@@ -113,19 +113,19 @@ def material():
     en_訳 = load_json_translations("en")
     rows = []
     for r in keys_authority():
-        鍵 = r["key"]
+        keys = r["key"]
         rows.append({
             "kind": r["kind"],
-            "key": escape(鍵),        # ソースのリテラルの形
-            "sym": 鍵,
-            "en": en_訳.get(鍵, 鍵),
-            "ja": ja_訳.get(鍵, ""),
+            "key": escape(keys),        # ソースのリテラルの形
+            "sym": keys,
+            "en": en_訳.get(keys, keys),
+            "ja": ja_訳.get(keys, ""),
         })
     return rows
 
 
 def load_json_translations(loc):
-    """`ui/i18n/<loc>.json` を {鍵: 訳} で読む。無ければ空。"""
+    """`ui/i18n/<loc>.json` を {keys: 訳} で読む。無ければ空。"""
     p = I18N_DIR / f"{loc}.json"
     if not p.exists():
         return {}
@@ -255,12 +255,12 @@ def check_table(loc):
     # (2026-08-26)。前は鍵が文そのものだったので鍵と比べていました
     英 = load_json_translations("en")
     for k, v in pairs:
-        鍵, 訳 = unescape(k), unescape(v)
-        if not 訳.strip() and 英.get(鍵, "").strip():
-            sys.exit(f"{loc}: 空の訳があります: {鍵}")
-        if holes(英.get(鍵, "")) != holes(訳):
-            sys.exit(f"{loc}: 穴埋めが合いません: {鍵}"
-                     f"({英.get(鍵, '')[:34]} → {訳[:34]})")
+        keys, 訳 = unescape(k), unescape(v)
+        if not 訳.strip() and 英.get(keys, "").strip():
+            sys.exit(f"{loc}: 空の訳があります: {keys}")
+        if holes(英.get(keys, "")) != holes(訳):
+            sys.exit(f"{loc}: 穴埋めが合いません: {keys}"
+                     f"({英.get(keys, '')[:34]} → {訳[:34]})")
     return len(pairs)
 
 

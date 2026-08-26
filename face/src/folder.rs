@@ -295,12 +295,12 @@ mod tests {
         std::fs::create_dir_all(dir.join(".jo-history")).unwrap();
 
         let v = list(&dir);
-        let 名: Vec<&str> = v.iter().map(|e| e.name.as_str()).collect();
-        assert_eq!(名[0], "images", "フォルダが先に来ていない: {名:?}");
-        assert!(!名.contains(&".隠し"), "隠しファイルが出た: {名:?}");
-        assert!(!名.iter().any(|n| n.contains("jo-history")), "控えが出た: {名:?}");
-        assert!(名.contains(&"売上台帳"), "{名:?}");
-        assert!(名.contains(&"覚え.txt"), "開けない物も一覧には出す: {名:?}");
+        let name: Vec<&str> = v.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(name[0], "images", "フォルダが先に来ていない: {name:?}");
+        assert!(!name.contains(&".隠し"), "隠しファイルが出た: {name:?}");
+        assert!(!name.iter().any(|n| n.contains("jo-history")), "控えが出た: {name:?}");
+        assert!(name.contains(&"売上台帳"), "{name:?}");
+        assert!(name.contains(&"覚え.txt"), "開けない物も一覧には出す: {name:?}");
 
         // 開ける物だけに絞れる
         let v2 = openable(&dir);
@@ -327,8 +327,8 @@ mod tests {
 ///
 /// 断るのは3つ — 空、区切りの字(`/` `\`)、`.` で始まる物です。
 /// `.` で始まる物は一覧に出ないので、作っても見えません。
-pub fn 名前を見る(名: &str) -> Result<(), String> {
-    let t = 名.trim();
+pub fn 名前を見る(name: &str) -> Result<(), String> {
+    let t = name.trim();
     if t.is_empty() {
         return Err(lang::i18n::tr("name_empty").to_string());
     }
@@ -342,11 +342,11 @@ pub fn 名前を見る(名: &str) -> Result<(), String> {
 }
 
 /// 新しいフォルダを作る。**同じ名前があれば断ります**(上書きしません)。
-pub fn フォルダを作る(親: &Path, 名: &str) -> Result<PathBuf, String> {
-    名前を見る(名)?;
-    let p = 親.join(名.trim());
+pub fn フォルダを作る(parent: &Path, name: &str) -> Result<PathBuf, String> {
+    名前を見る(name)?;
+    let p = parent.join(name.trim());
     if p.exists() {
-        return Err(format!("「{}」は既にあります", 名.trim()));
+        return Err(format!("「{}」は既にあります", name.trim()));
     }
     std::fs::create_dir(&p).map_err(|e| format!("作れません: {e}"))?;
     Ok(p)
@@ -355,29 +355,29 @@ pub fn フォルダを作る(親: &Path, 名: &str) -> Result<PathBuf, String> {
 /// 空のファイルを作る。**同じ名前があれば断ります**。
 ///
 /// 中身は呼ぶ側が決めます(`.adoc` なら題の1行など)。
-pub fn ファイルを作る(親: &Path, 名: &str, 中身: &str) -> Result<PathBuf, String> {
-    名前を見る(名)?;
-    let p = 親.join(名.trim());
+pub fn ファイルを作る(parent: &Path, name: &str, content: &str) -> Result<PathBuf, String> {
+    名前を見る(name)?;
+    let p = parent.join(name.trim());
     if p.exists() {
-        return Err(format!("「{}」は既にあります", 名.trim()));
+        return Err(format!("「{}」は既にあります", name.trim()));
     }
-    std::fs::write(&p, 中身).map_err(|e| format!("作れません: {e}"))?;
+    std::fs::write(&p, content).map_err(|e| format!("作れません: {e}"))?;
     Ok(p)
 }
 
 /// 名前を変える。**同じ名前があれば断ります**(上書きしません)。
-pub fn 名前を変える(元: &Path, 新しい名: &str) -> Result<PathBuf, String> {
+pub fn 名前を変える(from: &Path, 新しい名: &str) -> Result<PathBuf, String> {
     名前を見る(新しい名)?;
-    let 親 = 元.parent().ok_or_else(|| lang::i18n::tr("location_unknown").to_string())?;
-    let 先 = 親.join(新しい名.trim());
-    if 先 == 元 {
-        return Ok(先);
+    let parent = from.parent().ok_or_else(|| lang::i18n::tr("location_unknown").to_string())?;
+    let to = parent.join(新しい名.trim());
+    if to == from {
+        return Ok(to);
     }
-    if 先.exists() {
+    if to.exists() {
         return Err(format!("「{}」は既にあります", 新しい名.trim()));
     }
-    std::fs::rename(元, &先).map_err(|e| lang::i18n::trf("cannot_rename", &[&e]).to_string())?;
-    Ok(先)
+    std::fs::rename(from, &to).map_err(|e| lang::i18n::trf("cannot_rename", &[&e]).to_string())?;
+    Ok(to)
 }
 
 /// 消す。**ごみ箱には入りません** — 呼ぶ側が先に確かめてください。

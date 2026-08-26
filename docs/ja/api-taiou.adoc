@@ -210,15 +210,15 @@ def 大文字にする(段落):
 |===
 |ボタン |オブジェクト |印 |officework |python-docx |openpyxl
 
-|image:../face/icons/form-text.svg[Text Field,16,16] Text Field |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
-|image:../face/icons/form-combo.svg[Combo box,16,16] Combo box |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
-|image:../face/icons/form-dropdown.svg[Dropdown,16,16] Dropdown |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
-|image:../face/icons/form-checkbox.svg[Checkbox,16,16] Checkbox |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
-|image:../face/icons/form-radio.svg[Radio Button,16,16] Radio Button |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
+|image:../face/icons/form-text.svg[Text Field,16,16] Text Field |Doc(記入欄) |✅ |mcp.doc_fill({member: 値}) |— |—
+|image:../face/icons/form-combo.svg[Combo box,16,16] Combo box |Doc(記入欄) |✅ |mcp.doc_fill({member: 値}) |— |—
+|image:../face/icons/form-dropdown.svg[Dropdown,16,16] Dropdown |Doc(記入欄) |✅ |mcp.doc_fill({member: 値}) |— |—
+|image:../face/icons/form-checkbox.svg[Checkbox,16,16] Checkbox |Doc(記入欄) |✅ |mcp.doc_fill({member: 値}) |— |—
+|image:../face/icons/form-radio.svg[Radio Button,16,16] Radio Button |Doc(記入欄) |✅ |mcp.doc_fill({member: 値}) |— |—
 |image:../face/icons/form-image.svg[Picture,16,16] Picture |Doc(記入欄) | |— |— |—
-|image:../face/icons/form-email.svg[Email Address,16,16] Email Address |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
-|image:../face/icons/form-phone.svg[Phone Number,16,16] Phone Number |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
-|image:../face/icons/form-complex.svg[Complex Field,16,16] Complex Field |Doc(記入欄) |✅ |mcp.doc_fill({名前: 値}) |— |—
+|image:../face/icons/form-email.svg[Email Address,16,16] Email Address |Doc(記入欄) |✅ |mcp.doc_fill({member: 値}) |— |—
+|image:../face/icons/form-phone.svg[Phone Number,16,16] Phone Number |Doc(記入欄) |✅ |mcp.doc_fill({member: 値}) |— |—
+|image:../face/icons/form-complex.svg[Complex Field,16,16] Complex Field |Doc(記入欄) |✅ |mcp.doc_fill({member: 値}) |— |—
 |image:../face/icons/form-signature.svg[Signature,16,16] Signature |Doc(記入欄) | |— |— |—
 |image:../face/icons/form-name.svg[Name,16,16] Name |Doc(記入欄) |✅ |mcp.doc_fields() |— |—
 |===

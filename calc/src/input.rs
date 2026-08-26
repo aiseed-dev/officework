@@ -81,13 +81,13 @@ impl Calc {
     /// 固定や分割の帯があるときは、その分だけ動ける場所が狭くなります。
     /// 帯の中にカーソルが見えているなら、何も動かしません
     pub(crate) fn follow(&mut self) {
-        let 上 = self.上の帯();
-        let 左 = self.左の帯();
+        let top = self.top_band();
+        let left = self.left_band();
         let 帯の中 =
             |帯: Option<(u32, u32)>, v: u32| 帯.is_some_and(|(f, s)| f > 0 && (s..s + f).contains(&v));
-        let nr = self.rows_snug().saturating_sub(上.map_or(0, |(f, _)| f)).max(1);
-        let nc = self.cols_snug().saturating_sub(左.map_or(0, |(f, _)| f)).max(1);
-        if !帯の中(上, self.cursor.row) {
+        let nr = self.rows_snug().saturating_sub(top.map_or(0, |(f, _)| f)).max(1);
+        let nc = self.cols_snug().saturating_sub(left.map_or(0, |(f, _)| f)).max(1);
+        if !帯の中(top, self.cursor.row) {
             if self.cursor.row < self.view.row {
                 self.view.row = self.cursor.row;
             }
@@ -95,7 +95,7 @@ impl Calc {
                 self.view.row = self.cursor.row + 1 - nr;
             }
         }
-        if !帯の中(左, self.cursor.col) {
+        if !帯の中(left, self.cursor.col) {
             if self.cursor.col < self.view.col {
                 self.view.col = self.cursor.col;
             }

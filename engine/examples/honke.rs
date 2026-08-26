@@ -2,36 +2,36 @@
 fn main() {
     let root = std::path::Path::new("vendor/asciidoctor");
     let mut files = Vec::new();
-    fn 集める(d: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+    fn collect_into(d: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
         let Ok(rd) = std::fs::read_dir(d) else { return };
         for e in rd.flatten() {
             let p = e.path();
             if p.is_dir() {
-                集める(&p, out);
+                collect_into(&p, out);
             } else if p.extension().and_then(|x| x.to_str()) == Some("adoc") {
                 out.push(p);
             }
         }
     }
-    集める(root, &mut files);
+    collect_into(root, &mut files);
     files.sort();
-    let (mut 断り, mut 同じ, mut 変わった) = (0, 0, 0);
-    let mut 帳簿: std::collections::BTreeMap<String, usize> = Default::default();
+    let (mut note_div, mut 同じ, mut 変わった) = (0, 0, 0);
+    let mut ledger: std::collections::BTreeMap<String, usize> = Default::default();
     for f in &files {
         let Ok(src) = std::fs::read_to_string(f) else { continue };
         match kumihan::adoc::parse_full(&src) {
-            Err(_) => 断り += 1,
+            Err(_) => note_div += 1,
             Ok((doc, notes)) => {
                 for n in notes {
-                    let 名 = n.split(" ×").next().unwrap_or(&n).to_string();
-                    *帳簿.entry(名).or_default() += 1;
+                    let name = n.split(" ×").next().unwrap_or(&n).to_string();
+                    *ledger.entry(name).or_default() += 1;
                 }
                 if kumihan::adoc::write(&doc) == src { 同じ += 1 } else { 変わった += 1 }
             }
         }
     }
-    println!("{} 枚: 断り {断り} / 1バイトも変わらない {同じ} / 変わった {変わった}", files.len());
-    let mut v: Vec<_> = 帳簿.into_iter().collect();
+    println!("{} 枚: 断り {note_div} / 1バイトも変わらない {同じ} / 変わった {変わった}", files.len());
+    let mut v: Vec<_> = ledger.into_iter().collect();
     v.sort_by_key(|(_, n)| std::cmp::Reverse(*n));
     for (k, n) in v.iter().take(12) {
         println!("  {n:4} {k}");

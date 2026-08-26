@@ -1463,8 +1463,8 @@ impl Calc {
                     }
                 }
                 // **画面の言語の字が組める書体だけ**(2026-08-26)
-                let 系統 = kumihan::font::script_of(&ui::language());
-                for f in all.iter().filter(|f| f.covers(系統)) {
+                let script = kumihan::font::script_of(&ui::language());
+                for f in all.iter().filter(|f| f.covers(script)) {
                     vals.push((f.name.clone(), f.ascii.clone()));
                 }
                 if vals.is_empty() {
@@ -1898,19 +1898,19 @@ impl Calc {
                     n += 1;
                 }
                 let path = dir.join(format!("記録{n}.py"));
-                let 行 = script.lines().count();
+                let line = script.lines().count();
                 match std::fs::write(&path, script) {
                     Ok(()) => {
                         self.status = match ui::open_for_edit(&path.display().to_string()) {
                             Ok(tool) => ui::tf!(
                                 "wrote_recording_lines_opening",
                                 path.file_name().unwrap_or_default().to_string_lossy(),
-                                行, tool
+                                line, tool
                             )
                             .into(),
                             Err(_) => ui::tf!(
                                 "wrote_recording_lines",
-                                path.display().to_string(), 行
+                                path.display().to_string(), line
                             )
                             .into(),
                         };
@@ -2673,8 +2673,8 @@ impl Calc {
                     Some(i) => {
                         let d = &self.book.pivots[i];
                         // シートの名前も添える(別のシートの表も指せます)
-                        let 今 = format!("{}!{}:{}", d.sheet, d.src.0.a1(), d.src.1.a1());
-                        self.prompt = Some(("pivot-src", Editor::new(&今)));
+                        let now = format!("{}!{}:{}", d.sheet, d.src.0.a1(), d.src.1.a1());
+                        self.prompt = Some(("pivot-src", Editor::new(&now)));
                         self.status = ui::t!(
                             "type_source_range_press"
                         )
@@ -3648,15 +3648,15 @@ impl Calc {
                     for r in a.row..=b.row {
                         for c in a.col..=b.col {
                             let p = Pos::new(r, c);
-                            let 字 = sh.get(p).map(|x| x.value.display()).unwrap_or_default();
+                            let text = sh.get(p).map(|x| x.value.display()).unwrap_or_default();
                             // 空欄は規則の `allow_blank` に従う(打つときと同じ)
-                            if 字.is_empty() {
+                            if text.is_empty() {
                                 if !v.allow_blank {
                                     見つけた.push((si, p));
                                 }
                                 continue;
                             }
-                            if !v.passes(sh, &字) {
+                            if !v.passes(sh, &text) {
                                 見つけた.push((si, p));
                             }
                         }

@@ -59,7 +59,7 @@ NOT = re.compile(r'"20\d\d-\d\d-\d\d"|\[20\d\d-\d\d-\d\d\]')
 
 
 def main() -> int:
-    悪い = []
+    bad = []
     for rel in MIRU:
         p = ROOT / rel
         if not p.exists():
@@ -69,14 +69,14 @@ def main() -> int:
                 continue
             for pat, why in NG:
                 if re.search(pat, line):
-                    悪い.append((rel, n, why, line.strip()[:70]))
+                    bad.append((rel, n, why, line.strip()[:70]))
                     break
-    if not 悪い:
+    if not bad:
         print(f"利用者向けの {len(MIRU)} 枚に、内輪の注記はありません")
         return 0
-    print(f"**内輪の注記が {len(悪い)} 箇所あります。**", file=sys.stderr)
+    print(f"**内輪の注記が {len(bad)} 箇所あります。**", file=sys.stderr)
     print("使う人は経緯を知りません。設計(SEKKEI)に移してください。\n", file=sys.stderr)
-    for rel, n, why, line in 悪い:
+    for rel, n, why, line in bad:
         print(f"  {rel}:{n}  {why}", file=sys.stderr)
         print(f"      {line}", file=sys.stderr)
     return 1

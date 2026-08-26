@@ -34,38 +34,38 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-見る = ("calc/src", "writer/src", "ui/src", "officework/src")
+check = ("calc/src", "writer/src", "ui/src", "officework/src")
 
 # `self.status = format!(` / `this.status =\n format!(` の両方を拾う
-形 = re.compile(r'status\s*=\s*\n?\s*format!\(\s*\n?\s*(".*?")', re.S)
+shape = re.compile(r'status\s*=\s*\n?\s*format!\(\s*\n?\s*(".*?")', re.S)
 日本語 = re.compile(r'[ぁ-んァ-ヶ一-龠]')
 
 
 def main() -> int:
-    見た, 悪い = 0, []
-    for d in 見る:
+    seen, bad = 0, []
+    for d in check:
         for p in sorted((ROOT / d).rglob("*.rs")):
             s = p.read_text(encoding="utf-8")
-            for m in 形.finditer(s):
-                見た += 1
-                文 = m.group(1)[:160]
-                if 日本語.search(文):
-                    行 = s[: m.start()].count("\n") + 1
-                    悪い.append((p.relative_to(ROOT), 行, 文[:70]))
+            for m in shape.finditer(s):
+                seen += 1
+                sentence = m.group(1)[:160]
+                if 日本語.search(sentence):
+                    line = s[: m.start()].count("\n") + 1
+                    bad.append((p.relative_to(ROOT), line, sentence[:70]))
     # **読めなくなったら落ちる。** 静かに緑になるのが一番悪い。
     # 穴と英数字だけの `format!` は今も 10 件ほどあるので、0 は「読めていない」
-    if 見た < 5:
-        print(f"::error::status = format! が {見た} 件しか見つかりません(書き方が変わった?)")
+    if seen < 5:
+        print(f"::error::status = format! が {seen} 件しか見つかりません(書き方が変わった?)")
         return 1
-    for f, 行, 文 in 悪い:
+    for f, line, sentence in bad:
         print(
-            f"::error::{f}:{行} 状態行が訳を通っていません — {文}。"
+            f"::error::{f}:{line} 状態行が訳を通っていません — {sentence}。"
             "format! ではなく ui::tf! で書いてください"
             "(名前つきの差し込みは位置に直す)"
         )
-    if 悪い:
+    if bad:
         return 1
-    print(f"状態行の format! {見た} 件は、どれも訳の要らない物です(日本語を含みません)")
+    print(f"状態行の format! {seen} 件は、どれも訳の要らない物です(日本語を含みません)")
     return 0
 
 

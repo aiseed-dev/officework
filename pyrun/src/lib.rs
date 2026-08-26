@@ -1303,7 +1303,7 @@ mod venv_tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
 
-        let 見る = |cfg: &str| -> bool {
+        let check = |cfg: &str| -> bool {
             let home = cfg
                 .lines()
                 .find_map(|l| l.strip_prefix("home").map(|r| r.trim_start_matches([' ', '=']).trim()));
@@ -1313,11 +1313,11 @@ mod venv_tests {
             }
         };
         // 在る径路を指していれば壊れていない
-        assert!(!見る(&format!("home = {}\n", dir.display())), "在る径路を壊れていると言った");
+        assert!(!check(&format!("home = {}\n", dir.display())), "在る径路を壊れていると言った");
         // 消えた径路を指していれば壊れている
-        assert!(見る("home = /nowhere/bin\n"), "消えた径路を見逃した");
+        assert!(check("home = /nowhere/bin\n"), "消えた径路を見逃した");
         // home が無い pyvenv.cfg も壊れている扱い
-        assert!(見る("version = 3.14.6\n"), "home の無い cfg を見逃した");
+        assert!(check("version = 3.14.6\n"), "home の無い cfg を見逃した");
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -1441,12 +1441,12 @@ mod cage_tests {
         .unwrap();
         let mut v = ribbon_decls(&d);
         v.sort_by(|a, b| a.module.cmp(&b.module));
-        let 見た: Vec<_> = v
+        let seen: Vec<_> = v
             .iter()
             .map(|r| (r.label.as_str(), r.icon.as_str(), r.tab.as_str()))
             .collect();
         assert_eq!(
-            見た,
+            seen,
             vec![
                 ("年次", "py-list", "経理"),   // 古い.py(札・絵・段)
                 ("月次", "py-run", "経理"),    // 新しい.py(ラベル・アイコン・タブ)

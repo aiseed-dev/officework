@@ -622,7 +622,8 @@ pub(crate) const DV_KIND_XLSX: [&str; 5] = ["", "whole", "decimal", "list", "tex
 /// **引き当ては operator**(訳さない字)、画面は見出し
 pub(crate) fn dv_ops() -> [(&'static str, &'static str); 8] {
     [
-        ("between_2", ui::t!("between_2")),
+        // **左は xlsx の operator。** 訳さない字なので記号にしません
+        ("between", ui::t!("between_2")),
         ("notBetween", ui::t!("not_between")),
         ("equal", ui::t!("equal")),
         ("notEqual", ui::t!("not_equal")),
@@ -818,15 +819,15 @@ pub(crate) struct PivotSuggest {
 /// 列の中身が数として読めるか。**6割を超えたら数の列**とみなします。
 /// 全部でなくてよいのは、実物の表には「-」や「未定」が混ざるためです
 fn 数の列(vals: &[String]) -> bool {
-    let 中身: Vec<&String> = vals.iter().filter(|v| !v.trim().is_empty()).collect();
-    if 中身.is_empty() {
+    let content: Vec<&String> = vals.iter().filter(|v| !v.trim().is_empty()).collect();
+    if content.is_empty() {
         return false;
     }
-    let 数 = 中身
+    let numbers = content
         .iter()
         .filter(|v| v.replace([',', ' ', '\u{a0}'], "").parse::<f64>().is_ok())
         .count();
-    数 * 10 >= 中身.len() * 6
+    numbers * 10 >= content.len() * 6
 }
 
 /// 空でない値の種類の数。
@@ -872,14 +873,14 @@ pub(crate) fn pivot_suggestions(headers: &[String], cols: &[Vec<String>]) -> Vec
     }
     行候補.sort_unstable();
     let mut out: Vec<PivotSuggest> = Vec::new();
-    let 足す = |s: PivotSuggest, out: &mut Vec<PivotSuggest>| {
+    let push = |s: PivotSuggest, out: &mut Vec<PivotSuggest>| {
         if !out.contains(&s) && out.len() < 6 {
             out.push(s);
         }
     };
     for &(_, r) in 行候補.iter().take(2) {
         for &v in 値候補.iter().take(2) {
-            足す(
+            push(
                 PivotSuggest {
                     rows_sel: vec![headers[r].clone()],
                     cols_sel: Vec::new(),
@@ -893,7 +894,7 @@ pub(crate) fn pivot_suggestions(headers: &[String], cols: &[Vec<String>]) -> Vec
     // 2つの見出しで縦横に広げる形。列は種類の少ないものだけ
     if let (Some(&(_, r)), Some(&v)) = (行候補.first(), 値候補.first()) {
         if let Some(&(_, c)) = 行候補.iter().find(|&&(k, i)| i != r && k <= 8) {
-            足す(
+            push(
                 PivotSuggest {
                     rows_sel: vec![headers[r].clone()],
                     cols_sel: vec![headers[c].clone()],
@@ -906,7 +907,7 @@ pub(crate) fn pivot_suggestions(headers: &[String], cols: &[Vec<String>]) -> Vec
     }
     // 数の列が1つも無くても、件数なら数えられます
     if let Some(&(_, r)) = 行候補.first() {
-        足す(
+        push(
             PivotSuggest {
                 rows_sel: vec![headers[r].clone()],
                 cols_sel: Vec::new(),

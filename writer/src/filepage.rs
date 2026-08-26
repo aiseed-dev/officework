@@ -53,12 +53,12 @@ impl Writer {
                     .child(SharedString::from(if s.is_empty() { ph.to_string() } else { s }))
                     .on_click(cx.listener(move |t, _, _, cx| { t.fd_field = i; cx.notify() }))
             };
-            let 押し = |id: &'static str, 札: SharedString| {
+            let push_btn = |id: &'static str, label_text: SharedString| {
                 div().id(id).px_3().py_1().rounded_sm().cursor_pointer()
                     .border_1().border_color(th_btn).text_color(th_btn)
                     .text_size(px(us * 12.0))
                     .hover(move |s| s.bg(th_btn_hover))
-                    .child(札)
+                    .child(label_text)
             };
             pane = pane
                 .child(div().text_size(px(us * 16.0)).font_weight(gpui::FontWeight::BOLD)
@@ -66,9 +66,9 @@ impl Writer {
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(欄(self, 0, &self.fd_term, 280.0, "探す字"))
                     .child(欄(self, 1, &self.fd_glob, 120.0, "*.txt"))
-                    .child(押し("fd-dir", ui::t!("choose_folder").into()).on_click(
+                    .child(push_btn("fd-dir", ui::t!("choose_folder").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.find_dir_dialog(cx); cx.notify() })))
-                    .child(押し("fd-go", ui::t!("search_enter").into()).on_click(
+                    .child(push_btn("fd-go", ui::t!("search_enter").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.find_in_folder(); cx.notify() }))))
                 .child(div().text_size(px(us * 11.5)).text_color(th_status)
                     .child(SharedString::from(match self.find_dir() {
@@ -76,18 +76,18 @@ impl Writer {
                         None => ui::t!("no_folder_chosen_yet").to_string(),
                     })));
             // 当たりの一覧(ファイルごとに見出し + 行番号つきの行)
-            let mut 一覧 = div().id("fd-list")
+            let mut list = div().id("fd-list")
                 .flex_none().h(px(us * 320.0)).overflow_y_scroll()
                 .p_2().rounded_sm().bg(gpui::white())
                 .border_1().border_color(th_cmd_border)
                 .flex().flex_col().gap_0p5().text_size(px(us * 12.0));
             if self.fd_hits.is_empty() {
-                一覧 = 一覧.child(div().text_color(th_status)
+                list = list.child(div().text_color(th_status)
                     .child(ui::t!("nothing_searched_yet")));
             }
             self.fd_box.borrow_mut().clear();
             for (fi, f) in self.fd_hits.iter().enumerate() {
-                一覧 = 一覧.child(div().mt_1().text_color(th_btn)
+                list = list.child(div().mt_1().text_color(th_btn)
                     .child(SharedString::from(format!(
                         "{}   {}   {}",
                         f.path.file_name().unwrap_or_default().to_string_lossy(),
@@ -99,7 +99,7 @@ impl Writer {
                     // 長い行は縮める(一覧が横に流れない)
                     let line: String = h.text.chars().take(120).collect();
                     let rec = self.fd_box.clone();
-                    一覧 = 一覧.child(div()
+                    list = list.child(div()
                         .id(SharedString::from(format!("fd-h-{fi}-{hi}")))
                         .relative()
                         .child(gpui::canvas(
@@ -126,12 +126,12 @@ impl Writer {
                         })));
                 }
             }
-            pane = pane.child(一覧);
+            pane = pane.child(list);
             // **下の窓と「読み込み」**(発注者 2026-08-17
             // 「下に読み込みボタンを置くのはどうか」)。見て、これだと
             // 分かってから開く — 押し間違いで文書が入れ替わらない
             pane = pane.child(div().flex().flex_row().items_center().gap_2()
-                .child(押し("fd-load", ui::t!("load").into()).on_click(
+                .child(push_btn("fd-load", ui::t!("load").into()).on_click(
                     cx.listener(|t, _, _, cx| { t.find_load(); cx.notify() })))
                 .child(div().text_size(px(us * 11.5)).text_color(th_status)
                     .child(ui::t!("opens_document_chosen_hit"))));
@@ -317,9 +317,9 @@ impl Writer {
             // その段が `[文書.en]` のような言語ごとの分を持っているときは、
             // いまの言語の分を出します — 出さないと、画面の数字と
             // ファイルの中身が食い違って見えます
-            let 言語 = ui::language();
-            let 言い分 = |th: Option<&kumihan::theme::Theme>| -> Option<String> {
-                let th = th?.for_language(&言語);
+            let lang = ui::language();
+            let notes = |th: Option<&kumihan::theme::Theme>| -> Option<String> {
+                let th = th?.for_language(&lang);
                 match (th.font, th.size_pt) {
                     (Some(f), Some(s)) => Some(format!("{f} {s}pt")),
                     (Some(f), None) => Some(f),
@@ -327,13 +327,13 @@ impl Writer {
                     (None, None) => None,
                 }
             };
-            let 段 = |名: &str, 値: Option<String>, 場所: Option<String>| {
-                let 値 = 値.unwrap_or_else(|| ui::t!("not_specified").to_string());
+            let tab = |name: &str, value: Option<String>, 場所: Option<String>| {
+                let value = value.unwrap_or_else(|| ui::t!("not_specified").to_string());
                 div().flex().flex_col().gap_1().pb_2()
                     .child(div().flex().flex_row().items_center().gap_2()
                         .child(div().w(px(us * 120.0)).text_color(th_status)
-                            .child(SharedString::from(名.to_string())))
-                        .child(div().child(SharedString::from(値))))
+                            .child(SharedString::from(name.to_string())))
+                        .child(div().child(SharedString::from(value))))
                     .child(div().pl(px(us * 120.0)).text_size(px(us * 10.0))
                         .text_color(th_status)
                         .child(SharedString::from(
@@ -346,18 +346,18 @@ impl Writer {
                 .child(div().text_color(th_status)
                     .child(ui::t!("each_level_fills_what")))
                 .child(div().text_color(th_status).text_size(px(us * 11.0))
-                    .child(ui::tf!("current_language_font_size", 言語)))
+                    .child(ui::tf!("current_language_font_size", lang)))
                 .child(div().h(px(us * 8.0)))
                 // 1段目 — この文書
-                .child(段(&ui::t!("document_5"), self.doc.font.clone(),
+                .child(tab(&ui::t!("document_5"), self.doc.font.clone(),
                           Some(ui::t!("font_stored_document_open").to_string())))
                 // 2段目 — 綴り
-                .child(段(&ui::t!("folder_4"),
-                          言い分(綴り.as_ref()),
+                .child(tab(&ui::t!("folder_4"),
+                          notes(綴り.as_ref()),
                           綴りの場所.map(|p| p.display().to_string())))
                 // 3段目 — 利用者
-                .child(段(&ui::t!("account_computer"),
-                          言い分(利用者.as_ref()),
+                .child(tab(&ui::t!("account_computer"),
+                          notes(利用者.as_ref()),
                           Some(利用者の場所.display().to_string())))
                 .child(div().h(px(us * 8.0)))
                 // **いま実際に使っている書体と大きさ**。3段を重ねた結果です
@@ -396,13 +396,13 @@ impl Writer {
             if list.is_empty() {
                 pane = pane.child(ui::filemenu::recent_empty(&look));
             }
-            for (i, (名, 道)) in list.into_iter().enumerate() {
-                let 名2 = 名.clone();
+            for (i, (name, path)) in list.into_iter().enumerate() {
+                let 名2 = name.clone();
                 pane = pane.child(
-                    ui::filemenu::recent_row(&look, i, std::path::Path::new(&名))
+                    ui::filemenu::recent_row(&look, i, std::path::Path::new(&name))
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.tab = this.prev_tab;
-                            this.open(道.clone());
+                            this.open(path.clone());
                             // **控えを原本と取り違えないよう、道は持たせない**
                             this.path = None;
                             this.dirty = true;

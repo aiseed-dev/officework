@@ -1174,8 +1174,8 @@ impl Calc {
                 // ファイル名なので、この鍵と重なりません
                 if v != "salvage_what_can_read" {
                     // 控えから開く。**元のファイルは触りません**
-                    let 控え = ops::history::list(Some(&path));
-                    if let Some((_, q)) = 控え.into_iter().find(|(n, _)| *n == v) {
+                    let record = ops::history::list(Some(&path));
+                    if let Some((_, q)) = record.into_iter().find(|(n, _)| *n == v) {
                         self.open_version(&q);
                     }
                     return;
@@ -1269,9 +1269,9 @@ impl Calc {
             }
             "scenario-del" => {
                 let name = v.to_string();
-                let 前 = self.sheet().scenarios.len();
+                let before = self.sheet().scenarios.len();
                 self.sheet_mut().scenarios.retain(|s| s.name != name);
-                if self.sheet().scenarios.len() < 前 {
+                if self.sheet().scenarios.len() < before {
                     self.dirty = true;
                     self.status = ui::tf!("deleted_scenario", name).into();
                 }
@@ -2721,12 +2721,12 @@ impl Calc {
         let sel = sl.sel.clone();
         let grain = sl.grain.clone();
         let names = sl.pivots.clone();
-        let 見出し = self
+        let heading = self
             .sheet()
             .get(Pos::new(0, col))
             .map(|c| c.value.display())
             .unwrap_or_default();
-        if 見出し.is_empty() {
+        if heading.is_empty() {
             return;
         }
         let mut 押した = 0usize;
@@ -2735,7 +2735,7 @@ impl Calc {
             // その見出しをピボットが使っていなければ触らない
             let 使っている = {
                 let d = &self.book.pivots[pi];
-                d.rows_sel.contains(&見出し) || d.cols_sel.contains(&見出し)
+                d.rows_sel.contains(&heading) || d.cols_sel.contains(&heading)
             };
             if !使っている {
                 continue;
@@ -2750,7 +2750,7 @@ impl Calc {
             };
             let sh = &self.book.sheets[si2];
             let Some(c2) = (a.col..=b.col).find(|&c| {
-                sh.get(Pos::new(a.row, c)).map(|x| x.value.display()).unwrap_or_default() == 見出し
+                sh.get(Pos::new(a.row, c)).map(|x| x.value.display()).unwrap_or_default() == heading
             }) else {
                 continue;
             };
@@ -2782,9 +2782,9 @@ impl Calc {
                     .collect()
             };
             let d = &mut self.book.pivots[pi];
-            d.hide.retain(|(f, _)| *f != 見出し);
+            d.hide.retain(|(f, _)| *f != heading);
             if !隠す.is_empty() {
-                d.hide.push((見出し.clone(), 隠す));
+                d.hide.push((heading.clone(), 隠す));
             }
             let nd = d.clone();
             self.spawn_pivot(nd, Some(pi), cx);
@@ -2867,19 +2867,19 @@ impl Calc {
                     .collect()
             })
             .collect();
-        let 候補 = crate::util::pivot_suggestions(&headers, &cols);
-        if 候補.is_empty() {
+        let cands = crate::util::pivot_suggestions(&headers, &cols);
+        if cands.is_empty() {
             return false;
         }
         let at = self.pop_anchor();
         // 鍵は番号。見出しの字は帳票の中身なので、鍵にすると訳の照合に紛れます
-        let mut items: Vec<(String, String)> = 候補
+        let mut items: Vec<(String, String)> = cands
             .iter()
             .enumerate()
             .map(|(i, s)| (format!("#{i}"), crate::util::pivot_suggest_label(s)))
             .collect();
         items.extend(menu(&[ui::item!("choose_fields_myself_rows")]));
-        self.pivot_suggests = 候補;
+        self.pivot_suggests = cands;
         self.pick_note =
             Some(ui::t!("layouts_table_can_make").into());
         self.pick_kind = "pivot-suggest";
@@ -3088,13 +3088,13 @@ impl Calc {
             3 => crate::util::dv_styles().len(),
             _ => return false,
         };
-        let 今 = match d.menu {
+        let now = match d.menu {
             1 => &mut d.kind,
             2 => &mut d.op,
             _ => &mut d.err_style,
         };
         // 端では止めます(巡回しません — どちらが端か分からなくなるため)
-        *今 = if 下へ { (*今 + 1).min(n - 1) } else { 今.saturating_sub(1) };
+        *now = if 下へ { (*now + 1).min(n - 1) } else { now.saturating_sub(1) };
         true
     }
 
@@ -3178,7 +3178,7 @@ impl Calc {
             k => {
                 let ops = dv_ops();
                 let (opk, _) = ops[d.op.min(ops.len() - 1)];
-                let need2 = matches!(opk, "between_2" | "notBetween");
+                let need2 = matches!(opk, "between" | "notBetween");
                 // IME の全角の数・記号は半角にならす(打ち直させない)
                 let norm = |t: String| -> String {
                     t.chars()
@@ -4008,7 +4008,7 @@ impl Calc {
                     return;
                 };
                 // `Sheet1!A1:C20` か `A1:C20`(いまのシート)
-                let (名, 範囲) = match text.rsplit_once('!') {
+                let (name, 範囲) = match text.rsplit_once('!') {
                     Some((s0, r)) => (s0.trim().to_string(), r.trim().to_string()),
                     None => (self.sheet().name.clone(), text.trim().to_string()),
                 };
@@ -4023,8 +4023,8 @@ impl Calc {
                     self.status = ui::tf!("cant_read_range", 範囲).into();
                     return;
                 };
-                let Some(si) = self.book.sheets.iter().position(|s| s.name == 名) else {
-                    self.status = ui::tf!("there_no_sheet", 名).into();
+                let Some(si) = self.book.sheets.iter().position(|s| s.name == name) else {
+                    self.status = ui::tf!("there_no_sheet", name).into();
                     return;
                 };
                 if b0.row <= a0.row {
@@ -4033,7 +4033,7 @@ impl Calc {
                 }
                 // **いま使っている見出しが新しい範囲にあるか。** 無ければ
                 // 作り直しても空になります — 黙って空にせず、先に言います
-                let 見出し: Vec<String> = (a0.col..=b0.col)
+                let heading: Vec<String> = (a0.col..=b0.col)
                     .map(|c| {
                         self.book.sheets[si]
                             .get(Pos::new(a0.row, c))
@@ -4042,31 +4042,31 @@ impl Calc {
                     })
                     .collect();
                 let d = self.book.pivots[i].clone();
-                let 要る: Vec<&String> = d
+                let needed: Vec<&String> = d
                     .rows_sel
                     .iter()
                     .chain(d.cols_sel.iter())
                     .chain(std::iter::once(&d.value))
                     .filter(|h| !h.is_empty())
                     .collect();
-                let 無い: Vec<String> =
-                    要る.iter().filter(|h| !見出し.contains(h)).map(|h| h.to_string()).collect();
-                if !無い.is_empty() {
+                let missing: Vec<String> =
+                    needed.iter().filter(|h| !heading.contains(h)).map(|h| h.to_string()).collect();
+                if !missing.is_empty() {
                     self.status = ui::tf!(
                         "new_range_no_such",
-                        無い.join("・")
+                        missing.join("・")
                     )
                     .into();
                     return;
                 }
                 self.checkpoint();
-                self.book.pivots[i].sheet = 名.clone();
+                self.book.pivots[i].sheet = name.clone();
                 self.book.pivots[i].src = (a0, b0);
                 let d = self.book.pivots[i].clone();
                 self.dirty = true;
                 self.status = ui::tf!(
                     "source_table_repointed_rebuilding",
-                    名,
+                    name,
                     a0.a1(),
                     b0.a1()
                 )
@@ -4590,9 +4590,9 @@ impl Calc {
                     return;
                 }
                 let 何セル = cells.len();
-                let 前 = self.sheet().scenarios.len();
+                let before = self.sheet().scenarios.len();
                 self.sheet_mut().scenarios.retain(|s| s.name != name);
-                let 上書き = self.sheet().scenarios.len() < 前;
+                let 上書き = self.sheet().scenarios.len() < before;
                 self.sheet_mut().scenarios.push(sheet::model::Scenario {
                     name: name.clone(),
                     cells,

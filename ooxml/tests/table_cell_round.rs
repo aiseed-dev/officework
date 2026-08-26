@@ -48,7 +48,7 @@ fn 実物の表のセルがadocを往復する() {
             let src = kumihan::adoc::write(&doc);
             let back = kumihan::adoc::parse(&src).expect("書いた adoc が読めない");
             冊 += 1;
-            let 名 = p.file_name().unwrap().to_string_lossy().to_string();
+            let name = p.file_name().unwrap().to_string_lossy().to_string();
             for (a, b) in 升の字(&doc).iter().zip(升の字(&back).iter()) {
                 // 段落が2つ以上の升だけを見る(1段落の升は前から通っている)
                 if !a.contains('\n') {
@@ -60,7 +60,7 @@ fn 実物の表のセルがadocを往復する() {
                 } else if 芯(a) == 芯(b) {
                     空だけ += 1;
                 } else {
-                    中身が違う.push(format!("{名}: {a:?} → {b:?}"));
+                    中身が違う.push(format!("{name}: {a:?} → {b:?}"));
                 }
             }
         }

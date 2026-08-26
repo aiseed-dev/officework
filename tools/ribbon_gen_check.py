@@ -71,19 +71,19 @@ def main() -> int:
     real = R.tables_or_die(ROOT / "face" / "src" / "ribbon.rs")
 
     違い = []
-    for 表 in ("WRITER", "CALC"):
-        g, c = gen[表], real[表]
+    for table in ("WRITER", "CALC"):
+        g, c = gen[table], real[table]
         gn = [t.name for t in g]
         cn = [t.name for t in c]
         if gn != cn:
-            違い.append(f"{表}: タブの並びが違います\n  生成 {gn}\n  実物 {cn}")
+            違い.append(f"{table}: タブの並びが違います\n  生成 {gn}\n  実物 {cn}")
             continue
         for t1, t2 in zip(g, c):
             a = [(x.kind, x.id, x.label, x.icon) for x in t1.cmds]
             b = [(x.kind, x.id, x.label, x.icon) for x in t2.cmds]
             if a == b:
                 continue
-            違い.append(f"{表} / {t1.name}: 生成 {len(a)} 個 / 実物 {len(b)} 個")
+            違い.append(f"{table} / {t1.name}: 生成 {len(a)} 個 / 実物 {len(b)} 個")
             for k in range(max(len(a), len(b))):
                 x = a[k] if k < len(a) else None
                 y = b[k] if k < len(b) else None
@@ -100,7 +100,7 @@ def main() -> int:
         print("  うちで変えた    → ui/gen_ribbon.py の表に意図を書く")
         print("    EXTRA_CMDS(足す) / 並べ替え(動かす) / 外す / 言い換え / 絵の差し替え")
         return 1
-    n = sum(len(t.cmds) for 表 in ("WRITER", "CALC") for t in real[表])
+    n = sum(len(t.cmds) for table in ("WRITER", "CALC") for t in real[table])
     print(f"生成スクリプトは実物を再現できます(タブ {len(real['WRITER']) + len(real['CALC'])}・ボタン {n})")
 
     # **14 言語の表も作り直せるか。** ja だけ作り直せても、他が手で
@@ -108,14 +108,14 @@ def main() -> int:
     sys.path.insert(0, str(ROOT / "ui"))
     import locales  # noqa: E402
 
-    悪い = []
+    bad = []
     for loc in ["en"] + [t for t in locales.TAGS if t != "en"]:
         r = subprocess.run(
             [sys.executable, str(ROOT / "ui" / "gen_ribbon_locale.py"), loc],
             capture_output=True, text=True, cwd=ROOT, timeout=600,
         )
         if r.returncode != 0:
-            悪い.append(f"{loc}: 作り直せません\n  " + r.stderr.strip()[-300:])
+            bad.append(f"{loc}: 作り直せません\n  " + r.stderr.strip()[-300:])
             continue
         with tempfile.NamedTemporaryFile(
             "w", suffix=".rs", delete=False, encoding="utf-8"
@@ -128,17 +128,17 @@ def main() -> int:
             t2.unlink(missing_ok=True)
         c2 = R.tables_or_die(ROOT / "face" / "src" / f"ribbon_{loc.replace('-', '_')}.rs")
         d = [
-            f"{表}/{t3.name}: 生成 {x.label!r} / 実物 {y.label!r}"
-            for 表 in ("WRITER", "CALC")
-            for t3, t4 in zip(g2[表], c2[表])
+            f"{table}/{t3.name}: 生成 {x.label!r} / 実物 {y.label!r}"
+            for table in ("WRITER", "CALC")
+            for t3, t4 in zip(g2[table], c2[table])
             for x, y in zip(t3.cmds, t4.cmds)
             if (x.kind, x.id, x.label, x.icon) != (y.kind, y.id, y.label, y.icon)
         ]
         if d:
-            悪い.append(f"{loc}: {len(d)} 行ちがう\n  " + "\n  ".join(d[:4]))
-    if 悪い:
+            bad.append(f"{loc}: {len(d)} 行ちがう\n  " + "\n  ".join(d[:4]))
+    if bad:
         print("::error::言語の表が作り直せません(または作り直すと違う物になります)")
-        for b in 悪い:
+        for b in bad:
             print(b)
         print()
         print("訳が足りないときは ui/gen_ribbon_locale.py の OVERRIDES に足します")

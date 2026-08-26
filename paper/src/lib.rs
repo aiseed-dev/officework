@@ -525,11 +525,11 @@ mod tests {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let 紙 = |w: f32, h: f32| PageSetup {
+        let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
             top_mm: 20.0, bottom_mm: 20.0, columns: 1,
         };
-        let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
+        let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
             line_spacing: 1.0,
             sect: sect.map(|page| kumihan::SectionBreak {
@@ -537,12 +537,12 @@ mod tests {
             ..Default::default()
         });
         let d = Document {
-            page: Some(紙(210.0, 297.0)),          // 最後の節 = 縦
+            page: Some(paper(210.0, 297.0)),          // 最後の節 = 縦
             blocks: vec![
-                段("縦の節の本文", None),
-                段("縦の節の終わり", Some(紙(210.0, 297.0))),
-                段("横の節の本文", Some(紙(297.0, 210.0))),
-                段("また縦の節", None),
+                tab("縦の節の本文", None),
+                tab("縦の節の終わり", Some(paper(210.0, 297.0))),
+                tab("横の節の本文", Some(paper(297.0, 210.0))),
+                tab("また縦の節", None),
             ],
             ..Default::default()
         };
@@ -550,12 +550,12 @@ mod tests {
         assert_eq!(s.sect_pages.len(), 3, "節ごとの紙が揃っていない: {:?}", s.sect_pages);
 
         let papers = paginate_full(&s, Paper::default()).papers;
-        let 幅: Vec<f32> = papers.iter().map(|p| p.width_mm).collect();
+        let widths: Vec<f32> = papers.iter().map(|p| p.width_mm).collect();
         // 縦 → 横 → 縦。**節の切れ目で必ず頁が割れる**ので3ページ以上になる
-        assert!(papers.len() >= 3, "節の切れ目で頁が割れていない: {幅:?}");
-        assert_eq!(幅[0], 210.0, "1ページ目が最初の節の紙になっていない: {幅:?}");
-        assert!(幅.contains(&297.0), "横の節の紙が出ていない: {幅:?}");
-        assert_eq!(*幅.last().unwrap(), 210.0, "最後の節が縦に戻っていない: {幅:?}");
+        assert!(papers.len() >= 3, "節の切れ目で頁が割れていない: {widths:?}");
+        assert_eq!(widths[0], 210.0, "1ページ目が最初の節の紙になっていない: {widths:?}");
+        assert!(widths.contains(&297.0), "横の節の紙が出ていない: {widths:?}");
+        assert_eq!(*widths.last().unwrap(), 210.0, "最後の節が縦に戻っていない: {widths:?}");
 
         // PDF にしても落ちない(ページごとに大きさが違う紙を作る)
         let mut buf = Vec::new();
@@ -585,11 +585,11 @@ mod tests {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let 紙 = |w: f32, h: f32| PageSetup {
+        let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
             top_mm: 20.0, bottom_mm: 20.0, columns: 1,
         };
-        let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
+        let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
             line_spacing: 1.0,
             sect: sect.map(|page| kumihan::SectionBreak {
@@ -597,16 +597,16 @@ mod tests {
             ..Default::default()
         });
         let d = Document {
-            page: Some(紙(210.0, 297.0)),
+            page: Some(paper(210.0, 297.0)),
             blocks: vec![
-                段("縦の節。", Some(紙(210.0, 297.0))),
-                段("横の節。ここは紙が低い(210mm)ので、裏返しを間違えると外へ出る。", None),
+                tab("縦の節。", Some(paper(210.0, 297.0))),
+                tab("横の節。ここは紙が低い(210mm)ので、裏返しを間違えると外へ出る。", None),
             ],
             ..Default::default()
         };
         // 2つ目の節は Document::page(縦)なので、横は1つ目…ではない。
         // 節末に紙を置いた1段目が縦、残りが最後の節。ここでは横紙を最後に置く
-        let d = Document { page: Some(紙(297.0, 210.0)), ..d };
+        let d = Document { page: Some(paper(297.0, 210.0)), ..d };
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
         let pf = paginate_full(&s, Paper::default());
         let (pages, offsets, papers) = (pf.pages, pf.offsets, pf.papers);
@@ -634,11 +634,11 @@ mod tests {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let 紙 = |w: f32, h: f32| PageSetup {
+        let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
             top_mm: 20.0, bottom_mm: 20.0, columns: 1,
         };
-        let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
+        let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
             line_spacing: 1.0,
             sect: sect.map(|page| kumihan::SectionBreak {
@@ -646,10 +646,10 @@ mod tests {
             ..Default::default()
         });
         let d = Document {
-            page: Some(紙(297.0, 210.0)),                  // 最後の節 = 横
+            page: Some(paper(297.0, 210.0)),                  // 最後の節 = 横
             blocks: vec![
-                段("縦の節", Some(紙(210.0, 297.0))),       // 最初の節 = 縦
-                段("横の節", None),
+                tab("縦の節", Some(paper(210.0, 297.0))),       // 最初の節 = 縦
+                tab("横の節", None),
             ],
             ..Default::default()
         };
@@ -691,23 +691,23 @@ mod tests {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let 紙 = |w: f32, h: f32| PageSetup {
+        let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
             top_mm: 20.0, bottom_mm: 20.0, columns: 1,
         };
-        let 段 = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
+        let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
             line_spacing: 1.0,
             sect: sect.map(|page| kumihan::SectionBreak {
                 raw: String::new(), page, continuous: false }),
             ..Default::default()
         });
-        let 長文 = "いろはにほへとちりぬるを。".repeat(120);
+        let long_text = "いろはにほへとちりぬるを。".repeat(120);
         let d = Document {
-            page: Some(紙(297.0, 210.0)),                       // 最後の節 = 横
+            page: Some(paper(297.0, 210.0)),                       // 最後の節 = 横
             blocks: vec![
-                段(&長文, Some(紙(210.0, 297.0))),              // 縦の節
-                段(&長文, None),                                  // 横の節
+                tab(&long_text, Some(paper(210.0, 297.0))),              // 縦の節
+                tab(&long_text, None),                                  // 横の節
             ],
             ..Default::default()
         };
@@ -945,26 +945,26 @@ mod footnote_area_tests {
     use kumihan::{font, layout, Block, CharFormat, Document, FootnoteRef, Footnote,
                   Frame, Metrics, Paragraph, Run};
 
-    fn 組む(d: &Document) -> Sheet {
+    fn build(d: &Document) -> Sheet {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
         layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 })
     }
-    fn 印(id: &str) -> Run {
+    fn mark(id: &str) -> Run {
         Run { text: String::new(), size_pt: None, font: None,
               fmt: CharFormat { footnote: Some(FootnoteRef { id: id.into(), endnote: false }),
                                 ..Default::default() } }
     }
-    fn 字(t: &str) -> Run {
+    fn text(t: &str) -> Run {
         Run { text: t.into(), size_pt: None, font: None, fmt: CharFormat::default() }
     }
-    fn 段(runs: Vec<Run>) -> Block {
+    fn tab(runs: Vec<Run>) -> Block {
         Block::Para(Paragraph { runs, line_spacing: 1.0, ..Default::default() })
     }
-    fn 注(id: &str, t: &str) -> Footnote {
+    fn note(id: &str, t: &str) -> Footnote {
         Footnote { added: false, id: id.into(), endnote: false,
-                   paragraphs: vec![Paragraph { runs: vec![字(t)], line_spacing: 1.0,
+                   paragraphs: vec![Paragraph { runs: vec![text(t)], line_spacing: 1.0,
                                                 ..Default::default() }] }
     }
 
@@ -972,17 +972,17 @@ mod footnote_area_tests {
     /// 本文が重なって刷られる
     #[test]
     fn 脚注のある頁では本文の底が上がる() {
-        let 長文 = "いろはにほへとちりぬるを。".repeat(200);
+        let long_text = "いろはにほへとちりぬるを。".repeat(200);
         let なし = Document {
-            blocks: vec![段(vec![字(&長文)])],
+            blocks: vec![tab(vec![text(&long_text)])],
             ..Default::default()
         };
         let あり = Document {
-            blocks: vec![段(vec![印("9"), 字(&長文)])],
-            footnotes: vec![注("9", &"脚注の文章。".repeat(20))],
+            blocks: vec![tab(vec![mark("9"), text(&long_text)])],
+            footnotes: vec![note("9", &"脚注の文章。".repeat(20))],
             ..Default::default()
         };
-        let (s1, s2) = (組む(&なし), 組む(&あり));
+        let (s1, s2) = (build(&なし), build(&あり));
         let p1 = paginate_full(&s1, Paper::default());
         let p2 = paginate_full(&s2, Paper::default());
         assert!(!s2.notes.is_empty(), "脚注が組まれていない");
@@ -996,15 +996,15 @@ mod footnote_area_tests {
     /// 紙の外へ出ていても緑になる(SEKKEI.md の教訓)
     #[test]
     fn 脚注の字が紙の中に収まる() {
-        let 長文 = "いろはにほへとちりぬるを。".repeat(200);
+        let long_text = "いろはにほへとちりぬるを。".repeat(200);
         let d = Document {
-            blocks: vec![段(vec![印("9"), 字(&長文)])],
-            footnotes: vec![注("9", "脚注の文章。")],
+            blocks: vec![tab(vec![mark("9"), text(&long_text)])],
+            footnotes: vec![note("9", "脚注の文章。")],
             ..Default::default()
         };
-        let s = 組む(&d);
+        let s = build(&d);
         let pg = paginate_full(&s, Paper::default());
-        let mut 見た = 0usize;
+        let mut seen = 0usize;
         for (k, idx) in pg.notes.iter().enumerate() {
             if idx.is_empty() { continue }
             let pp = pg.papers.get(k).copied().unwrap_or(Paper::default());
@@ -1019,27 +1019,27 @@ mod footnote_area_tests {
                         "脚注の字が紙の外: y={y} 紙の高さ={}", pp.height_mm);
                     // 下余白より上、かつ本文の底より下に居る
                     assert!(y <= top + 0.01, "脚注が本文の側へ食い込んだ: y={y} top={top}");
-                    見た += 1;
+                    seen += 1;
                 }
                 up += nb.h_mm;
             }
         }
-        assert!(見た > 0, "脚注の行を1つも見ていない(試験になっていない)");
+        assert!(seen > 0, "脚注の行を1つも見ていない(試験になっていない)");
     }
 
     /// 脚注は**印のある頁**に出る。印が2頁目なら脚注も2頁目
     #[test]
     fn 脚注は印のある頁に出る() {
-        let 長文 = "いろはにほへとちりぬるを。".repeat(200);
+        let long_text = "いろはにほへとちりぬるを。".repeat(200);
         let d = Document {
             blocks: vec![
-                段(vec![字(&長文)]),
-                段(vec![字("後ろの段落"), 印("9")]),
+                tab(vec![text(&long_text)]),
+                tab(vec![text("後ろの段落"), mark("9")]),
             ],
-            footnotes: vec![注("9", "後ろの脚注。")],
+            footnotes: vec![note("9", "後ろの脚注。")],
             ..Default::default()
         };
-        let s = 組む(&d);
+        let s = build(&d);
         let pg = paginate_full(&s, Paper::default());
         assert!(pg.offsets.len() >= 2, "頁が足りず試験にならない");
         let 載った: Vec<usize> = pg.notes.iter().enumerate()
@@ -1055,9 +1055,9 @@ mod footnote_area_tests {
     /// 脚注が無ければ今までどおり(頁割りは1ミリも変わらない)
     #[test]
     fn 脚注が無ければ頁割りは変わらない() {
-        let 長文 = "いろはにほへとちりぬるを。".repeat(200);
-        let d = Document { blocks: vec![段(vec![字(&長文)])], ..Default::default() };
-        let s = 組む(&d);
+        let long_text = "いろはにほへとちりぬるを。".repeat(200);
+        let d = Document { blocks: vec![tab(vec![text(&long_text)])], ..Default::default() };
+        let s = build(&d);
         assert!(s.notes.is_empty(), "脚注が無いのに組んだ");
         let pg = paginate_full(&s, Paper::default());
         assert!(pg.notes.iter().all(|v| v.is_empty()), "脚注が無いのに頁に付いた");

@@ -1192,24 +1192,24 @@ mod screen_note_tests {
     use crate::*;
 
     fn 脚注のある文書() -> Document {
-        let 字 = |t: &str| kumihan::Run {
+        let text = |t: &str| kumihan::Run {
             text: t.into(), size_pt: None, font: None, fmt: Default::default() };
-        let 印 = kumihan::Run {
+        let mark = kumihan::Run {
             text: String::new(), size_pt: None, font: None,
             fmt: kumihan::CharFormat {
                 footnote: Some(kumihan::FootnoteRef { id: "2".into(), endnote: false }),
                 ..Default::default() } };
-        let 長文 = "いろはにほへとちりぬるを。".repeat(120);
+        let long_text = "いろはにほへとちりぬるを。".repeat(120);
         let mut d = Document::plain("");
         d.blocks = vec![kumihan::Block::Para(kumihan::Paragraph {
-            runs: vec![字(&長文), 印],
+            runs: vec![text(&long_text), mark],
             line_spacing: 1.0,
             ..Default::default()
         })];
         d.footnotes = vec![kumihan::Footnote {
             id: "2".into(), endnote: false,
             paragraphs: vec![kumihan::Paragraph {
-                runs: vec![字("これは脚注の文章。")],
+                runs: vec![text("これは脚注の文章。")],
                 line_spacing: 1.0,
                 ..Default::default() }],
             added: false,
@@ -1226,14 +1226,14 @@ mod screen_note_tests {
 
             assert!(!this.page.notes.is_empty(), "脚注が組まれていない");
             // 画面が持っている割り当てと、紙が出す割り当てが同じであること
-            let 紙 = paper::paginate_full(&this.page, paper::Paper {
+            let paper = paper::paginate_full(&this.page, paper::Paper {
                 width_mm: this.pg.w_mm,
                 height_mm: this.pg.h_mm,
                 margin_mm: this.pg.left_mm,
             });
-            assert_eq!(this.page_notes, 紙.notes,
+            assert_eq!(this.page_notes, paper.notes,
                 "画面と紙で脚注の割り当てが違う");
-            assert_eq!(this.page_offsets, 紙.offsets,
+            assert_eq!(this.page_offsets, paper.offsets,
                 "画面と紙で頁の切れ目が違う");
             assert!(this.page_notes.iter().any(|v| !v.is_empty()),
                 "どの頁にも脚注が付いていない");
@@ -1328,16 +1328,16 @@ mod footnote_undo_tests {
 mod doc_undo_tests {
     use crate::*;
 
-    fn 開く(cx: &mut gpui::TestAppContext) -> gpui::Entity<Writer> {
+    fn opens(cx: &mut gpui::TestAppContext) -> gpui::Entity<Writer> {
         cx.update(|cx| cx.new(|cx| Writer::new(None, cx)))
     }
-    fn 太字(w: &Writer) -> bool {
+    fn bold(w: &Writer) -> bool {
         w.doc.paragraphs().next().unwrap().runs.iter().any(|r| r.fmt.bold)
     }
 
     #[gpui::test]
     fn 太字が取り消せる(cx: &mut gpui::TestAppContext) {
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, cx| {
             this.doc = Document::plain("あいうえお");
             this.ed = Editor::new(&this.doc.body_text());
@@ -1345,13 +1345,13 @@ mod doc_undo_tests {
             this.ed.move_to(0, false);
             this.ed.move_to(9, true);
             this.run_cmd("bold", cx);
-            assert!(太字(this), "太字がかかっていない");
+            assert!(bold(this), "太字がかかっていない");
 
             this.undo_step();
-            assert!(!太字(this), "取り消しても太字のまま");
+            assert!(!bold(this), "取り消しても太字のまま");
 
             this.redo_step();
-            assert!(太字(this), "やり直しても太字が戻らない");
+            assert!(bold(this), "やり直しても太字が戻らない");
         });
     }
 
@@ -1360,7 +1360,7 @@ mod doc_undo_tests {
     /// 打鍵のほうを戻してしまい、使い手に順が読めない
     #[gpui::test]
     fn 打鍵と書式が同じ順で戻る(cx: &mut gpui::TestAppContext) {
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, cx| {
             this.doc = Document::plain("あいうえお");
             this.ed = Editor::new(&this.doc.body_text());
@@ -1377,11 +1377,11 @@ mod doc_undo_tests {
             this.ed.move_to(0, false);
             this.ed.move_to(9, true);
             this.run_cmd("bold", cx);
-            assert!(太字(this));
+            assert!(bold(this));
 
             // 戻す → **新しい順**。まず太字が外れ、字は残る
             this.undo_step();
-            assert!(!太字(this), "先に打鍵が戻った(順が違う)");
+            assert!(!bold(this), "先に打鍵が戻った(順が違う)");
             assert_eq!(this.doc.body_text(), "あいうえおか", "字まで戻った");
 
             // もう一手 → 打鍵が戻る
@@ -1392,14 +1392,14 @@ mod doc_undo_tests {
             this.redo_step();
             assert_eq!(this.doc.body_text(), "あいうえおか");
             this.redo_step();
-            assert!(太字(this), "やり直しで太字が戻らない");
+            assert!(bold(this), "やり直しで太字が戻らない");
         });
     }
 
     /// 続けて打った分は**1手にまとめる**(1字ごとに戻らない)
     #[gpui::test]
     fn 続けた打鍵は一手にまとまる(cx: &mut gpui::TestAppContext) {
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, _cx| {
             this.doc = Document::plain("");
             this.ed = Editor::new("");
@@ -1418,7 +1418,7 @@ mod doc_undo_tests {
     /// 戻したあとに打つと、やり直しの先は捨てる(枝分かれしない)
     #[gpui::test]
     fn 戻したあとに打つとやり直しは消える(cx: &mut gpui::TestAppContext) {
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, cx| {
             this.doc = Document::plain("あ");
             this.ed = Editor::new("あ");
@@ -1427,14 +1427,14 @@ mod doc_undo_tests {
             this.ed.move_to(3, true);
             this.run_cmd("bold", cx);
             this.undo_step();
-            assert!(!太字(this));
+            assert!(!bold(this));
             // ここで別の一手
             this.before_edit(true);
             this.ed.move_to(3, false);
             this.ed.insert("い");
             this.on_edited();
             this.redo_step();
-            assert!(!太字(this), "捨てたはずのやり直しが効いた");
+            assert!(!bold(this), "捨てたはずのやり直しが効いた");
             assert_eq!(this.doc.body_text(), "あい");
         });
     }
@@ -1520,7 +1520,7 @@ mod undo_coverage_tests {
     #[gpui::test]
     fn 文書を変える命令は一手で戻せる(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
-        let mut 見た = 0usize;
+        let mut seen = 0usize;
         for id in Writer::HANDLED.iter().filter(|i| !押さない(i)) {
             w.update(cx, |this, cx| {
                 仕切り直す(this);
@@ -1529,7 +1529,7 @@ mod undo_coverage_tests {
                 if sig(this) == before {
                     return; // この形では文書を変えない命令(欄を開くだけ等)
                 }
-                見た += 1;
+                seen += 1;
                 this.undo_step();
                 assert_eq!(sig(this), before,
                     "「{id}」が一手で戻らない(控えを取っていない)");
@@ -1540,7 +1540,7 @@ mod undo_coverage_tests {
         // **39 になったのは 2026-08-25** — 表の挿入と日付の挿入が、
         // 押すとマス目や一覧が開くだけの形になり、その場では文書を変えなく
         // なったためです(挿すのは `instable-go` と一覧から選んだとき)
-        assert!(見た >= 39, "文書を変える命令が {見た} 件しか無い — 試験の形が壊れている");
+        assert!(seen >= 39, "文書を変える命令が {seen} 件しか無い — 試験の形が壊れている");
     }
 
     /// やり直しも効く(戻すだけで進めないと片道になる)
@@ -1576,7 +1576,7 @@ mod undo_coverage_tests {
 mod paged_view_tests {
     use crate::*;
 
-    fn 開く(cx: &mut gpui::TestAppContext) -> gpui::Entity<Writer> {
+    fn opens(cx: &mut gpui::TestAppContext) -> gpui::Entity<Writer> {
         cx.update(|cx| cx.new(|cx| Writer::new(None, cx)))
     }
 
@@ -1586,7 +1586,7 @@ mod paged_view_tests {
         if !f.exists() {
             return;
         }
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, _| {
             this.open(f);
             this.paged = true;
@@ -1603,7 +1603,7 @@ mod paged_view_tests {
 
     #[gpui::test]
     fn 画面と紙で頁ごとの紙が同じ(cx: &mut gpui::TestAppContext) {
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, _| {
             this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400));
             this.ed = Editor::new(&this.doc.body_text());
@@ -1620,7 +1620,7 @@ mod paged_view_tests {
 
     #[gpui::test]
     fn 字がその頁の紙の中に収まる(cx: &mut gpui::TestAppContext) {
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, _| {
             this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400));
             this.ed = Editor::new(&this.doc.body_text());
@@ -1659,7 +1659,7 @@ mod paged_view_tests {
         let p = dir.join("ten.png");
         std::fs::write(&p, PNG).unwrap();
 
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, _| {
             this.set_doc(Document::plain("本文"));
             this.insert_image(&p);
@@ -1683,7 +1683,7 @@ mod paged_view_tests {
     /// 誰にも届かない** — ここが無いと配線の切れに気づけない
     #[gpui::test]
     fn 印刷レイアウトの釦で切り替わる(cx: &mut gpui::TestAppContext) {
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, cx| {
             assert!(!this.paged, "既定が印刷レイアウトになっている");
             this.run_cmd("printview", cx);
@@ -1696,7 +1696,7 @@ mod paged_view_tests {
     /// 画面だけの折り方どうし、両立させない(どちらを押しても他方が下りる)
     #[gpui::test]
     fn 印刷レイアウトと見開きは排他(cx: &mut gpui::TestAppContext) {
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, cx| {
             this.run_cmd("multipage", cx);
             assert!(this.multipage && !this.paged, "見開きにならない");
@@ -1710,7 +1710,7 @@ mod paged_view_tests {
     /// 縦書きは初版の約束で断る。**黙って何もしないのではなく、言って断る**
     #[gpui::test]
     fn 縦書きでは印刷レイアウトにしない(cx: &mut gpui::TestAppContext) {
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, cx| {
             this.doc.vertical = true;
             this.run_cmd("printview", cx);
@@ -1723,7 +1723,7 @@ mod paged_view_tests {
     /// 組んだ絵の良し悪しは実機と officework.tex の検査(test_tex.py)の持ち場
     #[gpui::test]
     fn 数式の釦でパネルが開く(cx: &mut gpui::TestAppContext) {
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, cx| {
             assert!(!this.eq_open, "はじめから開いている");
             this.run_cmd("insequation", cx);
@@ -1739,7 +1739,7 @@ mod paged_view_tests {
     /// 空で Enter は**何も起きない**(空の絵を置かない)
     #[gpui::test]
     fn 空の数式は置かない(cx: &mut gpui::TestAppContext) {
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, _| {
             this.set_doc(Document::plain("本文"));
             this.eq_open = true;
@@ -1754,7 +1754,7 @@ mod paged_view_tests {
     /// 組めない式は**黙って何も起きない、をしない**。理由を状態行に出す
     #[gpui::test]
     fn 組めない数式は理由を言う(cx: &mut gpui::TestAppContext) {
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, _| {
             this.set_doc(Document::plain("本文"));
             this.eq_open = true;
@@ -1768,7 +1768,7 @@ mod paged_view_tests {
 
     #[gpui::test]
     fn 編集モードは折らない(cx: &mut gpui::TestAppContext) {
-        let w = 開く(cx);
+        let w = opens(cx);
         w.update(cx, |this, _| {
             this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400));
             this.ed = Editor::new(&this.doc.body_text());
@@ -1942,7 +1942,7 @@ mod marker_tests {
             // カーソルを表の中へ(右パネルはここでだけ表の面を出す)
             this.switch_target(Target::Cell { table: 0, row: 1, col: 1 });
             assert!(this.cursor_table().is_some(), "表の中と分からない");
-            let 本文 = this.doc.body_text();
+            let body = this.doc.body_text();
 
             this.table_add_row(true);
             assert_eq!(this.doc.tables().next().unwrap().rows.len(), 4, "行が増えない");
@@ -1957,7 +1957,7 @@ mod marker_tests {
             // (2026-08-15 実機で踏んだ)。段落の数と字が変わらないこと
             assert_eq!(
                 this.doc.body_text(),
-                本文,
+                body,
                 "行や列を消したら本文が書き換わった(セルの字が本文へ流れた)"
             );
         });
@@ -2036,9 +2036,9 @@ mod marker_tests {
 
             let svg = dir.join("images/筆1.svg");
             assert!(svg.is_file(), "SVG が作られない: {}", this.status);
-            let 中身 = std::fs::read_to_string(&svg).unwrap();
-            assert!(中身.starts_with("<svg "), "SVG の形でない: {中身}");
-            assert!(中身.contains("stroke=\"#1C3B52\""), "ペンの色が入らない: {中身}");
+            let content = std::fs::read_to_string(&svg).unwrap();
+            assert!(content.starts_with("<svg "), "SVG の形でない: {content}");
+            assert!(content.contains("stroke=\"#1C3B52\""), "ペンの色が入らない: {content}");
 
             // 本文は image:: で指す(独自の書き方を足していない)
             let adoc = std::fs::read_to_string(&path).unwrap();
@@ -2091,13 +2091,13 @@ mod marker_tests {
             this.ink_end();
             this.save_to(path.clone());
             let back = std::fs::read_to_string(&path).unwrap();
-            let 字 = |s: &str| s.replace("\n", "").replace(" ", "");
+            let text = |s: &str| s.replace("\n", "").replace(" ", "");
             let 絵ぬき: String = back
                 .lines()
                 .filter(|l| !l.starts_with("image::"))
                 .collect::<Vec<_>>()
                 .join("\n");
-            assert_eq!(字(&絵ぬき), 字(src), "本文が変わった:\n{back}");
+            assert_eq!(text(&絵ぬき), text(src), "本文が変わった:\n{back}");
         });
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -2125,7 +2125,7 @@ mod marker_tests {
                        "書き出しで保存先が docx に移った: {}", this.status);
 
             let bytes = std::fs::read(&docx).unwrap();
-            let 部品 = |name: &str| {
+            let parts = |name: &str| {
                 let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes.clone())).unwrap();
                 let mut f = z.by_name(name).unwrap();
                 let mut s = String::new();
@@ -2133,11 +2133,11 @@ mod marker_tests {
                 s
             };
             // 既定のテンプレートの見出し1 は 16pt の太字
-            let styles = 部品("word/styles.xml");
+            let styles = parts("word/styles.xml");
             assert!(styles.contains(r#"w:styleId="Heading1""#), "見出しの定義が無い");
             assert!(styles.contains(r#"<w:sz w:val="32"/>"#), "16pt が定義に入らない");
             // 本文は名乗るだけ
-            let body = 部品("word/document.xml");
+            let body = parts("word/document.xml");
             assert!(body.contains(r#"w:val="Heading1""#), "pStyle が無い");
             assert!(!body.contains(r#"<w:sz w:val="32"/>"#), "本文に大きさが焼き付いた");
         });
@@ -2231,7 +2231,7 @@ mod marker_tests {
         w.update(cx, |this, _cx| {
             this.open(src.to_path_buf());
             assert!(!this.native, "開いただけで変わった(押したときだけのはず)");
-            let 前 = this
+            let before = this
                 .doc
                 .paragraphs()
                 .flat_map(|p| p.runs.iter())
@@ -2240,14 +2240,14 @@ mod marker_tests {
 
             this.distill_now();
             assert!(this.native, "adoc 形式にならない");
-            let 後 = this
+            let after = this
                 .doc
                 .paragraphs()
                 .flat_map(|p| p.runs.iter())
                 .filter(|r| r.size_pt.is_some() || r.font.is_some())
                 .count();
-            assert_eq!(後, 0, "本文に見た目が残った({前} → {後})");
-            let _ = 前;
+            assert_eq!(after, 0, "本文に見た目が残った({before} → {after})");
+            let _ = before;
             assert!(this.doc.template.is_some(), "テンプレートの名前が付かない");
             // 見た目はテンプレートの側にある
             assert!(
@@ -2274,10 +2274,10 @@ mod marker_tests {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             this.open(path.clone());
-            let 前 = this.tmpl.style("見出し1").and_then(|d| d.size_pt);
+            let before = this.tmpl.style("見出し1").and_then(|d| d.size_pt);
             this.ed.move_to(0, false);
             this.tweak_style(1);
-            assert_eq!(this.tmpl.style("見出し1").and_then(|d| d.size_pt), 前,
+            assert_eq!(this.tmpl.style("見出し1").and_then(|d| d.size_pt), before,
                        "テンプレートを書き替えた");
             let s = this.status.to_string();
             assert!(s.contains("テンプレート"), "言い分がない: {s}");
@@ -2422,9 +2422,9 @@ mod marker_tests {
             assert!(this.fd_tally.looked >= 2, "見た数が足りない");
 
             // 選んでも**開かない**(下に見せるだけ)
-            let 前 = this.path.clone();
+            let before = this.path.clone();
             this.find_peek(0, 0);
-            assert_eq!(this.path, 前, "選んだだけで開いた");
+            assert_eq!(this.path, before, "選んだだけで開いた");
             assert!(this.fd_peek.contains("unstructured"), "下に出ない: {}", this.fd_peek);
 
             // 「読み込み」で初めて開き、その位置へ行く
@@ -2506,8 +2506,8 @@ mod marker_tests {
         w.update(cx, |this, _cx| {
             this.open(dir.join("紙.adoc"));
             assert!(this.tmpl.setting == Default::default(), "紙のはず");
-            let 紙 = this.total_pages();
-            assert!(紙 > 1, "紙で1ページに収まった(前提が崩れた): {紙}");
+            let paper = this.total_pages();
+            assert!(paper > 1, "紙で1ページに収まった(前提が崩れた): {paper}");
 
             this.open(dir.join("長い.adoc"));
             assert!(this.tmpl.setting.endless(), "組み方が読めていない: {}", this.status);
@@ -2550,18 +2550,18 @@ mod marker_tests {
             // **見出しと本文が同じ枚に載る。** 枚数だけ合っていても、
             // 見出しだけの枚と本文だけの枚に割れていたら発表にならない
             // (2026-08-17、実機で1枚目が見出しだけに見えたので数え直した)
-            let mut 枚 = vec![String::new(); this.total_pages()];
+            let mut sheet = vec![String::new(); this.total_pages()];
             for line in &this.page.lines {
                 if !line.from_body {
                     continue;
                 }
                 let (p, _) = this.page_of_roll(line.y_mm);
-                枚[p].extend(line.cells.iter().map(|c| c.ch));
+                sheet[p].extend(line.cells.iter().map(|c| c.ch));
             }
-            assert!(枚[0].contains("題"), "1枚目が表題でない: {枚:?}");
+            assert!(sheet[0].contains("題"), "1枚目が表題でない: {sheet:?}");
             for (i, 節) in ["ひとつめ", "ふたつめ", "みっつめ"].iter().enumerate() {
-                assert!(枚[i + 1].contains(節), "{}枚目に見出し「{節}」が無い: {枚:?}", i + 2);
-                assert!(枚[i + 1].contains("短い本文。"), "{}枚目に本文が無い: {枚:?}", i + 2);
+                assert!(sheet[i + 1].contains(節), "{}枚目に見出し「{節}」が無い: {sheet:?}", i + 2);
+                assert!(sheet[i + 1].contains("短い本文。"), "{}枚目に本文が無い: {sheet:?}", i + 2);
             }
         });
         let _ = std::fs::remove_dir_all(&dir);
@@ -2755,9 +2755,9 @@ mod marker_tests {
         w.update(cx, |this, _cx| {
             this.open(doc.clone());
             let 画面 = this.total_pages();
-            let 紙 = this.print_layout().expect("印刷用が読めない");
-            let (pages, _) = paper::paginate(&紙.0, paper::Paper {
-                width_mm: 紙.1.w_mm, height_mm: 紙.1.h_mm, margin_mm: 紙.1.left_mm });
+            let paper = this.print_layout().expect("印刷用が読めない");
+            let (pages, _) = paper::paginate(&paper.0, paper::Paper {
+                width_mm: paper.1.w_mm, height_mm: paper.1.h_mm, margin_mm: paper.1.left_mm });
             let 紙の枚数 = pages.iter().copied().max().unwrap_or(1);
             assert!(紙の枚数 > 画面, "紙のほうが枚数が多い形になっていない({紙の枚数} と {画面})");
             // 最後の見出しのページ番号は**紙の**枚数(画面の枚数ではない)
@@ -2899,9 +2899,9 @@ mod 表の式 {
             this.doc = 台帳のある文書();
             this.relayout();
 
-            let 字: String = this.page.lines.iter().flat_map(|l| l.cells.iter().map(|c| c.ch)).collect();
-            assert!(字.contains("2000"), "答えが紙面に出ていない: {字}");
-            assert!(!字.contains("SUM"), "式の字がそのまま出ている: {字}");
+            let text: String = this.page.lines.iter().flat_map(|l| l.cells.iter().map(|c| c.ch)).collect();
+            assert!(text.contains("2000"), "答えが紙面に出ていない: {text}");
+            assert!(!text.contains("SUM"), "式の字がそのまま出ている: {text}");
         });
     }
 
@@ -2978,13 +2978,13 @@ mod 請求書をまとめる {
         w.update(cx, |this, _| {
             this.open(p.clone());
             this.show_doc(1); // 2枚目を見ている状態で保存
-            let 並び = this.docs_for_save();
-            assert_eq!(並び.len(), 3, "保存の並びが3枚でない");
-            assert_eq!(並び[0].props.title, "請求書 山田商店");
-            assert_eq!(並び[1].props.title, "請求書 鈴木工業");
-            assert_eq!(並び[2].props.title, "請求書 佐藤商会");
+            let order = this.docs_for_save();
+            assert_eq!(order.len(), 3, "保存の並びが3枚でない");
+            assert_eq!(order[0].props.title, "請求書 山田商店");
+            assert_eq!(order[1].props.title, "請求書 鈴木工業");
+            assert_eq!(order[2].props.title, "請求書 佐藤商会");
             // いま見ている2枚目の中身が入っていること
-            assert!(並び[1].body_text().contains("8,400"));
+            assert!(order[1].body_text().contains("8,400"));
         });
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -3015,8 +3015,8 @@ mod ファイルを何枚も開く {
 
     /// 試験ごとに**別のフォルダ**を作ります。同じ名前にすると、片方の
     /// 後片づけがもう片方の足元を消します(2026-08-19 に踏みました)
-    fn 場所(名: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!("jo-tabs-{}-{名}", std::process::id()));
+    fn 場所(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("jo-tabs-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         for (n, body) in [("甲.adoc", "= 甲\n\nあ。\n"), ("乙.adoc", "= 乙\n\nい。\n")] {
@@ -3110,13 +3110,13 @@ mod file_menu_tests {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             // 目次を入れていなければ「目次の更新」は押せない
-            assert!(!this.押せるか("toc-update"), "目次が無いのに押せる");
+            assert!(!this.can_press("toc-update"), "目次が無いのに押せる");
             // 見出しを立ててから目次を入れると押せる
             this.set_doc(kumihan::adoc::parse("= 題\n\n== 第1章\n\n本文。\n").expect("読めない"));
             this.run_cmd("toc", cx);
-            assert!(this.押せるか("toc-update"), "目次を入れたのに押せない");
+            assert!(this.can_press("toc-update"), "目次を入れたのに押せない");
             // コメントの削除は、いまの段落にコメントが付いているときだけ
-            assert!(!this.押せるか("co-delcomment"), "コメントが無いのに押せる");
+            assert!(!this.can_press("co-delcomment"), "コメントが無いのに押せる");
         });
     }
 
@@ -3125,8 +3125,8 @@ mod file_menu_tests {
     fn ファイルの項目の並びと押せるかが変わらない(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
-            let 品 = this.file_menu();
-            let ids: Vec<&str> = 品.iter().map(|i| i.id).collect();
+            let items = this.file_menu();
+            let ids: Vec<&str> = items.iter().map(|i| i.id).collect();
             assert_eq!(ids, vec![
                 "f-back", "f-new", "f-tpl", "f-open",
                 // **フォルダを開き直す**(2026-08-25)。綴りはフォルダなので、
@@ -3145,8 +3145,8 @@ mod file_menu_tests {
                 "f-style",
                 "f-info", "f-place", "f-quit", "f-opts", "f-help", "f-req",
             ]);
-            let 下: Vec<&str> = 品.iter().filter(|i| i.tail).map(|i| i.id).collect();
-            assert_eq!(下, vec!["f-opts", "f-help", "f-req"]);
+            let below: Vec<&str> = items.iter().filter(|i| i.tail).map(|i| i.id).collect();
+            assert_eq!(below, vec!["f-opts", "f-help", "f-req"]);
         });
     }
 
@@ -3272,8 +3272,8 @@ mod docx_formula_tests {
                 ..Default::default()
             }));
 
-            let 出 = this.doc_for_save(None);
-            let 字 = |d: &kumihan::Document| -> Vec<String> {
+            let out = this.doc_for_save(None);
+            let text = |d: &kumihan::Document| -> Vec<String> {
                 d.blocks
                     .iter()
                     .filter_map(|b| match b {
@@ -3290,12 +3290,12 @@ mod docx_formula_tests {
                     .collect()
             };
             // docx へ出す写しは**値**
-            assert!(字(&出).contains(&"5".to_string()), "docx に値が焼けていない: {:?}", 字(&出));
+            assert!(text(&out).contains(&"5".to_string()), "docx に値が焼けていない: {:?}", text(&out));
             // **正本は式のまま**(開き直せばまた計算される)
             assert!(
-                字(&this.doc).iter().any(|x| x.starts_with("=SUM")),
+                text(&this.doc).iter().any(|x| x.starts_with("=SUM")),
                 "正本の式が消えた: {:?}",
-                字(&this.doc)
+                text(&this.doc)
             );
         });
     }
@@ -3314,8 +3314,8 @@ mod docx_formula_tests {
                 ..Default::default()
             }));
             assert!(!ops::table::has_formula(&this.doc), "式が無いのに有ると言う");
-            let 出 = this.doc_for_save(None);
-            let ある = 出.blocks.iter().any(|b| matches!(b, kumihan::Block::Table(_)));
+            let out = this.doc_for_save(None);
+            let ある = out.blocks.iter().any(|b| matches!(b, kumihan::Block::Table(_)));
             assert!(ある, "表が消えた");
         });
     }
@@ -3354,12 +3354,12 @@ mod docx_formula_tests {
                 assert!(!this.tbl_open, "「{打つ}」が読めていません");
             }
             // **数が読めなければ断ります。** 黙って 3×3 を入れません
-            let 前 = this.doc.blocks.len();
+            let before = this.doc.blocks.len();
             this.tbl_ed = Editor::new("あ");
             this.tbl_open = true;
             this.tbl_commit(cx);
             assert!(this.tbl_open, "読めない字を受け付けています");
-            assert_eq!(this.doc.blocks.len(), 前, "読めないのに表が入りました");
+            assert_eq!(this.doc.blocks.len(), before, "読めないのに表が入りました");
             // **大きすぎるものも断ります**(打ち間違いで固まらないように)
             this.tbl_ed = Editor::new("999,999");
             this.tbl_commit(cx);
@@ -3378,15 +3378,15 @@ mod docx_formula_tests {
         w.update(cx, |this, cx| {
             this.run_cmd("datetime", cx);
             assert_eq!(this.open_list, Some("datetime"), "一覧が開いていません");
-            let 形 = this.一覧の中身("datetime");
-            assert!(形.len() >= 5, "形が {} 個しかありません", 形.len());
+            let shape = this.一覧の中身("datetime");
+            assert!(shape.len() >= 5, "形が {} 個しかありません", shape.len());
             // 西暦と和暦が両方あること
-            assert!(形.iter().any(|(k, _)| k.contains("年") && k.contains("月")),
-                    "西暦の形がありません: {形:?}");
-            assert!(形.iter().any(|(k, _)| k.starts_with("令和") || k.starts_with("平成")),
-                    "和暦の形がありません: {形:?}");
+            assert!(shape.iter().any(|(k, _)| k.contains("年") && k.contains("月")),
+                    "西暦の形がありません: {shape:?}");
+            assert!(shape.iter().any(|(k, _)| k.starts_with("令和") || k.starts_with("平成")),
+                    "和暦の形がありません: {shape:?}");
             // 選ぶと本文に固定の字で入る
-            let 選ぶ = 形[0].0.clone();
+            let 選ぶ = shape[0].0.clone();
             this.一覧を選ぶ("datetime", &選ぶ, cx);
             assert!(this.ed.text().contains(&選ぶ), "選んだ形が入っていません");
             assert_eq!(this.open_list, None, "選んだ後も一覧が開いたままです");
@@ -3396,13 +3396,13 @@ mod docx_formula_tests {
     /// 和暦の境目。**改元の日から新しい元号**になります
     #[test]
     fn 和暦は改元の日で変わる() {
-        use crate::cmds::和暦;
-        assert_eq!(和暦(2026, 8, 25), Some(("令和", "R", 8)));
-        assert_eq!(和暦(2019, 5, 1), Some(("令和", "R", 1)), "改元の当日は令和");
-        assert_eq!(和暦(2019, 4, 30), Some(("平成", "H", 31)), "改元の前日は平成");
-        assert_eq!(和暦(1989, 1, 8), Some(("平成", "H", 1)));
-        assert_eq!(和暦(1989, 1, 7), Some(("昭和", "S", 64)), "改元の前日は昭和");
-        assert_eq!(和暦(1900, 1, 1), None, "昭和より前は元号を出しません");
+        use crate::cmds::wareki;
+        assert_eq!(wareki(2026, 8, 25), Some(("令和", "R", 8)));
+        assert_eq!(wareki(2019, 5, 1), Some(("令和", "R", 1)), "改元の当日は令和");
+        assert_eq!(wareki(2019, 4, 30), Some(("平成", "H", 31)), "改元の前日は平成");
+        assert_eq!(wareki(1989, 1, 8), Some(("平成", "H", 1)));
+        assert_eq!(wareki(1989, 1, 7), Some(("昭和", "S", 64)), "改元の前日は昭和");
+        assert_eq!(wareki(1900, 1, 1), None, "昭和より前は元号を出しません");
     }
 
     #[gpui::test]
@@ -3440,12 +3440,12 @@ mod docx_formula_tests {
             // **ファイルのページのボタンは `file_menu_click`** を通ります
             this.file_menu_click("f-export", cx);
             assert_eq!(this.open_list, Some("f-export"), "形の一覧が開いていません");
-            let 形: Vec<String> =
+            let shape: Vec<String> =
                 this.一覧の中身("f-export").into_iter().map(|(k, _)| k).collect();
             // **文章の節から出せるのは4つ**(手引きの表)
-            assert_eq!(形, vec!["docx", "html", "pdf", "text"], "出せる形が表と違います");
+            assert_eq!(shape, vec!["docx", "html", "pdf", "text"], "出せる形が表と違います");
             // **`.adoc` は出しません** — 保存の側だからです
-            assert!(!形.iter().any(|k| k == "adoc"), "adoc が書き出しに出ています");
+            assert!(!shape.iter().any(|k| k == "adoc"), "adoc が書き出しに出ています");
         });
     }
 

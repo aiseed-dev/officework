@@ -5,19 +5,19 @@ fn main() {
     let toml = a.next().expect("toml");
     let (mut doc, _) = kumihan::adoc::parse_full(&std::fs::read_to_string(&adoc).unwrap()).unwrap();
     let th = kumihan::theme::parse(&std::fs::read_to_string(&toml).unwrap()).unwrap();
-    let 言うこと = kumihan::theme::apply_forms(&mut doc, &th);
-    for s in &言うこと {
+    let says = kumihan::theme::apply_forms(&mut doc, &th);
+    for s in &says {
         println!("言うこと: {s}");
     }
     for b in &doc.blocks {
         if let kumihan::Block::Table(t) = b {
             println!("升目 {} 行 / 比 {:?}", t.rows.len(), t.col_ratio);
             for row in &t.rows {
-                let 字: Vec<String> = row.iter()
+                let text: Vec<String> = row.iter()
                     .map(|c| c.paragraphs.iter().flat_map(|p| p.runs.iter())
                         .map(|r| r.text.as_str()).collect())
                     .collect();
-                println!("  {:?}", 字);
+                println!("  {:?}", text);
             }
         }
     }

@@ -1351,10 +1351,10 @@ mod validation_roundtrip_tests {
         b.sheets[0].set(Pos::parse("B2").unwrap(), Cell::input("100"));
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
-        let 元 = buf.into_inner();
+        let from = buf.into_inner();
 
         // 普通の読み手はこれを開けない状態にする — 末尾(中央目録)を落とす
-        let 壊れ = &元[..元.len() - 40];
+        let 壊れ = &from[..from.len() - 40];
         assert!(read(Cursor::new(壊れ.to_vec())).is_err(), "壊れていない");
 
         let s = crate::xlsx::salvage(壊れ);
@@ -1381,9 +1381,9 @@ mod validation_roundtrip_tests {
         write(&b, &mut buf).expect("書けない");
         let mut raw = buf.into_inner();
         // sharedStrings の中身のどこかを塗り潰す(名前は残す)
-        let 印 = b"xl/sharedStrings.xml";
-        let at = raw.windows(印.len()).position(|w| w == 印).expect("見つからない");
-        for i in at + 印.len() + 8..at + 印.len() + 40 {
+        let mark = b"xl/sharedStrings.xml";
+        let at = raw.windows(mark.len()).position(|w| w == mark).expect("見つからない");
+        for i in at + mark.len() + 8..at + mark.len() + 40 {
             if i < raw.len() {
                 raw[i] = 0xFF;
             }

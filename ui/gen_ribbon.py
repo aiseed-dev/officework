@@ -446,9 +446,9 @@ def label_of(app_loc, prefix, slot):
 def _label_of(app_loc, prefix, slot):
     # 言い換えが先。**本家に札があっても、こちらを使う**
     app = "documenteditor" if prefix == "DE" else "spreadsheeteditor"
-    for 表 in (言い換え[app], 言い換え["*"]):
-        if slot in 表:
-            return 表[slot]
+    for table in (言い換え[app], 言い換え["*"]):
+        if slot in table:
+            return table[slot]
     key = LABEL.get(slot)
     if key:
         for who in ("Toolbar", "ViewTab", "HeaderFooterTab"):
@@ -458,8 +458,8 @@ def _label_of(app_loc, prefix, slot):
                 # **見えない空白を落とす。** 本家の語には幅ゼロの空白(U+200B)が
                 # 混ざっていることがあり、そのまま持つと実物と字面が合いません
                 # (2026-08-21 に「折り返して全体を表示する」で出た)
-                字 = re.split(r"[。<（(]", app_loc[full])[0]
-                return 字.replace("\u200b", "").replace("\ufeff", "").strip()
+                text = re.split(r"[。<（(]", app_loc[full])[0]
+                return text.replace("\u200b", "").replace("\ufeff", "").strip()
     if slot in FALLBACK:
         return FALLBACK[slot]
     if slot in DYN_LABELS:

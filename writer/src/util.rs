@@ -196,12 +196,12 @@ pub(crate) fn strip_code_fence(s: &str) -> String {
 pub(crate) fn 取り出す囲み(out: &str) -> Option<String> {
     let mut it = out.split("```");
     it.next()?; // 囲みの前(説明)
-    let 中 = it.next()?;
+    let inner = it.next()?;
     // ```text や ```md のような札は落とす。1行目に札しか無いときだけ
-    let 中 = match 中.split_once('\n') {
-        Some((頭, 残り)) if !頭.trim().is_empty() && !頭.contains(' ') => 残り,
-        _ => 中,
+    let inner = match inner.split_once('\n') {
+        Some((head, rest)) if !head.trim().is_empty() && !head.contains(' ') => rest,
+        _ => inner,
     };
-    let t = 中.trim_start_matches('\n').trim_end().to_string();
+    let t = inner.trim_start_matches('\n').trim_end().to_string();
     if t.is_empty() { None } else { Some(t) }
 }

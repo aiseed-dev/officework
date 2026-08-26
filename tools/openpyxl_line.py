@@ -168,8 +168,8 @@ def main() -> int:
             if dou == "無い":
                 理由.setdefault(w, set()).add(lb)
         for w, s in sorted(理由.items(), key=lambda kv: -len(kv[1])):
-            中 = "・".join(sorted(s)[:8]) + ("ほか" if len(s) > 8 else "")
-            print(f"|{w} |{len(s)} |{中}")
+            inner = "・".join(sorted(s)[:8]) + ("ほか" if len(s) > 8 else "")
+            print(f"|{w} |{len(s)} |{inner}")
         print("|===")
     else:
         for t, lb, i, dou, w in r:

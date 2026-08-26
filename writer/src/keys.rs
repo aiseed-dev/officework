@@ -147,15 +147,15 @@ impl Writer {
         let hit = text[from..].find(&term).map(|i| from + i);
         // いまの文書の続きに無い。**ファイル全体なら次の文書へ回る**
         if hit.is_none() && self.find_file && self.doc_count() > 1 {
-            let 枚数 = self.doc_count();
-            for k in 1..枚数 {
-                let i = (self.doc_at + k) % 枚数;
-                let 中身 = if i == self.doc_at {
+            let n_sheets = self.doc_count();
+            for k in 1..n_sheets {
+                let i = (self.doc_at + k) % n_sheets;
+                let content = if i == self.doc_at {
                     self.doc.body_text()
                 } else {
                     self.docs[i].body_text()
                 };
-                if let Some(at) = 中身.find(&term) {
+                if let Some(at) = content.find(&term) {
                     self.show_doc(i);
                     self.ed.move_to(at, false);
                     self.ed.move_to(at + term.len(), true);
@@ -783,13 +783,13 @@ impl Writer {
         }
         // **名乗りを決める**(詳細設定)。空にすると名乗りません
         if self.cmt_name_edit {
-            let 名 = self.cmt_name_ed.text().trim().to_string();
-            ui::settings::set("user_name", &名);
+            let name = self.cmt_name_ed.text().trim().to_string();
+            ui::settings::set("user_name", &name);
             self.cmt_name_edit = false;
-            self.status = if 名.is_empty() {
+            self.status = if name.is_empty() {
                 ui::t!("comments_not_signed").into()
             } else {
-                ui::tf!("comments_signed", 名).into()
+                ui::tf!("comments_signed", name).into()
             };
             cx.notify();
             return;

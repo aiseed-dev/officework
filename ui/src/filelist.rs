@@ -41,11 +41,11 @@ pub fn header(look: &Look, dir: Option<&std::path::Path>) -> Div {
             .text_color(look.dim)
             .child(crate::t!("no_folder_open_file")),
         Some(d) => {
-            let 名 = d
+            let name = d
                 .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_else(|| d.display().to_string());
-            div().text_size(px(s * 10.5)).text_color(look.dim).child(SharedString::from(名))
+            div().text_size(px(s * 10.5)).text_color(look.dim).child(SharedString::from(name))
         }
     }
 }
@@ -54,7 +54,7 @@ pub fn header(look: &Look, dir: Option<&std::path::Path>) -> Div {
 ///
 /// 押す結び付けは呼ぶ側が足します(`row` と同じ作法)。
 pub fn up_row(look: &Look, dir: &std::path::Path) -> Option<Stateful<Div>> {
-    let 親 = dir.parent()?.to_path_buf();
+    let parent = dir.parent()?.to_path_buf();
     let s = look.scale;
     Some(
         div()
@@ -72,9 +72,9 @@ pub fn up_row(look: &Look, dir: &std::path::Path) -> Option<Stateful<Div>> {
             .child(SharedString::from("‹"))
             .child(SharedString::from(crate::tf!(
                 "up",
-                親.file_name()
+                parent.file_name()
                     .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_else(|| 親.display().to_string())
+                    .unwrap_or_else(|| parent.display().to_string())
             ))),
     )
 }
@@ -96,9 +96,9 @@ pub const 一覧の上限: usize = 200;
 /// **黙って切りません**(2026-08-26)。前は 200 件で切っていて、
 /// それ以上のファイルは*あるのに出ない*状態でした。
 pub fn entries_with_rest(dir: &std::path::Path) -> (Vec<folder::Entry>, usize) {
-    let 全部 = folder::list(dir);
-    let 残り = 全部.len().saturating_sub(一覧の上限);
-    (全部.into_iter().take(一覧の上限).collect(), 残り)
+    let all = folder::list(dir);
+    let rest = all.len().saturating_sub(一覧の上限);
+    (all.into_iter().take(一覧の上限).collect(), rest)
 }
 
 pub fn entries(dir: &std::path::Path) -> Vec<folder::Entry> {
@@ -106,12 +106,12 @@ pub fn entries(dir: &std::path::Path) -> Vec<folder::Entry> {
 }
 
 /// 切って落とした分の断り。0 件なら出しません。
-pub fn rest_note(look: &Look, 残り: usize) -> Option<Div> {
-    (残り > 0).then(|| {
+pub fn rest_note(look: &Look, rest: usize) -> Option<Div> {
+    (rest > 0).then(|| {
         div()
             .text_size(px(look.scale * 10.5))
             .text_color(look.dim)
-            .child(crate::tf!("more_not_shown_2", 残り))
+            .child(crate::tf!("more_not_shown_2", rest))
     })
 }
 
@@ -120,15 +120,15 @@ pub fn rest_note(look: &Look, 残り: usize) -> Option<Div> {
 /// **乗せたときだけ濃くなります。** いつも黒い字で「名前」「消す」が
 /// 並んでいると、一覧そのものが読めません(2026-08-26 発注者
 /// 「filemanager と同じユーザーインタフェースにしろ」)。
-pub fn row_button(look: &Look, i: usize, 印: &'static str, _名: SharedString) -> Stateful<Div> {
+pub fn row_button(look: &Look, i: usize, mark: &'static str, _名: SharedString) -> Stateful<Div> {
     let s = look.scale;
     let hover = look.hover;
-    let 絵 = match 印 {
+    let icon = match mark {
         "ren" => "icons/py-edit.svg",
         _ => "icons/cell-del.svg",
     };
     div()
-        .id(SharedString::from(format!("fl-{印}-{i}")))
+        .id(SharedString::from(format!("fl-{mark}-{i}")))
         .flex_none()
         .p_0p5()
         .rounded_sm()
@@ -137,23 +137,23 @@ pub fn row_button(look: &Look, i: usize, 印: &'static str, _名: SharedString) 
         .hover(move |st| st.bg(hover).opacity(1.0))
         .child(
             gpui::svg()
-                .path(SharedString::from(絵))
+                .path(SharedString::from(icon))
                 .size(px(s * 13.0))
                 .text_color(look.fg),
         )
 }
 
 /// 一覧の頭に置く「新しく作る」の絵。
-pub fn make_button(look: &Look, 印: &'static str, _名: SharedString) -> Stateful<Div> {
+pub fn make_button(look: &Look, mark: &'static str, _名: SharedString) -> Stateful<Div> {
     let s = look.scale;
     let hover = look.hover;
-    let 絵 = match 印 {
+    let icon = match mark {
         "folder" => "icons/py-folder.svg",
         "sheet" => "icons/instable.svg",
         _ => "icons/py-new.svg",
     };
     div()
-        .id(SharedString::from(format!("fl-new-{印}")))
+        .id(SharedString::from(format!("fl-new-{mark}")))
         .flex_none()
         .p_1()
         .rounded_sm()
@@ -161,7 +161,7 @@ pub fn make_button(look: &Look, 印: &'static str, _名: SharedString) -> Statef
         .hover(move |st| st.bg(hover))
         .child(
             gpui::svg()
-                .path(SharedString::from(絵))
+                .path(SharedString::from(icon))
                 .size(px(s * 15.0))
                 .text_color(look.fg),
         )
@@ -172,14 +172,14 @@ pub fn make_button(look: &Look, 印: &'static str, _名: SharedString) -> Statef
 ///
 /// `開ける` が偽なら指の形も乗ったときの色も付けません —
 /// **できないことを、できるように見せない**。
-pub fn row(look: &Look, i: usize, e: &folder::Entry, いま: bool) -> Stateful<Div> {
+pub fn row(look: &Look, i: usize, e: &folder::Entry, current: bool) -> Stateful<Div> {
     let s = look.scale;
     // **フォルダも押せます**(2026-08-26)。`can_open()` は「この道具で
     // *中身を開ける*か」なので、フォルダは偽です。フォルダは開くのでは
     // なく*中へ入る*ので、押せるかどうかは別に見ます
     let 押せる = e.kind.can_open() || e.kind == folder::Kind::Folder;
     let hover = look.hover;
-    let mut 行 = div()
+    let mut line = div()
         .id(SharedString::from(format!("fl-{i}")))
         .px_1()
         .py_0p5()
@@ -188,7 +188,7 @@ pub fn row(look: &Look, i: usize, e: &folder::Entry, いま: bool) -> Stateful<D
         .flex_row()
         .items_center()
         .gap_2()
-        .bg(if いま { look.hover } else { gpui::transparent_black().into() })
+        .bg(if current { look.hover } else { gpui::transparent_black().into() })
         // **行の頭に絵。** 種類は絵で分かるので、右端に字で書きません
         // (ファイル管理の道具の作法。2026-08-26 発注者)
         .child(
@@ -207,9 +207,9 @@ pub fn row(look: &Look, i: usize, e: &folder::Entry, いま: bool) -> Stateful<D
                 .child(SharedString::from(e.name.clone())),
         );
     if 押せる {
-        行 = 行.cursor_pointer().hover(move |st| st.bg(hover));
+        line = line.cursor_pointer().hover(move |st| st.bg(hover));
     }
-    行
+    line
 }
 
 /// 種類に当てる絵。**フォルダと、それ以外**を見分けられれば足ります。

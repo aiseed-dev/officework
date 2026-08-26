@@ -241,11 +241,11 @@ fn block_of(raw: &str) -> (Block, &str) {
 
     // 箇条書き `* `。**深さは `*` の数**(AsciiDoc の作法)で、字下げでも
     // 数えます。印の後ろに空白が要るので `*太字*` とは紛れません
-    let 星 = t.chars().take_while(|c| *c == '*').count();
-    if (1..=5).contains(&星) {
-        if let Some(r) = t[星..].strip_prefix(' ') {
-            let 深さ = if 星 > 1 { 星 - 1 } else { indent / 2 };
-            return (Block::Bullet(深さ.min(4) as u8), r);
+    let stars = t.chars().take_while(|c| *c == '*').count();
+    if (1..=5).contains(&stars) {
+        if let Some(r) = t[stars..].strip_prefix(' ') {
+            let depth = if stars > 1 { stars - 1 } else { indent / 2 };
+            return (Block::Bullet(depth.min(4) as u8), r);
         }
     }
 
@@ -274,21 +274,21 @@ fn inline(s: &str) -> Vec<Span> {
         // `[.line-through]#字#`(一重 — 語の外だけ。英語向け)
         if b[i] == '[' && b[i..].starts_with(&取り消し線.chars().collect::<Vec<_>>()[..]) {
             let mut from = i + 取り消し線.chars().count();
-            let 二重 = b.get(from) == Some(&'#');
-            if 二重 {
+            let double = b.get(from) == Some(&'#');
+            if double {
                 from += 1;
             }
-            let 閉じ = if 二重 {
+            let closing = if double {
                 b[from..].windows(2).position(|w| w == ['#', '#'])
             } else {
                 b[from..].iter().position(|c| *c == '#')
             };
-            if let Some(end) = 閉じ {
+            if let Some(end) = closing {
                 if end > 0 {
                     push(&mut out, &mut plain);
                     let text: String = b[from..from + end].iter().collect();
                     out.push(Span { text, strike: true, ..Default::default() });
-                    i = from + end + if 二重 { 2 } else { 1 };
+                    i = from + end + if double { 2 } else { 1 };
                     continue;
                 }
             }
@@ -434,9 +434,9 @@ fn link_at(b: &[char], at: usize) -> Option<(String, String, usize)> {
     if !区切り(at.checked_sub(1).map(|k| &b[k])) {
         return None;
     }
-    let 頭: [&str; 3] = ["https://", "http://", "mailto:"];
-    let 残り: String = b[at..].iter().collect();
-    if !頭.iter().any(|h| 残り.starts_with(h)) {
+    let head: [&str; 3] = ["https://", "http://", "mailto:"];
+    let rest: String = b[at..].iter().collect();
+    if !head.iter().any(|h| rest.starts_with(h)) {
         return None;
     }
     // URL は `[` まで(空白が来たらリンクではない)

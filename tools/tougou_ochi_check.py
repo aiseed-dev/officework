@@ -79,11 +79,11 @@ def 呼び(s: str) -> set[str]:
     同じ物を `crate::py::start_udf_watch` と `calc::start_udf_watch` の
     ように別の道から呼ぶので、頭を付けたままだと別物に見えます。
     """
-    出 = {
+    out = {
         m.split("::")[-1]
         for m in re.findall(r"\b([a-zA-Z_:]*[a-z_]{3,})\s*\(", s)
     }
-    return out_filter(出)
+    return out_filter(out)
 
 
 def out_filter(xs: set[str]) -> set[str]:
@@ -103,15 +103,15 @@ def main() -> int:
         )
         return 1
 
-    残り = sorted((calc | writer) - office - set(単体だけ))
-    for x in 残り:
+    rest = sorted((calc | writer) - office - set(単体だけ))
+    for x in rest:
         どこ = "/".join(n for n, s in (("表", calc), ("文章", writer)) if x in s)
         print(
             f"::error::{x} は {どこ} の run() にありますが、officework にはありません。"
             "配る形で動かない仕掛けかもしれません — officework から呼ぶか、"
             "tools/tougou_ochi_check.py の 単体だけ に理由を書いてください"
         )
-    if 残り:
+    if rest:
         return 1
 
     余り = sorted(set(単体だけ) - (calc | writer))

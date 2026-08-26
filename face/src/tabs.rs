@@ -33,7 +33,7 @@ pub struct Slot {
 pub fn merged() -> Vec<Slot> {
     let w = ribbon::writer_tabs();
     let c = ribbon::calc_tabs();
-    let 表の番号 = |名: &str| c.iter().position(|t| t.name == 名);
+    let 表の番号 = |name: &str| c.iter().position(|t| t.name == name);
 
     let mut out: Vec<Slot> = w
         .iter()

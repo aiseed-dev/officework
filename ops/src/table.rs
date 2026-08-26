@@ -88,19 +88,19 @@ pub fn fill_with(doc: &mut kumihan::Document, iter: Option<(u32, f64)>) -> usize
     let mut 直した = 0;
     for b in doc.blocks.iter_mut() {
         let kumihan::Block::Table(t) = b else { continue };
-        let 値 = values_with(t, iter);
+        let value = values_with(t, iter);
         for (r, row) in t.rows.iter_mut().enumerate() {
             // 格子の桁。結合した升はそのぶん進みます
             let mut c = 0usize;
             for cell in row.iter_mut() {
-                let 幅 = cell.span();
+                let widths = cell.span();
                 if kumihan::adoc::is_formula_cell(&kumihan::paras_text(&cell.paragraphs)) {
-                    if let Some(v) = 値.get(r).and_then(|x| x.get(c)) {
+                    if let Some(v) = value.get(r).and_then(|x| x.get(c)) {
                         kumihan::set_paras_text(&mut cell.paragraphs, &v.display());
                         直した += 1;
                     }
                 }
-                c += 幅;
+                c += widths;
             }
         }
     }
@@ -158,10 +158,10 @@ mod tests {
     #[test]
     fn 反復計算は設定したときだけ効く() {
         // A1 = B1 + 1、B1 = A1 — そのままでは循環参照
-        let t = 表("", false, &[&["=B1+1", "=A1"]]);
+        let t = table("", false, &[&["=B1+1", "=A1"]]);
         // 設定なし: 循環参照の印が出る(いままでどおり)
-        let 素 = display(&t);
-        assert!(素[0][0].contains('#'), "循環参照の印が出ていない: {素:?}");
+        let plain = display(&t);
+        assert!(plain[0][0].contains('#'), "循環参照の印が出ていない: {plain:?}");
         // 反復あり: 落ち着いた値になる
         let 反復 = display_with(&t, Some((100, 1e-9)));
         assert!(!反復[0][0].contains('#'), "反復しても印のまま: {反復:?}");
@@ -176,16 +176,16 @@ mod tests {
     #[test]
     fn 写しに入れる道でも反復が効く() {
         let mut d = kumihan::Document::default();
-        d.blocks.push(kumihan::Block::Table(表("", false, &[&["=B1+1", "=A1"]])));
+        d.blocks.push(kumihan::Block::Table(table("", false, &[&["=B1+1", "=A1"]])));
         let mut 反復 = d.clone();
         fill_with(&mut 反復, Some((100, 1e-9)));
         let kumihan::Block::Table(t) = &反復.blocks[0] else { panic!() };
-        let 出 = kumihan::paras_text(&t.rows[0][0].paragraphs);
-        assert!(!出.contains('#'), "写しの道に反復が効いていない: {出:?}");
+        let out = kumihan::paras_text(&t.rows[0][0].paragraphs);
+        assert!(!out.contains('#'), "写しの道に反復が効いていない: {out:?}");
         // 設定なしはいままでどおり印
-        let mut 素 = d.clone();
-        fill_with(&mut 素, None);
-        let kumihan::Block::Table(t) = &素.blocks[0] else { panic!() };
+        let mut plain = d.clone();
+        fill_with(&mut plain, None);
+        let kumihan::Block::Table(t) = &plain.blocks[0] else { panic!() };
         assert!(kumihan::paras_text(&t.rows[0][0].paragraphs).contains('#'), "既定が変わった");
     }
 
@@ -193,12 +193,12 @@ mod tests {
     /// Excel と同じで、循環参照は黙って値にせず印で言う
     #[test]
     fn 既定は反復しない() {
-        let t = 表("", false, &[&["=B1+1", "=A1"]]);
+        let t = table("", false, &[&["=B1+1", "=A1"]]);
         assert_eq!(display(&t), display_with(&t, None), "既定が変わった");
     }
 
     /// 字の並びから表を作る(試験の下ごしらえ)
-    fn 表(title: &str, header: bool, rows: &[&[&str]]) -> Table {
+    fn table(title: &str, header: bool, rows: &[&[&str]]) -> Table {
         Table {
             rows: rows
                 .iter()
@@ -220,7 +220,7 @@ mod tests {
     /// 番地の参照。見出しが1行目なので金額は B2:B3
     #[test]
     fn 番地の参照が文書の表で動く() {
-        let t = 表("表", true, &[&["品名", "金額"], &["机", "1200"], &["椅子", "800"], &["計", "=SUM(B2:B3)"]]);
+        let t = table("表", true, &[&["品名", "金額"], &["机", "1200"], &["椅子", "800"], &["計", "=SUM(B2:B3)"]]);
         assert_eq!(display(&t)[3][1], "2000");
     }
 
@@ -229,7 +229,7 @@ mod tests {
     /// 列の中で自分の列を合計すると循環参照になる
     #[test]
     fn 構造化参照が文書の表で動く() {
-        let t = 表(
+        let t = table(
             "売上台帳",
             true,
             &[&["品名", "金額", "全体"], &["机", "1200", "=SUM(売上台帳[金額])"], &["椅子", "800", ""]],
@@ -240,7 +240,7 @@ mod tests {
     /// **この行だけを指す構造化参照**(`[@列]`)。単価×数量の型
     #[test]
     fn この行の構造化参照が動く() {
-        let t = 表(
+        let t = table(
             "明細",
             true,
             &[&["単価", "数量", "金額"], &["100", "3", "=明細[@単価]*明細[@数量]"]],
@@ -251,7 +251,7 @@ mod tests {
     /// **式が式を指す。** 順番によらず解ける(依存の解決はエンジン任せ)
     #[test]
     fn 式が式を指しても解ける() {
-        let t = 表("表", false, &[&["1"], &["=A3*2"], &["=A1+9"]]);
+        let t = table("表", false, &[&["1"], &["=A3*2"], &["=A1+9"]]);
         let d = display(&t);
         assert_eq!(d[2][0], "10"); // A3 = A1+9
         assert_eq!(d[1][0], "20"); // A2 = A3*2
@@ -260,7 +260,7 @@ mod tests {
     /// 輪になっていたら **#CIRC!**。黙って 0 を返さない
     #[test]
     fn 循環参照は印になる() {
-        let t = 表("表", false, &[&["=A2"], &["=A1"]]);
+        let t = table("表", false, &[&["=A2"], &["=A1"]]);
         let d = display(&t);
         assert_eq!(d[0][0], "#CIRC!");
         assert_eq!(d[1][0], "#CIRC!");
@@ -269,7 +269,7 @@ mod tests {
     /// 式の無い表は、字がそのまま出る
     #[test]
     fn 式が無ければ字のまま() {
-        let t = 表("", false, &[&["あ", "1200"], &["い", "1,200"]]);
+        let t = table("", false, &[&["あ", "1200"], &["い", "1,200"]]);
         let d = display(&t);
         assert_eq!(d[0], vec!["あ", "1200"]);
         // 桁区切りは字のまま(数と読み違えない)
@@ -279,7 +279,7 @@ mod tests {
     /// **結合したセルで列がずれない。** 左上に字を置き、残りは空
     #[test]
     fn 結合しても列がずれない() {
-        let mut t = 表("表", false, &[&["見出し", ""], &["10", "20"], &["", "=SUM(A2:B2)"]]);
+        let mut t = table("表", false, &[&["見出し", ""], &["10", "20"], &["", "=SUM(A2:B2)"]]);
         t.rows[0][0].col_span = 2;
         t.rows[0].remove(1); // 結合したので格子の欄は1つ
         let d = display(&t);
@@ -294,7 +294,7 @@ mod 写しに答えを入れる {
     use super::*;
     use kumihan::{Block, Cellbox, Document, Table};
 
-    fn 文書() -> Document {
+    fn doc() -> Document {
         let cell = |s: &str| Cellbox {
             paragraphs: Document::plain(s).paragraphs().cloned().collect(),
             ..Default::default()
@@ -315,14 +315,14 @@ mod 写しに答えを入れる {
 
     #[test]
     fn 式のある表を見つける() {
-        assert!(has_formula(&文書()));
+        assert!(has_formula(&doc()));
         assert!(!has_formula(&Document::plain("式の無い文書")));
     }
 
     /// **式の升だけ答えの字になる。** ほかの升は触らない
     #[test]
     fn 式の升だけ差し替わる() {
-        let mut d = 文書();
+        let mut d = doc();
         assert_eq!(fill(&mut d), 1, "直した升の数が合わない");
         let t = d.blocks.iter().find_map(|b| if let Block::Table(t) = b { Some(t) } else { None }).unwrap();
         assert_eq!(kumihan::paras_text(&t.rows[3][1].paragraphs), "2000");
@@ -334,10 +334,10 @@ mod 写しに答えを入れる {
     /// **元の文書は式のまま。** 差し替えるのは写しだけ
     #[test]
     fn 元は式のまま() {
-        let 元 = 文書();
-        let mut 写し = 元.clone();
+        let from = doc();
+        let mut 写し = from.clone();
         fill(&mut 写し);
-        let t = 元.blocks.iter().find_map(|b| if let Block::Table(t) = b { Some(t) } else { None }).unwrap();
+        let t = from.blocks.iter().find_map(|b| if let Block::Table(t) = b { Some(t) } else { None }).unwrap();
         assert_eq!(kumihan::paras_text(&t.rows[3][1].paragraphs), "=SUM(B2:B3)", "元まで書き替えた");
     }
 }

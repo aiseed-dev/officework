@@ -292,7 +292,7 @@ impl Writer {
     /// PDF として保存。保存先の選択は**別のスレッド**(rfd は同期)。
     /// **CSV を差し込みます**(帳票。2026-08-17)。
     ///
-    /// 雛形に `{{名前}}` と `{{群.項目}}` を書いておき、CSV を選ぶと、
+    /// 雛形に `{{member}}` と `{{群.項目}}` を書いておき、CSV を選ぶと、
     /// 明細の行が CSV の行数だけ増えます。
     pub(crate) fn merge_csv(&mut self, cx: &mut Context<Self>) {
         self.flush_target();
@@ -373,7 +373,7 @@ impl Writer {
     pub(crate) fn write_html(&mut self, path: &std::path::Path) {
         // **Web 用のテンプレートがあればそれで出します**(テンプレート-web.toml)。
         // 無ければいま着ている物。互換の文書(docx)には型紙がないので既定です
-        let (th, 使った) = self.template_for("web");
+        let (th, used) = self.template_for("web");
         let page = kumihan::html_write::page(&self.doc, &th);
         if let Err(e) = std::fs::write(path, &page.html) {
             self.status = ui::tf!("cant_export", e).into();
@@ -397,7 +397,7 @@ impl Writer {
         self.status = if 書けない > 0 {
             ui::tf!("exported_image_files_not",
                     path.display(), 書けない).into()
-        } else if let Some(t) = 使った {
+        } else if let Some(t) = used {
             // どのテンプレートで出したかは必ず言う(黙って別の見た目にしない)
             ui::tf!("exported_using_web_format",
                     path.display(), t).into()

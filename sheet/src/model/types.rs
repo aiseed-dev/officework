@@ -1732,7 +1732,7 @@ impl Validation {
     fn judgeable(&self) -> bool {
         let f1 = self.formula.trim().parse::<f64>().is_ok();
         match self.op.as_str() {
-            "between_2" | "" | "notBetween" => {
+            "between" | "" | "notBetween" => {
                 f1 && self.formula2.trim().parse::<f64>().is_ok()
             }
             "equal" | "notEqual" | "greaterThan" | "lessThan"
@@ -1745,7 +1745,7 @@ impl Validation {
     fn op_passes(&self, x: f64) -> Option<bool> {
         let f1: f64 = self.formula.trim().parse().ok()?;
         Some(match self.op.as_str() {
-            "between_2" | "" => {
+            "between" | "" => {
                 let f2: f64 = self.formula2.trim().parse().ok()?;
                 (f1..=f2).contains(&x)
             }
@@ -1766,14 +1766,18 @@ impl Validation {
     /// 規則の言い直し(エラーの既定の文言に使う)。例: 「1 から 100 の整数」
     pub fn describe(&self) -> String {
         let noun = match self.kind.as_str() {
-            "whole" => "whole_number",
-            "decimal" => "number",
-            "textLength" => "characters_2",
+            // FIXME(2026-08-26): **ここはエンジンの中で日本語の文を組んで
+            // います。** 画面に出る文なので、本来は calc 側で ui::tf! を
+            // 通して組むべきです。移すまでは日本語のままにします —
+            // 英語にすると「1 から 100 の Whole number」になります
+            "whole" => "整数",
+            "decimal" => "数",
+            "textLength" => "文字数",
             _ => return String::new(),
         };
         let (f1, f2) = (self.formula.trim(), self.formula2.trim());
         match self.op.as_str() {
-            "between_2" | "" => format!("{f1} から {f2} の{noun}"),
+            "between" | "" => format!("{f1} から {f2} の{noun}"),
             "notBetween" => format!("{f1} から {f2} の外の{noun}"),
             "equal" => format!("{f1} に等しい{noun}"),
             "notEqual" => format!("{f1} 以外の{noun}"),

@@ -30,7 +30,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 UNIX_ONLY = re.compile(r"\b(ops::Host\b|crate::rpc::|ops::listen|ops::ask|ops::sock_path|std::os::unix)")
 
 # 見る場所。生成物と外から持ってきた物は見ません
-見る = ["calc/src", "writer/src", "ui/src", "officework/src", "ops/src", "sheet/src"]
+check = ["calc/src", "writer/src", "ui/src", "officework/src", "ops/src", "sheet/src"]
 
 
 def 旗の行(l: str) -> bool:
@@ -52,12 +52,12 @@ def ファイルごと旗つき(p: pathlib.Path) -> bool:
     旗が要りません。ここを見ないと、正しい物を誤って咎めます
     (最初に書いた版が3件そう言いました)。
     """
-    親 = p.parent / "lib.rs"
-    if not 親.exists() or p.name == "lib.rs":
+    parent = p.parent / "lib.rs"
+    if not parent.exists() or p.name == "lib.rs":
         return False
     # `#[cfg(unix)]` と `mod` の間に説明の行(`///`)が挟まることがあります。
     # そこを見落として、正しい物を3件咎めました
-    lines = 親.read_text(encoding="utf-8").split("\n")
+    lines = parent.read_text(encoding="utf-8").split("\n")
     宣言 = re.compile(r"\s*(pub )?mod " + re.escape(p.stem) + r"\s*;")
     for i, l in enumerate(lines):
         if not 宣言.match(l):
@@ -91,8 +91,8 @@ def 旗の内側(lines: list[str], i: int) -> bool:
 
 def main() -> int:
     漏れ = []
-    数 = 0
-    for d in 見る:
+    numbers = 0
+    for d in check:
         for p in sorted((ROOT / d).rglob("*.rs")):
             if ファイルごと旗つき(p):
                 continue  # `#[cfg(unix)] mod ...;` で取り込まれている
@@ -103,12 +103,12 @@ def main() -> int:
                     continue
                 if not UNIX_ONLY.search(l):
                     continue
-                数 += 1
+                numbers += 1
                 if not 旗の内側(lines, i):
                     漏れ.append((p.relative_to(ROOT), i + 1, l.strip()[:70]))
-    if 数 < 5:
+    if numbers < 5:
         # **読めなくなったら落ちる。** 静かに緑になるのが一番悪い
-        print(f"::error::Windows に無い物の呼び出しが {数} か所しか見つかりません(探し方が壊れた?)")
+        print(f"::error::Windows に無い物の呼び出しが {numbers} か所しか見つかりません(探し方が壊れた?)")
         return 1
     for f, n, t in 漏れ:
         print(f"::error::{f}:{n} が `#[cfg(unix)]` の外から Windows に無い物を呼んでいます")
@@ -118,7 +118,7 @@ def main() -> int:
         print("  呼ぶ側にも同じ旗を付けてください。この機械では Windows の的で")
         print("  calc を組めないので、CI の Windows の段まで気づけません。")
         return 1
-    print(f"Windows に無い物の呼び出し {数} か所は、全部 `#[cfg(unix)]` の内側です")
+    print(f"Windows に無い物の呼び出し {numbers} か所は、全部 `#[cfg(unix)]` の内側です")
     return 0
 
 

@@ -12,7 +12,7 @@ pub(crate) use pyrun::find_python;
 /// fields を渡す(記入=出口と吸い上げ=入口の対)。鍵は docx の w:tag
 /// (フォームタブの「名前」ボタンで付ける)。無い名前は例外で断る —
 /// ラベルの字を探して隣に書く走査より、名前が様式の背骨(発注者 2026-08-05)。
-/// もう一車線が雛形: render(辞書)= docxtpl の {{名前}} / {%tr %} 差し込み、
+/// もう一車線が雛形: render(辞書)= docxtpl の {{member}} / {%tr %} 差し込み、
 /// tpl_fields()= 差し込み口の一覧。往復する様式は記入欄、出して終わりの
 /// 量産文書(通知書・契約書)は雛形、の使い分け(SEKKEI 参照)
 pub(crate) fn macro_script(
@@ -102,7 +102,7 @@ def _tpl():
         raise SystemExit('docxtpl がありません(pip install docxtpl。.venv があればそちらへ)')
     return DocxTemplate(IN)
 def render(ctx):
-    # 雛形({{名前}} と {%tr for %} の行くり返し)に辞書を差し込む。
+    # 雛形({{member}} と {%tr for %} の行くり返し)に辞書を差し込む。
     # 以後の d は差し込み済みの文書になり、そのまま保存される
     global d
     t = _tpl()
@@ -113,7 +113,7 @@ def render(ctx):
     d = t.docx
     return d
 def tpl_fields():
-    # 雛形の差し込み口({{名前}})の一覧 — 雛形の仕様書。壊れていれば断る
+    # 雛形の差し込み口({{member}})の一覧 — 雛形の仕様書。壊れていれば断る
     t = _tpl()
     try:
         return sorted(t.get_undeclared_template_variables())

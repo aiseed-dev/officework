@@ -155,11 +155,11 @@ def main() -> int:
 
     ファイル = file_menu()
 
-    足りない = [c.id for t in tabs for c in t.cmds if c.id and c.id not in MAP]
-    足りない += [i for i, _ in ファイル if i not in FILE_MAP]
-    if 足りない:
+    missing_ids = [c.id for t in tabs for c in t.cmds if c.id and c.id not in MAP]
+    missing_ids += [i for i, _ in ファイル if i not in FILE_MAP]
+    if missing_ids:
         print("この表に無い項目があります(MAP に足してください):", file=sys.stderr)
-        for i in 足りない:
+        for i in missing_ids:
             print(f"  {i}", file=sys.stderr)
         return 1
     if "--check" in sys.argv:
@@ -196,8 +196,8 @@ def main() -> int:
         総数 += len(押せる)
         済 += a
         if adoc:
-            名 = "ファイル(リボンの行)" if tab.name == "ファイル" else tab.name
-            print(f"==== {名}({len(押せる)} 個中 {a} 個が Python から届く)\n")
+            name = "ファイル(リボンの行)" if tab.name == "ファイル" else tab.name
+            print(f"==== {name}({len(押せる)} 個中 {a} 個が Python から届く)\n")
             print('[cols="1,1,1"]')
             print("|===")
             print("|ボタン |id |Python\n")

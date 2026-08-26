@@ -563,10 +563,10 @@ impl Calc {
     /// 「3件見つかりました」と言って動かないのは、見つけていないのと同じです。
     pub(crate) fn find_next(&mut self, term: &str) {
         let ブック全体 = self.find_book;
-        let 枚数 = self.book.sheets.len();
+        let n_sheets = self.book.sheets.len();
         // いまのシートから始めて、ファイル全体なら後ろのシートへ回る
         let 見る順: Vec<usize> = if ブック全体 {
-            (0..枚数).map(|k| (self.active + k) % 枚数).collect()
+            (0..n_sheets).map(|k| (self.active + k) % n_sheets).collect()
         } else {
             vec![self.active]
         };

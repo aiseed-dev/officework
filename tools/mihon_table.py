@@ -94,10 +94,10 @@ def rows():
 
 def main() -> int:
     r = rows()
-    足りない = [k for k in list(IMA) + [(a, i) for a, i in DOU] if
+    missing_ids = [k for k in list(IMA) + [(a, i) for a, i in DOU] if
                 not any(x[0] == k[0] and x[3] == k[1] for x in r)]
-    if 足りない:
-        print("元に無い id が表にあります:", 足りない, file=sys.stderr)
+    if missing_ids:
+        print("元に無い id が表にあります:", missing_ids, file=sys.stderr)
         return 1
     if "--check" in sys.argv:
         print(f"見本の表は {len(r)} 行、元と揃っています")

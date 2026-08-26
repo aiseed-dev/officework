@@ -972,18 +972,18 @@ mod sect_tests {
 <w:p><w:r><w:t>後</w:t></w:r></w:p>
 <w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>
 </w:body></w:document>"#);
-        let 読む = |ty: &str| -> kumihan::SectionBreak {
+        let read_list = |ty: &str| -> kumihan::SectionBreak {
             let (d, _) = parse_document_xml(&xml(ty));
             let p = d.paragraphs().next().unwrap();
             p.sect.clone().unwrap()
         };
-        assert!(読む(r#"<w:type w:val="continuous"/>"#).continuous,
+        assert!(read_list(r#"<w:type w:val="continuous"/>"#).continuous,
             "continuous を読めていない");
-        assert!(!読む(r#"<w:type w:val="nextPage"/>"#).continuous,
+        assert!(!read_list(r#"<w:type w:val="nextPage"/>"#).continuous,
             "nextPage を continuous と読んだ");
-        assert!(!読む("").continuous, "type 無しの既定が nextPage になっていない");
+        assert!(!read_list("").continuous, "type 無しの既定が nextPage になっていない");
         // 原文はどの種類でもそのまま持ち越す
-        assert!(読む(r#"<w:type w:val="continuous"/>"#).raw.contains("continuous"),
+        assert!(read_list(r#"<w:type w:val="continuous"/>"#).raw.contains("continuous"),
             "原文から種類が落ちた");
     }
 
@@ -2095,10 +2095,10 @@ mod footnote_report_tests {
     fn 脚注の印は元の位置に戻る() {
         let (doc, _) = parse_document_xml(&二つの印());
         let out = write_document_xml(&doc);
-        let 位置 = |s: &str| out.find(s).unwrap_or_else(|| panic!("{s} が無い: {out}"));
-        assert!(位置("本文の一つ目です") < 位置(r#"w:id="20""#), "一つ目の印が前へ出た");
-        assert!(位置(r#"w:id="20""#) < 位置("同じ段落にもう一つ"), "一つ目の印が後ろへ流れた");
-        assert!(位置("同じ段落にもう一つ") < 位置(r#"w:id="21""#), "二つ目の印が前へ出た");
+        let positions = |s: &str| out.find(s).unwrap_or_else(|| panic!("{s} が無い: {out}"));
+        assert!(positions("本文の一つ目です") < positions(r#"w:id="20""#), "一つ目の印が前へ出た");
+        assert!(positions(r#"w:id="20""#) < positions("同じ段落にもう一つ"), "一つ目の印が後ろへ流れた");
+        assert!(positions("同じ段落にもう一つ") < positions(r#"w:id="21""#), "二つ目の印が前へ出た");
     }
 
     /// **id は振り直さない。** 書き手ごとに番号の付け方が違い
@@ -2353,7 +2353,7 @@ mod add_note_tests {
         zip.finish().unwrap().into_inner()
     }
 
-    fn 部品(z: &[u8], name: &str) -> Option<String> {
+    fn parts(z: &[u8], name: &str) -> Option<String> {
         let mut a = zip::ZipArchive::new(Cursor::new(z.to_vec())).ok()?;
         let mut f = a.by_name(name).ok()?;
         let mut s = String::new();
@@ -2366,13 +2366,13 @@ mod add_note_tests {
     fn 注の無い文書に脚注を足すと部品が揃う() {
         let src = 素のdocx();
         let (mut doc, _) = crate::read(Cursor::new(&src)).unwrap();
-        let 本文 = kumihan::Paragraph {
+        let body = kumihan::Paragraph {
             runs: vec![kumihan::Run { text: "足した脚注の文章。".into(), size_pt: Some(9.0),
                                       font: None, fmt: Default::default() }],
             line_spacing: 1.0,
             ..Default::default()
         };
-        let fr = doc.add_footnote(false, vec![本文]);
+        let fr = doc.add_footnote(false, vec![body]);
         // 本文の末尾に印を置く
         if let Some(kumihan::Block::Para(p)) = doc.blocks.last_mut() {
             p.runs.push(kumihan::Run {
@@ -2384,19 +2384,19 @@ mod add_note_tests {
         crate::write_with(&doc, Some(Cursor::new(&src)), Cursor::new(&mut out)).unwrap();
 
         // 1) 部品そのもの
-        let fx = 部品(&out, "word/footnotes.xml").expect("footnotes.xml が無い");
+        let fx = parts(&out, "word/footnotes.xml").expect("footnotes.xml が無い");
         assert!(fx.contains("足した脚注の文章。"), "脚注の文章が入っていない: {fx}");
         // **仕切り線が無いと Word は注を出さない**
         assert!(fx.contains(r#"w:type="separator""#), "仕切り線の定義が無い: {fx}");
         assert!(fx.contains(r#"w:type="continuationSeparator""#), "続きの仕切りが無い: {fx}");
         // 2) 宣言
-        let ct = 部品(&out, "[Content_Types].xml").unwrap();
+        let ct = parts(&out, "[Content_Types].xml").unwrap();
         assert!(ct.contains("/word/footnotes.xml"), "宣言が無い: {ct}");
         // 3) 関係
-        let rels = 部品(&out, "word/_rels/document.xml.rels").unwrap();
+        let rels = parts(&out, "word/_rels/document.xml.rels").unwrap();
         assert!(rels.contains("footnotes.xml"), "関係が無い: {rels}");
         // 本文の印
-        let dx = 部品(&out, "word/document.xml").unwrap();
+        let dx = parts(&out, "word/document.xml").unwrap();
         assert!(dx.contains("<w:footnoteReference"), "本文に印が無い: {dx}");
 
         // 読み直して戻ること
@@ -2447,7 +2447,7 @@ mod add_note_tests {
 
         let mut out = Vec::new();
         crate::write_with(&doc, Some(Cursor::new(&src)), Cursor::new(&mut out)).unwrap();
-        let fx = 部品(&out, "word/footnotes.xml").unwrap();
+        let fx = parts(&out, "word/footnotes.xml").unwrap();
         assert!(fx.contains("もとからの脚注"), "もとの注が消えた: {fx}");
         assert!(fx.contains("あとから足した"), "足した注が入っていない: {fx}");
         assert!(fx.contains(r#"w:type="separator""#), "仕切り線が消えた: {fx}");
@@ -2463,9 +2463,9 @@ mod add_note_tests {
         let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
         let mut out = Vec::new();
         crate::write_with(&doc, Some(Cursor::new(&src)), Cursor::new(&mut out)).unwrap();
-        assert!(部品(&out, "word/footnotes.xml").is_none(),
+        assert!(parts(&out, "word/footnotes.xml").is_none(),
             "注を足していないのに部品ができた");
-        let ct = 部品(&out, "[Content_Types].xml").unwrap();
+        let ct = parts(&out, "[Content_Types].xml").unwrap();
         assert!(!ct.contains("footnotes.xml"), "要らない宣言が入った: {ct}");
     }
 }
@@ -2501,7 +2501,7 @@ mod テンプレートを通す {
         out
     }
 
-    fn 部品(zipbytes: &[u8], name: &str) -> Option<String> {
+    fn parts(zipbytes: &[u8], name: &str) -> Option<String> {
         let mut z = zip::ZipArchive::new(Cursor::new(zipbytes.to_vec())).ok()?;
         let mut f = z.by_name(name).ok()?;
         let mut s = String::new();
@@ -2512,7 +2512,7 @@ mod テンプレートを通す {
     #[test]
     fn 見出しの見た目がスタイル定義に入る() {
         let th = kumihan::theme::default_theme();
-        let s = 部品(&書き出す(Some(&th)), "word/styles.xml").unwrap();
+        let s = parts(&書き出す(Some(&th)), "word/styles.xml").unwrap();
         // 既定のテンプレートの「見出し1」は 16pt の太字
         assert!(s.contains(r#"w:styleId="Heading1""#), "見出し1 が Heading1 にならない: {s}");
         assert!(s.contains(r#"<w:sz w:val="32"/>"#), "16pt が入らない: {s}");
@@ -2524,7 +2524,7 @@ mod テンプレートを通す {
     #[test]
     fn 利用者の名前はそのままスタイルの名前になる() {
         let th = kumihan::theme::default_theme();
-        let s = 部品(&書き出す(Some(&th)), "word/styles.xml").unwrap();
+        let s = parts(&書き出す(Some(&th)), "word/styles.xml").unwrap();
         // 「註記」は本家 AsciiDoc の書き方。役割の固定名ではないので日本語のまま
         assert!(s.contains(r#"w:styleId="註記""#), "註記 が styleId にならない: {s}");
         assert!(s.contains(r#"w:fill="FFF6E0""#), "註記の背景色が入らない: {s}");
@@ -2533,7 +2533,7 @@ mod テンプレートを通す {
     #[test]
     fn 本文には見た目を焼き付けない() {
         let th = kumihan::theme::default_theme();
-        let d = 部品(&書き出す(Some(&th)), "word/document.xml").unwrap();
+        let d = parts(&書き出す(Some(&th)), "word/document.xml").unwrap();
         // 見出しは pStyle で名乗るだけ。大きさも太字も本文の側には出さない
         assert!(d.contains(r#"w:val="Heading1""#), "pStyle が無い: {d}");
         assert!(!d.contains(r#"<w:sz w:val="32"/>"#), "本文に大きさが焼き付いた: {d}");
@@ -2541,7 +2541,7 @@ mod テンプレートを通す {
 
     #[test]
     fn 渡さなければ今までどおり() {
-        let s = 部品(&書き出す(None), "word/styles.xml").unwrap();
+        let s = parts(&書き出す(None), "word/styles.xml").unwrap();
         assert!(s.contains(r#"w:styleId="Heading1""#));
         assert!(!s.contains("註記"), "テンプレート抜きなのに入った: {s}");
     }

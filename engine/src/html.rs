@@ -592,8 +592,8 @@ fn attr_of(tag: &str, key: &str) -> Option<String> {
     let i = loop {
         let j = at + tag[at..].find(&pat)?;
         // 直前が空白でなければ別の札の一部(例: font-height=)
-        let 前 = tag[..j].chars().next_back();
-        if j == 0 || 前.is_some_and(char::is_whitespace) {
+        let before = tag[..j].chars().next_back();
+        if j == 0 || before.is_some_and(char::is_whitespace) {
             break j + pat.len();
         }
         at = j + pat.len();

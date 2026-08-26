@@ -1239,12 +1239,12 @@ mod shade_carry_tests {
 mod section_layout_tests {
     use super::*;
 
-    fn 紙(w: f32, h: f32) -> PageSetup {
+    fn paper(w: f32, h: f32) -> PageSetup {
         PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
                     top_mm: 20.0, bottom_mm: 20.0, columns: 1 }
     }
 
-    fn 段(text: &str, sect: Option<PageSetup>) -> Block {
+    fn tab(text: &str, sect: Option<PageSetup>) -> Block {
         段c(text, sect, false)
     }
 
@@ -1262,17 +1262,17 @@ mod section_layout_tests {
     /// **真ん中だけ横向きの3節。** 節の境目の手前の段落と、最後の節
     /// (`Document::page` から来るほう)が要注意 — 発注者 2026-08-10
     fn 三節() -> Document {
-        let 縦 = 紙(210.0, 297.0);
-        let 横 = 紙(297.0, 210.0);
+        let vertical = paper(210.0, 297.0);
+        let 横 = paper(297.0, 210.0);
         Document {
             // 最後の節は Document::page が持つ(docx がそう書く)
-            page: Some(縦),
+            page: Some(vertical),
             blocks: vec![
-                段("第一節の本文", None),
-                段("第一節の終わり", Some(縦)),   // ここまでが縦
-                段("第二節の本文", None),
-                段("第二節の終わり", Some(横)),   // ここまでが横
-                段("第三節の本文", None),          // ここは Document::page = 縦
+                tab("第一節の本文", None),
+                tab("第一節の終わり", Some(vertical)),   // ここまでが縦
+                tab("第二節の本文", None),
+                tab("第二節の終わり", Some(横)),   // ここまでが横
+                tab("第三節の本文", None),          // ここは Document::page = 縦
             ],
             ..Default::default()
         }
@@ -1302,12 +1302,12 @@ mod section_layout_tests {
     fn continuous_の節では頁を割らない() {
         // 段組みを変えるためだけの節が実物には多い。そこで改ページすると
         // **見た目が大きく変わる**(2026-08-10、pyoffice の指摘)
-        let 縦 = 紙(210.0, 297.0);
+        let vertical = paper(210.0, 297.0);
         let d = Document {
-            page: Some(縦),
+            page: Some(vertical),
             blocks: vec![
-                段c("一段の所", Some(縦), true),   // continuous: 紙は同じ
-                段("二段の所", None),
+                段c("一段の所", Some(vertical), true),   // continuous: 紙は同じ
+                tab("二段の所", None),
             ],
             ..Default::default()
         };
@@ -1321,10 +1321,10 @@ mod section_layout_tests {
     fn continuous_でも紙の大きさが違えば割る() {
         // 1枚の紙は1つの大きさしか取れない。continuous でも従えない所
         let d = Document {
-            page: Some(紙(297.0, 210.0)),                 // 横
+            page: Some(paper(297.0, 210.0)),                 // 横
             blocks: vec![
-                段c("縦の所", Some(紙(210.0, 297.0)), true), // continuous だが縦→横
-                段("横の所", None),
+                段c("縦の所", Some(paper(210.0, 297.0)), true), // continuous だが縦→横
+                tab("横の所", None),
             ],
             ..Default::default()
         };
@@ -1335,10 +1335,10 @@ mod section_layout_tests {
 
     #[test]
     fn nextpage_の節は今までどおり割る() {
-        let 縦 = 紙(210.0, 297.0);
+        let vertical = paper(210.0, 297.0);
         let d = Document {
-            page: Some(縦),
-            blocks: vec![段c("前", Some(縦), false), 段("後", None)],
+            page: Some(vertical),
+            blocks: vec![段c("前", Some(vertical), false), tab("後", None)],
             ..Default::default()
         };
         assert_eq!(layout_for_test(&d).breaks.len(), 1, "nextPage で割らなかった");
@@ -1355,8 +1355,8 @@ mod section_layout_tests {
     #[test]
     fn 節が一つなら今までどおり何も持たない() {
         let d = Document {
-            page: Some(紙(210.0, 297.0)),
-            blocks: vec![段("本文", None)],
+            page: Some(paper(210.0, 297.0)),
+            blocks: vec![tab("本文", None)],
             ..Default::default()
         };
         assert!(section_geometry(&d).is_empty(), "節が1つなのに節ごとの紙を作った");
@@ -1372,17 +1372,17 @@ mod footnote_mark_tests {
     /// という形になる(2026-08-10)
     #[test]
     fn 均しても脚注の印は残る() {
-        let 印 = |id: &str| Run {
+        let mark = |id: &str| Run {
             text: String::new(), size_pt: Some(10.5), font: None,
             fmt: CharFormat {
                 footnote: Some(FootnoteRef { id: id.into(), endnote: false }),
                 ..Default::default()
             },
         };
-        let 字 = |t: &str| Run {
+        let text = |t: &str| Run {
             text: t.into(), size_pt: Some(10.5), font: None, fmt: CharFormat::default(),
         };
-        let mut runs = vec![字("本文"), 印("20"), 字("の続き"), 印("21")];
+        let mut runs = vec![text("本文"), mark("20"), text("の続き"), mark("21")];
         normalize_runs(&mut runs);
         assert_eq!(runs.iter().filter(|r| r.fmt.footnote.is_some()).count(), 2,
             "印が落ちた: {runs:?}");
@@ -1409,23 +1409,23 @@ mod footnote_mark_tests {
 mod footnote_layout_tests {
     use super::*;
 
-    fn 組む(d: &Document) -> Sheet {
+    fn build(d: &Document) -> Sheet {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
         layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 })
     }
 
-    fn 印(id: &str) -> Run {
+    fn mark(id: &str) -> Run {
         Run { text: String::new(), size_pt: Some(10.5), font: None,
               fmt: CharFormat {
                   footnote: Some(FootnoteRef { id: id.into(), endnote: false }),
                   ..Default::default() } }
     }
-    fn 字(t: &str) -> Run {
+    fn text(t: &str) -> Run {
         Run { text: t.into(), size_pt: Some(10.5), font: None, fmt: CharFormat::default() }
     }
-    fn 段(runs: Vec<Run>) -> Block {
+    fn tab(runs: Vec<Run>) -> Block {
         Block::Para(Paragraph { runs, line_spacing: 1.0, ..Default::default() })
     }
     fn 尾印(id: &str) -> Run {
@@ -1434,9 +1434,9 @@ mod footnote_layout_tests {
                   footnote: Some(FootnoteRef { id: id.into(), endnote: true }),
                   ..Default::default() } }
     }
-    fn 注(id: &str, endnote: bool, t: &str) -> Footnote {
+    fn note(id: &str, endnote: bool, t: &str) -> Footnote {
         Footnote { added: false, id: id.into(), endnote,
-                   paragraphs: vec![Paragraph { runs: vec![字(t)], line_spacing: 1.0,
+                   paragraphs: vec![Paragraph { runs: vec![text(t)], line_spacing: 1.0,
                                                 ..Default::default() }] }
     }
 
@@ -1446,22 +1446,22 @@ mod footnote_layout_tests {
     #[test]
     fn 脚注と文末脚注のidが衝突しても取り違えない() {
         let d = Document {
-            blocks: vec![段(vec![字("あ"), 印("2"), 字("い"), 尾印("2")])],
+            blocks: vec![tab(vec![text("あ"), mark("2"), text("い"), 尾印("2")])],
             footnotes: vec![
-                注("2", false, "これは脚注"),
-                注("2", true, "これは文末脚注"),
+                note("2", false, "これは脚注"),
+                note("2", true, "これは文末脚注"),
             ],
             ..Default::default()
         };
-        let s = 組む(&d);
+        let s = build(&d);
         // **紙の下に来るのは脚注だけ。** 文末脚注は文書の末尾へ回るので
         // ここには入らない(2026-08-11 に置き場を分けた)
         assert_eq!(s.notes.len(), 1, "紙の下に文末脚注まで来た");
-        let 文 = |n: &NoteBlock| -> String {
+        let sentence = |n: &NoteBlock| -> String {
             n.lines.iter().flat_map(|l| l.cells.iter()).map(|c| c.ch).collect()
         };
-        assert!(文(&s.notes[0]).contains("これは脚注"),
-            "脚注の印に別の注が付いた: {:?}", 文(&s.notes[0]));
+        assert!(sentence(&s.notes[0]).contains("これは脚注"),
+            "脚注の印に別の注が付いた: {:?}", sentence(&s.notes[0]));
         let 全文: String = s.lines.iter()
             .flat_map(|l| l.cells.iter()).map(|c| c.ch).collect();
         assert!(全文.contains("これは文末脚注"), "文末脚注が末尾に出ていない");
@@ -1475,12 +1475,12 @@ mod footnote_layout_tests {
     fn 脚注の番号は出てくる順に振る() {
         let d = Document {
             blocks: vec![
-                段(vec![字("あ"), 印("20"), 字("い"), 印("21")]),
-                段(vec![字("う"), 印("22")]),
+                tab(vec![text("あ"), mark("20"), text("い"), mark("21")]),
+                tab(vec![text("う"), mark("22")]),
             ],
             ..Default::default()
         };
-        let s = 組む(&d);
+        let s = build(&d);
         let sup: String = s.lines.iter()
             .flat_map(|l| l.cells.iter())
             .filter(|c| c.fmt.superscript)
@@ -1494,27 +1494,27 @@ mod footnote_layout_tests {
     #[test]
     fn 番号を出しても本文のバイト位置は動かない() {
         let d = Document {
-            blocks: vec![段(vec![字("あい"), 印("2"), 字("うえ")])],
+            blocks: vec![tab(vec![text("あい"), mark("2"), text("うえ")])],
             ..Default::default()
         };
-        let s = 組む(&d);
-        let 本文: Vec<(char, usize)> = s.lines[0].cells.iter()
+        let s = build(&d);
+        let body: Vec<(char, usize)> = s.lines[0].cells.iter()
             .filter(|c| !c.fmt.superscript)
             .map(|c| (c.ch, c.off))
             .collect();
         // あ=0 い=3 う=6 え=9(いずれも3バイト)。印は挟まっても動かさない
-        assert_eq!(本文, vec![('あ', 0), ('い', 3), ('う', 6), ('え', 9)],
-            "印のせいで本文のバイト位置がずれた: {本文:?}");
+        assert_eq!(body, vec![('あ', 0), ('い', 3), ('う', 6), ('え', 9)],
+            "印のせいで本文のバイト位置がずれた: {body:?}");
     }
 
     /// 番号は上付きで、本文より小さい
     #[test]
     fn 番号は上付きで小さい() {
         let d = Document {
-            blocks: vec![段(vec![字("あ"), 印("2")])],
+            blocks: vec![tab(vec![text("あ"), mark("2")])],
             ..Default::default()
         };
-        let s = 組む(&d);
+        let s = build(&d);
         let c = s.lines[0].cells.iter().find(|c| c.fmt.superscript).expect("番号が無い");
         assert_eq!(c.ch, '1');
         assert!(c.size_pt < 10.5, "本文と同じ大きさ: {}", c.size_pt);
@@ -1530,17 +1530,17 @@ mod footnote_layout_tests {
         };
         let d = Document {
             blocks: vec![
-                段(vec![字("前"), 印("2")]),
+                tab(vec![text("前"), mark("2")]),
                 Block::Table(Table {
                     col_mm: vec![80.0],
-                    rows: vec![vec![cell(vec![字("表"), 印("3")])]],
+                    rows: vec![vec![cell(vec![text("表"), mark("3")])]],
         ..Default::default()
     }),
-                段(vec![字("後"), 印("4")]),
+                tab(vec![text("後"), mark("4")]),
             ],
             ..Default::default()
         };
-        let s = 組む(&d);
+        let s = build(&d);
         let sup: String = s.lines.iter()
             .flat_map(|l| l.cells.iter())
             .filter(|c| c.fmt.superscript)
@@ -1555,26 +1555,26 @@ mod footnote_layout_tests {
 mod endnote_tests {
     use crate::*;
 
-    fn 組む(d: &Document) -> Sheet {
+    fn build(d: &Document) -> Sheet {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
         layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 })
     }
-    fn 印(id: &str, endnote: bool) -> Run {
+    fn mark(id: &str, endnote: bool) -> Run {
         Run { text: String::new(), size_pt: Some(10.5), font: None,
               fmt: CharFormat { footnote: Some(FootnoteRef { id: id.into(), endnote }),
                                 ..Default::default() } }
     }
-    fn 字(t: &str) -> Run {
+    fn text(t: &str) -> Run {
         Run { text: t.into(), size_pt: Some(10.5), font: None, fmt: CharFormat::default() }
     }
-    fn 段(runs: Vec<Run>) -> Block {
+    fn tab(runs: Vec<Run>) -> Block {
         Block::Para(Paragraph { runs, line_spacing: 1.0, ..Default::default() })
     }
-    fn 注(id: &str, endnote: bool, t: &str) -> Footnote {
+    fn note(id: &str, endnote: bool, t: &str) -> Footnote {
         Footnote { added: false, id: id.into(), endnote,
-                   paragraphs: vec![Paragraph { runs: vec![字(t)], line_spacing: 1.0,
+                   paragraphs: vec![Paragraph { runs: vec![text(t)], line_spacing: 1.0,
                                                 ..Default::default() }] }
     }
 
@@ -1583,10 +1583,10 @@ mod endnote_tests {
     /// 実物(both-notes.docx)は脚注 2・3 と文末脚注 2・3 だった
     fn 混在() -> Document {
         Document {
-            blocks: vec![段(vec![字("あ"), 印("2", false), 字("い"), 印("2", true)])],
+            blocks: vec![tab(vec![text("あ"), mark("2", false), text("い"), mark("2", true)])],
             footnotes: vec![
-                注("2", false, "脚注のほう"),
-                注("2", true, "文末脚注のほう"),
+                note("2", false, "脚注のほう"),
+                note("2", true, "文末脚注のほう"),
             ],
             endnote_fmt: NoteNumFmt::LowerRoman,
             ..Default::default()
@@ -1595,12 +1595,12 @@ mod endnote_tests {
 
     #[test]
     fn 同じidでも脚注と文末脚注を取り違えない() {
-        let s = 組む(&混在());
-        let 下: Vec<String> = s.notes.iter()
+        let s = build(&混在());
+        let below: Vec<String> = s.notes.iter()
             .map(|n| n.lines.iter().flat_map(|l| l.cells.iter()).map(|c| c.ch).collect())
             .collect();
-        assert_eq!(下.len(), 1, "紙の下に文末脚注まで出た: {下:?}");
-        assert!(下[0].contains("脚注のほう"), "紙の下が取り違えている: {下:?}");
+        assert_eq!(below.len(), 1, "紙の下に文末脚注まで出た: {below:?}");
+        assert!(below[0].contains("脚注のほう"), "紙の下が取り違えている: {below:?}");
         let 全文: String = s.lines.iter()
             .flat_map(|l| l.cells.iter()).map(|c| c.ch).collect();
         assert!(全文.contains("文末脚注のほう"), "文末脚注が出ていない: {全文:?}");
@@ -1611,18 +1611,18 @@ mod endnote_tests {
     #[test]
     fn 脚注と文末脚注は別々に数える() {
         let d = Document {
-            blocks: vec![段(vec![
-                字("あ"), 印("2", false), 印("2", true),
-                字("い"), 印("3", false), 印("3", true),
+            blocks: vec![tab(vec![
+                text("あ"), mark("2", false), mark("2", true),
+                text("い"), mark("3", false), mark("3", true),
             ])],
             footnotes: vec![
-                注("2", false, "脚1"), 注("3", false, "脚2"),
-                注("2", true, "文末1"), 注("3", true, "文末2"),
+                note("2", false, "脚1"), note("3", false, "脚2"),
+                note("2", true, "文末1"), note("3", true, "文末2"),
             ],
             endnote_fmt: NoteNumFmt::LowerRoman,
             ..Default::default()
         };
-        let s = 組む(&d);
+        let s = build(&d);
         let 印の字: String = s.lines[0].cells.iter()
             .filter(|c| c.fmt.superscript).map(|c| c.ch).collect();
         // 脚注 1・2(算用数字)と 文末脚注 i・ii(ローマ数字)が交互に出る
@@ -1632,7 +1632,7 @@ mod endnote_tests {
     /// 文末脚注は**紙の下ではなく文書の末尾**。置き場が違う
     #[test]
     fn 文末脚注は本文の後ろへ流れる() {
-        let s = 組む(&混在());
+        let s = build(&混在());
         assert!(s.notes.iter().all(|n| !n.lines.is_empty()), "紙の下が空");
         // 本文の最後の行より下に、文末脚注の行が来る
         let 本文の底 = s.lines.iter()
@@ -1667,13 +1667,13 @@ mod endnote_tests {
 mod make_footnote_tests {
     use crate::*;
 
-    fn 文書(text: &str) -> Document {
+    fn doc(text: &str) -> Document {
         Document::plain(text)
     }
 
     #[test]
     fn 選んだ字が注へ移り跡に印が残る() {
-        let mut d = 文書("あいうえお");
+        let mut d = doc("あいうえお");
         // 「いう」を脚注にする(あ=0..3、いう=3..9)
         let fr = d.make_footnote(3..9, false).expect("脚注にできなかった");
         assert_eq!(d.body_text(), "あえお", "字が本文から抜けていない");
@@ -1691,7 +1691,7 @@ mod make_footnote_tests {
 
     #[test]
     fn 印は選んだ場所に残る() {
-        let mut d = 文書("あいうえお");
+        let mut d = doc("あいうえお");
         d.make_footnote(3..9, false).unwrap();
         let p = d.paragraphs().next().unwrap();
         // 「あ」の後ろ、「え」の前
@@ -1710,7 +1710,7 @@ mod make_footnote_tests {
     /// 決められないことを黙って決めない
     #[test]
     fn 段落をまたぐ範囲は断る() {
-        let mut d = 文書("あい\nうえ");
+        let mut d = doc("あい\nうえ");
         let before = d.body_text();
         assert!(d.make_footnote(3..12, false).is_none(), "またぐ範囲を受けてしまった");
         assert_eq!(d.body_text(), before, "断ったのに本文が変わった");
@@ -1719,7 +1719,7 @@ mod make_footnote_tests {
 
     #[test]
     fn 空の範囲は断る() {
-        let mut d = 文書("あいう");
+        let mut d = doc("あいう");
         assert!(d.make_footnote(3..3, false).is_none(), "空の範囲を受けてしまった");
         assert!(d.footnotes.is_empty());
     }
@@ -1727,7 +1727,7 @@ mod make_footnote_tests {
     /// 二つ作っても id がぶつからない
     #[test]
     fn 二つ作ってもidがぶつからない() {
-        let mut d = 文書("あいうえおかきくけこ");
+        let mut d = doc("あいうえおかきくけこ");
         let a = d.make_footnote(0..3, false).unwrap();
         let b = d.make_footnote(6..9, false).unwrap();
         assert_ne!(a.id, b.id, "同じ id を二度使った");
@@ -1737,7 +1737,7 @@ mod make_footnote_tests {
     /// 組むと、注が紙の下に出て番号が振られる
     #[test]
     fn 作った注が紙の下に出る() {
-        let mut d = 文書("あいうえお");
+        let mut d = doc("あいうえお");
         d.make_footnote(3..9, false).unwrap();
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
@@ -1761,11 +1761,11 @@ mod make_footnote_tests {
 mod fold_print_tests {
     use crate::*;
 
-    fn 紙(w: f32, h: f32) -> PageSetup {
+    fn paper(w: f32, h: f32) -> PageSetup {
         PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
                     top_mm: 20.0, bottom_mm: 20.0, columns: 1 }
     }
-    fn 行(y: f32) -> Line {
+    fn line(y: f32) -> Line {
         Line { cells: vec![Cell { ch: 'あ', x_mm: 0.0, w_mm: 4.0, size_pt: 10.5,
                                   off: 0, fmt: Default::default(), font: None }],
                y_mm: y, from_body: true, byte0: 0, cell: None }
@@ -1773,9 +1773,9 @@ mod fold_print_tests {
 
     #[test]
     fn 頁ごとに紙の高さで積む() {
-        let mut s = Sheet { lines: vec![行(20.0), 行(270.0), 行(530.0)], ..Default::default() };
+        let mut s = Sheet { lines: vec![line(20.0), line(270.0), line(530.0)], ..Default::default() };
         // 巻物では 260mm 間隔でも、折れば紙の高さ(+隙間)で積まれる
-        let tops = fold_print(&mut s, &[紙(210.0, 297.0); 3], &[0.0, 260.0, 522.0],
+        let tops = fold_print(&mut s, &[paper(210.0, 297.0); 3], &[0.0, 260.0, 522.0],
                                &[f32::NEG_INFINITY, 270.0, 530.0], 8.0);
         assert_eq!(tops, vec![0.0, 305.0, 610.0], "頁の上端が紙の高さで積まれていない");
         assert_eq!(s.lines[0].y_mm, 20.0, "1頁目の中の位置がずれた");
@@ -1786,8 +1786,8 @@ mod fold_print_tests {
     /// **頁ごとに紙が違ってよい。** 節で縦から横に変わる文書がこれ
     #[test]
     fn 紙の高さが頁ごとに違ってもよい() {
-        let mut s = Sheet { lines: vec![行(20.0), 行(270.0)], ..Default::default() };
-        let tops = fold_print(&mut s, &[紙(210.0, 297.0), 紙(297.0, 210.0)],
+        let mut s = Sheet { lines: vec![line(20.0), line(270.0)], ..Default::default() };
+        let tops = fold_print(&mut s, &[paper(210.0, 297.0), paper(297.0, 210.0)],
                               &[0.0, 260.0], &[f32::NEG_INFINITY, 270.0], 8.0);
         assert_eq!(tops, vec![0.0, 305.0], "縦の紙の高さで積んでいない");
         assert_eq!(s.lines[1].y_mm, 315.0);
@@ -1796,8 +1796,8 @@ mod fold_print_tests {
     /// 1頁だけの文書は中身を動かさない(折る必要が無い)
     #[test]
     fn 一頁なら動かさない() {
-        let mut s = Sheet { lines: vec![行(20.0), 行(100.0)], ..Default::default() };
-        let tops = fold_print(&mut s, &[紙(210.0, 297.0)], &[0.0], &[f32::NEG_INFINITY], 8.0);
+        let mut s = Sheet { lines: vec![line(20.0), line(100.0)], ..Default::default() };
+        let tops = fold_print(&mut s, &[paper(210.0, 297.0)], &[0.0], &[f32::NEG_INFINITY], 8.0);
         assert_eq!(tops, vec![0.0]);
         assert_eq!(s.lines[0].y_mm, 20.0);
         assert_eq!(s.lines[1].y_mm, 100.0);
@@ -1808,11 +1808,11 @@ mod fold_print_tests {
     #[test]
     fn 脚注の目印も一緒に折る() {
         let mut s = Sheet {
-            lines: vec![行(20.0), 行(270.0)],
+            lines: vec![line(20.0), line(270.0)],
             notes: vec![NoteBlock { no: 1, at_y: 270.0, lines: vec![], h_mm: 5.0 }],
             ..Default::default()
         };
-        fold_print(&mut s, &[紙(210.0, 297.0); 2], &[0.0, 260.0],
+        fold_print(&mut s, &[paper(210.0, 297.0); 2], &[0.0, 260.0],
                    &[f32::NEG_INFINITY, 270.0], 8.0);
         assert_eq!(s.notes[0].at_y, 315.0, "脚注の目印が巻物のまま");
     }
@@ -1825,8 +1825,8 @@ mod fold_print_tests {
     fn 紙の上端ではなく最初の行で頁を分ける() {
         // 1頁目は 20 と 270、2頁目は 280 から。2頁目の紙の上端は 260 で、
         // 270 の行より**上**にある
-        let mut s = Sheet { lines: vec![行(20.0), 行(270.0), 行(280.0)], ..Default::default() };
-        let tops = fold_print(&mut s, &[紙(210.0, 297.0); 2], &[0.0, 260.0],
+        let mut s = Sheet { lines: vec![line(20.0), line(270.0), line(280.0)], ..Default::default() };
+        let tops = fold_print(&mut s, &[paper(210.0, 297.0); 2], &[0.0, 260.0],
                               &[f32::NEG_INFINITY, 280.0], 8.0);
         assert_eq!(s.lines[1].y_mm, 270.0, "1頁目の末尾が次の頁へ化けた");
         assert_eq!(s.lines[2].y_mm, tops[1] + 20.0, "2頁目の頭がずれた");
@@ -1835,8 +1835,8 @@ mod fold_print_tests {
     /// 折ったら**頁の切れ目**もその位置に置き直す(紙に写す側が見る)
     #[test]
     fn 切れ目を置き直す() {
-        let mut s = Sheet { lines: vec![行(20.0), 行(270.0)], ..Default::default() };
-        fold_print(&mut s, &[紙(210.0, 297.0); 2], &[0.0, 260.0],
+        let mut s = Sheet { lines: vec![line(20.0), line(270.0)], ..Default::default() };
+        fold_print(&mut s, &[paper(210.0, 297.0); 2], &[0.0, 260.0],
                    &[f32::NEG_INFINITY, 270.0], 8.0);
         assert_eq!(s.breaks, vec![305.0], "切れ目が折った後の位置になっていない");
     }
@@ -1847,7 +1847,7 @@ mod fill_tests {
     use crate::{adoc, fill};
     use std::collections::BTreeMap;
 
-    fn 行(items: &[(&str, &str)]) -> BTreeMap<String, String> {
+    fn line(items: &[(&str, &str)]) -> BTreeMap<String, String> {
         items.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
     }
 
@@ -1871,27 +1871,27 @@ mod fill_tests {
     #[test]
     fn 空のデータで通すと穴の名前が全部出る() {
         let d = adoc::parse(雛形).expect("雛形が読めない");
-        let 元 = d.paragraphs().count();
+        let from = d.paragraphs().count();
         let (_, rep) = fill::fill(&d, &fill::Data::new());
         // **表の群は、列ごとではなく群の名前で出ます**(「明細.品名」では
         // なく「明細」)。行を増やす仕掛けなので、埋めるときも群の単位です
-        for 名 in ["宛名", "合計", "明細"] {
-            assert!(rep.unknown.iter().any(|x| x == 名), "{名} が出ていない: {:?}", rep.unknown);
+        for name in ["宛名", "合計", "明細"] {
+            assert!(rep.unknown.iter().any(|x| x == name), "{name} が出ていない: {:?}", rep.unknown);
         }
         // 同じ名前は1度だけ(道具はこれをそのまま一覧に出します)
-        let mut 並び = rep.unknown.clone();
-        並び.sort();
-        let 元の数 = 並び.len();
-        並び.dedup();
-        assert_eq!(並び.len(), 元の数, "同じ名前が2度出ている: {:?}", rep.unknown);
+        let mut order = rep.unknown.clone();
+        order.sort();
+        let 元の数 = order.len();
+        order.dedup();
+        assert_eq!(order.len(), 元の数, "同じ名前が2度出ている: {:?}", rep.unknown);
         // 元の文書は触られていない
-        assert_eq!(d.paragraphs().count(), 元, "元の文書が変わっている");
-        let 字: String = d
+        assert_eq!(d.paragraphs().count(), from, "元の文書が変わっている");
+        let text: String = d
             .paragraphs()
             .flat_map(|p| p.runs.iter())
             .map(|r| r.text.as_str())
             .collect();
-        assert!(字.contains("{{宛名}}"), "穴が消えている: {字}");
+        assert!(text.contains("{{宛名}}"), "穴が消えている: {text}");
     }
 
     /// **明細の行がデータの数だけ増える。** ここが帳票の芯です。
@@ -1900,28 +1900,28 @@ mod fill_tests {
         let d = adoc::parse(雛形).expect("雛形が読めない");
         let mut data = fill::Data::new();
         data.set("宛名", "みほん商事").set("合計", "3,000");
-        data.push_row("明細", 行(&[("品名", "鉛筆"), ("数量", "10")]));
-        data.push_row("明細", 行(&[("品名", "消しゴム"), ("数量", "5")]));
-        data.push_row("明細", 行(&[("品名", "定規"), ("数量", "2")]));
+        data.push_row("明細", line(&[("品名", "鉛筆"), ("数量", "10")]));
+        data.push_row("明細", line(&[("品名", "消しゴム"), ("数量", "5")]));
+        data.push_row("明細", line(&[("品名", "定規"), ("数量", "2")]));
 
         let (out, rep) = fill::fill(&d, &data);
         let t = out.tables().next().expect("表が無い");
         // 見出しの1行 + 明細3行
         assert_eq!(t.rows.len(), 4, "行が増えていない: {}", t.rows.len());
-        let 字 = |r: usize, c: usize| -> String {
+        let text = |r: usize, c: usize| -> String {
             t.rows[r][c].paragraphs.iter()
                 .flat_map(|p| p.runs.iter()).map(|x| x.text.as_str()).collect()
         };
-        assert_eq!(字(1, 0), "鉛筆");
-        assert_eq!(字(3, 1), "2");
+        assert_eq!(text(1, 0), "鉛筆");
+        assert_eq!(text(3, 1), "2");
         assert_eq!(rep.expanded.get("明細"), Some(&3));
         assert!(rep.unknown.is_empty(), "分からない名前があった: {:?}", rep.unknown);
 
         // 表の外も差し込まれる
-        let 本文: String = out.paragraphs().flat_map(|p| p.runs.iter())
+        let body: String = out.paragraphs().flat_map(|p| p.runs.iter())
             .map(|r| r.text.as_str()).collect();
-        assert!(本文.contains("みほん商事 御中"), "宛名が入っていない: {本文}");
-        assert!(本文.contains("合計 3,000 円"), "合計が入っていない: {本文}");
+        assert!(body.contains("みほん商事 御中"), "宛名が入っていない: {body}");
+        assert!(body.contains("合計 3,000 円"), "合計が入っていない: {body}");
     }
 
     /// **分からない名前を黙って空にしない。** 空にすると「金額が空欄の
@@ -1931,12 +1931,12 @@ mod fill_tests {
         let d = adoc::parse(雛形).expect("雛形が読めない");
         let mut data = fill::Data::new();
         data.set("宛名", "みほん商事"); // 合計を入れ忘れた
-        data.push_row("明細", 行(&[("品名", "鉛筆"), ("数量", "10")]));
+        data.push_row("明細", line(&[("品名", "鉛筆"), ("数量", "10")]));
 
         let (out, rep) = fill::fill(&d, &data);
-        let 本文: String = out.paragraphs().flat_map(|p| p.runs.iter())
+        let body: String = out.paragraphs().flat_map(|p| p.runs.iter())
             .map(|r| r.text.as_str()).collect();
-        assert!(本文.contains("{{合計}}"), "空にしてしまった: {本文}");
+        assert!(body.contains("{{合計}}"), "空にしてしまった: {body}");
         assert_eq!(rep.unknown, vec!["合計".to_string()]);
         assert!(rep.summary().contains("合計"), "報告に出ていない: {}", rep.summary());
     }
@@ -1977,8 +1977,8 @@ mod fill_tests {
     fn 差し込む所を数える() {
         let d = adoc::parse(雛形).expect("雛形が読めない");
         assert_eq!(fill::groups(&d), vec!["明細".to_string()]);
-        let 素 = adoc::parse("= 題\n\nただの本文。\n").unwrap();
-        assert!(fill::groups(&素).is_empty(), "無い所を有ると言った");
+        let plain = adoc::parse("= 題\n\nただの本文。\n").unwrap();
+        assert!(fill::groups(&plain).is_empty(), "無い所を有ると言った");
     }
 
     /// **雛形は何度でも使える**(原本を書き換えない)。
@@ -1987,12 +1987,12 @@ mod fill_tests {
         let d = adoc::parse(雛形).expect("雛形が読めない");
         let mut data = fill::Data::new();
         data.set("宛名", "一回目").set("合計", "1");
-        data.push_row("明細", 行(&[("品名", "あ"), ("数量", "1")]));
-        let 前 = adoc::write(&d);
+        data.push_row("明細", line(&[("品名", "あ"), ("数量", "1")]));
+        let before = adoc::write(&d);
         let _ = fill::fill(&d, &data);
         // 表の書き方は読むときに空白を許し、書くときは詰めるので、
         // 元の字ではなく**書き出した字どうし**で比べます
-        assert_eq!(adoc::write(&d), 前, "雛形が書き換わった");
+        assert_eq!(adoc::write(&d), before, "雛形が書き換わった");
         // 2回目も同じ結果になること
         let (a, _) = fill::fill(&d, &data);
         let (b, _) = fill::fill(&d, &data);
@@ -2026,10 +2026,10 @@ mod indent_tests {
         let s = layout(&c, &m, &Frame { measure_mm: 60.0, line_height_mm: 6.0, y0_mm: 20.0 });
         assert!(s.lines.len() >= 2, "2行以上に折れていない");
         // 1行目は下がり、2行目は下がらない
-        let 頭 = |i: usize| s.lines[i].cells[0].x_mm;
-        let 字 = 10.5 * 25.4 / 72.0;
-        assert!((頭(0) - 頭(1) - 字).abs() < 0.2,
-                "1行目だけが1字ぶん下がっていない: {} と {}", 頭(0), 頭(1));
+        let head = |i: usize| s.lines[i].cells[0].x_mm;
+        let text = 10.5 * 25.4 / 72.0;
+        assert!((head(0) - head(1) - text).abs() < 0.2,
+                "1行目だけが1字ぶん下がっていない: {} と {}", head(0), head(1));
     }
 
     /// **行の後ろの覚え書きを落とす。** TOML の普通の書き方で、これが読めないと
@@ -2110,9 +2110,9 @@ mod title_tests {
 mod fill_honke_tests {
     use crate::{adoc, fill};
 
-    /// **差し込みは本家の `{名前}` で書けます**(2026-08-18)。
-    /// AsciiDoc は属性の参照を `{名前}` と書くので、そちらに寄せました。
-    /// 前からの `{{名前}}` も受け続けます(手引きと見本がその形で出ています)。
+    /// **差し込みは本家の `{member}` で書けます**(2026-08-18)。
+    /// AsciiDoc は属性の参照を `{member}` と書くので、そちらに寄せました。
+    /// 前からの `{{member}}` も受け続けます(手引きと見本がその形で出ています)。
     #[test]
     fn 差し込みは本家の書き方でも書ける() {
         for src in ["請求先: {宛名} 様\n", "請求先: {{宛名}} 様\n"] {
@@ -2120,12 +2120,12 @@ mod fill_honke_tests {
             let mut data = fill::Data::new();
             data.set("宛名", "山田太郎");
             let (out, rep) = fill::fill(&d, &data);
-            let 字: String = out
+            let text: String = out
                 .paragraphs()
                 .flat_map(|p| p.runs.iter())
                 .map(|r| r.text.as_str())
                 .collect();
-            assert_eq!(字, "請求先: 山田太郎 様", "差し込めていない: {src:?}");
+            assert_eq!(text, "請求先: 山田太郎 様", "差し込めていない: {src:?}");
             assert!(rep.unknown.is_empty(), "分からない名前が出た: {rep:?}");
         }
     }
@@ -2136,12 +2136,12 @@ mod fill_honke_tests {
     fn 空白の入った中括弧は穴にしない() {
         let d = adoc::parse("式は { x + y } です。\n").expect("読めない");
         let (out, rep) = fill::fill(&d, &fill::Data::new());
-        let 字: String = out
+        let text: String = out
             .paragraphs()
             .flat_map(|p| p.runs.iter())
             .map(|r| r.text.as_str())
             .collect();
-        assert_eq!(字, "式は { x + y } です。");
+        assert_eq!(text, "式は { x + y } です。");
         assert!(rep.unknown.is_empty(), "普通の文を穴と見た: {rep:?}");
     }
 }
@@ -2158,13 +2158,13 @@ mod adoc_honke_tests {
         let src = "|===\n|あ |い\n|一つ目のセル\nその続きの行\n|二つ目\n|===\n";
         let d = adoc::parse(src).expect("読めない");
         let t = d.tables().next().expect("表が無い");
-        let 字 = |r: usize, c: usize| -> String {
+        let text = |r: usize, c: usize| -> String {
             t.rows[r][c].paragraphs.iter().flat_map(|p| p.runs.iter())
                 .map(|x| x.text.as_str()).collect()
         };
         assert_eq!(t.rows.len(), 2, "2行にならない: {:?}", t.rows.len());
-        assert_eq!(字(1, 0), "一つ目のセルその続きの行", "続きの行が繋がっていない");
-        assert_eq!(字(1, 1), "二つ目", "1行に1セルずつ書いた分が流れていない");
+        assert_eq!(text(1, 0), "一つ目のセルその続きの行", "続きの行が繋がっていない");
+        assert_eq!(text(1, 1), "二つ目", "1行に1セルずつ書いた分が流れていない");
     }
 
     /// **セルの指定を読み飛ばす**(`h|` 見出し・`^|` 中央・`a|` など)。
@@ -2174,9 +2174,9 @@ mod adoc_honke_tests {
         let d = adoc::parse("|===\nh|見出し ^|中央 a|中身\n|===\n").expect("読めない");
         let t = d.tables().next().expect("表が無い");
         assert_eq!(t.rows[0].len(), 3, "セルが3つに割れていない");
-        let 字: String = t.rows[0][0].paragraphs.iter().flat_map(|p| p.runs.iter())
+        let text: String = t.rows[0][0].paragraphs.iter().flat_map(|p| p.runs.iter())
             .map(|x| x.text.as_str()).collect();
-        assert_eq!(字, "見出し", "指定が字に混ざった");
+        assert_eq!(text, "見出し", "指定が字に混ざった");
     }
 
     /// **文書の頭は空行までが頭。** 著者の行で打ち切ると、その後ろの属性が
@@ -2193,9 +2193,9 @@ mod adoc_honke_tests {
     #[test]
     fn 継ぎ目の空白は和字のときだけ省く() {
         let d = adoc::parse("plain CSS.\nThe build minifies it.\n").expect("読めない");
-        let 字: String = d.paragraphs().flat_map(|p| p.runs.iter())
+        let text: String = d.paragraphs().flat_map(|p| p.runs.iter())
             .map(|r| r.text.as_str()).collect();
-        assert_eq!(字, "plain CSS. The build minifies it.", "英語の語がくっついた");
+        assert_eq!(text, "plain CSS. The build minifies it.", "英語の語がくっついた");
         let d2 = adoc::parse("日本語の文を\n行で折った。\n").expect("読めない");
         let 字2: String = d2.paragraphs().flat_map(|p| p.runs.iter())
             .map(|r| r.text.as_str()).collect();
@@ -2214,11 +2214,11 @@ mod adoc_notes_tests {
     /// 開かせたとき、下の帳簿に「塊の指定」が出ていて気づきました。
     #[test]
     fn 表に取り込んだ桁の指定は帳簿に出ない() {
-        let (d, 帳簿) = adoc::parse_full(
+        let (d, ledger) = adoc::parse_full(
             ".売上\n[cols=\"1,1\"]\n|===\n|月 |額\n\n|4月 |100\n|===\n",
         )
         .expect("読めない");
-        assert!(!帳簿.iter().any(|x| x.contains("塊の指定")), "取り込んだのに帳簿に出た: {帳簿:?}");
+        assert!(!ledger.iter().any(|x| x.contains("塊の指定")), "取り込んだのに帳簿に出た: {ledger:?}");
         let t = d.tables().next().expect("表が無い");
         assert_eq!(t.col_ratio, vec![1.0, 1.0], "桁の割合を取り込んでいない");
 
@@ -2314,14 +2314,14 @@ mod adoc_dropped_tests {
 mod html_write_tests {
     use crate::{adoc, html_write, theme};
 
-    fn 文書(src: &str) -> crate::doc::Document {
+    fn doc(src: &str) -> crate::doc::Document {
         adoc::parse(src).expect("adoc が読めない")
     }
 
     /// **本文は意味だけ。** 見た目は CSS の側に出て、HTML には入りません。
     #[test]
     fn 見た目はcssへ本文はhtmlへ() {
-        let d = 文書("= 題\n\n== 章の名前\n\n本文です。*ここ*が大事。\n");
+        let d = doc("= 題\n\n== 章の名前\n\n本文です。*ここ*が大事。\n");
         let th = theme::parse("[スタイル.見出し1]\n大きさ = 20\n太字 = true\n").unwrap();
         let p = html_write::page(&d, &th);
 
@@ -2340,11 +2340,11 @@ mod html_write_tests {
     /// Web にも帳票にもなる」の根拠です。
     #[test]
     fn テンプレートを替えても本文は変わらない() {
-        let d = 文書("= 題\n\n本文です。\n");
+        let d = doc("= 題\n\n本文です。\n");
         let web = theme::parse("[組み方]\n横幅 = \"可変\"\n区切り = \"なし\"\n").unwrap();
-        let 紙 = theme::parse("[スタイル.本文]\n大きさ = 10.5\n").unwrap();
+        let paper = theme::parse("[スタイル.本文]\n大きさ = 10.5\n").unwrap();
         let a = html_write::page(&d, &web);
-        let b = html_write::page(&d, &紙);
+        let b = html_write::page(&d, &paper);
         assert_eq!(html_write::body(&d), html_write::body(&d), "本文が安定しない");
         assert_ne!(a.css, b.css, "テンプレートを替えても CSS が同じ");
         assert!(a.css.contains("max-width"), "横幅可変が効いていない:\n{}", a.css);
@@ -2353,7 +2353,7 @@ mod html_write_tests {
     /// 箇条書きは `ul` / `ol` にまとめます(HTML の入れ物の作法)。
     #[test]
     fn 箇条書きはまとめて包む() {
-        let d = 文書("= 題\n\n* あ\n* い\n* う\n");
+        let d = doc("= 題\n\n* あ\n* い\n* う\n");
         let h = html_write::body(&d);
         assert_eq!(h.matches("<ul>").count(), 1, "ul が1つでない:\n{h}");
         assert_eq!(h.matches("<li>").count(), 3, "項目が3つでない:\n{h}");
@@ -2362,7 +2362,7 @@ mod html_write_tests {
     /// 出来た HTML が**形として正しい**か(閉じ忘れ・入れ子の乱れが無いか)。
     #[test]
     fn 出来たhtmlの形が崩れていない() {
-        let d = 文書("= 題\n\n== 章\n\n本文。*強調*と_斜体_。\n\n* あ\n* い\n\n____\n引用です。\n____\n");
+        let d = doc("= 題\n\n== 章\n\n本文。*強調*と_斜体_。\n\n* あ\n* い\n\n____\n引用です。\n____\n");
         let th = theme::parse("[スタイル.見出し1]\n大きさ = 18\n").unwrap();
         let p = html_write::page(&d, &th);
         // 開いた数と閉じた数が合うこと
@@ -2462,8 +2462,8 @@ mod html_write_tests {
         assert!(h.contains("申し込む</button>"), "送るボタンが無い");
 
         // **送り先が無ければ包まない。** 押しても何も起きない form は出さない
-        let 素 = theme::parse("[スタイル.本文]\n大きさ = 11\n").unwrap();
-        let h2 = html_write::page(&d, &素).html;
+        let plain = theme::parse("[スタイル.本文]\n大きさ = 11\n").unwrap();
+        let h2 = html_write::page(&d, &plain).html;
         assert!(!h2.contains("<form"), "送り先が無いのに form を出した:\n{h2}");
         assert!(h2.contains("name=\"name\""), "欄そのものは出るはず");
     }
@@ -2491,11 +2491,11 @@ mod html_write_tests {
                    .2+|上下で1つ |ふつう\n\
                    |下の行\n\
                    |===\n";
-        let d = 文書(src);
+        let d = doc(src);
         assert_eq!(adoc::write(&d), src, "adoc の往復が崩れた");
         let h = html_write::body(&d);
 
-        for (何, 印) in [
+        for (何, mark) in [
             ("しおり", "id=\"しるし\""),
             ("相互参照", "href=\"#しるし\""),
             ("脚注の印", "href=\"#fn1\""),
@@ -2510,7 +2510,7 @@ mod html_write_tests {
             ("横の結合", "colspan=\"2\""),
             ("縦の結合", "rowspan=\"2\""),
         ] {
-            assert!(h.contains(印), "{何}が HTML に出ていない({印}):\n{h}");
+            assert!(h.contains(mark), "{何}が HTML に出ていない({mark}):\n{h}");
         }
         // 縦結合の続きのセルは書かない(rowspan が占めるので、書くと桁が増える)
         assert_eq!(h.matches("<td").count(), 4, "セルの数が合わない:\n{h}");
@@ -2543,7 +2543,7 @@ mod html_write_tests {
     fn 目次はnavにまとまる() {
         use crate::doc::{Document, Paragraph, ParaStyle, Run};
         let mut d = Document::default();
-        let mut 行 = |style: ParaStyle, text: &str| {
+        let mut line = |style: ParaStyle, text: &str| {
             let mut p = Paragraph { style, line_spacing: 1.0, ..Default::default() };
             p.runs.push(Run {
                 text: text.into(),
@@ -2553,22 +2553,22 @@ mod html_write_tests {
             });
             d.push_para(p);
         };
-        行(ParaStyle::Toc(1), "はじめに … 1");
-        行(ParaStyle::Toc(2), "その1 … 2");
-        行(ParaStyle::Body, "本文です。");
+        line(ParaStyle::Toc(1), "はじめに … 1");
+        line(ParaStyle::Toc(2), "その1 … 2");
+        line(ParaStyle::Body, "本文です。");
         let h = html_write::body(&d);
         assert_eq!(h.matches("<nav class=\"toc\">").count(), 1, "nav が1つでない:\n{h}");
         assert_eq!(h.matches("</nav>").count(), 1, "nav の閉じが1つでない:\n{h}");
         assert!(h.contains("class=\"toc1\""), "段の深さが class に出ていない:\n{h}");
         // 本文は nav の外
-        let 後 = h.split("</nav>").nth(1).unwrap_or("");
-        assert!(後.contains("本文です。"), "本文が nav の中に入った:\n{h}");
+        let after = h.split("</nav>").nth(1).unwrap_or("");
+        assert!(after.contains("本文です。"), "本文が nav の中に入った:\n{h}");
     }
 
     /// 逃がし忘れると、本文の `<` でページが壊れます。
     #[test]
     fn 記号を逃がす() {
-        let d = 文書("= 題\n\n1 < 2 & 3 > 0\n");
+        let d = doc("= 題\n\n1 < 2 & 3 > 0\n");
         let h = html_write::body(&d);
         assert!(h.contains("1 &lt; 2 &amp; 3 &gt; 0"), "逃がせていない:\n{h}");
     }
@@ -2578,7 +2578,7 @@ mod html_write_tests {
 mod char_format_tests {
     use crate::doc::{CharFormat, Document, Paragraph, Run};
 
-    fn 段落(runs: &[(&str, bool)]) -> Document {
+    fn paras(runs: &[(&str, bool)]) -> Document {
         let mut d = Document::default();
         let mut p = Paragraph::default();
         for (s, bold) in runs {
@@ -2599,7 +2599,7 @@ mod char_format_tests {
     #[test]
     fn 選んでいるときは選んだ字の書式を見る() {
         // 「ここは」は普通、「大事」は太字(どちらも 9 バイトと 6 バイト)
-        let d = 段落(&[("ここは", false), ("大事", true), ("なところ。", false)]);
+        let d = paras(&[("ここは", false), ("大事", true), ("なところ。", false)]);
         assert!(d.char_format_at(9..15).bold, "選んだ字が太字なのに拾えていない");
         assert!(!d.char_format_at(0..9).bold, "普通の字を太字と言った");
     }
@@ -2608,7 +2608,7 @@ mod char_format_tests {
     /// (打つとその書式が続く、という慣習)。
     #[test]
     fn カーソル1点のときは直前の字を見る() {
-        let d = 段落(&[("ここは", false), ("大事", true), ("なところ。", false)]);
+        let d = paras(&[("ここは", false), ("大事", true), ("なところ。", false)]);
         assert!(!d.char_format_at(9..9).bold, "境目の手前は普通の字のはず");
         assert!(d.char_format_at(15..15).bold, "太字の直後は太字を継ぐはず");
     }
@@ -2643,16 +2643,16 @@ mod midashi_tests {
             })];
             d
         };
-        let 本文 = layout(&mk(ParaStyle::Body), &m, &frame);
+        let body = layout(&mk(ParaStyle::Body), &m, &frame);
         let h1 = layout(&mk(ParaStyle::Heading(1)), &m, &frame);
         let h2 = layout(&mk(ParaStyle::Heading(2)), &m, &frame);
 
-        let 大きさ = |s: &Sheet| s.lines[0].cells[0].size_pt;
-        assert!(大きさ(&h1) > 大きさ(&本文), "H1 が本文より大きくない");
-        assert!(大きさ(&h2) > 大きさ(&本文), "H2 が本文より大きくない");
-        assert!(大きさ(&h1) > 大きさ(&h2), "H1 が H2 より大きくない");
+        let size = |s: &Sheet| s.lines[0].cells[0].size_pt;
+        assert!(size(&h1) > size(&body), "H1 が本文より大きくない");
+        assert!(size(&h2) > size(&body), "H2 が本文より大きくない");
+        assert!(size(&h1) > size(&h2), "H1 が H2 より大きくない");
         assert!(h1.lines[0].cells[0].fmt.bold, "見出しが太字でない");
-        assert!(!本文.lines[0].cells[0].fmt.bold, "本文まで太字になった");
+        assert!(!body.lines[0].cells[0].fmt.bold, "本文まで太字になった");
     }
 
     /// **run が自分で大きさを言っていればそちらが勝つ**(docx の作法)。
@@ -2702,7 +2702,7 @@ fn 塊は種類ごとの要素で出る() {
     let h = crate::html_write::body(&d);
     // **開きのタグそのもので見ます。** `class="example"` だけ見ると、
     // `<pre><code class="example">` でも通ってしまいます
-    for (何, 印) in [
+    for (何, mark) in [
         ("註記", "<aside class=\"admonition note\""),
         ("警告", "<aside class=\"admonition warning\""),
         ("コード", "<code>"),
@@ -2711,7 +2711,7 @@ fn 塊は種類ごとの要素で出る() {
         ("傍注", "<aside class=\"sidebar\""),
         ("横の区切り線", "<hr"),
     ] {
-        assert!(h.contains(印), "{何} が {印} で出ていません:\n{h}");
+        assert!(h.contains(mark), "{何} が {mark} で出ていません:\n{h}");
     }
     // **`pre` はコードと字のままの2つだけ。** 例も傍注も文章です
     assert_eq!(h.matches("<pre").count(), 2, "pre が多すぎます:\n{h}");
@@ -2860,10 +2860,10 @@ fn 問答形式は問いと答えで出る() {
 /// HTML でも1つの `dl` になっていました。
 #[test]
 fn 空行で切れた一覧は別々になる() {
-    let 元 = "= 題\n\n[qanda]\n問い:: 答え\n\n用語:: 普通の説明\n";
-    let d = crate::adoc::parse(元).expect("読めない");
+    let from = "= 題\n\n[qanda]\n問い:: 答え\n\n用語:: 普通の説明\n";
+    let d = crate::adoc::parse(from).expect("読めない");
     // **書き戻しで空行が残ること**(ここが本体)
-    assert_eq!(crate::adoc::write(&d), 元, "書き戻しで空行が消えています");
+    assert_eq!(crate::adoc::write(&d), from, "書き戻しで空行が消えています");
     let h = crate::html_write::body(&d);
     assert!(h.contains("<ol class=\"qanda\">"), "問答が出ていません:\n{h}");
     assert!(h.contains("<dl>"), "後ろの用語の一覧が出ていません:\n{h}");
@@ -2889,16 +2889,16 @@ fn 紙でも塊と註記が分かる() {
     let m = crate::Metrics::new(&data).expect("読めない");
     let sheet = crate::layout(
         &d, &m, &crate::Frame { measure_mm: 160.0, line_height_mm: 6.0, y0_mm: 20.0 });
-    let 行: Vec<String> = sheet.lines.iter()
+    let line: Vec<String> = sheet.lines.iter()
         .map(|l| l.cells.iter().map(|c| c.ch).collect::<String>())
         .filter(|t| !t.trim().is_empty())
         .collect();
-    let 全部 = 行.join("\n");
+    let all = line.join("\n");
     // **印の行は紙に出しません**
-    assert!(!全部.contains("----"), "塊の印が印刷されています:\n{全部}");
-    assert!(!全部.contains("[source"), "塊の指定が印刷されています:\n{全部}");
+    assert!(!all.contains("----"), "塊の印が印刷されています:\n{all}");
+    assert!(!all.contains("[source"), "塊の指定が印刷されています:\n{all}");
     // **註記は種類が分かること**
-    assert!(全部.contains("メモ"), "註記の見出しがありません:\n{全部}");
+    assert!(all.contains("メモ"), "註記の見出しがありません:\n{all}");
     // **等幅の書体が入っているのに探していない、を捕まえます。**
     // 「機械に無いから」で素通りすると、探す所を壊しても気づけません
     let 入っている = ["Noto Sans Mono CJK JP", "Noto Sans Mono", "DejaVu Sans Mono",
@@ -2930,13 +2930,13 @@ fn 作業のリストは紙でも箱で出る() {
     let m = crate::Metrics::new(&data).expect("読めない");
     let sheet = crate::layout(
         &d, &m, &crate::Frame { measure_mm: 160.0, line_height_mm: 6.0, y0_mm: 20.0 });
-    let 全部: String = sheet.lines.iter()
+    let all: String = sheet.lines.iter()
         .map(|l| l.cells.iter().map(|c| c.ch).collect::<String>())
         .collect::<Vec<_>>().join("\n");
-    assert!(全部.contains("☐ やること"), "空の箱が出ていません:\n{全部}");
-    assert!(全部.contains("☑ 済んだこと"), "済みの箱が出ていません:\n{全部}");
-    assert!(!全部.contains("[ ]"), "印の字が印刷されています:\n{全部}");
-    assert!(!全部.contains("[x]"), "印の字が印刷されています:\n{全部}");
+    assert!(all.contains("☐ やること"), "空の箱が出ていません:\n{all}");
+    assert!(all.contains("☑ 済んだこと"), "済みの箱が出ていません:\n{all}");
+    assert!(!all.contains("[ ]"), "印の字が印刷されています:\n{all}");
+    assert!(!all.contains("[x]"), "印の字が印刷されています:\n{all}");
     // **書き戻しは元のまま。** 紙の見た目のために字を変えていないこと
     assert_eq!(crate::adoc::write(&d), "= 題\n\n* [ ] やること\n* [x] 済んだこと\n");
 
@@ -2944,11 +2944,11 @@ fn 作業のリストは紙でも箱で出る() {
     let d2 = crate::adoc::parse("= 題\n\n* [ ] 親\n** [ ] 子\n").expect("読めない");
     let s2 = crate::layout(
         &d2, &m, &crate::Frame { measure_mm: 160.0, line_height_mm: 6.0, y0_mm: 20.0 });
-    let 探す = |字: &str| -> f32 {
+    let 探す = |text: &str| -> f32 {
         s2.lines.iter()
-            .find(|l| l.cells.iter().map(|c| c.ch).collect::<String>().contains(字))
+            .find(|l| l.cells.iter().map(|c| c.ch).collect::<String>().contains(text))
             .map(|l| l.cells[0].x_mm)
-            .unwrap_or_else(|| panic!("{字} の行がありません"))
+            .unwrap_or_else(|| panic!("{text} の行がありません"))
     };
     assert!(探す("子") > 探す("親"), "2段目が下がっていません");
 
@@ -2965,9 +2965,9 @@ fn 作業のリストは紙でも箱で出る() {
 /// `[ ]` が字として残っていました。
 #[test]
 fn 多段の作業のリストも箱になる() {
-    let 元 = "= 題\n\n* [ ] 親\n** [x] 子\n";
-    let d = crate::adoc::parse(元).expect("読めない");
-    assert_eq!(crate::adoc::write(&d), 元, "書き戻しで字が変わっています");
+    let from = "= 題\n\n* [ ] 親\n** [x] 子\n";
+    let d = crate::adoc::parse(from).expect("読めない");
+    assert_eq!(crate::adoc::write(&d), from, "書き戻しで字が変わっています");
     let h = crate::html_write::body(&d);
     assert_eq!(h.matches("type=\"checkbox\"").count(), 2, "箱が2つ要ります:\n{h}");
     assert_eq!(h.matches("<ul").count(), 2, "入れ子になっていません:\n{h}");

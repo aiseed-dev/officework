@@ -889,29 +889,29 @@ mod tests {
     /// mac と Windows では何も起きませんでした。
     #[test]
     fn 関連付けの道具は_osごとに決まる() {
-        let 名 = opener_name();
+        let name = opener_name();
         if cfg!(target_os = "macos") {
-            assert_eq!(名, "open");
+            assert_eq!(name, "open");
         } else if cfg!(target_os = "windows") {
             // **cmd /c start は使いません。** cmd は受け取った字をもう一度
             // 自分の規則で解き直すので、`&` を含む名前で意図しない命令に
             // なり得ます。explorer.exe は普通の実行ファイルです
-            assert_eq!(名, "explorer.exe");
-            assert!(!名.contains("cmd"), "cmd を経由してはいけません");
+            assert_eq!(name, "explorer.exe");
+            assert!(!name.contains("cmd"), "cmd を経由してはいけません");
         } else {
-            assert_eq!(名, "xdg-open");
+            assert_eq!(name, "xdg-open");
         }
     }
 
     /// この機械にその道具が在ること(無ければ実機で開けない)。
     #[test]
     fn 関連付けの道具が機械に在る() {
-        let 名 = opener_name();
-        let 在る = std::process::Command::new(名)
+        let name = opener_name();
+        let 在る = std::process::Command::new(name)
             .arg("--version")
             .output()
             .is_ok();
-        assert!(在る, "{名} がこの機械にありません");
+        assert!(在る, "{name} がこの機械にありません");
     }
 
     struct App {

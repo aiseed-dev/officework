@@ -48,10 +48,10 @@ def main() -> int:
 
     # **鍵は英語です**(2026-08-26 の移行)。前は日本語で重なりを見て
     # いました。同じ鍵が2つの番号を持てば、訳も2つに分かれます
-    組: dict[str, list[int]] = {}
+    group: dict[str, list[int]] = {}
     for i, k in enumerate(keys):
-        組.setdefault(k["key"], []).append(i)
-    重 = {w: v for w, v in 組.items() if len(v) > 1}
+        group.setdefault(k["key"], []).append(i)
+    重 = {w: v for w, v in group.items() if len(v) > 1}
     if 重:
         for w, idx in sorted(重.items()):
             print(
@@ -63,15 +63,15 @@ def main() -> int:
     # 番号が1つでも、**訳が空のままでは意味がありません。**
     # 13 言語ぶん埋まっているかもここで見ます
     locs = [t for t in locales.TAGS if t != "en"]
-    足りない: list[str] = []
+    missing_ids: list[str] = []
     for loc in locs:
         p = ROOT / "ui/i18n" / f"{loc}.json"
         訳 = {k for k, v in json.loads(p.read_text(encoding="utf-8")).items() if v}
         欠け = len(keys) - len(訳 & {k["key"] for k in keys})
         if 欠け:
-            足りない.append(f"{loc}: {欠け} 句")
-    if 足りない:
-        print("::error::訳の空きがあります: " + " / ".join(足りない))
+            missing_ids.append(f"{loc}: {欠け} 句")
+    if missing_ids:
+        print("::error::訳の空きがあります: " + " / ".join(missing_ids))
         print("  ui/gen_lang.py --todo で鍵を出し、ui/i18n/<言語>.json に書いてください")
         return 1
 

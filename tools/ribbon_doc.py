@@ -37,7 +37,7 @@ MIDASHI = {
 }
 
 
-def 表(app: str, loc: str) -> str:
+def table(app: str, loc: str) -> str:
     tabs = ribbon_parse.tables_or_die()[app]
     midashi, c1, c2, c3, ok, ng = MIDASHI[loc]
     n = sum(len(t.cmds) for t in tabs)
@@ -75,7 +75,7 @@ def main() -> int:
             bad = 1
             continue
         ima = m.group(2)
-        beki = 表(app, loc)
+        beki = table(app, loc)
         if ima.strip() == beki.strip():
             continue
         if write:

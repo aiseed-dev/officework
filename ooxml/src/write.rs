@@ -371,15 +371,15 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             // Word の文書を開いて保存すると before / after が黙って消えていた
             // (2026-08-15)。twips = pt × 20
             let 行間あり = (p.spacing() - 1.0).abs() > 0.001;
-            let 前 = (p.space_before_pt * 20.0).round() as u32;
-            let 後 = (p.space_after_pt * 20.0).round() as u32;
-            if 行間あり || 前 > 0 || 後 > 0 {
+            let before = (p.space_before_pt * 20.0).round() as u32;
+            let after = (p.space_after_pt * 20.0).round() as u32;
+            if 行間あり || before > 0 || after > 0 {
                 let mut sp = BS::new("w:spacing");
-                if 前 > 0 {
-                    sp.push_attribute(("w:before", 前.to_string().as_str()));
+                if before > 0 {
+                    sp.push_attribute(("w:before", before.to_string().as_str()));
                 }
-                if 後 > 0 {
-                    sp.push_attribute(("w:after", 後.to_string().as_str()));
+                if after > 0 {
+                    sp.push_attribute(("w:after", after.to_string().as_str()));
                 }
                 if 行間あり {
                     sp.push_attribute(("w:line", ((p.spacing() * 240.0).round() as u32).to_string().as_str()));

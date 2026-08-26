@@ -70,7 +70,7 @@ impl BookTheme {
         })
     }
 
-    fn 枚(&mut self, name: &str) -> &mut SheetLook {
+    fn sheet(&mut self, name: &str) -> &mut SheetLook {
         if let Some(i) = self.sheets.iter().position(|s| s.name == name) {
             return &mut self.sheets[i];
         }
@@ -148,14 +148,14 @@ fn cell(s: &str) -> Cellbox {
     Cellbox { paragraphs: Document::plain(s).paragraphs().cloned().collect(), ..Default::default() }
 }
 
-fn 表(title: &str, 見出し: &[&str], rows: Vec<Vec<String>>) -> Option<Table> {
+fn table(title: &str, heading: &[&str], rows: Vec<Vec<String>>) -> Option<Table> {
     if rows.is_empty() {
         return None;
     }
     let mut t = Table {
         title: Some(title.to_string()),
         header_row: true,
-        rows: vec![見出し.iter().map(|h| cell(h)).collect()],
+        rows: vec![heading.iter().map(|h| cell(h)).collect()],
         ..Default::default()
     };
     for r in rows {
@@ -165,7 +165,7 @@ fn 表(title: &str, 見出し: &[&str], rows: Vec<Vec<String>>) -> Option<Table>
 }
 
 /// 数を字にする(整数はそのまま、小数は要るぶんだけ)
-fn 数(v: f32) -> String {
+fn numbers(v: f32) -> String {
     if (v - v.round()).abs() < 0.005 {
         format!("{}", v.round() as i64)
     } else {
@@ -193,7 +193,7 @@ fn 用紙の表(t: &BookTheme) -> Option<Table> {
                     Some(false) => "縦".into(),
                     None => String::new(),
                 },
-                s.margins_mm.map(|(l, r, tp, b)| format!("{},{},{},{}", 数(l), 数(r), 数(tp), 数(b))).unwrap_or_default(),
+                s.margins_mm.map(|(l, r, tp, b)| format!("{},{},{},{}", numbers(l), numbers(r), numbers(tp), numbers(b))).unwrap_or_default(),
                 match s.print_gridlines {
                     Some(true) => "true".into(),
                     Some(false) => "false".into(),
@@ -203,27 +203,27 @@ fn 用紙の表(t: &BookTheme) -> Option<Table> {
             ]
         })
         .collect();
-    表("用紙", &["シート", "大きさ", "向き", "余白", "目盛線", "拡大"], rows)
+    table("用紙", &["シート", "大きさ", "向き", "余白", "目盛線", "拡大"], rows)
 }
 
 fn 幅の表(t: &BookTheme) -> Option<Table> {
     let mut rows = Vec::new();
     for s in &t.sheets {
         for (c, w) in &s.col_width {
-            rows.push(vec![s.name.clone(), 列の名(*c), 数(*w)]);
+            rows.push(vec![s.name.clone(), 列の名(*c), numbers(*w)]);
         }
     }
-    表("列幅", &["シート", "列", "幅"], rows)
+    table("列幅", &["シート", "列", "幅"], rows)
 }
 
 fn 高さの表(t: &BookTheme) -> Option<Table> {
     let mut rows = Vec::new();
     for s in &t.sheets {
         for (r, h) in &s.row_height {
-            rows.push(vec![s.name.clone(), (r + 1).to_string(), 数(*h)]);
+            rows.push(vec![s.name.clone(), (r + 1).to_string(), numbers(*h)]);
         }
     }
-    表("行の高さ", &["シート", "行", "高さ"], rows)
+    table("行の高さ", &["シート", "行", "高さ"], rows)
 }
 
 /// 列の番号を A1 の綴りの列の名にする(0 → A)
@@ -283,39 +283,39 @@ pub fn parse(src: &str) -> Result<BookTheme, String> {
     Ok(t)
 }
 
-fn 取る(row: &[String], i: usize) -> &str {
+fn pick(row: &[String], i: usize) -> &str {
     row.get(i).map(|s| s.trim()).unwrap_or("")
 }
 
 fn 用紙を読む(t: &mut BookTheme, rows: &[Vec<String>]) {
     for row in rows {
-        let name = 取る(row, 0);
+        let name = pick(row, 0);
         if name.is_empty() {
             continue;
         }
-        let s = t.枚(name);
-        let 大きさ = 取る(row, 1);
-        if !大きさ.is_empty() {
-            s.paper_size = 用紙の番号(大きさ);
+        let s = t.sheet(name);
+        let size = pick(row, 1);
+        if !size.is_empty() {
+            s.paper_size = 用紙の番号(size);
         }
-        match 取る(row, 2) {
+        match pick(row, 2) {
             "横" => s.landscape = Some(true),
             "縦" => s.landscape = Some(false),
             _ => {}
         }
-        let 余白: Vec<f32> = 取る(row, 3).split(',').filter_map(|x| x.trim().parse().ok()).collect();
-        if 余白.len() == 4 {
-            s.margins_mm = Some((余白[0], 余白[1], 余白[2], 余白[3]));
-        } else if 余白.len() == 1 {
+        let margins: Vec<f32> = pick(row, 3).split(',').filter_map(|x| x.trim().parse().ok()).collect();
+        if margins.len() == 4 {
+            s.margins_mm = Some((margins[0], margins[1], margins[2], margins[3]));
+        } else if margins.len() == 1 {
             // 1つだけなら四方とも同じ
-            s.margins_mm = Some((余白[0], 余白[0], 余白[0], 余白[0]));
+            s.margins_mm = Some((margins[0], margins[0], margins[0], margins[0]));
         }
-        match 取る(row, 4).to_ascii_lowercase().as_str() {
+        match pick(row, 4).to_ascii_lowercase().as_str() {
             "true" => s.print_gridlines = Some(true),
             "false" => s.print_gridlines = Some(false),
             _ => {}
         }
-        if let Ok(z) = 取る(row, 5).parse() {
+        if let Ok(z) = pick(row, 5).parse() {
             s.zoom_scale = Some(z);
         }
     }
@@ -323,22 +323,22 @@ fn 用紙を読む(t: &mut BookTheme, rows: &[Vec<String>]) {
 
 fn 幅を読む(t: &mut BookTheme, rows: &[Vec<String>]) {
     for row in rows {
-        let name = 取る(row, 0);
-        let Some(c) = 列の番号(取る(row, 1)) else { continue };
-        let Ok(w) = 取る(row, 2).parse::<f32>() else { continue };
+        let name = pick(row, 0);
+        let Some(c) = 列の番号(pick(row, 1)) else { continue };
+        let Ok(w) = pick(row, 2).parse::<f32>() else { continue };
         if !name.is_empty() {
-            t.枚(name).col_width.push((c, w));
+            t.sheet(name).col_width.push((c, w));
         }
     }
 }
 
 fn 高さを読む(t: &mut BookTheme, rows: &[Vec<String>]) {
     for row in rows {
-        let name = 取る(row, 0);
-        let Ok(r) = 取る(row, 1).parse::<u32>() else { continue };
-        let Ok(h) = 取る(row, 2).parse::<f32>() else { continue };
+        let name = pick(row, 0);
+        let Ok(r) = pick(row, 1).parse::<u32>() else { continue };
+        let Ok(h) = pick(row, 2).parse::<f32>() else { continue };
         if !name.is_empty() && r >= 1 {
-            t.枚(name).row_height.push((r - 1, h));
+            t.sheet(name).row_height.push((r - 1, h));
         }
     }
 }
@@ -363,13 +363,13 @@ fn 列の番号(s: &str) -> Option<u32> {
 /// あるので、選ぶのは人の仕事です)。
 pub fn find_for(book: &std::path::Path) -> Option<std::path::PathBuf> {
     let dir = book.parent().unwrap_or(std::path::Path::new("."));
-    let mut 候補: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
+    let mut cands: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
         .ok()?
         .filter_map(|e| e.ok().map(|e| e.path()))
         .filter(|p| p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.ends_with(".tmpl.adoc")))
         .collect();
-    候補.sort();
-    (候補.len() == 1).then(|| 候補.remove(0))
+    cands.sort();
+    (cands.len() == 1).then(|| cands.remove(0))
 }
 
 /// このブックのフォルダに**新しく置く**テンプレートの径路。
@@ -391,7 +391,7 @@ mod tests {
     use super::*;
     use crate::Cell;
 
-    fn 帳簿() -> Book {
+    fn ledger() -> Book {
         let mut b = Book::new();
         b.sheets[0].name = "売上台帳".into();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("月"));
@@ -406,7 +406,7 @@ mod tests {
 
     #[test]
     fn 書いた字が表になっている() {
-        let src = write(&from_book(&帳簿()));
+        let src = write(&from_book(&ledger()));
         assert!(src.contains(".用紙"), "用紙の表が無い:\n{src}");
         assert!(src.contains(".列幅"), "列幅の表が無い:\n{src}");
         assert!(src.contains("|売上台帳 |A |20"), "列幅の行が無い:\n{src}");
@@ -415,15 +415,15 @@ mod tests {
 
     #[test]
     fn 往復で見た目が戻る() {
-        let 元 = from_book(&帳簿());
-        let 戻り = parse(&write(&元)).expect("読めない");
-        assert_eq!(戻り, 元, "往復で見た目が変わった");
+        let from = from_book(&ledger());
+        let back = parse(&write(&from)).expect("読めない");
+        assert_eq!(back, from, "往復で見た目が変わった");
     }
 
     /// **当てるとブックに戻る。** 意味だけの `.adoc` と組み合わせる形
     #[test]
     fn ブックに当てられる() {
-        let t = from_book(&帳簿());
+        let t = from_book(&ledger());
         let mut b = Book::new();
         b.sheets[0].name = "売上台帳".into();
         apply(&t, &mut b);
@@ -438,7 +438,7 @@ mod tests {
     /// 名前の合わないシートは**黙って飛ばす**(テンプレートは使い回せる)
     #[test]
     fn 知らないシートは飛ばす() {
-        let t = from_book(&帳簿());
+        let t = from_book(&ledger());
         let mut b = Book::new();
         b.sheets[0].name = "別の名前".into();
         apply(&t, &mut b);

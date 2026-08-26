@@ -70,17 +70,17 @@ pub fn build<V: 'static>(
     // 押せない段が出るくらいなら、行が2段になる方がましです。
     let mut row =
         div().flex().flex_row().flex_wrap().items_end().gap_1().px_2().bg(look.row_bg);
-    for (位置, 段) in tabs::merged().into_iter().enumerate() {
-        let 名 = 段.name;
+    for (positions, tab) in tabs::merged().into_iter().enumerate() {
+        let name = tab.name;
         let idx = match side {
-            Side::Doc => 段.doc,
-            Side::Sheet => 段.sheet,
+            Side::Doc => tab.doc,
+            Side::Sheet => tab.sheet,
         };
         let Some(i) = idx else {
             // この画面には無い段。**灰色で出す**(未実装のボタンと同じ描き方)
             row = row.child(
                 div()
-                    .id(SharedString::from(format!("tab{位置}")))
+                    .id(SharedString::from(format!("tab{positions}")))
                     .px_2p5()
                     .pt_1p5()
                     .text_size(px(scale * 12.0))
@@ -89,7 +89,7 @@ pub fn build<V: 'static>(
                     .flex_col()
                     .items_center()
                     .gap_1()
-                    .child(名)
+                    .child(name)
                     .child(div().h(px(2.0)).w_full()),
             );
             continue;
@@ -164,7 +164,7 @@ pub fn build<V: 'static>(
                 .flex_col()
                 .items_center()
                 .gap_1()
-                .child(名)
+                .child(name)
                 // 現在地の下線(デスクトップ版の形)
                 .child(div().h(px(2.5)).w_full().rounded_sm().bg(if on && is_ctx {
                     look.ctx_fg

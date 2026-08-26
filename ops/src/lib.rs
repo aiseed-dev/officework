@@ -1896,9 +1896,9 @@ pub fn stale_recovers(ext: &str) -> Vec<(String, PathBuf)> {
 
 /// 控えの隣に「元はどのファイルか」を書き添えます。復旧のときに
 /// 「どのファイルの控えか」を言うためです
-pub fn note_recover_origin(控え: &std::path::Path, orig: Option<&std::path::Path>) {
+pub fn note_recover_origin(record: &std::path::Path, orig: Option<&std::path::Path>) {
     if let Some(o) = orig {
-        let _ = std::fs::write(控え.with_extension("path"), o.to_string_lossy().as_bytes());
+        let _ = std::fs::write(record.with_extension("path"), o.to_string_lossy().as_bytes());
     }
 }
 
@@ -2133,13 +2133,13 @@ mod sign_tests {
     fn 署名してから検める() {
         let _家 = 家を独り占め();
         // 鍵の置き場は HOME の下。試験どうしがぶつからないよう別の家にする
-        let 家 = std::env::temp_dir().join(format!("ops-sign-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&家);
-        std::fs::create_dir_all(&家).unwrap();
-        let 元 = std::env::var_os("HOME");
-        unsafe { std::env::set_var("HOME", &家) };
+        let home = std::env::temp_dir().join(format!("ops-sign-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&home);
+        std::fs::create_dir_all(&home).unwrap();
+        let from = std::env::var_os("HOME");
+        unsafe { std::env::set_var("HOME", &home) };
 
-        let f = 家.join("報告書.adoc");
+        let f = home.join("報告書.adoc");
         std::fs::write(&f, "= 報告書\n\n本文です。\n").unwrap();
 
         // 1回目 — 署名を添える
@@ -2163,16 +2163,16 @@ mod sign_tests {
         }
 
         // 無いファイルは読めないと言う(黙って成功にしない)
-        match sign_or_verify(&家.join("ありません.adoc")) {
+        match sign_or_verify(&home.join("ありません.adoc")) {
             Err(SignErr::Read(_)) => {}
             他 => panic!("読めないと言うはず: {他:?}"),
         }
 
-        match 元 {
+        match from {
             Some(v) => unsafe { std::env::set_var("HOME", v) },
             None => unsafe { std::env::remove_var("HOME") },
         }
-        let _ = std::fs::remove_dir_all(&家);
+        let _ = std::fs::remove_dir_all(&home);
     }
 }
 
@@ -2188,11 +2188,11 @@ mod recover_tests {
     #[test]
     fn 控えの道と一覧() {
         let _家 = 家を独り占め();
-        let 家 = std::env::temp_dir().join(format!("ops-rec-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&家);
-        std::fs::create_dir_all(&家).unwrap();
-        let 元 = std::env::var_os("HOME");
-        unsafe { std::env::set_var("HOME", &家) };
+        let home = std::env::temp_dir().join(format!("ops-rec-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&home);
+        std::fs::create_dir_all(&home).unwrap();
+        let from = std::env::var_os("HOME");
+        unsafe { std::env::set_var("HOME", &home) };
 
         let a = std::path::Path::new("/tmp/報告書.adoc");
         let b = std::path::Path::new("/tmp/別の報告書.adoc");
@@ -2204,12 +2204,12 @@ mod recover_tests {
             .contains("未保存の文書"));
 
         // 控えを2つ置く(文章と表を1つずつ)
-        let 文 = recover_path_for(Some(a), "adoc", "無題");
-        std::fs::create_dir_all(文.parent().unwrap()).unwrap();
-        std::fs::write(&文, "= 報告書\n").unwrap();
-        note_recover_origin(&文, Some(a));
-        let 表 = recover_path_for(Some(a), "xlsx", "無題");
-        std::fs::write(&表, b"PK").unwrap();
+        let sentence = recover_path_for(Some(a), "adoc", "無題");
+        std::fs::create_dir_all(sentence.parent().unwrap()).unwrap();
+        std::fs::write(&sentence, "= 報告書\n").unwrap();
+        note_recover_origin(&sentence, Some(a));
+        let table = recover_path_for(Some(a), "xlsx", "無題");
+        std::fs::write(&table, b"PK").unwrap();
 
         // **拡張子で分かれる**(表の画面に文書の控えを出さない)
         let 文一覧 = stale_recovers("adoc");
@@ -2220,15 +2220,15 @@ mod recover_tests {
         // 保存できたら消す。**添え書きも消える**(消し忘れると次の起動で
         // 「落ちた後です」と嘘を言う)
         drop_recover(Some(a), "adoc", "無題");
-        assert!(!文.exists(), "控えが残っている");
-        assert!(!文.with_extension("path").exists(), "添え書きが残っている");
+        assert!(!sentence.exists(), "控えが残っている");
+        assert!(!sentence.with_extension("path").exists(), "添え書きが残っている");
         assert_eq!(stale_recovers("adoc").len(), 0);
         assert_eq!(stale_recovers("xlsx").len(), 1, "表の控えは消さない");
 
-        match 元 {
+        match from {
             Some(v) => unsafe { std::env::set_var("HOME", v) },
             None => unsafe { std::env::remove_var("HOME") },
         }
-        let _ = std::fs::remove_dir_all(&家);
+        let _ = std::fs::remove_dir_all(&home);
     }
 }

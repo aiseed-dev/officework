@@ -836,10 +836,10 @@ def i18n_の訳(target: str) -> dict[str, str]:
     # `OVERRIDES["en"]` の鍵はリボンの英語の札です
     訳 = json.loads(p.read_text(encoding="utf-8"))
     英 = json.loads((ここ / "i18n" / "en.json").read_text(encoding="utf-8"))
-    要る = set(OVERRIDES["en"])
+    needed = set(OVERRIDES["en"])
     out = {}
     for 記号, 英語 in 英.items():
-        if 英語 in 要る and 訳.get(記号):
+        if 英語 in needed and 訳.get(記号):
             out[英語] = 訳[記号]
     return out
 
@@ -928,10 +928,10 @@ use super::ribbon::{{{{取り込み}}}};
         print(f"  綴り直し: {a} → {b}", file=sys.stderr)
     # **使った書き方だけを取り込む。** 使わない物を書くと警告になり、
     # clippy の門(-D warnings)で止まります
-    本文 = "\n".join(out)
-    使った = [k for k in ("c", "t", "x", "xt", "xm")
-              if re.search(rf"^\s*{k}\(", 本文, re.M)]
-    print(本文.replace("{取り込み}", ", ".join(使った + ["Tab"])))
+    body = "\n".join(out)
+    used = [k for k in ("c", "t", "x", "xt", "xm")
+              if re.search(rf"^\s*{k}\(", body, re.M)]
+    print(body.replace("{取り込み}", ", ".join(used + ["Tab"])))
 
 
 if __name__ == "__main__":

@@ -617,12 +617,12 @@ impl Writer {
 
         // **外側の柱**(発注者 2026-08-15。calc と同じ作法)。
         // 面を切り替えるアイコンを縦に並べる
-        let 柱 = || div().flex_none().w(px(RAIL)).h_full()
+        let rail = || div().flex_none().w(px(RAIL)).h_full()
             .flex().flex_col().items_center().gap_1().py_1();
         // **柱の釦も場所を控える**(2026-08-16。点検の道具のため)。
         // 鍵は `&'static str` が要るので、呼ぶ側が静的な名前も渡す
         let boxes = self.btn_box.clone();
-        let 柱釦 = move |id: String, icon: &'static str, 札: String, on: bool| {
+        let rail_button = move |id: String, icon: &'static str, label_text: String, on: bool| {
             let rec = boxes.clone();
             let key: &'static str = match id.as_str() {
                 "rf-here" => "@rf-here",
@@ -656,7 +656,7 @@ impl Writer {
                 .border_1()
                 .border_color(if on { th_btn } else { gpui::transparent_black().into() })
                 .hover(move |s| s.bg(th_btn_hover))
-                .tooltip(move |_, cx| cx.new(|_| crate::view::Tip(札.clone().into(), us)).into())
+                .tooltip(move |_, cx| cx.new(|_| crate::view::Tip(label_text.clone().into(), us)).into())
                 .tooltip_show_delay(std::time::Duration::from_millis(150))
                 .child(gpui::svg()
                     .path(SharedString::from(format!("icons/{icon}.svg")))
@@ -796,31 +796,31 @@ impl Writer {
                 // 「入れる」を押して初めて文書が変わる。writer には
                 // calc のような Python の橋が無いので、入るのは**文そのもの**
                 _ => {
-                    let 主 = rgb(0x165E83);
-                    let 釦 = move |id: &'static str, label: String, 効き: bool| {
+                    let accent = rgb(0x165E83);
+                    let button = move |id: &'static str, label: String, 効き: bool| {
                         div().id(SharedString::from(id))
                             .px_2().py_0p5().rounded_sm().cursor_pointer()
                             .text_size(px(us * 11.5))
                             .text_color(if 効き { th_top_fg } else { th_status })
                             .border_1()
-                            .border_color(if 効き { 主 } else { th_cmd_border })
+                            .border_color(if 効き { accent } else { th_cmd_border })
                             .hover(move |st| st.bg(th_btn_hover))
                             .child(SharedString::from(label))
                     };
                     d = d.child(div().text_size(px(us * 10.5)).text_color(th_status).child(
                         ui::t!("can_ask_about_selection").to_string()));
-                    let mut 会話 = div().id("ai-chat-log").flex().flex_col().gap_1().mt_1()
+                    let mut chat = div().id("ai-chat-log").flex().flex_col().gap_1().mt_1()
                         .flex_1().min_h(px(us * 0.0)).overflow_y_scroll();
                     if self.ai_chat_log.is_empty() {
-                        会話 = 会話.child(div().text_size(px(us * 11.0)).text_color(th_status)
+                        chat = chat.child(div().text_size(px(us * 11.0)).text_color(th_status)
                             .child(ui::t!("e_g_make_paragraph").to_string()));
                     }
-                    for (自分, 字) in &self.ai_chat_log {
-                        会話 = 会話.child(div().text_size(px(us * 11.5))
-                            .text_color(if *自分 { 主 } else { th_top_fg })
-                            .child(format!("{} {}", if *自分 { "▸" } else { "◂" }, 字)));
+                    for (自分, text) in &self.ai_chat_log {
+                        chat = chat.child(div().text_size(px(us * 11.5))
+                            .text_color(if *自分 { accent } else { th_top_fg })
+                            .child(format!("{} {}", if *自分 { "▸" } else { "◂" }, text)));
                     }
-                    d = d.child(会話);
+                    d = d.child(chat);
                     if let Some(plan) = self.ai_chat_plan.clone() {
                         d = d.child(div().text_size(px(us * 10.5)).text_color(th_status).mt_1()
                             .child(ui::t!("text_insert_nothing_goes").to_string()));
@@ -832,12 +832,12 @@ impl Writer {
                             .text_size(px(us * 11.0)).text_color(th_top_fg)
                             .children(plan.lines().map(|l| div().child(l.to_string()))));
                         d = d.child(div().flex().flex_row().gap_1().mt_1()
-                            .child(釦("ai-chat-run", ui::t!("apply").to_string(), true)
+                            .child(button("ai-chat-run", ui::t!("apply").to_string(), true)
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.ai_chat_insert();
                                     cx.notify()
                                 })))
-                            .child(釦("ai-chat-drop", ui::t!("cancel").to_string(), false)
+                            .child(button("ai-chat-drop", ui::t!("cancel").to_string(), false)
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.ai_chat_plan = None;
                                     this.status =
@@ -850,7 +850,7 @@ impl Writer {
                         .mt_1().p_1().rounded_sm().cursor_text()
                         .bg(if dk { rgb(0x14171A) } else { rgb(0xFFFFFF) })
                         .border_1()
-                        .border_color(if self.ai_chat_focus { 主 } else { th_cmd_border })
+                        .border_color(if self.ai_chat_focus { accent } else { th_cmd_border })
                         .text_size(px(us * 11.5)).text_color(th_top_fg)
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.ai_chat_focus = true;
@@ -871,7 +871,7 @@ impl Writer {
                             self.ai_chat_in.text().to_string()
                         }));
                     let mut r = div().flex().flex_row().gap_1().mt_1();
-                    r = r.child(釦("ai-chat-send", ui::t!("send").to_string(), !self.ai_busy)
+                    r = r.child(button("ai-chat-send", ui::t!("send").to_string(), !self.ai_busy)
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.ai_chat_send(cx);
                             cx.notify()
@@ -883,21 +883,21 @@ impl Writer {
                     d = d.child(r);
                 }
             }
-            let 柱d = 柱()
-                .child(柱釦("nf-head".into(), "contents", ui::t!("heading").to_string(), self.nav_tab == 0).on_click(
+            let rail_div = rail()
+                .child(rail_button("nf-head".into(), "contents", ui::t!("heading").to_string(), self.nav_tab == 0).on_click(
                     cx.listener(|t, _, _, cx| { t.nav_tab = 0; cx.notify() })))
-                .child(柱釦("nf-cmt".into(), "co-showcomment", ui::t!("comment").to_string(), self.nav_tab == 1).on_click(
+                .child(rail_button("nf-cmt".into(), "co-showcomment", ui::t!("comment").to_string(), self.nav_tab == 1).on_click(
                     cx.listener(|t, _, _, cx| { t.nav_tab = 1; cx.notify() })))
-                .child(柱釦("nf-find".into(), "replace", ui::t!("find").to_string(), self.nav_tab == 2).on_click(
+                .child(rail_button("nf-find".into(), "replace", ui::t!("find").to_string(), self.nav_tab == 2).on_click(
                     cx.listener(|t, _, _, cx| { t.nav_tab = 2; cx.notify() })))
-                .child(柱釦("nf-ai".into(), "ai-ask", ui::t!("ai").to_string(), self.nav_tab == 3).on_click(
+                .child(rail_button("nf-ai".into(), "ai-ask", ui::t!("ai").to_string(), self.nav_tab == 3).on_click(
                     cx.listener(|t, _, _, cx| { t.nav_tab = 3; cx.notify() })));
             Some(div()
                 .flex_none().w(px(250.0 + RAIL)).h_full()
                 .m_1().rounded_sm().bg(panel_bg)
                 .border_1().border_color(th_cmd_border)
                 .flex().flex_row()
-                .child(柱d)
+                .child(rail_div)
                 .child(div().flex_none().w(px(us * 1.0)).h_full().bg(th_cmd_border))
                 .child(d))
         };
@@ -935,7 +935,7 @@ impl Writer {
             let row = || div().flex().flex_row().flex_wrap().gap_1();
             // 左と同じく**場所を取る**(重ねない)。巻けるようにもする —
             // 表の面が足された分、230px の幅では下が切れる
-            let 面 = self.rp_tab;
+            let face = self.rp_tab;
             // **どの枝が組んだか**を控える(値を読んだだけでは分からない)
             self.rp_drawn.set(9);
             let return_rp;
@@ -945,7 +945,7 @@ impl Writer {
                 .flex().flex_col().gap_1()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(match 面 {
+                    .child(match face {
                         1 => ui::t!("page_settings_whole_document"),
                         2 => ui::t!("styles_edit_template"),
                         3 => ui::t!("files_what_folder"),
@@ -954,7 +954,7 @@ impl Writer {
             // **ページは「いる場所」ではない。** 文書ぜんぶに掛かる決めなので、
             // 柱で別の面に分けた(発注者 2026-08-15「外側にアイコンをおいて
             // 操作を変更できるように」)
-            if 面 == 1 {
+            if face == 1 {
                 self.rp_drawn.set(1);
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                     .child(SharedString::from(ui::tf!("mm_margins_mm_columns", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, self.pg.cols(), if self.doc.vertical { ui::t!("vertical") } else { "" }))));
@@ -979,14 +979,14 @@ impl Writer {
                         |t, _, _, cx| { t.run_cmd("watermark", cx); cx.notify() })))
                     .child(btn(self, "pagecolor", ui::t!("page_colour_2").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("pagecolor", cx); cx.notify() }))));
-                let 柱d = 柱()
-                    .child(柱釦("rf-here".into(), "format", ui::t!("settings_adjust_where_cursor").to_string(), false).on_click(
+                let rail_div = rail()
+                    .child(rail_button("rf-here".into(), "format", ui::t!("settings_adjust_where_cursor").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
-                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), true).on_click(
+                    .child(rail_button("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), true).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
                     // **フォルダのファイル一覧**(2026-08-19 発注者
                     // 「フォルダー内のファイル一覧を右パネルに表示」)
-                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), false).on_click(
+                    .child(rail_button("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
                 return_rp = Some(div()
                     .flex_none().w(px(230.0 + RAIL)).h_full()
@@ -995,8 +995,8 @@ impl Writer {
                     .flex().flex_row()
                     .child(d)
                     .child(div().flex_none().w(px(us * 1.0)).h_full().bg(th_cmd_border))
-                    .child(柱d));
-            } else if 面 == 2 {
+                    .child(rail_div));
+            } else if face == 2 {
                 self.rp_drawn.set(2);
             // **スタイルの面**(2026-08-16。ネイティブ文書だけ)。
             // いまの段落が着ているスタイルと、テンプレートの一覧を出す。
@@ -1015,7 +1015,9 @@ impl Writer {
                 ));
                 // 役割のスタイル(段落そのものの意味)は先に、名前つきは後に
                 let mut names: Vec<String> =
-                    ["body", "title_style", "heading_1", "heading_2", "heading_3", "heading_4", "heading_5", "引用"]
+                    // **テンプレートのスタイル名。** 文書の形式の値なので日本語のまま
+                    // です(engine の role_name() と揃えます)
+                    ["本文", "表題", "見出し1", "見出し2", "見出し3", "見出し4", "見出し5", "引用"]
                     .iter()
                     .map(|s| s.to_string())
                     .collect();
@@ -1098,16 +1100,16 @@ impl Writer {
                 }
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                     .child(ui::t!("editing_changes_template_every")));
-                let 柱d = 柱()
-                    .child(柱釦("rf-here".into(), "format", ui::t!("settings_adjust_where_cursor").to_string(), false).on_click(
+                let rail_div = rail()
+                    .child(rail_button("rf-here".into(), "format", ui::t!("settings_adjust_where_cursor").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
-                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), false).on_click(
+                    .child(rail_button("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
-                    .child(柱釦("rf-style".into(), "styles", ui::t!("styles_edit_template").to_string(), true).on_click(
+                    .child(rail_button("rf-style".into(), "styles", ui::t!("styles_edit_template").to_string(), true).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 2; cx.notify() })))
                     // **フォルダのファイル一覧**(2026-08-19 発注者
                     // 「フォルダー内のファイル一覧を右パネルに表示」)
-                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), false).on_click(
+                    .child(rail_button("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
                 return_rp = Some(div()
                     .flex_none().w(px(230.0 + RAIL)).h_full()
@@ -1116,8 +1118,8 @@ impl Writer {
                     .flex().flex_row()
                     .child(d)
                     .child(div().flex_none().w(px(us * 1.0)).h_full().bg(th_cmd_border))
-                    .child(柱d));
-            } else if 面 == 3 {
+                    .child(rail_div));
+            } else if face == 3 {
                 // **フォルダの中身**(2026-08-19 発注者)。選ぶと開きます。
                 // 種類はファイルの名前で決まります(二重の拡張子)
                 self.rp_drawn.set(3);
@@ -1131,11 +1133,11 @@ impl Writer {
                 if let Some(dir) = dir.as_deref() {
                     // **上のフォルダへ戻れます**(2026-08-26)。
                     // 中へ入れても戻れないと、一方通行です
-                    if let Some(上) = ui::filelist::up_row(&look, dir) {
-                        let 親 = dir.parent().map(|p| p.to_path_buf());
-                        d = d.child(上.on_click(cx.listener(move |t, _, _, cx| {
-                            if let Some(親) = 親.clone() {
-                                t.show_folder(親);
+                    if let Some(top) = ui::filelist::up_row(&look, dir) {
+                        let parent = dir.parent().map(|p| p.to_path_buf());
+                        d = d.child(top.on_click(cx.listener(move |t, _, _, cx| {
+                            if let Some(parent) = parent.clone() {
+                                t.show_folder(parent);
                             }
                             cx.notify()
                         })));
@@ -1157,28 +1159,28 @@ impl Writer {
                                     cx.notify()
                                 }))),
                     );
-                    let (一覧, 残り) = ui::filelist::entries_with_rest(dir);
-                    if 一覧.is_empty() {
+                    let (list, rest) = ui::filelist::entries_with_rest(dir);
+                    if list.is_empty() {
                         d = d.child(ui::filelist::empty(&look));
                     }
-                    for (i, e) in 一覧.into_iter().enumerate() {
+                    for (i, e) in list.into_iter().enumerate() {
                         let 開ける = e.kind.can_open();
                         let 表だ = e.kind.is_sheet();
-                        let 道 = e.path.clone();
+                        let path = e.path.clone();
                         // **フォルダは中へ入ります**(2026-08-26 発注者)。
                         // 前は一覧に出るのに押しても何も起きませんでした
                         if e.kind == ui::folder::Kind::Folder {
-                            let 行 = ui::filelist::row(&look, i, &e, false)
+                            let line = ui::filelist::row(&look, i, &e, false)
                                 .on_click(cx.listener(move |t, _, _, cx| {
-                                    t.show_folder(道.clone());
+                                    t.show_folder(path.clone());
                                     cx.notify()
                                 }));
-                            d = d.child(行);
+                            d = d.child(line);
                             continue;
                         }
-                        let いま = self.path.as_deref() == Some(e.path.as_path());
-                        let mut 行 = ui::filelist::row(&look, i, &e, いま);
-                        行 = 行.on_click(cx.listener(move |t, _, _, cx| {
+                        let current = self.path.as_deref() == Some(e.path.as_path());
+                        let mut line = ui::filelist::row(&look, i, &e, current);
+                        line = line.on_click(cx.listener(move |t, _, _, cx| {
                             t.remember_folder();
                             if !開ける {
                                 // **こちらで開けない種類は、機械の関連付けに渡します**
@@ -1190,21 +1192,21 @@ impl Writer {
                                 // 隣の writer に落ちます。実機で押したら .ipynb が
                                 // writer で開きました(2026-08-24)。JupyterLab で
                                 // 開くべき物なので、機械の決めをそのまま使います
-                                t.status = match ui::open_outside(&道.display().to_string()) {
+                                t.status = match ui::open_outside(&path.display().to_string()) {
                                     ui::Opened::Yes => ui::tf!("opening_application_system_chose",
-                                        道.file_name().unwrap_or_default().to_string_lossy().to_string()).into(),
+                                        path.file_name().unwrap_or_default().to_string_lossy().to_string()).into(),
                                     ui::Opened::JustNow => ui::t!("just_opened").into(),
                                     ui::Opened::Failed => ui::tf!("no_application_associated_file",
-                                        道.display().to_string()).into(),
+                                        path.display().to_string()).into(),
                                 };
                                 cx.notify();
                                 return;
                             }
                             // **埋め込みなら種類を問わず officework に頼む**(段1)
                             if t.embedded || 表だ {
-                                t.open_request = Some(道.clone());
+                                t.open_request = Some(path.clone());
                             } else {
-                                t.open_in_tab(道.clone());
+                                t.open_in_tab(path.clone());
                             }
                             cx.notify()
                         }));
@@ -1212,7 +1214,7 @@ impl Writer {
                         let 道3 = e.path.clone();
                         d = d.child(
                             div().flex().flex_row().items_center().gap_1()
-                                .child(div().flex_1().min_w(px(0.0)).child(行))
+                                .child(div().flex_1().min_w(px(0.0)).child(line))
                                 .child(ui::filelist::row_button(&look, i, "ren",
                                     // **名前を変える釦**。リボンの「名前」
                                     // (defname)とは別の意味です
@@ -1231,16 +1233,16 @@ impl Writer {
                     }
                     // **切った分は言います**(2026-08-26)。黙って落とすと、
                     // あるはずのファイルが無いように見えます
-                    if let Some(断り) = ui::filelist::rest_note(&look, 残り) {
-                        d = d.child(断り);
+                    if let Some(note_div) = ui::filelist::rest_note(&look, rest) {
+                        d = d.child(note_div);
                     }
                 }
-                let 柱d = 柱()
-                    .child(柱釦("rf-here".into(), "format", ui::t!("settings_adjust_where_cursor").to_string(), false).on_click(
+                let rail_div = rail()
+                    .child(rail_button("rf-here".into(), "format", ui::t!("settings_adjust_where_cursor").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
-                    .child(柱釦("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), false).on_click(
+                    .child(rail_button("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
-                    .child(柱釦("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), true).on_click(
+                    .child(rail_button("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), true).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
                 return_rp = Some(div()
                     .flex_none().w(px(230.0 + RAIL)).h_full()
@@ -1249,18 +1251,18 @@ impl Writer {
                     .flex().flex_row()
                     .child(d.overflow_y_scroll())
                     .child(div().flex_none().w(px(us * 1.0)).h_full().bg(th_cmd_border))
-                    .child(柱d));
+                    .child(rail_div));
             } else {
 
             // **いる場所に追従する。** 表の中なら表の面、段落に数式や画像が
             // あればその面を、文字・段落・ページの前に出す
             // (発注者 2026-08-14「選んでいる物の設定に切り替わるように」)。
             // 出すだけで下の面も残す — 表の中でも字は太字にしたい
-            if let Some((_, 行, 列, 行数, 列数)) = self.cursor_table() {
+            if let Some((_, line, row_box, 行数, 列数)) = self.cursor_table() {
                 d = d.child(head(ui::t!("table_2")));
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                     .child(SharedString::from(ui::tf!(
-                        "rows_columns_now_row", 行数, 列数, 行 + 1, 列 + 1))));
+                        "rows_columns_now_row", 行数, 列数, line + 1, row_box + 1))));
                 d = d.child(row()
                     .child(btn(self, "tb-row-up", ui::t!("row_above").into()).on_click(
                         cx.listener(|t, _, _, cx| { t.table_add_row(false); cx.notify() })))
@@ -1279,10 +1281,10 @@ impl Writer {
             // 数式と画像は**段落が持つ**(writer に図形の選択という状態は無い)。
             // 数式は絵だが `tex` に原文を積んであるので、直せる
             if let Some(p0) = &para {
-                let 絵: Vec<&kumihan::InlineImage> =
+                let icon: Vec<&kumihan::InlineImage> =
                     p0.images.iter().chain(p0.images_new.iter()).collect();
                 let 式: Vec<&&kumihan::InlineImage> =
-                    絵.iter().filter(|im| im.tex.is_some()).collect();
+                    icon.iter().filter(|im| im.tex.is_some()).collect();
                 if let Some(im) = 式.first() {
                     let tex = im.tex.clone().unwrap_or_default();
                     d = d.child(head(ui::t!("formula_2")));
@@ -1297,7 +1299,7 @@ impl Writer {
                                 t.status = ui::t!("editing_equation_enter_re").into();
                                 cx.notify()
                             }))));
-                } else if let Some(im) = 絵.first() {
+                } else if let Some(im) = icon.first() {
                     d = d.child(head(ui::t!("images")));
                     d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                         .child(SharedString::from(
@@ -1403,20 +1405,20 @@ impl Writer {
                         |t, _, _, cx| { t.run_cmd("borders", cx); cx.notify() }))));
 
             // ページ
-            let 柱d = 柱()
-                .child(柱釦("rf-here".into(), "format", ui::t!("settings_adjust_where_cursor").to_string(), 面 == 0).on_click(
+            let rail_div = rail()
+                .child(rail_button("rf-here".into(), "format", ui::t!("settings_adjust_where_cursor").to_string(), face == 0).on_click(
                     cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
-                .child(柱釦("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), 面 == 1).on_click(
+                .child(rail_button("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), face == 1).on_click(
                     cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
                 // **スタイルの面はネイティブ文書だけ**(2026-08-16)。互換の
                 // 文書にはテンプレートが無く、押しても見せる物が無い —
                 // できないことを、できるように見せない
                 .children(self.native.then(|| {
-                    柱釦("rf-style".into(), "styles", ui::t!("styles_edit_template").to_string(), 面 == 2)
+                    rail_button("rf-style".into(), "styles", ui::t!("styles_edit_template").to_string(), face == 2)
                         .on_click(cx.listener(|t, _, _, cx| { t.rp_tab = 2; cx.notify() }))
                 }))
                 // **フォルダのファイル一覧**(2026-08-19)
-                .child(柱釦("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), false).on_click(
+                .child(rail_button("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), false).on_click(
                     cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
             return_rp = Some(div()
                 .flex_none().w(px(230.0 + RAIL)).h_full()
@@ -1425,7 +1427,7 @@ impl Writer {
                 .flex().flex_row()
                 .child(d)
                 .child(div().flex_none().w(px(us * 1.0)).h_full().bg(th_cmd_border))
-                .child(柱d));
+                .child(rail_div));
             }
             return_rp
         };
@@ -1698,7 +1700,7 @@ impl Writer {
             Some(job) => {
                 use crate::FlJob as J;
                 let 消す時 = matches!(job, J::Delete(_));
-                let 見出し = match job {
+                let heading = match job {
                     J::NewFolder => ui::t!("name_new_folder_type").to_string(),
                     J::NewDoc => ui::t!("name_new_document_type").to_string(),
                     J::Rename(_) => ui::t!("new_name_type_press").to_string(),
@@ -1711,7 +1713,7 @@ impl Writer {
                     .flex().flex_col().gap_2()
                     .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                         .text_color(rgb(0x165E83))
-                        .child(SharedString::from(見出し)));
+                        .child(SharedString::from(heading)));
                 if !消す時 {
                     let mut t = self.fl_ed.text().to_string();
                     let cur = self.fl_ed.cursor().min(t.len());
@@ -1828,10 +1830,10 @@ impl Writer {
                 // **画面の言語の字が組める書体だけ**(2026-08-26)。前は
                 // 日本語で決め打っていたので、韓国語の画面ではハングルの
                 // 出ない書体ばかりが並んでいました
-                let 系統 = kumihan::font::script_of(&ui::language());
+                let script = kumihan::font::script_of(&ui::language());
                 kumihan::font::list()
                     .iter()
-                    .filter(|f| f.covers(系統) && f.regular)
+                    .filter(|f| f.covers(script) && f.regular)
                     .map(|f| f.name.clone())
                     .filter(|n| q.is_empty() || n.to_lowercase().contains(&q.to_lowercase()))
                     .map(|n| (n.clone(), n))
@@ -1890,7 +1892,7 @@ impl Writer {
         } else {
             ui::combo::pop_x(bx, self.view_w_px)
         };
-        let 幅 = match kind {
+        let widths = match kind {
             "fontname" => ui::picklist::Width::Range(200.0, ui::combo::POP_W),
             "fontsize" => ui::picklist::Width::Range(bw.max(96.0), 140.0),
             "inssymbol" => ui::picklist::Width::Fixed(SYM_W),
@@ -1921,7 +1923,7 @@ impl Writer {
                 at,
                 up,
                 max_h,
-                width: 幅,
+                width: widths,
                 // マス目で並べる物。記号は 28px、表の大きさは 26px の角
                 grid: match kind {
                     "inssymbol" => Some(28.0),

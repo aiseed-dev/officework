@@ -13,7 +13,7 @@ impl Calc {
     /// **判定を新しく考えません。** 既に画面のどこかで数えている物だけを
     /// 使います。ここで独自の条件を書くと、腕の側と食い違ったときに
     /// 「黒いのに断られる」「灰色なのに押せば動く」が起きます。
-    pub(crate) fn 押せるか(&self, id: &str) -> bool {
+    pub(crate) fn can_press(&self, id: &str) -> bool {
         match id {
             // **絞り込みが張ってあるときだけ。**
             //
@@ -143,57 +143,57 @@ impl Calc {
     }
 
     /// **一覧の仕事を実行する。** 断られたら欄を開いたままにします。
-    pub(crate) fn fl_commit(&mut self, 名: String) {
+    pub(crate) fn fl_commit(&mut self, name: String) {
         use crate::FlJob as J;
         let Some(job) = self.fl_job.clone() else { return };
-        let 今 = self.folder();
+        let now = self.folder();
         let 結果: Result<String, String> = match &job {
-            J::NewFolder => match 今 {
-                Some(d) => ui::folder::フォルダを作る(&d, &名).map(|p| {
+            J::NewFolder => match now {
+                Some(d) => ui::folder::フォルダを作る(&d, &name).map(|p| {
                     ui::tf!("created",
                         p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
                 }),
                 None => Err(ui::t!("no_folder_open").to_string()),
             },
-            J::NewSheet => match 今 {
+            J::NewSheet => match now {
                 Some(d) => {
                     // **拡張子は付けます。** `.sheet.adoc` でないと表として開きません
-                    let t = 名.trim();
+                    let t = name.trim();
                     let n = if t.ends_with(".sheet.adoc") {
                         t.to_string()
                     } else {
                         format!("{}.sheet.adoc", t.trim_end_matches(".adoc"))
                     };
-                    let 題 = t.trim_end_matches(".sheet.adoc").trim_end_matches(".adoc");
-                    ui::folder::ファイルを作る(&d, &n, &format!("= {題}\n"))
+                    let title = t.trim_end_matches(".sheet.adoc").trim_end_matches(".adoc");
+                    ui::folder::ファイルを作る(&d, &n, &format!("= {title}\n"))
                         .map(|p| ui::tf!("created",
                             p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string())
                 }
                 None => Err(ui::t!("no_folder_open").to_string()),
             },
-            J::Rename(元) => ui::folder::名前を変える(元, &名).map(|先| {
-                if self.path.as_deref() == Some(元.as_path()) {
-                    self.path = Some(先.clone());
+            J::Rename(from) => ui::folder::名前を変える(from, &name).map(|to| {
+                if self.path.as_deref() == Some(from.as_path()) {
+                    self.path = Some(to.clone());
                 }
                 ui::tf!("renamed",
-                    先.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
+                    to.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
             }),
-            J::Delete(道) => {
+            J::Delete(path) => {
                 // **開いたままの物は消しません**(文章の画面と同じ)
-                if self.path.as_deref() == Some(道.as_path()) {
+                if self.path.as_deref() == Some(path.as_path()) {
                     Err(ui::t!("cant_delete_file_open").to_string())
                 } else {
-                    ui::folder::消す(道).map(|_| {
+                    ui::folder::消す(path).map(|_| {
                         ui::tf!("deleted",
-                            道.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
+                            path.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
                     })
                 }
             }
         };
         match 結果 {
-            Ok(言う) => {
+            Ok(told) => {
                 self.fl_job = None;
-                self.status = 言う.into();
+                self.status = told.into();
             }
             Err(e) => self.status = e.into(),
         }
@@ -1162,9 +1162,9 @@ impl Calc {
 
     /// 最終版の札を入切する。
     pub(crate) fn toggle_final_mark(&mut self) {
-        let 前 = self.final_mark();
+        let before = self.final_mark();
         self.book.props.custom.retain(|p| p.name != "_MarkAsFinal");
-        if !前 {
+        if !before {
             self.book.props.custom.push(sheet::model::CustomProp {
                 name: "_MarkAsFinal".into(),
                 value: sheet::model::CustomVal::Bool(true),
@@ -1172,7 +1172,7 @@ impl Calc {
             });
         }
         self.dirty = true;
-        self.status = if 前 {
+        self.status = if before {
             ui::t!("final_mark_removed").into()
         } else {
             ui::t!("marked_final_not_lock_can")
@@ -1182,7 +1182,7 @@ impl Calc {
 
     /// 画面の上の帯 — (行数, 先頭行)。分割していればそちら、していなければ固定。
     /// **両方は同時に立ちません**(片方を入れるともう片方を外します)
-    pub(crate) fn 上の帯(&self) -> Option<(u32, u32)> {
+    pub(crate) fn top_band(&self) -> Option<(u32, u32)> {
         match self.split {
             Some(s) => Some((s.row, self.split_view.row)),
             None => self.frozen.map(|f| (f.row, 0)),
@@ -1190,7 +1190,7 @@ impl Calc {
     }
 
     /// 画面の左の帯 — (列数, 先頭列)。上の帯と同じ役割です。
-    pub(crate) fn 左の帯(&self) -> Option<(u32, u32)> {
+    pub(crate) fn left_band(&self) -> Option<(u32, u32)> {
         match self.split {
             Some(s) => Some((s.col, self.split_view.col)),
             None => self.frozen.map(|f| (f.col, 0)),
@@ -1221,7 +1221,7 @@ impl Calc {
         } else {
             // 畳んだ行のぶん多めに見て、画面の行数まで詰める
             let extra = hidden.len() as u32;
-            grid_rows(self.上の帯(), self.view, fit + extra)
+            grid_rows(self.top_band(), self.view, fit + extra)
                 .into_iter()
                 .filter(|r| !hidden.contains(r))
                 .take(fit as usize)
@@ -1234,7 +1234,7 @@ impl Calc {
         let hidden = &self.sheet().col_hidden;
         let extra = hidden.len() as u32;
         let fit = self.cols_fit();
-        let mut v: Vec<u32> = grid_cols(self.左の帯(), self.view, fit + extra)
+        let mut v: Vec<u32> = grid_cols(self.left_band(), self.view, fit + extra)
             .into_iter()
             .filter(|c| !hidden.contains(c))
             .take(fit as usize)
@@ -2700,9 +2700,9 @@ pub(crate) fn sheet_var(name: &str) -> String {
 pub(crate) fn 取り出す囲み(out: &str) -> Option<String> {
     let mut it = out.split("```");
     it.next()?; // 囲みの前
-    let 中 = it.next()?;
-    let 中 = 中.strip_prefix("python").unwrap_or(中);
-    let t = 中.trim_start_matches('\n').trim_end().to_string();
+    let inner = it.next()?;
+    let inner = inner.strip_prefix("python").unwrap_or(inner);
+    let t = inner.trim_start_matches('\n').trim_end().to_string();
     if t.is_empty() { None } else { Some(t) }
 }
 
@@ -2800,14 +2800,14 @@ impl Calc {
         self.chat_plan = None;
         // 直近の6つ(3往復)まで。**いま足した自分の発言は除く**
         let n = self.chat_log.len().saturating_sub(1);
-        let 前 = &self.chat_log[n.saturating_sub(6)..n];
-        let q = if 前.is_empty() {
+        let before = &self.chat_log[n.saturating_sub(6)..n];
+        let q = if before.is_empty() {
             用件
         } else {
             let mut s = String::from("これまでのやりとり:\n");
-            for (自分, 字) in 前 {
+            for (自分, text) in before {
                 s.push_str(if *自分 { "私: " } else { "あなた: " });
-                s.push_str(字);
+                s.push_str(text);
                 s.push('\n');
             }
             format!("{s}\n続けて、次の頼みに答えてください。\n{用件}")
@@ -2878,29 +2878,29 @@ impl Calc {
                     Ok((true, out, _)) => {
                         this.chat_plan = None;
                         this.chat_err = None;
-                        let 尻 = out.lines().rev().take(3).collect::<Vec<_>>().join(" / ");
+                        let tail = out.lines().rev().take(3).collect::<Vec<_>>().join(" / ");
                         // **結果を会話に戻す。** 次の頼みがこれを踏まえられる
                         this.chat_log.push((
                             false,
-                            if 尻.trim().is_empty() {
+                            if tail.trim().is_empty() {
                                 ui::t!("applied").to_string()
                             } else {
-                                ui::tf!("applied_2", 尻).to_string()
+                                ui::tf!("applied_2", tail).to_string()
                             },
                         ));
-                        this.status = if 尻.trim().is_empty() {
+                        this.status = if tail.trim().is_empty() {
                             ui::t!("proposed_change_applied_ctrl").into()
                         } else {
-                            ui::tf!("proposed_change_applied_ctrl_z", 尻).into()
+                            ui::tf!("proposed_change_applied_ctrl_z", tail).into()
                         };
                         this.reload_from_disk_if_needed();
                     }
                     Ok((false, _, err)) => {
                         // **誤りを控えて会話にも出す。** 「直してもらう」で
                         // そのまま送れるようにする(Agent Panel の作法)
-                        let 尻 = err.lines().rev().take(4).collect::<Vec<_>>().join("\n");
-                        this.chat_log.push((false, ui::tf!("failed", 尻).to_string()));
-                        this.chat_err = Some(尻.clone());
+                        let tail = err.lines().rev().take(4).collect::<Vec<_>>().join("\n");
+                        this.chat_log.push((false, ui::tf!("failed", tail).to_string()));
+                        this.chat_err = Some(tail.clone());
                         this.status = ui::tf!("script_failed",
                             err.lines().rev().take(2).collect::<Vec<_>>().join(" / ")).into();
                     }

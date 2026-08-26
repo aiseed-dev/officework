@@ -77,14 +77,14 @@ pub fn run(s: &mut impl Screen, id: &str) -> bool {
         "py-folder" => {
             let dir = crate::pyedit::plugins_dir();
             let _ = std::fs::create_dir_all(&dir);
-            let 道 = dir.display().to_string();
-            let msg = match crate::open_outside(&道) {
-                crate::Opened::Yes => crate::tf!("opening", 道),
+            let path = dir.display().to_string();
+            let msg = match crate::open_outside(&path) {
+                crate::Opened::Yes => crate::tf!("opening", path),
                 crate::Opened::JustNow => {
                     crate::t!("just_opened_give_window").into()
                 }
                 crate::Opened::Failed => {
-                    crate::tf!("no_application_associated_file", 道)
+                    crate::tf!("no_application_associated_file", path)
                 }
             };
             s.say(msg.to_string());

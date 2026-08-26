@@ -58,9 +58,9 @@ pub fn write(doc: &Document) -> String {
     } else if !doc.props.title.is_empty() {
         head.push_str(&format!("= {}\n", doc.props.title));
     }
-    let 名 = |k: &str| k == "template" || k == "テンプレート";
+    let name = |k: &str| k == "template" || k == "テンプレート";
     if let Some(t) = &doc.template {
-        if !doc.attrs.iter().any(|(k, _)| 名(k)) {
+        if !doc.attrs.iter().any(|(k, _)| name(k)) {
             // このアプリが後から名前を付けた(読んだ字には無かった)
             head.push_str(&format!(":template: {t}\n"));
         }
@@ -71,7 +71,7 @@ pub fn write(doc: &Document) -> String {
             continue;
         }
         // テンプレートの名前は後から変わりうるので、いまの値で書きます
-        let v = if 名(k) { doc.template.clone().unwrap_or_else(|| v.clone()) } else { v.clone() };
+        let v = if name(k) { doc.template.clone().unwrap_or_else(|| v.clone()) } else { v.clone() };
         // 値の無い属性は `:名前:` と書く(後ろに空白を足さない)
         if v.is_empty() {
             head.push_str(&format!(":{k}:\n"));
@@ -175,8 +175,8 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
             return;
         }
         // 註記は本家の印で書く(`[.註記]` ではなく `NOTE: `)
-        if let Some(印) = 註記の印(n) {
-            out.push_str(印);
+        if let Some(mark) = 註記の印(n) {
+            out.push_str(mark);
             out.push(' ');
             out.push_str(&runs_text(&p.runs, doc));
             out.push_str("\n\n");
@@ -204,7 +204,7 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
         _ => String::new(),
     };
     out.push_str(&head);
-    let 字 = runs_text(&p.runs, doc);
+    let text = runs_text(&p.runs, doc);
     // **一文一行で書きます**(2026-08-18)。git の差分が文ごとになるので、
     // 1文直したときに何を直したのか読めます。読むときは続く行を1つの段落に
     // 継ぐので、開き直すと元の1段落に戻ります。
@@ -213,9 +213,9 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
     // 別の段落になってしまうので切りません
     let 切ってよい = head.is_empty() && p.style == ParaStyle::Body;
     if 切ってよい {
-        out.push_str(&文で切る(&字).join("\n"));
+        out.push_str(&文で切る(&text).join("\n"));
     } else {
-        out.push_str(&字);
+        out.push_str(&text);
     }
     out.push('\n');
     if !in_quote {
@@ -228,8 +228,8 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
 /// 「Dr. Smith」の `.` の後ろは空白と大文字ですが、文の終わりではありません。
 /// 頭文字1文字(`J. R. R.`)も同じです。ここで切ると、1つの名前が2行に
 /// 割れます(2026-08-18 に見本で見つけました)。
-fn 略語の後(前: &[char]) -> bool {
-    let 語: String = 前
+fn 略語の後(before: &[char]) -> bool {
+    let word: String = before
         .iter()
         .rev()
         .take_while(|c| c.is_ascii_alphabetic())
@@ -237,14 +237,14 @@ fn 略語の後(前: &[char]) -> bool {
         .into_iter()
         .rev()
         .collect();
-    if 語.len() == 1 {
+    if word.len() == 1 {
         return true; // 頭文字
     }
     const 略語: &[&str] = &[
         "Dr", "Mr", "Mrs", "Ms", "Prof", "Sr", "Jr", "St", "vs", "etc", "Fig", "No", "Vol",
         "Inc", "Ltd", "Co", "Corp", "Ave", "Rd", "approx", "cf", "al",
     ];
-    略語.iter().any(|x| x.eq_ignore_ascii_case(&語))
+    略語.iter().any(|x| x.eq_ignore_ascii_case(&word))
 }
 
 /// **1つの段落を、文ごとの行に切ります。**
@@ -257,17 +257,17 @@ fn 略語の後(前: &[char]) -> bool {
 fn 文で切る(s: &str) -> Vec<String> {
     let b: Vec<char> = s.chars().collect();
     let mut out: Vec<String> = Vec::new();
-    let mut 今 = String::new();
-    let mut 深さ = 0i32;
-    let mut 等幅 = false;
+    let mut now = String::new();
+    let mut depth = 0i32;
+    let mut mono = false;
     // **強調の途中では切りません**(2026-08-18)。`*太字。*` の中で切ると
     // 印が片方だけの行になり、次に開いたとき別の意味になります
     // (README を自分のエンジンに通して見つけました)
-    let mut 太字 = false;
+    let mut bold = false;
     let mut 斜体 = false;
     let mut 逃し = false;
     for (i, c) in b.iter().enumerate() {
-        今.push(*c);
+        now.push(*c);
         if 逃し {
             逃し = false;
             continue;
@@ -277,14 +277,14 @@ fn 文で切る(s: &str) -> Vec<String> {
                 逃し = true; // `\*` は字の `*`
                 continue;
             }
-            '`' => 等幅 = !等幅,
-            '[' if !等幅 => 深さ += 1,
-            ']' if !等幅 => 深さ = (深さ - 1).max(0),
-            '*' if !等幅 && 深さ == 0 => 太字 = !太字,
-            '_' if !等幅 && 深さ == 0 => 斜体 = !斜体,
+            '`' => mono = !mono,
+            '[' if !mono => depth += 1,
+            ']' if !mono => depth = (depth - 1).max(0),
+            '*' if !mono && depth == 0 => bold = !bold,
+            '_' if !mono && depth == 0 => 斜体 = !斜体,
             _ => {}
         }
-        if 深さ > 0 || 等幅 || 太字 || 斜体 {
+        if depth > 0 || mono || bold || 斜体 {
             continue;
         }
         let 切る = match c {
@@ -299,14 +299,14 @@ fn 文で切る(s: &str) -> Vec<String> {
         };
         // 行末の `.` の後ろの空白は落とす(次の行の頭には要らない)
         if 切る && i + 1 < b.len() {
-            out.push(std::mem::take(&mut 今));
+            out.push(std::mem::take(&mut now));
             if b.get(i + 1) == Some(&' ') {
                 // 欧文の切れ目。空白は捨てて、読むときに継ぎ目で足し直す
             }
         }
     }
-    if !今.is_empty() {
-        out.push(今);
+    if !now.is_empty() {
+        out.push(now);
     }
     // **2行目からの頭の空白だけ**落とします(欧文の切れ目のぶん)。
     // 1行目の空白は書いた人の字なので残します
@@ -333,13 +333,13 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
     // **強調の印を1つにするか2つにするかは、囲みの外の字で決まります。**
     // 開くときと閉じるときで数が違うと対にならないので、**開く前に
     // 閉じた先まで見て**、1つの囲みで同じ数に決めます(2026-08-18)
-    let 二重にするか = |前: Option<char>, 始め: usize, 太: bool| -> bool {
-        let 終わり = runs[始め..]
+    let 二重にするか = |before: Option<char>, start: usize, 太: bool| -> bool {
+        let 終わり = runs[start..]
             .iter()
             .position(|x| if 太 { !x.fmt.bold } else { !x.fmt.italic })
-            .map(|k| 始め + k);
-        let 後 = 終わり.and_then(|k| runs.get(k)).and_then(|x| x.text.chars().next());
-        前.is_some_and(|c| c.is_alphanumeric()) || 後.is_some_and(|c| c.is_alphanumeric())
+            .map(|k| start + k);
+        let after = 終わり.and_then(|k| runs.get(k)).and_then(|x| x.text.chars().next());
+        before.is_some_and(|c| c.is_alphanumeric()) || after.is_some_and(|c| c.is_alphanumeric())
     };
     for (ri, r) in runs.iter().enumerate() {
         // 脚注の印(字を持たない run)
@@ -367,23 +367,23 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
         // `*字*` の外側が字だと強調として読みません(`*太字*続き` はそのまま
         // アスタリスクが出ます)。README を本家に通して分かりました
         if r.fmt.bold != bold {
-            let 二重 = if r.fmt.bold {
+            let double = if r.fmt.bold {
                 二重にするか(s.chars().last(), ri, true)
             } else {
                 太字は二重
             };
-            s.push_str(if 二重 { "**" } else { "*" });
-            太字は二重 = 二重;
+            s.push_str(if double { "**" } else { "*" });
+            太字は二重 = double;
             bold = r.fmt.bold;
         }
         if r.fmt.italic != italic {
-            let 二重 = if r.fmt.italic {
+            let double = if r.fmt.italic {
                 二重にするか(s.chars().last(), ri, false)
             } else {
                 斜体は二重
             };
-            s.push_str(if 二重 { "__" } else { "_" });
-            斜体は二重 = 二重;
+            s.push_str(if double { "__" } else { "_" });
+            斜体は二重 = double;
             italic = r.fmt.italic;
         }
         // 上付き・下付きは**意味**(x² / H₂O)。AsciiDoc の標準の印
@@ -403,10 +403,10 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
             // **前後が字なら二重の印。** 本家は `字\`等幅\`字` を等幅として
             // 読みません(2026-08-18 に本家で確かめました)
             Some(MONO) => {
-                let 前 = s.chars().last();
-                let 後 = 次の字(runs, ri);
+                let before = s.chars().last();
+                let after = 次の字(runs, ri);
                 let 字か = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric());
-                if 字か(前) || 字か(後) {
+                if 字か(before) || 字か(after) {
                     ("``".to_string(), "``")
                 } else {
                     ("`".to_string(), "`")
@@ -415,7 +415,7 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
             Some(n) => (format!("[.{n}]#"), "#"),
             None => (String::new(), ""),
         };
-        let 等幅 = r.fmt.style_id.as_deref() == Some(MONO);
+        let mono = r.fmt.style_id.as_deref() == Some(MONO);
         s.push_str(&open);
         if let Some(sdt) = &r.fmt.sdt {
             s.push_str(&field_src(sdt));
@@ -424,13 +424,13 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
         } else if let Some(url) = &r.fmt.link {
             // **前が字なら `link:` を付けます。** 本家は `表計算https://…[名]` を
             // リンクとして読みません(2026-08-18 に本家で確かめました)
-            let 頭 = if s.chars().last().is_some_and(|c| c.is_alphanumeric()) {
+            let head = if s.chars().last().is_some_and(|c| c.is_alphanumeric()) {
                 "link:"
             } else {
                 ""
             };
-            s.push_str(&format!("{頭}{url}[{}]", esc(&r.text)));
-        } else if 等幅 {
+            s.push_str(&format!("{head}{url}[{}]", esc(&r.text)));
+        } else if mono {
             s.push_str(&r.text); // 等幅の中は字のまま
         } else {
             s.push_str(&esc(&r.text));
@@ -584,21 +584,21 @@ pub(crate) fn vspan_of(t: &Table, ri: usize, col: usize) -> u8 {
 
 fn write_table(out: &mut String, t: &Table, doc: &Document) {
     // 表の題(`.名前`)。表の名前になるので、桁の指定より前に書く
-    if let Some(名) = &t.title {
-        out.push_str(&format!(".{名}\n"));
+    if let Some(name) = &t.title {
+        out.push_str(&format!(".{name}\n"));
     }
     // **`a|` のセルがあるときは桁の数を必ず書きます。** 中身が次の行に
     // 続くので、読むときに「最初の行のセルの数」では桁を数えられません
     let 複数段落あり = t.rows.iter().flatten().any(|c| c.paragraphs.len() > 1);
     if t.col_ratio.is_empty() && 複数段落あり {
-        let 桁: usize = t.rows.first().map(|r| r.iter().map(|c| c.span()).sum()).unwrap_or(0);
-        if 桁 > 0 {
-            out.push_str(&format!("[cols=\"{}\"]\n", vec!["1"; 桁].join(",")));
+        let cols: usize = t.rows.first().map(|r| r.iter().map(|c| c.span()).sum()).unwrap_or(0);
+        if cols > 0 {
+            out.push_str(&format!("[cols=\"{}\"]\n", vec!["1"; cols].join(",")));
         }
     }
     // 桁の割合(`[cols="1,3"]`)。表の直前の行として書く
     if !t.col_ratio.is_empty() {
-        let 数: Vec<String> = t
+        let numbers: Vec<String> = t
             .col_ratio
             .iter()
             .map(|v| {
@@ -609,7 +609,7 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
                 }
             })
             .collect();
-        out.push_str(&format!("[cols=\"{}\"]\n", 数.join(",")));
+        out.push_str(&format!("[cols=\"{}\"]\n", numbers.join(",")));
     }
     out.push_str("|===\n");
     for (ri, row) in t.rows.iter().enumerate() {
@@ -665,19 +665,19 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
             let text = if is_formula_cell(&raw) {
                 raw
             } else {
-                let mut 段落 = cell.paragraphs.iter().map(|p| runs_text(&p.runs, doc)).collect::<Vec<_>>();
+                let mut paras = cell.paragraphs.iter().map(|p| runs_text(&p.runs, doc)).collect::<Vec<_>>();
                 // **空の段落は `{empty}` で書きます**(本家の書き方)。
                 // 空行を並べても本家は1つの切れ目にまとめるので、様式の
                 // 「書き込む余白」が何行あったかが消えてしまいます
                 if 複数の段落 {
-                    for p in 段落.iter_mut() {
+                    for p in paras.iter_mut() {
                         if p.trim().is_empty() {
                             *p = 空の段落.to_string();
                         }
                     }
                 }
                 // 複数段落は空行で区切ります(`a|` の中身の作法)
-                段落.join(if 複数の段落 { "\n\n" } else { " " })
+                paras.join(if 複数の段落 { "\n\n" } else { " " })
             };
             // **縦棒は逃がします**(2026-08-20 に見つけた)。逃がさないと
             // 中身の `|` が次のセルの頭と読まれ、**1つの升が2つに割れて
@@ -722,10 +722,10 @@ pub fn image_ext(bytes: &[u8]) -> &'static str {
 /// 触りません)。呼ぶ側が返りをファイルに書きます。
 pub fn assign_image_paths(doc: &mut Document) -> Vec<(String, std::sync::Arc<Vec<u8>>)> {
     // すでに使われている名前(同じ名前で上書きしないため)
-    let mut 使った: Vec<String> = Vec::new();
+    let mut used: Vec<String> = Vec::new();
     each_image(doc, &mut |im| {
         if let Some(s) = &im.src {
-            使った.push(s.clone());
+            used.push(s.clone());
         }
     });
     let mut out = Vec::new();
@@ -737,11 +737,11 @@ pub fn assign_image_paths(doc: &mut Document) -> Vec<(String, std::sync::Arc<Vec
         let name = loop {
             n += 1;
             let name = format!("images/図{n}.{}", image_ext(&im.bytes));
-            if !使った.contains(&name) {
+            if !used.contains(&name) {
                 break name;
             }
         };
-        使った.push(name.clone());
+        used.push(name.clone());
         im.src = Some(name.clone());
         out.push((name, im.bytes.clone()));
     });
@@ -779,28 +779,28 @@ fn each_image(doc: &mut Document, f: &mut dyn FnMut(&mut InlineImage)) {
 /// 「消える」と言うのが正確です。
 pub fn dropped(doc: &Document) -> Vec<&'static str> {
     let mut v: Vec<&'static str> = Vec::new();
-    let mut 足す = |name: &'static str| {
+    let mut push = |name: &'static str| {
         if !v.contains(&name) {
             v.push(name);
         }
     };
     if !doc.header.paragraphs.is_empty() {
-        足す("ヘッダー");
+        push("ヘッダー");
     }
     if !doc.footer.paragraphs.is_empty() {
-        足す("フッター");
+        push("フッター");
     }
     if doc.watermark.is_some() {
-        足す("透かし");
+        push("透かし");
     }
     if doc.page_color.is_some() {
-        足す("ページの色");
+        push("ページの色");
     }
     if doc.vertical {
-        足す("縦書き");
+        push("縦書き");
     }
     if doc.page.map(|p| p.columns > 1).unwrap_or(false) {
-        足す("段組み");
+        push("段組み");
     }
     // 手描きの線は保存で SVG の絵になります(writer の `ink_to_images`)。
     // 消えないので、ここでは数えません
@@ -816,55 +816,55 @@ pub fn dropped(doc: &Document) -> Vec<&'static str> {
         .flat_map(|c| c.paragraphs.iter());
     for p in doc.paragraphs().chain(cells) {
         if !p.comments.is_empty() {
-            足す("コメント");
+            push("コメント");
         }
         if p.align != crate::doc::Align::Left {
-            足す("段落の揃え");
+            push("段落の揃え");
         }
         if p.indent > 0 || p.first_line_twips != 0 {
-            足す("字下げ");
+            push("字下げ");
         }
         if p.line_spacing > 0.0 && p.line_spacing != 1.0 {
-            足す("行間");
+            push("行間");
         }
         if p.space_before_pt != 0.0 || p.space_after_pt != 0.0 {
-            足す("段落の前後の空き");
+            push("段落の前後の空き");
         }
         if p.shade.is_some() {
-            足す("段落の背景色");
+            push("段落の背景色");
         }
         if p.boxed {
-            足す("段落の囲み");
+            push("段落の囲み");
         }
         if p.dropcap {
-            足す("ドロップキャップ");
+            push("ドロップキャップ");
         }
         if matches!(p.style, ParaStyle::Toc(_) | ParaStyle::Tof) {
-            足す("目次の印");
+            push("目次の印");
         }
         for r in &p.runs {
             // 相互参照は「しおりの文字」と「ページ番号」の2種類だが、adoc は
             // `<<名前>>` の1種類しか持たない。ページ番号は文字の参照になる
             if r.fmt.field.as_ref().is_some_and(|f| f.page) {
-                足す("相互参照のページ番号");
+                push("相互参照のページ番号");
             }
             if r.fmt.underline {
-                足す("下線");
+                push("下線");
             }
             if r.fmt.strike {
-                足す("取り消し線");
+                push("取り消し線");
             }
             if r.fmt.color.is_some() {
-                足す("文字の色");
+                push("文字の色");
             }
             if r.fmt.highlight.is_some() {
-                足す("背景の色");
+                push("背景の色");
             }
             if r.size_pt.is_some() {
-                足す("字の大きさ");
+                push("字の大きさ");
             }
             if r.font.is_some() {
-                足す("フォント");
+                push("フォント");
             }
         }
     }
@@ -890,9 +890,9 @@ fn 本家だけの書き方(l: &str) -> Option<(&'static str, &'static str)> {
     let ts = t.trim_start();
     // 塊の区切り(DELIMITED_BLOCKS)。**うちが意味を知っている物は除く** —
     // 引用(____)と表(|===)は編集できます
-    for (印, 名) in DELIMITED {
-        if 区切りか(t, 印) {
-            return Some((名, "塊の区切り"));
+    for (mark, name) in DELIMITED {
+        if 区切りか(t, mark) {
+            return Some((name, "塊の区切り"));
         }
     }
     // 横の区切り線。改ページ(<<<)はうちが扱うので除く
@@ -933,12 +933,12 @@ fn 本家だけの書き方(l: &str) -> Option<(&'static str, &'static str)> {
     {
         return Some(("塊の指定([…])", "指定の行"));
     }
-    // 属性の参照 {名前}。うちの差し込みは {{名前}} なので、二重は数えない
+    // 属性の参照 {member}。うちの差し込みは {{member}} なので、二重は数えない
     let b = ts.as_bytes();
     for (i, c) in ts.char_indices() {
-        let 二重 = b.get(i + 1) == Some(&b'{') || (i > 0 && b[i - 1] == b'{');
-        if c == '{' && !二重 && ts[i..].contains('}') {
-            return Some(("属性の参照({名前})", ""));
+        let double = b.get(i + 1) == Some(&b'{') || (i > 0 && b[i - 1] == b'{');
+        if c == '{' && !double && ts[i..].contains('}') {
+            return Some(("属性の参照({member})", ""));
         }
     }
     None
@@ -976,8 +976,8 @@ pub(crate) const 説明のリストの始め: &str = "説明のリストの始�
 
 /// 箇条書きの行か。返るのは(段, 中身)。段は 0 から。
 /// AsciiDoc は印の数が段です(`*` が1段目、`**` が2段目)
-fn 箇条書きか(l: &str, 印: char) -> Option<(u8, &str)> {
-    let n = l.chars().take_while(|c| *c == 印).count();
+fn 箇条書きか(l: &str, mark: char) -> Option<(u8, &str)> {
+    let n = l.chars().take_while(|c| *c == mark).count();
     if n == 0 || n > 5 {
         return None;
     }
@@ -998,8 +998,8 @@ fn ラベル付きか(l: &str) -> bool {
 /// その行が註記なら (スタイル名, 中身) を返す
 fn 註記か(l: &str) -> Option<(&'static str, &str)> {
     let ts = l.trim_start();
-    for (i, 印) in ADMONITION.iter().enumerate() {
-        if let Some(rest) = ts.strip_prefix(印) {
+    for (i, mark) in ADMONITION.iter().enumerate() {
+        if let Some(rest) = ts.strip_prefix(mark) {
             if let Some(body) = rest.strip_prefix(' ') {
                 return Some((註記のスタイル[i], body));
             }
@@ -1036,12 +1036,12 @@ const DELIMITED: &[(&str, &str)] = &[
 
 /// その行が区切りか。**印は伸ばせます**(`-----` も `----` と同じ)。
 /// 4字の印は同じ字の並び、それ以外はちょうどその字。
-fn 区切りか(t: &str, 印: &str) -> bool {
-    let 頭 = 印.chars().next().unwrap_or(' ');
-    if 印.chars().count() == 4 && 印.chars().all(|c| c == 頭) {
-        return t.chars().count() >= 4 && t.chars().all(|x| x == 頭);
+fn 区切りか(t: &str, mark: &str) -> bool {
+    let head = mark.chars().next().unwrap_or(' ');
+    if mark.chars().count() == 4 && mark.chars().all(|c| c == head) {
+        return t.chars().count() >= 4 && t.chars().all(|x| x == head);
     }
-    t == 印
+    t == mark
 }
 
 
@@ -1058,9 +1058,9 @@ fn 区切りか(t: &str, 印: &str) -> bool {
 /// 1枚目の文書の物になります。`:doctype: book` は[`write_many`]が付ける
 /// 印なので、読むときに落とします(二重に付かないようにするため)。
 pub fn parse_many(src: &str) -> Result<Vec<Document>, String> {
-    let 塊 = 文書に切る(src);
-    let mut out = Vec::with_capacity(塊.len());
-    for s in 塊 {
+    let block = 文書に切る(src);
+    let mut out = Vec::with_capacity(block.len());
+    for s in block {
         out.push(parse(&s)?);
     }
     Ok(out)
@@ -1069,17 +1069,17 @@ pub fn parse_many(src: &str) -> Result<Vec<Document>, String> {
 /// [`parse_many`] の帳簿つき。読めなかった書き方を数えて返します。
 pub fn parse_many_full(src: &str) -> Result<(Vec<Document>, Vec<String>), String> {
     let mut docs = Vec::new();
-    let mut 帳簿 = Vec::new();
+    let mut ledger = Vec::new();
     for s in 文書に切る(src) {
         let (d, r) = parse_full(&s)?;
         docs.push(d);
         for x in r {
-            if !帳簿.contains(&x) {
-                帳簿.push(x);
+            if !ledger.contains(&x) {
+                ledger.push(x);
             }
         }
     }
-    Ok((docs, 帳簿))
+    Ok((docs, ledger))
 }
 
 /// 何枚もの文書を1つのファイルの字にする。
@@ -1127,7 +1127,7 @@ fn 文書の題か(l: &str) -> bool {
 /// **塊の中の `= ` では切りません。** 例の塊(`====`)や字のまま出す塊
 /// (`....`)、表(`|===`)の中に `= 題` と書いてあっても、それは中身です。
 fn 文書に切る(src: &str) -> Vec<String> {
-    let 行: Vec<&str> = src.split('\n').collect();
+    let lines: Vec<&str> = src.split('\n').collect();
     let mut out: Vec<String> = Vec::new();
     let mut cur = String::new();
     // いま開いている塊の印(None なら塊の外)
@@ -1136,22 +1136,22 @@ fn 文書に切る(src: &str) -> Vec<String> {
     // 直前の行が `[discrete]` の切れ目だったか(次の題行で二重に切らないため)
     let mut 印で切った = false;
     let mut i = 0usize;
-    while i < 行.len() {
-        let line = 行[i];
+    while i < lines.len() {
+        let line = lines[i];
         let t = line.trim_end();
-        let 中身 = t.trim();
+        let content = t.trim();
         match &開いた {
-            Some(印) => {
-                if 区切りか(中身, 印) {
+            Some(mark) => {
+                if 区切りか(content, mark) {
                     開いた = None;
                 }
             }
             None => {
-                if 中身 == "|===" || 中身 == "____" {
-                    開いた = Some(中身.to_string());
-                } else if let Some((印, _)) = DELIMITED.iter().find(|(d, _)| 区切りか(中身, d)) {
-                    開いた = Some((*印).to_string());
-                } else if 中身 == 文書の印 && 次は題(&行, i) {
+                if content == "|===" || content == "____" {
+                    開いた = Some(content.to_string());
+                } else if let Some((mark, _)) = DELIMITED.iter().find(|(d, _)| 区切りか(content, d)) {
+                    開いた = Some((*mark).to_string());
+                } else if content == 文書の印 && 次は題(&lines, i) {
                     // **切れ目の印。** 印そのものは持ち越しません。
                     //
                     // **前置きだけの塊は文書にしません**(2026-08-24)。
@@ -1208,8 +1208,8 @@ fn 文書に切る(src: &str) -> Vec<String> {
 }
 
 /// `[discrete]` の次(空行は飛ばす)が `= 題` か。
-fn 次は題(行: &[&str], at: usize) -> bool {
-    行[at + 1..]
+fn 次は題(line: &[&str], at: usize) -> bool {
+    line[at + 1..]
         .iter()
         .find(|l| !l.trim().is_empty())
         .is_some_and(|l| 文書の題か(l.trim_end()))
@@ -1229,7 +1229,7 @@ pub fn parse(src: &str) -> Result<Document, String> {
 /// 落ちています**。黙って本文に化けさせると、書いた人は出来上がりを見るまで
 /// 気づけません(2026-08-18。それまで8つ試して8つとも黙って化けていました)。
 pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
-    let mut 帳簿: std::collections::BTreeMap<&'static str, usize> =
+    let mut ledger: std::collections::BTreeMap<&'static str, usize> =
         std::collections::BTreeMap::new();
     let mut doc = Document::default();
     let mut lines = src.lines().enumerate().peekable();
@@ -1254,17 +1254,17 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     while let Some((_, line)) = lines.peek().copied() {
         let l = line.trim_end();
         if !head_done && doc.props.title.is_empty() && l.starts_with("= ") {
-            let 題 = l[2..].trim().to_string();
+            let title = l[2..].trim().to_string();
             // **表題は本文の段落にもする**(2026-08-18)。文書の情報にしか
             // 入れないと紙面に出ず、開いた人には題名が消えて見えます。
             // `props.title` にも同じ字を入れて、docx の文書の情報と往復します
-            doc.props.title = 題.clone();
+            doc.props.title = title.clone();
             let mut p = Paragraph {
                 style: ParaStyle::Title,
                 line_spacing: 1.0,
                 ..Default::default()
             };
-            p.runs.push(Run { text: 題, size_pt: None, font: None, fmt: CharFormat::default() });
+            p.runs.push(Run { text: title, size_pt: None, font: None, fmt: CharFormat::default() });
             doc.blocks.push(Block::Para(p));
             頭に入った = true;
             lines.next();
@@ -1315,7 +1315,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             continue;
         }
         if let Some((何, 役割)) = 本家だけの書き方(l) {
-            *帳簿.entry(何).or_default() += 1;
+            *ledger.entry(何).or_default() += 1;
             // **原文のまま持ち越し、役割の名前を付けます。**
             // 意味は分からなくても、字は壊さず返し、テンプレートで見た目を
             // 決められるようにします(2026-08-18)。役割が空の物
@@ -1344,10 +1344,10 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 直前も本文 = false; // 原文のままの行に続きを繋がない
                 直前が説明のリスト = false;
                 if 役割 == "塊の区切り" {
-                    let 印 = l.trim_end().to_string();
+                    let mark = l.trim_end().to_string();
                     while let Some((_, l2)) = lines.next() {
-                        let 閉じ = l2.trim_end() == 印;
-                        if 閉じ {
+                        let closing = l2.trim_end() == mark;
+                        if closing {
                             // 閉じの印。後ろの空行も原文に含めて持ち越す
                             let 空行 = 空(&mut lines);
                             let mut q = Paragraph {
@@ -1472,10 +1472,10 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                         // **読めたので帳簿から下げます**(2026-08-19、表の題と
                         // 同じ作法)。桁の割合は表に取り込んだので、
                         // 「読み飛ばした」と言うと嘘になります
-                        if let Some(n) = 帳簿.get_mut("塊の指定([…])") {
+                        if let Some(n) = ledger.get_mut("塊の指定([…])") {
                             *n -= 1;
                             if *n == 0 {
-                                帳簿.remove("塊の指定([…])");
+                                ledger.remove("塊の指定([…])");
                             }
                         }
                     }
@@ -1485,16 +1485,16 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             // 原文のまま持ち越すのをやめて表に入れます
             if let Some(Block::Para(prev)) = doc.blocks.last() {
                 if prev.style_id.as_deref() == Some("塊の題") {
-                    let 題: String = prev.runs.iter().map(|r| r.text.as_str()).collect();
-                    if let Some(名) = 題.trim().strip_prefix('.') {
-                        t.title = Some(名.to_string());
+                    let title: String = prev.runs.iter().map(|r| r.text.as_str()).collect();
+                    if let Some(name) = title.trim().strip_prefix('.') {
+                        t.title = Some(name.to_string());
                         doc.blocks.pop();
                         // **読めたので帳簿から下げます。** 表の題は取り込んだ
                         // ので、「読めなかった」と言うと嘘になります
-                        if let Some(n) = 帳簿.get_mut("塊の題(.題)") {
+                        if let Some(n) = ledger.get_mut("塊の題(.題)") {
                             *n -= 1;
                             if *n == 0 {
-                                帳簿.remove("塊の題(.題)");
+                                ledger.remove("塊の題(.題)");
                             }
                         }
                     }
@@ -1538,33 +1538,33 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             let (n, text) = rest;
             p.style = ParaStyle::Heading(n);
             text
-        } else if let Some((名, text)) = 註記か(l) {
+        } else if let Some((name, text)) = 註記か(l) {
             // 註記(`NOTE: 文`)。**印は字に残しません** — どれなのかは
             // 段落のスタイルが持ちます(2026-08-18)
-            p.style_id = Some(名.to_string());
+            p.style_id = Some(name.to_string());
             text
         } else if ラベル付きか(l) {
             // ラベル付きリスト(`項目:: 値`)。**`::` は字のまま残します** —
             // 画面で項目も値も直せて、書き戻しもそのままです(2026-08-18)
             // **空行で切れた2つ目の一覧には、始めの印を付けます。**
             // 付けないと、書き戻しで空行が落ちて1つに繋がります
-            let 続き = 直前が説明のリスト
+            let cont = 直前が説明のリスト
                 || !matches!(doc.blocks.last(), Some(Block::Para(q))
                              if q.style_id.as_deref().is_some_and(説明のリストか));
-            p.style_id = Some(if 続き {
+            p.style_id = Some(if cont {
                 "説明のリスト".to_string()
             } else {
                 説明のリストの始め.to_string()
             });
             l
-        } else if let Some((段, rest)) = 箇条書きか(l, '*') {
+        } else if let Some((tab, rest)) = 箇条書きか(l, '*') {
             // **入れ子の箇条書き**(`**` `***`)。AsciiDoc は印の数が段です
             p.list = ListKind::Bullet;
-            p.indent = 段;
+            p.indent = tab;
             rest
-        } else if let Some((段, rest)) = 箇条書きか(l, '.') {
+        } else if let Some((tab, rest)) = 箇条書きか(l, '.') {
             p.list = ListKind::Number;
-            p.indent = 段;
+            p.indent = tab;
             rest
         } else {
             l
@@ -1605,27 +1605,27 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             p.raw_adoc.is_none() && !p.style_id.as_deref().is_some_and(一行で1つ);
         直前が説明のリスト = p.style_id.as_deref().is_some_and(説明のリストか);
         if 継ぐ {
-            if let Some(Block::Para(前)) = doc.blocks.last_mut() {
+            if let Some(Block::Para(before)) = doc.blocks.last_mut() {
                 let 継 = 継ぎ目(
-                    前.runs.last().map(|r| r.text.as_str()).unwrap_or(""),
+                    before.runs.last().map(|r| r.text.as_str()).unwrap_or(""),
                     p.runs.first().map(|r| r.text.as_str()).unwrap_or(""),
                 );
                 if !継.is_empty() {
-                    if let Some(r) = 前.runs.last_mut() {
+                    if let Some(r) = before.runs.last_mut() {
                         r.text.push(' ');
                     }
                 }
-                前.runs.extend(p.runs);
+                before.runs.extend(p.runs);
                 continue;
             }
         }
         doc.blocks.push(Block::Para(p));
     }
-    let 帳簿 = 帳簿
+    let ledger = ledger
         .into_iter()
         .map(|(k, n)| if n > 1 { format!("{k} × {n}") } else { k.to_string() })
         .collect();
-    Ok((doc, 帳簿))
+    Ok((doc, ledger))
 }
 
 fn base_para(
@@ -1710,23 +1710,23 @@ fn parse_inline(
     doc: &mut Document,
     fresh_note: &mut usize,
 ) -> Result<Vec<Run>, String> {
-    let mut 状態 = 強調の状態::default();
-    parse_inline_続き(text, doc, fresh_note, &mut 状態)
+    let mut state = 強調の状態::default();
+    parse_inline_続き(text, doc, fresh_note, &mut state)
 }
 
 fn parse_inline_続き(
     text: &str,
     doc: &mut Document,
     fresh_note: &mut usize,
-     状態: &mut 強調の状態,
+     state: &mut 強調の状態,
 ) -> Result<Vec<Run>, String> {
     let mut runs: Vec<Run> = Vec::new();
     let mut cur = String::new();
-    let mut bold = 状態.bold;
-    let mut italic = 状態.italic;
+    let mut bold = state.bold;
+    let mut italic = state.italic;
     // **等幅**(`` `字` ``)。字のスタイルとして持つので、見た目はテンプレートの
     // `[スタイル.等幅]` が決めます(2026-08-18)
-    let mut mono = 状態.mono;
+    let mut mono = state.mono;
     let flush = |runs: &mut Vec<Run>, cur: &mut String, bold: bool, italic: bool, mono: bool| {
         if cur.is_empty() {
             return;
@@ -1747,11 +1747,11 @@ fn parse_inline_続き(
         // 壊れます。`\` も字なので、径路の `%USERPROFILE%\.config` が
         // 消えないようにします
         if mono {
-            let 閉じ = if rest.starts_with("``") { 2 } else if rest.starts_with('`') { 1 } else { 0 };
-            if 閉じ > 0 {
+            let closing = if rest.starts_with("``") { 2 } else if rest.starts_with('`') { 1 } else { 0 };
+            if closing > 0 {
                 flush(&mut runs, &mut cur, bold, italic, mono);
                 mono = false;
-                i += 閉じ;
+                i += closing;
                 continue;
             }
             let c = rest.chars().next().expect("空でない");
@@ -1907,8 +1907,8 @@ fn parse_inline_続き(
                 if let Some(close) = after[open..].find(']') {
                     flush(&mut runs, &mut cur, bold, italic, mono);
                     let tag = after[..open].to_string();
-                    let 中 = &after[open + 1..open + close];
-                    let (alias, kind, items) = parse_field(中);
+                    let inner = &after[open + 1..open + close];
+                    let (alias, kind, items) = parse_field(inner);
                     let fmt = CharFormat {
                         sdt: Some(Box::new(crate::doc::Sdt { kind, alias, tag, items })),
                         ..Default::default()
@@ -1969,7 +1969,7 @@ fn parse_inline_続き(
         i += c.len_utf8();
     }
     flush(&mut runs, &mut cur, bold, italic, mono);
-    *状態 = 強調の状態 { bold, italic, mono };
+    *state = 強調の状態 { bold, italic, mono };
     Ok(runs)
 }
 
@@ -1989,24 +1989,24 @@ fn parse_table_lines(
         // **空行は `a|` のセルの中だけ段落の切れ目にします。**
         // ほかの空行は今までどおり捨てます(表の見た目のための空行なので)
         if *l == 表の空行 {
-            if let Some(前) = 繋いだ.last_mut() {
-                if 最後のセルがadoc(前) && !前.ends_with("\n\n") {
-                    前.push_str("\n\n");
+            if let Some(before) = 繋いだ.last_mut() {
+                if 最後のセルがadoc(before) && !before.ends_with("\n\n") {
+                    before.push_str("\n\n");
                 }
             }
             continue;
         }
-        let 頭 = l.trim_start();
-        if 繋いだ.is_empty() || 頭.starts_with('|') || セルの指定つき(頭) {
+        let head = l.trim_start();
+        if 繋いだ.is_empty() || head.starts_with('|') || セルの指定つき(head) {
             繋いだ.push((*l).to_string());
-        } else if let Some(前) = 繋いだ.last_mut() {
+        } else if let Some(before) = 繋いだ.last_mut() {
             // 続きの行。**全角の空白は字下げなので残します**
-            let 続き = 端を落とす(l);
+            let cont = 端を落とす(l);
             // 段落の切れ目の直後は、字を継ぎ足す空白を入れません
-            if !前.ends_with("\n\n") {
-                前.push_str(継ぎ目(前, 続き));
+            if !before.ends_with("\n\n") {
+                before.push_str(継ぎ目(before, cont));
             }
-            前.push_str(続き);
+            before.push_str(cont);
         }
     }
 
@@ -2108,35 +2108,35 @@ fn parse_table_lines(
     let mut it = cells.into_iter().peekable();
     while it.peek().is_some() || !vstarts.is_empty() {
         let mut row: Vec<Cellbox> = Vec::new();
-        let mut 桁 = 0usize;
+        let mut cols = 0usize;
         vstarts.sort_by_key(|x| x.0);
         let pending = vstarts.clone();
         let mut 次のvstarts: Vec<(usize, u8)> = Vec::new();
-        for (col, 残り) in pending {
+        for (col, rest) in pending {
             // 上から伸びてきた分を、その桁に置く
-            while 桁 < col {
+            while cols < col {
                 match it.next() {
                     Some(c) => {
-                        桁 += c.span();
+                        cols += c.span();
                         row.push(c);
                     }
                     None => break,
                 }
             }
             row.push(Cellbox { v_merge: VMerge::Continue, ..Default::default() });
-            桁 += 1;
-            if 残り > 1 {
-                次のvstarts.push((col, 残り - 1));
+            cols += 1;
+            if rest > 1 {
+                次のvstarts.push((col, rest - 1));
             }
         }
-        while 桁 < ncols {
+        while cols < ncols {
             let Some(c) = it.next() else { break };
             let s = c.span();
-            let 縦 = c.paragraphs.first().map(|p| p.indent).unwrap_or(0);
-            if 縦 > 0 {
-                次のvstarts.push((桁, 縦));
+            let vertical = c.paragraphs.first().map(|p| p.indent).unwrap_or(0);
+            if vertical > 0 {
+                次のvstarts.push((cols, vertical));
             }
-            桁 += s;
+            cols += s;
             row.push(c);
         }
         if row.is_empty() {
@@ -2166,9 +2166,9 @@ fn 字のスタイルに見える(s: &str) -> bool {
 /// AsciiDoc は続く行を1つの段落にします。日本語の文を行で折ったときに空白が
 /// 入ると語の間が空いて見え、英語の文で空白を入れないと語がくっつきます
 /// (2026-08-18、本家の手引きを読ませて `CSS.The build` が出た)。
-fn 継ぎ目(前: &str, 後: &str) -> &'static str {
-    let a = 前.chars().next_back();
-    let b = 後.chars().next();
+fn 継ぎ目(before: &str, after: &str) -> &'static str {
+    let a = before.chars().next_back();
+    let b = after.chars().next();
     let 和字 = |c: Option<char>| {
         c.is_some_and(|c| {
             matches!(c as u32,
@@ -2294,7 +2294,7 @@ mod tests {
     use super::*;
 
     /// 恒等の門番。**正規形どうしで write(parse(x)) == x**
-    fn 往復(src: &str) {
+    fn round_trip(src: &str) {
         let doc = parse(src).expect(src);
         let back = write(&doc);
         assert_eq!(back, src, "往復で崩れた");
@@ -2304,7 +2304,7 @@ mod tests {
     /// やめ、意味として読んで書き戻す形にしたので、往復で崩れないことを見る
     #[test]
     fn 見出し4と5が往復する() {
-        往復("= 題\n\n===== 四段目\n\n====== 五段目\n");
+        round_trip("= 題\n\n===== 四段目\n\n====== 五段目\n");
         let doc = parse("===== 四段目\n").unwrap();
         let p = doc.paragraphs().next().unwrap();
         assert_eq!(p.style, ParaStyle::Heading(4));
@@ -2314,8 +2314,8 @@ mod tests {
     #[test]
     fn 等幅が往復する() {
         // 後ろが字なので二重の印(本家は `\`字\`と` を等幅として読まない)
-        往復("``等幅の字``と普通の字。\n");
-        往復("等幅は `これ` です。\n");
+        round_trip("``等幅の字``と普通の字。\n");
+        round_trip("等幅は `これ` です。\n");
         let doc = parse("`等幅の字`と普通の字。\n").unwrap();
         let p = doc.paragraphs().next().unwrap();
         assert_eq!(p.runs[0].fmt.style_id.as_deref(), Some(MONO));
@@ -2328,7 +2328,7 @@ mod tests {
 
     #[test]
     fn 註記が往復する() {
-        往復("NOTE: 気をつけて。\n\nWARNING: 危ない。\n\nTIP: こつです。\n");
+        round_trip("NOTE: 気をつけて。\n\nWARNING: 危ない。\n\nTIP: こつです。\n");
         let doc = parse("WARNING: 危ない。\n").unwrap();
         let p = doc.paragraphs().next().unwrap();
         assert_eq!(p.style_id.as_deref(), Some("警告"));
@@ -2338,7 +2338,7 @@ mod tests {
     #[test]
     fn ラベル付きリストが往復する() {
         // 続いている間は空行で割らない(1つの一覧)
-        往復("項目:: その説明\n別の項目:: 別の説明\n");
+        round_trip("項目:: その説明\n別の項目:: 別の説明\n");
         let doc = parse("項目:: その説明\n").unwrap();
         let p = doc.paragraphs().next().unwrap();
         assert_eq!(p.style_id.as_deref(), Some("説明のリスト"));
@@ -2346,7 +2346,7 @@ mod tests {
 
     #[test]
     fn 表の桁の指定が往復する() {
-        往復("[cols=\"1,3\"]\n|===\n|狭い |広い\n|あ |い\n|===\n");
+        round_trip("[cols=\"1,3\"]\n|===\n|狭い |広い\n|あ |い\n|===\n");
         let doc = parse("[cols=\"1,3\"]\n|===\n|あ|い\n|===\n").unwrap();
         let t = doc.tables().next().unwrap();
         assert_eq!(t.col_ratio, vec![1.0, 3.0]);
@@ -2357,7 +2357,7 @@ mod tests {
     #[test]
     fn 塊の指定の行は次の塊から離れない() {
         // 前は空行が入り、指定が塊に掛からなくなっていた
-        往復("[source,python]\n----\nprint(1)\n----\n");
+        round_trip("[source,python]\n----\nprint(1)\n----\n");
     }
 
     /// **一文一行**(2026-08-18)。git の差分が文ごとになる
@@ -2366,13 +2366,13 @@ mod tests {
         let doc = parse("一つ目です。二つ目です。\n").unwrap();
         assert_eq!(write(&doc), "一つ目です。\n二つ目です。\n");
         // 読むと1つの段落に戻る(和字の継ぎ目に空白は入れない)
-        往復("一つ目です。\n二つ目です。\n");
+        round_trip("一つ目です。\n二つ目です。\n");
     }
 
     #[test]
     fn 欧文は空白と大文字のときだけ切る() {
         // 略語と頭文字では切らない
-        往復("Dr. Smith went home.\nThe next one starts here.\n");
+        round_trip("Dr. Smith went home.\nThe next one starts here.\n");
         let doc = parse("See example.com/a.b for more.\n").unwrap();
         assert_eq!(write(&doc), "See example.com/a.b for more.\n");
     }
@@ -2380,34 +2380,34 @@ mod tests {
     #[test]
     fn 囲みの中では切らない() {
         // 脚注の中の `。` と、等幅の中の `。`
-        往復("脚注つきです。\nfootnote:[注の中の文。切りません]続きです。\n");
-        往復("`コードの中。切りません` と 普通の文。\n");
+        round_trip("脚注つきです。\nfootnote:[注の中の文。切りません]続きです。\n");
+        round_trip("`コードの中。切りません` と 普通の文。\n");
     }
 
     #[test]
     fn 見出しと箇条書きは切らない() {
         // 切ると、続く行が別の段落になってしまう
-        往復("== 見出し。二文目。\n\n* 一つ。二つ。\n");
+        round_trip("== 見出し。二文目。\n\n* 一つ。二つ。\n");
     }
 
     #[test]
     fn 利用者の名前を付けた段落は何行でも書ける() {
         // 註記とラベル付きリストだけが1行で1つ。名前つきの段落は普通の段落
-        往復("[.強調の囲み]\n一つ目です。\n二つ目です。\n");
+        round_trip("[.強調の囲み]\n一つ目です。\n二つ目です。\n");
     }
 
     /// **表の題は表の物**(2026-08-18)。calc のシート名になり、式の中では
     /// 表の名前になる(`=SUM(売上台帳[金額])`)
     #[test]
     fn 表の題が表に入って往復する() {
-        往復(".売上台帳\n|===\n|品名 |金額\n\n|ペン |100\n|===\n");
-        let (doc, 帳簿) = parse_full(".売上台帳\n|===\n|品名 |金額\n\n|ペン |100\n|===\n")
+        round_trip(".売上台帳\n|===\n|品名 |金額\n\n|ペン |100\n|===\n");
+        let (doc, ledger) = parse_full(".売上台帳\n|===\n|品名 |金額\n\n|ペン |100\n|===\n")
             .expect("読めない");
         let t = doc.tables().next().expect("表が無い");
         assert_eq!(t.title.as_deref(), Some("売上台帳"));
         assert!(t.header_row, "見出しの行が落ちた");
         // **取り込んだので帳簿には出さない**(出すと嘘になる)
-        assert!(!帳簿.iter().any(|x| x.contains("塊の題")), "{帳簿:?}");
+        assert!(!ledger.iter().any(|x| x.contains("塊の題")), "{ledger:?}");
         // 表と関係のない `.題` は、いままでどおり原文のまま持ち越す
         let (_, 帳簿2) = parse_full(".ただの題\n\n本文。\n").expect("読めない");
         assert!(帳簿2.iter().any(|x| x.contains("塊の題")), "{帳簿2:?}");
@@ -2415,8 +2415,8 @@ mod tests {
 
     #[test]
     fn 入れ子の箇条書きが往復する() {
-        往復("* 一段目\n** 二段目\n*** 三段目\n* また一段目\n");
-        往復(". 一つ目\n.. 中の一つ目\n");
+        round_trip("* 一段目\n** 二段目\n*** 三段目\n* また一段目\n");
+        round_trip(". 一つ目\n.. 中の一つ目\n");
         let doc = parse("** 二段目\n").unwrap();
         let p = doc.paragraphs().next().unwrap();
         assert_eq!(p.list, ListKind::Bullet);
@@ -2427,42 +2427,42 @@ mod tests {
     #[test]
     fn コードの塊の中身が直せる() {
         // 塊の中の `*` は太字の印ではない。空行も残る
-        往復("[source,python]\n----\nprint(\"*ほし*\")\n\nprint(1)\n----\n");
+        round_trip("[source,python]\n----\nprint(\"*ほし*\")\n\nprint(1)\n----\n");
         let doc = parse("----\nprint(1)\n----\n").unwrap();
-        let 中: Vec<&Paragraph> = doc
+        let inner: Vec<&Paragraph> = doc
             .paragraphs()
             .filter(|p| p.style_id.as_deref() == Some("塊の中"))
             .collect();
-        assert_eq!(中.len(), 1);
-        assert!(中[0].raw_adoc.is_none(), "字のまま持っていて直せない");
-        assert_eq!(中[0].runs[0].text, "print(1)");
+        assert_eq!(inner.len(), 1);
+        assert!(inner[0].raw_adoc.is_none(), "字のまま持っていて直せない");
+        assert_eq!(inner[0].runs[0].text, "print(1)");
     }
 
     #[test]
     fn 見出しと本文とリストが往復する() {
-        往復("= 月次報告\n:template: 社内標準\n\n== まとめ\n\n売上は前月比で伸びた。\n\n* 東京\n* 大阪\n\n. 一番\n. 二番\n");
+        round_trip("= 月次報告\n:template: 社内標準\n\n== まとめ\n\n売上は前月比で伸びた。\n\n* 東京\n* 大阪\n\n. 一番\n. 二番\n");
     }
 
     #[test]
     fn 強調と引用が往復する() {
         // **囲みの外が字なので二重の印。** 本家は `*要点*だけ` を強調として
         // 読まない(2026-08-18 に本家で確かめた)
-        往復("**要点**だけ__斜めに__言う。\n\n____\n引用の文。\n____\n");
+        round_trip("**要点**だけ__斜めに__言う。\n\n____\n引用の文。\n____\n");
     }
 
     #[test]
     fn 脚注とルビと参照としおりが往復する() {
-        往復("[[序]]\n本文footnote:[注の中身]の続きruby:漢字[かんじ]まで。\n\n<<序>>を見よ。\n");
+        round_trip("[[序]]\n本文footnote:[注の中身]の続きruby:漢字[かんじ]まで。\n\n<<序>>を見よ。\n");
     }
 
     #[test]
     fn リンクと数式と画像と改ページが往復する() {
-        往復("https://example.jp[例のサイト]を見る。\n\nstem:[x^2 + y^2 = 1]\n\nimage::images/図1.png[]\n\n<<<\n\n次の頁の文。\n");
+        round_trip("https://example.jp[例のサイト]を見る。\n\nstem:[x^2 + y^2 = 1]\n\nimage::images/図1.png[]\n\n<<<\n\n次の頁の文。\n");
     }
 
     #[test]
     fn 表が結合ごと往復する() {
-        往復("|===\n|品 |数\n2+|合計だけの行\n|===\n");
+        round_trip("|===\n|品 |数\n2+|合計だけの行\n|===\n");
     }
 
     #[test]
@@ -2494,22 +2494,22 @@ mod tests {
 
     #[test]
     fn 上付きと下付きが往復する() {
-        往復("水は H^2^O ではなく H~2~O。\n");
+        round_trip("水は H^2^O ではなく H~2~O。\n");
     }
 
     #[test]
     fn 文字単位のスタイルが往復する() {
-        往復("ここは[.注意]#気をつける#ところ。\n");
+        round_trip("ここは[.注意]#気をつける#ところ。\n");
         // **普通の文の `[.` は逃がしません**(2026-08-18)。逃がすのは
         // `[.名前]#` の形だけです。本家には `[.path]_径路_` のような役割の
         // 書き方があり、一律に逃がすと `\\` が入って別物になります
-        往復("配列は [.5] と書く。\n");
-        往復("径路は [.path]_data/x_ です。\n");
+        round_trip("配列は [.5] と書く。\n");
+        round_trip("径路は [.path]_data/x_ です。\n");
     }
 
     #[test]
     fn 段落のスタイル名が往復する() {
-        往復("[.注意書き]\nここは気をつける。\n\nふつうの段落。\n");
+        round_trip("[.注意書き]\nここは気をつける。\n\nふつうの段落。\n");
     }
 
     /// **普通の AsciiDoc の文書が開ける。** 頭の属性(`:author:` など)は
@@ -2532,12 +2532,12 @@ mod tests {
 /// `*` か `-` を段の数だけ並べ、`[ ]` か `[x]` が続く形です。
 /// `* [ ]` `** [x]` `- [ ]` のどれも作業のリストです。
 pub(crate) fn 作業のリストか(t: &str) -> bool {
-    let 印 = t.chars().next().filter(|c| *c == '*' || *c == '-');
-    let Some(印) = 印 else { return false };
-    let 残り = t.trim_start_matches(印);
-    if 残り.len() == t.len() {
+    let mark = t.chars().next().filter(|c| *c == '*' || *c == '-');
+    let Some(mark) = mark else { return false };
+    let rest = t.trim_start_matches(mark);
+    if rest.len() == t.len() {
         return false;
     }
-    let 残り = 残り.strip_prefix(' ').unwrap_or(残り);
-    残り.starts_with("[ ]") || 残り.starts_with("[x]") || 残り.starts_with("[X]")
+    let rest = rest.strip_prefix(' ').unwrap_or(rest);
+    rest.starts_with("[ ]") || rest.starts_with("[x]") || rest.starts_with("[X]")
 }

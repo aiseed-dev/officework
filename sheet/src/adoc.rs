@@ -46,18 +46,18 @@ pub fn write_report(book: &Book) -> Vec<String> {
     let mut 図形 = 0;
     let mut 画像 = 0;
     let ピボット = book.pivots.len();
-    let mut 幅 = 0;
+    let mut widths = 0;
     for s in &book.sheets {
         書式 += s.cells.values().filter(|c| !c.fmt.is_plain()).count();
         図形 += s.shapes.len();
         画像 += s.images.len() + s.images_new.len();
-        幅 += s.col_width.len() + s.row_height.len();
+        widths += s.col_width.len() + s.row_height.len();
     }
     if 書式 > 0 {
         out.push(format!("セルの書式 {} 件(見た目はテンプレートの持ち場です)", n(書式)));
     }
-    if 幅 > 0 {
-        out.push(format!("列の幅・行の高さ {} 件(見た目はテンプレートの持ち場です)", n(幅)));
+    if widths > 0 {
+        out.push(format!("列の幅・行の高さ {} 件(見た目はテンプレートの持ち場です)", n(widths)));
     }
     if 図形 > 0 {
         out.push(format!("図形 {} 件(adoc の表には置けません)", n(図形)));
@@ -83,20 +83,20 @@ pub fn parse(src: &str) -> Result<(Book, Vec<String>), String> {
 
     let mut book = Book::new();
     book.sheets.clear();
-    let mut 段落 = 0;
+    let mut paras = 0;
     for b in &doc.blocks {
         match b {
             Block::Table(t) => book.sheets.push(to_sheet(t, book.sheets.len())),
             // 見出しや本文は表計算のブックに居場所が無い
             Block::Para(p) => {
                 if !p.runs.iter().all(|r| r.text.trim().is_empty()) {
-                    段落 += 1;
+                    paras += 1;
                 }
             }
         }
     }
-    if 段落 > 0 {
-        report.push(format!("表の外の段落 {段落} 件(ブックには表しか入りません)"));
+    if paras > 0 {
+        report.push(format!("表の外の段落 {paras} 件(ブックには表しか入りません)"));
     }
     // 1枚も無いブックは作らない(calc は必ず1枚から始まる)
     if book.sheets.is_empty() {
@@ -302,7 +302,7 @@ mod tests {
         b
     }
 
-    fn 値(b: &Book, sheet: usize, a1: &str) -> String {
+    fn value(b: &Book, sheet: usize, a1: &str) -> String {
         b.sheets[sheet].value(Pos::parse(a1).unwrap()).display()
     }
 
@@ -320,15 +320,15 @@ mod tests {
     /// **往復してブックが戻る。** 値・式・シート名・見出し
     #[test]
     fn 往復で戻る() {
-        let 元 = 台帳();
-        let (戻り, report) = parse(&write(&元)).expect("読めない");
-        assert_eq!(戻り.sheets.len(), 1);
-        assert_eq!(戻り.sheets[0].name, "売上台帳");
-        assert_eq!(値(&戻り, 0, "B2"), "ボールペン");
+        let from = 台帳();
+        let (back, report) = parse(&write(&from)).expect("読めない");
+        assert_eq!(back.sheets.len(), 1);
+        assert_eq!(back.sheets[0].name, "売上台帳");
+        assert_eq!(value(&back, 0, "B2"), "ボールペン");
         // 式が生きている = 読んだ所で計算されている
-        assert_eq!(値(&戻り, 0, "D2"), "1800");
-        assert_eq!(値(&戻り, 0, "D3"), "400");
-        assert_eq!(戻り.sheets[0].get(Pos::parse("D2").unwrap()).unwrap().formula.as_deref(), Some("C2*150"));
+        assert_eq!(value(&back, 0, "D2"), "1800");
+        assert_eq!(value(&back, 0, "D3"), "400");
+        assert_eq!(back.sheets[0].get(Pos::parse("D2").unwrap()).unwrap().formula.as_deref(), Some("C2*150"));
         assert!(report.is_empty(), "落とし物があるはずがない: {report:?}");
     }
 
@@ -358,12 +358,12 @@ mod tests {
         });
         b.sheets.push(s);
         crate::calc::recalc_all(&mut b);
-        assert_eq!(値(&b, 0, "C2"), "1800");
-        assert_eq!(値(&b, 0, "D2"), "2200");
+        assert_eq!(value(&b, 0, "C2"), "1800");
+        assert_eq!(value(&b, 0, "D2"), "2200");
 
-        let (戻り, _) = parse(&write(&b)).expect("読めない");
-        assert_eq!(値(&戻り, 0, "C2"), "1800", "往復で この行の参照 が切れた");
-        assert_eq!(値(&戻り, 0, "D2"), "2200", "往復で構造化参照が切れた");
+        let (back, _) = parse(&write(&b)).expect("読めない");
+        assert_eq!(value(&back, 0, "C2"), "1800", "往復で この行の参照 が切れた");
+        assert_eq!(value(&back, 0, "D2"), "2200", "往復で構造化参照が切れた");
     }
 
     /// **人が手で書いた式が壊れない**(2026-08-19 に踏んだ穴)。
@@ -378,7 +378,7 @@ mod tests {
             Some("A2*B2*C2"),
             "式の * が太字の印として食われた"
         );
-        assert_eq!(値(&b, 0, "D2"), "24");
+        assert_eq!(value(&b, 0, "D2"), "24");
     }
 
     /// **式でない字を式にしない。** `=` の後ろに空白があれば式ではない
@@ -387,10 +387,10 @@ mod tests {
     fn 空白のある等号は式ではない() {
         let (b, _) = parse(".表\n|===\n|= 見出し |ふつう\n|===\n").expect("読めない");
         assert_eq!(b.sheets[0].get(Pos::parse("A1").unwrap()).unwrap().formula, None, "式にしてしまった");
-        assert_eq!(値(&b, 0, "A1"), "= 見出し");
+        assert_eq!(value(&b, 0, "A1"), "= 見出し");
         // 往復しても字のまま
-        let (戻り, _) = parse(&write(&b)).expect("読めない");
-        assert_eq!(値(&戻り, 0, "A1"), "= 見出し");
+        let (back, _) = parse(&write(&b)).expect("読めない");
+        assert_eq!(value(&back, 0, "A1"), "= 見出し");
     }
 
     /// 複数のシートは複数の表になる
@@ -400,10 +400,10 @@ mod tests {
         let mut s2 = Sheet::new("控え");
         s2.set(Pos::parse("A1").unwrap(), Cell::input("あ"));
         b.sheets.push(s2);
-        let (戻り, _) = parse(&write(&b)).expect("読めない");
-        assert_eq!(戻り.sheets.len(), 2);
-        assert_eq!(戻り.sheets[1].name, "控え");
-        assert_eq!(値(&戻り, 1, "A1"), "あ");
+        let (back, _) = parse(&write(&b)).expect("読めない");
+        assert_eq!(back.sheets.len(), 2);
+        assert_eq!(back.sheets[1].name, "控え");
+        assert_eq!(value(&back, 1, "A1"), "あ");
     }
 
     /// **横の結合が往復する**
@@ -417,11 +417,11 @@ mod tests {
         s.set(Pos::parse("B2").unwrap(), Cell::input("右"));
         s.merges.push((Pos::new(0, 0), Pos::new(0, 1)));
         b.sheets.push(s);
-        let (戻り, _) = parse(&write(&b)).expect("読めない");
-        assert_eq!(戻り.sheets[0].merges, vec![(Pos::new(0, 0), Pos::new(0, 1))]);
-        assert_eq!(値(&戻り, 0, "A1"), "題");
-        assert_eq!(値(&戻り, 0, "A2"), "左");
-        assert_eq!(値(&戻り, 0, "B2"), "右");
+        let (back, _) = parse(&write(&b)).expect("読めない");
+        assert_eq!(back.sheets[0].merges, vec![(Pos::new(0, 0), Pos::new(0, 1))]);
+        assert_eq!(value(&back, 0, "A1"), "題");
+        assert_eq!(value(&back, 0, "A2"), "左");
+        assert_eq!(value(&back, 0, "B2"), "右");
     }
 
     /// 表の外の段落は落とし、**落としたことを言う**
@@ -453,11 +453,11 @@ mod tests {
     #[test]
     fn 頭が0の番号は字のまま() {
         let (b, _) = parse(".台帳\n|===\n|番号 |数\n\n|001 |12\n|0007 |0.5\n|===\n").expect("読めない");
-        assert_eq!(値(&b, 0, "A2"), "001", "伝票番号が数に化けた");
-        assert_eq!(値(&b, 0, "A3"), "0007");
+        assert_eq!(value(&b, 0, "A2"), "001", "伝票番号が数に化けた");
+        assert_eq!(value(&b, 0, "A3"), "0007");
         // 本当の数は数のまま
-        assert_eq!(値(&b, 0, "B2"), "12");
-        assert_eq!(値(&b, 0, "B3"), "0.5", "0.5 まで字にしてしまった");
+        assert_eq!(value(&b, 0, "B2"), "12");
+        assert_eq!(value(&b, 0, "B3"), "0.5", "0.5 まで字にしてしまった");
     }
 
     /// **折返しのセルが往復する**(2026-08-19)。中に改行のあるセルは
@@ -472,9 +472,9 @@ mod tests {
         b.sheets.push(s);
         let src = write(&b);
         assert!(src.contains("a|一行目"), "折返しのセルが a| になっていない:\n{src}");
-        let (戻り, _) = parse(&src).expect("読めない");
-        assert_eq!(値(&戻り, 0, "A1"), "一行目\n二行目", "段落の切れ目が潰れた");
-        assert_eq!(値(&戻り, 0, "B1"), "ふつう");
+        let (back, _) = parse(&src).expect("読めない");
+        assert_eq!(value(&back, 0, "A1"), "一行目\n二行目", "段落の切れ目が潰れた");
+        assert_eq!(value(&back, 0, "B1"), "ふつう");
     }
 
     /// **升の中の縦棒で行が割れない**(2026-08-20 に見つけた)。
@@ -487,17 +487,17 @@ mod tests {
     /// 書く側だけでした。**保存で中身が壊れる**種類の欠陥です。
     #[test]
     fn 升の中の縦棒で行が割れない() {
-        for 中身 in ["A|B", "|見出し\n|中身", "|===\nおしまい", "|"] {
+        for content in ["A|B", "|見出し\n|中身", "|===\nおしまい", "|"] {
             let mut b = Book::new();
             b.sheets.clear();
             let mut s = Sheet::new("覚え");
-            s.set(Pos::parse("A1").unwrap(), Cell::input(中身));
+            s.set(Pos::parse("A1").unwrap(), Cell::input(content));
             s.set(Pos::parse("B1").unwrap(), Cell::input("番人"));
             b.sheets.push(s);
             let src = write(&b);
-            let (戻り, _) = parse(&src).expect("読めない");
-            assert_eq!(値(&戻り, 0, "A1"), 中身, "中身が戻らない:\n{src}");
-            assert_eq!(値(&戻り, 0, "B1"), "番人", "隣の升まで壊れた:\n{src}");
+            let (back, _) = parse(&src).expect("読めない");
+            assert_eq!(value(&back, 0, "A1"), content, "中身が戻らない:\n{src}");
+            assert_eq!(value(&back, 0, "B1"), "番人", "隣の升まで壊れた:\n{src}");
         }
     }
 
@@ -512,12 +512,12 @@ mod tests {
         s.set(Pos::parse("B1").unwrap(), Cell::input("番人"));
         b.sheets.push(s);
         let src = write(&b);
-        let (戻り, _) = parse(&src).expect("読めない");
-        let f = 戻り.sheets[0].get(Pos::parse("A1").unwrap()).and_then(|c| c.formula.clone());
+        let (back, _) = parse(&src).expect("読めない");
+        let f = back.sheets[0].get(Pos::parse("A1").unwrap()).and_then(|c| c.formula.clone());
         // 式は頭の `=` を落として持ちます(`Cell::input` の決め)
         assert_eq!(f.as_deref(), Some("\"A|B\""), "式が戻らない:\n{src}");
-        assert_eq!(値(&戻り, 0, "A1"), "A|B", "答えが違う");
-        assert_eq!(値(&戻り, 0, "B1"), "番人");
+        assert_eq!(value(&back, 0, "A1"), "A|B", "答えが違う");
+        assert_eq!(value(&back, 0, "B1"), "番人");
     }
 
 }

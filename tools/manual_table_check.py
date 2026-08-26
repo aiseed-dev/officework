@@ -84,39 +84,39 @@ def main():
 
     tabs = writer_buttons()
     adoc_src = ADOC.read_text(encoding="utf-8")
-    悪い = []
+    bad = []
 
     for cells in ja:
-        したいこと, 書き方, ボタン, _html = cells[0], cells[1], cells[2], cells[3]
+        したいこと, form, ボタン, _html = cells[0], cells[1], cells[2], cells[3]
 
         # ---- リボンの列 ----
         # 括弧で始まる注記(「(まだありません)」など)はボタンではない。
         # **ファイルの面と右パネルもここでは見ません** — どちらもリボンの表
         # (face/src/ribbon.rs)ではなく writer の画面の側(view.rs / panels.rs)に
         # 札があり、機械で突き合わせる相手がまだありません
-        見る = (
+        check = (
             ">" in ボタン
             and not ボタン.startswith("(")
             and not ボタン.startswith("ファイル")
             and not ボタン.startswith("右パネル")
         )
-        if 見る:
-            段, *あと = [x.strip() for x in ボタン.split(">")]
-            if 段 not in tabs:
-                悪い.append(f"{したいこと}: 「{段}」という段がありません")
-            elif あと and あと[0] not in tabs[段]:
+        if check:
+            tab, *あと = [x.strip() for x in ボタン.split(">")]
+            if tab not in tabs:
+                bad.append(f"{したいこと}: 「{tab}」という段がありません")
+            elif あと and あと[0] not in tabs[tab]:
                 # 「段 > ボタン > 一覧の項目」の形なら、見るのは真ん中まで
-                悪い.append(f"{したいこと}: 「{段}」に「{あと[0]}」のボタンがありません")
+                bad.append(f"{したいこと}: 「{tab}」に「{あと[0]}」のボタンがありません")
 
         # ---- 本文の書き方の列 ----
         # 印を1つ取って、読み手がその印を知っているか見る
-        for 印 in ("footnote:", "ruby:", "field:", "stem:", "image::", "<<<"):
-            if 印 in 書き方 and 印 not in adoc_src:
-                悪い.append(f"{したいこと}: 手引きの「{印}」を adoc の読み手が知りません")
+        for mark in ("footnote:", "ruby:", "field:", "stem:", "image::", "<<<"):
+            if mark in form and mark not in adoc_src:
+                bad.append(f"{したいこと}: 手引きの「{mark}」を adoc の読み手が知りません")
 
-    if 悪い:
+    if bad:
         print("手引きの「書き方の一覧」が実物と揃っていません:")
-        for x in 悪い:
+        for x in bad:
             print("  -", x)
         sys.exit(1)
     print(f"手引きの「書き方の一覧」は実物と揃っています({len(ja)} 行、日英で同数)")

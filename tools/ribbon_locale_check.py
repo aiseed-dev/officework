@@ -136,10 +136,10 @@ def duplicate_labels(locales: list[str]) -> int:
         name = "ribbon.rs" if loc == "ja" else f"ribbon_{loc}.rs"
         for table in ("CALC", "WRITER"):
             for tab in _tables(UI / name)[table]:
-                見た: dict[str, list[str]] = {}
+                seen: dict[str, list[str]] = {}
                 for c in tab.cmds:
-                    見た.setdefault(c.label, []).append(c.id or c.icon)
-                for label, who in 見た.items():
+                    seen.setdefault(c.label, []).append(c.id or c.icon)
+                for label, who in seen.items():
                     if len(who) > 1:
                         print(
                             f"::error::{loc} {table}/{tab.name}: "
@@ -183,23 +183,23 @@ def cross_app_ids() -> int:
     """
     t = _tables(UI / "ribbon.rs")
 
-    def 集める(表: str) -> dict[str, set[str]]:
+    def collect_into(table: str) -> dict[str, set[str]]:
         d: dict[str, set[str]] = {}
-        for tab in t[表]:
+        for tab in t[table]:
             for c in tab.cmds:
                 if c.id:
                     d.setdefault(c.label, set()).add(c.id)
         return d
 
-    w, c = 集める("WRITER"), 集める("CALC")
+    w, c = collect_into("WRITER"), collect_into("CALC")
     bad = 0
-    見た = set()
+    seen = set()
     for label in sorted(set(w) & set(c)):
         if w[label] == c[label]:
             continue
         exc = 別の働き.get(label)
         if exc and exc[0] == w[label] and exc[1] == c[label]:
-            見た.add(label)
+            seen.add(label)
             continue
         print(
             f"::error::{label!r} が、文章では {sorted(w[label])}・"
@@ -208,7 +208,7 @@ def cross_app_ids() -> int:
             "tools/ribbon_locale_check.py の 別の働き に理由を書いてください"
         )
         bad = 1
-    余り = set(別の働き) - 見た
+    余り = set(別の働き) - seen
     if 余り:
         print(
             f"::error::別の働き に書いてあるのに、いま食い違っていない組があります: "

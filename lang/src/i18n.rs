@@ -110,16 +110,16 @@ fn 札に直す(ロケール: &str) -> Option<&'static str> {
         return None;
     }
     // 国まで込みで引く(pt-br / zh-tw)
-    let 小文字 = 芯.to_ascii_lowercase();
-    if let Some(l) = 静かな札(&小文字) {
+    let lower = 芯.to_ascii_lowercase();
+    if let Some(l) = 静かな札(&lower) {
         return Some(l);
     }
-    let 言語 = 小文字.split('-').next().unwrap_or(&小文字);
+    let lang = lower.split('-').next().unwrap_or(&lower);
     // zh_HK は繁体。表に zh-hk は無いので zh-tw へ寄せる
-    if 言語 == "zh" && 小文字 == "zh-hk" {
+    if lang == "zh" && lower == "zh-hk" {
         return 静かな札("zh-tw");
     }
-    静かな札(言語)
+    静かな札(lang)
 }
 
 /// 札を、表に載っている `&'static str` に直す。無ければ `None`。
@@ -197,15 +197,15 @@ pub fn language_label(tag: &str) -> &str {
 /// 言語は 14 個で頭打ちなので、作った表はそのまま置いておきます
 /// (`Box::leak`)。
 fn lang_map() -> Option<&'static HashMap<&'static str, &'static str>> {
-    type 表 = HashMap<&'static str, &'static str>;
-    static 作った: OnceLock<std::sync::Mutex<HashMap<&'static str, Option<&'static 表>>>> =
+    type table = HashMap<&'static str, &'static str>;
+    static 作った: OnceLock<std::sync::Mutex<HashMap<&'static str, Option<&'static table>>>> =
         OnceLock::new();
     let 箱 = 作った.get_or_init(|| std::sync::Mutex::new(HashMap::new()));
     let l = language();
     let mut 箱 = 箱.lock().expect("対訳表の錠");
     *箱.entry(l).or_insert_with(|| {
         crate::i18n_tables::table(l)
-            .map(|t| &*Box::leak(Box::new(t.iter().copied().collect::<表>())))
+            .map(|t| &*Box::leak(Box::new(t.iter().copied().collect::<table>())))
     })
 }
 
@@ -336,7 +336,7 @@ mod 言語の決め方 {
     /// 残りが「錠が毒された」で落ちると、本当の原因が見えなくなります。
     static 錠: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-    fn 順番に() -> std::sync::MutexGuard<'static, ()> {
+    fn serially() -> std::sync::MutexGuard<'static, ()> {
         錠.lock().unwrap_or_else(|e| e.into_inner())
     }
 
@@ -397,7 +397,7 @@ mod 言語の決め方 {
     /// 環境変数で選べる
     #[test]
     fn 環境変数で選べる() {
-        let _錠 = 順番に();
+        let _錠 = serially();
         assert_eq!(引き直す(Some("en")), "en");
         assert_eq!(引き直す(Some("fr")), "fr", "fr は文言が揃っています");
         assert_eq!(引き直す(Some("ja")), "ja");
@@ -410,7 +410,7 @@ mod 言語の決め方 {
     /// *主張そのものが古く*なっていました(いまは揃っています)。
     #[test]
     fn 知らない札はjaに落ちる() {
-        let _錠 = 順番に();
+        let _錠 = serially();
         assert_eq!(引き直す(Some("xx")), "ja");
         assert_eq!(引き直す(Some("")), "ja");
         assert_eq!(引き直す(None), "ja", "何も無ければ既定は ja");
@@ -419,7 +419,7 @@ mod 言語の決め方 {
     /// 揃っている言語は全部受ける(表と食い違わない)
     #[test]
     fn 揃っている言語は全部受ける() {
-        let _錠 = 順番に();
+        let _錠 = serially();
         for l in crate::i18n_tables::LANGS {
             assert_eq!(引き直す(Some(l)), *l, "{l} が受けられない");
         }
@@ -432,7 +432,7 @@ mod 言語の決め方 {
     /// 機械の言語で出します。
     #[test]
     fn 設定が無ければosの言語で出る() {
-        let _錠 = 順番に();
+        let _錠 = serially();
         assert_eq!(引き直す_ロケール(None, Some("ja_JP.UTF-8")), "ja");
         assert_eq!(引き直す_ロケール(None, Some("en_US.UTF-8")), "en");
         assert_eq!(引き直す_ロケール(None, Some("de_DE.UTF-8")), "de");
@@ -447,7 +447,7 @@ mod 言語の決め方 {
     /// ポルトガル語が出ます。
     #[test]
     fn 国で分けている札は国まで見る() {
-        let _錠 = 順番に();
+        let _錠 = serially();
         assert_eq!(引き直す_ロケール(None, Some("pt_BR.UTF-8")), "pt-br");
         assert_eq!(引き直す_ロケール(None, Some("pt_PT.UTF-8")), "pt");
         assert_eq!(引き直す_ロケール(None, Some("zh_TW.UTF-8")), "zh-tw");
@@ -459,7 +459,7 @@ mod 言語の決め方 {
     /// **書いてある設定が OS より強い。** 機械が英語でも、選んだ言語で出ます
     #[test]
     fn 書いた設定がosより強い() {
-        let _錠 = 順番に();
+        let _錠 = serially();
         assert_eq!(引き直す_ロケール(Some("ja"), Some("en_US.UTF-8")), "ja");
         assert_eq!(引き直す_ロケール(Some("de"), Some("ja_JP.UTF-8")), "de");
     }
@@ -467,7 +467,7 @@ mod 言語の決め方 {
     /// OS の言語も読めなければ ja(いままでどおり)
     #[test]
     fn osの言語も読めなければja() {
-        let _錠 = 順番に();
+        let _錠 = serially();
         for l in ["C", "POSIX", "", "xx_YY.UTF-8"] {
             assert_eq!(引き直す_ロケール(None, Some(l)), "ja", "{l:?} で ja に落ちない");
         }
@@ -477,13 +477,13 @@ mod 言語の決め方 {
     /// [`set_language`] はいつ呼んでも効く(2026-08-19 の決め)
     #[test]
     fn 注いだ言語はいつでも効く() {
-        let _錠 = 順番に();
-        let 元 = *LANG.read().expect("言語の錠");
+        let _錠 = serially();
+        let from = *LANG.read().expect("言語の錠");
         assert!(set_language("de"));
         assert_eq!(language(), "de");
         assert!(set_language("ja"));
         assert_eq!(language(), "ja");
         assert!(!set_language("xx"), "知らない札は断る");
-        *LANG.write().expect("言語の錠") = 元;
+        *LANG.write().expect("言語の錠") = from;
     }
 }

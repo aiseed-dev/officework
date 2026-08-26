@@ -425,8 +425,8 @@ pub fn read_theme(at: &std::path::Path) -> Option<Theme> {
 ///
 /// `値` は TOML の値としてそのまま書きます。文字列なら `"…"` で囲んだ字を
 /// 渡してください。
-pub fn put(src: &str, section: &str, key: &str, 値: &str) -> String {
-    let 行 = format!("{key} = {値}");
+pub fn put(src: &str, section: &str, key: &str, value: &str) -> String {
+    let line = format!("{key} = {value}");
     let mut out: Vec<String> = Vec::new();
     let mut 節の中 = false;
     let mut 済んだ = false;
@@ -436,7 +436,7 @@ pub fn put(src: &str, section: &str, key: &str, 値: &str) -> String {
         if let Some(name) = t.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
             // 目当ての節から出るところ。まだ書けていなければここで足す
             if 節の中 && !済んだ {
-                out.push(行.clone());
+                out.push(line.clone());
                 済んだ = true;
             }
             節の中 = name.trim() == section;
@@ -447,7 +447,7 @@ pub fn put(src: &str, section: &str, key: &str, 値: &str) -> String {
         if 節の中 && !済んだ {
             if let Some((k, _)) = t.split_once('=') {
                 if k.trim() == key {
-                    out.push(行.clone());
+                    out.push(line.clone());
                     済んだ = true;
                     continue;
                 }
@@ -462,7 +462,7 @@ pub fn put(src: &str, section: &str, key: &str, 値: &str) -> String {
             }
             out.push(format!("[{section}]"));
         }
-        out.push(行);
+        out.push(line);
     }
     let mut s = out.join("\n");
     s.push('\n');
@@ -484,29 +484,29 @@ pub fn user_theme(config_dir: &std::path::Path) -> Theme {
 }
 
 /// 2つのテンプレートを重ねる。**上が言っていないことだけ下から取ります**。
-pub fn merge(mut 上: Theme, 下: Theme) -> Theme {
-    if 上.font.is_none() {
-        上.font = 下.font;
+pub fn merge(mut top: Theme, below: Theme) -> Theme {
+    if top.font.is_none() {
+        top.font = below.font;
     }
-    if 上.size_pt.is_none() {
-        上.size_pt = 下.size_pt;
+    if top.size_pt.is_none() {
+        top.size_pt = below.size_pt;
     }
-    if 上.page.is_none() {
-        上.page = 下.page;
+    if top.page.is_none() {
+        top.page = below.page;
     }
-    if 上.header.is_none() {
-        上.header = 下.header;
+    if top.header.is_none() {
+        top.header = below.header;
     }
-    if 上.footer.is_none() {
-        上.footer = 下.footer;
+    if top.footer.is_none() {
+        top.footer = below.footer;
     }
-    if 上.watermark.is_none() {
-        上.watermark = 下.watermark;
+    if top.watermark.is_none() {
+        top.watermark = below.watermark;
     }
     // 言語ごとの分も**札で重ねます**。上に同じ札があればそちらが勝ち、
     // 上が書体だけ言っているなら大きさは下から取ります
-    for (tag, d) in 下.lang_docs {
-        match 上.lang_docs.iter_mut().find(|(t, _)| *t == tag) {
+    for (tag, d) in below.lang_docs {
+        match top.lang_docs.iter_mut().find(|(t, _)| *t == tag) {
             Some((_, u)) => {
                 if u.font.is_none() {
                     u.font = d.font;
@@ -515,16 +515,16 @@ pub fn merge(mut 上: Theme, 下: Theme) -> Theme {
                     u.size_pt = d.size_pt;
                 }
             }
-            None => 上.lang_docs.push((tag, d)),
+            None => top.lang_docs.push((tag, d)),
         }
     }
     // スタイルは**名前で重ねます**。上に同じ名前があればそちらが勝ちます
-    for d in 下.styles {
-        if !上.styles.iter().any(|x| x.name == d.name) {
-            上.styles.push(d);
+    for d in below.styles {
+        if !top.styles.iter().any(|x| x.name == d.name) {
+            top.styles.push(d);
         }
     }
-    上
+    top
 }
 
 /// TOML(部分集合)からテンプレートを読む。
@@ -550,26 +550,26 @@ fn strip_note(line: &str) -> &str {
 /// 配列で書くので、1つの値が何行にもまたがります(2026-08-18)。
 fn 論理行(src: &str) -> Vec<(usize, String)> {
     let mut out: Vec<(usize, String)> = Vec::new();
-    let mut 続き: Option<(usize, String)> = None;
+    let mut cont: Option<(usize, String)> = None;
     for (ln, raw) in src.lines().enumerate() {
         let line = strip_note(raw).trim();
-        if line.is_empty() && 続き.is_none() {
+        if line.is_empty() && cont.is_none() {
             continue;
         }
-        match &mut 続き {
+        match &mut cont {
             Some((_, s)) => {
                 s.push(' ');
                 s.push_str(line);
             }
-            None => 続き = Some((ln, line.to_string())),
+            None => cont = Some((ln, line.to_string())),
         }
-        let (開始, s) = 続き.as_ref().expect("いま入れた");
+        let (開始, s) = cont.as_ref().expect("いま入れた");
         if 釣り合う(s) {
             out.push((*開始, s.clone()));
-            続き = None;
+            cont = None;
         }
     }
-    if let Some(x) = 続き {
+    if let Some(x) = cont {
         out.push(x); // 閉じていない — 値を読むところで指摘が出ます
     }
     out
@@ -577,17 +577,17 @@ fn 論理行(src: &str) -> Vec<(usize, String)> {
 
 /// `[` `{` と `]` `}` の数が釣り合っているか(囲みの中の字は数えません)
 fn 釣り合う(s: &str) -> bool {
-    let mut 深さ = 0i32;
-    let mut 囲み = false;
+    let mut depth = 0i32;
+    let mut boxed = false;
     for c in s.chars() {
         match c {
-            '"' => 囲み = !囲み,
-            '[' | '{' if !囲み => 深さ += 1,
-            ']' | '}' if !囲み => 深さ -= 1,
+            '"' => boxed = !boxed,
+            '[' | '{' if !boxed => depth += 1,
+            ']' | '}' if !boxed => depth -= 1,
             _ => {}
         }
     }
-    深さ <= 0
+    depth <= 0
 }
 
 /// **日本語のキーを `"…"` で囲んでから**ライブラリに渡します。
@@ -603,16 +603,16 @@ fn キーを囲む(v: &str) -> String {
     let b: Vec<char> = v.chars().collect();
     let mut out = String::new();
     let mut i = 0usize;
-    let mut 囲み = false;
+    let mut boxed = false;
     while i < b.len() {
         let c = b[i];
         if c == '"' {
-            囲み = !囲み;
+            boxed = !boxed;
             out.push(c);
             i += 1;
             continue;
         }
-        if 囲み || !(c.is_alphanumeric() && !c.is_ascii()) {
+        if boxed || !(c.is_alphanumeric() && !c.is_ascii()) {
             out.push(c);
             i += 1;
             continue;
@@ -626,13 +626,13 @@ fn キーを囲む(v: &str) -> String {
         while k < b.len() && b[k] == ' ' {
             k += 1;
         }
-        let 語: String = b[i..j].iter().collect();
+        let word: String = b[i..j].iter().collect();
         if k < b.len() && b[k] == '=' {
             out.push('"');
-            out.push_str(&語);
+            out.push_str(&word);
             out.push('"');
         } else {
-            out.push_str(&語);
+            out.push_str(&word);
         }
         i = j;
     }
@@ -711,26 +711,26 @@ pub fn parse(src: &str) -> Result<Theme, String> {
         // 中の \" や、配列・`{ }` の入れ子まで自分で読むと、不具合の方が
         // 多くなります。節とキーの読みはこちらに残します — TOML の素の
         // キーは英数字だけと決まっていて、日本語のキーが通らないためです
-        let 値 = |v: &str| -> Result<toml_edit::Value, String> {
+        let value = |v: &str| -> Result<toml_edit::Value, String> {
             キーを囲む(v)
                 .parse::<toml_edit::Value>()
                 .map_err(|e| format!("{} 行目: 値が読めません: {}", ln + 1, 一行に(&e.to_string())))
         };
         let s = |v: &str| -> Result<String, String> {
-            値(v)?
+            value(v)?
                 .as_str()
                 .map(|x| x.to_string())
                 .ok_or_else(|| format!("{} 行目: 文字列は \"…\" で囲みます: {v}", ln + 1))
         };
         let n = |v: &str| -> Result<f32, String> {
-            let x = 値(v)?;
+            let x = value(v)?;
             x.as_float()
                 .map(|f| f as f32)
                 .or_else(|| x.as_integer().map(|f| f as f32))
                 .ok_or_else(|| format!("{} 行目: 数で書いてください: {v}", ln + 1))
         };
         let b = |v: &str| -> Result<bool, String> {
-            値(v)?
+            value(v)?
                 .as_bool()
                 .ok_or_else(|| format!("{} 行目: true か false で書いてください: {v}", ln + 1))
         };
@@ -856,10 +856,10 @@ pub fn parse(src: &str) -> Result<Theme, String> {
                 }
             }
             Some(Sec::Form(i)) => {
-                let 名 = th.forms[*i].name.clone();
+                let name = th.forms[*i].name.clone();
                 match k {
-                    "行" | "rows" => th.forms[*i].rows = 升目を読む(&値(v)?, &名, ln)?,
-                    _ => return Err(format!("{} 行目: [様式.{名}] の知らないキー: {k}", ln + 1)),
+                    "行" | "rows" => th.forms[*i].rows = 升目を読む(&value(v)?, &name, ln)?,
+                    _ => return Err(format!("{} 行目: [様式.{name}] の知らないキー: {k}", ln + 1)),
                 }
             }
         }
@@ -873,17 +873,17 @@ pub fn parse(src: &str) -> Result<Theme, String> {
 }
 
 /// 様式の `行 = [ { 升 = […], 幅 = […] }, … ]` を読む。
-fn 升目を読む(v: &toml_edit::Value, 名: &str, ln: usize) -> Result<Vec<FormRow>, String> {
-    let 何行目 = |i: usize| format!("{} 行目: [様式.{名}] の {} 行目", ln + 1, i + 1);
+fn 升目を読む(v: &toml_edit::Value, name: &str, ln: usize) -> Result<Vec<FormRow>, String> {
+    let line_no = |i: usize| format!("{} 行目: [様式.{name}] の {} 行目", ln + 1, i + 1);
     let Some(配列) = v.as_array() else {
-        return Err(format!("{} 行目: [様式.{名}] の 行 は配列で書いてください", ln + 1));
+        return Err(format!("{} 行目: [様式.{name}] の 行 は配列で書いてください", ln + 1));
     };
     let mut out = Vec::new();
-    for (i, 行) in 配列.iter().enumerate() {
-        let Some(tbl) = 行.as_inline_table() else {
+    for (i, line) in 配列.iter().enumerate() {
+        let Some(tbl) = line.as_inline_table() else {
             return Err(format!(
                 "{}は {{ 升 = [\"項目の名前\"] }} の形で書いてください",
-                何行目(i)
+                line_no(i)
             ));
         };
         let mut r = FormRow::default();
@@ -891,13 +891,13 @@ fn 升目を読む(v: &toml_edit::Value, 名: &str, ln: usize) -> Result<Vec<For
             match k {
                 "升" | "cells" => {
                     let Some(a) = v.as_array() else {
-                        return Err(format!("{}の 升 は配列で書いてください", 何行目(i)));
+                        return Err(format!("{}の 升 は配列で書いてください", line_no(i)));
                     };
                     for c in a.iter() {
                         let Some(s) = c.as_str() else {
                             return Err(format!(
                                 "{}の 升 には項目の名前を \"…\" で書いてください",
-                                何行目(i)
+                                line_no(i)
                             ));
                         };
                         r.cells.push(s.to_string());
@@ -905,21 +905,21 @@ fn 升目を読む(v: &toml_edit::Value, 名: &str, ln: usize) -> Result<Vec<For
                 }
                 "幅" | "widths" => {
                     let Some(a) = v.as_array() else {
-                        return Err(format!("{}の 幅 は配列で書いてください", 何行目(i)));
+                        return Err(format!("{}の 幅 は配列で書いてください", line_no(i)));
                     };
                     for c in a.iter() {
                         let n = c
                             .as_float()
                             .or_else(|| c.as_integer().map(|x| x as f64))
-                            .ok_or_else(|| format!("{}の 幅 は数で書いてください", 何行目(i)))?;
+                            .ok_or_else(|| format!("{}の 幅 は数で書いてください", line_no(i)))?;
                         r.widths.push(n as f32);
                     }
                 }
-                _ => return Err(format!("{}の知らないキー: {k}", 何行目(i))),
+                _ => return Err(format!("{}の知らないキー: {k}", line_no(i))),
             }
         }
         if r.cells.is_empty() {
-            return Err(format!("{}に 升 がありません", 何行目(i)));
+            return Err(format!("{}に 升 がありません", line_no(i)));
         }
         out.push(r);
     }
@@ -1026,8 +1026,8 @@ pub fn write(th: &Theme) -> String {
             let 升: Vec<String> = r.cells.iter().map(|c| format!("\"{c}\"")).collect();
             s.push_str(&format!("  {{ 升 = [{}]", 升.join(", ")));
             if !r.widths.is_empty() {
-                let 幅: Vec<String> = r.widths.iter().map(|w| num(*w)).collect();
-                s.push_str(&format!(", 幅 = [{}]", 幅.join(", ")));
+                let widths: Vec<String> = r.widths.iter().map(|w| num(*w)).collect();
+                s.push_str(&format!(", 幅 = [{}]", widths.join(", ")));
             }
             s.push_str(" },\n");
         }
@@ -1169,11 +1169,11 @@ pub fn compose_page(out: &mut Document, theme: &Theme) {
         if t.col_ratio.is_empty() {
             continue;
         }
-        let 和: f32 = t.col_ratio.iter().sum();
-        if 和 <= 0.0 {
+        let sum: f32 = t.col_ratio.iter().sum();
+        if sum <= 0.0 {
             continue;
         }
-        t.col_mm = t.col_ratio.iter().map(|v| v / 和 * 行長).collect();
+        t.col_mm = t.col_ratio.iter().map(|v| v / sum * 行長).collect();
     }
 }
 
@@ -1186,7 +1186,7 @@ pub fn compose_page(out: &mut Document, theme: &Theme) {
 /// 返りは利用者に見せる言葉です。**対応の付かない項目と、埋まらない升は
 /// 必ず言います**。黙って落とすと、空欄の申請書ができあがります。
 pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
-    let Some(名) = out
+    let Some(name) = out
         .attrs
         .iter()
         .find(|(k, _)| k == "様式" || k == "form")
@@ -1195,8 +1195,8 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
     else {
         return Vec::new();
     };
-    let Some(form) = theme.forms.iter().find(|f| f.name == 名) else {
-        return vec![format!("様式「{名}」がテンプレートにありません")];
+    let Some(form) = theme.forms.iter().find(|f| f.name == name) else {
+        return vec![format!("様式「{name}」がテンプレートにありません")];
     };
 
     // 本文のラベル付きリストを集める(名前 → 値)。並びは書いた順
@@ -1207,19 +1207,19 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
         if p.style_id.as_deref() != Some("説明のリスト") {
             continue;
         }
-        let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
-        if let Some((名, 値)) = 字.split_once(":: ") {
-            項目.push((名.trim().to_string(), 値.trim().to_string()));
+        let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+        if let Some((name, value)) = text.split_once(":: ") {
+            項目.push((name.trim().to_string(), value.trim().to_string()));
             元の場所.push(i);
         }
     }
     if 元の場所.is_empty() {
-        return vec![format!("様式「{名}」を使う本文がありません(`項目:: 値` で書きます)")];
+        return vec![format!("様式「{name}」を使う本文がありません(`項目:: 値` で書きます)")];
     }
 
     // 升目を組む。1つの升は「項目の名前」と「値」の2つのセットになります
-    let mut 使った: Vec<String> = Vec::new();
-    let mut 言うこと: Vec<String> = Vec::new();
+    let mut used: Vec<String> = Vec::new();
+    let mut says: Vec<String> = Vec::new();
     // **升目は 100 桁の格子**で組みます(2026-08-18)。
     //
     // 行ごとに升の数が違うのが様式の普通の姿です(1行目は1つ、2行目は2つ)。
@@ -1229,31 +1229,31 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
     const 格子: u16 = 100;
     let mut rows: Vec<Vec<crate::doc::Cellbox>> = Vec::new();
     for r in &form.rows {
-        let mut 中身: Vec<(String, String)> = Vec::new();
+        let mut content: Vec<(String, String)> = Vec::new();
         for c in &r.cells {
-            let 値 = 項目.iter().find(|(n, _)| n == c).map(|(_, v)| v.clone());
-            if 値.is_none() {
-                言うこと.push(format!("升「{c}」に入れる項目が本文にありません"));
+            let value = 項目.iter().find(|(n, _)| n == c).map(|(_, v)| v.clone());
+            if value.is_none() {
+                says.push(format!("升「{c}」に入れる項目が本文にありません"));
             } else {
-                使った.push(c.clone());
+                used.push(c.clone());
             }
-            中身.push((c.clone(), 値.unwrap_or_default()));
+            content.push((c.clone(), value.unwrap_or_default()));
         }
         // この行のセルの数(名前と値で2つずつ)
-        let n = 中身.len() * 2;
-        let 幅 = 桁を割る(&r.widths, n, 格子);
+        let n = content.len() * 2;
+        let widths = 桁を割る(&r.widths, n, 格子);
         let mut row = Vec::new();
-        for (i, (名, 値)) in 中身.iter().enumerate() {
-            row.push(升幅(名, 幅[i * 2]));
-            row.push(升幅(値, 幅[i * 2 + 1]));
+        for (i, (name, value)) in content.iter().enumerate() {
+            row.push(升幅(name, widths[i * 2]));
+            row.push(升幅(value, widths[i * 2 + 1]));
         }
         rows.push(row);
     }
     // 格子はぜんぶ同じ幅(1%)。幅はセルの占める桁数で表しています
     let 比: Vec<f32> = Vec::new();
     for (n, _) in &項目 {
-        if !使った.contains(n) {
-            言うこと.push(format!("項目「{n}」に対応する升が様式にありません"));
+        if !used.contains(n) {
+            says.push(format!("項目「{n}」に対応する升が様式にありません"));
         }
     }
 
@@ -1264,33 +1264,33 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
         out.blocks.remove(*i);
     }
     out.blocks.insert(差し込む先, Block::Table(t));
-    言うこと
+    says
 }
 
 /// **幅の指定を、格子の桁数に割ります。**
 ///
 /// `幅` が無ければ等分します。数が足りない・多いときは、書いた分だけ使って
 /// 残りを等分します。合計は必ず格子の数にします(端数は最後の升に寄せます)
-fn 桁を割る(幅: &[f32], n: usize, 格子: u16) -> Vec<u8> {
+fn 桁を割る(widths: &[f32], n: usize, 格子: u16) -> Vec<u8> {
     if n == 0 {
         return Vec::new();
     }
     let mut w: Vec<f32> = (0..n)
-        .map(|i| 幅.get(i).copied().filter(|x| *x > 0.0).unwrap_or(0.0))
+        .map(|i| widths.get(i).copied().filter(|x| *x > 0.0).unwrap_or(0.0))
         .collect();
     // 書いていない分は、残りを等分する
     let 書いた: f32 = w.iter().sum();
     let 空き = w.iter().filter(|x| **x <= 0.0).count();
     if 空き > 0 {
-        let 残り = (格子 as f32 - 書いた).max(空き as f32);
+        let rest = (格子 as f32 - 書いた).max(空き as f32);
         for x in w.iter_mut().filter(|x| **x <= 0.0) {
-            *x = 残り / 空き as f32;
+            *x = rest / 空き as f32;
         }
     }
-    let 和: f32 = w.iter().sum();
+    let sum: f32 = w.iter().sum();
     let mut out: Vec<u8> = w
         .iter()
-        .map(|x| ((x / 和 * 格子 as f32).round() as i64).clamp(1, 255) as u8)
+        .map(|x| ((x / sum * 格子 as f32).round() as i64).clamp(1, 255) as u8)
         .collect();
     // 端数で合計がずれるので、最後の升で帳尻を合わせます
     let 差 = 格子 as i64 - out.iter().map(|x| *x as i64).sum::<i64>();
@@ -1301,19 +1301,19 @@ fn 桁を割る(幅: &[f32], n: usize, 格子: u16) -> Vec<u8> {
 }
 
 /// 升1つ(字と、占める桁数)
-fn 升幅(字: &str, 桁: u8) -> crate::doc::Cellbox {
-    let mut c = 升(字);
-    c.col_span = 桁;
+fn 升幅(text: &str, cols: u8) -> crate::doc::Cellbox {
+    let mut c = 升(text);
+    c.col_span = cols;
     c
 }
 
 /// 升1つ(字を1つ入れたセル)
-fn 升(字: &str) -> crate::doc::Cellbox {
+fn 升(text: &str) -> crate::doc::Cellbox {
     crate::doc::Cellbox {
         paragraphs: vec![crate::doc::Paragraph {
             line_spacing: 1.0,
             runs: vec![crate::doc::Run {
-                text: 字.to_string(),
+                text: text.to_string(),
                 size_pt: None,
                 font: None,
                 fmt: Default::default(),
@@ -1483,16 +1483,16 @@ mod tests {
     #[test]
     fn 様式は本文と名前で結ぶ() {
         let (mut doc, th) = 申請書();
-        let 言うこと = apply_forms(&mut doc, &th);
-        assert!(言うこと.is_empty(), "何か言われた: {言うこと:?}");
+        let says = apply_forms(&mut doc, &th);
+        assert!(says.is_empty(), "何か言われた: {says:?}");
         let t = doc.tables().next().expect("升目にならない");
         assert_eq!(t.rows.len(), 2);
         // 1つの升は「名前」と「値」の2つ。幅は 100 桁の格子で表す
-        let 字 = |c: &crate::doc::Cellbox| -> String {
+        let text = |c: &crate::doc::Cellbox| -> String {
             c.paragraphs.iter().flat_map(|p| p.runs.iter()).map(|r| r.text.as_str()).collect()
         };
-        assert_eq!(字(&t.rows[0][0]), "申請日");
-        assert_eq!(字(&t.rows[0][1]), "8月18日");
+        assert_eq!(text(&t.rows[0][0]), "申請日");
+        assert_eq!(text(&t.rows[0][1]), "8月18日");
         assert_eq!(t.rows[0][0].span(), 30, "幅の指定が効いていない");
         assert_eq!(t.rows[0][1].span(), 70);
         // 幅を書いていない行は等分(4つで 100)
@@ -1511,9 +1511,9 @@ mod tests {
             "= 題\n:様式: 申請書\n\n申請日:: 8月18日\n電話:: 03-0000-0000\n",
         )
         .unwrap();
-        let 言うこと = apply_forms(&mut doc, &th);
-        assert!(言うこと.iter().any(|s| s.contains("升「部署」")), "{言うこと:?}");
-        assert!(言うこと.iter().any(|s| s.contains("項目「電話」")), "{言うこと:?}");
+        let says = apply_forms(&mut doc, &th);
+        assert!(says.iter().any(|s| s.contains("升「部署」")), "{says:?}");
+        assert!(says.iter().any(|s| s.contains("項目「電話」")), "{says:?}");
     }
 
     #[test]
@@ -1675,9 +1675,9 @@ mod tests {
 
     #[test]
     fn 重ねるときは言語の分も札で重なる() {
-        let 上 = parse("[文書.en]\n書体 = \"Georgia\"\n").unwrap();
-        let 下 = parse("[文書.en]\n書体 = \"Arial\"\n大きさ = 11\n[文書.ko]\n大きさ = 10\n").unwrap();
-        let m = merge(上, 下);
+        let top = parse("[文書.en]\n書体 = \"Georgia\"\n").unwrap();
+        let below = parse("[文書.en]\n書体 = \"Arial\"\n大きさ = 11\n[文書.ko]\n大きさ = 10\n").unwrap();
+        let m = merge(top, below);
         let en = m.for_language("en");
         assert_eq!(en.font.as_deref(), Some("Georgia"), "上の書体が負けた");
         assert_eq!(en.size_pt, Some(11.0), "上が言っていない大きさを下から取れていない");
@@ -1686,9 +1686,9 @@ mod tests {
 
     #[test]
     fn 書き入れても手で書いた行が残る() {
-        let 元 = "# 自分で書いた注釈\n[文書]\n大きさ = 12\n\n[ページ]\n余白 = 20\n";
+        let from = "# 自分で書いた注釈\n[文書]\n大きさ = 12\n\n[ページ]\n余白 = 20\n";
         // 節はあってキーが無い — 節の終わりに足す
-        let a = put(元, "文書", "書体", "\"IPA明朝\"");
+        let a = put(from, "文書", "書体", "\"IPA明朝\"");
         assert!(a.contains("# 自分で書いた注釈"), "注釈が消えた:\n{a}");
         assert!(a.contains("余白 = 20"), "他の節が消えた:\n{a}");
         let th = parse(&a).unwrap();
@@ -1699,7 +1699,7 @@ mod tests {
         assert_eq!(b.matches("書体 =").count(), 1, "同じキーが2行になった:\n{b}");
         assert_eq!(parse(&b).unwrap().font.as_deref(), Some("IPAexゴシック"));
         // 節ごと無い — 末尾に足す
-        let c = put(元, "文書.ko", "書体", "\"NanumGothic\"");
+        let c = put(from, "文書.ko", "書体", "\"NanumGothic\"");
         assert_eq!(
             parse(&c).unwrap().for_language("ko").font.as_deref(),
             Some("NanumGothic"),

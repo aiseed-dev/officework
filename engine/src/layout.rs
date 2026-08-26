@@ -480,17 +480,17 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // 記入欄と同じ ☐ / ☑ で出します(画面の作法を揃える)
                 let 作業 = 作業のリスト(para);
                 let para_eff_check;
-                let para = if let Some((印, 本文, 段)) = 作業 {
+                let para = if let Some((mark, body, tab)) = 作業 {
                     let mut q = para.clone();
-                    q.indent = 段;
-                    let mut 残り = 本文.as_str();
+                    q.indent = tab;
+                    let mut rest = body.as_str();
                     for r in &mut q.runs {
-                        let n = r.text.len().min(残り.len());
-                        r.text = 残り[..n].to_string();
-                        残り = &残り[n..];
+                        let n = r.text.len().min(rest.len());
+                        r.text = rest[..n].to_string();
+                        rest = &rest[n..];
                     }
                     if let Some(r) = q.runs.first_mut() {
-                        r.text = format!("{印}{}", r.text);
+                        r.text = format!("{mark}{}", r.text);
                     }
                     para_eff_check = q;
                     &para_eff_check
@@ -510,16 +510,16 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     para_byte0 += para.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
                     continue;
                 }
-                let 等幅 = (para.style_id.as_deref() == Some("塊の中"))
+                let mono = (para.style_id.as_deref() == Some("塊の中"))
                     .then(crate::font::monospace)
                     .flatten()
                     .map(|f| f.name.clone());
                 let para_eff_mono;
-                let para = if let Some(名) = 等幅 {
+                let para = if let Some(name) = mono {
                     let mut q = para.clone();
                     for r in &mut q.runs {
                         if r.font.is_none() {
-                            r.font = Some(名.clone());
+                            r.font = Some(name.clone());
                         }
                     }
                     para_eff_mono = q;
@@ -592,10 +592,10 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 let para_eff: &Paragraph = owned_rest.as_ref().unwrap_or(para);
                 let measure = (measure - cap_shift).max(em);
                 let first_mm = first_line_mm(para_eff);
-                for (何行目, mut cells) in break_para(para_eff, m, measure, marker.as_deref(),
+                for (line_no, mut cells) in break_para(para_eff, m, measure, marker.as_deref(),
                                             doc.hyphenate, &mut note_no, base).into_iter().enumerate() {
                     // 1行目だけ字下げのぶん右へ(行長は組み手が縮めている)
-                    let 字下げ = if 何行目 == 0 { first_mm } else { 0.0 };
+                    let 字下げ = if line_no == 0 { first_mm } else { 0.0 };
                     // 頭の1字を除いたぶん、バイト位置を戻す
                     if cap_len > 0 {
                         for c in &mut cells {
@@ -1399,17 +1399,17 @@ fn 作業のリスト(p: &Paragraph) -> Option<(&'static str, String, u8)> {
     if p.style_id.as_deref() != Some("チェック") {
         return None;
     }
-    let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+    let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
     // 印は `*` でも `-`(Markdown の書き方)でもよい
-    let 頭 = 字.chars().next().unwrap_or('*');
-    let 星 = 字.chars().take_while(|c| *c == 頭).count();
-    let 残り = 字.trim_start_matches(頭).trim_start();
-    let (印, 本文) = if let Some(r) = 残り.strip_prefix("[x] ").or_else(|| 残り.strip_prefix("[X] ")) {
+    let head = text.chars().next().unwrap_or('*');
+    let stars = text.chars().take_while(|c| *c == head).count();
+    let rest = text.trim_start_matches(head).trim_start();
+    let (mark, body) = if let Some(r) = rest.strip_prefix("[x] ").or_else(|| rest.strip_prefix("[X] ")) {
         ("☑ ", r)
-    } else if let Some(r) = 残り.strip_prefix("[ ] ") {
+    } else if let Some(r) = rest.strip_prefix("[ ] ") {
         ("☐ ", r)
     } else {
         return None;
     };
-    Some((印, 本文.to_string(), 星.saturating_sub(1) as u8))
+    Some((mark, body.to_string(), stars.saturating_sub(1) as u8))
 }

@@ -116,13 +116,13 @@ class Office:
         """**窓が育ちきるまで待つ。** 途中の姿で測ると倍率を誤り、以後
         ずっと別の場所を押します(writer_shot が 2026-08-17 に踏んだ跡)。
         """
-        前 = None
+        before = None
         for _ in range(40):
             w = self.window()
             now = (w[3], w[4]) if w else None
-            if now and now == 前:
+            if now and now == before:
                 break
-            前 = now
+            before = now
             time.sleep(0.25)
         time.sleep(0.6)
 
@@ -264,8 +264,8 @@ class Office:
 
 
 if __name__ == "__main__":
-    出 = sys.argv[1] if len(sys.argv) > 1 else "/tmp/office-shot"
-    a = Office(出)
+    out = sys.argv[1] if len(sys.argv) > 1 else "/tmp/office-shot"
+    a = Office(out)
     try:
         w = a.window()
         s = a.scale()

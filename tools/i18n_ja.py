@@ -25,13 +25,13 @@ I18N = ROOT / "ui/i18n"
 def _表():
     """記号の鍵 → 日本語。**一度読んで取っておきます。**"""
     if not hasattr(_表, "値"):
-        _表.値 = json.loads((I18N / "ja.json").read_text(encoding="utf-8"))
-    return _表.値
+        _表.value = json.loads((I18N / "ja.json").read_text(encoding="utf-8"))
+    return _表.value
 
 
-def 日本語(鍵: str) -> str:
+def 日本語(keys: str) -> str:
     """記号の鍵を日本語に。表に無ければ鍵をそのまま返します。"""
-    return _表().get(鍵, 鍵)
+    return _表().get(keys, keys)
 
 
 def 画面の日本語() -> set:
@@ -40,14 +40,14 @@ def 画面の日本語() -> set:
     ja.json の訳(文言もリボンの語も入っています)に、リボンの札を足します。
     リボンの札は段2までコードの中に日本語で書いてあるので、そのまま拾えます。
     """
-    出 = set(_表().values())
+    out = set(_表().values())
     # **リボンの札は ribbon_ja.rs から。** 土台の ribbon.rs は英語です
     # (2026-08-26 の段2)
     ja = ROOT / "face/src/ribbon_ja.rs"
     if ja.exists():
         import re
         t = ja.read_text(encoding="utf-8")
-        出 |= set(re.findall(r'(?:c|t)\("[^"]*",\s*"((?:[^"\\]|\\.)*)"', t))
-        出 |= set(re.findall(r'(?:x|xt|xm)\("((?:[^"\\]|\\.)*)"', t))
-        出 |= set(re.findall(r'Tab \{ name: "([^"]+)"', t))
-    return 出
+        out |= set(re.findall(r'(?:c|t)\("[^"]*",\s*"((?:[^"\\]|\\.)*)"', t))
+        out |= set(re.findall(r'(?:x|xt|xm)\("((?:[^"\\]|\\.)*)"', t))
+        out |= set(re.findall(r'Tab \{ name: "([^"]+)"', t))
+    return out

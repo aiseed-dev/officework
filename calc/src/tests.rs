@@ -217,7 +217,7 @@ mod validation_tests {
             this.dv_ok(cx);
             assert!(this.dv_dlg.is_none(), "OK でパネルが閉じない");
             let v = &this.sheet().validations[0];
-            assert_eq!((v.kind.as_str(), v.op.as_str()), ("whole", "between_2"));
+            assert_eq!((v.kind.as_str(), v.op.as_str()), ("whole", "between"));
             assert_eq!((v.formula.as_str(), v.formula2.as_str()), ("1", "100"));
             // 警告なので、範囲の外も通して言うだけ
             this.anchor = None;
@@ -2067,7 +2067,7 @@ mod pivot_tests {
         .iter()
         .map(|r| r.iter().map(|s| s.to_string()).collect())
         .collect();
-        let 並び = |so: &str| -> Option<Vec<String>> {
+        let order = |so: &str| -> Option<Vec<String>> {
             let mut d = def(&["区分"], &[], "金額", "sum");
             d.sort = so.to_string();
             let (g, _) = run_py(pivot_spec_json(&headers, &rows, &d))?;
@@ -2075,7 +2075,7 @@ mod pivot_tests {
         };
         // **黙って飛ばさない。** `.venv` があるのに動かないなら、それは
         // 「試験が無い」と同じ — 2026-08-13、壊しても通ることに気づいた
-        let Some(素) = 並び("") else {
+        let Some(plain) = order("") else {
             assert!(
                 !std::path::Path::new("../.venv/bin/python").exists()
                     && !std::path::Path::new(".venv/bin/python").exists(),
@@ -2086,12 +2086,12 @@ mod pivot_tests {
         // **昇順は polars の素の並びと同じ**なので、この試験だけでは
         // 効いている証拠にならない(2026-08-13、壊しても通ることを確認した)。
         // 見出しの側は降順が、値の側は両方が、実際に並びを変える
-        assert_eq!(並び("見出しの昇順").unwrap(), vec!["A", "B", "C"], "見出しの昇順が効かない");
-        assert_eq!(並び("見出しの降順").unwrap(), vec!["C", "B", "A"], "見出しの降順が効かない");
-        assert_eq!(並び("値の大きい順").unwrap(), vec!["A", "C", "B"], "値の大きい順が効かない");
-        assert_eq!(並び("値の小さい順").unwrap(), vec!["B", "C", "A"], "値の小さい順が効かない");
+        assert_eq!(order("見出しの昇順").unwrap(), vec!["A", "B", "C"], "見出しの昇順が効かない");
+        assert_eq!(order("見出しの降順").unwrap(), vec!["C", "B", "A"], "見出しの降順が効かない");
+        assert_eq!(order("値の大きい順").unwrap(), vec!["A", "C", "B"], "値の大きい順が効かない");
+        assert_eq!(order("値の小さい順").unwrap(), vec!["B", "C", "A"], "値の小さい順が効かない");
         // **知らない指定は素通し。** 黙って別の順に並べない
-        assert_eq!(並び("よくわからない順").unwrap(), 素, "知らない指定で並びが変わっている");
+        assert_eq!(order("よくわからない順").unwrap(), plain, "知らない指定で並びが変わっている");
     }
 
     #[test]
@@ -2941,12 +2941,12 @@ mod recalc_tests {
             assert!(lo <= 予測1 && 予測1 <= up, "区間が予測を挟んでいない: {lo} {予測1} {up}");
             // **約束ではないと、シートに書いてある。**状態行はこの後グラフの
             // 報せで流れるので、そこだけでは伝わらない
-            let 断り = sh
+            let note_div = sh
                 .get(Pos::new(32, 0))
                 .map(|x| x.value.display())
                 .unwrap_or_default();
-            assert!(断り.contains("約束ではありません"), "断りがシートに無い: {断り:?}");
-            assert!(断り.contains("季節"), "季節を言っていない: {断り:?}");
+            assert!(note_div.contains("約束ではありません"), "断りがシートに無い: {note_div:?}");
+            assert!(note_div.contains("季節"), "季節を言っていない: {note_div:?}");
         });
     }
 
@@ -3029,10 +3029,10 @@ mod recalc_tests {
             assert!(!this.notes.is_empty(), "帯に何も出ない");
 
             // **上書きは断る。**元の壊れたファイルは触らない
-            let 前 = std::fs::read(&path).expect("読めない");
+            let before = std::fs::read(&path).expect("読めない");
             this.save(false, cx);
             assert!(this.status.contains("上書きしません"), "{}", this.status);
-            assert_eq!(std::fs::read(&path).expect("読めない"), 前, "元のファイルを書き替えた");
+            assert_eq!(std::fs::read(&path).expect("読めない"), before, "元のファイルを書き替えた");
 
             // **rpc の口も同じように断る。**画面だけ塞いでも意味がない。
             // 受け口は Windows には無い(`mod rpc` ごと cfg(unix))ので、
@@ -3041,7 +3041,7 @@ mod recalc_tests {
             {
                 let r = ops::Host::save(this, path.clone());
                 assert!(r.is_err(), "口から上書きできてしまった");
-                assert_eq!(std::fs::read(&path).expect("読めない"), 前, "口から書き替えた");
+                assert_eq!(std::fs::read(&path).expect("読めない"), before, "口から書き替えた");
             }
 
             // 名前を付けて保存できれば旗は下りる
@@ -3126,7 +3126,7 @@ mod recalc_tests {
     fn pdfの取り込みは取り方を画面に出す(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            let 表 = |how: &str| {
+            let table = |how: &str| {
                 vec![(
                     1u32,
                     how.to_string(),
@@ -3142,26 +3142,26 @@ mod recalc_tests {
                 delim: 0,
                 custom: String::new(),
                 dest: Pos::new(0, 0),
-                grid: 表("lines")[0].2.clone(),
+                grid: table("lines")[0].2.clone(),
                 used: (String::new(), String::new()),
-                pdf: 表("lines"),
+                pdf: table("lines"),
                 pdf_at: 0,
             };
             this.import_pend = Some(pend.clone());
             this.import_pick();
-            let 行: Vec<String> =
+            let line: Vec<String> =
                 this.pick.as_ref().unwrap().0.iter().map(|(_, l)| l.clone()).collect();
-            let 全部 = 行.join("\n");
-            assert!(全部.contains("罫線から"), "取り方が出ない: {全部}");
-            assert!(!全部.contains("文字コード"), "PDF なのに文字コードが出た: {全部}");
-            assert!(!全部.contains("区切り"), "PDF なのに区切りが出た: {全部}");
-            assert!(!全部.contains("推し量りました"), "罫線なのに断りが出た: {全部}");
+            let all = line.join("\n");
+            assert!(all.contains("罫線から"), "取り方が出ない: {all}");
+            assert!(!all.contains("文字コード"), "PDF なのに文字コードが出た: {all}");
+            assert!(!all.contains("区切り"), "PDF なのに区切りが出た: {all}");
+            assert!(!all.contains("推し量りました"), "罫線なのに断りが出た: {all}");
 
             // 文字の位置から取ったときは**必ず断りを出す**
-            pend.pdf = 表("text");
+            pend.pdf = table("text");
             this.import_pend = Some(pend);
             this.import_pick();
-            let 全部: String = this
+            let all: String = this
                 .pick
                 .as_ref()
                 .unwrap()
@@ -3170,8 +3170,8 @@ mod recalc_tests {
                 .map(|(_, l)| l.clone())
                 .collect::<Vec<_>>()
                 .join("\n");
-            assert!(全部.contains("推し量り"), "断りが出ない: {全部}");
-            assert!(全部.contains("桁のずれ"), "何を確かめるかを言っていない: {全部}");
+            assert!(all.contains("推し量り"), "断りが出ない: {all}");
+            assert!(all.contains("桁のずれ"), "何を確かめるかを言っていない: {all}");
         });
     }
 
@@ -3313,7 +3313,7 @@ mod recalc_tests {
         cx.run_until_parked();
         c.update(cx, |this, cx| {
             assert_eq!(this.book.pivots.len(), 1, "ピボットが建たない: {}", this.status);
-            let 名 = this.book.pivots[0].name.clone();
+            let name = this.book.pivots[0].name.clone();
             // 区分の列に板を1枚。まだ繋いでいない
             this.slicers.push(crate::util::Slicer { col: 0, ..Default::default() });
             this.slicer_sel = 0;
@@ -3323,8 +3323,8 @@ mod recalc_tests {
 
             // 繋ぐ
             this.pick_kind = "slicer-refs";
-            this.apply_pick(&名, cx);
-            assert_eq!(this.slicers[0].pivots, vec![名.clone()], "繋がらない");
+            this.apply_pick(&name, cx);
+            assert_eq!(this.slicers[0].pivots, vec![name.clone()], "繋がらない");
             let h = &this.book.pivots[0].hide;
             assert_eq!(h.len(), 1, "隠す値が入らない: {h:?}");
             assert_eq!(h[0].0, "区分");
@@ -3340,7 +3340,7 @@ mod recalc_tests {
 
             // もう一度押すと外れる
             this.pick_kind = "slicer-refs";
-            this.apply_pick(&名, cx);
+            this.apply_pick(&name, cx);
             assert!(this.slicers[0].pivots.is_empty(), "外れない");
         });
     }
@@ -3494,8 +3494,8 @@ mod recalc_tests {
             assert_eq!(this.view, Pos::new(6, 1), "下の窓がカーソルから始まっていない");
             assert!(this.入っているか("split"), "押された形にならない");
             // 帯は上の帯を返す(固定ではなく分割)
-            assert_eq!(this.上の帯(), Some((6, 0)));
-            assert_eq!(this.左の帯(), Some((1, 0)));
+            assert_eq!(this.top_band(), Some((6, 0)));
+            assert_eq!(this.left_band(), Some((1, 0)));
 
             // 逆向き。固定を入れると分割が外れる
             this.pick_kind = "freeze";
@@ -3539,10 +3539,10 @@ mod recalc_tests {
 
             this.run_cmd("dv-mark", cx);
             assert_eq!(this.dv_marks.len(), 2, "印の数が違う: {:?}", this.dv_marks);
-            let 位置: Vec<Pos> = this.dv_marks.iter().map(|(_, p)| *p).collect();
-            assert!(位置.contains(&Pos::new(1, 0)), "丙 に印が無い: {位置:?}");
-            assert!(位置.contains(&Pos::new(3, 0)), "丁 に印が無い: {位置:?}");
-            assert!(this.押せるか("dv-mark"), "印が付いている");
+            let positions: Vec<Pos> = this.dv_marks.iter().map(|(_, p)| *p).collect();
+            assert!(positions.contains(&Pos::new(1, 0)), "丙 に印が無い: {positions:?}");
+            assert!(positions.contains(&Pos::new(3, 0)), "丁 に印が無い: {positions:?}");
+            assert!(this.can_press("dv-mark"), "印が付いている");
             assert!(this.入っているか("dv-mark"), "押された形にならない");
 
             // もう一度押すと消える
@@ -6021,8 +6021,8 @@ mod fnhelp_tests {
     fn 関数の分類の綴りが揃っている() {
         use std::collections::BTreeSet;
         let タブ: BTreeSet<&str> = FN_GROUPS.iter().skip(1).copied().collect();
-        let 表: BTreeSet<&str> = crate::funcs::FUNCS.iter().map(|f| f.group).collect();
-        assert_eq!(タブ, 表, "タブの並びと funcs.rs の分類が食い違っています");
+        let table: BTreeSet<&str> = crate::funcs::FUNCS.iter().map(|f| f.group).collect();
+        assert_eq!(タブ, table, "タブの並びと funcs.rs の分類が食い違っています");
 
         // 族の一覧を開くコマンド。**既定に落ちてよいのはこの2つだけ**
         let 既定でよい = ["lookup_reference", "information"];
@@ -6059,24 +6059,24 @@ mod fnhelp_tests {
     /// 両方をここで見る。
     #[test]
     fn 関数の言葉がどの言語も揃っている() {
-        let 素: Vec<&str> = crate::funcs::FUNCS.iter().map(|f| f.name).collect();
-        assert!(素.windows(2).all(|w| w[0] < w[1]), "素の表が名前順に並んでいません");
-        let mut 見た = 0;
+        let plain: Vec<&str> = crate::funcs::FUNCS.iter().map(|f| f.name).collect();
+        assert!(plain.windows(2).all(|w| w[0] < w[1]), "素の表が名前順に並んでいません");
+        let mut seen = 0;
         for lang in ui::languages() {
             let Some(t) = crate::funcs_tables::text(lang) else {
                 // ja は素の表そのものなので登録簿に無い
                 assert_eq!(lang, "ja", "{lang} の関数の言葉が登録されていません");
                 continue;
             };
-            見た += 1;
+            seen += 1;
             let names: Vec<&str> = t.iter().map(|r| r.name).collect();
-            assert_eq!(names, 素, "{lang}: 関数の並びが素の表と違います");
+            assert_eq!(names, plain, "{lang}: 関数の並びが素の表と違います");
             for r in t {
                 assert!(!r.desc.is_empty(), "{lang}: {} の説明が空です", r.name);
                 assert!(r.args.starts_with('('), "{lang}: {} の引数が変です: {}", r.name, r.args);
             }
         }
-        assert!(見た >= 14, "言語が減っています({見た} 件)");
+        assert!(seen >= 14, "言語が減っています({seen} 件)");
     }
 
     /// **説明がその言語で書かれていること。** 穴を日本語で埋めると
@@ -6090,12 +6090,12 @@ mod fnhelp_tests {
                 continue;
             }
             let Some(t) = crate::funcs_tables::text(lang) else { continue };
-            let 残り: Vec<&str> = t
+            let rest: Vec<&str> = t
                 .iter()
                 .filter(|r| かな(r.desc) || かな(r.args))
                 .map(|r| r.name)
                 .collect();
-            assert!(残り.is_empty(), "{lang}: 日本語のまま残っている関数 {残り:?}");
+            assert!(rest.is_empty(), "{lang}: 日本語のまま残っている関数 {rest:?}");
         }
     }
 }
@@ -6340,7 +6340,7 @@ mod shape_nudge_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
             let (ox, oy) = 図形を1つ置く(this);
-            let 位置 = |this: &Calc| {
+            let positions = |this: &Calc| {
                 let sp = &this.sheet().shapes_new[0];
                 let (x, y) = this.cell_origin_px(sp.at).unwrap();
                 (x + sp.dx_px, y + sp.dy_px)
@@ -6348,7 +6348,7 @@ mod shape_nudge_tests {
             // 横に大きく、縦に少し → 縦は動かない
             this.shape_drag = Some((0, (ox, oy), (ox, oy), false));
             this.shape_drag_at(ox + 60.0, oy + 5.0, true);
-            let (_, y) = 位置(this);
+            let (_, y) = positions(this);
             assert!((y - oy).abs() < 0.6, "縦に動いています({} → {})", oy, y);
         });
     }
@@ -6360,16 +6360,16 @@ mod shape_nudge_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _| {
             let (ox, oy) = 図形を1つ置く(this);
-            let 位置 = |this: &Calc| {
+            let positions = |this: &Calc| {
                 let sp = &this.sheet().shapes_new[0];
                 let (x, y) = this.cell_origin_px(sp.at).unwrap();
                 (x + sp.dx_px, y + sp.dy_px)
             };
             assert!(this.nudge_shape(1.0, 0.0), "選んでいるのに動かない");
-            let (x, _) = 位置(this);
+            let (x, _) = positions(this);
             assert!((x - (ox + 1.0)).abs() < 0.6, "1px 動いていない({ox} → {x})");
             assert!(this.nudge_shape(0.0, 1.0));
-            let (_, y) = 位置(this);
+            let (_, y) = positions(this);
             assert!((y - (oy + 1.0)).abs() < 0.6, "縦に 1px 動いていない");
 
             // **選んでいなければ奪わない。** ここが false でないと、表の
@@ -7599,9 +7599,9 @@ mod web_export_tests {
             assert_eq!(this.fd_hits[0].hits[0].line, 2);
 
             // 選んでも開かない
-            let 前 = this.path.clone();
+            let before = this.path.clone();
             this.find_peek(0, 0);
-            assert_eq!(this.path, 前, "選んだだけで開いた");
+            assert_eq!(this.path, before, "選んだだけで開いた");
             assert!(this.fd_peek.contains("単価"));
 
             // **calc が開けるのは表だけ。** 素の字が当たったら、そう言う
@@ -7868,7 +7868,7 @@ mod file_menu_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             // 何も張っていなければ「フィルターを解除」は押せない
-            assert!(!this.押せるか("clear-filter"), "張っていないのに押せる");
+            assert!(!this.can_press("clear-filter"), "張っていないのに押せる");
             this.run_cmd("clear-filter", cx);
             assert!(
                 this.status.contains("掛かっていません"),
@@ -7879,14 +7879,14 @@ mod file_menu_tests {
             this.book.sheets[0].set(Pos::new(0, 0), sheet::Cell::input("見出し"));
             this.book.sheets[0].set(Pos::new(1, 0), sheet::Cell::input("1"));
             this.run_cmd("setfilter", cx);
-            assert!(this.押せるか("clear-filter"), "張ったのに押せない");
+            assert!(this.can_press("clear-filter"), "張ったのに押せない");
 
             // トレースの矢印も同じ形
-            assert!(!this.押せるか("remove-arrows"), "矢印が無いのに押せる");
+            assert!(!this.can_press("remove-arrows"), "矢印が無いのに押せる");
             this.run_cmd("remove-arrows", cx);
             assert!(this.status.contains("出ていません"), "嘘の返事: {}", this.status);
             this.trace = vec![(Pos::new(0, 0), true)];
-            assert!(this.押せるか("remove-arrows"), "矢印があるのに押せない");
+            assert!(this.can_press("remove-arrows"), "矢印があるのに押せない");
         });
     }
 
@@ -7899,8 +7899,8 @@ mod file_menu_tests {
     fn ファイルの項目の並びと押せるかが変わらない(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            let 品 = this.file_menu();
-            let ids: Vec<&str> = 品.iter().map(|i| i.id).collect();
+            let items = this.file_menu();
+            let ids: Vec<&str> = items.iter().map(|i| i.id).collect();
             assert_eq!(ids, vec![
                 "f-back", "f-new", "f-tpl", "f-open",
                 // **フォルダを開き直す**(2026-08-25)。綴りはフォルダなので、
@@ -7913,11 +7913,11 @@ mod file_menu_tests {
                 "f-macro", "f-info", "f-place", "f-quit", "f-opts", "f-help", "f-req",
             ]);
             // 押せないのは3つ(まだ無い物)
-            let 灰: Vec<&str> = 品.iter().filter(|i| !i.ready).map(|i| i.id).collect();
+            let 灰: Vec<&str> = items.iter().filter(|i| !i.ready).map(|i| i.id).collect();
             assert_eq!(灰, vec!["f-tpl", "f-help", "f-req"]);
             // 下へ寄せるのは3つ
-            let 下: Vec<&str> = 品.iter().filter(|i| i.tail).map(|i| i.id).collect();
-            assert_eq!(下, vec!["f-opts", "f-help", "f-req"]);
+            let below: Vec<&str> = items.iter().filter(|i| i.tail).map(|i| i.id).collect();
+            assert_eq!(below, vec!["f-opts", "f-help", "f-req"]);
         });
     }
 
@@ -7927,12 +7927,12 @@ mod file_menu_tests {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
             this.file_menu_click("f-recent", cx);
-            let 品 = this.file_menu();
-            let on: Vec<&str> = 品.iter().filter(|i| i.on).map(|i| i.id).collect();
+            let items = this.file_menu();
+            let on: Vec<&str> = items.iter().filter(|i| i.on).map(|i| i.id).collect();
             assert_eq!(on, vec!["f-recent"], "最近開いたに印が付かない");
             this.file_menu_click("f-opts", cx);
-            let 品 = this.file_menu();
-            let on: Vec<&str> = 品.iter().filter(|i| i.on).map(|i| i.id).collect();
+            let items = this.file_menu();
+            let on: Vec<&str> = items.iter().filter(|i| i.on).map(|i| i.id).collect();
             assert_eq!(on, vec!["f-opts"], "詳細設定に印が付かない");
         });
     }
@@ -7980,10 +7980,10 @@ mod file_menu_tests {
     fn 知らない項目は何もしない(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, cx| {
-            let 前 = this.file_view;
+            let before = this.file_view;
             this.file_menu_click("f-tpl", cx);
             this.file_menu_click("知らない", cx);
-            assert_eq!(this.file_view, 前);
+            assert_eq!(this.file_view, before);
         });
     }
     #[gpui::test]
@@ -8039,10 +8039,10 @@ mod file_menu_tests {
             assert!(ids.contains(&"f-export"), "ファイルのページに口がありません");
             // **ファイルのページのボタンは `file_menu_click`** を通ります
             this.file_menu_click("f-export", cx);
-            let 形: Vec<String> = this.pick.as_ref().expect("一覧が開いていません")
+            let shape: Vec<String> = this.pick.as_ref().expect("一覧が開いていません")
                 .0.iter().map(|(k, _)| k.clone()).collect();
-            assert_eq!(形, vec!["xlsx", "csv", "html", "pdf"], "出せる形が表と違います");
-            assert!(!形.iter().any(|k| k == "adoc"), "adoc が書き出しに出ています");
+            assert_eq!(shape, vec!["xlsx", "csv", "html", "pdf"], "出せる形が表と違います");
+            assert!(!shape.iter().any(|k| k == "adoc"), "adoc が書き出しに出ています");
         });
     }
 

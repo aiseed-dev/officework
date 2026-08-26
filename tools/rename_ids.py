@@ -40,7 +40,7 @@ RS_DIRS = ["engine", "sheet", "ooxml", "paper", "lang", "ops", "pyrun",
            "face", "ui", "writer", "calc", "officework", "pysheet", "sidecar"]
 
 # 日本語(かな・カナ・漢字)を含む語のかたまり
-語 = re.compile(r"[0-9A-Za-z_぀-ヿ一-鿿]+")
+word = re.compile(r"[0-9A-Za-z_぀-ヿ一-鿿]+")
 日本語 = re.compile(r"[぀-ヿ一-鿿]")
 
 
@@ -64,14 +64,14 @@ def _伏せる(src: str) -> str:
             continue
         # 塊の註釈(入れ子あり)
         if c == "/" and i + 1 < n and src[i + 1] == "*":
-            深さ, j = 1, i + 2
-            while j < n and 深さ:
+            depth, j = 1, i + 2
+            while j < n and depth:
                 if src[j] == "/" and j + 1 < n and src[j + 1] == "*":
-                    深さ += 1
+                    depth += 1
                     j += 2
                     continue
                 if src[j] == "*" and j + 1 < n and src[j + 1] == "/":
-                    深さ -= 1
+                    depth -= 1
                     j += 2
                     continue
                 j += 1
@@ -83,9 +83,9 @@ def _伏せる(src: str) -> str:
         if c == "r" and i + 1 < n and src[i + 1] in '"#':
             m = re.match(r'r(#*)"', src[i:])
             if m:
-                閉じ = '"' + m.group(1)
-                j = src.find(閉じ, i + m.end() - 1 + 1)
-                j = n if j < 0 else j + len(閉じ)
+                closing = '"' + m.group(1)
+                j = src.find(closing, i + m.end() - 1 + 1)
+                j = n if j < 0 else j + len(closing)
                 for k in range(i, j):
                     out[k] = " "
                 i = j
@@ -141,6 +141,10 @@ def _伏せる_py(src: str) -> str:
             i = j
             continue
         if c in "\"'":
+            # **f-string の `{…}` は中身がコードです。** 伏せてしまうと、
+            # そこに出てくる識別子が書き替わりません。文字の部分だけ伏せて、
+            # 波括弧の中は見えるようにします
+            f付き = i > 0 and src[i - 1] in "fF"
             三 = src[i:i + 3]
             if 三 in ('"""', "'''"):
                 j = src.find(三, i + 3)
@@ -155,32 +159,55 @@ def _伏せる_py(src: str) -> str:
                         j += 1
                         break
                     j += 1
+            深 = 0
             for k in range(i, min(j, n)):
-                out[k] = " "
+                if f付き and src[k] == "{":
+                    深 += 1
+                if not (f付き and 深):
+                    out[k] = " "
+                if f付き and src[k] == "}":
+                    深 -= 1
             i = j
             continue
         i += 1
     return "".join(out)
 
 
-def 集める():
+def collect_into():
     """{識別子: {ファイル: 回数}} を返す。"""
-    出 = {}
+    out = {}
     for p in 対象のファイル():
         src = p.read_text(encoding="utf-8", errors="replace")
         伏せた = _伏せる_py(src) if p.suffix == ".py" else _伏せる(src)
-        for m in 語.finditer(伏せた):
+        for m in word.finditer(伏せた):
             s = m.group(0)
             if 日本語.search(s):
-                出.setdefault(s, {}).setdefault(str(p.relative_to(ROOT)), 0)
-                出[s][str(p.relative_to(ROOT))] += 1
-    return 出
+                out.setdefault(s, {}).setdefault(str(p.relative_to(ROOT)), 0)
+                out[s][str(p.relative_to(ROOT))] += 1
+    return out
 
 
 def 辞書を読む():
     if not 辞書の場所.exists():
         return {}
     return json.loads(辞書の場所.read_text(encoding="utf-8"))
+
+
+def 埋め込みも(src: str, 辞書) -> str:
+    """文字列の中の `{識別子}` / `{識別子:書式}` を書き替える。
+
+    Rust は `format!("{name}")` のように、文字列の中へ識別子を直に書けます。
+    伏せた写しでは文字列を見ないので、ここだけ別に見ます。`{}` や `{0}`
+    のような位置指定は識別子ではないので触りません。
+
+    **画面の文言には効きません。** 鍵は記号(`save` など)で、穴埋めは
+    位置指定の `{}` だけだからです(2026-08-26 に鍵を記号にしました)。
+    """
+    def one(m):
+        新 = 辞書.get(m.group(1))
+        return m.group(0) if 新 is None else "{" + 新 + (m.group(2) or "") + "}"
+
+    return re.sub(r"\{([0-9A-Za-z_぀-ヿ一-鿿]+)(:[^}]*)?\}", one, src)
 
 
 def 書き替える(辞書, dry=True):
@@ -194,51 +221,52 @@ def 書き替える(辞書, dry=True):
     for p in 対象のファイル():
         src = p.read_text(encoding="utf-8", errors="replace")
         伏せた = _伏せる_py(src) if p.suffix == ".py" else _伏せる(src)
-        出, 前 = [], 0
+        out, before = [], 0
         n = 0
-        for m in 語.finditer(伏せた):
+        for m in word.finditer(伏せた):
             新 = 辞書.get(m.group(0))
             if not 新:
                 continue
-            出.append(src[前:m.start()])
-            出.append(新)
-            前 = m.end()
+            out.append(src[before:m.start()])
+            out.append(新)
+            before = m.end()
             n += 1
-        if n:
-            出.append(src[前:])
-            件数 += n
+        out.append(src[before:])
+        新しい = 埋め込みも("".join(out), 辞書)
+        if 新しい != src:
+            件数 += max(n, 1)
             触った += 1
             if not dry:
-                p.write_text("".join(出), encoding="utf-8")
+                p.write_text(新しい, encoding="utf-8")
     return 件数, 触った
 
 
 def main():
-    もの = 集める()
+    item = collect_into()
     if "--dict" in sys.argv:
         既に = 辞書を読む()
-        骨 = {k: 既に.get(k, "") for k in sorted(もの, key=len, reverse=True)}
+        骨 = {k: 既に.get(k, "") for k in sorted(item, key=len, reverse=True)}
         print(json.dumps(骨, ensure_ascii=False, indent=1))
         return 0
     辞書 = {k: v for k, v in 辞書を読む().items() if v}
     重なり = {}
     for k, v in 辞書.items():
         重なり.setdefault(v, []).append(k)
-    悪い = {v: ks for v, ks in 重なり.items() if len(ks) > 1}
-    if 悪い:
-        print(f"!! 同じ英語に2つ以上の日本語が当たっています({len(悪い)} 組)")
-        for v, ks in list(悪い.items())[:10]:
+    bad = {v: ks for v, ks in 重なり.items() if len(ks) > 1}
+    if bad:
+        print(f"!! 同じ英語に2つ以上の日本語が当たっています({len(bad)} 組)")
+        for v, ks in list(bad.items())[:10]:
             print(f"   {v}: {ks}")
         return 1
     rs = sum(1 for p in 対象のファイル() if p.suffix == ".rs")
-    print(f"日本語の識別子 {len(もの)} 種 / 出てくる回数 "
-          f"{sum(sum(d.values()) for d in もの.values())}")
+    print(f"日本語の識別子 {len(item)} 種 / 出てくる回数 "
+          f"{sum(sum(d.values()) for d in item.values())}")
     print(f"  辞書に書いてある: {len(辞書)} 種")
-    残り = [k for k in もの if k not in 辞書]
-    print(f"  まだ書いていない: {len(残り)} 種")
+    rest = [k for k in item if k not in 辞書]
+    print(f"  まだ書いていない: {len(rest)} 種")
     件数, 触った = 書き替える(辞書, dry="--go" not in sys.argv)
-    印 = "書き替えました" if "--go" in sys.argv else "書き替えます(--go で書き込み)"
-    print(f"{件数} か所 / {触った} ファイルを{印}(rs {rs} 枚を見ています)")
+    mark = "書き替えました" if "--go" in sys.argv else "書き替えます(--go で書き込み)"
+    print(f"{件数} か所 / {触った} ファイルを{mark}(rs {rs} 枚を見ています)")
     return 0
 
 

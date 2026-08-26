@@ -172,16 +172,16 @@ MICHI = {
     # (2026-08-25 まで、テキストフィールドと名前の2つしか載っていませんでした)。
     # 種類は docx の w:sdt に往復します。値の出し入れは名前で引くので、
     # どの種類でも呼び方は同じです
-    "form-text": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
+    "form-text": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
     "form-name": ("Doc(記入欄)", "mcp.doc_fields()", "", ""),
-    "form-combo": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
-    "form-dropdown": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
-    "form-checkbox": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
-    "form-radio": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
+    "form-combo": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
+    "form-dropdown": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
+    "form-checkbox": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
+    "form-radio": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
     "form-image": ("Doc(記入欄)", "", "", ""),
-    "form-email": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
-    "form-phone": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
-    "form-complex": ("Doc(記入欄)", "mcp.doc_fill({名前: 値})", "", ""),
+    "form-email": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
+    "form-phone": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
+    "form-complex": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
     "form-signature": ("Doc(記入欄)", "", "", ""),
     "co-addcomment": ("Comment", "p.add_comment(文) / c.comment", "p.add_comment(文)", "c.comment = Comment(…)"),
     "co-showcomment": ("Comment", "d.comments / c.comment", "d.comments", "c.comment"),
@@ -232,7 +232,7 @@ KAKEBA = {
 KAZARI = re.compile(r"^[‹›<>]\s*|\s*[((][^))]*[))]\s*$")
 
 
-def コマンド名(ラベル: str) -> str:
+def コマンド名(label: str) -> str:
     """画面のラベルから、コマンドの名前を取り出す。
 
     ファイル名も見出しも*これ*にします(2026-08-25 発注者「ファイル名や
@@ -243,7 +243,7 @@ def コマンド名(ラベル: str) -> str:
     対応表のほうは*画面のまま*にします。あちらは画面を引くための表なので、
     押しているボタンの字がそのまま出ていないと引けません。
     """
-    return KAZARI.sub("", ラベル).strip() or ラベル
+    return KAZARI.sub("", label).strip() or label
 
 
 # ファイル名に使えない字。`/` は制約で置き換えるだけで、名前の一部です
@@ -251,7 +251,7 @@ FNAME_NG = re.compile(r'[/\\:*?"<>|]')
 _手引きの表 = None
 
 
-def 手引き(ラベル: str) -> str:
+def 手引き(label: str) -> str:
     """ボタンの名前を、手引きへのリンクにして返す。
 
     **一覧から手引きへ飛べるようにします**(2026-08-25 発注者「一覧からの
@@ -267,12 +267,12 @@ def 手引き(ラベル: str) -> str:
         for q in さき.rglob("*.adoc"):
             if q.name != "README.ja.adoc":
                 _手引きの表[q.stem] = q.relative_to(ROOT / "docs").as_posix()
-    名 = FNAME_NG.sub("_", コマンド名(ラベル)).strip()
-    先 = _手引きの表.get(名)
-    return f"link:{先}[{ラベル}]" if 先 else ラベル
+    name = FNAME_NG.sub("_", コマンド名(label)).strip()
+    to = _手引きの表.get(name)
+    return f"link:{to}[{label}]" if to else label
 
 
-def 状態(id_: str, ow: str) -> str:
+def state(id_: str, ow: str) -> str:
     """印を返す(2026-08-24 発注者「実装できたら ✅、実装しないは ❌」)。
 
     印が言うのは*プログラムから呼べるか*だけです。ボタンのほうは、
@@ -484,56 +484,56 @@ def file_menu():
     src = FILE_SRC.read_text(encoding="utf-8")
     body = src[src.index("fn file_menu"):]
     body = body[: body.index("\n    }")]
-    出 = re.findall(r'I::new\("(f-[a-z]+)",\s*ui::t!\("([^"]+)"\)\)', body)
-    return [(i, i18n_ja.日本語(鍵)) for i, 鍵 in 出]
+    out = re.findall(r'I::new\("(f-[a-z]+)",\s*ui::t!\("([^"]+)"\)\)', body)
+    return [(i, i18n_ja.日本語(keys)) for i, keys in out]
 
 
 def rows():
     """(段, ボタン, 絵, オブジェクト, 印, officework, python-docx, openpyxl)。
     **並びはメニューのまま**、*分類はオブジェクト*です(2026-08-24 発注者)。"""
     tabs = ribbon_parse.tables_or_die()
-    並び = 段の並び(tabs)
+    order = 段の並び(tabs)
     w = {t.name: t for t in tabs["WRITER"]}
     c = {t.name: t for t in tabs["CALC"]}
     out = []
-    for 段 in 並び:
-        if 段 == "ファイル":
+    for tab in order:
+        if tab == "ファイル":
             # **リボンの3つではなく、全面のページの一覧を出します**
-            for i, ラベル in file_menu():
+            for i, label in file_menu():
                 if i not in FILE_MICHI:
                     continue
                 obj, ow, pd, op = FILE_MICHI[i]
-                _ラベルの逆引き[i] = ラベル
-                out.append((段, ラベル, "", obj, 状態(i, ow), ow, pd, op))
+                _ラベルの逆引き[i] = label
+                out.append((tab, label, "", obj, state(i, ow), ow, pd, op))
             continue
-        見た = set()
-        for t in (w.get(段), c.get(段)):
+        seen = set()
+        for t in (w.get(tab), c.get(tab)):
             if t is None:
                 continue
             for cmd in t.cmds:
-                if not cmd.id or cmd.id in 見た or cmd.id not in MICHI:
+                if not cmd.id or cmd.id in seen or cmd.id not in MICHI:
                     continue
-                見た.add(cmd.id)
+                seen.add(cmd.id)
                 obj, ow, pd, op = MICHI[cmd.id]
                 _ラベルの逆引き[cmd.id] = cmd.label
-                out.append((段, cmd.label, cmd.icon, obj, 状態(cmd.id, ow), ow, pd, op))
-    for 段, ラベル, obj, ow, pd, op in HOKA:
-        印 = "✅" if ow else ("❌" if ラベル in HOKA_TSUKURANAI else "")
-        _ラベルの逆引き[ラベル] = ラベル
-        out.append((段, ラベル, "", obj, 印, ow, pd, op))
+                out.append((tab, cmd.label, cmd.icon, obj, state(cmd.id, ow), ow, pd, op))
+    for tab, label, obj, ow, pd, op in HOKA:
+        mark = "✅" if ow else ("❌" if label in HOKA_TSUKURANAI else "")
+        _ラベルの逆引き[label] = label
+        out.append((tab, label, "", obj, mark, ow, pd, op))
     return out
 
 
 _ラベルの逆引き: dict = {}
 
 
-def 理由(ラベル: str, st: str):
+def 理由(label: str, st: str):
     """「実装しない」の理由。表の中で読めるようにします"""
     if st not in ("❌", "✍"):
         return None
-    for 表 in (TSUKURANAI, KAKEBA, HOKA_TSUKURANAI):
-        for k, v in 表.items():
-            if _ラベルの逆引き.get(k) == ラベル:
+    for table in (TSUKURANAI, KAKEBA, HOKA_TSUKURANAI):
+        for k, v in table.items():
+            if _ラベルの逆引き.get(k) == label:
                 return v
     return None
 
@@ -546,39 +546,39 @@ def 重なり(r):
     返りは (段, ボタン) → 最初に出た段。
     """
     初出, 出た = {}, {}
-    for 段, ラベル, *_ in r:
-        鍵 = ラベル
-        if 鍵 in 初出:
-            出た[(段, ラベル)] = 初出[鍵]
+    for tab, label, *_ in r:
+        keys = label
+        if keys in 初出:
+            出た[(tab, label)] = 初出[keys]
         else:
-            初出[鍵] = 段
+            初出[keys] = tab
     return 出た
 
 
-def 表() -> str:
+def table() -> str:
     r = rows()
     かさ = 重なり(r)
     o = []
     # **この節に説明を書きません。** 読み方はこの文書の頭にあります。
     # 利用者が読む物なので、作る側の話(生成の仕組み・作業の残り)は入れません
     o.append("")
-    いま = None
-    for 段, ラベル, 絵, obj, st, ow, pd, op in r:
-        if 段 != いま:
-            if いま is not None:
+    current = None
+    for tab, label, icon, obj, st, ow, pd, op in r:
+        if tab != current:
+            if current is not None:
                 o.append("|===\n")
             # **見出しは `==`。** `===` にすると本家が「段が飛んでいる」と
             # 警告します(この節の前に `==` が無いため。2026-08-24 に実際に出た)
-            o.append(f"== {段}")
+            o.append(f"== {tab}")
             o.append("")
             o.append('[cols="2,2,^1,3,3,3"]')
             o.append("|===")
             o.append("|ボタン |オブジェクト |印 |officework |python-docx |openpyxl\n")
-            いま = 段
+            current = tab
         f = lambda x: x if x else "—"
-        中 = ow if ow else (理由(ラベル, st) or "—")
-        if (段, ラベル) in かさ:
-            中 = f"*{かさ[(段, ラベル)]}と同じ*" + (f" — {中}" if 中 != "—" else "")
+        inner = ow if ow else (理由(label, st) or "—")
+        if (tab, label) in かさ:
+            inner = f"*{かさ[(tab, label)]}と同じ*" + (f" — {inner}" if inner != "—" else "")
         # **絵を名前の前に出します**(2026-08-24 発注者)。画面で見ている物と
         # 同じ絵なので、名前より先に目に入ります。径路は `face/icons` から
         # この文書の場所への相対です
@@ -586,13 +586,13 @@ def 表() -> str:
         # `face/src/icons.rs` が名前とファイルを繋いでいます(例: `insertimage`
         # の実体は `insimage.svg`)。画面はそちらを通るので出ますが、
         # 文書から直に指すと届きません。ここで解いてから書きます
-        名 = ICON_FILE.get(絵, 絵)
-        絵札 = f"image:{ICON_DIR}/{名}.svg[{ラベル},16,16] " if 名 else ""
+        name = ICON_FILE.get(icon, icon)
+        絵札 = f"image:{ICON_DIR}/{name}.svg[{label},16,16] " if name else ""
         # **ボタンの名前から手引きへ飛ばします**(2026-08-25 発注者
         # 「一覧からのリンクをつける」)。この表は引くための1枚なので、
         # 引き当てた行からそのまま詳しい説明へ行けないと途中で止まります
-        o.append(f"|{絵札}{手引き(ラベル)} |{f(obj)} |{st} |{中} |{f(pd)} |{f(op)}")
-    if いま is not None:
+        o.append(f"|{絵札}{手引き(label)} |{f(obj)} |{st} |{inner} |{f(pd)} |{f(op)}")
+    if current is not None:
         o.append("|===\n")
     return "\n".join(o)
 
@@ -612,11 +612,11 @@ def 覆い():
                     全.setdefault(c.id, (tab.name, c.label))
     # **ファイルのページも数えます**(リボンのファイルタブは3つだけで、
     # 実際の仕事は全面のページにあります)
-    for i, ラベル in file_menu():
-        全.setdefault(i, ("ファイル", ラベル))
+    for i, label in file_menu():
+        全.setdefault(i, ("ファイル", label))
     # クイックアクセスと左右のパネル(リボンにもページにも無い物)
-    for 段, ラベル, *_ in HOKA:
-        全.setdefault(ラベル, (段, ラベル))
+    for tab, label, *_ in HOKA:
+        全.setdefault(label, (tab, label))
     のせた = [k for k in 全 if k in MICHI or k in FILE_MICHI
                 or any(x[1] == k for x in HOKA)]
     return len(のせた), len(全), sorted(
@@ -631,7 +631,7 @@ def main() -> int:
     if not m:
         print(f"::error::{SAKI.name} に {MARK_S} の印がありません", file=sys.stderr)
         return 1
-    beki = 表()
+    beki = table()
     if "--write" in sys.argv:
         SAKI.write_text(src[: m.start(2)] + beki + src[m.end(2):], encoding="utf-8")
         print(f"{SAKI.name} を書き直しました({len(rows())} 行)")
@@ -655,8 +655,8 @@ def main() -> int:
     のせた, 全, 抜け = 覆い()
     if "--todo" in sys.argv:
         print(f"対応表に載っていないボタン {len(抜け)} 種:")
-        for 段, l, i in 抜け:
-            print(f"  {段:<12} {l:<24} {i}")
+        for tab, l, i in 抜け:
+            print(f"  {tab:<12} {l:<24} {i}")
         return 0
     print(f"対応表は実物と揃っています({len(rows())} 行)。"
           f"押せるボタン {全} 種のうち {のせた} 種を載せています"

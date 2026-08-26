@@ -413,8 +413,8 @@ pub fn css(th: &Theme, 題名あり: bool) -> String {
 /// **AsciiDoc の註記は5つ**です(`NOTE:` `TIP:` `IMPORTANT:` `WARNING:`
 /// `CAUTION:`)。docx には同じ物が無いので段落のスタイルとして往復し、
 /// Web ではまとめて `aside` に出します。
-fn 註記の種(名: &str) -> Option<&'static str> {
-    Some(match 名 {
+fn 註記の種(name: &str) -> Option<&'static str> {
+    Some(match name {
         "註記" | "NOTE" => "note",
         "こつ" | "TIP" => "tip",
         "大事" | "IMPORTANT" => "important",
@@ -428,8 +428,8 @@ fn 註記の種(名: &str) -> Option<&'static str> {
 ///
 /// コードと字のままの塊は改行がそのまま意味を持つので `pre` に入れます。
 /// 例・傍注・入れ物は文章なので、段落に割ります。
-fn 中が段落(塊: Option<&str>) -> bool {
-    matches!(塊, Some("example") | Some("sidebar") | Some("open"))
+fn 中が段落(block: Option<&str>) -> bool {
+    matches!(block, Some("example") | Some("sidebar") | Some("open"))
 }
 
 /// 註記の色。(左の線, 下地)
@@ -438,8 +438,8 @@ fn 中が段落(塊: Option<&str>) -> bool {
 /// 註記が註記に見えるようにするためです(Flet や Flutter と同じ考え方で、
 /// 上から降ってくる規則に頼りません)。`class` も付けるので、
 /// 揃えたい人はスタイルシートで上書きできます。
-fn 註記の色(種: &str) -> (&'static str, &'static str) {
-    match 種 {
+fn 註記の色(kind: &str) -> (&'static str, &'static str) {
+    match kind {
         "tip" => ("#2e7d32", "#f1f8e9"),
         "important" => ("#6a1b9a", "#f3e5f5"),
         "warning" => ("#ef6c00", "#fff3e0"),
@@ -449,8 +449,8 @@ fn 註記の色(種: &str) -> (&'static str, &'static str) {
 }
 
 /// 註記の入れ物の見た目。左に色の線を引いて、下地を薄く敷きます。
-fn 註記の飾り(種: &str) -> String {
-    let (線, 下地) = 註記の色(種);
+fn 註記の飾り(kind: &str) -> String {
+    let (線, 下地) = 註記の色(kind);
     format!(
         " style=\"border-left:4px solid {線};background:{下地};\
          padding:.6em 1em;margin:1em 0\""
@@ -465,13 +465,13 @@ const CODE_STYLE: &str = " style=\"font-family:ui-monospace,SFMono-Regular,\
 /// 塊の開きのタグ。`[NOTE]` が前に付いていれば註記にします。
 ///
 /// **見た目は要素そのものに書き込みます。** 中身だけを他所へ貼っても崩れません。
-fn 塊の開き(塊: Option<&str>, 印: Option<&str>) -> String {
-    if let Some(種) = 印.and_then(註記の種) {
+fn 塊の開き(block: Option<&str>, mark: Option<&str>) -> String {
+    if let Some(kind) = mark.and_then(註記の種) {
         return format!(
-            "<aside class=\"admonition {種}\" role=\"note\"{}><p style=\"margin:0\">",
-            註記の飾り(種));
+            "<aside class=\"admonition {kind}\" role=\"note\"{}><p style=\"margin:0\">",
+            註記の飾り(kind));
     }
-    match 塊 {
+    match block {
         Some("literal") => format!("<pre{CODE_STYLE}>"),
         Some("example") => "<div class=\"example\" style=\"border:1px solid #d0d7de;\
              padding:.8em 1em;margin:1em 0;border-radius:4px\"><p style=\"margin:0\">".into(),
@@ -484,11 +484,11 @@ fn 塊の開き(塊: Option<&str>, 印: Option<&str>) -> String {
 }
 
 /// 塊の閉じのタグ。開きと必ず対にします。
-fn 塊の閉じ(塊: Option<&str>, 印: Option<&str>) -> String {
-    if 印.and_then(註記の種).is_some() {
+fn 塊の閉じ(block: Option<&str>, mark: Option<&str>) -> String {
+    if mark.and_then(註記の種).is_some() {
         return "</p></aside>\n".into();
     }
-    match 塊 {
+    match block {
         Some("literal") => "</pre>\n".into(),
         Some("example") => "</p></div>\n".into(),
         Some("sidebar") => "</p></aside>\n".into(),
@@ -504,21 +504,21 @@ fn 塊の閉じ(塊: Option<&str>, 印: Option<&str>) -> String {
 /// `upperalpha` `lowerroman` `upperroman`)。返すのは (種類, 始めの数)。
 /// 番号の指定でなければ `None` です。
 fn 番号の付け方(指定: &str) -> Option<(String, Option<String>)> {
-    let mut 種 = None;
-    let mut 始め = None;
+    let mut kind = None;
+    let mut start = None;
     for 部 in 指定.split(',') {
         let 部 = 部.trim();
         if let Some(n) = 部.strip_prefix("start=") {
-            始め = Some(n.trim().to_string());
+            start = Some(n.trim().to_string());
         } else if matches!(部, "arabic" | "decimal" | "loweralpha" | "upperalpha"
                                 | "lowerroman" | "upperroman") {
-            種 = Some(部.to_string());
+            kind = Some(部.to_string());
         }
     }
-    if 種.is_none() && 始め.is_none() {
+    if kind.is_none() && start.is_none() {
         return None;
     }
-    Some((種.unwrap_or_else(|| "arabic".to_string()), 始め))
+    Some((kind.unwrap_or_else(|| "arabic".to_string()), start))
 }
 
 /// 番号の付け方を `ol` の属性にする。
@@ -526,15 +526,15 @@ fn 番号の付け方(指定: &str) -> Option<(String, Option<String>)> {
 /// **HTML の `type` で出します。** CSS を外しても番号の種類が残るように
 /// するためです(発注者「CSS がなくても全部指定するように」)。
 fn 番号の属性(付け方: Option<(String, Option<String>)>) -> String {
-    let Some((種, 始め)) = 付け方 else { return String::new() };
-    let t = match 種.as_str() {
+    let Some((kind, start)) = 付け方 else { return String::new() };
+    let t = match kind.as_str() {
         "loweralpha" => "a",
         "upperalpha" => "A",
         "lowerroman" => "i",
         "upperroman" => "I",
         _ => "1",
     };
-    match 始め {
+    match start {
         Some(n) => format!(" type=\"{t}\" start=\"{n}\""),
         None => format!(" type=\"{t}\""),
     }
@@ -547,8 +547,8 @@ fn 番号の属性(付け方: Option<(String, Option<String>)>) -> String {
 /// **CSS を外しても効くように、属性に書き込みます。**
 /// 括弧は CSS の既定の種類では出せないので、`(1)` の段は括弧なしの
 /// 数のままです(そこだけ紙と違います)。
-fn 様式の段(深さ: usize) -> String {
-    match 深さ {
+fn 様式の段(depth: usize) -> String {
+    match depth {
         0 => String::new(),                                     // 1. 2. 3.
         1 => " style=\"list-style-type:decimal\"".into(),       // (1) の段
         2 | 3 => " style=\"list-style-type:katakana\"".into(),  // ア イ ウ
@@ -578,14 +578,14 @@ fn build(doc: &Document) -> (String, Ctx) {
     // 箇条書きは連続する段落をまとめます(HTML の ul / ol は入れ物なので)
     let mut list: Vec<ListKind> = Vec::new();
     // ラベル付きリスト(`dl`)の途中か
-    let mut dl中 = false;
+    let mut in_dl = false;
     // コードの塊(`pre`)の途中か
     let mut pre中 = false;
     // **いま開いている塊の種類。** `----` はコード、`....` は字のまま、
     // `====` は例、`****` は傍注、`--` は入れ物です。
     // 前は全部 `<pre><code>` に落としていたので、例も傍注も註記も
     // コードに見えていました(2026-08-25 に実物を流して見つけました)
-    let mut 塊: Option<&'static str> = None;
+    let mut block: Option<&'static str> = None;
     // `[NOTE]` のように、塊の直前の指定の行が言う種類
     let mut 次の塊の印: Option<String> = None;
     // **次のリストの番号の付け方**(`[loweralpha]` `[start=5]` など)。
@@ -598,7 +598,7 @@ fn build(doc: &Document) -> (String, Ctx) {
     // 手続きの案内は「問いと答え」で書くのが読みやすいので、
     // 用語の一覧とは別の形で出します
     let mut 次は問答 = false;
-    let mut 問答中 = false;
+    let mut in_qanda = false;
     // 目次の行が続いている間(nav で包む)
     let mut 目次中 = false;
     let 題名あり = !doc.props.title.is_empty();
@@ -609,8 +609,8 @@ fn build(doc: &Document) -> (String, Ctx) {
     //
     // 深い段は*親の項目の中*に入れます。これが入れ子のリストの正しい形で、
     // 読み上げも折りたたみもここを見ます。
-    let close = |o: &mut String, 段: &mut Vec<ListKind>| {
-        while let Some(k) = 段.pop() {
+    let close = |o: &mut String, tab: &mut Vec<ListKind>| {
+        while let Some(k) = tab.pop() {
             o.push_str("</li>\n");
             o.push_str(if k == ListKind::Bullet { "</ul>\n" } else { "</ol>\n" });
         }
@@ -632,16 +632,16 @@ fn build(doc: &Document) -> (String, Ctx) {
                 close(&mut o, &mut list);
                 o.push_str("<table>\n");
                 // 表の題は `caption`(本家と同じ)
-                if let Some(名) = &t.title {
-                    o.push_str(&format!("  <caption>{}</caption>\n", esc(名)));
+                if let Some(name) = &t.title {
+                    o.push_str(&format!("  <caption>{}</caption>\n", esc(name)));
                 }
                 // **桁の指定**(`[cols="1,3"]`)。Web では割合でそのまま書けます
                 if !t.col_ratio.is_empty() {
-                    let 和: f32 = t.col_ratio.iter().sum();
-                    if 和 > 0.0 {
+                    let sum: f32 = t.col_ratio.iter().sum();
+                    if sum > 0.0 {
                         o.push_str("  <colgroup>");
                         for v in &t.col_ratio {
-                            o.push_str(&format!("<col style=\"width:{:.1}%\">", v / 和 * 100.0));
+                            o.push_str(&format!("<col style=\"width:{:.1}%\">", v / sum * 100.0));
                         }
                         o.push_str("</colgroup>\n");
                     }
@@ -691,17 +691,17 @@ fn build(doc: &Document) -> (String, Ctx) {
         // 読み手は種類を見分けているのに、書き出しが本文の字として
         // 出していました(印の `* [ ]` がそのままページに出ていた)
         let 作業 = p.style_id.as_deref() == Some("チェック");
-        let (種, 段数, inner) = if 作業 {
-            let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+        let (kind, 段数, inner) = if 作業 {
+            let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
             // 印は `*` でも `-`(Markdown の書き方)でもよい
-            let 印 = 字.chars().next().unwrap_or('*');
-            let 星 = 字.chars().take_while(|c| *c == 印).count().max(1);
-            let 残り 
-                = 字.trim_start_matches(印).trim_start();
-            let (済, 本文) = if let Some(r) = 残り.strip_prefix("[x] ").or_else(|| 残り.strip_prefix("[X] ")) {
+            let mark = text.chars().next().unwrap_or('*');
+            let stars = text.chars().take_while(|c| *c == mark).count().max(1);
+            let rest 
+                = text.trim_start_matches(mark).trim_start();
+            let (済, body) = if let Some(r) = rest.strip_prefix("[x] ").or_else(|| rest.strip_prefix("[X] ")) {
                 (true, r)
             } else {
-                (false, 残り.trim_start_matches("[ ] "))
+                (false, rest.trim_start_matches("[ ] "))
             };
             // **見た目は要素そのものが持ちます。** 印だけ消して素の箇条書きにすると、
             // 済んだかどうかが読めなくなります
@@ -711,11 +711,11 @@ fn build(doc: &Document) -> (String, Ctx) {
             } else {
                 "<input type=\"checkbox\" disabled style=\"margin-right:.5em\">"
             };
-            (ListKind::Bullet, 星 - 1, format!("{箱}{}", esc(本文)))
+            (ListKind::Bullet, stars - 1, format!("{箱}{}", esc(body)))
         } else {
             (p.list, p.indent as usize, inner)
         };
-        if 種 != ListKind::None {
+        if kind != ListKind::None {
             let n = 段数;
             // 深すぎる段を閉じる(親の項目も一緒に閉じます)
             while list.len() > n + 1 {
@@ -725,7 +725,7 @@ fn build(doc: &Document) -> (String, Ctx) {
             }
             if list.len() == n + 1 {
                 o.push_str("</li>\n");          // 同じ段の前の項目を閉じる
-                if list[n] != 種 {
+                if list[n] != kind {
                     let 古 = list.pop().expect("段があるはず");
                     o.push_str(if 古 == ListKind::Bullet { "</ul>\n" } else { "</ol>\n" });
                 }
@@ -734,7 +734,7 @@ fn build(doc: &Document) -> (String, Ctx) {
             // 書き込むので、CSS が無くても点は出ません
             let 飾り = if 作業 { " style=\"list-style:none;padding-left:0\"" } else { "" };
             while list.len() < n + 1 {
-                let 開き = if 種 == ListKind::Bullet {
+                let 開き = if kind == ListKind::Bullet {
                     format!("<ul{飾り}>\n")
                 } else {
                     // 指定は*いちばん外の段だけ*に効かせます。
@@ -748,7 +748,7 @@ fn build(doc: &Document) -> (String, Ctx) {
                     format!("<ol{属性}>\n")
                 };
                 o.push_str(&開き);
-                list.push(種);
+                list.push(kind);
             }
             o.push_str(&format!("  <li>{inner}"));   // 閉じは次の項目か、段を閉じるとき
             continue;
@@ -764,12 +764,12 @@ fn build(doc: &Document) -> (String, Ctx) {
         // **コードの塊は `pre` にします**(2026-08-18)。
         // `----` と `[source,python]` の行は、ここからここまでがコードだと
         // いう印です。文章ではないので、ページには出しません
-        let 名 = p.style_id.as_deref();
+        let name = p.style_id.as_deref();
         // **塊の区切りを見て、種類を覚えます。** 中身の段落は種類を
         // 持たないので、開いた印のほうから決めるしかありません
-        if 名 == Some("塊の区切り") && 塊.is_none() {
-            let 印: String = p.runs.iter().map(|r| r.text.as_str()).collect();
-            塊 = Some(match 印.trim() {
+        if name == Some("塊の区切り") && block.is_none() {
+            let mark: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+            block = Some(match mark.trim() {
                 "...." => "literal",
                 "====" => "example",
                 "****" => "sidebar",
@@ -778,108 +778,108 @@ fn build(doc: &Document) -> (String, Ctx) {
                 _ => "code",
             });
         }
-        if 名 == Some("塊の中") {
+        if name == Some("塊の中") {
             close(&mut o, &mut list);
-            if dl中 {
+            if in_dl {
                 o.push_str("</dl>\n");
-                dl中 = false;
+                in_dl = false;
             }
-            let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+            let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
             // **文章の塊では、空の行は段落の切れ目です。**
             // そのまま段落にすると `<p></p>` が出ます
-            if 中が段落(塊) && 字.trim().is_empty() {
+            if 中が段落(block) && text.trim().is_empty() {
                 continue;
             }
             if !pre中 {
-                o.push_str(&塊の開き(塊, 次の塊の印.as_deref()));
+                o.push_str(&塊の開き(block, 次の塊の印.as_deref()));
                 pre中 = true;
             } else {
-                o.push_str(if 中が段落(塊) { "</p>\n<p>" } else { "\n" });
+                o.push_str(if 中が段落(block) { "</p>\n<p>" } else { "\n" });
             }
             // **そのまま通す塊だけは逃がしません。** 生の HTML を書く
             // ための塊なので、逃がすと役に立ちません
-            if 塊 == Some("pass") {
-                o.push_str(&字);
+            if block == Some("pass") {
+                o.push_str(&text);
             } else {
-                o.push_str(&esc(&字));
+                o.push_str(&esc(&text));
             }
             continue;
         }
         if pre中 {
-            o.push_str(&塊の閉じ(塊, 次の塊の印.as_deref()));
+            o.push_str(&塊の閉じ(block, 次の塊の印.as_deref()));
             pre中 = false;
-            塊 = None;
+            block = None;
             次の塊の印 = None;
         }
         // **横の区切り線は hr です。** 前は印の字がそのまま出ていました
-        if 名 == Some("横の区切り線") {
+        if name == Some("横の区切り線") {
             close(&mut o, &mut list);
-            if dl中 {
+            if in_dl {
                 o.push_str("</dl>\n");
-                dl中 = false;
+                in_dl = false;
             }
             o.push_str("<hr style=\"border:0;border-top:1px solid #d0d7de;margin:2em 0\">\n");
             continue;
         }
         // **註記は aside に役割を付けます。** 前はただの段落だったので、
         // Web では本文と見分けが付きませんでした
-        if let Some(種) = 名.and_then(註記の種) {
+        if let Some(kind) = name.and_then(註記の種) {
             close(&mut o, &mut list);
-            if dl中 {
+            if in_dl {
                 o.push_str("</dl>\n");
-                dl中 = false;
+                in_dl = false;
             }
             o.push_str(&format!(
-                "<aside class=\"admonition {種}\" role=\"note\"{}>{inner}</aside>\n",
-                註記の飾り(種)));
+                "<aside class=\"admonition {kind}\" role=\"note\"{}>{inner}</aside>\n",
+                註記の飾り(kind)));
             continue;
         }
-        if 名 == Some("指定の行") {
+        if name == Some("指定の行") {
             // `[NOTE]` のような指定は、次の塊の種類になります
-            let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
-            let 中 = 字.trim().trim_start_matches('[').trim_end_matches(']');
-            if 註記の種(中).is_some() {
-                次の塊の印 = Some(中.to_string());
+            let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+            let inner = text.trim().trim_start_matches('[').trim_end_matches(']');
+            if 註記の種(inner).is_some() {
+                次の塊の印 = Some(inner.to_string());
             }
             // **番号の付け方の指定。** ここでリストを切ります —
             // 切らないと、指定の違う3つのリストが1つに繋がります
-            if let Some(付け方) = 番号の付け方(中) {
+            if let Some(付け方) = 番号の付け方(inner) {
                 close(&mut o, &mut list);
                 次のリスト = Some(付け方);
             }
-            if 中.split(',').any(|x| x.trim() == "qanda") {
-                if dl中 {
+            if inner.split(',').any(|x| x.trim() == "qanda") {
+                if in_dl {
                     o.push_str("</dl>\n");
-                    dl中 = false;
+                    in_dl = false;
                 }
                 次は問答 = true;
             }
             continue;
         }
-        if 名 == Some("塊の区切り") {
+        if name == Some("塊の区切り") {
             continue;
         }
         // **ラベル付きリスト**(`項目:: 値`)は `dl` / `dt` / `dd` に。
         // 続いている間は1つの `dl` にまとめます(2026-08-18)
         // **空行で切れた2つ目の一覧は、別の `dl` にします**(2026-08-25)。
         // 印が無かったころは、続きの一覧が前の一覧に呑まれていました
-        if p.style_id.as_deref() == Some("説明のリストの始め") && (dl中 || 問答中) {
-            o.push_str(if 問答中 { "</ol>\n" } else { "</dl>\n" });
-            dl中 = false;
-            問答中 = false;
+        if p.style_id.as_deref() == Some("説明のリストの始め") && (in_dl || in_qanda) {
+            o.push_str(if in_qanda { "</ol>\n" } else { "</dl>\n" });
+            in_dl = false;
+            in_qanda = false;
         }
         if p.style_id.as_deref().is_some_and(
             |n| n == "説明のリスト" || n == "説明のリストの始め") {
-            let 字: String = p.runs.iter().map(|r| r.text.as_str()).collect();
-            if let Some((項, _)) = 字.split_once(":: ") {
+            let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+            if let Some((項, _)) = text.split_once(":: ") {
                 close(&mut o, &mut list);
-                if 次は問答 && !問答中 {
+                if 次は問答 && !in_qanda {
                     o.push_str("<ol class=\"qanda\">\n");
-                    問答中 = true;
+                    in_qanda = true;
                     次は問答 = false;
-                } else if !問答中 && !dl中 {
+                } else if !in_qanda && !in_dl {
                     o.push_str("<dl>\n");
-                    dl中 = true;
+                    in_dl = true;
                 }
                 // **値の側は run のまま出します**(2026-08-18)。字だけを
                 // 取ると、記入欄・リンク・ルビが消えます(申込用紙を
@@ -905,29 +905,29 @@ fn build(doc: &Document) -> (String, Ctx) {
                 if let Some(first) = 値の並び.first_mut() {
                     first.text = first.text.trim_start().to_string();
                 }
-                let 値 = runs_html(&値の並び, doc, &mut ctx);
+                let value = runs_html(&値の並び, doc, &mut ctx);
                 // **問いは太く、答えはその下に。** 見た目は要素そのものが持ちます
-                if 問答中 {
+                if in_qanda {
                     o.push_str(&format!(
                         "  <li><p style=\"font-weight:600;margin:0 0 .3em\">{}</p>\
                          <p style=\"margin:0 0 .8em\">{}</p></li>\n",
-                        esc(項.trim()), 値));
+                        esc(項.trim()), value));
                 } else {
                     o.push_str(&format!(
                         "  <dt style=\"font-weight:600\">{}</dt>\
                          <dd style=\"margin:0 0 .6em 1.5em\">{}</dd>\n",
-                        esc(項.trim()), 値));
+                        esc(項.trim()), value));
                 }
                 continue;
             }
         }
-        if dl中 {
+        if in_dl {
             o.push_str("</dl>\n");
-            dl中 = false;
+            in_dl = false;
         }
-        if 問答中 {
+        if in_qanda {
             o.push_str("</ol>\n");
-            問答中 = false;
+            in_qanda = false;
         }
         close(&mut o, &mut list);
         let tag = tag_of(p.style, 題名あり);
@@ -965,13 +965,13 @@ fn build(doc: &Document) -> (String, Ctx) {
         o.push_str(&format!("<{tag}{id}{cls}>{余り}{inner}</{tag}>\n"));
     }
     if pre中 {
-        o.push_str(&塊の閉じ(塊, 次の塊の印.as_deref()));
+        o.push_str(&塊の閉じ(block, 次の塊の印.as_deref()));
     }
     close(&mut o, &mut list);
-    if 問答中 {
+    if in_qanda {
         o.push_str("</ol>\n");
     }
-    if dl中 {
+    if in_dl {
         o.push_str("</dl>\n");
     }
     close(&mut o, &mut list);

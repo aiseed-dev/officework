@@ -88,19 +88,19 @@ pub fn load() -> Session {
 pub fn prune(s: &Session) -> (Session, usize) {
     let mut out = Session { folder: s.folder.clone().filter(|d| d.is_dir()), ..Default::default() };
     let 見ていた = s.files.get(s.at).cloned();
-    let mut 落ちた = 0usize;
+    let mut dropped = 0usize;
     for f in &s.files {
         if f.is_file() {
             out.files.push(f.clone());
         } else {
-            落ちた += 1;
+            dropped += 1;
         }
     }
     // 見ていたタブが残っていればそこへ、消えていれば先頭へ
     out.at = 見ていた
         .and_then(|w| out.files.iter().position(|f| *f == w))
         .unwrap_or(0);
-    (out, 落ちた)
+    (out, dropped)
 }
 
 /// 前の版から上げた人のための**1回だけの移し替え**。
@@ -129,7 +129,7 @@ pub fn of(folder: Option<&Path>, files: &[PathBuf], at: usize) -> Session {
 mod tests {
     use super::*;
 
-    fn 姿() -> Session {
+    fn snapshot() -> Session {
         Session {
             folder: Some(PathBuf::from("/tmp/帳簿")),
             files: vec![
@@ -142,12 +142,12 @@ mod tests {
 
     #[test]
     fn 綴って読むと同じ姿になる() {
-        assert_eq!(from_text(&to_text(&姿())), 姿());
+        assert_eq!(from_text(&to_text(&snapshot())), snapshot());
     }
 
     #[test]
     fn 見ていたタブに印が付く() {
-        let t = to_text(&姿());
+        let t = to_text(&snapshot());
         assert!(t.contains("* /tmp/帳簿/売上台帳.sheet.adoc"), "{t}");
         assert!(t.contains("- /tmp/帳簿/報告書.adoc"), "{t}");
     }
@@ -178,11 +178,11 @@ mod tests {
         std::fs::create_dir_all(&d).unwrap();
         let 在る = d.join("在る.adoc");
         std::fs::write(&在る, "= 在る\n").unwrap();
-        let 無い = d.join("無い.adoc");
-        let _ = std::fs::remove_file(&無い);
-        let s = Session { folder: Some(d.clone()), files: vec![無い.clone(), 在る.clone()], at: 0 };
-        let (out, 落ちた) = prune(&s);
-        assert_eq!(落ちた, 1);
+        let missing = d.join("無い.adoc");
+        let _ = std::fs::remove_file(&missing);
+        let s = Session { folder: Some(d.clone()), files: vec![missing.clone(), 在る.clone()], at: 0 };
+        let (out, dropped) = prune(&s);
+        assert_eq!(dropped, 1);
         assert_eq!(out.files, vec![在る.clone()]);
         // 見ていたのは消えた側だったので、先頭へ寄せる
         assert_eq!(out.at, 0);
@@ -198,10 +198,10 @@ mod tests {
         let b = d.join("b.adoc");
         std::fs::write(&a, "= a\n").unwrap();
         std::fs::write(&b, "= b\n").unwrap();
-        let 無い = d.join("消えた.adoc");
-        let s = Session { folder: Some(d.clone()), files: vec![無い, a.clone(), b.clone()], at: 2 };
-        let (out, 落ちた) = prune(&s);
-        assert_eq!(落ちた, 1);
+        let missing = d.join("消えた.adoc");
+        let s = Session { folder: Some(d.clone()), files: vec![missing, a.clone(), b.clone()], at: 2 };
+        let (out, dropped) = prune(&s);
+        assert_eq!(dropped, 1);
         // b を見ていた。前は3枚目だったが、いまは2枚目
         assert_eq!(out.files, vec![a, b.clone()]);
         assert_eq!(out.files[out.at], b, "見ていたタブが変わった");

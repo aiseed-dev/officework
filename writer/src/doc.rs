@@ -29,7 +29,7 @@ pub(crate) fn is_plain_ext(e: &str) -> bool {
 pub(crate) struct Look {
     pub pg: kumihan::PageSetup,
     pub vertical: bool,
-    pub 組: kumihan::theme::Setting,
+    pub group: kumihan::theme::Setting,
     pub view_w_px: f32,
 }
 
@@ -55,12 +55,12 @@ impl Look {
             // ページに折らない(1本の流れ = Web の姿)。
             // 区切り=節(発表)は**合成の側**で見出し1 に改ページの印が
             // 付いているので、ここでは何もしない — 折り手がそこで割る
-            let measure = if self.組.fluid {
+            let measure = if self.group.fluid {
                 // 画面の画素 → mm(紙の幅は使わない)。**余白は紙と同じだけ
                 // 左右に空ける** — 前は 16mm 決め打ちで、窓が広い機械では
                 // 本文と表が紙からはみ出していた(2026-08-18 実機で見つけた)
-                let 余白 = self.pg.left_mm + self.pg.right_mm;
-                ((self.view_w_px / crate::PX_PER_MM) - 余白).max(40.0)
+                let margins = self.pg.left_mm + self.pg.right_mm;
+                ((self.view_w_px / crate::PX_PER_MM) - margins).max(40.0)
             } else {
                 self.pg.column_measure_mm()
             };
@@ -69,7 +69,7 @@ impl Look {
                 m,
                 &Frame { measure_mm: measure, line_height_mm: LINE_MM, y0_mm: y0 },
             );
-            if !self.組.endless() {
+            if !self.group.endless() {
                 kumihan::fold_columns(&mut page, &self.pg, y0);
             }
         }
@@ -589,23 +589,23 @@ impl Writer {
             let c = composed.get_or_insert_with(|| self.doc.clone());
             ops::table::fill_with(c, ui::calc_iter_setting());
         }
-        let 組 = if self.native { self.tmpl.setting } else { Default::default() };
+        let group = if self.native { self.tmpl.setting } else { Default::default() };
         // **ページの飾りは合成の写しから取ります**(2026-08-18)。
         // テンプレートに書いたヘッダー・透かし・縦書きが画面と紙に出ます。
         // `self.doc` は意味だけのまま(保存に漏れない)
         let 飾り = composed.as_ref().unwrap_or(&self.doc);
         self.dress_hf = (飾り.header.clone(), 飾り.footer.clone());
         self.dress_page = (飾り.watermark.clone(), 飾り.page_color.clone());
-        let 縦 = 飾り.vertical;
-        let 姿 = Look { pg: self.pg, vertical: 縦, 組, view_w_px: self.view_w_px };
-        self.page = 姿.lay_once(composed.as_ref().unwrap_or(&self.doc), &m);
+        let vertical = 飾り.vertical;
+        let snapshot = Look { pg: self.pg, vertical: vertical, group, view_w_px: self.view_w_px };
+        self.page = snapshot.lay_once(composed.as_ref().unwrap_or(&self.doc), &m);
         self.refresh_hf();
         // **跨がない**(発表)。折った結果を見て、境をまたいだ段落があれば
         // 写しにその段落の改ページの印を足し、**折り手に折り直させる**。
         // refresh_hf の後でないと頁の境が分からない
-        if 組.keep {
+        if group.keep {
             if let Some(c) = composed.as_mut() {
-                self.keep_paragraphs_whole(c, &m, &姿);
+                self.keep_paragraphs_whole(c, &m, &snapshot);
             }
         }
     }
@@ -619,7 +619,7 @@ impl Writer {
     ///
     /// **印を付けて組み直す**のがこの手の要。組んだ後の `breaks` に境だけ
     /// 足しても、行は巻物の位置のまま動かない(2026-08-17 の踏み跡)。
-    fn keep_paragraphs_whole(&mut self, c: &mut Document, m: &Metrics, 姿: &Look) {
+    fn keep_paragraphs_whole(&mut self, c: &mut Document, m: &Metrics, snapshot: &Look) {
         let n = c.paragraphs().count();
         for _ in 0..n.min(200) {
             let Some(i) = self.straddling_para(c) else { return };
@@ -630,7 +630,7 @@ impl Writer {
                 return;
             }
             p.page_break_before = true;
-            self.page = 姿.lay_once(c, m);
+            self.page = snapshot.lay_once(c, m);
             self.refresh_hf();
         }
     }
@@ -1238,17 +1238,17 @@ impl Writer {
     /// 「名前を付けて保存」と違って、*保存先は変わりません* — 書き出しは
     /// 別の形に写す操作で、いま書いている文書はそのままです。
     pub(crate) fn export_as(&mut self, cx: &mut Context<Self>, ext: &'static str) {
-        let 名 = match ext {
+        let name = match ext {
             "docx" => ui::t!("word_document"),
             _ => ui::t!("plain_text_file"),
         };
-        let もと = self.path.clone();
+        let src_of = self.path.clone();
         let ask = cx.background_executor().spawn(async move {
-            let mut d = rfd::FileDialog::new().add_filter(名, &[ext]);
-            if let Some(p) = もと.as_ref().and_then(|p| p.parent()) {
+            let mut d = rfd::FileDialog::new().add_filter(name, &[ext]);
+            if let Some(p) = src_of.as_ref().and_then(|p| p.parent()) {
                 d = d.set_directory(p);
             }
-            if let Some(n) = もと.as_ref().and_then(|p| p.file_stem()) {
+            if let Some(n) = src_of.as_ref().and_then(|p| p.file_stem()) {
                 d = d.set_file_name(format!("{}.{ext}", n.to_string_lossy()));
             }
             d.save_file()
@@ -1862,14 +1862,14 @@ impl Writer {
         } else {
             (sel.start, &全文[sel.clone()])
         };
-        let 候補 = ui::dict::ruby_targets(対象);
-        if 候補.is_empty() {
+        let cands = ui::dict::ruby_targets(対象);
+        if cands.is_empty() {
             self.status = ui::t!("there_no_kanji_words").into();
             return true;
         }
         let mut n = 0usize;
         let mut 割れた = 0usize;
-        for s in &候補 {
+        for s in &cands {
             let Some(yomi) = s.readings.first() else { continue };
             // **読みが語と同じなら振りません**(ひらがなの語に振っても無駄)
             if yomi == &s.base {
@@ -2259,11 +2259,11 @@ impl Writer {
         self.adopt_font();
         self.path = Some(p.to_path_buf());
         self.dirty = false;
-        let 行 = text.lines().count();
+        let line = text.lines().count();
         self.status = ui::tf!(
             "lines_opened_plain_text",
             p.file_name().unwrap_or_default().to_string_lossy(),
-            行
+            line
         )
         .into();
     }
@@ -2274,7 +2274,7 @@ impl Writer {
         let text = String::from_utf8_lossy(bytes).replace("\r\n", "\n");
         // **1つのファイルに文書が何枚も入っていることがあります**
         // (同時に送る請求書の原稿など。2026-08-19)。`= 題` で切れています
-        let (mut 文書たち, 帳簿) = match kumihan::adoc::parse_many_full(&text) {
+        let (mut 文書たち, ledger) = match kumihan::adoc::parse_many_full(&text) {
             Ok(d) => d,
             Err(e) => {
                 // **読めない所は言う。** 黙って本文に化けさせない
@@ -2283,7 +2283,7 @@ impl Writer {
             }
         };
         let doc = 文書たち.first().cloned().unwrap_or_default();
-        let 枚数 = 文書たち.len();
+        let n_sheets = 文書たち.len();
         self.target = Target::Body;
         self.hf_edit = None;
         self.track = false;
@@ -2292,16 +2292,16 @@ impl Writer {
         // **うちが扱わない AsciiDoc の書き方は、帳簿に出します。**
         // 字は本文として残りますが意味は落ちています。黙って化けさせると、
         // 書いた人は出来上がりを見るまで気づけません(2026-08-18)
-        self.notes = 帳簿.iter().map(|n| SharedString::from(n.clone())).collect();
+        self.notes = ledger.iter().map(|n| SharedString::from(n.clone())).collect();
         self.native = true;
-        let (tmpl, tmpl_path, 言い分) = self.load_template(doc.template.as_deref(), p);
+        let (tmpl, tmpl_path, notes) = self.load_template(doc.template.as_deref(), p);
         self.tmpl = tmpl;
         self.tmpl_path = tmpl_path;
         // 用紙はテンプレートが持つ(本文は持たない)
         self.pg = self.tmpl.page.unwrap_or_default();
         self.set_doc(doc);
         // 2枚目からは控えへ。0 番は置き場(いま `doc` にあります)
-        if 枚数 > 1 {
+        if n_sheets > 1 {
             文書たち[0] = kumihan::Document::default();
             self.docs = std::mem::take(&mut 文書たち);
         } else {
@@ -2318,25 +2318,25 @@ impl Writer {
         self.status = ui::tf!(
             "text_adoc_formatting_comes",
             p.file_name().unwrap_or_default().to_string_lossy(),
-            言い分
+            notes
         )
         .into();
-        if 枚数 > 1 {
+        if n_sheets > 1 {
             self.status =
-                ui::tf!("documents", self.status.clone(), 枚数.to_string()).into();
+                ui::tf!("documents", self.status.clone(), n_sheets.to_string()).into();
         }
         if 組めない > 0 {
             self.status =
                 ui::tf!("equations_not_typeset", self.status.clone(), 組めない).into();
         }
-        if !帳簿.is_empty() {
+        if !ledger.is_empty() {
             self.status = ui::tf!("uses_markup_not_handle",
-                                  self.status.clone(), 帳簿.join("・")).into();
+                                  self.status.clone(), ledger.join("・")).into();
         }
         // **様式の食い違いは開いたときに言います。** 印刷してから気づくのでは
         // 遅いので、升目を組んだその場で出します
-        if let Some(言うこと) = self.form_status() {
-            self.status = ui::tf!("form", self.status.clone(), 言うこと).into();
+        if let Some(says) = self.form_status() {
+            self.status = ui::tf!("form", self.status.clone(), says).into();
         }
     }
 
@@ -2427,12 +2427,12 @@ impl Writer {
                             at.display().to_string(),
                         ),
                         Err(e) => {
-                            let (th, 名) = Self::標準のテンプレート();
+                            let (th, name) = Self::標準のテンプレート();
                             (
                                 th,
                                 None,
                                 ui::tf!("not_read_used",
-                                        at.display().to_string(), 名, e).to_string(),
+                                        at.display().to_string(), name, e).to_string(),
                             )
                         }
                     };
@@ -2440,17 +2440,17 @@ impl Writer {
                 // **書式のファイルらしい物があるのに名前が違うときは言います。**
                 // 黙って既定で開くと、置いた人は「効かない」としか分かりません
                 if let Some(他) = 他の型(dir) {
-                    let (th, 名) = Self::標準のテンプレート();
+                    let (th, name) = Self::標準のテンプレート();
                     return (
                         th,
                         None,
                         ui::tf!("use_folder_rename_write",
-                                名, 他, Self::FOLDER_TEMPLATE).to_string(),
+                                name, 他, Self::FOLDER_TEMPLATE).to_string(),
                     );
                 }
             }
-            let (th, 名) = Self::標準のテンプレート();
-            return (th, None, 名);
+            let (th, name) = Self::標準のテンプレート();
+            return (th, None, name);
         };
         let mut cands = Vec::new();
         if let Some(dir) = doc_path.parent() {
@@ -2468,21 +2468,21 @@ impl Writer {
                 // **壊れたテンプレートは黙って既定に落ちない** — どこが
                 // 悪いか言わないと、直す手がかりが無い
                 Err(e) => {
-                    let (th, 名) = Self::標準のテンプレート();
+                    let (th, name) = Self::標準のテンプレート();
                     (
                         th,
                         None,
-                        ui::tf!("not_read_used", c.display().to_string(), 名, e)
+                        ui::tf!("not_read_used", c.display().to_string(), name, e)
                             .to_string(),
                     )
                 }
             };
         }
-        let (th, 名) = Self::標準のテンプレート();
+        let (th, name) = Self::標準のテンプレート();
         (
             th,
             None,
-            ui::tf!("template_not_found_used", name, 名).to_string(),
+            ui::tf!("template_not_found_used", name, name).to_string(),
         )
     }
 
@@ -2531,9 +2531,9 @@ impl Writer {
     pub(crate) fn set_user_font(&mut self, 書体: &str) {
         let 置き場 = ui::settings::dir();
         let at = 置き場.join(kumihan::theme::user_template_name());
-        let 元 = std::fs::read_to_string(&at).unwrap_or_default();
+        let from = std::fs::read_to_string(&at).unwrap_or_default();
         let 節 = format!("文書.{}", ui::language());
-        let 新しい = kumihan::theme::put(&元, &節, "書体", &format!("\"{書体}\""));
+        let 新しい = kumihan::theme::put(&from, &節, "書体", &format!("\"{書体}\""));
         if let Err(e) = std::fs::create_dir_all(&置き場)
             .and_then(|_| std::fs::write(&at, 新しい))
         {
@@ -2546,12 +2546,12 @@ impl Writer {
         // まだ保存していない文書には道がないので、開いている綴りの中に
         // ある物として探します(`load_template` は親のフォルダしか見ま
         // せんから、名前は何でもかまいません)。
-        let 道 = self
+        let path = self
             .path
             .clone()
             .or_else(|| self.folder().map(|d| d.join("まだ保存していない.adoc")));
-        if let Some(道) = 道 {
-            let (th, tp, _) = self.load_template(self.doc.template.as_deref(), &道);
+        if let Some(path) = path {
+            let (th, tp, _) = self.load_template(self.doc.template.as_deref(), &path);
             self.tmpl = th;
             self.tmpl_path = tp;
         } else {
@@ -2569,7 +2569,7 @@ impl Writer {
     }
 
     pub(crate) fn template_for(&self, 用途: &str) -> (kumihan::theme::Theme, Option<String>) {
-        let 今 = || (self.tmpl.clone(), None);
+        let now = || (self.tmpl.clone(), None);
         if !self.native {
             // 互換の文書(docx)には型紙がない。既定で出す
             return (Self::user_theme(), None);
@@ -2583,10 +2583,10 @@ impl Writer {
             .and_then(|p| p.parent().map(|d| d.to_path_buf()))
             .or_else(|| self.folder())
         else {
-            return 今();
+            return now();
         };
         let at = dir.join(format!("テンプレート-{用途}.toml"));
-        let Ok(src) = std::fs::read_to_string(&at) else { return 今() };
+        let Ok(src) = std::fs::read_to_string(&at) else { return now() };
         match kumihan::theme::parse(&src) {
             // **利用者の段を下に敷きます。** 綴りが言っていないことは、
             // この機械で自分がいつも使う書式で埋まります
@@ -2595,7 +2595,7 @@ impl Writer {
                 Some(at.display().to_string()),
             ),
             // **壊れていたら黙って落ちない。** どれを使ったかは呼ぶ側が言う
-            Err(_) => 今(),
+            Err(_) => now(),
         }
     }
 
@@ -2608,17 +2608,19 @@ impl Writer {
     ///
     /// 返りは(紙面, 用紙, 使ったファイル)。
     pub(crate) fn print_layout(&self) -> Option<(Page, kumihan::PageSetup, String)> {
-        let (th, 使った) = self.template_for("print");
-        let 使った = 使った?;
+        // **用途はファイル名の一部**(テンプレート-印刷.toml)。文書の
+        // 形式の値なので日本語のままです
+        let (th, used) = self.template_for("印刷");
+        let used = used?;
         let m = Metrics::new(&self.font_bytes).ok()?;
         let pg = th.page.unwrap_or(self.pg);
-        let 姿 = Look {
+        let snapshot = Look {
             pg,
             vertical: self.doc.vertical,
-            組: th.setting,
+            group: th.setting,
             view_w_px: self.view_w_px,
         };
-        Some((姿.lay_once(&kumihan::theme::compose(&self.doc, &th), &m), pg, 使った))
+        Some((snapshot.lay_once(&kumihan::theme::compose(&self.doc, &th), &m), pg, used))
     }
 
     /// 保存した先のフォルダに書式のファイルがあれば着る。返りは着た場所。
@@ -2697,12 +2699,12 @@ impl Writer {
 
     /// 何枚目かのファイルの名前(上のタブに出します)。
     pub(crate) fn file_name(&self, i: usize) -> String {
-        let 道 = if i == self.file_at {
+        let path = if i == self.file_at {
             self.path.clone()
         } else {
             self.files.get(i).and_then(|f| f.path.clone())
         };
-        match 道 {
+        match path {
             Some(p) => {
                 let n = p.file_name().unwrap_or_default().to_string_lossy().to_string();
                 ui::folder::display_name(&n, ui::folder::kind_of(&n))
@@ -2833,15 +2835,15 @@ impl Writer {
 
     /// 何枚目かの文書の名前(下のタブに出します)。
     pub(crate) fn doc_name(&self, i: usize) -> String {
-        let 題 = if i == self.doc_at {
+        let title = if i == self.doc_at {
             self.doc.props.title.clone()
         } else {
             self.docs.get(i).map(|d| d.props.title.clone()).unwrap_or_default()
         };
-        if 題.trim().is_empty() {
+        if title.trim().is_empty() {
             ui::tf!("document_2", (i + 1).to_string()).to_string()
         } else {
-            題
+            title
         }
     }
 
@@ -3169,14 +3171,14 @@ impl Writer {
         self.switch_target(Target::Body);
         self.flush_target();
         let sel = self.ed.selection();
-        let 字 = sel.start != sel.end;
+        let text = sel.start != sel.end;
         let n = name.clone();
-        if !字 {
+        if !text {
             self.doc.apply_para(sel, |p| p.style_id = Some(n.clone()));
         } else {
             self.doc.apply_char_format(sel, |f| f.style_id = Some(n.clone()));
         }
-        let 言い分 = if 定義あり {
+        let notes = if 定義あり {
             ui::t!("format_template").to_string()
         } else {
             ui::tf!("name_not_template_yet",
@@ -3186,10 +3188,10 @@ impl Writer {
         };
         self.dirty = true;
         self.relayout_keep();
-        self.status = if 字 {
-            ui::tf!("selected_text_now_uses", name, 言い分)
+        self.status = if text {
+            ui::tf!("selected_text_now_uses", name, notes)
         } else {
-            ui::tf!("paragraph_now_uses", name, 言い分)
+            ui::tf!("paragraph_now_uses", name, notes)
         }
         .into();
     }
@@ -3222,13 +3224,13 @@ impl Writer {
         self.flush_target();
         let sel = self.ed.selection();
         let role = match name {
-            "body" => Some(kumihan::ParaStyle::Body),
-            "title_style" => Some(kumihan::ParaStyle::Title),
-            "heading_1" => Some(kumihan::ParaStyle::Heading(1)),
-            "heading_2" => Some(kumihan::ParaStyle::Heading(2)),
-            "heading_3" => Some(kumihan::ParaStyle::Heading(3)),
-            "heading_4" => Some(kumihan::ParaStyle::Heading(4)),
-            "heading_5" => Some(kumihan::ParaStyle::Heading(5)),
+            "本文" => Some(kumihan::ParaStyle::Body),
+            "表題" => Some(kumihan::ParaStyle::Title),
+            "見出し1" => Some(kumihan::ParaStyle::Heading(1)),
+            "見出し2" => Some(kumihan::ParaStyle::Heading(2)),
+            "見出し3" => Some(kumihan::ParaStyle::Heading(3)),
+            "見出し4" => Some(kumihan::ParaStyle::Heading(4)),
+            "見出し5" => Some(kumihan::ParaStyle::Heading(5)),
             "引用" => Some(kumihan::ParaStyle::Quote),
             _ => None,
         };
@@ -3300,18 +3302,18 @@ impl Writer {
             頁ごと.entry(st.page).or_default().push(st);
         }
         // すでに使われている名前を避ける
-        let mut 使った: Vec<String> = Vec::new();
+        let mut used: Vec<String> = Vec::new();
         for b in &self.doc.blocks {
             if let kumihan::Block::Para(p) = b {
                 for im in p.images.iter().chain(p.images_new.iter()) {
                     if let Some(s) = &im.src {
-                        使った.push(s.clone());
+                        used.push(s.clone());
                     }
                 }
             }
         }
         // **後ろのページから入れます。** 前から入れるとブロックの番号がずれます
-        let mut 枚 = 0usize;
+        let mut sheet = 0usize;
         for (page, strokes) in 頁ごと.iter().rev() {
             let refs: Vec<&kumihan::Stroke> = strokes.iter().collect();
             let Some((svg, w_mm, h_mm)) = kumihan::strokes_to_svg(&refs) else { continue };
@@ -3323,12 +3325,12 @@ impl Writer {
             let mut n = page + 1;
             let rel = loop {
                 let rel = format!("images/筆{n}.svg");
-                if !使った.contains(&rel) {
+                if !used.contains(&rel) {
                     break rel;
                 }
                 n += 1;
             };
-            使った.push(rel.clone());
+            used.push(rel.clone());
             let to = dir.join(&rel);
             if let Some(d) = to.parent() {
                 std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
@@ -3364,9 +3366,9 @@ impl Writer {
                 }
                 _ => self.doc.blocks.push(para),
             }
-            枚 += 1;
+            sheet += 1;
         }
-        Ok(枚)
+        Ok(sheet)
     }
 
     pub(crate) fn save_adoc_to(&mut self, p: &std::path::Path) -> Result<(), String> {
@@ -3389,12 +3391,12 @@ impl Writer {
         }
         // **文書が何枚も入っていれば、全部書きます**(2026-08-19)。
         // いま見ている物を控えへ戻した並びを渡します
-        let 字 = if self.docs.len() > 1 {
+        let text = if self.docs.len() > 1 {
             kumihan::adoc::write_many(&self.docs_for_save())
         } else {
             kumihan::adoc::write(&self.doc)
         };
-        std::fs::write(p, 字).map_err(|e| e.to_string())
+        std::fs::write(p, text).map_err(|e| e.to_string())
     }
 
     /// **自動復旧の控えを書く**(2026-08-21 の B-3)。
@@ -3408,7 +3410,7 @@ impl Writer {
         self.flush_target();
         let dst = crate::io::控えの道(self.path.as_deref());
         // 何枚も入っているファイルなら全部。保存と同じ形にします
-        let 字 = if self.docs.len() > 1 {
+        let text = if self.docs.len() > 1 {
             kumihan::adoc::write_many(&self.docs_for_save())
         } else {
             kumihan::adoc::write(&self.doc)
@@ -3418,7 +3420,7 @@ impl Writer {
             if let Some(d) = dst.parent() {
                 std::fs::create_dir_all(d).ok()?;
             }
-            std::fs::write(&dst, 字).ok()?;
+            std::fs::write(&dst, text).ok()?;
             ops::note_recover_origin(&dst, orig.as_deref());
             Some(())
         });
@@ -3554,7 +3556,7 @@ impl Writer {
                     // フォルダの書式はそのフォルダの文書に効く、という決まりなので、
                     // 入れた文書だけ違う見た目のままだと辻褄が合いません
                     let 着替えた = self.adopt_folder_template(&p);
-                    let 名 = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+                    let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
                     // **筆を絵にしたら、画面を組み直します。** 模型では
                     // 段落が1つ増えているので、組み直さないと線も絵も
                     // 見えなくなります(2026-08-18 に実機で見つけました)
@@ -3565,16 +3567,16 @@ impl Writer {
                     // 中の絵になるので、黙ると「消えた」に見えます
                     self.status = if self.ink_svg_count > 0 {
                         ui::tf!("saved_strokes_became_svg",
-                                名, self.ink_svg_count).into()
+                                name, self.ink_svg_count).into()
                     } else if let Some(at) = 着替えた {
-                        ui::tf!("saved_uses_folders_format", 名, at).into()
+                        ui::tf!("saved_uses_folders_format", name, at).into()
                     } else if 落ちる.is_empty() {
-                        ui::tf!("saved_text_only_formatting", 名).into()
+                        ui::tf!("saved_text_only_formatting", name).into()
                     } else {
                         // **黙って捨てません。** adoc は意味だけを持つので、
                         // ページの飾りと直接書式はここで消えます
                         ui::tf!("saved_cannot_kept_format",
-                                名, 落ちる.join("・")).into()
+                                name, 落ちる.join("・")).into()
                     };
                 }
                 Err(e) => self.status = ui::tf!("cant_save", e).into(),
@@ -3648,16 +3650,16 @@ impl Writer {
                 };
                 let enc_note =
                     if self.encrypt_pw.is_some() { ui::t!("encrypted") } else { "" };
-                let 名 = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+                let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
                 // **ネイティブ文書から作った docx は、渡すための形です。**
                 // 見た目はスタイル定義の側に入っているので、この writer で
                 // 開き直しても直接書式は付いていません。そこを黙らない
                 self.status = if docx_tmpl.is_some() {
-                    let 元 = tmpl_at.unwrap_or_else(|| ui::t!("format_use").to_string());
+                    let from = tmpl_at.unwrap_or_else(|| ui::t!("format_use").to_string());
                     ui::tf!("exported_turned_into_style",
-                            名, 元).into()
+                            name, from).into()
                 } else {
-                    ui::tf!("saved", 名, enc_note, caveat).into()
+                    ui::tf!("saved", name, enc_note, caveat).into()
                 };
                 // **ネイティブ文書からの docx は「書き出し」です。**
                 // 原稿は adoc の側にあるので、保存先を docx へ移しません —

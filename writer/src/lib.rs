@@ -121,7 +121,7 @@ impl AiJob {
                  fill(名前, 値)=名前の記入欄すべてに書く / \
                  fill_one(名前, 値)=最初の一つに書く / \
                  extract(名前)=値を読む / fields()=(名前, 値)の一覧 / \
-                 render(辞書)={{名前}} 雛形への差し込み / \
+                 render(辞書)={{member}} 雛形への差し込み / \
                  tpl_fields()=差し込み口の一覧。\
                  ラベルの文字列を探して隣のセルに書く走査はしません(誤爆する)。\
                  表を歩くときは for row in tb.rows: for c in row.cells: の形にし、\
@@ -566,7 +566,7 @@ pub struct Writer {
 impl Writer {
     /// **いま押せるか**(2026-08-21 の B-5「灰色をボタン単位に」)。
     /// 考え方は表の同じ関数の註のとおりです。
-    pub(crate) fn 押せるか(&self, id: &str) -> bool {
+    pub(crate) fn can_press(&self, id: &str) -> bool {
         match id {
             // 目次・図表目次の「更新」は、**もう入れてあるときだけ**。
             // 入れていない文書で押しても、更新する物がありません

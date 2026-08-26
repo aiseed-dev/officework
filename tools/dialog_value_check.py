@@ -60,9 +60,9 @@ def 頁の値():
         m = re.search(r"== ダイアログ\n\n(.*?)\n\n== ", p.read_text(encoding="utf-8"), re.S)
         if not m:
             continue
-        for 行 in re.findall(r"^\* (.+)$", m.group(1), re.M):
+        for line in re.findall(r"^\* (.+)$", m.group(1), re.M):
             # 強調と註記を外す(`* 折れ線(*既定*)` → `折れ線`)
-            v = re.sub(r"\(\*[^)]*\*\)|\*", "", 行).strip()
+            v = re.sub(r"\(\*[^)]*\*\)|\*", "", line).strip()
             if len(v) < 3 or _説明.search(v) or len(v) > 30:
                 continue
             yield str(p.relative_to(CMDS))[:-5], v
@@ -70,15 +70,15 @@ def 頁の値():
 
 def main() -> int:
     文言 = 画面の文言()
-    悪い = [(f, v) for f, v in 頁の値() if v not in 文言]
-    見た = sum(1 for _ in 頁の値())
-    if not 悪い:
-        print(f"手引きに書いた選べる値 {見た} 件、画面の文言と揃っています")
+    bad = [(f, v) for f, v in 頁の値() if v not in 文言]
+    seen = sum(1 for _ in 頁の値())
+    if not bad:
+        print(f"手引きに書いた選べる値 {seen} 件、画面の文言と揃っています")
         return 0
-    print(f"**画面に無い値が {len(悪い)} 件あります。**", file=sys.stderr)
+    print(f"**画面に無い値が {len(bad)} 件あります。**", file=sys.stderr)
     print("利用者は画面の字で探します。頁を画面に合わせてください"
           "(画面のほうが間違っているなら、そちらを直します)。\n", file=sys.stderr)
-    for f, v in 悪い:
+    for f, v in bad:
         print(f"  {f}: 「{v}」", file=sys.stderr)
     return 1
 

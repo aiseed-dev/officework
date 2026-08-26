@@ -165,57 +165,57 @@ impl Writer {
     pub(crate) fn fl_commit(&mut self, cx: &mut Context<Self>) {
         use crate::FlJob as J;
         let Some(job) = self.fl_job.clone() else { return };
-        let 名 = self.fl_ed.text().to_string();
-        let 今 = self.folder();
+        let name = self.fl_ed.text().to_string();
+        let now = self.folder();
         let 結果: Result<String, String> = match &job {
-            J::NewFolder => match 今 {
-                Some(d) => ui::folder::フォルダを作る(&d, &名)
+            J::NewFolder => match now {
+                Some(d) => ui::folder::フォルダを作る(&d, &name)
                     .map(|p| ui::tf!("created",
                         p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()),
                 None => Err(ui::t!("no_folder_open").to_string()),
             },
-            J::NewDoc => match 今 {
+            J::NewDoc => match now {
                 Some(d) => {
                     // **拡張子は付けます。** 付け忘れた物が「文字だけの
                     // ファイル」になって開けないのを防ぎます
-                    let n = if 名.trim().ends_with(".adoc") {
-                        名.trim().to_string()
+                    let n = if name.trim().ends_with(".adoc") {
+                        name.trim().to_string()
                     } else {
-                        format!("{}.adoc", 名.trim())
+                        format!("{}.adoc", name.trim())
                     };
-                    let 題 = 名.trim().trim_end_matches(".adoc");
-                    ui::folder::ファイルを作る(&d, &n, &format!("= {題}
+                    let title = name.trim().trim_end_matches(".adoc");
+                    ui::folder::ファイルを作る(&d, &n, &format!("= {title}
 "))
                         .map(|p| ui::tf!("created",
                             p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string())
                 }
                 None => Err(ui::t!("no_folder_open").to_string()),
             },
-            J::Rename(元) => ui::folder::名前を変える(元, &名).map(|先| {
+            J::Rename(from) => ui::folder::名前を変える(from, &name).map(|to| {
                 // **いま開いている物なら、道も付け替えます**
-                if self.path.as_deref() == Some(元.as_path()) {
-                    self.path = Some(先.clone());
+                if self.path.as_deref() == Some(from.as_path()) {
+                    self.path = Some(to.clone());
                 }
                 ui::tf!("renamed",
-                    先.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
+                    to.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
             }),
-            J::Delete(道) => {
+            J::Delete(path) => {
                 // **開いたままの物は消しません。** 消してから保存すると
                 // 元に戻るので、消えたのか残ったのか分からなくなります
-                if self.path.as_deref() == Some(道.as_path()) {
+                if self.path.as_deref() == Some(path.as_path()) {
                     Err(ui::t!("cant_delete_file_open").to_string())
                 } else {
-                    ui::folder::消す(道).map(|_| {
+                    ui::folder::消す(path).map(|_| {
                         ui::tf!("deleted",
-                            道.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
+                            path.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
                     })
                 }
             }
         };
         match 結果 {
-            Ok(言う) => {
+            Ok(told) => {
                 self.fl_job = None;
-                self.status = 言う.into();
+                self.status = told.into();
             }
             // **断られたら開いたまま。** 打ち直せるようにします
             Err(e) => self.status = e.into(),
@@ -229,13 +229,13 @@ impl Writer {
     /// 打ち方で断らないためです。数が読めなければ、そう言って開いたままに
     /// します(黙って 3×3 を入れると、打ち間違いに気づけません)。
     pub(crate) fn tbl_commit(&mut self, cx: &mut Context<Self>) {
-        let 字 = self.tbl_ed.text().to_string();
-        let 数: Vec<usize> = 字
+        let text = self.tbl_ed.text().to_string();
+        let numbers: Vec<usize> = text
             .split(|c: char| !c.is_ascii_digit())
             .filter(|x| !x.is_empty())
             .filter_map(|x| x.parse().ok())
             .collect();
-        let (行, 列) = match 数.as_slice() {
+        let (line, row_box) = match numbers.as_slice() {
             [r, c] if *r >= 1 && *c >= 1 => (*r, *c),
             _ => {
                 self.status =
@@ -245,12 +245,12 @@ impl Writer {
         };
         // **上限を置きます。** 打ち間違いで 999,999 と入れると、
         // 組むのに何分も掛かって固まったように見えます
-        if 行 > 200 || 列 > 50 {
+        if line > 200 || row_box > 50 {
             self.status = ui::t!("too_large_up_200").into();
             return;
         }
         self.tbl_open = false;
-        self.table_size = (行, 列);
+        self.table_size = (line, row_box);
         self.run_cmd("instable-go", cx);
     }
 
@@ -614,16 +614,16 @@ impl Writer {
                     ..Default::default()
                 };
                 self.flush_target();
-                let (行, 列) = self.table_size;
+                let (line, row_box) = self.table_size;
                 self.doc.blocks.push(kumihan::Block::Table(kumihan::Table {
                     col_mm: vec![],
-                    rows: (0..行).map(|_| (0..列).map(|_| empty()).collect()).collect(),
+                    rows: (0..line).map(|_| (0..row_box).map(|_| empty()).collect()).collect(),
                     ..Default::default()
                 }));
                 self.dirty = true;
                 self.relayout_keep();
                 self.status =
-                    ui::tf!("table_added_end_click", 行, 列)
+                    ui::tf!("table_added_end_click", line, row_box)
                         .into();
             }
             // 記号の一覧(押すと出る/消える)
@@ -679,15 +679,15 @@ impl Writer {
             "hidenchars" => self.show_marks = !self.show_marks,
             // 一覧パネル(フォント・大きさ)。選ぶのはパネルの中
             "fontname" => {
-                let 開く = self.open_list != Some("fontname");
-                self.open_list = 開く.then_some("fontname");
+                let opens = self.open_list != Some("fontname");
+                self.open_list = opens.then_some("fontname");
                 // **絞り込みの欄を開く**(手順2)。数で切らない代わりです
-                self.font_filter = 開く.then(|| Editor::new(""));
+                self.font_filter = opens.then(|| Editor::new(""));
                 // **開いたときは今の書体の位置に居る**(表の画面と同じ)。
                 // 一覧の頭に飛ぶと、今どれなのかが分からなくなります
-                self.pick_sel = if 開く {
-                    let 今 = self.font_name.to_string();
-                    self.一覧の中身("fontname").iter().position(|(k, _)| *k == 今).unwrap_or(0)
+                self.pick_sel = if opens {
+                    let now = self.font_name.to_string();
+                    self.一覧の中身("fontname").iter().position(|(k, _)| *k == now).unwrap_or(0)
                 } else {
                     0
                 };
@@ -772,13 +772,13 @@ impl Writer {
                 self.status = if self.notes.is_empty() {
                     ui::t!("nothing_skipped").into()
                 } else {
-                    let 中 = self
+                    let inner = self
                         .notes
                         .iter()
                         .map(|x| x.to_string())
                         .collect::<Vec<_>>()
                         .join(" / ");
-                    ui::tf!("skipped", 中).into()
+                    ui::tf!("skipped", inner).into()
                 };
             }
             "ruler" => self.ruler = !self.ruler,
@@ -1520,13 +1520,13 @@ pub(crate) fn 日付の形() -> Vec<(String, String)> {
     let (Some(y), Some(m), Some(d)) = (it.next(), it.next(), it.next()) else {
         return Vec::new();
     };
-    let 和 = 和暦(y, m, d);
+    let sum = wareki(y, m, d);
     let mut v = vec![
         format!("{y}年{m}月{d}日"),
         format!("{y}/{m:02}/{d:02}"),
         format!("{y}-{m:02}-{d:02}"),
     ];
-    if let Some((元号, 略, 年)) = 和 {
+    if let Some((元号, 略, 年)) = sum {
         v.push(format!("{元号}{年}年{m}月{d}日"));
         v.push(format!("{略}{年}.{m}.{d}"));
     }
@@ -1534,7 +1534,7 @@ pub(crate) fn 日付の形() -> Vec<(String, String)> {
 }
 
 /// 西暦から元号と年を出す。(元号, 略号, 年)。範囲の外なら None
-pub(crate) fn 和暦(y: i32, m: i32, d: i32) -> Option<(&'static str, &'static str, i32)> {
+pub(crate) fn wareki(y: i32, m: i32, d: i32) -> Option<(&'static str, &'static str, i32)> {
     // (始まりの年, 月, 日, 元号, 略号)
     const 代: &[(i32, i32, i32, &str, &str)] = &[
         (2019, 5, 1, "令和", "R"),

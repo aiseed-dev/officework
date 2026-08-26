@@ -309,9 +309,9 @@ mod tests {
         if !辞書があるか() {
             return;
         }
-        let 本文 = "人気のない路地を歩く";
+        let body = "人気のない路地を歩く";
         let t = [Target { base: "人気".into(), at: 0 }];
-        let s = candidates(本文, &t);
+        let s = candidates(body, &t);
         assert_eq!(s.len(), 1);
         let r = &s[0].readings;
         assert!(r.contains(&"にんき".to_string()), "にんき が無い: {r:?}");
@@ -349,11 +349,11 @@ mod tests {
             return;
         }
         let v = ruby_targets("人気のない路地を歩く");
-        let 語: Vec<&str> = v.iter().map(|s| s.base.as_str()).collect();
-        assert!(語.contains(&"人気"), "{語:?}");
-        assert!(語.contains(&"路地"), "{語:?}");
+        let word: Vec<&str> = v.iter().map(|s| s.base.as_str()).collect();
+        assert!(word.contains(&"人気"), "{word:?}");
+        assert!(word.contains(&"路地"), "{word:?}");
         // ひらがなだけの語(の・ない・を)は入らない
-        assert!(!語.contains(&"の"), "{語:?}");
+        assert!(!word.contains(&"の"), "{word:?}");
         let 人気 = v.iter().find(|s| s.base == "人気").expect("人気 が無い");
         assert!(人気.readings.len() >= 2, "割れているのに候補が1つ: {:?}", 人気.readings);
         let 路地 = v.iter().find(|s| s.base == "路地").expect("路地 が無い");
@@ -370,21 +370,21 @@ mod tests {
         if !辞書があるか() {
             return;
         }
-        let 本文 = "報告書\n人気のない路地を歩く";
-        let v = ruby_targets(本文);
-        let 語: Vec<&str> = v.iter().map(|s| s.base.as_str()).collect();
+        let body = "報告書\n人気のない路地を歩く";
+        let v = ruby_targets(body);
+        let word: Vec<&str> = v.iter().map(|s| s.base.as_str()).collect();
         // 見出しは「報告」+「書」に切れます(辞書の切り方。誤りではない)
-        assert!(語.contains(&"報告"), "1行目が拾えていない: {語:?}");
-        assert!(語.contains(&"人気"), "2行目が拾えていない: {語:?}");
-        assert!(語.contains(&"路地"), "2行目が拾えていない: {語:?}");
+        assert!(word.contains(&"報告"), "1行目が拾えていない: {word:?}");
+        assert!(word.contains(&"人気"), "2行目が拾えていない: {word:?}");
+        assert!(word.contains(&"路地"), "2行目が拾えていない: {word:?}");
         // **位置が本文の中の位置になっているか。** 切り出して語と合うかで見る
         for s in &v {
             assert_eq!(
-                &本文[s.at..s.at + s.base.len()],
+                &body[s.at..s.at + s.base.len()],
                 s.base,
                 "位置がずれている: {} が {} を指している",
                 s.base,
-                &本文[s.at..s.at + s.base.len()]
+                &body[s.at..s.at + s.base.len()]
             );
         }
     }
@@ -395,12 +395,12 @@ mod tests {
         if !辞書があるか() {
             return;
         }
-        let 本文 = "山と山";
+        let body = "山と山";
         let t = [
             Target { base: "山".into(), at: 0 },
             Target { base: "山".into(), at: "山と".len() },
         ];
-        let s = candidates(本文, &t);
+        let s = candidates(body, &t);
         assert_eq!(s.len(), 2);
         assert_eq!(s[0].at, 0);
         assert_eq!(s[1].at, "山と".len());

@@ -163,8 +163,8 @@ def table_for(app: str, lang: str) -> str:
     # **手引きは AsciiDoc です**(2026-08-18 に .md から移した)。表は
     # `|===` で囲み、セルの間に空白を1つ置く(詰めると前のセルの終わりが
     # 桁の指定として読まれる)
-    見出し = "|キー |操作" if lang == "ja" else "|Key |Action"
-    lines = ['[cols="1,1"]', "|===", 見出し, ""]
+    heading = "|キー |操作" if lang == "ja" else "|Key |Action"
+    lines = ['[cols="1,1"]', "|===", heading, ""]
     for a in order:
         desc = DESC[a][0 if lang == "ja" else 1]
         lines.append(f"|{' / '.join(keys[a])} |{desc}")

@@ -35,7 +35,7 @@ pub fn note_at(dir: &Path, p: &Path) {
     if let Some(dir) = rf.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
-    let mut list = 読む(&rf);
+    let mut list = read_list(&rf);
     let me = p.to_string_lossy().to_string();
     list.retain(|x| *x != me);
     list.insert(0, me);
@@ -52,10 +52,10 @@ pub fn list() -> Vec<PathBuf> {
 /// 置き場を指して読む(試験はこちら)。
 pub fn list_at(dir: &Path) -> Vec<PathBuf> {
     引き継ぐ(dir);
-    読む(&dir.join("recent.txt")).into_iter().map(PathBuf::from).filter(|p| p.exists()).collect()
+    read_list(&dir.join("recent.txt")).into_iter().map(PathBuf::from).filter(|p| p.exists()).collect()
 }
 
-fn 読む(p: &Path) -> Vec<String> {
+fn read_list(p: &Path) -> Vec<String> {
     std::fs::read_to_string(p)
         .map(|s| s.lines().filter(|l| !l.trim().is_empty()).map(str::to_string).collect())
         .unwrap_or_default()
@@ -77,7 +77,7 @@ fn 引き継ぐ(dir: &Path) {
     }
     let mut 混ぜ: Vec<String> = Vec::new();
     for 古 in ["recent-writer.txt", "recent-calc.txt"] {
-        for l in 読む(&dir.join(古)) {
+        for l in read_list(&dir.join(古)) {
             if !混ぜ.contains(&l) {
                 混ぜ.push(l);
             }
@@ -101,8 +101,8 @@ mod tests {
     /// **`$HOME` を書き換えない。** 書き換える試験は、並べて走らせると
     /// 他の試験を壊します(2026-08-20 に実際に壊した)。置き場を引数で渡す
     /// `note_at` / `list_at` を呼びます
-    fn 試験の場(名: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("face-recent-{名}"));
+    fn 試験の場(name: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("face-recent-{name}"));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
         d

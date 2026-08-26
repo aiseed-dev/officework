@@ -117,7 +117,7 @@ def 外を言う():
 
     `packaging/` の下は組み立てのときの写しなので、数えません。
     """
-    見る = {d.split("/")[0] for d in SRC_DIRS}
+    check = {d.split("/")[0] for d in SRC_DIRS}
     外 = {}
     for p in ROOT.rglob("*.rs"):
         rel = str(p.relative_to(ROOT))
@@ -125,7 +125,7 @@ def 外を言う():
             continue
         if any(rel.startswith(d + "/") for d in SRC_DIRS):
             continue
-        if rel.split("/")[0] not in 見る:
+        if rel.split("/")[0] not in check:
             continue
         n = len(呼び出し.findall(p.read_text(encoding="utf-8", errors="ignore")))
         if n:

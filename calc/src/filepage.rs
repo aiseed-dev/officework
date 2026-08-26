@@ -197,12 +197,12 @@ impl Calc {
                         cx.notify()
                     }))
             };
-            let 押し = |id: &'static str, 札: SharedString| {
+            let push_btn = |id: &'static str, label_text: SharedString| {
                 div().id(id).px_3().py_1().rounded_sm().cursor_pointer()
                     .border_1().border_color(rgb(0x1B6E3C)).text_color(rgb(0x1B6E3C))
                     .text_size(px(us * 12.0))
                     .hover(|s| s.bg(rgb(0xEAF5EE)))
-                    .child(札)
+                    .child(label_text)
             };
             pane = pane
                 .child(div().text_size(px(us * 16.0)).font_weight(gpui::FontWeight::BOLD)
@@ -210,25 +210,25 @@ impl Calc {
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(欄(self, 0, &self.fd_term, 280.0, "探す字"))
                     .child(欄(self, 1, &self.fd_glob, 120.0, "*.xlsx"))
-                    .child(押し("fd-dir", ui::t!("choose_folder").into()).on_click(
+                    .child(push_btn("fd-dir", ui::t!("choose_folder").into()).on_click(
                         cx.listener(|t: &mut Calc, _, _, cx| { t.find_dir_dialog(cx); cx.notify() })))
-                    .child(押し("fd-go", ui::t!("search_enter").into()).on_click(
+                    .child(push_btn("fd-go", ui::t!("search_enter").into()).on_click(
                         cx.listener(|t: &mut Calc, _, _, cx| { t.find_in_folder(); cx.notify() }))))
                 .child(div().text_size(px(us * 11.5)).text_color(dim)
                     .child(SharedString::from(match self.find_dir() {
                         Some(d) => ui::tf!("folder_2", d.display()).to_string(),
                         None => ui::t!("no_folder_chosen_yet").to_string(),
                     })));
-            let mut 一覧 = div().id("fd-list")
+            let mut list = div().id("fd-list")
                 .flex_none().h(px(us * 300.0)).overflow_y_scroll()
                 .p_2().rounded_sm().bg(gpui::white())
                 .border_1().border_color(rgb(0xC6CDD3))
                 .flex().flex_col().gap_0p5().text_size(px(us * 12.0));
             if self.fd_hits.is_empty() {
-                一覧 = 一覧.child(div().text_color(dim).child(ui::t!("nothing_searched_yet")));
+                list = list.child(div().text_color(dim).child(ui::t!("nothing_searched_yet")));
             }
             for (fi, f) in self.fd_hits.iter().enumerate() {
-                一覧 = 一覧.child(div().mt_1().text_color(rgb(0x1B6E3C))
+                list = list.child(div().mt_1().text_color(rgb(0x1B6E3C))
                     .child(SharedString::from(format!(
                         "{}   {}   {}",
                         f.path.file_name().unwrap_or_default().to_string_lossy(),
@@ -238,7 +238,7 @@ impl Calc {
                 for (hi, h) in f.hits.iter().enumerate() {
                     let on = self.fd_at == Some((fi, hi));
                     let line: String = h.text.chars().take(120).collect();
-                    一覧 = 一覧.child(div()
+                    list = list.child(div()
                         .id(SharedString::from(format!("fd-h-{fi}-{hi}")))
                         .px_1().rounded_sm().cursor_pointer()
                         .bg(if on { rgb(0xEAF5EE) } else { gpui::transparent_black().into() })
@@ -251,9 +251,9 @@ impl Calc {
                         })));
                 }
             }
-            pane = pane.child(一覧);
+            pane = pane.child(list);
             pane = pane.child(div().flex().flex_row().items_center().gap_2()
-                .child(押し("fd-load", ui::t!("load").into()).on_click(
+                .child(push_btn("fd-load", ui::t!("load").into()).on_click(
                     cx.listener(|t: &mut Calc, _, _, cx| { t.find_load(cx); cx.notify() })))
                 .child(div().text_size(px(us * 11.5)).text_color(dim)
                     .child(ui::t!("opens_document_chosen_hit"))));
@@ -463,11 +463,11 @@ impl Calc {
             // ボタンは**自分の場所を控えます**。控えが無いと、点検の道具は
             // 座標を当てるしかありません(2026-08-21 にソルバーで踏んだ型)
             let boxes = self.btn_box.clone();
-            let 行 = move |label: SharedString, state: SharedString, on: bool,
+            let line = move |label: SharedString, state: SharedString, on: bool,
                       btn: SharedString, id: &'static str, cmd: &'static str,
                       cx: &mut Context<Self>| {
                 let rec = boxes.clone();
-                let 控え = gpui::canvas(move |b: gpui::Bounds<gpui::Pixels>, _, _| {
+                let record = gpui::canvas(move |b: gpui::Bounds<gpui::Pixels>, _, _| {
                     rec.borrow_mut().insert(id, (
                         f32::from(b.origin.x), f32::from(b.origin.y),
                         f32::from(b.size.width), f32::from(b.size.height),
@@ -481,7 +481,7 @@ impl Calc {
                     .child(div().id(id).relative()
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
                         .hover(move |s| s.bg(rgb(0xD3D9DE)))
-                        .child(控え)
+                        .child(record)
                         .child(btn)
                         .on_click(cx.listener(move |this, _, _, cx| {
                             // ファイルのページからは編集の画面へ戻してから走らせる。
@@ -503,7 +503,7 @@ impl Calc {
                 .child(div().text_color(dim)
                     .child(ui::t!("what_force_now_pressing")))
                 .child(div().h(px(6.0)))
-                .child(行(ui::t!("encrypt_password").into(),
+                .child(line(ui::t!("encrypt_password").into(),
                     if 暗号 {
                         ui::t!("next_save").into()
                     } else {
@@ -512,7 +512,7 @@ impl Calc {
                     暗号,
                     if 暗号 { ui::t!("change_remove") } else { ui::t!("set_password") }.into(),
                     "f-prot-encrypt", "prot-encrypt", cx))
-                .child(行(ui::t!("protect_sheet_2").into(),
+                .child(line(ui::t!("protect_sheet_2").into(),
                     if 保護中 {
                         ui::tf!("protected", sh).into()
                     } else {
@@ -521,12 +521,12 @@ impl Calc {
                     保護中,
                     if 保護中 { ui::t!("unprotect") } else { ui::t!("protect_sheet_3") }.into(),
                     "f-prot-doc", "prot-doc", cx))
-                .child(行(ui::t!("allowed_while_protected").into(),
+                .child(line(ui::t!("allowed_while_protected").into(),
                     SharedString::from(crate::util::protect_allow_summary(
                         &self.sheet().protect_allow)),
                     false,
                     ui::t!("choose").into(), "f-prot-allow", "prot-allow", cx))
-                .child(行(ui::t!("suggest_read_only").into(),
+                .child(line(ui::t!("suggest_read_only").into(),
                     if 勧め {
                         ui::t!("recommended_not_lock").into()
                     } else {
@@ -535,7 +535,7 @@ impl Calc {
                     勧め,
                     if 勧め { ui::t!("cancel") } else { ui::t!("recommend") }.into(),
                     "f-prot-ro", "read-only-rec", cx))
-                .child(行(ui::t!("final").into(),
+                .child(line(ui::t!("final").into(),
                     if self.final_mark() {
                         ui::t!("marked_final_not_lock").into()
                     } else {
@@ -544,7 +544,7 @@ impl Calc {
                     self.final_mark(),
                     if self.final_mark() { ui::t!("remove_mark") } else { ui::t!("mark_final") }.into(),
                     "f-prot-final", "final-mark", cx))
-                .child(行(ui::t!("digital_signature").into(),
+                .child(line(ui::t!("digital_signature").into(),
                     match self.path.as_deref() {
                         Some(p) if ops::sig_path_for(p).exists() =>
                             ui::t!("there_signature_file_next").into(),

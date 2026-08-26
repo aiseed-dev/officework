@@ -292,8 +292,8 @@ mod tests {
 
     /// 見本の場所。**試験ごとに別の名前**にする — 同じ名前だと、並んで走る
     /// 試験どうしが片づけ合って「無い」と言い出す(2026-08-17 に踏んだ)
-    fn 見本の場所(名: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("owsearch-{}-{名}", std::process::id()));
+    fn 見本の場所(name: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("owsearch-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(d.join("下")).unwrap();
         std::fs::create_dir_all(d.join(".git")).unwrap();

@@ -284,14 +284,14 @@ impl Calc {
     /// 控えがあれば**先にそちらを勧めます** — 9世代の控えは、拾い集めた
     /// 穴あきより確実です。拾うのはその後の手段です。
     pub(crate) fn offer_repair(&mut self, p: PathBuf, bytes: Vec<u8>, why: &str) {
-        let 控え = ops::history::list(Some(&p));
-        let mut items: Vec<(String, String)> = 控え
+        let record = ops::history::list(Some(&p));
+        let mut items: Vec<(String, String)> = record
             .iter()
             .map(|(name, _)| (name.clone(), ui::tf!("open_kept_copy", name.clone()).to_string()))
             .collect();
         items.extend(crate::util::menu(&[ui::item!("salvage_what_can_read")]));
         self.repair_pend = Some((p, bytes));
-        self.pick_note = Some(if 控え.is_empty() {
+        self.pick_note = Some(if record.is_empty() {
             ui::t!("there_no_kept_copies").into()
         } else {
             ui::t!("kept_copy_safer_salvaging").into()
@@ -881,7 +881,7 @@ impl Calc {
         let esc = |t: &str| {
             t.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
         };
-        let 題 = s.name.clone();
+        let title = s.name.clone();
         let mut out = String::new();
         let _ = write!(
             out,
@@ -897,8 +897,8 @@ impl Calc {
                 ".r{{text-align:right}}.c{{text-align:center}}.b{{font-weight:bold}}\n",
                 "</style></head><body>\n<h1>{}</h1>\n<table>\n"
             ),
-            esc(&題),
-            esc(&題)
+            esc(&title),
+            esc(&title)
         );
         let mut 結合 = 0usize;
         for r in 0..rows {
@@ -906,7 +906,7 @@ impl Calc {
             for c in 0..cols {
                 let pos = sheet::Pos::new(r, c);
                 let cell = s.get(pos);
-                let 字 = cell
+                let text = cell
                     .map(|x| {
                         sheet::model::format_value(
                             &x.value,
@@ -915,25 +915,25 @@ impl Calc {
                         )
                     })
                     .unwrap_or_default();
-                let mut 印 = String::new();
+                let mut mark = String::new();
                 if let Some(x) = cell {
                     if x.fmt.bold {
-                        印.push('b');
+                        mark.push('b');
                     }
                     match x.fmt.align {
-                        sheet::model::HAlign::Right => 印.push('r'),
-                        sheet::model::HAlign::Center => 印.push('c'),
+                        sheet::model::HAlign::Right => mark.push('r'),
+                        sheet::model::HAlign::Center => mark.push('c'),
                         _ => {}
                     }
                 }
-                let 組 = if 印.is_empty() {
+                let group = if mark.is_empty() {
                     String::new()
                 } else {
-                    format!(" class=\"{}\"", 印.chars().map(|ch| ch.to_string())
+                    format!(" class=\"{}\"", mark.chars().map(|ch| ch.to_string())
                         .collect::<Vec<_>>().join(" "))
                 };
-                let 名 = if r == 0 { "th" } else { "td" };
-                let _ = write!(out, "<{名}{組}>{}</{名}>", esc(&字));
+                let name = if r == 0 { "th" } else { "td" };
+                let _ = write!(out, "<{name}{group}>{}</{name}>", esc(&text));
             }
             out.push_str("</tr>\n");
         }

@@ -664,7 +664,7 @@ impl Render for Calc {
             // ピボットの締めと同じ扱いにします — 押しても腕が断る物を、
             // 押す前に見て分かるようにするためです
             let locked = (on_pivot && Calc::PIVOT_LOCKED.contains(&cmd.id))
-                || !self.押せるか(cmd.id);
+                || !self.can_press(cmd.id);
             // **記録中は「操作を記録」のボタンを赤く**(発注者 2026-08-16
             // 「記録中は、それがわかるようにして」)。下のステータスバーの印と二重にする —
             // 押した所を見ている目と、画面全体を見ている目は別
@@ -2810,13 +2810,13 @@ impl Render for Calc {
             // 分割の仕切り。固定の線より太い灰色の帯にして、**動かせる境目**と
             // 留まっている境目を見分けられるようにする
             {
-                let (上, 左, _) = self.分割の境目();
+                let (top, left, _) = self.分割の境目();
                 let 仕切り = rgb(0x9AA5AE);
-                if let Some(y) = 上 {
+                if let Some(y) = top {
                     bands.push(div().absolute().left(px(0.0)).top(px(y - 2.0))
                         .w_full().h(px(4.0)).bg(仕切り).into_any_element());
                 }
-                if let Some(x) = 左 {
+                if let Some(x) = left {
                     bands.push(div().absolute().left(px(x - 2.0)).top(px(0.0))
                         .w(px(4.0)).h_full().bg(仕切り).into_any_element());
                 }
@@ -3307,7 +3307,7 @@ impl Render for Calc {
                 // このシート / このファイル / フォルダ。フォルダ全体は別の道
                 // (データタブの「フォルダから探す」)なので、そう案内する
                 .when(*kind == "find", |d| {
-                    let 釦 = |id: &'static str, 札: &str, on: bool| {
+                    let button = |id: &'static str, label_text: &str, on: bool| {
                         div().id(id)
                             .px_2p5().py_0p5().rounded_sm().cursor_pointer()
                             .border_1()
@@ -3315,20 +3315,20 @@ impl Render for Calc {
                             .bg(if on { rgb(0xCFE6D8) } else { rgb(0xFFFFFF) })
                             .text_size(px(us * 11.0))
                             .text_color(if on { rgb(0x1B6E3C) } else { rgb(0x66707A) })
-                            .child(SharedString::from(札.to_string()))
+                            .child(SharedString::from(label_text.to_string()))
                     };
                     let 全体 = self.find_book;
                     d.child(div().mt_1p5().flex().flex_row().items_center().gap_1()
                         .child(div().text_size(px(us * 10.5)).text_color(rgb(0x66707A))
                             .child(ui::t!("search")))
-                        .child(釦("sc-sheet", ui::t!("sheet_4"), !全体)
+                        .child(button("sc-sheet", ui::t!("sheet_4"), !全体)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                                 |this, _, _, cx| {
                                     cx.stop_propagation();
                                     this.find_book = false;
                                     cx.notify()
                                 })))
-                        .child(釦("sc-book", ui::t!("file_2"), 全体)
+                        .child(button("sc-book", ui::t!("file_2"), 全体)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(
                                 |this, _, _, cx| {
                                     cx.stop_propagation();
@@ -3425,7 +3425,7 @@ impl Render for Calc {
             // *流れの中に置きます*(`None`)— 小窓の中で下に伸びる形なので、
             // 浮かせると小窓の縁で切れます
             let options = |mid: u8, items: Vec<String>, cx: &mut Context<Self>| {
-                let 並び: Vec<(String, String)> =
+                let order: Vec<(String, String)> =
                     items.into_iter().enumerate().map(|(i, n)| (i.to_string(), n)).collect();
                 let sel = match mid {
                     1 => kindi,
@@ -3446,7 +3446,7 @@ impl Render for Calc {
                     None,
                     None,
                     None,
-                    &並び,
+                    &order,
                     sel,
                     |_| ui::picklist::Deco::default(),
                     cx,
@@ -3801,9 +3801,9 @@ impl Render for Calc {
                                      sv.con_r.text().trim().to_string());
                                 // **整数・バイナリは右辺を取りません**
                                 // (2026-08-21)。左辺だけで足せます
-                                let 要る = crate::util::solver_op_needs_rhs(sv.con_op);
-                                if l.is_empty() || (要る && r.is_empty()) {
-                                    this.status = if 要る {
+                                let needed = crate::util::solver_op_needs_rhs(sv.con_op);
+                                if l.is_empty() || (needed && r.is_empty()) {
+                                    this.status = if needed {
                                         ui::t!("fill_both_sides_constraint").into()
                                     } else {
                                         ui::t!("type_left_side_constraint").into()
@@ -3825,9 +3825,9 @@ impl Render for Calc {
                                     let (l, r) =
                                         (sv.con_l.text().trim().to_string(),
                                          sv.con_r.text().trim().to_string());
-                                    let 要る = crate::util::solver_op_needs_rhs(sv.con_op);
+                                    let needed = crate::util::solver_op_needs_rhs(sv.con_op);
                                     if !l.is_empty()
-                                        && (!要る || !r.is_empty())
+                                        && (!needed || !r.is_empty())
                                         && i < sv.cons.len()
                                     {
                                         sv.cons[i] = (l, SOLVER_OPS[sv.con_op], r);
@@ -5167,7 +5167,7 @@ impl Render for Calc {
         let notes = if self.notes.is_empty() { None } else {
             // 拾い集めたブックは**別の見出しと色**にします。読み飛ばしと
             // 拾い集めは重さが違います(2026-08-22。台帳「開いて修復」)
-            let (bg, edge, fg, 見出し) = if self.salvaged {
+            let (bg, edge, fg, heading) = if self.salvaged {
                 (0xFDECEA, 0xE9B0A8, 0x8A2A1B,
                  ui::t!("workbook_pieced_together_damaged"))
             } else {
@@ -5176,7 +5176,7 @@ impl Render for Calc {
             let mut n = div().px_4().py_2().bg(rgb(bg))
                 .border_t_1().border_color(rgb(edge))
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
-                       .text_color(rgb(fg)).child(見出し));
+                       .text_color(rgb(fg)).child(heading));
             for x in &self.notes {
                 n = n.child(div().text_size(px(us * 11.0)).text_color(rgb(fg))
                             .child(x.clone()));
@@ -5322,20 +5322,20 @@ impl Render for Calc {
                        if dr != 0 || dc != 0 {
                            // 分割しているときは、**指している側**を動かす。
                            // 上の帯の上でホイールを回せば上の帯が動く(Excel と同じ)
-                           let (上, 左, 右寄せ) = this.分割の境目();
+                           let (top, left, 右寄せ) = this.分割の境目();
                            let (mx, my) = {
                                let (bx, by, _, _) = this.pane_box.get();
                                (f32::from(e.position.x) - bx, f32::from(e.position.y) - by)
                            };
-                           let 帯の上 = 上.is_some_and(|y| my < y)
-                               || 左.is_some_and(|x| if 右寄せ { mx > x } else { mx < x });
-                           let 先 = if 帯の上 {
+                           let 帯の上 = top.is_some_and(|y| my < y)
+                               || left.is_some_and(|x| if 右寄せ { mx > x } else { mx < x });
+                           let to = if 帯の上 {
                                &mut this.split_view
                            } else {
                                &mut this.view
                            };
-                           先.row = (先.row as i32 + dr).clamp(0, 9999) as u32;
-                           先.col = (先.col as i32 + dc).clamp(0, 255) as u32;
+                           to.row = (to.row as i32 + dr).clamp(0, 9999) as u32;
+                           to.col = (to.col as i32 + dc).clamp(0, 255) as u32;
                            cx.notify();
                        }
                    }))

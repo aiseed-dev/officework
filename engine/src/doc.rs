@@ -818,8 +818,8 @@ viewBox=\"0 0 {w:.2} {h:.2}\">"
         }
         let mut d = String::new();
         for (i, (x, y)) in st.points.iter().enumerate() {
-            let 印 = if i == 0 { 'M' } else { 'L' };
-            d.push_str(&format!("{印}{:.2} {:.2} ", x - x0, y - y0));
+            let mark = if i == 0 { 'M' } else { 'L' };
+            d.push_str(&format!("{mark}{:.2} {:.2} ", x - x0, y - y0));
         }
         let (色, 太さ, 透け) = if st.highlighter {
             ("#FFE65A", 3.0, 0.35)

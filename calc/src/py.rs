@@ -1589,10 +1589,10 @@ impl Calc {
         raw: &str,
         labels: Vec<String>,
         values: Vec<f64>,
-        見出し: String,
+        heading: String,
         cx: &mut Context<Self>,
     ) {
-        let 数 = |k: &str| -> Vec<f64> {
+        let numbers = |k: &str| -> Vec<f64> {
             raw.split_once(&format!("\"{k}\":["))
                 .and_then(|(_, r)| r.split_once(']'))
                 .map(|(body, _)| body.split(',').filter_map(|x| x.trim().parse().ok()).collect())
@@ -1607,7 +1607,7 @@ impl Calc {
                 })
                 .unwrap_or(0.0)
         };
-        let (fc, lo, up) = (数("forecast"), 数("lower"), 数("upper"));
+        let (fc, lo, up) = (numbers("forecast"), numbers("lower"), numbers("upper"));
         if fc.is_empty() {
             self.status = ui::t!("forecast_result_cannot_read").into();
             return;
@@ -1617,7 +1617,7 @@ impl Calc {
         self.checkpoint();
         let name = crate::util::unique_sheet_name_for(&self.book, ui::t!("forecast"));
         let mut sh = sheet::Sheet::new(&name);
-        let 実 = if 見出し.is_empty() { ui::t!("actual").to_string() } else { 見出し };
+        let 実 = if heading.is_empty() { ui::t!("actual").to_string() } else { heading };
         for (c, t) in [
             (0u32, ui::t!("period").to_string()),
             (1, 実),
@@ -1648,14 +1648,14 @@ impl Calc {
         } else {
             ui::t!("no_season_found").to_string()
         };
-        let 断り = ui::tf!(
+        let note_div = ui::tf!(
             "forecast_periods_ahead_interval",
             fc.len(),
             季.clone(),
             sigma
         )
         .to_string();
-        sh.set(Pos::new((n + fc.len() + 2) as u32, 0), sheet::Cell::input(&断り));
+        sh.set(Pos::new((n + fc.len() + 2) as u32, 0), sheet::Cell::input(&note_div));
         self.book.sheets.push(sh);
         let si = self.book.sheets.len() - 1;
         self.switch_sheet(si);
@@ -1664,7 +1664,7 @@ impl Calc {
         self.cursor = Pos::new(0, 0);
         self.insert_chart_kind(Pos::new(0, 0), Pos::new((n + fc.len()) as u32, 4), "line", cx);
         self.anchor = None;
-        self.status = 断り.into();
+        self.status = note_div.into();
     }
 
     /// **ピボットに連動する図を描き直す**(ピボットグラフ。2026-08-22)。
@@ -1685,13 +1685,13 @@ impl Calc {
         // 他の棒が潰れて読めなくなります(実機で見た)
         let 総計行 = u32::from(d.totals);
         let 総計列 = u32::from(d.totals && !d.cols_sel.is_empty());
-        let 行 = d.size.0.saturating_sub(総計行);
-        let 列 = d.size.1.saturating_sub(総計列);
-        if 行 < 2 || 列 < 2 {
+        let line = d.size.0.saturating_sub(総計行);
+        let row_box = d.size.1.saturating_sub(総計列);
+        if line < 2 || row_box < 2 {
             return;
         }
         let a = d.dest;
-        let b = Pos::new(d.dest.row + 行 - 1, d.dest.col + 列 - 1);
+        let b = Pos::new(d.dest.row + line - 1, d.dest.col + row_box - 1);
         self.chart_dest = Some(at);
         self.insert_chart_kind(a, b, "bar", cx);
     }
@@ -1745,7 +1745,7 @@ impl Calc {
             self.status = ui::t!("forecasting_needs_least_4_numbers").into();
             return;
         }
-        let 見出し = sh.get(Pos::new(a.row, vc)).map(|x| x.value.display()).unwrap_or_default();
+        let heading = sh.get(Pos::new(a.row, vc)).map(|x| x.value.display()).unwrap_or_default();
         let json = format!(
             "{{\"values\":[{}],\"horizon\":{},\"conf\":0.95,\"season\":0}}",
             values.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(","),
@@ -1780,7 +1780,7 @@ impl Calc {
             let r = task.await;
             let _ = this.update(cx, |this, cx| {
                 match r {
-                    Ok(raw) => this.forecast_place(&raw, labels, values, 見出し, cx),
+                    Ok(raw) => this.forecast_place(&raw, labels, values, heading, cx),
                     Err(e) => this.status = e.into(),
                 }
                 cx.notify();

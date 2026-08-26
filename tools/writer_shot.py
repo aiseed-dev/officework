@@ -85,13 +85,13 @@ class W:
         # 1.0 と誤り、以後ずっと**半分の位置**を押す(2026-08-17 に踏んだ。
         # ファイルの面も段も全部効かず、canvas を疑って回り道をした)。
         # 大きさが2回続けて同じになったら落ち着いたと見る
-        前 = None
+        before = None
         for _ in range(40):
             w = self.window()
             now = (w[3], w[4]) if w else None
-            if now and now == 前:
+            if now and now == before:
                 break
-            前 = now
+            before = now
             time.sleep(0.25)
         time.sleep(0.8)
 

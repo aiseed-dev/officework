@@ -437,7 +437,7 @@ impl Render for Writer {
                         let on = cmd.ready && self.toggled(cmd.id);
                         // **いまの状況で意味が無いボタンも灰色に**
                         // (2026-08-21 の B-5)。押す前に見て分かるように
-                        let fg = if !cmd.ready || dlg_open || !self.押せるか(cmd.id) {
+                        let fg = if !cmd.ready || dlg_open || !self.can_press(cmd.id) {
                             th_gray_fg
                         } else if on {
                             th_btn
@@ -648,10 +648,10 @@ impl Render for Writer {
             for i in 0..self.file_count() {
                 let on = i == self.file_at;
                 let 書きかけ = self.file_dirty(i);
-                let mut 札 = self.file_name(i);
+                let mut label_text = self.file_name(i);
                 if 書きかけ {
                     // **書きかけの印。** 閉じる前に気づけるように
-                    札.push('*');
+                    label_text.push('*');
                 }
                 bar = bar.child(div()
                     .id(SharedString::from(format!("file{i}")))
@@ -660,7 +660,7 @@ impl Render for Writer {
                     .border_1().border_color(if on { th_cmd_border } else { gpui::transparent_black().into() })
                     .text_size(px(us * 11.5))
                     .text_color(if on { th_top_fg } else { th_status })
-                    .child(SharedString::from(札))
+                    .child(SharedString::from(label_text))
                     .on_click(cx.listener(move |t, _, _, cx| { t.show_file(i); cx.notify() })));
                 // 閉じる(×)。書きかけがあるときは断ります
                 bar = bar.child(div()

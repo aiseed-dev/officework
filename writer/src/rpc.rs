@@ -94,13 +94,13 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
         }
         // 記入欄(様式の穴)の名前
         "fields" => {
-            let 名: Vec<String> = w.sdt_names().iter().map(|n| q(n)).collect();
-            ok(&format!("\"fields\":[{}]", 名.join(",")))
+            let name: Vec<String> = w.sdt_names().iter().map(|n| q(n)).collect();
+            ok(&format!("\"fields\":[{}]", name.join(",")))
         }
-        // **差し込みの穴(`{{名前}}`)の名前**(2026-08-21 の C-2)。
+        // **差し込みの穴(`{{member}}`)の名前**(2026-08-21 の C-2)。
         //
         // `fields` とは別の仕組みです。あちらは文書に埋め込んだ記入欄
-        // (Word の入力コントロール)で、こちらは本文に書いた `{{名前}}` です。
+        // (Word の入力コントロール)で、こちらは本文に書いた `{{member}}` です。
         // 道具の側で「その名前があるか」を先に見られないと、`fill_one` の
         // 結果から可否が読めません(`unknown` は*渡さなかった残りの穴*で、
         // 渡した名前が入ったかどうかではないため)。
@@ -110,8 +110,8 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
         // 全部の名前が出ます。返ってきた文書は捨てます
         "merge_fields" => {
             let (_, rep) = kumihan::fill::fill(&w.doc, &kumihan::fill::Data::new());
-            let 名: Vec<String> = rep.unknown.iter().map(|n| q(n)).collect();
-            ok(&format!("\"merge_fields\":[{}]", 名.join(",")))
+            let name: Vec<String> = rep.unknown.iter().map(|n| q(n)).collect();
+            ok(&format!("\"merge_fields\":[{}]", name.join(",")))
         }
         // **1つの記入欄に入れる。** まとめて入れる形は、値の並びを浅い
         // JSON で運べないので、呼ぶ側が繰り返します(道具の側で回す)

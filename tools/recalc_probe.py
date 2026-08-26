@@ -50,7 +50,7 @@ cross = call("recalc_cells", path=PATH,
 
 names = {1: "単価", 2: "数量", 3: "小計", 4: "消費税", 5: "合計",
          6: "判定", 7: "桁区切り", 8: "平均"}
-print(f"\n{'':10} {'前 (単価1200)':>16} {'後 (単価1500)':>16}   追随")
+print(f"\n{'':10} {'before (単価1200)':>16} {'after (単価1500)':>16}   追随")
 for r, label in names.items():
     b, a = before.get((r, 1), ""), after.get((r, 1), "")
     mark = "→ 変わった" if b != a else ("(変わらないのが正)" if r == 2 else "**動いていない**")
