@@ -8,7 +8,7 @@
 見るのは3つです。
 
 1. リボンの列に書いた「段 > ボタンの札」が実物にあるか
-   (`face/src/ribbon.rs` の WRITER)
+   (`face/src/ribbon_ja.rs` の WRITER)
 2. 本文の書き方の列に書いた印が、AsciiDoc の読み手にあるか
    (`engine/src/adoc.rs`。印そのものを探す — 表だけ増えるのを防ぐ)
 3. 日本語版と英語版の行数が同じか(片方だけ増えると訳が抜ける)
@@ -25,7 +25,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 JA = ROOT / "docs/ja/writer-manual.adoc"
 EN = ROOT / "docs/en/writer-manual.adoc"
-RIBBON = ROOT / "face/src/ribbon.rs"
+# **日本語の手引きと突き合わせるので、日本語のリボンを読みます**
+# (2026-08-26 の段2で、土台 ribbon.rs の札は英語になりました)
+RIBBON = ROOT / "face/src/ribbon_ja.rs"
 ADOC = ROOT / "engine/src/adoc.rs"
 
 # 表の見出し行(この行の下から表が始まる)。**手引きは AsciiDoc です**
@@ -70,7 +72,7 @@ def writer_buttons():
         if m and now:
             tabs[now].append(m.group(1))
     if len(tabs) < 5:
-        sys.exit("face/src/ribbon.rs から writer の段が読めません")
+        sys.exit("face/src/ribbon_ja.rs から writer の段が読めません")
     return tabs
 
 

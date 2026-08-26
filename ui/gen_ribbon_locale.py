@@ -27,6 +27,337 @@ RIBBON = Path(__file__).resolve().parent.parent / "face/src/ribbon.rs"
 
 # 本家に無い・こちらで足した語の対訳。ここに無い未解決語が出たら
 # このスクリプトは止まる — その語をここに足してから出し直す
+# 英語の札 → **本家(vendor)の日本語の札**。
+#
+# 土台 `face/src/ribbon.rs` の札は英語です(2026-08-26 の段2)。本家を
+# 引くときだけ、ここで日本語に直してから引きます。**英語で直に引くと
+# 別の項目の訳を拾います** — 本家の en は同じ字を何度も使っていて
+# (Italic・Group・Update など)、日本語ほど一意ではありません。
+# 英語で引いてみたら、日本語の札が 22 か所変わりました
+# (斜体 → イタリック、上付き → 上付き文字、グループ化 → グループ)。
+#
+# この表は段2で1度だけ起こしました。ボタンを足すときは、その札の
+# 本家の日本語をここにも足してください(足さないと本家を引けず、
+# `OVERRIDES` で全言語ぶん書くことになります)。
+# **絵 → 本家(vendor)の日本語の札。**
+#
+# 土台 `face/src/ribbon.rs` の札は英語です(2026-08-26 の段2)。本家を
+# 引くときだけ、ここで日本語に直してから引きます。**英語で直に引くと
+# 別の項目の訳を拾います** — 本家の en は同じ字を何度も使っていて
+# (Italic・Group・Update など)、日本語ほど一意ではありません。
+# 英語で引いてみたら、日本語の札が 22 か所変わりました
+# (斜体 → イタリック、上付き → 上付き文字、グループ化 → グループ)。
+#
+# **鍵は札ではなく絵です。** 同じ英語の札が2つあることがあります
+# (描画の Select と ピボットの Select)。札で引くと、片方の訳を
+# もう片方にも当ててしまいます。
+#
+# この表は段2で1度だけ起こしました。ボタンを足すときは、その絵の
+# 本家の日本語をここにも足してください。
+# **id(無ければ絵)→ 本家(vendor)の日本語の札。**
+#
+# 土台 `face/src/ribbon.rs` の札は英語です(2026-08-26 の段2)。本家を
+# 引くときだけ、ここで日本語に直してから引きます。**英語で直に引くと
+# 別の項目の訳を拾います** — 本家の en は同じ字を何度も使っていて
+# (Italic・Group・Update など)、日本語ほど一意ではありません。
+#
+# **鍵は札でも絵でもなく id です。** 札は同じ字が2つあり(描画の
+# Select とピボットの Select)、絵も共用があります(parastyle と
+# cell-styles がどちらも styles)。id を持たない釦(x/xt/xm)だけ
+# 絵で引きます。
+#
+# この表は段2で1度だけ起こしました。釦を足すときは、その id の
+# 本家の日本語をここにも足してください。
+# **`id|絵` → 本家(vendor)の日本語の札。**
+#
+# 土台 `face/src/ribbon.rs` の札は英語です(2026-08-26 の段2)。本家を
+# 引くときだけ、ここで日本語に直してから引きます。**英語で直に引くと
+# 別の項目の訳を拾います** — 本家の en は同じ字を何度も使っていて
+# (Italic・Group・Update など)、日本語ほど一意ではありません。
+#
+# **鍵は id と絵の組です。** どれも単独では一意になりません —
+# 札は 描画の Select とピボットの Select、絵は parastyle と
+# cell-styles がどちらも styles、id は 重複の削除 が2つの絵で
+# 出てきます。id を持たない釦(x/xt/xm)は id を空にします。
+#
+# この表は段2で1度だけ起こしました。釦を足すときは、その組の
+# 本家の日本語をここにも足してください。
+VENDOR_JA = {
+    "add-text|add-text": "テキストの追加",
+    "ai-furigana|ai-furigana": "ふりがな",
+    "ai-macro|ai-macro": "マクロを書く",
+    "align-center|align-center": "中央揃え",
+    "align-dist|align-dist": "均等割付",
+    "align-just|align-just": "両端揃え",
+    "align-left|align-left": "左揃え",
+    "align-right|align-right": "右揃え",
+    "blankpage|blankpage": "空白ページの挿入",
+    "bold|bold": "太字",
+    "bookmarks|bookmarks": "ブックマーク",
+    "borders|borders": "罫線",
+    "bottom|bottom": "下揃え",
+    "calc-mode|calculate": "計算方法",
+    "caption|caption": "図表番号",
+    "cell-del|cell-del": "セルを削除",
+    "cell-format|cell-format": "セルの書式設定",
+    "cell-ins|cell-ins": "セルを挿入",
+    "cell-lock|cell-lock": "セルのロック",
+    "cell-styles|styles": "セルのスタイル",
+    "changecase|changecase": "大文字小文字を変更",
+    "clear-filter|clear-filter": "フィルターを解除",
+    "clearstyle|clearstyle": "スタイルのクリア",
+    "clear|clear": "消去",
+    "co-addcomment|co-addcomment": "コメントを追加",
+    "co-addcomment|ins-comment": "コメント",
+    "co-chat|co-chat": "チャット",
+    "co-delcomment|co-delcomment": "コメントを削除",
+    "co-history|co-history": "バージョン履歴",
+    "co-showcomment|co-showcomment": "コメントの表示",
+    "coauth-mode|coauth-mode": "共同編集モード",
+    "colorschemas|colorschemas": "配色の変更",
+    "columns|columns": "列の挿入",
+    "comma|comma": "カンマスタイル",
+    "condformat|condformat": "条件付き書式",
+    "controls|controls": "コンテンツコントロールの挿入",
+    "copystyle|copystyle": "書式のコピー",
+    "copy|copy": "コピー",
+    "crossref|crossref": "相互参照",
+    "csv-kind|csv-kind": "CSV の形",
+    "currency|currency": "通貨スタイル",
+    "custom-sort|custom-sort": "並べ替え",
+    "cut|cut": "切り取り",
+    "darkmode|darkmode": "ダークモード",
+    "darkmode|theme": "ダークモード",
+    "data-external-links|data-external-links": "外部リンク(値で取り込む)",
+    "data-from-text|data-from-text": "テキストからデータ",
+    "data-validation|data-validation": "データの入力規則",
+    "datatable|datatable": "データテーブル",
+    "datetime|datetime": "日付/時刻",
+    "decfont|decfont": "フォントサイズの縮小",
+    "decoffset|decoffset": "インデントを減らす",
+    "defname|named-range": "名前の管理",
+    "defname|named-range-huge": "名前の管理",
+    "digit-dec|digit-dec": "小数点以下の表示桁数を減らす",
+    "digit-inc|digit-inc": "小数点以下の表示桁数を増やす",
+    "direction|direction": "文字の向き(右横書き)",
+    "draw-select|select-tool": "選択",
+    "dropcap|dropcap": "ドロップキャップの挿入",
+    "dv-mark|dv-mark": "無効データのマーク",
+    "edit-footer|edit-footer": "フッターの編集",
+    "edit-header|edit-header": "ヘッダーの編集",
+    "edit-header|editheader": "ヘッダー/フッター",
+    "eraser|eraser": "消しゴム",
+    "fill-num|fill-num": "フィル",
+    "fillparag|fillparag": "塗りつぶしの色",
+    "fit-pages|fit-pages": "紙に収める",
+    "fit-page|fit-page": "ページに合わせる",
+    "fit-width|fit-width": "幅に合わせる",
+    "flash-fill|flash-fill": "フラッシュフィル",
+    "fn-datetime|datetime": "日付/時刻",
+    "fn-financial|financial": "財務",
+    "fn-logical|logical": "論理",
+    "fn-lookup|lookup": "検索/行列",
+    "fn-math|math": "数学/三角",
+    "fn-more|more": "その他の関数",
+    "fn-recent|recent": "最近使った関数",
+    "fn-text|text": "文字列操作",
+    "fontcolor|fontcolor": "フォントの色",
+    "fontname|fontname": "フォント",
+    "fontsize|fontsize": "フォントのサイズ",
+    "footnote|footnote": "脚注",
+    "forecast|forecast": "予測シート",
+    "form-checkbox|form-checkbox": "チェックボックス",
+    "form-combo|form-combo": "コンボボックス",
+    "form-complex|form-complex": "複合フィールド",
+    "form-dropdown|form-dropdown": "ドロップダウン",
+    "form-email|form-email": "メールアドレス",
+    "form-image|form-image": "画像",
+    "form-name|form-name": "名前",
+    "form-phone|form-phone": "電話番号",
+    "form-radio|form-radio": "ラジオボタン",
+    "form-signature|form-signature": "署名",
+    "form-text|form-text": "テキストフィールド",
+    "format|format": "数値の書式",
+    "formula-bar|formula-bar": "数式バー",
+    "freeze|freeze": "ウィンドウ枠の固定",
+    "func-list|py-list": "Python の関数",
+    "goal-seek|goal-seek": "ゴールシーク",
+    "group|group": "グループ化",
+    "hide-details|hide-details": "詳細の非表示",
+    "hidenchars|hidenchars": "非表示文字",
+    "highlighter|highlighter": "蛍光ペン",
+    "highlight|highlight": "ハイライトの色",
+    "hyphenation|hyphenation": "ハイフン設定の変更",
+    "incfont|incfont": "フォントサイズの拡大",
+    "incoffset|incoffset": "インデントを増やす",
+    "inschart|inschart": "グラフを挿入",
+    "inscheckbox|inscheckbox": "チェックボックス",
+    "insequation|insequation": "方程式を挿入",
+    "insert-function|additional-formula": "関数の挿入",
+    "inshyperlink|inshyperlink": "ハイパーリンクを追加",
+    "insimage|insertimage": "画像を挿入",
+    "insimage|insimage-c": "画像を挿入",
+    "insrecommend|insrecommend": "推奨チャートを挿入",
+    "insshape|insshape": "図形を挿入",
+    "insslicer|insslicer": "スライサーを挿入",
+    "inssmartart|inssmartart": "SmartArtの挿入",
+    "inssparkline|inssparkline": "スパークラインを挿入する",
+    "inssymbol|inssymbol": "記号を挿入",
+    "instable|instable": "表の挿入",
+    "instextart|instextart": "テキストアートの挿入",
+    "instext|instext": "テキストボックスの挿入",
+    "italic|italic": "斜体",
+    "line-numbers|line-numbers": "行番号を表示する",
+    "linespace|linespace": "段落の行間",
+    "markers|markers": "箇条書き",
+    "merge|merge": "結合して、中央に配置する",
+    "middle|middle": "上下中央揃え",
+    "multilevels|multilevels": "複数レベルのリスト",
+    "multipage|multipage": "複数ページ",
+    "nav|nav": "ナビゲーション",
+    "numbering|numbering": "ナンバリング",
+    "numpages|numpages": "ページ数",
+    "open|open": "開く",
+    "pagebreak|pagebreak": "区切り",
+    "pagecolor|pagecolor": "ページ色の変更",
+    "pagemargins|pagemargins": "余白",
+    "pagenum|pagenum": "ページ番号",
+    "pageorient|pageorient": "印刷の向き",
+    "pagesize|pagesize": "ページのサイズ",
+    "paracolor|paracolor": "段落の背景色",
+    "parastyle|styles": "段落のスタイル",
+    "paste-name|paste-name": "名前を貼り付け",
+    "paste|paste": "貼り付け",
+    "pdf|print": "印刷",
+    "pen|pen": "ペン",
+    "percents|percents": "パーセントのスタイル",
+    "pivot-blank|pivot-blank": "空行",
+    "pivot-chart|pivot-chart": "ピボットグラフ",
+    "pivot-fields|pivot-fields": "フィールドリスト",
+    "pivot-insert|add-pivot": "ピボットテーブルを挿入",
+    "pivot-insert|pivot-insert": "ピボットテーブルを挿入",
+    "pivot-layout|pivot-layout": "レポートのレイアウト",
+    "pivot-refresh-all|pivot-refresh-all": "すべて更新",
+    "pivot-refresh|pivot-refresh": "更新",
+    "pivot-select|pivot-select": "選択する",
+    "pivot-showas|pivot-showas": "計算の種類",
+    "pivot-source|pivot-source": "データソース",
+    "pivot-style|pivot-style": "スタイル",
+    "pivot-subtotals|pivot-subtotals": "小計",
+    "pivot-totals|pivot-totals": "総計",
+    "print-gridlines|print-gridlines": "枠線も印刷",
+    "print-headings|print-headings": "見出しも印刷",
+    "printarea-add|printarea-add": "範囲を足す",
+    "printarea|printarea": "印刷範囲",
+    "printtitles|printtitles": "タイトルを印刷する",
+    "printview|printview": "印刷レイアウト",
+    "prot-allow|prot-allow": "許可する操作",
+    "prot-doc|prot-doc": "保護",
+    "prot-doc|protect-sheet": "シートを保護する",
+    "prot-encrypt|prot-encrypt": "暗号化する",
+    "prot-sign|prot-sign": "デジタル署名を追加",
+    "py-folder|py-folder": "置き場を開く",
+    "py-list|plug-manage": "一覧",
+    "py-list|py-list": "一覧",
+    "py-new|py-new": "新しい .py",
+    "read-only-rec|read-only-rec": "読み取り専用を勧める",
+    "rec-toggle|py-run": "操作を記録",
+    "recover-every|recover-every": "控えの間隔",
+    "recover|recover": "復旧",
+    "rem-duplicates|rem-duplicates": "重複の削除",
+    "rem-duplicates|td-remdup": "重複データを削除",
+    "remove-arrows|remove-arrows": "トレース矢印の削除",
+    "replace|replace": "置き換え",
+    "ribbon-list|py-line": "リボンのマクロ",
+    "rtl-sheet|rtl-sheet": "最初の列が右側に来るようにシートの方向を切り替える",
+    "ruby|ruby": "ルビ",
+    "ruler|ruler": "ルーラー",
+    "save|save": "保存",
+    "scale|scale": "拡大縮小印刷",
+    "scenario|scenario": "シナリオ",
+    "selectall|select-all": "すべて選択",
+    "setfilter|setfilter": "フィルター",
+    "sheet-view|sheet-view": "シートの表示",
+    "show-breaks|show-breaks": "紙の切れ目",
+    "show-details|show-details": "詳細の表示",
+    "show-formulas|show-formulas": "数式の表示",
+    "show-gridlines|show-gridlines": "枠線表示",
+    "show-headings|show-headings": "見出し",
+    "show-left|show-left": "左パネル",
+    "show-right|show-right": "右パネル",
+    "show-statusbar|show-statusbar": "ステータスバー",
+    "show-toolbar|show-toolbar": "ツールバーを常に表示する",
+    "show-zeros|show-zeros": "0を表示する",
+    "solver|solver": "ソルバー",
+    "sort-asc|sortasc": "昇順並べ替え",
+    "sort-desc|sortdesc": "降順並べ替え",
+    "split|split": "分割",
+    "strikeout|strikeout": "取り消し線",
+    "subscript|subscript": "下付き",
+    "subtotal|subtotal": "小計",
+    "sum|autosum": "オートSUM",
+    "superscript|superscript": "上付き",
+    "table-tpl|table-tpl": "表として書式設定",
+    "td-band-col|td-band-col": "縞模様の列",
+    "td-band-row|td-band-row": "縞模様の行",
+    "td-filter|td-filter": "フィルタのボタン",
+    "td-first|td-first": "最初の列",
+    "td-header|td-header": "ヘッダー行",
+    "td-last|td-last": "最後の列",
+    "td-resize|td-resize": "テーブルのサイズ変更",
+    "td-torange|td-torange": "範囲に変換する",
+    "td-total|td-total": "合計行",
+    "text-column|text-column": "区切り位置",
+    "text-from-file|text-from-file": "ファイルからのテキスト",
+    "text-orient|text-orient": "方向",
+    "toc-update|contents-update": "目次の更新",
+    "toc|contents": "目次",
+    "tof-update|tof-update": "図表目次の更新",
+    "tof|tof": "図表目次",
+    "top|top": "上揃え",
+    "trace-dep|trace-dep": "参照先のトレース",
+    "trace-prec|trace-prec": "参照元のトレース",
+    "track-changes|track-changes": "変更履歴",
+    "ui-bigger|ui-bigger": "画面の文字を大きく",
+    "ui-smaller|ui-smaller": "画面の文字を小さく",
+    "underline|underline": "下線",
+    "ungroup|ungroup": "グループ解除",
+    "watch|watch-window": "ウォッチウィンドウ",
+    "watermark|watermark": "透かしを編集する",
+    "wrap|wrap": "折り返して全体を表示する",
+    "zoom-in|zoom-in": "拡大",
+    "zoom-out|zoom-out": "縮小",
+    "zoom100|zoom100": "100%に拡大する",
+    "|img-align": "配置",
+    "|img-group": "グループ化",
+    "|img-movebkwd": "背面ヘ移動",
+    "|img-movefrwd": "前面ヘ移動",
+    "|protect-range": "範囲を保護する",
+    "|protect-workbook": "ブックを保護する",
+    "|shapes-merge": "図形を結合",
+    "|view-normal": "標準",
+    "|view-pagebreak": "改ページ プレビュー",
+}
+
+# タブの名前の橋。絵が無いので名前で引きます(名前は一意です)。
+VENDOR_JA_TAB = {
+    "Collaboration": "共同編集",
+    "Data": "データ",
+    "Draw": "描画",
+    "File": "ファイル",
+    "Forms": "フォーム",
+    "Formula": "数式",
+    "Home": "ホーム",
+    "Insert": "挿入",
+    "Layout": "レイアウト",
+    "Macros": "マクロ",
+    "Pivot Table": "ピボットテーブル",
+    "Protection": "保護",
+    "References": "参考資料",
+    "Table Design": "表のデザイン",
+    "View": "表示",
+}
+
 OVERRIDES = {
     "en": {
         # **セルの中の文字を回すボタン**(2026-08-21)。本家の日本語は
@@ -35,49 +366,49 @@ OVERRIDES = {
         # SSE.Views.Toolbar.tipTextOrientation から取ります
         # text-orient(セルの中の字の向き)。ページの向きの「向き」と
         # 英語がかぶるので分ける(2026-08-26)
-        "方向": "Text orientation",
+        "Text orientation": "Text orientation",
         # **セルの書式設定**(2026-08-21)。日本語は Excel の言葉にしたので
         # 本家の日本語(「セルをフォーマットする」)と字面が合いません。
         # 訳は本家の SSE.Views.DocumentHolder.txtCellFormat から取ります
-        "セルの書式設定": "Format cells",
-        "上下中央揃え": "Align middle",
+        "Format cells": "Format cells",
+        "Align middle": "Align middle",
         # 式から呼べる Python の関数の一覧(2026-08-16。本家に無い)
-        "Python の関数": "Python functions",
+        "Python functions": "Python functions",
         # リボンに出るマクロの一覧(2026-08-16。本家に無い)
-        "リボンのマクロ": "Ribbon macros",
-        "書式のコピー": "Format painter",
-        "スタイル": "Style",
-        "フィールドリスト": "Field list",
+        "Ribbon macros": "Ribbon macros",
+        "Format painter": "Format painter",
+        "Style": "Style",
+        "Field list": "Field list",
         # 表示タブ(こちらで足したボタン — 画面の文字の大きさ)
-        "画面の文字を大きく": "Bigger UI text",
-        "画面の文字を小さく": "Smaller UI text",
+        "Bigger UI text": "Bigger UI text",
+        "Smaller UI text": "Smaller UI text",
         # **入力規則に合っていない値を洗い出すボタン**(2026-08-21 の D群)。
         # 本家にこの機能そのものがないので、語もこちらで用意します
-        "無効データのマーク": "Circle invalid data",
-        "分割": "Split",
-        "シナリオ": "Scenario",
-        "予測シート": "Forecast Sheet",
-        "ピボットグラフ": "PivotChart",
+        "Circle invalid data": "Circle invalid data",
+        "Split": "Split",
+        "Scenario": "Scenario",
+        "Forecast Sheet": "Forecast Sheet",
+        "PivotChart": "PivotChart",
         # タブ
         "AI": "AI",
         # ファイル
-        "印刷": "Print",
-        "印刷レイアウト": "Print layout",
+        "Print": "Print",
+        "Print layout": "Print layout",
         # AI タブ(こちらの設計。calc-manual.md の英語版と同じ語)
         "要約": "Summarize",
         "書き直す": "Rewrite",
         "敬語にする": "Politer",
         "やさしく": "Plainer",
         "翻訳": "Translate",
-        "ふりがな": "Furigana",
+        "Furigana": "Furigana",
         "続きを書く": "Continue",
         "表にする": "To table",
         "頼む": "Ask",
         # writer 独自
-        "ルビ": "Ruby",
+        "Ruby": "Ruby",
         "縦書き": "Vertical text",
-        "テキスト方向": "Text direction",
-        "均等割付": "Distributed",
+        "Text direction": "Text direction",
+        "Distributed": "Distributed",
         "図表番号の挿入": "Insert caption",
         "洋子さんの索引": "Index",
         "青空文庫の注記": "Aozora notes",
@@ -91,229 +422,229 @@ OVERRIDES = {
         "誤変換": "Misconversion",
         "表記ゆれ": "Inconsistency",
         # calc 独自
-        "小計": "Subtotal",
+        "Subtotals": "Subtotals",
         # calc-mode。セルのスタイルの「計算」(Calculation)とかぶるので
         # 分ける。Excel の「計算方法の設定」に当たる
-        "計算方法": "Calculation options",
+        "Calculation options": "Calculation options",
         "シートの方向": "Sheet direction",
         "Python": "Python",
-        "チェックボックス": "Checkbox",
+        "Checkbox": "Checkbox",
         "外部リンク": "External links",
         "推奨チャート": "Recommended chart",
         # 共同編集・保護(writer/calc 共通の言い換え)
-        "共同編集モード": "Co-editing mode",
-        "バージョン履歴": "Version history",
-        "チャット": "Chat",
+        "Co-editing mode": "Co-editing mode",
+        "Version history": "Version history",
+        "Chat": "Chat",
         "保護する": "Protect",
-        "暗号化する": "Encrypt",
-        "デジタル署名を追加": "Add digital signature",
-        "マクロ": "Macros",
+        "Encrypt": "Encrypt",
+        "Add digital signature": "Add digital signature",
+        "Macros": "Macros",
         "プラグインの管理": "Manage plugins",
         # 本家の語と言い回しが少し違うもの(Word/Excel の標準語で)
-        "0を表示する": "Show zeros",
-        "100%に拡大する": "Zoom to 100%",
+        "Show zeros": "Show zeros",
+        "Zoom to 100%": "Zoom to 100%",
         "インターフェイステーマ": "Interface theme",
-        "ウォッチウィンドウ": "Watch window",
-        "オートSUM": "AutoSum",
-        "操作を記録": "Record actions",
-        "コメントを削除": "Delete comment",
-        "ソルバー": "Solver",
-        "テキストからデータ": "Text to data",
-        "トレース矢印の削除": "Remove arrows",
-        "フィル": "Fill",
-        "フィルターを解除": "Clear filter",
-        "マクロを書く": "Write macro",
-        "区切り位置": "Text to columns",
-        "図表番号": "Caption",
-        "図表目次": "Table of figures",
-        "図表目次の更新": "Update table of figures",
-        "外部リンク(値で取り込む)": "External links (import as values)",
-        "数学/三角": "Math & Trig",
-        "数式の表示": "Show formulas",
-        "文字の向き(右横書き)": "Right-to-left text",
-        "文字列操作": "Text",
-        "日付/時刻": "Date & Time",
-        "最近使った関数": "Recently used",
-        "枠線も印刷": "Print gridlines",
-        "目次の更新": "Update table of contents",
-        "縞模様の列": "Banded columns",
-        "見出しも印刷": "Print headings",
-        "詳細の非表示": "Hide detail",
-        "重複の削除": "Remove duplicates",
-        "関数の挿入": "Insert function",
+        "Watch window": "Watch window",
+        "AutoSum": "AutoSum",
+        "Record actions": "Record actions",
+        "Delete comment": "Delete comment",
+        "Solver": "Solver",
+        "Text to data": "Text to data",
+        "Remove arrows": "Remove arrows",
+        "Fill": "Fill",
+        "Clear filter": "Clear filter",
+        "Write macro": "Write macro",
+        "Text to columns": "Text to columns",
+        "Caption": "Caption",
+        "Table of figures": "Table of figures",
+        "Update table of figures": "Update table of figures",
+        "External links (import as values)": "External links (import as values)",
+        "Math & Trig": "Math & Trig",
+        "Show formulas": "Show formulas",
+        "Right-to-left text": "Right-to-left text",
+        "Text functions": "Text functions",
+        "Date & Time": "Date & Time",
+        "Recently used": "Recently used",
+        "Print gridlines": "Print gridlines",
+        "Update table of contents": "Update table of contents",
+        "Banded columns": "Banded columns",
+        "Print headings": "Print headings",
+        "Hide detail": "Hide detail",
+        "Remove duplicates": "Remove duplicates",
+        "Insert function": "Insert function",
         # 2026-08-10 に足した21語(台帳の消し込みで増えたボタン)
-        "CSV の形": "CSV format",
-        "セルのロック": "Cell lock",
-        "データテーブル": "Data table",
-        "フラッシュフィル": "Fill by example",
+        "CSV format": "CSV format",
+        "Cell lock": "Cell lock",
+        "Data table": "Data table",
+        "Fill by example": "Fill by example",
         # py-list(マクロの一覧)。入力規則の「リスト」(List)と
         # かぶるので分ける
-        "一覧": "Macro list",
-        "名前を貼り付け": "Paste name",
-        "復旧": "Recover",
-        "折り返して全体を表示する": "Wrap text",
-        "控えの間隔": "Backup interval",
-        "新しい .py": "New .py",
-        "範囲を足す": "Add to area",
-        "紙に収める": "Fit to paper",
-        "紙の切れ目": "Page breaks",
-        "置き場を開く": "Open folder",
-        "計算の種類": "Show values as",
-        "許可する操作": "Allowed actions",
-        "読み取り専用を勧める": "Suggest read-only",
+        "Macro list": "Macro list",
+        "Paste name": "Paste name",
+        "Recover": "Recover",
+        "Wrap text": "Wrap text",
+        "Backup interval": "Backup interval",
+        "New .py": "New .py",
+        "Add to area": "Add to area",
+        "Fit to paper": "Fit to paper",
+        "Page breaks": "Page breaks",
+        "Open folder": "Open folder",
+        "Show values as": "Show values as",
+        "Allowed actions": "Allowed actions",
+        "Suggest read-only": "Suggest read-only",
     },
     # vendor のロケールに無い語の穴埋め(gen_lang.py が材料の訳と併用する)
     "zh-tw": {
         # 本家の台湾語は「尋找和引用」— **引用は大陸の言い方**。
         # こちらの台湾語の材料は 參照 26 回・引用 0 回で、台湾の Excel も
         # 「查閱與參照」(2026-08-11、分類の耳を訳した下請けが数えて指摘)
-        "検索/行列": "查閱與參照",
-        "ページ数": "頁數",
-        "表のデザイン": "表格設計",
+        "Lookup & Reference": "查閱與參照",
+        "Number of pages": "頁數",
+        "Table Design": "表格設計",
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "it": {
-        "フィルタのボタン": "Pulsante filtro",
-        "ヘッダー行": "Riga di intestazione",
-        "合計行": "Riga totale",
-        "最後の列": "Ultima colonna",
-        "範囲に変換する": "Converti in intervallo",
-        "表のデザイン": "Struttura tabella",
-        "テーブルのサイズ変更": "Ridimensiona tabella",
+        "Filter button": "Pulsante filtro",
+        "Header row": "Riga di intestazione",
+        "Total row": "Riga totale",
+        "Last column": "Ultima colonna",
+        "Convert to range": "Converti in intervallo",
+        "Table Design": "Struttura tabella",
+        "Resize table": "Ridimensiona tabella",
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "tr": {
         # 表の「罫線」。本家の日本語は「表の枠線」でしたが、セルに引く線
         # なので Excel は「罫線」です。この言語は文章の側の「罫線」から
         # 引けないので、表の側の鍵(tipBorders)を書きます
-        "罫線": "Sınırlar",
+        "Borders": "Sınırlar",
         # **本家のトルコ語が誤訳**(2026-08-21)。Insert chart に
         # Tablo ekle(表を挿入)が入っていて、「表の挿入」と同じ
         # ラベルになっていました。tablo は表、grafik がグラフです。
         # 語は LibreOffice の公式訳(Insert Chart)から取りました
-        "グラフを挿入": "Grafik ekle",
-        "範囲を保護する": "Aralığı koru",
-        "図形を結合": "Şekilleri birleştir",
-        "改ページ プレビュー": "Sayfa Sonu Önizlemesi",
-        "フィルタのボタン": "Filtre düğmesi",
-        "ヘッダー行": "Üst bilgi satırı",
-        "ページ数": "Sayfa sayısı",
+        "Insert chart": "Grafik ekle",
+        "Protect Range": "Aralığı koru",
+        "Merge shapes": "Şekilleri birleştir",
+        "Page Break Preview": "Sayfa Sonu Önizlemesi",
+        "Filter button": "Filtre düğmesi",
+        "Header row": "Üst bilgi satırı",
+        "Number of pages": "Sayfa sayısı",
         "印刷物で次のページを開始する位置に改行を追加する": "Yeni sayfanın başlayacağı yere sayfa sonu ekle",
-        "参照元のトレース": "Etkileyenleri izle",
-        "参照先のトレース": "Etkilenenleri izle",
-        "合計行": "Toplam satırı",
-        "推奨チャートを挿入": "Önerilen grafik ekle",
-        "最初の列が右側に来るようにシートの方向を切り替える": "Sayfa yönünü ilk sütun sağda olacak şekilde değiştir",
-        "最後の列": "Son sütun",
-        "範囲に変換する": "Aralığa dönüştür",
-        "罫線": "Kenarlıklar",
-        "蛍光ペン": "Vurgulayıcı",
-        "表のデザイン": "Tablo tasarımı",
-        "カンマスタイル": "Virgül stili",
-        "ゴールシーク": "Hedef Ara",
-        "テーブルのサイズ変更": "Tabloyu yeniden boyutlandır",
-        "ファイルからのテキスト": "Dosyadan metin",
-        "SmartArtの挿入": "SmartArt ekle",
-        "すべて更新": "Tümünü yenile",
+        "Trace Precedents": "Etkileyenleri izle",
+        "Trace Dependents": "Etkilenenleri izle",
+        "Total row": "Toplam satırı",
+        "Insert recommended chart": "Önerilen grafik ekle",
+        "Switch the sheet direction so that the first column is on the right side": "Sayfa yönünü ilk sütun sağda olacak şekilde değiştir",
+        "Last column": "Son sütun",
+        "Convert to range": "Aralığa dönüştür",
+        "Borders": "Kenarlıklar",
+        "Highlighter": "Vurgulayıcı",
+        "Table Design": "Tablo tasarımı",
+        "Comma style": "Virgül stili",
+        "Goal Seek": "Hedef Ara",
+        "Resize table": "Tabloyu yeniden boyutlandır",
+        "Text from File": "Dosyadan metin",
+        "Insert SmartArt": "SmartArt ekle",
+        "Update all": "Tümünü yenile",
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "id": {
-        "図形を結合": "Gabungkan bentuk",
-        "ゴールシーク": "Pencarian Tujuan",
-        "テーブルのサイズ変更": "Ubah ukuran tabel",
-        "フィルタのボタン": "Tombol filter",
-        "ヘッダー行": "Baris header",
-        "ページ数": "Jumlah halaman",
-        "合計行": "Baris total",
-        "最初の列が右側に来るようにシートの方向を切り替える": "Ubah arah lembar agar kolom pertama di kanan",
-        "最後の列": "Kolom terakhir",
-        "範囲に変換する": "Konversi ke rentang",
-        "表のデザイン": "Desain tabel",
+        "Merge shapes": "Gabungkan bentuk",
+        "Goal Seek": "Pencarian Tujuan",
+        "Resize table": "Ubah ukuran tabel",
+        "Filter button": "Tombol filter",
+        "Header row": "Baris header",
+        "Number of pages": "Jumlah halaman",
+        "Total row": "Baris total",
+        "Switch the sheet direction so that the first column is on the right side": "Ubah arah lembar agar kolom pertama di kanan",
+        "Last column": "Kolom terakhir",
+        "Convert to range": "Konversi ke rentang",
+        "Table Design": "Desain tabel",
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "vi": {
         # 表の「罫線」。本家の日本語は「表の枠線」でしたが、セルに引く線
         # なので Excel は「罫線」です。この言語は文章の側の「罫線」から
         # 引けないので、表の側の鍵(tipBorders)を書きます
-        "罫線": "Đường viền",
-        "シートを保護する": "Bảo vệ trang tính",
-        "ブックを保護する": "Bảo vệ sổ làm việc",
-        "範囲を保護する": "Bảo vệ phạm vi",
-        "図形を結合": "Hợp nhất hình dạng",
-        "改ページ プレビュー": "Xem trước ngắt trang",
-        "SmartArtの挿入": "Chèn SmartArt",
-        "すべて更新": "Làm mới tất cả",
-        "その他の関数": "Hàm khác",
-        "ウィンドウ枠の固定": "Cố định ngăn",
-        "カンマスタイル": "Kiểu dấu phẩy",
-        "コンボボックス": "Hộp tổ hợp",
-        "ゴールシーク": "Tìm mục tiêu",
-        "シートの表示": "Hiện trang tính",
-        "ステータスバー": "Thanh trạng thái",
-        "スパークラインを挿入する": "Chèn biểu đồ thu nhỏ",
-        "スライサーを挿入": "Chèn slicer",
-        "タイトルを印刷する": "In tiêu đề",
-        "ダークモード": "Chế độ tối",
-        "ツールバーを常に表示する": "Luôn hiện thanh công cụ",
-        "テキストの追加": "Thêm chữ",
-        "テキストフィールド": "Trường văn bản",
-        "テーブルのサイズ変更": "Đổi cỡ bảng",
-        "データの入力規則": "Xác thực dữ liệu",
-        "ドロップダウン": "Danh sách thả xuống",
-        "ナビゲーション": "Dẫn hướng",
-        "ハイフン設定の変更": "Ngắt từ bằng dấu gạch nối",
-        "ピボットテーブル": "PivotTable",
-        "ピボットテーブルを挿入": "Chèn PivotTable",
-        "ファイルからのテキスト": "Văn bản từ tệp",
-        "フィルタのボタン": "Nút lọc",
-        "フィルター": "Bộ lọc",
-        "フォーム": "Biểu mẫu",
-        "ブックマーク": "Dấu trang",
-        "ヘッダー行": "Hàng tiêu đề",
-        "ペン": "Bút",
-        "ページ数": "tổng số trang",
-        "ページ番号": "số trang",
-        "ページ色の変更": "Màu trang",
-        "メールアドレス": "Địa chỉ email",
-        "ラジオボタン": "Nút radio",
-        "ルーラー": "Thước",
-        "レポートのレイアウト": "Bố cục báo cáo",
+        "Borders": "Đường viền",
+        "Protect sheet": "Bảo vệ trang tính",
+        "Protect workbook": "Bảo vệ sổ làm việc",
+        "Protect Range": "Bảo vệ phạm vi",
+        "Merge shapes": "Hợp nhất hình dạng",
+        "Page Break Preview": "Xem trước ngắt trang",
+        "Insert SmartArt": "Chèn SmartArt",
+        "Update all": "Làm mới tất cả",
+        "More functions": "Hàm khác",
+        "Freeze panes": "Cố định ngăn",
+        "Comma style": "Kiểu dấu phẩy",
+        "Combo box": "Hộp tổ hợp",
+        "Goal Seek": "Tìm mục tiêu",
+        "Sheet View": "Hiện trang tính",
+        "Status Bar": "Thanh trạng thái",
+        "Insert sparkline": "Chèn biểu đồ thu nhỏ",
+        "Insert slicer": "Chèn slicer",
+        "Print titles": "In tiêu đề",
+        "Dark mode": "Chế độ tối",
+        "Always Show Toolbar": "Luôn hiện thanh công cụ",
+        "Add Text": "Thêm chữ",
+        "Text Field": "Trường văn bản",
+        "Resize table": "Đổi cỡ bảng",
+        "Data Validation": "Xác thực dữ liệu",
+        "Dropdown": "Danh sách thả xuống",
+        "Navigation": "Dẫn hướng",
+        "Change hyphenation": "Ngắt từ bằng dấu gạch nối",
+        "Pivot Table": "PivotTable",
+        "Insert Pivot Table": "Chèn PivotTable",
+        "Text from File": "Văn bản từ tệp",
+        "Filter button": "Nút lọc",
+        "Filters": "Bộ lọc",
+        "Forms": "Biểu mẫu",
+        "Bookmark": "Dấu trang",
+        "Header row": "Hàng tiêu đề",
+        "Pen": "Bút",
+        "Number of pages": "tổng số trang",
+        "Page number": "số trang",
+        "Change page colour": "Màu trang",
+        "Email Address": "Địa chỉ email",
+        "Radio Button": "Nút radio",
+        "Rulers": "Thước",
+        "Report Layout": "Bố cục báo cáo",
         "印刷物で次のページを開始する位置に改行を追加する": "Chèn ngắt trang tại vị trí bắt đầu trang mới",
-        "印刷範囲": "Vùng in",
-        "参照元のトレース": "Truy vết ô ảnh hưởng",
-        "参照先のトレース": "Truy vết ô phụ thuộc",
-        "右パネル": "Bảng bên phải",
-        "合計行": "Hàng tổng",
-        "大文字小文字を変更": "Đổi chữ hoa/thường",
-        "左パネル": "Bảng bên trái",
-        "拡大縮小印刷": "Co giãn khi in",
-        "推奨チャートを挿入": "Chèn biểu đồ đề xuất",
-        "数式バー": "Thanh công thức",
-        "斜体": "Nghiêng",
-        "更新": "Làm mới",
-        "最初の列": "Cột đầu",
-        "最初の列が右側に来るようにシートの方向を切り替える": "Đổi hướng trang tính để cột đầu ở bên phải",
-        "条件付き書式": "Định dạng có điều kiện",
-        "検索/行列": "Tra cứu & tham chiếu",
-        "相互参照": "Tham chiếu chéo",
-        "空白ページの挿入": "Chèn trang trống",
-        "空行": "Dòng trống",
-        "総計": "Tổng chung",
-        "縞模様の行": "Hàng xen kẽ màu",
-        "罫線": "Viền",
-        "蛍光ペン": "Bút dạ quang",
-        "行番号を表示する": "Hiện số dòng",
-        "表のデザイン": "Thiết kế bảng",
-        "複合フィールド": "Trường phức hợp",
-        "複数ページ": "Nhiều trang",
-        "見出し": "Tiêu đề",
-        "記号を挿入": "Chèn ký hiệu",
-        "論理": "Logic",
-        "財務": "Tài chính",
-        "透かしを編集する": "Sửa hình mờ",
-        "重複データを削除": "Xóa dữ liệu trùng lặp",
-        "開く": "Mở",
-        "電話番号": "Số điện thoại",
+        "Print Area": "Vùng in",
+        "Trace Precedents": "Truy vết ô ảnh hưởng",
+        "Trace Dependents": "Truy vết ô phụ thuộc",
+        "Right Panel": "Bảng bên phải",
+        "Total row": "Hàng tổng",
+        "Change case": "Đổi chữ hoa/thường",
+        "Left Panel": "Bảng bên trái",
+        "Scale To Fit": "Co giãn khi in",
+        "Insert recommended chart": "Chèn biểu đồ đề xuất",
+        "Formula Bar": "Thanh công thức",
+        "Italic": "Nghiêng",
+        "Update": "Làm mới",
+        "First column": "Cột đầu",
+        "Switch the sheet direction so that the first column is on the right side": "Đổi hướng trang tính để cột đầu ở bên phải",
+        "Conditional formatting": "Định dạng có điều kiện",
+        "Lookup & Reference": "Tra cứu & tham chiếu",
+        "Cross-reference": "Tham chiếu chéo",
+        "Insert blank page": "Chèn trang trống",
+        "Blank Rows": "Dòng trống",
+        "Grand Total": "Tổng chung",
+        "Banded Rows": "Hàng xen kẽ màu",
+        "Borders": "Viền",
+        "Highlighter": "Bút dạ quang",
+        "Show line numbers": "Hiện số dòng",
+        "Table Design": "Thiết kế bảng",
+        "Complex Field": "Trường phức hợp",
+        "Multiple pages": "Nhiều trang",
+        "Headings": "Tiêu đề",
+        "Insert symbol": "Chèn ký hiệu",
+        "Logical": "Logic",
+        "Financial": "Tài chính",
+        "Edit watermark": "Sửa hình mờ",
+        "Remove Duplicates": "Xóa dữ liệu trùng lặp",
+        "Open": "Mở",
+        "Phone Number": "Số điện thoại",
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "de": {
@@ -332,44 +663,44 @@ OVERRIDES = {
         #   Projeto da mesa   = 家具の机の設計(table を家具と取った)
         #   Total de linhas   = 行数(「合計の行」ではない)
         #   Faixa de proteção = 保護の帯(命令の動詞が要る所を名詞句に)
-        "表のデザイン": "Design da Tabela",
-        "合計行": "Linha de Totais",
-        "範囲を保護する": "Proteger Intervalo",
+        "Table Design": "Design da Tabela",
+        "Total row": "Linha de Totais",
+        "Protect Range": "Proteger Intervalo",
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "pt": {
         # 表の「罫線」。本家の日本語は「表の枠線」でしたが、セルに引く線
         # なので Excel は「罫線」です。この言語は文章の側の「罫線」から
         # 引けないので、表の側の鍵(tipBorders)を書きます
-        "罫線": "Bordas",
+        "Borders": "Bordas",
         # **本家の欧州ファイル(pt-pt.json)は薄い。** 21 語は訳が無く、
         # 2 語はブラジル語が紛れていた("Estilo de porcentagem"、
         # データのタブが "Data"=日付)。**本家にあることは正しいことでは
         # ない** — 欠けたところは原文と英語から訳し、隣の言語から写さない
         # (2026-08-11。訳語の出どころは docs/sekkei/calc.ja.md)
-        "SmartArtの挿入": "Inserir SmartArt",
-        "カンマスタイル": "Estilo de vírgula",
-        "ゴールシーク": "Atingir objetivo",
-        "テーブルのサイズ変更": "Redimensionar tabela",
-        "ハイフン設定の変更": "Alterar a hifenização",
-        "ファイルからのテキスト": "Texto de um ficheiro",
-        "フィルタのボタン": "Botão de filtro",
-        "ヘッダー行": "Linha de cabeçalho",
-        "ページ数": "Número de páginas",
-        "ページ色の変更": "Alterar a cor da página",
+        "Insert SmartArt": "Inserir SmartArt",
+        "Comma style": "Estilo de vírgula",
+        "Goal Seek": "Atingir objetivo",
+        "Resize table": "Redimensionar tabela",
+        "Change hyphenation": "Alterar a hifenização",
+        "Text from File": "Texto de um ficheiro",
+        "Filter button": "Botão de filtro",
+        "Header row": "Linha de cabeçalho",
+        "Number of pages": "Número de páginas",
+        "Change page colour": "Alterar a cor da página",
         "印刷物で次のページを開始する位置に改行を追加する": "Adicione uma quebra no sítio onde a página seguinte deve começar na cópia impressa",
-        "参照元のトレース": "Rastrear Precedentes",
-        "合計行": "Linha de totais",
-        "図形を結合": "Unir formas",
-        "推奨チャートを挿入": "Inserir gráfico recomendado",
-        "最初の列が右側に来るようにシートの方向を切り替える": "Inverta a direção da folha para que a primeira coluna fique do lado direito",
-        "最後の列": "Última coluna",
-        "範囲に変換する": "Converter em intervalo",
-        "範囲を保護する": "Proteger intervalo",
-        "罫線": "Bordas",
-        "表のデザイン": "Estrutura da Tabela",
-        "データ": "Dados",
-        "パーセントのスタイル": "Estilo de percentagem",
+        "Trace Precedents": "Rastrear Precedentes",
+        "Total row": "Linha de totais",
+        "Merge shapes": "Unir formas",
+        "Insert recommended chart": "Inserir gráfico recomendado",
+        "Switch the sheet direction so that the first column is on the right side": "Inverta a direção da folha para que a primeira coluna fique do lado direito",
+        "Last column": "Última coluna",
+        "Convert to range": "Converter em intervalo",
+        "Protect Range": "Proteger intervalo",
+        "Borders": "Bordas",
+        "Table Design": "Estrutura da Tabela",
+        "Data": "Dados",
+        "Percent style": "Estilo de percentagem",
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "ru": {
@@ -404,8 +735,12 @@ def load(app, loc):
 
 
 def build_map(apps, target):
-    """ja の語 → target の語。同じ ja 語に複数候補があれば多数決 →
-    短い順 → 辞書順(決定的に選ぶ)"""
+    """**本家の日本語 → target の語。** 同じ語に複数候補があれば多数決 →
+    短い順 → 辞書順(決定的に選ぶ)。
+
+    土台の札は英語ですが、本家を引く鍵は日本語のままです。理由は
+    `VENDOR_JA` の註に書きました。
+    """
     cand: dict[str, Counter] = {}
     for app in apps:
         ja = load(app, "ja")
@@ -498,18 +833,16 @@ def i18n_の訳(target: str) -> dict[str, str]:
     if not p.exists() or not kp.exists():
         return {}
     keys = json.loads(kp.read_text(encoding="utf-8"))
-    # **鍵は英語になりました**(2026-08-26)。`OVERRIDES["en"]` は
-    # 「リボンの日本語の札 → 英語」なので、裏返して英語から札に戻します。
-    # リボンの札そのものが英語になるのは段2です
+    # **鍵も土台の札も英語です**(段1と段2)。番号 → 英語の鍵で引けます
     番号 = {k["i"]: k["key"] for k in keys}
-    英語から札 = {en: ja for ja, en in OVERRIDES["en"].items()}
+    要る = set(OVERRIDES["en"])
     out = {}
     for x in json.loads(p.read_text(encoding="utf-8")):
         if not isinstance(x, dict) or not x.get("t"):
             continue
-        札 = 英語から札.get(番号.get(x["i"]))
-        if 札:
-            out[札] = x["t"]
+        鍵 = 番号.get(x["i"])
+        if 鍵 in 要る:
+            out[鍵] = x["t"]
     return out
 
 
@@ -528,9 +861,13 @@ def main():
 
     respelled = []
 
-    def tr(label, m):
+    def tr(label, m, icon="", tab_name=False):
         if label in over:
             return over[label]
+        # **本家は日本語で引きます**(VENDOR_JA の註)。鍵は絵、
+        # タブは名前(絵が無いため)
+        label = VENDOR_JA_TAB.get(label, label) if tab_name \
+            else VENDOR_JA.get(icon, label)
         if label not in m:
             missing.append(label)
             return label
@@ -564,17 +901,17 @@ use super::ribbon::{{{{取り込み}}}};
         m = doc_map if const == "WRITER" else cell_map
         out.append(f"pub const {const}: &[Tab] = &[")
         for tab in tabs_of[const]:
-            out.append(f'    Tab {{ name: "{q(tr(tab.name, m))}", cmds: &[')
+            out.append(f'    Tab {{ name: "{q(tr(tab.name, m, tab_name=True))}", cmds: &[')
             for cmd in tab.cmds:
                 # **書き方の名前をそのまま写す**(c / t / x / xt / xm)。
                 # ボタンの性格は語ではないので、どの言語でも同じです
                 if cmd.ready:
                     out.append(
-                        f'        {cmd.kind}("{q(cmd.id)}", "{q(tr(cmd.label, m))}",'
+                        f'        {cmd.kind}("{q(cmd.id)}", "{q(tr(cmd.label, m, f"{cmd.id or ''}|{cmd.icon}"))}",'
                         f' "{q(cmd.icon)}"),')
                 else:
                     out.append(
-                        f'        {cmd.kind}("{q(tr(cmd.label, m))}", "{q(cmd.icon)}"),')
+                        f'        {cmd.kind}("{q(tr(cmd.label, m, f"{cmd.id or ''}|{cmd.icon}"))}", "{q(cmd.icon)}"),')
             out.append("    ]},")
         out.append("];\n")
 

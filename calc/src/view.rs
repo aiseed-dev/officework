@@ -768,7 +768,7 @@ impl Render for Calc {
             }
             b.into_any_element()
         };
-        if ribbon::CALC[self.tab].name == "ホーム" {
+        if ribbon::CALC[self.tab].name == "Home" {
             // 本家のホームは**単純な2行割りではない**(発注者 2026-08-06
             // スクショ)。組ごとに上の段と下の段が対になっている —
             // コピーの下に貼り付け、書体の下に B I U…、縦揃えの下に横揃え。
@@ -4879,7 +4879,7 @@ impl Render for Calc {
                     .child(btn("bold", ui::t!("Bold")))
                     .child(btn("italic", ui::t!("Italic")))
                     .child(btn("underline", ui::t!("Underline")))
-                    .child(btn("strikeout", ui::t!("Cancel")))
+                    .child(btn("strikeout", ui::t!("Strikethrough")))
                     .child(btn("incfont", ui::t!("Bigger")))
                     .child(btn("decfont", ui::t!("Smaller"))))
                 .child(title("Alignment"))

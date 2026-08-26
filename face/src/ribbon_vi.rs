@@ -189,7 +189,7 @@ pub const CALC: &[Tab] = &[
         c("middle", "Căn giữa", "middle"),
         c("bottom", "Căn dưới cùng", "bottom"),
         c("wrap", "Ngắt dòng trong ô", "wrap"),
-        c("text-orient", "Hướng", "text-orient"),
+        c("text-orient", "Hướng chữ", "text-orient"),
         c("align-left", "Căn trái", "align-left"),
         c("align-center", "Trung tâm", "align-center"),
         c("align-right", "Căn phải", "align-right"),

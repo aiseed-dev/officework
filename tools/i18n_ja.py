@@ -44,9 +44,13 @@ def 画面の日本語() -> set:
     リボンの札は段2までコードの中に日本語で書いてあるので、そのまま拾えます。
     """
     出 = set(_表().values())
-    ribbon = ROOT / "face/src/ribbon.rs"
-    if ribbon.exists():
+    # **リボンの札は ribbon_ja.rs から。** 土台の ribbon.rs は英語です
+    # (2026-08-26 の段2)
+    ja = ROOT / "face/src/ribbon_ja.rs"
+    if ja.exists():
         import re
-        出 |= set(re.findall(r'c\("[^"]*",\s*"([^"]+)"',
-                             ribbon.read_text(encoding="utf-8")))
+        t = ja.read_text(encoding="utf-8")
+        出 |= set(re.findall(r'(?:c|t)\("[^"]*",\s*"((?:[^"\\]|\\.)*)"', t))
+        出 |= set(re.findall(r'(?:x|xt|xm)\("((?:[^"\\]|\\.)*)"', t))
+        出 |= set(re.findall(r'Tab \{ name: "([^"]+)"', t))
     return 出

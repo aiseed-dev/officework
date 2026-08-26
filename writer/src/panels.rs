@@ -1214,7 +1214,9 @@ impl Writer {
                             div().flex().flex_row().items_center().gap_1()
                                 .child(div().flex_1().min_w(px(0.0)).child(行))
                                 .child(ui::filelist::row_button(&look, i, "ren",
-                                    ui::t!("Name").into())
+                                    // **名前を変える釦**。リボンの「名前」
+                                    // (defname)とは別の意味です
+                                    ui::t!("Rename").into())
                                     .on_click(cx.listener(move |t, _, _, cx| {
                                         t.fl_start(crate::FlJob::Rename(道2.clone()));
                                         cx.notify()
@@ -1317,7 +1319,7 @@ impl Writer {
                         |t, _, _, cx| { t.run_cmd("italic", cx); cx.notify() })))
                     .child(btn(self, "underline", ui::t!("Underline").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("underline", cx); cx.notify() })))
-                    .child(btn(self, "strikeout", ui::t!("Cancel").into()).on_click(cx.listener(
+                    .child(btn(self, "strikeout", ui::t!("Strikethrough").into()).on_click(cx.listener(
                         |t, _, _, cx| { t.run_cmd("strikeout", cx); cx.notify() }))))
                 .child(row()
                     .child(div().text_size(px(us * 11.0)).text_color(th_status)

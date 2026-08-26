@@ -45,7 +45,10 @@ pub fn merged() -> Vec<Slot> {
     // 動かしません — 使う人が覚えた場所を変えないためです
     let mut at = w
         .iter()
-        .position(|t| 表の番号(t.name).is_some() && t.name != "ファイル")
+        // **ファイルの段は名前で書きません**(2026-08-26)。表はその言語の
+        // 物なので、"ファイル" と書くと英語の画面では当たりません。
+        // ファイルは先頭と決まっているので、同じ表の先頭と比べます
+        .position(|t| 表の番号(t.name).is_some() && Some(t.name) != w.first().map(|x| x.name))
         .map(|_| レイアウトの次(&out))
         .unwrap_or(out.len());
     for (i, t) in c.iter().enumerate() {

@@ -11,7 +11,7 @@
 
 **手で要約しない。** タブの並びもボタンの並びも
 `vendor/web-apps/apps/*/main/app/template/Toolbar.template` の順そのまま、
-名前は同じ app の `locale/ja.json` から引く。
+名前は同じ app の `locale/en.json` から引く(2026-08-26 以降)。
 だから「Euro-Office と全く同じか」は、この台本を回し直せば確かめられる。
 
 全部入れる(2026-08-04 発注者確定で改訂。以前は共同編集・保護・
@@ -33,7 +33,9 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1] / "vendor" / "web-apps" / "apps"
-LOCALE = "ja"
+# **土台の札は英語**(2026-08-26 の段2。規約「プログラム内はすべて英語」)。
+# 日本語は face/src/ribbon_ja.rs に降りました
+LOCALE = "en"
 
 # 実装済みのコマンド。ここに載っているものだけが押せる。
 # **できないものを、できるように見せない。**
@@ -307,30 +309,42 @@ LABEL = {
 言い換え = {
     # 両方で同じ言い方をする物
     "*": {
-        "img-align": "配置",                # 本家「整列」— 表の側に合わせる
-        "img-group": "グループ化",          # 本家「グループ」— 動作なので動詞に
-        "inscheckbox": "チェックボックス",  # 本家は札が無い
-        "instextart": "テキストアートの挿入",
-        "print-gridlines": "枠線も印刷",
-        "print-headings": "見出しも印刷",
-        "data-external-links": "外部リンク(値で取り込む)",  # 何が起きるかを足す
-        "show-gridlines": "枠線表示",       # 本家「グリッド線」— Excel の言葉
+        "img-align": "Alignment",                # 本家「整列」— 表の側に合わせる
+        "img-group": "Group",          # 本家「グループ」— 動作なので動詞に
+        "inscheckbox": "Checkbox",  # 本家は札が無い
+        "instextart": "Insert Text Art",
+        "print-gridlines": "Print gridlines",
+        "print-headings": "Print headings",
+        "data-external-links": "External links (import as values)",  # 何が起きるかを足す
+        "show-gridlines": "Gridlines",       # 本家「グリッド線」— Excel の言葉
+        # **2026-08-26 の段2で足した分。** 土台の札が英語になったので、
+        # ribbon_en.rs を作っていたときの言い換え(前は OVERRIDES["en"] が
+        # 日本語の鍵で持っていた分)がここに要ります
+        "align-center": "Centre",             # 本家「Align center」
+        "columns": "Insert column",           # 1本しか入れないので単数
+        "img-movefrwd": "Bring forward",      # 大小文字をそろえる
+        "markers": "Bullet",                  # 1つ付ける操作なので単数
+        "pagemargins": "Margins",             # Word のリボンの言い方
+        "printarea": "Print Area",
+        "scale": "Scale To Fit",
+        "shapes-merge": "Merge shapes",
+        "text-from-file": "Text from File",
     },
     # **同じ欄でも、アプリで言い方が変わる物。** 文章は段落、表はセルが
     # 相手なので、同じ「スタイル」でも指す物が違います
     "documenteditor": {
-        "direction": "テキスト方向",
-        "styles": "段落のスタイル",
+        "direction": "Text direction",
+        "styles": "Paragraph style",
     },
     "spreadsheeteditor": {
-        "direction": "文字の向き(右横書き)",
-        "styles": "セルのスタイル",
+        "direction": "Right-to-left text",
+        "styles": "Cell Style",
         # 表が守るのはシート。文章は文書なので「保護」のまま
-        "prot-doc": "シートを保護する",
+        "prot-doc": "Protect sheet",
         # **本家の日本語だけが曖昧**(2026-08-21 に気づいた)。英語は
         # Align middle / Align center と分かれているのに、日本語はどちらも
         # 「中央揃え」で、ホームに同じ札のボタンが2つ並んでいました
-        "middle": "上下中央揃え",
+        "middle": "Align middle",
         # **本家の日本語だけが曖昧**(同じ形が3つありました)。
         #
         # `text-orient` はセルの中の文字を回すボタンです。本家の英語は
@@ -338,12 +352,12 @@ LABEL = {
         # 分かれているのに、日本語はどちらも「印刷の向き」でした。
         # Excel のホームの言い方に合わせて「方向」にします
         # (訳は 15 言語とも OVERRIDES に本家の語を書いてあります)
-        "text-orient": "方向",
+        "text-orient": "Text orientation",
         # 本家の日本語は「表の枠線」ですが、セルに引く線なので Excel は
         # 「罫線」です。文章の側は本家も「罫線」でした
-        "borders": "罫線",
+        "borders": "Borders",
         # 文章の側は「テキストボックスの挿入」。同じ物なので言い方を揃えます
-        "instext": "テキストボックスの挿入",
+        "instext": "Insert text box",
         # **こちらの引き間違い**(2026-08-21)。`cell-format`(書式設定の
         # 小窓を開く)を、`styles`(見た目の一覧)と同じ本家の語
         # `tipCellStyle` から引いていたので、ホームに「セルのスタイル」が
@@ -355,7 +369,7 @@ LABEL = {
         # 同じ鍵から取り、ベトナム語だけ本家に訳が無いので
         # LibreOffice の公式ベトナム語から取りました
         # (gen_ribbon_locale.py の OVERRIDES に註つきで書いてあります)
-        "cell-format": "セルの書式設定",
+        "cell-format": "Format cells",
     },
 }
 
@@ -369,28 +383,28 @@ LABEL = {
 }
 
 FALLBACK = {
-    "bold": "太字", "italic": "斜体", "underline": "下線",
-    "strikeout": "取り消し線", "superscript": "上付き", "subscript": "下付き",
-    "add-text": "テキストの追加", "contents-update": "目次の更新",
-    "bookmarks": "ブックマーク", "caption": "図表番号", "crossref": "相互参照",
-    "tof": "図表目次", "tof-update": "図表目次の更新",
-    "formula": "関数", "fill-num": "フィル", "named-range": "名前の管理",
-    "additional-formula": "関数の挿入", "autosum": "オートSUM",
-    "recent": "最近使った関数", "financial": "財務", "logical": "論理",
-    "text": "文字列操作", "datetime": "日付/時刻", "lookup": "検索/行列",
-    "math": "数学/三角", "more": "その他の関数",
-    "named-range-huge": "名前の管理", "trace-prec": "参照元のトレース",
-    "trace-dep": "参照先のトレース", "remove-arrows": "トレース矢印の削除",
-    "show-formulas": "数式の表示", "watch-window": "ウォッチウィンドウ",
-    "calculate": "計算方法", "data-from-text": "テキストからデータ",
-    "data-external-links": "外部リンク", "custom-sort": "並べ替え",
-    "text-column": "区切り位置", "rem-duplicates": "重複の削除",
-    "data-validation": "データの入力規則", "goal-seek": "ゴールシーク",
-    "solver": "ソルバー", "group": "グループ化", "ungroup": "グループ解除",
-    "show-details": "詳細の表示", "hide-details": "詳細の非表示",
-    "spell": "スペルチェック", "furigana": "ふりがな", "pagebreak": "区切り", "setfilter": "フィルター", "clear-filter": "フィルターを解除",
-    "contents": "目次",
-    "open": "開く", "print": "印刷",
+    "bold": "Bold", "italic": "Italic", "underline": "Underline",
+    "strikeout": "Strikethrough", "superscript": "Superscript", "subscript": "Subscript",
+    "add-text": "Add Text", "contents-update": "Update table of contents",
+    "bookmarks": "Bookmark", "caption": "Caption", "crossref": "Cross-reference",
+    "tof": "Table of figures", "tof-update": "Update table of figures",
+    "formula": "関数", "fill-num": "Fill", "named-range": "Name manager",
+    "additional-formula": "Insert function", "autosum": "AutoSum",
+    "recent": "Recently used", "financial": "Financial", "logical": "Logical",
+    "text": "Text functions", "datetime": "Date & Time", "lookup": "Lookup & Reference",
+    "math": "Math & Trig", "more": "More functions",
+    "named-range-huge": "Name manager", "trace-prec": "Trace Precedents",
+    "trace-dep": "Trace Dependents", "remove-arrows": "Remove arrows",
+    "show-formulas": "Show formulas", "watch-window": "Watch window",
+    "calculate": "Calculation options", "data-from-text": "Text to data",
+    "data-external-links": "外部リンク", "custom-sort": "Sort",
+    "text-column": "Text to columns", "rem-duplicates": "Remove duplicates",
+    "data-validation": "Data Validation", "goal-seek": "Goal Seek",
+    "solver": "Solver", "group": "Group", "ungroup": "Ungroup",
+    "show-details": "Show details", "hide-details": "Hide detail",
+    "spell": "スペルチェック", "furigana": "Furigana", "pagebreak": "Breaks", "setfilter": "Filters", "clear-filter": "Clear filter",
+    "contents": "Table of contents",
+    "open": "Open", "print": "Print",
 }
 
 
@@ -416,7 +430,20 @@ def tab_names(app, prefix):
     return out
 
 
+def 英国綴り(s: str) -> str:
+    """米国綴りを英国綴りへ。**ribbon_en.rs と同じ道を通します**
+    (2026-08-26 の段2)。土台の札が英語になったので、綴りも揃えます。"""
+    import sys as _s
+    _s.path.insert(0, str(HERE)) if "HERE" in globals() else None
+    from gen_ribbon_locale import respell
+    return respell("en", s)
+
+
 def label_of(app_loc, prefix, slot):
+    return 英国綴り(_label_of(app_loc, prefix, slot))
+
+
+def _label_of(app_loc, prefix, slot):
     # 言い換えが先。**本家に札があっても、こちらを使う**
     app = "documenteditor" if prefix == "DE" else "spreadsheeteditor"
     for 表 in (言い換え[app], 言い換え["*"]):
@@ -449,42 +476,42 @@ def label_of(app_loc, prefix, slot):
 # アプリ固有の追加タブ(本家の位置に挿す)。(タブ名, 直前に置くタブ名, cmds)
 APP_TABS = {
     "documenteditor": [
-        ("フォーム", "参考資料", [
-            ("form-text", "テキストフィールド"), ("form-combo", "コンボボックス"),
-            ("form-dropdown", "ドロップダウン"), ("form-checkbox", "チェックボックス"),
-            ("form-radio", "ラジオボタン"), ("form-image", "画像"),
-            ("form-email", "メールアドレス"), ("form-phone", "電話番号"),
-            ("form-complex", "複合フィールド"), ("form-signature", "署名"),
-            ("form-name", "名前"),
+        ("Forms", "References", [
+            ("form-text", "Text Field"), ("form-combo", "Combo box"),
+            ("form-dropdown", "Dropdown"), ("form-checkbox", "Checkbox"),
+            ("form-radio", "Radio Button"), ("form-image", "Picture"),
+            ("form-email", "Email Address"), ("form-phone", "Phone Number"),
+            ("form-complex", "Complex Field"), ("form-signature", "Signature"),
+            ("form-name", "Name"),
         ]),
     ],
     "spreadsheeteditor": [
-        ("ピボットテーブル", "データ", [
-            ("pivot-insert", "ピボットテーブルを挿入"), ("pivot-refresh", "更新"),
-            ("pivot-refresh-all", "すべて更新"), ("pivot-select", "選択する"),
-            ("pivot-totals", "総計"), ("pivot-subtotals", "小計"),
-            ("pivot-blank", "空行"), ("pivot-layout", "レポートのレイアウト"),
+        ("Pivot Table", "Data", [
+            ("pivot-insert", "Insert Pivot Table"), ("pivot-refresh", "Update"),
+            ("pivot-refresh-all", "Update all"), ("pivot-select", "Select"),
+            ("pivot-totals", "Grand Total"), ("pivot-subtotals", "Subtotals"),
+            ("pivot-blank", "Blank Rows"), ("pivot-layout", "Report Layout"),
         ]),
-        ("表のデザイン", "ピボットテーブル", [
-            ("td-header", "ヘッダー行"), ("td-total", "合計行"),
-            ("td-band-row", "縞模様の行"), ("td-first", "最初の列"),
-            ("td-last", "最後の列"), ("td-band-col", "縞模様の列"),
-            ("td-filter", "フィルタのボタン"), ("td-remdup", "重複データを削除"),
-            ("td-torange", "範囲に変換する"), ("td-resize", "テーブルのサイズ変更"),
+        ("Table Design", "Pivot Table", [
+            ("td-header", "Header row"), ("td-total", "Total row"),
+            ("td-band-row", "Banded Rows"), ("td-first", "First column"),
+            ("td-last", "Last column"), ("td-band-col", "Banded columns"),
+            ("td-filter", "Filter button"), ("td-remdup", "Remove Duplicates"),
+            ("td-torange", "Convert to range"), ("td-resize", "Resize table"),
         ]),
     ],
 }
 
 COMMON_TAIL = {
     "collaboration": [
-        ("coauth-mode", "共同編集モード"), ("co-addcomment", "コメントを追加"),
-        ("co-delcomment", "コメントを削除"), ("co-showcomment", "コメントの表示"),
-        ("co-chat", "チャット"), ("co-history", "バージョン履歴"),
+        ("coauth-mode", "Co-editing mode"), ("co-addcomment", "Add Comment"),
+        ("co-delcomment", "Delete comment"), ("co-showcomment", "Show comments"),
+        ("co-chat", "Chat"), ("co-history", "Version history"),
         # writer は本家どおり変更履歴もここ(出力時に履歴の前へ挿す)
     ],
     "protect": [
-        ("prot-encrypt", "暗号化する"), ("prot-sign", "デジタル署名を追加"),
-        ("prot-doc", "保護"),
+        ("prot-encrypt", "Encrypt"), ("prot-sign", "Add digital signature"),
+        ("prot-doc", "Protection"),
     ],
     # **マクロのタブ**(本家のプラグインの位置)。
     #
@@ -494,18 +521,18 @@ COMMON_TAIL = {
     # 中身はアプリごとに違うので、名前だけ共通で中身は分けます
     "macros": {
         "documenteditor": [
-            ("py-list", "一覧", "plug-manage"),
+            ("py-list", "Macro list", "plug-manage"),
             # **表にしか無かった**ので文章にも足しました(2026-08-21 の B-3)。
             # 置き場は pyrun の1本で、どちらから開いても同じ場所です
-            ("py-folder", "置き場を開く", "py-folder"),
-            ("ai-macro", "マクロを書く", "ai-macro"),
+            ("py-folder", "Open folder", "py-folder"),
+            ("ai-macro", "Write macro", "ai-macro"),
         ],
         "spreadsheeteditor": [
-            ("rec-toggle", "操作を記録", "py-run"),
-            ("py-new", "新しい .py", "py-new"),
-            ("py-list", "一覧", "py-list"),
-            ("ribbon-list", "リボンのマクロ", "py-line"),
-            ("py-folder", "置き場を開く", "py-folder"),
+            ("rec-toggle", "Record actions", "py-run"),
+            ("py-new", "New .py", "py-new"),
+            ("py-list", "Macro list", "py-list"),
+            ("ribbon-list", "Ribbon macros", "py-line"),
+            ("py-folder", "Open folder", "py-folder"),
         ],
     },
     # **AI の段は作りません**(2026-08-20 発注者「AI については、固定的にしか
@@ -524,29 +551,29 @@ COMMON_TAIL = {
 
 DYNAMIC = {
     "documenteditor": [
-        ("draw", 3, [("pen", "ペン"), ("highlighter", "蛍光ペン"), ("eraser", "消しゴム")]),
+        ("draw", 3, [("pen", "Pen"), ("highlighter", "Highlighter"), ("eraser", "Eraser")]),
         # ヘッダー/フッターとレビューのタブはデスクトップ版に無い
         # (2026-08-04 発注者「画面はデスクトップ版に合わせて」)。
         # 中身は 挿入(ヘッダー等)・共同編集(変更履歴)・
         # 下のステータスバー(スペル・文字数)へ畳んだ
         ("view", 6, [
-            ("zoom-in", "拡大"), ("zoom-out", "縮小"),
-            ("ruler", "ルーラー"), ("darkmode", "ダークモード"),
+            ("zoom-in", "Zoom in"), ("zoom-out", "Zoom out"),
+            ("ruler", "Rulers"), ("darkmode", "Dark mode"),
         ]),
     ],
     "spreadsheeteditor": [
-        ("draw", 3, [("pen", "ペン"), ("highlighter", "蛍光ペン"), ("eraser", "消しゴム")]),
+        ("draw", 3, [("pen", "Pen"), ("highlighter", "Highlighter"), ("eraser", "Eraser")]),
         ("view", 99, [
-            ("freeze", "ウィンドウ枠の固定"), ("sheet-view", "シートの表示"),
-            ("show-gridlines", "グリッド線"), ("show-headings", "見出し"),
+            ("freeze", "Freeze panes"), ("sheet-view", "Sheet View"),
+            ("show-gridlines", "グリッド線"), ("show-headings", "Headings"),
         ]),
     ],
 }
 
 TAB_NAME_KEYS = {"draw": "Draw", "headerfooter": "HeaderFooter",
                  "review": "Review", "view": "View",
-                 "collaboration": "共同編集", "protect": "保護",
-                 "macros": "マクロ"}
+                 "collaboration": "Collaboration", "protect": "Protection",
+                 "macros": "Macros"}
 
 
 # **絵の実体がまだ無いボタン。** 本家には在りますが、うちに絵が無いので
@@ -608,20 +635,20 @@ def tabs_of(app, prefix):
                      "align-just", "align-dist", "hidenchars", "paracolor",
                      "borders",
                      "styles", "replace", "select-all"]
-            for c, l in [("copy", "コピー"), ("cut", "切り取り"),
-                         ("paste", "貼り付け"), ("align-left", "左揃え"),
-                         ("align-right", "右揃え"), ("align-dist", "均等割付"),
-                         ("ruby", "ルビ")]:
+            for c, l in [("copy", "Copy"), ("cut", "Cut"),
+                         ("paste", "Paste"), ("align-left", "Align left"),
+                         ("align-right", "Align right"), ("align-dist", "Distributed"),
+                         ("ruby", "Ruby")]:
                 DYN_LABELS[c] = l
         # ヘッダー・フッター類はタブを畳んで挿入タブへ(デスクトップ版の場所)
         if tab == "ins" and app == "documenteditor":
             at = slots.index("insequation") if "insequation" in slots else len(slots)
             slots[at:at] = ["edit-header", "edit-footer", "pagenum",
                             "datetime", "numpages"]
-            for c, l in [("edit-header", "ヘッダーの編集"),
-                         ("edit-footer", "フッターの編集"),
-                         ("pagenum", "ページ番号"), ("datetime", "日付/時刻"),
-                         ("numpages", "ページ数")]:
+            for c, l in [("edit-header", "Edit header"),
+                         ("edit-footer", "Edit footer"),
+                         ("pagenum", "Page number"), ("datetime", "Date & Time"),
+                         ("numpages", "Number of pages")]:
                 DYN_LABELS[c] = l
         # フィルターも class 注入(btn-slot.slot-btn-setfilter)
         if tab == "home" and app == "spreadsheeteditor" and "custom-sort" not in slots:
@@ -657,7 +684,7 @@ def tabs_of(app, prefix):
     ]:
         if key == "collaboration" and app == "documenteditor":
             # 変更履歴は本家どおりバージョン履歴の手前
-            cmds = cmds[:-1] + [("track-changes", "変更履歴")] + cmds[-1:]
+            cmds = cmds[:-1] + [("track-changes", "Track changes")] + cmds[-1:]
         # **writer では暗号化を掛けるボタンを出さない**(2026-08-18 発注者
         # 「暗号化は、開くだけ残す」)。writer が保存するのは adoc で、
         # zip ではないので包めない。パスワード付きの docx を**開く**道は
@@ -669,7 +696,7 @@ def tabs_of(app, prefix):
         entry = (name, [c for c, _ in cmds])
         for c, label in cmds:
             DYN_LABELS[c] = label
-        view_at = next((i for i, (n, _) in enumerate(out) if n == "表示"), len(out))
+        view_at = next((i for i, (n, _) in enumerate(out) if n == "View"), len(out))
         out.insert(view_at, entry)
 
     # マクロのタブは末尾。**絵も名前もここで決まる**(本家に無いので)
@@ -681,7 +708,7 @@ def tabs_of(app, prefix):
     # **置き場所はアプリごと。** 表は「データ」の後ろ(Python のタブが居た所)、
     # 文章は末尾(プラグインのタブが居た所)。畳んだときの位置をそのまま継ぎます
     if app == "spreadsheeteditor":
-        at = next((i + 1 for i, (n, _) in enumerate(out) if n == "データ"), len(out))
+        at = next((i + 1 for i, (n, _) in enumerate(out) if n == "Data"), len(out))
         out.insert(at, entry)
     else:
         out.append(entry)
@@ -718,110 +745,110 @@ DYN_ICONS = {}
 # この一覧は手で書いていません。素の出力と実物を突き合わせて機械に出させました。
 EXTRA_CMDS = {
     "writer": [
-        ("ホーム", 'ruby', "ai-furigana", "ふりがな", "ai-furigana", "c"),
-        ("参考資料", 'crossref', "footnote", "脚注", "footnote", "c"),
-        ("表示", None, "nav", "ナビゲーション", "nav", "t"),
-        ("表示", 'nav', "fit-page", "ページに合わせる", "fit-page", "c"),
-        ("表示", 'fit-page', "fit-width", "幅に合わせる", "fit-width", "c"),
-        ("表示", 'fit-width', "zoom100", "100%に拡大する", "zoom100", "c"),
-        ("表示", 'zoom-out', "printview", "印刷レイアウト", "printview", "c"),
-        ("表示", 'printview', "multipage", "複数ページ", "multipage", "c"),
+        ("Home", 'ruby', "ai-furigana", "Furigana", "ai-furigana", "c"),
+        ("References", 'crossref', "footnote", "Footnote", "footnote", "c"),
+        ("View", None, "nav", "Navigation", "nav", "t"),
+        ("View", 'nav', "fit-page", "Fit to page", "fit-page", "c"),
+        ("View", 'fit-page', "fit-width", "Fit to width", "fit-width", "c"),
+        ("View", 'fit-width', "zoom100", "Zoom to 100%", "zoom100", "c"),
+        ("View", 'zoom-out', "printview", "Print layout", "printview", "c"),
+        ("View", 'printview', "multipage", "Multiple pages", "multipage", "c"),
         # **表にしかありませんでした**(2026-08-21 発注者「双方でできるように
         # したいです」)。中身は ui::appcmd に1本あります。ダークモードの
         # 隣に置くのは、表と同じ並びにするためです
-        ("表示", 'multipage', "ui-bigger", "画面の文字を大きく", "ui-bigger", "c"),
-        ("表示", 'ui-bigger', "ui-smaller", "画面の文字を小さく", "ui-smaller", "c"),
-        ("表示", 'ruler', "show-toolbar", "ツールバーを常に表示する", "show-toolbar", "t"),
-        ("表示", 'show-toolbar', "show-statusbar", "ステータスバー", "show-statusbar", "t"),
-        ("表示", 'show-statusbar', "show-left", "左パネル", "show-left", "t"),
-        ("表示", 'show-left', "show-right", "右パネル", "show-right", "t"),
+        ("View", 'multipage', "ui-bigger", "Bigger UI text", "ui-bigger", "c"),
+        ("View", 'ui-bigger', "ui-smaller", "Smaller UI text", "ui-smaller", "c"),
+        ("View", 'ruler', "show-toolbar", "Always Show Toolbar", "show-toolbar", "t"),
+        ("View", 'show-toolbar', "show-statusbar", "Status Bar", "show-statusbar", "t"),
+        ("View", 'show-statusbar', "show-left", "Left Panel", "show-left", "t"),
+        ("View", 'show-left', "show-right", "Right Panel", "show-right", "t"),
     ],
     "calc": [
         # コピー・切り取り・貼り付けは、本家ではタブの外(全タブ共通の場所)。
         # Excel と同じくホームの先頭に置く
-        ("ホーム", None, "copy", "コピー", "copy", "c"),
-        ("ホーム", 'copy', "cut", "切り取り", "cut", "c"),
-        ("ホーム", 'cut', "paste", "貼り付け", "paste", "c"),
-        ("ホーム", 'paste', "copystyle", "書式のコピー", "copystyle", "c"),
-        ("ホーム", 'text-orient', "align-left", "左揃え", "align-left", "c"),
-        ("ホーム", 'align-center', "align-right", "右揃え", "align-right", "c"),
-        ("ホーム", 'align-just', "align-dist", "均等割付", "align-dist", "c"),
-        ("ホーム", 'direction', "sum", "オートSUM", "autosum", "c"),
-        ("ホーム", 'clear', "sort-desc", "降順並べ替え", "sortdesc", "c"),
-        ("ホーム", 'sort-desc', "sort-asc", "昇順並べ替え", "sortasc", "c"),
-        ("挿入", None, "pivot-insert", "ピボットテーブルを挿入", "add-pivot", "c"),
-        ("挿入", 'inssparkline', "co-addcomment", "コメント", "ins-comment", "c"),
-        ("挿入", 'instextart', "edit-header", "ヘッダー/フッター", "editheader", "c"),
-        ("描画", None, "draw-select", "選択", "select-tool", "c"),
-        ("レイアウト", 'pagebreak', "edit-header", "ヘッダー/フッター", "editheader", "c"),
+        ("Home", None, "copy", "Copy", "copy", "c"),
+        ("Home", 'copy', "cut", "Cut", "cut", "c"),
+        ("Home", 'cut', "paste", "Paste", "paste", "c"),
+        ("Home", 'paste', "copystyle", "Format painter", "copystyle", "c"),
+        ("Home", 'text-orient', "align-left", "Align left", "align-left", "c"),
+        ("Home", 'align-center', "align-right", "Align right", "align-right", "c"),
+        ("Home", 'align-just', "align-dist", "Distributed", "align-dist", "c"),
+        ("Home", 'direction', "sum", "AutoSum", "autosum", "c"),
+        ("Home", 'clear', "sort-desc", "Sort descending", "sortdesc", "c"),
+        ("Home", 'sort-desc', "sort-asc", "Sort ascending", "sortasc", "c"),
+        ("Insert", None, "pivot-insert", "Insert Pivot Table", "add-pivot", "c"),
+        ("Insert", 'inssparkline', "co-addcomment", "Comment", "ins-comment", "c"),
+        ("Insert", 'instextart', "edit-header", "Header & Footer", "editheader", "c"),
+        ("Draw", None, "draw-select", "Select", "select-tool", "c"),
+        ("Layout", 'pagebreak', "edit-header", "Header & Footer", "editheader", "c"),
         # 本家では「拡大縮小印刷」の中の選択肢。うちは小窓を持たないので
         # レイアウトタブに独立したボタンで出す
-        ("レイアウト", 'scale', "fit-pages", "紙に収める", "fit-pages", "c"),
-        ("レイアウト", 'fit-pages', "printarea-add", "範囲を足す", "printarea-add", "c"),
-        ("レイアウト", 'printarea-add', "show-breaks", "紙の切れ目", "show-breaks", "c"),
-        ("数式", 'insert-function', "func-list", "Python の関数", "py-list", "c"),
-        ("数式", 'defname', "paste-name", "名前を貼り付け", "paste-name", "c"),
+        ("Layout", 'scale', "fit-pages", "Fit to paper", "fit-pages", "c"),
+        ("Layout", 'fit-pages', "printarea-add", "Add to area", "printarea-add", "c"),
+        ("Layout", 'printarea-add', "show-breaks", "Page breaks", "show-breaks", "c"),
+        ("Formula", 'insert-function', "func-list", "Python functions", "py-list", "c"),
+        ("Formula", 'defname', "paste-name", "Paste name", "paste-name", "c"),
         # **入力規則に合っていない値を洗い出す**(2026-08-21 の D群)。
         # 本家に無い機能なので、絵も語もこちらで用意しました。
         # 入切の形です — もう一度押すと印が消えます
-        ("データ", 'data-validation', "dv-mark", "無効データのマーク", "dv-mark", "t"),
-        ("データ", 'clear-filter', "sort-desc", "降順並べ替え", "sortdesc", "c"),
-        ("データ", 'sort-desc', "sort-asc", "昇順並べ替え", "sortasc", "c"),
+        ("Data", 'data-validation', "dv-mark", "Circle invalid data", "dv-mark", "t"),
+        ("Data", 'clear-filter', "sort-desc", "Sort descending", "sortdesc", "c"),
+        ("Data", 'sort-desc', "sort-asc", "Sort ascending", "sortasc", "c"),
         # 小計は本家のデータタブに無いが、グループ化を「畳むと合計が残る」
         # 形で使うために置く(Excel の データ > 小計 に相当。発注者指摘)
-        ("データ", 'hide-details', "subtotal", "小計", "subtotal", "c"),
-        ("データ", 'subtotal', "datatable", "データテーブル", "datatable", "c"),
-        ("データ", 'datatable', "python", "Python", "python", "c"),
-        ("データ", 'python', "csv-kind", "CSV の形", "csv-kind", "c"),
-        ("データ", 'csv-kind', "flash-fill", "フラッシュフィル", "flash-fill", "c"),
-        ("ピボットテーブル", 'pivot-insert', "pivot-fields", "フィールドリスト", "pivot-fields", "c"),
+        ("Data", 'hide-details', "subtotal", "Subtotals", "subtotal", "c"),
+        ("Data", 'subtotal', "datatable", "Data table", "datatable", "c"),
+        ("Data", 'datatable', "python", "Python", "python", "c"),
+        ("Data", 'python', "csv-kind", "CSV format", "csv-kind", "c"),
+        ("Data", 'csv-kind', "flash-fill", "Fill by example", "flash-fill", "c"),
+        ("Pivot Table", 'pivot-insert', "pivot-fields", "Field list", "pivot-fields", "c"),
         # 本家は値フィールドの設定の中にある「計算の種類」。うちは指図が
         # 集計の名前ひとつなので、タブに独立したボタンとして置く
         # **元の表を差し替える**(2026-08-21 の D群)。本家に無いボタンですが、
         # 語は本家の `PivotSettingsAdvanced.textDataSource` にあるので、
         # 訳は全言語ともそこから引けます(「データソース」)
-        ("ピボットテーブル", 'pivot-refresh-all', "pivot-source", "データソース", "pivot-source", "c"),
-        ("ピボットテーブル", 'pivot-blank', "pivot-showas", "計算の種類", "pivot-showas", "c"),
-        ("ピボットテーブル", 'pivot-layout', "pivot-style", "スタイル", "pivot-style", "c"),
+        ("Pivot Table", 'pivot-refresh-all', "pivot-source", "Data source", "pivot-source", "c"),
+        ("Pivot Table", 'pivot-blank', "pivot-showas", "Show values as", "pivot-showas", "c"),
+        ("Pivot Table", 'pivot-layout', "pivot-style", "Style", "pivot-style", "c"),
         # 本家では「セルの書式設定 > 保護」タブと「シートの保護」小窓の中。
         # うちは小窓を持たない作りなので、保護タブに独立したボタンで出す
         # 本家に無い灰色。**まだ押せないが性格は分かる** — どちらも入切
-        ("保護", 'prot-encrypt', "", "ブックを保護する", "protect-workbook", "xt"),
-        ("保護", 'prot-doc', "", "範囲を保護する", "protect-range", "xt"),
-        ("保護", 'prot-sign', "cell-lock", "セルのロック", "cell-lock", "c"),
-        ("保護", 'cell-lock', "prot-allow", "許可する操作", "prot-allow", "c"),
-        ("保護", 'prot-allow', "recover", "復旧", "recover", "c"),
-        ("保護", 'recover', "recover-every", "控えの間隔", "recover-every", "c"),
-        ("保護", 'recover-every', "read-only-rec", "読み取り専用を勧める", "read-only-rec", "c"),
+        ("Protection", 'prot-encrypt', "", "Protect workbook", "protect-workbook", "xt"),
+        ("Protection", 'prot-doc', "", "Protect Range", "protect-range", "xt"),
+        ("Protection", 'prot-sign', "cell-lock", "Cell lock", "cell-lock", "c"),
+        ("Protection", 'cell-lock', "prot-allow", "Allowed actions", "prot-allow", "c"),
+        ("Protection", 'prot-allow', "recover", "Recover", "recover", "c"),
+        ("Protection", 'recover', "recover-every", "Backup interval", "recover-every", "c"),
+        ("Protection", 'recover-every', "read-only-rec", "Suggest read-only", "read-only-rec", "c"),
         # 表示の切り替え(どれか1つ)。入切とは性格が違う
-        ("表示", 'sheet-view', "", "標準", "view-normal", "xm"),
-        ("表示", 'view-normal', "", "改ページ プレビュー", "view-pagebreak", "xm"),
-        ("表示", 'sheet-view', "zoom-in", "拡大", "zoom-in", "c"),
-        ("表示", 'zoom-in', "zoom-out", "縮小", "zoom-out", "c"),
+        ("View", 'sheet-view', "", "Normal", "view-normal", "xm"),
+        ("View", 'view-normal', "", "Page Break Preview", "view-pagebreak", "xm"),
+        ("View", 'sheet-view', "zoom-in", "Zoom in", "zoom-in", "c"),
+        ("View", 'zoom-in', "zoom-out", "Zoom out", "zoom-out", "c"),
         # **文章にしか無かった**ので表にも足しました(2026-08-21 の B-3)。
         # 拡大・縮小と対になる命令で、中身は `ui::appcmd` に1本あります
-        ("表示", 'zoom-out', "zoom100", "100%に拡大する", "zoom100", "c"),
-        ("表示", 'zoom100', "ui-bigger", "画面の文字を大きく", "ui-bigger", "c"),
-        ("表示", 'ui-bigger', "ui-smaller", "画面の文字を小さく", "ui-smaller", "c"),
+        ("View", 'zoom-out', "zoom100", "Zoom to 100%", "zoom100", "c"),
+        ("View", 'zoom100', "ui-bigger", "Bigger UI text", "ui-bigger", "c"),
+        ("View", 'ui-bigger', "ui-smaller", "Smaller UI text", "ui-smaller", "c"),
         # **文章と同じ命令**(2026-08-21 の B-2)。中身は1文字も違わないので
         # id と札を揃えました。絵はアプリごとに別のまま(どちらも明暗の絵)
-        ("表示", 'ui-smaller', "darkmode", "ダークモード", "theme", "t"),
+        ("View", 'ui-smaller', "darkmode", "Dark mode", "theme", "t"),
         # シナリオ。本家に無い。語は LibreOffice の `Scenario`(14 言語ある)
-        ("データ", 'goal-seek', "scenario", "シナリオ", "scenario", "c"),
+        ("Data", 'goal-seek', "scenario", "Scenario", "scenario", "c"),
         # 予測シート。本家にも LibreOffice にも当たる語が無い。
         # 語は Excel の「予測シート」で、13 言語はこちらで訳した
         # (2026-08-21「レポートの接続」と同じ扱い)
-        ("データ", 'scenario', "forecast", "予測シート", "forecast", "c"),
+        ("Data", 'scenario', "forecast", "Forecast Sheet", "forecast", "c"),
         # ピボットグラフ。本家にも LibreOffice にも当たる語が無い。
         # 語は Excel の「ピボットグラフ」で、13 言語はこちらで訳した
-        ("ピボットテーブル", 'pivot-source', "pivot-chart", "ピボットグラフ", "pivot-chart", "c"),
+        ("Pivot Table", 'pivot-source', "pivot-chart", "PivotChart", "pivot-chart", "c"),
         # ウィンドウの分割。本家に無いので、Excel の「分割」に合わせて足す。
         # 分割している間は押された形にしたいので、書き方は t(入切)
-        ("表示", 'freeze', "split", "分割", "split", "t"),
-        ("表示", 'freeze', "formula-bar", "数式バー", "formula-bar", "t"),
-        ("表示", 'show-headings', "show-zeros", "0を表示する", "show-zeros", "t"),
-        ("表示", 'show-zeros', "show-left", "左パネル", "show-left", "t"),
-        ("表示", 'show-left', "show-right", "右パネル", "show-right", "t"),
+        ("View", 'freeze', "split", "Split", "split", "t"),
+        ("View", 'freeze', "formula-bar", "Formula Bar", "formula-bar", "t"),
+        ("View", 'show-headings', "show-zeros", "Show zeros", "show-zeros", "t"),
+        ("View", 'show-zeros', "show-left", "Left Panel", "show-left", "t"),
+        ("View", 'show-left', "show-right", "Right Panel", "show-right", "t"),
     ],
 }
 
@@ -836,35 +863,35 @@ EXTRA_CMDS = {
 # 「なんとなく」で増やさないためです。
 並べ替え = [
     # 暗い明るいは目盛りより先。表示の切り替えの仲間として並べる
-    ("documenteditor", "表示", "darkmode", "multipage"),
+    ("documenteditor", "View", "darkmode", "multipage"),
     # 並べ替えの3つを続ける(昇順・降順・ユーザー設定)。本家は
     # ユーザー設定だけが離れていて、続けて使う物が3箇所に散る
-    ("spreadsheeteditor", "データ", "custom-sort", "sort-asc"),
+    ("spreadsheeteditor", "Data", "custom-sort", "sort-asc"),
     # 表示の切り替え(標準/改ページ)をいちばん前へ。まず「どの見え方か」を
     # 選び、そのあと拡大や枠の固定を触る順にする
-    ("spreadsheeteditor", "表示", "freeze", "darkmode"),
-    ("spreadsheeteditor", "表示", "formula-bar", "freeze"),
-    ("spreadsheeteditor", "表示", "split", "freeze"),
+    ("spreadsheeteditor", "View", "freeze", "darkmode"),
+    ("spreadsheeteditor", "View", "formula-bar", "freeze"),
+    ("spreadsheeteditor", "View", "split", "freeze"),
     # 表示の切り替えは、シートの見え方のすぐ後ろ
-    ("spreadsheeteditor", "表示", "view-normal", "sheet-view"),
-    ("spreadsheeteditor", "表示", "view-pagebreak", "view-normal"),
+    ("spreadsheeteditor", "View", "view-normal", "sheet-view"),
+    ("spreadsheeteditor", "View", "view-pagebreak", "view-normal"),
     # 絞り込みは並べ替えの隣(続けて使う)。本家は離れている
-    ("spreadsheeteditor", "ホーム", "setfilter", "sort-asc"),
-    ("spreadsheeteditor", "ホーム", "clear-filter", "setfilter"),
+    ("spreadsheeteditor", "Home", "setfilter", "sort-asc"),
+    ("spreadsheeteditor", "Home", "clear-filter", "setfilter"),
     # ブックの保護は暗号化の次。範囲の保護はその次で、細かい方へ降りる順
-    ("spreadsheeteditor", "保護", "prot-doc", "protect-workbook"),
-    ("spreadsheeteditor", "保護", "protect-range", "prot-doc"),
+    ("spreadsheeteditor", "Protection", "prot-doc", "protect-workbook"),
+    ("spreadsheeteditor", "Protection", "protect-range", "prot-doc"),
 ]
 
 # **本家に在るが、うちでは別のタブに置いた物。**
 # 二重に出さないよう、元のタブからは外します
 外す = [
     # 関数の挿入は数式タブが持ち場。ホームにも欄があるが出さない
-    ("spreadsheeteditor", "ホーム", "insert-function"),
+    ("spreadsheeteditor", "Home", "insert-function"),
     # **同じ札のボタンが2つ並んでいました**(2026-08-21)。どちらも
     # 「グラフを挿入」で、押すと出る物も同じです。表の側は 2026-08-16 に
     # 片付けてあり、文章の側が残っていました
-    ("documenteditor", "挿入", "smartpicker"),
+    ("documenteditor", "Insert", "smartpicker"),
 ]
 
 
@@ -942,7 +969,7 @@ HEAD = '''//! リボン(タブ+コマンド)。**Euro-Office の現物から生�
 //!
 //! このファイルは手で書かない。`gen_ribbon.py` が
 //! `vendor/web-apps/apps/*/main/app/template/Toolbar.template` の並び順と
-//! 同 app の `locale/ja.json` の名前から起こす。
+//! 同 app の `locale/en.json` の名前から起こす。
 //! だから「Euro-Office と全く同じか」は台本を回し直せば確かめられる。
 //!
 //! ```text
@@ -1242,15 +1269,15 @@ mod tests {
             // **「プラグイン」は「マクロ」に改名した**(2026-08-16 発注者
             // 「プラグインはマクロだけでいいのでは」)。本家に同じ段はあるが、
             // 使う人の言葉に寄せた — 段を消したのではなく名を替えた
-            for want in ["共同編集", "保護", "マクロ"] {
+            for want in ["Collaboration", "Protection", "Macros"] {
                 assert!(
                     tabs.iter().any(|t| t.name == want),
                     "タブが無い: {want}"
                 );
             }
         }
-        assert!(WRITER.iter().any(|t| t.name == "フォーム"), "writer にタブが無い: フォーム");
-        for want in ["ピボットテーブル", "表のデザイン"] {
+        assert!(WRITER.iter().any(|t| t.name == "Forms"), "writer にタブが無い: フォーム");
+        for want in ["Pivot Table", "Table Design"] {
             assert!(CALC.iter().any(|t| t.name == want), "calc にタブが無い: {want}");
         }
     }
@@ -1271,11 +1298,11 @@ mod tests {
     #[test]
     fn euro_officeのタブが揃っている() {
         let names: Vec<&str> = WRITER.iter().map(|t| t.name).collect();
-        for want in ["ファイル", "ホーム", "挿入", "レイアウト", "参考資料"] {
+        for want in ["File", "Home", "Insert", "Layout", "References"] {
             assert!(names.contains(&want), "文書に「{want}」タブが無い: {names:?}");
         }
         let names: Vec<&str> = CALC.iter().map(|t| t.name).collect();
-        for want in ["ファイル", "ホーム", "挿入", "レイアウト", "数式", "データ"] {
+        for want in ["File", "Home", "Insert", "Layout", "Formula", "Data"] {
             assert!(names.contains(&want), "表計算に「{want}」タブが無い: {names:?}");
         }
     }

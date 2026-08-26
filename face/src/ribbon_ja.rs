@@ -274,7 +274,7 @@ pub const CALC: &[Tab] = &[
         c("fn-recent", "最近使った関数", "recent"),
         c("fn-financial", "財務", "financial"),
         c("fn-logical", "論理", "logical"),
-        c("fn-text", "テキスト", "text"),
+        c("fn-text", "文字列操作", "text"),
         c("fn-datetime", "日付/時刻", "datetime"),
         c("fn-lookup", "検索/行列", "lookup"),
         c("fn-math", "数学/三角", "math"),

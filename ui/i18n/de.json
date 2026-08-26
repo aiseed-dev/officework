@@ -2581,7 +2581,7 @@
  },
  {
   "i": 645,
-  "t": "Durchgestrichen"
+  "t": "Abbrechen"
  },
  {
   "i": 646,
@@ -2933,7 +2933,7 @@
  },
  {
   "i": 733,
-  "t": "Zahlenformat auf „Standard“ zurückgesetzt"
+  "t": "Zahlenformat auf Standard zurückgesetzt"
  },
  {
   "i": 734,
@@ -8405,306 +8405,306 @@
  },
  {
   "i": 2101,
-  "t": "Ziel"
- },
- {
-  "i": 2102,
   "t": "Zusammenfassung"
  },
  {
-  "i": 2103,
+  "i": 2102,
   "t": "Umschreiben"
  },
  {
-  "i": 2104,
+  "i": 2103,
   "t": "Höflicher"
  },
  {
-  "i": 2105,
+  "i": 2104,
   "t": "Einfacher"
  },
  {
-  "i": 2106,
+  "i": 2105,
   "t": "Übersetzung"
  },
  {
-  "i": 2107,
+  "i": 2106,
   "t": "Fortsetzen"
  },
  {
-  "i": 2108,
+  "i": 2107,
   "t": "In Tabelle"
  },
  {
-  "i": 2109,
+  "i": 2108,
   "t": "Anfragen"
  },
  {
-  "i": 2110,
+  "i": 2109,
   "t": "Ruby"
  },
  {
-  "i": 2111,
+  "i": 2110,
   "t": "Textrichtung"
  },
  {
-  "i": 2112,
+  "i": 2111,
   "t": "Verteilt"
  },
  {
-  "i": 2113,
+  "i": 2112,
   "t": "Beschriftung einfügen"
  },
  {
-  "i": 2114,
-  "t": "URL öffnen"
- },
- {
-  "i": 2115,
+  "i": 2113,
   "t": "Index"
  },
  {
-  "i": 2116,
+  "i": 2114,
   "t": "Aozora-Anmerkungen"
  },
  {
-  "i": 2117,
+  "i": 2115,
   "t": "Denden-Markup"
  },
  {
-  "i": 2118,
+  "i": 2116,
   "t": "Änderungen nachverfolgen"
  },
  {
-  "i": 2119,
+  "i": 2117,
   "t": "Änderungen anzeigen"
  },
  {
-  "i": 2120,
+  "i": 2118,
   "t": "Korrektur"
  },
  {
-  "i": 2121,
+  "i": 2119,
   "t": "Rechtschreibprüfung"
  },
  {
-  "i": 2122,
+  "i": 2120,
   "t": "Thesaurus"
  },
  {
-  "i": 2123,
+  "i": 2121,
   "t": "Fehlkonvertierung"
  },
  {
-  "i": 2124,
+  "i": 2122,
   "t": "Uneinheitliche Schreibung"
  },
  {
-  "i": 2125,
+  "i": 2123,
   "t": "Berechnung"
  },
  {
-  "i": 2126,
-  "t": "Rechts-nach-links-Text"
- },
- {
-  "i": 2127,
+  "i": 2124,
   "t": "Blattrichtung"
  },
  {
-  "i": 2128,
+  "i": 2125,
   "t": "Python"
  },
  {
-  "i": 2129,
+  "i": 2126,
   "t": "Kontrollkästchen"
  },
  {
-  "i": 2130,
+  "i": 2127,
   "t": "Externe Verknüpfungen"
  },
  {
-  "i": 2131,
+  "i": 2128,
   "t": "Empfohlene Diagramme"
  },
  {
-  "i": 2132,
+  "i": 2129,
   "t": "Co-Bearbeitung"
  },
  {
-  "i": 2133,
+  "i": 2130,
   "t": "Versionsverlauf"
  },
  {
-  "i": 2134,
+  "i": 2131,
   "t": "Chat"
  },
  {
-  "i": 2135,
+  "i": 2132,
   "t": "Verschlüsseln"
  },
  {
-  "i": 2136,
+  "i": 2133,
   "t": "Digitale Signatur hinzufügen"
  },
  {
-  "i": 2137,
+  "i": 2134,
   "t": "Plugins verwalten"
  },
  {
-  "i": 2138,
+  "i": 2135,
   "t": "Nullen anzeigen"
  },
  {
-  "i": 2139,
+  "i": 2136,
   "t": "Auf 100 % zoomen"
  },
  {
-  "i": 2140,
+  "i": 2137,
   "t": "Oberflächendesign"
  },
  {
-  "i": 2141,
+  "i": 2138,
   "t": "Überwachungsfenster"
  },
  {
-  "i": 2142,
+  "i": 2139,
   "t": "AutoSumme"
  },
  {
-  "i": 2143,
+  "i": 2140,
   "t": "Aktionen aufzeichnen"
  },
  {
-  "i": 2144,
+  "i": 2141,
   "t": "Kommentar löschen"
  },
  {
-  "i": 2145,
+  "i": 2142,
   "t": "Solver"
  },
  {
-  "i": 2146,
+  "i": 2143,
   "t": "Text zu Daten"
  },
  {
-  "i": 2147,
+  "i": 2144,
   "t": "Pfeile entfernen"
  },
  {
-  "i": 2148,
+  "i": 2145,
   "t": "Ausfüllen"
  },
  {
-  "i": 2149,
+  "i": 2146,
   "t": "Filter löschen"
  },
  {
-  "i": 2150,
+  "i": 2147,
   "t": "Makro schreiben"
  },
  {
-  "i": 2151,
+  "i": 2148,
   "t": "Text in Spalten"
  },
  {
-  "i": 2152,
+  "i": 2149,
   "t": "Beschriftung"
  },
  {
-  "i": 2153,
+  "i": 2150,
   "t": "Abbildungsverzeichnis"
  },
  {
-  "i": 2154,
+  "i": 2151,
   "t": "Abbildungsverzeichnis aktualisieren"
  },
  {
-  "i": 2155,
+  "i": 2152,
   "t": "Externe Verknüpfungen (als Werte einlesen)"
  },
  {
-  "i": 2156,
+  "i": 2153,
   "t": "Formeln anzeigen"
  },
  {
-  "i": 2157,
+  "i": 2154,
   "t": "Textrichtung (rechts nach links)"
  },
  {
-  "i": 2158,
+  "i": 2155,
   "t": "Zuletzt verwendet"
  },
  {
-  "i": 2159,
+  "i": 2156,
   "t": "Gitternetzlinien drucken"
  },
  {
-  "i": 2160,
+  "i": 2157,
   "t": "Inhaltsverzeichnis aktualisieren"
  },
  {
-  "i": 2161,
+  "i": 2158,
   "t": "Gebänderte Spalten"
  },
  {
-  "i": 2162,
+  "i": 2159,
+  "t": "Überschriften drucken"
+ },
+ {
+  "i": 2160,
   "t": "Detail ausblenden"
  },
  {
-  "i": 2163,
+  "i": 2161,
   "t": "Duplikate entfernen"
  },
  {
-  "i": 2164,
-  "t": "Funktion einfügen"
- },
- {
-  "i": 2165,
+  "i": 2162,
   "t": "CSV-Format"
  },
  {
-  "i": 2166,
+  "i": 2163,
   "t": "Zelle sperren"
  },
  {
-  "i": 2167,
+  "i": 2164,
   "t": "Datentabelle"
  },
  {
-  "i": 2168,
+  "i": 2165,
   "t": "Musterfüllung"
  },
  {
-  "i": 2169,
+  "i": 2166,
   "t": "Liste"
  },
  {
-  "i": 2170,
+  "i": 2167,
   "t": "Namen einfügen"
  },
  {
-  "i": 2171,
+  "i": 2168,
   "t": "Text umbrechen"
  },
  {
-  "i": 2172,
+  "i": 2169,
   "t": "Sicherungsintervall"
  },
  {
-  "i": 2173,
+  "i": 2170,
   "t": "Neue .py"
  },
  {
-  "i": 2174,
+  "i": 2171,
   "t": "Bereich hinzufügen"
  },
  {
-  "i": 2175,
+  "i": 2172,
   "t": "Aufs Blatt einpassen"
  },
  {
-  "i": 2176,
+  "i": 2173,
   "t": "Blattgrenzen"
+ },
+ {
+  "i": 2174,
+  "t": "Ordner öffnen"
+ },
+ {
+  "i": 2175,
+  "t": "Berechnungsart"
+ },
+ {
+  "i": 2176,
+  "t": "Erlaubte Aktionen"
  }
 ]

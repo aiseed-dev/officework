@@ -302,15 +302,15 @@ impl Render for Writer {
             ("ai-macro", Some("Write macro")),
         ]];
         let rows: Option<&[&[LItem]]> = match ribbon::WRITER[self.tab].name {
-            "ホーム" => Some(HOME_ROWS),
+            "Home" => Some(HOME_ROWS),
             "Insert" => Some(INS_ROWS),
-            "描画" => Some(DRAW_ROWS),
-            "レイアウト" => Some(LAYOUT_ROWS),
-            "参考資料" => Some(REF_ROWS),
-            "フォーム" => Some(FORM_ROWS),
-            "共同編集" => Some(COLLAB_ROWS),
-            "保護" => Some(PROT_ROWS),
-            "表示" => Some(VIEW_ROWS),
+            "Draw" => Some(DRAW_ROWS),
+            "Layout" => Some(LAYOUT_ROWS),
+            "References" => Some(REF_ROWS),
+            "Forms" => Some(FORM_ROWS),
+            "Collaboration" => Some(COLLAB_ROWS),
+            "Protection" => Some(PROT_ROWS),
+            "View" => Some(VIEW_ROWS),
             "Macros" => Some(PLUG_ROWS),
             _ => None,
         };
