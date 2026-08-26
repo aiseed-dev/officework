@@ -1,0 +1,49 @@
+= 新規文書の初期設定 — Opus への作業指示
+
+発注者の指摘(2026-08-26)「初期設定ができていないのでは」への直しです。
+基本のテスト(test/basic_docx.py・same_code_docx.py)で見つかった穴で、
+新規の Doc がひな型を持たないため、開く機械ごとに見た目が変わります。
+
+== 教師(実測済み — SEKKEI「ひな型の教師の実測」)
+
+発注者の Word が作った空(test/out/Document 2.docx)を測りました。
+**構成だけ借ります**(蒸留の作法 — 中身の XML は写さない):
+
+- スタイルは **33 個だけ**: 土台4(Normal・Default Paragraph Font・
+  Normal Table・No List)+見出し1〜9(+Char 対)+Title・Subtitle・
+  Quote・Intense 系・List Paragraph。**List Number は Word の空にも無い**
+- docDefaults: **10.5pt**(w:sz 21)・カーニング 2・言語 ja-JP。
+  書体は直接書かず**テーマ参照**(minorHAnsi / minorEastAsia)
+- theme1.xml が書体の実体を持つ(Word は游)
+- 用紙 A4(11906×16838 twip)・余白 1440 twip
+- 大きさの目安: officework のいまの新規 2.7KB(骨だけ)/
+  Word 12.5KB(目標)/ python-docx 37.2KB(肥満 — 真似ない)
+
+== 決め
+
+. 新規の Doc(エンジンの `Doc()` と writer の新規の両方)は、この形の
+  ひな型を持つ: 33 スタイル相当+docDefaults 10.5pt+テーマ+A4
+- 余白だけは教師と違えて **20mm**(writer の決め済みの既定)
+. **言語が日本語のときは、テーマの書体を BIZ UD 系にする**
+  (発注者 2026-08-26)。本文(minor)= BIZ UDPゴシック、
+  見出し(major)も BIZ UD 系。他の言語のときは
+  `kumihan::font::set_default_language` の既定に従う —
+  「標準フォントは OS と言語で変える」(ui/src/lib.rs の決め)と1本の道
+. docProps に個人名を入れない(教師のファイルには作成者名が入っている —
+  写さない)
+. スタイルは 33 で閉じる。python-docx の 164 は真似ない(増やさない決め)
+
+== 確かめ方
+
+- test/basic_docx.py が緑のまま
+- test/same_code_docx.py の2枚を並べて開いて、見た目が揃う
+  (書体が機械任せにならない)
+- 新規で保存した空の大きさが Word の形に近づく(目安 10KB 前後)
+- ついでに同じ束で: **日付の読み返し**(test/basic_xlsx.py の唯一の赤 —
+  形式が日付のセルは datetime で返す。書く側は済んでいて読む側だけ)
+
+== 関連
+
+- SEKKEI「基本のテストの追補 — 新規文書の初期設定が無い」
+  「ひな型の教師の実測」
+- 既定の書体の決め(BIZ UD 系 — Linux/Windows/mac の入り方も決め済み)
