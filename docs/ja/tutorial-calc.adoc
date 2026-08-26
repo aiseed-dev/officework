@@ -81,8 +81,84 @@ openpyxl 自身は計算できないので、値まで欲しいときにこの�
   丸めてください** — 見た目だけ丸めて中身がずれたまま、を防ぐ
   事務の作法でもあります
 
+== 第2回: 書式で整えて、様式の顔にする
+
+第1回の見積に、題と罫線と色を付けて「渡せる紙」にします。
+書式の道具(Font・Border・PatternFill・Alignment)は openpyxl と
+同じ名前・同じ形です。
+
+[source,python]
+----
+from officework import sheet
+from officework.sheet import Font, Border, Side, PatternFill, Alignment
+
+wb = sheet.Book()
+ws = wb[0]
+ws.title = "見積"
+
+# 列の幅
+for col, w in zip("ABCD", (16, 8, 10, 12)):
+    ws.column_dimensions[col].width = w
+
+# 題 — 3列を1つに結合して、大きく中央に
+ws.merge_cells("A1:D1")
+c = ws.cell(1, 1)
+c.value = "御 見 積 書"
+c.font = Font(size=16, bold=True)
+c.alignment = Alignment(horizontal="center")
+
+# 見出しの行 — 塗りと白抜きの太字と罫線
+box = Border(top=Side(style="thin"), bottom=Side(style="thin"),
+             left=Side(style="thin"), right=Side(style="thin"))
+for j, label in enumerate(["品名", "数量", "単価", "金額"], start=1):
+    c = ws.cell(3, j)
+    c.value = label
+    c.font = Font(bold=True, color="FFFFFF")
+    c.fill = PatternFill("solid", fgColor="1B6E3C")
+    c.alignment = Alignment(horizontal="center")
+    c.border = box
+
+# 明細 — 数字は右に寄せ、罫線で囲む
+items = [("ペン", 5, 100), ("ノート", 3, 150), ("消しゴム", 10, 80)]
+for i, (name, qty, price) in enumerate(items, start=4):
+    ws.cell(i, 1).value = name
+    ws.cell(i, 2).value = qty
+    c = ws.cell(i, 3)
+    c.value = price
+    c.number_format = "#,##0"
+    c = ws.cell(i, 4)
+    c.value = f"=B{i}*C{i}"
+    c.number_format = "#,##0"
+    for j in range(1, 5):
+        ws.cell(i, j).border = box
+
+ws.cell(8, 3).value = "税込"
+c = ws.cell(8, 4)
+c.value = "=ROUND(SUM(D4:D6)*1.1, 0)"
+c.number_format = '"¥"#,##0'
+c.font = Font(bold=True)
+c.border = Border(bottom=Side(style="double"))   # 締めは二重線
+
+wb.recalc()
+wb.save("見積2.xlsx")
+----
+
+=== 覚えること3つ
+
+. **書式はセルに「物」を入れる** — `c.font = Font(...)`、
+  `c.fill = PatternFill("solid", fgColor="1B6E3C")`、
+  `c.border = Border(...)`。openpyxl と同じ書き方です
+. **結合は `merge_cells("A1:D1")`** — 値と書式は左上のセルに付けます
+. **罫線は場所ごとに** — `Border(top=…, bottom=…)` と `Side(style=…)` の
+  組み合わせ。線の種類は thin・medium・thick・double・dashed などです
+
+=== よくあるつまずき
+
+* 色は `"1B6E3C"` のような 6桁の16進数で書きます(`#` は付けません)
+* 結合した範囲の中のセルに書いても表示されません — 左上のセルに
+  書いてください
+
 == 続きの回(これから)
 
-. 第2回: 書式で整える — 罫線・塗り・結合・列の幅
 . 第3回: 日付と時刻の帳簿 — 出勤簿を作る
 . 第4回: 入力規則 — 選択肢から選ばせる
