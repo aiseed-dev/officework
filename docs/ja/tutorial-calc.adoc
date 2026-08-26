@@ -1,0 +1,88 @@
+= 実例で覚える — Python で表計算を作る
+
+コードを打てば、そのまま動きます。この頁のコードは test/ の受け入れ試験と
+同じ物なので、**動かなくなったら検査が先に気づきます**。
+
+officework の書き味は openpyxl と同じです。違いは import の1行だけ。
+そして openpyxl にできないことが1つできます — **式の計算**です。
+
+[source,python]
+----
+import openpyxl                  # openpyxl なら(式は計算されない)
+wb = openpyxl.Workbook()
+
+from officework import sheet     # officework なら(式を計算できる)
+wb = sheet.Book()
+----
+
+== 第1回: 見積の計算をさせる
+
+セルに値と式を入れ、計算させて、xlsx で保存します。
+
+[source,python]
+----
+from officework import sheet
+
+wb = sheet.Book()
+ws = wb[0]
+ws.title = "見積"
+
+# 見出しの行
+for j, label in enumerate(["品名", "数量", "単価", "金額"], start=1):
+    ws.cell(1, j).value = label
+
+# 明細 — 金額は式
+items = [("ペン", 5, 100), ("ノート", 3, 150), ("消しゴム", 10, 80)]
+for i, (name, qty, price) in enumerate(items, start=2):
+    ws.cell(i, 1).value = name
+    ws.cell(i, 2).value = qty
+    c = ws.cell(i, 3)
+    c.value = price
+    c.number_format = "#,##0"
+    ws.cell(i, 4).value = f"=B{i}*C{i}"
+
+# 合計と消費税
+ws.cell(6, 3).value = "小計"
+ws.cell(6, 4).value = "=SUM(D2:D4)"
+ws.cell(7, 3).value = "税込"
+c = ws.cell(7, 4)
+c.value = "=ROUND(D6*1.1, 0)"                 # お金は丸める
+c.number_format = '"¥"#,##0'
+
+wb.recalc()                                   # ここが openpyxl との違い
+print("税込:", ws.cell(7, 4).value)           # → 1925
+
+wb.save("見積.xlsx")
+----
+
+保存した 見積.xlsx には**式も計算した値も両方**入っています。
+Excel で開けばそのまま式が生きていて、openpyxl で
+`load_workbook("見積.xlsx", data_only=True)` と読めば値が取れます —
+openpyxl 自身は計算できないので、値まで欲しいときにこの組み合わせが
+効きます。
+
+=== 覚えること3つ
+
+. **セルは `ws.cell(行, 列)`。値も式も `.value` に入れる** — 式は
+  `"=B2*C2"` のように `=` から書きます
+. **`wb.recalc()` で計算する** — 式を入れ替えたら、もう一度呼びます
+. **表示形式は `.number_format`** — `"#,##0"` で桁区切り、
+  `'"¥"#,##0'` で円の印。**電話番号や品番は `"@"`**(文字列)にすると
+  頭の 0 が守られます
+
+=== よくあるつまずき
+
+* 式を入れた直後に `.value` を読むと、まだ計算前です —
+  先に `wb.recalc()` を呼んでください
+* 行を挿すと式は自動で追います(`=SUM(D2:D4)` は挿した分だけずれます)。
+  自分で書き替える必要はありません
+* 小数の掛け算は、末尾に細かい誤差が付くことがあります
+  (`1750*1.1` → `1925.0000000000002`)。**お金の式は `ROUND(式, 0)` で
+  丸めてください** — 見た目だけ丸めて中身がずれたまま、を防ぐ
+  事務の作法でもあります
+
+== 続きの回(これから)
+
+. 第2回: 書式で整える — 罫線・塗り・結合・列の幅
+. 第3回: 日付と時刻の帳簿 — 出勤簿を作る
+. 第4回: 入力規則 — 選択肢から選ばせる

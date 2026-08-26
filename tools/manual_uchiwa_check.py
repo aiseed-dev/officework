@@ -27,6 +27,7 @@ MIRU = [
     "docs/ja/README.adoc",
     "docs/ja/from-excel.adoc",
     "docs/ja/tutorial-word.adoc",
+    "docs/ja/tutorial-calc.adoc",
     "docs/ja/genkou-manual.adoc",
     "docs/ja/api-taiou.adoc",
     "docs/ja/docx-xlsx-tono-chigai.adoc",
