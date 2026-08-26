@@ -580,6 +580,11 @@ pub(crate) fn vspan_of(t: &Table, ri: usize, col: usize) -> u8 {
 }
 
 fn write_table(out: &mut String, t: &Table, doc: &Document) {
+    // **表の役割**(`[.names]`)。題より前に書く — AsciiDoc は塊の指定を
+    // 題の前に置く作法です
+    if let Some(role) = &t.role {
+        out.push_str(&format!("[.{role}]\n"));
+    }
     // 表の題(`.名前`)。表の名前になるので、桁の指定より前に書く
     if let Some(name) = &t.title {
         out.push_str(&format!(".{name}\n"));
@@ -1496,6 +1501,10 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                         }
                     }
                 }
+            }
+            // **直前の `[.name]` は表の役割です**(2026-08-26)
+            if let Some(role) = pending_style.take() {
+                t.role = Some(role);
             }
             doc.blocks.push(Block::Table(t));
             continue;

@@ -86,6 +86,8 @@ pub fn parse(src: &str) -> Result<(Book, Vec<String>), String> {
     let mut paras = 0;
     for b in &doc.blocks {
         match b {
+            // 役割の印の付いた表はシートではありません。後で入れます
+            Block::Table(t) if t.role.is_some() => {}
             Block::Table(t) => book.sheets.push(to_sheet(t, book.sheets.len())),
             // 見出しや本文は表計算のブックに居場所が無い
             Block::Para(p) => {
@@ -103,6 +105,7 @@ pub fn parse(src: &str) -> Result<(Book, Vec<String>), String> {
         book.sheets.push(Sheet::new("Sheet1"));
     }
     take_book_settings(&doc, &mut book);
+    crate::book_meta::take_all(&doc, &mut book.sheets);
     // **値は持たないので、読んだ所で計算する。** 式が正本
     recalc_all(&mut book);
     Ok((book, report))
@@ -115,6 +118,12 @@ fn to_doc(book: &Book) -> Document {
     put_book_settings(&mut d, book);
     for s in &book.sheets {
         d.blocks.push(Block::Table(to_table(s)));
+        // **格子に載らない意味**(名前の定義・入力規則など)は役割の印を
+        // 付けた表にします。シートの表の直後に置くので、人が読んでも
+        // どのシートの物か分かります
+        for t in crate::book_meta::tables_of(s) {
+            d.blocks.push(Block::Table(t));
+        }
     }
     d
 }

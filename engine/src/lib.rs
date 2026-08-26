@@ -33,6 +33,8 @@ pub mod adoc;
 pub mod atomic;
 /// ブック ⇄ AsciiDoc(ブックの正本を .sheet.adoc にする)
 pub mod book_adoc;
+/// シートの、格子に載らない意味を表で持つ(`[.names]` などの印)
+pub mod book_meta;
 /// `.sheet.adoc` の往復で落ちる持ち物を数える
 pub mod holes;
 /// ブックの見た目 — テンプレート(`テンプレート.adoc`)

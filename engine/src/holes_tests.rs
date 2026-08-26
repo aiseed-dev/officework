@@ -69,9 +69,9 @@ mod holes_count {
        
        
         // 1枚の側
-        "row_hidden", "col_hidden",
-        "tables", "names", "links", "cond",
-        "validations", "scenarios", "print_areas", "shapes", "images", "phonetics",
+       
+       
+        "shapes", "images",
     ];
 
     #[test]

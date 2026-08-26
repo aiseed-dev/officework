@@ -2016,6 +2016,8 @@ pub(super) fn parse_document_rels(
                             let tb = Table {
                                 rows: b.rows,
                                 col_mm: b.col_mm,
+                                // 役割は `.sheet.adoc` の印なので docx には無い
+                                role: None,
                                 // docx は幅を mm で持つので、割合は空のまま
                                 col_ratio: Vec::new(),
                                 // docx の見出しの行(w:tblHeader)はまだ読まない
