@@ -1234,15 +1234,9 @@ mod holes_count {
         "props", "theme", "names_raw", "named_styles", "named_styles_new", "scripts",
         "calc_manual", "calc_iter", "r1c1", "read_only_rec", "date1904",
         // 1枚の側
-        "cells", "merges", "default_col_width", "default_row_height", "row_collapsed",
-        "col_collapsed", "row_outline", "col_outline", "row_hidden", "col_hidden",
-        "tables", "style_of", "rtl", "freeze", "show_gridlines", "show_formulas",
-        "hidden", "tab_color", "protected", "protect_allow", "names", "links", "cond",
-        "validations", "scenarios", "print_areas", "print_scale", "fit_to_w", "fit_to_h",
-        "row_breaks", "col_breaks", "print_headings", "print_title_rows",
-        "print_title_cols", "header", "footer", "header_even", "footer_even",
-        "header_first", "footer_first", "hf_diff_odd_even", "hf_diff_first",
-        "shapes", "images", "phonetics",
+        "cells", "merges", "row_hidden", "col_hidden",
+        "tables", "style_of", "names", "links", "cond",
+        "validations", "scenarios", "print_areas", "shapes", "images", "phonetics",
     ];
 
     #[test]

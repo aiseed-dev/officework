@@ -30,7 +30,7 @@
 //! だから**配られたテンプレートは書き替えません** — 呼ぶ側は、既にある
 //! ファイルを上書きしないでください。
 
-use crate::book::{Book, Pos, Sheet};
+use crate::book::{Book, FreezePane, Pos, ProtectAllow, Sheet};
 use crate::{Block, Cellbox, Document, Table};
 
 /// 1枚ぶんの見た目。
@@ -48,6 +48,54 @@ pub struct SheetLook {
     pub margins_mm: Option<(f32, f32, f32, f32)>,
     pub print_gridlines: Option<bool>,
     pub zoom_scale: Option<u32>,
+    /// 印刷の倍率(%)
+    pub print_scale: Option<u32>,
+    /// 横に何枚で収めるか。0 は「指定なし」
+    pub fit_to_w: Option<u32>,
+    /// 縦に何枚で収めるか。0 は「指定なし」
+    pub fit_to_h: Option<u32>,
+    /// 行番号と列番号を刷るか
+    pub print_headings: Option<bool>,
+    /// 各ページの頭で繰り返す行(0 から。始めと終わり)
+    pub print_title_rows: Option<(u32, u32)>,
+    /// 各ページの左で繰り返す列(0 から。始めと終わり)
+    pub print_title_cols: Option<(u32, u32)>,
+    /// 手で入れた横の改ページ(0 からの行)
+    pub row_breaks: Vec<u32>,
+    /// 手で入れた縦の改ページ(0 からの列)
+    pub col_breaks: Vec<u32>,
+    pub header: Option<String>,
+    pub footer: Option<String>,
+    pub header_even: Option<String>,
+    pub footer_even: Option<String>,
+    pub header_first: Option<String>,
+    pub footer_first: Option<String>,
+    /// 奇数頁と偶数頁で分けるか
+    pub hf_diff_odd_even: Option<bool>,
+    /// 先頭の頁を分けるか
+    pub hf_diff_first: Option<bool>,
+    /// 固定枠(固定する行の数, 列の数)
+    pub freeze: Option<(u32, u32)>,
+    pub show_gridlines: Option<bool>,
+    pub show_formulas: Option<bool>,
+    /// 右から左へ書くか
+    pub rtl: Option<bool>,
+    /// このシートを隠すか
+    pub hidden: Option<bool>,
+    /// シート見出しの色(RRGGBB)
+    pub tab_color: Option<String>,
+    /// シートを保護するか
+    pub protected: Option<bool>,
+    /// 保護中も許す操作の名前
+    pub protect_allow: Option<Vec<String>>,
+    /// (行, 段, 畳んでいるか)
+    pub row_outline: Vec<(u32, u8, bool)>,
+    /// (列, 段, 畳んでいるか)
+    pub col_outline: Vec<(u32, u8, bool)>,
+    /// 何も指定していない列の幅
+    pub default_col_width: Option<f32>,
+    /// 何も指定していない行の高さ
+    pub default_row_height: Option<f32>,
 }
 
 /// ブックの見た目ぜんぶ。
@@ -67,6 +115,34 @@ impl BookTheme {
                 && s.margins_mm.is_none()
                 && s.print_gridlines.is_none()
                 && s.zoom_scale.is_none()
+                && s.print_scale.is_none()
+                && s.fit_to_w.is_none()
+                && s.fit_to_h.is_none()
+                && s.print_headings.is_none()
+                && s.print_title_rows.is_none()
+                && s.print_title_cols.is_none()
+                && s.row_breaks.is_empty()
+                && s.col_breaks.is_empty()
+                && s.header.is_none()
+                && s.footer.is_none()
+                && s.header_even.is_none()
+                && s.footer_even.is_none()
+                && s.header_first.is_none()
+                && s.footer_first.is_none()
+                && s.hf_diff_odd_even.is_none()
+                && s.hf_diff_first.is_none()
+                && s.freeze.is_none()
+                && s.show_gridlines.is_none()
+                && s.show_formulas.is_none()
+                && s.rtl.is_none()
+                && s.hidden.is_none()
+                && s.tab_color.is_none()
+                && s.protected.is_none()
+                && s.protect_allow.is_none()
+                && s.row_outline.is_empty()
+                && s.col_outline.is_empty()
+                && s.default_col_width.is_none()
+                && s.default_row_height.is_none()
         })
     }
 
@@ -92,6 +168,36 @@ pub fn from_book(b: &Book) -> BookTheme {
             margins_mm: s.margins_mm,
             print_gridlines: s.print_gridlines.then_some(true),
             zoom_scale: s.zoom_scale,
+            print_scale: s.print_scale,
+            fit_to_w: s.fit_to_w,
+            fit_to_h: s.fit_to_h,
+            print_headings: s.print_headings.then_some(true),
+            print_title_rows: s.print_title_rows,
+            print_title_cols: s.print_title_cols,
+            row_breaks: s.row_breaks.clone(),
+            col_breaks: s.col_breaks.clone(),
+            header: s.header.clone(),
+            footer: s.footer.clone(),
+            header_even: s.header_even.clone(),
+            footer_even: s.footer_even.clone(),
+            header_first: s.header_first.clone(),
+            footer_first: s.footer_first.clone(),
+            hf_diff_odd_even: s.hf_diff_odd_even.then_some(true),
+            hf_diff_first: s.hf_diff_first.then_some(true),
+            freeze: s.freeze.as_ref().map(|f| (f.frozen_rows, f.frozen_columns)),
+            show_gridlines: s.show_gridlines,
+            show_formulas: s.show_formulas,
+            rtl: s.rtl.then_some(true),
+            hidden: s.hidden.then_some(true),
+            tab_color: s.tab_color.clone(),
+            protected: s.protected.then_some(true),
+            protect_allow: s.protected.then(|| allow_names(&s.protect_allow)),
+            // **畳んだ印は段の指定と別**です。畳むボタンの載る行には段が
+            // 無いことがあるので、両方を合わせて拾います(2026-08-26)
+            row_outline: outline_rows(&s.row_outline, &s.row_collapsed),
+            col_outline: outline_rows(&s.col_outline, &s.col_collapsed),
+            default_col_width: s.default_col_width,
+            default_row_height: s.default_row_height,
         };
         t.sheets.push(look);
     }
@@ -124,6 +230,96 @@ pub fn apply(t: &BookTheme, b: &mut Book) {
         if let Some(z) = look.zoom_scale {
             s.zoom_scale = Some(z);
         }
+        if let Some(v) = look.print_scale {
+            s.print_scale = Some(v);
+        }
+        if let Some(v) = look.fit_to_w {
+            s.fit_to_w = Some(v);
+        }
+        if let Some(v) = look.fit_to_h {
+            s.fit_to_h = Some(v);
+        }
+        if let Some(v) = look.print_headings {
+            s.print_headings = v;
+        }
+        if let Some(v) = look.print_title_rows {
+            s.print_title_rows = Some(v);
+        }
+        if let Some(v) = look.print_title_cols {
+            s.print_title_cols = Some(v);
+        }
+        if !look.row_breaks.is_empty() {
+            s.row_breaks = look.row_breaks.clone();
+        }
+        if !look.col_breaks.is_empty() {
+            s.col_breaks = look.col_breaks.clone();
+        }
+        // ヘッダーとフッター。**空の字も指定のうち**なので、Some なら入れます
+        for (mine, theirs) in [
+            (&look.header, &mut s.header),
+            (&look.footer, &mut s.footer),
+            (&look.header_even, &mut s.header_even),
+            (&look.footer_even, &mut s.footer_even),
+            (&look.header_first, &mut s.header_first),
+            (&look.footer_first, &mut s.footer_first),
+        ] {
+            if let Some(v) = mine {
+                *theirs = Some(v.clone());
+            }
+        }
+        if let Some(v) = look.hf_diff_odd_even {
+            s.hf_diff_odd_even = v;
+        }
+        if let Some(v) = look.hf_diff_first {
+            s.hf_diff_first = v;
+        }
+        if let Some((r, c)) = look.freeze {
+            s.freeze = Some(FreezePane { frozen_rows: r, frozen_columns: c });
+        }
+        if look.show_gridlines.is_some() {
+            s.show_gridlines = look.show_gridlines;
+        }
+        if look.show_formulas.is_some() {
+            s.show_formulas = look.show_formulas;
+        }
+        if let Some(v) = look.rtl {
+            s.rtl = v;
+        }
+        if let Some(v) = look.hidden {
+            s.hidden = v;
+        }
+        if look.tab_color.is_some() {
+            s.tab_color = look.tab_color.clone();
+        }
+        if let Some(v) = look.protected {
+            s.protected = v;
+        }
+        if let Some(names) = &look.protect_allow {
+            s.protect_allow = allow_from(names);
+        }
+        // 段が 0 は「段の指定なし」— 畳んだ印だけの行です
+        for (r, lv, folded) in &look.row_outline {
+            if *lv > 0 {
+                s.row_outline.insert(*r, *lv);
+            }
+            if *folded {
+                s.row_collapsed.insert(*r);
+            }
+        }
+        for (c, lv, folded) in &look.col_outline {
+            if *lv > 0 {
+                s.col_outline.insert(*c, *lv);
+            }
+            if *folded {
+                s.col_collapsed.insert(*c);
+            }
+        }
+        if let Some(v) = look.default_col_width {
+            s.default_col_width = Some(v);
+        }
+        if let Some(v) = look.default_row_height {
+            s.default_row_height = Some(v);
+        }
     }
 }
 
@@ -139,6 +335,24 @@ pub fn write(t: &BookTheme) -> String {
         d.blocks.push(Block::Table(tb));
     }
     if let Some(tb) = height_table(t) {
+        d.blocks.push(Block::Table(tb));
+    }
+    if let Some(tb) = print_table(t) {
+        d.blocks.push(Block::Table(tb));
+    }
+    if let Some(tb) = break_table(t) {
+        d.blocks.push(Block::Table(tb));
+    }
+    if let Some(tb) = hf_table(t) {
+        d.blocks.push(Block::Table(tb));
+    }
+    if let Some(tb) = view_table(t) {
+        d.blocks.push(Block::Table(tb));
+    }
+    if let Some(tb) = outline_table(t) {
+        d.blocks.push(Block::Table(tb));
+    }
+    if let Some(tb) = protect_table(t) {
         d.blocks.push(Block::Table(tb));
     }
     crate::adoc::write(&d)
@@ -162,6 +376,421 @@ fn table(title: &str, heading: &[&str], rows: Vec<Vec<String>>) -> Option<Table>
         t.rows.push(r.iter().map(|x| cell(x)).collect());
     }
     Some(t)
+}
+
+
+
+/// **保護中も許す操作の名前。** 表と `ProtectAllow` の欄を1対1で結びます。
+///
+/// 名前は Excel の「シートの保護」の小窓の言い方に寄せてあります。
+/// **欄を足したらここにも足すこと** — `every_protect_flag_has_a_name` が
+/// 数を確かめます。
+pub const ALLOW_NAMES: &[(&str, fn(&mut ProtectAllow))] = &[
+    ("ロックされたセルの選択", |a| a.select_locked = true),
+    ("ロックされていないセルの選択", |a| a.select_unlocked = true),
+    ("セルの書式設定", |a| a.format_cells = true),
+    ("列の書式設定", |a| a.format_cols = true),
+    ("行の書式設定", |a| a.format_rows = true),
+    ("列の挿入", |a| a.insert_cols = true),
+    ("行の挿入", |a| a.insert_rows = true),
+    ("ハイパーリンクの挿入", |a| a.insert_links = true),
+    ("列の削除", |a| a.delete_cols = true),
+    ("行の削除", |a| a.delete_rows = true),
+    ("並べ替え", |a| a.sort = true),
+    ("オートフィルターの使用", |a| a.autofilter = true),
+    ("ピボットテーブルの使用", |a| a.pivot = true),
+    ("オブジェクトの編集", |a| a.objects = true),
+];
+
+/// 段の指定と畳んだ印を合わせて (位置, 段, 畳むか) の並びにする。
+///
+/// **どちらか片方しか無い所も落としません。** 畳むボタンの載る行には
+/// 段の指定が無いことがあり、段だけ書くとその行の畳みが消えます。
+fn outline_rows(
+    levels: &std::collections::BTreeMap<u32, u8>,
+    folded: &std::collections::BTreeSet<u32>,
+) -> Vec<(u32, u8, bool)> {
+    let mut at: Vec<u32> = levels.keys().copied().chain(folded.iter().copied()).collect();
+    at.sort_unstable();
+    at.dedup();
+    at.iter()
+        .map(|k| (*k, levels.get(k).copied().unwrap_or(0), folded.contains(k)))
+        .collect()
+}
+
+/// いま許している操作の名前を並べる
+fn allow_names(a: &ProtectAllow) -> Vec<String> {
+    let on = [
+        a.select_locked, a.select_unlocked, a.format_cells, a.format_cols, a.format_rows,
+        a.insert_cols, a.insert_rows, a.insert_links, a.delete_cols, a.delete_rows,
+        a.sort, a.autofilter, a.pivot, a.objects,
+    ];
+    ALLOW_NAMES
+        .iter()
+        .zip(on)
+        .filter(|(_, yes)| *yes)
+        .map(|((n, _), _)| n.to_string())
+        .collect()
+}
+
+/// 名前の並びから許可を組み立てる。**知らない名前は黙って飛ばします**
+fn allow_from(names: &[String]) -> ProtectAllow {
+    // **全部切った所から組み立てます。** 既定の `ProtectAllow` は
+    // 「ロックされたセルの選択」が入なので、`Default` から始めると
+    // 表に書いていない許可が勝手に付きます
+    let mut a = ProtectAllow {
+        select_locked: false, select_unlocked: false, format_cells: false,
+        format_cols: false, format_rows: false, insert_cols: false, insert_rows: false,
+        insert_links: false, delete_cols: false, delete_rows: false, sort: false,
+        autofilter: false, pivot: false, objects: false,
+    };
+    for n in names {
+        if let Some((_, set)) = ALLOW_NAMES.iter().find(|(name, _)| name == n) {
+            set(&mut a);
+        }
+    }
+    a
+}
+
+/// 画面の設定。**シートを開いたときの見え方**です。
+fn view_table(t: &BookTheme) -> Option<Table> {
+    let rows: Vec<Vec<String>> = t
+        .sheets
+        .iter()
+        .filter(|s| {
+            s.freeze.is_some()
+                || s.show_gridlines.is_some()
+                || s.show_formulas.is_some()
+                || s.rtl.is_some()
+                || s.hidden.is_some()
+                || s.tab_color.is_some()
+                || s.default_col_width.is_some()
+                || s.default_row_height.is_some()
+        })
+        .map(|s| {
+            vec![
+                s.name.clone(),
+                s.freeze.map(|(r, c)| format!("{r},{c}")).unwrap_or_default(),
+                yes_no(s.show_gridlines),
+                yes_no(s.show_formulas),
+                yes_no(s.rtl),
+                yes_no(s.hidden),
+                s.tab_color.clone().unwrap_or_default(),
+                s.default_col_width.map(numbers).unwrap_or_default(),
+                s.default_row_height.map(numbers).unwrap_or_default(),
+            ]
+        })
+        .collect();
+    table(
+        "画面",
+        &["シート", "固定", "目盛線", "数式", "右横書き", "隠す", "見出しの色", "既定の列幅", "既定の行の高さ"],
+        rows,
+    )
+}
+
+fn read_view(t: &mut BookTheme, rows: &[Vec<String>]) {
+    for row in rows {
+        let name = pick(row, 0);
+        if name.is_empty() {
+            continue;
+        }
+        let s = t.sheet(name);
+        if let Some((r, c)) = pick(row, 1).split_once(',') {
+            if let (Ok(r), Ok(c)) = (r.trim().parse(), c.trim().parse()) {
+                s.freeze = Some((r, c));
+            }
+        }
+        s.show_gridlines = read_yes_no(pick(row, 2)).or(s.show_gridlines);
+        s.show_formulas = read_yes_no(pick(row, 3)).or(s.show_formulas);
+        s.rtl = read_yes_no(pick(row, 4)).or(s.rtl);
+        s.hidden = read_yes_no(pick(row, 5)).or(s.hidden);
+        let color = pick(row, 6);
+        if !color.is_empty() {
+            s.tab_color = Some(color.to_string());
+        }
+        if let Ok(v) = pick(row, 7).parse() {
+            s.default_col_width = Some(v);
+        }
+        if let Ok(v) = pick(row, 8).parse() {
+            s.default_row_height = Some(v);
+        }
+    }
+}
+
+/// グループ化(アウトライン)。**1つの段に1行**です。
+fn outline_table(t: &BookTheme) -> Option<Table> {
+    let mut rows: Vec<Vec<String>> = Vec::new();
+    for s in &t.sheets {
+        for (r, lv, folded) in &s.row_outline {
+            rows.push(vec![
+                s.name.clone(), "行".into(), (r + 1).to_string(),
+                lv.to_string(), yes_no(Some(*folded)),
+            ]);
+        }
+        for (c, lv, folded) in &s.col_outline {
+            rows.push(vec![
+                s.name.clone(), "列".into(), col_name(*c),
+                lv.to_string(), yes_no(Some(*folded)),
+            ]);
+        }
+    }
+    table("グループ化", &["シート", "種類", "位置", "段", "畳む"], rows)
+}
+
+fn read_outline(t: &mut BookTheme, rows: &[Vec<String>]) {
+    for row in rows {
+        let name = pick(row, 0);
+        if name.is_empty() {
+            continue;
+        }
+        let kind = pick(row, 1).to_string();
+        let at = pick(row, 2).to_string();
+        let Ok(level) = pick(row, 3).parse::<u8>() else { continue };
+        let folded = read_yes_no(pick(row, 4)).unwrap_or(false);
+        let s = t.sheet(name);
+        match kind.as_str() {
+            "行" => {
+                if let Ok(n) = at.parse::<u32>() {
+                    if n > 0 {
+                        s.row_outline.push((n - 1, level, folded));
+                    }
+                }
+            }
+            "列" => {
+                if let Some(c) = col_index(&at) {
+                    s.col_outline.push((c, level, folded));
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// シートの保護。**許す操作は名前を並べます**(数の並びにしない —
+/// テンプレートは人が読んで直す物です)。
+fn protect_table(t: &BookTheme) -> Option<Table> {
+    let rows: Vec<Vec<String>> = t
+        .sheets
+        .iter()
+        .filter(|s| s.protected.is_some())
+        .map(|s| {
+            vec![
+                s.name.clone(),
+                yes_no(s.protected),
+                s.protect_allow.clone().unwrap_or_default().join("、"),
+            ]
+        })
+        .collect();
+    table("保護", &["シート", "保護", "許す操作"], rows)
+}
+
+fn read_protect(t: &mut BookTheme, rows: &[Vec<String>]) {
+    for row in rows {
+        let name = pick(row, 0);
+        if name.is_empty() {
+            continue;
+        }
+        let on = read_yes_no(pick(row, 1));
+        let names: Vec<String> = pick(row, 2)
+            .split(['、', ','])
+            .map(|x| x.trim().to_string())
+            .filter(|x| !x.is_empty())
+            .collect();
+        let s = t.sheet(name);
+        s.protected = on.or(s.protected);
+        if s.protected == Some(true) {
+            s.protect_allow = Some(names);
+        }
+    }
+}
+
+/// 印刷の設定。**用紙の表と分けたのは、列が多くなりすぎるから**です。
+fn print_table(t: &BookTheme) -> Option<Table> {
+    let rows: Vec<Vec<String>> = t
+        .sheets
+        .iter()
+        .filter(|s| {
+            s.print_scale.is_some()
+                || s.fit_to_w.is_some()
+                || s.fit_to_h.is_some()
+                || s.print_headings.is_some()
+                || s.print_title_rows.is_some()
+                || s.print_title_cols.is_some()
+        })
+        .map(|s| {
+            vec![
+                s.name.clone(),
+                s.print_scale.map(|v| v.to_string()).unwrap_or_default(),
+                s.fit_to_w.map(|v| v.to_string()).unwrap_or_default(),
+                s.fit_to_h.map(|v| v.to_string()).unwrap_or_default(),
+                yes_no(s.print_headings),
+                s.print_title_rows.map(|(a, b)| format!("{}:{}", a + 1, b + 1)).unwrap_or_default(),
+                s.print_title_cols.map(|(a, b)| format!("{}:{}", col_name(a), col_name(b))).unwrap_or_default(),
+            ]
+        })
+        .collect();
+    table(
+        "印刷",
+        &["シート", "倍率", "横に収める", "縦に収める", "行列番号", "タイトル行", "タイトル列"],
+        rows,
+    )
+}
+
+fn read_print(t: &mut BookTheme, rows: &[Vec<String>]) {
+    for row in rows {
+        let name = pick(row, 0);
+        if name.is_empty() {
+            continue;
+        }
+        let s = t.sheet(name);
+        if let Ok(v) = pick(row, 1).parse() {
+            s.print_scale = Some(v);
+        }
+        if let Ok(v) = pick(row, 2).parse() {
+            s.fit_to_w = Some(v);
+        }
+        if let Ok(v) = pick(row, 3).parse() {
+            s.fit_to_h = Some(v);
+        }
+        s.print_headings = read_yes_no(pick(row, 4)).or(s.print_headings);
+        s.print_title_rows = read_rows(pick(row, 5)).or(s.print_title_rows);
+        s.print_title_cols = read_cols(pick(row, 6)).or(s.print_title_cols);
+    }
+}
+
+/// 手で入れた改ページ。**行は番号、列は綴りの名前**で書きます
+/// (画面の見出しと同じ言い方にするため)。
+fn break_table(t: &BookTheme) -> Option<Table> {
+    let rows: Vec<Vec<String>> = t
+        .sheets
+        .iter()
+        .filter(|s| !s.row_breaks.is_empty() || !s.col_breaks.is_empty())
+        .map(|s| {
+            vec![
+                s.name.clone(),
+                s.row_breaks.iter().map(|r| (r + 1).to_string()).collect::<Vec<_>>().join(","),
+                s.col_breaks.iter().map(|c| col_name(*c)).collect::<Vec<_>>().join(","),
+            ]
+        })
+        .collect();
+    table("改ページ", &["シート", "行", "列"], rows)
+}
+
+fn read_break(t: &mut BookTheme, rows: &[Vec<String>]) {
+    for row in rows {
+        let name = pick(row, 0);
+        if name.is_empty() {
+            continue;
+        }
+        let s = t.sheet(name);
+        let rb: Vec<u32> = pick(row, 1)
+            .split(',')
+            .filter_map(|x| x.trim().parse::<u32>().ok())
+            .filter(|n| *n > 0)
+            .map(|n| n - 1)
+            .collect();
+        if !rb.is_empty() {
+            s.row_breaks = rb;
+        }
+        let cb: Vec<u32> = pick(row, 2).split(',').filter_map(|x| col_index(x.trim())).collect();
+        if !cb.is_empty() {
+            s.col_breaks = cb;
+        }
+    }
+}
+
+/// ヘッダーとフッター。**1つの位置に1行**です。
+///
+/// 「奇数と偶数を分ける」「先頭の頁を分ける」の入切は、その位置の行が
+/// あるかどうかで表します。**字が空でも行があれば入**です — 分ける指定を
+/// して中身を書いていない状態は、本家にもあるためです。
+fn hf_table(t: &BookTheme) -> Option<Table> {
+    let mut rows: Vec<Vec<String>> = Vec::new();
+    for s in &t.sheets {
+        for (label, v) in [
+            ("ヘッダー", &s.header),
+            ("フッター", &s.footer),
+        ] {
+            if let Some(x) = v {
+                rows.push(vec![s.name.clone(), label.into(), x.clone()]);
+            }
+        }
+        if s.hf_diff_odd_even == Some(true) {
+            for (label, v) in [("偶数ヘッダー", &s.header_even), ("偶数フッター", &s.footer_even)] {
+                rows.push(vec![s.name.clone(), label.into(), v.clone().unwrap_or_default()]);
+            }
+        }
+        if s.hf_diff_first == Some(true) {
+            for (label, v) in [("先頭ヘッダー", &s.header_first), ("先頭フッター", &s.footer_first)] {
+                rows.push(vec![s.name.clone(), label.into(), v.clone().unwrap_or_default()]);
+            }
+        }
+    }
+    table("ヘッダーとフッター", &["シート", "位置", "文字"], rows)
+}
+
+fn read_hf(t: &mut BookTheme, rows: &[Vec<String>]) {
+    for row in rows {
+        let name = pick(row, 0);
+        if name.is_empty() {
+            continue;
+        }
+        let where_at = pick(row, 1).to_string();
+        let text = pick(row, 2).to_string();
+        let s = t.sheet(name);
+        match where_at.as_str() {
+            "ヘッダー" => s.header = Some(text),
+            "フッター" => s.footer = Some(text),
+            "偶数ヘッダー" => {
+                s.header_even = Some(text);
+                s.hf_diff_odd_even = Some(true);
+            }
+            "偶数フッター" => {
+                s.footer_even = Some(text);
+                s.hf_diff_odd_even = Some(true);
+            }
+            "先頭ヘッダー" => {
+                s.header_first = Some(text);
+                s.hf_diff_first = Some(true);
+            }
+            "先頭フッター" => {
+                s.footer_first = Some(text);
+                s.hf_diff_first = Some(true);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// 入切を字に。指定なしは空
+fn yes_no(v: Option<bool>) -> String {
+    match v {
+        Some(true) => "true".into(),
+        Some(false) => "false".into(),
+        None => String::new(),
+    }
+}
+
+fn read_yes_no(s: &str) -> Option<bool> {
+    match s.to_ascii_lowercase().as_str() {
+        "true" => Some(true),
+        "false" => Some(false),
+        _ => None,
+    }
+}
+
+/// `1:1` を (0, 0) に。空なら None
+fn read_rows(s: &str) -> Option<(u32, u32)> {
+    let (a, b) = s.split_once(':')?;
+    let a: u32 = a.trim().parse().ok()?;
+    let b: u32 = b.trim().parse().ok()?;
+    (a > 0 && b > 0).then(|| (a - 1, b - 1))
+}
+
+/// `A:A` を (0, 0) に。空なら None
+fn read_cols(s: &str) -> Option<(u32, u32)> {
+    let (a, b) = s.split_once(':')?;
+    Some((col_index(a.trim())?, col_index(b.trim())?))
 }
 
 /// 数を字にする(整数はそのまま、小数は要るぶんだけ)
@@ -277,6 +906,12 @@ pub fn parse(src: &str) -> Result<BookTheme, String> {
             "用紙" => read_paper(&mut t, body),
             "列幅" => read_width(&mut t, body),
             "行の高さ" => read_height(&mut t, body),
+            "印刷" => read_print(&mut t, body),
+            "改ページ" => read_break(&mut t, body),
+            "ヘッダーとフッター" => read_hf(&mut t, body),
+            "画面" => read_view(&mut t, body),
+            "グループ化" => read_outline(&mut t, body),
+            "保護" => read_protect(&mut t, body),
             _ => {}
         }
     }
@@ -466,5 +1101,40 @@ mod tests {
     fn unknown_paper_keeps_its_number() {
         assert_eq!(paper_name(99), "99");
         assert_eq!(paper_no("99"), Some(99));
+    }
+}
+
+/// **許す操作の名前が `ProtectAllow` の欄と1対1か。**
+///
+/// 欄を足して名前を足し忘れると、その許可はテンプレートで往復しません。
+/// `types.rs` を読んで数を突き合わせます。
+#[cfg(test)]
+mod allow_names_watch {
+    use super::ALLOW_NAMES;
+
+    #[test]
+    fn every_protect_flag_has_a_name() {
+        let src = include_str!("book/types.rs");
+        let head = "pub struct ProtectAllow {";
+        let from = src.find(head).expect("ProtectAllow が無い");
+        let body = &src[from + head.len()..];
+        let to = body.find("\n}").expect("終わりが無い");
+        let n = body[..to].lines().filter(|l| l.trim().starts_with("pub ")).count();
+        assert_eq!(
+            ALLOW_NAMES.len(),
+            n,
+            "ProtectAllow の欄は {n} 個、名前の表は {} 個。\
+             足りない欄はテンプレートで往復しません",
+            ALLOW_NAMES.len()
+        );
+    }
+
+    #[test]
+    fn the_names_do_not_repeat() {
+        for (i, (a, _)) in ALLOW_NAMES.iter().enumerate() {
+            for (b, _) in &ALLOW_NAMES[i + 1..] {
+                assert_ne!(a, b, "同じ名前が2つある: 「{a}」");
+            }
+        }
     }
 }
