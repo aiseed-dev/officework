@@ -200,6 +200,12 @@ pub fn write_pages<W: std::io::Write>(
             c.rect(0.0, 0.0, pt(pw), pt(ph));
             c.fill_nonzero();
         }
+        // **塗りは絵の下、紙の色の上。** 罫線より先に敷いて線を潰しません
+        for f in &page.fills {
+            c.set_fill_rgb(f.rgb.0, f.rgb.1, f.rgb.2);
+            c.rect(pt(f.x_mm), pt(f.y_mm), pt(f.w_mm), pt(f.h_mm));
+            c.fill_nonzero();
+        }
         // **絵はいちばん下**。字と罫線が上に載ります
         for (k, (_, im)) in img_ids[i].iter().enumerate() {
             c.save_state();
@@ -210,7 +216,7 @@ pub fn write_pages<W: std::io::Write>(
         }
         // **罫線を先に引きます**(字の下)
         for r in &page.rules {
-            c.set_stroke_rgb(0.0, 0.0, 0.0);
+            c.set_stroke_rgb(r.rgb.0, r.rgb.1, r.rgb.2);
             c.set_line_width(pt(r.w_mm));
             c.move_to(pt(r.x1_mm), pt(r.y1_mm));
             c.line_to(pt(r.x2_mm), pt(r.y2_mm));
@@ -752,6 +758,32 @@ mod tests {
         assert!(twice, "二度打ちの跡が無い(太字が出ていない): {places:?}");
     }
 
+    /// **塗りと色つきの罫線が出る。** 表計算の帯に要ります(2026-08-27)
+    #[test]
+    fn fills_and_coloured_rules_reach_the_paper() {
+        let leaf = Leaf {
+            fills: vec![Fill {
+                x_mm: 20.0, y_mm: 250.0, w_mm: 60.0, h_mm: 8.0,
+                rgb: (0.87, 0.92, 0.98),
+            }],
+            rules: vec![Rule {
+                x1_mm: 20.0, y1_mm: 250.0, x2_mm: 80.0, y2_mm: 250.0,
+                w_mm: 0.3, rgb: (0.2, 0.4, 0.7),
+            }],
+            ..Default::default()
+        };
+        let mut out = Vec::new();
+        write_pages(&[leaf], 210.0, 297.0, &font(), &mut out).expect("PDF が出ない");
+        let body = unpack(&out);
+        assert!(body.contains(" re"), "塗りの四角が無い");
+        assert!(body.contains(" rg"), "塗りの色が無い");
+        assert!(body.contains(" RG"), "線の色が無い");
+        // **塗りは線より先**。潰すと罫線が消えます
+        let fill_at = body.find(" re").expect("四角");
+        let line_at = body.find(" l\n").unwrap_or(usize::MAX);
+        assert!(fill_at < line_at, "塗りが線より後ろにある(線が消えます)");
+    }
+
     /// 字が1つも無い紙でも落ちない
     #[test]
     fn an_empty_page_still_makes_a_pdf() {
@@ -769,6 +801,8 @@ pub struct Rule {
     pub x2_mm: f32,
     pub y2_mm: f32,
     pub w_mm: f32,
+    /// 線の色(0〜1 の RGB)。既定は黒
+    pub rgb: (f32, f32, f32),
 }
 
 /// **紙1枚に置く物。** `pdf_writer` の `Page` と名前がぶつかるので別の名前です
@@ -781,9 +815,22 @@ pub struct Leaf {
     pub bg: Option<(f32, f32, f32)>,
     /// 透かし(斜めの薄い字)
     pub watermark: Option<String>,
+    /// **塗り(表の帯・セルの背景)。** 罫線より先に敷きます — 線を
+    /// 塗り潰さないためです
+    pub fills: Vec<Fill>,
     /// **この紙の大きさ(mm)。** 節で紙が変わる文書は頁ごとに違います。
     /// `None` なら呼ぶ側に渡した既定の大きさ
     pub size_mm: Option<(f32, f32)>,
+}
+
+/// 塗る四角。左下からの mm。
+pub struct Fill {
+    pub x_mm: f32,
+    pub y_mm: f32,
+    pub w_mm: f32,
+    pub h_mm: f32,
+    /// 0〜1 の RGB
+    pub rgb: (f32, f32, f32),
 }
 
 /// 紙に置く画像。左下からの mm。
@@ -927,6 +974,7 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
                 x2_mm: pp.margin_mm + r[2],
                 y2_mm: pp.height_mm - (r[3] - off),
                 w_mm: 0.2,
+                rgb: (0.0, 0.0, 0.0),
             });
         }
     }
