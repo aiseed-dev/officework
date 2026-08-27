@@ -481,6 +481,9 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 if !sheet.lines.is_empty() {
                     y += space_before_mm(para, base);
                 }
+                // **段落の背景色の始まり**を覚えます。終わりは行を積んだ
+                // 後に分かるので、そこで四角にします
+                let shade_top = y;
                 // インデント1段 = 全角2文字ぶん(日本の書類の慣習)
                 // **作業のリスト**(`* [ ] やること`)。
                 // 印をそのまま組むと `* [ ]` が紙に出ます。この版は
@@ -700,6 +703,16 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                         + cells.iter().map(|c| c.off).min().unwrap_or(0);
                     sheet.lines.push(Line { cells, y_mm: y, from_body: true, byte0, cell: None });
                     y += lh_of(para, frame);
+                }
+                // **段落の背景色**(2026-08-27)。模型に在り、画面は塗って
+                // いたのに、組む所で落としていたので紙と PDF に出ていません
+                // でした。註記の帯も見出しの背景も印刷で消えます
+                if let Some(c) = para.shade.as_deref() {
+                    let h = (y - shade_top).max(lh_of(para, frame));
+                    sheet.fills.push((
+                        [indent_mm, shade_top - lh_of(para, frame) * 0.8, measure, h],
+                        c.to_string(),
+                    ));
                 }
                 // **段落の後の空き**(前の空きと同じ決め方)
                 y += space_after_mm(para, base);
@@ -1233,6 +1246,8 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         lines: Vec<(Vec<Cell>, usize)>,
         x: f32,
         w: f32,
+        /// 升の背景色。**升の中の最初の段落の物**を使います
+        shade: Option<String>,
     }
     let mut rows_laid: Vec<Vec<Laid>> = Vec::new();
     let mut row_hs: Vec<f32> = Vec::new();
@@ -1259,7 +1274,8 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 }
                 nlines = nlines.max(ls.len());
             }
-            laid.push(Laid { ci, gc, span, v: cell.v_merge, lines: ls, x, w });
+            let shade = cell.paragraphs.first().and_then(|p| p.shade.clone());
+            laid.push(Laid { ci, gc, span, v: cell.v_merge, lines: ls, x, w, shade });
             gc += span;
         }
         rows_laid.push(laid);
@@ -1314,6 +1330,13 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     .collect();
                 sheet.lines.push(Line { cells, y_mm: yy, from_body: false, byte0: b0, cell: id });
                 yy += lh;
+            }
+            // **升の塗り**(2026-08-27)。段落の背景色は模型に在り、画面は
+            // 塗っていたのに、**組む所で落としていた**ので紙と PDF に出て
+            // いませんでした。註記の帯も見出しの背景も印刷で消えます。
+            // 罫線より先に敷くよう、`fills` は `rules` と別に持ちます
+            if let Some(c) = l.shade.as_deref() {
+                sheet.fills.push(([l.x, row_top, l.w, h], c.to_string()));
             }
             // クリックの当たり判定(結合したセルは結合後の大きさで当てる)
             sheet.cell_boxes.push(CellBox {

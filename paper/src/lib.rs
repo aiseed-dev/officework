@@ -1122,8 +1122,11 @@ pub fn doc_to_sheet(
             &fallback
         }
     };
-    let mut d = doc.clone();
-    kumihan::theme::compose_page(&mut d, t);
+    // **`compose` です。`compose_page` ではありません。**
+    // `compose_page` は紙の設定と飾りだけで、段落にスタイルを着せません。
+    // 間違えると註記の帯も見出しの背景も出ません(2026-08-27 に実物で
+    // 気づいた — 試験は緑でした)
+    let d = kumihan::theme::compose(doc, t);
 
     // 書体は**文書が名乗った物**が先。無ければいまの言語の既定
     let want = d.font.clone().or_else(|| t.font.clone());

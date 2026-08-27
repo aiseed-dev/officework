@@ -2975,3 +2975,57 @@ fn nested_task_lists_also_render_as_boxes() {
 }
 
 }
+
+/// **段落と升の背景色が紙面に落ちる**(2026-08-27 発注者「セルの塗りが
+/// どうして文書にないのですか」)。
+///
+/// 模型は前から持っていて、画面も塗っていました。**組む所で落としていた**
+/// ので、紙と PDF に出ていません。註記の帯も見出しの背景も印刷で消えます。
+#[cfg(test)]
+mod shade_tests {
+    #[test]
+    fn a_paragraph_shade_reaches_the_page() {
+        let mut d = crate::adoc::parse("NOTE: 註記です。\n").expect("読めない");
+        let t = crate::theme::default_theme();
+        d = crate::theme::compose(&d, &t);
+        let m = crate::Metrics::new(&[]).ok();
+        let _ = m;
+        let f = crate::font::default_family("ja").expect("書体");
+        let bytes = crate::font::load(f).expect("読めない");
+        let m = crate::Metrics::new(&bytes).expect("測れない");
+        let s = crate::layout(
+            &d,
+            &m,
+            &crate::Frame { measure_mm: 170.0, line_height_mm: crate::LINE_MM, y0_mm: 24.0 },
+        );
+        assert!(!s.fills.is_empty(), "註記の帯が紙面に落ちていない");
+        assert_eq!(s.fills[0].1, "FFF6E0", "既定のテンプレートの色でない");
+    }
+
+    /// **升の塗り**も同じ道です
+    #[test]
+    fn a_cell_shade_reaches_the_page() {
+        let mut d = crate::Document::default();
+        let mut cell = crate::Cellbox::default();
+        let mut p = crate::Document::plain("見出し").paragraphs().next().cloned().expect("段落");
+        p.shade = Some("4472C4".into());
+        cell.paragraphs = vec![p];
+        d.blocks.push(crate::Block::Table(crate::Table {
+            rows: vec![vec![cell]],
+            ..Default::default()
+        }));
+        let f = crate::font::default_family("ja").expect("書体");
+        let bytes = crate::font::load(f).expect("読めない");
+        let m = crate::Metrics::new(&bytes).expect("測れない");
+        let s = crate::layout(
+            &d,
+            &m,
+            &crate::Frame { measure_mm: 170.0, line_height_mm: crate::LINE_MM, y0_mm: 24.0 },
+        );
+        assert!(
+            s.fills.iter().any(|(_, c)| c == "4472C4"),
+            "升の塗りが紙面に落ちていない: {:?}",
+            s.fills
+        );
+    }
+}
