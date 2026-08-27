@@ -37,6 +37,9 @@ pub struct Piece {
     pub w_mm: f32,
     pub underline: bool,
     pub strike: bool,
+    /// 太字。**書体の実体は1つ**なので、少しずらして二度打って合成します
+    /// (太字を持っていない物を、持っている顔で出さないため)
+    pub bold: bool,
     /// 蛍光ペンの色(RRGGBB)
     pub highlight: Option<String>,
 }
@@ -237,6 +240,11 @@ pub fn write_pages<W: std::io::Write>(
             c.set_font(f_name, p.size_pt);
             c.set_text_matrix([1.0, 0.0, 0.0, 1.0, pt(p.x_mm), pt(p.y_mm)]);
             c.show(Str(&bytes));
+            if p.bold {
+                // 0.12mm ずらして二度打つ(いまの道と同じ合成)
+                c.set_text_matrix([1.0, 0.0, 0.0, 1.0, pt(p.x_mm + 0.12), pt(p.y_mm)]);
+                c.show(Str(&bytes));
+            }
             c.end_text();
             // 下線と取り消し線。**字の下に引く線**なので、字を書いた後に
             for (on, at) in [(p.underline, -0.18f32), (p.strike, 0.28)] {
@@ -602,6 +610,79 @@ mod tests {
         assert!(lost.iter().any(|s| s.contains("ペンの筆")), "数えていない: {lost:?}");
     }
 
+    /// **縦書きが横に組まれない。** 1字ずつ列に置きます
+    #[test]
+    fn vertical_writing_is_not_laid_out_sideways() {
+        let doc = kumihan::adoc::parse("= 題\n\n本文です。\n").expect("読めない");
+        let (mut sheet, page, bytes) = crate::doc_to_sheet(&doc, None).expect("組めない");
+        sheet.vertical = true;
+        sheet.vert_x = sheet.lines.iter().enumerate().map(|(i, _)| 180.0 - i as f32 * 8.0).collect();
+        let pp = crate::Paper {
+            width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm,
+        };
+        let mut out = Vec::new();
+        sheet_to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut out)).expect("PDF が出ない");
+        let body = unpack(&out);
+        // **1字ずつ**なので、字の数だけ置く命令が出ます
+        let n = body.matches("Tm").count();
+        let chars: usize = sheet.lines.iter().map(|l| l.cells.len()).sum();
+        assert!(n >= chars, "1字ずつ置いていない: 命令 {n} / 字 {chars}");
+        // **列ごとに違う x** に置いていること(横組みなら全部同じ x です)
+        let xs: Vec<String> = body
+            .lines()
+            .filter(|l| l.ends_with(" Tm"))
+            .filter_map(|l| l.split_whitespace().nth(4).map(|v| v.to_string()))
+            .collect();
+        let mut u = xs.clone();
+        u.sort();
+        u.dedup();
+        assert!(u.len() > 1, "字が全部同じ列にある(横に組まれている): {u:?}");
+    }
+
+    /// **節ごとの紙はまだ効かない。** 数えて返します(黙って揃えません)
+    #[test]
+    fn per_section_paper_is_counted_not_silently_flattened() {
+        let mut sheet = kumihan::Sheet::default();
+        sheet.sect_pages.push((0.0, kumihan::PageSetup::default()));
+        let pp = crate::Paper { width_mm: 210.0, height_mm: 297.0, margin_mm: 20.0 };
+        let mut out = Vec::new();
+        let lost = sheet_to_pdf(&sheet, &font(), pp, std::io::Cursor::new(&mut out))
+            .expect("PDF が出ない");
+        assert!(lost.iter().any(|s| s.contains("節ごとの用紙")), "数えていない: {lost:?}");
+    }
+
+    /// **字の位置がいまの道と一致する。**
+    ///
+    /// 字が取れるかを見るだけでは足りません。**ずれていても取れます。**
+    /// 2026-08-27 に左余白を足し忘れて、字が紙の左端に寄っていました。
+    /// 置く命令の座標そのものを突き合わせます。
+    #[test]
+    fn the_glyphs_land_where_the_old_road_puts_them() {
+        let doc = kumihan::adoc::parse("= 題\n\n本文です。\n").expect("読めない");
+        let (sheet, page, bytes) = crate::doc_to_sheet(&doc, None).expect("組めない");
+        let pp = crate::Paper {
+            width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm,
+        };
+        let mut out = Vec::new();
+        sheet_to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut out)).expect("PDF が出ない");
+
+        // 置く命令の x を拾います(Tm の5番目)
+        let body = unpack(&out);
+        let xs: Vec<f32> = body
+            .lines()
+            .filter(|l| l.ends_with(" Tm"))
+            .filter_map(|l| l.split_whitespace().nth(4).and_then(|v| v.parse().ok()))
+            .collect();
+        assert!(!xs.is_empty(), "置く命令が無い");
+        // **左余白より左に字は出ません。** 出ていたら余白を足し忘れています
+        let left = pp.margin_mm * 72.0 / 25.4;
+        assert!(
+            xs.iter().all(|x| *x >= left - 0.1),
+            "字が左余白より外に出ている: 余白 {left:.1}pt / いちばん左 {:.1}pt",
+            xs.iter().cloned().fold(f32::MAX, f32::min)
+        );
+    }
+
     /// 字が1つも無い紙でも落ちない
     #[test]
     fn an_empty_page_still_makes_a_pdf() {
@@ -672,6 +753,10 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
     page_decor: F,
     out: W,
 ) -> Result<Vec<String>, String> {
+    // **紙面の x は左余白からの距離**です。紙の左端からではありません。
+    // 足さないと字が左端に寄ります(2026-08-27 に pdftotext -bbox で
+    // 突き合わせて見つけた — 字が取れるかを見るだけでは分かりません)
+    let mx = paper.margin_mm;
     let (pages_of, offsets) = crate::paginate(sheet, paper);
     let n = pages_of.iter().copied().max().unwrap_or(1);
     let mut pages: Vec<Leaf> = (0..n).map(|_| Leaf::default()).collect();
@@ -680,8 +765,31 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
     for (i, line) in sheet.lines.iter().enumerate() {
         let k = pages_of.get(i).copied().unwrap_or(1).max(1) - 1;
         let off = offsets.get(k).copied().unwrap_or(0.0);
-        let y = paper.height_mm - (line.y_mm - off);
+        let y_roll = line.y_mm - off;
+        let y = paper.height_mm - y_roll;
         let Some(p) = pages.get_mut(k) else { continue };
+        if sheet.vertical {
+            // **縦書きは1字ずつ**。列の x(絶対 mm)に正立で置き、
+            // 字の腰は「上からの距離 + だいたいの上がり」で合わせます
+            // (いまの道と同じ決め)
+            let colx = sheet.vert_x.get(i).copied().unwrap_or(0.0);
+            for c in &line.cells {
+                let em = c.size_pt * 0.3528;
+                p.pieces.push(Piece {
+                    x_mm: mx + colx,
+                    y_mm: paper.height_mm - (y_roll + c.x_mm + em * 0.85),
+                    size_pt: c.size_pt,
+                    text: c.ch.to_string(),
+                    color: c.fmt.color.clone(),
+                    w_mm: em,
+                    underline: c.fmt.underline,
+                    strike: c.fmt.strike,
+                    bold: c.fmt.bold,
+                    highlight: c.fmt.highlight.clone(),
+                });
+            }
+            continue;
+        }
         // **続きの字はまとめて1つの塊**にします。1字ずつ置くと PDF が太ります
         let mut run: Option<Piece> = None;
         for c in &line.cells {
@@ -692,7 +800,7 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
                         p.pieces.push(r);
                     }
                     run = Some(Piece {
-                        x_mm: c.x_mm,
+                        x_mm: mx + c.x_mm,
                         y_mm: y,
                         size_pt: c.size_pt,
                         text: c.ch.to_string(),
@@ -712,9 +820,9 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
         let off = offsets.get(k).copied().unwrap_or(0.0);
         if let Some(p) = pages.get_mut(k) {
             p.rules.push(Rule {
-                x1_mm: r[0],
+                x1_mm: mx + r[0],
                 y1_mm: paper.height_mm - (r[1] - off),
-                x2_mm: r[2],
+                x2_mm: mx + r[2],
                 y2_mm: paper.height_mm - (r[3] - off),
                 w_mm: 0.2,
             });
@@ -733,7 +841,7 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
         }
         if let Some(p) = pages.get_mut(k) {
             p.images.push(Image {
-                x_mm: at[0],
+                x_mm: mx + at[0],
                 // 紙面は上端の y。PDF は左下からなので、高さのぶん下げます
                 y_mm: paper.height_mm - (at[1] - off) - at[3],
                 w_mm: at[2],
@@ -754,7 +862,7 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
         for line in page_decor(k + 1) {
             for c in &line.cells {
                 p.pieces.push(Piece {
-                    x_mm: c.x_mm,
+                    x_mm: mx + c.x_mm,
                     y_mm: paper.height_mm - line.y_mm,
                     size_pt: c.size_pt,
                     text: c.ch.to_string(),
@@ -762,10 +870,19 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
                     w_mm: c.w_mm,
                     underline: c.fmt.underline,
                     strike: c.fmt.strike,
+                    bold: c.fmt.bold,
                     highlight: c.fmt.highlight.clone(),
                 });
             }
         }
+    }
+    // **節ごとの紙はまだ効きません。** 1冊に A4 縦と横が混ざる文書は、
+    // 全部の頁が同じ紙になります。黙って揃えないように数えて言います
+    if !sheet.sect_pages.is_empty() {
+        lost.push(format!(
+            "節ごとの用紙 {} 件(この書き手ではまだ効きません。全部の頁が同じ紙になります)",
+            sheet.sect_pages.len()
+        ));
     }
     if !dress.ink.is_empty() {
         lost.push(format!("ペンの筆 {} 本(この書き手ではまだ載りません)", dress.ink.len()));
