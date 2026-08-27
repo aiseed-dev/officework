@@ -1091,12 +1091,19 @@ pub fn doc_to_pdf<W: Write>(
     out: W,
 ) -> Result<(), String> {
     let (sheet, page, bytes) = doc_to_sheet(doc, theme)?;
-    to_pdf(
+    // **低い層の書き手を通します**(2026-08-27)。使った字だけ埋めるので、
+    // 1枚物が 20MB から 10KB になります。ここが最初の差し替えです —
+    // 画面(writer)の書き出しはまだ printpdf のままです
+    let lost = pdfw::sheet_to_pdf(
         &sheet,
         &bytes,
         Paper { width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm },
         out,
-    )
+    )?;
+    // 載らなかった物は呼ぶ側へ言えないので、ここでは黙るしかありません。
+    // **数える口が要るなら [`pdfw::sheet_to_pdf`] を直に呼びます**
+    let _ = lost;
+    Ok(())
 }
 
 /// 文書を紙面に組む。**PDF と画面が同じ道を通る**ための1本です。

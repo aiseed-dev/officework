@@ -85,8 +85,7 @@ pub fn write(
         .iter()
         .map(|v| Leaf {
             pieces: v.clone(),
-            rules: Vec::new(),
-            images: Vec::new(),
+            ..Default::default()
         })
         .collect();
     let mut out = Vec::new();
@@ -107,8 +106,14 @@ pub fn write_pages<W: std::io::Write>(
     // ① 使った字を集めて、字形の番号に直す。**同じ字は1つ**にまとめます
     let mut used: BTreeMap<char, u16> = BTreeMap::new();
     for page in pages {
-        for p in &page.pieces {
-            for c in p.text.chars() {
+        // 透かしの字も埋めないと、**透かしだけ豆腐**になります
+        let texts = page
+            .pieces
+            .iter()
+            .map(|p| p.text.as_str())
+            .chain(page.watermark.as_deref());
+        for t in texts {
+            for c in t.chars() {
                 if let Some(g) = face.glyph_index(c) {
                     used.insert(c, g.0);
                 }
@@ -185,6 +190,12 @@ pub fn write_pages<W: std::io::Write>(
         pg.finish();
 
         let mut c = Content::new();
+        // **紙の色はいちばん下**。全部の上に敷き直すと字が消えます
+        if let Some((r, g, b)) = page.bg {
+            c.set_fill_rgb(r, g, b);
+            c.rect(0.0, 0.0, pt(page_w_mm), pt(page_h_mm));
+            c.fill_nonzero();
+        }
         // **絵はいちばん下**。字と罫線が上に載ります
         for (k, (_, im)) in img_ids[i].iter().enumerate() {
             c.save_state();
@@ -240,6 +251,26 @@ pub fn write_pages<W: std::io::Write>(
                 c.line_to(pt(p.x_mm + p.w_mm), pt(y));
                 c.stroke();
             }
+        }
+        // **透かしは字の上**。薄い灰で斜めに置きます(本家と同じ見え方)
+        if let Some(w) = &page.watermark {
+            let mut bytes = Vec::with_capacity(w.chars().count() * 2);
+            for ch in w.chars() {
+                bytes.extend_from_slice(&new_gid.get(&ch).copied().unwrap_or(0).to_be_bytes());
+            }
+            let size = 60.0f32;
+            // 45 度に倒して紙の真ん中あたりへ
+            let (sin, cos) = (0.7071f32, 0.7071f32);
+            c.begin_text();
+            c.set_fill_rgb(0.85, 0.85, 0.85);
+            c.set_font(f_name, size);
+            c.set_text_matrix([
+                cos, sin, -sin, cos,
+                pt(page_w_mm) * 0.2,
+                pt(page_h_mm) * 0.3,
+            ]);
+            c.show(Str(&bytes));
+            c.end_text();
         }
         pdf.stream(content_ids[i], &c.finish());
     }
@@ -486,6 +517,7 @@ mod tests {
                 x_mm: 20.0, y_mm: 200.0, w_mm: 40.0, h_mm: 30.0,
                 data: std::sync::Arc::new(png.into_inner()),
             }],
+            ..Default::default()
         };
         let mut out = Vec::new();
         write_pages(&[leaf], 210.0, 297.0, &font(), &mut out).expect("PDF が出ない");
@@ -506,6 +538,68 @@ mod tests {
         let lost = sheet_to_pdf(&sheet, &font(), pp, std::io::Cursor::new(&mut out))
             .expect("PDF が出ない");
         assert!(lost.iter().any(|s| s.contains("読めない画像")), "数えていない: {lost:?}");
+    }
+
+    /// **ヘッダーと透かしと紙の色が出る。** 差し替えに要る飾りです
+    #[test]
+    fn the_page_dress_and_the_header_reach_the_paper() {
+        let doc = kumihan::adoc::parse("= 題\n\n本文です。\n").expect("読めない");
+        let (sheet, page, bytes) = crate::doc_to_sheet(&doc, None).expect("組めない");
+        let pp = crate::Paper {
+            width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm,
+        };
+        let dress = crate::PageDress {
+            bg: Some((0.98, 0.98, 0.94)),
+            watermark: Some("見本".into()),
+            ink: Vec::new(),
+        };
+        // ヘッダーの行を1つ作って渡します(組む側が字にして寄越す約束)
+        let hf = |_k: usize| {
+            vec![kumihan::Line {
+                y_mm: 12.0,
+                cells: "第1頁"
+                    .chars()
+                    .enumerate()
+                    .map(|(i, ch)| kumihan::Cell {
+                        ch,
+                        x_mm: 20.0 + i as f32 * 3.5,
+                        w_mm: 3.5,
+                        size_pt: 9.0,
+                        off: 0,
+                        fmt: kumihan::CharFormat::default(),
+                        font: None,
+                    })
+                    .collect(),
+                from_body: false,
+                byte0: 0,
+                cell: None,
+            }]
+        };
+        let mut out = Vec::new();
+        let lost = sheet_to_pdf_with(&sheet, &bytes, pp, &dress, hf, std::io::Cursor::new(&mut out))
+            .expect("PDF が出ない");
+        assert!(lost.is_empty(), "落ちた物がある: {lost:?}");
+        let body = unpack(&out);
+        assert!(body.contains(" re"), "紙の色の四角が無い");
+        // 透かしは倒して置くので、行列に 0.7071 が出ます
+        assert!(body.contains("0.7071"), "透かしが斜めに置かれていない");
+    }
+
+    /// **ペンの筆はまだ載りません。** 数えて返します(黙って落としません)
+    #[test]
+    fn pen_strokes_are_counted_not_dropped() {
+        let sheet = kumihan::Sheet::default();
+        let pp = crate::Paper { width_mm: 210.0, height_mm: 297.0, margin_mm: 20.0 };
+        let dress = crate::PageDress {
+            bg: None,
+            watermark: None,
+            ink: vec![kumihan::Stroke::default()],
+        };
+        let mut out = Vec::new();
+        let lost =
+            sheet_to_pdf_with(&sheet, &font(), pp, &dress, |_| Vec::new(), std::io::Cursor::new(&mut out))
+                .expect("PDF が出ない");
+        assert!(lost.iter().any(|s| s.contains("ペンの筆")), "数えていない: {lost:?}");
     }
 
     /// 字が1つも無い紙でも落ちない
@@ -533,6 +627,10 @@ pub struct Leaf {
     pub pieces: Vec<Piece>,
     pub rules: Vec<Rule>,
     pub images: Vec<Image>,
+    /// 紙の色(0〜1 の RGB)
+    pub bg: Option<(f32, f32, f32)>,
+    /// 透かし(斜めの薄い字)
+    pub watermark: Option<String>,
 }
 
 /// 紙に置く画像。左下からの mm。
@@ -556,6 +654,22 @@ pub fn sheet_to_pdf<W: std::io::Write>(
     sheet: &kumihan::Sheet,
     font_data: &[u8],
     paper: crate::Paper,
+    out: W,
+) -> Result<Vec<String>, String> {
+    sheet_to_pdf_with(sheet, font_data, paper, &crate::PageDress::default(), |_| Vec::new(), out)
+}
+
+/// **紙面を PDF にする(ページごとの飾りつき)。**
+///
+/// `page_decor(k)` は k ページ目(1始まり)に置く行 — ヘッダーとフッターです。
+/// `kumihan::layout_hf` がこの形で返します。ページ番号は組む側が字にして
+/// 寄越すので、ここでは**置くだけ**です([`crate::to_pdf_with`] と同じ約束)。
+pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
+    sheet: &kumihan::Sheet,
+    font_data: &[u8],
+    paper: crate::Paper,
+    dress: &crate::PageDress,
+    page_decor: F,
     out: W,
 ) -> Result<Vec<String>, String> {
     let (pages_of, offsets) = crate::paginate(sheet, paper);
@@ -630,6 +744,31 @@ pub fn sheet_to_pdf<W: std::io::Write>(
     }
     if bad > 0 {
         lost.push(format!("読めない画像 {bad} 件"));
+    }
+
+    // 紙の飾りと、ページごとのヘッダー・フッター
+    for (k, p) in pages.iter_mut().enumerate() {
+        p.bg = dress.bg;
+        p.watermark = dress.watermark.clone();
+        // **飾りの行の y はページの上端からの mm**(巻物の座標ではありません)
+        for line in page_decor(k + 1) {
+            for c in &line.cells {
+                p.pieces.push(Piece {
+                    x_mm: c.x_mm,
+                    y_mm: paper.height_mm - line.y_mm,
+                    size_pt: c.size_pt,
+                    text: c.ch.to_string(),
+                    color: c.fmt.color.clone(),
+                    w_mm: c.w_mm,
+                    underline: c.fmt.underline,
+                    strike: c.fmt.strike,
+                    highlight: c.fmt.highlight.clone(),
+                });
+            }
+        }
+    }
+    if !dress.ink.is_empty() {
+        lost.push(format!("ペンの筆 {} 本(この書き手ではまだ載りません)", dress.ink.len()));
     }
     write_pages(&pages, paper.width_mm, paper.height_mm, font_data, out)?;
     Ok(lost)

@@ -24,6 +24,7 @@ fn main() {
         images: vec![paper::pdfw::Image {
             x_mm: 20.0, y_mm: 200.0, w_mm: 64.0, h_mm: 48.0, data,
         }],
+        ..Default::default()
     };
     let mut out = Vec::new();
     paper::pdfw::write_pages(&[leaf], 210.0, 297.0, &bytes, &mut out).expect("PDF");
