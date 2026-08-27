@@ -987,6 +987,15 @@ fn is_bullet(l: &str, mark: char) -> Option<(u8, &str)> {
     Some(((n - 1) as u8, rest))
 }
 
+/// `-` の箇条書きの行か。返るのは中身。
+///
+/// **`-` は1段目だけ**です(AsciiDoc の決め。`--` は塊の囲みなので、
+/// 箇条書きとして読むと囲みが壊れます)。
+fn is_dash_bullet(l: &str) -> Option<&str> {
+    let rest = l.strip_prefix("- ")?;
+    Some(rest)
+}
+
 /// ラベル付きリストの行か(`項目:: 値`)。
 /// マクロ(`名前:対象[…]`)と紛れないよう `:: ` を見ます
 fn is_labelled(l: &str) -> bool {
@@ -1567,6 +1576,14 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             // **入れ子の箇条書き**(`**` `***`)。AsciiDoc は印の数が段です
             p.list = ListKind::Bullet;
             p.indent = tab;
+            rest
+        } else if let Some(rest) = is_dash_bullet(l) {
+            // **`-` の箇条書き。** AsciiDoc は `*` と `-` の両方を受けます。
+            // `-` は1段目だけで、入れ子にはできません(本家の決め)。
+            // 見ていなかったので、2つの項目が1つの段落に潰れ、印の `-` も
+            // 字のまま出ていました(2026-08-27 に実物の PDF で気づいた)
+            p.list = ListKind::Bullet;
+            p.indent = 0;
             rest
         } else if let Some((tab, rest)) = is_bullet(l, '.') {
             p.list = ListKind::Number;
@@ -2546,4 +2563,53 @@ pub(crate) fn is_task_list(t: &str) -> bool {
     }
     let rest = rest.strip_prefix(' ').unwrap_or(rest);
     rest.starts_with("[ ]") || rest.starts_with("[x]") || rest.starts_with("[X]")
+}
+
+/// **`-` の箇条書き**(2026-08-27)。AsciiDoc は `*` と `-` の両方を
+/// 受けます。`-` を見ていなかったので、項目が1つの段落に潰れ、印も
+/// 字のまま出ていました。実物の PDF を見て気づきました。
+#[cfg(test)]
+mod dash_bullet_tests {
+    #[test]
+    fn a_dash_list_becomes_separate_items() {
+        let d = super::parse("本文。\n\n- 一つ目\n- 二つ目\n\n終わり。\n").expect("読めない");
+        let items: Vec<String> = d
+            .blocks
+            .iter()
+            .filter_map(|b| match b {
+                crate::Block::Para(p) if p.list == crate::ListKind::Bullet => {
+                    Some(p.runs.iter().map(|r| r.text.as_str()).collect())
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(items, vec!["一つ目", "二つ目"], "項目に分かれていない");
+    }
+
+    /// **印は字として残りません。** `-` が本文に出ていました
+    #[test]
+    fn the_dash_is_not_left_in_the_text() {
+        let d = super::parse("- 単価は税抜きです\n").expect("読めない");
+        let t: String = d
+            .blocks
+            .iter()
+            .filter_map(|b| match b {
+                crate::Block::Para(p) => Some(p.runs.iter().map(|r| r.text.as_str()).collect::<String>()),
+                _ => None,
+            })
+            .collect();
+        assert!(!t.contains('-'), "印が字として残っている: {t:?}");
+    }
+
+    /// **`--` は塊の囲み**です。箇条書きとして読むと囲みが壊れます
+    #[test]
+    fn a_double_dash_is_a_block_fence_not_a_bullet() {
+        let d = super::parse("--\n囲みの中\n--\n").expect("読めない");
+        let bullets = d
+            .blocks
+            .iter()
+            .filter(|b| matches!(b, crate::Block::Para(p) if p.list == crate::ListKind::Bullet))
+            .count();
+        assert_eq!(bullets, 0, "囲みを箇条書きとして読んでいる");
+    }
 }
