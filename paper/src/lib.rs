@@ -377,6 +377,13 @@ pub struct Pagination {
     /// 頁ごとに載る脚注(`sheet.notes` の添字)。**脚注は紙の下を占める**ので、
     /// その高さぶん本文の底が上がる — 頁割りと切り離せない
     pub notes: Vec<Vec<usize>>,
+    /// **その頁の頭で繰り返す表の見出しの高さ(mm)。** 0 なら繰り返さない。
+    ///
+    /// 表が頁をまたぐとき、次の頁の頭に見出しの行を写します。その高さぶん
+    /// 本文の頭が下がるので、**頁割りが数えないと重なります**
+    /// (2026-08-27 に実物で重ねてしまった)。脚注が本文の底を上げるのと
+    /// 同じ形です。
+    pub header_h: Vec<f32>,
     /// 頁ごとの**切れ目**(その頁に載る最初の行の巻物 y)。
     /// `offsets` は余白を引いた後の値で**前の頁の裾と重なる**ので、
     /// 「この y はどの頁か」を引くのにそのまま使うと1頁ずれる。
@@ -417,8 +424,22 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             None => paper,
         }
     };
+    // **繰り返す見出しの高さ。** その表の見出しの行が占める高さです
+    let head_h = |t: usize| -> f32 {
+        let ys: Vec<f32> = sheet
+            .lines
+            .iter()
+            .filter(|l| matches!(l.cell, Some((tn, 0, _)) if tn == t))
+            .map(|l| l.y_mm)
+            .collect();
+        match (ys.iter().cloned().fold(f32::MAX, f32::min), ys.iter().cloned().fold(0.0, f32::max)) {
+            (lo, hi) if lo <= hi => hi - lo + LINE_GUESS_MM,
+            _ => 0.0,
+        }
+    };
     let mut pages = Vec::with_capacity(sheet.lines.len());
     let mut offsets = vec![0.0f32];
+    let mut header_h = vec![0.0f32];
     let mut papers = vec![paper_at(0.0)];
     // 頁ごとの脚注と、その高さ。**脚注が増えるとその頁の本文の底が上がる**
     let mut notes: Vec<Vec<usize>> = vec![Vec::new()];
@@ -456,10 +477,19 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
         let y_roll = line.y_mm - offsets.last().unwrap();
         // 脚注のぶん、本文に使える底が上がる(仕切りの隙間も見る)
         let reserve = if note_h + add > 0.0 { note_h + add + NOTE_GAP_MM } else { 0.0 };
-        if forced || y_roll > cur.height_mm - cur.margin_mm - reserve {
+        // **いまの頁で繰り返している見出し**のぶんも底が上がります
+        let hh = *header_h.last().unwrap();
+        if forced || y_roll > cur.height_mm - cur.margin_mm - reserve - hh {
             // 次のページへ。行の紙面上の高さは(余白ぶんを除いて)そのまま続ける
             let next = paper_at(line.y_mm);
-            offsets.push(line.y_mm - next.margin_mm);
+            // **見出しを繰り返す表の途中なら、その高さぶん頭を下げます。**
+            // 数えないと、繰り返した見出しが次の行と重なります
+            let repeat = match line.cell {
+                Some((t, ri, _)) if ri > 0 && sheet.header_tables.contains(&t) => head_h(t),
+                _ => 0.0,
+            };
+            offsets.push(line.y_mm - next.margin_mm - repeat);
+            header_h.push(repeat);
             papers.push(next);
             starts.push(line.y_mm);
             // 行が次の頁へ動けば、**その行に付いた脚注も一緒に動く**
@@ -471,8 +501,12 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
         }
         pages.push(offsets.len());
     }
-    Pagination { pages, offsets, papers, starts, notes }
+    Pagination { pages, offsets, papers, starts, notes, header_h }
 }
+
+/// 見出しの行1行ぶんの見当(mm)。**行の高さは紙面が持っていない**ので、
+/// 繰り返す高さを測るときの下駄にします
+const LINE_GUESS_MM: f32 = 7.0;
 
 /// 本文と脚注の間の隙間(mm)。仕切り線もこの中に引く
 pub const NOTE_GAP_MM: f32 = 3.0;

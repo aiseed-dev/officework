@@ -784,13 +784,13 @@ mod tests {
         assert!(fill_at < line_at, "塗りが線より後ろにある(線が消えます)");
     }
 
-    /// **表の見出しの繰り返しは、まだ効かない。** 数えて返します。
+    /// **表が頁をまたぐと、見出しの行が繰り返される。**
     ///
-    /// 2026-08-27 に入れてみて、実物で重なることが分かりました。頁の頭に
-    /// 置いても、そこには既に次の行が載っています。頁割りが見出しのぶんを
-    /// 詰めていないためです。**黙って重ねません。**
+    /// 事務の帳票は、2頁目が数字の並びだけでは読めません。頁割りが
+    /// 見出しのぶんだけ頭を下げ、そこへ1頁目の見出しを写します。
+    /// 数えないと重なります(2026-08-27 に実物で重ねた)。
     #[test]
-    fn a_repeating_header_row_is_counted_not_silently_overlapped() {
+    fn a_header_row_repeats_on_later_pages() {
         let mut src = String::from("|===\n|品名 |数量\n\n");
         for i in 1..=60 {
             src.push_str(&format!("|品目{i} |{}\n", i * 3));
@@ -805,10 +805,22 @@ mod tests {
         let lost = sheet_to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut out))
             .expect("PDF が出ない");
         assert!(!sheet.header_tables.is_empty(), "見出しの表を覚えていない");
+        assert!(lost.is_empty(), "落ちた物がある: {lost:?}");
+
+        // **2頁目以降に場所が空いていること。** 空けないと重なります
+        let full = crate::paginate_full(&sheet, pp);
+        let 頁 = full.pages.iter().copied().max().unwrap_or(1);
+        assert!(頁 > 1, "1頁に収まってしまい、繰り返しを見られない");
         assert!(
-            lost.iter().any(|s| s.contains("見出しの繰り返し")),
-            "数えていない: {lost:?}"
+            full.header_h.iter().skip(1).any(|h| *h > 0.0),
+            "見出しのぶんの場所が空いていない: {:?}",
+            full.header_h
         );
+
+        // 見出しの字が頁の数だけ出ていること
+        let body = unpack(&out);
+        let n = body.matches("Tm").count();
+        assert!(n > 0, "置く命令が無い");
     }
 
     /// 字が1つも無い紙でも落ちない
@@ -1008,23 +1020,59 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
 
     let mut lost = Vec::new();
 
-    // **表の見出しの行の繰り返しは、まだ効きません。**
+    // **表の見出しの行を、2頁目から繰り返します**(2026-08-27)。
     //
-    // 2026-08-27 に入れてみて、実物で重なることが分かりました。頁の頭に
-    // 置いても、そこには既に次の行が載っています。**頁割りが見出しのぶんを
-    // 詰めていない**からです。
-    //
-    // 直すには `paginate_full` が「この頁は見出しを繰り返すので、その高さ
-    // ぶん本文の入る高さが減る」と数える必要があります。脚注が本文の底を
-    // 上げるのと同じ形です。頁割りの側の作業なので、ここでは**数えて言う
-    // だけ**にします(黙って重ねません)。
-    if !sheet.header_tables.is_empty() {
-        let 頁 = pages_of.iter().copied().max().unwrap_or(1);
-        if 頁 > 1 {
-            lost.push(format!(
-                "表の見出しの繰り返し {} 表(頁をまたぐと2頁目から見出しが出ません)",
-                sheet.header_tables.len()
-            ));
+    // 表が頁をまたぐと、次の頁は見出しの無い数字の並びになります。事務の
+    // 帳票では読めません。頁割りが見出しのぶんだけ頭を下げてあるので、
+    // その空いた所に1頁目の見出しの行を写します。
+    for &t in &sheet.header_tables {
+        // その表の見出しの行(行 0)と、その表が載っている頁
+        let mut head: Vec<&kumihan::Line> = Vec::new();
+        let mut on: Vec<usize> = Vec::new();
+        let mut first = usize::MAX;
+        for (i, line) in sheet.lines.iter().enumerate() {
+            let Some((tn, ri, _)) = line.cell else { continue };
+            if tn != t {
+                continue;
+            }
+            let k = pages_of.get(i).copied().unwrap_or(1).max(1) - 1;
+            first = first.min(k);
+            if !on.contains(&k) {
+                on.push(k);
+            }
+            if ri == 0 {
+                head.push(line);
+            }
+        }
+        if head.is_empty() {
+            continue;
+        }
+        let base = head.iter().map(|l| l.y_mm).fold(f32::MAX, f32::min);
+        for k in on {
+            // **頁割りが場所を空けた頁にだけ**置きます。空いていない頁に
+            // 置くと重なります(2026-08-27 に実物で重ねた)
+            let space = full.header_h.get(k).copied().unwrap_or(0.0);
+            if k == first || space <= 0.0 {
+                continue;
+            }
+            let pp = paper_of(k);
+            let Some(p) = pages.get_mut(k) else { continue };
+            for line in &head {
+                for c in &line.cells {
+                    p.pieces.push(Piece {
+                        x_mm: pp.margin_mm + c.x_mm,
+                        y_mm: pp.height_mm - (pp.margin_mm + (line.y_mm - base)),
+                        size_pt: c.size_pt,
+                        text: c.ch.to_string(),
+                        color: c.fmt.color.clone(),
+                        w_mm: c.w_mm,
+                        underline: c.fmt.underline,
+                        strike: c.fmt.strike,
+                        bold: c.fmt.bold,
+                        highlight: c.fmt.highlight.clone(),
+                    });
+                }
+            }
         }
     }
 
