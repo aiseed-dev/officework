@@ -683,6 +683,36 @@ mod tests {
         );
     }
 
+    /// **太字が横組みの本文に出る。**
+    ///
+    /// 2026-08-27 に実物を見て気づきました。題も見出しも細いままで、
+    /// 試験は全部緑でした。**書いた物を見ないと分かりません。**
+    #[test]
+    fn bold_reaches_the_body_text() {
+        let doc = kumihan::adoc::parse("= 題\n\n*太い字*と普通の字。\n").expect("読めない");
+        let (sheet, page, bytes) = crate::doc_to_sheet(&doc, None).expect("組めない");
+        let pp = crate::Paper {
+            width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm,
+        };
+        let mut out = Vec::new();
+        sheet_to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut out)).expect("PDF が出ない");
+        // **太字は 0.12mm ずらして二度打ちます。** 同じ y で x だけ
+        // 0.12mm(= 0.34pt)違う置き方が並ぶのが、その跡です
+        let body = unpack(&out);
+        let places: Vec<(f32, f32)> = body
+            .lines()
+            .filter(|l| l.ends_with(" Tm"))
+            .filter_map(|l| {
+                let w: Vec<&str> = l.split_whitespace().collect();
+                Some((w.get(4)?.parse().ok()?, w.get(5)?.parse().ok()?))
+            })
+            .collect();
+        let twice = places.windows(2).any(|w| {
+            (w[0].1 - w[1].1).abs() < 0.01 && (w[1].0 - w[0].0 - 0.34).abs() < 0.05
+        });
+        assert!(twice, "二度打ちの跡が無い(太字が出ていない): {places:?}");
+    }
+
     /// 字が1つも無い紙でも落ちない
     #[test]
     fn an_empty_page_still_makes_a_pdf() {
@@ -790,11 +820,25 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
             }
             continue;
         }
-        // **続きの字はまとめて1つの塊**にします。1字ずつ置くと PDF が太ります
+        // **見た目が同じ続きの字だけ**まとめます。1字ずつ置くと PDF が
+        // 太りますが、まとめすぎると下線が隣の字まで伸び、太字が普通の字に
+        // 掛かります(2026-08-27 に実物を見て気づいた — 題も見出しも
+        // 細いままでした)
         let mut run: Option<Piece> = None;
         for c in &line.cells {
+            let same = run.as_ref().is_some_and(|r: &Piece| {
+                (r.size_pt - c.size_pt).abs() < 0.01
+                    && r.color == c.fmt.color
+                    && r.bold == c.fmt.bold
+                    && r.underline == c.fmt.underline
+                    && r.strike == c.fmt.strike
+                    && r.highlight == c.fmt.highlight
+            });
             match &mut run {
-                Some(r) if (r.size_pt - c.size_pt).abs() < 0.01 => r.text.push(c.ch),
+                Some(r) if same => {
+                    r.text.push(c.ch);
+                    r.w_mm += c.w_mm;
+                }
                 _ => {
                     if let Some(r) = run.take() {
                         p.pieces.push(r);
@@ -804,7 +848,12 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
                         y_mm: y,
                         size_pt: c.size_pt,
                         text: c.ch.to_string(),
-                ..Default::default()
+                        color: c.fmt.color.clone(),
+                        w_mm: c.w_mm,
+                        underline: c.fmt.underline,
+                        strike: c.fmt.strike,
+                        bold: c.fmt.bold,
+                        highlight: c.fmt.highlight.clone(),
                     });
                 }
             }
