@@ -46,12 +46,34 @@ pub fn write(
     page_h_mm: f32,
     font_data: &[u8],
 ) -> Result<Vec<u8>, String> {
+    let ps: Vec<Leaf> = pages
+        .iter()
+        .map(|v| Leaf {
+            pieces: v.iter().map(|p| Piece {
+                x_mm: p.x_mm, y_mm: p.y_mm, size_pt: p.size_pt, text: p.text.clone(),
+            }).collect(),
+            rules: Vec::new(),
+        })
+        .collect();
+    let mut out = Vec::new();
+    write_pages(&ps, page_w_mm, page_h_mm, font_data, &mut out)?;
+    Ok(out)
+}
+
+/// **紙の並びを PDF にして書き出す。** 字も罫線も置きます。
+pub fn write_pages<W: std::io::Write>(
+    pages: &[Leaf],
+    page_w_mm: f32,
+    page_h_mm: f32,
+    font_data: &[u8],
+    mut out: W,
+) -> Result<(), String> {
     let face = ttf_parser::Face::parse(font_data, 0).map_err(|e| e.to_string())?;
 
     // ① 使った字を集めて、字形の番号に直す。**同じ字は1つ**にまとめます
     let mut used: BTreeMap<char, u16> = BTreeMap::new();
     for page in pages {
-        for p in page {
+        for p in &page.pieces {
             for c in p.text.chars() {
                 if let Some(g) = face.glyph_index(c) {
                     used.insert(c, g.0);
@@ -90,16 +112,23 @@ pub fn write(
     pdf.pages(tree).kids(page_ids.iter().copied()).count(pages.len() as i32);
 
     let f_name = Name(b"F1");
-    for (i, pieces) in pages.iter().enumerate() {
-        let mut page = pdf.page(page_ids[i]);
-        page.media_box(Rect::new(0.0, 0.0, pt(page_w_mm), pt(page_h_mm)));
-        page.parent(tree);
-        page.contents(content_ids[i]);
-        page.resources().fonts().pair(f_name, font);
-        page.finish();
+    for (i, page) in pages.iter().enumerate() {
+        let mut pg = pdf.page(page_ids[i]);
+        pg.media_box(Rect::new(0.0, 0.0, pt(page_w_mm), pt(page_h_mm)));
+        pg.parent(tree);
+        pg.contents(content_ids[i]);
+        pg.resources().fonts().pair(f_name, font);
+        pg.finish();
 
         let mut c = Content::new();
-        for p in pieces {
+        // **罫線を先に引きます**(字の下)
+        for r in &page.rules {
+            c.set_line_width(pt(r.w_mm));
+            c.move_to(pt(r.x1_mm), pt(r.y1_mm));
+            c.line_to(pt(r.x2_mm), pt(r.y2_mm));
+            c.stroke();
+        }
+        for p in &page.pieces {
             // **字形の番号を2バイトで並べます。** CID フォントなので、
             // 字そのものではなく番号を書きます
             let mut bytes = Vec::with_capacity(p.text.chars().count() * 2);
@@ -192,7 +221,7 @@ pub fn write(
     let cmap = deflate(&to_unicode_cmap(&new_gid));
     pdf.cmap(to_uni, &cmap).filter(Filter::FlateDecode);
 
-    Ok(pdf.finish())
+    out.write_all(&pdf.finish()).map_err(|e| e.to_string())
 }
 
 /// zlib で縮める(PDF の `FlateDecode`)。
@@ -258,10 +287,136 @@ mod tests {
         assert!(out.len() < 200_000, "{} バイトある", out.len());
     }
 
+    /// **紙面をそのまま受けても、いまの道と同じ字が出る。**
+    ///
+    /// 大きさは 1,800 分の1 になります(書体を丸ごと埋めないため)。
+    #[test]
+    fn the_same_page_comes_out_far_smaller() {
+        let src = "= 四月の売上\n\n本文です。\n\n|===\n|品名 |金額\n\n|ペン |1,200\n|===\n";
+        let doc = kumihan::adoc::parse(src).expect("読めない");
+        let (sheet, page, bytes) = crate::doc_to_sheet(&doc, None).expect("組めない");
+        let pp = crate::Paper {
+            width_mm: page.w_mm,
+            height_mm: page.h_mm,
+            margin_mm: page.left_mm,
+        };
+        let mut old = Vec::new();
+        crate::to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut old)).expect("いまの道");
+        let mut new = Vec::new();
+        let lost = sheet_to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut new))
+            .expect("新しい道");
+        assert!(new.starts_with(b"%PDF"));
+        assert!(lost.is_empty(), "この文書で落ちる物があった: {lost:?}");
+        assert!(
+            new.len() * 100 < old.len(),
+            "小さくなっていない: いま {} / 新しい {}",
+            old.len(),
+            new.len()
+        );
+    }
+
     /// 字が1つも無い紙でも落ちない
     #[test]
     fn an_empty_page_still_makes_a_pdf() {
         let out = write(&[vec![]], 210.0, 297.0, &font()).expect("PDF が出ない");
         assert!(out.starts_with(b"%PDF"));
     }
+}
+
+// ───────────────────────────────────────── 紙面をそのまま受ける
+
+/// 引く線(表の罫線)。左下からの mm。
+pub struct Rule {
+    pub x1_mm: f32,
+    pub y1_mm: f32,
+    pub x2_mm: f32,
+    pub y2_mm: f32,
+    pub w_mm: f32,
+}
+
+/// **紙1枚に置く物。** `pdf_writer` の `Page` と名前がぶつかるので別の名前です
+#[derive(Default)]
+pub struct Leaf {
+    pub pieces: Vec<Piece>,
+    pub rules: Vec<Rule>,
+}
+
+/// **組み上がった紙面を PDF にする。**
+///
+/// `paper::to_pdf` と同じ物を受け、同じ頁割りを通ります。違うのは書き手だけ
+/// です — 書体を丸ごと埋めるか、使った字だけ埋めるか。
+///
+/// 画像と透かしとペンの筆はまだ載りません(次の段)。載らない物は
+/// **数えて返します**(黙って落としません)。
+pub fn sheet_to_pdf<W: std::io::Write>(
+    sheet: &kumihan::Sheet,
+    font_data: &[u8],
+    paper: crate::Paper,
+    out: W,
+) -> Result<Vec<String>, String> {
+    let (pages_of, offsets) = crate::paginate(sheet, paper);
+    let n = pages_of.iter().copied().max().unwrap_or(1);
+    let mut pages: Vec<Leaf> = (0..n).map(|_| Leaf::default()).collect();
+
+    // 行を頁へ配ります。**y は上からの mm** なので、PDF の下からの mm に直します
+    for (i, line) in sheet.lines.iter().enumerate() {
+        let k = pages_of.get(i).copied().unwrap_or(1).max(1) - 1;
+        let off = offsets.get(k).copied().unwrap_or(0.0);
+        let y = paper.height_mm - (line.y_mm - off);
+        let Some(p) = pages.get_mut(k) else { continue };
+        // **続きの字はまとめて1つの塊**にします。1字ずつ置くと PDF が太ります
+        let mut run: Option<Piece> = None;
+        for c in &line.cells {
+            match &mut run {
+                Some(r) if (r.size_pt - c.size_pt).abs() < 0.01 => r.text.push(c.ch),
+                _ => {
+                    if let Some(r) = run.take() {
+                        p.pieces.push(r);
+                    }
+                    run = Some(Piece {
+                        x_mm: c.x_mm,
+                        y_mm: y,
+                        size_pt: c.size_pt,
+                        text: c.ch.to_string(),
+                    });
+                }
+            }
+        }
+        if let Some(r) = run.take() {
+            p.pieces.push(r);
+        }
+    }
+
+    // 罫線。どの頁に載るかは y で決めます
+    for r in &sheet.rules {
+        let k = page_of(&offsets, r[1], paper.height_mm);
+        let off = offsets.get(k).copied().unwrap_or(0.0);
+        if let Some(p) = pages.get_mut(k) {
+            p.rules.push(Rule {
+                x1_mm: r[0],
+                y1_mm: paper.height_mm - (r[1] - off),
+                x2_mm: r[2],
+                y2_mm: paper.height_mm - (r[3] - off),
+                w_mm: 0.2,
+            });
+        }
+    }
+
+    let mut lost = Vec::new();
+    if !sheet.images.is_empty() {
+        lost.push(format!("画像 {} 件(この書き手ではまだ載りません)", sheet.images.len()));
+    }
+    write_pages(&pages, paper.width_mm, paper.height_mm, font_data, out)?;
+    Ok(lost)
+}
+
+/// その y がどの頁か(頁の頭の並びから引く)
+fn page_of(offsets: &[f32], y: f32, height_mm: f32) -> usize {
+    let mut k = 0;
+    for (i, off) in offsets.iter().enumerate() {
+        if y >= *off - 0.01 && y < off + height_mm {
+            k = i;
+        }
+    }
+    k
 }
