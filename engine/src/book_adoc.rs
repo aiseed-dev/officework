@@ -254,6 +254,7 @@ fn cellbox(text: &str, col_span: u8, v_merge: VMerge) -> Cellbox {
         paragraphs: Document::plain(text).paragraphs().cloned().collect(),
         col_span,
         v_merge,
+        ..Default::default()
     }
 }
 

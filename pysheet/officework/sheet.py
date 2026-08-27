@@ -531,6 +531,90 @@ class Hyperlink:
         return "<Hyperlink {!r}>".format(self.target)
 
 
+def _rgb_of(v):
+    """openpyxl の色を RRGGBB の字にする。
+
+    `Color(rgb="FF9C0006")` でも `"9C0006"` でも `"#9C0006"` でも受けます。
+    xlsx は頭2桁が透明度なので、8桁なら落とします。
+    """
+    if v is None:
+        return None
+    t = str(getattr(v, "rgb", None) or v).strip().lstrip("#")
+    if len(t) == 8:
+        t = t[2:]
+    return t or None
+
+
+class SheetProtection:
+    """シート全体の保護。openpyxl の `ws.protection` の役。
+
+    `ws.protection.sheet = True` で保護が掛かります。**パスワードは
+    掛けません**(掛けた振りもしません)。許す操作は openpyxl と同じ
+    「禁じる」向きの名前(`formatCells` など)でも読み書きできますが、
+    模型は「許す」向きなので、ここで裏返します。
+    """
+
+    # openpyxl の名前 → エンジンの名前。openpyxl は「禁じる」向き
+    KINSHI = {
+        "formatCells": "format_cells",
+        "formatColumns": "format_cols",
+        "formatRows": "format_rows",
+        "insertColumns": "insert_cols",
+        "insertRows": "insert_rows",
+        "insertHyperlinks": "insert_links",
+        "deleteColumns": "delete_cols",
+        "deleteRows": "delete_rows",
+        "sort": "sort",
+        "autoFilter": "autofilter",
+        "pivotTables": "pivot",
+        "objects": "objects",
+    }
+    # openpyxl の「許す」向きの名前
+    YURUSU = {
+        "selectLockedCells": "select_locked",
+        "selectUnlockedCells": "select_unlocked",
+    }
+
+    def __init__(self, sheet):
+        object.__setattr__(self, "_s", sheet)
+
+    @property
+    def sheet(self):
+        return self._s._s.protected
+
+    @sheet.setter
+    def sheet(self, v):
+        self._s._s.protected = bool(v)
+
+    # openpyxl は enable() / disable() も持つ
+    def enable(self):
+        self.sheet = True
+
+    def disable(self):
+        self.sheet = False
+
+    def __getattr__(self, name):
+        allow = set(self._s._s.protect_allow)
+        if name in self.KINSHI:
+            return self.KINSHI[name] not in allow      # 禁じる向き
+        if name in self.YURUSU:
+            return self.YURUSU[name] in allow
+        raise AttributeError(name)
+
+    def __setattr__(self, name, value):
+        if name in self.KINSHI or name in self.YURUSU:
+            uchi = self.KINSHI.get(name) or self.YURUSU[name]
+            hoshii = (not value) if name in self.KINSHI else bool(value)
+            allow = set(self._s._s.protect_allow)
+            allow.add(uchi) if hoshii else allow.discard(uchi)
+            self._s._s.protect_allow = sorted(allow)
+            return
+        object.__setattr__(self, name, value)
+
+    def __repr__(self):
+        return "<SheetProtection sheet={}>".format(self.sheet)
+
+
 class Protection:
     """セルの保護。openpyxl の Protection(locked) の形。
     シートを保護したとき、locked=False のセルだけが書ける(記入欄を開ける作法)。
@@ -551,9 +635,42 @@ def _is_date_fmt(nf):
     # y / m / d / h / s が残るか — openpyxl と同じ考え方の簡易版
     if not nf or nf == "General":
         return False
+    return any(t in _fmt_body(nf) for t in "ymdhs")
+
+
+def _serial_to_datetime(v, nf, epoch):
+    """Excel の通し番号を datetime に直す。openpyxl と同じ返し分けです。
+
+    日付だけの表示形式なら `date`、時刻だけなら `time`、両方あれば
+    `datetime` を返します。1900年うるう年の穴(通し番号 60 = 存在しない
+    1900-02-29)は openpyxl と同じく前へずらして扱います。
+    """
+    import datetime
+
+    body = _fmt_body(nf)
+    hi = any(t in body for t in "hs") or "m" in body and ":" in body
+    hizuke = any(t in body for t in "yd")
+    # 1904 起点でないブックは、通し番号 60 までが1日ずれています
+    days = int(v)
+    frac = float(v) - days
+    if epoch.year == 1899 and days < 60:
+        days += 1
+    try:
+        at = epoch + datetime.timedelta(days=days, seconds=round(frac * 86400))
+    except OverflowError:
+        return v
+    if hi and not hizuke:
+        return at.time()
+    if hizuke and not hi:
+        return at.date()
+    return at
+
+
+def _fmt_body(nf):
+    """表示形式から、引用と条件の中を除いた本体を小文字で返す"""
     out = []
     inq = inb = False
-    for ch in nf:
+    for ch in nf or "":
         if ch == '"':
             inq = not inq
         elif inq:
@@ -564,8 +681,7 @@ def _is_date_fmt(nf):
             inb = False
         elif not inb:
             out.append(ch)
-    s = "".join(out).lower()
-    return any(t in s for t in "ymdhs")
+    return "".join(out).lower()
 
 
 class Cell:
@@ -596,7 +712,20 @@ class Cell:
 
     @property
     def value(self):
-        return self.parent[self.coordinate]
+        """セルの値。**表示形式が日付なら datetime で返します。**
+
+        Excel の中では日付も数(起点からの通し番号)です。openpyxl は
+        表示形式を見て datetime に直してから返すので、こちらも同じに
+        します。書く側は先に済んでいて、読む側だけが数のままでした
+        (2026-08-27、test/basic_xlsx.py の唯一の赤)。
+        """
+        v = self.parent[self.coordinate]
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            return v
+        nf = self._fmt().get("number_format")
+        if not _is_date_fmt(nf):
+            return v
+        return _serial_to_datetime(v, nf, self.parent.parent.epoch)
 
     @value.setter
     def value(self, v):
@@ -747,10 +876,13 @@ class Cell:
 
     @property
     def is_date(self):
-        # 表示形式が日付で、中身が数(日付の通し番号)なら True
+        # 表示形式が日付で、中身が数(日付の通し番号)なら True。
+        # **`value` ではなく生の値を見ます** — `value` は日付の表示形式が
+        # あれば datetime に直して返すので、ここで使うと必ず False に
+        # なります(2026-08-27 に踏みました)
         if not _is_date_fmt(self._fmt().get("number_format")):
             return False
-        v = self.value
+        v = self.parent[self.coordinate]
         return isinstance(v, (int, float)) and not isinstance(v, bool)
 
     @property
@@ -1006,6 +1138,60 @@ class Sheet:
     def dimensions(self):
         return self.calculate_dimension()
 
+    # ── 条件付き書式 — openpyxl の Font / PatternFill をそのまま受ける ──
+    #
+    # エンジンの口は色を字で取ります。openpyxl の台本は `font=Font(...)`
+    # `fill=PatternFill(...)` と書くので、ここでほどいて渡します。
+    # **両方の書き方が通る** — 色を字で渡しても構いません
+
+    @staticmethod
+    def _mitame(font=None, fill=None, **kw):
+        """openpyxl の Font / PatternFill を、色と飾りの鍵にほどく"""
+        out = dict(kw)
+        if font is not None:
+            for uchi, honke in [("color", "color"), ("bold", "bold"),
+                                ("italic", "italic"), ("strike", "strike")]:
+                v = getattr(font, honke, None)
+                if v is not None and out.get(uchi) is None:
+                    out[uchi] = _rgb_of(v) if uchi == "color" else bool(v)
+            u = getattr(font, "underline", None)
+            if u is not None and out.get("underline") is None:
+                out["underline"] = u not in (None, "none", False)
+        if fill is not None and out.get("fill") is None:
+            out["fill"] = _rgb_of(getattr(fill, "fgColor", None) or getattr(fill, "start_color", None))
+        return {k: v for k, v in out.items() if v is not None}
+
+    def conditional_formatting_cellis(self, range, op, value, value2=None, **kw):
+        self._s.conditional_formatting_cellis(
+            range, op, str(value), None if value2 is None else str(value2),
+            **self._mitame(**kw))
+
+    def conditional_formatting_formula(self, range, formula, **kw):
+        self._s.conditional_formatting_formula(range, formula, **self._mitame(**kw))
+
+    def conditional_formatting_duplicates(self, range, unique=False, **kw):
+        self._s.conditional_formatting_duplicates(range, unique=unique, **self._mitame(**kw))
+
+    @property
+    def protection(self):
+        """シートの保護。`ws.protection.sheet = True` で掛かります"""
+        return SheetProtection(self)
+
+    def protect(self, *, allow=None):
+        """**シートを保護する。** `ws.protection.sheet = True` の短い書き方。
+
+        `allow` に許す操作の名前を渡すと、そこだけ開けます
+        (`ws.protect(allow=["sort", "autofilter"])`)。渡さなければ
+        エンジンの既定(ロックの有無にかかわらずセルは選べる)です。
+        """
+        self._s.protected = True
+        if allow is not None:
+            self._s.protect_allow = sorted(allow)
+
+    def unprotect(self):
+        """保護を外す。許す操作の設定はそのまま残します"""
+        self._s.protected = False
+
     def append(self, iterable):
         """使われている範囲の次の行に1行置く(openpyxl と同じ定義)。
 
@@ -1260,6 +1446,37 @@ class Sheet:
         return '<officework.sheet.Sheet "{}">'.format(self.name)
 
 
+class DocumentProperties:
+    """ブックの情報。openpyxl の `wb.properties` の役。
+
+    `wb.properties.title = "御見積書"` のように書きます。読める欄は
+    creator / title / subject / keywords / description の5つで、
+    openpyxl の別名(`author`)も受けます。
+    """
+
+    ALIAS = {"author": "creator"}
+    FIELDS = ("creator", "title", "subject", "keywords", "description")
+
+    def __init__(self, book):
+        object.__setattr__(self, "_b", book)
+
+    def __getattr__(self, name):
+        k = self.ALIAS.get(name, name)
+        if k in self.FIELDS:
+            return self._b._b.props().get(k) or None
+        raise AttributeError(name)
+
+    def __setattr__(self, name, value):
+        k = self.ALIAS.get(name, name)
+        if k in self.FIELDS:
+            self._b._b.set_props(**{k: "" if value is None else str(value)})
+            return
+        object.__setattr__(self, name, value)
+
+    def __repr__(self):
+        return "<DocumentProperties title={!r}>".format(self.title)
+
+
 class Book:
     """1冊のブック。エンジンの Book を包み、openpyxl の Workbook の口を足す。"""
 
@@ -1302,6 +1519,11 @@ class Book:
 
     def __len__(self):
         return len(self._b)
+
+    @property
+    def properties(self):
+        """ブックの情報(題・著者など)。openpyxl と同じ書き方です"""
+        return DocumentProperties(self)
 
     def __getattr__(self, name):
         if name.startswith("_"):  # 自分の畑(_b 等)で再帰しない

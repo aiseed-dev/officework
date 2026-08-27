@@ -168,10 +168,18 @@ pf.space_before = od.Pt(12)
 pf.space_after = 6          # 生の数(pt)でも受ける
 check(pf.space_before.pt == 12.0, f"段落前の余白が入らない: {pf.space_before}")
 check(pf.space_after.pt == 6.0, f"段落後の余白が入らない: {pf.space_after}")
-# 字下げは模型では段数(1段=全角2字)で、Length との対応をまだ決めて
-# いないので、ここは断ったままです
-raises(NotImplementedError, lambda: setattr(pf, "left_indent", 100),
-       "字下げを黙って受けている")
+# 字下げも 2026-08-27 に入りました。**左は模型では段数**(1段=全角2字)
+# なので、本文の既定の大きさ(10.5pt)で数えていちばん近い段に寄ります。
+# 1行目の字下げは docx と同じ長さのまま往復します
+pf.first_line_indent = od.Pt(10.5)
+check(abs(pf.first_line_indent.pt - 10.5) < 0.1,
+      f"1行目の字下げが入らない: {pf.first_line_indent}")
+pf.left_indent = od.Pt(21)          # 全角2字ぶん = 1段
+check(abs(pf.left_indent.pt - 21) < 0.1, f"左の字下げが入らない: {pf.left_indent}")
+pf.left_indent = od.Pt(42)          # 2段
+check(abs(pf.left_indent.pt - 42) < 0.1, f"2段目が入らない: {pf.left_indent}")
+pf.left_indent = None
+check(pf.left_indent.pt == 0.0, f"字下げが外れない: {pf.left_indent}")
 
 # ── 無指定は無指定のまま往復する(2026-08-13 に塞いだ穴)──────
 # 指定の無い文字の大きさが往復で 10.5pt に焼き付いていた(w:sz を必ず

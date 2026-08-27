@@ -326,6 +326,55 @@ impl PyBook {
     }
 
 
+    /// **ブックの情報**(docProps/core.xml)を dict で読む。
+    ///
+    /// 鍵: creator / title / subject / keywords / description。
+    /// creator は `;` 区切りで何人でも入る決めなので、そのまま繋いで返します。
+    fn props<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+        let g = lock(&self.inner)?;
+        let p = &g.book.props;
+        let d = PyDict::new(py);
+        d.set_item("creator", p.creators.join("; "))?;
+        d.set_item("title", &p.title)?;
+        d.set_item("subject", &p.subject)?;
+        d.set_item("keywords", &p.keywords)?;
+        d.set_item("description", &p.description)?;
+        Ok(d)
+    }
+
+    /// ブックの情報を書く。**渡した鍵だけ**を替えます。
+    #[pyo3(signature = (**kw))]
+    fn set_props(&self, kw: Option<&Bound<'_, PyDict>>) -> PyResult<()> {
+        let Some(kw) = kw else { return Ok(()) };
+        let mut g = lock(&self.inner)?;
+        for (k, v) in kw.iter() {
+            let k: String = k.extract()?;
+            let v: String = if v.is_none() { String::new() } else { v.extract()? };
+            let p = &mut g.book.props;
+            match k.as_str() {
+                // 1つの欄に `;` 区切りで何人でも入ります。空なら誰も居ない
+                "creator" => {
+                    p.creators = v
+                        .split(';')
+                        .map(|x| x.trim().to_string())
+                        .filter(|x| !x.is_empty())
+                        .collect()
+                }
+                "title" => p.title = v,
+                "subject" => p.subject = v,
+                "keywords" => p.keywords = v,
+                "description" => p.description = v,
+                _ => {
+                    return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                        "ブックの情報に「{k}」はありません。使えるのは \
+                         creator / title / subject / keywords / description"
+                    )))
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// 名前付きセル様式を**作る**(openpyxl の add_named_style)。
     /// 書式は `set_fmt` と同じ鍵の dict で渡す。保存で styles.xml の
     /// cellStyleXfs / cellStyles に**追記**する(原本の索引は動かさない)。
@@ -687,6 +736,313 @@ impl PySheet {
         };
         self.with(|s| {
             s.freeze = f;
+            Ok(())
+        })
+    }
+
+    /// **条件付き書式 — 数の比較。** openpyxl の CellIsRule に当たります。
+    ///
+    /// `op` は greaterThan / lessThan / equal / greaterThanOrEqual /
+    /// lessThanOrEqual / notEqual / between / notBetween。
+    /// `between` のときだけ `value2` を使います。
+    #[pyo3(signature = (range, op, value, value2=None, *, color=None, fill=None,
+                        bold=None, italic=None, underline=None, strike=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn conditional_formatting_cellis(
+        &self,
+        range: &str,
+        op: &str,
+        value: &str,
+        value2: Option<&str>,
+        color: Option<String>,
+        fill: Option<String>,
+        bold: Option<bool>,
+        italic: Option<bool>,
+        underline: Option<bool>,
+        strike: Option<bool>,
+    ) -> PyResult<()> {
+        let n = |v: &str| -> PyResult<f64> {
+            v.trim().parse::<f64>().map_err(|_| {
+                PyValueError::new_err(format!("比べる相手は数です: {v:?}"))
+            })
+        };
+        let kind = match op {
+            "between" | "notBetween" => {
+                let b = value2.ok_or_else(|| {
+                    PyValueError::new_err("between には value2 も要ります")
+                })?;
+                book::CondKind::Between(n(value)?, n(b)?, op == "notBetween")
+            }
+            "greaterThan" => book::CondKind::Cmp(book::CondOp::Gt, n(value)?),
+            "lessThan" => book::CondKind::Cmp(book::CondOp::Lt, n(value)?),
+            "equal" => book::CondKind::Cmp(book::CondOp::Eq, n(value)?),
+            "greaterThanOrEqual" => book::CondKind::Cmp(book::CondOp::Ge, n(value)?),
+            "lessThanOrEqual" => book::CondKind::Cmp(book::CondOp::Le, n(value)?),
+            "notEqual" => book::CondKind::Cmp(book::CondOp::Ne, n(value)?),
+            _ => {
+                return Err(PyValueError::new_err(format!(
+                    "比べ方に「{op}」はありません。使えるのは greaterThan / \
+                     lessThan / equal / greaterThanOrEqual / lessThanOrEqual / \
+                     notEqual / between / notBetween"
+                )))
+            }
+        };
+        self.add_cond(range, kind, color, fill, bold, italic, underline, strike)
+    }
+
+    /// **条件付き書式 — 数式。** 真になったセルに書式が付きます。
+    /// 式は範囲の左上を錨にした書き方(`WEEKDAY($A4,2)>=6`)で、`=` は付けません。
+    #[pyo3(signature = (range, formula, *, color=None, fill=None,
+                        bold=None, italic=None, underline=None, strike=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn conditional_formatting_formula(
+        &self,
+        range: &str,
+        formula: &str,
+        color: Option<String>,
+        fill: Option<String>,
+        bold: Option<bool>,
+        italic: Option<bool>,
+        underline: Option<bool>,
+        strike: Option<bool>,
+    ) -> PyResult<()> {
+        let f = formula.trim().trim_start_matches('=').to_string();
+        self.add_cond(
+            range,
+            book::CondKind::Formula(f),
+            color, fill, bold, italic, underline, strike,
+        )
+    }
+
+    /// **条件付き書式 — 重複する値。** `unique=True` で「一意の値」に変わります
+    #[pyo3(signature = (range, *, unique=false, color=None, fill=None,
+                        bold=None, italic=None, underline=None, strike=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn conditional_formatting_duplicates(
+        &self,
+        range: &str,
+        unique: bool,
+        color: Option<String>,
+        fill: Option<String>,
+        bold: Option<bool>,
+        italic: Option<bool>,
+        underline: Option<bool>,
+        strike: Option<bool>,
+    ) -> PyResult<()> {
+        self.add_cond(
+            range,
+            book::CondKind::Dup(unique),
+            color, fill, bold, italic, underline, strike,
+        )
+    }
+
+    /// **条件付き書式 — データバー。** 最小〜最大を棒の長さにします。
+    /// 棒は書式ではなく塗りなので、色以外の指定は取りません。
+    #[pyo3(signature = (range, *, color="638EC6"))]
+    fn conditional_formatting_databar(&self, range: &str, color: &str) -> PyResult<()> {
+        let c = color.trim_start_matches('#').to_string();
+        self.add_cond(range, book::CondKind::Bar(c), None, None, None, None, None, None)
+    }
+
+    /// **条件付き書式 — カラースケール。** 小さい値から大きい値へ色を渡します。
+    /// `mid` を渡さなければ2色です(Excel の既定は3色)。
+    #[pyo3(signature = (range, *, start="F8696B", mid=Some("FFEB84".to_string()), end="63BE7B"))]
+    fn conditional_formatting_colorscale(
+        &self,
+        range: &str,
+        start: &str,
+        mid: Option<String>,
+        end: &str,
+    ) -> PyResult<()> {
+        let h = |v: &str| v.trim_start_matches('#').to_string();
+        let kind = book::CondKind::Scale(
+            h(start),
+            mid.as_deref().map(h),
+            h(end),
+        );
+        self.add_cond(range, kind, None, None, None, None, None, None)
+    }
+
+    /// 用紙の大きさ(Excel の番号。9 = A4、8 = A3、11 = A5)
+    #[getter]
+    fn paper_size(&self) -> PyResult<Option<u32>> {
+        self.with(|s| Ok(s.paper_size))
+    }
+
+    #[setter]
+    fn set_paper_size(&self, value: Option<u32>) -> PyResult<()> {
+        self.with(|s| {
+            s.paper_size = value;
+            Ok(())
+        })
+    }
+
+    /// 用紙の向き。`"portrait"`(縦)か `"landscape"`(横)
+    #[getter]
+    fn orientation(&self) -> PyResult<&'static str> {
+        self.with(|s| Ok(if s.landscape { "landscape" } else { "portrait" }))
+    }
+
+    #[setter]
+    fn set_orientation(&self, value: &str) -> PyResult<()> {
+        let yoko = match value {
+            "landscape" => true,
+            "portrait" => false,
+            _ => {
+                return Err(PyValueError::new_err(format!(
+                    "向きは portrait か landscape です: {value:?}"
+                )))
+            }
+        };
+        self.with(|s| {
+            s.landscape = yoko;
+            Ok(())
+        })
+    }
+
+    /// **紙1枚に収める。** True で横1枚・縦は成り行き(Excel の既定と同じ)。
+    /// 枚数を細かく決めたいときは (横, 縦) の組で渡します。0 は「成り行き」。
+    #[getter]
+    fn fit_to_page(&self) -> PyResult<bool> {
+        self.with(|s| Ok(s.fit_to_w.is_some() || s.fit_to_h.is_some()))
+    }
+
+    #[setter]
+    fn set_fit_to_page(&self, value: &Bound<'_, PyAny>) -> PyResult<()> {
+        let (w, h) = if let Ok((w, h)) = value.extract::<(u32, u32)>() {
+            (Some(w), Some(h))
+        } else if value.extract::<bool>()? {
+            (Some(1), Some(0))
+        } else {
+            (None, None)
+        };
+        self.with(|s| {
+            s.fit_to_w = w;
+            s.fit_to_h = h;
+            Ok(())
+        })
+    }
+
+    /// シート見出しの色(RRGGBB)。None で色なし
+    #[getter]
+    fn tab_color(&self) -> PyResult<Option<String>> {
+        self.with(|s| Ok(s.tab_color.clone()))
+    }
+
+    #[setter]
+    fn set_tab_color(&self, value: Option<String>) -> PyResult<()> {
+        let c = value.map(|v| v.trim_start_matches('#').to_string());
+        self.with(|s| {
+            s.tab_color = c;
+            Ok(())
+        })
+    }
+
+    /// **改ページを入れる。** `row` はその行の**上**で切ります(1 起点)。
+    fn add_row_break(&self, row: u32) -> PyResult<()> {
+        if row < 2 {
+            return Err(PyValueError::new_err("1行目の上では切れません"));
+        }
+        self.with(|s| {
+            let r = row - 1;
+            if !s.row_breaks.contains(&r) {
+                s.row_breaks.push(r);
+                s.row_breaks.sort_unstable();
+            }
+            Ok(())
+        })
+    }
+
+    /// 縦の改ページ。`col` は列の名前("D")で、その列の**左**で切ります
+    fn add_col_break(&self, col: &str) -> PyResult<()> {
+        let c = parse_ref(&format!("{col}1"))?.col;
+        if c == 0 {
+            return Err(PyValueError::new_err("A 列の左では切れません"));
+        }
+        self.with(|s| {
+            if !s.col_breaks.contains(&c) {
+                s.col_breaks.push(c);
+                s.col_breaks.sort_unstable();
+            }
+            Ok(())
+        })
+    }
+
+    /// **自動フィルター。** 範囲("A3:E7")を入れると見出しに ▼ が出ます。
+    /// None で外します。中では見出し付きの表として持ちます(xlsx も同じ形)。
+    #[getter]
+    fn auto_filter(&self) -> PyResult<Option<String>> {
+        self.with(|s| {
+            Ok(s.tables
+                .iter()
+                .find(|t| t.filter)
+                .map(|t| format!("{}:{}", t.a.a1(), t.b.a1())))
+        })
+    }
+
+    #[setter]
+    fn set_auto_filter(&self, value: Option<&str>) -> PyResult<()> {
+        let hani = value.map(parse_range).transpose()?;
+        self.with(|s| {
+            s.tables.retain(|t| !t.filter);
+            if let Some((a, b)) = hani {
+                // **見た目の付かない表**として持ちます。帯や色は付けません —
+                // 頼まれたのは絞り込みのボタンだけです
+                s.tables.push(book::TableDef {
+                    name: format!("_filter{}", s.tables.len() + 1),
+                    style: None,
+                    a,
+                    b,
+                    header: true,
+                    totals: false,
+                    banded_rows: false,
+                    banded_cols: false,
+                    first_col: false,
+                    last_col: false,
+                    filter: true,
+                });
+            }
+            Ok(())
+        })
+    }
+
+    /// **シートを保護しているか。** xlsx の sheetProtection です。
+    ///
+    /// パスワードは掛けません(掛けた振りもしません)。効き目は
+    /// 「ロックを外していないセルを編集させない」で、外し方は
+    /// セルごとの `protection` です(openpyxl と同じ二段構え)。
+    #[getter]
+    fn protected(&self) -> PyResult<bool> {
+        self.with(|s| Ok(s.protected))
+    }
+
+    #[setter]
+    fn set_protected(&self, value: bool) -> PyResult<()> {
+        self.with(|s| {
+            s.protected = value;
+            Ok(())
+        })
+    }
+
+    /// **保護中でも許す操作。** 名前の並びで読み書きします。
+    ///
+    /// 使える名前: select_locked / select_unlocked / format_cells /
+    /// format_cols / format_rows / insert_cols / insert_rows /
+    /// insert_links / delete_cols / delete_rows / sort / autofilter /
+    /// pivot / objects。
+    ///
+    /// xlsx は「禁じる」向きで書きますが、ここは画面のチェックボックスと
+    /// 同じ**「許す」向き**です(模型の決め)。
+    #[getter]
+    fn protect_allow(&self) -> PyResult<Vec<String>> {
+        self.with(|s| Ok(allow_names(&s.protect_allow)))
+    }
+
+    #[setter]
+    fn set_protect_allow(&self, value: Vec<String>) -> PyResult<()> {
+        let a = allow_from(&value)?;
+        self.with(|s| {
+            s.protect_allow = a;
             Ok(())
         })
     }
@@ -1600,4 +1956,92 @@ fn _sheet(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // 副モジュールとして建て、officework/_doc.py が `officework.doc` の名前で受ける
     doc::register(m)?;
     Ok(())
+}
+
+/// 許す操作の名前と旗の行き来。**名前は1箇所で決める** — 読みと書きで
+/// 綴りがずれると、保存して開き直したときだけ設定が消えます。
+fn allow_pairs(a: &mut book::ProtectAllow) -> Vec<(&'static str, &mut bool)> {
+    vec![
+        ("select_locked", &mut a.select_locked),
+        ("select_unlocked", &mut a.select_unlocked),
+        ("format_cells", &mut a.format_cells),
+        ("format_cols", &mut a.format_cols),
+        ("format_rows", &mut a.format_rows),
+        ("insert_cols", &mut a.insert_cols),
+        ("insert_rows", &mut a.insert_rows),
+        ("insert_links", &mut a.insert_links),
+        ("delete_cols", &mut a.delete_cols),
+        ("delete_rows", &mut a.delete_rows),
+        ("sort", &mut a.sort),
+        ("autofilter", &mut a.autofilter),
+        ("pivot", &mut a.pivot),
+        ("objects", &mut a.objects),
+    ]
+}
+
+fn allow_names(a: &book::ProtectAllow) -> Vec<String> {
+    let mut c = a.clone();
+    allow_pairs(&mut c)
+        .into_iter()
+        .filter(|(_, on)| **on)
+        .map(|(k, _)| k.to_string())
+        .collect()
+}
+
+fn allow_from(names: &[String]) -> PyResult<book::ProtectAllow> {
+    let mut a = book::ProtectAllow::default();
+    {
+        let mut pairs = allow_pairs(&mut a);
+        for (_, on) in pairs.iter_mut() {
+            **on = false;
+        }
+        for n in names {
+            match pairs.iter_mut().find(|(k, _)| *k == n.as_str()) {
+                Some((_, on)) => **on = true,
+                None => {
+                    let all: Vec<&str> = allow_pairs(&mut book::ProtectAllow::default())
+                        .into_iter()
+                        .map(|(k, _)| k)
+                        .collect();
+                    return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                        "許す操作に「{n}」はありません。使えるのは {}",
+                        all.join(" / ")
+                    )));
+                }
+            }
+        }
+    }
+    Ok(a)
+}
+
+impl PySheet {
+    /// 条件付き書式を1つ足す。**見た目の受け取りは1箇所**にまとめます —
+    /// 種類ごとに書くと、鍵の綴りが少しずつずれます
+    #[allow(clippy::too_many_arguments)]
+    fn add_cond(
+        &self,
+        range: &str,
+        kind: book::CondKind,
+        color: Option<String>,
+        fill: Option<String>,
+        bold: Option<bool>,
+        italic: Option<bool>,
+        underline: Option<bool>,
+        strike: Option<bool>,
+    ) -> PyResult<()> {
+        let h = |v: Option<String>| v.map(|x| x.trim_start_matches('#').to_string());
+        let (a, b) = parse_range(range)?;
+        let look = book::CondLook {
+            color: h(color),
+            fill: h(fill),
+            bold,
+            italic,
+            underline,
+            strike,
+        };
+        self.with(|s| {
+            s.cond.push(book::CondRule { range: (a, b), kind, look });
+            Ok(())
+        })
+    }
 }

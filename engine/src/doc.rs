@@ -503,7 +503,7 @@ pub enum VMerge {
 }
 
 /// 表の1セル。中は段落の列(セルの中にも段落がある)
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Cellbox {
     pub paragraphs: Vec<Paragraph>,
     /// 横の結合(docx の w:gridSpan)。このセルが占める格子の列数。
@@ -511,6 +511,29 @@ pub struct Cellbox {
     pub col_span: u8,
     /// 縦の結合
     pub v_merge: VMerge,
+    /// **セルの中の縦の揃え**(docx の `w:tcPr/w:vAlign`)。
+    ///
+    /// 表計算と同じ型を使います([`book::VAlign`])。docx の既定は上揃えで、
+    /// 表計算の既定は下揃えなので、**docx の既定は `Top`** です
+    /// (読み書きの所で `None` に畳みます)。
+    pub valign: book::VAlign,
+}
+
+/// **既定の縦位置は上揃え。**
+///
+/// `book::VAlign` の既定は下揃えですが、それは表計算の決めです。docx の
+/// 既定は上揃えなので、`derive` に任せると新しいセルが全部
+/// `w:vAlign val="bottom"` になります(2026-08-27 に実物の docx を
+/// python-docx で開いて気づきました)。
+impl Default for Cellbox {
+    fn default() -> Self {
+        Cellbox {
+            paragraphs: Vec::new(),
+            col_span: 0,
+            v_merge: VMerge::None,
+            valign: book::VAlign::Top,
+        }
+    }
 }
 
 impl Cellbox {
@@ -526,6 +549,11 @@ pub struct Table {
     pub rows: Vec<Vec<Cellbox>>,
     /// 列の幅(mm)。docx の `w:gridCol`。空なら等分
     pub col_mm: Vec<f32>,
+    /// **行の高さ(mm)**。docx の `w:trPr/w:trHeight`。空なら中身なり。
+    ///
+    /// 行より短ければ足りない分は既定、長ければ余りは捨てます
+    /// (行を足し引きしても添字がずれないように、`rows` とは別に持ちます)。
+    pub row_mm: Vec<f32>,
     /// **列の幅の割合**(AsciiDoc の `[cols="1,3"]`)。2026-08-18。
     ///
     /// adoc は幅を mm で言わず、比で言います。紙の幅が決まって初めて mm に
@@ -749,6 +777,45 @@ pub struct StyleInfo {
     pub kind: String,
     /// 字の見た目。**設定した物だけ**を持ちます(None は「言わない」)
     pub look: StyleLook,
+}
+
+/// **Word が「使ったときに作る」組み込みスタイル。**
+///
+/// Word の空の文書には 33 個しかスタイルが入っていませんが、リボンの
+/// スタイル一覧にはもっと並んでいます。並んでいるだけの物(潜在スタイル)は、
+/// **貼った瞬間に styles.xml へ書き足されます**。だから Word では
+/// 「List Bullet が無いので貼れない」ということが起きません。
+///
+/// ここはその一覧です。名前を渡すと (styleId, w:name) を返します。
+/// 知らない名前には `None` を返すので、打ち間違いは今までどおり断ります
+/// (2026-08-27、python-docx と同じ台本を通すために足しました)。
+pub fn latent_style(name: &str) -> Option<(&'static str, &'static str)> {
+    // (styleId, w:name)。**両方 Word の綴りのまま**でないと、読み手が
+    // 組み込みの物だと見てくれません
+    const LATENT: &[(&str, &str)] = &[
+        ("ListBullet", "List Bullet"),
+        ("ListBullet2", "List Bullet 2"),
+        ("ListBullet3", "List Bullet 3"),
+        ("ListNumber", "List Number"),
+        ("ListNumber2", "List Number 2"),
+        ("ListNumber3", "List Number 3"),
+        ("ListParagraph", "List Paragraph"),
+        ("Caption", "Caption"),
+        ("Subtitle", "Subtitle"),
+        ("IntenseQuote", "Intense Quote"),
+        ("NoSpacing", "No Spacing"),
+        ("Header", "header"),
+        ("Footer", "footer"),
+        ("FootnoteText", "footnote text"),
+        ("TOCHeading", "TOC Heading"),
+        ("TOC1", "toc 1"),
+        ("TOC2", "toc 2"),
+        ("TOC3", "toc 3"),
+    ];
+    LATENT
+        .iter()
+        .find(|(id, n)| name.eq_ignore_ascii_case(id) || name.eq_ignore_ascii_case(n))
+        .copied()
 }
 
 /// スタイルが持つ字の見た目。三択(入・切・言わない)です。

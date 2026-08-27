@@ -170,6 +170,33 @@ class Run:
         self._r.strike = bool(v)
 
     @property
+    def highlight(self):
+        """蛍光ペンの色の名前。`run.font.highlight_color` の短い書き方"""
+        return self._r.highlight
+
+    @highlight.setter
+    def highlight(self, v):
+        self._r.highlight = None if v in (None, "none") else str(v)
+
+    @property
+    def superscript(self):
+        """上付き(x²)"""
+        return self._r.superscript
+
+    @superscript.setter
+    def superscript(self, v):
+        self._r.superscript = bool(v)
+
+    @property
+    def subscript(self):
+        """下付き(H₂O)"""
+        return self._r.subscript
+
+    @subscript.setter
+    def subscript(self, v):
+        self._r.subscript = bool(v)
+
+    @property
     def color(self):
         return self._r.color
 
@@ -570,12 +597,19 @@ def _align_word(v):
     return str(getattr(v, "name", v)).lower()
 
 
+# 全角1字の幅(pt)。本文の既定の大きさ 10.5pt で数えます
+_ZEN = 10.5
+
+
 class ParagraphFormat:
     """python-docx の paragraph_format の役。模型が持つ物だけ —
-    alignment・line_spacing・page_break_before・space_before・space_after。
-    字下げ(left_indent)は模型では段数(1段=全角2字)で、python-docx の
-    Length との対応をまだ決めていないので、読みは None・書きは正直に断る
-    (黙って捨てない)。"""
+    alignment・line_spacing・page_break_before・space_before・space_after・
+    first_line_indent・left_indent。
+
+    **左の字下げは模型では段数**(1段=全角2字)です。python-docx は長さで
+    書くので、本文の既定の大きさ(10.5pt)で数えて行き来します。段の途中の
+    値はいちばん近い段に寄ります(2026-08-27 に決めました)。1行目の
+    字下げ(first_line_indent)は docx と同じ長さで持つので、そのままです。"""
 
     __slots__ = ("_p",)
 
@@ -607,6 +641,28 @@ class ParagraphFormat:
         self._p.page_break_before = bool(v)
 
     @property
+    def first_line_indent(self):
+        """1行目の字下げ。正で字下げ、負でぶら下げ(python-docx と同じ)"""
+        return Length.from_pt(self._p.first_line_indent)
+
+    @first_line_indent.setter
+    def first_line_indent(self, v):
+        self._p.first_line_indent = 0.0 if v is None else _to_pt(v)
+
+    @property
+    def left_indent(self):
+        """左の字下げ。**模型は段数(1段=全角2字)**なので、本文の字の
+        大きさから pt に直して返します。字の大きさを持たない段落は
+        10.5pt(既定)で数えます。"""
+        return Length.from_pt(self._p.indent_level * _ZEN * 2)
+
+    @left_indent.setter
+    def left_indent(self, v):
+        # 全角2字ぶんで割り切れない値は、いちばん近い段に寄せます
+        pt = 0.0 if v is None else _to_pt(v)
+        self._p.indent_level = max(0, min(9, round(pt / (_ZEN * 2))))
+
+    @property
     def space_before(self):
         """段落の前の空き。**pt で返します**(python-docx は Length)。"""
         return Length.from_pt(self._p.space_before)
@@ -622,17 +678,6 @@ class ParagraphFormat:
     @space_after.setter
     def space_after(self, v):
         self._p.space_after = _to_pt(v)
-
-    @property
-    def left_indent(self):
-        return None
-
-    @left_indent.setter
-    def left_indent(self, v):
-        raise NotImplementedError(
-            "字下げは模型では段数(1段=全角2字)— python-docx の Length との"
-            "対応はまだ決めていない(台帳)"
-        )
 
 
 class Paragraph:
@@ -753,6 +798,29 @@ class Cell:
     def __init__(self, raw):
         self._c = raw
 
+    def merge(self, other):
+        """このセルから相手のセルまでを1つに結合する(python-docx と同じ)"""
+        return Cell(self._c.merge(other._c))
+
+    @property
+    def vertical_alignment(self):
+        """セルの中の縦位置。"top" / "center" / "bottom"(docx の既定は上)"""
+        return self._c.vertical_alignment
+
+    @vertical_alignment.setter
+    def vertical_alignment(self, v):
+        self._c.vertical_alignment = _valign_word(v)
+
+    @property
+    def width(self):
+        """セルの幅。docx は列で持つので、この列の幅です"""
+        w = self._c.width
+        return Length.from_mm(w) if w else None
+
+    @width.setter
+    def width(self, v):
+        self._c.width = 0.0 if v is None else _to_mm(v)
+
     @property
     def text(self):
         return self._c.text
@@ -769,6 +837,41 @@ class Cell:
         return repr(self._c)
 
 
+def _valign_word(v):
+    """縦位置の言い方をそろえる。
+
+    python-docx は `WD_ALIGN_VERTICAL.CENTER` のような列挙で渡します。
+    名前でも字でも受けて、エンジンの言葉に直します。
+    """
+    if v is None:
+        return "top"
+    t = str(getattr(v, "name", v)).strip().lower()
+    return {"middle": "center", "both": "center"}.get(t, t)
+
+
+class _HeadFoot(str):
+    """ヘッダー / フッター。**字そのものとして振る舞います。**
+
+    `print(d.header)` で中身が出て、`d.header.text = "…"` でも書けます。
+    python-docx は段落の並びを返しますが、こちらは1行の字で足ります
+    (中で改行すれば段落が分かれます)。
+    """
+
+    def __new__(cls, raw, which):
+        self = super().__new__(cls, getattr(raw, which))
+        self._raw = raw
+        self._which = which
+        return self
+
+    @property
+    def text(self):
+        return str(self)
+
+    @text.setter
+    def text(self, v):
+        setattr(self._raw, self._which, "" if v is None else str(v))
+
+
 class Row:
     """表の1行。"""
 
@@ -782,6 +885,16 @@ class Row:
 
     def __getitem__(self, i):
         return Cell(self._row[i])
+
+    @property
+    def height(self):
+        """行の高さ。指定なしは None(python-docx と同じ)"""
+        h = self._row.height
+        return Length.from_mm(h) if h else None
+
+    @height.setter
+    def height(self, v):
+        self._row.height = 0.0 if v is None else _to_mm(v)
 
     @property
     def cells(self):
@@ -970,11 +1083,21 @@ class Doc:
 
     @property
     def header(self):
-        return self._d.header
+        """ヘッダー。`d.header.text = "…"` でも `d.header = "…"` でも書けます"""
+        return _HeadFoot(self._d, "header")
+
+    @header.setter
+    def header(self, v):
+        self._d.header = "" if v is None else str(v)
 
     @property
     def footer(self):
-        return self._d.footer
+        """フッター。ページ番号は `#`、総ページ数は `##` で書きます"""
+        return _HeadFoot(self._d, "footer")
+
+    @footer.setter
+    def footer(self, v):
+        self._d.footer = "" if v is None else str(v)
 
     def find(self, needle):
         return [Paragraph(p) for p in self._d.find(needle)]

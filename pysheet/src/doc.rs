@@ -160,6 +160,13 @@ fn marks_to_text(s: &str) -> String {
     s.replace(kumihan::PAGES_MARK, "##").replace(kumihan::PAGE_MARK, "#")
 }
 
+/// [`marks_to_text`] の逆。**`##` を先に見ます** — `#` から先に直すと
+/// `##` が `#` 2つになり、総ページ数がページ番号2つに化けます。
+fn text_to_marks(s: &str) -> String {
+    s.replace("##", &kumihan::PAGES_MARK.to_string())
+        .replace('#', &kumihan::PAGE_MARK.to_string())
+}
+
 /// 段落の字を丸ごと入れ替える。**段落の性質(見出し・寄せ・箇条書き・字下げ・
 /// しおり・図・アンカー)はそのまま**で、run だけを1本に置き換える。
 ///
@@ -456,17 +463,33 @@ impl PyDoc {
             .join("\n"))
     }
 
-    /// ヘッダーの字(読むだけ)。保存では原本の物がそのまま残る。
-    /// ページ番号は `#`、総ページ数は `##` に置いて返す([`marks_to_text`])。
+    /// ヘッダーの字。ページ番号は `#`、総ページ数は `##` で書きます
+    /// ([`marks_to_text`])。改行があれば段落が分かれます。
     #[getter]
     fn header(&self) -> PyResult<String> {
         Ok(marks_to_text(&kumihan::paras_text(&lock(&self.inner)?.doc.header.paragraphs)))
     }
 
-    /// フッターの字(読むだけ)。ヘッダーと同じくページ番号は `#`。
+    #[setter]
+    fn set_header(&self, text: &str) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        let t = text_to_marks(text);
+        kumihan::set_paras_text(&mut g.doc.header.paragraphs, &t);
+        Ok(())
+    }
+
+    /// フッターの字。ヘッダーと同じくページ番号は `#`。
     #[getter]
     fn footer(&self) -> PyResult<String> {
         Ok(marks_to_text(&kumihan::paras_text(&lock(&self.inner)?.doc.footer.paragraphs)))
+    }
+
+    #[setter]
+    fn set_footer(&self, text: &str) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        let t = text_to_marks(text);
+        kumihan::set_paras_text(&mut g.doc.footer.paragraphs, &t);
+        Ok(())
     }
 
     /// `needle` を含む段落を、本文・表のセルの区別なく上から順に返す。
@@ -1446,6 +1469,19 @@ impl PyParagraph {
                             && (s.kind == "paragraph" || s.kind.is_empty())
                     })
                     .map(|s| s.id.clone());
+                // **Word が使ったときに作る組み込みスタイル**なら、ここで
+                // 作ります(List Bullet など)。Word と同じ振る舞いです
+                let found = found.or_else(|| {
+                    kumihan::latent_style(value).map(|(id, name)| {
+                        g.doc.styles_new.push(kumihan::StyleInfo {
+                            id: id.to_string(),
+                            name: name.to_string(),
+                            kind: "paragraph".into(),
+                            ..Default::default()
+                        });
+                        id.to_string()
+                    })
+                });
                 match found {
                     Some(id) => (kumihan::ParaStyle::Body, Some(id)),
                     None => {
@@ -1510,6 +1546,42 @@ impl PyParagraph {
             )));
         }
         self.with_mut(|p| p.line_spacing = value)
+    }
+
+    /// **1行目の字下げ(pt)。** 正で字下げ、負でぶら下げです。
+    ///
+    /// 日本の書類は本文の1行目を全角1字ぶん下げます(10.5pt の字なら
+    /// 10.5pt)。模型は docx と同じ twip で持っているので、ここで直します。
+    #[getter]
+    fn first_line_indent(&self) -> PyResult<f32> {
+        self.with(|p| p.first_line_twips as f32 / 20.0)
+    }
+
+    #[setter]
+    fn set_first_line_indent(&self, value: f32) -> PyResult<()> {
+        if !(-200.0..=200.0).contains(&value) {
+            return Err(PyValueError::new_err(format!(
+                "1行目の字下げは -200〜200pt: {value}"
+            )));
+        }
+        self.with_mut(|p| p.first_line_twips = (value * 20.0).round() as i32)
+    }
+
+    /// **左のインデント(段数)。** 1段 = 全角2字ぶんです。
+    ///
+    /// docx は twip で持ちますが、模型は段数です(日本の書類の慣習)。
+    /// pt との対応は本文の字の大きさで変わるので、ここは段数のまま渡します。
+    #[getter]
+    fn indent_level(&self) -> PyResult<u32> {
+        self.with(|p| p.indent as u32)
+    }
+
+    #[setter]
+    fn set_indent_level(&self, value: u32) -> PyResult<()> {
+        if value > 9 {
+            return Err(PyValueError::new_err(format!("インデントは 0〜9 段: {value}")));
+        }
+        self.with_mut(|p| p.indent = value as u8)
     }
 
     /// **段落の前の空き(pt)**(台帳 #5。2026-08-27)。
@@ -1729,6 +1801,39 @@ impl PyRun {
     #[setter]
     fn set_strike(&self, value: bool) -> PyResult<()> {
         self.with_mut(|r| r.fmt.strike = value)
+    }
+
+    /// 上付き(x²)。docx の `w:vertAlign w:val="superscript"`
+    #[getter]
+    fn superscript(&self) -> PyResult<bool> {
+        self.with(|r| r.fmt.superscript)
+    }
+
+    #[setter]
+    fn set_superscript(&self, value: bool) -> PyResult<()> {
+        // 上と下は同時に付きません。片方を立てたらもう片方は寝かせます
+        self.with_mut(|r| {
+            r.fmt.superscript = value;
+            if value {
+                r.fmt.subscript = false;
+            }
+        })
+    }
+
+    /// 下付き(H₂O)
+    #[getter]
+    fn subscript(&self) -> PyResult<bool> {
+        self.with(|r| r.fmt.subscript)
+    }
+
+    #[setter]
+    fn set_subscript(&self, value: bool) -> PyResult<()> {
+        self.with_mut(|r| {
+            r.fmt.subscript = value;
+            if value {
+                r.fmt.superscript = false;
+            }
+        })
     }
 
     #[getter]
@@ -2105,6 +2210,39 @@ impl PyRow {
         })
     }
 
+    /// **行の高さ(mm)。** 0 は「中身なり」(指定なし)です。
+    ///
+    /// docx は「少なくともこの高さ」で書きます。字が入り切らない行は
+    /// 指定より高くなります(Word と同じで、字を切りません)。
+    #[getter]
+    fn height(&self) -> PyResult<f32> {
+        let g = lock(&self.inner)?;
+        Ok(g.table(self.block)
+            .and_then(|t| t.row_mm.get(self.row).copied())
+            .unwrap_or(0.0))
+    }
+
+    #[setter]
+    fn set_height(&self, value: f32) -> PyResult<()> {
+        if !(0.0..=1000.0).contains(&value) {
+            return Err(PyValueError::new_err(format!("行の高さは 0〜1000mm: {value}")));
+        }
+        let mut g = lock(&self.inner)?;
+        let Some(Block::Table(t)) = g.doc.blocks.get_mut(self.block) else {
+            return Err(PyIndexError::new_err("この表はもう文書に無い"));
+        };
+        // **行と同じ長さに伸ばしてから**入れます。足りないまま添字で
+        // 触ると、後ろの行だけ高さを付けたときに前の行がずれます
+        if t.row_mm.len() < t.rows.len() {
+            t.row_mm.resize(t.rows.len(), 0.0);
+        }
+        match t.row_mm.get_mut(self.row) {
+            Some(h) => *h = value,
+            None => return Err(PyIndexError::new_err("その行は表の外です")),
+        }
+        Ok(())
+    }
+
     /// セルの一覧。
     #[getter]
     fn cells(&self) -> PyResult<Vec<PyCell>> {
@@ -2147,6 +2285,129 @@ impl PyCell {
 
 #[pymethods]
 impl PyCell {
+    /// **このセルから相手のセルまでを1つに結合する。**
+    ///
+    /// python-docx と同じく、結合した左上のセルを返します。横の結合は
+    /// docx の `w:gridSpan`、縦は `w:vMerge` です。呑まれたセルの字は
+    /// 消えます(Excel の結合と同じ — 左上だけが残ります)。
+    ///
+    /// **同じ行か同じ列だけ**です。四角い塊の結合(2行2列など)は、
+    /// 行ごとに横を結んでから縦に結びます。
+    fn merge(&self, other: &PyCell) -> PyResult<PyCell> {
+        if self.block != other.block {
+            return Err(PyValueError::new_err("別の表のセルとは結合できません"));
+        }
+        let (r0, r1) = (self.row.min(other.row), self.row.max(other.row));
+        let (c0, c1) = (self.col.min(other.col), self.col.max(other.col));
+        if r0 != r1 && c0 != c1 {
+            return Err(PyValueError::new_err(
+                "結合できるのは同じ行か同じ列です。四角い塊は、行ごとに横を\
+                 結んでから縦に結んでください",
+            ));
+        }
+        let mut g = lock(&self.inner)?;
+        let Some(Block::Table(t)) = g.doc.blocks.get_mut(self.block) else {
+            return Err(PyIndexError::new_err("この表はもう文書に無い"));
+        };
+        if r1 >= t.rows.len() || t.rows[r0..=r1].iter().any(|r| c1 >= r.len()) {
+            return Err(PyIndexError::new_err("そのセルは表の外です"));
+        }
+        if r0 == r1 {
+            // 横に結ぶ。**呑まれたセルは格子から取り除きます** — 残すと
+            // 読み手には「3つ分の1つ + 空2つ = 5列」に見えます
+            // (2026-08-27、python-docx で開いて気づきました)
+            let haba = (c1 - c0 + 1) as u8;
+            t.rows[r0].drain((c0 + 1)..=c1);
+            t.rows[r0][c0].col_span = haba;
+        } else {
+            // 縦に結ぶ。先頭が Start、続きが Continue
+            t.rows[r0][c0].v_merge = kumihan::VMerge::Start;
+            for r in (r0 + 1)..=r1 {
+                t.rows[r][c0] = kumihan::Cellbox {
+                    v_merge: kumihan::VMerge::Continue,
+                    ..Default::default()
+                };
+            }
+        }
+        Ok(PyCell {
+            inner: Arc::clone(&self.inner),
+            block: self.block,
+            row: r0,
+            col: c0,
+        })
+    }
+
+    /// **セルの中の縦位置。** `"top"` / `"center"` / `"bottom"`。
+    /// docx の既定は `"top"` です(表計算の既定の下揃えとは違います)。
+    #[getter]
+    fn vertical_alignment(&self) -> PyResult<&'static str> {
+        let g = lock(&self.inner)?;
+        let c = g
+            .table(self.block)
+            .and_then(|t| t.rows.get(self.row))
+            .and_then(|r| r.get(self.col))
+            .ok_or_else(|| PyIndexError::new_err("このセルはもう文書に無い"))?;
+        Ok(match c.valign {
+            book::VAlign::Middle => "center",
+            book::VAlign::Bottom => "bottom",
+            _ => "top",
+        })
+    }
+
+    #[setter]
+    fn set_vertical_alignment(&self, value: &str) -> PyResult<()> {
+        let v = match value {
+            "top" => book::VAlign::Top,
+            "center" | "middle" => book::VAlign::Middle,
+            "bottom" => book::VAlign::Bottom,
+            _ => {
+                return Err(PyValueError::new_err(format!(
+                    "縦位置は top / center / bottom です: {value:?}"
+                )))
+            }
+        };
+        let mut g = lock(&self.inner)?;
+        let Some(Block::Table(t)) = g.doc.blocks.get_mut(self.block) else {
+            return Err(PyIndexError::new_err("この表はもう文書に無い"));
+        };
+        match t.rows.get_mut(self.row).and_then(|r| r.get_mut(self.col)) {
+            Some(c) => c.valign = v,
+            None => return Err(PyIndexError::new_err("そのセルは表の外です")),
+        }
+        Ok(())
+    }
+
+    /// **セルの幅(mm)。** docx は幅を**列**で持つので、これはこのセルが
+    /// 居る列の幅です。同じ列の別の行に入れても同じ所を触ります
+    /// (python-docx も同じ振る舞いです)。
+    #[getter]
+    fn width(&self) -> PyResult<f32> {
+        let g = lock(&self.inner)?;
+        Ok(g.table(self.block)
+            .and_then(|t| t.col_mm.get(self.col).copied())
+            .unwrap_or(0.0))
+    }
+
+    #[setter]
+    fn set_width(&self, value: f32) -> PyResult<()> {
+        if !(0.0..=1000.0).contains(&value) {
+            return Err(PyValueError::new_err(format!("列の幅は 0〜1000mm: {value}")));
+        }
+        let mut g = lock(&self.inner)?;
+        let Some(Block::Table(t)) = g.doc.blocks.get_mut(self.block) else {
+            return Err(PyIndexError::new_err("この表はもう文書に無い"));
+        };
+        let haba = t.rows.iter().map(|r| r.len()).max().unwrap_or(0);
+        if t.col_mm.len() < haba {
+            t.col_mm.resize(haba, 0.0);
+        }
+        match t.col_mm.get_mut(self.col) {
+            Some(w) => *w = value,
+            None => return Err(PyIndexError::new_err("その列は表の外です")),
+        }
+        Ok(())
+    }
+
     /// セルの字(段落を改行で繋いだもの)。
     #[getter]
     fn text(&self) -> PyResult<String> {

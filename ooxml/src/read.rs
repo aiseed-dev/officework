@@ -359,6 +359,8 @@ pub(super) struct TblBuild {
     align: Option<Align>,
     /// 列幅の固定(w:tblLayout type="fixed")
     fixed_layout: bool,
+    /// 行の高さ(mm)。w:trPr の w:trHeight から
+    row_mm: Vec<f32>,
 }
 
 /// twip → mm(1twip = 1/20pt)
@@ -1239,6 +1241,10 @@ pub(super) fn parse_document_rels(
     // いま読んでいるセルの結合(w:tcPr の gridSpan / vMerge)
     let mut cell_span = 0u8;
     let mut cell_vmerge = VMerge::None;
+    // セルの縦位置。**docx の既定は上揃え**(表計算の既定の下揃えとは違う)
+    let mut cell_valign = book::VAlign::Top;
+    // 行の高さ(twip)。w:trPr の w:trHeight
+    let mut row_twips: Option<u32> = None;
     // **無指定は None のまま持つ。** ここで数を入れると、往復で
     // 「10.5pt 指定」が焼き付く(2026-08-13、本家 python-docx で発覚)
     let mut size_pt: Option<f32> = None;
@@ -1515,6 +1521,16 @@ pub(super) fn parse_document_rels(
                             // val 無しは「続き」(docx の既定)
                             _ => VMerge::Continue,
                         };
+                    },
+                    b"vAlign" => if stack.last().is_some() {
+                        cell_valign = match attr(&e, "val").as_deref() {
+                            Some("center") => book::VAlign::Middle,
+                            Some("bottom") => book::VAlign::Bottom,
+                            _ => book::VAlign::Top,
+                        };
+                    },
+                    b"trHeight" => if stack.last().is_some() {
+                        row_twips = attr(&e, "val").and_then(|v| v.parse().ok());
                     },
                     b"sectPr" => {
                         // 節の設定。用紙・余白のほか、ヘッダーの参照も入っている。
@@ -1879,6 +1895,16 @@ pub(super) fn parse_document_rels(
                             _ => VMerge::Continue,
                         };
                     },
+                    b"vAlign" => if stack.last().is_some() {
+                        cell_valign = match attr(&e, "val").as_deref() {
+                            Some("center") => book::VAlign::Middle,
+                            Some("bottom") => book::VAlign::Bottom,
+                            _ => book::VAlign::Top,
+                        };
+                    },
+                    b"trHeight" => if stack.last().is_some() {
+                        row_twips = attr(&e, "val").and_then(|v| v.parse().ok());
+                    },
                     b"drawing" | b"pict" | b"object" =>
                         rep.note(&format!("w:{}", String::from_utf8_lossy(&n))),
                     // 脚注・文末脚注の印。**模型に持てない** — 本文を作り直すときに
@@ -2048,19 +2074,31 @@ pub(super) fn parse_document_rels(
                             paragraphs: paras,
                             col_span: cell_span,
                             v_merge: cell_vmerge,
+                            valign: cell_valign,
                         });
                         cell_span = 0;
                         cell_vmerge = VMerge::None;
+                        cell_valign = book::VAlign::Top;
                     },
                     b"tr" => if let Some(b) = stack.last_mut() {
                         let row = std::mem::take(&mut b.row);
                         b.rows.push(row);
+                        // 指定の無い行は 0(= 中身なり)。**行と同じ長さで
+                        // 持つ**ので、後ろの行だけ高さが付いていても
+                        // 添字がずれません
+                        b.row_mm.push(row_twips.take().map_or(0.0, |t| twip_mm(t as f32)));
                     },
                     b"tbl" => {
                         if let Some(b) = stack.pop() {
                             let tb = Table {
                                 rows: b.rows,
                                 col_mm: b.col_mm,
+                                // どの行にも指定が無ければ、持たないのと同じ
+                                row_mm: if b.row_mm.iter().all(|h| *h <= 0.0) {
+                                    Vec::new()
+                                } else {
+                                    b.row_mm
+                                },
                                 // 役割は `.sheet.adoc` の印なので docx には無い
                                 role: None,
                                 // docx は幅を mm で持つので、割合は空のまま

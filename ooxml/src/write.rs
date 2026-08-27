@@ -984,13 +984,47 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
                     }
                 }
                 w.write_event(Event::End(BytesEnd::new("w:tblGrid"))).unwrap();
-                for row in &t.rows {
+                for (ri, row) in t.rows.iter().enumerate() {
                     w.write_event(Event::Start(BS::new("w:tr"))).unwrap();
+                    // 行の高さ。0 は「中身なり」なので何も書きません
+                    let h = t.row_mm.get(ri).copied().unwrap_or(0.0);
+                    if h > 0.0 {
+                        w.write_event(Event::Start(BS::new("w:trPr"))).unwrap();
+                        let mut e = BS::new("w:trHeight");
+                        let tw = (h * 1440.0 / 25.4).round().max(1.0) as u32;
+                        let tw = tw.to_string();
+                        e.push_attribute(("w:val", tw.as_str()));
+                        // **少なくともこの高さ**(atLeast)。中身が入り切らない
+                        // ときに字を切らないための決めで、Word の既定と同じです
+                        e.push_attribute(("w:hRule", "atLeast"));
+                        w.write_event(Event::Empty(e)).unwrap();
+                        w.write_event(Event::End(BytesEnd::new("w:trPr"))).unwrap();
+                    }
+                    // 格子の何列目かは、前のセルが呑んだ分も数えます
+                    let mut ci = 0usize;
                     for cell in row {
                         w.write_event(Event::Start(BS::new("w:tc"))).unwrap();
                         // セル結合を返す(読んだものを捨てると様式の枠が壊れる)
-                        if cell.col_span > 1 || cell.v_merge != VMerge::None {
+                        // セルの幅。**格子(w:tblGrid)だけでは足りません** —
+                        // Word も python-docx もセルごとの `w:tcW` を見ます
+                        // (2026-08-27 に python-docx で開いて気づきました)
+                        let cw: f32 = (0..cell.span())
+                            .filter_map(|k| t.col_mm.get(ci + k))
+                            .sum();
+                        if cell.col_span > 1
+                            || cell.v_merge != VMerge::None
+                            || cell.valign != book::VAlign::Top
+                            || cw > 0.0
+                        {
                             w.write_event(Event::Start(BS::new("w:tcPr"))).unwrap();
+                            if cw > 0.0 {
+                                let mut e = BS::new("w:tcW");
+                                let tw = (cw * 1440.0 / 25.4).round().max(1.0) as u32;
+                                let tw = tw.to_string();
+                                e.push_attribute(("w:w", tw.as_str()));
+                                e.push_attribute(("w:type", "dxa"));
+                                w.write_event(Event::Empty(e)).unwrap();
+                            }
                             if cell.col_span > 1 {
                                 let mut g = BS::new("w:gridSpan");
                                 let v = cell.col_span.to_string();
@@ -1009,6 +1043,17 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
                                 }
                                 VMerge::None => {}
                             }
+                            // 縦位置。**docx の既定は上揃え**なので、上のときは
+                            // 何も書きません(書くと原本と差分が出ます)
+                            if let Some(v) = match cell.valign {
+                                book::VAlign::Middle => Some("center"),
+                                book::VAlign::Bottom => Some("bottom"),
+                                _ => None,
+                            } {
+                                let mut e = BS::new("w:vAlign");
+                                e.push_attribute(("w:val", v));
+                                w.write_event(Event::Empty(e)).unwrap();
+                            }
                             w.write_event(Event::End(BytesEnd::new("w:tcPr"))).unwrap();
                         }
                         if cell.paragraphs.is_empty() {
@@ -1020,6 +1065,7 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
                             }
                         }
                         w.write_event(Event::End(BytesEnd::new("w:tc"))).unwrap();
+                        ci += cell.span();
                     }
                     w.write_event(Event::End(BytesEnd::new("w:tr"))).unwrap();
                 }

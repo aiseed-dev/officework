@@ -887,12 +887,14 @@ if pydocx is not None:
         # 本家の enum をそのまま代入しても効く
         d_r[1].alignment = WD_ALIGN_PARAGRAPH.RIGHT
         check(d_r[1].align == "right", "本家の enum の代入が効かない")
-        # 模型に無い物は黙って捨てない
-        try:
-            d_r[1].paragraph_format.space_before = 12
-            check(False, "space_before が黙って通った")
-        except NotImplementedError:
-            pass
+        # 段落の前後の余白と字下げは 2026-08-27 に模型へ入りました。
+        # 断るのをやめたので、往復するかを見ます
+        pf_r = d_r[1].paragraph_format
+        pf_r.space_before = 12
+        check(pf_r.space_before.pt == 12.0, f"段落前の余白: {pf_r.space_before}")
+        pf_r.first_line_indent = 10.5
+        check(abs(pf_r.first_line_indent.pt - 10.5) < 0.1,
+              f"1行目の字下げ: {pf_r.first_line_indent}")
         try:
             d_h.add_heading("題", level=0)
             check(False, "level=0(Title)が黙って通った")
