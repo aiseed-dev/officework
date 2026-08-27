@@ -54,6 +54,19 @@ jobs:
               exit 1
               ;;
           esac
+          # **タグと版が同じかを見ます。**
+          #
+          # PyPI へ上がるのは `pysheet/Cargo.toml` の版で、タグの名前では
+          # ありません。ずれると「v0.5.0 のタグを押したのに 0.4.9 が上がる」
+          # が起き、しかも PyPI は同じファイルを2度受け取らないので**やり直しが
+          # 効きません**。先に止めます(2026-08-28)
+          TAG="${GITHUB_REF#refs/tags/v}"
+          VER=$(grep -m1 '^version' pysheet/Cargo.toml | cut -d'"' -f2)
+          if [ "$TAG" != "$VER" ]; then
+            echo "::error::タグ v$TAG と pysheet/Cargo.toml の版 $VER が違います。どちらかを直してください"
+            exit 1
+          fi
+          echo "タグと版は $VER で揃っています"
 
   # 各プラットフォームの wheel。abi3-py310 なので **1枚で 3.10 以降を賄う**
   wheels:
@@ -109,7 +122,16 @@ jobs:
           python -m venv kensho-venv
           PY=kensho-venv/bin/python
           [ -f "$PY" ] || PY=kensho-venv/Scripts/python
-          "$PY" -m pip install --quiet --find-links pysheet/dist officework
+          # **組んだ wheel だけを入れます。**
+          #
+          # `--find-links` だけだと PyPI にも取りに行きます。しかも pip は
+          # 前触れの版(0.5.0b1 など)を既定で飛ばすので、β を出すときは
+          # **古い安定版が入り、それを検査して通してしまいます**
+          # (2026-08-28 に手元で踏みました。0.5.0b1 を組んだのに 0.4.0 が
+          #  入り、画面が入っている・98MB という検査結果が出ました)。
+          # `--no-index` で外を見ないようにし、`--pre` で前触れも受けます
+          "$PY" -m pip install --quiet --no-index --pre \
+              --find-links pysheet/dist officework
           "$PY" - <<'PYEOF'
           import os, tempfile
           from officework import sheet

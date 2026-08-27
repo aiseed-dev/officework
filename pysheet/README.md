@@ -15,6 +15,13 @@ Written in Rust (15,000+ lines, 240+ tests), exposed to Python through PyO3.
 $ pip install officework
 ```
 
+**0.5.0 is in beta.** It is published as `0.5.0b1`, so the line above still
+gives you 0.4.0. To try the beta:
+
+```console
+$ pip install --pre officework
+```
+
 Wheels are abi3 (CPython 3.10+), so one wheel per platform covers every
 version; Linux, macOS and Windows are published. The wheel is **just the
 engines and the bridge** — a few MB, no GUI. `pandas` is imported only if you
@@ -121,6 +128,44 @@ Since 0.3.0 the wheel also typesets **equations**: `officework.tex` takes
 LaTeX and returns SVG or PNG. With TeX installed it typesets there (matrix
 columns align); without it, matplotlib's mathtext does the job; with
 neither, it refuses with the reason — never a silent empty picture.
+
+New in 0.5.0, the engines **print**. `save()` looks at the extension, so a
+workbook or a document becomes a PDF without an app, an office suite or a
+print driver:
+
+```python
+b.save("quote.pdf")                      # the sheet, paginated, with headers
+d.save("report.pdf")                     # the document, typeset
+```
+
+The fonts are subsetted, so a Japanese page is around 25 KB rather than the
+20 MB a whole CJK font would cost. Neither `openpyxl` nor `python-docx` can
+do this at all.
+
+Charts are drawn the same way — as shapes, by this library, not as an
+instruction for Excel to render later. So they appear in the PDF and on the
+screen too, not only after you open the file in Excel:
+
+```python
+ws.add_chart("bar", data="B3:C8", categories="A4:A8", at="A10",
+             title="Target and actual")
+```
+
+For finer control there is a small chart layer whose shape is borrowed from
+d3 — build a scale, then place marks through it:
+
+```python
+from officework import chart
+c = chart.Chart(340, 180, title="Attainment")
+x = c.band(branches)
+y = c.linear([0, 150])
+c.axis_left(y, fmt=lambda v: f"{int(v)}%")
+c.bars(x, y, rates, color="70AD47", labels=True)
+c.place(ws, "A20")
+```
+
+What you give up is a live Excel chart: ours is fixed at the data it was drawn
+from. Redraw it to update it.
 
 New in 0.4.0, the bridge reaches the rest of a cell's formatting —
 `align`, `valign`, `indent`, `rotation`, `shrink`, `locked`,

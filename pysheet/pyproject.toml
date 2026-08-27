@@ -30,7 +30,11 @@ license-files = ["LICENSE"]
 authors = [{ name = "Yasuhiro Niji" }]
 keywords = ["xlsx", "docx", "excel", "word", "spreadsheet", "office", "openpyxl", "python-docx", "xlwings"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    # β です(2026-08-28)。0.5.0 は「バグが多すぎるので延期」(2026-08-25)
+    # のあと、受け入れ試験のやり直しで穴を埋めました。**版の番号にも β を
+    # 付けます**(0.5.0b1)ので、`pip install officework` では入りません。
+    # 試す人は `pip install --pre officework` と打ちます
+    "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
     "Programming Language :: Rust",
     "Programming Language :: Python :: 3",
