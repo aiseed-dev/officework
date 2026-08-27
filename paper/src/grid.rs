@@ -327,6 +327,13 @@ impl Ink<'_> {
     fn fill(&mut self, x: f32, y: f32, w: f32, h: f32, rgb: (f32, f32, f32)) {
         self.leaf.fills.push(pdfw::Fill { x_mm: x, y_mm: y, w_mm: w, h_mm: h, rgb });
     }
+
+    /// 好きな形の塗り(円グラフの扇・傾いた棒)
+    fn poly(&mut self, points: Vec<(f32, f32)>, rgb: (f32, f32, f32)) {
+        if points.len() >= 3 {
+            self.leaf.polys.push(pdfw::Poly { points, rgb });
+        }
+    }
 }
 
 /// **紙を足していく先。** 頁を足す所を1本にしておくと、頁割りに手を
@@ -442,7 +449,16 @@ fn draw_sheet(
     setup: &PrintSetup,
     carry: bool,
 ) -> (std::ops::Range<usize>, u32, Margins) {
-    let (ext_rows, ext_cols) = grid.extent();
+    let (mut ext_rows, mut ext_cols) = grid.extent();
+    // **図形の置き場まで紙を伸ばします。** 中身のあるセルより下に置いた図は、
+    // 伸ばさないと最後の行の所へ寄ってしまい、図が全部重なります
+    // (2026-08-27 に図を紙で見て気づきました)
+    for sp in grid.shapes.iter().chain(grid.shapes_new.iter()) {
+        let mm = 25.4 / 96.0;
+        let shita = sp.at.row + ((sp.dy_px + sp.height_px) * mm / ROW_MM).ceil() as u32 + 1;
+        ext_rows = ext_rows.max(shita);
+        ext_cols = ext_cols.max(sp.at.col + 1);
+    }
     // 印刷範囲があればそこだけ(行も列も)。**複数あれば域ごとに刷る**
     let areas: Vec<(u32, u32, u32, u32)> = if setup.areas.is_empty() {
         vec![(0, ext_rows, 0, ext_cols)]
@@ -732,6 +748,9 @@ fn draw_sheet(
         }
     };
 
+    // 行 → (紙の番号, 上端の mm)。図形をその紙へ置くために使います
+    let mut row_place: std::collections::BTreeMap<u32, (usize, f32)> =
+        std::collections::BTreeMap::new();
     let mut y_used = 0.0f32; // このページで使った高さ
     // 束(横のページ)ごとに全行を出す。束が変わるたび新しい紙へ
     for (bi, &(r0, r1, bc0, bn)) in bands.iter().enumerate() {
@@ -769,30 +788,61 @@ fn draw_sheet(
             }
         }
         let y_top = paper.height_mm - mt - y_used;
+        // **その行がどの紙のどこに出たか**を控えます。図形の置き場はここから
+        // 引きます(2026-08-27 まで図は1枚目にしか出ませんでした)
+        if bi == 0 {
+            row_place.entry(r).or_insert((cur, y_top));
+        }
         y_used += rh;
         draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
     }
     }
-    // 図形(挿した分も読んだ分も)。**輪郭だけ**を紙に出す(塗りはまだ —
-    // printpdf の多角形塗りを持ち込むまで。黙って出したことにしない)
+    // 図形(挿した分も読んだ分も)。塗りと輪郭を紙に出します
     {
-        // セル→1ページ目基準のmm(改ページをまたぐ図形の紙送りはまだ)
-        let cell_mm = |at: book::Pos| -> (f32, f32) {
-            let x: f32 = (c0..at.col.min(c0 + ncols))
-                .map(|c| col_mm[(c - c0) as usize])
+        // セル → (紙の番号, 左からの mm, 上端の mm)。
+        // **行の控えから引く**ので、改ページの後ろに置いた図もその紙に出ます
+        let cell_at = |at: book::Pos| -> (usize, f32, f32) {
+            let x: f32 = (c0..at.col)
+                .map(|c| {
+                    col_mm
+                        .get((c - c0) as usize)
+                        .copied()
+                        .unwrap_or(COL_MM * scale)
+                })
                 .sum();
-            let y: f32 = (r0..at.row.min(r1)).map(row_mm).sum();
-            (ml + x, paper.height_mm - mt - y)
+            // 控えに無い行(隠した行など)は、手前のいちばん近い行から数えます
+            let (page, y_top) = match row_place.range(..=at.row).next_back() {
+                Some((r, (p, y))) => (*p, *y - (*r..at.row).map(row_mm).sum::<f32>()),
+                None => (first, paper.height_mm - mt),
+            };
+            (page, ml + x, y_top)
         };
-        let l1 = &mut board.ink(first);
-        for sp in grid.shapes.iter().chain(grid.shapes_new.iter()) {
-            let (x, y_top) = cell_mm(sp.at);
+        // 同じ紙の図をまとめて描きます(筆を借り直す回数を減らします)
+        let mut kumi: Vec<(usize, &book::SheetShape)> = grid
+            .shapes
+            .iter()
+            .chain(grid.shapes_new.iter())
+            .map(|sp| (cell_at(sp.at).0, sp))
+            .collect();
+        kumi.sort_by_key(|(p, _)| *p);
+        let mut ima = usize::MAX;
+        let mut ink_box: Option<Ink<'_>> = None;
+        for (page, sp) in kumi {
+            if page != ima {
+                ima = page;
+                ink_box = Some(board.ink(page));
+            }
+            let l1 = ink_box.as_mut().expect("筆");
+            let (_, x, y_top) = cell_at(sp.at);
             let mm = 25.4 / 96.0; // px → mm
             // アンカーのセルからの px のずらしも紙に写す
             let (x, y_top) =
                 (x + sp.dx_px * mm * scale, y_top - sp.dy_px * mm * scale);
             let (w, h) = (sp.width_px * mm * scale, sp.height_px * mm * scale);
-            let pen = sp.line.as_deref().and_then(hex_rgb).unwrap_or((0.0, 0.0, 0.0));
+            // **線の指定が無ければ引きません**(模型の決め)。前は黒に
+            // 落としていたので、字を置くだけの箱にも枠が出ていました
+            // (2026-08-27 に図を紙で見て気づきました)
+            let pen = sp.line.as_deref().and_then(hex_rgb);
             let pen_w = sp.line_w.max(0.1) * scale * 25.4 / 72.0;
             let pts: Vec<(f32, f32)> = match sp.kind.as_str() {
                 "ellipse" => (0..=24)
@@ -830,13 +880,15 @@ fn draw_sheet(
                         let (cx_, ty) = pp.at;
                         let (l, r) = (x + cx_ * w - bw / 2.0, x + cx_ * w + bw / 2.0);
                         let t = y_top - ty * h;
-                        for (x1, y1, x2, y2) in [
-                            (l, t, r, t),
-                            (r, t, r, base_y),
-                            (r, base_y, l, base_y),
-                            (l, base_y, l, t),
-                        ] {
-                            l1.line(x1, y1, x2, y2, pen_w, pen);
+                        if let Some(pen) = pen {
+                            for (x1, y1, x2, y2) in [
+                                (l, t, r, t),
+                                (r, t, r, base_y),
+                                (r, base_y, l, base_y),
+                                (l, base_y, l, t),
+                            ] {
+                                l1.line(x1, y1, x2, y2, pen_w, pen);
+                            }
                         }
                     }
                     continue;
@@ -910,17 +962,47 @@ fn draw_sheet(
                     p.1 = ccy - ry;
                 }
             }
-            let closed = !matches!(sp.kind.as_str(), "line" | "spark" | "ink" | "marker");
-            // 折れ線は辺ごとに引きます。閉じる形なら最後の点から先頭へ1本
-            let ends = if closed { pts.len() } else { pts.len().saturating_sub(1) };
-            for i in 0..ends {
-                let (x1, y1) = pts[i];
-                let (x2, y2) = pts[(i + 1) % pts.len()];
-                l1.line(x1, y1, x2, y2, pen_w, pen);
+            // 閉じるかどうか。**`path` は塗りがあるときだけ閉じます** —
+            // 塗らない折れ線を閉じると、終点から始点へ1本余計に引かれます
+            // (2026-08-27 に折れ線の図を紙で見て気づきました)
+            let closed = match sp.kind.as_str() {
+                "line" | "spark" | "ink" | "marker" => false,
+                "path" => sp.fill.is_some(),
+                _ => true,
+            };
+            // **塗ってから輪郭。** 2026-08-27 まで紙は輪郭だけでした。
+            // 図をこちらで描く(発注者「チャートは python による独自描画」)
+            // には、棒も扇も中が塗れないと形になりません
+            if closed {
+                if let Some(c) = sp.fill.as_deref().and_then(hex_rgb) {
+                    l1.poly(pts.clone(), c);
+                }
             }
-            // 図形の中の文字(テキストボックス)。左上から素直に
+            // 折れ線は辺ごとに引きます。閉じる形なら最後の点から先頭へ1本
+            if let Some(pen) = pen {
+                let ends = if closed { pts.len() } else { pts.len().saturating_sub(1) };
+                for i in 0..ends {
+                    let (x1, y1) = pts[i];
+                    let (x2, y2) = pts[(i + 1) % pts.len()];
+                    l1.line(x1, y1, x2, y2, pen_w, pen);
+                }
+            }
+            // 図形の中の文字(テキストボックス)。揃えの指定があれば従います
             if let Some(t) = &sp.text {
-                l1.text(t, 9.0 * scale, x + 1.5, y_top - 4.5, (0.0, 0.0, 0.0), false);
+                let pt = sp.text_fmt.size_pt.unwrap_or(9.0) * scale;
+                let haba: f32 = t
+                    .chars()
+                    .map(|c| if c.is_ascii() { 0.55 } else { 1.0 })
+                    .sum::<f32>()
+                    * pt * 25.4 / 72.0;
+                let tx = match sp.text_fmt.align {
+                    book::HAlign::Center => x + (w - haba) / 2.0,
+                    book::HAlign::Right => x + w - haba - 1.0,
+                    _ => x + 1.5,
+                };
+                // 縦は箱の真ん中に寄せます(図の題も軸の目盛りもそれで合います)
+                let ty = y_top - h / 2.0 - pt * 25.4 / 72.0 * 0.35;
+                l1.text(t, pt, tx, ty, (0.0, 0.0, 0.0), false);
             }
         }
     }

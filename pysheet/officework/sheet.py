@@ -134,6 +134,26 @@ class PatternFill:
         self.fgColor = fgColor if fgColor is not None else start_color
 
 
+class GradientFill:
+    """階調の塗り。openpyxl の GradientFill の形。
+
+    `GradientFill(stop=("1B6E3C", "63BE7B"))` のように色を並べます。
+    位置は等間隔に配ります。`degree` は角度(0 = 左から右)です。
+    """
+
+    def __init__(self, type="linear", degree=0, stop=(), **_rest):
+        self.type = type
+        self.degree = degree
+        self.stop = list(stop)
+
+    @property
+    def _kumi(self):
+        """(角度, [(位置, 色), …])。エンジンへ渡す形"""
+        n = max(1, len(self.stop) - 1)
+        return (float(self.degree),
+                [(i / n, _rgb_of(c)) for i, c in enumerate(self.stop)])
+
+
 class Alignment:
     def __init__(self, horizontal=None, vertical=None, wrap_text=None,
                  shrink_to_fit=None, text_rotation=0, indent=0, **_rest):
@@ -823,6 +843,12 @@ class Cell:
 
     @fill.setter
     def fill(self, v):
+        # 階調の塗りは別の鍵で渡します(模型が別に持っています)
+        if isinstance(v, GradientFill):
+            if len(v.stop) < 2:
+                raise ValueError("階調には色が2つ以上要ります")
+            self.parent.set_fmt(self.coordinate, gradient=v._kumi)
+            return
         pt = getattr(v, "patternType", None)
         if pt is None:
             pt = getattr(v, "fill_type", None)
@@ -873,6 +899,20 @@ class Cell:
         self.parent.set_fmt(
             self.coordinate, number_format=None if v in (None, "General") else v
         )
+
+    @property
+    def array_formula(self):
+        """このセルが起点の配列数式(CSE)。無ければ None"""
+        for at, f, _, _ in self.parent.array_formulae:
+            if at == self.coordinate:
+                return f
+        return None
+
+    @array_formula.setter
+    def array_formula(self, v):
+        """配列数式を入れる。**1つのセルに入れると 1×1 の配列**です。
+        広い範囲に入れたいときは `ws.set_array_formula("D9:D12", …)` を。"""
+        self.parent.set_array_formula(self.coordinate, str(v))
 
     @property
     def is_date(self):
@@ -1137,6 +1177,63 @@ class Sheet:
     @property
     def dimensions(self):
         return self.calculate_dimension()
+
+    def add_chart(self, kind, *, data, categories=None, at="A1", title=None,
+                  width=320.0, height=200.0, color=None, **kw):
+        """**図を置く。** データはセルの範囲("B3:C7")か、数の列で渡します。
+
+        図は図形の集まりとして**こちらで描きます**(2026-08-27 発注者
+        「チャートは python による独自描画でいいのでは」)。画面にも紙にも
+        xlsx にも同じ物が出ます。細かく組みたいときは
+        `officework.chart.Chart` を直に使ってください。
+
+        - `kind` — "bar"(縦棒)/ "line"(折れ線)/ "pie"(円)/
+          "doughnut"(ドーナツ)
+        - `data` — 値の範囲。**1行目が系列の名前**なら見出しとして外します
+        - `categories` — 区分の名前の範囲("A4:A7")
+        """
+        from . import chart as _chart
+
+        atai = self._hani_no_atai(data)
+        名 = self._hani_no_atai(categories, moji=True) if categories else None
+        if 名 and 名 and isinstance(名[0], list):
+            名 = [r[0] for r in 名]
+        yaku = {"bar": _chart.bar, "line": _chart.line,
+                "pie": _chart.pie, "doughnut": _chart.pie}
+        if kind not in yaku:
+            raise ValueError(
+                "図の種類に「{}」はありません。使えるのは {}".format(
+                    kind, " / ".join(sorted(yaku))))
+        if kind in ("pie", "doughnut"):
+            hira = [v for r in atai for v in (r if isinstance(r, list) else [r])]
+            return yaku[kind](self, at, hira, 名, title=title, width=width,
+                              height=height, color=color,
+                              hole=0.5 if kind == "doughnut" else 0.0, **kw)
+        return yaku[kind](self, at, atai, 名, title=title, width=width,
+                          height=height, color=color, **kw)
+
+    def _hani_no_atai(self, hani, *, moji=False):
+        """範囲("B3:C7")を値の列にする。**列ごとに1つの系列**です。
+
+        1行目が字なら系列の名前とみて外します(openpyxl の
+        `from_rows=False` と同じ見方)。数の列をそのまま渡してもかまいません。
+        """
+        if not isinstance(hani, str):
+            return list(hani)
+        cells = self[hani] if ":" in hani else ((self[hani],),)
+        hyou = [[c.value for c in row] for row in cells]
+        if not hyou:
+            return []
+        if moji:
+            return [str(r[0]) if r[0] is not None else "" for r in hyou]
+        # 1行目が全部字なら見出し
+        if len(hyou) > 1 and all(isinstance(v, str) for v in hyou[0]):
+            hyou = hyou[1:]
+        # 列ごとに縦に読み替えます
+        keiretsu = [[r[c] for r in hyou] for c in range(len(hyou[0]))]
+        kazu = [[float(v) for v in k if isinstance(v, (int, float))] for k in keiretsu]
+        kazu = [k for k in kazu if k]
+        return kazu if len(kazu) > 1 else (kazu[0] if kazu else [])
 
     # ── 条件付き書式 — openpyxl の Font / PatternFill をそのまま受ける ──
     #

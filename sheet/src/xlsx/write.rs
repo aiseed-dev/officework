@@ -2404,6 +2404,11 @@ pub(super) fn shape_anchor_xml(sp: &book::SheetShape, id: u32) -> String {
                 format!("<a:pPr{algn}>{bullet}</a:pPr>")
             };
             let strike = if tf.strike { r#" strike="sngStrike""# } else { "" };
+            // 字の大きさは 100分の1pt。指定が無ければ既定の 11pt
+            let sz = format!(
+                r#" sz="{}""#,
+                (tf.size_pt.unwrap_or(11.0) * 100.0).round().max(100.0) as u32
+            );
             // 上付き・下付きは baseline の千分率(Office の既定に合わせる)
             let base = if tf.sup {
                 r#" baseline="30000""#
@@ -2415,13 +2420,14 @@ pub(super) fn shape_anchor_xml(sp: &book::SheetShape, id: u32) -> String {
             format!(
                 concat!(
                     "<xdr:txBody><a:bodyPr wrap=\"square\"{anchor}{vert}/><a:lstStyle/>",
-                    "<a:p>{ppr}<a:r><a:rPr lang=\"ja-JP\" sz=\"1100\"{strike}{base}/>",
+                    "<a:p>{ppr}<a:r><a:rPr lang=\"ja-JP\"{sz}{strike}{base}/>",
                     "<a:t>{t}</a:t></a:r></a:p>",
                     "</xdr:txBody>"
                 ),
                 anchor = anchor,
                 vert = vert,
                 ppr = ppr,
+                sz = sz,
                 strike = strike,
                 base = base,
                 t = esc(t)

@@ -432,6 +432,12 @@ pub(super) fn text_fmt_attr(e: &BytesStart, tf: &mut book::TextFmt) {
             let base = attr(e, "baseline").and_then(|v| v.parse::<i32>().ok());
             tf.sup = base.is_some_and(|b| b > 0);
             tf.sub = base.is_some_and(|b| b < 0);
+            // 字の大きさは 100分の1pt。既定(11pt)は持ちません —
+            // 持つと、触っていない図形まで大きさを書いたことになります
+            tf.size_pt = attr(e, "sz")
+                .and_then(|v| v.parse::<f32>().ok())
+                .map(|v| v / 100.0)
+                .filter(|v| (*v - 11.0).abs() > 0.01);
         }
         _ => {}
     }

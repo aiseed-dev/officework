@@ -495,6 +495,7 @@ mod carry_tests {
                 strike: true,
                 sup: true,
                 sub: false,
+                size_pt: Some(14.0),
             },
             ..Default::default()
         });

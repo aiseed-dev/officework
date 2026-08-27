@@ -218,6 +218,23 @@ pub fn write_pages<W: std::io::Write>(
             c.rect(pt(f.x_mm), pt(f.y_mm), pt(f.w_mm), pt(f.h_mm));
             c.fill_nonzero();
         }
+        // 好きな形の塗り。四角の塗りと同じ層です
+        for g in &page.polys {
+            let Some(((x0, y0), rest)) = g.points.split_first() else { continue };
+            if rest.is_empty() {
+                continue;
+            }
+            if fill_now != Some(g.rgb) {
+                c.set_fill_rgb(g.rgb.0, g.rgb.1, g.rgb.2);
+                fill_now = Some(g.rgb);
+            }
+            c.move_to(pt(*x0), pt(*y0));
+            for (x, y) in rest {
+                c.line_to(pt(*x), pt(*y));
+            }
+            c.close_path();
+            c.fill_nonzero();
+        }
         // **絵はいちばん下**。字と罫線が上に載ります
         for (k, (_, im)) in img_ids[i].iter().enumerate() {
             c.save_state();
@@ -891,6 +908,9 @@ pub struct Leaf {
     /// **塗り(表の帯・セルの背景)。** 罫線より先に敷きます — 線を
     /// 塗り潰さないためです
     pub fills: Vec<Fill>,
+    /// **好きな形の塗り。** 円グラフの扇や、傾いた棒に使います。
+    /// 四角で足りるものは [`Fill`] の方が小さく済みます
+    pub polys: Vec<Poly>,
     /// **この紙の大きさ(mm)。** 節で紙が変わる文書は頁ごとに違います。
     /// `None` なら呼ぶ側に渡した既定の大きさ
     pub size_mm: Option<(f32, f32)>,
@@ -902,6 +922,19 @@ pub struct Fill {
     pub y_mm: f32,
     pub w_mm: f32,
     pub h_mm: f32,
+    /// 0〜1 の RGB
+    pub rgb: (f32, f32, f32),
+}
+
+/// **好きな形の塗り。** 点を順に結んで閉じ、中を塗ります。
+///
+/// 円は多角形に刻んで渡します(細かく刻めば目では区別が付きません)。
+/// PDF は曲線も持てますが、点の列だけで済ませると呼ぶ側が1つの形で
+/// 何でも描けます。
+#[derive(Debug, Clone, Default)]
+pub struct Poly {
+    /// 左下からの mm
+    pub points: Vec<(f32, f32)>,
     /// 0〜1 の RGB
     pub rgb: (f32, f32, f32),
 }

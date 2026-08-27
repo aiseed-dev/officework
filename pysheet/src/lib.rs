@@ -740,6 +740,140 @@ impl PySheet {
         })
     }
 
+    /// **図形を1つ置く。**
+    ///
+    /// 図をこちらで描くための土台です(2026-08-27 発注者「チャートは
+    /// python による独自描画でいいのでは」)。棒も扇も軸の目盛りも、
+    /// この口で置いた図形の集まりです。
+    ///
+    /// - `kind` — rect / roundRect / ellipse / line / diamond / rightArrow /
+    ///   path(`points` で好きな形)
+    /// - `at` — 左上を留めるセル("A9")。`dx` `dy` はそこからのずらし(px)
+    /// - `width` `height` — 大きさ(px)
+    /// - `points` — `path` のときの点。**0〜1 に正規化**した (x, y) の列で、
+    ///   図形の左上が (0,0)、右下が (1,1) です
+    ///
+    /// xlsx へは図形(prstGeom / custGeom)として書きます。**Excel でも
+    /// 図形として開けます** — 絵にして貼るのではありません。
+    #[pyo3(signature = (kind, at, width, height, *, dx=0.0, dy=0.0, fill=None,
+                        line=None, line_w=1.5, text=None, points=None,
+                        rot=0.0, alpha=1.0, font_pt=None, align=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn add_shape(
+        &self,
+        kind: &str,
+        at: &str,
+        width: f32,
+        height: f32,
+        dx: f32,
+        dy: f32,
+        fill: Option<String>,
+        line: Option<String>,
+        line_w: f32,
+        text: Option<String>,
+        points: Option<Vec<(f32, f32)>>,
+        rot: f32,
+        alpha: f32,
+        font_pt: Option<f32>,
+        align: Option<&str>,
+    ) -> PyResult<usize> {
+        const KIND: &[&str] = &[
+            "rect", "roundRect", "ellipse", "line", "diamond", "rightArrow", "path",
+        ];
+        if !KIND.contains(&kind) {
+            return Err(PyValueError::new_err(format!(
+                "図形の種類に「{kind}」はありません。使えるのは {}",
+                KIND.join(" / ")
+            )));
+        }
+        if kind == "path" && points.as_ref().is_none_or(|p| p.len() < 2) {
+            return Err(PyValueError::new_err("path には points が2点以上要ります"));
+        }
+        let p = parse_ref(at)?;
+        let h = |v: Option<String>| v.map(|x| x.trim_start_matches('#').to_string());
+        let mut fmt = book::TextFmt::default();
+        if let Some(a) = align {
+            fmt.align = match a {
+                "left" => book::HAlign::Left,
+                "center" => book::HAlign::Center,
+                "right" => book::HAlign::Right,
+                _ => {
+                    return Err(PyValueError::new_err(format!(
+                        "字の揃えは left / center / right です: {a:?}"
+                    )))
+                }
+            };
+        }
+        fmt.size_pt = font_pt;
+        let sp = book::SheetShape {
+            at: p,
+            width_px: width,
+            height_px: height,
+            kind: kind.to_string(),
+            fill: h(fill),
+            line: h(line),
+            text,
+            text_fmt: fmt,
+            points: points
+                .unwrap_or_default()
+                .into_iter()
+                .map(|at| book::PathPoint { at, ..Default::default() })
+                .collect(),
+            dx_px: dx,
+            dy_px: dy,
+            rot,
+            line_w,
+            alpha: alpha.clamp(0.0, 1.0),
+            ..Default::default()
+        };
+        self.with(|s| {
+            s.shapes_new.push(sp.clone());
+            Ok(s.shapes_new.len() - 1)
+        })
+    }
+
+    /// **置いた図形の一覧。** 1つずつ dict で返します。
+    ///
+    /// 鍵: kind / at / dx / dy / width / height / fill / line / line_w /
+    /// text / points / rot / alpha。読んだ図形も挿した図形も入ります。
+    #[getter]
+    fn shapes<'py>(&self, py: Python<'py>) -> PyResult<Vec<Bound<'py, PyDict>>> {
+        self.with(|s| {
+            s.shapes
+                .iter()
+                .chain(s.shapes_new.iter())
+                .map(|sp| {
+                    let d = PyDict::new(py);
+                    d.set_item("kind", &sp.kind)?;
+                    d.set_item("at", sp.at.a1())?;
+                    d.set_item("dx", sp.dx_px)?;
+                    d.set_item("dy", sp.dy_px)?;
+                    d.set_item("width", sp.width_px)?;
+                    d.set_item("height", sp.height_px)?;
+                    d.set_item("fill", sp.fill.clone())?;
+                    d.set_item("line", sp.line.clone())?;
+                    d.set_item("line_w", sp.line_w)?;
+                    d.set_item("text", sp.text.clone())?;
+                    d.set_item(
+                        "points",
+                        sp.points.iter().map(|p| p.at).collect::<Vec<_>>(),
+                    )?;
+                    d.set_item("rot", sp.rot)?;
+                    d.set_item("alpha", sp.alpha)?;
+                    Ok(d)
+                })
+                .collect()
+        })
+    }
+
+    /// 置いた図形を全部取り除きます(図を描き直すとき)
+    fn clear_shapes(&self) -> PyResult<()> {
+        self.with(|s| {
+            s.shapes_new.clear();
+            Ok(())
+        })
+    }
+
     /// **条件付き書式 — 数の比較。** openpyxl の CellIsRule に当たります。
     ///
     /// `op` は greaterThan / lessThan / equal / greaterThanOrEqual /
@@ -1309,6 +1443,33 @@ impl PySheet {
         })
     }
 
+    /// **昔ながらの配列数式(CSE)を入れる。**
+    ///
+    /// Excel で範囲を選んで Ctrl+Shift+Enter を押したものです。
+    /// `range` は覆う範囲("D9" や "D9:D12")で、1つのセルなら 1×1 です。
+    ///
+    /// 普通の式として入れると `=SUM(C4:C7*1)` が**黙って違う値になる**ので、
+    /// 配列として入れたいときはこちらを使います。
+    fn set_array_formula(&self, range: &str, formula: &str) -> PyResult<()> {
+        let (a, b) = if range.contains(':') {
+            parse_range(range)?
+        } else {
+            let p = parse_ref(range)?;
+            (p, p)
+        };
+        let f = formula.trim().trim_start_matches('=').to_string();
+        if f.is_empty() {
+            return Err(PyValueError::new_err("配列数式が空です"));
+        }
+        let rows = b.row - a.row + 1;
+        let cols = b.col - a.col + 1;
+        self.with_calc(|s| {
+            s.set(a, book::Cell { formula: Some(f.clone()), ..Default::default() });
+            s.cse.insert(a, (rows, cols));
+            Ok(())
+        })
+    }
+
     /// 配列式(スピル)の一覧 [(左上のセル, 式, 行数, 列数)]。
     /// openpyxl の array_formulae と同じ役。
     #[getter]
@@ -1869,6 +2030,33 @@ fn apply_fmt(f: &mut book::CellFormat, kw: &Bound<'_, PyDict>) -> PyResult<()> {
                 "fill" => {
                     f.fill = v.extract::<Option<String>>()?;
                     f.fill_theme = None;
+                }
+                // **階調の塗り**(openpyxl の GradientFill)。
+                // (角度, [(位置 0〜1, 色), …]) の組で渡します
+                "gradient" => {
+                    f.fill_grad = match v.extract::<Option<(f64, Vec<(f64, String)>)>>()? {
+                        None => None,
+                        Some((deg, stops)) => {
+                            if stops.len() < 2 {
+                                return Err(PyValueError::new_err(
+                                    "階調には色が2つ以上要ります",
+                                ));
+                            }
+                            Some(book::Gradient {
+                                degree_c: (deg * 100.0).round() as i32,
+                                stops: stops
+                                    .into_iter()
+                                    .map(|(at, c)| {
+                                        (
+                                            (at.clamp(0.0, 1.0) * 1000.0).round() as u32,
+                                            c.trim_start_matches('#').to_string(),
+                                        )
+                                    })
+                                    .collect(),
+                                path: None,
+                            })
+                        }
+                    }
                 }
                 "number_format" => f.number_format = v.extract()?,
                 "horizontal" => {
