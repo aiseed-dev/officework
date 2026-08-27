@@ -41,6 +41,20 @@ pub struct Piece {
     pub highlight: Option<String>,
 }
 
+/// 絵を PDF に載せる形にする。返りは(中身, 幅, 高さ, JPEG か)。
+///
+/// **JPEG はそのまま**入れます(PDF が読めるので解く必要がありません)。
+/// PNG は解いて RGB に並べ直し、zlib で縮めます。
+fn decode(data: &[u8]) -> Option<(Vec<u8>, u32, u32, bool)> {
+    let img = image::load_from_memory(data).ok()?;
+    let (w, h) = (image::GenericImageView::width(&img), image::GenericImageView::height(&img));
+    if data.starts_with(&[0xFF, 0xD8]) {
+        // JPEG。**そのまま埋めます** — 解いて縮め直すと大きくなります
+        return Some((data.to_vec(), w, h, true));
+    }
+    Some((deflate(img.to_rgb8().as_raw()), w, h, false))
+}
+
 /// `RRGGBB` を 0〜1 の三つ組に。読めなければ黒
 fn rgb(s: &str) -> (f32, f32, f32) {
     let h = s.trim_start_matches('#');
@@ -72,6 +86,7 @@ pub fn write(
         .map(|v| Leaf {
             pieces: v.clone(),
             rules: Vec::new(),
+            images: Vec::new(),
         })
         .collect();
     let mut out = Vec::new();
@@ -130,16 +145,54 @@ pub fn write_pages<W: std::io::Write>(
     pdf.catalog(catalog).pages(tree);
     pdf.pages(tree).kids(page_ids.iter().copied()).count(pages.len() as i32);
 
+    // **画像は先に部品にします。** 同じ絵が2枚に出ても1つで済みます
+    let mut img_ids: Vec<Vec<(Ref, &Image)>> = Vec::new();
+    let mut img_parts: Vec<(Ref, Vec<u8>, u32, u32, bool)> = Vec::new();
+    for page in pages {
+        let mut on_this = Vec::new();
+        for im in &page.images {
+            match decode(&im.data) {
+                Some((rgb, w, h, jpeg)) => {
+                    let r = id();
+                    img_parts.push((r, rgb, w, h, jpeg));
+                    on_this.push((r, im));
+                }
+                // **読めない絵は数えて返します**(呼ぶ側が言う)
+                None => {}
+            }
+        }
+        img_ids.push(on_this);
+    }
+
     let f_name = Name(b"F1");
     for (i, page) in pages.iter().enumerate() {
         let mut pg = pdf.page(page_ids[i]);
         pg.media_box(Rect::new(0.0, 0.0, pt(page_w_mm), pt(page_h_mm)));
         pg.parent(tree);
         pg.contents(content_ids[i]);
-        pg.resources().fonts().pair(f_name, font);
+        {
+            let mut res = pg.resources();
+            res.fonts().pair(f_name, font);
+            if !img_ids[i].is_empty() {
+                let mut xo = res.x_objects();
+                for (k, (r, _)) in img_ids[i].iter().enumerate() {
+                    xo.pair(Name(format!("I{k}").as_bytes()), *r);
+                }
+                xo.finish();
+            }
+            res.finish();
+        }
         pg.finish();
 
         let mut c = Content::new();
+        // **絵はいちばん下**。字と罫線が上に載ります
+        for (k, (_, im)) in img_ids[i].iter().enumerate() {
+            c.save_state();
+            // 置き方の行列。大きさをそのまま使います
+            c.transform([pt(im.w_mm), 0.0, 0.0, pt(im.h_mm), pt(im.x_mm), pt(im.y_mm)]);
+            c.x_object(Name(format!("I{k}").as_bytes()));
+            c.restore_state();
+        }
         // **罫線を先に引きます**(字の下)
         for r in &page.rules {
             c.set_stroke_rgb(0.0, 0.0, 0.0);
@@ -262,6 +315,18 @@ pub fn write_pages<W: std::io::Write>(
         st.pair(Name(b"Subtype"), Name(b"OpenType"));
     }
     st.finish();
+
+    // 画像の実体
+    for (r, data, w, h, jpeg) in img_parts {
+        let mut x = pdf.image_xobject(r, &data);
+        x.width(w as i32)
+            .height(h as i32)
+            .color_space()
+            .device_rgb();
+        x.bits_per_component(8);
+        x.filter(if jpeg { Filter::DctDecode } else { Filter::FlateDecode });
+        x.finish();
+    }
 
     // ⑤ 字形の番号 → 元の字。**選んで写せる PDF** にするために要ります
     let cmap = deflate(&to_unicode_cmap(&new_gid));
@@ -405,6 +470,44 @@ mod tests {
         out
     }
 
+    /// **絵が紙に載る。** PNG は解いて並べ直し、JPEG はそのまま埋めます
+    #[test]
+    fn a_picture_reaches_the_paper() {
+        let mut img = image::RgbImage::new(8, 6);
+        img.put_pixel(0, 0, image::Rgb([220, 40, 40]));
+        let mut png = std::io::Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgb8(img)
+            .write_to(&mut png, image::ImageOutputFormat::Png)
+            .expect("PNG");
+        let leaf = Leaf {
+            pieces: vec![],
+            rules: vec![],
+            images: vec![Image {
+                x_mm: 20.0, y_mm: 200.0, w_mm: 40.0, h_mm: 30.0,
+                data: std::sync::Arc::new(png.into_inner()),
+            }],
+        };
+        let mut out = Vec::new();
+        write_pages(&[leaf], 210.0, 297.0, &font(), &mut out).expect("PDF が出ない");
+        assert!(out.starts_with(b"%PDF"));
+        let body = String::from_utf8_lossy(&out);
+        assert!(body.contains("/Image"), "絵の部品が無い");
+        assert!(body.contains("/DeviceRGB"), "色の指定が無い");
+        assert!(unpack(&out).contains("/I0 Do"), "絵を置く命令が無い");
+    }
+
+    /// **読めない絵は数えて返す。** 黙って落としません
+    #[test]
+    fn a_broken_picture_is_counted_not_dropped() {
+        let mut sheet = kumihan::Sheet::default();
+        sheet.images.push((std::sync::Arc::new(vec![0u8, 1, 2, 3]), [10.0, 10.0, 20.0, 20.0]));
+        let pp = crate::Paper { width_mm: 210.0, height_mm: 297.0, margin_mm: 20.0 };
+        let mut out = Vec::new();
+        let lost = sheet_to_pdf(&sheet, &font(), pp, std::io::Cursor::new(&mut out))
+            .expect("PDF が出ない");
+        assert!(lost.iter().any(|s| s.contains("読めない画像")), "数えていない: {lost:?}");
+    }
+
     /// 字が1つも無い紙でも落ちない
     #[test]
     fn an_empty_page_still_makes_a_pdf() {
@@ -429,6 +532,17 @@ pub struct Rule {
 pub struct Leaf {
     pub pieces: Vec<Piece>,
     pub rules: Vec<Rule>,
+    pub images: Vec<Image>,
+}
+
+/// 紙に置く画像。左下からの mm。
+pub struct Image {
+    pub x_mm: f32,
+    pub y_mm: f32,
+    pub w_mm: f32,
+    pub h_mm: f32,
+    /// PNG か JPEG の実体
+    pub data: std::sync::Arc<Vec<u8>>,
 }
 
 /// **組み上がった紙面を PDF にする。**
@@ -493,9 +607,29 @@ pub fn sheet_to_pdf<W: std::io::Write>(
         }
     }
 
+    // 画像。どの頁に載るかは上端の y で決めます
     let mut lost = Vec::new();
-    if !sheet.images.is_empty() {
-        lost.push(format!("画像 {} 件(この書き手ではまだ載りません)", sheet.images.len()));
+    let mut bad = 0;
+    for (data, at) in &sheet.images {
+        let k = page_of(&offsets, at[1], paper.height_mm);
+        let off = offsets.get(k).copied().unwrap_or(0.0);
+        if image::load_from_memory(data).is_err() {
+            bad += 1;
+            continue;
+        }
+        if let Some(p) = pages.get_mut(k) {
+            p.images.push(Image {
+                x_mm: at[0],
+                // 紙面は上端の y。PDF は左下からなので、高さのぶん下げます
+                y_mm: paper.height_mm - (at[1] - off) - at[3],
+                w_mm: at[2],
+                h_mm: at[3],
+                data: data.clone(),
+            });
+        }
+    }
+    if bad > 0 {
+        lost.push(format!("読めない画像 {bad} 件"));
     }
     write_pages(&pages, paper.width_mm, paper.height_mm, font_data, out)?;
     Ok(lost)
