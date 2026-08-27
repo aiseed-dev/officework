@@ -1,6 +1,6 @@
 //! いまの道(printpdf)と新しい道(pdf-writer + subsetter)を見比べる。
 fn main() {
-    let src = "= 四月の売上\n\n本文です。日本語の行組みもエンジンが折ります。\n\n\
+    let src = "= 四月の売上\n\n本文です。*太字*と _斜体_ と #色つき# があります。\n\n\
                == 明細\n\n|===\n|品名 |金額\n\n|ボールペン |1,200\n|ノート |480\n|===\n";
     let doc = kumihan::adoc::parse(src).expect("読めない");
     let (sheet, page, bytes) = paper::doc_to_sheet(&doc, None).expect("組めない");

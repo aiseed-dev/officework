@@ -23,13 +23,34 @@ use pdf_writer::types::{FontFlags, SystemInfo};
 use pdf_writer::{Content, Filter, Finish, Name, Pdf, Rect, Ref, Str};
 use std::collections::BTreeMap;
 
-/// 1つの紙に置く字。
+/// 1つの紙に置く字。**要る所だけ書けます**(`..Default::default()`)
+#[derive(Default, Clone)]
 pub struct Piece {
     /// 左下からの位置(mm)
     pub x_mm: f32,
     pub y_mm: f32,
     pub size_pt: f32,
     pub text: String,
+    /// 字の色(RRGGBB)。無ければ黒
+    pub color: Option<String>,
+    /// この字の幅(mm)。下線と取り消し線と蛍光ペンを引くのに要ります
+    pub w_mm: f32,
+    pub underline: bool,
+    pub strike: bool,
+    /// 蛍光ペンの色(RRGGBB)
+    pub highlight: Option<String>,
+}
+
+/// `RRGGBB` を 0〜1 の三つ組に。読めなければ黒
+fn rgb(s: &str) -> (f32, f32, f32) {
+    let h = s.trim_start_matches('#');
+    let v = |i: usize| {
+        u8::from_str_radix(h.get(i..i + 2).unwrap_or("00"), 16).unwrap_or(0) as f32 / 255.0
+    };
+    if h.len() < 6 {
+        return (0.0, 0.0, 0.0);
+    }
+    (v(0), v(2), v(4))
 }
 
 /// mm → PDF の単位(pt)
@@ -49,9 +70,7 @@ pub fn write(
     let ps: Vec<Leaf> = pages
         .iter()
         .map(|v| Leaf {
-            pieces: v.iter().map(|p| Piece {
-                x_mm: p.x_mm, y_mm: p.y_mm, size_pt: p.size_pt, text: p.text.clone(),
-            }).collect(),
+            pieces: v.clone(),
             rules: Vec::new(),
         })
         .collect();
@@ -123,10 +142,22 @@ pub fn write_pages<W: std::io::Write>(
         let mut c = Content::new();
         // **罫線を先に引きます**(字の下)
         for r in &page.rules {
+            c.set_stroke_rgb(0.0, 0.0, 0.0);
             c.set_line_width(pt(r.w_mm));
             c.move_to(pt(r.x1_mm), pt(r.y1_mm));
             c.line_to(pt(r.x2_mm), pt(r.y2_mm));
             c.stroke();
+        }
+        // **蛍光ペンは字の下に敷きます**(字が隠れないように)
+        for p in &page.pieces {
+            if let Some(h) = &p.highlight {
+                let (r, g, b) = rgb(h);
+                c.set_fill_rgb(r, g, b);
+                // 字の高さのぶん。下に少し出して本家の見え方に寄せます
+                let h_mm = p.size_pt * 25.4 / 72.0;
+                c.rect(pt(p.x_mm), pt(p.y_mm - h_mm * 0.22), pt(p.w_mm), pt(h_mm));
+                c.fill_nonzero();
+            }
         }
         for p in &page.pieces {
             // **字形の番号を2バイトで並べます。** CID フォントなので、
@@ -136,11 +167,26 @@ pub fn write_pages<W: std::io::Write>(
                 let g = new_gid.get(&ch).copied().unwrap_or(0);
                 bytes.extend_from_slice(&g.to_be_bytes());
             }
+            let (r, g, b) = p.color.as_deref().map(rgb).unwrap_or((0.0, 0.0, 0.0));
             c.begin_text();
+            c.set_fill_rgb(r, g, b);
             c.set_font(f_name, p.size_pt);
             c.set_text_matrix([1.0, 0.0, 0.0, 1.0, pt(p.x_mm), pt(p.y_mm)]);
             c.show(Str(&bytes));
             c.end_text();
+            // 下線と取り消し線。**字の下に引く線**なので、字を書いた後に
+            for (on, at) in [(p.underline, -0.18f32), (p.strike, 0.28)] {
+                if !on || p.w_mm <= 0.0 {
+                    continue;
+                }
+                let h_mm = p.size_pt * 25.4 / 72.0;
+                let y = p.y_mm + h_mm * at;
+                c.set_stroke_rgb(r, g, b);
+                c.set_line_width(pt(h_mm * 0.05).max(0.3));
+                c.move_to(pt(p.x_mm), pt(y));
+                c.line_to(pt(p.x_mm + p.w_mm), pt(y));
+                c.stroke();
+            }
         }
         pdf.stream(content_ids[i], &c.finish());
     }
@@ -274,6 +320,7 @@ mod tests {
             y_mm: 250.0,
             size_pt: 10.5,
             text: "四月の売上は 1,200 円です。".into(),
+                ..Default::default()
         }]];
         let out = write(&pages, 210.0, 297.0, &whole).expect("PDF が出ない");
         assert!(out.starts_with(b"%PDF"), "PDF になっていない");
@@ -313,6 +360,49 @@ mod tests {
             old.len(),
             new.len()
         );
+    }
+
+    /// **色と飾りが PDF に出る。** 事務の書類は見出しの色と下線が要ります
+    #[test]
+    fn colour_and_decorations_reach_the_paper() {
+        let pages = vec![vec![
+            Piece {
+                x_mm: 20.0, y_mm: 250.0, size_pt: 12.0, w_mm: 30.0,
+                text: "赤い見出し".into(),
+                color: Some("CC0000".into()),
+                ..Default::default()
+            },
+            Piece {
+                x_mm: 20.0, y_mm: 240.0, size_pt: 10.5, w_mm: 24.0,
+                text: "下線と蛍光".into(),
+                underline: true,
+                highlight: Some("FFFF00".into()),
+                ..Default::default()
+            },
+        ]];
+        let f = font();
+        let out = write(&pages, 210.0, 297.0, &f).expect("PDF が出ない");
+        let body = unpack(&out);
+        // 字の色(rg)・線(RG)・塗り(蛍光ペン)が出ていること
+        assert!(body.contains("rg"), "色の命令が無い");
+        assert!(body.contains(" RG"), "線の色が無い");
+        assert!(body.contains(" re"), "蛍光ペンの四角が無い");
+    }
+
+    /// 流れを解いて中の命令を字にする(実物を見るため)
+    fn unpack(pdf: &[u8]) -> String {
+        let mut out = String::new();
+        let mut from = 0;
+        while let Some(i) = pdf[from..].windows(6).position(|w| w == b"stream") {
+            let a = from + i + 6;
+            let a = a + pdf[a..].iter().take_while(|c| **c == b'\r' || **c == b'\n').count();
+            let Some(j) = pdf[a..].windows(9).position(|w| w == b"endstream") else { break };
+            if let Ok(s) = std::str::from_utf8(&pdf[a..a + j]) {
+                out.push_str(s);
+            }
+            from = a + j;
+        }
+        out
     }
 
     /// 字が1つも無い紙でも落ちない
@@ -378,6 +468,7 @@ pub fn sheet_to_pdf<W: std::io::Write>(
                         y_mm: y,
                         size_pt: c.size_pt,
                         text: c.ch.to_string(),
+                ..Default::default()
                     });
                 }
             }
