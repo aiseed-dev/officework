@@ -742,6 +742,7 @@ mod byte0_tests {
 
     #[test]
     fn wrapping_keeps_line_byte_positions_matching_the_text() {
+        let _lang = crate::font::lang_lock();
         // 「行の文字数 + 1」で数えると、折り返した行の数だけずれていた
         let text = "あ".repeat(40); // 100mm に入らないので折り返す
         let ls = lines(&text, 100.0);

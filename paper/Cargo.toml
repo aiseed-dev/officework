@@ -19,3 +19,4 @@ flate2 = "1.1.9"
 
 [dev-dependencies]
 ooxml = { path = "../ooxml" }
+ops = { path = "../ops" }

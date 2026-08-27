@@ -444,6 +444,20 @@ pub fn fallback() -> Option<&'static Family> {
 /// 標準の書体を選ぶときに見る言語。既定は日本語です。
 static UI_LANG: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
 
+/// **既定の言語は処理系に1つしかありません。**
+///
+/// 試験を並べて回すと、言語を入れ替える試験の値が、書体を見る試験にも
+/// 届いてしまいます。入れ替える側も見る側も、この錠を取ってから動きます
+/// (2026-08-27 に、回すたびに違う試験が落ちるので気づきました)。
+#[cfg(test)]
+pub(crate) static LANG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// 錠を取ります。前の試験が落ちて錠が壊れていても、そのまま使います
+#[cfg(test)]
+pub(crate) fn lang_lock() -> std::sync::MutexGuard<'static, ()> {
+    LANG_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 /// **画面の言語をエンジンに渡す。**
 ///
 /// エンジンは設定ファイルを読みません(画面にも設定にも依存しないのが
@@ -563,6 +577,7 @@ mod tests {
 
     #[test]
     fn a_missing_font_is_substituted_but_reported() {
+        let _lang = lang_lock();
         let (f, exact) = for_document(Some("存在しない書体XYZ")).unwrap();
         assert!(!exact, "指定と違う書体なのに、合っていることにした");
         assert!(f.japanese, "英字フォントに落ちている(豆腐になる)");
@@ -570,6 +585,7 @@ mod tests {
 
     #[test]
     fn with_no_request_it_picks_a_font_that_can_set_japanese() {
+        let _lang = lang_lock();
         let (f, exact) = for_document(None).unwrap();
         assert!(exact);
         assert!(f.japanese);
@@ -577,6 +593,7 @@ mod tests {
 
     #[test]
     fn a_serif_document_does_not_turn_sans() {
+        let _lang = lang_lock();
         // ＭＳ 明朝は Linux に無い。でも代替は明朝系であるべき
         let (f, exact) = for_document(Some("ＭＳ 明朝")).unwrap();
         assert!(!exact);
@@ -595,6 +612,7 @@ mod tests {
 
     #[test]
     fn the_resolved_font_can_typeset() {
+        let _lang = lang_lock();
         let (f, _) = for_document(None).unwrap();
         let data = load(f).unwrap();
         let m = crate::Metrics::new(&data).expect("解釈できない");

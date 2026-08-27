@@ -58,6 +58,12 @@ fn decode(data: &[u8]) -> Option<(Vec<u8>, u32, u32, bool)> {
     Some((deflate(img.to_rgb8().as_raw()), w, h, false))
 }
 
+/// 0〜1 の三つ組を `RRGGBB` に。[`rgb`] の逆です
+pub fn to_hex(c: (f32, f32, f32)) -> String {
+    let b = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+    format!("{:02X}{:02X}{:02X}", b(c.0), b(c.1), b(c.2))
+}
+
 /// `RRGGBB` を 0〜1 の三つ組に。読めなければ黒
 fn rgb(s: &str) -> (f32, f32, f32) {
     let h = s.trim_start_matches('#');
@@ -201,8 +207,14 @@ pub fn write_pages<W: std::io::Write>(
             c.fill_nonzero();
         }
         // **塗りは絵の下、紙の色の上。** 罫線より先に敷いて線を潰しません
+        // **色と太さは変わったときだけ書きます。** 升ごとに書き直すと、
+        // 90 行の表で中身が 10 倍に膨れます(2026-08-27 に実物で測りました)
+        let mut fill_now: Option<(f32, f32, f32)> = None;
         for f in &page.fills {
-            c.set_fill_rgb(f.rgb.0, f.rgb.1, f.rgb.2);
+            if fill_now != Some(f.rgb) {
+                c.set_fill_rgb(f.rgb.0, f.rgb.1, f.rgb.2);
+                fill_now = Some(f.rgb);
+            }
             c.rect(pt(f.x_mm), pt(f.y_mm), pt(f.w_mm), pt(f.h_mm));
             c.fill_nonzero();
         }
@@ -215,9 +227,13 @@ pub fn write_pages<W: std::io::Write>(
             c.restore_state();
         }
         // **罫線を先に引きます**(字の下)
+        let mut pen: Option<((f32, f32, f32), f32)> = None;
         for r in &page.rules {
-            c.set_stroke_rgb(r.rgb.0, r.rgb.1, r.rgb.2);
-            c.set_line_width(pt(r.w_mm));
+            if pen != Some((r.rgb, r.w_mm)) {
+                c.set_stroke_rgb(r.rgb.0, r.rgb.1, r.rgb.2);
+                c.set_line_width(pt(r.w_mm));
+                pen = Some((r.rgb, r.w_mm));
+            }
             c.move_to(pt(r.x1_mm), pt(r.y1_mm));
             c.line_to(pt(r.x2_mm), pt(r.y2_mm));
             c.stroke();
@@ -275,7 +291,8 @@ pub fn write_pages<W: std::io::Write>(
             }
             let size = 60.0f32;
             // 45 度に倒して紙の真ん中あたりへ
-            let (sin, cos) = (0.7071f32, 0.7071f32);
+            let (sin, cos) =
+                (std::f32::consts::FRAC_1_SQRT_2, std::f32::consts::FRAC_1_SQRT_2);
             c.begin_text();
             c.set_fill_rgb(0.85, 0.85, 0.85);
             c.set_font(f_name, size);
@@ -287,7 +304,10 @@ pub fn write_pages<W: std::io::Write>(
             c.show(Str(&bytes));
             c.end_text();
         }
-        pdf.stream(content_ids[i], &c.finish());
+        // 頁の中身も縮めます。**字も罫線も同じ形の繰り返し**なので、
+        // よく縮みます
+        let body = deflate(&c.finish());
+        pdf.stream(content_ids[i], &body).filter(Filter::FlateDecode);
     }
 
     // ④ 書体。Type0(CID)— 字の対応は PDF の側が持ちます
@@ -413,6 +433,34 @@ fn to_unicode_cmap(gids: &BTreeMap<char, u16>) -> Vec<u8> {
     s.into_bytes()
 }
 
+/// **PDF の中の命令を読み出す。** 試験で「本当に書いたか」を見るための物。
+///
+/// 中身は縮めてあるので、解いてから字にします。
+#[cfg(test)]
+pub(crate) fn unpack(pdf: &[u8]) -> String {
+    let mut out = String::new();
+    let mut from = 0;
+    while let Some(i) = pdf[from..].windows(6).position(|w| w == b"stream") {
+        let a = from + i + 6;
+        let a = a + pdf[a..].iter().take_while(|c| **c == b'\r' || **c == b'\n').count();
+        let Some(j) = pdf[a..].windows(9).position(|w| w == b"endstream") else { break };
+        let raw = &pdf[a..a + j];
+        // **中身は縮めてあります。** 解いてから読みます。解けない塊
+        // (絵や書体)は素通りします
+        let mut wide = Vec::new();
+        let body: &[u8] = {
+            use std::io::Read;
+            let mut z = flate2::read::ZlibDecoder::new(raw);
+            if z.read_to_end(&mut wide).is_ok() { &wide } else { raw }
+        };
+        if let Ok(s) = std::str::from_utf8(body) {
+            out.push_str(s);
+        }
+        from = a + j;
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -501,20 +549,6 @@ mod tests {
     }
 
     /// 流れを解いて中の命令を字にする(実物を見るため)
-    fn unpack(pdf: &[u8]) -> String {
-        let mut out = String::new();
-        let mut from = 0;
-        while let Some(i) = pdf[from..].windows(6).position(|w| w == b"stream") {
-            let a = from + i + 6;
-            let a = a + pdf[a..].iter().take_while(|c| **c == b'\r' || **c == b'\n').count();
-            let Some(j) = pdf[a..].windows(9).position(|w| w == b"endstream") else { break };
-            if let Ok(s) = std::str::from_utf8(&pdf[a..a + j]) {
-                out.push_str(s);
-            }
-            from = a + j;
-        }
-        out
-    }
 
     /// **絵が紙に載る。** PNG は解いて並べ直し、JPEG はそのまま埋めます
     #[test]

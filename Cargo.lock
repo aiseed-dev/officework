@@ -4177,6 +4177,7 @@ dependencies = [
  "image 0.24.9",
  "kumihan",
  "ooxml",
+ "ops",
  "pdf-writer",
  "printpdf",
  "subsetter",

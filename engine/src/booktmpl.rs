@@ -1318,6 +1318,7 @@ mod tests {
 
     #[test]
     fn the_written_text_is_a_table() {
+        let _lang = crate::font::lang_lock();
         let src = write(&from_book(&ledger()));
         assert!(src.contains(".用紙"), "用紙の表が無い:\n{src}");
         assert!(src.contains(".列幅"), "列幅の表が無い:\n{src}");
@@ -1327,6 +1328,7 @@ mod tests {
 
     #[test]
     fn the_look_survives_a_round_trip() {
+        let _lang = crate::font::lang_lock();
         let from = from_book(&ledger());
         let back = parse(&write(&from)).expect("読めない");
         assert_eq!(back, from, "往復で見た目が変わった");
@@ -1335,6 +1337,7 @@ mod tests {
     /// **当てるとブックに戻る。** 意味だけの `.adoc` と組み合わせる形
     #[test]
     fn applies_to_a_book() {
+        let _lang = crate::font::lang_lock();
         let t = from_book(&ledger());
         let mut b = Book::new();
         b.sheets[0].name = "売上台帳".into();
@@ -1350,6 +1353,7 @@ mod tests {
     /// 名前の合わないシートは**黙って飛ばす**(テンプレートは使い回せる)
     #[test]
     fn unknown_sheets_are_skipped() {
+        let _lang = crate::font::lang_lock();
         let t = from_book(&ledger());
         let mut b = Book::new();
         b.sheets[0].name = "別の名前".into();
@@ -1360,6 +1364,7 @@ mod tests {
     /// 知らない表は飛ばす(writer 向けの節が混じっていても落ちない)
     #[test]
     fn unknown_tables_are_skipped() {
+        let _lang = crate::font::lang_lock();
         let t = parse(".スタイル\n|===\n|名前 |大きさ\n\n|見出し1 |16\n|===\n").expect("読めない");
         assert!(t.is_empty());
     }
@@ -1367,6 +1372,7 @@ mod tests {
     /// 余白は1つだけ書けば四方とも同じ
     #[test]
     fn one_margin_value_is_enough() {
+        let _lang = crate::font::lang_lock();
         let t = parse(".用紙\n|===\n|シート |大きさ |向き |余白\n\n|表 |A4 |縦 |20\n|===\n").expect("読めない");
         assert_eq!(t.sheets[0].margins_mm, Some((20.0, 20.0, 20.0, 20.0)));
         assert_eq!(t.sheets[0].paper_size, Some(9));
@@ -1376,6 +1382,7 @@ mod tests {
     /// 知らない用紙の番号は**番号のまま**(黙って A4 にしない)
     #[test]
     fn unknown_paper_keeps_its_number() {
+        let _lang = crate::font::lang_lock();
         assert_eq!(paper_name(99), "99");
         assert_eq!(paper_no("99"), Some(99));
     }
@@ -1391,6 +1398,7 @@ mod allow_names_watch {
 
     #[test]
     fn every_protect_flag_has_a_name() {
+        let _lang = crate::font::lang_lock();
         let src = include_str!("../../book/src/types.rs");
         let head = "pub struct ProtectAllow {";
         let from = src.find(head).expect("ProtectAllow が無い");
@@ -1408,6 +1416,7 @@ mod allow_names_watch {
 
     #[test]
     fn the_names_do_not_repeat() {
+        let _lang = crate::font::lang_lock();
         for (i, (a, _)) in ALLOW_NAMES.iter().enumerate() {
             for (b, _) in &ALLOW_NAMES[i + 1..] {
                 assert_ne!(a, b, "同じ名前が2つある: 「{a}」");
@@ -1432,6 +1441,7 @@ mod language_tests {
 
     #[test]
     fn the_template_is_written_in_the_screen_language() {
+        let _lang = crate::font::lang_lock();
         let ja = tmpl_in("ja");
         assert!(ja.contains(".用紙"), "日本語の題が出ない:\n{}", &ja[..200.min(ja.len())]);
         let de = tmpl_in("de");
@@ -1442,6 +1452,7 @@ mod language_tests {
 
     #[test]
     fn a_template_written_in_another_language_still_reads() {
+        let _lang = crate::font::lang_lock();
         // ドイツ語で書いて、日本語の画面で読む
         let de = tmpl_in("de");
         crate::font::set_default_language("ja");
@@ -1458,6 +1469,7 @@ mod language_tests {
 
     #[test]
     fn every_language_round_trips() {
+        let _lang = crate::font::lang_lock();
         for l in words::LANGS {
             let src = tmpl_in(l);
             crate::font::set_default_language(l);
@@ -1479,6 +1491,7 @@ mod words_watch {
 
     #[test]
     fn every_symbol_the_template_uses_is_in_the_table() {
+        let _lang = crate::font::lang_lock();
         // booktmpl.rs と style.rs が `w("…")` と `words::is("…", …)` で呼ぶ記号
         let src = concat!(include_str!("booktmpl.rs"), include_str!("booktmpl/style.rs"));
         let mut want: Vec<&str> = Vec::new();
@@ -1519,6 +1532,7 @@ mod words_watch {
     /// (2026-08-26 に `font_2` が出た)。
     #[test]
     fn the_symbols_in_the_lists_are_in_the_table() {
+        let _lang = crate::font::lang_lock();
         let mut all = super::style::symbols();
         all.extend(super::ALLOW_NAMES.iter().map(|(s, _)| *s));
         for sym in all {
@@ -1531,6 +1545,7 @@ mod words_watch {
 
     #[test]
     fn the_table_has_fifteen_languages() {
+        let _lang = crate::font::lang_lock();
         assert_eq!(words::LANGS.len(), 15, "言語の数が変わりました");
         assert!(words::LANGS.contains(&"ja") && words::LANGS.contains(&"en"));
     }
@@ -1540,6 +1555,7 @@ mod words_watch {
     /// 渡すので、**同じ場所に来る記号どうし**でぶつからなければ構いません。
     #[test]
     fn words_in_the_same_place_do_not_collide() {
+        let _lang = crate::font::lang_lock();
         const PLACES: &[&[&str]] = &[
             &["paper", "col_width", "row_height", "print", "page_break", "header_footer",
               "view", "tmpl_group", "tmpl_protect", "format", "format_applied", "workbook"],

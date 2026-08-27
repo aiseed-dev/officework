@@ -7,12 +7,12 @@
 //!   - 横に紙からはみ出す列は**次の紙に送らず、切れる**。
 //!     切れた列の数を返すので、呼ぶ側は画面に出すこと(黙って落とさない)
 
-use std::io::{BufWriter, Write};
+use std::io::Write;
 
-use printpdf::*;
 use book::{format_value, HAlign, Value};
 use book::Sheet as Grid;
 
+use crate::pdfw;
 use crate::Paper;
 
 const COL_MM: f32 = 26.0;
@@ -22,17 +22,45 @@ const MM_PER_CHW: f32 = 2.0;
 
 /// `RRGGBB` を 0..1 の RGB にする。読めなければ None(黙って黒にしない)。
 /// 紙の1枚の置き場(頁と層)。printpdf の組で持ち回ります。
-type PaperPlace = (PdfPageIndex, PdfLayerIndex);
 /// 余白(左・右・上・下。mm)。
 type Margins = (f32, f32, f32, f32);
 
 fn hex_rgb(s: &str) -> Option<(f32, f32, f32)> {
+    // 色の書き方は3通り届きます。xlsx は `FFDCE6F1`(頭の2桁は透明度)、
+    // テーマの表は `DCE6F1`、`.sheet.adoc` に人が書くときは `#DCE6F1` です。
+    // **どれも同じ色**なので、ここで揃えます(2026-08-27 に取りこぼしを
+    // 実物の PDF で見つけました)
+    let t = s.trim().trim_start_matches('#');
+    let t = if t.len() == 8 { &t[2..] } else { t };
+    if t.len() != 6 {
+        return None;
+    }
     let g = |i: usize| {
-        s.get(i * 2..i * 2 + 2)
+        t.get(i * 2..i * 2 + 2)
             .and_then(|h| u8::from_str_radix(h, 16).ok())
             .map(|v| v as f32 / 255.0)
     };
     Some((g(0)?, g(1)?, g(2)?))
+}
+
+#[cfg(test)]
+mod colour_tests {
+    use super::hex_rgb;
+
+    #[test]
+    fn the_three_ways_of_writing_a_colour_all_mean_the_same() {
+        let want = hex_rgb("DCE6F1").expect("6桁");
+        assert_eq!(hex_rgb("#DCE6F1"), Some(want), "adoc の書き方");
+        assert_eq!(hex_rgb("FFDCE6F1"), Some(want), "xlsx の書き方");
+        assert_eq!(hex_rgb(" DCE6F1 "), Some(want), "前後の空白");
+    }
+
+    #[test]
+    fn a_colour_that_is_not_a_colour_is_not_drawn() {
+        assert_eq!(hex_rgb("あか"), None);
+        assert_eq!(hex_rgb("#FFF"), None, "3桁の略記はまだ受けません");
+        assert_eq!(hex_rgb(""), None);
+    }
 }
 
 /// 印刷の指定(帳票が持っているもの)。Paper(紙の大きさ)とは別 —
@@ -211,11 +239,10 @@ pub fn hf_subst(raw: &str, page_no: usize, total: usize) -> String {
 /// (2026-08-13、Book.to_pdf のために sheet_to_pdf から切り出した)。
 #[allow(clippy::too_many_arguments)]
 fn draw_header_footer(
-    doc: &PdfDocumentReference,
-    font: &IndirectFontRef,
+    board: &mut Board,
     grid: &Grid,
     paper: Paper,
-    hf_pages: &[(PdfPageIndex, PdfLayerIndex)],
+    hf_pages: std::ops::Range<usize>,
     (ml, mr, mt, mb): (f32, f32, f32, f32),
     offset: usize,
     total: usize,
@@ -232,34 +259,110 @@ fn draw_header_footer(
                 .map(|c| if (c as u32) < 0x2E80 { 0.5 } else { 1.0 })
                 .sum::<f32>() * 3.175
         };
-        for (i, (pi, li)) in hf_pages.iter().enumerate() {
-            let lyr = doc.get_page(*pi).get_layer(*li);
-            lyr.set_fill_color(Color::Rgb(Rgb::new(0.25, 0.28, 0.31, None)));
+        const HF_INK: (f32, f32, f32) = (0.25, 0.28, 0.31);
+        for (i, page) in hf_pages.enumerate() {
+            let ink = &mut board.ink(page);
             let subst = |raw: &str| -> String { hf_subst(raw, offset + i + 1, total) };
-            let put3 = |raw: &str, y: f32| {
+            let put3 = |ink: &mut Ink<'_>, raw: &str, y: f32| {
                 let (lf, cn, rt) = book::hf_split(raw);
                 let (lf, cn, rt) = (subst(&lf), subst(&cn), subst(&rt));
                 if !lf.is_empty() {
-                    lyr.use_text(lf, 9.0, Mm(ml), Mm(y), font);
+                    ink.text(&lf, 9.0, ml, y, HF_INK, false);
                 }
                 if !cn.is_empty() {
                     let x = (paper.width_mm - est(&cn)) / 2.0;
-                    lyr.use_text(cn, 9.0, Mm(x.max(ml)), Mm(y), font);
+                    ink.text(&cn, 9.0, x.max(ml), y, HF_INK, false);
                 }
                 if !rt.is_empty() {
                     let x = paper.width_mm - mr - est(&rt);
-                    lyr.use_text(rt, 9.0, Mm(x.max(ml)), Mm(y), font);
+                    ink.text(&rt, 9.0, x.max(ml), y, HF_INK, false);
                 }
             };
             if let Some(h) = &grid.header {
-                put3(h, paper.height_mm - mt * 0.55);
+                put3(ink, h, paper.height_mm - mt * 0.55);
             }
             if let Some(f) = &grid.footer {
-                put3(f, mb * 0.35);
+                put3(ink, f, mb * 0.35);
             }
-            lyr.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
         }
     }
+}
+
+/// 印刷の枠線の色(薄い灰)
+const GRID_GREY: (f32, f32, f32) = (0.85, 0.87, 0.89);
+/// 行番号と列番号の色
+const HEAD_GREY: (f32, f32, f32) = (0.4, 0.44, 0.48);
+
+/// **描く先。** 紙1枚を受け持ちます。
+///
+/// 表計算は紙面(`kumihan::Sheet`)を通らず、その場で描いています。
+/// 描く所はそのままにして、置く先だけをここに集めました
+/// (2026-08-27 発注者「行番号と列番号もセルと同じ」)。
+struct Ink<'a> {
+    leaf: &'a mut pdfw::Leaf,
+}
+
+impl Ink<'_> {
+    fn text(&mut self, t: &str, pt: f32, x: f32, y: f32, rgb: (f32, f32, f32), bold: bool) {
+        self.leaf.pieces.push(pdfw::Piece {
+            x_mm: x,
+            // 表計算も新しい書き手も、左下からの y で描きます
+            y_mm: y,
+            size_pt: pt,
+            text: t.to_string(),
+            w_mm: t.chars().map(|c| if c.is_ascii() { 0.55 } else { 1.0 }).sum::<f32>()
+                * pt * 25.4 / 72.0,
+            bold,
+            color: Some(pdfw::to_hex(rgb)),
+            ..Default::default()
+        });
+    }
+
+    fn line(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, w: f32, rgb: (f32, f32, f32)) {
+        self.leaf.rules.push(pdfw::Rule {
+            x1_mm: x1, y1_mm: y1, x2_mm: x2, y2_mm: y2, w_mm: w, rgb,
+        });
+    }
+
+    fn fill(&mut self, x: f32, y: f32, w: f32, h: f32, rgb: (f32, f32, f32)) {
+        self.leaf.fills.push(pdfw::Fill { x_mm: x, y_mm: y, w_mm: w, h_mm: h, rgb });
+    }
+}
+
+/// **紙を足していく先。** 頁を足す所を1本にしておくと、頁割りに手を
+/// 入れずに書き手を替えられます(2026-08-27)。
+struct Board {
+    leaves: Vec<pdfw::Leaf>,
+}
+
+impl Board {
+    /// 1枚目の紙を敷いた紙束を作ります
+    fn new(paper: Paper) -> Self {
+        Board { leaves: vec![leaf(paper)] }
+    }
+
+    /// 紙を1枚足して、その番号を返します
+    fn add_page(&mut self, paper: Paper) -> usize {
+        self.leaves.push(leaf(paper));
+        self.leaves.len() - 1
+    }
+
+    fn len(&self) -> usize {
+        self.leaves.len()
+    }
+
+    /// `i` 枚目に描く筆を借ります
+    fn ink(&mut self, i: usize) -> Ink<'_> {
+        Ink { leaf: &mut self.leaves[i] }
+    }
+
+    fn save<W: Write>(self, paper: Paper, font_data: &[u8], out: W) -> Result<(), String> {
+        pdfw::write_pages(&self.leaves, paper.width_mm, paper.height_mm, font_data, out)
+    }
+}
+
+fn leaf(paper: Paper) -> pdfw::Leaf {
+    pdfw::Leaf { size_mm: Some((paper.width_mm, paper.height_mm)), ..Default::default() }
 }
 
 /// 1つの表を PDF にする。行が紙に収まらなければ次のページへ。
@@ -271,20 +374,12 @@ pub fn sheet_to_pdf<W: Write>(
     setup: &PrintSetup,
     out: W,
 ) -> Result<u32, String> {
-    let (doc, page, layer) = PdfDocument::new(
-        &grid.name,
-        Mm(paper.width_mm),
-        Mm(paper.height_mm),
-        "帳票",
-    );
-    let font = doc
-        .add_external_font(std::io::Cursor::new(font_data))
-        .map_err(|e| e.to_string())?;
-    let (pages, clipped, margins) =
-        draw_sheet(&doc, &font, grid, paper, setup, Some((page, layer)));
+    let mut board = Board::new(paper);
+    let (pages, clipped, margins) = draw_sheet(&mut board, grid, paper, setup, true);
     // 1枚だけの PDF は、そのシートの頁数がそのまま総頁
-    draw_header_footer(&doc, &font, grid, paper, &pages, margins, 0, pages.len());
-    doc.save(&mut BufWriter::new(out)).map_err(|e| e.to_string())?;
+    let total = pages.len();
+    draw_header_footer(&mut board, grid, paper, pages, margins, 0, total);
+    board.save(paper, font_data, out)?;
     Ok(clipped)
 }
 
@@ -304,32 +399,27 @@ pub fn book_to_pdf<W: Write>(
     out: W,
 ) -> Result<u32, String> {
     let first = sheets.first().ok_or("シートがありません")?;
-    let (doc, page, layer) = PdfDocument::new(
-        &first.0.name,
-        Mm(first.1.width_mm),
-        Mm(first.1.height_mm),
-        "帳票",
-    );
-    let font = doc
-        .add_external_font(std::io::Cursor::new(font_data))
-        .map_err(|e| e.to_string())?;
+    let paper1 = first.1;
     let mut clipped = 0u32;
+    let mut board = Board::new(paper1);
     // 版組を先に全部済ませる — **総頁が決まってからでないと &N が書けない**
-    let mut laid: Vec<(usize, Vec<PaperPlace>, Margins)> = Vec::new();
-    let mut carry = Some((page, layer));
+    let mut laid: Vec<(usize, std::ops::Range<usize>, Margins)> = Vec::new();
+    let mut carry = true;
     for (i, (grid, paper, setup)) in sheets.iter().enumerate() {
-        let (pages, cl, margins) = draw_sheet(&doc, &font, grid, *paper, setup, carry.take());
+        let (pages, cl, margins) = draw_sheet(&mut board, grid, *paper, setup, carry);
+        carry = false;
         clipped += cl;
         laid.push((i, pages, margins));
     }
     let total: usize = laid.iter().map(|(_, p, _)| p.len()).sum();
     let mut offset = 0usize;
-    for (i, pages, margins) in &laid {
-        let (grid, paper, _) = &sheets[*i];
-        draw_header_footer(&doc, &font, grid, *paper, pages, *margins, offset, total);
-        offset += pages.len();
+    for (i, pages, margins) in laid {
+        let (grid, paper, _) = &sheets[i];
+        let n = pages.len();
+        draw_header_footer(&mut board, grid, *paper, pages, margins, offset, total);
+        offset += n;
     }
-    doc.save(&mut BufWriter::new(out)).map_err(|e| e.to_string())?;
+    board.save(paper1, font_data, out)?;
     Ok(clipped)
 }
 
@@ -346,13 +436,12 @@ pub fn band_cols(title_cols: &[u32], start: u32, n: u32) -> Vec<u32> {
 }
 
 fn draw_sheet(
-    doc: &PdfDocumentReference,
-    font: &IndirectFontRef,
+    board: &mut Board,
     grid: &Grid,
     paper: Paper,
     setup: &PrintSetup,
-    first: Option<(PdfPageIndex, PdfLayerIndex)>,
-) -> (Vec<PaperPlace>, u32, Margins) {
+    carry: bool,
+) -> (std::ops::Range<usize>, u32, Margins) {
     let (ext_rows, ext_cols) = grid.extent();
     // 印刷範囲があればそこだけ(行も列も)。**複数あれば域ごとに刷る**
     let areas: Vec<(u32, u32, u32, u32)> = if setup.areas.is_empty() {
@@ -375,14 +464,14 @@ fn draw_sheet(
     // **紙 N 枚に収める指定があれば、そちらが勝つ**(Excel と同じ)
     let scale = fit_scale(grid, paper, setup, (r0, r1, c0, c1), (ml, mr, mt, mb))
         .unwrap_or_else(|| grid.print_scale.unwrap_or(100).clamp(10, 400) as f32 / 100.0);
-    // 文書の1枚目(渡されていればそれを使い、無ければ足す)
-    let (page, layer) = first.unwrap_or_else(|| {
-        let (np, nl) = doc.add_page(Mm(paper.width_mm), Mm(paper.height_mm), "帳票");
-        (np, nl)
-    });
-    let mut l = doc.get_page(page).get_layer(layer);
-    // 各ページの控え(ヘッダー/フッターは総頁が決まってから描く)
-    let mut hf_pages = vec![(page, layer)];
+    // 文書の1枚目(もう作ってあればそれを使い、無ければ足す)
+    let first = if carry {
+        board.len() - 1
+    } else {
+        board.add_page(paper)
+    };
+    // いま描いている紙(ヘッダー/フッターは総頁が決まってから描く)
+    let mut cur = first;
 
     // 列の幅と左端(文書の指定に従う)。印刷範囲の左端が原点。
     // グループ化で畳んだ列は幅ゼロ(画面と同じく出さない)
@@ -467,8 +556,7 @@ fn draw_sheet(
     #[allow(clippy::too_many_arguments)]
     fn draw_row(
         grid: &Grid,
-        l: &PdfLayerReference,
-        font: &IndirectFontRef,
+        ink: &mut Ink<'_>,
         r: u32,
         y_top: f32,
         rh: f32,
@@ -483,36 +571,22 @@ fn draw_sheet(
         let ncols = cols.len();
         // 印刷の枠線(printOptions gridLines)。薄い灰で先に敷く
         if grid.print_gridlines {
-            l.set_outline_color(Color::Rgb(Rgb::new(0.85, 0.87, 0.89, None)));
             let w_total = col_x[ncols];
             for (x1, y1, x2, y2) in [
                 (ml, y_top, ml + w_total, y_top),
                 (ml, y_top - rh, ml + w_total, y_top - rh),
             ] {
-                l.add_line(Line {
-                    points: vec![
-                        (Point::new(Mm(x1), Mm(y1)), false),
-                        (Point::new(Mm(x2), Mm(y2)), false),
-                    ],
-                    is_closed: false,
-                });
+                ink.line(x1, y1, x2, y2, 0.1, GRID_GREY);
             }
             for &x in col_x.iter().take(ncols + 1) {
-                l.add_line(Line {
-                    points: vec![
-                        (Point::new(Mm(ml + x), Mm(y_top)), false),
-                        (Point::new(Mm(ml + x), Mm(y_top - rh)), false),
-                    ],
-                    is_closed: false,
-                });
+                ink.line(ml + x, y_top, ml + x, y_top - rh, 0.1, GRID_GREY);
             }
-            l.set_outline_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
         }
         // 行番号(printOptions headings)。左の余白に小さく
+        // **行番号も升と同じ字**です(2026-08-27 発注者)。置き場が余白と
+        // いうだけで、特別扱いはしません
         if grid.print_headings {
-            l.set_fill_color(Color::Rgb(Rgb::new(0.4, 0.44, 0.48, None)));
-            l.use_text((r + 1).to_string(), 6.5, Mm(ml - 7.0), Mm(y_top - rh + 2.0), font);
-            l.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+            ink.text(&(r + 1).to_string(), 6.5, ml - 7.0, y_top - rh + 2.0, HEAD_GREY, false);
         }
         for (i, &c) in cols.iter().enumerate() {
             let p = book::Pos::new(r, c);
@@ -528,7 +602,7 @@ fn draw_sheet(
             // ここは決まった答えを紙の形に写すだけ
             let ck = kumihan::look::resolve_cond(cond_prep, p, &cell.value);
             let fill = ck.fill.clone().or_else(|| cell.fmt.fill.clone());
-            let ink = ck.color.clone().or_else(|| cell.fmt.color.clone());
+            let colour = ck.color.clone().or_else(|| cell.fmt.color.clone());
             // **None は「触らない」**(セル自身の書式のまま)
             let bold = ck.bold.unwrap_or(cell.fmt.bold);
             //
@@ -545,10 +619,8 @@ fn draw_sheet(
             //   **セル自身のそれらも描いていない**ので、条件付き書式のぶんだけ
             //   描くと食い違いがかえって増える
             // 塗りは罫線より先に敷く(線を塗り潰さない)
-            if let Some((cr, cg, cb)) = fill.as_deref().and_then(hex_rgb) {
-                l.set_fill_color(Color::Rgb(Rgb::new(cr, cg, cb, None)));
-                l.add_rect(Rect::new(Mm(x), Mm(y_top - rh), Mm(x + cw), Mm(y_top)));
-                l.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+            if let Some(c) = fill.as_deref().and_then(hex_rgb) {
+                ink.fill(x, y_top - rh, cw, rh, c);
             }
 
             // 罫線。引いてある辺だけ — 線種の太さと色まで写す
@@ -561,7 +633,7 @@ fn draw_sheet(
                 (b.right, (x + cw, y_top, x + cw, y_top - rh)),
             ] {
                 if e.on {
-                    let (cr, cg, cb) = match e.color {
+                    let c = match e.color {
                         Some(v) => (
                             ((v >> 16) & 255) as f32 / 255.0,
                             ((v >> 8) & 255) as f32 / 255.0,
@@ -569,19 +641,9 @@ fn draw_sheet(
                         ),
                         None => (0.0, 0.0, 0.0),
                     };
-                    l.set_outline_color(Color::Rgb(Rgb::new(cr, cg, cb, None)));
-                    // px → pt(1px ≒ 0.75pt)。二重線は2本に開くほどの幅が
-                    // 無いので太めの1本で
-                    l.set_outline_thickness(e.style.px() * 0.75);
-                    l.add_line(Line {
-                        points: vec![
-                            (Point::new(Mm(x1), Mm(y1)), false),
-                            (Point::new(Mm(x2), Mm(y2)), false),
-                        ],
-                        is_closed: false,
-                    });
-                    l.set_outline_thickness(0.0);
-                    l.set_outline_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+                    // px → pt → mm。二重線は2本に開くほどの幅が無いので
+                    // 太めの1本で
+                    ink.line(x1, y1, x2, y2, e.style.px() * 0.75 * 25.4 / 72.0, c);
                 }
             }
 
@@ -596,32 +658,23 @@ fn draw_sheet(
                 let s = (rh - 1.6).min(3.2); // 箱の一辺 mm
                 let bx = x + 1.5;
                 let by = y_top - rh / 2.0 - s / 2.0; // 箱の下辺
-                l.set_outline_color(Color::Rgb(Rgb::new(0.1, 0.1, 0.1, None)));
-                let sq = vec![
-                    (bx, by), (bx + s, by), (bx + s, by + s), (bx, by + s),
-                ];
-                l.add_line(Line {
-                    points: sq
-                        .into_iter()
-                        .map(|(px_, py_)| (printpdf::Point::new(Mm(px_), Mm(py_)), false))
-                        .collect(),
-                    is_closed: true,
-                });
+                const TICK_INK: (f32, f32, f32) = (0.1, 0.1, 0.1);
+                // 折れ線は辺ごとに引きます(書き手が持つのは直線だけ)
+                for (x1, y1, x2, y2) in [
+                    (bx, by, bx + s, by),
+                    (bx + s, by, bx + s, by + s),
+                    (bx + s, by + s, bx, by + s),
+                    (bx, by + s, bx, by),
+                ] {
+                    ink.line(x1, y1, x2, y2, 0.2, TICK_INK);
+                }
                 if *b {
-                    let tick = vec![
-                        (bx + s * 0.2, by + s * 0.5),
-                        (bx + s * 0.45, by + s * 0.2),
-                        (bx + s * 0.85, by + s * 0.85),
-                    ];
-                    l.add_line(Line {
-                        points: tick
-                            .into_iter()
-                            .map(|(px_, py_)| {
-                                (printpdf::Point::new(Mm(px_), Mm(py_)), false)
-                            })
-                            .collect(),
-                        is_closed: false,
-                    });
+                    for (x1, y1, x2, y2) in [
+                        (bx + s * 0.2, by + s * 0.5, bx + s * 0.45, by + s * 0.2),
+                        (bx + s * 0.45, by + s * 0.2, bx + s * 0.85, by + s * 0.85),
+                    ] {
+                        ink.line(x1, y1, x2, y2, 0.3, TICK_INK);
+                    }
                 }
                 continue;
             }
@@ -661,37 +714,25 @@ fn draw_sheet(
             };
             let ty = y_top - rh + 2.0;
             // 文字は塗り色で描かれる(PDF の作法)ので、色付きの字は前後で入れ替える
-            let colored = ink.as_deref().and_then(hex_rgb);
-            if let Some((cr, cg, cb)) = colored {
-                l.set_fill_color(Color::Rgb(Rgb::new(cr, cg, cb, None)));
-            }
-            l.use_text(&shown, pt, Mm(tx), Mm(ty), font);
-            if bold {
-                l.use_text(&shown, pt, Mm(tx + 0.1), Mm(ty), font);
-            }
-            if colored.is_some() {
-                l.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
-            }
+            let c = colour.as_deref().and_then(hex_rgb).unwrap_or((0.0, 0.0, 0.0));
+            ink.text(&shown, pt, tx, ty, c, bold);
         }
     }
 
     // 列名の見出し(printOptions headings)。各ページの上の余白に
-    let draw_col_heads = |l: &PdfLayerReference, cols: &[u32], cx: &[f32], cm: &[f32]| {
+    let draw_col_heads = |ink: &mut Ink<'_>, cols: &[u32], cx: &[f32], cm: &[f32]| {
         if !grid.print_headings {
             return;
         }
-        l.set_fill_color(Color::Rgb(Rgb::new(0.4, 0.44, 0.48, None)));
         for (i, &c) in cols.iter().enumerate() {
             let x = ml + cx[i] + cm[i] / 2.0 - 1.0;
             let name = book::Pos::new(0, c).a1();
             let name = name.trim_end_matches('1');
-            l.use_text(name, 6.5, Mm(x), Mm(paper.height_mm - mt + 1.5), font);
+            ink.text(name, 6.5, x, paper.height_mm - mt + 1.5, HEAD_GREY, false);
         }
-        l.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
     };
 
     let mut y_used = 0.0f32; // このページで使った高さ
-    let mut page_no = 1u32;
     // 束(横のページ)ごとに全行を出す。束が変わるたび新しい紙へ
     for (bi, &(r0, r1, bc0, bn)) in bands.iter().enumerate() {
     let cols = band_cols(&title_cols, bc0, bn);
@@ -701,17 +742,10 @@ fn draw_sheet(
         col_x.push(col_x.last().unwrap() + w);
     }
     if bi > 0 {
-        page_no += 1;
         y_used = 0.0;
-        let (np, nl) = doc.add_page(
-            Mm(paper.width_mm),
-            Mm(paper.height_mm),
-            format!("帳票 {page_no}"),
-        );
-        l = doc.get_page(np).get_layer(nl);
-        hf_pages.push((np, nl));
+        cur = board.add_page(paper);
     }
-    draw_col_heads(&l, &cols, &col_x, &col_mm);
+    draw_col_heads(&mut board.ink(cur), &cols, &col_x, &col_mm);
     for r in r0..r1.max(r0 + 1) {
         // 畳んだ行は紙にも出さない(画面と同じ)
         if grid.row_hidden.contains(&r) {
@@ -721,29 +755,22 @@ fn draw_sheet(
         // 改ページ(rowBreaks: この行から新しい紙)か、紙が尽きたら次のページ
         let break_here = y_used > 0.0 && grid.row_breaks.contains(&r);
         if break_here || (y_used + rh > usable && y_used > 0.0) {
-            page_no += 1;
             y_used = 0.0;
-            let (np, nl) = doc.add_page(
-                Mm(paper.width_mm),
-                Mm(paper.height_mm),
-                format!("帳票 {page_no}"),
-            );
-            l = doc.get_page(np).get_layer(nl);
-            hf_pages.push((np, nl));
-            draw_col_heads(&l, &cols, &col_x, &col_mm);
+            cur = board.add_page(paper);
+            draw_col_heads(&mut board.ink(cur), &cols, &col_x, &col_mm);
             // タイトル行を頭で繰り返す(いま描く行が自分自身なら繰り返さない)
             if !title_rows.contains(&r) {
                 for tr in &title_rows {
                     let th = row_mm(*tr);
                     let y_top = paper.height_mm - mt - y_used;
-                    draw_row(grid, &l, font, *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
+                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
                     y_used += th;
                 }
             }
         }
         let y_top = paper.height_mm - mt - y_used;
         y_used += rh;
-        draw_row(grid, &l, font, r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
+        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
     }
     }
     // 図形(挿した分も読んだ分も)。**輪郭だけ**を紙に出す(塗りはまだ —
@@ -757,7 +784,7 @@ fn draw_sheet(
             let y: f32 = (r0..at.row.min(r1)).map(row_mm).sum();
             (ml + x, paper.height_mm - mt - y)
         };
-        let l1 = doc.get_page(page).get_layer(layer);
+        let l1 = &mut board.ink(first);
         for sp in grid.shapes.iter().chain(grid.shapes_new.iter()) {
             let (x, y_top) = cell_mm(sp.at);
             let mm = 25.4 / 96.0; // px → mm
@@ -765,10 +792,8 @@ fn draw_sheet(
             let (x, y_top) =
                 (x + sp.dx_px * mm * scale, y_top - sp.dy_px * mm * scale);
             let (w, h) = (sp.width_px * mm * scale, sp.height_px * mm * scale);
-            if let Some((cr, cg, cb)) = sp.line.as_deref().and_then(hex_rgb) {
-                l1.set_outline_color(Color::Rgb(Rgb::new(cr, cg, cb, None)));
-            }
-            l1.set_outline_thickness(sp.line_w.max(0.1) * scale);
+            let pen = sp.line.as_deref().and_then(hex_rgb).unwrap_or((0.0, 0.0, 0.0));
+            let pen_w = sp.line_w.max(0.1) * scale * 25.4 / 72.0;
             let pts: Vec<(f32, f32)> = match sp.kind.as_str() {
                 "ellipse" => (0..=24)
                     .map(|i| {
@@ -805,13 +830,14 @@ fn draw_sheet(
                         let (cx_, ty) = pp.at;
                         let (l, r) = (x + cx_ * w - bw / 2.0, x + cx_ * w + bw / 2.0);
                         let t = y_top - ty * h;
-                        l1.add_line(Line {
-                            points: [(l, t), (r, t), (r, base_y), (l, base_y)]
-                                .into_iter()
-                                .map(|(px_, py_)| (Point::new(Mm(px_), Mm(py_)), false))
-                                .collect(),
-                            is_closed: true,
-                        });
+                        for (x1, y1, x2, y2) in [
+                            (l, t, r, t),
+                            (r, t, r, base_y),
+                            (r, base_y, l, base_y),
+                            (l, base_y, l, t),
+                        ] {
+                            l1.line(x1, y1, x2, y2, pen_w, pen);
+                        }
                     }
                     continue;
                 }
@@ -885,22 +911,21 @@ fn draw_sheet(
                 }
             }
             let closed = !matches!(sp.kind.as_str(), "line" | "spark" | "ink" | "marker");
-            l1.add_line(Line {
-                points: pts
-                    .into_iter()
-                    .map(|(px_, py_)| (Point::new(Mm(px_), Mm(py_)), false))
-                    .collect(),
-                is_closed: closed,
-            });
-            l1.set_outline_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+            // 折れ線は辺ごとに引きます。閉じる形なら最後の点から先頭へ1本
+            let ends = if closed { pts.len() } else { pts.len().saturating_sub(1) };
+            for i in 0..ends {
+                let (x1, y1) = pts[i];
+                let (x2, y2) = pts[(i + 1) % pts.len()];
+                l1.line(x1, y1, x2, y2, pen_w, pen);
+            }
             // 図形の中の文字(テキストボックス)。左上から素直に
             if let Some(t) = &sp.text {
-                l1.use_text(t, 9.0 * scale, Mm(x + 1.5), Mm(y_top - 4.5), font);
+                l1.text(t, 9.0 * scale, x + 1.5, y_top - 4.5, (0.0, 0.0, 0.0), false);
             }
         }
     }
 
-    (hf_pages, clipped, (ml, mr, mt, mb))
+    (first..board.len(), clipped, (ml, mr, mt, mb))
 }
 
 #[cfg(test)]
@@ -966,7 +991,7 @@ mod tests {
         // 塗りが無ければ長方形(re)は1つも描かれない
         let mut plain = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut plain).unwrap();
-        assert!(!String::from_utf8_lossy(&plain).contains(" re\n"), "塗りが無いのに長方形がある");
+        assert!(!crate::pdfw::unpack(&plain).contains(" re\n"), "塗りが無いのに長方形がある");
         s.set(Pos::parse("A2").unwrap(), Cell {
             formula: None,
             value: Value::Text("塗り".into()),
@@ -978,7 +1003,7 @@ mod tests {
         });
         let mut buf = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut buf).unwrap();
-        let hay = String::from_utf8_lossy(&buf).to_string();
+        let hay = crate::pdfw::unpack(&buf);
         assert!(hay.contains(" re\n"), "塗りの長方形が無い");
         assert!(hay.contains(" rg\n"), "色の指定が無い");
     }
@@ -999,7 +1024,7 @@ mod tests {
         let mut buf = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut buf).unwrap();
         assert!(
-            String::from_utf8_lossy(&buf).contains(" re\n"),
+            crate::pdfw::unpack(&buf).contains(" re\n"),
             "条件に合う値の塗りが紙に出ない"
         );
     }
