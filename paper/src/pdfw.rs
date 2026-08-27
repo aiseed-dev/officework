@@ -784,6 +784,33 @@ mod tests {
         assert!(fill_at < line_at, "塗りが線より後ろにある(線が消えます)");
     }
 
+    /// **表の見出しの繰り返しは、まだ効かない。** 数えて返します。
+    ///
+    /// 2026-08-27 に入れてみて、実物で重なることが分かりました。頁の頭に
+    /// 置いても、そこには既に次の行が載っています。頁割りが見出しのぶんを
+    /// 詰めていないためです。**黙って重ねません。**
+    #[test]
+    fn a_repeating_header_row_is_counted_not_silently_overlapped() {
+        let mut src = String::from("|===\n|品名 |数量\n\n");
+        for i in 1..=60 {
+            src.push_str(&format!("|品目{i} |{}\n", i * 3));
+        }
+        src.push_str("|===\n");
+        let doc = crate::super_parse(&src);
+        let (sheet, page, bytes) = crate::doc_to_sheet(&doc, None).expect("組めない");
+        let pp = crate::Paper {
+            width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm,
+        };
+        let mut out = Vec::new();
+        let lost = sheet_to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut out))
+            .expect("PDF が出ない");
+        assert!(!sheet.header_tables.is_empty(), "見出しの表を覚えていない");
+        assert!(
+            lost.iter().any(|s| s.contains("見出しの繰り返し")),
+            "数えていない: {lost:?}"
+        );
+    }
+
     /// 字が1つも無い紙でも落ちない
     #[test]
     fn an_empty_page_still_makes_a_pdf() {
@@ -979,6 +1006,28 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
         }
     }
 
+    let mut lost = Vec::new();
+
+    // **表の見出しの行の繰り返しは、まだ効きません。**
+    //
+    // 2026-08-27 に入れてみて、実物で重なることが分かりました。頁の頭に
+    // 置いても、そこには既に次の行が載っています。**頁割りが見出しのぶんを
+    // 詰めていない**からです。
+    //
+    // 直すには `paginate_full` が「この頁は見出しを繰り返すので、その高さ
+    // ぶん本文の入る高さが減る」と数える必要があります。脚注が本文の底を
+    // 上げるのと同じ形です。頁割りの側の作業なので、ここでは**数えて言う
+    // だけ**にします(黙って重ねません)。
+    if !sheet.header_tables.is_empty() {
+        let 頁 = pages_of.iter().copied().max().unwrap_or(1);
+        if 頁 > 1 {
+            lost.push(format!(
+                "表の見出しの繰り返し {} 表(頁をまたぐと2頁目から見出しが出ません)",
+                sheet.header_tables.len()
+            ));
+        }
+    }
+
     // 塗り。**罫線より先に敷きます**(線を塗り潰さないため)
     for (at, color) in &sheet.fills {
         let k = page_of(offsets, at[1], paper.height_mm);
@@ -1014,7 +1063,6 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
     }
 
     // 画像。どの頁に載るかは上端の y で決めます
-    let mut lost = Vec::new();
     let mut bad = 0;
     for (data, at) in &sheet.images {
         let k = page_of(offsets, at[1], paper.height_mm);

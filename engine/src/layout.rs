@@ -1311,6 +1311,10 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         h
     };
 
+    // **見出しの行を持つ表**を覚えます。紙が頁をまたぐとき繰り返します
+    if table.header_row && !sheet.header_tables.contains(&table_no) {
+        sheet.header_tables.push(table_no);
+    }
     // 第2走: 中身と当たり判定(from_body=false。本文の位置合わせに入れない)
     for (ri, laid) in rows_laid.into_iter().enumerate() {
         let row_top = tops[ri];

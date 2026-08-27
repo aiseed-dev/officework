@@ -1067,6 +1067,12 @@ mod footnote_area_tests {
 }
 
 
+/// 試験のための読み(adoc → 文書)。**本体では使いません**
+#[cfg(test)]
+pub(crate) fn super_parse(src: &str) -> kumihan::Document {
+    kumihan::adoc::parse(src).expect("読めない")
+}
+
 /// **文書から PDF を1手で作る**(2026-08-27 発注者「エンジンで pdf を
 /// つくるところまで」)。
 ///
