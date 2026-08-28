@@ -41,6 +41,10 @@ jobs:
     name: 回し方を見る
     runs-on: ubuntu-latest
     steps:
+      # **木を持ってきます。** 版を読むのに要ります。2026-08-28 に、
+      # 版を見る所を足したのに checkout を足し忘れて、
+      # 「pysheet/Cargo.toml がありません」で止まりました
+      - uses: actions/checkout@v5
       - name: タグから回しているか
         run: |
           if [ "${{ inputs.dry_run }}" = "true" ]; then
@@ -61,7 +65,15 @@ jobs:
           # が起き、しかも PyPI は同じファイルを2度受け取らないので**やり直しが
           # 効きません**。先に止めます(2026-08-28)
           TAG="${GITHUB_REF#refs/tags/v}"
+          if [ ! -f pysheet/Cargo.toml ]; then
+            echo "::error::pysheet/Cargo.toml がありません。この仕事に actions/checkout がありますか"
+            exit 1
+          fi
           VER=$(grep -m1 '^version' pysheet/Cargo.toml | cut -d'"' -f2)
+          if [ -z "$VER" ]; then
+            echo "::error::pysheet/Cargo.toml から版が読めません"
+            exit 1
+          fi
           if [ "$TAG" != "$VER" ]; then
             echo "::error::タグ v$TAG と pysheet/Cargo.toml の版 $VER が違います。どちらかを直してください"
             exit 1
