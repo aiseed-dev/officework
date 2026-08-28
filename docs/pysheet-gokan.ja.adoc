@@ -339,5 +339,28 @@ App クラスは作らない(下記)。
 |`add_column(width)` |断る |等分の表に1列だけ幅を持たせると形が決まらない。幅なしで足す道を案内する
 |===
 
+=== 実在の連載サンプルで測ったずれ(2026-08-28、test/out/blog の48本)
+
+shibutan-bloomers.com の連載(python-docx 第1〜3回・openpyxl 第2〜3回)の
+サンプル24本を、本家と officework(import の行だけ差し替え)の両方で
+実行して突き合わせた。本家側は 23/24 が通る(残る1本は記事が古く、
+いまの openpyxl 3.1 でも同じ所で止まる)。officework 側で止まった物の
+うち、この台帳に既にある物(run 内の画像・add\_table の style 引数)を
+除いた新しいずれは次の8件。置き場と回し方は test/out/blog/README.ja.adoc。
+
+[cols="1,1,1"]
+|===
+|ずれ |重さ |どうする(案 2026-08-28)
+
+|`Document('径路')` で開けない(`Doc.open` だけ) |入り口の1行目で止まる |生成の引数に径路を受けて open へ回す(互換層)
+|`font.size` が本家の `Pt(12)`(EMU の Length)を「152400 で変」と断る |本家のコードがそのまま動かない |int(EMU)も受けて pt に直す — add\_picture が Length を受けるのと同じ作法
+|`paragraph.style` が str を返し `.style.name` が無い |記事の定番の書き方 |run の font と同じ「str の子」で両対応(\_doc.py の \_Font の手)
+|`ws[1]`(行番号)・`ws['A']`(列文字)・`ws['A1':'C3']`(スライス)が全部使えない |openpyxl の基本の書き方。A1 の文字列しか受けない |\_\_getitem\_\_ を本家の形(A1・範囲・行番号・列文字・スライス)に広げる(互換層)
+|空セルの `ws['B4']` が None を返す |本家はセルを作って返す約束 — 結合の左上に書く形が全部止まる |触ったら作って返す(値は None)— cell(r, c) と同じに
+|`Section.start_type` が読めない |add\_section は済みだが、読む側の属性が無い |読みを張る(new\_page / continuous)
+|スタイル定義の属性(base\_style・hidden・quick\_style・priority・locked)が無い |第3回の題材そのもの |「名乗りだけの最小定義」をどこまで広げるか — 決めてから
+|書体の名指しが PDF に効くのは文書ぜんたいの `d.font` だけ |run 単位の `font.name` と表の `Font(name=…)` は docx には入るが、PDF は Noto のまま |run・セルの書体名を PDF の組む所へ届ける(0.5.0b2 の直しの続き)
+|===
+
 採取の道具: link:../tools/gokan_inventory.py[tools/gokan\_inventory.py]。
 再採取は `.venv/bin/python tools/gokan_inventory.py inventory.json `(3つが .venv に入っている前提)。
