@@ -20,6 +20,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use pyo3::exceptions::{PyIOError, PyIndexError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
 use kumihan::{Block, CharFormat, Document, Paragraph, Run};
 
@@ -321,6 +322,7 @@ impl PyDoc {
             name: "Normal".into(),
             kind: "paragraph".into(),
             look: Default::default(),
+            ..Default::default()
         });
         for d in &kumihan::theme::default_theme().styles {
             if d.name == "本文" {
@@ -332,6 +334,7 @@ impl PyDoc {
                 name,
                 kind: "paragraph".into(),
                 look: Default::default(),
+                ..Default::default()
             });
         }
         PyDoc {
@@ -674,6 +677,144 @@ impl PyDoc {
             .collect())
     }
 
+    /// **スタイル定義の性質を読む。** 返りは dict。
+    ///
+    /// 鍵: based_on(元になるスタイルの styleId)/ hidden(一覧に出さない)/
+    /// unhide_when_used(使ったら出す)/ locked(書き替えを禁じる)/
+    /// quick_style(リボンの一覧に出す)/ priority(並べる順)。
+    fn style_props<'py>(&self, py: Python<'py>, name: &str) -> PyResult<Bound<'py, PyDict>> {
+        let g = lock(&self.inner)?;
+        let s = g
+            .doc
+            .styles
+            .iter()
+            .chain(g.doc.styles_new.iter())
+            .find(|s| s.name == name || s.id == name)
+            .ok_or_else(|| PyValueError::new_err(format!("スタイル「{name}」が無い")))?;
+        let d = PyDict::new(py);
+        d.set_item("based_on", s.based_on.clone())?;
+        d.set_item("hidden", s.hidden)?;
+        d.set_item("unhide_when_used", s.unhide_when_used)?;
+        d.set_item("locked", s.locked)?;
+        d.set_item("quick_style", s.quick_style)?;
+        d.set_item("priority", s.priority)?;
+        d.set_item("alignment", s.para.align.map(align_word))?;
+        d.set_item("space_before", s.para.space_before_pt)?;
+        d.set_item("space_after", s.para.space_after_pt)?;
+        d.set_item("line_spacing", s.para.line_spacing)?;
+        d.set_item("indent_level", s.para.indent)?;
+        d.set_item(
+            "first_line_indent",
+            s.para.first_line_twips.map(|t| t as f32 / 20.0),
+        )?;
+        Ok(d)
+    }
+
+    /// スタイル定義の性質を書く。**渡した鍵だけ**を替えます。
+    ///
+    /// 原本から読んだスタイルでも書けます。保存では、触った定義だけを
+    /// styles.xml で差し替えます(触っていない物は1字も動きません)。
+    #[pyo3(signature = (name, **kw))]
+    fn set_style_props(&self, name: &str, kw: Option<&Bound<'_, PyDict>>) -> PyResult<()> {
+        let Some(kw) = kw else { return Ok(()) };
+        let mut g = lock(&self.inner)?;
+        // **本体と足した分を別々に見ます。** 両方をつないで可変で借りると
+        // 借用が二重になります
+        let doko = g.doc.styles.iter().position(|s| s.name == name || s.id == name);
+        let s = match doko {
+            Some(i) => &mut g.doc.styles[i],
+            None => {
+                let j = g
+                    .doc
+                    .styles_new
+                    .iter()
+                    .position(|s| s.name == name || s.id == name)
+                    .ok_or_else(|| {
+                        PyValueError::new_err(format!("スタイル「{name}」が無い"))
+                    })?;
+                &mut g.doc.styles_new[j]
+            }
+        };
+        for (k, v) in kw.iter() {
+            let k: String = k.extract()?;
+            match k.as_str() {
+                "based_on" => {
+                    s.based_on = if v.is_none() { None } else { Some(v.extract()?) }
+                }
+                "hidden" => s.hidden = v.extract()?,
+                "unhide_when_used" => s.unhide_when_used = v.extract()?,
+                "locked" => s.locked = v.extract()?,
+                "quick_style" => s.quick_style = v.extract()?,
+                "priority" => {
+                    s.priority = if v.is_none() { None } else { Some(v.extract()?) }
+                }
+                "alignment" => {
+                    s.para.align = if v.is_none() {
+                        None
+                    } else {
+                        let w: String = v.extract()?;
+                        Some(align_of(&w).ok_or_else(|| {
+                            PyValueError::new_err(format!("揃えに「{w}」はありません"))
+                        })?)
+                    }
+                }
+                "space_before" => {
+                    s.para.space_before_pt =
+                        if v.is_none() { None } else { Some(v.extract()?) }
+                }
+                "space_after" => {
+                    s.para.space_after_pt =
+                        if v.is_none() { None } else { Some(v.extract()?) }
+                }
+                "line_spacing" => {
+                    s.para.line_spacing = if v.is_none() { None } else { Some(v.extract()?) }
+                }
+                "indent_level" => {
+                    s.para.indent = if v.is_none() { None } else { Some(v.extract()?) }
+                }
+                "first_line_indent" => {
+                    s.para.first_line_twips = if v.is_none() {
+                        None
+                    } else {
+                        let pt: f32 = v.extract()?;
+                        Some((pt * 20.0).round() as i32)
+                    }
+                }
+                _ => {
+                    return Err(PyValueError::new_err(format!(
+                        "スタイルの性質に「{k}」はありません。使えるのは \
+                         based_on / hidden / unhide_when_used / locked / \
+                         quick_style / priority / alignment / space_before / \
+                         space_after / line_spacing / indent_level / \
+                         first_line_indent"
+                    )))
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// **このアプリで足したスタイルを消す。**
+    ///
+    /// 原本から読んだスタイルは消せません。styles.xml は据え置きが基本で、
+    /// 消すと、そのスタイルを当てた段落が原本の中で行き場を失います。
+    /// 正直に断ります(黙って何もしない、はしません)。
+    fn remove_style(&self, name: &str) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        let mae = g.doc.styles_new.len();
+        g.doc.styles_new.retain(|s| s.name != name && s.id != name);
+        if g.doc.styles_new.len() < mae {
+            return Ok(());
+        }
+        if g.doc.styles.iter().any(|s| s.name == name || s.id == name) {
+            return Err(PyValueError::new_err(format!(
+                "スタイル「{name}」は原本の物なので消せません\
+                 (このアプリで足した物だけ消せます)"
+            )));
+        }
+        Err(PyValueError::new_err(format!("スタイル「{name}」が無い")))
+    }
+
     /// スタイルを足す。styleId は名前から空白を抜いた形(Word の流儀)。
     /// 同じ物が居れば断る。
     ///
@@ -727,6 +868,7 @@ impl PyDoc {
                 bold, italic, underline, strike,
                 size_pt: size, color, font, fill,
             },
+            ..Default::default()
         });
         Ok(())
     }
@@ -1594,16 +1736,7 @@ impl PyParagraph {
     /// 行の寄せ。"left" / "center" / "right" / "justify" / "distribute"。
     #[getter]
     fn align(&self) -> PyResult<String> {
-        self.with(|p| {
-            match p.align {
-                kumihan::Align::Left => "left",
-                kumihan::Align::Center => "center",
-                kumihan::Align::Right => "right",
-                kumihan::Align::Justify => "justify",
-                kumihan::Align::Distribute => "distribute",
-            }
-            .to_string()
-        })
+        self.with(|p| align_word(p.align).to_string())
     }
 
     #[setter]
@@ -2761,4 +2894,27 @@ fn read_picture(
         (None, None) => (w0, h0),
     };
     Ok((data, w_mm, h_mm))
+}
+
+/// 揃えの言い換え。**1箇所で決めます** — 段落とスタイルで綴りがずれると、
+/// 同じ物が別の名前で返ります
+fn align_word(a: kumihan::Align) -> &'static str {
+    match a {
+        kumihan::Align::Left => "left",
+        kumihan::Align::Center => "center",
+        kumihan::Align::Right => "right",
+        kumihan::Align::Justify => "justify",
+        kumihan::Align::Distribute => "distribute",
+    }
+}
+
+fn align_of(v: &str) -> Option<kumihan::Align> {
+    Some(match v {
+        "left" => kumihan::Align::Left,
+        "center" => kumihan::Align::Center,
+        "right" => kumihan::Align::Right,
+        "justify" | "both" => kumihan::Align::Justify,
+        "distribute" => kumihan::Align::Distribute,
+        _ => return None,
+    })
 }

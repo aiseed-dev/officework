@@ -2731,6 +2731,7 @@ mod own_style_look {
             name: "注記".into(),
             kind: "paragraph".into(),
             look,
+            ..Default::default()
         });
         styles_of(&write_out(&d))
     }

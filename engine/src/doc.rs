@@ -777,6 +777,22 @@ pub struct StyleInfo {
     pub kind: String,
     /// 字の見た目。**設定した物だけ**を持ちます(None は「言わない」)
     pub look: StyleLook,
+    /// 元になるスタイルの `styleId`(docx の `w:basedOn`)。
+    /// 書いていない物は自分で全部決めます
+    pub based_on: Option<String>,
+    /// スタイルの一覧に出さない(docx の `w:semiHidden`)。
+    /// **使ったら出す**(`w:unhideWhenUsed`)は別に持ちます
+    pub hidden: bool,
+    /// 使ったら一覧に出す(docx の `w:unhideWhenUsed`)
+    pub unhide_when_used: bool,
+    /// 書き替えを禁じる(docx の `w:locked`)。文書を保護したときに効きます
+    pub locked: bool,
+    /// リボンのスタイルの一覧に出す(docx の `w:qFormat`)
+    pub quick_style: bool,
+    /// 一覧に並べる順(docx の `w:uiPriority`)。小さいほど先
+    pub priority: Option<i32>,
+    /// 段落の見た目(docx の `w:pPr`)。字の見た目([`StyleLook`])と対です
+    pub para: StyleParaLook,
 }
 
 /// **Word が「使ったときに作る」組み込みスタイル。**
@@ -836,10 +852,27 @@ pub fn latent_style(name: &str) -> Option<(&'static str, &'static str)> {
         .copied()
 }
 
-/// スタイルが持つ字の見た目。三択(入・切・言わない)です。
+/// スタイルが持つ**段落の**見た目(docx の `w:pPr`)。
 ///
-/// 「言わない」は、元になるスタイル(`basedOn`)から受け継ぐという意味です。
-/// `false` を書くと**わざわざ切る**ことになり、意味が違います。
+/// 三択(入・切・言わない)です。「言わない」は、元になるスタイル
+/// (`basedOn`)から受け継ぐという意味で、`false` を書くと**わざわざ切る**
+/// ことになり、意味が違います。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct StyleParaLook {
+    /// 横の揃え。`None` は「言わない」(元になるスタイルから受け継ぐ)
+    pub align: Option<Align>,
+    /// 段落の前後の空き(pt)
+    pub space_before_pt: Option<f32>,
+    pub space_after_pt: Option<f32>,
+    /// 行間の倍率
+    pub line_spacing: Option<f32>,
+    /// 左のインデント段数(1段 = 全角2文字ぶん)
+    pub indent: Option<u8>,
+    /// 1行目の字下げ(twip。負はぶら下げ)
+    pub first_line_twips: Option<i32>,
+}
+
+/// スタイルが持つ字の見た目(docx の `w:rPr`)。三択(入・切・言わない)です。
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct StyleLook {
     pub bold: Option<bool>,

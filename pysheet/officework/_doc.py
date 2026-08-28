@@ -384,6 +384,18 @@ class Length(int):
     def pt(self):
         return self / 12700
 
+    @property
+    def inches(self):
+        return self / 914400
+
+    @property
+    def twips(self):
+        return self / 635
+
+    @classmethod
+    def from_inches(cls, v):
+        return None if v is None else cls(round(float(v) * 914400))
+
     @classmethod
     def from_pt(cls, v):
         """pt → Length。`None` はそのまま `None`(指定なし)。"""
@@ -523,6 +535,98 @@ class Section:
         return repr(self._s)
 
 
+class _StylePara:
+    """`Style.paragraph_format` の役。段落の `ParagraphFormat` と同じ呼び名。
+
+    **スタイルが持つ段落の見た目**です(docx の `w:pPr`)。段落そのものの
+    書式とは別で、こちらはスタイルを当てた段落すべてに効きます。
+    """
+
+    __slots__ = ("_s",)
+
+    def __init__(self, style):
+        self._s = style
+
+    @property
+    def alignment(self):
+        return self._s._props()["alignment"]
+
+    @alignment.setter
+    def alignment(self, v):
+        self._s._set(alignment=None if v is None else _align_word(v))
+
+    @property
+    def space_before(self):
+        v = self._s._props()["space_before"]
+        return None if v is None else Length.from_pt(v)
+
+    @space_before.setter
+    def space_before(self, v):
+        self._s._set(space_before=None if v is None else _to_pt(v))
+
+    @property
+    def space_after(self):
+        v = self._s._props()["space_after"]
+        return None if v is None else Length.from_pt(v)
+
+    @space_after.setter
+    def space_after(self, v):
+        self._s._set(space_after=None if v is None else _to_pt(v))
+
+    @property
+    def line_spacing(self):
+        return self._s._props()["line_spacing"]
+
+    @line_spacing.setter
+    def line_spacing(self, v):
+        self._s._set(line_spacing=None if v is None else float(v))
+
+    @property
+    def left_indent(self):
+        """左の字下げ。**模型は段数**(1段=全角2字)なので pt に直します"""
+        v = self._s._props()["indent_level"]
+        return None if v is None else Length.from_pt(v * _ZEN * 2)
+
+    @left_indent.setter
+    def left_indent(self, v):
+        if v is None:
+            self._s._set(indent_level=None)
+            return
+        self._s._set(indent_level=max(0, min(9, round(_to_pt(v) / (_ZEN * 2)))))
+
+    @property
+    def first_line_indent(self):
+        v = self._s._props()["first_line_indent"]
+        return None if v is None else Length.from_pt(v)
+
+    @first_line_indent.setter
+    def first_line_indent(self, v):
+        self._s._set(first_line_indent=None if v is None else _to_pt(v))
+
+
+class _StyleColor(str):
+    """スタイルの字の色。字としても `.rgb` でも使えます(`_Color` と同じ手)"""
+
+    def __new__(cls, value, font=None):
+        self = super().__new__(cls, value or "")
+        self._font = font
+        return self
+
+    @property
+    def rgb(self):
+        return str(self) or None
+
+    @rgb.setter
+    def rgb(self, v):
+        if self._font is None:
+            raise NotImplementedError("この色はスタイルに繋がっていません")
+        self._font._set(color=_rgb_moji(v))
+
+    @property
+    def type(self):
+        return None
+
+
 class _StyleFont:
     """`Style.font` の役。**自作スタイルだけ**書けます(2026-08-27)。
 
@@ -585,11 +689,16 @@ class _StyleFont:
 
     @property
     def color(self):
-        return self._look().get("color")
+        """字の色。**本家は色の入れ物を返します**(`font.color.rgb`)。
+
+        色を持たないスタイルでも入れ物を返します — `None` を返すと
+        `font.color.rgb` が読めません(2026-08-28、連載の第3回)。
+        """
+        return _StyleColor(self._look().get("color"), self)
 
     @color.setter
     def color(self, v):
-        self._set(color=None if v is None else str(v))
+        self._set(color=_rgb_moji(v))
 
     @property
     def name(self):
@@ -655,6 +764,99 @@ class Style:
         self.name = name
         self.type = kind
         self._d = raw_doc
+
+    # ── 定義の性質(python-docx と同じ呼び名)────────────────────────
+    #
+    # `base_style` は本家に合わせて**スタイルそのもの**を返します。
+    # 他は真偽と数です。原本から読んだスタイルでも書けて、保存では
+    # 触った定義だけが styles.xml で差し替わります(2026-08-28)。
+
+    def _props(self):
+        if self._d is None:
+            raise NotImplementedError("このスタイルは文書に繋がっていません")
+        return self._d.style_props(self.name)
+
+    def _set(self, **kw):
+        if self._d is None:
+            raise NotImplementedError("このスタイルは文書に繋がっていません")
+        self._d.set_style_props(self.name, **kw)
+
+    @property
+    def base_style(self):
+        b = self._props()["based_on"]
+        if b is None:
+            return None
+        for sid, name, kind in self._d.styles:
+            if sid == b:
+                return Style(sid, name, kind, self._d)
+        return None
+
+    @base_style.setter
+    def base_style(self, v):
+        if v is None:
+            self._set(based_on=None)
+            return
+        # スタイルでも名前でも受けます
+        sid = getattr(v, "style_id", None)
+        if sid is None:
+            name = str(getattr(v, "name", v))
+            sid = next((i for i, n, _ in self._d.styles if n == name or i == name), name)
+        self._set(based_on=sid)
+
+    @property
+    def hidden(self):
+        return self._props()["hidden"]
+
+    @hidden.setter
+    def hidden(self, v):
+        self._set(hidden=bool(v))
+
+    @property
+    def unhide_when_used(self):
+        return self._props()["unhide_when_used"]
+
+    @unhide_when_used.setter
+    def unhide_when_used(self, v):
+        self._set(unhide_when_used=bool(v))
+
+    @property
+    def locked(self):
+        return self._props()["locked"]
+
+    @locked.setter
+    def locked(self, v):
+        self._set(locked=bool(v))
+
+    @property
+    def quick_style(self):
+        return self._props()["quick_style"]
+
+    @quick_style.setter
+    def quick_style(self, v):
+        self._set(quick_style=bool(v))
+
+    def delete(self):
+        """このスタイルを消す(python-docx と同じ口)。
+
+        **このアプリで足した物だけ**です。原本から読んだスタイルは
+        据え置きなので、消そうとすると断ります。
+        """
+        if self._d is None:
+            raise NotImplementedError("このスタイルは文書に繋がっていません")
+        self._d.remove_style(self.name)
+
+    @property
+    def paragraph_format(self):
+        """スタイルの段落の見た目(揃え・前後の空き・行間)"""
+        return _StylePara(self)
+
+    @property
+    def priority(self):
+        return self._props()["priority"]
+
+    @priority.setter
+    def priority(self, v):
+        self._set(priority=None if v is None else int(v))
 
     @property
     def font(self):

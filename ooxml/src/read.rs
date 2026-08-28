@@ -991,6 +991,59 @@ pub(super) fn extract_ink(doc: &mut Document) {
 /// 浅い読み(core.xml と同じ流儀)— 定義の本体は理解せず、原本が持ち越す。
 pub(super) fn parse_styles(xml: &str) -> Vec<kumihan::StyleInfo> {
     /// スタイルの `w:rPr` と `w:pPr` から見た目を読む。**読むだけ**です。
+/// スタイルの段落の見た目(`w:pPr` の中)。読めない物は「言わない」のまま
+fn style_para(body: &str) -> kumihan::StyleParaLook {
+    let val = |tag: &str| -> Option<String> {
+        let t = format!("<{tag}");
+        body.find(&t).map(|n| {
+            let e = body[n..].find('>').map(|e| n + e).unwrap_or(body.len());
+            attr_of(&body[n..e], "w:val")
+        })
+    };
+    let spacing = |key: &str| -> Option<f32> {
+        let n = body.find("<w:spacing")?;
+        let e = body[n..].find('>').map(|e| n + e)?;
+        let v = attr_of(&body[n..e], key);
+        // twip の 20 分の1が pt
+        v.parse::<f32>().ok().map(|t| t / 20.0)
+    };
+    kumihan::StyleParaLook {
+        align: val("w:jc").as_deref().and_then(align_of),
+        space_before_pt: spacing("w:before"),
+        space_after_pt: spacing("w:after"),
+        // 行間は 240 が1行(docx の決め)
+        line_spacing: {
+            let n = body.find("<w:spacing");
+            n.and_then(|n| body[n..].find('>').map(|e| n + e))
+                .map(|e| attr_of(&body[n.unwrap()..e], "w:line"))
+                .and_then(|v| v.parse::<f32>().ok())
+                .map(|l| l / 240.0)
+        },
+        indent: ind(body, "w:left").map(|t| (t / 480.0).round().clamp(0.0, 9.0) as u8),
+        first_line_twips: ind(body, "w:firstLine")
+            .or_else(|| ind(body, "w:hanging").map(|v| -v))
+            .map(|v| v as i32),
+    }
+}
+
+/// `w:ind` の値(twip)
+fn ind(body: &str, key: &str) -> Option<f32> {
+    let n = body.find("<w:ind")?;
+    let e = body[n..].find('>').map(|e| n + e)?;
+    attr_of(&body[n..e], key).parse().ok()
+}
+
+/// `w:jc` の値を揃えへ
+fn align_of(v: &str) -> Option<kumihan::Align> {
+    Some(match v {
+        "left" | "start" => kumihan::Align::Left,
+        "center" => kumihan::Align::Center,
+        "right" | "end" => kumihan::Align::Right,
+        "both" | "distribute" => kumihan::Align::Justify,
+        _ => return None,
+    })
+}
+
 fn style_look(body: &str) -> kumihan::StyleLook {
     let mut l = kumihan::StyleLook::default();
     // 三択を守ります。`<w:b/>` は入、`<w:b w:val="0"/>` は切、無ければ言わない
@@ -1069,7 +1122,36 @@ fn attr_of(hay: &str, key: &str) -> String {
             // styles.xml を据え置くので、ここで読んだ物は書き戻しません。
             // 読むのは「設定したのに開き直すと None」を無くすためです —
             // ファイルには残っているのに見えないと、失われたように見えます
-            out.push(kumihan::StyleInfo { id, name, kind, look: style_look(body) });
+            // 定義の性質(元になるスタイル・一覧への出し方・順)も読みます。
+            // **読むだけでは足りません** — 触った物は保存で書き戻します
+            // (2026-08-28。連載の第3回がここを題材にしています)
+            let val = |tag: &str| -> Option<String> {
+                let t = format!("<{tag}");
+                body.find(&t).map(|n| {
+                    let e = body[n..].find('>').map(|e| n + e).unwrap_or(body.len());
+                    attr_of(&body[n..e], "w:val")
+                })
+            };
+            // `<w:semiHidden/>` のように val を書かない形は「入」です
+            let flag = |tag: &str| -> bool {
+                match val(tag) {
+                    None => false,
+                    Some(v) => !matches!(v.as_str(), "0" | "false"),
+                }
+            };
+            out.push(kumihan::StyleInfo {
+                id,
+                name,
+                kind,
+                look: style_look(body),
+                based_on: val("w:basedOn").filter(|v| !v.is_empty()),
+                hidden: flag("w:semiHidden"),
+                unhide_when_used: flag("w:unhideWhenUsed"),
+                locked: flag("w:locked"),
+                quick_style: flag("w:qFormat"),
+                priority: val("w:uiPriority").and_then(|v| v.parse().ok()),
+                para: style_para(body),
+            });
         }
         from = end.max(i + 1);
     }

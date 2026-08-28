@@ -1167,16 +1167,72 @@ pub(super) fn image_kind(bytes: &[u8]) -> (&'static str, &'static str) {
 /// **三択(入・切・言わない)を守ります。** 言っていない物は書きません —
 /// 元になるスタイルから受け継ぐという意味だからです。
 fn style_look_xml(l: &kumihan::StyleLook) -> String {
-    if l.is_empty() {
+    style_look_xml_with(l, &kumihan::StyleParaLook::default())
+}
+
+/// 字と段落の見た目を1つの `<w:style>` の中身に。
+///
+/// **`w:pPr` は1つにまとめます。** 塗りと揃えを別々の `w:pPr` に書くと
+/// Word が後ろの1つしか見ません。
+fn style_look_xml_with(
+    l: &kumihan::StyleLook,
+    pl: &kumihan::StyleParaLook,
+) -> String {
+    let mut ppr = String::new();
+    if let Some(a) = pl.align {
+        let v = match a {
+            kumihan::Align::Left => "left",
+            kumihan::Align::Center => "center",
+            kumihan::Align::Right => "right",
+            kumihan::Align::Justify => "both",
+            kumihan::Align::Distribute => "distribute",
+        };
+        ppr.push_str(&format!(r#"<w:jc w:val="{v}"/>"#));
+    }
+    // 空きと行間は1つの `w:spacing` にまとめます(schema の決め)
+    let mut sp = String::new();
+    if let Some(v) = pl.space_before_pt {
+        sp.push_str(&format!(r#" w:before="{}""#, (v * 20.0).round() as i32));
+    }
+    if let Some(v) = pl.space_after_pt {
+        sp.push_str(&format!(r#" w:after="{}""#, (v * 20.0).round() as i32));
+    }
+    if let Some(v) = pl.line_spacing {
+        sp.push_str(&format!(
+            r#" w:line="{}" w:lineRule="auto""#,
+            (v * 240.0).round() as i32
+        ));
+    }
+    if !sp.is_empty() {
+        ppr.push_str(&format!("<w:spacing{sp}/>"));
+    }
+    // 字下げも1つの `w:ind` にまとめます。1段 = 全角2文字 = 480 twip
+    let mut ind = String::new();
+    if let Some(v) = pl.indent {
+        ind.push_str(&format!(r#" w:left="{}""#, v as i32 * 480));
+    }
+    if let Some(v) = pl.first_line_twips {
+        if v >= 0 {
+            ind.push_str(&format!(r#" w:firstLine="{v}""#));
+        } else {
+            ind.push_str(&format!(r#" w:hanging="{}""#, -v));
+        }
+    }
+    if !ind.is_empty() {
+        ppr.push_str(&format!("<w:ind{ind}/>"));
+    }
+    if let Some(c) = &l.fill {
+        ppr.push_str(&format!(
+            r#"<w:shd w:val="clear" w:color="auto" w:fill="{}"/>"#,
+            esc(c)
+        ));
+    }
+    if l.is_empty() && ppr.is_empty() {
         return String::new();
     }
     let mut out = String::new();
-    // 塗りは段落の側(w:pPr の shd)
-    if let Some(c) = &l.fill {
-        out.push_str(&format!(
-            r#"<w:pPr><w:shd w:val="clear" w:color="auto" w:fill="{}"/></w:pPr>"#,
-            esc(c)
-        ));
+    if !ppr.is_empty() {
+        out.push_str(&format!("<w:pPr>{ppr}</w:pPr>"));
     }
     let mut r = String::new();
     if let Some(f) = &l.font {
@@ -1211,6 +1267,127 @@ fn style_look_xml(l: &kumihan::StyleLook) -> String {
     out
 }
 
+/// スタイル定義の性質を XML に。**順は schema のとおり** —
+/// `w:name` の次が `w:basedOn`、その後ろに一覧まわりの旗が並びます。
+/// 順を崩すと Word が開けません。
+fn style_props_xml(s: &kumihan::StyleInfo) -> String {
+    let mut out = String::new();
+    if let Some(b) = &s.based_on {
+        out.push_str(&format!(r#"<w:basedOn w:val="{}"/>"#, esc(b)));
+    }
+    if let Some(p) = s.priority {
+        out.push_str(&format!(r#"<w:uiPriority w:val="{p}"/>"#));
+    }
+    for (on, tag) in [
+        (s.hidden, "w:semiHidden"),
+        (s.unhide_when_used, "w:unhideWhenUsed"),
+        (s.quick_style, "w:qFormat"),
+        (s.locked, "w:locked"),
+    ] {
+        if on {
+            out.push_str(&format!("<{tag}/>"));
+        }
+    }
+    out
+}
+
+/// **原本のスタイルの性質を書き戻す。**
+///
+/// 据え置きが基本なので、`doc.styles` の中身が読んだときと変わっている
+/// スタイルだけを差し替えます。触っていないスタイルは1字も動きません。
+///
+/// 差し替えるのは `w:name` の後ろの性質(`w:basedOn` `w:uiPriority`
+/// `w:semiHidden` `w:unhideWhenUsed` `w:qFormat` `w:locked`)だけで、
+/// 見た目(`w:rPr` `w:pPr`)には触りません。
+fn patch_style_props(xml: &str, doc: &Document) -> String {
+    // 読み直して、変わっている物を拾う
+    let moto = crate::read::parse_styles(xml);
+    let kawatta: Vec<&kumihan::StyleInfo> = doc
+        .styles
+        .iter()
+        .filter(|s| {
+            moto.iter().any(|m| {
+                m.id == s.id
+                    && (m.based_on != s.based_on
+                        || m.hidden != s.hidden
+                        || m.unhide_when_used != s.unhide_when_used
+                        || m.locked != s.locked
+                        || m.quick_style != s.quick_style
+                        || m.priority != s.priority
+                        || m.para != s.para)
+            })
+        })
+        .collect();
+    if kawatta.is_empty() {
+        return xml.to_string();
+    }
+    let mut out = xml.to_string();
+    for s in kawatta {
+        let Some(i) = out.find(&format!("w:styleId=\"{}\"", esc(&s.id))) else { continue };
+        // この `<w:style` の中身の始まりと終わり
+        let Some(hajime) = out[..i].rfind("<w:style ") else { continue };
+        let Some(atama) = out[i..].find('>').map(|e| i + e + 1) else { continue };
+        let Some(owari) = out[atama..].find("</w:style>").map(|e| atama + e) else { continue };
+        let naka = &out[atama..owari];
+        // `w:name` は残し、性質だけ入れ替える
+        let namae = naka
+            .find("<w:name")
+            .and_then(|n| naka[n..].find('>').map(|e| naka[n..n + e + 1].to_string()))
+            .unwrap_or_default();
+        let mut nokori = naka.to_string();
+        for tag in ["w:basedOn", "w:uiPriority", "w:semiHidden", "w:unhideWhenUsed",
+                    "w:qFormat", "w:locked"] {
+            nokori = drop_empty_tag(&nokori, tag);
+        }
+        if !namae.is_empty() {
+            nokori = nokori.replacen(&namae, "", 1);
+        }
+        // 段落の見た目を触っていれば、古い `w:pPr` を落として書き直します。
+        // **字の見た目(`w:rPr`)には触りません** — 据え置きが基本です
+        let moto_para = moto.iter().find(|m| m.id == s.id).map(|m| &m.para);
+        if moto_para != Some(&s.para) {
+            nokori = drop_block(&nokori, "w:pPr");
+        }
+        let mi = if moto_para != Some(&s.para) {
+            style_look_xml_with(&kumihan::StyleLook::default(), &s.para)
+        } else {
+            String::new()
+        };
+        let atarashii = format!("{namae}{}{mi}{nokori}", style_props_xml(s));
+        out.replace_range(atama..owari, &atarashii);
+        let _ = hajime;
+    }
+    out
+}
+
+/// `<w:pPr>…</w:pPr>` を丸ごと1つ落とす
+fn drop_block(xml: &str, tag: &str) -> String {
+    let hiraki = format!("<{tag}");
+    let toji = format!("</{tag}>");
+    let Some(i) = xml.find(&hiraki) else { return xml.to_string() };
+    let Some(e) = xml[i..].find('>').map(|e| i + e) else { return xml.to_string() };
+    // 空要素(`<w:pPr/>`)なら、そこまでで終わり
+    if xml[..e].ends_with('/') {
+        return format!("{}{}", &xml[..i], &xml[e + 1..]);
+    }
+    match xml[e..].find(&toji) {
+        Some(j) => format!("{}{}", &xml[..i], &xml[e + j + toji.len()..]),
+        None => xml.to_string(),
+    }
+}
+
+/// `<w:qFormat/>` や `<w:uiPriority w:val="9"/>` を1つ落とす
+fn drop_empty_tag(xml: &str, tag: &str) -> String {
+    let t = format!("<{tag}");
+    match xml.find(&t) {
+        Some(i) => match xml[i..].find('>') {
+            Some(e) => format!("{}{}", &xml[..i], &xml[i + e + 1..]),
+            None => xml.to_string(),
+        },
+        None => xml.to_string(),
+    }
+}
+
 fn styles_new_xml(doc: &Document, existing: &str) -> String {
     let mut out = String::new();
     for s in &doc.styles_new {
@@ -1223,7 +1400,8 @@ fn styles_new_xml(doc: &Document, existing: &str) -> String {
             esc(&s.id),
             esc(&s.name),
         ));
-        out.push_str(&style_look_xml(&s.look));
+        out.push_str(&style_props_xml(s));
+        out.push_str(&style_look_xml_with(&s.look, &s.para));
         out.push_str("</w:style>");
     }
     out
@@ -1332,12 +1510,16 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
                 // **追記だけ**する(core.xml と同じ外科術 — 作り直さない)
                 if name == "word/styles.xml" {
                     let s0 = String::from_utf8_lossy(&buf).to_string();
-                    let add = styles_new_xml(doc, &s0);
+                    // 原本のスタイルは据え置きですが、**性質を触った物だけ**は
+                    // 書き戻します(2026-08-28)。触っていない物は1字も動きません
+                    let mut s = patch_style_props(&s0, doc);
+                    let add = styles_new_xml(doc, &s);
                     if !add.is_empty() {
-                        let mut s = s0;
                         if let Some(pnt) = s.rfind("</w:styles>") {
                             s.insert_str(pnt, &add);
                         }
+                    }
+                    if s != s0 {
                         zip.start_file(name, opts).map_err(|e| e.to_string())?;
                         zip.write_all(s.as_bytes()).map_err(|e| e.to_string())?;
                         continue;
