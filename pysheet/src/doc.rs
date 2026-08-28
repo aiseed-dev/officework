@@ -463,6 +463,42 @@ impl PyDoc {
             .join("\n"))
     }
 
+    /// **文書ぜんたいの書体**(docx の `w:docDefaults`)。
+    ///
+    /// 段落や run が自分で指定していなければこれを使います。`None` は
+    /// 「言わない」で、開いた機械の既定に従います。
+    ///
+    /// **PDF にもここが効きます。** 名前が見つからなければ、系統を保った
+    /// 代替(明朝 → 明朝)に落ちます。
+    #[getter]
+    fn font(&self) -> PyResult<Option<String>> {
+        Ok(lock(&self.inner)?.doc.font.clone())
+    }
+
+    #[setter]
+    fn set_font(&self, value: Option<String>) -> PyResult<()> {
+        let v = value.filter(|s| !s.trim().is_empty());
+        lock(&self.inner)?.doc.font = v;
+        Ok(())
+    }
+
+    /// 文書ぜんたいの字の大きさ(pt)。`None` は既定(10.5pt)
+    #[getter]
+    fn size_pt(&self) -> PyResult<Option<f32>> {
+        Ok(lock(&self.inner)?.doc.size_pt)
+    }
+
+    #[setter]
+    fn set_size_pt(&self, value: Option<f32>) -> PyResult<()> {
+        if let Some(v) = value {
+            if !(1.0..=400.0).contains(&v) {
+                return Err(PyValueError::new_err(format!("字の大きさは 1〜400pt: {v}")));
+            }
+        }
+        lock(&self.inner)?.doc.size_pt = value;
+        Ok(())
+    }
+
     /// ヘッダーの字。ページ番号は `#`、総ページ数は `##` で書きます
     /// ([`marks_to_text`])。改行があれば段落が分かれます。
     #[getter]

@@ -58,6 +58,49 @@ fn decode(data: &[u8]) -> Option<(Vec<u8>, u32, u32, bool)> {
     Some((deflate(img.to_rgb8().as_raw()), w, h, false))
 }
 
+/// **PDF に書く書体の名前。** `ABCDEF+NotoSansCJKjp-Regular` の形です。
+///
+/// 頭の6文字は「字を一部だけ埋めた」印で、PDF の決まりです(大文字の
+/// 英字6つ + `+`)。読む側はこれを見て「元の書体そのものではない」と
+/// 分かります。元の名前は書体の中の PostScript 名を使い、無ければ
+/// 家族の名前から作ります。
+///
+/// 名前に使えない字(空白や括弧)は落とします — PDF の名前は
+/// 区切りの字を含められません。
+fn base_font_name(face: &ttf_parser::Face) -> String {
+    // **読める物を選びます。** 名前の表は同じ id が複数入っていて、
+    // Macintosh の側は古い encoding で読めないことがあります。先に
+    // 見つけた方を採ると、読める Windows の側があるのに諦めます
+    // (2026-08-28、IPAex が `Font` になって気づきました)
+    let hiku = |id: u16| -> Option<String> {
+        face.names()
+            .into_iter()
+            .filter(|n| n.name_id == id)
+            .find_map(|n| n.to_string())
+    };
+    let moto = hiku(ttf_parser::name_id::POST_SCRIPT_NAME)
+        .or_else(|| hiku(ttf_parser::name_id::FULL_NAME))
+        .or_else(|| hiku(ttf_parser::name_id::FAMILY))
+        .unwrap_or_else(|| "Font".to_string());
+    let kirei: String = moto
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '.' || *c == '_')
+        .take(60)
+        .collect();
+    let kirei = if kirei.is_empty() { "Font".to_string() } else { kirei };
+    // **一部だけ埋めた印。** 中身から決めるので、同じ書体の同じ字なら
+    // 同じ印になります(組み直しても PDF が変わりません)
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in kirei.as_bytes() {
+        h ^= *b as u64;
+        h = h.wrapping_mul(0x0100_0000_01b3);
+    }
+    let tag: String = (0..6)
+        .map(|i| (b'A' + ((h >> (i * 5)) % 26) as u8) as char)
+        .collect();
+    format!("{tag}+{kirei}")
+}
+
 /// 0〜1 の三つ組を `RRGGBB` に。[`rgb`] の逆です
 pub fn to_hex(c: (f32, f32, f32)) -> String {
     let b = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
@@ -328,8 +371,15 @@ pub fn write_pages<W: std::io::Write>(
     }
 
     // ④ 書体。Type0(CID)— 字の対応は PDF の側が持ちます
+    //
+    // **名前は元の書体の物にします。** 前は全部 `Subset` と名乗っていて、
+    // 出来た PDF を見ても何の書体で組んだのか分かりませんでした
+    // (2026-08-28、Noto と BIZ UD を見比べようとして気づきました)。
+    // 頭の6文字は「一部だけ埋めた」印で、PDF の決まりです
+    let ps_name = base_font_name(&face);
+    let ps = ps_name.as_bytes();
     pdf.type0_font(font)
-        .base_font(Name(b"Subset"))
+        .base_font(Name(ps))
         .encoding_predefined(Name(b"Identity-H"))
         .descendant_font(cid)
         .to_unicode(to_uni);
@@ -348,7 +398,7 @@ pub fn write_pages<W: std::io::Write>(
         pdf_writer::types::CidFontType::Type2
     };
     cf.subtype(kind)
-        .base_font(Name(b"Subset"))
+        .base_font(Name(ps))
         .system_info(SystemInfo { registry: Str(b"Adobe"), ordering: Str(b"Identity"), supplement: 0 })
         .font_descriptor(desc)
         .cid_to_gid_map_predefined(Name(b"Identity"))
@@ -370,7 +420,7 @@ pub fn write_pages<W: std::io::Write>(
     let bbox = face.global_bounding_box();
     let scale = |v: i16| v as f32 / upem * 1000.0;
     let mut fd = pdf.font_descriptor(desc);
-    fd.name(Name(b"Subset"))
+    fd.name(Name(ps))
         .flags(FontFlags::SYMBOLIC)
         .bbox(Rect::new(scale(bbox.x_min), scale(bbox.y_min), scale(bbox.x_max), scale(bbox.y_max)))
         .italic_angle(0.0)

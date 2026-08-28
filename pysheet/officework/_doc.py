@@ -1082,6 +1082,24 @@ class Doc:
         return self._d.text
 
     @property
+    def font(self):
+        """文書ぜんたいの書体。PDF にもここが効きます"""
+        return self._d.font
+
+    @font.setter
+    def font(self, v):
+        self._d.font = v
+
+    @property
+    def size_pt(self):
+        """文書ぜんたいの字の大きさ(pt)"""
+        return self._d.size_pt
+
+    @size_pt.setter
+    def size_pt(self, v):
+        self._d.size_pt = v
+
+    @property
     def header(self):
         """ヘッダー。`d.header.text = "…"` でも `d.header = "…"` でも書けます"""
         return _HeadFoot(self._d, "header")

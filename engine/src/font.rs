@@ -310,7 +310,10 @@ fn read_family(data: &[u8], index: u32, path: &Path) -> Option<Family> {
     let cyrillic = face.glyph_index('Ж').is_some();
     let latin = face.glyph_index('A').is_some() && face.glyph_index('é').is_some();
     let vietnamese = latin && face.glyph_index('ế').is_some();
-    let regular = face.is_regular();
+    // **「標準」だけでは足りません。** BIZ UD ゴシックの Bold は
+    // OS/2 の標準の旗も立てていて(2026-08-28 に実物で確認)、標準の顔と
+    // 見分けが付きません。太字と斜体でないことも見ます
+    let regular = face.is_regular() && !face.is_bold() && !face.is_italic();
     Some(Family {
         name,
         ascii: ascii_name,
