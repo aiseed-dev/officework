@@ -1140,6 +1140,62 @@ impl PySheet {
         })
     }
 
+    /// **ピボットテーブルを置く**(openpyxl の add_pivot の役)。
+    ///
+    /// 元の表(`src`。1行目が見出し)を、`rows` で行に、`cols` で列に
+    /// 広げて `value` を集計し、`at` へ置きます。
+    ///
+    /// 集計の仕方は sum / count / mean / min / max / median。返りは
+    /// 置いた広さ (行数, 列数) です。
+    ///
+    /// **アプリが動いていなくても回ります**(2026-08-29)。中では
+    /// polars(Rust)が集計します。
+    #[pyo3(signature = (src, at, rows, value, cols=None, agg="sum", totals=true))]
+    #[allow(clippy::too_many_arguments)]
+    fn add_pivot(
+        &self,
+        src: &str,
+        at: &str,
+        rows: Vec<String>,
+        value: String,
+        cols: Option<Vec<String>>,
+        agg: &str,
+        totals: bool,
+    ) -> PyResult<(u32, u32)> {
+        let (a, b) = parse_range(src)?;
+        let dest = parse_ref(at)?;
+        let name = self.with(|s| Ok(s.name.clone()))?;
+        let mut def = book::PivotDef {
+            sheet: name,
+            src: (a, b),
+            rows_sel: rows,
+            cols_sel: cols.unwrap_or_default(),
+            value,
+            agg: agg.to_string(),
+            totals,
+            dest,
+            // **指図は全部書きます。** `PivotDef` は既定を持ちません —
+            // 持たせると「言い忘れ」と「そう決めた」が見分けられなくなります
+            subtotals: false,
+            blank_rows: false,
+            compact: true,
+            size: (0, 0),
+            hide: Vec::new(),
+            style: String::new(),
+            chart_at: None,
+            name: String::new(),
+            vfilter: None,
+            group_by: Vec::new(),
+            show_as: String::new(),
+            sort: String::new(),
+        };
+        let mut g = lock(&self.inner)?;
+        def.name = format!("ピボット{}", g.book.pivots.len() + 1);
+        let (h, w) = pivot::apply(&mut g.book, &mut def).map_err(PyValueError::new_err)?;
+        g.book.pivots.push(def);
+        Ok((h, w))
+    }
+
     /// **シートを保護しているか。** xlsx の sheetProtection です。
     ///
     /// パスワードは掛けません(掛けた振りもしません)。効き目は

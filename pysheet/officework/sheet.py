@@ -426,6 +426,45 @@ class _Tables:
         return repr(self._all())
 
 
+class _SheetView:
+    """`ws.sheet_view` の役。**中身はシートが持ちます** — ここは
+    openpyxl の呼び名で読み書きするための薄い札です。"""
+
+    __slots__ = ("_s",)
+
+    def __init__(self, sheet):
+        self._s = sheet
+
+    @property
+    def showGridLines(self):
+        v = self._s.show_gridlines
+        return True if v is None else v
+
+    @showGridLines.setter
+    def showGridLines(self, v):
+        self._s.show_gridlines = bool(v)
+
+    @property
+    def zoomScale(self):
+        return self._s.zoom_scale
+
+    @zoomScale.setter
+    def zoomScale(self, v):
+        self._s.zoom_scale = None if v is None else int(v)
+
+    @property
+    def rightToLeft(self):
+        v = self._s.rtl
+        return False if v is None else v
+
+    @rightToLeft.setter
+    def rightToLeft(self, v):
+        self._s.rtl = bool(v)
+
+    def __repr__(self):
+        return "<SheetView gridlines={}>".format(self.showGridLines)
+
+
 class _Values(tuple):
     """`ws.values` の返り。**属性としても呼び出しとしても使えます。**
 
@@ -927,6 +966,56 @@ class Cell:
         self.parent.set_array_formula(self.coordinate, str(v))
 
     @property
+    def quotePrefix(self):
+        """**先頭のクォート**(数に見える字を字として持つ印)。
+
+        こちらは値の型で持ちます(`"0001"` は最初から字)ので、印は
+        要りません。本家の台本が読んでも落ちないよう False を返します。
+        """
+        return False
+
+    @property
+    def pivotButton(self):
+        """ピボットの ▼ が付いているか。**画面の持ち物**なので False"""
+        return False
+
+    def check_error(self, value=None):
+        """エラー値か(openpyxl の内部の判定)。`#N/A` などなら True"""
+        v = self.value if value is None else value
+        return isinstance(v, str) and v.startswith("#")
+
+    def check_string(self, value):
+        """字として置ける形に直す(openpyxl の内部の判定)"""
+        if value is None:
+            return None
+        t = str(value)
+        # xlsx のセルは 32,767 字まで(本家と同じ切り方)
+        return t[:32767]
+
+    @property
+    def internal_value(self):
+        """**中に入っている値そのもの。** 日付の表示形式でも通し番号のまま
+        返ります(`value` は datetime に直します)。openpyxl と同じ役です。"""
+        return self.parent.nama(self.coordinate)
+
+    @property
+    def has_style(self):
+        """既定でない書式を持っているか(openpyxl と同じ)"""
+        return bool(self._fmt())
+
+    @property
+    def style_id(self):
+        """書式の索引。**こちらは索引を人に見せません** — 原本の索引は
+        保存のときだけ使い、模型は書式そのものを持ちます。本家の台本が
+        読んでも落ちないよう 0 を返します。"""
+        return 0
+
+    @property
+    def base_date(self):
+        """日付の起点(ブックの `epoch` と同じ)"""
+        return self.parent.parent.epoch
+
+    @property
     def is_date(self):
         # 表示形式が日付で、中身が数(日付の通し番号)なら True。
         # **`value` ではなく生の値を見ます** — `value` は日付の表示形式が
@@ -1347,6 +1436,76 @@ class Sheet:
     def conditional_formatting_duplicates(self, range, unique=False, **kw):
         self._s.conditional_formatting_duplicates(range, unique=unique, **self._mitame(**kw))
 
+    def add_pivot(self, src, at, rows, value, cols=None, agg="sum", totals=True):
+        """**ピボットテーブルを置く。** 中では polars(Rust)が集計します。
+
+        `src` は元の表("A1:C7"。1行目が見出し)、`at` は置く左上。
+        `rows` は行に並べる見出し、`cols` は列に広げる見出しです。
+        返りは置いた広さ (行数, 列数)。
+        """
+        return self._s.add_pivot(src, at, list(rows), str(value),
+                                 None if cols is None else list(cols),
+                                 str(agg), bool(totals))
+
+    @property
+    def active_cell(self):
+        """いま選んでいるセル。**ファイルの側には持ちません** — 画面の
+        持ち物なので、開いたときは常に左上です(openpyxl は sheetView の
+        値を返しますが、こちらは画面が持ちます)。"""
+        return "A1"
+
+    @property
+    def selected_cell(self):
+        """選んでいる範囲。`active_cell` と同じ理由で左上を返します"""
+        return "A1"
+
+    @property
+    def sheet_view(self):
+        """画面の設定(目盛線・固定枠・拡大)。openpyxl は入れ物を返しますが、
+        こちらは**シートが直に持ちます** — `ws.show_gridlines` などです。"""
+        return _SheetView(self)
+
+    def set_printer_settings(self, paper_size=None, orientation=None):
+        """紙の設定(openpyxl と同じ口)。`ws.paper_size` などと同じ所です"""
+        if paper_size is not None:
+            self.paper_size = int(paper_size)
+        if orientation is not None:
+            self.orientation = str(orientation)
+
+    def add_image(self, img, anchor=None, width_px=None, height_px=None):
+        """**シートに画像を置く**(openpyxl と同じ口)。
+
+        `img` は径路でも bytes でも、openpyxl の `Image` でも受けます。
+        `anchor` は左上を留めるセル("B2")。`Image` が `anchor` を持って
+        いればそちらを使います。大きさは絵の実寸(96dpi)が既定で、
+        `Image` に `width` / `height`(px)があればそれを使います。
+        """
+        # **openpyxl の `Image` は `path` に部品の名前を持ちます**
+        # (`/xl/media/image1.png`)。実体は `ref` の側です — 径路のことも
+        # あれば、開いたファイルや PIL の絵のこともあります
+        moto = getattr(img, "ref", None) or getattr(img, "path", None) or img
+        if hasattr(moto, "read"):          # 開いたファイル
+            moto = moto.read()
+        elif hasattr(moto, "save") and not isinstance(moto, (str, bytes, bytearray)):
+            # PIL の絵。PNG にして渡します
+            import io
+            buf = io.BytesIO()
+            moto.save(buf, format="PNG")
+            moto = buf.getvalue()
+        at = anchor or getattr(img, "anchor", None) or "A1"
+        at = str(getattr(at, "_from", at) or "A1")
+        if not isinstance(at, str) or not at[:1].isalpha():
+            at = "A1"
+        # 大きさは名指しが勝ちます(`width_px` はこちらの前からの呼び方)
+        w = width_px if width_px is not None else getattr(img, "width", None)
+        h = height_px if height_px is not None else getattr(img, "height", None)
+        self._s.add_image(
+            moto if isinstance(moto, (bytes, bytearray)) else str(moto),
+            at,
+            None if w is None else float(w),
+            None if h is None else float(h),
+        )
+
     @property
     def protection(self):
         """シートの保護。`ws.protection.sheet = True` で掛かります"""
@@ -1760,6 +1919,50 @@ class Book:
         cur = names.index(name)
         to = max(0, min(len(names) - 1, cur + offset))
         self._b.move_sheet(name, to)
+
+    # ── openpyxl の古い呼び名 ────────────────────────────────────
+    #
+    # openpyxl 2.x の名前です。本家では非推奨ですが、世に出ている台本
+    # (連載・社内のマクロ)はこの名前で書かれています。**動かないと
+    # 移ってこられない**ので受けます(2026-08-29)。
+
+    @property
+    def data_only(self):
+        """**値だけで開いたか。** openpyxl は開くときに選ばせますが、
+        こちらは**式も値も常に両方持ちます**(自分で計算できるため)。
+        選ぶ必要が無いので False を返します。"""
+        return False
+
+    @property
+    def read_only(self):
+        """**読むだけで開いたか。** こちらはその形を持ちません
+        (原本を壊さない作りなので、開いて保存しても元は残ります)"""
+        return False
+
+    @property
+    def chartsheets(self):
+        """グラフだけのシート。**まだ持ちません** — 空を返します。
+        図はシートの上に置く形(`ws.add_chart`)で作れます。"""
+        return []
+
+    def create_chartsheet(self, title=None, index=None):
+        """グラフだけのシートを足す。**まだ持ちません**ので、正直に断ります"""
+        raise NotImplementedError(
+            "グラフだけのシートはまだ持ちません。"
+            "普通のシートに ws.add_chart(...) で置いてください"
+        )
+
+    def get_sheet_by_name(self, name):
+        """シートを名前で。いまの書き方は `wb[name]`"""
+        return self[name]
+
+    def get_sheet_names(self):
+        """シートの名前の並び。いまの書き方は `wb.sheetnames`"""
+        return list(self.sheetnames)
+
+    def remove_sheet(self, worksheet):
+        """シートを消す。いまの書き方は `wb.remove(ws)`"""
+        return self.remove(worksheet)
 
     def index(self, worksheet):
         return self._b.sheet_names.index(worksheet.title)

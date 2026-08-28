@@ -234,6 +234,15 @@ class Run:
     def strike(self, v):
         self._r.strike = bool(v)
 
+    @property
+    def contains_page_break(self):
+        """この run に改ページが入っているか。
+
+        **模型は改ページを段落の性質で持ちます**。run では持たないので、
+        常に False です(段落の側は `p.contains_page_break` で見られます)。
+        """
+        return False
+
     def add_picture(self, image, width=None, height=None):
         """この run の段落に画像を足す(python-docx と同じ口)。
 
@@ -1094,6 +1103,22 @@ class Paragraph:
     def comments(self):
         return [Comment(a, t, self) for a, t in self._p.comments]
 
+    @property
+    def contains_page_break(self):
+        """この段落で改ページするか(python-docx と同じ)。
+
+        **模型は改ページを段落の性質で持ちます**(`page_break_before`)。
+        本家は「改ページの run が中にあるか」で見ますが、紙の上の意味は
+        同じです。
+        """
+        return bool(self._p.page_break_before)
+
+    @property
+    def rendered_page_breaks(self):
+        """組んだ結果の改ページ。**組んでみないと分かりません**ので、
+        ここは指定した改ページだけを返します(本家も指定の分は返します)"""
+        return [self] if self._p.page_break_before else []
+
     def add_comment(self, text, author=""):
         """この段落にコメントを付ける(段落単位 — 文中の範囲は持たない)。"""
         self._p.add_comment(text, author)
@@ -1203,6 +1228,24 @@ def _valign_word(v):
         return "top"
     t = str(getattr(v, "name", v)).strip().lower()
     return {"middle": "center", "both": "center"}.get(t, t)
+
+
+class _Settings:
+    """`d.settings` の役。**中身は文書が直に持ちます**"""
+
+    __slots__ = ("_d",)
+
+    def __init__(self, doc):
+        self._d = doc
+
+    @property
+    def odd_and_even_pages_header_footer(self):
+        """奇数と偶数でヘッダーを分けているか。**文書の粒度では持ちません**
+        (表の側は持ちます)ので False"""
+        return False
+
+    def __repr__(self):
+        return "<Settings>"
 
 
 class _HeadFoot(str):
@@ -1321,6 +1364,24 @@ class Table:
 
     def __init__(self, raw):
         self._t = raw
+
+    @property
+    def table(self):
+        """自分自身(python-docx と同じ。セルから表へ辿るときの口)"""
+        return self
+
+    @property
+    def table_direction(self):
+        """表の向き。**右から左に並べる表は模型に持ちません**ので None。
+        文書ぜんたいの右横書きは `ws.rtl`(表計算)側にあります。"""
+        return None
+
+    @table_direction.setter
+    def table_direction(self, v):
+        if v is not None:
+            raise NotImplementedError(
+                "右から左に並べる表は模型に持ちません(黙って受けません)"
+            )
 
     def __len__(self):
         return len(self._t)
@@ -1455,6 +1516,26 @@ class Doc:
     @property
     def text(self):
         return self._d.text
+
+    def add_comment(self, text, author="", paragraph=None):
+        """**コメントを付ける**(python-docx と同じ口)。
+
+        付ける先は段落です(模型の粒度)。`paragraph` を渡さなければ
+        いちばん後ろの段落に付きます。
+        """
+        p = paragraph if paragraph is not None else self[len(self) - 1]
+        p.add_comment(text, author)
+        return p
+
+    @property
+    def settings(self):
+        """文書の設定(python-docx の `settings` の役)。
+
+        **こちらは設定を文書が直に持ちます** — 書体は `d.font`、
+        字の大きさは `d.size_pt`、紙は `d.sections[0]` です。ここは
+        本家の台本が読んでも落ちないよう、その入り口を返します。
+        """
+        return _Settings(self)
 
     @property
     def font(self):

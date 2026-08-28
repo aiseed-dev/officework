@@ -1,0 +1,24 @@
+[package]
+name = "pivot"
+version = "0.0.1"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+
+# **ピボットの集計。** polars(Rust)で回します。
+#
+# 2026-08-29 発注者「ピボットの処理は polars をつかって。polars が
+# rust のライブラリーもあるのでは」。いままでは Python の polars を
+# 別プロセスで呼んでいたので、**アプリでしか使えません**でした。
+# エンジン(pip install officework)からも使えるようにします。
+#
+# 要る機能だけを入れます(既定の全部入りは重い)。
+[dependencies]
+book = { path = "../book" }
+polars = { version = "0.55", default-features = false, features = [
+    "lazy",       # 遅延で組む(集計の骨)
+    "pivot",      # ピボット
+    "dtype-full", # 日付や小さい整数も落とさない
+] }
+
+[dev-dependencies]
+pyrun = { path = "../pyrun" }
