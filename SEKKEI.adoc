@@ -4799,3 +4799,42 @@ officework 2.7KB(骨だけ)/ Word 12.5KB(目標)/ python-docx 37.2KB(肥満)。
   模型には足さない
 * 原稿(文書)の run の書式(太字・斜体など)は別の話 — こちらは
   従来どおり adoc の記法(`**…**` など)に写る
+
+== 検討: 2D レンダラーの選考(2026-08-29 発注者「ベストなものを選考してみて」)
+
+polars を入れて良くなった前例に倣い、2D 描画も「その分野の一番」を
+選んでおく。前提を先に測った:
+
+* 画面(writer / calc)は gpui が既に描いている(中は lyon の三角形分割 +
+  自前。writer/src/view.rs の paint_path)。ここを替える話ではない
+* うちには**描く物の共通の形が既にある** — pdfw の Piece / Rule / Fill /
+  Poly(paper/src/grid.rs の Leaf)。PDF の書き手はこれを消費する。
+  レンダラーが要るのは、この同じ形を**絵(画面外の PNG・スマホの画面)**に
+  する道
+* 使い道は3つ: (1) スマホ・サーバーで紙面を絵にする(PDF 化の道具の
+  プレビュー)、(2) 図・グラフを画面と紙で同じに出す下地、(3) 将来の
+  Android の画面(face + レンダラー)
+* 字は kumihan が組む(位置は決まっている)。レンダラーは字形を置くだけで
+  よい — 文字組み内蔵(HarfBuzz 同梱)はむしろ余計
+
+=== 候補と判定
+
+[cols="1,1,2"]
+|===
+|候補 |判定 |理由
+
+|tiny-skia |**採る(いま)** |Skia の芯だけを純 Rust に移した CPU レンダラー。小さく・速く・出力が決定的。resvg の下で実物の SVG 何万枚で鍛えられている。管理が linebender(vello と同じ家)に移り、続きの心配も減った。文字組みを持たないのは、字形を置くだけのうちにはむしろ合う
+|vello(+ vello_cpu / vello_hybrid) |**見張る(次)** |GPU 計算中心の新世代。純 Rust・wgpu。Xilem / Masonry / Bevy が採用し、業界の向かう先。ただしまだ alpha で API が動く。Masonry は imaging という抽象で「裏を vello にも vello_cpu にも差し替えられる」形にした — うちも Leaf を共通の形にして裏を差し替えられるようにしておけば、育った日に乗り換えられる
+|skia-safe(rust-skia) |採らない |能力は最強(Chrome / Android / Flutter の実物)だが C++ の Skia を丸ごと連れてくる。6面(Linux / Win / mac × 画面 / wheel)の CI でビルドが最重量になり、純 Rust の作業場の利点を失う。polars の逆
+|femtovg |採らない |NanoVG 流で手軽だが OpenGL 依存。mac の GL は非推奨層で、先が細い
+|lyon |採らない(単体では) |三角形分割の部品でレンダラーではない。gpui の下に既にいる
+|pathfinder / forma |採らない |開発が止まっている
+|===
+
+=== 決め方の案
+
+. 裏を差し替えられる線を1本引く: 「Leaf(+字形の置き場)→ 絵」の
+  API を paper に置き、最初の裏を tiny-skia で書く
+. vello は vello_cpu が alpha を出た頃に同じ線の裏として試す。
+  表(呼ぶ側)は変えない
+. skia は将来も入れない(C++ ビルドを作業場に入れない決め)
