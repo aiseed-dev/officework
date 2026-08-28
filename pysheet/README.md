@@ -16,8 +16,8 @@ Written in Rust (15,000+ lines, 240+ tests), exposed to Python through PyO3.
 $ pip install officework
 ```
 
-**0.5.0 is in beta.** It is published as `0.5.0b1`, so the line above still
-gives you 0.4.0. To try the beta:
+**0.5.0 is in beta.** It is published as a pre-release, so the line above
+still gives you 0.4.0. To try the beta:
 
 ```console
 $ pip install --pre officework
