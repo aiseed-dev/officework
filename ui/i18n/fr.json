@@ -2226,5 +2226,7 @@
  "medium": "Moyen",
  "even_page": "Page paire",
  "first_page": "Première Page",
- "all_pages": "Tous"
+ "all_pages": "Tous",
+ "default_2": "Par défaut",
+ "fit_to_page": "Ajuster à la page"
 }

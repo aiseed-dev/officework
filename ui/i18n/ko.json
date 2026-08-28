@@ -2226,5 +2226,7 @@
  "unlocked": "보호되지 않음",
  "even_page": "짝수 페이지",
  "first_page": "첫 페이지",
- "all_pages": "모두"
+ "all_pages": "모두",
+ "default_2": "기본",
+ "fit_to_page": "페이지에 맞춤"
 }

@@ -2226,5 +2226,7 @@
  "unlocked": "不被保护的",
  "even_page": "偶数页",
  "first_page": "首页",
- "all_pages": "全部"
+ "all_pages": "全部",
+ "default_2": "默认",
+ "fit_to_page": "调整至页面大小"
 }

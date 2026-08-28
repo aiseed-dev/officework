@@ -2226,5 +2226,7 @@
  "unlocked": "Desprotegido",
  "even_page": "Página par",
  "first_page": "Primeira página",
- "all_pages": "Tudo"
+ "all_pages": "Tudo",
+ "default_2": "Padrão",
+ "fit_to_page": "Ajustar à página"
 }

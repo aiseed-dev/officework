@@ -2226,5 +2226,7 @@
  "unlocked": "未受保護",
  "even_page": "偶數頁",
  "first_page": "首頁",
- "all_pages": "全部"
+ "all_pages": "全部",
+ "default_2": "預設",
+ "fit_to_page": "縮放至整頁"
 }

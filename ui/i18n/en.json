@@ -2237,5 +2237,7 @@
  "tmpl_font": "Font",
  "even_page": "Even page",
  "first_page": "First page",
- "all_pages": "All"
+ "all_pages": "All",
+ "default_2": "Default",
+ "fit_to_page": "Fit to page"
 }

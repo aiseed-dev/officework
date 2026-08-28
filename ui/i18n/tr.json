@@ -2226,5 +2226,7 @@
  "unlocked": "Korumalı değil",
  "even_page": "Çift Sayfa",
  "first_page": "İlk sayfa",
- "all_pages": "Tümü"
+ "all_pages": "Tümü",
+ "default_2": "varsayılan",
+ "fit_to_page": "Sayfaya Sığdır"
 }

@@ -64,6 +64,7 @@ HIKU = {
     "scale": "Scale",
     "fit_to_width": "Fit to width",
     # 「縦に収める」— 本家も LibreOffice も1語では持っていません
+    "fit_to_page": "Fit to page",
     "fit_to_height": None,
     # 画面の「表示」タブの見出しの札。行番号と列番号のことです
     "row_col_headings": "Headings",
@@ -76,6 +77,7 @@ HIKU = {
     "freeze": "Freeze panes",
     "rtl": "Right to left",
     "tab_color": "Tab color",
+    "default_2": "Default",
     "default_col_width": None,
     "default_row_height": None,
     "kind": "Type",

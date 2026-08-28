@@ -2226,5 +2226,7 @@
  "unlocked": "Tak terlindungi",
  "even_page": "Halaman genap",
  "first_page": "Halaman pertama",
- "all_pages": "Semua"
+ "all_pages": "Semua",
+ "default_2": "standar",
+ "fit_to_page": "Sesuaikan Halaman"
 }

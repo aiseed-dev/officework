@@ -59,6 +59,9 @@ WORDS = [
     ("gridlines",          "目盛線",         "Gridlines"),
     ("tmpl_zoom",             "拡大",           "Zoom"),
     ("scale",              "倍率",           "Scale"),
+    # **紙に収める枚数は「横,縦」の1欄**にしました(2026-08-28)。
+    # 下の2つは古いテンプレートを読むために残してあります
+    ("fit_to_page",        "紙に収める",     "Fit to page"),
     ("fit_to_width",       "横に収める",     "Fit to width"),
     ("fit_to_height",      "縦に収める",     "Fit to height"),
     ("row_col_headings",   "行列番号",       "Row and column headings"),
@@ -71,6 +74,10 @@ WORDS = [
     ("rtl",                "右横書き",       "Right to left"),
     ("hide",               "非表示",         "Hide"),
     ("tab_color",          "見出しの色",     "Tab color"),
+    # **既定の幅と高さは、列幅と行の高さの表に「既定」の行として置きます**
+    # (2026-08-28)。「既定の列幅」を1語で持つと訳が引けません。
+    # 下の2つは古いテンプレートを読むために残してあります
+    ("default_2",          "既定",           "Default"),
     ("default_col_width",  "既定の列幅",     "Default column width"),
     ("default_row_height", "既定の行の高さ", "Default row height"),
     ("kind",               "種類",           "Kind"),

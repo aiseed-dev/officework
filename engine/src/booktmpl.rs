@@ -717,8 +717,6 @@ fn view_table(t: &BookTheme) -> Option<Table> {
                 || s.rtl.is_some()
                 || s.hidden.is_some()
                 || s.tab_color.is_some()
-                || s.default_col_width.is_some()
-                || s.default_row_height.is_some()
         })
         .map(|s| {
             vec![
@@ -729,14 +727,12 @@ fn view_table(t: &BookTheme) -> Option<Table> {
                 yes_no(s.rtl),
                 yes_no(s.hidden),
                 s.tab_color.clone().unwrap_or_default(),
-                s.default_col_width.map(numbers).unwrap_or_default(),
-                s.default_row_height.map(numbers).unwrap_or_default(),
             ]
         })
         .collect();
     table(
         w("view"),
-        &[w("sheets"), w("freeze"), w("gridlines"), w("formula_2"), w("rtl"), w("hide"), w("tab_color"), w("default_col_width"), w("default_row_height")],
+        &[w("sheets"), w("freeze"), w("gridlines"), w("formula_2"), w("rtl"), w("hide"), w("tab_color")],
         rows,
     )
 }
@@ -761,6 +757,9 @@ fn read_view(t: &mut BookTheme, rows: &[Vec<String>]) {
         if !color.is_empty() {
             s.tab_color = Some(color.to_string());
         }
+        // **古い形(9列)も読みます。** 2026-08-28 まで、既定の幅と高さを
+        // ここに置いていました。いまは列幅・行の高さの表に「既定」の行として
+        // 入れます(「既定の列幅」という複合語は訳が引けないため)
         if let Ok(v) = pick(row, 7).parse() {
             s.default_col_width = Some(v);
         }
@@ -885,8 +884,12 @@ fn print_table(t: &BookTheme) -> Option<Table> {
             vec![
                 s.name.clone(),
                 s.print_scale.map(|v| v.to_string()).unwrap_or_default(),
-                s.fit_to_w.map(|v| v.to_string()).unwrap_or_default(),
-                s.fit_to_h.map(|v| v.to_string()).unwrap_or_default(),
+                // **紙に収める枚数は「横,縦」の1欄です**(固定枠と同じ書き方)。
+                // 「横に収める」「縦に収める」を1語で持つと訳が引けません
+                match (s.fit_to_w, s.fit_to_h) {
+                    (None, None) => String::new(),
+                    (a, b) => format!("{},{}", a.unwrap_or(0), b.unwrap_or(0)),
+                },
                 yes_no(s.print_headings),
                 s.print_title_rows.map(|(a, b)| format!("{}:{}", a + 1, b + 1)).unwrap_or_default(),
                 s.print_title_cols.map(|(a, b)| format!("{}:{}", col_name(a), col_name(b))).unwrap_or_default(),
@@ -895,7 +898,7 @@ fn print_table(t: &BookTheme) -> Option<Table> {
         .collect();
     table(
         w("print"),
-        &[w("sheets"), w("scale"), w("fit_to_width"), w("fit_to_height"), w("row_col_headings"), w("title_rows"), w("title_cols")],
+        &[w("sheets"), w("scale"), w("fit_to_page"), w("row_col_headings"), w("title_rows"), w("title_cols")],
         rows,
     )
 }
@@ -910,15 +913,28 @@ fn read_print(t: &mut BookTheme, rows: &[Vec<String>]) {
         if let Ok(v) = pick(row, 1).parse() {
             s.print_scale = Some(v);
         }
-        if let Ok(v) = pick(row, 2).parse() {
-            s.fit_to_w = Some(v);
+        // **列は6つでも7つでも読みます。** 7つは古い形(横と縦が別の欄)、
+        // 6つが今の形(「横,縦」の1欄)です
+        let furui = row.len() >= 7;
+        if furui {
+            if let Ok(v) = pick(row, 2).parse() {
+                s.fit_to_w = Some(v);
+            }
+            if let Ok(v) = pick(row, 3).parse() {
+                s.fit_to_h = Some(v);
+            }
+        } else if let Some((a, b)) = pick(row, 2).split_once(',') {
+            if let Ok(v) = a.trim().parse() {
+                s.fit_to_w = Some(v);
+            }
+            if let Ok(v) = b.trim().parse() {
+                s.fit_to_h = Some(v);
+            }
         }
-        if let Ok(v) = pick(row, 3).parse() {
-            s.fit_to_h = Some(v);
-        }
-        s.print_headings = read_yes_no(pick(row, 4)).or(s.print_headings);
-        s.print_title_rows = read_rows(pick(row, 5)).or(s.print_title_rows);
-        s.print_title_cols = read_cols(pick(row, 6)).or(s.print_title_cols);
+        let z = if furui { 1 } else { 0 };
+        s.print_headings = read_yes_no(pick(row, 3 + z)).or(s.print_headings);
+        s.print_title_rows = read_rows(pick(row, 4 + z)).or(s.print_title_rows);
+        s.print_title_cols = read_cols(pick(row, 5 + z)).or(s.print_title_cols);
     }
 }
 
@@ -1125,6 +1141,11 @@ fn paper_table(t: &BookTheme) -> Option<Table> {
 fn width_table(t: &BookTheme) -> Option<Table> {
     let mut rows = Vec::new();
     for s in &t.sheets {
+        // **既定の幅は「既定」という列の名で置きます。** 「既定の列幅」を
+        // 1語で持つと、どの製品も持たない言い方なので訳が引けません
+        if let Some(v) = s.default_col_width {
+            rows.push(vec![s.name.clone(), w("default_2").into(), numbers(v)]);
+        }
         for (c, w) in &s.col_width {
             rows.push(vec![s.name.clone(), col_name(*c), numbers(*w)]);
         }
@@ -1135,6 +1156,9 @@ fn width_table(t: &BookTheme) -> Option<Table> {
 fn height_table(t: &BookTheme) -> Option<Table> {
     let mut rows = Vec::new();
     for s in &t.sheets {
+        if let Some(v) = s.default_row_height {
+            rows.push(vec![s.name.clone(), w("default_2").into(), numbers(v)]);
+        }
         for (r, h) in &s.row_height {
             rows.push(vec![s.name.clone(), (r + 1).to_string(), numbers(*h)]);
         }
@@ -1256,20 +1280,33 @@ fn read_paper(t: &mut BookTheme, rows: &[Vec<String>]) {
 fn read_width(t: &mut BookTheme, rows: &[Vec<String>]) {
     for row in rows {
         let name = pick(row, 0);
-        let Some(c) = col_index(pick(row, 1)) else { continue };
-        let Ok(w) = pick(row, 2).parse::<f32>() else { continue };
-        if !name.is_empty() {
-            t.sheet(name).col_width.push((c, w));
+        if name.is_empty() {
+            continue;
         }
+        let Ok(w) = pick(row, 2).parse::<f32>() else { continue };
+        // 列の欄が「既定」なら、そのシートの既定の幅
+        if words::is("default_2", pick(row, 1)) {
+            t.sheet(name).default_col_width = Some(w);
+            continue;
+        }
+        let Some(c) = col_index(pick(row, 1)) else { continue };
+        t.sheet(name).col_width.push((c, w));
     }
 }
 
 fn read_height(t: &mut BookTheme, rows: &[Vec<String>]) {
     for row in rows {
         let name = pick(row, 0);
-        let Ok(r) = pick(row, 1).parse::<u32>() else { continue };
+        if name.is_empty() {
+            continue;
+        }
         let Ok(h) = pick(row, 2).parse::<f32>() else { continue };
-        if !name.is_empty() && r >= 1 {
+        if words::is("default_2", pick(row, 1)) {
+            t.sheet(name).default_row_height = Some(h);
+            continue;
+        }
+        let Ok(r) = pick(row, 1).parse::<u32>() else { continue };
+        if r >= 1 {
             t.sheet(name).row_height.push((r - 1, h));
         }
     }
@@ -1539,6 +1576,41 @@ mod words_watch {
         assert_eq!(s.footer_first.as_deref(), Some("&L初頁"), "先頭のフッターが読めない");
         assert_eq!(s.hf_diff_odd_even, Some(true), "偶数を分ける印が立たない");
         assert_eq!(s.hf_diff_first, Some(true), "先頭を分ける印が立たない");
+    }
+
+    /// **古い形の印刷・列幅の表も読めます。**
+    ///
+    /// 2026-08-28 に、複合語をやめるために表の形を2つ直しました。
+    /// 配ってあるテンプレートが読めなくなると困るので、古い形も受けます。
+    #[test]
+    fn the_old_print_and_width_tables_still_read() {
+        let _lang = crate::font::lang_lock();
+        crate::font::set_default_language("ja");
+        let furui = "\
+= テンプレート
+
+.印刷
+|===
+|シート |倍率 |横に収める |縦に収める |行列番号 |タイトル行 |タイトル列
+
+|売上 |90 |1 |0 |true |1:1 |A:A
+|===
+
+.画面
+|===
+|シート |固定 |目盛線 |数式 |右横書き |非表示 |見出しの色 |既定の列幅 |既定の行の高さ
+
+|売上 | | | | | | |8.43 |13.50
+|===
+";
+        let t = super::parse(furui).expect("古い形が読めない");
+        let s = &t.sheets[0];
+        assert_eq!(s.print_scale, Some(90), "倍率");
+        assert_eq!((s.fit_to_w, s.fit_to_h), (Some(1), Some(0)), "紙に収める枚数");
+        assert_eq!(s.print_headings, Some(true), "行列番号");
+        assert_eq!(s.print_title_rows, Some((0, 0)), "タイトル行");
+        assert_eq!(s.default_col_width, Some(8.43), "既定の列幅");
+        assert_eq!(s.default_row_height, Some(13.5), "既定の行の高さ");
     }
 
     #[test]
