@@ -2228,5 +2228,7 @@
  "first_page": "İlk sayfa",
  "all_pages": "Tümü",
  "default_2": "varsayılan",
- "fit_to_page": "Sayfaya Sığdır"
+ "fit_to_page": "Sayfaya Sığdır",
+ "diagonal": "Köşegen",
+ "selection": "Seçim"
 }

@@ -158,6 +158,12 @@ WORDS = [
     ("medium",             "中",             "Medium"),
     ("thick",              "太",             "Thick"),
     ("double",             "二重",           "Double"),
+    # **線種と揃えは「柄+修飾」で書きます**(2026-08-28 発注者
+    # 「斜め線(方向, 線種, 配置)、こういうマクロではないの」)。
+    # 型スタンプの名前(slantDashDot)を語彙にせず、1語ずつの組にします。
+    # 下の2つは古いテンプレートを読むために残してあります
+    ("diagonal",           "斜め",           "Diagonal"),
+    ("selection",          "選択範囲",       "Selection"),
     ("slant_dash_dot",     "斜め一点鎖線",   "Slanted dash dot"),
     # --- 横の位置 ---
     ("align_general",      "標準",           "General"),

@@ -2239,5 +2239,7 @@
  "first_page": "First page",
  "all_pages": "All",
  "default_2": "Default",
- "fit_to_page": "Fit to page"
+ "fit_to_page": "Fit to page",
+ "diagonal": "Diagonal",
+ "selection": "Selection"
 }

@@ -2228,5 +2228,7 @@
  "first_page": "首页",
  "all_pages": "全部",
  "default_2": "默认",
- "fit_to_page": "调整至页面大小"
+ "fit_to_page": "调整至页面大小",
+ "diagonal": "对角线",
+ "selection": "选择"
 }

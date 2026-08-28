@@ -32,6 +32,7 @@
 
 /// セルの書式を (名前, 項目, 値) の表で持つ
 pub mod style;
+
 /// テンプレートの言葉の表(15言語)。**ui/gen_tmpl_words.py が起こします**
 pub mod words;
 

@@ -2239,5 +2239,7 @@
  "first_page": "先頭の頁",
  "all_pages": "すべて",
  "default_2": "既定",
- "fit_to_page": "紙に収める"
+ "fit_to_page": "紙に収める",
+ "diagonal": "斜め",
+ "selection": "選択範囲"
 }

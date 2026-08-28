@@ -2228,5 +2228,7 @@
  "first_page": "首頁",
  "all_pages": "全部",
  "default_2": "預設",
- "fit_to_page": "縮放至整頁"
+ "fit_to_page": "縮放至整頁",
+ "diagonal": "對角線",
+ "selection": "選擇"
 }

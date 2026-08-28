@@ -106,7 +106,7 @@ pub fn to_rows(f: &CellFormat) -> Vec<(&'static str, String)> {
         put("borders", borders_text(&f.borders));
     }
     if f.align != d.align {
-        put("align", words::text(halign_text(f.align)).into());
+        put("align", halign_text(f.align));
     }
     if f.valign != d.valign {
         put("valign", words::text(valign_text(f.valign)).into());
@@ -266,11 +266,53 @@ const BSTYLES: &[(BStyle, &str)] = &[
     (BStyle::SlantDashDot, "slant_dash_dot"),
 ];
 
-fn bstyle_text(s: BStyle) -> &'static str {
-    words::text(BSTYLES.iter().find(|(k, _)| *k == s).map(|(_, v)| *v).unwrap_or("thin"))
+/// 線種を**柄と修飾に分けて**書く。
+///
+/// 発注者「斜め一点鎖線・選択範囲内で中央、これに訳語をつけるのが
+/// おかしくないですか。斜め線(方向, 線種, 配置)、こういうマクロでは
+/// ないの」(2026-08-28)。そのとおりで、`slantDashDot` は Excel の
+/// 型スタンプの名前です。**罫線は場所×ペンの直交モデル**という決めが
+/// あるのに、ここだけ型の名前を語彙にしていました。
+///
+/// 柄(一点鎖線)に、修飾(斜め)をカンマで足す形にします。どちらも
+/// 1語なので、どの言語にも訳があります。
+fn bstyle_text(s: BStyle) -> String {
+    let (gara, kazari) = bstyle_parts(s);
+    match kazari {
+        Some(k) => format!("{},{}", words::text(gara), words::text(k)),
+        None => words::text(gara).to_string(),
+    }
+}
+
+/// 線種 → (柄, 修飾)。修飾は方向(斜め)だけです。
+///
+/// 太さの付いた物(`medium_dashed` など)は**1語のまま**にします。
+/// 出どころ(本家・LibreOffice)がその形で訳を持っていて、
+/// 分けると逆に元の言い方から離れます。
+fn bstyle_parts(s: BStyle) -> (&'static str, Option<&'static str>) {
+    match s {
+        BStyle::SlantDashDot => ("dash_dot", Some("diagonal")),
+        _ => (
+            BSTYLES.iter().find(|(k, _)| *k == s).map(|(_, v)| *v).unwrap_or("thin"),
+            None,
+        ),
+    }
 }
 
 fn read_bstyle(s: &str) -> BStyle {
+    // **柄と修飾に分かれた形を先に見ます。** 分かれていなければ、
+    // 今までどおり1語として引きます(古いテンプレートもこれで読めます)
+    if let Some((gara, kazari)) = s.split_once(',') {
+        let gara = read_bstyle_1(gara.trim());
+        if words::is("diagonal", kazari.trim()) && gara == BStyle::DashDot {
+            return BStyle::SlantDashDot;
+        }
+        return gara;
+    }
+    read_bstyle_1(s)
+}
+
+fn read_bstyle_1(s: &str) -> BStyle {
     BSTYLES.iter().find(|(_, sym)| words::is(sym, s)).map(|(k, _)| *k).unwrap_or(BStyle::Thin)
 }
 
@@ -284,11 +326,32 @@ const HALIGNS: &[(HAlign, &str)] = &[
     (HAlign::Distribute, "distributed"),
 ];
 
-fn halign_text(a: HAlign) -> &'static str {
-    HALIGNS.iter().find(|(k, _)| *k == a).map(|(_, v)| *v).unwrap_or("align_general")
+/// 横位置。**「選択範囲内で中央」も分けて書きます** — 中央(揃え)に
+/// 範囲(効く先)をカンマで足した形です。線種と同じ考えです
+fn halign_text(a: HAlign) -> String {
+    match a {
+        HAlign::CenterContinuous => {
+            format!("{},{}", words::text("center"), words::text("selection"))
+        }
+        _ => words::text(
+            HALIGNS.iter().find(|(k, _)| *k == a).map(|(_, v)| *v).unwrap_or("align_general"),
+        )
+        .to_string(),
+    }
 }
 
 fn read_halign(s: &str) -> HAlign {
+    if let Some((yose, saki)) = s.split_once(',') {
+        let yose = read_halign_1(yose.trim());
+        if words::is("selection", saki.trim()) && yose == HAlign::Center {
+            return HAlign::CenterContinuous;
+        }
+        return yose;
+    }
+    read_halign_1(s)
+}
+
+fn read_halign_1(s: &str) -> HAlign {
     HALIGNS.iter().find(|(_, sym)| words::is(sym, s)).map(|(k, _)| *k).unwrap_or(HAlign::General)
 }
 
@@ -378,5 +441,68 @@ mod tests {
                 assert_ne!(a, b, "同じ項目の名前が2つある: 「{a}」");
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod chokkou_tests {
+    use super::{bstyle_text, halign_text, read_bstyle, read_halign};
+    use book::{BStyle, HAlign};
+
+    /// **型スタンプの名前を語彙にしない。**
+    ///
+    /// 発注者「斜め線(方向, 線種, 配置)、こういうマクロではないの」
+    /// (2026-08-28)。`slantDashDot` は Excel の型の名前で、意味は
+    /// 「一点鎖線を斜めに」です。1語ずつの組で書き、読み返せることを見ます。
+    #[test]
+    fn a_slanted_line_is_written_as_a_pattern_and_a_direction() {
+        let _lang = crate::font::lang_lock();
+        crate::font::set_default_language("ja");
+        let t = bstyle_text(BStyle::SlantDashDot);
+        assert_eq!(t, "一点鎖線,斜め", "型の名前のままです: {t}");
+        assert_eq!(read_bstyle(&t), BStyle::SlantDashDot, "読み返せない");
+    }
+
+    #[test]
+    fn centre_across_a_selection_is_written_the_same_way() {
+        let _lang = crate::font::lang_lock();
+        crate::font::set_default_language("ja");
+        let t = halign_text(HAlign::CenterContinuous);
+        assert_eq!(t, "中央,選択範囲", "{t}");
+        assert_eq!(read_halign(&t), HAlign::CenterContinuous, "読み返せない");
+    }
+
+    /// 修飾の付かない線種と揃えは、今までどおり1語です
+    #[test]
+    fn a_plain_pattern_stays_one_word() {
+        let _lang = crate::font::lang_lock();
+        crate::font::set_default_language("ja");
+        assert_eq!(bstyle_text(BStyle::DashDot), "一点鎖線");
+        assert_eq!(read_bstyle("一点鎖線"), BStyle::DashDot);
+        assert_eq!(halign_text(HAlign::Center), "中央");
+    }
+
+    /// **古いテンプレート(1語の型の名前)も読めます**
+    #[test]
+    fn the_old_stamp_names_still_read() {
+        let _lang = crate::font::lang_lock();
+        crate::font::set_default_language("ja");
+        assert_eq!(read_bstyle("斜め一点鎖線"), BStyle::SlantDashDot);
+        assert_eq!(read_halign("選択範囲内で中央"), HAlign::CenterContinuous);
+    }
+
+    /// どの言語でも組で書ける(訳の無い語に落ちない)
+    #[test]
+    fn every_language_writes_both_parts() {
+        let _lang = crate::font::lang_lock();
+        for l in crate::booktmpl::words::LANGS {
+            crate::font::set_default_language(l);
+            let t = bstyle_text(BStyle::SlantDashDot);
+            assert!(t.contains(','), "{l}: 組になっていない: {t}");
+            assert_eq!(read_bstyle(&t), BStyle::SlantDashDot, "{l}: 読み返せない: {t}");
+            let a = halign_text(HAlign::CenterContinuous);
+            assert_eq!(read_halign(&a), HAlign::CenterContinuous, "{l}: 読み返せない: {a}");
+        }
+        crate::font::set_default_language("ja");
     }
 }

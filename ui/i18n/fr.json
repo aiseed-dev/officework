@@ -2228,5 +2228,7 @@
  "first_page": "Première Page",
  "all_pages": "Tous",
  "default_2": "Par défaut",
- "fit_to_page": "Ajuster à la page"
+ "fit_to_page": "Ajuster à la page",
+ "diagonal": "Diagonale",
+ "selection": "Sélection"
 }

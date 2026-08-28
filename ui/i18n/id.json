@@ -2228,5 +2228,7 @@
  "first_page": "Halaman pertama",
  "all_pages": "Semua",
  "default_2": "standar",
- "fit_to_page": "Sesuaikan Halaman"
+ "fit_to_page": "Sesuaikan Halaman",
+ "diagonal": "Diagonal",
+ "selection": "Pilihan"
 }

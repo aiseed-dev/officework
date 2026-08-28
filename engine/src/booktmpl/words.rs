@@ -125,6 +125,8 @@ pub const WORDS: &[(&str, [&str; 15])] = &[
     ("medium", ["Mittel", "Medium", "media", "Moyen", "sedang", "medio", "中", "중간 굵기", "Média", "Média", "Средняя", "Orta kalın", "Nét", "中粗", "中粗"]),
     ("thick", ["Dick", "Thick", "Grueso", "Épais", "Tebal", "Spesso", "太", "굵은 선", "Grosso", "Grosso", "Толстая", "Kalın", "Đậm", "粗", "粗"]),
     ("double", ["Doppelt", "Double", "Doble", "Double", "Ganda", "Doppio", "二重", "이중선", "Duplo", "Duplo", "Двойная", "Çift", "Đôi", "双线", "雙線"]),
+    ("diagonal", ["Diagonal", "Diagonal", "Diagonal", "Diagonale", "Diagonal", "Diagonale", "斜め", "대각선", "Diagonal", "Diagonal", "По диагонали", "Köşegen", "Diagonal", "对角线", "對角線"]),
+    ("selection", ["Auswahl", "Selection", "Selección", "Sélection", "Pilihan", "Selezione", "選択範囲", "선택", "Seleção", "Seleção", "Выделенный фрагмент", "Seçim", "Lựa chọn", "选择", "選擇"]),
     ("slant_dash_dot", ["Slanted dash dot", "Slanted dash dot", "Slanted dash dot", "Slanted dash dot", "Slanted dash dot", "Slanted dash dot", "斜め一点鎖線", "Slanted dash dot", "Slanted dash dot", "Slanted dash dot", "Slanted dash dot", "Slanted dash dot", "Slanted dash dot", "Slanted dash dot", "Slanted dash dot"]),
     ("align_general", ["Allgemein", "General", "General", "Général", "Umum", "Generale", "標準", "일반", "Geral", "Geral", "Общие", "Genel", "Tổng quát", "常规", "一般"]),
     ("left", ["Links", "Left", "Izquierda", "Gauche", "Kiri", "Sinistra", "左", "왼쪽", "Esquerda", "Esquerda", "По левому краю", "Sol", "Trái", "左", "靠左"]),

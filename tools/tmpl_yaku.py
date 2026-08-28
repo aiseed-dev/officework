@@ -115,6 +115,8 @@ HIKU = {
     # 線種の「中」は、既に訳のある medium_* から共通の言葉を取ります。
     # 取れない言語(仏)は `Medium` を引きます
     "medium": ("Medium", ["medium_dashed", "medium_dash_dot", "medium_dash_dot_dot"]),
+    "diagonal": "Diagonal",
+    "selection": "Selection",
     "slant_dash_dot": None,
     "align_general": "General",
     "center": "Center",
