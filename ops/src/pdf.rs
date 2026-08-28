@@ -37,7 +37,7 @@ pub fn doc(
 /// 見えないシート(hidden)は刷りません — 画面と同じです。
 /// 返りは切れた列の数の合計で、0 でなければ紙からはみ出しています。
 pub fn book(b: &book::Book, to: &Path) -> Result<u32, String> {
-    let font = crate::font_data();
+    let font = crate::try_font_data()?;
     let sheets: Vec<(&book::Sheet, paper::Paper, paper::grid::PrintSetup)> = b
         .sheets
         .iter()

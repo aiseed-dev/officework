@@ -1667,19 +1667,33 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
 /// 見つからなければ**その場で止める** — 日本語が豆腐になった画面を
 /// 「動いている」と見せない。
 pub fn font_data() -> &'static [u8] {
-    static FONT: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+    try_font_data().unwrap_or_else(|e| {
+        eprintln!("{e}");
+        std::process::exit(1);
+    })
+}
+
+/// **書体を探す。無ければ理由を返す。**
+///
+/// [`font_data`] はアプリ向けで、見つからなければプロセスごと止めます。
+/// 画面のあるアプリはそれでよいのですが、**ライブラリとして呼ばれたときに
+/// 止めてはいけません** — Python から PDF を作ろうとした人が、例外も
+/// 出ないまま死にます。書体の入っていない Linux のサーバーでは普通に
+/// 起きます(2026-08-28)。
+pub fn try_font_data() -> Result<&'static [u8], String> {
+    static FONT: std::sync::OnceLock<Result<Vec<u8>, String>> = std::sync::OnceLock::new();
     FONT.get_or_init(|| {
-        {
-            // 文書が書体を指定していればそれを、無ければ機械にある日本語フォントを
-            let (fam, _) = kumihan::font::for_document(None).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            });
-            kumihan::font::load(fam).unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1);
-            })
-        }
+        // 文書が書体を指定していればそれを、無ければ機械にある日本語フォントを
+        let (fam, _) = kumihan::font::for_document(None)?;
+        kumihan::font::load(fam)
+    })
+    .as_deref()
+    .map_err(|e| {
+        format!(
+            "{e}\n\nPDF を作るには日本語の書体が1つ要ります。\
+             Debian / Ubuntu なら `apt install fonts-noto-cjk`、\
+             Red Hat 系なら `dnf install google-noto-sans-cjk-fonts` で入ります。"
+        )
     })
 }
 

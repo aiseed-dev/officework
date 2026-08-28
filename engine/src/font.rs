@@ -101,24 +101,136 @@ pub fn script_of(lang: &str) -> Script {
     }
 }
 
-/// 探す場所。OS ごとの標準的な置き場と、利用者の置き場。
+/// 探す場所。
+///
+/// **Linux では置き場を決め打ちにしません**(2026-08-28 発注者「書体の
+/// 置き場が決め打ちというのはおかしい」)。どこに書体があるかを決めるのは
+/// fontconfig で、それは配布版や利用者の設定で変わります。この機械でも
+/// `/usr/share/texmf/…` の下に 4 か所あり、決め打ちでは拾えていませんでした。
+///
+/// 順に、fontconfig の設定 → OS ごとの既定 → 利用者の置き場 →
+/// `OFFICE_FONT_DIR` を見ます。同じ所は後で1回に畳みます。
 fn dirs() -> Vec<PathBuf> {
+    let mut v: Vec<PathBuf> = fontconfig_dirs();
+    // OS ごとの既定。**fontconfig の無い機種のための物**です。
     // /system/fonts は Android(Noto CJK が標準で居る)。iOS は mac と同じ
     // /System/Library/Fonts。スマホは wheel(PEP 730/738)で Python から
     // エンジンを使う道があるので、探索先に最初から入れておく(2026-08-13)
-    let mut v: Vec<PathBuf> = ["/usr/share/fonts", "/usr/local/share/fonts",
-        "/Library/Fonts", "/System/Library/Fonts", "/system/fonts",
-        "C:\\Windows\\Fonts"]
-        .iter().map(PathBuf::from).collect();
+    v.extend(
+        ["/usr/share/fonts", "/usr/local/share/fonts",
+         "/Library/Fonts", "/System/Library/Fonts", "/system/fonts",
+         "C:\\Windows\\Fonts"]
+            .iter()
+            .map(PathBuf::from),
+    );
     if let Ok(h) = std::env::var("HOME") {
         v.push(PathBuf::from(&h).join(".fonts"));
         v.push(PathBuf::from(&h).join(".local/share/fonts"));
         v.push(PathBuf::from(&h).join("Library/Fonts"));
     }
+    // XDG の置き場(`XDG_DATA_DIRS` は `:` 区切り)
+    for base in xdg_data_dirs() {
+        v.push(base.join("fonts"));
+    }
     if let Ok(d) = std::env::var("OFFICE_FONT_DIR") {
         v.push(PathBuf::from(d));
     }
+    // **同じ所を2度走査しない。** 走査は再帰なので、重なると目に見えて遅くなります
+    let mut mita = std::collections::HashSet::new();
+    v.retain(|p| mita.insert(p.clone()));
     v
+}
+
+/// `XDG_DATA_HOME` と `XDG_DATA_DIRS`(既定は `~/.local/share` と
+/// `/usr/local/share:/usr/share`)
+fn xdg_data_dirs() -> Vec<PathBuf> {
+    let mut v = Vec::new();
+    match std::env::var("XDG_DATA_HOME") {
+        Ok(d) if !d.is_empty() => v.push(PathBuf::from(d)),
+        _ => {
+            if let Ok(h) = std::env::var("HOME") {
+                v.push(PathBuf::from(h).join(".local/share"));
+            }
+        }
+    }
+    let dirs = std::env::var("XDG_DATA_DIRS")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "/usr/local/share:/usr/share".to_string());
+    v.extend(dirs.split(':').filter(|s| !s.is_empty()).map(PathBuf::from));
+    v
+}
+
+/// **fontconfig の設定に書いてある置き場。**
+///
+/// `<dir>` の行だけを見ます。XML の解釈はしません — 置き場を知りたい
+/// だけなので、`<dir…>…</dir>` を拾えば足ります。`prefix="xdg"` は
+/// `XDG_DATA_HOME` からの相対、頭の `~` は `HOME` です。
+///
+/// 設定が無い機械(mac・Windows・Android)では空を返し、下の既定に任せます。
+fn fontconfig_dirs() -> Vec<PathBuf> {
+    let mut files: Vec<PathBuf> = vec![PathBuf::from("/etc/fonts/fonts.conf")];
+    // conf.d の断片。配布版が texlive などの置き場をここで足します
+    if let Ok(rd) = std::fs::read_dir("/etc/fonts/conf.d") {
+        let mut kake: Vec<PathBuf> = rd
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|x| x == "conf"))
+            .collect();
+        kake.sort();
+        files.extend(kake);
+    }
+    if let Ok(h) = std::env::var("HOME") {
+        let cfg = std::env::var("XDG_CONFIG_HOME")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from(&h).join(".config"));
+        files.push(cfg.join("fontconfig/fonts.conf"));
+        files.push(PathBuf::from(&h).join(".fonts.conf"));
+    }
+
+    let mut out = Vec::new();
+    for f in files {
+        let Ok(text) = std::fs::read_to_string(&f) else { continue };
+        for (attr, body) in dir_tags(&text) {
+            let body = body.trim();
+            if body.is_empty() {
+                continue;
+            }
+            let p = if attr.contains(r#"prefix="xdg""#) {
+                let Some(base) = xdg_data_dirs().into_iter().next() else { continue };
+                base.join(body)
+            } else if let Some(rest) = body.strip_prefix("~/") {
+                let Ok(h) = std::env::var("HOME") else { continue };
+                PathBuf::from(h).join(rest)
+            } else {
+                PathBuf::from(body)
+            };
+            out.push(p);
+        }
+    }
+    out
+}
+
+/// `<dir …>…</dir>` を (属性, 中身) で拾う
+fn dir_tags(text: &str) -> Vec<(&str, &str)> {
+    let mut out = Vec::new();
+    let mut rest = text;
+    while let Some(i) = rest.find("<dir") {
+        rest = &rest[i + 4..];
+        // `<dirs>` のような別の名前は飛ばす
+        if !rest.starts_with(|c: char| c == '>' || c.is_whitespace()) {
+            continue;
+        }
+        let Some(j) = rest.find('>') else { break };
+        let attr = &rest[..j];
+        rest = &rest[j + 1..];
+        let Some(k) = rest.find("</dir>") else { break };
+        out.push((attr, &rest[..k]));
+        rest = &rest[k + 6..];
+    }
+    out
 }
 
 /// この機械にあるフォント。**リボンのフォント一覧はこれ。**

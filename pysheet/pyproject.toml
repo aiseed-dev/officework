@@ -16,7 +16,7 @@ build-backend = "maturin"
 
 [project]
 name = "officework"
-description = "An openpyxl / python-docx / xlwings alternative: xlsx and docx engines that keep your forms intact and recalculate formulas, plus a bridge to a running office app"
+description = "An openpyxl / python-docx alternative that also writes PDF: xlsx and docx engines that keep your forms intact, recalculate formulas, and typeset straight to PDF"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "AGPL-3.0-or-later"
@@ -28,7 +28,7 @@ license = "AGPL-3.0-or-later"
 # (2026-08-17、0.4.0 の公開で踏んだ。wheel 3つは上がり sdist だけ落ちた)
 license-files = ["LICENSE"]
 authors = [{ name = "Yasuhiro Niji" }]
-keywords = ["xlsx", "docx", "excel", "word", "spreadsheet", "office", "openpyxl", "python-docx", "xlwings"]
+keywords = ["xlsx", "docx", "pdf", "excel", "word", "spreadsheet", "office", "openpyxl", "python-docx", "report", "invoice"]
 classifiers = [
     # β です(2026-08-28)。0.5.0 は「バグが多すぎるので延期」(2026-08-25)
     # のあと、受け入れ試験のやり直しで穴を埋めました。**版の番号にも β を

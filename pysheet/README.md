@@ -1,8 +1,9 @@
 # officework
 
-**xlsx and docx engines that do not destroy your forms**, plus a bridge that
-drives a running office app from Python — the way `xlwings` drives Excel, but on
-your own machine and without Excel.
+**xlsx and docx engines that do not destroy your forms — and that print.**
+Read a spreadsheet or a document, change it, write it back with its borders,
+merges and styles intact, and turn it into a PDF. No office suite, no headless
+browser, no print driver.
 
 Written in Rust (15,000+ lines, 240+ tests), exposed to Python through PyO3.
 
@@ -24,13 +25,13 @@ $ pip install --pre officework
 
 Wheels are abi3 (CPython 3.10+), so one wheel per platform covers every
 version; Linux, macOS and Windows are published. The wheel is **just the
-engines and the bridge** — a few MB, no GUI. `pandas` is imported only if you
-ask for it (`pip install officework[pandas]`).
+engines** — a few MB, no GUI, nothing to install alongside. `pandas` is
+imported only if you ask for it (`pip install officework[pandas]`).
 
-## Three ways in
+## Spreadsheets
 
 ```python
-from officework import sheet             # the engine — no app needed
+from officework import sheet
 b = sheet.Book.open("form7.xlsx")
 s = b["quote"]
 s["A30"] = "Nihon Funen Co., Ltd."       # borders, merges, widths stay intact
@@ -39,8 +40,10 @@ s.insert_row(30)                         # remaining formulas follow the move
 b.save("out.xlsx")                       # shapes and print setup carried over
 ```
 
+## Documents
+
 ```python
-from officework import doc               # the engine — docx, no app needed
+from officework import doc
 d = doc.Doc.open("report.docx")
 print(d.unsupported)                     # anything it could not read, never dropped in silence
 d.replace("Old Name Ltd.", "New Name Ltd.")   # per-run formatting is left alone
@@ -49,110 +52,44 @@ print(d.tables[0][1][2].text)            # table, row, cell
 d.save("out.docx")                       # styles, headers, shapes, tracked changes carried over
 ```
 
-```python
-from officework import calc as xw        # the bridge — drives the running app
-import pandas as pd
+## PDF — the part the others cannot do
 
-wb = xw.Book()                           # a blank workbook comes up
-wb.sheets.active["A1"].value = df        # the DataFrame lands in the sheet
-df2 = wb.sheets.active["A1"].options(pd.DataFrame, expand="table").value
-```
-
-The bridge talks over a unix socket on **this machine only** — no TCP is opened.
-It needs [officework](https://github.com/aiseed-dev/officework) running.
-
-## Let an AI drive the app (MCP)
-
-```console
-$ pip install "officework[mcp]"
-```
-
-That installs `officework-mcp`, an MCP server speaking over stdin/stdout.
-Register it with an MCP client (Claude Code, Claude Desktop, …) and the
-assistant can read and write the workbook you have open — the same bridge the
-Python API uses, so the same rules apply: your machine only, no TCP.
-
-```jsonc
-// claude_desktop_config.json
-{ "mcpServers": { "officework": { "command": "officework-mcp" } } }
-```
-
-The tools it exposes are deliberately few: `book_info`, `used_range`,
-`read_range`, `read_formulas`, `write_range`, `set_format`, `autofit`, `save`.
-Reading a range gives values; `read_formulas` gives the formulas behind them.
-
-## The app is a separate download
-
-These engines are what **aiseed office** — a spreadsheet and a word processor
-with a window — uses whenever it meets the Microsoft formats. The app is
-downloaded on its own (`.deb`, `.tar.gz`, `.dmg`, `setup.exe`, Flatpak); this
-wheel does not carry it. Nothing here needs it: the engines are complete
-without a screen.
-
-If the app is installed, `officework` starts it, and the bridge above drives it:
-
-```console
-$ officework report.xlsx        # opens it in aiseed office
-```
-
-Spreadsheets and documents open as tabs of one window. Passing a second file
-adds a tab rather than opening another window. To point at a build of your own:
-
-```console
-$ OFFICEWORK_OFFICEWORK=/path/to/officework officework report.xlsx
-```
-
-## Your old vocabulary still works
-
-Code written for openpyxl, xlwings or python-docx largely runs as-is:
+`save()` looks at the extension. The same book or document you just edited
+becomes a PDF, laid out by the same typesetting engine that drives the desktop
+app, so the paper matches the screen:
 
 ```python
-ws = wb.active                          # openpyxl: cell(), append, iter_rows,
-ws.cell(2, 3).value                     #   dimensions, create_sheet,
-ws.append(["Aug", "pens", 5000])        #   copy_worksheet, freeze_panes …
-xw.Range("B2").offset(1, 2).address     # xlwings: '$D$3' — resize,
-xw.Range("A1").current_region           #   last_cell, current_region …
-d.tables[0].cell(0, 1).text             # python-docx: row_cells, columns,
-d[3].runs[0].font.name                  #   runs, clear …
-```
-
-The inventory — all 324 core members of the three libraries, judged one
-by one — is in the repo:
-[docs/pysheet-gokan.ja.adoc](https://github.com/aiseed-dev/officework/blob/main/docs/pysheet-gokan.ja.adoc).
-Interop is proven with the originals' own eyes: openpyxl reads what this
-engine writes, **including the computed values** it cannot produce itself.
-See the [Python manual](https://github.com/aiseed-dev/officework/blob/main/docs/en/python-manual.adoc)
-for the details and the deliberate differences.
-
-Since 0.3.0 the wheel also typesets **equations**: `officework.tex` takes
-LaTeX and returns SVG or PNG. With TeX installed it typesets there (matrix
-columns align); without it, matplotlib's mathtext does the job; with
-neither, it refuses with the reason — never a silent empty picture.
-
-New in 0.5.0, the engines **print**. `save()` looks at the extension, so a
-workbook or a document becomes a PDF without an app, an office suite or a
-print driver:
-
-```python
-b.save("quote.pdf")                      # the sheet, paginated, with headers
+b.save("quote.pdf")                      # the sheet, paginated, repeating header rows
 d.save("report.pdf")                     # the document, typeset
 ```
 
-The fonts are subsetted, so a Japanese page is around 25 KB rather than the
-20 MB a whole CJK font would cost. Neither `openpyxl` nor `python-docx` can
-do this at all.
+This runs on a server with nothing else installed. There is no LibreOffice to
+launch, no Chromium to drive, no `wkhtmltopdf`, no temporary HTML. It is one
+library call, and it is fast enough to sit inside a request handler.
 
-Charts are drawn the same way — as shapes, by this library, not as an
-instruction for Excel to render later. So they appear in the PDF and on the
-screen too, not only after you open the file in Excel:
+Fonts are subsetted, so only the glyphs you used are embedded. A Japanese page
+comes out under 30 KB — measured here at 8 KB for plain text and 25 KB for a
+page with a table, colour and shading — where embedding a whole CJK font costs
+20 MB. Line breaking follows JIS X 4051, so Japanese text does not break before
+a closing bracket or after an opening one.
+
+Neither `openpyxl` nor `python-docx` can produce a PDF at all. The commercial
+libraries that can are priced accordingly.
+
+### Charts
+
+Charts are **drawn by this library**, as shapes, rather than written as an
+instruction for Excel to render later. So they appear in the PDF, not only
+after someone opens the file in Excel:
 
 ```python
 ws.add_chart("bar", data="B3:C8", categories="A4:A8", at="A10",
              title="Target and actual")
 ```
 
-For finer control there is a small chart layer whose shape is borrowed from
-d3 — build a scale, then place marks through it:
+Bar, line, pie and doughnut are built in. For finer control there is a small
+chart layer whose shape is borrowed from d3 — build a scale, then place marks
+through it:
 
 ```python
 from officework import chart
@@ -167,10 +104,32 @@ c.place(ws, "A20")
 What you give up is a live Excel chart: ours is fixed at the data it was drawn
 from. Redraw it to update it.
 
-New in 0.4.0, the bridge reaches the rest of a cell's formatting —
-`align`, `valign`, `indent`, `rotation`, `shrink`, `locked`,
-`underline`, `strike`, `superscript`, `subscript` — plus page setup and the
-table-design commands, so a macro can finish a form rather than only fill it.
+### Equations
+
+`officework.tex` takes LaTeX and returns SVG or PNG. With TeX installed it
+typesets there (matrix columns align); without it, matplotlib's mathtext does
+the job; with neither, it refuses with the reason — never a silent empty
+picture.
+
+## Your old vocabulary still works
+
+Code written for openpyxl or python-docx largely runs as-is:
+
+```python
+ws = wb.active                          # openpyxl: cell(), append, iter_rows,
+ws.cell(2, 3).value                     #   dimensions, create_sheet,
+ws.append(["Aug", "pens", 5000])        #   copy_worksheet, freeze_panes …
+d.tables[0].cell(0, 1).text             # python-docx: row_cells, columns,
+d[3].runs[0].font.name                  #   runs, clear …
+```
+
+The inventory — all 324 core members of the reference libraries, judged one
+by one — is in the repo:
+[docs/pysheet-gokan.ja.adoc](https://github.com/aiseed-dev/officework/blob/main/docs/pysheet-gokan.ja.adoc).
+Interop is proven with the originals' own eyes: openpyxl reads what this
+engine writes, **including the computed values** it cannot produce itself.
+See the [Python manual](https://github.com/aiseed-dev/officework/blob/main/docs/en/python-manual.adoc)
+for the details and the deliberate differences.
 
 ## Why the engines exist
 
