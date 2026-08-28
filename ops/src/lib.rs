@@ -22,6 +22,9 @@ use std::path::PathBuf;
 pub mod history;
 pub mod table;
 
+/// PDF を作る(アプリが動いていなくても)。**どの機種でも使えます**
+pub mod pdf;
+
 /// ソケットの置き場所。`$XDG_RUNTIME_DIR/officework/<app>.sock`。
 /// AF_UNIX の径路は 108 字までなので、長すぎるときは
 /// `/tmp/officework-UID/<app>.sock` へ落とす(Python 側も同じ規則)。
@@ -29,10 +32,12 @@ pub mod table;
 /// wheel(エンジンだけを配る)はこれを使わない。0.2.0 のタグで Windows の
 /// wheel がここで組めなくなって気づいた(2026-08-12 — publish の門は効き、
 /// PyPI には何も出ていない)
+///
+/// **印は関数のすぐ上に置くこと。** 2026-08-27 に `pub mod pdf;` を
+/// この説明と関数の間へ差し込んでしまい、`#[cfg(unix)]` が pdf の方に
+/// 掛かりました。Windows で PDF が消え、代わりにソケットが組まれて
+/// 落ちました(2026-08-28、Windows の走行で分かりました)
 #[cfg(unix)]
-/// PDF を作る(アプリが動いていなくても)
-pub mod pdf;
-
 pub fn sock_path(app: &str) -> PathBuf {
     if let Some(base) = std::env::var_os("XDG_RUNTIME_DIR") {
         let p = PathBuf::from(&base).join("officework").join(format!("{app}.sock"));
