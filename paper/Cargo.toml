@@ -16,7 +16,32 @@ pdf-writer = "0.15.0"
 subsetter = "0.2.6"
 ttf-parser = "0.25.1"
 flate2 = "1.1.9"
+# **絵にする係**(2026-08-29 の決め「レンダラーは vello を入れる」)。
+# 最初は CPU 版だけです — GPU 版は wgpu を連れてくるので、Android の
+# 画面が要る日まで入れません。
+#
+# **任意にしてあります。**
+#
+# 荷物は測りました。**vello は wheel を1バイトも増やしません** —
+# エンジンの側が絵を呼ばないので、リンカが落とします。それでも任意に
+# するのは、呼ぶ人が出たときに 90MB の `.so` が黙って太らないためです。
+# 絵が要るのはアプリと回帰検査で、そこは `--features e` で入れます。
+#
+# (`.so` が 13MB から 90MB になったのはピボットを本気で polars に
+#  繋いだ分です。骨だけのときはリンカが落としていました)
+vello_cpu = { version = "0.2", optional = true }
+png = { version = "0.18", optional = true }
+
+[features]
+default = []
+# 紙面を絵にする(画面の下絵・回帰検査・PNG 書き出し)
+e = ["dep:vello_cpu", "dep:png"]
 
 [dev-dependencies]
 ooxml = { path = "../ooxml" }
 ops = { path = "../ops" }
+
+# 絵の見本は、絵にする係が入っているときだけ
+[[example]]
+name = "e_sample"
+required-features = ["e"]

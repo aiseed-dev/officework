@@ -73,6 +73,10 @@ jobs:
         # 下で見ていましたが、**試験は3 OS のどこでも走っていません**でした。
         # gpui を持たないので、この画面のいらない仕事で回ります
         run: bash tools/ci-test.sh --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops -p face -p pysheet
+      - name: 絵にする側も回す(--features e)
+        # **既定では入りません**(荷物が大きいので任意にしてあります)。
+        # 付けないと絵の試験が1本も走らないので、ここで明に付けます
+        run: bash tools/ci-test.sh -p paper --features e
       - name: サイドカーが組めるか(pyoffice)
         run: cargo build -p sidecar
       - name: Windows の的でも組めるか(pysheet — 配る wheel の3つ目の OS)

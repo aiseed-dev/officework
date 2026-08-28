@@ -9,6 +9,11 @@
 pub mod grid;
 /// 低い層で PDF を書く(使った字だけ埋める)。**まだ並べて動かす段**
 pub mod pdfw;
+/// 紙面を絵にする(画面の下絵・回帰検査・PNG 書き出し)。
+/// **`--features e` のときだけ**入ります — 絵にする裏(vello)は
+/// 荷物が大きく、ファイルを触るだけの人には要らないためです
+#[cfg(feature = "e")]
+pub mod e;
 
 use std::io::{BufWriter, Write};
 

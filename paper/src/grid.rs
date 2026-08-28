@@ -372,6 +372,34 @@ fn leaf(paper: Paper) -> pdfw::Leaf {
     pdfw::Leaf { size_mm: Some((paper.width_mm, paper.height_mm)), ..Default::default() }
 }
 
+/// **紙面を1枚だけ取り出す。** 絵にする道([`crate::e`])の入り口です。
+///
+/// PDF を作るのと**同じ組み方**を通すので、絵と紙が食い違いません。
+/// 返るのは1枚目です(何枚あるかは [`sheet_leaves`] で全部取れます)。
+pub fn sheet_leaf(
+    grid: &Grid,
+    paper: Paper,
+    setup: &PrintSetup,
+) -> Result<pdfw::Leaf, String> {
+    sheet_leaves(grid, paper, setup)?
+        .into_iter()
+        .next()
+        .ok_or_else(|| "刷る物がありません".to_string())
+}
+
+/// 紙面を全部取り出す。**PDF を書かずに**組むだけです
+pub fn sheet_leaves(
+    grid: &Grid,
+    paper: Paper,
+    setup: &PrintSetup,
+) -> Result<Vec<pdfw::Leaf>, String> {
+    let mut board = Board::new(paper);
+    let (pages, _clipped, margins) = draw_sheet(&mut board, grid, paper, setup, true);
+    let total = pages.len();
+    draw_header_footer(&mut board, grid, paper, pages, margins, 0, total);
+    Ok(board.leaves)
+}
+
 /// 1つの表を PDF にする。行が紙に収まらなければ次のページへ。
 /// 返すのは**右にはみ出して切れた列の数**(0 なら全部紙に入っている)。
 pub fn sheet_to_pdf<W: Write>(
