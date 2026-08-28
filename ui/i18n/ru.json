@@ -55,7 +55,6 @@
  "cant_export": "Не удалось экспортировать: {}",
  "style_removed": "Стиль снят",
  "cant_hand_python": "Не удалось передать в Python: {}",
- "aggregating": "Сводим {} по {}…",
  "unlinked": "{} отвязано",
  "not_formula_cell": "{} — не ячейка с формулой",
  "no_formula_refers": "Ни одна формула не ссылается на {}",
@@ -2230,5 +2229,16 @@
  "default_2": "По умолчанию",
  "fit_to_page": "По размеру страницы",
  "diagonal": "По диагонали",
- "selection": "Выделенный фрагмент"
+ "selection": "Выделенный фрагмент",
+ "fit_to_height": "Fit to height",
+ "default_col_width": "Default column width",
+ "default_row_height": "Default row height",
+ "header_even": "Even page header",
+ "footer_even": "Even page footer",
+ "header_first": "First page header",
+ "footer_first": "First page footer",
+ "fill_theme": "Fill theme color",
+ "color_theme": "Font theme color",
+ "slant_dash_dot": "Slanted dash dot",
+ "center_across": "Center across selection"
 }

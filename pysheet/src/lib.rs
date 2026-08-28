@@ -1150,7 +1150,8 @@ impl PySheet {
     ///
     /// **アプリが動いていなくても回ります**(2026-08-29)。中では
     /// polars(Rust)が集計します。
-    #[pyo3(signature = (src, at, rows, value, cols=None, agg="sum", totals=true))]
+    #[pyo3(signature = (src, at, rows, value, cols=None, agg="sum", totals=true,
+                        subtotals=false, grand_label=None, subtotal_label=None))]
     #[allow(clippy::too_many_arguments)]
     fn add_pivot(
         &self,
@@ -1161,6 +1162,9 @@ impl PySheet {
         cols: Option<Vec<String>>,
         agg: &str,
         totals: bool,
+        subtotals: bool,
+        grand_label: Option<String>,
+        subtotal_label: Option<String>,
     ) -> PyResult<(u32, u32)> {
         let (a, b) = parse_range(src)?;
         let dest = parse_ref(at)?;
@@ -1176,7 +1180,7 @@ impl PySheet {
             dest,
             // **指図は全部書きます。** `PivotDef` は既定を持ちません —
             // 持たせると「言い忘れ」と「そう決めた」が見分けられなくなります
-            subtotals: false,
+            subtotals,
             blank_rows: false,
             compact: true,
             size: (0, 0),
@@ -1191,7 +1195,17 @@ impl PySheet {
         };
         let mut g = lock(&self.inner)?;
         def.name = format!("ピボット{}", g.book.pivots.len() + 1);
-        let (h, w) = pivot::apply(&mut g.book, &mut def).map_err(PyValueError::new_err)?;
+        // **札は呼ぶ側が決めます。** 既定は英語で、日本語の帳票を作る人は
+        // `grand_label="総計"` のように渡します
+        let mut spec = pivot::from_def(&def);
+        if let Some(v) = grand_label {
+            spec.grand_label = v;
+        }
+        if let Some(v) = subtotal_label {
+            spec.subtotal_label = v;
+        }
+        let (h, w) =
+            pivot::apply_with(&mut g.book, &mut def, &spec).map_err(PyValueError::new_err)?;
         g.book.pivots.push(def);
         Ok((h, w))
     }

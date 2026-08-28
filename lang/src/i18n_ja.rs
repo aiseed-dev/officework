@@ -58,7 +58,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("cant_export", "書き出せません: {}"),
     ("style_removed", "スタイルを外しました"),
     ("cant_hand_python", "Python に渡せません: {}"),
-    ("aggregating", "{} の {} を集めています…"),
     ("unlinked", "{} のリンクを外しました"),
     ("not_formula_cell", "{} は式のセルではありません"),
     ("no_formula_refers", "{} を参照している式はありません"),

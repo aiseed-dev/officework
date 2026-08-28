@@ -1050,40 +1050,48 @@ mod pivot_tests {
         }
     }
 
-    #[test]
-    fn the_settings_json_escapes_correctly() {
-        let json = pivot_spec_json(
-            &["部\"署".to_string()],
-            &[vec!["営\\業".to_string()]],
-            &def(&["部\"署"], &[], "部\"署", "sum"),
-        );
-        assert!(json.contains("部\\\"署"), "二重引用符が逃げていない: {json}");
-        assert!(json.contains("営\\\\業"), "バックスラッシュが逃げていない: {json}");
-        assert!(json.contains("\"totals\":false"), "旗が無い: {json}");
+    /// **集計は Rust の polars でその場で回します**(2026-08-29)。
+    /// 前は指図を JSON にして Python を別プロセスで起こしていました。
+    /// JSON の逃がし方の試験は、JSON を作らなくなったので落としました。
+    fn run_py(_spec: String) -> Option<(Vec<Vec<String>>, Vec<char>)> {
+        None
     }
 
-    fn run_py(spec: String) -> Option<(Vec<Vec<String>>, Vec<char>)> {
-        // .venv が無い機械では黙って飛ぶ(HIKITSUGI の作法)
-        let py = ["../.venv/bin/python", ".venv/bin/python"]
-            .iter()
-            .map(std::path::PathBuf::from)
-            .find(|p| p.exists())?;
-        // 並走する試験と取り合わないよう、呼び出しごとに番号を振る
-        static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-        let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let dir = std::env::temp_dir().join(format!("jo-pivot-test-{}", std::process::id()));
-        let _ = std::fs::create_dir_all(&dir);
-        let json_path = dir.join(format!("pivot{n}.json"));
-        let py_path = dir.join(format!("pivot{n}.py"));
-        std::fs::write(&json_path, spec).unwrap();
-        std::fs::write(&py_path, PIVOT_PY).unwrap();
-        let o = std::process::Command::new(&py)
-            .arg(&py_path)
-            .arg(&json_path)
-            .output()
-            .unwrap();
-        assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
-        Some(parse_pivot_grid(&String::from_utf8_lossy(&o.stdout)))
+    /// 指図から集計する(試験の入り口)
+    fn agg2(
+        headers: &[String],
+        rows: &[Vec<String>],
+        def: &book::PivotDef,
+    ) -> (Vec<Vec<String>>, Vec<char>) {
+        let mut spec = pivot::from_def(def);
+        spec.subtotal_label = "{} 小計".into();
+        spec.grand_label = "総計".into();
+        spec.agg_label = match def.agg.as_str() {
+            "count" => "個数",
+            "average" | "mean" => "平均",
+            "maximum" | "max" => "最大",
+            "minimum" | "min" => "最小",
+            _ => "合計",
+        }
+        .into();
+        let g = pivot::run(headers, rows, &spec).expect("集計");
+        (g.rows, g.kinds)
+    }
+
+    #[allow(dead_code)]
+    fn agg(
+        headers: &[&str],
+        rows: &[Vec<&str>],
+        def: &book::PivotDef,
+    ) -> (Vec<Vec<String>>, Vec<char>) {
+        let h: Vec<String> = headers.iter().map(|s| s.to_string()).collect();
+        let b: Vec<Vec<String>> =
+            rows.iter().map(|r| r.iter().map(|s| s.to_string()).collect()).collect();
+        let mut spec = pivot::from_def(def);
+        spec.subtotal_label = "{} 小計".into();
+        spec.grand_label = "総計".into();
+        let g = pivot::run(&h, &b, &spec).expect("集計");
+        (g.rows, g.kinds)
     }
 
     #[gpui::test]
@@ -2013,23 +2021,20 @@ mod pivot_tests {
         // 日付を月でグループ化して合計
         let mut d = def(&["日付"], &[], "金額", "sum");
         d.group_by.push(("日付".into(), "月".into()));
-        let spec = pivot_spec_json(&headers, &rows, &d);
-        let Some((g, _)) = run_py(spec) else { return };
+        let (g, _) = agg2(&headers, &rows, &d);
         assert_eq!(g[1], vec!["2026-01", "150"], "月のグループが効かない: {g:?}");
         assert_eq!(g[2], vec!["2026-02", "30"]);
         assert_eq!(g[3], vec!["2026-04", "70"]);
         // 四半期
         let mut d = def(&["日付"], &[], "金額", "sum");
         d.group_by.push(("日付".into(), "quarters".into()));
-        let spec = pivot_spec_json(&headers, &rows, &d);
-        let Some((g, _)) = run_py(spec) else { return };
+        let (g, _) = agg2(&headers, &rows, &d);
         assert_eq!(g[1], vec!["2026年Q1", "180"], "四半期が効かない: {g:?}");
         assert_eq!(g[2], vec!["2026年Q2", "70"]);
         // 数の幅(金額を 50 刻みで束ね、区分を数える)
         let mut d = def(&["金額"], &[], "区分", "count");
         d.group_by.push(("金額".into(), "幅:50".into()));
-        let spec = pivot_spec_json(&headers, &rows, &d);
-        let Some((g, _)) = run_py(spec) else { return };
+        let (g, _) = agg2(&headers, &rows, &d);
         assert_eq!(g[1], vec!["  0〜 49", "1"], "幅の帯が違う: {g:?}");
         assert_eq!(g[2], vec![" 50〜 99", "2"], "帯の並びが数字順でない: {g:?}");
         assert_eq!(g[3], vec!["100〜149", "1"]);
@@ -2037,16 +2042,14 @@ mod pivot_tests {
         let mut d = def(&["区分"], &[], "金額", "sum");
         d.vfilter = Some((">=".into(), 70.0));
         d.totals = true;
-        let spec = pivot_spec_json(&headers, &rows, &d);
-        let Some((g, _k)) = run_py(spec) else { return };
+        let (g, _k) = agg2(&headers, &rows, &d);
         // A=150, B=100 → 両方残る。しきい値を上げると片方だけに
         assert_eq!(g[1], vec!["A", "150"]);
         assert_eq!(g[2], vec!["B", "100"]);
         let mut d = def(&["区分"], &[], "金額", "sum");
         d.vfilter = Some((">".into(), 120.0));
         d.totals = true;
-        let spec = pivot_spec_json(&headers, &rows, &d);
-        let Some((g, k)) = run_py(spec) else { return };
+        let (g, k) = agg2(&headers, &rows, &d);
         assert_eq!(g[1], vec!["A", "150"], "値のフィルターが効かない: {g:?}");
         let ti = k.iter().position(|c| *c == 't').expect("総計が無い");
         assert_eq!(g[ti], vec!["総計", "150"], "総計が絞り込み後になっていない: {g:?}");
@@ -2070,7 +2073,7 @@ mod pivot_tests {
         let order = |so: &str| -> Option<Vec<String>> {
             let mut d = def(&["区分"], &[], "金額", "sum");
             d.sort = so.to_string();
-            let (g, _) = run_py(pivot_spec_json(&headers, &rows, &d))?;
+            let (g, _) = agg2(&headers, &rows, &d);
             Some(g.iter().skip(1).map(|r| r[0].clone()).collect())
         };
         // **黙って飛ばさない。** `.venv` があるのに動かないなら、それは
@@ -2086,10 +2089,11 @@ mod pivot_tests {
         // **昇順は polars の素の並びと同じ**なので、この試験だけでは
         // 効いている証拠にならない(2026-08-13、壊しても通ることを確認した)。
         // 見出しの側は降順が、値の側は両方が、実際に並びを変える
-        assert_eq!(order("見出しの昇順").unwrap(), vec!["A", "B", "C"], "見出しの昇順が効かない");
-        assert_eq!(order("見出しの降順").unwrap(), vec!["C", "B", "A"], "見出しの降順が効かない");
-        assert_eq!(order("値の大きい順").unwrap(), vec!["A", "C", "B"], "値の大きい順が効かない");
-        assert_eq!(order("値の小さい順").unwrap(), vec!["B", "C", "A"], "値の小さい順が効かない");
+        // **指図は鍵で持ちます**(2026-08-26 の移行)。画面の札ではありません
+        assert_eq!(order("labels_z").unwrap(), vec!["A", "B", "C"], "見出しの昇順が効かない");
+        assert_eq!(order("labels_z_2").unwrap(), vec!["C", "B", "A"], "見出しの降順が効かない");
+        assert_eq!(order("largest_value_first").unwrap(), vec!["A", "C", "B"], "値の大きい順が効かない");
+        assert_eq!(order("smallest_value_first").unwrap(), vec!["B", "C", "A"], "値の小さい順が効かない");
         // **知らない指定は素通し。** 黙って別の順に並べない
         assert_eq!(order("よくわからない順").unwrap(), plain, "知らない指定で並びが変わっている");
     }
@@ -2108,8 +2112,7 @@ mod pivot_tests {
         .map(|r| r.iter().map(|s| s.to_string()).collect())
         .collect();
         // 部署×月の合計(クロス表)
-        let spec = pivot_spec_json(&headers, &rows, &def(&["部署"], &["月"], "金額", "sum"));
-        let Some((g, k)) = run_py(spec) else { return };
+        let (g, k) = agg2(&headers, &rows, &def(&["部署"], &["月"], "金額", "sum"));
         // 1行目は Excel と同じ札(合計 / 金額 と、列に広げた見出し)
         assert_eq!(k[0], 'l');
         assert_eq!(g[0], vec!["合計 / 金額", "月", ""], "札の形が違う: {g:?}");
@@ -2119,8 +2122,7 @@ mod pivot_tests {
         // 無い組み合わせ: 合計は 0(空の合計)。平均などは null → 空欄になる
         assert_eq!(g[3], vec!["総務", "30", "0"]);
         // 部署ごとの個数(列に広げない)— 値の列の見出しは「個数 / 金額」
-        let spec = pivot_spec_json(&headers, &rows, &def(&["部署"], &[], "金額", "count"));
-        let Some((g, _)) = run_py(spec) else { return };
+        let (g, _) = agg2(&headers, &rows, &def(&["部署"], &[], "金額", "count"));
         assert_eq!(g[0], vec!["部署", "個数 / 金額"]);
         assert_eq!(g[1], vec!["営業", "3"]);
         assert_eq!(g[2], vec!["総務", "1"]);
@@ -2143,8 +2145,7 @@ mod pivot_tests {
         d.totals = true;
         d.subtotals = true;
         d.blank_rows = true;
-        let spec = pivot_spec_json(&headers, &rows, &d);
-        let Some((g, k)) = run_py(spec) else { return };
+        let (g, k) = agg2(&headers, &rows, &d);
         assert_eq!(g[0], vec!["合計 / 金額", "", "月", "", ""], "札: {g:?}");
         assert_eq!(g[1], vec!["部署", "係", "1月", "2月", "総計"], "見出し: {g:?}");
         assert_eq!(g[2], vec!["営業", "一", "100", "70", "170"]);
@@ -2165,8 +2166,7 @@ mod pivot_tests {
         d.blank_rows = false;
         d.totals = false;
         d.compact = true;
-        let spec = pivot_spec_json(&headers, &rows, &d);
-        let Some((g, _)) = run_py(spec) else { return };
+        let (g, _) = agg2(&headers, &rows, &d);
         assert_eq!(g[3][0], "", "繰り返しの部署が空欄にならない: {g:?}");
         assert_eq!(g[3][1], "二");
     }

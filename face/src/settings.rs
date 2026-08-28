@@ -147,6 +147,8 @@ mod tests {
     /// 表を引いて落ちます。
     #[test]
     fn changing_the_language_changes_the_ribbon_words() {
+        // **言語は処理系に1つ。** 読む試験と並ぶと崩れるので錠を取ります
+        let _lang = lang::i18n::lang_lock();
         assert!(lang::i18n::set_language("en"));
         assert_eq!(super::language(), "en");
         assert_eq!(crate::ribbon::writer_tabs()[1].name, "Home");
@@ -155,5 +157,7 @@ mod tests {
         assert!(lang::i18n::set_language("ja"));
         assert_eq!(crate::ribbon::writer_tabs()[1].name, "ホーム");
         assert_eq!(crate::ribbon::calc_tabs()[1].name, "ホーム");
+        // **日本語に戻してから放します** — 錠を放した後に他が読みます
+        assert!(lang::i18n::set_language("ja"));
     }
 }

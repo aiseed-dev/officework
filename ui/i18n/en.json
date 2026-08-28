@@ -55,7 +55,6 @@
  "cant_export": "Can't export it: {}",
  "style_removed": "Style removed",
  "cant_hand_python": "Can't hand it to Python: {}",
- "aggregating": "Aggregating {} by {}…",
  "unlinked": "Unlinked {}",
  "not_formula_cell": "{} is not a formula cell",
  "no_formula_refers": "No formula refers to {}",

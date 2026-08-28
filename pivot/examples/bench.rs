@@ -25,6 +25,7 @@ fn main() {
         value: "金額".into(),
         agg: "sum".into(),
         totals: true,
+        ..Default::default()
     };
 
     // 1度暖める(初回は割り当てが入る)

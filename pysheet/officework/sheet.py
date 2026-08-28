@@ -1436,16 +1436,23 @@ class Sheet:
     def conditional_formatting_duplicates(self, range, unique=False, **kw):
         self._s.conditional_formatting_duplicates(range, unique=unique, **self._mitame(**kw))
 
-    def add_pivot(self, src, at, rows, value, cols=None, agg="sum", totals=True):
+    def add_pivot(self, src, at, rows, value, cols=None, agg="sum", totals=True,
+                  subtotals=False, grand_label=None, subtotal_label=None):
         """**ピボットテーブルを置く。** 中では polars(Rust)が集計します。
 
         `src` は元の表("A1:C7"。1行目が見出し)、`at` は置く左上。
         `rows` は行に並べる見出し、`cols` は列に広げる見出しです。
-        返りは置いた広さ (行数, 列数)。
+        `agg` は sum / count / mean / min / max / median。
+
+        **札は既定が英語です。** 日本語の帳票なら
+        `grand_label="総計"`、`subtotal_label="{} 小計"` を渡します。
+
+        返りは置いた広さ (行数, 列数)。列に広げると見出しが2行になります。
         """
         return self._s.add_pivot(src, at, list(rows), str(value),
                                  None if cols is None else list(cols),
-                                 str(agg), bool(totals))
+                                 str(agg), bool(totals), bool(subtotals),
+                                 grand_label, subtotal_label)
 
     @property
     def active_cell(self):

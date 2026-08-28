@@ -932,6 +932,7 @@ dependencies = [
  "ooxml",
  "ops",
  "paper",
+ "pivot",
  "pyrun",
  "rfd",
  "sheet",

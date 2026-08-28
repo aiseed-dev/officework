@@ -19,6 +19,7 @@ path = "src/main.rs"
 
 [dependencies]
 book = { path = "../book" }
+pivot = { path = "../pivot" }
 sheet = { path = "../sheet" }
 pyrun = { path = "../pyrun" }
 ops = { path = "../ops" }

@@ -58,7 +58,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("cant_export", "无法导出:{}"),
     ("style_removed", "已移除样式"),
     ("cant_hand_python", "无法交给 Python:{}"),
-    ("aggregating", "正在按 {} 汇总 {}…"),
     ("unlinked", "已取消 {} 的链接"),
     ("not_formula_cell", "{} 不是公式单元格"),
     ("no_formula_refers", "没有公式引用 {}"),

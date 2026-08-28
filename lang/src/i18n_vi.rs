@@ -58,7 +58,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("cant_export", "Không xuất được: {}"),
     ("style_removed", "Đã bỏ kiểu"),
     ("cant_hand_python", "Không chuyển được sang Python: {}"),
-    ("aggregating", "Đang tổng hợp {} theo {}…"),
     ("unlinked", "Đã bỏ liên kết {}"),
     ("not_formula_cell", "{} không phải ô công thức"),
     ("no_formula_refers", "Không có công thức nào tham chiếu {}"),

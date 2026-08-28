@@ -197,7 +197,7 @@ pub(crate) fn apply_py_results(
 }
 
 pub(crate) use pyrun::{
-    cage_work_dir, caged_python, find_python, CHART_PY, CSV_PY, EQ_PY, PIVOT_PY, SOLVER_PY,
+    cage_work_dir, caged_python, find_python, CHART_PY, CSV_PY, EQ_PY, SOLVER_PY,
     TEXTART_PY,
 };
 
@@ -764,38 +764,27 @@ impl Calc {
                     .collect()
             })
             .collect();
-        let json = pivot_spec_json(&headers, &data, &def);
-        let dir = workdir("pivot");
-        self.status = ui::tf!("aggregating", def.value, def.agg).into();
-        let task = cx.background_executor().spawn(async move {
-            let _ = std::fs::create_dir_all(&dir);
-            let json_path = dir.join("pivot.json");
-            let py_path = dir.join("pivot.py");
-            std::fs::write(&json_path, json).map_err(|e| e.to_string())?;
-            std::fs::write(&py_path, PIVOT_PY).map_err(|e| e.to_string())?;
-            let o = std::process::Command::new(find_python())
-                .arg(&py_path)
-                .arg(&json_path)
-                .output()
-                .map_err(|e| format!("Python が起動できません: {e}"))?;
-            if !o.status.success() {
-                let err = String::from_utf8_lossy(&o.stderr);
-                let last = err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("原因不明");
-                return Err(if err.contains("No module named") {
-                    format!("polars がありません({last})。次で入ります:\n  {}",
-                            pyrun::pip_hint("polars"))
-                } else {
-                    format!("集計できません: {last}")
-                });
-            }
-            Ok(String::from_utf8_lossy(&o.stdout).to_string())
-        });
+        // **集計は Rust の polars で、その場で回します**(2026-08-29 発注者
+        // 「ピボットの処理は polars をつかって」)。前は Python を別プロセスで
+        // 起こしていて、1万行で 145ms 待っていました。いまは 1ms です。
+        // 待たないので、進み具合の札も要りません
+        // **画面に出る札は Rust で訳してから渡します**(2026-08-26 の決め)。
+        // 集計の側は鍵で処理し、字は渡された訳で書きます
+        let mut spec = pivot::from_def(&def);
+        // `subtotal` の訳は「{} 小計」の形です(`{}` が区切りの名前)
+        spec.subtotal_label = ui::t!("subtotal").to_string();
+        spec.grand_label = ui::t!("grand_totals").to_string();
+        spec.agg_label = ui::tr_dyn(&def.agg).to_string();
+        let task = std::future::ready(
+            pivot::run(&headers, &data, &spec)
+                .map(|g| (g.rows, g.kinds))
+                .map_err(|e| e.to_string()),
+        );
         cx.spawn(async move |this, cx| {
             let r = task.await;
             let _ = this.update(cx, |this, cx| {
                 match r {
-                    Ok(raw) => {
-                        let (grid, kinds) = parse_pivot_grid(&raw);
+                    Ok((grid, kinds)) => {
                         let h = grid.len() as u32;
                         let w = grid.iter().map(|r| r.len()).max().unwrap_or(1) as u32;
                         let used = |this: &Self, p: Pos| {

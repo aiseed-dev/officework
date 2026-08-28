@@ -55,7 +55,6 @@
  "cant_export": "Não é possível exportar: {}",
  "style_removed": "Estilo removido",
  "cant_hand_python": "Não é possível passar para o Python: {}",
- "aggregating": "Agregando {} por {}…",
  "unlinked": "{} desvinculado",
  "not_formula_cell": "{} não é uma célula de fórmula",
  "no_formula_refers": "Nenhuma fórmula faz referência a {}",
@@ -2230,5 +2229,16 @@
  "default_2": "Padrão",
  "fit_to_page": "Ajustar a página",
  "diagonal": "Diagonal",
- "selection": "Seleção"
+ "selection": "Seleção",
+ "fit_to_height": "Fit to height",
+ "default_col_width": "Default column width",
+ "default_row_height": "Default row height",
+ "header_even": "Even page header",
+ "footer_even": "Even page footer",
+ "header_first": "First page header",
+ "footer_first": "First page footer",
+ "fill_theme": "Fill theme color",
+ "color_theme": "Font theme color",
+ "slant_dash_dot": "Slanted dash dot",
+ "center_across": "Center across selection"
 }

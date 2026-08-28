@@ -58,7 +58,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("cant_export", "Dışa aktarılamıyor: {}"),
     ("style_removed", "Stil kaldırıldı"),
     ("cant_hand_python", "Python'a aktarılamıyor: {}"),
-    ("aggregating", "{} değeri {} ile toplanıyor…"),
     ("unlinked", "{} bağlantısı kaldırıldı"),
     ("not_formula_cell", "{} bir formül hücresi değil"),
     ("no_formula_refers", "{} hücresine başvuran formül yok"),

@@ -55,7 +55,6 @@
  "cant_export": "無法匯出:{}",
  "style_removed": "已移除樣式",
  "cant_hand_python": "無法交給 Python:{}",
- "aggregating": "正在依 {} 彙總 {}…",
  "unlinked": "已取消 {} 的連結",
  "not_formula_cell": "{} 不是公式儲存格",
  "no_formula_refers": "沒有公式參照 {}",
@@ -2230,5 +2229,16 @@
  "default_2": "預設",
  "fit_to_page": "縮放至整頁",
  "diagonal": "對角線",
- "selection": "選擇"
+ "selection": "選擇",
+ "fit_to_height": "Fit to height",
+ "default_col_width": "Default column width",
+ "default_row_height": "Default row height",
+ "header_even": "Even page header",
+ "footer_even": "Even page footer",
+ "header_first": "First page header",
+ "footer_first": "First page footer",
+ "fill_theme": "Fill theme color",
+ "color_theme": "Font theme color",
+ "slant_dash_dot": "Slanted dash dot",
+ "center_across": "Center across selection"
 }

@@ -941,64 +941,7 @@ pub(crate) fn pivot_suggest_label(s: &PivotSuggest) -> String {
     }
 }
 
-/// ピボットの指図を JSON にする(手で組む — グラフと同じ割り切り)。
-pub(crate) fn pivot_spec_json(headers: &[String], rows: &[Vec<String>], d: &book::PivotDef) -> String {
-    let esc = |t: &str| t.replace('\\', "\\\\").replace('"', "\\\"");
-    let strs = |xs: &[String]| {
-        xs.iter().map(|x| format!("\"{}\"", esc(x))).collect::<Vec<_>>().join(",")
-    };
-    let hides = d
-        .hide
-        .iter()
-        .map(|(f, vs)| format!("[\"{}\",[{}]]", esc(f), strs(vs)))
-        .collect::<Vec<_>>()
-        .join(",");
-    let vf = match &d.vfilter {
-        Some((op, th)) => format!("[\"{}\",{th}]", esc(op)),
-        None => "null".into(),
-    };
-    let groups = d
-        .group_by
-        .iter()
-        .map(|(f, unit)| format!("[\"{}\",\"{}\"]", esc(f), esc(unit)))
-        .collect::<Vec<_>>()
-        .join(",");
-    format!(
-        "{{\"headers\":[{}],\"rows\":[{}],\"index\":[{}],\"columns\":[{}],\"value\":\"{}\",\"agg\":\"{}\",\"agg_label\":\"{agg_label}\",\"subtotal_label\":\"{sub_label}\",\"grand_label\":\"{grand_label}\",\"totals\":{},\"subtotals\":{},\"blank_rows\":{},\"compact\":{},\"hide\":[{hides}],\"vfilter\":{vf},\"group\":[{groups}],\"show_as\":\"{sa}\",\"sort\":\"{so}\"}}",
-        strs(headers),
-        rows.iter().map(|r| format!("[{}]", strs(r))).collect::<Vec<_>>().join(","),
-        strs(&d.rows_sel),
-        strs(&d.cols_sel),
-        esc(&d.value),
-        esc(&d.agg),
-        d.totals,
-        d.subtotals,
-        d.blank_rows,
-        d.compact,
-        sa = esc(&d.show_as),
-        so = esc(&d.sort),
-        // **画面に出る札は Rust で訳してから渡します**(2026-08-26)。
-        // 台本は鍵で処理し、字は渡された訳で書きます — Python から
-        // 対訳表は引けませんし、引けるようにすると表が2つになります
-        agg_label = esc(&ui::tr_dyn(&d.agg)),
-        sub_label = esc(ui::t!("subtotal")),
-        grand_label = esc(ui::t!("grand_totals")),
-    )
-}
 
-/// ピボットの台本の答えを読む。各行の1欄目は種別
-/// (h=見出し d=データ s=小計 b=空行 t=総計)、残りが欄。
-pub(crate) fn parse_pivot_grid(raw: &str) -> (Vec<Vec<String>>, Vec<char>) {
-    let mut grid = Vec::new();
-    let mut kinds = Vec::new();
-    for line in raw.split('\u{1e}') {
-        let mut it = line.split('\u{1f}');
-        let kind = it.next().and_then(|k| k.chars().next()).unwrap_or('d');
-        grid.push(it.map(|v| v.to_string()).collect());
-        kinds.push(kind);
-    }
-    (grid, kinds)
-}
 
 /// データタブの「小計」(Excel の集計)。基準の列の値が変わる区切りごとに
 /// 「〜 小計」の行(=SUM)を挿し、明細にグループ化(深さ1)を掛け、最後に

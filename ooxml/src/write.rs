@@ -1166,10 +1166,6 @@ pub(super) fn image_kind(bytes: &[u8]) -> (&'static str, &'static str) {
 ///
 /// **三択(入・切・言わない)を守ります。** 言っていない物は書きません —
 /// 元になるスタイルから受け継ぐという意味だからです。
-fn style_look_xml(l: &kumihan::StyleLook) -> String {
-    style_look_xml_with(l, &kumihan::StyleParaLook::default())
-}
-
 /// 字と段落の見た目を1つの `<w:style>` の中身に。
 ///
 /// **`w:pPr` は1つにまとめます。** 塗りと揃えを別々の `w:pPr` に書くと

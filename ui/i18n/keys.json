@@ -224,10 +224,6 @@
   "kind": "msg"
  },
  {
-  "key": "aggregating",
-  "kind": "msg"
- },
- {
   "key": "unlinked",
   "kind": "msg"
  },

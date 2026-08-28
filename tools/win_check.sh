@@ -19,10 +19,20 @@
 set -uo pipefail
 
 TARGET=x86_64-pc-windows-msvc
-# **wheel に入る crate だけ。** `cargo tree -p pysheet` で確かめた並びです。
-# gpui を持つ物(calc / writer / ui)と `lang` は入りません — `lang` は
-# C の道具(lib.exe)が要るので、手元の Linux では的を変えて見られません
-CRATES=(-p book -p kumihan -p sheet -p ooxml -p paper -p ops -p pysheet)
+# **wheel に入る crate のうち、手元で見られる物だけ。**
+#
+# `cargo tree -p pysheet` で確かめた並びから、C の道具が要る物を外して
+# います。手元は Linux なので、Windows 用の C を組む所は通りません。
+#
+# - `lang` は `lib.exe` が要ります
+# - `pysheet` は polars → stacker → psm が Windows 用のアセンブラを
+#   組みます(2026-08-29 にピボットを polars に移して外れました)
+#
+# **外した分は CI が見ます**(`core-windows` の仕事が Windows の実機で
+# 組みます)。ここで見るのは `#[cfg(unix)]` の付け忘れで、それは
+# `ops` まででほぼ捕まります — Windows を壊した実例2件はどちらも
+# `ops` でした(2026-08-12 と 2026-08-28)。
+CRATES=(-p book -p kumihan -p sheet -p ooxml -p paper -p ops)
 
 if ! rustup target list --installed | grep -q "^$TARGET$"; then
   echo "Windows の的を足します($TARGET)"

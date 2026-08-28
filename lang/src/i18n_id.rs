@@ -58,7 +58,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("cant_export", "Tidak bisa mengekspor: {}"),
     ("style_removed", "Gaya dilepas"),
     ("cant_hand_python", "Tidak bisa diserahkan ke Python: {}"),
-    ("aggregating", "Mengagregasi {} menurut {}…"),
     ("unlinked", "{} dilepas tautannya"),
     ("not_formula_cell", "{} bukan sel rumus"),
     ("no_formula_refers", "Tidak ada rumus yang merujuk {}"),

@@ -58,7 +58,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("cant_export", "내보낼 수 없습니다: {}"),
     ("style_removed", "스타일을 뗐습니다"),
     ("cant_hand_python", "Python 에 넘길 수 없습니다: {}"),
-    ("aggregating", "{} 을 {} 로 집계하고 있습니다…"),
     ("unlinked", "{} 의 연결을 끊었습니다"),
     ("not_formula_cell", "{} 은 수식 셀이 아닙니다"),
     ("no_formula_refers", "{} 을 참조하는 수식이 없습니다"),

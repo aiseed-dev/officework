@@ -140,6 +140,19 @@ fn quiet_tag(tag: &str) -> Option<&'static str> {
 /// **いつ呼んでも効きます**(2026-08-19)。設定で選び直したときもここを
 /// 通します。知らない札は false — 黙って ja に落としません。
 /// 呼ばなければ今までどおり(環境変数 → settings.toml → ja)です。
+/// **試験のときだけの錠。** 画面の言語は処理系に1つしかないので、
+/// 替える試験と読む試験が並ぶと崩れます。替える側がこの錠を取り、
+/// 読む側で崩れて困る物も取ります(2026-08-29。engine の
+/// `font::lang_lock` と同じ形)。
+/// **`#[cfg(test)]` にはできません。** それは crate の中だけの印で、
+/// 使うのは別の crate(face)の試験だからです
+pub static LANG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// 錠を取ります。前の試験が落ちて錠が壊れていても、そのまま使います
+pub fn lang_lock() -> std::sync::MutexGuard<'static, ()> {
+    LANG_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 pub fn set_language(tag: &str) -> bool {
     let Some(l) = quiet_tag(tag) else { return false };
     *LANG.write().expect("言語の錠") = Some(l);

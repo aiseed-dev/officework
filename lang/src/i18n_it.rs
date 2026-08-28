@@ -58,7 +58,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("cant_export", "Impossibile esportare: {}"),
     ("style_removed", "Stile rimosso"),
     ("cant_hand_python", "Impossibile passarlo a Python: {}"),
-    ("aggregating", "Aggregazione di {} per {}…"),
     ("unlinked", "{} scollegato"),
     ("not_formula_cell", "{} non è una cella con formula"),
     ("no_formula_refers", "Nessuna formula fa riferimento a {}"),
