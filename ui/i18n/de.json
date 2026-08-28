@@ -2193,7 +2193,6 @@
  "scale": "Maßstab",
  "fit_to_width": "Breite anpassen",
  "row_col_headings": "Überschriften",
- "title_rows": "Titelzeile",
  "tmpl_text": "Text",
  "freeze": "Fensterausschnitt fixieren",
  "rtl": "Von rechts nach links",
@@ -2221,5 +2220,11 @@
  "edge_top": "Rahmenlinie oben",
  "edge_bottom": "Rahmenlinie unten",
  "edge_left": "Rahmenlinie links",
- "edge_right": "Rahmenlinie rechts"
+ "edge_right": "Rahmenlinie rechts",
+ "title_rows": "Wiederholungszeilen",
+ "title_cols": "Wiederholungsspalten",
+ "unlocked": "Nicht geschützt",
+ "even_page": "Gerade Seite",
+ "first_page": "Erste Seite",
+ "all_pages": "Alle"
 }

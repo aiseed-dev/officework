@@ -2193,7 +2193,6 @@
  "scale": "Échelle",
  "fit_to_width": "Ajuster à la largeur",
  "row_col_headings": "Titres",
- "title_rows": "Ligne du titre",
  "tmpl_text": "Texte",
  "freeze": "Figer les volets",
  "rtl": "De droite à gauche",
@@ -2220,5 +2219,12 @@
  "edge_top": "Bordure supérieure",
  "edge_bottom": "Bordure inférieure",
  "edge_left": "Bordure gauche",
- "edge_right": "Bordure droite"
+ "edge_right": "Bordure droite",
+ "title_rows": "Lignes à répéter",
+ "title_cols": "Colonnes à répéter",
+ "unlocked": "Non protégé",
+ "medium": "Moyen",
+ "even_page": "Page paire",
+ "first_page": "Première Page",
+ "all_pages": "Tous"
 }

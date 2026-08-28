@@ -971,26 +971,37 @@ fn read_break(t: &mut BookTheme, rows: &[Vec<String>]) {
 fn hf_table(t: &BookTheme) -> Option<Table> {
     let mut rows: Vec<Vec<String>> = Vec::new();
     for s in &t.sheets {
-        for (label, v) in [
-            (w("header"), &s.header),
-            (w("footer"), &s.footer),
-        ] {
+        for (label, v) in [(w("header"), &s.header), (w("footer"), &s.footer)] {
             if let Some(x) = v {
-                rows.push(vec![s.name.clone(), label.into(), x.clone()]);
+                rows.push(vec![s.name.clone(), label.into(), w("all_pages").into(), x.clone()]);
             }
         }
         if s.hf_diff_odd_even == Some(true) {
-            for (label, v) in [(w("header_even"), &s.header_even), (w("footer_even"), &s.footer_even)] {
-                rows.push(vec![s.name.clone(), label.into(), v.clone().unwrap_or_default()]);
+            for (label, v) in [(w("header"), &s.header_even), (w("footer"), &s.footer_even)] {
+                rows.push(vec![
+                    s.name.clone(),
+                    label.into(),
+                    w("even_page").into(),
+                    v.clone().unwrap_or_default(),
+                ]);
             }
         }
         if s.hf_diff_first == Some(true) {
-            for (label, v) in [(w("header_first"), &s.header_first), (w("footer_first"), &s.footer_first)] {
-                rows.push(vec![s.name.clone(), label.into(), v.clone().unwrap_or_default()]);
+            for (label, v) in [(w("header"), &s.header_first), (w("footer"), &s.footer_first)] {
+                rows.push(vec![
+                    s.name.clone(),
+                    label.into(),
+                    w("first_page").into(),
+                    v.clone().unwrap_or_default(),
+                ]);
             }
         }
     }
-    table(w("header_footer"), &[w("sheets"), w("position"), w("tmpl_text")], rows)
+    table(
+        w("header_footer"),
+        &[w("sheets"), w("position"), w("format_applied"), w("tmpl_text")],
+        rows,
+    )
 }
 
 fn read_hf(t: &mut BookTheme, rows: &[Vec<String>]) {
@@ -1000,27 +1011,36 @@ fn read_hf(t: &mut BookTheme, rows: &[Vec<String>]) {
             continue;
         }
         let where_at = pick(row, 1).to_string();
-        let text = pick(row, 2).to_string();
+        // **列は3つでも4つでも読みます。** 3つは古い形(位置に
+        // 「偶数ヘッダー」のような複合語が入っている)、4つが今の形です
+        let (target, text) = if row.len() >= 4 {
+            (pick(row, 2).to_string(), pick(row, 3).to_string())
+        } else {
+            (String::new(), pick(row, 2).to_string())
+        };
         let s = t.sheet(name);
         const SPOTS: &[&str] = &[
             "header", "footer", "header_even", "footer_even", "header_first", "footer_first",
         ];
-        match words::which(SPOTS, &where_at) {
-            Some("header") => s.header = Some(text),
-            Some("footer") => s.footer = Some(text),
-            Some("header_even") => {
+        const TARGETS: &[&str] = &["all_pages", "even_page", "first_page"];
+        let doko = words::which(SPOTS, &where_at);
+        let itsu = words::which(TARGETS, &target).unwrap_or("all_pages");
+        match (doko, itsu) {
+            (Some("header"), "all_pages") => s.header = Some(text),
+            (Some("footer"), "all_pages") => s.footer = Some(text),
+            (Some("header"), "even_page") | (Some("header_even"), _) => {
                 s.header_even = Some(text);
                 s.hf_diff_odd_even = Some(true);
             }
-            Some("footer_even") => {
+            (Some("footer"), "even_page") | (Some("footer_even"), _) => {
                 s.footer_even = Some(text);
                 s.hf_diff_odd_even = Some(true);
             }
-            Some("header_first") => {
+            (Some("header"), "first_page") | (Some("header_first"), _) => {
                 s.header_first = Some(text);
                 s.hf_diff_first = Some(true);
             }
-            Some("footer_first") => {
+            (Some("footer"), "first_page") | (Some("footer_first"), _) => {
                 s.footer_first = Some(text);
                 s.hf_diff_first = Some(true);
             }
@@ -1488,6 +1508,38 @@ mod language_tests {
 #[cfg(test)]
 mod words_watch {
     use super::words;
+
+    /// **古い形のヘッダーの表も読めます。**
+    ///
+    /// 2026-08-28 まで、位置の列に「偶数ヘッダー」のような複合語を
+    /// 入れていました。どの製品も1語では持たない言い方で、訳が引けません。
+    /// 位置(ヘッダー / フッター)と適用先(すべて / 偶数の頁 / 先頭の頁)の
+    /// 2列に分けました。**配ってあるテンプレートが読めなくなると困る**ので、
+    /// 3列の古い形も受けます。
+    #[test]
+    fn the_old_three_column_header_table_still_reads() {
+        let _lang = crate::font::lang_lock();
+        crate::font::set_default_language("ja");
+        let furui = "\
+= テンプレート
+
+.ヘッダーとフッター
+|===
+|シート |位置 |文字
+
+|売上 |ヘッダー |&C題
+|売上 |偶数ヘッダー |&L偶数
+|売上 |先頭フッター |&L初頁
+|===
+";
+        let t = super::parse(furui).expect("古い形が読めない");
+        let s = &t.sheets[0];
+        assert_eq!(s.header.as_deref(), Some("&C題"), "ヘッダーが読めない");
+        assert_eq!(s.header_even.as_deref(), Some("&L偶数"), "偶数のヘッダーが読めない");
+        assert_eq!(s.footer_first.as_deref(), Some("&L初頁"), "先頭のフッターが読めない");
+        assert_eq!(s.hf_diff_odd_even, Some(true), "偶数を分ける印が立たない");
+        assert_eq!(s.hf_diff_first, Some(true), "先頭を分ける印が立たない");
+    }
 
     #[test]
     fn every_symbol_the_template_uses_is_in_the_table() {

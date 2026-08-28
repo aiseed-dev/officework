@@ -2193,7 +2193,6 @@
  "scale": "缩放比例",
  "fit_to_width": "调整至合适宽度",
  "row_col_headings": "标题",
- "title_rows": "标题行",
  "tmpl_text": "文本",
  "freeze": "冻结窗格",
  "rtl": "从右到左",
@@ -2221,5 +2220,11 @@
  "edge_top": "上边框",
  "edge_bottom": "底部边框",
  "edge_left": "左边框",
- "edge_right": "右邊框"
+ "edge_right": "右邊框",
+ "title_rows": "需要重复的行",
+ "title_cols": "需要重复的列",
+ "unlocked": "不被保护的",
+ "even_page": "偶数页",
+ "first_page": "首页",
+ "all_pages": "全部"
 }

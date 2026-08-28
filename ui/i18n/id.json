@@ -2193,7 +2193,6 @@
  "scale": "Skala",
  "fit_to_width": "Sesuaikan Lebar",
  "row_col_headings": "Tajuk",
- "title_rows": "Baris judul",
  "tmpl_text": "Teks",
  "freeze": "Freeze Panes",
  "rtl": "Kanan sampai kiri",
@@ -2221,5 +2220,11 @@
  "edge_top": "Pembatas Atas",
  "edge_bottom": "Batas Bawah",
  "edge_left": "Pembatas Kiri",
- "edge_right": "Pembatas Kanan"
+ "edge_right": "Pembatas Kanan",
+ "title_rows": "Baris Yang Diulang",
+ "title_cols": "Kolom yang Diulang",
+ "unlocked": "Tak terlindungi",
+ "even_page": "Halaman genap",
+ "first_page": "Halaman pertama",
+ "all_pages": "Semua"
 }

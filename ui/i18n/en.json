@@ -2234,5 +2234,8 @@
  "tmpl_text": "Text",
  "tmpl_collapsed": "Collapsed",
  "tmpl_borders": "Borders",
- "tmpl_font": "Font"
+ "tmpl_font": "Font",
+ "even_page": "Even page",
+ "first_page": "First page",
+ "all_pages": "All"
 }

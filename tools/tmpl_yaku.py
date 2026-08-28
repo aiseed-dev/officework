@@ -67,9 +67,11 @@ HIKU = {
     "fit_to_height": None,
     # 画面の「表示」タブの見出しの札。行番号と列番号のことです
     "row_col_headings": "Headings",
-    # LibreOffice の「タイトル行」がそのままの意味です
-    "title_rows": "Title row",
-    "title_cols": None,
+    # LibreOffice の「繰り返す行 / 繰り返す列」。**対で取ります** —
+    # 片方を `Title row`、片方を `Columns to Repeat` から取ると、
+    # 並んだときに言い方が揃いません(2026-08-28)
+    "title_rows": "Rows to Repeat",
+    "title_cols": "Columns to Repeat",
     "tmpl_text": "Text",
     "freeze": "Freeze panes",
     "rtl": "Right to left",
@@ -81,6 +83,9 @@ HIKU = {
     "tmpl_collapsed": "Collapse",
     "item": "Item",
     "range": "Range",
+    "even_page": "Even page",
+    "first_page": "First page",
+    "all_pages": "All",
     "header_even": None,
     "footer_even": None,
     "header_first": None,
@@ -101,11 +106,13 @@ HIKU = {
     "font_color": "Font color",
     "tmpl_font": "Font",
     "shrink": "Shrink to fit",
-    # 「ロック解除」は本家が Locked しか持たず、引くと意味が裏返ります
-    "unlocked": None,
+    # 「ロック解除」は本家が Locked しか持たず、引くと意味が裏返ります。
+    # LibreOffice の「保護されていない」が同じ意味です
+    "unlocked": "Not protected",
     "hide_formula": "Hide formula",
-    # 線種の「中」は、既に訳のある medium_* から共通の頭を取ります
-    "medium": ("prefix", ["medium_dashed", "medium_dash_dot", "medium_dash_dot_dot"]),
+    # 線種の「中」は、既に訳のある medium_* から共通の言葉を取ります。
+    # 取れない言語(仏)は `Medium` を引きます
+    "medium": ("Medium", ["medium_dashed", "medium_dash_dot", "medium_dash_dot_dot"]),
     "slant_dash_dot": None,
     "align_general": "General",
     "center": "Center",
@@ -274,6 +281,11 @@ def main():
             if isinstance(how, tuple):
                 v = common_of([cur.get(k, "") for k in how[1]])
                 moto = "既にある訳から"
+                if not v:
+                    # 共通の言葉が取れない言語(修飾が語尾で形を変える)は
+                    # 出どころから引きます
+                    v = oo.get(how[0]) or lo.get(how[0])
+                    moto = "本家 / LibreOffice"
             else:
                 # **この語だけの差し替え。** 表の外へ持ち出さないよう、
                 # 出どころは別の名前で受けます

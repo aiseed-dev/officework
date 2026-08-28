@@ -2193,7 +2193,6 @@
  "scale": "縮放",
  "fit_to_width": "縮放至頁面寬度",
  "row_col_headings": "標題",
- "title_rows": "題名列",
  "tmpl_text": "文字",
  "freeze": "凍結窗格",
  "rtl": "從右到左",
@@ -2221,5 +2220,11 @@
  "edge_top": "上邊框",
  "edge_bottom": "底部邊框",
  "edge_left": "左邊框",
- "edge_right": "右邊界"
+ "edge_right": "右邊界",
+ "title_rows": "要重複的列",
+ "title_cols": "要重複的欄",
+ "unlocked": "未受保護",
+ "even_page": "偶數頁",
+ "first_page": "首頁",
+ "all_pages": "全部"
 }

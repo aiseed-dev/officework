@@ -2193,7 +2193,6 @@
  "scale": "Escala",
  "fit_to_width": "Ajustar al ancho",
  "row_col_headings": "Encabezados",
- "title_rows": "Fila de título",
  "tmpl_text": "Texto",
  "freeze": "Congelar paneles",
  "rtl": "De derecha a izquierda",
@@ -2221,5 +2220,11 @@
  "edge_top": "Borde superior",
  "edge_bottom": "Borde inferior",
  "edge_left": "Borde izquierdo",
- "edge_right": "Borde derecho"
+ "edge_right": "Borde derecho",
+ "title_rows": "Filas que repetir",
+ "title_cols": "Columnas que repetir",
+ "unlocked": "No protegido",
+ "even_page": "Página par",
+ "first_page": "Primera página",
+ "all_pages": "Todo"
 }

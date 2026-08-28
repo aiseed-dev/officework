@@ -86,6 +86,13 @@ WORDS = [
     ("portrait",           "縦",             "Portrait"),
     ("header",             "ヘッダー",       "Header"),
     ("footer",             "フッター",       "Footer"),
+    # **ヘッダーの「対象」は別の列にします**(2026-08-28)。「偶数ヘッダー」
+    # のような複合語は、どの製品も1語では持たないので訳が引けません。
+    # 「偶数の頁」「先頭の頁」なら本家がどの言語でも持っています。
+    # 下の4つは**古いテンプレートを読むため**に残してあります
+    ("even_page",          "偶数の頁",       "Even page"),
+    ("first_page",         "先頭の頁",       "First page"),
+    ("all_pages",          "すべて",         "All"),
     ("header_even",        "偶数ヘッダー",   "Even page header"),
     ("footer_even",        "偶数フッター",   "Even page footer"),
     ("header_first",       "先頭ヘッダー",   "First page header"),

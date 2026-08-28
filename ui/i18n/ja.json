@@ -2234,5 +2234,8 @@
  "tmpl_text": "文字",
  "tmpl_collapsed": "畳む",
  "tmpl_borders": "罫線",
- "tmpl_font": "書体"
+ "tmpl_font": "書体",
+ "even_page": "偶数の頁",
+ "first_page": "先頭の頁",
+ "all_pages": "すべて"
 }

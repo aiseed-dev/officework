@@ -2193,7 +2193,6 @@
  "scale": "Ölçek",
  "fit_to_width": "Genişliğe Sığdır",
  "row_col_headings": "Başlıklar",
- "title_rows": "Başlık satırı",
  "tmpl_text": "Metin",
  "freeze": "Parçaları Dondur",
  "rtl": "Sağdan Sola",
@@ -2221,5 +2220,11 @@
  "edge_top": "Üst Sınır",
  "edge_bottom": "Alt Sınır",
  "edge_left": "Sol Sınır",
- "edge_right": "Sağ Sınır"
+ "edge_right": "Sağ Sınır",
+ "title_rows": "Tekrarlanacak Satırlar",
+ "title_cols": "Tekrarlanacak Sütunlar",
+ "unlocked": "Korumalı değil",
+ "even_page": "Çift Sayfa",
+ "first_page": "İlk sayfa",
+ "all_pages": "Tümü"
 }

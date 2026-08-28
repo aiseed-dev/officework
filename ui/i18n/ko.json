@@ -2193,7 +2193,6 @@
  "scale": "배율",
  "fit_to_width": "너비에 맞춤",
  "row_col_headings": "제목",
- "title_rows": "제목 행",
  "tmpl_text": "텍스트",
  "freeze": "창 고정",
  "rtl": "오른쪽에서 왼쪽으로",
@@ -2221,5 +2220,11 @@
  "edge_top": "위쪽 테두리",
  "edge_bottom": "아래쪽 테두리",
  "edge_left": "왼쪽 테두리",
- "edge_right": "오른쪽 테두리"
+ "edge_right": "오른쪽 테두리",
+ "title_rows": "행 반복",
+ "title_cols": "열 반복",
+ "unlocked": "보호되지 않음",
+ "even_page": "짝수 페이지",
+ "first_page": "첫 페이지",
+ "all_pages": "모두"
 }

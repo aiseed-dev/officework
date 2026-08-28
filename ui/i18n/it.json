@@ -2193,7 +2193,6 @@
  "scale": "Ridimensiona",
  "fit_to_width": "Adatta alla larghezza",
  "row_col_headings": "Intestazioni",
- "title_rows": "Riga del titolo",
  "tmpl_text": "Testo",
  "freeze": "Blocca riquadri",
  "rtl": "Da destra a sinistra",
@@ -2221,5 +2220,11 @@
  "edge_top": "Bordo superiore",
  "edge_bottom": "Bordo inferiore",
  "edge_left": "Bordo sinistro",
- "edge_right": "Bordo destro"
+ "edge_right": "Bordo destro",
+ "title_rows": "Righe da ripetere",
+ "title_cols": "Colonne da ripetere",
+ "unlocked": "Non protetto",
+ "even_page": "Pagina pari",
+ "first_page": "Prima pagina",
+ "all_pages": "Tutti"
 }

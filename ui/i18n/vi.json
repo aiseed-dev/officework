@@ -2212,5 +2212,9 @@
  "medium": "Nét",
  "align_general": "Tổng quát",
  "center": "Trung tâm",
- "edge_bottom": "Viền dưới"
+ "edge_bottom": "Viền dưới",
+ "unlocked": "Không bảo vệ",
+ "even_page": "Trang chẵn",
+ "first_page": "First Page",
+ "all_pages": "Tất cả"
 }
