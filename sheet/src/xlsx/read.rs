@@ -99,6 +99,114 @@ pub(super) fn parse_shared(xml: &str) -> (Vec<String>, Vec<Option<String>>) {
     (out, rubies)
 }
 
+/// **セルの中の飾りが付いた共有文字列を、原文のまま取り出す。**
+///
+/// xlsx はセルの一部だけ色や太さを変えられます(`<si>` の中が `<r>` の
+/// 並びになる。openpyxl 3.1 の `CellRichText`)。こちらは**模型に持ちません** —
+/// 共通ライブラリにも adoc にも入れない、という決めです(2026-08-28 発注者)。
+///
+/// 代わりに、**原本の `<si>` をそのまま返します**。字が変わっていない
+/// セルは飾りごと元に戻り、字を書き替えたセルは普通の字になります。
+/// 模型が増えないので、画面や紙を組む速さにも響きません。
+///
+/// 返りは (飾りを外した字 → `<si>` の中身の原文)。飾りの無い物は入れません。
+pub(super) fn rich_shared(xml: &str) -> std::collections::HashMap<String, String> {
+    rich_runs(xml, "si")
+}
+
+/// **シートの中に直に書かれた飾り**(`<c t="inlineStr"><is>`)。
+///
+/// Excel は飾りを共有文字列に置きますが、openpyxl はセルの中に置きます。
+/// 中身の作り(`<r>` の並び)は同じなので、同じ表に混ぜて持てます。
+pub(super) fn rich_inline(xml: &str) -> std::collections::HashMap<String, String> {
+    rich_runs(xml, "is")
+}
+
+fn rich_runs(xml: &str, tag: &str) -> std::collections::HashMap<String, String> {
+    let (hiraki, toji) = (format!("<{tag}>"), format!("</{tag}>"));
+    let mut out = std::collections::HashMap::new();
+    let mut rest = xml;
+    while let Some(a) = rest.find(&hiraki) {
+        let after = &rest[a + hiraki.len()..];
+        let Some(b) = after.find(&toji) else { break };
+        let naka = &after[..b];
+        rest = &after[b + toji.len()..];
+        // 飾りが無い(`<r>` を持たない)物は、いまの書き方で足ります
+        if !naka.contains("<r>") && !naka.contains("<r ") {
+            continue;
+        }
+        // 飾りを外した字。**ふりがな(`<rPh>`)の中の `<t>` は混ぜません** —
+        // 混ぜると「提案見積書テイアンミツモリショ」になります
+        let mut moji = String::new();
+        let mut r2 = naka;
+        while let Some(i) = r2.find("<t") {
+            // rPh の中に入ってしまう `<t>` を飛ばす
+            let mae = &r2[..i];
+            let rph = mae.matches("<rPh").count() > mae.matches("</rPh>").count();
+            let after_t = &r2[i..];
+            let Some(j) = after_t.find('>') else { break };
+            if after_t[..j].ends_with('/') {
+                r2 = &after_t[j + 1..];
+                continue;
+            }
+            let body = &after_t[j + 1..];
+            let Some(k) = body.find("</t>") else { break };
+            if !rph {
+                moji.push_str(&unesc(&body[..k]));
+            }
+            r2 = &body[k + 4..];
+        }
+        if !moji.is_empty() {
+            out.insert(moji, naka.to_string());
+        }
+    }
+    out
+}
+
+/// XML の実体参照を戻す。
+///
+/// **数の参照(`&#36196;`)も戻します。** openpyxl は日本語を全部この形で
+/// 書きます。名前の5つだけ見ていて、実物の xlsx で拾えませんでした
+/// (2026-08-28)。
+fn unesc(s: &str) -> String {
+    if !s.contains('&') {
+        return s.to_string();
+    }
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(i) = rest.find('&') {
+        out.push_str(&rest[..i]);
+        let after = &rest[i..];
+        let Some(j) = after.find(';') else {
+            out.push_str(after);
+            return out;
+        };
+        let name = &after[1..j];
+        match name {
+            "lt" => out.push('<'),
+            "gt" => out.push('>'),
+            "quot" => out.push('"'),
+            "apos" => out.push('\''),
+            "amp" => out.push('&'),
+            _ => {
+                // `#36196`(10進)と `#x8d64`(16進)
+                let n = name.strip_prefix('#').and_then(|d| match d.strip_prefix(['x', 'X']) {
+                    Some(h) => u32::from_str_radix(h, 16).ok(),
+                    None => d.parse::<u32>().ok(),
+                });
+                match n.and_then(char::from_u32) {
+                    Some(c) => out.push(c),
+                    // 読めない参照はそのまま置きます(勝手に消さない)
+                    None => out.push_str(&after[..=j]),
+                }
+            }
+        }
+        rest = &after[j + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
 /// `<mergeCell ref="A1:B2"/>` を結合として持つ(読み飛ばすと保存で消える)。
 pub(super) fn merge(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
     if let Some(r) = attr(e, "ref") {
@@ -2565,4 +2673,37 @@ pub(super) fn parse_print_area(raw: &str) -> Option<(usize, Vec<(Pos, Pos)>)> {
         return None;
     }
     Some((sid, out))
+}
+
+#[cfg(test)]
+mod rich_tests {
+    use super::{rich_inline, rich_shared};
+
+    /// **セルの中の飾りを、原文のまま拾えるか。**
+    ///
+    /// Excel は共有文字列(`<si>`)に、openpyxl はセルの中(`<is>`)に
+    /// 書きます。どちらも `<r>` の並びで、拾い方は同じです。
+    #[test]
+    fn the_runs_in_a_cell_are_picked_up_as_they_are() {
+        let sheet_xml = r#"<sheetData><row r="1"><c r="A1" t="inlineStr"><is><r><rPr><b val="1"/></rPr><t>赤い太字</t></r><r><t>と普通の字</t></r></is></c></row></sheetData>"#;
+        let m = rich_inline(sheet_xml);
+        assert_eq!(m.len(), 1, "拾えた数が違う: {m:?}");
+        let (k, v) = m.iter().next().unwrap();
+        assert_eq!(k, "赤い太字と普通の字", "飾りを外した字が違う");
+        assert!(v.contains("<b val=\"1\"/>"), "飾りの原文が入っていない: {v}");
+    }
+
+    #[test]
+    fn a_plain_cell_is_not_picked_up() {
+        let sheet_xml = r#"<is><t>ただの字</t></is>"#;
+        assert!(rich_inline(sheet_xml).is_empty(), "飾りの無い字を拾っている");
+    }
+
+    #[test]
+    fn the_reading_aid_is_not_mixed_into_the_text() {
+        // ふりがな(rPh)の中の <t> を混ぜると「提案書テイアンショ」になります
+        let sst = r#"<si><r><rPr><b/></rPr><t>提案書</t></r><rPh sb="0" eb="3"><t>テイアンショ</t></rPh></si>"#;
+        let m = rich_shared(sst);
+        assert_eq!(m.keys().next().map(String::as_str), Some("提案書"), "{m:?}");
+    }
 }

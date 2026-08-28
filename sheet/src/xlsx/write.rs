@@ -770,6 +770,12 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     let mut orig_ct: Option<String> = None;
     let mut orig_sheet_rels: Vec<Option<String>> = Vec::new();
     let mut orig_styles: Option<String> = None;
+    // 原本の共有文字列。**セルの中の飾り(richtext)をそのまま返す**ために持つ
+    let mut orig_shared: Option<String> = None;
+    // シートの中に直に書かれた飾り(openpyxl はこちらに書く)。
+    // 飾りを外した字 → `<r>` の並びの原文
+    let mut orig_inline: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
     if let Some(src) = original {
         if let Ok(mut z) = zip::ZipArchive::new(src) {
             // **どの部品がどのシートの物かは r:id で解く**(読みと同じ道理)。
@@ -827,6 +833,8 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 if name.starts_with("xl/worksheets/sheet") && name.ends_with(".xml") {
                     // シート本体は作り直すが、印刷まわりと図形の参照は引き継ぐ
                     let s = String::from_utf8_lossy(&buf);
+                    // セルの中に直に書かれた飾りを拾う(openpyxl の書き方)
+                    orig_inline.extend(crate::xlsx::read::rich_inline(&s));
                     let mut extra = String::new();
                     for pat in ["<printOptions", "<pageMargins", "<pageSetup", "<drawing"] {
                         if let Some(i) = s.find(pat) {
@@ -888,6 +896,13 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 }
                 if name == "xl/theme/theme1.xml" {
                     continue; // テーマの色はモデルが正(配色の変更が効く)
+                }
+                if name == "xl/sharedStrings.xml" {
+                    // 原本の共有文字列は**セルの中の飾りの土台**として持つ。
+                    // 作り直すと、字は残るが色や太さが消えます
+                    // (2026-08-28、台帳の第4便)
+                    orig_shared = Some(String::from_utf8_lossy(&buf).to_string());
+                    continue;
                 }
                 if name == "xl/styles.xml" {
                     // 原本の書式表は**据え置き合成の土台**として持つ
@@ -1481,19 +1496,24 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     }
     put("xl/styles.xml", &styles_xml)?;
 
+    // **飾りの付いた字は原本のまま返します。** 字が変わっていないセルは
+    // 色も太さも元どおりになります(2026-08-28、台帳の第4便)
+    let mut kazari = orig_shared
+        .as_deref()
+        .map(crate::xlsx::read::rich_shared)
+        .unwrap_or_default();
+    // **共有文字列が先、シートの中が後。** 同じ字が両方にあるのは
+    // 普通ではありませんが、あれば共有文字列の方が正です
+    for (k, v) in orig_inline {
+        kazari.entry(k).or_insert(v);
+    }
     let si: String = shared
         .iter()
         .zip(&shared_ruby)
-        .map(|(s, ruby)| match ruby {
-            Some(r) => format!(
-                "<si><t xml:space=\"preserve\">{}</t>\
-                 <rPh sb=\"0\" eb=\"{}\"><t>{}</t></rPh>\
-                 <phoneticPr fontId=\"0\"/></si>",
-                esc(s),
-                s.chars().count(),
-                esc(r)
-            ),
-            None => format!("<si><t xml:space=\"preserve\">{}</t></si>", esc(s)),
+        .map(|(s, ruby)| match kazari.get(s) {
+            // 飾りのある字。**ふりがなも原文に入っている**ので、そのまま
+            Some(naka) => format!("<si>{naka}</si>"),
+            None => plain_si(s, ruby.as_deref()),
         })
         .collect();
     put("xl/sharedStrings.xml", &format!(
@@ -2496,4 +2516,22 @@ pub(super) fn image_anchor_xml(im: &book::SheetImage, rid: &str, id: u32) -> Str
         id = id,
         rid = rid
     )
+}
+
+/// 飾りの無い共有文字列1件。ふりがながあれば `<rPh>` で添えます。
+///
+/// **ふりがなは日本語の xlsx の宝**です。落とすと PHONETIC 関数も
+/// 振り仮名の表示も消えます。
+fn plain_si(s: &str, ruby: Option<&str>) -> String {
+    match ruby {
+        Some(r) => format!(
+            "<si><t xml:space=\"preserve\">{}</t>\
+             <rPh sb=\"0\" eb=\"{}\"><t>{}</t></rPh>\
+             <phoneticPr fontId=\"0\"/></si>",
+            esc(s),
+            s.chars().count(),
+            esc(r)
+        ),
+        None => format!("<si><t xml:space=\"preserve\">{}</t></si>", esc(s)),
+    }
 }
