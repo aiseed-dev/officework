@@ -360,6 +360,7 @@ shibutan-bloomers.com の連載(python-docx 第1〜3回・openpyxl 第2〜3回)�
 |`Section.start_type` が読めない |add\_section は済みだが、読む側の属性が無い |読みを張る(new\_page / continuous)
 |スタイル定義の属性(base\_style・hidden・quick\_style・priority・locked)が無い |第3回の題材そのもの |「名乗りだけの最小定義」をどこまで広げるか — 決めてから
 |書体の名指しが PDF に効くのは文書ぜんたいの `d.font` だけ |run 単位の `font.name` と表の `Font(name=…)` は docx には入るが、PDF は Noto のまま |run・セルの書体名を PDF の組む所へ届ける(0.5.0b2 の直しの続き)
+|セルの中の richtext(1つのセルの一部だけ赤い太字、の類 — openpyxl 3.1 の CellRichText)を持たない。読みは字だけに均され、**触っていないセルでも保存で飾りが消える**(0.5.0b2 で実測)。unsupported にも出ない |「読めない物を黙って落とさない」の約束の穴。様式の注意書き(一部だけ赤)は実務にある |模型のセルの字の値に run の並びを持たせる(kumihan の段落が run を持つのと同じ形)。Python は CellRichText / TextBlock / InlineFont の顔で読み書き。持てるまでの間は、開いた時に unsupported へ数えて、保存では原文を据え置く
 |===
 
 採取の道具: link:../tools/gokan_inventory.py[tools/gokan\_inventory.py]。
