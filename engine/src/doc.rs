@@ -794,6 +794,24 @@ pub fn latent_style(name: &str) -> Option<(&'static str, &'static str)> {
     // 組み込みの物だと見てくれません
     const LATENT: &[(&str, &str)] = &[
         ("ListBullet", "List Bullet"),
+        // **`…Char` は文字スタイル。** 見出しや副題に文字だけ当てる
+        // ときに Word が作ります(2026-08-28、連載のサンプルで踏みました)
+        ("SubtitleChar", "Subtitle Char"),
+        ("TitleChar", "Title Char"),
+        ("QuoteChar", "Quote Char"),
+        ("IntenseQuoteChar", "Intense Quote Char"),
+        ("Heading1Char", "Heading 1 Char"),
+        ("Heading2Char", "Heading 2 Char"),
+        ("Heading3Char", "Heading 3 Char"),
+        ("Heading4Char", "Heading 4 Char"),
+        ("Heading5Char", "Heading 5 Char"),
+        ("Heading6Char", "Heading 6 Char"),
+        ("Strong", "Strong"),
+        ("Emphasis", "Emphasis"),
+        ("IntenseEmphasis", "Intense Emphasis"),
+        ("SubtleEmphasis", "Subtle Emphasis"),
+        ("BookTitle", "Book Title"),
+        ("Hyperlink", "Hyperlink"),
         ("ListBullet2", "List Bullet 2"),
         ("ListBullet3", "List Bullet 3"),
         ("ListNumber", "List Number"),

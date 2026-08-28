@@ -143,13 +143,20 @@ check(t[1][2].text == "右下", "添字で引いたセルが食い違う")
 t.add_row()
 check(t.shape == (3, 3), f"行を足しても形が変わらない: {t.shape}")
 check(len(t.rows[-1].cells) == 3, "足した行の列数が違う")
-# 本家は add_column(width) と幅を要るが、**等分の表に1列だけ幅は形が
-# 決まらない** — 正直に断り、幅なしで足す道を案内する(家の作法)
-raises(ValueError, lambda: t.add_column(od.Mm(30)),
-       "等分の表に幅つきの列を黙って足している")
 t.add_column()
 check(t.shape == (3, 4), f"列を足しても形が変わらない: {t.shape}")
 check(len(t.columns[-1].cells) == 3, "足した列の行数が違う")
+# 等分の表に幅つきの列を足すときは、**今ある列を等分で埋めてから**足します
+# (2026-08-28。前は断っていましたが、本家では通る書き方でした)。
+# 埋める値は紙の幅から余白を引いた物を列の数で割った物で、見た目は
+# 変わりません
+mae = t.shape[1]
+t.add_column(od.Mm(30))
+check(t.shape[1] == mae + 1, f"幅つきの列が足せない: {t.shape}")
+check(abs(t.cell(0, mae).width.mm - 30) < 0.1,
+      f"足した列の幅が入らない: {t.cell(0, mae).width}")
+check(t.cell(0, 0).width is not None, "今ある列の幅が埋まっていない")
+
 
 # tbl-props: autofit は明示が無ければ True(本家の「no explicit → autofit」)
 check(t.autofit is True, f"autofit の既定が True でない: {t.autofit}")
@@ -231,15 +238,15 @@ def 文字は文字のまま置かれる():
     ws["A4"] = "3.14"
     ws["A5"] = "=1+2"
     ws["A6"] = ""
-    assert ws["A1"] == "0001", f"品番が数にされた: {ws['A1']!r}"
-    assert ws["A2"] == " 山田 太郎 ", f"前後の空白が削られた: {ws['A2']!r}"
-    assert ws["A3"] == "TRUE", f"TRUE が真偽にされた: {ws['A3']!r}"
-    assert ws["A4"] == "3.14", f"数に見える字が数にされた: {ws['A4']!r}"
+    assert ws["A1"].value == "0001", f"品番が数にされた: {ws['A1'].value!r}"
+    assert ws["A2"].value == " 山田 太郎 ", f"前後の空白が削られた: {ws['A2'].value!r}"
+    assert ws["A3"].value == "TRUE", f"TRUE が真偽にされた: {ws['A3'].value!r}"
+    assert ws["A4"].value == "3.14", f"数に見える字が数にされた: {ws['A4'].value!r}"
     # = で始まる字だけは式(openpyxl も同じ)
     assert ws.formula("A5") == "=1+2", f"式にならない: {ws.formula('A5')!r}"
-    assert ws["A5"] == 3, f"式が計算されない: {ws['A5']!r}"
+    assert ws["A5"].value == 3, f"式が計算されない: {ws['A5'].value!r}"
     # 空文字は空のセル(使っている範囲の数え方を変えないため)
-    assert ws["A6"] is None, f"空文字が値になった: {ws['A6']!r}"
+    assert ws["A6"].value is None, f"空文字が値になった: {ws['A6'].value!r}"
     print("  文字は文字のまま置かれる: ok")
 
 
@@ -253,9 +260,9 @@ def 整数はintで返る():
     ws["A1"] = 340
     ws["A2"] = 3.5
     ws["A3"] = -7
-    assert isinstance(ws["A1"], int) and ws["A1"] == 340, repr(ws["A1"])
-    assert isinstance(ws["A2"], float) and ws["A2"] == 3.5, repr(ws["A2"])
-    assert isinstance(ws["A3"], int) and ws["A3"] == -7, repr(ws["A3"])
+    assert isinstance(ws["A1"].value, int) and ws["A1"].value == 340, repr(ws["A1"].value)
+    assert isinstance(ws["A2"].value, float) and ws["A2"].value == 3.5, repr(ws["A2"].value)
+    assert isinstance(ws["A3"].value, int) and ws["A3"].value == -7, repr(ws["A3"].value)
     print("  整数はintで返る: ok")
 
 
@@ -307,7 +314,7 @@ def 径路はPathでも受ける():
         b.save(p)
         assert p.exists(), "Path で保存できない"
         b2 = sheet.Book.open(p)
-        assert b2[b2.sheet_names[0]]["A1"] == "あ", "Path で開けない"
+        assert b2[b2.sheet_names[0]]["A1"].value == "あ", "Path で開けない"
     print("  径路はPathでも受ける: ok")
 
 

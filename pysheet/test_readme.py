@@ -32,7 +32,7 @@ b = sheet.Book.open("templates/在庫台帳.xlsx")
 s = b[0]
 s["A30"] = "Nihon Funen Co., Ltd."
 s["C30"] = "=B30*100"
-check(s["A30"] == "Nihon Funen Co., Ltd.", "字が入る")
+check(s["A30"].value == "Nihon Funen Co., Ltd.", "字が入る")
 s.insert_row(30)
 b.save(os.path.join(tmp, "out.xlsx"))
 check(os.path.getsize(os.path.join(tmp, "out.xlsx")) > 1000, "xlsx が書ける")

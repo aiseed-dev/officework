@@ -426,6 +426,18 @@ class _Tables:
         return repr(self._all())
 
 
+class _Values(tuple):
+    """`ws.values` の返り。**属性としても呼び出しとしても使えます。**
+
+    本家は属性なので `for row in ws.values` と書きます。こちらは前まで
+    呼び出しだったので、`ws.values()` と書いた台本も世に出ています。
+    どちらも通しておきます(2026-08-28)。
+    """
+
+    def __call__(self):
+        return self
+
+
 class DataValidation:
     """入力規則。openpyxl の DataValidation の形(type / formula1 / add)。
     list はエンジンが効かせる(規則に合わない入力を堰き止める)。
@@ -739,7 +751,7 @@ class Cell:
         します。書く側は先に済んでいて、読む側だけが数のままでした
         (2026-08-27、test/basic_xlsx.py の唯一の赤)。
         """
-        v = self.parent[self.coordinate]
+        v = self.parent.nama(self.coordinate)
         if isinstance(v, bool) or not isinstance(v, (int, float)):
             return v
         nf = self._fmt().get("number_format")
@@ -756,7 +768,7 @@ class Cell:
         # openpyxl と同じ札: 'f' 式・'s' 文字・'b' 真偽・'n' 数と空
         if self.parent.formula(self.coordinate) is not None:
             return "f"
-        v = self.parent[self.coordinate]
+        v = self.parent.nama(self.coordinate)
         if isinstance(v, bool):
             return "b"
         if isinstance(v, str):
@@ -922,7 +934,7 @@ class Cell:
         # なります(2026-08-27 に踏みました)
         if not _is_date_fmt(self._fmt().get("number_format")):
             return False
-        v = self.parent[self.coordinate]
+        v = self.parent.nama(self.coordinate)
         return isinstance(v, (int, float)) and not isinstance(v, bool)
 
     @property
@@ -1018,26 +1030,84 @@ class Sheet:
         return self._s.name
 
     def __getitem__(self, key):
-        # **範囲(A1:F1)は Cell の組の組で返す**(openpyxl と同じ)。
-        # 見出しの行にまとめて書式を掛けるときの定番の書き方で、前は
-        # 「セル参照として読めない」で落ちていた(2026-08-15)。
-        # 1行なら ((c, c, …),)、1列なら ((c,), (c,), …) — openpyxl の形を
-        # そのまま真似るので、呼ぶ側は `for row in ws["A1:F1"]` と書ける
-        if isinstance(key, str) and ":" in key:
-            a, _, b = key.partition(":")
-            (r0, c0), (r1, c1) = _cell_rc(a), _cell_rc(b)
-            if r0 > r1:
-                r0, r1 = r1, r0
-            if c0 > c1:
-                c0, c1 = c1, c0
-            return tuple(
-                tuple(Cell(self, r, c) for c in range(c0, c1 + 1))
-                for r in range(r0, r1 + 1)
-            )
-        return self._s[key]
+        """openpyxl と同じ形で返します。
+
+        - `ws["A1"]` — **セル**(Cell)。値ではありません。空の席でも
+          セルを返します(本家の約束。結合の左上に書く形がこれに拠ります)
+        - `ws["A1:F1"]` — Cell の組の組。1行なら `((c, c, …),)`、
+          1列なら `((c,), (c,), …)`
+        - `ws["A"]` / `ws["A:C"]` — その列の Cell
+        - `ws[1]` / `ws[1:3]` — その行の Cell
+        - `ws["A1":"C3"]` — スライスの書き方も範囲と同じ
+
+        **2026-08-28 に値からセルへ変えました。** 前は `ws["A1"]` が値を
+        返していて、`ws["A1"].value` と書く本家の台本が全部止まりました
+        (実物の連載のサンプル 24 本のうち 5 本がここで落ちました)。
+        値が欲しいときは `.value` を付けてください。
+        """
+        # ws["A1":"C3"] — スライス
+        if isinstance(key, slice):
+            if key.start is None or key.stop is None:
+                raise ValueError("スライスは端を両方書いてください")
+            # `ws["A":"B"]` も `ws[1:3]` も、`:` で繋いだ書き方と同じに扱います
+            return self["{}:{}".format(key.start, key.stop)]
+        # ws[1] / ws[1:3] — 行番号
+        if isinstance(key, int):
+            return self._gyou(key)
+        if not isinstance(key, str):
+            raise TypeError("セルの指し方が分かりません: {!r}".format(key))
+        t = key.replace("$", "").strip()
+        if ":" in t:
+            a, _, b = t.partition(":")
+            # 行番号だけの範囲("2:5")と列文字だけの範囲("A:C")
+            if a.isdigit() and b.isdigit():
+                return tuple(self._gyou(r) for r in range(int(a), int(b) + 1))
+            if a.isalpha() and b.isalpha():
+                return tuple(
+                    self._retsu(_col_letter(c))
+                    for c in range(_col_index(a), _col_index(b) + 1)
+                )
+            return self._hani(t)
+        if t.isdigit():
+            return self._gyou(int(t))
+        if t.isalpha():
+            return self._retsu(t)
+        r, c = _cell_rc(t)
+        return Cell(self, r, c)
+
+    def _hani(self, ref):
+        """"A1:C3" を Cell の組の組に"""
+        a, _, b = ref.partition(":")
+        (r0, c0), (r1, c1) = _cell_rc(a), _cell_rc(b)
+        if r0 > r1:
+            r0, r1 = r1, r0
+        if c0 > c1:
+            c0, c1 = c1, c0
+        return tuple(
+            tuple(Cell(self, r, c) for c in range(c0, c1 + 1))
+            for r in range(r0, r1 + 1)
+        )
+
+    def _gyou(self, row):
+        """その行の Cell。**使っている列の幅まで**(本家と同じ)"""
+        if row < 1:
+            raise ValueError("行は1から数えます: {}".format(row))
+        haba = max(1, self.max_column)
+        return tuple(Cell(self, row, c) for c in range(1, haba + 1))
+
+    def _retsu(self, letters):
+        """その列の Cell。**使っている行の高さまで**(本家と同じ)"""
+        c = _col_index(letters)
+        takasa = max(1, self.max_row)
+        return tuple(Cell(self, r, c) for r in range(1, takasa + 1))
 
     def __setitem__(self, key, value):
         self._s[key] = value
+
+    def nama(self, key):
+        """**セルの生の値。** `ws["A1"]` は Cell を返すので、値そのものが
+        要るときはこちらです(`Cell.value` が使います)。"""
+        return self._s[key]
 
     def formula(self, key):
         return self._s.formula(key)
@@ -1049,8 +1119,16 @@ class Sheet:
     def shape(self):
         return self._s.shape
 
+    @property
     def values(self):
-        return self._s.values()
+        """使っている範囲の値を、行ごとの組で返します。
+
+        **本家は属性です**(`for row in ws.values`)。こちらは呼び出しに
+        していたので、本家の台本が「method は回せない」で止まりました
+        (2026-08-28)。`ws.values()` と書いていた分も動くよう、返る物は
+        呼んでも自分を返します。
+        """
+        return _Values(self._s.values())
 
     @property
     def merges(self):

@@ -49,6 +49,10 @@ enum Loc {
     Body(usize),
     /// 表のセルの中の段落
     Cell { block: usize, row: usize, col: usize, para: usize },
+    /// ヘッダー(`true`)/ フッター(`false`)の段落。
+    /// **模型はここを段落の列で持っています** — 本家と同じように
+    /// 揃えや書式を掛けられます(2026-08-28)
+    HeadFoot { header: bool, para: usize },
 }
 
 impl Inner {
@@ -80,6 +84,10 @@ impl Inner {
                 Block::Para(p) => Some(p),
                 _ => None,
             },
+            Loc::HeadFoot { header, para } => {
+                let hf = if *header { &self.doc.header } else { &self.doc.footer };
+                hf.paragraphs.get(*para)
+            }
             Loc::Cell { block, row, col, para } => match self.doc.blocks.get(*block)? {
                 Block::Table(t) => t.rows.get(*row)?.get(*col)?.paragraphs.get(*para),
                 _ => None,
@@ -93,6 +101,10 @@ impl Inner {
                 Block::Para(p) => Some(p),
                 _ => None,
             },
+            Loc::HeadFoot { header, para } => {
+                let hf = if *header { &mut self.doc.header } else { &mut self.doc.footer };
+                hf.paragraphs.get_mut(*para)
+            }
             Loc::Cell { block, row, col, para } => match self.doc.blocks.get_mut(*block)? {
                 Block::Table(t) => t.rows.get_mut(*row)?.get_mut(*col)?.paragraphs.get_mut(*para),
                 _ => None,
@@ -499,6 +511,35 @@ impl PyDoc {
         Ok(())
     }
 
+    /// **ヘッダーに段落を足す。** 返りは普通の段落なので、揃えも書式も
+    /// 掛けられます(2026-08-28、連載のサンプルで要りました)。
+    #[pyo3(signature = (text="", *, footer=false))]
+    fn add_hf_paragraph(&self, text: &str, footer: bool) -> PyResult<PyParagraph> {
+        let mut g = lock(&self.inner)?;
+        let mut p = Paragraph { line_spacing: 1.0, ..Default::default() };
+        set_para_text(&mut p, &text_to_marks(text));
+        let hf = if footer { &mut g.doc.footer } else { &mut g.doc.header };
+        hf.paragraphs.push(p);
+        let para = hf.paragraphs.len() - 1;
+        Ok(PyParagraph {
+            inner: Arc::clone(&self.inner),
+            loc: Loc::HeadFoot { header: !footer, para },
+        })
+    }
+
+    /// ヘッダー(フッター)の段落の一覧
+    #[pyo3(signature = (*, footer=false))]
+    fn hf_paragraphs(&self, footer: bool) -> PyResult<Vec<PyParagraph>> {
+        let g = lock(&self.inner)?;
+        let hf = if footer { &g.doc.footer } else { &g.doc.header };
+        Ok((0..hf.paragraphs.len())
+            .map(|para| PyParagraph {
+                inner: Arc::clone(&self.inner),
+                loc: Loc::HeadFoot { header: !footer, para },
+            })
+            .collect())
+    }
+
     /// ヘッダーの字。ページ番号は `#`、総ページ数は `##` で書きます
     /// ([`marks_to_text`])。改行があれば段落が分かれます。
     #[getter]
@@ -874,26 +915,7 @@ impl PyDoc {
         width_mm: Option<f32>,
         height_mm: Option<f32>,
     ) -> PyResult<PyParagraph> {
-        let data: Vec<u8> = if let Ok(b) = image.extract::<Vec<u8>>() {
-            b
-        } else if let Ok(p) = image.extract::<String>() {
-            std::fs::read(&p).map_err(|e| PyIOError::new_err(format!("{p}: 読めない: {e}")))?
-        } else {
-            return Err(PyTypeError::new_err(
-                "画像は 径路の文字列 か bytes(PNG / JPEG)で渡してください",
-            ));
-        };
-        let (wpx, hpx) = ops::image_px(&data).ok_or_else(|| {
-            PyValueError::new_err("PNG / JPEG として読めない(大きさが測れない)")
-        })?;
-        // 実寸(96dpi)を既定に、渡された辺へ縦横比を保って合わせる
-        let (w0, h0) = (wpx as f32 * 25.4 / 96.0, hpx as f32 * 25.4 / 96.0);
-        let (w_mm, h_mm) = match (width_mm, height_mm) {
-            (Some(w), Some(h)) => (w, h),
-            (Some(w), None) => (w, w * h0 / w0),
-            (None, Some(h)) => (h * w0 / h0, h),
-            (None, None) => (w0, h0),
-        };
+        let (data, w_mm, h_mm) = read_picture(image, width_mm, height_mm)?;
         let mut g = lock(&self.inner)?;
         let mut p = Paragraph { line_spacing: 1.0, ..Default::default() };
         p.images_new.push(kumihan::InlineImage {
@@ -1100,6 +1122,28 @@ impl PySection {
 
 #[pymethods]
 impl PySection {
+    /// **節の始め方。** `"new_page"`(改ページして始める)か
+    /// `"continuous"`(改ページしない)。
+    ///
+    /// 文書末の節は改ページの概念を持たないので `"new_page"` を返します
+    /// (本家も既定はこれです)。読みが無くて連載のサンプルが止まりました
+    /// (2026-08-28)。
+    #[getter]
+    fn start_type(&self) -> PyResult<&'static str> {
+        let g = lock(&self.inner)?;
+        let mids = g.section_blocks();
+        if self.idx >= mids.len() {
+            return Ok("new_page");
+        }
+        match g.doc.blocks.get(mids[self.idx]) {
+            Some(Block::Para(p)) => Ok(match p.sect.as_ref() {
+                Some(sc) if sc.continuous => "continuous",
+                _ => "new_page",
+            }),
+            _ => Err(PyIndexError::new_err("この節はもう文書に無い")),
+        }
+    }
+
     #[getter]
     fn page_width_mm(&self) -> PyResult<f32> {
         Ok(self.page()?.w_mm)
@@ -1367,6 +1411,17 @@ impl PyParagraph {
                 }
                 g.doc.blocks.insert(b, Block::Para(p));
                 Ok(PyParagraph { inner: Arc::clone(&self.inner), loc: Loc::Body(b) })
+            }
+            Loc::HeadFoot { header, para } => {
+                let hf = if header { &mut g.doc.header } else { &mut g.doc.footer };
+                if para > hf.paragraphs.len() {
+                    return Err(PyIndexError::new_err("この段落はもうヘッダーに無い"));
+                }
+                hf.paragraphs.insert(para, p);
+                Ok(PyParagraph {
+                    inner: Arc::clone(&self.inner),
+                    loc: Loc::HeadFoot { header, para },
+                })
             }
             Loc::Cell { block, row, col, para } => {
                 let cell = match g.doc.blocks.get_mut(block) {
@@ -1746,6 +1801,34 @@ impl PyRun {
 
 #[pymethods]
 impl PyRun {
+    /// **この run の段落に画像を足す**(python-docx の
+    /// `run.add_picture` の役)。径路でも bytes でも。
+    ///
+    /// 本家は run の中に絵を置きますが、こちらの模型は絵を**段落**が
+    /// 持ちます。同じ段落に載るので、刷った紙は同じ所に出ます。
+    /// 台帳に「run 内の画像」として残っていた物です(2026-08-28)。
+    #[pyo3(signature = (image, width_mm=None, height_mm=None))]
+    fn add_picture(
+        &self,
+        image: &Bound<'_, PyAny>,
+        width_mm: Option<f32>,
+        height_mm: Option<f32>,
+    ) -> PyResult<()> {
+        let (data, w_mm, h_mm) = read_picture(image, width_mm, height_mm)?;
+        let mut g = lock(&self.inner)?;
+        let p = g.para_mut(&self.loc).ok_or_else(|| {
+            PyIndexError::new_err("この段落はもう文書に無い")
+        })?;
+        p.images_new.push(kumihan::InlineImage {
+            bytes: std::sync::Arc::new(data),
+            w_mm,
+            h_mm,
+            tex: None,
+            src: None,
+        });
+        Ok(())
+    }
+
     #[getter]
     fn text(&self) -> PyResult<String> {
         self.with(|r| r.text.clone())
@@ -1915,6 +1998,19 @@ impl PyRun {
                     .chain(g.doc.styles_new.iter())
                     .find(|s| (s.name == v || s.id == v) && s.kind == "character")
                     .map(|s| s.id.clone());
+                // **Word が使ったときに作る文字スタイル**なら、ここで作ります
+                // (`Subtitle Char` など)。段落のスタイルと同じ作法です
+                let found = found.or_else(|| {
+                    kumihan::latent_style(&v).map(|(id, name)| {
+                        g.doc.styles_new.push(kumihan::StyleInfo {
+                            id: id.to_string(),
+                            name: name.to_string(),
+                            kind: "character".into(),
+                            ..Default::default()
+                        });
+                        id.to_string()
+                    })
+                });
                 match found {
                     Some(id) => Some(id),
                     None => {
@@ -2047,30 +2143,34 @@ impl PyTable {
 
     /// 列を1つ足す(右端。全部の行に空のセルが付く)。
     /// `width_mm` は新しい列の幅 — 元の列に幅の指定が無い(等分)ときは
-    /// 受けられない(1列だけ幅を持つと形が決まらない)ので正直に断る。
+    /// 幅を渡すと、その幅で足します。
     #[pyo3(signature = (width_mm=None))]
     fn add_column(&self, width_mm: Option<f32>) -> PyResult<()> {
         let mut g = lock(&self.inner)?;
+        let page = g.doc.page;
         let t = match g.doc.blocks.get_mut(self.block) {
             Some(Block::Table(t)) => t,
             _ => return Err(PyIndexError::new_err("この表はもう文書に無い")),
         };
-        match (width_mm, t.col_mm.is_empty()) {
-            (Some(w), false) => t.col_mm.push(w),
-            (Some(_), true) => {
-                return Err(PyValueError::new_err(
-                    "この表は列の幅が等分(未指定)なので、新しい列だけに幅を持てません。幅なしで足してください",
-                ))
+        // **幅を持たない表に幅つきの列を足すときは、今ある列を等分で
+        // 埋めてから足します。** 前は断っていましたが、本家(python-docx)は
+        // 通る書き方で、断ると台本が止まります(2026-08-28)。等分の値は
+        // 紙の幅から余白を引いた物を列の数で割った物 — 見た目は変わりません
+        let haba = t.rows.iter().map(|r| r.len()).max().unwrap_or(0);
+        if let Some(w) = width_mm {
+            if t.col_mm.is_empty() && haba > 0 {
+                let pg = page.unwrap_or_default();
+                let tsukaeru = (pg.w_mm - pg.left_mm - pg.right_mm).max(10.0);
+                t.col_mm = vec![tsukaeru / haba as f32; haba];
             }
-            (None, true) => {} // 等分のまま
-            (None, false) => {
-                // 幅を持つ表に幅なしの列は形が決まらない — 平均で足す
-                let avg = t.col_mm.iter().sum::<f32>() / t.col_mm.len() as f32;
-                t.col_mm.push(avg);
-            }
+            t.col_mm.push(w);
+        } else if !t.col_mm.is_empty() {
+            // 幅を持つ表に幅なしで足すときは、今の平均を入れます
+            let hei = t.col_mm.iter().sum::<f32>() / t.col_mm.len() as f32;
+            t.col_mm.push(hei);
         }
-        for row in t.rows.iter_mut() {
-            row.push(empty_cell());
+        for r in t.rows.iter_mut() {
+            r.push(empty_cell());
         }
         Ok(())
     }
@@ -2631,4 +2731,34 @@ mod tests {
             "欄のまとまりが違う: {g:?}"
         );
     }
+}
+
+/// 画像を読み、置く大きさ(mm)を決める。**段落と run の両方が使います** —
+/// 2つに書くと、片方だけ縦横比の扱いが違う、が起きます。
+fn read_picture(
+    image: &Bound<'_, PyAny>,
+    width_mm: Option<f32>,
+    height_mm: Option<f32>,
+) -> PyResult<(Vec<u8>, f32, f32)> {
+    let data: Vec<u8> = if let Ok(b) = image.extract::<Vec<u8>>() {
+        b
+    } else if let Ok(p) = image.extract::<String>() {
+        std::fs::read(&p).map_err(|e| PyIOError::new_err(format!("{p}: 読めない: {e}")))?
+    } else {
+        return Err(PyTypeError::new_err(
+            "画像は 径路の文字列 か bytes(PNG / JPEG)で渡してください",
+        ));
+    };
+    let (wpx, hpx) = ops::image_px(&data).ok_or_else(|| {
+        PyValueError::new_err("PNG / JPEG として読めない(大きさが測れない)")
+    })?;
+    // 実寸(96dpi)を既定に、渡された辺へ縦横比を保って合わせる
+    let (w0, h0) = (wpx as f32 * 25.4 / 96.0, hpx as f32 * 25.4 / 96.0);
+    let (w_mm, h_mm) = match (width_mm, height_mm) {
+        (Some(w), Some(h)) => (w, h),
+        (Some(w), None) => (w, w * h0 / w0),
+        (None, Some(h)) => (h * w0 / h0, h),
+        (None, None) => (w0, h0),
+    };
+    Ok((data, w_mm, h_mm))
 }

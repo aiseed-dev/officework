@@ -69,7 +69,7 @@ class _Font(str):
 
     @size.setter
     def size(self, v):
-        self._run.size_pt = float(v)
+        self._run.size_pt = _to_pt(v)
 
     @property
     def bold(self):
@@ -97,11 +97,76 @@ class _Font(str):
 
     @property
     def color(self):
-        return self._run.color
+        """字の色。**本家は色の入れ物を返します**(`font.color.rgb = …`)。
+
+        こちらは字(RRGGBB)で持っているので、字としても `.rgb` でも
+        使える入れ物を返します。`font.color = "FF0000"` も通ります
+        (2026-08-28、連載のサンプルで踏みました)。
+        """
+        return _Color(self._run.color, self._run)
 
     @color.setter
     def color(self, v):
-        self._run.color = v
+        self._run.color = _rgb_moji(v)
+
+
+def _rgb_moji(v):
+    """色を `RRGGBB` の字にする。本家の `RGBColor(255,0,0)` も受けます"""
+    if v is None:
+        return None
+    if isinstance(v, _Color):
+        return str(v) or None
+    # RGBColor は 3 バイトの列。str() が "FF0000" を返します
+    t = str(v).strip().lstrip("#")
+    if len(t) == 8:
+        t = t[2:]
+    return t or None
+
+
+def _muki(v):
+    """向きの言い方をそろえる。字・本家の列挙・数(0=縦, 1=横)を受けます"""
+    if isinstance(v, int) and not isinstance(v, bool):
+        return "landscape" if v == 1 else "portrait"
+    t = str(getattr(v, "name", v)).strip().lower()
+    if t.startswith("landscape"):
+        return "landscape"
+    if t.startswith("portrait"):
+        return "portrait"
+    return t
+
+
+def _kumikomi_kind(name):
+    """組み込みスタイルの種類。名前が `Char` で終われば文字スタイル"""
+    return "character" if str(name).strip().endswith("Char") else "paragraph"
+
+
+class _Color(str):
+    """字の色。**字としても `.rgb` でも使えます。**
+
+    本家(python-docx)は `run.font.color.rgb = RGBColor(255,0,0)` と
+    書きます。こちらは色を字で持っているので、字を継いで `.rgb` を
+    足しました。`_Font` の手と同じです。
+    """
+
+    def __new__(cls, value, run=None):
+        self = super().__new__(cls, value or "")
+        self._run = run
+        return self
+
+    @property
+    def rgb(self):
+        return str(self) or None
+
+    @rgb.setter
+    def rgb(self, v):
+        if self._run is None:
+            raise NotImplementedError("この色は run に繋がっていません")
+        self._run.color = _rgb_moji(v)
+
+    @property
+    def type(self):
+        """色の指し方。うちは常に直の指定(本家の MSO_THEME_COLOR は無し)"""
+        return None
 
 
 class Run:
@@ -169,6 +234,13 @@ class Run:
     def strike(self, v):
         self._r.strike = bool(v)
 
+    def add_picture(self, image, width=None, height=None):
+        """この run の段落に画像を足す(python-docx と同じ口)。
+
+        大きさは mm の数でも、本家の `Mm(15)` のような Length でも。
+        """
+        self._r.add_picture(image, _to_mm(width) or None, _to_mm(height) or None)
+
     @property
     def highlight(self):
         """蛍光ペンの色の名前。`run.font.highlight_color` の短い書き方"""
@@ -206,9 +278,11 @@ class Run:
 
     @property
     def style(self):
-        """文字スタイルの名前(指定なしは None)。書きは styles にある
-        文字スタイルの名前(本家のスタイルの物でも)。"""
-        return self._r.style
+        """文字スタイルの名前(指定なしは None)。字としても `.name` でも
+        読めます。書きは styles にある文字スタイルの名前(本家の物でも)。"""
+        n = self._r.style
+        # 本家は指定が無いと "Default Paragraph Font" を返します
+        return StyleName(n or "Default Paragraph Font", kind="character")
 
     @style.setter
     def style(self, v):
@@ -322,16 +396,25 @@ class Length(int):
 
 def _to_pt(v):
     """`Length` でも生の数でも pt にする。**本家は Length、うちは pt** —
-    どちらで渡されても通します(`Pt(12)` も `12` も同じ意味)。"""
+    どちらで渡されても通します(`Pt(12)` も `12` も同じ意味)。
+
+    **型では見ません。** 本家(python-docx)の `Pt(12)` はあちらの
+    `Length` で、こちらの `Length` とは別の型です。中身は EMU の整数
+    なので、型で見ると `152400` がそのまま pt として渡り「大きさが変」で
+    止まります(2026-08-28、連載のサンプルで踏みました)。`.pt` を
+    持っているかどうかで見ます。
+    """
     if v is None:
         return 0.0
-    return float(v.pt) if isinstance(v, Length) else float(v)
+    pt = getattr(v, "pt", None)
+    return float(pt) if pt is not None else float(v)
 
 
 def _to_mm(v):
     if v is None:
         return 0.0
-    return float(v.mm) if isinstance(v, Length) else float(v)
+    mm = getattr(v, "mm", None)
+    return float(mm) if mm is not None else float(v)
 
 
 def Pt(v):
@@ -376,10 +459,11 @@ class Section:
     読み書き — 書きは原文の sectPr へ属性差し替えなので、理解しない設定
     (ヘッダー参照・段組み)は崩れない。"""
 
-    __slots__ = ("_s",)
+    __slots__ = ("_s", "_doc")
 
-    def __init__(self, raw):
+    def __init__(self, raw, doc=None):
         self._s = raw
+        self._doc = doc
 
     def _len_prop(name):  # noqa: N805 — 小さな工場
         mm_name = name + "_mm"
@@ -391,6 +475,26 @@ class Section:
             setattr(self._s, mm_name, v.mm if hasattr(v, "mm") else float(v) / 36000)
 
         return property(get, set_)
+
+    @property
+    def start_type(self):
+        """節の始め方。"new_page" か "continuous"(python-docx と同じ)"""
+        return self._s.start_type
+
+    @property
+    def header(self):
+        """この節のヘッダー。
+
+        **模型はヘッダーを文書に1つ持ちます**(節ごとではありません)。
+        docx の途中の節が別のヘッダーを持つ形は、原文のまま持ち越して
+        いて、こちらからは触りません。ここが返すのは文書のヘッダーです。
+        """
+        return self._doc.header if self._doc is not None else None
+
+    @property
+    def footer(self):
+        """この節のフッター。ヘッダーと同じく文書の物を返します"""
+        return self._doc.footer if self._doc is not None else None
 
     page_width = _len_prop("page_width")
     page_height = _len_prop("page_height")
@@ -407,8 +511,13 @@ class Section:
     @orientation.setter
     def orientation(self, v):
         """`"portrait"` / `"landscape"`。**幅と高さを1手で入れ替えます** —
-        1つずつ動かすと、途中で正方形になって向きが決まらない瞬間ができます。"""
-        self._s.orientation = str(v)
+        1つずつ動かすと、途中で正方形になって向きが決まらない瞬間ができます。
+
+        本家の列挙(`WD_ORIENT.LANDSCAPE`)でも受けます。`str()` すると
+        `"LANDSCAPE (1)"` になるので、名前と数の方を先に見ます
+        (2026-08-28、連載のサンプルで踏みました)。
+        """
+        self._s.orientation = _muki(v)
 
     def __repr__(self):
         return repr(self._s)
@@ -495,6 +604,43 @@ class _StyleFont:
         return "<officework.doc StyleFont {!r}>".format(self._look())
 
 
+class StyleName(str):
+    """スタイルの名前。**字としても Style としても振る舞います。**
+
+    本家(python-docx)の `paragraph.style` は Style を返すので
+    `p.style.name` と書きます。こちらは名前(字)を返していたので、
+    その書き方が全部止まりました(2026-08-28、連載のサンプル)。
+
+    `p.style == "Title"` と `p.style.name == "Title"` の**どちらも**
+    通るように、字を継いで `.name` を足しました。`_Font` が
+    `run.font` で使っているのと同じ手です。
+    """
+
+    def __new__(cls, name, doc=None, kind="paragraph"):
+        self = super().__new__(cls, name or "")
+        self._doc = doc
+        self._kind = kind
+        return self
+
+    @property
+    def name(self):
+        return str(self)
+
+    @property
+    def style_id(self):
+        return str(self)
+
+    @property
+    def type(self):
+        return self._kind
+
+    @property
+    def font(self):
+        if self._doc is None:
+            raise NotImplementedError("このスタイルは文書に繋がっていません")
+        return _StyleFont(self._doc, str(self))
+
+
 class Style:
     """スタイルの名乗り(本家の style の役 — .name / .style_id / .type)と、
     自作スタイルの見た目(`.font`)。
@@ -560,9 +706,15 @@ class _Styles:
 
     def __getitem__(self, name):
         s = self._find(name)
-        if s is None:
-            raise KeyError("スタイルが無い: {!r}".format(name))
-        return s
+        if s is not None:
+            return s
+        # **Word が使ったときに作る組み込みスタイル**なら、ここで作ります。
+        # 段落に貼るときと同じ作法です(2026-08-28)
+        try:
+            return self.add_style(str(name), _kumikomi_kind(name), builtin=True)
+        except Exception:
+            pass
+        raise KeyError("スタイルが無い: {!r}".format(name))
 
     def add_style(self, name, style_type="paragraph", builtin=False):
         """スタイルを足す(本家と同じ口)。style_type は "paragraph" /
@@ -705,7 +857,9 @@ class Paragraph:
 
     @property
     def style(self):
-        return self._p.style
+        """段落のスタイル。字としても `.name` でも読めます"""
+        n = self._p.style
+        return None if n is None else StyleName(n)
 
     @style.setter
     def style(self, value):
@@ -870,6 +1024,20 @@ class _HeadFoot(str):
     @text.setter
     def text(self, v):
         setattr(self._raw, self._which, "" if v is None else str(v))
+
+    def add_paragraph(self, text=""):
+        """ヘッダー / フッターに段落を足します(python-docx と同じ口)。
+
+        返りは**普通の段落**なので、揃えも書式も掛けられます。
+        """
+        return Paragraph(
+            self._raw.add_hf_paragraph(text, footer=self._which == "footer"))
+
+    @property
+    def paragraphs(self):
+        """段落の一覧(python-docx と同じ)"""
+        return [Paragraph(p)
+                for p in self._raw.hf_paragraphs(footer=self._which == "footer")]
 
 
 class Row:
@@ -1043,8 +1211,13 @@ class Table:
 class Doc:
     """docx の文書。エンジンの Doc を包み、python-docx の口を足す。"""
 
-    def __init__(self):
-        self._d = _doc.Doc()
+    def __init__(self, path=None):
+        """`Doc()` は空の文書、`Doc("報告.docx")` は開きます。
+
+        python-docx の `Document(径路)` と同じ形です。前は `Doc.open` しか
+        無く、本家の台本が1行目で止まりました(2026-08-28)。
+        """
+        self._d = _doc.Doc.open(str(path)) if path is not None else _doc.Doc()
 
     @staticmethod
     def open(path):
@@ -1176,7 +1349,7 @@ class Doc:
     @property
     def sections(self):
         """節の一覧(本家と同じ口)。途中の節+文書末の節。"""
-        return [Section(s) for s in self._d.sections]
+        return [Section(s, self) for s in self._d.sections]
 
     def add_section(self, start_type=None):
         """節を足す(python-docx と同じ切り方)。**切るのは末尾** —
@@ -1189,7 +1362,7 @@ class Doc:
         if start_type is not None:
             name = getattr(start_type, "name", None)
             kind = str(name if name is not None else start_type).lower()
-        return Section(self._d.add_section(kind))
+        return Section(self._d.add_section(kind), self)
 
     @property
     def inline_shapes(self):
@@ -1214,13 +1387,15 @@ class Doc:
     def add_table(self, rows, cols, style=None):
         """表を新しく組む(明細の帳票づくり)。各セルは空の段落を1つ持つ。
 
-        style はまだ持てない(台帳の「足す(書式)」)— 黙って無視しない。
+        `style` は**名前を運ぶだけ**です。定義(styles.xml)はこちらでは
+        持たず、原本(雛形)が持っている前提です。名前を運べば Word で
+        開いたときにその見た目になります。**組む所は名前を見ません**ので、
+        officework の画面と PDF では罫線も帯も付きません。
         """
+        t = Table(self._d.add_table(rows, cols))
         if style is not None:
-            raise NotImplementedError(
-                "表のスタイルはまだ持てない(台帳: docs/pysheet-gokan.ja.md の「足す(書式)」)"
-            )
-        return Table(self._d.add_table(rows, cols))
+            t._t.style = str(getattr(style, "name", style))
+        return t
 
     def __getattr__(self, name):
         # エンジンに後から生えた口は、包み直しを待たずにそのまま通す

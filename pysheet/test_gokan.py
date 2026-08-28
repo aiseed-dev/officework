@@ -38,14 +38,14 @@ check(s.dimensions == "A1:A1", f"空の dimensions: {s.dimensions}")
 s.append([1, 2])
 s.append({"B": 9})          # 列の字で
 s.append({3: "う"})         # 列の番号(1起点)でも
-check(s["A1"] == 1 and s["B1"] == 2, f"append の1行目: {s['A1']},{s['B1']}")
-check(s["B2"] == 9, f"append の dict(字): {s['B2']}")
-check(s["C3"] == "う", f"append の dict(番号): {s['C3']}")
+check(s["A1"].value == 1 and s["B1"].value == 2, f"append の1行目: {s['A1'].value},{s['B1'].value}")
+check(s["B2"].value == 9, f"append の dict(字): {s['B2'].value}")
+check(s["C3"].value == "う", f"append の dict(番号): {s['C3'].value}")
 check(s.dimensions == "A1:C3", f"append 後の dimensions: {s.dimensions}")
 
 # --- cell(row, column, value=): 書いて、札(座標)が openpyxl と同じ形 ----------
 c = s.cell(row=2, column=3, value=7)
-check(s["C2"] == 7, "cell(value=) が書けていない")
+check(s["C2"].value == 7, "cell(value=) が書けていない")
 check(c.coordinate == "C2" and c.column_letter == "C" and c.col_idx == 3,
       f"Cell の札: {c.coordinate},{c.column_letter},{c.col_idx}")
 check(c.data_type == "n", f"数の data_type: {c.data_type}")
@@ -147,7 +147,7 @@ if openpyxl is not None:
         wb3.save(out2)
         b3 = office_sheet.Book.open(out2)
         s3 = b3[0]
-        check(s3["A1"] == 1 and s3["B1"] == "あ" and s3["C1"] is True,
+        check(s3["A1"].value == 1 and s3["B1"].value == "あ" and s3["C1"].value is True,
               "openpyxl が書いた物をうちが読めない")
 
 # (第1歩では title の代入と create_sheet(index=) は「正直に断る」だったが、
@@ -304,11 +304,11 @@ if openpyxl is not None:
     n = sm.move_range("B1", rows=5)
     check(n == 1, f"動いたセルの数: {n}")
     check(sm.formula("B6") == "=A1*2", f"中の式が勝手に動いた: {sm.formula('B6')}")
-    check(sm["B6"] == 20, "動いた式の答えが違う")
+    check(sm["B6"].value == 20, "動いた式の答えが違う")
     # **上位分**: 外から指す式が付いて動く(openpyxl は古びたまま)
     check(sm.formula("D1") == "=B6+1", f"外の式が追随しない: {sm.formula('D1')}")
-    check(sm["D1"] == 21, f"追随した式の答え: {sm['D1']}")
-    check(sm["B1"] is None, "元の場所が空になっていない")
+    check(sm["D1"].value == 21, f"追随した式の答え: {sm['D1'].value}")
+    check(sm["B1"].value is None, "元の場所が空になっていない")
 
     # translate=True は本家と同じ定義(中の相対参照がずれる)
     bm2 = office_sheet.Book()
@@ -352,7 +352,7 @@ if openpyxl is not None:
               f"列グループ: {sg.column_groups}")
         # 配列式(スピル)は値まで計算されている — openpyxl は式を持つだけ
         sg["C1"] = "=SUM(A1:A3*2)"
-        check(sg["C1"] == 12, f"配列の計算: {sg['C1']}")
+        check(sg["C1"].value == 12, f"配列の計算: {sg['C1'].value}")
         out_g = os.path.join(t, "group.xlsx")
         bg.save(out_g)
         rg = openpyxl.load_workbook(out_g).active
@@ -501,7 +501,7 @@ if openpyxl is not None:
               f"表の一覧: {dict(st.tables)}")
         # **構造化参照が計算まで効く**(openpyxl は式を計算しない = 上位分)
         st["D1"] = "=SUM(明細[金額])"
-        check(st["D1"] == 350000, f"構造化参照の計算: {st['D1']}")
+        check(st["D1"].value == 350000, f"構造化参照の計算: {st['D1'].value}")
         out_t = os.path.join(t, "table.xlsx")
         bt.save(out_t)
 
@@ -528,7 +528,7 @@ if openpyxl is not None:
         check(s_t2.tables["在庫"].tableStyleInfo.name == "TableStyleLight1",
               "表の様式の名前が読めない")
         s_t2["D1"] = "=SUM(在庫[数])"
-        check(s_t2["D1"] == 7, f"本家の表への構造化参照: {s_t2['D1']}")
+        check(s_t2["D1"].value == 7, f"本家の表への構造化参照: {s_t2['D1'].value}")
         # 本家の実物の Table をそのまま渡しても効く
         s_t2.add_table(OTable(displayName="控え", ref="A1:B2"))
         check("控え" in s_t2.tables, "本家の Table の代入")
@@ -551,7 +551,7 @@ if openpyxl is not None:
         bn.defined_names["数量"] = office_sheet.DefinedName(
             "数量", attr_text="{}!$A$2".format(sn.title))
         sn["B1"] = "=単価*数量"
-        check(sn["B1"] == 400, f"名前が式で効かない: {sn['B1']}")
+        check(sn["B1"].value == 400, f"名前が式で効かない: {sn['B1'].value}")
         check("単価" in bn.defined_names and len(bn.defined_names) == 2,
               f"defined_names: {dict(bn.defined_names)}")
         out_n = os.path.join(t, "names.xlsx")
@@ -575,7 +575,7 @@ if openpyxl is not None:
         s9 = b9[0]
         check("tanka" in b9.defined_names, f"本家の名前: {dict(b9.defined_names)}")
         s9["B1"] = "=tanka*2"
-        check(s9["B1"] == 500, f"本家の名前が式で効かない: {s9['B1']}")
+        check(s9["B1"].value == 500, f"本家の名前が式で効かない: {s9['B1'].value}")
         del b9.defined_names["tanka"]
         check("tanka" not in b9.defined_names, "名前が消えない")
 
@@ -737,10 +737,10 @@ if openpyxl is not None:
               f"1904 起点の表示が4年ずれている: {s13.display('A1')}")
         # 関数: YEAR も起点どおり
         s13["B1"] = "=YEAR(A1)"
-        check(s13["B1"] == 2026, f"1904 起点の YEAR: {s13['B1']}")
+        check(s13["B1"].value == 2026, f"1904 起点の YEAR: {s13['B1'].value}")
         # datetime の書き込みも起点どおりの通し番号になる
         s13["C1"] = datetime.date(2026, 8, 13)
-        check(s13["C1"] == s13["A1"], f"datetime の受けが起点とずれる: "
+        check(s13["C1"].value == s13["A1"].value, f"datetime の受けが起点とずれる: "
               f"{s13['C1']} vs {s13['A1']}")
         # 往復して本家が同じ日付で読める
         out_e2 = os.path.join(t, "mac1904_rt.xlsx")
@@ -1202,8 +1202,8 @@ s["B1"] = "題"
 s["C2"] = 9
 s.merge_cells("A1:C2")
 check(s.merged_cell_ranges == ["A1:C2"], f"結合が台帳に載らない: {s.merged_cell_ranges}")
-check(s["A1"] == "題", "空だった左上へ最初の中身が移っていない")
-check(s["B1"] is None and s["C2"] is None, "呑まれた中身が消えていない")
+check(s["A1"].value == "題", "空だった左上へ最初の中身が移っていない")
+check(s["B1"].value is None and s["C2"].value is None, "呑まれた中身が消えていない")
 
 # 解除: openpyxl と同じ定義 — その範囲そのものが結合でなければ ValueError
 try:
@@ -1233,11 +1233,11 @@ b2 = office_sheet.Book()
 b2[0]["A1"] = 42
 w2 = b2.create_sheet("集計")
 w2["A1"] = "=Sheet1!A1*2"
-check(w2["A1"] == 84, "他のシートへの式")
+check(w2["A1"].value == 84, "他のシートへの式")
 b2[0].title = "元データ"
 check(b2.sheetnames[0] == "元データ", "改名が一覧に出ない")
 check(w2.formula("A1") == "=元データ!A1*2", f"改名に式が追随しない: {w2.formula('A1')}")
-check(w2["A1"] == 84, "改名後の再計算")
+check(w2["A1"].value == 84, "改名後の再計算")
 try:
     w2.title = "元データ"
     check(False, "同じ名前への改名が通った")
@@ -1252,9 +1252,9 @@ except ValueError:
 # 複製・削除・並べ替え・途中に差す
 w3 = b2.copy_worksheet(b2[0])
 check(w3.title == "元データ Copy", f"複製の名前: {w3.title}")
-check(w3["A1"] == 42, "複製に中身が写っていない")
+check(w3["A1"].value == 42, "複製に中身が写っていない")
 w3["A1"] = 1
-check(b2[0]["A1"] == 42, "複製が元とつながったまま(独立していない)")
+check(b2[0]["A1"].value == 42, "複製が元とつながったまま(独立していない)")
 b2.remove(w3)
 check("元データ Copy" not in b2.sheetnames, "削除できていない")
 head = b2.create_sheet("先頭", 0)
@@ -1338,11 +1338,10 @@ check(t_j.shape == (3, 3) and len(row.cells) == 3, "add_row")
 row.cells[0].text = "ザボガードF"
 t_j.add_column()
 check(t_j.shape == (3, 4), f"add_column: {t_j.shape}")
-try:
-    d_j.add_table(2, 2, style="Table Grid")
-    check(False, "add_table の style が黙って捨てられた")
-except NotImplementedError:
-    pass
+# 表のスタイルは**名前を運ぶ**ようになりました(2026-08-28)。定義は
+# 原本の styles.xml が持つ前提で、こちらは名乗りを落とさないだけです
+t_s = d_j.add_table(2, 2, style="Table Grid")
+check(t_s.style == "Table Grid", f"add_table の style が運べていない: {t_s.style}")
 
 if pydocx is not None:
     with tempfile.TemporaryDirectory() as t:

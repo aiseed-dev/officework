@@ -36,9 +36,15 @@ b = sheet.Book.open("form7.xlsx")
 s = b["quote"]
 s["A30"] = "Nihon Funen Co., Ltd."       # borders, merges, widths stay intact
 s["C30"] = "=B30*100"                    # a formula; recalculated on the spot
+print(s["C30"].value)                    # the computed value, as in openpyxl
 s.insert_row(30)                         # remaining formulas follow the move
 b.save("out.xlsx")                       # shapes and print setup carried over
 ```
+
+Indexing follows openpyxl exactly: `ws["A1"]` is a **cell**, `ws["A1:C3"]`
+a tuple of rows, `ws[1]` a row, `ws["A"]` a column. Reading an untouched
+address gives you a cell whose `.value` is `None`, not `None` itself — so
+writing into a merged region's top-left works the way the articles show.
 
 ## Documents
 

@@ -23,30 +23,30 @@ s["C1"] = 125000
 s["D1"] = "=B1*C1"
 s["D2"] = "=ROUND(D1*0.1,0)"
 s["D3"] = "=D1+D2"
-check(s["D3"] == 550000, f"式が計算されない: {s['D3']}")
+check(s["D3"].value == 550000, f"式が計算されない: {s['D3'].value}")
 check(s.formula("D3") == "=D1+D2", "編集欄に式が戻らない")
 # **整数は int、小数は float**(2026-08-15 に openpyxl に合わせた)。
 # 前は何でも float で返していたので、340 が 340.0 になり、品番や個数を
 # 見せる前に毎回 int() が要った。中は f64 のまま
-check(isinstance(s["B1"], int) and s["B1"] == 4, "整数が int で返らない")
+check(isinstance(s["B1"].value, int) and s["B1"].value == 4, "整数が int で返らない")
 s["B2"] = 4.5
-check(isinstance(s["B2"], float) and s["B2"] == 4.5, "小数が float で返らない")
-check(s["Z9"] is None, "空セルが None でない")
+check(isinstance(s["B2"].value, float) and s["B2"].value == 4.5, "小数が float で返らない")
+check(s["Z9"].value is None, "空セルが None でない")
 
 with tempfile.TemporaryDirectory() as d:
     out = os.path.join(d, "round.xlsx")
     b.save(out)
     b2 = office_sheet.Book.open(out)
     s2 = b2[0]
-    check(s2["A1"] == "ザボガードF F-02", "日本語が往復しない")
-    check(s2["D3"] == 550000, "式が保存されず再計算できない")
+    check(s2["A1"].value == "ザボガードF F-02", "日本語が往復しない")
+    check(s2["D3"].value == 550000, "式が保存されず再計算できない")
     check(s2.formula("D1") == "=B1*C1", "式そのものが往復しない")
 
 # --- 型: bool は bool のまま、None は消す ------------------------------------
 s["E1"] = True
-check(s["E1"] is True, "bool が bool で返らない")
+check(s["E1"].value is True, "bool が bool で返らない")
 s["A1"] = None
-check(s["A1"] is None, "None で消えない")
+check(s["A1"].value is None, "None で消えない")
 
 # --- 文字列は**そのまま置く**(2026-08-15 に「打ったのと同じ解釈」から改めた)--
 #
@@ -59,27 +59,34 @@ check(s["A1"] is None, "None で消えない")
 # (それは Excel と同じで正しい)。**ファイルの口と打鍵の口を分けた**という
 # 改めで、経緯は docs/sekkei/python.ja.md
 s["F1"] = "123"
-check(s["F1"] == "123", "数字に見える字が数にされた(openpyxl は字のまま)")
+check(s["F1"].value == "123", "数字に見える字が数にされた(openpyxl は字のまま)")
 s["F2"] = "0001"
-check(s["F2"] == "0001", "品番の頭の 0 が落ちた")
+check(s["F2"].value == "0001", "品番の頭の 0 が落ちた")
 s["F3"] = 123
-check(s["F3"] == 123 and isinstance(s["F3"], int), "数を置いたら数で返るべき")
+check(s["F3"].value == 123 and isinstance(s["F3"].value, int), "数を置いたら数で返るべき")
 
-# --- datetime は Excel の通し番号になる(帳票の日付セルの定番)----------------
+# --- datetime は Excel の通し番号で持ち、読むと datetime で返る ---------------
+#
+# **中では通し番号、読むと日付**です(openpyxl と同じ)。生の通し番号は
+# `ws.nama("G1")` で見られます。2026-08-27 に読む側を本家に合わせました
 import datetime
 EPOCH = datetime.date(1899, 12, 30)   # Excel の通し番号の起点
 d = datetime.date(2026, 8, 5)
 s["G1"] = d
-check(s["G1"] == (d - EPOCH).days, f"date が通し番号にならない: {s['G1']}")
+check(s.nama("G1") == (d - EPOCH).days, f"date が通し番号にならない: {s.nama('G1')}")
+check(s["G1"].value == d, f"日付が date で返らない: {s['G1'].value!r}")
 s["G2"] = "=YEAR(G1)"
 s["G3"] = "=MONTH(G1)"
-check((s["G2"], s["G3"]) == (2026, 8),
-      f"通し番号が DATE 関数の規約とずれている: YEAR={s['G2']} MONTH={s['G3']}")
+check((s["G2"].value, s["G3"].value) == (2026, 8),
+      f"通し番号が DATE 関数の規約とずれている: YEAR={s['G2'].value} MONTH={s['G3'].value}")
 s["G4"] = datetime.datetime(2026, 8, 5, 18, 0, 0)
-check(abs(s["G4"] - ((d - EPOCH).days + 0.75)) < 1e-9,
-      f"datetime の時刻が日の割合にならない: {s['G4']}")
+check(abs(s.nama("G4") - ((d - EPOCH).days + 0.75)) < 1e-9,
+      f"datetime の時刻が日の割合にならない: {s.nama('G4')}")
+check(s["G4"].value == datetime.datetime(2026, 8, 5, 18, 0, 0),
+      f"日時が datetime で返らない: {s['G4'].value!r}")
 s["G5"] = datetime.time(6, 0)
-check(abs(s["G5"] - 0.25) < 1e-9, f"time が日の割合にならない: {s['G5']}")
+check(abs(s.nama("G5") - 0.25) < 1e-9, f"time が日の割合にならない: {s.nama('G5')}")
+check(s["G5"].value == datetime.time(6, 0), f"時刻が time で返らない: {s['G5'].value!r}")
 try:
     s["G6"] = object()
     check(False, "置けない型を黙って受けた")
@@ -95,9 +102,9 @@ t["A4"] = "=SUM(A1:A3)"
 t.insert_row(2)                       # 2行目に空行 → 明細が1行増える
 check(t.formula("A5") == "=SUM(A1:A4)", f"行を挿しても参照が伸びない: {t.formula('A5')}")
 t["A2"] = 50
-check(t["A5"] == 650, f"挿した行に打った値が合計に入らない: {t['A5']}")
+check(t["A5"].value == 650, f"挿した行に打った値が合計に入らない: {t['A5'].value}")
 t.remove_row(2)
-check(t["A4"] == 600, f"行を抜いた後の合計が違う: {t['A4']}")
+check(t["A4"].value == 600, f"行を抜いた後の合計が違う: {t['A4'].value}")
 
 # --- 表示形式は据え置き(値を差し替えても書式が残るのが存在理由)--------------
 # 書式は Python からは作れない(作るのは calc の仕事)ので、実物で確かめる
@@ -105,7 +112,7 @@ real = "/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/実施要領�
 if os.path.exists(real):
     rb = office_sheet.Book.open(real)
     rs = rb[0]
-    check(rs["B1"] == "（様式７）", f"実物の中身が読めない: {rs['B1']}")
+    check(rs["B1"].value == "（様式７）", f"実物の中身が読めない: {rs['B1'].value}")
     merges = rs.merges
     check(len(merges) > 0, "実物の様式にセル結合が無いことになっている")
     rows, cols = rs.shape
@@ -113,14 +120,14 @@ if os.path.exists(real):
     rs["A30"] = "日本フネン株式会社"
     rs["C30"] = "=B30*100"
     rs["B30"] = 3
-    check(rs["C30"] == 300, "実物の上で式が効かない")
+    check(rs["C30"].value == 300, "実物の上で式が効かない")
     with tempfile.TemporaryDirectory() as d:
         out = os.path.join(d, "様式7_差込.xlsx")
         rb.save(out)
         rb2 = office_sheet.Book.open(out)
         rs2 = rb2[0]
-        check(rs2["A30"] == "日本フネン株式会社", "差し込んだ値が保存されない")
-        check(rs2["B1"] == "（様式７）", "元の内容が壊れた")
+        check(rs2["A30"].value == "日本フネン株式会社", "差し込んだ値が保存されない")
+        check(rs2["B1"].value == "（様式７）", "元の内容が壊れた")
         check(rs2.merges == merges, "保存でセル結合が崩れた(帳票の枠が壊れた)")
         import zipfile
         with zipfile.ZipFile(out) as z:
@@ -148,7 +155,7 @@ else:
         ps[f"A{i}"] = name
         ps[f"B{i}"] = float(total)
     ps["B3"] = "=SUM(B1:B2)"
-    check(ps["B3"] == 290, f"polars の集計が差し込めない: {ps['B3']}")
+    check(ps["B3"].value == 290, f"polars の集計が差し込めない: {ps['B3'].value}")
     back = pl.DataFrame(ps.values(), orient="row")
     check(back.shape == (3, 2), f"values() が DataFrame にならない: {back.shape}")
 
