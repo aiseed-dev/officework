@@ -545,7 +545,7 @@ fn style_table(t: &BookTheme) -> Option<Table> {
     let mut rows: Vec<Vec<String>> = Vec::new();
     for (name, f) in &t.styles {
         for (item, v) in style::to_rows(f) {
-            rows.push(vec![name.clone(), w(item).to_string(), v]);
+            rows.push(vec![name.clone(), item, v]);
         }
     }
     table(w("format"), &[w("name"), w("item"), w("value")], rows)

@@ -5,13 +5,43 @@ use super::layout::*;
 use crate::font;
 
 #[cfg(test)]
+/// **試験で使う既定の書体。**
+///
+/// 既定の書体は画面の言語で決まります。言語を替える試験(テンプレートの
+/// 各国語版)と並んで走ると、別の書体が返って字幅の試験が落ちます
+/// (2026-08-28。25 回に1回ほど落ちるのを捕まえました)。
+///
+/// ここで**言語を日本語に据えて**から取ります。錠は返る前に放すので、
+/// 言語を替える試験と噛み合いません。
+#[cfg(test)]
+pub(crate) fn test_font() -> Vec<u8> {
+    // **1度だけ選んで、1度だけ読みます。**
+    //
+    // 呼ぶ所が 31 あるので、そのたびに読み直すと数十 MB × 31 になります。
+    // 錠の中で読むようにしたら、試験が 2.4 秒から 3分20秒 になりました
+    // (2026-08-28。測って気づきました)。
+    //
+    // 選ぶときだけ言語の錠を取ります。既定の書体は画面の言語で決まるので、
+    // 言語を替える試験(テンプレートの各国語版)と並ぶと別の書体が返り、
+    // 字幅の試験が落ちます(25 回に1回ほど)。
+    static FONT: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+    FONT.get_or_init(|| {
+        let f = {
+            let _lang = crate::font::lang_lock();
+            crate::font::set_default_language("ja");
+            crate::font::for_document(None).expect("日本語フォントが要る").0
+        };
+        crate::font::load(f).expect("読めない")
+    })
+    .clone()
+}
+
 mod kihon {
     use super::*;
 
     fn font() -> Vec<u8> {
         // **同梱しない。** システムのフォントを使う
-        let (f, _) = crate::font::for_document(None).expect("日本語フォントが要る");
-        crate::font::load(f).expect("読めない")
+        super::test_font()
     }
 
     fn sheet_of(text: &str, measure: f32) -> Sheet {
@@ -187,7 +217,7 @@ mod align_tests {
     use super::*;
 
     fn sheet(text: &str, a: Align) -> Sheet {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain(text);
         d.apply_align(0..text.len(), a);
@@ -219,7 +249,7 @@ mod align_tests {
     #[test]
     fn the_format_reaches_the_characters() {
         // 画面と紙が同じものを見るので、片方だけ太字になることが起きない
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("太字");
         d.apply_char_format(0..6, |f| f.bold = true);
@@ -266,7 +296,7 @@ mod list_tests {
     use super::*;
 
     fn sheet(setup: impl Fn(&mut Document)) -> Sheet {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("一つ目\n二つ目\n三つ目");
         setup(&mut d);
@@ -313,7 +343,7 @@ mod list_tests {
     /// (2026-08-18、見本を実機で開いて「3.」から始まっているのを見つけた)。
     #[test]
     fn a_change_of_kind_restarts_the_numbering() {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("あ\nい\n一つ目\n二つ目");
         for (i, kind) in [
@@ -334,7 +364,7 @@ mod list_tests {
 
     #[test]
     fn deep_numbering_restarts_when_a_shallow_level_advances() {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("一\n一の一\n一の二\n二\n二の一");
         for (i, ind) in [(0usize, 0u8), (1, 1), (2, 1), (3, 0), (4, 1)] {
@@ -387,7 +417,7 @@ mod list_tests {
     #[test]
     fn indenting_shortens_the_line_length() {
         // 右端がはみ出さないこと
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let long = "あ".repeat(60);
         let mut d = Document::plain(&long);
@@ -406,7 +436,7 @@ mod vertical_tests {
 
     #[test]
     fn vertical_writing_runs_right_to_left_and_top_to_bottom() {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let d = Document::plain("一行目の文。\n二行目。");
         let pg = PageSetup::default();
@@ -436,7 +466,7 @@ mod ruby_tests {
 
     #[test]
     fn the_ruby_line_sits_above_the_base_at_half_size() {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("組版の話");
         // 「組版」にだけルビを振る
@@ -466,7 +496,7 @@ mod distribute_tests {
 
     #[test]
     fn distributed_alignment_stretches_the_last_line_too() {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("氏名");
         if let Some(Block::Para(p)) = d.blocks.first_mut() {
@@ -511,7 +541,7 @@ mod table_layout_tests {
     }
 
     fn sheet() -> Sheet {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         layout(&doc_with_table(), &m,
                &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 })
@@ -562,7 +592,7 @@ mod table_layout_tests {
             rows: vec![vec![cell(&"あ".repeat(30)), cell("短い")]],
         ..Default::default()
     }));
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
         // 50mm の列に 30文字(約110mm)は3行になる
@@ -594,7 +624,7 @@ mod merge_layout_tests {
     }
 
     fn sheet_of(rows: Vec<Vec<Cellbox>>) -> Sheet {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let d = Document { note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
             font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
@@ -671,7 +701,7 @@ mod gridcol_tests {
     }
 
     fn rules_of(col_mm: Vec<f32>) -> Vec<[f32; 4]> {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let d = Document { note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
             font: None,
@@ -716,7 +746,7 @@ mod empty_line_tests {
     #[test]
     fn an_empty_paragraph_still_holds_a_line() {
         // 持たないと、後ろの行のバイト勘定がずれてカーソルが合わなくなる
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let d = Document::plain("一行目\n\n三行目");
         let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
@@ -733,7 +763,7 @@ mod byte0_tests {
     use super::*;
 
     fn lines(text: &str, measure: f32) -> Vec<Line> {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let d = Document::plain(text);
         layout(&d, &m, &Frame { measure_mm: measure, line_height_mm: 6.0, y0_mm: 20.0 })
@@ -781,7 +811,7 @@ mod byte0_tests {
 
     #[test]
     fn the_bullet_mark_is_not_counted_in_byte_positions() {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("項目");
         if let Block::Para(p) = &mut d.blocks[0] { p.list = ListKind::Bullet }
@@ -1006,7 +1036,7 @@ mod hyphen_tests {
 
     #[test]
     fn english_words_break_at_syllables_with_a_hyphen() {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let text = "The quick information hyphenation representation communication demonstration";
         let mut d = Document::plain(text);
@@ -1027,7 +1057,7 @@ mod hyphen_tests {
 
     #[test]
     fn no_split_means_no_change() {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let d = Document::plain("The quick information hyphenation");
         let s = layout(&d, &m, &Frame { measure_mm: 45.0, line_height_mm: 6.0, y0_mm: 20.0 });
@@ -1042,7 +1072,7 @@ mod dropcap_tests {
 
     #[test]
     fn the_first_character_is_large_and_the_rest_is_set_narrow() {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain(&format!("春{}", "はあけぼの。".repeat(8)));
         if let Block::Para(p) = &mut d.blocks[0] {
@@ -1067,7 +1097,7 @@ mod column_tests {
     use super::*;
 
     fn folded(n_lines: usize, cols: u8) -> Sheet {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let text = (1..=n_lines).map(|i| format!("{i} 行目")).collect::<Vec<_>>().join("\n");
         let d = Document::plain(&text);
@@ -1116,7 +1146,7 @@ mod column_tests {
     #[test]
     fn a_single_column_changes_nothing() {
         let a = folded(30, 1);
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let text = (1..=30).map(|i| format!("{i} 行目")).collect::<Vec<_>>().join("\n");
         let d = Document::plain(&text);
@@ -1137,7 +1167,7 @@ mod hf_layout_tests {
     use super::*;
 
     fn metrics() -> Vec<u8> {
-        font::load(font::for_document(None).unwrap().0).unwrap()
+        test_font()
     }
 
     fn hf(text: &str) -> HeadFoot {
@@ -2011,7 +2041,7 @@ mod indent_tests {
     /// (2026-08-18。それまで模型は値を持つだけで、紙面では使っていませんでした)。
     #[test]
     fn indents_only_the_first_line() {
-        let data = font::load(font::for_document(None).unwrap().0).unwrap();
+        let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let doc = crate::adoc::parse(
             "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめも
@@ -2620,8 +2650,7 @@ mod midashi_tests {
     use super::*;
 
     fn font() -> Vec<u8> {
-        let (f, _) = crate::font::for_document(None).expect("日本語フォントが要る");
-        crate::font::load(f).expect("読めない")
+        super::test_font()
     }
 
     /// **見出しは見出しに見える**(2026-08-15)。

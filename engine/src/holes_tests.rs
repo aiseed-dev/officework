@@ -69,6 +69,12 @@ mod holes_count {
 
     #[test]
     fn the_round_trip_holes_are_the_known_ones() {
+        // **言語の錠を取ります。** 往復はテンプレートを通るので、他の試験が
+        // 画面の言語を替えている間に走ると崩れます。台湾の中国語は「列」が
+        // 行のことなので、日本語の「列」が行として読まれます
+        // (2026-08-28。20 回に1回ほど落ちるのを捕まえました)
+        let _lang = crate::font::lang_lock();
+        crate::font::set_default_language("ja");
         let now = round_trip_holes();
         let extra: Vec<_> = now.iter().filter(|n| !KNOWN.contains(n)).collect();
         let fixed: Vec<_> = KNOWN.iter().filter(|n| !now.contains(n)).collect();

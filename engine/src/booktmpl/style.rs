@@ -77,14 +77,47 @@ pub const FIELDS: &[(&str, &str)] = &[
     ("formula_hidden", "hide_formula"),
 ];
 
+/// 項目の名前。**組になる物は1語ずつ繋ぎます。**
+///
+/// 「塗りのテーマ色」のような複合語は、どの製品も1語では持たないので
+/// 訳が引けません。塗り(どこに)とテーマ色(何を)は別々に訳があるので、
+/// カンマで繋いで書きます(2026-08-28 発注者「塗りのテーマ色で何の問題が
+/// あるの」— 問題はありませんでした。線種と同じ手で書けます)。
+fn item_text(sym: &str) -> String {
+    match sym {
+        "fill_theme" => {
+            format!("{},{}", words::text("fill_color"), words::text("theme_colors"))
+        }
+        "color_theme" => {
+            format!("{},{}", words::text("font_color"), words::text("theme_colors"))
+        }
+        _ => words::text(sym).to_string(),
+    }
+}
+
+/// 項目の名前(組も1語も)を記号に戻す
+fn item_sym(label: &str) -> Option<&'static str> {
+    if let Some((doko, nani)) = label.split_once(',') {
+        if words::is("theme_colors", nani.trim()) {
+            if words::is("fill_color", doko.trim()) {
+                return Some("fill_theme");
+            }
+            if words::is("font_color", doko.trim()) {
+                return Some("color_theme");
+            }
+        }
+    }
+    FIELDS.iter().find(|(_, sym)| words::is(sym, label)).map(|(k, _)| *k)
+}
+
 /// 1つの書式を (項目, 値) の並びにする。**既定のままの欄は出しません。**
-pub fn to_rows(f: &CellFormat) -> Vec<(&'static str, String)> {
+pub fn to_rows(f: &CellFormat) -> Vec<(String, String)> {
     let d = CellFormat::default();
-    let mut out: Vec<(&'static str, String)> = Vec::new();
+    let mut out: Vec<(String, String)> = Vec::new();
     // 項目の名前は**画面の言語**で書きます。値の中の語(線種・揃え)も同じ
     let mut put = |key: &str, v: String| {
         if let Some((_, sym)) = FIELDS.iter().find(|(k, _)| *k == key) {
-            out.push((*sym, v));
+            out.push((item_text(sym), v));
         }
     };
     if f.bold != d.bold {
@@ -168,13 +201,9 @@ pub fn to_rows(f: &CellFormat) -> Vec<(&'static str, String)> {
 pub fn from_rows(rows: &[(String, String)]) -> CellFormat {
     let mut f = CellFormat::default();
     for (label, v) in rows {
-        let Some((key, _)) =
-            FIELDS.iter().find(|(_, sym)| words::is(sym, label))
-        else {
-            continue;
-        };
+        let Some(key) = item_sym(label) else { continue };
         let yes = v.eq_ignore_ascii_case("true");
-        match *key {
+        match key {
             "bold" => f.bold = yes,
             "italic" => f.italic = yes,
             "underline" => f.underline = yes,
@@ -491,6 +520,47 @@ mod chokkou_tests {
         assert_eq!(read_halign("選択範囲内で中央"), HAlign::CenterContinuous);
     }
 
+    /// **テーマ色も組で書きます。** 「塗りのテーマ色」は1語では
+    /// 引けませんが、塗りとテーマ色は別々に訳があります
+    #[test]
+    fn a_theme_colour_is_written_as_where_and_what() {
+        let _lang = crate::font::lang_lock();
+        crate::font::set_default_language("ja");
+        let mut f = book::CellFormat::default();
+        f.fill_theme = Some((4, 200));
+        f.color_theme = Some((1, 0));
+        let rows = super::to_rows(&f);
+        let items: Vec<&str> = rows.iter().map(|(k, _)| k.as_str()).collect();
+        assert!(items.contains(&"塗り,テーマ色"), "{items:?}");
+        assert!(items.contains(&"文字色,テーマ色"), "{items:?}");
+        // 読み返せる
+        let back = super::from_rows(&rows);
+        assert_eq!(back.fill_theme, Some((4, 200)), "塗りのテーマ色が戻らない");
+        assert_eq!(back.color_theme, Some((1, 0)), "文字のテーマ色が戻らない");
+    }
+
+    /// **色とテーマ由来は両方持てます。** 行が別なので、片方が消えません
+    #[test]
+    fn a_colour_and_its_theme_origin_both_survive() {
+        let _lang = crate::font::lang_lock();
+        crate::font::set_default_language("ja");
+        let mut f = book::CellFormat::default();
+        f.fill = Some("FFF2CC".into());
+        f.fill_theme = Some((4, 200));
+        let back = super::from_rows(&super::to_rows(&f));
+        assert_eq!(back.fill.as_deref(), Some("FFF2CC"), "塗りの色が消えた");
+        assert_eq!(back.fill_theme, Some((4, 200)), "テーマ由来が消えた");
+    }
+
+    /// 古いテンプレート(1語の「塗りのテーマ色」)も読めます
+    #[test]
+    fn the_old_one_word_theme_colour_still_reads() {
+        let _lang = crate::font::lang_lock();
+        crate::font::set_default_language("ja");
+        let rows = vec![("塗りのテーマ色".to_string(), "4,200".to_string())];
+        assert_eq!(super::from_rows(&rows).fill_theme, Some((4, 200)));
+    }
+
     /// どの言語でも組で書ける(訳の無い語に落ちない)
     #[test]
     fn every_language_writes_both_parts() {
@@ -502,6 +572,11 @@ mod chokkou_tests {
             assert_eq!(read_bstyle(&t), BStyle::SlantDashDot, "{l}: 読み返せない: {t}");
             let a = halign_text(HAlign::CenterContinuous);
             assert_eq!(read_halign(&a), HAlign::CenterContinuous, "{l}: 読み返せない: {a}");
+            let mut f = book::CellFormat::default();
+            f.fill_theme = Some((4, 200));
+            let rows = super::to_rows(&f);
+            assert!(rows[0].0.contains(','), "{l}: テーマ色が組になっていない: {:?}", rows[0].0);
+            assert_eq!(super::from_rows(&rows).fill_theme, Some((4, 200)), "{l}: 読み返せない");
         }
         crate::font::set_default_language("ja");
     }
