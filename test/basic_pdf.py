@@ -56,6 +56,15 @@ qd = tmp / "report.docx"
 d.save(str(qd))
 check("同じ文書の docx の頭", qd.read_bytes()[:2], b"PK")
 
+# 5. 書体の名指し — 文書ぜんたいの書体が PDF に埋まる
+#    (この機械に BIZ UD 書体が入っている前提。細かくは pysheet/test_font.py)
+d2 = doc.Doc()
+d2.font = "BIZ UD明朝"
+d2.add_paragraph("書体の名指しの確かめです。")
+q2 = tmp / "mincho.pdf"
+d2.save(str(q2))
+check("名指しした書体が埋まる", b"BIZUDMincho" in q2.read_bytes(), True)
+
 if BAD:
     raise SystemExit(f"合わない物 {len(BAD)} 件: " + "、".join(BAD))
 print("基本のテスト: 全部合った")
