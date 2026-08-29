@@ -313,13 +313,13 @@ $ echo '{"cmd":"ping"}' | nc -q 1 -U $XDG_RUNTIME_DIR/officework/officework.sock
 == 構成
 
 ----
-engine/     kumihan — 組版の核(行組み・禁則・字幅・紙面の座標)
+engine/     kumihan — 組版の核(行組み・禁則・字幅・ページ上の座標)
 ooxml/      docx の読み書き
 sheet/      xlsx の読み書き、式の計算、書式(styles.xml)
 ops/        ブックの操作の言葉と受け口(開く・読む・書く — Python もアプリも同じ意味で使う)
 pyrun/      Python を実行する仕組み(サンドボックス・時間制限)
 lang/       言語ごとの処理(訳の表・校正・ふりがな)。画面なしで動く
-paper/      紙面を PDF と PNG へ写す
+paper/      組み上がったページを PDF と PNG に書き出す
 face/       画面の部品のうち、絵を描かない部分(ファイルの一覧・前回の姿)
 ui/         gpui との結線(入力・IME・リボン)
 writer/     文書の編集画面
@@ -329,8 +329,8 @@ pysheet/    Python から使う部分(pip install officework → officework.shee
 sidecar/    genoffice に載せるときの別プロセス
 ----
 
-**画面も紙も、同じ紙面を別の面に写すだけ**です。
-だから画面と印刷が食い違いません。
+ページの組み立て(改行の位置や、どの文字をどこに置くか)は、1つのエンジンが計算します。
+**画面も PDF も、その同じ計算の結果を描きます。** 画面と印刷を食い違わせないための作りです。
 
 == 各国語版
 

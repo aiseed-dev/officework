@@ -300,7 +300,7 @@ sheet/      xlsx reading and writing, formula engine, styles (styles.xml)
 ops/        the verbs of a workbook and the sockets (open, read, write — same meaning for Python and the app)
 pyrun/      the machinery that runs Python (sandbox, time limits)
 lang/       language-specific logic; knows nothing about gpui, runs headless
-paper/      projects the page onto PDF and PNG
+paper/      writes the laid-out page as PDF and PNG
 face/       screen parts that do no drawing (file listing, last session)
 ui/         glue to gpui (input, IME, ribbon)
 writer/     the document editor
@@ -310,7 +310,7 @@ pysheet/    Python bindings (pip install officework -> officework.sheet, officew
 sidecar/    the separate process that rides inside genoffice
 ----
 
-*The screen and the paper are the same page projected onto different surfaces*, which is why display and print never disagree.
+Line breaks and the position of every character are computed by one engine. *The screen and the PDF both draw that same result* — the design that keeps display and print from disagreeing.
 
 == Localization
 
