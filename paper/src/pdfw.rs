@@ -1028,6 +1028,22 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
     page_decor: F,
     out: W,
 ) -> Result<Vec<String>, String> {
+    let (pages, lost) = sheet_leaves_with(sheet, paper, dress, page_decor);
+    write_pages(&pages, paper.width_mm, paper.height_mm, font_data, out)?;
+    Ok(lost)
+}
+
+/// **紙面だけを組む。** PDF は書きません。
+///
+/// 絵にする道([`crate::e`])と回帰検査の入り口です。書く所と組む所を
+/// 分けてあるので、**紙と絵が同じ紙面から出ます**。
+/// 返りは (紙面の並び, 載らなかった物の報せ)。
+pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
+    sheet: &kumihan::Sheet,
+    paper: crate::Paper,
+    dress: &crate::PageDress,
+    page_decor: F,
+) -> (Vec<Leaf>, Vec<String>) {
     // **紙面の x は左余白からの距離**です。紙の左端からではありません。
     // 足さないと字が左端に寄ります(2026-08-27 に pdftotext -bbox で
     // 突き合わせて見つけた — 字が取れるかを見るだけでは分かりません)
@@ -1278,8 +1294,7 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
     if !dress.ink.is_empty() {
         lost.push(format!("ペンの筆 {} 本(この書き手ではまだ載りません)", dress.ink.len()));
     }
-    write_pages(&pages, paper.width_mm, paper.height_mm, font_data, out)?;
-    Ok(lost)
+    (pages, lost)
 }
 
 /// その y がどの頁か(頁の頭の並びから引く)

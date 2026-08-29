@@ -1151,6 +1151,19 @@ pub fn doc_to_pdf<W: Write>(
     Ok(())
 }
 
+/// **文書の紙面を1枚取り出す。** PDF は書きません。
+///
+/// 絵にする道([`e`])と回帰検査の入り口です。**PDF と同じ組み方**を
+/// 通るので、絵と紙が食い違いません。`k` は0から数えた頁です。
+///
+/// `page` は [`doc_to_sheet`] が返した紙の設定をそのまま渡します。
+pub fn doc_leaf(sheet: &kumihan::Sheet, page: kumihan::PageSetup, k: usize) -> Option<pdfw::Leaf> {
+    let paper = Paper { width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm };
+    let (pages, _lost) =
+        pdfw::sheet_leaves_with(sheet, paper, &PageDress::default(), |_| Vec::new());
+    pages.into_iter().nth(k)
+}
+
 /// 文書を紙面に組む。**PDF と画面が同じ道を通る**ための1本です。
 ///
 /// 返りは(組んだ紙面, 紙の設定, 書体の実体)。
