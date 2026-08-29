@@ -26,10 +26,11 @@
 //! ```
 
 use crate::pdfw::Leaf;
+use std::sync::Arc;
 use vello_cpu::kurbo::{Affine, BezPath, Cap, Join, Point, Rect, Stroke};
 use vello_cpu::peniko::color::{AlphaColor, Srgb};
-use vello_cpu::peniko::{Blob, FontData};
-use vello_cpu::{Glyph, Pixmap, RenderContext, Resources};
+use vello_cpu::peniko::{Blob, FontData, ImageBrush, ImageQuality, ImageSampler};
+use vello_cpu::{Glyph, ImageSource, Pixmap, RenderContext, Resources};
 
 /// 出来上がった絵。**画素の並びと大きさ**だけを持ちます
 pub struct E {
@@ -148,10 +149,19 @@ pub fn egaku_with(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, font: Option<&[u8
         cx.stroke_path(&path);
     }
 
+    // **絵は罫線の後。** pdfw も同じ順です
+    for im in &leaf.images {
+        e_hameru(&mut cx, im, h_mm, mm);
+    }
+
     let mut res = Resources::new();
     // **字はいちばん上。** 塗りと罫線の後に置きます
     if let Some(data) = font {
         moji(&mut cx, &mut res, leaf, h_mm, mm, data);
+        // **透かしも字です。** 敷いた後の紙に薄く斜めで重ねます
+        if let Some(s) = &leaf.watermark {
+            sukashi(&mut cx, &mut res, s, w_mm, h_mm, mm, data);
+        }
     }
     cx.set_transform(Affine::IDENTITY);
     cx.flush();
@@ -226,6 +236,83 @@ fn moji(
     }
 }
 
+/// **透かしを重ねる。** 薄い灰で 45 度に倒します([`crate::pdfw`] と同じ見え方)
+fn sukashi(
+    cx: &mut RenderContext,
+    res: &mut Resources,
+    s: &str,
+    w_mm: f32,
+    h_mm: f32,
+    mm: f64,
+    data: &[u8],
+) {
+    let Ok(face) = ttf_parser::Face::parse(data, 0) else { return };
+    let fd = FontData::new(Blob::new(Arc::new(data.to_vec())), 0);
+    let em = face.units_per_em() as f64;
+    // pdfw と同じ 60pt・紙の左から2割・下から3割
+    let size = 60.0 * 25.4 / 72.0 * mm;
+    let (x0, y0) = (w_mm as f64 * 0.2 * mm, (h_mm as f64 * 0.7) * mm);
+    let mut okuri = 0.0f64;
+    let mut gs: Vec<Glyph> = Vec::with_capacity(s.chars().count());
+    for ch in s.chars() {
+        let Some(gid) = face.glyph_index(ch) else { continue };
+        // **倒すのは字の並びの方**です。紙ごと回すと他の物まで回ります
+        gs.push(Glyph { id: gid.0 as u32, x: okuri as f32, y: 0.0 });
+        okuri += face.glyph_hor_advance(gid).unwrap_or(0) as f64 / em * size;
+    }
+    if gs.is_empty() {
+        return;
+    }
+    let c = std::f64::consts::FRAC_1_SQRT_2;
+    // y が下向きなので、上へ上がる向きに倒すには sin の符号を返します
+    cx.set_transform(Affine::new([c, -c, c, c, x0, y0]));
+    cx.set_paint(iro((0.85, 0.85, 0.85), 1.0));
+    cx.glyph_run(res, &fd).font_size(size as f32).hint(false).fill_glyphs(gs.into_iter());
+    cx.set_transform(Affine::IDENTITY);
+}
+
+/// **絵を1枚はめる。** PNG / JPEG を解いて画素にし、紙の場所へ引き伸ばします
+fn e_hameru(cx: &mut RenderContext, im: &crate::pdfw::Image, h_mm: f32, mm: f64) {
+    // **読めない絵は黙って飛ばします。** pdfw も同じで、数えて返す側が
+    // 「読めない画像 N 件」と言います
+    let Ok(dec) = image::load_from_memory(&im.data) else { return };
+    let rgba = dec.to_rgba8();
+    let (iw, ih) = (rgba.width(), rgba.height());
+    if iw == 0 || ih == 0 || iw > u16::MAX as u32 || ih > u16::MAX as u32 {
+        return;
+    }
+    // vello は**掛けた後の**画素(premultiplied)で持ちます
+    let mut pm = Pixmap::new(iw as u16, ih as u16);
+    {
+        let buf = pm.data_as_u8_slice_mut();
+        for (i, p) in rgba.pixels().enumerate() {
+            let a = p.0[3] as u32;
+            let k = i * 4;
+            for j in 0..3 {
+                buf[k + j] = ((p.0[j] as u32 * a + 127) / 255) as u8;
+            }
+            buf[k + 3] = p.0[3];
+        }
+    }
+    // 紙の上の四角(左下からの mm を、上からの画素に直します)
+    let x0 = im.x_mm as f64 * mm;
+    let y0 = (h_mm - im.y_mm - im.h_mm) as f64 * mm;
+    let (w, h) = (im.w_mm as f64 * mm, im.h_mm as f64 * mm);
+    if !(w > 0.0 && h > 0.0) {
+        return;
+    }
+    // 絵の画素の座標から紙の座標へ。**引き伸ばしは筆の側**で掛けます
+    cx.set_paint_transform(
+        Affine::translate((x0, y0)) * Affine::scale_non_uniform(w / iw as f64, h / ih as f64),
+    );
+    cx.set_paint(ImageBrush {
+        image: ImageSource::Pixmap(Arc::new(pm)),
+        sampler: ImageSampler { quality: ImageQuality::High, ..Default::default() },
+    });
+    cx.fill_rect(&Rect::new(x0, y0, x0 + w, y0 + h));
+    cx.reset_paint_transform();
+}
+
 /// 0〜1 の三つ組を色に
 fn iro(c: (f32, f32, f32), a: f32) -> AlphaColor<Srgb> {
     AlphaColor::new([c.0, c.1, c.2, a])
@@ -253,6 +340,87 @@ mod tests {
             }],
             ..Default::default()
         }
+    }
+
+    /// 見本の絵。左半分が赤、右半分が青の PNG
+    fn futairo_png(w: u32, h: u32) -> Vec<u8> {
+        let mut rgba = Vec::with_capacity((w * h * 4) as usize);
+        for _ in 0..h {
+            for x in 0..w {
+                let c: [u8; 4] =
+                    if x < w / 2 { [230, 40, 40, 255] } else { [40, 40, 230, 255] };
+                rgba.extend_from_slice(&c);
+            }
+        }
+        let mut out = Vec::new();
+        let mut enc = png::Encoder::new(&mut out, w, h);
+        enc.set_color(png::ColorType::Rgba);
+        enc.set_depth(png::BitDepth::Eight);
+        let mut wr = enc.write_header().expect("頭");
+        wr.write_image_data(&rgba).expect("中身");
+        wr.finish().expect("締め");
+        out
+    }
+
+    /// **絵が紙の場所に出る。** 長く描かれておらず、紙には出るのに絵からは
+    /// 黙って消えていました(2026-08-29)
+    #[test]
+    fn an_image_lands_where_the_paper_puts_it() {
+        let leaf = Leaf {
+            images: vec![crate::pdfw::Image {
+                x_mm: 10.0,
+                y_mm: 10.0,
+                w_mm: 40.0,
+                h_mm: 20.0,
+                data: std::sync::Arc::new(futairo_png(20, 10)),
+            }],
+            ..Default::default()
+        };
+        let e = egaku(&leaf, 80.0, 40.0, 4.0);
+        let iro = |x_mm: f32, y_mm: f32| -> (u8, u8, u8) {
+            let (px, py) = ((x_mm * 4.0) as usize, ((40.0 - y_mm) * 4.0) as usize);
+            let i = (py * 320 + px) * 4;
+            (e.rgba[i], e.rgba[i + 1], e.rgba[i + 2])
+        };
+        // 絵の左寄り(15mm, 20mm)は赤、右寄り(45mm, 20mm)は青
+        let (r, _, b) = iro(15.0, 20.0);
+        assert!(r > 200 && b < 100, "絵の左が出ていない: {r},{b}");
+        let (r, _, b) = iro(45.0, 20.0);
+        assert!(b > 200 && r < 100, "絵の右が出ていない: {r},{b}");
+        // 絵の外(60mm, 20mm)は白のまま — **引き伸ばしがはみ出していない**
+        let (r, g, b) = iro(60.0, 20.0);
+        assert!(r > 250 && g > 250 && b > 250, "絵が枠からはみ出した: {r},{g},{b}");
+    }
+
+    /// **読めない絵は落とすが、他の物は描く。** 1枚のせいで紙面ごと消えない
+    #[test]
+    fn an_unreadable_image_does_not_take_the_page_with_it() {
+        let mut leaf = hako();
+        leaf.images = vec![crate::pdfw::Image {
+            x_mm: 10.0,
+            y_mm: 10.0,
+            w_mm: 20.0,
+            h_mm: 10.0,
+            data: std::sync::Arc::new("これは PNG ではありません".as_bytes().to_vec()),
+        }];
+        let e = egaku(&leaf, 80.0, 40.0, 4.0);
+        assert_eq!((e.w, e.h), (320, 160));
+        // 三角の塗りは残っている
+        let i = ((40.0 - 15.0) as usize * 4 * 320 + 60 * 4) * 4;
+        assert!(e.rgba[i] > 200, "他の物まで消えた");
+    }
+
+    /// **透かしが出る。** 書体を渡したときだけです
+    #[test]
+    fn a_watermark_appears_only_with_a_font() {
+        let leaf = Leaf { watermark: Some("見本".into()), ..Default::default() };
+        let nashi = egaku(&leaf, 210.0, 297.0, 2.0);
+        let (fam, _) = kumihan::font::for_document(None).expect("書体");
+        let data = kumihan::font::load(fam).expect("読めない");
+        let ari = egaku_with(&leaf, 210.0, 297.0, 2.0, Some(&data));
+        assert_ne!(nashi.yubi(), ari.yubi(), "透かしが描かれていない");
+        // 書体が無ければ紙は白のまま
+        assert!(nashi.rgba.iter().all(|b| *b == 255), "字を描かないのに何か出た");
     }
 
     /// **絵が出る。** 紙の色で塗りつぶされ、置いた物の色が画素に現れます

@@ -165,6 +165,60 @@ NOTE: 単価は税抜きです。
             }
         }
     }
+
+    // ③ 絵と透かし。**この2つは長く描かれていませんでした**(2026-08-29)。
+    //    紙には出るのに絵には出ず、黙って消えていました
+    out.push((
+        "絵と透かし",
+        paper::pdfw::Leaf {
+            size_mm: Some((210.0, 297.0)),
+            watermark: Some("見本".into()),
+            images: vec![paper::pdfw::Image {
+                x_mm: 30.0,
+                y_mm: 200.0,
+                w_mm: 60.0,
+                h_mm: 40.0,
+                data: std::sync::Arc::new(obi_png()),
+            }],
+            rules: vec![paper::pdfw::Rule {
+                x1_mm: 30.0,
+                y1_mm: 195.0,
+                x2_mm: 180.0,
+                y2_mm: 195.0,
+                w_mm: 0.3,
+                rgb: (0.2, 0.2, 0.2),
+            }],
+            ..Default::default()
+        },
+        // 絵の場所も罫線も紙の座標で決まるので、書体では動きません
+        false,
+    ));
+    out
+}
+
+/// 見本の絵。赤緑青の帯を PNG にします(**同じ入力から同じバイト列**)
+fn obi_png() -> Vec<u8> {
+    let (w, h) = (60u32, 40u32);
+    let mut rgba = Vec::with_capacity((w * h * 4) as usize);
+    for y in 0..h {
+        for _ in 0..w {
+            let c: [u8; 4] = if y < h / 3 {
+                [220, 60, 60, 255]
+            } else if y < h * 2 / 3 {
+                [60, 170, 90, 255]
+            } else {
+                [60, 90, 200, 255]
+            };
+            rgba.extend_from_slice(&c);
+        }
+    }
+    let mut out = Vec::new();
+    let mut enc = png::Encoder::new(&mut out, w, h);
+    enc.set_color(png::ColorType::Rgba);
+    enc.set_depth(png::BitDepth::Eight);
+    let mut wr = enc.write_header().expect("PNG の頭");
+    wr.write_image_data(&rgba).expect("PNG の中身");
+    wr.finish().expect("PNG の締め");
     out
 }
 
