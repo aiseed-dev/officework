@@ -51,6 +51,58 @@ def kurabe(midashi, honke_cls, uchi_obj):
     return nai
 
 
+def chart_kurabe():
+    """**チャートは種類で数えます。**
+
+    本家(openpyxl)は OOXML のチャート XML の模型を持ち、こちらは図形の
+    集まりとして描きます。作りが違うので、欄の名前を突き合わせても意味が
+    ありません(本家の欄のほとんどは Excel に描かせるための指図です)。
+
+    利用者から見て同じなのは**どの種類のグラフが出せるか**なので、そこを
+    数えます。
+    """
+    import inspect
+
+    import openpyxl.chart as oc
+
+    honke = sorted(
+        n for n in dir(oc) if n.endswith("Chart") and inspect.isclass(getattr(oc, n))
+    )
+    # 本家の名前と、こちらの `add_chart` の `kind` の対応
+    taiou = {
+        "AreaChart": "area",
+        "BarChart": "bar",
+        "BubbleChart": "bubble",
+        "DoughnutChart": "doughnut",
+        "LineChart": "line",
+        "PieChart": "pie",
+        "ProjectedPieChart": None,
+        "RadarChart": "radar",
+        "ScatterChart": "scatter",
+        "StockChart": None,
+        "SurfaceChart": None,
+    }
+    b = ow.Book()
+    ws = b[0]
+    for r, v in enumerate([3, 1, 4, 1, 5], start=1):
+        ws.cell(r, 1).value = f"項目{r}"
+        ws.cell(r, 2).value = v
+    aru, nai = [], []
+    for na in honke:
+        kind = taiou.get(na)
+        if kind is None:
+            nai.append(na)
+            continue
+        try:
+            ws.add_chart(kind, data="B1:B5", categories="A1:A5", at="D1")
+            aru.append(na)
+        except Exception:
+            nai.append(na)
+    wari = len(aru) * 100 // max(1, len(honke))
+    print(f"{'openpyxl チャートの種類':34} {len(aru):3} / {len(honke):3}  ({wari}%)")
+    return nai
+
+
 def main():
     ana = {}
 
@@ -78,6 +130,9 @@ def main():
     ana["python-docx.Paragraph"] = kurabe("python-docx Paragraph", DPara, p)
     ana["python-docx.Run"] = kurabe("python-docx Run", DRun, r)
     ana["python-docx.Table"] = kurabe("python-docx Table", DTable, t)
+
+    # --- チャート(種類で数えます)---
+    ana["openpyxl.Chart"] = chart_kurabe()
 
     nokori = sum(len(v) for v in ana.values())
     print(f"\nまだ無い口: {nokori}")

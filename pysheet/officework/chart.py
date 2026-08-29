@@ -225,6 +225,105 @@ class Chart:
                 self.path(pts, line=iro, line_w=1.8)
         return self
 
+    def areas(self, x, y, values, *, color=None):
+        """面グラフ。折れ線の下を塗ります。
+
+        塗りは薄めにします(系列が重なったとき下の系列が見えるように)。
+        線は折れ線と同じ濃さで引きます。
+        """
+        retsu = values if values and isinstance(values[0], (list, tuple)) else [values]
+        soko = y(0)
+        for si, series in enumerate(retsu):
+            iro = (color[si] if isinstance(color, (list, tuple)) else color) or self.color(si)
+            pts = []
+            for i, v in enumerate(series):
+                mark = x.labels[i] if i < len(x.labels) else i
+                cx = x.center(mark) if isinstance(x, Band) else x(mark)
+                pts.append((cx, y(v)))
+            if len(pts) < 2:
+                continue
+            # 下を閉じた形にしてから塗り、線はその上に引きます
+            self.path([(pts[0][0], soko)] + pts + [(pts[-1][0], soko)], fill=iro)
+            self.path(pts, line=iro, line_w=1.8)
+        return self
+
+    def points(self, x, y, values, *, color=None, size=None):
+        """散布。`values` は (x, y) の組の列、または組の列の列です。
+
+        `size` を渡すと点の大きさが変わります(バブル)。数の列で渡すと
+        値ごとの大きさ、1つの数なら全部その大きさです。
+        """
+        retsu = (
+            values
+            if values and isinstance(values[0], (list, tuple)) and values[0]
+            and isinstance(values[0][0], (list, tuple))
+            else [values]
+        )
+        for si, series in enumerate(retsu):
+            iro = (color[si] if isinstance(color, (list, tuple)) else color) or self.color(si)
+            oo = size[si] if isinstance(size, (list, tuple)) and si < len(size) else size
+            for i, (vx, vy) in enumerate(series):
+                r = 3.0
+                if isinstance(oo, (list, tuple)):
+                    if i < len(oo):
+                        r = max(2.0, min(20.0, float(oo[i])))
+                elif oo is not None:
+                    r = max(2.0, min(20.0, float(oo)))
+                # 点は 12 角形。円に見えて、形は path 1つで済みます
+                import math as _m
+
+                self.path(
+                    [
+                        (x(vx) + r * _m.cos(k / 12.0 * _m.tau),
+                         y(vy) + r * _m.sin(k / 12.0 * _m.tau))
+                        for k in range(12)
+                    ],
+                    fill=iro,
+                )
+        return self
+
+    def radar(self, labels, values, *, color=None, rings=4):
+        """レーダー。区分を円周に等分して、値を中心からの長さにします"""
+        import math as _m
+
+        l, t, r, b = self.plot
+        cx, cy = (l + r) / 2.0, (t + b) / 2.0
+        # **区分の名前を置く余白を外に取ります。** 取らないと上の名前が
+        # 題に重なります(2026-08-29 に紙で見て気づきました)
+        NA_W, NA_H = 46.0, 12.0
+        rad = max(10.0, min(r - l - NA_W, b - t - NA_H * 2.0) / 2.0)
+        retsu = values if values and isinstance(values[0], (list, tuple)) else [values]
+        saidai = max((max(x) for x in retsu if x), default=1.0) or 1.0
+        n = max(1, len(labels))
+        kaku = lambda i: i / n * _m.tau - _m.pi / 2.0  # 真上から時計回り
+
+        def wa(rr, atai=None):
+            """輪を作る。**最後に先頭へ戻して閉じます** — 閉じないと
+            上に切れ目が空きます(`path` は閉じない道です)"""
+            pts = [
+                (cx + rr * (1.0 if atai is None else atai[i] / saidai) * _m.cos(kaku(i)),
+                 cy + rr * (1.0 if atai is None else atai[i] / saidai) * _m.sin(kaku(i)))
+                for i in range(n)
+            ]
+            return pts + pts[:1]
+
+        for k in range(1, rings + 1):
+            self.path(wa(rad * k / rings), line="D0D0D0", line_w=0.8)
+        for i in range(n):
+            self.line(cx, cy, cx + rad * _m.cos(kaku(i)), cy + rad * _m.sin(kaku(i)),
+                      line="D0D0D0")
+        for si, series in enumerate(retsu):
+            iro = (color[si] if isinstance(color, (list, tuple)) else color) or self.color(si)
+            atai = list(series[:n]) + [0.0] * max(0, n - len(series))
+            self.path(wa(rad, atai), line=iro, line_w=1.8)
+        # 区分の名前を外側に。真上と真下は上下へ、左右は外へ寄せます
+        for i, na in enumerate(labels[:n]):
+            a = kaku(i)
+            lx = cx + (rad + 8.0) * _m.cos(a) - NA_W / 2.0
+            ly = cy + (rad + 8.0) * _m.sin(a) - NA_H / 2.0
+            self.label(str(na), lx, ly, NA_W, NA_H)
+        return self
+
     def arcs(self, values, *, labels=None, color=None, hole=0.0):
         """円グラフ。**扇は多角形に刻んで**置きます(48 分の1周ずつ)"""
         l, t, r, b = self.plot
@@ -318,4 +417,65 @@ def pie(ws, at, values, labels=None, *, title=None, width=280.0, height=200.0,
     """円グラフを1行で。`hole` を 0.5 などにするとドーナツになります"""
     c = Chart(width, height, title=title)
     c.arcs(list(values), labels=labels, color=color, hole=hole)
+    return c.place(ws, at, **kw)
+
+
+def area(ws, at, values, labels=None, *, title=None, width=320.0, height=200.0,
+         color=None, **kw):
+    """面グラフを1行で。折れ線の下を塗ります"""
+    retsu = values if values and isinstance(values[0], (list, tuple)) else [values]
+    c = Chart(width, height, title=title)
+    x = c.band(labels or list(range(1, len(retsu[0]) + 1)), padding=0.0)
+    y = c.linear([min(0.0, min(min(s) for s in retsu)), max(max(s) for s in retsu)])
+    c.axis_left(y)
+    c.axis_bottom(x)
+    c.areas(x, y, retsu, color=color)
+    return c.place(ws, at, **kw)
+
+
+def scatter(ws, at, values, *, title=None, width=320.0, height=200.0,
+            color=None, size=None, **kw):
+    """散布図を1行で。`values` は (x, y) の組の列です。
+
+    `size` を渡すとバブルになります(組ごとの大きさ、または1つの数)。
+    """
+    kumi = (
+        values
+        if values and isinstance(values[0], (list, tuple)) and values[0]
+        and isinstance(values[0][0], (list, tuple))
+        else [values]
+    )
+    hira = [p for s in kumi for p in s]
+    if not hira:
+        raise ValueError("散布図に置く点がありません")
+    c = Chart(width, height, title=title)
+    xs = [p[0] for p in hira]
+    ys = [p[1] for p in hira]
+    # **点の半径ぶん、目盛りの端に余裕を取ります。** 取らないと端の点が
+    # 枠から半分はみ出します(2026-08-29 に紙で見て気づきました)
+    saidai_r = 3.0
+    if isinstance(size, (list, tuple)):
+        hira_size = [v for e in size for v in (e if isinstance(e, (list, tuple)) else [e])]
+        if hira_size:
+            saidai_r = max(2.0, min(20.0, max(float(v) for v in hira_size)))
+    elif size is not None:
+        saidai_r = max(2.0, min(20.0, float(size)))
+    l, t, r, b = c.plot
+    x0, x1 = min(xs), max(xs)
+    y0, y1 = min(0.0, min(ys)), max(ys)
+    yoyuu_x = (x1 - x0 or 1.0) * saidai_r / max(1.0, (r - l) - saidai_r * 2.0)
+    yoyuu_y = (y1 - y0 or 1.0) * saidai_r / max(1.0, (b - t) - saidai_r * 2.0)
+    x = c.linear([x0 - yoyuu_x, x1 + yoyuu_x], vertical=False)
+    y = c.linear([y0 - yoyuu_y, y1 + yoyuu_y])
+    c.axis_left(y)
+    c.points(x, y, kumi, color=color, size=size)
+    return c.place(ws, at, **kw)
+
+
+def radar(ws, at, values, labels=None, *, title=None, width=280.0, height=240.0,
+          color=None, **kw):
+    """レーダーを1行で"""
+    retsu = values if values and isinstance(values[0], (list, tuple)) else [values]
+    c = Chart(width, height, title=title)
+    c.radar(labels or list(range(1, len(retsu[0]) + 1)), retsu, color=color)
     return c.place(ws, at, **kw)

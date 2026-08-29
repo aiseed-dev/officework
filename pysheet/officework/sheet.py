@@ -1355,7 +1355,8 @@ class Sheet:
         `officework.chart.Chart` を直に使ってください。
 
         - `kind` — "bar"(縦棒)/ "line"(折れ線)/ "pie"(円)/
-          "doughnut"(ドーナツ)
+          "doughnut"(ドーナツ)/ "area"(面)/ "scatter"(散布)/
+          "bubble"(バブル)/ "radar"(レーダー)
         - `data` — 値の範囲。**1行目が系列の名前**なら見出しとして外します
         - `categories` — 区分の名前の範囲("A4:A7")
         """
@@ -1366,11 +1367,28 @@ class Sheet:
         if 名 and 名 and isinstance(名[0], list):
             名 = [r[0] for r in 名]
         yaku = {"bar": _chart.bar, "line": _chart.line,
-                "pie": _chart.pie, "doughnut": _chart.pie}
+                "pie": _chart.pie, "doughnut": _chart.pie,
+                "area": _chart.area, "radar": _chart.radar,
+                "scatter": _chart.scatter, "bubble": _chart.scatter}
         if kind not in yaku:
             raise ValueError(
                 "図の種類に「{}」はありません。使えるのは {}".format(
                     kind, " / ".join(sorted(yaku))))
+        if kind in ("scatter", "bubble"):
+            # **散布は (x, y) の組**が要ります。範囲を渡したときは、
+            # 1列目を x、2列目を y と見ます(openpyxl の Series と同じ)
+            kumi = atai
+            if kumi and not isinstance(kumi[0], (list, tuple)):
+                kumi = [[float(i + 1), float(v)] for i, v in enumerate(kumi)]
+            elif len(kumi) >= 2 and isinstance(kumi[0], list):
+                kumi = list(zip(kumi[0], kumi[1]))
+            if kind == "bubble" and "size" not in kw:
+                kw["size"] = [abs(float(p[1])) ** 0.5 * 2.0 for p in kumi]
+            return yaku[kind](self, at, list(kumi), title=title, width=width,
+                              height=height, color=color, **kw)
+        if kind == "radar":
+            return yaku[kind](self, at, atai, 名, title=title, width=width,
+                              height=height, color=color, **kw)
         if kind in ("pie", "doughnut"):
             hira = [v for r in atai for v in (r if isinstance(r, list) else [r])]
             return yaku[kind](self, at, hira, 名, title=title, width=width,
