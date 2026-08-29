@@ -1074,6 +1074,27 @@ pub fn set_paras_text(paras: &mut Vec<Paragraph>, text: &str) {
 }
 
 impl Document {
+    /// **文書に出てくる字を全部、順に見る**(表の中も含む)。
+    ///
+    /// 書体を選ぶときに使います。どの文字の種類が要るかは、文中の字を
+    /// 見ないと分かりません([`crate::font::for_text`])。
+    pub fn chars(&self) -> impl Iterator<Item = char> + '_ {
+        self.blocks.iter().flat_map(|b| {
+            let paras: Vec<&Paragraph> = match b {
+                Block::Para(p) => vec![p],
+                Block::Table(t) => t
+                    .rows
+                    .iter()
+                    .flatten()
+                    .flat_map(|c| c.paragraphs.iter())
+                    .collect(),
+            };
+            paras
+                .into_iter()
+                .flat_map(|p| p.runs.iter().flat_map(|r| r.text.chars()))
+                .collect::<Vec<_>>()
+        })
+    }
     /// 段落だけを順に見る(組版は v0 では段落のみを組む)
     pub fn paragraphs(&self) -> impl Iterator<Item = &Paragraph> {
         self.blocks.iter().filter_map(|b| match b {

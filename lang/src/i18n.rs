@@ -12,29 +12,9 @@
 
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::path::PathBuf;
 use std::sync::OnceLock;
 
-fn settings_path() -> PathBuf {
-    pyrun::config_dir().join("settings.toml")
-}
 
-/// settings.toml から素朴に1つの鍵を読む(`key = "value"` の行)
-fn from_file(key: &str) -> Option<String> {
-    let s = std::fs::read_to_string(settings_path()).ok()?;
-    for line in s.lines() {
-        let line = line.trim();
-        if line.starts_with('#') || line.starts_with('[') {
-            continue;
-        }
-        if let Some((k, v)) = line.split_once('=') {
-            if k.trim() == key {
-                return Some(v.trim().trim_matches('"').to_string());
-            }
-        }
-    }
-    None
-}
 
 /// いまの言語。**いつでも変えられます**(2026-08-19 発注者「言語は設定で
 /// いつでも変更できるようにして」)。
@@ -46,7 +26,7 @@ static LANG: std::sync::RwLock<Option<&'static str>> = std::sync::RwLock::new(No
 /// 画面の言語。**文言が揃った言語だけ**を受ける(登録簿 i18n_tables が正)。
 ///
 /// 優先順: [`set_language`] の注入 > 環境変数 OFFICE_LANG > settings.toml >
-/// **OS の言語設定** > 既定 ja
+/// **OS の言語設定** > 既定 en(2026-08-30 発注者。前は ja でした)
 ///
 /// OS の言語設定を見るようになったのは 2026-08-26 です。それまでは
 /// 「何も書いていなければ日本語」でした。鍵を英語に裏返すと「何も
@@ -57,70 +37,16 @@ pub fn language() -> &'static str {
     if let Some(l) = *LANG.read().expect("言語の錠") {
         return l;
     }
-    let l = std::env::var("OFFICE_LANG")
-        .ok()
-        .filter(|s| !s.is_empty())
-        .or_else(|| from_file("language"))
-        .and_then(|raw| quiet_tag(&raw))
-        .or_else(os_language)
-        .unwrap_or("ja");
+    // **決め方は book に1本**(環境変数 → 設定 → OS → en。2026-08-30)。
+    // エンジンと画面で別々に決めていたので、Python から使うと設定を
+    // 見ませんでした。ここは book が返した札を、文言の揃った言語に
+    // 丸めるだけです
+    let l = quiet_tag(&book::lang::decide(None)).unwrap_or(book::lang::FALLBACK);
     *LANG.write().expect("言語の錠") = Some(l);
     l
 }
 
-/// OS の言語設定。無い・読めない・表に無いなら `None`。
-///
-/// 見る順は `LC_ALL` → `LC_MESSAGES` → `LANG`。POSIX の決まりの順です。
-/// 値は `ja_JP.UTF-8` や `pt_BR.UTF-8` のような形なので、[`札に直す`] で
-/// うちの札に直します。
-///
-/// Windows と Mac もこの3つを見ます。どちらも本来は OS の API で聞く物
-/// ですが、**うちの3つのアプリはどれも `main` で言語を注げる**ので、
-/// そちらの殻から [`set_language`] で渡してください。ここはその注ぎが
-/// 無かったときの下敷きです。
-fn os_language() -> Option<&'static str> {
-    for k in ["LC_ALL", "LC_MESSAGES", "LANG"] {
-        let Ok(v) = std::env::var(k) else { continue };
-        if v.is_empty() || v == "C" || v == "POSIX" {
-            continue;
-        }
-        if let Some(l) = to_tag(&v) {
-            return Some(l);
-        }
-    }
-    None
-}
 
-/// POSIX のロケールの字を、うちの札に直す。
-///
-/// `ja_JP.UTF-8` → `ja`、`pt_BR.UTF-8` → `pt-br`、`zh_TW` → `zh-tw`。
-/// **国まで見るのは、うちが国で分けている札だけ**です(`pt`/`pt-br` と
-/// `zh`/`zh-tw`)。それ以外は言語だけで引きます。
-///
-/// 中国語は `zh_CN` が簡体、`zh_TW` と `zh_HK` が繁体です。国を落として
-/// `zh` にしてしまうと、台湾の人に簡体字が出ます。
-fn to_tag(locale: &str) -> Option<&'static str> {
-    // `.UTF-8` や `@euro` のような飾りを落とす
-    let core = locale
-        .split(['.', '@'])
-        .next()
-        .unwrap_or(locale)
-        .replace('_', "-");
-    if core.is_empty() {
-        return None;
-    }
-    // 国まで込みで引く(pt-br / zh-tw)
-    let lower = core.to_ascii_lowercase();
-    if let Some(l) = quiet_tag(&lower) {
-        return Some(l);
-    }
-    let lang = lower.split('-').next().unwrap_or(&lower);
-    // zh_HK は繁体。表に zh-hk は無いので zh-tw へ寄せる
-    if lang == "zh" && lower == "zh-hk" {
-        return quiet_tag("zh-tw");
-    }
-    quiet_tag(lang)
-}
 
 /// 札を、表に載っている `&'static str` に直す。無ければ `None`。
 ///
@@ -416,17 +342,19 @@ mod how_language_is_chosen {
         assert_eq!(resolve_again(Some("ja")), "ja");
     }
 
-    /// **知らない札は ja に落ちる。** 文言の無い言語を名乗りません。
+    /// **知らない札は en に落ちる。** 文言の無い言語を名乗りません。
+    ///
+    /// 落ち先は 2026-08-30 に発注者が ja から en へ変えました。
     ///
     /// 前はこの試験が自分で書いた `match` を検べていて、本物を1度も
     /// 通していませんでした。おまけに「fr は文言が無い」と書いてあり、
     /// *主張そのものが古く*なっていました(いまは揃っています)。
     #[test]
-    fn unknown_tag_falls_back_to_ja() {
+    fn unknown_tag_falls_back_to_english() {
         let _lock = serially();
-        assert_eq!(resolve_again(Some("xx")), "ja");
-        assert_eq!(resolve_again(Some("")), "ja");
-        assert_eq!(resolve_again(None), "ja", "何も無ければ既定は ja");
+        assert_eq!(resolve_again(Some("xx")), "en");
+        assert_eq!(resolve_again(Some("")), "en");
+        assert_eq!(resolve_again(None), "en", "何も無ければ既定は en");
     }
 
     /// 揃っている言語は全部受ける(表と食い違わない)
@@ -477,14 +405,14 @@ mod how_language_is_chosen {
         assert_eq!(resolve_with_locale(Some("de"), Some("ja_JP.UTF-8")), "de");
     }
 
-    /// OS の言語も読めなければ ja(いままでどおり)
+    /// OS の言語も読めなければ en(2026-08-30 発注者。前は ja でした)
     #[test]
-    fn falls_back_to_ja_when_os_locale_unreadable() {
+    fn falls_back_to_english_when_os_locale_unreadable() {
         let _lock = serially();
         for l in ["C", "POSIX", "", "xx_YY.UTF-8"] {
-            assert_eq!(resolve_with_locale(None, Some(l)), "ja", "{l:?} で ja に落ちない");
+            assert_eq!(resolve_with_locale(None, Some(l)), "en", "{l:?} で en に落ちない");
         }
-        assert_eq!(resolve_with_locale(None, None), "ja", "環境変数が無いとき");
+        assert_eq!(resolve_with_locale(None, None), "en", "環境変数が無いとき");
     }
 
     /// [`set_language`] はいつ呼んでも効く(2026-08-19 の決め)

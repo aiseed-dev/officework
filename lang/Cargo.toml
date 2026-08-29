@@ -21,6 +21,8 @@ ai = ["dep:rustls", "dep:webpki-roots"]
 # 公式ライブラリなので、宛先の1つがこれを要る(2026-08-15)。
 # pyrun は依存ゼロの std だけの機構で、循環もしない
 pyrun = { path = "../pyrun" }
+# 言語の決め方は book に1本(環境変数 → 設定 → OS → en)。2026-08-30
+book = { path = "../book" }
 # AI の宛先(Claude API を直に叩く道)。Python も SDK も要らない
 # — 規約が名指しで勧めている「API キー認証」そのもの
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"], optional = true }

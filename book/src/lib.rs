@@ -25,6 +25,8 @@ pub mod calc;
 pub mod datetime_names;
 /// 値を引ける表 — 式の計算が表に求める面はこれだけ
 pub mod grid;
+/// どの言語で組むかを決める、1本の規則(環境変数 → 設定 → OS → en)
+pub mod lang;
 /// テーマ色の組と、番号+明るさの加減から色を解く
 pub mod theme;
 

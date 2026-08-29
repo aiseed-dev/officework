@@ -309,8 +309,13 @@ struct PyDoc {
 #[pymethods]
 impl PyDoc {
     /// 空の文書。
+    ///
+    /// `lang` は組むときの言語です(`"ja"`, `"en"` など)。渡さなければ
+    /// 設定ファイルと OS の言語から決めます(2026-08-30)。
     #[new]
-    fn new() -> PyDoc {
+    #[pyo3(signature = (lang = None))]
+    fn new(lang: Option<&str>) -> PyDoc {
+        crate::kotoba(lang);
         let mut doc = Document::default();
         // まっさらの文書が保存で持つスタイル定義と**一覧を一致させる** —
         // 書かれる物が見えない一覧は嘘になる。
@@ -347,8 +352,12 @@ impl PyDoc {
     }
 
     /// docx を開く。**元のバイトを抱えたまま**持つ(`save` で使う)。
+    ///
+    /// `lang` は [`PyDoc::new`] と同じです。
     #[staticmethod]
-    fn open(path: &str) -> PyResult<PyDoc> {
+    #[pyo3(signature = (path, lang = None))]
+    fn open(path: &str, lang: Option<&str>) -> PyResult<PyDoc> {
+        crate::kotoba(lang);
         let bytes =
             std::fs::read(path).map_err(|e| PyIOError::new_err(format!("{path}: 読めない: {e}")))?;
         let (doc, rep) = ooxml::read(std::io::Cursor::new(&bytes))

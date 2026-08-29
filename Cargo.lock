@@ -3628,6 +3628,7 @@ dependencies = [
 name = "lang"
 version = "0.1.0"
 dependencies = [
+ "book",
  "pyrun",
  "rustls",
  "webpki-roots 0.26.11",
@@ -5963,6 +5964,9 @@ dependencies = [
 [[package]]
 name = "pyrun"
 version = "0.0.1"
+dependencies = [
+ "book",
+]
 
 [[package]]
 name = "pysheet"

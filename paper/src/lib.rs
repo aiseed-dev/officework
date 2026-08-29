@@ -1214,9 +1214,11 @@ pub fn doc_to_sheet(
     // 気づいた — 試験は緑でした)
     let d = kumihan::theme::compose(doc, t);
 
-    // 書体は**文書が名乗った物**が先。無ければいまの言語の既定
+    // 書体は**文書が名乗った物**が先。無ければいまの言語の既定。
+    // 文中の字も渡します — 選んだ書体がその字を持っていないと、
+    // PDF ではその字だけ消えます(2026-08-30)
     let want = d.font.clone().or_else(|| t.font.clone());
-    let (family, _) = kumihan::font::for_document(want.as_deref())?;
+    let (family, _) = kumihan::font::for_text(want.as_deref(), d.chars())?;
     let bytes = kumihan::font::load(family)?;
     let m = kumihan::Metrics::new(&bytes)?;
 

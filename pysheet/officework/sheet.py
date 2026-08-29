@@ -1860,17 +1860,20 @@ class DocumentProperties:
 class Book:
     """1冊のブック。エンジンの Book を包み、openpyxl の Workbook の口を足す。"""
 
-    def __init__(self):
-        self._b = _engine.Book()
+    def __init__(self, lang=None):
+        """``lang`` は組むときの言語です(``"ja"``, ``"en"`` など)。渡さない
+        ときは、設定ファイルと OS の言語から決めます(2026-08-30)。
+        """
+        self._b = _engine.Book(lang)
         self._path = None
 
     @staticmethod
-    def open(path):
+    def open(path, lang=None):
         # **pathlib.Path も受ける**(openpyxl と同じ。2026-08-15)。
         # 芯は文字しか取らないので、ここで径路の形に直してから渡す
         path = _os.fspath(path)
         b = Book.__new__(Book)
-        b._b = _engine.Book.open(path)
+        b._b = _engine.Book.open(path, lang)
         b._path = path
         return b
 

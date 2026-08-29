@@ -1474,21 +1474,27 @@ class Table:
 class Doc:
     """docx の文書。エンジンの Doc を包み、python-docx の口を足す。"""
 
-    def __init__(self, path=None):
+    def __init__(self, path=None, lang=None):
         """`Doc()` は空の文書、`Doc("報告.docx")` は開きます。
 
         python-docx の `Document(径路)` と同じ形です。前は `Doc.open` しか
         無く、本家の台本が1行目で止まりました(2026-08-28)。
+
+        ``lang`` は組むときの言語です(``"ja"``, ``"en"`` など)。渡さない
+        ときは、設定ファイルと OS の言語から決めます(2026-08-30)。
         """
-        self._d = _doc.Doc.open(str(path)) if path is not None else _doc.Doc()
+        if path is not None:
+            self._d = _doc.Doc.open(str(path), lang)
+        else:
+            self._d = _doc.Doc(lang)
 
     @staticmethod
-    def open(path):
+    def open(path, lang=None):
         # **pathlib.Path も受ける**(python-docx と同じ。2026-08-15)。
         # 芯は文字しか取らないので、ここで径路の形に直してから渡す。
         # sheet.Book と揃えること — 片方だけ受けるのがいちばん困る
         d = Doc.__new__(Doc)
-        d._d = _doc.Doc.open(_os.fspath(path))
+        d._d = _doc.Doc.open(_os.fspath(path), lang)
         return d
 
     def add_shape(self, kind, x, y, width, height, **kw):

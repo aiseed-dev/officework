@@ -31,11 +31,17 @@ use std::path::PathBuf;
 /// 置き場だけ `~/.config/office` のまま残っていた(発注者が気づいた)。
 /// **まだ公開前なので、古い名前は残さず移した** — 二重に読む道を作ると、
 /// どちらが正かが分からなくなる。
+///
+/// # 定義は1つです(2026-08-30)
+///
+/// 言語の設定も同じ `settings.toml` から読みます。読む所が2つに分かれると、
+/// 片方だけ別の場所を見て、設定が効かなくなります。場所を決めるのは
+/// [`book::lang::settings_path`] です。
 pub fn config_dir() -> PathBuf {
-    std::env::var_os("HOME")
+    book::lang::settings_path()
+        .parent()
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."))
-        .join(".config/officework")
 }
 
 // ---- plugins(.py の置き場)-------------------------------------------------

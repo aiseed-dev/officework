@@ -101,8 +101,10 @@ check(len(ori) == 1, f"折れ線が1本でない: {len(ori)}")
 check(ori[0].get("fill") is None, "折れ線に塗りが付いている(閉じてしまう)")
 
 # 知らない種類は断る
+# (前はここが "radar" でした。レーダーチャートを作れるようになったので、
+#  試験のほうが古くなって落ちていました。2026-08-30)
 try:
-    ws.add_chart("radar", data="C4:C6", at="A30")
+    ws.add_chart("そんな図はない", data="C4:C6", at="A30")
     check(False, "知らない図の種類が黙って通った")
 except ValueError:
     pass

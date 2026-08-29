@@ -135,6 +135,19 @@ fn time_frac(v: &Bound<'_, PyAny>) -> PyResult<f64> {
         / 86400.0)
 }
 
+/// **どの言語で組むかを決めます。**
+///
+/// `lang=` が渡されたらそれ、無ければ環境変数 → 設定ファイル → OS の
+/// 言語 → en の順です(決め方は `book::lang` に1本)。
+///
+/// 言語は処理系に1つしかありません。1つの Python の中で2冊を別の言語で
+/// 作ると、**後から開いたほうの言語で両方とも保存されます**。
+pub(crate) fn kotoba(lang: Option<&str>) {
+    if let Some(t) = lang {
+        kumihan::font::set_default_language(&book::lang::decide(Some(t)));
+    }
+}
+
 /// xlsx のブック。
 #[pyclass(name = "Book")]
 struct PyBook {
@@ -144,8 +157,13 @@ struct PyBook {
 #[pymethods]
 impl PyBook {
     /// 空のブック(Sheet1 が1枚)。
+    ///
+    /// `lang` は組むときの言語です(`"ja"`, `"en"` など)。渡さなければ
+    /// 設定ファイルと OS の言語から決めます(2026-08-30)。
     #[new]
-    fn new() -> PyBook {
+    #[pyo3(signature = (lang = None))]
+    fn new(lang: Option<&str>) -> PyBook {
+        kotoba(lang);
         PyBook {
             inner: Arc::new(Mutex::new(Inner {
                 book: book::Book::new(),
@@ -156,8 +174,12 @@ impl PyBook {
     }
 
     /// xlsx を開く。式は開いた時点で再計算される。
+    ///
+    /// `lang` は [`PyBook::new`] と同じです。
     #[staticmethod]
-    fn open(path: &str) -> PyResult<PyBook> {
+    #[pyo3(signature = (path, lang = None))]
+    fn open(path: &str, lang: Option<&str>) -> PyResult<PyBook> {
+        kotoba(lang);
         let bytes = std::fs::read(path)
             .map_err(|e| PyIOError::new_err(format!("{path}: 読めない: {e}")))?;
         let (mut book, rep) = xlsx::read(std::io::Cursor::new(&bytes))

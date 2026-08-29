@@ -556,7 +556,7 @@ pub fn fallback() -> Option<&'static Family> {
     default_family(&default_language())
 }
 
-/// 標準の書体を選ぶときに見る言語。既定は日本語です。
+/// 標準の書体を選ぶときに見る言語。入れていなければ `book::lang` が決めます。
 static UI_LANG: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
 
 /// **既定の言語は処理系に1つしかありません。**
@@ -577,20 +577,30 @@ pub(crate) fn lang_lock() -> std::sync::MutexGuard<'static, ()> {
 ///
 /// エンジンは設定ファイルを読みません(画面にも設定にも依存しないのが
 /// このクレートの決まりです)。なので、言語を知っている側から入れます。
-/// 呼ばなければ日本語です。言語を変えたときも、もう一度呼んでください。
+/// 呼ばなければ `book::lang::decide` が決めます(環境変数 → 設定 → OS →
+/// en)。言語を変えたときも、もう一度呼んでください。
 pub fn set_default_language(tag: &str) {
     *UI_LANG.write().expect("言語の錠") = Some(tag.to_string());
 }
 
 /// いまエンジンが見ている言語。
 pub fn default_language() -> String {
-    UI_LANG.read().expect("言語の錠").clone().unwrap_or_else(|| "ja".to_string())
+    if let Some(l) = UI_LANG.read().expect("言語の錠").clone() {
+        return l;
+    }
+    // **決め方は book に1本あります**(環境変数 → 設定 → OS → en)。
+    // 2026-08-30 まではここが `ja` の決め打ちで、設定も OS も見ていません
+    // でした。Python から使うと、ドイツ語の設定にしてある機械でも
+    // 日本語の既定で組まれます
+    book::lang::decide(None)
 }
 
 /// 文書の指定を実体に結び付ける。
 ///
-/// 返り値の2つめが `false` なら**指定と違う書体で出している** —
-/// 呼び出し側はそれを利用者に伝えること(黙って別の字で刷らない)。
+/// 指定された書体が無ければ、**似た書体に置き換えて刷ります**。エラーには
+/// しません(2026-08-29 発注者。止まると実用になりません)。返り値の2つめが
+/// `false` なら置き換えた印です。画面のように利用者へ伝えられる所では、
+/// 置き換えたことを出してください。
 pub fn for_document(wanted: Option<&str>) -> Result<(&'static Family, bool), String> {
     if let Some(w) = wanted.filter(|s| !s.is_empty()) {
         if let Some(f) = resolve(w) {
@@ -604,6 +614,74 @@ pub fn for_document(wanted: Option<&str>) -> Result<(&'static Family, bool), Str
         return Ok((f, false));
     }
     fallback().map(|f| (f, true)).ok_or_else(|| missing(None))
+}
+
+/// **その文書に出てくる字を、全部組める書体を選ぶ。**
+///
+/// [`for_document`] は言語と名前だけで選びます。それだと、英語の設定の
+/// 機械でドイツ語の文書に日本語を1行入れたとき、選ばれた書体が仮名を
+/// 持っておらず、**その字だけ紙から消えます**(PDF は字形が無い字を
+/// 空白として刷ります)。2026-08-30 に、既定の言語を en にしたときに
+/// 出てきました。
+///
+/// 名前の指定は今までどおり効きます。指定された書体が文中の字を組める
+/// なら、そのまま使います。組めない字があるときだけ、組める書体に
+/// 換えます。返り値の2つめは [`for_document`] と同じで、指定どおりなら
+/// `true` です。
+pub fn for_text(
+    wanted: Option<&str>,
+    text: impl Iterator<Item = char>,
+) -> Result<(&'static Family, bool), String> {
+    let need = scripts_in(text);
+    let (f, exact) = for_document(wanted)?;
+    if need.iter().all(|s| f.covers(*s)) {
+        return Ok((f, exact));
+    }
+    // 系統(明朝・ゴシック・等幅)は保ったまま、字が足りる物を探します
+    let g = read_generic(&f.name);
+    let ok = |c: &&Family| need.iter().all(|s| c.covers(*s));
+    let pick = list()
+        .iter()
+        .find(|c| c.regular && read_generic(&c.name) == g && ok(c))
+        .or_else(|| list().iter().find(|c| c.regular && ok(c)))
+        .or_else(|| list().iter().find(ok));
+    Ok(match pick {
+        // 換えたので、指定どおりではありません
+        Some(c) => (c, false),
+        // 全部組める書体が1つも無ければ、元の選択のままにします。
+        // 一部が消えますが、勝手に別の言語の書体へ寄せるよりはましです
+        None => (f, exact),
+    })
+}
+
+/// 文中に出てくる字から、要る文字の種類を数え上げます。
+///
+/// ラテン文字は、記号の付かない ASCII ならどの書体でも組めるので数えません。
+/// 記号つき(ä é)から先を [`Script::Latin`] として数えます。
+fn scripts_in(text: impl Iterator<Item = char>) -> Vec<Script> {
+    let mut v: Vec<Script> = Vec::new();
+    let mut add = |s: Script| {
+        if !v.contains(&s) {
+            v.push(s);
+        }
+    };
+    for c in text {
+        match c as u32 {
+            0x00..=0x7f => {}
+            0x80..=0x24f => add(Script::Latin),
+            0x400..=0x52f => add(Script::Cyrillic),
+            // ベトナム語だけに出る、記号が二重に付く字
+            0x1e00..=0x1eff => add(Script::Vietnamese),
+            // 仮名。**漢字より先に見ます** — 仮名があれば日本語です
+            0x3040..=0x30ff => add(Script::Japanese),
+            0xac00..=0xd7af | 0x1100..=0x11ff => add(Script::Korean),
+            // 漢字。日本語か中国語かは字では分かれないので、漢字が
+            // 組めることだけを求めます
+            0x3400..=0x9fff | 0xf900..=0xfaff => add(Script::SimplifiedChinese),
+            _ => {}
+        }
+    }
+    v
 }
 
 fn missing(wanted: Option<&str>) -> String {
@@ -693,17 +771,51 @@ mod tests {
     #[test]
     fn a_missing_font_is_substituted_but_reported() {
         let _lang = lang_lock();
+        // 落ち先はいまの言語の既定なので、言語を明示します(2026-08-30)
+        set_default_language("ja");
         let (f, exact) = for_document(Some("存在しない書体XYZ")).unwrap();
         assert!(!exact, "指定と違う書体なのに、合っていることにした");
         assert!(f.japanese, "英字フォントに落ちている(豆腐になる)");
+        *UI_LANG.write().unwrap() = None;
+    }
+
+    /// **英語の設定でも、日本語の字は消えない。**
+    ///
+    /// 2026-08-30 に既定の言語を en にしたとき、英語の既定の書体
+    /// (Liberation Sans)には仮名が無いので、PDF から「見本」の2字だけが
+    /// 消えました。文中の字を見て選び直します。
+    #[test]
+    fn japanese_in_an_english_document_still_gets_a_font_that_has_it() {
+        let _lang = lang_lock();
+        set_default_language("en");
+        let (plain, _) = for_text(None, "Hello".chars()).unwrap();
+        assert!(!plain.japanese, "英語だけの文書に日本語の書体を選んだ");
+        let (mixed, _) = for_text(None, "Hello 見本".chars()).unwrap();
+        assert!(mixed.japanese, "仮名と漢字が組めない書体のままだった");
+        *UI_LANG.write().unwrap() = None;
+    }
+
+    /// 指定した書体でその字が組めるなら、換えません
+    #[test]
+    fn a_font_that_can_set_the_text_is_left_alone() {
+        let _lang = lang_lock();
+        set_default_language("ja");
+        let (f, exact) = for_text(None, "日本語のみ".chars()).unwrap();
+        assert!(exact, "換える要が無いのに換えた");
+        assert!(f.japanese);
+        *UI_LANG.write().unwrap() = None;
     }
 
     #[test]
     fn with_no_request_it_picks_a_font_that_can_set_japanese() {
         let _lang = lang_lock();
+        // **言語を明示します。** 2026-08-30 に既定が en になり、ここを
+        // 環境まかせにすると、英語の設定の機械で落ちるようになりました
+        set_default_language("ja");
         let (f, exact) = for_document(None).unwrap();
         assert!(exact);
         assert!(f.japanese);
+        *UI_LANG.write().unwrap() = None;
     }
 
     #[test]
@@ -728,11 +840,15 @@ mod tests {
     #[test]
     fn the_resolved_font_can_typeset() {
         let _lang = lang_lock();
+        // 「日」の幅を見るので、日本語で選びます(2026-08-30 に既定が
+        // en になり、環境まかせだと英字の書体が返ってきます)
+        set_default_language("ja");
         let (f, _) = for_document(None).unwrap();
         let data = load(f).unwrap();
         let m = crate::Metrics::new(&data).expect("解釈できない");
         let w = m.advance_mm('日', 10.5);
         assert!(w > 3.0 && w < 4.5, "全角の幅がおかしい: {w}mm ({})", f.name);
+        *UI_LANG.write().unwrap() = None;
     }
 }
 

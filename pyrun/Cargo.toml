@@ -8,3 +8,5 @@ license.workspace = true
 # plugins の走査・埋め込み台本は、全部 std だけでできる。
 # ここに何かを足したくなったら、それは pyrun の仕事ではない合図
 [dependencies]
+# 設定の置き場は book に1本(言語もそこから読むため。2026-08-30)
+book = { path = "../book" }
