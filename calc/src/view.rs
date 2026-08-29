@@ -5652,14 +5652,21 @@ pub(crate) fn zukei_png(sp: &book::SheetShape, pad: f32) -> Option<Vec<u8>> {
 
     let (w_px, h_px) = (sp.width_px.max(4.0) + pad * 2.0, sp.height_px.max(4.0) + pad * 2.0);
     let (w_mm, h_mm) = (w_px * MM, h_px * MM);
+    // **線の太さの半分だけ内側に寄せます。** 寄せないと輪郭が絵の縁に
+    // ちょうど乗り、線の外半分が切り落とされて**半分の太さに見えます**
+    // (2026-08-29 に画面の絵を画素で数えて分かりました。SVG の側は
+    // `SheetShape::to_svg` で同じことをしています)
+    let uchi = (sp.line_w * 4.0 / 3.0 / 2.0).max(1.0); // pt → px、その半分
     // 文字とずらしを外した写しを渡します。置き場はこちらで決めます
     let mut hitotsu = sp.clone();
     hitotsu.text = None;
     hitotsu.dx_px = 0.0;
     hitotsu.dy_px = 0.0;
+    hitotsu.width_px = (sp.width_px.max(4.0) - uchi * 2.0).max(1.0);
+    hitotsu.height_px = (sp.height_px.max(4.0) - uchi * 2.0).max(1.0);
     // `y_top` は紙の下からの mm で、図形の上の端です
     let leaf = paper::grid::shapes_leaf(
-        &[(hitotsu, pad * MM, h_mm - pad * MM)],
+        &[(hitotsu, (pad + uchi) * MM, h_mm - (pad + uchi) * MM)],
         paper::Paper { width_mm: w_mm, height_mm: h_mm, margin_mm: 0.0 },
     );
     paper::e::egaku(&leaf, w_mm, h_mm, KOMAKASA / MM).png().ok()
