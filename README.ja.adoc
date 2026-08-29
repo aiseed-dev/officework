@@ -257,7 +257,7 @@ $ pip install "officework[mcp]"   # あとは officework-mcp を AI 側に登録
 `.xls` の取り込みだけ未実装)。
 手順と「何を差し替えて、何を差し替えていないか」はlink:docs/engine.ja.adoc[エンジンの説明]へ。
 
-openpyxl と違い、罫線・結合・列幅・図形を保ったまま値を差し込めます。
+書き方の決まりは1つです。原本のファイルを正として、変えた所だけを書き戻します。読めなかった部品は `unsupported` に一覧で出ます — 黙って落としません。
 
 [source,python]
 ----

@@ -239,7 +239,7 @@ Since 2026-08-10 the engine can stand in for the xlsx helper inside https://gith
 Eleven of the twelve commands are officework's, including saving; genoffice still decides what a save should change, and `.xls` import is the one thing not implemented.
 See link:docs/engine.adoc[the engine page] for the recipe and for exactly what is and is not replaced.
 
-Unlike openpyxl, values can be inserted while *borders, merged cells, column widths, and shapes stay intact*.
+The writing rule is simple: the original file is the source of truth, and only what changed is written back. Anything the engine could not read is listed in `unsupported` — nothing is dropped in silence.
 
 [source,python]
 ----
