@@ -43,12 +43,13 @@ fn main() {
     let font = ops::font_data();
     paper::grid::sheet_to_pdf(&bk.sheets[0], font, paper::Paper::default(), &setup,
                               std::io::Cursor::new(&mut pdf)).expect("PDF");
+    std::fs::write("test/out/紙面.pdf", &pdf).expect("PDF を置く");
     println!("PDF: {} バイト", pdf.len());
 
     // 同じ紙面を絵に(いまは罫線と塗りだけ。字はこれから)
     let leaf = paper::grid::sheet_leaf(&bk.sheets[0], paper::Paper::default(), &setup)
         .expect("紙面");
-    let e = paper::e::egaku(&leaf, 210.0, 297.0, 3.0);
+    let e = paper::e::egaku_with(&leaf, 210.0, 297.0, 3.0, Some(font));
     std::fs::write("test/out/紙面.png", e.png().expect("PNG")).expect("書き出し");
     println!("test/out/紙面.png: {}×{} 画素 / 指紋 {}", e.w, e.h, e.yubi());
 }

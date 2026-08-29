@@ -108,7 +108,7 @@ pub fn to_hex(c: (f32, f32, f32)) -> String {
 }
 
 /// `RRGGBB` を 0〜1 の三つ組に。読めなければ黒
-fn rgb(s: &str) -> (f32, f32, f32) {
+pub(crate) fn rgb(s: &str) -> (f32, f32, f32) {
     let h = s.trim_start_matches('#');
     let v = |i: usize| {
         u8::from_str_radix(h.get(i..i + 2).unwrap_or("00"), 16).unwrap_or(0) as f32 / 255.0

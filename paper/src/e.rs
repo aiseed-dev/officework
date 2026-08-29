@@ -28,7 +28,8 @@
 use crate::pdfw::Leaf;
 use vello_cpu::kurbo::{Affine, BezPath, Cap, Join, Point, Rect, Stroke};
 use vello_cpu::peniko::color::{AlphaColor, Srgb};
-use vello_cpu::{Pixmap, RenderContext, Resources};
+use vello_cpu::peniko::{Blob, FontData};
+use vello_cpu::{Glyph, Pixmap, RenderContext, Resources};
 
 /// 出来上がった絵。**画素の並びと大きさ**だけを持ちます
 pub struct E {
@@ -71,13 +72,22 @@ impl E {
 /// `w_mm` × `h_mm` が紙の大きさ、`bai` が 1mm 何画素か(4.0 なら
 /// A4 が 840×1188 画素)。
 ///
-/// **字はまだ描きません。** 罫線・塗り・好きな形の塗り・紙の色を描きます。
-///
-/// 字を置くには書体の実体(`vello_cpu::peniko::FontData`)と、字から
-/// 字形の番号への対応が要ります。対応は [`crate::pdfw`] が PDF を書く
-/// ときに作っている物と同じなので、そこを分けて両方から使う形にします
-/// (次の区切り)。**先に「絵が出る」所まで通して、順に足します。**
+/// **字は描きません。** 罫線・塗り・好きな形の塗り・紙の色だけです。
+/// 字も描くなら [`egaku_with`] に書体を渡します。
 pub fn egaku(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32) -> E {
+    egaku_with(leaf, w_mm, h_mm, bai, None)
+}
+
+/// **書体を渡して、字も描く。**
+///
+/// `font` は書体の実体(TTF / OTF / TTC のバイト列)です。
+/// [`crate::pdfw`] が PDF に埋めるのと**同じ物**を渡してください —
+/// 同じ書体で組んだ紙面を、同じ書体で描くためです。
+///
+/// 字形の番号は**その場で引きます**([`ttf_parser`])。pdfw が作る
+/// サブセット後の番号とは別で、こちらは元の書体の番号です。絵は
+/// 書体を丸ごと持っているので、番号を詰め直す必要がありません。
+pub fn egaku_with(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, font: Option<&[u8]>) -> E {
     let (w, h) = ((w_mm * bai) as u16, (h_mm * bai) as u16);
     let (w, h) = (w.max(1), h.max(1));
     let mut cx = RenderContext::new(w, h);
@@ -85,10 +95,11 @@ pub fn egaku(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32) -> E {
     // 持っているので、写すときに紙の高さから引きます
     let mm = bai as f64;
 
-    if let Some(c) = leaf.bg {
-        cx.set_paint(iro(c, 1.0));
-        cx.fill_rect(&Rect::new(0.0, 0.0, w as f64, h as f64));
-    }
+    // **紙は必ず敷きます。** 敷かないと透明のままで、開く道具によっては
+    // 黒く見えます(2026-08-29 に PDF と並べて気づきました)。
+    // `bg` が無ければ白 — 紙は白い物です
+    cx.set_paint(iro(leaf.bg.unwrap_or((1.0, 1.0, 1.0)), 1.0));
+    cx.fill_rect(&Rect::new(0.0, 0.0, w as f64, h as f64));
 
     // **塗りが先、罫線が後、絵はその間。** pdfw と同じ順です —
     // 順が違うと線が塗りに隠れます
@@ -135,12 +146,82 @@ pub fn egaku(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32) -> E {
         cx.stroke_path(&path);
     }
 
+    let mut res = Resources::new();
+    // **字はいちばん上。** 塗りと罫線の後に置きます
+    if let Some(data) = font {
+        moji(&mut cx, &mut res, leaf, h_mm, mm, data);
+    }
     cx.set_transform(Affine::IDENTITY);
     cx.flush();
     let mut pix = Pixmap::new(w, h);
-    let mut res = Resources::new();
     cx.render(&mut pix, &mut res);
     E { w: w as u32, h: h as u32, rgba: pix.data_as_u8_slice().to_vec() }
+}
+
+/// 字を置く。**1つの `Piece` が1つの run** です(同じ大きさ・同じ色)
+fn moji(
+    cx: &mut RenderContext,
+    res: &mut Resources,
+    leaf: &Leaf,
+    h_mm: f32,
+    mm: f64,
+    data: &[u8],
+) {
+    let Ok(face) = ttf_parser::Face::parse(data, 0) else { return };
+    let fd = FontData::new(Blob::new(std::sync::Arc::new(data.to_vec())), 0);
+    let em = face.units_per_em() as f64;
+    for p in &leaf.pieces {
+        if p.text.is_empty() {
+            continue;
+        }
+        // pt を画素に(1pt = 1/72 インチ = 25.4/72 mm)
+        let size = p.size_pt as f64 * 25.4 / 72.0 * mm;
+        // **`y_mm` は字の下端**です(pdfw と同じ)。紙は下からの y なので
+        // 高さから引き、そのまま置き位置になります
+        let x0 = p.x_mm as f64 * mm;
+        let y0 = (h_mm - p.y_mm) as f64 * mm;
+        let mut okuri = 0.0f64;
+        let mut gs: Vec<Glyph> = Vec::with_capacity(p.text.chars().count());
+        for ch in p.text.chars() {
+            let Some(gid) = face.glyph_index(ch) else { continue };
+            gs.push(Glyph { id: gid.0 as u32, x: (x0 + okuri) as f32, y: y0 as f32 });
+            let adv = face.glyph_hor_advance(gid).unwrap_or(0) as f64;
+            okuri += adv / em * size;
+        }
+        if gs.is_empty() {
+            continue;
+        }
+        let c = p.color.as_deref().map(crate::pdfw::rgb).unwrap_or((0.0, 0.0, 0.0));
+        cx.set_paint(iro(c, 1.0));
+        cx.glyph_run(res, &fd)
+            .font_size(size as f32)
+            .hint(false)
+            .fill_glyphs(gs.into_iter());
+        // 太字は 0.12mm ずらして二度打ちます(pdfw と同じ合成)
+        if p.bold {
+            let zure = 0.12 * mm;
+            let gs2: Vec<Glyph> = p
+                .text
+                .chars()
+                .scan(0.0f64, |ok, ch| {
+                    let gid = face.glyph_index(ch)?;
+                    let g = Glyph {
+                        id: gid.0 as u32,
+                        x: (x0 + *ok + zure) as f32,
+                        y: y0 as f32,
+                    };
+                    *ok += face.glyph_hor_advance(gid).unwrap_or(0) as f64 / em * size;
+                    Some(g)
+                })
+                .collect();
+            if !gs2.is_empty() {
+                cx.glyph_run(res, &fd)
+                    .font_size(size as f32)
+                    .hint(false)
+                    .fill_glyphs(gs2.into_iter());
+            }
+        }
+    }
 }
 
 /// 0〜1 の三つ組を色に
@@ -204,6 +285,39 @@ mod tests {
         let mut c = hako();
         c.fills[0].rgb = (0.2, 0.8, 0.3);
         assert_ne!(a.yubi(), egaku(&c, 80.0, 40.0, 4.0).yubi(), "色を変えても同じ指紋");
+    }
+
+    /// **字が出る。** 書体を渡したときだけです
+    #[test]
+    fn glyphs_appear_only_when_a_font_is_given() {
+        let (fam, _) = kumihan::font::for_document(None).expect("書体");
+        let data = kumihan::font::load(fam).expect("読めない");
+        let mut leaf = Leaf { bg: Some((1.0, 1.0, 1.0)), ..Default::default() };
+        leaf.pieces.push(crate::pdfw::Piece {
+            x_mm: 5.0,
+            y_mm: 10.0,
+            size_pt: 20.0,
+            text: "あ".into(),
+            ..Default::default()
+        });
+        // 字の墨が乗った画素を数えます(白でない物)
+        let sumi = |e: &E| -> usize {
+            e.rgba.chunks(4).filter(|p| p[0] < 200 && p[3] > 0).count()
+        };
+        let nashi = egaku(&leaf, 40.0, 20.0, 4.0);
+        let ari = egaku_with(&leaf, 40.0, 20.0, 4.0, Some(&data));
+        assert_eq!(sumi(&nashi), 0, "書体を渡していないのに字が出ている");
+        assert!(sumi(&ari) > 50, "字が出ていない: 墨の画素 {}", sumi(&ari));
+    }
+
+    /// **紙は必ず白く敷きます。** 敷かないと透明のままで、開く道具に
+    /// よっては黒く見えます(2026-08-29 に PDF と並べて気づきました)
+    #[test]
+    fn the_paper_is_always_opaque() {
+        let e = egaku(&Leaf::default(), 20.0, 10.0, 4.0);
+        let sumi = e.rgba.chunks(4).find(|p| p[3] != 255);
+        assert!(sumi.is_none(), "透けている画素がある: {sumi:?}");
+        assert_eq!(&e.rgba[..4], &[255, 255, 255, 255], "紙が白くない");
     }
 
     /// PNG として読める物が出る
