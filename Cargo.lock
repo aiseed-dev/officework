@@ -5972,6 +5972,7 @@ dependencies = [
  "kumihan",
  "ooxml",
  "ops",
+ "paper",
  "pivot",
  "pyo3",
  "pyo3-build-config",
