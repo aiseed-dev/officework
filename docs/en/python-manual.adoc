@@ -236,8 +236,25 @@ Two limits, as of this version:
 
 A new document's defaults are decided by its language.
 The built-in default template carries a body size per language, and the base fonts follow the script.
-Today a new document is created with the Japanese defaults; the argument to choose another language at creation (`Doc(lang=)`, `Book(lang=)`) is *not usable yet*.
-The language is chosen at creation only — everything it sets is ordinary formatting you can change afterwards (`d.font`, run formatting, section paper and margins).
+Pass the language as `lang`. You can pass it when opening a file too.
+
+[source,python]
+----
+d = doc.Doc(lang="en")                     # a new document with English defaults
+b = sheet.Book(lang="de")                  # a new workbook with German defaults
+d = doc.Doc.open("report.docx", lang="ja")  # also accepted when opening
+----
+
+Without `lang`, the language is decided in this order:
+
+. the `OFFICE_LANG` environment variable
+. the settings file (`language` in `~/.config/officework/settings.toml`)
+. the OS locale (`LANG` and friends)
+. `en`, if none of those are set
+
+The language is chosen when you create or open a document — everything it sets is ordinary formatting you can change afterwards (`d.font`, run formatting, section paper and margins).
+
+NOTE: There is one language per process. If you build two workbooks in different languages inside one Python run, both are saved in whichever language you named last.
 
 [cols="1,1,2"]
 |===
@@ -254,7 +271,12 @@ The language is chosen at creation only — everything it sets is ordinary forma
 Which face you actually get depends on what the machine (OS) has installed.
 If the font named in the file is present, it is used; otherwise the machine's standard font stands in (Windows ships the BIZ UD family; other machines fall back to their standard mincho and gothic).
 Paper starts as A4 with 20 mm margins in every language; change it per section if you need to.
-When a named font is not installed on the machine, the engine substitutes the machine's standard font, judging only the family — mincho-like names go to the standard mincho, gothic to gothic, monospace to monospace.
+
+The file that changes the defaults themselves is `~/.config/officework/テンプレート.toml` (this machine's standard).
+The app reads it; Python's `save("x.pdf")` path *does not read it yet* — the same limit as the second item below.
+When a named font is not installed on the machine, the engine substitutes the machine's standard font rather than raising an error, judging only the family — mincho-like names go to the standard mincho, gothic to gothic, monospace to monospace.
+
+The chosen font may still lack characters the document uses; the English default font has no kana, for example. In that case the engine picks a font that covers every character in the document, keeping the same family (serif stays serif).
 
 === What it does not do — and what is reported but never lost
 
