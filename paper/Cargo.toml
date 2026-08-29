@@ -57,3 +57,6 @@ required-features = ["e"]
 
 [[example]]
 name = "zukei_xlsx"
+
+[[example]]
+name = "doc_zukei"

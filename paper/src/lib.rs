@@ -29,6 +29,9 @@ pub struct PageDress {
     pub watermark: Option<String>,
     /// 手描きの線(ページ固定)。蛍光ペンは文字の下、ペンは上に描く
     pub ink: Vec<kumihan::Stroke>,
+    /// **ページに貼り付く図形。** 形を作るのは表を刷るときと同じ
+    /// [`grid`] の1本なので、文書と表で図形の形が食い違いません
+    pub shapes: Vec<kumihan::DocShape>,
 }
 
 /// 紙の大きさ(mm)。既定は A4 縦。
@@ -1139,10 +1142,19 @@ pub fn doc_to_pdf<W: Write>(
     // **低い層の書き手を通します**(2026-08-27)。使った字だけ埋めるので、
     // 1枚物が 20MB から 10KB になります。ここが最初の差し替えです —
     // 画面(writer)の書き出しはまだ printpdf のままです
-    let lost = pdfw::sheet_to_pdf(
+    // **ページに貼り付く図形と紙の飾りを渡します**(2026-08-29)。
+    // 渡さないと、模型に在っても紙に出ません
+    let dress = PageDress {
+        watermark: doc.watermark.clone(),
+        shapes: doc.shapes.clone(),
+        ..Default::default()
+    };
+    let lost = pdfw::sheet_to_pdf_with(
         &sheet,
         &bytes,
         Paper { width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm },
+        &dress,
+        |_| Vec::new(),
         out,
     )?;
     // 載らなかった物は呼ぶ側へ言えないので、ここでは黙るしかありません。
@@ -1158,9 +1170,17 @@ pub fn doc_to_pdf<W: Write>(
 ///
 /// `page` は [`doc_to_sheet`] が返した紙の設定をそのまま渡します。
 pub fn doc_leaves(sheet: &kumihan::Sheet, page: kumihan::PageSetup) -> Vec<pdfw::Leaf> {
+    doc_leaves_with(sheet, page, &PageDress::default())
+}
+
+/// 紙の飾り(透かし・ページに貼り付く図形)も渡して紙面を組む
+pub fn doc_leaves_with(
+    sheet: &kumihan::Sheet,
+    page: kumihan::PageSetup,
+    dress: &PageDress,
+) -> Vec<pdfw::Leaf> {
     let paper = Paper { width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm };
-    let (pages, _lost) =
-        pdfw::sheet_leaves_with(sheet, paper, &PageDress::default(), |_| Vec::new());
+    let (pages, _lost) = pdfw::sheet_leaves_with(sheet, paper, dress, |_| Vec::new());
     pages
 }
 

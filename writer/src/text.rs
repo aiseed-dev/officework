@@ -466,6 +466,10 @@ impl Writer {
             bg: self.dress_page.1.as_deref().map(|c| (hex(c, 0), hex(c, 1), hex(c, 2))),
             watermark: self.dress_page.0.clone(),
             ink: self.doc.ink.clone(),
+            // **画面の書き出しは printpdf のまま**なので、図形はまだ
+            // 載りません(`to_pdf_with` が見ていません)。渡しておけば、
+            // 書き手を差し替えたときにそのまま出ます
+            shapes: self.doc.shapes.clone(),
         };
         let r = kumihan::atomic::save(p, |f| {
             paper::to_pdf_with(

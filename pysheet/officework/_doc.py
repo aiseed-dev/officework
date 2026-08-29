@@ -1491,6 +1491,26 @@ class Doc:
         d._d = _doc.Doc.open(_os.fspath(path))
         return d
 
+    def add_shape(self, kind, x, y, width, height, **kw):
+        """**ページに貼り付く図形を置く。**
+
+        置き場と大きさは紙の左上からの mm です。形の名前は xlsx と同じで、
+        ``rect`` / ``roundRect`` / ``ellipse`` / ``rightArrow`` /
+        ``diamond`` / ``line`` が使えます。
+
+        ``fill`` と ``line`` は色("DDE7F0")、``text`` は図形の中の文字、
+        ``rotation`` は回す角度、``opacity`` は不透明度、``shadow`` は影、
+        ``page`` は何ページ目か(0始まり)です。
+
+        python-docx には無い口です(本家は画像しか置けません)。
+        """
+        return self._d.add_shape(kind, x, y, width, height, **kw)
+
+    @property
+    def shapes(self):
+        """置いた図形の数"""
+        return self._d.shapes
+
     def save(self, path, dpi=None):
         """保存する。拡張子で行き先が決まります。
 

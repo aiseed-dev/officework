@@ -714,7 +714,7 @@ mod tests {
         let dress = crate::PageDress {
             bg: Some((0.98, 0.98, 0.94)),
             watermark: Some("見本".into()),
-            ink: Vec::new(),
+            ..Default::default()
         };
         // ヘッダーの行を1つ作って渡します(組む側が字にして寄越す約束)
         let hf = |_k: usize| {
@@ -757,6 +757,7 @@ mod tests {
             bg: None,
             watermark: None,
             ink: vec![kumihan::Stroke::default()],
+            ..Default::default()
         };
         let mut out = Vec::new();
         let lost =
@@ -1370,6 +1371,18 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
     }
     if !dress.ink.is_empty() {
         lost.push(format!("ペンの筆 {} 本(この書き手ではまだ載りません)", dress.ink.len()));
+    }
+    // **ページに貼り付く図形。** 字と罫線の上に置きます(Word も同じで、
+    // `behindDoc="0"` は本文の上です)
+    if !dress.shapes.is_empty() {
+        for (k, leaf) in pages.iter_mut().enumerate() {
+            let h = leaf.size_mm.map(|(_, h)| h).unwrap_or(paper.height_mm);
+            let kono: Vec<kumihan::DocShape> =
+                dress.shapes.iter().filter(|s| s.page == k).cloned().collect();
+            if !kono.is_empty() {
+                crate::grid::doc_shapes(leaf, &kono, h);
+            }
+        }
     }
     (pages, lost)
 }

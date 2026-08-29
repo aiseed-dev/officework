@@ -2211,3 +2211,135 @@ pub(super) fn parse_document_rels(
     }
     (doc, rep)
 }
+/// **ページに貼り付く図形を DrawingML にする。**
+///
+/// 2026-08-29 発注者「docx の図形をやって」。ペンの筆
+/// ([`ink_anchor_xml`])と同じ置き方(`wp:anchor` の `relativeFrom="page"`)
+/// で、形は xlsx と同じ prstGeom / custGeom です。**Word でも図形として
+/// 開けます** — 絵に落とさないのが決めです。
+///
+/// 名前 `joshape…p{page}` が読み戻しの鍵です(ページ番号も名前で持ちます —
+/// XML の座標はページの中の位置しか持てないため)。
+pub fn shape_anchor_xml(sp: &kumihan::DocShape, id: usize) -> String {
+    let (w, h) = (sp.w_mm.max(0.5), sp.h_mm.max(0.5));
+    let (cx, cy) = (emu(w), emu(h));
+    let look = &sp.look;
+
+    // 形。点を持つ物は custGeom、それ以外は prstGeom の名前をそのまま
+    let geom = if look.points.is_empty() {
+        let prst = match look.kind.as_str() {
+            "roundRect" | "ellipse" | "rightArrow" | "diamond" | "line" => look.kind.as_str(),
+            _ => "rect",
+        };
+        format!(r#"<a:prstGeom prst="{prst}"><a:avLst/></a:prstGeom>"#)
+    } else {
+        let mut path = String::new();
+        for (i, p) in look.points.iter().enumerate() {
+            let tag = if i == 0 || p.start { "moveTo" } else { "lnTo" };
+            path.push_str(&format!(
+                r#"<a:{tag}><a:pt x="{}" y="{}"/></a:{tag}>"#,
+                (p.at.0.clamp(0.0, 1.0) * cx as f32) as i64,
+                (p.at.1.clamp(0.0, 1.0) * cy as f32) as i64,
+            ));
+        }
+        format!(
+            concat!(
+                r#"<a:custGeom><a:avLst/><a:gdLst/><a:ahLst/><a:cxnLst/>"#,
+                r#"<a:rect l="0" t="0" r="{cx}" b="{cy}"/>"#,
+                r#"<a:pathLst><a:path w="{cx}" h="{cy}">{path}</a:path></a:pathLst></a:custGeom>"#
+            ),
+            cx = cx,
+            cy = cy,
+            path = path
+        )
+    };
+
+    // 塗りと線。**指定が無ければ書きません**(模型の決め — 無い物を
+    // 黒や白に落とすと、字を置くだけの箱にも枠が出ます)
+    let a = look.alpha.clamp(0.0, 1.0);
+    let usu = if a >= 1.0 {
+        String::new()
+    } else {
+        format!(r#"<a:alpha val="{}"/>"#, (a * 100_000.0) as i64)
+    };
+    let fill = match look.fill.as_deref() {
+        Some(c) => format!(r#"<a:solidFill><a:srgbClr val="{}">{usu}</a:srgbClr></a:solidFill>"#,
+                           c.trim_start_matches('#')),
+        None => "<a:noFill/>".into(),
+    };
+    let line = match look.line.as_deref() {
+        Some(c) => format!(
+            r#"<a:ln w="{}"><a:solidFill><a:srgbClr val="{}">{usu}</a:srgbClr></a:solidFill></a:ln>"#,
+            (look.line_w.max(0.1) * 12_700.0) as i64,
+            c.trim_start_matches('#')
+        ),
+        None => String::new(),
+    };
+    // 影。xlsx と同じ右下への落ち影です
+    let kage = if look.shadow {
+        concat!(
+            r#"<a:effectLst><a:outerShdw blurRad="38100" dist="38100" dir="2700000" "#,
+            r#"algn="tl" rotWithShape="0"><a:srgbClr val="9E9E9E">"#,
+            r#"<a:alpha val="35000"/></a:srgbClr></a:outerShdw></a:effectLst>"#
+        )
+        .to_string()
+    } else {
+        String::new()
+    };
+    // 回転(6万分の1度)と反転
+    let rot = look.rot.rem_euclid(360.0);
+    let mut xfrm = String::new();
+    if rot != 0.0 {
+        xfrm.push_str(&format!(r#" rot="{}""#, (rot * 60_000.0) as i64));
+    }
+    if look.flip_h {
+        xfrm.push_str(r#" flipH="1""#);
+    }
+    if look.flip_v {
+        xfrm.push_str(r#" flipV="1""#);
+    }
+    // 図形の中の文字
+    let body = match look.text.as_deref() {
+        Some(t) if !t.is_empty() => format!(
+            r#"<wps:txbx><w:txbxContent><w:p><w:r><w:t xml:space="preserve">{}</w:t></w:r></w:p></w:txbxContent></wps:txbx>"#,
+            esc(t)
+        ),
+        _ => String::new(),
+    };
+
+    format!(
+        concat!(
+            r#"<w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" "#,
+            r#"relativeHeight="251658241" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1">"#,
+            r#"<wp:simplePos x="0" y="0"/>"#,
+            r#"<wp:positionH relativeFrom="page"><wp:posOffset>{px}</wp:posOffset></wp:positionH>"#,
+            r#"<wp:positionV relativeFrom="page"><wp:posOffset>{py}</wp:posOffset></wp:positionV>"#,
+            r#"<wp:extent cx="{cx}" cy="{cy}"/><wp:wrapNone/>"#,
+            r#"<wp:docPr id="{id}" name="joshape{id}p{page}"/>"#,
+            r#"<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">"#,
+            r#"<wps:wsp><wps:cNvSpPr/><wps:spPr>"#,
+            r#"<a:xfrm{xfrm}><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>"#,
+            r#"{geom}{fill}{line}{kage}"#,
+            r#"</wps:spPr>{body}<wps:bodyPr rot="0" anchor="ctr"/></wps:wsp>"#,
+            r#"</a:graphicData></a:graphic></wp:anchor></w:drawing>"#
+        ),
+        px = emu(sp.x_mm),
+        py = emu(sp.y_mm),
+        cx = cx,
+        cy = cy,
+        id = id,
+        page = sp.page,
+        xfrm = xfrm,
+        geom = geom,
+        fill = fill,
+        line = line,
+        kage = kage,
+        body = body
+    )
+}
+
+/// [`shape_anchor_xml`] を、段落の控え(anchors)にそのまま置ける形で返す
+pub fn shape_anchor_run(sp: &kumihan::DocShape, id: usize) -> String {
+    let inner = shape_anchor_xml(sp, id);
+    wrap_with_ns(&inner, &Default::default()).unwrap_or(inner)
+}

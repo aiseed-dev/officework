@@ -95,6 +95,22 @@ a closing bracket or after an opening one.
 Neither `openpyxl` nor `python-docx` can produce a PDF at all. The commercial
 libraries that can are priced accordingly.
 
+### Shapes in a document
+
+`python-docx` can only place pictures. This engine can place real shapes —
+rectangles, rounded rectangles, ellipses, arrows, diamonds and lines — pinned
+to the page, with fill, outline, text inside, rotation, opacity and a drop
+shadow:
+
+```python
+d.add_shape("roundRect", 25, 80, 40, 25, fill="DDE7F0", line="2E5A87",
+            text="Approved", shadow=True)
+```
+
+Coordinates and sizes are millimetres from the top-left of the page. They are
+written as DrawingML, so Word and LibreOffice open them as shapes you can
+select and edit — not as a flattened picture. They also come out in the PDF.
+
 ### Charts
 
 Charts are **drawn by this library**, as shapes, rather than written as an

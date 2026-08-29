@@ -391,6 +391,23 @@ impl Board {
 /// (2026-08-29 発注者「gpui を使うか vello を使うかはテストをして決めて
 /// いけばいい」)。形を作るのは表を刷るときと同じ [`zukei`] なので、
 /// ここで見た形は紙に出る形と同じです。
+/// **ページに貼り付く図形を、組み上がった紙面へ足す。**
+///
+/// `y_mm` は紙の**上から**の mm(文書の図形はそう持ちます)。紙面は下からの
+/// mm なので、ここで裏返します。
+pub(crate) fn doc_shapes(leaf: &mut pdfw::Leaf, shapes: &[kumihan::DocShape], h_mm: f32) {
+    let mut l1 = Ink { leaf };
+    for sp in shapes {
+        // `zukei` は図形自身のずらしを足すので、写しで 0 にしてから渡します
+        let mut look = sp.look.clone();
+        look.dx_px = 0.0;
+        look.dy_px = 0.0;
+        look.width_px = sp.w_mm * 96.0 / 25.4;
+        look.height_px = sp.h_mm * 96.0 / 25.4;
+        zukei(&mut l1, &look, sp.x_mm, h_mm - sp.y_mm, 1.0);
+    }
+}
+
 pub fn shapes_leaf(shapes: &[(book::SheetShape, f32, f32)], paper: Paper) -> pdfw::Leaf {
     let mut board = Board::new(paper);
     {

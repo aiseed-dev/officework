@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         font: None,
         size_pt: None,
         page: None,
-        sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
+        sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
         blocks: vec![
             Block::Para(Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,

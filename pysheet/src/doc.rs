@@ -1123,6 +1123,72 @@ impl PyDoc {
 
     /// 本文の末尾に表を組む(rows × cols)。各セルは空の段落を1つ持つ
     /// (docx のセルは段落無しでは立たない)。列の幅は等分。
+    /// **ページに貼り付く図形を置く。**
+    ///
+    /// 2026-08-29 発注者「docx の図形をやって」。python-docx には無い所です
+    /// (本家は画像しか置けません)。
+    ///
+    /// 置き場と大きさは紙の左上からの mm です。形は xlsx と同じ名前
+    /// ("rect" / "roundRect" / "ellipse" / "rightArrow" / "diamond" / "line")。
+    #[pyo3(signature = (kind, x, y, width, height, *, fill=None, line=None,
+                        line_width=1.5, text=None, rotation=0.0, opacity=1.0,
+                        shadow=false, page=0))]
+    #[allow(clippy::too_many_arguments)]
+    fn add_shape(
+        &self,
+        kind: &str,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        fill: Option<String>,
+        line: Option<String>,
+        line_width: f32,
+        text: Option<String>,
+        rotation: f32,
+        opacity: f32,
+        shadow: bool,
+        page: usize,
+    ) -> PyResult<()> {
+        const KATA: [&str; 6] =
+            ["rect", "roundRect", "ellipse", "rightArrow", "diamond", "line"];
+        if !KATA.contains(&kind) {
+            return Err(PyValueError::new_err(format!(
+                "図形に「{kind}」はありません。使えるのは {}",
+                KATA.join(" / ")
+            )));
+        }
+        if !(width > 0.0 && height > 0.0) {
+            return Err(PyValueError::new_err("図形の幅と高さは正の数で"));
+        }
+        let mut g = lock(&self.inner)?;
+        g.doc.shapes.push(kumihan::DocShape {
+            page,
+            x_mm: x,
+            y_mm: y,
+            w_mm: width,
+            h_mm: height,
+            look: book::SheetShape {
+                kind: kind.into(),
+                fill: fill.map(|c| c.trim_start_matches('#').to_string()),
+                line: line.map(|c| c.trim_start_matches('#').to_string()),
+                line_w: line_width.max(0.1),
+                text,
+                rot: rotation,
+                alpha: opacity.clamp(0.0, 1.0),
+                shadow,
+                ..Default::default()
+            },
+        });
+        Ok(())
+    }
+
+    /// 置いた図形の数
+    #[getter]
+    fn shapes(&self) -> PyResult<usize> {
+        Ok(lock(&self.inner)?.doc.shapes.len())
+    }
+
     fn add_table(&self, rows: usize, cols: usize) -> PyResult<PyTable> {
         if rows == 0 || cols == 0 {
             return Err(PyValueError::new_err("表は1行1列から"));

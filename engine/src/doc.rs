@@ -727,6 +727,12 @@ pub struct Document {
     pub watermark: Option<String>,
     /// 手描きの線(描画タブのペン)。docx では自由曲線の図形になる
     pub ink: Vec<Stroke>,
+    /// **ページに貼り付く図形**(四角・楕円・矢印・チャートなど)。
+    /// 本文を編集しても動きません — Word のページ固定の図形と同じです。
+    ///
+    /// 2026-08-29 発注者「docx の図形をやって」。それまで文書は
+    /// [`Stroke`](手描きの筆)しか持てず、xlsx の側にだけ図形がありました
+    pub shapes: Vec<DocShape>,
     /// 変更履歴の書き手(w:ins / w:del の author)。
     /// 保存用の写しにだけ入る — 印([`TRK_INS_S`] 等)と対で使う
     pub track_author: Option<String>,
@@ -915,6 +921,28 @@ pub const TRK_INS_E: char = '\u{E011}';
 pub const TRK_DEL_S: char = '\u{E012}';
 /// 削除の終わり
 pub const TRK_DEL_E: char = '\u{E013}';
+
+/// **ページに貼り付く図形1つ。** 座標はそのページの中の mm(紙の左上が原点)。
+///
+/// 形・塗り・線・中の文字は [`book::SheetShape`] をそのまま使います。
+/// 表と文書で図形の形が食い違わないためです — 組む所も
+/// [`paper::grid`] の同じ1本を通ります。
+///
+/// `look` の `at` と `dx_px` / `dy_px` は**使いません**。文書の図形は
+/// セルに留めるのではなく、ページの上の mm で置くからです。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct DocShape {
+    /// 何ページ目か(0始まり)
+    pub page: usize,
+    /// ページの左上からの mm
+    pub x_mm: f32,
+    pub y_mm: f32,
+    /// 大きさ(mm)
+    pub w_mm: f32,
+    pub h_mm: f32,
+    /// 形・塗り・線・中の文字
+    pub look: book::SheetShape,
+}
 
 /// 手描きの1筆。座標は**そのページの中**の mm(紙の左上が原点)。
 /// ページに貼り付く(本文を編集しても動かない)— Word のページ固定の図形と同じ。
