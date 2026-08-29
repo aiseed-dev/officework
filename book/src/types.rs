@@ -1097,7 +1097,8 @@ pub struct SheetShape {
     /// xlsx へは srgbClr の子 a:alpha として書く
     pub alpha: f32,
     /// 影(右下への落ち影)。xlsx の a:outerShdw と往復。
-    /// 紙(PDF)は輪郭だけの方針なので影は画面と xlsx だけ
+    /// **紙にも出ます**(2026-08-29 発注者「紙にも影を出すようにして」)。
+    /// それまでは「紙は輪郭だけ」の方針で画面と xlsx だけでした
     pub shadow: bool,
 }
 

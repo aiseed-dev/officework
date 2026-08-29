@@ -319,19 +319,33 @@ impl Ink<'_> {
     }
 
     fn line(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, w: f32, rgb: (f32, f32, f32)) {
+        self.line_a(x1, y1, x2, y2, w, rgb, 1.0);
+    }
+
+    /// 透明度つきの線。図形の影と `SheetShape::alpha` が使います
+    fn line_a(
+        &mut self, x1: f32, y1: f32, x2: f32, y2: f32, w: f32, rgb: (f32, f32, f32), a: f32,
+    ) {
         self.leaf.rules.push(pdfw::Rule {
-            x1_mm: x1, y1_mm: y1, x2_mm: x2, y2_mm: y2, w_mm: w, rgb,
+            x1_mm: x1, y1_mm: y1, x2_mm: x2, y2_mm: y2, w_mm: w, rgb, a,
         });
     }
 
     fn fill(&mut self, x: f32, y: f32, w: f32, h: f32, rgb: (f32, f32, f32)) {
-        self.leaf.fills.push(pdfw::Fill { x_mm: x, y_mm: y, w_mm: w, h_mm: h, rgb });
+        self.leaf.fills.push(pdfw::Fill {
+            x_mm: x, y_mm: y, w_mm: w, h_mm: h, rgb, ..Default::default()
+        });
     }
 
     /// 好きな形の塗り(円グラフの扇・傾いた棒)
     fn poly(&mut self, points: Vec<(f32, f32)>, rgb: (f32, f32, f32)) {
+        self.poly_a(points, rgb, 1.0);
+    }
+
+    /// 透明度つきの塗り
+    fn poly_a(&mut self, points: Vec<(f32, f32)>, rgb: (f32, f32, f32), a: f32) {
         if points.len() >= 3 {
-            self.leaf.polys.push(pdfw::Poly { points, rgb });
+            self.leaf.polys.push(pdfw::Poly { points, rgb, a });
         }
     }
 }
@@ -1055,12 +1069,35 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
             "path" => sp.fill.is_some(),
             _ => true,
         };
+        // **影は本体の下。** 同じ形を灰色で右下へずらして先に描きます。
+        // 画面(`SheetShape::to_svg`)と同じ 4px・#9E9E9E・濃さ 0.35 です。
+        //
+        // 2026-08-29 発注者「紙にも影を出すようにして」。それまでは
+        // 「紙は輪郭だけ」の決めで、影は画面と xlsx だけでした
+        let usu = sp.alpha.clamp(0.0, 1.0);
+        if sp.shadow && !pts.is_empty() {
+            let zure = 4.0 * 25.4 / 96.0 * scale;
+            let kage: Vec<(f32, f32)> =
+                pts.iter().map(|(x, y)| (x + zure, y - zure)).collect();
+            let hai = (0.62, 0.62, 0.62);
+            if closed && sp.fill.is_some() {
+                l1.poly_a(kage.clone(), hai, 0.35);
+            }
+            if pen.is_some() {
+                let ends = if closed { kage.len() } else { kage.len().saturating_sub(1) };
+                for i in 0..ends {
+                    let (x1, y1) = kage[i];
+                    let (x2, y2) = kage[(i + 1) % kage.len()];
+                    l1.line_a(x1, y1, x2, y2, pen_w, hai, 0.35);
+                }
+            }
+        }
         // **塗ってから輪郭。** 2026-08-27 まで紙は輪郭だけでした。
         // 図をこちらで描く(発注者「チャートは python による独自描画」)
         // には、棒も扇も中が塗れないと形になりません
         if closed {
             if let Some(c) = sp.fill.as_deref().and_then(hex_rgb) {
-                l1.poly(pts.clone(), c);
+                l1.poly_a(pts.clone(), c, usu);
             }
         }
         // 折れ線は辺ごとに引きます。閉じる形なら最後の点から先頭へ1本
@@ -1069,7 +1106,7 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
             for i in 0..ends {
                 let (x1, y1) = pts[i];
                 let (x2, y2) = pts[(i + 1) % pts.len()];
-                l1.line(x1, y1, x2, y2, pen_w, pen);
+                l1.line_a(x1, y1, x2, y2, pen_w, pen, usu);
             }
         }
         // 図形の中の文字(テキストボックス)。揃えの指定があれば従います

@@ -107,7 +107,7 @@ pub fn egaku_with(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, font: Option<&[u8
     // **塗りが先、罫線が後、絵はその間。** pdfw と同じ順です —
     // 順が違うと線が塗りに隠れます
     for f in &leaf.fills {
-        cx.set_paint(iro(f.rgb, 1.0));
+        cx.set_paint(iro(f.rgb, f.a));
         let y = (h_mm - f.y_mm - f.h_mm) as f64 * mm;
         cx.fill_rect(&Rect::new(
             f.x_mm as f64 * mm,
@@ -130,7 +130,7 @@ pub fn egaku_with(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, font: Option<&[u8
             path.line_to(ten(*q));
         }
         path.close_path();
-        cx.set_paint(iro(p.rgb, 1.0));
+        cx.set_paint(iro(p.rgb, p.a));
         cx.fill_path(&path);
     }
 
@@ -145,7 +145,7 @@ pub fn egaku_with(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, font: Option<&[u8
             end_cap: Cap::Butt,
             ..Default::default()
         });
-        cx.set_paint(iro(r.rgb, 1.0));
+        cx.set_paint(iro(r.rgb, r.a));
         cx.stroke_path(&path);
     }
 
@@ -329,14 +329,17 @@ mod tests {
             fills: vec![Fill {
                 x_mm: 10.0, y_mm: 10.0, w_mm: 30.0, h_mm: 20.0,
                 rgb: (0.87, 0.92, 0.98),
+                ..Default::default()
             }],
             rules: vec![Rule {
                 x1_mm: 10.0, y1_mm: 10.0, x2_mm: 40.0, y2_mm: 10.0,
                 w_mm: 0.3, rgb: (0.2, 0.4, 0.7),
+                ..Default::default()
             }],
             polys: vec![Poly {
                 points: vec![(50.0, 10.0), (70.0, 10.0), (60.0, 30.0)],
                 rgb: (0.9, 0.5, 0.2),
+                ..Default::default()
             }],
             ..Default::default()
         }

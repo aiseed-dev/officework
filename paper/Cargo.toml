@@ -49,3 +49,7 @@ required-features = ["e"]
 [[example]]
 name = "zukei_hakaru"
 required-features = ["e"]
+
+[[example]]
+name = "kage_kurabe"
+required-features = ["e"]

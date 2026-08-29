@@ -210,6 +210,34 @@ NOTE: 単価は税抜きです。
         alpha: 1.0,
         ..Default::default()
     });
+    // 影と半透明。**紙は長くどちらも無視していました**(2026-08-29)
+    zu.shapes_new.push(book::SheetShape {
+        at: book::Pos::new(1, 1),
+        dx_px: 220.0,
+        dy_px: 300.0,
+        width_px: 110.0,
+        height_px: 70.0,
+        kind: "roundRect".into(),
+        fill: Some("4472C4".into()),
+        line: Some("2E5A87".into()),
+        line_w: 1.5,
+        alpha: 1.0,
+        shadow: true,
+        ..Default::default()
+    });
+    zu.shapes_new.push(book::SheetShape {
+        at: book::Pos::new(1, 1),
+        dx_px: 290.0,
+        dy_px: 330.0,
+        width_px: 110.0,
+        height_px: 70.0,
+        kind: "ellipse".into(),
+        fill: Some("C0504D".into()),
+        line: Some("8C3A38".into()),
+        line_w: 1.5,
+        alpha: 0.5,
+        ..Default::default()
+    });
     // 折れ線(スパークライン)。points を使う道
     zu.shapes_new.push(book::SheetShape {
         at: book::Pos::new(1, 1),
@@ -258,6 +286,7 @@ NOTE: 単価は税抜きです。
                 y2_mm: 195.0,
                 w_mm: 0.3,
                 rgb: (0.2, 0.2, 0.2),
+                ..Default::default()
             }],
             ..Default::default()
         },

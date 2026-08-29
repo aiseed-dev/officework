@@ -222,6 +222,33 @@ pub fn write_pages<W: std::io::Write>(
     }
 
     let f_name = Name(b"F1");
+    // **使う濃さを頁ごとに数え上げます。** PDF の透明度は資源に置いた
+    // ExtGState を名前で呼ぶ形なので、先に何が要るか分かっていないと
+    // 資源が書けません(資源は中身より先に書き終わります)
+    let usu_ids: Vec<Vec<(u8, Ref)>> = pages
+        .iter()
+        .map(|p| {
+            let mut v: Vec<u8> = p
+                .fills
+                .iter()
+                .map(|f| f.a)
+                .chain(p.polys.iter().map(|g| g.a))
+                .chain(p.rules.iter().map(|r| r.a))
+                .map(usu_key)
+                .collect();
+            // **薄い物が1つも無ければ資源を作りません。** 逆に1つでも
+            // あれば、不透明へ戻すための 255 も要ります(戻す先が資源に
+            // 無いと、開く道具が「A255 が無い」と言って読めません)
+            if v.iter().all(|k| *k == 255) {
+                return Vec::new();
+            }
+            v.push(255);
+            v.sort_unstable();
+            v.dedup();
+            v.into_iter().map(|k| (k, id())).collect()
+        })
+        .collect();
+
     for (i, page) in pages.iter().enumerate() {
         let (pw, ph) = page.size_mm.unwrap_or((page_w_mm, page_h_mm));
         let mut pg = pdf.page(page_ids[i]);
@@ -238,6 +265,13 @@ pub fn write_pages<W: std::io::Write>(
                 }
                 xo.finish();
             }
+            if !usu_ids[i].is_empty() {
+                let mut gs = res.ext_g_states();
+                for (k, r) in &usu_ids[i] {
+                    gs.pair(Name(format!("A{k}").as_bytes()), *r);
+                }
+                gs.finish();
+            }
             res.finish();
         }
         pg.finish();
@@ -253,7 +287,12 @@ pub fn write_pages<W: std::io::Write>(
         // **色と太さは変わったときだけ書きます。** 升ごとに書き直すと、
         // 90 行の表で中身が 10 倍に膨れます(2026-08-27 に実物で測りました)
         let mut fill_now: Option<(f32, f32, f32)> = None;
+        // **透明度は資源の名前で切り替えます**(PDF は色に透明度を持てず、
+        // ExtGState という別の入れ物に置く決まりです)。使った濃さだけ
+        // 資源に並べ、変わったときだけ名前を書きます
+        let mut usu_now: Option<u8> = None;
         for f in &page.fills {
+            usu(&mut c, &mut usu_now, f.a);
             if fill_now != Some(f.rgb) {
                 c.set_fill_rgb(f.rgb.0, f.rgb.1, f.rgb.2);
                 fill_now = Some(f.rgb);
@@ -267,6 +306,7 @@ pub fn write_pages<W: std::io::Write>(
             if rest.is_empty() {
                 continue;
             }
+            usu(&mut c, &mut usu_now, g.a);
             if fill_now != Some(g.rgb) {
                 c.set_fill_rgb(g.rgb.0, g.rgb.1, g.rgb.2);
                 fill_now = Some(g.rgb);
@@ -289,6 +329,7 @@ pub fn write_pages<W: std::io::Write>(
         // **罫線を先に引きます**(字の下)
         let mut pen: Option<((f32, f32, f32), f32)> = None;
         for r in &page.rules {
+            usu(&mut c, &mut usu_now, r.a);
             if pen != Some((r.rgb, r.w_mm)) {
                 c.set_stroke_rgb(r.rgb.0, r.rgb.1, r.rgb.2);
                 c.set_line_width(pt(r.w_mm));
@@ -368,6 +409,12 @@ pub fn write_pages<W: std::io::Write>(
         // よく縮みます
         let body = deflate(&c.finish());
         pdf.stream(content_ids[i], &body).filter(Filter::FlateDecode);
+        // **濃さの中身。** 塗りと線の両方に掛けます(図形の影は塗りと
+        // 輪郭が一緒に薄くなるので、片方だけでは色が濃く出ます)
+        for (k, r) in &usu_ids[i] {
+            let a = *k as f32 / 255.0;
+            pdf.ext_graphics(*r).non_stroking_alpha(a).stroking_alpha(a);
+        }
     }
 
     // ④ 書体。Type0(CID)— 字の対応は PDF の側が持ちます
@@ -866,10 +913,12 @@ mod tests {
             fills: vec![Fill {
                 x_mm: 20.0, y_mm: 250.0, w_mm: 60.0, h_mm: 8.0,
                 rgb: (0.87, 0.92, 0.98),
+                ..Default::default()
             }],
             rules: vec![Rule {
                 x1_mm: 20.0, y1_mm: 250.0, x2_mm: 80.0, y2_mm: 250.0,
                 w_mm: 0.3, rgb: (0.2, 0.4, 0.7),
+                ..Default::default()
             }],
             ..Default::default()
         };
@@ -943,6 +992,15 @@ pub struct Rule {
     pub w_mm: f32,
     /// 線の色(0〜1 の RGB)。既定は黒
     pub rgb: (f32, f32, f32),
+    /// 不透明度(0〜1、1 = 不透明)。図形の影と `SheetShape::alpha` が使います
+    pub a: f32,
+}
+
+impl Default for Rule {
+    fn default() -> Self {
+        // **透明度の既定は1**です。0 にすると足した所が全部消えます
+        Rule { x1_mm: 0.0, y1_mm: 0.0, x2_mm: 0.0, y2_mm: 0.0, w_mm: 0.0, rgb: (0.0, 0.0, 0.0), a: 1.0 }
+    }
 }
 
 /// **紙1枚に置く物。** `pdf_writer` の `Page` と名前がぶつかるので別の名前です
@@ -974,6 +1032,14 @@ pub struct Fill {
     pub h_mm: f32,
     /// 0〜1 の RGB
     pub rgb: (f32, f32, f32),
+    /// 不透明度(0〜1、1 = 不透明)
+    pub a: f32,
+}
+
+impl Default for Fill {
+    fn default() -> Self {
+        Fill { x_mm: 0.0, y_mm: 0.0, w_mm: 0.0, h_mm: 0.0, rgb: (0.0, 0.0, 0.0), a: 1.0 }
+    }
 }
 
 /// **好きな形の塗り。** 点を順に結んで閉じ、中を塗ります。
@@ -981,12 +1047,20 @@ pub struct Fill {
 /// 円は多角形に刻んで渡します(細かく刻めば目では区別が付きません)。
 /// PDF は曲線も持てますが、点の列だけで済ませると呼ぶ側が1つの形で
 /// 何でも描けます。
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Poly {
     /// 左下からの mm
     pub points: Vec<(f32, f32)>,
     /// 0〜1 の RGB
     pub rgb: (f32, f32, f32),
+    /// 不透明度(0〜1、1 = 不透明)
+    pub a: f32,
+}
+
+impl Default for Poly {
+    fn default() -> Self {
+        Poly { points: Vec::new(), rgb: (0.0, 0.0, 0.0), a: 1.0 }
+    }
 }
 
 /// 紙に置く画像。左下からの mm。
@@ -1147,6 +1221,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                 y2_mm: pp.height_mm - (r[3] - off),
                 w_mm: 0.2,
                 rgb: (0.0, 0.0, 0.0),
+                ..Default::default()
             });
         }
     }
@@ -1222,6 +1297,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                 w_mm: at[2],
                 h_mm: at[3],
                 rgb: rgb(color),
+                ..Default::default()
             });
         }
     }
@@ -1239,6 +1315,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                 w_mm: at[2],
                 h_mm: at[3],
                 rgb: rgb(color),
+                ..Default::default()
             });
         }
     }
@@ -1306,4 +1383,19 @@ fn page_of(offsets: &[f32], y: f32, height_mm: f32) -> usize {
         }
     }
     k
+}
+
+/// 濃さを 0〜255 の目盛りに。**同じ濃さは同じ資源**を使い回すためです
+fn usu_key(a: f32) -> u8 {
+    (a.clamp(0.0, 1.0) * 255.0).round() as u8
+}
+
+/// 濃さが変わったときだけ書きます。255(不透明)は既定なので何も書きません
+fn usu(c: &mut Content, ima: &mut Option<u8>, a: f32) {
+    let k = usu_key(a);
+    if *ima == Some(k) || (ima.is_none() && k == 255) {
+        return;
+    }
+    c.set_parameters(Name(format!("A{k}").as_bytes()));
+    *ima = Some(k);
 }
