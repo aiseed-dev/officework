@@ -10,7 +10,7 @@ It does not compete on the number of features: complex work is left to AI and Py
 Microsoft's Excel and Word are a closed world: the data, the look and the code are all locked inside one file.
 officework unpicks that — it is an Office that **sets data, templates, Python and AI free**.
 
-The four are each made independent:
+The four are split into modules, so each is easy to swap:
 
 * *Data* — documents are AsciiDoc (`.adoc`), and spreadsheets can live in the same plain-text form (`.sheet.adoc`). Any tool can read them, and diffs work. xlsx / docx are read and written as delivery formats, without breaking their formatting
 * *Templates* — the look of a document is separated from its text. The same text takes a different shape just by swapping the template
@@ -21,6 +21,9 @@ The engine also installs on its own (`pip install officework`): it reads and wri
 You watch the result, finish it by hand, and drive a live workbook from Python.
 
 The app is *one binary, officework*.
+It is still under development: not yet in a state to publish even as an alpha, and no builds are distributed. What is published and usable today is the engine (`pip install officework`). To try the app, build it from source (see "Building from source" below).
+
+Where it stands, this is how it works.
 You open a folder and edit documents and spreadsheets in tabs of the same window.
 The two editors inside have names: *writer* for documents, *calc* for spreadsheets.
 Which one opens a file is decided by its name:
