@@ -29,7 +29,7 @@ There are two editors: *writer* for documents and *calc* for spreadsheets. You o
 
 === Confidential files and AI
 
-Built-in enterprise AI such as Microslop 365 Copilot answers by first searching everything the company has — mail, documents, meetings, chat (the mechanism called RAG).
+Built-in enterprise AI such as Microsoft 365 Copilot answers by first searching data across the company — mail, documents, meetings, chat (the mechanism called RAG).
 Its safety rests on one claim: the AI respects existing access rights.
 
 That premise is wrong.
@@ -37,7 +37,7 @@ A person's mailbox receives all kinds of information from all kinds of people.
 How much of it may be passed on, and to whom, is a judgment the person who knows the content makes case by case.
 That judgment cannot be written down in advance as machine permissions.
 So an AI that cross-searches the whole company on the strength of permissions will mix material people should not see into its summaries.
-Microslop answers with permission audits, sensitivity labels and monitoring — but that is the same premise restated: that the judgment can be captured in settings.
+Microsoft's countermeasures are permission audits, sensitivity labels and monitoring — but those restate the same premise: that the judgment can be captured in settings.
 Secrets cannot be handled with confidence in this shape.
 
 officework is designed the other way around.
@@ -49,11 +49,11 @@ officework is designed the other way around.
 === Python in Excel, and the VBA that stayed
 
 The other reason is Python in Excel.
-Microslop, too, chose Python as the new way to script a spreadsheet.
-But that Python runs in Microslop's cloud, not on your machine: every time the formula computes, the cells it reads are sent outside.
+Microsoft, too, chose Python as the new way to script a spreadsheet.
+But that Python runs in Microsoft's cloud, not on your machine: every time the formula computes, the cells it reads leave the machine.
 And VBA is still there.
-The "open = execute" path that macro viruses have used — known for decades — stays open for compatibility's sake.
-Adding a new road while leaving the old hole open does not make things safe.
+Defences have been added over the years — macros in files from the internet are now blocked by default — but the mechanism itself, a document that carries code, is kept for compatibility's sake.
+Adding a new road while keeping the old mechanism does not make things safe.
 Even VBA could close the "open = execute" path by moving its source out of the file.
 But that alone would not make it safe.
 VBA can call anything in Windows, so wherever the code lives, once it runs it can do anything.
@@ -63,7 +63,7 @@ As long as compatibility had to be kept, this hole could not be closed.
 Now, though, there is AI.
 Old VBA macros are exactly the kind of thing an AI can rewrite into a new form.
 Compatibility is no longer a reason the hole cannot be closed.
-Microslop is simply not doing the work.
+That it stays open is now a matter of judgment, not a technical wall.
 
 officework carries no VBA compatibility, so it could settle both at once.
 
@@ -74,7 +74,7 @@ officework carries no VBA compatibility, so it could settle both at once.
 
 Software developers have had a tool for keeping history (git) for nearly thirty years.
 Who changed what, and when — all of it recorded, any old version restorable.
-Office files cannot use it: they are compressed blobs whose differences cannot be read.
+With Office files it barely works: they are compressed blobs whose differences cannot be read.
 So offices around the world still manage versions by filename — "final", "fixed", "(2)" — to this day.
 
 officework's documents and workbooks are plain text, so git just works.
