@@ -980,6 +980,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("backups_books_ended_without", "沒能儲存就結束的活頁簿備份(選一個就開啟)"),
     ("how_often_keep_auto", "自動復原備份的間隔(不會覆寫原檔)"),
     ("showing_where_paper_ends", "顯示紙張斷開的地方(目前一張紙就放得下)"),
+    ("page_break_preview_on", "分頁預覽(分隔 {} 條)。標準可還原"),
+    ("normal_view_on", "已回到標準檢視"),
     ("page_break_lines_off", "已不再顯示紙張斷開的地方"),
     ("fit_paper_wins_over", "配合紙張大小(選了之後，會比縮放列印的 % 優先)"),
     ("recording_changes_press_again", "開始記錄變更(再按一次，會把跟開始時的差異記下來，並列出清單)"),

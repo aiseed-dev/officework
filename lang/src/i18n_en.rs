@@ -980,6 +980,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("backups_books_ended_without", "Backups of books that ended without saving (choose one to open it)"),
     ("how_often_keep_auto", "How often to keep an auto-recovery backup (the original is never overwritten)"),
     ("showing_where_paper_ends", "Showing where the paper ends (right now it all fits on one sheet)"),
+    ("page_break_preview_on", "Page break preview ({} breaks). Normal view puts it back"),
+    ("normal_view_on", "Normal view"),
     ("page_break_lines_off", "Page break lines off"),
     ("fit_paper_wins_over", "Fit to paper (this wins over the scaling % when set)"),
     ("recording_changes_press_again", "Recording changes (press again to record the difference from where you started and list it)"),

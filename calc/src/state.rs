@@ -388,6 +388,7 @@ impl Calc {
             show_headers: true,
             show_zeros: true,
             show_breaks: false,
+            page_preview: false,
             // 既定は5分。JO_RECOVER_SECS で縮められる(点検と、
             // 落ちやすい環境での駆け込み用)
             recover_secs: std::env::var("JO_RECOVER_SECS")

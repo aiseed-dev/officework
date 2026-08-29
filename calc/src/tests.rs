@@ -1837,7 +1837,30 @@ mod pivot_tests {
         });
     }
 
-        /// **図形を束ねる / 解く。束ねたら一緒に動き、一緒に消える。**
+        /// **表示の切り替え。** 改ページプレビューは切れ目を出して縮め、
+    /// 標準は元に戻します(2026-08-30 発注者「改ページプレビュー」)。
+    #[gpui::test]
+    fn the_view_tab_switches_between_normal_and_page_break(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            assert!(!this.page_preview, "はじめは標準のはず");
+            let moto = this.zoom;
+            this.run_cmd("view-pagebreak", cx);
+            assert!(this.page_preview, "切り替わっていない");
+            assert!(this.show_breaks, "切れ目が出ていない");
+            assert!(this.zoom < moto, "縮んでいない");
+            // もう一度押しても何も起きない(同じ表示なので)
+            let z = this.zoom;
+            this.run_cmd("view-pagebreak", cx);
+            assert_eq!(this.zoom, z);
+            this.run_cmd("view-normal", cx);
+            assert!(!this.page_preview, "標準に戻っていない");
+            assert!(!this.show_breaks, "切れ目が残っている");
+            assert_eq!(this.zoom, moto, "倍率が戻っていない");
+        });
+    }
+
+    /// **図形を束ねる / 解く。束ねたら一緒に動き、一緒に消える。**
     ///
     /// 2026-08-29 発注者「グループ化」。同じ札で入切します(本家と同じ)。
     #[gpui::test]

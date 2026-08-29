@@ -156,6 +156,7 @@ impl Calc {
         // Python タブ(2026-08-09)
         "rec-toggle", "py-new", "py-list", "py-folder", "func-list", "ribbon-list",
         "prot-doc", "prot-book", "prot-encrypt", "prot-sign",
+        "view-normal", "view-pagebreak",
         "zoom-in", "zoom-out", "zoom100", "ui-bigger", "ui-smaller", "formula-bar", "show-headings", "show-zeros",
         // 左右のパネル(2026-08-15)
         "show-left", "show-right",
@@ -375,7 +376,8 @@ impl Calc {
         "setfilter", "clear-filter",
         "trace-prec", "trace-dep", "remove-arrows", "pivot-select",
         "coauth-mode", "co-showcomment", "co-chat", "co-history",
-        "prot-doc", "prot-book", "prot-encrypt", "prot-sign", "ai-where",
+        "prot-doc", "prot-book", "prot-encrypt", "prot-sign",
+        "view-normal", "view-pagebreak", "ai-where",
         "recover", "recover-every", "csv-kind", "autofit-col", "autofit-row",
         "read-only-rec",
         // 「許可する操作」は保護中にこそ触る。**鍵を掛けていないので
@@ -3492,6 +3494,28 @@ impl Calc {
                 ));
             }
             // 紙の切れ目を画面に見せる(本家の改ページプレビューの破線)
+            // **表示の切り替え**(2026-08-30 発注者「改ページプレビュー」)。
+            // 改ページプレビューは、紙の切れ目を出して少し縮めた表示です。
+            // 標準に戻すと切れ目を消して倍率を戻します。
+            //
+            // 本家は「紙に載る所だけを大きく見せる」造りですが、こちらは
+            // **同じ表を別の見え方にする**だけにしました。表の外を隠すと、
+            // 隠れた所を触れなくなり、戻し方も覚えることになります
+            "view-normal" | "view-pagebreak" => {
+                let preview = id == "view-pagebreak";
+                if self.page_preview == preview {
+                    return;
+                }
+                self.page_preview = preview;
+                self.show_breaks = preview;
+                self.zoom = if preview { 0.6 } else { 1.0 };
+                self.status = if preview {
+                    let (r, c) = self.page_breaks_now();
+                    ui::tf!("page_break_preview_on", r.len() + c.len()).into()
+                } else {
+                    ui::t!("normal_view_on").into()
+                };
+            }
             "show-breaks" => {
                 self.show_breaks = !self.show_breaks;
                 let (r, c) = self.page_breaks_now();

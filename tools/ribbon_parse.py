@@ -49,7 +49,7 @@ RIBBON = ROOT / "face/src/ribbon.rs"
 class Cmd(NamedTuple):
     """1つのボタン。`kind` は書き方の名前そのもの。
 
-    * `"c"` 押す(押せる) / `"t"` 入切(押せる)
+    * `"c"` 押す(押せる) / `"t"` 入切(押せる) / `"m"` どれか1つ(押せる)
     * `"x"` 押す(灰色) / `"xt"` 入切(灰色) / `"xm"` どれか1つ(灰色)
 
     **灰色に id は無い** — `x(label, icon)` の2引数で、実物も `id: ""` を入れる。
@@ -62,7 +62,7 @@ class Cmd(NamedTuple):
 
     @property
     def ready(self) -> bool:
-        return self.kind in ("c", "t")
+        return self.kind in ("c", "t", "m")
 
 
 class Tab(NamedTuple):
@@ -81,8 +81,9 @@ _WS = re.compile(r"\s+")
 _LINE_COMMENT = re.compile(r"//[^\n]*")
 _TAB_OPEN = re.compile(r"Tab\s*\{\s*name:\s*" + _STR + r"\s*,\s*cmds:\s*&\[")
 _TAB_CLOSE = re.compile(r"\]\s*\}")
-# **押せるボタンは3つ引数**(id, 札, 絵)。`c` は押す物、`t` は入切の物
-_C = re.compile(r"(c|t)\(\s*" + _STR + r"\s*,\s*" + _STR + r"\s*,\s*" + _STR + r"\s*,?\s*\)")
+# **押せるボタンは3つ引数**(id, 札, 絵)。`c` は押す物、`t` は入切の物、
+# `m` はどれか1つ(標準 / 改ページ プレビュー。2026-08-30)
+_C = re.compile(r"(c|t|m)\(\s*" + _STR + r"\s*,\s*" + _STR + r"\s*,\s*" + _STR + r"\s*,?\s*\)")
 # **灰色は2つ引数**(札, 絵)。id を持たない。`x` は押す物、`xt` は入切、
 # `xm` はどれか1つ(標準 / 改ページ プレビュー)
 _X = re.compile(r"(x|xt|xm)\(\s*" + _STR + r"\s*,\s*" + _STR + r"\s*,?\s*\)")

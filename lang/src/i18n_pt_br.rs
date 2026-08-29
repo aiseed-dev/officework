@@ -980,6 +980,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("backups_books_ended_without", "Cópias de livros que terminaram sem serem guardados (escolha uma para a abrir)"),
     ("how_often_keep_auto", "De quanto em quanto tempo salvar uma cópia de recuperação (o original nunca é escrito por cima)"),
     ("showing_where_paper_ends", "A mostrar onde o papel acaba (por agora cabe tudo numa folha)"),
+    ("page_break_preview_on", "Visualização de quebras ({} quebras). Normal restaura"),
+    ("normal_view_on", "Exibição normal"),
     ("page_break_lines_off", "Linhas de quebra de página desligadas"),
     ("fit_paper_wins_over", "Ajustar ao papel (quando ligado, ganha ao % de escala)"),
     ("recording_changes_press_again", "Registrando as alterações (pressione de novo para gravar a diferença desde o início e ver a lista)"),

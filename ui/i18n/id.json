@@ -2244,5 +2244,7 @@
  "grouped_shapes": "{} bentuk dikelompokkan (tekan lagi untuk melepas)",
  "ungrouped_shapes": "{} bentuk dilepas dari kelompok",
  "book_structure_locked": "Struktur buku kerja dikunci (lembar tidak dapat diubah)",
- "book_structure_unlocked": "Struktur buku kerja dibuka"
+ "book_structure_unlocked": "Struktur buku kerja dibuka",
+ "page_break_preview_on": "Pratinjau hentian halaman ({} hentian). Normal mengembalikannya",
+ "normal_view_on": "Tampilan normal"
 }

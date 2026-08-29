@@ -2244,5 +2244,7 @@
  "grouped_shapes": "Đã nhóm {} hình (nhấn lại để bỏ nhóm)",
  "ungrouped_shapes": "Đã bỏ nhóm {} hình",
  "book_structure_locked": "Đã khoá cấu trúc sổ làm việc (không thể thay đổi trang tính)",
- "book_structure_unlocked": "Đã mở khoá cấu trúc sổ làm việc"
+ "book_structure_unlocked": "Đã mở khoá cấu trúc sổ làm việc",
+ "page_break_preview_on": "Xem trước ngắt trang ({} ngắt). Chuẩn sẽ trả lại",
+ "normal_view_on": "Dạng xem chuẩn"
 }

@@ -335,6 +335,8 @@ VENDOR_JA = {
     "shapes-merge|shapes-merge": "図形を結合",
     "img-group|img-group": "グループ化",
     "prot-book|protect-workbook": "ブックを保護する",
+    "view-normal|view-normal": "標準",
+    "view-pagebreak|view-pagebreak": "改ページ プレビュー",
     "|img-align": "配置",
     "|img-group": "グループ化",
     "|img-movebkwd": "背面ヘ移動",
@@ -936,7 +938,7 @@ use super::ribbon::{{{{import_of}}}};
     # **使った書き方だけを取り込む。** 使わない物を書くと警告になり、
     # clippy の門(-D warnings)で止まります
     body = "\n".join(out)
-    used = [k for k in ("c", "t", "x", "xt", "xm")
+    used = [k for k in ("c", "t", "m", "x", "xt", "xm")
               if re.search(rf"^\s*{k}\(", body, re.M)]
     print(body.replace("{import_of}", ", ".join(used + ["Tab"])))
 

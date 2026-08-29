@@ -980,6 +980,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("backups_books_ended_without", "保存できずに終わったブックのバックアップ(選ぶと開きます)"),
     ("how_often_keep_auto", "自動復旧のバックアップを取る間隔(元のファイルは上書きしません)"),
     ("showing_where_paper_ends", "紙の切れ目を出します(いまは1枚に収まっています)"),
+    ("page_break_preview_on", "改ページ プレビュー(切れ目 {} 本)。標準で戻ります"),
+    ("normal_view_on", "標準の表示に戻しました"),
     ("page_break_lines_off", "紙の切れ目を消しました"),
     ("fit_paper_wins_over", "紙に収める(選ぶと拡大縮小印刷の % より優先します)"),
     ("recording_changes_press_again", "変更履歴を記録します(もう一度押すと、開始時点との差を刻んで一覧を出します)"),

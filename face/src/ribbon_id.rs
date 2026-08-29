@@ -10,7 +10,7 @@
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
-use super::ribbon::{c, t, x, xt, xm, Tab};
+use super::ribbon::{c, t, m, x, xt, Tab};
 
 pub const WRITER: &[Tab] = &[
     Tab { name: "File", cmds: &[
@@ -370,8 +370,8 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "Lihat", cmds: &[
         c("sheet-view", "Tampilan sheet", "sheet-view"),
-        xm("Normal", "view-normal"),
-        xm("Pratinjau Jeda Halaman", "view-pagebreak"),
+        m("view-normal", "Normal", "view-normal"),
+        m("view-pagebreak", "Pratinjau Jeda Halaman", "view-pagebreak"),
         c("zoom-in", "Perbesar", "zoom-in"),
         c("zoom-out", "Perkecil", "zoom-out"),
         c("zoom100", "Zoom ke 100%", "zoom100"),

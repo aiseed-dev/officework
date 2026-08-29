@@ -980,6 +980,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("backups_books_ended_without", "Bản sao lưu của những sổ tính kết thúc mà chưa lưu (chọn một cái để mở)"),
     ("how_often_keep_auto", "Khoảng cách giữa hai lần lưu bản khôi phục tự động (không ghi đè bản gốc)"),
     ("showing_where_paper_ends", "Hiện chỗ hết tờ giấy (hiện giờ vừa đúng một tờ)"),
+    ("page_break_preview_on", "Xem trước ngắt trang ({} ngắt). Chuẩn sẽ trả lại"),
+    ("normal_view_on", "Dạng xem chuẩn"),
     ("page_break_lines_off", "Đã tắt đường ngắt trang"),
     ("fit_paper_wins_over", "Thu vừa tờ giấy (chọn thì cái này được ưu tiên hơn % phóng to thu nhỏ khi in)"),
     ("recording_changes_press_again", "Bắt đầu ghi lịch sử thay đổi (bấm lần nữa để ghi lại phần khác với lúc bắt đầu và xem danh sách)"),

@@ -2244,5 +2244,7 @@
  "grouped_shapes": "{} 個の図形を束ねました(もう一度押すと解きます)",
  "ungrouped_shapes": "{} 個の図形の束を解きました",
  "book_structure_locked": "ブックの構造を守ります(シートの追加・削除・並べ替えができません)",
- "book_structure_unlocked": "ブックの構造の保護を外しました"
+ "book_structure_unlocked": "ブックの構造の保護を外しました",
+ "page_break_preview_on": "改ページ プレビュー(切れ目 {} 本)。標準で戻ります",
+ "normal_view_on": "標準の表示に戻しました"
 }

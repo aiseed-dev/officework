@@ -2244,5 +2244,7 @@
  "grouped_shapes": "{} formes groupées (appuyez de nouveau pour dissocier)",
  "ungrouped_shapes": "{} formes dissociées",
  "book_structure_locked": "Structure du classeur verrouillée (les feuilles ne peuvent pas être modifiées)",
- "book_structure_unlocked": "Structure du classeur déverrouillée"
+ "book_structure_unlocked": "Structure du classeur déverrouillée",
+ "page_break_preview_on": "Aperçu des sauts de page ({} sauts). Normal rétablit",
+ "normal_view_on": "Affichage normal"
 }

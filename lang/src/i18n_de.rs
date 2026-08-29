@@ -980,6 +980,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("backups_books_ended_without", "Sicherungen von Mappen, die ohne Speichern beendet wurden (Auswählen öffnet sie)"),
     ("how_often_keep_auto", "Abstand, in dem eine Sicherung zur automatischen Wiederherstellung angelegt wird (das Original wird nicht überschrieben)"),
     ("showing_where_paper_ends", "Zeigt, wo das Blatt endet (im Moment passt alles auf ein Blatt)"),
+    ("page_break_preview_on", "Seitenumbruchvorschau ({} Umbrüche). Normal stellt zurück"),
+    ("normal_view_on", "Normale Ansicht"),
     ("page_break_lines_off", "Die Blattgrenzen sind ausgeblendet"),
     ("fit_paper_wins_over", "Auf das Blatt einpassen (das geht dem Druckmaßstab in % vor)"),
     ("recording_changes_press_again", "Die Änderungen werden aufgezeichnet (noch einmal drücken: der Unterschied zum Startpunkt wird festgehalten und aufgelistet)"),

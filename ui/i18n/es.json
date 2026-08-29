@@ -2244,5 +2244,7 @@
  "grouped_shapes": "{} formas agrupadas (pulse de nuevo para desagrupar)",
  "ungrouped_shapes": "Se desagruparon {} formas",
  "book_structure_locked": "Estructura del libro bloqueada (no se pueden cambiar las hojas)",
- "book_structure_unlocked": "Estructura del libro desbloqueada"
+ "book_structure_unlocked": "Estructura del libro desbloqueada",
+ "page_break_preview_on": "Vista previa de salto de página ({} saltos). Normal la restaura",
+ "normal_view_on": "Vista normal"
 }

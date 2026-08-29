@@ -980,6 +980,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("backups_books_ended_without", "Kaydedilmeden kapanan kitapların yedekleri (seçince açılır)"),
     ("how_often_keep_auto", "Otomatik kurtarma yedeğinin alınma sıklığı (aslının üzerine yazılmaz)"),
     ("showing_where_paper_ends", "Kâğıdın bittiği yerler gösteriliyor (şu anda her şey tek sayfaya sığıyor)"),
+    ("page_break_preview_on", "Sayfa sonu önizleme ({} son). Normal geri alır"),
+    ("normal_view_on", "Normal görünüm"),
     ("page_break_lines_off", "Kâğıt sonu çizgileri kaldırıldı"),
     ("fit_paper_wins_over", "Kâğıda sığdır (seçilirse ölçekleme yüzdesinin önüne geçer)"),
     ("recording_changes_press_again", "Değişiklikler kaydediliyor (bir daha basarsanız başlangıca göre farklar yazılır ve listelenir)"),

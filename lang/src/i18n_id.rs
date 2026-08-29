@@ -980,6 +980,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("backups_books_ended_without", "Salinan buku kerja yang berakhir tanpa tersimpan (pilih satu untuk membukanya)"),
     ("how_often_keep_auto", "Selang waktu penyimpanan salinan pemulihan otomatis (berkas aslinya tidak ditimpa)"),
     ("showing_where_paper_ends", "Menampilkan tempat kertas berakhir (saat ini semuanya muat dalam satu lembar)"),
+    ("page_break_preview_on", "Pratinjau hentian halaman ({} hentian). Normal mengembalikannya"),
+    ("normal_view_on", "Tampilan normal"),
     ("page_break_lines_off", "Garis tempat kertas berakhir dimatikan"),
     ("fit_paper_wins_over", "Muatkan ke kertas (bila dipilih, ini didahulukan daripada % perbesaran cetak)"),
     ("recording_changes_press_again", "Mencatat riwayat perubahan (tekan sekali lagi untuk mencatat selisihnya dari titik awal dan menampilkan daftarnya)"),

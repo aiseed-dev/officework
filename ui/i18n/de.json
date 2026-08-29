@@ -2244,5 +2244,7 @@
  "grouped_shapes": "{} Formen gruppiert (erneut drücken zum Aufheben)",
  "ungrouped_shapes": "Gruppierung von {} Formen aufgehoben",
  "book_structure_locked": "Arbeitsmappenstruktur gesperrt (Blätter können nicht geändert werden)",
- "book_structure_unlocked": "Arbeitsmappenstruktur entsperrt"
+ "book_structure_unlocked": "Arbeitsmappenstruktur entsperrt",
+ "page_break_preview_on": "Seitenumbruchvorschau ({} Umbrüche). Normal stellt zurück",
+ "normal_view_on": "Normale Ansicht"
 }

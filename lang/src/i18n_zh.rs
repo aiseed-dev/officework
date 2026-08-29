@@ -980,6 +980,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("backups_books_ended_without", "没能保存就结束了的工作簿的备份（选中就打开）"),
     ("how_often_keep_auto", "留自动恢复备份的间隔（不会覆盖原件）"),
     ("showing_where_paper_ends", "显示纸张断开的地方（现在一张纸就装得下）"),
+    ("page_break_preview_on", "分页预览(分隔 {} 条)。标准可还原"),
+    ("normal_view_on", "已回到标准视图"),
     ("page_break_lines_off", "已经不再显示纸张断开的线了"),
     ("fit_paper_wins_over", "凑到纸张大小（选中以后，比缩放打印的 % 更优先）"),
     ("recording_changes_press_again", "开始记录修改（再按一次，会把跟开始时的差异记下来，并列成一张单子）"),

@@ -980,6 +980,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("backups_books_ended_without", "Copie delle cartelle di lavoro chiuse senza salvare (sceglierne una per aprirla)"),
     ("how_often_keep_auto", "Ogni quanto tenere una copia di ripristino automatico (l'originale non viene mai sovrascritto)"),
     ("showing_where_paper_ends", "Mostra dove finisce la pagina (per ora sta tutto in una pagina)"),
+    ("page_break_preview_on", "Anteprima interruzioni di pagina ({} interruzioni). Normale ripristina"),
+    ("normal_view_on", "Visualizzazione normale"),
     ("page_break_lines_off", "Righe di fine pagina nascoste"),
     ("fit_paper_wins_over", "Adatta alla pagina (se attivo, ha la precedenza sulla % di ingrandimento o riduzione della stampa)"),
     ("recording_changes_press_again", "Registrazione delle modifiche attiva (premendo di nuovo si registra la differenza rispetto all'inizio e se ne mostra l'elenco)"),

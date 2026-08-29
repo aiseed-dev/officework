@@ -980,6 +980,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("backups_books_ended_without", "Copies des classeurs fermés sans avoir été enregistrés (choisissez-en une pour l'ouvrir)"),
     ("how_often_keep_auto", "Intervalle entre deux copies de récupération automatique (l'original n'est jamais écrasé)"),
     ("showing_where_paper_ends", "Affiche là où le papier s'arrête (pour l'instant tout tient sur une page)"),
+    ("page_break_preview_on", "Aperçu des sauts de page ({} sauts). Normal rétablit"),
+    ("normal_view_on", "Affichage normal"),
     ("page_break_lines_off", "Les traits de saut de page sont masqués"),
     ("fit_paper_wins_over", "Ajuster au papier (une fois choisi, cela l'emporte sur le % de mise à l'échelle)"),
     ("recording_changes_press_again", "Les modifications sont enregistrées (appuyez de nouveau pour consigner l'écart avec le point de départ et en afficher la liste)"),

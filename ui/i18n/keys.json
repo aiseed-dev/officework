@@ -3912,6 +3912,14 @@
   "kind": "msg"
  },
  {
+  "key": "page_break_preview_on",
+  "kind": "msg"
+ },
+ {
+  "key": "normal_view_on",
+  "kind": "msg"
+ },
+ {
   "key": "page_break_lines_off",
   "kind": "msg"
  },

@@ -55,6 +55,11 @@ pub(crate) const fn c(id: &'static str, label: &'static str, icon: &'static str)
 pub(crate) const fn t(id: &'static str, label: &'static str, icon: &'static str) -> Cmd {
     Cmd { id, label, icon, ready: true, kind: Kind::Toggle }
 }
+/// 表示の切り替え(押せる)。同じ組の中で1つだけが押された形になります
+pub(crate) const fn m(id: &'static str, label: &'static str, icon: &'static str) -> Cmd {
+    Cmd { id, label, icon, ready: true, kind: Kind::Mode }
+}
+
 /// 押すボタン(まだ押せない灰色)
 #[allow(dead_code)] // 灰色ゼロの今は未使用だが、ロケール表の生成が使う形
 pub(crate) const fn x(label: &'static str, icon: &'static str) -> Cmd {
@@ -571,8 +576,8 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "View", cmds: &[
         c("sheet-view", "Sheet View", "sheet-view"),
-        xm("Normal", "view-normal"),
-        xm("Page Break Preview", "view-pagebreak"),
+        m("view-normal", "Normal", "view-normal"),
+        m("view-pagebreak", "Page Break Preview", "view-pagebreak"),
         c("zoom-in", "Zoom in", "zoom-in"),
         c("zoom-out", "Zoom out", "zoom-out"),
         c("zoom100", "Zoom to 100%", "zoom100"),

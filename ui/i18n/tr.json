@@ -2244,5 +2244,7 @@
  "grouped_shapes": "{} şekil gruplandı (çözmek için yeniden basın)",
  "ungrouped_shapes": "{} şeklin grubu çözüldü",
  "book_structure_locked": "Çalışma kitabı yapısı kilitlendi (sayfalar değiştirilemez)",
- "book_structure_unlocked": "Çalışma kitabı yapısının kilidi açıldı"
+ "book_structure_unlocked": "Çalışma kitabı yapısının kilidi açıldı",
+ "page_break_preview_on": "Sayfa sonu önizleme ({} son). Normal geri alır",
+ "normal_view_on": "Normal görünüm"
 }

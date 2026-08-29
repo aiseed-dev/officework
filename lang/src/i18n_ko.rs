@@ -980,6 +980,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("backups_books_ended_without", "저장하지 못하고 끝난 문서의 사본(고르면 엽니다)"),
     ("how_often_keep_auto", "자동 복구 사본을 두는 간격(원본은 덮어쓰지 않습니다)"),
     ("showing_where_paper_ends", "종이가 끊기는 자리를 보여 줍니다(지금은 한 장에 들어갑니다)"),
+    ("page_break_preview_on", "페이지 나누기 미리 보기(나누기 {}개). 기본 보기로 돌아갑니다"),
+    ("normal_view_on", "기본 보기로 돌아왔습니다"),
     ("page_break_lines_off", "종이가 끊기는 자리를 지웠습니다"),
     ("fit_paper_wins_over", "종이에 맞추기(고르면 확대·축소 인쇄의 %보다 앞섭니다)"),
     ("recording_changes_press_again", "변경 이력을 기록합니다(한 번 더 누르면 시작 시점과의 차이를 적어 목록으로 냅니다)"),
