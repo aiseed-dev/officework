@@ -589,17 +589,31 @@ def projected_pie(ws, at, values, labels=None, *, title=None, width=340.0,
     c = Chart(width, height, title=title)
     l, t, r, b = c.plot
     # 円は左 6 割、棒は右
-    c.pad = dict(c.pad, right=c.width - (l + (r - l) * 0.58))
-    c.arcs([atai[i] for i in maru] + [sum(atai[i] for i in bou)],
-           labels=[na[i] for i in maru] + ["その他"], color=color)
+    hidari = l + (r - l) * 0.58
+    c.pad = dict(c.pad, right=c.width - hidari)
+    maru_atai = [atai[i] for i in maru] + [sum(atai[i] for i in bou)]
+    c.arcs(maru_atai, labels=[na[i] for i in maru] + ["その他"], color=color)
+    # **「その他」の扇の両端**を、結ぶ線のために覚えます(`arcs` と同じ置き方 —
+    # 12時から時計回りで、最後の扇が「その他」です)
+    ccx, ccy = (l + hidari) / 2.0, (t + b) / 2.0
+    rad = min(hidari - l, b - t) / 2.0
+    zen = float(sum(maru_atai)) or 1.0
+    hajime = -math.pi / 2.0 + 2.0 * math.pi * (zen - maru_atai[-1]) / zen
+    owari = hajime + 2.0 * math.pi * maru_atai[-1] / zen
     c.pad = dict(c.pad, right=c.width - r)
 
     # 棒は右端に積み上げ
     bx = l + (r - l) * 0.78
     bw = (r - l) * 0.16
     goukei = sum(atai[i] for i in bou) or 1.0
-    y = t + (b - t) * 0.15
+    y0 = t + (b - t) * 0.15
     takasa = (b - t) * 0.7
+    # **円の「その他」と棒を結びます**(Excel と同じ見せ方)。棒より先に
+    # 引くので、線の端が棒に隠れて始点と終点がきれいに収まります
+    for a_kaku, by in ((hajime, y0), (owari, y0 + takasa)):
+        c.line(ccx + rad * math.cos(a_kaku), ccy + rad * math.sin(a_kaku),
+               bx, by, line="B0B0B0", line_w=0.8)
+    y = y0
     for k, i in enumerate(bou):
         h = takasa * atai[i] / goukei
         c.rect(bx, y, bw, h, fill=c.color(len(maru) + k))
