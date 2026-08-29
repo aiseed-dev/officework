@@ -106,12 +106,12 @@ See the link:docs/en/calc-manual.adoc[calc manual].
 
 [source,console]
 ----
-$ pip install officework      # engine, bridge, MCP server. No GUI (a few MB)
+$ pip install officework      # everything except the GUI (a few MB)
 ----
 
-That is enough to read and write xlsx and docx. The bridge that drives a running screen from Python, and the MCP server that lets an AI drive it, are in the same package.
+That is enough to read and write xlsx and docx. Driving a running app from Python, and the MCP server that lets an AI do the same, are in the same package.
 
-*The screen (aiseed office) comes in the shape your machine wants* — `.deb`, `.tar.gz`, `.dmg`, `setup.exe`, Flatpak. Install one and `officework` starts it. If the engine is already installed, the bridge connects to it as is.
+*The screen (aiseed office) comes in the shape your machine wants* — `.deb`, `.tar.gz`, `.dmg`, `setup.exe`, Flatpak. Install one and `officework` starts it. If the engine is already installed, the two connect as they are.
 
 [NOTE]
 ====
@@ -232,7 +232,7 @@ $ pip install "officework[mcp]"   # then register `officework-mcp` with your cli
 ----
 
 It hands the AI a fixed set of spreadsheet and document tools; none of them runs arbitrary code.
-It talks to the app over the same mechanism as the Python bridge, under the same rules: everything stays on this machine, and no TCP port is opened.
+It talks to the app over the same mechanism Python uses, under the same rules: everything stays on this machine, and no TCP port is opened.
 
 It embeds in other applications too.
 Since 2026-08-10 the engine can stand in for the xlsx helper inside https://github.com/genspark-ai/genoffice[genoffice], an Electron spreadsheet, with no patch to genoffice at all — one environment variable.
@@ -269,15 +269,14 @@ d.save("out.docx")
 `replace()` is the one to reach for when filling in a form: it keeps each run's formatting, so a bold field label next to a plain value stays that way.
 Assigning to `.text` replaces the whole paragraph and gives it the first run's formatting.
 
-To drive a running calc from the outside, use the bridge instead.
-That one does need the app.
+A running calc can also be driven from the outside (this one needs the app running):
 
 [source,python]
 ----
 from officework import calc as xw   # Book / Range, in the style of xlwings
 ----
 
-The bridge is not Python-only.
+This connection is not Python-only.
 The app opens a socket (`$XDG_RUNTIME_DIR/officework/officework.sock`): write one line of JSON, get one line back.
 Anything that can write JSON can connect, whatever the language — the MCP server is just one more client of this socket.
 There is no verb that runs arbitrary code.

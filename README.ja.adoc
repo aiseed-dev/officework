@@ -114,15 +114,15 @@ git を入れない人にも損はありません — 字のままのファイ�
 
 [source,console]
 ----
-$ pip install officework      # エンジン・橋・MCP。画面は入りません(数 MB)
+$ pip install officework      # 画面以外の一式が入ります(数 MB)
 ----
 
 xlsx / docx を読み書きする所までは、これだけで足ります。
-動いている画面を Python から操る橋と、AI に操らせる MCP も同じ荷物に入っています。
+動いているアプリを Python から操る仕組みと、AI に操らせる MCP サーバも同じ荷物に入っています。
 
 *画面(aiseed office)は、その機械に合う形で。*
 `.deb` / `.tar.gz` / `.dmg` / `setup.exe` / Flatpak を入れると、`officework` と打って立ち上がります。
-エンジンを先に入れてあれば、橋はそのまま繋がります。
+エンジンを先に入れてあれば、そのまま繋がって動きます。
 
 [NOTE]
 ====
@@ -249,7 +249,7 @@ $ pip install "officework[mcp]"   # あとは officework-mcp を AI 側に登録
 ----
 
 渡すのは表と文書の決まった道具だけで、任意のコードを走らせる道具は置いていません。
-アプリとの間は Python の橋と同じ仕組みを使うので、決まりも同じです — このパソコンの中だけで動き、TCP は開きません。
+アプリとの間は、Python から操るときと同じ仕組みを使うので、決まりも同じです — このパソコンの中だけで動き、TCP は開きません。
 
 *別のアプリの中にも入ります。* Electron 製の表計算link:https://github.com/genspark-ai/genoffice[genoffice] は、xlsx の読み書きを別プロセスの助手に任せる作りです。
 その助手をこのエンジンに差し替えられます — *genoffice 側のコードは1行も変えず*、環境変数を1つ設定するだけ。
@@ -296,7 +296,7 @@ d.save("out.docx")
 from officework import calc as xw   # xlwings 流の Book / Range
 ----
 
-橋は Python の専用ではありません。
+この接続は Python 専用ではありません。
 アプリはソケット(`$XDG_RUNTIME_DIR/officework/officework.sock`)を開いていて、JSON を1行書くと JSON を1行返します。
 JSON を書ければ、どの言語のどのアプリからでも繋げます — MCP サーバもこのソケットの客の1つです。
 任意のコードを走らせる命令は置いていません。
