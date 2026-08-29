@@ -256,10 +256,10 @@ pub const WRITER: &[Tab] = &[
         // **本家にはもう1つ「折り返し」があります**(`img-wrapping`)。
         // 絵の実体がまだ無いので入れていません — 表の側にも無いボタンで、
         // 絵を描いて icons.rs に足せば、ここに1行足すだけで出ます
-        x("Bring forward", "img-movefrwd"),
-        x("Send Backward", "img-movebkwd"),
-        x("Alignment", "img-align"),
-        x("Group", "img-group"),
+        c("img-movefrwd", "Bring forward", "img-movefrwd"),
+        c("img-movebkwd", "Send Backward", "img-movebkwd"),
+        c("img-align", "Alignment", "img-align"),
+        c("img-group", "Group", "img-group"),
         x("Merge shapes", "shapes-merge"),
         c("watermark", "Edit watermark", "watermark"),
         c("pagecolor", "Change page colour", "pagecolor"),

@@ -3451,3 +3451,82 @@ mod docx_formula_tests {
 
 
 }
+
+#[cfg(test)]
+mod doc_shape_tests {
+    use crate::*;
+
+    fn hako(page: usize, x: f32, y: f32) -> kumihan::DocShape {
+        kumihan::DocShape {
+            page,
+            x_mm: x,
+            y_mm: y,
+            w_mm: 40.0,
+            h_mm: 25.0,
+            look: book::SheetShape {
+                kind: "rect".into(),
+                fill: Some("DDE7F0".into()),
+                line: Some("2E5A87".into()),
+                line_w: 1.5,
+                alpha: 1.0,
+                ..Default::default()
+            },
+        }
+    }
+
+    /// **文書の図形が、リボンのレイアウトの札で動く。**
+    ///
+    /// 2026-08-30。それまで文書は図形を画面に出せず、5つの札が灰色でした。
+    #[gpui::test]
+    fn the_layout_tab_moves_document_shapes(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.doc.shapes = vec![hako(0, 25.0, 60.0), hako(0, 80.0, 60.0)];
+        });
+        // 重なり順は並び。前面へ移動で入れ替わる
+        w.update(cx, |this, cx| {
+            this.shape_sel = Some(0);
+            this.run_cmd("img-movefrwd", cx);
+            assert_eq!(this.doc.shapes[1].x_mm, 25.0, "並びが変わっていない");
+            assert_eq!(this.shape_sel, Some(1), "選びが付いてきていない");
+        });
+        // 束ねる → 解く
+        w.update(cx, |this, cx| {
+            this.shape_sel = Some(0);
+            this.run_cmd("img-group", cx);
+            let g = this.doc.shapes[0].look.group;
+            assert_ne!(g, 0, "束ねていない");
+            assert_eq!(this.doc.shapes[1].look.group, g, "番号が揃っていない");
+            this.run_cmd("img-group", cx);
+            assert_eq!(this.doc.shapes[0].look.group, 0, "解けていない");
+        });
+        // 左でそろえる
+        w.update(cx, |this, cx| {
+            this.shape_sel = Some(0);
+            this.run_cmd("img-align", cx);
+            assert_eq!(this.doc.shapes[0].x_mm, this.doc.shapes[1].x_mm, "そろっていない");
+        });
+        // 図形を選んでいなければ、理由を言って断る
+        w.update(cx, |this, cx| {
+            this.shape_sel = None;
+            this.status = "".into();
+            this.run_cmd("img-movefrwd", cx);
+            assert!(!this.status.is_empty(), "図形なしで押して何も言わない");
+        });
+    }
+
+    /// **図形をつまんで動かすと、その場所に留まる。**
+    #[gpui::test]
+    fn dragging_a_shape_moves_it(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.doc.shapes = vec![hako(0, 25.0, 60.0)];
+            // 掴んだ所と図形の位置を控える(クリックが立てるのと同じ形)
+            this.shape_drag = Some((0, (30.0, 65.0), (25.0, 60.0)));
+            this.shape_move(50.0, 85.0);
+            assert!((this.doc.shapes[0].x_mm - 45.0).abs() < 0.01, "x: {}", this.doc.shapes[0].x_mm);
+            assert!((this.doc.shapes[0].y_mm - 80.0).abs() < 0.01, "y: {}", this.doc.shapes[0].y_mm);
+            assert!(this.dirty, "動かしたのに変更の印が立っていない");
+        });
+    }
+}

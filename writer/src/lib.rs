@@ -536,6 +536,14 @@ pub struct Writer {
     form_notes: Vec<String>,
     /// ページの繰り上げ量(紙と同じ折り方)。筆のページ⇔巻物の変換に使う
     page_offsets: Vec<f32>,
+    /// 図形の絵の控え(SVG の鍵 → 画。calc と同じ作り)
+    shape_cache: std::cell::RefCell<
+        std::collections::HashMap<usize, std::sync::Arc<gpui::Image>>,
+    >,
+    /// いま選んでいる図形(`doc.shapes` の番号)
+    shape_sel: Option<usize>,
+    /// 図形をつまんでいる間(番号, つかんだ画面の位置mm, つかんだ図形の位置mm)
+    shape_drag: Option<(usize, (f32, f32), (f32, f32))>,
     /// 各ページに**載る最初の行の y**(巻物の座標。1枚目は -∞)。
     ///
     /// **どの枚に属するかはこちらで決める。** `page_offsets` は「紙の上端」で、

@@ -11,6 +11,37 @@ impl Writer {
         let x_mm = (rel_x - 28.0) / pxmm - self.pg.left_mm;
         let y_mm = (rel_y - 14.0) / pxmm + self.scroll_mm;
 
+        // **図形を先に見ます**(2026-08-30)。図形は本文の上に乗るので、
+        // 本文の当たり判定より先に見ないと、図形を押しても本文が動きます。
+        // 後に描いた図形が上なので、後ろから探します
+        let ate = self.doc.shapes.iter().enumerate().rev().find(|(_, sp)| {
+            let oy = self
+                .page_offsets
+                .get(sp.page)
+                .copied()
+                .unwrap_or(sp.page as f32 * self.pg.h_mm);
+            let (sx, sy) = (sp.x_mm - self.pg.left_mm, sp.y_mm + oy);
+            x_mm >= sx && x_mm <= sx + sp.w_mm && y_mm >= sy && y_mm <= sy + sp.h_mm
+        });
+        match ate {
+            Some((i, sp)) => {
+                let oy = self
+                    .page_offsets
+                    .get(sp.page)
+                    .copied()
+                    .unwrap_or(sp.page as f32 * self.pg.h_mm);
+                self.shape_sel = Some(i);
+                self.shape_drag = Some((i, (x_mm, y_mm), (sp.x_mm, sp.y_mm + oy)));
+                self.status = ui::t!("shape_selected_drag_move").into();
+                return;
+            }
+            None => {
+                // 図形の外を押したら選びを外します
+                self.shape_sel = None;
+                self.shape_drag = None;
+            }
+        }
+
         // 表のセルの中なら、そのセルの編集に切り替える
         let hit_box = self.page.cell_boxes.iter().find(|b| {
             x_mm >= b.x_mm && x_mm <= b.x_mm + b.w_mm
@@ -244,6 +275,9 @@ impl Writer {
     /// 「押しても何も起きないボタン」を止める仕掛けが消える**
     #[allow(dead_code)]
     pub(crate) const HANDLED: &'static [&'static str] = &[
+        // 図形の並べ替え・整列・束ね(2026-08-30。文書にも図形が入るように
+        // なったので、リボンから届くようにしました)
+        "img-movefrwd", "img-movebkwd", "img-align", "img-group",
         "open", "save", "undo", "redo", "selectall", "pdf",
         "bold", "italic", "underline", "strikeout", "fontcolor",
         "superscript", "subscript", "highlight", "clearstyle",
@@ -1002,5 +1036,113 @@ impl Writer {
     pub(crate) fn do_font_smaller(&mut self, _: &ui::FontSmaller, _: &mut Window, cx: &mut Context<Self>) {
         self.run_cmd("decfont", cx);
         cx.notify();
+    }
+}
+
+impl Writer {
+    /// **つまんでいる図形を動かす。** `x_mm` / `y_mm` は巻物の座標です。
+    ///
+    /// 2026-08-30。図形はページに貼り付くので、動かした先のページに
+    /// 留め直します(紙をまたいで引くと、そのページの中の位置になります)。
+    pub(crate) fn shape_move(&mut self, x_mm: f32, y_mm: f32) {
+        let Some((i, (gx, gy), (ox, oy))) = self.shape_drag else { return };
+        let (nx, ny) = (ox + (x_mm - gx), oy + (y_mm - gy));
+        // 巻物の y から、どのページの中の何 mm かに直します
+        let page = self
+            .page_offsets
+            .iter()
+            .rposition(|o| ny + 0.01 >= *o)
+            .unwrap_or(0);
+        let oy2 = self.page_offsets.get(page).copied().unwrap_or(0.0);
+        let Some(sp) = self.doc.shapes.get_mut(i) else { return };
+        let mae = (sp.page, sp.x_mm, sp.y_mm);
+        sp.page = page;
+        sp.x_mm = nx.max(0.0);
+        sp.y_mm = (ny - oy2).max(0.0);
+        if mae != (sp.page, sp.x_mm, sp.y_mm) {
+            self.dirty = true;
+        }
+    }
+}
+
+impl Writer {
+    /// **図形を束ねる / 束を解く。**(2026-08-30)
+    ///
+    /// 文書では Ctrl+クリックで束ねる仕掛けをまだ持たないので、
+    /// **選んでいる図形と同じページの図形**をまとめて束ねます。
+    /// 同じ束を選んでいれば解きます。
+    pub(crate) fn shape_group(&mut self) {
+        let Some(i) = self.shape_sel else {
+            self.status = ui::tf!("select_more_shapes_first", 1).into();
+            return;
+        };
+        let Some(sp) = self.doc.shapes.get(i) else { return };
+        let (page, g) = (sp.page, sp.look.group);
+        let nakama: Vec<usize> = self
+            .doc
+            .shapes
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.page == page)
+            .map(|(k, _)| k)
+            .collect();
+        if nakama.len() < 2 && g == 0 {
+            self.status = ui::tf!("select_more_shapes_first", 2).into();
+            return;
+        }
+        let toku = g != 0;
+        let atarashii = if toku {
+            0
+        } else {
+            self.doc.shapes.iter().map(|s| s.look.group).max().unwrap_or(0) + 1
+        };
+        let mut n = 0;
+        for k in nakama {
+            if toku && self.doc.shapes[k].look.group != g {
+                continue;
+            }
+            self.doc.shapes[k].look.group = atarashii;
+            n += 1;
+        }
+        self.dirty = true;
+        self.status = if toku {
+            ui::tf!("ungrouped_shapes", n).into()
+        } else {
+            ui::tf!("grouped_shapes", n).into()
+        };
+    }
+
+    /// **同じページの図形を左でそろえる。**(2026-08-30)
+    ///
+    /// 表の側は6通りの揃えと2通りの分布を一覧から選ばせますが、文書では
+    /// まだ束の選び方が無いので、まず左揃えだけです。
+    pub(crate) fn shape_align_doc(&mut self) {
+        let Some(i) = self.shape_sel else {
+            self.status = ui::tf!("select_more_shapes_first", 1).into();
+            return;
+        };
+        let Some(sp) = self.doc.shapes.get(i) else { return };
+        let page = sp.page;
+        let idx: Vec<usize> = self
+            .doc
+            .shapes
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.page == page)
+            .map(|(k, _)| k)
+            .collect();
+        if idx.len() < 2 {
+            self.status = ui::tf!("select_more_shapes_first", 2).into();
+            return;
+        }
+        let hidari = idx
+            .iter()
+            .map(|&k| self.doc.shapes[k].x_mm)
+            .fold(f32::MAX, f32::min);
+        for k in &idx {
+            self.doc.shapes[*k].x_mm = hidari;
+        }
+        self.dirty = true;
+        self.status = ui::t!("aligned_left").into();
     }
 }

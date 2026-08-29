@@ -98,7 +98,8 @@ impl Writer {
     pub(crate) const DIALOG_IDS: &'static [&'static str] = &[
         "replace", "watermark", "bookmarks", "co-addcomment", "co-history",
         "co-chat", "py-list", "form-combo",
-        "form-dropdown", "form-name", "ruby", "insequation",
+        "form-dropdown", "form-name", "ruby",
+        "insequation",
     ];
 
     /// **小窓(… の側)が開いているか。** [`Self::DIALOG_IDS`] の腕が立てる
@@ -497,6 +498,36 @@ impl Writer {
             // calc がグラフを matplotlib に任せるのと同じ分業)。TeX が入って
             // いればそちらで組み、無ければ matplotlib に落ちる。
             // 打った原文は絵と一緒に持ち越すので、開き直しても直せる
+            // **図形の並べ替え・整列・束ね・結合**(2026-08-30)。
+            // 文書の図形はページに貼り付くので、重なり順は `doc.shapes` の
+            // 並びです(後に描いた方が前)
+            "img-movefrwd" | "img-movebkwd" => {
+                let Some(i) = self.shape_sel else {
+                    self.status = ui::tf!("select_more_shapes_first", 1).into();
+                    return;
+                };
+                let n = self.doc.shapes.len();
+                if n <= i {
+                    return;
+                }
+                let j = if id == "img-movefrwd" {
+                    (i + 1).min(n - 1)
+                } else {
+                    i.saturating_sub(1)
+                };
+                if j != i {
+                    self.doc.shapes.swap(i, j);
+                    self.shape_sel = Some(j);
+                    self.dirty = true;
+                }
+                self.status = if id == "img-movefrwd" {
+                    ui::t!("moved_forward").into()
+                } else {
+                    ui::t!("moved_backward").into()
+                };
+            }
+            "img-group" => self.shape_group(),
+            "img-align" => self.shape_align_doc(),
             "insequation" => {
                 self.switch_target(Target::Body);
                 self.eq_ed = Editor::new("");

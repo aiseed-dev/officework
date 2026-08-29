@@ -1387,6 +1387,63 @@ impl Render for Writer {
                 .bg(rgb(0x165E83)));
         }
 
+        // **ページに貼り付く図形**(2026-08-30)。calc と同じ SVG の道です —
+        // 大きさを織り込んで作るので、拡げても鮮明です。
+        // 選んでいる図形には枠を出します
+        for (i, sp) in self.doc.shapes.iter().enumerate() {
+            let oy = self
+                .page_offsets
+                .get(sp.page)
+                .copied()
+                .unwrap_or(sp.page as f32 * self.pg.h_mm);
+            // 模型は mm、画面は px。図形の見た目は px で作るので直します
+            let mut look = sp.look.clone();
+            look.width_px = sp.w_mm * PX_PER_MM;
+            look.height_px = sp.h_mm * PX_PER_MM;
+            let pad = look.pad();
+            let svg = look.to_svg();
+            let key = {
+                use std::hash::{Hash, Hasher};
+                let mut h = std::collections::hash_map::DefaultHasher::new();
+                svg.hash(&mut h);
+                h.finish() as usize
+            };
+            let src = self
+                .shape_cache
+                .borrow_mut()
+                .entry(key)
+                .or_insert_with(|| {
+                    std::sync::Arc::new(gpui::Image::from_bytes(
+                        gpui::ImageFormat::Svg,
+                        svg.into_bytes(),
+                    ))
+                })
+                .clone();
+            let (x, y) = (sp.x_mm * pxmm, (sp.y_mm + oy) * pxmm);
+            let (w, h) = (sp.w_mm * pxmm, sp.h_mm * pxmm);
+            let pd = pad / PX_PER_MM * pxmm;
+            paper = paper.child(
+                gpui::img(src)
+                    .absolute()
+                    .left(px(x - pd))
+                    .top(px(y - pd))
+                    .w(px(w + pd * 2.0))
+                    .h(px(h + pd * 2.0)),
+            );
+            if self.shape_sel == Some(i) {
+                paper = paper.child(
+                    div()
+                        .absolute()
+                        .left(px(x - 2.0))
+                        .top(px(y - 2.0))
+                        .w(px(w + 4.0))
+                        .h(px(h + 4.0))
+                        .border_2()
+                        .border_color(rgb(0x1B6E3C)),
+                );
+            }
+        }
+
         // 手描きの線。gpui の Path は「塗り」なので、折れ線を
         // 幅のある四角形の連なりとして塗る(画面も紙も同じ座標)
         {
@@ -1840,6 +1897,16 @@ impl gpui::Element for InputSink {
                     cx.notify();
                     return;
                 }
+                // **図形をつまんでいる間は図形が動きます**(2026-08-30)。
+                // 本文の選択より先に見ないと、図形を掴んだまま字が選ばれます
+                if w.shape_drag.is_some() {
+                    let pxmm = PX_PER_MM * w.zoom;
+                    let x = (f32::from(rel.x) - 28.0) / pxmm - w.pg.left_mm;
+                    let y = (f32::from(rel.y) - 14.0) / pxmm + w.scroll_mm;
+                    w.shape_move(x, y);
+                    cx.notify();
+                    return;
+                }
                 if w.drag_select {
                     w.click_at(f32::from(rel.x), f32::from(rel.y), true);
                     cx.notify();
@@ -1857,6 +1924,7 @@ impl gpui::Element for InputSink {
                     cx.notify();
                 }
                 w.drag_select = false;
+                w.shape_drag = None;
             });
         });
         // 右クリックでメニュー。選択があれば選択への操作、無ければ押した所へ

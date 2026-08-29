@@ -9563,6 +9563,7 @@ checksum = "1ffae5123b2d3fc086436f8834ae3ab053a283cfac8fe0a0b8eaae044768a4c4"
 name = "writer"
 version = "0.1.0-alpha"
 dependencies = [
+ "book",
  "ed25519-dalek",
  "encoding_rs",
  "gpui",
