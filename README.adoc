@@ -247,8 +247,8 @@ from officework import sheet
 
 b = sheet.Book.open("form7.xlsx")
 b["Sheet1"]["A30"] = "Sample Trading Co., Ltd."   # only the value is rewritten
-b.save("out.xlsx")
-print(b.unsupported)   # the list of parts it couldn't read (empty = everything was read)
+b.save("out.xlsx")     # the xlsx to send on
+b.save("quote.pdf")    # the same content, straight to paper
 ----
 
 The same applies to docx. `python-docx` rewrites the parts of a file it does not understand; this engine's policy is to rewrite only what you changed.
@@ -258,12 +258,9 @@ The same applies to docx. `python-docx` rewrites the parts of a file it does not
 from officework import doc
 
 d = doc.Doc.open("report.docx")
-print(d.unsupported)               # the list of parts it couldn't read (empty = everything was read)
 d.replace("Old Name Ltd.", "New Name Ltd.")   # formatting inside the paragraph is left alone
 d.fill("customer", "Sample Trading K.K.")  # fill a named form field (named in writer)
-d[3].text = "replaced"             # the heading stays a heading; alignment and first-line indent survive
-print(d.tables[0][1][2].text)      # table, row, cell
-d.save("out.docx")
+d.save("report.pdf")               # the filled-in result, straight to paper
 ----
 
 `replace()` is the one to reach for when filling in a form: it keeps each run's formatting, so a bold field label next to a plain value stays that way.
