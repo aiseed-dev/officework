@@ -1,9 +1,8 @@
 # officework
 
-**xlsx and docx engines that do not destroy your forms — and that print.**
-Read a spreadsheet or a document, change it, write it back with its borders,
-merges and styles intact, and turn it into a PDF. No office suite, no headless
-browser, no print driver.
+**xlsx and docx engines built not to destroy your forms — and that print.**
+Read a spreadsheet or a document, change it, write back only what you changed,
+and turn it into a PDF. No office suite, no headless browser, no print driver.
 
 Written in Rust (about 109,000 lines in the engine crates, 1,600+ tests), exposed to Python through PyO3.
 
@@ -34,11 +33,11 @@ imported only if you ask for it (`pip install officework[pandas]`).
 from officework import sheet
 b = sheet.Book.open("form7.xlsx")
 s = b["quote"]
-s["A30"] = "Sample Trading Co., Ltd."       # borders, merges, widths stay intact
+s["A30"] = "Sample Trading Co., Ltd."    # only the value is rewritten
 s["C30"] = "=B30*100"                    # a formula; recalculated on the spot
 print(s["C30"].value)                    # the computed value, as in openpyxl
 s.insert_row(30)                         # remaining formulas follow the move
-b.save("out.xlsx")                       # shapes and print setup carried over
+b.save("out.xlsx")                       # writes back the changes
 ```
 
 Indexing follows openpyxl exactly: `ws["A1"]` is a **cell**, `ws["A1:C3"]`
@@ -51,11 +50,11 @@ writing into a merged region's top-left works the way the articles show.
 ```python
 from officework import doc
 d = doc.Doc.open("report.docx")
-print(d.unsupported)                     # anything it could not read, never dropped in silence
-d.replace("Old Name Ltd.", "New Name Ltd.")   # per-run formatting is left alone
+print(d.unsupported)                     # what it recognised it could not read
+d.replace("Old Name Ltd.", "New Name Ltd.")   # replaces the text, run by run
 d[3].text = "replaced"                   # the paragraph stays a heading, stays aligned
 print(d.tables[0][1][2].text)            # table, row, cell
-d.save("out.docx")                       # styles, headers, shapes, tracked changes carried over
+d.save("out.docx")                       # writes back the changes
 ```
 
 ## PDF and PNG — the part the others cannot do
@@ -177,9 +176,9 @@ understand. For a document used as a *printed form* — the way most Japanese
 offices use one — that means the borders, merged cells, column widths, shapes,
 styles and headers you spent an afternoon on come back wrong.
 
-These engines keep the original as the source of truth and write back only what
-changed. `b.unsupported` / `d.unsupported` list anything they could not read, so
-nothing is dropped in silence.
+When these engines open an xlsx or docx and write it back, they rewrite only
+what changed. `b.unsupported` / `d.unsupported` list what they recognised as
+unreadable, as far as they can tell.
 
 The docx side is checked against an independent reader (genoffice's TypeScript
 docx engine) over 51 real documents, 43 of which this project did not write:

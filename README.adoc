@@ -12,12 +12,12 @@ officework unpicks that — it is an Office that **sets data, templates, Python 
 
 The four are split into modules, so each is easy to swap:
 
-* *Data* — documents are AsciiDoc (`.adoc`), and spreadsheets can live in the same plain-text form (`.sheet.adoc`). Any tool can read them, and diffs work. xlsx / docx are read and written as delivery formats, without breaking their formatting
+* *Data* — documents are AsciiDoc (`.adoc`), and spreadsheets can live in the same plain-text form (`.sheet.adoc`). Any tool can read them, and diffs work. xlsx / docx are read and written as delivery formats
 * *Templates* — the look of a document is separated from its text. The same text takes a different shape just by swapping the template
 * *Python* — code is never stored in a workbook or a document. Drop a `.py` file and call it from a cell formula like `=double(A1)`, a ribbon button, or the macro list. This is what replaces VBA — and the "open = execute" attack path does not exist
 * *AI* — no AI is tied in. Anything that speaks the OpenAI-compatible API can be connected, including a model on your own machine. You can consult the AI from inside the app, and by registering the MCP server you can ask an AI to operate the running app for you
 
-The engine also installs on its own (`pip install officework`): it reads and writes xlsx and docx without breaking their formatting, in the idiom of openpyxl, python-docx and xlwings.
+The engine also installs on its own (`pip install officework`): it reads and writes xlsx and docx in the idiom of openpyxl, python-docx and xlwings.
 You watch the result, finish it by hand, and drive a live workbook from Python.
 
 The app is under development.
@@ -88,8 +88,8 @@ And if you never install git, you lose nothing — plain-text files can join a h
 
 The highlights only — the full list lives in the link:docs/en/writer-manual.adoc[writer manual] and the link:docs/en/calc-manual.adoc[calc manual], which describe only what works today.
 
-* *writer (documents)* — Japanese typesetting up to vertical writing, ruby (furigana) and distributed justification. Form fields (build a form, protect it, hand it out), TOC, track changes, comments, drawing, printing where the paper changes partway, PDF. A docx survives open-and-save
-* *calc (spreadsheets)* — about 190 functions (incl. dynamic arrays), recalculation with circular-reference detection, multiple sheets, pivot tables, conditional formatting, data validation, charts (11 types, drawn as shapes), a solver, protection and encryption, PDF. An xlsx survives too
+* *writer (documents)* — Japanese typesetting up to vertical writing, ruby (furigana) and distributed justification. Form fields (build a form, protect it, hand it out), TOC, track changes, comments, drawing, printing where the paper changes partway, PDF. A docx can be opened, edited and saved back
+* *calc (spreadsheets)* — about 190 functions (incl. dynamic arrays), recalculation with circular-reference detection, multiple sheets, pivot tables, conditional formatting, data validation, charts (11 types, drawn as shapes), a solver, protection and encryption, PDF. An xlsx can too
 
 The ribbon layout follows Euro-Office, so people who switch don't have to relearn where things are. *Commands that don't work yet are shown grayed out* — we never make something look usable when it isn't.
 
@@ -109,7 +109,7 @@ See the link:docs/en/calc-manual.adoc[calc manual].
 $ pip install officework      # engine, bridge, MCP server. No GUI (a few MB)
 ----
 
-That is enough to read and write xlsx and docx without breaking their formatting. The bridge that drives a running screen from Python, and the MCP server that lets an AI drive it, are in the same package.
+That is enough to read and write xlsx and docx. The bridge that drives a running screen from Python, and the MCP server that lets an AI drive it, are in the same package.
 
 *The screen (aiseed office) comes in the shape your machine wants* — `.deb`, `.tar.gz`, `.dmg`, `setup.exe`, Flatpak. Install one and `officework` starts it. If the engine is already installed, the bridge connects to it as is.
 
@@ -246,12 +246,12 @@ When you open a received xlsx or docx and write it back, the engine's policy is 
 from officework import sheet
 
 b = sheet.Book.open("form7.xlsx")
-b["Sheet1"]["A30"] = "Sample Trading Co., Ltd."   # formatting is preserved
+b["Sheet1"]["A30"] = "Sample Trading Co., Ltd."   # only the value is rewritten
 b.save("out.xlsx")
 print(b.unsupported)   # the list of parts it couldn't read (empty = everything was read)
 ----
 
-The same applies to docx. `python-docx` rewrites the parts of a file it does not understand; this engine keeps the original and writes back only what changed, so styles, headers, shapes and tracked changes survive.
+The same applies to docx. `python-docx` rewrites the parts of a file it does not understand; this engine's policy is to rewrite only what you changed.
 
 [source,python]
 ----
