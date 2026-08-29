@@ -21,18 +21,10 @@ officework はそれをほどいて、**データ・テンプレート・Python�
 エンジンは `pip install officework` で単体でも入ります: xlsx / docx を書式ごと壊さずに読み書きし、openpyxl・python-docx・xlwings の書き味を継いでいます。
 自動化の結果を目で確かめ、手で仕上げ、起動中のブックを Python から直に操れます。
 
-アプリは **officework の1本**です。
-ただし、アプリはまだ開発の途中です。アルファ版としても公開できる状態ではなく、配布はしていません。いま公開していて使えるのはエンジン(`pip install officework`)だけです。試すにはソースから組みます(下の「組む」)。
+アプリは開発中です。
+アルファ版としても公開できる状態ではなく、配布はしていません。いま公開していて使えるのはエンジン(`pip install officework`)だけです。試すにはソースから組みます(下の「組む」)。
 
-出来ているところは、こう動きます。
-フォルダを開いて、文書も表も同じウィンドウのタブで編集します。
-中の編集画面は2つで、名前があります: 文書編集が *writer*、表計算が *calc* です。
-どちらで開くかは、ファイルの名前で決まります。
-
-* *writer*(文書 — `名前.adoc`)— AsciiDoc の視覚エディタ。原稿を見たまま直し、画面・PDF・HTML・docx に出す。docx は受け渡しの形式で、開いて見る・adoc にすることはできる(link:docs/ja/writer-manual.adoc[writer の手引き])
-* *calc*(表 — `名前.sheet.adoc`)— 式も計算する表計算。xlsx も開いて、直して、保存できる(link:docs/ja/calc-manual.adoc[calc の手引き])
-
-閉じて開き直すと、前回開いていたフォルダとファイルとタブが戻ります。
+編集画面は2つあります。文書編集の *writer* と表計算の *calc* で、フォルダを開いて、どちらも同じウィンドウのタブで編集します(link:docs/ja/writer-manual.adoc[writer の手引き]・link:docs/ja/calc-manual.adoc[calc の手引き])。
 
 == なぜ作ったか
 
