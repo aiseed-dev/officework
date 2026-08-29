@@ -873,6 +873,26 @@ fn draw_sheet(
             let pen = sp.line.as_deref().and_then(hex_rgb);
             let pen_w = sp.line_w.max(0.1) * scale * 25.4 / 72.0;
             let pts: Vec<(f32, f32)> = match sp.kind.as_str() {
+                // **角丸。** 画面(`SheetShape::to_svg`)と Excel は丸めるのに、
+                // 紙だけ四角のままでした(2026-08-29 に図形を絵にして
+                // 気づきました)。丸めの大きさは画面と同じ短辺の 15%
+                "roundRect" => {
+                    let px = 25.4 / 96.0 * scale; // 4px を mm に
+                    let r = (w.min(h) * 0.15).max(4.0 * px).min(w.min(h) / 2.0);
+                    // 角ごとに4分の1円を6辺で近づけます
+                    let kado = |cx: f32, cy: f32, kara: f32| {
+                        (0..=6).map(move |i| {
+                            let t = kara + i as f32 / 6.0 * std::f32::consts::FRAC_PI_2;
+                            (cx + r * t.cos(), cy + r * t.sin())
+                        })
+                    };
+                    let (l, rr, tp, bt) = (x, x + w, y_top, y_top - h);
+                    kado(rr - r, tp - r, 0.0) // 右上
+                        .chain(kado(l + r, tp - r, std::f32::consts::FRAC_PI_2)) // 左上
+                        .chain(kado(l + r, bt + r, std::f32::consts::PI)) // 左下
+                        .chain(kado(rr - r, bt + r, std::f32::consts::PI * 1.5)) // 右下
+                        .collect()
+                }
                 "ellipse" => (0..=24)
                     .map(|i| {
                         let t = i as f32 / 24.0 * std::f32::consts::TAU;

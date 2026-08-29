@@ -166,7 +166,78 @@ NOTE: 単価は税抜きです。
         }
     }
 
-    // ③ 絵と透かし。**この2つは長く描かれていませんでした**(2026-08-29)。
+    // ③ 図形。四角・角丸・楕円・矢印・線・折れ線と、図形の中の文字。
+    //    **チャートもこの道を通ります**(図形の集まりとして描くので)
+    let mut zu = book::Sheet::new("図形");
+    for (i, (kind, fill, line)) in [
+        ("rect", Some("DDE7F0"), Some("2E5A87")),
+        ("roundRect", Some("F5E6D3"), None),
+        ("ellipse", None, Some("C0504D")),
+        ("rightArrow", Some("9BBB59"), None),
+        ("diamond", Some("8064A2"), Some("403152")),
+        ("line", None, Some("333333")),
+    ]
+    .iter()
+    .enumerate()
+    {
+        zu.shapes_new.push(book::SheetShape {
+            at: book::Pos::new(1, 1),
+            dx_px: 20.0 + (i % 3) as f32 * 130.0,
+            dy_px: 20.0 + (i / 3) as f32 * 90.0,
+            width_px: 110.0,
+            height_px: 70.0,
+            kind: (*kind).into(),
+            fill: fill.map(|s| s.to_string()),
+            line: line.map(|s| s.to_string()),
+            line_w: 1.5,
+            alpha: 1.0,
+            ..Default::default()
+        });
+    }
+    // 回転と反転、そして図形の中の文字
+    zu.shapes_new.push(book::SheetShape {
+        at: book::Pos::new(1, 1),
+        dx_px: 20.0,
+        dy_px: 200.0,
+        width_px: 150.0,
+        height_px: 80.0,
+        kind: "rect".into(),
+        fill: Some("FFF2CC".into()),
+        line: Some("BF8F00".into()),
+        text: Some("回した箱".into()),
+        rot: 20.0,
+        line_w: 1.5,
+        alpha: 1.0,
+        ..Default::default()
+    });
+    // 折れ線(スパークライン)。points を使う道
+    zu.shapes_new.push(book::SheetShape {
+        at: book::Pos::new(1, 1),
+        dx_px: 220.0,
+        dy_px: 200.0,
+        width_px: 160.0,
+        height_px: 70.0,
+        kind: "spark".into(),
+        line: Some("4472C4".into()),
+        line_w: 2.0,
+        alpha: 1.0,
+        points: (0..8)
+            .map(|i| book::PathPoint {
+                at: (i as f32 / 7.0, [0.2, 0.6, 0.35, 0.9, 0.5, 0.75, 0.3, 0.65][i]),
+                ..Default::default()
+            })
+            .collect(),
+        ..Default::default()
+    });
+    if let Ok(leaf) =
+        paper::grid::sheet_leaf(&zu, paper::Paper::default(), &paper::grid::PrintSetup::default())
+    {
+        // 図形の場所も形も紙の座標で決まるので、書体では動きません
+        // (中の文字だけは動くので、そこは「字」の側が見ます)
+        out.push(("図形", leaf, false));
+    }
+
+    // ④ 絵と透かし。**この2つは長く描かれていませんでした**(2026-08-29)。
     //    紙には出るのに絵には出ず、黙って消えていました
     out.push((
         "絵と透かし",
