@@ -232,6 +232,28 @@ Two limits, as of this version:
 * Writing sections back to docx is incomplete. The mid-document section's paper size is written empty, and only the margins you set explicitly are written, so Word shows its own defaults for the rest. The PDF made here is laid out correctly
 * `save("x.pdf")` always lays out with the built-in default template (the body size follows the document language). A `テンプレート.toml` next to the file has no effect on this path
 
+=== Language and default formatting
+
+A new document's defaults are decided by its language.
+The built-in default template carries a body size per language, and the base fonts follow the script.
+Today a new document is created with the Japanese defaults; the argument to choose another language at creation (`Doc(lang=)`, `Book(lang=)`) is *not usable yet*.
+The language is chosen at creation only — everything it sets is ordinary formatting you can change afterwards (`d.font`, run formatting, section paper and margins).
+
+[cols="1,1,2"]
+|===
+|Language |Body size |Base fonts
+
+|ja |10.5pt |BIZ UD family — gothic for headings, mincho for body
+|en, de, es, fr, it, id, pt, pt-br, tr, ru |11pt |the machine's standard fonts (sans for headings, serif for body)
+|ko |10pt |the machine's standard Korean fonts
+|zh |10.5pt |the machine's standard fonts for the script
+|zh-tw |12pt |the machine's standard fonts for the script
+|vi |13pt |the machine's standard fonts (larger because stacked diacritics crush at 11pt)
+|===
+
+Paper starts as A4 with 20 mm margins in every language; change it per section if you need to.
+When a named font is not installed on the machine, the engine substitutes the machine's standard font, judging only the family — mincho-like names go to the standard mincho, gothic to gothic, monospace to monospace.
+
 === What it does not do — and what is reported but never lost
 
 Body reading covers paragraphs and tables (sections are separate under `d.sections`, comments under `d.comments`, inline pictures under `d.inline_shapes`).
