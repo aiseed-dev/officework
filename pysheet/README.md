@@ -109,7 +109,9 @@ d.add_shape("roundRect", 25, 80, 40, 25, fill="DDE7F0", line="2E5A87",
 
 Coordinates and sizes are millimetres from the top-left of the page. They are
 written as DrawingML, so Word and LibreOffice open them as shapes you can
-select and edit — not as a flattened picture. They also come out in the PDF.
+select and edit — not as a flattened picture. They also come out in the PDF,
+they are read back when you reopen the file, and `page=` puts a shape on any
+page, not just the first.
 
 ### Charts
 

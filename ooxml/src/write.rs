@@ -1428,28 +1428,11 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
     let opts: zip::write::FileOptions<'_, ()> =
         zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
-    // **ページに貼り付く図形を、1つ目の段落に差し込みます。**
-    //
-    // docx の図形は「どの段落に留まるか」で置き場が決まります(紙からの
-    // mm は持てても、何ページ目かは持てません)。ここは模型から作り直す
-    // 道なので組み上がりを知りません。1ページ目の図形だけを書きます。
-    //
-    // **2ページ目以降は書きません。** 1つ目の段落に付ければ Word は
-    // 1ページ目に置くので、違うページへ出てしまいます。ページの分かる
-    // アプリ(writer)は、ペンの筆と同じく `shape_anchor_run` を
-    // そのページの段落へ自分で差し込みます
-    let doc = &if doc.shapes.iter().any(|s| s.page == 0) {
-        let mut d = doc.clone();
-        if let Some(kumihan::Block::Para(p1)) = d.blocks.first_mut() {
-            for (i, sp) in doc.shapes.iter().filter(|s| s.page == 0).enumerate() {
-                p1.anchors.push(crate::read::shape_anchor_run(sp, 9000 + i));
-            }
-        }
-        d
-    } else {
-        doc.clone()
-    };
-
+    // **図形は組む所が控えへ入れます**([`paper::doc_with_shapes`])。
+    // docx の図形は「どの段落に留まるか」でページが決まり、ここは模型から
+    // 作り直す道なので組み上がりを知りません。2026-08-29 まではここで
+    // 1ページ目だけ差し込んでいましたが、2ページ目以降が違うページへ
+    // 出るので、知っている側へ移しました
     let (body, new_media, cmts_out) = write_document_full(doc);
     // 今回こちらが作り直す部品の名前(これ以外の joimg は既存画像として持ち越す)
     let regen_media: Vec<String> = new_media.iter().enumerate()

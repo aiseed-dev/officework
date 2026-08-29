@@ -429,12 +429,20 @@ impl PyDoc {
             return ops::pdf::doc(&g.doc, None, std::path::Path::new(path))
                 .map_err(|e| PyIOError::new_err(format!("{path}: PDF にできない: {e}")));
         }
+        // **図形はそのページの段落へ結び付けてから書きます。** docx は
+        // 「何ページ目か」を持てないので、組み上がりを見ないと置き場が
+        // 決まりません(2026-08-29)
+        let doc = if g.doc.shapes.is_empty() {
+            g.doc.clone()
+        } else {
+            paper::doc_with_shapes(&g.doc)
+        };
         let mut buf = std::io::Cursor::new(Vec::new());
         let r = match &g.original {
             Some(bytes) => {
-                ooxml::write_with(&g.doc, Some(std::io::Cursor::new(bytes)), &mut buf)
+                ooxml::write_with(&doc, Some(std::io::Cursor::new(bytes)), &mut buf)
             }
-            None => ooxml::write(&g.doc, &mut buf),
+            None => ooxml::write(&doc, &mut buf),
         };
         r.map_err(|e| PyIOError::new_err(format!("{path}: 書けない: {e}")))?;
         std::fs::write(path, buf.into_inner())

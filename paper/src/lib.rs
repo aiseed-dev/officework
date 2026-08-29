@@ -1254,3 +1254,83 @@ mod doc_pdf_tests {
         assert!(buf.starts_with(b"%PDF"));
     }
 }
+
+/// **ページごとの「先頭の段落」を出す。**
+///
+/// docx の図形は「どの段落に留まるか」でページが決まります(紙からの mm は
+/// 持てても、何ページ目かは持てません)。だから、そのページに載っている
+/// 段落へ結び付けないと違うページに出ます。
+///
+/// 返りは(ページ番号(0始まり)→ 段落の番号, 段落の番号 → 塊の番号)。
+///
+/// 2026-08-29 に writer の中から出しました。画面と同じ答えを Python の
+/// 保存からも使うためです — **別に書くとページが食い違います**。
+pub fn page_head_paras(
+    doc: &kumihan::Document,
+    sheet: &kumihan::Sheet,
+    page: kumihan::PageSetup,
+) -> (std::collections::BTreeMap<usize, usize>, Vec<usize>) {
+    let (pages, _) = paginate(
+        sheet,
+        Paper { width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm },
+    );
+    // 段落の頭が本文の何バイト目か
+    let mut starts: Vec<usize> = Vec::new();
+    let mut at = 0usize;
+    for p in doc.paragraphs() {
+        starts.push(at);
+        at += p.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
+    }
+    let mut page_para: std::collections::BTreeMap<usize, usize> = Default::default();
+    for (l, pg) in sheet.lines.iter().zip(&pages) {
+        if !l.from_body {
+            continue;
+        }
+        let pi = starts.iter().rposition(|s| *s <= l.byte0).unwrap_or(0);
+        page_para.entry(pg - 1).or_insert(pi);
+    }
+    let para_block_idx: Vec<usize> = doc
+        .blocks
+        .iter()
+        .enumerate()
+        .filter(|(_, b)| matches!(b, kumihan::Block::Para(_)))
+        .map(|(i, _)| i)
+        .collect();
+    (page_para, para_block_idx)
+}
+
+/// **ページに貼り付く図形を、そのページの段落へ結び付ける。**
+///
+/// 保存の前に1度呼びます。返った写しを `ooxml::write*` へ渡すと、
+/// 2ページ目以降の図形も正しいページに出ます。
+///
+/// 組み上がりが要るので、ここ(paper)に置いています。ooxml は組む所を
+/// 知りません。
+pub fn doc_with_shapes(doc: &kumihan::Document) -> kumihan::Document {
+    if doc.shapes.is_empty() {
+        return doc.clone();
+    }
+    let Ok((sheet, page, _)) = doc_to_sheet(doc, None) else { return doc.clone() };
+    let (page_para, para_block) = page_head_paras(doc, &sheet, page);
+    let mut out = doc.clone();
+    let mut nokori: Vec<kumihan::DocShape> = Vec::new();
+    for (i, sp) in doc.shapes.iter().enumerate() {
+        let saki = page_para
+            .get(&sp.page)
+            .and_then(|pi| para_block.get(*pi))
+            .copied();
+        let Some(bi) = saki else {
+            // そのページが無い(図形が紙より後ろ)— 模型には残します
+            nokori.push(sp.clone());
+            continue;
+        };
+        if let Some(kumihan::Block::Para(p)) = out.blocks.get_mut(bi) {
+            p.anchors.push(ooxml::shape_anchor_run(sp, 9000 + i));
+        } else {
+            nokori.push(sp.clone());
+        }
+    }
+    // 控えへ移した分は模型から外します(二重に書かないため)
+    out.shapes = nokori;
+    out
+}

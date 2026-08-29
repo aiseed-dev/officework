@@ -73,7 +73,35 @@ import docx as pdocx
 
 check("python-docx で開ける", len(pdocx.Document(str(p)).paragraphs) >= 2, True)
 
-# 6. 紙にも出る
+# 6. **2ページ目の図形は2ページ目の段落へ結び付く。**
+#    docx は「何ページ目か」を持てないので、組み上がりを見て決めます
+d2 = doc.Doc()
+d2.add_heading("2ページある文書", level=1)
+for i in range(1, 201):
+    d2.add_paragraph(f"{i} 行目の本文です。ページを溢れさせるための字を並べます。")
+d2.add_shape("rect", 25, 60, 50, 25, fill="DDE7F0", page=0)
+d2.add_shape("ellipse", 25, 60, 50, 25, fill="C0504D", page=1)
+p2 = tmp / "nipage.docx"
+d2.save(str(p2))
+x2 = zipfile.ZipFile(p2).read("word/document.xml").decode("utf-8")
+check("2つとも書かれる", x2.count("<wps:wsp>"), 2)
+# 1ページ目の図形は先頭近く、2ページ目の図形はずっと後ろの段落に付く
+i0 = x2.find("joshape9000p0")
+i1 = x2.find("joshape9001p1")
+mae = lambda i: x2[:i].count("<w:p>") + x2[:i].count("<w:p ")
+check("1ページ目は先頭の段落", mae(i0) <= 2, True)
+check("2ページ目はずっと後ろの段落", mae(i1) > 10, True)
+
+# 7. 図形が docx を往復する
+d3 = moto()
+d3.add_shape("roundRect", 25, 80, 40, 25, fill="DDE7F0", line="2E5A87",
+             text="往復", rotation=20.0, opacity=0.5, shadow=True)
+p3 = tmp / "oufuku.docx"
+d3.save(str(p3))
+d4 = doc.Doc.open(str(p3))
+check("読み戻した数", d4.shapes, 1)
+
+# 8. 紙にも出る
 q = tmp / "shape.pdf"
 d.save(str(q))
 check("PDF の頭", q.read_bytes()[:5], b"%PDF-")

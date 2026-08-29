@@ -2769,3 +2769,59 @@ mod own_style_look {
         assert!(off.contains(r#"<w:b w:val="0"/>"#), "切ったことが書かれない: {off}");
     }
 }
+
+/// **ページに貼り付く図形が docx を往復する。**
+///
+/// 2026-08-29 発注者「docx の図形をやって」。書いた物がそのまま読み戻せ
+/// ないと、開いて直して保存するたびに形が痩せます。
+#[test]
+fn shapes_survive_a_round_trip() {
+    let mut doc = kumihan::adoc::parse("= 題\n\n本文です。\n").expect("読めない");
+    doc.shapes = vec![kumihan::DocShape {
+        page: 0,
+        x_mm: 25.0,
+        y_mm: 80.0,
+        w_mm: 40.0,
+        h_mm: 25.0,
+        look: book::SheetShape {
+            kind: "roundRect".into(),
+            fill: Some("DDE7F0".into()),
+            line: Some("2E5A87".into()),
+            line_w: 2.25,
+            alpha: 0.5,
+            rot: 20.0,
+            shadow: true,
+            text: Some("往復".into()),
+            ..Default::default()
+        },
+    }];
+    // 保存の前に、そのページの段落へ結び付けます(paper がやる仕事です)。
+    // ここでは1ページ目なので、1つ目の段落へ手で入れます
+    if let Some(kumihan::Block::Para(p)) = doc.blocks.first_mut() {
+        p.anchors.push(crate::shape_anchor_run(&doc.shapes[0].clone(), 9000));
+    }
+    let motto = doc.shapes[0].clone();
+    doc.shapes.clear();
+
+    let mut buf = std::io::Cursor::new(Vec::new());
+    crate::write(&doc, &mut buf).expect("書けない");
+    buf.set_position(0);
+    let (mata, _) = crate::read(buf).expect("読めない");
+
+    assert_eq!(mata.shapes.len(), 1, "図形が読み戻せていない");
+    let a = &mata.shapes[0];
+    assert_eq!(a.page, motto.page);
+    assert!((a.x_mm - motto.x_mm).abs() < 0.01, "x が違う: {}", a.x_mm);
+    assert!((a.y_mm - motto.y_mm).abs() < 0.01, "y が違う: {}", a.y_mm);
+    assert!((a.w_mm - motto.w_mm).abs() < 0.01, "幅が違う: {}", a.w_mm);
+    assert_eq!(a.look.kind, motto.look.kind);
+    assert_eq!(a.look.fill, motto.look.fill);
+    assert_eq!(a.look.line, motto.look.line);
+    assert!((a.look.line_w - motto.look.line_w).abs() < 0.01, "線の太さ");
+    assert!((a.look.alpha - motto.look.alpha).abs() < 0.01, "濃さ");
+    assert!((a.look.rot - motto.look.rot).abs() < 0.5, "回転");
+    assert!(a.look.shadow, "影が消えた");
+    // **タグごと拾わない。** `<w:txbxContent>` 自身が `<w:t` で始まるので、
+    // 探し始める場所を間違えると `<w:p><w:r><w:t …>往復` が入ります
+    assert_eq!(a.look.text.as_deref(), Some("往復"), "図形の中の文字");
+}

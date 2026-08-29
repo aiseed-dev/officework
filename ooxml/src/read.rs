@@ -147,6 +147,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     let (mut doc, mut rep) = parse_document_rels(&xml, &media, &cmap, &targets);
     // このアプリのペン(joink)は原文控えから筆へ読み戻す
     extract_ink(&mut doc);
+    extract_shapes(&mut doc);
     if !styxml.is_empty() {
         doc.styles = parse_styles(&styxml);
     }
@@ -2342,4 +2343,141 @@ pub fn shape_anchor_xml(sp: &kumihan::DocShape, id: usize) -> String {
 pub fn shape_anchor_run(sp: &kumihan::DocShape, id: usize) -> String {
     let inner = shape_anchor_xml(sp, id);
     wrap_with_ns(&inner, &Default::default()).unwrap_or(inner)
+}
+
+/// 原文控え(anchors)の中の joshape(ページに貼り付く図形)を模型へ読み戻す。
+/// 読めたら控えから外す(保存はモデルから作り直すので、二重になりません)。
+///
+/// **こちらが書いた図形だけを読みます。** Word や他のソフトが作った
+/// `wps:wsp` は名前が違うので手を付けず、原本のまま持ち越します —
+/// 読めない物を半端に読むより、そのまま返す方が壊しません。
+pub(super) fn extract_shapes(doc: &mut Document) {
+    let mut deta: Vec<kumihan::DocShape> = Vec::new();
+    for b in &mut doc.blocks {
+        let Block::Para(p) = b else { continue };
+        let mut i = 0;
+        while i < p.anchors.len() {
+            let a = &p.anchors[i];
+            let Some(ni) = a.find("name=\"joshape") else {
+                i += 1;
+                continue;
+            };
+            let page = a[ni..]
+                .find('p')
+                .and_then(|pi| {
+                    let s2 = &a[ni + pi + 1..];
+                    let e = s2.find('"')?;
+                    s2[..e].parse::<usize>().ok()
+                })
+                .unwrap_or(0);
+            let (Some(sp), Some((w, h))) = (shape_look(a), shape_size(a)) else {
+                i += 1;
+                continue;
+            };
+            let x = mm_of(a, "<wp:positionH relativeFrom=\"page\"><wp:posOffset>");
+            let y = mm_of(a, "<wp:positionV relativeFrom=\"page\"><wp:posOffset>");
+            let (Some(x_mm), Some(y_mm)) = (x, y) else {
+                i += 1;
+                continue;
+            };
+            deta.push(kumihan::DocShape { page, x_mm, y_mm, w_mm: w, h_mm: h, look: sp });
+            p.anchors.remove(i);
+        }
+    }
+    doc.shapes.extend(deta);
+}
+
+/// `<wp:extent cx="…" cy="…"/>` を mm で
+fn shape_size(a: &str) -> Option<(f32, f32)> {
+    let i = a.find("<wp:extent cx=\"")? + 15;
+    let xe = a[i..].find('"')? + i;
+    let cx: f32 = a[i..xe].parse().ok()?;
+    let j = a[xe..].find("cy=\"")? + xe + 4;
+    let ye = a[j..].find('"')? + j;
+    let cy: f32 = a[j..ye].parse().ok()?;
+    Some((cx / 36000.0, cy / 36000.0))
+}
+
+/// EMU の値を mm で拾う
+fn mm_of(a: &str, pat: &str) -> Option<f32> {
+    let i = a.find(pat)? + pat.len();
+    let e = a[i..].find('<')? + i;
+    a[i..e].parse::<f32>().ok().map(|v| v / 36000.0)
+}
+
+/// 図形の見た目(形・塗り・線・回転・不透明度・影・中の文字)
+fn shape_look(a: &str) -> Option<book::SheetShape> {
+    let mut sp = book::SheetShape { alpha: 1.0, line_w: 1.5, ..Default::default() };
+    // 形。prstGeom の名前、無ければ点で作る形
+    sp.kind = match a.find("<a:prstGeom prst=\"") {
+        Some(i) => {
+            let s2 = i + 18;
+            let e = a[s2..].find('"')? + s2;
+            a[s2..e].to_string()
+        }
+        None if a.contains("<a:custGeom") => "path".into(),
+        None => return None,
+    };
+    // 塗りと線の色。**この図形の中の最初の物だけ**を見ます
+    let iro = |from: &str| -> Option<String> {
+        let i = a.find(from)? + from.len();
+        let j = a[i..].find("<a:srgbClr val=\"")? + i + 16;
+        let e = a[j..].find('"')? + j;
+        // 別の欄まで飛び越えていないか(影の色を線の色と読まないため)
+        if a[i..j].contains("</a:ln>") { None } else { Some(a[j..e].to_string()) }
+    };
+    if a.contains("<a:noFill/>") && a.find("<a:noFill/>") < a.find("<a:ln ") {
+        sp.fill = None;
+    } else {
+        sp.fill = iro("<a:solidFill>");
+    }
+    sp.line = iro("<a:ln ");
+    if let Some(i) = a.find("<a:ln w=\"") {
+        let s2 = i + 9;
+        if let Some(e) = a[s2..].find('"') {
+            if let Ok(w) = a[s2..s2 + e].parse::<f32>() {
+                sp.line_w = w / 12_700.0;
+            }
+        }
+    }
+    // 不透明度・回転・反転・影
+    if let Some(i) = a.find("<a:alpha val=\"") {
+        let s2 = i + 14;
+        if let Some(e) = a[s2..].find('"') {
+            if let Ok(v) = a[s2..s2 + e].parse::<f32>() {
+                sp.alpha = (v / 100_000.0).clamp(0.0, 1.0);
+            }
+        }
+    }
+    if let Some(i) = a.find("<a:xfrm rot=\"") {
+        let s2 = i + 13;
+        if let Some(e) = a[s2..].find('"') {
+            if let Ok(v) = a[s2..s2 + e].parse::<f32>() {
+                sp.rot = v / 60_000.0;
+            }
+        }
+    }
+    sp.flip_h = a.contains("flipH=\"1\"");
+    sp.flip_v = a.contains("flipV=\"1\"");
+    sp.shadow = a.contains("<a:outerShdw");
+    // 図形の中の文字
+    // **`<w:txbxContent>` の**後ろから**探します。** そのタグ自身が
+    // `<w:t` で始まるので、頭から探すと自分に当たり、タグごと字として
+    // 拾います(2026-08-29 に往復させて気づきました — 「往復」ではなく
+    // `<w:p><w:r><w:t …>往復` が入りました)
+    if let Some(i) = a.find("<w:txbxContent>").map(|i| i + "<w:txbxContent>".len()) {
+        let s2 = &a[i..];
+        if let Some(j) = s2.find("<w:t") {
+            if let Some(k) = s2[j..].find('>') {
+                let start = j + k + 1;
+                if let Some(e) = s2[start..].find("</w:t>") {
+                    let t = unesc(&s2[start..start + e]);
+                    if !t.is_empty() {
+                        sp.text = Some(t);
+                    }
+                }
+            }
+        }
+    }
+    Some(sp)
 }
