@@ -2240,5 +2240,7 @@
  "default_2": "Default",
  "fit_to_page": "Fit to page",
  "diagonal": "Diagonal",
- "selection": "Selection"
+ "selection": "Selection",
+ "grouped_shapes": "Grouped {} shapes (press again to ungroup)",
+ "ungrouped_shapes": "Ungrouped {} shapes"
 }

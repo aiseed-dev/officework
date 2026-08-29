@@ -1028,6 +1028,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("saved_svg", "Đã lưu dạng SVG: {}"),
     ("settings_shape_settings_panel", "Các thiết lập nằm ở bảng \"Thiết lập hình\" bên phải"),
     ("select_more_shapes_first", "Hãy chọn từ {} hình trở lên (Ctrl+bấm chuột để chọn thêm)"),
+    ("grouped_shapes", "Đã nhóm {} hình (nhấn lại để bỏ nhóm)"),
+    ("ungrouped_shapes", "Đã bỏ nhóm {} hình"),
     ("aligned_left", "Đã căn {} hình sang trái"),
     ("centred_horizontally", "Đã căn {} hình vào giữa theo chiều ngang"),
     ("aligned_right", "Đã căn {} hình sang phải"),

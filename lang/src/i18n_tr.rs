@@ -1028,6 +1028,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("saved_svg", "SVG olarak kaydedildi: {}"),
     ("settings_shape_settings_panel", "Ayarlar sağdaki \"Şekil ayarları\" panelinde"),
     ("select_more_shapes_first", "Önce en az {} şekil seçin (Ctrl+tıklama ile seçime eklersiniz)"),
+    ("grouped_shapes", "{} şekil gruplandı (çözmek için yeniden basın)"),
+    ("ungrouped_shapes", "{} şeklin grubu çözüldü"),
     ("aligned_left", "{} şekil sola hizalandı"),
     ("centred_horizontally", "{} şekil yatayda ortalandı"),
     ("aligned_right", "{} şekil sağa hizalandı"),

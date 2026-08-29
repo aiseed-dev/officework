@@ -212,6 +212,12 @@ impl Calc {
                 let Some(i) = self.shape_sel.take() else { return };
                 let mut idx: Vec<usize> = std::mem::take(&mut self.shape_multi);
                 idx.push(i);
+                // **束ねた図形は束ごと消えます**(2026-08-29)
+                let mut tabane: Vec<usize> = Vec::new();
+                for &k in &idx {
+                    tabane.extend(self.shape_group_idx(k));
+                }
+                idx.extend(tabane);
                 idx.sort_unstable();
                 idx.dedup();
                 idx.retain(|&k| k < self.sheet().shapes_new.len());
@@ -340,6 +346,62 @@ impl Calc {
 
     /// 整列と分布(Ctrl+クリックで束ねた図形へ)。整列は2個から、分布は3個から。
     /// 基準は束の外接の箱(本家の「選択した図形に合わせる」と同じ)
+    /// **図形を束ねる / 束を解く。**
+    ///
+    /// 2026-08-29 発注者「グループ化」。束ねた図形は、1つ選ぶと全部が
+    /// 選ばれ、動かすと一緒に動きます。xlsx へは本物の group
+    /// (`xdr:grpSp`)で書くので、Excel でも束として開けます。
+    ///
+    /// 選んだ図形が全部同じ束なら**解きます**(本家と同じ入切の作り)。
+    pub(crate) fn shape_group(&mut self) {
+        let mut idx: Vec<usize> = self
+            .shape_sel
+            .into_iter()
+            .chain(self.shape_multi.iter().copied())
+            .collect();
+        idx.sort_unstable();
+        idx.dedup();
+        idx.retain(|&i| i < self.sheet().shapes_new.len());
+        let ima: Vec<u32> = idx.iter().map(|&i| self.sheet().shapes_new[i].group).collect();
+        // 1つの束を選んでいるなら、それを解きます
+        let toku = ima.first().copied().unwrap_or(0) != 0 && ima.iter().all(|g| *g == ima[0]);
+        if !toku && idx.len() < 2 {
+            self.status = ui::tf!("select_more_shapes_first", 2).into();
+            return;
+        }
+        self.checkpoint();
+        let g = if toku {
+            0
+        } else {
+            // 使われていない番号を1つ選びます
+            self.sheet().shapes_new.iter().map(|s| s.group).max().unwrap_or(0) + 1
+        };
+        for &i in &idx {
+            self.sheet_mut().shapes_new[i].group = g;
+        }
+        self.dirty = true;
+        self.status = if toku {
+            ui::tf!("ungrouped_shapes", idx.len()).into()
+        } else {
+            ui::tf!("grouped_shapes", idx.len()).into()
+        };
+    }
+
+    /// その図形と**同じ束の図形の番号**(束ねていなければ自分だけ)
+    pub(crate) fn shape_group_idx(&self, i: usize) -> Vec<usize> {
+        let g = match self.sheet().shapes_new.get(i) {
+            Some(sp) if sp.group != 0 => sp.group,
+            _ => return vec![i],
+        };
+        self.sheet()
+            .shapes_new
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.group == g)
+            .map(|(k, _)| k)
+            .collect()
+    }
+
     pub(crate) fn shape_align(&mut self, id: &str) {
         let mut idx: Vec<usize> = self
             .shape_sel
@@ -503,6 +565,29 @@ impl Calc {
                 }
             }
             if self.place_shape_px(i, ox + mx, oy + my) {
+                // **束ねた図形は一緒に動きます**(2026-08-29)。掴んだ図形が
+                // 動いた分だけ、同じ束の他の図形もずらします
+                let ugoki = {
+                    let sp = &self.sheet().shapes_new[i];
+                    let (sx, sy) = self.cell_origin_px(sp.at).unwrap_or((0.0, 0.0));
+                    let (bx, by) = self.cell_origin_px(before.0).unwrap_or((0.0, 0.0));
+                    (sx + sp.dx_px - (bx + before.1), sy + sp.dy_px - (by + before.2))
+                };
+                if ugoki.0.abs() > 0.01 || ugoki.1.abs() > 0.01 {
+                    for k in self.shape_group_idx(i) {
+                        if k == i {
+                            continue;
+                        }
+                        let moto = {
+                            let sp = &self.sheet().shapes_new[k];
+                            self.cell_origin_px(sp.at)
+                                .map(|(cx, cy)| (cx + sp.dx_px, cy + sp.dy_px))
+                        };
+                        if let Some((px, py)) = moto {
+                            self.place_shape_px(k, px + ugoki.0, py + ugoki.1);
+                        }
+                    }
+                }
                 let sp = &self.sheet().shapes_new[i];
                 if sp.at != before.0
                     || (sp.dx_px - before.1).abs() > 0.5

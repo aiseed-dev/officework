@@ -1028,6 +1028,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("saved_svg", "Guardado em SVG: {}"),
     ("settings_shape_settings_panel", "As definições estão no painel \"Definições da forma\", à direita"),
     ("select_more_shapes_first", "Selecione primeiro {} ou mais formas (Ctrl+clique acrescenta à seleção)"),
+    ("grouped_shapes", "{} formas agrupadas (pressione de novo para desagrupar)"),
+    ("ungrouped_shapes", "{} formas desagrupadas"),
     ("aligned_left", "{} formas alinhadas à esquerda"),
     ("centred_horizontally", "{} formas centradas na horizontal"),
     ("aligned_right", "{} formas alinhadas à direita"),

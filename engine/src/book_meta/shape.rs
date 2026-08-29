@@ -30,6 +30,8 @@ pub const FIELDS: &[(&str, &str)] = &[
     ("line_w", "line-width"),
     ("alpha", "alpha"),
     ("shadow", "shadow"),
+    // 束(グループ)の番号。0 は束ねていない(2026-08-29)
+    ("group", "group"),
     ("rot", "rotation"),
     ("flip_h", "flip-h"),
     ("flip_v", "flip-v"),
@@ -81,6 +83,9 @@ pub fn to_rows(s: &SheetShape) -> Vec<(&'static str, String)> {
             put(k, x.clone());
         }
     }
+    if s.group != d.group {
+        put("group", s.group.to_string());
+    }
     if s.text_fmt != d.text_fmt {
         put("text_fmt", text_fmt(&s.text_fmt));
     }
@@ -106,6 +111,7 @@ pub fn from_rows(rows: &[(String, String)]) -> SheetShape {
                 }
             }
             "kind" => s.kind = v.clone(),
+            "group" => s.group = v.parse().unwrap_or(s.group),
             "width_px" => s.width_px = v.parse().unwrap_or(s.width_px),
             "height_px" => s.height_px = v.parse().unwrap_or(s.height_px),
             "dx_px" => s.dx_px = v.parse().unwrap_or(s.dx_px),

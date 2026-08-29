@@ -2240,5 +2240,7 @@
  "default_2": "既定",
  "fit_to_page": "紙に収める",
  "diagonal": "斜め",
- "selection": "選択範囲"
+ "selection": "選択範囲",
+ "grouped_shapes": "{} 個の図形を束ねました(もう一度押すと解きます)",
+ "ungrouped_shapes": "{} 個の図形の束を解きました"
 }

@@ -1028,6 +1028,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("saved_svg", "SVG로 저장했습니다: {}"),
     ("settings_shape_settings_panel", "설정은 오른쪽 '도형 설정' 패널에서 하세요"),
     ("select_more_shapes_first", "도형을 {}개 이상 고른 다음에(Ctrl+클릭으로 더할 수 있습니다)"),
+    ("grouped_shapes", "도형 {}개를 그룹으로 묶었습니다(다시 누르면 해제)"),
+    ("ungrouped_shapes", "도형 {}개의 그룹을 해제했습니다"),
     ("aligned_left", "{}개를 왼쪽으로 맞췄습니다"),
     ("centred_horizontally", "{}개를 좌우 가운데로 맞췄습니다"),
     ("aligned_right", "{}개를 오른쪽으로 맞췄습니다"),

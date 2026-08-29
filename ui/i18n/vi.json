@@ -2240,5 +2240,7 @@
  "edge_top": "Top edge",
  "edge_left": "Left edge",
  "edge_right": "Right edge",
- "diagonal": "Diagonal"
+ "diagonal": "Diagonal",
+ "grouped_shapes": "Đã nhóm {} hình (nhấn lại để bỏ nhóm)",
+ "ungrouped_shapes": "Đã bỏ nhóm {} hình"
 }

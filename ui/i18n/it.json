@@ -2240,5 +2240,7 @@
  "fill_theme": "Fill theme color",
  "color_theme": "Font theme color",
  "slant_dash_dot": "Slanted dash dot",
- "center_across": "Center across selection"
+ "center_across": "Center across selection",
+ "grouped_shapes": "{} forme raggruppate (premi di nuovo per separare)",
+ "ungrouped_shapes": "{} forme separate"
 }

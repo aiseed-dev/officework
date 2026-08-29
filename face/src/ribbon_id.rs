@@ -263,7 +263,7 @@ pub const CALC: &[Tab] = &[
         c("img-movefrwd", "Majukan", "img-movefrwd"),
         c("img-movebkwd", "Mundurkan", "img-movebkwd"),
         c("img-align", "Perataan", "img-align"),
-        x("Grup", "img-group"),
+        c("img-group", "Grup", "img-group"),
         c("shapes-merge", "Gabungkan bentuk", "shapes-merge"),
         c("colorschemas", "Ubah Skema Warna", "colorschemas"),
     ]},

@@ -263,7 +263,7 @@ pub const CALC: &[Tab] = &[
         c("img-movefrwd", "Porta avanti", "img-movefrwd"),
         c("img-movebkwd", "Porta indietro", "img-movebkwd"),
         c("img-align", "Allineamento", "img-align"),
-        x("Raggruppa", "img-group"),
+        c("img-group", "Raggruppa", "img-group"),
         c("shapes-merge", "Fondi forme", "shapes-merge"),
         c("colorschemas", "Cambia combinazione di colori", "colorschemas"),
     ]},

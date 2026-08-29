@@ -3335,3 +3335,58 @@ mod calc_round {
         );
     }
 }
+
+/// **束ねた図形が xlsx を往復する。**
+///
+/// 2026-08-29 発注者「グループ化」。名前で覚える細工ではなく、本物の
+/// `xdr:grpSp` で書きます。Excel でも束として開けます。
+#[test]
+fn grouped_shapes_survive_a_round_trip() {
+    let mut b = book::Book::new();
+    for (kind, fill, dx, g) in
+        [("rect", "DDE7F0", 20.0f32, 1u32), ("ellipse", "C0504D", 160.0, 1), ("diamond", "9BBB59", 20.0, 0)]
+    {
+        b.sheets[0].shapes_new.push(book::SheetShape {
+            at: book::Pos::new(2, 0),
+            dx_px: dx,
+            dy_px: 20.0,
+            width_px: 110.0,
+            height_px: 70.0,
+            kind: kind.into(),
+            fill: Some(fill.into()),
+            line: Some("2E5A87".into()),
+            line_w: 1.5,
+            alpha: 1.0,
+            group: g,
+            ..Default::default()
+        });
+    }
+    let mut buf = Vec::new();
+    super::write(&b, std::io::Cursor::new(&mut buf)).expect("書けない");
+
+    // 束は1つの入れ物、束ねていない図形は別の入れ物
+    let x = {
+        use std::io::Read;
+        let mut z = zip::ZipArchive::new(std::io::Cursor::new(&buf)).expect("開けない");
+        let na: Vec<String> =
+            (0..z.len()).map(|i| z.by_index(i).unwrap().name().to_string()).collect();
+        let d = na.iter().find(|n| n.contains("drawings/") && n.ends_with(".xml")).expect("描画");
+        let mut t = String::new();
+        z.by_name(d).unwrap().read_to_string(&mut t).unwrap();
+        t
+    };
+    assert_eq!(x.matches("<xdr:grpSp>").count(), 1, "束が grpSp になっていない");
+    assert_eq!(x.matches("<xdr:oneCellAnchor>").count(), 2, "入れ物の数が違う");
+
+    let (b2, _) = super::read(std::io::Cursor::new(&buf)).expect("読めない");
+    let sp = &b2.sheets[0].shapes;
+    assert_eq!(sp.len(), 3, "図形の数が違う");
+    assert_eq!(sp[0].group, 1, "束の番号が落ちた");
+    assert_eq!(sp[1].group, 1, "束の番号が落ちた");
+    assert_eq!(sp[2].group, 0, "束ねていない図形に番号が付いた");
+    // 束の子の位置も戻る(束の中の位置 + 入れ物の位置)
+    assert!((sp[0].dx_px - 20.0).abs() < 1.0, "1つ目の位置: {}", sp[0].dx_px);
+    assert!((sp[1].dx_px - 160.0).abs() < 1.0, "2つ目の位置: {}", sp[1].dx_px);
+    assert_eq!(sp[1].kind, "ellipse");
+    assert_eq!(sp[1].fill.as_deref(), Some("C0504D"));
+}

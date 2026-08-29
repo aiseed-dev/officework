@@ -1028,6 +1028,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("saved_svg", "已保存为 SVG：{}"),
     ("settings_shape_settings_panel", "设置请在右边的「图形设置」面板里改"),
     ("select_more_shapes_first", "请先选中 {} 个以上的图形（按住 Ctrl 点击可以加选）"),
+    ("grouped_shapes", "已组合 {} 个形状(再次按下可取消组合)"),
+    ("ungrouped_shapes", "已取消组合 {} 个形状"),
     ("aligned_left", "已把 {} 个靠左对齐"),
     ("centred_horizontally", "已把 {} 个左右居中对齐"),
     ("aligned_right", "已把 {} 个靠右对齐"),

@@ -579,6 +579,11 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
     let mut in_from = false;
     let mut in_ln = false;
     let mut in_sp = false;
+    // 束(grpSp)の番号と、いま読んでいる子の束の中での位置(EMU)
+    let mut in_grp: Option<u32> = None;
+    let mut ko_off: (i64, i64) = (0, 0);
+    // 束は子ごとに押し出すので、入れ物の終わりで押し出す分と分ける
+    let mut grp_out: Vec<(Pos, i64, i64, i64, i64, DrawKind)> = Vec::new();
     let mut is_chart = false;
     // 回転・反転・線幅・不透明度・影(xfrm / a:ln w / a:alpha / outerShdw)
     let mut rot = 0.0f32;
@@ -607,6 +612,8 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     has_custom = false;
                     (path_w, path_h) = (1000.0, 1000.0);
                     in_sp = false;
+                    in_grp = None;
+                    ko_off = (0, 0);
                     in_ln = false;
                     is_chart = false;
                     rot = 0.0;
@@ -621,9 +628,32 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     cur = t.to_vec()
                 }
                 b"sp" => in_sp = true,
+                // **束(grpSp)。** 名前 `jogrp{番号}` が束の番号です。
+                // 中の図形は1つの入れ物に並ぶので、子ごとに押し出します
+                // (2026-08-29 発注者「グループ化」)
+                // **`grpSp` 自身は名前を持ちません。** 番号は中の
+                // `nvGrpSpPr/cNvPr` の名前(`jogrp{番号}`)にあります。
+                // ここで目印だけ立て、番号は次の `cNvPr` で拾います
+                // (2026-08-29。開始タグから拾おうとして 0 のままでした)
+                b"grpSp" => in_grp = Some(0),
+                b"cNvPr" if in_grp == Some(0) => {
+                    in_grp = Some(
+                        attr(&e, "name")
+                            .as_deref()
+                            .and_then(|n| n.strip_prefix("jogrp"))
+                            .and_then(|n| n.parse::<u32>().ok())
+                            .unwrap_or(0),
+                    );
+                }
                 // グラフの入れ物。**中に入らない** — 在ったことだけ控える
                 b"graphicFrame" => is_chart = true,
                 b"cNvPr" if sp_name.is_none() => sp_name = attr(&e, "name"),
+                b"off" if in_sp && in_grp.is_some() => {
+                    ko_off = (
+                        attr(&e, "x").and_then(|v| v.parse::<i64>().ok()).unwrap_or(0),
+                        attr(&e, "y").and_then(|v| v.parse::<i64>().ok()).unwrap_or(0),
+                    );
+                }
                 b"xfrm" if in_sp => {
                     rot = attr(&e, "rot")
                         .and_then(|v| v.parse::<i64>().ok())
@@ -708,7 +738,25 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         embed = attr(&e, "embed");
                     }
                 }
+                // **束の番号は自己完結のタグで来ます**(`<xdr:cNvPr …/>`)。
+                // 開始タグの腕だけに書いて、番号が 0 のままでした(2026-08-29)
+                b"cNvPr" if in_grp == Some(0) => {
+                    in_grp = Some(
+                        attr(&e, "name")
+                            .as_deref()
+                            .and_then(|n| n.strip_prefix("jogrp"))
+                            .and_then(|n| n.parse::<u32>().ok())
+                            .unwrap_or(0),
+                    );
+                }
                 b"cNvPr" if sp_name.is_none() => sp_name = attr(&e, "name"),
+                // 束の子の、束の中での位置(EMU)
+                b"off" if in_sp && in_grp.is_some() => {
+                    ko_off = (
+                        attr(&e, "x").and_then(|v| v.parse::<i64>().ok()).unwrap_or(0),
+                        attr(&e, "y").and_then(|v| v.parse::<i64>().ok()).unwrap_or(0),
+                    );
+                }
                 b"pt" if has_custom => {
                     let x = attr(&e, "x").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
                     let y = attr(&e, "y").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
@@ -765,6 +813,12 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         line_w = w / 12700.0;
                     }
                 }
+                b"off" if in_sp && in_grp.is_some() => {
+                    ko_off = (
+                        attr(&e, "x").and_then(|v| v.parse::<i64>().ok()).unwrap_or(0),
+                        attr(&e, "y").and_then(|v| v.parse::<i64>().ok()).unwrap_or(0),
+                    );
+                }
                 b"xfrm" if in_sp => {
                     rot = attr(&e, "rot")
                         .and_then(|v| v.parse::<i64>().ok())
@@ -797,7 +851,51 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                 b"ln" => in_ln = false,
                 b"effectLst" => in_effect = false,
                 b"t" => in_t = false,
+                // **束の子は、その場で1つ押し出します。** 入れ物の終わりまで
+                // 待つと、最後の子だけになります(2026-08-29)
+                b"sp" if in_grp.is_some() => {
+                    in_sp = false;
+                    let g = in_grp.unwrap_or(0);
+                    let tpl = book::SheetShape {
+                        fill: fill.take(),
+                        line: line.take(),
+                        text: (!text.is_empty()).then(|| text.clone()),
+                        text_fmt: tfmt.clone(),
+                        rot,
+                        flip_h,
+                        flip_v,
+                        line_w,
+                        alpha: alpha.unwrap_or(1.0),
+                        shadow,
+                        group: g,
+                        ..Default::default()
+                    };
+                    if let (Some(c), Some(rr), Some(pr)) = (col, row, prst.take()) {
+                        grp_out.push((
+                            Pos::new(rr, c),
+                            off_x + ko_off.0,
+                            off_y + ko_off.1,
+                            cx.unwrap_or(300 * 9525),
+                            cy.unwrap_or(200 * 9525),
+                            DrawKind::Shape(Box::new(book::SheetShape { kind: pr, ..tpl })),
+                        ));
+                    }
+                    // 次の子のために、1つぶんだけ畳みます
+                    text.clear();
+                    tfmt = book::TextFmt::default();
+                    ko_off = (0, 0);
+                    rot = 0.0;
+                    (flip_h, flip_v) = (false, false);
+                    line_w = 1.5;
+                    alpha = None;
+                    shadow = false;
+                }
                 b"oneCellAnchor" | b"twoCellAnchor" | b"absoluteAnchor" => {
+                    if in_grp.is_some() {
+                        out.append(&mut grp_out);
+                        in_grp = None;
+                        continue;
+                    }
                     // 図形の雛形(場所と大きさは受け手が埋める)
                     let tpl = book::SheetShape {
                         fill: fill.take(),

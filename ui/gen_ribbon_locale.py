@@ -328,6 +328,12 @@ VENDOR_JA = {
     "zoom-in|zoom-in": "拡大",
     "zoom-out|zoom-out": "縮小",
     "zoom100|zoom100": "100%に拡大する",
+    # **id が付いた分**(2026-08-29。灰色のときは id が空でした)
+    "img-align|img-align": "配置",
+    "img-movebkwd|img-movebkwd": "背面ヘ移動",
+    "img-movefrwd|img-movefrwd": "前面ヘ移動",
+    "shapes-merge|shapes-merge": "図形を結合",
+    "img-group|img-group": "グループ化",
     "|img-align": "配置",
     "|img-group": "グループ化",
     "|img-movebkwd": "背面ヘ移動",

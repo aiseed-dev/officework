@@ -1028,6 +1028,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("saved_svg", "Saved as SVG: {}"),
     ("settings_shape_settings_panel", "Settings are in the \"Shape settings\" panel on the right"),
     ("select_more_shapes_first", "Select {} or more shapes first (Ctrl+click adds to the selection)"),
+    ("grouped_shapes", "Grouped {} shapes (press again to ungroup)"),
+    ("ungrouped_shapes", "Ungrouped {} shapes"),
     ("aligned_left", "Aligned {} to the left"),
     ("centred_horizontally", "Centred {} horizontally"),
     ("aligned_right", "Aligned {} to the right"),

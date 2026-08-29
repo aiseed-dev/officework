@@ -150,7 +150,7 @@ impl Calc {
         "inssmartart", "insequation", "insslicer", "inscheckbox", "instextart",
         // 図形の並べ替え・整列・結合(2026-08-29。腕は前からあり、
         // 右クリックのメニューからしか届いていませんでした)
-        "img-movefrwd", "img-movebkwd", "img-align", "shapes-merge",
+        "img-movefrwd", "img-movebkwd", "img-align", "shapes-merge", "img-group",
         "coauth-mode", "co-delcomment", "co-showcomment", "co-chat",
         "co-history",
         // Python タブ(2026-08-09)
@@ -1406,6 +1406,11 @@ impl Calc {
                         "sh-backward"
                     });
                 }
+            }
+            // 束ねる / 束を解く(同じ札で入切。本家と同じ)
+            "img-group" => {
+                self.commit();
+                self.shape_group();
             }
             "img-align" | "shapes-merge" => {
                 self.commit();

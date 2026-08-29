@@ -1028,6 +1028,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("saved_svg", "SVG で保存しました: {}"),
     ("settings_shape_settings_panel", "設定は右の「図形の設定」のパネルでどうぞ"),
     ("select_more_shapes_first", "{} 個以上の図形を選んでから(Ctrl+クリックで足せます)"),
+    ("grouped_shapes", "{} 個の図形を束ねました(もう一度押すと解きます)"),
+    ("ungrouped_shapes", "{} 個の図形の束を解きました"),
     ("aligned_left", "{} 個を左に揃えました"),
     ("centred_horizontally", "{} 個を左右の中央に揃えました"),
     ("aligned_right", "{} 個を右に揃えました"),

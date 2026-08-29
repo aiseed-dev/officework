@@ -1837,7 +1837,64 @@ mod pivot_tests {
         });
     }
 
-        /// **リボンのレイアウトの札から、図形の整列と結合に届く。**
+        /// **図形を束ねる / 解く。束ねたら一緒に動き、一緒に消える。**
+    ///
+    /// 2026-08-29 発注者「グループ化」。同じ札で入切します(本家と同じ)。
+    #[gpui::test]
+    fn grouping_moves_and_deletes_the_whole_bundle(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            for (r, cc) in [(1u32, 1u32), (3, 3), (5, 5)] {
+                this.book.sheets[0].shapes_new.push(book::SheetShape {
+                    at: Pos::new(r, cc),
+                    width_px: 40.0,
+                    height_px: 20.0,
+                    kind: "rect".into(),
+                    line: Some("1B6E3C".into()),
+                    ..Default::default()
+                });
+            }
+        });
+        // 1つだけでは束ねない(理由を言って断る)
+        c.update(cx, |this, cx| {
+            this.shape_sel = Some(0);
+            this.shape_multi.clear();
+            this.run_cmd("img-group", cx);
+            assert_eq!(this.book.sheets[0].shapes_new[0].group, 0, "1つで束ねた");
+        });
+        // 2つ選べば束ねる
+        c.update(cx, |this, cx| {
+            this.shape_sel = Some(0);
+            this.shape_multi = vec![1];
+            this.run_cmd("img-group", cx);
+            let g = this.book.sheets[0].shapes_new[0].group;
+            assert_ne!(g, 0, "束ねていない");
+            assert_eq!(this.book.sheets[0].shapes_new[1].group, g, "番号が揃っていない");
+            assert_eq!(this.book.sheets[0].shapes_new[2].group, 0, "関係ない図形まで束ねた");
+            // 束の仲間が引ける
+            assert_eq!(this.shape_group_idx(0).len(), 2);
+            assert_eq!(this.shape_group_idx(2), vec![2]);
+        });
+        // もう一度押すと解ける
+        c.update(cx, |this, cx| {
+            this.shape_sel = Some(0);
+            this.shape_multi = vec![1];
+            this.run_cmd("img-group", cx);
+            assert_eq!(this.book.sheets[0].shapes_new[0].group, 0, "解けていない");
+        });
+        // 束ごと消える
+        c.update(cx, |this, cx| {
+            this.shape_sel = Some(0);
+            this.shape_multi = vec![1];
+            this.run_cmd("img-group", cx);
+            this.shape_sel = Some(0);
+            this.shape_multi.clear();
+            this.shape_menu_action("sh-del");
+            assert_eq!(this.book.sheets[0].shapes_new.len(), 1, "束ごと消えていない");
+        });
+    }
+
+    /// **リボンのレイアウトの札から、図形の整列と結合に届く。**
     ///
     /// 2026-08-29。動き(`shape_align` / `shapes_boolean` / `shape_menu_action`)は
     /// 前からありましたが、右クリックのメニューからしか届かず、リボンの札は

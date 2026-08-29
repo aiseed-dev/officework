@@ -1028,6 +1028,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("saved_svg", "Als SVG gespeichert: {}"),
     ("settings_shape_settings_panel", "Die Einstellungen finden Sie rechts im Bereich „Formeinstellungen“"),
     ("select_more_shapes_first", "Wählen Sie erst {} oder mehr Formen aus (mit Ctrl+Klick kommen weitere dazu)"),
+    ("grouped_shapes", "{} Formen gruppiert (erneut drücken zum Aufheben)"),
+    ("ungrouped_shapes", "Gruppierung von {} Formen aufgehoben"),
     ("aligned_left", "{} Formen links ausgerichtet"),
     ("centred_horizontally", "{} Formen waagerecht zentriert"),
     ("aligned_right", "{} Formen rechts ausgerichtet"),

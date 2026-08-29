@@ -1108,8 +1108,35 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         }
         let mut anchors = String::new();
         let mut rels_add = String::new();
+        // **束ねた図形は1つの `xdr:grpSp` にまとめます**(2026-08-29)。
+        // Excel でも束として開け、まとめて動かせます。束ねていない図形は
+        // 今までどおり1枚ずつです
+        let mut sunda: Vec<usize> = Vec::new();
         for (k, spn) in sh.shapes_new.iter().enumerate() {
-            anchors.push_str(&shape_anchor_xml(spn, (i as u32) * 100 + k as u32 + 50));
+            if sunda.contains(&k) {
+                continue;
+            }
+            let base = (i as u32) * 100 + k as u32 + 50;
+            if spn.group == 0 {
+                anchors.push_str(&shape_anchor_xml(spn, base));
+                continue;
+            }
+            let nakama: Vec<usize> = sh
+                .shapes_new
+                .iter()
+                .enumerate()
+                .filter(|(_, s2)| s2.group == spn.group)
+                .map(|(n, _)| n)
+                .collect();
+            sunda.extend(&nakama);
+            if nakama.len() < 2 {
+                anchors.push_str(&shape_anchor_xml(spn, base));
+                continue;
+            }
+            anchors.push_str(&group_anchor_xml(
+                &nakama.iter().map(|&n| &sh.shapes_new[n]).collect::<Vec<_>>(),
+                base,
+            ));
         }
         for (k, im) in sh.images_new.iter().enumerate() {
             media_n += 1;
@@ -2268,6 +2295,11 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
 
 /// 挿した図形1枚のアンカー(oneCellAnchor の xdr:sp)。Excel でも図形として開ける。
 pub(super) fn shape_anchor_xml(sp: &book::SheetShape, id: u32) -> String {
+    shape_xml(sp, id, None)
+}
+
+/// 図形1つ。`naka_off` を渡すと**束の子**(`xdr:sp` だけ)を返します
+fn shape_xml(sp: &book::SheetShape, id: u32, naka_off: Option<(i64, i64)>) -> String {
     let (cx, cy) = ((sp.width_px * 9525.0) as i64, (sp.height_px * 9525.0) as i64);
     // 不透明度は srgbClr の子 a:alpha(10万分率)。1.0 なら書かない
     let alpha = if sp.alpha < 0.999 {
@@ -2455,40 +2487,124 @@ pub(super) fn shape_anchor_xml(sp: &book::SheetShape, id: u32) -> String {
         }
         None => String::new(),
     };
+    // 折れ線ものは name に自作の札を残す — 開き直しで組み直せる。
+    // **印は3つ目の欄**(無ければ空。古い札とも読み合える)
+    let name = if matches!(sp.kind.as_str(), "spark-col" | "spark-wl") {
+        format!("jo:{}:{:.4}:{}", sp.kind, sp.base, sp.spark_marks.tag())
+    } else if sp.kind == "spark" && sp.spark_marks != book::SparkMarks::default() {
+        format!("jo:spark:0:{}", sp.spark_marks.tag())
+    } else {
+        format!("図形 {id}")
+    };
+    let xfrm = xfrm_attrs;
+    // **中身(`xdr:sp`)は束の子としても使います。** `off` は束の中での
+    // 位置(EMU)で、束ねていないときは 0,0 です
+    let (off_x, off_y) = naka_off.unwrap_or((0, 0));
+    let sp_xml = format!(
+        concat!(
+            "<xdr:sp macro=\"\" textlink=\"\">",
+            "<xdr:nvSpPr><xdr:cNvPr id=\"{id}\" name=\"{name}\"/><xdr:cNvSpPr/></xdr:nvSpPr>",
+            "<xdr:spPr><a:xfrm{xfrm}><a:off x=\"{ox}\" y=\"{oy}\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm>",
+            "{geom}{fill}{line}{effect}</xdr:spPr>{txt}",
+            "</xdr:sp>"
+        ),
+        id = id,
+        name = name,
+        xfrm = xfrm,
+        ox = off_x,
+        oy = off_y,
+        cx = cx,
+        cy = cy,
+        geom = geom,
+        fill = fill,
+        line = line,
+        effect = effect,
+        txt = txt,
+    );
+    if naka_off.is_some() {
+        return sp_xml;
+    }
     format!(
         concat!(
             "<xdr:oneCellAnchor>",
             "<xdr:from><xdr:col>{col}</xdr:col><xdr:colOff>{dx}</xdr:colOff>",
             "<xdr:row>{row}</xdr:row><xdr:rowOff>{dy}</xdr:rowOff></xdr:from>",
             "<xdr:ext cx=\"{cx}\" cy=\"{cy}\"/>",
-            "<xdr:sp macro=\"\" textlink=\"\">",
-            "<xdr:nvSpPr><xdr:cNvPr id=\"{id}\" name=\"{name}\"/><xdr:cNvSpPr/></xdr:nvSpPr>",
-            "<xdr:spPr><a:xfrm{xfrm}><a:off x=\"0\" y=\"0\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm>",
-            "{geom}{fill}{line}{effect}</xdr:spPr>{txt}",
-            "</xdr:sp><xdr:clientData/></xdr:oneCellAnchor>"
+            "{sp_xml}",
+            "<xdr:clientData/></xdr:oneCellAnchor>"
         ),
+        sp_xml = sp_xml,
         col = sp.at.col,
         row = sp.at.row,
         dx = (sp.dx_px * 9525.0) as i64,
         dy = (sp.dy_px * 9525.0) as i64,
         cx = cx,
         cy = cy,
+    )
+}
+
+/// **束ねた図形を1つの `xdr:grpSp` にする。**
+///
+/// 2026-08-29 発注者「グループ化」。Excel でも束として開け、まとめて
+/// 動かせます(名前で覚える細工ではなく、本物の group です)。
+///
+/// 子の座標は**束の中の EMU** です。`chOff`/`chExt` を `off`/`ext` と
+/// 同じにしてあるので、子は束の左上からの位置をそのまま書けます。
+fn group_anchor_xml(sps: &[&book::SheetShape], id: u32) -> String {
+    // 束の外枠(画素)。留めるセルは、いちばん左上の図形のもの
+    let px = |sp: &book::SheetShape| -> (f32, f32) {
+        // セルの粗さは無視して、留めたセル + ずらしで比べます
+        (sp.at.col as f32 * 64.0 + sp.dx_px, sp.at.row as f32 * 20.0 + sp.dy_px)
+    };
+    let atama = sps
+        .iter()
+        .min_by(|a, b| {
+            let (ax, ay) = px(a);
+            let (bx, by) = px(b);
+            (ay, ax).partial_cmp(&(by, bx)).unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .copied()
+        .expect("束が空");
+    let (bx, by) = px(atama);
+    let mut w = 0.0f32;
+    let mut h = 0.0f32;
+    for sp in sps {
+        let (x, y) = px(sp);
+        w = w.max(x - bx + sp.width_px);
+        h = h.max(y - by + sp.height_px);
+    }
+    let (cx, cy) = ((w * 9525.0) as i64, (h * 9525.0) as i64);
+    let mut ko = String::new();
+    for (n, sp) in sps.iter().enumerate() {
+        let (x, y) = px(sp);
+        ko.push_str(&shape_xml(
+            sp,
+            id + n as u32 + 1,
+            Some((((x - bx) * 9525.0) as i64, ((y - by) * 9525.0) as i64)),
+        ));
+    }
+    format!(
+        concat!(
+            "<xdr:oneCellAnchor>",
+            "<xdr:from><xdr:col>{col}</xdr:col><xdr:colOff>{dx}</xdr:colOff>",
+            "<xdr:row>{row}</xdr:row><xdr:rowOff>{dy}</xdr:rowOff></xdr:from>",
+            "<xdr:ext cx=\"{cx}\" cy=\"{cy}\"/>",
+            "<xdr:grpSp>",
+            "<xdr:nvGrpSpPr><xdr:cNvPr id=\"{id}\" name=\"jogrp{g}\"/><xdr:cNvGrpSpPr/></xdr:nvGrpSpPr>",
+            "<xdr:grpSpPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/>",
+            "<a:chOff x=\"0\" y=\"0\"/><a:chExt cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm></xdr:grpSpPr>",
+            "{ko}",
+            "</xdr:grpSp><xdr:clientData/></xdr:oneCellAnchor>"
+        ),
+        col = atama.at.col,
+        row = atama.at.row,
+        dx = (atama.dx_px * 9525.0) as i64,
+        dy = (atama.dy_px * 9525.0) as i64,
+        cx = cx,
+        cy = cy,
         id = id,
-        // 折れ線ものは name に自作の札を残す — 開き直しで組み直せる。
-        // **印は3つ目の欄**(無ければ空。古い札とも読み合える)
-        name = if matches!(sp.kind.as_str(), "spark-col" | "spark-wl") {
-            format!("jo:{}:{:.4}:{}", sp.kind, sp.base, sp.spark_marks.tag())
-        } else if sp.kind == "spark" && sp.spark_marks != book::SparkMarks::default() {
-            format!("jo:spark:0:{}", sp.spark_marks.tag())
-        } else {
-            format!("図形 {id}")
-        },
-        geom = geom,
-        fill = fill,
-        line = line,
-        effect = effect,
-        xfrm = xfrm_attrs,
-        txt = txt
+        g = atama.group,
+        ko = ko,
     )
 }
 

@@ -4104,6 +4104,14 @@
   "kind": "msg"
  },
  {
+  "key": "grouped_shapes",
+  "kind": "msg"
+ },
+ {
+  "key": "ungrouped_shapes",
+  "kind": "msg"
+ },
+ {
   "key": "aligned_left",
   "kind": "msg"
  },

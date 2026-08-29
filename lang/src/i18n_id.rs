@@ -1028,6 +1028,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("saved_svg", "Disimpan sebagai SVG: {}"),
     ("settings_shape_settings_panel", "Pengaturannya ada di panel \"Pengaturan bentuk\" di sebelah kanan"),
     ("select_more_shapes_first", "Pilih {} bentuk atau lebih dulu (Ctrl+klik menambahkannya ke pilihan)"),
+    ("grouped_shapes", "{} bentuk dikelompokkan (tekan lagi untuk melepas)"),
+    ("ungrouped_shapes", "{} bentuk dilepas dari kelompok"),
     ("aligned_left", "{} bentuk diratakan ke kiri"),
     ("centred_horizontally", "{} bentuk diratakan ke tengah secara mendatar"),
     ("aligned_right", "{} bentuk diratakan ke kanan"),

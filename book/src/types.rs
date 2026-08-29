@@ -1096,6 +1096,12 @@ pub struct SheetShape {
     /// 不透明度(0〜1、1=不透明)。塗りと線の色に掛かる。
     /// xlsx へは srgbClr の子 a:alpha として書く
     pub alpha: f32,
+    /// **同じ束に入っている図形は同じ番号。** 0 は「束ねていない」。
+    ///
+    /// 束ねた図形は、1つ選ぶと全部が選ばれ、動かすと一緒に動きます。
+    /// xlsx へは `xdr:grpSp`(本物の group)で書くので、Excel でも束として
+    /// 開けます(2026-08-29 発注者「グループ化」)。
+    pub group: u32,
     /// 影(右下への落ち影)。xlsx の a:outerShdw と往復。
     /// **紙にも出ます**(2026-08-29 発注者「紙にも影を出すようにして」)。
     /// それまでは「紙は輪郭だけ」の方針で画面と xlsx だけでした
@@ -1124,6 +1130,7 @@ impl Default for SheetShape {
             line_w: 1.5,
             alpha: 1.0,
             shadow: false,
+            group: 0,
         }
     }
 }

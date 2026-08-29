@@ -263,7 +263,7 @@ pub const CALC: &[Tab] = &[
         c("img-movefrwd", "前面ヘ移動", "img-movefrwd"),
         c("img-movebkwd", "背面ヘ移動", "img-movebkwd"),
         c("img-align", "配置", "img-align"),
-        x("グループ化", "img-group"),
+        c("img-group", "グループ化", "img-group"),
         c("shapes-merge", "図形を結合", "shapes-merge"),
         c("colorschemas", "配色の変更", "colorschemas"),
     ]},
