@@ -2,6 +2,10 @@
 
 _元は英語版(link:README.adoc[README.adoc])です。こちらは日本語訳です。_
 
+officework は、データと描画を現代化した Office です。
+Euro-Office・Zed・Polars・openpyxl・python-docx という公開されているソフトウェアを、Claude が蒸留して組み合わせて作りました。
+機能の数では勝負しません。複雑なことは AI と Python にやらせます。
+
 Microsoft の Excel と Word は閉じた世界です。
 データも、見た目も、コードも、1つのファイルの中に閉じ込められています。
 officework はそれをほどいて、**データ・テンプレート・Python・AI を自由に使えるようにした Office** です。
