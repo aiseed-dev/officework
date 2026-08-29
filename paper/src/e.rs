@@ -88,7 +88,9 @@ pub fn egaku(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32) -> E {
 /// サブセット後の番号とは別で、こちらは元の書体の番号です。絵は
 /// 書体を丸ごと持っているので、番号を詰め直す必要がありません。
 pub fn egaku_with(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, font: Option<&[u8]>) -> E {
-    let (w, h) = ((w_mm * bai) as u16, (h_mm * bai) as u16);
+    // **四捨五入します。** 切り捨てると A4 の 150 dpi が 1754 でなく 1753
+    // 画素になり、1画素足りません(297mm × 150 ÷ 25.4 = 1753.94)
+    let (w, h) = ((w_mm * bai).round() as u16, (h_mm * bai).round() as u16);
     let (w, h) = (w.max(1), h.max(1));
     let mut cx = RenderContext::new(w, h);
     // mm を画素に。**y はそのまま下向き**です — Leaf は左下からの y で

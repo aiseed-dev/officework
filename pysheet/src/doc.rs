@@ -399,8 +399,22 @@ impl PyDoc {
     /// 保存する。開いた元のファイルがあれば `ooxml::write_with` に渡し、
     /// **こちらが作り直さない部品は原本のまま持ち越す**(様式・図形・変更履歴・
     /// 読めなかった部品)。openpyxl / python-docx との違いはここ。
-    fn save(&self, path: &str) -> PyResult<()> {
+    ///
+    /// 拡張子が `.pdf` なら紙に、`.png` なら絵になります。`dpi` は絵の
+    /// 細かさで、既定は 150 です(`.png` のときだけ効きます)。
+    #[pyo3(signature = (path, dpi = None))]
+    fn save(&self, path: &str, dpi: Option<f32>) -> PyResult<()> {
         let g = lock(&self.inner)?;
+        // **`.png` なら絵にします**(2026-08-29)。頁ごとに1枚で、
+        // 2枚目からは名前に `-2`・`-3` が付きます
+        if std::path::Path::new(path)
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("png"))
+        {
+            ops::png::doc(&g.doc, None, std::path::Path::new(path), dpi.unwrap_or(ops::png::DPI))
+                .map_err(|e| PyIOError::new_err(format!("{path}: PNG にできない: {e}")))?;
+            return Ok(());
+        }
         // **`.pdf` なら紙にします**(2026-08-27 発注者「エンジンで pdf を
         // つくるところまで」)。新しい口は作りません — 拡張子で行き先が
         // 決まるのは、この階が前からやっていることです。

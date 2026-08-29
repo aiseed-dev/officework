@@ -9,7 +9,7 @@ license.workspace = true
 # 生きた表、pysheet ならファイル。gpui は絶対に入れない
 [dependencies]
 book = { path = "../book" }
-paper = { path = "../paper" }
+paper = { path = "../paper", features = ["e"] }
 # 設定の置き場は pyrun が正本(2026-08-16)。依存ゼロの std だけの機構
 pyrun = { path = "../pyrun" }
 kumihan = { path = "../engine" }

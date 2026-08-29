@@ -56,7 +56,7 @@ pub fn book(b: &book::Book, to: &Path) -> Result<u32, String> {
 }
 
 /// シートの紙の設定。**シートごとに効きます**(1冊に縦と横が混ざってよい)
-fn paper_of(s: &book::Sheet) -> paper::Paper {
+pub(crate) fn paper_of(s: &book::Sheet) -> paper::Paper {
     // 用紙の番号は Excel の決め。9 = A4
     let (w, h) = match s.paper_size.unwrap_or(9) {
         8 => (297.0, 420.0),
@@ -72,7 +72,7 @@ fn paper_of(s: &book::Sheet) -> paper::Paper {
     paper::Paper { width_mm: w, height_mm: h, margin_mm: margin }
 }
 
-fn setup_of(s: &book::Sheet, date1904: bool) -> paper::grid::PrintSetup {
+pub(crate) fn setup_of(s: &book::Sheet, date1904: bool) -> paper::grid::PrintSetup {
     paper::grid::PrintSetup {
         areas: s.print_areas.clone(),
         margins_mm: s.margins_mm,

@@ -174,9 +174,23 @@ impl PyBook {
 
     /// 保存する。開いた元のファイルがあれば、こちらが作り直さない部品
     /// (図形・テーマ・印刷設定・文書情報)を原本から持ち越す。
-    fn save(&self, path: &str) -> PyResult<()> {
+    ///
+    /// 拡張子が `.pdf` なら紙に、`.png` なら絵になります。`dpi` は絵の
+    /// 細かさで、既定は 150 です(`.png` のときだけ効きます)。
+    #[pyo3(signature = (path, dpi = None))]
+    fn save(&self, path: &str, dpi: Option<f32>) -> PyResult<()> {
         let mut g = lock(&self.inner)?;
         recalc_all(&mut g.book);
+        // **`.png` なら絵にします**(2026-08-29)。頁ごとに1枚で、
+        // 2枚目からは名前に `-2`・`-3` が付きます
+        if std::path::Path::new(path)
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("png"))
+        {
+            ops::png::book(&g.book, std::path::Path::new(path), dpi.unwrap_or(ops::png::DPI))
+                .map_err(|e| PyIOError::new_err(format!("{path}: PNG にできない: {e}")))?;
+            return Ok(());
+        }
         // **`.pdf` なら紙にします**(2026-08-27)。頁番号はブック通しで、
         // 隠したシートは刷りません — 画面と同じです。
         // openpyxl には無い所です(本家は組版を持たないので作れません)

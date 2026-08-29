@@ -58,7 +58,7 @@ print(d.tables[0][1][2].text)            # table, row, cell
 d.save("out.docx")                       # styles, headers, shapes, tracked changes carried over
 ```
 
-## PDF — the part the others cannot do
+## PDF and PNG — the part the others cannot do
 
 `save()` looks at the extension. The same book or document you just edited
 becomes a PDF, laid out by the same typesetting engine that drives the desktop
@@ -68,6 +68,19 @@ app, so the paper matches the screen:
 b.save("quote.pdf")                      # the sheet, paginated, repeating header rows
 d.save("report.pdf")                     # the document, typeset
 ```
+
+`.png` gives you the same page as an image — for a thumbnail, a preview in a web
+page, or a picture to drop into a chat message:
+
+```python
+b.save("quote.png")                      # 150 dpi by default; A4 comes out 1240x1754
+d.save("report.png", dpi=300)            # print resolution
+```
+
+One file per page. The first page keeps the name you gave it, and later pages
+get `-2`, `-3` appended, so a three-page document writes `report.png`,
+`report-2.png` and `report-3.png`. Both formats come off the same laid-out page,
+so the image and the PDF agree.
 
 This runs on a server with nothing else installed. There is no LibreOffice to
 launch, no Chromium to drive, no `wkhtmltopdf`, no temporary HTML. It is one

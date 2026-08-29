@@ -1491,9 +1491,15 @@ class Doc:
         d._d = _doc.Doc.open(_os.fspath(path))
         return d
 
-    def save(self, path):
+    def save(self, path, dpi=None):
+        """保存する。拡張子で行き先が決まります。
+
+        ``.docx`` は文書、``.pdf`` は紙、``.png`` は絵です。
+        ``dpi`` は絵の細かさで、既定は 150 です(``.png`` のときだけ効きます)。
+        頁が複数あるときは、2枚目から名前に ``-2``・``-3`` が付きます。
+        """
         # Path も受ける(上の open と同じ理由)
-        self._d.save(_os.fspath(path))
+        self._d.save(_os.fspath(path), dpi)
 
     @property
     def unsupported(self):

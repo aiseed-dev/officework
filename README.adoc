@@ -296,7 +296,7 @@ sheet/      xlsx reading and writing, formula engine, styles (styles.xml)
 ops/        the verbs of a workbook and the sockets (open, read, write — same meaning for Python and the app)
 pyrun/      the machinery that runs Python (sandbox, time limits)
 lang/       language-specific logic; knows nothing about gpui, runs headless
-paper/      projects the page onto PDF
+paper/      projects the page onto PDF and PNG
 face/       screen parts that do no drawing (file listing, last session)
 ui/         glue to gpui (input, IME, ribbon)
 writer/     the document editor

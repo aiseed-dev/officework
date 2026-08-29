@@ -25,6 +25,9 @@ pub mod table;
 /// PDF を作る(アプリが動いていなくても)。**どの機種でも使えます**
 pub mod pdf;
 
+/// 紙面を PNG にする。pdf と同じ紙面から、片方は紙、片方は絵になります
+pub mod png;
+
 /// ソケットの置き場所。`$XDG_RUNTIME_DIR/officework/<app>.sock`。
 /// AF_UNIX の径路は 108 字までなので、長すぎるときは
 /// `/tmp/officework-UID/<app>.sock` へ落とす(Python 側も同じ規則)。
