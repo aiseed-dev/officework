@@ -33,11 +33,12 @@ imported only if you ask for it (`pip install officework[pandas]`).
 from officework import sheet
 b = sheet.Book.open("form7.xlsx")
 s = b["quote"]
+s.insert_row(30)                         # make room; the formulas below follow the move
 s["A30"] = "Sample Trading Co., Ltd."    # only the value is rewritten
 s["C30"] = "=B30*100"                    # a formula; recalculated on the spot
 print(s["C30"].value)                    # the computed value, as in openpyxl
-s.insert_row(30)                         # remaining formulas follow the move
-b.save("out.xlsx")                       # writes back the changes
+b.save("out.xlsx")                       # the xlsx to send on
+b.save("quote.pdf")                      # the same sheet, straight to paper
 ```
 
 Indexing follows openpyxl exactly: `ws["A1"]` is a **cell**, `ws["A1:C3"]`
@@ -50,11 +51,10 @@ writing into a merged region's top-left works the way the articles show.
 ```python
 from officework import doc
 d = doc.Doc.open("report.docx")
-print(d.unsupported)                     # what it recognised it could not read
 d.replace("Old Name Ltd.", "New Name Ltd.")   # replaces the text, run by run
-d[3].text = "replaced"                   # the paragraph stays a heading, stays aligned
-print(d.tables[0][1][2].text)            # table, row, cell
-d.save("out.docx")                       # writes back the changes
+d.fill("customer", "Sample Trading K.K.")     # fill a named form field
+d.save("out.docx")                       # the docx to send on
+d.save("report.pdf")                     # the same document, typeset for paper
 ```
 
 ## PDF and PNG — the part the others cannot do
