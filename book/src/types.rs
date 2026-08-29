@@ -695,6 +695,14 @@ pub struct Sheet {
     /// チェックボックスと同じ**「許す」向き**で持ち、読み書きの所だけで
     /// 裏返す。向きを混ぜると必ずどこかで逆になる
     pub protect_allow: ProtectAllow,
+    /// **範囲ごとの保護**(名前, 範囲)。xlsx の `protectedRanges` と往復します。
+    ///
+    /// シート全体の保護([`Sheet::protected`])が入っているときに効き、
+    /// ここに挙げた範囲だけ**別に守ります**。
+    ///
+    /// **鍵は持ちません。** password は書かず、掛けた振りをしません
+    /// (`read_only_rec` と同じ考えです。2026-08-30 発注者「範囲を保護」)。
+    pub protect_ranges: Vec<(String, String)>,
     /// 名前の定義。式の中で名前が使える。
     /// workbook.xml の definedNames と往復する
     pub names: Vec<DefinedName>,

@@ -1464,6 +1464,14 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
                 b"tabColor" => {
                     sh.tab_color = attr(&e, "rgb");
                 }
+                // **範囲ごとの保護**(2026-08-30)。鍵は読みません — 持たない
+                // 物を持っている顔をしないためです
+                b"protectedRange" => {
+                    if let Some(sq) = attr(&e, "sqref") {
+                        let na = attr(&e, "name").unwrap_or_default();
+                        sh.protect_ranges.push((na, sq));
+                    }
+                }
                 // シートの保護。sheet="0" と書く道具は保護していない扱い
                 b"sheetProtection" => {
                     sh.protected =

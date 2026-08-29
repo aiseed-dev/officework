@@ -2246,5 +2246,10 @@
  "book_structure_locked": "Workbook structure locked (sheets cannot be added, removed or reordered)",
  "book_structure_unlocked": "Workbook structure unlocked",
  "page_break_preview_on": "Page break preview ({} breaks). Normal view puts it back",
- "normal_view_on": "Normal view"
+ "normal_view_on": "Normal view",
+ "select_range_first": "Select the range to protect first",
+ "protected_range_name": "Range {}",
+ "range_protected": "{} is protected (the sheet is protected too)",
+ "range_protection_removed": "{} is no longer protected",
+ "protected_ranges": "Protected ranges"
 }

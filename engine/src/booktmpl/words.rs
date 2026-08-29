@@ -59,6 +59,7 @@ pub const WORDS: &[(&str, [&str; 15])] = &[
     ("level", ["Ebene", "Level", "Nivel", "Niveau", "Tingkat", "Livello", "段", "레벨", "Nível", "Nível", "Уровень", "Seviye", "Cấp", "级别", "層級"]),
     ("tmpl_collapsed", ["Reduzieren", "Collapsed", "Contraer", "Réduire", "Kuncupkan", "Riduci", "畳む", "축소", "Recolher", "Minimizar", "Свернуть", "Daralt", "Thu gọn", "折叠", "折疊"]),
     ("allowed_actions", ["Erlaubte Aktionen", "Allowed actions", "Operaciones permitidas", "Actions permises", "Tindakan yang diizinkan", "Operazioni consentite", "許可する操作", "허용할 동작", "Operações permitidas", "Operações permitidas", "Разрешённые действия", "İzin verilen işlemler", "Thao tác được phép", "允许的操作", "允許的操作"]),
+    ("protected_ranges", ["Geschützte Bereiche", "Protected ranges", "Rangos protegidos", "Plages protégées", "Rentang terlindungi", "Intervalli protetti", "守る範囲", "보호할 범위", "Intervalos protegidos", "Intervalos protegidos", "Защищённые диапазоны", "Korunan aralıklar", "Vùng được bảo vệ", "保护的区域", "保護的範圍"]),
     ("name", ["Umbenennen", "Name", "Renombrar", "Renommer", "Ganti nama", "Rinomina", "名前", "이름 변경", "Mudar o nome", "Renomear", "Переименовать", "Yeniden adlandır", "Đổi tên", "重命名", "重新命名"]),
     ("item", ["Element", "Item", "Elemento", "Element", "Butir", "Elemento", "項目", "항목", "Item", "Item", "Элемент", "Öğe", "Mục", "项目", "項目"]),
     ("value", ["Wert", "Value", "Valor", "Valeur", "Nilai", "Valore", "値", "값", "Valor", "Valor", "Значение", "Değer", "Giá trị", "值", "值"]),

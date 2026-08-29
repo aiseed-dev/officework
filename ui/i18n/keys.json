@@ -7668,6 +7668,22 @@
   "kind": "msg"
  },
  {
+  "key": "select_range_first",
+  "kind": "msg"
+ },
+ {
+  "key": "protected_range_name",
+  "kind": "msg"
+ },
+ {
+  "key": "range_protected",
+  "kind": "msg"
+ },
+ {
+  "key": "range_protection_removed",
+  "kind": "msg"
+ },
+ {
   "key": "book_structure_unlocked",
   "kind": "msg"
  },
@@ -8726,6 +8742,10 @@
  {
   "key": "allowed_actions",
   "kind": "ribbon"
+ },
+ {
+  "key": "protected_ranges",
+  "kind": "word"
  },
  {
   "key": "col_width",

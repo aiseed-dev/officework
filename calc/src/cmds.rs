@@ -155,7 +155,7 @@ impl Calc {
         "co-history",
         // Python タブ(2026-08-09)
         "rec-toggle", "py-new", "py-list", "py-folder", "func-list", "ribbon-list",
-        "prot-doc", "prot-book", "prot-encrypt", "prot-sign",
+        "prot-doc", "prot-book", "prot-range", "prot-encrypt", "prot-sign",
         "view-normal", "view-pagebreak",
         "zoom-in", "zoom-out", "zoom100", "ui-bigger", "ui-smaller", "formula-bar", "show-headings", "show-zeros",
         // 左右のパネル(2026-08-15)
@@ -376,7 +376,7 @@ impl Calc {
         "setfilter", "clear-filter",
         "trace-prec", "trace-dep", "remove-arrows", "pivot-select",
         "coauth-mode", "co-showcomment", "co-chat", "co-history",
-        "prot-doc", "prot-book", "prot-encrypt", "prot-sign",
+        "prot-doc", "prot-book", "prot-range", "prot-encrypt", "prot-sign",
         "view-normal", "view-pagebreak", "ai-where",
         "recover", "recover-every", "csv-kind", "autofit-col", "autofit-row",
         "read-only-rec",
@@ -1665,6 +1665,39 @@ impl Calc {
             // **ブックの構造を守る**(2026-08-30 発注者「ブックを保護」)。
             // シートの追加・削除・並べ替え・名前の変更を禁じます。
             // **鍵ではありません** — password は書かず、掛けた振りをしません
+            // **範囲ごとの保護**(2026-08-30 発注者「範囲を保護」)。
+            // 選んだ範囲を守る一覧に入れます。既に入っている範囲を選んで
+            // 押すと外します(シートの保護と同じ入切の作り)。
+            //
+            // **鍵は持ちません** — password を書かず、掛けた振りをしません
+            "prot-range" => {
+                self.commit();
+                if self.anchor.is_none() {
+                    self.status = ui::t!("select_range_first").into();
+                    return;
+                }
+                let (a, b) = self.sel_rect();
+                let sq = format!("{}:{}", a.a1(), b.a1());
+                let ima = self.sheet().protect_ranges.iter().position(|(_, r)| *r == sq);
+                match ima {
+                    Some(i) => {
+                        self.sheet_mut().protect_ranges.remove(i);
+                        self.status = ui::tf!("range_protection_removed", sq).into();
+                    }
+                    None => {
+                        let n = self.sheet().protect_ranges.len() + 1;
+                        let na = ui::tf!("protected_range_name", n).to_string();
+                        self.sheet_mut().protect_ranges.push((na, sq.clone()));
+                        // **シートの保護が無いと効きません。** 黙って効かない
+                        // ままにせず、まとめて掛けます
+                        if !self.sheet().protected {
+                            self.sheet_mut().protected = true;
+                        }
+                        self.status = ui::tf!("range_protected", sq).into();
+                    }
+                }
+                self.dirty = true;
+            }
             "prot-book" => {
                 self.commit();
                 self.book.lock_structure = !self.book.lock_structure;

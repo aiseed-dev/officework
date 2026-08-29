@@ -1848,6 +1848,18 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             }
             w.write_event(Event::Empty(pr)).unwrap();
         }
+        // **範囲ごとの保護**(2026-08-30)。作法どおり sheetProtection の
+        // 直後です。**鍵は書きません** — 掛けた振りをしないためです
+        if !sh.protect_ranges.is_empty() {
+            w.write_event(Event::Start(BytesStart::new("protectedRanges"))).unwrap();
+            for (na, hani) in &sh.protect_ranges {
+                let mut r = BytesStart::new("protectedRange");
+                r.push_attribute(("sqref", hani.as_str()));
+                r.push_attribute(("name", na.as_str()));
+                w.write_event(Event::Empty(r)).unwrap();
+            }
+            w.write_event(Event::End(BytesEnd::new("protectedRanges"))).unwrap();
+        }
         // シナリオ。**作法どおり sheetProtection の後・mergeCells の前**。
         // `current` と `show` は「いま出しているのはどれか」で、こちらは
         // シナリオを当てても覚えないので 0 のままにします

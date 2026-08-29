@@ -84,6 +84,7 @@ WORDS = [
     ("level",              "段",             "Level"),
     ("tmpl_collapsed",     "畳む",           "Collapsed"),
     ("allowed_actions",    "許可する操作",   "Allowed actions"),
+    ("protected_ranges",   "守る範囲",       "Protected ranges"),
     ("name",               "名前",           "Name"),
     ("item",               "項目",           "Item"),
     ("value",              "値",             "Value"),

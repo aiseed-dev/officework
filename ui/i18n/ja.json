@@ -2246,5 +2246,10 @@
  "book_structure_locked": "ブックの構造を守ります(シートの追加・削除・並べ替えができません)",
  "book_structure_unlocked": "ブックの構造の保護を外しました",
  "page_break_preview_on": "改ページ プレビュー(切れ目 {} 本)。標準で戻ります",
- "normal_view_on": "標準の表示に戻しました"
+ "normal_view_on": "標準の表示に戻しました",
+ "select_range_first": "守る範囲を選んでください",
+ "protected_range_name": "範囲 {}",
+ "range_protected": "{} を守ります(シートの保護も掛けました)",
+ "range_protection_removed": "{} の保護を外しました",
+ "protected_ranges": "守る範囲"
 }

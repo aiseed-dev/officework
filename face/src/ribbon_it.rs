@@ -10,7 +10,7 @@
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
-use super::ribbon::{c, t, m, x, xt, Tab};
+use super::ribbon::{c, t, m, Tab};
 
 pub const WRITER: &[Tab] = &[
     Tab { name: "File", cmds: &[
@@ -94,7 +94,7 @@ pub const WRITER: &[Tab] = &[
         c("img-movebkwd", "Porta indietro", "img-movebkwd"),
         c("img-align", "Allineamento", "img-align"),
         c("img-group", "Raggruppa", "img-group"),
-        x("Fondi forme", "shapes-merge"),
+        c("shapes-merge", "Fondi forme", "shapes-merge"),
         c("watermark", "Modifica filigrana", "watermark"),
         c("pagecolor", "Cambia colore della pagina", "pagecolor"),
         c("colorschemas", "Cambia combinazione di colori", "colorschemas"),
@@ -360,7 +360,7 @@ pub const CALC: &[Tab] = &[
         c("prot-encrypt", "Crittografa", "prot-encrypt"),
         c("prot-book", "Proteggere libro di lavoro", "protect-workbook"),
         c("prot-doc", "Proteggi foglio", "protect-sheet"),
-        xt("Proteggi rango", "protect-range"),
+        c("prot-range", "Proteggi rango", "protect-range"),
         c("prot-sign", "Aggiungi firma digitale", "prot-sign"),
         c("cell-lock", "Blocca cella", "cell-lock"),
         c("prot-allow", "Operazioni consentite", "prot-allow"),

@@ -2246,5 +2246,10 @@
  "book_structure_locked": "Arbeitsmappenstruktur gesperrt (Blätter können nicht geändert werden)",
  "book_structure_unlocked": "Arbeitsmappenstruktur entsperrt",
  "page_break_preview_on": "Seitenumbruchvorschau ({} Umbrüche). Normal stellt zurück",
- "normal_view_on": "Normale Ansicht"
+ "normal_view_on": "Normale Ansicht",
+ "select_range_first": "Wählen Sie zuerst den zu schützenden Bereich",
+ "protected_range_name": "Bereich {}",
+ "range_protected": "{} ist geschützt (das Blatt ebenfalls)",
+ "range_protection_removed": "{} ist nicht mehr geschützt",
+ "protected_ranges": "Geschützte Bereiche"
 }

@@ -2246,5 +2246,10 @@
  "book_structure_locked": "Estructura del libro bloqueada (no se pueden cambiar las hojas)",
  "book_structure_unlocked": "Estructura del libro desbloqueada",
  "page_break_preview_on": "Vista previa de salto de página ({} saltos). Normal la restaura",
- "normal_view_on": "Vista normal"
+ "normal_view_on": "Vista normal",
+ "select_range_first": "Seleccione primero el rango a proteger",
+ "protected_range_name": "Rango {}",
+ "range_protected": "{} está protegido (la hoja también)",
+ "range_protection_removed": "{} ya no está protegido",
+ "protected_ranges": "Rangos protegidos"
 }

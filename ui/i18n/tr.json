@@ -2246,5 +2246,10 @@
  "book_structure_locked": "Çalışma kitabı yapısı kilitlendi (sayfalar değiştirilemez)",
  "book_structure_unlocked": "Çalışma kitabı yapısının kilidi açıldı",
  "page_break_preview_on": "Sayfa sonu önizleme ({} son). Normal geri alır",
- "normal_view_on": "Normal görünüm"
+ "normal_view_on": "Normal görünüm",
+ "select_range_first": "Önce korunacak aralığı seçin",
+ "protected_range_name": "Aralık {}",
+ "range_protected": "{} korunuyor (sayfa da korundu)",
+ "range_protection_removed": "{} artık korunmuyor",
+ "protected_ranges": "Korunan aralıklar"
 }

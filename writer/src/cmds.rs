@@ -527,6 +527,20 @@ impl Writer {
                 };
             }
             "img-group" => self.shape_group(),
+            // **図形を結合する。** 芯は表の側と同じ `book::combine` です。
+            //
+            // 文書には一覧を出す仕組みがまだ無いので、**押すたびに
+            // 結合 → 交差 → 減算**と回します。どれを掛けたかは状態行に
+            // 出るので、押しても分からない、にはなりません
+            "shapes-merge" => {
+                self.merge_op = (self.merge_op + 1) % 3;
+                let op = match self.merge_op {
+                    1 => book::BoolOp::Intersect,
+                    2 => book::BoolOp::Subtract,
+                    _ => book::BoolOp::Union,
+                };
+                self.shapes_boolean(op);
+            }
             "img-align" => self.shape_align_doc(),
             "insequation" => {
                 self.switch_target(Target::Body);

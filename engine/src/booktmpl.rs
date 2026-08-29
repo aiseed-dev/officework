@@ -99,6 +99,8 @@ pub struct SheetLook {
     pub protected: Option<bool>,
     /// 保護中も許す操作。**記号で持ちます**(書くときに画面の言語へ訳す)
     pub protect_allow: Option<Vec<String>>,
+    /// 範囲ごとの保護(名前, 範囲)。2026-08-30
+    pub protect_ranges: Vec<(String, String)>,
     /// (行, 段, 畳んでいるか)
     pub row_outline: Vec<(u32, u8, bool)>,
     /// (列, 段, 畳んでいるか)
@@ -162,6 +164,7 @@ impl BookTheme {
                 && s.tab_color.is_none()
                 && s.protected.is_none()
                 && s.protect_allow.is_none()
+                && s.protect_ranges.is_empty()
                 && s.row_outline.is_empty()
                 && s.col_outline.is_empty()
                 && s.default_col_width.is_none()
@@ -215,6 +218,7 @@ pub fn from_book(b: &Book) -> BookTheme {
             tab_color: s.tab_color.clone(),
             protected: s.protected.then_some(true),
             protect_allow: s.protected.then(|| allow_names(&s.protect_allow)),
+            protect_ranges: s.protect_ranges.clone(),
             // **畳んだ印は段の指定と別**です。畳むボタンの載る行には段が
             // 無いことがあるので、両方を合わせて拾います(2026-08-26)
             row_outline: outline_rows(&s.row_outline, &s.row_collapsed),
@@ -401,6 +405,9 @@ pub fn apply(t: &BookTheme, b: &mut Book) {
         }
         if let Some(names) = &look.protect_allow {
             s.protect_allow = allow_from(names);
+        }
+        if !look.protect_ranges.is_empty() {
+            s.protect_ranges = look.protect_ranges.clone();
         }
         // 段が 0 は「段の指定なし」— 畳んだ印だけの行です
         for (r, lv, folded) in &look.row_outline {
@@ -838,10 +845,20 @@ fn protect_table(t: &BookTheme) -> Option<Table> {
                     .map(|sym| w(sym))
                     .collect::<Vec<_>>()
                     .join("、"),
+                // **範囲ごとの保護**(2026-08-30)。`名前=範囲` を並べます
+                s.protect_ranges
+                    .iter()
+                    .map(|(na, r)| if na.is_empty() { r.clone() } else { format!("{na}={r}") })
+                    .collect::<Vec<_>>()
+                    .join("、"),
             ]
         })
         .collect();
-    table(w("tmpl_protect"), &[w("sheets"), w("tmpl_protect"), w("allowed_actions")], rows)
+    table(
+        w("tmpl_protect"),
+        &[w("sheets"), w("tmpl_protect"), w("allowed_actions"), w("protected_ranges")],
+        rows,
+    )
 }
 
 fn read_protect(t: &mut BookTheme, rows: &[Vec<String>]) {
@@ -860,10 +877,23 @@ fn read_protect(t: &mut BookTheme, rows: &[Vec<String>]) {
             .filter(|x| !x.is_empty())
             .map(|x| words::which(&syms, x).unwrap_or(x).to_string())
             .collect();
+        // 範囲ごとの保護。`名前=範囲` か、範囲だけ
+        let hani: Vec<(String, String)> = pick(row, 3)
+            .split(['、', ','])
+            .map(|x| x.trim())
+            .filter(|x| !x.is_empty())
+            .map(|x| match x.split_once('=') {
+                Some((na, r)) => (na.trim().to_string(), r.trim().to_string()),
+                None => (String::new(), x.to_string()),
+            })
+            .collect();
         let s = t.sheet(name);
         s.protected = on.or(s.protected);
         if s.protected == Some(true) {
             s.protect_allow = Some(names);
+        }
+        if !hani.is_empty() {
+            s.protect_ranges = hani;
         }
     }
 }

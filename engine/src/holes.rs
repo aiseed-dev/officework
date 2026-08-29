@@ -55,6 +55,8 @@ pub const WATCHED: &[(&str, Watch)] = &[
     ("tab_color", Watch::Look),
     ("protected", Watch::Look),
     ("protect_allow", Watch::Look),
+    // 範囲ごとの保護(2026-08-30)
+    ("protect_ranges", Watch::Look),
     ("names", Watch::Body),
     ("links", Watch::Body),
     ("comments", Watch::Body),
@@ -214,6 +216,7 @@ pub fn filled_sheet(name: &str) -> Sheet {
     s.tab_color = Some("4472C4".into());
     s.protected = true;
     s.protect_allow.sort = true;
+    s.protect_ranges = vec![("入力欄".into(), "B2:D10".into())];
     s.names = vec![DefinedName { name: "税率".into(), range: "$A$1".into(), scoped: true }];
     s.links.insert(at("A2"), "https://example.jp".into());
     s.cond = vec![CondRule {
@@ -409,6 +412,7 @@ fn same_sheet_field(name: &str, a: &Sheet, b: &Sheet) -> bool {
         "tab_color" => a.tab_color == b.tab_color,
         "protected" => a.protected == b.protected,
         "protect_allow" => a.protect_allow == b.protect_allow,
+        "protect_ranges" => a.protect_ranges == b.protect_ranges,
         "names" => a.names == b.names,
         "links" => a.links == b.links,
         "comments" => a.comments.len() == b.comments.len(),

@@ -2246,5 +2246,10 @@
  "book_structure_locked": "Struttura della cartella bloccata (i fogli non possono essere modificati)",
  "book_structure_unlocked": "Struttura della cartella sbloccata",
  "page_break_preview_on": "Anteprima interruzioni di pagina ({} interruzioni). Normale ripristina",
- "normal_view_on": "Visualizzazione normale"
+ "normal_view_on": "Visualizzazione normale",
+ "select_range_first": "Seleziona prima l'intervallo da proteggere",
+ "protected_range_name": "Intervallo {}",
+ "range_protected": "{} è protetto (anche il foglio)",
+ "range_protection_removed": "{} non è più protetto",
+ "protected_ranges": "Intervalli protetti"
 }

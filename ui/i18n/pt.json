@@ -2246,5 +2246,10 @@
  "book_structure_locked": "Estrutura do livro bloqueada (as folhas não podem ser alteradas)",
  "book_structure_unlocked": "Estrutura do livro desbloqueada",
  "page_break_preview_on": "Pré-visualização de quebras ({} quebras). Normal repõe",
- "normal_view_on": "Vista normal"
+ "normal_view_on": "Vista normal",
+ "select_range_first": "Selecione primeiro o intervalo a proteger",
+ "protected_range_name": "Intervalo {}",
+ "range_protected": "{} está protegido (a folha também)",
+ "range_protection_removed": "{} já não está protegido",
+ "protected_ranges": "Intervalos protegidos"
 }

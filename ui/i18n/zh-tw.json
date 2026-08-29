@@ -2246,5 +2246,10 @@
  "book_structure_locked": "已保護活頁簿結構(不能新增、刪除或移動工作表)",
  "book_structure_unlocked": "已取消活頁簿結構保護",
  "page_break_preview_on": "分頁預覽(分隔 {} 條)。標準可還原",
- "normal_view_on": "已回到標準檢視"
+ "normal_view_on": "已回到標準檢視",
+ "select_range_first": "請先選擇要保護的範圍",
+ "protected_range_name": "範圍 {}",
+ "range_protected": "已保護 {}(工作表也已保護)",
+ "range_protection_removed": "已取消 {} 的保護",
+ "protected_ranges": "保護的範圍"
 }

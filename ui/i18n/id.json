@@ -2246,5 +2246,10 @@
  "book_structure_locked": "Struktur buku kerja dikunci (lembar tidak dapat diubah)",
  "book_structure_unlocked": "Struktur buku kerja dibuka",
  "page_break_preview_on": "Pratinjau hentian halaman ({} hentian). Normal mengembalikannya",
- "normal_view_on": "Tampilan normal"
+ "normal_view_on": "Tampilan normal",
+ "select_range_first": "Pilih dulu rentang yang akan dilindungi",
+ "protected_range_name": "Rentang {}",
+ "range_protected": "{} dilindungi (lembar juga)",
+ "range_protection_removed": "{} tidak lagi dilindungi",
+ "protected_ranges": "Rentang terlindungi"
 }

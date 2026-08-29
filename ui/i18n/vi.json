@@ -2246,5 +2246,10 @@
  "book_structure_locked": "Đã khoá cấu trúc sổ làm việc (không thể thay đổi trang tính)",
  "book_structure_unlocked": "Đã mở khoá cấu trúc sổ làm việc",
  "page_break_preview_on": "Xem trước ngắt trang ({} ngắt). Chuẩn sẽ trả lại",
- "normal_view_on": "Dạng xem chuẩn"
+ "normal_view_on": "Dạng xem chuẩn",
+ "select_range_first": "Hãy chọn vùng cần bảo vệ trước",
+ "protected_range_name": "Vùng {}",
+ "range_protected": "{} được bảo vệ (trang tính cũng vậy)",
+ "range_protection_removed": "{} không còn được bảo vệ",
+ "protected_ranges": "Vùng được bảo vệ"
 }

@@ -235,6 +235,7 @@ impl Writer {
             page_offsets: vec![0.0],
             shape_cache: Default::default(),
             shape_sel: None,
+            merge_op: 2,
             shape_drag: None,
             page_starts: vec![f32::NEG_INFINITY],
             page_notes: vec![Vec::new()],

@@ -3423,3 +3423,38 @@ fn the_workbook_structure_lock_round_trips() {
     let (b4, _) = super::read(std::io::Cursor::new(&buf2)).expect("読めない");
     assert!(!b4.lock_structure, "外したのに残っている");
 }
+
+/// **範囲ごとの保護が往復する。**
+///
+/// 2026-08-30 発注者「範囲を保護」。鍵は持ちません — password を書かず、
+/// 掛けた振りをしないためです(ブックの保護と同じ考え)。
+#[test]
+fn protected_ranges_round_trip() {
+    let mut b = book::Book::new();
+    b.sheets[0].protected = true;
+    b.sheets[0].protect_ranges = vec![
+        ("入力欄".into(), "B2:D10".into()),
+        ("合計".into(), "F2:F10".into()),
+    ];
+    let mut buf = Vec::new();
+    super::write(&b, std::io::Cursor::new(&mut buf)).expect("書けない");
+
+    let x = {
+        use std::io::Read;
+        let mut z = zip::ZipArchive::new(std::io::Cursor::new(&buf)).expect("開けない");
+        let mut t = String::new();
+        z.by_name("xl/worksheets/sheet1.xml").unwrap().read_to_string(&mut t).unwrap();
+        t
+    };
+    assert!(x.contains("<protectedRanges>"), "範囲の保護が書かれていない");
+    assert!(x.contains(r#"sqref="B2:D10""#), "範囲が書かれていない");
+    assert!(!x.contains("password"), "鍵を書いている(掛けた振りをしない)");
+    // **作法どおり sheetProtection の後**(順が違うと Excel が読まない)
+    let (i, j) = (x.find("sheetProtection").unwrap(), x.find("protectedRanges").unwrap());
+    assert!(i < j, "並びが作法どおりでない");
+
+    let (b2, _) = super::read(std::io::Cursor::new(&buf)).expect("読めない");
+    assert_eq!(b2.sheets[0].protect_ranges.len(), 2, "読み戻せていない");
+    assert_eq!(b2.sheets[0].protect_ranges[0], ("入力欄".into(), "B2:D10".into()));
+    assert_eq!(b2.sheets[0].protect_ranges[1].1, "F2:F10");
+}

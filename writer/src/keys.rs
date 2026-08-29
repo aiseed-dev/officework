@@ -277,7 +277,7 @@ impl Writer {
     pub(crate) const HANDLED: &'static [&'static str] = &[
         // 図形の並べ替え・整列・束ね(2026-08-30。文書にも図形が入るように
         // なったので、リボンから届くようにしました)
-        "img-movefrwd", "img-movebkwd", "img-align", "img-group",
+        "img-movefrwd", "img-movebkwd", "img-align", "img-group", "shapes-merge",
         "open", "save", "undo", "redo", "selectall", "pdf",
         "bold", "italic", "underline", "strikeout", "fontcolor",
         "superscript", "subscript", "highlight", "clearstyle",
@@ -1144,5 +1144,83 @@ impl Writer {
         }
         self.dirty = true;
         self.status = ui::t!("aligned_left").into();
+    }
+}
+
+impl Writer {
+    /// **図形を結合する。**(2026-08-30)
+    ///
+    /// 芯は `book::combine` で、表の側([`calc`])と同じ物です。文書は
+    /// 座標が mm なので、2つ目の輪郭を1つ目の枠の目盛り(0〜1)へ直して
+    /// から渡します。
+    ///
+    /// 相手は**同じページの、選んでいる図形の次の1つ**です。文書は
+    /// Ctrl+クリックで束を選ぶ仕掛けをまだ持たないためです。
+    pub(crate) fn shapes_boolean(&mut self, op: book::BoolOp) {
+        use book::{combine, outline, to_points};
+        let Some(a) = self.shape_sel else {
+            self.status = ui::t!("select_two_shapes_ctrl").into();
+            return;
+        };
+        let Some(sa) = self.doc.shapes.get(a).cloned() else { return };
+        // 同じページの、a の次にある図形
+        let Some(b) = self
+            .doc
+            .shapes
+            .iter()
+            .enumerate()
+            .find(|(k, s)| *k != a && s.page == sa.page)
+            .map(|(k, _)| k)
+        else {
+            self.status = ui::t!("select_two_shapes_ctrl").into();
+            return;
+        };
+        let sb = self.doc.shapes[b].clone();
+        // **輪郭を出せない形は断る。** 黙って四角で計算しない
+        let (Some(oa), Some(ob)) = (
+            outline(&sa.look.kind, &sa.look.points),
+            outline(&sb.look.kind, &sb.look.points),
+        ) else {
+            self.status = ui::t!("shape_cannot_combined_outline").into();
+            return;
+        };
+        let (aw, ah) = (sa.w_mm.max(0.1), sa.h_mm.max(0.1));
+        let (bw, bh) = (sb.w_mm.max(0.1), sb.h_mm.max(0.1));
+        let ob: Vec<Vec<(f32, f32)>> = ob
+            .iter()
+            .map(|c| {
+                c.iter()
+                    .map(|&(x, y)| {
+                        // b の 0..1 → 紙の mm → a の 0..1
+                        (
+                            ((sb.x_mm + x * bw) - sa.x_mm) / aw,
+                            ((sb.y_mm + y * bh) - sa.y_mm) / ah,
+                        )
+                    })
+                    .collect()
+            })
+            .collect();
+        let res = combine(&oa, &ob, op);
+        if res.is_empty() {
+            self.status = ui::t!("nothing_left_not_overlap").into();
+            return;
+        }
+        let pts = to_points(&res);
+        {
+            let sp = &mut self.doc.shapes[a];
+            sp.look.kind = "path".into();
+            sp.look.points = pts;
+            // 回転と反転は輪郭に焼き込んでいないので落とします(掛けたままだと
+            // 二重に掛かる)
+            sp.look.rot = 0.0;
+            sp.look.flip_h = false;
+            sp.look.flip_v = false;
+        }
+        // 引かれた側は消えます(結合・交差・減算のどれでも1つになる)
+        let keep = a - usize::from(b < a);
+        self.doc.shapes.remove(b);
+        self.shape_sel = Some(keep);
+        self.dirty = true;
+        self.status = ui::tf!("done_turned_into_outline", "結合").into();
     }
 }

@@ -2246,5 +2246,10 @@
  "book_structure_locked": "Структура книги защищена (листы нельзя добавлять, удалять и переставлять)",
  "book_structure_unlocked": "Защита структуры книги снята",
  "page_break_preview_on": "Страничный режим (разрывов: {}). «Обычный» вернёт назад",
- "normal_view_on": "Обычный режим"
+ "normal_view_on": "Обычный режим",
+ "select_range_first": "Сначала выберите диапазон для защиты",
+ "protected_range_name": "Диапазон {}",
+ "range_protected": "{} защищён (лист тоже)",
+ "range_protection_removed": "Защита {} снята",
+ "protected_ranges": "Защищённые диапазоны"
 }

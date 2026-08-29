@@ -542,6 +542,8 @@ pub struct Writer {
     >,
     /// いま選んでいる図形(`doc.shapes` の番号)
     shape_sel: Option<usize>,
+    /// 図形を結合するときの掛け方(0=結合 1=交差 2=減算)。押すたびに回ります
+    merge_op: u8,
     /// 図形をつまんでいる間(番号, つかんだ画面の位置mm, つかんだ図形の位置mm)
     shape_drag: Option<(usize, (f32, f32), (f32, f32))>,
     /// 各ページに**載る最初の行の y**(巻物の座標。1枚目は -∞)。

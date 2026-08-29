@@ -1837,7 +1837,34 @@ mod pivot_tests {
         });
     }
 
-        /// **表示の切り替え。** 改ページプレビューは切れ目を出して縮め、
+        /// **範囲ごとの保護。** 選んだ範囲を守り、もう一度押すと外します。
+    /// 2026-08-30 発注者「範囲を保護」。
+    #[gpui::test]
+    fn protecting_a_range_adds_and_removes_it(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        // 範囲を選んでいなければ、理由を言って断る
+        c.update(cx, |this, cx| {
+            this.anchor = None;
+            this.run_cmd("prot-range", cx);
+            assert!(this.sheet().protect_ranges.is_empty(), "範囲なしで足した");
+            assert!(!this.status.is_empty(), "何も言わない");
+        });
+        // 選んで押すと入る。シートの保護も掛かる
+        c.update(cx, |this, cx| {
+            this.cursor = Pos::new(1, 1);
+            this.anchor = Some(Pos::new(9, 3));
+            this.run_cmd("prot-range", cx);
+            assert_eq!(this.sheet().protect_ranges.len(), 1, "入っていない");
+            assert!(this.sheet().protected, "シートの保護が掛かっていない");
+        });
+        // 同じ範囲でもう一度押すと外れる
+        c.update(cx, |this, cx| {
+            this.run_cmd("prot-range", cx);
+            assert!(this.sheet().protect_ranges.is_empty(), "外れていない");
+        });
+    }
+
+    /// **表示の切り替え。** 改ページプレビューは切れ目を出して縮め、
     /// 標準は元に戻します(2026-08-30 発注者「改ページプレビュー」)。
     #[gpui::test]
     fn the_view_tab_switches_between_normal_and_page_break(cx: &mut gpui::TestAppContext) {

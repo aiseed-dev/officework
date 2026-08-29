@@ -335,6 +335,8 @@ VENDOR_JA = {
     "shapes-merge|shapes-merge": "図形を結合",
     "img-group|img-group": "グループ化",
     "prot-book|protect-workbook": "ブックを保護する",
+    "prot-range|protect-range": "範囲を保護する",
+    "shapes-merge|shapes-merge": "図形を結合",
     "view-normal|view-normal": "標準",
     "view-pagebreak|view-pagebreak": "改ページ プレビュー",
     "|img-align": "配置",

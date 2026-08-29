@@ -2246,5 +2246,10 @@
  "book_structure_locked": "Structure du classeur verrouillée (les feuilles ne peuvent pas être modifiées)",
  "book_structure_unlocked": "Structure du classeur déverrouillée",
  "page_break_preview_on": "Aperçu des sauts de page ({} sauts). Normal rétablit",
- "normal_view_on": "Affichage normal"
+ "normal_view_on": "Affichage normal",
+ "select_range_first": "Sélectionnez d'abord la plage à protéger",
+ "protected_range_name": "Plage {}",
+ "range_protected": "{} est protégée (la feuille aussi)",
+ "range_protection_removed": "{} n'est plus protégée",
+ "protected_ranges": "Plages protégées"
 }
