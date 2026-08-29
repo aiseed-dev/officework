@@ -3,7 +3,7 @@
 _日本語版(secondary): link:README.ja.adoc[README.ja.adoc]_
 
 officework is an Office that modernises data and drawing.
-It was made to escape the closed world of Microsoft 365.
+It was made to break out of the closed world of Microsoft 365.
 It was made by Claude distilling and combining published software — Euro-Office, Zed, Polars, openpyxl, python-docx.
 It does not compete on the number of features: complex work is left to AI and Python.
 

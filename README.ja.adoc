@@ -3,7 +3,7 @@
 _元は英語版(link:README.adoc[README.adoc])です。こちらは日本語訳です。_
 
 officework は、データと描画を現代化した Office です。
-Microsoft 365 の閉じた世界から逃げるために作りました。
+Microsoft 365 の閉じた世界から抜け出すために作りました。
 Euro-Office・Zed・Polars・openpyxl・python-docx という公開されているソフトウェアを、Claude が蒸留して組み合わせて作りました。
 機能の数では勝負しません。複雑なことは AI と Python にやらせます。
 
