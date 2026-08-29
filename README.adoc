@@ -239,7 +239,7 @@ Since 2026-08-10 the engine can stand in for the xlsx helper inside https://gith
 Eleven of the twelve commands are officework's, including saving; genoffice still decides what a save should change, and `.xls` import is the one thing not implemented.
 See link:docs/engine.adoc[the engine page] for the recipe and for exactly what is and is not replaced.
 
-The engine is built to keep the original file as the base and write back only what changed. Parts it recognises as unreadable are listed in `unsupported`, as far as it can tell.
+When you open a received xlsx or docx and write it back, the engine's policy is to rewrite only what you changed. Parts it recognises as unreadable are listed in `unsupported`, as far as it can tell.
 
 [source,python]
 ----

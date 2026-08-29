@@ -257,7 +257,7 @@ $ pip install "officework[mcp]"   # あとは officework-mcp を AI 側に登録
 `.xls` の取り込みだけ未実装)。
 手順と「何を差し替えて、何を差し替えていないか」はlink:docs/engine.ja.adoc[エンジンの説明]へ。
 
-原本のファイルを元に、変えた所だけを書き戻す方針で作っています。読めなかった部品は、分かる範囲で `unsupported` の一覧に出します。
+受け取った xlsx / docx を開いて書き戻すときは、変えた所だけを書き替える方針です。読めなかった部品は、分かる範囲で `unsupported` の一覧に出します。
 
 [source,python]
 ----
