@@ -5,7 +5,7 @@ Read a spreadsheet or a document, change it, write it back with its borders,
 merges and styles intact, and turn it into a PDF. No office suite, no headless
 browser, no print driver.
 
-Written in Rust (15,000+ lines, 240+ tests), exposed to Python through PyO3.
+Written in Rust (about 109,000 lines in the engine crates, 1,600+ tests), exposed to Python through PyO3.
 
 日本語の説明は GitHub にあります (Japanese documentation on GitHub):
 [Python の手引き](https://github.com/aiseed-dev/officework/blob/main/docs/ja/python-manual.adoc)
@@ -162,7 +162,7 @@ d.tables[0].cell(0, 1).text             # python-docx: row_cells, columns,
 d[3].runs[0].font.name                  #   runs, clear …
 ```
 
-The inventory — all 324 core members of the reference libraries, judged one
+The inventory — every core member of the reference libraries, judged one
 by one — is in the repo:
 [docs/pysheet-gokan.ja.adoc](https://github.com/aiseed-dev/officework/blob/main/docs/pysheet-gokan.ja.adoc).
 Interop is proven with the originals' own eyes: openpyxl reads what this

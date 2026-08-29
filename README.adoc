@@ -94,7 +94,7 @@ And if you never install git, you lose nothing — plain-text files can join a h
 The highlights only — the full list lives in the link:docs/en/writer-manual.adoc[writer manual] and the link:docs/en/calc-manual.adoc[calc manual], which describe only what works today.
 
 * *writer (documents)* — Japanese typesetting up to vertical writing, ruby (furigana) and distributed justification. Form fields (build a form, protect it, hand it out), TOC, track changes, comments, drawing, printing where the paper changes partway, PDF. A docx survives open-and-save
-* *calc (spreadsheets)* — about 185 functions (incl. dynamic arrays), recalculation with circular-reference detection, multiple sheets, pivot tables, conditional formatting, data validation, charts (backed by matplotlib), a solver, protection and encryption, PDF. An xlsx survives too
+* *calc (spreadsheets)* — about 190 functions (incl. dynamic arrays), recalculation with circular-reference detection, multiple sheets, pivot tables, conditional formatting, data validation, charts (11 types, drawn as shapes), a solver, protection and encryption, PDF. An xlsx survives too
 
 The ribbon layout follows Euro-Office, so people who switch don't have to relearn where things are. *Commands that don't work yet are shown grayed out* — we never make something look usable when it isn't.
 
@@ -217,7 +217,9 @@ cargo run --release --bin office-spell -- --furigana draft.txt
 
 == Division of labor with Python
 
-*The app is for shaping things while you look at them; Python is for producing data and drawings.* There are buttons for charts, SmartArt, equations, pivots, and the solver, but the workers behind them are Python (matplotlib, polars, scipy).
+*The app is for shaping things while you look at them; Python is for producing data and drawings.* There are buttons for charts, SmartArt, equations, pivots and the solver.
+Charts and pivots are done by the engine itself now — charts as shapes, pivots by Rust polars — so they work without Python installed.
+SmartArt, equations and the solver still call Python (matplotlib, scipy).
 For heavier analysis, use polars or statsmodels directly.
 
 *The engine alone is on PyPI. You do not need the apps for it.*
@@ -315,7 +317,7 @@ sidecar/    the separate process that rides inside genoffice
 
 == Localization
 
-*The UI language switches at runtime.* 14 languages are built in: ja (default), en, de, es, fr, id, it, ko, pt, ru, tr, vi, zh, zh-tw.
+*The UI language switches at runtime.* Built in: ja (default), en, de, es, fr, id, it, ko, pt, pt-br, ru, tr, vi, zh, zh-tw.
 
 [source,bash]
 ----
@@ -325,10 +327,10 @@ OFFICE_LANG=en ./target/release/officework      # temporary override
 ----
 
 *The whole UI switches* — ribbon, status-bar messages, and dialogs.
-Every phrase is translated in all 13 languages, and a language with missing phrases is never registered.
+Every phrase is translated in every language, and a language with missing phrases is never registered.
 
 The exact number is deliberately not written here: it only grows, so writing it down means writing something that goes stale.
-The guarantee lives in `cargo test` instead (`lang/tests/i18n_soroi.rs`), which checks on every run that English has no untranslated phrase, that no dead translations remain, and that all 13 tables carry the same keys.
+The guarantee lives in `cargo test` instead (`lang/tests/i18n_soroi.rs`), which checks on every run that English has no untranslated phrase, that no dead translations remain, and that every table carries the same keys.
 It used to be a script someone had to remember to run, so nobody ran it and 173 phrases went missing — *a script you have to remember is not a check.*
 
 There is also a settings page: File > Advanced settings shows the current language, font, proofreading endpoint, and Python path, and cycles through the languages (the screen switches the moment you pick one).

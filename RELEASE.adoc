@@ -79,8 +79,9 @@ structure and page break preview all work now.
   `dpi=300` for print resolution
 * Formatting applied to part of a cell's text (bold on a few characters, say)
   no longer disappears when you save
-* Workbook structure protection. **No password is set** — we do not pretend to
-  hold something we do not
+* The spreadsheet app can protect the workbook structure and individual
+  ranges. **No password is set** — we do not pretend to hold something we do
+  not. Both are written into the xlsx, so Excel honours them
 * The spreadsheet screen switches between page break preview and normal view
 * Translucent fills, such as a highlighter pen, now show on screen and in PDF
 * Freehand pen strokes reach the paper (highlighter under the text, pen on top)
