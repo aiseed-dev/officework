@@ -1356,7 +1356,8 @@ class Sheet:
 
         - `kind` — "bar"(縦棒)/ "line"(折れ線)/ "pie"(円)/
           "doughnut"(ドーナツ)/ "area"(面)/ "scatter"(散布)/
-          "bubble"(バブル)/ "radar"(レーダー)
+          "bubble"(バブル)/ "radar"(レーダー)/ "stock"(高安終値)/
+          "surface"(等高線)/ "projected_pie"(補助縦棒つきの円)
         - `data` — 値の範囲。**1行目が系列の名前**なら見出しとして外します
         - `categories` — 区分の名前の範囲("A4:A7")
         """
@@ -1369,7 +1370,9 @@ class Sheet:
         yaku = {"bar": _chart.bar, "line": _chart.line,
                 "pie": _chart.pie, "doughnut": _chart.pie,
                 "area": _chart.area, "radar": _chart.radar,
-                "scatter": _chart.scatter, "bubble": _chart.scatter}
+                "scatter": _chart.scatter, "bubble": _chart.scatter,
+                "stock": _chart.stock, "surface": _chart.surface,
+                "projected_pie": _chart.projected_pie}
         if kind not in yaku:
             raise ValueError(
                 "図の種類に「{}」はありません。使えるのは {}".format(
@@ -1385,6 +1388,24 @@ class Sheet:
             if kind == "bubble" and "size" not in kw:
                 kw["size"] = [abs(float(p[1])) ** 0.5 * 2.0 for p in kumi]
             return yaku[kind](self, at, list(kumi), title=title, width=width,
+                              height=height, color=color, **kw)
+        if kind == "stock":
+            # **高値・安値・終値の3つの列**が要ります(あれば4つ目が始値)
+            hashira = atai if atai and isinstance(atai[0], list) else [atai]
+            if len(hashira) < 3:
+                raise ValueError("高安終値には高値・安値・終値の3列が要ります")
+            return yaku[kind](self, at, hashira[0], hashira[1], hashira[2],
+                              hashira[3] if len(hashira) > 3 else None, 名,
+                              title=title, width=width, height=height,
+                              color=color, **kw)
+        if kind == "surface":
+            # 等高線は数の格子。範囲は行の並びのまま渡します
+            koushi = atai if atai and isinstance(atai[0], list) else [atai]
+            return yaku[kind](self, at, koushi, title=title, width=width,
+                              height=height, color=color, **kw)
+        if kind == "projected_pie":
+            hira = [v for r in atai for v in (r if isinstance(r, list) else [r])]
+            return yaku[kind](self, at, hira, 名, title=title, width=width,
                               height=height, color=color, **kw)
         if kind == "radar":
             return yaku[kind](self, at, atai, 名, title=title, width=width,

@@ -324,6 +324,72 @@ class Chart:
             self.label(str(na), lx, ly, NA_W, NA_H)
         return self
 
+    def hlc(self, x, y, takane, yasune, owarine, hajimene=None, *, color=None):
+        """**高安終値。** 日ごとに、高値から安値へ縦線を引き、終値に横棒を出します。
+
+        `hajimene`(始値)を渡すと左にも横棒を出します(四本値)。
+        株価の見方は世界共通なので、色は上げ下げで変えず1色にします。
+        """
+        iro = color or "333333"
+        haba = max(2.0, x.width * 0.3) if isinstance(x, Band) else 4.0
+        for i in range(len(takane)):
+            mark = x.labels[i] if isinstance(x, Band) and i < len(x.labels) else i
+            cx = x.center(mark) if isinstance(x, Band) else x(mark)
+            self.line(cx, y(takane[i]), cx, y(yasune[i]), line=iro, line_w=1.2)
+            if i < len(owarine):
+                self.line(cx, y(owarine[i]), cx + haba, y(owarine[i]), line=iro, line_w=1.2)
+            if hajimene and i < len(hajimene):
+                self.line(cx - haba, y(hajimene[i]), cx, y(hajimene[i]), line=iro, line_w=1.2)
+        return self
+
+    def surface(self, grid, *, color=None, rows=None, cols=None):
+        """**等高線(面)。** 高さの格子を斜めから見た形で置きます。
+
+        `grid` は数の行の並びです。奥ほど小さく描く遠近は付けません
+        (Excel も付けません)。高さで色の濃さを変えます。
+        """
+        if not grid or not grid[0]:
+            raise ValueError("等高線に置く数がありません")
+        l, t, r, b = self.plot
+        nr, nc = len(grid), len(grid[0])
+        hira = [v for row in grid for v in row]
+        lo, hi = min(hira), max(hira)
+        haba = (hi - lo) or 1.0
+        # 斜めから見る。奥へ行くほど右上へずらします
+        oku_x = (r - l) * 0.25
+        oku_y = (b - t) * 0.22
+        w = (r - l) - oku_x
+        h = (b - t) - oku_y
+        taka = h * 0.85  # 高さに使う分。低いと平らに潰れて形が読めません
+        base = self.color(0) if color is None else color
+
+        def ten(ri, ci, v):
+            fx = ci / max(1, nc - 1)
+            fy = ri / max(1, nr - 1)
+            return (l + fx * w + fy * oku_x,
+                    b - fy * oku_y - (v - lo) / haba * taka)
+
+        # 奥から手前へ。後から描いた面が手前に来ます
+        for ri in range(nr - 1, 0, -1):
+            for ci in range(nc - 1):
+                yon = [
+                    ten(ri, ci, grid[ri][ci]),
+                    ten(ri, ci + 1, grid[ri][ci + 1]),
+                    ten(ri - 1, ci + 1, grid[ri - 1][ci + 1]),
+                    ten(ri - 1, ci, grid[ri - 1][ci]),
+                ]
+                naka = (grid[ri][ci] + grid[ri][ci + 1]
+                        + grid[ri - 1][ci] + grid[ri - 1][ci + 1]) / 4.0
+                # 高いほど濃く。下を上げないと白に近すぎて形が見えません
+                k = 0.35 + 0.65 * ((naka - lo) / haba)
+                iro = "".join(
+                    f"{min(255, int(255 - (255 - int(base[j:j+2], 16)) * k)):02X}"
+                    for j in (0, 2, 4)
+                )
+                self.path(yon, fill=iro, line="9AA6B2", line_w=0.4)
+        _ = (rows, cols)
+        return self
+
     def arcs(self, values, *, labels=None, color=None, hole=0.0):
         """円グラフ。**扇は多角形に刻んで**置きます(48 分の1周ずつ)"""
         l, t, r, b = self.plot
@@ -478,4 +544,65 @@ def radar(ws, at, values, labels=None, *, title=None, width=280.0, height=240.0,
     retsu = values if values and isinstance(values[0], (list, tuple)) else [values]
     c = Chart(width, height, title=title)
     c.radar(labels or list(range(1, len(retsu[0]) + 1)), retsu, color=color)
+    return c.place(ws, at, **kw)
+
+
+def stock(ws, at, takane, yasune, owarine, hajimene=None, labels=None, *,
+          title=None, width=340.0, height=200.0, color=None, **kw):
+    """高安終値の図を1行で。`hajimene` を渡すと四本値になります"""
+    if not takane or not yasune or not owarine:
+        raise ValueError("高値・安値・終値の3つが要ります")
+    c = Chart(width, height, title=title)
+    x = c.band(labels or list(range(1, len(takane) + 1)))
+    y = c.linear([min(yasune), max(takane)])
+    c.axis_left(y)
+    c.axis_bottom(x)
+    c.hlc(x, y, takane, yasune, owarine, hajimene, color=color)
+    return c.place(ws, at, **kw)
+
+
+def surface(ws, at, grid, *, title=None, width=320.0, height=240.0, color=None, **kw):
+    """等高線(面)の図を1行で。`grid` は数の行の並びです"""
+    c = Chart(width, height, title=title)
+    c.surface(grid, color=color)
+    return c.place(ws, at, **kw)
+
+
+def projected_pie(ws, at, values, labels=None, *, title=None, width=340.0,
+                  height=200.0, color=None, pulled=2, **kw):
+    """**補助縦棒つきの円。** 小さい区分を右の積み上げ棒へ出します。
+
+    `pulled` が棒へ出す個数です(小さい方から数えます)。円の側は、
+    出した分をまとめた1切れになります — Excel と同じ見せ方です。
+    """
+    atai = [float(v) for v in values]
+    if not atai:
+        raise ValueError("円に置く数がありません")
+    na = list(labels) if labels else [str(i + 1) for i in range(len(atai))]
+    na += [""] * (len(atai) - len(na))
+    n = max(1, min(int(pulled), len(atai) - 1))
+    # 小さい方から n 個を棒へ
+    junjo = sorted(range(len(atai)), key=lambda i: atai[i])
+    bou = sorted(junjo[:n])
+    maru = [i for i in range(len(atai)) if i not in bou]
+
+    c = Chart(width, height, title=title)
+    l, t, r, b = c.plot
+    # 円は左 6 割、棒は右
+    c.pad = dict(c.pad, right=c.width - (l + (r - l) * 0.58))
+    c.arcs([atai[i] for i in maru] + [sum(atai[i] for i in bou)],
+           labels=[na[i] for i in maru] + ["その他"], color=color)
+    c.pad = dict(c.pad, right=c.width - r)
+
+    # 棒は右端に積み上げ
+    bx = l + (r - l) * 0.78
+    bw = (r - l) * 0.16
+    goukei = sum(atai[i] for i in bou) or 1.0
+    y = t + (b - t) * 0.15
+    takasa = (b - t) * 0.7
+    for k, i in enumerate(bou):
+        h = takasa * atai[i] / goukei
+        c.rect(bx, y, bw, h, fill=c.color(len(maru) + k))
+        c.label(na[i], bx + bw + 2.0, y + h / 2.0 - 6.0, 44.0, 12.0, align="left")
+        y += h
     return c.place(ws, at, **kw)

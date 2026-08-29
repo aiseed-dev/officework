@@ -122,8 +122,9 @@ ws.add_chart("bar", data="B3:C8", categories="A4:A8", at="A10",
              title="Target and actual")
 ```
 
-Bar, line, area, pie, doughnut, radar, scatter and bubble are built in — eight
-of the eleven chart types `openpyxl` can write. For finer control there is a small
+All eleven chart types `openpyxl` can write are built in: bar, line, area, pie,
+doughnut, projected pie, radar, scatter, bubble, stock (high-low-close) and
+surface. For finer control there is a small
 chart layer whose shape is borrowed from d3 — build a scale, then place marks
 through it:
 

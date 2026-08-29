@@ -76,17 +76,20 @@ def chart_kurabe():
         "DoughnutChart": "doughnut",
         "LineChart": "line",
         "PieChart": "pie",
-        "ProjectedPieChart": None,
+        "ProjectedPieChart": "projected_pie",
         "RadarChart": "radar",
         "ScatterChart": "scatter",
-        "StockChart": None,
-        "SurfaceChart": None,
+        "StockChart": "stock",
+        "SurfaceChart": "surface",
     }
     b = ow.Book()
     ws = b[0]
+    # 高安終値は3列、等高線は格子が要るので、4列の見本にします
     for r, v in enumerate([3, 1, 4, 1, 5], start=1):
         ws.cell(r, 1).value = f"項目{r}"
-        ws.cell(r, 2).value = v
+        ws.cell(r, 2).value = v + 4
+        ws.cell(r, 3).value = v
+        ws.cell(r, 4).value = v + 2
     aru, nai = [], []
     for na in honke:
         kind = taiou.get(na)
@@ -94,7 +97,8 @@ def chart_kurabe():
             nai.append(na)
             continue
         try:
-            ws.add_chart(kind, data="B1:B5", categories="A1:A5", at="D1")
+            hani = "B1:D5" if kind in ("stock", "surface") else "B1:B5"
+            ws.add_chart(kind, data=hani, categories="A1:A5", at="F1")
             aru.append(na)
         except Exception:
             nai.append(na)

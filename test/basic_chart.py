@@ -25,25 +25,42 @@ def check(label, got, want):
 
 
 def moto():
-    """見本の表。1列目が区分、2列目と3列目が数"""
+    """見本の表。1列目が区分、2〜4列目が数。
+
+    高安終値は3列(高値・安値・終値)、等高線は格子が要るので、
+    どの種類でも足りるように**3列**用意します。
+    """
     b = sheet.Book()
     ws = b[0]
-    for r, (na, a, c) in enumerate(
-        [("東京", 3, 5), ("大阪", 1, 2), ("名古屋", 4, 1),
-         ("福岡", 1, 6), ("札幌", 5, 3)], start=1
+    for r, (na, a, c, d) in enumerate(
+        [("東京", 8, 3, 5), ("大阪", 6, 1, 2), ("名古屋", 9, 4, 6),
+         ("福岡", 7, 1, 3), ("札幌", 9, 5, 7)], start=1
     ):
         ws.cell(r, 1).value = na
         ws.cell(r, 2).value = a
         ws.cell(r, 3).value = c
+        ws.cell(r, 4).value = d
     return b, ws
 
 
-# 1. 8種類とも置ける。置くたびに図形が増える
-for kind in ("bar", "line", "pie", "doughnut", "area", "radar", "scatter", "bubble"):
+# 1. 11種類とも置ける。置くたびに図形が増える
+#    openpyxl が書ける種類と同じ数です(tools/cover_check.py が数えます)
+for kind in ("bar", "line", "pie", "doughnut", "area", "radar", "scatter",
+             "bubble", "stock", "surface", "projected_pie"):
     b, ws = moto()
     mae = len(ws.shapes)
-    ws.add_chart(kind, data="B1:B5", categories="A1:A5", at="E1", title=kind)
+    # 高安終値と等高線は列が3つ要ります
+    hani = "B1:D5" if kind in ("stock", "surface") else "B1:B5"
+    ws.add_chart(kind, data=hani, categories="A1:A5", at="F1", title=kind)
     check(f"{kind} が置ける", len(ws.shapes) > mae, True)
+
+# 1b. 高安終値は列が足りなければ断る
+b, ws = moto()
+try:
+    ws.add_chart("stock", data="B1:B5", at="F1")
+    check("高安終値の列不足を断る", "受けてしまった", "断る")
+except ValueError:
+    check("高安終値の列不足を断る", "断る", "断る")
 
 # 2. 系列が2つでも置ける(散布は (x, y) の組として読む)
 b, ws = moto()
@@ -53,7 +70,7 @@ check("系列が2つの縦棒", len(ws.shapes) > 0, True)
 # 3. 知らない種類は断る。**できないことをできるように見せない**
 b, ws = moto()
 try:
-    ws.add_chart("surface", data="B1:B5", at="E1")
+    ws.add_chart("smiley", data="B1:B5", at="E1")
     check("知らない種類を断る", "受けてしまった", "断る")
 except ValueError:
     check("知らない種類を断る", "断る", "断る")
