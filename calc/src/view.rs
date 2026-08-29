@@ -5396,6 +5396,12 @@ impl Render for Calc {
                            // 回転・影のはみ出しぶんキャンバスが四方に広い
                            let pad = sp.pad();
                            let svg = sp.to_svg();
+                           // **描き手は2つあります**(2026-08-29 発注者
+                           // 「どちらにも縛られなくなる」)。既定は gpui の
+                           // SVG、`OFFICEWORK_ZUKEI=vello` で vello の PNG。
+                           // 控えの鍵は SVG から作ります — 同じ図形なら
+                           // どちらの道でも同じ鍵になり、切り替えても
+                           // 混ざりません(1回の起動で片方しか使いません)
                            let key = {
                                use std::hash::{Hash, Hasher};
                                let mut h = std::collections::hash_map::DefaultHasher::new();
@@ -5407,10 +5413,18 @@ impl Render for Calc {
                                .borrow_mut()
                                .entry(key)
                                .or_insert_with(|| {
-                                   std::sync::Arc::new(gpui::Image::from_bytes(
-                                       gpui::ImageFormat::Svg,
-                                       svg.into_bytes(),
-                                   ))
+                                   // **先に選んでから描きます。** 逆にすると
+                                   // 使わない絵を毎回作ることになります
+                                   let e = if vello_de_kaku() {
+                                       zukei_png(sp, pad)
+                                   } else {
+                                       None
+                                   };
+                                   let (fmt, bytes) = match e {
+                                       Some(png) => (gpui::ImageFormat::Png, png),
+                                       None => (gpui::ImageFormat::Svg, svg.into_bytes()),
+                                   };
+                                   std::sync::Arc::new(gpui::Image::from_bytes(fmt, bytes))
                                })
                                .clone();
                            layer.push(
@@ -5600,4 +5614,53 @@ pub(crate) fn md_body(
         col = col.child(line);
     }
     col.into_any_element()
+}
+
+/// **図形を画面に出すのに、どちらの描き手を使うか。**
+///
+/// 2026-08-29 発注者「gpui を使うか vello を使うかはテストをして決めて
+/// いけばいい。その方が、どちらにも縛られなくなる」。
+///
+/// 既定は gpui(SVG)です。`OFFICEWORK_ZUKEI=vello` を付けて起動すると
+/// vello に替わります。**画面には出しません** — 比べるための物なので、
+/// 開発のときだけ環境変数で切り替えます(2026-08-29 発注者)。
+pub(crate) fn vello_de_kaku() -> bool {
+    static ERABI: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ERABI.get_or_init(|| {
+        let vello =
+            std::env::var("OFFICEWORK_ZUKEI").is_ok_and(|v| v.eq_ignore_ascii_case("vello"));
+        // **どちらで描いたかを言います。** 絵を見ただけでは分かりません —
+        // XWayland では窓の画が古いことがあり、2つの描き手の絵が1バイトも
+        // 違わない、という取り違えを実際にしました(2026-08-29)
+        eprintln!("図形の描き手: {}", if vello { "vello" } else { "gpui(SVG)" });
+        vello
+    })
+}
+
+/// **図形1つを vello で絵にする。** 返りは PNG のバイト列です。
+///
+/// 出来上がりの大きさは SVG の側と同じ(図形の大きさ + `pad` が四方)に
+/// します。並べたときに位置がずれないためです。
+///
+/// **図形の中の文字は描きません。** 画面では gpui が別に文字を出しており
+/// (縦書き・箇条書き・文字効果はそちらが持っています)、両方描くと
+/// 二重になります。ここで比べたいのは図形の形です。
+pub(crate) fn zukei_png(sp: &book::SheetShape, pad: f32) -> Option<Vec<u8>> {
+    const MM: f32 = 25.4 / 96.0; // px → mm
+    // 画面の1画素に対して2画素で描きます(拡大しても粗く見えないように)
+    const KOMAKASA: f32 = 2.0;
+
+    let (w_px, h_px) = (sp.width_px.max(4.0) + pad * 2.0, sp.height_px.max(4.0) + pad * 2.0);
+    let (w_mm, h_mm) = (w_px * MM, h_px * MM);
+    // 文字とずらしを外した写しを渡します。置き場はこちらで決めます
+    let mut hitotsu = sp.clone();
+    hitotsu.text = None;
+    hitotsu.dx_px = 0.0;
+    hitotsu.dy_px = 0.0;
+    // `y_top` は紙の下からの mm で、図形の上の端です
+    let leaf = paper::grid::shapes_leaf(
+        &[(hitotsu, pad * MM, h_mm - pad * MM)],
+        paper::Paper { width_mm: w_mm, height_mm: h_mm, margin_mm: 0.0 },
+    );
+    paper::e::egaku(&leaf, w_mm, h_mm, KOMAKASA / MM).png().ok()
 }
