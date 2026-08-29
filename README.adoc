@@ -231,6 +231,9 @@ An *MCP server* ships with it, so an AI assistant can drive the running app:
 $ pip install "officework[mcp]"   # then register `officework-mcp` with your client
 ----
 
+It hands the AI fifteen tools: eight for spreadsheets (book info, reading and writing ranges, formulas, formatting, autofit, save) and seven for documents (reading and writing text, form fields, mail merge, PDF export). None of them runs arbitrary code.
+It talks to the app over the same mechanism as the Python bridge, under the same rules: everything stays on this machine, and no TCP port is opened.
+
 It embeds in other applications too.
 Since 2026-08-10 the engine can stand in for the xlsx helper inside https://github.com/genspark-ai/genoffice[genoffice], an Electron spreadsheet, with no patch to genoffice at all — one environment variable.
 Eleven of the twelve commands are officework's, including saving; genoffice still decides what a save should change, and `.xls` import is the one thing not implemented.
