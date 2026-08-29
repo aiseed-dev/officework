@@ -5777,3 +5777,16 @@ come through untouched など)の見直しは **beta.3 の公開後**に行う�
 変える前の説明で、いまは Cell が返る(.value で値)。言い切りの
 見直し(公開後)とは別の、事実の誤りなので、beta.3 の束と同じ回で
 ja / en とも直すこと。
+
+同日決め(発注者): 例は save("quote.pdf") より **to_pdf()** が良い —
+PDF の直接の操作(専用の指定)ができるので。実物を確かめた:
+officework.calc(xlwings の書き方)には Sheet.to_pdf(path) と
+Book.to_pdf(path=None, include=, exclude=) が既にある。エンジン側
+(officework.sheet / doc)には無い。
+
+決め: save("x.pdf") は残し(2026-08-27 の「拡張子で行き先」)、
+sheet.Book.to_pdf / doc.Doc.to_pdf を calc と同じ署名で足す。
+中は同じ ops::pdf の1本。PDF 専用の指定(シートの選り分け・
+いずれページの範囲)の置き場が to_pdf。実装は beta.3 の束に足す
+(Opus)。入ったら README / PyPI / python-manual の例を to_pdf の
+形に直す(Fable)。
