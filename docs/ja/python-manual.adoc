@@ -273,6 +273,40 @@ t.values()             # list[list[str]] — そのまま polars に渡せる
 t[1][2].paragraphs     # そのセルの段落(Paragraph として)
 ----
 
+=== 節 — 用紙・向き・余白
+
+文書は節のつながりで、節ごとに用紙の大きさ・向き・余白・ヘッダーとフッターを持ちます。
+1つのファイルで A4 のページの後に横向きのページを刷れるのは、この仕組みです。
+
+[source,python]
+----
+s = d.sections[0]              # 文書には必ず1つはある
+s.page_width, s.page_height    # 単位は EMU。36,000 で割ると mm(A4 = 7,560,000 x 10,692,000)
+s.orientation                  # "portrait" / "landscape"
+s.top_margin                   # これも EMU。新規の文書は A4・余白 20mm
+
+s2 = d.add_section()           # 末尾で切る。これから足す物が新しい節に入る
+d.add_paragraph("このページだけ別の紙")
+s2.page_width  = 254 * 36000   # 大きさは両方とも自分で入れる —
+s2.page_height = 180 * 36000   #   orientation を変えても数字は入れ替わらない
+s2.orientation = "landscape"
+s2.left_margin = 20 * 36000
+
+s2.header.add_paragraph("第2章")   # ヘッダーとフッターも節ごと
+----
+
+`add_section(start_type=)` は `"new_page"`(既定)か `"continuous"` を受けます。それ以外は理由つきで断ります。
+種類は作るときに決め、後から変えられません。
+長さはどれも EMU の整数です(1mm = 36,000)。`Mm()` のような換算の助手はありません。
+新規の文書は A4・余白 20mm で始まります(python-docx の新規は余白 1 インチです)。
+
+この機械で実測しました: 2節の文書を PDF にすると、1ページ目が A4、2ページ目が 254×180mm で出ます。
+
+この版の限界を2つ書いておきます。
+
+* 節の書式を docx に書く側は不完全です。途中の節の用紙が空で書かれ、余白も明示的に設定した辺しか書かれないので、残りは Word の既定で表示されます。ここで作る PDF は正しく組まれます
+* `save("x.pdf")` は常に同梱の既定テンプレートで組みます(本文の大きさは文書の言語に従います)。ファイルの隣の `テンプレート.toml` は、この道では効きません
+
 === やらないことと、報告に出るが失われないもの
 
 本文として読めるのは段落と表です(節は `d.sections`、コメントは``d.comments``、画像の一件は `d.inline_shapes` で別に引ける)。
@@ -291,7 +325,7 @@ link:api-taiou.adoc[対応表] にあります。引くための表なので分�
 == 他のライブラリの書き方でも動く — openpyxl・xlwings・python-docx
 
 いま持っているコードも、覚えている書き方も、そのまま使えます。
-**API と試験は写す・実装は写さない**が方針(docs/sekkei/python.ja.adoc)で、在庫は台帳 link:../pysheet-gokan.ja.adoc[docs/pysheet-gokan.ja.adoc] — 3ライブラリの中核 324 メンバーを1件ずつ判定してある(できる物・作る物・作らない物とその理由)。
+**API と試験は写す・実装は写さない**が方針(docs/sekkei/python.ja.adoc)で、在庫は台帳 link:../pysheet-gokan.ja.adoc[docs/pysheet-gokan.ja.adoc] — 3ライブラリの中核メンバーを1件ずつ判定してある(できる物・作る物・作らない物とその理由)。
 ここに書くのは**いま動くものだけ**で、全部この機械で動かして確かめています。
 
 書式をそのまま保つことと、式を計算し直すことは、どの書き方をしても効きます。
@@ -335,7 +369,7 @@ wb.add_named_style(...)                       # セルのスタイル(名前付�
 ----
 
 データの入力規則・名前付き範囲・グループ化・画像(`add_image`)・ヘッダー/フッター(奇数・偶数・先頭ページの別まで)・1904 日付システム・`move_range`(数式の参照が付いて動く)も同じ流儀で。
-*何がどこまであるかは対応表を見てください*(link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc] — 324 件に判定と理由)。
+*何がどこまであるかは対応表を見てください*(link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc] — 全件に判定と理由)。
 
 === xlwings の書き方(officework.calc — 動いている calc を操る)
 

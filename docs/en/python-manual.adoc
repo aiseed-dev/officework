@@ -198,6 +198,40 @@ t.values()             # list[list[str]] — hand it straight to polars
 t[1][2].paragraphs     # the cell's paragraphs, as Paragraph objects
 ----
 
+=== Sections — paper, orientation, margins
+
+A document is a chain of sections, and each section carries its own paper size, orientation, margins, header and footer.
+This is how one file prints A4 pages followed by a landscape page.
+
+[source,python]
+----
+s = d.sections[0]              # every document has at least one
+s.page_width, s.page_height    # EMU; divide by 36,000 for mm (A4 = 7,560,000 x 10,692,000)
+s.orientation                  # "portrait" / "landscape"
+s.top_margin                   # EMU too; a new document is A4 with 20 mm margins
+
+s2 = d.add_section()           # cuts at the end; what you add next lands in the new section
+d.add_paragraph("this page is different")
+s2.page_width  = 254 * 36000   # enter both numbers yourself --
+s2.page_height = 180 * 36000   #   setting orientation does not swap them
+s2.orientation = "landscape"
+s2.left_margin = 20 * 36000
+
+s2.header.add_paragraph("Chapter 2")   # header and footer are per section
+----
+
+`add_section(start_type=)` takes `"new_page"` (the default) or `"continuous"`; anything else is refused with the reason.
+The type is decided at creation and cannot be changed later.
+Lengths are plain EMU integers (1 mm = 36,000); there are no `Mm()` helpers.
+A new document starts as A4 with 20 mm margins (python-docx starts with 1-inch margins).
+
+Measured here: a two-section document saved as PDF comes out page 1 A4, page 2 254 x 180 mm.
+
+Two limits, as of this version:
+
+* Writing sections back to docx is incomplete. The mid-document section's paper size is written empty, and only the margins you set explicitly are written, so Word shows its own defaults for the rest. The PDF made here is laid out correctly
+* `save("x.pdf")` always lays out with the built-in default template (the body size follows the document language). A `テンプレート.toml` next to the file has no effect on this path
+
 === What it does not do — and what is reported but never lost
 
 Body reading covers paragraphs and tables (sections are separate under `d.sections`, comments under `d.comments`, inline pictures under `d.inline_shapes`).
@@ -210,7 +244,7 @@ Existing equations do not appear in the body text (they are carried through verb
 == Writing in vocabularies you already know — openpyxl, xlwings, python-docx
 
 You don't have to throw away your existing code or the vocabulary in your head.
-The policy is *copy the API and the tests, never the implementation* (docs/sekkei/python.ja.adoc); the inventory is the ledger link:../pysheet-gokan.ja.adoc[docs/pysheet-gokan.ja.adoc] — all 324 core members of the three libraries, judged one by one (what works, what we will build, what we won't and why).
+The policy is *copy the API and the tests, never the implementation* (docs/sekkei/python.ja.adoc); the inventory is the ledger link:../pysheet-gokan.ja.adoc[docs/pysheet-gokan.ja.adoc] — the core members of the three libraries, judged one by one (what works, what we will build, what we won't and why).
 Everything below works today and was measured on this machine.
 
 And the two things the originals can't give you — untouched formatting and recalculation — come along whichever vocabulary you write in.
@@ -253,7 +287,7 @@ ws.add_table(...)                             # tables — =SUM(Items[Amount]) c
 wb.add_named_style(...)                       # named cell styles are carried too
 ----
 
-Data validation, defined names, outline groups, pictures (`add_image`), headers/footers (down to odd/even/first pages), the 1904 date system, and `move_range` (references follow the move) all work the same way. *The canonical list of what exists is the ledger *(link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc] — 324 items, each with a verdict and a reason).
+Data validation, defined names, outline groups, pictures (`add_image`), headers/footers (down to odd/even/first pages), the 1904 date system, and `move_range` (references follow the move) all work the same way. *The canonical list of what exists is the ledger *(link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc] — every item with a verdict and a reason).
 
 === The xlwings vocabulary (officework.calc — a running calc)
 
