@@ -149,6 +149,16 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
 /// 同じ文書が別の頁数に折れる形になっていました(2026-08-27)。
 pub const LINE_MM: f32 = 6.4;
 
+/// **行の箱の中で、ベースラインが上端から何 mm 下か。**
+///
+/// 残りの `LINE_MM - BASE_UP_MM`(2.4mm)が字の足の分です。
+///
+/// 頁割りはここを見ます。見ないとベースラインだけで判断してしまい、
+/// **最後の行の足が下の余白へ 1.4mm はみ出します**(2026-08-29 に測って
+/// 分かりました。Word は行の箱ごと入る分しか置かないので、同じ文書が
+/// 1ページあたり1行ずれていました)。
+pub const BASE_UP_MM: f32 = 4.0;
+
 pub struct Frame {
     pub measure_mm: f32,   // 行長
     pub line_height_mm: f32,

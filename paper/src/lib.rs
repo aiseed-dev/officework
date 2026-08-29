@@ -487,7 +487,10 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
         let reserve = if note_h + add > 0.0 { note_h + add + NOTE_GAP_MM } else { 0.0 };
         // **いまの頁で繰り返している見出し**のぶんも底が上がります
         let hh = *header_h.last().unwrap();
-        if forced || y_roll > cur.height_mm - cur.margin_mm - reserve - hh {
+        // **行の箱ごと入る分しか置きません。** ベースラインだけで見ると、
+        // 字の足(箱の下 2.4mm)が余白へはみ出します(2026-08-29 に測りました)
+        let asi = kumihan::LINE_MM - kumihan::BASE_UP_MM;
+        if forced || y_roll > cur.height_mm - cur.margin_mm - reserve - hh - asi {
             // 次のページへ。行の紙面上の高さは(余白ぶんを除いて)そのまま続ける
             let next = paper_at(line.y_mm);
             // **見出しを繰り返す表の途中なら、その高さぶん頭を下げます。**
@@ -1223,7 +1226,7 @@ pub fn doc_to_sheet(
     let line_mm = kumihan::LINE_MM;
     // 段組みも紙の設定から。writer の画面と同じ関数を通します
     let measure = page.column_measure_mm();
-    let y0 = page.top_mm + 4.0;
+    let y0 = page.top_mm + kumihan::BASE_UP_MM;
     let sheet = kumihan::layout(
         &d,
         &m,
