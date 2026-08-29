@@ -5572,3 +5572,37 @@ Sheet1 なので変わらない。
 形の案: `sheet.Book(lang="ja")`・`doc.Doc(lang="ja")` と新規作成の
 引数で受ける。README の例もこの形に直す。実装は beta.3 の後 —
 手引きに未実装の印で書いてから実装する(マニュアル駆動の順)。
+
+==== Opus への依頼: beta.3 の前に直す — 新規文書の PDF の書体(2026-08-30 Fable、発注者指示)
+
+発注者「beta.3 を公開する前に実装して。そうしないと作成する PDF の
+フォントがおかしくなる」。実測で確認した。**タグの前に必要**。
+
+不具合(実測):
+
+    from officework import doc
+    d = doc.Doc()
+    d.add_paragraph("日本語の段落です。")
+    d.save("x.pdf")   # pdffonts → NotoSansCJKjp-Regular(ゴシック)
+
+- docx の側は正しい: theme1.xml に BIZ UDPゴシック(major)/
+  BIZ UDP明朝(minor)、docDefaults は minorEastAsia 参照。
+  Word / LibreOffice で開けば本文は明朝で出る
+- この機械には BIZUDPMincho が入っている(fc-list で確認)のに、
+  PDF は NotoSans — つまり ops::pdf::doc(d, None) →
+  paper::doc_to_pdf の道が、同梱の既定テンプレートの本文の書体を
+  当てておらず、font=None の run が fallback()(ゴシック)に
+  落ちている。paper/src の for_document(None) の呼び所と、
+  pysheet PyDoc::new が積むスタイル(id "Normal")と既定テンプレートの
+  「本文」の結び付きを疑う
+- 結果: 新規文書が「Word では明朝・PDF ではゴシック」に食い違う
+
+あわせて続き16の実装(同じ依頼で):
+
+- `Doc(lang=)`・`Book(lang=)` を新規作成の引数に足す。渡されたら
+  kumihan::font::set_default_language を呼んでから組み立てる。
+  省略時はいまの既定(ja)のまま
+- 合否: (1) 新規 Doc → PDF の pdffonts に BIZUDPMincho が出る
+  (2) Doc(lang="en") → theme1.xml がラテンの書体になり、PDF も
+  それに従う (3) python-manual(ja/en)に lang= を同じコミットで
+  記載 (4) README の例の直しは実装後に Fable が行う
