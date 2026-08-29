@@ -1,92 +1,100 @@
 = officework 0.5.0-beta.3
 
-試すには: `pip install --pre officework`
+日本語版: link:RELEASE.ja.adoc[RELEASE.ja.adoc]
 
-== ページ割りが Word の決まりに合いました
+To try it: `pip install --pre officework`
 
-docx を保存するとき、行の高さもファイルに書くようにしました。書かないと、
-開いた側が自分の既定を当てます。Word の「1行」は字の 1.15 倍ほど、こちらは
-10.5pt に対して 6.4mm(1.73 倍)なので、同じ文書が別のページ数に折れて
-いました。
+== Pagination now follows Word's rules
 
-あわせて、行の下端が下の余白へはみ出す不具合も直しました。ページ割りが
-行の足の分を見ておらず、最後の行が 1.4mm 出ていました。
+When saving a docx we now write the line height into the file. Without it the
+program that opens the file applies its own default. Word's "single" line is
+about 1.15× the font size; ours is 6.4mm for 10.5pt text, which is 1.73×. The
+same document therefore broke onto a different number of pages.
 
-200 段落の文書で確かめています。直す前はこちらが5ページ・相手が3ページ
-でしたが、いまは**どちらも6ページで、各ページの区切りまで同じ**です
-(1ページ目 1〜38 行目、2ページ目 〜78、3ページ目 〜118、4ページ目 〜158)。
+We also fixed a defect where the bottom of the last line spilled into the
+margin. Pagination looked only at the baseline, not at the descender, so the
+last line hung 1.4mm below the text area.
 
-NOTE: 確かめたのは LibreOffice です(手元に Word がありません)。行送りの
-決まりは Word と同じ物を書いているので、Word でも同じに折れるはずですが、
-実機では見ていません。
+Checked with a 200-paragraph document. Before the fix we produced 5 pages and
+the other program produced 3; now **both produce 6 pages and break at the same
+places** (page 1 ends at line 38, page 2 at 78, page 3 at 118, page 4 at 158).
 
-== openpyxl・python-docx でできることに追いつきました
+One caveat: we checked against LibreOffice, because we have no copy of Word
+here. The line height we write is the same value Word uses, so it should break
+identically in Word, but we have not seen it on a real machine.
 
-エンジン(`pip install officework`)の機能を openpyxl・python-docx の機能の
-一覧と突き合わせ、100% になりました。
+== Caught up with what openpyxl and python-docx can do
+
+We compared the engine (`pip install officework`) against the API surface of
+openpyxl and python-docx. It is now at 100%.
 
 [cols="2,1"]
 |===
-|突き合わせた物 |結果
+|Compared against |Result
 
-|openpyxl の Workbook / Worksheet / Cell |100%
-|python-docx の Document / Paragraph / Run / Table |100%
-|openpyxl が書けるグラフの種類 |11 / 11
+|openpyxl Workbook / Worksheet / Cell |100%
+|python-docx Document / Paragraph / Run / Table |100%
+|Chart types openpyxl can write |11 / 11
+
 |===
 
-グラフは openpyxl と同じ 11 種類を作れます。縦棒・折れ線・面・円・
-ドーナツ・補助縦棒つき円・レーダー・散布・バブル・高安終値(株価)・
-等高線です。補助縦棒つき円グラフでは、円と棒を結ぶ線も引きます。
+All eleven chart types are available: bar, line, area, pie, doughnut,
+projected pie, radar, scatter, bubble, stock (high-low-close) and surface. In a
+projected pie chart we also draw the leader lines between the pie and the bar.
 
-実物の記事のサンプル 24 本を、本家と officework の両方で走らせて
-突き合わせ、実物の文書で見つけたずれを直しました。いちばん大きかったのは
-`ws["A1"]` で、本家はセルを返すのにこちらは値を返していた所です。
+We ran 24 sample scripts from a published article series through both the
+original libraries and officework, compared the output, and fixed the
+differences we found in real documents. The largest was `ws["A1"]`: the
+original returns a cell, and we were returning a value.
 
-== 図形が文書に入りました
+== Shapes in documents
 
-docx に図形を置けるようになりました(python-docx は画像しか置けません)。
-`d.add_shape("roundRect", 25, 80, 40, 25, fill="DDE7F0", text="承認")` の
-ように、形の名前と置き場と大きさを渡します。四角・角丸・楕円・矢印・
-ひし形・線の6種類に、塗り・線・中の文字・回転・不透明度・影を付けられます。
+You can now place shapes in a docx (`python-docx` can only place pictures).
+Call `d.add_shape("roundRect", 25, 80, 40, 25, fill="DDE7F0", text="Approved")`
+with the shape name, position and size. Rectangle, rounded rectangle, ellipse,
+arrow, diamond and line are built in, each with fill, outline, text inside,
+rotation, opacity and a drop shadow.
 
-置き場と大きさは紙の左上からの mm です。DrawingML で書くので、Word でも
-LibreOffice でも**図形として選んで編集できます** — 絵に落としていません。
-開いて保存し直しても壊れず、2ページ目以降にも置けます。
+Coordinates and sizes are millimetres from the top-left of the page. They are
+written as DrawingML, so Word and LibreOffice open them as **shapes you can
+select and edit** — not as a flattened picture. They survive open-and-save, and
+you can put them on any page, not just the first.
 
-グループ化した図形は本物のグループ(`grpSp`)として書くので、Excel や
-Word で開いてもひとまとまりのまま扱えます。
+Grouped shapes are written as a real group (`grpSp`), so Excel and Word treat
+them as one object.
 
-writer の画面でも図形を選んで動かせるようになりました。
+You can also select and drag shapes on the writer screen.
 
-== リボンの押せないボタンが無くなりました
+== No unusable buttons left in the ribbon
 
-押しても何も起きないボタンと、押せない灰色のボタンが、writer にも calc にも
-1つも残っていません(beta.2 の時点では 14 件ありました)。
+There are no buttons that do nothing when pressed, and no greyed-out buttons,
+in either writer or calc. In beta.2 there were 14.
 
-図形の前面・背面への移動、整列、グループ化、結合、ブックの構造の保護、
-改ページプレビューが押せるようになっています。
+Bring forward, send backward, align, group, merge shapes, protect workbook
+structure and page break preview all work now.
 
-== そのほかの変更
+== Other changes
 
-* ページを画像でも保存できます(`save("ページ.png")`)。既定は 150 dpi で、
-  `dpi=300` のように細かさを指定できます
-* セルの中の一部だけに付けた飾り(文字の一部だけ太字など)が、保存で
-  消えなくなりました
-* ブックの構造の保護に対応しました。**パスワードは掛けません** — 持たない
-  物を持っている顔をしないためです
-* 表計算の画面で、改ページプレビューと標準表示を切り替えられます
-* 蛍光ペンのような半透明の塗りが、画面でも PDF でも出ます
-* 手描きのペンが紙にも出るようになりました(蛍光ペンは字の下、ペンは字の上)
-* 画面の言葉とテンプレートの訳を 15 言語ぶん整理しました
+* Save a page as an image (`save("page.png")`). The default is 150 dpi; pass
+  `dpi=300` for print resolution
+* Formatting applied to part of a cell's text (bold on a few characters, say)
+  no longer disappears when you save
+* Workbook structure protection. **No password is set** — we do not pretend to
+  hold something we do not
+* The spreadsheet screen switches between page break preview and normal view
+* Translucent fills, such as a highlighter pen, now show on screen and in PDF
+* Freehand pen strokes reach the paper (highlighter under the text, pen on top)
+* Screen wording and template translations tidied up across 15 languages
 
-== 中の仕掛け
+== Under the hood
 
-利用者からは見えませんが、この版で**紙面の絵を突き合わせる検査**を作りました。
-見本の紙面を組んで絵にし、指紋を控えて「同じ入力なら同じ絵」を見ます。
+Not visible to users, but this release added a **regression check that compares
+rendered pages as images**. It lays out sample pages, renders them, stores a
+fingerprint, and checks that the same input still produces the same picture.
 
-作ったのは、数の試験が全部緑のまま見た目だけ壊れることが続いたためです。
-この版で見つけて直した物のうち6件は、開いて見るか画素を数えるまで
-分かりませんでした。絵と透かしが紙面から消えていた、角丸が紙だけ四角
-だった、影と不透明度が紙で無視されていた、画面の図形の線が半分の太さ
-だった、ペンの筆が紙に載っていなかった、行の足が余白へはみ出していた、
-の6件です。
+We built it because the numeric tests kept passing while the appearance broke.
+Six of the defects fixed in this release were invisible until we opened the
+output and looked, or counted pixels: images and watermarks missing from the
+page, rounded rectangles drawn square on paper, shadows and opacity ignored on
+paper, shape outlines drawn at half width on screen, pen strokes never reaching
+the paper, and the last line spilling into the margin.
