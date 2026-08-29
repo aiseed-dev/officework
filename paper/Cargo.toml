@@ -40,6 +40,7 @@ e = ["dep:vello_cpu", "dep:png"]
 [dev-dependencies]
 ooxml = { path = "../ooxml" }
 ops = { path = "../ops" }
+sheet = { path = "../sheet" }
 
 # 絵の見本は、絵にする係が入っているときだけ
 [[example]]
@@ -53,3 +54,6 @@ required-features = ["e"]
 [[example]]
 name = "kage_kurabe"
 required-features = ["e"]
+
+[[example]]
+name = "zukei_xlsx"

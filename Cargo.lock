@@ -4715,6 +4715,7 @@ dependencies = [
  "pdf-writer",
  "png 0.18.1",
  "printpdf",
+ "sheet",
  "subsetter",
  "ttf-parser 0.25.1",
  "vello_cpu",
