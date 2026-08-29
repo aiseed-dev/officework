@@ -5606,3 +5606,12 @@ Sheet1 なので変わらない。
   (2) Doc(lang="en") → theme1.xml がラテンの書体になり、PDF も
   それに従う (3) python-manual(ja/en)に lang= を同じコミットで
   記載 (4) README の例の直しは実装後に Fable が行う
+
+同日追記(同じ依頼に合否を1つ足す): 名指しの書体が無いときに
+黙って刷らないこと。実測では `d.font = "存在しない書体テスト"` の
+まま save("x.pdf") が警告もエラーも無く NotoSans で刷った。
+エンジンの for_document は置き替えの印(2つめの返り値 false)を
+返しているのに、Python の口まで届いていない。伝える形(警告か
+unsupported か)は任せる — 決めは「黙って別の字で刷らない」
+(engine/src/font.rs の注のとおり)。README の「書体が無いときは
+こう伝えます」の一文は、実装後に Fable が足す。
