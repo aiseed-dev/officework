@@ -1837,6 +1837,68 @@ mod pivot_tests {
         });
     }
 
+        /// **リボンのレイアウトの札から、図形の整列と結合に届く。**
+    ///
+    /// 2026-08-29。動き(`shape_align` / `shapes_boolean` / `shape_menu_action`)は
+    /// 前からありましたが、右クリックのメニューからしか届かず、リボンの札は
+    /// 灰色でした。ここで見るのは**道が通っているか**です。
+    #[gpui::test]
+    fn the_layout_tab_reaches_the_shape_commands(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            for (r, cc) in [(1u32, 1u32), (3, 3)] {
+                this.book.sheets[0].shapes_new.push(book::SheetShape {
+                    at: Pos::new(r, cc),
+                    width_px: 40.0,
+                    height_px: 20.0,
+                    kind: "rect".into(),
+                    line: Some("1B6E3C".into()),
+                    ..Default::default()
+                });
+            }
+        });
+
+        // 図形を選んでいないときは、理由を言って断る(黙って何も起きない、にしない)
+        c.update(cx, |this, cx| {
+            this.shape_sel = None;
+            this.shape_multi.clear();
+            this.run_cmd("img-movefrwd", cx);
+            assert!(!this.status.is_empty(), "図形なしで押して何も言わない");
+            this.run_cmd("img-align", cx);
+            assert!(this.pick.is_none(), "図形なしなのに一覧を出した");
+        });
+
+        // 2つ選べば、整列の一覧が出る
+        c.update(cx, |this, cx| {
+            this.shape_sel = Some(0);
+            this.shape_multi = vec![1];
+            this.run_cmd("img-align", cx);
+            let items = this.pick.as_ref().map(|(v, _)| v.len()).unwrap_or(0);
+            assert!(items >= 6, "整列の一覧が出ていない({items} 件)");
+            assert_eq!(this.pick_kind, "sh-align");
+            this.pick = None;
+        });
+
+        // 結合も同じ道
+        c.update(cx, |this, cx| {
+            this.shape_sel = Some(0);
+            this.shape_multi = vec![1];
+            this.run_cmd("shapes-merge", cx);
+            assert!(this.pick.is_some(), "結合の一覧が出ていない");
+            assert_eq!(this.pick_kind, "sh-bool");
+            this.pick = None;
+        });
+
+        // 前面へ移動は、並びが実際に変わる(重なり順 = shapes_new の並び)
+        c.update(cx, |this, cx| {
+            this.shape_sel = Some(0);
+            this.shape_multi.clear();
+            let mae = this.book.sheets[0].shapes_new[0].at;
+            this.run_cmd("img-movefrwd", cx);
+            assert_ne!(this.book.sheets[0].shapes_new[0].at, mae, "並びが変わっていない");
+        });
+    }
+
     #[gpui::test]
     fn shape_align_and_distribute_use_the_groups_bounding_box(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));

@@ -148,6 +148,9 @@ impl Calc {
         "td-first", "td-last", "td-filter",
         "group", "ungroup", "hide-details", "show-details", "subtotal", "solver",
         "inssmartart", "insequation", "insslicer", "inscheckbox", "instextart",
+        // 図形の並べ替え・整列・結合(2026-08-29。腕は前からあり、
+        // 右クリックのメニューからしか届いていませんでした)
+        "img-movefrwd", "img-movebkwd", "img-align", "shapes-merge",
         "coauth-mode", "co-delcomment", "co-showcomment", "co-chat",
         "co-history",
         // Python タブ(2026-08-09)
@@ -1390,6 +1393,39 @@ impl Calc {
             }
             // 大文字小文字。選択の英字に小文字があれば大文字へ、無ければ小文字へ
             // 大文字小文字の変更。本家は5択のサブメニュー —
+            // **図形の並べ替えと整列。** 中身は右クリックの図形メニューと
+            // 同じ物です(2026-08-29)。腕はあったのに、リボンの札だけが
+            // 灰色で届きませんでした
+            "img-movefrwd" | "img-movebkwd" => {
+                if self.shape_sel.is_none() {
+                    self.status = ui::tf!("select_more_shapes_first", 1).into();
+                } else {
+                    self.shape_menu_action(if id == "img-movefrwd" {
+                        "sh-forward"
+                    } else {
+                        "sh-backward"
+                    });
+                }
+            }
+            "img-align" | "shapes-merge" => {
+                self.commit();
+                let sub = if id == "img-align" { "sh-align" } else { "sh-bool" };
+                // **押せない物は一覧に出しません。** 整列は2つ以上、
+                // 分布は3つ以上、結合は2つ以上の図形が要ります
+                let items: Vec<(String, String)> = self
+                    .menu_sub_entries(sub)
+                    .into_iter()
+                    .filter(|(_, _, ok)| *ok)
+                    .map(|(i, l, _)| (i.to_string(), l.to_string()))
+                    .collect();
+                if items.is_empty() {
+                    self.status = ui::t!("select_two_shapes_ctrl").into();
+                } else {
+                    let at = self.pop_anchor();
+                    self.pick_kind = sub;
+                    self.pick = Some((items, at));
+                }
+            }
             // 大小のトグルだけの仮実装をやめ、一覧から選ぶ
             "changecase" => {
                 self.commit();
