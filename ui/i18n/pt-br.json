@@ -2242,5 +2242,7 @@
  "slant_dash_dot": "Slanted dash dot",
  "center_across": "Center across selection",
  "grouped_shapes": "{} formas agrupadas (pressione de novo para desagrupar)",
- "ungrouped_shapes": "{} formas desagrupadas"
+ "ungrouped_shapes": "{} formas desagrupadas",
+ "book_structure_locked": "Estrutura da pasta bloqueada (as planilhas não podem ser alteradas)",
+ "book_structure_unlocked": "Estrutura da pasta desbloqueada"
 }

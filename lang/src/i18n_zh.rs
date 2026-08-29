@@ -1916,6 +1916,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("highlighted_dependent_cells_clear", "{}:已高亮 {} 个从属单元格(用“移去箭头”清除)"),
     ("unprotected_sheet_can_edit", "已撤销工作表“{}”的保护(现在可以编辑;保存后会写入 xlsx)"),
     ("protected_sheet_only_unlocked_cells", "已保护工作表“{}”(只能编辑未锁定的单元格;在“允许的操作”中放宽;同一个按钮可撤销。不设置密码,也不假装设置)"),
+    ("book_structure_locked", "已保护工作簿结构(不能添加、删除或移动工作表)"),
+    ("book_structure_unlocked", "已取消工作簿结构保护"),
     ("hold_write_lock_whoever", "写入权在您这边({})。先打开工作簿的人可以写,之后的人只能读(锁是 .~lock 文件)"),
     ("placed_checkboxes_toggle_space", "已放置 {} 个复选框(用空格键切换;在 Excel 中显示为 TRUE/FALSE{})"),
     ("hid_sheet_same_button", "已隐藏工作表“{}”(同一个按钮可恢复;保存后会写入 xlsx)"),

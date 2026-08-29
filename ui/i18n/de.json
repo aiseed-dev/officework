@@ -2242,5 +2242,7 @@
  "slant_dash_dot": "Slanted dash dot",
  "center_across": "Center across selection",
  "grouped_shapes": "{} Formen gruppiert (erneut drücken zum Aufheben)",
- "ungrouped_shapes": "Gruppierung von {} Formen aufgehoben"
+ "ungrouped_shapes": "Gruppierung von {} Formen aufgehoben",
+ "book_structure_locked": "Arbeitsmappenstruktur gesperrt (Blätter können nicht geändert werden)",
+ "book_structure_unlocked": "Arbeitsmappenstruktur entsperrt"
 }

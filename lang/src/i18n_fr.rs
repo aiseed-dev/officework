@@ -1916,6 +1916,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("highlighted_dependent_cells_clear", "{} : {} cellules dépendantes mises en évidence (effacez-les avec Supprimer les flèches)"),
     ("unprotected_sheet_can_edit", "Feuille « {} » déprotégée (vous pouvez la modifier ; la modification est conservée dans le xlsx à l'enregistrement)"),
     ("protected_sheet_only_unlocked_cells", "Feuille « {} » protégée (seules les cellules déverrouillées sont modifiables ; assouplissez avec Actions autorisées ; le même bouton la libère. Aucun mot de passe n'est posé — et nous ne faisons pas semblant)"),
+    ("book_structure_locked", "Structure du classeur verrouillée (les feuilles ne peuvent pas être modifiées)"),
+    ("book_structure_unlocked", "Structure du classeur déverrouillée"),
     ("hold_write_lock_whoever", "Vous ({}) détenez le verrou d'écriture. Le premier à ouvrir le classeur peut écrire ; les suivants ne font que lire (le verrou est un fichier .~lock)"),
     ("placed_checkboxes_toggle_space", "{} cases à cocher placées (basculez avec la barre d'espace ; Excel les affiche comme VRAI/FAUX{})"),
     ("hid_sheet_same_button", "Feuille « {} » masquée (le même bouton la ramène ; la modification est conservée dans le xlsx à l'enregistrement)"),

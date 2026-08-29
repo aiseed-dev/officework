@@ -1916,6 +1916,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("highlighted_dependent_cells_clear", "{}: đã tô sáng {} ô phụ thuộc (xóa bằng Bỏ mũi tên)"),
     ("unprotected_sheet_can_edit", "Đã bỏ bảo vệ trang tính \"{}\" (giờ bạn có thể sửa; khi lưu, thay đổi vẫn nằm trong xlsx)"),
     ("protected_sheet_only_unlocked_cells", "Đã bảo vệ trang tính \"{}\" (chỉ sửa được các ô không khóa; nới lỏng ở Thao tác được phép; cùng nút đó sẽ bỏ bảo vệ. Không đặt mật khẩu — và cũng không giả vờ đặt)"),
+    ("book_structure_locked", "Đã khoá cấu trúc sổ làm việc (không thể thay đổi trang tính)"),
+    ("book_structure_unlocked", "Đã mở khoá cấu trúc sổ làm việc"),
     ("hold_write_lock_whoever", "Quyền ghi thuộc về bạn ({}). Ai mở sổ làm việc trước thì được ghi; những người sau chỉ đọc (khóa là tệp .~lock)"),
     ("placed_checkboxes_toggle_space", "Đã đặt {} hộp kiểm (bật tắt bằng phím cách; Excel hiển thị là TRUE/FALSE{})"),
     ("hid_sheet_same_button", "Đã ẩn trang tính \"{}\" (cùng nút đó sẽ hiện lại; khi lưu, thay đổi vẫn nằm trong xlsx)"),

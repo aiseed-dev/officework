@@ -1916,6 +1916,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("highlighted_dependent_cells_clear", "{}: {} etkilenen hücre vurgulandı (Okları kaldır ile temizleyin)"),
     ("unprotected_sheet_can_edit", "\"{}\" sayfasının koruması kaldırıldı (artık düzenleyebilirsiniz; kaydedince değişiklik xlsx içinde kalır)"),
     ("protected_sheet_only_unlocked_cells", "\"{}\" sayfası korundu (yalnızca kilidi açık hücreler düzenlenebilir; İzin verilen işlemler ile gevşetin; aynı düğme korumayı kaldırır. Parola konmaz — kondu gibi de yapmayız)"),
+    ("book_structure_locked", "Çalışma kitabı yapısı kilitlendi (sayfalar değiştirilemez)"),
+    ("book_structure_unlocked", "Çalışma kitabı yapısının kilidi açıldı"),
     ("hold_write_lock_whoever", "Yazma kilidi sizde ({}). Çalışma kitabını ilk açan yazabilir; sonrakiler yalnızca okur (kilit bir .~lock dosyasıdır)"),
     ("placed_checkboxes_toggle_space", "{} onay kutusu yerleştirildi (boşluk tuşuyla değiştirin; Excel bunları DOĞRU/YANLIŞ olarak gösterir{})"),
     ("hid_sheet_same_button", "\"{}\" sayfası gizlendi (aynı düğme geri getirir; kaydedince değişiklik xlsx içinde kalır)"),

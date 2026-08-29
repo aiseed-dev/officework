@@ -2242,5 +2242,7 @@
  "slant_dash_dot": "Slanted dash dot",
  "center_across": "Center across selection",
  "grouped_shapes": "已组合 {} 个形状(再次按下可取消组合)",
- "ungrouped_shapes": "已取消组合 {} 个形状"
+ "ungrouped_shapes": "已取消组合 {} 个形状",
+ "book_structure_locked": "已保护工作簿结构(不能添加、删除或移动工作表)",
+ "book_structure_unlocked": "已取消工作簿结构保护"
 }

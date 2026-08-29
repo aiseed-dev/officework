@@ -2242,5 +2242,7 @@
  "slant_dash_dot": "Slanted dash dot",
  "center_across": "Center across selection",
  "grouped_shapes": "Сгруппировано фигур: {} (нажмите ещё раз, чтобы разгруппировать)",
- "ungrouped_shapes": "Разгруппировано фигур: {}"
+ "ungrouped_shapes": "Разгруппировано фигур: {}",
+ "book_structure_locked": "Структура книги защищена (листы нельзя добавлять, удалять и переставлять)",
+ "book_structure_unlocked": "Защита структуры книги снята"
 }

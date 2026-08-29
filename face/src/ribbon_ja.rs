@@ -358,7 +358,7 @@ pub const CALC: &[Tab] = &[
     ]},
     Tab { name: "保護", cmds: &[
         c("prot-encrypt", "暗号化する", "prot-encrypt"),
-        xt("ブックを保護する", "protect-workbook"),
+        c("prot-book", "ブックを保護する", "protect-workbook"),
         c("prot-doc", "シートを保護する", "protect-sheet"),
         xt("範囲を保護する", "protect-range"),
         c("prot-sign", "デジタル署名を追加", "prot-sign"),

@@ -1916,6 +1916,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("highlighted_dependent_cells_clear", "{}: {} sel dependen disorot (hapus dengan Hapus panah)"),
     ("unprotected_sheet_can_edit", "Proteksi lembar \"{}\" dilepas (sekarang bisa diedit; perubahan tetap tersimpan di xlsx saat disimpan)"),
     ("protected_sheet_only_unlocked_cells", "Lembar \"{}\" diproteksi (hanya sel yang tidak terkunci bisa diedit; longgarkan lewat Tindakan yang diizinkan; tombol yang sama melepasnya. Tidak ada kata sandi yang dipasang — dan kami juga tidak berpura-pura memasangnya)"),
+    ("book_structure_locked", "Struktur buku kerja dikunci (lembar tidak dapat diubah)"),
+    ("book_structure_unlocked", "Struktur buku kerja dibuka"),
     ("hold_write_lock_whoever", "Kunci tulis ada pada Anda ({}). Yang membuka buku kerja lebih dulu bisa menulis; yang berikutnya hanya membaca (kuncinya berupa berkas .~lock)"),
     ("placed_checkboxes_toggle_space", "{} kotak centang ditempatkan (ubah dengan tombol spasi; Excel menampilkannya sebagai TRUE/FALSE{})"),
     ("hid_sheet_same_button", "Lembar \"{}\" disembunyikan (tombol yang sama mengembalikannya; perubahan tetap tersimpan di xlsx saat disimpan)"),

@@ -1732,6 +1732,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     let mut calc_iter: Option<(u32, f64)> = None;
     let mut r1c1 = false;
     let mut read_only_rec = false;
+    let mut lock_structure = false;
     if let Ok(mut f) = zip.by_name("xl/workbook.xml") {
         let mut s = String::new();
         let _ = f.read_to_string(&mut s);
@@ -1766,6 +1767,11 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 {
                     read_only_rec = matches!(
                         attr(&e, "readOnlyRecommended").as_deref(),
+                        Some("1") | Some("true")
+                    );
+                    // ブックの構造の保護(2026-08-30)
+                    lock_structure = matches!(
+                        attr(&e, "lockStructure").as_deref(),
                         Some("1") | Some("true")
                     );
                 }
@@ -1866,6 +1872,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
         calc_iter,
         r1c1,
         read_only_rec,
+        lock_structure,
         ..Default::default()
     };
     // ブックの情報(docProps/core.xml)。読んで見せる。保存は原文持ち越し

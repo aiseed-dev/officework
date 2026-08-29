@@ -1916,6 +1916,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("highlighted_dependent_cells_clear", "{}: se han resaltado {} celdas dependientes (bórrelas con Quitar flechas)"),
     ("unprotected_sheet_can_edit", "Se ha desprotegido la hoja \"{}\" (ya puede editarla; el cambio se conserva en el xlsx al guardar)"),
     ("protected_sheet_only_unlocked_cells", "Se ha protegido la hoja \"{}\" (solo se pueden editar las celdas desbloqueadas; use Acciones permitidas para relajarlo; el mismo botón lo libera. No se pone contraseña, y tampoco fingimos ponerla)"),
+    ("book_structure_locked", "Estructura del libro bloqueada (no se pueden cambiar las hojas)"),
+    ("book_structure_unlocked", "Estructura del libro desbloqueada"),
     ("hold_write_lock_whoever", "Usted ({}) tiene el bloqueo de escritura. Quien abre el libro primero puede escribir; los demás solo leen (el bloqueo es un archivo .~lock)"),
     ("placed_checkboxes_toggle_space", "Se han colocado {} casillas (cámbielas con la barra espaciadora; Excel las muestra como VERDADERO/FALSO{})"),
     ("hid_sheet_same_button", "Se ha ocultado la hoja \"{}\" (el mismo botón la devuelve; el cambio se conserva en el xlsx al guardar)"),

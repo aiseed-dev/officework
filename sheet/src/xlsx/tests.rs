@@ -3390,3 +3390,36 @@ fn grouped_shapes_survive_a_round_trip() {
     assert_eq!(sp[1].kind, "ellipse");
     assert_eq!(sp[1].fill.as_deref(), Some("C0504D"));
 }
+
+/// **ブックの構造の保護が往復する。**
+///
+/// 2026-08-30 発注者「ブックを保護」。鍵ではないので password は書きません
+/// — 掛けた振りをしないためです(読み取り専用のお願いと同じ考え)。
+#[test]
+fn the_workbook_structure_lock_round_trips() {
+    let mut b = book::Book::new();
+    b.lock_structure = true;
+    let mut buf = Vec::new();
+    super::write(&b, std::io::Cursor::new(&mut buf)).expect("書けない");
+
+    let x = {
+        use std::io::Read;
+        let mut z = zip::ZipArchive::new(std::io::Cursor::new(&buf)).expect("開けない");
+        let mut t = String::new();
+        z.by_name("xl/workbook.xml").unwrap().read_to_string(&mut t).unwrap();
+        t
+    };
+    assert!(x.contains(r#"lockStructure="1""#), "構造の保護が書かれていない");
+    assert!(!x.contains("password"), "鍵を書いている(掛けた振りをしない)");
+
+    let (b2, _) = super::read(std::io::Cursor::new(&buf)).expect("読めない");
+    assert!(b2.lock_structure, "読み戻せていない");
+
+    // 外したら消える
+    let mut b3 = b2;
+    b3.lock_structure = false;
+    let mut buf2 = Vec::new();
+    super::write(&b3, std::io::Cursor::new(&mut buf2)).expect("書けない");
+    let (b4, _) = super::read(std::io::Cursor::new(&buf2)).expect("読めない");
+    assert!(!b4.lock_structure, "外したのに残っている");
+}

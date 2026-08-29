@@ -141,6 +141,10 @@ fn put_book_settings(d: &mut Document, book: &Book) {
     if book.read_only_rec {
         put("read-only-recommended", "true".into());
     }
+    // ブックの構造の保護(2026-08-30)
+    if book.lock_structure {
+        put("lock-structure", "true".into());
+    }
     if book.date1904 {
         put("date-1904", "true".into());
     }
@@ -166,6 +170,7 @@ fn take_book_settings(d: &Document, book: &mut Book) {
             "description" => book.props.description = v.clone(),
             "calc-manual" => book.calc_manual = yes,
             "read-only-recommended" => book.read_only_rec = yes,
+            "lock-structure" => book.lock_structure = yes,
             "date-1904" => book.date1904 = yes,
             "calc-iterate" => {
                 if let Some((n, eps)) = v.split_once(',') {

@@ -2242,5 +2242,7 @@
  "slant_dash_dot": "Slanted dash dot",
  "center_across": "Center across selection",
  "grouped_shapes": "{} bentuk dikelompokkan (tekan lagi untuk melepas)",
- "ungrouped_shapes": "{} bentuk dilepas dari kelompok"
+ "ungrouped_shapes": "{} bentuk dilepas dari kelompok",
+ "book_structure_locked": "Struktur buku kerja dikunci (lembar tidak dapat diubah)",
+ "book_structure_unlocked": "Struktur buku kerja dibuka"
 }

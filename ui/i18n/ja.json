@@ -2242,5 +2242,7 @@
  "diagonal": "斜め",
  "selection": "選択範囲",
  "grouped_shapes": "{} 個の図形を束ねました(もう一度押すと解きます)",
- "ungrouped_shapes": "{} 個の図形の束を解きました"
+ "ungrouped_shapes": "{} 個の図形の束を解きました",
+ "book_structure_locked": "ブックの構造を守ります(シートの追加・削除・並べ替えができません)",
+ "book_structure_unlocked": "ブックの構造の保護を外しました"
 }

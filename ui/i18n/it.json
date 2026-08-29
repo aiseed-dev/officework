@@ -2242,5 +2242,7 @@
  "slant_dash_dot": "Slanted dash dot",
  "center_across": "Center across selection",
  "grouped_shapes": "{} forme raggruppate (premi di nuovo per separare)",
- "ungrouped_shapes": "{} forme separate"
+ "ungrouped_shapes": "{} forme separate",
+ "book_structure_locked": "Struttura della cartella bloccata (i fogli non possono essere modificati)",
+ "book_structure_unlocked": "Struttura della cartella sbloccata"
 }

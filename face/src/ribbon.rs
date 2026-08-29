@@ -559,7 +559,7 @@ pub const CALC: &[Tab] = &[
         // 本家 SSE の並び: 暗号化 / ブック / シート / 範囲。
         // ブックと範囲は未実装(灰)。署名は本家に無いこちらのボタン — 末尾
         c("prot-encrypt", "Encrypt", "prot-encrypt"),
-        xt("Protect workbook", "protect-workbook"),
+        c("prot-book", "Protect workbook", "protect-workbook"),
         c("prot-doc", "Protect sheet", "protect-sheet"),
         xt("Protect Range", "protect-range"),
         c("prot-sign", "Add digital signature", "prot-sign"),

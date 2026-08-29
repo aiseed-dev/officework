@@ -1916,6 +1916,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("highlighted_dependent_cells_clear", "{} の参照先 {} セルを光らせました(トレース矢印の削除で消す)"),
     ("unprotected_sheet_can_edit", "シート「{}」の保護を外しました(編集できます。保存で xlsx にも残ります)"),
     ("protected_sheet_only_unlocked_cells", "シート「{}」を保護しました(ロックを外したセルだけ書けます。「許可する操作」で緩められます。同じボタンで解除。パスワードは掛けません — 掛けた振りもしません)"),
+    ("book_structure_locked", "ブックの構造を守ります(シートの追加・削除・並べ替えができません)"),
+    ("book_structure_unlocked", "ブックの構造の保護を外しました"),
     ("hold_write_lock_whoever", "編集権はこちら({})にあります。同じブックは先に開いた人が書け、後の人は読むだけになります(錠は .~lock ファイル)"),
     ("placed_checkboxes_toggle_space", "チェックボックスを {} 個置きました(空白キーで切替。Excel では TRUE/FALSE で見えます{})"),
     ("hid_sheet_same_button", "シート「{}」を隠しました(同じボタンで戻せます。保存で xlsx にも残ります)"),

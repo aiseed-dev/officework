@@ -1916,6 +1916,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("highlighted_dependent_cells_clear", "{}: {} abhängige Zellen hervorgehoben (mit Pfeile entfernen löschen)"),
     ("unprotected_sheet_can_edit", "Blattschutz für \"{}\" aufgehoben (Sie können es jetzt bearbeiten; beim Speichern bleibt das in der xlsx erhalten)"),
     ("protected_sheet_only_unlocked_cells", "Blatt \"{}\" geschützt (nur nicht gesperrte Zellen sind bearbeitbar; unter Erlaubte Aktionen lockern; dieselbe Schaltfläche hebt es auf. Es wird kein Kennwort gesetzt — und wir tun auch nicht so)"),
+    ("book_structure_locked", "Arbeitsmappenstruktur gesperrt (Blätter können nicht geändert werden)"),
+    ("book_structure_unlocked", "Arbeitsmappenstruktur entsperrt"),
     ("hold_write_lock_whoever", "Sie ({}) halten die Schreibsperre. Wer die Arbeitsmappe zuerst öffnet, darf schreiben; alle danach lesen nur (die Sperre ist eine .~lock-Datei)"),
     ("placed_checkboxes_toggle_space", "{} Kontrollkästchen gesetzt (mit der Leertaste umschalten; Excel zeigt sie als WAHR/FALSCH{})"),
     ("hid_sheet_same_button", "Blatt \"{}\" ausgeblendet (dieselbe Schaltfläche holt es zurück; beim Speichern bleibt das in der xlsx erhalten)"),

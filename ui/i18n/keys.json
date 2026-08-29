@@ -7656,6 +7656,14 @@
   "kind": "msg"
  },
  {
+  "key": "book_structure_locked",
+  "kind": "msg"
+ },
+ {
+  "key": "book_structure_unlocked",
+  "kind": "msg"
+ },
+ {
   "key": "hold_write_lock_whoever",
   "kind": "msg"
  },

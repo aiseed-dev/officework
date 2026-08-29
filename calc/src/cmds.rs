@@ -155,7 +155,7 @@ impl Calc {
         "co-history",
         // Python タブ(2026-08-09)
         "rec-toggle", "py-new", "py-list", "py-folder", "func-list", "ribbon-list",
-        "prot-doc", "prot-encrypt", "prot-sign",
+        "prot-doc", "prot-book", "prot-encrypt", "prot-sign",
         "zoom-in", "zoom-out", "zoom100", "ui-bigger", "ui-smaller", "formula-bar", "show-headings", "show-zeros",
         // 左右のパネル(2026-08-15)
         "show-left", "show-right",
@@ -375,7 +375,7 @@ impl Calc {
         "setfilter", "clear-filter",
         "trace-prec", "trace-dep", "remove-arrows", "pivot-select",
         "coauth-mode", "co-showcomment", "co-chat", "co-history",
-        "prot-doc", "prot-encrypt", "prot-sign", "ai-where",
+        "prot-doc", "prot-book", "prot-encrypt", "prot-sign", "ai-where",
         "recover", "recover-every", "csv-kind", "autofit-col", "autofit-row",
         "read-only-rec",
         // 「許可する操作」は保護中にこそ触る。**鍵を掛けていないので
@@ -1660,6 +1660,19 @@ impl Calc {
             }
             // シートの保護。パスワードは掛けない(掛けた振りもしない)—
             // Excel でも「保護されたシート」に見え、解除も同じ1手でできる
+            // **ブックの構造を守る**(2026-08-30 発注者「ブックを保護」)。
+            // シートの追加・削除・並べ替え・名前の変更を禁じます。
+            // **鍵ではありません** — password は書かず、掛けた振りをしません
+            "prot-book" => {
+                self.commit();
+                self.book.lock_structure = !self.book.lock_structure;
+                self.dirty = true;
+                self.status = if self.book.lock_structure {
+                    ui::t!("book_structure_locked").into()
+                } else {
+                    ui::t!("book_structure_unlocked").into()
+                };
+            }
             "prot-doc" => {
                 let name = self.sheet().name.clone();
                 if self.sheet().protected {

@@ -2242,5 +2242,7 @@
  "slant_dash_dot": "Slanted dash dot",
  "center_across": "Center across selection",
  "grouped_shapes": "{} formas agrupadas (pulse de nuevo para desagrupar)",
- "ungrouped_shapes": "Se desagruparon {} formas"
+ "ungrouped_shapes": "Se desagruparon {} formas",
+ "book_structure_locked": "Estructura del libro bloqueada (no se pueden cambiar las hojas)",
+ "book_structure_unlocked": "Estructura del libro desbloqueada"
 }

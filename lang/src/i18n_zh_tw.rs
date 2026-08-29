@@ -1916,6 +1916,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("highlighted_dependent_cells_clear", "{}:已標示 {} 個從屬儲存格(用「移除箭號」清除)"),
     ("unprotected_sheet_can_edit", "已解除工作表「{}」的保護(現在可以編輯;存檔後會寫入 xlsx)"),
     ("protected_sheet_only_unlocked_cells", "已保護工作表「{}」(只能編輯未鎖定的儲存格;在「允許的操作」中放寬;同一個按鈕可解除。不設定密碼,也不假裝設定)"),
+    ("book_structure_locked", "已保護活頁簿結構(不能新增、刪除或移動工作表)"),
+    ("book_structure_unlocked", "已取消活頁簿結構保護"),
     ("hold_write_lock_whoever", "編輯權在您這邊({})。先開啟活頁簿的人可以寫入,之後的人只能讀取(鎖是 .~lock 檔案)"),
     ("placed_checkboxes_toggle_space", "已放置 {} 個核取方塊(用空白鍵切換;在 Excel 中顯示為 TRUE/FALSE{})"),
     ("hid_sheet_same_button", "已隱藏工作表「{}」(同一個按鈕可還原;存檔後會寫入 xlsx)"),

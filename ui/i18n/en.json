@@ -2242,5 +2242,7 @@
  "diagonal": "Diagonal",
  "selection": "Selection",
  "grouped_shapes": "Grouped {} shapes (press again to ungroup)",
- "ungrouped_shapes": "Ungrouped {} shapes"
+ "ungrouped_shapes": "Ungrouped {} shapes",
+ "book_structure_locked": "Workbook structure locked (sheets cannot be added, removed or reordered)",
+ "book_structure_unlocked": "Workbook structure unlocked"
 }

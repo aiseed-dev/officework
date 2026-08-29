@@ -2242,5 +2242,7 @@
  "slant_dash_dot": "Slanted dash dot",
  "center_across": "Center across selection",
  "grouped_shapes": "도형 {}개를 그룹으로 묶었습니다(다시 누르면 해제)",
- "ungrouped_shapes": "도형 {}개의 그룹을 해제했습니다"
+ "ungrouped_shapes": "도형 {}개의 그룹을 해제했습니다",
+ "book_structure_locked": "통합 문서 구조를 보호합니다(시트를 추가·삭제·이동할 수 없습니다)",
+ "book_structure_unlocked": "통합 문서 구조 보호를 해제했습니다"
 }

@@ -1916,6 +1916,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("highlighted_dependent_cells_clear", "{}: {} células dependentes realçadas (limpe-as com Remover setas)"),
     ("unprotected_sheet_can_edit", "Planilha \"{}\" desprotegida (você já pode editá-la; ao salvar a alteração fica no xlsx)"),
     ("protected_sheet_only_unlocked_cells", "Planilha \"{}\" protegida (só as células desbloqueadas podem ser editadas; afrouxe em Ações permitidas; o mesmo botão libera. Nenhuma senha é definida — e também não fingimos que sim)"),
+    ("book_structure_locked", "Estrutura da pasta bloqueada (as planilhas não podem ser alteradas)"),
+    ("book_structure_unlocked", "Estrutura da pasta desbloqueada"),
     ("hold_write_lock_whoever", "O bloqueio de escrita é seu ({}). Quem abrir a pasta de trabalho primeiro pode escrever; os seguintes apenas leem (o bloqueio é um arquivo .~lock)"),
     ("placed_checkboxes_toggle_space", "Colocadas {} caixas de seleção (alterne com a barra de espaço; o Excel as mostra como VERDADEIRO/FALSO{})"),
     ("hid_sheet_same_button", "Planilha \"{}\" ocultada (o mesmo botão traz de volta; ao salvar a alteração fica no xlsx)"),

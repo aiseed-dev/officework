@@ -270,6 +270,13 @@ pub(super) fn patch_sheet_states(workbook: &str, book: &Book) -> String {
 /// 読み取り専用のお願いを workbook.xml に織り込む(無ければ足し、
 /// 外したら消す)。**鍵ではないので password は書かない** — 掛けた振りをしない
 pub(super) fn patch_read_only(workbook: &str, on: bool) -> String {
+    patch_protection(workbook, on, false)
+}
+
+/// 読み取り専用のお願いと、ブックの構造の保護を workbook.xml に織り込む。
+/// **鍵ではないので password は書きません** — 掛けた振りをしない
+pub(super) fn patch_protection(workbook: &str, read_only: bool, lock: bool) -> String {
+    let on = read_only || lock;
     let mut s = workbook.to_string();
     // 既存の workbookProtection は取り除いてから置き直す
     if let Some(i) = s.find("<workbookProtection") {
@@ -286,7 +293,14 @@ pub(super) fn patch_read_only(workbook: &str, on: bool) -> String {
     // 手近な目印として <sheets> の前に置く
     match s.find("<bookViews").or_else(|| s.find("<sheets")) {
         Some(i) => {
-            s.insert_str(i, r#"<workbookProtection readOnlyRecommended="1"/>"#);
+            let mut a = String::new();
+            if lock {
+                a.push_str(r#" lockStructure="1""#);
+            }
+            if read_only {
+                a.push_str(r#" readOnlyRecommended="1""#);
+            }
+            s.insert_str(i, &format!("<workbookProtection{a}/>"));
             s
         }
         None => s,
@@ -861,7 +875,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                     // 計算方法もこちらが正(F9 で手動にしたら残す)
                     let patched = patch_calc_pr(&patched, book.calc_manual);
                     // 読み取り専用のお願い(鍵ではない)
-                    let patched = patch_read_only(&patched, book.read_only_rec);
+                    let patched = patch_protection(&patched, book.read_only_rec, book.lock_structure);
                     // 反復計算も原本の calcPr に織り込む(無ければ足し、切っていれば外す)
                     let patched = if let Some(start) = patched.find("<calcPr") {
                         match patched[start..].find('>') {
@@ -1503,8 +1517,17 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     put("xl/workbook.xml", &format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="{NS}" xmlns:r="{RNS}">{}<sheets>{sheets_xml}</sheets>{}{}</workbook>"#,
-        // 読み取り専用のお願い(スキーマでは sheets の前)
-        if book.read_only_rec { r#"<workbookProtection readOnlyRecommended="1"/>"# } else { "" },
+        // 保護(スキーマでは sheets の前)。読み取り専用のお願いと、
+        // ブックの構造の保護。**鍵は書きません** — 掛けた振りをしない
+        // (2026-08-30。原本を持ち越す道にだけ足して、こちらを忘れました)
+        match (book.lock_structure, book.read_only_rec) {
+            (false, false) => String::new(),
+            (l, r) => format!(
+                "<workbookProtection{}{}/>",
+                if l { r#" lockStructure="1""# } else { "" },
+                if r { r#" readOnlyRecommended="1""# } else { "" },
+            ),
+        },
         defined_names_xml(book),
         // 手動計算をファイルに残す(自動は既定なので書かない)
         calc_pr_xml(book).as_str()))?;

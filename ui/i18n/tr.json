@@ -2242,5 +2242,7 @@
  "slant_dash_dot": "Slanted dash dot",
  "center_across": "Center across selection",
  "grouped_shapes": "{} şekil gruplandı (çözmek için yeniden basın)",
- "ungrouped_shapes": "{} şeklin grubu çözüldü"
+ "ungrouped_shapes": "{} şeklin grubu çözüldü",
+ "book_structure_locked": "Çalışma kitabı yapısı kilitlendi (sayfalar değiştirilemez)",
+ "book_structure_unlocked": "Çalışma kitabı yapısının kilidi açıldı"
 }

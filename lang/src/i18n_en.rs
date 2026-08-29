@@ -1916,6 +1916,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("highlighted_dependent_cells_clear", "{}: highlighted {} dependent cells (clear with Remove Arrows)"),
     ("unprotected_sheet_can_edit", "Unprotected sheet \"{}\" (you can edit it now; the change is kept in the xlsx on save)"),
     ("protected_sheet_only_unlocked_cells", "Protected sheet \"{}\" (only unlocked cells can be edited; loosen it under Allowed actions; the same button releases it. No password is set — and we don't pretend to set one)"),
+    ("book_structure_locked", "Workbook structure locked (sheets cannot be added, removed or reordered)"),
+    ("book_structure_unlocked", "Workbook structure unlocked"),
     ("hold_write_lock_whoever", "You ({}) hold the write lock. Whoever opens the workbook first can write; anyone after that reads only (the lock is a .~lock file)"),
     ("placed_checkboxes_toggle_space", "Placed {} checkboxes (toggle with the space key; Excel shows them as TRUE/FALSE{})"),
     ("hid_sheet_same_button", "Hid sheet \"{}\" (the same button brings it back; the change is kept in the xlsx on save)"),

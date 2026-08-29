@@ -1916,6 +1916,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("highlighted_dependent_cells_clear", "{}: evidenziate {} celle dipendenti (cancellale con Rimuovi frecce)"),
     ("unprotected_sheet_can_edit", "Protezione del foglio \"{}\" rimossa (ora puoi modificarlo; al salvataggio la modifica resta nel file xlsx)"),
     ("protected_sheet_only_unlocked_cells", "Foglio \"{}\" protetto (si possono modificare solo le celle sbloccate; allenta la protezione da Azioni consentite; lo stesso pulsante la rimuove. Non viene impostata alcuna password — e non fingiamo di impostarla)"),
+    ("book_structure_locked", "Struttura della cartella bloccata (i fogli non possono essere modificati)"),
+    ("book_structure_unlocked", "Struttura della cartella sbloccata"),
     ("hold_write_lock_whoever", "Il blocco di scrittura è tuo ({}). Chi apre per primo la cartella di lavoro può scrivere; gli altri possono solo leggere (il blocco è un file .~lock)"),
     ("placed_checkboxes_toggle_space", "Inserite {} caselle di controllo (si commutano con la barra spaziatrice; Excel le mostra come VERO/FALSO{})"),
     ("hid_sheet_same_button", "Foglio \"{}\" nascosto (lo stesso pulsante lo riporta; al salvataggio la modifica resta nel file xlsx)"),

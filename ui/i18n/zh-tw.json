@@ -2242,5 +2242,7 @@
  "slant_dash_dot": "Slanted dash dot",
  "center_across": "Center across selection",
  "grouped_shapes": "已群組 {} 個圖形(再按一次可取消群組)",
- "ungrouped_shapes": "已取消群組 {} 個圖形"
+ "ungrouped_shapes": "已取消群組 {} 個圖形",
+ "book_structure_locked": "已保護活頁簿結構(不能新增、刪除或移動工作表)",
+ "book_structure_unlocked": "已取消活頁簿結構保護"
 }

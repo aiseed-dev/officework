@@ -334,6 +334,7 @@ VENDOR_JA = {
     "img-movefrwd|img-movefrwd": "前面ヘ移動",
     "shapes-merge|shapes-merge": "図形を結合",
     "img-group|img-group": "グループ化",
+    "prot-book|protect-workbook": "ブックを保護する",
     "|img-align": "配置",
     "|img-group": "グループ化",
     "|img-movebkwd": "背面ヘ移動",

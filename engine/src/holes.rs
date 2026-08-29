@@ -144,6 +144,8 @@ pub const WATCHED_BOOK: &[(&str, Watch)] = &[
     ("calc_iter", Watch::Body),
     ("r1c1", Watch::Look),
     ("read_only_rec", Watch::Body),
+    // ブックの構造の保護(2026-08-30)
+    ("lock_structure", Watch::Body),
     ("date1904", Watch::Body),
     ("changes", Watch::Body),
     ("path", Watch::Skip("開いた場所。ファイルの中身ではない")),
@@ -166,6 +168,7 @@ pub fn filled_book() -> Book {
     b.calc_iter = Some((50, 0.001));
     b.r1c1 = true;
     b.read_only_rec = true;
+    b.lock_structure = true;
     b.date1904 = true;
     b
 }
@@ -368,6 +371,7 @@ fn same_book_field(name: &str, a: &Book, b: &Book) -> bool {
         "calc_iter" => a.calc_iter == b.calc_iter,
         "r1c1" => a.r1c1 == b.r1c1,
         "read_only_rec" => a.read_only_rec == b.read_only_rec,
+        "lock_structure" => a.lock_structure == b.lock_structure,
         "date1904" => a.date1904 == b.date1904,
         "changes" => a.changes.len() == b.changes.len(),
         _ => panic!("見張りの表にあるのに比べ方が無い: {name}"),
