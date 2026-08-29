@@ -243,14 +243,16 @@ The language is chosen at creation only — everything it sets is ordinary forma
 |===
 |Language |Body size |Base fonts
 
-|ja |10.5pt |BIZ UD family — gothic for headings, mincho for body
-|en, de, es, fr, it, id, pt, pt-br, tr, ru |11pt |the machine's standard fonts (sans for headings, serif for body)
-|ko |10pt |the machine's standard Korean fonts
-|zh |10.5pt |the machine's standard fonts for the script
-|zh-tw |12pt |the machine's standard fonts for the script
-|vi |13pt |the machine's standard fonts (larger because stacked diacritics crush at 11pt)
+|ja |10.5pt |the file names the BIZ UD family — gothic for headings, mincho for body
+|en, de, es, fr, it, id, pt, pt-br, tr, ru |11pt |sans for headings, serif for body
+|ko |10pt |Korean fonts
+|zh |10.5pt |fonts for the script
+|zh-tw |12pt |fonts for the script
+|vi |13pt |Latin fonts (larger because stacked diacritics crush at 11pt)
 |===
 
+Which face you actually get depends on what the machine (OS) has installed.
+If the font named in the file is present, it is used; otherwise the machine's standard font stands in (Windows ships the BIZ UD family; other machines fall back to their standard mincho and gothic).
 Paper starts as A4 with 20 mm margins in every language; change it per section if you need to.
 When a named font is not installed on the machine, the engine substitutes the machine's standard font, judging only the family — mincho-like names go to the standard mincho, gothic to gothic, monospace to monospace.
 
