@@ -485,7 +485,13 @@ mod para_tests {
         let mut s = String::new();
         use std::io::Read;
         z.by_name("word/document.xml").unwrap().read_to_string(&mut s).unwrap();
-        assert!(!s.contains("w:pPr"), "何も指定していないのに pPr を書いた");
+        // **行の高さだけは書きます**(2026-08-29)。書かないと開いた側が
+        // 自分の既定を当て、同じ文書が別の頁数に折れます。それ以外は
+        // 足しません — 頼まれていない飾りを書かないための試験です
+        assert!(s.contains("w:lineRule=\"atLeast\""), "行の高さを書いていない");
+        for iranai in ["w:jc", "w:ind", "w:numPr", "w:pStyle", "w:before", "w:after"] {
+            assert!(!s.contains(iranai), "頼まれていない {iranai} を書いた");
+        }
     }
 
     #[test]

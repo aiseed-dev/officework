@@ -341,6 +341,11 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             // 「区切りが黙って消える」と同じ抜け方
             || p.space_before_pt > 0.0
             || p.space_after_pt > 0.0
+            // **行の高さを書くときも pPr が要ります。** これを足さないと、
+            // 何も飾りの無い普通の段落だけ pPr ごと書かれず、行の高さが
+            // 入りません(2026-08-29 に 200 段落の文書で、見出し1つにしか
+            // 入っていないのを見て気づきました)
+            || SARA.with(|c| c.get())
             || p.style_id.is_some();
         if has_ppr {
             w.write_event(Event::Start(BS::new("w:pPr"))).unwrap();
@@ -436,7 +441,25 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             let has_line_spacing = (p.spacing() - 1.0).abs() > 0.001;
             let before = (p.space_before_pt * 20.0).round() as u32;
             let after = (p.space_after_pt * 20.0).round() as u32;
-            if has_line_spacing || before > 0 || after > 0 {
+            // **新しく作った文書には行の高さを明に書きます。**
+            //
+            // 書かないと、開いた側が自分の既定を当てます。Word の「1行」は
+            // 字の大きさの 1.15 倍ほど、こちらは 10.5pt に対して 6.4mm
+            // (1.73 倍)なので、同じ文書が別の頁数に折れます。200 段落の
+            // 文書で、こちらは5ページ・LibreOffice は3ページでした
+            // (2026-08-29 に実際に変換して分かりました)。頁数がずれると、
+            // ページに貼り付く図形の置き場も、目次の頁番号も狂います。
+            //
+            // **開いた元がある文書では書きません。** 原本が「1.5行」と
+            // 言っているのを、こちらの mm に置き替えるのは書き替えです。
+            // **倍率の指定がある段落は触りません。** 絶対の高さで書くと
+            // 「1.5倍」という指定そのものが消え、開き直すと別の数になります
+            // (2026-08-29 に往復の試験が落ちて気づきました)
+            let gyou_tw = (SARA.with(|c| c.get()) && !has_line_spacing).then(|| {
+                let lh = kumihan::LINE_MM * p.spacing() * kumihan::head_scale_of(p.style);
+                (lh * 72.0 * 20.0 / 25.4).round() as u32
+            });
+            if has_line_spacing || before > 0 || after > 0 || gyou_tw.is_some() {
                 let mut sp = BS::new("w:spacing");
                 if before > 0 {
                     sp.push_attribute(("w:before", before.to_string().as_str()));
@@ -444,7 +467,14 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 if after > 0 {
                     sp.push_attribute(("w:after", after.to_string().as_str()));
                 }
-                if has_line_spacing {
+                if let Some(tw) = gyou_tw {
+                    // **`atLeast`(この高さ以上)にします。** `exact` だと、
+                    // 段落の中に大きい字があるとき Word が字を切ります。
+                    // 普通の本文では natural(字の 1.15 倍ほど)より
+                    // こちらの方が高いので、同じ高さになります
+                    sp.push_attribute(("w:line", tw.to_string().as_str()));
+                    sp.push_attribute(("w:lineRule", "atLeast"));
+                } else if has_line_spacing {
                     sp.push_attribute(("w:line", ((p.spacing() * 240.0).round() as u32).to_string().as_str()));
                     sp.push_attribute(("w:lineRule", "auto"));
                 }
@@ -885,6 +915,14 @@ thread_local! {
     /// 見えないので、文書ぜんたいで決まる番号をここから引く
     static LINKS: std::cell::RefCell<std::collections::BTreeMap<String, usize>> =
         std::cell::RefCell::new(Default::default());
+}
+
+thread_local! {
+    /// **新しく作った文書か。** 真のとき、段落に行の高さを明に書きます。
+    ///
+    /// 開いた元がある文書では触りません — 原本を壊さないためです
+    /// (2026-08-29。下の `GYOU` の説明を見てください)。
+    static SARA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc<Vec<u8>>>, Vec<Comment>) {
@@ -1433,7 +1471,10 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
     // 作り直す道なので組み上がりを知りません。2026-08-29 まではここで
     // 1ページ目だけ差し込んでいましたが、2ページ目以降が違うページへ
     // 出るので、知っている側へ移しました
+    // 開いた元があるかを、段落を書く所へ伝えます(行の高さの決めに使います)
+    SARA.with(|c| c.set(original.is_none()));
     let (body, new_media, cmts_out) = write_document_full(doc);
+    SARA.with(|c| c.set(false));
     // 今回こちらが作り直す部品の名前(これ以外の joimg は既存画像として持ち越す)
     let regen_media: Vec<String> = new_media.iter().enumerate()
         .map(|(i, m)| {

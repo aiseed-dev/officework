@@ -360,6 +360,12 @@ pub(super) const CELL_PAD: f32 = 1.4;
 /// **まだ読んでいない物**: 文書自身の styles.xml。そこに書かれた本当の
 /// 大きさ・色・前後の空きは読めていないので、ここは既定の見え方でしかない。
 /// 見出しの前後の空きも入れていない(段の送りに関わるので別便)
+/// 見出しの行の高さの倍率。**docx へ書く行の高さもこれを見ます**
+/// (書かないと開いた側が自分の既定を当て、頁数が食い違います)
+pub fn head_scale_of(style: ParaStyle) -> f32 {
+    head_scale(style)
+}
+
 pub(super) fn head_scale(style: ParaStyle) -> f32 {
     match style {
         // 文書の表題。見出し1 より大きい(テンプレートが言えばそちらが勝つ)

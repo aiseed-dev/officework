@@ -1544,11 +1544,10 @@ pub(super) fn parse_document_rels(
                             .unwrap_or(0);
                     }
                     b"spacing" if in_ppr => {
-                        // w:line は 240 = 1行
-                        line_spacing = attr(&e, "line")
-                            .and_then(|v| v.parse::<f32>().ok())
-                            .map(|v| (v / 240.0).clamp(0.5, 5.0))
-                            .unwrap_or(1.0);
+                        line_spacing = gyou_bairitsu(
+                            attr(&e, "line").and_then(|v| v.parse::<f32>().ok()),
+                            attr(&e, "lineRule"),
+                        );
                         // **段落の前後の空き**(twips = pt × 20)。
                         // 前は読んでいなかったので、開いて保存すると消えていた
                         let twips = |n: &str| {
@@ -1934,11 +1933,10 @@ pub(super) fn parse_document_rels(
                             .unwrap_or(0);
                     }
                     b"spacing" if in_ppr => {
-                        // w:line は 240 = 1行
-                        line_spacing = attr(&e, "line")
-                            .and_then(|v| v.parse::<f32>().ok())
-                            .map(|v| (v / 240.0).clamp(0.5, 5.0))
-                            .unwrap_or(1.0);
+                        line_spacing = gyou_bairitsu(
+                            attr(&e, "line").and_then(|v| v.parse::<f32>().ok()),
+                            attr(&e, "lineRule"),
+                        );
                         // **こちらは空要素(`<w:spacing …/>`)の腕。**
                         // 実際に書かれるのはほぼこちらなので、上の Start の腕
                         // だけ直しても効かない(2026-08-15 に踏んだ)
@@ -2480,4 +2478,26 @@ fn shape_look(a: &str) -> Option<book::SheetShape> {
         }
     }
     Some(sp)
+}
+
+
+/// **行の高さを倍率に直す。**
+///
+/// `w:lineRule="auto"`(既定)なら `w:line` は 240 = 1行 の倍率です。
+/// `atLeast` と `exact` は twips の**高さそのもの**なので、こちらの
+/// 1行の高さ([`kumihan::LINE_MM`])で割って倍率に直します。
+///
+/// 見分けないと、自分で書いた docx を開き直したときに 544 twips が
+/// 2.27 倍と読まれます(2026-08-29 に往復の試験が落ちて気づきました)。
+fn gyou_bairitsu(line: Option<f32>, rule: Option<String>) -> f32 {
+    let Some(v) = line else { return 1.0 };
+    match rule.as_deref() {
+        Some("atLeast") | Some("exact") => {
+            let mm = v / 20.0 * 25.4 / 72.0;
+            let b = mm / kumihan::LINE_MM;
+            // ほぼ1倍なら1倍に丸めます(こちらが書いた高さがこれです)
+            if (b - 1.0).abs() < 0.02 { 1.0 } else { b.clamp(0.5, 5.0) }
+        }
+        _ => (v / 240.0).clamp(0.5, 5.0),
+    }
 }
