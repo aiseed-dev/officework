@@ -368,6 +368,26 @@ impl Board {
     }
 }
 
+/// **図形だけの紙面を組む。** シートを通しません。
+///
+/// 図形を1つずつ、`(図形, 左からの mm, 下からの mm)` で渡します。返るのは
+/// 紙面なので、[`crate::e`] で絵にできます。
+///
+/// 用意したのは、**同じ図形を紙と画面のどちらでも描いて比べる**ためです
+/// (2026-08-29 発注者「gpui を使うか vello を使うかはテストをして決めて
+/// いけばいい」)。形を作るのは表を刷るときと同じ [`zukei`] なので、
+/// ここで見た形は紙に出る形と同じです。
+pub fn shapes_leaf(shapes: &[(book::SheetShape, f32, f32)], paper: Paper) -> pdfw::Leaf {
+    let mut board = Board::new(paper);
+    {
+        let mut l1 = board.ink(0);
+        for (sp, x_mm, y_mm) in shapes {
+            zukei(&mut l1, sp, *x_mm, *y_mm, 1.0);
+        }
+    }
+    board.leaves.remove(0)
+}
+
 fn leaf(paper: Paper) -> pdfw::Leaf {
     pdfw::Leaf { size_mm: Some((paper.width_mm, paper.height_mm)), ..Default::default() }
 }
@@ -862,201 +882,215 @@ fn draw_sheet(
             }
             let l1 = ink_box.as_mut().expect("筆");
             let (_, x, y_top) = cell_at(sp.at);
-            let mm = 25.4 / 96.0; // px → mm
-            // アンカーのセルからの px のずらしも紙に写す
-            let (x, y_top) =
-                (x + sp.dx_px * mm * scale, y_top - sp.dy_px * mm * scale);
-            let (w, h) = (sp.width_px * mm * scale, sp.height_px * mm * scale);
-            // **線の指定が無ければ引きません**(模型の決め)。前は黒に
-            // 落としていたので、字を置くだけの箱にも枠が出ていました
-            // (2026-08-27 に図を紙で見て気づきました)
-            let pen = sp.line.as_deref().and_then(hex_rgb);
-            let pen_w = sp.line_w.max(0.1) * scale * 25.4 / 72.0;
-            let pts: Vec<(f32, f32)> = match sp.kind.as_str() {
-                // **角丸。** 画面(`SheetShape::to_svg`)と Excel は丸めるのに、
-                // 紙だけ四角のままでした(2026-08-29 に図形を絵にして
-                // 気づきました)。丸めの大きさは画面と同じ短辺の 15%
-                "roundRect" => {
-                    let px = 25.4 / 96.0 * scale; // 4px を mm に
-                    let r = (w.min(h) * 0.15).max(4.0 * px).min(w.min(h) / 2.0);
-                    // 角ごとに4分の1円を6辺で近づけます
-                    let kado = |cx: f32, cy: f32, kara: f32| {
-                        (0..=6).map(move |i| {
-                            let t = kara + i as f32 / 6.0 * std::f32::consts::FRAC_PI_2;
-                            (cx + r * t.cos(), cy + r * t.sin())
-                        })
-                    };
-                    let (l, rr, tp, bt) = (x, x + w, y_top, y_top - h);
-                    kado(rr - r, tp - r, 0.0) // 右上
-                        .chain(kado(l + r, tp - r, std::f32::consts::FRAC_PI_2)) // 左上
-                        .chain(kado(l + r, bt + r, std::f32::consts::PI)) // 左下
-                        .chain(kado(rr - r, bt + r, std::f32::consts::PI * 1.5)) // 右下
-                        .collect()
-                }
-                "ellipse" => (0..=24)
-                    .map(|i| {
-                        let t = i as f32 / 24.0 * std::f32::consts::TAU;
-                        (x + w / 2.0 + w / 2.0 * t.cos(), y_top - h / 2.0 + h / 2.0 * t.sin())
-                    })
-                    .collect(),
-                "rightArrow" => {
-                    let (ty, by, bx, my) =
-                        (h * 0.25, h * 0.75, w - (w * 0.35).min(h), h / 2.0);
-                    vec![
-                        (x, y_top - ty),
-                        (x + bx, y_top - ty),
-                        (x + bx, y_top),
-                        (x + w, y_top - my),
-                        (x + bx, y_top - h),
-                        (x + bx, y_top - by),
-                        (x, y_top - by),
-                    ]
-                }
-                "diamond" => vec![
-                    (x + w / 2.0, y_top),
-                    (x + w, y_top - h / 2.0),
-                    (x + w / 2.0, y_top - h),
-                    (x, y_top - h / 2.0),
-                ],
-                "line" => vec![(x, y_top), (x + w, y_top - h)],
-                // 縦棒・勝ち負け: 棒ごとに閉じた長方形を落とす(紙も棒で)
-                "spark-col" | "spark-wl" => {
-                    let n = sp.points.len().max(1) as f32;
-                    let bw = (w / n * 0.7).max(0.5);
-                    let base_y = y_top - sp.base * h;
-                    for pp in &sp.points {
-                        let (cx_, ty) = pp.at;
-                        let (l, r) = (x + cx_ * w - bw / 2.0, x + cx_ * w + bw / 2.0);
-                        let t = y_top - ty * h;
-                        if let Some(pen) = pen {
-                            for (x1, y1, x2, y2) in [
-                                (l, t, r, t),
-                                (r, t, r, base_y),
-                                (r, base_y, l, base_y),
-                                (l, base_y, l, t),
-                            ] {
-                                l1.line(x1, y1, x2, y2, pen_w, pen);
-                            }
-                        }
-                    }
-                    continue;
-                }
-                // **曲線は紙では折れ線に割る。** printpdf の Line は直線の列
-                // しか持たない — 曲がっているものを直線1本にすると形が変わる
-                // ので、区間ごとに 12 に刻む(見た目で区別が付かない細かさ)
-                "spark" | "ink" | "marker" | "path" => {
-                    let ex = |p: (f32, f32)| (x + p.0 * w, y_top - p.1 * h);
-                    let mut out: Vec<(f32, f32)> = Vec::new();
-                    for (i, pp) in sp.points.iter().enumerate() {
-                        if i == 0 {
-                            out.push(ex(pp.at));
-                            continue;
-                        }
-                        let prev = &sp.points[i - 1];
-                        match (prev.c_out, pp.c_in) {
-                            (None, None) => out.push(ex(pp.at)),
-                            (co, ci) => {
-                                let p0 = ex(prev.at);
-                                let c1 = ex(co.unwrap_or(prev.at));
-                                let c2 = ex(ci.unwrap_or(pp.at));
-                                let p3 = ex(pp.at);
-                                for k in 1..=12 {
-                                    let t = k as f32 / 12.0;
-                                    let u = 1.0 - t;
-                                    let bx = u * u * u * p0.0
-                                        + 3.0 * u * u * t * c1.0
-                                        + 3.0 * u * t * t * c2.0
-                                        + t * t * t * p3.0;
-                                    let by = u * u * u * p0.1
-                                        + 3.0 * u * u * t * c1.1
-                                        + 3.0 * u * t * t * c2.1
-                                        + t * t * t * p3.1;
-                                    out.push((bx, by));
-                                }
-                            }
-                        }
-                    }
-                    out
-                }
-                _ => vec![
-                    (x, y_top),
-                    (x + w, y_top),
-                    (x + w, y_top - h),
-                    (x, y_top - h),
-                ],
-            };
-            // 回転と反転(折れ線もの以外)。紙は y が上向きなので、
-            // いったん画面向きのずれに直してから時計回りに回す
-            let rot = sp.rot.rem_euclid(360.0);
-            let poly = matches!(
-                sp.kind.as_str(),
-                "spark" | "spark-col" | "spark-wl" | "ink" | "marker" | "path"
-            );
-            let mut pts = pts;
-            if (rot != 0.0 || sp.flip_h || sp.flip_v) && !poly {
-                let (ccx, ccy) = (x + w / 2.0, y_top - h / 2.0);
-                let (s, c) = (rot.to_radians().sin(), rot.to_radians().cos());
-                for p in pts.iter_mut() {
-                    let mut dx = p.0 - ccx;
-                    let mut dy = ccy - p.1; // 下向き正
-                    if sp.flip_h {
-                        dx = -dx;
-                    }
-                    if sp.flip_v {
-                        dy = -dy;
-                    }
-                    let (rx, ry) = (dx * c - dy * s, dx * s + dy * c);
-                    p.0 = ccx + rx;
-                    p.1 = ccy - ry;
-                }
-            }
-            // 閉じるかどうか。**`path` は塗りがあるときだけ閉じます** —
-            // 塗らない折れ線を閉じると、終点から始点へ1本余計に引かれます
-            // (2026-08-27 に折れ線の図を紙で見て気づきました)
-            let closed = match sp.kind.as_str() {
-                "line" | "spark" | "ink" | "marker" => false,
-                "path" => sp.fill.is_some(),
-                _ => true,
-            };
-            // **塗ってから輪郭。** 2026-08-27 まで紙は輪郭だけでした。
-            // 図をこちらで描く(発注者「チャートは python による独自描画」)
-            // には、棒も扇も中が塗れないと形になりません
-            if closed {
-                if let Some(c) = sp.fill.as_deref().and_then(hex_rgb) {
-                    l1.poly(pts.clone(), c);
-                }
-            }
-            // 折れ線は辺ごとに引きます。閉じる形なら最後の点から先頭へ1本
-            if let Some(pen) = pen {
-                let ends = if closed { pts.len() } else { pts.len().saturating_sub(1) };
-                for i in 0..ends {
-                    let (x1, y1) = pts[i];
-                    let (x2, y2) = pts[(i + 1) % pts.len()];
-                    l1.line(x1, y1, x2, y2, pen_w, pen);
-                }
-            }
-            // 図形の中の文字(テキストボックス)。揃えの指定があれば従います
-            if let Some(t) = &sp.text {
-                let pt = sp.text_fmt.size_pt.unwrap_or(9.0) * scale;
-                let haba: f32 = t
-                    .chars()
-                    .map(|c| if c.is_ascii() { 0.55 } else { 1.0 })
-                    .sum::<f32>()
-                    * pt * 25.4 / 72.0;
-                let tx = match sp.text_fmt.align {
-                    book::HAlign::Center => x + (w - haba) / 2.0,
-                    book::HAlign::Right => x + w - haba - 1.0,
-                    _ => x + 1.5,
-                };
-                // 縦は箱の真ん中に寄せます(図の題も軸の目盛りもそれで合います)
-                let ty = y_top - h / 2.0 - pt * 25.4 / 72.0 * 0.35;
-                l1.text(t, pt, tx, ty, (0.0, 0.0, 0.0), false);
-            }
+            zukei(l1, sp, x, y_top, scale);
         }
     }
 
     (first..board.len(), clipped, (ml, mr, mt, mb))
 }
+/// **図形を1つ紙面に描く。**
+///
+/// `x` と `y_top` は図形を留めるセルの左上(紙の左からと下からの mm)、
+/// `scale` は拡大縮小印刷の倍率です。図形自身のずらし(`dx_px`・`dy_px`)は
+/// この中で足します。
+///
+/// **切り出したのは、同じ図形を別の描き手にも渡せるようにするため**です
+/// (2026-08-29 発注者「gpui を使うか vello を使うかはテストをして
+/// 決めていけばいい」)。形を作る所を1本にしておかないと、紙と画面で
+/// 図形の形が食い違います — 角丸が紙だけ四角だったのがその例です。
+fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
+        let mm = 25.4 / 96.0; // px → mm
+        // アンカーのセルからの px のずらしも紙に写す
+        let (x, y_top) =
+            (x + sp.dx_px * mm * scale, y_top - sp.dy_px * mm * scale);
+        let (w, h) = (sp.width_px * mm * scale, sp.height_px * mm * scale);
+        // **線の指定が無ければ引きません**(模型の決め)。前は黒に
+        // 落としていたので、字を置くだけの箱にも枠が出ていました
+        // (2026-08-27 に図を紙で見て気づきました)
+        let pen = sp.line.as_deref().and_then(hex_rgb);
+        let pen_w = sp.line_w.max(0.1) * scale * 25.4 / 72.0;
+        let pts: Vec<(f32, f32)> = match sp.kind.as_str() {
+            // **角丸。** 画面(`SheetShape::to_svg`)と Excel は丸めるのに、
+            // 紙だけ四角のままでした(2026-08-29 に図形を絵にして
+            // 気づきました)。丸めの大きさは画面と同じ短辺の 15%
+            "roundRect" => {
+                let px = 25.4 / 96.0 * scale; // 4px を mm に
+                let r = (w.min(h) * 0.15).max(4.0 * px).min(w.min(h) / 2.0);
+                // 角ごとに4分の1円を6辺で近づけます
+                let kado = |cx: f32, cy: f32, kara: f32| {
+                    (0..=6).map(move |i| {
+                        let t = kara + i as f32 / 6.0 * std::f32::consts::FRAC_PI_2;
+                        (cx + r * t.cos(), cy + r * t.sin())
+                    })
+                };
+                let (l, rr, tp, bt) = (x, x + w, y_top, y_top - h);
+                kado(rr - r, tp - r, 0.0) // 右上
+                    .chain(kado(l + r, tp - r, std::f32::consts::FRAC_PI_2)) // 左上
+                    .chain(kado(l + r, bt + r, std::f32::consts::PI)) // 左下
+                    .chain(kado(rr - r, bt + r, std::f32::consts::PI * 1.5)) // 右下
+                    .collect()
+            }
+            "ellipse" => (0..=24)
+                .map(|i| {
+                    let t = i as f32 / 24.0 * std::f32::consts::TAU;
+                    (x + w / 2.0 + w / 2.0 * t.cos(), y_top - h / 2.0 + h / 2.0 * t.sin())
+                })
+                .collect(),
+            "rightArrow" => {
+                let (ty, by, bx, my) =
+                    (h * 0.25, h * 0.75, w - (w * 0.35).min(h), h / 2.0);
+                vec![
+                    (x, y_top - ty),
+                    (x + bx, y_top - ty),
+                    (x + bx, y_top),
+                    (x + w, y_top - my),
+                    (x + bx, y_top - h),
+                    (x + bx, y_top - by),
+                    (x, y_top - by),
+                ]
+            }
+            "diamond" => vec![
+                (x + w / 2.0, y_top),
+                (x + w, y_top - h / 2.0),
+                (x + w / 2.0, y_top - h),
+                (x, y_top - h / 2.0),
+            ],
+            "line" => vec![(x, y_top), (x + w, y_top - h)],
+            // 縦棒・勝ち負け: 棒ごとに閉じた長方形を落とす(紙も棒で)
+            "spark-col" | "spark-wl" => {
+                let n = sp.points.len().max(1) as f32;
+                let bw = (w / n * 0.7).max(0.5);
+                let base_y = y_top - sp.base * h;
+                for pp in &sp.points {
+                    let (cx_, ty) = pp.at;
+                    let (l, r) = (x + cx_ * w - bw / 2.0, x + cx_ * w + bw / 2.0);
+                    let t = y_top - ty * h;
+                    if let Some(pen) = pen {
+                        for (x1, y1, x2, y2) in [
+                            (l, t, r, t),
+                            (r, t, r, base_y),
+                            (r, base_y, l, base_y),
+                            (l, base_y, l, t),
+                        ] {
+                            l1.line(x1, y1, x2, y2, pen_w, pen);
+                        }
+                    }
+                }
+                return;
+            }
+            // **曲線は紙では折れ線に割る。** printpdf の Line は直線の列
+            // しか持たない — 曲がっているものを直線1本にすると形が変わる
+            // ので、区間ごとに 12 に刻む(見た目で区別が付かない細かさ)
+            "spark" | "ink" | "marker" | "path" => {
+                let ex = |p: (f32, f32)| (x + p.0 * w, y_top - p.1 * h);
+                let mut out: Vec<(f32, f32)> = Vec::new();
+                for (i, pp) in sp.points.iter().enumerate() {
+                    if i == 0 {
+                        out.push(ex(pp.at));
+                        continue;
+                    }
+                    let prev = &sp.points[i - 1];
+                    match (prev.c_out, pp.c_in) {
+                        (None, None) => out.push(ex(pp.at)),
+                        (co, ci) => {
+                            let p0 = ex(prev.at);
+                            let c1 = ex(co.unwrap_or(prev.at));
+                            let c2 = ex(ci.unwrap_or(pp.at));
+                            let p3 = ex(pp.at);
+                            for k in 1..=12 {
+                                let t = k as f32 / 12.0;
+                                let u = 1.0 - t;
+                                let bx = u * u * u * p0.0
+                                    + 3.0 * u * u * t * c1.0
+                                    + 3.0 * u * t * t * c2.0
+                                    + t * t * t * p3.0;
+                                let by = u * u * u * p0.1
+                                    + 3.0 * u * u * t * c1.1
+                                    + 3.0 * u * t * t * c2.1
+                                    + t * t * t * p3.1;
+                                out.push((bx, by));
+                            }
+                        }
+                    }
+                }
+                out
+            }
+            _ => vec![
+                (x, y_top),
+                (x + w, y_top),
+                (x + w, y_top - h),
+                (x, y_top - h),
+            ],
+        };
+        // 回転と反転(折れ線もの以外)。紙は y が上向きなので、
+        // いったん画面向きのずれに直してから時計回りに回す
+        let rot = sp.rot.rem_euclid(360.0);
+        let poly = matches!(
+            sp.kind.as_str(),
+            "spark" | "spark-col" | "spark-wl" | "ink" | "marker" | "path"
+        );
+        let mut pts = pts;
+        if (rot != 0.0 || sp.flip_h || sp.flip_v) && !poly {
+            let (ccx, ccy) = (x + w / 2.0, y_top - h / 2.0);
+            let (s, c) = (rot.to_radians().sin(), rot.to_radians().cos());
+            for p in pts.iter_mut() {
+                let mut dx = p.0 - ccx;
+                let mut dy = ccy - p.1; // 下向き正
+                if sp.flip_h {
+                    dx = -dx;
+                }
+                if sp.flip_v {
+                    dy = -dy;
+                }
+                let (rx, ry) = (dx * c - dy * s, dx * s + dy * c);
+                p.0 = ccx + rx;
+                p.1 = ccy - ry;
+            }
+        }
+        // 閉じるかどうか。**`path` は塗りがあるときだけ閉じます** —
+        // 塗らない折れ線を閉じると、終点から始点へ1本余計に引かれます
+        // (2026-08-27 に折れ線の図を紙で見て気づきました)
+        let closed = match sp.kind.as_str() {
+            "line" | "spark" | "ink" | "marker" => false,
+            "path" => sp.fill.is_some(),
+            _ => true,
+        };
+        // **塗ってから輪郭。** 2026-08-27 まで紙は輪郭だけでした。
+        // 図をこちらで描く(発注者「チャートは python による独自描画」)
+        // には、棒も扇も中が塗れないと形になりません
+        if closed {
+            if let Some(c) = sp.fill.as_deref().and_then(hex_rgb) {
+                l1.poly(pts.clone(), c);
+            }
+        }
+        // 折れ線は辺ごとに引きます。閉じる形なら最後の点から先頭へ1本
+        if let Some(pen) = pen {
+            let ends = if closed { pts.len() } else { pts.len().saturating_sub(1) };
+            for i in 0..ends {
+                let (x1, y1) = pts[i];
+                let (x2, y2) = pts[(i + 1) % pts.len()];
+                l1.line(x1, y1, x2, y2, pen_w, pen);
+            }
+        }
+        // 図形の中の文字(テキストボックス)。揃えの指定があれば従います
+        if let Some(t) = &sp.text {
+            let pt = sp.text_fmt.size_pt.unwrap_or(9.0) * scale;
+            let haba: f32 = t
+                .chars()
+                .map(|c| if c.is_ascii() { 0.55 } else { 1.0 })
+                .sum::<f32>()
+                * pt * 25.4 / 72.0;
+            let tx = match sp.text_fmt.align {
+                book::HAlign::Center => x + (w - haba) / 2.0,
+                book::HAlign::Right => x + w - haba - 1.0,
+                _ => x + 1.5,
+            };
+            // 縦は箱の真ん中に寄せます(図の題も軸の目盛りもそれで合います)
+            let ty = y_top - h / 2.0 - pt * 25.4 / 72.0 * 0.35;
+            l1.text(t, pt, tx, ty, (0.0, 0.0, 0.0), false);
+        }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -1584,4 +1618,57 @@ mod print_extras_tests {
         assert!(String::from_utf8_lossy(&book).len() > String::from_utf8_lossy(&alone).len());
     }
 
+}
+
+#[cfg(test)]
+mod zukei_tests {
+    use super::*;
+
+    fn hako(kind: &str) -> book::SheetShape {
+        book::SheetShape {
+            at: book::Pos::new(0, 0),
+            width_px: 120.0,
+            height_px: 80.0,
+            kind: kind.into(),
+            fill: Some("DDE7F0".into()),
+            line: Some("2E5A87".into()),
+            line_w: 1.5,
+            alpha: 1.0,
+            ..Default::default()
+        }
+    }
+
+    /// **図形だけの紙面が組める。** シートを通しません
+    #[test]
+    fn shapes_alone_make_a_page() {
+        let leaf = shapes_leaf(&[(hako("rect"), 20.0, 200.0)], Paper::default());
+        assert_eq!(leaf.size_mm, Some((210.0, 297.0)));
+        assert!(!leaf.polys.is_empty(), "塗りが出ていない");
+        assert!(!leaf.rules.is_empty(), "線が出ていない");
+    }
+
+    /// **角丸は四角より点が多い。** 紙だけ四角に落ちていたのを直した所です
+    /// (2026-08-29)。同じ大きさで点の数が同じなら、また四角に戻っています
+    #[test]
+    fn a_round_rect_is_not_a_plain_rect() {
+        let kado = shapes_leaf(&[(hako("roundRect"), 20.0, 200.0)], Paper::default());
+        let shikaku = shapes_leaf(&[(hako("rect"), 20.0, 200.0)], Paper::default());
+        let ten = |l: &pdfw::Leaf| l.polys.first().map(|p| p.points.len()).unwrap_or(0);
+        assert!(ten(&shikaku) > 0 && ten(&kado) > ten(&shikaku),
+            "角丸が四角のまま: 角丸 {} 点 / 四角 {} 点", ten(&kado), ten(&shikaku));
+    }
+
+    /// **画面と紙が同じ図形を知っている。** 片方だけが描ける種類があると、
+    /// 見比べたときに食い違います(角丸がそれでした)
+    #[test]
+    fn the_screen_and_the_paper_know_the_same_shapes() {
+        for kind in ["rect", "roundRect", "ellipse", "rightArrow", "diamond", "line"] {
+            let leaf = shapes_leaf(&[(hako(kind), 20.0, 200.0)], Paper::default());
+            assert!(
+                !leaf.polys.is_empty() || !leaf.rules.is_empty(),
+                "紙が {kind} を描けていない"
+            );
+            assert!(!hako(kind).to_svg().is_empty(), "画面が {kind} を描けていない");
+        }
+    }
 }

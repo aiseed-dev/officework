@@ -45,3 +45,7 @@ ops = { path = "../ops" }
 [[example]]
 name = "e_sample"
 required-features = ["e"]
+
+[[example]]
+name = "zukei_hakaru"
+required-features = ["e"]
