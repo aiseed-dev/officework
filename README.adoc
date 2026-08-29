@@ -248,7 +248,7 @@ Unlike openpyxl, values can be inserted while *borders, merged cells, column wid
 from officework import sheet
 
 b = sheet.Book.open("form7.xlsx")
-b["Sheet1"]["A30"] = "Nihon Funen Co., Ltd."   # formatting is preserved
+b["Sheet1"]["A30"] = "Sample Trading Co., Ltd."   # formatting is preserved
 b.save("out.xlsx")
 print(b.unsupported)   # the list of parts it couldn't read (empty = everything was read)
 ----
@@ -262,7 +262,7 @@ from officework import doc
 d = doc.Doc.open("report.docx")
 print(d.unsupported)               # the list of parts it couldn't read (empty = everything was read)
 d.replace("Old Name Ltd.", "New Name Ltd.")   # formatting inside the paragraph is left alone
-d.fill("customer", "Nihon Funen K.K.")  # fill a named form field (named in writer)
+d.fill("customer", "Sample Trading K.K.")  # fill a named form field (named in writer)
 d[3].text = "replaced"             # the heading stays a heading; alignment and first-line indent survive
 print(d.tables[0][1][2].text)      # table, row, cell
 d.save("out.docx")

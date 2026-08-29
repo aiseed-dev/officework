@@ -34,7 +34,7 @@ imported only if you ask for it (`pip install officework[pandas]`).
 from officework import sheet
 b = sheet.Book.open("form7.xlsx")
 s = b["quote"]
-s["A30"] = "Nihon Funen Co., Ltd."       # borders, merges, widths stay intact
+s["A30"] = "Sample Trading Co., Ltd."       # borders, merges, widths stay intact
 s["C30"] = "=B30*100"                    # a formula; recalculated on the spot
 print(s["C30"].value)                    # the computed value, as in openpyxl
 s.insert_row(30)                         # remaining formulas follow the move

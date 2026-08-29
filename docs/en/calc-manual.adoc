@@ -483,7 +483,7 @@ However many cells it writes, *one Ctrl+Z* returns you to the state before the p
 
 [source,python]
 ----
-s["A30"] = "Nihon Funen Co., Ltd."   # value only; formatting is left alone
+s["A30"] = "Sample Trading Co., Ltd."   # value only; formatting is left alone
 ----
 
 * Press Enter on an empty field to pick a .py file instead

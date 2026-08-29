@@ -138,7 +138,7 @@ For fixed-form documents produced in volume, call from Python.
 from officework import doc
 
 d = doc.Doc.open("report-template.docx")
-d.fill("addressee", "Nihon Funen Co., Ltd.")
+d.fill("addressee", "Sample Trading Co., Ltd.")
 d.fill("amount", "1,440,000")
 d.save("report_nihon-funen.docx")
 ----
@@ -147,7 +147,7 @@ Placeholders like `{name}` in a template can be replaced in one call.
 
 [source,python]
 ----
-d.render({"addressee": "Nihon Funen Co., Ltd.", "total": "1,440,000"},
+d.render({"addressee": "Sample Trading Co., Ltd.", "total": "1,440,000"},
          rows={"detail": [{"item": "Ballpoint pens", "qty": "12"},
                           {"item": "Copy paper", "qty": "5"}]})
 ----

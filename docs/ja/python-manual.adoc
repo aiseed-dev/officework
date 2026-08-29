@@ -251,7 +251,7 @@ writer の 挿入 > 記入欄 で置き、「記入欄に名前を付ける」�
 [source,python]
 ----
 d.fields()                          # [(名前, いまの値)] の一覧
-d.fill("宛先", "日本フネン株式会社")  # その名前の欄すべてに書く → 書いた数
+d.fill("宛先", "サンプル商事株式会社")  # その名前の欄すべてに書く → 書いた数
                                     # (0 なら欄が無い — 黙って成功にしない)
 d.extract("宛先")                   # 最初の欄の値。無ければ None
 ----
@@ -590,8 +590,8 @@ d.render({"宛名": 宛名}, {"明細": 明細})
 import jinja2
 
 雛形 = open("請求書.adoc", encoding="utf-8").read()
-本文 = jinja2.Template(雛形).render(宛名="日本フネン株式会社", 明細=行)
-open("請求書_日本フネン.adoc", "w", encoding="utf-8").write(本文)
+本文 = jinja2.Template(雛形).render(宛名="サンプル商事株式会社", 明細=行)
+open("請求書_サンプル商事.adoc", "w", encoding="utf-8").write(本文)
 ----
 
 繰り返し・条件・絞り込みは、jinja2 の書き方がそのまま効きます。
