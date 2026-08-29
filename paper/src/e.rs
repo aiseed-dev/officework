@@ -134,7 +134,7 @@ pub fn egaku_with(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, font: Option<&[u8
         cx.fill_path(&path);
     }
 
-    for r in &leaf.rules {
+    for r in leaf.rules.iter() {
         let mut path = BezPath::new();
         path.move_to(Point::new(r.x1_mm as f64 * mm, (h_mm - r.y1_mm) as f64 * mm));
         path.line_to(Point::new(r.x2_mm as f64 * mm, (h_mm - r.y2_mm) as f64 * mm));
@@ -162,6 +162,21 @@ pub fn egaku_with(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, font: Option<&[u8
         if let Some(s) = &leaf.watermark {
             sukashi(&mut cx, &mut res, s, w_mm, h_mm, mm, data);
         }
+    }
+    // **字の上に引く線**(手描きのペン)。字を書いた後に引きます
+    for r in &leaf.rules_top {
+        let mut path = BezPath::new();
+        path.move_to(Point::new(r.x1_mm as f64 * mm, (h_mm - r.y1_mm) as f64 * mm));
+        path.line_to(Point::new(r.x2_mm as f64 * mm, (h_mm - r.y2_mm) as f64 * mm));
+        cx.set_stroke(Stroke {
+            width: (r.w_mm.max(0.05) as f64 * mm).max(0.5),
+            join: Join::Round,
+            start_cap: Cap::Round,
+            end_cap: Cap::Round,
+            ..Default::default()
+        });
+        cx.set_paint(iro(r.rgb, r.a));
+        cx.stroke_path(&path);
     }
     cx.set_transform(Affine::IDENTITY);
     cx.flush();

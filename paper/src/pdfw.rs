@@ -234,6 +234,7 @@ pub fn write_pages<W: std::io::Write>(
                 .map(|f| f.a)
                 .chain(p.polys.iter().map(|g| g.a))
                 .chain(p.rules.iter().map(|r| r.a))
+                .chain(p.rules_top.iter().map(|r| r.a))
                 .map(usu_key)
                 .collect();
             // **薄い物が1つも無ければ資源を作りません。** 逆に1つでも
@@ -350,6 +351,11 @@ pub fn write_pages<W: std::io::Write>(
                 c.fill_nonzero();
             }
         }
+        // **字を書く前に不透明へ戻します。** 戻さないと、直前に敷いた
+        // 薄い物(蛍光ペン・図形の影)の濃さが字にも掛かります。
+        // 2026-08-29 に PDF を開いて字が灰色なのを見て気づきました —
+        // 絵の側は色ごとに濃さを持つので、そちらには出ません
+        usu(&mut c, &mut usu_now, 1.0);
         for p in &page.pieces {
             // **字形の番号を2バイトで並べます。** CID フォントなので、
             // 字そのものではなく番号を書きます
@@ -381,6 +387,21 @@ pub fn write_pages<W: std::io::Write>(
                 c.set_line_width(pt(h_mm * 0.05).max(0.3));
                 c.move_to(pt(p.x_mm), pt(y));
                 c.line_to(pt(p.x_mm + p.w_mm), pt(y));
+                c.stroke();
+            }
+        }
+        // **字の上の線**(手描きのペン)。字を書いた後に引きます
+        if !page.rules_top.is_empty() {
+            let mut pen2: Option<((f32, f32, f32), f32)> = None;
+            for r in &page.rules_top {
+                usu(&mut c, &mut usu_now, r.a);
+                if pen2 != Some((r.rgb, r.w_mm)) {
+                    c.set_stroke_rgb(r.rgb.0, r.rgb.1, r.rgb.2);
+                    c.set_line_width(pt(r.w_mm));
+                    pen2 = Some((r.rgb, r.w_mm));
+                }
+                c.move_to(pt(r.x1_mm), pt(r.y1_mm));
+                c.line_to(pt(r.x2_mm), pt(r.y2_mm));
                 c.stroke();
             }
         }
@@ -748,22 +769,33 @@ mod tests {
         assert!(body.contains("0.7071"), "透かしが斜めに置かれていない");
     }
 
-    /// **ペンの筆はまだ載りません。** 数えて返します(黙って落としません)
+    /// **ペンの筆が紙に載る。** 蛍光ペンは字の下、ペンは字の上です
+    /// (2026-08-29。それまでは数えるだけでした)
     #[test]
-    fn pen_strokes_are_counted_not_dropped() {
+    fn pen_strokes_land_on_the_paper() {
         let sheet = kumihan::Sheet::default();
         let pp = crate::Paper { width_mm: 210.0, height_mm: 297.0, margin_mm: 20.0 };
+        let fude = |hl: bool| kumihan::Stroke {
+            page: 0,
+            highlighter: hl,
+            points: vec![(20.0, 40.0), (60.0, 40.0), (100.0, 45.0)],
+        };
         let dress = crate::PageDress {
-            bg: None,
-            watermark: None,
-            ink: vec![kumihan::Stroke::default()],
+            ink: vec![fude(true), fude(false)],
             ..Default::default()
         };
-        let mut out = Vec::new();
-        let lost =
-            sheet_to_pdf_with(&sheet, &font(), pp, &dress, |_| Vec::new(), std::io::Cursor::new(&mut out))
-                .expect("PDF が出ない");
-        assert!(lost.iter().any(|s| s.contains("ペンの筆")), "数えていない: {lost:?}");
+        let (pages, lost) = sheet_leaves_with(&sheet, pp, &dress, |_| Vec::new());
+        assert!(
+            !lost.iter().any(|s| s.contains("ペンの筆")),
+            "まだ「載りません」と言っている: {lost:?}"
+        );
+        let leaf = pages.first().expect("紙面");
+        // 点3つ = 辺2本。蛍光ペンは字の下(rules)、ペンは字の上(rules_top)
+        assert_eq!(leaf.rules.len(), 2, "蛍光ペンが字の下に無い");
+        assert_eq!(leaf.rules_top.len(), 2, "ペンが字の上に無い");
+        // 蛍光ペンは薄く太く、ペンは濃く細く
+        assert!(leaf.rules[0].a < 0.6 && leaf.rules[0].w_mm > 2.0, "蛍光ペンの太さと濃さ");
+        assert!(leaf.rules_top[0].a >= 1.0 && leaf.rules_top[0].w_mm < 1.0, "ペンの太さと濃さ");
     }
 
     /// **縦書きが横に組まれない。** 1字ずつ列に置きます
@@ -1020,6 +1052,11 @@ pub struct Leaf {
     /// **好きな形の塗り。** 円グラフの扇や、傾いた棒に使います。
     /// 四角で足りるものは [`Fill`] の方が小さく済みます
     pub polys: Vec<Poly>,
+    /// **字の上に引く線。** [`Leaf::rules`] は字の下です。
+    ///
+    /// 手描きのペンはここへ入ります(紙に書き込んだ線なので、字の上に
+    /// 乗るのが本当です)。蛍光ペンは逆に字の下なので `rules` の方です。
+    pub rules_top: Vec<Rule>,
     /// **この紙の大きさ(mm)。** 節で紙が変わる文書は頁ごとに違います。
     /// `None` なら呼ぶ側に渡した既定の大きさ
     pub size_mm: Option<(f32, f32)>,
@@ -1369,8 +1406,32 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
             }
         }
     }
+    // **手描きの筆。** 蛍光ペンは太く・薄く・字の下、ペンは細く・濃く・字の上。
+    // 2026-08-29 まで「この書き手ではまだ載りません」と数えるだけでした —
+    // 紙面の色に透明度が無く、蛍光ペンが出せなかったためです
     if !dress.ink.is_empty() {
-        lost.push(format!("ペンの筆 {} 本(この書き手ではまだ載りません)", dress.ink.len()));
+        for (k, leaf) in pages.iter_mut().enumerate() {
+            let h = leaf.size_mm.map(|(_, h)| h).unwrap_or(paper.height_mm);
+            for st in dress.ink.iter().filter(|s| s.page == k) {
+                let (w_mm, rgb, a) = if st.highlighter {
+                    (3.0, (1.0, 0.89, 0.36), 0.45)
+                } else {
+                    (0.45, (0.11, 0.23, 0.32), 1.0)
+                };
+                let saki = if st.highlighter { &mut leaf.rules } else { &mut leaf.rules_top };
+                for w in st.points.windows(2) {
+                    saki.push(Rule {
+                        x1_mm: w[0].0,
+                        y1_mm: h - w[0].1,
+                        x2_mm: w[1].0,
+                        y2_mm: h - w[1].1,
+                        w_mm,
+                        rgb,
+                        a,
+                    });
+                }
+            }
+        }
     }
     // **ページに貼り付く図形。** 字と罫線の上に置きます(Word も同じで、
     // `behindDoc="0"` は本文の上です)
