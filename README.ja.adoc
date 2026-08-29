@@ -240,15 +240,15 @@ SmartArt・方程式・ソルバーは今も Python(matplotlib・scipy)を呼び
 $ pip install officework
 ----
 
-**MCP サーバ**も付いています。
-AI に、動いているアプリを操らせられます:
+**MCP サーバ**も開発中です。
+AI に、動いているアプリを操らせるためのものです:
 
 [source,console]
 ----
 $ pip install "officework[mcp]"   # あとは officework-mcp を AI 側に登録する
 ----
 
-渡す道具は15個です。表の8つ(ブックの情報・範囲の読み書き・数式・書式・自動調整・保存)と文書の7つ(本文の読み書き・記入欄・差し込み・PDF 書き出し)で、任意のコードを走らせる道具は置いていません。
+渡すのは表と文書の決まった道具だけで、任意のコードを走らせる道具は置いていません。
 アプリとの間は Python の橋と同じ仕組みを使うので、決まりも同じです — このパソコンの中だけで動き、TCP は開きません。
 
 *別のアプリの中にも入ります。* Electron 製の表計算link:https://github.com/genspark-ai/genoffice[genoffice] は、xlsx の読み書きを別プロセスの助手に任せる作りです。
