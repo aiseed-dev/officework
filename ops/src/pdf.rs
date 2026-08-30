@@ -47,9 +47,29 @@ pub fn book(b: &book::Book, to: &Path) -> Result<u32, String> {
     if sheets.is_empty() {
         return Err("刷るシートがありません(全部隠れています)".into());
     }
+    // **セルが名指しした書体を集めて渡します**(2026-08-31。Fable の指摘2)。
+    // 前は1本しか埋められず、明朝の升もゴシックの升も同じ書体で出ていました。
+    // 機械に無い書体は置き替えます(`for_document` が系統を保ちます)
+    let mut fonts: Vec<(String, Vec<u8>)> = vec![("".into(), font.to_vec())];
+    let mut mita: std::collections::BTreeSet<String> = Default::default();
+    for s in &b.sheets {
+        let namae = s.cells.values().filter_map(|c| c.fmt.font.clone()).chain(
+            s.rich_runs.values().flatten().filter_map(|r| r.font.clone()),
+        );
+        for na in namae {
+            if !mita.insert(na.clone()) {
+                continue;
+            }
+            if let Ok((fam, _)) = kumihan::font::for_document(Some(&na)) {
+                if let Ok(d) = kumihan::font::load(fam) {
+                    fonts.push((na, d));
+                }
+            }
+        }
+    }
     let mut cut = 0;
     kumihan::atomic::save(to, |f| {
-        cut = paper::grid::book_to_pdf(&sheets, font, f)?;
+        cut = paper::grid::book_to_pdf_fonts(&sheets, &fonts, f)?;
         Ok(())
     })?;
     Ok(cut)

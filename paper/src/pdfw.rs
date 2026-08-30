@@ -42,6 +42,12 @@ pub struct Piece {
     pub bold: bool,
     /// 蛍光ペンの色(RRGGBB)
     pub highlight: Option<String>,
+    /// **どの書体で描くか**(渡した書体の並びの何番目か)。
+    ///
+    /// 0 は1本目で、いままでの呼び出しはこのままです。表計算のセルは
+    /// 書体を名指しするので、明朝とゴシックと欧文を刷り分けます
+    /// (2026-08-31。Fable の指摘2)
+    pub font: u8,
 }
 
 /// 絵を PDF に載せる形にする。返りは(中身, 幅, 高さ, JPEG か)。
@@ -151,40 +157,68 @@ pub fn write_pages<W: std::io::Write>(
     page_w_mm: f32,
     page_h_mm: f32,
     font_data: &[u8],
+    out: W,
+) -> Result<(), String> {
+    write_pages_fonts(pages, page_w_mm, page_h_mm, &[font_data], out)
+}
+
+/// **書体を何本でも埋める形。** `Piece::font` がどれを使うかを指します。
+///
+/// 表計算のセルは書体を名指しします(明朝・ゴシック・欧文)。1本しか
+/// 埋めないと、明朝の升までゴシックで出ます(2026-08-31。Fable の指摘2)。
+pub fn write_pages_fonts<W: std::io::Write>(
+    pages: &[Leaf],
+    page_w_mm: f32,
+    page_h_mm: f32,
+    fonts: &[&[u8]],
     mut out: W,
 ) -> Result<(), String> {
-    let face = ttf_parser::Face::parse(font_data, 0).map_err(|e| e.to_string())?;
+    let fonts: Vec<&[u8]> = if fonts.is_empty() { vec![b""] } else { fonts.to_vec() };
+    let faces: Vec<ttf_parser::Face> = fonts
+        .iter()
+        .map(|d| ttf_parser::Face::parse(d, 0).map_err(|e| e.to_string()))
+        .collect::<Result<_, _>>()?;
+    let face = &faces[0];
 
-    // ① 使った字を集めて、字形の番号に直す。**同じ字は1つ**にまとめます
-    let mut used: BTreeMap<char, u16> = BTreeMap::new();
+    // ① 使った字を、**書体ごとに**集めて字形の番号に直します。
+    // 同じ字は1つにまとめます
+    let mut used_all: Vec<BTreeMap<char, u16>> = vec![BTreeMap::new(); faces.len()];
     for page in pages {
-        // 透かしの字も埋めないと、**透かしだけ豆腐**になります
-        let texts = page
-            .pieces
-            .iter()
-            .map(|p| p.text.as_str())
-            .chain(page.watermark.as_deref());
-        for t in texts {
-            for c in t.chars() {
+        for p in &page.pieces {
+            let fi = (p.font as usize).min(faces.len() - 1);
+            for c in p.text.chars() {
+                if let Some(g) = faces[fi].glyph_index(c) {
+                    used_all[fi].insert(c, g.0);
+                }
+            }
+        }
+        // 透かしの字も埋めないと、**透かしだけ豆腐**になります。1本目で描きます
+        if let Some(w) = page.watermark.as_deref() {
+            for c in w.chars() {
                 if let Some(g) = face.glyph_index(c) {
-                    used.insert(c, g.0);
+                    used_all[0].insert(c, g.0);
                 }
             }
         }
     }
-    if used.is_empty() {
+    if used_all[0].is_empty() {
         // 字が1つも無い紙でも PDF は出します(白紙)
-        used.insert(' ', face.glyph_index(' ').map(|g| g.0).unwrap_or(0));
+        used_all[0].insert(' ', face.glyph_index(' ').map(|g| g.0).unwrap_or(0));
     }
 
-    // ② 番号を詰め直して、使った字形だけの書体にする
-    let mut remap = subsetter::GlyphRemapper::new();
-    remap.remap(0); // .notdef は必ず 0 番
-    let mut new_gid: BTreeMap<char, u16> = BTreeMap::new();
-    for (c, g) in &used {
-        new_gid.insert(*c, remap.remap(*g));
+    // ② 番号を詰め直して、使った字形だけの書体にする(書体ごとに)
+    let mut new_gid_all: Vec<BTreeMap<char, u16>> = Vec::with_capacity(faces.len());
+    let mut subsets: Vec<Vec<u8>> = Vec::with_capacity(faces.len());
+    for (fi, used) in used_all.iter().enumerate() {
+        let mut remap = subsetter::GlyphRemapper::new();
+        remap.remap(0); // .notdef は必ず 0 番
+        let mut new_gid: BTreeMap<char, u16> = BTreeMap::new();
+        for (c, g) in used {
+            new_gid.insert(*c, remap.remap(*g));
+        }
+        subsets.push(subsetter::subset(fonts[fi], 0, &remap).map_err(|e| e.to_string())?);
+        new_gid_all.push(new_gid);
     }
-    let subset = subsetter::subset(font_data, 0, &remap).map_err(|e| e.to_string())?;
 
     // ③ PDF を組む
     let mut pdf = Pdf::new();
@@ -194,8 +228,10 @@ pub fn write_pages<W: std::io::Write>(
         next += 1;
         r
     };
-    let (catalog, tree, font, cid, desc, file, to_uni) =
-        (id(), id(), id(), id(), id(), id(), id());
+    let (catalog, tree) = (id(), id());
+    // **書体1本につき5つの部品**(書体・CID・記述・実体・Unicode の対応)
+    let font_ids: Vec<(Ref, Ref, Ref, Ref, Ref)> =
+        (0..faces.len()).map(|_| (id(), id(), id(), id(), id())).collect();
     let page_ids: Vec<Ref> = pages.iter().map(|_| id()).collect();
     let content_ids: Vec<Ref> = pages.iter().map(|_| id()).collect();
 
@@ -221,7 +257,9 @@ pub fn write_pages<W: std::io::Write>(
         img_ids.push(on_this);
     }
 
-    let f_name = Name(b"F1");
+    // 書体の資源の名前(`F1`・`F2`…)。`Piece::font` がどれかを指します
+    let f_names: Vec<String> = (1..=faces.len()).map(|k| format!("F{k}")).collect();
+    let f_name = Name(f_names[0].as_bytes());
     // **使う濃さを頁ごとに数え上げます。** PDF の透明度は資源に置いた
     // ExtGState を名前で呼ぶ形なので、先に何が要るか分かっていないと
     // 資源が書けません(資源は中身より先に書き終わります)
@@ -258,7 +296,12 @@ pub fn write_pages<W: std::io::Write>(
         pg.contents(content_ids[i]);
         {
             let mut res = pg.resources();
-            res.fonts().pair(f_name, font);
+            {
+                let mut fs = res.fonts();
+                for (k, nm) in f_names.iter().enumerate() {
+                    fs.pair(Name(nm.as_bytes()), font_ids[k].0);
+                }
+            }
             if !img_ids[i].is_empty() {
                 let mut xo = res.x_objects();
                 for (k, (r, _)) in img_ids[i].iter().enumerate() {
@@ -359,15 +402,22 @@ pub fn write_pages<W: std::io::Write>(
         for p in &page.pieces {
             // **字形の番号を2バイトで並べます。** CID フォントなので、
             // 字そのものではなく番号を書きます
+            // **その字を持っている書体で描きます**(2026-08-31)。
+            // 名指しの書体に無い字は1本目に落とします — 無い書体で描くと
+            // その字だけ消えます
+            let fi = {
+                let k = (p.font as usize).min(faces.len() - 1);
+                if p.text.chars().all(|ch| new_gid_all[k].contains_key(&ch)) { k } else { 0 }
+            };
             let mut bytes = Vec::with_capacity(p.text.chars().count() * 2);
             for ch in p.text.chars() {
-                let g = new_gid.get(&ch).copied().unwrap_or(0);
+                let g = new_gid_all[fi].get(&ch).copied().unwrap_or(0);
                 bytes.extend_from_slice(&g.to_be_bytes());
             }
             let (r, g, b) = p.color.as_deref().map(rgb).unwrap_or((0.0, 0.0, 0.0));
             c.begin_text();
             c.set_fill_rgb(r, g, b);
-            c.set_font(f_name, p.size_pt);
+            c.set_font(Name(f_names[fi].as_bytes()), p.size_pt);
             c.set_text_matrix([1.0, 0.0, 0.0, 1.0, pt(p.x_mm), pt(p.y_mm)]);
             c.show(Str(&bytes));
             if p.bold {
@@ -409,7 +459,8 @@ pub fn write_pages<W: std::io::Write>(
         if let Some(w) = &page.watermark {
             let mut bytes = Vec::with_capacity(w.chars().count() * 2);
             for ch in w.chars() {
-                bytes.extend_from_slice(&new_gid.get(&ch).copied().unwrap_or(0).to_be_bytes());
+                // 透かしは1本目の書体で描きます(上で1本目に集めています)
+                bytes.extend_from_slice(&new_gid_all[0].get(&ch).copied().unwrap_or(0).to_be_bytes());
             }
             let size = 60.0f32;
             // 45 度に倒して紙の真ん中あたりへ
@@ -444,78 +495,86 @@ pub fn write_pages<W: std::io::Write>(
     // 出来た PDF を見ても何の書体で組んだのか分かりませんでした
     // (2026-08-28、Noto と BIZ UD を見比べようとして気づきました)。
     // 頭の6文字は「一部だけ埋めた」印で、PDF の決まりです
-    let ps_name = base_font_name(&face);
-    let ps = ps_name.as_bytes();
-    pdf.type0_font(font)
-        .base_font(Name(ps))
-        .encoding_predefined(Name(b"Identity-H"))
-        .descendant_font(cid)
-        .to_unicode(to_uni);
+    // **書体ごとに部品を書きます**(2026-08-31)。前は1本しか埋められず、
+    // 明朝の升もゴシックの升も同じ書体で出ていました
+    for (fi, faceN) in faces.iter().enumerate() {
+        let (font, cid, desc, file, to_uni) = font_ids[fi];
+        let face = faceN;
+        let new_gid = &new_gid_all[fi];
+        let subset = &subsets[fi];
+        let ps_name = base_font_name(&face);
+        let ps = ps_name.as_bytes();
+        pdf.type0_font(font)
+            .base_font(Name(ps))
+            .encoding_predefined(Name(b"Identity-H"))
+            .descendant_font(cid)
+            .to_unicode(to_uni);
 
-    // **字形の持ち方で名乗りが変わります。** 日本語の書体は CFF(OpenType)の
-    // ことが多く、TrueType と名乗ると読む側が「型と中身が食い違う」と言います
-    // (2026-08-27 に pdftotext で見つけた)
-    let is_cff = face.tables().cff.is_some();
-    let upem = face.units_per_em() as f32;
-    let mut cf = pdf.cid_font(cid);
-    // **TrueType の字形だと名乗ります。** 名乗らないと読む側が
-    // 「書体の型と中身が食い違う」と言います(2026-08-27 に見つけた)
-    let kind = if is_cff {
-        pdf_writer::types::CidFontType::Type0
-    } else {
-        pdf_writer::types::CidFontType::Type2
-    };
-    cf.subtype(kind)
-        .base_font(Name(ps))
-        .system_info(SystemInfo { registry: Str(b"Adobe"), ordering: Str(b"Identity"), supplement: 0 })
-        .font_descriptor(desc)
-        .cid_to_gid_map_predefined(Name(b"Identity"))
-        .default_width(0.0);
-    {
-        // 字幅。**1000 を 1em とする PDF の単位**に直します
-        let mut w = cf.widths();
-        for (c, g) in &new_gid {
-            let adv = face
-                .glyph_index(*c)
-                .and_then(|i| face.glyph_hor_advance(i))
-                .unwrap_or(0) as f32;
-            w.same(*g, *g, adv / upem * 1000.0);
+        // **字形の持ち方で名乗りが変わります。** 日本語の書体は CFF(OpenType)の
+        // ことが多く、TrueType と名乗ると読む側が「型と中身が食い違う」と言います
+        // (2026-08-27 に pdftotext で見つけた)
+        let is_cff = face.tables().cff.is_some();
+        let upem = face.units_per_em() as f32;
+        let mut cf = pdf.cid_font(cid);
+        // **TrueType の字形だと名乗ります。** 名乗らないと読む側が
+        // 「書体の型と中身が食い違う」と言います(2026-08-27 に見つけた)
+        let kind = if is_cff {
+            pdf_writer::types::CidFontType::Type0
+        } else {
+            pdf_writer::types::CidFontType::Type2
+        };
+        cf.subtype(kind)
+            .base_font(Name(ps))
+            .system_info(SystemInfo { registry: Str(b"Adobe"), ordering: Str(b"Identity"), supplement: 0 })
+            .font_descriptor(desc)
+            .cid_to_gid_map_predefined(Name(b"Identity"))
+            .default_width(0.0);
+        {
+            // 字幅。**1000 を 1em とする PDF の単位**に直します
+            let mut w = cf.widths();
+            for (c, g) in new_gid.iter() {
+                let adv = face
+                    .glyph_index(*c)
+                    .and_then(|i| face.glyph_hor_advance(i))
+                    .unwrap_or(0) as f32;
+                w.same(*g, *g, adv / upem * 1000.0);
+            }
+            w.finish();
         }
-        w.finish();
-    }
-    cf.finish();
+        cf.finish();
 
-    let bbox = face.global_bounding_box();
-    let scale = |v: i16| v as f32 / upem * 1000.0;
-    let mut fd = pdf.font_descriptor(desc);
-    fd.name(Name(ps))
-        .flags(FontFlags::SYMBOLIC)
-        .bbox(Rect::new(scale(bbox.x_min), scale(bbox.y_min), scale(bbox.x_max), scale(bbox.y_max)))
-        .italic_angle(0.0)
-        .ascent(scale(face.ascender()))
-        .descent(scale(face.descender()))
-        .cap_height(face.capital_height().map(scale).unwrap_or(scale(face.ascender())))
-        .stem_v(80.0);
-    // 埋める所も型で分かれます。CFF は FontFile3(OpenType)。
-    // **同じ番号の物を2度書かない** — 1つの記述に足します
-    if is_cff {
-        fd.font_file3(file);
-    } else {
-        fd.font_file2(file);
+        let bbox = face.global_bounding_box();
+        let scale = |v: i16| v as f32 / upem * 1000.0;
+        let mut fd = pdf.font_descriptor(desc);
+        fd.name(Name(ps))
+            .flags(FontFlags::SYMBOLIC)
+            .bbox(Rect::new(scale(bbox.x_min), scale(bbox.y_min), scale(bbox.x_max), scale(bbox.y_max)))
+            .italic_angle(0.0)
+            .ascent(scale(face.ascender()))
+            .descent(scale(face.descender()))
+            .cap_height(face.capital_height().map(scale).unwrap_or(scale(face.ascender())))
+            .stem_v(80.0);
+        // 埋める所も型で分かれます。CFF は FontFile3(OpenType)。
+        // **同じ番号の物を2度書かない** — 1つの記述に足します
+        if is_cff {
+            fd.font_file3(file);
+        } else {
+            fd.font_file2(file);
+        }
+        fd.finish();
+        // **圧縮は自分で掛けます。** `filter` は「掛けた」と名乗るだけで、
+        // 中身は触りません。名乗りだけ書いて圧縮しないと、読む側が
+        // 「壊れた書体」と言います(2026-08-27 に pdftotext で見つけた)
+        let packed = deflate(&subset);
+        let mut st = pdf.stream(file, &packed);
+        st.filter(Filter::FlateDecode);
+        if is_cff {
+            // **CFF の実体は「何の形か」を流れの側で名乗ります。**
+            // 名乗らないと読む側が「知らない書体の型」と言います
+            st.pair(Name(b"Subtype"), Name(b"OpenType"));
+        }
+        st.finish();
     }
-    fd.finish();
-    // **圧縮は自分で掛けます。** `filter` は「掛けた」と名乗るだけで、
-    // 中身は触りません。名乗りだけ書いて圧縮しないと、読む側が
-    // 「壊れた書体」と言います(2026-08-27 に pdftotext で見つけた)
-    let packed = deflate(&subset);
-    let mut st = pdf.stream(file, &packed);
-    st.filter(Filter::FlateDecode);
-    if is_cff {
-        // **CFF の実体は「何の形か」を流れの側で名乗ります。**
-        // 名乗らないと読む側が「知らない書体の型」と言います
-        st.pair(Name(b"Subtype"), Name(b"OpenType"));
-    }
-    st.finish();
 
     // 画像の実体
     for (r, data, w, h, jpeg) in img_parts {
@@ -529,9 +588,12 @@ pub fn write_pages<W: std::io::Write>(
         x.finish();
     }
 
-    // ⑤ 字形の番号 → 元の字。**選んで写せる PDF** にするために要ります
-    let cmap = deflate(&to_unicode_cmap(&new_gid));
-    pdf.cmap(to_uni, &cmap).filter(Filter::FlateDecode);
+    // ⑤ 字形の番号 → 元の字。**選んで写せる PDF** にするために要ります。
+    // 書体ごとに番号の付け方が違うので、書体ごとに書きます
+    for (fi, ids) in font_ids.iter().enumerate() {
+        let cmap = deflate(&to_unicode_cmap(&new_gid_all[fi]));
+        pdf.cmap(ids.4, &cmap).filter(Filter::FlateDecode);
+    }
 
     out.write_all(&pdf.finish()).map_err(|e| e.to_string())
 }
@@ -667,6 +729,7 @@ mod tests {
                 text: "下線と蛍光".into(),
                 underline: true,
                 highlight: Some("FFFF00".into()),
+                font: 0,
                 ..Default::default()
             },
         ]];
@@ -1183,6 +1246,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                     strike: c.fmt.strike,
                     bold: c.fmt.bold,
                     highlight: c.fmt.highlight.clone(),
+                    font: 0,
                 });
             }
             continue;
@@ -1221,6 +1285,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                         strike: c.fmt.strike,
                         bold: c.fmt.bold,
                         highlight: c.fmt.highlight.clone(),
+                        font: 0,
                     });
                 }
             }
@@ -1300,6 +1365,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                         strike: c.fmt.strike,
                         bold: c.fmt.bold,
                         highlight: c.fmt.highlight.clone(),
+                        font: 0,
                     });
                 }
             }
@@ -1386,6 +1452,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                     strike: c.fmt.strike,
                     bold: c.fmt.bold,
                     highlight: c.fmt.highlight.clone(),
+                    font: 0,
                 });
             }
         }

@@ -338,7 +338,15 @@ struct Ink<'a> {
 
 impl Ink<'_> {
     fn text(&mut self, t: &str, pt: f32, x: f32, y: f32, rgb: (f32, f32, f32), bold: bool) {
+        self.text_font(t, pt, x, y, rgb, bold, 0);
+    }
+
+    /// **書体を選んで描く。** 番号は `sheet_to_pdf` に渡した書体の並びの
+    /// 何番目か(2026-08-31。セルが名指しする明朝・ゴシック・欧文の刷り分け)
+    fn text_font(&mut self, t: &str, pt: f32, x: f32, y: f32, rgb: (f32, f32, f32),
+                 bold: bool, font: u8) {
         self.leaf.pieces.push(pdfw::Piece {
+            font,
             x_mm: x,
             // 表計算も新しい書き手も、左下からの y で描きます
             y_mm: y,
@@ -388,12 +396,21 @@ impl Ink<'_> {
 /// 入れずに書き手を替えられます(2026-08-27)。
 struct Board {
     leaves: Vec<pdfw::Leaf>,
+    /// **埋める書体の名前の並び。** セルが名指しした名前をここで引いて
+    /// `Piece::font` の番号にします(2026-08-31)。空なら1本だけです
+    fonts: Vec<String>,
 }
 
 impl Board {
     /// 1枚目の紙を敷いた紙束を作ります
     fn new(paper: Paper) -> Self {
-        Board { leaves: vec![leaf(paper)] }
+        Board { leaves: vec![leaf(paper)], fonts: Vec::new() }
+    }
+
+    /// 書体の名前から番号を引きます。名指しが無い・知らない名前は1本目
+    fn font_no(&self, na: Option<&str>) -> u8 {
+        na.and_then(|n| self.fonts.iter().position(|x| x == n))
+            .unwrap_or(0) as u8
     }
 
     /// 紙を1枚足して、その番号を返します
@@ -413,6 +430,11 @@ impl Board {
 
     fn save<W: Write>(self, paper: Paper, font_data: &[u8], out: W) -> Result<(), String> {
         pdfw::write_pages(&self.leaves, paper.width_mm, paper.height_mm, font_data, out)
+    }
+
+    /// 書体を何本か埋めて書き出します(`fonts` の並びが `Piece::font` の番号)
+    fn save_fonts<W: Write>(self, paper: Paper, fonts: &[&[u8]], out: W) -> Result<(), String> {
+        pdfw::write_pages_fonts(&self.leaves, paper.width_mm, paper.height_mm, fonts, out)
     }
 }
 
@@ -478,7 +500,18 @@ pub fn sheet_leaves(
     paper: Paper,
     setup: &PrintSetup,
 ) -> Result<Vec<pdfw::Leaf>, String> {
+    sheet_leaves_fonts(grid, paper, setup, &[])
+}
+
+/// 書体の名前の並びつき。`Piece::font` がその並びの番号になります
+pub fn sheet_leaves_fonts(
+    grid: &Grid,
+    paper: Paper,
+    setup: &PrintSetup,
+    fonts: &[String],
+) -> Result<Vec<pdfw::Leaf>, String> {
     let mut board = Board::new(paper);
+    board.fonts = fonts.to_vec();
     let (pages, _clipped, margins) = draw_sheet(&mut board, grid, paper, setup, true);
     let total = pages.len();
     draw_header_footer(&mut board, grid, paper, pages, margins, 0, total);
@@ -518,10 +551,23 @@ pub fn book_to_pdf<W: Write>(
     font_data: &[u8],
     out: W,
 ) -> Result<u32, String> {
+    book_to_pdf_fonts(sheets, &[("".to_string(), font_data.to_vec())], out)
+}
+
+/// **書体を名前つきで何本か渡す形。** セルが名指しした書体で刷り分けます
+/// (2026-08-31。Fable の指摘2 — 明朝の升がゴシックで出ていました)。
+///
+/// 1本目が既定です。名指しの無いセルと、知らない名前はそちらで描きます。
+pub fn book_to_pdf_fonts<W: Write>(
+    sheets: &[(&Grid, Paper, PrintSetup)],
+    fonts: &[(String, Vec<u8>)],
+    out: W,
+) -> Result<u32, String> {
     let first = sheets.first().ok_or("シートがありません")?;
     let paper1 = first.1;
     let mut clipped = 0u32;
     let mut board = Board::new(paper1);
+    board.fonts = fonts.iter().map(|(n, _)| n.clone()).collect();
     // 版組を先に全部済ませる — **総頁が決まってからでないと &N が書けない**
     let mut laid: Vec<(usize, std::ops::Range<usize>, Margins)> = Vec::new();
     let mut carry = true;
@@ -539,7 +585,8 @@ pub fn book_to_pdf<W: Write>(
         draw_header_footer(&mut board, grid, *paper, pages, margins, offset, total);
         offset += n;
     }
-    board.save(paper1, font_data, out)?;
+    let data: Vec<&[u8]> = fonts.iter().map(|(_, d)| d.as_slice()).collect();
+    board.save_fonts(paper1, &data, out)?;
     Ok(clipped)
 }
 
@@ -562,6 +609,8 @@ fn draw_sheet(
     setup: &PrintSetup,
     carry: bool,
 ) -> (std::ops::Range<usize>, u32, Margins) {
+    // 埋める書体の名前の並び。セルの名指しをこれで番号に直します
+    let fonts = board.fonts.clone();
     let (mut ext_rows, mut ext_cols) = grid.print_extent();
     // **図形の置き場まで紙を伸ばします。** 中身のあるセルより下に置いた図は、
     // 伸ばさないと最後の行の所へ寄ってしまい、図が全部重なります
@@ -696,6 +745,8 @@ fn draw_sheet(
         scale: f32,
         cond_prep: &[(book::CondRule, book::CondAux)],
         date1904: bool,
+        // 埋める書体の名前の並び。セルの名指しを番号に直します(2026-08-31)
+        fonts: &[String],
     ) {
         let ncols = cols.len();
         // 印刷の枠線(printOptions gridLines)。薄い灰で先に敷く
@@ -916,6 +967,10 @@ fn draw_sheet(
             };
             // 文字は塗り色で描かれる(PDF の作法)ので、色付きの字は前後で入れ替える
             let c = colour.as_deref().and_then(hex_rgb).unwrap_or((0.0, 0.0, 0.0));
+            // **セルが名指しした書体で描きます**(2026-08-31。Fable の指摘2)。
+            // run が自分で名乗っていればそちらが勝ちます
+            let fno_cell = fonts.iter().position(|x| Some(x.as_str()) == cell.fmt.font.as_deref())
+                .unwrap_or(0) as u8;
             // **何行あっても、セルの下から積みます。** 1行のときは今までと
             // 同じ位置です。行送りはその行のいちばん大きい字で決めます
             let okuri_of = |g: &[Kata]| -> f32 {
@@ -943,16 +998,24 @@ fn draw_sheet(
                     // 字と字の間に配る余り。両端は升の縁に着けます
                     let aki = ((ma_w - 3.0 - w) / (kazu - 1) as f32).max(0.0);
                     let mut wx = x + 1.5;
-                    for (t, rp, _rf) in g {
+                    for (t, rp, rf) in g {
+                        let fno = rf.as_deref()
+                            .and_then(|n| fonts.iter().position(|x| x == n))
+                            .map(|k| k as u8)
+                            .unwrap_or(fno_cell);
                         for ch in t.chars() {
                             let one = ch.to_string();
-                            ink.text(&one, *rp, wx, ty, c, bold);
+                            ink.text_font(&one, *rp, wx, ty, c, bold, fno);
                             wx += haba1(&one, *rp) + aki;
                         }
                     }
                 } else {
-                    for (t, rp, _rf) in g {
-                        ink.text(t, *rp, gx, ty, c, bold);
+                    for (t, rp, rf) in g {
+                        let fno = rf.as_deref()
+                            .and_then(|n| fonts.iter().position(|x| x == n))
+                            .map(|k| k as u8)
+                            .unwrap_or(fno_cell);
+                        ink.text_font(t, *rp, gx, ty, c, bold, fno);
                         gx += haba1(t, *rp);
                     }
                 }
@@ -1008,7 +1071,7 @@ fn draw_sheet(
                 for tr in &title_rows {
                     let th = row_mm(*tr);
                     let y_top = paper.height_mm - mt - y_used;
-                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
+                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts);
                     y_used += th;
                 }
             }
@@ -1020,7 +1083,7 @@ fn draw_sheet(
             row_place.entry(r).or_insert((cur, y_top));
         }
         y_used += rh;
-        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904);
+        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts);
     }
     }
     // 図形(挿した分も読んだ分も)。塗りと輪郭を紙に出します
@@ -1305,6 +1368,40 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
 
 #[cfg(test)]
 mod tests {
+    /// **セルが名指しした書体で刷り分ける。**
+    ///
+    /// 2026-08-31、国税庁の酒税の表(Fable の指摘2)。PDF に埋める書体が
+    /// 1本だけで、明朝の升もゴシックの升も同じ字で出ていました。
+    #[test]
+    fn a_cell_prints_in_the_font_it_names() {
+        let mut g = Grid { name: "見本".into(), ..Default::default() };
+        for (c, na) in [(0u32, None), (1, Some("明朝")), (2, Some("ゴシック"))] {
+            g.set(Pos::new(0, c), Cell {
+                formula: None,
+                value: Value::Text("あ".into()),
+                fmt: CellFormat { font: na.map(str::to_string), ..Default::default() },
+            });
+        }
+        // 書体の名前だけを渡します(実体はどれも同じで構いません)
+        let d = kumihan::font::load(kumihan::font::for_text(None, "あ".chars()).unwrap().0).unwrap();
+        let fonts: Vec<(String, Vec<u8>)> = ["", "明朝", "ゴシック"]
+            .iter().map(|n| (n.to_string(), d.clone())).collect();
+        let setup = PrintSetup::default();
+        let mut out = Vec::new();
+        book_to_pdf_fonts(&[(&g, Paper::default(), setup)], &fonts, &mut out).unwrap();
+        // 置いたかけらの書体の番号が 0・1・2 に分かれていること
+        let mut board = Board::new(Paper::default());
+        board.fonts = fonts.iter().map(|(n, _)| n.clone()).collect();
+        let leaves = {
+            let s2 = PrintSetup::default();
+            sheet_leaves_fonts(&g, Paper::default(), &s2, &board.fonts).unwrap()
+        };
+        let mut ban: Vec<u8> = leaves.iter().flat_map(|l| l.pieces.iter().map(|p| p.font)).collect();
+        ban.sort_unstable();
+        ban.dedup();
+        assert_eq!(ban, vec![0, 1, 2], "書体が1本に落ちている: {ban:?}");
+    }
+
     /// **均等割付は字を升の幅いっぱいに配る。**
     ///
     /// 2026-08-31、国税庁の酒税の表(Fable の指摘5)。区分の列は
