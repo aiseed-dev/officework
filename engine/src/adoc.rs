@@ -703,10 +703,19 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
                 // `{empty}` を置くと、その後ろの空白は字として残ります
                 // 1行目の頭も同じです。`|` のすぐ後ろの空白は、読む側が
                 // 升の区切りの飾りとして落とします
+                // 行末の空白も同じです。`|` の手前の空白は升の区切りの
+                // 飾りなので、読む側が落とします
                 t = t
                     .split('\n')
                     .map(|l| {
-                        if l.starts_with(' ') { format!("{EMPTY_PARA}{l}") } else { l.to_string() }
+                        let mut o = l.to_string();
+                        if o.starts_with(' ') {
+                            o.insert_str(0, EMPTY_PARA);
+                        }
+                        if o.ends_with(' ') {
+                            o.push_str(EMPTY_PARA);
+                        }
+                        o
                     })
                     .collect::<Vec<_>>()
                     .join("\n");
@@ -2135,21 +2144,38 @@ fn parse_table_lines(
             // **`{empty}` の後ろの空白は字です**(書く側が置いた印)。
             // 印だけ外します — `{empty}` だけの升は空の段落なので触りません
             let hazushita;
-            let (cell_text, atama_wo_nokosu): (&str, bool) =
-                match cell_text.trim_start().strip_prefix(EMPTY_PARA) {
-                    Some(nokori) if !nokori.is_empty() => {
-                        hazushita = nokori.to_string();
-                        (&hazushita, true)
+            let (cell_text, atama_wo_nokosu, oshiri_wo_nokosu): (&str, bool, bool) = {
+                let mut t = cell_text.trim_matches(|c: char| c == '\t' || c == '\r');
+                let mut atama = false;
+                let mut oshiri = false;
+                if let Some(n) = t.trim_start().strip_prefix(EMPTY_PARA) {
+                    if !n.is_empty() {
+                        t = n;
+                        atama = true;
                     }
-                    _ => (cell_text, false),
-                };
+                }
+                if let Some(n) = t.trim_end().strip_suffix(EMPTY_PARA) {
+                    if !n.is_empty() {
+                        t = n;
+                        oshiri = true;
+                    }
+                }
+                hazushita = t.to_string();
+                (&hazushita, atama, oshiri)
+            };
             let raw = cell_text.trim_matches(|c: char| c == ' ' || c == '\t' || c == '\r');
             let para_text: Vec<&str> = if asciidoc_cell && raw.contains("\n\n") {
                 raw.split("\n\n").map(trim_edges).collect()
-            } else if atama_wo_nokosu {
-                // 印を外した升は、**頭の空白を字として残します**。
-                // 後ろだけ落とします(升の切れ目の前の飾りなので)
-                vec![cell_text.trim_end_matches([' ', '\t', '\r', '\n'])]
+            } else if atama_wo_nokosu || oshiri_wo_nokosu {
+                // 印を外した側の空白は**字として残します**
+                let mut t = cell_text;
+                if !atama_wo_nokosu {
+                    t = t.trim_start_matches([' ', '\t', '\r', '\n']);
+                }
+                if !oshiri_wo_nokosu {
+                    t = t.trim_end_matches([' ', '\t', '\r', '\n']);
+                }
+                vec![t]
             } else {
                 vec![trim_edges(cell_text)]
             };
@@ -2223,6 +2249,15 @@ fn parse_table_lines(
             }
         }
         while cols < ncols {
+            // **入れると溢れる升は、次の行の頭にします**(2026-08-31)。
+            // 前は幅を見ずに入れていたので、11 升の後ろに幅 10 の升が来ると
+            // 1行に 21 桁ぶん詰まり、そこから後ろが**1行ずつずれて**
+            // いました(国税庁の酒税の表で 47 升)
+            if let Some(tsugi) = it.peek() {
+                if cols > 0 && cols + tsugi.span() > ncols {
+                    break;
+                }
+            }
             let Some(c) = it.next() else { break };
             let s = c.span();
             let vertical = c.paragraphs.first().map(|p| p.indent).unwrap_or(0);

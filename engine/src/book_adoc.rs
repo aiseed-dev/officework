@@ -589,6 +589,42 @@ mod tests {
         assert_eq!(value(&back, 0, "A2"), "2020", "字下げの無い数まで字にした");
     }
 
+    /// **幅の広い升は、入る行から始まる。**
+    ///
+    /// 2026-08-31。桁の数で行に切るとき、入れると溢れる升もそのまま入れて
+    /// いました。11 升の後ろに幅 10 の升が来ると1行に 21 桁ぶん詰まり、
+    /// **そこから後ろが1行ずつずれます**(国税庁の酒税の表で 47 升)。
+    #[test]
+    fn a_wide_cell_starts_a_row_it_fits_in() {
+        // 3列の表(桁の数は1行目で決まります)。2行目は幅3の升1つで、
+        // 3行目が続きます。**升は流れで並ぶ**ので、幅を見ずに詰めると
+        // 「まとめ」が1行目の後ろに食い込みます
+        // 2行目は升1つだけ。次に来る幅3の升は**入らない**ので、
+        // 3行目の頭になります
+        let src = ".表\n|===\n|あ |い |う\n|え\n3+|まとめ\n|か |き |く\n|===\n";
+        let (b, _) = parse(src).expect("読めない");
+        assert_eq!(value(&b, 0, "A1"), "あ");
+        assert_eq!(value(&b, 0, "C1"), "う");
+        assert_eq!(value(&b, 0, "A2"), "え");
+        assert_eq!(value(&b, 0, "A3"), "まとめ", "幅の広い升が前の行に食い込んだ");
+        assert_eq!(value(&b, 0, "A4"), "か", "その後ろがずれた");
+        assert_eq!(value(&b, 0, "C4"), "く");
+    }
+
+    /// **行末の空白も往復する。** 頭と同じで、帳票では字の一部です
+    #[test]
+    fn a_trailing_space_survives_the_round_trip() {
+        let mut b = Book::new();
+        b.sheets.clear();
+        let mut s = Sheet::new("覚え");
+        s.set(Pos::parse("A1").unwrap(), Cell::input("用語の説明： "));
+        s.set(Pos::parse("B1").unwrap(), Cell::input("隣"));
+        b.sheets.push(s);
+        let (back, _) = parse(&write(&b)).expect("読めない");
+        assert_eq!(value(&back, 0, "A1"), "用語の説明： ", "行末の空白が消えた");
+        assert_eq!(value(&back, 0, "B1"), "隣", "隣の升が壊れた");
+    }
+
     /// **セルの中の改行は、AsciiDoc の改行(` +`)で書く。**
     ///
     /// 2026-08-31 発注者「adoc では rich_runs は使わない。だからこそ、
