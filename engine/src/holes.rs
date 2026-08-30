@@ -88,6 +88,7 @@ pub const WATCHED: &[(&str, Watch)] = &[
     ("images", Watch::Aside),
     ("phonetics", Watch::Body),
     // ここから下は**埋めません**。理由つき。
+    ("rich_runs", Watch::Skip("セルの中の飾りを読みで解いた別表。**描くときだけ**見る。\n    // 保存は原文の共有文字列を持ち越すので、ここからは書かない(2026-08-31)")),
     ("shapes_new", Watch::Skip("shapes と同じ物。保存で shapes に合流する")),
     ("images_new", Watch::Skip("images と同じ物。保存で images に合流する")),
     ("py_stamp", Watch::Skip("Python を走らせた印。開き直せば計算し直す")),

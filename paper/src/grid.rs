@@ -829,11 +829,6 @@ fn draw_sheet(
             // (国税庁の酒税の表の I7「Number of licensed sites to sell
             // liquors」)。折り返しの位置もそのぶんずれます
             let pt = cell.fmt.size_c.map_or(9.5, |c| c as f32 / 100.0) * scale;
-            // 1文字の幅(mm)。全角 1em / 半角 0.55em のだいたいの見当
-            let haba = |t: &str| -> f32 {
-                t.chars().map(|ch| if ch.is_ascii() { 0.55 } else { 1.0 }).sum::<f32>()
-                    * pt * 25.4 / 72.0
-            };
             // **セルの中で折り返す**(2026-08-31 発注者。xlsx の `wrapText`)。
             //
             // 前は折り返しを見ておらず、長い見出しが右のセルへ流れて、
@@ -853,34 +848,65 @@ fn draw_sheet(
                     .sum();
             }
             let naka = (ma_w - 3.0).max(pt * 25.4 / 72.0);
-            let gyou: Vec<String> = if cell.fmt.wrap {
-                let mut out: Vec<String> = Vec::new();
-                // セルの中の改行(Alt+Enter)も行の区切りです
-                for moto in shown.split('\n') {
+            // **セルの中で飾りが変わる所は、run ごとに描きます**
+            // (2026-08-31 発注者。`Sheet::rich_runs`)。国税庁の酒税の表は
+            // 8pt のセルの中で英文だけ 6pt・Century です。セル1つに大きさ
+            // 1つだと、その英文が 8pt で出て折り返しの位置もずれます。
+            //
+            // 飾りの無いセルは、セルの書式の run が1つあるのと同じです
+            let kire: Vec<(String, f32, Option<String>)> = match grid.rich_runs.get(&p) {
+                Some(rs) if !rs.is_empty() => rs
+                    .iter()
+                    .map(|r| {
+                        (r.text.replace('\r', ""),
+                         r.size_pt.map_or(pt, |v| v * scale),
+                         r.font.clone().or_else(|| cell.fmt.font.clone()))
+                    })
+                    .collect(),
+                _ => vec![(shown.clone(), pt, cell.fmt.font.clone())],
+            };
+            // 1つの run の一部(同じ飾りの一続き)
+            type Kata = (String, f32, Option<String>);
+            let haba1 = |t: &str, p: f32| -> f32 {
+                t.chars().map(|ch| if ch.is_ascii() { 0.55 } else { 1.0 }).sum::<f32>()
+                    * p * 25.4 / 72.0
+            };
+            // 行の列。1行は run のかけら(字, 大きさ, 書体)の並び
+            let mut gyou: Vec<Vec<Kata>> = vec![Vec::new()];
+            let mut yoko = 0.0f32;
+            for (t, rp, rf) in &kire {
+                for (i, danraku) in t.split('\n').enumerate() {
+                    if i > 0 {
+                        // セルの中の改行(Alt+Enter)
+                        gyou.push(Vec::new());
+                        yoko = 0.0;
+                    }
                     let mut ima = String::new();
-                    for ch in moto.chars() {
-                        let mut tame = ima.clone();
-                        tame.push(ch);
-                        if !ima.is_empty() && haba(&tame) > naka {
-                            out.push(std::mem::take(&mut ima));
+                    for ch in danraku.chars() {
+                        let w = haba1(&ch.to_string(), *rp);
+                        if cell.fmt.wrap && !ima.is_empty() && yoko + w > naka {
+                            gyou.last_mut().expect("行").push((std::mem::take(&mut ima), *rp, rf.clone()));
+                            gyou.push(Vec::new());
+                            yoko = 0.0;
                         }
                         ima.push(ch);
+                        yoko += w;
                     }
-                    out.push(ima);
+                    if !ima.is_empty() {
+                        gyou.last_mut().expect("行").push((ima, *rp, rf.clone()));
+                    }
                 }
-                out
-            } else {
-                shown.split('\n').map(|x| x.to_string()).collect()
+            }
+            gyou.retain(|g| !g.is_empty());
+            if gyou.is_empty() {
+                continue;
+            }
+            // 1行ぶんの幅(mm)。かけらごとの大きさで測ります
+            let gyou_haba = |g: &[Kata]| -> f32 {
+                g.iter().map(|(t, rp, _)| haba1(t, *rp)).sum()
             };
             let tx = if right {
-                // だいたいの字幅で右に寄せる(全角 1em / 半角 0.55em)
-                let w: f32 = shown
-                    .chars()
-                    .map(|ch| if ch.is_ascii() { 0.55 } else { 1.0 })
-                    .sum::<f32>()
-                    * pt
-                    * 25.4
-                    / 72.0;
+                let w = gyou.first().map(|g| gyou_haba(g)).unwrap_or(0.0);
                 x + cw - 1.5 - w
             } else {
                 // 字下げ(indent)。1段 = 全角約1字ぶん左を空ける —
@@ -891,20 +917,27 @@ fn draw_sheet(
             // 文字は塗り色で描かれる(PDF の作法)ので、色付きの字は前後で入れ替える
             let c = colour.as_deref().and_then(hex_rgb).unwrap_or((0.0, 0.0, 0.0));
             // **何行あっても、セルの下から積みます。** 1行のときは今までと
-            // 同じ位置です
-            let okuri = pt * 25.4 / 72.0 * 1.2;
-            let mut ty = y_top - rh + 2.0 + okuri * (gyou.len() as f32 - 1.0);
+            // 同じ位置です。行送りはその行のいちばん大きい字で決めます
+            let okuri_of = |g: &[Kata]| -> f32 {
+                g.iter().map(|(_, rp, _)| *rp).fold(0.0f32, f32::max) * 25.4 / 72.0 * 1.2
+            };
+            let takasa: f32 = gyou.iter().map(|g| okuri_of(g)).sum();
+            let mut ty = y_top - rh + 2.0 + takasa - okuri_of(&gyou[gyou.len() - 1]);
             for g in &gyou {
-                let gx = match cell.fmt.align {
+                let w = gyou_haba(g);
+                let mut gx = match cell.fmt.align {
                     // **中央揃え**(2026-08-31)。前は左に出ていました。
                     // 幅は結合したぶん(`ma_w`)で見ます — 結合の1列目の
                     // 幅で中央を出すと、題が紙の左へはみ出します
-                    HAlign::Center | HAlign::CenterContinuous => x + (ma_w - haba(g)) / 2.0,
-                    _ if right => x + cw - 1.5 - haba(g),
+                    HAlign::Center | HAlign::CenterContinuous => x + (ma_w - w) / 2.0,
+                    _ if right => x + cw - 1.5 - w,
                     _ => tx,
                 };
-                ink.text(g, pt, gx, ty, c, bold);
-                ty -= okuri;
+                for (t, rp, _rf) in g {
+                    ink.text(t, *rp, gx, ty, c, bold);
+                    gx += haba1(t, *rp);
+                }
+                ty -= okuri_of(g);
             }
         }
     }
@@ -1253,6 +1286,45 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
 
 #[cfg(test)]
 mod tests {
+    /// **セルの中で飾りが変わっても、その大きさで描く。**
+    ///
+    /// 2026-08-31 発注者「セルのサイズは8ポイントで英字だけ6ポイントに
+    /// 設定しています」。セル1つに大きさ1つだと、6pt の英文が 8pt で出て、
+    /// 折り返しの位置もずれます。
+    #[test]
+    fn a_run_inside_a_cell_keeps_its_own_size() {
+        use book::{Pos, RichRun};
+        let mut g = Grid { name: "見本".into(), ..Default::default() };
+        g.col_width.insert(0, 12.0);
+        let p = Pos::new(0, 0);
+        g.set(p, Cell {
+            formula: None,
+            value: Value::Text("販売場数\nNumber of licensed sites".into()),
+            fmt: CellFormat { wrap: true, size_c: Some(800), ..Default::default() },
+        });
+        g.rich_runs.insert(p, vec![
+            RichRun { text: "販売場数\n".into(), ..Default::default() },
+            RichRun { text: "Number of licensed sites".into(), size_pt: Some(6.0),
+                      font: Some("Century".into()), ..Default::default() },
+        ]);
+        // **PDF の中身ではなく、置いた字を見ます**(流れは圧縮されます)
+        let leaves = sheet_leaves(&g, Paper::default(), &PrintSetup::default()).unwrap();
+        let mut ookisa: Vec<f32> = leaves.iter()
+            .flat_map(|l| l.pieces.iter().map(|x| x.size_pt))
+            .collect();
+        ookisa.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        ookisa.dedup_by(|a, b| (*a - *b).abs() < 0.01);
+        assert!(ookisa.iter().any(|v| (v - 6.0).abs() < 0.01),
+                "6pt の run が 6pt で置かれていない: {ookisa:?}");
+        assert!(ookisa.iter().any(|v| (v - 8.0).abs() < 0.01),
+                "セルの 8pt が出ていない: {ookisa:?}");
+        // 日本語と英語が別の行に折れていること
+        let gyou: std::collections::BTreeSet<i32> = leaves.iter()
+            .flat_map(|l| l.pieces.iter().map(|x| (x.y_mm * 10.0) as i32))
+            .collect();
+        assert!(gyou.len() >= 2, "セルの中の改行で行が分かれていない");
+    }
+
     /// **列の幅は Excel の式で出す。**
     ///
     /// 2026-08-30、国税庁の酒税の表で見つけました。「1文字 = 2.0mm」の
