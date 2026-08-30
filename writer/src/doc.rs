@@ -782,11 +782,7 @@ impl Writer {
         &self,
         doc: &Document,
     ) -> (std::collections::BTreeMap<usize, usize>, Vec<usize>) {
-        let (pages, _) = paper::paginate(&self.page, paper::Paper {
-            width_mm: self.pg.w_mm,
-            height_mm: self.pg.h_mm,
-            margin_mm: self.pg.left_mm,
-        });
+        let (pages, _) = paper::paginate(&self.page, paper::Paper::from_page(&self.pg));
         let mut starts: Vec<usize> = Vec::new();
         let mut at = 0usize;
         for p in doc.paragraphs() {
@@ -939,11 +935,7 @@ impl Writer {
         }
         // **紙と同じ折り方を、同じ関数から受け取る。** 脚注はその頁の
         // 本文の底を上げるので、別に数えると画面と PDF がずれる
-        let pn = paper::paginate_full(&self.page, paper::Paper {
-            width_mm: self.pg.w_mm,
-            height_mm: self.pg.h_mm,
-            margin_mm: self.pg.left_mm,
-        });
+        let pn = paper::paginate_full(&self.page, paper::Paper::from_page(&self.pg));
         self.page_offsets = pn.offsets;
         self.page_starts = pn.starts;
         self.page_notes = pn.notes;

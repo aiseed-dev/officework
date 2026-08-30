@@ -41,11 +41,40 @@ pub struct Paper {
     pub height_mm: f32,
     /// 左の余白。紙面の x はここからの相対
     pub margin_mm: f32,
+    /// 上の余白。**2頁目からの本文の頭がここに来ます**
+    pub top_mm: f32,
+    /// 下の余白。ここまで来たら頁を折ります
+    pub bottom_mm: f32,
 }
 
 impl Default for Paper {
     fn default() -> Self {
-        Paper { width_mm: 210.0, height_mm: 297.0, margin_mm: 20.0 }
+        Paper { width_mm: 210.0, height_mm: 297.0, margin_mm: 20.0, top_mm: 20.0, bottom_mm: 20.0 }
+    }
+}
+
+impl Paper {
+    /// 上下の余白が左と同じ紙。**試験と、余白を1つしか持たない呼び出し**に
+    /// 使います。docx から来た文書は4つとも別なので、そちらは
+    /// [`from_page`](Paper::from_page) を通します
+    pub fn hitoshii(width_mm: f32, height_mm: f32, margin_mm: f32) -> Paper {
+        Paper { width_mm, height_mm, margin_mm, top_mm: margin_mm, bottom_mm: margin_mm }
+    }
+
+    /// 紙の設定から。**上下と左右を別に持ちます**(2026-08-30)。
+    ///
+    /// 前は余白を1つしか持たず、頁割りが左の余白を上下にも使っていました。
+    /// 内閣府の告知書(左右 25mm・上下 30mm)で、**2頁目から本文が
+    /// 25mm の高さで始まり**、1頁に2行余分に入っていました。13頁の文書が
+    /// 11頁になります。
+    pub fn from_page(pg: &kumihan::PageSetup) -> Paper {
+        Paper {
+            width_mm: pg.w_mm,
+            height_mm: pg.h_mm,
+            margin_mm: pg.left_mm,
+            top_mm: pg.top_mm,
+            bottom_mm: pg.bottom_mm,
+        }
     }
 }
 
@@ -82,7 +111,7 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
     // これをそのまま使うと1ページ目だけ紙が違う、という形で狂う
     let paper1 = sheet
         .setup_at(0.0)
-        .map(|pg| Paper { width_mm: pg.w_mm, height_mm: pg.h_mm, margin_mm: pg.left_mm })
+        .map(|pg| Paper::from_page(&pg))
         .unwrap_or(paper);
     let (doc, page, layer) = PdfDocument::new(
         "office",
@@ -424,11 +453,7 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
     // その高さに効いている紙。節が無ければ呼ぶ側の紙をそのまま使う
     let paper_at = |y: f32| -> Paper {
         match sheet.setup_at(y) {
-            Some(pg) => Paper {
-                width_mm: pg.w_mm,
-                height_mm: pg.h_mm,
-                margin_mm: pg.left_mm,
-            },
+            Some(pg) => Paper::from_page(&pg),
             None => paper,
         }
     };
@@ -490,7 +515,9 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
         // **行の箱ごと入る分しか置きません。** ベースラインだけで見ると、
         // 字の足(箱の下 2.4mm)が余白へはみ出します(2026-08-29 に測りました)
         let asi = kumihan::LINE_MM - kumihan::BASE_UP_MM;
-        if forced || y_roll > cur.height_mm - cur.margin_mm - reserve - hh - asi {
+        // **下の余白は下の余白で見ます**(2026-08-30)。前は左の余白を
+        // 上下にも使っていました
+        if forced || y_roll > cur.height_mm - cur.bottom_mm - reserve - hh - asi {
             // 次のページへ。行の紙面上の高さは(余白ぶんを除いて)そのまま続ける
             let next = paper_at(line.y_mm);
             // **見出しを繰り返す表の途中なら、その高さぶん頭を下げます。**
@@ -499,7 +526,12 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
                 Some((t, ri, _)) if ri > 0 && sheet.header_tables.contains(&t) => head_h(t),
                 _ => 0.0,
             };
-            offsets.push(line.y_mm - next.margin_mm - repeat);
+            // **次の頁の頭は上の余白**です(同上)。左の余白を使っていたので、
+            // 上下と左右が違う文書では2頁目から本文の頭がずれていました
+            // 1頁目の頭は `doc_to_sheet` が `top_mm + BASE_UP_MM` に置きます。
+            // **続きの頁も同じ高さに揃えます** — 足さないと、2頁目からだけ
+            // 1行の腰のぶん(4mm)高く始まります
+            offsets.push(line.y_mm - next.top_mm - kumihan::BASE_UP_MM - repeat);
             header_h.push(repeat);
             papers.push(next);
             starts.push(line.y_mm);
@@ -706,7 +738,7 @@ mod tests {
         assert_eq!(s.setup_at(0.0).map(|g| (g.w_mm, g.h_mm)), Some((210.0, 297.0)),
             "巻物の頭で最初の節が引けない: {:?}", s.sect_pages);
 
-        let page_of = Paper { width_mm: 297.0, height_mm: 210.0, margin_mm: 20.0 };
+        let page_of = Paper::hitoshii(297.0, 210.0, 20.0 );
         let papers = paginate_full(&s, page_of).papers;
         assert_eq!((papers[0].width_mm, papers[0].height_mm), (210.0, 297.0),
             "1ページ目が最後の節の紙で刷られた");
@@ -719,6 +751,47 @@ mod tests {
     /// 持っていた。同じ y に居る本文の行と同じ頁に来ることを直接見る —
     /// 「PDF が出来た」だけを見る試験はこのずれを通してしまう
     /// (SEKKEI.md「緑は『正しい』ではなく『この物差しでは差が出ない』」)
+    /// **上下の余白が左右と違う文書でも、どの頁も同じ高さで始まる。**
+    ///
+    /// 2026-08-30、内閣府の告知書(左右 25mm・上下 30mm)で見つけました。
+    /// `Paper` が余白を1つしか持たず、頁割りが**左の余白を上下にも**
+    /// 使っていたので、2頁目からの本文が 25mm の高さで始まり、1頁に
+    /// 2行余分に入っていました。13頁の文書が 11頁になります。
+    #[test]
+    fn every_page_starts_at_the_top_margin() {
+        let pg = kumihan::PageSetup {
+            w_mm: 210.0, h_mm: 297.0,
+            left_mm: 25.0, right_mm: 25.0, top_mm: 30.0, bottom_mm: 30.0,
+            columns: 1,
+        };
+        // 助手の `sheet` は固定の枠で組むので、ここは紙の設定に合わせて
+        // 自分で組みます(1頁目の頭も `top_mm + BASE_UP_MM` になります)
+        let (fam, _) = font::for_text(None, "いろは".chars()).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let d = Document::plain(&"いろはにほへとちりぬるを。".repeat(400));
+        let s = layout(&d, &m, &Frame {
+            measure_mm: pg.column_measure_mm(),
+            line_height_mm: kumihan::LINE_MM,
+            y0_mm: pg.top_mm + kumihan::BASE_UP_MM,
+        });
+        let pg2 = paginate_full(&s, Paper::from_page(&pg));
+        assert!(pg2.offsets.len() >= 3, "頁が足りず試験にならない");
+        // 各頁の1行目が、紙の上から見て同じ高さに来ること
+        let mut atama: Vec<f32> = Vec::new();
+        for (k, _) in pg2.offsets.iter().enumerate() {
+            let i = pg2.pages.iter().position(|p| *p == k + 1).expect("頁が空");
+            atama.push(s.lines[i].y_mm - pg2.offsets[k]);
+        }
+        for (k, y) in atama.iter().enumerate().skip(1) {
+            assert!((y - atama[0]).abs() < 0.05,
+                    "{} 頁目の頭が1頁目とずれた: {y} / {}", k + 1, atama[0]);
+        }
+        // その高さは**上の余白**(左の 25mm ではない)
+        assert!((atama[0] - (pg.top_mm + kumihan::BASE_UP_MM)).abs() < 0.05,
+                "頭が上の余白から始まっていない: {}", atama[0]);
+    }
+
     #[test]
     fn image_and_border_pagination_matches_the_text() {
         let (s, _) = sheet(&"いろはにほへとちりぬるを。".repeat(400), Align::Left);
@@ -1163,7 +1236,7 @@ pub fn doc_to_pdf<W: Write>(
     let lost = pdfw::sheet_to_pdf_with(
         &sheet,
         &bytes,
-        Paper { width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm },
+        Paper::from_page(&page),
         &dress,
         |_| Vec::new(),
         out,
@@ -1190,7 +1263,7 @@ pub fn doc_leaves_with(
     page: kumihan::PageSetup,
     dress: &PageDress,
 ) -> Vec<pdfw::Leaf> {
-    let paper = Paper { width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm };
+    let paper = Paper::from_page(&page);
     let (pages, _lost) = pdfw::sheet_leaves_with(sheet, paper, dress, |_| Vec::new());
     pages
 }
@@ -1293,7 +1366,7 @@ pub fn foreign_shapes(
 ) -> Vec<kumihan::DocShape> {
     let pg = paginate_full(
         sheet,
-        Paper { width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm },
+        Paper::from_page(&page),
     );
     // 段落の頭が本文の何バイト目か([`page_head_paras`] と同じ数え方)
     let mut starts: Vec<usize> = Vec::new();
@@ -1349,7 +1422,7 @@ pub fn page_head_paras(
 ) -> (std::collections::BTreeMap<usize, usize>, Vec<usize>) {
     let (pages, _) = paginate(
         sheet,
-        Paper { width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm },
+        Paper::from_page(&page),
     );
     // 段落の頭が本文の何バイト目か
     let mut starts: Vec<usize> = Vec::new();

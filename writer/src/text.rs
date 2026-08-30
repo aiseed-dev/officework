@@ -450,9 +450,7 @@ impl Writer {
         let total = for_print
             .as_ref()
             .map(|(s, pg, _)| {
-                paper::paginate(s, paper::Paper {
-                    width_mm: pg.w_mm, height_mm: pg.h_mm, margin_mm: pg.left_mm,
-                })
+                paper::paginate(s, paper::Paper::from_page(&pg))
                 .0
                 .iter()
                 .copied()
@@ -475,11 +473,7 @@ impl Writer {
             paper::to_pdf_with(
                 sheet,
                 &self.font_bytes,
-                paper::Paper {
-                    width_mm: pg.w_mm,
-                    height_mm: pg.h_mm,
-                    margin_mm: pg.left_mm,
-                },
+                paper::Paper::from_page(&pg),
                 &dress,
                 // ヘッダー・フッター。ページ番号はここで各頁の数字になる
                 |k| {
@@ -736,11 +730,7 @@ impl Writer {
             Some((s, pg, _)) => (s, pg),
             None => (self.page.clone(), self.pg),
         };
-        let (pages, _) = paper::paginate(&sheet, paper::Paper {
-            width_mm: pg.w_mm,
-            height_mm: pg.h_mm,
-            margin_mm: pg.left_mm,
-        });
+        let (pages, _) = paper::paginate(&sheet, paper::Paper::from_page(&pg));
         move |byte: usize| {
             let mut hit = 1usize;
             for (l, p) in sheet.lines.iter().zip(&pages) {

@@ -5667,7 +5667,7 @@ pub(crate) fn zukei_png(sp: &book::SheetShape, pad: f32) -> Option<Vec<u8>> {
     // `y_top` は紙の下からの mm で、図形の上の端です
     let leaf = paper::grid::shapes_leaf(
         &[(hitotsu, (pad + uchi) * MM, h_mm - (pad + uchi) * MM)],
-        paper::Paper { width_mm: w_mm, height_mm: h_mm, margin_mm: 0.0 },
+        paper::Paper::hitoshii(w_mm, h_mm, 0.0 ),
     );
     paper::e::egaku(&leaf, w_mm, h_mm, KOMAKASA / MM).png().ok()
 }

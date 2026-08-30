@@ -636,11 +636,7 @@ mod tests {
         let src = "= 四月の売上\n\n本文です。\n\n|===\n|品名 |金額\n\n|ペン |1,200\n|===\n";
         let doc = kumihan::adoc::parse(src).expect("読めない");
         let (sheet, page, bytes) = crate::doc_to_sheet(&doc, None).expect("組めない");
-        let pp = crate::Paper {
-            width_mm: page.w_mm,
-            height_mm: page.h_mm,
-            margin_mm: page.left_mm,
-        };
+        let pp = crate::Paper::from_page(&page);
         let mut old = Vec::new();
         crate::to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut old)).expect("いまの道");
         let mut new = Vec::new();
@@ -717,7 +713,7 @@ mod tests {
     fn a_broken_picture_is_counted_not_dropped() {
         let mut sheet = kumihan::Sheet::default();
         sheet.images.push((std::sync::Arc::new(vec![0u8, 1, 2, 3]), [10.0, 10.0, 20.0, 20.0]));
-        let pp = crate::Paper { width_mm: 210.0, height_mm: 297.0, margin_mm: 20.0 };
+        let pp = crate::Paper::hitoshii(210.0, 297.0, 20.0);
         let mut out = Vec::new();
         let lost = sheet_to_pdf(&sheet, &font(), pp, std::io::Cursor::new(&mut out))
             .expect("PDF が出ない");
@@ -729,9 +725,7 @@ mod tests {
     fn the_page_dress_and_the_header_reach_the_paper() {
         let doc = kumihan::adoc::parse("= 題\n\n本文です。\n").expect("読めない");
         let (sheet, page, bytes) = crate::doc_to_sheet(&doc, None).expect("組めない");
-        let pp = crate::Paper {
-            width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm,
-        };
+        let pp = crate::Paper::hitoshii(page.w_mm, page.h_mm, page.left_mm);
         let dress = crate::PageDress {
             bg: Some((0.98, 0.98, 0.94)),
             watermark: Some("見本".into()),
@@ -774,7 +768,7 @@ mod tests {
     #[test]
     fn pen_strokes_land_on_the_paper() {
         let sheet = kumihan::Sheet::default();
-        let pp = crate::Paper { width_mm: 210.0, height_mm: 297.0, margin_mm: 20.0 };
+        let pp = crate::Paper::hitoshii(210.0, 297.0, 20.0);
         let fude = |hl: bool| kumihan::Stroke {
             page: 0,
             highlighter: hl,
@@ -805,9 +799,7 @@ mod tests {
         let (mut sheet, page, bytes) = crate::doc_to_sheet(&doc, None).expect("組めない");
         sheet.vertical = true;
         sheet.vert_x = sheet.lines.iter().enumerate().map(|(i, _)| 180.0 - i as f32 * 8.0).collect();
-        let pp = crate::Paper {
-            width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm,
-        };
+        let pp = crate::Paper::hitoshii(page.w_mm, page.h_mm, page.left_mm);
         let mut out = Vec::new();
         sheet_to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut out)).expect("PDF が出ない");
         let body = unpack(&out);
@@ -835,9 +827,7 @@ mod tests {
         let src = "= 縦の節\n\n本文です。\n\n[.landscape]\n== 横の節\n\n横の本文です。\n";
         let doc = kumihan::adoc::parse(src).expect("読めない");
         let (sheet, page, bytes) = crate::doc_to_sheet(&doc, None).expect("組めない");
-        let pp = crate::Paper {
-            width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm,
-        };
+        let pp = crate::Paper::hitoshii(page.w_mm, page.h_mm, page.left_mm);
         let mut out = Vec::new();
         sheet_to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut out)).expect("PDF が出ない");
         assert!(out.starts_with(b"%PDF"));
@@ -886,9 +876,7 @@ mod tests {
     fn the_glyphs_land_where_the_old_road_puts_them() {
         let doc = kumihan::adoc::parse("= 題\n\n本文です。\n").expect("読めない");
         let (sheet, page, bytes) = crate::doc_to_sheet(&doc, None).expect("組めない");
-        let pp = crate::Paper {
-            width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm,
-        };
+        let pp = crate::Paper::hitoshii(page.w_mm, page.h_mm, page.left_mm);
         let mut out = Vec::new();
         sheet_to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut out)).expect("PDF が出ない");
 
@@ -917,9 +905,7 @@ mod tests {
     fn bold_reaches_the_body_text() {
         let doc = kumihan::adoc::parse("= 題\n\n*太い字*と普通の字。\n").expect("読めない");
         let (sheet, page, bytes) = crate::doc_to_sheet(&doc, None).expect("組めない");
-        let pp = crate::Paper {
-            width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm,
-        };
+        let pp = crate::Paper::hitoshii(page.w_mm, page.h_mm, page.left_mm);
         let mut out = Vec::new();
         sheet_to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut out)).expect("PDF が出ない");
         // **太字は 0.12mm ずらして二度打ちます。** 同じ y で x だけ
@@ -981,9 +967,7 @@ mod tests {
         src.push_str("|===\n");
         let doc = crate::super_parse(&src);
         let (sheet, page, bytes) = crate::doc_to_sheet(&doc, None).expect("組めない");
-        let pp = crate::Paper {
-            width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm,
-        };
+        let pp = crate::Paper::hitoshii(page.w_mm, page.h_mm, page.left_mm);
         let mut out = Vec::new();
         let lost = sheet_to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut out))
             .expect("PDF が出ない");

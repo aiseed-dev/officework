@@ -813,11 +813,7 @@ impl Render for Writer {
             .w(px(self.paper_w_mm() * pxmm)).h(px(self.content_mm() * pxmm));
         if self.paged {
             for (k, top) in self.page_tops.clone().iter().enumerate() {
-                let q = self.page_papers.get(k).copied().unwrap_or(paper::Paper {
-                    width_mm: self.pg.w_mm,
-                    height_mm: self.pg.h_mm,
-                    margin_mm: self.pg.left_mm,
-                });
+                let q = self.page_papers.get(k).copied().unwrap_or(paper::Paper::from_page(&self.pg));
                 paper = paper.child(div().absolute()
                     .left(px(0.0)).top(px(top * pxmm))
                     .w(px(q.width_mm * pxmm)).h(px(q.height_mm * pxmm))

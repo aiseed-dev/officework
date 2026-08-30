@@ -6,7 +6,7 @@ fn main() {
                == 明細\n\n|===\n|品名 |金額\n\n|ボールペン |1,200\n|===\n";
     let doc = kumihan::adoc::parse(src).expect("読めない");
     let (sheet, page, bytes) = paper::doc_to_sheet(&doc, None).expect("組めない");
-    let pp = paper::Paper { width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm };
+    let pp = paper::Paper::from_page(&page);
 
     let mut a = Vec::new();
     paper::to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut a)).expect("いまの道");

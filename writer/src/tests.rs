@@ -1232,11 +1232,7 @@ mod screen_note_tests {
 
             assert!(!this.page.notes.is_empty(), "脚注が組まれていない");
             // 画面が持っている割り当てと、紙が出す割り当てが同じであること
-            let paper = paper::paginate_full(&this.page, paper::Paper {
-                width_mm: this.pg.w_mm,
-                height_mm: this.pg.h_mm,
-                margin_mm: this.pg.left_mm,
-            });
+            let paper = paper::paginate_full(&this.page, paper::Paper::from_page(&this.pg));
             assert_eq!(this.page_notes, paper.notes,
                 "画面と紙で脚注の割り当てが違う");
             assert_eq!(this.page_offsets, paper.offsets,
@@ -1615,11 +1611,7 @@ mod paged_view_tests {
             this.ed = Editor::new(&this.doc.body_text());
             this.paged = true;
             this.relayout();
-            let kami = paper::paginate_full(&this.page, paper::Paper {
-                width_mm: this.pg.w_mm,
-                height_mm: this.pg.h_mm,
-                margin_mm: this.pg.left_mm,
-            });
+            let kami = paper::paginate_full(&this.page, paper::Paper::from_page(&this.pg));
             assert_eq!(this.page_papers.len(), kami.papers.len(), "頁の数が違う");
         });
     }
@@ -2762,8 +2754,7 @@ mod marker_tests {
             this.open(doc.clone());
             let screen = this.total_pages();
             let paper = this.print_layout().expect("印刷用が読めない");
-            let (pages, _) = paper::paginate(&paper.0, paper::Paper {
-                width_mm: paper.1.w_mm, height_mm: paper.1.h_mm, margin_mm: paper.1.left_mm });
+            let (pages, _) = paper::paginate(&paper.0, paper::Paper::hitoshii(paper.1.w_mm, paper.1.h_mm, paper.1.left_mm ));
             let paper_pages = pages.iter().copied().max().unwrap_or(1);
             assert!(paper_pages > screen, "紙のほうが枚数が多い形になっていない({paper_pages} と {screen})");
             // 最後の見出しのページ番号は**紙の**枚数(画面の枚数ではない)

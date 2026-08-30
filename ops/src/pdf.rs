@@ -68,8 +68,11 @@ pub(crate) fn paper_of(s: &book::Sheet) -> paper::Paper {
         _ => (210.0, 297.0),
     };
     let (w, h) = if s.landscape { (h, w) } else { (w, h) };
-    let margin = s.margins_mm.map(|(l, _, _, _)| l).unwrap_or(20.0);
-    paper::Paper { width_mm: w, height_mm: h, margin_mm: margin }
+    // **上下も渡します**(2026-08-30)。前は左だけ渡していて、頁割りが
+    // それを上下にも使っていました。上下と左右が違う設定の表では、
+    // 2頁目からの本文の頭がずれます
+    let (l, _r, t, b) = s.margins_mm.unwrap_or((20.0, 20.0, 20.0, 20.0));
+    paper::Paper { width_mm: w, height_mm: h, margin_mm: l, top_mm: t, bottom_mm: b }
 }
 
 pub(crate) fn setup_of(s: &book::Sheet, date1904: bool) -> paper::grid::PrintSetup {
