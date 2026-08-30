@@ -376,7 +376,7 @@ def 大文字にする(段落):
 |Heading |link:commands/左パネル/見出し.adoc[見出し] |✅ |p.style で拾う |p.style |—
 |Comment |link:commands/左パネル/コメント.adoc[コメント] |✅ |*挿入と同じ* — d.comments |d.comments |c.comment
 |Find |link:commands/左パネル/検索.adoc[検索] |✅ |d.find(字) |— |—
-|AI |AI | |— |— |—
+|Agent panel |エージェントパネル | |— |— |—
 |===
 
 == 右パネル
@@ -388,7 +388,7 @@ def 大文字にする(段落):
 |Settings — adjust where the cursor is |設定。カーソルのある場所に掛かります | |— |— |—
 |Page — settings for the whole document |ページ設定。文書全体に掛かります |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
 |Styles — edit the template |スタイル。テンプレートを直します |✅ |p.style |p.style |—
-|Files — what is in the folder |ファイル。フォルダの中を並べます | |— |— |—
+|Project panel |プロジェクトパネル | |— |— |—
 |===
 
 == 下端
