@@ -214,12 +214,39 @@ def tables_or_die(path: pathlib.Path | str = RIBBON) -> dict[str, list[Tab]]:
 # **信じる前に、落ちる所を見る。** 6つの崩し方それぞれで止まること。
 # `python3 tools/ribbon_parse.py --self-test` で回る(CI からも呼ぶ)。
 
+# **崩す先は原文から探します。** 前はボタンの表示名を字で書いていて
+# (`c("open", "開く", "open"),`)、表示名が英語に変わった日に5つとも
+# 何も崩さなくなりました。崩していない物を通すのは当たり前なので、
+# 検査は「効いていません」と言い続けます(2026-08-30 に CI で出ました)。
+#
+# 下の `_kezuru` が、実際に文字が変わったかどうかも見ます。
+
+
+def _hitotsu(src: str, hajime: str) -> str:
+    """`src` の中から `hajime` で始まる最初の1行を、前後の空白ごと返す"""
+    for line in src.splitlines():
+        if line.strip().startswith(hajime):
+            return line.strip()
+    raise RibbonError(f"崩す先が見つかりません: {hajime} で始まる行")
+
+
+def _kaeru(src: str, hajime: str, tsukuru) -> str:
+    """最初の1行を `tsukuru` が作った字に置き替える。**変わらなければ落とす**"""
+    moto = _hitotsu(src, hajime)
+    out = src.replace(moto, tsukuru(moto), 1)
+    if out == src:
+        raise RibbonError(f"崩せていません: {moto}")
+    return out
+
+
 _BREAKS = {
-    "新しい種類 y(…)": lambda s: s.replace('c("open", "開く", "open"),', 'y("open", "開く", "open"),', 1),
-    "マクロ書き c!(…)": lambda s: s.replace('c("open", "開く", "open"),', 'c!("open", "開く", "open"),', 1),
-    "Tab を関数で作る": lambda s: s.replace('Tab { name: "ファイル", cmds: &[', 'tab("ファイル", &[', 1),
-    "c に4つ目の引数": lambda s: s.replace('c("open", "開く", "open"),', 'c("open", "開く", "open", 1),', 1),
-    "/* */ で囲んで消す": lambda s: s.replace('c("save", "保存", "save"),', '/* c("save", "保存", "save"), */', 1),
+    "新しい種類 y(…)": lambda s: _kaeru(s, 'c("', lambda x: "y(" + x[2:]),
+    "マクロ書き c!(…)": lambda s: _kaeru(s, 'c("', lambda x: "c!(" + x[2:]),
+    "Tab を関数で作る": lambda s: _kaeru(
+        s, "Tab { name:", lambda x: "tab(" + x[len("Tab { name:"):].replace(", cmds: &[", ", &[")
+    ),
+    "c に4つ目の引数": lambda s: _kaeru(s, 'c("', lambda x: x.replace("),", ", 1),")),
+    "/* */ で囲んで消す": lambda s: _kaeru(s, 'c("', lambda x: f"/* {x} */"),
     "表がもう1つ増える": lambda s: s + "\npub const CALC2: &[Tab] = &[];\n",
 }
 
@@ -242,8 +269,16 @@ def _self_test() -> int:
 
     # 崩したら落ちること
     for label, break_it in _BREAKS.items():
+        # **崩す所で落ちたら、それも検査の失敗です。** 崩せていないのに
+        # 「素通りした」と言うと、直す先を取り違えます
+        try:
+            kowashita = break_it(src)
+        except RibbonError as e:
+            print(f"::error::{label}: {e}(**崩す側が古くなっています**)")
+            bad = 1
+            continue
         with tempfile.NamedTemporaryFile("w", suffix=".rs", encoding="utf-8", delete=False) as f:
-            f.write(break_it(src))
+            f.write(kowashita)
             p = f.name
         try:
             tables(p)

@@ -163,6 +163,12 @@ def duplicate_labels(locales: list[str]) -> int:
 #
 # **鍵は英語です**(2026-08-26 の段2でリボンの札が英語になりました)。
 different_job = {
+    "Group": (
+        {"img-group"}, {"group", "img-group"},
+        "図形をひとまとまりにする img-group は両方にある。表にはもう1つ、"
+        "データタブの group がある — こちらは行や列を折りたたむ"
+        "アウトラインで、図形とは別の働き(Excel も同じ札を使う)",
+    ),
     "Checkbox": (
         {"form-checkbox"}, {"inscheckbox"},
         "文章は文書の入力欄(記入欄の仲間)、表は選んだセルに TRUE/FALSE を書く",

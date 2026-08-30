@@ -112,6 +112,12 @@ READY = {
         "py-list": "py-list", "py-line": "py-line", "py-calc": "py-calc",
         "py-folder": "py-folder",
         "prot-encrypt": "prot-encrypt", "prot-sign": "prot-sign",
+        # **図形の重なりと束ね**(2026-08-30)。beta.3 で押せるように
+        # したのに、この表に足していませんでした。生成し直すと5つとも
+        # 灰色に戻ります
+        "img-movefrwd": "img-movefrwd", "img-movebkwd": "img-movebkwd",
+        "img-align": "img-align", "img-group": "img-group",
+        "shapes-merge": "shapes-merge",
     },
     "calc": {
         "open": "open", "save": "save", "undo": "undo", "redo": "redo",
@@ -208,6 +214,12 @@ READY = {
         "remove-arrows": "remove-arrows", "insrecommend": "insrecommend",
         "instable": "instable", "table-tpl": "table-tpl",
         "inssymbol": "inssymbol",
+        # **図形の重なりと束ね**(2026-08-30)。beta.3 で押せるように
+        # したのに、この表に足していませんでした。生成し直すと5つとも
+        # 灰色に戻ります
+        "img-movefrwd": "img-movefrwd", "img-movebkwd": "img-movebkwd",
+        "img-align": "img-align", "img-group": "img-group",
+        "shapes-merge": "shapes-merge",
     },
 }
 
@@ -812,17 +824,20 @@ EXTRA_CMDS = {
         ("Pivot Table", 'pivot-layout', "pivot-style", "Style", "pivot-style", "c"),
         # 本家では「セルの書式設定 > 保護」タブと「シートの保護」小窓の中。
         # うちは小窓を持たない作りなので、保護タブに独立したボタンで出す
-        # 本家に無い灰色。**まだ押せないが性格は分かる** — どちらも入切
-        ("Protection", 'prot-encrypt', "", "Protect workbook", "protect-workbook", "xt"),
-        ("Protection", 'prot-doc', "", "Protect Range", "protect-range", "xt"),
+        # 本家に無い物。**2026-08-30 に押せるようにしました**(beta.3 で
+        # ブックの構造と範囲を守れるようにした分)。灰色のままだと、
+        # 生成し直したときに動く物が押せなくなります
+        ("Protection", 'prot-encrypt', "prot-book", "Protect workbook", "protect-workbook", "c"),
+        ("Protection", 'prot-doc', "prot-range", "Protect Range", "protect-range", "c"),
         ("Protection", 'prot-sign', "cell-lock", "Cell lock", "cell-lock", "c"),
         ("Protection", 'cell-lock', "prot-allow", "Allowed actions", "prot-allow", "c"),
         ("Protection", 'prot-allow', "recover", "Recover", "recover", "c"),
         ("Protection", 'recover', "recover-every", "Backup interval", "recover-every", "c"),
         ("Protection", 'recover-every', "read-only-rec", "Suggest read-only", "read-only-rec", "c"),
-        # 表示の切り替え(どれか1つ)。入切とは性格が違う
-        ("View", 'sheet-view', "", "Normal", "view-normal", "xm"),
-        ("View", 'view-normal', "", "Page Break Preview", "view-pagebreak", "xm"),
+        # 表示の切り替え(どれか1つ)。入切とは性格が違う。
+        # **2026-08-30 に押せるようにしました**(上の保護と同じ理由)
+        ("View", 'sheet-view', "view-normal", "Normal", "view-normal", "m"),
+        ("View", 'view-normal', "view-pagebreak", "Page Break Preview", "view-pagebreak", "m"),
         ("View", 'sheet-view', "zoom-in", "Zoom in", "zoom-in", "c"),
         ("View", 'zoom-in', "zoom-out", "Zoom out", "zoom-out", "c"),
         # **文章にしか無かった**ので表にも足しました(2026-08-21 の B-3)。
@@ -957,7 +972,10 @@ def emit():
                     k = kind if kind.startswith("x") else "x"
                     print(f'        {k}("{lab}", "{icon}"),')
                 else:
-                    k = kind if kind in ("c", "t") else "c"
+                    # **m(どれか1つ)も出します**(2026-08-30)。
+                    # 灰色の側は xm を持っていたのに、押せる側は c と t
+                    # だけで、m を書いても c に落ちていました
+                    k = kind if kind in ("c", "t", "m") else "c"
                     print(f'        {k}("{cid}", "{lab}", "{icon}"),')
             print("    ]},")
         print("];")
