@@ -140,15 +140,22 @@ pub fn format_value(v: &Value, code: Option<&str>, date1904: bool) -> String {
     };
     let int = if comma { group(&int) } else { int };
 
+    // **書式は `正;負;ゼロ;文字` の区画に分かれます**(2026-08-31)。
+    // 負の区画があればそちらを使います。役所の表は「△ 5,148」と書き、
+    // 前は区画を見ずに `-5,148` と出していました(国税庁の酒税の表)
+    let sects: Vec<&str> = code.split(';').collect();
+    let hu_sect = (n < 0.0).then(|| sects.get(1).copied()).flatten();
+    let sect = hu_sect.unwrap_or_else(|| sects.first().copied().unwrap_or(code));
     let mut out = String::new();
-    if n < 0.0 {
+    // 負の区画が無ければ、こちらで `-` を付けます。区画があるときは、
+    // その区画の字(`△ ` や `(`)が符号の役をします
+    if n < 0.0 && hu_sect.is_none() {
         out.push('-');
     }
     // 記号は数の**前にも後ろにも**付く。`"¥"#,##0` と `#,##0.00 "€"` は
     // どちらも実際の綴りで、**前しか読まないと独・仏・西・伊・葡・露・越の
     // 記号が落ちる**(14言語のうち7つがこの並び。2026-08-10 に踏んだ)。
     // 数の芯(# 0 ?)の前と後ろを、それぞれ字として出す
-    let sect = code.split(';').next().unwrap_or(code);
     let core = |c: char| c == '#' || c == '0' || c == '?';
     let (head, tail) = match (sect.find(core), sect.rfind(core)) {
         (Some(a), Some(b)) => (&sect[..a], &sect[b + 1..]),

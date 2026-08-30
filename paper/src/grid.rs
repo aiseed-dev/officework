@@ -933,9 +933,28 @@ fn draw_sheet(
                     _ if right => x + cw - 1.5 - w,
                     _ => tx,
                 };
-                for (t, rp, _rf) in g {
-                    ink.text(t, *rp, gx, ty, c, bold);
-                    gx += haba1(t, *rp);
+                // **均等割付は字を升の幅いっぱいに配ります**(2026-08-31。
+                // Fable の指摘5)。役所の表は「清 酒」「合成清酒」のように
+                // 区分の列を割り付けます。前は左に詰めていました
+                let waru = matches!(cell.fmt.align, HAlign::Distribute)
+                    && g.iter().map(|(t, _, _)| t.chars().count()).sum::<usize>() > 1;
+                if waru {
+                    let kazu: usize = g.iter().map(|(t, _, _)| t.chars().count()).sum();
+                    // 字と字の間に配る余り。両端は升の縁に着けます
+                    let aki = ((ma_w - 3.0 - w) / (kazu - 1) as f32).max(0.0);
+                    let mut wx = x + 1.5;
+                    for (t, rp, _rf) in g {
+                        for ch in t.chars() {
+                            let one = ch.to_string();
+                            ink.text(&one, *rp, wx, ty, c, bold);
+                            wx += haba1(&one, *rp) + aki;
+                        }
+                    }
+                } else {
+                    for (t, rp, _rf) in g {
+                        ink.text(t, *rp, gx, ty, c, bold);
+                        gx += haba1(t, *rp);
+                    }
                 }
                 ty -= okuri_of(g);
             }
@@ -1286,6 +1305,33 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
 
 #[cfg(test)]
 mod tests {
+    /// **均等割付は字を升の幅いっぱいに配る。**
+    ///
+    /// 2026-08-31、国税庁の酒税の表(Fable の指摘5)。区分の列は
+    /// 「清 酒」のように割り付きます。前は左に詰めていました。
+    #[test]
+    fn a_distributed_cell_spreads_its_characters() {
+        let hiku = |align| -> Vec<f32> {
+            let mut g = Grid { name: "見本".into(), ..Default::default() };
+            g.col_width.insert(0, 20.0);
+            g.set(Pos::new(0, 0), Cell {
+                formula: None,
+                value: Value::Text("清酒".into()),
+                fmt: CellFormat { align, ..Default::default() },
+            });
+            let leaves = sheet_leaves(&g, Paper::default(), &PrintSetup::default()).unwrap();
+            leaves.iter().flat_map(|l| l.pieces.iter().map(|p| p.x_mm)).collect()
+        };
+        let hidari = hiku(book::HAlign::Left);
+        let waru = hiku(book::HAlign::Distribute);
+        assert_eq!(waru.len(), 2, "字を1つずつ置いていない: {waru:?}");
+        let haba_h = hidari.iter().cloned().fold(0.0f32, f32::max)
+            - hidari.iter().cloned().fold(f32::MAX, f32::min);
+        let haba_w = waru.iter().cloned().fold(0.0f32, f32::max)
+            - waru.iter().cloned().fold(f32::MAX, f32::min);
+        assert!(haba_w > haba_h * 2.0, "広がっていない: 左詰め {haba_h} / 割付 {haba_w}");
+    }
+
     /// **セルの中で飾りが変わっても、その大きさで描く。**
     ///
     /// 2026-08-31 発注者「セルのサイズは8ポイントで英字だけ6ポイントに
