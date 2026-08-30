@@ -1339,6 +1339,12 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     let cover = |row: usize, g: usize| -> Option<(usize, usize, VMerge)> {
         grid.get(row)?.iter().find(|(gc, span, _)| *gc <= g && g < gc + span).copied()
     };
+    // 格子の位置から**セルそのもの**を引く。`grid[row]` の並びは
+    // `table.rows[row]` の並びと同じなので、位置がそのまま添字です
+    let cell_at = |row: usize, g: usize| -> Option<&Cellbox> {
+        let i = grid.get(row)?.iter().position(|(gc, span, _)| *gc <= g && g < gc + span)?;
+        table.rows.get(row)?.get(i)
+    };
     // (ri, gc) から始まる縦結合の高さ: 同じ格子位置で Continue が続く間
     let merged_h = |ri: usize, gc: usize| -> f32 {
         let mut h = row_hs[ri];
@@ -1401,24 +1407,40 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     // `tops` は行より1つ多い(上端に加えて最後の下端を持つ)ので、
     // そのまま歩けば行の境を全部通る
     for (b, &y) in tops.iter().enumerate() {
+        // **その辺を引く決まりか**(2026-08-30)。docx の `w:tblBorders` に
+        // 挙がっていない辺は引きません。前は必ず四方に引いていたので、
+        // 下線だけの様式が枠だらけになっていました
+        let hiku_yoko = if b == 0 {
+            table.borders.top
+        } else if b >= grid.len() {
+            table.borders.bottom
+        } else {
+            table.borders.inside_h
+        };
+        // **桁ごとに決めてから繋ぎます。** セルごとに指定が違う様式
+        // (記入欄だけ下線)があるので、先に区間をまとめてしまうと
+        // 先頭のセルの指定で塗り潰されます
+        let hiku_at = |g: usize| -> bool {
+            // 境の下の行が Continue なら、この格子の上に線は引かない
+            if b > 0 && b < grid.len()
+                && matches!(cover(b, g), Some((_, _, VMerge::Continue)))
+            {
+                return false;
+            }
+            // セルの指定が表の指定より強い。上の行の「下」と、
+            // 下の行の「上」のどちらかが言っていればそちらに従います
+            let ue = b.checked_sub(1).and_then(|r| cell_at(r, g)).and_then(|c| c.borders.bottom);
+            let shita = cell_at(b, g).and_then(|c| c.borders.top);
+            ue.or(shita).unwrap_or(hiku_yoko)
+        };
         let mut g = 0usize;
         while g < ncols {
-            // 境の下の行が Continue なら、この格子の上に線は引かない
-            let blocked = b > 0
-                && b < grid.len()
-                && matches!(cover(b, g), Some((_, _, VMerge::Continue)));
-            if blocked {
+            if !hiku_at(g) {
                 g += 1;
                 continue;
             }
             let start = g;
-            while g < ncols {
-                let blk = b > 0
-                    && b < grid.len()
-                    && matches!(cover(b, g), Some((_, _, VMerge::Continue)));
-                if blk {
-                    break;
-                }
+            while g < ncols && hiku_at(g) {
                 g += 1;
             }
             sheet.rules.push([xs[start], y, xs[g], y]);
@@ -1439,7 +1461,17 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         edges.sort_by(|a, b| a.partial_cmp(b).unwrap());
         edges.dedup_by(|a, b| (*a - *b).abs() < 0.01);
         for x in edges {
-            sheet.rules.push([x, top, x, bottom]);
+            // 左端・右端・その間で、引く決まりが違います
+            let hiku = if (x - xs[0]).abs() < 0.01 {
+                table.borders.left
+            } else if (x - xs[ncols]).abs() < 0.01 {
+                table.borders.right
+            } else {
+                table.borders.inside_v
+            };
+            if hiku {
+                sheet.rules.push([x, top, x, bottom]);
+            }
         }
     }
     // 次のベースライン

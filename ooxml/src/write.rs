@@ -1036,13 +1036,26 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
                     e.push_attribute(("w:val", a.as_docx()));
                     w.write_event(Event::Empty(e)).unwrap();
                 }
+                // **読んだ辺をそのまま返します**(2026-08-30)。前は必ず
+                // 6辺とも書いていたので、下線だけの様式を開いて保存すると
+                // 枠だらけになりました
+                let bd = t.borders;
                 w.write_event(Event::Start(BS::new("w:tblBorders"))).unwrap();
-                for side in ["top", "left", "bottom", "right", "insideH", "insideV"] {
+                for (side, hiku) in [
+                    ("top", bd.top), ("left", bd.left), ("bottom", bd.bottom),
+                    ("right", bd.right), ("insideH", bd.inside_h), ("insideV", bd.inside_v),
+                ] {
                     let tag = format!("w:{side}");
                     let mut e = BS::new(tag.as_str());
-                    e.push_attribute(("w:val", "single"));
-                    e.push_attribute(("w:sz", "4"));
-                    e.push_attribute(("w:color", "000000"));
+                    if hiku {
+                        e.push_attribute(("w:val", "single"));
+                        e.push_attribute(("w:sz", "4"));
+                        e.push_attribute(("w:color", "000000"));
+                    } else {
+                        // **「引かない」と明に言います。** 黙って書かないと、
+                        // 表のスタイルの罫線が出てきます
+                        e.push_attribute(("w:val", "nil"));
+                    }
                     w.write_event(Event::Empty(e)).unwrap();
                 }
                 w.write_event(Event::End(BytesEnd::new("w:tblBorders"))).unwrap();

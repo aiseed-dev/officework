@@ -91,6 +91,31 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         }
         at = s + e;
     }
+    // **部品の在り処は関係で引きます。** `word/styles.xml` は慣習で、
+    // 決まりではありません。内閣府の様式(document_4.docx)は
+    // `word/styles2.xml` `word/settings2.xml` `word/theme/theme11.xml` を
+    // 使っていて、名前で探していたスタイル・設定・テーマが**1つも
+    // 読めていません**でした(2026-08-30)
+    let bui = |kind: &str, kisoku: &str| -> String {
+        let mata = format!("/{kind}\"");
+        for r in rels.split("<Relationship").skip(1) {
+            let Some(ti) = r.find("Type=\"") else { continue };
+            let Some(te) = r[ti + 6..].find('"') else { continue };
+            if !r[ti + 6..ti + 6 + te].ends_with(&mata[1..mata.len() - 1]) {
+                continue;
+            }
+            let Some(gi) = r.find("Target=\"") else { continue };
+            let Some(ge) = r[gi + 8..].find('"') else { continue };
+            let t = &r[gi + 8..gi + 8 + ge];
+            // `/word/styles.xml` のような絶対の書き方も来ます
+            return if let Some(x) = t.strip_prefix('/') {
+                x.to_string()
+            } else {
+                format!("word/{t}")
+            };
+        }
+        kisoku.to_string()
+    };
     let mut media: std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>> =
         Default::default();
     for (id, target) in &targets {
@@ -114,13 +139,13 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     // 定義の本体は保存で原本ごと持ち越す — ここは一覧を見せる写し
     // (2026-08-12 発注者確定「スタイル定義は持たない主義では無理」)
     let mut styxml = String::new();
-    if let Ok(mut f) = zip.by_name("word/styles.xml") {
+    if let Ok(mut f) = zip.by_name(&bui("styles", "word/styles.xml")) {
         let _ = f.read_to_string(&mut styxml);
     }
 
     // 設定(settings.xml)。欧文ハイフネーションの旗を読む
     let mut sxml = String::new();
-    if let Ok(mut f) = zip.by_name("word/settings.xml") {
+    if let Ok(mut f) = zip.by_name(&bui("settings", "word/settings.xml")) {
         let _ = f.read_to_string(&mut sxml);
     }
 
@@ -150,6 +175,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     extract_shapes(&mut doc);
     if !styxml.is_empty() {
         doc.styles = parse_styles(&styxml);
+        hyou_no_kei(&mut doc, &styxml);
     }
     if !pxml.is_empty() {
         let field = |tag: &str| -> String {
@@ -266,7 +292,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     // 文書の既定書体(styles.xml の docDefaults)。読まないと
     // 明朝の書類がこちらの既定(ゴシック)で表示される
     let mut styles = String::new();
-    if let Ok(mut f) = zip.by_name("word/styles.xml") {
+    if let Ok(mut f) = zip.by_name(&bui("styles", "word/styles.xml")) {
         let _ = f.read_to_string(&mut styles);
     }
     if let Some(i) = styles.find("docDefaults") {
@@ -294,7 +320,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
             // この形(w:asciiTheme="minorHAnsi")
             if doc.font.is_none() && tag.contains("Theme=\"") {
                 let mut theme = String::new();
-                if let Ok(mut f) = zip.by_name("word/theme/theme1.xml") {
+                if let Ok(mut f) = zip.by_name(&bui("theme", "word/theme/theme1.xml")) {
                     let _ = f.read_to_string(&mut theme);
                 }
                 // 本文の既定は minor の組。major は見出し用
@@ -362,6 +388,9 @@ pub(super) struct TblBuild {
     fixed_layout: bool,
     /// 行の高さ(mm)。w:trPr の w:trHeight から
     row_mm: Vec<f32>,
+    /// 罫線の指定(w:tblBorders)。**書いてなければ None** で、
+    /// そのときは今までどおり四方に引きます
+    borders: Option<kumihan::TableBorders>,
 }
 
 /// twip → mm(1twip = 1/20pt)
@@ -1326,6 +1355,11 @@ pub(super) fn parse_document_rels(
     let mut cell_vmerge = VMerge::None;
     // セルの縦位置。**docx の既定は上揃え**(表計算の既定の下揃えとは違う)
     let mut cell_valign = book::VAlign::Top;
+    // **罫線の辺の名前は余白にも出ます**(w:tcMar の w:top など)。
+    // どの囲みの中に居るかを覚えてから読みます(2026-08-30)
+    let mut in_tbl_borders = false;
+    let mut in_tc_borders = false;
+    let mut cell_borders = kumihan::CellBorders::default();
     // 行の高さ(twip)。w:trPr の w:trHeight
     let mut row_twips: Option<u32> = None;
     // **無指定は None のまま持つ。** ここで数を入れると、往復で
@@ -1424,6 +1458,14 @@ pub(super) fn parse_document_rels(
                         }
                     }
                     b"tbl" => stack.push(TblBuild::default()),
+                    b"tblBorders" => {
+                        in_tbl_borders = true;
+                        // 書いてある辺だけ引きます。まず全部消してから足します
+                        if let Some(b) = stack.last_mut() {
+                            b.borders = Some(kumihan::TableBorders::nashi());
+                        }
+                    }
+                    b"tcBorders" => in_tc_borders = true,
                     b"gridCol" => if let Some(b) = stack.last_mut() {
                         if let Some(w) = attr(&e, "w").and_then(|v| v.parse::<f32>().ok()) {
                             b.col_mm.push(twip_mm(w));
@@ -1840,6 +1882,33 @@ pub(super) fn parse_document_rels(
                 match n.as_slice() {
                     // 記入欄の設定は空要素で来る(<w:alias w:val="…"/> 等)
                     _ if in_sdtpr && sdt_pr_elem(&n, &e, &mut sdt_now) => {}
+                    // **罫線の辺**。`w:val="nil"` と `"none"` は引かない印
+                    b"top" | b"left" | b"bottom" | b"right" | b"insideH" | b"insideV"
+                        if in_tbl_borders || in_tc_borders =>
+                    {
+                        let hiku = !matches!(attr(&e, "val").as_deref(), Some("nil") | Some("none"));
+                        if in_tbl_borders {
+                            if let Some(b) = stack.last_mut() {
+                                let bd = b.borders.get_or_insert_with(kumihan::TableBorders::nashi);
+                                match n.as_slice() {
+                                    b"top" => bd.top = hiku,
+                                    b"left" => bd.left = hiku,
+                                    b"bottom" => bd.bottom = hiku,
+                                    b"right" => bd.right = hiku,
+                                    b"insideH" => bd.inside_h = hiku,
+                                    _ => bd.inside_v = hiku,
+                                }
+                            }
+                        } else {
+                            match n.as_slice() {
+                                b"top" => cell_borders.top = Some(hiku),
+                                b"left" => cell_borders.left = Some(hiku),
+                                b"bottom" => cell_borders.bottom = Some(hiku),
+                                b"right" => cell_borders.right = Some(hiku),
+                                _ => {}
+                            }
+                        }
+                    }
                     // gridCol は空要素で来る
                     b"gridCol" => if let Some(b) = stack.last_mut() {
                         if let Some(w) = attr(&e, "w").and_then(|v| v.parse::<f32>().ok()) {
@@ -2207,6 +2276,7 @@ pub(super) fn parse_document_rels(
                         let paras = std::mem::take(&mut b.cell);
                         b.row.push(Cellbox {
                             paragraphs: paras,
+                            borders: cell_borders,
                             col_span: cell_span,
                             v_merge: cell_vmerge,
                             valign: cell_valign,
@@ -2214,7 +2284,10 @@ pub(super) fn parse_document_rels(
                         cell_span = 0;
                         cell_vmerge = VMerge::None;
                         cell_valign = book::VAlign::Top;
+                        cell_borders = kumihan::CellBorders::default();
                     },
+                    b"tblBorders" => in_tbl_borders = false,
+                    b"tcBorders" => in_tc_borders = false,
                     b"tr" => if let Some(b) = stack.last_mut() {
                         let row = std::mem::take(&mut b.row);
                         b.rows.push(row);
@@ -2227,6 +2300,14 @@ pub(super) fn parse_document_rels(
                         if let Some(b) = stack.pop() {
                             let tb = Table {
                                 rows: b.rows,
+                                // **docx の既定は「引かない」です。** 表も
+                                // スタイルも何も言っていない表に、Word は
+                                // 罫線を引きません。四方に引くのは AsciiDoc
+                                // の表の決めで、docx には合いません
+                                // (2026-08-30)。スタイルが言っていれば
+                                // 後で [`hyou_no_kei`] が上書きします
+                                borders: b.borders.unwrap_or_else(kumihan::TableBorders::nashi),
+                                style_borders_unset: b.borders.is_none(),
                                 col_mm: b.col_mm,
                                 // どの行にも指定が無ければ、持たないのと同じ
                                 row_mm: if b.row_mm.iter().all(|h| *h <= 0.0) {
@@ -2395,6 +2476,51 @@ pub fn shape_anchor_xml(sp: &kumihan::DocShape, id: usize) -> String {
 pub fn shape_anchor_run(sp: &kumihan::DocShape, id: usize) -> String {
     let inner = shape_anchor_xml(sp, id);
     wrap_with_ns(&inner, &Default::default()).unwrap_or(inner)
+}
+
+/// **表の罫線を、名乗っているスタイルから補う。**
+///
+/// 表が `w:tblBorders` を持っていなければ、`w:tblStyle` が指す定義の
+/// `w:tblBorders` に従います。スタイルにも無ければ、いままでどおり
+/// 四方に引きます。
+///
+/// 2026-08-30。内閣府の様式(document_4.docx)は4つの表のうち3つが
+/// スタイル任せで、そのスタイルが「下と横内線だけ」でした。読まないと
+/// 枠だらけになります。
+fn hyou_no_kei(doc: &mut Document, styxml: &str) {
+    fn kei_of(styxml: &str, id: &str) -> Option<kumihan::TableBorders> {
+        let i = styxml.find(&format!("w:styleId=\"{id}\""))?;
+        let j = styxml[i..].find("</w:style>").map(|e| i + e)?;
+        let seg = &styxml[i..j];
+        let bi = seg.find("<w:tblBorders>")?;
+        let be = seg[bi..].find("</w:tblBorders>").map(|e| bi + e)?;
+        let naka = &seg[bi..be];
+        let mut bd = kumihan::TableBorders::nashi();
+        for (tag, at) in [
+            ("<w:top", &mut bd.top), ("<w:left", &mut bd.left),
+            ("<w:bottom", &mut bd.bottom), ("<w:right", &mut bd.right),
+            ("<w:insideH", &mut bd.inside_h), ("<w:insideV", &mut bd.inside_v),
+        ] {
+            if let Some(k) = naka.find(tag) {
+                let owari = naka[k..].find('>').map(|e| k + e).unwrap_or(naka.len());
+                *at = !naka[k..owari].contains("w:val=\"nil\"")
+                    && !naka[k..owari].contains("w:val=\"none\"");
+            }
+        }
+        Some(bd)
+    }
+    fn walk(blocks: &mut [Block], styxml: &str) {
+        for b in blocks {
+            let Block::Table(t) = b else { continue };
+            if !t.style_borders_unset {
+                continue;
+            }
+            if let Some(bd) = t.style.as_deref().and_then(|id| kei_of(styxml, id)) {
+                t.borders = bd;
+            }
+        }
+    }
+    walk(&mut doc.blocks, styxml);
 }
 
 /// 原文控え(anchors)の中の joshape(ページに貼り付く図形)を模型へ読み戻す。

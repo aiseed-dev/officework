@@ -518,6 +518,9 @@ pub enum VMerge {
 #[derive(Debug, Clone)]
 pub struct Cellbox {
     pub paragraphs: Vec<Paragraph>,
+    /// このセルだけの罫線の指定(docx の `w:tcPr/w:tcBorders`)。
+    /// `None` は「言わない」で、表の指定に従います
+    pub borders: CellBorders,
     /// 横の結合(docx の w:gridSpan)。このセルが占める格子の列数。
     /// 0 と 1 はどちらも「結合なし」(既定の 0 を特別扱いしない)
     pub col_span: u8,
@@ -531,6 +534,48 @@ pub struct Cellbox {
     pub valign: book::VAlign,
 }
 
+/// **表のどこに罫線を引くか**(docx の `w:tblBorders`)。
+///
+/// 既定は6か所とも引きます。AsciiDoc の表と、新しく作る表がこれです。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TableBorders {
+    pub top: bool,
+    pub left: bool,
+    pub bottom: bool,
+    pub right: bool,
+    /// 行と行の間
+    pub inside_h: bool,
+    /// 列と列の間
+    pub inside_v: bool,
+}
+
+impl Default for TableBorders {
+    fn default() -> Self {
+        TableBorders { top: true, left: true, bottom: true, right: true,
+                       inside_h: true, inside_v: true }
+    }
+}
+
+impl TableBorders {
+    /// 1本も引かない
+    pub fn nashi() -> Self {
+        TableBorders { top: false, left: false, bottom: false, right: false,
+                       inside_h: false, inside_v: false }
+    }
+}
+
+/// **そのセルだけの罫線**(docx の `w:tcBorders`)。
+///
+/// `None` は「言わない」で、表の指定に従います。`Some(false)` は
+/// **わざわざ引かない**で、意味が違います。
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct CellBorders {
+    pub top: Option<bool>,
+    pub left: Option<bool>,
+    pub bottom: Option<bool>,
+    pub right: Option<bool>,
+}
+
 /// **既定の縦位置は上揃え。**
 ///
 /// `book::VAlign` の既定は下揃えですが、それは表計算の決めです。docx の
@@ -541,6 +586,7 @@ impl Default for Cellbox {
     fn default() -> Self {
         Cellbox {
             paragraphs: Vec::new(),
+            borders: CellBorders::default(),
             col_span: 0,
             v_merge: VMerge::None,
             valign: book::VAlign::Top,
@@ -559,6 +605,19 @@ impl Cellbox {
 #[derive(Debug, Clone, Default)]
 pub struct Table {
     pub rows: Vec<Vec<Cellbox>>,
+    /// **どこに罫線を引くか**(docx の `w:tblBorders`)。
+    ///
+    /// 既定は6か所とも引きます。docx に `w:tblBorders` が書いてあれば、
+    /// **そこに挙がっている辺だけ**引きます(2026-08-30)。前は指定を
+    /// 読まずに必ず四方へ引いていたので、下線だけの様式が枠だらけに
+    /// なっていました。
+    pub borders: TableBorders,
+    /// **`w:tblBorders` を自分では言っていない**という印。
+    ///
+    /// 言っていなければ、名乗っているスタイルの罫線に従います
+    /// (`ooxml` が読んだ後で当てます)。AsciiDoc の表と新しく作る表は
+    /// 自分で言っているので false です
+    pub style_borders_unset: bool,
     /// 列の幅(mm)。docx の `w:gridCol`。空なら等分
     pub col_mm: Vec<f32>,
     /// **行の高さ(mm)**。docx の `w:trPr/w:trHeight`。空なら中身なり。

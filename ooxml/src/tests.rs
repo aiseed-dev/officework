@@ -530,6 +530,46 @@ mod para_tests {
         assert!(crate::foreign_shape(&a).is_none(), "うちの図形を他所の物と読んだ");
     }
 
+    /// **表の罫線は書いてあるとおりに引く。**
+    ///
+    /// 2026-08-30、内閣府の様式(document_4.docx)で見つけました。読み手が
+    /// `w:tblBorders` も `w:tcBorders` も読まず、必ず四方に引いていたので、
+    /// 下線だけの記入欄が枠だらけになっていました。
+    ///
+    /// **docx の既定は「引かない」**です。表もスタイルも何も言っていない表に、
+    /// Word は罫線を引きません。四方に引くのは AsciiDoc の表の決めです。
+    #[test]
+    fn table_borders_are_read_as_written() {
+        // 下と横内線だけの様式(記入欄によくある形)
+        let xml = r#"<w:document xmlns:w="x"><w:body><w:tbl><w:tblPr><w:tblBorders>
+            <w:bottom w:val="single" w:sz="4"/><w:insideH w:val="single" w:sz="4"/>
+            </w:tblBorders></w:tblPr>
+            <w:tr><w:tc><w:tcPr><w:tcBorders><w:bottom w:val="nil"/></w:tcBorders></w:tcPr>
+            <w:p><w:r><w:t>名前</w:t></w:r></w:p></w:tc>
+            <w:tc><w:p><w:r><w:t>値</w:t></w:r></w:p></w:tc></w:tr>
+            </w:tbl></w:body></w:document>"#;
+        let (doc, _) = crate::parse_document_xml(xml);
+        let kumihan::Block::Table(t) = &doc.blocks[0] else { panic!("表でない") };
+        let b = t.borders;
+        assert!(b.bottom && b.inside_h, "書いてある辺が落ちた");
+        assert!(!b.top && !b.left && !b.right && !b.inside_v,
+                "書いていない辺まで引いている: {b:?}");
+        assert_eq!(t.rows[0][0].borders.bottom, Some(false), "セルの nil を読んでいない");
+        assert_eq!(t.rows[0][1].borders.bottom, None, "言っていないセルが指定を持った");
+    }
+
+    /// **何も言っていない表には引かない**(docx の既定)
+    #[test]
+    fn a_table_that_says_nothing_gets_no_borders() {
+        let xml = r#"<w:document xmlns:w="x"><w:body><w:tbl>
+            <w:tr><w:tc><w:p><w:r><w:t>あ</w:t></w:r></w:p></w:tc></w:tr>
+            </w:tbl></w:body></w:document>"#;
+        let (doc, _) = crate::parse_document_xml(xml);
+        let kumihan::Block::Table(t) = &doc.blocks[0] else { panic!("表でない") };
+        assert_eq!(t.borders, kumihan::TableBorders::nashi(), "四方に引いている");
+        assert!(t.style_borders_unset, "スタイルから補う印が付いていない");
+    }
+
     /// **文字数での指定も読む。** 日本語の Word がよく使う書き方で、
     /// `w:leftChars="100"` は全角1文字(210 twip)です。Word は twip と
     /// 両方あるときこちらを優先します(2026-08-30)
@@ -1752,6 +1792,46 @@ mod list_level_tests {
         let (back, _) = read(buf).expect("読めない");
         let inds: Vec<u8> = back.paragraphs().map(|p| p.indent).collect();
         assert_eq!(inds, vec![0, 2], "深さが往復しない");
+    }
+
+    /// **表の罫線は書いてあるとおりに引く。**
+    ///
+    /// 2026-08-30、内閣府の様式(document_4.docx)で見つけました。読み手が
+    /// `w:tblBorders` も `w:tcBorders` も読まず、必ず四方に引いていたので、
+    /// 下線だけの記入欄が枠だらけになっていました。
+    ///
+    /// **docx の既定は「引かない」**です。表もスタイルも何も言っていない表に、
+    /// Word は罫線を引きません。四方に引くのは AsciiDoc の表の決めです。
+    #[test]
+    fn table_borders_are_read_as_written() {
+        // 下と横内線だけの様式(記入欄によくある形)
+        let xml = r#"<w:document xmlns:w="x"><w:body><w:tbl><w:tblPr><w:tblBorders>
+            <w:bottom w:val="single" w:sz="4"/><w:insideH w:val="single" w:sz="4"/>
+            </w:tblBorders></w:tblPr>
+            <w:tr><w:tc><w:tcPr><w:tcBorders><w:bottom w:val="nil"/></w:tcBorders></w:tcPr>
+            <w:p><w:r><w:t>名前</w:t></w:r></w:p></w:tc>
+            <w:tc><w:p><w:r><w:t>値</w:t></w:r></w:p></w:tc></w:tr>
+            </w:tbl></w:body></w:document>"#;
+        let (doc, _) = parse_document_xml(xml);
+        let kumihan::Block::Table(t) = &doc.blocks[0] else { panic!("表でない") };
+        let b = t.borders;
+        assert!(b.bottom && b.inside_h, "書いてある辺が落ちた");
+        assert!(!b.top && !b.left && !b.right && !b.inside_v,
+                "書いていない辺まで引いている: {b:?}");
+        assert_eq!(t.rows[0][0].borders.bottom, Some(false), "セルの nil を読んでいない");
+        assert_eq!(t.rows[0][1].borders.bottom, None, "言っていないセルが指定を持った");
+    }
+
+    /// **何も言っていない表には引かない**(docx の既定)
+    #[test]
+    fn a_table_that_says_nothing_gets_no_borders() {
+        let xml = r#"<w:document xmlns:w="x"><w:body><w:tbl>
+            <w:tr><w:tc><w:p><w:r><w:t>あ</w:t></w:r></w:p></w:tc></w:tr>
+            </w:tbl></w:body></w:document>"#;
+        let (doc, _) = parse_document_xml(xml);
+        let kumihan::Block::Table(t) = &doc.blocks[0] else { panic!("表でない") };
+        assert_eq!(t.borders, kumihan::TableBorders::nashi(), "四方に引いている");
+        assert!(t.style_borders_unset, "スタイルから補う印が付いていない");
     }
 
     /// **文字数での指定も読む。** 日本語の Word がよく使う書き方で、
