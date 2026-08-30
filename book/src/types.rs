@@ -2198,6 +2198,27 @@ impl Sheet {
         self.cells.keys().fold((0, 0), |(r, c), p| (r.max(p.row + 1), c.max(p.col + 1)))
     }
 
+    /// **刷る範囲**(行数, 列数)。空なら (0,0)。
+    ///
+    /// [`extent`](Self::extent) は**セルが置かれている所**を返します。
+    /// xlsx には値も飾りも無いセルが並んでいることがよくあり、それを
+    /// 数えると紙が余分に増えます。国税庁の酒税の表では、12列のうち
+    /// 中身があるのは9列で、80行のうち71行でした(2026-08-30)。
+    ///
+    /// **空でも罫線や塗りのあるセルは刷ります。** 表の枠の一部なので、
+    /// 落とすと様式が欠けます。
+    pub fn print_extent(&self) -> (u32, u32) {
+        self.cells
+            .iter()
+            .filter(|(_, c)| {
+                !matches!(c.value, Value::Empty)
+                    || c.formula.is_some()
+                    || c.fmt.borders != Borders::default()
+                    || c.fmt.fill.is_some()
+            })
+            .fold((0, 0), |(r, c), (p, _)| (r.max(p.row + 1), c.max(p.col + 1)))
+    }
+
     /// **見せる大きさ。** 次の4つの、いちばん大きい所:
     ///
     /// - `extent` — 中身のあるセル

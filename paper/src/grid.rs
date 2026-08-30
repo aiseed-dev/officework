@@ -17,8 +17,42 @@ use crate::Paper;
 
 const COL_MM: f32 = 26.0;
 const ROW_MM: f32 = 7.0;
-/// xlsx の列幅1 ≒ 2.0mm(標準フォントの「0」1個ぶん)
-const MM_PER_CHW: f32 = 2.0;
+
+/// 行の高さ(mm)。**シートの既定を使います**(2026-08-30)。
+///
+/// 高さを言っていない行は、シートの `defaultRowHeight`(pt)に従います。
+/// 前は 7.0mm の決め打ちに落ちていて、国税庁の酒税の表(13.2pt = 4.7mm)
+/// では**5割高く**なり、1枚に入る行が減って紙が倍に増えていました。
+fn gyou_mm(grid: &Grid, r: u32) -> f32 {
+    grid.row_height
+        .get(&r)
+        .copied()
+        .or(grid.default_row_height)
+        .map(|pt| pt * 25.4 / 72.0)
+        .unwrap_or(ROW_MM)
+}
+/// **列の幅(mm)。Excel と同じ式で出します**(2026-08-30)。
+///
+/// xlsx の列幅は「標準の書体の `0` が何文字ぶん入るか」で、画素への
+/// 直し方は Excel が決めています:
+///
+/// ```text
+/// px = trunc(幅 × MDW) + 5
+/// ```
+///
+/// `MDW` は標準の書体の `0` の幅(画素)で、96dpi ではだいたい 7 です
+/// (Calibri 11 も ＭＳ明朝 10.5 も 7)。`+5` はセルの内側の余白
+/// (左右2画素ずつ)と罫線1画素です。Excel の既定の 8.43 が 64 画素に
+/// なるのはこの式です。
+///
+/// 前は「1文字 = 2.0mm」の掛け算でした。8.43 で 16.86mm、この式で
+/// 16.93mm なので**ほとんど同じ**です。幅が変わっても離れないように
+/// 式のほうへ寄せました(2026-08-30)。
+fn retsu_mm(haba: f32) -> f32 {
+    const MDW: f32 = 7.0;
+    let px = (haba * MDW).trunc() + 5.0;
+    px * 25.4 / 96.0
+}
 
 /// `RRGGBB` を 0..1 の RGB にする。読めなければ None(黙って黒にしない)。
 /// 紙の1枚の置き場(頁と層)。printpdf の組で持ち回ります。
@@ -102,12 +136,12 @@ fn fit_scale(
         .filter(|c| !grid.col_hidden.contains(c))
         .map(|c| {
             grid.col_width.get(&c).copied().or(grid.default_col_width)
-                .map(|w| w * MM_PER_CHW).unwrap_or(COL_MM)
+                .map(retsu_mm).unwrap_or(COL_MM)
         })
         .sum();
     let total_h: f32 = (r0..r1)
         .filter(|r| !grid.row_hidden.contains(r))
-        .map(|r| grid.row_height.get(&r).map(|pt| pt * 25.4 / 72.0).unwrap_or(ROW_MM))
+        .map(|r| gyou_mm(grid, r))
         .sum();
     let usable_w = (paper.width_mm - ml - mr).max(1.0);
     let usable_h = (paper.height_mm - mt - mb).max(1.0);
@@ -134,7 +168,7 @@ fn fit_scale(
 /// 返すのは (行の切れ目, 列の切れ目)。どちらも「その手前で紙が変わる」
 /// 位置で、先頭(範囲の頭)は入れない。
 pub fn page_starts(grid: &Grid, paper: Paper, setup: &PrintSetup) -> (Vec<u32>, Vec<u32>) {
-    let (ext_rows, ext_cols) = grid.extent();
+    let (ext_rows, ext_cols) = grid.print_extent();
     let (r0, r1, c0, c1) = match setup.areas.first() {
         Some((a, b)) if setup.areas.len() == 1 => (a.row, b.row + 1, a.col, b.col + 1),
         // 域が複数あるときは域ごとに紙が変わる — 画面の線は引かない
@@ -156,7 +190,7 @@ pub fn page_starts(grid: &Grid, paper: Paper, setup: &PrintSetup) -> (Vec<u32>, 
             continue;
         }
         let cw = grid.col_width.get(&c).copied().or(grid.default_col_width)
-            .map(|x| x * MM_PER_CHW).unwrap_or(COL_MM) * scale;
+            .map(retsu_mm).unwrap_or(COL_MM) * scale;
         if w > 0.0 && (grid.col_breaks.contains(&c) || w + cw > usable_w + 0.1) {
             cols.push(c);
             w = 0.0;
@@ -171,7 +205,7 @@ pub fn page_starts(grid: &Grid, paper: Paper, setup: &PrintSetup) -> (Vec<u32>, 
         if grid.row_hidden.contains(&r) {
             continue;
         }
-        let rh = grid.row_height.get(&r).map(|pt| pt * 25.4 / 72.0).unwrap_or(ROW_MM) * scale;
+        let rh = gyou_mm(grid, r) * scale;
         if h > 0.0 && (grid.row_breaks.contains(&r) || h + rh > usable_h) {
             rows.push(r);
             h = 0.0;
@@ -528,7 +562,7 @@ fn draw_sheet(
     setup: &PrintSetup,
     carry: bool,
 ) -> (std::ops::Range<usize>, u32, Margins) {
-    let (mut ext_rows, mut ext_cols) = grid.extent();
+    let (mut ext_rows, mut ext_cols) = grid.print_extent();
     // **図形の置き場まで紙を伸ばします。** 中身のあるセルより下に置いた図は、
     // 伸ばさないと最後の行の所へ寄ってしまい、図が全部重なります
     // (2026-08-27 に図を紙で見て気づきました)
@@ -577,7 +611,7 @@ fn draw_sheet(
                 return 0.0;
             }
             grid.col_width.get(&c).copied().or(grid.default_col_width)
-                .map(|w| w * MM_PER_CHW).unwrap_or(COL_MM) * scale
+                .map(retsu_mm).unwrap_or(COL_MM) * scale
         })
         .collect();
     let mut col_x = vec![0.0f32];
@@ -630,7 +664,7 @@ fn draw_sheet(
         if grid.row_hidden.contains(&r) {
             return 0.0;
         }
-        grid.row_height.get(&r).map(|pt| pt * 25.4 / 72.0).unwrap_or(ROW_MM) * scale
+        gyou_mm(grid, r) * scale
     };
     let usable = paper.height_mm - mt - mb;
 
@@ -1158,6 +1192,23 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
 
 #[cfg(test)]
 mod tests {
+    /// **列の幅は Excel の式で出す。**
+    ///
+    /// 2026-08-30、国税庁の酒税の表で見つけました。「1文字 = 2.0mm」の
+    /// 掛け算だったので**どのシートも 8% 広く**なり、収まるはずのシートが
+    /// 横に割れて、7枚の冊子が 22 枚になっていました。
+    #[test]
+    fn a_column_is_as_wide_as_excel_makes_it() {
+        // 幅 8.43(Excel の既定)は 64 画素 = 16.93mm
+        assert!((super::retsu_mm(8.43) - 16.93).abs() < 0.05, "{}", super::retsu_mm(8.43));
+        // 前の式(× 2.0)は 16.86mm で近いが、幅が大きいほど離れる
+        // **狭い列ほど、前の「× 2.0」より広くなります。** 内側の余白
+        // (5画素 = 1.32mm)は幅に関わらず付くためで、細い列を並べた
+        // 帳票ほど差が出ます
+        assert!(super::retsu_mm(2.0) > 2.0 * 2.0, "細い列で余白が付いていない");
+        assert!(super::retsu_mm(40.0) < 40.0 * 2.0, "広い列で掛けすぎている");
+    }
+
     use book::{Borders, Cell, CellFormat, Pos, Value};
 
     use super::*;

@@ -5,6 +5,35 @@ use super::fmt::*;
 use super::refs::*;
 use super::types::*;
 
+/// **刷る範囲は、中身か飾りのあるセルまで。**
+///
+/// 2026-08-30、国税庁の酒税の表で見つけました。値も飾りも無いセルが右と
+/// 下に並んでいて、それを数えたぶん紙が増えていました(12列のうち中身が
+/// あるのは9列)。**空でも罫線のあるセルは刷ります** — 表の枠の一部です。
+#[cfg(test)]
+mod print_extent_tests {
+    use super::*;
+
+    #[test]
+    fn the_print_range_stops_at_the_last_thing_worth_printing() {
+        let mut s = Sheet { name: "見本".into(), ..Default::default() };
+        s.set(Pos::new(0, 0), Cell {
+            formula: None, value: Value::Text("あ".into()), fmt: Default::default() });
+        // **書式だけ持っていて、値も罫線も塗りも無いセル。**
+        // xlsx にはこれが右と下に並んでいることがよくあります
+        let mut dake = CellFormat::default();
+        dake.color = Some("FF0000".into());
+        s.set(Pos::new(9, 9), Cell { formula: None, value: Value::Empty, fmt: dake });
+        assert_eq!(s.extent(), (10, 10), "セルの置かれた範囲は変わらない");
+        assert_eq!(s.print_extent(), (1, 1), "空のセルまで刷ろうとしている");
+        // 罫線を持たせると、刷る範囲に入る
+        let mut fmt = CellFormat::default();
+        fmt.borders.bottom = Edge::THIN;
+        s.set(Pos::new(4, 4), Cell { formula: None, value: Value::Empty, fmt });
+        assert_eq!(s.print_extent(), (5, 5), "罫線のあるセルが落ちた");
+    }
+}
+
 #[cfg(test)]
 mod r1c1_tests {
 
