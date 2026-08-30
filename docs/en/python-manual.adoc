@@ -60,21 +60,25 @@ b.unsupported                           # list of parts we couldn't read (empty 
 
 === Reading and writing cells
 
+`s["A1"]` returns a cell, as in openpyxl. Read the value through `.value`. A never-touched address still returns a cell, whose `.value` is None.
+
 [source,python]
 ----
-s["A1"]            # read: numbers are float, text is str, ☑/☐ is bool, formula cells give the computed value
+s["A1"].value      # read: numbers are int / float, text is str, ☑/☐ is bool,
+                   #       dates are date, formula cells give the computed value
 s.formula("E2")    # the formula itself ("=SUM(B2:D2)"; None if not a formula)
 s.display("E2")    # display string ("238" — through the number format)
 s["A1"] = 100      # write: number
 s["A1"] = "text"   #        text
 s["A1"] = True     #        bool (shows as ☑/☐ in calc)
 s["A1"] = "=B1*C1" #        formula (string starting with "=")
-s["A1"] = date(2026, 8, 5)  # datetime.date/datetime/time → Excel serial number
+s["A1"] = date(2026, 8, 5)  # date / datetime / time — reads back as a date
 s["A1"] = None     #        clear
 ----
 
-* *Formatting is preserved* — writing a value never touches borders, merges, or number formats
-* Empty cells read back as *None or ""* (never-touched cells are None; "" appears when *the original file stored an empty string* — assigning `s["A1"] = ""` yourself is the same as clearing, and reads back None. Both are falsy, so `if s["A1"]:` usually suffices; to be precise use `s["A1"] in (None, "")`)
+* Writing is unchanged: `s["A1"] = value`. Only reading goes through `.value`. A range `s["A1:C3"]` is a tuple of rows, and the items are cells (`r[0][0].value`)
+* Writing a value is built not to touch the cell's formatting (borders, merges, number formats)
+* An empty cell's `.value` is None or "" (never-touched cells are None; "" appears when the original file stored an empty string — assigning `s["A1"] = ""` yourself is the same as clearing, and reads back None. Both are falsy, so `if s["A1"].value:` suffices)
 
 === Ranges as arrays — the main topic
 
