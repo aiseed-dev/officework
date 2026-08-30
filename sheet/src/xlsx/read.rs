@@ -122,6 +122,114 @@ pub(super) fn rich_inline(xml: &str) -> std::collections::HashMap<String, String
     rich_runs(xml, "is")
 }
 
+/// **共有文字列を si の並び順で run の並びに解く**(画面と紙が描くときに
+/// 使う側。`Sheet::rich_runs` の材料)。飾りの無い si は空。
+/// 保存には使わない — そちらは上の原文の持ち越しのまま
+pub(super) fn shared_runs(xml: &str) -> Vec<Vec<book::RichRun>> {
+    bodies_of(xml, "si").map(runs_of).collect()
+}
+
+/// シートの中に直に書かれた飾り(`<is>`)を、飾りを外した字 → run の並び
+/// で返す。共有文字列と違い番地の手がかりが無いので、字で引く
+pub(super) fn inline_runs(xml: &str) -> std::collections::HashMap<String, Vec<book::RichRun>> {
+    let mut out = std::collections::HashMap::new();
+    for naka in bodies_of(xml, "is") {
+        let rs = runs_of(naka);
+        if rs.is_empty() {
+            continue;
+        }
+        let moji: String = rs.iter().map(|r| r.text.as_str()).collect();
+        if !moji.is_empty() {
+            out.insert(moji, rs);
+        }
+    }
+    out
+}
+
+/// `<si>` / `<is>` の中身を並び順で返す
+fn bodies_of<'a>(xml: &'a str, tag: &str) -> impl Iterator<Item = &'a str> + 'a {
+    let hiraki = format!("<{tag}>");
+    let toji = format!("</{tag}>");
+    let mut rest = xml;
+    std::iter::from_fn(move || {
+        let a = rest.find(&hiraki)?;
+        let after = &rest[a + hiraki.len()..];
+        let b = after.find(&toji)?;
+        let naka = &after[..b];
+        rest = &after[b + toji.len()..];
+        Some(naka)
+    })
+}
+
+/// `<r>` の並びを run に解く。`<rPr>` の無い run は上書きなし。
+/// ふりがな(`<rPh>`)は `<r>` の外に居るので、ここには混ざらない
+fn runs_of(naka: &str) -> Vec<book::RichRun> {
+    if !naka.contains("<r>") && !naka.contains("<r ") {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    let mut rest = naka;
+    loop {
+        let i = match (rest.find("<r>"), rest.find("<r ")) {
+            (Some(a), Some(b)) => a.min(b),
+            (Some(a), None) => a,
+            (None, Some(b)) => b,
+            (None, None) => break,
+        };
+        let after = &rest[i..];
+        let Some(end) = after.find("</r>") else { break };
+        let r_body = &after[..end];
+        rest = &after[end + 4..];
+        let mut run = book::RichRun::default();
+        if let Some(p) = r_body.find("<rPr>") {
+            let pr = &r_body[p..r_body.find("</rPr>").unwrap_or(r_body.len())];
+            run.font = attr_of(pr, "rFont", "val");
+            run.size_pt = attr_of(pr, "sz", "val").and_then(|v| v.parse().ok());
+            run.bold = flag_of(pr, "b");
+            run.italic = flag_of(pr, "i");
+            run.color = attr_of(pr, "color", "rgb")
+                .map(|v| if v.len() == 8 { v[2..].to_string() } else { v });
+        }
+        let mut t_rest = r_body;
+        while let Some(ti) = t_rest.find("<t") {
+            let after_t = &t_rest[ti..];
+            let Some(j) = after_t.find('>') else { break };
+            if after_t[..j].ends_with('/') {
+                t_rest = &after_t[j + 1..];
+                continue;
+            }
+            let body = &after_t[j + 1..];
+            let Some(k) = body.find("</t>") else { break };
+            run.text.push_str(&unesc(&body[..k]));
+            t_rest = &body[k + 4..];
+        }
+        if !run.text.is_empty() {
+            out.push(run);
+        }
+    }
+    out
+}
+
+/// `<sz val="10"/>` のような1要素の属性を抜く(rPr の中だけで使う)
+fn attr_of(pr: &str, elem: &str, attr: &str) -> Option<String> {
+    let key = format!("<{elem} ");
+    let i = pr.find(&key)?;
+    let end = pr[i..].find("/>").map(|j| i + j).unwrap_or(pr.len());
+    let seg = &pr[i..end];
+    let akey = format!("{attr}=\"");
+    let a = seg.find(&akey)? + akey.len();
+    let b = seg[a..].find('"')? + a;
+    Some(unesc(&seg[a..b]))
+}
+
+/// `<b/>` は true、`<b val="0"/>` は false、無ければ None
+fn flag_of(pr: &str, elem: &str) -> Option<bool> {
+    if pr.contains(&format!("<{elem}/>")) {
+        return Some(true);
+    }
+    attr_of(pr, elem, "val").map(|v| v != "0" && v != "false")
+}
+
 fn rich_runs(xml: &str, tag: &str) -> std::collections::HashMap<String, String> {
     let (hiraki, toji) = (format!("<{tag}>"), format!("</{tag}>"));
     let mut out = std::collections::HashMap::new();
@@ -1297,6 +1405,7 @@ pub(super) fn parse_threaded_comments(
 }
 
 pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>],
+               runs: &[Vec<book::RichRun>],
                styles: &[book::CellFormat], name: &str, rep: &mut Report) -> Sheet {
     let mut r = Reader::from_str(xml);
     r.config_mut().trim_text(false);
@@ -1566,6 +1675,13 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
                                 {
                                     sh.phonetics.insert(p, r);
                                 }
+                                // セルの中の飾り(richtext)も紐づけて持つ —
+                                // 描く側(画面・紙)が見る
+                                if let Some(rs) = i.and_then(|i| runs.get(i)) {
+                                    if !rs.is_empty() {
+                                        sh.rich_runs.insert(p, rs.clone());
+                                    }
+                                }
                                 i.and_then(|i| shared.get(i).cloned())
                                     .map(Value::Text).unwrap_or(Value::Empty)
                             }
@@ -1715,14 +1831,16 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
         named_styles = crate::xlsx::styles::parse_named(&s, &theme_colors);
     }
 
-    let (shared, rubies) = {
+    let (shared, rubies, shared_run_list) = {
         let mut s = String::new();
         match zip.by_name("xl/sharedStrings.xml") {
             Ok(mut f) => {
                 let _ = f.read_to_string(&mut s);
-                parse_shared(&s)
+                let (a, b) = parse_shared(&s);
+                let r = shared_runs(&s);
+                (a, b, r)
             }
-            Err(_) => (Vec::new(), Vec::new()),
+            Err(_) => (Vec::new(), Vec::new(), Vec::new()),
         }
     };
     // シート名(workbook.xml の並び順)と、名前の定義
@@ -1962,8 +2080,24 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
         let mut s = String::new();
         if let Ok(mut f) = zip.by_name(path) { let _ = f.read_to_string(&mut s); }
         let name = names.get(i).cloned().unwrap_or_else(|| format!("Sheet{}", i + 1));
-        let mut sh = parse_sheet(&s, &shared, &rubies, &styles, &name, &mut rep);
+        let mut sh = parse_sheet(&s, &shared, &rubies, &shared_run_list, &styles, &name, &mut rep);
         sh.hidden = hiddens.get(i).copied().unwrap_or(false);
+        // シートの中に直に書かれた飾り(openpyxl の置き方)も別表へ。
+        // 番地の手がかりが無いので、飾りを外した字で引き当てる
+        let inline = inline_runs(&s);
+        if !inline.is_empty() {
+            let atari: Vec<(Pos, Vec<book::RichRun>)> = sh
+                .cells
+                .iter()
+                .filter_map(|(p, c)| match &c.value {
+                    Value::Text(t) => inline.get(t).map(|rs| (*p, rs.clone())),
+                    _ => None,
+                })
+                .collect();
+            for (p, rs) in atari {
+                sh.rich_runs.insert(p, rs);
+            }
+        }
         // このシートの rels(ハイパーリンクの先・コメントの部品への道)
         let rels_path = {
             let base = path.rsplit_once('/').map(|(_, b)| b).unwrap_or(path);
@@ -2790,7 +2924,36 @@ pub(super) fn parse_print_area(raw: &str) -> Option<(usize, Vec<(Pos, Pos)>)> {
 
 #[cfg(test)]
 mod rich_tests {
-    use super::{rich_inline, rich_shared};
+    use super::{inline_runs, rich_inline, rich_shared, shared_runs};
+
+    /// **飾りを run の並びに解けるか**(描く側が見る別表の材料)。
+    /// 書体・大きさ・太字と、si の並び順、飾りの無い si が空なこと。
+    #[test]
+    fn runs_are_parsed_with_font_size_and_bold() {
+        let sst = r#"<sst><si><r><rPr><rFont val="ＭＳ ゴシック"/><sz val="9"/></rPr><t>課税数量</t></r><r><rPr><rFont val="Century"/><sz val="8"/><b/></rPr><t xml:space="preserve">Taxable volume</t></r></si><si><t>ただの字</t></si></sst>"#;
+        let rs = shared_runs(sst);
+        assert_eq!(rs.len(), 2, "si の数と合わない: {rs:?}");
+        assert!(rs[1].is_empty(), "飾りの無い si が空でない");
+        let r = &rs[0];
+        assert_eq!(r.len(), 2);
+        assert_eq!(r[0].font.as_deref(), Some("ＭＳ ゴシック"));
+        assert_eq!(r[0].size_pt, Some(9.0));
+        assert_eq!(r[0].text, "課税数量");
+        assert_eq!(r[1].font.as_deref(), Some("Century"));
+        assert_eq!(r[1].bold, Some(true));
+        assert_eq!(r[1].text, "Taxable volume");
+    }
+
+    /// シートの中に直に書かれた飾り(`<is>`)も、字で引ける形で解ける
+    #[test]
+    fn inline_runs_are_keyed_by_the_plain_text() {
+        let sheet_xml = r#"<sheetData><row r="1"><c r="A1" t="inlineStr"><is><r><rPr><color rgb="FFCC0000"/></rPr><t>赤い字</t></r><r><t>と普通の字</t></r></is></c></row></sheetData>"#;
+        let m = inline_runs(sheet_xml);
+        assert_eq!(m.len(), 1, "{m:?}");
+        let rs = &m["赤い字と普通の字"];
+        assert_eq!(rs[0].color.as_deref(), Some("CC0000"), "先頭の FF が剥けていない");
+        assert_eq!(rs[1].color, None);
+    }
 
     /// **セルの中の飾りを、原文のまま拾えるか。**
     ///

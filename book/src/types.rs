@@ -528,6 +528,21 @@ pub struct Cell {
     pub fmt: CellFormat,
 }
 
+/// セルの中の1つの run — 字と、セルの書式からの上書き(None の項目は
+/// セルの書式のまま)。読み専用の別表(`Sheet::rich_runs`)にだけ現れる
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct RichRun {
+    pub text: String,
+    /// 書体の名前(rFont)
+    pub font: Option<String>,
+    /// 大きさ(pt)
+    pub size_pt: Option<f32>,
+    pub bold: Option<bool>,
+    pub italic: Option<bool>,
+    /// RRGGBB
+    pub color: Option<String>,
+}
+
 
 impl Cell {
     /// 利用者が入力した文字列を、式か値として解釈する。
@@ -791,6 +806,11 @@ pub struct Sheet {
     /// セルのふりがな(xlsx の rPh)。**日本語の xlsx の宝** — 欧米の実装が
     /// 落としがちなので、読んで持ち、保存で書き戻す。PHONETIC 関数が読む
     pub phonetics: BTreeMap<Pos, String>,
+    /// セルの中の飾り(richtext)。読みで `<r>` を解いて持ち、画面と紙が
+    /// **描くときに見る**ための別表。保存はここから書かない — 原文の
+    /// 持ち越し(xlsx::write の共有文字列)のままで、adoc にも持ち込まない
+    /// (2026-08-28 の決めは変えない)。飾りの無いセルは載らない
+    pub rich_runs: BTreeMap<Pos, Vec<RichRun>>,
     /// 動的配列のスピル(起点 → 高さ, 幅)。=FILTER 等があふれた先の記録。
     /// 再計算はここを見て前回の影を消してから置き直す(残骸を残さない)。
     /// xlsx へは独自部品 xl/joSpill.xml で往復(joPivot と同じ作法) —
