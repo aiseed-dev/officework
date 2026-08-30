@@ -99,6 +99,14 @@ impl Tree {
         out
     }
 
+    /// 行を上から `cap` 件まで。2つめは切って落とした数。
+    /// **黙って切らない** — 呼ぶ側が断りを出す(filelist と同じ作法)
+    pub fn rows_capped(&self, cap: usize) -> (Vec<Row>, usize) {
+        let all = self.rows();
+        let rest = all.len().saturating_sub(cap);
+        (all.into_iter().take(cap).collect(), rest)
+    }
+
     fn walk(&self, dir: &Path, depth: usize, out: &mut Vec<Row>) {
         for e in folder::list(dir) {
             let expanded = e.kind == Kind::Folder && self.is_expanded(&e.path);

@@ -140,26 +140,51 @@ impl Calc {
                                     cx.notify()
                                 }))),
                     );
-                    let (list, rest) = ui::filelist::entries_with_rest(dir);
-                    if list.is_empty() {
+                    // **木の根を、いま見ているフォルダに同期**(2026-08-31
+                    // 発注者「IDE にあるものと同じでいい」)。writer と同じ形
+                    if self.fl_tree.root() != dir {
+                        self.fl_tree.set_root(dir);
+                    }
+                    let (rows, rest) =
+                        self.fl_tree.rows_capped(ui::filelist::LIST_CAP);
+                    if rows.is_empty() {
                         d = d.child(ui::filelist::empty(&look));
                     }
-                    for (i, e) in list.into_iter().enumerate() {
+                    for (i, r) in rows.into_iter().enumerate() {
+                        let e = r.entry.clone();
                         let can_open = e.kind.can_open();
                         let is_a_doc = e.kind.is_doc();
                         let path = e.path.clone();
-                        // **フォルダは中へ入ります**(2026-08-26 発注者)
+                        // **フォルダはその場で開閉**(IDE の木)。改名と
+                        // 削除の絵はファイルと同じに付ける
                         if e.kind == ui::folder::Kind::Folder {
-                            let line = ui::filelist::row(&look, i, &e, false)
+                            let line = ui::filelist::tree_row(&look, i, &r, false)
                                 .on_click(cx.listener(move |this, _, _, cx| {
-                                    this.show_folder(path.clone());
+                                    this.fl_tree.toggle(&path);
                                     cx.notify()
                                 }));
-                            d = d.child(line);
+                            let path2 = e.path.clone();
+                            let path3 = e.path.clone();
+                            d = d.child(
+                                div().flex().flex_row().items_center().gap_1()
+                                    .child(div().flex_1().min_w(px(0.0)).child(line))
+                                    .child(ui::filelist::row_button(&look, i, "ren",
+                                        ui::t!("name").into())
+                                        .on_click(cx.listener(move |this, _, _, cx| {
+                                            this.fl_start(crate::FlJob::Rename(path2.clone()));
+                                            cx.notify()
+                                        })))
+                                    .child(ui::filelist::row_button(&look, i, "del",
+                                        ui::t!("erase").into())
+                                        .on_click(cx.listener(move |this, _, _, cx| {
+                                            this.fl_start(crate::FlJob::Delete(path3.clone()));
+                                            cx.notify()
+                                        }))),
+                            );
                             continue;
                         }
                         let current = self.path.as_deref() == Some(e.path.as_path());
-                        let mut line = ui::filelist::row(&look, i, &e, current);
+                        let mut line = ui::filelist::tree_row(&look, i, &r, current);
                         line = line.on_click(cx.listener(move |this, _, _, cx| {
                             this.remember_folder();
                             if !can_open {

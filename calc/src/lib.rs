@@ -483,6 +483,8 @@ pub struct Calc {
     pub(crate) chosen_folder: Option<PathBuf>,
     /// 一覧でしている仕事(2026-08-26)。文章の画面と同じ4つ
     pub(crate) fl_job: Option<FlJob>,
+    /// プロジェクトパネルの木(展開と選択)。根は folder() と同期する
+    pub(crate) fl_tree: ui::tree::Tree,
     pub(crate) right_face: u8,
     /// **このファイルを開いてほしい**(2026-08-19。統合の段1)。
     ///

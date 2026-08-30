@@ -490,6 +490,8 @@ pub struct Writer {
     fl_job: Option<FlJob>,
     /// 名前を打つ欄
     fl_ed: Editor,
+    /// プロジェクトパネルの木(展開と選択)。根は folder() と同期する
+    fl_tree: ui::tree::Tree,
     rb_range: std::ops::Range<usize>,
     /// 数式のパネル(LaTeX を打つ)。**組むのは Python** — 自前で組版は
     /// 書かない(calc がグラフを matplotlib に任せるのと同じ分業)。

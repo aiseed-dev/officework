@@ -156,6 +156,7 @@ impl Writer {
             chosen_folder: None,
             fl_job: None,
             fl_ed: Editor::new(""),
+            fl_tree: ui::tree::Tree::default(),
             tbl_open: false,
             tbl_ed: Editor::new(""),
             font_filter: None,

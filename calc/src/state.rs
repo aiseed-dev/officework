@@ -415,6 +415,7 @@ impl Calc {
             left_face: 0,
             chosen_folder: None,
             fl_job: None,
+            fl_tree: ui::tree::Tree::default(),
             right_face: 0,
             open_request: None,
             open_dialog_request: false,

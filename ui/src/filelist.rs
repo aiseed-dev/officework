@@ -212,6 +212,63 @@ pub fn row(look: &Look, i: usize, e: &folder::Entry, current: bool) -> Stateful<
     line
 }
 
+/// 木の行1つ(IDE のプロジェクトパネルの形)。字下げと ▸/▾ つき。
+///
+/// `row` と同じ約束: 押す結び付けは呼ぶ側が `.on_click(cx.listener(…))` で
+/// 足す。id も `fl-{i}` で `row` と同じなので、呼ぶ側の結び方は変わらない。
+pub fn tree_row(look: &Look, i: usize, r: &crate::tree::Row, current: bool) -> Stateful<Div> {
+    let s = look.scale;
+    let e = &r.entry;
+    let is_dir = e.kind == folder::Kind::Folder;
+    let pressable = e.kind.can_open() || is_dir;
+    let hover = look.hover;
+    let twist = if !is_dir {
+        ""
+    } else if r.expanded {
+        "▾"
+    } else {
+        "▸"
+    };
+    let mut line = div()
+        .id(SharedString::from(format!("fl-{i}")))
+        .pl(px(s * (4.0 + r.depth as f32 * 12.0)))
+        .pr_1()
+        .py_0p5()
+        .rounded_sm()
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap_1()
+        .bg(if current { look.hover } else { gpui::transparent_black().into() })
+        .child(
+            div()
+                .flex_none()
+                .w(px(s * 10.0))
+                .text_size(px(s * 9.0))
+                .text_color(look.dim)
+                .child(SharedString::from(twist)),
+        )
+        .child(
+            gpui::svg()
+                .path(SharedString::from(icon_of(e.kind)))
+                .size(px(s * 14.0))
+                .flex_none()
+                .text_color(if pressable { look.fg } else { look.dim }),
+        )
+        .child(
+            div()
+                .flex_1()
+                .min_w(px(0.0))
+                .text_size(px(s * 11.5))
+                .text_color(if pressable { look.fg } else { look.dim })
+                .child(SharedString::from(e.name.clone())),
+        );
+    if pressable {
+        line = line.cursor_pointer().hover(move |st| st.bg(hover));
+    }
+    line
+}
+
 /// 種類に当てる絵。**フォルダと、それ以外**を見分けられれば足ります。
 fn icon_of(k: folder::Kind) -> &'static str {
     match k {
