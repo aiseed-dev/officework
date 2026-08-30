@@ -472,9 +472,14 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 w.write_event(Event::Empty(id)).unwrap();
                 w.write_event(Event::End(BytesEnd::new("w:numPr"))).unwrap();
             }
-            if p.indent > 0 || p.first_line_twips != 0 {
+            if p.indent > 0 || p.left_twips > 0 || p.first_line_twips != 0 {
                 let mut ind = BS::new("w:ind");
-                if p.indent > 0 {
+                // **読んだ twip をそのまま返します**(2026-08-30)。段数へ
+                // 丸めてから書き戻すと、開いて保存しただけで字下げが
+                // 動きます(1文字が2文字になる)
+                if p.left_twips > 0 {
+                    ind.push_attribute(("w:left", p.left_twips.to_string().as_str()));
+                } else if p.indent > 0 {
                     ind.push_attribute(("w:left", (p.indent as u32 * 420).to_string().as_str()));
                 }
                 // 1行目の字下げ(twip のまま往復)。負はぶら下げ

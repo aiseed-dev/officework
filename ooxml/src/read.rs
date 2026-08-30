@@ -1340,6 +1340,7 @@ pub(super) fn parse_document_rels(
     let mut list = ListKind::default();
     let mut indent = 0u8;
     let mut first_line = 0i32; // w:ind の firstLine(正)/ hanging(負)。twip のまま持つ
+    let mut left_twips = 0i32; // w:ind の left。段数と違って丸めない(2026-08-30)
     let mut line_spacing = 1.0f32;
     let mut space_before_pt = 0.0f32;
     let mut space_after_pt = 0.0f32;
@@ -1531,11 +1532,37 @@ pub(super) fn parse_document_rels(
                             .and_then(|v| v.parse::<f32>().ok())
                             .map(|v| (v / 420.0).round().clamp(0.0, 20.0) as u8)
                             .unwrap_or(0);
+                        // **段数とは別に、twip をそのまま持ちます**(2026-08-30)。
+                        // 段数は 420 twip きざみなので、1文字(210)の字下げが
+                        // 2文字になり、3文字が4文字になっていました。内閣府の
+                        // 告知書で 123 か所ずれていました。
+                        //
+                        // `w:leftChars` は文字数(100 = 1文字)での指定で、
+                        // 日本語の Word がよく使います。**Word はこちらを
+                        // 優先する**ので、両方あればこちらを採ります
+                        left_twips = attr(&e, "leftChars")
+                            .and_then(|v| v.parse::<f32>().ok())
+                            .map(|v| (v / 100.0 * 210.0) as i32)
+                            .or_else(|| {
+                                attr(&e, "left").and_then(|v| v.parse::<f32>().ok()).map(|v| v as i32)
+                            })
+                            .unwrap_or(0);
                         // 1行目の字下げは twip のまま(段落を触っても落とさない —
                         // 2026-08-13 に「黙って消える」を実測で踏んだ)
-                        first_line = attr(&e, "firstLine")
-                            .and_then(|v| v.parse::<f32>().ok())
-                            .map(|v| v as i32)
+                        // 文字数の指定(`w:firstLineChars` / `w:hangingChars`)を
+                        // 先に見ます。上の `w:leftChars` と同じ理由です
+                        let ji = |na: &str| {
+                            attr(&e, na)
+                                .and_then(|v| v.parse::<f32>().ok())
+                                .map(|v| (v / 100.0 * 210.0) as i32)
+                        };
+                        first_line = ji("firstLineChars")
+                            .or_else(|| {
+                                attr(&e, "firstLine")
+                                    .and_then(|v| v.parse::<f32>().ok())
+                                    .map(|v| v as i32)
+                            })
+                            .or_else(|| ji("hangingChars").map(|v| -v))
                             .or_else(|| {
                                 attr(&e, "hanging")
                                     .and_then(|v| v.parse::<f32>().ok())
@@ -1920,11 +1947,37 @@ pub(super) fn parse_document_rels(
                             .and_then(|v| v.parse::<f32>().ok())
                             .map(|v| (v / 420.0).round().clamp(0.0, 20.0) as u8)
                             .unwrap_or(0);
+                        // **段数とは別に、twip をそのまま持ちます**(2026-08-30)。
+                        // 段数は 420 twip きざみなので、1文字(210)の字下げが
+                        // 2文字になり、3文字が4文字になっていました。内閣府の
+                        // 告知書で 123 か所ずれていました。
+                        //
+                        // `w:leftChars` は文字数(100 = 1文字)での指定で、
+                        // 日本語の Word がよく使います。**Word はこちらを
+                        // 優先する**ので、両方あればこちらを採ります
+                        left_twips = attr(&e, "leftChars")
+                            .and_then(|v| v.parse::<f32>().ok())
+                            .map(|v| (v / 100.0 * 210.0) as i32)
+                            .or_else(|| {
+                                attr(&e, "left").and_then(|v| v.parse::<f32>().ok()).map(|v| v as i32)
+                            })
+                            .unwrap_or(0);
                         // 1行目の字下げは twip のまま(段落を触っても落とさない —
                         // 2026-08-13 に「黙って消える」を実測で踏んだ)
-                        first_line = attr(&e, "firstLine")
-                            .and_then(|v| v.parse::<f32>().ok())
-                            .map(|v| v as i32)
+                        // 文字数の指定(`w:firstLineChars` / `w:hangingChars`)を
+                        // 先に見ます。上の `w:leftChars` と同じ理由です
+                        let ji = |na: &str| {
+                            attr(&e, na)
+                                .and_then(|v| v.parse::<f32>().ok())
+                                .map(|v| (v / 100.0 * 210.0) as i32)
+                        };
+                        first_line = ji("firstLineChars")
+                            .or_else(|| {
+                                attr(&e, "firstLine")
+                                    .and_then(|v| v.parse::<f32>().ok())
+                                    .map(|v| v as i32)
+                            })
+                            .or_else(|| ji("hangingChars").map(|v| -v))
                             .or_else(|| {
                                 attr(&e, "hanging")
                                     .and_then(|v| v.parse::<f32>().ok())
@@ -2105,6 +2158,7 @@ pub(super) fn parse_document_rels(
                                 page_break_before, list,
                                 // 深さ: w:ind(直接指定)が無ければ w:ilvl から
                                 indent: indent.max(ilvl),
+                                left_twips,
                                 first_line_twips: first_line,
                                 line_spacing,
                                 space_before_pt,

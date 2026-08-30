@@ -14,7 +14,7 @@ mod round {
     fn para(s: &str) -> Paragraph {
         Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![Run { text: s.to_string(), size_pt: Some(10.5), font: None, fmt: Default::default() }] }
+                    list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![Run { text: s.to_string(), size_pt: Some(10.5), font: None, fmt: Default::default() }] }
     }
     fn doc(parts: &[&str]) -> Document {
         Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: parts.iter().map(|s| Block::Para(para(s))).collect() }
@@ -49,7 +49,7 @@ mod round {
     fn font_size_is_preserved() {
         let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
+                    list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
             Run { text: "大見出し".into(), size_pt: Some(16.0), font: None, fmt: Default::default() },
             Run { text: "本文".into(), size_pt: Some(10.5), font: None, fmt: Default::default() },
         ]})]};
@@ -82,7 +82,7 @@ mod round {
     fn line_breaks_inside_a_paragraph_are_preserved() {
         let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
+                    list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
             Run { text: "一行目\n二行目".into(), size_pt: Some(10.5), font: None, fmt: Default::default() }]})]};
         let (back, _) = round_trip(&d);
         assert_eq!(texts(&back)[0], "一行目\n二行目");
@@ -250,7 +250,7 @@ mod font_tests {
                 page_break_before: false,
                     list: Default::default(),
                 indent: 0,
-                first_line_twips: 0,
+                left_twips: 0, first_line_twips: 0,
                 line_spacing: 1.0,
                 shade: None, boxed: false, images_new: Vec::new(), runs: vec![Run {
                     text: "日本フネン".into(),
@@ -302,7 +302,7 @@ mod fmt_tests {
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("見出し", f.clone())] })],
+                    list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("見出し", f.clone())] })],
         };
         let back = roundtrip(&d);
         assert_eq!(back.paragraphs().next().unwrap().runs[0].fmt, f, "書式が消えた");
@@ -317,7 +317,7 @@ mod fmt_tests {
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("赤", f.clone())] })],
+                    list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("赤", f.clone())] })],
         };
         assert_eq!(roundtrip(&d).paragraphs().next().unwrap().runs[0].fmt, f);
     }
@@ -336,7 +336,7 @@ mod fmt_tests {
                     page_break_before: false,
                     list: Default::default(),
                     indent: 0,
-                    first_line_twips: 0,
+                    left_twips: 0, first_line_twips: 0,
                     line_spacing: 1.0,
                     shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("表題", CharFormat::default())],
                 })],
@@ -385,7 +385,7 @@ mod para_tests {
             page_break_before: false,
             list,
             indent,
-            first_line_twips: 0,
+            left_twips: 0, first_line_twips: 0,
             line_spacing: spacing,
             shade: None, boxed: false, images_new: Vec::new(),
             runs: vec![Run {
@@ -411,7 +411,7 @@ mod para_tests {
         let mut p = Paragraph { style_id: None, raw_adoc: None, space_before_pt: 12.0, space_after_pt: 6.0,
             align: Default::default(), style: Default::default(), comments: Vec::new(),
             bookmarks: Vec::new(), anchors: Vec::new(), sect: None, images: Vec::new(),
-            page_break_before: false, list: ListKind::None, indent: 0, first_line_twips: 0,
+            page_break_before: false, list: ListKind::None, indent: 0, left_twips: 0, first_line_twips: 0,
             line_spacing: 1.0, shade: None, boxed: false, dropcap: false,
             images_new: Vec::new(),
             runs: vec![Run { text: "間の空いた段落".into(), size_pt: Some(10.5),
@@ -428,7 +428,7 @@ mod para_tests {
         let p = Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,
             align: Default::default(), style: Default::default(), comments: Vec::new(),
             bookmarks: Vec::new(), anchors: Vec::new(), sect: None, images: Vec::new(),
-            page_break_before: false, list: ListKind::None, indent: 0, first_line_twips: 0,
+            page_break_before: false, list: ListKind::None, indent: 0, left_twips: 0, first_line_twips: 0,
             line_spacing: 1.0, shade: None, boxed: false, dropcap: false,
             images_new: Vec::new(),
             runs: vec![Run { text: "素の段落".into(), size_pt: Some(10.5),
@@ -467,6 +467,26 @@ mod para_tests {
             assert_eq!(roundtrip(para(ListKind::None, n, 1.0)).indent, n, "{n}段が消えた");
         }
     }
+
+    /// **左インデントは twip のまま往復する。**
+    ///
+    /// 段数(`indent`)は全角2文字きざみなので、1文字(210 twip)が2文字に、
+    /// 3文字(630)が4文字になっていました。内閣府の告知書で 123 か所ずれて
+    /// いたのを 2026-08-30 に見つけました。開いて保存するだけで字下げが
+    /// 動くので、往復でも見ます。
+    #[test]
+    fn the_left_indent_keeps_its_exact_twips() {
+        for tw in [210i32, 220, 426, 440, 630, 840] {
+            let mut p = para(ListKind::None, 0, 1.0);
+            p.left_twips = tw;
+            assert_eq!(roundtrip(p).left_twips, tw, "w:left {tw} が動いた");
+        }
+    }
+
+    /// **文字数での指定も読む。** 日本語の Word がよく使う書き方で、
+    /// `w:leftChars="100"` は全角1文字(210 twip)です。Word は twip と
+    /// 両方あるときこちらを優先します(2026-08-30)
+
 
     #[test]
     fn line_spacing_round_trips() {
@@ -1685,6 +1705,19 @@ mod list_level_tests {
         let (back, _) = read(buf).expect("読めない");
         let inds: Vec<u8> = back.paragraphs().map(|p| p.indent).collect();
         assert_eq!(inds, vec![0, 2], "深さが往復しない");
+    }
+
+    /// **文字数での指定も読む。** 日本語の Word がよく使う書き方で、
+    /// `w:leftChars="100"` は全角1文字(210 twip)です。twip と両方あるとき、
+    /// Word はこちらを優先します(2026-08-30)
+    #[test]
+    fn a_character_based_indent_wins_over_twips() {
+        let xml = r#"<w:document xmlns:w="x"><w:body><w:p><w:pPr>
+            <w:ind w:left="9999" w:leftChars="200"/>
+            </w:pPr><w:r><w:t>字</w:t></w:r></w:p></w:body></w:document>"#;
+        let (doc, _) = parse_document_xml(xml);
+        let p = doc.paragraphs().next().unwrap();
+        assert_eq!(p.left_twips, 420, "文字数の指定を読んでいない(2文字 = 420twip)");
     }
 
     #[test]

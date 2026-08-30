@@ -58,7 +58,13 @@ pub(super) enum Tok {
     One(char, f32, f32, CharFormat, Option<String>, usize),
     // (字と幅と位置の列, サイズpt, 書式, 書体)
     Word(Vec<(char, f32, usize)>, f32, CharFormat, Option<String>),
-    Space(f32, f32, CharFormat, Option<String>, usize),
+    // (字, 幅mm, サイズpt, 書式, 書体, バイト位置)。
+    // **字も持ちます**(2026-08-30)。前は半角スペースに置き替えていましたが、
+    // 紙に出すとき字を繋げて1つの塊で書くので、**送りは書体の半角の幅**に
+    // なります。全角スペース(U+3000)で字下げした文書が、1字あたり
+    // 12pt のはずが 3.48pt になっていました(内閣府の告知書、9字で 76.7pt)。
+    // バイト位置も全角は3バイトなので、半角に替えると数が合いません
+    Space(char, f32, f32, CharFormat, Option<String>, usize),
 }
 
 pub(super) fn is_word_char(c: char) -> bool {
@@ -127,7 +133,7 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
                                    run.font.clone()));
             }
             if ch == ' ' || ch == '\u{3000}' {
-                out.push(Tok::Space(m.advance_mm(ch, rpt), rpt,
+                out.push(Tok::Space(ch, m.advance_mm(ch, rpt), rpt,
                                     run.fmt.clone(), run.font.clone(), off));
             } else {
                 out.push(Tok::One(ch, m.advance_mm(ch, rpt), rpt,
@@ -181,6 +187,18 @@ pub struct Frame {
 /// **組み手と呼ぶ側の両方が同じ値を使う**ので、ここに1つだけ置きます。
 pub(super) fn first_line_mm(para: &Paragraph) -> f32 {
     (para.first_line_twips.max(0) as f32 / 20.0) * 25.4 / 72.0
+}
+
+/// 左のインデント(mm)。**twip の指定があればそちらが勝ちます。**
+///
+/// 段数(`indent`)は全角2文字きざみなので、1文字や3文字を表せません。
+/// docx から読んだ細かい値は `left_twips` が持っているので、それを先に
+/// 見ます(2026-08-30)。`em` は全角1文字の幅(mm)です。
+pub(super) fn left_mm(para: &Paragraph, em: f32) -> f32 {
+    if para.left_twips > 0 {
+        return (para.left_twips as f32 / 20.0) * 25.4 / 72.0;
+    }
+    para.indent as f32 * em * 2.0
 }
 
 pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
@@ -252,8 +270,8 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
                                                  fmt: f.clone(), font: ft.clone(), off: *o })
                     .collect(),
                 cs.iter().map(|(_, w, _)| *w).sum()),
-            Tok::Space(w, s, f, ft, o) =>
-                (vec![Cell { ch: ' ', x_mm: 0.0, w_mm: *w, size_pt: *s, fmt: f.clone(),
+            Tok::Space(ch, w, s, f, ft, o) =>
+                (vec![Cell { ch: *ch, x_mm: 0.0, w_mm: *w, size_pt: *s, fmt: f.clone(),
                              font: ft.clone(), off: *o }], *w),
         };
 
@@ -294,9 +312,16 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
             let head = cells.first().map(|c| c.ch);
             cur = close(&mut done, &mut cur, &mut w_cur, head);
         }
-        if cur.is_empty() {
+        // **折り返した行の頭の空白は組みません。** 語と語の区切りが
+        // 行頭に来ただけなので、字下げではありません。
+        //
+        // ただし**段落の1行目は別**です(2026-08-30)。日本の書類は
+        // `w:ind` を使わず全角スペースで字下げすることが多く、内閣府の
+        // 告知書では「　あなたは、」の1字と「　　…　様」の9字がそれです。
+        // 落とすと字下げが消えて、宛名が余白に貼り付きます
+        if cur.is_empty() && !done.is_empty() {
             if let Tok::Space(..) = tok {
-                continue; // 行頭の空白は組まない
+                continue;
             }
         }
         w_cur += w;
@@ -527,7 +552,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // 本文と同じ字だと、コードなのか文章なのか分かりません。
                 // 等幅の書体がこの機械に無ければ、そのまま組みます
                 let em = para.runs.first().and_then(|r| r.size_pt).unwrap_or(base) * 25.4 / 72.0;
-                let indent_mm = para.indent as f32 * em * 2.0;
+                let indent_mm = left_mm(para, em);
                 let measure = (block_measure - indent_mm).max(em);
                 // **塊の印の行は、紙に出しません**(2026-08-25)。
                 // `[source,python]` と `----` がそのまま印刷されていました。
