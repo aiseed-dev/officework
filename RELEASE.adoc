@@ -1,103 +1,101 @@
-= officework 0.5.0-beta.4
+= officework 0.5.0-beta.5
 
 日本語版: link:RELEASE.ja.adoc[RELEASE.ja.adoc]
 
 To try it: `pip install --pre officework`
 
-This release is what one real document taught us. We took a notice form the
-Cabinet Office publishes for download, converted it with officework, and
-compared the result against the PDF the same office publishes beside it. Three
-defects came out of that one file, and all three would show on any Japanese
-office form of the same shape.
+Two published government forms taught us this release. We converted the
+National Tax Agency's liquor tax overview and the Cabinet Office's assessment
+notice, and compared each against the PDF the same office publishes beside it.
+Everything below came out of that comparison.
 
-== Indents match the original
+== Spreadsheets print the way the file asks
 
-Three separate causes, all of them visible on the first page.
+Seven defects, all of them visible on the first page of that tax form.
 
-The left indent was rounded to steps of two full-width characters, so a
-one-character indent came out as two and a three-character indent as four. That
-form sets a left indent in 123 places. The paragraph now carries the exact
-value from the file, and writes the same value back, so opening and saving no
-longer moves the text.
+**Text in a cell did not wrap.** The header cell holds 販 売 場 数 over Number
+of licensed sites to sell liquors, with wrapping set. We ran it out as one
+line: through its neighbours, past the right margin, and off the paper. It
+wraps now, and to the width the cell really spans, which matters because these
+headers are merged across columns.
 
-Indents written as a character count — `w:leftChars` and its two siblings — were
-ignored. This is what Japanese Word writes, and Word prefers it over the
-measurement when a document has both. A document that uses only the character
-form lost every indent.
+**Formatting inside a cell was ignored.** That same cell is 8pt with its
+English line at 6pt in a different family. The whole cell printed at one size,
+which also moved every wrap with it. Each run is drawn at its own size now.
 
-Most of the indenting in that form is not a paragraph setting at all: it is
-full-width spaces typed at the start of the line, which is how Japanese
-business documents are usually laid out. We were dropping them, and when we
-kept them we drew them at the width of an ASCII space — 3.48pt where 12pt was
-called for. Nine of them put the addressee 76.7pt from where it belongs.
+**Only one font could be embedded in a PDF.** The form asks for ＭＳ明朝 in the
+body, ＭＳゴシック in the headings and Century for the English; we printed all
+of it in one face. As many as are needed are embedded, and a character its font
+does not have falls back rather than disappearing.
 
-After the fix, 様 sits at 178.90pt against the reference PDF's 178.92, and
-大臣 at 394.90 against 394.92.
+**Negative numbers ignored the format's negative section.** Number formats come
+in sections — positive, negative, zero, text — and this form asks for
+「△ 5,148」. We read the first section and put a minus in front.
 
-== Text boxes made by other programs are printed
+**Distributed alignment printed left**, where the 区分 column should spread its
+characters across the cell, and **centred cells printed left** as well, since
+only left and right were distinguished.
 
-The same form has three contact panels — office, address, phone, email — and a
-note beneath them. We printed none of them.
+**A sheet's vertical margins were taken from its horizontal ones.** This form
+sets 25mm at the sides and 30mm top and bottom. Page one was right; every page
+after it began 5mm too high with 5mm too much room at the foot, which is two
+extra lines a page.
 
-They were never lost. Anything we did not write ourselves was kept as the
-original XML and copied back out on save, so the document survived a round
-trip intact; it simply never reached the page. Word positions these boxes
-relative to the flow of the text, so where they land is only known once the
-document is laid out — the reading is now split so that the shape's size and
-contents come from the XML and its position is resolved after layout.
+== Documents keep their indents, their text boxes and their rules
 
-Two things also had to change for the contents to be legible. We were reading
-only the first line inside a box, which was enough for the single-line shapes
-we write ourselves but dropped four of the five lines in each of these panels.
-And the renderer drew whatever it had as one line, which ran each panel across
-its neighbours.
+**Indentation was being lost.** Japanese forms indent with spaces rather than
+with a paragraph setting, and three separate things dropped it: the left indent
+was rounded to steps of two full-width characters, so a one-character indent
+became two; indents written as a character count were not read at all, which is
+what Japanese Word writes; and full-width spaces typed at the start of a line
+were discarded, or drawn at the width of an ASCII space. On the Cabinet Office
+notice this put the addressee 76.7pt from where it belongs. It now sits at
+178.90pt against the reference PDF's 178.92.
 
-== English is now British or American
+**Text boxes made by other programs never reached the page.** They survived
+being opened and saved — they were kept as the original XML — but only shapes
+we had written ourselves were drawn. The three contact panels on page 6 of that
+notice, and all five lines inside each, are printed now.
 
-English is one language on screen and two in documents, because the date order
-splits by country and choosing one silently is wrong for the other half.
+**Table borders were not read.** Every table came out with all four sides
+because the model had nowhere to put what the file said. A form of underlined
+entry fields came out as a grid of boxes. What the file asks for is drawn, per
+table and per cell, and a docx table that says nothing gets nothing, which is
+what Word draws.
 
-[cols="2,1,1"]
-|===
-|Language setting |Short date |Paper
+**Parts were being found by their conventional names.** `word/styles.xml` and
+its neighbours are a convention, not a rule; OOXML says where its parts are
+through the relationships. One of these forms uses `word/styles2.xml`, so we
+were reading no styles, no settings and no theme at all — 403 style
+declarations, invisible.
 
-|`en`, `en_US` |m/d/yyyy |Letter
-|`en_GB`, `en_AU`, `en_IE`, `en_ZA`, `en_NZ` |dd/mm/yyyy |A4
-|===
+== Converting a sheet to AsciiDoc
 
-An English locale that names a country other than the US is treated as
-British, because Australia, New Zealand, Ireland, South Africa and India all
-write dd/mm/yyyy. An unrecognised one falls to the same side rather than
-stopping.
+Cell rich text stays out of adoc, so what has to survive is the shape of the
+text. Three things did not.
 
-This fixes a defect rather than only adding a choice. The date table held
-British formats under the tag `en`, and US English mapped to that same entry,
-so opening an American spreadsheet gave British date order. A docx now also
-declares `en-GB` or `en-US` where it used to write a bare `en`.
+A line break inside a cell became a blank line, which reads as two paragraphs;
+it is written as AsciiDoc's own line break now. Leading and trailing whitespace
+was trimmed, taking the indents with it; AsciiDoc's own mark for an empty
+span now protects it. And
+cells flow into rows by column count, but the cut let a cell in without
+checking that it fitted, so a wide merged cell overflowed its row and
+everything after it slid down and across.
+
+That tax sheet now round-trips all 557 of its cells unchanged. Fifty-six of
+them changed before.
 
 == Other changes
 
-* The right panel is now the project panel and the left one the agent panel,
-  in all fifteen languages. The right panel called itself a file listing, which
-  it stopped being when it gained create, rename and delete
-* The sample scripts follow the engine's current API
+* The right panel is a tree, like an IDE's, and opening a file reveals it there
+* Ribbon buttons that do one thing are grouped into one row
 
 == Under the hood
 
-Not visible to users. Three checks had quietly stopped checking anything.
+The PDF writer's font handling was built around a single embedded font — one
+face, one subset, one resource. It now keeps a set, which is what made the
+per-cell fonts possible. The single-font entry points are unchanged.
 
-The ribbon parser's self-test sabotages the table six ways and expects each to
-be caught. Five of the six carried a copy of a button's label, and the labels
-became English in August, so those five had not modified anything since —
-passing an unbroken file to the parser and reporting that the parser was blind.
-Each case now finds its target in the file and fails loudly if the text did not
-actually change.
-
-The generator that produces the ribbon table could no longer reproduce it.
-Regenerating would have greyed out nine buttons that work, all of them made
-usable during beta.3. Fixing that surfaced a gap in the generator itself: it
-could emit a greyed either-or button but had no way to emit a working one.
-
-The Windows build check ran on Linux by cross-compiling, which stopped being
-possible when polars arrived and brought C code with it. It runs on a Windows
-machine now.
+`Paper` carries four margins instead of one. Adding the fields made the
+compiler name every construction site, twenty-five of them, so none could be
+missed.
