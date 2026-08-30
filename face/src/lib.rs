@@ -34,6 +34,8 @@
 pub mod combo;
 /// フォルダの中身を並べる(名前で種類が決まる)
 pub mod folder;
+/// プロジェクトパネルの木の状態(展開・選択・字下げつきの平坦化)
+pub mod tree;
 pub mod funcs;
 // gen_funcs:begin(この間は calc/gen_funcs.py が生成する — 手で書かない)
 pub mod funcs_de;
