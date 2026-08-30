@@ -350,9 +350,8 @@ Origins of bundled and derived material are listed in `NOTICE.md`.
 
 == Status
 
-Ribbon buttons: *writer 5 grayed out, calc 9* — shape tools and view switches on both sides.
-The nine are shape ordering, alignment, grouping and merging on the Layout tab, protecting a workbook or a range on Protect, and the normal and page-break views on View.
-Everything else on both ribbons works.
+Ribbon buttons: *nothing is grayed out* — every button on both ribbons does something when pressed.
+When an unfinished command ships, it appears grayed rather than pretending to work.
 
 Both figures are checked on every push against the ribbon tables themselves, so this line cannot quietly go stale — which is exactly what it had done: it said zero for months while calc showed nine.
 

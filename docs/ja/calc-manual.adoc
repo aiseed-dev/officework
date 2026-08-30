@@ -762,327 +762,318 @@ Python が走る道は、これで3つです:
 == すべての操作
 
 // ribbon:gen:start(この間は tools/ribbon\_doc.py --write が書く)
-リボンの全部です。199 個のうち 190 個が動きます(残り 9 個はグレー表示です)。
+リボンの全部です。199 個のうち 199 個が動きます(残り 0 個はグレー表示です)。
 
-*ファイル*
-
-[cols="2,1"]
-|===
-|ボタン |押せるか
-
-|開く |動きます
-|保存 |動きます
-|印刷 |動きます
-|===
-
-*ホーム*
+*File*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|コピー |動きます
-|切り取り |動きます
-|貼り付け |動きます
-|書式のコピー |動きます
-|フォント |動きます
-|フォントのサイズ |動きます
-|フォントサイズの拡大 |動きます
-|フォントサイズの縮小 |動きます
-|大文字小文字を変更 |動きます
-|太字 |動きます
-|斜体 |動きます
-|下線 |動きます
-|取り消し線 |動きます
-|下付き |動きます
-|フォントの色 |動きます
-|塗りつぶしの色 |動きます
-|罫線 |動きます
-|上揃え |動きます
-|上下中央揃え |動きます
-|下揃え |動きます
-|折り返して全体を表示する |動きます
-|方向 |動きます
-|左揃え |動きます
-|中央揃え |動きます
-|右揃え |動きます
-|両端揃え |動きます
-|均等割付 |動きます
-|結合して、中央に配置する |動きます
-|文字の向き(右横書き) |動きます
-|オートSUM |動きます
-|フィル |動きます
-|名前の管理 |動きます
-|消去 |動きます
-|降順並べ替え |動きます
-|昇順並べ替え |動きます
-|フィルター |動きます
-|フィルターを解除 |動きます
-|数値の書式 |動きます
-|通貨スタイル |動きます
-|パーセントのスタイル |動きます
-|カンマスタイル |動きます
-|小数点以下の表示桁数を減らす |動きます
-|小数点以下の表示桁数を増やす |動きます
-|セルを挿入 |動きます
-|セルを削除 |動きます
-|セルの書式設定 |動きます
-|条件付き書式 |動きます
-|表として書式設定 |動きます
-|セルのスタイル |動きます
-|置き換え |動きます
-|すべて選択 |動きます
+|Open |動きます
+|Save |動きます
+|Print |動きます
 |===
 
-*挿入*
+*Home*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|ピボットテーブルを挿入 |動きます
-|表の挿入 |動きます
-|画像を挿入 |動きます
-|図形を挿入 |動きます
-|SmartArtの挿入 |動きます
-|チェックボックス |動きます
-|推奨チャートを挿入 |動きます
-|グラフを挿入 |動きます
-|スパークラインを挿入する |動きます
-|コメント |動きます
-|ハイパーリンクを追加 |動きます
-|スライサーを挿入 |動きます
-|テキストボックスの挿入 |動きます
-|テキストアートの挿入 |動きます
-|ヘッダー/フッター |動きます
-|方程式を挿入 |動きます
-|記号を挿入 |動きます
+|Copy |動きます
+|Cut |動きます
+|Paste |動きます
+|Format painter |動きます
+|Font |動きます
+|Font size |動きます
+|Increment font size |動きます
+|Decrement font size |動きます
+|Change case |動きます
+|Bold |動きます
+|Italic |動きます
+|Underline |動きます
+|Strikethrough |動きます
+|Subscript |動きます
+|Font colour |動きます
+|Fill colour |動きます
+|Borders |動きます
+|Align top |動きます
+|Align middle |動きます
+|Align bottom |動きます
+|Wrap text |動きます
+|Text orientation |動きます
+|Align left |動きます
+|Centre |動きます
+|Align right |動きます
+|Justified |動きます
+|Distributed |動きます
+|Merge and centre |動きます
+|Right-to-left text |動きます
+|AutoSum |動きます
+|Fill |動きます
+|Name manager |動きます
+|Clear |動きます
+|Sort descending |動きます
+|Sort ascending |動きます
+|Filters |動きます
+|Clear filter |動きます
+|Number format |動きます
+|Currency style |動きます
+|Percent style |動きます
+|Comma style |動きます
+|Decrease decimal |動きます
+|Increase decimal |動きます
+|Insert cells |動きます
+|Delete cells |動きます
+|Format cells |動きます
+|Conditional formatting |動きます
+|Format as table template |動きます
+|Cell Style |動きます
+|Replace |動きます
+|Select all |動きます
 |===
 
-*描画*
+*Insert*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|選択 |動きます
-|ペン |動きます
-|蛍光ペン |動きます
-|消しゴム |動きます
+|Insert Pivot Table |動きます
+|Insert table |動きます
+|Insert image |動きます
+|Insert shape |動きます
+|Insert SmartArt |動きます
+|Checkbox |動きます
+|Insert recommended chart |動きます
+|Insert chart |動きます
+|Insert sparkline |動きます
+|Comment |動きます
+|Add link |動きます
+|Insert slicer |動きます
+|Insert text box |動きます
+|Insert Text Art |動きます
+|Header & Footer |動きます
+|Insert equation |動きます
+|Insert symbol |動きます
 |===
 
-*レイアウト*
+*Draw*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|余白 |動きます
-|印刷の向き |動きます
-|ページのサイズ |動きます
-|印刷範囲 |動きます
-|区切り |動きます
-|ヘッダー/フッター |動きます
-|拡大縮小印刷 |動きます
-|紙に収める |動きます
-|範囲を足す |動きます
-|紙の切れ目 |動きます
-|タイトルを印刷する |動きます
-|最初の列が右側に来るようにシートの方向を切り替える |動きます
-|枠線も印刷 |動きます
-|見出しも印刷 |動きます
-|前面ヘ移動 |まだです
-|背面ヘ移動 |まだです
-|配置 |まだです
-|グループ化 |まだです
-|図形を結合 |まだです
-|配色の変更 |動きます
+|Select |動きます
+|Pen |動きます
+|Highlighter |動きます
+|Eraser |動きます
 |===
 
-*数式*
+*Layout*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|関数の挿入 |動きます
-|Python の関数 |動きます
-|オートSUM |動きます
-|最近使った関数 |動きます
-|財務 |動きます
-|論理 |動きます
-|文字列操作 |動きます
-|日付/時刻 |動きます
-|検索/行列 |動きます
-|数学/三角 |動きます
-|その他の関数 |動きます
-|名前の管理 |動きます
-|名前を貼り付け |動きます
-|参照元のトレース |動きます
-|参照先のトレース |動きます
-|トレース矢印の削除 |動きます
-|数式の表示 |動きます
-|ウォッチウィンドウ |動きます
-|計算方法 |動きます
+|Margins |動きます
+|Page orientation |動きます
+|Page size |動きます
+|Print Area |動きます
+|Breaks |動きます
+|Header & Footer |動きます
+|Scale To Fit |動きます
+|Fit to paper |動きます
+|Add to area |動きます
+|Page breaks |動きます
+|Print titles |動きます
+|Switch the sheet direction so that the first column is on the right side |動きます
+|Print gridlines |動きます
+|Print headings |動きます
+|Bring forward |動きます
+|Send Backward |動きます
+|Alignment |動きます
+|Group |動きます
+|Merge shapes |動きます
+|Change colour theme |動きます
 |===
 
-*データ*
+*Formula*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|テキストからデータ |動きます
-|外部リンク(値で取り込む) |動きます
-|フィルター |動きます
-|フィルターを解除 |動きます
-|降順並べ替え |動きます
-|昇順並べ替え |動きます
-|並べ替え |動きます
-|区切り位置 |動きます
-|重複の削除 |動きます
-|データの入力規則 |動きます
-|無効データのマーク |動きます
-|ゴールシーク |動きます
-|シナリオ |動きます
-|予測シート |動きます
-|ソルバー |動きます
-|グループ化 |動きます
-|グループ解除 |動きます
-|詳細の表示 |動きます
-|詳細の非表示 |動きます
-|小計 |動きます
-|データテーブル |動きます
+|Insert function |動きます
+|Python functions |動きます
+|AutoSum |動きます
+|Recently used |動きます
+|Financial |動きます
+|Logical |動きます
+|Text functions |動きます
+|Date & Time |動きます
+|Lookup & Reference |動きます
+|Math & Trig |動きます
+|More functions |動きます
+|Name manager |動きます
+|Paste name |動きます
+|Trace Precedents |動きます
+|Trace Dependents |動きます
+|Remove arrows |動きます
+|Show formulas |動きます
+|Watch window |動きます
+|Calculation options |動きます
+|===
+
+*Data*
+
+[cols="2,1"]
+|===
+|ボタン |押せるか
+
+|Text to data |動きます
+|External links (import as values) |動きます
+|Filters |動きます
+|Clear filter |動きます
+|Sort descending |動きます
+|Sort ascending |動きます
+|Sort |動きます
+|Text to columns |動きます
+|Remove duplicates |動きます
+|Data Validation |動きます
+|Circle invalid data |動きます
+|Goal Seek |動きます
+|Scenario |動きます
+|Forecast Sheet |動きます
+|Solver |動きます
+|Group |動きます
+|Ungroup |動きます
+|Show details |動きます
+|Hide detail |動きます
+|Subtotals |動きます
+|Data table |動きます
 |Python |動きます
-|CSV の形 |動きます
-|フラッシュフィル |動きます
+|CSV format |動きます
+|Fill by example |動きます
 |===
 
-*マクロ*
+*Macros*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|操作を記録 |動きます
-|新しい .py |動きます
-|一覧 |動きます
-|リボンのマクロ |動きます
-|置き場を開く |動きます
+|Record actions |動きます
+|New .py |動きます
+|Macro list |動きます
+|Ribbon macros |動きます
+|Open folder |動きます
 |===
 
-*ピボットテーブル*
+*Pivot Table*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|ピボットテーブルを挿入 |動きます
-|フィールドリスト |動きます
-|更新 |動きます
-|すべて更新 |動きます
-|データソース |動きます
-|ピボットグラフ |動きます
-|選択する |動きます
-|総計 |動きます
-|小計 |動きます
-|空行 |動きます
-|計算の種類 |動きます
-|レポートのレイアウト |動きます
-|スタイル |動きます
+|Insert Pivot Table |動きます
+|Field list |動きます
+|Update |動きます
+|Update all |動きます
+|Data source |動きます
+|PivotChart |動きます
+|Select |動きます
+|Grand Total |動きます
+|Subtotals |動きます
+|Blank Rows |動きます
+|Show values as |動きます
+|Report Layout |動きます
+|Style |動きます
 |===
 
-*表のデザイン*
+*Table Design*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|ヘッダー行 |動きます
-|合計行 |動きます
-|縞模様の行 |動きます
-|最初の列 |動きます
-|最後の列 |動きます
-|縞模様の列 |動きます
-|フィルタのボタン |動きます
-|重複データを削除 |動きます
-|範囲に変換する |動きます
-|テーブルのサイズ変更 |動きます
+|Header row |動きます
+|Total row |動きます
+|Banded Rows |動きます
+|First column |動きます
+|Last column |動きます
+|Banded columns |動きます
+|Filter button |動きます
+|Remove Duplicates |動きます
+|Convert to range |動きます
+|Resize table |動きます
 |===
 
-*共同編集*
+*Collaboration*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|共同編集モード |動きます
-|コメントを追加 |動きます
-|コメントを削除 |動きます
-|コメントの表示 |動きます
-|チャット |動きます
-|バージョン履歴 |動きます
+|Co-editing mode |動きます
+|Add Comment |動きます
+|Delete comment |動きます
+|Show comments |動きます
+|Chat |動きます
+|Version history |動きます
 |===
 
-*保護*
+*Protection*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|暗号化する |動きます
-|ブックを保護する |まだです
-|シートを保護する |動きます
-|範囲を保護する |まだです
-|デジタル署名を追加 |動きます
-|セルのロック |動きます
-|許可する操作 |動きます
-|復旧 |動きます
-|控えの間隔 |動きます
-|読み取り専用を勧める |動きます
+|Encrypt |動きます
+|Protect workbook |動きます
+|Protect sheet |動きます
+|Protect Range |動きます
+|Add digital signature |動きます
+|Cell lock |動きます
+|Allowed actions |動きます
+|Recover |動きます
+|Backup interval |動きます
+|Suggest read-only |動きます
 |===
 
-*表示*
+*View*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|シートの表示 |動きます
-|標準 |まだです
-|改ページ プレビュー |まだです
-|拡大 |動きます
-|縮小 |動きます
-|100%に拡大する |動きます
-|画面の文字を大きく |動きます
-|画面の文字を小さく |動きます
-|ダークモード |動きます
-|ウィンドウ枠の固定 |動きます
-|分割 |動きます
-|数式バー |動きます
-|枠線表示 |動きます
-|見出し |動きます
-|0を表示する |動きます
-|左パネル |動きます
-|右パネル |動きます
+|Sheet View |動きます
+|Normal |動きます
+|Page Break Preview |動きます
+|Zoom in |動きます
+|Zoom out |動きます
+|Zoom to 100% |動きます
+|Bigger UI text |動きます
+|Smaller UI text |動きます
+|Dark mode |動きます
+|Freeze panes |動きます
+|Split |動きます
+|Formula Bar |動きます
+|Gridlines |動きます
+|Headings |動きます
+|Show zeros |動きます
+|Left Panel |動きます
+|Right Panel |動きます
 |===
 
 // ribbon:gen:end
 
-== 未実装のもの(グレー表示)と代替
+== グレー表示(未実装のもの)と代替
 
-*リボンのグレー表示は 9 個。* 内訳:
-
-[cols="1,1"]
-|===
-|タブ |グレー表示
-
-|レイアウト |前面ヘ移動・背面ヘ移動・配置・グループ化・図形を結合
-|保護 |ブックを保護する・範囲を保護する
-|表示 |標準・改ページ プレビュー
-|===
-
-*それ以外は全部動きます。* この数はリボンの表と突き合わせて毎回の push で確かめています — ここは前まで「ゼロ」と書いてあり、何か月も間違っていました。
+*いま、グレー表示のボタンはありません — リボンは全部動きます。*
+まだ出来ていない機能が入るときは、動くふりをせず、押せない形(グレー表示)で並びます。
+この言い分はリボンの表と毎回の push で突き合わせているので、黙って古くなりません。
 
 以下は、うちのやり方が本家と違うもの・Python に回すもの:
 

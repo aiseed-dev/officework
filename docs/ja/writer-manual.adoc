@@ -33,7 +33,7 @@ officework の文書の編集画面の手引き。
 Python から使うときは今までどおり docx を直して返せます(`from officework import doc`)。
 画面で直さないだけです。
 
-**押せるボタンは全部動きます(グレー表示は図形まわりの5つだけ)。全部の一覧は「すべての操作」にあります。
+**ボタンは全部動きます。グレー表示はありません。全部の一覧は「すべての操作」にあります。
 **docx をパスワードで包むボタンは外しました。
 パスワード付きの docx を**開く**ことはできます。
 
@@ -808,229 +808,226 @@ adoc 形式にしました — 書式 1 個をテンプレートに移し、段�
 == すべての操作
 
 // ribbon:gen:start(この間は tools/ribbon\_doc.py --write が書く)
-リボンの全部です。124 個のうち 119 個が動きます(残り 5 個はグレー表示です)。
+リボンの全部です。124 個のうち 124 個が動きます(残り 0 個はグレー表示です)。
 
-*ファイル*
-
-[cols="2,1"]
-|===
-|ボタン |押せるか
-
-|開く |動きます
-|保存 |動きます
-|印刷 |動きます
-|===
-
-*ホーム*
+*File*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|コピー |動きます
-|切り取り |動きます
-|貼り付け |動きます
-|フォント |動きます
-|フォントのサイズ |動きます
-|フォントサイズの拡大 |動きます
-|フォントサイズの縮小 |動きます
-|大文字小文字を変更 |動きます
-|ルビ |動きます
-|ふりがな |動きます
-|太字 |動きます
-|斜体 |動きます
-|下線 |動きます
-|取り消し線 |動きます
-|上付き |動きます
-|下付き |動きます
-|ハイライトの色 |動きます
-|フォントの色 |動きます
-|スタイルのクリア |動きます
-|箇条書き |動きます
-|ナンバリング |動きます
-|複数レベルのリスト |動きます
-|インデントを減らす |動きます
-|インデントを増やす |動きます
-|段落の行間 |動きます
-|テキスト方向 |動きます
-|左揃え |動きます
-|中央揃え |動きます
-|右揃え |動きます
-|両端揃え |動きます
-|均等割付 |動きます
-|非表示文字 |動きます
-|段落の背景色 |動きます
-|罫線 |動きます
-|段落のスタイル |動きます
-|置き換え |動きます
-|すべて選択 |動きます
+|Open |動きます
+|Save |動きます
+|Print |動きます
 |===
 
-*挿入*
+*Home*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|空白ページの挿入 |動きます
-|区切り |動きます
-|表の挿入 |動きます
-|画像を挿入 |動きます
-|図形を挿入 |動きます
-|SmartArtの挿入 |動きます
-|グラフを挿入 |動きます
-|テキストボックスの挿入 |動きます
-|テキストアートの挿入 |動きます
-|ドロップキャップの挿入 |動きます
-|ファイルからのテキスト |動きます
-|ヘッダーの編集 |動きます
-|フッターの編集 |動きます
-|ページ番号 |動きます
-|日付/時刻 |動きます
-|ページ数 |動きます
-|方程式を挿入 |動きます
-|記号を挿入 |動きます
-|コンテンツコントロールの挿入 |動きます
+|Copy |動きます
+|Cut |動きます
+|Paste |動きます
+|Font |動きます
+|Font size |動きます
+|Increment font size |動きます
+|Decrement font size |動きます
+|Change case |動きます
+|Ruby |動きます
+|Furigana |動きます
+|Bold |動きます
+|Italic |動きます
+|Underline |動きます
+|Strikethrough |動きます
+|Superscript |動きます
+|Subscript |動きます
+|Highlight colour |動きます
+|Font colour |動きます
+|Clear style |動きます
+|Bullet |動きます
+|Numbering |動きます
+|Multilevel list |動きます
+|Decrease indent |動きます
+|Increase indent |動きます
+|Paragraph line spacing |動きます
+|Text direction |動きます
+|Align left |動きます
+|Centre |動きます
+|Align right |動きます
+|Justified |動きます
+|Distributed |動きます
+|Nonprinting characters |動きます
+|Shading |動きます
+|Borders |動きます
+|Paragraph style |動きます
+|Replace |動きます
+|Select all |動きます
 |===
 
-*描画*
+*Insert*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|ペン |動きます
-|蛍光ペン |動きます
-|消しゴム |動きます
+|Insert blank page |動きます
+|Breaks |動きます
+|Insert table |動きます
+|Insert image |動きます
+|Insert shape |動きます
+|Insert SmartArt |動きます
+|Insert chart |動きます
+|Insert text box |動きます
+|Insert Text Art |動きます
+|Insert drop cap |動きます
+|Text from File |動きます
+|Edit header |動きます
+|Edit footer |動きます
+|Page number |動きます
+|Date & Time |動きます
+|Number of pages |動きます
+|Insert equation |動きます
+|Insert symbol |動きます
+|Insert content controls |動きます
 |===
 
-*レイアウト*
+*Draw*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|余白 |動きます
-|印刷の向き |動きます
-|ページのサイズ |動きます
-|列の挿入 |動きます
-|行番号を表示する |動きます
-|ハイフン設定の変更 |動きます
-|前面ヘ移動 |まだです
-|背面ヘ移動 |まだです
-|配置 |まだです
-|グループ化 |まだです
-|図形を結合 |まだです
-|透かしを編集する |動きます
-|ページ色の変更 |動きます
-|配色の変更 |動きます
+|Pen |動きます
+|Highlighter |動きます
+|Eraser |動きます
 |===
 
-*参考資料*
+*Layout*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|目次 |動きます
-|テキストの追加 |動きます
-|目次の更新 |動きます
-|ブックマーク |動きます
-|図表番号 |動きます
-|相互参照 |動きます
-|脚注 |動きます
-|図表目次 |動きます
-|図表目次の更新 |動きます
+|Margins |動きます
+|Page orientation |動きます
+|Page size |動きます
+|Insert column |動きます
+|Show line numbers |動きます
+|Change hyphenation |動きます
+|Bring forward |動きます
+|Send Backward |動きます
+|Alignment |動きます
+|Group |動きます
+|Merge shapes |動きます
+|Edit watermark |動きます
+|Change page colour |動きます
+|Change colour theme |動きます
 |===
 
-*フォーム*
+*References*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|テキストフィールド |動きます
-|コンボボックス |動きます
-|ドロップダウン |動きます
-|チェックボックス |動きます
-|ラジオボタン |動きます
-|画像 |動きます
-|メールアドレス |動きます
-|電話番号 |動きます
-|複合フィールド |動きます
-|署名 |動きます
-|名前 |動きます
+|Table of contents |動きます
+|Add Text |動きます
+|Update table of contents |動きます
+|Bookmark |動きます
+|Caption |動きます
+|Cross-reference |動きます
+|Footnote |動きます
+|Table of figures |動きます
+|Update table of figures |動きます
 |===
 
-*共同編集*
+*Forms*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|共同編集モード |動きます
-|コメントを追加 |動きます
-|コメントを削除 |動きます
-|コメントの表示 |動きます
-|チャット |動きます
-|変更履歴 |動きます
-|バージョン履歴 |動きます
+|Text Field |動きます
+|Combo box |動きます
+|Dropdown |動きます
+|Checkbox |動きます
+|Radio Button |動きます
+|Picture |動きます
+|Email Address |動きます
+|Phone Number |動きます
+|Complex Field |動きます
+|Signature |動きます
+|Name |動きます
 |===
 
-*保護*
+*Collaboration*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|デジタル署名を追加 |動きます
-|保護 |動きます
+|Co-editing mode |動きます
+|Add Comment |動きます
+|Delete comment |動きます
+|Show comments |動きます
+|Chat |動きます
+|Track changes |動きます
+|Version history |動きます
 |===
 
-*表示*
+*Protection*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|ナビゲーション |動きます
-|ページに合わせる |動きます
-|幅に合わせる |動きます
-|100%に拡大する |動きます
-|拡大 |動きます
-|縮小 |動きます
-|印刷レイアウト |動きます
-|複数ページ |動きます
-|ダークモード |動きます
-|画面の文字を大きく |動きます
-|画面の文字を小さく |動きます
-|ルーラー |動きます
-|ツールバーを常に表示する |動きます
-|ステータスバー |動きます
-|左パネル |動きます
-|右パネル |動きます
+|Add digital signature |動きます
+|Protection |動きます
 |===
 
-*マクロ*
+*View*
 
 [cols="2,1"]
 |===
 |ボタン |押せるか
 
-|一覧 |動きます
-|置き場を開く |動きます
-|マクロを書く |動きます
+|Navigation |動きます
+|Fit to page |動きます
+|Fit to width |動きます
+|Zoom to 100% |動きます
+|Zoom in |動きます
+|Zoom out |動きます
+|Print layout |動きます
+|Multiple pages |動きます
+|Dark mode |動きます
+|Bigger UI text |動きます
+|Smaller UI text |動きます
+|Rulers |動きます
+|Always Show Toolbar |動きます
+|Status Bar |動きます
+|Left Panel |動きます
+|Right Panel |動きます
+|===
+
+*Macros*
+
+[cols="2,1"]
+|===
+|ボタン |押せるか
+
+|Macro list |動きます
+|Open folder |動きます
+|Write macro |動きます
 |===
 
 // ribbon:gen:end
 
-== グレー表示は5つだけ
+== グレー表示
 
-グレー表示になっているのは、レイアウトタブの**図形まわりの5つ**だけです —
-前面へ移動・背面へ移動・配置・グループ化・図形を結合。
-図形を扱う機能はまだ入っていないので、押せない形で場所だけ取ってあります。
-
-「できないものを、できるように見せない」ためで、灰色のボタンは押しても
-何も起きません。表計算の側も同じ扱いです。
+いま、グレー表示のボタンはありません — リボンは全部動きます。
+まだ出来ていない機能が入るときは、「できないものを、できるように見せない」の決まりどおり、動くふりをせず押せない形(グレー表示)で並びます。
+表計算の側も同じ扱いです。
 
 残る正直な限界は各章に書いたとおり(縦書きの初版の限界、変更履歴の個別採否、セル結合を作る UI など)。
