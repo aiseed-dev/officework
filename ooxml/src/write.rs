@@ -18,16 +18,6 @@ pub(super) const ROOT_RELS: &str = r#"<?xml version="1.0" encoding="UTF-8" stand
 
 pub(super) const W_NS: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
-/// まっさらから作る文書に入れる最小の styles.xml。
-/// **原本があれば使わない**(原本のスタイル定義を持ち越す)。
-/// これが無いと、pStyle の Heading1 を読む側(Word / python-docx)が
-/// styleId を解決できず「Normal」に落ちる — 見出しと名乗った物は
-/// 見出しとして読まれるのが「定義どおり」。名前(w:name)は Word の
-/// 組み込み名("heading 1")— 読み手はこれで組み込みスタイルと同一視する。
-/// 見た目は最小(太字と大きさ)だけ — スタイル定義は持たない主義のまま、
-/// 読み手への名乗りのためだけに置く
-pub(super) const STYLES_MIN: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:sz w:val="40"/><w:szCs w:val="40"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/><w:rPr><w:i/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/><w:szCs w:val="32"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="2"/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:style></w:styles>"#;
 
 /// **新規の文書の用紙。** 既定は A4 と余白 20mm(1134 twip)です。
 ///
@@ -1794,8 +1784,8 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
         zip.write_all(cx.as_bytes()).map_err(|e| e.to_string())?;
     }
 
-    // スタイル定義。テンプレートがあればそこから作り、無ければ最小の物を
-    // 入れる(STYLES_MIN の注のとおり)。
+    // スタイル定義。テンプレートがあればそこから作り、無ければ同梱の
+    // 既定のひな型を入れます。
     // このアプリで足したスタイルはその後ろに追記する
     if !orig_has_styles {
         // **新規の文書は同梱の既定のひな型を持ちます**(2026-08-26 発注者

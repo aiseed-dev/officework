@@ -1513,10 +1513,8 @@ fn task_list(p: &Paragraph) -> Option<(&'static str, String, u8)> {
     let rest = text.trim_start_matches(head).trim_start();
     let (mark, body) = if let Some(r) = rest.strip_prefix("[x] ").or_else(|| rest.strip_prefix("[X] ")) {
         ("☑ ", r)
-    } else if let Some(r) = rest.strip_prefix("[ ] ") {
-        ("☐ ", r)
     } else {
-        return None;
+        ("☐ ", rest.strip_prefix("[ ] ")?)
     };
     Some((mark, body.to_string(), stars.saturating_sub(1) as u8))
 }

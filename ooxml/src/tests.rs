@@ -2772,6 +2772,11 @@ mod through_template {
     /// よって違う紙に組まれます。
     #[test]
     fn a_new_document_always_names_its_paper() {
+        // **言語を名乗ります。** 用紙は言語で変わります(2026-08-30 から
+        // アメリカ英語はレター)。名乗らないと、言語を替える試験と並んだ
+        // ときだけ落ちます
+        let _lock = kumihan::font::lang_lock();
+        kumihan::font::set_default_language("ja");
         let d = parts(&write_out(None), "word/document.xml").unwrap();
         assert!(d.contains(r#"<w:pgSz w:w="11906" w:h="16838"/>"#), "A4 が入らない: {d}");
         // 余白 20mm = 1134 twip。教師(Word の空)の 25.4mm ではなく、

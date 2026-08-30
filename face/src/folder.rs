@@ -190,6 +190,81 @@ pub fn openable(dir: &Path) -> Vec<Entry> {
     list(dir).into_iter().filter(|e| e.kind.can_open() || e.kind == Kind::Folder).collect()
 }
 
+/// 名前として使えるか見る。だめなら理由を返します。
+///
+/// 断るのは3つ — 空、区切りの字(`/` `\`)、`.` で始まる物です。
+/// `.` で始まる物は一覧に出ないので、作っても見えません。
+pub fn check_name(name: &str) -> Result<(), String> {
+    let t = name.trim();
+    if t.is_empty() {
+        return Err(lang::i18n::tr("name_empty").to_string());
+    }
+    if t.contains('/') || t.contains('\\') {
+        return Err(lang::i18n::tr("name_cannot_contain").to_string());
+    }
+    if t.starts_with('.') {
+        return Err(lang::i18n::tr("names_starting_not_listed").to_string());
+    }
+    Ok(())
+}
+
+/// 新しいフォルダを作る。**同じ名前があれば断ります**(上書きしません)。
+pub fn make_folder(parent: &Path, name: &str) -> Result<PathBuf, String> {
+    check_name(name)?;
+    let p = parent.join(name.trim());
+    if p.exists() {
+        return Err(format!("「{}」は既にあります", name.trim()));
+    }
+    std::fs::create_dir(&p).map_err(|e| format!("作れません: {e}"))?;
+    Ok(p)
+}
+
+/// 空のファイルを作る。**同じ名前があれば断ります**。
+///
+/// 中身は呼ぶ側が決めます(`.adoc` なら題の1行など)。
+pub fn make_file(parent: &Path, name: &str, content: &str) -> Result<PathBuf, String> {
+    check_name(name)?;
+    let p = parent.join(name.trim());
+    if p.exists() {
+        return Err(format!("「{}」は既にあります", name.trim()));
+    }
+    std::fs::write(&p, content).map_err(|e| format!("作れません: {e}"))?;
+    Ok(p)
+}
+
+/// 名前を変える。**同じ名前があれば断ります**(上書きしません)。
+pub fn rename_to(from: &Path, new_name: &str) -> Result<PathBuf, String> {
+    check_name(new_name)?;
+    let parent = from.parent().ok_or_else(|| lang::i18n::tr("location_unknown").to_string())?;
+    let to = parent.join(new_name.trim());
+    if to == from {
+        return Ok(to);
+    }
+    if to.exists() {
+        return Err(format!("「{}」は既にあります", new_name.trim()));
+    }
+    std::fs::rename(from, &to).map_err(|e| lang::i18n::trf("cannot_rename", &[&e]).to_string())?;
+    Ok(to)
+}
+
+/// 消す。**ごみ箱には入りません** — 呼ぶ側が先に確かめてください。
+///
+/// フォルダは*空のときだけ*消します。中身ごと消す道は置きません
+/// (押し間違いで綴りが消えるのは取り返しが付きません)。
+pub fn remove_at(p: &Path) -> Result<(), String> {
+    if p.is_dir() {
+        return std::fs::remove_dir(p).map_err(|e| {
+            if e.kind() == std::io::ErrorKind::DirectoryNotEmpty {
+                lang::i18n::tr("folder_not_empty_empty").to_string()
+            } else {
+                lang::i18n::trf("cannot_delete", &[&e]).to_string()
+            }
+        });
+    }
+    std::fs::remove_file(p).map_err(|e| lang::i18n::trf("cannot_delete", &[&e]).to_string())
+}
+
+
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod tests {
@@ -322,77 +397,3 @@ mod tests {
 // いけません**(2026-08-26 発注者)。作る・名前を変える・消すの3つを
 // ここに置きます。画面は writer と calc の2つありますが、*ファイルを
 // 触るのはこの1本*です。片方だけ直すと食い違うためです。
-
-/// 名前として使えるか見る。だめなら理由を返します。
-///
-/// 断るのは3つ — 空、区切りの字(`/` `\`)、`.` で始まる物です。
-/// `.` で始まる物は一覧に出ないので、作っても見えません。
-pub fn check_name(name: &str) -> Result<(), String> {
-    let t = name.trim();
-    if t.is_empty() {
-        return Err(lang::i18n::tr("name_empty").to_string());
-    }
-    if t.contains('/') || t.contains('\\') {
-        return Err(lang::i18n::tr("name_cannot_contain").to_string());
-    }
-    if t.starts_with('.') {
-        return Err(lang::i18n::tr("names_starting_not_listed").to_string());
-    }
-    Ok(())
-}
-
-/// 新しいフォルダを作る。**同じ名前があれば断ります**(上書きしません)。
-pub fn make_folder(parent: &Path, name: &str) -> Result<PathBuf, String> {
-    check_name(name)?;
-    let p = parent.join(name.trim());
-    if p.exists() {
-        return Err(format!("「{}」は既にあります", name.trim()));
-    }
-    std::fs::create_dir(&p).map_err(|e| format!("作れません: {e}"))?;
-    Ok(p)
-}
-
-/// 空のファイルを作る。**同じ名前があれば断ります**。
-///
-/// 中身は呼ぶ側が決めます(`.adoc` なら題の1行など)。
-pub fn make_file(parent: &Path, name: &str, content: &str) -> Result<PathBuf, String> {
-    check_name(name)?;
-    let p = parent.join(name.trim());
-    if p.exists() {
-        return Err(format!("「{}」は既にあります", name.trim()));
-    }
-    std::fs::write(&p, content).map_err(|e| format!("作れません: {e}"))?;
-    Ok(p)
-}
-
-/// 名前を変える。**同じ名前があれば断ります**(上書きしません)。
-pub fn rename_to(from: &Path, new_name: &str) -> Result<PathBuf, String> {
-    check_name(new_name)?;
-    let parent = from.parent().ok_or_else(|| lang::i18n::tr("location_unknown").to_string())?;
-    let to = parent.join(new_name.trim());
-    if to == from {
-        return Ok(to);
-    }
-    if to.exists() {
-        return Err(format!("「{}」は既にあります", new_name.trim()));
-    }
-    std::fs::rename(from, &to).map_err(|e| lang::i18n::trf("cannot_rename", &[&e]).to_string())?;
-    Ok(to)
-}
-
-/// 消す。**ごみ箱には入りません** — 呼ぶ側が先に確かめてください。
-///
-/// フォルダは*空のときだけ*消します。中身ごと消す道は置きません
-/// (押し間違いで綴りが消えるのは取り返しが付きません)。
-pub fn remove_at(p: &Path) -> Result<(), String> {
-    if p.is_dir() {
-        return std::fs::remove_dir(p).map_err(|e| {
-            if e.kind() == std::io::ErrorKind::DirectoryNotEmpty {
-                lang::i18n::tr("folder_not_empty_empty").to_string()
-            } else {
-                lang::i18n::trf("cannot_delete", &[&e]).to_string()
-            }
-        });
-    }
-    std::fs::remove_file(p).map_err(|e| lang::i18n::trf("cannot_delete", &[&e]).to_string())
-}

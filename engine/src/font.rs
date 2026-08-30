@@ -628,12 +628,14 @@ static UI_LANG: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None)
 /// 試験を並べて回すと、言語を入れ替える試験の値が、書体を見る試験にも
 /// 届いてしまいます。入れ替える側も見る側も、この錠を取ってから動きます
 /// (2026-08-27 に、回すたびに違う試験が落ちるので気づきました)。
-#[cfg(test)]
-pub(crate) static LANG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+/// **`#[cfg(test)]` にはできません。** それは crate の中だけの印で、
+/// 取りたいのは別の crate(`ooxml`)の試験だからです。用紙が言語で変わる
+/// ようになった 2026-08-30 から、`ooxml` の試験も取ります
+/// (`lang::i18n::LANG_LOCK` と同じ形)
+pub static LANG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// 錠を取ります。前の試験が落ちて錠が壊れていても、そのまま使います
-#[cfg(test)]
-pub(crate) fn lang_lock() -> std::sync::MutexGuard<'static, ()> {
+pub fn lang_lock() -> std::sync::MutexGuard<'static, ()> {
     LANG_LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 
@@ -771,6 +773,27 @@ fn missing(wanted: Option<&str>) -> String {
 /// 実体を読む。
 pub fn load(f: &Family) -> Result<Vec<u8>, String> {
     std::fs::read(&f.path).map_err(|e| format!("{}: {e}", f.path.display()))
+}
+
+
+/// **コードの塊に使う等幅の書体**を、この機械から探す。
+///
+/// 日本語の入るコードもあるので、和文を持つ物から順に見ます。
+/// どれも入っていなければ `None` — *代わりの書体で等幅のふりはしません*。
+/// 等幅でない字で組むと桁が揃わず、かえって読みにくくなります。
+pub fn monospace() -> Option<&'static Family> {
+    const CANDS: &[&str] = &[
+        "Noto Sans Mono CJK JP",   // Linux の既定の組み合わせ
+        "BIZ UDGothic",            // Windows(等幅の和文)
+        "MS Gothic",
+        "Osaka-Mono",              // Mac
+        "IPAGothic",
+        "Noto Sans Mono",          // 和文が無い物は最後
+        "DejaVu Sans Mono",
+        "Liberation Mono",
+        "Courier New",
+    ];
+    CANDS.iter().find_map(|n| resolve(n))
 }
 
 #[cfg(test)]
@@ -940,24 +963,4 @@ mod tests {
         assert!(w > 3.0 && w < 4.5, "全角の幅がおかしい: {w}mm ({})", f.name);
         *UI_LANG.write().unwrap() = None;
     }
-}
-
-/// **コードの塊に使う等幅の書体**を、この機械から探す。
-///
-/// 日本語の入るコードもあるので、和文を持つ物から順に見ます。
-/// どれも入っていなければ `None` — *代わりの書体で等幅のふりはしません*。
-/// 等幅でない字で組むと桁が揃わず、かえって読みにくくなります。
-pub fn monospace() -> Option<&'static Family> {
-    const CANDS: &[&str] = &[
-        "Noto Sans Mono CJK JP",   // Linux の既定の組み合わせ
-        "BIZ UDGothic",            // Windows(等幅の和文)
-        "MS Gothic",
-        "Osaka-Mono",              // Mac
-        "IPAGothic",
-        "Noto Sans Mono",          // 和文が無い物は最後
-        "DejaVu Sans Mono",
-        "Liberation Mono",
-        "Courier New",
-    ];
-    CANDS.iter().find_map(|n| resolve(n))
 }

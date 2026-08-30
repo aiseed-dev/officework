@@ -107,7 +107,7 @@ pub fn run(head: &[String], body: &[Vec<String>], spec: &Spec) -> Result<Grid, S
     if let Some((op, th)) = &spec.vfilter {
         let n = spec.rows.len();
         kumi.rows.retain(|r| {
-            let v = r.get(r.len() - 1).and_then(|s| s.trim().parse::<f64>().ok());
+            let v = r.last().and_then(|s| s.trim().parse::<f64>().ok());
             let _ = n;
             match v {
                 Some(v) => match op.as_str() {
@@ -273,7 +273,7 @@ fn matome(
                 let (y, m) = d;
                 r[i] = match unit.as_str() {
                     "years" => format!("{y}年"),
-                    "quarters" => format!("{y}年Q{}", (m + 2) / 3),
+                    "quarters" => format!("{y}年Q{}", m.div_ceil(3)),
                     _ => format!("{y}-{m:02}"),
                 };
             }

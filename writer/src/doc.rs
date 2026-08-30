@@ -603,7 +603,7 @@ impl Writer {
         self.dress_hf = (deco.header.clone(), deco.footer.clone());
         self.dress_page = (deco.watermark.clone(), deco.page_color.clone());
         let vertical = deco.vertical;
-        let snapshot = Look { pg: self.pg, vertical: vertical, group, view_w_px: self.view_w_px };
+        let snapshot = Look { pg: self.pg, vertical, group, view_w_px: self.view_w_px };
         self.page = snapshot.lay_once(composed.as_ref().unwrap_or(&self.doc), &m);
         self.refresh_hf();
         // **跨がない**(発表)。折った結果を見て、境をまたいだ段落があれば

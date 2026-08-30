@@ -267,12 +267,6 @@ pub(super) fn patch_sheet_states(workbook: &str, book: &Book) -> String {
     out
 }
 
-/// 読み取り専用のお願いを workbook.xml に織り込む(無ければ足し、
-/// 外したら消す)。**鍵ではないので password は書かない** — 掛けた振りをしない
-pub(super) fn patch_read_only(workbook: &str, on: bool) -> String {
-    patch_protection(workbook, on, false)
-}
-
 /// 読み取り専用のお願いと、ブックの構造の保護を workbook.xml に織り込む。
 /// **鍵ではないので password は書きません** — 掛けた振りをしない
 pub(super) fn patch_protection(workbook: &str, read_only: bool, lock: bool) -> String {

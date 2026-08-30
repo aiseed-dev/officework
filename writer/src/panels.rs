@@ -1902,7 +1902,7 @@ impl Writer {
                 // **画面の言語の字が組める書体だけ**(2026-08-26)。前は
                 // 日本語で決め打っていたので、韓国語の画面ではハングルの
                 // 出ない書体ばかりが並んでいました
-                let script = kumihan::font::script_of(&ui::language());
+                let script = kumihan::font::script_of(ui::language());
                 kumihan::font::list()
                     .iter()
                     .filter(|f| f.covers(script) && f.regular)

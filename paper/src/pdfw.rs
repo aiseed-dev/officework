@@ -244,14 +244,11 @@ pub fn write_pages_fonts<W: std::io::Write>(
     for page in pages {
         let mut on_this = Vec::new();
         for im in &page.images {
-            match decode(&im.data) {
-                Some((rgb, w, h, jpeg)) => {
-                    let r = id();
-                    img_parts.push((r, rgb, w, h, jpeg));
-                    on_this.push((r, im));
-                }
-                // **読めない絵は数えて返します**(呼ぶ側が言う)
-                None => {}
+            // **読めない絵は落とします。** 数えて返すのは呼ぶ側の仕事です
+            if let Some((rgb, w, h, jpeg)) = decode(&im.data) {
+                let r = id();
+                img_parts.push((r, rgb, w, h, jpeg));
+                on_this.push((r, im));
             }
         }
         img_ids.push(on_this);
@@ -497,12 +494,12 @@ pub fn write_pages_fonts<W: std::io::Write>(
     // 頭の6文字は「一部だけ埋めた」印で、PDF の決まりです
     // **書体ごとに部品を書きます**(2026-08-31)。前は1本しか埋められず、
     // 明朝の升もゴシックの升も同じ書体で出ていました
-    for (fi, faceN) in faces.iter().enumerate() {
+    for (fi, kono) in faces.iter().enumerate() {
         let (font, cid, desc, file, to_uni) = font_ids[fi];
-        let face = faceN;
+        let face = kono;
         let new_gid = &new_gid_all[fi];
         let subset = &subsets[fi];
-        let ps_name = base_font_name(&face);
+        let ps_name = base_font_name(face);
         let ps = ps_name.as_bytes();
         pdf.type0_font(font)
             .base_font(Name(ps))
@@ -565,7 +562,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
         // **圧縮は自分で掛けます。** `filter` は「掛けた」と名乗るだけで、
         // 中身は触りません。名乗りだけ書いて圧縮しないと、読む側が
         // 「壊れた書体」と言います(2026-08-27 に pdftotext で見つけた)
-        let packed = deflate(&subset);
+        let packed = deflate(subset);
         let mut st = pdf.stream(file, &packed);
         st.filter(Filter::FlateDecode);
         if is_cff {
@@ -741,8 +738,6 @@ mod tests {
         assert!(body.contains(" RG"), "線の色が無い");
         assert!(body.contains(" re"), "蛍光ペンの四角が無い");
     }
-
-    /// 流れを解いて中の命令を字にする(実物を見るため)
 
     /// **絵が紙に載る。** PNG は解いて並べ直し、JPEG はそのまま埋めます
     #[test]

@@ -35,7 +35,7 @@ fn main() {
         let mut sum = Cell::input(&format!("=SUM(B{0}:D{0})", r + 1));
         sum.fmt.number_format = Some("#,##0".into());
         sh.set(Pos::new(r, 4), sum);
-        if r % 2 == 0 {
+        if r.is_multiple_of(2) {
             for c in 0..5u32 {
                 let p = Pos::new(r, c);
                 let mut cc = sh.get(p).cloned().unwrap_or_default();

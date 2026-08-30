@@ -450,7 +450,7 @@ impl Writer {
         let total = for_print
             .as_ref()
             .map(|(s, pg, _)| {
-                paper::paginate(s, paper::Paper::from_page(&pg))
+                paper::paginate(s, paper::Paper::from_page(pg))
                 .0
                 .iter()
                 .copied()

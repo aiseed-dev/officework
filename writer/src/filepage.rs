@@ -319,7 +319,7 @@ impl Writer {
             // ファイルの中身が食い違って見えます
             let lang = ui::language();
             let notes = |th: Option<&kumihan::theme::Theme>| -> Option<String> {
-                let th = th?.for_language(&lang);
+                let th = th?.for_language(lang);
                 match (th.font, th.size_pt) {
                     (Some(f), Some(s)) => Some(format!("{f} {s}pt")),
                     (Some(f), None) => Some(f),
@@ -349,14 +349,14 @@ impl Writer {
                     .child(ui::tf!("current_language_font_size", lang)))
                 .child(div().h(px(us * 8.0)))
                 // 1段目 — この文書
-                .child(tab(&ui::t!("document_5"), self.doc.font.clone(),
+                .child(tab(ui::t!("document_5"), self.doc.font.clone(),
                           Some(ui::t!("font_stored_document_open").to_string())))
                 // 2段目 — 綴り
-                .child(tab(&ui::t!("folder_4"),
+                .child(tab(ui::t!("folder_4"),
                           notes(folder.as_ref()),
                           folder_place.map(|p| p.display().to_string())))
                 // 3段目 — 利用者
-                .child(tab(&ui::t!("account_computer"),
+                .child(tab(ui::t!("account_computer"),
                           notes(user.as_ref()),
                           Some(user_place.display().to_string())))
                 .child(div().h(px(us * 8.0)))

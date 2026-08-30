@@ -1063,12 +1063,6 @@ mod pivot_tests {
         }
     }
 
-    /// **集計は Rust の polars でその場で回します**(2026-08-29)。
-    /// 前は指図を JSON にして Python を別プロセスで起こしていました。
-    /// JSON の逃がし方の試験は、JSON を作らなくなったので落としました。
-    fn run_py(_spec: String) -> Option<(Vec<Vec<String>>, Vec<char>)> {
-        None
-    }
 
     /// 指図から集計する(試験の入り口)
     fn agg2(

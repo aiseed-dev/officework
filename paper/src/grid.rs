@@ -379,11 +379,6 @@ impl Ink<'_> {
         });
     }
 
-    /// 好きな形の塗り(円グラフの扇・傾いた棒)
-    fn poly(&mut self, points: Vec<(f32, f32)>, rgb: (f32, f32, f32)) {
-        self.poly_a(points, rgb, 1.0);
-    }
-
     /// 透明度つきの塗り
     fn poly_a(&mut self, points: Vec<(f32, f32)>, rgb: (f32, f32, f32), a: f32) {
         if points.len() >= 3 {
@@ -407,11 +402,6 @@ impl Board {
         Board { leaves: vec![leaf(paper)], fonts: Vec::new() }
     }
 
-    /// 書体の名前から番号を引きます。名指しが無い・知らない名前は1本目
-    fn font_no(&self, na: Option<&str>) -> u8 {
-        na.and_then(|n| self.fonts.iter().position(|x| x == n))
-            .unwrap_or(0) as u8
-    }
 
     /// 紙を1枚足して、その番号を返します
     fn add_page(&mut self, paper: Paper) -> usize {

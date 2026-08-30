@@ -26,7 +26,7 @@ fn main() {
                 ..Default::default()
             };
             cell.fmt.number_format = Some("#,##0".into());
-            if r % 2 == 0 {
+            if r.is_multiple_of(2) {
                 cell.fmt.fill = Some("F5F7FA".into());
             }
             sh.set(book::Pos::new(r, c), cell);

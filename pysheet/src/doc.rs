@@ -2247,7 +2247,7 @@ impl PyRun {
                 // **Word が使ったときに作る文字スタイル**なら、ここで作ります
                 // (`Subtitle Char` など)。段落のスタイルと同じ作法です
                 let found = found.or_else(|| {
-                    kumihan::latent_style(&v).map(|(id, name)| {
+                    kumihan::latent_style(v).map(|(id, name)| {
                         g.doc.styles_new.push(kumihan::StyleInfo {
                             id: id.to_string(),
                             name: name.to_string(),
@@ -2851,6 +2851,60 @@ pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     parent.add_submodule(&m)
 }
 
+/// 画像を読み、置く大きさ(mm)を決める。**段落と run の両方が使います** —
+/// 2つに書くと、片方だけ縦横比の扱いが違う、が起きます。
+fn read_picture(
+    image: &Bound<'_, PyAny>,
+    width_mm: Option<f32>,
+    height_mm: Option<f32>,
+) -> PyResult<(Vec<u8>, f32, f32)> {
+    let data: Vec<u8> = if let Ok(b) = image.extract::<Vec<u8>>() {
+        b
+    } else if let Ok(p) = image.extract::<String>() {
+        std::fs::read(&p).map_err(|e| PyIOError::new_err(format!("{p}: 読めない: {e}")))?
+    } else {
+        return Err(PyTypeError::new_err(
+            "画像は 径路の文字列 か bytes(PNG / JPEG)で渡してください",
+        ));
+    };
+    let (wpx, hpx) = ops::image_px(&data).ok_or_else(|| {
+        PyValueError::new_err("PNG / JPEG として読めない(大きさが測れない)")
+    })?;
+    // 実寸(96dpi)を既定に、渡された辺へ縦横比を保って合わせる
+    let (w0, h0) = (wpx as f32 * 25.4 / 96.0, hpx as f32 * 25.4 / 96.0);
+    let (w_mm, h_mm) = match (width_mm, height_mm) {
+        (Some(w), Some(h)) => (w, h),
+        (Some(w), None) => (w, w * h0 / w0),
+        (None, Some(h)) => (h * w0 / h0, h),
+        (None, None) => (w0, h0),
+    };
+    Ok((data, w_mm, h_mm))
+}
+
+/// 揃えの言い換え。**1箇所で決めます** — 段落とスタイルで綴りがずれると、
+/// 同じ物が別の名前で返ります
+fn align_word(a: kumihan::Align) -> &'static str {
+    match a {
+        kumihan::Align::Left => "left",
+        kumihan::Align::Center => "center",
+        kumihan::Align::Right => "right",
+        kumihan::Align::Justify => "justify",
+        kumihan::Align::Distribute => "distribute",
+    }
+}
+
+fn align_of(v: &str) -> Option<kumihan::Align> {
+    Some(match v {
+        "left" => kumihan::Align::Left,
+        "center" => kumihan::Align::Center,
+        "right" => kumihan::Align::Right,
+        "justify" | "both" => kumihan::Align::Justify,
+        "distribute" => kumihan::Align::Distribute,
+        _ => return None,
+    })
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2977,57 +3031,4 @@ mod tests {
             "欄のまとまりが違う: {g:?}"
         );
     }
-}
-
-/// 画像を読み、置く大きさ(mm)を決める。**段落と run の両方が使います** —
-/// 2つに書くと、片方だけ縦横比の扱いが違う、が起きます。
-fn read_picture(
-    image: &Bound<'_, PyAny>,
-    width_mm: Option<f32>,
-    height_mm: Option<f32>,
-) -> PyResult<(Vec<u8>, f32, f32)> {
-    let data: Vec<u8> = if let Ok(b) = image.extract::<Vec<u8>>() {
-        b
-    } else if let Ok(p) = image.extract::<String>() {
-        std::fs::read(&p).map_err(|e| PyIOError::new_err(format!("{p}: 読めない: {e}")))?
-    } else {
-        return Err(PyTypeError::new_err(
-            "画像は 径路の文字列 か bytes(PNG / JPEG)で渡してください",
-        ));
-    };
-    let (wpx, hpx) = ops::image_px(&data).ok_or_else(|| {
-        PyValueError::new_err("PNG / JPEG として読めない(大きさが測れない)")
-    })?;
-    // 実寸(96dpi)を既定に、渡された辺へ縦横比を保って合わせる
-    let (w0, h0) = (wpx as f32 * 25.4 / 96.0, hpx as f32 * 25.4 / 96.0);
-    let (w_mm, h_mm) = match (width_mm, height_mm) {
-        (Some(w), Some(h)) => (w, h),
-        (Some(w), None) => (w, w * h0 / w0),
-        (None, Some(h)) => (h * w0 / h0, h),
-        (None, None) => (w0, h0),
-    };
-    Ok((data, w_mm, h_mm))
-}
-
-/// 揃えの言い換え。**1箇所で決めます** — 段落とスタイルで綴りがずれると、
-/// 同じ物が別の名前で返ります
-fn align_word(a: kumihan::Align) -> &'static str {
-    match a {
-        kumihan::Align::Left => "left",
-        kumihan::Align::Center => "center",
-        kumihan::Align::Right => "right",
-        kumihan::Align::Justify => "justify",
-        kumihan::Align::Distribute => "distribute",
-    }
-}
-
-fn align_of(v: &str) -> Option<kumihan::Align> {
-    Some(match v {
-        "left" => kumihan::Align::Left,
-        "center" => kumihan::Align::Center,
-        "right" => kumihan::Align::Right,
-        "justify" | "both" => kumihan::Align::Justify,
-        "distribute" => kumihan::Align::Distribute,
-        _ => return None,
-    })
 }
