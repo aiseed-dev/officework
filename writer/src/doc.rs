@@ -1516,6 +1516,19 @@ impl Writer {
                 return;
             }
         };
+        // **開いたファイルまでの道を木の中で開く**(IDE の auto-reveal)。
+        // 根がまだ無ければ先に立てる — 後のパネルの同期が展開を捨てない
+        // よう、パネルと同じ答え(選んだフォルダ、無ければ親)で立てる
+        if self.fl_tree.root().as_os_str().is_empty() {
+            if let Some(dir) = self
+                .chosen_folder
+                .clone()
+                .or_else(|| p.parent().map(|x| x.to_path_buf()))
+            {
+                self.fl_tree.set_root(dir);
+            }
+        }
+        self.fl_tree.reveal(&p);
         // HTML(JS なしの閲覧 — SEKKEI「writer の HTML」)
         if p.extension().and_then(|e| e.to_str()).is_some_and(|e| {
             e.eq_ignore_ascii_case("html") || e.eq_ignore_ascii_case("htm")
@@ -3008,8 +3021,16 @@ impl Writer {
                 format!("{{\"id\":\"{id}\",\"x\":{x},\"y\":{y},\"w\":{w},\"h\":{h}}}")
             })
             .collect();
+        // プロジェクトパネルの木(見える行の数と、選ばれている径路)。
+        // 画が古くても、reveal が効いたかはここで分かる
+        let fl_sel = self
+            .fl_tree
+            .selected
+            .as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_default();
         let body = format!(
-            "{{\"tab\":{},\"native\":{},\"rp_open\":{},\"rp_tab\":{},\"rp_drawn\":{},\"file_view\":{},\"win_w\":{},\"win_h\":{},\"fd_files\":{},\"fd_hits\":{},\"sel\":[{},{}],\"fd_boxes\":[{}],\"status\":{:?},\"boxes\":[{}]}}",
+            "{{\"tab\":{},\"native\":{},\"rp_open\":{},\"rp_tab\":{},\"rp_drawn\":{},\"file_view\":{},\"win_w\":{},\"win_h\":{},\"fd_files\":{},\"fd_hits\":{},\"sel\":[{},{}],\"fd_boxes\":[{}],\"status\":{:?},\"boxes\":[{}],\"fl_rows\":{},\"fl_sel\":{fl_sel:?}}}",
             self.tab,
             self.native,
             self.rp_open,
@@ -3032,7 +3053,8 @@ impl Writer {
                 .collect::<Vec<_>>()
                 .join(","),
             self.status.to_string(),
-            boxes.join(",")
+            boxes.join(","),
+            self.fl_tree.rows().len()
         );
         // 同じ中身なら書かない(毎フレーム書くのは無駄)
         if *self.ui_dump_last.borrow() == body {

@@ -232,6 +232,19 @@ impl Calc {
                 return;
             }
         };
+        // **開いたファイルまでの道を木の中で開く**(IDE の auto-reveal)。
+        // 根がまだ無ければ先に立てる — 後のパネルの同期が展開を捨てない
+        // よう、パネルと同じ答え(選んだフォルダ、無ければ親)で立てる
+        if self.fl_tree.root().as_os_str().is_empty() {
+            if let Some(dir) = self
+                .chosen_folder
+                .clone()
+                .or_else(|| p.parent().map(|x| x.to_path_buf()))
+            {
+                self.fl_tree.set_root(dir);
+            }
+        }
+        self.fl_tree.reveal(&p);
         // **`.adoc` は字のファイル**なので、zip の道は通らない
         if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc")) {
             self.open_adoc(p, bytes);
