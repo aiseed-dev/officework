@@ -36,6 +36,40 @@ import ribbon_parse  # noqa: E402
 # id・並び・絵は ja 版でも同じです(`ribbon_ja.rs` の頭に書いてあります)。
 RIBBON_JA = ROOT / "face/src/ribbon_ja.rs"
 
+# オブジェクトの列に出す日本語(2026-08-30 発注者「オブジェクトはわかるので
+# 日本語名の項目にしたほうがいい」)。
+#
+# **この表の中では英語のクラス名のまま持ちます。** 右の2列に並ぶのは
+# python-docx と openpyxl のクラス名なので、こちらを日本語で持つと
+# 突き合わせるときに一段訳す手間が増えます。出すときに1か所で訳します。
+#
+# 言葉は日本語のマニュアルで使っている物に合わせました
+# (`Section` は「セクション」ではなく「節」、`Run` は「文字」です)。
+MONO = {
+    "Doc": "文書",
+    "Book": "ブック",
+    "Sheet": "シート",
+    "Cell": "セル",
+    "Paragraph": "段落",
+    "Run": "文字",
+    "Table": "表",
+    "Section": "節",
+    "Comment": "コメント",
+    "Template": "テンプレート",
+}
+# 長い名前から当てます(短い名前が長い名前の一部だったときに割れないため)
+_MONO_RE = re.compile("|".join(sorted(MONO, key=len, reverse=True)))
+
+
+def mono_ja(obj: str) -> str:
+    """オブジェクトの列を日本語にします。
+
+    `Run / Cell` は「文字 / セル」、`Doc(記入欄)` は「文書(記入欄)」に
+    なります。「どこでも」のように元から日本語の物はそのまま通ります。
+    """
+    return _MONO_RE.sub(lambda m: MONO[m.group(0)], obj)
+
+
 # ボタンの id → (オブジェクト, officework, python-docx, openpyxl)。
 # **officework は `.adoc` を触る1つの模型なので、文書と表で列を割りません**
 # (2026-08-24 発注者)。どのオブジェクトの物かを示します。
@@ -605,7 +639,7 @@ def table() -> str:
         # **ボタンの名前から手引きへ飛ばします**(2026-08-25 発注者
         # 「一覧からのリンクをつける」)。この表は引くための1枚なので、
         # 引き当てた行からそのまま詳しい説明へ行けないと途中で止まります
-        o.append(f"|{icon_tag}{manual_link(label)} |{f(obj)} |{st} |{inner} |{f(pd)} |{f(op)}")
+        o.append(f"|{icon_tag}{manual_link(label)} |{f(mono_ja(obj))} |{st} |{inner} |{f(pd)} |{f(op)}")
     if current is not None:
         o.append("|===\n")
     return "\n".join(o)
