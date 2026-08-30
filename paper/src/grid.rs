@@ -824,7 +824,54 @@ fn draw_sheet(
                 | HAlign::Distribute => false,
                 HAlign::General => matches!(cell.value, Value::Number(_)),
             };
-            let pt = 9.5f32 * scale;
+            // **セルが言う大きさで描きます**(2026-08-31 発注者)。前は
+            // 9.5pt の決め打ちで、6pt に設定した英文が大きく出ていました
+            // (国税庁の酒税の表の I7「Number of licensed sites to sell
+            // liquors」)。折り返しの位置もそのぶんずれます
+            let pt = cell.fmt.size_c.map_or(9.5, |c| c as f32 / 100.0) * scale;
+            // 1文字の幅(mm)。全角 1em / 半角 0.55em のだいたいの見当
+            let haba = |t: &str| -> f32 {
+                t.chars().map(|ch| if ch.is_ascii() { 0.55 } else { 1.0 }).sum::<f32>()
+                    * pt * 25.4 / 72.0
+            };
+            // **セルの中で折り返す**(2026-08-31 発注者。xlsx の `wrapText`)。
+            //
+            // 前は折り返しを見ておらず、長い見出しが右のセルへ流れて、
+            // 紙からもはみ出していました(国税庁の酒税の表の I7
+            // 「販 売 場 数 / Number of licensed sites to sell liquors」)。
+            //
+            // **結合していれば、結合したぶんの幅で折ります。** 元のセルの
+            // 幅で折ると、何列にも渡る注記が1列の幅で縦に積まれます
+            let mut ma_w = cw;
+            if let Some((tl, br)) = grid.merges.iter().find(|(tl, _)| *tl == p) {
+                ma_w = (tl.col..=br.col)
+                    .filter(|c| !grid.col_hidden.contains(c))
+                    .map(|c| {
+                        grid.col_width.get(&c).copied().or(grid.default_col_width)
+                            .map(retsu_mm).unwrap_or(COL_MM) * scale
+                    })
+                    .sum();
+            }
+            let naka = (ma_w - 3.0).max(pt * 25.4 / 72.0);
+            let gyou: Vec<String> = if cell.fmt.wrap {
+                let mut out: Vec<String> = Vec::new();
+                // セルの中の改行(Alt+Enter)も行の区切りです
+                for moto in shown.split('\n') {
+                    let mut ima = String::new();
+                    for ch in moto.chars() {
+                        let mut tame = ima.clone();
+                        tame.push(ch);
+                        if !ima.is_empty() && haba(&tame) > naka {
+                            out.push(std::mem::take(&mut ima));
+                        }
+                        ima.push(ch);
+                    }
+                    out.push(ima);
+                }
+                out
+            } else {
+                shown.split('\n').map(|x| x.to_string()).collect()
+            };
             let tx = if right {
                 // だいたいの字幅で右に寄せる(全角 1em / 半角 0.55em)
                 let w: f32 = shown
@@ -841,10 +888,24 @@ fn draw_sheet(
                 let ind = f32::from(cell.fmt.indent) * pt * 25.4 / 72.0;
                 x + 1.5 + ind
             };
-            let ty = y_top - rh + 2.0;
             // 文字は塗り色で描かれる(PDF の作法)ので、色付きの字は前後で入れ替える
             let c = colour.as_deref().and_then(hex_rgb).unwrap_or((0.0, 0.0, 0.0));
-            ink.text(&shown, pt, tx, ty, c, bold);
+            // **何行あっても、セルの下から積みます。** 1行のときは今までと
+            // 同じ位置です
+            let okuri = pt * 25.4 / 72.0 * 1.2;
+            let mut ty = y_top - rh + 2.0 + okuri * (gyou.len() as f32 - 1.0);
+            for g in &gyou {
+                let gx = match cell.fmt.align {
+                    // **中央揃え**(2026-08-31)。前は左に出ていました。
+                    // 幅は結合したぶん(`ma_w`)で見ます — 結合の1列目の
+                    // 幅で中央を出すと、題が紙の左へはみ出します
+                    HAlign::Center | HAlign::CenterContinuous => x + (ma_w - haba(g)) / 2.0,
+                    _ if right => x + cw - 1.5 - haba(g),
+                    _ => tx,
+                };
+                ink.text(g, pt, gx, ty, c, bold);
+                ty -= okuri;
+            }
         }
     }
 
