@@ -11,8 +11,9 @@
 「これが、インデックスの一つになるから、独立させないとダメでしょう」)。
 手引きの中に埋めると、引きたい人が手引きを読む羽目になります。
 
-    python3 tools/api_taiou.py           # 揃っているか見る(CI の検査)
-    python3 tools/api_taiou.py --write   # 手引きの節を書き直す
+    python3 tools/api_taiou.py             # 揃っているか見る(CI の検査)
+    python3 tools/api_taiou.py --write     # 手引きの節を書き直す
+    python3 tools/api_taiou.py --self-test # まとまりの検査が効いているか見る
 
 対応は下の表が持ちます。**本家の側は実際に呼んで確かめた名前**です
 (python-docx 1.2.0 / openpyxl 3.1.5)。無い所は空です。
@@ -51,6 +52,64 @@ class Row(NamedTuple):
     ow: str         # officework の書き方
     pd: str         # python-docx の書き方
     op: str         # openpyxl の書き方
+    group: str = ""  # まとまりの名前(下の GROUPS。無ければ空)
+
+
+# **同じことをするボタンのまとまり**(2026-08-30 発注者「こういうのは、
+# ボタングループとして処理すべきでは」)。表では1行にまとめて出します。
+#
+# **まとまりは中身から計算できません。** 2つ試して両方だめでした。
+#
+# 「右の列が同じ行をまとめる」と、ファイルの段の 戻る・フォルダーを開く・
+# 最近開いた・復旧・終了・ヘルプなど 10 個が1行になります。同じなのは
+# 「まだ API が無い」ことだけで、別々の操作です。まとめると「同じ操作です」
+# と嘘を書きます。
+#
+# 「隣り合っていて右の列も同じならまとめる」だと、減るのは 20 行だけで、
+# しかも揃えが割れます。表の中で両端揃えだけ書き方を変えて持っていたのが
+# 理由で、画面の並びとは関係がありません。
+#
+# だから、まとまりはここに書きます。**画面の並びは崩しません** — 隣り
+# 合って並んでいる分だけをまとめるので、間に別のボタンが挟まっていれば
+# そこで切れます。
+#
+# (まとまりの名前, [ボタンの id], officework, python-docx, openpyxl)
+GROUPS = [
+    ("貼り付け", ["copy", "cut", "paste"],
+     "p.text = 値 / s['A1'] = 値 / c.text = 値", "p.text = 値", "ws['A1'] = 値"),
+    ("フォントの大きさ", ["fontsize", "incfont", "decfont"],
+     "r.size_pt / c.font", "r.font.size", "c.font = Font(size=…)"),
+    ("箇条書きと番号", ["markers", "numbering"],
+     "p.style = '箇条書き' / '番号付き'", "p.style = 'List Bullet' / 'List Number'", ""),
+    ("字下げ", ["decoffset", "incoffset"],
+     "p.paragraph_format.left_indent", "p.paragraph_format.left_indent", ""),
+    # **揃えは1つの属性に5つの値**です(`pysheet/src/doc.rs` の p.align)。
+    # 5行に割っていたときは、左揃えのときに何を入れるのかを一度も
+    # 書いていませんでした
+    ("揃え", ["align-left", "align-center", "align-right", "align-just", "align-dist"],
+     "p.align = 'left' / 'center' / 'right' / 'justify' / 'distribute'",
+     "p.alignment", "c.alignment = Alignment(…)"),
+    ("数値の見せ方", ["format", "currency", "percents", "comma"],
+     "c.number_format", "", "c.number_format"),
+    ("並べ替え", ["sort-desc", "sort-asc"], "", "", ""),
+    ("フィルター", ["setfilter", "clear-filter"], "", "", "ws.auto_filter"),
+    ("ヘッダーとフッター", ["edit-header", "edit-footer"],
+     "d.header / d.footer", "section.header / section.footer", "ws.oddHeader"),
+    ("グループ化", ["group", "ungroup"],
+     "s.row_groups", "", "ws.column_dimensions[…].outline_level"),
+    ("手書き", ["draw-select", "pen", "highlighter", "eraser"], "", "", ""),
+    ("マクロ", ["py-list", "py-folder", "ai-macro", "rec-toggle", "py-new", "ribbon-list"],
+     "", "", ""),
+    # 記入欄は種類が違っても、値の出し入れは名前で引くので呼び方が同じです。
+    # 画像と署名はまだ置けないので、この中に入れません
+    ("記入欄", ["form-text", "form-combo", "form-dropdown", "form-checkbox",
+              "form-radio", "form-email", "form-phone", "form-complex"],
+     "mcp.doc_fill({member: 値})", "", ""),
+    ("表の見た目", ["td-band-row", "td-first", "td-last", "td-band-col"],
+     "", "", "ws.tables[…].tableStyleInfo"),
+]
+
+GROUP_OF = {i: g for g in GROUPS for i in g[1]}
 
 
 # ボタンの id → (officework, python-docx, openpyxl)。
@@ -59,24 +118,10 @@ class Row(NamedTuple):
 # `A / B` は、いま2つの呼び方がある物です(寄せる仕事が残っています)。
 MICHI = {
     # 描画 — 手書き。**docx だけの機能**で、adoc には居場所がありません
-    "draw-select": ('', '', ''),
-    "pen": ('', '', ''),
-    "highlighter": ('', '', ''),
-    "eraser": ('', '', ''),
     # マクロ — Python を動かす側。**プログラムからは自分で書けば済みます**
-    "py-list": ('', '', ''),
-    "py-new": ('', '', ''),
-    "py-folder": ('', '', ''),
-    "ribbon-list": ('', '', ''),
-    "rec-toggle": ('', '', ''),
-    "ai-macro": ('', '', ''),
     # 表のデザイン — テーブルの見た目。openpyxl は tables で持ちます
     "td-header": ('', '', 'ws.tables[…].tableStyleInfo'),
     "td-total": ('', '', 'ws.tables[…].totalsRowCount'),
-    "td-band-row": ('', '', 'ws.tables[…].tableStyleInfo'),
-    "td-band-col": ('', '', 'ws.tables[…].tableStyleInfo'),
-    "td-first": ('', '', 'ws.tables[…].tableStyleInfo'),
-    "td-last": ('', '', 'ws.tables[…].tableStyleInfo'),
     "td-filter": ('', '', 'ws.auto_filter'),
     "td-torange": ('', '', 'del ws.tables[…]'),
     "td-resize": ('', '', 'ws.tables[…].ref'),
@@ -115,18 +160,12 @@ MICHI = {
     "open": ('Doc.open(径路) / Book.open(径路)', 'docx.Document(径路)', 'load_workbook(径路)'),
     "save": ('d.save(径路) / b.save(径路)', 'd.save(径路)', 'wb.save(径路)'),
     "pdf": ('', '', ''),
-    "copy": ("p.text = 値 / s['A1'] = 値 / c.text = 値", 'p.text = 値', "ws['A1'] = 値"),
-    "cut": ("p.text = 値 / s['A1'] = 値 / c.text = 値", 'p.text = 値', "ws['A1'] = 値"),
-    "paste": ("p.text = 値 / s['A1'] = 値 / c.text = 値", 'p.text = 値', "ws['A1'] = 値"),
     "clear": ("r.clear() / s['A1'] = None", 'r.clear()', "ws['A1'] = None"),
     "bold": ('r.bold / c.font', 'r.bold', 'c.font = Font(bold=True)'),
     "italic": ('r.italic / c.font', 'r.italic', 'c.font = Font(italic=True)'),
     "underline": ('r.underline / c.font', 'r.underline', 'c.font = Font(underline=…)'),
     "strikeout": ('r.strike', 'r.font.strike', ''),
     "fontname": ('r.font / c.font', 'r.font.name', 'c.font = Font(name=…)'),
-    "fontsize": ('r.size_pt / c.font', 'r.font.size', 'c.font = Font(size=…)'),
-    "incfont": ('r.size_pt / c.font', 'r.font.size', 'c.font = Font(size=…)'),
-    "decfont": ('r.size_pt / c.font', 'r.font.size', 'c.font = Font(size=…)'),
     "fontcolor": ('r.color / c.font', 'r.font.color.rgb', 'c.font = Font(color=…)'),
     "superscript": ('', 'r.font.superscript', ''),
     "subscript": ('', 'r.font.subscript', 'c.font = Font(vertAlign=…)'),
@@ -137,41 +176,22 @@ MICHI = {
     # (p.boxed)、calc はセルに線を引きます。段落の枠にはまだ呼び方が
     # ありません(2026-08-25 本家のマニュアルと突き合わせて分かった)
     "borders": ('c.border', '', 'c.border = Border(…)'),
-    "align-left": ('p.align / c.alignment', 'p.alignment', 'c.alignment = Alignment(…)'),
-    "align-center": ('p.align / c.alignment', 'p.alignment', 'c.alignment = Alignment(…)'),
-    "align-right": ('p.align / c.alignment', 'p.alignment', 'c.alignment = Alignment(…)'),
-    "align-just": ("p.align = 'justify'", 'p.alignment', ''),
-    "align-dist": ("p.align = 'distribute'", '', ''),
     "wrap": ('c.alignment', '', 'c.alignment = Alignment(wrap_text=True)'),
     "merge": ('(col_span / v_merge) / s.merge_cells(…)', 'cell.merge(…)', "ws.merge_cells('A1:B2')"),
     "parastyle": ('p.style', 'p.style', ''),
-    "markers": ("p.style = '箇条書き'", "p.style = 'List Bullet'", ''),
-    "numbering": ("p.style = '番号付き'", "p.style = 'List Number'", ''),
     "multilevels": ('', '', ''),
-    "decoffset": ('p.paragraph_format', 'p.paragraph_format.left_indent', ''),
-    "incoffset": ('p.paragraph_format', 'p.paragraph_format.left_indent', ''),
     "linespace": ('p.paragraph_format.line_spacing', 'p.paragraph_format.line_spacing', ''),
     "replace": ('d.replace(前, 後)', '', ''),
-    "format": ('c.number_format', '', 'c.number_format'),
-    "currency": ('c.number_format', '', 'c.number_format'),
-    "percents": ('c.number_format', '', 'c.number_format'),
-    "comma": ('c.number_format', '', 'c.number_format'),
     "cell-ins": ('t.add_row() / s.insert_rows(行)', 't.add_row()', 'ws.insert_rows(行)'),
     "cell-del": ('s.delete_rows(行)', '', 'ws.delete_rows(行)'),
     "condformat": ('', '', 'ws.conditional_formatting.add(…)'),
     "sum": ("s['A1'] = '=SUM(…)'", '', "ws['A1'] = '=SUM(…)'"),
     "defname": ('b.create_named_range(名前, …)', '', 'wb.defined_names'),
-    "sort-asc": ('', '', ''),
-    "sort-desc": ('', '', ''),
-    "setfilter": ('', '', 'ws.auto_filter.ref'),
-    "clear-filter": ('', '', 'ws.auto_filter'),
     "instable": ('d.add_table(行, 列) / s.add_table(…)', 'd.add_table(行, 列)', 'ws.add_table(…)'),
     "insimage": ('d.add_picture(径路)', 'd.add_picture(径路)', 'ws.add_image(…)'),
     "inschart": ('', '', 'ws.add_chart(…)'),
     "blankpage": ('d.add_page_break()', 'd.add_page_break()', ''),
     "pagebreak": ('d.add_page_break()', 'd.add_page_break()', 'ws.row_breaks'),
-    "edit-header": ('d.header / s.oddHeader', 'section.header', 'ws.oddHeader'),
-    "edit-footer": ('d.footer', 'section.footer', ''),
     "controls": ('mcp.doc_fields()', '', ''),
     "insequation": ('', '', ''),
     "inshyperlink": ('c.hyperlink', '', 'c.hyperlink'),
@@ -185,8 +205,6 @@ MICHI = {
     "insert-function": ("s['A1'] = '=…'", '', "ws['A1'] = '=…'"),
     "calc-mode": ('b.recalc()', '', 'wb.calculation'),
     "data-validation": ('s.add_data_validation(…)', '', 'ws.add_data_validation(…)'),
-    "group": ('s.row_groups', '', 'ws.column_dimensions[…].outline_level'),
-    "ungroup": ('s.row_groups', '', 'ws.column_dimensions[…].outline_level'),
     "toc": ('', '', ''),
     "bookmarks": ('', '', ''),
     "crossref": ('', '', ''),
@@ -196,16 +214,8 @@ MICHI = {
     # (2026-08-25 まで、テキストフィールドと名前の2つしか載っていませんでした)。
     # 種類は docx の w:sdt に往復します。値の出し入れは名前で引くので、
     # どの種類でも呼び方は同じです
-    "form-text": ('mcp.doc_fill({member: 値})', '', ''),
     "form-name": ('mcp.doc_fields()', '', ''),
-    "form-combo": ('mcp.doc_fill({member: 値})', '', ''),
-    "form-dropdown": ('mcp.doc_fill({member: 値})', '', ''),
-    "form-checkbox": ('mcp.doc_fill({member: 値})', '', ''),
-    "form-radio": ('mcp.doc_fill({member: 値})', '', ''),
     "form-image": ('', '', ''),
-    "form-email": ('mcp.doc_fill({member: 値})', '', ''),
-    "form-phone": ('mcp.doc_fill({member: 値})', '', ''),
-    "form-complex": ('mcp.doc_fill({member: 値})', '', ''),
     "form-signature": ('', '', ''),
     "co-addcomment": ('p.add_comment(文) / c.comment', 'p.add_comment(文)', 'c.comment = Comment(…)'),
     "co-showcomment": ('d.comments / c.comment', 'd.comments', 'c.comment'),
@@ -607,13 +617,16 @@ def rows():
             if t is None:
                 continue
             for cmd in t.cmds:
-                if not cmd.id or cmd.id in seen or cmd.id not in MICHI:
+                if not cmd.id or cmd.id in seen:
+                    continue
+                g = GROUP_OF.get(cmd.id)
+                if g is None and cmd.id not in MICHI:
                     continue
                 seen.add(cmd.id)
-                ow, pd, op = MICHI[cmd.id]
+                name, _ids, ow, pd, op = g if g else ("", None, *MICHI[cmd.id])
                 _label_lookup[cmd.id] = cmd.label
                 out.append(Row(tab, eigo.get(cmd.id, ""), cmd.label, cmd.icon,
-                               state(cmd.id, ow), ow, pd, op))
+                               state(cmd.id, ow), ow, pd, op, name))
     for tab, spec, ow, pd, op in HOKA:
         e, j = hoka_name(spec)
         mark = "✅" if ow else ("❌" if j in HOKA_TSUKURANAI else "")
@@ -652,6 +665,25 @@ def overlap(r):
     return came_out
 
 
+def matomeru(r):
+    """**まとまりの行を1本にたたむ。**
+
+    隣り合っていて、同じ段の、同じまとまりの行だけをまとめます。間に別の
+    ボタンが挟まっていればそこで切れます — 画面の並びを崩さないためです
+    (記入欄は画像と署名が間に入るので、2本に分かれます)。
+
+    返りは (代表の行, [その行に入るボタンの行]) の並び。
+    """
+    out = []
+    for row in r:
+        if (out and row.group and out[-1][0].group == row.group
+                and out[-1][0].tab == row.tab):
+            out[-1][1].append(row)
+            continue
+        out.append((row, [row]))
+    return out
+
+
 def table() -> str:
     r = rows()
     dup_of = overlap(r)
@@ -660,7 +692,7 @@ def table() -> str:
     # 利用者が読む物なので、作る側の話(生成の仕組み・作業の残り)は入れません
     o.append("")
     current = None
-    for row in r:
+    for row, nakama in matomeru(r):
         if row.tab != current:
             if current is not None:
                 o.append("|===\n")
@@ -687,16 +719,84 @@ def table() -> str:
         #
         # **絵の説明文は空にします**(2026-08-30)。名前がすぐ隣にあるので、
         # 入れると読み上げも本文の写しも名前が2回出ます
-        name = ICON_FILE.get(row.icon, row.icon)
-        icon_tag = f'image:{ICON_DIR}/{name}.svg[,16,16] ' if name else ""
+        #
+        # **まとまりの行は、入っているボタンを全部並べます**(2026-08-30)。
+        # 名前を1つに省くと、画面で押しているボタンから引けなくなります
+        def hitotsu(x):
+            name = ICON_FILE.get(x.icon, x.icon)
+            tag = f'image:{ICON_DIR}/{name}.svg[,16,16] ' if name else ""
+            return tag + f(x.en)
+
         # **ボタンの名前から手引きへ飛ばします**(2026-08-25 発注者
         # 「一覧からのリンクをつける」)。この表は引くための1枚なので、
         # 引き当てた行からそのまま詳しい説明へ行けないと途中で止まります
-        o.append(f"|{icon_tag}{f(row.en)} |{manual_link(row.ja)} |{row.mark} "
+        eng = " / ".join(hitotsu(x) for x in nakama)
+        nihon = " / ".join(manual_link(x.ja) for x in nakama)
+        o.append(f"|{eng} |{nihon} |{row.mark} "
                  f"|{inner} |{f(row.pd)} |{f(row.op)}")
     if current is not None:
         o.append("|===\n")
     return "\n".join(o)
+
+
+def group_check():
+    """**まとまりの宣言を見張る**(2026-08-30)。落ちる条件を返します。
+
+    まとまりは手で書くので、リボンが変われば黙って古びます。3つ見ます。
+
+    1. 同じ id が2つのまとまりに入っていないか
+    2. まとまりに書いた id がリボンに実在するか(綴りの誤りと消えたボタン)
+    3. まとまりと `MICHI` の両方に入っている id がないか(どちらが効くか
+       読んで分からなくなります)
+    """
+    tabs = ribbon_parse.tables_or_die(RIBBON_JA)
+    aru = {c.id for app in tabs for t in tabs[app] for c in t.cmds if c.id}
+    warui = []
+    mita = {}
+    for name, ids, *_ in GROUPS:
+        for i in ids:
+            if i in mita:
+                warui.append(f"{i} が「{mita[i]}」と「{name}」の両方に入っています")
+            mita[i] = name
+            if i not in aru:
+                warui.append(f"「{name}」の {i} がリボンにありません")
+            if i in MICHI:
+                warui.append(f"{i} が「{name}」と MICHI の両方にあります")
+    return warui
+
+
+def group_self_test() -> int:
+    """**信じる前に、落ちる所を見る**(`ribbon_parse` の自己試験と同じ作法)。
+
+    3つの崩し方それぞれで `group_check` が言うことを確かめます。
+    言わなくなったら、検査が効いていません。
+
+        python3 tools/api_taiou.py --self-test
+    """
+    global GROUPS, GROUP_OF
+    moto = list(GROUPS)
+    kowashikata = [
+        ("2つのまとまりに同じ id", ("試し", ["copy"], "", "", "")),
+        ("リボンに無い id", ("試し", ["arienai-id"], "", "", "")),
+        ("まとまりと MICHI の両方", ("試し", ["bold"], "", "", "")),
+    ]
+    warui = []
+    for namae, tashi in kowashikata:
+        GROUPS = moto + [tashi]
+        GROUP_OF = {i: g for g in GROUPS for i in g[1]}
+        itta = group_check()
+        print(f"  {namae}: {itta[0] if itta else '**何も言いません**'}")
+        if not itta:
+            warui.append(namae)
+    GROUPS = moto
+    GROUP_OF = {i: g for g in GROUPS for i in g[1]}
+    nokori = group_check()
+    print(f"  崩していないとき: {nokori or '何も言いません(正しい)'}")
+    if warui or nokori:
+        print("::error::まとまりの検査が効いていません", file=sys.stderr)
+        return 1
+    print("まとまりの検査は3つの崩し方すべてで落ちます")
+    return 0
 
 
 def cover():
@@ -721,14 +821,25 @@ def cover():
     for tab, spec, *_ in HOKA:
         j = hoka_name(spec)[1]
         whole.setdefault(j, (tab, j))
-    listed = [k for k in whole if k in MICHI or k in FILE_MICHI or k in hoka_ja]
+    nosete = lambda k: k in MICHI or k in FILE_MICHI or k in hoka_ja or k in GROUP_OF
+    listed = [k for k in whole if nosete(k)]
     return len(listed), len(whole), sorted(
-        (v[0], v[1], k) for k, v in whole.items()
-        if k not in MICHI and k not in FILE_MICHI and k not in hoka_ja
+        (v[0], v[1], k) for k, v in whole.items() if not nosete(k)
     )
 
 
 def main() -> int:
+    if "--self-test" in sys.argv:
+        return group_self_test()
+    # **まとまりの宣言を先に見ます。** ここが崩れていると、まとめた行が
+    # 静かに嘘になります(消えたボタンを名前に並べる・二重に数える)
+    warui = group_check()
+    if warui:
+        print(f"::error::まとまりの宣言が実物と合っていません({len(warui)} 件)",
+              file=sys.stderr)
+        for w in warui:
+            print(f"  {w}", file=sys.stderr)
+        return 1
     src = SAKI.read_text(encoding="utf-8")
     m = re.search(rf"({re.escape(MARK_S)}[^\n]*\n)(.*?)(\n?{re.escape(MARK_E)})", src, re.S)
     if not m:
