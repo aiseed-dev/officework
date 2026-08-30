@@ -29,6 +29,13 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).parent))
 import ribbon_parse  # noqa: E402
 
+# **日本語のリボンを読みます**(2026-08-30)。
+# 土台の `face/src/ribbon.rs` は 2026-08-26 の段2で札が英語になりました。
+# そのまま読むと、日本語の手引きなのに段もボタンも英語で出ます。しかも
+# 検査は落ちません(生成する道具なので、黙って英語の表を書きます)。
+# id・並び・絵は ja 版でも同じです(`ribbon_ja.rs` の頭に書いてあります)。
+RIBBON_JA = ROOT / "face/src/ribbon_ja.rs"
+
 # ボタンの id → (オブジェクト, officework, python-docx, openpyxl)。
 # **officework は `.adoc` を触る1つの模型なので、文書と表で列を割りません**
 # (2026-08-24 発注者)。どのオブジェクトの物かを示します。
@@ -259,6 +266,11 @@ def manual_link(label: str) -> str:
     そのまま詳しい説明へ行けないと、そこで止まります。
 
     手引きがまだ無いボタンは、名前をそのまま返します(リンクにしません)。
+
+    **径路はこの文書(`docs/ja/api-taiou.adoc`)から見た相対です。**
+    `docs` から数えると `ja/commands/…` になり、`docs/ja/ja/commands/…` を
+    指してリンクが全部切れます(2026-08-26 の言語別フォルダへの移動で
+    こうなっていました)。
     """
     global _manual_table
     if _manual_table is None:
@@ -266,7 +278,7 @@ def manual_link(label: str) -> str:
         ahead = ROOT / "docs/ja/commands"
         for q in ahead.rglob("*.adoc"):
             if q.name != "README.ja.adoc":
-                _manual_table[q.stem] = q.relative_to(ROOT / "docs").as_posix()
+                _manual_table[q.stem] = q.relative_to(ROOT / "docs/ja").as_posix()
     name = FNAME_NG.sub("_", command_name(label)).strip()
     to = _manual_table.get(name)
     return f"link:{to}[{label}]" if to else label
@@ -298,8 +310,10 @@ def state(id_: str, ow: str) -> str:
     return ""
 
 
-# アイコンの置き場(この文書から見た相対の径路)
-ICON_DIR = "../face/icons"
+# アイコンの置き場(この文書から見た相対の径路)。
+# **文書は `docs/ja/` にあります**(2026-08-26 に言語別のフォルダへ移りました)。
+# ここが `../face/icons` のままだと `docs/face/icons` を指し、絵が1つも出ません
+ICON_DIR = "../../face/icons"
 
 ICONS_RS = ROOT / "face/src/icons.rs"
 
@@ -491,7 +505,7 @@ def file_menu():
 def rows():
     """(段, ボタン, 絵, オブジェクト, 印, officework, python-docx, openpyxl)。
     **並びはメニューのまま**、*分類はオブジェクト*です(2026-08-24 発注者)。"""
-    tabs = ribbon_parse.tables_or_die()
+    tabs = ribbon_parse.tables_or_die(RIBBON_JA)
     order = tab_layout(tabs)
     w = {t.name: t for t in tabs["WRITER"]}
     c = {t.name: t for t in tabs["CALC"]}
@@ -603,7 +617,7 @@ def cover():
     「Python ですべて操作できる」と言うには、*表が全部のボタンを載せている*
     必要があります。載っていないボタンは、状態すら分かりません。
     """
-    tabs = ribbon_parse.tables_or_die()
+    tabs = ribbon_parse.tables_or_die(RIBBON_JA)
     whole = {}
     for app in ("WRITER", "CALC"):
         for tab in tabs[app]:

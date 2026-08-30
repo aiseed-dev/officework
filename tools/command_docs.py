@@ -150,8 +150,15 @@ def state_name(label: str, mark: str) -> str:
 
 
 def _ribbon():
+    """リボンのボタン。**日本語の札で読みます**(2026-08-30)。
+
+    突き合わせる相手(手引きの頁と対応表の行)は日本語なので、札が英語の
+    `face/src/ribbon.rs` を読むと1つも一致しません。一致しないと下の
+    `state_name` が印の側に落ちて、*API がまだ無いボタンを全部「未実装」*と
+    書きます。落ちた先が既定値なので、検査は緑のまま嘘を配ります。
+    """
     import ribbon_parse
-    t = ribbon_parse.tables_or_die()
+    t = ribbon_parse.tables_or_die(api_taiou.RIBBON_JA)
     return [x for table in ("WRITER", "CALC") for tab in t[table] for x in tab.cmds]
 
 
