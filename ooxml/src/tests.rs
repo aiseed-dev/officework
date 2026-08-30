@@ -483,6 +483,53 @@ mod para_tests {
         }
     }
 
+    /// **他所のソフトのテキストボックスを読む。**
+    ///
+    /// 2026-08-30、内閣府の告知書で見つけました。窓口の欄が3つとも紙に
+    /// 出ていませんでした。保存では原文のまま残るので、往復の試験では
+    /// 気づけません。中の字は5行あり、**前は最初の1行しか読んで**
+    /// いませんでした。
+    #[test]
+    fn a_word_text_box_is_read_with_all_its_lines() {
+        let a = concat!(
+            r#"<w:drawing><wp:anchor><wp:positionH relativeFrom="column">"#,
+            r#"<wp:posOffset>1893600</wp:posOffset></wp:positionH>"#,
+            r#"<wp:positionV relativeFrom="paragraph">"#,
+            r#"<wp:posOffset>18000</wp:posOffset></wp:positionV>"#,
+            r#"<wp:extent cx="2088000" cy="1044000"/>"#,
+            r#"<wp:docPr id="7" name="テキスト ボックス 7"/>"#,
+            r#"<wps:wsp><wps:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom>"#,
+            r#"</wps:spPr><wps:txbx><w:txbxContent>"#,
+            r#"<w:p><w:r><w:t>＜相談窓口＞</w:t></w:r></w:p>"#,
+            r#"<w:p><w:r><w:t>住所</w:t></w:r><w:r><w:t>と電話</w:t></w:r></w:p>"#,
+            r#"<w:p><w:r><w:t>電子メール</w:t></w:r></w:p>"#,
+            r#"</w:txbxContent></wps:txbx></wps:wsp></wp:anchor></w:drawing>"#,
+        );
+        let f = crate::foreign_shape(a).expect("他所の図形が読めない");
+        assert_eq!((f.w_mm.round(), f.h_mm.round()), (58.0, 29.0), "大きさが違う");
+        assert_eq!((f.h_from.as_str(), f.v_from.as_str()), ("column", "paragraph"));
+        assert!((f.x_mm - 52.6).abs() < 0.1, "横のずれ {}", f.x_mm);
+        assert!((f.y_mm - 0.5).abs() < 0.1, "縦のずれ {}", f.y_mm);
+        assert_eq!(f.look.kind, "rect");
+        assert_eq!(
+            f.look.text.as_deref(),
+            Some("＜相談窓口＞\n住所と電話\n電子メール"),
+            "行が落ちている(前は最初の1行だけでした)"
+        );
+    }
+
+    /// **うちが書いた図形は、こちらの道では読まない。**
+    /// `extract_shapes` が名前とページ番号ごと読むので、二重になります
+    #[test]
+    fn our_own_shapes_are_not_read_as_foreign() {
+        let sp = kumihan::DocShape {
+            page: 1, x_mm: 20.0, y_mm: 30.0, w_mm: 40.0, h_mm: 25.0,
+            look: book::SheetShape { kind: "rect".into(), ..Default::default() },
+        };
+        let a = crate::shape_anchor_run(&sp, 9000);
+        assert!(crate::foreign_shape(&a).is_none(), "うちの図形を他所の物と読んだ");
+    }
+
     /// **文字数での指定も読む。** 日本語の Word がよく使う書き方で、
     /// `w:leftChars="100"` は全角1文字(210 twip)です。Word は twip と
     /// 両方あるときこちらを優先します(2026-08-30)

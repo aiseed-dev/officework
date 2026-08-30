@@ -1151,9 +1151,13 @@ pub fn doc_to_pdf<W: Write>(
     // 画面(writer)の書き出しはまだ printpdf のままです
     // **ページに貼り付く図形と紙の飾りを渡します**(2026-08-29)。
     // 渡さないと、模型に在っても紙に出ません
+    // **他所のテキストボックスも紙に出します**(2026-08-30)。模型には
+    // 入っていない(原文の控えのまま持ち越している)ので、ここで置き直します
+    let mut shapes = doc.shapes.clone();
+    shapes.extend(foreign_shapes(doc, &sheet, page));
     let dress = PageDress {
         watermark: doc.watermark.clone(),
-        shapes: doc.shapes.clone(),
+        shapes,
         ..Default::default()
     };
     let lost = pdfw::sheet_to_pdf_with(
@@ -1274,6 +1278,70 @@ mod doc_pdf_tests {
 ///
 /// 2026-08-29 に writer の中から出しました。画面と同じ答えを Python の
 /// 保存からも使うためです — **別に書くとページが食い違います**。
+/// **他所のソフトが作った図形を、紙の上の場所へ置き直す。**
+///
+/// Word のテキストボックスは「この段落から下へ○mm」のような相対の位置で
+/// 書いてあるので、組んでみないと場所が決まりません。うちが書く図形は名前に
+/// ページ番号を持っているので、この道は通りません。
+///
+/// 2026-08-30 に足しました。内閣府の告知書の窓口の欄が3つとも、紙にも画面にも
+/// 出ていませんでした(保存では原文のまま残っていたので、往復では気づけません)。
+pub fn foreign_shapes(
+    doc: &kumihan::Document,
+    sheet: &kumihan::Sheet,
+    page: kumihan::PageSetup,
+) -> Vec<kumihan::DocShape> {
+    let pg = paginate_full(
+        sheet,
+        Paper { width_mm: page.w_mm, height_mm: page.h_mm, margin_mm: page.left_mm },
+    );
+    // 段落の頭が本文の何バイト目か([`page_head_paras`] と同じ数え方)
+    let mut starts: Vec<usize> = Vec::new();
+    let mut at = 0usize;
+    for p in doc.paragraphs() {
+        starts.push(at);
+        at += p.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
+    }
+    let mut out: Vec<kumihan::DocShape> = Vec::new();
+    for (pi, para) in doc.paragraphs().enumerate() {
+        if para.anchors.is_empty() {
+            continue;
+        }
+        // その段落の1行目が、どの頁の、頁の中のどの高さに来たか
+        let hajime = starts[pi];
+        let Some(li) = sheet.lines.iter().position(|l| l.from_body && l.byte0 >= hajime) else {
+            continue;
+        };
+        let kami = pg.pages.get(li).copied().unwrap_or(1) - 1;
+        let soko = pg.offsets.get(kami).copied().unwrap_or(0.0);
+        // 行を紙に置くときと同じ数え方です(`pdfw` の `y_roll`)。
+        // 上の余白はもう `y_mm` に入っているので、足すと二重になります
+        let y_para = sheet.lines[li].y_mm - soko;
+        for a in &para.anchors {
+            let Some(f) = ooxml::foreign_shape(a) else { continue };
+            // 横の基準。`margin` と `column` は本文の左端、`page` は紙の左端
+            let x = match f.h_from.as_str() {
+                "page" => f.x_mm,
+                _ => page.left_mm + f.x_mm,
+            };
+            // 縦の基準。`page` は紙の上端、それ以外はこの段落の頭から
+            let y = match f.v_from.as_str() {
+                "page" => f.y_mm,
+                _ => y_para + f.y_mm,
+            };
+            out.push(kumihan::DocShape {
+                page: kami,
+                x_mm: x,
+                y_mm: y,
+                w_mm: f.w_mm,
+                h_mm: f.h_mm,
+                look: f.look,
+            });
+        }
+    }
+    out
+}
+
 pub fn page_head_paras(
     doc: &kumihan::Document,
     sheet: &kumihan::Sheet,

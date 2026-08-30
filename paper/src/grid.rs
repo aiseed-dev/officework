@@ -1129,19 +1129,29 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
         // 図形の中の文字(テキストボックス)。揃えの指定があれば従います
         if let Some(t) = &sp.text {
             let pt = sp.text_fmt.size_pt.unwrap_or(9.0) * scale;
-            let haba: f32 = t
-                .chars()
-                .map(|c| if c.is_ascii() { 0.55 } else { 1.0 })
-                .sum::<f32>()
-                * pt * 25.4 / 72.0;
-            let tx = match sp.text_fmt.align {
-                book::HAlign::Center => x + (w - haba) / 2.0,
-                book::HAlign::Right => x + w - haba - 1.0,
-                _ => x + 1.5,
-            };
-            // 縦は箱の真ん中に寄せます(図の題も軸の目盛りもそれで合います)
-            let ty = y_top - h / 2.0 - pt * 25.4 / 72.0 * 0.35;
-            l1.text(t, pt, tx, ty, (0.0, 0.0, 0.0), false);
+            // **改行で折ります**(2026-08-30)。Word のテキストボックスは
+            // 何行も持ちます。1行に繋げて描いていたので、内閣府の告知書の
+            // 窓口の欄が横一列になって隣の枠まではみ出していました
+            let gyou: Vec<&str> = t.split('\n').collect();
+            let takasa = pt * 25.4 / 72.0 * 1.25;
+            // 縦は箱の真ん中に寄せます(図の題も軸の目盛りもそれで合います)。
+            // 何行もあるときは、まとまりの真ん中が箱の真ん中に来るようにします
+            let mut ty = y_top - h / 2.0 - pt * 25.4 / 72.0 * 0.35
+                + takasa * (gyou.len() as f32 - 1.0) / 2.0;
+            for g in gyou {
+                let haba: f32 = g
+                    .chars()
+                    .map(|c| if c.is_ascii() { 0.55 } else { 1.0 })
+                    .sum::<f32>()
+                    * pt * 25.4 / 72.0;
+                let tx = match sp.text_fmt.align {
+                    book::HAlign::Center => x + (w - haba) / 2.0,
+                    book::HAlign::Right => x + w - haba - 1.0,
+                    _ => x + 1.5,
+                };
+                l1.text(g, pt, tx, ty, (0.0, 0.0, 0.0), false);
+                ty -= takasa;
+            }
         }
 }
 

@@ -2439,6 +2439,57 @@ pub(super) fn extract_shapes(doc: &mut Document) {
     doc.shapes.extend(deta);
 }
 
+/// **他所のソフトが作った図形**(テキストボックスなど)を1つ読みます。
+///
+/// うちが書く図形は `wp:docPr` の名前が `joshape…` で、ページ番号も名前に
+/// 入れてあるので [`extract_shapes`] が読めます。Word が作る図形は名前が
+/// 違い、位置も「この段落から下へ○mm」のような**相対**で書いてあるので、
+/// 置き場所は組み上がりを知っている側(`paper`)が決めます。ここは
+/// 寸法と見た目と**基準の名前**だけ返します。
+///
+/// 2026-08-30 に足しました。内閣府の告知書の窓口の欄が3つとも消えていて、
+/// 紙にも画面にも出ませんでした(保存では原文のまま残っていました)。
+#[derive(Debug, Clone)]
+pub struct ForeignShape {
+    /// 基準からのずれ(mm)
+    pub x_mm: f32,
+    pub y_mm: f32,
+    pub w_mm: f32,
+    pub h_mm: f32,
+    /// 横の基準。`margin` / `column` / `page` / `character` など
+    pub h_from: String,
+    /// 縦の基準。`paragraph` / `page` / `line` など
+    pub v_from: String,
+    /// 形・塗り・線・中の文字
+    pub look: book::SheetShape,
+}
+
+/// 段落の控え1つを [`ForeignShape`] に。うちの図形と、図形でない物は `None`
+pub fn foreign_shape(a: &str) -> Option<ForeignShape> {
+    if a.contains("name=\"joshape") || a.contains("name=\"joink") {
+        return None; // うちが書いた物は extract_shapes が読みます
+    }
+    let (w_mm, h_mm) = shape_size(a)?;
+    let look = shape_look(a)?;
+    // 基準の名前と、そこからのずれ
+    let kijun = |tag: &str| -> (String, f32) {
+        let Some(i) = a.find(tag) else { return (String::new(), 0.0) };
+        let from = a[i..]
+            .find("relativeFrom=\"")
+            .and_then(|j| {
+                let s2 = i + j + 14;
+                a[s2..].find('"').map(|e| a[s2..s2 + e].to_string())
+            })
+            .unwrap_or_default();
+        let owari = a[i..].find('>').map(|e| i + e).unwrap_or(a.len());
+        let zure = mm_of(&a[owari..], "<wp:posOffset>").unwrap_or(0.0);
+        (from, zure)
+    };
+    let (h_from, x_mm) = kijun("<wp:positionH");
+    let (v_from, y_mm) = kijun("<wp:positionV");
+    Some(ForeignShape { x_mm, y_mm, w_mm, h_mm, h_from, v_from, look })
+}
+
 /// `<wp:extent cx="…" cy="…"/>` を mm で
 fn shape_size(a: &str) -> Option<(f32, f32)> {
     let i = a.find("<wp:extent cx=\"")? + 15;
@@ -2518,20 +2569,41 @@ fn shape_look(a: &str) -> Option<book::SheetShape> {
     // 拾います(2026-08-29 に往復させて気づきました — 「往復」ではなく
     // `<w:p><w:r><w:t …>往復` が入りました)
     if let Some(i) = a.find("<w:txbxContent>").map(|i| i + "<w:txbxContent>".len()) {
-        let s2 = &a[i..];
-        if let Some(j) = s2.find("<w:t") {
-            if let Some(k) = s2[j..].find('>') {
-                let start = j + k + 1;
-                if let Some(e) = s2[start..].find("</w:t>") {
-                    let t = unesc(&s2[start..start + e]);
-                    if !t.is_empty() {
-                        sp.text = Some(t);
-                    }
-                }
-            }
+        let owari = a[i..].find("</w:txbxContent>").map(|e| i + e).unwrap_or(a.len());
+        let t = txbx_text(&a[i..owari]);
+        if !t.is_empty() {
+            sp.text = Some(t);
         }
     }
     Some(sp)
+}
+
+/// テキストボックスの中の字を**全部**拾う。段落の切れ目は改行にします。
+///
+/// **前は最初の `<w:t>` しか読んでいませんでした**(2026-08-30)。うちが
+/// 書く図形は字が1つなので気づきませんでしたが、Word の作る欄は何行も
+/// 持ちます。内閣府の告知書の窓口の欄は、5行のうち1行だけが残っていました。
+fn txbx_text(naka: &str) -> String {
+    let mut gyou: Vec<String> = Vec::new();
+    for p in naka.split("</w:p>") {
+        let mut s = String::new();
+        let mut at = 0usize;
+        while let Some(i) = p[at..].find("<w:t").map(|i| i + at) {
+            let Some(k) = p[i..].find('>').map(|k| k + i + 1) else { break };
+            // `<w:tab/>` などを `<w:t>` と読み違えない
+            if !matches!(p[i + 4..].chars().next(), Some('>') | Some(' ')) {
+                at = k;
+                continue;
+            }
+            let Some(e) = p[k..].find("</w:t>").map(|e| e + k) else { break };
+            s.push_str(&unesc(&p[k..e]));
+            at = e + 6;
+        }
+        if !s.is_empty() {
+            gyou.push(s);
+        }
+    }
+    gyou.join("\n")
 }
 
 
