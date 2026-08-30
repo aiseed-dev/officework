@@ -546,7 +546,8 @@ mod tests {
     use super::*;
 
     fn sheet(text: &str, align: Align) -> (Sheet, Vec<u8>) {
-        let (fam, _) = font::for_document(None).unwrap();
+        // 組む字が組める書体を選びます(上の `build` と同じ理由)
+        let (fam, _) = font::for_text(None, text.chars()).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain(text);
@@ -993,7 +994,10 @@ mod footnote_area_tests {
                   Frame, Metrics, Paragraph, Run};
 
     fn build(d: &Document) -> Sheet {
-        let (fam, _) = font::for_document(None).unwrap();
+        // **文中の字が組める書体を選びます。** 既定の言語は機械の設定に
+        // よるので(2026-08-30 から en が落ち先)、`for_document(None)` だと
+        // 言語を設定していない機械で仮名の無い書体が返り、行が0本になります
+        let (fam, _) = font::for_text(None, d.chars()).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
         layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 })

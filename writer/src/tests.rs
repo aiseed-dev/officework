@@ -1,6 +1,12 @@
 //! writer の試験(main.rs から純移動 2026-08-08。分割の1歩目 —
 //! calc と同じ作法: 純移動だけ、挙動と文言は一切変えない)。
 //! 中の `use crate::*` は移動先でも同じ意味になるよう `use crate::*` に直した
+//!
+//! # 言語を決めてから回してください
+//!
+//! calc の試験と同じで、ここも**画面の日本語の文言を直に見ます**。
+//! `OFFICE_LANG=ja cargo test -p writer` で回してください。
+//! 理由は `calc/src/tests.rs` の頭に書いてあります(2026-08-30)。
 
 #[cfg(test)]
 mod cell_edit_tests {

@@ -2551,6 +2551,10 @@ mod through_template {
     /// 既定の書体も大きさも入っていませんでした。それでは開く機械ごとに
     /// 見た目が変わります。
     fn the_bundled_default_is_used_when_no_template_is_given() {
+        // **言語を名乗ります。** 下で 10.5pt と ja-JP を直に見ているので、
+        // 機械の設定まかせだと、言語を設定していない機械で落ちます
+        // (2026-08-30 から、どれも無ければ en です)
+        kumihan::font::set_default_language("ja");
         let s = parts(&write_out(None), "word/styles.xml").unwrap();
         assert!(s.contains(r#"w:styleId="Heading1""#), "見出しが無い: {s}");
         assert!(s.contains("註記"), "同梱の既定のスタイルが入らない: {s}");

@@ -433,7 +433,10 @@ mod tests {
     fn a_watermark_appears_only_with_a_font() {
         let leaf = Leaf { watermark: Some("見本".into()), ..Default::default() };
         let nashi = egaku(&leaf, 210.0, 297.0, 2.0);
-        let (fam, _) = kumihan::font::for_document(None).expect("書体");
+        // **透かしの字が組める書体を選びます。** 既定の言語は機械の設定に
+        // よるので(2026-08-30 から en が落ち先)、`for_document(None)` だと
+        // 言語を設定していない機械で仮名の無い書体が返り、何も描かれません
+        let (fam, _) = kumihan::font::for_text(None, "見本".chars()).expect("書体");
         let data = kumihan::font::load(fam).expect("読めない");
         let ari = egaku_with(&leaf, 210.0, 297.0, 2.0, Some(&data));
         assert_ne!(nashi.yubi(), ari.yubi(), "透かしが描かれていない");
@@ -478,7 +481,8 @@ mod tests {
     /// **字が出る。** 書体を渡したときだけです
     #[test]
     fn glyphs_appear_only_when_a_font_is_given() {
-        let (fam, _) = kumihan::font::for_document(None).expect("書体");
+        // 出す字が組める書体を選びます(上の透かしの試験と同じ理由)
+        let (fam, _) = kumihan::font::for_text(None, "あ".chars()).expect("書体");
         let data = kumihan::font::load(fam).expect("読めない");
         let mut leaf = Leaf { bg: Some((1.0, 1.0, 1.0)), ..Default::default() };
         leaf.pieces.push(crate::pdfw::Piece {
