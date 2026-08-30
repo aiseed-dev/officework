@@ -1,101 +1,103 @@
-= officework 0.5.0-beta.3
+= officework 0.5.0-beta.4
 
 日本語版: link:RELEASE.ja.adoc[RELEASE.ja.adoc]
 
 To try it: `pip install --pre officework`
 
-== Pagination now follows Word's rules
+This release is what one real document taught us. We took a notice form the
+Cabinet Office publishes for download, converted it with officework, and
+compared the result against the PDF the same office publishes beside it. Three
+defects came out of that one file, and all three would show on any Japanese
+office form of the same shape.
 
-When saving a docx we now write the line height into the file. Without it the
-program that opens the file applies its own default. Word's "single" line is
-about 1.15× the font size; ours is 6.4mm for 10.5pt text, which is 1.73×. The
-same document therefore broke onto a different number of pages.
+== Indents match the original
 
-We also fixed a defect where the bottom of the last line spilled into the
-margin. Pagination looked only at the baseline, not at the descender, so the
-last line hung 1.4mm below the text area.
+Three separate causes, all of them visible on the first page.
 
-Checked with a 200-paragraph document. Before the fix we produced 5 pages and
-the other program produced 3; now **both produce 6 pages and break at the same
-places** (page 1 ends at line 38, page 2 at 78, page 3 at 118, page 4 at 158).
+The left indent was rounded to steps of two full-width characters, so a
+one-character indent came out as two and a three-character indent as four. That
+form sets a left indent in 123 places. The paragraph now carries the exact
+value from the file, and writes the same value back, so opening and saving no
+longer moves the text.
 
-One caveat: we checked against LibreOffice, because we have no copy of Word
-here. The line height we write is the same value Word uses, so it should break
-identically in Word, but we have not seen it on a real machine.
+Indents written as a character count — `w:leftChars` and its two siblings — were
+ignored. This is what Japanese Word writes, and Word prefers it over the
+measurement when a document has both. A document that uses only the character
+form lost every indent.
 
-== Caught up with what openpyxl and python-docx can do
+Most of the indenting in that form is not a paragraph setting at all: it is
+full-width spaces typed at the start of the line, which is how Japanese
+business documents are usually laid out. We were dropping them, and when we
+kept them we drew them at the width of an ASCII space — 3.48pt where 12pt was
+called for. Nine of them put the addressee 76.7pt from where it belongs.
 
-We compared the engine (`pip install officework`) against the API surface of
-openpyxl and python-docx. It is now at 100%.
+After the fix, 様 sits at 178.90pt against the reference PDF's 178.92, and
+大臣 at 394.90 against 394.92.
 
-[cols="2,1"]
+== Text boxes made by other programs are printed
+
+The same form has three contact panels — office, address, phone, email — and a
+note beneath them. We printed none of them.
+
+They were never lost. Anything we did not write ourselves was kept as the
+original XML and copied back out on save, so the document survived a round
+trip intact; it simply never reached the page. Word positions these boxes
+relative to the flow of the text, so where they land is only known once the
+document is laid out — the reading is now split so that the shape's size and
+contents come from the XML and its position is resolved after layout.
+
+Two things also had to change for the contents to be legible. We were reading
+only the first line inside a box, which was enough for the single-line shapes
+we write ourselves but dropped four of the five lines in each of these panels.
+And the renderer drew whatever it had as one line, which ran each panel across
+its neighbours.
+
+== English is now British or American
+
+English is one language on screen and two in documents, because the date order
+splits by country and choosing one silently is wrong for the other half.
+
+[cols="2,1,1"]
 |===
-|Compared against |Result
+|Language setting |Short date |Paper
 
-|openpyxl Workbook / Worksheet / Cell |100%
-|python-docx Document / Paragraph / Run / Table |100%
-|Chart types openpyxl can write |11 / 11
-
+|`en`, `en_US` |m/d/yyyy |Letter
+|`en_GB`, `en_AU`, `en_IE`, `en_ZA`, `en_NZ` |dd/mm/yyyy |A4
 |===
 
-All eleven chart types are available: bar, line, area, pie, doughnut,
-projected pie, radar, scatter, bubble, stock (high-low-close) and surface. In a
-projected pie chart we also draw the leader lines between the pie and the bar.
+An English locale that names a country other than the US is treated as
+British, because Australia, New Zealand, Ireland, South Africa and India all
+write dd/mm/yyyy. An unrecognised one falls to the same side rather than
+stopping.
 
-We ran 24 sample scripts from a published article series through both the
-original libraries and officework, compared the output, and fixed the
-differences we found in real documents. The largest was `ws["A1"]`: the
-original returns a cell, and we were returning a value.
-
-== Shapes in documents
-
-You can now place shapes in a docx (`python-docx` can only place pictures).
-Call `d.add_shape("roundRect", 25, 80, 40, 25, fill="DDE7F0", text="Approved")`
-with the shape name, position and size. Rectangle, rounded rectangle, ellipse,
-arrow, diamond and line are built in, each with fill, outline, text inside,
-rotation, opacity and a drop shadow.
-
-Coordinates and sizes are millimetres from the top-left of the page. They are
-written as DrawingML, so Word and LibreOffice open them as **shapes you can
-select and edit** — not as a flattened picture. They survive open-and-save, and
-you can put them on any page, not just the first.
-
-Grouped shapes are written as a real group (`grpSp`), so Excel and Word treat
-them as one object.
-
-You can also select and drag shapes on the writer screen.
-
-== No unusable buttons left in the ribbon
-
-There are no buttons that do nothing when pressed, and no greyed-out buttons,
-in either writer or calc. In beta.2 there were 14.
-
-Bring forward, send backward, align, group, merge shapes, protect workbook
-structure and page break preview all work now.
+This fixes a defect rather than only adding a choice. The date table held
+British formats under the tag `en`, and US English mapped to that same entry,
+so opening an American spreadsheet gave British date order. A docx now also
+declares `en-GB` or `en-US` where it used to write a bare `en`.
 
 == Other changes
 
-* Save a page as an image (`save("page.png")`). The default is 150 dpi; pass
-  `dpi=300` for print resolution
-* Formatting applied to part of a cell's text (bold on a few characters, say)
-  no longer disappears when you save
-* The spreadsheet app can protect the workbook structure and individual
-  ranges. **No password is set** — we do not pretend to hold something we do
-  not. Both are written into the xlsx, so Excel honours them
-* The spreadsheet screen switches between page break preview and normal view
-* Translucent fills, such as a highlighter pen, now show on screen and in PDF
-* Freehand pen strokes reach the paper (highlighter under the text, pen on top)
-* Screen wording and template translations tidied up across 15 languages
+* The right panel is now the project panel and the left one the agent panel,
+  in all fifteen languages. The right panel called itself a file listing, which
+  it stopped being when it gained create, rename and delete
+* The sample scripts follow the engine's current API
 
 == Under the hood
 
-Not visible to users, but this release added a **regression check that compares
-rendered pages as images**. It lays out sample pages, renders them, stores a
-fingerprint, and checks that the same input still produces the same picture.
+Not visible to users. Three checks had quietly stopped checking anything.
 
-We built it because the numeric tests kept passing while the appearance broke.
-Six of the defects fixed in this release were invisible until we opened the
-output and looked, or counted pixels: images and watermarks missing from the
-page, rounded rectangles drawn square on paper, shadows and opacity ignored on
-paper, shape outlines drawn at half width on screen, pen strokes never reaching
-the paper, and the last line spilling into the margin.
+The ribbon parser's self-test sabotages the table six ways and expects each to
+be caught. Five of the six carried a copy of a button's label, and the labels
+became English in August, so those five had not modified anything since —
+passing an unbroken file to the parser and reporting that the parser was blind.
+Each case now finds its target in the file and fails loudly if the text did not
+actually change.
+
+The generator that produces the ribbon table could no longer reproduce it.
+Regenerating would have greyed out nine buttons that work, all of them made
+usable during beta.3. Fixing that surfaced a gap in the generator itself: it
+could emit a greyed either-or button but had no way to emit a working one.
+
+The Windows build check ran on Linux by cross-compiling, which stopped being
+possible when polars arrived and brought C code with it. It runs on a Windows
+machine now.
