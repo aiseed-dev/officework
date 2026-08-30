@@ -158,13 +158,25 @@ jobs:
           assert sheet.Book.open(out)[0]["A1"].value == "検査"
           print("往復できた:", b.sheet_names)
           PYEOF
-          # **荷物が太っていないか。** 2026-08-15 に実行ファイルを同梱して
-          # 36MB になり、2026-08-21 に外しました。戻っていたら気づけるように
+          # **アプリの実行ファイルが混じっていないか。**
+          #
+          # 2026-08-15 に同梱して 36MB になり、2026-08-21 に外しました。
+          # 前は大きさだけで見ていましたが、それだと**エンジンが正しく
+          # 育ったのか、アプリが紛れ込んだのかが区別できません**。
+          # 名前で直に見ます(2026-08-30)。
           "$PY" - <<'PYEOF'
           import pathlib, officework
           ne = pathlib.Path(officework.__file__).parent
+          apps = [f.name for f in ne.rglob("*")
+                  if f.is_file() and f.stem in ("calc", "writer", "officework")
+                  and f.suffix in ("", ".exe")]
+          assert not apps, f"アプリの実行ファイルが混じっています: {apps}"
+
+          # 大きさの上限。エンジンだけで 44MB です(polars・vello・PDF の
+          # 3つがほとんど)。calc は 149MB・writer は 66MB あるので、
+          # どちらか1つでも紛れれば 60MB を超えて止まります
           size = sum(f.stat().st_size for f in ne.rglob("*") if f.is_file())
-          assert size < 20_000_000, f"荷物が大きすぎます({size/1e6:.0f}MB)"
+          assert size < 60_000_000, f"荷物が大きすぎます({size/1e6:.0f}MB)"
           print(f"荷物 {size/1e6:.1f}MB")
           PYEOF
       - uses: actions/upload-artifact@v5

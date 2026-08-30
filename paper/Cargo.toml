@@ -12,7 +12,10 @@ kumihan = { path = "../engine" }
 ooxml = { path = "../ooxml" }
 printpdf = { version = "0.7", features = ["embedded_images"] }
 # 画像の復号(printpdf の embedded_images が使うのと同じ crate)
-image = "0.24"
+# **要る形式だけ。** 既定は exr・webp・dds・hdr・ico なども入り、
+# 使わない復号器がそのまま配る物に載ります(2026-08-30)。
+# printpdf が別に gif・tiff・bmp・pnm を頼むので、それは載ります
+image = { version = "0.24", default-features = false, features = ["png", "jpeg"] }
 pdf-writer = "0.15.0"
 subsetter = "0.2.6"
 ttf-parser = "0.25.1"

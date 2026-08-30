@@ -8,3 +8,16 @@ exclude = ["vendor", "core"]
 [workspace.package]
 edition = "2021"
 license = "AGPL-3.0-or-later"
+
+# **配る物の大きさは、ここで決まります。**
+#
+# 2026-08-30 に PyPI の検査が落ちました。ホイールを開くと 92MB で、
+# 検査の上限 20MB を大きく超えていました。指定が1つも無く、記号も
+# 落ちていませんでした。
+#
+# `lto` は crate をまたいで使わない物を落とします。`codegen-units = 1` は
+# その効きを上げます。どちらも組む時間は延びますが、配るときだけです。
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
