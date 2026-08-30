@@ -22,5 +22,5 @@ for i, (name, m2) in enumerate(atesaki, 1):
     out = f"見積書_{i:02}.xlsx"
     b.save(out)
     total = sheet.Book.open(out)            # 式は読み直しで計算済み
-    f18 = total[total.sheet_names[0]]["F18"]
+    f18 = total[total.sheet_names[0]]["F18"].value
     print(f"{out}  {name}  合計 {f18:,.0f} 円")

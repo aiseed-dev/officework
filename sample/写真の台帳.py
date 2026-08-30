@@ -160,7 +160,7 @@ def 台帳を作る():
         比 = 見せる長辺 / max(*(int(x) for x in 画素.split("×"))) if 画素 and "×" in 画素 else 1.0
         w_px = int(round(int(画素.split("×")[0]) * 比)) if 画素 and "×" in 画素 else 見せる長辺
         h_px = int(round(int(画素.split("×")[1]) * 比)) if 画素 and "×" in 画素 else 見せる長辺
-        ws.add_image(p.read_bytes(), at=f"A{写真の行}", width_px=w_px, height_px=h_px)
+        ws.add_image(p.read_bytes(), anchor=f"A{写真の行}", width_px=w_px, height_px=h_px)
         # 写真の下に行が食い込まないよう、収まる高さを配る
         for r in range(写真の行, 写真の行 + 12):
             ws.row_dimensions[r].height = (h_px / 12.0) * 72.0 / 96.0

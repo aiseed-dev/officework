@@ -52,13 +52,13 @@ def 記入済みの注文書を作る():
 def 注文を読む():
     b = sheet.Book.open(注文書)
     ws = b[b.sheet_names[0]]
-    宛先 = (ws["B3"], ws["E3"], ws["B4"])
+    宛先 = (ws["B3"].value, ws["E3"].value, ws["B4"].value)
     注文 = []
     for r in range(7, ws.max_row + 1):
-        袋 = ws[f"D{r}"]
+        袋 = ws[f"D{r}"].value
         if not 袋:
             continue
-        注文.append((ws[f"A{r}"], ws[f"B{r}"], ws[f"C{r}"], int(袋)))
+        注文.append((ws[f"A{r}"].value, ws[f"B{r}"].value, ws[f"C{r}"].value, int(袋)))
     return 宛先, 注文
 
 
