@@ -4,6 +4,7 @@
 #   cp target/debug/lib_sheet.so pysheet/officework/_sheet.so
 #   PYTHONPATH=pysheet python3 pysheet/test_doc.py
 import os
+import re
 import sys
 import tempfile
 import zipfile
@@ -117,5 +118,51 @@ with tempfile.TemporaryDirectory() as t:
     check(len(d3.tables) == len(d.tables), "保存で表が消えた")
     check(d3[0].text == first_before.replace("業務", "作業"), "差し込んだ字が保存されない")
     check(d3.tables[0].values() == d.tables[0].values(), "保存で表の中身が変わった")
+
+# ── to_pdf は save(".pdf") と同じ道 ────────────────────────────────
+# 名前を分けたのは、PDF だけの指定を足す置き場を作るためです
+# (2026-08-30 発注者)。中身が分かれてしまわないよう、同じ PDF が
+# 出ることをここで見ます。
+with tempfile.TemporaryDirectory() as t:
+    d = doc.Doc(lang="ja")
+    d.add_paragraph("見本の文書です")
+    d.add_paragraph("2段落目")
+    a, b = os.path.join(t, "a.pdf"), os.path.join(t, "b.pdf")
+    d.save(a)
+    modori = d.to_pdf(b)
+    check(open(a, "rb").read() == open(b, "rb").read(),
+          "to_pdf が save('.pdf') と違う PDF を出した")
+    check(modori == b, f"to_pdf の返りが保存先でない: {modori}")
+
+    # 名前を省くと、開いたファイルの名前の .pdf
+    docx = os.path.join(t, "報告.docx")
+    d.save(docx)
+    p = doc.Doc.open(docx).to_pdf()
+    check(p == os.path.join(t, "報告.pdf"), f"省いたときの名前が違う: {p}")
+    check(os.path.exists(p), "省いたときに書かれていない")
+
+# ── 節の用紙は docx にも全部書く ──────────────────────────────────
+# 前は途中の節の sectPr が空で、余白も書き替えた辺しか入らず、
+# 開いたソフトの既定(英語圏の Word なら Letter)になっていました
+# (2026-08-30)。
+with tempfile.TemporaryDirectory() as t:
+    d = doc.Doc(lang="ja")
+    d.add_paragraph("1節")
+    s = d.add_section()
+    s.page_width, s.page_height = 254 * 36000, 180 * 36000
+    s.left_margin = 30 * 36000
+    d.add_paragraph("2節")
+    out = os.path.join(t, "節.docx")
+    d.save(out)
+    with zipfile.ZipFile(out) as z:
+        x = z.read("word/document.xml").decode("utf-8")
+    sects = re.findall(r"<w:sectPr.*?</w:sectPr>|<w:sectPr[^>]*/>", x, re.S)
+    check(len(sects) == 2, f"節が2つでない: {len(sects)}")
+    for i, sx in enumerate(sects):
+        check("w:pgSz" in sx, f"節{i + 1}に紙の大きさが無い")
+        for hen in ("w:top", "w:right", "w:bottom", "w:left"):
+            check(hen in sx, f"節{i + 1}に {hen} の余白が無い")
+    check('w:orient="landscape"' in sects[1], "横長の節に向きの印が無い")
+    check('w:w="11906"' in sects[0], f"1節目が A4 でない: {sects[0]}")
 
 print("OK")

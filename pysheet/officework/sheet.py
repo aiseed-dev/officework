@@ -1889,6 +1889,33 @@ class Book:
         # pathlib.Path も受ける(上の open と同じ理由)
         self._b.save(_os.fspath(path), dpi)
 
+    def to_pdf(self, path=None, include=None, exclude=None):
+        """ブック全体を1つの PDF にします。返り値は保存先です。
+
+        ``save("x.pdf")`` と同じ道を通ります。名前が違うだけではなく、
+        PDF だけの指定を足すならこちらに足します(2026-08-30 発注者)。
+
+        ``path`` を省くと、開いたファイルの名前の拡張子を ``.pdf`` に
+        替えた所へ書きます。新しいブックなら ``ブック1.pdf`` です。
+
+        紙・向き・余白・印刷範囲はシートごとに効きます(1冊に A4 の縦と
+        横が混ざってかまいません)。
+
+        ``include`` / ``exclude`` は持ちません。`officework.calc` の
+        同じ名前の口と揃えてあります。
+        """
+        if include is not None or exclude is not None:
+            raise NotImplementedError(
+                "シートの選り分け(include / exclude)は持ちません。"
+                "刷りたくないシートは隠してください"
+            )
+        if path is None:
+            moto = self._path or "ブック1"
+            path = _os.path.splitext(moto)[0] + ".pdf"
+        path = _os.path.abspath(_os.fspath(path))
+        self._b.save(path, None)
+        return path
+
     def recalc(self):
         self._b.recalc()
 

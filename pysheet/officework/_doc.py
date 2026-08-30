@@ -1487,6 +1487,8 @@ class Doc:
             self._d = _doc.Doc.open(str(path), lang)
         else:
             self._d = _doc.Doc(lang)
+        # 開いた元の名前。`to_pdf()` を引数なしで呼ぶときに使います
+        self._path = str(path) if path is not None else None
 
     @staticmethod
     def open(path, lang=None):
@@ -1494,7 +1496,8 @@ class Doc:
         # 芯は文字しか取らないので、ここで径路の形に直してから渡す。
         # sheet.Book と揃えること — 片方だけ受けるのがいちばん困る
         d = Doc.__new__(Doc)
-        d._d = _doc.Doc.open(_os.fspath(path), lang)
+        d._path = _os.fspath(path)
+        d._d = _doc.Doc.open(d._path, lang)
         return d
 
     def add_shape(self, kind, x, y, width, height, **kw):
@@ -1526,6 +1529,22 @@ class Doc:
         """
         # Path も受ける(上の open と同じ理由)
         self._d.save(_os.fspath(path), dpi)
+
+    def to_pdf(self, path=None):
+        """文書を PDF にします。返り値は保存先です。
+
+        ``save("x.pdf")`` と同じ道を通ります。名前が違うだけではなく、
+        PDF だけの指定を足すならこちらに足します(2026-08-30 発注者)。
+
+        ``path`` を省くと、開いたファイルの名前の拡張子を ``.pdf`` に
+        替えた所へ書きます。新しい文書なら ``文書1.pdf`` です。
+        """
+        if path is None:
+            moto = getattr(self, "_path", None) or "文書1"
+            path = _os.path.splitext(moto)[0] + ".pdf"
+        path = _os.path.abspath(_os.fspath(path))
+        self._d.save(path, None)
+        return path
 
     @property
     def unsupported(self):

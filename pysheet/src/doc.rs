@@ -1046,11 +1046,14 @@ impl PyDoc {
             };
         let mut g = lock(&self.inner)?;
         let page = g.doc.page.unwrap_or_default();
+        // **空の sectPr から始めません。** 空だと途中の節が紙も余白も
+        // 持たず、開いたソフトの既定(英語圏の Word なら Letter)で
+        // 表示されます(2026-08-30)
         let raw = g
             .doc
             .sect_raw
             .clone()
-            .unwrap_or_else(|| "<w:sectPr></w:sectPr>".to_string());
+            .unwrap_or_else(|| ooxml::sect_xml(&page));
         let brk = kumihan::SectionBreak {
             raw: set_sect_continuous(&raw, continuous),
             page,
@@ -1303,6 +1306,16 @@ fn set_sect_continuous(raw: &str, continuous: bool) -> String {
     }
 }
 
+/// **向きの札を、いまの縦横に合わせる。**
+///
+/// 幅と高さを直に書き替えたときも `w:orient` を揃えます。前は
+/// `orientation` を使ったときしか札が付かず、`page_width` で横長にすると
+/// Word の「ページ設定」が縦のままでした(2026-08-30)。
+fn muki_wo_soroeru(raw: &str, p: &kumihan::PageSetup) -> String {
+    let muki = if p.w_mm > p.h_mm { "landscape" } else { "portrait" };
+    patch_sect_text(raw, "w:pgSz", "w:orient", muki)
+}
+
 /// 1つの節。idx が途中の節(sectPr を持つ段落の順)の数までなら途中、
 /// その次が文書末の節。位置で引き直す手(段落・run と同じ作法)。
 #[pyclass(name = "Section", module = "officework.doc")]
@@ -1346,11 +1359,12 @@ impl PySection {
             }
         } else {
             let mut page = g.doc.page.unwrap_or_default();
+            // 空から始めると、書き替えた辺の余白しか残りません(2026-08-30)
             let mut raw = g
                 .doc
                 .sect_raw
                 .clone()
-                .unwrap_or_else(|| "<w:sectPr></w:sectPr>".to_string());
+                .unwrap_or_else(|| ooxml::sect_xml(&page));
             f(&mut page, &mut raw);
             g.doc.page = Some(page);
             g.doc.sect_raw = Some(raw);
@@ -1393,6 +1407,7 @@ impl PySection {
         self.mutate(|p, raw| {
             p.w_mm = v;
             *raw = patch_sect(raw, "w:pgSz", "w:w", mm_twips(v));
+            *raw = muki_wo_soroeru(raw, p);
         })
     }
 
@@ -1406,6 +1421,7 @@ impl PySection {
         self.mutate(|p, raw| {
             p.h_mm = v;
             *raw = patch_sect(raw, "w:pgSz", "w:h", mm_twips(v));
+            *raw = muki_wo_soroeru(raw, p);
         })
     }
 

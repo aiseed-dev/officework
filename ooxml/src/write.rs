@@ -39,6 +39,35 @@ pub(super) const DEFAULT_SECT: &str = concat!(
     r#"w:header="851" w:footer="992" w:gutter="0"/></w:sectPr>"#
 );
 
+/// **用紙の設定から `sectPr` を組む。**
+///
+/// 新しい節を作るときの元にします。前は空の `<w:sectPr></w:sectPr>` から
+/// 始めていたので、途中の節が紙も余白も持たず、開いたソフトの既定
+/// (英語圏の Word なら Letter・余白1インチ)で表示されていました。
+/// 文書末の節も、後から書き替えた辺の余白しか持ちませんでした
+/// (2026-08-30)。
+///
+/// 横長のときは `w:orient="landscape"` も書きます。Word の「印刷の向き」は
+/// 縦横の寸法ではなくこの印を見ます。
+pub fn sect_xml(p: &kumihan::PageSetup) -> String {
+    let tw = |mm: f32| (mm * 1440.0 / 25.4).round() as i64;
+    let muki = if p.w_mm > p.h_mm { r#" w:orient="landscape""# } else { "" };
+    format!(
+        concat!(
+            r#"<w:sectPr><w:pgSz{} w:w="{}" w:h="{}"/>"#,
+            r#"<w:pgMar w:top="{}" w:right="{}" w:bottom="{}" w:left="{}" "#,
+            r#"w:header="851" w:footer="992" w:gutter="0"/></w:sectPr>"#
+        ),
+        muki,
+        tw(p.w_mm),
+        tw(p.h_mm),
+        tw(p.top_mm),
+        tw(p.right_mm),
+        tw(p.bottom_mm),
+        tw(p.left_mm),
+    )
+}
+
 pub(super) const RNS_DOC: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
 /// テンプレートのスタイル名を、docx の styleId にする。

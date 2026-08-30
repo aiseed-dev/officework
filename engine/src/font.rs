@@ -467,6 +467,9 @@ pub fn substitute(name: &str) -> Option<&'static Family> {
 /// 名前を日本語と英語の両方で書いてあるのは、書体が OS の言語によって
 /// 違う名前を名乗るからです([`resolve`] は空白や大小文字の揺れは吸い
 /// ますが、名前の翻訳まではしません)。
+///
+/// ここに並ぶのは**ゴシック(サンセリフ)だけ**です。明朝(セリフ)は
+/// [`serif_cands`] にあります。
 fn default_cands(s: Script) -> &'static [&'static str] {
     #[cfg(target_os = "windows")]
     match s {
@@ -501,6 +504,48 @@ fn default_cands(s: Script) -> &'static [&'static str] {
     }
 }
 
+/// **明朝(セリフ)の候補**を、言語ごとに並べたもの。
+///
+/// [`default_cands`] と同じ役ですが、そちらはゴシックしか並んでいません。
+/// 2026-08-30 まで明朝の候補が無く、本文の書体は必ず全体の走査に落ちて
+/// いました。走査は「ラテン文字が組める明朝の先頭」を拾うので、英語の
+/// 文書の本文に **BIZ UDP明朝**(日本語の書体)が入っていました。中国語
+/// と韓国語も、その言語の書体ではない物が入っていました。
+fn serif_cands(s: Script) -> &'static [&'static str] {
+    #[cfg(target_os = "windows")]
+    match s {
+        Script::Japanese => &["游明朝", "Yu Mincho", "ＭＳ Ｐ明朝", "MS PMincho"],
+        Script::Korean => &["바탕", "Batang", "궁서", "Gungsuh"],
+        Script::SimplifiedChinese => &["宋体", "SimSun", "新宋体", "NSimSun"],
+        Script::TraditionalChinese => &["新細明體", "PMingLiU", "細明體", "MingLiU"],
+        Script::Cyrillic | Script::Vietnamese | Script::Latin => {
+            &["Times New Roman", "Georgia", "Cambria"]
+        }
+    }
+    #[cfg(target_os = "macos")]
+    match s {
+        Script::Japanese => &["ヒラギノ明朝 ProN", "Hiragino Mincho ProN", "YuMincho"],
+        Script::Korean => &["AppleMyungjo", "Apple SD Gothic Neo"],
+        Script::SimplifiedChinese => &["Songti SC", "宋体-简", "STSong"],
+        Script::TraditionalChinese => &["Songti TC", "宋体-繁", "LiSong Pro"],
+        Script::Cyrillic | Script::Vietnamese | Script::Latin => {
+            &["Times New Roman", "Georgia", "Palatino"]
+        }
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    match s {
+        Script::Japanese => &["Noto Serif CJK JP", "IPAex明朝", "BIZ UDP明朝", "IPA P明朝"],
+        Script::Korean => &["Noto Serif CJK KR", "Baekmuk Batang", "은 바탕"],
+        Script::SimplifiedChinese => &["Noto Serif CJK SC", "Source Han Serif SC", "AR PL SungtiL GB"],
+        Script::TraditionalChinese => {
+            &["Noto Serif CJK TC", "Source Han Serif TC", "AR PL Mingti2L Big5"]
+        }
+        Script::Cyrillic | Script::Vietnamese | Script::Latin => {
+            &["Liberation Serif", "DejaVu Serif", "Noto Serif", "Nimbus Roman"]
+        }
+    }
+}
+
 /// **その言語の標準の書体。** 文書もテンプレートも書体を言っていないとき、
 /// これを使います。
 ///
@@ -517,18 +562,37 @@ fn default_cands(s: Script) -> &'static [&'static str] {
 /// 機械に無ければ `None`。呼ぶ側が名前を決めます。
 pub fn default_generic(lang: &str, g: Generic) -> Option<&'static Family> {
     let s = script_of(lang);
-    for c in default_cands(s) {
+    // 役に合う候補の一覧から探します。明朝を頼まれてゴシックの一覧を
+    // 引いても当たらないので、必ず全体の走査に落ちていました(2026-08-30)
+    let cands: &[&str] = match g {
+        Generic::Serif => serif_cands(s),
+        _ => default_cands(s),
+    };
+    for c in cands {
         if let Some(f) = resolve(c) {
             if read_generic(&f.name) == Some(g) {
                 return Some(f);
             }
         }
     }
-    // 候補に無ければ、その言語の字が組める物から系統で選びます
+    // 候補に無ければ、その言語の字が組める物から系統で選びます。
+    //
+    // **その言語の書体を先に見ます。** ラテン文字は日本語の書体でも
+    // 組めてしまうので、ただ走査すると英語の文書の本文が BIZ UDP明朝に
+    // なりました。日本語・中国語・韓国語の書体でない物を先に見ます
+    let yoso = |f: &&Family| match s {
+        Script::Cyrillic | Script::Vietnamese | Script::Latin => {
+            f.japanese || f.han || f.hangul
+        }
+        _ => false,
+    };
+    let au = |f: &&Family| f.covers(s) && read_generic(&f.name) == Some(g);
     list()
         .iter()
-        .find(|f| f.covers(s) && f.regular && read_generic(&f.name) == Some(g))
-        .or_else(|| list().iter().find(|f| f.covers(s) && read_generic(&f.name) == Some(g)))
+        .find(|f| au(f) && f.regular && !yoso(f))
+        .or_else(|| list().iter().find(|f| au(f) && !yoso(f)))
+        .or_else(|| list().iter().find(|f| au(f) && f.regular))
+        .or_else(|| list().iter().find(au))
 }
 
 pub fn default_family(lang: &str) -> Option<&'static Family> {
@@ -793,6 +857,32 @@ mod tests {
         let (mixed, _) = for_text(None, "Hello 見本".chars()).unwrap();
         assert!(mixed.japanese, "仮名と漢字が組めない書体のままだった");
         *UI_LANG.write().unwrap() = None;
+    }
+
+    /// **本文の書体は、その言語の書体から選ぶ。**
+    ///
+    /// 2026-08-30 まで明朝の候補の一覧が無く、本文は必ず全体の走査に
+    /// 落ちていました。走査は「ラテン文字が組める明朝の先頭」を拾うので、
+    /// 英語の文書の本文に BIZ UDP明朝(日本語の書体)が入っていました。
+    /// 手引きの「英語は本文セリフ」と食い違っていた所です。
+    #[test]
+    fn the_body_font_comes_from_the_language_not_from_japanese() {
+        let _lang = lang_lock();
+        for lang in ["en", "de", "pt-br", "vi", "ru"] {
+            let f = default_generic(lang, Generic::Serif)
+                .unwrap_or_else(|| panic!("{lang}: 明朝が見つからない"));
+            assert!(
+                !f.japanese,
+                "{lang} の本文に日本語の書体が入った: {}",
+                f.name
+            );
+            assert_eq!(read_generic(&f.name), Some(Generic::Serif), "{lang}");
+        }
+        // 見出し(ゴシック)も同じこと
+        for lang in ["en", "de", "vi"] {
+            let f = default_generic(lang, Generic::SansSerif).expect("ゴシック");
+            assert!(!f.japanese, "{lang} の見出しに日本語の書体が入った: {}", f.name);
+        }
     }
 
     /// 指定した書体でその字が組めるなら、換えません
