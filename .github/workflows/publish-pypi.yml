@@ -172,11 +172,16 @@ jobs:
                   and f.suffix in ("", ".exe")]
           assert not apps, f"アプリの実行ファイルが混じっています: {apps}"
 
-          # 大きさの上限。エンジンだけで 44MB です(polars・vello・PDF の
-          # 3つがほとんど)。calc は 149MB・writer は 66MB あるので、
-          # どちらか1つでも紛れれば 60MB を超えて止まります
+          # 大きさの上限。**アプリが混じったかどうかは上の名前で見ます。**
+          # ここは、思っていない大きい物(書体の束や表など)が入ったときに
+          # 気づくための2枚目の網です。
+          #
+          # Linux と Windows は 45MB、mac は 79MB です。mac だけ倍近いのは
+          # universal2 で組んでいて、**1枚に Intel と Apple Silicon の
+          # 2つが入る**ためです(2026-08-30 に実測)。中身は polars・
+          # vello・PDF の3つでほとんどを占めます
           size = sum(f.stat().st_size for f in ne.rglob("*") if f.is_file())
-          assert size < 60_000_000, f"荷物が大きすぎます({size/1e6:.0f}MB)"
+          assert size < 120_000_000, f"荷物が大きすぎます({size/1e6:.0f}MB)"
           print(f"荷物 {size/1e6:.1f}MB")
           PYEOF
       - uses: actions/upload-artifact@v5
