@@ -694,10 +694,23 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
                 // **段落の中の改行は AsciiDoc の改行**(行末の ` +`)です。
                 // 空行で区切ると段落が2つになり、間が余分に空きます —
                 // 表計算のセルの「区　分 / Type」はそれでは違う見え方です
-                paras
+                let mut t = paras
                     .join(if many_paras { "\n\n" } else { " " })
                     .replace('\n', " +\n")
-                    .replace(" +\n +\n", "\n\n")
+                    .replace(" +\n +\n", "\n\n");
+                // **継ぐ行の頭の空白を守ります**(2026-08-31)。読む側は
+                // 続きの行の頭を落とします(adoc の字下げは字ではないため)。
+                // `{empty}` を置くと、その後ろの空白は字として残ります
+                // 1行目の頭も同じです。`|` のすぐ後ろの空白は、読む側が
+                // 升の区切りの飾りとして落とします
+                t = t
+                    .split('\n')
+                    .map(|l| {
+                        if l.starts_with(' ') { format!("{EMPTY_PARA}{l}") } else { l.to_string() }
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                t
             };
             // **縦棒は逃がします**(2026-08-20 に見つけた)。逃がさないと
             // 中身の `|` が次のセルの頭と読まれ、**1つの升が2つに割れて
@@ -2049,7 +2062,12 @@ fn parse_table_lines(
             if before.ends_with(" +") {
                 before.truncate(before.len() - 2);
                 before.push('\n');
-                before.push_str(cont);
+                // **`{empty}` の後ろの空白は字です**(書く側が置いた印)。
+                // 印だけ外して、空白はそのまま残します
+                match l.trim_start().strip_prefix(EMPTY_PARA) {
+                    Some(nokori) => before.push_str(nokori),
+                    None => before.push_str(cont),
+                }
                 continue;
             }
             // 段落の切れ目の直後は、字を継ぎ足す空白を入れません
@@ -2114,9 +2132,24 @@ fn parse_table_lines(
             } else {
                 cell_text
             };
+            // **`{empty}` の後ろの空白は字です**(書く側が置いた印)。
+            // 印だけ外します — `{empty}` だけの升は空の段落なので触りません
+            let hazushita;
+            let (cell_text, atama_wo_nokosu): (&str, bool) =
+                match cell_text.trim_start().strip_prefix(EMPTY_PARA) {
+                    Some(nokori) if !nokori.is_empty() => {
+                        hazushita = nokori.to_string();
+                        (&hazushita, true)
+                    }
+                    _ => (cell_text, false),
+                };
             let raw = cell_text.trim_matches(|c: char| c == ' ' || c == '\t' || c == '\r');
             let para_text: Vec<&str> = if asciidoc_cell && raw.contains("\n\n") {
                 raw.split("\n\n").map(trim_edges).collect()
+            } else if atama_wo_nokosu {
+                // 印を外した升は、**頭の空白を字として残します**。
+                // 後ろだけ落とします(升の切れ目の前の飾りなので)
+                vec![cell_text.trim_end_matches([' ', '\t', '\r', '\n'])]
             } else {
                 vec![trim_edges(cell_text)]
             };

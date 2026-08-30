@@ -604,13 +604,24 @@ impl Cell {
         if t.is_empty() {
             return Cell::default();
         }
-        if let Ok(n) = t.parse::<f64>() {
-            return Cell { formula: None, value: Value::Number(n), fmt: Default::default() };
+        // **行頭に空白があれば字です**(2026-08-31)。「　　2020」は
+        // 字下げした見出しであって数ではありません。数にすると空白ごと
+        // 消えて、桁の揃った帳票が崩れます
+        let atama_aki = s.starts_with(|c: char| c.is_whitespace());
+        if !atama_aki {
+            if let Ok(n) = t.parse::<f64>() {
+                return Cell { formula: None, value: Value::Number(n), fmt: Default::default() };
+            }
         }
         match t.to_ascii_uppercase().as_str() {
             "TRUE" => Cell { formula: None, value: Value::Bool(true), fmt: Default::default() },
             "FALSE" => Cell { formula: None, value: Value::Bool(false), fmt: Default::default() },
-            _ => Cell { formula: None, value: Value::Text(t.to_string()), fmt: Default::default() },
+            // **字は打たれたまま持ちます**(2026-08-31)。数か式かの見分けに
+            // 削った字を使うのはそのままで、**値には元の字**を入れます。
+            // 日本の帳票は全角スペースで字下げするので、削ると
+            // 「　　　　百万円」が「百万円」になって桁が揃わなくなります
+            // (国税庁の酒税の表で 557 升のうち 56 升)
+            _ => Cell { formula: None, value: Value::Text(s.to_string()), fmt: Default::default() },
         }
     }
 
