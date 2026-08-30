@@ -79,23 +79,25 @@ jobs:
         run: bash tools/ci-test.sh -p paper --features e
       - name: サイドカーが組めるか(pyoffice)
         run: cargo build -p sidecar
-      - name: Windows の的でも組めるか(pysheet — 配る wheel の3つ目の OS)
-        # v0.2.0 のタグで初めて発覚: pysheet が ops に依存した日に、ops の
-        # unix 専用 API(sock_path の uid・/dev/urandom・0600)が Windows の
-        # wheel を壊した。push のたびにここで見る — タグを押してから知るのは遅い
-        run: |
-          rustup target add x86_64-pc-windows-msvc
-          cargo check -p pysheet --target x86_64-pc-windows-msvc
-      - name: スマホの的でも組めるか(pysheet の wheel と sidecar の橋)
+      # **pysheet を他の OS 向けにここで見るのは、もうできません。**
+      #
+      # 2026-08-29 に pivot(polars)が pysheet に入り、polars が psm と
+      # stacker を連れてきました。この2つは **C のコードを的向けに翻訳
+      # します**。Linux の `cc` は Windows の windows.h を持たず、Android の
+      # clang も持っていないので、翻訳する前に止まります。
+      #
+      # ここは「翻訳器だけで安く見る」段でした。C が要るようになった以上、
+      # 的の道具を持つ機械で見るしかありません:
+      #   Windows … 下の core-windows の仕事(本物の MSVC がある)
+      #   Android … wheels-mobile.yml(NDK の clang を入れている)
+      #   iOS    … Linux からは無理です。SDK が要ります
+      - name: スマホの的でも組めるか(sidecar の橋と、持ち運べる層)
         # 2026-08-13 発注者「Android/iOS 版の wheel を」「FFI を優先」。
-        # 手元の実測では全部一発で通った(依存が純 Rust + unix なので)—
-        # この状態を保つ見張り。sidecar はスマホでは関数の橋(ffi)として
-        # アプリに焼き込む(iOS はサブプロセス禁止)。wheel と .a/.so を
-        # 実際に組む仕事は配布の車線で別途
+        # sidecar はスマホでは関数の橋(ffi)としてアプリに焼き込みます
+        # (iOS はサブプロセス禁止)。ここに残した3つは**純 Rust のまま**
+        # なので、翻訳器だけで見られます(2026-08-30 に1つずつ確かめました)
         run: |
           rustup target add aarch64-linux-android aarch64-apple-ios
-          cargo check -p pysheet --target aarch64-linux-android
-          cargo check -p pysheet --target aarch64-apple-ios
           cargo check -p sidecar --target aarch64-linux-android
           cargo check -p sidecar --target aarch64-apple-ios
           # lang は feature "ai"(rustls)を外した形で — スマホの組み方
@@ -500,6 +502,17 @@ jobs:
         env:
           OFFICE_FONT_DIR: ${{ runner.temp }}/jpfonts
         run: bash tools/ci-test.sh --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
+      - name: pysheet が組めるか(配る wheel の3つ目の OS)
+        # v0.2.0 のタグで初めて発覚: pysheet が ops に依存した日に、ops の
+        # unix 専用 API(sock_path の uid・/dev/urandom・0600)が Windows の
+        # wheel を壊しました。push のたびに見ます — タグを押してから知るのは
+        # 遅いためです。
+        #
+        # 前は Linux から `--target x86_64-pc-windows-msvc` で見ていました。
+        # polars が C のコード(psm・stacker)を連れてきた 2026-08-29 から、
+        # それでは windows.h が無くて止まります。**本物の MSVC がある
+        # ここへ移しました**(2026-08-30)
+        run: cargo check -p pysheet
 
   # 配る形で確かめる。**手元の木ではなく wheel を入れた素の環境で**
   python:
