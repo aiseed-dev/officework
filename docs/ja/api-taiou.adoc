@@ -337,6 +337,8 @@ def 大文字にする(段落):
 |===
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
+|image:../../face/icons/show-left.svg[,16,16] Left Panel |link:commands/表示/左パネル.adoc[左パネル] | |— |— |—
+|image:../../face/icons/show-right.svg[,16,16] Right Panel |link:commands/表示/右パネル.adoc[右パネル] | |— |— |—
 |image:../../face/icons/freeze.svg[,16,16] Freeze panes |link:commands/表示/ウィンドウ枠の固定.adoc[ウィンドウ枠の固定] |✅ |s.freeze_panes |— |ws.freeze_panes
 |image:../../face/icons/show-gridlines.svg[,16,16] Gridlines |link:commands/表示/枠線表示.adoc[枠線表示] |✅ |s.show_gridlines |— |ws.sheet_view.showGridLines
 |===
@@ -376,7 +378,7 @@ def 大文字にする(段落):
 |Heading |link:commands/左パネル/見出し.adoc[見出し] |✅ |p.style で拾う |p.style |—
 |Comment |link:commands/左パネル/コメント.adoc[コメント] |✅ |*挿入と同じ* — d.comments |d.comments |c.comment
 |Find |link:commands/左パネル/検索.adoc[検索] |✅ |d.find(字) |— |—
-|Agent panel |エージェントパネル | |— |— |—
+|Agent panel |link:commands/左パネル/エージェントパネル.adoc[エージェントパネル] | |— |— |—
 |===
 
 == 右パネル
@@ -385,10 +387,10 @@ def 大文字にする(段落):
 |===
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
-|Settings — adjust where the cursor is |設定。カーソルのある場所に掛かります | |— |— |—
-|Page — settings for the whole document |ページ設定。文書全体に掛かります |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
-|Styles — edit the template |スタイル。テンプレートを直します |✅ |p.style |p.style |—
-|Project panel |プロジェクトパネル | |— |— |—
+|Settings — adjust where the cursor is |link:commands/右パネル/設定.adoc[設定。カーソルのある場所に掛かります] | |— |— |—
+|Page — settings for the whole document |link:commands/右パネル/ページ設定.adoc[ページ設定。文書全体に掛かります] |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
+|Styles — edit the template |link:commands/右パネル/スタイル.adoc[スタイル。テンプレートを直します] |✅ |p.style |p.style |—
+|Project panel |link:commands/右パネル/プロジェクトパネル.adoc[プロジェクトパネル] | |— |— |—
 |===
 
 == 下端
