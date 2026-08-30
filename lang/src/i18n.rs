@@ -41,7 +41,9 @@ pub fn language() -> &'static str {
     // エンジンと画面で別々に決めていたので、Python から使うと設定を
     // 見ませんでした。ここは book が返した札を、文言の揃った言語に
     // 丸めるだけです
-    let l = quiet_tag(&book::lang::decide(None)).unwrap_or(book::lang::FALLBACK);
+    // 落ち先は "en" です。`book::lang::FALLBACK` は文書の側の答え
+    // (`en-gb`)で、画面の文言の表は英語で1つなので、ここは "en" です
+    let l = quiet_tag(&book::lang::decide(None)).unwrap_or("en");
     *LANG.write().expect("言語の錠") = Some(l);
     l
 }
@@ -53,7 +55,10 @@ pub fn language() -> &'static str {
 /// **en を名指しで受けます。** 鍵が英語なので en は対訳表を持ちません
 /// (2026-08-26)。表の登録簿だけを見ると en が落ちてしまいます。
 fn quiet_tag(tag: &str) -> Option<&'static str> {
-    if tag == "en" {
+    // **画面の文言は英語で1つです。** イギリスとアメリカで分けるのは
+    // 文書の設定(日付の並び・用紙・docx の言語の札)だけで、リボンや
+    // メニューの言葉は同じ物を使います(2026-08-30 発注者)
+    if tag == "en" || tag == "en-us" || tag == "en-gb" {
         return Some("en");
     }
     crate::i18n_tables::LANGS.iter().find(|x| **x == tag).copied()

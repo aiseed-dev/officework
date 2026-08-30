@@ -8,7 +8,7 @@
 //! . 環境変数 `OFFICE_LANG`
 //! . 設定ファイル `~/.config/officework/settings.toml` の `language`
 //! . OS の言語設定(`LC_ALL` → `LC_MESSAGES` → `LANG`)
-//! . どれも無ければ `en`
+//! . どれも無ければ `en-us`
 //!
 //! **ここに置いたのは、決め方が2つに分かれていたからです。** 画面
 //! (`lang::i18n`)は上の順で決めていましたが、エンジン
@@ -52,7 +52,10 @@ pub fn setting(key: &str) -> Option<String> {
 /// 2026-08-30 発注者。前は `ja` でした。英語を主にしたので、手がかりが
 /// 1つも無いときは英語で出します。日本語の機械では OS の言語が先に
 /// 当たるので、この行まで落ちません。
-pub const FALLBACK: &str = "en";
+///
+/// 手がかりが1つも無いのは素の `en` と同じことなので、[`to_tag`] が
+/// `en` に返すのと同じ `en-us` にします。
+pub const FALLBACK: &str = "en-us";
 
 /// OS の言語設定を札に直す。無い・読めないなら `None`。
 ///
@@ -72,14 +75,27 @@ pub fn os_language() -> Option<String> {
 
 /// POSIX のロケールの字を札に直す。`ja_JP.UTF-8` → `ja`、`zh_TW` → `zh-tw`。
 ///
-/// **国まで見るのは、国で分けている札だけ**です(`pt`/`pt-br` と
-/// `zh`/`zh-tw`)。台湾の人に簡体字を出さないためです。
+/// **国まで見るのは、国で分けている札だけ**です(`pt`/`pt-br`、
+/// `zh`/`zh-tw`、`en-us`/`en-gb`)。台湾の人に簡体字を出さないためです。
+///
+/// **英語は日付の並びが国で割れています。** `m/d/yyyy` と `dd/mm/yyyy` の
+/// どちらで出すかを決めるため、`en-us` と `en-gb` に分けています
+/// (2026-08-30 発注者)。
+///
+/// 素の `en` は `en-us` です。国を名乗っていて、それが米国でないときだけ
+/// `en-gb` にします。`en_GB` も `en_AU` も `en_IE` も `en-gb` です。
+/// 豪・NZ・愛・南ア・印が `dd/mm/yyyy` を使うからで、2026-08-11 の
+/// 判じ方をそのまま使っています。
 pub fn to_tag(locale: &str) -> Option<String> {
     let core = locale.split(['.', '@']).next().unwrap_or(locale).replace('_', "-");
     if core.is_empty() {
         return None;
     }
     let lower = core.to_lowercase();
+    if lower == "en" || lower.starts_with("en-") {
+        let us = lower == "en" || lower.starts_with("en-us");
+        return Some(if us { "en-us" } else { "en-gb" }.into());
+    }
     for kuni in ["pt-br", "zh-tw", "zh-hk"] {
         if lower.starts_with(kuni) {
             return Some(if kuni == "zh-hk" { "zh-tw".into() } else { kuni.into() });
@@ -108,7 +124,10 @@ mod tests {
     fn a_posix_locale_becomes_our_tag() {
         for (from, want) in [
             ("ja_JP.UTF-8", "ja"),
-            ("en_US.UTF-8", "en"),
+            // 英語は国まで名乗ります(下の試験で細かく見ます)
+            ("en_US.UTF-8", "en-us"),
+            ("en", "en-us"),
+            ("en_GB.UTF-8", "en-gb"),
             ("pt_BR.UTF-8", "pt-br"),
             ("pt_PT.UTF-8", "pt"),
             ("zh_TW", "zh-tw"),
@@ -128,12 +147,13 @@ mod tests {
         assert_eq!(super::decide(Some("pt_BR.UTF-8")), "pt-br");
     }
 
-    /// **どれも無ければ en。**(2026-08-30 発注者。前は ja でした)
+    /// **どれも無ければ英語。**(2026-08-30 発注者。前は ja でした)
     #[test]
     fn nothing_set_means_english() {
         // 環境変数を空にして呼びます。設定ファイルは機械のものを見るので、
         // ここでは「空の指定が明の指定として通らない」ことだけ見ます
         assert_eq!(super::decide(Some("")), super::decide(None));
-        assert_eq!(super::FALLBACK, "en");
+        assert_eq!(super::FALLBACK, "en-us");
     }
+
 }

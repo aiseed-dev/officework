@@ -92,6 +92,36 @@ impl Setting {
 pub struct LangDoc {
     pub font: Option<String>,
     pub size_pt: Option<f32>,
+    /// その言語の既定の用紙(幅 mm, 高さ mm)。**アメリカだけレターです**
+    /// (2026-08-30 発注者)。他の言語は A4 なので、書かなければ `None` です
+    pub paper_mm: Option<(f32, f32)>,
+}
+
+/// 用紙の名前を mm に直す。**読む側と書く側で同じ表を見ます**
+pub fn youshi_mm(na: &str) -> Option<(f32, f32)> {
+    match na {
+        "A4" => Some((210.0, 297.0)),
+        "A4横" | "A4 landscape" => Some((297.0, 210.0)),
+        "A3" => Some((297.0, 420.0)),
+        "B5" => Some((182.0, 257.0)),
+        // アメリカの標準の用紙。8.5 × 11 インチ
+        "レター" | "Letter" => Some((215.9, 279.4)),
+        _ => None,
+    }
+}
+
+/// mm を用紙の名前に戻す。**[`youshi_mm`] と往復できます**
+pub fn youshi_na(wh: (f32, f32)) -> &'static str {
+    for na in ["A4", "A4横", "A3", "B5", "レター"] {
+        if youshi_mm(na) == Some(wh) {
+            return na;
+        }
+    }
+    "A4"
+}
+
+fn youshi_error(na: &str) -> String {
+    format!("知らない用紙: {na}(A4 / A4横 / A3 / B5 / レター)")
 }
 
 /// テンプレート。文書の頭の `:template: 名前` が名指す実体。
@@ -216,6 +246,12 @@ impl Theme {
             if d.size_pt.is_some() {
                 th.size_pt = d.size_pt;
             }
+            // **用紙も言語で変わります。** アメリカ英語だけレターです
+            // (2026-08-30 発注者「en は、イギリスとアメリカの2つにして」)
+            if let Some((w, h)) = d.paper_mm {
+                let p = th.page.get_or_insert_with(crate::doc::PageSetup::default);
+                (p.w_mm, p.h_mm) = (w, h);
+            }
         }
         th
     }
@@ -255,7 +291,13 @@ pub const DEFAULT_TOML: &str = r#"# officework の既定のテンプレート
 大きさ = 10.5
 
 # 英語・ドイツ語などラテン文字の言語。Word の既定が 11pt
-[文書.en]
+#
+# **英語は国まで名乗ります**(2026-08-30 発注者)。アメリカだけ用紙が
+# レター(8.5 × 11 インチ)で、イギリスは他と同じ A4 です
+[文書.en-us]
+大きさ = 11
+用紙 = "レター"
+[文書.en-gb]
 大きさ = 11
 [文書.de]
 大きさ = 11
@@ -789,9 +831,16 @@ pub fn parse(src: &str) -> Result<Theme, String> {
                 match k {
                     "書体" | "font" => d.font = Some(s(v)?),
                     "大きさ" | "size" => d.size_pt = Some(n(v)?),
+                    "用紙" | "paper" => {
+                        let na = s(v)?;
+                        d.paper_mm = Some(
+                            youshi_mm(&na)
+                                .ok_or_else(|| format!("{} 行目: {}", ln + 1, youshi_error(&na)))?,
+                        );
+                    }
                     _ => {
                         return Err(format!(
-                            "{} 行目: [文書.{tag}] の知らないキー: {k}(書体 / 大きさ)",
+                            "{} 行目: [文書.{tag}] の知らないキー: {k}(書体 / 大きさ / 用紙)",
                             ln + 1
                         ))
                     }
@@ -800,15 +849,12 @@ pub fn parse(src: &str) -> Result<Theme, String> {
             Some(Sec::Page) => {
                 let p = th.page.get_or_insert_with(PageSetup::default);
                 match k {
-                    "用紙" | "paper" => match s(v)?.as_str() {
-                        "A4" => {}
-                        "A4横" | "A4 landscape" => {
-                            (p.w_mm, p.h_mm) = (297.0, 210.0);
-                        }
-                        "A3" => (p.w_mm, p.h_mm) = (297.0, 420.0),
-                        "B5" => (p.w_mm, p.h_mm) = (182.0, 257.0),
-                        other => return Err(format!("{} 行目: 知らない用紙: {other}(A4 / A4横 / A3 / B5)", ln + 1)),
-                    },
+                    "用紙" | "paper" => {
+                        let na = s(v)?;
+                        let (w, h) = youshi_mm(&na)
+                            .ok_or_else(|| format!("{} 行目: {}", ln + 1, youshi_error(&na)))?;
+                        (p.w_mm, p.h_mm) = (w, h);
+                    }
                     "余白" | "margin" => {
                         let m = n(v)?;
                         (p.left_mm, p.right_mm, p.top_mm, p.bottom_mm) = (m, m, m, m);
@@ -959,7 +1005,7 @@ pub fn write(th: &Theme) -> String {
     // **言語ごとの分も書き出します**(2026-08-26)。書かないと、保存し直した
     // ときに言語の分が消えます
     for (tag, d) in &th.lang_docs {
-        if d.font.is_none() && d.size_pt.is_none() {
+        if d.font.is_none() && d.size_pt.is_none() && d.paper_mm.is_none() {
             continue;
         }
         s.push_str(&format!("[文書.{tag}]\n"));
@@ -968,6 +1014,9 @@ pub fn write(th: &Theme) -> String {
         }
         if let Some(n) = d.size_pt {
             s.push_str(&format!("大きさ = {}\n", num(n)));
+        }
+        if let Some(wh) = d.paper_mm {
+            s.push_str(&format!("用紙 = {:?}\n", youshi_na(wh)));
         }
         s.push('\n');
     }

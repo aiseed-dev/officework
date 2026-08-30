@@ -30,12 +30,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "vendor/sdkjs/common/NumFormat.js"
-OUT = ROOT / "sheet/src/datetime_names.rs"
+# 表は book に移りました(2026-08-30 に気づきました。ここが sheet の
+# ままで、生成し直すと使われないファイルが1つできる状態でした)
+OUT = ROOT / "book/src/datetime_names.rs"
 
 # うちの言語 → 本家の Name。**素直に引けない2つに注意**:
-#   en  **英国**。分岐したのは米国側で、豪・NZ・愛・南ア・印は英国綴りに
-#       従う(2026-08-11 発注者)。pt と同じ判じ方 — 多いほうではなく、
-#       **分岐していないほう**を素にすると枝の無い国が正しい側に落ちる
+#   en  **en-us と en-gb の2つ**(2026-08-30 発注者)。英語は日付の並びが
+#       国で割れていて、m/d/yyyy と dd/mm/yyyy のどちらで出すかを決める
+#       ために分ける。素の en は米国式。国を名乗っていて米国でないものは
+#       英国式に落とす — 豪・NZ・愛・南ア・印がそちらだから
+#       (2026-08-11 の判じ方をそのまま使う)
 #   pt  **ポルトガル**。ブラジルだけを pt-BR として分ける
 #       (2026-08-11 発注者確定)。vendor と CLDR は素の pt をブラジルに
 #        しているが、**落とし所の正しさは別の話**だった —
@@ -47,7 +51,8 @@ OUT = ROOT / "sheet/src/datetime_names.rs"
 LOCALES = {
     "ja": "ja",
     "de": "de",
-    "en": "en-GB",
+    "en-us": "en-US",
+    "en-gb": "en-GB",
     "es": "es",
     "fr": "fr",
     "id": "id",
@@ -67,7 +72,7 @@ LOCALES = {
 # 中立の名前にも番号(0x11)を持つが、Excel が書くのは `[$-411]`(ja-JP)。
 # どの国を代表に置くかは**こちらの選択**なので、名指しで書いて材料と照合する
 CANON = {
-    "ja": "ja-JP", "de": "de-DE", "en": "en-GB", "es": "es-ES", "fr": "fr-FR",
+    "ja": "ja-JP", "de": "de-DE", "en-us": "en-US", "en-gb": "en-GB", "es": "es-ES", "fr": "fr-FR",
     "id": "id-ID", "it": "it-IT", "ko": "ko-KR", "pt": "pt-PT", "pt-br": "pt-BR", "ru": "ru-RU",
     "tr": "tr-TR", "vi": "vi-VN", "zh": "zh-CN", "zh-tw": "zh-TW",
 }
@@ -153,6 +158,11 @@ def lcid_rows() -> list[tuple[int, str]]:
             lang = exact[name]
         elif name.startswith("zh"):
             lang = "zh-tw" if name in ("zh-TW", "zh-HK", "zh-MO", "zh-Hant") else "zh"
+        elif name == "en" or name.startswith("en-"):
+            # **米国と名乗っていない英語は英国式へ。** 上の exact で
+            # en-US と en-GB は拾い終わっているので、ここに来るのは
+            # 豪・NZ・愛・南ア・印などです
+            lang = "en-gb"
         else:
             lang = name.split("-")[0]
         if lang in ours:

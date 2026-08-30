@@ -29,15 +29,18 @@ pub(super) const W_NS: &str = "http://schemas.openxmlformats.org/wordprocessingm
 pub(super) const STYLES_MIN: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:sz w:val="40"/><w:szCs w:val="40"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/><w:rPr><w:i/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/><w:szCs w:val="32"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:pPr><w:outlineLvl w:val="2"/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:style></w:styles>"#;
 
-/// **新規の文書の用紙。** A4(11906×16838 twip)と余白 20mm(1134 twip)。
+/// **新規の文書の用紙。** 既定は A4 と余白 20mm(1134 twip)です。
 ///
 /// 教師(Word の空)は余白 1440 twip(25.4mm)ですが、**余白だけは
 /// 決め済みの 20mm** にします(writer の既定と1本の道)。
-pub(super) const DEFAULT_SECT: &str = concat!(
-    r#"<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>"#,
-    r#"<w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" "#,
-    r#"w:header="851" w:footer="992" w:gutter="0"/></w:sectPr>"#
-);
+///
+/// **用紙はいまの言語で決まります**(2026-08-30 発注者)。前は A4 の
+/// 決め打ちでした。アメリカ英語のときだけレターになります — 同梱の
+/// テンプレートの `[文書.en-us]` がそう言っています。
+pub(super) fn default_sect() -> String {
+    let p = kumihan::theme::default_theme().page.unwrap_or_default();
+    sect_xml(&p)
+}
 
 /// **用紙の設定から `sectPr` を組む。**
 ///
@@ -114,13 +117,30 @@ fn style_name_of(name: &str, id: &str) -> String {
 }
 
 /// 画面の言語の札を docx の `w:lang` の形に(`ja` → `ja-JP`)
+///
+/// 英語は `en-us` と `en-gb` の2つです(2026-08-30 発注者)。
+/// 前は `en` をそのまま書いていました。短い形も札としては通りますが、
+/// Word は国まで書きます。
 fn doc_lang_tag(lang: &str) -> String {
     match lang {
         "ja" => "ja-JP".into(),
         "ko" => "ko-KR".into(),
         "zh" => "zh-CN".into(),
         "zh-tw" => "zh-TW".into(),
+        "en-us" => "en-US".into(),
+        "en-gb" => "en-GB".into(),
         other => other.to_string(),
+    }
+}
+
+/// `w:lang` の `w:val` — **ラテン文字の言葉に使う言語**です。
+///
+/// Word は日本語の文書でもここに `en-US` と書きます。英語の文書のときだけ、
+/// 選んだほうの英語にします
+fn latin_lang_tag(lang: &str) -> &'static str {
+    match lang {
+        "en-gb" => "en-GB",
+        _ => "en-US",
     }
 }
 
@@ -164,7 +184,8 @@ fn styles_from_theme(theme: &kumihan::theme::Theme) -> String {
     // 日本語の組みが本家と揃いません
     let lang = kumihan::font::default_language();
     dd.push_str(&format!(
-        r#"<w:kern w:val="2"/><w:lang w:val="en-US" w:eastAsia="{}" w:bidi="ar-SA"/>"#,
+        r#"<w:kern w:val="2"/><w:lang w:val="{}" w:eastAsia="{}" w:bidi="ar-SA"/>"#,
+        latin_lang_tag(&lang),
         esc(&doc_lang_tag(&lang))
     ));
     if !dd.is_empty() {
@@ -1195,7 +1216,7 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
     // 前は指定が無ければ `sectPr` ごと書かず、読む機械の既定に落ちていました
     // — 英語圏の Word なら Letter になります。同じファイルが国によって
     // 違う紙に組まれるので、A4 と余白を名指しします
-    let sect = sect.unwrap_or_else(|| DEFAULT_SECT.to_string());
+    let sect = sect.unwrap_or_else(default_sect);
     let _ = w.get_mut().write_all(sect.as_bytes());
     w.write_event(Event::End(BytesEnd::new("w:body"))).unwrap();
     w.write_event(Event::End(BytesEnd::new("w:document"))).unwrap();
