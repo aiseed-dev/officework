@@ -5817,3 +5817,24 @@ beta.3 前の依頼(上のまとめ直し)への追加が2つ。
 合否: to_pdf() が Book / Doc の両方で save(".pdf") と同じ PDF を
 出す。手引きの言い切りが全部実物と一致する(ずれを直した側を
 コミットの文に書く)。
+
+==== 合否の確認の結果: 残り1件(2026-08-30 Fable)
+
+beta.3 前の依頼をこの木(759f26d8)で確かめた。**5件中4件は合格**:
+lang=(Doc / Book / open にもある)・to_pdf()(save(".pdf") と
+バイト一致の試験つき)・でたらめな書体名でも刷れる(機種の標準の
+ゴシックに落ちた)・節の docx 書き出し(sectPr が全辺の余白と
+w:orient つきで書かれ、LibreOffice の変換でページも一致)。
+
+**未達が1件**: 新規文書の PDF の本文の書体。実測:
+
+- `Doc(lang="ja")` + 日本語 → PDF は NotoSansCJKjp(明朝でない。
+  BIZUDPMincho は入っているのに)
+- `Doc(lang="en")` + 英語 → PDF は LiberationSans(セリフでない)
+
+docx のテーマは直っている(本文=明朝 / セリフ)ので、Word で
+開くと明朝・こちらの PDF はゴシック、という食い違いがまだ残る。
+ops::pdf::doc → paper の道で、font=None の本文の run がテーマの
+本文の書体(minor)に結ばれず、ゴシックの fallback に落ちている。
+python-manual の表(本文は明朝 / セリフ)は docx 側だけ真で、
+PDF 側はまだ嘘 — 直せば両方真になる。
