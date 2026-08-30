@@ -1407,6 +1407,10 @@ mod tests {
     #[test]
     fn the_written_text_is_a_table() {
         let _lang = crate::font::lang_lock();
+        // **言語を名乗ります。** 日本語の題を当てにしているので、
+        // 既定まかせだと落ちます(2026-08-31 から、どれも無ければ
+        // アメリカ英語です)
+        crate::font::set_default_language("ja");
         let src = write(&from_book(&ledger()));
         assert!(src.contains(".用紙"), "用紙の表が無い:\n{src}");
         assert!(src.contains(".列幅"), "列幅の表が無い:\n{src}");
@@ -1417,6 +1421,10 @@ mod tests {
     #[test]
     fn the_look_survives_a_round_trip() {
         let _lang = crate::font::lang_lock();
+        // **言語を名乗ります。** 日本語の題を当てにしているので、
+        // 既定まかせだと落ちます(2026-08-31 から、どれも無ければ
+        // アメリカ英語です)
+        crate::font::set_default_language("ja");
         let from = from_book(&ledger());
         let back = parse(&write(&from)).expect("読めない");
         assert_eq!(back, from, "往復で見た目が変わった");
@@ -1426,6 +1434,10 @@ mod tests {
     #[test]
     fn applies_to_a_book() {
         let _lang = crate::font::lang_lock();
+        // **言語を名乗ります。** 日本語の題を当てにしているので、
+        // 既定まかせだと落ちます(2026-08-31 から、どれも無ければ
+        // アメリカ英語です)
+        crate::font::set_default_language("ja");
         let t = from_book(&ledger());
         let mut b = Book::new();
         b.sheets[0].name = "売上台帳".into();
@@ -1442,6 +1454,10 @@ mod tests {
     #[test]
     fn unknown_sheets_are_skipped() {
         let _lang = crate::font::lang_lock();
+        // **言語を名乗ります。** 日本語の題を当てにしているので、
+        // 既定まかせだと落ちます(2026-08-31 から、どれも無ければ
+        // アメリカ英語です)
+        crate::font::set_default_language("ja");
         let t = from_book(&ledger());
         let mut b = Book::new();
         b.sheets[0].name = "別の名前".into();
@@ -1453,6 +1469,10 @@ mod tests {
     #[test]
     fn unknown_tables_are_skipped() {
         let _lang = crate::font::lang_lock();
+        // **言語を名乗ります。** 日本語の題を当てにしているので、
+        // 既定まかせだと落ちます(2026-08-31 から、どれも無ければ
+        // アメリカ英語です)
+        crate::font::set_default_language("ja");
         let t = parse(".スタイル\n|===\n|名前 |大きさ\n\n|見出し1 |16\n|===\n").expect("読めない");
         assert!(t.is_empty());
     }
@@ -1461,6 +1481,10 @@ mod tests {
     #[test]
     fn one_margin_value_is_enough() {
         let _lang = crate::font::lang_lock();
+        // **言語を名乗ります。** 日本語の題を当てにしているので、
+        // 既定まかせだと落ちます(2026-08-31 から、どれも無ければ
+        // アメリカ英語です)
+        crate::font::set_default_language("ja");
         let t = parse(".用紙\n|===\n|シート |大きさ |向き |余白\n\n|表 |A4 |縦 |20\n|===\n").expect("読めない");
         assert_eq!(t.sheets[0].margins_mm, Some((20.0, 20.0, 20.0, 20.0)));
         assert_eq!(t.sheets[0].paper_size, Some(9));
@@ -1487,6 +1511,10 @@ mod allow_names_watch {
     #[test]
     fn every_protect_flag_has_a_name() {
         let _lang = crate::font::lang_lock();
+        // **言語を名乗ります。** 日本語の題を当てにしているので、
+        // 既定まかせだと落ちます(2026-08-31 から、どれも無ければ
+        // アメリカ英語です)
+        crate::font::set_default_language("ja");
         let src = include_str!("../../book/src/types.rs");
         let head = "pub struct ProtectAllow {";
         let from = src.find(head).expect("ProtectAllow が無い");
@@ -1505,6 +1533,10 @@ mod allow_names_watch {
     #[test]
     fn the_names_do_not_repeat() {
         let _lang = crate::font::lang_lock();
+        // **言語を名乗ります。** 日本語の題を当てにしているので、
+        // 既定まかせだと落ちます(2026-08-31 から、どれも無ければ
+        // アメリカ英語です)
+        crate::font::set_default_language("ja");
         for (i, (a, _)) in ALLOW_NAMES.iter().enumerate() {
             for (b, _) in &ALLOW_NAMES[i + 1..] {
                 assert_ne!(a, b, "同じ名前が2つある: 「{a}」");
@@ -1647,6 +1679,10 @@ mod words_watch {
     #[test]
     fn every_symbol_the_template_uses_is_in_the_table() {
         let _lang = crate::font::lang_lock();
+        // **言語を名乗ります。** 日本語の題を当てにしているので、
+        // 既定まかせだと落ちます(2026-08-31 から、どれも無ければ
+        // アメリカ英語です)
+        crate::font::set_default_language("ja");
         // booktmpl.rs と style.rs が `w("…")` と `words::is("…", …)` で呼ぶ記号
         let src = concat!(include_str!("booktmpl.rs"), include_str!("booktmpl/style.rs"));
         let mut want: Vec<&str> = Vec::new();
@@ -1688,6 +1724,10 @@ mod words_watch {
     #[test]
     fn the_symbols_in_the_lists_are_in_the_table() {
         let _lang = crate::font::lang_lock();
+        // **言語を名乗ります。** 日本語の題を当てにしているので、
+        // 既定まかせだと落ちます(2026-08-31 から、どれも無ければ
+        // アメリカ英語です)
+        crate::font::set_default_language("ja");
         let mut all = super::style::symbols();
         all.extend(super::ALLOW_NAMES.iter().map(|(s, _)| *s));
         for sym in all {
@@ -1701,6 +1741,10 @@ mod words_watch {
     #[test]
     fn the_table_has_fifteen_languages() {
         let _lang = crate::font::lang_lock();
+        // **言語を名乗ります。** 日本語の題を当てにしているので、
+        // 既定まかせだと落ちます(2026-08-31 から、どれも無ければ
+        // アメリカ英語です)
+        crate::font::set_default_language("ja");
         assert_eq!(words::LANGS.len(), 15, "言語の数が変わりました");
         assert!(words::LANGS.contains(&"ja") && words::LANGS.contains(&"en"));
     }
@@ -1711,6 +1755,10 @@ mod words_watch {
     #[test]
     fn words_in_the_same_place_do_not_collide() {
         let _lang = crate::font::lang_lock();
+        // **言語を名乗ります。** 日本語の題を当てにしているので、
+        // 既定まかせだと落ちます(2026-08-31 から、どれも無ければ
+        // アメリカ英語です)
+        crate::font::set_default_language("ja");
         const PLACES: &[&[&str]] = &[
             &["paper", "col_width", "row_height", "print", "page_break", "header_footer",
               "view", "tmpl_group", "tmpl_protect", "format", "format_applied", "workbook"],
