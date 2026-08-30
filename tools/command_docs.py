@@ -61,18 +61,18 @@ def list():
     2か所にあるボタンは2行あるのが正しい形です。
     """
     summary = {}
-    for tab, label, _icon, _obj, mark, ow, pd, op in api_taiou.rows():
+    for row in api_taiou.rows():
         # ❌(呼ぶ相手が無い物)にも画面のボタンはありますが、
         # する事が画面の見え方だけなので手引きは要りません
-        if mark == "❌":
+        if row.mark == "❌":
             continue
-        member = command_name(label)
+        member = command_name(row.ja)
         if member in summary:
-            if tab not in summary[member][1]:
-                summary[member][1].append(tab)
+            if row.tab not in summary[member][1]:
+                summary[member][1].append(row.tab)
             continue
-        p = SAKI / name(tab) / f"{name(member)}.adoc"
-        summary[member] = [member, [tab], mark, ow, p, pd, op, label]
+        p = SAKI / name(row.tab) / f"{name(member)}.adoc"
+        summary[member] = [member, [row.tab], row.mark, row.ow, p, row.pd, row.op, row.ja]
     return [tuple(v) for v in summary.values()]
 
 
@@ -281,8 +281,8 @@ def main() -> int:
         look = re.match(r"= (.+)", s)
         if m and look and current != "廃止予定":
             member = look.group(1).strip()
-            mark = next((x[4] for x in api_taiou.rows()
-                       if command_name(x[1]) == member), "")
+            mark = next((x.mark for x in api_taiou.rows()
+                       if command_name(x.ja) == member), "")
             should_be = state_name(member, mark)
             if should_be != current:
                 drift.append((q.relative_to(ROOT).as_posix(), current, should_be))

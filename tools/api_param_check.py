@@ -272,14 +272,14 @@ def _arity_check(item, member: str, args: str, recv: str):
 def main() -> int:
     bad = []
     seen = 0
-    for tab, label, _icon, _obj, mark, ow, pd, op in api_taiou.rows():
-        if mark != "✅" or not ow:
+    for row in api_taiou.rows():
+        if row.mark != "✅" or not row.ow:
             continue
         seen += 1
-        check(ow, f"{tab}/{label}", bad)
-        for x in (pd, op):
+        check(row.ow, f"{row.tab}/{row.ja}", bad)
+        for x in (row.pd, row.op):
             if x and x != "—":
-                check(x, f"{tab}/{label}", bad)
+                check(x, f"{row.tab}/{row.ja}", bad)
     if unchecked:
         print(f"**{len(unchecked)} 件の受け取り手が引けませんでした。**", file=sys.stderr)
         print("引けないまま通すと、何も見ないで「合っています」と出ます。"

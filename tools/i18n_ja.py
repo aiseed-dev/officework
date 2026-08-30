@@ -12,8 +12,9 @@
 どれかが古びます。
 
     import i18n_ja
-    i18n_ja.日本語(鍵)        # 記号の鍵 → 日本語(無ければ鍵のまま)
-    i18n_ja.画面の日本語()     # 画面に出る日本語の字を全部
+    i18n_ja.japanese(鍵)         # 鍵 → 日本語(無ければ鍵のまま)
+    i18n_ja.english(鍵)          # 鍵 → 英語(無ければ鍵のまま)
+    i18n_ja.screen_japanese()    # 画面に出る日本語の字を全部
 """
 import json
 import pathlib
@@ -22,16 +23,30 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 I18N = ROOT / "ui/i18n"
 
 
-def _table():
-    """記号の鍵 → 日本語。**一度読んで取っておきます。**"""
+def _table(lang: str = "ja"):
+    """鍵 → その言語の文言。**一度読んで取っておきます。**"""
     if not hasattr(_table, "value"):
-        _table.value = json.loads((I18N / "ja.json").read_text(encoding="utf-8"))
-    return _table.value
+        _table.value = {}
+    if lang not in _table.value:
+        _table.value[lang] = json.loads(
+            (I18N / f"{lang}.json").read_text(encoding="utf-8"))
+    return _table.value[lang]
 
 
 def japanese(keys: str) -> str:
-    """記号の鍵を日本語に。表に無ければ鍵をそのまま返します。"""
+    """鍵を日本語に。表に無ければ鍵をそのまま返します。"""
     return _table().get(keys, keys)
+
+
+def english(keys: str) -> str:
+    """鍵を英語に。表に無ければ鍵をそのまま返します。
+
+    **対応表のボタンの列を英語と日本語の2つにするために足しました**
+    (2026-08-30 発注者)。画面を英語で使っている人は日本語名で引けません。
+    右の python-docx と openpyxl の列も英語なので、英語名が並ぶほうが
+    突き合わせやすくもなります。
+    """
+    return _table("en").get(keys, keys)
 
 
 def screen_japanese() -> set:

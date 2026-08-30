@@ -24,6 +24,7 @@ _sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent))
 import i18n_ja  # noqa: E402  英語の鍵 → 日本語の札
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).parent))
@@ -36,200 +37,182 @@ import ribbon_parse  # noqa: E402
 # id・並び・絵は ja 版でも同じです(`ribbon_ja.rs` の頭に書いてあります)。
 RIBBON_JA = ROOT / "face/src/ribbon_ja.rs"
 
-# オブジェクトの列に出す日本語(2026-08-30 発注者「オブジェクトはわかるので
-# 日本語名の項目にしたほうがいい」)。
+# 1行の中身。**ボタンの名前は英語と日本語の2つ**です(2026-08-30 発注者
+# 「オブジェクトを廃止して、ボタンの項目に英語名と日本語名の2列にして」)。
 #
-# **この表の中では英語のクラス名のまま持ちます。** 右の2列に並ぶのは
-# python-docx と openpyxl のクラス名なので、こちらを日本語で持つと
-# 突き合わせるときに一段訳す手間が増えます。出すときに1か所で訳します。
-#
-# 言葉は日本語のマニュアルで使っている物に合わせました
-# (`Section` は「セクション」ではなく「節」、`Run` は「文字」です)。
-MONO = {
-    "Doc": "文書",
-    "Book": "ブック",
-    "Sheet": "シート",
-    "Cell": "セル",
-    "Paragraph": "段落",
-    "Run": "文字",
-    "Table": "表",
-    "Section": "節",
-    "Comment": "コメント",
-    "Template": "テンプレート",
-}
-# 長い名前から当てます(短い名前が長い名前の一部だったときに割れないため)
-_MONO_RE = re.compile("|".join(sorted(MONO, key=len, reverse=True)))
+# オブジェクトの列は廃止しました。`p.align` の `p` が段落だと右の列が
+# 言っているので、203 行のうち 125 行は同じことを2度書いていました。
+class Row(NamedTuple):
+    tab: str        # 段(ホーム・挿入…)
+    en: str         # 画面の英語の名前
+    ja: str         # 画面の日本語の名前
+    icon: str       # 絵の名前(無ければ空)
+    mark: str       # 印(✅ ✍ ❌ 空)
+    ow: str         # officework の書き方
+    pd: str         # python-docx の書き方
+    op: str         # openpyxl の書き方
 
 
-def mono_ja(obj: str) -> str:
-    """オブジェクトの列を日本語にします。
-
-    `Run / Cell` は「文字 / セル」、`Doc(記入欄)` は「文書(記入欄)」に
-    なります。「どこでも」のように元から日本語の物はそのまま通ります。
-    """
-    return _MONO_RE.sub(lambda m: MONO[m.group(0)], obj)
-
-
-# ボタンの id → (オブジェクト, officework, python-docx, openpyxl)。
+# ボタンの id → (officework, python-docx, openpyxl)。
 # **officework は `.adoc` を触る1つの模型なので、文書と表で列を割りません**
-# (2026-08-24 発注者)。どのオブジェクトの物かを示します。
+# (2026-08-24 発注者)。
 # `A / B` は、いま2つの呼び方がある物です(寄せる仕事が残っています)。
 MICHI = {
     # 描画 — 手書き。**docx だけの機能**で、adoc には居場所がありません
-    "draw-select": ("", "", "", ""),
-    "pen": ("", "", "", ""),
-    "highlighter": ("", "", "", ""),
-    "eraser": ("", "", "", ""),
+    "draw-select": ('', '', ''),
+    "pen": ('', '', ''),
+    "highlighter": ('', '', ''),
+    "eraser": ('', '', ''),
     # マクロ — Python を動かす側。**プログラムからは自分で書けば済みます**
-    "py-list": ("", "", "", ""),
-    "py-new": ("", "", "", ""),
-    "py-folder": ("", "", "", ""),
-    "ribbon-list": ("", "", "", ""),
-    "rec-toggle": ("", "", "", ""),
-    "ai-macro": ("", "", "", ""),
+    "py-list": ('', '', ''),
+    "py-new": ('', '', ''),
+    "py-folder": ('', '', ''),
+    "ribbon-list": ('', '', ''),
+    "rec-toggle": ('', '', ''),
+    "ai-macro": ('', '', ''),
     # 表のデザイン — テーブルの見た目。openpyxl は tables で持ちます
-    "td-header": ("Table", "", "", "ws.tables[…].tableStyleInfo"),
-    "td-total": ("Table", "", "", "ws.tables[…].totalsRowCount"),
-    "td-band-row": ("Table", "", "", "ws.tables[…].tableStyleInfo"),
-    "td-band-col": ("Table", "", "", "ws.tables[…].tableStyleInfo"),
-    "td-first": ("Table", "", "", "ws.tables[…].tableStyleInfo"),
-    "td-last": ("Table", "", "", "ws.tables[…].tableStyleInfo"),
-    "td-filter": ("Table", "", "", "ws.auto_filter"),
-    "td-torange": ("Table", "", "", "del ws.tables[…]"),
-    "td-resize": ("Table", "", "", "ws.tables[…].ref"),
+    "td-header": ('', '', 'ws.tables[…].tableStyleInfo'),
+    "td-total": ('', '', 'ws.tables[…].totalsRowCount'),
+    "td-band-row": ('', '', 'ws.tables[…].tableStyleInfo'),
+    "td-band-col": ('', '', 'ws.tables[…].tableStyleInfo'),
+    "td-first": ('', '', 'ws.tables[…].tableStyleInfo'),
+    "td-last": ('', '', 'ws.tables[…].tableStyleInfo'),
+    "td-filter": ('', '', 'ws.auto_filter'),
+    "td-torange": ('', '', 'del ws.tables[…]'),
+    "td-resize": ('', '', 'ws.tables[…].ref'),
 
     # **ダイアログのパラメータの台帳にあるのに、表に載っていなかった物**
     # (2026-08-25。docs/sekkei/dialog-parameters.ja.adoc から)。
     # 手引きにパラメータを書くには、まず表に行が要ります
-    "table-tpl": ("Sheet", "", "", "ws.add_table(…)"),
-    "fit-pages": ("Sheet", "", "", "ws.page_setup.fitToWidth"),
-    "prot-allow": ("Sheet", "", "", "ws.protection"),
-    "scenario": ("Sheet", "", "", ""),
-    "solver": ("Sheet", "", "", ""),
-    "inssparkline": ("Sheet", "", "", ""),
-    "insslicer": ("Sheet", "", "", ""),
-    "paste-name": ("Book", "", "", "wb.defined_names"),
-    "watermark": ("Doc", "", "", ""),
-    "co-history": ("Doc", "", "", ""),
-    "changecase": ("Run", "", "", ""),
-    "inssymbol": ("Run", "", "", ""),
-    "datetime": ("Paragraph", "", "", ""),
-    "selectall": ("Doc", "", "", ""),
-    "text-from-file": ("Doc", "", "", ""),
-    "rem-duplicates": ("Sheet", "", "", ""),
-    "flash-fill": ("Cell", "", "", ""),
-    "text-column": ("Cell", "", "", ""),
-    "subtotal": ("Cell", "", "", ""),
-    "trace-prec": ("Cell", "", "", ""),
-    "show-formulas": ("Cell", "", "", ""),
-    "fill-num": ("Cell", "", "", ""),
-    "numpages": ("Doc", "", "", ""),
-    "pagenum": ("Doc", "", "", ""),
-    "insrecommend": ("Sheet", "", "", ""),
-    "func-list": ("Book", "", "", ""),
-    "csv-kind": ("Sheet", "", "", ""),
-    "data-from-text": ("Sheet", "", "", ""),
-    "open": ("Doc / Book", "Doc.open(径路) / Book.open(径路)", "docx.Document(径路)", "load_workbook(径路)"),
-    "save": ("Doc / Book", "d.save(径路) / b.save(径路)", "d.save(径路)", "wb.save(径路)"),
-    "pdf": ("", "", "", ""),
-    "copy": ("どこでも", "p.text = 値 / s['A1'] = 値 / c.text = 値", "p.text = 値", "ws['A1'] = 値"),
-    "cut": ("どこでも", "p.text = 値 / s['A1'] = 値 / c.text = 値", "p.text = 値", "ws['A1'] = 値"),
-    "paste": ("どこでも", "p.text = 値 / s['A1'] = 値 / c.text = 値", "p.text = 値", "ws['A1'] = 値"),
-    "clear": ("Run / Cell", "r.clear() / s['A1'] = None", "r.clear()", "ws['A1'] = None"),
-    "bold": ("Run / Cell", "r.bold / c.font", "r.bold", "c.font = Font(bold=True)"),
-    "italic": ("Run / Cell", "r.italic / c.font", "r.italic", "c.font = Font(italic=True)"),
-    "underline": ("Run / Cell", "r.underline / c.font", "r.underline", "c.font = Font(underline=…)"),
-    "strikeout": ("Run", "r.strike", "r.font.strike", ""),
-    "fontname": ("Run / Cell", "r.font / c.font", "r.font.name", "c.font = Font(name=…)"),
-    "fontsize": ("Run / Cell", "r.size_pt / c.font", "r.font.size", "c.font = Font(size=…)"),
-    "incfont": ("Run / Cell", "r.size_pt / c.font", "r.font.size", "c.font = Font(size=…)"),
-    "decfont": ("Run / Cell", "r.size_pt / c.font", "r.font.size", "c.font = Font(size=…)"),
-    "fontcolor": ("Run / Cell", "r.color / c.font", "r.font.color.rgb", "c.font = Font(color=…)"),
-    "superscript": ("Run", "", "r.font.superscript", ""),
-    "subscript": ("Run", "", "r.font.subscript", "c.font = Font(vertAlign=…)"),
-    "clearstyle": ("Run", "r.clear()", "r.clear()", ""),
-    "ruby": ("Run", "", "", ""),
-    "fillparag": ("Cell", "c.fill", "", "c.fill = PatternFill(…)"),
+    "table-tpl": ('', '', 'ws.add_table(…)'),
+    "fit-pages": ('', '', 'ws.page_setup.fitToWidth'),
+    "prot-allow": ('', '', 'ws.protection'),
+    "scenario": ('', '', ''),
+    "solver": ('', '', ''),
+    "inssparkline": ('', '', ''),
+    "insslicer": ('', '', ''),
+    "paste-name": ('', '', 'wb.defined_names'),
+    "watermark": ('', '', ''),
+    "co-history": ('', '', ''),
+    "changecase": ('', '', ''),
+    "inssymbol": ('', '', ''),
+    "datetime": ('', '', ''),
+    "selectall": ('', '', ''),
+    "text-from-file": ('', '', ''),
+    "rem-duplicates": ('', '', ''),
+    "flash-fill": ('', '', ''),
+    "text-column": ('', '', ''),
+    "subtotal": ('', '', ''),
+    "trace-prec": ('', '', ''),
+    "show-formulas": ('', '', ''),
+    "fill-num": ('', '', ''),
+    "numpages": ('', '', ''),
+    "pagenum": ('', '', ''),
+    "insrecommend": ('', '', ''),
+    "func-list": ('', '', ''),
+    "csv-kind": ('', '', ''),
+    "data-from-text": ('', '', ''),
+    "open": ('Doc.open(径路) / Book.open(径路)', 'docx.Document(径路)', 'load_workbook(径路)'),
+    "save": ('d.save(径路) / b.save(径路)', 'd.save(径路)', 'wb.save(径路)'),
+    "pdf": ('', '', ''),
+    "copy": ("p.text = 値 / s['A1'] = 値 / c.text = 値", 'p.text = 値', "ws['A1'] = 値"),
+    "cut": ("p.text = 値 / s['A1'] = 値 / c.text = 値", 'p.text = 値', "ws['A1'] = 値"),
+    "paste": ("p.text = 値 / s['A1'] = 値 / c.text = 値", 'p.text = 値', "ws['A1'] = 値"),
+    "clear": ("r.clear() / s['A1'] = None", 'r.clear()', "ws['A1'] = None"),
+    "bold": ('r.bold / c.font', 'r.bold', 'c.font = Font(bold=True)'),
+    "italic": ('r.italic / c.font', 'r.italic', 'c.font = Font(italic=True)'),
+    "underline": ('r.underline / c.font', 'r.underline', 'c.font = Font(underline=…)'),
+    "strikeout": ('r.strike', 'r.font.strike', ''),
+    "fontname": ('r.font / c.font', 'r.font.name', 'c.font = Font(name=…)'),
+    "fontsize": ('r.size_pt / c.font', 'r.font.size', 'c.font = Font(size=…)'),
+    "incfont": ('r.size_pt / c.font', 'r.font.size', 'c.font = Font(size=…)'),
+    "decfont": ('r.size_pt / c.font', 'r.font.size', 'c.font = Font(size=…)'),
+    "fontcolor": ('r.color / c.font', 'r.font.color.rgb', 'c.font = Font(color=…)'),
+    "superscript": ('', 'r.font.superscript', ''),
+    "subscript": ('', 'r.font.subscript', 'c.font = Font(vertAlign=…)'),
+    "clearstyle": ('r.clear()', 'r.clear()', ''),
+    "ruby": ('', '', ''),
+    "fillparag": ('c.fill', '', 'c.fill = PatternFill(…)'),
     # **文書とセルで掛かる相手が違います。** writer は段落を枠で囲み
     # (p.boxed)、calc はセルに線を引きます。段落の枠にはまだ呼び方が
     # ありません(2026-08-25 本家のマニュアルと突き合わせて分かった)
-    "borders": ("Paragraph / Cell", "c.border", "", "c.border = Border(…)"),
-    "align-left": ("Paragraph / Cell", "p.align / c.alignment", "p.alignment", "c.alignment = Alignment(…)"),
-    "align-center": ("Paragraph / Cell", "p.align / c.alignment", "p.alignment", "c.alignment = Alignment(…)"),
-    "align-right": ("Paragraph / Cell", "p.align / c.alignment", "p.alignment", "c.alignment = Alignment(…)"),
-    "align-just": ("Paragraph", "p.align = 'justify'", "p.alignment", ""),
-    "align-dist": ("Paragraph", "p.align = 'distribute'", "", ""),
-    "wrap": ("Cell", "c.alignment", "", "c.alignment = Alignment(wrap_text=True)"),
-    "merge": ("Cell", "(col_span / v_merge) / s.merge_cells(…)", "cell.merge(…)", "ws.merge_cells('A1:B2')"),
-    "parastyle": ("Paragraph", "p.style", "p.style", ""),
-    "markers": ("Paragraph", "p.style = '箇条書き'", "p.style = 'List Bullet'", ""),
-    "numbering": ("Paragraph", "p.style = '番号付き'", "p.style = 'List Number'", ""),
-    "multilevels": ("Paragraph", "", "", ""),
-    "decoffset": ("Paragraph", "p.paragraph_format", "p.paragraph_format.left_indent", ""),
-    "incoffset": ("Paragraph", "p.paragraph_format", "p.paragraph_format.left_indent", ""),
-    "linespace": ("Paragraph", "p.paragraph_format.line_spacing", "p.paragraph_format.line_spacing", ""),
-    "replace": ("Doc", "d.replace(前, 後)", "", ""),
-    "format": ("Cell", "c.number_format", "", "c.number_format"),
-    "currency": ("Cell", "c.number_format", "", "c.number_format"),
-    "percents": ("Cell", "c.number_format", "", "c.number_format"),
-    "comma": ("Cell", "c.number_format", "", "c.number_format"),
-    "cell-ins": ("Table / Sheet", "t.add_row() / s.insert_rows(行)", "t.add_row()", "ws.insert_rows(行)"),
-    "cell-del": ("Sheet", "s.delete_rows(行)", "", "ws.delete_rows(行)"),
-    "condformat": ("Cell", "", "", "ws.conditional_formatting.add(…)"),
-    "sum": ("Cell", "s['A1'] = '=SUM(…)'", "", "ws['A1'] = '=SUM(…)'"),
-    "defname": ("Book", "b.create_named_range(名前, …)", "", "wb.defined_names"),
-    "sort-asc": ("Sheet", "", "", ""),
-    "sort-desc": ("Sheet", "", "", ""),
-    "setfilter": ("Sheet", "", "", "ws.auto_filter.ref"),
-    "clear-filter": ("Sheet", "", "", "ws.auto_filter"),
-    "instable": ("Doc / Sheet", "d.add_table(行, 列) / s.add_table(…)", "d.add_table(行, 列)", "ws.add_table(…)"),
-    "insimage": ("Doc", "d.add_picture(径路)", "d.add_picture(径路)", "ws.add_image(…)"),
-    "inschart": ("Sheet", "", "", "ws.add_chart(…)"),
-    "blankpage": ("Doc", "d.add_page_break()", "d.add_page_break()", ""),
-    "pagebreak": ("Doc", "d.add_page_break()", "d.add_page_break()", "ws.row_breaks"),
-    "edit-header": ("Doc / Sheet", "d.header / s.oddHeader", "section.header", "ws.oddHeader"),
-    "edit-footer": ("Doc", "d.footer", "section.footer", ""),
-    "controls": ("Doc(記入欄)", "mcp.doc_fields()", "", ""),
-    "insequation": ("Doc", "", "", ""),
-    "inshyperlink": ("Cell", "c.hyperlink", "", "c.hyperlink"),
-    "pivot-insert": ("Sheet", "", "", "ws.add_pivot(…)"),
-    "pagemargins": ("Section", "d.sections[0]", "section.left_margin", "ws.page_margins"),
-    "pageorient": ("Section", "d.sections[0]", "section.orientation", "ws.page_setup.orientation"),
-    "pagesize": ("Section", "d.sections[0]", "section.page_width", "ws.page_setup.paperSize"),
-    "printarea": ("Sheet", "s.print_area", "", "ws.print_area"),
-    "printtitles": ("Sheet", "s.print_title_rows", "", "ws.print_title_rows"),
-    "print-gridlines": ("Sheet", "s.print_gridlines", "", "ws.print_options.gridLines"),
-    "insert-function": ("Cell", "s['A1'] = '=…'", "", "ws['A1'] = '=…'"),
-    "calc-mode": ("Book", "b.recalc()", "", "wb.calculation"),
-    "data-validation": ("Sheet", "s.add_data_validation(…)", "", "ws.add_data_validation(…)"),
-    "group": ("Sheet", "s.row_groups", "", "ws.column_dimensions[…].outline_level"),
-    "ungroup": ("Sheet", "s.row_groups", "", "ws.column_dimensions[…].outline_level"),
-    "toc": ("Doc", "", "", ""),
-    "bookmarks": ("Paragraph", "", "", ""),
-    "crossref": ("Paragraph", "", "", ""),
-    "footnote": ("Paragraph", "", "", ""),
-    "caption": ("Paragraph", "", "", ""),
+    "borders": ('c.border', '', 'c.border = Border(…)'),
+    "align-left": ('p.align / c.alignment', 'p.alignment', 'c.alignment = Alignment(…)'),
+    "align-center": ('p.align / c.alignment', 'p.alignment', 'c.alignment = Alignment(…)'),
+    "align-right": ('p.align / c.alignment', 'p.alignment', 'c.alignment = Alignment(…)'),
+    "align-just": ("p.align = 'justify'", 'p.alignment', ''),
+    "align-dist": ("p.align = 'distribute'", '', ''),
+    "wrap": ('c.alignment', '', 'c.alignment = Alignment(wrap_text=True)'),
+    "merge": ('(col_span / v_merge) / s.merge_cells(…)', 'cell.merge(…)', "ws.merge_cells('A1:B2')"),
+    "parastyle": ('p.style', 'p.style', ''),
+    "markers": ("p.style = '箇条書き'", "p.style = 'List Bullet'", ''),
+    "numbering": ("p.style = '番号付き'", "p.style = 'List Number'", ''),
+    "multilevels": ('', '', ''),
+    "decoffset": ('p.paragraph_format', 'p.paragraph_format.left_indent', ''),
+    "incoffset": ('p.paragraph_format', 'p.paragraph_format.left_indent', ''),
+    "linespace": ('p.paragraph_format.line_spacing', 'p.paragraph_format.line_spacing', ''),
+    "replace": ('d.replace(前, 後)', '', ''),
+    "format": ('c.number_format', '', 'c.number_format'),
+    "currency": ('c.number_format', '', 'c.number_format'),
+    "percents": ('c.number_format', '', 'c.number_format'),
+    "comma": ('c.number_format', '', 'c.number_format'),
+    "cell-ins": ('t.add_row() / s.insert_rows(行)', 't.add_row()', 'ws.insert_rows(行)'),
+    "cell-del": ('s.delete_rows(行)', '', 'ws.delete_rows(行)'),
+    "condformat": ('', '', 'ws.conditional_formatting.add(…)'),
+    "sum": ("s['A1'] = '=SUM(…)'", '', "ws['A1'] = '=SUM(…)'"),
+    "defname": ('b.create_named_range(名前, …)', '', 'wb.defined_names'),
+    "sort-asc": ('', '', ''),
+    "sort-desc": ('', '', ''),
+    "setfilter": ('', '', 'ws.auto_filter.ref'),
+    "clear-filter": ('', '', 'ws.auto_filter'),
+    "instable": ('d.add_table(行, 列) / s.add_table(…)', 'd.add_table(行, 列)', 'ws.add_table(…)'),
+    "insimage": ('d.add_picture(径路)', 'd.add_picture(径路)', 'ws.add_image(…)'),
+    "inschart": ('', '', 'ws.add_chart(…)'),
+    "blankpage": ('d.add_page_break()', 'd.add_page_break()', ''),
+    "pagebreak": ('d.add_page_break()', 'd.add_page_break()', 'ws.row_breaks'),
+    "edit-header": ('d.header / s.oddHeader', 'section.header', 'ws.oddHeader'),
+    "edit-footer": ('d.footer', 'section.footer', ''),
+    "controls": ('mcp.doc_fields()', '', ''),
+    "insequation": ('', '', ''),
+    "inshyperlink": ('c.hyperlink', '', 'c.hyperlink'),
+    "pivot-insert": ('', '', 'ws.add_pivot(…)'),
+    "pagemargins": ('d.sections[0]', 'section.left_margin', 'ws.page_margins'),
+    "pageorient": ('d.sections[0]', 'section.orientation', 'ws.page_setup.orientation'),
+    "pagesize": ('d.sections[0]', 'section.page_width', 'ws.page_setup.paperSize'),
+    "printarea": ('s.print_area', '', 'ws.print_area'),
+    "printtitles": ('s.print_title_rows', '', 'ws.print_title_rows'),
+    "print-gridlines": ('s.print_gridlines', '', 'ws.print_options.gridLines'),
+    "insert-function": ("s['A1'] = '=…'", '', "ws['A1'] = '=…'"),
+    "calc-mode": ('b.recalc()', '', 'wb.calculation'),
+    "data-validation": ('s.add_data_validation(…)', '', 'ws.add_data_validation(…)'),
+    "group": ('s.row_groups', '', 'ws.column_dimensions[…].outline_level'),
+    "ungroup": ('s.row_groups', '', 'ws.column_dimensions[…].outline_level'),
+    "toc": ('', '', ''),
+    "bookmarks": ('', '', ''),
+    "crossref": ('', '', ''),
+    "footnote": ('', '', ''),
+    "caption": ('', '', ''),
     # 記入欄。**事務の様式の中心**なので、11 個のボタンを全部載せます
     # (2026-08-25 まで、テキストフィールドと名前の2つしか載っていませんでした)。
     # 種類は docx の w:sdt に往復します。値の出し入れは名前で引くので、
     # どの種類でも呼び方は同じです
-    "form-text": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
-    "form-name": ("Doc(記入欄)", "mcp.doc_fields()", "", ""),
-    "form-combo": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
-    "form-dropdown": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
-    "form-checkbox": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
-    "form-radio": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
-    "form-image": ("Doc(記入欄)", "", "", ""),
-    "form-email": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
-    "form-phone": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
-    "form-complex": ("Doc(記入欄)", "mcp.doc_fill({member: 値})", "", ""),
-    "form-signature": ("Doc(記入欄)", "", "", ""),
-    "co-addcomment": ("Comment", "p.add_comment(文) / c.comment", "p.add_comment(文)", "c.comment = Comment(…)"),
-    "co-showcomment": ("Comment", "d.comments / c.comment", "d.comments", "c.comment"),
-    "prot-doc": ("Sheet", "", "", "ws.protection"),
-    "prot-encrypt": ("Book", "", "", "wb.security"),
-    "freeze": ("Sheet", "s.freeze_panes", "", "ws.freeze_panes"),
-    "show-gridlines": ("Sheet", "s.show_gridlines", "", "ws.sheet_view.showGridLines"),
+    "form-text": ('mcp.doc_fill({member: 値})', '', ''),
+    "form-name": ('mcp.doc_fields()', '', ''),
+    "form-combo": ('mcp.doc_fill({member: 値})', '', ''),
+    "form-dropdown": ('mcp.doc_fill({member: 値})', '', ''),
+    "form-checkbox": ('mcp.doc_fill({member: 値})', '', ''),
+    "form-radio": ('mcp.doc_fill({member: 値})', '', ''),
+    "form-image": ('', '', ''),
+    "form-email": ('mcp.doc_fill({member: 値})', '', ''),
+    "form-phone": ('mcp.doc_fill({member: 値})', '', ''),
+    "form-complex": ('mcp.doc_fill({member: 値})', '', ''),
+    "form-signature": ('', '', ''),
+    "co-addcomment": ('p.add_comment(文) / c.comment', 'p.add_comment(文)', 'c.comment = Comment(…)'),
+    "co-showcomment": ('d.comments / c.comment', 'd.comments', 'c.comment'),
+    "prot-doc": ('', '', 'ws.protection'),
+    "prot-encrypt": ('', '', 'wb.security'),
+    "freeze": ('s.freeze_panes', '', 'ws.freeze_panes'),
+    "show-gridlines": ('s.show_gridlines', '', 'ws.sheet_view.showGridLines'),
 }
 
 # **実装しないと決めた物**(id → 理由)。
@@ -396,48 +379,93 @@ def tab_layout(tabs):
 #
 # クイックアクセスは窓の1段目、左右のパネルは表示タブから開きます。
 # *どちらもリボンの表に載っていない*ので、読むだけでは表に出てきません。
-# (段, ボタン, オブジェクト, officework, python-docx, openpyxl)
+#
+# **名前は画面の鍵で書きます**(2026-08-30)。鍵を書けば英語と日本語の
+# 両方が `ui/i18n` から出るので、画面と揃います。ここを手で書いていた
+# あいだ、シート見出しの右クリックは7行と書いてありましたが、画面には
+# 10項目あって、6つは名前も違っていました。
+#
+# 画面に文言が無いボタンだけ、`(英語, 日本語)` の組を手で書きます。
+# 絵だけのボタンと、コードに日本語を直に書いてあるメニューです。
+# 英語が無いものは英語の欄を空にします — 無い物を作りません。
+#
+# (段, 名前, officework, python-docx, openpyxl)
 HOKA = [
-    ("クイックアクセス", "保存", "Doc / Book", "d.save(径路) / b.save(径路)",
-     "d.save(径路)", "wb.save(径路)"),
-    ("クイックアクセス", "印刷", "Doc", "", "", ""),
-    ("クイックアクセス", "元に戻す", "", "", "", ""),
-    ("クイックアクセス", "やり直し", "", "", "", ""),
-    ("左パネル", "見出し", "Paragraph", "p.style で拾う", "p.style", ""),
-    ("左パネル", "コメント", "Comment", "d.comments", "d.comments", "c.comment"),
-    ("左パネル", "検索", "Doc", "d.find(字)", "", ""),
-    ("左パネル", "AI と相談する", "", "", "", ""),
-    ("右パネル", "設定・ページ・スタイル", "", "", "", ""),
-    # 窓の下端(ステータスバー)
-    ("下端", "ページ", "Doc", "(紙に組んで数える)", "", ""),
-    ("下端", "文字数", "Doc", "len(d.text)", "len(d.text)", ""),
-    ("下端", "ファイルの形式", "", "", "", ""),
-    ("下端", "状態の文言", "", "", "", ""),
-    ("下端", "スペル", "", "", "", ""),
-    ("下端", "ズーム", "", "", "", ""),
-    ("下端", "選んだ範囲の合計・平均・個数", "Sheet",
-     "sum(…) / len(…)(値を読んで数える)", "", ""),
-    # 右クリックのメニュー(writer 17・calc 42)。**ほとんどがリボンと同じ命令**で、
+    # クイックアクセスは絵だけのボタンです。名前はその命令の名前を借ります
+    ("クイックアクセス", "save", "d.save(径路) / b.save(径路)", "d.save(径路)", "wb.save(径路)"),
+    ("クイックアクセス", "print", "", "", ""),
+    # 元に戻す・やり直しは、画面のどこにも文言がありません(絵だけで、
+    # 命令の側にも訳がありません)。よく知られた名前を手で書きます
+    ("クイックアクセス", ("Undo", "元に戻す"), "", "", ""),
+    ("クイックアクセス", ("Redo", "やり直し"), "", "", ""),
+    ("左パネル", "heading", "p.style で拾う", "p.style", ""),
+    ("左パネル", "comment", "d.comments", "d.comments", "c.comment"),
+    ("左パネル", "find", "d.find(字)", "", ""),
+    ("左パネル", "ai", "", "", ""),
+    # **右パネルは3つのボタンです**(`writer/src/panels.rs`)。
+    # 「設定・ページ・スタイル」と1行にまとめてありましたが、3つ目は
+    # スタイルではなくフォルダの中身でした
+    ("右パネル", "settings_adjust_where_cursor", "", "", ""),
+    ("右パネル", "page_settings_whole_document", "d.sections[0]", "section.page_width", "ws.page_setup.paperSize"),
+    ("右パネル", "files_what_folder", "", "", ""),
+    # 窓の下端(ステータスバー)。数を入れる所は名前から外します
+    ("下端", "page", "(紙に組んで数える)", "", ""),
+    ("下端", "characters", "len(d.text)", "len(d.text)", ""),
+    ("下端", "spell", "", "", ""),
+    ("下端", "zoom", "", "", ""),
+    # 形式と状態はコードに直に書いた字で、鍵がありません
+    ("下端", ("", "ファイルの形式"), "", "", ""),
+    ("下端", ("", "状態の文言"), "", "", ""),
+    ("下端", ("", "選んだ範囲の合計・平均・個数"), "sum(…) / len(…)(値を読んで数える)", "", ""),
+    # 右クリックのメニュー。**ほとんどがリボンと同じ命令**で、
     # ここにしか無い物だけを挙げます
-    ("右クリック", "語を選択", "", "", "", ""),
-    ("右クリック", "行を選択", "", "", "", ""),
-    ("右クリック", "文字数を数える", "Doc", "len(d.text)", "len(d.text)", ""),
+    ("右クリック", "select_word", "", "", ""),
+    ("右クリック", "select_line", "", "", ""),
+    ("右クリック", "word_count", "len(d.text)", "len(d.text)", ""),
     # 読み飛ばした部品の一覧は officework だけの物です。
     # 本家の2つには同じ物がありません(2026-08-25 api_param_check が見つけた)
-    ("右クリック", "この版で読み飛ばしたもの", "Doc", "d.unsupported", "", ""),
-    ("右クリック", "形式を選択して貼り付け", "", "", "", ""),
-    ("右クリック", "返信を追加", "Comment", "", "", ""),
-    ("右クリック", "マクロの割り当て", "", "", "", ""),
-    ("右クリック", "画像として保存(SVG)", "", "", "", ""),
-    # シート見出しの右クリック(シートの管理)
-    ("シート見出しの右クリック", "シートの挿入", "Book", "b.add_sheet(名前)", "", "wb.create_sheet(名前)"),
-    ("シート見出しの右クリック", "シートの削除", "Book", "b.remove(名前)", "", "del wb[名前]"),
-    ("シート見出しの右クリック", "シートの名前の変更", "Sheet", "s.title = 名前", "", "ws.title = 名前"),
-    ("シート見出しの右クリック", "シートのコピー", "Book", "b.copy_worksheet(名前)", "", "wb.copy_worksheet(ws)"),
-    ("シート見出しの右クリック", "左右へ移動", "Book", "b.move_sheet(名前, 位置)", "", "wb.move_sheet(名前, 位置)"),
-    ("シート見出しの右クリック", "非表示・再表示", "Sheet", "", "", "ws.sheet_state"),
-    ("シート見出しの右クリック", "タブの色", "Sheet", "", "", "ws.sheet_properties.tabColor"),
+    ("右クリック", "skipped_version", "d.unsupported", "", ""),
+    # 下の4つは `calc/src/view.rs` に日本語を直に書いてあるメニューです。
+    # 英語の画面でも日本語のまま出るので、英語の名前がありません
+    ("右クリック", ("", "形式を選択して貼り付け"), "", "", ""),
+    ("右クリック", ("", "返信を追加"), "", "", ""),
+    ("右クリック", ("", "マクロの割り当て"), "", "", ""),
+    ("右クリック", ("", "画像として保存(SVG)"), "", "", ""),
+    # シート見出しの右クリック(`calc/src/picks.rs` の 10 項目)
+    ("シート見出しの右クリック", "insert", "b.add_sheet(名前)", "", "wb.create_sheet(名前)"),
+    ("シート見出しの右クリック", "delete", "b.remove(名前)", "", "del wb[名前]"),
+    ("シート見出しの右クリック", "rename", "s.title = 名前", "", "ws.title = 名前"),
+    ("シート見出しの右クリック", "duplicate", "b.copy_worksheet(名前)", "", "wb.copy_worksheet(ws)"),
+    ("シート見出しの右クリック", "move_left", "b.move_sheet(名前, 位置)", "", "wb.move_sheet(名前, 位置)"),
+    ("シート見出しの右クリック", "move_right", "b.move_sheet(名前, 位置)", "", "wb.move_sheet(名前, 位置)"),
+    ("シート見出しの右クリック", "hide", "", "", "ws.sheet_state"),
+    ("シート見出しの右クリック", "unhide", "", "", "ws.sheet_state"),
+    ("シート見出しの右クリック", "tab_colour", "", "", "ws.sheet_properties.tabColor"),
+    ("シート見出しの右クリック", "protect_sheet", "s.protected = True", "", "ws.protection.sheet = True"),
 ]
+
+# 文言の中の `{}`(数が入る所)を落として、名前だけにします。
+# 画面は「{}/{} ページ」「ズーム {}%」と出しますが、表に要るのは
+# 「ページ」「ズーム」です
+_KAZU = re.compile(r"\{\}")
+
+
+def _namae(text: str) -> str:
+    # **短くしません。** 右パネルは「設定 — いる場所を直す」の形で、
+    # ダッシュの前だけ取ると「設定」「ページ」「ファイル」になります。
+    # 下端にも「ページ」があるので、別のボタンが同じ名前になって
+    # 「同じものです」と嘘を書きました(2026-08-30 に実際に出た)
+    return re.sub(r"\s+", " ", _KAZU.sub("", text)).strip(" /%,")
+
+
+def hoka_name(spec) -> tuple:
+    """HOKA の名前を (英語, 日本語) にします。
+
+    鍵のときは `ui/i18n` から両方を引きます。組のときはそのまま返します。
+    """
+    if isinstance(spec, tuple):
+        return spec
+    return (_namae(i18n_ja.english(spec)), _namae(i18n_ja.japanese(spec)))
 
 # 上の物のうち、専用の口を作らないと決めた物(理由つき)
 # **リボンに無いボタンで、いま動くもの。**
@@ -460,7 +488,9 @@ HOKA_UGOKU = {
     # 右クリックとシート見出し
     "返信を追加",                       # calc/src/view.rs の comment-reply
     "画像として保存(SVG)",              # calc/src/view.rs の sh-save
-    "非表示・再表示",                    # calc/src/picks.rs
+    # **隠すと戻すは別のボタンです**(`calc/src/picks.rs` の hide / unhide)。
+    # 「非表示・再表示」と1つに書いてありましたが、画面では2項目です
+    "非表示", "再表示",
     "タブの色",
 }
 # **マクロの割り当ては、まだ入っていません。** 図形やボタンにマクロを
@@ -488,36 +518,36 @@ FILE_SRC = ROOT / "writer/src/cmds.rs"
 # リボンだけを読むと、*ファイルの仕事がほとんど表に出ません*
 # (2026-08-24 発注者「どうして対応表を変更しないのだ」)
 FILE_MICHI = {
-    "f-new": ("Doc / Book", "Doc() / Book()", "docx.Document()", "Workbook()"),
-    "f-tpl": ("Template", "", "docx.Document(雛形)", "load_workbook(雛形)"),
-    "f-open": ("Doc / Book", "Doc.open(径路) / Book.open(径路)", "docx.Document(径路)", "load_workbook(径路)"),
+    "f-new": ('Doc() / Book()', 'docx.Document()', 'Workbook()'),
+    "f-tpl": ('', 'docx.Document(雛形)', 'load_workbook(雛形)'),
+    "f-open": ('Doc.open(径路) / Book.open(径路)', 'docx.Document(径路)', 'load_workbook(径路)'),
     # **フォルダを開き直す**(2026-08-25 発注者「どうしてフォルダーを開くが
     # ないのだ」)。綴りはフォルダなので、仕事を替えるとはフォルダを替えること。
     # プログラムは径路を直に書けるので、専用の呼び方は要りません
-    "f-folder": ("", "", "", ""),
+    "f-folder": ('', '', ''),
     # **右パネル**(2026-08-26)。ファイル管理の口になったので載せます。
     # 作る・名前を変える・消すは Python なら pathlib で書けます
     "show-right": ("", "", "", ""),
     # **形を選んで書き出す1つの入り口**。形ごとの呼び方は save に寄せます
-    "f-export": ("Doc / Book", "d.save(径路) / b.save(径路)", "d.save(径路)", "wb.save(径路)"),
-    "f-url": ("Doc", "", "", ""),
-    "f-recent": ("", "", "", ""),
-    "f-find": ("", "", "", ""),
-    "f-recover": ("", "", "", ""),
-    "f-save": ("Doc / Book", "d.save(径路) / b.save(径路)", "d.save(径路)", "wb.save(径路)"),
-    "f-saveas": ("Doc / Book", "d.save(別の径路)", "d.save(別の径路)", "wb.save(別の径路)"),
-    "f-print": ("Doc", "", "", ""),
-    "f-merge": ("Doc", "mcp.doc_merge_fields() / mcp.doc_fill(1行分)", "", ""),
-    "f-html": ("Doc", "", "", ""),
-    "f-protect": ("Doc / Book", "", "", "wb.security"),
-    "f-distill": ("Doc", "", "", ""),
-    "f-info": ("Doc / Book", "d.core_properties", "d.core_properties", "wb.properties"),
-    "f-place": ("", "", "", ""),
-    "f-quit": ("", "", "", ""),
-    "f-opts": ("", "", "", ""),
-    "f-help": ("", "", "", ""),
-    "f-req": ("", "", "", ""),
-    "f-back": ("", "", "", ""),
+    "f-export": ('d.save(径路) / b.save(径路)', 'd.save(径路)', 'wb.save(径路)'),
+    "f-url": ('', '', ''),
+    "f-recent": ('', '', ''),
+    "f-find": ('', '', ''),
+    "f-recover": ('', '', ''),
+    "f-save": ('d.save(径路) / b.save(径路)', 'd.save(径路)', 'wb.save(径路)'),
+    "f-saveas": ('d.save(別の径路)', 'd.save(別の径路)', 'wb.save(別の径路)'),
+    "f-print": ('', '', ''),
+    "f-merge": ('mcp.doc_merge_fields() / mcp.doc_fill(1行分)', '', ''),
+    "f-html": ('', '', ''),
+    "f-protect": ('', '', 'wb.security'),
+    "f-distill": ('', '', ''),
+    "f-info": ('d.core_properties', 'd.core_properties', 'wb.properties'),
+    "f-place": ('', '', ''),
+    "f-quit": ('', '', ''),
+    "f-opts": ('', '', ''),
+    "f-help": ('', '', ''),
+    "f-req": ('', '', ''),
+    "f-back": ('', '', ''),
 }
 
 
@@ -533,26 +563,32 @@ def file_menu():
     body = src[src.index("fn file_menu"):]
     body = body[: body.index("\n    }")]
     out = re.findall(r'I::new\("(f-[a-z]+)",\s*ui::t!\("([^"]+)"\)\)', body)
-    return [(i, i18n_ja.japanese(keys)) for i, keys in out]
+    return [(i, i18n_ja.english(keys), i18n_ja.japanese(keys)) for i, keys in out]
 
 
 def rows():
-    """(段, ボタン, 絵, オブジェクト, 印, officework, python-docx, openpyxl)。
-    **並びはメニューのまま**、*分類はオブジェクト*です(2026-08-24 発注者)。"""
-    tabs = ribbon_parse.tables_or_die(RIBBON_JA)
-    order = tab_layout(tabs)
-    w = {t.name: t for t in tabs["WRITER"]}
-    c = {t.name: t for t in tabs["CALC"]}
+    """`Row` の並び。**並びはメニューのまま**です(2026-08-24 発注者)。
+
+    ボタンの名前は英語と日本語の2つを持ちます。リボンは英語の
+    `ribbon.rs` と日本語の `ribbon_ja.rs` を id で突き合わせます
+    (2つのファイルは id も並びも同じで、`ribbon_locale_check` が見張ります)。
+    """
+    ja = ribbon_parse.tables_or_die(RIBBON_JA)
+    en = ribbon_parse.tables_or_die(ribbon_parse.RIBBON)
+    eigo = {c.id: c.label for app in en for t in en[app] for c in t.cmds if c.id}
+    order = tab_layout(ja)
+    w = {t.name: t for t in ja["WRITER"]}
+    c = {t.name: t for t in ja["CALC"]}
     out = []
     for tab in order:
         if tab == "ファイル":
             # **リボンの3つではなく、全面のページの一覧を出します**
-            for i, label in file_menu():
+            for i, e, j in file_menu():
                 if i not in FILE_MICHI:
                     continue
-                obj, ow, pd, op = FILE_MICHI[i]
-                _label_lookup[i] = label
-                out.append((tab, label, "", obj, state(i, ow), ow, pd, op))
+                ow, pd, op = FILE_MICHI[i]
+                _label_lookup[i] = j
+                out.append(Row(tab, e, j, "", state(i, ow), ow, pd, op))
             continue
         seen = set()
         for t in (w.get(tab), c.get(tab)):
@@ -562,13 +598,15 @@ def rows():
                 if not cmd.id or cmd.id in seen or cmd.id not in MICHI:
                     continue
                 seen.add(cmd.id)
-                obj, ow, pd, op = MICHI[cmd.id]
+                ow, pd, op = MICHI[cmd.id]
                 _label_lookup[cmd.id] = cmd.label
-                out.append((tab, cmd.label, cmd.icon, obj, state(cmd.id, ow), ow, pd, op))
-    for tab, label, obj, ow, pd, op in HOKA:
-        mark = "✅" if ow else ("❌" if label in HOKA_TSUKURANAI else "")
-        _label_lookup[label] = label
-        out.append((tab, label, "", obj, mark, ow, pd, op))
+                out.append(Row(tab, eigo.get(cmd.id, ""), cmd.label, cmd.icon,
+                               state(cmd.id, ow), ow, pd, op))
+    for tab, spec, ow, pd, op in HOKA:
+        e, j = hoka_name(spec)
+        mark = "✅" if ow else ("❌" if j in HOKA_TSUKURANAI else "")
+        _label_lookup[j] = j
+        out.append(Row(tab, e, j, "", mark, ow, pd, op))
     return out
 
 
@@ -594,12 +632,11 @@ def overlap(r):
     返りは (段, ボタン) → 最初に出た段。
     """
     first_seen, came_out = {}, {}
-    for tab, label, *_ in r:
-        keys = label
-        if keys in first_seen:
-            came_out[(tab, label)] = first_seen[keys]
+    for row in r:
+        if row.ja in first_seen:
+            came_out[(row.tab, row.ja)] = first_seen[row.ja]
         else:
-            first_seen[keys] = tab
+            first_seen[row.ja] = row.tab
     return came_out
 
 
@@ -611,22 +648,23 @@ def table() -> str:
     # 利用者が読む物なので、作る側の話(生成の仕組み・作業の残り)は入れません
     o.append("")
     current = None
-    for tab, label, icon, obj, st, ow, pd, op in r:
-        if tab != current:
+    for row in r:
+        if row.tab != current:
             if current is not None:
                 o.append("|===\n")
             # **見出しは `==`。** `===` にすると本家が「段が飛んでいる」と
             # 警告します(この節の前に `==` が無いため。2026-08-24 に実際に出た)
-            o.append(f"== {tab}")
+            o.append(f"== {row.tab}")
             o.append("")
             o.append('[cols="2,2,^1,3,3,3"]')
             o.append("|===")
-            o.append("|ボタン |オブジェクト |印 |officework |python-docx |openpyxl\n")
-            current = tab
+            o.append("|英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl\n")
+            current = row.tab
         f = lambda x: x if x else "—"
-        inner = ow if ow else (reason(label, st) or "—")
-        if (tab, label) in dup_of:
-            inner = f"*{dup_of[(tab, label)]}と同じ*" + (f" — {inner}" if inner != "—" else "")
+        inner = row.ow if row.ow else (reason(row.ja, row.mark) or "—")
+        if (row.tab, row.ja) in dup_of:
+            inner = (f"*{dup_of[(row.tab, row.ja)]}と同じ*"
+                     + (f" — {inner}" if inner != "—" else ""))
         # **絵を名前の前に出します**(2026-08-24 発注者)。画面で見ている物と
         # 同じ絵なので、名前より先に目に入ります。径路は `face/icons` から
         # この文書の場所への相対です
@@ -634,12 +672,16 @@ def table() -> str:
         # `face/src/icons.rs` が名前とファイルを繋いでいます(例: `insertimage`
         # の実体は `insimage.svg`)。画面はそちらを通るので出ますが、
         # 文書から直に指すと届きません。ここで解いてから書きます
-        name = ICON_FILE.get(icon, icon)
-        icon_tag = f"image:{ICON_DIR}/{name}.svg[{label},16,16] " if name else ""
+        #
+        # **絵の説明文は空にします**(2026-08-30)。名前がすぐ隣にあるので、
+        # 入れると読み上げも本文の写しも名前が2回出ます
+        name = ICON_FILE.get(row.icon, row.icon)
+        icon_tag = f'image:{ICON_DIR}/{name}.svg[,16,16] ' if name else ""
         # **ボタンの名前から手引きへ飛ばします**(2026-08-25 発注者
         # 「一覧からのリンクをつける」)。この表は引くための1枚なので、
         # 引き当てた行からそのまま詳しい説明へ行けないと途中で止まります
-        o.append(f"|{icon_tag}{manual_link(label)} |{f(mono_ja(obj))} |{st} |{inner} |{f(pd)} |{f(op)}")
+        o.append(f"|{icon_tag}{f(row.en)} |{manual_link(row.ja)} |{row.mark} "
+                 f"|{inner} |{f(row.pd)} |{f(row.op)}")
     if current is not None:
         o.append("|===\n")
     return "\n".join(o)
@@ -660,16 +702,17 @@ def cover():
                     whole.setdefault(c.id, (tab.name, c.label))
     # **ファイルのページも数えます**(リボンのファイルタブは3つだけで、
     # 実際の仕事は全面のページにあります)
-    for i, label in file_menu():
-        whole.setdefault(i, ("ファイル", label))
+    for i, _e, j in file_menu():
+        whole.setdefault(i, ("ファイル", j))
     # クイックアクセスと左右のパネル(リボンにもページにも無い物)
-    for tab, label, *_ in HOKA:
-        whole.setdefault(label, (tab, label))
-    listed = [k for k in whole if k in MICHI or k in FILE_MICHI
-                or any(x[1] == k for x in HOKA)]
+    hoka_ja = {hoka_name(spec)[1] for _tab, spec, *_ in HOKA}
+    for tab, spec, *_ in HOKA:
+        j = hoka_name(spec)[1]
+        whole.setdefault(j, (tab, j))
+    listed = [k for k in whole if k in MICHI or k in FILE_MICHI or k in hoka_ja]
     return len(listed), len(whole), sorted(
         (v[0], v[1], k) for k, v in whole.items()
-        if k not in MICHI and k not in FILE_MICHI and not any(x[1] == k for x in HOKA)
+        if k not in MICHI and k not in FILE_MICHI and k not in hoka_ja
     )
 
 
