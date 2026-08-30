@@ -1,0 +1,87 @@
+= 解説ブログのサンプル24本を、import を替えただけで走らせた
+
+////
+公開用の記事の草稿(Qiita 向け)。*マニュアルではない。*
+* 2026-08-30 時点の書き物で、その時点の事実と見立てを残すもの。挙動が変わっても
+  遡って直さない(直すのはマニュアル。docs/README.ja.adoc の三帳簿を参照)
+* 発注者(yniji)の一人称で書いてある。書き手は発注者
+* 貼り付けるときはこの注記ごと消してよい(HTML コメントなので残っても見えない)
+////
+
+officework という Office を作っています。エンジンは Rust で、Python から
+`pip install officework` で使えます。xlsx と docx を読み書きして、
+そのまま PDF にもできます。
+
+エンジンの Python の書き方は、openpyxl と python-docx を受け継ぎました。
+公式ドキュメントだけを見て作ったのではありません。**人が実際にどう書いて
+いるか**を教材にしました。広く読まれている解説を教科書にすれば、
+その解説で覚えた人のコードがそのまま動くはずだからです。
+
+教科書にしたのは「https://www.shibutan-bloomers.com/[Pythonでもっと自由を]」の
+連載です。python-docx の第1〜3回と openpyxl の第2〜3回、サンプルコードが
+全部で24本あります。Office の自動化を日本語で学んだ人なら、
+読んだことがある人も多いと思います。
+
+== やり方 — import の行だけを置き換える
+
+24本のサンプルを写して、**import の行だけ**を機械的に置き換えました。
+
+[source,python]
+----
+# 元の連載のまま
+from docx import Document
+from openpyxl import load_workbook
+
+# officework 版
+from officework import doc as _officework
+Document = _officework.Doc
+from officework import sheet as _officework
+load_workbook = _officework.Book.open
+----
+
+それ以外の行は1文字も変えていません。`docx.shared` や `docx.enum` の
+定数もそのままです(officework は本家の定数も受けます)。officework に
+無い名前があれば、そこで止まります。止まったことも結果として数えます。
+
+== 結果 — 24本中23本がそのまま動いた
+
+2026-08-30 に、元のまま(openpyxl / python-docx)と officework 版の
+両方を走らせました。
+
+* **23本は、import 以外そのままで最後まで動きました。** 文書を作る・
+  表を読む・書式を付ける・画像を貼る、という連載の内容が一通り通ります
+* 残る1本(openpyxl 第3回の List6)は `wb.defined_names.definedName`
+  という書き方で止まりました。これは openpyxl 3.0 時代の API で、
+  **いまの openpyxl(3.1)でも同じ場所で止まります**。連載の欠陥では
+  なく、本家の API が変わった話です。officework も同じ場所で
+  同じように止まる、というのが結果です
+
+覚えた語彙を捨てなくていい、というのがこの数字の意味です。解説記事で
+身につけた書き方は、そのまま通ります。
+
+== おまけ — 同じコードの続きに1行足すと紙になる
+
+openpyxl にも python-docx にも、PDF を作る機能はありません。
+officework のエンジンは組版まで持っているので、連載のコードで作った
+ブックや文書に、保存の1行を足すだけで紙になります。
+
+[source,python]
+----
+wb.save("報告.xlsx")   # ここまでは連載のとおり
+wb.save("報告.pdf")    # 拡張子を変えるだけ。サーバーに他のソフトは要らない
+----
+
+== 正直な注意
+
+officework は 0.5.0 のベータ版です。openpyxl・python-docx の全部の API が
+あるわけではなく、中核のクラスから順に、1件ずつ判定しながら作っています。
+試すときは次の1行です。
+
+[source,console]
+----
+$ pip install --pre officework
+----
+
+最後に。教科書にした連載の書き手に感謝します。実際に読まれている
+解説があったから、「覚えた書き方がそのまま動くか」という確かめが
+できました。
