@@ -591,7 +591,13 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
     }
     // **`a|` のセルがあるときは桁の数を必ず書きます。** 中身が次の行に
     // 続くので、読むときに「最初の行のセルの数」では桁を数えられません
-    let has_many_paras = t.rows.iter().flatten().any(|c| c.paragraphs.len() > 1);
+    // **改行を持つ升も「複数行の升」です**(2026-08-31)。`a|` で書かれ、
+    // 中身が次の行へ続くので、桁の数を `[cols=]` で先に言っておかないと
+    // 読む側が行の切れ目を見誤ります(隣の升が次の行へ落ちました)
+    let has_many_paras = t.rows.iter().flatten().any(|c| {
+        c.paragraphs.len() > 1
+            || c.paragraphs.iter().any(|p| p.runs.iter().any(|r| r.text.contains('\n')))
+    });
     if t.col_ratio.is_empty() && has_many_paras {
         let cols: usize = t.rows.first().map(|r| r.iter().map(|c| c.span()).sum()).unwrap_or(0);
         if cols > 0 {
@@ -633,7 +639,13 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
             // 逆にすると `6+` が前のセルの字の末尾にくっつき、区切りの空白が
             // その後ろに来るので、読むときに指定として読めません。行の
             // 2つ目から先の結合が**黙って消えて**いました
-            let many_paras = cell.paragraphs.len() > 1;
+            // **セルの中に改行があるときも `a|` にします**(2026-08-31)。
+            // 素の升は1行しか書けないので、改行がそのまま出ると行が割れます
+            let ori_ari = cell
+                .paragraphs
+                .iter()
+                .any(|p| p.runs.iter().any(|r| r.text.contains('\n')));
+            let many_paras = cell.paragraphs.len() > 1 || ori_ari;
             if wrote {
                 // 前のセルが複数段落なら、行を変えて次のセルを始めます
                 out.push(if prev_is_multi { '\n' } else { ' ' });
@@ -678,8 +690,14 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
                         }
                     }
                 }
-                // 複数段落は空行で区切ります(`a|` の中身の作法)
-                paras.join(if many_paras { "\n\n" } else { " " })
+                // 複数段落は空行で区切ります(`a|` の中身の作法)。
+                // **段落の中の改行は AsciiDoc の改行**(行末の ` +`)です。
+                // 空行で区切ると段落が2つになり、間が余分に空きます —
+                // 表計算のセルの「区　分 / Type」はそれでは違う見え方です
+                paras
+                    .join(if many_paras { "\n\n" } else { " " })
+                    .replace('\n', " +\n")
+                    .replace(" +\n +\n", "\n\n")
             };
             // **縦棒は逃がします**(2026-08-20 に見つけた)。逃がさないと
             // 中身の `|` が次のセルの頭と読まれ、**1つの升が2つに割れて
@@ -2025,6 +2043,15 @@ fn parse_table_lines(
         } else if let Some(before) = joined.last_mut() {
             // 続きの行。**全角の空白は字下げなので残します**
             let cont = trim_edges(l);
+            // **行末の ` +` は AsciiDoc の改行**です(2026-08-31)。段落の
+            // 切れ目ではなく1つの段落の中の改行なので、印を落として
+            // 改行で継ぎます。表計算のセルの「区　分 / Type」がこの形です
+            if before.ends_with(" +") {
+                before.truncate(before.len() - 2);
+                before.push('\n');
+                before.push_str(cont);
+                continue;
+            }
             // 段落の切れ目の直後は、字を継ぎ足す空白を入れません
             if !before.ends_with("\n\n") {
                 before.push_str(seam(before, cont));
@@ -2077,6 +2104,16 @@ fn parse_table_lines(
             // **空の段落も残します。** 様式のセルは、書き込む余白として
             // 空の段落を持っていることがあります(実物で 59 升)。
             // 末尾の改行がその段落を表すので、分ける前には落としません
+            // **行末の ` +` は AsciiDoc の改行**です(2026-08-31)。
+            // 段落の切れ目ではないので、1つの段落の中の改行に戻します。
+            // 表計算のセルの「区　分 / Type」がこの形です
+            let hodoita;
+            let cell_text: &str = if cell_text.contains(" +\n") {
+                hodoita = cell_text.replace(" +\n", "\n");
+                &hodoita
+            } else {
+                cell_text
+            };
             let raw = cell_text.trim_matches(|c: char| c == ' ' || c == '\t' || c == '\r');
             let para_text: Vec<&str> = if asciidoc_cell && raw.contains("\n\n") {
                 raw.split("\n\n").map(trim_edges).collect()

@@ -254,9 +254,24 @@ fn cell_text(s: &Sheet, p: Pos) -> String {
     }
 }
 
+/// 升1つ。**セルの中の改行は「行の折り」で、段落の切れ目ではありません**
+/// (2026-08-31 発注者)。
+///
+/// `Document::plain` は改行で段落に割ります。表計算のセルでそれをすると、
+/// 「区　分 / Type」の1升が2段落になり、間が段落の空きだけ開きます。
+/// 1段落のまま持ち、書くときに AsciiDoc の改行(行末の ` +`)にします。
 fn cellbox(text: &str, col_span: u8, v_merge: VMerge) -> Cellbox {
     Cellbox {
-        paragraphs: Document::plain(text).paragraphs().cloned().collect(),
+        paragraphs: vec![crate::Paragraph {
+            runs: vec![crate::Run {
+                text: text.to_string(),
+                size_pt: None,
+                font: None,
+                fmt: Default::default(),
+            }],
+            line_spacing: 1.0,
+            ..Default::default()
+        }],
         col_span,
         v_merge,
         ..Default::default()
@@ -543,6 +558,34 @@ mod tests {
         // 本当の数は数のまま
         assert_eq!(value(&b, 0, "B2"), "12");
         assert_eq!(value(&b, 0, "B3"), "0.5", "0.5 まで字にしてしまった");
+    }
+
+    /// **セルの中の改行は、AsciiDoc の改行(` +`)で書く。**
+    ///
+    /// 2026-08-31 発注者「adoc では rich_runs は使わない。だからこそ、
+    /// うまく表示できるように変換できるようにして」。飾りは持ち込まない
+    /// ので、せめて**行の折りが行の折りとして見える**必要があります。
+    /// 空行で書くと段落が2つになり、間が余分に空きます。
+    #[test]
+    fn an_in_cell_break_is_written_as_a_line_break() {
+        let mut b = Book::new();
+        b.sheets.clear();
+        let mut s = Sheet::new("覚え");
+        s.set(Pos::parse("A1").unwrap(), Cell::input("区　分
+Type"));
+        s.set(Pos::parse("B1").unwrap(), Cell::input("隣"));
+        b.sheets.push(s);
+        let src = write(&b);
+        assert!(src.contains("区　分 +
+Type"), "改行が ` +` になっていない:\n{src}");
+        assert!(!src.contains("区　分
+
+Type"), "空行で書いている(段落が2つになる)");
+        // 隣の升も同じ行のまま
+        let (back, _) = parse(&src).expect("読めない");
+        assert_eq!(value(&back, 0, "A1"), "区　分
+Type", "改行が戻らない");
+        assert_eq!(value(&back, 0, "B1"), "隣", "隣の升が次の行へ落ちた");
     }
 
     /// **折返しのセルが往復する**(2026-08-19)。中に改行のあるセルは

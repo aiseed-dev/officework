@@ -73,8 +73,16 @@ pub(super) fn parse_shared(xml: &str) -> (Vec<String>, Vec<Option<String>>) {
                 b"t" if in_rph => in_rt = true,
                 _ => {}
             },
-            Ok(Event::Text(t)) if in_t => cur.push_str(&t.unescape().unwrap_or_default()),
-            Ok(Event::Text(t)) if in_rt => ruby.push_str(&t.unescape().unwrap_or_default()),
+            // **改行は `\n` に揃えます**(2026-08-31)。xlsx はセルの中の
+            // 改行を `\r\n` で持つことがあり(国税庁の様式)、`\r` を
+            // 模型に入れると adoc に書いたとき行末に出て読めなくなります
+            Ok(Event::Text(t)) => {
+                if in_t {
+                    cur.push_str(&t.unescape().unwrap_or_default().replace("\r\n", "\n"));
+                } else if in_rt {
+                    ruby.push_str(&t.unescape().unwrap_or_default().replace("\r\n", "\n"));
+                }
+            }
             Ok(Event::End(e)) => match local(e.name().as_ref()) {
                 b"t" => {
                     in_t = false;
@@ -276,7 +284,15 @@ fn rich_runs(xml: &str, tag: &str) -> std::collections::HashMap<String, String> 
 /// **数の参照(`&#36196;`)も戻します。** openpyxl は日本語を全部この形で
 /// 書きます。名前の5つだけ見ていて、実物の xlsx で拾えませんでした
 /// (2026-08-28)。
+/// XML の逃がしを戻す。**改行は `\n` に揃えます**(2026-08-31)。
+///
+/// xlsx はセルの中の改行を `\r\n` で持つことがあります(国税庁の様式)。
+/// `\r` を模型に入れると、adoc に書き出したときに行末へ出て、
+/// AsciiDoc の改行(` +`)と並んで読めない字になります。
 fn unesc(s: &str) -> String {
+    if s.contains('\r') {
+        return unesc(&s.replace("\r\n", "\n").replace('\r', "\n"));
+    }
     if !s.contains('&') {
         return s.to_string();
     }
