@@ -266,8 +266,12 @@ def command_name(label: str) -> str:
 
     対応表のほうは*画面のまま*にします。あちらは画面を引くための表なので、
     押しているボタンの字がそのまま出ていないと引けません。
+
+    **句点があるときは、その前までが名前です**(2026-08-30)。右パネルの
+    見出しは「ページ設定。文書全体に掛かります」のように、名前と説明を
+    並べて出しています。手引きの名前に要るのは前の方だけです。
     """
-    return KAZARI.sub("", label).strip() or label
+    return KAZARI.sub("", label.split("。")[0]).strip() or label
 
 
 # ファイル名に使えない字。`/` は制約で置き換えるだけで、名前の一部です
@@ -407,6 +411,7 @@ HOKA = [
     # スタイルではなくフォルダの中身でした
     ("右パネル", "settings_adjust_where_cursor", "", "", ""),
     ("右パネル", "page_settings_whole_document", "d.sections[0]", "section.page_width", "ws.page_setup.paperSize"),
+    ("右パネル", "styles_edit_template", "p.style", "p.style", ""),
     ("右パネル", "files_what_folder", "", "", ""),
     # 窓の下端(ステータスバー)。数を入れる所は名前から外します
     ("下端", "page", "(紙に組んで数える)", "", ""),

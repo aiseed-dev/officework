@@ -385,9 +385,10 @@ def 大文字にする(段落):
 |===
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
-|Settings — adjust where the cursor is |設定 — いる場所を直す | |— |— |—
-|Page — settings for the whole document |ページ — 文書ぜんぶの決め |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
-|Files — what is in the folder |ファイル — フォルダの中身 | |— |— |—
+|Settings — adjust where the cursor is |設定。カーソルのある場所に掛かります | |— |— |—
+|Page — settings for the whole document |ページ設定。文書全体に掛かります |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
+|Styles — edit the template |スタイル。テンプレートを直します |✅ |p.style |p.style |—
+|Files — what is in the folder |ファイル。フォルダの中を並べます | |— |— |—
 |===
 
 == 下端
