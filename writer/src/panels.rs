@@ -52,6 +52,44 @@ pub(crate) struct Panels {
 }
 
 impl Writer {
+    /// パネルに焦点があり、木への打鍵を受けるか。編集の欄が開いている
+    /// 間は受けない(矢印はそちらの物)
+    pub(crate) fn fl_takes_keys(&self) -> bool {
+        self.fl_focus
+            && self.rp_open
+            && self.rp_tab == 3
+            && !self.chat_open
+            && !self.ai_chat_focus
+            && self.fl_job.is_none()
+    }
+
+    /// 木で選ばれている物を開く(Enter)。フォルダなら開閉
+    pub(crate) fn fl_open_selected(&mut self) {
+        let Some(p) = self.fl_tree.selected.clone() else { return };
+        if p.is_dir() {
+            self.fl_tree.toggle(&p);
+            return;
+        }
+        let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+        let kind = ui::folder::kind_of(&name);
+        self.remember_folder();
+        if !kind.can_open() {
+            self.status = match ui::open_outside(&p.display().to_string()) {
+                ui::Opened::Yes => ui::tf!("opening_application_system_chose", name).into(),
+                ui::Opened::JustNow => ui::t!("just_opened").into(),
+                ui::Opened::Failed => {
+                    ui::tf!("no_application_associated_file", p.display().to_string()).into()
+                }
+            };
+            return;
+        }
+        if self.embedded || kind.is_sheet() {
+            self.open_request = Some(p);
+        } else {
+            self.open_in_tab(p);
+        }
+    }
+
     /// パネルを全部組む(順番は view.rs にあった時のまま)。
     /// 色は render のテーマの束 — パネルが使う6つだけを受け取る
     #[allow(clippy::too_many_arguments)] // 色は6つとも別物。束ねると呼ぶ側から見えない
@@ -1179,9 +1217,12 @@ impl Writer {
                         // のではなく、字下げして下に出す。改名と削除の絵は
                         // ファイルと同じに付ける
                         if e.kind == ui::folder::Kind::Folder {
-                            let line = ui::filelist::tree_row(&look, i, &r, false)
+                            let on = self.fl_tree.selected.as_deref() == Some(e.path.as_path());
+                            let line = ui::filelist::tree_row(&look, i, &r, on)
                                 .on_click(cx.listener(move |t, _, _, cx| {
+                                    t.fl_focus = true; // 行を押したら焦点はパネル
                                     t.fl_tree.toggle(&path);
+                                    t.fl_tree.selected = Some(path.clone());
                                     cx.notify()
                                 }));
                             let path2 = e.path.clone();
@@ -1204,9 +1245,12 @@ impl Writer {
                             );
                             continue;
                         }
-                        let current = self.path.as_deref() == Some(e.path.as_path());
+                        let current = self.path.as_deref() == Some(e.path.as_path())
+                            || self.fl_tree.selected.as_deref() == Some(e.path.as_path());
                         let mut line = ui::filelist::tree_row(&look, i, &r, current);
                         line = line.on_click(cx.listener(move |t, _, _, cx| {
+                            t.fl_focus = true; // 行を押したら焦点はパネル
+                            t.fl_tree.selected = Some(path.clone());
                             t.remember_folder();
                             if !can_open {
                                 // **こちらで開けない種類は、機械の関連付けに渡します**
@@ -1270,10 +1314,12 @@ impl Writer {
                         cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
                     .child(rail_button("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), true).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
+                // **焦点がパネルにある間は枠の色で見せる**(2026-08-31 発注者
+                // 「枠の色は任せる」)。押した行から矢印で動かせる印
                 return_rp = Some(div()
                     .flex_none().w(px(230.0 + RAIL)).h_full()
                     .m_1().rounded_sm().bg(panel_bg)
-                    .border_1().border_color(th_cmd_border)
+                    .border_1().border_color(if self.fl_focus { th_btn } else { th_cmd_border })
                     .flex().flex_row()
                     .child(d.overflow_y_scroll())
                     .child(div().flex_none().w(px(us * 1.0)).h_full().bg(th_cmd_border))

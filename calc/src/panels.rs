@@ -158,9 +158,12 @@ impl Calc {
                         // **フォルダはその場で開閉**(IDE の木)。改名と
                         // 削除の絵はファイルと同じに付ける
                         if e.kind == ui::folder::Kind::Folder {
-                            let line = ui::filelist::tree_row(&look, i, &r, false)
+                            let on = self.fl_tree.selected.as_deref() == Some(e.path.as_path());
+                            let line = ui::filelist::tree_row(&look, i, &r, on)
                                 .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.fl_focus = true; // 行を押したら焦点はパネル
                                     this.fl_tree.toggle(&path);
+                                    this.fl_tree.selected = Some(path.clone());
                                     cx.notify()
                                 }));
                             let path2 = e.path.clone();
@@ -183,9 +186,12 @@ impl Calc {
                             );
                             continue;
                         }
-                        let current = self.path.as_deref() == Some(e.path.as_path());
+                        let current = self.path.as_deref() == Some(e.path.as_path())
+                            || self.fl_tree.selected.as_deref() == Some(e.path.as_path());
                         let mut line = ui::filelist::tree_row(&look, i, &r, current);
                         line = line.on_click(cx.listener(move |this, _, _, cx| {
+                            this.fl_focus = true; // 行を押したら焦点はパネル
+                            this.fl_tree.selected = Some(path.clone());
                             this.remember_folder();
                             if !can_open {
                                 // **こちらで開けない種類は、機械の関連付けに渡します**
@@ -483,7 +489,8 @@ impl Calc {
             Some(div()
                 .flex_none().w(px((W + RAIL) * us)).h_full()
                 .m_1().rounded_sm().bg(bg)
-                .border_1().border_color(line)
+                // **焦点がパネルにある間は枠の色で見せる**(2026-08-31)
+                .border_1().border_color(if self.fl_focus && face == 2 { accent } else { line })
                 .flex().flex_row()
                 .child(d)
                 // 柱は**外側**(窓の縁の側)。仕切りの線を1本

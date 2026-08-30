@@ -485,6 +485,9 @@ pub struct Calc {
     pub(crate) fl_job: Option<FlJob>,
     /// プロジェクトパネルの木(展開と選択)。根は folder() と同期する
     pub(crate) fl_tree: ui::tree::Tree,
+    /// パネルに焦点があるか。行を押すと移り、表を押すか Esc で戻る
+    /// (2026-08-31 発注者決め)。真の間は ↑↓←→ と Enter が木に効く
+    pub(crate) fl_focus: bool,
     pub(crate) right_face: u8,
     /// **このファイルを開いてほしい**(2026-08-19。統合の段1)。
     ///

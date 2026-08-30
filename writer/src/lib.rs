@@ -492,6 +492,9 @@ pub struct Writer {
     fl_ed: Editor,
     /// プロジェクトパネルの木(展開と選択)。根は folder() と同期する
     fl_tree: ui::tree::Tree,
+    /// パネルに焦点があるか。行を押すと移り、本文を押すか Esc で戻る
+    /// (2026-08-31 発注者決め)。真の間は ↑↓←→ と Enter が木に効く
+    fl_focus: bool,
     rb_range: std::ops::Range<usize>,
     /// 数式のパネル(LaTeX を打つ)。**組むのは Python** — 自前で組版は
     /// 書かない(calc がグラフを matplotlib に任せるのと同じ分業)。

@@ -4,8 +4,9 @@ use crate::*;
 
 impl Writer {
     pub(crate) fn click_at(&mut self, rel_x: f32, rel_y: f32, extend: bool) {
-        // 本文を押したら会話の欄から焦点が離れる(打鍵は本文へ戻る)
+        // 本文を押したら会話の欄とパネルから焦点が離れる(打鍵は本文へ戻る)
         self.ai_chat_focus = false;
+        self.fl_focus = false;
         let pxmm = PX_PER_MM * self.zoom;
         // 紙は編集領域の (28,14)px に置いてあり、スクロールで上へずれている
         let x_mm = (rel_x - 28.0) / pxmm - self.pg.left_mm;
@@ -455,10 +456,20 @@ impl Writer {
         cx.notify();
     }
     pub(crate) fn left(&mut self, _: &ui::Left, _: &mut Window, cx: &mut Context<Self>) {
+        if self.fl_takes_keys() {
+            self.fl_tree.select_side(false);
+            cx.notify();
+            return;
+        }
         self.editor().move_char(false, false);
         cx.notify();
     }
     pub(crate) fn right(&mut self, _: &ui::Right, _: &mut Window, cx: &mut Context<Self>) {
+        if self.fl_takes_keys() {
+            self.fl_tree.select_side(true);
+            cx.notify();
+            return;
+        }
         self.editor().move_char(true, false);
         cx.notify();
     }
@@ -506,6 +517,13 @@ impl Writer {
         if self.ai_chat_focus {
             self.ai_chat_focus = false;
             self.status = ui::t!("back_document_conversation_panel").into();
+            cx.notify();
+            return;
+        }
+        // パネルの焦点は Esc で本文へ返す(パネルは開いたまま)
+        if self.fl_focus {
+            self.fl_focus = false;
+            self.status = ui::t!("back_text_editing").into();
             cx.notify();
             return;
         }
@@ -744,6 +762,11 @@ impl Writer {
         cx.notify();
     }
     pub(crate) fn up(&mut self, _: &ui::Up, _: &mut Window, cx: &mut Context<Self>) {
+        if self.fl_takes_keys() {
+            self.fl_tree.select_step(false);
+            cx.notify();
+            return;
+        }
         if self.send_list(false) {
             cx.notify();
             return;
@@ -752,6 +775,11 @@ impl Writer {
         cx.notify();
     }
     pub(crate) fn down(&mut self, _: &ui::Down, _: &mut Window, cx: &mut Context<Self>) {
+        if self.fl_takes_keys() {
+            self.fl_tree.select_step(true);
+            cx.notify();
+            return;
+        }
         if self.send_list(true) {
             cx.notify();
             return;
@@ -799,6 +827,11 @@ impl Writer {
         cx.notify();
     }
     pub(crate) fn enter(&mut self, _: &ui::Enter, _: &mut Window, cx: &mut Context<Self>) {
+        if self.fl_takes_keys() {
+            self.fl_open_selected();
+            cx.notify();
+            return;
+        }
         // 左パネルの会話の Enter = 送る(焦点はそのまま — 続けて書ける)
         if self.ai_chat_focus {
             self.ai_chat_send(cx);

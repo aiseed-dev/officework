@@ -119,6 +119,45 @@ impl Calc {
 
     /// **いま開いているフォルダ。** 右パネルのファイル一覧が並べる場所です。
     /// 開いているブックの親を使い、無ければ前に使ったフォルダです。
+    /// パネルに焦点があり、木への打鍵を受けるか。編集の小窓が開いている
+    /// 間は受けない(矢印はそちらの物)
+    pub(crate) fn fl_takes_keys(&self) -> bool {
+        self.fl_focus
+            && self.right_open
+            && self.right_face == 2
+            && self.py_edit.is_none()
+            && self.fn_args.is_none()
+            && self.fn_dlg.is_none()
+            && self.fl_job.is_none()
+    }
+
+    /// 木で選ばれている物を開く(Enter)。フォルダなら開閉
+    pub(crate) fn fl_open_selected(&mut self) {
+        let Some(p) = self.fl_tree.selected.clone() else { return };
+        if p.is_dir() {
+            self.fl_tree.toggle(&p);
+            return;
+        }
+        let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+        let kind = ui::folder::kind_of(&name);
+        self.remember_folder();
+        if !kind.can_open() {
+            self.status = match ui::open_outside(&p.display().to_string()) {
+                ui::Opened::Yes => ui::tf!("opening_application_system_chose", name).into(),
+                ui::Opened::JustNow => ui::t!("just_opened").into(),
+                ui::Opened::Failed => {
+                    ui::tf!("no_application_associated_file", p.display().to_string()).into()
+                }
+            };
+            return;
+        }
+        if self.embedded || kind.is_doc() {
+            self.open_request = Some(p);
+        } else {
+            self.open(p);
+        }
+    }
+
     /// **一覧の仕事を始める。** 名前を打つ欄を出します(2026-08-26)。
     pub(crate) fn fl_start(&mut self, job: crate::FlJob) {
         use crate::FlJob as J;
@@ -416,6 +455,7 @@ impl Calc {
             chosen_folder: None,
             fl_job: None,
             fl_tree: ui::tree::Tree::default(),
+            fl_focus: false,
             right_face: 0,
             open_request: None,
             open_dialog_request: false,
@@ -1363,6 +1403,8 @@ impl Calc {
     /// マウスの左を押した(格子領域の座標)。押したセルが選択の始まり。
     /// メニューが出ていたら閉じる(項目の上の押下は stop_propagation でここに来ない)。
     pub(crate) fn mouse_down_at(&mut self, x: f32, y: f32, shift: bool, ctrl: bool, clicks: usize) {
+        // 表を押したらパネルから焦点が離れる(打鍵は表へ戻る)
+        self.fl_focus = false;
         self.menu_at = None;
         self.menu_direct = false;
         self.close_pick();

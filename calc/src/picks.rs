@@ -3320,6 +3320,13 @@ impl Calc {
             cx.notify();
             return;
         }
+        // パネルの焦点は Esc で表へ返す(パネルは開いたまま)
+        if self.fl_focus {
+            self.fl_focus = false;
+            self.status = ui::t!("back_text_editing").into();
+            cx.notify();
+            return;
+        }
         // .py の編集面。書きかけがあれば一度断る(黙って捨てない)
         if self.py_edit.is_some() {
             self.close_py_edit();

@@ -529,6 +529,11 @@ impl Calc {
 
     pub(crate) fn a_left(&mut self, _: &ui::Left, _: &mut Window, cx: &mut Context<Self>) {
         // 小窓 → パネル → 打ちかけの文字 → セル、の順で見る
+        if self.fl_takes_keys() {
+            self.fl_tree.select_side(false);
+            cx.notify();
+            return;
+        }
         if let Some(ed) = &mut self.name_edit { ed.move_char(false, false) }
         else if self.fn_args.is_some() { self.editor().move_char(false, false) }
         else if let Some(d) = &mut self.fn_dlg { d.search.move_char(false, false) }
@@ -540,6 +545,11 @@ impl Calc {
         cx.notify();
     }
     pub(crate) fn a_right(&mut self, _: &ui::Right, _: &mut Window, cx: &mut Context<Self>) {
+        if self.fl_takes_keys() {
+            self.fl_tree.select_side(true);
+            cx.notify();
+            return;
+        }
         if let Some(ed) = &mut self.name_edit { ed.move_char(true, false) }
         else if self.fn_args.is_some() { self.editor().move_char(true, false) }
         else if let Some(d) = &mut self.fn_dlg { d.search.move_char(true, false) }
@@ -694,6 +704,11 @@ impl Calc {
         cx.notify();
     }
     pub(crate) fn a_up(&mut self, _: &ui::Up, _: &mut Window, cx: &mut Context<Self>) {
+        if self.fl_takes_keys() {
+            self.fl_tree.select_step(false);
+            cx.notify();
+            return;
+        }
         if let Some(p) = &mut self.py_edit {
             p.move_line(false, false);
         } else if let Some(a) = &mut self.fn_args {
@@ -710,6 +725,11 @@ impl Calc {
         cx.notify();
     }
     pub(crate) fn a_down(&mut self, _: &ui::Down, _: &mut Window, cx: &mut Context<Self>) {
+        if self.fl_takes_keys() {
+            self.fl_tree.select_step(true);
+            cx.notify();
+            return;
+        }
         if let Some(p) = &mut self.py_edit {
             p.move_line(true, false);
         } else if let Some(a) = &mut self.fn_args {
@@ -969,6 +989,12 @@ impl Calc {
     }
 
     pub(crate) fn a_enter(&mut self, _: &ui::Enter, _: &mut Window, cx: &mut Context<Self>) {
+        // パネルに焦点があれば、選んでいる物を開く
+        if self.fl_takes_keys() {
+            self.fl_open_selected();
+            cx.notify();
+            return;
+        }
         // フォルダから探す(ファイルの面)。Enter で探す
         if self.tab == 0 && self.file_view == 3 {
             self.find_in_folder();

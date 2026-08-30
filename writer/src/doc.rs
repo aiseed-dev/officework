@@ -157,6 +157,7 @@ impl Writer {
             fl_job: None,
             fl_ed: Editor::new(""),
             fl_tree: ui::tree::Tree::default(),
+            fl_focus: false,
             tbl_open: false,
             tbl_ed: Editor::new(""),
             font_filter: None,
