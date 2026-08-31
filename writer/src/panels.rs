@@ -1022,6 +1022,10 @@ impl Writer {
                         cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
                     .child(rail_button("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), true).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
+                    // **スタイルの柱はどの面でも出す**(2026-08-31 Opus の
+                    // 指摘 — この枝だけ欠けていて、ページ設定の面で消えていた)
+                    .child(rail_button("rf-style".into(), "styles", ui::t!("styles_edit_template").to_string(), false).on_click(
+                        cx.listener(|t, _, _, cx| { t.rp_tab = 2; cx.notify() })))
                     // **フォルダのファイル一覧**(2026-08-19 発注者
                     // 「フォルダー内のファイル一覧を右パネルに表示」)
                     .child(rail_button("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), false).on_click(
@@ -1312,6 +1316,9 @@ impl Writer {
                         cx.listener(|t, _, _, cx| { t.rp_tab = 0; cx.notify() })))
                     .child(rail_button("rf-page".into(), "pagesize", ui::t!("page_settings_whole_document").to_string(), false).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 1; cx.notify() })))
+                    // **スタイルの柱はどの面でも出す**(2026-08-31 — この枝も欠けていた)
+                    .child(rail_button("rf-style".into(), "styles", ui::t!("styles_edit_template").to_string(), false).on_click(
+                        cx.listener(|t, _, _, cx| { t.rp_tab = 2; cx.notify() })))
                     .child(rail_button("rf-files".into(), "py-folder", ui::t!("files_what_folder").to_string(), true).on_click(
                         cx.listener(|t, _, _, cx| { t.rp_tab = 3; cx.notify() })));
                 // **焦点がパネルにある間は枠の色で見せる**(2026-08-31 発注者
