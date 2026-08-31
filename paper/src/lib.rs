@@ -1297,10 +1297,23 @@ pub fn doc_to_sheet(
     // 気づいた — 試験は緑でした)
     let d = kumihan::theme::compose(doc, t);
 
-    // 書体は**文書が名乗った物**が先。無ければいまの言語の既定。
+    // 書体は**文書が名乗った物**が先。次にテンプレートの物。
     // 文中の字も渡します — 選んだ書体がその字を持っていないと、
     // PDF ではその字だけ消えます(2026-08-30)
-    let want = d.font.clone().or_else(|| t.font.clone());
+    //
+    // **どちらも名乗らなければ本文の書体(明朝・セリフ)です**(2026-08-31)。
+    // 同梱の既定テンプレートは書体の名前を書きません(機械にある物から
+    // 選ぶため)ので、ここが空のまま `default_family` に落ちていました。
+    // それはゴシック・サンセリフなので、**同じ文書が docx では明朝、
+    // PDF ではゴシック**で出ていました。手引きはこれを「この版の限界」と
+    // 断り書きしていたところです。
+    let want = d.font.clone().or_else(|| t.font.clone()).or_else(|| {
+        kumihan::font::default_generic(
+            &kumihan::font::default_language(),
+            kumihan::font::Generic::Serif,
+        )
+        .map(|f| f.name.clone())
+    });
     let (family, _) = kumihan::font::for_text(want.as_deref(), d.chars())?;
     let bytes = kumihan::font::load(family)?;
     let m = kumihan::Metrics::new(&bytes)?;
@@ -1331,6 +1344,29 @@ mod doc_pdf_tests {
         super::doc_to_pdf(&doc, None, std::io::Cursor::new(&mut buf)).expect("PDF が出ない");
         assert!(buf.starts_with(b"%PDF"), "PDF になっていない");
         assert!(buf.len() > 1000, "中身が薄すぎる: {} バイト", buf.len());
+    }
+
+    /// **本文は明朝・セリフで組む。**
+    ///
+    /// 書体を名乗らない文書は、同梱の既定テンプレートも書体を書かないので、
+    /// 機械の既定(ゴシック・サンセリフ)に落ちていました。docx で保存した
+    /// 同じ文書は明朝で出るので、**同じ文書が形式で違う顔**になっていました。
+    #[test]
+    fn the_body_is_set_in_a_serif_face() {
+        let _lock = kumihan::font::lang_lock();
+        kumihan::font::set_default_language("ja");
+        let doc = kumihan::adoc::parse("= 見本\n\n本文です。\n").expect("読めない");
+        let (_sheet, _page, bytes) =
+            crate::doc_to_sheet(&doc, None).expect("組めない");
+        let serif = kumihan::font::default_generic("ja", kumihan::font::Generic::Serif)
+            .expect("この機械に明朝がありません");
+        let hoshii = kumihan::font::load(serif).expect("読めない");
+        assert_eq!(
+            bytes.len(),
+            hoshii.len(),
+            "本文が明朝で組まれていません(選ばれたのは {} ではない何か)",
+            serif.name
+        );
     }
 
     /// 空の文書でも落ちない(紙が1枚出る)

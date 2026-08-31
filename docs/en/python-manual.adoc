@@ -277,7 +277,7 @@ NOTE: There is one language per process. If you build two workbooks in different
 |vi |13pt |Latin fonts (larger because stacked diacritics crush at 11pt)
 |===
 
-One limit in this version: when laying out a PDF, the body comes out in the standard gothic / sans face, not the mincho / serif this table names. The same docx opened in Word or LibreOffice shows the mincho / serif body.
+A PDF is laid out with the same mincho / serif body this table names.
 
 Which face you actually get depends on what the machine (OS) has installed.
 If the font named in the file is present, it is used; otherwise the machine's standard font stands in (Windows ships the BIZ UD family; other machines fall back to their standard mincho and gothic).
