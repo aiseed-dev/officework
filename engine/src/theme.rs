@@ -1373,11 +1373,83 @@ fn grid_cell(text: &str) -> crate::doc::Cellbox {
     }
 }
 
+/// **文書自身のスタイル定義を段落に流し込む。**
+///
+/// 段落が直に言っている所は触りません。docx の決めどおり、run の `w:rPr` が
+/// スタイルより強く、スタイルは `docDefaults` より強い順です。
+fn jibun_wo_ateru(
+    para: &mut crate::doc::Paragraph,
+    lk: &crate::doc::StyleLook,
+    pl: &crate::doc::StyleParaLook,
+) {
+    // 揃えは、段落が既定(左)のままのときだけスタイルの物にします。
+    // docx は「左」と「言わない」を書き分けないので、ここは見分けられません
+    if para.align == crate::doc::Align::Left {
+        if let Some(a) = pl.align {
+            para.align = a;
+        }
+    }
+    if para.space_before_pt == 0.0 {
+        para.space_before_pt = pl.space_before_pt.unwrap_or(0.0);
+    }
+    if para.space_after_pt == 0.0 {
+        para.space_after_pt = pl.space_after_pt.unwrap_or(0.0);
+    }
+    if para.line_spacing == 1.0 && para.line_pt.is_none() {
+        para.line_spacing = pl.line_spacing.unwrap_or(1.0);
+    }
+    if para.indent == 0 {
+        para.indent = pl.indent.unwrap_or(0);
+    }
+    if para.first_line_twips == 0 {
+        para.first_line_twips = pl.first_line_twips.unwrap_or(0);
+    }
+    for r in &mut para.runs {
+        if r.size_pt.is_none() {
+            r.size_pt = lk.size_pt;
+        }
+        if r.font.is_none() {
+            r.font = lk.font.clone();
+        }
+        r.fmt.bold |= lk.bold.unwrap_or(false);
+        r.fmt.italic |= lk.italic.unwrap_or(false);
+        r.fmt.underline |= lk.underline.unwrap_or(false);
+        if r.fmt.color.is_none() {
+            r.fmt.color = lk.color.clone();
+        }
+    }
+}
+
 pub fn compose(doc: &Document, theme: &Theme) -> Document {
     let mut out = doc.clone();
     compose_page(&mut out, theme);
+    // **文書が自分でスタイル定義を持っていれば、そちらが正です**(2026-09-01)。
+    //
+    // docx は `styles.xml` を一緒に持ってきます。そこにある見出しの大きさ・
+    // 色・揃えを、こちらのテンプレートで上書きしていました。内閣府の
+    // document_4 は見出しが 20pt・中央揃え・色付きなのに、うちの
+    // テンプレートの 16pt・左揃え・黒で出ていました。
+    let jibun: Vec<(String, crate::doc::StyleLook, crate::doc::StyleParaLook)> = out
+        .blocks
+        .iter()
+        .filter_map(|b| match b {
+            crate::doc::Block::Para(p) => p.style_id.clone(),
+            _ => None,
+        })
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .filter_map(|id| out.style_matome(&id).map(|(l, p)| (id, l, p)))
+        .collect();
     for block in &mut out.blocks {
         let crate::doc::Block::Para(para) = block else { continue };
+        if let Some((_, lk, pl)) = para
+            .style_id
+            .as_deref()
+            .and_then(|id| jibun.iter().find(|(i, _, _)| i == id))
+        {
+            jibun_wo_ateru(para, lk, pl);
+            continue;
+        }
         // 名指しのスタイル(style_id)が役割の固定名より勝つ —
         // 利用者が新設した物は名前で着る
         let def = para

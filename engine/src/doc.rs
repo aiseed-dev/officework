@@ -1961,6 +1961,44 @@ impl Document {
         self.style_look(id, |l| l.font.clone())
     }
 
+    /// **スタイル定義を1つにまとめる。** 元になるスタイル(`w:basedOn`)を
+    /// たどり、手前のスタイルが言っていない所だけ先のスタイルで埋めます。
+    ///
+    /// この文書がその名前のスタイルを持っていなければ `None` です。
+    /// テンプレートを重ねてよいかどうかの判断にも使います
+    /// ([`crate::theme::compose`])。
+    pub fn style_matome(&self, id: &str) -> Option<(StyleLook, StyleParaLook)> {
+        let hiku =
+            |i: &str| self.styles.iter().chain(self.styles_new.iter()).find(|s| s.id == i);
+        let mut lk = StyleLook::default();
+        let mut pl = StyleParaLook::default();
+        let mut ima = id;
+        let mut atta = false;
+        for _ in 0..16 {
+            let Some(s) = hiku(ima) else { break };
+            atta = true;
+            lk.bold = lk.bold.or(s.look.bold);
+            lk.italic = lk.italic.or(s.look.italic);
+            lk.underline = lk.underline.or(s.look.underline);
+            lk.strike = lk.strike.or(s.look.strike);
+            lk.size_pt = lk.size_pt.or(s.look.size_pt);
+            lk.color = lk.color.clone().or_else(|| s.look.color.clone());
+            lk.font = lk.font.clone().or_else(|| s.look.font.clone());
+            lk.fill = lk.fill.clone().or_else(|| s.look.fill.clone());
+            pl.align = pl.align.or(s.para.align);
+            pl.space_before_pt = pl.space_before_pt.or(s.para.space_before_pt);
+            pl.space_after_pt = pl.space_after_pt.or(s.para.space_after_pt);
+            pl.line_spacing = pl.line_spacing.or(s.para.line_spacing);
+            pl.indent = pl.indent.or(s.para.indent);
+            pl.first_line_twips = pl.first_line_twips.or(s.para.first_line_twips);
+            match s.based_on.as_deref() {
+                Some(o) => ima = o,
+                None => break,
+            }
+        }
+        atta.then_some((lk, pl))
+    }
+
     /// スタイルの見た目を、元になるスタイル(`w:basedOn`)をたどって引く。
     /// 輪になっている定義でも止まるよう、たどる回数を限ります。
     fn style_look<T>(&self, id: Option<&str>, toru: impl Fn(&StyleLook) -> Option<T>) -> Option<T> {
