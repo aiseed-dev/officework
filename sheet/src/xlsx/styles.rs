@@ -112,6 +112,40 @@ impl FillDef {
     }
 }
 
+/// **ブックの標準の書体**(`styles.xml` の `<fonts>` の1本目)。
+/// 返りは (名前, 大きさ pt)。
+///
+/// 列幅を紙の長さに直すのに要ります(2026-08-31)。xlsx の列幅は「標準の
+/// 書体の数字が何文字ぶん入るか」で書いてあるので、その数字1字の幅を
+/// 知らないとミリに直せません。LibreOffice も同じ所を見ています
+/// (`sc/source/filter/oox/unitconverter.cxx` の
+/// `getStyles().getDefaultFont()` と「get maximum width of all digits」)。
+pub fn default_font(xml: &str) -> Option<(String, f32)> {
+    let mut r = Reader::from_str(xml);
+    let mut buf = Vec::new();
+    let (mut in_fonts, mut owari) = (false, false);
+    let (mut na, mut pt) = (None, None);
+    loop {
+        match r.read_event_into(&mut buf) {
+            Ok(Event::Eof) | Err(_) => break,
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) => match local(e.name().as_ref()) {
+                b"fonts" => in_fonts = true,
+                // 2本目に入ったら終わり(1本目だけが標準の書体)
+                b"font" if in_fonts && (na.is_some() || pt.is_some()) => owari = true,
+                b"name" | b"rFont" if in_fonts && !owari => na = attr(&e, "val"),
+                b"sz" if in_fonts && !owari => {
+                    pt = attr(&e, "val").and_then(|v| v.parse::<f32>().ok())
+                }
+                _ => {}
+            },
+            Ok(Event::End(e)) if local(e.name().as_ref()) == b"fonts" => break,
+            _ => {}
+        }
+        buf.clear();
+    }
+    Some((na?, pt?))
+}
+
 fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
     let mut fonts: Vec<Fnt> = Vec::new();
     let mut fills: Vec<FillDef> = Vec::new();

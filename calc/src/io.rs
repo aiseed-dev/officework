@@ -1163,6 +1163,17 @@ impl Calc {
         (paper, desc)
     }
 
+    /// **このブックの数字1文字の幅(画素)。** 列幅を紙の長さに直す物差し
+    /// です(2026-08-31)。標準の書体が分からなければ 0 を返し、紙の側が
+    /// ＭＳ 明朝 10.5pt と同じ 7 に落とします
+    pub(crate) fn suuji_haba(&self) -> f32 {
+        self.book
+            .default_font
+            .as_ref()
+            .and_then(|(na, pt)| kumihan::font::digit_px(na, *pt))
+            .unwrap_or(0.0)
+    }
+
     /// 画面に見せる**紙の切れ目**(行, 列)。刷る側と同じ規則で数える
     pub(crate) fn page_breaks_now(&self) -> (Vec<u32>, Vec<u32>) {
         let (paper, _) = self.paper_of_sheet();
@@ -1171,6 +1182,7 @@ impl Calc {
             areas: sh.print_areas.clone(),
             margins_mm: sh.margins_mm,
             date1904: self.book.date1904,
+            mdw_px: self.suuji_haba(),
         };
         paper::grid::page_starts(sh, paper, &setup)
     }
@@ -1207,6 +1219,7 @@ impl Calc {
                     areas: sh.print_areas.clone(),
                     margins_mm: sh.margins_mm,
                     date1904: self.book.date1904,
+            mdw_px: self.suuji_haba(),
                 },
             ));
         }
@@ -1271,6 +1284,7 @@ impl Calc {
             areas: areas.clone(),
             margins_mm: sh.margins_mm,
             date1904: self.book.date1904,
+            mdw_px: self.suuji_haba(),
         };
         match areas.len() {
             0 => {}

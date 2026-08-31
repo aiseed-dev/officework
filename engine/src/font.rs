@@ -434,6 +434,35 @@ const ONAJI_HABA: &[(&str, &[&str])] = &[
     ("couriernew", &["Liberation Mono", "Cousine"]),
 ];
 
+/// **その書体の、数字1文字の幅(画素)。** 96dpi です。
+///
+/// `0` から `9` を測って、いちばん広いものを返します。LibreOffice と同じ
+/// やり方です(`sc/source/filter/oox/unitconverter.cxx` の
+/// 「get maximum width of all digits」)。
+///
+/// xlsx の列幅は「標準の書体の数字が何文字ぶん入るか」で書いてあるので、
+/// 紙の長さに直すのにこの値が要ります。ＭＳ 明朝 10.5pt なら 7、
+/// Arial 12pt なら 9 です。
+///
+/// **測るのは置き替え先の書体です。** 原本の書体がこの機械に無ければ、
+/// 幅の合う相手([`ONAJI_HABA`])に置き替わっているので、そちらの数字を
+/// 測ることになります。名前が引けないときは `None`。
+pub fn digit_px(name: &str, pt: f32) -> Option<f32> {
+    let (fam, _) = for_document(Some(name)).ok()?;
+    let d = load(fam).ok()?;
+    let face = ttf_parser::Face::parse(&d, 0).ok()?;
+    let em = face.units_per_em() as f32;
+    if em <= 0.0 {
+        return None;
+    }
+    let hiro = "0123456789"
+        .chars()
+        .filter_map(|c| face.glyph_index(c).and_then(|g| face.glyph_hor_advance(g)))
+        .map(|a| a as f32 / em)
+        .fold(0.0f32, f32::max);
+    (hiro > 0.0).then(|| (hiro * pt * 96.0 / 72.0).round())
+}
+
 /// 無い書体の筋の通った代替。**明朝の書類を黙ってゴシックにしない。**
 ///
 /// Windows の書体(ＭＳ 明朝、Times New Roman など)は Linux に無いのが

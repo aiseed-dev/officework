@@ -138,6 +138,7 @@ pub const WATCHED_BOOK: &[(&str, Watch)] = &[
     ("sheets", Watch::Body),
     ("props", Watch::Body),
     ("theme", Watch::Look),
+    ("default_font", Watch::Skip("ブックの標準の書体。**列幅を紙の長さに直すための物差し**で\n    // (2026-08-31)、セルの書式ではありません。xlsx の styles.xml から読むだけ\n    // なので、adoc に書く所がありません")),
     ("names_raw", Watch::Skip("読めなかった definedName の xlsx の原文。\n    // 理解しないまま持ち越す控えで、adoc に居場所は無い")),
     ("named_styles", Watch::Look),
     ("named_styles_new", Watch::Look),

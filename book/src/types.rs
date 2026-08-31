@@ -2474,6 +2474,15 @@ pub struct Book {
     pub props: BookProps,
     /// テーマの色の組(12色)。空なら Office の既定
     pub theme: Vec<String>,
+    /// **ブックの標準の書体**(名前, 大きさ pt)。xlsx の `styles.xml` の
+    /// `<fonts>` の1本目です。
+    ///
+    /// 列幅を紙の長さに直すのに要ります(2026-08-31)。xlsx の列幅は
+    /// 「標準の書体の数字が何文字ぶん入るか」で書いてあるので、その数字
+    /// 1字の幅を知らないとミリになりません。ＭＳ 明朝 10.5pt なら 7画素、
+    /// Arial 12pt なら 9画素です。**セルの書式ではありません** — 書式は
+    /// `CellFormat` が持ちます
+    pub default_font: Option<(String, f32)>,
     /// こちらが理解できなかった definedName の原文(Print_Area など)。
     /// **理解はしないが、捨てない。** 保存でそのまま返す
     pub names_raw: Vec<String>,

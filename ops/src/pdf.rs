@@ -38,11 +38,13 @@ pub fn doc(
 /// 返りは切れた列の数の合計で、0 でなければ紙からはみ出しています。
 pub fn book(b: &book::Book, to: &Path) -> Result<u32, String> {
     let font = crate::try_font_data()?;
+    // **列幅の物差し。** ブックの標準の書体の数字1文字の幅(画素)
+    let mdw = suuji_haba(b);
     let sheets: Vec<(&book::Sheet, paper::Paper, paper::grid::PrintSetup)> = b
         .sheets
         .iter()
         .filter(|s| !s.hidden)
-        .map(|s| (s, paper_of(s), setup_of(s, b.date1904)))
+        .map(|s| (s, paper_of(s), setup_of_mdw(s, b.date1904, mdw)))
         .collect();
     if sheets.is_empty() {
         return Err("刷るシートがありません(全部隠れています)".into());
@@ -96,12 +98,32 @@ pub(crate) fn paper_of(s: &book::Sheet) -> paper::Paper {
 }
 
 pub(crate) fn setup_of(s: &book::Sheet, date1904: bool) -> paper::grid::PrintSetup {
+    setup_of_mdw(s, date1904, 0.0)
+}
+
+/// 数字1文字の幅つき([`suuji_haba`] が出します)
+pub(crate) fn setup_of_mdw(
+    s: &book::Sheet,
+    date1904: bool,
+    mdw_px: f32,
+) -> paper::grid::PrintSetup {
     paper::grid::PrintSetup {
         areas: s.print_areas.clone(),
         margins_mm: s.margins_mm,
         date1904,
+        mdw_px,
     }
 }
+
+/// **そのブックの数字1文字の幅(画素)。** 標準の書体から測ります。
+/// 分からなければ 0(紙の側が 7 に落とします)
+pub(crate) fn suuji_haba(b: &book::Book) -> f32 {
+    b.default_font
+        .as_ref()
+        .and_then(|(na, pt)| kumihan::font::digit_px(na, *pt))
+        .unwrap_or(0.0)
+}
+
 
 #[cfg(test)]
 mod tests {
