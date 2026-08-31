@@ -1914,7 +1914,12 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
             // 長い段落が1行のまま伸び、本文の上に重なっていました。内閣府の
             // 告知書は1ページぶんの本文が1つの箱に入っていて、1187字のうち
             // 紙に出ていたのは 47字だけでした。
-            let naka = (w - 3.0).max(pt * 25.4 / 72.0);
+            // **箱の内側の余白は文書が決めます**(2026-08-31 発注者)。
+            // DrawingML の `<a:bodyPr lIns rIns tIns bIns>` で、既定は
+            // 左右 0.1インチ・上下 0.05インチです。前は左 1.5mm の決め打ちで、
+            // 内閣府の調査票の担当欄の字が箱の縁に寄っていました
+            let (il, ir, it, ib) = sp.text_fmt.ins_mm;
+            let naka = (w - il - ir).max(pt * 25.4 / 72.0);
             let hitotsu = |c: char| if c.is_ascii() { 0.55 } else { 1.0 } * pt * 25.4 / 72.0;
             let mut gyou: Vec<String> = Vec::new();
             for danraku in t.split('\n') {
@@ -1931,16 +1936,22 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
                 gyou.push(ima);
             }
             let takasa = pt * 25.4 / 72.0 * 1.25;
-            // 縦は箱の真ん中に寄せます(図の題も軸の目盛りもそれで合います)。
-            // 何行もあるときは、まとまりの真ん中が箱の真ん中に来るようにします
-            let mut ty = y_top - h / 2.0 - pt * 25.4 / 72.0 * 0.35
-                + takasa * (gyou.len() as f32 - 1.0) / 2.0;
+            // **縦の寄せは `<a:bodyPr anchor>`**(2026-08-31 発注者)。既定は
+            // 上で、前はどの箱も真ん中に寄せていました。余白の内側で寄せます
+            let block = takasa * gyou.len() as f32;
+            let aki = (h - it - ib - block).max(0.0);
+            let ue = match sp.text_fmt.anchor {
+                book::TextAnchor::Top => 0.0,
+                book::TextAnchor::Middle => aki / 2.0,
+                book::TextAnchor::Bottom => aki,
+            };
+            let mut ty = y_top - it - ue - pt * 25.4 / 72.0 * 0.9;
             for g in &gyou {
                 let haba: f32 = g.chars().map(hitotsu).sum();
                 let tx = match sp.text_fmt.align {
-                    book::HAlign::Center => x + (w - haba) / 2.0,
-                    book::HAlign::Right => x + w - haba - 1.0,
-                    _ => x + 1.5,
+                    book::HAlign::Center => x + il + (w - il - ir - haba) / 2.0,
+                    book::HAlign::Right => x + w - ir - haba,
+                    _ => x + il,
                 };
                 l1.text(g, pt, tx, ty, (0.0, 0.0, 0.0), false);
                 ty -= takasa;
@@ -2715,6 +2726,37 @@ mod zukei_tests {
         yoko.sort_by(f32::total_cmp);
         yoko.dedup_by(|a, b| (*a - *b).abs() < 0.01);
         assert_eq!(yoko.len(), 2, "結合の中に横線が出た: {yoko:?}");
+    }
+
+    /// **テキストボックスの余白は文書が決める。**
+    ///
+    /// 左 1.5mm の決め打ちで、縦はどの箱も真ん中に寄せていました。
+    /// DrawingML の既定は左右 0.1インチ(2.54mm)・上下 0.05インチ(1.27mm)、
+    /// 縦の寄せは上です。内閣府の調査票の担当欄の字が、箱の縁に寄って
+    /// 上下の真ん中に浮いていました(2026-08-31 発注者)。
+    #[test]
+    fn a_text_box_keeps_the_inset_the_file_asks_for() {
+        let hako = |ins: (f32, f32, f32, f32), anchor: book::TextAnchor| {
+            let mut sp = hako("rect");
+            sp.text = Some("あ".into());
+            sp.text_fmt.ins_mm = ins;
+            sp.text_fmt.anchor = anchor;
+            let leaf = shapes_leaf(&[(sp, 20.0, 200.0)], Paper::default());
+            let p = leaf.pieces.first().expect("字が無い").clone();
+            (p.x_mm, p.y_mm)
+        };
+        let kitei = book::TextFmt::default().ins_mm;
+        assert!((kitei.0 - 2.54).abs() < 0.01, "左の既定が {} mm", kitei.0);
+        assert!((kitei.2 - 1.27).abs() < 0.01, "上の既定が {} mm", kitei.2);
+        // 左の余白を広げたら、字も右へ動く
+        let (x0, _) = hako(kitei, book::TextAnchor::Top);
+        let (x1, _) = hako((10.0, 2.54, 1.27, 1.27), book::TextAnchor::Top);
+        assert!((x1 - x0 - (10.0 - 2.54)).abs() < 0.05, "左の余白が効いていない");
+        // 上・中・下で高さが変わる
+        let (_, yt) = hako(kitei, book::TextAnchor::Top);
+        let (_, ym) = hako(kitei, book::TextAnchor::Middle);
+        let (_, yb) = hako(kitei, book::TextAnchor::Bottom);
+        assert!(yt > ym && ym > yb, "縦の寄せが効いていない: {yt} {ym} {yb}");
     }
 
     /// **斜めの罫線を引く。**

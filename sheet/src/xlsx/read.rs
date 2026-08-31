@@ -646,6 +646,18 @@ pub(super) fn text_fmt_attr(e: &BytesStart, tf: &mut book::TextFmt) {
             // 縦組みは vert が横以外のとき。**種類は問わない** —
             // eaVert も vert270 もこちらは1つの縦組みで見せる
             tf.vertical = attr(e, "vert").is_some_and(|v| v != "horz");
+            // **箱の内側の余白**(EMU。2026-08-31 発注者)。書いていなければ
+            // DrawingML の既定(左右 0.1in・上下 0.05in)のままです
+            let emu = |k: &str| {
+                attr(e, k)
+                    .and_then(|v| v.parse::<f32>().ok())
+                    .map(|v| v / 914400.0 * 25.4)
+            };
+            let m = &mut tf.ins_mm;
+            m.0 = emu("lIns").unwrap_or(m.0);
+            m.1 = emu("rIns").unwrap_or(m.1);
+            m.2 = emu("tIns").unwrap_or(m.2);
+            m.3 = emu("bIns").unwrap_or(m.3);
         }
         b"pPr" => {
             tf.align = match attr(e, "algn").as_deref() {
