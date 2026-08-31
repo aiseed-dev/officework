@@ -422,6 +422,7 @@ pub fn read_generic(name: &str) -> Option<Generic> {
 /// | Arial・Times・Calibri・Cambria・Courier New | Liberation 系ほか | その目的で作られた書体 |
 /// | ＭＳ 明朝・ゴシック・Ｐ明朝・Ｐゴシック | 梅明朝・梅ゴシック・梅P明朝・梅Pゴシック | 半角が1字ずつ一致 |
 /// | 游明朝・游ゴシック | Noto Serif/Sans CJK JP | **発注者の決め**(2026-08-31)。まだ測っていません |
+/// | ヒラギノ(頭で見る) | Noto Serif/Sans CJK JP | 同上。[`ATAMA_DE_MIRU`] |
 ///
 /// **ＭＳ Ｐ明朝・ＭＳ Ｐゴシックはここに入れていません。** あの2つは
 /// 漢字が固定幅・半角が proportional という組み合わせで、書体1本では
@@ -537,11 +538,31 @@ pub fn digit_px(name: &str, pt: f32) -> Option<f32> {
     (hiro > 0.0).then(|| (hiro * pt * 96.0 / 72.0).round())
 }
 
-/// [`ONAJI_HABA`] から、幅の合う相手を引きます。この機械に無ければ `None`
+/// **頭で見る組。** 名前の変種が多い書体はこちらです。
+///
+/// ヒラギノは「ヒラギノ明朝 ProN」「ヒラギノ角ゴシック W3」「Hiragino Sans」
+/// のように名乗りが分かれます。1つずつ並べるより頭で見るほうが漏れません。
+///
+/// **これは測った組ではありません**(2026-08-31 発注者「ヒラギノは noto に
+/// 近いようです」)。ヒラギノの本物が手元に無く、幅は確かめていません。
+/// 明朝かゴシックかは名前から読みます([`read_generic`])。
+const ATAMA_DE_MIRU: &[&str] = &["ヒラギノ", "hiragino"];
+
+/// [`ONAJI_HABA`] と [`ATAMA_DE_MIRU`] から、幅の合う相手を引きます。
+/// この機械に無ければ `None`
 fn umeru(name: &str) -> Option<&'static Family> {
     let key = norm(name);
-    let (_, aite) = ONAJI_HABA.iter().find(|(n, _)| norm(n) == key)?;
-    aite.iter().find_map(|c| resolve(c))
+    if let Some((_, aite)) = ONAJI_HABA.iter().find(|(n, _)| norm(n) == key) {
+        return aite.iter().find_map(|c| resolve(c));
+    }
+    if ATAMA_DE_MIRU.iter().any(|n| key.starts_with(&norm(n))) {
+        let aite: &[&str] = match read_generic(name) {
+            Some(Generic::SansSerif) => &["Noto Sans CJK JP", "源ノ角ゴシック"],
+            _ => &["Noto Serif CJK JP", "源ノ明朝"],
+        };
+        return aite.iter().find_map(|c| resolve(c));
+    }
+    None
 }
 
 /// 無い書体の筋の通った代替。**明朝の書類を黙ってゴシックにしない。**
@@ -1068,10 +1089,28 @@ mod tests {
         for na in ["ＭＳ 明朝", "ＭＳ ゴシック", "MS Mincho", "MS Gothic"] {
             assert!(hankaku_no_kae(na).is_none(), "{na} を分けた");
         }
-        // まだ測っていない書体。**当て推量で分けません**
+        // まだ測っていない書体。**当て推量で分けません**。
+        // 游とヒラギノは Noto を当てますが(発注者の決め)、分けはしません
         for na in ["メイリオ", "Meiryo UI", "游明朝", "游ゴシック", "ヒラギノ明朝 ProN"] {
-            // 游は Noto を当てます(発注者の決め)。分けはしません
             assert!(hankaku_no_kae(na).is_none(), "測っていない {na} を分けた");
+        }
+        // **ヒラギノは名前の頭で見ます。** 名乗りの変種が多いためです
+        for (na, sansu) in [
+            ("ヒラギノ明朝 ProN", false),
+            ("ヒラギノ明朝 Pro W3", false),
+            ("Hiragino Mincho ProN", false),
+            ("ヒラギノ角ゴシック W3", true),
+            ("Hiragino Sans", true),
+            ("Hiragino Kaku Gothic ProN", true),
+        ] {
+            let Some(f) = substitute(na) else { continue };
+            assert!(f.japanese, "{na} に日本語でない書体を当てた: {}", f.name);
+            let g = read_generic(na);
+            assert_eq!(
+                g == Some(Generic::SansSerif),
+                sansu,
+                "{na} の系統を読み違えた: {g:?}"
+            );
         }
         // 欧文の書体は元から1本です
         for na in ["Arial", "Times New Roman", "Century"] {
