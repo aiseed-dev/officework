@@ -157,6 +157,126 @@ fn mitsumori() -> Book {
     b
 }
 
+/// 請求書 — 見積書の続きの紙。**明細は見積書と同じ工事**にしてあるので、
+/// 「見積を出して、請求する」の一周が2枚で追えます。
+///
+/// 見積書との違いは4つだけです — 表題・番号の名前・支払期限の行・振込先。
+/// 明細と小計・消費税・合計の式、罫線、印刷範囲は同じ形です。
+fn seikyu() -> Book {
+    let mut b = Book::new();
+    let s = &mut b.sheets[0];
+    s.name = "請求書".into();
+    for (i, w) in [(0, 6.0), (1, 34.0), (2, 10.0), (3, 8.0), (4, 12.0), (5, 14.0)] {
+        s.col_width.insert(i, w);
+    }
+
+    // 表題(A1:F1 結合・中央)
+    let mut t = Cell::input("御 請 求 書");
+    t.fmt.bold = true;
+    t.fmt.size_c = Some(1800);
+    t.fmt.align = HAlign::Center;
+    t.fmt.valign = VAlign::Middle;
+    s.set(Pos::new(0, 0), t);
+    s.merges.push((Pos::new(0, 0), Pos::new(0, 5)));
+    s.row_height.insert(0, 32.0);
+
+    // 宛先と番号・日付(中身は架空)
+    let mut atesaki = Cell::input("株式会社みほん商事 御中");
+    atesaki.fmt.bold = true;
+    atesaki.fmt.size_c = Some(1200);
+    s.set(Pos::new(2, 0), atesaki);
+    s.set(Pos::new(2, 4), Cell::input("請求書番号"));
+    s.set(Pos::new(2, 5), Cell::input("S-2026-001"));
+    s.set(Pos::new(3, 4), Cell::input("発行日"));
+    s.set(Pos::new(3, 5), Cell::input("2026-08-25"));
+    // **支払期限は請求書だけの行**(見積書には無い)
+    s.set(Pos::new(4, 4), Cell::input("支払期限"));
+    s.set(Pos::new(4, 5), Cell::input("2026-09-30"));
+    s.set(Pos::new(5, 0), Cell::input("下記のとおりご請求申し上げます。"));
+
+    // 税込合計(明細から式で引く)
+    let mut label = Cell::input("御請求金額(税込)");
+    label.fmt.bold = true;
+    s.set(Pos::new(6, 0), label);
+    let mut total = Cell::input("=F19");
+    total.fmt.bold = true;
+    total.fmt.size_c = Some(1400);
+    total.fmt.number_format = Some("¥#,##0".into());
+    s.set(Pos::new(6, 2), total);
+
+    // 発行元(架空)
+    s.set(Pos::new(6, 4), Cell::input("例示工務店"));
+    s.set(Pos::new(7, 4), Cell::input("見本県架空市例示町1-2-3"));
+    s.set(Pos::new(8, 4), Cell::input("012-345-6789"));
+
+    // 明細(11行目が見出し、12〜16行目が明細 — A1 で言えば)
+    for (i, name) in ["No.", "品名", "数量", "単位", "単価", "金額"].iter().enumerate() {
+        let mut c = Cell::input(name);
+        c.fmt.bold = true;
+        c.fmt.fill = Some("DCE6F1".into());
+        c.fmt.borders = Borders::ALL;
+        c.fmt.align = HAlign::Center;
+        s.set(Pos::new(10, i as u32), c);
+    }
+    let rows: &[(&str, &str, &str, &str)] = &[
+        ("外壁塗装工事", "1", "式", "450000"),
+        ("足場の設置", "120", "㎡", "800"),
+        ("高圧洗浄", "120", "㎡", "300"),
+    ];
+    for r in 0..5u32 {
+        let row = 11 + r; // 0-based。A1 で言えば 12〜16 行目
+        for col in 0..6u32 {
+            let mut c = match (col, rows.get(r as usize)) {
+                (0, Some(_)) => Cell::input(&format!("{}", r + 1)),
+                (1, Some(d)) => Cell::input(d.0),
+                (2, Some(d)) => Cell::input(d.1),
+                (3, Some(d)) => Cell::input(d.2),
+                (4, Some(d)) => Cell::input(d.3),
+                (5, Some(_)) => Cell::input(&format!("=C{n}*E{n}", n = row + 1)),
+                _ => Cell::input(""),
+            };
+            c.fmt.borders = Borders::ALL;
+            if col >= 4 {
+                c.fmt.number_format = Some("#,##0".into());
+            }
+            s.set(Pos::new(row, col), c);
+        }
+    }
+    // 小計・消費税・合計(式)
+    for (row, label, formula) in [
+        (16u32, "小計", "=SUM(F12:F16)"),
+        (17, "消費税(10%)", "=ROUND(F17*0.1,0)"),
+        (18, "合計", "=F17+F18"),
+    ] {
+        let mut l = Cell::input(label);
+        l.fmt.borders = Borders::ALL;
+        l.fmt.align = HAlign::Center;
+        s.set(Pos::new(row, 4), l);
+        let mut f = Cell::input(formula);
+        f.fmt.borders = Borders::ALL;
+        f.fmt.number_format = Some("¥#,##0".into());
+        if row == 18 {
+            f.fmt.bold = true;
+        }
+        s.set(Pos::new(row, 5), f);
+    }
+
+    // **振込先も請求書だけ**(見積書には無い)。口座は架空
+    let mut furikomi = Cell::input("お振込先");
+    furikomi.fmt.bold = true;
+    s.set(Pos::new(20, 0), furikomi);
+    s.set(Pos::new(21, 0), Cell::input("見本銀行 架空支店 普通 1234567"));
+    s.set(Pos::new(22, 0), Cell::input("口座名義 例示工務店(レイジコウムテン)"));
+    s.set(Pos::new(23, 0), Cell::input("恐れ入りますが、振込手数料は御社にてご負担ください。"));
+
+    // 印刷は A4 縦・この範囲だけ
+    s.paper_size = Some(9); // A4
+    s.landscape = false;
+    s.print_areas.push((Pos::new(0, 0), Pos::new(23, 5)));
+    recalc(s);
+    b
+}
+
 /// 現金出納帳 — 前行を引き継ぐ残高の式・条件付き書式・コメントの見本。
 fn suitou() -> Book {
     let mut b = Book::new();
@@ -399,22 +519,35 @@ const CHUMON_KOSHIN: &str = r#"# 注文書.xlsx の手続き「更新」—
 #
 # 据え付け(1機械1回): 中身を確かめてから
 #   ~/.config/officework/plugins/更新.py
-# へ写す。以後、注文書を開いて データ > Python のパネルで「@更新 net」
-# (網ありサンドボックス — 許可はその場の操作だけで、ブックには保存されない)。
+# へ写す。以後、注文書を開いて データ > Python のパネルで「@更新」
 URL = "http://127.0.0.1:8765/catalog.csv"
 
-import urllib.request, csv, io
-raw = urllib.request.urlopen(URL, timeout=5).read()
-rows = list(csv.reader(io.StringIO(raw.decode("utf-8"))))[1:]
-for i, r in enumerate(rows):
-    n = 2 + i
-    s[f"H{n}"] = r[0]          # 品番
-    s[f"I{n}"] = r[2]          # 品名
-    s[f"J{n}"] = int(r[4])     # 単価
-for n in range(2 + len(rows), 41):   # 減った分の残骸は消す
-    s[f"H{n}"] = None; s[f"I{n}"] = None; s[f"J{n}"] = None
-b.recalc()
-print(f"品番マスタを {len(rows)} 品目に更新しました")
+import csv
+import io
+import urllib.request
+
+# **開いている calc に繋ぎます。** `@更新` で呼ぶ手続きは別のプロセスで
+# 走るので、`s` や `b` は最初から入っていません(入っているのは
+# データ > Python の1行の欄だけです)
+from officework import calc as xw
+
+
+def 更新する():
+    b = xw.Book.attach()
+    s = b.active
+
+    raw = urllib.request.urlopen(URL, timeout=5).read()
+    rows = list(csv.reader(io.StringIO(raw.decode("utf-8"))))[1:]
+    for i, r in enumerate(rows):
+        n = 2 + i
+        s[f"H{n}"].value = [[r[0], r[2], int(r[4])]]   # 品番・品名・単価
+    for n in range(2 + len(rows), 41):   # 減った分の残骸は消す
+        s[f"H{n}:J{n}"].value = [[None, None, None]]
+    b.recalc()
+    print(f"品番マスタを {len(rows)} 品目に更新しました")
+
+
+更新する()
 "#;
 
 const CHUMON_SOSHIN: &str = r#"# 注文書.xlsx の手続き「送信」—
@@ -422,25 +555,45 @@ const CHUMON_SOSHIN: &str = r#"# 注文書.xlsx の手続き「送信」—
 #
 # 据え付け(1機械1回): 中身を確かめてから
 #   ~/.config/officework/plugins/送信.py
-# へ写す。以後、注文書を開いて データ > Python のパネルで「@送信 net」
-# (網ありサンドボックス — 許可はその場の操作だけで、ブックには保存されない)。
+# へ写す。以後、注文書を開いて データ > Python のパネルで「@送信」
 URL = "http://127.0.0.1:8765/order"
 
-import urllib.request, json
-lines = []
-for n in range(7, 17):
-    code, qty = s[f"A{n}"], s[f"D{n}"]
-    if code and qty:
-        lines.append({"品番": code, "数量": int(qty)})
-if not lines:
-    print("注文行がありません(品番と数量を入れてから)")
-else:
-    order = {"社名": s["B3"] or "(未記入)", "担当": s["D3"] or "", "明細": lines}
+import json
+import urllib.request
+
+# **開いている calc に繋ぎます。** `@送信` で呼ぶ手続きは別のプロセスで
+# 走るので、`s` や `b` は最初から入っていません(入っているのは
+# データ > Python の1行の欄だけです)。同じ置き場の `plugins/天気.py` と
+# 同じ形で繋ぎます
+from officework import calc as xw
+
+
+def 送る():
+    b = xw.Book.attach()
+    s = b.active
+
+    lines = []
+    for n in range(7, 17):
+        code = s[f"A{n}"].value
+        qty = s[f"D{n}"].value
+        if code and qty:
+            lines.append({"品番": str(code), "数量": int(qty)})
+    if not lines:
+        print("注文行がありません(品番と数量を入れてから)")
+        return
+    order = {
+        "社名": s["B3"].value or "(未記入)",
+        "担当": s["D3"].value or "",
+        "明細": lines,
+    }
     req = urllib.request.Request(
         URL, json.dumps(order, ensure_ascii=False).encode("utf-8"),
         {"Content-Type": "application/json"})
     r = json.loads(urllib.request.urlopen(req, timeout=5).read().decode("utf-8"))
     print(f"送信しました(受付番号 {r['受付番号']}・明細 {len(lines)} 行)")
+
+
+送る()
 "#;
 
 /// 受注台帳 — e-shop の販売管理側(SEKKEI「e-shop」の段②)。
@@ -482,41 +635,54 @@ const JUCHU_TORIKOMI: &str = r#"# 受注台帳.xlsx の手続き「取り込み�
 #   ~/.config/officework/plugins/取り込み.py
 # へ写す(templates/ の問い合わせ台帳の取り込みと同名 — 同じ機械で両方
 # 使うなら、どちらかを別名で置く。@名前 はファイル名がそのまま)。
-# 以後、台帳を開いて データ > Python のパネルで「@取り込み net」
-# (網ありサンドボックス — 許可はその場の操作だけで、ブックには保存されない)。
+# 以後、台帳を開いて データ > Python のパネルで「@取り込み」
 # 取込済の件数(K2)を控えているので、新しい注文だけが入る。
 URL = "http://127.0.0.1:8765"
 
-import urllib.request, json, csv, io
-orders = json.loads(urllib.request.urlopen(URL + "/orders", timeout=5).read().decode("utf-8"))
-raw = urllib.request.urlopen(URL + "/catalog.csv", timeout=5).read().decode("utf-8")
-master = {r[0]: (r[2], int(r[4])) for r in list(csv.reader(io.StringIO(raw)))[1:]}
-done = int(float(s["K2"] or 0))
-new = orders[done:]
-if not new:
-    print(f"新しい注文はありません(累計 {len(orders)} 件)")
-else:
+import csv
+import io
+import json
+import urllib.request
+
+# **開いている calc に繋ぎます。** `@取り込み` で呼ぶ手続きは別のプロセスで
+# 走るので、`s` や `b` は最初から入っていません(入っているのは
+# データ > Python の1行の欄だけです)
+from officework import calc as xw
+
+
+def 取り込む():
+    b = xw.Book.attach()
+    s = b.active
+
+    orders = json.loads(
+        urllib.request.urlopen(URL + "/orders", timeout=5).read().decode("utf-8"))
+    raw = urllib.request.urlopen(URL + "/catalog.csv", timeout=5).read().decode("utf-8")
+    master = {r[0]: (r[2], int(r[4])) for r in list(csv.reader(io.StringIO(raw)))[1:]}
+    done = int(float(s["K2"].value or 0))
+    new = orders[done:]
+    if not new:
+        print(f"新しい注文はありません(累計 {len(orders)} 件)")
+        return
     n = 2
-    while s[f"A{n}"] not in (None, ""):
+    while s[f"A{n}"].value not in (None, ""):
         n += 1
     lines = 0
     for i, o in enumerate(new, start=done + 1):
         for line in o.get("明細", []):
             code = str(line.get("品番", ""))
             name, price = master.get(code, ("(不明な品番)", 0))
-            s[f"A{n}"] = i
-            s[f"B{n}"] = o.get("社名", "")
-            s[f"C{n}"] = code
-            s[f"D{n}"] = name
-            s[f"E{n}"] = int(line.get("数量", 0))
-            s[f"F{n}"] = price
-            s[f"G{n}"] = f"=E{n}*F{n}"
-            s[f"H{n}"] = "FALSE"
+            s[f"A{n}"].value = [[
+                i, o.get("社名", ""), code, name,
+                int(line.get("数量", 0)), price, f"=E{n}*F{n}", "FALSE",
+            ]]
             n += 1
             lines += 1
-    s["K2"] = len(orders)
+    s["K2"].value = len(orders)
     b.recalc()
     print(f"{len(new)} 件({lines} 行)を取り込みました(累計 {len(orders)} 件)")
+
+
+取り込む()
 "#;
 
 /// 売上台帳 — ピボットの試し場。月×区分×品名の36行が詰まっていて、
@@ -569,6 +735,7 @@ fn uriage() -> Book {
 fn main() {
     std::fs::create_dir_all("sample").expect("sample/ が作れない");
     save(&mitsumori(), "sample/見積書.xlsx");
+    save(&seikyu(), "sample/請求書.xlsx");
     save(&suitou(), "sample/出納帳.xlsx");
     save(&seiseki(), "sample/成績表.xlsx");
     save(&chumon(), "sample/注文書.xlsx");
@@ -584,7 +751,7 @@ fn main() {
         println!("書いた: {p}");
     }
     // 読み戻して壊れていないことを確かめる(黙って配らない)
-    for p in ["sample/見積書.xlsx", "sample/出納帳.xlsx", "sample/成績表.xlsx",
+    for p in ["sample/見積書.xlsx", "sample/請求書.xlsx", "sample/出納帳.xlsx", "sample/成績表.xlsx",
               "sample/注文書.xlsx", "sample/受注台帳.xlsx", "sample/売上台帳.xlsx"] {
         let f = std::fs::File::open(p).expect("開けない");
         let (back, rep) = sheet::xlsx::read(f).expect("読めない");
