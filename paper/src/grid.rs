@@ -348,6 +348,17 @@ impl Ink<'_> {
     /// 何番目か(2026-08-31。セルが名指しする明朝・ゴシック・欧文の刷り分け)
     fn text_font(&mut self, t: &str, pt: f32, x: f32, y: f32, rgb: (f32, f32, f32),
                  bold: bool, font: u8) {
+        let w = t.chars().map(|c| if c.is_ascii() { 0.55 } else { 1.0 }).sum::<f32>()
+            * pt * 25.4 / 72.0;
+        self.text_kazari(t, pt, x, y, rgb, bold, font, w, false, false);
+    }
+
+    /// **飾りつき。** 下線と取り消し線は書き手が持っているのに、表計算から
+    /// は渡していませんでした(2026-08-31 発注者)。幅は下線を引く長さに
+    /// 使うので、**描く書体で測った値**を渡します
+    #[allow(clippy::too_many_arguments)]
+    fn text_kazari(&mut self, t: &str, pt: f32, x: f32, y: f32, rgb: (f32, f32, f32),
+                   bold: bool, font: u8, w_mm: f32, underline: bool, strike: bool) {
         self.leaf.pieces.push(pdfw::Piece {
             font,
             x_mm: x,
@@ -355,9 +366,10 @@ impl Ink<'_> {
             y_mm: y,
             size_pt: pt,
             text: t.to_string(),
-            w_mm: t.chars().map(|c| if c.is_ascii() { 0.55 } else { 1.0 }).sum::<f32>()
-                * pt * 25.4 / 72.0,
+            w_mm,
             bold,
+            underline,
+            strike,
             color: Some(pdfw::to_hex(rgb)),
             ..Default::default()
         });
@@ -397,12 +409,70 @@ struct Board {
     /// **埋める書体の名前の並び。** セルが名指しした名前をここで引いて
     /// `Piece::font` の番号にします(2026-08-31)。空なら1本だけです
     fonts: Vec<String>,
+    /// 書体ごとの字の幅([`Habakei`])。`fonts` と同じ番号で並びます
+    haba: Habakei,
+}
+
+/// **書体ごとの、1字の幅(em)。**
+///
+/// 前は書体に関わらず「半角 0.55em・全角 1.0em」で見積もっていました
+/// (2026-08-31 に直した)。実際は書体で違います — ＭＳ 明朝の数字は
+/// 0.500em、IPAex明朝は 0.618em、Century は 0.556em で、カンマは
+/// 0.203em から 0.305em まで開きます。
+///
+/// 描く書体と違う幅で組むと、右揃えの位置・折り返す所・セルに入るかの
+/// 判定が全部ずれます。総務省の給与所得の第1表では、数が隣の欄へ
+/// はみ出していました。
+#[derive(Default, Clone)]
+struct Habakei {
+    /// 書体ごとの (字 → 1em あたりの幅)。表に無い字は見積りに落ちます
+    hyou: Vec<std::collections::HashMap<char, f32>>,
+}
+
+impl Habakei {
+    /// 書体の中身と、その表に出てくる字から作ります
+    fn new(data: &[Vec<u8>], ji: &std::collections::BTreeSet<char>) -> Self {
+        let hyou = data
+            .iter()
+            .map(|d| {
+                let mut m = std::collections::HashMap::new();
+                if let Ok(face) = ttf_parser::Face::parse(d, 0) {
+                    let em = face.units_per_em() as f32;
+                    if em > 0.0 {
+                        for &c in ji {
+                            let a = face.glyph_index(c).and_then(|g| face.glyph_hor_advance(g));
+                            if let Some(a) = a {
+                                m.insert(c, a as f32 / em);
+                            }
+                        }
+                    }
+                }
+                m
+            })
+            .collect();
+        Habakei { hyou }
+    }
+
+    /// 1字の幅(mm)。表に無ければ、半角 0.55em・全角 1.0em の見積り
+    fn ji_mm(&self, fno: usize, ch: char, pt: f32) -> f32 {
+        let em = self
+            .hyou
+            .get(fno)
+            .and_then(|m| m.get(&ch).copied())
+            .unwrap_or(if ch.is_ascii() { 0.55 } else { 1.0 });
+        em * pt * 25.4 / 72.0
+    }
+
+    /// 続きの幅(mm)
+    fn mm(&self, fno: usize, t: &str, pt: f32) -> f32 {
+        t.chars().map(|c| self.ji_mm(fno, c, pt)).sum()
+    }
 }
 
 impl Board {
     /// 1枚目の紙を敷いた紙束を作ります
     fn new(paper: Paper) -> Self {
-        Board { leaves: vec![leaf(paper)], fonts: Vec::new() }
+        Board { leaves: vec![leaf(paper)], fonts: Vec::new(), haba: Habakei::default() }
     }
 
 
@@ -503,12 +573,62 @@ pub fn sheet_leaves_fonts(
     setup: &PrintSetup,
     fonts: &[String],
 ) -> Result<Vec<pdfw::Leaf>, String> {
+    // **名前しか渡されないので、幅を測るために中身を読みます**
+    // (2026-08-31)。読めない書体は見積りに落ちるだけで、止まりません
+    let data: Vec<Vec<u8>> = fonts
+        .iter()
+        .map(|n| {
+            kumihan::font::for_document(Some(n))
+                .ok()
+                .and_then(|(fam, _)| kumihan::font::load(fam).ok())
+                .unwrap_or_default()
+        })
+        .collect();
+    sheet_leaves_haba(grid, paper, setup, fonts, &data)
+}
+
+/// 書体の中身つき。幅を測るのに使います
+fn sheet_leaves_haba(
+    grid: &Grid,
+    paper: Paper,
+    setup: &PrintSetup,
+    fonts: &[String],
+    data: &[Vec<u8>],
+) -> Result<Vec<pdfw::Leaf>, String> {
     let mut board = Board::new(paper);
     board.fonts = fonts.to_vec();
+    board.haba = Habakei::new(data, &deru_ji(grid));
     let (pages, _clipped, margins) = draw_sheet(&mut board, grid, paper, setup, true);
     let total = pages.len();
     draw_header_footer(&mut board, grid, paper, pages, margins, 0, total);
     Ok(board.leaves)
+}
+
+/// **その表に出てくる字を全部集めます。** 字送りの表を作る材料です。
+///
+/// セルの値・数式の結果・ヘッダーとフッターの文言まで見ます。ここに
+/// 漏れた字は 0.55em の見積りに落ちるだけなので、静かに間違えます
+fn deru_ji(grid: &Grid) -> std::collections::BTreeSet<char> {
+    let mut ji: std::collections::BTreeSet<char> = std::collections::BTreeSet::new();
+    for c in grid.cells.values() {
+        ji.extend(c.value.display().chars());
+        if let Some(f) = &c.formula {
+            ji.extend(f.chars());
+        }
+    }
+    for rs in grid.rich_runs.values() {
+        for r in rs {
+            ji.extend(r.text.chars());
+        }
+    }
+    let hf = [&grid.header, &grid.footer, &grid.header_even, &grid.footer_even,
+              &grid.header_first, &grid.footer_first];
+    for s in hf.into_iter().flatten() {
+        ji.extend(s.chars());
+    }
+    // 書式が作る字(桁区切り・記号・`#`)は値に出ないので足しておきます
+    ji.extend("0123456789.,-+#()%¥$△▲ ".chars());
+    ji
 }
 
 /// 1つの表を PDF にする。行が紙に収まらなければ次のページへ。
@@ -521,6 +641,7 @@ pub fn sheet_to_pdf<W: Write>(
     out: W,
 ) -> Result<u32, String> {
     let mut board = Board::new(paper);
+    board.haba = Habakei::new(std::slice::from_ref(&font_data.to_vec()), &deru_ji(grid));
     let (pages, clipped, margins) = draw_sheet(&mut board, grid, paper, setup, true);
     // 1枚だけの PDF は、そのシートの頁数がそのまま総頁
     let total = pages.len();
@@ -561,6 +682,14 @@ pub fn book_to_pdf_fonts<W: Write>(
     let mut clipped = 0u32;
     let mut board = Board::new(paper1);
     board.fonts = fonts.iter().map(|(n, _)| n.clone()).collect();
+    // **字送りの表は1冊ぶんまとめて。** 紙束は1つで、どのシートの
+    // セルも同じ番号で書体を引くためです
+    let mut ji = std::collections::BTreeSet::new();
+    for (grid, _, _) in sheets {
+        ji.extend(deru_ji(grid));
+    }
+    let data0: Vec<Vec<u8>> = fonts.iter().map(|(_, d)| d.clone()).collect();
+    board.haba = Habakei::new(&data0, &ji);
     // 版組を先に全部済ませる — **総頁が決まってからでないと &N が書けない**
     let mut laid: Vec<(usize, std::ops::Range<usize>, Margins)> = Vec::new();
     let mut carry = true;
@@ -604,6 +733,7 @@ fn draw_sheet(
 ) -> (std::ops::Range<usize>, u32, Margins) {
     // 埋める書体の名前の並び。セルの名指しをこれで番号に直します
     let fonts = board.fonts.clone();
+    let board_haba = board.haba.clone();
     let (mut ext_rows, mut ext_cols) = grid.print_extent();
     // **図形の置き場まで紙を伸ばします。** 中身のあるセルより下に置いた図は、
     // 伸ばさないと最後の行の所へ寄ってしまい、図が全部重なります
@@ -740,6 +870,8 @@ fn draw_sheet(
         date1904: bool,
         // 埋める書体の名前の並び。セルの名指しを番号に直します(2026-08-31)
         fonts: &[String],
+        // 書体ごとの字の幅。**描く書体で測ります**(2026-08-31)
+        haba: &Habakei,
     ) {
         let ncols = cols.len();
         // 印刷の枠線(printOptions gridLines)。薄い灰で先に敷く
@@ -851,7 +983,7 @@ fn draw_sheet(
                 }
                 continue;
             }
-            let shown = format_value(&cell.value, cell.fmt.number_format.as_deref(), date1904);
+            let mut shown = format_value(&cell.value, cell.fmt.number_format.as_deref(), date1904);
             if shown.is_empty() {
                 continue;
             }
@@ -881,7 +1013,13 @@ fn draw_sheet(
             //
             // **結合していれば、結合したぶんの幅で折ります。** 元のセルの
             // 幅で折ると、何列にも渡る注記が1列の幅で縦に積まれます
+            //
+            // **高さも同じです**(2026-08-31 発注者)。上下に結合したセルの
+            // 字を1行目の高さだけで置いていたので、結合の1行目の下端に
+            // 出ていました。見た目は上揃えです — 国税庁の酒税の表の
+            // 「区 分」がこれでした
             let mut ma_w = cw;
+            let mut ma_h = rh;
             if let Some((tl, br)) = grid.merges.iter().find(|(tl, _)| *tl == p) {
                 ma_w = (tl.col..=br.col)
                     .filter(|c| !grid.col_hidden.contains(c))
@@ -890,8 +1028,56 @@ fn draw_sheet(
                             .map(retsu_mm).unwrap_or(COL_MM) * scale
                     })
                     .sum();
+                ma_h = (tl.row..=br.row)
+                    .filter(|r| !grid.row_hidden.contains(r))
+                    .map(|r| gyou_mm(grid, r) * scale)
+                    .sum();
             }
-            let naka = (ma_w - 3.0).max(pt * 25.4 / 72.0);
+            // **セルが名指しした書体で描きます**(2026-08-31。Fable の指摘2)。
+            // run が自分で名乗っていればそちらが勝ちます。
+            // **幅もこの書体で測ります** — 書体で1字の幅が違うためです
+            let fno_cell = fonts
+                .iter()
+                .position(|x| Some(x.as_str()) == cell.fmt.font.as_deref())
+                .unwrap_or(0) as u8;
+            let fno_of = |rf: &Option<String>| -> u8 {
+                rf.as_deref()
+                    .and_then(|n| fonts.iter().position(|x| x == n))
+                    .map(|k| k as u8)
+                    .unwrap_or(fno_cell)
+            };
+            // **字下げのぶんは、入る幅から引きます**(2026-08-31 発注者)。
+            // 前は描くときだけ左を空けていたので、字下げした行は右へ
+            // はみ出していました。右揃えのセルは右から空けます
+            let ind = f32::from(cell.fmt.indent) * pt * 25.4 / 72.0;
+            let naka = (ma_w - 3.0 - ind).max(pt * 25.4 / 72.0);
+            // **数がセルに入らないときは `#` で埋めます**(2026-08-31 発注者)。
+            //
+            // Excel と同じ決まりです。文字は右隣が空いていればはみ出して
+            // よいのですが、**数は絶対にはみ出しません** — 桁が読めない数を
+            // 見せるより、入らないと知らせるほうが安全だからです。
+            // 前は数もそのまま描いていたので、狭い列では隣の数と重なって
+            // 読めなくなっていました(総務省の給与所得の第1表)。
+            //
+            // **縮小して全体を表示**(xlsx の `shrinkToFit`)が先です
+            // (2026-08-31 発注者)。Excel はこの指定があると字を縮めて
+            // 入れるので、`#####` にはなりません。折り返しとは併用しません
+            let mut pt = pt;
+            if cell.fmt.shrink && !cell.fmt.wrap {
+                let iru = haba.mm(fno_cell as usize, &shown, pt);
+                if iru > naka && iru > 0.0 {
+                    // Excel は 1pt 刻みで落とします。下限は 1pt
+                    pt = (pt * naka / iru).max(1.0);
+                }
+            }
+            // 折り返しの指定があるセルは、下の折り返しに任せます
+            if matches!(cell.value, Value::Number(_)) && !cell.fmt.wrap && !cell.fmt.shrink {
+                let hitotsu = haba.ji_mm(fno_cell as usize, '#', pt);
+                if haba.mm(fno_cell as usize, &shown, pt) > naka && hitotsu > 0.0 {
+                    let kazu = (naka / hitotsu).floor().max(1.0) as usize;
+                    shown = "#".repeat(kazu);
+                }
+            }
             // **セルの中で飾りが変わる所は、run ごとに描きます**
             // (2026-08-31 発注者。`Sheet::rich_runs`)。国税庁の酒税の表は
             // 8pt のセルの中で英文だけ 6pt・Century です。セル1つに大きさ
@@ -911,10 +1097,6 @@ fn draw_sheet(
             };
             // 1つの run の一部(同じ飾りの一続き)
             type Kata = (String, f32, Option<String>);
-            let haba1 = |t: &str, p: f32| -> f32 {
-                t.chars().map(|ch| if ch.is_ascii() { 0.55 } else { 1.0 }).sum::<f32>()
-                    * p * 25.4 / 72.0
-            };
             // 行の列。1行は run のかけら(字, 大きさ, 書体)の並び
             let mut gyou: Vec<Vec<Kata>> = vec![Vec::new()];
             let mut yoko = 0.0f32;
@@ -927,7 +1109,7 @@ fn draw_sheet(
                     }
                     let mut ima = String::new();
                     for ch in danraku.chars() {
-                        let w = haba1(&ch.to_string(), *rp);
+                        let w = haba.ji_mm(fno_of(rf) as usize, ch, *rp);
                         if cell.fmt.wrap && !ima.is_empty() && yoko + w > naka {
                             gyou.last_mut().expect("行").push((std::mem::take(&mut ima), *rp, rf.clone()));
                             gyou.push(Vec::new());
@@ -947,30 +1129,39 @@ fn draw_sheet(
             }
             // 1行ぶんの幅(mm)。かけらごとの大きさで測ります
             let gyou_haba = |g: &[Kata]| -> f32 {
-                g.iter().map(|(t, rp, _)| haba1(t, *rp)).sum()
+                g.iter().map(|(t, rp, rf)| haba.mm(fno_of(rf) as usize, t, *rp)).sum()
             };
+            // 字下げ(indent)。1段 = 全角約1字ぶん空ける — 日本の帳票は
+            // 項目の階層を字下げで見せます。**右揃えなら右から空けます**
+            // (2026-08-31 発注者。前は右揃えのとき字下げを捨てていました)
             let tx = if right {
                 let w = gyou.first().map(|g| gyou_haba(g)).unwrap_or(0.0);
-                x + cw - 1.5 - w
+                x + cw - 1.5 - ind - w
             } else {
-                // 字下げ(indent)。1段 = 全角約1字ぶん左を空ける —
-                // 日本の帳票は項目の階層を字下げで見せる
-                let ind = f32::from(cell.fmt.indent) * pt * 25.4 / 72.0;
                 x + 1.5 + ind
             };
             // 文字は塗り色で描かれる(PDF の作法)ので、色付きの字は前後で入れ替える
             let c = colour.as_deref().and_then(hex_rgb).unwrap_or((0.0, 0.0, 0.0));
-            // **セルが名指しした書体で描きます**(2026-08-31。Fable の指摘2)。
-            // run が自分で名乗っていればそちらが勝ちます
-            let fno_cell = fonts.iter().position(|x| Some(x.as_str()) == cell.fmt.font.as_deref())
-                .unwrap_or(0) as u8;
-            // **何行あっても、セルの下から積みます。** 1行のときは今までと
-            // 同じ位置です。行送りはその行のいちばん大きい字で決めます
+            // 行送りはその行のいちばん大きい字で決めます
             let okuri_of = |g: &[Kata]| -> f32 {
                 g.iter().map(|(_, rp, _)| *rp).fold(0.0f32, f32::max) * 25.4 / 72.0 * 1.2
             };
             let takasa: f32 = gyou.iter().map(|g| okuri_of(g)).sum();
-            let mut ty = y_top - rh + 2.0 + takasa - okuri_of(&gyou[gyou.len() - 1]);
+            // **縦の揃え**(2026-08-31 発注者)。前はどのセルも下から積んで
+            // いて、`valign` を一度も見ていませんでした。上下に結合した
+            // 見出しが結合の1行目の下端に出ていたのはこれと結合の高さの
+            // 両方が原因です(国税庁の酒税の表の「区 分」)。
+            //
+            // 上下いっぱいに散らす(`Distribute`)は行の間隔を割り出す所が
+            // まだなので、模型の注記どおり上揃えで描きます
+            let soko = y_top - ma_h + 2.0; // 結合したぶんの下端
+            let aki = (ma_h - takasa).max(0.0);
+            let ue = match cell.fmt.valign {
+                book::VAlign::Bottom => 0.0,
+                book::VAlign::Middle => aki / 2.0,
+                book::VAlign::Top | book::VAlign::Distribute => aki,
+            };
+            let mut ty = soko + ue + takasa - okuri_of(&gyou[gyou.len() - 1]);
             for g in &gyou {
                 let w = gyou_haba(g);
                 let mut gx = match cell.fmt.align {
@@ -992,24 +1183,22 @@ fn draw_sheet(
                     let aki = ((ma_w - 3.0 - w) / (kazu - 1) as f32).max(0.0);
                     let mut wx = x + 1.5;
                     for (t, rp, rf) in g {
-                        let fno = rf.as_deref()
-                            .and_then(|n| fonts.iter().position(|x| x == n))
-                            .map(|k| k as u8)
-                            .unwrap_or(fno_cell);
+                        let fno = fno_of(rf);
                         for ch in t.chars() {
                             let one = ch.to_string();
-                            ink.text_font(&one, *rp, wx, ty, c, bold, fno);
-                            wx += haba1(&one, *rp) + aki;
+                            let w1 = haba.ji_mm(fno as usize, ch, *rp);
+                            ink.text_kazari(&one, *rp, wx, ty, c, bold, fno, w1,
+                                            cell.fmt.underline, cell.fmt.strike);
+                            wx += haba.ji_mm(fno as usize, ch, *rp) + aki;
                         }
                     }
                 } else {
                     for (t, rp, rf) in g {
-                        let fno = rf.as_deref()
-                            .and_then(|n| fonts.iter().position(|x| x == n))
-                            .map(|k| k as u8)
-                            .unwrap_or(fno_cell);
-                        ink.text_font(t, *rp, gx, ty, c, bold, fno);
-                        gx += haba1(t, *rp);
+                        let fno = fno_of(rf);
+                        let w1 = haba.mm(fno as usize, t, *rp);
+                        ink.text_kazari(t, *rp, gx, ty, c, bold, fno, w1,
+                                        cell.fmt.underline, cell.fmt.strike);
+                        gx += haba.mm(fno as usize, t, *rp);
                     }
                 }
                 ty -= okuri_of(g);
@@ -1064,7 +1253,7 @@ fn draw_sheet(
                 for tr in &title_rows {
                     let th = row_mm(*tr);
                     let y_top = paper.height_mm - mt - y_used;
-                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts);
+                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba);
                     y_used += th;
                 }
             }
@@ -1076,7 +1265,7 @@ fn draw_sheet(
             row_place.entry(r).or_insert((cur, y_top));
         }
         y_used += rh;
-        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts);
+        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba);
     }
     }
     // 図形(挿した分も読んだ分も)。塗りと輪郭を紙に出します
