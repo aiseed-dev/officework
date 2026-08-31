@@ -1100,6 +1100,7 @@ impl PyDoc {
             h_mm,
             tex: None, // python-docx の add_picture。数式は別の口
             src: None, // ネイティブ文書の相対の径路。ここは中身を直に持つ
+            off: 0,
         });
         g.doc.blocks.push(Block::Para(p));
         let b = g.doc.blocks.len() - 1;
@@ -2071,6 +2072,7 @@ impl PyRun {
             h_mm,
             tex: None,
             src: None,
+            off: 0,
         });
         Ok(())
     }

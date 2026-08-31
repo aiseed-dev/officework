@@ -2585,6 +2585,7 @@ mod html_write_tests {
             h_mm: 30.0,
             tex: None,
             src: None,
+            off: 0,
         });
         d.push_para(p);
         let page = html_write::page(&d, &theme::default_theme());

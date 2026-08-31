@@ -2717,6 +2717,7 @@ mod marker_tests {
                 h_mm: 20.0,
                 tex: None,
                 src: None,
+                off: 0,
             });
             d.push_para(p);
             this.set_doc(d);
@@ -2848,6 +2849,7 @@ mod marker_tests {
                 h_mm: 20.0,
                 tex: None,
                 src: None,
+                off: 0,
             });
             d.push_para(p);
             this.set_doc(d);

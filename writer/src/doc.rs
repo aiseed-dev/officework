@@ -1359,6 +1359,7 @@ impl Writer {
                     h_mm,
                     tex: Some(tex.clone()),
                     src: None,
+                    off: 0,
                 };
                 // 挿すのはカーソルの段落。**images_new にだけ入れる** —
                 // 組版(layout)は images と images_new の両方を描くので、
@@ -3362,6 +3363,7 @@ impl Writer {
                 h_mm,
                 tex: None,
                 src: Some(rel), // 実体はもう置いたので、名前付けの対象にしない
+                off: 0,
             };
             let para = kumihan::Block::Para(kumihan::Paragraph {
                 images_new: vec![im],

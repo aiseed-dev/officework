@@ -2178,7 +2178,7 @@ mod image_insert_tests {
             bytes: std::sync::Arc::new(png_bytes()),
             w_mm: 50.0,
             h_mm: 30.0,
-            tex: None,
+            tex: None, off: 0,
                     src: None,
         });
         let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
@@ -2216,7 +2216,7 @@ mod image_insert_tests {
             w_mm: 12.0,
             h_mm: 8.0,
             tex: Some(shiki.to_string()),
-                    src: None,
+                    src: None, off: 0,
         });
         let d = Document { blocks: vec![Block::Para(p)], ..Default::default() };
         let mut buf = Cursor::new(Vec::new());

@@ -553,7 +553,8 @@ pub(super) fn image_of(
     let tex = grab("descr=\"")
         .filter(|d| d.starts_with(TEX_SIRUSI))
         .map(|d| unesc(&d[TEX_SIRUSI.len()..]));
-    Some(kumihan::InlineImage { bytes, w_mm: cx / 36000.0, h_mm: cy / 36000.0, tex, src: None })
+    Some(kumihan::InlineImage { bytes, w_mm: cx / 36000.0, h_mm: cy / 36000.0, tex, src: None,
+        off: 0 })
 }
 
 /// sectPr から用紙の寸法を読む(twip → mm)。
@@ -1796,7 +1797,12 @@ pub(super) fn parse_document_rels_num(
                             // 原文が使う接頭辞の宣言を、包む run に付ける。
                             // 付けないと保存した XML が「未宣言の接頭辞」で壊れる
                             // 表示用: 画像の実体と大きさが分かれば拾う
-                            if let Some(im) = image_of(raw, media) {
+                            if let Some(mut im) = image_of(raw, media) {
+                                // **字の中のどこに居るか**を覚えます。
+                                // 段落の頭に在る絵は行の中に置きます
+                                im.off = para.as_ref().map_or(0, |ps: &Vec<Run>| {
+                                    ps.iter().map(|r| r.text.len()).sum::<usize>()
+                                }) + cur.len();
                                 images.push(im);
                             }
                             match wrap_with_ns(raw, &ns_decls) {

@@ -72,14 +72,25 @@ pub struct Piece {
 ///
 /// **JPEG はそのまま**入れます(PDF が読めるので解く必要がありません)。
 /// PNG は解いて RGB に並べ直し、zlib で縮めます。
-fn decode(data: &[u8]) -> Option<(Vec<u8>, u32, u32, bool)> {
+/// 画像を PDF に埋める形に直す。返すのは
+/// (色の並び, 透けぐあい, 幅, 高さ, JPEG か) です。
+///
+/// **透けぐあいは別の流れにします。** PDF は色と透けを分けて持ち、
+/// 透けの側を `/SMask` として色の側から指します。前は `to_rgb8` で
+/// 透けを捨てていたので、内閣府の document_4 の鈴の絵が灰色の四角に
+/// なっていました(2026-09-01)。
+fn decode(data: &[u8]) -> Option<(Vec<u8>, Option<Vec<u8>>, u32, u32, bool)> {
     let img = image::load_from_memory(data).ok()?;
     let (w, h) = (image::GenericImageView::width(&img), image::GenericImageView::height(&img));
     if data.starts_with(&[0xFF, 0xD8]) {
         // JPEG。**そのまま埋めます** — 解いて縮め直すと大きくなります
-        return Some((data.to_vec(), w, h, true));
+        return Some((data.to_vec(), None, w, h, true));
     }
-    Some((deflate(img.to_rgb8().as_raw()), w, h, false))
+    let rgba = img.to_rgba8();
+    // 全部が不透明なら、透けの流れは書きません(ファイルが要らず太ります)
+    let suke = rgba.as_raw().iter().skip(3).step_by(4).any(|a| *a != 255);
+    let alpha = suke.then(|| deflate(&rgba.as_raw().iter().skip(3).step_by(4).copied().collect::<Vec<u8>>()));
+    Some((deflate(img.to_rgb8().as_raw()), alpha, w, h, false))
 }
 
 /// **PDF に書く書体の名前。** `ABCDEF+NotoSansCJKjp-Regular` の形です。
@@ -258,14 +269,15 @@ pub fn write_pages_fonts<W: std::io::Write>(
 
     // **画像は先に部品にします。** 同じ絵が2枚に出ても1つで済みます
     let mut img_ids: Vec<Vec<(Ref, &Image)>> = Vec::new();
-    let mut img_parts: Vec<(Ref, Vec<u8>, u32, u32, bool)> = Vec::new();
+    let mut img_parts: Vec<(Ref, Vec<u8>, Option<(Ref, Vec<u8>)>, u32, u32, bool)> = Vec::new();
     for page in pages {
         let mut on_this = Vec::new();
         for im in &page.images {
             // **読めない絵は落とします。** 数えて返すのは呼ぶ側の仕事です
-            if let Some((rgb, w, h, jpeg)) = decode(&im.data) {
+            if let Some((rgb, alpha, w, h, jpeg)) = decode(&im.data) {
                 let r = id();
-                img_parts.push((r, rgb, w, h, jpeg));
+                let suke = alpha.map(|a| (id(), a));
+                img_parts.push((r, rgb, suke, w, h, jpeg));
                 on_this.push((r, im));
             }
         }
@@ -627,7 +639,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
     }
 
     // 画像の実体
-    for (r, data, w, h, jpeg) in img_parts {
+    for (r, data, suke, w, h, jpeg) in img_parts {
         let mut x = pdf.image_xobject(r, &data);
         x.width(w as i32)
             .height(h as i32)
@@ -635,7 +647,18 @@ pub fn write_pages_fonts<W: std::io::Write>(
             .device_rgb();
         x.bits_per_component(8);
         x.filter(if jpeg { Filter::DctDecode } else { Filter::FlateDecode });
+        // **透けぐあいは灰色1枚の絵**として指します。PDF の決まりです
+        if let Some((sr, _)) = &suke {
+            x.s_mask(*sr);
+        }
         x.finish();
+        if let Some((sr, a)) = suke {
+            let mut m = pdf.image_xobject(sr, &a);
+            m.width(w as i32).height(h as i32).color_space().device_gray();
+            m.bits_per_component(8);
+            m.filter(Filter::FlateDecode);
+            m.finish();
+        }
     }
 
     // ⑤ 字形の番号 → 元の字。**選んで写せる PDF** にするために要ります。

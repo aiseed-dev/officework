@@ -1568,6 +1568,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 h_mm: 0.0,
                 tex: None,
                 src: Some(path.to_string()),
+                off: 0,
             });
             doc.blocks.push(Block::Para(p));
             continue;
@@ -1583,6 +1584,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 h_mm: 0.0,
                 tex: Some(tex.to_string()),
                 src: None,
+                off: 0,
             });
             doc.blocks.push(Block::Para(p));
             continue;

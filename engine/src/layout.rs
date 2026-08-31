@@ -186,7 +186,35 @@ pub struct Frame {
 ///
 /// **組み手と呼ぶ側の両方が同じ値を使う**ので、ここに1つだけ置きます。
 pub(super) fn first_line_mm(para: &Paragraph) -> f32 {
-    (para.first_line_twips.max(0) as f32 / 20.0) * 25.4 / 72.0
+    (para.first_line_twips.max(0) as f32 / 20.0) * 25.4 / 72.0 + atama_no_gazou_mm(para)
+}
+
+/// **段落の頭に置かれた画像の幅(mm)。**
+///
+/// docx の `<wp:inline>` は run の中に入るので、字と同じ行に並びます。
+/// 前は段落の下にしか置けず、内閣府の document_4 では見出しの絵が
+/// 見出しの1行下に落ちていました(2026-09-01)。1行目の字下げに足すと、
+/// 折り返しも揃えもそのまま正しくなります — 中央揃えなら絵と字を
+/// ひとまとまりにして中央に置きます。
+///
+/// **見るのは頭(位置0)に在る画像だけです。** 途中に入る絵は、行の中の
+/// どこで折るかまで見ないと置けないので、今までどおり段落の下です。
+pub(super) fn atama_no_gazou_takasa(para: &Paragraph) -> f32 {
+    para.images
+        .iter()
+        .chain(para.images_new.iter())
+        .filter(|im| im.off == 0)
+        .map(|im| im.h_mm)
+        .fold(0.0, f32::max)
+}
+
+pub(super) fn atama_no_gazou_mm(para: &Paragraph) -> f32 {
+    para.images
+        .iter()
+        .chain(para.images_new.iter())
+        .filter(|im| im.off == 0)
+        .map(|im| im.w_mm)
+        .sum()
 }
 
 /// 左のインデント(mm)。**twip の指定があればそちらが勝ちます。**
@@ -697,13 +725,41 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                             c.off += cap_len;
                         }
                     }
+                    // **絵が行より高ければ、行を絵の高さまで広げます。**
+                    // Word と同じで、絵の下端が字のベースラインに乗り、
+                    // はみ出す分は上へ伸びます。広げないと前の行に重なります
+                    let e_h = if line_no == 0 { atama_no_gazou_takasa(para_eff) } else { 0.0 };
+                    let hikui = lh_of(para, frame, base, pfont.as_deref());
+                    if e_h > hikui {
+                        y += e_h - hikui;
+                    }
                     if cells.is_empty() {
                         // 空の段落も**行として持つ**。持たないと、後ろの行の
                         // バイト勘定が1つずつずれて、カーソルが本文とずれる
                         sheet.lines.push(Line {
                             cells: Vec::new(), y_mm: y, from_body: true,
                             byte0: para_byte0 + cap_len, cell: None });
-                        y += lh_of(para, frame, base, pfont.as_deref());
+                        // 字が無くても絵は置きます(絵だけの段落)
+                        if line_no == 0 && e_h > 0.0 {
+                            let hiroi: f32 = atama_no_gazou_mm(para_eff);
+                            let aki = (measure - hiroi).max(0.0);
+                            let mut ix = indent_mm + cap_shift + match para.align {
+                                Align::Center => aki / 2.0,
+                                Align::Right => aki,
+                                _ => 0.0,
+                            };
+                            for im in para_eff.images.iter().chain(para_eff.images_new.iter()) {
+                                if im.off != 0 {
+                                    continue;
+                                }
+                                sheet.images.push((
+                                    im.bytes.clone(),
+                                    [ix, y - im.h_mm, im.w_mm, im.h_mm],
+                                ));
+                                ix += im.w_mm;
+                            }
+                        }
+                        y += hikui;
                         continue;
                     }
                     // 揃え。**行の幅と行長の差を、どこに置くか**の話でしかない
@@ -720,6 +776,23 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     } else {
                         0.0
                     };
+                    // **頭の画像は、この行の字の左に置きます**(2026-09-01)。
+                    // 幅は `first_line_mm` が字下げとして空けてあるので、
+                    // 揃えの計算はもう済んでいます
+                    if line_no == 0 {
+                        let mut ix = x - atama_no_gazou_mm(para_eff);
+                        for im in para_eff.images.iter().chain(para_eff.images_new.iter()) {
+                            if im.off != 0 {
+                                continue;
+                            }
+                            // 絵の下端を行のベースラインに合わせます(Word と同じ)
+                            sheet.images.push((
+                                im.bytes.clone(),
+                                [ix, y - im.h_mm, im.w_mm, im.h_mm],
+                            ));
+                            ix += im.w_mm;
+                        }
+                    }
                     let cells: Vec<Cell> = cells
                         .into_iter()
                         .map(|mut c| { c.x_mm = x; x += c.w_mm + gap; c })
@@ -803,6 +876,10 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 y += space_after_mm(para, base);
                 // 画像は段落の下に置く。幅が行長を超えるなら比例で縮める
                 for im in para.images.iter().chain(para.images_new.iter()) {
+                    // 頭の画像はもう1行目の中に置いてあります
+                    if im.off == 0 {
+                        continue;
+                    }
                     let scale = if im.w_mm > measure { measure / im.w_mm } else { 1.0 };
                     let (w, h) = (im.w_mm * scale, im.h_mm * scale);
                     sheet.images.push((im.bytes.clone(), [indent_mm, y - lh_of(para, frame, base, pfont.as_deref()) * 0.6, w, h]));

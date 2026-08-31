@@ -324,6 +324,7 @@ impl Builder {
                     h_mm: mm("height"),
                     tex: None,
                     src: Some(src),
+                    off: 0,
                 });
             }
             // 記入(フォーム)。欄は下線の空欄として見せ、中身は Form に集める
