@@ -8982,5 +8982,125 @@
  {
   "key": "tmpl_font",
   "kind": "tmpl"
+ },
+ {
+  "key": "arrange",
+  "kind": "msg"
+ },
+ {
+  "key": "align_shapes",
+  "kind": "msg"
+ },
+ {
+  "key": "merge_shapes_menu",
+  "kind": "msg"
+ },
+ {
+  "key": "assign_macro",
+  "kind": "msg"
+ },
+ {
+  "key": "save_as_picture",
+  "kind": "msg"
+ },
+ {
+  "key": "edit_points",
+  "kind": "msg"
+ },
+ {
+  "key": "stop_edit_points",
+  "kind": "msg"
+ },
+ {
+  "key": "link_menu",
+  "kind": "msg"
+ },
+ {
+  "key": "paste_special",
+  "kind": "msg"
+ },
+ {
+  "key": "clear_menu",
+  "kind": "msg"
+ },
+ {
+  "key": "total_how",
+  "kind": "msg"
+ },
+ {
+  "key": "filter_menu",
+  "kind": "msg"
+ },
+ {
+  "key": "reapply",
+  "kind": "msg"
+ },
+ {
+  "key": "add_comment",
+  "kind": "msg"
+ },
+ {
+  "key": "add_reply",
+  "kind": "msg"
+ },
+ {
+  "key": "mark_resolved",
+  "kind": "msg"
+ },
+ {
+  "key": "unmark_resolved",
+  "kind": "msg"
+ },
+ {
+  "key": "comment_list",
+  "kind": "msg"
+ },
+ {
+  "key": "hide_formula_protected",
+  "kind": "msg"
+ },
+ {
+  "key": "stop_hide_formula",
+  "kind": "msg"
+ },
+ {
+  "key": "number_format_menu",
+  "kind": "msg"
+ },
+ {
+  "key": "pick_from_list",
+  "kind": "msg"
+ },
+ {
+  "key": "define_name",
+  "kind": "msg"
+ },
+ {
+  "key": "hyperlink_menu",
+  "kind": "msg"
+ },
+ {
+  "key": "freeze_panes",
+  "kind": "msg"
+ },
+ {
+  "key": "column_width_menu",
+  "kind": "msg"
+ },
+ {
+  "key": "row_height_menu",
+  "kind": "msg"
+ },
+ {
+  "key": "fit_width_contents",
+  "kind": "msg"
+ },
+ {
+  "key": "fit_height_contents",
+  "kind": "msg"
+ },
+ {
+  "key": "group_menu",
+  "kind": "msg"
  }
 ]

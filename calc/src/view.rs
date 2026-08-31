@@ -2116,24 +2116,24 @@ impl Render for Calc {
                 });
             #[allow(clippy::type_complexity)]
             let shape_entries: Vec<(&'static str, &'static str, &'static str, bool, bool)> = vec![
-                ("sh-cut", "cut", "", true, false),
-                ("sh-copy", "copy", "", true, false),
-                ("sh-paste", "paste", "", self.shape_clip.is_some(), false),
+                ("sh-cut", ui::t!("cut"), "", true, false),
+                ("sh-copy", ui::t!("copy"), "", true, false),
+                ("sh-paste", ui::t!("paste"), "", self.shape_clip.is_some(), false),
                 ("", "", "", false, false),
-                ("sh-order", "配置", "", true, true),
-                ("sh-align", "整列", "", true, true),
-                ("sh-rotate", "rotation_2", "", !sh_poly, true),
-                ("sh-group", "グループ化", "", false, false),
+                ("sh-order", ui::t!("arrange"), "", true, true),
+                ("sh-align", ui::t!("align_shapes"), "", true, true),
+                ("sh-rotate", ui::t!("rotation_2"), "", !sh_poly, true),
+                ("sh-group", ui::t!("group_menu"), "", false, false),
                 // 足し引き。**2つ選んでいるときだけ**(1つでは相手がいない)
-                ("sh-bool", "図形を結合", "",
+                ("sh-bool", ui::t!("merge_shapes_menu"), "",
                     self.shape_sel.is_some() && !self.shape_multi.is_empty(), true),
                 ("", "", "", false, false),
-                ("sh-macro", "マクロの割り当て", "", false, false),
-                ("sh-save", "画像として保存(SVG)", "", true, false),
+                ("sh-macro", ui::t!("assign_macro"), "", false, false),
+                ("sh-save", ui::t!("save_as_picture"), "", true, false),
                 // **点で形を作る図形でだけ押せる。** prstGeom の形は
                 // 頂点を持たないので、押しても掴む物がない
                 ("sh-points",
-                    if self.point_edit.is_some() { "ポイントの編集をやめる" } else { "ポイントの編集" },
+                    if self.point_edit.is_some() { ui::t!("stop_edit_points") } else { ui::t!("edit_points") },
                     "",
                     self.shape_sel.is_some_and(|i| {
                         self.sheet().shapes_new.get(i)
@@ -2141,26 +2141,26 @@ impl Render for Calc {
                     }),
                     false),
                 ("", "", "", false, false),
-                ("sh-settings", "図形の詳細設定", "", true, false),
-                ("sh-link", "リンク", "", false, false),
+                ("sh-settings", ui::t!("shape_settings"), "", true, false),
+                ("sh-link", ui::t!("link_menu"), "", false, false),
                 ("", "", "", false, false),
-                ("sh-del", "delete", "Del", true, false),
+                ("sh-del", ui::t!("delete"), "Del", true, false),
             ];
             // (id, 名前, 付記, 押せるか, 子メニューか)
             #[allow(clippy::type_complexity)]
             let mut entries: Vec<(&'static str, &'static str, &'static str, bool, bool)> = vec![
-                ("cut", "cut", "Ctrl+X", true, false),
-                ("copy", "copy", "Ctrl+C", true, false),
-                ("paste", "paste", "Ctrl+V", true, false),
+                ("cut", ui::t!("cut"), "Ctrl+X", true, false),
+                ("copy", ui::t!("copy"), "Ctrl+C", true, false),
+                ("paste", ui::t!("paste"), "Ctrl+V", true, false),
                 // 本家(Euro-Office)に無いのが残念、との声で追加した唯一の独自項目
-                ("pastesp", "形式を選択して貼り付け", "", true, true),
+                ("pastesp", ui::t!("paste_special"), "", true, true),
                 ("", "", "", false, false),
-                ("ins", "insert", "", true, true),
-                ("del", "delete", "", true, true),
-                ("clr", "消去", "", true, true),
+                ("ins", ui::t!("insert"), "", true, true),
+                ("del", ui::t!("delete"), "", true, true),
+                ("clr", ui::t!("clear_menu"), "", true, true),
                 ("", "", "", false, false),
-                ("sort", "sort_2", "", true, true),
-                ("subtotal", "合計の集計のしかた", "", {
+                ("sort", ui::t!("sort_2"), "", true, true),
+                ("subtotal", ui::t!("total_how"), "", {
                     // 合計行の =SUM / =SUBTOTAL の上でだけ生かす(本家のセル右の▼)
                     self.sheet().get(self.cursor).and_then(|c| c.formula.as_deref()).is_some_and(
                         |f| {
@@ -2169,51 +2169,51 @@ impl Render for Calc {
                         },
                     )
                 }, true),
-                ("filter", "フィルター", "", true, true),
-                ("reapply", "再適用", "", self.filter_active(), false),
+                ("filter", ui::t!("filter_menu"), "", true, true),
+                ("reapply", ui::t!("reapply"), "", self.filter_active(), false),
                 ("", "", "", false, false),
-                ("co-addcomment", "コメントを追加", "", true, false),
+                ("co-addcomment", ui::t!("add_comment"), "", true, false),
                 // 返信と解決は**コメントが付いているセルでだけ**押せる。
                 // 無いセルで灰色に見えるのが正しい(できないものを、
                 // できるように見せない)
-                ("comment-reply", "返信を追加", "",
+                ("comment-reply", ui::t!("add_reply"), "",
                     self.sheet().comments.contains_key(&self.cursor), false),
                 ("comment-done",
                     if self.sheet().comments.get(&self.cursor).is_some_and(|t| t.done) {
-                        "解決済みを取り消す"
+                        ui::t!("unmark_resolved")
                     } else {
-                        "解決済みにする"
+                        ui::t!("mark_resolved")
                     },
                     "",
                     self.sheet().comments.contains_key(&self.cursor), false),
                 // 一覧はブック全体 — このセルにコメントが無くても押せる
                 ("comment-list",
-                    if self.comment_list.is_some() { "close_comment_list" } else { "コメントの一覧" },
+                    if self.comment_list.is_some() { ui::t!("close_comment_list") } else { ui::t!("comment_list") },
                     "",
                     self.book.sheets.iter().any(|s| !s.comments.is_empty()),
                     false),
                 ("", "", "", false, false),
-                ("fmtcells", "セルをフォーマットする", "", true, false),
+                ("fmtcells", ui::t!("format_cells"), "", true, false),
                 // 本家は「セルの書式設定 → 保護」タブ。**式のあるセルでだけ**
                 // 押せる — 式の無いセルで「式を隠す」は掛ける相手がいない
                 ("cell-hide-formula",
                     if self.sheet().get(self.cursor).is_some_and(|c| c.fmt.formula_hidden) {
-                        "式を隠すのをやめる"
+                        ui::t!("stop_hide_formula")
                     } else {
-                        "式を隠す(保護中)"
+                        ui::t!("hide_formula_protected")
                     },
                     "",
                     self.sheet().get(self.cursor).is_some_and(|c| c.formula.is_some()),
                     false),
-                ("numfmt", "数値の書式", "", true, true),
-                ("cond", "conditional_formatting", "", true, true),
-                ("picklist", "ドロップダウンリストから選択する", "", true, false),
-                ("defname", "名前の定義", "", true, false),
+                ("numfmt", ui::t!("number_format_menu"), "", true, true),
+                ("cond", ui::t!("conditional_formatting"), "", true, true),
+                ("picklist", ui::t!("pick_from_list"), "", true, false),
+                ("defname", ui::t!("define_name"), "", true, false),
                 ("", "", "", false, false),
-                ("func", "insert_function", "", true, true),
-                ("hyperlink", "ハイパーリンク", "", true, false),
+                ("func", ui::t!("insert_function"), "", true, true),
+                ("hyperlink", ui::t!("hyperlink_menu"), "", true, false),
                 ("", "", "", false, false),
-                ("freeze", "枠の固定", "", true, false),
+                ("freeze", ui::t!("freeze_panes"), "", true, false),
             ];
             if self.menu_shape {
                 entries = shape_entries;
@@ -2221,17 +2221,17 @@ impl Render for Calc {
             // 見出しからのメニューには 幅/高さ の数値指定を頭に(Excel の作法)
             match self.menu_head {
                 Some(true) => {
-                    entries.insert(0, ("colw", "列の幅…", "", true, false));
-                    entries.insert(1, ("autofit-col", "幅を中身に合わせる", "", true, false));
-                    entries.insert(2, ("hide-cols", "hide", "", true, false));
-                    entries.insert(3, ("unhide-cols", "unhide", "", true, false));
+                    entries.insert(0, ("colw", ui::t!("column_width_menu"), "", true, false));
+                    entries.insert(1, ("autofit-col", ui::t!("fit_width_contents"), "", true, false));
+                    entries.insert(2, ("hide-cols", ui::t!("hide"), "", true, false));
+                    entries.insert(3, ("unhide-cols", ui::t!("unhide"), "", true, false));
                     entries.insert(4, ("", "", "", false, false));
                 }
                 Some(false) => {
-                    entries.insert(0, ("rowh", "行の高さ…", "", true, false));
-                    entries.insert(1, ("autofit-row", "高さを中身に合わせる", "", true, false));
-                    entries.insert(2, ("hide-rows", "hide", "", true, false));
-                    entries.insert(3, ("unhide-rows", "unhide", "", true, false));
+                    entries.insert(0, ("rowh", ui::t!("row_height_menu"), "", true, false));
+                    entries.insert(1, ("autofit-row", ui::t!("fit_height_contents"), "", true, false));
+                    entries.insert(2, ("hide-rows", ui::t!("hide"), "", true, false));
+                    entries.insert(3, ("unhide-rows", ui::t!("unhide"), "", true, false));
                     entries.insert(4, ("", "", "", false, false));
                 }
                 None => {}
