@@ -573,11 +573,11 @@ jobs:
           assert b.sheet_names, "シートが読めていない"
           assert b.unsupported == [], f"読めなかった部品がある: {b.unsupported}"
           s = b[b.sheet_names[0]]
-          s["A30"] = "日本フネン株式会社"
+          s["A30"] = "サンプル商事株式会社"
           b.save("/tmp/out.xlsx")
 
           again = sheet.Book.open("/tmp/out.xlsx")
-          assert again[again.sheet_names[0]]["A30"] == "日本フネン株式会社"
+          assert again[again.sheet_names[0]]["A30"].value == "サンプル商事株式会社"
           print("見本どおりに動いた:", b.sheet_names)
           PY
       - name: docx の見本もそのまま動くか
@@ -649,13 +649,13 @@ jobs:
           from officework import doc
           d = doc.Doc.open("/tmp/fields.docx")
           assert d.fields() == [("宛先", "ここに社名"), ("金額", "0")], d.fields()
-          assert d.fill("宛先", "日本フネン株式会社") == 1
+          assert d.fill("宛先", "サンプル商事株式会社") == 1
           assert d.fill("無い名前", "x") == 0, "無い欄で黙って成功してはいけない"
-          assert d.extract("宛先") == "日本フネン株式会社"
+          assert d.extract("宛先") == "サンプル商事株式会社"
           assert d.extract("無い名前") is None
           d.save("/tmp/fields-out.docx")
           again = doc.Doc.open("/tmp/fields-out.docx")
-          assert again.fields() == [("宛先", "日本フネン株式会社"), ("金額", "0")], "保存で欄が壊れた"
+          assert again.fields() == [("宛先", "サンプル商事株式会社"), ("金額", "0")], "保存で欄が壊れた"
           print("記入欄の見本どおりに動いた:", again.fields())
           PY
 
