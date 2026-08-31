@@ -1635,19 +1635,35 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
 
     // 画像。どの頁に載るかは上端の y で決めます
     let mut bad = 0;
+    let mut wmf_moji = 0usize;
     for (data, at) in &sheet.images {
         let k = page_of(offsets, at[1], paper.height_mm);
         let off = offsets.get(k).copied().unwrap_or(0.0);
         let pp = paper_of(k);
+        // 紙面は上端の y。PDF は左下からなので、高さのぶん下げます
+        let (x, y) = (pp.margin_mm + at[0], pp.height_mm - (at[1] - off) - at[3]);
+        // **WMF は線と塗りの並びです。** 画素にせず、そのまま道にします
+        // (2026-08-31)。内閣府の面談記録の様式が図をこの形で持っています
+        if crate::wmf::wmf_ka(data) {
+            match crate::wmf::michi_ni(data, x, y, at[2], at[3]) {
+                Some((michi, nokoshi)) => {
+                    wmf_moji += nokoshi;
+                    if let Some(p) = pages.get_mut(k) {
+                        p.paths.extend(michi);
+                    }
+                }
+                None => bad += 1,
+            }
+            continue;
+        }
         if image::load_from_memory(data).is_err() {
             bad += 1;
             continue;
         }
         if let Some(p) = pages.get_mut(k) {
             p.images.push(Image {
-                x_mm: pp.margin_mm + at[0],
-                // 紙面は上端の y。PDF は左下からなので、高さのぶん下げます
-                y_mm: pp.height_mm - (at[1] - off) - at[3],
+                x_mm: x,
+                y_mm: y,
                 w_mm: at[2],
                 h_mm: at[3],
                 data: data.clone(),
@@ -1656,6 +1672,9 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
     }
     if bad > 0 {
         lost.push(format!("読めない画像 {bad} 件"));
+    }
+    if wmf_moji > 0 {
+        lost.push(format!("WMF の中の字 {wmf_moji} 件"));
     }
 
     // 紙の飾りと、ページごとのヘッダー・フッター

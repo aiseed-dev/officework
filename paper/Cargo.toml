@@ -35,6 +35,11 @@ flate2 = "1.1.9"
 #  繋いだ分です。骨だけのときはリンカが落としていました)
 vello_cpu = { version = "0.2", optional = true }
 png = { version = "0.18", optional = true }
+# **WMF(Windows メタファイル)を読む係**(2026-08-31)。内閣府の様式が
+# 図をこの形で持っています。`Player` を実装して、SVG を経由せずに
+# `pdfw::Michi` へ直に出します。**svg の機能は切ります** — こちらは
+# SVG を作らないので、その分の依存が要りません
+wmf-core = { version = "0.1.1", default-features = false }
 
 [features]
 default = []
