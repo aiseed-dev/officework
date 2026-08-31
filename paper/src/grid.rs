@@ -1716,19 +1716,35 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
             let pt = sp.text_fmt.size_pt.unwrap_or(9.0) * scale;
             // **改行で折ります**(2026-08-30)。Word のテキストボックスは
             // 何行も持ちます。1行に繋げて描いていたので、内閣府の告知書の
-            // 窓口の欄が横一列になって隣の枠まではみ出していました
-            let gyou: Vec<&str> = t.split('\n').collect();
+            // 窓口の欄が横一列になって隣の枠まではみ出していました。
+            //
+            // **箱の幅でも折ります**(2026-08-31)。改行だけで切っていたので、
+            // 長い段落が1行のまま伸び、本文の上に重なっていました。内閣府の
+            // 告知書は1ページぶんの本文が1つの箱に入っていて、1187字のうち
+            // 紙に出ていたのは 47字だけでした。
+            let naka = (w - 3.0).max(pt * 25.4 / 72.0);
+            let hitotsu = |c: char| if c.is_ascii() { 0.55 } else { 1.0 } * pt * 25.4 / 72.0;
+            let mut gyou: Vec<String> = Vec::new();
+            for danraku in t.split('\n') {
+                let (mut ima, mut yoko) = (String::new(), 0.0f32);
+                for c in danraku.chars() {
+                    let cw = hitotsu(c);
+                    if !ima.is_empty() && yoko + cw > naka {
+                        gyou.push(std::mem::take(&mut ima));
+                        yoko = 0.0;
+                    }
+                    ima.push(c);
+                    yoko += cw;
+                }
+                gyou.push(ima);
+            }
             let takasa = pt * 25.4 / 72.0 * 1.25;
             // 縦は箱の真ん中に寄せます(図の題も軸の目盛りもそれで合います)。
             // 何行もあるときは、まとまりの真ん中が箱の真ん中に来るようにします
             let mut ty = y_top - h / 2.0 - pt * 25.4 / 72.0 * 0.35
                 + takasa * (gyou.len() as f32 - 1.0) / 2.0;
-            for g in gyou {
-                let haba: f32 = g
-                    .chars()
-                    .map(|c| if c.is_ascii() { 0.55 } else { 1.0 })
-                    .sum::<f32>()
-                    * pt * 25.4 / 72.0;
+            for g in &gyou {
+                let haba: f32 = g.chars().map(hitotsu).sum();
                 let tx = match sp.text_fmt.align {
                     book::HAlign::Center => x + (w - haba) / 2.0,
                     book::HAlign::Right => x + w - haba - 1.0,
@@ -2426,6 +2442,27 @@ mod zukei_tests {
         assert_eq!(leaf.size_mm, Some((210.0, 297.0)));
         assert!(!leaf.polys.is_empty(), "塗りが出ていない");
         assert!(!leaf.rules.is_empty(), "線が出ていない");
+    }
+
+    /// **テキストボックスの字は、箱の幅で折り返す。**
+    ///
+    /// 改行でしか切っていなかったので、長い段落が1行のまま伸び、本文の上に
+    /// 重なっていました。内閣府の告知書は1ページぶんの本文が1つの箱に
+    /// 入っていて、1187字のうち紙に出ていたのは 47字だけでした
+    /// (2026-08-31)。
+    #[test]
+    fn a_text_box_wraps_at_its_own_width() {
+        let mut sp = hako("rect");
+        // 改行を持たない長い段落。箱は 120px なので、1行には少ししか入りません
+        sp.text = Some("あ".repeat(200));
+        let leaf = shapes_leaf(&[(sp, 20.0, 200.0)], Paper::default());
+        let ji: usize = leaf.pieces.iter().map(|p| p.text.chars().count()).sum();
+        assert_eq!(ji, 200, "字が落ちている");
+        assert!(leaf.pieces.len() > 10, "1行のまま描いている: {} 行", leaf.pieces.len());
+        // どの行も箱の幅に収まっていること
+        let hidari = leaf.pieces.iter().map(|p| p.x_mm).fold(f32::MAX, f32::min);
+        let migi = leaf.pieces.iter().map(|p| p.x_mm + p.w_mm).fold(f32::MIN, f32::max);
+        assert!(migi - hidari < 34.0, "箱からはみ出した: {:.1}mm", migi - hidari);
     }
 
     /// **角丸は四角より点が多い。** 紙だけ四角に落ちていたのを直した所です
