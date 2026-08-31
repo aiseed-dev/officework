@@ -399,15 +399,59 @@ pub fn read_generic(name: &str) -> Option<Generic> {
     None
 }
 
+/// **字送りが同じ書体の組**(2026-08-31)。
+///
+/// 系統(明朝/ゴシック)が合っていても、**1字の幅が違うと表が崩れます**。
+/// ＭＳ 明朝は半角95字すべてが 0.500em の固定幅ですが、これまで当てて
+/// いた IPAex明朝は proportional で、数字が 0.618em ありました。24% 太い
+/// ので、桁の多い表では数が隣の欄へはみ出していました。
+///
+/// 左が原本の名前、右がこの機械で幅を測って選んだ相手です。前の3組は
+/// 国税庁の PDF に埋め込まれていた本物と1字ずつ比べました。後の5組は
+/// 元から「字送りを合わせる」目的で作られた書体です。
+///
+/// | 原本 | 相手 | 確かめ方 |
+/// |---|---|---|
+/// | ＭＳ 明朝 | IPA明朝 | 半角95字が完全一致 |
+/// | ＭＳ ゴシック | IPAゴシック | 半角95字が完全一致 |
+/// | Century | C059 | 半角95字の平均ずれ 0.01% |
+/// | Arial・Times・Calibri・Cambria・Courier New | Liberation 系ほか | その目的で作られた書体 |
+///
+/// **ＭＳ Ｐ明朝・ＭＳ Ｐゴシックはここに入れていません。** あの2つは
+/// 漢字が固定幅・半角が proportional という組み合わせで、書体1本では
+/// 合わせられないためです(数字は 0.500em、カンマは 0.305/0.203em)。
+/// 半角と全角で別の書体を持てるようにしてから入れます。
+const ONAJI_HABA: &[(&str, &[&str])] = &[
+    ("ＭＳ明朝", &["IPA明朝", "IPAMincho"]),
+    ("msmincho", &["IPA明朝", "IPAMincho"]),
+    ("ＭＳゴシック", &["IPAゴシック", "IPAGothic"]),
+    ("msgothic", &["IPAゴシック", "IPAGothic"]),
+    ("century", &["C059", "Century Schoolbook L"]),
+    ("arial", &["Liberation Sans", "Arimo"]),
+    ("timesnewroman", &["Liberation Serif", "Tinos"]),
+    ("calibri", &["Carlito"]),
+    ("cambria", &["Caladea"]),
+    ("couriernew", &["Liberation Mono", "Cousine"]),
+];
+
 /// 無い書体の筋の通った代替。**明朝の書類を黙ってゴシックにしない。**
 ///
 /// Windows の書体(ＭＳ 明朝、Times New Roman など)は Linux に無いのが
 /// 普通なので、系統(明朝/ゴシック)を保って置き換えます。
 ///
+/// **字送りまで同じ相手がいれば、そちらを先に使います**(2026-08-31。
+/// [`ONAJI_HABA`])。系統だけ合わせると表の桁がずれます。
+///
 /// どの一覧から選ぶかは**画面の言語**で変わります(2026-08-26)。日本語の
 /// 一覧しか持っていなかったので、ドイツ語の画面で Times New Roman の
 /// 文書を開くと日本語の明朝になっていました。
 pub fn substitute(name: &str) -> Option<&'static Family> {
+    let key = norm(name);
+    if let Some((_, aite)) = ONAJI_HABA.iter().find(|(n, _)| norm(n) == key) {
+        if let Some(f) = aite.iter().find_map(|c| resolve(c)) {
+            return Some(f);
+        }
+    }
     let k = read_generic(name)?;
     // 並びは「入れた書体(IPA/Noto)→ OS の持ち物」。後半は実機の書体 —
     // Mac は Hiragino、Windows は游/メイリオ/ＭＳ が標準で、ここに無いと
@@ -829,6 +873,44 @@ mod tests {
         // 名前に拡張子や連番が混じっていないこと(ファイル名を切っただけの疑い)
         assert!(!f.name.contains(".ttf") && !f.name.contains(".otf") && !f.name.contains(".ttc"),
             "書体名にファイルの拡張子が混じっている: {}", f.name);
+    }
+
+    /// **代替は字送りまで合わせる。**
+    ///
+    /// 系統(明朝/ゴシック)だけ合わせていたので、ＭＳ 明朝の表に IPAex明朝
+    /// が当たっていました。ＭＳ 明朝は半角95字すべてが 0.500em の固定幅、
+    /// IPAex明朝は proportional で数字が 0.618em です。24% 太いので、桁の
+    /// 多い表では数が隣の欄へはみ出していました(総務省の給与所得の第1表、
+    /// 2026-08-31)。
+    ///
+    /// 0.500em は、国税庁の PDF に埋め込まれていた本物の ＭＳ 明朝を
+    /// 測った値です。
+    #[test]
+    fn a_replacement_keeps_the_advance_width() {
+        let _lock = lang_lock();
+        set_default_language("ja");
+        let mut mita = 0;
+        for (moto, aite) in ONAJI_HABA {
+            let Some(machi) = aite.iter().find_map(|c| resolve(c)) else {
+                continue; // この機械に相手がいない
+            };
+            let deta = substitute(moto).expect("代替が返らない");
+            assert_eq!(deta.name, machi.name, "{moto} に {} が当たった", deta.name);
+            mita += 1;
+        }
+        assert!(mita > 0, "字送りの合う書体が1つも入っていない");
+        // ＭＳ 明朝の相手がいるなら、数字がちょうど半角であること
+        if let Some(f) = resolve("IPA明朝") {
+            let d = load(f).expect("読めない");
+            let face = ttf_parser::Face::parse(&d, 0).expect("解けない");
+            let em = face.units_per_em() as f32;
+            let haba = face
+                .glyph_index('0')
+                .and_then(|g| face.glyph_hor_advance(g))
+                .expect("0 が無い") as f32
+                / em;
+            assert!((haba - 0.5).abs() < 0.001, "数字が {haba}em(本物は 0.500em)");
+        }
     }
 
     #[test]
