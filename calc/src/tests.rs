@@ -7452,12 +7452,20 @@ mod combo_tests {
             this.select_rows(2, 2);
             let (a, b) = this.sel_rect();
             assert_eq!((a.col, b.col), (0, crate::util::LAST_COL), "行が端まで届いていない");
-            // 全範囲へ書式を掛けても待たされないこと(空セルに器を作らない)
-            let t = std::time::Instant::now();
+            // **歩いた量で見ます。** 前は壁時計で 500ms を測っていましたが、
+            // 実測 20ms(最適化なし)に対して 25 倍の budget で、詰まった
+            // 並行の回だけ落ちていました(2026-08-31 に3度)。機械の混み
+            // 具合を試験にすると、直す先の無い赤が出ます。
+            //
+            // 見たいのは「行ぜんぶを選んでも列の数しか歩かない」ことなので、
+            // **できたセルの数**で見ます — こちらは機械に左右されません
             this.select_cols(3, 3);
             this.run_cmd("bold", cx);
-            let ms = t.elapsed().as_millis();
-            assert!(ms < 500, "列ぜんぶへの書式が {ms}ms 掛かった(遅すぎる)");
+            let n = this.book.sheets[0].cells.len();
+            assert!(
+                n <= crate::util::LAST_ROW as usize + 2,
+                "列1本の書式で {n} 個のセルができた(列の高さを超えている)"
+            );
             // 空だったセルに器を作って表を膨らませていないこと
             assert!(
                 this.book.sheets[0].extent().1 <= 4,
