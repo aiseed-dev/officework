@@ -472,7 +472,7 @@ HOKA = [
     ("シート見出しの右クリック", "hide", "", "", "ws.sheet_state"),
     ("シート見出しの右クリック", "unhide", "", "", "ws.sheet_state"),
     ("シート見出しの右クリック", "tab_colour", "", "", "ws.sheet_properties.tabColor"),
-    ("シート見出しの右クリック", "protect_sheet", "s.protected = True", "", "ws.protection.sheet = True"),
+    ("シート見出しの右クリック", "protect_sheet", "s.protect()", "", "ws.protection.sheet = True"),
 ]
 
 # 文言の中の `{}`(数が入る所)を落として、名前だけにします。

@@ -403,7 +403,7 @@ def 大文字にする(段落):
 |Hide |link:commands/シート見出しの右クリック/非表示.adoc[非表示] | |— |— |ws.sheet_state
 |Unhide |link:commands/シート見出しの右クリック/再表示.adoc[再表示] | |— |— |ws.sheet_state
 |Tab colour |link:commands/シート見出しの右クリック/タブの色.adoc[タブの色] | |— |— |ws.sheet_properties.tabColor
-|Protect the sheet |link:commands/シート見出しの右クリック/シートを保護.adoc[シートを保護] |✅ |s.protected = True |— |ws.protection.sheet = True
+|Protect the sheet |link:commands/シート見出しの右クリック/シートを保護.adoc[シートを保護] |✅ |s.protect() |— |ws.protection.sheet = True
 |===
 
 // api:taiou:end
