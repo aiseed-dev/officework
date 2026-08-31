@@ -1131,14 +1131,24 @@ fn draw_sheet(
 
             // 罫線。引いてある辺だけ — 線種の太さと色まで写す
             // (破線の刻みは紙では実線に落とす。太さと色が形を保つ)
+            //
+            // **結合した範囲の内側には引きません**(2026-08-31 発注者)。
+            // Excel は結合を1つの升として扱い、外周だけを引きます。升ごとに
+            // 4辺を引いていたので、国税庁の消費税の表の「熊 本」(A63:A67 の
+            // 5行結合)を罫線が4本横切っていました
+            let uti = grid.merges.iter().find(|(a, b)| {
+                (a.row..=b.row).contains(&p.row) && (a.col..=b.col).contains(&p.col)
+            });
             let b = cell.fmt.borders;
-            for (e, (x1, y1, x2, y2)) in [
-                (b.top, (x, y_top, x + cw, y_top)),
-                (b.bottom, (x, y_top - rh, x + cw, y_top - rh)),
-                (b.left, (x, y_top, x, y_top - rh)),
-                (b.right, (x + cw, y_top, x + cw, y_top - rh)),
+            for (e, (x1, y1, x2, y2), fuchi) in [
+                (b.top, (x, y_top, x + cw, y_top), uti.is_none_or(|(a, _)| p.row == a.row)),
+                (b.bottom, (x, y_top - rh, x + cw, y_top - rh),
+                 uti.is_none_or(|(_, z)| p.row == z.row)),
+                (b.left, (x, y_top, x, y_top - rh), uti.is_none_or(|(a, _)| p.col == a.col)),
+                (b.right, (x + cw, y_top, x + cw, y_top - rh),
+                 uti.is_none_or(|(_, z)| p.col == z.col)),
             ] {
-                if e.on {
+                if e.on && fuchi {
                     let c = match e.color {
                         Some(v) => (
                             ((v >> 16) & 255) as f32 / 255.0,
@@ -2630,6 +2640,42 @@ mod zukei_tests {
             assert!(atama <= masu + 0.05,
                     "字が升の上へ出た: 頭{atama:.2}mm 升{masu:.2}mm");
         }
+    }
+
+    /// **結合した範囲の内側には罫線を引かない。**
+    ///
+    /// Excel は結合を1つの升として扱い、外周だけを引きます。升ごとに4辺を
+    /// 引いていたので、内側の升に罫線が残っているファイルではそれが出て
+    /// いました。国税庁の消費税の表の「熊 本」(A63:A67 の5行結合)を
+    /// 4本が横切っていました。同じ表の「高 松」は内側に罫線が無く、線も
+    /// 出ていなかったので、**同じ形の見出しで見え方が食い違って**いました
+    /// (2026-08-31 発注者)。
+    #[test]
+    fn a_merge_draws_only_its_outline() {
+        let mut g = Grid::default();
+        let mut f = book::CellFormat::default();
+        f.borders.top = book::Edge::THIN;
+        f.borders.bottom = book::Edge::THIN;
+        f.borders.left = book::Edge::THIN;
+        f.borders.right = book::Edge::THIN;
+        // 3行を結合し、**中の升にも4辺の罫線を持たせます**
+        for r in 0..3u32 {
+            g.set(book::Pos::new(r, 0), book::Cell {
+                formula: None, value: book::Value::Text("あ".into()), fmt: f.clone() });
+        }
+        g.merges.push((book::Pos::new(0, 0), book::Pos::new(2, 0)));
+        let setup = PrintSetup { date1904: false, mdw_px: 0.0, ..Default::default() };
+        let leaf = &sheet_leaves(&g, Paper::default(), &setup).expect("組めない")[0];
+        // 横線は上端と下端の2本だけ(内側の2本は出さない)
+        let mut yoko: Vec<f32> = leaf
+            .rules
+            .iter()
+            .filter(|r| (r.y1_mm - r.y2_mm).abs() < 0.01)
+            .map(|r| r.y1_mm)
+            .collect();
+        yoko.sort_by(f32::total_cmp);
+        yoko.dedup_by(|a, b| (*a - *b).abs() < 0.01);
+        assert_eq!(yoko.len(), 2, "結合の中に横線が出た: {yoko:?}");
     }
 
     /// **行末の空白で折り返さない。**
