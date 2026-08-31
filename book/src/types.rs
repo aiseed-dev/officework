@@ -220,16 +220,41 @@ pub struct Borders {
     pub bottom: Edge,
     pub left: Edge,
     pub right: Edge,
+    /// **斜めの罫線**(xlsx の `<diagonal>`)。2026-08-31 発注者。
+    ///
+    /// 日本の帳票は、表の左上の升を斜めに割って「区分」と「項目」の2つの
+    /// 見出しを入れます。国税庁の消費税の表がその形です。
+    /// 引く向きは [`diag_down`](Self::diag_down) と
+    /// [`diag_up`](Self::diag_up) で、両方立てれば×になります
+    pub diag: Edge,
+    /// 左上から右下へ(xlsx の `<border diagonalDown="1">`)
+    pub diag_down: bool,
+    /// 左下から右上へ(xlsx の `<border diagonalUp="1">`)
+    pub diag_up: bool,
 }
 
 impl Borders {
-    pub const ALL: Borders =
-        Borders { top: Edge::THIN, bottom: Edge::THIN, left: Edge::THIN, right: Edge::THIN };
-    pub const NONE: Borders =
-        Borders { top: Edge::OFF, bottom: Edge::OFF, left: Edge::OFF, right: Edge::OFF };
+    pub const ALL: Borders = Borders {
+        top: Edge::THIN,
+        bottom: Edge::THIN,
+        left: Edge::THIN,
+        right: Edge::THIN,
+        diag: Edge::OFF,
+        diag_down: false,
+        diag_up: false,
+    };
+    pub const NONE: Borders = Borders {
+        top: Edge::OFF,
+        bottom: Edge::OFF,
+        left: Edge::OFF,
+        right: Edge::OFF,
+        diag: Edge::OFF,
+        diag_down: false,
+        diag_up: false,
+    };
 
     pub fn any(self) -> bool {
-        self.top.on || self.bottom.on || self.left.on || self.right.on
+        self.top.on || self.bottom.on || self.left.on || self.right.on || self.diag.on
     }
 }
 

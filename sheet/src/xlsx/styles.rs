@@ -267,6 +267,7 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
                             b"left" => &mut bd.left,
                             b"right" => &mut bd.right,
                             b"top" => &mut bd.top,
+                            b"diagonal" => &mut bd.diag,
                             _ => &mut bd.bottom,
                         };
                         if edge.on {
@@ -349,11 +350,16 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
             }
             b"border" if in_borders => {
                 bd = Borders::default();
+                // **斜めの向きは `<border>` に付きます**(2026-08-31)。
+                // 線そのものは子の `<diagonal>` です
+                let on = |k: &str| matches!(attr(&e, k).as_deref(), Some("1") | Some("true"));
+                bd.diag_down = on("diagonalDown");
+                bd.diag_up = on("diagonalUp");
                 if empty {
                     borders.push(std::mem::take(&mut bd));
                 }
             }
-            b"left" | b"right" | b"top" | b"bottom" if in_borders => {
+            b"left" | b"right" | b"top" | b"bottom" | b"diagonal" if in_borders => {
                 // style 属性が無い/none のときは引かれていない。
                 // 線種は from_xlsx(知らない線種は細実線)。色は子の <color rgb>
                 let edge = match attr(&e, "style") {
@@ -366,6 +372,7 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
                     b"left" => bd.left = edge,
                     b"right" => bd.right = edge,
                     b"top" => bd.top = edge,
+                    b"diagonal" => bd.diag = edge,
                     _ => bd.bottom = edge,
                 }
                 side = Some(n.clone());
@@ -799,7 +806,14 @@ fn fill_xml(f: &FillDef, gray125: bool) -> String {
 }
 
 fn border_xml(b: &Borders) -> String {
-    let mut s = String::from("<border>");
+    // **斜めの向きは `<border>` の属性です**(2026-08-31)
+    let muki = match (b.diag_down, b.diag_up) {
+        (true, true) => " diagonalDown=\"1\" diagonalUp=\"1\"",
+        (true, false) => " diagonalDown=\"1\"",
+        (false, true) => " diagonalUp=\"1\"",
+        (false, false) => "",
+    };
+    let mut s = format!("<border{muki}>");
     for (e, tag) in [(b.left, "left"), (b.right, "right"), (b.top, "top"), (b.bottom, "bottom")] {
         if e.on {
             let color = match e.color {
@@ -811,7 +825,19 @@ fn border_xml(b: &Borders) -> String {
             s.push_str(&format!("<{tag}/>"));
         }
     }
-    s.push_str("<diagonal/></border>");
+    // **斜めの罫線**(2026-08-31)。向きは上の `<border>` の属性です
+    if b.diag.on {
+        let color = match b.diag.color {
+            Some(v) => format!("<color rgb=\"FF{v:06X}\"/>"),
+            None => "<color indexed=\"64\"/>".into(),
+        };
+        s.push_str(&format!(
+            "<diagonal style=\"{}\">{color}</diagonal></border>",
+            b.diag.style.xlsx()
+        ));
+    } else {
+        s.push_str("<diagonal/></border>");
+    }
     s
 }
 

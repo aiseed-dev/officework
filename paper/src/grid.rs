@@ -1140,6 +1140,45 @@ fn draw_sheet(
                 (a.row..=b.row).contains(&p.row) && (a.col..=b.col).contains(&p.col)
             });
             let b = cell.fmt.borders;
+            // **斜めの罫線**(2026-08-31 発注者)。日本の帳票は表の左上の升を
+            // 斜めに割り、上と下に別の見出しを入れます。結合の升では、結合
+            // ぜんぶを1つの升として引きます
+            if b.diag.on {
+                let (dx, dy) = uti
+                    .map(|(a, z)| {
+                        let w: f32 = (a.col..=z.col)
+                            .filter(|c| !grid.col_hidden.contains(c))
+                            .map(|c| {
+                                grid.col_width.get(&c).copied().or(grid.default_col_width)
+                                    .map(|v| retsu_mm_mdw(v, mdw_px)).unwrap_or(COL_MM) * scale
+                            })
+                            .sum();
+                        let h: f32 = (a.row..=z.row)
+                            .filter(|r| !grid.row_hidden.contains(r))
+                            .map(|r| gyou_mm(grid, r) * scale)
+                            .sum();
+                        (w, h)
+                    })
+                    .unwrap_or((cw, rh));
+                // 結合の左上に来たときだけ引きます(呑まれた升では引かない)
+                if uti.is_none_or(|(a, _)| *a == p) {
+                    let c = match b.diag.color {
+                        Some(v) => (
+                            ((v >> 16) & 255) as f32 / 255.0,
+                            ((v >> 8) & 255) as f32 / 255.0,
+                            (v & 255) as f32 / 255.0,
+                        ),
+                        None => (0.0, 0.0, 0.0),
+                    };
+                    let futo = b.diag.style.px() * 0.75 * 25.4 / 72.0;
+                    if b.diag_down {
+                        ink.line(x, y_top, x + dx, y_top - dy, futo, c);
+                    }
+                    if b.diag_up {
+                        ink.line(x, y_top - dy, x + dx, y_top, futo, c);
+                    }
+                }
+            }
             for (e, (x1, y1, x2, y2), fuchi) in [
                 (b.top, (x, y_top, x + cw, y_top), uti.is_none_or(|(a, _)| p.row == a.row)),
                 (b.bottom, (x, y_top - rh, x + cw, y_top - rh),
@@ -2676,6 +2715,39 @@ mod zukei_tests {
         yoko.sort_by(f32::total_cmp);
         yoko.dedup_by(|a, b| (*a - *b).abs() < 0.01);
         assert_eq!(yoko.len(), 2, "結合の中に横線が出た: {yoko:?}");
+    }
+
+    /// **斜めの罫線を引く。**
+    ///
+    /// 日本の帳票は、表の左上の升を斜めに割って「区分」と「項目」の2つの
+    /// 見出しを入れます。模型が斜めを持っておらず、書き出しでも空の
+    /// `<diagonal/>` を出すだけでした。国税庁の消費税の都道府県別の表が
+    /// この形です(2026-08-31 発注者)。
+    #[test]
+    fn a_diagonal_border_crosses_the_merge() {
+        let mut g = Grid::default();
+        let mut f = book::CellFormat::default();
+        f.borders.diag = book::Edge::THIN;
+        f.borders.diag_down = true;
+        // 2行2列の結合。斜めは結合ぜんぶを渡ります
+        g.set(book::Pos::new(0, 0), book::Cell {
+            formula: None, value: book::Value::Text("区分".into()), fmt: f });
+        g.merges.push((book::Pos::new(0, 0), book::Pos::new(1, 1)));
+        let setup = PrintSetup { date1904: false, mdw_px: 0.0, ..Default::default() };
+        let leaf = &sheet_leaves(&g, Paper::default(), &setup).expect("組めない")[0];
+        let naname: Vec<&pdfw::Rule> = leaf
+            .rules
+            .iter()
+            .filter(|r| (r.x1_mm - r.x2_mm).abs() > 0.5 && (r.y1_mm - r.y2_mm).abs() > 0.5)
+            .collect();
+        assert_eq!(naname.len(), 1, "斜めの線が {} 本", naname.len());
+        // 左上から右下へ(x が増えるほど y が減る)
+        let r = naname[0];
+        assert!((r.x2_mm - r.x1_mm) * (r.y2_mm - r.y1_mm) < 0.0, "向きが逆");
+        // 結合の2列2行ぶんを渡っていること
+        let cw = retsu_mm_mdw(g.default_col_width.unwrap_or(8.43), 7.0);
+        assert!((r.x2_mm - r.x1_mm).abs() > cw * 1.5,
+                "1列ぶんしか引いていない: {:.1}mm", (r.x2_mm - r.x1_mm).abs());
     }
 
     /// **行末の空白で折り返さない。**

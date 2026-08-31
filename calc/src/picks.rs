@@ -2990,7 +2990,7 @@ impl Calc {
                     }
                     "all_borders_grid" => {
                         *bd = book::Borders {
-                            top: e, bottom: e, left: e, right: e,
+                            top: e, bottom: e, left: e, right: e, ..*bd
                         };
                     }
                     // 内側だけ(外周には引かない)— 帳票の中身の区切り
