@@ -76,7 +76,7 @@ def 席を引く(申込):
     ws = b[b.sheet_names[0]]
     どこ = {}
     for r in range(2, ws.max_row + 1):
-        番号 = ws[f"A{r}"]
+        番号 = ws[f"A{r}"].value
         if 番号 is not None:
             どこ[str(番号)] = r
     受けた, 断った = [], []
@@ -85,7 +85,9 @@ def 席を引く(申込):
         if r is None:
             断った.append(f"{名前}: 研修 {研修番号} は一覧にありません")
             continue
-        題, 残り, 受講料 = ws[f"B{r}"], ws[f"G{r}"], ws[f"H{r}"]
+        題 = ws[f"B{r}"].value
+        残り = ws[f"G{r}"].value
+        受講料 = ws[f"H{r}"].value
         if not 残り or 残り <= 0:
             断った.append(f"{名前}: 「{題}」は満席です(キャンセル待ちへ)")
             continue
@@ -128,9 +130,8 @@ def 受付表を作る(研修番号):
     w0 = b0[b0.sheet_names[0]]
     情報 = None
     for r in range(2, w0.max_row + 1):
-        if str(w0[f"A{r}"]) == str(研修番号):
-            情報 = (w0[f"B{r}"], w0[f"C{r}"], w0[f"D{r}"], w0[f"E{r}"],
-                    w0[f"F{r}"], w0[f"G{r}"])
+        if str(w0[f"A{r}"].value) == str(研修番号):
+            情報 = tuple(w0[f"{c}{r}"].value for c in "BCDEFG")
     if 情報 is None:
         return None
     題, 日, 時間, 場所, 定員, 残り = 情報

@@ -70,7 +70,7 @@ def 在庫を引く(注文):
     # 番号 → その行
     どこ = {}
     for r in range(2, ws.max_row + 1):
-        番号 = ws[f"A{r}"]
+        番号 = ws[f"A{r}"].value
         if 番号 is not None:
             どこ[str(番号)] = r
     受けた, 断った = [], []
@@ -80,7 +80,7 @@ def 在庫を引く(注文):
         if r is None:
             断った.append(f"{鍵} {品名}: この番号は在庫の表にありません")
             continue
-        今 = ws[f"E{r}"]
+        今 = ws[f"E{r}"].value
         if 今 is None:
             断った.append(f"{鍵} {品名}: まだ販売していません(販売予定)")
             continue

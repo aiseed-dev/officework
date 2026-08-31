@@ -5,8 +5,13 @@
 # docx は python-docx で作る(SEKKEI「writer には橋を作らない」—
 # その保存を writer が読めることは実物で確認済み)。
 # サンプルは生成物 — 直すのはこのファイル。
+import pathlib
+
 import docx
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+# 書き出す先は、この .py の隣です(どこで走らせても同じ)
+ここ = pathlib.Path(__file__).resolve().parent
 
 
 def report():
@@ -38,7 +43,7 @@ def report():
 
     p = d.add_paragraph()
     p.add_run("以上").bold = True
-    d.save("sample/報告書.docx")
+    d.save(ここ / "報告書.docx")
     print("書いた: sample/報告書.docx")
 
 
@@ -75,7 +80,7 @@ def cover_letter():
     p = d.add_paragraph("以上")
     p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
-    d.save("sample/送付状.docx")
+    d.save(ここ / "送付状.docx")
     print("書いた: sample/送付状.docx")
 
 
@@ -107,7 +112,7 @@ def minutes():
     d.add_paragraph("・休業の貼り紙: 8月6日(水)まで(架空次郎)")
     d.add_paragraph("・次回定例: 8月18日(月)10:00")
 
-    d.save("sample/議事録.docx")
+    d.save(ここ / "議事録.docx")
     print("書いた: sample/議事録.docx")
 
 

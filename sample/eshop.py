@@ -13,13 +13,15 @@
 # 本実装は writer のプラグイン(~/.config/officework/plugins・サンドボックスつき)になる —
 # そのとき d(python-docx の文書)束縛でこの中身がそのまま使える。
 import csv
+import pathlib
 import re
 import sys
 
 import docx
 
-SRC = sys.argv[1] if len(sys.argv) > 1 else "sample/カタログ.docx"
-OUT = "sample/商品マスタ.csv"
+ここ = pathlib.Path(__file__).resolve().parent
+SRC = sys.argv[1] if len(sys.argv) > 1 else ここ / "カタログ.docx"
+OUT = ここ / "商品マスタ.csv"
 
 
 def main():

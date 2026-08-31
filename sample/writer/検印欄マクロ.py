@@ -21,9 +21,13 @@ if "d" in globals():                     # writer のマクロとして
     検印欄を足す(d)
     print("検印欄を末尾に足しました(Ctrl+Z で戻せます)")
 else:                                    # 単体で(検証にも使う)
+    import pathlib
     import sys
+
     import docx
-    src = sys.argv[1] if len(sys.argv) > 1 else "sample/報告書.docx"
+
+    src = sys.argv[1] if len(sys.argv) > 1 else str(
+        pathlib.Path(__file__).resolve().parent.parent / "報告書.docx")
     doc = docx.Document(src)
     検印欄を足す(doc)
     out = src.replace(".docx", "_検印.docx")

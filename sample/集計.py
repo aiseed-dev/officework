@@ -1,14 +1,20 @@
 # 売上台帳.xlsx を読んで区分ごとに集計する — 読み側の見本(アプリ不要)。
 #
 #   pip install officework
-#   python3 集計.py
+#   python3 sample/集計.py
 #
 # values() は「行×欄の2次元リスト」を1回で返す(1セルずつ引くより速い)。
 # 込み入った集計はここから polars / pandas に渡せばよい —
 # エンジンの仕事は「帳票を正しく読む」まで。
+import pathlib
+
 from officework import sheet
 
-b = sheet.Book.open("売上台帳.xlsx")
+# **開くファイルは、この .py の隣から探します。** どこで走らせても同じに
+# なるようにするためです(裸の名前で書くと、綴りの中で走らせたときだけ動く)
+ここ = pathlib.Path(__file__).resolve().parent
+
+b = sheet.Book.open(ここ / "売上台帳.xlsx")
 rows = b[b.sheet_names[0]].values()
 head, body = rows[0], rows[1:]
 print("見出し:", head, f"/ 明細 {len(body)} 行")

@@ -137,13 +137,16 @@ def 足す(*写真):
             "(例: @家計簿.足す ~/写真/レシート.jpg)"
         )
 
-    # 見出しが無ければ置く(初めて使うとき)
-    if not s["A1"]:
-        s["A1"] = [["日付", "店", "分類", "金額", "品目"]]
+    # 見出しが無ければ置く(初めて使うとき)。
+    # **値は `.value` で読み書きします。** `s["A1"]` は範囲そのものなので、
+    # 中身が空でも真になります(そのまま if に掛けると見出しが置かれず、
+    # while は止まりません)
+    if not s["A1"].value:
+        s["A1"].value = [["日付", "店", "分類", "金額", "品目"]]
 
     # 続きの行を探す(表の下端の次)
     行 = 2
-    while s[f"A{行}"]:
+    while s[f"A{行}"].value:
         行 += 1
 
     足した = 0
@@ -151,7 +154,7 @@ def 足す(*写真):
         p = os.path.expanduser(str(p))
         r = 読む(p)
         品 = "・".join(x.get("品", "") for x in (r.get("品目") or [])[:5])
-        s[f"A{行}"] = [[
+        s[f"A{行}"].value = [[
             r.get("日付"), r.get("店"), r.get("分類"), r.get("合計"), 品,
         ]]
         行 += 1
@@ -167,10 +170,12 @@ def 月まとめ():
 
     行, 明細 = 2, []
     while True:
-        日 = s[f"A{行}"]
+        日 = s[f"A{行}"].value
         if not 日:
             break
-        明細.append((str(日)[:7], s[f"C{行}"] or "その他", float(s[f"D{行}"] or 0)))
+        明細.append((str(日)[:7],
+                    s[f"C{行}"].value or "その他",
+                    float(s[f"D{行}"].value or 0)))
         行 += 1
     if not 明細:
         raise SystemExit("集計する明細がありません(@家計簿 で先に足してください)")
@@ -182,7 +187,7 @@ def 月まとめ():
         行値 = [sum(a for mm, cc, a in 明細 if mm == m and cc == c) for c in 分類]
         表.append([m] + 行値 + [sum(行値)])
 
-    s["G1"] = 表
+    s["G1"].value = 表
     print(f"{len(月)} か月ぶんを G1 からまとめました")
 
 

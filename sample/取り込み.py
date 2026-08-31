@@ -9,33 +9,47 @@
 # 取込済の件数(K2)を控えているので、新しい注文だけが入る。
 URL = "http://127.0.0.1:8765"
 
-import urllib.request, json, csv, io
-orders = json.loads(urllib.request.urlopen(URL + "/orders", timeout=5).read().decode("utf-8"))
-raw = urllib.request.urlopen(URL + "/catalog.csv", timeout=5).read().decode("utf-8")
-master = {r[0]: (r[2], int(r[4])) for r in list(csv.reader(io.StringIO(raw)))[1:]}
-done = int(float(s["K2"] or 0))
-new = orders[done:]
-if not new:
-    print(f"新しい注文はありません(累計 {len(orders)} 件)")
-else:
+import csv
+import io
+import json
+import urllib.request
+
+# **開いている calc に繋ぎます。** `@取り込み` で呼ぶ手続きは別のプロセスで
+# 走るので、`s` や `b` は最初から入っていません(入っているのは
+# データ > Python の1行の欄だけです)
+from officework import calc as xw
+
+
+def 取り込む():
+    b = xw.Book.attach()
+    s = b.active
+
+    orders = json.loads(
+        urllib.request.urlopen(URL + "/orders", timeout=5).read().decode("utf-8"))
+    raw = urllib.request.urlopen(URL + "/catalog.csv", timeout=5).read().decode("utf-8")
+    master = {r[0]: (r[2], int(r[4])) for r in list(csv.reader(io.StringIO(raw)))[1:]}
+    done = int(float(s["K2"].value or 0))
+    new = orders[done:]
+    if not new:
+        print(f"新しい注文はありません(累計 {len(orders)} 件)")
+        return
     n = 2
-    while s[f"A{n}"] not in (None, ""):
+    while s[f"A{n}"].value not in (None, ""):
         n += 1
     lines = 0
     for i, o in enumerate(new, start=done + 1):
         for line in o.get("明細", []):
             code = str(line.get("品番", ""))
             name, price = master.get(code, ("(不明な品番)", 0))
-            s[f"A{n}"] = i
-            s[f"B{n}"] = o.get("社名", "")
-            s[f"C{n}"] = code
-            s[f"D{n}"] = name
-            s[f"E{n}"] = int(line.get("数量", 0))
-            s[f"F{n}"] = price
-            s[f"G{n}"] = f"=E{n}*F{n}"
-            s[f"H{n}"] = "FALSE"
+            s[f"A{n}"].value = [[
+                i, o.get("社名", ""), code, name,
+                int(line.get("数量", 0)), price, f"=E{n}*F{n}", "FALSE",
+            ]]
             n += 1
             lines += 1
-    s["K2"] = len(orders)
+    s["K2"].value = len(orders)
     b.recalc()
     print(f"{len(new)} 件({lines} 行)を取り込みました(累計 {len(orders)} 件)")
+
+
+取り込む()

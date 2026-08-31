@@ -9,11 +9,15 @@
 # writer で開いたら 参考資料 > 目次 で、見出しからページ番号つきの目次が作れる。
 import csv
 import io
+import pathlib
 import sys
 import urllib.request
 
 import docx
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+# 書き出す先は、この .py の隣です(どこで走らせても同じ)
+ここ = pathlib.Path(__file__).resolve().parent
 
 URL = "http://127.0.0.1:8765/catalog.csv"
 
@@ -119,7 +123,7 @@ def main():
     p = d.add_paragraph("以上")
     p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
-    d.save("sample/カタログ.docx")
+    d.save(ここ / "カタログ.docx")
     print(f"書いた: sample/カタログ.docx({source}・{len(products)}品目・{len(categories)}分類)")
 
 
