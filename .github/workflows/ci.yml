@@ -299,6 +299,10 @@ jobs:
           # 両方から探します。上限を付けずに入れて、新しい版で壊れたら
           # ここで分かるようにします
           pip install --quiet openpyxl python-docx mcp
+          # **先に検査が効いているかを見る。** 6通り崩して、全部で落ちること。
+          # 引く先が変われば「名前がありません」を言えなくなることがあり、
+          # そのときは黙って「全部合っています」に化ける
+          python3 tools/api_param_check.py --self-test
           python3 tools/api_param_check.py
       - name: face に gpui が混ざっていないか(孫まで)
         # **持ち運べる層の値打ちは「gpui を持たないこと」そのもの**

@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """対応表に書いた呼び方が、本物と合っているかを確かめる。
 
-    python3 tools/api_param_check.py
+    .venv/bin/python tools/api_param_check.py             # 確かめる
+    .venv/bin/python tools/api_param_check.py --self-test # 検査が効いているか
+
+**引く先の包みが入っている Python で動かします。** openpyxl・python-docx・
+officework・mcp が要ります。素の `python3` で動かすと、受け取り手が1つも
+引けず「48 件の受け取り手が引けませんでした」と言って止まります
+(黙って通さないのは正しい形ですが、直す所を探して回ることになります)。
+CI は先に `pip install` してから `python3` で動かしています。
 
 発注者 2026-08-25「パラメータをきちんとチェックする」。
 
@@ -269,7 +276,44 @@ def _arity_check(item, member: str, args: str, recv: str):
     return None
 
 
+def self_test() -> int:
+    """**信じる前に、落ちる所を見る**(`ribbon_parse` と `api_taiou` と同じ作法)。
+
+    表をわざと6通り崩して、この検査が言うことを確かめます。言わなくなったら、
+    「呼び方は全部合っています」は何も見ていない字になります。
+
+    表のファイルは触りません。崩した字を直に `check()` へ渡します。
+    """
+    KOWASU = [
+        ("属性の綴り違い", "r.strikee"),
+        ("呼び方の綴り違い", "d.replaceee(前, 後)"),
+        ("引数が多い", "d.replace(前, 後, 余分)"),
+        ("A / B の左が違う", "r.boldish / c.font"),
+        ("A / B の右が違う", "r.bold / c.fontish"),
+        ("代入の左が違う", "p.alignish = 'left'"),
+    ]
+    warui = []
+    for namae, form in KOWASU:
+        bad = []
+        check(form, "自己試験", bad)
+        print(f"  {namae}: {bad[0][2] if bad else '**何も言いません**'}")
+        if not bad:
+            warui.append(namae)
+    # 正しい字では黙ること(何にでも文句を言う検査も役に立ちません)
+    bad = []
+    for form in ("r.bold / c.font", "d.replace(前, 後)", "p.align = 'left'"):
+        check(form, "自己試験", bad)
+    print(f"  正しい字のとき: {bad or '何も言いません(正しい)'}")
+    if warui or bad:
+        print("::error::呼び方の検査が効いていません", file=sys.stderr)
+        return 1
+    print("呼び方の検査は6通りの崩し方すべてで落ちます")
+    return 0
+
+
 def main() -> int:
+    if "--self-test" in sys.argv:
+        return self_test()
     bad = []
     seen = 0
     for row in api_taiou.rows():
