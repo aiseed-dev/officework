@@ -8326,4 +8326,38 @@ mod file_menu_tests {
     }
 
 
+
+    #[gpui::test]
+    fn panel_keys_are_taken_only_when_the_panel_holds_focus(cx: &mut gpui::TestAppContext) {
+        // 決め(2026-08-31 発注者): 行を押したら焦点はパネルへ、表を押すか
+        // Esc で戻る。焦点の間だけ矢印と Enter が木に効く。その門を
+        // 画面なしで見張る — 門が緩むと、本文の矢印がパネルに奪われる
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            assert!(!this.fl_takes_keys(), "何もしていないのに木へ打鍵が行く");
+            this.fl_focus = true;
+            assert!(!this.fl_takes_keys(), "パネルが閉じているのに効いている");
+            this.right_open = true;
+            this.right_face = 2;
+            assert!(this.fl_takes_keys(), "焦点があるのに効かない");
+            // 名前を打つ欄が開いたら、打鍵はそちらの物
+            this.fl_job = Some(crate::FlJob::NewFolder);
+            assert!(!this.fl_takes_keys(), "名前を打っている間まで木が動く");
+            this.fl_job = None;
+            this.right_face = 0;
+            assert!(!this.fl_takes_keys(), "ファイルの面でないのに効いている");
+        });
+    }
+
+    #[gpui::test]
+    fn clicking_the_grid_returns_the_focus_to_the_sheet(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.fl_focus = true;
+            this.right_open = true;
+            this.right_face = 2;
+            this.mouse_down_at(100.0, 100.0, false, false, 1);
+            assert!(!this.fl_focus, "表を押したのに焦点がパネルに残っている");
+        });
+    }
 }
