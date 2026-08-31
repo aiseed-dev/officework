@@ -1,101 +1,107 @@
-= officework 0.5.0-beta.5
+= officework 0.5.0-beta.6
 
-日本語版: link:RELEASE.ja.adoc[RELEASE.ja.adoc]
+日本語: link:RELEASE.ja.adoc[RELEASE.ja.adoc]
 
 To try it: `pip install --pre officework`
 
-Two published government forms taught us this release. We converted the
-National Tax Agency's liquor tax overview and the Cabinet Office's assessment
-notice, and compared each against the PDF the same office publishes beside it.
-Everything below came out of that comparison.
+This release came out of published forms again. Four of them went through
+officework into PDF and were read beside the PDF each office publishes in the
+same place: the National Tax Agency's liquor tax overview and consumption tax
+tables, the Ministry of Internal Affairs' wage statistics, and the Cabinet
+Office's interview record.
 
-== Spreadsheets print the way the file asks
+The loudest problem in the last release was tables running off the paper. It
+had two separate causes and both are fixed.
 
-Seven defects, all of them visible on the first page of that tax form.
+== Column widths match Excel
 
-**Text in a cell did not wrap.** The header cell holds 販 売 場 数 over Number
-of licensed sites to sell liquors, with wrapping set. We ran it out as one
-line: through its neighbours, past the right margin, and off the paper. It
-wraps now, and to the width the cell really spans, which matters because these
-headers are merged across columns.
+**The five-pixel padding was counted twice.** What xlsx stores for a column is
+how many digits of the standard font fit in it, and the cell's inner padding is
+already inside that number. Adding it again made every column 1.3mm too wide,
+which compounds across a wide table. The liquor tax overview went from 21 pages
+to 12.
 
-**Formatting inside a cell was ignored.** That same cell is 8pt with its
-English line at 6pt in a different family. The whole cell printed at one size,
-which also moved every wrap with it. Each run is drawn at its own size now.
+**The digit width was fixed at seven pixels.** It depends on the font and its
+size: seven for MS Mincho at 10.5pt, nine for Arial at 12pt. It is measured from
+the workbook's own standard font now. The wage statistics table uses Arial 12pt,
+so its columns had been 22% too narrow.
 
-**Only one font could be embedded in a PDF.** The form asks for ＭＳ明朝 in the
-body, ＭＳゴシック in the headings and Century for the English; we printed all
-of it in one face. As many as are needed are embedded, and a character its font
-does not have falls back rather than disappearing.
+**Fit-to-page was applied when nobody asked for it.** That setting only counts
+when the fit-to-page mark is present; otherwise Excel uses the scale. The
+consumption tax sheets carry both a scale of 78% and a fit of two pages wide,
+and using the second works out at 83.7% — larger, not smaller — which pushed
+the sheet onto an extra column of paper.
 
-**Negative numbers ignored the format's negative section.** Number formats come
-in sections — positive, negative, zero, text — and this form asks for
-「△ 5,148」. We read the first section and put a minus in front.
+**A table's right edge is no longer counted as content.** Many forms draw the
+right edge of a table as the *left* border of the next column. Counting that
+column added a sheet of paper. Four of the liquor tax workbook's five sheets are
+drawn that way.
 
-**Distributed alignment printed left**, where the 区分 column should spread its
-characters across the cell, and **centred cells printed left** as well, since
-only left and right were distinguished.
+== Numbers stay inside their cell
 
-**A sheet's vertical margins were taken from its horizontal ones.** This form
-sets 25mm at the sides and 30mm top and bottom. Page one was right; every page
-after it began 5mm too high with 5mm too much room at the foot, which is two
-extra lines a page.
+**A missing font is replaced by one with the same widths.** Before, only the
+class was preserved — mincho stayed mincho. MS Mincho gives all 95 half-width
+characters the same width; IPAex Mincho, which was standing in for it, is
+proportional and sets a digit 24% wider. In a table of figures the columns ran
+into each other.
 
-== Documents keep their indents, their text boxes and their rules
+Ume Mincho, Ume Gothic, Ume P Mincho and Ume P Gothic match the four MS faces
+character for character. Century maps to C059, and Arial, Times New Roman,
+Calibri, Cambria and Courier New to the fonts drawn to match them.
 
-**Indentation was being lost.** Japanese forms indent with spaces rather than
-with a paragraph setting, and three separate things dropped it: the left indent
-was rounded to steps of two full-width characters, so a one-character indent
-became two; indents written as a character count were not read at all, which is
-what Japanese Word writes; and full-width spaces typed at the start of a line
-were discarded, or drawn at the width of an ASCII space. On the Cabinet Office
-notice this put the addressee 76.7pt from where it belongs. It now sits at
-178.90pt against the reference PDF's 178.92.
+**Text is measured with the font that will draw it.** Every half-width
+character had been assumed 0.55em and every other 1.0em, whatever the font.
+That assumption decided right alignment, where a line wrapped, and whether the
+text fit at all.
 
-**Text boxes made by other programs never reached the page.** They survived
-being opened and saved — they were kept as the original XML — but only shapes
-we had written ourselves were drawn. The three contact panels on page 6 of that
-notice, and all five lines inside each, are printed now.
+**A number that does not fit is filled with #.** As Excel does. Text may spill
+into an empty neighbour; a number may not, because a number with its digits cut
+off still reads as a number.
 
-**Table borders were not read.** Every table came out with all four sides
-because the model had nowhere to put what the file said. A form of underlined
-entry fields came out as a grid of boxes. What the file asks for is drawn, per
-table and per cell, and a docx table that says nothing gets nothing, which is
-what Word draws.
+== The whole cell format is read
 
-**Parts were being found by their conventional names.** `word/styles.xml` and
-its neighbours are a convention, not a rule; OOXML says where its parts are
-through the relationships. One of these forms uses `word/styles2.xml`, so we
-were reading no styles, no settings and no theme at all — 403 style
-declarations, invisible.
+Of 25 fields, 11 were being read. Everything that shows on paper is read now.
+The two left out are sheet protection.
 
-== Converting a sheet to AsciiDoc
+* **Indent** — one step is three spaces, not one full-width character, and a
+  right-aligned cell indents from the right
+* **Vertical alignment** — was never read; everything sat on the bottom. Merged
+  cells now sum their height too, so a heading merged down several rows no
+  longer lands at the bottom of the merge's first row
+* **Stacked text** — narrow column headings stack downward instead of running
+  into the next column. Rotation from 0 to 180 degrees prints as well
+* **Shrink to fit** — shrinks the type rather than overflowing, and does not
+  apply to a cell holding more than one line
+* **Underline, strike, subscript, italic** — printed. Italic slants only by the
+  angle the font declares, so a font without an italic face stays upright
+* **All eighteen pattern fills** — every one had been a flat wash of the
+  foreground colour, which turned a light shading into solid black. The colours
+  blend by the pattern's weight now
+* **Gradient fills** — filled with the two stops blended
 
-Cell rich text stays out of adoc, so what has to survive is the shape of the
-text. Three things did not.
+== Pictures appear
 
-A line break inside a cell became a blank line, which reads as two paragraphs;
-it is written as AsciiDoc's own line break now. Leading and trailing whitespace
-was trimmed, taking the indents with it; AsciiDoc's own mark for an empty
-span now protects it. And
-cells flow into rows by column count, but the cut let a cell in without
-checking that it fitted, so a wide merged cell overflowed its row and
-everything after it slid down and across.
+**WMF pictures are drawn.** Two of the three pictures in the Cabinet Office's
+interview record form are Windows Metafiles, which the image decoder could not
+read, so they were dropped. A metafile is a list of lines and fills rather than
+a picture, so it is drawn as such and **does not go soft when enlarged**.
 
-That tax sheet now round-trips all 557 of its cells unchanged. Fifty-six of
-them changed before.
+The PDF writer can now handle curves, clipping and dash patterns.
 
 == Other changes
 
-* The right panel is a tree, like an IDE's, and opening a file reveals it there
-* Ribbon buttons that do one thing are grouped into one row
+* Document parts are located through their relationship type rather than their
+  conventional name, so a docx that names them differently still opens
+* The right-click menus go through the translation table
+* An edit no longer copies the whole sheet for undo. On a 200,000-cell sheet
+  that was 33ms per edit; it is 36µs
+* The styles panel shows the same headings on every face
 
 == Under the hood
 
-The PDF writer's font handling was built around a single embedded font — one
-face, one subset, one resource. It now keeps a set, which is what made the
-per-cell fonts possible. The single-font entry points are unchanged.
+The PDF writer has a path: move, line, cubic curve, close, filled and stroked,
+with a dash pattern and a clip. The clip belongs to one path, so adding
+something in the middle of a list cannot leave it switched on.
 
-`Paper` carries four margins instead of one. Adding the fields made the
-compiler name every construction site, twenty-five of them, so none could be
-missed.
+Font substitution looks for a width-compatible partner first. Every partner is
+freely licensed, and none is bundled.
