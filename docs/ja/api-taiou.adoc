@@ -78,7 +78,7 @@ def 大文字にする(段落):
 |Recent |link:commands/ファイル/最近開いた.adoc[最近開いた] | |— |— |—
 |Search a folder |link:commands/ファイル/フォルダから探す.adoc[フォルダから探す] | |— |— |—
 |Recover |link:commands/ファイル/復旧.adoc[復旧] | |— |— |—
-|Save |link:commands/ファイル/保存.adoc[保存] |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|Save |link:commands/クイックアクセス/保存.adoc[保存] |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
 |Save As |link:commands/ファイル/名前を付けて保存.adoc[名前を付けて保存] |✅ |d.save(別の径路) |d.save(別の径路) |wb.save(別の径路)
 |Print |link:commands/ファイル/印刷.adoc[印刷] | |— |— |—
 |Export |link:commands/ファイル/エクスポート.adoc[エクスポート] |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
@@ -327,7 +327,7 @@ def 大文字にする(段落):
 |===
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
-|Save |link:commands/ファイル/保存.adoc[保存] |✅ |*ファイルと同じ* — d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|Save |link:commands/クイックアクセス/保存.adoc[保存] |✅ |*ファイルと同じ* — d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
 |Print |link:commands/ファイル/印刷.adoc[印刷] | |*ファイルと同じ* |— |—
 |Undo |元に戻す |❌ |画面の操作です。プログラムは保存する前の写しを持てます |— |—
 |Redo |やり直し |❌ |同じく画面の操作です |— |—

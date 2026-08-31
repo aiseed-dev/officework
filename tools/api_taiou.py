@@ -313,9 +313,12 @@ def manual_link(label: str) -> str:
     if _manual_table is None:
         _manual_table = {}
         ahead = ROOT / "docs/ja/commands"
-        for q in ahead.rglob("*.adoc"):
+        # **並べてから先勝ち。** 同じ名前の頁が2つのタブにある(オートSUM が
+        # ホームと数式に居る)とき、rglob の順はファイルシステム任せなので、
+        # 走る機械によって勝者が変わり、CI と手元で表が揺れていた
+        for q in sorted(ahead.rglob("*.adoc")):
             if q.name != "README.ja.adoc":
-                _manual_table[q.stem] = q.relative_to(ROOT / "docs/ja").as_posix()
+                _manual_table.setdefault(q.stem, q.relative_to(ROOT / "docs/ja").as_posix())
     name = FNAME_NG.sub("_", command_name(label)).strip()
     to = _manual_table.get(name)
     return f"link:{to}[{label}]" if to else label
