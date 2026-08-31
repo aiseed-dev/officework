@@ -649,16 +649,16 @@ mod carry_tests {
         // 分からなくなっていた
         let mut b = Book::new();
         let p = Pos::parse("B2").unwrap();
-        b.sheets[0].comments.insert(p, book::CommentThread::new("覚書", "日本フネン"));
+        b.sheets[0].comments.insert(p, book::CommentThread::new("覚書", "サンプル商事"));
         let mut buf = Vec::new();
         crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
         let mut z = zip::ZipArchive::new(Cursor::new(&buf)).unwrap();
         let mut cs = String::new();
         z.by_name("xl/comments1.xml").unwrap().read_to_string(&mut cs).unwrap();
-        assert!(cs.contains("<author>日本フネン</author>"), "写しに著者が無い: {cs}");
+        assert!(cs.contains("<author>サンプル商事</author>"), "写しに著者が無い: {cs}");
         // 写しだけを読む道(スレッドの部品が無い古いブック)でも著者が出る
         let got = crate::xlsx::read::parse_comments(&cs);
-        assert_eq!(got[0].1.entries[0].who, "日本フネン", "著者を読み落とした");
+        assert_eq!(got[0].1.entries[0].who, "サンプル商事", "著者を読み落とした");
     }
 
 
@@ -2520,13 +2520,13 @@ mod script_roundtrip_tests {
     fn workbook_properties_round_trip() {
         let mut b = Book::new();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
-        b.props.creators = vec!["日本フネン".into()];
+        b.props.creators = vec!["サンプル商事".into()];
         b.props.title = "見積 <2026>".into();
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
         buf.set_position(0);
         let (back, _) = read(buf).expect("読めない");
-        assert_eq!(back.props.creators, ["日本フネン"], "作成者が往復しない");
+        assert_eq!(back.props.creators, ["サンプル商事"], "作成者が往復しない");
         assert_eq!(back.props.title, "見積 <2026>", "逃がしが往復しない");
         assert_eq!(back.props.subject, "", "空欄は空欄のまま");
     }

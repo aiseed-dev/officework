@@ -80,7 +80,7 @@ def quote():
     ws["F3"].number_format = "@"
 
     ws.merge_cells("A5:C5")
-    ws["A5"] = "日本フネン株式会社 御中"
+    ws["A5"] = "サンプル商事株式会社 御中"
     ws["A5"].font = Font(size=12, bold=True, underline="single")
 
     ws["E5"] = "aiseed"
@@ -262,7 +262,7 @@ def attendance():
         for j in range(1, 7):
             ws.cell(r, j).border = BOX
     ws["F6"] = "客先で採寸"
-    ws["F6"].comment = Comment("日本フネンの現場です", "上長")
+    ws["F6"].comment = Comment("サンプル商事の現場です", "上長")
 
     # 土日の行に色(数式の条件)
     ws.conditional_formatting.add("A4:F10",

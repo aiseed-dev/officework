@@ -117,7 +117,7 @@ if os.path.exists(real):
     check(len(merges) > 0, "実物の様式にセル結合が無いことになっている")
     rows, cols = rs.shape
     check(rows > 0 and cols > 0, "実物の範囲が取れない")
-    rs["A30"] = "日本フネン株式会社"
+    rs["A30"] = "サンプル商事株式会社"
     rs["C30"] = "=B30*100"
     rs["B30"] = 3
     check(rs["C30"].value == 300, "実物の上で式が効かない")
@@ -126,7 +126,7 @@ if os.path.exists(real):
         rb.save(out)
         rb2 = office_sheet.Book.open(out)
         rs2 = rb2[0]
-        check(rs2["A30"].value == "日本フネン株式会社", "差し込んだ値が保存されない")
+        check(rs2["A30"].value == "サンプル商事株式会社", "差し込んだ値が保存されない")
         check(rs2["B1"].value == "（様式７）", "元の内容が壊れた")
         check(rs2.merges == merges, "保存でセル結合が崩れた(帳票の枠が壊れた)")
         import zipfile

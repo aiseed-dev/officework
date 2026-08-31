@@ -32,13 +32,13 @@ mod round {
     #[test]
     fn a_japanese_paragraph_round_trips() {
         let d = doc(&[
-            "日本フネン株式会社 設備利用申込",
+            "サンプル商事株式会社 設備利用申込",
             "事業者名: 〇〇工務店",
             "「防火ドアは、特定防火設備です。」",
         ]);
         let (back, rep) = round_trip(&d);
         assert_eq!(texts(&back), vec![
-            "日本フネン株式会社 設備利用申込",
+            "サンプル商事株式会社 設備利用申込",
             "事業者名: 〇〇工務店",
             "「防火ドアは、特定防火設備です。」",
         ]);
@@ -99,8 +99,8 @@ mod round {
         let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![
             Block::Para(para("(様式3) 会社概要")),
             Block::Table(Table { col_mm: vec![], rows: vec![
-                vec![cell("会　社　名"), cell("日本フネン株式会社")],
-                vec![cell("所　在　地"), cell("徳島県吉野川市川島町三ツ島新田179-1")],
+                vec![cell("会　社　名"), cell("サンプル商事株式会社")],
+                vec![cell("所　在　地"), cell("見本県見本市見本町1-2-3")],
                 vec![cell("資　本　金"), cell("3億1,400万円")],
             ],
         ..Default::default()
@@ -114,7 +114,7 @@ mod round {
         assert_eq!(t[0].rows[1].len(), 2);
         let v: String = t[0].rows[1][1].paragraphs[0].runs.iter()
             .map(|r| r.text.as_str()).collect();
-        assert_eq!(v, "徳島県吉野川市川島町三ツ島新田179-1");
+        assert_eq!(v, "見本県見本市見本町1-2-3");
         assert_eq!(texts(&back), vec!["(様式3) 会社概要", "以上"], "本文の順序も保たれる");
         assert!(rep.is_lossless(), "未対応: {:?}", rep.unsupported);
     }
@@ -253,7 +253,7 @@ mod font_tests {
                 left_twips: 0, first_line_twips: 0,
                 line_spacing: 1.0,
                 shade: None, boxed: false, images_new: Vec::new(), runs: vec![Run {
-                    text: "日本フネン".into(),
+                    text: "サンプル商事".into(),
                     size_pt: Some(10.5),
                     font: Some("BIZ UDPゴシック".into()),
                     fmt: Default::default(),
@@ -1753,7 +1753,7 @@ mod bookmark_tests {
         // 相互参照・コメントのアンカーが壊れる
         let xml = r#"<w:document xmlns:w="x"><w:body><w:p>
             <w:bookmarkStart w:id="0" w:name="会社名"/>
-            <w:r><w:t>日本フネン</w:t></w:r>
+            <w:r><w:t>サンプル商事</w:t></w:r>
             <w:bookmarkEnd w:id="0"/>
             <w:commentRangeStart w:id="3"/>
             <w:r><w:t>要確認の箇所</w:t></w:r>
@@ -1768,7 +1768,7 @@ mod bookmark_tests {
         assert!(out.contains("bookmarkEnd"), "しおりの終わりが消えた");
         assert!(out.contains("commentRangeStart"), "コメントの範囲が消えた");
         assert!(out.contains("commentReference"), "コメントのアンカーが消えた");
-        assert!(out.contains("日本フネン") && out.contains("要確認の箇所"), "本文が消えた");
+        assert!(out.contains("サンプル商事") && out.contains("要確認の箇所"), "本文が消えた");
     }
 }
 

@@ -467,7 +467,7 @@ mod tests {
     #[test]
     fn ordinary_text_passes_through() {
         // 書式が1つも無ければ None — 普通のセルに費用を掛けない
-        assert!(parse("日本フネン株式会社").is_none());
+        assert!(parse("サンプル商事株式会社").is_none());
         assert!(parse("").is_none());
         assert!(parse("2026-08-09").is_none(), "日付が箇条書きに化けた");
         assert!(parse("-100").is_none(), "負の数が箇条書きに化けた");

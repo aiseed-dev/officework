@@ -196,7 +196,7 @@ mod cell_basics {
     fn input_splits_into_formula_and_value() {
         assert_eq!(Cell::input("123").value, Value::Number(123.0));
         assert_eq!(Cell::input("1.5").value, Value::Number(1.5));
-        assert_eq!(Cell::input("日本フネン").value, Value::Text("日本フネン".into()));
+        assert_eq!(Cell::input("サンプル商事").value, Value::Text("サンプル商事".into()));
         assert_eq!(Cell::input("TRUE").value, Value::Bool(true));
         assert_eq!(Cell::input("=SUM(A1:A3)").formula.as_deref(), Some("SUM(A1:A3)"));
         assert!(Cell::input("  ").formula.is_none());

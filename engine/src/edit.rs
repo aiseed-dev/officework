@@ -459,11 +459,11 @@ mod tests {
     #[test]
     fn japanese_can_be_typed_and_deleted() {
         let mut e = Editor::new("");
-        e.insert("日本フネン");
-        assert_eq!(e.text(), "日本フネン");
-        assert_eq!(e.cursor(), "日本フネン".len());
+        e.insert("サンプル商事");
+        assert_eq!(e.text(), "サンプル商事");
+        assert_eq!(e.cursor(), "サンプル商事".len());
         e.backspace();
-        assert_eq!(e.text(), "日本フネ", "1文字=3バイトを丸ごと消す");
+        assert_eq!(e.text(), "サンプル商", "1文字=3バイトを丸ごと消す");
     }
 
     #[test]
@@ -532,10 +532,10 @@ mod tests {
     #[test]
     fn ime_clause_selection_shows_inside_the_preedit() {
         let mut e = Editor::new("");
-        // 「にほんふねん」→ 変換候補「日本フネン」、うち「日本」が変換対象
-        e.set_marked("日本フネン", Some(0.."日本".len()));
-        assert_eq!(e.selection(), 0.."日本".len());
-        assert_eq!(e.marked_range(), Some(0.."日本フネン".len()));
+        // 「さんぷるしょうじ」→ 変換候補「サンプル商事」、うち「サンプル」が変換対象
+        e.set_marked("サンプル商事", Some(0.."サンプル".len()));
+        assert_eq!(e.selection(), 0.."サンプル".len());
+        assert_eq!(e.marked_range(), Some(0.."サンプル商事".len()));
     }
 
     #[test]

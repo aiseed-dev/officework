@@ -81,7 +81,7 @@ mod tests {
     #[test]
     fn fix_same_as_source_is_not_a_hit() {
         let content = r#"[{"found":"日本","suggest":"日本","why":"誤変換"}]"#;
-        assert!(parse_notes(content, "日本フネン").is_empty());
+        assert!(parse_notes(content, "サンプル商事").is_empty());
     }
 
     #[test]

@@ -52,11 +52,11 @@ fn opens_a_real_template_appends_and_saves() {
 
     let n = d.ed.text().len();
     d.ed.move_to(n, false);
-    handler::replace(&mut d, None, "\n日本フネン株式会社");
+    handler::replace(&mut d, None, "\nサンプル商事株式会社");
 
     let after = open(save(&d)).doc.body_text();
     assert!(after.contains("参 加 表 明 書"), "元の本文が消えた");
-    assert!(after.trim_end().ends_with("日本フネン株式会社"),
+    assert!(after.trim_end().ends_with("サンプル商事株式会社"),
         "追記が残っていない: {:?}", after.chars().rev().take(30).collect::<String>());
 }
 

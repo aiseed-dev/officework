@@ -44,7 +44,7 @@ fn opens_edits_and_saves_a_real_file() {
     let n = book.sheets[0].cells.len();
 
     let s = &mut book.sheets[0];
-    s.set(Pos::parse("A30").unwrap(), Cell::input("日本フネン株式会社"));
+    s.set(Pos::parse("A30").unwrap(), Cell::input("サンプル商事株式会社"));
     s.set(Pos::parse("B30").unwrap(), Cell::input("3"));
     s.set(Pos::parse("C30").unwrap(), Cell::input("=B30*100"));
     recalc(s);
@@ -52,7 +52,7 @@ fn opens_edits_and_saves_a_real_file() {
     let back = round(&book);
     let b = &back.sheets[0];
     assert!(b.cells.len() >= n + 3, "打った内容が保存されていない");
-    assert_eq!(b.value(Pos::parse("A30").unwrap()).display(), "日本フネン株式会社");
+    assert_eq!(b.value(Pos::parse("A30").unwrap()).display(), "サンプル商事株式会社");
     assert_eq!(b.value(Pos::parse("C30").unwrap()).display(), "300", "式が効いていない");
     assert_eq!(b.value(Pos::parse("B1").unwrap()).display(), "（様式７）", "元の内容が壊れた");
 }

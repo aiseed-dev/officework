@@ -97,12 +97,12 @@ mod basic {
                      ("B2", "=IF(A1>100,\"超過\",\"適正\")"),
                      ("B3", "=\"H\"&A1&\"まで\""),
                      ("B4", "=CONCATENATE(\"合計\",A1,\"枚\")"),
-                     ("B5", "=LEN(\"日本フネン\")")]);
+                     ("B5", "=LEN(\"サンプル商事\")")]);
         assert_eq!(v(&sh, "B1"), "超過");
         assert_eq!(v(&sh, "B2"), "適正");
         assert_eq!(v(&sh, "B3"), "H12まで");
         assert_eq!(v(&sh, "B4"), "合計12枚");
-        assert_eq!(v(&sh, "B5"), "5", "日本語は文字数で数える");
+        assert_eq!(v(&sh, "B5"), "6", "日本語は文字数で数える");
     }
 
     #[test]
@@ -252,10 +252,10 @@ mod more_fn_tests {
     #[test]
     fn text_can_be_sliced() {
         // 日本語は文字数で数える(バイトではない)
-        assert_eq!(eval("=LEFT(\"日本フネン\",2)", &[]), Value::Text("日本".into()));
-        assert_eq!(eval("=RIGHT(\"日本フネン\",3)", &[]), Value::Text("フネン".into()));
+        assert_eq!(eval("=LEFT(\"サンプル商事\",2)", &[]), Value::Text("サン".into()));
+        assert_eq!(eval("=RIGHT(\"サンプル商事\",3)", &[]), Value::Text("ル商事".into()));
         // MID は1始まり
-        assert_eq!(eval("=MID(\"日本フネン\",3,2)", &[]), Value::Text("フネ".into()));
+        assert_eq!(eval("=MID(\"サンプル商事\",3,2)", &[]), Value::Text("プル".into()));
     }
 
     #[test]

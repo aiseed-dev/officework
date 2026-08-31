@@ -850,11 +850,11 @@ render({"顧客名": "青森県庁", "担当者": "山田",
         )
         .unwrap();
         // 台本: 名前で記入し、読み戻して報告する(同名ラベル3組でも誤爆しない)
-        let code = r#"fill("代表・住所", "徳島県徳島市山城町東浜傍示1番地1")
-fill("代表・商号", "日本フネン株式会社")
+        let code = r#"fill("代表・住所", "見本県見本市見本町4-5-6")
+fill("代表・商号", "サンプル商事株式会社")
 fill("担当・氏名", "山田太郎")
 fill("担当・メール", "yamada@example.jp")
-assert extract("代表・商号") == "日本フネン株式会社"
+assert extract("代表・商号") == "サンプル商事株式会社"
 assert extract("協力1・住所") .strip() == ""
 print(len(fields()))
 "#;
@@ -869,7 +869,7 @@ print(len(fields()))
         let (doc2, _) =
             ooxml::read(std::io::Cursor::new(std::fs::read(&out_d).unwrap())).unwrap();
         let body = doc2.body_text();
-        assert!(body.contains("日本フネン株式会社"), "記入が残らない");
+        assert!(body.contains("サンプル商事株式会社"), "記入が残らない");
         assert!(body.contains("山城町東浜傍示"), "住所が残らない");
         let _ = std::fs::remove_dir_all(&dir);
     }

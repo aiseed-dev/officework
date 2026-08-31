@@ -947,8 +947,8 @@ mod tests {
     #[test]
     fn ordinary_typing_reaches_the_text() {
         let mut a = app("");
-        handler::replace(&mut a, None, "日本フネン");
-        assert_eq!(a.ed.text(), "日本フネン");
+        handler::replace(&mut a, None, "サンプル商事");
+        assert_eq!(a.ed.text(), "サンプル商事");
         assert_eq!(a.edits, 1, "組版のやり直しが呼ばれる");
     }
 
@@ -999,8 +999,8 @@ mod tests {
     #[test]
     fn clause_selection_converts_to_byte_positions() {
         let mut a = app("");
-        // 「日本フネン」のうち UTF-16 で 0..2 =「日本」が変換対象
-        handler::replace_and_mark(&mut a, None, "日本フネン", Some(0..2));
-        assert_eq!(a.ed.selection(), 0.."日本".len(), "UTF-16→バイトの変換が違う");
+        // 「サンプル商事」のうち UTF-16 で 0..2 =「サン」が変換対象
+        handler::replace_and_mark(&mut a, None, "サンプル商事", Some(0..2));
+        assert_eq!(a.ed.selection(), 0.."サン".len(), "UTF-16→バイトの変換が違う");
     }
 }

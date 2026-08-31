@@ -59,7 +59,7 @@ def quote():
 
     ws.merge_cells("A5:C5")
     c = ws.cell(5, 1)
-    c.value = "日本フネン株式会社 御中"
+    c.value = "サンプル商事株式会社 御中"
     c.font = Font(size=12, bold=True, underline="single")
 
     c = ws.cell(5, 5)
@@ -246,7 +246,7 @@ def attendance():
             ws.cell(r, j).border = BOX
     c = ws.cell(6, 6)
     c.value = "客先で採寸"
-    c.comment = Comment("日本フネンの現場です", "上長")
+    c.comment = Comment("サンプル商事の現場です", "上長")
 
     ws.conditional_formatting_formula("A4:F10", "WEEKDAY($A4,2)>=6",
                                       fill=PatternFill("solid", fgColor="FCE4EC"))
