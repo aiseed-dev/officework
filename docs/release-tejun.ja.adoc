@@ -1,0 +1,91 @@
+= 公開の手順
+
+作る側の資料です。利用者向けの一覧(`docs/ja/README.adoc`)には載せません。
+
+版を上げてリリースノートを書くところまでは、こちらで済ませます。**タグを
+打って push するのは発注者です。**
+
+== いまの版
+
+`pysheet/Cargo.toml` の `version` が版そのものです。`Cargo.lock` も一緒に
+変わります。この2つと `RELEASE.adoc`・`RELEASE.ja.adoc` の4つが、版を
+上げるコミットの中身です。
+
+`pyproject.toml` に版は書きません。maturin が `Cargo.toml` から取ります。
+
+== 公開の順
+
+=== 1. 手元で確かめる
+
+[source,console]
+----
+$ cargo test -p book -p sheet -p paper -p kumihan -p ooxml -p ops
+$ OFFICE_LANG=ja cargo test -p calc -p writer -p ui -p officework
+$ bash tools/ci-clippy.sh -p sheet -p kumihan -p ooxml -p lang -p paper \
+    -p sidecar -p pyrun -p ops -p face -p pysheet --all-targets -- \
+    -D warnings -A clippy::too_many_arguments -A clippy::type_complexity \
+    -A clippy::field_reassign_with_default -A clippy::needless_range_loop
+$ bash tools/ci-clippy.sh -p calc -p writer -p ui -p officework --all-targets -- \
+    -D warnings -A clippy::too_many_arguments -A clippy::type_complexity \
+    -A clippy::field_reassign_with_default -A clippy::needless_range_loop
+$ python3 tools/kotoba_check.py
+----
+
+=== 2. wheel を作れるか、上げずに試す
+
+タグを打つ前にここで止められます。`dry_run` を付けたまま回すと、wheel と
+sdist は出来て、PyPI へ上げる段は飛びます。
+
+[source,console]
+----
+$ gh workflow run publish-pypi.yml --ref main -f dry_run=true
+$ gh run watch
+----
+
+=== 3. タグを打って push する
+
+**ここからは発注者の作業です。** `refs/tags/v*` が押されたときだけ、PyPI へ
+上げる段が動きます。
+
+[source,console]
+----
+$ git push origin main
+$ git tag -a v0.5.0-beta.6 -m "officework 0.5.0-beta.6"
+$ git push origin v0.5.0-beta.6
+----
+
+タグの名前から `v` を取った字と、`pysheet/Cargo.toml` の版が同じでないと、
+ワークフローが最初の段で止まります。PyPI へ上がるのは `Cargo.toml` の版の
+ほうなので、ずれたまま通すと別の版が上がってしまうためです。
+
+=== 4. 上がったか見る
+
+[source,console]
+----
+$ gh run watch
+$ pip index versions officework --pre
+----
+
+== 打ち間違えたタグを直す
+
+タグは付け替えられます。付け替えたら、GitHub 側の古いタグも消します。
+
+[source,console]
+----
+$ git tag -d v0.5.0-beta.6
+$ git push origin :refs/tags/v0.5.0-beta.6
+----
+
+**PyPI は上書きできません。** 同じ版を上げ直すことはできないので、間違えた
+ものを公開してしまったら、次の番号へ進みます。
+
+== β の付け方
+
+`Cargo.toml` は `0.5.0-beta.6`、PyPI での名前は `0.5.0b6` になります。
+maturin が直します。β には `--pre` が要るので、`pip install officework`
+では入りません。
+
+[source,console]
+----
+$ pip install --pre officework
+----
