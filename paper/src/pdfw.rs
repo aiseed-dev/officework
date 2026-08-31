@@ -286,6 +286,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 .iter()
                 .map(|f| f.a)
                 .chain(p.polys.iter().map(|g| g.a))
+                .chain(p.paths.iter().map(|m| m.a))
                 .chain(p.rules.iter().map(|r| r.a))
                 .chain(p.rules_top.iter().map(|r| r.a))
                 .map(usu_key)
@@ -376,6 +377,18 @@ pub fn write_pages_fonts<W: std::io::Write>(
             }
             c.close_path();
             c.fill_nonzero();
+        }
+        // **曲がる線と切り抜きのある形**([`Michi`])。塗りと同じ層です。
+        // 色も太さも道ごとに書き直すので、上の `fill_now`/`pen` の控えは
+        // 当てにならなくなります — 書いた後で消しておきます
+        if !page.paths.is_empty() {
+            for m in &page.paths {
+                usu(&mut c, &mut usu_now, m.a);
+                michi_kaku(&mut c, m, pt);
+            }
+            // 道は `q`/`Q` で挟むので、中で決めた色も濃さも戻ります。
+            // 上の控えは当てにならないので消しておきます
+            usu_now = None;
         }
         // **絵はいちばん下**。字と罫線が上に載ります
         for (k, (_, im)) in img_ids[i].iter().enumerate() {
@@ -965,6 +978,50 @@ mod tests {
         assert!(w(boxes[0]) < w(boxes[1]), "向きが変わっていない: {boxes:?}");
     }
 
+    /// **曲線・切り抜き・点線が PDF に出る。**
+    ///
+    /// [`Poly`] は直線で閉じた形しか描けません。WMF や SVG の図には曲線も
+    /// 点線も切り抜きもあるので、[`Michi`] を足しました(2026-08-31 発注者
+    /// 「ベジェ曲線はいずれ必要。切り抜き、線の種類も必要でしょう」)。
+    ///
+    /// 命令そのものを見ます。`c` が曲線、`W` が切り抜き、`d` が点線です。
+    #[test]
+    fn a_path_can_curve_and_dash_and_clip() {
+        let leaf = Leaf {
+            paths: vec![Michi {
+                suji: vec![
+                    Suji::Ugoku(10.0, 10.0),
+                    Suji::Mageru(20.0, 40.0, 40.0, 40.0, 50.0, 10.0),
+                    Suji::Tojiru,
+                ],
+                fill: Some((1.0, 0.0, 0.0)),
+                stroke: Some((0.0, 0.0, 1.0)),
+                w_mm: 0.5,
+                dash: vec![2.0, 1.0],
+                clip: vec![
+                    Suji::Ugoku(0.0, 0.0),
+                    Suji::Hiku(30.0, 0.0),
+                    Suji::Hiku(30.0, 30.0),
+                    Suji::Tojiru,
+                ],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let mut out = Vec::new();
+        write_pages(&[leaf], 210.0, 297.0, &font(), &mut out).expect("PDF が出ない");
+        let body = unpack(&out);
+        assert!(body.contains(" c\n"), "ベジェ曲線の命令が無い");
+        assert!(body.contains("\nW\n"), "切り抜きの命令が無い");
+        assert!(body.contains("] 0 d\n"), "点線の命令が無い");
+        assert!(body.contains("\nB\n") || body.ends_with("B"), "塗って線を引く命令が無い");
+        // 切り抜きは `q`/`Q` の中だけ。次の道へ持ち越しません
+        let q = body.find('q').expect("q が無い");
+        let w = body.find("\nW\n").expect("W が無い");
+        let qq = body.rfind('Q').expect("Q が無い");
+        assert!(q < w && w < qq, "切り抜きが q/Q の外にある");
+    }
+
     /// **字の位置がいまの道と一致する。**
     ///
     /// 字が取れるかを見るだけでは足りません。**ずれていても取れます。**
@@ -1134,6 +1191,9 @@ pub struct Leaf {
     /// **好きな形の塗り。** 円グラフの扇や、傾いた棒に使います。
     /// 四角で足りるものは [`Fill`] の方が小さく済みます
     pub polys: Vec<Poly>,
+    /// **曲がる線と、切り抜きのある形**([`Michi`])。`polys` の次、絵の前に
+    /// 描きます。WMF の図がここへ入ります(2026-08-31)
+    pub paths: Vec<Michi>,
     /// **字の上に引く線。** [`Leaf::rules`] は字の下です。
     ///
     /// 手描きのペンはここへ入ります(紙に書き込んだ線なので、字の上に
@@ -1142,6 +1202,130 @@ pub struct Leaf {
     /// **この紙の大きさ(mm)。** 節で紙が変わる文書は頁ごとに違います。
     /// `None` なら呼ぶ側に渡した既定の大きさ
     pub size_mm: Option<(f32, f32)>,
+}
+
+/// **道を1つ描きます。**
+///
+/// `q`/`Q` で挟むので、切り抜きも色も次へ持ち越しません。呼ぶ側は色の
+/// 控えを捨ててください。
+fn michi_kaku(c: &mut pdf_writer::Content, m: &Michi, pt: impl Fn(f32) -> f32) {
+    if m.suji.is_empty() {
+        return;
+    }
+    let hiku = |c: &mut pdf_writer::Content, suji: &[Suji]| {
+        for s in suji {
+            match *s {
+                Suji::Ugoku(x, y) => {
+                    c.move_to(pt(x), pt(y));
+                }
+                Suji::Hiku(x, y) => {
+                    c.line_to(pt(x), pt(y));
+                }
+                Suji::Mageru(x1, y1, x2, y2, x, y) => {
+                    c.cubic_to(pt(x1), pt(y1), pt(x2), pt(y2), pt(x), pt(y));
+                }
+                Suji::Tojiru => {
+                    c.close_path();
+                }
+            };
+        }
+    };
+    c.save_state();
+    // 切り抜き。**形を引いてから `W n`** で、以降の描きをその中に閉じます
+    if !m.clip.is_empty() {
+        hiku(c, &m.clip);
+        c.clip_nonzero();
+        c.end_path();
+    }
+    if let Some((r, g, b)) = m.fill {
+        c.set_fill_rgb(r, g, b);
+    }
+    if let Some((r, g, b)) = m.stroke {
+        c.set_stroke_rgb(r, g, b);
+        c.set_line_width(pt(m.w_mm));
+        if !m.dash.is_empty() {
+            let kizami: Vec<f32> = m.dash.iter().map(|v| pt(*v)).collect();
+            c.set_dash_pattern(kizami, 0.0);
+        }
+    }
+    hiku(c, &m.suji);
+    match (m.fill.is_some(), m.stroke.is_some()) {
+        (true, true) => {
+            if m.fill_gusuu {
+                c.fill_even_odd_and_stroke()
+            } else {
+                c.fill_nonzero_and_stroke()
+            }
+        }
+        (true, false) => {
+            if m.fill_gusuu {
+                c.fill_even_odd()
+            } else {
+                c.fill_nonzero()
+            }
+        }
+        (false, true) => c.stroke(),
+        // 塗りも線も無い道は、切り抜きの形を渡すためだけの物
+        (false, false) => c.end_path(),
+    };
+    c.restore_state();
+}
+
+/// **道の一区切り。** 座標は紙の左下からの mm です。
+///
+/// [`Poly`] は直線で閉じた形しか表せません。曲線・切り抜き・点線が要る
+/// 図(WMF や SVG から来るもの)はこちらで描きます(2026-08-31)。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Suji {
+    /// そこへ移る(新しい線の始まり)
+    Ugoku(f32, f32),
+    /// まっすぐ引く
+    Hiku(f32, f32),
+    /// **ベジェ曲線**(制御点2つ、行き先)。PDF の `c` です
+    Mageru(f32, f32, f32, f32, f32, f32),
+    /// 始まりへ閉じる
+    Tojiru,
+}
+
+/// **曲がる線と、切り抜きのある形。**
+///
+/// 塗りと線は両方付けられます([`Poly`] は塗りだけ、[`Rule`] は線だけ)。
+/// **切り抜きはこの1つの道にだけ掛かります** — `q`/`Q` で挟むので、次の
+/// 道には残りません。掛け続けたいときは、道ごとに同じ形を持たせます。
+/// 状態を持ち越さない形にしたのは、並びの途中で切り抜きが解けなくなる
+/// 事故を避けるためです。
+pub struct Michi {
+    pub suji: Vec<Suji>,
+    /// 塗る色(0〜1 の RGB)。None なら塗りません
+    pub fill: Option<(f32, f32, f32)>,
+    /// 塗りの決まり。true で偶奇(SVG の `evenodd`、PDF の `f*`)
+    pub fill_gusuu: bool,
+    /// 線の色。None なら引きません
+    pub stroke: Option<(f32, f32, f32)>,
+    /// 線の太さ(mm)
+    pub w_mm: f32,
+    /// **点線の刻み(mm)。** 空なら実線です。`[2.0, 1.0]` なら
+    /// 2mm 引いて 1mm 空ける、を繰り返します
+    pub dash: Vec<f32>,
+    /// 不透明度(0〜1、1 = 不透明)
+    pub a: f32,
+    /// **切り抜く形。** 空ならこの道は切り抜きません
+    pub clip: Vec<Suji>,
+}
+
+impl Default for Michi {
+    fn default() -> Self {
+        Michi {
+            suji: Vec::new(),
+            fill: None,
+            fill_gusuu: false,
+            stroke: None,
+            w_mm: 0.2,
+            dash: Vec::new(),
+            a: 1.0,
+            clip: Vec::new(),
+        }
+    }
 }
 
 /// 塗る四角。左下からの mm。
