@@ -423,6 +423,14 @@ pub struct Paragraph {
     /// この段落の前で改ページする(docx の w:pageBreakBefore)
     pub page_break_before: bool,
     pub list: ListKind,
+    /// **文書が決めている箇条書きの印**(docx の `numbering.xml` の
+    /// `w:lvlText`)。`○` や `(%1)` のような書き方で、`%1` はその段の番号に
+    /// 置き替わります。
+    ///
+    /// `None` なら段の深さから作ります([`Paragraph::marker`])。前は常に
+    /// そちらで、内閣府の調査票が9か所で使っている `○` が中黒で出て
+    /// いました(2026-08-31)。
+    pub list_text: Option<String>,
     /// 左のインデント段数。1段 = 全角2文字ぶん(日本の書類の慣習)。
     ///
     /// **段数なので、1文字や3文字は表せません。** 箇条書きの深さでもあり
@@ -478,6 +486,30 @@ impl Paragraph {
     /// 箇条書きの頭に付く印。組版のときに本文の前へ置く。
     /// **レベル(インデント)で印が変わる**(Word の複数レベルのリストの慣習)。
     pub fn marker(&self, nth: usize) -> Option<String> {
+        // **文書が印を決めているなら、それを使います**(2026-08-31)。
+        // `%1`〜`%9` はその段の番号です。docx の `w:lvlText` の書き方で、
+        // どの段の番号かまでは見ずに、この段の番号を入れます
+        if let Some(t) = self.list_text.as_deref().filter(|t| !t.is_empty()) {
+            if self.list == ListKind::None {
+                return None;
+            }
+            let mut out = String::with_capacity(t.len() + 2);
+            let mut ji = t.chars().peekable();
+            while let Some(c) = ji.next() {
+                match (c, ji.peek()) {
+                    ('%', Some(d)) if d.is_ascii_digit() => {
+                        ji.next();
+                        out.push_str(&(nth + 1).to_string());
+                    }
+                    _ => out.push(c),
+                }
+            }
+            // 数字で終わる印は、本文とくっつかないように空白を1つ足します
+            if out.ends_with(|c: char| c.is_ascii_digit()) {
+                out.push(' ');
+            }
+            return Some(out);
+        }
         match self.list {
             ListKind::None => None,
             ListKind::Bullet => Some(

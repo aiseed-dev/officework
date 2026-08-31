@@ -8,11 +8,37 @@ use super::write::*;
 
 #[cfg(test)]
 mod round {
+
+    /// **箇条書きの印は文書が決める。**
+    ///
+    /// 前は `numId` を 1 と 2 だけ決め打ちし、`numbering.xml` を見て
+    /// いませんでした。内閣府の調査票は `○` を numId 3〜11 に散らして
+    /// いて、9か所とも中黒で出ていました(2026-08-31)。
+    #[test]
+    fn the_bullet_comes_from_the_numbering_part() {
+        let num = r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:abstractNum w:abstractNumId="4"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/><w:lvlText w:val="○"/></w:lvl></w:abstractNum>
+<w:abstractNum w:abstractNumId="5"><w:lvl w:ilvl="0"><w:numFmt w:val="decimal"/><w:lvlText w:val="(%1)"/></w:lvl></w:abstractNum>
+<w:num w:numId="7"><w:abstractNumId w:val="4"/></w:num>
+<w:num w:numId="9"><w:abstractNumId w:val="5"/></w:num>
+</w:numbering>"#;
+        let hyou = crate::read::num_markers(num);
+        assert_eq!(hyou.get(&(7, 0)), Some(&("○".to_string(), false)), "中黒の印が引けない");
+        assert_eq!(hyou.get(&(9, 0)), Some(&("(%1)".to_string(), true)), "番号の印が引けない");
+        assert!(!hyou.contains_key(&(8, 0)), "無い numId に印が出た");
+        // 印の `%1` は、その段の番号に置き替わります
+        let mut p = kumihan::Paragraph { list: kumihan::ListKind::Number, ..Default::default() };
+        p.list_text = Some("(%1)".into());
+        assert_eq!(p.marker(2).as_deref(), Some("(3)"), "番号が入らない");
+        p.list = kumihan::ListKind::Bullet;
+        p.list_text = Some("○".into());
+        assert_eq!(p.marker(0).as_deref(), Some("○"), "印がそのまま出ない");
+    }
     use super::*;
     use kumihan::{Block, Cellbox, Document, Paragraph, Run, Table};
 
     fn para(s: &str) -> Paragraph {
-        Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
+        Paragraph { style_id: None, raw_adoc: None, list_text: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![Run { text: s.to_string(), size_pt: Some(10.5), font: None, fmt: Default::default() }] }
     }
@@ -47,7 +73,7 @@ mod round {
 
     #[test]
     fn font_size_is_preserved() {
-        let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
+        let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
             Run { text: "大見出し".into(), size_pt: Some(16.0), font: None, fmt: Default::default() },
@@ -80,7 +106,7 @@ mod round {
 
     #[test]
     fn line_breaks_inside_a_paragraph_are_preserved() {
-        let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
+        let d = Document { size_pt: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![
             Run { text: "一行目\n二行目".into(), size_pt: Some(10.5), font: None, fmt: Default::default() }]})]};
@@ -243,7 +269,7 @@ mod font_tests {
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-            blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
+            blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, space_before_pt: 0.0, space_after_pt: 0.0,  style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
                 align: Default::default(),
                 anchors: Vec::new(),
                     images: Vec::new(),
@@ -300,7 +326,7 @@ mod fmt_tests {
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-            blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
+            blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("見出し", f.clone())] })],
         };
@@ -315,7 +341,7 @@ mod fmt_tests {
             font: None,
             page: None,
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-            blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
+            blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, space_before_pt: 0.0, space_after_pt: 0.0,  align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, line_spacing: 1.0, shade: None, boxed: false, images_new: Vec::new(), runs: vec![run("赤", f.clone())] })],
         };
@@ -329,7 +355,7 @@ mod fmt_tests {
                 font: None,
                 page: None,
                 sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
-                blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
+                blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, space_before_pt: 0.0, space_after_pt: 0.0,  style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
                     align: a,
                     anchors: Vec::new(),
                     images: Vec::new(),
@@ -378,7 +404,7 @@ mod para_tests {
     use kumihan::{Align, Block, Document, ListKind, Paragraph, Run};
 
     fn para(list: ListKind, indent: u8, spacing: f32) -> Paragraph {
-        Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,  style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
+        Paragraph { style_id: None, raw_adoc: None, list_text: None, space_before_pt: 0.0, space_after_pt: 0.0,  style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
             align: Align::Left,
             anchors: Vec::new(),
                     images: Vec::new(),
@@ -408,7 +434,7 @@ mod para_tests {
     /// 帳票の余白は書いた人が決めた物なので、勝手に詰めてはいけない。
     #[test]
     fn paragraph_spacing_round_trips() {
-        let mut p = Paragraph { style_id: None, raw_adoc: None, space_before_pt: 12.0, space_after_pt: 6.0,
+        let mut p = Paragraph { style_id: None, raw_adoc: None, list_text: None, space_before_pt: 12.0, space_after_pt: 6.0,
             align: Default::default(), style: Default::default(), comments: Vec::new(),
             bookmarks: Vec::new(), anchors: Vec::new(), sect: None, images: Vec::new(),
             page_break_before: false, list: ListKind::None, indent: 0, left_twips: 0, first_line_twips: 0,
@@ -425,7 +451,7 @@ mod para_tests {
     /// 空きが無い段落には `w:spacing` を書かない(要らない印を増やさない)
     #[test]
     fn a_paragraph_without_spacing_stays_plain() {
-        let p = Paragraph { style_id: None, raw_adoc: None, space_before_pt: 0.0, space_after_pt: 0.0,
+        let p = Paragraph { style_id: None, raw_adoc: None, list_text: None, space_before_pt: 0.0, space_after_pt: 0.0,
             align: Default::default(), style: Default::default(), comments: Vec::new(),
             bookmarks: Vec::new(), anchors: Vec::new(), sect: None, images: Vec::new(),
             page_break_before: false, list: ListKind::None, indent: 0, left_twips: 0, first_line_twips: 0,

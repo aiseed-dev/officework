@@ -575,6 +575,45 @@ fn rule(l: &PdfLayerReference, f: &CharFormat, x: f32, y: f32, w: f32, pt: f32) 
 
 #[cfg(test)]
 mod tests {
+
+    /// **紙に入らない図形は次の紙へ送る。**
+    ///
+    /// 錨の段落が紙の下の方にあると、そこからのずれを足した位置が紙の外に
+    /// 出ます。前はそのまま置いていたので、内閣府の調査票の窓口の欄2つが
+    /// 305mm(A4 は 297mm)に来て、紙に出ていませんでした(2026-08-31)。
+    #[test]
+    fn a_shape_that_does_not_fit_moves_to_the_next_page() {
+        // 錨の段落を紙の下の方に置くため、本文を長くします
+        let mut d = kumihan::Document::default();
+        for _ in 0..40 {
+            d.push_para(kumihan::Paragraph {
+                runs: vec![kumihan::Run {
+                    text: "本文です。".into(),
+                    size_pt: None,
+                    font: None,
+                    fmt: Default::default(),
+                }],
+                ..Default::default()
+            });
+        }
+        // 最後の段落に、段落から 60mm 下という錨を付けます
+        let a = r#"<w:drawing><wp:anchor><wp:positionH relativeFrom="column"><wp:posOffset>0</wp:posOffset></wp:positionH>
+<wp:positionV relativeFrom="paragraph"><wp:posOffset>2160000</wp:posOffset></wp:positionV>
+<wp:extent cx="1800000" cy="720000"/><a:graphic><a:graphicData><wps:wsp><wps:spPr>
+<a:prstGeom prst="rect"/></wps:spPr><wps:txbx><w:txbxContent><w:p><w:r><w:t>窓口</w:t></w:r></w:p></w:txbxContent></wps:txbx>
+</wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing>"#;
+        if let Some(kumihan::Block::Para(p)) = d.blocks.last_mut() {
+            p.anchors.push(a.into());
+        }
+        let (sheet, page, _) = doc_to_sheet(&d, None).expect("組めない");
+        let v = foreign_shapes(&d, &sheet, page);
+        assert_eq!(v.len(), 1, "図形が置かれていない");
+        assert!(
+            v[0].y_mm + v[0].h_mm <= page.h_mm,
+            "紙({}mm)から落ちている: y {}mm + 高さ {}mm",
+            page.h_mm, v[0].y_mm, v[0].h_mm
+        );
+    }
     use kumihan::{font, layout, Align, Document, Frame, Metrics};
 
     use super::*;
@@ -1436,10 +1475,21 @@ pub fn foreign_shapes(
                 _ => page.left_mm + f.x_mm,
             };
             // 縦の基準。`page` は紙の上端、それ以外はこの段落の頭から
-            let y = match f.v_from.as_str() {
+            let mut y = match f.v_from.as_str() {
                 "page" => f.y_mm,
                 _ => y_para + f.y_mm,
             };
+            // **紙に入らない図形は次の紙へ送ります**(2026-08-31)。Word は
+            // 錨の段落ごと送ります。内閣府の調査票は窓口の欄2つが 305mm の
+            // 所に来ていて、A4(297mm)の下に落ちて紙に出ていませんでした
+            let mut kami = kami;
+            let tsukaeru = (page.h_mm - page.top_mm - page.bottom_mm).max(1.0);
+            let mut nogare = 0;
+            while y + f.h_mm > page.h_mm && nogare < 8 {
+                y -= tsukaeru;
+                kami += 1;
+                nogare += 1;
+            }
             out.push(kumihan::DocShape {
                 page: kami,
                 x_mm: x,

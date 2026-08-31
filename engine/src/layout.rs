@@ -1305,8 +1305,19 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             if cell.v_merge != VMerge::Continue {
                 let inner = (w - 2.0 * CELL_PAD).max(2.0);
                 let mut para0 = 0usize;
+                // **升の中でも箇条書きの印を出します**(2026-08-31)。前は
+                // `None` を渡していたので、内閣府の調査票の `○` が8か所
+                // 消えていました。番号は升ごとに数え直します
+                let mut kazu = 0usize;
                 for para in &cell.paragraphs {
-                    for cs in break_para(para, m, inner, None, hyphenate, notes, base) {
+                    let mk = match para.list {
+                        ListKind::None => None,
+                        _ => {
+                            kazu += 1;
+                            para.marker(kazu - 1)
+                        }
+                    };
+                    for cs in break_para(para, m, inner, mk.as_deref(), hyphenate, notes, base) {
                         let b0 = para0 + cs.iter().map(|c| c.off).min().unwrap_or(0);
                         ls.push((cs, b0));
                     }

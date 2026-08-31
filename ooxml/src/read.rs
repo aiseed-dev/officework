@@ -145,6 +145,15 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         let _ = f.read_to_string(&mut styxml);
     }
 
+    // **箇条書きの印**(numbering.xml)。`numId` と段から `w:lvlText` を引きます。
+    // 前は「numId 1 は中黒、2 は番号」の決め打ちで、文書が決めた印を
+    // 見ていませんでした(2026-08-31。内閣府の調査票の `○` が9か所)
+    let mut numxml = String::new();
+    if let Ok(mut f) = zip.by_name(&bui("numbering", "word/numbering.xml")) {
+        let _ = f.read_to_string(&mut numxml);
+    }
+    let shirushi = num_markers(&numxml);
+
     // 設定(settings.xml)。欧文ハイフネーションの旗を読む
     let mut sxml = String::new();
     if let Ok(mut f) = zip.by_name(&bui("settings", "word/settings.xml")) {
@@ -171,7 +180,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         let _ = f.read_to_string(&mut cxml);
     }
     let cmap = parse_comments(&cxml);
-    let (mut doc, mut rep) = parse_document_rels(&xml, &media, &cmap, &targets);
+    let (mut doc, mut rep) = parse_document_rels_num(&xml, &media, &cmap, &targets, &shirushi);
     // このアプリのペン(joink)は原文控えから筆へ読み戻す
     extract_ink(&mut doc);
     extract_shapes(&mut doc);
@@ -1334,15 +1343,27 @@ pub(super) fn parse_document_full(
     media: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
     cmts: &std::collections::BTreeMap<String, Comment>,
 ) -> (Document, Report) {
-    parse_document_rels(xml, media, cmts, &Default::default())
+    parse_document_num(xml, media, cmts, &Default::default())
 }
 
-/// 関係(rId → 的)つき。リンクの URL を解くのに要る
-pub(super) fn parse_document_rels(
+/// `shirushi` は `numbering.xml` の印の表([`num_markers`])。
+/// 空なら今までどおり `numId` の決め打ちで箇条書きの種類を決めます
+pub(super) fn parse_document_num(
+    xml: &str,
+    media: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
+    cmts: &std::collections::BTreeMap<String, Comment>,
+    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
+) -> (Document, Report) {
+    parse_document_rels_num(xml, media, cmts, &Default::default(), shirushi)
+}
+
+/// 関係と、箇条書きの印の表([`num_markers`])つき。ここが本体です
+pub(super) fn parse_document_rels_num(
     xml: &str,
     media: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
     cmts: &std::collections::BTreeMap<String, Comment>,
     targets: &std::collections::BTreeMap<String, String>,
+    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
 ) -> (Document, Report) {
     let mut r = Reader::from_str(xml);
     r.config_mut().trim_text(false);
@@ -1374,6 +1395,8 @@ pub(super) fn parse_document_rels(
     let mut align = Align::default();
     // 箇条書き・インデント・行間(w:numPr / w:ind / w:spacing)
     let mut list = ListKind::default();
+    // 文書が決めた箇条書きの印(numbering.xml の w:lvlText)
+    let mut list_text: Option<String> = None;
     let mut indent = 0u8;
     let mut first_line = 0i32; // w:ind の firstLine(正)/ hanging(負)。twip のまま持つ
     let mut left_twips = 0i32; // w:ind の left。段数と違って丸めない(2026-08-30)
@@ -1537,11 +1560,22 @@ pub(super) fn parse_document_rels(
                         ilvl = attr(&e, "val").and_then(|v| v.parse().ok()).unwrap_or(0).min(8);
                     }
                     b"numId" if in_ppr => {
-                        list = match attr(&e, "val").as_deref() {
-                            Some("2") => ListKind::Number,
-                            Some("0") | None => ListKind::None,
-                            _ => ListKind::Bullet,
-                        };
+                        let n: Option<u32> = attr(&e, "val").and_then(|v| v.parse().ok());
+                        // **文書が決めた印を先に引きます**(2026-08-31)。
+                        // 無い docx は今までどおり numId の決め打ちです
+                        list_text = n.and_then(|n| shirushi.get(&(n, ilvl)).cloned()).map(
+                            |(t, kazu)| {
+                                list = if kazu { ListKind::Number } else { ListKind::Bullet };
+                                t
+                            },
+                        );
+                        if list_text.is_none() {
+                            list = match n {
+                                Some(2) => ListKind::Number,
+                                Some(0) | None => ListKind::None,
+                                _ => ListKind::Bullet,
+                            };
+                        }
                     }
                     // 段落のスタイル。見出しと目次の行だけを持つ
                     b"pStyle" if in_ppr => {
@@ -1979,11 +2013,22 @@ pub(super) fn parse_document_rels(
                         ilvl = attr(&e, "val").and_then(|v| v.parse().ok()).unwrap_or(0).min(8);
                     }
                     b"numId" if in_ppr => {
-                        list = match attr(&e, "val").as_deref() {
-                            Some("2") => ListKind::Number,
-                            Some("0") | None => ListKind::None,
-                            _ => ListKind::Bullet,
-                        };
+                        let n: Option<u32> = attr(&e, "val").and_then(|v| v.parse().ok());
+                        // **文書が決めた印を先に引きます**(2026-08-31)。
+                        // 無い docx は今までどおり numId の決め打ちです
+                        list_text = n.and_then(|n| shirushi.get(&(n, ilvl)).cloned()).map(
+                            |(t, kazu)| {
+                                list = if kazu { ListKind::Number } else { ListKind::Bullet };
+                                t
+                            },
+                        );
+                        if list_text.is_none() {
+                            list = match n {
+                                Some(2) => ListKind::Number,
+                                Some(0) | None => ListKind::None,
+                                _ => ListKind::Bullet,
+                            };
+                        }
                     }
                     // 段落のスタイル。見出しと目次の行だけを持つ
                     b"pStyle" if in_ppr => {
@@ -2221,7 +2266,8 @@ pub(super) fn parse_document_rels(
                         if let Some(runs) = para.take() {
                             rep.runs += runs.len();
                             rep.paragraphs += 1;
-                            let mut p = Paragraph { align, raw_adoc: None, anchors: std::mem::take(&mut anchors),
+                            let mut p = Paragraph { align, raw_adoc: None, list_text: list_text.take(),
+                                            anchors: std::mem::take(&mut anchors),
                                 sect: para_sect.take(),
                                 images: std::mem::take(&mut images),
                                 comments: std::mem::take(&mut para_comments),
@@ -2593,6 +2639,74 @@ pub struct ForeignShape {
 }
 
 /// 段落の控え1つを [`ForeignShape`] に。うちの図形と、図形でない物は `None`
+/// **箇条書きの印の表**(docx の `numbering.xml`)。
+///
+/// 返るのは `(numId, 段) → (印, 番号か)` です。印は `w:lvlText` の字で、
+/// `○` や `(%1)` のような書き方をしています。`%1` はその段の番号で、
+/// 置き替えるのは組む所です([`kumihan::Paragraph::marker`])。
+///
+/// docx は2段構えで、`w:num` が `numId` を `abstractNumId` に結び付け、
+/// 本体の `w:abstractNum` が段ごとの印を持ちます。**両方引かないと**
+/// 印にたどり着けません。
+pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (String, bool)> {
+    let mut out = std::collections::BTreeMap::new();
+    if xml.is_empty() {
+        return out;
+    }
+    let attr1 = |seg: &str, key: &str| -> Option<String> {
+        let pat = format!("{key}=\"");
+        let i = seg.find(&pat)? + pat.len();
+        seg[i..].find('"').map(|e| seg[i..i + e].to_string())
+    };
+    // 本体: abstractNumId → 段ごとの (印, 番号か)
+    let mut honnin: std::collections::BTreeMap<u32, Vec<(u8, String, bool)>> = Default::default();
+    let mut rest = xml;
+    while let Some(i) = rest.find("<w:abstractNum ") {
+        let owari = rest[i..].find("</w:abstractNum>").map(|e| i + e).unwrap_or(rest.len());
+        let blk = &rest[i..owari];
+        let id: Option<u32> = attr1(blk, "w:abstractNumId").and_then(|v| v.parse().ok());
+        if let Some(id) = id {
+            let mut lv = blk;
+            while let Some(j) = lv.find("<w:lvl ") {
+                let le = lv[j..].find("</w:lvl>").map(|e| j + e).unwrap_or(lv.len());
+                let one = &lv[j..le];
+                let ilvl: u8 = attr1(one, "w:ilvl").and_then(|v| v.parse().ok()).unwrap_or(0);
+                let fmt = one
+                    .find("<w:numFmt ")
+                    .and_then(|k| attr1(&one[k..], "w:val"))
+                    .unwrap_or_default();
+                let txt = one
+                    .find("<w:lvlText ")
+                    .and_then(|k| attr1(&one[k..], "w:val"))
+                    .unwrap_or_default();
+                if !txt.is_empty() && fmt != "none" {
+                    honnin.entry(id).or_default().push((ilvl, txt, fmt != "bullet"));
+                }
+                lv = &lv[le.max(j + 7)..];
+            }
+        }
+        rest = &rest[owari.max(i + 15)..];
+    }
+    // 結び付け: numId → abstractNumId
+    let mut rest = xml;
+    while let Some(i) = rest.find("<w:num ") {
+        let owari = rest[i..].find("</w:num>").map(|e| i + e).unwrap_or(rest.len());
+        let blk = &rest[i..owari];
+        let num: Option<u32> = attr1(blk, "w:numId").and_then(|v| v.parse().ok());
+        let abs: Option<u32> = blk
+            .find("<w:abstractNumId ")
+            .and_then(|k| attr1(&blk[k..], "w:val"))
+            .and_then(|v| v.parse().ok());
+        if let (Some(n), Some(a)) = (num, abs) {
+            for (ilvl, txt, kazu) in honnin.get(&a).into_iter().flatten() {
+                out.insert((n, *ilvl), (txt.clone(), *kazu));
+            }
+        }
+        rest = &rest[owari.max(i + 7)..];
+    }
+    out
+}
+
 pub fn foreign_shape(a: &str) -> Option<ForeignShape> {
     if a.contains("name=\"joshape") || a.contains("name=\"joink") {
         return None; // うちが書いた物は extract_shapes が読みます
