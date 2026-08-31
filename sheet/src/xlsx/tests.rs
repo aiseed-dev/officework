@@ -1806,7 +1806,10 @@ mod print_setup_roundtrip_tests {
         assert_eq!(nashi.sheets[0].print_scale, Some(78), "倍率まで落とした");
         let ari = yomu(r#"<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>"#);
         assert_eq!(ari.sheets[0].fit_to_w, Some(2), "印があるのに読んでいない");
-        assert_eq!(ari.sheets[0].fit_to_h, None, "無い指定を作った");
+        // **書いていない側の既定は1枚**です(ISO/IEC 29500 の
+        // `fitToHeight` は `default="1"`)。総務省の給与所得の表は印だけを
+        // 立てて2つとも書いていないので、縦横1枚の意味になります
+        assert_eq!(ari.sheets[0].fit_to_h, Some(1), "書いていない側が1枚になっていない");
         // 保存でも印を書く。書かないと Excel 側で効きません
         let mut buf = Cursor::new(Vec::new());
         write(&ari, &mut buf).expect("書けない");

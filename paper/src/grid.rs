@@ -205,6 +205,23 @@ fn fit_scale(
             k = k.min(usable_h * n as f32 / total_h);
         }
     }
+    // **端数のぶんだけ余分に縮めます**(2026-08-31)。上の割り算は行が
+    // 途中で切れる前提の概算です。実際は行の途中では切れないので、
+    // ちょうどの倍率だと最後の1行が入らず紙が1枚増えます。国税庁の
+    // 酒税の総括表の1シート目がこれで2枚になっていました。
+    //
+    // 見るのはいちばん高い行です — 端数がどれだけ大きくても、その1行ぶんを
+    // 超えることはありません
+    if let Some(n) = nh.filter(|n| *n > 0) {
+        let takai = (r0..r1)
+            .filter(|r| !grid.row_hidden.contains(r))
+            .map(|r| gyou_mm(grid, r))
+            .fold(0.0f32, f32::max);
+        let waku = usable_h * n as f32;
+        if total_h > 0.0 && (total_h + takai) * k > waku {
+            k = k.min(waku / (total_h + takai));
+        }
+    }
     Some(k.clamp(0.1, 1.0))
 }
 
@@ -2453,6 +2470,28 @@ mod zukei_tests {
         assert_eq!(leaf.size_mm, Some((210.0, 297.0)));
         assert!(!leaf.polys.is_empty(), "塗りが出ていない");
         assert!(!leaf.rules.is_empty(), "線が出ていない");
+    }
+
+    /// **紙 N 枚に収めるとき、行の端数を見込む。**
+    ///
+    /// 「全体の高さ ÷ 使える高さ」ちょうどの倍率だと、行の途中では切れない
+    /// ので最後の1行が押し出され、紙が1枚増えます。総務省の給与所得の表は
+    /// 縦横1枚の指定で2枚になっていました(2026-08-31)。
+    #[test]
+    fn fitting_to_a_page_allows_for_the_last_row() {
+        let mut g = Grid::default();
+        // 25mm の行を 12 本 = 300mm。使える高さは 100mm なので、ちょうどの
+        // 倍率は 1/3 で、行の高さは 8.333mm。12 本で 100.0mm ぴったりに
+        // なりますが、端数の丸めで最後の1本が押し出されます
+        for r in 0..12u32 {
+            g.row_height.insert(r, 25.0 * 72.0 / 25.4);
+            g.set(book::Pos::new(r, 0), book::Cell::input("あ"));
+        }
+        g.fit_to_h = Some(1);
+        let paper = Paper::hitoshii(210.0, 140.0, 20.0);
+        let setup = PrintSetup { date1904: false, mdw_px: 0.0, ..Default::default() };
+        let leaves = sheet_leaves(&g, paper, &setup).expect("組めない");
+        assert_eq!(leaves.len(), 1, "1枚に収まっていない: {} 枚", leaves.len());
     }
 
     /// **セルの内側の余白は、Excel と同じ 2 画素。**

@@ -1576,8 +1576,9 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
                     // (2026-08-31)。Excel はそのとき `scale` のほうを使います。
                     // 国税庁の消費税の表は `scale="78"` と `fitToWidth="2"` が
                     // 両方あり、後者を使うと 83.7% に**広がって**紙が1列増えます
-                    let n = |k: &str| {
-                        attr(&e, k).and_then(|v| v.parse::<u32>().ok()).filter(|v| *v > 0)
+                    let n = |k: &str| match attr(&e, k) {
+                        Some(v) => v.parse::<u32>().ok().filter(|v| *v > 0),
+                        None => Some(1),
                     };
                     if fit_to_page {
                         sh.fit_to_w = n("fitToWidth");
