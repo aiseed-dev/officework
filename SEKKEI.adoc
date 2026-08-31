@@ -6148,3 +6148,11 @@ link:docs/sekkei/agent.ja.adoc[agent.ja.adoc](エージェント)と
 同日(発注者): 来月、Mac で一番安価な Microsoft 365 を購読する。
 比較の教師(実機の Word / Excel の PDF)がそろう。それまでに
 Fable が「1枚1機能の見本」の台本を用意しておく。
+
+同日続き(CI の試験の見直し): **book(213本)と pivot(16本)が
+CI の試験の列に入っておらず、どの push でも走っていなかった。**
+足した(aa559e56)。どちらも gpui 無しの純クレートで、polars は
+pysheet 経由で組まれるため費用はほぼゼロ。画面のクレート
+(calc・writer・ui・officework — 計164本)は表示の土台が要るため
+CI では走らない — これは事故でなく決めとして控える。手元の
+実機の検査(menu_run・ribbon_sweep・writer_sweep)がその受け持ち。
