@@ -445,8 +445,46 @@ pub(super) fn space_after_mm(para: &Paragraph, base: f32) -> f32 {
     }
 }
 
-pub(super) fn lh_of(para: &Paragraph, frame: &Frame) -> f32 {
-    frame.line_height_mm * para.spacing() * head_scale(para.style)
+/// **1行の高さ(mm)。**
+///
+/// 決め方は Word と LibreOffice に合わせて2段です。まず書体と字の大きさから
+/// 高さを出し、その上に段落の指定を掛けます
+/// (LibreOffice は `sw/source/core/text/itrform2.cxx` の `CalcRealHeight`)。
+///
+/// - `w:lineRule="exact"` — その高さで固定します
+/// - `w:lineRule="atLeast"` — その高さを下限にします
+/// - `w:lineRule="auto"` — 書体から出した高さに倍率を掛けます
+///
+/// 書体の名前が分からない段落(AsciiDoc から起こした文書など)は、
+/// [`Frame::line_height_mm`] をそのまま使います。
+pub(super) fn lh_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&str>) -> f32 {
+    let kihon = match syotai_lh_mm(para, base, font) {
+        Some(mm) => mm,
+        None => frame.line_height_mm * head_scale(para.style),
+    };
+    match para.line_pt {
+        // exact は書体を見ません。atLeast は下限です
+        Some((pt, true)) => pt * PT_TO_MM,
+        Some((pt, false)) => kihon.max(pt * PT_TO_MM),
+        None => kihon * para.spacing(),
+    }
+}
+
+/// **書体と字の大きさから出した1行の高さ(mm)。**
+///
+/// その行に乗る一番大きい字が決めます。書体を1つも名乗っていない段落は
+/// `None` を返します。行送りの倍率は [`crate::font::okuri_em`] が引きます。
+fn syotai_lh_mm(para: &Paragraph, base: f32, font: Option<&str>) -> Option<f32> {
+    let base = base * head_scale(para.style);
+    // **字が1つも無い段落も高さを持ちます。** 空の段落で run が無いと
+    // ここが None になり、書体を見ない既定に落ちていました
+    let mut takai = crate::font::okuri_em(font).map(|em| base * em * PT_TO_MM);
+    for r in &para.runs {
+        let em = crate::font::okuri_em(r.font.as_deref().or(font))?;
+        let mm = r.pt(base) * em * PT_TO_MM;
+        takai = Some(takai.map_or(mm, |t: f32| t.max(mm)));
+    }
+    takai
 }
 
 /// 節ごとの用紙を、**ブロックの番号で引ける形**に開く。
@@ -512,6 +550,12 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
         };
         match block {
             Block::Para(para) => {
+                // **段落スタイルが大きさを言っていればそちらが勝ちます。**
+                // run の指定はさらに強く、下の break_para が見ます
+                let base = doc.style_pt(para.style_id.as_deref()).unwrap_or(base);
+                // **書体もスタイルが言います。** run が名乗らない段落の
+                // 行送りは、これが引けないと出せません
+                let pfont = doc.style_font(para.style_id.as_deref()).or_else(|| doc.font.clone());
                 // 改ページ。紙に写すときにここで頁が割れる
                 if para.page_break_before && !sheet.lines.is_empty() {
                     sheet.breaks.push(y);
@@ -628,7 +672,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                                 font: first.and_then(|r| r.font.clone()),
                                 off: 0,
                             }],
-                            y_mm: y + lh_of(para, frame),
+                            y_mm: y + lh_of(para, frame, base, pfont.as_deref()),
                             from_body: true,
                             byte0: para_byte0,
                             cell: None,
@@ -659,7 +703,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                         sheet.lines.push(Line {
                             cells: Vec::new(), y_mm: y, from_body: true,
                             byte0: para_byte0 + cap_len, cell: None });
-                        y += lh_of(para, frame);
+                        y += lh_of(para, frame, base, pfont.as_deref());
                         continue;
                     }
                     // 揃え。**行の幅と行長の差を、どこに置くか**の話でしかない
@@ -743,15 +787,15 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     let byte0 = para_byte0
                         + cells.iter().map(|c| c.off).min().unwrap_or(0);
                     sheet.lines.push(Line { cells, y_mm: y, from_body: true, byte0, cell: None });
-                    y += lh_of(para, frame);
+                    y += lh_of(para, frame, base, pfont.as_deref());
                 }
                 // **段落の背景色**(2026-08-27)。模型に在り、画面は塗って
                 // いたのに、組む所で落としていたので紙と PDF に出ていません
                 // でした。註記の帯も見出しの背景も印刷で消えます
                 if let Some(c) = para.shade.as_deref() {
-                    let h = (y - shade_top).max(lh_of(para, frame));
+                    let h = (y - shade_top).max(lh_of(para, frame, base, pfont.as_deref()));
                     sheet.fills.push((
-                        [indent_mm, shade_top - lh_of(para, frame) * 0.8, measure, h],
+                        [indent_mm, shade_top - lh_of(para, frame, base, pfont.as_deref()) * 0.8, measure, h],
                         c.to_string(),
                     ));
                 }
@@ -761,7 +805,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 for im in para.images.iter().chain(para.images_new.iter()) {
                     let scale = if im.w_mm > measure { measure / im.w_mm } else { 1.0 };
                     let (w, h) = (im.w_mm * scale, im.h_mm * scale);
-                    sheet.images.push((im.bytes.clone(), [indent_mm, y - lh_of(para, frame) * 0.6, w, h]));
+                    sheet.images.push((im.bytes.clone(), [indent_mm, y - lh_of(para, frame, base, pfont.as_deref()) * 0.6, w, h]));
                     y += h + frame.line_height_mm * 0.4;
                 }
                 // 次の段落の頭 = この段落のバイト数 + 改行1つ
@@ -787,7 +831,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
             }
             Block::Table(table) => {
                 y = layout_table(table, m, frame, y, &mut sheet, table_no, doc.hyphenate,
-                                 &mut note_no, base);
+                                 &mut note_no, base, doc);
                 table_no += 1;
             }
         }
@@ -1243,7 +1287,8 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
 // 上と同じ理由で束ねません
 #[allow(clippy::too_many_arguments)]
 pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32, sheet: &mut Sheet,
-                table_no: usize, hyphenate: bool, notes: &mut NoteCount, base: f32) -> f32 {
+                table_no: usize, hyphenate: bool, notes: &mut NoteCount, base: f32,
+                doc: &Document) -> f32 {
     // 列数は「セルの数」ではなく「セルが占める格子の数」
     let ncols = table
         .rows
@@ -1284,7 +1329,8 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         gc: usize,     // 占める格子の左端
         span: usize,
         v: VMerge,
-        lines: Vec<(Vec<Cell>, usize)>,
+        /// 行の字と、升の中でのバイト位置と、その行の高さ(mm)
+        lines: Vec<(Vec<Cell>, usize, f32)>,
         x: f32,
         w: f32,
         /// 升の背景色。**升の中の最初の段落の物**を使います
@@ -1294,13 +1340,15 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     let mut row_hs: Vec<f32> = Vec::new();
     for row in &table.rows {
         let mut gc = 0usize;
-        let mut nlines = 1usize;
+        // **升ごとに高さを足します。** 升の中の段落が別の大きさなら、
+        // 行の高さも別です。行の高さはいちばん高い升で決まります
+        let mut takasa = lh;
         let mut laid: Vec<Laid> = Vec::new();
         for (ci, cell) in row.iter().enumerate() {
             let span = cell.span().min(ncols.saturating_sub(gc)).max(1);
             let x = xs[gc.min(ncols)];
             let w = xs[(gc + span).min(ncols)] - x;
-            let mut ls: Vec<(Vec<Cell>, usize)> = Vec::new();
+            let mut ls: Vec<(Vec<Cell>, usize, f32)> = Vec::new();
             // 縦結合の続きは上のセルに呑まれている。中身は組まない
             if cell.v_merge != VMerge::Continue {
                 let inner = (w - 2.0 * CELL_PAD).max(2.0);
@@ -1310,6 +1358,10 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 // 消えていました。番号は升ごとに数え直します
                 let mut kazu = 0usize;
                 for para in &cell.paragraphs {
+                    let pbase = doc.style_pt(para.style_id.as_deref()).unwrap_or(base);
+                    let pfont =
+                        doc.style_font(para.style_id.as_deref()).or_else(|| doc.font.clone());
+                    let plh = lh_of(para, frame, pbase, pfont.as_deref());
                     let mk = match para.list {
                         ListKind::None => None,
                         _ => {
@@ -1317,21 +1369,21 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                             para.marker(kazu - 1)
                         }
                     };
-                    for cs in break_para(para, m, inner, mk.as_deref(), hyphenate, notes, base) {
+                    for cs in break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase) {
                         let b0 = para0 + cs.iter().map(|c| c.off).min().unwrap_or(0);
-                        ls.push((cs, b0));
+                        ls.push((cs, b0, plh));
                     }
                     let plen: usize = para.runs.iter().map(|r| r.text.len()).sum();
                     para0 += plen + 1;
                 }
-                nlines = nlines.max(ls.len());
+                takasa = takasa.max(ls.iter().map(|(_, _, h)| *h).sum::<f32>());
             }
             let shade = cell.paragraphs.first().and_then(|p| p.shade.clone());
             laid.push(Laid { ci, gc, span, v: cell.v_merge, lines: ls, x, w, shade });
             gc += span;
         }
         rows_laid.push(laid);
-        row_hs.push(nlines as f32 * lh + 2.0 * CELL_PAD);
+        row_hs.push(takasa + 2.0 * CELL_PAD);
     }
 
     // 行の上端(累積)
@@ -1382,16 +1434,17 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             }
             let h = if l.v == VMerge::Start { merged_h(ri, l.gc) } else { row_hs[ri] };
             let x0 = l.x + CELL_PAD;
-            let mut yy = row_top + CELL_PAD + lh * 0.8;
+            let mut yy = row_top + CELL_PAD;
             let id = Some((table_no, ri, l.ci));
-            for (cells, b0) in l.lines {
+            for (cells, b0, plh) in l.lines {
+                yy += plh * 0.8;
                 let mut x = x0;
                 let cells: Vec<Cell> = cells
                     .into_iter()
                     .map(|mut c| { c.x_mm = x; x += c.w_mm; c })
                     .collect();
                 sheet.lines.push(Line { cells, y_mm: yy, from_body: false, byte0: b0, cell: id });
-                yy += lh;
+                yy += plh * 0.2;
             }
             // **升の塗り**(2026-08-27)。段落の背景色は模型に在り、画面は
             // 塗っていたのに、**組む所で落としていた**ので紙と PDF に出て

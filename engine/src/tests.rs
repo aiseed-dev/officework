@@ -2737,9 +2737,9 @@ mod midashi_tests {
     fn a_heading_line_follows_in_height_too() {
         let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0 };
         let p = |style: ParaStyle| Paragraph { style, ..Default::default() };
-        assert!(lh_of(&p(ParaStyle::Heading(1)), &frame) > lh_of(&p(ParaStyle::Body), &frame),
+        assert!(lh_of(&p(ParaStyle::Heading(1)), &frame, 10.5, None) > lh_of(&p(ParaStyle::Body), &frame, 10.5, None),
                 "H1 の行が本文と同じ高さ(重なる)");
-        assert_eq!(lh_of(&p(ParaStyle::Body), &frame), 6.0, "本文の高さが変わった");
+        assert_eq!(lh_of(&p(ParaStyle::Body), &frame, 10.5, None), 6.0, "本文の高さが変わった");
     }
 /// **塊の種類ごとに、正しい要素で出るか。**
 ///

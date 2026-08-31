@@ -484,6 +484,8 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             // Word の文書を開いて保存すると before / after が黙って消えていた
             // (2026-08-15)。twips = pt × 20
             let has_line_spacing = (p.spacing() - 1.0).abs() > 0.001;
+            // **原本が高さそのものを言っていたら、そのまま書き戻します。**
+            // 倍率に直して書くと、開き直したときに別の数になります
             let before = (p.space_before_pt * 20.0).round() as u32;
             let after = (p.space_after_pt * 20.0).round() as u32;
             // **新しく作った文書には行の高さを明に書きます。**
@@ -504,7 +506,9 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 let lh = kumihan::LINE_MM * p.spacing() * kumihan::head_scale_of(p.style);
                 (lh * 72.0 * 20.0 / 25.4).round() as u32
             });
-            if has_line_spacing || before > 0 || after > 0 || gyou_tw.is_some() {
+            if has_line_spacing || before > 0 || after > 0 || gyou_tw.is_some()
+                || p.line_pt.is_some()
+            {
                 let mut sp = BS::new("w:spacing");
                 if before > 0 {
                     sp.push_attribute(("w:before", before.to_string().as_str()));
@@ -512,7 +516,10 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 if after > 0 {
                     sp.push_attribute(("w:after", after.to_string().as_str()));
                 }
-                if let Some(tw) = gyou_tw {
+                if let Some((pt, chodo)) = p.line_pt {
+                    sp.push_attribute(("w:line", ((pt * 20.0).round() as i64).to_string().as_str()));
+                    sp.push_attribute(("w:lineRule", if chodo { "exact" } else { "atLeast" }));
+                } else if let Some(tw) = gyou_tw {
                     // **`atLeast`(この高さ以上)にします。** `exact` だと、
                     // 段落の中に大きい字があるとき Word が字を切ります。
                     // 普通の本文では natural(字の 1.15 倍ほど)より

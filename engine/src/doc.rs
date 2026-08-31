@@ -449,8 +449,16 @@ pub struct Paragraph {
     /// **原文の値をそのまま持って往復する** — 段落を触っても落とさないための箱で、
     /// 紙面はまだ使わない(組みに効かせるのは K4 の均等割付と同じ回で)
     pub first_line_twips: i32,
-    /// 行間の倍率。1.0 が既定
+    /// 行間の倍率。1.0 が既定。`line_pt` が入っているときは見ません
     pub line_spacing: f32,
+    /// **行の高さそのもの(pt)。** docx の `w:lineRule` が `exact` か
+    /// `atLeast` のときに入ります。`exact` はこの高さで固定、`atLeast` は
+    /// 下限です(`true` が exact)。
+    ///
+    /// 前は [`crate::LINE_MM`] で割って倍率に直していました。行の高さが
+    /// 6.4mm の決め打ちだったので割れましたが、書体から出すようにすると
+    /// 割れません(2026-09-01)。
+    pub line_pt: Option<(f32, bool)>,
     /// 段落の**前後の空き**(pt)。docx の `w:spacing` の `w:before` / `w:after`
     /// (twips = pt × 20)。0 は「無指定」。
     ///
@@ -1930,6 +1938,43 @@ impl Document {
     /// docDefaults にあればそれ、無ければ [`DEFAULT_PT`]
     pub fn base_pt(&self) -> f32 {
         self.size_pt.unwrap_or(DEFAULT_PT)
+    }
+
+    /// **段落スタイルが言う字の大きさ(pt)。**
+    ///
+    /// docx は3段で決めます。run の `w:rPr` が一番強く、次が段落スタイルの
+    /// `w:rPr`、最後が `docDefaults` です。真ん中を読んでいなかったので、
+    /// 内閣府の調査票が 12pt ではなく 11pt で組まれていました
+    /// (2026-09-01。本文のスタイル Body Text が `w:sz 24` を言っています)。
+    ///
+    /// 元になるスタイル(`w:basedOn`)をたどります。輪になっている定義でも
+    /// 止まるよう、たどる回数を限ります。
+    pub fn style_pt(&self, id: Option<&str>) -> Option<f32> {
+        self.style_look(id, |l| l.size_pt)
+    }
+
+    /// **段落スタイルが言う書体の名前。** 決め方は [`Document::style_pt`] と
+    /// 同じです。この文書は Normal が「ＭＳ 明朝」と言っていて、run は
+    /// 何も言っていません。行送りは原本の書体で決まるので、ここが引けないと
+    /// 書体から高さを出せません。
+    pub fn style_font(&self, id: Option<&str>) -> Option<String> {
+        self.style_look(id, |l| l.font.clone())
+    }
+
+    /// スタイルの見た目を、元になるスタイル(`w:basedOn`)をたどって引く。
+    /// 輪になっている定義でも止まるよう、たどる回数を限ります。
+    fn style_look<T>(&self, id: Option<&str>, toru: impl Fn(&StyleLook) -> Option<T>) -> Option<T> {
+        let hiku =
+            |i: &str| self.styles.iter().chain(self.styles_new.iter()).find(|s| s.id == i);
+        let mut ima = id?;
+        for _ in 0..16 {
+            let s = hiku(ima)?;
+            if let Some(v) = toru(&s.look) {
+                return Some(v);
+            }
+            ima = s.based_on.as_deref()?;
+        }
+        None
     }
 }
 

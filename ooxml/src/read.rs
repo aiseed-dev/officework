@@ -1401,6 +1401,7 @@ pub(super) fn parse_document_rels_num(
     let mut first_line = 0i32; // w:ind の firstLine(正)/ hanging(負)。twip のまま持つ
     let mut left_twips = 0i32; // w:ind の left。段数と違って丸めない(2026-08-30)
     let mut line_spacing = 1.0f32;
+    let mut line_pt: Option<(f32, bool)> = None;
     let mut space_before_pt = 0.0f32;
     let mut space_after_pt = 0.0f32;
     let mut page_break_before = false;
@@ -1506,6 +1507,7 @@ pub(super) fn parse_document_rels_num(
                               fmt = CharFormat::default(); align = Align::default();
                               list = ListKind::default(); indent = 0; first_line = 0;
                               line_spacing = 1.0;
+                              line_pt = None;
                               space_before_pt = 0.0;
                               space_after_pt = 0.0;
                               page_break_before = false; shade = None; boxed = false;
@@ -1649,7 +1651,7 @@ pub(super) fn parse_document_rels_num(
                             .unwrap_or(0);
                     }
                     b"spacing" if in_ppr => {
-                        line_spacing = gyou_bairitsu(
+                        (line_spacing, line_pt) = gyou_bairitsu(
                             attr(&e, "line").and_then(|v| v.parse::<f32>().ok()),
                             attr(&e, "lineRule"),
                         );
@@ -2102,7 +2104,7 @@ pub(super) fn parse_document_rels_num(
                             .unwrap_or(0);
                     }
                     b"spacing" if in_ppr => {
-                        line_spacing = gyou_bairitsu(
+                        (line_spacing, line_pt) = gyou_bairitsu(
                             attr(&e, "line").and_then(|v| v.parse::<f32>().ok()),
                             attr(&e, "lineRule"),
                         );
@@ -2278,6 +2280,7 @@ pub(super) fn parse_document_rels_num(
                                 left_twips,
                                 first_line_twips: first_line,
                                 line_spacing,
+                                line_pt,
                                 space_before_pt,
                                 space_after_pt,
                                 style: pstyle,
@@ -2849,23 +2852,20 @@ fn txbx_text(naka: &str) -> String {
 }
 
 
-/// **行の高さを倍率に直す。**
+/// **`w:spacing` の行の高さを読む。** 返すのは (倍率, 高さ) の組です。
 ///
 /// `w:lineRule="auto"`(既定)なら `w:line` は 240 = 1行 の倍率です。
-/// `atLeast` と `exact` は twips の**高さそのもの**なので、こちらの
-/// 1行の高さ([`kumihan::LINE_MM`])で割って倍率に直します。
+/// `atLeast` と `exact` は twips の**高さそのもの**なので、pt に直して
+/// そのまま持ちます。`exact` は組の2つめが `true` です。
 ///
-/// 見分けないと、自分で書いた docx を開き直したときに 544 twips が
-/// 2.27 倍と読まれます(2026-08-29 に往復の試験が落ちて気づきました)。
-fn gyou_bairitsu(line: Option<f32>, rule: Option<String>) -> f32 {
-    let Some(v) = line else { return 1.0 };
+/// 前はこの2つも 1行の高さ(`kumihan::LINE_MM`)で割って倍率にしていました。
+/// 行の高さが 6.4mm の決め打ちだったので割れましたが、書体から出すように
+/// 変えたので割れません(2026-09-01)。
+fn gyou_bairitsu(line: Option<f32>, rule: Option<String>) -> (f32, Option<(f32, bool)>) {
+    let Some(v) = line else { return (1.0, None) };
     match rule.as_deref() {
-        Some("atLeast") | Some("exact") => {
-            let mm = v / 20.0 * 25.4 / 72.0;
-            let b = mm / kumihan::LINE_MM;
-            // ほぼ1倍なら1倍に丸めます(こちらが書いた高さがこれです)
-            if (b - 1.0).abs() < 0.02 { 1.0 } else { b.clamp(0.5, 5.0) }
-        }
-        _ => (v / 240.0).clamp(0.5, 5.0),
+        Some("atLeast") => (1.0, Some((v / 20.0, false))),
+        Some("exact") => (1.0, Some((v / 20.0, true))),
+        _ => ((v / 240.0).clamp(0.5, 5.0), None),
     }
 }

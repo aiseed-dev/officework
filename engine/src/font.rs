@@ -509,6 +509,64 @@ pub fn hankaku_no_kae(name: &str) -> Option<&'static Family> {
     aite.iter().find_map(|c| resolve(c))
 }
 
+/// **原本の書体の行送り(em)。**
+///
+/// 幅の合う相手([`ONAJI_HABA`])に置き替えても、縦の寸法までは揃いません。
+/// 梅明朝は 1.0000em、ＭＳ 明朝は 1.292em です。行送りは原本の名前で
+/// 引かないと合いません(2026-09-01)。
+///
+/// | 原本 | 行送り | どこで測ったか |
+/// |---|---|---|
+/// | ＭＳ 明朝 | 1.292em | 内閣府 chosahyo.pdf。12pt→15.54pt、10.02pt→12.96pt |
+/// | Century | 1.360em | 国税庁の酒税の xlsx を Excel が刷った PDF |
+///
+/// どれも `w:spacing w:line` の指定が無く、文字グリッドも効いていない
+/// 文書で測っています。指定がある文書は書体の行送りを上書きするので、
+/// ここの値には使えません。
+///
+/// Meiryo UI は一度 1.966em で入れましたが、その文書は docDefaults が
+/// 1.15 倍を掛けていました。書体そのものの値ではないので外しています
+/// (2026-09-01)。
+///
+/// **測った物だけを載せます。** 系統が同じという理由で足すと、
+/// ＭＳ Ｐ明朝のように別の値を持つ書体で外れます。
+const OKURI_EM: &[(&str, f32)] = &[
+    ("ＭＳ明朝", 1.292),
+    ("msmincho", 1.292),
+    ("century", 1.360),
+];
+
+/// **1行の高さ(em)。** 書体の名前から引きます。
+///
+/// [`OKURI_EM`] に測った値があればそれを返します。無ければ、この機械に
+/// 載っている書体そのものから出します。出し方は LibreOffice と同じで
+/// (`vcl/source/font/fontmetric.cxx` の `ImplCalcLineSpacing`)、
+/// OS/2 の usWinAscent と usWinDescent に hhea の lineGap を足します。
+/// OS/2 の fsSelection の7ビット目が立っていれば sTypo 系に切り替えます。
+///
+/// 書体が引けなければ `None` を返します。呼ぶ側が既定を決めます。
+pub fn okuri_em(name: Option<&str>) -> Option<f32> {
+    let name = name?;
+    let key = norm(name);
+    if let Some((_, em)) = OKURI_EM.iter().find(|(n, _)| norm(n) == key) {
+        return Some(*em);
+    }
+    let (fam, _) = for_document(Some(name)).ok()?;
+    let d = load(fam).ok()?;
+    let face = ttf_parser::Face::parse(&d, 0).ok()?;
+    let upem = face.units_per_em() as f32;
+    let (ue, sita) = match face.tables().os2 {
+        Some(o) if o.use_typographic_metrics() => {
+            (o.typographic_ascender() as f32, -o.typographic_descender() as f32)
+        }
+        Some(o) => (o.windows_ascender() as f32, o.windows_descender() as f32),
+        None => (face.ascender() as f32, -face.descender() as f32),
+    };
+    let aki = face.line_gap() as f32;
+    let em = (ue + sita + aki) / upem;
+    (em > 0.1).then_some(em)
+}
+
 /// **その書体の、数字1文字の幅(画素)。** 96dpi です。
 ///
 /// `0` から `9` を測って、いちばん広いものを返します。LibreOffice と同じ
