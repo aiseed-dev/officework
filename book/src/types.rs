@@ -2317,7 +2317,7 @@ impl Sheet {
 /// ピボットの指図。src の表を集計して dest に**その時の値**で置いたもの。
 /// セルには値しか残らない — この指図があるから「更新」で置き直せる。
 /// 更新は明示の操作のときだけ polars を回す(開く=再計算はしない)。
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct PivotDef {
     /// 元の表があるシートの名前(番号ではなく名前 — 並べ替えに耐える)
     pub sheet: String,
