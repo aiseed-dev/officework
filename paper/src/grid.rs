@@ -350,16 +350,20 @@ impl Ink<'_> {
                  bold: bool, font: u8) {
         let w = t.chars().map(|c| if c.is_ascii() { 0.55 } else { 1.0 }).sum::<f32>()
             * pt * 25.4 / 72.0;
-        self.text_kazari(t, pt, x, y, rgb, bold, font, w, false, false);
+        self.text_kazari(t, pt, x, y, rgb, bold, font, w, false, false, 0.0, false);
     }
 
     /// **飾りつき。** 下線と取り消し線は書き手が持っているのに、表計算から
     /// は渡していませんでした(2026-08-31 発注者)。幅は下線を引く長さに
-    /// 使うので、**描く書体で測った値**を渡します
+    /// 使うので、**描く書体で測った値**を渡します。
+    /// `rotation` は傾き(度。左回り)で、0 は水平です
     #[allow(clippy::too_many_arguments)]
     fn text_kazari(&mut self, t: &str, pt: f32, x: f32, y: f32, rgb: (f32, f32, f32),
-                   bold: bool, font: u8, w_mm: f32, underline: bool, strike: bool) {
+                   bold: bool, font: u8, w_mm: f32, underline: bool, strike: bool,
+                   rotation: f32, italic: bool) {
         self.leaf.pieces.push(pdfw::Piece {
+            rotation,
+            italic,
             font,
             x_mm: x,
             // 表計算も新しい書き手も、左下からの y で描きます
@@ -629,6 +633,58 @@ fn deru_ji(grid: &Grid) -> std::collections::BTreeSet<char> {
     // 書式が作る字(桁区切り・記号・`#`)は値に出ないので足しておきます
     ji.extend("0123456789.,-+#()%¥$△▲ ".chars());
     ji
+}
+
+/// **セルの柄の色**(xlsx の `patternFill@patternType`。2026-08-31)。
+///
+/// 前は柄を見ておらず、どの柄も前景色のべた塗りになっていました。網掛けで
+/// 「記入しない欄」を示す帳票が、真っ黒に潰れます。
+///
+/// 柄そのものの点の並びは仕様書に書かれていません(Excel は 8×8 の点で
+/// 持っています)。**LibreOffice は線を引かず、前景色と地の色を濃さの比で
+/// 混ぜて1色にします。** その比をそのまま使います
+/// (`sc/source/filter/oox/stylesbuffer.cxx` の `Fill::finalizeImport`。
+/// 0x80 が前景 100%)。18種類すべてに値があります。
+///
+/// 知らない名前は前景色のままにします。
+fn gara_iro(na: &str, mae: (f32, f32, f32), ji: (f32, f32, f32)) -> (f32, f32, f32) {
+    let koki = match na {
+        "solid" => 0x80,
+        "darkGray" | "darkTrellis" => 0x60,
+        "darkDown" | "darkGrid" | "darkHorizontal" | "darkUp" | "darkVertical"
+        | "mediumGray" => 0x40,
+        "lightGrid" => 0x38,
+        "lightTrellis" => 0x30,
+        "lightDown" | "lightGray" | "lightHorizontal" | "lightUp" | "lightVertical" => 0x20,
+        "gray125" => 0x10,
+        "gray0625" => 0x08,
+        _ => return mae,
+    };
+    let k = koki as f32 / 128.0;
+    (
+        ji.0 + (mae.0 - ji.0) * k,
+        ji.1 + (mae.1 - ji.1) * k,
+        ji.2 + (mae.2 - ji.2) * k,
+    )
+}
+
+/// **グラデーションの色**(xlsx の `gradientFill`。2026-08-31)。
+///
+/// **階調そのものは描きません。** LibreOffice に合わせて、最初の2つの
+/// 止めを半分ずつ混ぜた1色にします
+/// (`sc/source/filter/oox/stylesbuffer.cxx` の `Fill::finalizeImport`。
+/// `lclGetMixedColor(..., 0x40)`)。止めが1つなら、その色です。
+///
+/// あちらも角度と `type="path"`(放射)は見ておらず、止めも先の2つしか
+/// 使いません。**円形の塗りを横縞にしないため**、こちらも同じにします
+/// (`book::Gradient` の注記が案じているのがその形です)。
+fn gradation_iro(g: &book::Gradient) -> Option<(f32, f32, f32)> {
+    let mut tome = g.stops.iter().filter_map(|(_, c)| hex_rgb(c));
+    let a = tome.next()?;
+    match tome.next() {
+        Some(b) => Some(((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0, (a.2 + b.2) / 2.0)),
+        None => Some(a),
+    }
 }
 
 /// 1つの表を PDF にする。行が紙に収まらなければ次のページへ。
@@ -923,8 +979,21 @@ fn draw_sheet(
             // - 斜体・下線・取り消し線(`ck.italic`/`underline`/`strike`)=
             //   **セル自身のそれらも描いていない**ので、条件付き書式のぶんだけ
             //   描くと食い違いがかえって増える
-            // 塗りは罫線より先に敷く(線を塗り潰さない)
-            if let Some(c) = fill.as_deref().and_then(hex_rgb) {
+            // 塗りは罫線より先に敷く(線を塗り潰さない)。
+            //
+            // **柄とグラデーションも描きます**(2026-08-31 発注者)。前は
+            // `fill`(べた塗りの色)しか見ておらず、柄のセルは前景色の
+            // べた塗りに、グラデーションのセルは無地になっていました。
+            //
+            // 柄は前景色と地の色を混ぜた1色にします([`gara_iro`])。
+            // 地の色が無ければ白を地とします(Excel の既定)
+            let gara = cell.fmt.fill_pattern.as_deref();
+            if let Some(c) = cell.fmt.fill_grad.as_ref().and_then(gradation_iro) {
+                ink.fill(x, y_top - rh, cw, rh, c);
+            } else if let (Some(na), Some(mae)) = (gara, fill.as_deref().and_then(hex_rgb)) {
+                let ji = cell.fmt.fill_bg.as_deref().and_then(hex_rgb).unwrap_or((1.0, 1.0, 1.0));
+                ink.fill(x, y_top - rh, cw, rh, gara_iro(na, mae, ji));
+            } else if let Some(c) = fill.as_deref().and_then(hex_rgb) {
                 ink.fill(x, y_top - rh, cw, rh, c);
             }
 
@@ -1046,10 +1115,26 @@ fn draw_sheet(
                     .map(|k| k as u8)
                     .unwrap_or(fno_cell)
             };
-            // **字下げのぶんは、入る幅から引きます**(2026-08-31 発注者)。
-            // 前は描くときだけ左を空けていたので、字下げした行は右へ
-            // はみ出していました。右揃えのセルは右から空けます
-            let ind = f32::from(cell.fmt.indent) * pt * 25.4 / 72.0;
+            // **字下げ。1段は空白3つぶん**です(ISO/IEC 29500 の `indent`:
+            // 「an increment of 1 represents 3 spaces … 3 space widths
+            // (of the normal style font)」)。2026-08-31 に測って直しました。
+            //
+            // 空白の幅はその書体から取ります。前は「1段 = 全角1字」で
+            // 数えていたので、ＭＳ 明朝なら 3分の2 しかありませんでした。
+            //
+            // **効くのは左・右・均等割付だけ**です(同じ規定。
+            // 「Only left, right, and distributed … are supported」)。
+            //
+            // 入る幅からも引きます。前は描くときだけ左を空けていたので、
+            // 字下げした行は右へはみ出していました
+            let ind = if matches!(
+                cell.fmt.align,
+                HAlign::Left | HAlign::Right | HAlign::Distribute | HAlign::General
+            ) {
+                f32::from(cell.fmt.indent) * 3.0 * haba.ji_mm(fno_cell as usize, ' ', pt)
+            } else {
+                0.0
+            };
             let naka = (ma_w - 3.0 - ind).max(pt * 25.4 / 72.0);
             // **数がセルに入らないときは `#` で埋めます**(2026-08-31 発注者)。
             //
@@ -1059,14 +1144,20 @@ fn draw_sheet(
             // 前は数もそのまま描いていたので、狭い列では隣の数と重なって
             // 読めなくなっていました(総務省の給与所得の第1表)。
             //
-            // **縮小して全体を表示**(xlsx の `shrinkToFit`)が先です
-            // (2026-08-31 発注者)。Excel はこの指定があると字を縮めて
-            // 入れるので、`#####` にはなりません。折り返しとは併用しません
+            // **縮小して全体を表示**(xlsx の `shrinkToFit`)が先です。
+            // 字を縮めて入れるので、下の `#####` にはなりません。
+            //
+            // **何行にもなるセルには効きません**(ISO/IEC 29500:
+            // 「Not applicable when a cell contains multiple lines of
+            // text」)。折り返しの指定と、セルの中の改行の両方を見ます。
+            //
+            // 縮め方の刻みは規定にありません。ここは入る大きさまで
+            // そのまま縮めます(下限 1pt)
             let mut pt = pt;
-            if cell.fmt.shrink && !cell.fmt.wrap {
+            let nangyou = cell.fmt.wrap || shown.contains('\n');
+            if cell.fmt.shrink && !nangyou {
                 let iru = haba.mm(fno_cell as usize, &shown, pt);
                 if iru > naka && iru > 0.0 {
-                    // Excel は 1pt 刻みで落とします。下限は 1pt
                     pt = (pt * naka / iru).max(1.0);
                 }
             }
@@ -1078,6 +1169,38 @@ fn draw_sheet(
                     shown = "#".repeat(kazu);
                 }
             }
+            // **下付き**(xlsx の `vertAlign="subscript"`)。上付きは模型が
+            // まだ持っていません。
+            //
+            // 大きさと下げ幅は仕様書にありません。LibreOffice の既定
+            // (大きさ 58%・下げ 8%)に合わせます
+            // (help「Font Position」と tdf#80194 の直し)
+            let sagaru = if cell.fmt.subscript {
+                pt *= 0.58;
+                pt * 25.4 / 72.0 * 0.08
+            } else {
+                0.0
+            };
+            // **縦書き**(xlsx の `textRotation="255"`)。2026-08-31 発注者。
+            //
+            // 255 は仕様書の範囲(0〜180)の外で、Excel の独自の値です。
+            // 角度ではなく「字を1つずつ下へ積む」という指定で、役所の帳票は
+            // 狭い列の見出しをこれで縦にします。前は横に出ていたので、隣の
+            // 列まで伸びていました。
+            //
+            // 1字ずつ改行を入れて、いまの複数行の仕組みに乗せます
+            if cell.fmt.rotation == Some(255) {
+                shown = shown.chars().map(|c| c.to_string()).collect::<Vec<_>>().join("\n");
+            }
+            // 傾き。ISO/IEC 29500 の `textRotation`:
+            // 「For 0-90, the value represents degrees above horizon.
+            //   For 91-180 the degrees below the horizon is calculated as:
+            //   [degrees below horizon] = 90 - textRotation」
+            let katamuki = match cell.fmt.rotation {
+                Some(v) if (1..=90).contains(&v) => v as f32,
+                Some(v) if (91..=180).contains(&v) => 90.0 - v as f32,
+                _ => 0.0,
+            };
             // **セルの中で飾りが変わる所は、run ごとに描きます**
             // (2026-08-31 発注者。`Sheet::rich_runs`)。国税庁の酒税の表は
             // 8pt のセルの中で英文だけ 6pt・Century です。セル1つに大きさ
@@ -1161,7 +1284,8 @@ fn draw_sheet(
                 book::VAlign::Middle => aki / 2.0,
                 book::VAlign::Top | book::VAlign::Distribute => aki,
             };
-            let mut ty = soko + ue + takasa - okuri_of(&gyou[gyou.len() - 1]);
+            // 下付きはここで下げます(行送りは変えません)
+            let mut ty = soko + ue + takasa - okuri_of(&gyou[gyou.len() - 1]) - sagaru;
             for g in &gyou {
                 let w = gyou_haba(g);
                 let mut gx = match cell.fmt.align {
@@ -1188,7 +1312,8 @@ fn draw_sheet(
                             let one = ch.to_string();
                             let w1 = haba.ji_mm(fno as usize, ch, *rp);
                             ink.text_kazari(&one, *rp, wx, ty, c, bold, fno, w1,
-                                            cell.fmt.underline, cell.fmt.strike);
+                                            cell.fmt.underline, cell.fmt.strike, katamuki,
+                                            cell.fmt.italic);
                             wx += haba.ji_mm(fno as usize, ch, *rp) + aki;
                         }
                     }
@@ -1197,8 +1322,9 @@ fn draw_sheet(
                         let fno = fno_of(rf);
                         let w1 = haba.mm(fno as usize, t, *rp);
                         ink.text_kazari(t, *rp, gx, ty, c, bold, fno, w1,
-                                        cell.fmt.underline, cell.fmt.strike);
-                        gx += haba.mm(fno as usize, t, *rp);
+                                        cell.fmt.underline, cell.fmt.strike, katamuki,
+                                        cell.fmt.italic);
+                        gx += w1;
                     }
                 }
                 ty -= okuri_of(g);

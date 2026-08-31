@@ -48,6 +48,24 @@ pub struct Piece {
     /// 書体を名指しするので、明朝とゴシックと欧文を刷り分けます
     /// (2026-08-31。Fable の指摘2)
     pub font: u8,
+    /// **傾き(度。左回り)。** xlsx の `alignment textRotation` が
+    /// 1〜90 のときに使います(2026-08-31 発注者)。
+    ///
+    /// 0 はいままでどおり水平です。`(x_mm, y_mm)` を軸に回します —
+    /// 字の並ぶ向きが変わるだけで、置く点は変わりません。
+    /// 縦書き(`textRotation="255"`)は傾きではなく1字ずつ下へ積むので、
+    /// この値ではなく呼ぶ側で行を分けて渡します
+    pub rotation: f32,
+    /// **斜体。** 字を傾けて作ります(2026-08-31)。
+    ///
+    /// **傾きの角度は書体が決めます** — `post` 表の `italicAngle` を読み、
+    /// その書体が言う角度で倒します。持っていなければ(素の書体は 0 度)
+    /// 倒しません。
+    ///
+    /// 名前1つにつき書体の実体を1本しか埋めていないので、斜体の顔が
+    /// あってもそれを選べません。**顔を持つ書体はそちらを使うべきです** —
+    /// 書体を顔ごとに引ける形にしてから直します
+    pub italic: bool,
 }
 
 /// 絵を PDF に載せる形にする。返りは(中身, 幅, 高さ, JPEG か)。
@@ -415,11 +433,33 @@ pub fn write_pages_fonts<W: std::io::Write>(
             c.begin_text();
             c.set_fill_rgb(r, g, b);
             c.set_font(Name(f_names[fi].as_bytes()), p.size_pt);
-            c.set_text_matrix([1.0, 0.0, 0.0, 1.0, pt(p.x_mm), pt(p.y_mm)]);
+            // 傾き(度。左回り)。0 のときはいままでと同じ行列です。
+            //
+            // **斜体は書体が持つ角度でだけ倒します**(`post` の
+            // `italicAngle`。右へ倒す書体は負の値)。斜体の顔を持たない
+            // 書体は 0 度なので、倒れません — 斜体にしない、が答えです
+            // (2026-08-31 発注者)。角度をこちらで決めることはしません。
+            //
+            // PDF には「斜体」という指示が無く、読む側は傾けてくれません。
+            // 画面は OS の文字描画に任せられるので、この計算は要りません
+            let (sin, cos) = p.rotation.to_radians().sin_cos();
+            let sh = if p.italic {
+                -faces[fi].italic_angle().to_radians().tan()
+            } else {
+                0.0
+            };
+            // [a b c d] = 回転 × 剪断。剪断は [1 0; sh 1]
+            let (a, b) = (cos, sin);
+            let (cc, d) = (-sin + cos * sh, cos + sin * sh);
+            c.set_text_matrix([a, b, cc, d, pt(p.x_mm), pt(p.y_mm)]);
             c.show(Str(&bytes));
             if p.bold {
-                // 0.12mm ずらして二度打つ(いまの道と同じ合成)
-                c.set_text_matrix([1.0, 0.0, 0.0, 1.0, pt(p.x_mm + 0.12), pt(p.y_mm)]);
+                // 0.12mm ずらして二度打つ(いまの道と同じ合成)。
+                // ずらす向きは字の並ぶ向きに合わせます
+                c.set_text_matrix([
+                    a, b, cc, d,
+                    pt(p.x_mm + 0.12 * cos), pt(p.y_mm + 0.12 * sin),
+                ]);
                 c.show(Str(&bytes));
             }
             c.end_text();
@@ -1242,6 +1282,8 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                     bold: c.fmt.bold,
                     highlight: c.fmt.highlight.clone(),
                     font: 0,
+                    rotation: 0.0,
+                    italic: c.fmt.italic,
                 });
             }
             continue;
@@ -1281,6 +1323,8 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                         bold: c.fmt.bold,
                         highlight: c.fmt.highlight.clone(),
                         font: 0,
+                        rotation: 0.0,
+                        italic: c.fmt.italic,
                     });
                 }
             }
@@ -1361,6 +1405,8 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                         bold: c.fmt.bold,
                         highlight: c.fmt.highlight.clone(),
                         font: 0,
+                        rotation: 0.0,
+                        italic: c.fmt.italic,
                     });
                 }
             }
@@ -1448,6 +1494,8 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                     bold: c.fmt.bold,
                     highlight: c.fmt.highlight.clone(),
                     font: 0,
+                    rotation: 0.0,
+                    italic: c.fmt.italic,
                 });
             }
         }
