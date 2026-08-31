@@ -2239,15 +2239,37 @@ impl Sheet {
     /// **空でも罫線や塗りのあるセルは刷ります。** 表の枠の一部なので、
     /// 落とすと様式が欠けます。
     pub fn print_extent(&self) -> (u32, u32) {
-        self.cells
+        let miru = |c: &Cell| {
+            !matches!(c.value, Value::Empty)
+                || c.formula.is_some()
+                || c.fmt.borders != Borders::default()
+                || c.fmt.fill.is_some()
+        };
+        let (rows, mut cols) = self
+            .cells
             .iter()
-            .filter(|(_, c)| {
-                !matches!(c.value, Value::Empty)
-                    || c.formula.is_some()
-                    || c.fmt.borders != Borders::default()
-                    || c.fmt.fill.is_some()
-            })
-            .fold((0, 0), |(r, c), (p, _)| (r.max(p.row + 1), c.max(p.col + 1)))
+            .filter(|(_, c)| miru(c))
+            .fold((0, 0), |(r, c), (p, _)| (r.max(p.row + 1), c.max(p.col + 1)));
+        // **左の罫線しか無い列は、前の列の右端です**(2026-08-31)。
+        // 表の右の縁を、隣の列の「左」として書いてある帳票が多く、その1列を
+        // 数えると紙が1枚増えます(国税庁の酒税の表は5シート中4つがこの形)
+        while cols > 0 {
+            let c = cols - 1;
+            let hidari_dake = self.cells.iter().filter(|(p, _)| p.col == c).all(|(_, x)| {
+                matches!(x.value, Value::Empty)
+                    && x.formula.is_none()
+                    && x.fmt.fill.is_none()
+                    && !x.fmt.borders.top.on
+                    && !x.fmt.borders.bottom.on
+                    && !x.fmt.borders.right.on
+            });
+            if hidari_dake {
+                cols -= 1;
+            } else {
+                break;
+            }
+        }
+        (rows, cols)
     }
 
     /// **見せる大きさ。** 次の4つの、いちばん大きい所:

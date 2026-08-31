@@ -53,6 +53,32 @@ mod print_extent_tests {
         s.set(Pos::new(4, 4), Cell { formula: None, value: Value::Empty, fmt });
         assert_eq!(s.print_extent(), (5, 5), "罫線のあるセルが落ちた");
     }
+
+    /// **表の右の縁を、隣の列の「左の罫線」として書いた帳票。**
+    ///
+    /// その1列を刷る範囲に数えると、紙が1枚増えます。国税庁の酒税の
+    /// 総括表は5シート中4つがこの形でした(2026-08-31)。
+    #[test]
+    fn a_column_holding_only_a_left_border_is_not_printed() {
+        let mut s = Sheet { name: "見本".into(), ..Default::default() };
+        for r in 0..3 {
+            let mut fmt = CellFormat::default();
+            fmt.borders.right = Edge::THIN;
+            s.set(Pos::new(r, 0), Cell {
+                formula: None, value: Value::Text("あ".into()), fmt });
+            // 右隣は、左の罫線だけを持つ空のセル
+            let mut hidari = CellFormat::default();
+            hidari.borders.left = Edge::THIN;
+            s.set(Pos::new(r, 1), Cell { formula: None, value: Value::Empty, fmt: hidari });
+        }
+        assert_eq!(s.print_extent(), (3, 1), "左の罫線だけの列を刷る範囲に数えた");
+        // 上の罫線が付いたら、その列は縁ではないので数える
+        let mut ue = CellFormat::default();
+        ue.borders.left = Edge::THIN;
+        ue.borders.top = Edge::THIN;
+        s.set(Pos::new(0, 1), Cell { formula: None, value: Value::Empty, fmt: ue });
+        assert_eq!(s.print_extent(), (3, 2), "縁ではない列まで落とした");
+    }
 }
 
 #[cfg(test)]
