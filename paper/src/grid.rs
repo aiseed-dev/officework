@@ -1840,6 +1840,23 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
         // 図形の中の文字(テキストボックス)。揃えの指定があれば従います
         if let Some(t) = &sp.text {
             let pt = sp.text_fmt.size_pt.unwrap_or(9.0) * scale;
+            // **縦組みの箱**(`<a:bodyPr vert="…">`。2026-08-31 発注者)。
+            // 箱が細いので、横に組むと1字ずつ折り返されて「F o r」のように
+            // 落ちます。国税庁の消費税の表の「For the current year」が
+            // これでした。字を 90 度倒して、箱の高さを行の長さに使います
+            if sp.text_fmt.vertical {
+                let hitotsu = |c: char| {
+                    (if c.is_ascii() { 0.55f32 } else { 1.0 }) * pt * 25.4 / 72.0
+                };
+                let haba: f32 = t.chars().filter(|c| *c != '\n').map(hitotsu).sum();
+                // 箱の中ほどから、上から下へ。字は右へ倒します(vert)
+                let tx = x + (w - pt * 25.4 / 72.0) / 2.0 + pt * 25.4 / 72.0 * 0.8;
+                let ty = y_top - (h - haba).max(0.0) / 2.0;
+                let hito: String = t.chars().filter(|c| *c != '\n').collect();
+                l1.text_kazari(&hito, pt, tx, ty, (0.0, 0.0, 0.0), false, 0, haba,
+                               false, false, -90.0, false);
+                return;
+            }
             // **改行で折ります**(2026-08-30)。Word のテキストボックスは
             // 何行も持ちます。1行に繋げて描いていたので、内閣府の告知書の
             // 窓口の欄が横一列になって隣の枠まではみ出していました。

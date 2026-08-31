@@ -717,6 +717,13 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
     let mut shadow = false;
     // effectLst の中の色や alpha を塗りと取り違えない
     let mut in_effect = false;
+    // **字の色を図形の塗りと取り違えないための印**(2026-08-31)。
+    // テキストボックスの `<a:rPr><a:solidFill><a:srgbClr val="000000"/>` は
+    // 字の色です。国税庁の消費税の表の縦書きの箱が、これで真っ黒に
+    // 塗り潰されていました
+    let mut in_body = false;
+    // `<a:noFill/>` を見たら、そこで決まりです。後から来る色で塗りません
+    let (mut fill_kimatta, mut line_kimatta) = (false, false);
     let mut cur: Vec<u8> = Vec::new();
     loop {
         match r.read_event_into(&mut buf) {
@@ -746,6 +753,9 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     alpha = None;
                     shadow = false;
                     in_effect = false;
+                    in_body = false;
+                    fill_kimatta = false;
+                    line_kimatta = false;
                 }
                 b"from" => in_from = true,
                 t @ (b"col" | b"row" | b"colOff" | b"rowOff") if in_from => {
@@ -787,6 +797,15 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     flip_v = attr(&e, "flipV").as_deref() == Some("1");
                 }
                 b"effectLst" => in_effect = true,
+                b"txBody" => in_body = true,
+                // **塗らない・線を引かないの指定。** 見たらそこで決まり
+                b"noFill" if in_sp && !in_effect && !in_body => {
+                    if in_ln {
+                        line_kimatta = true;
+                    } else {
+                        fill_kimatta = true;
+                    }
+                }
                 b"outerShdw" if in_sp => shadow = true,
                 b"ln" => {
                     in_ln = true;
@@ -811,13 +830,13 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                 }
                 b"custGeom" => has_custom = true,
                 // alpha を子に持つ色は Start で来る(<a:srgbClr><a:alpha/></a:srgbClr>)
-                b"srgbClr" if in_sp && !in_effect => {
+                b"srgbClr" if in_sp && !in_effect && !in_body => {
                     let v = attr(&e, "val");
                     if in_ln {
-                        if line.is_none() {
+                        if line.is_none() && !line_kimatta {
                             line = v;
                         }
-                    } else if fill.is_none() {
+                    } else if fill.is_none() && !fill_kimatta {
                         fill = v;
                     }
                 }
@@ -907,13 +926,13 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         pts.push(book::PathPoint::at(at.0, at.1));
                     }
                 }
-                b"srgbClr" if in_sp && !in_effect => {
+                b"srgbClr" if in_sp && !in_effect && !in_body => {
                     let v = attr(&e, "val");
                     if in_ln {
-                        if line.is_none() {
+                        if line.is_none() && !line_kimatta {
                             line = v;
                         }
-                    } else if fill.is_none() {
+                    } else if fill.is_none() && !fill_kimatta {
                         fill = v;
                     }
                 }
@@ -973,6 +992,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                 }
                 b"col" | b"row" | b"colOff" | b"rowOff" => cur.clear(),
                 b"ln" => in_ln = false,
+                b"txBody" => in_body = false,
                 b"effectLst" => in_effect = false,
                 b"t" => in_t = false,
                 // **束の子は、その場で1つ押し出します。** 入れ物の終わりまで

@@ -11,6 +11,40 @@ use super::write::*;
 
 #[cfg(test)]
 mod fmt_round {
+
+    /// **図形の塗りに、字の色を使わない。**
+    ///
+    /// `<a:noFill/>` の図形の中にあるテキストボックスの `<a:rPr>` が
+    /// `<a:srgbClr val="000000"/>` を持つと、それを図形の塗りとして拾って
+    /// いました。国税庁の消費税の表の縦書きの箱が真っ黒に潰れていました
+    /// (2026-08-31 発注者)。
+    #[test]
+    fn a_shapes_fill_is_not_its_text_colour() {
+        // **実物の形そのままです**(国税庁の消費税の表の drawing1.xml)。
+        // `<a:noFill/>` が2つ、その後ろの `<a:rPr>` に字の色があります
+        let dr = r#"<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+<xdr:twoCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
+<xdr:to><xdr:col>1</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>3</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+<xdr:sp macro="" textlink=""><xdr:nvSpPr><xdr:cNvPr id="1" name="Text Box 9"/><xdr:cNvSpPr txBox="1"/></xdr:nvSpPr>
+<xdr:spPr bwMode="auto"><a:xfrm><a:off x="36711" y="4718146"/><a:ext cx="110992" cy="789768"/></a:xfrm>
+<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln w="9525"><a:noFill/><a:miter lim="800000"/><a:headEnd/><a:tailEnd/></a:ln><a:effectLst/></xdr:spPr>
+<xdr:txBody><a:bodyPr vert="vert" wrap="none" anchor="b"/><a:lstStyle/><a:p><a:pPr algn="l"/><a:r>
+<a:rPr lang="en-US" sz="600" b="0" i="0" strike="noStrike"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:latin typeface="Century"/></a:rPr>
+<a:t>For the current year</a:t></a:r></a:p></xdr:txBody></xdr:sp>
+<xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>"#;
+        let v = crate::xlsx::read::parse_drawing_anchors(dr);
+        let sp = v
+            .iter()
+            .find_map(|t| match &t.5 {
+                crate::xlsx::read::DrawKind::Shape(s) => Some(s.as_ref()),
+                _ => None,
+            })
+            .expect("図形が読めない");
+        assert_eq!(sp.fill, None, "塗らない図形に色が付いた");
+        assert_eq!(sp.line, None, "線を引かない図形に色が付いた");
+        assert!(sp.text_fmt.vertical, "縦組みを読んでいない");
+        assert_eq!(sp.text.as_deref(), Some("For the current year"));
+    }
     use book::{Borders, Cell, CellFormat, Edge, HAlign, Pos, Value};
     use book::{Book, Sheet};
 
