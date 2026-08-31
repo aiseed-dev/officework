@@ -410,22 +410,42 @@ pub fn read_generic(name: &str) -> Option<Generic> {
 /// 国税庁の PDF に埋め込まれていた本物と1字ずつ比べました。後の5組は
 /// 元から「字送りを合わせる」目的で作られた書体です。
 ///
+/// **測った組と、発注者が決めた組が混じっています。** 下の表の右端に
+/// どちらかを書いてあります。測っていない組は、幅が合っている保証が
+/// ありません — 本物が手に入ったら測って直します。
+///
 /// | 原本 | 相手 | 確かめ方 |
 /// |---|---|---|
 /// | ＭＳ 明朝 | IPA明朝 | 半角95字が完全一致 |
 /// | ＭＳ ゴシック | IPAゴシック | 半角95字が完全一致 |
 /// | Century | C059 | 半角95字の平均ずれ 0.01% |
 /// | Arial・Times・Calibri・Cambria・Courier New | Liberation 系ほか | その目的で作られた書体 |
+/// | ＭＳ 明朝・ゴシック・Ｐ明朝・Ｐゴシック | 梅明朝・梅ゴシック・梅P明朝・梅Pゴシック | 半角が1字ずつ一致 |
+/// | 游明朝・游ゴシック | Noto Serif/Sans CJK JP | **発注者の決め**(2026-08-31)。まだ測っていません |
 ///
 /// **ＭＳ Ｐ明朝・ＭＳ Ｐゴシックはここに入れていません。** あの2つは
 /// 漢字が固定幅・半角が proportional という組み合わせで、書体1本では
 /// 合わせられないためです(数字は 0.500em、カンマは 0.305/0.203em)。
 /// 半角と全角で別の書体を持てるようにしてから入れます。
 const ONAJI_HABA: &[(&str, &[&str])] = &[
-    ("ＭＳ明朝", &["IPA明朝", "IPAMincho"]),
-    ("msmincho", &["IPA明朝", "IPAMincho"]),
-    ("ＭＳゴシック", &["IPAゴシック", "IPAGothic"]),
-    ("msgothic", &["IPAゴシック", "IPAGothic"]),
+    ("ＭＳ明朝", &["梅明朝", "Ume Mincho", "IPA明朝", "IPAMincho"]),
+    ("msmincho", &["梅明朝", "Ume Mincho", "IPA明朝", "IPAMincho"]),
+    ("ＭＳゴシック", &["梅ゴシック", "Ume Gothic", "IPAゴシック", "IPAGothic"]),
+    ("msgothic", &["梅ゴシック", "Ume Gothic", "IPAゴシック", "IPAGothic"]),
+    ("ＭＳＰ明朝", &["梅P明朝", "Ume P Mincho"]),
+    ("mspmincho", &["梅P明朝", "Ume P Mincho"]),
+    ("ＭＳＰゴシック", &["梅Pゴシック", "Ume P Gothic"]),
+    ("mspgothic", &["梅Pゴシック", "Ume P Gothic"]),
+    ("ＭＳＵＩゴシック", &["梅UIゴシック", "Ume UI Gothic", "梅Pゴシック", "Ume P Gothic"]),
+    ("msuigothic", &["梅UIゴシック", "Ume UI Gothic", "梅Pゴシック", "Ume P Gothic"]),
+    // **游は Noto**(2026-08-31 発注者)。下の注記のとおり、これは測った
+    // 組ではありません — 游の本物が手元に無く、幅は確かめられていません
+    ("游明朝", &["Noto Serif CJK JP", "源ノ明朝"]),
+    ("游明朝体", &["Noto Serif CJK JP", "源ノ明朝"]),
+    ("yumincho", &["Noto Serif CJK JP", "源ノ明朝"]),
+    ("游ゴシック", &["Noto Sans CJK JP", "源ノ角ゴシック"]),
+    ("游ゴシック体", &["Noto Sans CJK JP", "源ノ角ゴシック"]),
+    ("yugothic", &["Noto Sans CJK JP", "源ノ角ゴシック"]),
     ("century", &["C059", "Century Schoolbook L"]),
     ("arial", &["Liberation Sans", "Arimo"]),
     ("timesnewroman", &["Liberation Serif", "Tinos"]),
@@ -433,6 +453,60 @@ const ONAJI_HABA: &[(&str, &[&str])] = &[
     ("cambria", &["Caladea"]),
     ("couriernew", &["Liberation Mono", "Cousine"]),
 ];
+
+/// **漢字と半角で別の書体を当てる組**(2026-08-31 発注者)。
+///
+/// ＭＳ Ｐ明朝とＭＳ Ｐゴシックは、漢字が全角の升に収まり、**半角の数字が
+/// 0.500em に固定**されています。置き替え先1本では合いません — IPA明朝は
+/// 半角が全部 0.500em の等幅なのでカンマまで数字と同じ幅になり、IPAex明朝
+/// は proportional ですが数字が 0.618em あります。**漢字は日本語の書体、
+/// 半角は欧文の書体**と分けます。
+///
+/// | | 数字 | カンマ | M |
+/// |---|---|---|---|
+/// | ＭＳ Ｐ明朝(本物) | 0.500em | 0.305em | 0.801em |
+/// | Liberation Serif | 0.500em | 0.250em | 0.889em |
+/// | ＭＳ Ｐゴシック(本物) | 0.500em | 0.203em | 0.742em |
+/// | Roboto Condensed | 0.494em | 0.197em | 0.755em |
+///
+/// **梅フォントが入っていれば、ここは使われません**(2026-08-31 発注者
+/// 「MS明朝、ゴシック系には梅フォントがある」)。梅P明朝と梅Pゴシックは
+/// ＭＳ Ｐ明朝・ＭＳ Ｐゴシックと1字ずつ一致するので、書体1本で足ります。
+/// 下の [`hankaku_no_kae`] は、梅が無い機械のための二番手です。
+///
+/// **測った書体だけを並べます。** 一度「日本語の書体はどれも分ける」と
+/// いう規則にしましたが、間違いでした。メイリオ UI の数字は 0.6211em で、
+/// ＭＳ Ｐ明朝の 0.500em とはまるで違います(内閣府の面談記録の PDF に
+/// 埋め込まれていた本物を測りました)。あちらは IPAex明朝の 0.618em が
+/// 0.5% しか違わないので、**分けないほうが近い**のです。
+///
+/// 測っていない名前(游明朝・游ゴシック・ヒラギノ・HG 系)はここに
+/// 入れません。今までどおり1本で組みます。**測ってから足します。**
+const HANKAKU_NO_KAE: &[(&str, &[&str])] = &[
+    ("ＭＳＰ明朝", &["Liberation Serif", "Tinos", "Times New Roman"]),
+    ("mspmincho", &["Liberation Serif", "Tinos", "Times New Roman"]),
+    ("ＭＳＰゴシック", &["Roboto Condensed", "Liberation Sans", "Arimo"]),
+    ("mspgothic", &["Roboto Condensed", "Liberation Sans", "Arimo"]),
+];
+
+/// **半角に当てる書体。** 組に無ければ `None`(1本で組みます)。
+///
+/// 詳しくは [`HANKAKU_NO_KAE`] を見てください。その機械に本物があるときも
+/// 分けません — 本物が両方の設計を持っているためです。
+pub fn hankaku_no_kae(name: &str) -> Option<&'static Family> {
+    if resolve(name).is_some() {
+        return None;
+    }
+    // **幅の合う相手が1本で見つかったなら、分けません**(2026-08-31)。
+    // 梅P明朝は ＭＳ Ｐ明朝と1字ずつ一致するので、欧文を別に当てる必要が
+    // ありません
+    if umeru(name).is_some() {
+        return None;
+    }
+    let key = norm(name);
+    let (_, aite) = HANKAKU_NO_KAE.iter().find(|(n, _)| norm(n) == key)?;
+    aite.iter().find_map(|c| resolve(c))
+}
 
 /// **その書体の、数字1文字の幅(画素)。** 96dpi です。
 ///
@@ -463,6 +537,13 @@ pub fn digit_px(name: &str, pt: f32) -> Option<f32> {
     (hiro > 0.0).then(|| (hiro * pt * 96.0 / 72.0).round())
 }
 
+/// [`ONAJI_HABA`] から、幅の合う相手を引きます。この機械に無ければ `None`
+fn umeru(name: &str) -> Option<&'static Family> {
+    let key = norm(name);
+    let (_, aite) = ONAJI_HABA.iter().find(|(n, _)| norm(n) == key)?;
+    aite.iter().find_map(|c| resolve(c))
+}
+
 /// 無い書体の筋の通った代替。**明朝の書類を黙ってゴシックにしない。**
 ///
 /// Windows の書体(ＭＳ 明朝、Times New Roman など)は Linux に無いのが
@@ -475,11 +556,8 @@ pub fn digit_px(name: &str, pt: f32) -> Option<f32> {
 /// 一覧しか持っていなかったので、ドイツ語の画面で Times New Roman の
 /// 文書を開くと日本語の明朝になっていました。
 pub fn substitute(name: &str) -> Option<&'static Family> {
-    let key = norm(name);
-    if let Some((_, aite)) = ONAJI_HABA.iter().find(|(n, _)| norm(n) == key) {
-        if let Some(f) = aite.iter().find_map(|c| resolve(c)) {
-            return Some(f);
-        }
+    if let Some(f) = umeru(name) {
+        return Some(f);
     }
     let k = read_generic(name)?;
     // 並びは「入れた書体(IPA/Noto)→ OS の持ち物」。後半は実機の書体 —
@@ -928,6 +1006,26 @@ mod tests {
             mita += 1;
         }
         assert!(mita > 0, "字送りの合う書体が1つも入っていない");
+        // 梅フォントは ＭＳ の4つと1字ずつ一致します。数字とカンマで見ます
+        // (本物は 07 と 01 の PDF に埋め込まれていたものを測りました)
+        for (na, suuji, kanma) in [
+            ("梅明朝", 0.500, 0.500),
+            ("梅ゴシック", 0.500, 0.500),
+            ("梅P明朝", 0.500, 0.305),
+            ("梅Pゴシック", 0.500, 0.203),
+        ] {
+            let Some(f) = resolve(na) else { continue };
+            let d = load(f).expect("読めない");
+            let face = ttf_parser::Face::parse(&d, 0).expect("解けない");
+            let em = face.units_per_em() as f32;
+            let haba = |c: char| {
+                face.glyph_index(c).and_then(|g| face.glyph_hor_advance(g)).map(|a| a as f32 / em)
+            };
+            let s0 = haba('0').expect("0 が無い");
+            let sk = haba(',').expect("カンマが無い");
+            assert!((s0 - suuji).abs() < 0.002, "{na} の数字が {s0}em(本物は {suuji}em)");
+            assert!((sk - kanma).abs() < 0.002, "{na} のカンマが {sk}em(本物は {kanma}em)");
+        }
         // ＭＳ 明朝の相手がいるなら、数字がちょうど半角であること
         if let Some(f) = resolve("IPA明朝") {
             let d = load(f).expect("読めない");
@@ -939,6 +1037,49 @@ mod tests {
                 .expect("0 が無い") as f32
                 / em;
             assert!((haba - 0.5).abs() < 0.001, "数字が {haba}em(本物は 0.500em)");
+        }
+    }
+
+    /// **漢字と半角で設計の違う書体は、半角を分ける。**
+    ///
+    /// 日本語の書体の多くは欧文が proportional です。置き替え先1本では
+    /// 合いません — IPA明朝は半角が全部 0.500em の等幅、IPAex明朝は
+    /// proportional ですが数字が 0.618em(本物は 0.500em)です。
+    ///
+    /// **測った書体だけを分ける。**
+    ///
+    /// 一度「日本語の書体はどれも分ける」という規則にしましたが、間違い
+    /// でした(2026-08-31)。メイリオ UI の数字は 0.6211em で、ＭＳ Ｐ明朝の
+    /// 0.500em とはまるで違います。IPAex明朝の 0.618em が 0.5% しか違わない
+    /// ので、**分けないほうが近い**のです。
+    #[test]
+    fn only_the_faces_that_were_measured_are_split() {
+        let _lock = lang_lock();
+        set_default_language("ja");
+        // 半角の数字が 0.500em に固定されている2つ。測ってあります。
+        // **1本で幅の合う相手(梅P明朝など)がいれば分けません**
+        for na in ["ＭＳ Ｐ明朝", "ＭＳ Ｐゴシック", "MS PMincho", "MS PGothic"] {
+            match hankaku_no_kae(na) {
+                Some(f) => assert!(!f.japanese, "{na} の半角に日本語の書体を当てた: {}", f.name),
+                None => assert!(umeru(na).is_some(), "{na} が分かれも埋まりもしない"),
+            }
+        }
+        // 半角95字が全部 0.500em の等幅。IPA明朝が1字ずつ合うので分けません
+        for na in ["ＭＳ 明朝", "ＭＳ ゴシック", "MS Mincho", "MS Gothic"] {
+            assert!(hankaku_no_kae(na).is_none(), "{na} を分けた");
+        }
+        // まだ測っていない書体。**当て推量で分けません**
+        for na in ["メイリオ", "Meiryo UI", "游明朝", "游ゴシック", "ヒラギノ明朝 ProN"] {
+            // 游は Noto を当てます(発注者の決め)。分けはしません
+            assert!(hankaku_no_kae(na).is_none(), "測っていない {na} を分けた");
+        }
+        // 欧文の書体は元から1本です
+        for na in ["Arial", "Times New Roman", "Century"] {
+            assert!(hankaku_no_kae(na).is_none(), "{na} を分けた");
+        }
+        // この機械にある書体は、本物が両方の設計を持っているので分けません
+        if let Some(f) = list().iter().find(|f| f.japanese && f.regular) {
+            assert!(hankaku_no_kae(&f.name).is_none(), "{} を分けた", f.name);
         }
     }
 

@@ -31,6 +31,30 @@ fn gyou_mm(grid: &Grid, r: u32) -> f32 {
         .map(|pt| pt * 25.4 / 72.0)
         .unwrap_or(ROW_MM)
 }
+/// **半角の書体の名前に付ける印**(2026-08-31 発注者)。
+///
+/// ＭＳ Ｐ明朝のように、漢字と半角で設計の違う書体があります。書体の並びに
+/// 「漢字の分」と「半角の分」の2本を入れ、後者の名前の末尾にこの印を
+/// 付けて見分けます。名前に出てこない字を選んであります。
+pub const HANKAKU_SIRUSI: char = '\u{1}';
+
+/// **書体の変わり目で、続きを切り分けます。**
+///
+/// 返るのは (書体の番号, その続き) の並びです。ＭＳ Ｐ明朝のように漢字と
+/// 半角で書体が変わるとき、1回の描きに混ぜられないので分けます
+/// (2026-08-31 発注者)。
+fn wakeru(t: &str, fno: impl Fn(char) -> u8) -> Vec<(u8, String)> {
+    let mut out: Vec<(u8, String)> = Vec::new();
+    for ch in t.chars() {
+        let f = fno(ch);
+        match out.last_mut() {
+            Some((g, s)) if *g == f => s.push(ch),
+            _ => out.push((f, ch.to_string())),
+        }
+    }
+    out
+}
+
 /// **列の幅(mm)。Excel と同じ式で出します**(2026-08-31 に直した)。
 ///
 /// xlsx が持つ列幅は「標準の書体の `0` が何文字ぶん入るか」です。画素へ
@@ -1128,6 +1152,23 @@ fn draw_sheet(
                     .map(|k| k as u8)
                     .unwrap_or(fno_cell)
             };
+            // **半角だけ別の書体で組む書体**(ＭＳ Ｐ明朝・ＭＳ Ｐゴシック)
+            // は、半角の番号がもう1つ並んでいます(2026-08-31 発注者)。
+            // 無ければ元の番号のままです
+            let han_of = |fno: u8| -> u8 {
+                fonts
+                    .get(fno as usize)
+                    .and_then(|n| {
+                        let sagasu = format!("{n}{HANKAKU_SIRUSI}");
+                        fonts.iter().position(|x| *x == sagasu)
+                    })
+                    .map(|k| k as u8)
+                    .unwrap_or(fno)
+            };
+            // その字を描く書体の番号。半角は上の相手へ振り分けます
+            let ji_fno = |fno: u8, ch: char| -> u8 {
+                if ch.is_ascii() { han_of(fno) } else { fno }
+            };
             // **字下げ。1段は空白3つぶん**です(ISO/IEC 29500 の `indent`:
             // 「an increment of 1 represents 3 spaces … 3 space widths
             // (of the normal style font)」)。2026-08-31 に測って直しました。
@@ -1144,11 +1185,15 @@ fn draw_sheet(
                 cell.fmt.align,
                 HAlign::Left | HAlign::Right | HAlign::Distribute | HAlign::General
             ) {
-                f32::from(cell.fmt.indent) * 3.0 * haba.ji_mm(fno_cell as usize, ' ', pt)
+                f32::from(cell.fmt.indent) * 3.0 * haba.ji_mm(ji_fno(fno_cell, ' ') as usize, ' ', pt)
             } else {
                 0.0
             };
             let naka = (ma_w - 3.0 - ind).max(pt * 25.4 / 72.0);
+            // セルの書体で、字ごとに測ります(半角は相手の書体で)
+            let haba_cell = |t: &str, p: f32| -> f32 {
+                t.chars().map(|c| haba.ji_mm(ji_fno(fno_cell, c) as usize, c, p)).sum()
+            };
             // **数がセルに入らないときは `#` で埋めます**(2026-08-31 発注者)。
             //
             // Excel と同じ決まりです。文字は右隣が空いていればはみ出して
@@ -1169,15 +1214,15 @@ fn draw_sheet(
             let mut pt = pt;
             let nangyou = cell.fmt.wrap || shown.contains('\n');
             if cell.fmt.shrink && !nangyou {
-                let iru = haba.mm(fno_cell as usize, &shown, pt);
+                let iru = haba_cell(&shown, pt);
                 if iru > naka && iru > 0.0 {
                     pt = (pt * naka / iru).max(1.0);
                 }
             }
             // 折り返しの指定があるセルは、下の折り返しに任せます
             if matches!(cell.value, Value::Number(_)) && !cell.fmt.wrap && !cell.fmt.shrink {
-                let hitotsu = haba.ji_mm(fno_cell as usize, '#', pt);
-                if haba.mm(fno_cell as usize, &shown, pt) > naka && hitotsu > 0.0 {
+                let hitotsu = haba.ji_mm(ji_fno(fno_cell, '#') as usize, '#', pt);
+                if haba_cell(&shown, pt) > naka && hitotsu > 0.0 {
                     let kazu = (naka / hitotsu).floor().max(1.0) as usize;
                     shown = "#".repeat(kazu);
                 }
@@ -1245,7 +1290,7 @@ fn draw_sheet(
                     }
                     let mut ima = String::new();
                     for ch in danraku.chars() {
-                        let w = haba.ji_mm(fno_of(rf) as usize, ch, *rp);
+                        let w = haba.ji_mm(ji_fno(fno_of(rf), ch) as usize, ch, *rp);
                         if cell.fmt.wrap && !ima.is_empty() && yoko + w > naka {
                             gyou.last_mut().expect("行").push((std::mem::take(&mut ima), *rp, rf.clone()));
                             gyou.push(Vec::new());
@@ -1265,7 +1310,12 @@ fn draw_sheet(
             }
             // 1行ぶんの幅(mm)。かけらごとの大きさで測ります
             let gyou_haba = |g: &[Kata]| -> f32 {
-                g.iter().map(|(t, rp, rf)| haba.mm(fno_of(rf) as usize, t, *rp)).sum()
+                g.iter()
+                    .map(|(t, rp, rf)| {
+                        let f = fno_of(rf);
+                        t.chars().map(|c| haba.ji_mm(ji_fno(f, c) as usize, c, *rp)).sum::<f32>()
+                    })
+                    .sum()
             };
             // 字下げ(indent)。1段 = 全角約1字ぶん空ける — 日本の帳票は
             // 項目の階層を字下げで見せます。**右揃えなら右から空けます**
@@ -1333,11 +1383,15 @@ fn draw_sheet(
                 } else {
                     for (t, rp, rf) in g {
                         let fno = fno_of(rf);
-                        let w1 = haba.mm(fno as usize, t, *rp);
-                        ink.text_kazari(t, *rp, gx, ty, c, bold, fno, w1,
-                                        cell.fmt.underline, cell.fmt.strike, katamuki,
-                                        cell.fmt.italic);
-                        gx += w1;
+                        // **半角と全角で書体が変わるなら、そこで切ります**
+                        // (2026-08-31 発注者。ＭＳ Ｐ明朝など)
+                        for (f1, kata) in wakeru(t, |ch| ji_fno(fno, ch)) {
+                            let w1 = haba.mm(f1 as usize, &kata, *rp);
+                            ink.text_kazari(&kata, *rp, gx, ty, c, bold, f1, w1,
+                                            cell.fmt.underline, cell.fmt.strike, katamuki,
+                                            cell.fmt.italic);
+                            gx += w1;
+                        }
                     }
                 }
                 ty -= okuri_of(g);

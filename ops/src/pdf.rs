@@ -64,7 +64,15 @@ pub fn book(b: &book::Book, to: &Path) -> Result<u32, String> {
             }
             if let Ok((fam, _)) = kumihan::font::for_document(Some(&na)) {
                 if let Ok(d) = kumihan::font::load(fam) {
-                    fonts.push((na, d));
+                    fonts.push((na.clone(), d));
+                }
+            }
+            // **半角だけ別の書体で組む書体**(ＭＳ Ｐ明朝など)は、もう1本
+            // 足します(2026-08-31 発注者)。名前の後ろに印を付けて分けます —
+            // 紙の側がその印で引きます
+            if let Some(fam) = kumihan::font::hankaku_no_kae(&na) {
+                if let Ok(d) = kumihan::font::load(fam) {
+                    fonts.push((format!("{na}{}", paper::grid::HANKAKU_SIRUSI), d));
                 }
             }
         }
