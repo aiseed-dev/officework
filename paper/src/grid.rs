@@ -31,6 +31,14 @@ fn gyou_mm(grid: &Grid, r: u32) -> f32 {
         .map(|pt| pt * 25.4 / 72.0)
         .unwrap_or(ROW_MM)
 }
+/// **書体が読めないときの行送り**(1em あたり)。
+///
+/// 書体が `hhea` を持っていれば、そちらを使います([`Habakei::okuri_em`])。
+const OKURI_KITEI: f32 = 1.2;
+
+/// **書体が読めないときの下がり**(1em あたり)。
+const SAGARI_KITEI: f32 = 0.12;
+
 /// **セルの内側の余白(片側 mm)。**
 ///
 /// Excel は字を升の縁から 2 画素あけます(96dpi で 0.53mm)。列幅に入って
@@ -494,6 +502,25 @@ struct Board {
 struct Habakei {
     /// 書体ごとの (字 → 1em あたりの幅)。表に無い字は見積りに落ちます
     hyou: Vec<std::collections::HashMap<char, f32>>,
+    /// **書体ごとの行送り(1em あたり)。** `hhea` の `ascender - descender`
+    /// です(2026-08-31)。
+    ///
+    /// 前は書体に関わらず 1.2 倍の決め打ちでした。根拠がありません。
+    /// LibreOffice は1行の中の run をなめて ascent と descent の最大を取り、
+    /// その和を行の高さにします(`editeng` の `FormatterFontMetric`:
+    /// `GetHeight() { return nMaxAscent + nMaxDescent; }`)。倍率は
+    /// 行間の指定があるときだけ掛けます。同じやり方にしました。
+    ///
+    /// ＭＳ 明朝もＭＳ Ｐ明朝も 1.000em、Century は 1.202em です(元の PDF に
+    /// 埋め込まれていた本物を測りました)。1.2 の決め打ちは、日本語の書体で
+    /// 2割ひらきすぎ、Century でほぼ合う、という当たり外れでした
+    okuri: Vec<f32>,
+    /// **書体ごとの下がり(1em あたり)。** `hhea` の `-descender` です。
+    ///
+    /// 下揃えの升で、字の足が升の底に着く量です。前は書体に関わらず
+    /// 2.0mm の決め打ちでした(2026-08-31)。8pt の字なら本当は 0.34mm
+    /// ほどなので、6倍ちかく浮いていました
+    sagari: Vec<f32>,
 }
 
 impl Habakei {
@@ -517,7 +544,47 @@ impl Habakei {
                 m
             })
             .collect();
-        Habakei { hyou }
+        let okuri = data
+            .iter()
+            .map(|d| {
+                ttf_parser::Face::parse(d, 0)
+                    .ok()
+                    .filter(|f| f.units_per_em() > 0)
+                    .map(|f| {
+                        let em = f.units_per_em() as f32;
+                        (f32::from(f.ascender()) - f32::from(f.descender())) / em
+                    })
+                    .filter(|v| *v > 0.1)
+                    .unwrap_or(OKURI_KITEI)
+            })
+            .collect();
+        let sagari = data
+            .iter()
+            .map(|d| {
+                ttf_parser::Face::parse(d, 0)
+                    .ok()
+                    .filter(|f| f.units_per_em() > 0)
+                    .map(|f| -f32::from(f.descender()) / f.units_per_em() as f32)
+                    .filter(|v| *v >= 0.0 && *v < 0.5)
+                    .unwrap_or(SAGARI_KITEI)
+            })
+            .collect();
+        Habakei { hyou, okuri, sagari }
+    }
+
+    /// **その書体の下がり(mm)。** 読めない書体は [`SAGARI_KITEI`]
+    fn sagari_mm(&self, fno: usize, pt: f32) -> f32 {
+        self.sagari.get(fno).copied().unwrap_or(SAGARI_KITEI) * pt * 25.4 / 72.0
+    }
+
+    /// **その書体の行送り(1em あたり)。** 読めない書体は [`OKURI_KITEI`]
+    fn okuri_em(&self, fno: usize) -> f32 {
+        self.okuri.get(fno).copied().unwrap_or(OKURI_KITEI)
+    }
+
+    /// 1行ぶんの送り(mm)。**その行に出てくる書体の、いちばん大きいもの**
+    fn okuri_mm(&self, fno: usize, pt: f32) -> f32 {
+        self.okuri_em(fno) * pt * 25.4 / 72.0
     }
 
     /// 1字の幅(mm)。表に無ければ、半角 0.55em・全角 1.0em の見積り
@@ -1357,8 +1424,12 @@ fn draw_sheet(
             // 文字は塗り色で描かれる(PDF の作法)ので、色付きの字は前後で入れ替える
             let c = colour.as_deref().and_then(hex_rgb).unwrap_or((0.0, 0.0, 0.0));
             // 行送りはその行のいちばん大きい字で決めます
+            // **行送りは、その行に出てくる書体の実物から出します**
+            // (2026-08-31。LibreOffice と同じで ascent + descent)
             let okuri_of = |g: &[Kata]| -> f32 {
-                g.iter().map(|(_, rp, _)| *rp).fold(0.0f32, f32::max) * 25.4 / 72.0 * 1.2
+                g.iter()
+                    .map(|(_, rp, rf)| haba.okuri_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp))
+                    .fold(0.0f32, f32::max)
             };
             let takasa: f32 = gyou.iter().map(|g| okuri_of(g)).sum();
             // **縦の揃え**(2026-08-31 発注者)。前はどのセルも下から積んで
@@ -1368,15 +1439,30 @@ fn draw_sheet(
             //
             // 上下いっぱいに散らす(`Distribute`)は行の間隔を割り出す所が
             // まだなので、模型の注記どおり上揃えで描きます
-            let soko = y_top - ma_h + 2.0; // 結合したぶんの下端
+            //
+            // **下揃えの 2.0mm は下揃えのときだけ**です(2026-08-31)。字の
+            // 足が升の底に着かないようにする下駄で、真ん中や上に寄せるときは
+            // 要りません。足していたので、字が升の上の罫線に乗っていました
+            // (国税庁の消費税の表の「件」「百万円」)
+            let soko = y_top - ma_h; // 結合したぶんの下端
             let aki = (ma_h - takasa).max(0.0);
             let ue = match cell.fmt.valign {
                 book::VAlign::Bottom => 0.0,
                 book::VAlign::Middle => aki / 2.0,
                 book::VAlign::Top | book::VAlign::Distribute => aki,
             };
+            // **足の下がりは書体から**(2026-08-31)。前は 2.0mm の決め打ちで、
+            // 8pt の字なら本当の 0.34mm に対して6倍ちかく浮いていました
+            let sagari = gyou
+                .last()
+                .map(|g: &Vec<Kata>| {
+                    g.iter()
+                        .map(|(_, rp, rf)| haba.sagari_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp))
+                        .fold(0.0f32, f32::max)
+                })
+                .unwrap_or(0.0);
             // 下付きはここで下げます(行送りは変えません)
-            let mut ty = soko + ue + takasa - okuri_of(&gyou[gyou.len() - 1]) - sagaru;
+            let mut ty = soko + ue + sagari + takasa - okuri_of(&gyou[gyou.len() - 1]) - sagaru;
             for g in &gyou {
                 let w = gyou_haba(g);
                 let mut gx = match cell.fmt.align {
@@ -2470,6 +2556,82 @@ mod zukei_tests {
         assert_eq!(leaf.size_mm, Some((210.0, 297.0)));
         assert!(!leaf.polys.is_empty(), "塗りが出ていない");
         assert!(!leaf.rules.is_empty(), "線が出ていない");
+    }
+
+    /// **下揃えの下駄は、下揃えのときだけ。**
+    ///
+    /// 字の足が升の底に着かないよう 2.0mm 上げていましたが、真ん中や上に
+    /// 寄せるときにも足していました。升が低いと字の頭が升の上へ突き抜け、
+    /// 上の罫線に乗ります。国税庁の消費税の表の「件」「百万円」がこれで、
+    /// 11.25pt(3.97mm)の升に 8pt の字を真ん中で置いて 0.58mm はみ出して
+    /// いました(2026-08-31 発注者)。
+    #[test]
+    fn only_bottom_alignment_lifts_the_text() {
+        let tameshi = |ht: f32| -> Vec<f32> {
+            let mut g = Grid::default();
+            g.row_height.insert(0, ht);
+            for (c, v) in [(0u32, book::VAlign::Bottom), (1, book::VAlign::Middle),
+                           (2, book::VAlign::Top)] {
+                let mut f = book::CellFormat { valign: v, ..Default::default() };
+                f.size_c = Some(800);
+                g.set(book::Pos::new(0, c), book::Cell {
+                    formula: None, value: book::Value::Text("あ".into()), fmt: f });
+            }
+            let setup = PrintSetup { date1904: false, mdw_px: 0.0, ..Default::default() };
+            let leaf = &sheet_leaves(&g, Paper::default(), &setup).expect("組めない")[0];
+            let mut y: Vec<f32> = leaf.pieces.iter().filter(|p| p.text == "あ")
+                .map(|p| p.y_mm).collect();
+            y.sort_by(f32::total_cmp);
+            y
+        };
+        // 余裕のある升(30pt)。下・中・上で位置が変わり、空きを等分する
+        let y = tameshi(30.0);
+        assert_eq!(y.len(), 3, "3つとも描けていない");
+        assert!(y[0] < y[1] && y[1] < y[2], "揃えで高さが変わっていない: {y:?}");
+        assert!((y[1] - y[0] - (y[2] - y[1])).abs() < 0.05,
+                "空きを等分していない: {y:?}");
+        // 詰まった升(11.25pt)でも、字が升の上へ出ない
+        let ht = 11.25f32;
+        let masu = ht * 25.4 / 72.0;
+        let y = tameshi(ht);
+        let soko = 297.0 - 20.0 - masu; // 上余白 20mm の紙の1行目
+        for v in &y {
+            // 足の位置から字の頭まで(8pt の 0.9em ぶん)を見ます
+            let atama = v - soko + 8.0 * 0.9 * 25.4 / 72.0;
+            assert!(atama <= masu + 0.05,
+                    "字が升の上へ出た: 頭{atama:.2}mm 升{masu:.2}mm");
+        }
+    }
+
+    /// **行送りと足の下がりは、書体が決める。**
+    ///
+    /// 前はどちらも決め打ちでした — 行送りは字の 1.2 倍、下がりは 2.0mm。
+    /// 根拠がありません。LibreOffice は1行の中の run をなめて ascent と
+    /// descent の最大を取り、その和を行の高さにします(`editeng` の
+    /// `FormatterFontMetric::GetHeight()`)。同じやり方にしました。
+    ///
+    /// ＭＳ 明朝もＭＳ Ｐ明朝も 1.000em、Century は 1.202em です(元の PDF に
+    /// 埋め込まれていた本物を測った値)。1.2 の決め打ちは日本語の書体で
+    /// 2割ひらきすぎでした。
+    #[test]
+    fn the_line_advance_comes_from_the_font() {
+        let d = kumihan::font::for_document(None)
+            .ok()
+            .and_then(|(f, _)| kumihan::font::load(f).ok())
+            .expect("書体が無い");
+        let ji: std::collections::BTreeSet<char> = "あ".chars().collect();
+        let h = Habakei::new(std::slice::from_ref(&d), &ji);
+        let face = ttf_parser::Face::parse(&d, 0).expect("解けない");
+        let em = face.units_per_em() as f32;
+        let matomo = (f32::from(face.ascender()) - f32::from(face.descender())) / em;
+        assert!((h.okuri_em(0) - matomo).abs() < 0.001,
+                "行送りが書体の値でない: {} 対 {matomo}", h.okuri_em(0));
+        // 決め打ちの 1.2 ではないこと(日本語の書体は 1.0 前後)
+        assert!(h.okuri_em(0) < 1.15 || h.okuri_em(0) > 1.25,
+                "1.2 の決め打ちのまま: {}", h.okuri_em(0));
+        // 下がりは descent。8pt なら 1mm を大きく下回ります
+        let s = h.sagari_mm(0, 8.0);
+        assert!(s > 0.0 && s < 1.0, "下がりが {s}mm(前は 2.0mm の決め打ち)");
     }
 
     /// **紙 N 枚に収めるとき、行の端数を見込む。**
