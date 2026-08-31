@@ -1386,6 +1386,17 @@ fn draw_sheet(
                     let mut ima = String::new();
                     for ch in danraku.chars() {
                         let w = haba.ji_mm(ji_fno(fno_of(rf), ch) as usize, ch, *rp);
+                        // **行末の空白では折り返しません**(2026-08-31 発注者)。
+                        // 空白1つのために行を替えると、その行は空白だけに
+                        // なり、紙の上では空の行に見えます。国税庁の消費税の
+                        // 表の注記は、段落の末尾がちょうど幅を超えたところに
+                        // 空白があり、途中に空白の行が出ていました。
+                        // 折り返す所を探すときは、字だけを見ます
+                        if ch == ' ' && cell.fmt.wrap && yoko + w > naka {
+                            ima.push(ch);
+                            yoko += w;
+                            continue;
+                        }
                         if cell.fmt.wrap && !ima.is_empty() && yoko + w > naka {
                             gyou.last_mut().expect("行").push((std::mem::take(&mut ima), *rp, rf.clone()));
                             gyou.push(Vec::new());
@@ -1399,7 +1410,8 @@ fn draw_sheet(
                     }
                 }
             }
-            gyou.retain(|g| !g.is_empty());
+            // 空の行と、空白だけの行は出しません
+            gyou.retain(|g| g.iter().any(|(t, _, _)| !t.trim().is_empty()));
             if gyou.is_empty() {
                 continue;
             }
@@ -2600,6 +2612,32 @@ mod zukei_tests {
             let atama = v - soko + 8.0 * 0.9 * 25.4 / 72.0;
             assert!(atama <= masu + 0.05,
                     "字が升の上へ出た: 頭{atama:.2}mm 升{masu:.2}mm");
+        }
+    }
+
+    /// **行末の空白で折り返さない。**
+    ///
+    /// 段落の末尾がちょうど幅を超えた所に空白があると、その空白1つのために
+    /// 行を替えていました。その行は空白だけになり、紙の上では空の行に
+    /// 見えます。国税庁の消費税の表の注記(41行目)は、7段落のうち1つが
+    /// これに当たって途中に空白の行が出ていました(2026-08-31 発注者)。
+    #[test]
+    fn a_trailing_space_does_not_start_a_line() {
+        let mut g = Grid::default();
+        g.row_height.insert(0, 90.0);
+        g.col_width.insert(0, 8.0);
+        let mut f = book::CellFormat { wrap: true, ..Default::default() };
+        f.size_c = Some(700);
+        // **升の幅をちょうど超えた所に空白がある**形です。8字ごとに空白を
+        // 入れた 20 字の後ろに、さらに空白を1つ置きます
+        let t: String = (0..20).map(|i| if i % 8 == 7 { ' ' } else { 'n' }).collect();
+        g.set(book::Pos::new(0, 0), book::Cell {
+            formula: None, value: book::Value::Text(format!("{t} ")), fmt: f });
+        let setup = PrintSetup { date1904: false, mdw_px: 0.0, ..Default::default() };
+        let leaf = &sheet_leaves(&g, Paper::default(), &setup).expect("組めない")[0];
+        for p in &leaf.pieces {
+            assert!(p.text.is_empty() || !p.text.trim().is_empty(),
+                    "空白だけの行を描いた: {:?}", p.text);
         }
     }
 
