@@ -78,7 +78,7 @@ def 大文字にする(段落):
 |Recent |link:commands/ファイル/最近開いた.adoc[最近開いた] | |— |— |—
 |Search a folder |link:commands/ファイル/フォルダから探す.adoc[フォルダから探す] | |— |— |—
 |Recover |link:commands/ファイル/復旧.adoc[復旧] | |— |— |—
-|Save |link:commands/クイックアクセス/保存.adoc[保存] |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|Save |link:commands/クイックアクセス/保存.adoc[保存]・link:commands/ファイル/保存.adoc[ファイル] |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
 |Save As |link:commands/ファイル/名前を付けて保存.adoc[名前を付けて保存] |✅ |d.save(別の径路) |d.save(別の径路) |wb.save(別の径路)
 |Print |link:commands/ファイル/印刷.adoc[印刷] | |— |— |—
 |Export |link:commands/ファイル/エクスポート.adoc[エクスポート] |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
@@ -125,9 +125,9 @@ def 大文字にする(段落):
 |image:../../face/icons/fillparag.svg[,16,16] Fill colour |link:commands/ホーム/塗りつぶしの色.adoc[塗りつぶしの色] |✅ |c.fill |— |c.fill = PatternFill(…)
 |image:../../face/icons/wrap.svg[,16,16] Wrap text |link:commands/ホーム/折り返して全体を表示する.adoc[折り返して全体を表示する] |✅ |c.alignment |— |c.alignment = Alignment(wrap_text=True)
 |image:../../face/icons/merge.svg[,16,16] Merge and centre |link:commands/ホーム/結合して、中央に配置する.adoc[結合して、中央に配置する] |✅ |(col_span / v_merge) / s.merge_cells(…) |cell.merge(…) |ws.merge_cells('A1:B2')
-|image:../../face/icons/autosum.svg[,16,16] AutoSum |link:commands/ホーム/オートSUM.adoc[オートSUM] |✅ |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
+|image:../../face/icons/autosum.svg[,16,16] AutoSum |link:commands/ホーム/オートSUM.adoc[オートSUM]・link:commands/数式/オートSUM.adoc[数式] |✅ |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
 |image:../../face/icons/fill-num.svg[,16,16] Fill |link:commands/ホーム/フィル.adoc[フィル] |✍ |for i in range(10): s[f'A{i+2}'] = i + 1 |— |—
-|image:../../face/icons/named-range.svg[,16,16] Name manager |link:commands/ホーム/名前の管理.adoc[名前の管理] |✅ |b.create_named_range(名前, …) |— |wb.defined_names
+|image:../../face/icons/named-range.svg[,16,16] Name manager |link:commands/ホーム/名前の管理.adoc[名前の管理]・link:commands/数式/名前の管理.adoc[数式] |✅ |b.create_named_range(名前, …) |— |wb.defined_names
 |image:../../face/icons/clear.svg[,16,16] Clear |link:commands/ホーム/消去.adoc[消去] |✅ |r.clear() / s['A1'] = None |r.clear() |ws['A1'] = None
 |image:../../face/icons/sortdesc.svg[,16,16] Sort descending / image:../../face/icons/sortasc.svg[,16,16] Sort ascending |link:commands/ホーム/降順並べ替え.adoc[降順並べ替え] / link:commands/ホーム/昇順並べ替え.adoc[昇順並べ替え] | |— |— |—
 |image:../../face/icons/setfilter.svg[,16,16] Filters / image:../../face/icons/clear-filter.svg[,16,16] Clear filter |link:commands/ホーム/フィルター.adoc[フィルター] / link:commands/ホーム/フィルターを解除.adoc[フィルターを解除] | |— |— |ws.auto_filter
@@ -145,7 +145,7 @@ def 大文字にする(段落):
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
 |image:../../face/icons/blankpage.svg[,16,16] Insert blank page |link:commands/挿入/空白ページの挿入.adoc[空白ページの挿入] |✅ |d.add_page_break() |d.add_page_break() |—
-|image:../../face/icons/pagebreak.svg[,16,16] Breaks |link:commands/レイアウト/区切り.adoc[区切り] |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../../face/icons/pagebreak.svg[,16,16] Breaks |link:commands/レイアウト/区切り.adoc[区切り]・link:commands/挿入/区切り.adoc[挿入] |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../../face/icons/instable.svg[,16,16] Insert table |link:commands/挿入/表の挿入.adoc[表の挿入] |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
 |image:../../face/icons/insimage.svg[,16,16] Insert image |link:commands/挿入/画像を挿入.adoc[画像を挿入] |✅ |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
 |image:../../face/icons/inschart.svg[,16,16] Insert chart |link:commands/挿入/グラフを挿入.adoc[グラフを挿入] | |— |— |ws.add_chart(…)
@@ -160,7 +160,7 @@ def 大文字にする(段落):
 |image:../../face/icons/add-pivot.svg[,16,16] Insert Pivot Table |link:commands/挿入/ピボットテーブルを挿入.adoc[ピボットテーブルを挿入] | |— |— |ws.add_pivot(…)
 |image:../../face/icons/insrecommend.svg[,16,16] Insert recommended chart |link:commands/挿入/推奨チャートを挿入.adoc[推奨チャートを挿入] |✍ |s.values() を polars に渡して選ぶ |— |—
 |image:../../face/icons/inssparkline.svg[,16,16] Insert sparkline |link:commands/挿入/スパークラインを挿入する.adoc[スパークラインを挿入する] | |— |— |—
-|image:../../face/icons/ins-comment.svg[,16,16] Add Comment |link:commands/左パネル/コメント.adoc[コメント] |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
+|image:../../face/icons/ins-comment.svg[,16,16] Add Comment |link:commands/左パネル/コメント.adoc[コメント]・link:commands/挿入/コメント.adoc[挿入] |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
 |image:../../face/icons/inshyperlink.svg[,16,16] Add link |link:commands/挿入/ハイパーリンクを追加.adoc[ハイパーリンクを追加] |✅ |c.hyperlink |— |c.hyperlink
 |image:../../face/icons/insslicer.svg[,16,16] Insert slicer |link:commands/挿入/スライサーを挿入.adoc[スライサーを挿入] | |— |— |—
 |===
@@ -185,7 +185,7 @@ def 大文字にする(段落):
 |image:../../face/icons/pagesize.svg[,16,16] Page size |link:commands/レイアウト/ページのサイズ.adoc[ページのサイズ] |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
 |image:../../face/icons/watermark.svg[,16,16] Edit watermark |link:commands/レイアウト/透かしを編集する.adoc[透かしを編集する] | |— |— |—
 |image:../../face/icons/printarea.svg[,16,16] Print Area |link:commands/レイアウト/印刷範囲.adoc[印刷範囲] |✅ |s.print_area |— |ws.print_area
-|image:../../face/icons/pagebreak.svg[,16,16] Breaks |link:commands/レイアウト/区切り.adoc[区切り] |✅ |*挿入と同じ* — d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../../face/icons/pagebreak.svg[,16,16] Breaks |link:commands/レイアウト/区切り.adoc[区切り]・link:commands/挿入/区切り.adoc[挿入] |✅ |*挿入と同じ* — d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../../face/icons/editheader.svg[,16,16] Edit header |link:commands/レイアウト/ヘッダー_フッター.adoc[ヘッダー/フッター] |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
 |image:../../face/icons/fit-pages.svg[,16,16] Fit to paper |link:commands/レイアウト/紙に収める.adoc[紙に収める] | |— |— |ws.page_setup.fitToWidth
 |image:../../face/icons/printtitles.svg[,16,16] Print titles |link:commands/レイアウト/タイトルを印刷する.adoc[タイトルを印刷する] |✅ |s.print_title_rows |— |ws.print_title_rows
@@ -200,8 +200,8 @@ def 大文字にする(段落):
 
 |image:../../face/icons/additional-formula.svg[,16,16] Insert function |link:commands/数式/関数の挿入.adoc[関数の挿入] |✅ |s['A1'] = '=…' |— |ws['A1'] = '=…'
 |image:../../face/icons/py-list.svg[,16,16] Python functions |link:commands/数式/Python の関数.adoc[Python の関数] |✍ |自分の .py を書く(綴りの macros) |— |—
-|image:../../face/icons/autosum.svg[,16,16] AutoSum |link:commands/ホーム/オートSUM.adoc[オートSUM] |✅ |*ホームと同じ* — s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
-|image:../../face/icons/named-range-huge.svg[,16,16] Name manager |link:commands/ホーム/名前の管理.adoc[名前の管理] |✅ |*ホームと同じ* — b.create_named_range(名前, …) |— |wb.defined_names
+|image:../../face/icons/autosum.svg[,16,16] AutoSum |link:commands/ホーム/オートSUM.adoc[オートSUM]・link:commands/数式/オートSUM.adoc[数式] |✅ |*ホームと同じ* — s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
+|image:../../face/icons/named-range-huge.svg[,16,16] Name manager |link:commands/ホーム/名前の管理.adoc[名前の管理]・link:commands/数式/名前の管理.adoc[数式] |✅ |*ホームと同じ* — b.create_named_range(名前, …) |— |wb.defined_names
 |image:../../face/icons/paste-name.svg[,16,16] Paste name |link:commands/数式/名前を貼り付け.adoc[名前を貼り付け] | |— |— |wb.defined_names
 |image:../../face/icons/trace-prec.svg[,16,16] Trace Precedents |link:commands/数式/参照元のトレース.adoc[参照元のトレース] |✍ |s.formula('A1') で参照を読む |— |—
 |image:../../face/icons/show-formulas.svg[,16,16] Show formulas |link:commands/数式/数式の表示.adoc[数式の表示] |✍ |s.formula(場所) |— |—
@@ -327,7 +327,7 @@ def 大文字にする(段落):
 |===
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
-|Save |link:commands/クイックアクセス/保存.adoc[保存] |✅ |*ファイルと同じ* — d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|Save |link:commands/クイックアクセス/保存.adoc[保存]・link:commands/ファイル/保存.adoc[ファイル] |✅ |*ファイルと同じ* — d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
 |Print |link:commands/ファイル/印刷.adoc[印刷] | |*ファイルと同じ* |— |—
 |Undo |元に戻す |❌ |画面の操作です。プログラムは保存する前の写しを持てます |— |—
 |Redo |やり直し |❌ |同じく画面の操作です |— |—
@@ -340,7 +340,7 @@ def 大文字にする(段落):
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
 |Heading |link:commands/左パネル/見出し.adoc[見出し] |✅ |p.style で拾う |p.style |—
-|Comment |link:commands/左パネル/コメント.adoc[コメント] |✅ |*挿入と同じ* — d.comments |d.comments |c.comment
+|Comment |link:commands/左パネル/コメント.adoc[コメント]・link:commands/挿入/コメント.adoc[挿入] |✅ |*挿入と同じ* — d.comments |d.comments |c.comment
 |Find |link:commands/左パネル/検索.adoc[検索] |✅ |d.find(字) |— |—
 |Agent panel |link:commands/左パネル/エージェントパネル.adoc[エージェントパネル] | |— |— |—
 |===

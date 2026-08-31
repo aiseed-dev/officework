@@ -313,15 +313,22 @@ def manual_link(label: str) -> str:
     if _manual_table is None:
         _manual_table = {}
         ahead = ROOT / "docs/ja/commands"
-        # **並べてから先勝ち。** 同じ名前の頁が2つのタブにある(オートSUM が
-        # ホームと数式に居る)とき、rglob の順はファイルシステム任せなので、
-        # 走る機械によって勝者が変わり、CI と手元で表が揺れていた
+        # **同じ名前の頁が2つのタブにあるときは、全部に繋ぐ**(2026-08-31
+        # 発注者「リンク先を複数かけばいいだけ」)。どれか1つを選ぶと、
+        # 選び方がファイルシステムの順任せになって CI と手元で表が
+        # 揺れていた。並べるのは、出る順を機械によらず同じにするため
         for q in sorted(ahead.rglob("*.adoc")):
             if q.name != "README.ja.adoc":
-                _manual_table.setdefault(q.stem, q.relative_to(ROOT / "docs/ja").as_posix())
+                _manual_table.setdefault(q.stem, []).append(
+                    q.relative_to(ROOT / "docs/ja").as_posix())
     name = FNAME_NG.sub("_", command_name(label)).strip()
-    to = _manual_table.get(name)
-    return f"link:{to}[{label}]" if to else label
+    tos = _manual_table.get(name)
+    if not tos:
+        return label
+    # 1つ目はボタンの名前で、2つ目からはタブの名前で(オートSUM・数式)
+    out = [f"link:{tos[0]}[{label}]"]
+    out += [f"link:{t}[{t.split('/')[-2]}]" for t in tos[1:]]
+    return "・".join(out)
 
 
 def state(id_: str, ow: str) -> str:
