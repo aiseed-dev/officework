@@ -4,22 +4,24 @@
 use super::ribbon::Tab;
 
 pub fn tabs(lang: &str) -> Option<(&'static [Tab], &'static [Tab])> {
-    match lang {
-        "de" => Some((crate::ribbon_de::WRITER, crate::ribbon_de::CALC)),
-        "en" => Some((crate::ribbon_en::WRITER, crate::ribbon_en::CALC)),
-        "es" => Some((crate::ribbon_es::WRITER, crate::ribbon_es::CALC)),
-        "fr" => Some((crate::ribbon_fr::WRITER, crate::ribbon_fr::CALC)),
-        "id" => Some((crate::ribbon_id::WRITER, crate::ribbon_id::CALC)),
-        "it" => Some((crate::ribbon_it::WRITER, crate::ribbon_it::CALC)),
-        "ja" => Some((crate::ribbon_ja::WRITER, crate::ribbon_ja::CALC)),
-        "ko" => Some((crate::ribbon_ko::WRITER, crate::ribbon_ko::CALC)),
-        "pt" => Some((crate::ribbon_pt::WRITER, crate::ribbon_pt::CALC)),
-        "pt-br" => Some((crate::ribbon_pt_br::WRITER, crate::ribbon_pt_br::CALC)),
-        "ru" => Some((crate::ribbon_ru::WRITER, crate::ribbon_ru::CALC)),
-        "tr" => Some((crate::ribbon_tr::WRITER, crate::ribbon_tr::CALC)),
-        "vi" => Some((crate::ribbon_vi::WRITER, crate::ribbon_vi::CALC)),
-        "zh" => Some((crate::ribbon_zh::WRITER, crate::ribbon_zh::CALC)),
-        "zh-tw" => Some((crate::ribbon_zh_tw::WRITER, crate::ribbon_zh_tw::CALC)),
-        _ => None,
-    }
+    // 言語のファイルは語の対だけ。表は localized が骨組みへ差し込んで組む
+    let (lang, words, by_id) = match lang {
+        "de" => ("de", crate::ribbon_de::WORDS, crate::ribbon_de::WORDS_BY_ID),
+        "en" => ("en", crate::ribbon_en::WORDS, crate::ribbon_en::WORDS_BY_ID),
+        "es" => ("es", crate::ribbon_es::WORDS, crate::ribbon_es::WORDS_BY_ID),
+        "fr" => ("fr", crate::ribbon_fr::WORDS, crate::ribbon_fr::WORDS_BY_ID),
+        "id" => ("id", crate::ribbon_id::WORDS, crate::ribbon_id::WORDS_BY_ID),
+        "it" => ("it", crate::ribbon_it::WORDS, crate::ribbon_it::WORDS_BY_ID),
+        "ja" => ("ja", crate::ribbon_ja::WORDS, crate::ribbon_ja::WORDS_BY_ID),
+        "ko" => ("ko", crate::ribbon_ko::WORDS, crate::ribbon_ko::WORDS_BY_ID),
+        "pt" => ("pt", crate::ribbon_pt::WORDS, crate::ribbon_pt::WORDS_BY_ID),
+        "pt-br" => ("pt-br", crate::ribbon_pt_br::WORDS, crate::ribbon_pt_br::WORDS_BY_ID),
+        "ru" => ("ru", crate::ribbon_ru::WORDS, crate::ribbon_ru::WORDS_BY_ID),
+        "tr" => ("tr", crate::ribbon_tr::WORDS, crate::ribbon_tr::WORDS_BY_ID),
+        "vi" => ("vi", crate::ribbon_vi::WORDS, crate::ribbon_vi::WORDS_BY_ID),
+        "zh" => ("zh", crate::ribbon_zh::WORDS, crate::ribbon_zh::WORDS_BY_ID),
+        "zh-tw" => ("zh-tw", crate::ribbon_zh_tw::WORDS, crate::ribbon_zh_tw::WORDS_BY_ID),
+        _ => return None,
+    };
+    Some(super::ribbon::localized(lang, words, by_id))
 }

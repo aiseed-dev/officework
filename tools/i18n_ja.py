@@ -60,9 +60,11 @@ def screen_japanese() -> set:
     # (2026-08-26 の段2)
     ja = ROOT / "face/src/ribbon_ja.rs"
     if ja.exists():
-        import re
-        t = ja.read_text(encoding="utf-8")
-        out |= set(re.findall(r'(?:c|t)\("[^"]*",\s*"((?:[^"\\]|\\.)*)"', t))
-        out |= set(re.findall(r'(?:x|xt|xm)\("((?:[^"\\]|\\.)*)"', t))
-        out |= set(re.findall(r'Tab \{ name: "([^"]+)"', t))
+        # 2026-08-31 の作り替え: ribbon_ja.rs は (英語の札, 語) の対だけ。
+        # 語の側(タブ名も id 引きの例外も)を全部拾う
+        import sys as _sys
+        _sys.path.insert(0, str(ROOT / "tools"))
+        import ribbon_parse
+        w, by_id = ribbon_parse.words(ja)
+        out |= set(w.values()) | set(by_id.values())
     return out

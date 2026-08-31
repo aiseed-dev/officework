@@ -886,8 +886,10 @@ def main():
         return got
 
     out = []
-    out.append(f"""//! リボンの {target} 版 — **語だけが ja(ribbon.rs)と違う**。
-//! id・並び・ready・icon は ja と同一(ribbon.rs の試験が保証する)。
+    out.append(f"""//! リボンの {target} の**語の表** — 構造は持たない(2026-08-31 の作り替え)。
+//! 骨組みは ribbon.rs の1本だけで、ここには (英語の札, 語) の対しか無い。
+//! 言語の表は実行時に ribbon::localized が骨組みへ差し込んで組む —
+//! 骨組みが言語ごとにずれる余地は、作りから消してある。
 //!
 //! このファイルは手で書かない:
 //!
@@ -897,32 +899,25 @@ def main():
 //!
 //! 対訳は vendor/web-apps のロケール(本家の語)。本家に無いこちらの
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
-
-use super::ribbon::{{{{import_of}}}};
 """)
     def q(s):
         """Rust のリテラルに戻す。解析器は逃げを解いた素の字を渡してくる"""
         return s.replace("\\", "\\\\").replace('"', '\\"')
 
-    # **並びは WRITER → CALC。** 解析器の dict は CALC が先なので、そのまま
-    # 回すと生成物の2つの表が入れ替わる(受け入れ試験で気づいた)
+    # **対を集める。** 札 → 語。同じ札で語が割れたら(働きが違うボタン)、
+    # id か icon で引く例外の表へ回す — 構造は持たないまま区別できる
+    pairs: dict[str, set] = {}
+    at: list[tuple[str, str, str, str]] = []  # (id, icon, 札, 語)
     for const in ("WRITER", "CALC"):
         m = doc_map if const == "WRITER" else cell_map
-        out.append(f"pub const {const}: &[Tab] = &[")
         for tab in tabs_of[const]:
-            out.append(f'    Tab {{ name: "{q(tr(tab.name, m, tab_name=True))}", cmds: &[')
+            w = tr(tab.name, m, tab_name=True)
+            pairs.setdefault(tab.name, set()).add(w)
+            at.append(("", "", tab.name, w))
             for cmd in tab.cmds:
-                # **書き方の名前をそのまま写す**(c / t / x / xt / xm)。
-                # ボタンの性格は語ではないので、どの言語でも同じです
-                if cmd.ready:
-                    out.append(
-                        f'        {cmd.kind}("{q(cmd.id)}", "{q(tr(cmd.label, m, f"{cmd.id or ''}|{cmd.icon}"))}",'
-                        f' "{q(cmd.icon)}"),')
-                else:
-                    out.append(
-                        f'        {cmd.kind}("{q(tr(cmd.label, m, f"{cmd.id or ''}|{cmd.icon}"))}", "{q(cmd.icon)}"),')
-            out.append("    ]},")
-        out.append("];\n")
+                w = tr(cmd.label, m, f"{cmd.id or ''}|{cmd.icon}")
+                pairs.setdefault(cmd.label, set()).add(w)
+                at.append((cmd.id, cmd.icon, cmd.label, w))
 
     if missing:
         uniq = sorted(set(missing))
@@ -937,12 +932,35 @@ use super::ribbon::{{{{import_of}}}};
             "— 黙って米国綴りに戻さないため、ここで止めます")
     for a, b in sorted(set(respelled)):
         print(f"  綴り直し: {a} → {b}", file=sys.stderr)
-    # **使った書き方だけを取り込む。** 使わない物を書くと警告になり、
-    # clippy の門(-D warnings)で止まります
-    body = "\n".join(out)
-    used = [k for k in ("c", "t", "m", "x", "xt", "xm")
-              if re.search(rf"^\s*{k}\(", body, re.M)]
-    print(body.replace("{import_of}", ", ".join(used + ["Tab"])))
+    uniform = {k: next(iter(v)) for k, v in pairs.items() if len(v) == 1}
+    split = {k for k, v in pairs.items() if len(v) > 1}
+    by_id: dict[str, str] = {}
+    naked = []
+    for id_, icon, label, w in at:
+        if label not in split:
+            continue
+        key = id_ or icon
+        if not key:
+            naked.append(label)
+            continue
+        if by_id.get(key, w) != w:
+            naked.append(f"{label} ({key})")
+        by_id[key] = w
+    if naked:
+        sys.exit(
+            "::error::同じ札で語が割れているのに id でも icon でも引けません: "
+            + ", ".join(sorted(set(naked))))
+    out.append("pub const WORDS: &[(&str, &str)] = &[")
+    for k in sorted(uniform):
+        if uniform[k] != k:  # 英語と同じ語は書かない(素通しで足りる)
+            out.append(f'    ("{q(k)}", "{q(uniform[k])}"),')
+    out.append("];\n")
+    out.append("/// 同じ札で働きが違うボタンの語(id か icon で引く)")
+    out.append("pub const WORDS_BY_ID: &[(&str, &str)] = &[")
+    for k in sorted(by_id):
+        out.append(f'    ("{q(k)}", "{q(by_id[k])}"),')
+    out.append("];\n")
+    print("\n".join(out))
 
 
 if __name__ == "__main__":

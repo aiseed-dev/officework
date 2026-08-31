@@ -190,9 +190,62 @@ def _unescape(s: str) -> str:
     return s.replace('\\"', '"').replace("\\\\", "\\")
 
 
-def tables(path: pathlib.Path | str = RIBBON) -> dict[str, list[Tab]]:
-    """`{"CALC": [Tab, …], "WRITER": [Tab, …]}`。読めなければ `RibbonError`。"""
+def words(path: pathlib.Path | str) -> tuple[dict[str, str], dict[str, str]]:
+    """語の表(ribbon_<loc>.rs)を読む。返りは (WORDS, WORDS_BY_ID)。
+
+    2026-08-31 の作り替えで、言語のファイルは (英語の札, 語) の対だけに
+    なった。構造は ribbon.rs の1本が持つ。
+    """
     src = pathlib.Path(path).read_text(encoding="utf-8")
+    def pairs(name: str) -> dict[str, str]:
+        a, b = _table_pairs_region(src, name)
+        out = {}
+        for m in re.finditer(r'\("((?:[^"\\]|\\.)*)",\s*"((?:[^"\\]|\\.)*)"\)', src[a:b]):
+            out[_unescape(m.group(1))] = _unescape(m.group(2))
+        return out
+    return pairs("WORDS"), pairs("WORDS_BY_ID")
+
+
+def _table_pairs_region(src: str, name: str) -> tuple[int, int]:
+    m = re.search(rf"pub const {name}\s*:\s*&\[\(&str, &str\)\]\s*=\s*&\[", src)
+    if not m:
+        raise RibbonError(f"{name} の表がありません")
+    end = src.index("];", m.end())
+    return m.end(), end
+
+
+def localized_tables(path: pathlib.Path | str) -> dict[str, list[Tab]]:
+    """骨組み(ribbon.rs)に語の表を差し込んだ、その言語の表。
+
+    Rust 側の `ribbon::localized` と同じ合成。道具はこれで、生成物が
+    まだ骨組みを持っていた頃と同じ形の表を受け取れる。
+    """
+    w, by_id = words(path)
+    base = tables(RIBBON)
+    out: dict[str, list[Tab]] = {}
+    for name, tabs_ in base.items():
+        out[name] = [
+            Tab(
+                name=w.get(tab.name, tab.name),
+                cmds=[
+                    c._replace(label=by_id.get(c.id or c.icon, w.get(c.label, c.label)))
+                    for c in tab.cmds
+                ],
+            )
+            for tab in tabs_
+        ]
+    return out
+
+
+def tables(path: pathlib.Path | str = RIBBON) -> dict[str, list[Tab]]:
+    """`{"CALC": [Tab, …], "WRITER": [Tab, …]}`。読めなければ `RibbonError`。
+
+    **語の表(作り替え後の ribbon_<loc>.rs)を渡されたら合成して返す** —
+    呼ぶ側は形の違いを知らなくてよい。
+    """
+    src = pathlib.Path(path).read_text(encoding="utf-8")
+    if "pub const WORDS" in src:
+        return localized_tables(path)
     others = [m for m in re.findall(r"pub const (\w+)\s*:\s*&\[Tab\]", src) if m not in ("CALC", "WRITER")]
     if others:
         # **知らない表が増えたら言う。** 黙って CALC/WRITER だけ見ると、

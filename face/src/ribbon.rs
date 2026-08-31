@@ -92,6 +92,59 @@ pub fn calc_tabs() -> &'static [Tab] {
         .unwrap_or(CALC)
 }
 
+/// **語だけの表から、その言語のリボンを組む**(2026-08-31 の作り替え)。
+///
+/// 骨組みは [`WRITER`] / [`CALC`] の1本だけで、言語のファイル
+/// (ribbon_<loc>.rs)は (英語の鍵, 語) の対しか持たない — 骨組みが
+/// 言語ごとにずれる余地を、検査で守るのではなく作りから消した
+/// (発注者「もっとまともなものに」)。
+///
+/// 初回に組んで持ち回す(言語は有限なので leak でよい)。訳の無い鍵は
+/// 英語のまま出す — 完全さは生成の側が見張る(訳が無ければ生成が止まる)。
+pub fn localized(
+    lang: &'static str,
+    words: &'static [(&'static str, &'static str)],
+    by_id: &'static [(&'static str, &'static str)],
+) -> (&'static [Tab], &'static [Tab]) {
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+    type Built = (&'static [Tab], &'static [Tab]);
+    static CACHE: OnceLock<Mutex<HashMap<&'static str, Built>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some(hit) = cache.lock().unwrap().get(lang) {
+        return *hit;
+    }
+    let map: HashMap<&'static str, &'static str> = words.iter().copied().collect();
+    let idm: HashMap<&'static str, &'static str> = by_id.iter().copied().collect();
+    let word = |en: &'static str| -> &'static str { map.get(en).copied().unwrap_or(en) };
+    let build = |src: &'static [Tab]| -> &'static [Tab] {
+        let tabs: Vec<Tab> = src
+            .iter()
+            .map(|t| Tab {
+                name: word(t.name),
+                cmds: Box::leak(
+                    t.cmds
+                        .iter()
+                        .map(|c| Cmd {
+                            // 同じ札で働きが違う物は id(無ければ icon)で引く
+                            label: idm
+                                .get(if c.id.is_empty() { c.icon } else { c.id })
+                                .copied()
+                                .unwrap_or_else(|| word(c.label)),
+                            ..*c
+                        })
+                        .collect::<Vec<_>>()
+                        .into_boxed_slice(),
+                ),
+            })
+            .collect();
+        Box::leak(tabs.into_boxed_slice())
+    };
+    let out = (build(WRITER), build(CALC));
+    cache.lock().unwrap().insert(lang, out);
+    out
+}
+
 pub struct Tab {
     pub name: &'static str,
     pub cmds: &'static [Cmd],

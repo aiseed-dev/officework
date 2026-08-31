@@ -204,13 +204,20 @@ def write_registries():
         "use super::ribbon::Tab;",
         "",
         "pub fn tabs(lang: &str) -> Option<(&'static [Tab], &'static [Tab])> {",
-        "    match lang {",
+        "    // 言語のファイルは語の対だけ。表は localized が骨組みへ差し込んで組む",
+        "    let (lang, words, by_id) = match lang {",
     ]
     for l in langs:
         m = mod_name(l)
         body.append(
-            f'        "{l}" => Some((crate::ribbon_{m}::WRITER, crate::ribbon_{m}::CALC)),')
-    body += ["        _ => None,", "    }", "}", ""]
+            f'        "{l}" => ("{l}", crate::ribbon_{m}::WORDS, crate::ribbon_{m}::WORDS_BY_ID),')
+    body += [
+        "        _ => return None,",
+        "    };",
+        "    Some(super::ribbon::localized(lang, words, by_id))",
+        "}",
+        "",
+    ]
     (ROOT / "face/src/ribbon_tables.rs").write_text("\n".join(body), encoding="utf-8")
 
     # lib.rs の目印区間

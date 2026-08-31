@@ -57,20 +57,16 @@ def rows(path, head):
 
 
 def writer_buttons():
-    """writer のリボン → {段の名前: [ボタンの札]}"""
-    src = RIBBON.read_text(encoding="utf-8")
-    seg = src[src.index("pub const WRITER"):src.index("pub const CALC")]
+    """writer のリボン → {段の名前: [ボタンの札]}。
+
+    2026-08-31 の作り替えで ribbon_ja.rs は語の対だけになった。
+    骨組みへの合成は ribbon_parse が1本で受け持つ(Rust 側と同じ形)。
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import ribbon_parse
     tabs = {}
-    now = None
-    for line in seg.splitlines():
-        m = re.search(r'Tab \{ name: "([^"]+)"', line)
-        if m:
-            now = m.group(1)
-            tabs[now] = []
-            continue
-        m = re.search(r'c\("[^"]+",\s*"([^"]+)"', line)
-        if m and now:
-            tabs[now].append(m.group(1))
+    for tab in ribbon_parse.tables_or_die(RIBBON)["WRITER"]:
+        tabs[tab.name] = [c.label for c in tab.cmds if c.ready]
     if len(tabs) < 5:
         sys.exit("face/src/ribbon_ja.rs から writer の段が読めません")
     return tabs

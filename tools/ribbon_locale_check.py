@@ -1,4 +1,17 @@
-"""**13言語のリボンが ja と同じ骨組みかを、組み立てずに見る。**
+"""**リボンの語の検査**(2026-08-31 の作り替え後の形)。
+
+骨組みの照合は消えた — 言語のファイルは (英語の札, 語) の対だけになり、
+表は実行時に骨組み(ribbon.rs の1本)へ差し込んで組むので、骨組みが
+言語ごとにずれることは**作りとして起きない**。生成の完全さ(訳の欠けで
+止まる)は生成器と ribbon_gen_check が見張る。
+
+ここに残るのは**語そのものの検査**。どれも実際に踏んだ穴から来ている:
+同じタブに同じラベル(6件見つけた)・2言語が丸ごと同語(pt の事故)・
+アプリをまたぐ id。以下は当時の記録。
+
+---(作り替え前の頭書き。経緯として残す)---
+
+**13言語のリボンが ja と同じ骨組みかを、組み立てずに見る。**
 
 `face/src/ribbon.rs`(ja)と `face/src/ribbon_<loc>.rs`(生成物)は、
 **語だけが違って id・並び・ready・icon は同じ**でなければならない。
@@ -235,37 +248,13 @@ def main() -> int:
         return 1
 
     bad = 0
+    # 骨組みの照合は作り替えで不要になった。残すのは「骨組み自体が
+    # 読めているか」(FLOOR)だけ — 字面を読む検査の失明の見張り
     for table in ("CALC", "WRITER"):
         ja = buttons(UI / "ribbon.rs", table)
         if len(ja) < FLOOR:
-            print(f"::error::{table}: ja の表が読めていません(ボタン {len(ja)} 件)")
+            print(f"::error::{table}: 骨組みの表が読めていません(ボタン {len(ja)} 件)")
             bad = 1
-            continue
-        ja_tabs = len(tabs(UI / "ribbon.rs", table))
-        for loc in locales:
-            got = buttons(UI / f"ribbon_{loc}.rs", table)
-            if len(got) != len(ja):
-                print(
-                    f"::error::{table} {loc}: ボタンの数が違います"
-                    f"(ja {len(ja)} / {loc} {len(got)})"
-                )
-                bad = 1
-                continue
-            n = len(tabs(UI / f"ribbon_{loc}.rs", table))
-            if n != ja_tabs:
-                print(f"::error::{table} {loc}: タブの数が違います(ja {ja_tabs} / {loc} {n})")
-                bad = 1
-            for i, (a, b) in enumerate(zip(ja, got)):
-                if a != b:
-                    print(
-                        f"::error::{table} {loc}: {i} 番目のボタンがずれています "
-                        f"— ja (id={a[0]!r} icon={a[1]!r} ready={a[2]}) / "
-                        f"{loc} (id={b[0]!r} icon={b[1]!r} ready={b[2]})"
-                    )
-                    bad = 1
-                    break
-        if not bad:
-            print(f"{table}: {len(locales)} 言語とも ja と同じ骨組み(ボタン {len(ja)} 件)")
     bad |= same_words(locales)
     dup = duplicate_labels(locales)
     bad |= dup
