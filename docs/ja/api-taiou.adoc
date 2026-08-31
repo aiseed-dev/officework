@@ -351,9 +351,9 @@ def 大文字にする(段落):
 |===
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
-|Settings — adjust where the cursor is |link:commands/右パネル/設定.adoc[設定。カーソルのある場所に掛かります] | |— |— |—
-|Page — settings for the whole document |link:commands/右パネル/ページ設定.adoc[ページ設定。文書全体に掛かります] |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
-|Styles — edit the template |link:commands/右パネル/スタイル.adoc[スタイル。テンプレートを直します] |✅ |p.style |p.style |—
+|Settings. Applies where the cursor is |link:commands/右パネル/設定.adoc[設定。カーソルのある場所に掛かります] | |— |— |—
+|Page setup. Applies to the whole document |link:commands/右パネル/ページ設定.adoc[ページ設定。文書全体に掛かります] |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
+|Styles. Edits the template |link:commands/右パネル/スタイル.adoc[スタイル。テンプレートを直します] |✅ |p.style |p.style |—
 |Project panel |link:commands/右パネル/プロジェクトパネル.adoc[プロジェクトパネル] | |— |— |—
 |===
 
