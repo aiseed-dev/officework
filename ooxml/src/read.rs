@@ -75,21 +75,23 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     if let Ok(mut f) = zip.by_name("word/_rels/document.xml.rels") {
         let _ = f.read_to_string(&mut rels);
     }
+    // **属性の並び順を当てにしません**(2026-08-31 発注者)。前は `Id="` を
+    // 見つけてから**その後ろ**で `Target="` を探していました。内閣府の様式
+    // (document_4.docx)は `Type` `Target` `Id` の順に書いてあるので、次の
+    // 関係の `Target` を拾って対応がずれ、**絵が3枚とも消えていました**。
+    // すぐ下の `bui` は最初から要素ごとに区切って読んでいます
     let mut targets: std::collections::BTreeMap<String, String> = Default::default();
-    let mut at = 0usize;
-    while let Some(i) = rels[at..].find("Id=\"") {
-        let s = at + i + 4;
-        let Some(e) = rels[s..].find('"') else { break };
-        let id = rels[s..s + e].to_string();
-        // 同じ Relationship の中の Target を探す(次の > まで)
-        let tail = &rels[s + e..];
-        if let Some(ti) = tail.find("Target=\"") {
-            let ts = ti + 8;
-            if let Some(te) = tail[ts..].find('"') {
-                targets.insert(id, tail[ts..ts + te].to_string());
-            }
+    for r in rels.split("<Relationship").skip(1) {
+        // 1つの要素の中だけを見ます
+        let r = &r[..r.find('>').unwrap_or(r.len())];
+        let hiku = |k: &str| -> Option<String> {
+            let i = r.find(k)? + k.len();
+            let e = r[i..].find('"')? + i;
+            Some(r[i..e].to_string())
+        };
+        if let (Some(id), Some(t)) = (hiku("Id=\""), hiku("Target=\"")) {
+            targets.insert(id, t);
         }
-        at = s + e;
     }
     // **部品の在り処は関係で引きます。** `word/styles.xml` は慣習で、
     // 決まりではありません。内閣府の様式(document_4.docx)は

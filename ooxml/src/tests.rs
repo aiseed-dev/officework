@@ -1998,6 +1998,55 @@ mod hf_tests {
             "印が往復しない: {t:?}");
     }
 
+    /// **関係の属性は、どの順で書いてあっても読む。**
+    ///
+    /// 前は `Id="` を見つけてから**その後ろ**で `Target="` を探していました。
+    /// 内閣府の様式(document_4.docx)は `Type` `Target` `Id` の順なので、
+    /// 次の関係の `Target` を拾って対応がずれ、**絵が3枚とも消えて**
+    /// いました(2026-08-31 発注者「document_4 では、絵が消えている」)。
+    #[test]
+    fn a_relationship_is_read_whatever_order_its_attributes_come_in() {
+        // 1×1 の PNG(絵の中身は問わないので、いちばん小さいもの)
+        let png: &[u8] = &[
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48,
+            0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00,
+            0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78,
+            0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+            0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+        ];
+        let tsukuru = |rel: &str| -> Vec<u8> {
+            let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+            let o: zip::write::FileOptions<'_, ()> = Default::default();
+            let mut put = |n: &str, d: &[u8]| {
+                zip.start_file(n, o).unwrap();
+                zip.write_all(d).unwrap();
+            };
+            put("[Content_Types].xml", br#"<Types xmlns="ct"><Default Extension="xml" ContentType="application/xml"/></Types>"#);
+            put("_rels/.rels", br#"<Relationships xmlns="r"/>"#);
+            put("word/_rels/document.xml.rels",
+                format!(r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{rel}</Relationships>"#).as_bytes());
+            put("word/media/image1.png", png);
+            put("word/document.xml", r#"<w:document xmlns:w="x" xmlns:r="y" xmlns:wp="z" xmlns:a="w"><w:body><w:p><w:r><w:drawing><wp:inline><wp:extent cx="914400" cy="914400"/><a:blip r:embed="rId7"/></wp:inline></w:drawing></w:r></w:p></w:body></w:document>"#.as_bytes());
+            zip.finish().unwrap().into_inner()
+        };
+        let e = |src: Vec<u8>| -> usize {
+            let (d, _) = crate::read(Cursor::new(src)).unwrap();
+            d.blocks
+                .iter()
+                .map(|b| match b {
+                    kumihan::Block::Para(p) => p.images.len(),
+                    _ => 0,
+                })
+                .sum()
+        };
+        // よくある順(Id が先)
+        let futsuu = r#"<Relationship Id="rId7" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.png"/>"#;
+        assert_eq!(e(tsukuru(futsuu)), 1, "よくある順で絵が読めない");
+        // 内閣府の様式の順(Id が最後)。**2つ並べて、ずれが出る形にします**
+        let cao = r#"<Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml" Id="rId1" /><Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.png" Id="rId7" />"#;
+        assert_eq!(e(tsukuru(cao)), 1, "Id が後ろにある書き方で絵が消えた");
+    }
+
     /// 原本に header1.xml を持つ最小の docx
     fn docx_with_header(header_xml: &[u8]) -> Vec<u8> {
         let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
