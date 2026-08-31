@@ -82,6 +82,34 @@ pub(crate) enum FlJob {
     Delete(PathBuf),
 }
 
+/// **取り消しの控え1つ。**
+///
+/// セルだけを触る操作は、**触ったセルの前の中身**だけを控えます
+/// (2026-08-31 発注者「編集のたびにシートを丸ごと写すのはやめられる
+/// でしょう」)。20 万セルの表で、1回の編集ごとに 36ms 掛かっていました。
+///
+/// 列幅や結合のように**構造を変える操作**は、いままでどおり丸ごと控えます。
+/// 何が変わるか分からない操作を差分で追うと、戻し損ねる方が重いためです。
+#[derive(Clone)]
+pub(crate) enum Hikae {
+    /// シートを丸ごと(構造を変える操作)。**箱に入れます** —
+    /// 差分の側との大きさの差が大きく、控えの列が丸ごとの大きさで揃うため
+    Marugoto(usize, Box<book::Sheet>),
+    /// セルだけの差分。`None` は「そこにセルが無かった」。
+    /// 3つ目は行の高さの控え(打鍵で行が伸びることがあります)
+    Sabun(usize, Vec<(Pos, Option<book::Cell>)>, Vec<(u32, Option<f32>)>),
+}
+
+impl Hikae {
+    /// どのシートの控えか
+    pub(crate) fn sheet(&self) -> usize {
+        match self {
+            Hikae::Marugoto(i, _) | Hikae::Sabun(i, _, _) => *i,
+        }
+    }
+}
+
+
 pub struct Calc {
     focus: FocusHandle,
     book: Book,
@@ -373,8 +401,8 @@ pub struct Calc {
     /// 複数シートに触るものは全部まとめて1手(どれでも1手で戻せる)。
     /// **どのシートの控えかを一緒に持つ** — シートを切り替えた後の undo が
     /// 別のシートへ他所の中身を書き戻す事故を防ぐ
-    undo_stack: Vec<Vec<(usize, book::Sheet)>>,
-    redo_stack: Vec<Vec<(usize, book::Sheet)>>,
+    undo_stack: Vec<Vec<Hikae>>,
+    redo_stack: Vec<Vec<Hikae>>,
     /// シートごとのカーソル・窓・固定(切り替えても場所を失わない)
     sheet_ui: Vec<(Pos, Pos, Option<Pos>)>,
     /// コピーの控え(起点, そのとき書いた TSV)。貼り付け時に系のクリップボードと

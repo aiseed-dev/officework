@@ -663,8 +663,35 @@ impl Calc {
     /// いまの表を控える(次の操作を戻せるように)。やり直しの控えは捨てる。
     pub(crate) fn checkpoint(&mut self) {
         self.edits += 1;
-        self.undo_stack
-            .push(vec![(self.active, self.book.sheets[self.active].clone())]);
+        self.undo_stack.push(vec![crate::Hikae::Marugoto(self.active, Box::new(self.book.sheets[self.active].clone()))]);
+        if self.undo_stack.len() > 100 {
+            self.undo_stack.remove(0);
+        }
+        self.redo_stack.clear();
+    }
+
+    /// **触るセルだけを控える。** シートを丸ごと写しません
+    /// (2026-08-31 発注者)。20 万セルの表で、丸ごとの写しは1回 36ms
+    /// 掛かっていました。
+    ///
+    /// 使えるのは**セルの中身しか変えない操作**です。列幅・結合・
+    /// 入力規則のように構造が動く操作は [`checkpoint`](Self::checkpoint) で
+    /// 丸ごと控えます。
+    pub(crate) fn checkpoint_cells(&mut self, a: Pos, b: Pos) {
+        self.edits += 1;
+        let sh = &self.book.sheets[self.active];
+        let mut cells = Vec::with_capacity(((b.row - a.row + 1) * (b.col - a.col + 1)) as usize);
+        for r in a.row..=b.row {
+            for c in a.col..=b.col {
+                let p = Pos::new(r, c);
+                cells.push((p, sh.get(p).cloned()));
+            }
+        }
+        // 行の高さも控えます(打鍵で行が伸びることがあります)
+        let takasa: Vec<(u32, Option<f32>)> = (a.row..=b.row)
+            .map(|r| (r, sh.row_height.get(&r).copied()))
+            .collect();
+        self.undo_stack.push(vec![crate::Hikae::Sabun(self.active, cells, takasa)]);
         if self.undo_stack.len() > 100 {
             self.undo_stack.remove(0);
         }
@@ -681,6 +708,7 @@ impl Calc {
                 .iter()
                 .cloned()
                 .enumerate()
+                .map(|(i, sh)| crate::Hikae::Marugoto(i, Box::new(sh)))
                 .collect(),
         );
         if self.undo_stack.len() > 100 {
@@ -702,19 +730,71 @@ impl Calc {
         }
     }
 
+    /// **控えの裏返しを作る。** いまの中身を、戻せる形で取ります
+    /// (取り消しと やり直しは同じ物を行き来します)
+    fn ura(&self, h: &crate::Hikae) -> crate::Hikae {
+        match h {
+            crate::Hikae::Marugoto(i, _) => {
+                crate::Hikae::Marugoto(*i, Box::new(self.book.sheets[*i].clone()))
+            }
+            crate::Hikae::Sabun(i, cells, takasa) => crate::Hikae::Sabun(
+                *i,
+                cells
+                    .iter()
+                    .map(|(p, _)| (*p, self.book.sheets[*i].get(*p).cloned()))
+                    .collect(),
+                takasa
+                    .iter()
+                    .map(|(r, _)| (*r, self.book.sheets[*i].row_height.get(r).copied()))
+                    .collect(),
+            ),
+        }
+    }
+
+    /// 控えをシートへ当てる
+    fn ateru(&mut self, h: crate::Hikae) {
+        match h {
+            crate::Hikae::Marugoto(i, sh) => self.book.sheets[i] = *sh,
+            crate::Hikae::Sabun(i, cells, takasa) => {
+                for (r, h) in takasa {
+                    match h {
+                        Some(h) => {
+                            self.book.sheets[i].row_height.insert(r, h);
+                        }
+                        None => {
+                            self.book.sheets[i].row_height.remove(&r);
+                        }
+                    }
+                }
+                for (p, c) in cells {
+                    match c {
+                        Some(c) => self.book.sheets[i].set(p, c),
+                        // **無かったセルは消します。** 素のセルを置くと、
+                        // 表の範囲が広がったままになります
+                        None => {
+                            self.book.sheets[i].cells.remove(&p);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     pub(crate) fn undo_sheet(&mut self) {
         let Some(batch) = self.undo_stack.pop() else {
             self.status = ui::t!("nothing_undo").into();
             return;
         };
         let mut redo = Vec::new();
-        let first = batch.first().map(|(i, _)| *i);
-        for (idx, prev) in batch {
-            if idx < self.book.sheets.len() {
-                redo.push((idx, self.book.sheets[idx].clone()));
-                self.book.sheets[idx] = prev;
-                recalc_book(&mut self.book, idx);
+        let first = batch.first().map(|h| h.sheet());
+        for h in batch {
+            let idx = h.sheet();
+            if idx >= self.book.sheets.len() {
+                continue;
             }
+            redo.push(self.ura(&h));
+            self.ateru(h);
+            recalc_book(&mut self.book, idx);
         }
         self.redo_stack.push(redo);
         if let Some(i) = first {
@@ -731,11 +811,12 @@ impl Calc {
             return;
         };
         let mut undo = Vec::new();
-        let first = batch.first().map(|(i, _)| *i);
-        for (idx, next) in batch {
+        let first = batch.first().map(|h| h.sheet());
+        for h in batch {
+            let idx = h.sheet();
             if idx < self.book.sheets.len() {
-                undo.push((idx, self.book.sheets[idx].clone()));
-                self.book.sheets[idx] = next;
+                undo.push(self.ura(&h));
+                self.ateru(h);
                 recalc_book(&mut self.book, idx);
             }
         }
@@ -2663,7 +2744,10 @@ impl Calc {
                 self.status = ui::tf!("fails_data_validation_rule_but", said).into();
             }
         }
-        self.checkpoint();
+        // **打鍵は1つのセルしか変えません**(2026-08-31 発注者「編集の
+        // たびにシートを丸ごと写すのはやめられるでしょう」)。20 万セルの
+        // 表で、丸ごとの写しは1回 36ms 掛かっていました
+        self.checkpoint_cells(cur, cur);
         // **書式は据え置く。** 打ち直しただけで罫線や塗りが消えるのは帳票の事故
         let fmt = self.sheet().get(cur).map(|c| c.fmt.clone()).unwrap_or_default();
         let mut cell = Cell::input(&text);

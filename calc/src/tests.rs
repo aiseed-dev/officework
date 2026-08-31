@@ -7437,6 +7437,45 @@ mod combo_tests {
         });
     }
 
+    /// **差分の控えでも、取り消しでちゃんと戻る。**
+    ///
+    /// 2026-08-31 発注者「編集のたびにシートを丸ごと写すのはやめられる
+    /// でしょう」。20 万セルの表で1回 36ms 掛かっていました。差分に
+    /// したので、**戻し損ねていないか**を3つの道で見ます。
+    #[gpui::test]
+    fn undo_puts_back_what_the_diff_saved(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let p = Pos::new(0, 0);
+            let q = Pos::new(1, 0);
+            this.book.sheets[0].set(p, book::Cell::input("元の字"));
+
+            // ① 打鍵 — 中身が戻ること
+            this.cursor = p;
+            this.input.select_all();
+            this.input.insert("打ち替え");
+            this.commit();
+            assert_eq!(this.sheet().get(p).unwrap().value.display(), "打ち替え");
+            this.undo_sheet();
+            assert_eq!(this.sheet().get(p).unwrap().value.display(), "元の字", "打鍵が戻らない");
+
+            // ② 書式 — 無かったセルが「無い」まで戻ること。
+            // **打ちかけを先に片づけます** — 残っていると、書式の手前の
+            // `commit` がその字を新しいセルへ書き込みます
+            this.cursor = q;
+            this.anchor = None;
+            this.sync_input();
+            this.run_cmd("bold", cx);
+            assert!(this.sheet().get(q).is_some_and(|c| c.fmt.bold), "太字が掛かっていない");
+            this.undo_sheet();
+            assert!(this.sheet().get(q).is_none(), "無かったセルが残った");
+
+            // ③ やり直しも効くこと
+            this.redo_sheet();
+            assert!(this.sheet().get(q).is_some_and(|c| c.fmt.bold), "やり直しで戻らない");
+        });
+    }
+
     #[gpui::test]
     fn column_and_row_selection_reaches_the_edge_without_being_slow(cx: &mut gpui::TestAppContext) {
         // 発注者 2026-08-14「行選択や列選択も途中で止めずに同じく全範囲」。

@@ -5371,7 +5371,7 @@ impl Calc {
             _ => (None, ""),
         };
         // 1手で戻せる(シート見出しの色もシートの中身 — checkpoint と同じ作法で番号つき)
-        self.undo_stack.push(vec![(t, self.book.sheets[t].clone())]);
+        self.undo_stack.push(vec![crate::Hikae::Marugoto(t, Box::new(self.book.sheets[t].clone()))]);
         self.redo_stack.clear();
         self.book.sheets[t].tab_color = hex.map(|h| h.to_string());
         self.dirty = true;

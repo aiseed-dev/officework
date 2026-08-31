@@ -194,7 +194,9 @@ impl Calc {
                 ui::t!("sheet_protected_protection_tab").into();
             return;
         }
-        self.checkpoint();
+        // 範囲のセルしか触らないので、差分で控えます(2026-08-31)
+        let (a, b) = self.sel_rect();
+        self.checkpoint_cells(a, b);
         let n = self.clear_range();
         self.sync_input();
         self.status = ui::tf!("contents_cells_cleared_formatting", n).into();
@@ -421,7 +423,9 @@ impl Calc {
         self.clip = None;
         self.clip_cells = None;
         self.clip_range = None;
-        self.checkpoint();
+        // 範囲のセルしか触らないので、差分で控えます(2026-08-31)
+        let (a, b) = self.sel_rect();
+        self.checkpoint_cells(a, b);
         let n = self.clear_range();
         self.status = ui::tf!("cut_cells", n).into();
         cx.notify();
@@ -1214,9 +1218,11 @@ impl Calc {
             return;
         }
         self.commit();
-        self.checkpoint();
         // 範囲選択があれば全部に掛ける。罫線も塗りも、帳票は範囲でやる仕事
         let (a, b) = self.sel_rect();
+        // **触るセルだけ控えます**(2026-08-31)。書式はセルの中身しか
+        // 変えないので、シートを丸ごと写す必要がありません
+        self.checkpoint_cells(a, b);
         for r in a.row..=b.row {
             for cidx in a.col..=b.col {
                 let p = Pos::new(r, cidx);
