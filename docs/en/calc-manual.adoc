@@ -61,7 +61,7 @@ Freeze panes, sheet visibility (unhide/hide sheets), and the interface theme als
 === All keys
 
 The table above covers just the basics.
-Every live binding is listed below (generated from the binding table — hand-written lists always drift).
+Every live binding is listed below (generated from the binding table — a hand-written list goes stale).
 You can rebind in settings.toml: `key.bold = "alt-b"` replaces the default keys for that action (separate several with commas, unbind with an empty string `""`; unreadable lines are reported in the status bar at startup; action names are the English names below).
 
 // keys:gen:start (rewritten by tools/keys\_doc.py --write)
@@ -351,7 +351,7 @@ ai_model = "gpt-oss-120b"
 
 Common ports: Ollama `11434`, llama.cpp server `8080`, LM Studio `1234` — all on `/v1/chat/completions`.
 
-If the destination can't be reached the app says so (it never silently returns nothing). *Keys are never stored in the workbook.*
+If the destination can't be reached the app says so (it never silently returns nothing). *Keys are not written to the workbook* — the environment variable above is the only place they are read from.
 
 == Cell text is AsciiDoc
 
@@ -370,7 +370,7 @@ see https://…[here]                   → a blue underlined link
 * *Doubled markers are the reliable form.* Single markers (`*bold*`) only work at word boundaries, so they do nothing inside Japanese text, which has no spaces between words (`this is *bold*` works in Latin text)
 * An `=` with *no space after it* is a formula (`=SUM(A1)`); with a space it is a cell heading (`= Big`)
 * The cell always holds plain text — the formula bar and Python see it as is, markers included
-* *It is written to xlsx as plain text*. A round trip can never garble it (Excel shows the markers literally — honest degradation)
+* *It is written to xlsx as plain text*. Being plain text, a round trip brings back the markers you typed (Excel shows them literally — honest degradation)
 * *The selected cell shows the raw text* so you can retype it
 * To stack headings and bullets vertically, turn on *wrap* for the cell (without wrap, newlines still collapse to spaces as before)
 * Japanese typefaces have no italic face, so `__italic__` does not slant in Japanese (the markers are still removed). Latin text slants
