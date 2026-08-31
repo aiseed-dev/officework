@@ -15,5 +15,5 @@
 書体 Noto_Sans_CJK_JP/c7a5a8d18e92effb
 絵と透かし/字 0a257deee0767b04
 絵と透かし/罫線 35f0459feb811a3f
-表計算/字 a764425b29fcef2d
+表計算/字 30d77cfb0b2cfcc8
 表計算/罫線 1e2630e1e78a6a1f

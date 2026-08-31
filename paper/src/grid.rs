@@ -31,6 +31,17 @@ fn gyou_mm(grid: &Grid, r: u32) -> f32 {
         .map(|pt| pt * 25.4 / 72.0)
         .unwrap_or(ROW_MM)
 }
+/// **セルの内側の余白(片側 mm)。**
+///
+/// Excel は字を升の縁から 2 画素あけます(96dpi で 0.53mm)。列幅に入って
+/// いる 5 画素の内訳が「左右2画素ずつ + 罫線1画素」なので、字が使えるのは
+/// 幅から 4 画素を引いた分です。
+///
+/// 前は片側 1.5mm(合わせて 3.0mm)を引いていました。総務省の給与所得の
+/// 表では、8桁の数が入るはずの升で 3mm 足りず `#####` になっていました
+/// (2026-08-31)。
+const MASU_PAD_MM: f32 = 2.0 * 25.4 / 96.0;
+
 /// **半角の書体の名前に付ける印**(2026-08-31 発注者)。
 ///
 /// ＭＳ Ｐ明朝のように、漢字と半角で設計の違う書体があります。書体の並びに
@@ -1189,7 +1200,7 @@ fn draw_sheet(
             } else {
                 0.0
             };
-            let naka = (ma_w - 3.0 - ind).max(pt * 25.4 / 72.0);
+            let naka = (ma_w - 2.0 * MASU_PAD_MM - ind).max(pt * 25.4 / 72.0);
             // セルの書体で、字ごとに測ります(半角は相手の書体で)
             let haba_cell = |t: &str, p: f32| -> f32 {
                 t.chars().map(|c| haba.ji_mm(ji_fno(fno_cell, c) as usize, c, p)).sum()
@@ -1322,9 +1333,9 @@ fn draw_sheet(
             // (2026-08-31 発注者。前は右揃えのとき字下げを捨てていました)
             let tx = if right {
                 let w = gyou.first().map(|g| gyou_haba(g)).unwrap_or(0.0);
-                x + cw - 1.5 - ind - w
+                x + cw - MASU_PAD_MM - ind - w
             } else {
-                x + 1.5 + ind
+                x + MASU_PAD_MM + ind
             };
             // 文字は塗り色で描かれる(PDF の作法)ので、色付きの字は前後で入れ替える
             let c = colour.as_deref().and_then(hex_rgb).unwrap_or((0.0, 0.0, 0.0));
@@ -1356,7 +1367,7 @@ fn draw_sheet(
                     // 幅は結合したぶん(`ma_w`)で見ます — 結合の1列目の
                     // 幅で中央を出すと、題が紙の左へはみ出します
                     HAlign::Center | HAlign::CenterContinuous => x + (ma_w - w) / 2.0,
-                    _ if right => x + cw - 1.5 - w,
+                    _ if right => x + cw - MASU_PAD_MM - w,
                     _ => tx,
                 };
                 // **均等割付は字を升の幅いっぱいに配ります**(2026-08-31。
@@ -1367,8 +1378,8 @@ fn draw_sheet(
                 if waru {
                     let kazu: usize = g.iter().map(|(t, _, _)| t.chars().count()).sum();
                     // 字と字の間に配る余り。両端は升の縁に着けます
-                    let aki = ((ma_w - 3.0 - w) / (kazu - 1) as f32).max(0.0);
-                    let mut wx = x + 1.5;
+                    let aki = ((ma_w - 2.0 * MASU_PAD_MM - w) / (kazu - 1) as f32).max(0.0);
+                    let mut wx = x + MASU_PAD_MM;
                     for (t, rp, rf) in g {
                         let fno = fno_of(rf);
                         for ch in t.chars() {
@@ -2442,6 +2453,24 @@ mod zukei_tests {
         assert_eq!(leaf.size_mm, Some((210.0, 297.0)));
         assert!(!leaf.polys.is_empty(), "塗りが出ていない");
         assert!(!leaf.rules.is_empty(), "線が出ていない");
+    }
+
+    /// **セルの内側の余白は、Excel と同じ 2 画素。**
+    ///
+    /// 片側 1.5mm(合わせて 3.0mm)を引いていました。列幅に入っている
+    /// 5 画素の内訳は「左右2画素ずつ + 罫線1画素」なので、字が使えるのは
+    /// 幅から 4 画素(1.06mm)を引いた分です。総務省の給与所得の表では
+    /// 3mm 足りず、8桁の数が 35 か所で `#####` になっていました
+    /// (2026-08-31)。
+    #[test]
+    fn a_cell_keeps_only_excels_own_padding() {
+        // 96dpi の 2 画素 = 0.529mm
+        assert!((MASU_PAD_MM - 0.529).abs() < 0.002, "{MASU_PAD_MM}");
+        // 15.65mm の升に、8.12pt の「10,893,085」(4.609em = 13.20mm)が入る
+        let iru = 13.20;
+        assert!(15.65 - 2.0 * MASU_PAD_MM > iru, "8桁の数が入らない");
+        // 前の 3.0mm では入りませんでした
+        assert!(15.65 - 3.0 < iru, "前の余白でも入ってしまう(試験が効かない)");
     }
 
     /// **テキストボックスの字は、箱の幅で折り返す。**
