@@ -1,30 +1,31 @@
 #!/usr/bin/env python3
-"""**本家との差分の検査。** 同じ実物を本家(openpyxl / python-docx)と
-officework に読ませ、答えを1項目ずつ突き合わせる(2026-08-31 発注者
-「python-docx と openpyxl との互換性テストをやれ」)。
+"""**本家との差分の検査 — 本家の公開の口を全部歩く。**
 
-見本を作って確かめる検査は、直した所しか見ない。実物と本家を使う
-この形は、**知らなかったずれ**を見つける — test/cao・test/zei と
-同じ考え方の、Python の口の版。
+同じ実物を本家(openpyxl / python-docx)と officework に読ませ、
+**本家のクラスが公開しているプロパティを機械的に全部**突き合わせる
+(2026-08-31 発注者「python-docx と openpyxl の全部を網羅したテストに」)。
+
+見る項目を人が選ぶと、選ばなかった穴は永遠に見えない。ここは本家の
+クラス定義から公開プロパティの一覧を取り出して回すので、本家に口が
+増えれば検査も勝手に広がる。うちに口が無ければ「口が無い」、答えが
+違えば「答えが違う」として、**口の名前ごと**に数える。
 
     .venv/bin/python test/gokan_diff.py ~/dev/test/zei/*.xlsx ~/dev/test/cao/*.docx
 
-読みの突き合わせ(このファイル)で見る物:
-
-- xlsx: シート名・使う範囲・全セルの値・表示形式・結合・列幅・行高・
-  書体(名前/大きさ/太字)・揃え
-- docx: 段落の数と字・run の分かれ目と太字/斜体・表の形と中身・
-  節の用紙と余白
-
-さらに**書きの往復**: officework で保存した物を本家に読ませ、本家が
-元ファイルから読んだ答えと比べる(消えた物・化けた物が出る)。
+さらに**書きの往復**: officework で開いてそのまま保存した物を本家に
+読ませ、本家が元から読んだ答えと同じ歩き方で比べる。触っていないのに
+変わる物(原本を変える壊れ方)が出る。
 """
 
+import inspect
 import sys
 import tempfile
 from pathlib import Path
 
-MAX_SHOW = 5  # 種類ごとに最初の5件だけ見せる(数は全部数える)
+MAX_SHOW = 3   # 口ごとに最初の3例だけ見せる(数は全部数える)
+MAX_ROWS = 400
+MAX_COLS = 60
+DEPTH = 3      # 値のオブジェクト(Font など)を掘る深さ
 
 
 class Diff:
@@ -32,17 +33,17 @@ class Diff:
         self.name = name
         self.kinds = {}
 
-    def add(self, kind, msg):
-        self.kinds.setdefault(kind, []).append(msg)
+    def add(self, member, msg):
+        self.kinds.setdefault(member, []).append(msg)
 
     def report(self):
         total = sum(len(v) for v in self.kinds.values())
         if not total:
             print(f"  {self.name}: ずれなし")
             return 0
-        print(f"  {self.name}: ずれ {total} 件")
-        for kind, msgs in sorted(self.kinds.items(), key=lambda kv: -len(kv[1])):
-            print(f"    [{kind}] {len(msgs)} 件")
+        print(f"  {self.name}: ずれ {total} 件 / 口 {len(self.kinds)} 種")
+        for member, msgs in sorted(self.kinds.items(), key=lambda kv: -len(kv[1])):
+            print(f"    {member}: {len(msgs)} 件")
             for m in msgs[:MAX_SHOW]:
                 print(f"      {m}")
             if len(msgs) > MAX_SHOW:
@@ -50,14 +51,109 @@ class Diff:
         return total
 
 
-def norm_val(v):
-    """値の比べ方。int と float の 100 は同じ、None と "" は別(仕様の差を見る)"""
-    if isinstance(v, float) and v == int(v) and abs(v) < 1e15:
+# ---- 比べ方 ---------------------------------------------------------------
+
+def props_of(cls) -> list:
+    """本家のクラスの公開プロパティの名前。ここが網羅の正本 —
+    本家の定義から取るので、人が項目を選ばない。"""
+    out = []
+    for n in dir(cls):
+        if n.startswith("_"):
+            continue
+        try:
+            a = inspect.getattr_static(cls, n)
+        except AttributeError:
+            continue
+        if isinstance(a, (property, inspect.getattr_static(type("x", (), {"p": property(lambda s: 0)}), "p").__class__)):
+            out.append(n)
+    return sorted(set(out))
+
+
+def norm(v, depth=DEPTH):
+    """答えを比べられる形に。数の 100 と 100.0 は同じ、EMU は int、
+    列挙は名前、値のオブジェクトは公開の場だけの辞書に。"""
+    if v is None or isinstance(v, (bool, str, bytes)):
+        return v
+    # 列挙(WD_ALIGN_PARAGRAPH.RIGHT など)は名前の小文字で —
+    # うちは文字列で返す設計なので、表し方を揃えてから比べる
+    if hasattr(v, "name") and hasattr(v, "__int__") and not isinstance(v, bool):
+        try:
+            return str(v.name).lower()
+        except Exception:
+            pass
+    if isinstance(v, float):
+        return int(v) if v == int(v) and abs(v) < 1e15 else round(v, 6)
+    if isinstance(v, int):
         return int(v)
-    return v
+    if isinstance(v, (list, tuple)):
+        return [norm(x, depth - 1) for x in v] if depth > 0 else f"<列 {len(v)}>"
+    t = type(v).__name__
+    if depth <= 0:
+        return f"<{t}>"
+    # 値のオブジェクト(Font・Alignment・Color…)は公開の場を辞書に
+    d = {}
+    for n in dir(v):
+        if n.startswith("_") or n in (
+            "parent", "idx", "tagname", "namespace",
+            # 内部の XML(lxml)は表し方の雑音にしかならない
+            "element", "xml", "attrib", "nsmap", "prefix", "sourceline", "tag",
+        ):
+            continue
+        try:
+            a = getattr(v, n)
+        except Exception:
+            continue
+        if callable(a):
+            continue
+        d[n] = norm(a, depth - 1)
+    return d or f"<{t}>"
 
 
-# ---------------- xlsx ----------------
+def cmp_prop(d: Diff, where: str, member: str, ref, mine):
+    """本家の答えとうちの答えを1つ比べる。"""
+    try:
+        rv = getattr(ref, member)
+    except Exception:
+        return  # 本家自身が答えられない口は比べない
+    if callable(rv):
+        return
+    try:
+        mv = getattr(mine, member)
+    except AttributeError:
+        d.add(f"口が無い: {member}", where)
+        return
+    except Exception as e:
+        d.add(f"口が壊れる: {member}", f"{where}: {type(e).__name__} {e}")
+        return
+    if callable(mv):
+        mv_desc = "<関数>"
+        d.add(f"形が違う: {member}", f"{where}: 本家は値 / うちは{mv_desc}")
+        return
+    a, b = norm(rv), norm(mv)
+    if a != b:
+        sa, sb = repr(a)[:60], repr(b)[:60]
+        d.add(f"答えが違う: {member}", f"{where}: 本家 {sa} / うち {sb}")
+
+
+def walk_pair(d: Diff, where: str, ref, mine, skip=()):
+    """本家のクラスの公開プロパティを全部歩いて比べる。"""
+    for member in props_of(type(ref)):
+        if member in skip:
+            continue
+        cmp_prop(d, where, member, ref, mine)
+
+
+# ---- xlsx -----------------------------------------------------------------
+
+# 比べても意味の無い口(こちらの内部や、実物でなく環境に依る物)
+XLSX_SKIP_WB = {"loaded_theme", "vba_archive", "path", "excel_base_date",
+                "epoch", "template", "data_only", "read_only", "write_only",
+                "iso_dates", "rels", "calculation", "views", "security",
+                "shared_strings", "style_names"}
+XLSX_SKIP_WS = {"parent", "views", "HeaderFooter", "legacy_drawing",
+                "orientation", "path", "plot"}
+XLSX_SKIP_CELL = {"parent", "encoding", "base_date"}
+
 
 def xlsx_diff(path: Path) -> int:
     import openpyxl
@@ -67,56 +163,29 @@ def xlsx_diff(path: Path) -> int:
     wb = openpyxl.load_workbook(path)
     b = sheet.Book.open(str(path))
 
-    if wb.sheetnames != b.sheet_names:
-        d.add("シート名", f"本家 {wb.sheetnames} / うち {b.sheet_names}")
+    walk_pair(d, "Workbook", wb, b, skip=XLSX_SKIP_WB)
     for name in wb.sheetnames:
         if name not in b.sheet_names:
+            d.add("シートが無い", name)
             continue
         ws, s = wb[name], b[name]
-        # 使う範囲
-        if (ws.max_row, ws.max_column) != (s.max_row, s.max_column):
-            d.add("範囲", f"{name}: 本家 {ws.max_row}x{ws.max_column} / うち {s.max_row}x{s.max_column}")
-        rows = min(ws.max_row, s.max_row, 400)
-        cols = min(ws.max_column, s.max_column, 60)
+        walk_pair(d, f"[{name}]", ws, s, skip=XLSX_SKIP_WS)
+        rows = min(ws.max_row, MAX_ROWS)
+        cols = min(ws.max_column, MAX_COLS)
         for r in range(1, rows + 1):
             for c in range(1, cols + 1):
                 oc = ws.cell(r, c)
-                mc = s.cell(r, c)
-                a1 = oc.coordinate
-                ov, mv = norm_val(oc.value), norm_val(mc.value)
-                if ov != mv:
-                    d.add("値", f"{name}!{a1}: 本家 {ov!r} / うち {mv!r}")
-                if oc.number_format != mc.number_format:
-                    d.add("表示形式", f"{name}!{a1}: 本家 {oc.number_format!r} / うち {mc.number_format!r}")
-                of_, mf = oc.font, mc.font
-                if (of_.name, of_.bold or False) != (mf.name, mf.bold or False):
-                    d.add("書体", f"{name}!{a1}: 本家 ({of_.name}, 太字={of_.bold}) / うち ({mf.name}, 太字={mf.bold})")
-                oa, ma = oc.alignment, mc.alignment
-                if (oa.horizontal, oa.vertical) != (ma.horizontal, ma.vertical):
-                    d.add("揃え", f"{name}!{a1}: 本家 ({oa.horizontal},{oa.vertical}) / うち ({ma.horizontal},{ma.vertical})")
-        try:
-            om = {str(m) for m in ws.merged_cells.ranges}
-            mm = {str(m) for m in s.merged_cells.ranges}
-            for x in sorted(om - mm):
-                d.add("結合", f"{name}: 本家にだけ {x}")
-            for x in sorted(mm - om):
-                d.add("結合", f"{name}: うちにだけ {x}")
-        except AttributeError as e:
-            d.add("口が無い", f"{e}")
-        try:
-            for col, dim in ws.column_dimensions.items():
-                w1 = dim.width
-                w2 = s.column_dimensions[col].width
-                if (w1 or 0) and (w2 or 0) and abs(w1 - w2) > 0.02:
-                    d.add("列幅", f"{name}:{col}: 本家 {w1} / うち {w2}")
-        except AttributeError as e:
-            d.add("口が無い", f"{e}")
+                try:
+                    mc = s.cell(r, c)
+                except Exception as e:
+                    d.add("cell() が壊れる", f"{name}!{oc.coordinate}: {e}")
+                    continue
+                walk_pair(d, f"{name}!{oc.coordinate}", oc, mc, skip=XLSX_SKIP_CELL)
     return d.report()
 
 
 def xlsx_roundtrip(path: Path) -> int:
-    """officework で開いて**そのまま保存**し、本家に読ませて元と比べる。
-    触っていないのに変わる物 = 往復で壊す物。"""
+    """officework で開いてそのまま保存 → 本家どうしで元と比べる。"""
     import openpyxl
     from officework import sheet
 
@@ -126,30 +195,28 @@ def xlsx_roundtrip(path: Path) -> int:
     b.save(str(out))
     a = openpyxl.load_workbook(path)
     z = openpyxl.load_workbook(out)
-    if a.sheetnames != z.sheetnames:
-        d.add("シート名", f"元 {a.sheetnames} / 往復後 {z.sheetnames}")
     for name in a.sheetnames:
         if name not in z.sheetnames:
+            d.add("シートが消える", name)
             continue
         wa, wz = a[name], z[name]
-        rows = min(wa.max_row, 400)
-        cols = min(wa.max_column, 60)
+        rows = min(wa.max_row, MAX_ROWS)
+        cols = min(wa.max_column, MAX_COLS)
         for r in range(1, rows + 1):
             for c in range(1, cols + 1):
                 ca, cz = wa.cell(r, c), wz.cell(r, c)
-                if norm_val(ca.value) != norm_val(cz.value):
-                    d.add("値が変わる", f"{name}!{ca.coordinate}: {norm_val(ca.value)!r} → {norm_val(cz.value)!r}")
-                if ca.number_format != cz.number_format:
-                    d.add("表示形式が変わる", f"{name}!{ca.coordinate}: {ca.number_format!r} → {cz.number_format!r}")
-        om = {str(m) for m in wa.merged_cells.ranges}
-        mm = {str(m) for m in wz.merged_cells.ranges}
-        if om != mm:
-            d.add("結合が変わる", f"{name}: {len(om)} → {len(mm)}")
+                walk_pair(d, f"{name}!{ca.coordinate}", ca, cz, skip=XLSX_SKIP_CELL)
     out.unlink()
     return d.report()
 
 
-# ---------------- docx ----------------
+# ---- docx -----------------------------------------------------------------
+
+DOCX_SKIP_DOC = {"element", "part", "settings", "styles"}
+DOCX_SKIP_PARA = {"part"}
+DOCX_SKIP_RUN = {"part", "element"}
+DOCX_SKIP_SEC = set()
+
 
 def docx_diff(path: Path) -> int:
     import docx
@@ -159,50 +226,41 @@ def docx_diff(path: Path) -> int:
     a = docx.Document(str(path))
     m = odoc.Doc.open(str(path))
 
-    apara = a.paragraphs
+    apara = list(a.paragraphs)
     if len(apara) != len(m):
-        d.add("段落の数", f"本家 {len(apara)} / うち {len(m)}")
+        d.add("答えが違う: len(paragraphs)", f"本家 {len(apara)} / うち {len(m)}")
     for i in range(min(len(apara), len(m))):
-        at = apara[i].text
-        mt = m[i].text
-        if at != mt:
-            d.add("段落の字", f"{i}: 本家 {at[:40]!r} / うち {mt[:40]!r}")
-            continue
-        aruns = [(r.text, bool(r.bold), bool(r.italic)) for r in apara[i].runs]
-        mruns = [(r.text, bool(r.bold), bool(r.italic)) for r in m[i].runs]
-        if aruns != mruns:
-            d.add("run", f"{i}: 本家 {len(aruns)} 個 / うち {len(mruns)} 個 ({at[:20]!r})")
-    if len(a.tables) != len(m.tables):
-        d.add("表の数", f"本家 {len(a.tables)} / うち {len(m.tables)}")
-    for ti in range(min(len(a.tables), len(m.tables))):
-        ta, tm = a.tables[ti], m.tables[ti]
-        ra, rm = len(ta.rows), len(tm)
-        if ra != rm:
-            d.add("表の行数", f"表{ti}: 本家 {ra} / うち {rm}")
-        for r in range(min(ra, rm)):
-            ca = [c.text for c in ta.rows[r].cells]
-            cm = [tm[r][c].text for c in range(len(tm[r]))]
+        pa, pm = apara[i], m[i]
+        walk_pair(d, f"段落{i}", pa, pm, skip=DOCX_SKIP_PARA)
+        ra, rm = list(pa.runs), list(pm.runs)
+        if len(ra) != len(rm):
+            d.add("答えが違う: len(runs)", f"段落{i}: 本家 {len(ra)} / うち {len(rm)}")
+        for j in range(min(len(ra), len(rm))):
+            walk_pair(d, f"段落{i}.run{j}", ra[j], rm[j], skip=DOCX_SKIP_RUN)
+    ta, tm = list(a.tables), list(m.tables)
+    if len(ta) != len(tm):
+        d.add("答えが違う: len(tables)", f"本家 {len(ta)} / うち {len(tm)}")
+    for ti in range(min(len(ta), len(tm))):
+        rows_a = ta[ti].rows
+        for r in range(min(len(rows_a), len(tm[ti]))):
+            ca = [c.text for c in rows_a[r].cells]
+            try:
+                cm = [tm[ti][r][c].text for c in range(len(tm[ti][r]))]
+            except Exception as e:
+                d.add("口が壊れる: table[r][c]", f"表{ti}行{r}: {e}")
+                continue
             if ca != cm:
-                d.add("表の中身", f"表{ti} 行{r}: 本家 {ca[:3]} / うち {cm[:3]}")
-    # 節(用紙と余白)
-    asec = a.sections
-    msec = m.sections
-    if len(asec) != len(msec):
-        d.add("節の数", f"本家 {len(asec)} / うち {len(msec)}")
-    for i in range(min(len(asec), len(msec))):
-        sa, sm = asec[i], msec[i]
-        for attr in ("page_width", "page_height", "top_margin", "left_margin"):
-            va = getattr(sa, attr)
-            vm = getattr(sm, attr)
-            va = int(va) if va is not None else None
-            vm = int(vm) if vm is not None else None
-            if va != vm:
-                d.add("節", f"節{i}.{attr}: 本家 {va} / うち {vm}")
+                d.add("答えが違う: table cell text",
+                      f"表{ti}行{r}: 本家 {ca[:2]!r} / うち {cm[:2]!r}")
+    sa, sm = list(a.sections), list(m.sections)
+    if len(sa) != len(sm):
+        d.add("答えが違う: len(sections)", f"本家 {len(sa)} / うち {len(sm)}")
+    for i in range(min(len(sa), len(sm))):
+        walk_pair(d, f"節{i}", sa[i], sm[i], skip=DOCX_SKIP_SEC)
     return d.report()
 
 
 def docx_roundtrip(path: Path) -> int:
-    """officework で開いてそのまま保存 → 本家に読ませて元と比べる。"""
     import docx
     from officework import doc as odoc
 
@@ -212,13 +270,15 @@ def docx_roundtrip(path: Path) -> int:
     m.save(str(out))
     a = docx.Document(str(path))
     z = docx.Document(str(out))
-    if len(a.paragraphs) != len(z.paragraphs):
-        d.add("段落の数が変わる", f"{len(a.paragraphs)} → {len(z.paragraphs)}")
-    for i in range(min(len(a.paragraphs), len(z.paragraphs))):
-        if a.paragraphs[i].text != z.paragraphs[i].text:
-            d.add("字が変わる", f"{i}: {a.paragraphs[i].text[:30]!r} → {z.paragraphs[i].text[:30]!r}")
+    pa, pz = list(a.paragraphs), list(z.paragraphs)
+    if len(pa) != len(pz):
+        d.add("段落の数が変わる", f"{len(pa)} → {len(pz)}")
+    for i in range(min(len(pa), len(pz))):
+        walk_pair(d, f"段落{i}", pa[i], pz[i], skip=DOCX_SKIP_PARA)
     if len(a.tables) != len(z.tables):
         d.add("表の数が変わる", f"{len(a.tables)} → {len(z.tables)}")
+    for i in range(min(len(a.sections), len(z.sections))):
+        walk_pair(d, f"節{i}", a.sections[i], z.sections[i], skip=DOCX_SKIP_SEC)
     out.unlink()
     return d.report()
 
