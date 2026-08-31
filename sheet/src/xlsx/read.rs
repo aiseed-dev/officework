@@ -1433,6 +1433,10 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
     // 誰かが昔しまい込んだ表示設定を、いまの固定枠として読んでしまわないため
     // (pageSetup など他の元素も同じ形で入るが、そちらは元からの持ち越し)
     let mut in_custom_view = false;
+    // **「紙 N 枚に収める」が選ばれているか**(`<pageSetUpPr fitToPage="1"/>`)。
+    // これが無ければ `pageSetup` の `fitToWidth`/`fitToHeight` は効きません。
+    // sheetPr はシートの先頭、pageSetup は末尾なので、先にこちらが来ます
+    let mut fit_to_page = false;
     let (mut in_v, mut in_f, mut in_is) = (false, false, false);
     let (mut v, mut f) = (String::new(), String::new());
     // 印刷のヘッダー/フッター。いまどの区分の中か
@@ -1567,12 +1571,23 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
                     sh.landscape = attr(&e, "orientation").as_deref() == Some("landscape");
                     sh.paper_size = attr(&e, "paperSize").and_then(|v| v.parse().ok());
                     sh.print_scale = attr(&e, "scale").and_then(|v| v.parse().ok());
-                    // 紙 N 枚に収める。0 は「合わせない」なので None に倒す
+                    // 紙 N 枚に収める。0 は「合わせない」なので None に倒す。
+                    // **`fitToPage` が選ばれていないときは読みません**
+                    // (2026-08-31)。Excel はそのとき `scale` のほうを使います。
+                    // 国税庁の消費税の表は `scale="78"` と `fitToWidth="2"` が
+                    // 両方あり、後者を使うと 83.7% に**広がって**紙が1列増えます
                     let n = |k: &str| {
                         attr(&e, k).and_then(|v| v.parse::<u32>().ok()).filter(|v| *v > 0)
                     };
-                    sh.fit_to_w = n("fitToWidth");
-                    sh.fit_to_h = n("fitToHeight");
+                    if fit_to_page {
+                        sh.fit_to_w = n("fitToWidth");
+                        sh.fit_to_h = n("fitToHeight");
+                    }
+                }
+                // 「紙 N 枚に収める」を選んだ印。sheetPr の子で、シートの先頭に来る
+                b"pageSetUpPr" if !in_custom_view => {
+                    fit_to_page =
+                        matches!(attr(&e, "fitToPage").as_deref(), Some("1") | Some("true"));
                 }
                 b"printOptions" => {
                     let on = |k: &str| {

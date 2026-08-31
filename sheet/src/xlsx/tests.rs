@@ -1767,6 +1767,61 @@ mod print_setup_roundtrip_tests {
         );
     }
 
+    /// **「紙 N 枚に収める」は、選ばれているときだけ効く。**
+    ///
+    /// `fitToWidth` は `<pageSetUpPr fitToPage="1"/>` と組で意味を持ちます。
+    /// 印が無ければ Excel は `scale` のほうを使います。国税庁の消費税の表は
+    /// `scale="78"` と `fitToWidth="2"` の両方を持っていて、後者を使うと
+    /// 倍率が 83.7% に**上がり**、紙が1列ぶん増えていました(2026-08-31)。
+    #[test]
+    fn fit_to_width_needs_the_fit_to_page_mark() {
+        use std::io::Write as _;
+        let yomu = |shirushi: &str| {
+            let b0 = Book::new();
+            let mut buf = Cursor::new(Vec::new());
+            write(&b0, &mut buf).expect("書けない");
+            let mut z = zip::ZipArchive::new(Cursor::new(buf.get_ref().clone())).unwrap();
+            let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
+            for i in 0..z.len() {
+                let mut f = z.by_index(i).unwrap();
+                let name = f.name().to_string();
+                let mut s = Vec::new();
+                f.read_to_end(&mut s).unwrap();
+                if name.ends_with("sheet1.xml") {
+                    let t = String::from_utf8(s).unwrap().replace(
+                        "</worksheet>",
+                        r#"<pageSetup paperSize="9" scale="78" fitToWidth="2" orientation="portrait"/></worksheet>"#,
+                    );
+                    // sheetPr は worksheet の最初の子でなければならない
+                    let t = t.replacen("><", &format!(">{shirushi}<"), 1);
+                    s = t.into_bytes();
+                }
+                w.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+                w.write_all(&s).unwrap();
+            }
+            read(Cursor::new(w.finish().unwrap().into_inner())).expect("読めない").0
+        };
+        let nashi = yomu("");
+        assert_eq!(nashi.sheets[0].fit_to_w, None, "印が無いのに紙に収めようとした");
+        assert_eq!(nashi.sheets[0].print_scale, Some(78), "倍率まで落とした");
+        let ari = yomu(r#"<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>"#);
+        assert_eq!(ari.sheets[0].fit_to_w, Some(2), "印があるのに読んでいない");
+        assert_eq!(ari.sheets[0].fit_to_h, None, "無い指定を作った");
+        // 保存でも印を書く。書かないと Excel 側で効きません
+        let mut buf = Cursor::new(Vec::new());
+        write(&ari, &mut buf).expect("書けない");
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.into_inner())).unwrap();
+        let mut s = String::new();
+        z.by_name("xl/worksheets/sheet1.xml").unwrap().read_to_string(&mut s).unwrap();
+        assert!(s.contains(r#"<pageSetUpPr fitToPage="1"/>"#), "保存で印が消えた");
+        buf = Cursor::new(Vec::new());
+        write(&nashi, &mut buf).expect("書けない");
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.into_inner())).unwrap();
+        let mut s = String::new();
+        z.by_name("xl/worksheets/sheet1.xml").unwrap().read_to_string(&mut s).unwrap();
+        assert!(!s.contains("pageSetUpPr"), "選ばれていない印を書いた");
+    }
+
     #[test]
     fn unknown_source_attributes_survive_while_only_the_direction_changes() {
         // 拡大縮小(scale)付きの原本を読み、向きだけ変えて保存する

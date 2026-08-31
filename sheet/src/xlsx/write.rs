@@ -1603,12 +1603,24 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         ws.push_attribute(("xmlns", NS));
         ws.push_attribute(("xmlns:r", RNS));
         w.write_event(Event::Start(ws)).unwrap();
-        // シート見出し(タブ)の色。schema では worksheet の先頭(sheetPr)
-        if let Some(c) = &sh.tab_color {
+        // シート見出し(タブ)の色と「紙 N 枚に収める」の印。
+        // schema ではどちらも worksheet の先頭(sheetPr)に入ります。
+        // **印が無いと Excel は fitToWidth/fitToHeight を読みません**
+        // (2026-08-31)。前は pageSetup の属性しか書いていなかったので、
+        // こちらで紙に収める設定をしても Excel では効いていませんでした
+        let osameru = sh.fit_to_w.is_some() || sh.fit_to_h.is_some();
+        if sh.tab_color.is_some() || osameru {
             w.write_event(Event::Start(BytesStart::new("sheetPr"))).unwrap();
-            let mut tc = BytesStart::new("tabColor");
-            tc.push_attribute(("rgb", c.as_str()));
-            w.write_event(Event::Empty(tc)).unwrap();
+            if let Some(c) = &sh.tab_color {
+                let mut tc = BytesStart::new("tabColor");
+                tc.push_attribute(("rgb", c.as_str()));
+                w.write_event(Event::Empty(tc)).unwrap();
+            }
+            if osameru {
+                let mut pp = BytesStart::new("pageSetUpPr");
+                pp.push_attribute(("fitToPage", "1"));
+                w.write_event(Event::Empty(pp)).unwrap();
+            }
             w.write_event(Event::End(BytesEnd::new("sheetPr"))).unwrap();
         }
         // 画面の見え方(schema では sheetPr の次)。右から左・固定枠・格子線・
