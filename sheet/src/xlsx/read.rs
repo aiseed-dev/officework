@@ -2697,7 +2697,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                         // prstGeom の名前をそのまま返すので原本は壊れないが、
                         // 画面では四角に見える — 見える物が違うなら言う
                         if !book::can_draw(&sp.kind) {
-                            rep.note("表示できない図形(代わりに四角を表示します。ファイルには元の形のまま残ります)");
+                            rep.note("表示できない図形(代わりに四角を表示)");
                         }
                         sp.at = at;
                         sp.width_px = width_px;
