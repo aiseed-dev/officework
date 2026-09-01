@@ -1,107 +1,109 @@
-= officework 0.5.0-beta.6
+= officework 0.5.0-beta.7
 
 日本語: link:RELEASE.ja.adoc[RELEASE.ja.adoc]
 
 To try it: `pip install --pre officework`
 
-This release came out of published forms again. Four of them went through
+This release came out of published forms again. Three of them went through
 officework into PDF and were read beside the PDF each office publishes in the
-same place: the National Tax Agency's liquor tax overview and consumption tax
-tables, the Ministry of Internal Affairs' wage statistics, and the Cabinet
-Office's interview record.
+same place: the National Tax Agency's liquor tax overview, and the Cabinet
+Office's aptitude survey form and interview record.
 
-The loudest problem in the last release was tables running off the paper. It
-had two separate causes and both are fixed.
+Column widths matched after the last release, so this time the vertical
+measurements did not. The same document ran one or two pages longer than
+theirs, and lines drifted downward.
 
-== Column widths match Excel
+== Line height comes from the font
 
-**The five-pixel padding was counted twice.** What xlsx stores for a column is
-how many digits of the standard font fit in it, and the cell's inner padding is
-already inside that number. Adding it again made every column 1.3mm too wide,
-which compounds across a wide table. The liquor tax overview went from 21 pages
-to 12.
+**Every line was 6.4mm, whatever the font and the size.** Word and LibreOffice
+both decide it in two steps: the font gives a natural height, then the
+paragraph's setting overrides it. We now do the same two steps.
 
-**The digit width was fixed at seven pixels.** It depends on the font and its
-size: seven for MS Mincho at 10.5pt, nine for Arial at 12pt. It is measured from
-the workbook's own standard font now. The wage statistics table uses Arial 12pt,
-so its columns had been 22% too narrow.
+**A substituted font's vertical metrics do not match the original.** Ume Mincho
+is 1.0000em where MS Mincho is 1.292em. The widths were matched; the heights
+were not. Line advance is now looked up under the original font's name. Names
+that are not in the table fall back to the face installed on the machine, the
+way LibreOffice does it — OS/2 usWinAscent plus usWinDescent plus the hhea line
+gap.
 
-**Fit-to-page was applied when nobody asked for it.** That setting only counts
-when the fit-to-page mark is present; otherwise Excel uses the scale. The
-consumption tax sheets carry both a scale of 78% and a fit of two pages wide,
-and using the second works out at 83.7% — larger, not smaller — which pushed
-the sheet onto an extra column of paper.
+**A line height given in points was turned into a multiplier.** `w:lineRule`
+`exact` and `atLeast` state the height itself. Dividing them by the 6.4mm
+constant only worked while that constant was the line height, so they are
+carried as a height in points now.
 
-**A table's right edge is no longer counted as content.** Many forms draw the
-right edge of a table as the *left* border of the next column. Counting that
-column added a sheet of paper. Four of the liquor tax workbook's five sheets are
-drawn that way.
+The survey form goes from six pages to five, matching the reference. Its body
+advance is 15.50pt against the reference's 15.54pt.
 
-== Numbers stay inside their cell
+== Paragraph styles are applied
 
-**A missing font is replaced by one with the same widths.** Before, only the
-class was preserved — mincho stayed mincho. MS Mincho gives all 95 half-width
-characters the same width; IPAex Mincho, which was standing in for it, is
-proportional and sets a digit 24% wider. In a table of figures the columns ran
-into each other.
+A docx carries its own style definitions. We were overlaying the bundled
+template's heading definition on top of them, so the interview record's
+headings — 20pt, centred, blue in the file — came out at our template's 16pt,
+left aligned and black.
 
-Ume Mincho, Ume Gothic, Ume P Mincho and Ume P Gothic match the four MS faces
-character for character. Century maps to C059, and Arial, Times New Roman,
-Calibri, Cambria and Courier New to the fonts drawn to match them.
+When the document defines the style itself, that definition wins. Otherwise the
+template is used as before. The `w:basedOn` chain is followed.
 
-**Text is measured with the font that will draw it.** Every half-width
-character had been assumed 0.55em and every other 1.0em, whatever the font.
-That assumption decided right alignment, where a line wrapped, and whether the
-text fit at all.
+Size works the same way: the survey form's body is 12pt in the file and we set
+it at 11pt, because the body style's `w:sz 24` was not being read.
 
-**A number that does not fit is filled with #.** As Excel does. Text may spill
-into an empty neighbour; a number may not, because a number with its digits cut
-off still reads as a number.
+== Inline images sit on the line
 
-== The whole cell format is read
+A drawing in a docx lives inside a run, so it is part of the text flow. We drew
+images below the paragraph, so a heading's image dropped to its own line and
+the heading could not be centred together with it.
 
-Of 25 fields, 11 were being read. Everything that shows on paper is read now.
-The two left out are sheet protection.
+An image at the start of a paragraph is now placed to the left of the first
+line's text, and the line grows when the image is taller than the text.
 
-* **Indent** — one step is three spaces, not one full-width character, and a
-  right-aligned cell indents from the right
-* **Vertical alignment** — was never read; everything sat on the bottom. Merged
-  cells now sum their height too, so a heading merged down several rows no
-  longer lands at the bottom of the merge's first row
-* **Stacked text** — narrow column headings stack downward instead of running
-  into the next column. Rotation from 0 to 180 degrees prints as well
-* **Shrink to fit** — shrinks the type rather than overflowing, and does not
-  apply to a cell holding more than one line
-* **Underline, strike, subscript, italic** — printed. Italic slants only by the
-  angle the font declares, so a font without an italic face stays upright
-* **All eighteen pattern fills** — every one had been a flat wash of the
-  foreground colour, which turned a light shading into solid black. The colours
-  blend by the pattern's weight now
-* **Gradient fills** — filled with the two stops blended
+**Transparent images came out as grey squares.** The PNG alpha channel was
+being dropped. It is now written as a separate stream and referenced as a soft
+mask, which is what the PDF format asks for.
 
-== Pictures appear
+== Text box insets
 
-**WMF pictures are drawn.** Two of the three pictures in the Cabinet Office's
-interview record form are Windows Metafiles, which the image decoder could not
-read, so they were dropped. A metafile is a list of lines and fills rather than
-a picture, so it is drawn as such and **does not go soft when enlarged**.
+The inset was hardcoded at 1.5mm on the left and every box was centred
+vertically. DrawingML's defaults are 0.1in left and right, 0.05in top and
+bottom, anchored to the top. A file that states `lIns` and friends is followed.
 
-The PDF writer can now handle curves, clipping and dash patterns.
+== Borders
+
+* **A merged cell was drawing borders through its middle.** A merge is one
+  cell, so only its outline is drawn
+* **Diagonal borders are drawn.** Across a merge, one line spans the whole
+  merge
+
+== Opening and saving leaves the original alone
+
+**Tabs were appearing at the start of lines.** A paragraph's tab stop
+definitions were being read as tab characters. Eight paragraphs of the survey
+form changed text on a save.
+
+**A drawing's stored copy was cut short.** In a docx that starts with a byte
+order mark, the offsets used to slice the original XML are three bytes out. The
+interview record is such a file, and opening and saving it produced XML that no
+longer parsed.
+
+**The styles relationship was written twice.** In a docx whose styles part is
+not called `styles.xml` — the interview record's is `styles2.xml` — we added
+our own on top. A package may only carry one relationship of that type.
 
 == Other changes
 
-* Document parts are located through their relationship type rather than their
-  conventional name, so a docx that names them differently still opens
-* The right-click menus go through the translation table
-* An edit no longer copies the whole sheet for undo. On a 200,000-cell sheet
-  that was 33ms per edit; it is 36µs
-* The styles panel shows the same headings on every face
+* A cell's inner padding is Excel's two pixels
+* A single trailing space no longer gets a line of its own
+* Numbered list markers follow what the document states
+* A shape's fill colour is no longer used as its text colour
+* Fitting to one page allows for the tallest row, so the last row is no longer
+  pushed off
 
-== Under the hood
+== Internal changes
 
-The PDF writer has a path: move, line, cubic curve, close, filled and stroked,
-with a dash pattern and a clip. The clip belongs to one path, so adding
-something in the middle of a list cannot leave it switched on.
+`kumihan::Document` gained `style_matome`, which resolves a style definition
+through its `w:basedOn` chain and returns `None` when the document has no such
+definition.
 
-Font substitution looks for a width-compatible partner first. Every partner is
-freely licensed, and none is bundled.
+`InlineImage` now records where in the paragraph's text it sits.
+
+A differential test against openpyxl and python-docx was added. It walks every
+public property of the originals and compares them with ours.
