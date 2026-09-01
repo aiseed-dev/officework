@@ -295,13 +295,33 @@ Arguments in `[ ]` can be omitted.
 |===
 |Function |Description
 
+|`CUMIPMT(rate, nper, pv, start_period, end_period, type)` |Returns the cumulative interest paid between two periods.
+|`CUMPRINC(rate, nper, pv, start_period, end_period, type)` |Returns the cumulative principal paid on a loan between two periods.
+|`DB(cost, salvage, life, period, [month])` |Returns the depreciation of an asset for a specified period using the fixed-declining balance method.
+|`DDB(cost, salvage, life, period, [factor])` |Returns the depreciation of an asset for a specified period using the double-declining balance method or some other method you specify.
+|`DOLLARDE(fractional_dollar, fraction)` |Converts a dollar price, expressed as a fraction, into a dollar price, expressed as a decimal number.
+|`DOLLARFR(decimal_dollar, fraction)` |Converts a dollar price, expressed as a decimal number, into a dollar price, expressed as a fraction.
+|`EFFECT(nominal_rate, npery)` |Returns the effective annual interest rate.
 |`FV(rate, nper, pmt, [pv], [type])` |Returns the future value of an investment based on periodic, constant payments and a constant interest rate.
+|`FVSCHEDULE(principal, schedule)` |Returns the future value of an initial principal after applying a series of compound interest rates.
+|`IPMT(rate, per, nper, pv, [fv], [type])` |Returns the interest payment for a given period for an investment, based on periodic, constant payments and a constant interest rate.
 |`IRR(values, [guess])` |Returns the internal rate of return for a series of cash flows.
+|`ISPMT(rate, per, nper, pv)` |Returns the interest paid during a specific period of an investment.
+|`MIRR(values, finance_rate, reinvest_rate)` |Returns the internal rate of return for a series of periodic cash flows, considering both cost of investment and interest on reinvestment of cash.
+|`NOMINAL(effect_rate, npery)` |Returns the annual nominal interest rate.
 |`NPER(rate, pmt, pv, [fv], [type])` |Returns the number of periods for an investment based on periodic, constant payments and a constant interest rate.
 |`NPV(rate, value1, [value2], ...)` |Returns the net present value of an investment based on a discount rate and a series of future payments (negative values) and income (positive values).
+|`PDURATION(rate, pv, fv)` |Returns the number of periods required by an investment to reach a specified value.
 |`PMT(rate, nper, pv, [fv], [type])` |Calculates the payment for a loan based on constant payments and a constant interest rate.
+|`PPMT(rate, per, nper, pv, [fv], [type])` |Returns the payment on the principal for a given investment based on periodic, constant payments and a constant interest rate.
 |`PV(rate, nper, pmt, [fv], [type])` |Returns the present value of an investment: the total amount that a series of future payments is worth now.
 |`RATE(nper, pmt, pv, [fv], [type], [guess])` |Returns the interest rate per period of a loan or an investment. For example, use 6%/4 for quarterly payments at 6% APR.
+|`RRI(nper, pv, fv)` |Returns an equivalent interest rate for the growth of an investment.
+|`SLN(cost, salvage, life)` |Returns the straight-line depreciation of an asset for one period.
+|`SYD(cost, salvage, life, per)` |Returns the sum-of-years' digits depreciation of an asset for a specified period.
+|`VDB(cost, salvage, life, start_period, end_period, [factor], [no_switch])` |Returns the depreciation of an asset for any period you specify, including partial periods, using the double-declining balance method or some other method you specify.
+|`XIRR(values, dates, [guess])` |Returns the internal rate of return for a schedule of cash flows.
+|`XNPV(rate, values, dates)` |Returns the net present value for a schedule of cash flows.
 |===
 
 == Information

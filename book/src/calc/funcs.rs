@@ -704,6 +704,39 @@ pub(super) fn bisect(f: &dyn Fn(f64) -> f64, lo: f64, hi: f64) -> Option<f64> {
     None
 }
 
+/// 定期支払額(PMT の中身)。type は 0=期末払い・1=期首払い。
+/// IPMT・PPMT・CUMIPMT・CUMPRINC が同じ式を通るための一本道
+pub(super) fn pmt_of(rate: f64, nper: f64, pv: f64, fv: f64, typ: f64) -> Option<f64> {
+    if nper == 0.0 {
+        return None;
+    }
+    Some(if rate == 0.0 {
+        -(pv + fv) / nper
+    } else {
+        let k = (1.0 + rate).powf(nper);
+        -(pv * k + fv) * rate / ((k - 1.0) * (1.0 + rate * typ))
+    })
+}
+
+/// 支払いのうち利息の分(IPMT の中身)。期首払いの1回目は利息 0
+pub(super) fn ipmt_of(rate: f64, per: f64, nper: f64, pv: f64, fv: f64, typ: f64) -> Option<f64> {
+    if per < 1.0 || per > nper {
+        return None;
+    }
+    if typ == 1.0 && per == 1.0 {
+        return Some(0.0);
+    }
+    let pmt = pmt_of(rate, nper, pv, fv, typ)?;
+    if rate == 0.0 {
+        return Some(0.0);
+    }
+    let g = (1.0 + rate).powf(per - 1.0);
+    // per-1 回払ったあとの残高に、その期の利率を掛ける
+    let bal = pv * g + pmt * (1.0 + rate * typ) * (g - 1.0) / rate;
+    let i = -bal * rate;
+    Some(if typ == 1.0 { i / (1.0 + rate) } else { i })
+}
+
 /// 関数の引数。ほとんどの関数は平らな値で足りるが、表を引く関数
 /// (VLOOKUP・INDEX 等)は範囲の**形**(列数)が要る。
 #[derive(Debug, Clone)]
@@ -1328,6 +1361,78 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                 _ => Value::Error("#VALUE!".into()),
             });
         }
+        "MIRR" => {
+            // MIRR(並び, 借入の利率, 再投資の利率)
+            let vals: Vec<f64> = args
+                .first()
+                .map(|g| {
+                    g.values()
+                        .iter()
+                        .filter(|v| matches!(v, Value::Number(_)))
+                        .map(|v| v.as_number())
+                        .collect()
+                })
+                .unwrap_or_default();
+            let fr = args.get(1).map(|g| g.first().as_number()).unwrap_or(0.0);
+            let rr = args.get(2).map(|g| g.first().as_number()).unwrap_or(0.0);
+            let n = vals.len();
+            if n < 2
+                || !vals.iter().any(|v| *v > 0.0)
+                || !vals.iter().any(|v| *v < 0.0)
+            {
+                return Ok(Value::Error("#DIV/0!".into()));
+            }
+            let fv: f64 = vals
+                .iter()
+                .enumerate()
+                .filter(|(_, v)| **v > 0.0)
+                .map(|(i, v)| v * (1.0 + rr).powf((n - 1 - i) as f64))
+                .sum();
+            let pv: f64 = vals
+                .iter()
+                .enumerate()
+                .filter(|(_, v)| **v < 0.0)
+                .map(|(i, v)| v / (1.0 + fr).powf(i as f64))
+                .sum();
+            return Ok(Value::Number((fv / -pv).powf(1.0 / (n as f64 - 1.0)) - 1.0));
+        }
+        "XNPV" | "XIRR" => {
+            // 日付つきの正味現在価値と内部利益率。日数は 365 で割る(Excel と同じ)
+            let (vi, di) = if name == "XNPV" { (1, 2) } else { (0, 1) };
+            let take = |i: usize| -> Vec<f64> {
+                args.get(i)
+                    .map(|g| {
+                        g.values()
+                            .iter()
+                            .filter(|v| matches!(v, Value::Number(_)))
+                            .map(|v| v.as_number())
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            };
+            let (vals, dates) = (take(vi), take(di));
+            if vals.is_empty() || vals.len() != dates.len() {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let d0 = dates[0];
+            let npv = move |r: f64| -> f64 {
+                vals.iter()
+                    .zip(&dates)
+                    .map(|(v, d)| v / (1.0 + r).powf((d - d0) / 365.0))
+                    .sum()
+            };
+            if name == "XNPV" {
+                let r = args.first().map(|g| g.first().as_number()).unwrap_or(0.0);
+                if r <= -1.0 {
+                    return Ok(Value::Error("#NUM!".into()));
+                }
+                return Ok(Value::Number(npv(r)));
+            }
+            return Ok(match bisect(&npv, -0.999_999, 10.0) {
+                Some(r) => Value::Number(r),
+                None => Value::Error("#NUM!".into()),
+            });
+        }
         "SUMX2MY2" | "SUMX2PY2" | "SUMXMY2" => {
             // 2つの並びを対で読む集計。長さが違えば #N/A(Excel と同じ)
             let (Some(x), Some(y)) = (args.first(), args.get(1)) else {
@@ -1726,6 +1831,207 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                 .filter(|d| !wk[weekday0(*d, ep) as usize] && !holidays.contains(d))
                 .count() as i64;
             Value::Number(if e < s { -n } else { n } as f64)
+        }
+        "IPMT" | "PPMT" => {
+            // IPMT(利率, 期, 期間, 現在価値, [将来価値], [支払期日])
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (rate, per, nper, pv) = (g(0), g(1), g(2), g(3));
+            let (fv, typ) = (g(4), g(5));
+            match (ipmt_of(rate, per, nper, pv, fv, typ), pmt_of(rate, nper, pv, fv, typ)) {
+                (Some(ip), Some(pmt)) => {
+                    Value::Number(if name == "IPMT" { ip } else { pmt - ip })
+                }
+                _ => Value::Error("#NUM!".into()),
+            }
+        }
+        "CUMIPMT" | "CUMPRINC" => {
+            // 期の範囲での利息(元金)の累計。将来価値は 0 で固定(Excel と同じ)
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (rate, nper, pv) = (g(0), g(1), g(2));
+            let (s, e, typ) = (g(3), g(4), g(5));
+            if rate <= 0.0 || nper <= 0.0 || pv <= 0.0 || s < 1.0 || e < s || e > nper
+                || !(typ == 0.0 || typ == 1.0)
+            {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let Some(pmt) = pmt_of(rate, nper, pv, 0.0, typ) else {
+                return Ok(Value::Error("#NUM!".into()));
+            };
+            let mut sum = 0.0;
+            for per in s as i64..=e as i64 {
+                let Some(ip) = ipmt_of(rate, per as f64, nper, pv, 0.0, typ) else {
+                    return Ok(Value::Error("#NUM!".into()));
+                };
+                sum += if name == "CUMIPMT" { ip } else { pmt - ip };
+            }
+            Value::Number(sum)
+        }
+        "ISPMT" => {
+            // 元金均等のときの利息(期をまたいで直線で減る)
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (rate, per, nper, pv) = (g(0), g(1), g(2), g(3));
+            if nper == 0.0 {
+                Value::Error("#DIV/0!".into())
+            } else {
+                Value::Number(pv * rate * (per / nper - 1.0))
+            }
+        }
+        "SLN" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (cost, salvage, life) = (g(0), g(1), g(2));
+            if life == 0.0 {
+                Value::Error("#DIV/0!".into())
+            } else {
+                Value::Number((cost - salvage) / life)
+            }
+        }
+        "SYD" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (cost, salvage, life, per) = (g(0), g(1), g(2), g(3));
+            if life <= 0.0 || per < 1.0 || per > life {
+                Value::Error("#NUM!".into())
+            } else {
+                Value::Number(
+                    (cost - salvage) * (life - per + 1.0) * 2.0 / (life * (life + 1.0)),
+                )
+            }
+        }
+        "DB" => {
+            // 定率法(率は3桁に丸める — Excel の約束)。第5引数は初年の月数
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (cost, salvage, life, period) = (g(0), g(1), g(2), g(3));
+            let month = a.get(4).map(|v| v.as_number()).unwrap_or(12.0);
+            if cost <= 0.0 || salvage < 0.0 || life <= 0.0 || period < 1.0
+                || !(1.0..=12.0).contains(&month)
+                || period > life + 1.0
+            {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let rate = ((1.0 - (salvage / cost).powf(1.0 / life)) * 1000.0).round() / 1000.0;
+            let mut total = 0.0;
+            let mut dep = 0.0;
+            let last = period as i64;
+            for k in 1..=last {
+                dep = if k == 1 {
+                    cost * rate * month / 12.0
+                } else if k as f64 == life + 1.0 {
+                    (cost - total) * rate * (12.0 - month) / 12.0
+                } else {
+                    (cost - total) * rate
+                };
+                total += dep;
+            }
+            Value::Number(dep)
+        }
+        "DDB" => {
+            // 倍額定率法。残存価額を割り込まない
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (cost, salvage, life, period) = (g(0), g(1), g(2), g(3));
+            let factor = a.get(4).map(|v| v.as_number()).unwrap_or(2.0);
+            if cost < 0.0 || salvage < 0.0 || life <= 0.0 || period < 1.0 || period > life
+                || factor <= 0.0
+            {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let mut book = cost;
+            let mut dep = 0.0;
+            for _ in 1..=period as i64 {
+                dep = (book * factor / life).min(book - salvage).max(0.0);
+                book -= dep;
+            }
+            Value::Number(dep)
+        }
+        "VDB" => {
+            // 倍額定率法(期間指定・端数の期も可)。定額法の方が大きく
+            // なった期からは定額法に切り替える(第7引数で止められる)
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (cost, salvage, life, start, end) = (g(0), g(1), g(2), g(3), g(4));
+            let factor = a.get(5).map(|v| v.as_number()).unwrap_or(2.0);
+            let no_switch = a.get(6).map(|v| v.as_number() != 0.0).unwrap_or(false);
+            if cost < 0.0 || salvage < 0.0 || life <= 0.0 || start < 0.0 || end < start
+                || end > life || factor <= 0.0
+            {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let mut book = cost;
+            let mut sum = 0.0;
+            for k in 0..end.ceil() as i64 {
+                let left = life - k as f64;
+                let ddb = book * factor / life;
+                let sl = if left > 0.0 { (book - salvage) / left } else { 0.0 };
+                let dep = if !no_switch && sl > ddb { sl } else { ddb }
+                    .min(book - salvage)
+                    .max(0.0);
+                // この期のうち [start, end] に掛かる割合だけ数える
+                let part = (end.min((k + 1) as f64) - start.max(k as f64)).max(0.0);
+                sum += dep * part;
+                book -= dep;
+            }
+            Value::Number(sum)
+        }
+        "EFFECT" | "NOMINAL" => {
+            // 実効年利と名目年利の行き来
+            let r = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            let npery = a.get(1).map(|v| v.as_number()).unwrap_or(0.0).floor();
+            if r <= 0.0 || npery < 1.0 {
+                Value::Error("#NUM!".into())
+            } else if name == "EFFECT" {
+                Value::Number((1.0 + r / npery).powf(npery) - 1.0)
+            } else {
+                Value::Number(((1.0 + r).powf(1.0 / npery) - 1.0) * npery)
+            }
+        }
+        "PDURATION" => {
+            // 目標額に届くまでの期間
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (rate, pv, fv) = (g(0), g(1), g(2));
+            if rate <= 0.0 || pv <= 0.0 || fv <= 0.0 {
+                Value::Error("#NUM!".into())
+            } else {
+                Value::Number((fv.ln() - pv.ln()) / (1.0 + rate).ln())
+            }
+        }
+        "RRI" => {
+            // 元利から逆算した1期あたりの利率
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (nper, pv, fv) = (g(0), g(1), g(2));
+            if nper <= 0.0 || pv == 0.0 || fv / pv < 0.0 {
+                Value::Error("#NUM!".into())
+            } else {
+                Value::Number((fv / pv).powf(1.0 / nper) - 1.0)
+            }
+        }
+        "FVSCHEDULE" => {
+            // 元本に利率の並びを順に掛ける
+            let p = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            let mut acc = p;
+            for v in a.get(1..).unwrap_or(&[]) {
+                match v {
+                    Value::Number(r) => acc *= 1.0 + r,
+                    Value::Empty => {}
+                    _ => return Ok(Value::Error("#VALUE!".into())),
+                }
+            }
+            Value::Number(acc)
+        }
+        "DOLLARDE" | "DOLLARFR" => {
+            // 分数表記のドル価格(1.02 = 1 と 2/16)と小数の行き来
+            let x = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            let f = a.get(1).map(|v| v.as_number()).unwrap_or(0.0).floor();
+            if f < 0.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            if f == 0.0 {
+                return Ok(Value::Error("#DIV/0!".into()));
+            }
+            let digits = 10f64.powi(f.log10().ceil() as i32);
+            let p = x.trunc();
+            let frac = x - p;
+            Value::Number(if name == "DOLLARDE" {
+                p + frac * digits / f
+            } else {
+                p + frac * f / digits
+            })
         }
         // ---- 財務(閉じた式で解けるものだけ。RATE のような反復解は持たない)----
         "PMT" | "PV" | "FV" | "NPER" => {

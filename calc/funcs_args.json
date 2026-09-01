@@ -983,6 +983,86 @@
   "GAUSS": {
    "a": "(x)",
    "ad": "要求得分布的值"
+  },
+  "CUMIPMT": {
+   "a": "(利率, 期數, 現值, 起始期間, 結束期間, 類型)",
+   "ad": "各期利率!總付款期數!現值!計算中的第一個期數!計算中的最後一個期數!付款時點"
+  },
+  "CUMPRINC": {
+   "a": "(利率, 期數, 現值, 起始期間, 結束期間, 類型)",
+   "ad": "各期利率!總付款期數!現值!計算中的第一個期數!計算中的最後一個期數!付款時點"
+  },
+  "DB": {
+   "a": "(成本, 殘值, 年限, 期間, [月數])",
+   "ad": "資產的原始成本!折舊最後階段的資產殘值!資產折舊的期數（有時稱為資產的使用年限）!要計算折舊的期間。期間必須與年限使用相同單位!第一年的月數。若省略，視為 12"
+  },
+  "DDB": {
+   "a": "(成本, 殘值, 年限, 期間, [倍率])",
+   "ad": "資產的原始成本!折舊最後階段的資產殘值!資產折舊的期數（有時稱為資產的使用年限）!要計算折舊的期間。期間必須與年限使用相同單位!餘額遞減的速率。若省略，視為 2（倍率遞減法）"
+  },
+  "VDB": {
+   "a": "(成本, 殘值, 年限, 起始期間, 結束期間, [倍率], [不切換])",
+   "ad": "資產的原始成本!折舊最後階段的資產殘值!資產折舊的期數（有時稱為資產的使用年限）!要計算折舊的起始期間，與年限使用相同單位!要計算折舊的結束期間，與年限使用相同單位!餘額遞減的速率。若省略，視為 2（倍率遞減法）!折舊大於遞減餘額時是否切換成直線法：切換 = FALSE 或省略；不切換 = TRUE"
+  },
+  "SLN": {
+   "a": "(成本, 殘值, 年限)",
+   "ad": "資產的原始成本!折舊最後階段的資產殘值!資產折舊的期數（有時稱為資產的使用年限）"
+  },
+  "SYD": {
+   "a": "(成本, 殘值, 年限, 期間)",
+   "ad": "資產的原始成本!折舊最後階段的資產殘值!資產折舊的期數（有時稱為資產的使用年限）!期間，必須與年限使用相同單位"
+  },
+  "DOLLARDE": {
+   "a": "(分數型金額, 分母)",
+   "ad": "以分數表示的數值!分數分母要使用的整數"
+  },
+  "DOLLARFR": {
+   "a": "(小數型金額, 分母)",
+   "ad": "小數數值!分數分母要使用的整數"
+  },
+  "EFFECT": {
+   "a": "(名目利率, 每年複利期數)",
+   "ad": "名目利率!每年的複利期數"
+  },
+  "NOMINAL": {
+   "a": "(實效利率, 每年複利期數)",
+   "ad": "實效利率!每年的複利期數"
+  },
+  "FVSCHEDULE": {
+   "a": "(本金, 利率表)",
+   "ad": "現值!要套用的利率陣列"
+  },
+  "IPMT": {
+   "a": "(利率, 期數, 總期數, 現值, [未來值], [類型])",
+   "ad": "各期利率。例如年利率 6% 的按季付款用 6%/4!要求得利息的期數，必須介於 1 到 總付款期數 之間!投資的總付款期數!現值 — 未來一連串付款目前所值的總額!未來值 — 最後一次付款後想達到的現金餘額。若省略，未來值 = 0!付款時點的邏輯值：期末 = 0 或省略，期初 = 1"
+  },
+  "PPMT": {
+   "a": "(利率, 期數, 總期數, 現值, [未來值], [類型])",
+   "ad": "各期利率。例如年利率 6% 的按季付款用 6%/4!要求得利息的期數，必須介於 1 到 總付款期數 之間!投資的總付款期數!現值 — 未來一連串付款目前所值的總額!未來值 — 最後一次付款後想達到的現金餘額。若省略，未來值 = 0!付款時點的邏輯值：期末 = 0 或省略，期初 = 1"
+  },
+  "ISPMT": {
+   "a": "(利率, 期數, 總期數, 現值)",
+   "ad": "各期利率。例如年利率 6% 的按季付款用 6%/4!要求得利息的期數!投資的總付款期數!未來一連串付款目前所值的總額"
+  },
+  "MIRR": {
+   "a": "(值, 借款利率, 再投資利率)",
+   "ad": "代表定期支出（負數）與收入（正數）的數值陣列或儲存格參照!支付現金流量所用資金的利率!現金流量再投資時所獲得的利率"
+  },
+  "PDURATION": {
+   "a": "(利率, 現值, 未來值)",
+   "ad": "各期利率!投資的現值!投資想達到的未來值"
+  },
+  "RRI": {
+   "a": "(期數, 現值, 未來值)",
+   "ad": "投資的期數!投資的現值!投資的未來值"
+  },
+  "XIRR": {
+   "a": "(值, 日期, [猜測值])",
+   "ad": "對應到付款日期表的一連串現金流量!對應到現金流量的付款日期表!猜測接近 XIRR 結果的數值"
+  },
+  "XNPV": {
+   "a": "(利率, 值, 日期)",
+   "ad": "要套用到現金流量的折現率!對應到付款日期表的一連串現金流量!對應到現金流量的付款日期表"
   }
  },
  "id": {
@@ -1711,6 +1791,66 @@
   },
   "STANDARDIZE": {
    "a": "(x, rata_rata, simpangan_baku)"
+  },
+  "CUMIPMT": {
+   "a": "(suku_bunga, jumlah_periode, nilai_sekarang, periode_awal, periode_akhir, tipe)"
+  },
+  "CUMPRINC": {
+   "a": "(suku_bunga, jumlah_periode, nilai_sekarang, periode_awal, periode_akhir, tipe)"
+  },
+  "DB": {
+   "a": "(biaya, nilai_sisa, masa_pakai, periode, [bulan])"
+  },
+  "DDB": {
+   "a": "(biaya, nilai_sisa, masa_pakai, periode, [faktor])"
+  },
+  "VDB": {
+   "a": "(biaya, nilai_sisa, masa_pakai, periode_awal, periode_akhir, [faktor], [tanpa_peralihan])"
+  },
+  "SLN": {
+   "a": "(biaya, nilai_sisa, masa_pakai)"
+  },
+  "SYD": {
+   "a": "(biaya, nilai_sisa, masa_pakai, periode)"
+  },
+  "DOLLARDE": {
+   "a": "(dolar_pecahan, pecahan)"
+  },
+  "DOLLARFR": {
+   "a": "(dolar_desimal, pecahan)"
+  },
+  "EFFECT": {
+   "a": "(suku_bunga_nominal, periode_per_tahun)"
+  },
+  "NOMINAL": {
+   "a": "(suku_bunga_efektif, periode_per_tahun)"
+  },
+  "FVSCHEDULE": {
+   "a": "(pokok, jadwal)"
+  },
+  "IPMT": {
+   "a": "(suku_bunga, periode, jumlah_periode, nilai_sekarang, [nilai_masa_depan], [tipe])"
+  },
+  "PPMT": {
+   "a": "(suku_bunga, periode, jumlah_periode, nilai_sekarang, [nilai_masa_depan], [tipe])"
+  },
+  "ISPMT": {
+   "a": "(suku_bunga, periode, jumlah_periode, nilai_sekarang)"
+  },
+  "MIRR": {
+   "a": "(nilai, suku_bunga_pinjaman, suku_bunga_investasi)"
+  },
+  "PDURATION": {
+   "a": "(suku_bunga, nilai_sekarang, nilai_masa_depan)"
+  },
+  "RRI": {
+   "a": "(jumlah_periode, nilai_sekarang, nilai_masa_depan)"
+  },
+  "XIRR": {
+   "a": "(nilai, tanggal, [perkiraan])"
+  },
+  "XNPV": {
+   "a": "(suku_bunga, nilai, tanggal)"
   }
  },
  "ko": {
@@ -2424,6 +2564,66 @@
   },
   "STANDARDIZE": {
    "a": "(x, 평균, 표준_편차)"
+  },
+  "CUMIPMT": {
+   "a": "(이율, 기간수, 현재가치, 시작기간, 종료기간, 지급시기)"
+  },
+  "CUMPRINC": {
+   "a": "(이율, 기간수, 현재가치, 시작기간, 종료기간, 지급시기)"
+  },
+  "DB": {
+   "a": "(취득가액, 잔존가치, 수명, 기간, [월수])"
+  },
+  "DDB": {
+   "a": "(취득가액, 잔존가치, 수명, 기간, [감가율])"
+  },
+  "VDB": {
+   "a": "(취득가액, 잔존가치, 수명, 시작기간, 종료기간, [감가율], [전환안함])"
+  },
+  "SLN": {
+   "a": "(취득가액, 잔존가치, 수명)"
+  },
+  "SYD": {
+   "a": "(취득가액, 잔존가치, 수명, 기간)"
+  },
+  "DOLLARDE": {
+   "a": "(분수형_금액, 분모)"
+  },
+  "DOLLARFR": {
+   "a": "(소수형_금액, 분모)"
+  },
+  "EFFECT": {
+   "a": "(명목이율, 연간_복리횟수)"
+  },
+  "NOMINAL": {
+   "a": "(실효이율, 연간_복리횟수)"
+  },
+  "FVSCHEDULE": {
+   "a": "(원금, 이율표)"
+  },
+  "IPMT": {
+   "a": "(이율, 기간, 기간수, 현재가치, [미래가치], [지급시기])"
+  },
+  "PPMT": {
+   "a": "(이율, 기간, 기간수, 현재가치, [미래가치], [지급시기])"
+  },
+  "ISPMT": {
+   "a": "(이율, 기간, 기간수, 현재가치)"
+  },
+  "MIRR": {
+   "a": "(값, 금융이율, 재투자이율)"
+  },
+  "PDURATION": {
+   "a": "(이율, 현재가치, 미래가치)"
+  },
+  "RRI": {
+   "a": "(기간수, 현재가치, 미래가치)"
+  },
+  "XIRR": {
+   "a": "(값, 날짜, [추정값])"
+  },
+  "XNPV": {
+   "a": "(할인율, 값, 날짜)"
   }
  },
  "vi": {
@@ -3122,6 +3322,66 @@
   },
   "STANDARDIZE": {
    "a": "(x, trung_bình, độ_lệch_chuẩn)"
+  },
+  "CUMIPMT": {
+   "a": "(lãi_suất, số_kỳ, giá_trị_hiện_thời, kỳ_đầu, kỳ_cuối, loại)"
+  },
+  "CUMPRINC": {
+   "a": "(lãi_suất, số_kỳ, giá_trị_hiện_thời, kỳ_đầu, kỳ_cuối, loại)"
+  },
+  "DB": {
+   "a": "(nguyên_giá, giá_trị_thu_hồi, thời_hạn, kỳ, [số_tháng])"
+  },
+  "DDB": {
+   "a": "(nguyên_giá, giá_trị_thu_hồi, thời_hạn, kỳ, [hệ_số])"
+  },
+  "VDB": {
+   "a": "(nguyên_giá, giá_trị_thu_hồi, thời_hạn, kỳ_đầu, kỳ_cuối, [hệ_số], [không_chuyển])"
+  },
+  "SLN": {
+   "a": "(nguyên_giá, giá_trị_thu_hồi, thời_hạn)"
+  },
+  "SYD": {
+   "a": "(nguyên_giá, giá_trị_thu_hồi, thời_hạn, kỳ)"
+  },
+  "DOLLARDE": {
+   "a": "(số_dạng_phân_số, mẫu_số)"
+  },
+  "DOLLARFR": {
+   "a": "(số_thập_phân, mẫu_số)"
+  },
+  "EFFECT": {
+   "a": "(lãi_suất_danh_nghĩa, số_kỳ_mỗi_năm)"
+  },
+  "NOMINAL": {
+   "a": "(lãi_suất_thực_tế, số_kỳ_mỗi_năm)"
+  },
+  "FVSCHEDULE": {
+   "a": "(vốn_gốc, bảng_lãi_suất)"
+  },
+  "IPMT": {
+   "a": "(lãi_suất, kỳ, số_kỳ, giá_trị_hiện_thời, [giá_trị_tương_lai], [loại])"
+  },
+  "PPMT": {
+   "a": "(lãi_suất, kỳ, số_kỳ, giá_trị_hiện_thời, [giá_trị_tương_lai], [loại])"
+  },
+  "ISPMT": {
+   "a": "(lãi_suất, kỳ, số_kỳ, giá_trị_hiện_thời)"
+  },
+  "MIRR": {
+   "a": "(các_giá_trị, lãi_suất_vay, lãi_suất_tái_đầu_tư)"
+  },
+  "PDURATION": {
+   "a": "(lãi_suất, giá_trị_hiện_thời, giá_trị_tương_lai)"
+  },
+  "RRI": {
+   "a": "(số_kỳ, giá_trị_hiện_thời, giá_trị_tương_lai)"
+  },
+  "XIRR": {
+   "a": "(các_giá_trị, ngày_tháng, [đoán_trước])"
+  },
+  "XNPV": {
+   "a": "(lãi_suất, các_giá_trị, ngày_tháng)"
   }
  },
  "zh": {
@@ -3165,6 +3425,35 @@
   },
   "DEGREES": {
    "a": "(angle)"
+  }
+ },
+ "pt-br": {
+  "FISHER": {
+   "a": "(x)"
+  },
+  "FISHERINV": {
+   "a": "(y)"
+  },
+  "GAMMALN": {
+   "a": "(x)"
+  },
+  "GAMMALN.PRECISE": {
+   "a": "(x)"
+  },
+  "GAUSS": {
+   "a": "(x)"
+  },
+  "PHI": {
+   "a": "(x)"
+  },
+  "SLOPE": {
+   "a": "(val_conhecidos_y, val_conhecidos_x)"
+  },
+  "INTERCEPT": {
+   "a": "(val_conhecidos_y, val_conhecidos_x)"
+  },
+  "RRI": {
+   "a": "(nper, va, vf)"
   }
  }
 }

@@ -36,7 +36,8 @@
   "PHONETIC": {"a": "(intervallo)", "d": "Restituisce i furigana (lettura fonetica in kana) memorizzati nelle celle, ricavati dalle informazioni di lettura del file xlsx aperto.", "ad": "è l'intervallo di celle di cui si desidera ottenere i furigana"},
   "IFS": {"a": "(test; se_vero; ...)", "d": "Verifica se una o più condizioni sono soddisfatte e restituisce un valore corrispondente alla prima condizione VERO.", "ad": "è un valore o un'espressione qualsiasi che può dare come risultato VERO o FALSO!è il valore che viene restituito se test è VERO"},
   "TIMEVALUE": {"a": "(ora_testo)", "d": "Converte un'ora in formato testo in un numero seriale che rappresenta l'ora, un numero da 0 (00:00:00) a 0,999988426 (23:59:59). Applicare al numero un formato ora dopo aver inserito la formula.", "ad": "è una stringa di testo che indica un'ora in uno dei formati ora di Spreadsheet Editor (le informazioni sulla data nella stringa vengono ignorate)"},
-  "DECIMAL": {"a": "(num; radice)", "d": "Converte la rappresentazione testuale di un numero in una data base in un numero decimale.", "ad": "è il numero che si vuole convertire!è la radice di base del numero da convertire"}
+  "DECIMAL": {"a": "(num; radice)", "d": "Converte la rappresentazione testuale di un numero in una data base in un numero decimale.", "ad": "è il numero che si vuole convertire!è la radice di base del numero da convertire"},
+  "PDURATION": {"a": "(tasso_int; val_attuale; val_futuro)", "d": "Restituisce il numero di periodi necessari a un investimento per raggiungere un valore specificato.", "ad": "è il tasso di interesse per periodo!è il valore attuale dell'investimento!è il valore futuro desiderato dell'investimento"}
  },
  "ko": {
   "YEN": {"a": "(number; [decimals])", "d": "엔화 기호(¥)와 천 단위 구분 기호를 사용하여 숫자를 텍스트로 변환합니다.", "ad": "은(는) 서식을 지정하려는 수입니다.!은(는) 소수점 이하의 자릿수입니다. 생략하면 decimals은 2가 됩니다."},
