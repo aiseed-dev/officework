@@ -6297,3 +6297,12 @@ test/gen_ms_teacher.py(1枚1機能 × 20、本家で生成)が用意済み。
 形で言い直した文。M365 では叶わない願い(VBA 放置・Python は
 クラウドの中・Copilot は話すだけ)である点まで含めて、説明にも
 そのまま使える。
+
+同日続き(発注者): 願いの一文は**ずっと前からの話** —
+2018年12月の発注者の記事「Excel に Python が搭載?その後 —
+xlwings を使おう」(qiita.com/yniji/items/b38bc312e860027108ac)。
+2017年に Microsoft は Excel への Python 搭載を検討して見送り
+(JavaScript を選択)、2023年に出した Python in Excel はクラウドの
+中だった。officework の `from officework import calc as xw` は
+この記事の結論(xlwings を使おう)の直系。願いは8年物で、
+説明にも「2018年からの宿題を自分で解いた」と書ける。
