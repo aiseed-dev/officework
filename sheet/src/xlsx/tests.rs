@@ -523,14 +523,15 @@ mod carry_tests {
             at: Pos::new(0, 0),
             width_px: 80.0,
             height_px: 50.0,
-            kind: "cube".into(), // こちらが作図を持たない形
+            kind: "nonesuch".into(), // こちらが作図を持たない形(cube は
+            // 定義データの187種に入って描けるようになった)
             fill: Some("DCE6F1".into()),
             ..Default::default()
         });
         let mut buf = Vec::new();
         crate::xlsx::write(&b, Cursor::new(&mut buf)).unwrap();
         let (back, rep) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
-        assert_eq!(back.sheets[0].shapes[0].kind, "cube", "名前まで失っている");
+        assert_eq!(back.sheets[0].shapes[0].kind, "nonesuch", "名前まで失っている");
         assert!(
             rep.unsupported.iter().any(|(n, _)| n.contains("描けない形")),
             "描けない形を黙って通した: {:?}",

@@ -1233,6 +1233,10 @@ pub struct SheetShape {
     /// 原本と違っても、図形は同じセルの縁に貼り付く)。
     /// `editAs="oneCell"` / `"absolute"` のアンカーでは `None` のまま
     pub to: Option<(Pos, f32, f32)>,
+    /// 調整値(prstGeom の avLst)。大かっこの曲がりの強さ、矢印の
+    /// 太さなど、形ごとのつまみ。名前(adj1 など)と値の組で、
+    /// 無い分は定義データの既定が使われる
+    pub adj: Vec<(String, f32)>,
 }
 
 impl Default for SheetShape {
@@ -1260,6 +1264,7 @@ impl Default for SheetShape {
             shadow: false,
             group: 0,
             to: None,
+            adj: Vec::new(),
         }
     }
 }
@@ -1505,9 +1510,24 @@ impl SheetShape {
                 )
             }
             // 本家の図形ギャラリーの品揃え。**xlsx の prstGeom の名前を
-            // そのまま種類に使う**ので、Excel で作った帳票の形もここに来る
-            k => match preset_svg(k, x0, y0, x1, y1, &style) {
-                Some(s) => s,
+            // そのまま種類に使う**ので、Excel で作った帳票の形もここに来る。
+            // 描くのは紙と同じ点の列(定義データ → preset_pts)
+            k => match preset_pts_adj(k, x0, y0, x1, y1, &self.adj) {
+                Some(polys) => {
+                    let mut s = String::new();
+                    for p in polys {
+                        let d: Vec<String> =
+                            p.pts.iter().map(|(x, y)| format!("{x:.1},{y:.1}")).collect();
+                        let d = d.join(" ");
+                        let f_ = if p.closed && p.fill { fill } else { "none" };
+                        let l_ = if p.stroke { line } else { "none" };
+                        let el = if p.closed { "polygon" } else { "polyline" };
+                        s.push_str(&format!(
+                            r#"<{el} points="{d}" fill="{f_}" stroke="{l_}" stroke-width="{sw:.2}" stroke-linejoin="round"{op_attr}/>"#
+                        ));
+                    }
+                    s
+                }
                 // 知らない形は四角で描く。**それを黙ってやらない** —
                 // 読みの Report が「描けない図形」として一件ずつ数える
                 None => format!(
@@ -1533,7 +1553,8 @@ pub fn can_draw(kind: &str) -> bool {
         // 点で形を作るもの(このアプリが作る。points で描く)。
         // `path` は**自由な形** — 頂点と制御点を人がつまんで決める
         | "spark" | "spark-col" | "spark-wl" | "ink" | "marker" | "path"
-    ) || preset_svg(kind, 0.0, 0.0, 1.0, 1.0, "").is_some()
+    ) || crate::spec_has(kind)
+        || preset_svg(kind, 0.0, 0.0, 1.0, 1.0, "").is_some()
 }
 
 /// prstGeom の名前 → 形の SVG。**描ける形だけ** Some を返す。
@@ -1774,14 +1795,46 @@ pub fn preset_svg(kind: &str, x0: f32, y0: f32, x1: f32, y1: f32, style: &str) -
     Some(s)
 }
 
-/// [`preset_svg`] の作図を**点の列**にする。紙(PDF)と絵の側が使う。
+/// 形を**点の列**にする。紙(PDF)も画面(SVG)もこれで描く。
 ///
-/// 作図の表は preset_svg の1箇所だけ。ここはその出力(polygon /
-/// rect / ellipse / path)を読んで、部分ごとに(点の列, 閉じるか)へ
-/// 落とす。表を2つ持つと「画面では星、紙では四角」に割れるので、
-/// 形は2度書かない。曲線は 12〜24 に刻む(紙の他の曲線と同じで、
-/// 見た目に区別が付かない細かさ)。
+/// 一番の出どころは OOXML の定義データ(187種。[`crate::spec_polys`] —
+/// 調整値も効く)。定義に無い名前だけ、手書きの作図([`preset_svg`])を
+/// 読んで同じ形に落とす。表を2つ持つと「画面では星、紙では四角」に
+/// 割れるので、形の知識はこの2段のどちらか1箇所にだけ置く。
+pub fn preset_pts_adj(
+    kind: &str,
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+    adj: &[(String, f32)],
+) -> Option<Vec<crate::Poly>> {
+    if let Some(polys) = crate::spec_polys(kind, x0, y0, x1, y1, adj) {
+        return Some(polys);
+    }
+    let subs = hand_pts(kind, x0, y0, x1, y1)?;
+    Some(
+        subs.into_iter()
+            .map(|(pts, closed)| crate::Poly { pts, closed, fill: closed, stroke: true })
+            .collect(),
+    )
+}
+
+/// 調整値なしの入り口(試験と、調整値を持たない呼び手のため)
 pub fn preset_pts(
+    kind: &str,
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+) -> Option<Vec<crate::Poly>> {
+    preset_pts_adj(kind, x0, y0, x1, y1, &[])
+}
+
+/// [`preset_svg`] の作図(polygon / rect / ellipse / path)を読んで
+/// 点の列にする。[`preset_pts_adj`] の下請け — 定義データに無い
+/// 名前だけがここへ来る
+fn hand_pts(
     kind: &str,
     x0: f32,
     y0: f32,

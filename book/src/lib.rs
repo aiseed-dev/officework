@@ -32,8 +32,14 @@ pub mod theme;
 
 mod fmt;
 mod ops;
+/// OOXML の図形の定義(187種)。生成物 — 手で直さない
+mod preset_gen;
+/// その定義を点の列にする解釈器
+mod preset_spec;
 mod refs;
 mod types;
+
+pub use preset_spec::{spec_has, spec_names, spec_polys, Poly};
 
 pub use fmt::format_value;
 pub use refs::{

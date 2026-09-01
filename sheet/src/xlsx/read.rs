@@ -696,6 +696,8 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
     let (mut cx, mut cy) = (None::<i64>, None::<i64>);
     let mut embed = None::<String>;
     let mut prst = None::<String>;
+    // 調整値(prstGeom の avLst)。大かっこの曲がりの強さなどのつまみ
+    let mut adj_list: Vec<(String, f32)> = Vec::new();
     // 図形の色: solidFill の1つ目が塗り、a:ln の中のものが線
     let (mut fill, mut line) = (None::<String>, None::<String>);
     // 図形の中の文字(a:t)と、custGeom の折れ線
@@ -754,6 +756,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     (off_x, off_y) = (0, 0);
                     (to_col, to_row) = (None, None);
                     (to_off_x, to_off_y) = (0, 0);
+                    adj_list.clear();
                     to_cells = t == b"twoCellAnchor"
                         && !matches!(
                             attr(&e, "editAs").as_deref(),
@@ -929,6 +932,15 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         attr(&e, "y").and_then(|v| v.parse::<i64>().ok()).unwrap_or(0),
                     );
                 }
+                // 調整値(avLst の gd)。custGeom の gdLst と混同しない
+                // よう、prstGeom を見た後だけ拾う。式は必ず "val N"
+                b"gd" if prst.is_some() && !has_custom => {
+                    if let (Some(n), Some(f)) = (attr(&e, "name"), attr(&e, "fmla")) {
+                        if let Some(v) = f.strip_prefix("val ").and_then(|v| v.trim().parse::<f32>().ok()) {
+                            adj_list.push((n, v));
+                        }
+                    }
+                }
                 b"pt" if has_custom => {
                     let x = attr(&e, "x").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
                     let y = attr(&e, "y").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
@@ -1049,6 +1061,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         alpha: alpha.unwrap_or(1.0),
                         shadow,
                         group: g,
+                        adj: std::mem::take(&mut adj_list),
                         ..Default::default()
                     };
                     if let (Some(c), Some(rr), Some(pr)) = (col, row, prst.take()) {
@@ -1089,6 +1102,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         line_w,
                         alpha: alpha.unwrap_or(1.0),
                         shadow,
+                        adj: std::mem::take(&mut adj_list),
                         to: match (to_cells, to_col, to_row) {
                             (true, Some(c), Some(r)) => Some((
                                 Pos::new(r, c),

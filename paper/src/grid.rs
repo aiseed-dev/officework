@@ -1960,34 +1960,36 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
             "path" => sp.fill.is_some(),
             _ => true,
         };
-        let mut subs: Vec<(Vec<(f32, f32)>, bool)> = if pts.is_empty()
+        let mut subs: Vec<book::Poly> = if pts.is_empty()
             && !matches!(sp.kind.as_str(), "spark" | "ink" | "marker" | "path")
         {
-            book::preset_pts(&sp.kind, 0.0, 0.0, w, h)
-                .map(|subs| {
-                    subs.into_iter()
-                        .map(|(v, c)| {
-                            let v: Vec<(f32, f32)> = v
-                                .into_iter()
-                                .map(|(px, py)| (x + px, y_top - py))
-                                .collect();
-                            (v, c)
+            book::preset_pts_adj(&sp.kind, 0.0, 0.0, w, h, &sp.adj)
+                .map(|polys| {
+                    polys
+                        .into_iter()
+                        .map(|mut p| {
+                            for pt in &mut p.pts {
+                                *pt = (x + pt.0, y_top - pt.1);
+                            }
+                            p
                         })
                         .collect()
                 })
                 .unwrap_or_else(|| {
-                    vec![(
-                        vec![
+                    vec![book::Poly {
+                        pts: vec![
                             (x, y_top),
                             (x + w, y_top),
                             (x + w, y_top - h),
                             (x, y_top - h),
                         ],
-                        true,
-                    )]
+                        closed: true,
+                        fill: true,
+                        stroke: true,
+                    }]
                 })
         } else {
-            vec![(pts, closed)]
+            vec![book::Poly { pts, closed, fill: true, stroke: true }]
         };
         // 回転と反転(折れ線もの以外)。紙は y が上向きなので、
         // いったん画面向きのずれに直してから時計回りに回す
@@ -1999,7 +2001,7 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
         if (rot != 0.0 || sp.flip_h || sp.flip_v) && !poly {
             let (ccx, ccy) = (x + w / 2.0, y_top - h / 2.0);
             let (s, c) = (rot.to_radians().sin(), rot.to_radians().cos());
-            for p in subs.iter_mut().flat_map(|(v, _)| v.iter_mut()) {
+            for p in subs.iter_mut().flat_map(|p| p.pts.iter_mut()) {
                 let mut dx = p.0 - ccx;
                 let mut dy = ccy - p.1; // 下向き正
                 if sp.flip_h {
@@ -2022,18 +2024,18 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
         if sp.shadow {
             let zure = 4.0 * 25.4 / 96.0 * scale;
             let hai = (0.62, 0.62, 0.62);
-            for (pts, closed) in &subs {
-                if pts.is_empty() {
+            for p in &subs {
+                if p.pts.is_empty() {
                     continue;
                 }
                 let kage: Vec<(f32, f32)> =
-                    pts.iter().map(|(x, y)| (x + zure, y - zure)).collect();
-                if *closed && sp.fill.is_some() {
+                    p.pts.iter().map(|(x, y)| (x + zure, y - zure)).collect();
+                if p.closed && p.fill && sp.fill.is_some() {
                     l1.poly_a(kage.clone(), hai, 0.35);
                 }
-                if pen.is_some() {
+                if pen.is_some() && p.stroke {
                     let ends =
-                        if *closed { kage.len() } else { kage.len().saturating_sub(1) };
+                        if p.closed { kage.len() } else { kage.len().saturating_sub(1) };
                     for i in 0..ends {
                         let (x1, y1) = kage[i];
                         let (x2, y2) = kage[(i + 1) % kage.len()];
@@ -2045,18 +2047,21 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
         // **塗ってから輪郭。** 2026-08-27 まで紙は輪郭だけでした。
         // 図をこちらで描く(発注者「チャートは python による独自描画」)
         // には、棒も扇も中が塗れないと形になりません
-        for (pts, closed) in &subs {
-            if *closed {
+        for p in &subs {
+            if p.closed && p.fill {
                 if let Some(c) = sp.fill.as_deref().and_then(hex_rgb) {
-                    l1.poly_a(pts.clone(), c, usu);
+                    l1.poly_a(p.pts.clone(), c, usu);
                 }
             }
             // 折れ線は辺ごとに引きます。閉じる形なら最後の点から先頭へ1本
             if let Some(pen) = pen {
-                let ends = if *closed { pts.len() } else { pts.len().saturating_sub(1) };
+                if !p.stroke {
+                    continue;
+                }
+                let ends = if p.closed { p.pts.len() } else { p.pts.len().saturating_sub(1) };
                 for i in 0..ends {
-                    let (x1, y1) = pts[i];
-                    let (x2, y2) = pts[(i + 1) % pts.len()];
+                    let (x1, y1) = p.pts[i];
+                    let (x2, y2) = p.pts[(i + 1) % p.pts.len()];
                     l1.line_dash(x1, y1, x2, y2, pen_w, pen, usu, kizami);
                 }
             }

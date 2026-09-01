@@ -859,9 +859,10 @@ mod shape_tests {
         assert!(svg.contains("<ellipse"));
         // 知らない種類は四角で描く(黙って消さない)。
         // **例に使う名前は「まだ描けない物」でなければならない** —
-        // hexagon はここの例だったが 2026-08-13 に描けるようになった
-        let unknown = SheetShape { kind: "cube".into(), ..sh };
-        assert!(!can_draw("cube"), "例に使った形が描けるようになっている");
+        // hexagon はここの例だったが 2026-08-13 に、cube も定義データ
+        // (187種)で描けるようになった
+        let unknown = SheetShape { kind: "nonesuch".into(), ..sh };
+        assert!(!can_draw("nonesuch"), "例に使った形が描けるようになっている");
         assert!(unknown.to_svg().contains("<rect"));
     }
 }
@@ -1117,7 +1118,7 @@ mod month_name_tests {
 /// 図形ギャラリー(台帳 第2便の [中])。**形が形に見えるか**を縛る。
 #[cfg(test)]
 mod preset_shape_tests {
-    use crate::{can_draw, preset_pts, preset_svg, SheetShape};
+    use crate::{can_draw, preset_pts, preset_pts_adj, preset_svg, SheetShape};
     use crate::Pos;
 
     /// 本家の分類に並ぶ、いま描ける形の全部
@@ -1170,12 +1171,12 @@ mod preset_shape_tests {
         for k in KINDS {
             let subs = preset_pts(k, 0.0, 0.0, 100.0, 60.0)
                 .unwrap_or_else(|| panic!("{k} が紙の点にならない"));
-            assert!(!subs.is_empty() && subs.iter().all(|(v, _)| v.len() >= 2), "{k} の点が足りない");
-            for (v, _) in &subs {
-                for (x, y) in v {
+            assert!(!subs.is_empty() && subs.iter().all(|p| p.pts.len() >= 2), "{k} の点が足りない");
+            for p in &subs {
+                for (x, y) in &p.pts {
                     assert!(x.is_finite() && y.is_finite(), "{k} の点に NaN");
                     assert!(
-                        (-1.0..=101.0).contains(x) && (-1.0..=61.0).contains(y),
+                        (-25.0..=125.0).contains(x) && (-15.0..=75.0).contains(y),
                         "{k} が箱から出た: {x},{y}"
                     );
                 }
@@ -1184,20 +1185,64 @@ mod preset_shape_tests {
     }
 
     #[test]
+    fn every_spec_shape_yields_finite_points() {
+        // 定義データの全形(187種)が、式 → 点の列まで通ること。
+        // 式の解釈を1つ間違えると NaN や桁違いの座標になって、
+        // 画面から図形が消える(絵は「出ない」としか言わない)
+        let mut n = 0;
+        for sh in crate::preset_gen::SHAPES {
+            let subs = preset_pts(sh.name, 0.0, 0.0, 100.0, 60.0)
+                .unwrap_or_else(|| panic!("{} が点にならない", sh.name));
+            assert!(subs.iter().any(|p| p.pts.len() >= 2), "{} の点が足りない", sh.name);
+            for p in &subs {
+                for (x, y) in &p.pts {
+                    assert!(x.is_finite() && y.is_finite(), "{} の点に NaN", sh.name);
+                    // 吹き出しの尻尾は箱を出るのが正しい(既定の調整値でも
+                    // 箱の外へ 1.5 倍まで)。それより遠いのは式の間違い
+                    assert!(
+                        (-150.0..=250.0).contains(x) && (-90.0..=150.0).contains(y),
+                        "{} が桁違いに飛んだ: {x},{y}",
+                        sh.name
+                    );
+                }
+            }
+            n += 1;
+        }
+        assert_eq!(n, 187, "形の数が変わった(生成し直しの漏れ?)");
+    }
+
+    #[test]
+    fn an_adjust_value_changes_the_brace_curl() {
+        // 酒税の様式の大かっこは adj1=43032〜73447 を持つ。調整値が
+        // 効かないと、つまみを読んでも絵が変わらない
+        let flat = preset_pts_adj("leftBrace", 0.0, 0.0, 10.0, 80.0, &[("adj1".into(), 10000.0)])
+            .expect("leftBrace が描けない");
+        let curl = preset_pts_adj("leftBrace", 0.0, 0.0, 10.0, 80.0, &[("adj1".into(), 70000.0)])
+            .expect("leftBrace が描けない");
+        assert!(!flat[0].pts.is_empty() && !curl[0].pts.is_empty());
+        assert_ne!(flat[0].pts, curl[0].pts, "調整値を変えても点が同じ");
+    }
+
+    #[test]
     fn a_brace_is_an_open_stroke() {
-        // 大かっこ(酒税の様式で23個)は閉じない線 — 閉じると「{」の
-        // 上端と下端が1本で結ばれて、四角に見える
+        // 大かっこ(酒税の様式で23個)の線は閉じない — 閉じると「{」の
+        // 上端と下端が1本で結ばれて、四角に見える。定義データでは
+        // 塗り用(線なし)と線用(塗りなし)の2本に分かれている
         for k in ["leftBrace", "rightBrace"] {
             let subs = preset_pts(k, 0.0, 0.0, 10.0, 80.0).unwrap();
-            assert_eq!(subs.len(), 1, "{k} が1本の線でない");
-            assert!(!subs[0].1, "{k} が閉じている");
+            let sen: Vec<_> = subs.iter().filter(|p| p.stroke).collect();
+            assert_eq!(sen.len(), 1, "{k} の線が1本でない");
+            assert!(!sen[0].closed, "{k} の線が閉じている");
+            assert!(!sen[0].fill, "{k} の線の輪郭を塗ることにしている");
         }
     }
 
     #[test]
     fn an_unknown_shape_answers_not_drawable() {
         // 数えられて Report に載る側。**黙って四角にしない**ための入り口
-        for k in ["cube", "can", "heart", "ribbon", "actionButtonHome", ""] {
+        // cube も heart も定義データ(187種)に入ったので、いまは描ける。
+        // 描けないのは、定義に無い名前だけ
+        for k in ["nonesuch", "star99", "テスト", ""] {
             assert!(!can_draw(k), "{k} を描けることにしている");
         }
     }

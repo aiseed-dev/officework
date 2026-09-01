@@ -1,5 +1,8 @@
 target/
-vendor/
+# vendor は他プロジェクトの写し置き場(追跡しない)。ただし図形の
+# 定義データだけは小さく、生成の元なので追跡する
+vendor/*
+!vendor/ooxml-shapes/
 
 # 機械ごとの設定。絶対パスや symlink が入るので追跡しない
 .cargo/

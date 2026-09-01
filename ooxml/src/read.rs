@@ -2926,6 +2926,28 @@ fn shape_look(a: &str) -> Option<book::SheetShape> {
         None if a.contains("<a:custGeom") => "path".into(),
         None => return None,
     };
+    // 調整値(prstGeom の avLst)。大かっこの曲がりなど、形のつまみ。
+    // custGeom の gdLst と混ざらないよう、avLst の中だけを見る
+    if sp.kind != "path" {
+        if let Some(i) = a.find("<a:avLst>") {
+            let end = a[i..].find("</a:avLst>").map(|e| i + e).unwrap_or(a.len());
+            let mut at = i;
+            while let Some(j) = a[at..end].find("<a:gd name=\"") {
+                let s2 = at + j + 12;
+                let Some(ne) = a[s2..end].find('"').map(|e| s2 + e) else { break };
+                let name = a[s2..ne].to_string();
+                if let Some(k) = a[ne..end].find("fmla=\"val ") {
+                    let vs = ne + k + 10;
+                    if let Some(ve) = a[vs..end].find('"').map(|e| vs + e) {
+                        if let Ok(v) = a[vs..ve].trim().parse::<f32>() {
+                            sp.adj.push((name, v));
+                        }
+                    }
+                }
+                at = ne;
+            }
+        }
+    }
     // **テーマの色**(`<a:schemeClr val="tx1"/>`)。`srgbClr` で書いていない
     // 図形は、これを読まないと色が無い=線を引かない、になります。
     // 既定のテーマの色に写します — 文書のテーマは読まないので、
