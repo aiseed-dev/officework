@@ -32,6 +32,10 @@ pub(super) enum Tok {
     LParen,
     RParen,
     Comma,
+    /// 配列定数 `{1,2;3,4}` の括りと行の区切り
+    LBrace,
+    RBrace,
+    Semi,
 }
 
 /// 構造化参照 `Table1[金額]` / `Table1[@金額]` / `[@金額]` / `[金額]` を読む。
@@ -255,6 +259,9 @@ pub(super) fn lex(src: &str) -> Result<Vec<Tok>, String> {
             '(' => out.push(Tok::LParen),
             ')' => out.push(Tok::RParen),
             ',' => out.push(Tok::Comma),
+            '{' => out.push(Tok::LBrace),
+            '}' => out.push(Tok::RBrace),
+            ';' => out.push(Tok::Semi),
             _ => return Err(format!("読めない文字: {c}")),
         }
         i += 1;
@@ -503,6 +510,33 @@ impl<'a> P<'a> {
             }
         }
         Ok(out)
+    }
+
+    /// 配列定数 `{1,2;3,4}` の中身を読む(`{` は読んだ後に呼ぶ)。
+    /// 中身は定数だけ — 数(負の符号つきも)・文字・TRUE/FALSE。
+    /// `,` が列の区切り、`;` が行の区切り(Excel と同じ書き方)
+    pub(super) fn array_const(&mut self) -> Result<Vec<Vec<Value>>, String> {
+        let mut rows = vec![Vec::new()];
+        loop {
+            let v = match self.next() {
+                Some(Tok::Num(n)) => Value::Number(n),
+                Some(Tok::Str(s)) => Value::Text(s),
+                Some(Tok::Op(sign @ ('-' | '+'))) => match self.next() {
+                    Some(Tok::Num(n)) => Value::Number(if sign == '-' { -n } else { n }),
+                    _ => return Err("配列定数の符号の後ろが数ではありません".into()),
+                },
+                Some(Tok::Name(n)) if n == "TRUE" => Value::Bool(true),
+                Some(Tok::Name(n)) if n == "FALSE" => Value::Bool(false),
+                _ => return Err("配列定数の中身が読めません".into()),
+            };
+            rows.last_mut().expect("1行は必ずある").push(v);
+            match self.next() {
+                Some(Tok::Comma) => {}
+                Some(Tok::Semi) => rows.push(Vec::new()),
+                Some(Tok::RBrace) => return Ok(rows),
+                _ => return Err("配列定数が閉じていません".into()),
+            }
+        }
     }
 
     /// 別のシートの範囲を答える。直書きの `Sheet2!A1` と
@@ -761,6 +795,16 @@ impl<'a> P<'a> {
                     Some(Tok::RParen) => Ok(v),
                     _ => Err("括弧が閉じていません".into()),
                 }
+            }
+            // 配列定数。1つの値が要る場面では左上の値を使う
+            // (並びのまま要る場面は配列の読み手 AP が受ける)
+            Some(Tok::LBrace) => {
+                let rows = self.array_const()?;
+                Ok(rows
+                    .into_iter()
+                    .next()
+                    .and_then(|r| r.into_iter().next())
+                    .unwrap_or(Value::Empty))
             }
             Some(Tok::Name(name)) => {
                 match self.peek() {

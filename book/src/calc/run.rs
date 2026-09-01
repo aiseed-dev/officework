@@ -718,13 +718,16 @@ pub(super) fn recalc_pass_iter(
     (changed, max_delta)
 }
 
-/// 配列数式か — あふれる関数(FILTER 等)が式のどこかに入っているか。
-/// 文字列の中の "FILTER" を拾わないよう、字句にしてから見る
+/// 配列数式か — あふれる関数(FILTER 等)か配列定数 `{…}` が式の
+/// どこかに入っているか。文字列の中の "FILTER" を拾わないよう、
+/// 字句にしてから見る
 pub(super) fn is_array_formula(f: &str) -> bool {
     lex(f)
         .map(|toks| {
-            toks.iter()
-                .any(|t| matches!(t, Tok::Name(n) if ARRAY_FNS.contains(&n.as_str())))
+            toks.iter().any(|t| {
+                matches!(t, Tok::Name(n) if ARRAY_FNS.contains(&n.as_str()))
+                    || matches!(t, Tok::LBrace)
+            })
         })
         .unwrap_or(false)
 }

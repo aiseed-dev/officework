@@ -211,6 +211,11 @@ impl AP<'_, '_> {
                     _ => Err("括弧が閉じていません".into()),
                 }
             }
+            // 配列定数はそのまま並びになる(=SUM({1,2,3}) が効く)
+            Some(Tok::LBrace) => {
+                self.p.next();
+                Ok(AVal::Arr(self.p.array_const()?))
+            }
             Some(Tok::Name(n)) if self.p.t.get(self.p.i + 1) == Some(&Tok::LParen) => {
                 if ARRAY_FNS.contains(&n.as_str()) {
                     // あふれる関数の呼び出し — 並びのまま持つ

@@ -916,6 +916,27 @@ mod dan3_tests {
     }
 
     #[test]
+    fn array_constants_pass_into_functions_and_spill() {
+        let mut s = sheet_with(&[
+            ("A1", "=SUM({1,2;3,4})"),
+            ("A2", "=VLOOKUP(2,{1,10;2,20},2,FALSE)"),
+            ("A3", "=SUM({-1,2})"),
+            ("A4", "=SUM({1,2,3}*{2,2,2})"),
+            ("C1", "={5,6;7,8}"),
+        ]);
+        recalc(&mut s);
+        assert_eq!(v(&s, "A1"), Value::Number(10.0));
+        assert_eq!(v(&s, "A2"), Value::Number(20.0), "表を引く関数に形が渡らない");
+        assert_eq!(v(&s, "A3"), Value::Number(1.0), "負の符号が読めない");
+        assert_eq!(v(&s, "A4"), Value::Number(12.0), "要素ごとの演算が効かない");
+        // 単独の配列定数は隣へあふれる
+        for (a1, n) in [("C1", 5.0), ("D1", 6.0), ("C2", 7.0), ("D2", 8.0)] {
+            assert_eq!(v(&s, a1), Value::Number(n), "{a1} が違う");
+        }
+        assert_eq!(s.spills.get(&Pos::parse("C1").unwrap()), Some(&(2, 2)));
+    }
+
+    #[test]
     fn an_occupied_cell_blocks_the_spill() {
         let mut s = sheet_with(&[
             ("A1", "=SEQUENCE(3,1)"),
