@@ -576,6 +576,44 @@ pub fn okuri_em(name: Option<&str>) -> Option<f32> {
     (em > 0.1).then(|| em.max(1.0))
 }
 
+/// **描く書体の、ベースラインより下の深さ(em)。**
+///
+/// この機械にある書体(置き替え先)の OS/2 から取ります。字の足が
+/// どこまで伸びるかは、原本の書体ではなく**実際に描く書体**が決めます。
+fn sagari_em(name: Option<&str>) -> Option<f32> {
+    let (fam, _) = for_document(name).ok()?;
+    let d = load(fam).ok()?;
+    let face = ttf_parser::Face::parse(&d, 0).ok()?;
+    let upem = face.units_per_em() as f32;
+    let sita = match face.tables().os2 {
+        Some(o) if o.use_typographic_metrics() => -o.typographic_descender() as f32,
+        Some(o) => o.windows_descender() as f32,
+        None => -face.descender() as f32,
+    };
+    (sita > 0.0).then_some(sita / upem)
+}
+
+/// **行の箱の中で、ベースラインが上端から何 em 下か。**
+///
+/// LibreOffice と同じ決め方です(`sw/source/core/txtnode/fntcache.cxx`)。
+///
+/// ```text
+/// GetFontHeight = ascent + descent + leading
+/// GetFontAscent = ascent + leading      ← 余った空きは全部上に置く
+/// ```
+///
+/// つまり字の下に残る空きは**描く書体の descent そのもの**で、行の箱が
+/// 高いぶんは上に付きます。前は「箱の高さの 0.8」という割合の決め打ちで、
+/// 表のセルで字と下の罫線の間が元の 2.5pt に対して 1.2pt でした
+/// (2026-09-01 発注者)。
+///
+/// 引けなければ `None`。呼ぶ側が今までどおりの割合を当てます。
+pub fn agari_em(name: Option<&str>) -> Option<f32> {
+    let zentai = okuri_em(name)?;
+    let sita = sagari_em(name)?;
+    (zentai > sita).then_some(zentai - sita)
+}
+
 /// **その書体の、数字1文字の幅(画素)。** 96dpi です。
 ///
 /// `0` から `9` を測って、いちばん広いものを返します。LibreOffice と同じ

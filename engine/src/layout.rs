@@ -1649,6 +1649,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             // **縦の揃え**(docx の `w:tcPr/w:vAlign`)。既定は上です。
             // 前はどのセルも上に置いていたので、「□認められる」の行が
             // セルの頭に張り付いていました(2026-09-01 発注者)
+            let pfont2 = doc.font.clone();
             let naka: f32 = l.lines.iter().map(|(_, _, h, _, _)| *h).sum();
             let aki = (h - 2.0 * CELL_PAD_V - naka).max(0.0);
             let ue = match l.valign {
@@ -1660,11 +1661,21 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let id = Some((table_no, ri, l.ci));
             let uti = (l.w - 2.0 * CELL_PAD).max(0.0);
             for (cells, b0, plh, yose, pt) in l.lines {
-                // **ベースラインは行の箱の下から、字の足のぶんだけ上**です。
-                // 前は箱の高さの 0.8 を上から取っていたので、箱が字より
-                // 高い表では字が上に浮き、下の罫線との間が空いていました
-                // (2026-09-01 発注者)。足の深さは字の大きさで決まります
-                yy += (plh - pt * 0.22 * 25.4 / 72.0).max(plh * 0.5);
+                // **ベースラインは書体の上がりの所**です。LibreOffice と
+                // 同じで、行の箱が字より高いぶんは全部ベースラインより上に
+                // 置き、下に残るのは書体の足の深さだけです
+                // (`sw/source/core/txtnode/fntcache.cxx` の
+                // `GetFontAscent = ascent + leading`)。前は箱の高さの
+                // 0.8 という割合の決め打ちで、字と下の罫線の間が元の
+                // 2.5pt に対して 1.2pt でした(2026-09-01 発注者)。
+                //
+                // 書体が引けないときと、箱に収まらないときは 0.8 のままです
+                let ji = cells.first().and_then(|c| c.font.clone()).or_else(|| pfont2.clone());
+                let agari = crate::font::agari_em(ji.as_deref())
+                    .map(|e| pt * e * PT_TO_MM)
+                    .filter(|v| *v > 0.0 && *v <= plh)
+                    .unwrap_or(plh * 0.8);
+                yy += agari;
                 // **横の揃え**は段落が言います。前はセルの中を全部左に
                 // 寄せていたので、「調査項目」「内容」の中央揃えが
                 // 効いていませんでした(2026-09-01 発注者)
@@ -1680,7 +1691,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     .map(|mut c| { c.x_mm = x; x += c.w_mm; c })
                     .collect();
                 sheet.lines.push(Line { cells, y_mm: yy, from_body: false, byte0: b0, cell: id });
-                yy += pt * 0.22 * 25.4 / 72.0;
+                yy += plh - agari;
             }
             // **セルの塗り**(2026-08-27)。段落の背景色は模型に在り、画面は
             // 塗っていたのに、**組む所で落としていた**ので紙と PDF に出て
