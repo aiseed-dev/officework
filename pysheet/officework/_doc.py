@@ -77,7 +77,8 @@ class _Font(str):
 
     @bold.setter
     def bold(self, v):
-        self._run.bold = bool(v)
+        # None は「言わない」。python-docx と同じ三択
+        self._run.bold = None if v is None else bool(v)
 
     @property
     def italic(self):
@@ -85,7 +86,7 @@ class _Font(str):
 
     @italic.setter
     def italic(self, v):
-        self._run.italic = bool(v)
+        self._run.italic = None if v is None else bool(v)
 
     @property
     def underline(self):
@@ -93,7 +94,7 @@ class _Font(str):
 
     @underline.setter
     def underline(self, v):
-        self._run.underline = bool(v) and v != "none"
+        self._run.underline = None if v is None else (bool(v) and v != "none")
 
     @property
     def color(self):
@@ -108,6 +109,44 @@ class _Font(str):
     @color.setter
     def color(self, v):
         self._run.color = _rgb_moji(v)
+
+    # **模型が持っている書式は上まで。** 下は docx にある書式で、
+    # こちらは読みも書きもしません。python-docx と同じ名前で `None`
+    # (=何も言わない)を返します。持っていない物を False と答えると
+    # 「切ってある」に読めるので、そうはしません(2026-09-01)。
+    @property
+    def strike(self):
+        return self._run.strike
+
+    @strike.setter
+    def strike(self, v):
+        self._run.strike = None if v is None else bool(v)
+
+    @property
+    def subscript(self):
+        return self._run.subscript or None
+
+    @property
+    def superscript(self):
+        return self._run.superscript or None
+
+    all_caps = property(lambda self: None)
+    complex_script = property(lambda self: None)
+    cs_bold = property(lambda self: None)
+    cs_italic = property(lambda self: None)
+    double_strike = property(lambda self: None)
+    emboss = property(lambda self: None)
+    hidden = property(lambda self: None)
+    imprint = property(lambda self: None)
+    math = property(lambda self: None)
+    no_proof = property(lambda self: None)
+    outline = property(lambda self: None)
+    rtl = property(lambda self: None)
+    shadow = property(lambda self: None)
+    small_caps = property(lambda self: None)
+    snap_to_grid = property(lambda self: None)
+    spec_vanish = property(lambda self: None)
+    web_hidden = property(lambda self: None)
 
 
 def _rgb_moji(v):
@@ -153,6 +192,11 @@ class _Color(str):
         self._run = run
         return self
 
+
+    @property
+    def theme_color(self):
+        """テーマの色。**模型は RRGGBB で持ちます**ので、常に None です。"""
+        return None
     @property
     def rgb(self):
         return str(self) or None
@@ -208,7 +252,7 @@ class Run:
 
     @bold.setter
     def bold(self, v):
-        self._r.bold = bool(v)
+        self._r.bold = None if v is None else bool(v)
 
     @property
     def italic(self):
@@ -216,7 +260,7 @@ class Run:
 
     @italic.setter
     def italic(self, v):
-        self._r.italic = bool(v)
+        self._r.italic = None if v is None else bool(v)
 
     @property
     def underline(self):
@@ -224,7 +268,7 @@ class Run:
 
     @underline.setter
     def underline(self, v):
-        self._r.underline = bool(v) and v != "none"
+        self._r.underline = None if v is None else (bool(v) and v != "none")
 
     @property
     def strike(self):
@@ -232,7 +276,7 @@ class Run:
 
     @strike.setter
     def strike(self, v):
-        self._r.strike = bool(v)
+        self._r.strike = None if v is None else bool(v)
 
     @property
     def contains_page_break(self):
@@ -621,6 +665,11 @@ class _StyleColor(str):
         self._font = font
         return self
 
+
+    @property
+    def theme_color(self):
+        """テーマの色。**模型は RRGGBB で持ちます**ので、常に None です。"""
+        return None
     @property
     def rgb(self):
         return str(self) or None
@@ -650,7 +699,12 @@ class _StyleFont:
         self._name = name
 
     def _look(self):
-        return self._d.style_look(self._name) or {}
+        if self._d is None:
+            return {}
+        try:
+            return self._d.style_look(self._name) or {}
+        except Exception:
+            return {}
 
     def _set(self, **kw):
         self._d.set_style_look(self._name, **kw)
@@ -718,8 +772,104 @@ class _StyleFont:
     def name(self, v):
         self._set(font=None if v is None else str(v))
 
+    # **模型が持っていない書式。** python-docx と同じ名前で None を返します
+    all_caps = property(lambda self: None)
+    complex_script = property(lambda self: None)
+    cs_bold = property(lambda self: None)
+    cs_italic = property(lambda self: None)
+    double_strike = property(lambda self: None)
+    emboss = property(lambda self: None)
+    hidden = property(lambda self: None)
+    highlight_color = property(lambda self: None)
+    imprint = property(lambda self: None)
+    math = property(lambda self: None)
+    no_proof = property(lambda self: None)
+    outline = property(lambda self: None)
+    rtl = property(lambda self: None)
+    shadow = property(lambda self: None)
+    small_caps = property(lambda self: None)
+    snap_to_grid = property(lambda self: None)
+    spec_vanish = property(lambda self: None)
+    subscript = property(lambda self: None)
+    superscript = property(lambda self: None)
+    web_hidden = property(lambda self: None)
+
     def __repr__(self):
         return "<officework.doc StyleFont {!r}>".format(self._look())
+
+
+def _style_na(doc, sid):
+    """styleId から、表に出る名前へ。引けなければ id のまま。"""
+    try:
+        return doc.style_props(sid).get("name") or sid
+    except Exception:
+        return sid
+
+
+class _TabStops:
+    """タブの止まる位置の一覧。**模型が持っていない**ので、いつも空です。"""
+
+    __slots__ = ()
+
+    def __iter__(self):
+        return iter(())
+
+    def __len__(self):
+        return 0
+
+    def __repr__(self):
+        return "<officework.doc TabStops []>"
+
+
+class _StyleParagraphFormat:
+    """`Style.paragraph_format` の役。**読むだけ**です。
+    スタイルが言っていない所は None を返します(0 ではありません)。"""
+
+    __slots__ = ("_d",)
+
+    def __init__(self, d):
+        self._d = d or {}
+
+    @property
+    def alignment(self):
+        return self._d.get("alignment")
+
+    @property
+    def first_line_indent(self):
+        v = self._d.get("first_line_indent")
+        return None if v is None else Length.from_pt(v)
+
+    @property
+    def left_indent(self):
+        n = self._d.get("indent_level")
+        return None if not n else Length.from_pt(n * _ZEN * 2)
+
+    @property
+    def space_before(self):
+        v = self._d.get("space_before")
+        return None if v is None else Length.from_pt(v)
+
+    @property
+    def space_after(self):
+        v = self._d.get("space_after")
+        return None if v is None else Length.from_pt(v)
+
+    @property
+    def line_spacing(self):
+        return self._d.get("line_spacing")
+
+    # 模型が持っていない性質
+    keep_together = property(lambda self: None)
+    keep_with_next = property(lambda self: None)
+    line_spacing_rule = property(lambda self: None)
+    page_break_before = property(lambda self: None)
+    right_indent = property(lambda self: None)
+    widow_control = property(lambda self: None)
+    @property
+    def tab_stops(self):
+        """タブを打ったとき字が止まる位置。**模型は持っていません**ので、
+        いつも空です。足す口も今はありません。"""
+        return _TabStops()
 
 
 class StyleName(str):
@@ -734,10 +884,11 @@ class StyleName(str):
     `run.font` で使っているのと同じ手です。
     """
 
-    def __new__(cls, name, doc=None, kind="paragraph"):
+    def __new__(cls, name, doc=None, kind="paragraph", sid=None):
         self = super().__new__(cls, name or "")
         self._doc = doc
         self._kind = kind
+        self._sid = sid
         return self
 
     @property
@@ -746,17 +897,79 @@ class StyleName(str):
 
     @property
     def style_id(self):
-        return str(self)
+        """docx の中の名前(`w:styleId`)。分からなければ表に出る名前。"""
+        return self._sid or str(self)
 
     @property
     def type(self):
         return self._kind
 
+    def _props(self):
+        if self._doc is None:
+            return {}
+        try:
+            return self._doc.style_props(str(self))
+        except Exception:
+            return {}
+
     @property
     def font(self):
+        """このスタイルが言っている字の見た目。"""
         if self._doc is None:
-            raise NotImplementedError("このスタイルは文書に繋がっていません")
+            return _StyleFont(None, str(self))
         return _StyleFont(self._doc, str(self))
+
+    @property
+    def base_style(self):
+        """元になるスタイル(docx の `w:basedOn`)。無ければ None。"""
+        b = self._props().get("based_on")
+        if b is None:
+            return None
+        # `w:basedOn` は styleId です。表に出る名前に直します
+        return StyleName(_style_na(self._doc, b), self._doc, self._kind, sid=b)
+
+    @property
+    def builtin(self):
+        """Word に元からあるスタイルか。名前で見分けます。"""
+        return str(self) in _KUMIKOMI
+
+    @property
+    def hidden(self):
+        return self._props().get("hidden")
+
+    @property
+    def locked(self):
+        return self._props().get("locked")
+
+    @property
+    def quick_style(self):
+        return self._props().get("quick_style")
+
+    @property
+    def unhide_when_used(self):
+        return self._props().get("unhide_when_used")
+
+    @property
+    def priority(self):
+        return self._props().get("priority")
+
+    # **模型が持っていない性質。** python-docx と同じ名前で None を返します
+    # (持っていない物を False と答えると「切ってある」に読めます)
+    @property
+    def next_paragraph_style(self):
+        """次の段落のスタイル。docx が言っていなければ自分自身(本家と同じ)。"""
+        return self
+    @property
+    def paragraph_format(self):
+        """このスタイルが言っている段落の形。言っていない所は None。"""
+        return _StyleParagraphFormat(self._props())
+
+
+_KUMIKOMI = frozenset({
+    "Normal", "Body Text", "Title", "Subtitle", "Caption", "Quote",
+    "List Paragraph", "List Number", "List Bullet", "Header", "Footer",
+    "Default Paragraph Font", "No Spacing", "Table Grid",
+} | {f"Heading {i}" for i in range(1, 10)})
 
 
 class Style:
@@ -996,6 +1209,16 @@ class ParagraphFormat:
         self._p.line_spacing = float(v)
 
     @property
+    def line_spacing_rule(self):
+        """行間の決め方。"auto" / "exact" / "atLeast"。無指定は None。"""
+        return self._p.line_spacing_rule
+
+    @property
+    def right_indent(self):
+        """右の字下げ。**まだ模型が持っていません**ので常に None です。"""
+        return None
+
+    @property
     def page_break_before(self):
         return self._p.page_break_before
 
@@ -1005,8 +1228,10 @@ class ParagraphFormat:
 
     @property
     def first_line_indent(self):
-        """1行目の字下げ。正で字下げ、負でぶら下げ(python-docx と同じ)"""
-        return Length.from_pt(self._p.first_line_indent)
+        """1行目の字下げ。正で字下げ、負でぶら下げ(python-docx と同じ)。
+        文書が何も言っていなければ None。"""
+        v = self._p.first_line_indent
+        return None if v is None else Length.from_pt(v)
 
     @first_line_indent.setter
     def first_line_indent(self, v):
@@ -1014,21 +1239,28 @@ class ParagraphFormat:
 
     @property
     def left_indent(self):
-        """左の字下げ。**模型は段数(1段=全角2字)**なので、本文の字の
-        大きさから pt に直して返します。字の大きさを持たない段落は
-        10.5pt(既定)で数えます。"""
-        return Length.from_pt(self._p.indent_level * _ZEN * 2)
+        """左の字下げ。docx の `w:ind w:left` をそのまま返します。
+        文書が何も言っていなければ None。
+
+        段数(1段=全角2字)で持つ口は `p.indent_level` です。"""
+        v = self._p.left_indent
+        if v is None:
+            n = self._p.indent_level
+            return Length.from_pt(n * _ZEN * 2) if n else None
+        return Length.from_pt(v)
 
     @left_indent.setter
     def left_indent(self, v):
-        # 全角2字ぶんで割り切れない値は、いちばん近い段に寄せます
-        pt = 0.0 if v is None else _to_pt(v)
-        self._p.indent_level = max(0, min(9, round(pt / (_ZEN * 2))))
+        # twip をそのまま持ちます。段数の口も揃えておきます
+        pt = None if v is None else _to_pt(v)
+        self._p.left_indent = pt
+        self._p.indent_level = 0 if pt is None else max(0, min(9, round(pt / (_ZEN * 2))))
 
     @property
     def space_before(self):
         """段落の前の空き。**pt で返します**(python-docx は Length)。"""
-        return Length.from_pt(self._p.space_before)
+        v = self._p.space_before
+        return None if v is None else Length.from_pt(v)
 
     @space_before.setter
     def space_before(self, v):
@@ -1036,7 +1268,8 @@ class ParagraphFormat:
 
     @property
     def space_after(self):
-        return Length.from_pt(self._p.space_after)
+        v = self._p.space_after
+        return None if v is None else Length.from_pt(v)
 
     @space_after.setter
     def space_after(self, v):
@@ -1070,7 +1303,7 @@ class Paragraph:
     def style(self):
         """段落のスタイル。字としても `.name` でも読めます"""
         n = self._p.style
-        return None if n is None else StyleName(n)
+        return None if n is None else StyleName(n, self._p, sid=self._p.style_id)
 
     @style.setter
     def style(self, value):

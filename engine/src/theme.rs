@@ -1395,8 +1395,8 @@ fn jibun_wo_ateru(
     if para.space_after_pt == 0.0 {
         para.space_after_pt = pl.space_after_pt.unwrap_or(0.0);
     }
-    if para.line_spacing == 1.0 && para.line_pt.is_none() {
-        para.line_spacing = pl.line_spacing.unwrap_or(1.0);
+    if para.line_spacing <= 0.0 && para.line_pt.is_none() {
+        para.line_spacing = pl.line_spacing.unwrap_or(0.0);
     }
     if para.indent == 0 {
         para.indent = pl.indent.unwrap_or(0);
@@ -1471,7 +1471,7 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             para.space_after_pt = def.space_after_pt;
         }
         if let Some(ls) = def.line_spacing {
-            if para.line_spacing == 1.0 {
+            if para.line_spacing <= 0.0 {
                 para.line_spacing = ls;
             }
         }

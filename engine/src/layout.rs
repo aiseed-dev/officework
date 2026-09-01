@@ -185,8 +185,15 @@ pub struct Frame {
 /// 1行目の字下げ(mm)。段落が持つ twips から。負(ぶら下げ)は 0 とみなす。
 ///
 /// **組み手と呼ぶ側の両方が同じ値を使う**ので、ここに1つだけ置きます。
-pub(super) fn first_line_mm(para: &Paragraph) -> f32 {
-    (para.first_line_twips.max(0) as f32 / 20.0) * 25.4 / 72.0 + atama_no_gazou_mm(para)
+pub(super) fn first_line_mm(para: &Paragraph, base: f32) -> f32 {
+    // **文字数での指定は、その段落の字の大きさで解きます**(2026-09-01)。
+    // Word が書き置いた twip はその段落の大きさで解いた値なので、こちらの
+    // 既定(10.5pt)で解くとずれます。調査票は 12pt の段落で 240twip です
+    let tw = match para.first_line_chars {
+        Some(c) => c / 100.0 * base * 20.0,
+        None => para.first_line_twips as f32,
+    };
+    (tw.max(0.0) / 20.0) * 25.4 / 72.0 + atama_no_gazou_mm(para)
 }
 
 /// **段落の頭に置かれた画像の幅(mm)。**
@@ -272,7 +279,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
     // こちらが決めても、画面は空白の字をフォントの幅で描くからです
     // (2026-08-18 に実機で見て気づきました)。
     // ぶら下げ(負の値)はまだ組めないので、0 として扱います
-    let first_mm = first_line_mm(para);
+    let first_mm = first_line_mm(para, base);
 
     // 箇条書きの印は本文の前に置く。**本文の一部にはしない**ので、
     // 編集中の文字位置とずれない(印は組版のときだけ現れる)
@@ -714,7 +721,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 }
                 let para_eff: &Paragraph = owned_rest.as_ref().unwrap_or(para);
                 let measure = (measure - cap_shift).max(em);
-                let first_mm = first_line_mm(para_eff);
+                let first_mm = first_line_mm(para_eff, base);
                 for (line_no, mut cells) in break_para(para_eff, m, measure, marker.as_deref(),
                                             doc.hyphenate, &mut note_no, base).into_iter().enumerate() {
                     // 1行目だけ字下げのぶん右へ(行長は組み手が縮めている)

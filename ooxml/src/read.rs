@@ -377,9 +377,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
             }
         }
     }
-    // Word の編集で細切れになった同書式の run を読みで繋ぐ
-    // (編集で際限なく増やさない・雛形の {{ }} の保険)
-    doc.heal_runs();
+    // **読みでは run を繋ぎません**(2026-09-01)。原文の分かれ目は
+    // 原文の情報です。繋ぐのは編集の側([`kumihan::Document::heal_runs`])。
     Ok((doc, rep))
 }
 
@@ -1400,14 +1399,16 @@ pub(super) fn parse_document_rels_num(
     // 文字の書式(w:rPr)と段落の揃え(w:jc)。読んで捨てると開き直したとき消える
     let mut fmt = CharFormat::default();
     let mut align = Align::default();
+    let mut align_itta = false;
     // 箇条書き・インデント・行間(w:numPr / w:ind / w:spacing)
     let mut list = ListKind::default();
     // 文書が決めた箇条書きの印(numbering.xml の w:lvlText)
     let mut list_text: Option<String> = None;
     let mut indent = 0u8;
     let mut first_line = 0i32; // w:ind の firstLine(正)/ hanging(負)。twip のまま持つ
+    let mut first_line_chars: Option<f32> = None;
     let mut left_twips = 0i32; // w:ind の left。段数と違って丸めない(2026-08-30)
-    let mut line_spacing = 1.0f32;
+    let mut line_spacing = 0.0f32;
     let mut line_pt: Option<(f32, bool)> = None;
     let mut space_before_pt = 0.0f32;
     let mut space_after_pt = 0.0f32;
@@ -1512,8 +1513,10 @@ pub(super) fn parse_document_rels_num(
                     },
                     b"p" => { para = Some(Vec::new()); size_pt = None; font = None;
                               fmt = CharFormat::default(); align = Align::default();
+                              align_itta = false;
+                              first_line_chars = None;
                               list = ListKind::default(); indent = 0; first_line = 0;
-                              line_spacing = 1.0;
+                              line_spacing = 0.0;
                               line_pt = None;
                               space_before_pt = 0.0;
                               space_after_pt = 0.0;
@@ -1544,11 +1547,17 @@ pub(super) fn parse_document_rels_num(
                             .or_else(|| attr(&e, "hAnsi"))
                             .filter(|s| !s.is_empty());
                     }
-                    // w:val="0"/"false" は「付けない」の意味なので、有無だけで判定しない
-                    b"b" if in_rpr => fmt.bold = on(&e),
-                    b"i" if in_rpr => fmt.italic = on(&e),
-                    b"u" if in_rpr => fmt.underline = attr(&e, "val").as_deref() != Some("none"),
-                    b"strike" if in_rpr => fmt.strike = on(&e),
+                    // w:val="0"/"false" は「付けない」の意味なので、有無だけで判定しない。
+                    // **要素が在ったこと自体も覚えます**(2026-09-01)。
+                    // 「言わない」と「切ると言った」は別で、前者はスタイルから
+                    // 受け継ぎ、後者はスタイルを打ち消します
+                    b"b" if in_rpr => { fmt.bold = on(&e); fmt.itta.bold = true }
+                    b"i" if in_rpr => { fmt.italic = on(&e); fmt.itta.italic = true }
+                    b"u" if in_rpr => {
+                        fmt.underline = attr(&e, "val").as_deref() != Some("none");
+                        fmt.itta.underline = true;
+                    }
+                    b"strike" if in_rpr => { fmt.strike = on(&e); fmt.itta.strike = true }
                     b"color" if in_rpr => {
                         fmt.color = attr(&e, "val").filter(|v| !v.is_empty() && v != "auto");
                     }
@@ -1643,12 +1652,23 @@ pub(super) fn parse_document_rels_num(
                                 .and_then(|v| v.parse::<f32>().ok())
                                 .map(|v| (v / 100.0 * 210.0) as i32)
                         };
-                        first_line = ji("firstLineChars")
+                        // 文字数の指定は、そのまま覚えておきます。組むときは
+                        // その段落の字の大きさで解き直します
+                        first_line_chars = attr(&e, "firstLineChars")
+                            .and_then(|v| v.parse::<f32>().ok())
                             .or_else(|| {
-                                attr(&e, "firstLine")
+                                attr(&e, "hangingChars")
                                     .and_then(|v| v.parse::<f32>().ok())
-                                    .map(|v| v as i32)
-                            })
+                                    .map(|v| -v)
+                            });
+                        // **twip は原文のまま持ちます。** Word が書き置いた
+                        // `w:firstLine` はその段落の字の大きさで解いた値で、
+                        // python-docx が返すのもこれです。組むときは上で
+                        // 覚えた文字数から解き直します
+                        first_line = attr(&e, "firstLine")
+                            .and_then(|v| v.parse::<f32>().ok())
+                            .map(|v| v as i32)
+                            .or_else(|| ji("firstLineChars"))
                             .or_else(|| ji("hangingChars").map(|v| -v))
                             .or_else(|| {
                                 attr(&e, "hanging")
@@ -1671,6 +1691,7 @@ pub(super) fn parse_document_rels_num(
                         space_after_pt = twips("after").unwrap_or(0.0).max(0.0);
                     }
                     b"jc" if in_ppr => {
+                        align_itta = true;
                         if let Some(v) = attr(&e, "val") { align = Align::from_docx(&v); }
                     }
                     // 表の置き方・スタイル名・列幅の固定(w:tblPr の中)
@@ -2007,11 +2028,17 @@ pub(super) fn parse_document_rels_num(
                             .or_else(|| attr(&e, "hAnsi"))
                             .filter(|s| !s.is_empty());
                     }
-                    // w:val="0"/"false" は「付けない」の意味なので、有無だけで判定しない
-                    b"b" if in_rpr => fmt.bold = on(&e),
-                    b"i" if in_rpr => fmt.italic = on(&e),
-                    b"u" if in_rpr => fmt.underline = attr(&e, "val").as_deref() != Some("none"),
-                    b"strike" if in_rpr => fmt.strike = on(&e),
+                    // w:val="0"/"false" は「付けない」の意味なので、有無だけで判定しない。
+                    // **要素が在ったこと自体も覚えます**(2026-09-01)。
+                    // 「言わない」と「切ると言った」は別で、前者はスタイルから
+                    // 受け継ぎ、後者はスタイルを打ち消します
+                    b"b" if in_rpr => { fmt.bold = on(&e); fmt.itta.bold = true }
+                    b"i" if in_rpr => { fmt.italic = on(&e); fmt.itta.italic = true }
+                    b"u" if in_rpr => {
+                        fmt.underline = attr(&e, "val").as_deref() != Some("none");
+                        fmt.itta.underline = true;
+                    }
+                    b"strike" if in_rpr => { fmt.strike = on(&e); fmt.itta.strike = true }
                     b"color" if in_rpr => {
                         fmt.color = attr(&e, "val").filter(|v| !v.is_empty() && v != "auto");
                     }
@@ -2106,12 +2133,23 @@ pub(super) fn parse_document_rels_num(
                                 .and_then(|v| v.parse::<f32>().ok())
                                 .map(|v| (v / 100.0 * 210.0) as i32)
                         };
-                        first_line = ji("firstLineChars")
+                        // 文字数の指定は、そのまま覚えておきます。組むときは
+                        // その段落の字の大きさで解き直します
+                        first_line_chars = attr(&e, "firstLineChars")
+                            .and_then(|v| v.parse::<f32>().ok())
                             .or_else(|| {
-                                attr(&e, "firstLine")
+                                attr(&e, "hangingChars")
                                     .and_then(|v| v.parse::<f32>().ok())
-                                    .map(|v| v as i32)
-                            })
+                                    .map(|v| -v)
+                            });
+                        // **twip は原文のまま持ちます。** Word が書き置いた
+                        // `w:firstLine` はその段落の字の大きさで解いた値で、
+                        // python-docx が返すのもこれです。組むときは上で
+                        // 覚えた文字数から解き直します
+                        first_line = attr(&e, "firstLine")
+                            .and_then(|v| v.parse::<f32>().ok())
+                            .map(|v| v as i32)
+                            .or_else(|| ji("firstLineChars"))
                             .or_else(|| ji("hangingChars").map(|v| -v))
                             .or_else(|| {
                                 attr(&e, "hanging")
@@ -2135,6 +2173,7 @@ pub(super) fn parse_document_rels_num(
                         space_after_pt = twips("after").unwrap_or(0.0).max(0.0);
                     }
                     b"jc" if in_ppr => {
+                        align_itta = true;
                         if let Some(v) = attr(&e, "val") { align = Align::from_docx(&v); }
                     }
                     // 表の置き方・スタイル名・列幅の固定(w:tblPr の中)
@@ -2296,6 +2335,8 @@ pub(super) fn parse_document_rels_num(
                                 indent: indent.max(ilvl),
                                 left_twips,
                                 first_line_twips: first_line,
+                                first_line_chars,
+                                align_itta,
                                 line_spacing,
                                 line_pt,
                                 space_before_pt,
@@ -2879,10 +2920,12 @@ fn txbx_text(naka: &str) -> String {
 /// 行の高さが 6.4mm の決め打ちだったので割れましたが、書体から出すように
 /// 変えたので割れません(2026-09-01)。
 fn gyou_bairitsu(line: Option<f32>, rule: Option<String>) -> (f32, Option<(f32, bool)>) {
-    let Some(v) = line else { return (1.0, None) };
+    // **無指定は 0.0 です**(2026-09-01)。1.0 を入れると「1倍と言った」と
+    // 見分けが付かず、python-docx が None を返す所でうちが 1.0 を返します
+    let Some(v) = line else { return (0.0, None) };
     match rule.as_deref() {
-        Some("atLeast") => (1.0, Some((v / 20.0, false))),
-        Some("exact") => (1.0, Some((v / 20.0, true))),
+        Some("atLeast") => (0.0, Some((v / 20.0, false))),
+        Some("exact") => (0.0, Some((v / 20.0, true))),
         _ => ((v / 240.0).clamp(0.5, 5.0), None),
     }
 }

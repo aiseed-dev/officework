@@ -244,6 +244,16 @@ impl PyBook {
         Ok(lock(&self.inner)?.book.sheets.iter().map(|s| s.name.clone()).collect())
     }
 
+    /// **このブックの標準の書体**(名前, 大きさ pt)。無ければ None。
+    ///
+    /// xlsx の `styles.xml` の最初の書体です。書式を1つも持たないセルは
+    /// この書体で描かれるので、`cell.font` もこれを返します
+    /// (2026-09-01。前は None を返していて、openpyxl と食い違っていました)。
+    #[getter]
+    fn default_font(&self) -> PyResult<Option<(String, f32)>> {
+        Ok(lock(&self.inner)?.book.default_font.clone())
+    }
+
     /// 読めなかったものの帳簿 [(名前, 件数)]。空なら取りこぼしなし。
     /// **黙って落とさない** — 開いた様式に読めないものがあれば、ここに出る。
     #[getter]

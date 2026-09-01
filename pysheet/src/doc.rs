@@ -1759,6 +1759,81 @@ impl PyParagraph {
 
     /// 段落の役目かスタイル。役目を知る物は "body" / "heading1"〜 / "toc1" 等、
     /// それ以外のスタイルは**名前**(styles.xml の名乗り。無ければ styleId)。
+        /// **スタイルが言っている字の見た目を読む。** 中身は `Doc.style_look` と
+    /// 同じです。段落から直に引けると `p.style.font.size` が通ります。
+    fn style_look(&self, py: Python<'_>, name: &str) -> PyResult<Option<Py<PyAny>>> {
+        let g = lock(&self.inner)?;
+        let Some(st) = g
+            .doc
+            .styles
+            .iter()
+            .chain(g.doc.styles_new.iter())
+            .find(|s| s.name == name || s.id == name)
+        else {
+            return Ok(None);
+        };
+        let d = PyDict::new(py);
+        let l = &st.look;
+        for (k, v) in [("bold", l.bold), ("italic", l.italic),
+                       ("underline", l.underline), ("strike", l.strike)] {
+            if let Some(x) = v {
+                d.set_item(k, x)?;
+            }
+        }
+        if let Some(x) = l.size_pt {
+            d.set_item("size", x)?;
+        }
+        for (k, v) in [("color", &l.color), ("font", &l.font), ("fill", &l.fill)] {
+            if let Some(x) = v {
+                d.set_item(k, x)?;
+            }
+        }
+        Ok(Some(d.into_any().unbind()))
+    }
+
+    /// **スタイル定義の性質を読む。** 中身は `Doc.style_props` と同じです。
+    /// 段落から直に引けると、`p.style.base_style` のような書き方が通ります。
+    fn style_props<'py>(&self, py: Python<'py>, name: &str) -> PyResult<Bound<'py, PyDict>> {
+        let g = lock(&self.inner)?;
+        let s = g
+            .doc
+            .styles
+            .iter()
+            .chain(g.doc.styles_new.iter())
+            .find(|s| s.name == name || s.id == name)
+            .ok_or_else(|| PyValueError::new_err(format!("スタイル「{name}」が無い")))?;
+        let d = PyDict::new(py);
+        d.set_item("name", if s.name.is_empty() { s.id.clone() } else { s.name.clone() })?;
+        d.set_item("style_id", s.id.clone())?;
+        d.set_item("based_on", s.based_on.clone())?;
+        d.set_item("hidden", s.hidden)?;
+        d.set_item("unhide_when_used", s.unhide_when_used)?;
+        d.set_item("locked", s.locked)?;
+        d.set_item("quick_style", s.quick_style)?;
+        d.set_item("priority", s.priority)?;
+        d.set_item("alignment", s.para.align.map(align_word))?;
+        d.set_item("space_before", s.para.space_before_pt)?;
+        d.set_item("space_after", s.para.space_after_pt)?;
+        d.set_item("line_spacing", s.para.line_spacing)?;
+        d.set_item("indent_level", s.para.indent)?;
+        d.set_item(
+            "first_line_indent",
+            s.para.first_line_twips.map(|t| t as f32 / 20.0),
+        )?;
+        Ok(d)
+    }
+
+    /// **この段落のスタイルの styleId**(docx の `w:pStyle w:val`)。
+    /// 名前(`style`)ではなくファイルの中の名前です。無ければ None。
+    #[getter]
+    fn style_id(&self) -> PyResult<Option<String>> {
+        let g = lock(&self.inner)?;
+        let p = g.para(&self.loc).ok_or_else(|| {
+            PyIndexError::new_err("この段落はもう文書に無い(文書の形が変わった)")
+        })?;
+        Ok(p.style_id.clone())
+    }
+
     #[getter]
     fn style(&self) -> PyResult<String> {
         let g = lock(&self.inner)?;
@@ -1848,9 +1923,14 @@ impl PyParagraph {
     }
 
     /// 行の寄せ。"left" / "center" / "right" / "justify" / "distribute"。
+    /// **文書が何も言っていなければ `None`** です(2026-09-01)。既定は左ですが、
+    /// 「左と言った」と「言わない」は別で、後者はスタイルから受け継ぎます。
     #[getter]
-    fn align(&self) -> PyResult<String> {
-        self.with(|p| align_word(p.align).to_string())
+    fn align(&self) -> PyResult<Option<String>> {
+        self.with(|p| {
+            (p.align_itta || p.align != kumihan::Align::Left)
+                .then(|| align_word(p.align).to_string())
+        })
     }
 
     #[setter]
@@ -1867,13 +1947,17 @@ impl PyParagraph {
                 )))
             }
         };
-        self.with_mut(|p| p.align = a)
+        self.with_mut(|p| {
+            p.align = a;
+            p.align_itta = true;
+        })
     }
 
-    /// 行間の倍率(1.0 が既定)。docx の w:spacing lineRule="auto" と対。
+    /// 行間の倍率。docx の `w:spacing w:lineRule="auto"` と対です。
+    /// **文書が何も言っていなければ `None`**(1.0 とは別)。
     #[getter]
-    fn line_spacing(&self) -> PyResult<f32> {
-        self.with(|p| p.spacing())
+    fn line_spacing(&self) -> PyResult<Option<f32>> {
+        self.with(|p| (p.line_spacing > 0.0).then_some(p.line_spacing))
     }
 
     #[setter]
@@ -1891,8 +1975,9 @@ impl PyParagraph {
     /// 日本の書類は本文の1行目を全角1字ぶん下げます(10.5pt の字なら
     /// 10.5pt)。模型は docx と同じ twip で持っているので、ここで直します。
     #[getter]
-    fn first_line_indent(&self) -> PyResult<f32> {
-        self.with(|p| p.first_line_twips as f32 / 20.0)
+    /// **文書が何も言っていなければ `None`** です。
+    fn first_line_indent(&self) -> PyResult<Option<f32>> {
+        self.with(|p| (p.first_line_twips != 0).then(|| p.first_line_twips as f32 / 20.0))
     }
 
     #[setter]
@@ -1914,6 +1999,30 @@ impl PyParagraph {
         self.with(|p| p.indent as u32)
     }
 
+    /// **左の字下げ(pt)。** docx の `w:ind w:left` をそのまま。
+    /// 段数(`indent_level`)は全角2字きざみなので、細かい値はこちらです。
+    /// 何も言っていなければ `None`。
+    #[getter]
+    fn left_indent(&self) -> PyResult<Option<f32>> {
+        self.with(|p| (p.left_twips != 0).then(|| p.left_twips as f32 / 20.0))
+    }
+
+    #[setter]
+    fn set_left_indent(&self, value: Option<f32>) -> PyResult<()> {
+        self.with_mut(|p| p.left_twips = value.map_or(0, |v| (v * 20.0).round() as i32))
+    }
+
+    /// **行間の決め方。** `"auto"`(倍率)・`"exact"`(この高さで固定)・
+    /// `"atLeast"`(この高さ以上)。何も言っていなければ `None`。
+    #[getter]
+    fn line_spacing_rule(&self) -> PyResult<Option<String>> {
+        self.with(|p| match p.line_pt {
+            Some((_, true)) => Some("exact".to_string()),
+            Some((_, false)) => Some("atLeast".to_string()),
+            None => (p.line_spacing > 0.0).then(|| "auto".to_string()),
+        })
+    }
+
     #[setter]
     fn set_indent_level(&self, value: u32) -> PyResult<()> {
         if value > 9 {
@@ -1926,8 +2035,8 @@ impl PyParagraph {
     ///
     /// 開催通知のような1枚物で、見出しと本文の間を空けるのに要ります。
     #[getter]
-    fn space_before(&self) -> PyResult<f32> {
-        self.with(|p| p.space_before_pt)
+    fn space_before(&self) -> PyResult<Option<f32>> {
+        self.with(|p| (p.space_before_pt != 0.0).then_some(p.space_before_pt))
     }
 
     #[setter]
@@ -1940,8 +2049,8 @@ impl PyParagraph {
 
     /// **段落の後ろの空き(pt)**(台帳 #5)。
     #[getter]
-    fn space_after(&self) -> PyResult<f32> {
-        self.with(|p| p.space_after_pt)
+    fn space_after(&self) -> PyResult<Option<f32>> {
+        self.with(|p| (p.space_after_pt != 0.0).then_some(p.space_after_pt))
     }
 
     #[setter]
@@ -2116,24 +2225,36 @@ impl PyRun {
         self.with_mut(|r| r.font = value.filter(|v| !v.is_empty()))
     }
 
+    /// **太字。三択です。** `True` = 太字、`False` = あえて太字にしない、
+    /// `None` = 何も言わない(スタイルや文書の既定に従う)。
+    ///
+    /// python-docx と同じ約束です。前は `None` を `False` に潰していたので、
+    /// 受け継ぎの情報が消えていました(2026-09-01)。
     #[getter]
-    fn bold(&self) -> PyResult<bool> {
-        self.with(|r| r.fmt.bold)
+    fn bold(&self) -> PyResult<Option<bool>> {
+        self.with(|r| r.fmt.itta.bold.then_some(r.fmt.bold))
     }
 
     #[setter]
-    fn set_bold(&self, value: bool) -> PyResult<()> {
-        self.with_mut(|r| r.fmt.bold = value)
+    fn set_bold(&self, value: Option<bool>) -> PyResult<()> {
+        self.with_mut(|r| {
+            r.fmt.bold = value.unwrap_or(false);
+            r.fmt.itta.bold = value.is_some();
+        })
     }
 
+    /// 斜体。三択は [`bold`](Self::bold) と同じです。
     #[getter]
-    fn italic(&self) -> PyResult<bool> {
-        self.with(|r| r.fmt.italic)
+    fn italic(&self) -> PyResult<Option<bool>> {
+        self.with(|r| r.fmt.itta.italic.then_some(r.fmt.italic))
     }
 
     #[setter]
-    fn set_italic(&self, value: bool) -> PyResult<()> {
-        self.with_mut(|r| r.fmt.italic = value)
+    fn set_italic(&self, value: Option<bool>) -> PyResult<()> {
+        self.with_mut(|r| {
+            r.fmt.italic = value.unwrap_or(false);
+            r.fmt.itta.italic = value.is_some();
+        })
     }
 
     /// **蛍光ペン**(台帳 #9)。色の名前(`yellow` `green` …)か、無ければ `None`。
@@ -2151,23 +2272,30 @@ impl PyRun {
     }
 
     #[getter]
-    fn underline(&self) -> PyResult<bool> {
-        self.with(|r| r.fmt.underline)
+    fn underline(&self) -> PyResult<Option<bool>> {
+        self.with(|r| r.fmt.itta.underline.then_some(r.fmt.underline))
     }
 
     #[setter]
-    fn set_underline(&self, value: bool) -> PyResult<()> {
-        self.with_mut(|r| r.fmt.underline = value)
+    fn set_underline(&self, value: Option<bool>) -> PyResult<()> {
+        self.with_mut(|r| {
+            r.fmt.underline = value.unwrap_or(false);
+            r.fmt.itta.underline = value.is_some();
+        })
     }
 
+    /// 取り消し線。三択は [`bold`](Self::bold) と同じです。
     #[getter]
-    fn strike(&self) -> PyResult<bool> {
-        self.with(|r| r.fmt.strike)
+    fn strike(&self) -> PyResult<Option<bool>> {
+        self.with(|r| r.fmt.itta.strike.then_some(r.fmt.strike))
     }
 
     #[setter]
-    fn set_strike(&self, value: bool) -> PyResult<()> {
-        self.with_mut(|r| r.fmt.strike = value)
+    fn set_strike(&self, value: Option<bool>) -> PyResult<()> {
+        self.with_mut(|r| {
+            r.fmt.strike = value.unwrap_or(false);
+            r.fmt.itta.strike = value.is_some();
+        })
     }
 
     /// 上付き(x²)。docx の `w:vertAlign w:val="superscript"`

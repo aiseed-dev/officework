@@ -88,6 +88,40 @@ longer parsed.
 not called `styles.xml` — the interview record's is `styles2.xml` — we added
 our own on top. A package may only carry one relationship of that type.
 
+== The Python API answers like openpyxl and python-docx
+
+A test was written that walks every public property of the originals and
+compares the answers with ours. Nobody picks the list, so it grows whenever the
+originals grow. Its first run found that we were filling in defaults where the
+file states nothing.
+
+**Bold, italic, underline and strikethrough have three values now.** A docx
+writes on, off, and says-nothing as three different things. We collapsed the
+last two into `False`, which hid whether the run inherits from its style.
+`None` now means the file says nothing. On save, a run that was explicitly
+turned off is written back that way.
+
+**Paragraph alignment, line spacing, indents and spacing work the same.** They
+return `None` when the file states nothing.
+
+**Run boundaries survive reading.** Word splits runs even when the formatting
+is identical, and we joined them on read, so run-level formatting was invisible
+from Python. Joining is now the editing side's job.
+
+**A first-line indent given in characters is resolved with the paragraph's own
+size.** One character is 240 twips in a 12pt paragraph and 210 in a 10.5pt one;
+we always used 10.5pt.
+
+**A cell with no format of its own reports the workbook's default font.** It
+used to report `None`, which reads as "this cell has no font".
+
+`ws.merged_cells` was added. It iterates "B2:C3" strings and supports `in`,
+`len()` and `str()`.
+
+A paragraph's style now reaches its base style, its font and its paragraph
+format (`p.style.base_style`, `p.style.font.size`,
+`p.style.paragraph_format`).
+
 == Other changes
 
 * A cell's inner padding is Excel's two pixels

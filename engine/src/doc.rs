@@ -115,9 +115,25 @@ pub struct FootnoteRef {
     pub endnote: bool,
 }
 
+/// **書式を「言った」かどうか。** [`CharFormat::itta`] が持ちます。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct Itta {
+    pub bold: bool,
+    pub italic: bool,
+    pub underline: bool,
+    pub strike: bool,
+}
+
+impl Itta {
+    /// 1つでも言っているか
+    pub fn nanika(&self) -> bool {
+        self.bold || self.italic || self.underline || self.strike
+    }
+}
+
 /// 文字の書式。**docx の `w:rPr` に対応する。**
 ///
-/// 既定(全部 false・色なし)が素の本文。`Default` で作れば何も付かない。
+/// 既定(全部 false・色なし)が普通の本文。`Default` で作れば何も付きません。
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CharFormat {
     pub bold: bool,
@@ -156,6 +172,16 @@ pub struct CharFormat {
     /// 定義は styles.xml が持ち、こちらは名前を運んで返すだけ
     /// (2026-08-12 発注者確定 — スタイルを捨てない)
     pub style_id: Option<String>,
+    /// **どの書式を「言った」か。**
+    ///
+    /// docx の `<w:b/>` は入、`<w:b w:val="0"/>` は切、要素そのものが
+    /// 無ければ「言わない」の三択です。上の `bold` などは入か切かしか
+    /// 持てないので、言ったかどうかをここに持ちます。
+    ///
+    /// 言わない書式はスタイルや文書の既定から受け継ぎます。二択に潰すと
+    /// 受け継ぎの情報が消え、`w:val="0"`(あえて切る)も書き戻せません
+    /// (2026-09-01、python-docx との差分検査で分かりました)。
+    pub itta: Itta,
 }
 
 /// 記入欄の中身(docx の w:sdtPr)。
@@ -452,6 +478,18 @@ pub struct Paragraph {
     ///
     /// 0 は「指定なし」で、そのときは `indent` の段数を使います。
     pub left_twips: i32,
+    /// **寄せを言ったかどうか。** docx は `w:jc` が無ければ「言わない」で、
+    /// スタイルから受け継ぎます。`align` の既定は左なので、言わない場合と
+    /// 「左と言った」場合が見分けられません。ここで見分けます(2026-09-01)。
+    pub align_itta: bool,
+    /// **1行目の字下げの、文字数での指定**(docx の `w:firstLineChars` /
+    /// `w:hangingChars`。100 = 1文字)。日本語の Word はこちらでよく書きます。
+    ///
+    /// `first_line_twips` は Word がその段落の字の大きさで解いた値です。
+    /// 字の大きさが 12pt なら 100文字ぶんは 240twip、10.5pt なら 210twip に
+    /// なるので、**組むときは文字数から解き直します**(2026-09-01)。
+    /// python-docx は twip の方を返すので、読む口はそちらを渡します。
+    pub first_line_chars: Option<f32>,
     /// 1行目の字下げ(twip。正= w:firstLine、負= w:hanging のぶら下げ)。
     /// **原文の値をそのまま持って往復する** — 段落を触っても落とさないための箱で、
     /// 紙面はまだ使わない(組みに効かせるのは K4 の均等割付と同じ回で)

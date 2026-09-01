@@ -532,7 +532,7 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 }
                 w.write_event(Event::Empty(sp)).unwrap();
             }
-            if p.align != Align::Left {
+            if p.align != Align::Left || p.align_itta {
                 let mut jc = BS::new("w:jc");
                 jc.push_attribute(("w:val", p.align.as_docx()));
                 w.write_event(Event::Empty(jc)).unwrap();
@@ -759,15 +759,27 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 rf.push_attribute(("w:eastAsia", f.as_str()));
                 w.write_event(Event::Empty(rf)).unwrap();
             }
-            // 文字の書式。付いているものだけ書く
-            if run.fmt.bold { w.write_event(Event::Empty(BS::new("w:b"))).unwrap() }
-            if run.fmt.italic { w.write_event(Event::Empty(BS::new("w:i"))).unwrap() }
-            if run.fmt.underline {
+            // 文字の書式。付いているものと、**あえて切ると言った**ものを書く。
+            // 原文が `<w:b w:val="0"/>` と言っていたら、そのまま書き戻します。
+            // 落とすとスタイルの太字が復活します(2026-09-01)
+            for (tag, on, itta) in [
+                ("w:b", run.fmt.bold, run.fmt.itta.bold),
+                ("w:i", run.fmt.italic, run.fmt.itta.italic),
+                ("w:strike", run.fmt.strike, run.fmt.itta.strike),
+            ] {
+                if on {
+                    w.write_event(Event::Empty(BS::new(tag))).unwrap();
+                } else if itta {
+                    let mut t = BS::new(tag);
+                    t.push_attribute(("w:val", "0"));
+                    w.write_event(Event::Empty(t)).unwrap();
+                }
+            }
+            if run.fmt.underline || run.fmt.itta.underline {
                 let mut u = BS::new("w:u");
-                u.push_attribute(("w:val", "single"));
+                u.push_attribute(("w:val", if run.fmt.underline { "single" } else { "none" }));
                 w.write_event(Event::Empty(u)).unwrap();
             }
-            if run.fmt.strike { w.write_event(Event::Empty(BS::new("w:strike"))).unwrap() }
             if run.fmt.superscript || run.fmt.subscript {
                 let mut va = BS::new("w:vertAlign");
                 va.push_attribute(("w:val",

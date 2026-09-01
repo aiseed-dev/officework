@@ -68,6 +68,38 @@ def _cell_rc(ref):
 # 初めて効く、という openpyxl と同じ使い方。
 
 
+class MergedCells:
+    """結合している範囲の一覧。openpyxl の `MultiCellRange` と同じ使い方。"""
+
+    __slots__ = ("ranges",)
+
+    def __init__(self, ranges):
+        self.ranges = set(ranges)
+
+    def __iter__(self):
+        return iter(sorted(self.ranges))
+
+    def __len__(self):
+        return len(self.ranges)
+
+    def __contains__(self, x):
+        return str(x).upper() in self.ranges
+
+    def __str__(self):
+        return " ".join(sorted(self.ranges))
+
+    def __repr__(self):
+        return "<MergedCells [{}]>".format(self)
+
+    def __eq__(self, other):
+        if isinstance(other, MergedCells):
+            return self.ranges == other.ranges
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(frozenset(self.ranges))
+
+
 class Color:
     """色。openpyxl の Color の役(rgb だけ持つ。"RRGGBB")。"""
 
@@ -825,9 +857,13 @@ class Cell:
     @property
     def font(self):
         d = self._fmt()
+        # **書式が言っていない所は、ブックの標準の書体です**(2026-09-01)。
+        # openpyxl も styles.xml の最初の書体を返します。None を返すと、
+        # 「この升は書体を持たない」と読めてしまいます
+        kitei = self.parent.parent.default_font or (None, None)
         return Font(
-            name=d.get("font"),
-            size=d.get("size"),
+            name=d.get("font") or kitei[0],
+            size=d.get("size") or kitei[1],
             bold=d.get("bold", False),
             italic=d.get("italic", False),
             underline="single" if d.get("underline") else None,
@@ -1642,6 +1678,20 @@ class Sheet:
     def merged_cell_ranges(self):
         # openpyxl と同じ「"B2:C3" の一覧」の形で返す
         return ["{}:{}".format(a, b) for a, b in self._s.merges]
+
+    @property
+    def merged_cells(self):
+        """結合している範囲の一覧(openpyxl の `ws.merged_cells` と同じ口)。
+
+        `for r in ws.merged_cells` で "B2:C3" の形の文字列が順に出ます。
+        `"B2:C3" in ws.merged_cells` も `len()` も `str()` も使えます。
+        中身は `ws.merged_cells.ranges` にも入っています。
+
+        **読む口だけです。** 足すのは `merge_cells`、外すのは
+        `unmerge_cells` です(openpyxl は `.add` も受けますが、こちらは
+        結合の作法を1本にしています)。
+        """
+        return MergedCells("{}:{}".format(a, b) for a, b in self._s.merges)
 
     @property
     def print_area(self):

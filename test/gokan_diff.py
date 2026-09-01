@@ -72,7 +72,13 @@ def props_of(cls) -> list:
 def norm(v, depth=DEPTH):
     """答えを比べられる形に。数の 100 と 100.0 は同じ、EMU は int、
     列挙は名前、値のオブジェクトは公開の場だけの辞書に。"""
-    if v is None or isinstance(v, (bool, str, bytes)):
+    # **字を継いだ入れ物は、中身で比べます。** うちの `p.style` や
+    # `run.font` は「字としても使える入れ物」なので、字として比べると
+    # 本家の持ち物と突き合わせられません(2026-09-01)
+    if isinstance(v, str) and type(v) is not str and (
+            hasattr(v, "name") or hasattr(v, "rgb")):
+        pass
+    elif v is None or isinstance(v, (bool, str, bytes)):
         return v
     # 列挙(WD_ALIGN_PARAGRAPH.RIGHT など)は名前の小文字で —
     # うちは文字列で返す設計なので、表し方を揃えてから比べる
@@ -87,9 +93,10 @@ def norm(v, depth=DEPTH):
         return int(v)
     if isinstance(v, (list, tuple)):
         return [norm(x, depth - 1) for x in v] if depth > 0 else f"<列 {len(v)}>"
-    t = type(v).__name__
+    # **深さ切れの印にクラスの名前を使いません**(2026-09-01)。本家と
+    # こちらで名前が同じになるはずがなく、中身を見ていないのに落ちます
     if depth <= 0:
-        return f"<{t}>"
+        return "<入れ物>"
     # 値のオブジェクト(Font・Alignment・Color…)は公開の場を辞書に
     d = {}
     for n in dir(v):
@@ -106,7 +113,7 @@ def norm(v, depth=DEPTH):
         if callable(a):
             continue
         d[n] = norm(a, depth - 1)
-    return d or f"<{t}>"
+    return d or "<入れ物>"
 
 
 def cmp_prop(d: Diff, where: str, member: str, ref, mine):
@@ -152,7 +159,15 @@ XLSX_SKIP_WB = {"loaded_theme", "vba_archive", "path", "excel_base_date",
                 "shared_strings", "style_names"}
 XLSX_SKIP_WS = {"parent", "views", "HeaderFooter", "legacy_drawing",
                 "orientation", "path", "plot"}
-XLSX_SKIP_CELL = {"parent", "encoding", "base_date"}
+# **意図した違い**(python-manual の「意図した違い」に書いたもの)。
+# 理由を書かずにここへ足さないこと。
+#
+# style_id / has_style — openpyxl が自分の中に持つ書式表の番号です。
+#   同じ見た目でも並べ方で番号が変わるので、突き合わせても意味がありません。
+#   こちらは升ごとに書式そのものを持ちます(`cell.font` などで読めます)。
+#   openpyxl は結合の2升目以降を「書式なし」と答えますが、ファイルには
+#   書式の番号が書いてあります。こちらはファイルのとおりに答えます。
+XLSX_SKIP_CELL = {"parent", "encoding", "base_date", "style_id", "has_style"}
 
 
 def xlsx_diff(path: Path) -> int:
