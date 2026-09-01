@@ -24,6 +24,7 @@
 import os as _os
 
 from . import _sheet as _engine
+from ._strict import NoStrayAttributes
 
 _doc = _engine.doc
 
@@ -1704,8 +1705,11 @@ class Table:
         return repr(self._t)
 
 
-class Doc:
+class Doc(NoStrayAttributes):
     """docx の文書。エンジンの Doc を包み、python-docx の口を足す。"""
+
+    # 自分で持つ属性。ここに無い名前への代入は断ります(打ち間違い避け)
+    _own = ("_d", "_path")
 
     def __init__(self, path=None, lang=None):
         """`Doc()` は空の文書、`Doc("報告.docx")` は開きます。

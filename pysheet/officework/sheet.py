@@ -27,6 +27,7 @@ openpyxl との違いをはっきり書いておく:
 import os as _os
 
 from . import _sheet as _engine
+from ._strict import NoStrayAttributes
 
 
 def _col_letter(n):
@@ -1115,8 +1116,11 @@ class Cell:
         return "<Cell {!r}.{}>".format(self.parent.name, self.coordinate)
 
 
-class Sheet:
+class Sheet(NoStrayAttributes):
     """1枚のシート。エンジンの Sheet を包み、openpyxl の Worksheet の口を足す。"""
+
+    # 自分で持つ属性。ここに無い名前への代入は断ります(打ち間違い避け)
+    _own = ("_s", "_book", "_append_row")
 
     # openpyxl の Worksheet が持つ定数(値は openpyxl 3.1.5 の実物)
     BREAK_NONE = 0
@@ -1907,8 +1911,11 @@ class DocumentProperties:
         return "<DocumentProperties title={!r}>".format(self.title)
 
 
-class Book:
+class Book(NoStrayAttributes):
     """1冊のブック。エンジンの Book を包み、openpyxl の Workbook の口を足す。"""
+
+    # 自分で持つ属性。ここに無い名前への代入は断ります
+    _own = ("_b", "_path")
 
     def __init__(self, lang=None):
         """``lang`` は組むときの言語です(``"ja"``, ``"en"`` など)。渡さない

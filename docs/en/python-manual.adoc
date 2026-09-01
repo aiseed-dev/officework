@@ -467,6 +467,23 @@ def aggregate(r, limit, kind):   # r = [[r1c1, r1c2], [r2c1, …], …]
 Call the AI from a macro (`ribbon/` or `plugins/`) and write the result into the cell as an ordinary value.
 The same holds for a model running on your own machine.
 
+== A misspelt name is refused on the spot
+
+Assigning to a name that `Doc`, `Book` or `Sheet` does not have is refused.
+
+[source,python]
+----
+s.protectedd = True
+# AttributeError: Sheet に 'protectedd' という項目はありません。
+#                 protection の打ち間違いではありませんか
+----
+
+It used to add one more attribute and leave the sheet untouched, which
+reads to the person who wrote it as though it worked. When a close name
+exists, the message names it.
+
+Cells, colours and borders have always refused this way.
+
 == writer macros (d = python-docx)
 
 *Full manual: link:macro-manual.adoc[macro-manual.adoc]* — named fields (`fill` / `extract` / `fields`), templates (`render` / `tpl_fields`, docxtpl), selection macros for the spreadsheet, the sandbox, and having an AI write the script.
