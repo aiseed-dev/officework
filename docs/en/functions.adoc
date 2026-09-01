@@ -104,6 +104,16 @@ Arguments in `[ ]` can be omitted.
 |`AVERAGEA(value1, [value2], ...)` |Returns the average (arithmetic mean) of its arguments, evaluating text and FALSE in arguments as 0; TRUE evaluates as 1. Arguments can be numbers, names, arrays or references.
 |`AVERAGEIF(range, criteria, [average_range])` |Finds average (arithmetic mean) for the cells specified by a given condition or criteria.
 |`AVERAGEIFS(average_range, criteria_range, criteria, ...)` |Finds average (arithmetic mean) for the cells specified by a given set of conditions or criteria.
+|`BETA.DIST(x, alpha, beta, cumulative, [A], [B])` |Returns the beta probability distribution function.
+|`BETA.INV(probability, alpha, beta, [A], [B])` |Returns the inverse of the cumulative beta probability density function (BETA.DIST).
+|`BINOM.DIST(number_s, trials, probability_s, cumulative)` |Returns the individual term binomial distribution probability.
+|`BINOM.INV(trials, probability_s, alpha)` |Returns the smallest value for which the cumulative binomial distribution is greater than or equal to a criterion value.
+|`CHISQ.DIST(x, deg_freedom, cumulative)` |Returns the left-tailed probability of the chi-squared distribution.
+|`CHISQ.DIST.RT(x, deg_freedom)` |Returns the right-tailed probability of the chi-squared distribution.
+|`CHISQ.INV(probability, deg_freedom)` |Returns the inverse of the left-tailed probability of the chi-squared distribution.
+|`CHISQ.INV.RT(probability, deg_freedom)` |Returns the inverse of the right-tailed probability of the chi-squared distribution.
+|`CONFIDENCE.NORM(alpha, standard_dev, size)` |Returns the confidence interval for a population mean, using a normal distribution.
+|`CONFIDENCE.T(alpha, standard_dev, size)` |Returns the confidence interval for a population mean, using a Student's T distribution.
 |`CORREL(array1, array2)` |Returns the correlation coefficient between two data sets.
 |`COUNT(value1, [value2], ...)` |Counts the number of cells in a range that contain numbers.
 |`COUNTA(value1, [value2], ...)` |Counts the number of cells in a range that are not empty.
@@ -113,17 +123,28 @@ Arguments in `[ ]` can be omitted.
 |`COVARIANCE.P(array1, array2)` |Returns population covariance, the average of the products of deviations for each data point pair in two data sets.
 |`COVARIANCE.S(array1, array2)` |Returns sample covariance, the average of the products of deviations for each data point pair in two data sets.
 |`DEVSQ(number1, [number2], ...)` |Returns the sum of squares of deviations of data points from their sample mean.
+|`EXPON.DIST(x, lambda, cumulative)` |Returns the exponential distribution.
+|`F.DIST(x, deg_freedom1, deg_freedom2, cumulative)` |Returns the (left-tailed) F probability distribution (degree of diversity) for two data sets.
+|`F.DIST.RT(x, deg_freedom1, deg_freedom2)` |Returns the (right-tailed) F probability distribution (degree of diversity) for two data sets.
+|`F.INV(probability, deg_freedom1, deg_freedom2)` |Returns the inverse of the (left-tailed) F probability distribution: if p = F.DIST(x,...), then F.INV(p,...) = x.
+|`F.INV.RT(probability, deg_freedom1, deg_freedom2)` |Returns the inverse of the (right-tailed) F probability distribution: if p = F.DIST.RT(x,...), then F.INV.RT(p,...) = x.
 |`FISHER(x)` |Returns the Fisher transformation.
 |`FISHERINV(y)` |Returns the inverse of the Fisher transformation: if y = FISHER(x), then FISHERINV(y) = x.
 |`FORECAST(x, known_y's, known_x's)` |Calculates, or predicts, a future value along a linear trend by using existing values.
+|`GAMMA(x)` |Returns the Gamma function value.
+|`GAMMA.DIST(x, alpha, beta, cumulative)` |Returns the gamma distribution.
+|`GAMMA.INV(probability, alpha, beta)` |Returns the inverse of the gamma cumulative distribution: if p = GAMMA.DIST(x,...), then GAMMA.INV(p,...) = x.
 |`GAMMALN(x)` |Returns the natural logarithm of the gamma function.
 |`GAMMALN.PRECISE(x)` |Returns the natural logarithm of the gamma function.
 |`GAUSS(x)` |Returns 0.5 less than the standard normal cumulative distribution.
 |`GEOMEAN(number1, [number2], ...)` |Returns the geometric mean of an array or range of positive numeric data.
 |`HARMEAN(number1, [number2], ...)` |Returns the harmonic mean of a data set of positive numbers: the reciprocal of the arithmetic mean of reciprocals.
+|`HYPGEOM.DIST(sample_s, number_sample, population_s, number_pop, cumulative)` |Returns the hypergeometric distribution.
 |`INTERCEPT(known_ys, known_xs)` |Calculates the point at which a line will intersect the y-axis by using a best-fit regression line plotted through the known x-values and y-values.
 |`KURT(number1, [number2], ...)` |Returns the kurtosis of a data set.
 |`LARGE(array, k)` |Returns the k-th largest value in a data set. For example, the fifth largest number.
+|`LOGNORM.DIST(x, mean, standard_dev, cumulative)` |Returns the lognormal distribution of x, where ln(x) is normally distributed with parameters Mean and Standard_dev.
+|`LOGNORM.INV(probability, mean, standard_dev)` |Returns the inverse of the lognormal cumulative distribution function of x, where ln(x) is normally distributed with parameters Mean and Standard_dev.
 |`MAX(number1, [number2], ...)` |Returns the largest value in a set of values. Ignores logical values and text.
 |`MAXA(value1, [value2], ...)` |Returns the largest value in a set of values. Does not ignore logical values and text.
 |`MAXIFS(max_range, criteria_range, criteria, ...)` |Returns the maximum value among cells specified by a given set of conditions or criteria.
@@ -133,6 +154,11 @@ Arguments in `[ ]` can be omitted.
 |`MINIFS(min_range, criteria_range, criteria, ...)` |Returns the minimum value among cells specified by a given set of conditions or criteria.
 |`MODE(number1, [number2], ...)` |Returns the most frequently occurring, or repetitive, value in an array or range of data.
 |`MODE.MULT(number1, [number2], ...)` |Returns a vertical array of the most frequently occurring, or repetitive, values in an array or range of data. For a horizontal array, use =TRANSPOSE(MODE.MULT(number1,number2,...)).
+|`NEGBINOM.DIST(number_f, number_s, probability_s, cumulative)` |Returns the negative binomial distribution, the probability that there will be Number_f failures before the Number_s-th success, with Probability_s probability of a success.
+|`NORM.DIST(x, mean, standard_dev, cumulative)` |Returns the normal distribution for the specified mean and standard deviation.
+|`NORM.INV(probability, mean, standard_dev)` |Returns the inverse of the normal cumulative distribution for the specified mean and standard deviation.
+|`NORM.S.DIST(z, cumulative)` |Returns the standard normal distribution (has a mean of zero and a standard deviation of one).
+|`NORM.S.INV(probability)` |Returns the inverse of the standard normal cumulative distribution (has a mean of zero and a standard deviation of one).
 |`PEARSON(array1, array2)` |Returns the Pearson product moment correlation coefficient, r.
 |`PERCENTILE(array, k)` |Returns the k-th percentile of values in a range.
 |`PERCENTILE.EXC(array, k)` |Returns the k-th percentile of values in a range, where k is in the range 0..1, exclusive.
@@ -140,6 +166,7 @@ Arguments in `[ ]` can be omitted.
 |`PERCENTRANK.INC(array, x, [significance])` |Returns the rank of a value in a data set as a percentage of the data set as a percentage (0..1, inclusive) of the data set.
 |`PERMUTATIONA(number, number_chosen)` |Returns the number of permutations for a given number of objects (with repetitions) that can be selected from the total objects.
 |`PHI(x)` |Returns the value of the density function for a standard normal distribution.
+|`POISSON.DIST(x, mean, cumulative)` |Returns the Poisson distribution.
 |`QUARTILE(array, quart)` |Returns the quartile of a data set.
 |`QUARTILE.EXC(array, quart)` |Returns the quartile of a data set, based on percentile values from 0..1, exclusive.
 |`RANK(number, ref, [order])` |Returns the rank of a number in a list of numbers: its size relative to other values in the list.
@@ -158,11 +185,17 @@ Arguments in `[ ]` can be omitted.
 |`STEYX(known_y's, known_x's)` |Returns the standard error of the predicted y-value for each x in a regression.
 |`SUMIF(range, criteria, [sum_range])` |Adds the cells specified by a given condition or criteria.
 |`SUMIFS(sum_range, criteria_range, criteria, ...)` |Adds the cells specified by a given set of conditions or criteria.
+|`T.DIST(x, deg_freedom, cumulative)` |Returns the left-tailed Student's t-distribution.
+|`T.DIST.2T(x, deg_freedom)` |Returns the two-tailed Student's t-distribution.
+|`T.DIST.RT(x, deg_freedom)` |Returns the right-tailed Student's t-distribution.
+|`T.INV(probability, deg_freedom)` |Returns the left-tailed inverse of the Student's t-distribution.
+|`T.INV.2T(probability, deg_freedom)` |Returns the two-tailed inverse of the Student's t-distribution.
 |`TRIMMEAN(array, percent)` |Returns the mean of the interior portion of a set of data values.
 |`VAR(number1, [number2], ...)` |Estimates variance based on a sample (ignores logical values and text in the sample).
 |`VARA(value1, [value2], ...)` |Estimates variance based on a sample, including logical values and text. Text and the logical value FALSE have the value 0; the logical value TRUE has the value 1.
 |`VARP(number1, [number2], ...)` |Calculates variance based on the entire population (ignores logical values and text in the population).
 |`VARPA(value1, [value2], ...)` |Calculates variance based on the entire population, including logical values and text. Text and the logical value FALSE have the value 0; the logical value TRUE has the value 1.
+|`WEIBULL.DIST(x, alpha, beta, cumulative)` |Returns the Weibull distribution.
 |===
 
 == Text

@@ -1063,6 +1063,138 @@
   "XNPV": {
    "a": "(利率, 值, 日期)",
    "ad": "要套用到現金流量的折現率!對應到付款日期表的一連串現金流量!對應到現金流量的付款日期表"
+  },
+  "GAMMA": {
+   "a": "(x)",
+   "ad": "要求得分布的值"
+  },
+  "NORM.DIST": {
+   "a": "(x, 平均數, 標準差, 累積)",
+   "ad": "要求得分布的值!分布的算術平均數!分布的標準差（正數）!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "NORM.INV": {
+   "a": "(機率, 平均數, 標準差)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!分布的算術平均數!分布的標準差（正數）"
+  },
+  "NORM.S.DIST": {
+   "a": "(z, 累積)",
+   "ad": "要求得分布的值!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "NORM.S.INV": {
+   "a": "(機率)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間"
+  },
+  "LOGNORM.DIST": {
+   "a": "(x, 平均數, 標準差, 累積)",
+   "ad": "要求得分布的值!分布的算術平均數!分布的標準差（正數）!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "LOGNORM.INV": {
+   "a": "(機率, 平均數, 標準差)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!分布的算術平均數!分布的標準差（正數）"
+  },
+  "EXPON.DIST": {
+   "a": "(x, lambda, 累積)",
+   "ad": "要求得分布的值!參數值（正數）!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "WEIBULL.DIST": {
+   "a": "(x, alpha, beta, 累積)",
+   "ad": "要求得分布的值!分布的參數（正數）!分布的參數（正數）!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "GAMMA.DIST": {
+   "a": "(x, alpha, beta, 累積)",
+   "ad": "要求得分布的值!分布的參數（正數）!分布的參數（正數）!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "GAMMA.INV": {
+   "a": "(機率, alpha, beta)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!分布的參數（正數）!分布的參數（正數）"
+  },
+  "CHISQ.DIST": {
+   "a": "(x, 自由度, 累積)",
+   "ad": "要求得分布的值!自由度!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "CHISQ.DIST.RT": {
+   "a": "(x, 自由度)",
+   "ad": "要求得分布的值!自由度"
+  },
+  "CHISQ.INV": {
+   "a": "(機率, 自由度)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!自由度"
+  },
+  "CHISQ.INV.RT": {
+   "a": "(機率, 自由度)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!自由度"
+  },
+  "POISSON.DIST": {
+   "a": "(x, 平均數, 累積)",
+   "ad": "要求得分布的值!分布的算術平均數!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "BINOM.DIST": {
+   "a": "(成功次數, 試驗次數, 成功機率, 累積)",
+   "ad": "試驗的成功次數!獨立試驗的次數!每次試驗的成功機率!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "BINOM.INV": {
+   "a": "(試驗次數, 成功機率, alpha)",
+   "ad": "獨立試驗的次數!每次試驗的成功機率!分布的參數（正數）"
+  },
+  "NEGBINOM.DIST": {
+   "a": "(失敗次數, 成功次數, 成功機率, 累積)",
+   "ad": "失敗的次數!試驗的成功次數!每次試驗的成功機率!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "HYPGEOM.DIST": {
+   "a": "(樣本成功次數, 樣本數, 母體成功次數, 母體大小, 累積)",
+   "ad": "樣本中成功的次數!樣本的大小!母體中成功的次數!母體的大小!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "T.DIST": {
+   "a": "(x, 自由度, 累積)",
+   "ad": "要求得分布的值!自由度!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "T.DIST.RT": {
+   "a": "(x, 自由度)",
+   "ad": "要求得分布的值!自由度"
+  },
+  "T.DIST.2T": {
+   "a": "(x, 自由度)",
+   "ad": "要求得分布的值!自由度"
+  },
+  "T.INV": {
+   "a": "(機率, 自由度)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!自由度"
+  },
+  "T.INV.2T": {
+   "a": "(機率, 自由度)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!自由度"
+  },
+  "F.DIST": {
+   "a": "(x, 自由度1, 自由度2, 累積)",
+   "ad": "要求得分布的值!分子的自由度!分母的自由度!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "F.DIST.RT": {
+   "a": "(x, 自由度1, 自由度2)",
+   "ad": "要求得分布的值!分子的自由度!分母的自由度"
+  },
+  "F.INV": {
+   "a": "(機率, 自由度1, 自由度2)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!分子的自由度!分母的自由度"
+  },
+  "F.INV.RT": {
+   "a": "(機率, 自由度1, 自由度2)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!分子的自由度!分母的自由度"
+  },
+  "BETA.DIST": {
+   "a": "(x, alpha, beta, 累積, [A], [B])",
+   "ad": "要求得分布的值!分布的參數（正數）!分布的參數（正數）!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE!x 區間的選擇性下限。若省略，A = 0!x 區間的選擇性上限。若省略，B = 1"
+  },
+  "BETA.INV": {
+   "a": "(機率, alpha, beta, [A], [B])",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!分布的參數（正數）!分布的參數（正數）!x 區間的選擇性下限。若省略，A = 0!x 區間的選擇性上限。若省略，B = 1"
+  },
+  "CONFIDENCE.NORM": {
+   "a": "(alpha, 標準差, 樣本數)",
+   "ad": "用來計算信賴水準的顯著水準，大於 0 且小於 1!分布的標準差（正數）!樣本的大小"
+  },
+  "CONFIDENCE.T": {
+   "a": "(alpha, 標準差, 樣本數)",
+   "ad": "用來計算信賴水準的顯著水準，大於 0 且小於 1!分布的標準差（正數）!樣本的大小"
   }
  },
  "id": {
@@ -1851,6 +1983,105 @@
   },
   "XNPV": {
    "a": "(suku_bunga, nilai, tanggal)"
+  },
+  "GAMMA": {
+   "a": "(x)"
+  },
+  "NORM.DIST": {
+   "a": "(x, rata_rata, simpangan_baku, kumulatif)"
+  },
+  "NORM.INV": {
+   "a": "(probabilitas, rata_rata, simpangan_baku)"
+  },
+  "NORM.S.DIST": {
+   "a": "(z, kumulatif)"
+  },
+  "NORM.S.INV": {
+   "a": "(probabilitas)"
+  },
+  "LOGNORM.DIST": {
+   "a": "(x, rata_rata, simpangan_baku, kumulatif)"
+  },
+  "LOGNORM.INV": {
+   "a": "(probabilitas, rata_rata, simpangan_baku)"
+  },
+  "EXPON.DIST": {
+   "a": "(x, lambda, kumulatif)"
+  },
+  "WEIBULL.DIST": {
+   "a": "(x, alfa, beta, kumulatif)"
+  },
+  "GAMMA.DIST": {
+   "a": "(x, alfa, beta, kumulatif)"
+  },
+  "GAMMA.INV": {
+   "a": "(probabilitas, alfa, beta)"
+  },
+  "CHISQ.DIST": {
+   "a": "(x, derajat_kebebasan, kumulatif)"
+  },
+  "CHISQ.DIST.RT": {
+   "a": "(x, derajat_kebebasan)"
+  },
+  "CHISQ.INV": {
+   "a": "(probabilitas, derajat_kebebasan)"
+  },
+  "CHISQ.INV.RT": {
+   "a": "(probabilitas, derajat_kebebasan)"
+  },
+  "POISSON.DIST": {
+   "a": "(x, rata_rata, kumulatif)"
+  },
+  "BINOM.DIST": {
+   "a": "(jumlah_sukses, percobaan, probabilitas_sukses, kumulatif)"
+  },
+  "BINOM.INV": {
+   "a": "(percobaan, probabilitas_sukses, alfa)"
+  },
+  "NEGBINOM.DIST": {
+   "a": "(jumlah_gagal, jumlah_sukses, probabilitas_sukses, kumulatif)"
+  },
+  "HYPGEOM.DIST": {
+   "a": "(sukses_sampel, ukuran_sampel, sukses_populasi, ukuran_populasi, kumulatif)"
+  },
+  "T.DIST": {
+   "a": "(x, derajat_kebebasan, kumulatif)"
+  },
+  "T.DIST.RT": {
+   "a": "(x, derajat_kebebasan)"
+  },
+  "T.DIST.2T": {
+   "a": "(x, derajat_kebebasan)"
+  },
+  "T.INV": {
+   "a": "(probabilitas, derajat_kebebasan)"
+  },
+  "T.INV.2T": {
+   "a": "(probabilitas, derajat_kebebasan)"
+  },
+  "F.DIST": {
+   "a": "(x, derajat_kebebasan1, derajat_kebebasan2, kumulatif)"
+  },
+  "F.DIST.RT": {
+   "a": "(x, derajat_kebebasan1, derajat_kebebasan2)"
+  },
+  "F.INV": {
+   "a": "(probabilitas, derajat_kebebasan1, derajat_kebebasan2)"
+  },
+  "F.INV.RT": {
+   "a": "(probabilitas, derajat_kebebasan1, derajat_kebebasan2)"
+  },
+  "BETA.DIST": {
+   "a": "(x, alfa, beta, kumulatif, [A], [B])"
+  },
+  "BETA.INV": {
+   "a": "(probabilitas, alfa, beta, [A], [B])"
+  },
+  "CONFIDENCE.NORM": {
+   "a": "(alfa, simpangan_baku, ukuran)"
+  },
+  "CONFIDENCE.T": {
+   "a": "(alfa, simpangan_baku, ukuran)"
   }
  },
  "ko": {
@@ -2624,6 +2855,105 @@
   },
   "XNPV": {
    "a": "(할인율, 값, 날짜)"
+  },
+  "GAMMA": {
+   "a": "(x)"
+  },
+  "NORM.DIST": {
+   "a": "(x, 평균, 표준_편차, 누적)"
+  },
+  "NORM.INV": {
+   "a": "(확률, 평균, 표준_편차)"
+  },
+  "NORM.S.DIST": {
+   "a": "(z, 누적)"
+  },
+  "NORM.S.INV": {
+   "a": "(확률)"
+  },
+  "LOGNORM.DIST": {
+   "a": "(x, 평균, 표준_편차, 누적)"
+  },
+  "LOGNORM.INV": {
+   "a": "(확률, 평균, 표준_편차)"
+  },
+  "EXPON.DIST": {
+   "a": "(x, 람다, 누적)"
+  },
+  "WEIBULL.DIST": {
+   "a": "(x, 알파, 베타, 누적)"
+  },
+  "GAMMA.DIST": {
+   "a": "(x, 알파, 베타, 누적)"
+  },
+  "GAMMA.INV": {
+   "a": "(확률, 알파, 베타)"
+  },
+  "CHISQ.DIST": {
+   "a": "(x, 자유도, 누적)"
+  },
+  "CHISQ.DIST.RT": {
+   "a": "(x, 자유도)"
+  },
+  "CHISQ.INV": {
+   "a": "(확률, 자유도)"
+  },
+  "CHISQ.INV.RT": {
+   "a": "(확률, 자유도)"
+  },
+  "POISSON.DIST": {
+   "a": "(x, 평균, 누적)"
+  },
+  "BINOM.DIST": {
+   "a": "(성공수, 시행횟수, 성공확률, 누적)"
+  },
+  "BINOM.INV": {
+   "a": "(시행횟수, 성공확률, 알파)"
+  },
+  "NEGBINOM.DIST": {
+   "a": "(실패수, 성공수, 성공확률, 누적)"
+  },
+  "HYPGEOM.DIST": {
+   "a": "(표본성공수, 표본수, 모집단성공수, 모집단수, 누적)"
+  },
+  "T.DIST": {
+   "a": "(x, 자유도, 누적)"
+  },
+  "T.DIST.RT": {
+   "a": "(x, 자유도)"
+  },
+  "T.DIST.2T": {
+   "a": "(x, 자유도)"
+  },
+  "T.INV": {
+   "a": "(확률, 자유도)"
+  },
+  "T.INV.2T": {
+   "a": "(확률, 자유도)"
+  },
+  "F.DIST": {
+   "a": "(x, 자유도1, 자유도2, 누적)"
+  },
+  "F.DIST.RT": {
+   "a": "(x, 자유도1, 자유도2)"
+  },
+  "F.INV": {
+   "a": "(확률, 자유도1, 자유도2)"
+  },
+  "F.INV.RT": {
+   "a": "(확률, 자유도1, 자유도2)"
+  },
+  "BETA.DIST": {
+   "a": "(x, 알파, 베타, 누적, [A], [B])"
+  },
+  "BETA.INV": {
+   "a": "(확률, 알파, 베타, [A], [B])"
+  },
+  "CONFIDENCE.NORM": {
+   "a": "(알파, 표준_편차, 표본크기)"
+  },
+  "CONFIDENCE.T": {
+   "a": "(알파, 표준_편차, 표본크기)"
   }
  },
  "vi": {
@@ -3382,6 +3712,105 @@
   },
   "XNPV": {
    "a": "(lãi_suất, các_giá_trị, ngày_tháng)"
+  },
+  "GAMMA": {
+   "a": "(x)"
+  },
+  "NORM.DIST": {
+   "a": "(x, trung_bình, độ_lệch_chuẩn, lũy_tích)"
+  },
+  "NORM.INV": {
+   "a": "(xác_suất, trung_bình, độ_lệch_chuẩn)"
+  },
+  "NORM.S.DIST": {
+   "a": "(z, lũy_tích)"
+  },
+  "NORM.S.INV": {
+   "a": "(xác_suất)"
+  },
+  "LOGNORM.DIST": {
+   "a": "(x, trung_bình, độ_lệch_chuẩn, lũy_tích)"
+  },
+  "LOGNORM.INV": {
+   "a": "(xác_suất, trung_bình, độ_lệch_chuẩn)"
+  },
+  "EXPON.DIST": {
+   "a": "(x, lambda, lũy_tích)"
+  },
+  "WEIBULL.DIST": {
+   "a": "(x, alpha, beta, lũy_tích)"
+  },
+  "GAMMA.DIST": {
+   "a": "(x, alpha, beta, lũy_tích)"
+  },
+  "GAMMA.INV": {
+   "a": "(xác_suất, alpha, beta)"
+  },
+  "CHISQ.DIST": {
+   "a": "(x, bậc_tự_do, lũy_tích)"
+  },
+  "CHISQ.DIST.RT": {
+   "a": "(x, bậc_tự_do)"
+  },
+  "CHISQ.INV": {
+   "a": "(xác_suất, bậc_tự_do)"
+  },
+  "CHISQ.INV.RT": {
+   "a": "(xác_suất, bậc_tự_do)"
+  },
+  "POISSON.DIST": {
+   "a": "(x, trung_bình, lũy_tích)"
+  },
+  "BINOM.DIST": {
+   "a": "(số_thành_công, số_phép_thử, xác_suất_thành_công, lũy_tích)"
+  },
+  "BINOM.INV": {
+   "a": "(số_phép_thử, xác_suất_thành_công, alpha)"
+  },
+  "NEGBINOM.DIST": {
+   "a": "(số_thất_bại, số_thành_công, xác_suất_thành_công, lũy_tích)"
+  },
+  "HYPGEOM.DIST": {
+   "a": "(thành_công_mẫu, cỡ_mẫu, thành_công_tổng_thể, cỡ_tổng_thể, lũy_tích)"
+  },
+  "T.DIST": {
+   "a": "(x, bậc_tự_do, lũy_tích)"
+  },
+  "T.DIST.RT": {
+   "a": "(x, bậc_tự_do)"
+  },
+  "T.DIST.2T": {
+   "a": "(x, bậc_tự_do)"
+  },
+  "T.INV": {
+   "a": "(xác_suất, bậc_tự_do)"
+  },
+  "T.INV.2T": {
+   "a": "(xác_suất, bậc_tự_do)"
+  },
+  "F.DIST": {
+   "a": "(x, bậc_tự_do1, bậc_tự_do2, lũy_tích)"
+  },
+  "F.DIST.RT": {
+   "a": "(x, bậc_tự_do1, bậc_tự_do2)"
+  },
+  "F.INV": {
+   "a": "(xác_suất, bậc_tự_do1, bậc_tự_do2)"
+  },
+  "F.INV.RT": {
+   "a": "(xác_suất, bậc_tự_do1, bậc_tự_do2)"
+  },
+  "BETA.DIST": {
+   "a": "(x, alpha, beta, lũy_tích, [A], [B])"
+  },
+  "BETA.INV": {
+   "a": "(xác_suất, alpha, beta, [A], [B])"
+  },
+  "CONFIDENCE.NORM": {
+   "a": "(alpha, độ_lệch_chuẩn, cỡ_mẫu)"
+  },
+  "CONFIDENCE.T": {
+   "a": "(alpha, độ_lệch_chuẩn, cỡ_mẫu)"
   }
  },
  "zh": {
@@ -3402,6 +3831,27 @@
   },
   "LOOKUP": {
    "ad": "LOOKUP 要在查找向量中查找的值，可以是数值、文本、逻辑值，也可以是数值的的名称或引用!只包含单行或单列的单元格区域，其值为文本，数值或者逻辑值且以升序排序!只包含单行或单列的单元格区域，与查找向量大小相同!LOOKUP 要在数组中查找的值，可以是数值、文本、逻辑值，也可以是数值的名称或引用!包含文本、数值或逻辑值的单元格区域，用来同查找值相比较"
+  },
+  "GAMMA": {
+   "a": "(x)"
+  },
+  "FISHER": {
+   "a": "(x)"
+  },
+  "GAMMALN": {
+   "a": "(x)"
+  },
+  "GAMMALN.PRECISE": {
+   "a": "(x)"
+  },
+  "GAUSS": {
+   "a": "(x)"
+  },
+  "PHI": {
+   "a": "(x)"
+  },
+  "FISHERINV": {
+   "a": "(y)"
   }
  },
  "fr": {

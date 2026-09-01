@@ -477,6 +477,90 @@ pub(super) fn norm_cdf(z: f64) -> f64 {
     0.5 * (1.0 + erf(z / std::f64::consts::SQRT_2))
 }
 
+/// 正則化不完全ベータ I_x(a, b)(Lentz 法の連分数)。
+/// 二項・t・F・ベータ分布の土台
+pub(super) fn beta_i(a: f64, b: f64, x: f64) -> f64 {
+    if x <= 0.0 {
+        return 0.0;
+    }
+    if x >= 1.0 {
+        return 1.0;
+    }
+    let bt = (ln_gamma(a + b) - ln_gamma(a) - ln_gamma(b) + a * x.ln() + b * (1.0 - x).ln())
+        .exp();
+    let cf = |a: f64, b: f64, x: f64| -> f64 {
+        let tiny = 1e-300;
+        let (qab, qap, qam) = (a + b, a + 1.0, a - 1.0);
+        let mut c = 1.0;
+        let mut d = 1.0 - qab * x / qap;
+        if d.abs() < tiny {
+            d = tiny;
+        }
+        d = 1.0 / d;
+        let mut h = d;
+        for m in 1..300 {
+            let m = m as f64;
+            let m2 = 2.0 * m;
+            let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+            d = 1.0 + aa * d;
+            if d.abs() < tiny {
+                d = tiny;
+            }
+            c = 1.0 + aa / c;
+            if c.abs() < tiny {
+                c = tiny;
+            }
+            d = 1.0 / d;
+            h *= d * c;
+            let aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+            d = 1.0 + aa * d;
+            if d.abs() < tiny {
+                d = tiny;
+            }
+            c = 1.0 + aa / c;
+            if c.abs() < tiny {
+                c = tiny;
+            }
+            d = 1.0 / d;
+            let del = d * c;
+            h *= del;
+            if (del - 1.0).abs() < 1e-16 {
+                break;
+            }
+        }
+        h
+    };
+    if x < (a + 1.0) / (a + b + 2.0) {
+        bt * cf(a, b, x) / a
+    } else {
+        1.0 - bt * cf(b, a, 1.0 - x) / b
+    }
+}
+
+/// 累積分布の逆(分布は単調なので挟み撃ちで解ける)。
+/// 上限は cdf が p を超えるまで倍々に広げる
+pub(super) fn invert_cdf_pos(cdf: &dyn Fn(f64) -> f64, p: f64) -> Option<f64> {
+    let mut hi = 1.0;
+    for _ in 0..600 {
+        if cdf(hi) >= p {
+            break;
+        }
+        hi *= 2.0;
+    }
+    bisect(&|x| cdf(x) - p, 0.0, hi)
+}
+
+/// 標準正規分布の逆(確率 → z)。0 < p < 1 で呼ぶこと
+pub(super) fn probit(p: f64) -> Option<f64> {
+    bisect(&|z| norm_cdf(z) - p, -40.0, 40.0)
+}
+
+/// t 分布の下側確率
+pub(super) fn t_cdf(x: f64, df: f64) -> f64 {
+    let tail = 0.5 * beta_i(df / 2.0, 0.5, df / (df + x * x));
+    if x >= 0.0 { 1.0 - tail } else { tail }
+}
+
 /// NETWORKDAYS.INTL / WORKDAY.INTL の「週末」の引数 → 曜日の表
 /// (0=日曜 … 6=土曜、true = 休む日)。数(1〜7 は2日続き・11〜17 は
 /// 1日だけ)と "0000011" の7文字(月曜始まり)を受ける。読めなければ None。
@@ -2459,6 +2543,443 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                 Value::Error("#NUM!".into())
             } else {
                 Value::Number((x - m) / s)
+            }
+        }
+        // ---- 分布 ----
+        "GAMMA" => {
+            let x = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            if x <= 0.0 && x.fract() == 0.0 {
+                Value::Error("#NUM!".into())
+            } else if x > 0.0 {
+                Value::Number(ln_gamma(x).exp())
+            } else {
+                // 負の非整数は反射律 Γ(x) = π / (sin(πx) Γ(1−x))
+                let s = (std::f64::consts::PI * x).sin();
+                Value::Number(std::f64::consts::PI / (s * ln_gamma(1.0 - x).exp()))
+            }
+        }
+        "NORM.DIST" | "NORM.S.DIST" | "NORMDIST" | "NORMSDIST" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let x = g(0);
+            let s_form = name.contains("S.") || name == "NORMSDIST";
+            let (m, s, cum) = if s_form {
+                (0.0, 1.0, a.get(1).map(|v| v.as_number() != 0.0).unwrap_or(true))
+            } else {
+                (g(1), g(2), a.get(3).map(|v| v.as_number() != 0.0).unwrap_or(true))
+            };
+            if s <= 0.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let z = (x - m) / s;
+            Value::Number(if cum {
+                norm_cdf(z)
+            } else {
+                (-z * z / 2.0).exp() / (s * (2.0 * std::f64::consts::PI).sqrt())
+            })
+        }
+        "NORM.INV" | "NORM.S.INV" | "NORMINV" | "NORMSINV" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let p = g(0);
+            let s_form = name.contains("S.") || name == "NORMSINV";
+            let (m, s) = if s_form { (0.0, 1.0) } else { (g(1), g(2)) };
+            if !(0.0..1.0).contains(&p) || p == 0.0 || s <= 0.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            match probit(p) {
+                Some(z) => Value::Number(m + s * z),
+                None => Value::Error("#NUM!".into()),
+            }
+        }
+        "LOGNORM.DIST" | "LOGNORM.INV" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (x, m, s) = (g(0), g(1), g(2));
+            if s <= 0.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            if name == "LOGNORM.INV" {
+                if !(0.0..1.0).contains(&x) || x == 0.0 {
+                    return Ok(Value::Error("#NUM!".into()));
+                }
+                return Ok(match probit(x) {
+                    Some(z) => Value::Number((m + s * z).exp()),
+                    None => Value::Error("#NUM!".into()),
+                });
+            }
+            let cum = a.get(3).map(|v| v.as_number() != 0.0).unwrap_or(true);
+            if x <= 0.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let z = (x.ln() - m) / s;
+            Value::Number(if cum {
+                norm_cdf(z)
+            } else {
+                (-z * z / 2.0).exp()
+                    / (x * s * (2.0 * std::f64::consts::PI).sqrt())
+            })
+        }
+        "EXPON.DIST" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (x, lambda) = (g(0), g(1));
+            let cum = a.get(2).map(|v| v.as_number() != 0.0).unwrap_or(true);
+            if x < 0.0 || lambda <= 0.0 {
+                Value::Error("#NUM!".into())
+            } else if cum {
+                Value::Number(1.0 - (-lambda * x).exp())
+            } else {
+                Value::Number(lambda * (-lambda * x).exp())
+            }
+        }
+        "WEIBULL.DIST" | "WEIBULL" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (x, alpha, beta) = (g(0), g(1), g(2));
+            let cum = a.get(3).map(|v| v.as_number() != 0.0).unwrap_or(true);
+            if x < 0.0 || alpha <= 0.0 || beta <= 0.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let t = (x / beta).powf(alpha);
+            Value::Number(if cum {
+                1.0 - (-t).exp()
+            } else {
+                alpha / beta * (x / beta).powf(alpha - 1.0) * (-t).exp()
+            })
+        }
+        "GAMMA.DIST" | "GAMMADIST" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (x, alpha, beta) = (g(0), g(1), g(2));
+            let cum = a.get(3).map(|v| v.as_number() != 0.0).unwrap_or(true);
+            if x < 0.0 || alpha <= 0.0 || beta <= 0.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            Value::Number(if cum {
+                gamma_p(alpha, x / beta)
+            } else if x == 0.0 {
+                if alpha < 1.0 {
+                    return Ok(Value::Error("#NUM!".into()));
+                } else if alpha == 1.0 {
+                    1.0 / beta
+                } else {
+                    0.0
+                }
+            } else {
+                ((alpha - 1.0) * x.ln() - x / beta - ln_gamma(alpha) - alpha * beta.ln())
+                    .exp()
+            })
+        }
+        "GAMMA.INV" | "GAMMAINV" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (p, alpha, beta) = (g(0), g(1), g(2));
+            if !(0.0..1.0).contains(&p) || alpha <= 0.0 || beta <= 0.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            match invert_cdf_pos(&|x| gamma_p(alpha, x / beta), p) {
+                Some(x) => Value::Number(x),
+                None => Value::Error("#NUM!".into()),
+            }
+        }
+        "CHISQ.DIST" | "CHISQ.DIST.RT" | "CHIDIST" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (x, df) = (g(0), g(1).floor());
+            let rt = name != "CHISQ.DIST";
+            let cum =
+                rt || a.get(2).map(|v| v.as_number() != 0.0).unwrap_or(true);
+            if x < 0.0 || df < 1.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let p = gamma_p(df / 2.0, x / 2.0);
+            Value::Number(if rt {
+                1.0 - p
+            } else if cum {
+                p
+            } else if x == 0.0 {
+                if df < 2.0 {
+                    return Ok(Value::Error("#NUM!".into()));
+                } else if df == 2.0 {
+                    0.5
+                } else {
+                    0.0
+                }
+            } else {
+                ((df / 2.0 - 1.0) * x.ln() - x / 2.0 - ln_gamma(df / 2.0)
+                    - (df / 2.0) * 2f64.ln())
+                    .exp()
+            })
+        }
+        "CHISQ.INV" | "CHISQ.INV.RT" | "CHIINV" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (mut p, df) = (g(0), g(1).floor());
+            if name != "CHISQ.INV" {
+                p = 1.0 - p;
+            }
+            if !(0.0..1.0).contains(&p) || df < 1.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            match invert_cdf_pos(&|x| gamma_p(df / 2.0, x / 2.0), p) {
+                Some(x) => Value::Number(x),
+                None => Value::Error("#NUM!".into()),
+            }
+        }
+        "POISSON.DIST" | "POISSON" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (x, m) = (g(0).floor(), g(1));
+            let cum = a.get(2).map(|v| v.as_number() != 0.0).unwrap_or(true);
+            if x < 0.0 || m < 0.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            Value::Number(if cum {
+                1.0 - gamma_p(x + 1.0, m)
+            } else if m == 0.0 {
+                if x == 0.0 { 1.0 } else { 0.0 }
+            } else {
+                (x * m.ln() - m - ln_gamma(x + 1.0)).exp()
+            })
+        }
+        "BINOM.DIST" | "BINOMDIST" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (k, n, p) = (g(0).floor(), g(1).floor(), g(2));
+            let cum = a.get(3).map(|v| v.as_number() != 0.0).unwrap_or(true);
+            if k < 0.0 || k > n || !(0.0..=1.0).contains(&p) {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let pmf = |k: f64| -> f64 {
+                if p == 0.0 {
+                    return if k == 0.0 { 1.0 } else { 0.0 };
+                }
+                if p == 1.0 {
+                    return if k == n { 1.0 } else { 0.0 };
+                }
+                (ln_gamma(n + 1.0) - ln_gamma(k + 1.0) - ln_gamma(n - k + 1.0)
+                    + k * p.ln()
+                    + (n - k) * (1.0 - p).ln())
+                    .exp()
+            };
+            Value::Number(if !cum {
+                pmf(k)
+            } else if k >= n {
+                1.0
+            } else {
+                // P(X ≤ k) = I_{1-p}(n-k, k+1)
+                beta_i(n - k, k + 1.0, 1.0 - p)
+            })
+        }
+        "BINOM.INV" | "CRITBINOM" => {
+            // 累積確率が基準以上になる最小の回数
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (n, p, alpha) = (g(0).floor(), g(1), g(2));
+            if n < 0.0 || !(0.0..=1.0).contains(&p) || !(0.0..=1.0).contains(&alpha) {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let mut c = 0.0;
+            let mut ans = n;
+            for k in 0..=n as i64 {
+                let k = k as f64;
+                c += (ln_gamma(n + 1.0) - ln_gamma(k + 1.0) - ln_gamma(n - k + 1.0)
+                    + if p > 0.0 { k * p.ln() } else if k == 0.0 { 0.0 } else { f64::NEG_INFINITY }
+                    + if p < 1.0 { (n - k) * (1.0 - p).ln() } else if k == n { 0.0 } else { f64::NEG_INFINITY })
+                    .exp();
+                if c >= alpha {
+                    ans = k;
+                    break;
+                }
+            }
+            Value::Number(ans)
+        }
+        "NEGBINOM.DIST" | "NEGBINOMDIST" => {
+            // 失敗が f 回、成功が s 回になる確率
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (f, s, p) = (g(0).floor(), g(1).floor(), g(2));
+            let cum = a.get(3).map(|v| v.as_number() != 0.0).unwrap_or(false);
+            if f < 0.0 || s < 1.0 || !(0.0..=1.0).contains(&p) {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            Value::Number(if cum {
+                beta_i(s, f + 1.0, p)
+            } else {
+                (ln_gamma(f + s) - ln_gamma(f + 1.0) - ln_gamma(s)
+                    + s * p.ln()
+                    + f * (1.0 - p).ln())
+                    .exp()
+            })
+        }
+        "HYPGEOM.DIST" | "HYPGEOMDIST" => {
+            // 標本 n 個のうち当たりが k 個(母集団 nn 個・当たり kk 個)
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (k, n, kk, nn) = (g(0).floor(), g(1).floor(), g(2).floor(), g(3).floor());
+            let cum = a.get(4).map(|v| v.as_number() != 0.0).unwrap_or(false);
+            let lo = (n + kk - nn).max(0.0);
+            let hi = n.min(kk);
+            if k < lo || k > hi || n < 0.0 || kk < 0.0 || nn < 1.0 || n > nn || kk > nn {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let lnc = |n: f64, k: f64| -> f64 {
+                ln_gamma(n + 1.0) - ln_gamma(k + 1.0) - ln_gamma(n - k + 1.0)
+            };
+            let pmf =
+                |k: f64| -> f64 { (lnc(kk, k) + lnc(nn - kk, n - k) - lnc(nn, n)).exp() };
+            Value::Number(if cum {
+                let mut sum = 0.0;
+                let mut j = lo;
+                while j <= k {
+                    sum += pmf(j);
+                    j += 1.0;
+                }
+                sum
+            } else {
+                pmf(k)
+            })
+        }
+        "T.DIST" | "T.DIST.RT" | "T.DIST.2T" | "TDIST" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (x, df) = (g(0), g(1).floor());
+            if df < 1.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            match name {
+                "T.DIST" => {
+                    let cum = a.get(2).map(|v| v.as_number() != 0.0).unwrap_or(true);
+                    Value::Number(if cum {
+                        t_cdf(x, df)
+                    } else {
+                        (ln_gamma((df + 1.0) / 2.0) - ln_gamma(df / 2.0)).exp()
+                            / (df * std::f64::consts::PI).sqrt()
+                            * (1.0 + x * x / df).powf(-(df + 1.0) / 2.0)
+                    })
+                }
+                "T.DIST.RT" => Value::Number(1.0 - t_cdf(x, df)),
+                _ => {
+                    // 両側(x は正で渡す約束 — Excel と同じ)
+                    if x < 0.0 {
+                        return Ok(Value::Error("#NUM!".into()));
+                    }
+                    Value::Number(2.0 * (1.0 - t_cdf(x, df)))
+                }
+            }
+        }
+        "T.INV" | "T.INV.2T" | "TINV" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (p, df) = (g(0), g(1).floor());
+            if !(0.0..=1.0).contains(&p) || p == 0.0 || df < 1.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            // 両側(T.INV.2T と古い TINV)は上側 p/2 の点
+            let target = if name == "T.INV" { p } else { 1.0 - p / 2.0 };
+            let mut hi = 1.0;
+            for _ in 0..2000 {
+                if t_cdf(hi, df) >= target && t_cdf(-hi, df) <= target {
+                    break;
+                }
+                hi *= 2.0;
+            }
+            match bisect(&|x| t_cdf(x, df) - target, -hi, hi) {
+                Some(x) => Value::Number(x),
+                None => Value::Error("#NUM!".into()),
+            }
+        }
+        "F.DIST" | "F.DIST.RT" | "FDIST" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (x, d1, d2) = (g(0), g(1).floor(), g(2).floor());
+            if x < 0.0 || d1 < 1.0 || d2 < 1.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let cdf = beta_i(d1 / 2.0, d2 / 2.0, d1 * x / (d1 * x + d2));
+            if name == "F.DIST" {
+                let cum = a.get(3).map(|v| v.as_number() != 0.0).unwrap_or(true);
+                Value::Number(if cum {
+                    cdf
+                } else if x == 0.0 {
+                    if d1 < 2.0 {
+                        return Ok(Value::Error("#NUM!".into()));
+                    } else if d1 == 2.0 {
+                        1.0
+                    } else {
+                        0.0
+                    }
+                } else {
+                    ((d1 / 2.0) * d1.ln() + (d2 / 2.0) * d2.ln()
+                        + (d1 / 2.0 - 1.0) * x.ln()
+                        - ((d1 + d2) / 2.0) * (d2 + d1 * x).ln()
+                        - (ln_gamma(d1 / 2.0) + ln_gamma(d2 / 2.0)
+                            - ln_gamma((d1 + d2) / 2.0)))
+                        .exp()
+                })
+            } else {
+                Value::Number(1.0 - cdf)
+            }
+        }
+        "F.INV" | "F.INV.RT" | "FINV" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (mut p, d1, d2) = (g(0), g(1).floor(), g(2).floor());
+            if name != "F.INV" {
+                p = 1.0 - p;
+            }
+            if !(0.0..1.0).contains(&p) || d1 < 1.0 || d2 < 1.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            match invert_cdf_pos(&|x| beta_i(d1 / 2.0, d2 / 2.0, d1 * x / (d1 * x + d2)), p) {
+                Some(x) => Value::Number(x),
+                None => Value::Error("#NUM!".into()),
+            }
+        }
+        "BETA.DIST" | "BETADIST" => {
+            // BETA.DIST(x, α, β, 累積, [下限 A], [上限 B])
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (x, al, be) = (g(0), g(1), g(2));
+            let cum = a.get(3).map(|v| v.as_number() != 0.0).unwrap_or(true);
+            let lo = a.get(4).map(|v| v.as_number()).unwrap_or(0.0);
+            let hi = a.get(5).map(|v| v.as_number()).unwrap_or(1.0);
+            if al <= 0.0 || be <= 0.0 || hi <= lo || x < lo || x > hi {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let t = (x - lo) / (hi - lo);
+            Value::Number(if cum {
+                beta_i(al, be, t)
+            } else {
+                ((al - 1.0) * t.ln() + (be - 1.0) * (1.0 - t).ln()
+                    - (ln_gamma(al) + ln_gamma(be) - ln_gamma(al + be)))
+                    .exp()
+                    / (hi - lo)
+            })
+        }
+        "BETA.INV" | "BETAINV" => {
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (p, al, be) = (g(0), g(1), g(2));
+            let lo = a.get(3).map(|v| v.as_number()).unwrap_or(0.0);
+            let hi = a.get(4).map(|v| v.as_number()).unwrap_or(1.0);
+            if !(0.0..1.0).contains(&p) || p == 0.0 || al <= 0.0 || be <= 0.0 || hi <= lo {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            match bisect(&|t| beta_i(al, be, t) - p, 0.0, 1.0) {
+                Some(t) => Value::Number(lo + t * (hi - lo)),
+                None => Value::Error("#NUM!".into()),
+            }
+        }
+        "CONFIDENCE.NORM" | "CONFIDENCE" | "CONFIDENCE.T" => {
+            // 信頼区間の幅の半分
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (alpha, sd, n) = (g(0), g(1), g(2).floor());
+            if !(0.0..1.0).contains(&alpha) || alpha == 0.0 || sd <= 0.0 || n < 1.0 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            if name == "CONFIDENCE.T" {
+                if n < 2.0 {
+                    return Ok(Value::Error("#DIV/0!".into()));
+                }
+                let df = n - 1.0;
+                let target = 1.0 - alpha / 2.0;
+                let mut hi = 1.0;
+                for _ in 0..2000 {
+                    if t_cdf(hi, df) >= target {
+                        break;
+                    }
+                    hi *= 2.0;
+                }
+                return Ok(match bisect(&|x| t_cdf(x, df) - target, 0.0, hi) {
+                    Some(t) => Value::Number(t * sd / n.sqrt()),
+                    None => Value::Error("#NUM!".into()),
+                });
+            }
+            match probit(1.0 - alpha / 2.0) {
+                Some(z) => Value::Number(z * sd / n.sqrt()),
+                None => Value::Error("#NUM!".into()),
             }
         }
         "COUNTBLANK" => Value::Number(a.iter().filter(|v| v.is_empty()).count() as f64),
