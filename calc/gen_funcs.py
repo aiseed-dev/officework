@@ -85,6 +85,18 @@ def _patch(name):
 
 PATCH, ARGS = _patch("funcs_hand"), _patch("funcs_args")
 
+# 分類 → 画面の鍵(ui::tr で訳す記号)。生成する group の欄はこちら
+GROUP_KEY = {
+    "数学/三角": "math_trig",
+    "統計": "statistics",
+    "文字列操作": "text_functions",
+    "論理": "logical",
+    "日付/時刻": "date_time",
+    "検索/行列": "lookup_reference",
+    "財務": "financial",
+    "情報": "information",
+}
+
 NAMES = [n for names in GROUPS.values() for n in names.split()]
 
 
@@ -120,7 +132,7 @@ def rows_for(loc: str):
                 continue
             args = info.get("a", "(…)").replace("; ", ", ")
             ads = [s for s in info.get("ad", "").split("!") if s.strip()]
-            rows.append((name, group, args, info["d"], ads))
+            rows.append((name, GROUP_KEY[group], args, info["d"], ads))
     rows.sort(key=lambda r: r[0])
     return rows, holes
 
@@ -140,7 +152,7 @@ def ja_source() -> str:
                        src="ja_desc.json(本家の日本語)"), ""]
     out.append("""pub struct FnInfo {
     pub name: &'static str,
-    /// 分類。**日本語のまま持つ** — 画面に出すときに ui::tr で訳す。
+    /// 分類の鍵(math_trig など)。画面に出すときに ui::tr で訳す。
     /// 絞り込みの照合に使う鍵なので、訳した語を入れてはいけない
     pub group: &'static str,
     pub args_ja: &'static str,
@@ -207,6 +219,66 @@ def loc_source(loc: str) -> tuple[str, list[str]]:
 
 def mod_name(loc: str) -> str:
     return "funcs_" + loc.replace("-", "_").lower()
+
+
+# マニュアルの英語版の見出し(分類の鍵は日本語のまま)
+GROUP_EN = {
+    "数学/三角": "Math and trigonometry",
+    "統計": "Statistical",
+    "文字列操作": "Text",
+    "論理": "Logical",
+    "日付/時刻": "Date and time",
+    "検索/行列": "Lookup and reference",
+    "財務": "Financial",
+    "情報": "Information",
+}
+
+
+def manual_source(loc: str) -> str:
+    """関数のマニュアル(docs/<loc>/functions.adoc)。
+
+    関数の挿入の小窓と同じ材料から作るので、画面とマニュアルが
+    食い違わない。載るのは実際に計算できる関数だけ。
+    """
+    d = load(loc)
+    ja = loc == "ja"
+    out = [
+        "// このファイルは生成物です — 手で直さないでください。",
+        "// 作り直し: python3 calc/gen_funcs.py --manual",
+        "= 関数の一覧" if ja else "= Functions",
+        ":toc: left",
+        "",
+    ]
+    if ja:
+        out += [
+            "数式で使える関数の一覧です。載っているのは、このアプリが実際に",
+            "計算できる関数だけです。説明は、関数の挿入の小窓(数式タブ、",
+            "または Shift+F3)に出るものと同じ材料から作っています。",
+            "",
+            "引数の `[ ]` は、省略できる引数です。",
+        ]
+    else:
+        out += [
+            "The functions you can use in formulas. Only functions this",
+            "app actually computes are listed. The descriptions come from",
+            "the same source as the Insert Function dialog (Formulas tab,",
+            "or Shift+F3).",
+            "",
+            "Arguments in `[ ]` can be omitted.",
+        ]
+    for group, names in GROUPS.items():
+        out += ["", f"== {group if ja else GROUP_EN[group]}", ""]
+        out += ['[cols="1,2"]', "|===",
+                "|関数 |説明" if ja else "|Function |Description", ""]
+        for name in sorted(names.split()):
+            info = d.get(name)
+            if not info or not info.get("d"):
+                continue
+            args = info.get("a", "(…)").replace("; ", ", ")
+            desc = info["d"].replace("|", "\\|")
+            out.append(f"|`{name}{args}` |{desc}")
+        out.append("|===")
+    return "\n".join(out) + "\n"
 
 
 def tables_source(locs: list[str]) -> str:
@@ -318,6 +390,12 @@ def report_sigs(want: dict) -> int:
 
 
 def main() -> int:
+    if "--manual" in sys.argv:
+        for loc in ("ja", "en"):
+            p = ROOT / f"docs/{loc}/functions.adoc"
+            p.write_text(manual_source(loc), encoding="utf-8")
+            print(f"{p.relative_to(ROOT)} を書きました")
+        return 0
     if "--all" not in sys.argv and "--check" not in sys.argv:
         sys.stdout.write(ja_source())
         return 0
@@ -329,7 +407,10 @@ def main() -> int:
 
     locs = sorted(VENDOR)
     want = {SRCDIR / "funcs.rs": ja_source(),
-            SRCDIR / "funcs_tables.rs": tables_source(locs)}
+            SRCDIR / "funcs_tables.rs": tables_source(locs),
+            # マニュアルも同じ材料の生成物 — 画面と食い違えば --check が止める
+            ROOT / "docs/ja/functions.adoc": manual_source("ja"),
+            ROOT / "docs/en/functions.adoc": manual_source("en")}
     holes = {}
     for loc in locs:
         text, h = loc_source(loc)

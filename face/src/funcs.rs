@@ -6,7 +6,7 @@
 
 pub struct FnInfo {
     pub name: &'static str,
-    /// 分類。**日本語のまま持つ** — 画面に出すときに ui::tr で訳す。
+    /// 分類の鍵(math_trig など)。画面に出すときに ui::tr で訳す。
     /// 絞り込みの照合に使う鍵なので、訳した語を入れてはいけない
     pub group: &'static str,
     pub args_ja: &'static str,

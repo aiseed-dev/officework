@@ -1,0 +1,263 @@
+// このファイルは生成物です — 手で直さないでください。
+// 作り直し: python3 calc/gen_funcs.py --manual
+= Functions
+:toc: left
+
+The functions you can use in formulas. Only functions this
+app actually computes are listed. The descriptions come from
+the same source as the Insert Function dialog (Formulas tab,
+or Shift+F3).
+
+Arguments in `[ ]` can be omitted.
+
+== Math and trigonometry
+
+[cols="1,2"]
+|===
+|Function |Description
+
+|`ABS(number)` |Returns the absolute value of a number, a number without its sign
+|`ACOS(number)` |Returns the arccosine of a number, in radians in the range 0 to Pi. The arccosine is the angle whose cosine is Number
+|`ASIN(number)` |Returns the arcsine of a number in radians, in the range -Pi/2 to Pi/2
+|`ATAN(number)` |Returns the arctangent of a number in radians, in the range -Pi/2 to Pi/2
+|`ATAN2(x_num, y_num)` |Returns the arctangent of the specified x and y coordinates, in radians between -Pi and Pi, excluding -Pi
+|`CEILING(number, significance)` |Rounds a number up, to the nearest multiple of significance
+|`CEILING.MATH(number, [significance], [mode])` |Rounds a number up, to the nearest integer or to the nearest multiple of significance
+|`COMBIN(number, number_chosen)` |Returns the number of combinations for a given number of items
+|`COS(number)` |Returns the cosine of an angle
+|`COSH(number)` |Returns the hyperbolic cosine of a number
+|`DEGREES(angle)` |Converts radians to degrees
+|`EVEN(number)` |Rounds a positive number up and negative number down to the nearest even integer
+|`EXP(number)` |Returns e raised to the power of a given number
+|`FACT(number)` |Returns the factorial of a number, equal to 1*2*3*...* Number
+|`FLOOR(number, significance)` |Rounds a number down to the nearest multiple of significance
+|`FLOOR.MATH(number, [significance], [mode])` |Rounds a number down, to the nearest integer or to the nearest multiple of significance
+|`GCD(number1, [number2], ...)` |Returns the greatest common divisor
+|`INT(number)` |Rounds a number down to the nearest integer
+|`LCM(number1, [number2], ...)` |Returns the least common multiple
+|`LN(number)` |Returns the natural logarithm of a number
+|`LOG(number, [base])` |Returns the logarithm of a number to the base you specify
+|`LOG10(number)` |Returns the base-10 logarithm of a number
+|`MOD(number, divisor)` |Returns the remainder after a number is divided by a divisor
+|`MROUND(number, multiple)` |Returns a number rounded to the desired multiple
+|`ODD(number)` |Rounds a positive number up and negative number down to the nearest odd integer
+|`PERMUT(number, number_chosen)` |Returns the number of permutations for a given number of objects that can be selected from the total objects
+|`PI()` |Returns the value of Pi, 3.14159265358979, accurate to 15 digits
+|`POWER(number, power)` |Returns the result of a number raised to a power
+|`PRODUCT(number1, [number2], ...)` |Multiplies all the numbers given as arguments
+|`QUOTIENT(numerator, denominator)` |Returns the integer portion of a division
+|`RADIANS(angle)` |Converts degrees to radians
+|`RAND()` |Returns a random number greater than or equal to 0 and less than 1, evenly distributed (changes on recalculation)
+|`RANDBETWEEN(bottom, top)` |Returns a random number between the numbers you specify
+|`ROUND(number, num_digits)` |Rounds a number to a specified number of digits
+|`ROUNDDOWN(number, num_digits)` |Rounds a number down, towards zero
+|`ROUNDUP(number, num_digits)` |Rounds a number up, away from zero
+|`SEQUENCE(rows, [columns], [start], [step])` |Returns a sequence of numbers
+|`SIGN(number)` |Returns the sign of a number: 1 if the number is positive, zero if the number is zero, or -1 if the number is negative
+|`SIN(number)` |Returns the sine of an angle
+|`SINH(number)` |Returns the hyperbolic sine of a number
+|`SQRT(number)` |Returns the square root of a number
+|`SUBTOTAL(function_num, ref1, ...)` |Returns a subtotal in a list or database
+|`SUM(number1, [number2], ...)` |Adds all the numbers in a range of cells
+|`SUMPRODUCT(array1, [array2], [array3], ...)` |Returns the sum of the products of corresponding ranges or arrays
+|`SUMSQ(number1, [number2], ...)` |Returns the sum of the squares of the arguments. The arguments can be numbers, arrays, names or references to cells that contain numbers
+|`TAN(number)` |Returns the tangent of an angle
+|`TANH(number)` |Returns the hyperbolic tangent of a number
+|`TRUNC(number, [num_digits])` |Truncates a number to an integer by removing the decimal, or fractional, part of the number
+|===
+
+== Statistical
+
+[cols="1,2"]
+|===
+|Function |Description
+
+|`AVERAGE(number1, [number2], ...)` |Returns the average (arithmetic mean) of its arguments, which can be numbers or names, arrays or references that contain numbers
+|`AVERAGEA(value1, [value2], ...)` |Returns the average (arithmetic mean) of its arguments, evaluating text and FALSE in arguments as 0; TRUE evaluates as 1. Arguments can be numbers, names, arrays or references
+|`AVERAGEIF(range, criteria, [average_range])` |Finds average (arithmetic mean) for the cells specified by a given condition or criteria
+|`AVERAGEIFS(average_range, criteria_range, criteria, ...)` |Finds average (arithmetic mean) for the cells specified by a given set of conditions or criteria
+|`CORREL(array1, array2)` |Returns the correlation coefficient between two data sets
+|`COUNT(value1, [value2], ...)` |Counts the number of cells in a range that contain numbers
+|`COUNTA(value1, [value2], ...)` |Counts the number of cells in a range that are not empty
+|`COUNTBLANK(range)` |Counts the number of empty cells in a specified range of cells
+|`COUNTIF(range, criteria)` |Counts the number of cells within a range that meet the given condition
+|`COUNTIFS(criteria_range, criteria, ...)` |Counts the number of cells specified by a given set of conditions or criteria
+|`FORECAST(x, known_y's, known_x's)` |Calculates, or predicts, a future value along a linear trend by using existing values
+|`INTERCEPT(known_ys, known_xs)` |Calculates the point at which a line will intersect the y-axis by using a best-fit regression line plotted through the known x-values and y-values
+|`LARGE(array, k)` |Returns the k-th largest value in a data set. For example, the fifth largest number
+|`MAX(number1, [number2], ...)` |Returns the largest value in a set of values. Ignores logical values and text
+|`MAXA(value1, [value2], ...)` |Returns the largest value in a set of values. Does not ignore logical values and text
+|`MAXIFS(max_range, criteria_range, criteria, ...)` |Returns the maximum value among cells specified by a given set of conditions or criteria
+|`MEDIAN(number1, [number2], ...)` |Returns the median, or the number in the middle of the set of given numbers
+|`MIN(number1, [number2], ...)` |Returns the smallest number in a set of values. Ignores logical values and text
+|`MINA(value1, [value2], ...)` |Returns the smallest value in a set of values. Does not ignore logical values and text
+|`MINIFS(min_range, criteria_range, criteria, ...)` |Returns the minimum value among cells specified by a given set of conditions or criteria
+|`MODE(number1, [number2], ...)` |Returns the most frequently occurring, or repetitive, value in an array or range of data
+|`PERCENTILE(array, k)` |Returns the k-th percentile of values in a range
+|`QUARTILE(array, quart)` |Returns the quartile of a data set
+|`RANK(number, ref, [order])` |Returns the rank of a number in a list of numbers: its size relative to other values in the list
+|`RANK.AVG(number, ref, [order])` |Returns the rank of a number in a list of numbers: its size relative to other values in the list; if more than one value has the same rank, the average rank is returned
+|`RANK.EQ(number, ref, [order])` |Returns the rank of a number in a list of numbers: its size relative to other values in the list; if more than one value has the same rank, the top rank of that set of values is returned
+|`SLOPE(known_ys, known_xs)` |Returns the slope of the linear regression line through the given data points
+|`SMALL(array, k)` |Returns the k-th smallest value in a data set. For example, the fifth smallest number
+|`STDEV(number1, [number2], ...)` |Estimates standard deviation based on a sample (ignores logical values and text in the sample)
+|`STDEVP(number1, [number2], ...)` |Calculates standard deviation based on the entire population given as arguments (ignores logical values and text)
+|`SUMIF(range, criteria, [sum_range])` |Adds the cells specified by a given condition or criteria
+|`SUMIFS(sum_range, criteria_range, criteria, ...)` |Adds the cells specified by a given set of conditions or criteria
+|`VAR(number1, [number2], ...)` |Estimates variance based on a sample (ignores logical values and text in the sample)
+|`VARP(number1, [number2], ...)` |Calculates variance based on the entire population (ignores logical values and text in the population)
+|===
+
+== Text
+
+[cols="1,2"]
+|===
+|Function |Description
+
+|`ASC( text )` |For Double-byte character set (DBCS) languages, the function changes full-width (double-byte) characters to half-width (single-byte) characters
+|`CHAR(number)` |Returns the character specified by the code number from the character set for your computer
+|`CLEAN(text)` |Removes all nonprintable characters from text
+|`CODE(text)` |Returns a numeric code for the first character in a text string, in the character set used by your computer
+|`CONCAT(text1, ...)` |Concatenates a list or range of text strings
+|`CONCATENATE(text1, [text2], ...)` |Joins several text strings into one text string
+|`DATESTRING(serial_number)` |Returns a date as text in the Japanese imperial era calendar
+|`EXACT(text1, text2)` |Checks whether two text strings are exactly the same, and returns TRUE or FALSE. EXACT is case-sensitive
+|`FIND(find_text, within_text, [start_num])` |Returns the starting position of one text string within another text string. FIND is case-sensitive
+|`FIXED(number, [decimals], [no_commas])` |Rounds a number to the specified number of decimals and returns the result as text with or without commas
+|`JIS(text)` |Converts half-width (single-byte) characters in a string to full-width (double-byte) characters
+|`LEFT(text, [num_chars])` |Returns the specified number of characters from the start of a text string
+|`LEFTB( string, [number-chars] )` |Extracts the substring from the specified string starting from the left character and is intended for languages that use the double-byte character set (DBCS) like Japanese, Chinese, Korean etc.
+|`LEN(text)` |Returns the number of characters in a text string
+|`LENB( string )` |Analyses the specified string and returns the number of characters it contains and is intended for languages that use the double-byte character set (DBCS) like Japanese, Chinese, Korean etc.
+|`LOWER(text)` |Converts all letters in a text string to lowercase
+|`MID(text, start_num, num_chars)` |Returns the characters from the middle of a text string, given a starting position and length
+|`MIDB( string, start-pos, number-chars )` |Extracts the characters from the specified string starting from any position and is intended for languages that use the double-byte character set (DBCS) like Japanese, Chinese, Korean etc.
+|`NUMBERVALUE(text, [decimal_separator], [group_separator])` |Converts text to number in a locale-independent manner
+|`PHONETIC(range)` |Returns the furigana (phonetic reading) held in the cells, taken from the reading information stored in the xlsx that was opened
+|`PROPER(text)` |Converts a text string to proper case; the first letter in each word to uppercase, and all other letters to lowercase
+|`REPT(text, number_times)` |Repeats text a given number of times. Use REPT to fill a cell with a number of instances of a text string
+|`RIGHT(text, [num_chars])` |Returns the specified number of characters from the end of a text string
+|`RIGHTB( string, [number-chars] )` |Extracts a substring from a string starting from the right-most character, based on the specified number of characters and is intended for languages that use the double-byte character set (DBCS) like Japanese, Chinese, Korean etc.
+|`SEARCH(find_text, within_text, [start_num])` |Returns the number of the character at which a specific character or text string is first found, reading left to right (not case-sensitive)
+|`SUBSTITUTE(text, old_text, new_text, [instance_num])` |Replaces existing text with new text in a text string
+|`TEXT(value, format_text)` |Converts a value to text in a specific number format
+|`TEXTJOIN(delimiter, ignore_empty, text1, ...)` |Concatenates a list or range of text strings using a delimiter
+|`TRIM(text)` |Removes all spaces from a text string except for single spaces between words
+|`UNICHAR(number)` |Returns the Unicode character referenced by the given numeric value
+|`UNICODE(text)` |Returns the number (code point) corresponding to the first character of the text
+|`UPPER(text)` |Converts a text string to all uppercase letters
+|`VALUE(text)` |Converts a text string that represents a number to a number
+|`YEN(number, [decimals])` |Formats a number as text with the yen sign (¥) and thousands separators
+|===
+
+== Logical
+
+[cols="1,2"]
+|===
+|Function |Description
+
+|`AND(logical1, [logical2], ...)` |Checks whether all arguments are TRUE, and returns TRUE if all arguments are TRUE
+|`FALSE()` |Returns the logical value FALSE
+|`IF(logical_test, [value_if_true], [value_if_false])` |Checks whether a condition is met, and returns one value if TRUE, and another value if FALSE
+|`IFERROR(value, value_if_error)` |Returns value_if_error if expression is an error and the value of the expression itself otherwise
+|`IFNA(value, value_if_na)` |Returns the value you specify if the expression resolves to #N/A, otherwise returns the result of the expression
+|`IFS(logical_test, value_if_true, ...)` |Checks whether one or more conditions are met and returns a value corresponding to the first TRUE condition
+|`NOT(logical)` |Changes FALSE to TRUE, or TRUE to FALSE
+|`OR(logical1, [logical2], ...)` |Checks whether any of the arguments are TRUE, and returns TRUE or FALSE. Returns FALSE only if all arguments are FALSE
+|`SWITCH(expression, value1, result1, [default_or_value2], [result2], ...)` |Evaluates an expression against a list of values and returns the result corresponding to the first matching value. If there is no match, an optional default value is returned
+|`TRUE()` |Returns the logical value TRUE
+|===
+
+== Date and time
+
+[cols="1,2"]
+|===
+|Function |Description
+
+|`DATE(year, month, day)` |Returns the number that represents the date in the date-time code
+|`DATEDIF( start-date, end-date, unit )` |Returns the difference between two date values (start date and end date), based on the interval (unit) specified
+|`DATEVALUE(date_text)` |Converts a date in the form of text to a number that represents the date in the date-time code
+|`DAY(serial_number)` |Returns the day of the month, a number from 1 to 31.
+|`DAYS(end_date, start_date)` |Returns the number of days between the two dates.
+|`DAYS360(start_date, end_date, [method])` |Returns the number of days between two dates based on a 360-day year (twelve 30-day months)
+|`EDATE(start_date, months)` |Returns the serial number of the date that is the indicated number of months before or after the start date
+|`EOMONTH(start_date, months)` |Returns the serial number of the last day of the month before or after a specified number of months
+|`HOUR(serial_number)` |Returns the hour as a number from 0 (12:00 A.M.) to 23 (11:00 P.M.).
+|`ISOWEEKNUM(date)` |Returns the ISO week number in the year for a given date
+|`MINUTE(serial_number)` |Returns the minute, a number from 0 to 59.
+|`MONTH(serial_number)` |Returns the month, a number from 1 (January) to 12 (December).
+|`NETWORKDAYS(start_date, end_date, [holidays])` |Returns the number of whole workdays between two dates
+|`NOW()` |Returns the current date and time formatted as a date and time.
+|`SECOND(serial_number)` |Returns the second, a number from 0 to 59.
+|`TIME(hour, minute, second)` |Converts hours, minutes and seconds given as numbers to a serial number, formatted with a time format
+|`TODAY()` |Returns the current date formatted as a date.
+|`WEEKDAY(serial_number, [return_type])` |Returns a number from 1 to 7 identifying the day of the week of a date.
+|`WEEKNUM(serial_number, [return_type])` |Returns the week number in the year
+|`WORKDAY(start_date, days, [holidays])` |Returns the serial number of the date before or after a specified number of workdays
+|`YEAR(serial_number)` |Returns the year of a date, an integer in the range 1900-9999.
+|`YEARFRAC(start_date, end_date, [basis])` |Returns the year fraction representing the number of whole days between start_date and end_date
+|===
+
+== Lookup and reference
+
+[cols="1,2"]
+|===
+|Function |Description
+
+|`ADDRESS(row_num, column_num, [abs_num], [a1], [sheet_text])` |Creates a cell reference as text, given specified row and column numbers
+|`CHOOSE(index_num, value1, [value2], ...)` |Chooses a value or action to perform from a list of values, based on an index number
+|`COLUMN([reference])` |Returns the column number of a reference
+|`COLUMNS(array)` |Returns the number of columns in an array or reference
+|`FILTER(array, include, [if_empty])` |Filter a range or array
+|`HLOOKUP(lookup_value, table_array, row_index_num, [range_lookup])` |Looks for a value in the top row of a table or array of values and returns the value in the same column from a row you specify
+|`HYPERLINK(link_location, [friendly_name])` |Creates a shortcut or jump that opens a document stored on your hard drive, a network server, or on the Internet
+|`INDEX(array, row_num, [column_num]!reference, row_num, [column_num], [area_num])` |Returns a value or reference of the cell at the intersection of a particular row and column, in a given range
+|`INDIRECT(ref_text, [a1])` |Returns the reference specified by a text string
+|`LOOKUP(lookup_value, lookup_vector, [result_vector]!lookup_value, array)` |Looks up a value either from a one-row or one-column range or from an array. Provided for backwards compatibility
+|`MATCH(lookup_value, lookup_array, [match_type])` |Returns the relative position of an item in an array that matches a specified value in a specified order
+|`OFFSET(reference, rows, cols, [height], [width])` |Returns a reference to a range that is a given number of rows and columns from a given reference
+|`ROW([reference])` |Returns the row number of a reference
+|`ROWS(array)` |Returns the number of rows in a reference or array
+|`SORT(array, [sort_index], [sort_order], [by_col])` |Sorts a range or array
+|`TRANSPOSE(array)` |Converts a vertical range of cells to a horizontal range, or vice versa
+|`UNIQUE(array, [by_col], [exactly_once])` |Returns the unique values from a range or array.
+|`VLOOKUP(lookup_value, table_array, col_index_num, [range_lookup])` |Looks for a value in the leftmost column of a table and then returns a value in the same row from a column that you specify. By default, the table must be sorted in an ascending order
+|`XLOOKUP(lookup_value, lookup_array, return_array, [if_not_found], [match_mode], [search_mode])` |Searches a range or an array for a match and returns the corresponding item from a second range or array. By default, an exact match is used
+|===
+
+== Financial
+
+[cols="1,2"]
+|===
+|Function |Description
+
+|`FV(rate, nper, pmt, [pv], [type])` |Returns the future value of an investment based on periodic, constant payments and a constant interest rate
+|`IRR(values, [guess])` |Returns the internal rate of return for a series of cash flows
+|`NPER(rate, pmt, pv, [fv], [type])` |Returns the number of periods for an investment based on periodic, constant payments and a constant interest rate
+|`NPV(rate, value1, [value2], ...)` |Returns the net present value of an investment based on a discount rate and a series of future payments (negative values) and income (positive values)
+|`PMT(rate, nper, pv, [fv], [type])` |Calculates the payment for a loan based on constant payments and a constant interest rate
+|`PV(rate, nper, pmt, [fv], [type])` |Returns the present value of an investment: the total amount that a series of future payments is worth now
+|`RATE(nper, pmt, pv, [fv], [type], [guess])` |Returns the interest rate per period of a loan or an investment. For example, use 6%/4 for quarterly payments at 6% APR
+|===
+
+== Information
+
+[cols="1,2"]
+|===
+|Function |Description
+
+|`ISBLANK(value)` |Checks whether a reference is to an empty cell, and returns TRUE or FALSE
+|`ISERR(value)` |Checks whether a value is an error other than #N/A, and returns TRUE or FALSE
+|`ISERROR(value)` |Checks whether a value is an error, and returns TRUE or FALSE
+|`ISEVEN(number)` |Returns TRUE if the number is even
+|`ISLOGICAL(value)` |Checks whether a value is a logical value (TRUE or FALSE), and returns TRUE or FALSE
+|`ISNA(value)` |Checks whether a value is #N/A, and returns TRUE or FALSE
+|`ISNONTEXT(value)` |Checks whether a value is not text (blank cells are not text), and returns TRUE or FALSE
+|`ISNUMBER(value)` |Checks whether a value is a number, and returns TRUE or FALSE
+|`ISODD(number)` |Returns TRUE if the number is odd
+|`ISTEXT(value)` |Checks whether a value is text, and returns TRUE or FALSE
+|`N(value)` |Converts non-number value to a number, dates to serial numbers, TRUE to 1, anything else to 0 (zero)
+|`NA()` |Returns the error value #N/A (value not available)
+|`T(value)` |Checks whether a value is text, and returns the text if it is, or returns double quotes (empty text) if it is not
+|`TYPE(value)` |Returns an integer representing the data type of a value: number = 1; text = 2; logical value = 4; error value = 16; array = 64; compound data = 128
+|===
