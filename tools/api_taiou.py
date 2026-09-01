@@ -221,6 +221,28 @@ MICHI = {
     "co-showcomment": ('d.comments / c.comment', 'd.comments', 'c.comment'),
     "prot-doc": ('', '', 'ws.protection'),
     "prot-encrypt": ('', '', 'wb.security'),
+    # 表示 — 画面の見え方だけを変える物。**文書もファイルも変わりません**
+    "zoom-in": ("", "", ""),
+    "zoom-out": ("", "", ""),
+    "zoom100": ("", "", ""),
+    "fit-page": ("", "", ""),
+    "fit-width": ("", "", ""),
+    "multipage": ("", "", ""),
+    "darkmode": ("", "", ""),
+    "ui-bigger": ("", "", ""),
+    "ui-smaller": ("", "", ""),
+    "show-toolbar": ("", "", ""),
+    "show-statusbar": ("", "", ""),
+    "formula-bar": ("", "", ""),
+    "ruler": ("", "", ""),
+    "nav": ("", "", ""),
+    "split": ("", "", ""),
+    "printview": ("", "", ""),
+    "view-normal": ("", "", ""),
+    "view-pagebreak": ("", "", ""),
+    "sheet-view": ("", "", ""),
+    "show-headings": ("", "", ""),
+    "show-zeros": ("", "", ""),
     "freeze": ('s.freeze_panes', '', 'ws.freeze_panes'),
     "show-gridlines": ('s.show_gridlines', '', 'ws.sheet_view.showGridLines'),
     # **左右のパネルを出すボタン**(2026-08-30)。
@@ -235,6 +257,28 @@ MICHI = {
 # *ここに載せるのは、決めが記録されている物だけ*です。
 # 決めていない空欄は「未実装」— 作らないと決めたのではなく、まだ作っていません。
 TSUKURANAI = {
+    # 表示タブ(2026-08-31)。画面の見え方だけで、文書もファイルも変わりません
+    "zoom-in": "画面の表示です。文書は変わりません",
+    "zoom-out": "画面の表示です。文書は変わりません",
+    "zoom100": "画面の表示です。文書は変わりません",
+    "fit-page": "画面の表示です。文書は変わりません",
+    "fit-width": "画面の表示です。文書は変わりません",
+    "multipage": "画面の表示です。文書は変わりません",
+    "darkmode": "画面の色を切り替えます。文書は変わりません",
+    "ui-bigger": "画面の文字を大きくします。文書の文字は変わりません",
+    "ui-smaller": "画面の文字を小さくします。文書の文字は変わりません",
+    "show-toolbar": "ツールバーの出し入れです",
+    "show-statusbar": "ステータスバーの出し入れです",
+    "formula-bar": "数式バーの出し入れです",
+    "ruler": "ルーラーの出し入れです",
+    "nav": "左パネルの出し入れです",
+    "split": "画面を分けて表示します。文書は変わりません",
+    "printview": "画面の表示の切り替えです",
+    "view-normal": "画面の表示の切り替えです",
+    "view-pagebreak": "画面の表示の切り替えです",
+    "sheet-view": "画面の表示の切り替えです",
+    "show-headings": "行と列の見出しの出し入れです。画面だけの表示です",
+    "show-zeros": "画面の表示です。0 を隠しても、xlsx には 0 が残ります",
     # 描画(手書き)。docx だけの機能で、adoc には居場所がありません
     # マクロ(Python を動かす側)
     # ファイルのページの、画面だけの物。**文書は変わりません**

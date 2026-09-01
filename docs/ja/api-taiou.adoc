@@ -306,10 +306,31 @@ def 大文字にする(段落):
 |===
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
+|image:../../face/icons/nav.svg[,16,16] Navigation |ナビゲーション |❌ |左パネルの出し入れです |— |—
+|image:../../face/icons/fit-page.svg[,16,16] Fit to page |ページに合わせる |❌ |画面の表示です。文書は変わりません |— |—
+|image:../../face/icons/fit-width.svg[,16,16] Fit to width |幅に合わせる |❌ |画面の表示です。文書は変わりません |— |—
+|image:../../face/icons/zoom100.svg[,16,16] Zoom to 100% |100%に拡大する |❌ |画面の表示です。文書は変わりません |— |—
+|image:../../face/icons/zoom-in.svg[,16,16] Zoom in |拡大 |❌ |画面の表示です。文書は変わりません |— |—
+|image:../../face/icons/zoom-out.svg[,16,16] Zoom out |縮小 |❌ |画面の表示です。文書は変わりません |— |—
+|image:../../face/icons/printview.svg[,16,16] Print layout |印刷レイアウト |❌ |画面の表示の切り替えです |— |—
+|image:../../face/icons/multipage.svg[,16,16] Multiple pages |複数ページ |❌ |画面の表示です。文書は変わりません |— |—
+|image:../../face/icons/darkmode.svg[,16,16] Dark mode |ダークモード |❌ |画面の色を切り替えます。文書は変わりません |— |—
+|image:../../face/icons/ui-bigger.svg[,16,16] Bigger UI text |画面の文字を大きく |❌ |画面の文字を大きくします。文書の文字は変わりません |— |—
+|image:../../face/icons/ui-smaller.svg[,16,16] Smaller UI text |画面の文字を小さく |❌ |画面の文字を小さくします。文書の文字は変わりません |— |—
+|image:../../face/icons/ruler.svg[,16,16] Rulers |ルーラー |❌ |ルーラーの出し入れです |— |—
+|image:../../face/icons/show-toolbar.svg[,16,16] Always Show Toolbar |ツールバーを常に表示する |❌ |ツールバーの出し入れです |— |—
+|image:../../face/icons/show-statusbar.svg[,16,16] Status Bar |ステータスバー |❌ |ステータスバーの出し入れです |— |—
 |image:../../face/icons/show-left.svg[,16,16] Left Panel |link:commands/表示/左パネル.adoc[左パネル] | |— |— |—
 |image:../../face/icons/show-right.svg[,16,16] Right Panel |link:commands/表示/右パネル.adoc[右パネル] | |— |— |—
+|image:../../face/icons/sheet-view.svg[,16,16] Sheet View |シートの表示 |❌ |画面の表示の切り替えです |— |—
+|image:../../face/icons/view-normal.svg[,16,16] Normal |標準 |❌ |画面の表示の切り替えです |— |—
+|image:../../face/icons/view-pagebreak.svg[,16,16] Page Break Preview |改ページ プレビュー |❌ |画面の表示の切り替えです |— |—
 |image:../../face/icons/freeze.svg[,16,16] Freeze panes |link:commands/表示/ウィンドウ枠の固定.adoc[ウィンドウ枠の固定] |✅ |s.freeze_panes |— |ws.freeze_panes
+|image:../../face/icons/split.svg[,16,16] Split |分割 |❌ |画面を分けて表示します。文書は変わりません |— |—
+|image:../../face/icons/formula-bar.svg[,16,16] Formula Bar |数式バー |❌ |数式バーの出し入れです |— |—
 |image:../../face/icons/show-gridlines.svg[,16,16] Gridlines |link:commands/表示/枠線表示.adoc[枠線表示] |✅ |s.show_gridlines |— |ws.sheet_view.showGridLines
+|image:../../face/icons/show-headings.svg[,16,16] Headings |link:commands/左パネル/見出し.adoc[見出し] |❌ |行と列の見出しの出し入れです。画面だけの表示です |— |—
+|image:../../face/icons/show-zeros.svg[,16,16] Show zeros |0を表示する |❌ |画面の表示です。0 を隠しても、xlsx には 0 が残ります |— |—
 |===
 
 == マクロ
@@ -339,7 +360,7 @@ def 大文字にする(段落):
 |===
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
-|Heading |link:commands/左パネル/見出し.adoc[見出し] |✅ |p.style で拾う |p.style |—
+|Heading |link:commands/左パネル/見出し.adoc[見出し] |✅ |*表示と同じ* — p.style で拾う |p.style |—
 |Comment |link:commands/左パネル/コメント.adoc[コメント]・link:commands/挿入/コメント.adoc[挿入] |✅ |*挿入と同じ* — d.comments |d.comments |c.comment
 |Find |link:commands/左パネル/検索.adoc[検索] |✅ |d.find(字) |— |—
 |Agent panel |link:commands/左パネル/エージェントパネル.adoc[エージェントパネル] | |— |— |—
