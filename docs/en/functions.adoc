@@ -93,6 +93,7 @@ Arguments in `[ ]` can be omitted.
 |`MINA(value1, [value2], ...)` |Returns the smallest value in a set of values. Does not ignore logical values and text.
 |`MINIFS(min_range, criteria_range, criteria, ...)` |Returns the minimum value among cells specified by a given set of conditions or criteria.
 |`MODE(number1, [number2], ...)` |Returns the most frequently occurring, or repetitive, value in an array or range of data.
+|`MODE.MULT(number1, [number2], ...)` |Returns a vertical array of the most frequently occurring, or repetitive, values in an array or range of data. For a horizontal array, use =TRANSPOSE(MODE.MULT(number1,number2,...)).
 |`PERCENTILE(array, k)` |Returns the k-th percentile of values in a range.
 |`QUARTILE(array, quart)` |Returns the quartile of a data set.
 |`RANK(number, ref, [order])` |Returns the rank of a number in a list of numbers: its size relative to other values in the list.
@@ -123,6 +124,7 @@ Arguments in `[ ]` can be omitted.
 |`DATESTRING(serial_number)` |Returns a date as text in the Japanese imperial era calendar.
 |`EXACT(text1, text2)` |Checks whether two text strings are exactly the same, and returns TRUE or FALSE. EXACT is case-sensitive.
 |`FIND(find_text, within_text, [start_num])` |Returns the starting position of one text string within another text string. FIND is case-sensitive.
+|`FINDB( string-1, string-2, [start-pos] )` |Finds the specified substring (string-1) within a string (string-2) and is intended for languages the double-byte character set (DBCS) like Japanese, Chinese, Korean etc.
 |`FIXED(number, [decimals], [no_commas])` |Rounds a number to the specified number of decimals and returns the result as text with or without commas.
 |`JIS(text)` |Converts half-width (single-byte) characters in a string to full-width (double-byte) characters.
 |`LEFT(text, [num_chars])` |Returns the specified number of characters from the start of a text string.
@@ -135,10 +137,12 @@ Arguments in `[ ]` can be omitted.
 |`NUMBERVALUE(text, [decimal_separator], [group_separator])` |Converts text to number in a locale-independent manner.
 |`PHONETIC(range)` |Returns the furigana (phonetic reading) held in the cells, taken from the reading information stored in the xlsx that was opened.
 |`PROPER(text)` |Converts a text string to proper case; the first letter in each word to uppercase, and all other letters to lowercase.
+|`REPLACEB( string-1, start-pos, number-chars, string-2 )` |Replaces a set of characters, based on the number of characters and the start position you specify, with a new set of characters and is intended for languages that use the double-byte character set (DBCS) like Japanese, Chinese, Korean etc.
 |`REPT(text, number_times)` |Repeats text a given number of times. Use REPT to fill a cell with a number of instances of a text string.
 |`RIGHT(text, [num_chars])` |Returns the specified number of characters from the end of a text string.
 |`RIGHTB( string, [number-chars] )` |Extracts a substring from a string starting from the right-most character, based on the specified number of characters and is intended for languages that use the double-byte character set (DBCS) like Japanese, Chinese, Korean etc.
 |`SEARCH(find_text, within_text, [start_num])` |Returns the number of the character at which a specific character or text string is first found, reading left to right (not case-sensitive).
+|`SEARCHB( string-1, string-2, [start-pos] )` |Returns the location of the specified substring in a string and is intended for languages that use the double-byte character set (DBCS) like Japanese, Chinese, Korean etc.
 |`SUBSTITUTE(text, old_text, new_text, [instance_num])` |Replaces existing text with new text in a text string.
 |`TEXT(value, format_text)` |Converts a value to text in a specific number format.
 |`TEXTJOIN(delimiter, ignore_empty, text1, ...)` |Concatenates a list or range of text strings using a delimiter.
@@ -166,6 +170,7 @@ Arguments in `[ ]` can be omitted.
 |`OR(logical1, [logical2], ...)` |Checks whether any of the arguments are TRUE, and returns TRUE or FALSE. Returns FALSE only if all arguments are FALSE.
 |`SWITCH(expression, value1, result1, [default_or_value2], [result2], ...)` |Evaluates an expression against a list of values and returns the result corresponding to the first matching value. If there is no match, an optional default value is returned.
 |`TRUE()` |Returns the logical value TRUE.
+|`XOR(logical1, [logical2], ...)` |Returns a logical 'Exclusive Or' of all arguments.
 |===
 
 == Date and time
@@ -187,13 +192,16 @@ Arguments in `[ ]` can be omitted.
 |`MINUTE(serial_number)` |Returns the minute, a number from 0 to 59.
 |`MONTH(serial_number)` |Returns the month, a number from 1 (January) to 12 (December).
 |`NETWORKDAYS(start_date, end_date, [holidays])` |Returns the number of whole workdays between two dates.
+|`NETWORKDAYS.INTL(start_date, end_date, [weekend], [holidays])` |Returns the number of whole workdays between two dates with custom weekend parameters.
 |`NOW()` |Returns the current date and time formatted as a date and time.
 |`SECOND(serial_number)` |Returns the second, a number from 0 to 59.
 |`TIME(hour, minute, second)` |Converts hours, minutes and seconds given as numbers to a serial number, formatted with a time format.
+|`TIMEVALUE(time_text)` |Converts a text time to a serial number for a time, a number from 0 (12:00:00 AM) to 0.999988426 (11:59:59 PM). Format the number with a time format after entering the formula.
 |`TODAY()` |Returns the current date formatted as a date.
 |`WEEKDAY(serial_number, [return_type])` |Returns a number from 1 to 7 identifying the day of the week of a date.
 |`WEEKNUM(serial_number, [return_type])` |Returns the week number in the year.
 |`WORKDAY(start_date, days, [holidays])` |Returns the serial number of the date before or after a specified number of workdays.
+|`WORKDAY.INTL(start_date, days, [weekend], [holidays])` |Returns the serial number of the date before or after a specified number of workdays with custom weekend parameters.
 |`YEAR(serial_number)` |Returns the year of a date, an integer in the range 1900-9999.
 |`YEARFRAC(start_date, end_date, [basis])` |Returns the year fraction representing the number of whole days between start_date and end_date.
 |===
@@ -246,6 +254,7 @@ Arguments in `[ ]` can be omitted.
 |===
 |Function |Description
 
+|`ERROR.TYPE(error_val)` |Returns a number matching an error value.
 |`ISBLANK(value)` |Checks whether a reference is to an empty cell, and returns TRUE or FALSE.
 |`ISERR(value)` |Checks whether a value is an error other than #N/A, and returns TRUE or FALSE.
 |`ISERROR(value)` |Checks whether a value is an error, and returns TRUE or FALSE.

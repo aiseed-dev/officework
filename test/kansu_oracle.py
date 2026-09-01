@@ -88,6 +88,8 @@ def compute(src, outdir):
 
 
 def suck(path, cases):
+    import datetime
+
     from openpyxl import load_workbook
 
     wb = load_workbook(path, data_only=True)
@@ -99,6 +101,14 @@ def suck(path, cases):
             v = ""
         elif isinstance(v, bool):
             v = "TRUE" if v else "FALSE"
+        elif isinstance(v, datetime.datetime):
+            # 日付の表示形式が付くと openpyxl は datetime で返す。
+            # 中身は通し番号(1899-12-30 起点)なので、数に戻して書く
+            delta = v - datetime.datetime(1899, 12, 30)
+            v = repr(delta.days + delta.seconds / 86400)
+        elif isinstance(v, datetime.time):
+            # 時刻の表示形式も同じ — 日の割合に戻す
+            v = repr((v.hour * 3600 + v.minute * 60 + v.second) / 86400)
         elif isinstance(v, float):
             v = repr(v)
         rows.append(f"{name}\t{formula}\t{v}")

@@ -388,6 +388,44 @@ pub(crate) fn weekday0(serial: i64, ep: i64) -> i64 {
     ((serial - ep).rem_euclid(7) + 4).rem_euclid(7)
 }
 
+/// NETWORKDAYS.INTL / WORKDAY.INTL の「週末」の引数 → 曜日の表
+/// (0=日曜 … 6=土曜、true = 休む日)。数(1〜7 は2日続き・11〜17 は
+/// 1日だけ)と "0000011" の7文字(月曜始まり)を受ける。読めなければ None。
+/// 7日全部が休みの形は受けない — 仕事日が無く、日数を数え終われない
+pub(super) fn weekend_days(v: Option<&Value>) -> Option<[bool; 7]> {
+    let mut w = [false; 7];
+    match v {
+        // 引数を省いたら 1(土日)と同じ
+        None => {
+            w[0] = true;
+            w[6] = true;
+        }
+        Some(Value::Text(s)) if s.len() == 7 && s.chars().all(|c| c == '0' || c == '1') => {
+            if s.chars().all(|c| c == '1') {
+                return None;
+            }
+            for (i, c) in s.chars().enumerate() {
+                if c == '1' {
+                    // 7文字は月曜始まり。表は日曜始まりなので1つずらす
+                    w[(i + 1) % 7] = true;
+                }
+            }
+        }
+        Some(v) => match v.as_number() as i64 {
+            // 1=土日, 2=日月, 3=月火 … 7=金土
+            n @ 1..=7 => {
+                let first = (n as usize + 5) % 7;
+                w[first] = true;
+                w[(first + 1) % 7] = true;
+            }
+            // 11=日曜だけ, 12=月曜だけ … 17=土曜だけ
+            n @ 11..=17 => w[n as usize - 11] = true,
+            _ => return None,
+        },
+    }
+    Some(w)
+}
+
 /// RAND 用の乱数(0.0 以上 1.0 未満)。暗号用ではない(表計算の RAND も同じ)。
 /// 依存を増やさず xorshift64* を自前で持つ。種は最初の呼び出し時刻
 pub(super) fn rand01() -> f64 {
@@ -1094,6 +1132,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
         "IFERROR" | "ISERROR" | "ISBLANK" | "IF" | "IFS" | "SWITCH" | "CHOOSE"
             | "ISNUMBER" | "ISTEXT" // エラーは数でも文字でもない → FALSE と答える
             | "IFNA" | "ISNA" | "ISERR" | "ISLOGICAL" | "ISNONTEXT" | "TYPE" | "N" | "T"
+            | "ERROR.TYPE" // エラーの種類を数で答える関数 — エラーが材料
     ) {
         if let Some(e) = a.iter().find(|v| matches!(v, Value::Error(_))) {
             return Ok(e.clone());
@@ -1208,6 +1247,14 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
         "OR" => Value::Bool(a.iter().any(|v| v.as_number() != 0.0
             || matches!(v, Value::Bool(true)))),
         "NOT" => Value::Bool(!(a.first().map(|v| v.as_number() != 0.0).unwrap_or(false))),
+        // 真が奇数個なら TRUE(Excel の XOR は2つに限らない)
+        "XOR" => Value::Bool(
+            a.iter()
+                .filter(|v| v.as_number() != 0.0 || matches!(v, Value::Bool(true)))
+                .count()
+                % 2
+                == 1,
+        ),
         "CONCATENATE" | "CONCAT" => Value::Text(a.iter().map(|v| v.display()).collect()),
         // 引数つきの TRUE()/FALSE() も本物の Excel ファイルには出てくる
         "TRUE" => Value::Bool(true),
@@ -1259,6 +1306,20 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                 t.split(['/', '-']).filter_map(|p| p.trim().parse().ok()).collect();
             match parts.as_slice() {
                 [y, m, d] => Value::Number(date_serial_at(*y, *m, *d, ep) as f64),
+                _ => Value::Error("#VALUE!".into()),
+            }
+        }
+        "TIMEVALUE" => {
+            // "13:30"・"13:30:00" を日の割合に。24時を超えた分は日に
+            // 繰り上がるので、割合だけを残す(Excel と同じ)
+            let s = a.first().map(|v| v.display()).unwrap_or_default();
+            let parts: Vec<f64> =
+                s.trim().split(':').filter_map(|p| p.trim().parse().ok()).collect();
+            match parts.as_slice() {
+                [h, m] => Value::Number(((h * 3600.0 + m * 60.0) / 86400.0).rem_euclid(1.0)),
+                [h, m, sec] => {
+                    Value::Number(((h * 3600.0 + m * 60.0 + sec) / 86400.0).rem_euclid(1.0))
+                }
                 _ => Value::Error("#VALUE!".into()),
             }
         }
@@ -1346,6 +1407,46 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                     let w = weekday0(*d, ep);
                     w != 0 && w != 6 && !holidays.contains(d)
                 })
+                .count() as i64;
+            Value::Number(if e < s { -n } else { n } as f64)
+        }
+        "WORKDAY.INTL" => {
+            // WORKDAY.INTL(始, 日数, [週末], [休みの日…]) — 週末を選べる形
+            let mut cur = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
+            let days = a.get(1).map(|v| v.as_number()).unwrap_or(0.0) as i64;
+            let Some(wk) = weekend_days(a.get(2)) else {
+                return Ok(Value::Error("#VALUE!".into()));
+            };
+            let holidays: HashSet<i64> =
+                a.get(3..).unwrap_or(&[]).iter().map(|v| v.as_number() as i64).collect();
+            if days.abs() > 1_000_000 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let step = if days < 0 { -1 } else { 1 };
+            let mut left = days.abs();
+            while left > 0 {
+                cur += step;
+                if !wk[weekday0(cur, ep) as usize] && !holidays.contains(&cur) {
+                    left -= 1;
+                }
+            }
+            Value::Number(cur as f64)
+        }
+        "NETWORKDAYS.INTL" => {
+            // NETWORKDAYS.INTL(始, 終, [週末], [休みの日…]) — 両端を含む仕事日の数
+            let s = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
+            let e = a.get(1).map(|v| v.as_number()).unwrap_or(0.0) as i64;
+            let Some(wk) = weekend_days(a.get(2)) else {
+                return Ok(Value::Error("#VALUE!".into()));
+            };
+            let holidays: HashSet<i64> =
+                a.get(3..).unwrap_or(&[]).iter().map(|v| v.as_number() as i64).collect();
+            let (lo, hi) = (s.min(e), s.max(e));
+            if hi - lo > 10_000_000 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let n = (lo..=hi)
+                .filter(|d| !wk[weekday0(*d, ep) as usize] && !holidays.contains(d))
                 .count() as i64;
             Value::Number(if e < s { -n } else { n } as f64)
         }
@@ -1831,6 +1932,21 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             Some(Value::Error(_)) => 16.0,
             _ => 1.0,
         }),
+        // エラーの種類を数で答える。エラーでない値には #N/A(Excel と同じ)
+        "ERROR.TYPE" => match a.first() {
+            Some(Value::Error(e)) => match e.as_str() {
+                "#NULL!" => Value::Number(1.0),
+                "#DIV/0!" => Value::Number(2.0),
+                "#VALUE!" => Value::Number(3.0),
+                "#REF!" => Value::Number(4.0),
+                "#NAME?" => Value::Number(5.0),
+                "#NUM!" => Value::Number(6.0),
+                "#N/A" => Value::Number(7.0),
+                "#SPILL!" => Value::Number(9.0),
+                _ => Value::Error("#N/A".into()),
+            },
+            _ => Value::Error("#N/A".into()),
+        },
         "PROPER" => {
             let s = a.first().map(|v| v.display()).unwrap_or_default();
             let mut out = String::new();
@@ -1945,6 +2061,74 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                     take_bytes(&mut rest.into_iter(), n(2))
                 }
             })
+        }
+        "FINDB" | "SEARCHB" => {
+            // FIND/SEARCH のバイト版 — 答えは1起点のバイト位置。
+            // SEARCHB は大文字小文字を見ない(SEARCH と同じ)
+            let (mut needle, mut hay) = (
+                a.first().map(|v| v.display()).unwrap_or_default(),
+                a.get(1).map(|v| v.display()).unwrap_or_default(),
+            );
+            if name == "SEARCHB" {
+                needle = needle.to_lowercase();
+                hay = hay.to_lowercase();
+            }
+            let start = (a.get(2).map(|v| v.as_number()).unwrap_or(1.0) as usize).max(1);
+            let ch: Vec<char> = hay.chars().collect();
+            let nch: Vec<char> = needle.chars().collect();
+            if nch.is_empty() {
+                return Ok(Value::Number(start as f64));
+            }
+            // 開始位置(バイト)まで進めてから、1文字ずつ照らす
+            let mut byte_pos = 1usize;
+            let mut i = 0usize;
+            while i < ch.len() && byte_pos < start {
+                byte_pos += jchar_width(ch[i]);
+                i += 1;
+            }
+            let mut ans = None;
+            while i + nch.len() <= ch.len() {
+                if ch[i..i + nch.len()] == nch[..] {
+                    ans = Some(byte_pos);
+                    break;
+                }
+                byte_pos += jchar_width(ch[i]);
+                i += 1;
+            }
+            match ans {
+                Some(b) => Value::Number(b as f64),
+                None => Value::Error("#VALUE!".into()),
+            }
+        }
+        "REPLACEB" => {
+            // REPLACE のバイト版 — 開始位置と数え方がバイト。
+            // 文字の途中に掛かる指定は、その文字ごと置き換える
+            let src: Vec<char> = a.first().map(|v| v.display()).unwrap_or_default().chars().collect();
+            let start = a.get(1).map(|v| v.as_number()).unwrap_or(1.0);
+            let n = a.get(2).map(|v| v.as_number()).unwrap_or(0.0);
+            let new = a.get(3).map(|v| v.display()).unwrap_or_default();
+            if start < 1.0 || n < 0.0 {
+                return Ok(Value::Error("#VALUE!".into()));
+            }
+            let (start, n) = (start as usize, n as usize);
+            let mut out = String::new();
+            let mut used = 0usize;
+            let mut i = 0usize;
+            // 開始バイトより前に収まる文字は残す
+            while i < src.len() && used + jchar_width(src[i]) < start {
+                out.push(src[i]);
+                used += jchar_width(src[i]);
+                i += 1;
+            }
+            out.push_str(&new);
+            // 置き換えるバイト数ぶんの文字を飛ばす
+            let end = start - 1 + n;
+            while i < src.len() && used < end {
+                used += jchar_width(src[i]);
+                i += 1;
+            }
+            out.extend(&src[i..]);
+            Value::Text(out)
         }
         // 全角と半角(日本語一級の道具)
         "ASC" => Value::Text(asc_hankaku(&a.first().map(|v| v.display()).unwrap_or_default())),
@@ -2137,6 +2321,27 @@ pub(super) fn array_call(name: &str, args: Vec<Arg>) -> Result<Vec<Vec<Value>>, 
                         .map(|c| Value::Number(start + step * (r * cols + c) as f64))
                         .collect()
                 })
+                .collect())
+        }
+        "MODE.MULT" => {
+            // 最頻値を全部、縦の並びで(出た順)。どの数も1回だけなら #N/A
+            let mut counts: Vec<(f64, usize)> = Vec::new();
+            for v in args.iter().flat_map(|g| g.values().iter()) {
+                if let Value::Number(n) = v {
+                    match counts.iter_mut().find(|(x, _)| x == n) {
+                        Some((_, c)) => *c += 1,
+                        None => counts.push((*n, 1)),
+                    }
+                }
+            }
+            let best = counts.iter().map(|(_, c)| *c).max().unwrap_or(0);
+            if best < 2 {
+                return Err(err("#N/A"));
+            }
+            Ok(counts
+                .into_iter()
+                .filter(|(_, c)| *c == best)
+                .map(|(n, _)| vec![Value::Number(n)])
                 .collect())
         }
         "UNIQUE" => {

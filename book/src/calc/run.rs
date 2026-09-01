@@ -239,6 +239,7 @@ pub fn eval_in(grid: &dyn Grid, at: Pos, formula: &str) -> Value {
 pub(super) const ARRAY_FNS: &[&str] = &[
     "FILTER", "SORT", "UNIQUE", "SEQUENCE", "TRANSPOSE", "TEXTSPLIT",
     "SORTBY", "RANDARRAY", "VSTACK", "HSTACK", "TAKE", "DROP", "TOCOL", "TOROW",
+    "MODE.MULT",
 ];
 
 pub fn recalc(sheet: &mut Sheet) {
