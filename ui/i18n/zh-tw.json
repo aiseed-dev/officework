@@ -2283,5 +2283,7 @@
  "group_menu": "群組",
  "function_search": "搜尋函數",
  "function_category": "類別",
- "function_name": "函數名稱"
+ "function_name": "函數名稱",
+ "engineering": "工程",
+ "database": "資料庫"
 }

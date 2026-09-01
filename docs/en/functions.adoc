@@ -107,6 +107,7 @@ Arguments in `[ ]` can be omitted.
 |`BETA.DIST(x, alpha, beta, cumulative, [A], [B])` |Returns the beta probability distribution function.
 |`BETA.INV(probability, alpha, beta, [A], [B])` |Returns the inverse of the cumulative beta probability density function (BETA.DIST).
 |`BINOM.DIST(number_s, trials, probability_s, cumulative)` |Returns the individual term binomial distribution probability.
+|`BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])` |Returns the probability of a trial result using a binomial distribution.
 |`BINOM.INV(trials, probability_s, alpha)` |Returns the smallest value for which the cumulative binomial distribution is greater than or equal to a criterion value.
 |`CHISQ.DIST(x, deg_freedom, cumulative)` |Returns the left-tailed probability of the chi-squared distribution.
 |`CHISQ.DIST.RT(x, deg_freedom)` |Returns the right-tailed probability of the chi-squared distribution.
@@ -204,6 +205,7 @@ Arguments in `[ ]` can be omitted.
 |===
 |Function |Description
 
+|`ARRAYTOTEXT(array, [format])` |Returns a text representation of the values in the specified range.
 |`ASC( text )` |For Double-byte character set (DBCS) languages, the function changes full-width (double-byte) characters to half-width (single-byte) characters.
 |`CHAR(number)` |Returns the character specified by the code number from the character set for your computer.
 |`CLEAN(text)` |Removes all nonprintable characters from text.
@@ -240,6 +242,7 @@ Arguments in `[ ]` can be omitted.
 |`UNICODE(text)` |Returns the number (code point) corresponding to the first character of the text.
 |`UPPER(text)` |Converts a text string to all uppercase letters.
 |`VALUE(text)` |Converts a text string that represents a number to a number.
+|`VALUETOTEXT(value, [format])` |Returns text from any specified value.
 |`YEN(number, [decimals])` |Formats a number as text with the yen sign (¥) and thousands separators.
 |===
 
@@ -378,4 +381,65 @@ Arguments in `[ ]` can be omitted.
 |`NA()` |Returns the error value #N/A (value not available).
 |`T(value)` |Checks whether a value is text, and returns the text if it is, or returns double quotes (empty text) if it is not.
 |`TYPE(value)` |Returns an integer representing the data type of a value: number = 1; text = 2; logical value = 4; error value = 16; array = 64; compound data = 128.
+|===
+
+== Engineering
+
+[cols="1,2"]
+|===
+|Function |Description
+
+|`BIN2DEC(number)` |Converts a binary number to decimal.
+|`BIN2HEX(number, [places])` |Converts a binary number to hexadecimal.
+|`BIN2OCT(number, [places])` |Converts a binary number to octal.
+|`BITAND(number1, number2)` |Returns a bitwise 'And' of two numbers.
+|`BITLSHIFT(number, shift_amount)` |Returns a number shifted left by shift_amount bits.
+|`BITOR(number1, number2)` |Returns a bitwise 'Or' of two numbers.
+|`BITRSHIFT(number, shift_amount)` |Returns a number shifted right by shift_amount bits.
+|`BITXOR(number1, number2)` |Returns a bitwise 'Exclusive Or' of two numbers.
+|`COMPLEX(real_num, i_num, [suffix])` |Converts real and imaginary coefficients into a complex number.
+|`CONVERT(number, from_unit, to_unit)` |Converts a number from one measurement system to another.
+|`DEC2BIN(number, [places])` |Converts a decimal number to binary.
+|`DEC2HEX(number, [places])` |Converts a decimal number to hexadecimal.
+|`DEC2OCT(number, [places])` |Converts a decimal number to octal.
+|`DELTA(number1, [number2])` |Tests whether two numbers are equal.
+|`ERF(lower_limit, [upper_limit])` |Returns the error function.
+|`ERF.PRECISE(X)` |Returns the error function.
+|`ERFC(x)` |Returns the complementary error function.
+|`ERFC.PRECISE(X)` |Returns the complementary error function.
+|`GESTEP(number, [step])` |Tests whether a number is greater than a threshold value.
+|`HEX2BIN(number, [places])` |Converts a Hexadecimal number to binary.
+|`HEX2DEC(number)` |Converts a hexadecimal number to decimal.
+|`HEX2OCT(number, [places])` |Converts a hexadecimal number to octal.
+|`IMABS(inumber)` |Returns the absolute value (modulus) of a complex number.
+|`IMAGINARY(inumber)` |Returns the imaginary coefficient of a complex number.
+|`IMCONJUGATE(inumber)` |Returns the complex conjugate of a complex number.
+|`IMDIV(inumber1, inumber2)` |Returns the quotient of two complex numbers.
+|`IMPRODUCT(inumber1, [inumber2], ...)` |Returns the product of 1 to 255 complex numbers.
+|`IMREAL(inumber)` |Returns the real coefficient of a complex number.
+|`IMSUB(inumber1, inumber2)` |Returns the difference of two complex numbers.
+|`IMSUM(inumber1, [inumber2], ...)` |Returns the sum of complex numbers.
+|`OCT2BIN(number, [places])` |Converts an octal number to binary.
+|`OCT2DEC(number)` |Converts an octal number to decimal.
+|`OCT2HEX(number, [places])` |Converts an octal number to hexadecimal.
+|===
+
+== Database
+
+[cols="1,2"]
+|===
+|Function |Description
+
+|`DAVERAGE(database, field, criteria)` |Averages the values in a column in a list or database that match conditions you specify.
+|`DCOUNT(database, field, criteria)` |Counts the cells containing numbers in the field (column) of records in the database that match the conditions you specify.
+|`DCOUNTA(database, field, criteria)` |Counts nonblank cells in the field (column) of records in the database that match the conditions you specify.
+|`DGET(database, field, criteria)` |Extracts from a database a single record that matches the conditions you specify.
+|`DMAX(database, field, criteria)` |Returns the largest number in the field (column) of records in the database that match the conditions you specify.
+|`DMIN(database, field, criteria)` |Returns the smallest number in the field (column) of records in the database that match the conditions you specify.
+|`DPRODUCT(database, field, criteria)` |Multiplies the values in the field (column) of records in the database that match the conditions you specify.
+|`DSTDEV(database, field, criteria)` |Estimates the standard deviation based on a sample from selected database entries.
+|`DSTDEVP(database, field, criteria)` |Calculates the standard deviation based on the entire population of selected database entries.
+|`DSUM(database, field, criteria)` |Adds the numbers in the field (column) of records in the database that match the conditions you specify.
+|`DVAR(database, field, criteria)` |Estimates variance based on a sample from selected database entries.
+|`DVARP(database, field, criteria)` |Calculates variance based on the entire population of selected database entries.
 |===

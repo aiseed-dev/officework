@@ -2283,5 +2283,7 @@
  "group_menu": "Nhóm",
  "function_search": "Tìm kiếm hàm",
  "function_category": "Thể loại",
- "function_name": "Tên hàm"
+ "function_name": "Tên hàm",
+ "engineering": "Kỹ thuật",
+ "database": "Cơ sở dữ liệu"
 }

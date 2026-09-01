@@ -2283,5 +2283,7 @@
  "group_menu": "Agrupar",
  "function_search": "Pesquisar uma função",
  "function_category": "Categoria",
- "function_name": "Nome da função"
+ "function_name": "Nome da função",
+ "engineering": "Engenharia",
+ "database": "Banco de dados"
 }

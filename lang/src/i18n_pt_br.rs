@@ -1329,6 +1329,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("stop", "Parar"),
     ("warning", "Aviso"),
     ("information", "Informações"),
+    ("engineering", "Engenharia"),
+    ("database", "Banco de dados"),
     ("card_list", "Lista de cartões"),
     ("vertical_list", "Lista vertical"),
     ("pyramid_list", "Lista em pirâmide"),

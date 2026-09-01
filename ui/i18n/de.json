@@ -2283,5 +2283,7 @@
  "group_menu": "Gruppieren",
  "function_search": "Funktion suchen",
  "function_category": "Kategorie",
- "function_name": "Funktionsname"
+ "function_name": "Funktionsname",
+ "engineering": "Konstruktion",
+ "database": "Datenbank"
 }

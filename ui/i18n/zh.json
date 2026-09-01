@@ -2283,5 +2283,7 @@
  "group_menu": "组合",
  "function_search": "搜索函数",
  "function_category": "类别",
- "function_name": "函数名"
+ "function_name": "函数名",
+ "engineering": "工程",
+ "database": "数据库"
 }

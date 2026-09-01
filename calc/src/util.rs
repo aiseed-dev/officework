@@ -396,7 +396,7 @@ pub(crate) struct FnDlg {
 
 /// 分類のタブ。「すべて」+ funcs.rs の分類。**日本語のまま持つ** —
 /// これは絞り込みの照合に使う鍵で、画面に出すときだけ訳す
-pub(crate) const FN_GROUPS: &[&str] = &["all", "math_trig", "statistics", "text_functions", "logical", "date_time", "lookup_reference", "financial", "information"];
+pub(crate) const FN_GROUPS: &[&str] = &["all", "math_trig", "statistics", "text_functions", "logical", "date_time", "lookup_reference", "financial", "information", "engineering", "database"];
 
 /// 分類のタブに出す語。**変数を `ui::tr` に渡さず、1つずつ literal で書く。**
 ///
@@ -421,6 +421,8 @@ pub(crate) fn fn_group_label(key: &'static str) -> &'static str {
         "lookup_reference" => ui::t!("lookup_reference"),
         "financial" => ui::t!("financial"),
         "information" => ui::t!("information"),
+        "engineering" => ui::t!("engineering"),
+        "database" => ui::t!("database"),
         other => other,
     }
 }

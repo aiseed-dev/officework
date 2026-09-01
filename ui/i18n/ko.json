@@ -2283,5 +2283,7 @@
  "group_menu": "그룹화",
  "function_search": "함수 검색",
  "function_category": "범주",
- "function_name": "함수 이름"
+ "function_name": "함수 이름",
+ "engineering": "공학",
+ "database": "데이터베이스"
 }

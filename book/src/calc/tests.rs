@@ -916,6 +916,31 @@ mod dan3_tests {
     }
 
     #[test]
+    fn text_and_range_of_binomial_missing_from_libreoffice() {
+        // この3つは LibreOffice に無いので答えの表に載らない。
+        // 正は Excel の公式ドキュメントの例
+        let mut s = sheet_with(&[
+            ("A1", "=BINOM.DIST.RANGE(60,0.75,48)"),
+            ("A2", "=BINOM.DIST.RANGE(60,0.75,45,50)"),
+            ("A3", "=ARRAYTOTEXT({1,2;3,4})"),
+            ("A4", "=ARRAYTOTEXT({1,\"あ\";3,4},1)"),
+            ("A5", "=VALUETOTEXT(\"あい\",1)"),
+            ("A6", "=VALUETOTEXT(1.25)"),
+        ]);
+        recalc(&mut s);
+        let n = |a1: &str| match v(&s, a1) {
+            Value::Number(x) => x,
+            other => panic!("{a1} が数でない: {other:?}"),
+        };
+        assert!((n("A1") - 0.083_974_967_429_051).abs() < 1e-12);
+        assert!((n("A2") - 0.523_629_793_471_887).abs() < 1e-12);
+        assert_eq!(v(&s, "A3"), Value::Text("1, 2; 3, 4".into()));
+        assert_eq!(v(&s, "A4"), Value::Text("{1,\"あ\";3,4}".into()));
+        assert_eq!(v(&s, "A5"), Value::Text("\"あい\"".into()));
+        assert_eq!(v(&s, "A6"), Value::Text("1.25".into()));
+    }
+
+    #[test]
     fn array_constants_pass_into_functions_and_spill() {
         let mut s = sheet_with(&[
             ("A1", "=SUM({1,2;3,4})"),

@@ -2283,5 +2283,7 @@
  "group_menu": "Сгруппировать",
  "function_search": "Поиск функции",
  "function_category": "Категория",
- "function_name": "Имя функции"
+ "function_name": "Имя функции",
+ "engineering": "Инженерные",
+ "database": "База данных"
 }

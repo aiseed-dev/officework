@@ -62,12 +62,13 @@ GROUPS = {
             "CHISQ.INV.RT POISSON.DIST BINOM.DIST BINOM.INV "
             "NEGBINOM.DIST HYPGEOM.DIST T.DIST T.DIST.RT T.DIST.2T "
             "T.INV T.INV.2T F.DIST F.DIST.RT F.INV F.INV.RT "
-            "BETA.DIST BETA.INV CONFIDENCE.NORM CONFIDENCE.T",
+            "BETA.DIST BETA.INV CONFIDENCE.NORM CONFIDENCE.T "
+            "BINOM.DIST.RANGE",
     "文字列操作": "LEN LEFT RIGHT MID TRIM UPPER LOWER CONCATENATE CONCAT TEXT "
               "SUBSTITUTE FIND SEARCH VALUE TEXTJOIN REPT CHAR CODE "
               "UNICHAR UNICODE PROPER EXACT CLEAN FIXED YEN NUMBERVALUE "
               "LENB LEFTB RIGHTB MIDB FINDB SEARCHB REPLACEB "
-              "ASC JIS DATESTRING PHONETIC",
+              "ASC JIS DATESTRING PHONETIC VALUETOTEXT ARRAYTOTEXT",
     "論理": "IF IFS SWITCH AND OR NOT TRUE FALSE IFERROR IFNA XOR",
     "日付/時刻": "TODAY NOW DATE DATEVALUE YEAR MONTH DAY WEEKDAY "
             "TIME HOUR MINUTE SECOND EDATE EOMONTH DATEDIF "
@@ -82,6 +83,13 @@ GROUPS = {
             "MIRR XNPV XIRR",
     "情報": "ISBLANK ISERROR ISNA ISERR ISLOGICAL ISNONTEXT ISNUMBER ISTEXT "
             "ISEVEN ISODD NA T N TYPE ERROR.TYPE",
+    "エンジニアリング": "BIN2DEC BIN2HEX BIN2OCT OCT2BIN OCT2DEC OCT2HEX "
+            "DEC2BIN DEC2HEX DEC2OCT HEX2BIN HEX2DEC HEX2OCT "
+            "BITAND BITOR BITXOR BITLSHIFT BITRSHIFT DELTA GESTEP "
+            "ERF ERF.PRECISE ERFC ERFC.PRECISE COMPLEX IMABS IMREAL "
+            "IMAGINARY IMCONJUGATE IMSUM IMSUB IMPRODUCT IMDIV CONVERT",
+    "データベース": "DSUM DAVERAGE DCOUNT DCOUNTA DMAX DMIN DGET "
+            "DPRODUCT DSTDEV DSTDEVP DVAR DVARP",
 }
 
 # 本家の表に無い(日本語まわりの)関数は、こちらで書く。
@@ -91,6 +99,14 @@ HAND_JA = {
     "JIS": {"a": "(文字列)", "d": "半角(1 バイト)文字を全角(2 バイト)文字に変換します。"},
     "DATESTRING": {"a": "(シリアル値)", "d": "日付を和暦の文字列にして返します。"},
     "PHONETIC": {"a": "(範囲)", "d": "セルのふりがなを返します(読み込んだ xlsx のふりがな情報を引きます)。"},
+    # 本家の対訳に無い3つ(2026-09-02)。答えの正は Excel の仕様
+    "VALUETOTEXT": {"a": "(値, [書式])", "d": "指定した値を文字列にして返します。",
+        "ad": "文字列にして返す値!返す形式。0 または省略で簡潔な形式、1 で厳密な形式(文字列を引用符で囲みます)"},
+    "ARRAYTOTEXT": {"a": "(配列, [書式])", "d": "指定した範囲の値を文字列にして返します。",
+        "ad": "文字列にして返す配列!返す形式。0 または省略で簡潔な形式、1 で厳密な形式({} で囲み、文字列を引用符で囲みます)"},
+    "BINOM.DIST.RANGE": {"a": "(試行回数, 成功率, 成功数, [成功数2])",
+        "d": "二項分布を使用して、試行結果の確率を返します。",
+        "ad": "独立した試行の回数!各試行の成功率!試行における成功数!指定した場合、成功数がこの値と成功数の間に入る確率を返します"},
 }
 # 本家の対訳に穴があった語をここで埋める(言語 → 関数名 → {a, d, ad})。
 # **穴を黙って日本語で埋めない** — 埋めていない穴があれば生成を止める。
@@ -117,6 +133,8 @@ GROUP_KEY = {
     "検索/行列": "lookup_reference",
     "財務": "financial",
     "情報": "information",
+    "エンジニアリング": "engineering",
+    "データベース": "database",
 }
 
 NAMES = [n for names in GROUPS.values() for n in names.split()]
@@ -253,6 +271,8 @@ GROUP_EN = {
     "検索/行列": "Lookup and reference",
     "財務": "Financial",
     "情報": "Information",
+    "エンジニアリング": "Engineering",
+    "データベース": "Database",
 }
 
 

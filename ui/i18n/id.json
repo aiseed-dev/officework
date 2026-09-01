@@ -2283,5 +2283,7 @@
  "group_menu": "Kelompokkan",
  "function_search": "Cari fungsi",
  "function_category": "Kategori",
- "function_name": "Nama fungsi"
+ "function_name": "Nama fungsi",
+ "engineering": "Teknik",
+ "database": "Database"
 }

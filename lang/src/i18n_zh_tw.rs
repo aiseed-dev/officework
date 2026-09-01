@@ -1329,6 +1329,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("stop", "停止"),
     ("warning", "警告"),
     ("information", "資訊"),
+    ("engineering", "工程"),
+    ("database", "資料庫"),
     ("card_list", "卡片式清單"),
     ("vertical_list", "垂直清單"),
     ("pyramid_list", "金字塔清單"),

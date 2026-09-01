@@ -2283,5 +2283,7 @@
  "group_menu": "グループ化",
  "function_search": "関数の検索",
  "function_category": "関数の分類",
- "function_name": "関数名"
+ "function_name": "関数名",
+ "engineering": "エンジニアリング",
+ "database": "データベース"
 }

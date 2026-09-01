@@ -1195,6 +1195,186 @@
   "CONFIDENCE.T": {
    "a": "(alpha, 標準差, 樣本數)",
    "ad": "用來計算信賴水準的顯著水準，大於 0 且小於 1!分布的標準差（正數）!樣本的大小"
+  },
+  "BIN2DEC": {
+   "a": "(數值)",
+   "ad": "要轉換的二進位數"
+  },
+  "BIN2HEX": {
+   "a": "(數值, [位數])",
+   "ad": "要轉換的二進位數!要使用的字元數"
+  },
+  "BIN2OCT": {
+   "a": "(數值, [位數])",
+   "ad": "要轉換的二進位數!要使用的字元數"
+  },
+  "OCT2BIN": {
+   "a": "(數值, [位數])",
+   "ad": "要轉換的八進位數!要使用的字元數"
+  },
+  "OCT2DEC": {
+   "a": "(數值)",
+   "ad": "要轉換的八進位數"
+  },
+  "OCT2HEX": {
+   "a": "(數值, [位數])",
+   "ad": "要轉換的八進位數!要使用的字元數"
+  },
+  "DEC2BIN": {
+   "a": "(數值, [位數])",
+   "ad": "要轉換的十進位數!要使用的字元數"
+  },
+  "DEC2HEX": {
+   "a": "(數值, [位數])",
+   "ad": "要轉換的十進位數!要使用的字元數"
+  },
+  "DEC2OCT": {
+   "a": "(數值, [位數])",
+   "ad": "要轉換的十進位數!要使用的字元數"
+  },
+  "HEX2BIN": {
+   "a": "(數值, [位數])",
+   "ad": "要轉換的十六進位數!要使用的字元數"
+  },
+  "HEX2DEC": {
+   "a": "(數值)",
+   "ad": "要轉換的十六進位數"
+  },
+  "HEX2OCT": {
+   "a": "(數值, [位數])",
+   "ad": "要轉換的十六進位數!要使用的字元數"
+  },
+  "BITAND": {
+   "a": "(數值1, 數值2)",
+   "ad": "要計算之二進位數的十進位表示!要計算之二進位數的十進位表示"
+  },
+  "BITOR": {
+   "a": "(數值1, 數值2)",
+   "ad": "要計算之二進位數的十進位表示!要計算之二進位數的十進位表示"
+  },
+  "BITXOR": {
+   "a": "(數值1, 數值2)",
+   "ad": "要計算之二進位數的十進位表示!要計算之二進位數的十進位表示"
+  },
+  "BITLSHIFT": {
+   "a": "(數值, 移動位數)",
+   "ad": "要計算之二進位數的十進位表示!要將數值往左移動的位元數"
+  },
+  "BITRSHIFT": {
+   "a": "(數值, 移動位數)",
+   "ad": "要計算之二進位數的十進位表示!要將數值往右移動的位元數"
+  },
+  "DELTA": {
+   "a": "(數值1, [數值2])",
+   "ad": "第一個數值!第二個數值"
+  },
+  "GESTEP": {
+   "a": "(數值, [臨界值])",
+   "ad": "要與臨界值比較的值!臨界值"
+  },
+  "ERF": {
+   "a": "(下限, [上限])",
+   "ad": "ERF 積分的下限!ERF 積分的上限"
+  },
+  "ERF.PRECISE": {
+   "a": "(X)",
+   "ad": "積分的下限"
+  },
+  "ERFC": {
+   "a": "(x)",
+   "ad": "ERFC 積分的下限"
+  },
+  "ERFC.PRECISE": {
+   "a": "(X)",
+   "ad": "積分的下限"
+  },
+  "COMPLEX": {
+   "a": "(實部, 虛部, [字尾])",
+   "ad": "複數的實部係數!複數的虛部係數!複數虛部的字尾"
+  },
+  "IMABS": {
+   "a": "(複數)",
+   "ad": "要求得絕對值的複數"
+  },
+  "IMREAL": {
+   "a": "(複數)",
+   "ad": "要求得實部係數的複數"
+  },
+  "IMAGINARY": {
+   "a": "(複數)",
+   "ad": "要求得虛部係數的複數"
+  },
+  "IMCONJUGATE": {
+   "a": "(複數)",
+   "ad": "要求得共軛複數的複數"
+  },
+  "IMSUM": {
+   "a": "(複數1, [複數2], ...)",
+   "ad": "要相加的 1 到 255 個複數"
+  },
+  "IMSUB": {
+   "a": "(複數1, 複數2)",
+   "ad": "要被減的複數!要減去的複數"
+  },
+  "IMPRODUCT": {
+   "a": "(複數1, [複數2], ...)",
+   "ad": "要相乘的 1 到 255 個複數"
+  },
+  "IMDIV": {
+   "a": "(複數1, 複數2)",
+   "ad": "複數的分子（被除數）!複數的分母（除數）"
+  },
+  "CONVERT": {
+   "a": "(數值, 變換前單位, 變換後單位)",
+   "ad": "要轉換的值（以變換前單位表示）!數值的單位!結果的單位"
+  },
+  "DSUM": {
+   "a": "(資料庫, 欄位, 準則)",
+   "ad": "組成清單或資料庫的儲存格範圍。資料庫是一份相關資料的清單!以雙引號括住的欄標籤，或代表欄在清單中位置的數字!含有指定條件的儲存格範圍。範圍包含一個欄標籤，以及標籤下方作為條件的一個儲存格"
+  },
+  "DAVERAGE": {
+   "a": "(資料庫, 欄位, 準則)",
+   "ad": "組成清單或資料庫的儲存格範圍。資料庫是一份相關資料的清單!以雙引號括住的欄標籤，或代表欄在清單中位置的數字!含有指定條件的儲存格範圍。範圍包含一個欄標籤，以及標籤下方作為條件的一個儲存格"
+  },
+  "DCOUNT": {
+   "a": "(資料庫, 欄位, 準則)",
+   "ad": "組成清單或資料庫的儲存格範圍。資料庫是一份相關資料的清單!以雙引號括住的欄標籤，或代表欄在清單中位置的數字!含有指定條件的儲存格範圍。範圍包含一個欄標籤，以及標籤下方作為條件的一個儲存格"
+  },
+  "DCOUNTA": {
+   "a": "(資料庫, 欄位, 準則)",
+   "ad": "組成清單或資料庫的儲存格範圍。資料庫是一份相關資料的清單!以雙引號括住的欄標籤，或代表欄在清單中位置的數字!含有指定條件的儲存格範圍。範圍包含一個欄標籤，以及標籤下方作為條件的一個儲存格"
+  },
+  "DMAX": {
+   "a": "(資料庫, 欄位, 準則)",
+   "ad": "組成清單或資料庫的儲存格範圍。資料庫是一份相關資料的清單!以雙引號括住的欄標籤，或代表欄在清單中位置的數字!含有指定條件的儲存格範圍。範圍包含一個欄標籤，以及標籤下方作為條件的一個儲存格"
+  },
+  "DMIN": {
+   "a": "(資料庫, 欄位, 準則)",
+   "ad": "組成清單或資料庫的儲存格範圍。資料庫是一份相關資料的清單!以雙引號括住的欄標籤，或代表欄在清單中位置的數字!含有指定條件的儲存格範圍。範圍包含一個欄標籤，以及標籤下方作為條件的一個儲存格"
+  },
+  "DGET": {
+   "a": "(資料庫, 欄位, 準則)",
+   "ad": "組成清單或資料庫的儲存格範圍。資料庫是一份相關資料的清單!以雙引號括住的欄標籤，或代表欄在清單中位置的數字!含有指定條件的儲存格範圍。範圍包含一個欄標籤，以及標籤下方作為條件的一個儲存格"
+  },
+  "DPRODUCT": {
+   "a": "(資料庫, 欄位, 準則)",
+   "ad": "組成清單或資料庫的儲存格範圍。資料庫是一份相關資料的清單!以雙引號括住的欄標籤，或代表欄在清單中位置的數字!含有指定條件的儲存格範圍。範圍包含一個欄標籤，以及標籤下方作為條件的一個儲存格"
+  },
+  "DSTDEV": {
+   "a": "(資料庫, 欄位, 準則)",
+   "ad": "組成清單或資料庫的儲存格範圍。資料庫是一份相關資料的清單!以雙引號括住的欄標籤，或代表欄在清單中位置的數字!含有指定條件的儲存格範圍。範圍包含一個欄標籤，以及標籤下方作為條件的一個儲存格"
+  },
+  "DSTDEVP": {
+   "a": "(資料庫, 欄位, 準則)",
+   "ad": "組成清單或資料庫的儲存格範圍。資料庫是一份相關資料的清單!以雙引號括住的欄標籤，或代表欄在清單中位置的數字!含有指定條件的儲存格範圍。範圍包含一個欄標籤，以及標籤下方作為條件的一個儲存格"
+  },
+  "DVAR": {
+   "a": "(資料庫, 欄位, 準則)",
+   "ad": "組成清單或資料庫的儲存格範圍。資料庫是一份相關資料的清單!以雙引號括住的欄標籤，或代表欄在清單中位置的數字!含有指定條件的儲存格範圍。範圍包含一個欄標籤，以及標籤下方作為條件的一個儲存格"
+  },
+  "DVARP": {
+   "a": "(資料庫, 欄位, 準則)",
+   "ad": "組成清單或資料庫的儲存格範圍。資料庫是一份相關資料的清單!以雙引號括住的欄標籤，或代表欄在清單中位置的數字!含有指定條件的儲存格範圍。範圍包含一個欄標籤，以及標籤下方作為條件的一個儲存格"
   }
  },
  "id": {
@@ -2082,6 +2262,144 @@
   },
   "CONFIDENCE.T": {
    "a": "(alfa, simpangan_baku, ukuran)"
+  },
+  "ARRAYTOTEXT": {
+   "a": "(array, [format])"
+  },
+  "CONVERT": {
+   "a": "(angka, dari_satuan, ke_satuan)"
+  },
+  "DELTA": {
+   "a": "(angka1, [angka2])"
+  },
+  "BIN2DEC": {
+   "a": "(angka)"
+  },
+  "BIN2HEX": {
+   "a": "(angka, [tempat])"
+  },
+  "BIN2OCT": {
+   "a": "(angka, [tempat])"
+  },
+  "OCT2BIN": {
+   "a": "(angka, [tempat])"
+  },
+  "OCT2DEC": {
+   "a": "(angka)"
+  },
+  "OCT2HEX": {
+   "a": "(angka, [tempat])"
+  },
+  "DEC2BIN": {
+   "a": "(angka, [tempat])"
+  },
+  "DEC2HEX": {
+   "a": "(angka, [tempat])"
+  },
+  "DEC2OCT": {
+   "a": "(angka, [tempat])"
+  },
+  "HEX2BIN": {
+   "a": "(angka, [tempat])"
+  },
+  "HEX2DEC": {
+   "a": "(angka)"
+  },
+  "HEX2OCT": {
+   "a": "(angka, [tempat])"
+  },
+  "BITAND": {
+   "a": "(angka1, angka2)"
+  },
+  "BITOR": {
+   "a": "(angka1, angka2)"
+  },
+  "BITXOR": {
+   "a": "(angka1, angka2)"
+  },
+  "BITLSHIFT": {
+   "a": "(angka, jumlah_geser)"
+  },
+  "BITRSHIFT": {
+   "a": "(angka, jumlah_geser)"
+  },
+  "GESTEP": {
+   "a": "(angka, [langkah])"
+  },
+  "ERF": {
+   "a": "(batas_bawah, [batas_atas])"
+  },
+  "ERF.PRECISE": {
+   "a": "(X)"
+  },
+  "ERFC": {
+   "a": "(x)"
+  },
+  "ERFC.PRECISE": {
+   "a": "(X)"
+  },
+  "COMPLEX": {
+   "a": "(angka_riil, angka_imajiner, [akhiran])"
+  },
+  "IMABS": {
+   "a": "(angka_kompleks)"
+  },
+  "IMREAL": {
+   "a": "(angka_kompleks)"
+  },
+  "IMAGINARY": {
+   "a": "(angka_kompleks)"
+  },
+  "IMCONJUGATE": {
+   "a": "(angka_kompleks)"
+  },
+  "IMSUM": {
+   "a": "(angka_kompleks1, [angka_kompleks2], ...)"
+  },
+  "IMSUB": {
+   "a": "(angka_kompleks1, angka_kompleks2)"
+  },
+  "IMPRODUCT": {
+   "a": "(angka_kompleks1, [angka_kompleks2], ...)"
+  },
+  "IMDIV": {
+   "a": "(angka_kompleks1, angka_kompleks2)"
+  },
+  "DSUM": {
+   "a": "(database, bidang, kriteria)"
+  },
+  "DAVERAGE": {
+   "a": "(database, bidang, kriteria)"
+  },
+  "DCOUNT": {
+   "a": "(database, bidang, kriteria)"
+  },
+  "DCOUNTA": {
+   "a": "(database, bidang, kriteria)"
+  },
+  "DMAX": {
+   "a": "(database, bidang, kriteria)"
+  },
+  "DMIN": {
+   "a": "(database, bidang, kriteria)"
+  },
+  "DGET": {
+   "a": "(database, bidang, kriteria)"
+  },
+  "DPRODUCT": {
+   "a": "(database, bidang, kriteria)"
+  },
+  "DSTDEV": {
+   "a": "(database, bidang, kriteria)"
+  },
+  "DSTDEVP": {
+   "a": "(database, bidang, kriteria)"
+  },
+  "DVAR": {
+   "a": "(database, bidang, kriteria)"
+  },
+  "DVARP": {
+   "a": "(database, bidang, kriteria)"
   }
  },
  "ko": {
@@ -2954,6 +3272,141 @@
   },
   "CONFIDENCE.T": {
    "a": "(알파, 표준_편차, 표본크기)"
+  },
+  "BIN2DEC": {
+   "a": "(숫자)"
+  },
+  "BIN2HEX": {
+   "a": "(숫자, [자릿수])"
+  },
+  "BIN2OCT": {
+   "a": "(숫자, [자릿수])"
+  },
+  "OCT2BIN": {
+   "a": "(숫자, [자릿수])"
+  },
+  "OCT2DEC": {
+   "a": "(숫자)"
+  },
+  "OCT2HEX": {
+   "a": "(숫자, [자릿수])"
+  },
+  "DEC2BIN": {
+   "a": "(숫자, [자릿수])"
+  },
+  "DEC2HEX": {
+   "a": "(숫자, [자릿수])"
+  },
+  "DEC2OCT": {
+   "a": "(숫자, [자릿수])"
+  },
+  "HEX2BIN": {
+   "a": "(숫자, [자릿수])"
+  },
+  "HEX2DEC": {
+   "a": "(숫자)"
+  },
+  "HEX2OCT": {
+   "a": "(숫자, [자릿수])"
+  },
+  "BITAND": {
+   "a": "(숫자1, 숫자2)"
+  },
+  "BITOR": {
+   "a": "(숫자1, 숫자2)"
+  },
+  "BITXOR": {
+   "a": "(숫자1, 숫자2)"
+  },
+  "BITLSHIFT": {
+   "a": "(숫자, 이동할_비트수)"
+  },
+  "BITRSHIFT": {
+   "a": "(숫자, 이동할_비트수)"
+  },
+  "DELTA": {
+   "a": "(숫자1, [숫자2])"
+  },
+  "GESTEP": {
+   "a": "(숫자, [기준값])"
+  },
+  "ERF": {
+   "a": "(하한, [상한])"
+  },
+  "ERF.PRECISE": {
+   "a": "(X)"
+  },
+  "ERFC": {
+   "a": "(x)"
+  },
+  "ERFC.PRECISE": {
+   "a": "(X)"
+  },
+  "COMPLEX": {
+   "a": "(실수부, 허수부, [접미사])"
+  },
+  "IMABS": {
+   "a": "(복소수)"
+  },
+  "IMREAL": {
+   "a": "(복소수)"
+  },
+  "IMAGINARY": {
+   "a": "(복소수)"
+  },
+  "IMCONJUGATE": {
+   "a": "(복소수)"
+  },
+  "IMSUM": {
+   "a": "(복소수1, [복소수2], ...)"
+  },
+  "IMSUB": {
+   "a": "(복소수1, 복소수2)"
+  },
+  "IMPRODUCT": {
+   "a": "(복소수1, [복소수2], ...)"
+  },
+  "IMDIV": {
+   "a": "(복소수1, 복소수2)"
+  },
+  "CONVERT": {
+   "a": "(숫자, 변환전_단위, 변환후_단위)"
+  },
+  "DSUM": {
+   "a": "(데이터베이스, 필드, 조건)"
+  },
+  "DAVERAGE": {
+   "a": "(데이터베이스, 필드, 조건)"
+  },
+  "DCOUNT": {
+   "a": "(데이터베이스, 필드, 조건)"
+  },
+  "DCOUNTA": {
+   "a": "(데이터베이스, 필드, 조건)"
+  },
+  "DMAX": {
+   "a": "(데이터베이스, 필드, 조건)"
+  },
+  "DMIN": {
+   "a": "(데이터베이스, 필드, 조건)"
+  },
+  "DGET": {
+   "a": "(데이터베이스, 필드, 조건)"
+  },
+  "DPRODUCT": {
+   "a": "(데이터베이스, 필드, 조건)"
+  },
+  "DSTDEV": {
+   "a": "(데이터베이스, 필드, 조건)"
+  },
+  "DSTDEVP": {
+   "a": "(데이터베이스, 필드, 조건)"
+  },
+  "DVAR": {
+   "a": "(데이터베이스, 필드, 조건)"
+  },
+  "DVARP": {
+   "a": "(데이터베이스, 필드, 조건)"
   }
  },
  "vi": {
@@ -3811,6 +4264,141 @@
   },
   "CONFIDENCE.T": {
    "a": "(alpha, độ_lệch_chuẩn, cỡ_mẫu)"
+  },
+  "BIN2DEC": {
+   "a": "(số)"
+  },
+  "BIN2HEX": {
+   "a": "(số, [số_ký_tự])"
+  },
+  "BIN2OCT": {
+   "a": "(số, [số_ký_tự])"
+  },
+  "OCT2BIN": {
+   "a": "(số, [số_ký_tự])"
+  },
+  "OCT2DEC": {
+   "a": "(số)"
+  },
+  "OCT2HEX": {
+   "a": "(số, [số_ký_tự])"
+  },
+  "DEC2BIN": {
+   "a": "(số, [số_ký_tự])"
+  },
+  "DEC2HEX": {
+   "a": "(số, [số_ký_tự])"
+  },
+  "DEC2OCT": {
+   "a": "(số, [số_ký_tự])"
+  },
+  "HEX2BIN": {
+   "a": "(số, [số_ký_tự])"
+  },
+  "HEX2DEC": {
+   "a": "(số)"
+  },
+  "HEX2OCT": {
+   "a": "(số, [số_ký_tự])"
+  },
+  "BITAND": {
+   "a": "(số1, số2)"
+  },
+  "BITOR": {
+   "a": "(số1, số2)"
+  },
+  "BITXOR": {
+   "a": "(số1, số2)"
+  },
+  "BITLSHIFT": {
+   "a": "(số, số_bit_dịch_chuyển)"
+  },
+  "BITRSHIFT": {
+   "a": "(số, số_bit_dịch_chuyển)"
+  },
+  "DELTA": {
+   "a": "(số1, [số2])"
+  },
+  "GESTEP": {
+   "a": "(số, [bước])"
+  },
+  "ERF": {
+   "a": "(giới_hạn_dưới, [giới_hạn_trên])"
+  },
+  "ERF.PRECISE": {
+   "a": "(X)"
+  },
+  "ERFC": {
+   "a": "(x)"
+  },
+  "ERFC.PRECISE": {
+   "a": "(X)"
+  },
+  "COMPLEX": {
+   "a": "(phần_thực, phần_ảo, [hậu_tố])"
+  },
+  "IMABS": {
+   "a": "(số_phức)"
+  },
+  "IMREAL": {
+   "a": "(số_phức)"
+  },
+  "IMAGINARY": {
+   "a": "(số_phức)"
+  },
+  "IMCONJUGATE": {
+   "a": "(số_phức)"
+  },
+  "IMSUM": {
+   "a": "(số_phức1, [số_phức2], ...)"
+  },
+  "IMSUB": {
+   "a": "(số_phức1, số_phức2)"
+  },
+  "IMPRODUCT": {
+   "a": "(số_phức1, [số_phức2], ...)"
+  },
+  "IMDIV": {
+   "a": "(số_phức1, số_phức2)"
+  },
+  "CONVERT": {
+   "a": "(số, từ_đơn_vị, sang_đơn_vị)"
+  },
+  "DSUM": {
+   "a": "(cơ_sở_dữ_liệu, trường, tiêu_chí)"
+  },
+  "DAVERAGE": {
+   "a": "(cơ_sở_dữ_liệu, trường, tiêu_chí)"
+  },
+  "DCOUNT": {
+   "a": "(cơ_sở_dữ_liệu, trường, tiêu_chí)"
+  },
+  "DCOUNTA": {
+   "a": "(cơ_sở_dữ_liệu, trường, tiêu_chí)"
+  },
+  "DMAX": {
+   "a": "(cơ_sở_dữ_liệu, trường, tiêu_chí)"
+  },
+  "DMIN": {
+   "a": "(cơ_sở_dữ_liệu, trường, tiêu_chí)"
+  },
+  "DGET": {
+   "a": "(cơ_sở_dữ_liệu, trường, tiêu_chí)"
+  },
+  "DPRODUCT": {
+   "a": "(cơ_sở_dữ_liệu, trường, tiêu_chí)"
+  },
+  "DSTDEV": {
+   "a": "(cơ_sở_dữ_liệu, trường, tiêu_chí)"
+  },
+  "DSTDEVP": {
+   "a": "(cơ_sở_dữ_liệu, trường, tiêu_chí)"
+  },
+  "DVAR": {
+   "a": "(cơ_sở_dữ_liệu, trường, tiêu_chí)"
+  },
+  "DVARP": {
+   "a": "(cơ_sở_dữ_liệu, trường, tiêu_chí)"
   }
  },
  "zh": {
@@ -3875,6 +4463,33 @@
   },
   "DEGREES": {
    "a": "(angle)"
+  },
+  "ERF.PRECISE": {
+   "a": "(X)"
+  },
+  "ERFC": {
+   "a": "(x)"
+  },
+  "ERFC.PRECISE": {
+   "a": "(X)"
+  },
+  "GAMMA": {
+   "a": "(x)"
+  },
+  "ISOWEEKNUM": {
+   "a": "(date)"
+  },
+  "RADIANS": {
+   "a": "(angle)"
+  },
+  "SERIESSUM": {
+   "a": "(x, n, m, coefficients)"
+  },
+  "EXPON.DIST": {
+   "a": "(x, lambda, cumulé)"
+  },
+  "NORM.S.DIST": {
+   "a": "(z, cumulé)"
   }
  },
  "pt-br": {
@@ -3904,6 +4519,204 @@
   },
   "RRI": {
    "a": "(nper, va, vf)"
+  }
+ },
+ "de": {
+  "ERF.PRECISE": {
+   "a": "(X)"
+  },
+  "ERFC.PRECISE": {
+   "a": "(X)"
+  },
+  "FISHER": {
+   "a": "(x)"
+  },
+  "FISHERINV": {
+   "a": "(y)"
+  },
+  "GAMMA": {
+   "a": "(x)"
+  },
+  "GAMMALN": {
+   "a": "(x)"
+  },
+  "GAMMALN.PRECISE": {
+   "a": "(x)"
+  },
+  "GAUSS": {
+   "a": "(x)"
+  },
+  "PHI": {
+   "a": "(x)"
+  },
+  "ISPMT": {
+   "a": "(Zins, Zr, Zzr, Bw)"
+  }
+ },
+ "es": {
+  "ERF.PRECISE": {
+   "a": "(X)"
+  },
+  "ERFC": {
+   "a": "(x)"
+  },
+  "ERFC.PRECISE": {
+   "a": "(X)"
+  },
+  "FISHER": {
+   "a": "(x)"
+  },
+  "FISHERINV": {
+   "a": "(y)"
+  },
+  "GAMMA": {
+   "a": "(x)"
+  },
+  "GAMMALN": {
+   "a": "(x)"
+  },
+  "GAMMALN.PRECISE": {
+   "a": "(x)"
+  },
+  "GAUSS": {
+   "a": "(x)"
+  },
+  "PHI": {
+   "a": "(x)"
+  },
+  "FILTER": {
+   "a": "(matriz, incluir, [si_está_vacío])"
+  }
+ },
+ "it": {
+  "ERF.PRECISE": {
+   "a": "(X)"
+  },
+  "ERFC": {
+   "a": "(x)"
+  },
+  "ERFC.PRECISE": {
+   "a": "(X)"
+  },
+  "FISHER": {
+   "a": "(x)"
+  },
+  "FISHERINV": {
+   "a": "(y)"
+  },
+  "GAMMA": {
+   "a": "(x)"
+  },
+  "GAMMALN": {
+   "a": "(x)"
+  },
+  "GAMMALN.PRECISE": {
+   "a": "(x)"
+  },
+  "GAUSS": {
+   "a": "(x)"
+  },
+  "PHI": {
+   "a": "(x)"
+  }
+ },
+ "pt": {
+  "ERF.PRECISE": {
+   "a": "(X)"
+  },
+  "ERFC": {
+   "a": "(x)"
+  },
+  "ERFC.PRECISE": {
+   "a": "(X)"
+  },
+  "FISHER": {
+   "a": "(x)"
+  },
+  "FISHERINV": {
+   "a": "(y)"
+  },
+  "GAMMA": {
+   "a": "(x)"
+  },
+  "GAMMALN": {
+   "a": "(x)"
+  },
+  "GAMMALN.PRECISE": {
+   "a": "(x)"
+  },
+  "GAUSS": {
+   "a": "(x)"
+  },
+  "PHI": {
+   "a": "(x)"
+  }
+ },
+ "ru": {
+  "ERF.PRECISE": {
+   "a": "(X)"
+  },
+  "ERFC": {
+   "a": "(x)"
+  },
+  "ERFC.PRECISE": {
+   "a": "(X)"
+  },
+  "FISHER": {
+   "a": "(x)"
+  },
+  "FISHERINV": {
+   "a": "(y)"
+  },
+  "GAMMA": {
+   "a": "(x)"
+  },
+  "GAMMALN": {
+   "a": "(x)"
+  },
+  "GAMMALN.PRECISE": {
+   "a": "(x)"
+  },
+  "GAUSS": {
+   "a": "(x)"
+  },
+  "PHI": {
+   "a": "(x)"
+  },
+  "TYPE": {
+   "a": "(значение)"
+  }
+ },
+ "tr": {
+  "ERF.PRECISE": {
+   "a": "(X)"
+  },
+  "ERFC": {
+   "a": "(x)"
+  },
+  "ERFC.PRECISE": {
+   "a": "(X)"
+  },
+  "FISHER": {
+   "a": "(x)"
+  },
+  "FISHERINV": {
+   "a": "(y)"
+  },
+  "GAMMA": {
+   "a": "(x)"
+  },
+  "GAMMALN": {
+   "a": "(x)"
+  },
+  "GAMMALN.PRECISE": {
+   "a": "(x)"
+  },
+  "GAUSS": {
+   "a": "(x)"
+  },
+  "PHI": {
+   "a": "(x)"
   }
  }
 }

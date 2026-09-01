@@ -6256,8 +6256,10 @@ mod fnhelp_tests {
         let table: BTreeSet<&str> = crate::funcs::FUNCS.iter().map(|f| f.group).collect();
         assert_eq!(tab_of, table, "タブの並びと funcs.rs の分類が食い違っています");
 
-        // 族の一覧を開くコマンド。**既定に落ちてよいのはこの2つだけ**
-        let default_ok = ["lookup_reference", "information"];
+        // 族の一覧を開くコマンド。**既定に落ちてよいのはこの4つだけ** —
+        // リボンに族のボタンが無い分類(情報・エンジニアリング・
+        // データベースと、既定そのものの検索/行列)
+        let default_ok = ["lookup_reference", "information", "engineering", "database"];
         for g in &tab_of {
             let id = util::fn_group_cmd(g);
             if default_ok.contains(g) {

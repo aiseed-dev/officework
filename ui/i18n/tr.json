@@ -2283,5 +2283,7 @@
  "group_menu": "Grupla",
  "function_search": "İşlev ara",
  "function_category": "Kategori",
- "function_name": "İşlev adı"
+ "function_name": "İşlev adı",
+ "engineering": "Mühendislik",
+ "database": "Veritabanı"
 }
