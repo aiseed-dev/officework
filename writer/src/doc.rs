@@ -581,9 +581,9 @@ impl Writer {
         // 発表(跨がない)のときだけ、写しに改ページの印を足しながら
         // 何度か組み直すので、写しは**書ける形**で持つ
         let mut composed = self.native.then(|| kumihan::theme::compose(&self.doc, &self.tmpl));
-        // **様式(升目)は写しの側で組みます**(2026-08-18)。本文は
-        // `項目:: 値` のまま残るので、保存しても升目は本文に漏れません。
-        // 対応の付かない項目と埋まらない升は、ここで受け取って状態行に出します
+        // **様式(セル)は写しの側で組みます**(2026-08-18)。本文は
+        // `項目:: 値` のまま残るので、保存してもセルは本文に漏れません。
+        // 対応の付かない項目と埋まらないセルは、ここで受け取って状態行に出します
         self.form_notes = match composed.as_mut() {
             Some(c) => kumihan::theme::apply_forms(c, &self.tmpl),
             None => Vec::new(),
@@ -817,7 +817,7 @@ impl Writer {
         let mut doc = self.doc.clone();
         if let Some(th) = tmpl {
             kumihan::theme::compose_page(&mut doc, th);
-            // **様式(升目)は docx にも出します。** 画面と同じ表になります
+            // **様式(セル)は docx にも出します。** 画面と同じ表になります
             kumihan::theme::apply_forms(&mut doc, th);
         }
         // 相互参照は保存の写しで計算し直す(docx のキャッシュを新しく保つ。
@@ -1077,8 +1077,8 @@ impl Writer {
         }
     }
 
-    /// **様式(升目)で言うことがあれば、状態行に出します。**
-    /// 対応の付かない項目と埋まらない升を黙って落とすと、空欄の申請書が
+    /// **様式(セル)で言うことがあれば、状態行に出します。**
+    /// 対応の付かない項目と埋まらないセルを黙って落とすと、空欄の申請書が
     /// できあがります(2026-08-18)
     pub(crate) fn form_status(&self) -> Option<String> {
         (!self.form_notes.is_empty()).then(|| self.form_notes.join("・"))
@@ -2346,7 +2346,7 @@ impl Writer {
                                   self.status.clone(), ledger.join("・")).into();
         }
         // **様式の食い違いは開いたときに言います。** 印刷してから気づくのでは
-        // 遅いので、升目を組んだその場で出します
+        // 遅いので、セルを組んだその場で出します
         if let Some(says) = self.form_status() {
             self.status = ui::tf!("form", self.status.clone(), says).into();
         }

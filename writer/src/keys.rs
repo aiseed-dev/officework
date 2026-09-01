@@ -793,7 +793,7 @@ impl Writer {
     /// 表の画面と同じ作法で、端では止まります(巡回しません — どちらが
     /// 端かが分からなくなるため)。
     pub(crate) fn send_list(&mut self, downward: bool) -> bool {
-        // **記号の一覧は ↑↓ で送りません**(升の並びなので、行の中を
+        // **記号の一覧は ↑↓ で送りません**(セルの並びなので、行の中を
         // 動くのと段を動くのが別物になります。前からの形を保ちます)
         let kind = match self.open_list {
             Some(k) if k != "inssymbol" => k,

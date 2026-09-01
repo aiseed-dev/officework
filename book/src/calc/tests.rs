@@ -2045,7 +2045,7 @@ mod calculation_works_on_tables_outside_a_sheet {
     use crate::grid::Grid;
     use crate::{Pos, TableDef, Value};
 
-    /// 九九の表。**升目の値を式で答える**だけの、いちばん小さい表。
+    /// 九九の表。**セルの値を式で答える**だけの、いちばん小さい表。
     /// 中身を持たなくても計算に載ることを示す
     struct TimesTable {
         defs: Vec<TableDef>,

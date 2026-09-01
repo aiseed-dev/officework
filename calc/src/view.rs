@@ -1168,7 +1168,7 @@ impl Render for Calc {
         // (窓に合わせるのは見える範囲。セルの大きさは設定どおり固定)
         let (sel_a, sel_b) = self.sel_rect();
         let has_sel = self.anchor.is_some();
-        // 左上の角 = 全部のセルを選ぶ(押せる升。当たり判定は
+        // 左上の角 = 全部のセルを選ぶ(押せるセル。当たり判定は
         // state.rs の mouse_down_at。ここは見た目と誘いだけ)。
         // 全部選んでいる間は見出しと同じ緑にして「いま全選択」を見せる
         let all_on = has_sel

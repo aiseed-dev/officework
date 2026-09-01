@@ -1666,7 +1666,7 @@ impl Calc {
             return;
         }
         // 見出しの左上の角 = **全部のセルを選ぶ**(Excel の作法。
-        // 発注者 2026-08-14)。行の見出しでも列の見出しでもない唯一の升
+        // 発注者 2026-08-14)。行の見出しでも列の見出しでもない唯一のセル
         if x < HEAD_W && y < ROW_H && self.show_headers {
             if !self.commit() {
                 return;

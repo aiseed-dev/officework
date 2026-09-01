@@ -1,7 +1,7 @@
 //! **実物の docx で、表のセルの往復を測る。**
 //!
 //! 日本の様式は「1つのセルに段落がいくつも入る」形が多く、実物 17 冊の
-//! 395 升のうち **63 升**がそれでした(2026-08-19)。素のセル(`|`)は中身を
+//! 395 セルのうち **63 セル**がそれでした(2026-08-19)。素のセル(`|`)は中身を
 //! 1段落として組むので、そのまま書くと段落の切れ目が消えます。
 //!
 //! `a|`(AsciiDoc として組むセル)と `{empty}`(空の段落)で往復させます。
@@ -50,7 +50,7 @@ fn real_table_cells_round_trip_through_adoc() {
             volume += 1;
             let name = p.file_name().unwrap().to_string_lossy().to_string();
             for (a, b) in cell_text(&doc).iter().zip(cell_text(&back).iter()) {
-                // 段落が2つ以上の升だけを見る(1段落の升は前から通っている)
+                // 段落が2つ以上のセルだけを見る(1段落のセルは前から通っている)
                 if !a.contains('\n') {
                     continue;
                 }
@@ -66,7 +66,7 @@ fn real_table_cells_round_trip_through_adoc() {
         }
     }
 
-    println!("docx {volume} 冊 / 段落が複数の升 {grid_cell}: そのまま {as_is} / 空の段落だけ違う {blank_only}");
+    println!("docx {volume} 冊 / 段落が複数のセル {grid_cell}: そのまま {as_is} / 空の段落だけ違う {blank_only}");
     assert!(volume > 0, "docx を1冊も読めていない");
     // **字が消えたら落とす。** 段落の数の細かな違いは許す
     assert!(content_differs.is_empty(), "セルの字が往復で変わった:\n  {}", content_differs.join("\n  "));

@@ -165,20 +165,20 @@ pub struct Theme {
     /// 縦書き(右の列から左へ)
     pub vertical: bool,
     pub styles: Vec<StyleDef>,
-    /// **様式(升目)**。申請書のような枠の書類の形です(2026-08-18)。
+    /// **様式(セル)**。申請書のような枠の書類の形です(2026-08-18)。
     /// 中身は本文のラベル付きリスト(`項目:: 値`)が持ち、ここは枠だけを
     /// 持ちます。結び付けは名前で取ります
     pub forms: Vec<Form>,
 }
 
-/// 様式(升目)1つ。
+/// 様式(セル)1つ。
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Form {
     pub name: String,
     pub rows: Vec<FormRow>,
 }
 
-/// 様式の1行。`升` に項目の名前を並べ、`幅` があれば桁の比になります。
+/// 様式の1行。`セル` に項目の名前を並べ、`幅` があれば桁の比になります。
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct FormRow {
     /// この行に並べる項目の名前
@@ -588,7 +588,7 @@ fn strip_note(line: &str) -> &str {
 /// **1つの読み単位にまとめた行**を返します。返りは(元の行番号, 中身)。
 ///
 /// 覚え書き(`#` から行末)を落とし、空行を捨てます。値が `[` や `{` で
-/// 開いたまま行が終わったら、閉じるまで次の行を繋ぎます — 様式の升目は
+/// 開いたまま行が終わったら、閉じるまで次の行を繋ぎます — 様式のセルは
 /// 配列で書くので、1つの値が何行にもまたがります(2026-08-18)。
 fn logical_lines(src: &str) -> Vec<(usize, String)> {
     let mut out: Vec<(usize, String)> = Vec::new();
@@ -639,7 +639,7 @@ fn balances(s: &str) -> bool {
 /// (2026-08-18 に実際に通して分かりました)。**書き方は変えません** —
 /// 渡す直前にここで囲みます。
 ///
-/// 直すのは `{ 升 = […] }` のような値の中のキーだけです。囲みの中
+/// 直すのは `{ セル = […] }` のような値の中のキーだけです。囲みの中
 /// (`"…"`)は字なので触りません。
 fn quote_key(v: &str) -> String {
     let b: Vec<char> = v.chars().collect();
@@ -918,7 +918,7 @@ pub fn parse(src: &str) -> Result<Theme, String> {
     Ok(th)
 }
 
-/// 様式の `行 = [ { 升 = […], 幅 = […] }, … ]` を読む。
+/// 様式の `行 = [ { セル = […], 幅 = […] }, … ]` を読む。
 fn read_grid(v: &toml_edit::Value, name: &str, ln: usize) -> Result<Vec<FormRow>, String> {
     let line_no = |i: usize| format!("{} 行目: [様式.{name}] の {} 行目", ln + 1, i + 1);
     let Some(array_of) = v.as_array() else {
@@ -928,21 +928,21 @@ fn read_grid(v: &toml_edit::Value, name: &str, ln: usize) -> Result<Vec<FormRow>
     for (i, line) in array_of.iter().enumerate() {
         let Some(tbl) = line.as_inline_table() else {
             return Err(format!(
-                "{}は {{ 升 = [\"項目の名前\"] }} の形で書いてください",
+                "{}は {{ セル = [\"項目の名前\"] }} の形で書いてください",
                 line_no(i)
             ));
         };
         let mut r = FormRow::default();
         for (k, v) in tbl.iter() {
             match k {
-                "升" | "cells" => {
+                "セル" | "cells" => {
                     let Some(a) = v.as_array() else {
-                        return Err(format!("{}の 升 は配列で書いてください", line_no(i)));
+                        return Err(format!("{}の セル は配列で書いてください", line_no(i)));
                     };
                     for c in a.iter() {
                         let Some(s) = c.as_str() else {
                             return Err(format!(
-                                "{}の 升 には項目の名前を \"…\" で書いてください",
+                                "{}の セル には項目の名前を \"…\" で書いてください",
                                 line_no(i)
                             ));
                         };
@@ -965,7 +965,7 @@ fn read_grid(v: &toml_edit::Value, name: &str, ln: usize) -> Result<Vec<FormRow>
             }
         }
         if r.cells.is_empty() {
-            return Err(format!("{}に 升 がありません", line_no(i)));
+            return Err(format!("{}に セル がありません", line_no(i)));
         }
         out.push(r);
     }
@@ -1068,12 +1068,12 @@ pub fn write(th: &Theme) -> String {
         }
         s.push('\n');
     }
-    // 様式(升目)。**行の並びが意味そのもの**なので、書いた順に出します
+    // 様式(セル)。**行の並びが意味そのもの**なので、書いた順に出します
     for f in &th.forms {
         s.push_str(&format!("[様式.{}]\n行 = [\n", f.name));
         for r in &f.rows {
             let grid_cell: Vec<String> = r.cells.iter().map(|c| format!("\"{c}\"")).collect();
-            s.push_str(&format!("  {{ 升 = [{}]", grid_cell.join(", ")));
+            s.push_str(&format!("  {{ セル = [{}]", grid_cell.join(", ")));
             if !r.widths.is_empty() {
                 let widths: Vec<String> = r.widths.iter().map(|w| num(*w)).collect();
                 s.push_str(&format!(", 幅 = [{}]", widths.join(", ")));
@@ -1226,13 +1226,13 @@ pub fn compose_page(out: &mut Document, theme: &Theme) {
     }
 }
 
-/// **本文のラベル付きリストを、様式(升目)の表にします**(2026-08-18)。
+/// **本文のラベル付きリストを、様式(セル)の表にします**(2026-08-18)。
 ///
 /// 文書の頭に `:様式: 申請書` と書き、テンプレートに `[様式.申請書]` が
-/// あるときだけ効きます。中身(`項目:: 値`)と升の結び付けは**名前で取ります**
+/// あるときだけ効きます。中身(`項目:: 値`)とセルの結び付けは**名前で取ります**
 /// — 順番で取ると、項目を1つ足しただけで全部ずれます。
 ///
-/// 返りは利用者に見せる言葉です。**対応の付かない項目と、埋まらない升は
+/// 返りは利用者に見せる言葉です。**対応の付かない項目と、埋まらないセルは
 /// 必ず言います**。黙って落とすと、空欄の申請書ができあがります。
 pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
     let Some(name) = out
@@ -1266,12 +1266,12 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
         return vec![format!("様式「{name}」を使う本文がありません(`項目:: 値` で書きます)")];
     }
 
-    // 升目を組む。1つの升は「項目の名前」と「値」の2つのセットになります
+    // セルを組む。1つのセルは「項目の名前」と「値」の2つのセットになります
     let mut used: Vec<String> = Vec::new();
     let mut says: Vec<String> = Vec::new();
-    // **升目は 100 桁の格子**で組みます(2026-08-18)。
+    // **セルは 100 桁の格子**で組みます(2026-08-18)。
     //
-    // 行ごとに升の数が違うのが様式の普通の姿です(1行目は1つ、2行目は2つ)。
+    // 行ごとにセルの数が違うのが様式の普通の姿です(1行目は1つ、2行目は2つ)。
     // 表の桁は1組しか持てないので、100 の格子を敷いて、各セルが占める桁数で
     // 幅を表します。100 は百分率と同じなので、`幅 = [30, 70]` がそのまま
     // 30 桁と 70 桁になります
@@ -1282,7 +1282,7 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
         for c in &r.cells {
             let value = entries.iter().find(|(n, _)| n == c).map(|(_, v)| v.clone());
             if value.is_none() {
-                says.push(format!("升「{c}」に入れる項目が本文にありません"));
+                says.push(format!("セル「{c}」に入れる項目が本文にありません"));
             } else {
                 used.push(c.clone());
             }
@@ -1302,7 +1302,7 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
     let ratio: Vec<f32> = Vec::new();
     for (n, _) in &entries {
         if !used.contains(n) {
-            says.push(format!("項目「{n}」に対応する升が様式にありません"));
+            says.push(format!("項目「{n}」に対応するセルが様式にありません"));
         }
     }
 
@@ -1319,7 +1319,7 @@ pub fn apply_forms(out: &mut Document, theme: &Theme) -> Vec<String> {
 /// **幅の指定を、格子の桁数に割ります。**
 ///
 /// `幅` が無ければ等分します。数が足りない・多いときは、書いた分だけ使って
-/// 残りを等分します。合計は必ず格子の数にします(端数は最後の升に寄せます)
+/// 残りを等分します。合計は必ず格子の数にします(端数は最後のセルに寄せます)
 fn split_cols(widths: &[f32], n: usize, grid: u16) -> Vec<u8> {
     if n == 0 {
         return Vec::new();
@@ -1341,7 +1341,7 @@ fn split_cols(widths: &[f32], n: usize, grid: u16) -> Vec<u8> {
         .iter()
         .map(|x| ((x / sum * grid as f32).round() as i64).clamp(1, 255) as u8)
         .collect();
-    // 端数で合計がずれるので、最後の升で帳尻を合わせます
+    // 端数で合計がずれるので、最後のセルで帳尻を合わせます
     let delta = grid as i64 - out.iter().map(|x| *x as i64).sum::<i64>();
     if let Some(last) = out.last_mut() {
         *last = (*last as i64 + delta).clamp(1, 255) as u8;
@@ -1349,14 +1349,14 @@ fn split_cols(widths: &[f32], n: usize, grid: u16) -> Vec<u8> {
     out
 }
 
-/// 升1つ(字と、占める桁数)
+/// セル1つ(字と、占める桁数)
 fn cell_width(text: &str, cols: u8) -> crate::doc::Cellbox {
     let mut c = grid_cell(text);
     c.col_span = cols;
     c
 }
 
-/// 升1つ(字を1つ入れたセル)
+/// セル1つ(字を1つ入れたセル)
 fn grid_cell(text: &str) -> crate::doc::Cellbox {
     crate::doc::Cellbox {
         paragraphs: vec![crate::doc::Paragraph {
@@ -1565,10 +1565,10 @@ mod tests {
         }
     }
 
-    /// **様式(升目)**(2026-08-18)。中身は本文が持ち、枠だけをここに置く
+    /// **様式(セル)**(2026-08-18)。中身は本文が持ち、枠だけをここに置く
     #[test]
     fn a_form_reads_and_round_trips() {
-        let src = "[様式.申請書]\n行 = [\n  { 升 = [\"申請日\"], 幅 = [30, 70] },\n  { 升 = [\"部署\", \"氏名\"] },\n]\n";
+        let src = "[様式.申請書]\n行 = [\n  { セル = [\"申請日\"], 幅 = [30, 70] },\n  { セル = [\"部署\", \"氏名\"] },\n]\n";
         let th = parse(src).expect("読めない");
         assert_eq!(th.forms.len(), 1);
         assert_eq!(th.forms[0].name, "申請書");
@@ -1583,10 +1583,10 @@ mod tests {
     /// TOML の決まりでは、囲まないキーは英数字だけだから
     #[test]
     fn values_under_japanese_keys_read() {
-        let th = parse("[様式.甲]\n行 = [{ 升 = [\"あ\"] }]\n").expect("読めない");
+        let th = parse("[様式.甲]\n行 = [{ セル = [\"あ\"] }]\n").expect("読めない");
         assert_eq!(th.forms[0].rows[0].cells, vec!["あ"]);
-        // 囲みの中の `升 =` は字なので触らない
-        assert_eq!(quote_key("\"升 = 1\""), "\"升 = 1\"");
+        // 囲みの中の `セル =` は字なので触らない
+        assert_eq!(quote_key("\"セル = 1\""), "\"セル = 1\"");
     }
 
     fn form_doc() -> (Document, Theme) {
@@ -1595,7 +1595,7 @@ mod tests {
         )
         .expect("本文が読めない");
         let th = parse(
-            "[様式.申請書]\n行 = [\n  { 升 = [\"申請日\"], 幅 = [30, 70] },\n  { 升 = [\"部署\", \"氏名\"] },\n]\n",
+            "[様式.申請書]\n行 = [\n  { セル = [\"申請日\"], 幅 = [30, 70] },\n  { セル = [\"部署\", \"氏名\"] },\n]\n",
         )
         .expect("様式が読めない");
         (doc, th)
@@ -1606,9 +1606,9 @@ mod tests {
         let (mut doc, th) = form_doc();
         let says = apply_forms(&mut doc, &th);
         assert!(says.is_empty(), "何か言われた: {says:?}");
-        let t = doc.tables().next().expect("升目にならない");
+        let t = doc.tables().next().expect("セルにならない");
         assert_eq!(t.rows.len(), 2);
-        // 1つの升は「名前」と「値」の2つ。幅は 100 桁の格子で表す
+        // 1つのセルは「名前」と「値」の2つ。幅は 100 桁の格子で表す
         let text = |c: &crate::doc::Cellbox| -> String {
             c.paragraphs.iter().flat_map(|p| p.runs.iter()).map(|r| r.text.as_str()).collect()
         };
@@ -1618,7 +1618,7 @@ mod tests {
         assert_eq!(t.rows[0][1].span(), 70);
         // 幅を書いていない行は等分(4つで 100)
         assert_eq!(t.rows[1].iter().map(|c| c.span()).sum::<usize>(), 100);
-        // **本文は `項目:: 値` のまま残らない**(升目に置き換わる)
+        // **本文は `項目:: 値` のまま残らない**(セルに置き換わる)
         assert!(
             !doc.paragraphs().any(|p| p.style_id.as_deref() == Some("説明のリスト")),
             "ラベル付きリストが二重に残った"
@@ -1633,7 +1633,7 @@ mod tests {
         )
         .unwrap();
         let says = apply_forms(&mut doc, &th);
-        assert!(says.iter().any(|s| s.contains("升「部署」")), "{says:?}");
+        assert!(says.iter().any(|s| s.contains("セル「部署」")), "{says:?}");
         assert!(says.iter().any(|s| s.contains("項目「電話」")), "{says:?}");
     }
 
@@ -1642,7 +1642,7 @@ mod tests {
         let (_, th) = form_doc();
         let (mut doc, _) = crate::adoc::parse_full("= 題\n\n項目:: 値\n").unwrap();
         assert!(apply_forms(&mut doc, &th).is_empty());
-        assert!(doc.tables().next().is_none(), "様式と言っていないのに升目にした");
+        assert!(doc.tables().next().is_none(), "様式と言っていないのにセルにした");
     }
 
     #[test]

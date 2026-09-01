@@ -260,6 +260,13 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
             let which = if footer { "フッター" } else { "ヘッダー" };
             let hf = if footer { &mut doc.footer } else { &mut doc.header };
             hf.part = Some(part);
+            // **この部品の図形も運びます**(2026-09-01)。紙の飾り枠は
+            // ヘッダーに置かれます。段落の控えから集めます
+            hf.anchors = hdoc
+                .paragraphs()
+                .flat_map(|p| p.anchors.iter().cloned())
+                .filter(|a| a.contains("<w:drawing") || a.contains("<w:pict"))
+                .collect();
             if hdoc.tables().next().is_some() {
                 rep.note(&format!("{which}の表(編集できないが保存では残る)"));
             } else {
@@ -1191,6 +1198,7 @@ fn attr_of(hay: &str, key: &str) -> String {
                 unhide_when_used: flag("w:unhideWhenUsed"),
                 locked: flag("w:locked"),
                 quick_style: flag("w:qFormat"),
+                default: matches!(attr_of(head, "w:default").as_str(), "1" | "true"),
                 priority: val("w:uiPriority").and_then(|v| v.parse().ok()),
                 para: style_para(body),
             });
@@ -1724,11 +1732,18 @@ pub(super) fn parse_document_rels_num(
                     }
                     // 段落の囲み枠。辺の別は持たない(あれば囲みとみなす)
                     b"pBdr" if in_ppr => { boxed = true; in_pbdr = true }
-                    // **どの辺を引くか。** `w:tcBorders`(升の罫線)にも
+                    // **どの辺を引くか。** `w:tcBorders`(セルの罫線)にも
                     // 同じ名前の子が並ぶので、`in_pbdr` で見分けます
                     b"top" | b"bottom" | b"left" | b"right" | b"between" if in_pbdr => {
                         if !matches!(attr(&e, "val").as_deref(), Some("none") | Some("nil")) {
                             let b = &mut para_border;
+                            // `w:space` は pt そのもの、`w:sz` は 1/8 pt
+                            if let Some(v) = attr(&e, "space").and_then(|v| v.parse::<f32>().ok()) {
+                                b.space_pt = b.space_pt.max(v);
+                            }
+                            if let Some(v) = attr(&e, "sz").and_then(|v| v.parse::<f32>().ok()) {
+                                b.w_pt = b.w_pt.max(v / 8.0);
+                            }
                             match local(e.name().as_ref()) {
                                 b"top" => b.top = true,
                                 b"bottom" => b.bottom = true,
@@ -2236,11 +2251,18 @@ pub(super) fn parse_document_rels_num(
                     }
                     // 段落の囲み枠。辺の別は持たない(あれば囲みとみなす)
                     b"pBdr" if in_ppr => { boxed = true; in_pbdr = true }
-                    // **どの辺を引くか。** `w:tcBorders`(升の罫線)にも
+                    // **どの辺を引くか。** `w:tcBorders`(セルの罫線)にも
                     // 同じ名前の子が並ぶので、`in_pbdr` で見分けます
                     b"top" | b"bottom" | b"left" | b"right" | b"between" if in_pbdr => {
                         if !matches!(attr(&e, "val").as_deref(), Some("none") | Some("nil")) {
                             let b = &mut para_border;
+                            // `w:space` は pt そのもの、`w:sz` は 1/8 pt
+                            if let Some(v) = attr(&e, "space").and_then(|v| v.parse::<f32>().ok()) {
+                                b.space_pt = b.space_pt.max(v);
+                            }
+                            if let Some(v) = attr(&e, "sz").and_then(|v| v.parse::<f32>().ok()) {
+                                b.w_pt = b.w_pt.max(v / 8.0);
+                            }
                             match local(e.name().as_ref()) {
                                 b"top" => b.top = true,
                                 b"bottom" => b.bottom = true,
@@ -2884,6 +2906,34 @@ fn shape_look(a: &str) -> Option<book::SheetShape> {
         None if a.contains("<a:custGeom") => "path".into(),
         None => return None,
     };
+    // **テーマの色**(`<a:schemeClr val="tx1"/>`)。`srgbClr` で書いていない
+    // 図形は、これを読まないと色が無い=線を引かない、になります。
+    // 既定のテーマの色に写します — 文書のテーマは読まないので、
+    // 濃さ(`lumMod` など)は見ません(2026-09-01)
+    fn theme_iro(a: &str, from: &str) -> Option<String> {
+        let i = a.find(from)? + from.len();
+        let j = a[i..].find("<a:schemeClr val=\"")? + i + 18;
+        let e = a[j..].find('"')? + j;
+        if a[i..j].contains("</a:ln>") {
+            return None;
+        }
+        Some(match &a[j..e] {
+            "tx1" | "dk1" => "000000",
+            "bg1" | "lt1" => "FFFFFF",
+            "tx2" | "dk2" => "44546A",
+            "bg2" | "lt2" => "E7E6E6",
+            "accent1" => "4472C4",
+            "accent2" => "ED7D31",
+            "accent3" => "A5A5A5",
+            "accent4" => "FFC000",
+            "accent5" => "5B9BD5",
+            "accent6" => "70AD47",
+            "hlink" => "0563C1",
+            "folHlink" => "954F72",
+            _ => "000000",
+        }
+        .to_string())
+    }
     // 塗りと線の色。**この図形の中の最初の物だけ**を見ます
     let iro = |from: &str| -> Option<String> {
         let i = a.find(from)? + from.len();
@@ -2897,7 +2947,17 @@ fn shape_look(a: &str) -> Option<book::SheetShape> {
     } else {
         sp.fill = iro("<a:solidFill>");
     }
-    sp.line = iro("<a:ln ");
+    sp.line = iro("<a:ln ").or_else(|| theme_iro(a, "<a:ln "));
+    // **線の種類**(`<a:prstDash val="dash"/>`)。無ければ実線
+    if let Some(i) = a.find("<a:prstDash val=\"") {
+        let s2 = i + 17;
+        if let Some(e) = a[s2..].find('"') {
+            let v = &a[s2..s2 + e];
+            if v != "solid" && !v.is_empty() {
+                sp.dash = Some(v.to_string());
+            }
+        }
+    }
     if let Some(i) = a.find("<a:ln w=\"") {
         let s2 = i + 9;
         if let Some(e) = a[s2..].find('"') {

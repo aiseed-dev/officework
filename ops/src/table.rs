@@ -73,12 +73,12 @@ pub fn has_formula(doc: &kumihan::Document) -> bool {
     })
 }
 
-/// 文書の中の表の式を計算して、**見せる字に置き換える**。返すのは直した升の数。
+/// 文書の中の表の式を計算して、**見せる字に置き換える**。返すのは直したセルの数。
 ///
 /// **写しの上で呼んでください。** 元の文書は式のまま残します — 式が正本で、
 /// 答えは見せるときに作る、が決めです(SEKKEI「エンジンの統一」3段目)。
 ///
-/// 式でない升は触りません。太字などの書式を持った升を、答えの字で
+/// 式でないセルは触りません。太字などの書式を持ったセルを、答えの字で
 /// 塗り潰さないためです。
 pub fn fill(doc: &mut kumihan::Document) -> usize {
     fill_with(doc, None)
@@ -91,7 +91,7 @@ pub fn fill_with(doc: &mut kumihan::Document, iter: Option<(u32, f64)>) -> usize
         let kumihan::Block::Table(t) = b else { continue };
         let value = values_with(t, iter);
         for (r, row) in t.rows.iter_mut().enumerate() {
-            // 格子の桁。結合した升はそのぶん進みます
+            // 格子の桁。結合したセルはそのぶん進みます
             let mut c = 0usize;
             for cell in row.iter_mut() {
                 let widths = cell.span();
@@ -320,14 +320,14 @@ mod answer_into_copy {
         assert!(!has_formula(&Document::plain("式の無い文書")));
     }
 
-    /// **式の升だけ答えの字になる。** ほかの升は触らない
+    /// **式のセルだけ答えの字になる。** ほかのセルは触らない
     #[test]
     fn only_formula_cells_are_replaced() {
         let mut d = doc();
-        assert_eq!(fill(&mut d), 1, "直した升の数が合わない");
+        assert_eq!(fill(&mut d), 1, "直したセルの数が合わない");
         let t = d.blocks.iter().find_map(|b| if let Block::Table(t) = b { Some(t) } else { None }).unwrap();
         assert_eq!(kumihan::paras_text(&t.rows[3][1].paragraphs), "2000");
-        // 式でない升はそのまま
+        // 式でないセルはそのまま
         assert_eq!(kumihan::paras_text(&t.rows[1][1].paragraphs), "1200");
         assert_eq!(kumihan::paras_text(&t.rows[0][0].paragraphs), "品名");
     }

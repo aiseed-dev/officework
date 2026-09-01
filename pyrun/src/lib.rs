@@ -983,7 +983,7 @@ print(json.dumps({
 /// * **どちらで取ったかを必ず返します**(`lines` か `text`)。呼ぶ側は
 ///   それを訳して画面に出します。台本は鍵だけを返し、画面の字は作りません
 ///
-/// 返すのは JSON で、ページごと・表ごとの升目です。**この台本は何も書き
+/// 返すのは JSON で、ページごと・表ごとのセルです。**この台本は何も書き
 /// 込みません** — 人が見て、押してから流し込みます。
 pub const PDF_TABLE_PY: &str = r#"
 import sys
@@ -1027,7 +1027,7 @@ with pdfplumber.open(path) as pdf:
             out.append({"page": pno, "how": how, "rows": grid})
 
 # 返しは区切り文字づけ(この形はこちらで決めたもの。JSON は要らない)
-#   表と表 = \x1d / 見出しと中身 = \x1e / 行と行 = \x1e / 升と升 = \x1f
+#   表と表 = \x1d / 見出しと中身 = \x1e / 行と行 = \x1e / セルとセル = \x1f
 #   各表の頭は  ページ番号 \x1f 取り方(lines / text)
 parts = []
 for t in out:

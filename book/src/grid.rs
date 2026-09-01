@@ -25,7 +25,7 @@ pub trait Grid {
     /// 表の名前。`別表!A1` の照合と `CELL("filename")` が使います。
     fn name(&self) -> &str;
 
-    /// 升目の値。中身の無い所は [`Value::Empty`] を返します。
+    /// セルの値。中身の無い所は [`Value::Empty`] を返します。
     fn value(&self, p: Pos) -> Value;
 
     /// 手で隠した行か。`SUBTOTAL`/`AGGREGATE` の 101〜111 が飛ばします。

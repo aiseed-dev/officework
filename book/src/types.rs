@@ -222,7 +222,7 @@ pub struct Borders {
     pub right: Edge,
     /// **斜めの罫線**(xlsx の `<diagonal>`)。2026-08-31 発注者。
     ///
-    /// 日本の帳票は、表の左上の升を斜めに割って「区分」と「項目」の2つの
+    /// 日本の帳票は、表の左上のセルを斜めに割って「区分」と「項目」の2つの
     /// 見出しを入れます。国税庁の消費税の表がその形です。
     /// 引く向きは [`diag_down`](Self::diag_down) と
     /// [`diag_up`](Self::diag_up) で、両方立てれば×になります
@@ -645,7 +645,7 @@ impl Cell {
             // 削った字を使うのはそのままで、**値には元の字**を入れます。
             // 日本の帳票は全角スペースで字下げするので、削ると
             // 「　　　　百万円」が「百万円」になって桁が揃わなくなります
-            // (国税庁の酒税の表で 557 升のうち 56 升)
+            // (国税庁の酒税の表で 557 セルのうち 56 セル)
             _ => Cell { formula: None, value: Value::Text(s.to_string()), fmt: Default::default() },
         }
     }
@@ -1190,6 +1190,13 @@ pub struct SheetShape {
     pub flip_v: bool,
     /// 線の太さ(pt)。既定 1.5pt = 従来の 2px。xlsx の a:ln の w と往復
     pub line_w: f32,
+    /// **線の種類。** DrawingML の `<a:prstDash val="…">` の名前をそのまま
+    /// 持ちます(`dash` `dot` `dashDot` など)。`None` は実線です。
+    ///
+    /// 内閣府の調査票の相談窓口の囲みは点線のテキストボックスです
+    /// (2026-09-01 発注者「テキストボックスはよく使うので、囲みは
+    /// 印刷できるようにはできませんか」)。
+    pub dash: Option<String>,
     /// 不透明度(0〜1、1=不透明)。塗りと線の色に掛かる。
     /// xlsx へは srgbClr の子 a:alpha として書く
     pub alpha: f32,
@@ -1214,6 +1221,7 @@ impl Default for SheetShape {
             kind: String::new(),
             fill: None,
             line: None,
+            dash: None,
             text: None,
             text_fmt: TextFmt::default(),
             spark_marks: SparkMarks::default(),

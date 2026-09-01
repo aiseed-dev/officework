@@ -1211,6 +1211,7 @@ mod hf_layout_tests {
         HeadFoot {
             paragraphs: Document::plain(text).paragraphs().cloned().collect(),
             part: None,
+            anchors: Vec::new(),
         }
     }
 
@@ -3044,7 +3045,7 @@ fn nested_task_lists_also_render_as_boxes() {
 
 }
 
-/// **段落と升の背景色が紙面に落ちる**(2026-08-27 発注者「セルの塗りが
+/// **段落とセルの背景色が紙面に落ちる**(2026-08-27 発注者「セルの塗りが
 /// どうして文書にないのですか」)。
 ///
 /// 模型は前から持っていて、画面も塗っていました。**組む所で落としていた**
@@ -3070,7 +3071,7 @@ mod shade_tests {
         assert_eq!(s.fills[0].1, "FFF6E0", "既定のテンプレートの色でない");
     }
 
-    /// **升の塗り**も同じ道です
+    /// **セルの塗り**も同じ道です
     #[test]
     fn a_cell_shade_reaches_the_page() {
         let mut d = crate::Document::default();
@@ -3092,14 +3093,14 @@ mod shade_tests {
         );
         assert!(
             s.fills.iter().any(|(_, c)| c == "4472C4"),
-            "升の塗りが紙面に落ちていない: {:?}",
+            "セルの塗りが紙面に落ちていない: {:?}",
             s.fills
         );
     }
 
-    /// **升の中の揃えと、行の高さの下限。**
+    /// **セルの中の揃えと、行の高さの下限。**
     ///
-    /// 内閣府の調査票の表は、見出しの升が中央揃え・チェックの升が縦の
+    /// 内閣府の調査票の表は、見出しのセルが中央揃え・チェックのセルが縦の
     /// 中央揃え・行が `w:trHeight` で高さを言っています。組む所がどれも
     /// 見ていなかったので、字が左上に寄り、行も低いままでした
     /// (2026-09-01 発注者「調査項目、内容は中央揃え」)。
@@ -3137,7 +3138,7 @@ mod shade_tests {
             hiku(t).lines.iter().flat_map(|l| l.cells.clone())
                 .find(|c| c.ch == ji).map(|c| c.x_mm).expect("字が無い")
         };
-        // **同じ升を左揃えにしたときより右に来る**のが中央揃えです
+        // **同じセルを左揃えにしたときより右に来る**のが中央揃えです
         let migi = x_of(&t, '中');
         let mut hidari = t.clone();
         hidari.rows[0][1].paragraphs[0].align = Align::Left;

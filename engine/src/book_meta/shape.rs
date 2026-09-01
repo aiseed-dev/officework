@@ -27,6 +27,7 @@ pub const FIELDS: &[(&str, &str)] = &[
     ("dy_px", "dy"),
     ("fill", "fill"),
     ("line", "line"),
+    ("dash", "line-dash"),
     ("line_w", "line-width"),
     ("alpha", "alpha"),
     ("shadow", "shadow"),
@@ -78,7 +79,8 @@ pub fn to_rows(s: &SheetShape) -> Vec<(&'static str, String)> {
             put(k, v.to_string());
         }
     }
-    for (k, v) in [("fill", &s.fill), ("line", &s.line), ("text", &s.text)] {
+    for (k, v) in [("fill", &s.fill), ("line", &s.line), ("dash", &s.dash),
+                   ("text", &s.text)] {
         if let Some(x) = v {
             put(k, x.clone());
         }
@@ -125,6 +127,7 @@ pub fn from_rows(rows: &[(String, String)]) -> SheetShape {
             "flip_v" => s.flip_v = yes,
             "fill" => s.fill = Some(v.clone()),
             "line" => s.line = Some(v.clone()),
+            "dash" => s.dash = Some(v.clone()),
             "text" => s.text = Some(v.clone()),
             "text_fmt" => s.text_fmt = read_text_fmt(v),
             "spark_marks" => s.spark_marks = read_spark(v),

@@ -462,8 +462,18 @@ pub(super) fn hyphen_split(cs: &[(char, f32, usize)], size_pt: f32, m: &Metrics,
     best
 }
 
-/// セルの中の余白(mm)
+/// セルの中の左右の余白(mm)。docx の `w:tblCellMar` の既定は 108twip
+/// (1.9mm)で、こちらは少し狭く取っています
 pub(super) const CELL_PAD: f32 = 1.4;
+
+/// **セルの中の上下の余白(mm)。** docx の `w:tblCellMar` の既定は
+/// **上下とも 0** です。
+///
+/// 前は左右と同じ 1.4mm を上下にも入れていました。字はセルの上から置き、
+/// 罫線はセルの下の端に引くので、足した余白が全部「字の下」に溜まります。
+/// 内閣府の面談の記録では、罫線が自分の字から 12.6pt 離れて次の行の字に
+/// 乗っていました(元は 2.5pt。2026-09-01 発注者)。
+pub(super) const CELL_PAD_V: f32 = 0.0;
 
 /// **見出しの見え方**(2026-08-15)。基準の字に対する倍率で持つ。
 ///
@@ -952,12 +962,18 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 if para.border.aru() {
                     let (x0, x1) = (indent_mm, indent_mm + measure);
                     let lh = lh_of(para, frame, base, pfont.as_deref());
+                    // **線は段落を高くします**(2026-09-01)。線の上下に
+                    // `w:space` ずつ空き、線そのものの太さも足されます。
+                    // 内閣府の調査票の記入欄は、これで1行 15.7mm 相当が
+                    // 元と同じ 18pt 相当になります
+                    y += para.border.takasa_pt() * PT_TO_MM;
                     // **線は段落の下端に引きます。**`y` はもう次の行の
                     // ベースラインなので、そこまで下げると次の段落の字に
                     // 掛かります。字の足のぶんだけ戻した所が下端です
                     // (行の箱の中でベースラインが上から [`BASE_UP_MM`])
                     let asi = lh * (LINE_MM - BASE_UP_MM) / LINE_MM;
-                    let sita = y - lh + asi;
+                    let aki = para.border.space_pt * PT_TO_MM;
+                    let sita = y - lh - para.border.takasa_pt() * PT_TO_MM + asi + aki;
                     let ue = shade_top - lh * 0.8;
                     if para.border.top {
                         sheet.rules.push([x0, ue, x1, ue]);
@@ -1516,13 +1532,13 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         gc: usize,     // 占める格子の左端
         span: usize,
         v: VMerge,
-        /// 行の字と、升の中でのバイト位置と、その行の高さ(mm)と、横の揃え
-        lines: Vec<(Vec<Cell>, usize, f32, Align)>,
+        /// 行の字と、セルの中でのバイト位置と、行の高さ(mm)と、横の揃えと、字の大きさ(pt)
+        lines: Vec<(Vec<Cell>, usize, f32, Align, f32)>,
         x: f32,
         w: f32,
-        /// 升の背景色。**升の中の最初の段落の物**を使います
+        /// セルの背景色。**セルの中の最初の段落の物**を使います
         shade: Option<String>,
-        /// 升の中の縦の揃え(docx の `w:tcPr/w:vAlign`)
+        /// セルの中の縦の揃え(docx の `w:tcPr/w:vAlign`)
         valign: book::VAlign,
     }
     let mut rows_laid: Vec<Vec<Laid>> = Vec::new();
@@ -1530,22 +1546,22 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
 
     for (ri_now, row) in table.rows.iter().enumerate() {
         let mut gc = 0usize;
-        // **升ごとに高さを足します。** 升の中の段落が別の大きさなら、
-        // 行の高さも別です。行の高さはいちばん高い升で決まります
+        // **セルごとに高さを足します。** セルの中の段落が別の大きさなら、
+        // 行の高さも別です。行の高さはいちばん高いセルで決まります
         let mut takasa = lh;
         let mut laid: Vec<Laid> = Vec::new();
         for (ci, cell) in row.iter().enumerate() {
             let span = cell.span().min(ncols.saturating_sub(gc)).max(1);
             let x = xs[gc.min(ncols)];
             let w = xs[(gc + span).min(ncols)] - x;
-            let mut ls: Vec<(Vec<Cell>, usize, f32, Align)> = Vec::new();
+            let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32)> = Vec::new();
             // 縦結合の続きは上のセルに呑まれている。中身は組まない
             if cell.v_merge != VMerge::Continue {
                 let inner = (w - 2.0 * CELL_PAD).max(2.0);
                 let mut para0 = 0usize;
-                // **升の中でも箇条書きの印を出します**(2026-08-31)。前は
+                // **セルの中でも箇条書きの印を出します**(2026-08-31)。前は
                 // `None` を渡していたので、内閣府の調査票の `○` が8か所
-                // 消えていました。番号は升ごとに数え直します
+                // 消えていました。番号はセルごとに数え直します
                 let mut kazu = 0usize;
                 for para in &cell.paragraphs {
                     let pbase = doc.style_pt(para.style_id.as_deref()).unwrap_or(base);
@@ -1561,12 +1577,13 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     };
                     for cs in break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase) {
                         let b0 = para0 + cs.iter().map(|c| c.off).min().unwrap_or(0);
-                        ls.push((cs, b0, plh, para.align));
+                        let pt = cs.first().map(|c: &Cell| c.size_pt).unwrap_or(pbase);
+                        ls.push((cs, b0, plh, para.align, pt));
                     }
                     let plen: usize = para.runs.iter().map(|r| r.text.len()).sum();
                     para0 += plen + 1;
                 }
-                takasa = takasa.max(ls.iter().map(|(_, _, h, _)| *h).sum::<f32>());
+                takasa = takasa.max(ls.iter().map(|(_, _, h, _, _)| *h).sum::<f32>());
             }
             let shade = cell.paragraphs.first().and_then(|p| p.shade.clone());
             laid.push(Laid { ci, gc, span, v: cell.v_merge, lines: ls, x, w, shade,
@@ -1578,7 +1595,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         // 「表の高さが異なる」)。模型は読んでいたのに、組む所で
         // 中身の高さしか見ていませんでした
         let iu = table.row_mm.get(ri_now).copied().unwrap_or(0.0);
-        row_hs.push((takasa + 2.0 * CELL_PAD).max(iu));
+        row_hs.push((takasa + 2.0 * CELL_PAD_V).max(iu));
     }
 
     // 行の上端(累積)
@@ -1630,21 +1647,25 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let h = if l.v == VMerge::Start { merged_h(ri, l.gc) } else { row_hs[ri] };
             let x0 = l.x + CELL_PAD;
             // **縦の揃え**(docx の `w:tcPr/w:vAlign`)。既定は上です。
-            // 前はどの升も上に置いていたので、「□認められる」の行が
-            // 升の頭に張り付いていました(2026-09-01 発注者)
-            let naka: f32 = l.lines.iter().map(|(_, _, h, _)| *h).sum();
-            let aki = (h - 2.0 * CELL_PAD - naka).max(0.0);
+            // 前はどのセルも上に置いていたので、「□認められる」の行が
+            // セルの頭に張り付いていました(2026-09-01 発注者)
+            let naka: f32 = l.lines.iter().map(|(_, _, h, _, _)| *h).sum();
+            let aki = (h - 2.0 * CELL_PAD_V - naka).max(0.0);
             let ue = match l.valign {
                 book::VAlign::Middle => aki / 2.0,
                 book::VAlign::Bottom => aki,
                 _ => 0.0,
             };
-            let mut yy = row_top + CELL_PAD + ue;
+            let mut yy = row_top + CELL_PAD_V + ue;
             let id = Some((table_no, ri, l.ci));
             let uti = (l.w - 2.0 * CELL_PAD).max(0.0);
-            for (cells, b0, plh, yose) in l.lines {
-                yy += plh * 0.8;
-                // **横の揃え**は段落が言います。前は升の中を全部左に
+            for (cells, b0, plh, yose, pt) in l.lines {
+                // **ベースラインは行の箱の下から、字の足のぶんだけ上**です。
+                // 前は箱の高さの 0.8 を上から取っていたので、箱が字より
+                // 高い表では字が上に浮き、下の罫線との間が空いていました
+                // (2026-09-01 発注者)。足の深さは字の大きさで決まります
+                yy += (plh - pt * 0.22 * 25.4 / 72.0).max(plh * 0.5);
+                // **横の揃え**は段落が言います。前はセルの中を全部左に
                 // 寄せていたので、「調査項目」「内容」の中央揃えが
                 // 効いていませんでした(2026-09-01 発注者)
                 let haba: f32 = cells.iter().map(|c| c.w_mm).sum();
@@ -1659,9 +1680,9 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     .map(|mut c| { c.x_mm = x; x += c.w_mm; c })
                     .collect();
                 sheet.lines.push(Line { cells, y_mm: yy, from_body: false, byte0: b0, cell: id });
-                yy += plh * 0.2;
+                yy += pt * 0.22 * 25.4 / 72.0;
             }
-            // **升の塗り**(2026-08-27)。段落の背景色は模型に在り、画面は
+            // **セルの塗り**(2026-08-27)。段落の背景色は模型に在り、画面は
             // 塗っていたのに、**組む所で落としていた**ので紙と PDF に出て
             // いませんでした。註記の帯も見出しの背景も印刷で消えます。
             // 罫線より先に敷くよう、`fills` は `rules` と別に持ちます

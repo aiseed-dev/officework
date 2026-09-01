@@ -859,7 +859,7 @@ class Cell:
         d = self._fmt()
         # **書式が言っていない所は、ブックの標準の書体です**(2026-09-01)。
         # openpyxl も styles.xml の最初の書体を返します。None を返すと、
-        # 「この升は書体を持たない」と読めてしまいます
+        # 「このセルは書体を持たない」と読めてしまいます
         kitei = self.parent.parent.default_font or (None, None)
         return Font(
             name=d.get("font") or kitei[0],

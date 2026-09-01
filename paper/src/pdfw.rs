@@ -194,7 +194,7 @@ pub fn write_pages<W: std::io::Write>(
 /// **書体を何本でも埋める形。** `Piece::font` がどれを使うかを指します。
 ///
 /// 表計算のセルは書体を名指しします(明朝・ゴシック・欧文)。1本しか
-/// 埋めないと、明朝の升までゴシックで出ます(2026-08-31。Fable の指摘2)。
+/// 埋めないと、明朝のセルまでゴシックで出ます(2026-08-31。Fable の指摘2)。
 pub fn write_pages_fonts<W: std::io::Write>(
     pages: &[Leaf],
     page_w_mm: f32,
@@ -356,7 +356,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
             c.fill_nonzero();
         }
         // **塗りは絵の下、紙の色の上。** 罫線より先に敷いて線を潰しません
-        // **色と太さは変わったときだけ書きます。** 升ごとに書き直すと、
+        // **色と太さは変わったときだけ書きます。** セルごとに書き直すと、
         // 90 行の表で中身が 10 倍に膨れます(2026-08-27 に実物で測りました)
         let mut fill_now: Option<(f32, f32, f32)> = None;
         // **透明度は資源の名前で切り替えます**(PDF は色に透明度を持てず、
@@ -412,6 +412,8 @@ pub fn write_pages_fonts<W: std::io::Write>(
         }
         // **罫線を先に引きます**(字の下)
         let mut pen: Option<((f32, f32, f32), f32)> = None;
+        // 破線の刻み。前の線の分が残らないよう、実線のときは戻します
+        let mut kizami: Option<(f32, f32)> = None;
         for r in &page.rules {
             usu(&mut c, &mut usu_now, r.a);
             if pen != Some((r.rgb, r.w_mm)) {
@@ -419,9 +421,19 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 c.set_line_width(pt(r.w_mm));
                 pen = Some((r.rgb, r.w_mm));
             }
+            if kizami != r.dash {
+                match r.dash {
+                    Some((on, off)) => { c.set_dash_pattern([pt(on), pt(off)], 0.0); }
+                    None => { c.set_dash_pattern([], 0.0); }
+                }
+                kizami = r.dash;
+            }
             c.move_to(pt(r.x1_mm), pt(r.y1_mm));
             c.line_to(pt(r.x2_mm), pt(r.y2_mm));
             c.stroke();
+        }
+        if kizami.is_some() {
+            c.set_dash_pattern([], 0.0);
         }
         // **蛍光ペンは字の下に敷きます**(字が隠れないように)
         for p in &page.pieces {
@@ -566,7 +578,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
     // (2026-08-28、Noto と BIZ UD を見比べようとして気づきました)。
     // 頭の6文字は「一部だけ埋めた」印で、PDF の決まりです
     // **書体ごとに部品を書きます**(2026-08-31)。前は1本しか埋められず、
-    // 明朝の升もゴシックの升も同じ書体で出ていました
+    // 明朝のセルもゴシックのセルも同じ書体で出ていました
     for (fi, kono) in faces.iter().enumerate() {
         let (font, cid, desc, file, to_uni) = font_ids[fi];
         let face = kono;
@@ -1209,12 +1221,18 @@ pub struct Rule {
     pub rgb: (f32, f32, f32),
     /// 不透明度(0〜1、1 = 不透明)。図形の影と `SheetShape::alpha` が使います
     pub a: f32,
+    /// **破線の刻み(mm)。** (線, 間)です。`None` は実線。
+    ///
+    /// テキストボックスの点線の囲みがこれです(2026-09-01 発注者
+    /// 「テキストボックスはよく使うので、囲みは印刷できるように」)。
+    pub dash: Option<(f32, f32)>,
 }
 
 impl Default for Rule {
     fn default() -> Self {
         // **透明度の既定は1**です。0 にすると足した所が全部消えます
-        Rule { x1_mm: 0.0, y1_mm: 0.0, x2_mm: 0.0, y2_mm: 0.0, w_mm: 0.0, rgb: (0.0, 0.0, 0.0), a: 1.0 }
+        Rule { x1_mm: 0.0, y1_mm: 0.0, x2_mm: 0.0, y2_mm: 0.0, w_mm: 0.0,
+               rgb: (0.0, 0.0, 0.0), a: 1.0, dash: None }
     }
 }
 
@@ -1588,9 +1606,29 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
         }
     }
 
-    // 罫線。どの頁に載るかは y で決めます
+    // **罫線は、その線が仕切る行と同じ紙に載せます**(2026-09-01 発注者
+    // 「ページの最後に表の最初の罫線がくるときは、次ページ」)。
+    //
+    // 前は線の y だけで紙を決めていました。行が次の紙へ動いても線は動かず、
+    // 表の頭の線だけが前の紙の最後に残り、次の紙は線の無い表で始まります。
+    // 内閣府の調査票の3枚目は、表の上の線が2枚目の余白の外に出ていました。
+    //
+    // 紙の頭の少し上に来た線は、その紙の物とみなします。表の頭の線は
+    // 1行目より 1行ぶん上に引くので、そのぶんを見ます
+    // 紙 i の中身の上端(巻物の座標)。1行目の箱の頭です。表の頭の線は
+    // 1行目のベースラインより上に引くので、ここまでを紙 i の物とみなします
+    let kubun = |y: f32| -> usize {
+        let mut k = 0usize;
+        for (i, off) in offsets.iter().enumerate() {
+            let ue = off + paper_of(i).top_mm - kumihan::BASE_UP_MM;
+            if ue <= y {
+                k = i;
+            }
+        }
+        k
+    };
     for r in &sheet.rules {
-        let k = page_of(offsets, r[1], paper.height_mm);
+        let k = kubun(r[1].min(r[3])).min(pages.len().saturating_sub(1));
         let off = offsets.get(k).copied().unwrap_or(0.0);
         let pp = paper_of(k);
         if let Some(p) = pages.get_mut(k) {
@@ -1649,7 +1687,10 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                 for c in &line.cells {
                     p.pieces.push(Piece {
                         x_mm: pp.margin_mm + c.x_mm,
-                        y_mm: pp.height_mm - (pp.margin_mm + (line.y_mm - base)),
+                        // **縦は上の余白から**です(2026-09-01)。左の余白を
+                        // 使っていたので、上下と左右が違う紙では繰り返した
+                        // 見出しが上の余白へ出ていました
+                        y_mm: pp.height_mm - (pp.top_mm + (line.y_mm - base)),
                         size_pt: c.size_pt,
                         text: c.ch.to_string(),
                         color: c.fmt.color.clone(),
@@ -1795,6 +1836,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                         w_mm,
                         rgb,
                         a,
+                        dash: None,
                     });
                 }
             }

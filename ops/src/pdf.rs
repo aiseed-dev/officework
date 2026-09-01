@@ -50,7 +50,7 @@ pub fn book(b: &book::Book, to: &Path) -> Result<u32, String> {
         return Err("刷るシートがありません(全部隠れています)".into());
     }
     // **セルが名指しした書体を集めて渡します**(2026-08-31。Fable の指摘2)。
-    // 前は1本しか埋められず、明朝の升もゴシックの升も同じ書体で出ていました。
+    // 前は1本しか埋められず、明朝のセルもゴシックのセルも同じ書体で出ていました。
     // 機械に無い書体は置き替えます(`for_document` が系統を保ちます)
     let mut fonts: Vec<(String, Vec<u8>)> = vec![("".into(), font.to_vec())];
     let mut mita: std::collections::BTreeSet<String> = Default::default();

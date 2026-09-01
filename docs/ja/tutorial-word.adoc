@@ -66,7 +66,7 @@ d.save("開催通知.docx")
   (`WD_ALIGN_PARAGRAPH.CENTER`)もそのまま通ります
 . **字の飾りは run に** — 段落の中の一部だけ太字にするときは
   `add_run(字)` してから `bold = True`
-. **表は行×列で作って、升に字を入れる** — `add_table(rows, cols)` と
+. **表は行×列で作って、セルに字を入れる** — `add_table(rows, cols)` と
   `cell(行, 列).text`
 
 === よくあるつまずき

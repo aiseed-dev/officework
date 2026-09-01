@@ -283,6 +283,7 @@ fn houkoku_sample() -> Document {
     d.header = HeadFoot {
         paragraphs: vec![Paragraph { align: Align::Right, ..p("月次報告(見本)") }],
         part: None,
+        anchors: Vec::new(),
     };
     d.footer = HeadFoot {
         paragraphs: vec![Paragraph {
@@ -290,6 +291,7 @@ fn houkoku_sample() -> Document {
             ..para(vec![run("- "), run(&PAGE_MARK.to_string()), run(" -")])
         }],
         part: None,
+        anchors: Vec::new(),
     };
 
     d.blocks.push(Block::Para(heading(1, "月次報告(2026年7月)")));

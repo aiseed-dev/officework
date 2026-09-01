@@ -350,13 +350,18 @@ pub struct InlineImage {
 ///
 /// `between` は「同じ指定の段落が続くとき、その間に引く」です。
 /// 上下の辺と合わせて、記入欄の並びが1本ずつ線で仕切られます。
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct ParaBorder {
     pub top: bool,
     pub bottom: bool,
     pub left: bool,
     pub right: bool,
     pub between: bool,
+    /// **字と線の間の空き(pt)。** docx の `w:space`(pt そのもの)。
+    /// 線の上と下の両方に空きます
+    pub space_pt: f32,
+    /// **線の太さ(pt)。** docx の `w:sz`(1/8 pt)
+    pub w_pt: f32,
 }
 
 impl ParaBorder {
@@ -367,7 +372,17 @@ impl ParaBorder {
 
     /// 4辺を囲む(画面の「囲み」の切り替えが作る形)
     pub fn kakomi() -> Self {
-        ParaBorder { top: true, bottom: true, left: true, right: true, between: false }
+        ParaBorder { top: true, bottom: true, left: true, right: true, ..Default::default() }
+    }
+
+    /// **線が段落に足す高さ(pt)。** 線の上と下の空きと、線の太さです。
+    /// 線を引かない段落は 0 です
+    pub fn takasa_pt(&self) -> f32 {
+        if self.bottom || self.between || self.top {
+            self.space_pt * 2.0 + self.w_pt
+        } else {
+            0.0
+        }
     }
 }
 
@@ -1005,6 +1020,12 @@ pub struct StyleInfo {
     pub locked: bool,
     /// リボンのスタイルの一覧に出す(docx の `w:qFormat`)
     pub quick_style: bool,
+    /// **その種類の既定のスタイルか**(docx の `w:style w:default="1"`)。
+    ///
+    /// `w:pStyle` を名乗らない段落はこれに従います。読まないと
+    /// `docDefaults` に落ち、内閣府の面談の記録では表の書体が
+    /// Meiryo UI ではなく ＭＳ 明朝になっていました(2026-09-01)。
+    pub default: bool,
     /// 一覧に並べる順(docx の `w:uiPriority`)。小さいほど先
     pub priority: Option<i32>,
     /// 段落の見た目(docx の `w:pPr`)。字の見た目([`StyleLook`])と対です
@@ -1244,6 +1265,14 @@ pub struct HeadFoot {
     /// 読み込んだ docx での部品名(`word/header1.xml` 等)。
     /// 保存で同じ部品へ書き戻す。None で paragraphs があれば新しい部品を作る
     pub part: Option<String>,
+    /// **この部品に錨を下ろした図形の原文。** 段落と同じ「理解はしないが
+    /// 捨てない」で、`w:drawing` を丸ごと控えます。
+    ///
+    /// 紙の飾り枠はここに入ります。内閣府の面談の記録は、紙の全面の
+    /// 長方形をヘッダーに置いていて、前は捨てていました
+    /// (2026-09-01 発注者「document_4 でも囲みが表示できていない」)。
+    /// **すべての紙に出します** — ヘッダーとはそういうものです
+    pub anchors: Vec<String>,
 }
 
 /// ページ番号の印(docx の PAGE フィールド)。ヘッダー・フッターの文中に
@@ -2103,7 +2132,18 @@ impl Document {
     fn style_look<T>(&self, id: Option<&str>, toru: impl Fn(&StyleLook) -> Option<T>) -> Option<T> {
         let hiku =
             |i: &str| self.styles.iter().chain(self.styles_new.iter()).find(|s| s.id == i);
-        let mut ima = id?;
+        // **名乗らない段落は、その種類の既定のスタイル**に従います
+        let kitei = || {
+            self.styles
+                .iter()
+                .chain(self.styles_new.iter())
+                .find(|s| s.default && s.kind == "paragraph")
+                .map(|s| s.id.as_str())
+        };
+        let mut ima = match id {
+            Some(i) => i,
+            None => kitei()?,
+        };
         for _ in 0..16 {
             let s = hiku(ima)?;
             if let Some(v) = toru(&s.look) {

@@ -472,6 +472,28 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             _ => 0.0,
         }
     };
+    // **表の1行は、セルごとに別の紙へ割りません**(2026-09-01 発注者
+    // 「罫線が前ページ、内容がこちらのページと別れてしまっている」)。
+    //
+    // 組む所はセルごとに行を並べるので、`sheet.lines` の並びはセル1の全行 →
+    // セル2の全行です。1行ずつ紙に振ると、同じ表の行でもセル1が前の紙・セル2が
+    // 次の紙になります。罫線は表の行の位置で引くので、字だけが次の紙へ
+    // 動き、上の余白にも出ていました。
+    //
+    // その表の行に属する行の**いちばん下**で判断すれば、行の頭で紙が
+    // 変わり、セルが揃って動きます。紙1枚に収まらない行だけは今までどおり
+    // (途中で割らないと永遠に入らないため)
+    let waku: std::collections::HashMap<(usize, usize), (f32, f32)> = {
+        let mut m: std::collections::HashMap<(usize, usize), (f32, f32)> = Default::default();
+        for l in &sheet.lines {
+            if let Some((t, ri, _)) = l.cell {
+                let e = m.entry((t, ri)).or_insert((l.y_mm, l.y_mm));
+                e.0 = e.0.min(l.y_mm);
+                e.1 = e.1.max(l.y_mm);
+            }
+        }
+        m
+    };
     let mut pages = Vec::with_capacity(sheet.lines.len());
     let mut offsets = vec![0.0f32];
     let mut header_h = vec![0.0f32];
@@ -519,7 +541,21 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
         let asi = kumihan::LINE_MM - kumihan::BASE_UP_MM;
         // **下の余白は下の余白で見ます**(2026-08-30)。前は左の余白を
         // 上下にも使っていました
-        if forced || y_roll > cur.height_mm - cur.bottom_mm - reserve - hh - asi {
+        let soko = cur.height_mm - cur.bottom_mm - reserve - hh - asi;
+        // 表の行は、その行のいちばん下で判断します。紙1枚に収まらない行は
+        // 自分の位置で判断します(そうしないと入る所が無くなります)
+        // 表の行の上端と下端。紙1枚に収まらない行は、今までどおり自分の
+        // 位置で見ます(そうしないと入る所が無くなります)
+        let hako = line
+            .cell
+            .and_then(|(t, ri, _)| waku.get(&(t, ri)))
+            .copied()
+            .filter(|(a, b)| b - a < soko - cur.top_mm);
+        let mite = match hako {
+            Some((_, b)) => b - offsets.last().unwrap(),
+            None => y_roll,
+        };
+        if forced || mite > soko {
             // 次のページへ。行の紙面上の高さは(余白ぶんを除いて)そのまま続ける
             let next = paper_at(line.y_mm);
             // **見出しを繰り返す表の途中なら、その高さぶん頭を下げます。**
@@ -533,7 +569,14 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             // 1頁目の頭は `doc_to_sheet` が `top_mm + BASE_UP_MM` に置きます。
             // **続きの頁も同じ高さに揃えます** — 足さないと、2頁目からだけ
             // 1行の腰のぶん(4mm)高く始まります
-            offsets.push(line.y_mm - next.top_mm - kumihan::BASE_UP_MM - repeat);
+            // **表の行なら、その行の上端を紙の頭に合わせます**(2026-09-01)。
+            //
+            // `sheet.lines` はセルごとに並ぶので、y の順ではありません。頁を
+            // 変えた行を基準にすると、同じ行でもそれより上にあるセルの行が
+            // 上の余白へ出ます。内閣府の調査票の3枚目は、見出しのセルが
+            // 余白の外に 28pt 出ていました
+            let atama = hako.map(|(a, _)| a).unwrap_or(line.y_mm);
+            offsets.push(atama - next.top_mm - kumihan::BASE_UP_MM - repeat);
             header_h.push(repeat);
             papers.push(next);
             starts.push(line.y_mm);
@@ -981,6 +1024,7 @@ mod hf_tests {
             paragraphs: Document::plain(&PAGE_MARK.to_string())
                 .paragraphs().cloned().collect(),
             part: None,
+            anchors: Vec::new(),
         };
         let mut buf = Vec::new();
         to_pdf_with(&s, &data, Paper::default(), &PageDress::default(),
@@ -1455,6 +1499,31 @@ pub fn foreign_shapes(
         at += p.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
     }
     let mut out: Vec<kumihan::DocShape> = Vec::new();
+    // **ヘッダーとフッターの図形は、どの紙にも出します**(2026-09-01)。
+    // 紙の飾り枠がこれです。位置は紙が基準(`relativeFrom="page"`)なので、
+    // 紙ごとに同じ所へ置けば足ります
+    let kami_kazu = pg.offsets.len().max(1);
+    for a in doc.header.anchors.iter().chain(doc.footer.anchors.iter()) {
+        let Some(f) = ooxml::foreign_shape(a) else { continue };
+        let x = match f.h_from.as_str() {
+            "page" => f.x_mm,
+            _ => page.left_mm + f.x_mm,
+        };
+        let y = match f.v_from.as_str() {
+            "page" => f.y_mm,
+            _ => page.top_mm + f.y_mm,
+        };
+        for k in 0..kami_kazu {
+            out.push(kumihan::DocShape {
+                page: k,
+                x_mm: x,
+                y_mm: y,
+                w_mm: f.w_mm,
+                h_mm: f.h_mm,
+                look: f.look.clone(),
+            });
+        }
+    }
     for (pi, para) in doc.paragraphs().enumerate() {
         if para.anchors.is_empty() {
             continue;

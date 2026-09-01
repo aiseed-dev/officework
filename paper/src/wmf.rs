@@ -11,7 +11,7 @@
 //!
 //! # 座標
 //!
-//! WMF は自前の升目(window)で座標を持ちます。置き場と大きさは
+//! WMF は自前のセル(window)で座標を持ちます。置き場と大きさは
 //! `SetWindowOrg` と `SetWindowExt` で決まり、無ければ見出しの外枠を
 //! 使います。それを、docx が言う mm の枠へ引き伸ばします。
 //!
@@ -37,7 +37,7 @@ pub struct Wmf {
     nokoshi: std::rc::Rc<std::cell::Cell<usize>>,
     /// 置き場(紙の左下からの mm)
     waku: (f32, f32, f32, f32),
-    /// WMF の升目(左, 上, 幅, 高さ)
+    /// WMF のセル(左, 上, 幅, 高さ)
     mado: (f32, f32, f32, f32),
     /// いまのペン(色, 太さ mm, 点線の刻み)。None なら線を引かない
     pen: Option<((f32, f32, f32), f32, Vec<f32>)>,
@@ -45,7 +45,7 @@ pub struct Wmf {
     hake: Option<(f32, f32, f32)>,
     /// 番号で覚えた道具。`SelectObject` がここから選びます
     dougu: Vec<Dougu>,
-    /// `MoveTo` が置いた位置(WMF の升目)
+    /// `MoveTo` が置いた位置(WMF のセル)
     ima: (f32, f32),
 }
 
@@ -73,7 +73,7 @@ impl Wmf {
         }
     }
 
-    /// WMF の升目の点を、紙の mm に直します。
+    /// WMF のセルの点を、紙の mm に直します。
     /// **WMF の y は下向き**、紙の y は上向きなので、上下が入れ替わります
     fn ten(&self, x: f32, y: f32) -> (f32, f32) {
         let (ox, oy, ow, oh) = self.mado;
@@ -130,7 +130,7 @@ impl Wmf {
         const K: f32 = 0.552_284_8;
         let (cx, cy) = ((l + r) / 2.0, (t + b) / 2.0);
         let (rx, ry) = ((r - l) / 2.0, (b - t) / 2.0);
-        // 右 → 下 → 左 → 上(WMF の升目のまま。`ten` が紙へ直します)
+        // 右 → 下 → 左 → 上(WMF のセルのまま。`ten` が紙へ直します)
         let p = |x: f32, y: f32| self.ten(x, y);
         let (x0, y0) = p(cx + rx, cy);
         let mut v = vec![Suji::Ugoku(x0, y0)];
@@ -179,7 +179,7 @@ impl Player for Wmf {
     }
 
     fn header(mut self, _n: usize, h: MetafileHeader) -> Result<Self, PlayError> {
-        // **置ける枠があればそれを升目の既定にします。** `SetWindowExt` が
+        // **置ける枠があればそれをセルの既定にします。** `SetWindowExt` が
         // 来れば上書きされます
         if let MetafileHeader::StartsWithPlaceable(p, _) = &h {
             let b = &p.bounding_box;
@@ -213,7 +213,7 @@ impl Player for Wmf {
         r: META_CREATEPENINDIRECT,
     ) -> Result<Self, PlayError> {
         let p = &r.pen;
-        // 太さは升目の単位。横の縮尺で mm に直します
+        // 太さはセルの単位。横の縮尺で mm に直します
         let (_, _, ow, _) = self.mado;
         let (_, _, pw, _) = self.waku;
         let futo = if ow.abs() < 1e-6 {
@@ -418,7 +418,7 @@ mod tests {
         w(0);
         w(100);
         w(100); // 外枠
-        w(1440); // 1 インチあたりの升目
+        w(1440); // 1 インチあたりのセル
         w(0);
         w(0); // 予備
         w(0); // 検査の値(読み手は見ません)
@@ -465,7 +465,7 @@ mod tests {
         let (michi, nokoshi) = michi_ni(&d, 20.0, 50.0, 40.0, 40.0).expect("読めない");
         assert_eq!(nokoshi, 0, "受けなかった記録がある");
         assert_eq!(michi.len(), 1, "四角1つが道1本にならない");
-        // 升目 100 のうち 10〜90 なので、40mm の枠では 4mm〜36mm。
+        // セル 100 のうち 10〜90 なので、40mm の枠では 4mm〜36mm。
         // **y は上下が入れ替わります** — WMF は下向き、紙は上向きです
         let x: Vec<f32> = michi[0]
             .suji

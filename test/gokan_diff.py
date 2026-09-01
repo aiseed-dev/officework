@@ -164,8 +164,8 @@ XLSX_SKIP_WS = {"parent", "views", "HeaderFooter", "legacy_drawing",
 #
 # style_id / has_style — openpyxl が自分の中に持つ書式表の番号です。
 #   同じ見た目でも並べ方で番号が変わるので、突き合わせても意味がありません。
-#   こちらは升ごとに書式そのものを持ちます(`cell.font` などで読めます)。
-#   openpyxl は結合の2升目以降を「書式なし」と答えますが、ファイルには
+#   こちらはセルごとに書式そのものを持ちます(`cell.font` などで読めます)。
+#   openpyxl は結合の2セル以降を「書式なし」と答えますが、ファイルには
 #   書式の番号が書いてあります。こちらはファイルのとおりに答えます。
 XLSX_SKIP_CELL = {"parent", "encoding", "base_date", "style_id", "has_style"}
 
