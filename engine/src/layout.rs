@@ -121,10 +121,13 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
             }
             continue;
         }
+        // **字間**(`w:rPr` の `w:spacing`)。1文字ごとに足します
+        let aki = run.fmt.spacing_pt * PT_TO_MM;
+        let okuri = |ch: char| (m.advance_mm(ch, rpt) + aki).max(0.0);
         let mut word: Vec<(char, f32, usize)> = Vec::new();
         for ch in run.text.chars() {
             if is_word_char(ch) {
-                word.push((ch, m.advance_mm(ch, rpt), off));
+                word.push((ch, okuri(ch), off));
                 off += ch.len_utf8();
                 continue;
             }
@@ -133,10 +136,10 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
                                    run.font.clone()));
             }
             if ch == ' ' || ch == '\u{3000}' {
-                out.push(Tok::Space(ch, m.advance_mm(ch, rpt), rpt,
+                out.push(Tok::Space(ch, okuri(ch), rpt,
                                     run.fmt.clone(), run.font.clone(), off));
             } else {
-                out.push(Tok::One(ch, m.advance_mm(ch, rpt), rpt,
+                out.push(Tok::One(ch, okuri(ch), rpt,
                                   run.fmt.clone(), run.font.clone(), off));
             }
             off += ch.len_utf8();
@@ -295,7 +298,36 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
             w_cur += w;
         }
     }
+    // **タブは決まった位置まで送ります**(2026-09-01)。
+    //
+    // 前は1文字ぶんの幅しか送らず、字形も持っていないので豆腐が出ていました。
+    // 内閣府の調査票の氏名欄は、下線が 78.6pt ぶん縮んでいました。
+    // 止まる位置は段落の `w:tabs`、どれも越えていれば既定の刻みです。
+    let tab_saki = |ima_mm: f32| -> f32 {
+        let ima_tw = ima_mm * 72.0 * 20.0 / 25.4;
+        let tugi = para
+            .tab_stops
+            .iter()
+            .copied()
+            .filter(|t| *t as f32 > ima_tw + 0.5)
+            .min()
+            .map(|t| t as f32)
+            .unwrap_or_else(|| {
+                let k = crate::TAB_TWIPS as f32;
+                ((ima_tw / k).floor() + 1.0) * k
+            });
+        (tugi / 20.0) * 25.4 / 72.0
+    };
     for tok in tokenize(para, m, notes, base) {
+        // タブの幅は、いまの位置から次の止まる所までです
+        let tok = match &tok {
+            Tok::One('\t', _, s, f, ft, o) => {
+                let saki = tab_saki(w_cur + if done.is_empty() { first_mm } else { 0.0 });
+                let haba = (saki - w_cur - if done.is_empty() { first_mm } else { 0.0 }).max(0.0);
+                Tok::Space('\t', haba, *s, f.clone(), ft.clone(), *o)
+            }
+            _ => tok,
+        };
         let (cells, w): (Vec<Cell>, f32) = match &tok {
             Tok::One(ch, w, s, f, ft, o) =>
                 (vec![Cell { ch: *ch, x_mm: 0.0, w_mm: *w, size_pt: *s, fmt: f.clone(),
@@ -312,7 +344,19 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
 
         // 1行目だけ行長が短い(字下げのぶん)
         let measure = if done.is_empty() { (measure - first_mm).max(1.0) } else { measure };
-        if w_cur + w > measure && !cur.is_empty() {
+        // **行頭に置けない字は、はみ出させて行末に留めます**(追い込み)。
+        //
+        // 句読点や閉じ括弧は行の頭に来られません。前は手前の字を次の行へ
+        // 送り出していた(追い出し)ので、1行に入る字が元より1〜2字少なく
+        // なっていました。内閣府の調査票は、行末の「」」が右の余白へ
+        // 1字ぶん出ています(2026-09-01 発注者「漢字の横幅は同じはず。
+        // どうして文字数が違ってくる」)。
+        //
+        // 出るのは**1字だけ**です。続けて出ると行が伸び続けます
+        let oikomi = matches!(&tok, Tok::One(ch, ..) if is_gyoto_kinsoku(*ch))
+            && !cur.is_empty()
+            && !cur.last().is_some_and(|c: &Cell| is_gyoto_kinsoku(c.ch));
+        if w_cur + w > measure && !cur.is_empty() && !oikomi {
             if let Tok::Space(..) = tok {
                 // 行末に空白は要らない。行を折るだけ
                 cur = close(&mut done, &mut cur, &mut w_cur, None);
@@ -511,9 +555,18 @@ pub(super) fn lh_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&st
 /// `None` を返します。行送りの倍率は [`crate::font::okuri_em`] が引きます。
 fn syotai_lh_mm(para: &Paragraph, base: f32, font: Option<&str>) -> Option<f32> {
     let base = base * head_scale(para.style);
-    // **字が1つも無い段落も高さを持ちます。** 空の段落で run が無いと
-    // ここが None になり、書体を見ない既定に落ちていました
-    let mut takai = crate::font::okuri_em(font).map(|em| base * em * PT_TO_MM);
+    // **字が1つも無い段落も高さを持ちます。** run が無いとここが None に
+    // なり、書体を見ない既定に落ちていました。
+    //
+    // **run があるときは使いません**(2026-09-01)。基準の大きさは
+    // 「run が大きさを言わないとき」の受けでしかないので、これを高さの
+    // 下限にすると、11pt の受けを持つ文書の 10pt の段落が 11pt の行送りに
+    // なります。内閣府の調査票の参考条文が 12.9pt のところ 14.2pt でした
+    let mut takai = if para.runs.is_empty() {
+        crate::font::okuri_em(font).map(|em| base * em * PT_TO_MM)
+    } else {
+        None
+    };
     for r in &para.runs {
         let em = crate::font::okuri_em(r.font.as_deref().or(font))?;
         let mm = r.pt(base) * em * PT_TO_MM;
@@ -722,8 +775,10 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 let para_eff: &Paragraph = owned_rest.as_ref().unwrap_or(para);
                 let measure = (measure - cap_shift).max(em);
                 let first_mm = first_line_mm(para_eff, base);
-                for (line_no, mut cells) in break_para(para_eff, m, measure, marker.as_deref(),
-                                            doc.hyphenate, &mut note_no, base).into_iter().enumerate() {
+                let gyou = break_para(para_eff, m, measure, marker.as_deref(),
+                                      doc.hyphenate, &mut note_no, base);
+                let gyou_kazu = gyou.len();
+                for (line_no, mut cells) in gyou.into_iter().enumerate() {
                     // 1行目だけ字下げのぶん右へ(行長は組み手が縮めている)
                     let indent_of = if line_no == 0 { first_mm } else { 0.0 };
                     // 頭の1字を除いたぶん、バイト位置を戻す
@@ -777,8 +832,16 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                         Align::Center => slack / 2.0,
                         Align::Right => slack,
                     };
-                    // 均等割付: 差を字間に等しく配る(最後の行も配る)
-                    let gap = if para.align == Align::Distribute && cells.len() >= 2 {
+                    // 均等割付: 差を字間に等しく配る(最後の行も配る)。
+                    //
+                    // **両端揃え(docx の `w:jc="both"`)は最後の行を配りません**
+                    // (2026-09-01)。前は左揃えと同じ扱いだったので、右端が
+                    // 揃わず、内閣府の調査票は行末が元より最大 26pt 手前で
+                    // 終わっていました。
+                    let owari = line_no + 1 == gyou_kazu;
+                    let kubaru = para.align == Align::Distribute
+                        || (para.align == Align::Justify && !owari);
+                    let gap = if kubaru && cells.len() >= 2 {
                         slack / (cells.len() - 1) as f32
                     } else {
                         0.0

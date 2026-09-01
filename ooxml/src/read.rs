@@ -1400,6 +1400,7 @@ pub(super) fn parse_document_rels_num(
     let mut fmt = CharFormat::default();
     let mut align = Align::default();
     let mut align_itta = false;
+    let mut tab_stops: Vec<i32> = Vec::new();
     // 箇条書き・インデント・行間(w:numPr / w:ind / w:spacing)
     let mut list = ListKind::default();
     // 文書が決めた箇条書きの印(numbering.xml の w:lvlText)
@@ -1514,6 +1515,7 @@ pub(super) fn parse_document_rels_num(
                     b"p" => { para = Some(Vec::new()); size_pt = None; font = None;
                               fmt = CharFormat::default(); align = Align::default();
                               align_itta = false;
+                              tab_stops.clear();
                               first_line_chars = None;
                               list = ListKind::default(); indent = 0; first_line = 0;
                               line_spacing = 0.0;
@@ -1558,6 +1560,14 @@ pub(super) fn parse_document_rels_num(
                         fmt.itta.underline = true;
                     }
                     b"strike" if in_rpr => { fmt.strike = on(&e); fmt.itta.strike = true }
+                    // **字間**(`w:rPr` の `w:spacing`。1/20 pt)。段落の
+                    // `w:spacing`(行の高さ)とは別物なので、`in_rpr` で分けます
+                    b"spacing" if in_rpr => {
+                        fmt.spacing_pt = attr(&e, "val")
+                            .and_then(|v| v.parse::<f32>().ok())
+                            .map(|v| v / 20.0)
+                            .unwrap_or(0.0);
+                    }
                     b"color" if in_rpr => {
                         fmt.color = attr(&e, "val").filter(|v| !v.is_empty() && v != "auto");
                     }
@@ -2015,6 +2025,14 @@ pub(super) fn parse_document_rels_num(
                     // あちらはタブを打ったとき字が止まる位置の定義です。
                     // 見分けていなかったので、内閣府の調査票は開いて保存
                     // しただけで行頭にタブが増えていました(2026-09-01)。
+                    // タブの止まる位置(`w:pPr/w:tabs` の中の `w:tab w:pos`)
+                    b"tab" if in_ppr => {
+                        if let Some(v) = attr(&e, "pos").and_then(|v| v.parse::<i32>().ok()) {
+                            if v > 0 && !tab_stops.contains(&v) {
+                                tab_stops.push(v);
+                            }
+                        }
+                    }
                     b"tab" if !in_ppr => if let Some(p) = para.as_mut() {
                         p.push(Run { text: "\t".into(), size_pt, font: font.clone(), fmt: fmt.clone() }) },
                     b"sz" if in_rpr => {
@@ -2039,6 +2057,14 @@ pub(super) fn parse_document_rels_num(
                         fmt.itta.underline = true;
                     }
                     b"strike" if in_rpr => { fmt.strike = on(&e); fmt.itta.strike = true }
+                    // **字間**(`w:rPr` の `w:spacing`。1/20 pt)。段落の
+                    // `w:spacing`(行の高さ)とは別物なので、`in_rpr` で分けます
+                    b"spacing" if in_rpr => {
+                        fmt.spacing_pt = attr(&e, "val")
+                            .and_then(|v| v.parse::<f32>().ok())
+                            .map(|v| v / 20.0)
+                            .unwrap_or(0.0);
+                    }
                     b"color" if in_rpr => {
                         fmt.color = attr(&e, "val").filter(|v| !v.is_empty() && v != "auto");
                     }
@@ -2337,6 +2363,7 @@ pub(super) fn parse_document_rels_num(
                                 first_line_twips: first_line,
                                 first_line_chars,
                                 align_itta,
+                                tab_stops: std::mem::take(&mut tab_stops),
                                 line_spacing,
                                 line_pt,
                                 space_before_pt,

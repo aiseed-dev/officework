@@ -1521,6 +1521,33 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
         // 細いままでした)
         let mut run: Option<Piece> = None;
         for c in &line.cells {
+            // **タブは字ではありません。** 幅だけ持たせて、字形は出しません。
+            // 書体はタブの字形を持たないので、描くと豆腐(□)になります
+            // (2026-09-01、内閣府の調査票の氏名欄で見つけました)。
+            // 下線はタブの上にも引きます — 記入欄の下線はこれで出ます
+            if c.ch == '\t' {
+                if let Some(r) = run.take() {
+                    p.pieces.push(r);
+                }
+                if c.fmt.underline || c.fmt.strike {
+                    p.pieces.push(Piece {
+                        x_mm: mx + c.x_mm,
+                        y_mm: y,
+                        size_pt: c.size_pt,
+                        text: String::new(),
+                        color: c.fmt.color.clone(),
+                        w_mm: c.w_mm,
+                        underline: c.fmt.underline,
+                        strike: c.fmt.strike,
+                        bold: false,
+                        highlight: c.fmt.highlight.clone(),
+                        font: 0,
+                        rotation: 0.0,
+                        italic: false,
+                    });
+                }
+                continue;
+            }
             let same = run.as_ref().is_some_and(|r: &Piece| {
                 (r.size_pt - c.size_pt).abs() < 0.01
                     && r.color == c.fmt.color

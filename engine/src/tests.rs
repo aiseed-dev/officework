@@ -103,14 +103,25 @@ mod kihon {
         }
     }
 
+    /// **行長を超えてよいのは、行頭に置けない字1つぶんだけ。**
+    ///
+    /// 句読点や閉じ括弧は行の頭に来られません。手前の字を次の行へ送り出す
+    /// (追い出す)と1行に入る字が減るので、その1字だけ行末からはみ出させます
+    /// (追い込み。2026-09-01)。内閣府の調査票は、元の PDF がこの組み方です。
+    /// **それ以外の超過は駄目です。**
     #[test]
-    fn does_not_overshoot_the_line_length() {
-        // 追い出しで短くなるのは良い。超えるのは駄目(はみ出し)
+    fn only_a_line_start_kinsoku_may_overhang() {
         for measure in [40.0, 55.0, 70.0] {
             let s = sheet_of(SAMPLE, measure);
             for l in &s.lines {
-                assert!(l.width_mm() <= measure + 0.1,
+                if l.width_mm() <= measure + 0.1 {
+                    continue;
+                }
+                let owari = l.cells.last().expect("空の行が超過している");
+                assert!(is_gyoto_kinsoku(owari.ch),
                     "行長{measure}mm を超過: {:.2}mm 「{}」", l.width_mm(), l.text());
+                assert!(l.width_mm() - owari.w_mm <= measure + 0.1,
+                    "はみ出しが1字を超えた: {:.2}mm 「{}」", l.width_mm(), l.text());
             }
         }
     }
