@@ -533,8 +533,8 @@ mod carry_tests {
         let (back, rep) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
         assert_eq!(back.sheets[0].shapes[0].kind, "nonesuch", "名前まで失っている");
         assert!(
-            rep.unsupported.iter().any(|(n, _)| n.contains("描けない形")),
-            "描けない形を黙って通した: {:?}",
+            rep.unsupported.iter().any(|(n, _)| n.contains("表示できない図形")),
+            "表示できない図形を黙って通した: {:?}",
             rep.unsupported
         );
     }
