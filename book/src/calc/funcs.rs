@@ -388,6 +388,95 @@ pub(crate) fn weekday0(serial: i64, ep: i64) -> i64 {
     ((serial - ep).rem_euclid(7) + 4).rem_euclid(7)
 }
 
+/// ln Γ(x)(Lanczos の近似、g=7)。統計の関数の土台 — 相対誤差は
+/// 1e-13 程度で、突き合わせの基準(1e-10)に足りる
+pub(super) fn ln_gamma(x: f64) -> f64 {
+    const C: [f64; 9] = [
+        0.999_999_999_999_809_93,
+        676.520_368_121_885_1,
+        -1_259.139_216_722_402_8,
+        771.323_428_777_653_13,
+        -176.615_029_162_140_59,
+        12.507_343_278_686_905,
+        -0.138_571_095_265_720_12,
+        9.984_369_578_019_571_6e-6,
+        1.505_632_735_149_311_6e-7,
+    ];
+    if x < 0.5 {
+        // 反射律: Γ(x)Γ(1-x) = π / sin(πx)
+        return (std::f64::consts::PI / (std::f64::consts::PI * x).sin()).ln()
+            - ln_gamma(1.0 - x);
+    }
+    let x = x - 1.0;
+    let mut a = C[0];
+    let t = x + 7.5;
+    for (i, c) in C.iter().enumerate().skip(1) {
+        a += c / (x + i as f64);
+    }
+    0.5 * (2.0 * std::f64::consts::PI).ln() + (x + 0.5) * t.ln() - t + a.ln()
+}
+
+/// 正則化不完全ガンマ P(a, x)。x < a+1 は級数、それ以外は連分数で解く
+/// (どちらも収束が速い側を使う)。カイ二乗・ポアソン・erf の土台
+pub(super) fn gamma_p(a: f64, x: f64) -> f64 {
+    if x <= 0.0 || a <= 0.0 {
+        return if x <= 0.0 { 0.0 } else { 1.0 };
+    }
+    let lg = ln_gamma(a);
+    if x < a + 1.0 {
+        // 級数
+        let mut term = 1.0 / a;
+        let mut sum = term;
+        let mut n = a;
+        for _ in 0..500 {
+            n += 1.0;
+            term *= x / n;
+            sum += term;
+            if term.abs() < sum.abs() * 1e-16 {
+                break;
+            }
+        }
+        sum * (-x + a * x.ln() - lg).exp()
+    } else {
+        // 連分数(Lentz 法)で Q を出して 1 - Q
+        let tiny = 1e-300;
+        let mut b = x + 1.0 - a;
+        let mut c = 1.0 / tiny;
+        let mut d = 1.0 / b;
+        let mut h = d;
+        for i in 1..500 {
+            let an = -(i as f64) * (i as f64 - a);
+            b += 2.0;
+            d = an * d + b;
+            if d.abs() < tiny {
+                d = tiny;
+            }
+            c = b + an / c;
+            if c.abs() < tiny {
+                c = tiny;
+            }
+            d = 1.0 / d;
+            let del = d * c;
+            h *= del;
+            if (del - 1.0).abs() < 1e-16 {
+                break;
+            }
+        }
+        1.0 - (-x + a * x.ln() - lg).exp() * h
+    }
+}
+
+/// 誤差関数 erf(x) = P(1/2, x²)。奇関数なので負は符号で返す
+pub(super) fn erf(x: f64) -> f64 {
+    let p = gamma_p(0.5, x * x);
+    if x < 0.0 { -p } else { p }
+}
+
+/// 標準正規分布の下側確率 Φ(z)
+pub(super) fn norm_cdf(z: f64) -> f64 {
+    0.5 * (1.0 + erf(z / std::f64::consts::SQRT_2))
+}
+
 /// NETWORKDAYS.INTL / WORKDAY.INTL の「週末」の引数 → 曜日の表
 /// (0=日曜 … 6=土曜、true = 休む日)。数(1〜7 は2日続き・11〜17 は
 /// 1日だけ)と "0000011" の7文字(月曜始まり)を受ける。読めなければ None。
@@ -945,7 +1034,102 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             let hi = (lo + 1).min(ns.len() - 1);
             return Ok(Value::Number(ns[lo] + (ns[hi] - ns[lo]) * frac));
         }
-        "CORREL" | "SLOPE" | "INTERCEPT" | "FORECAST" | "FORECAST.LINEAR" => {
+        "PERCENTILE.EXC" | "QUARTILE.EXC" => {
+            // 排他的な百分位 — 順位を k(n+1) で取る。範囲の外は #NUM!
+            let mut ns: Vec<f64> = args
+                .first()
+                .map(|g| {
+                    g.values()
+                        .iter()
+                        .filter(|v| matches!(v, Value::Number(_)))
+                        .map(|v| v.as_number())
+                        .collect()
+                })
+                .unwrap_or_default();
+            let k = args.get(1).map(|g| g.first().as_number()).unwrap_or(f64::NAN);
+            let k = if name.starts_with("QUARTILE") { k / 4.0 } else { k };
+            let n = ns.len();
+            if n == 0 || !k.is_finite() {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            ns.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
+            let rank = k * (n + 1) as f64;
+            if rank < 1.0 || rank > n as f64 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let lo = rank.floor() as usize - 1;
+            let hi = (lo + 1).min(n - 1);
+            return Ok(Value::Number(ns[lo] + (ns[hi] - ns[lo]) * rank.fract()));
+        }
+        "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC" => {
+            // 値の百分順位。INC は 0〜1 の内側、EXC は (n+1) 割り。
+            // 有効桁(既定 3)は四捨五入でなく切り捨て(Excel と同じ)
+            let mut ns: Vec<f64> = args
+                .first()
+                .map(|g| {
+                    g.values()
+                        .iter()
+                        .filter(|v| matches!(v, Value::Number(_)))
+                        .map(|v| v.as_number())
+                        .collect()
+                })
+                .unwrap_or_default();
+            let x = args.get(1).map(|g| g.first().as_number()).unwrap_or(f64::NAN);
+            let sig = args.get(2).map(|g| g.first().as_number()).unwrap_or(3.0) as i32;
+            let n = ns.len();
+            if n == 0 || sig < 1 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            ns.sort_by(|p, q| p.partial_cmp(q).unwrap_or(std::cmp::Ordering::Equal));
+            if x < ns[0] || x > ns[n - 1] {
+                return Ok(Value::Error("#N/A".into()));
+            }
+            // 0起点の位置(同値なら先頭、間なら直線補間)
+            let pos = match ns.iter().position(|v| *v >= x) {
+                Some(i) if ns[i] == x => i as f64,
+                Some(i) => {
+                    let (lo, hi) = (ns[i - 1], ns[i]);
+                    (i - 1) as f64 + (x - lo) / (hi - lo)
+                }
+                None => (n - 1) as f64,
+            };
+            let r = if name == "PERCENTRANK.EXC" {
+                (pos + 1.0) / (n + 1) as f64
+            } else {
+                if n == 1 {
+                    return Ok(Value::Number(1.0));
+                }
+                pos / (n - 1) as f64
+            };
+            let f = 10f64.powi(sig);
+            return Ok(Value::Number((r * f).floor() / f));
+        }
+        "TRIMMEAN" => {
+            // 上下から floor(n×割合/2) 個ずつ外して平均する
+            let mut ns: Vec<f64> = args
+                .first()
+                .map(|g| {
+                    g.values()
+                        .iter()
+                        .filter(|v| matches!(v, Value::Number(_)))
+                        .map(|v| v.as_number())
+                        .collect()
+                })
+                .unwrap_or_default();
+            let p = args.get(1).map(|g| g.first().as_number()).unwrap_or(f64::NAN);
+            if ns.is_empty() || !(0.0..1.0).contains(&p) {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            ns.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
+            let cut = (ns.len() as f64 * p / 2.0).floor() as usize;
+            let rest = &ns[cut..ns.len() - cut];
+            if rest.is_empty() {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            return Ok(Value::Number(rest.iter().sum::<f64>() / rest.len() as f64));
+        }
+        "CORREL" | "PEARSON" | "RSQ" | "STEYX" | "COVARIANCE.P" | "COVARIANCE.S"
+        | "SLOPE" | "INTERCEPT" | "FORECAST" | "FORECAST.LINEAR" => {
             // 対で見る統計。両方が数の行だけを使う(Excel と同じ)
             let fc = name.starts_with("FORECAST");
             let (ys, xs) = if fc {
@@ -980,11 +1164,34 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             let sxx: f64 = pairs.iter().map(|(_, x)| (x - mx) * (x - mx)).sum();
             let syy: f64 = pairs.iter().map(|(y, _)| (y - my) * (y - my)).sum();
             return Ok(match name {
-                "CORREL" => {
+                "CORREL" | "PEARSON" => {
                     if sxx == 0.0 || syy == 0.0 {
                         Value::Error("#DIV/0!".into())
                     } else {
                         Value::Number(sxy / (sxx * syy).sqrt())
+                    }
+                }
+                "RSQ" => {
+                    if sxx == 0.0 || syy == 0.0 {
+                        Value::Error("#DIV/0!".into())
+                    } else {
+                        Value::Number(sxy * sxy / (sxx * syy))
+                    }
+                }
+                "COVARIANCE.P" => Value::Number(sxy / n),
+                "COVARIANCE.S" => {
+                    if pairs.len() < 2 {
+                        Value::Error("#DIV/0!".into())
+                    } else {
+                        Value::Number(sxy / (n - 1.0))
+                    }
+                }
+                "STEYX" => {
+                    // 回帰の標準誤差 √((Syy − Sxy²/Sxx) / (n−2))
+                    if pairs.len() < 3 || sxx == 0.0 {
+                        Value::Error("#DIV/0!".into())
+                    } else {
+                        Value::Number(((syy - sxy * sxy / sxx) / (n - 2.0)).sqrt())
                     }
                 }
                 _ => {
@@ -1807,6 +2014,145 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                 let ss: f64 = ns.iter().map(|x| (x - mean) * (x - mean)).sum();
                 let var = ss / if sample { n - 1.0 } else { n };
                 Value::Number(if name.starts_with("STDEV") { var.sqrt() } else { var })
+            }
+        }
+        "STDEVA" | "STDEVPA" | "VARA" | "VARPA" => {
+            // A の一族 — 文字は 0、TRUE/FALSE は 1/0 として数に入れる
+            let ns: Vec<f64> = a
+                .iter()
+                .filter(|v| !v.is_empty())
+                .map(|v| match v {
+                    Value::Number(n) => *n,
+                    Value::Bool(b) => *b as i32 as f64,
+                    _ => 0.0,
+                })
+                .collect();
+            let sample = matches!(name, "STDEVA" | "VARA");
+            if ns.len() < if sample { 2 } else { 1 } {
+                Value::Error("#DIV/0!".into())
+            } else {
+                let n = ns.len() as f64;
+                let mean = ns.iter().sum::<f64>() / n;
+                let ss: f64 = ns.iter().map(|x| (x - mean) * (x - mean)).sum();
+                let var = ss / if sample { n - 1.0 } else { n };
+                Value::Number(if name.starts_with("STDEV") { var.sqrt() } else { var })
+            }
+        }
+        "AVEDEV" | "DEVSQ" | "GEOMEAN" | "HARMEAN" | "KURT" | "SKEW" | "SKEW.P" => {
+            let ns = nums(&a);
+            let n = ns.len() as f64;
+            if ns.is_empty() {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let mean = ns.iter().sum::<f64>() / n;
+            match name {
+                "AVEDEV" => Value::Number(ns.iter().map(|x| (x - mean).abs()).sum::<f64>() / n),
+                "DEVSQ" => {
+                    Value::Number(ns.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>())
+                }
+                "GEOMEAN" => {
+                    if ns.iter().any(|x| *x <= 0.0) {
+                        Value::Error("#NUM!".into())
+                    } else {
+                        // 対数の平均で出す(積は大きな並びであふれる)
+                        Value::Number((ns.iter().map(|x| x.ln()).sum::<f64>() / n).exp())
+                    }
+                }
+                "HARMEAN" => {
+                    if ns.iter().any(|x| *x <= 0.0) {
+                        Value::Error("#NUM!".into())
+                    } else {
+                        Value::Number(n / ns.iter().map(|x| 1.0 / x).sum::<f64>())
+                    }
+                }
+                "SKEW.P" => {
+                    let m2 = ns.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / n;
+                    let m3 = ns.iter().map(|x| (x - mean).powi(3)).sum::<f64>() / n;
+                    if m2 == 0.0 {
+                        Value::Error("#DIV/0!".into())
+                    } else {
+                        Value::Number(m3 / m2.powf(1.5))
+                    }
+                }
+                "SKEW" => {
+                    let s = (ns.iter().map(|x| (x - mean).powi(2)).sum::<f64>()
+                        / (n - 1.0))
+                        .sqrt();
+                    if ns.len() < 3 || s == 0.0 {
+                        Value::Error("#DIV/0!".into())
+                    } else {
+                        let t = ns.iter().map(|x| ((x - mean) / s).powi(3)).sum::<f64>();
+                        Value::Number(n / ((n - 1.0) * (n - 2.0)) * t)
+                    }
+                }
+                _ => {
+                    // KURT(尖度) — 標本の式(Excel と同じ)
+                    let s = (ns.iter().map(|x| (x - mean).powi(2)).sum::<f64>()
+                        / (n - 1.0))
+                        .sqrt();
+                    if ns.len() < 4 || s == 0.0 {
+                        Value::Error("#DIV/0!".into())
+                    } else {
+                        let t = ns.iter().map(|x| ((x - mean) / s).powi(4)).sum::<f64>();
+                        Value::Number(
+                            n * (n + 1.0) / ((n - 1.0) * (n - 2.0) * (n - 3.0)) * t
+                                - 3.0 * (n - 1.0) * (n - 1.0)
+                                    / ((n - 2.0) * (n - 3.0)),
+                        )
+                    }
+                }
+            }
+        }
+        "FISHER" => {
+            let x = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            if x.abs() >= 1.0 {
+                Value::Error("#NUM!".into())
+            } else {
+                Value::Number(0.5 * ((1.0 + x) / (1.0 - x)).ln())
+            }
+        }
+        "FISHERINV" => {
+            let y = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            let e = (2.0 * y).exp();
+            Value::Number((e - 1.0) / (e + 1.0))
+        }
+        "GAUSS" => {
+            // Φ(z) - 0.5(0 から z までの確率)
+            let z = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            Value::Number(norm_cdf(z) - 0.5)
+        }
+        "PHI" => {
+            // 標準正規分布の密度
+            let x = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            Value::Number((-x * x / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt())
+        }
+        "GAMMALN" | "GAMMALN.PRECISE" => {
+            let x = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            if x <= 0.0 {
+                Value::Error("#NUM!".into())
+            } else {
+                Value::Number(ln_gamma(x))
+            }
+        }
+        "PERMUTATIONA" => {
+            // 重複を許す順列 = n^k
+            let n = a.first().map(|v| v.as_number()).unwrap_or(0.0).floor();
+            let k = a.get(1).map(|v| v.as_number()).unwrap_or(0.0).floor();
+            if n < 0.0 || k < 0.0 {
+                Value::Error("#NUM!".into())
+            } else {
+                let r = n.powf(k);
+                if r.is_finite() { Value::Number(r) } else { Value::Error("#NUM!".into()) }
+            }
+        }
+        "STANDARDIZE" => {
+            let x = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            let m = a.get(1).map(|v| v.as_number()).unwrap_or(0.0);
+            let s = a.get(2).map(|v| v.as_number()).unwrap_or(0.0);
+            if s <= 0.0 {
+                Value::Error("#NUM!".into())
+            } else {
+                Value::Number((x - m) / s)
             }
         }
         "COUNTBLANK" => Value::Number(a.iter().filter(|v| v.is_empty()).count() as f64),
