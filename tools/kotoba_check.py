@@ -29,6 +29,7 @@ TARGETS = [
     "sample/README.md",
     # 引く1枚と、コマンドごとの手引き(2026-08-24 に足した)
     "docs/ja/api-taiou.adoc", "docs/ja/genkou-manual.adoc",
+    "docs/ja/df-manual.adoc",
     "docs/ja/docx-xlsx-tono-chigai.adoc",
     "docs/ja/commands/*.adoc", "docs/ja/commands/*/*.adoc",
     # **画面の文言**(2026-08-26 の段4)。利用者がいちばん読む字なのに、

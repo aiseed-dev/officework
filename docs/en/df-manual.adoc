@@ -156,7 +156,7 @@ definitions, and the order they run in comes from the dependencies alone.
 That is the spreadsheet's own way of recalculating, widened from cells to
 columns and names.
 
-== Two things not settled yet
+== Three things not settled yet
 
 *Running totals inside a formula.* A ledger has a balance column, which is
 the running total of the amounts above it. Which summaries can appear
@@ -166,7 +166,12 @@ inside a `df` formula, and how they are written, is not decided.
 `Journal[AccountName] = Accounts[Name]` needs a rule for which key joins
 the two tables. That rule is not decided.
 
-Both will be settled against the ledger sample when it is built.
+*How the returned table looks in a cell.* `df` returns the table it
+defined. What a cell shows when you write `=df(…)` straight into it, the
+table itself or nothing at all because the formula is only a definition,
+is not decided.
+
+The first two will be settled against the ledger sample when it is built.
 
 == Related manuals
 
