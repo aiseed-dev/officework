@@ -1463,12 +1463,17 @@ fn draw_sheet(
             type Kata = (String, f32, Option<String>);
             // 行の列。1行は run のかけら(字, 大きさ, 書体)の並び
             let mut gyou: Vec<Vec<Kata>> = vec![Vec::new()];
+            // **その行を、空でも残すか。** セルの中の改行(Alt+Enter)で
+            // 作った行は、字が無くても1行ぶんの高さを取ります。折り返しで
+            // できた行は、空なら出しません
+            let mut mamoru: Vec<bool> = vec![true];
             let mut yoko = 0.0f32;
             for (t, rp, rf) in &kire {
                 for (i, danraku) in t.split('\n').enumerate() {
                     if i > 0 {
                         // セルの中の改行(Alt+Enter)
                         gyou.push(Vec::new());
+                        mamoru.push(true);
                         yoko = 0.0;
                     }
                     let mut ima = String::new();
@@ -1488,6 +1493,7 @@ fn draw_sheet(
                         if cell.fmt.wrap && !ima.is_empty() && yoko + w > naka {
                             gyou.last_mut().expect("行").push((std::mem::take(&mut ima), *rp, rf.clone()));
                             gyou.push(Vec::new());
+                            mamoru.push(false);
                             yoko = 0.0;
                         }
                         ima.push(ch);
@@ -1498,8 +1504,23 @@ fn draw_sheet(
                     }
                 }
             }
-            // 空の行と、空白だけの行は出しません
-            gyou.retain(|g| g.iter().any(|(t, _, _)| !t.trim().is_empty()));
+            // **折り返しでできた空の行だけを落とします**(2026-09-01 発注者)。
+            // 前は空の行を全部落としていたので、国税庁の酒税の斜め罫線の
+            // 見出しで、真ん中の空行2つが消えて「国税局・都道府県」が
+            // 上に詰まっていました。改行で作った行は字が無くても残します
+            let mut k = 0usize;
+            gyou.retain(|g| {
+                let nokosu = mamoru.get(k).copied().unwrap_or(true)
+                    || g.iter().any(|(t, _, _)| !t.trim().is_empty());
+                k += 1;
+                nokosu
+            });
+            // 末尾の空の行は出しません(高さだけ取って見えないため)
+            while gyou.len() > 1 && gyou.last().is_some_and(|g| {
+                g.iter().all(|(t, _, _)| t.trim().is_empty())
+            }) {
+                gyou.pop();
+            }
             if gyou.is_empty() {
                 continue;
             }
@@ -1527,6 +1548,13 @@ fn draw_sheet(
             // **行送りは、その行に出てくる書体の実物から出します**
             // (2026-08-31。LibreOffice と同じで ascent + descent)
             let okuri_of = |g: &[Kata]| -> f32 {
+                // **字の無い行も1行ぶんの高さを取ります**(2026-09-01 発注者)。
+                // 0 を返していたので、セルの中の空行が高さを持たず、
+                // 国税庁の酒税の斜め罫線の見出しで「国税局・都道府県」が
+                // 上に詰まっていました
+                if g.is_empty() {
+                    return haba.okuri_mm(ji_fno(fno_of(&cell.fmt.font), 'あ') as usize, pt);
+                }
                 g.iter()
                     .map(|(_, rp, rf)| haba.okuri_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp))
                     .fold(0.0f32, f32::max)
@@ -1638,6 +1666,14 @@ fn draw_sheet(
     for w in &col_mm {
         col_x.push(col_x.last().unwrap() + w);
     }
+    // **紙の中で中央に置く**(xlsx の `printOptions@horizontalCentered`)。
+    // 読まないと左の余白に寄ります。国税庁の酒税の都道府県別の表は
+    // これが立っていて、元より 18pt 左に出ていました(2026-09-01)
+    let ml = if grid.h_centered {
+        ml + ((paper.width_mm - ml - mr - col_x[col_x.len() - 1]) / 2.0).max(0.0)
+    } else {
+        ml
+    };
     if bi > 0 {
         y_used = 0.0;
         cur = board.add_page(paper);

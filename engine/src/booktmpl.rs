@@ -58,6 +58,9 @@ pub struct SheetLook {
     /// 余白(mm。左, 右, 上, 下)
     pub margins_mm: Option<(f32, f32, f32, f32)>,
     pub print_gridlines: Option<bool>,
+    /// 刷るとき紙の中央に置く(横・縦)
+    pub h_centered: Option<bool>,
+    pub v_centered: Option<bool>,
     pub zoom_scale: Option<u32>,
     /// 印刷の倍率(%)
     pub print_scale: Option<u32>,
@@ -139,6 +142,8 @@ impl BookTheme {
                 && s.landscape.is_none()
                 && s.margins_mm.is_none()
                 && s.print_gridlines.is_none()
+                && s.h_centered.is_none()
+                && s.v_centered.is_none()
                 && s.zoom_scale.is_none()
                 && s.print_scale.is_none()
                 && s.fit_to_w.is_none()
@@ -193,6 +198,8 @@ pub fn from_book(b: &Book) -> BookTheme {
             landscape: s.landscape.then_some(true),
             margins_mm: s.margins_mm,
             print_gridlines: s.print_gridlines.then_some(true),
+            h_centered: s.h_centered.then_some(true),
+            v_centered: s.v_centered.then_some(true),
             zoom_scale: s.zoom_scale,
             print_scale: s.print_scale,
             fit_to_w: s.fit_to_w,
@@ -335,6 +342,12 @@ pub fn apply(t: &BookTheme, b: &mut Book) {
         }
         if let Some(g) = look.print_gridlines {
             s.print_gridlines = g;
+        }
+        if let Some(g) = look.h_centered {
+            s.h_centered = g;
+        }
+        if let Some(g) = look.v_centered {
+            s.v_centered = g;
         }
         if let Some(z) = look.zoom_scale {
             s.zoom_scale = Some(z);
@@ -1145,6 +1158,8 @@ fn paper_table(t: &BookTheme) -> Option<Table> {
                 || s.landscape.is_some()
                 || s.margins_mm.is_some()
                 || s.print_gridlines.is_some()
+                || s.h_centered.is_some()
+                || s.v_centered.is_some()
                 || s.zoom_scale.is_some()
         })
         .map(|s| {
@@ -1163,10 +1178,16 @@ fn paper_table(t: &BookTheme) -> Option<Table> {
                     None => String::new(),
                 },
                 s.zoom_scale.map(|z| z.to_string()).unwrap_or_default(),
+                match (s.h_centered, s.v_centered) {
+                    (None, None) => String::new(),
+                    (h, v) => format!("{},{}",
+                        if h == Some(true) { "true" } else { "false" },
+                        if v == Some(true) { "true" } else { "false" }),
+                },
             ]
         })
         .collect();
-    table(w("paper"), &[w("sheets"), w("size"), w("orientation"), w("margins"), w("gridlines"), w("tmpl_zoom")], rows)
+    table(w("paper"), &[w("sheets"), w("size"), w("orientation"), w("margins"), w("gridlines"), w("tmpl_zoom"), w("centered")], rows)
 }
 
 fn width_table(t: &BookTheme) -> Option<Table> {
@@ -1304,6 +1325,12 @@ fn read_paper(t: &mut BookTheme, rows: &[Vec<String>]) {
         }
         if let Ok(z) = pick(row, 5).parse() {
             s.zoom_scale = Some(z);
+        }
+        let naka = pick(row, 6);
+        if !naka.is_empty() {
+            let mut it = naka.split(',');
+            s.h_centered = Some(it.next().is_some_and(|v| v.trim() == "true"));
+            s.v_centered = Some(it.next().is_some_and(|v| v.trim() == "true"));
         }
     }
 }

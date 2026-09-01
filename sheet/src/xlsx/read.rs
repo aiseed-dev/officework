@@ -1628,6 +1628,9 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
                     };
                     sh.print_gridlines = on("gridLines");
                     sh.print_headings = on("headings");
+                    // **紙の中で中央に置くか。** 読まないと左と上に寄ります
+                    sh.h_centered = on("horizontalCentered");
+                    sh.v_centered = on("verticalCentered");
                 }
                 // 画面の見え方(右から左・格子線・倍率)と固定枠。
                 // 子を持たない sheetView はこちら(Start 側にも同じ組がある)

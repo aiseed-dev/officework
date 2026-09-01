@@ -801,6 +801,14 @@ pub struct Sheet {
     /// 枠線・見出し(行番号と列名)も印刷する(printOptions)
     pub print_gridlines: bool,
     pub print_headings: bool,
+    /// **刷るとき、紙の中で左右の中央に置く**(xlsx の
+    /// `printOptions@horizontalCentered`)。
+    ///
+    /// 読まないと左の余白に寄ります。国税庁の酒税の都道府県別の表は
+    /// これが立っていて、元より 18pt 左に出ていました(2026-09-01)。
+    pub h_centered: bool,
+    /// 同じく上下の中央に置く(`verticalCentered`)
+    pub v_centered: bool,
     /// タイトル行(各ページの頭で繰り返す行の範囲。Print_Titles の行の部)
     pub print_title_rows: Option<(u32, u32)>,
     /// タイトル列(各ページの左で繰り返す列の範囲。Print_Titles の列の部

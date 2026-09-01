@@ -38,6 +38,7 @@ pub const WORDS: &[(&str, [&str; 15])] = &[
     ("margins", ["Ränder", "Margins", "Márgenes", "Marges", "Margin", "Margini", "余白", "여백", "Margens", "Margens", "Поля", "Kenar boşluğu", "Lề", "页边距", "邊界"]),
     ("gridlines", ["Gitternetzlinien", "Gridlines", "Líneas de cuadrícula", "Quadrillage", "Garis Grid", "Linee griglia", "目盛線", "눈금선", "Linhas da grelha", "Linhas de grade", "Линии сетки", "Klavuz çizgileri", "Đường lưới", "网格线", "網格線"]),
     ("tmpl_zoom", ["Maßstab", "Zoom", "Ampliación", "Zoom", "Pembesaran", "Zoom", "拡大", "확대/축소", "Ampliação", "Zoom", "Масштаб", "Büyüt", "Thu phóng", "缩放", "縮放"]),
+    ("centered", ["Zentriert", "Centered", "Centrado", "Centré", "Di tengah", "Centrato", "中央に置く", "가운데 맞춤", "Centrado", "Centralizado", "По центру", "Ortala", "Căn giữa", "居中", "置中"]),
     ("scale", ["Maßstab", "Scale", "Escala", "Échelle", "Skala", "Ridimensiona", "倍率", "배율", "Redimensionar", "Redimensionar", "Масштаб", "Ölçek", "Tỷ lệ", "缩放比例", "縮放"]),
     ("fit_to_page", ["Seite anpassen", "Fit to page", "Ajustar a la página", "Ajuster à la page", "Sesuaikan Halaman", "Adatta alla pagina", "紙に収める", "페이지에 맞춤", "Ajustar à página", "Ajustar a página", "По размеру страницы", "Sayfaya Sığdır", "Vừa với trang", "调整至页面大小", "縮放至整頁"]),
     ("fit_to_width", ["Breite anpassen", "Fit to width", "Ajustar al ancho", "Ajuster à la largeur", "Sesuaikan Lebar", "Adatta alla larghezza", "横に収める", "너비에 맞춤", "Ajustar à largura", "Ajustar largura", "По ширине", "Genişliğe Sığdır", "Vừa với Chiều rộng", "调整至合适宽度", "縮放至頁面寬度"]),

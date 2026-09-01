@@ -74,6 +74,8 @@ pub const WATCHED: &[(&str, Watch)] = &[
     ("col_breaks", Watch::Look),
     ("print_gridlines", Watch::Look),
     ("print_headings", Watch::Look),
+    ("h_centered", Watch::Look),
+    ("v_centered", Watch::Look),
     ("print_title_rows", Watch::Look),
     ("print_title_cols", Watch::Look),
     ("header", Watch::Look),
@@ -250,6 +252,8 @@ pub fn filled_sheet(name: &str) -> Sheet {
     s.row_breaks = vec![10];
     s.col_breaks = vec![4];
     s.print_gridlines = true;
+    s.h_centered = true;
+    s.v_centered = true;
     s.print_headings = true;
     s.print_title_rows = Some((0, 0));
     s.print_title_cols = Some((0, 0));
@@ -432,6 +436,8 @@ fn same_sheet_field(name: &str, a: &Sheet, b: &Sheet) -> bool {
         "col_breaks" => a.col_breaks == b.col_breaks,
         "print_gridlines" => a.print_gridlines == b.print_gridlines,
         "print_headings" => a.print_headings == b.print_headings,
+        "h_centered" => a.h_centered == b.h_centered,
+        "v_centered" => a.v_centered == b.v_centered,
         "print_title_rows" => a.print_title_rows == b.print_title_rows,
         "print_title_cols" => a.print_title_cols == b.print_title_cols,
         "header" => a.header == b.header,
