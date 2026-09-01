@@ -1536,9 +1536,14 @@ fn draw_sheet(
             // 字下げ(indent)。1段 = 全角約1字ぶん空ける — 日本の帳票は
             // 項目の階層を字下げで見せます。**右揃えなら右から空けます**
             // (2026-08-31 発注者。前は右揃えのとき字下げを捨てていました)
+            // **右揃えは結合した幅の右端に着けます**(2026-09-01 発注者)。
+            // 前は自分の列の幅(`cw`)で右端を出していたので、B列とC列を
+            // 結合したセルの数が B列の右端に寄り、左隣の数とぶつかって
+            // いました。国税庁の酒税の総括表の「1,071」がこれです。
+            // 中央揃えと折り返しは前から `ma_w` を見ています
             let tx = if right {
                 let w = gyou.first().map(|g| gyou_haba(g)).unwrap_or(0.0);
-                x + cw - MASU_PAD_MM - ind - w
+                x + ma_w - MASU_PAD_MM - ind - w
             } else {
                 x + MASU_PAD_MM + ind
             };
@@ -1598,7 +1603,7 @@ fn draw_sheet(
                     // 幅は結合したぶん(`ma_w`)で見ます — 結合の1列目の
                     // 幅で中央を出すと、題が紙の左へはみ出します
                     HAlign::Center | HAlign::CenterContinuous => x + (ma_w - w) / 2.0,
-                    _ if right => x + cw - MASU_PAD_MM - w,
+                    _ if right => x + ma_w - MASU_PAD_MM - w,
                     _ => tx,
                 };
                 // **均等割付は字をセルの幅いっぱいに配ります**(2026-08-31。
