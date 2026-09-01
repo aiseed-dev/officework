@@ -310,6 +310,28 @@ MICHI = {
     "dv-mark": ('', '', ''),
     "data-external-links": ('', '', ''),
     "python": ('', '', ''),
+    # 保護・共同編集・参考資料・挿入(2026-08-31)
+    "cell-lock": ('c.protection = Protection(locked=…)', '', 'c.protection = Protection(locked=…)'),
+    "prot-book": ('', '', 'wb.security'),
+    "prot-range": ('', '', 'ws.protection'),
+    "prot-sign": ('', '', ''),
+    "recover": ('', '', ''),
+    "recover-every": ('', '', ''),
+    "read-only-rec": ('', '', 'wb.security'),
+    "co-delcomment": ('', '', ''),
+    "co-chat": ('', '', ''),
+    "coauth-mode": ('', '', ''),
+    "track-changes": ('', '', ''),
+    "add-text": ('', '', ''),
+    "tof": ('', '', ''),
+    "tof-update": ('', '', ''),
+    "toc-update": ('', '', ''),
+    "insshape": ('', '', ''),
+    "inssmartart": ('', '', ''),
+    "instext": ('', '', ''),
+    "instextart": ('', '', ''),
+    "dropcap": ('', '', ''),
+    "inscheckbox": ('', '', ''),
     "freeze": ('s.freeze_panes', '', 'ws.freeze_panes'),
     "show-gridlines": ('s.show_gridlines', '', 'ws.sheet_view.showGridLines'),
     # **左右のパネルを出すボタン**(2026-08-30)。
@@ -324,6 +346,9 @@ MICHI = {
 # *ここに載せるのは、決めが記録されている物だけ*です。
 # 決めていない空欄は「未実装」— 作らないと決めたのではなく、まだ作っていません。
 TSUKURANAI = {
+    # 共同編集の、画面だけの物(2026-08-31)
+    "co-chat": "画面の会話です。文書は変わりません",
+    "coauth-mode": "共同編集の入切です。文書は変わりません",
     # 数式タブの、画面だけの物(2026-08-31)。関数の族は小窓の絞り込みで、
     # 押しても文書は変わりません。トレースの矢印とウォッチも画面の印です
     "fn-recent": "関数の挿入の小窓を、この族で絞り込みます。文書は変わりません",
@@ -704,6 +729,8 @@ FILE_MICHI = {
     "f-html": ('', '', ''),
     "f-protect": ('', '', 'wb.security'),
     "f-distill": ('', '', ''),
+    # 言語と既定の書体・大きさを見せるページ(writer/src/filepage.rs)
+    "f-style": ('Doc(lang=…) / d.font', 'd.styles["Normal"].font', ''),
     "f-info": ('d.core_properties', 'd.core_properties', 'wb.properties'),
     "f-place": ('', '', ''),
     "f-quit": ('', '', ''),

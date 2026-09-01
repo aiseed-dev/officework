@@ -86,6 +86,7 @@ def 大文字にする(段落):
 |Export for the web (HTML) |link:commands/ファイル/Web の形で書き出す.adoc[Web の形で書き出す(HTML)] | |— |— |—
 |Protect |link:commands/ファイル/保護する.adoc[保護する] | |— |— |wb.security
 |Convert to adoc (split text and formatting) |link:commands/ファイル/adoc 形式にする.adoc[adoc 形式にする(本文と書式を分ける)] | |— |— |—
+|Formatting defaults |書式の標準 |✅ |Doc(lang=…) / d.font |d.styles["Normal"].font |—
 |Info |link:commands/ファイル/詳細情報.adoc[詳細情報] |✅ |d.core_properties |d.core_properties |wb.properties
 |Open file location |link:commands/ファイル/ファイルの場所を開く.adoc[ファイルの場所を開く] | |— |— |—
 |Quit |link:commands/ファイル/終了.adoc[終了] | |— |— |—
@@ -159,7 +160,12 @@ def 大文字にする(段落):
 |image:../../face/icons/pagebreak.svg[,16,16] Breaks |link:commands/レイアウト/区切り.adoc[区切り]・link:commands/挿入/区切り.adoc[挿入] |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../../face/icons/instable.svg[,16,16] Insert table |link:commands/挿入/表の挿入.adoc[表の挿入] |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
 |image:../../face/icons/insimage.svg[,16,16] Insert image |link:commands/挿入/画像を挿入.adoc[画像を挿入] |✅ |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
+|image:../../face/icons/insshape.svg[,16,16] Insert shape |図形を挿入 | |— |— |—
+|image:../../face/icons/inssmartart.svg[,16,16] Insert SmartArt |SmartArtの挿入 | |— |— |—
 |image:../../face/icons/inschart.svg[,16,16] Insert chart |link:commands/挿入/グラフを挿入.adoc[グラフを挿入] | |— |— |ws.add_chart(…)
+|image:../../face/icons/instext.svg[,16,16] Insert text box |テキストボックスの挿入 | |— |— |—
+|image:../../face/icons/instextart.svg[,16,16] Insert Text Art |テキストアートの挿入 | |— |— |—
+|image:../../face/icons/dropcap.svg[,16,16] Insert drop cap |ドロップキャップの挿入 | |— |— |—
 |image:../../face/icons/text-from-file.svg[,16,16] Text from File |link:commands/挿入/ファイルからのテキスト.adoc[ファイルからのテキスト] |✍ |d.add_paragraph(open('メモ.txt').read()) |— |—
 |image:../../face/icons/edit-header.svg[,16,16] Edit header / image:../../face/icons/edit-footer.svg[,16,16] Edit footer |link:commands/挿入/ヘッダーの編集.adoc[ヘッダーの編集] / link:commands/挿入/フッターの編集.adoc[フッターの編集] |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
 |image:../../face/icons/pagenum.svg[,16,16] Page number |link:commands/挿入/ページ番号.adoc[ページ番号] |✍ |(ヘッダーの `#`) |— |—
@@ -169,6 +175,7 @@ def 大文字にする(段落):
 |image:../../face/icons/inssymbol.svg[,16,16] Insert symbol |link:commands/挿入/記号を挿入.adoc[記号を挿入] |✍ |r.text += '※'(字をそのまま打つ) |— |—
 |image:../../face/icons/controls.svg[,16,16] Insert content controls |link:commands/挿入/コンテンツコントロールの挿入.adoc[コンテンツコントロールの挿入] |✅ |mcp.doc_fields() |— |—
 |image:../../face/icons/add-pivot.svg[,16,16] Insert Pivot Table |link:commands/挿入/ピボットテーブルを挿入.adoc[ピボットテーブルを挿入] | |— |— |ws.add_pivot(…)
+|image:../../face/icons/inscheckbox.svg[,16,16] Checkbox |link:commands/フォーム/チェックボックス.adoc[チェックボックス] | |— |— |—
 |image:../../face/icons/insrecommend.svg[,16,16] Insert recommended chart |link:commands/挿入/推奨チャートを挿入.adoc[推奨チャートを挿入] |✍ |s.values() を polars に渡して選ぶ |— |—
 |image:../../face/icons/inssparkline.svg[,16,16] Insert sparkline |link:commands/挿入/スパークラインを挿入する.adoc[スパークラインを挿入する] | |— |— |—
 |image:../../face/icons/ins-comment.svg[,16,16] Add Comment |link:commands/左パネル/コメント.adoc[コメント]・link:commands/挿入/コメント.adoc[挿入] |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
@@ -317,10 +324,14 @@ def 大文字にする(段落):
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
 |image:../../face/icons/contents.svg[,16,16] Table of contents |link:commands/参考資料/目次.adoc[目次] | |— |— |—
+|image:../../face/icons/add-text.svg[,16,16] Add Text |テキストの追加 | |— |— |—
+|image:../../face/icons/contents-update.svg[,16,16] Update table of contents |目次の更新 | |— |— |—
 |image:../../face/icons/bookmarks.svg[,16,16] Bookmark |link:commands/参考資料/ブックマーク.adoc[ブックマーク] | |— |— |—
 |image:../../face/icons/caption.svg[,16,16] Caption |link:commands/参考資料/図表番号.adoc[図表番号] | |— |— |—
 |image:../../face/icons/crossref.svg[,16,16] Cross-reference |link:commands/参考資料/相互参照.adoc[相互参照] | |— |— |—
 |image:../../face/icons/footnote.svg[,16,16] Footnote |link:commands/参考資料/脚注.adoc[脚注] | |— |— |—
+|image:../../face/icons/tof.svg[,16,16] Table of figures |図表目次 | |— |— |—
+|image:../../face/icons/tof-update.svg[,16,16] Update table of figures |図表目次の更新 | |— |— |—
 |===
 
 == フォーム
@@ -342,8 +353,12 @@ def 大文字にする(段落):
 |===
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
+|image:../../face/icons/coauth-mode.svg[,16,16] Co-editing mode |共同編集モード |❌ |共同編集の入切です。文書は変わりません |— |—
 |image:../../face/icons/co-addcomment.svg[,16,16] Add Comment |link:commands/共同編集/コメントを追加.adoc[コメントを追加] |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
+|image:../../face/icons/co-delcomment.svg[,16,16] Delete comment |コメントを削除 | |— |— |—
 |image:../../face/icons/co-showcomment.svg[,16,16] Show comments |link:commands/共同編集/コメントの表示.adoc[コメントの表示] |✅ |d.comments / c.comment |d.comments |c.comment
+|image:../../face/icons/co-chat.svg[,16,16] Chat |チャット |❌ |画面の会話です。文書は変わりません |— |—
+|image:../../face/icons/track-changes.svg[,16,16] Track changes |変更履歴 | |— |— |—
 |image:../../face/icons/co-history.svg[,16,16] Version history |link:commands/共同編集/バージョン履歴.adoc[バージョン履歴] | |— |— |—
 |===
 
@@ -353,9 +368,16 @@ def 大文字にする(段落):
 |===
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
+|image:../../face/icons/prot-sign.svg[,16,16] Add digital signature |デジタル署名を追加 | |— |— |—
 |image:../../face/icons/prot-doc.svg[,16,16] Protection |link:commands/保護/保護.adoc[保護] | |— |— |ws.protection
 |image:../../face/icons/prot-encrypt.svg[,16,16] Encrypt |link:commands/保護/暗号化する.adoc[暗号化する] | |— |— |wb.security
+|image:../../face/icons/protect-workbook.svg[,16,16] Protect workbook |ブックを保護する | |— |— |wb.security
+|image:../../face/icons/protect-range.svg[,16,16] Protect Range |範囲を保護する | |— |— |ws.protection
+|image:../../face/icons/cell-lock.svg[,16,16] Cell lock |セルのロック |✅ |c.protection = Protection(locked=…) |— |c.protection = Protection(locked=…)
 |image:../../face/icons/prot-allow.svg[,16,16] Allowed actions |link:commands/保護/許可する操作.adoc[許可する操作] | |— |— |ws.protection
+|image:../../face/icons/recover.svg[,16,16] Recover |link:commands/ファイル/復旧.adoc[復旧] | |*ファイルと同じ* |— |—
+|image:../../face/icons/recover-every.svg[,16,16] Backup interval |控えの間隔 | |— |— |—
+|image:../../face/icons/read-only-rec.svg[,16,16] Suggest read-only |読み取り専用を勧める | |— |— |wb.security
 |===
 
 == 表示
