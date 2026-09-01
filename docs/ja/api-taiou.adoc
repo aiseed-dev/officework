@@ -105,25 +105,33 @@ def 大文字にする(段落):
 |image:../../face/icons/fontsize.svg[,16,16] Font size / image:../../face/icons/incfont.svg[,16,16] Increment font size / image:../../face/icons/decfont.svg[,16,16] Decrement font size |link:commands/ホーム/フォントのサイズ.adoc[フォントのサイズ] / link:commands/ホーム/フォントサイズの拡大.adoc[フォントサイズの拡大] / link:commands/ホーム/フォントサイズの縮小.adoc[フォントサイズの縮小] |✅ |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
 |image:../../face/icons/changecase.svg[,16,16] Change case |link:commands/ホーム/大文字小文字を変更.adoc[大文字小文字を変更] |✍ |r.text = r.text.upper() |— |—
 |image:../../face/icons/ruby.svg[,16,16] Ruby |link:commands/ホーム/ルビ.adoc[ルビ] | |— |— |—
+|image:../../face/icons/ai-furigana.svg[,16,16] Furigana |ふりがな | |— |— |—
 |image:../../face/icons/bold.svg[,16,16] Bold |link:commands/ホーム/太字.adoc[太字] |✅ |r.bold / c.font |r.bold |c.font = Font(bold=True)
 |image:../../face/icons/italic.svg[,16,16] Italic |link:commands/ホーム/斜体.adoc[斜体] |✅ |r.italic / c.font |r.italic |c.font = Font(italic=True)
 |image:../../face/icons/underline.svg[,16,16] Underline |link:commands/ホーム/下線.adoc[下線] |✅ |r.underline / c.font |r.underline |c.font = Font(underline=…)
 |image:../../face/icons/strikeout.svg[,16,16] Strikethrough |link:commands/ホーム/取り消し線.adoc[取り消し線] |✅ |r.strike |r.font.strike |—
 |image:../../face/icons/superscript.svg[,16,16] Superscript |link:commands/ホーム/上付き.adoc[上付き] | |— |r.font.superscript |—
 |image:../../face/icons/subscript.svg[,16,16] Subscript |link:commands/ホーム/下付き.adoc[下付き] | |— |r.font.subscript |c.font = Font(vertAlign=…)
+|image:../../face/icons/highlight.svg[,16,16] Highlight colour |ハイライトの色 |✅ |r.highlight = '色' |r.font.highlight_color |—
 |image:../../face/icons/fontcolor.svg[,16,16] Font colour |link:commands/ホーム/フォントの色.adoc[フォントの色] |✅ |r.color / c.font |r.font.color.rgb |c.font = Font(color=…)
 |image:../../face/icons/clearstyle.svg[,16,16] Clear style |link:commands/ホーム/スタイルのクリア.adoc[スタイルのクリア] |✅ |r.clear() |r.clear() |—
 |image:../../face/icons/markers.svg[,16,16] Bullet / image:../../face/icons/numbering.svg[,16,16] Numbering |link:commands/ホーム/箇条書き.adoc[箇条書き] / link:commands/ホーム/ナンバリング.adoc[ナンバリング] |✅ |p.style = '箇条書き' / '番号付き' |p.style = 'List Bullet' / 'List Number' |—
 |image:../../face/icons/multilevels.svg[,16,16] Multilevel list |link:commands/ホーム/複数レベルのリスト.adoc[複数レベルのリスト] | |— |— |—
 |image:../../face/icons/decoffset.svg[,16,16] Decrease indent / image:../../face/icons/incoffset.svg[,16,16] Increase indent |link:commands/ホーム/インデントを減らす.adoc[インデントを減らす] / link:commands/ホーム/インデントを増やす.adoc[インデントを増やす] |✅ |p.paragraph_format.left_indent |p.paragraph_format.left_indent |—
 |image:../../face/icons/linespace.svg[,16,16] Paragraph line spacing |link:commands/ホーム/段落の行間.adoc[段落の行間] |✅ |p.paragraph_format.line_spacing |p.paragraph_format.line_spacing |—
+|image:../../face/icons/direction.svg[,16,16] Text direction |テキスト方向 | |— |— |—
 |image:../../face/icons/align-left.svg[,16,16] Align left / image:../../face/icons/align-center.svg[,16,16] Centre / image:../../face/icons/align-right.svg[,16,16] Align right / image:../../face/icons/align-just.svg[,16,16] Justified / image:../../face/icons/align-dist.svg[,16,16] Distributed |link:commands/ホーム/左揃え.adoc[左揃え] / link:commands/ホーム/中央揃え.adoc[中央揃え] / link:commands/ホーム/右揃え.adoc[右揃え] / link:commands/ホーム/両端揃え.adoc[両端揃え] / link:commands/ホーム/均等割付.adoc[均等割付] |✅ |p.align = 'left' / 'center' / 'right' / 'justify' / 'distribute' |p.alignment |c.alignment = Alignment(…)
+|image:../../face/icons/hidenchars.svg[,16,16] Nonprinting characters |非表示文字 |❌ |編集記号を画面に出すだけです。文書には入りません |— |—
+|image:../../face/icons/paracolor.svg[,16,16] Shading |段落の背景色 | |— |— |—
 |image:../../face/icons/borders.svg[,16,16] Borders |link:commands/ホーム/罫線.adoc[罫線] |✅ |c.border |— |c.border = Border(…)
 |image:../../face/icons/styles.svg[,16,16] Paragraph style |link:commands/ホーム/段落のスタイル.adoc[段落のスタイル] |✅ |p.style |p.style |—
 |image:../../face/icons/replace.svg[,16,16] Replace |link:commands/ホーム/置き換え.adoc[置き換え] |✅ |d.replace(前, 後) |— |—
 |image:../../face/icons/select-all.svg[,16,16] Select all |link:commands/ホーム/すべて選択.adoc[すべて選択] |✍ |d.paragraphs(全部を順に回る) |— |—
+|image:../../face/icons/copystyle.svg[,16,16] Format painter |書式のコピー | |— |— |—
 |image:../../face/icons/fillparag.svg[,16,16] Fill colour |link:commands/ホーム/塗りつぶしの色.adoc[塗りつぶしの色] |✅ |c.fill |— |c.fill = PatternFill(…)
+|image:../../face/icons/top.svg[,16,16] Align top / image:../../face/icons/middle.svg[,16,16] Align middle / image:../../face/icons/bottom.svg[,16,16] Align bottom |上揃え / 上下中央揃え / 下揃え |✅ |c.alignment = Alignment(vertical='top' / 'center' / 'bottom') |— |c.alignment = Alignment(vertical=…)
 |image:../../face/icons/wrap.svg[,16,16] Wrap text |link:commands/ホーム/折り返して全体を表示する.adoc[折り返して全体を表示する] |✅ |c.alignment |— |c.alignment = Alignment(wrap_text=True)
+|image:../../face/icons/text-orient.svg[,16,16] Text orientation |文字の向き |✅ |c.alignment = Alignment(text_rotation=角度) |— |c.alignment = Alignment(text_rotation=角度)
 |image:../../face/icons/merge.svg[,16,16] Merge and centre |link:commands/ホーム/結合して、中央に配置する.adoc[結合して、中央に配置する] |✅ |(col_span / v_merge) / s.merge_cells(…) |cell.merge(…) |ws.merge_cells('A1:B2')
 |image:../../face/icons/autosum.svg[,16,16] AutoSum |link:commands/ホーム/オートSUM.adoc[オートSUM]・link:commands/数式/オートSUM.adoc[数式] |✅ |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
 |image:../../face/icons/fill-num.svg[,16,16] Fill |link:commands/ホーム/フィル.adoc[フィル] |✍ |for i in range(10): s[f'A{i+2}'] = i + 1 |— |—
@@ -132,10 +140,13 @@ def 大文字にする(段落):
 |image:../../face/icons/sortdesc.svg[,16,16] Sort descending / image:../../face/icons/sortasc.svg[,16,16] Sort ascending |link:commands/ホーム/降順並べ替え.adoc[降順並べ替え] / link:commands/ホーム/昇順並べ替え.adoc[昇順並べ替え] | |— |— |—
 |image:../../face/icons/setfilter.svg[,16,16] Filters / image:../../face/icons/clear-filter.svg[,16,16] Clear filter |link:commands/ホーム/フィルター.adoc[フィルター] / link:commands/ホーム/フィルターを解除.adoc[フィルターを解除] | |— |— |ws.auto_filter
 |image:../../face/icons/format.svg[,16,16] Number format / image:../../face/icons/currency.svg[,16,16] Currency style / image:../../face/icons/percents.svg[,16,16] Percent style / image:../../face/icons/comma.svg[,16,16] Comma style |link:commands/ホーム/数値の書式.adoc[数値の書式] / link:commands/ホーム/通貨スタイル.adoc[通貨スタイル] / link:commands/ホーム/パーセントのスタイル.adoc[パーセントのスタイル] / link:commands/ホーム/カンマスタイル.adoc[カンマスタイル] |✅ |c.number_format |— |c.number_format
+|image:../../face/icons/digit-dec.svg[,16,16] Decrease decimal / image:../../face/icons/digit-inc.svg[,16,16] Increase decimal |小数点以下の表示桁数を減らす / 小数点以下の表示桁数を増やす |✅ |c.number_format = '0.00' |— |c.number_format = '0.00'
 |image:../../face/icons/cell-ins.svg[,16,16] Insert cells |link:commands/ホーム/セルを挿入.adoc[セルを挿入] |✅ |t.add_row() / s.insert_rows(行) |t.add_row() |ws.insert_rows(行)
 |image:../../face/icons/cell-del.svg[,16,16] Delete cells |link:commands/ホーム/セルを削除.adoc[セルを削除] |✅ |s.delete_rows(行) |— |ws.delete_rows(行)
+|image:../../face/icons/cell-format.svg[,16,16] Format cells |セルの書式設定 |✅ |c.font / c.alignment / c.border / c.fill |— |c.font / c.alignment / c.border / c.fill
 |image:../../face/icons/condformat.svg[,16,16] Conditional formatting |link:commands/ホーム/条件付き書式.adoc[条件付き書式] | |— |— |ws.conditional_formatting.add(…)
 |image:../../face/icons/table-tpl.svg[,16,16] Format as table template |link:commands/ホーム/表として書式設定.adoc[表として書式設定] | |— |— |ws.add_table(…)
+|image:../../face/icons/styles.svg[,16,16] Cell Style |セルのスタイル |✅ |b.add_named_style(スタイル) |— |wb.add_named_style(NamedStyle(…))
 |===
 
 == 挿入

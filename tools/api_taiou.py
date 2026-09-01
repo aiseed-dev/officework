@@ -89,6 +89,12 @@ GROUPS = [
     ("揃え", ["align-left", "align-center", "align-right", "align-just", "align-dist"],
      "p.align = 'left' / 'center' / 'right' / 'justify' / 'distribute'",
      "p.alignment", "c.alignment = Alignment(…)"),
+    # 縦の揃えは1つの属性に3つの値です(Alignment(vertical=…))
+    ("縦の揃え", ["top", "middle", "bottom"],
+     "c.alignment = Alignment(vertical='top' / 'center' / 'bottom')", "",
+     "c.alignment = Alignment(vertical=…)"),
+    ("小数点の桁", ["digit-inc", "digit-dec"],
+     "c.number_format = '0.00'", "", "c.number_format = '0.00'"),
     ("数値の見せ方", ["format", "currency", "percents", "comma"],
      "c.number_format", "", "c.number_format"),
     ("並べ替え", ["sort-desc", "sort-asc"], "", "", ""),
@@ -261,6 +267,16 @@ MICHI = {
     "shapes-merge": ('', '', ''),
     "show-breaks": ('', '', ''),
     "line-numbers": ('', '', ''),
+    # ホーム(2026-08-31)
+    "text-orient": ('c.alignment = Alignment(text_rotation=角度)', '', 'c.alignment = Alignment(text_rotation=角度)'),
+    "highlight": ("r.highlight = '色'", 'r.font.highlight_color', ''),
+    "cell-styles": ('b.add_named_style(スタイル)', '', 'wb.add_named_style(NamedStyle(…))'),
+    "cell-format": ('c.font / c.alignment / c.border / c.fill', '', 'c.font / c.alignment / c.border / c.fill'),
+    "direction": ('', '', ''),
+    "paracolor": ('', '', ''),
+    "copystyle": ('', '', ''),
+    "ai-furigana": ('', '', ''),
+    "hidenchars": ('', '', ''),
     "freeze": ('s.freeze_panes', '', 'ws.freeze_panes'),
     "show-gridlines": ('s.show_gridlines', '', 'ws.sheet_view.showGridLines'),
     # **左右のパネルを出すボタン**(2026-08-30)。
@@ -275,6 +291,8 @@ MICHI = {
 # *ここに載せるのは、決めが記録されている物だけ*です。
 # 決めていない空欄は「未実装」— 作らないと決めたのではなく、まだ作っていません。
 TSUKURANAI = {
+    # ホームタブの、画面だけの1つ(2026-08-31)
+    "hidenchars": "編集記号を画面に出すだけです。文書には入りません",
     # レイアウトタブの、画面だけの2つ(2026-08-31)
     "show-breaks": "紙の切れ目の線を画面に出すだけです。文書は変わりません",
     "line-numbers": "行番号を画面に出すだけです。文書には入りません",
