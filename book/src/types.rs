@@ -562,12 +562,6 @@ pub struct RichRun {
     pub font: Option<String>,
     /// 大きさ(pt)
     pub size_pt: Option<f32>,
-    /// **箱の内側の余白(mm。左・右・上・下)。**
-    ///
-    /// DrawingML の `<a:bodyPr lIns rIns tIns bIns>` です。書いていなければ
-    /// 既定は左右 0.1インチ(2.54mm)・上下 0.05インチ(1.27mm)で、
-    /// [`TextFmt::default`] がその値を入れます(2026-08-31 発注者)。
-    pub ins_mm: (f32, f32, f32, f32),
     pub bold: Option<bool>,
     pub italic: Option<bool>,
     /// RRGGBB
@@ -1109,6 +1103,13 @@ pub struct TextFmt {
     /// 軸の目盛りは同じ大きさでは読めません。xlsx の `a:rPr@sz`
     /// (100分の1pt)と往復します
     pub size_pt: Option<f32>,
+    /// **1行の高さ(pt)。** docx の `w:spacing w:line` が `exact` か
+    /// `atLeast` のときに入ります。書いていなければ `None` で、そのときは
+    /// 字の大きさから出します。
+    ///
+    /// 内閣府の調査票の担当欄は 283twip(14.15pt)を言っています。
+    /// 読まないと行が詰まり、箱の下に空きが残ります(2026-09-01 発注者)。
+    pub line_pt: Option<f32>,
     /// **箱の内側の余白(mm。左・右・上・下)。**
     ///
     /// DrawingML の `<a:bodyPr lIns rIns tIns bIns>` です。書いていなければ
@@ -1129,6 +1130,7 @@ impl Default for TextFmt {
             sup: false,
             sub: false,
             size_pt: None,
+            line_pt: None,
             // DrawingML の既定(左右 0.1in・上下 0.05in)
             ins_mm: (2.54, 2.54, 1.27, 1.27),
         }

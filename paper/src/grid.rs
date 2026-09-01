@@ -1926,7 +1926,10 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
         }
         // 図形の中の文字(テキストボックス)。揃えの指定があれば従います
         if let Some(t) = &sp.text {
-            let pt = sp.text_fmt.size_pt.unwrap_or(9.0) * scale;
+            // **字の大きさは箱が言います。** 言っていなければ文書の既定の
+            // 11pt です。前は 9pt の決め打ちで、内閣府の調査票の担当欄が
+            // 元より2段階小さく出ていました(2026-09-01 発注者)
+            let pt = sp.text_fmt.size_pt.unwrap_or(11.0) * scale;
             // **縦組みの箱**(`<a:bodyPr vert="…">`。2026-08-31 発注者)。
             // 箱が細いので、横に組むと1字ずつ折り返されて「F o r」のように
             // 落ちます。国税庁の消費税の表の「For the current year」が
@@ -1958,6 +1961,8 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
             // 内閣府の調査票の担当欄の字が箱の縁に寄っていました
             let (il, ir, it, ib) = sp.text_fmt.ins_mm;
             let naka = (w - il - ir).max(pt * 25.4 / 72.0);
+            // 半角は 0.55em、全角は 1em。**全角スペース(U+3000)も全角**です —
+            // `is_ascii` で見ると半角に落ち、字の並びが詰まります
             let hitotsu = |c: char| if c.is_ascii() { 0.55 } else { 1.0 } * pt * 25.4 / 72.0;
             let mut gyou: Vec<String> = Vec::new();
             for danraku in t.split('\n') {
@@ -1973,7 +1978,12 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
                 }
                 gyou.push(ima);
             }
-            let takasa = pt * 25.4 / 72.0 * 1.25;
+            // **行の高さも箱が言います**(`w:spacing w:line` の exact/atLeast)。
+            // 言っていなければ字の大きさの 1.25 倍です
+            let takasa = match sp.text_fmt.line_pt {
+                Some(v) => v * scale * 25.4 / 72.0,
+                None => pt * 25.4 / 72.0 * 1.25,
+            };
             // **縦の寄せは `<a:bodyPr anchor>`**(2026-08-31 発注者)。既定は
             // 上で、前はどの箱も真ん中に寄せていました。余白の内側で寄せます
             let block = takasa * gyou.len() as f32;

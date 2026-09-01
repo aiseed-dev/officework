@@ -2900,12 +2900,53 @@ fn shape_look(a: &str) -> Option<book::SheetShape> {
     // `<w:p><w:r><w:t …>往復` が入りました)
     if let Some(i) = a.find("<w:txbxContent>").map(|i| i + "<w:txbxContent>".len()) {
         let owari = a[i..].find("</w:txbxContent>").map(|e| i + e).unwrap_or(a.len());
-        let t = txbx_text(&a[i..owari]);
+        let naka = &a[i..owari];
+        let t = txbx_text(naka);
         if !t.is_empty() {
             sp.text = Some(t);
         }
+        // **箱の中の書き方も読みます**(2026-09-01 発注者)。前は字だけを
+        // 拾って `w:rPr` と `w:pPr` を捨てていたので、内閣府の調査票の
+        // 担当欄が 9pt の決め打ちで組まれ、行も詰まっていました。
+        //
+        // 字の大きさは最初の `w:sz`(1/2 pt)。言っていなければ `None` の
+        // ままで、描く側が文書の既定を当てます
+        if let Some(pt) = hiroi(naka, "<w:sz w:val=\"") {
+            sp.text_fmt.size_pt = Some(pt / 2.0);
+        }
+        // 行の高さは最初の `w:spacing`。`exact` と `atLeast` は twip の
+        // 高さそのものです(`auto` は倍率なので、ここでは見ません)
+        if let Some(j) = naka.find("<w:spacing ") {
+            let e = naka[j..].find('>').map(|e| j + e).unwrap_or(naka.len());
+            let tag = &naka[j..e];
+            let rule = attr_str(tag, "w:lineRule");
+            if matches!(rule.as_str(), "exact" | "atLeast") {
+                if let Some(v) = attr_str(tag, "w:line").parse::<f32>().ok().filter(|v| *v > 0.0) {
+                    sp.text_fmt.line_pt = Some(v / 20.0);
+                }
+            }
+        }
     }
     Some(sp)
+}
+
+/// タグの属性を字で。無ければ空。
+fn attr_str(tag: &str, key: &str) -> String {
+    let pat = format!("{key}=\"");
+    match tag.find(&pat) {
+        Some(i) => {
+            let s = i + pat.len();
+            tag[s..].find('"').map(|e| tag[s..s + e].to_string()).unwrap_or_default()
+        }
+        None => String::new(),
+    }
+}
+
+/// `<w:sz w:val="22"/>` のような、数を1つ拾う。無ければ `None`
+fn hiroi(naka: &str, pat: &str) -> Option<f32> {
+    let i = naka.find(pat)? + pat.len();
+    let e = naka[i..].find('"')? + i;
+    naka[i..e].parse().ok()
 }
 
 /// テキストボックスの中の字を**全部**拾う。段落の切れ目は改行にします。

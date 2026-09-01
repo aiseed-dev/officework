@@ -554,6 +554,44 @@ mod para_tests {
         );
     }
 
+    /// **テキストボックスの書き方も読む。**
+    ///
+    /// 前は字だけを拾って `w:rPr` と `w:pPr` を捨てていたので、内閣府の
+    /// 調査票の担当欄が 9pt の決め打ちで組まれ、行も詰まっていました
+    /// (2026-09-01 発注者「テキストボックスのスタイルが読み込んで
+    /// 反映していますか」)。
+    #[test]
+    fn a_text_box_carries_its_size_and_line_height() {
+        let hako = |naka: &str| {
+            let a = format!(
+                concat!(
+                    r#"<w:drawing><wp:anchor><wp:extent cx="2088000" cy="1044000"/>"#,
+                    r#"<wps:wsp><wps:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom>"#,
+                    r#"</wps:spPr><wps:txbx><w:txbxContent>{}"#,
+                    r#"</w:txbxContent></wps:txbx></wps:wsp></wp:anchor></w:drawing>"#,
+                ),
+                naka
+            );
+            crate::foreign_shape(&a).expect("他所の図形が読めない").look.text_fmt
+        };
+        // 何も言わない箱は、大きさも行の高さも None(描く側が既定を当てる)
+        let f = hako(r#"<w:p><w:r><w:t>あ</w:t></w:r></w:p>"#);
+        assert_eq!((f.size_pt, f.line_pt), (None, None), "言っていない物を作った");
+        // `w:sz` は 1/2 pt、`w:spacing w:line` の exact は twip の高さ
+        let f = hako(concat!(
+            r#"<w:p><w:pPr><w:spacing w:line="283" w:lineRule="exact"/></w:pPr>"#,
+            r#"<w:r><w:rPr><w:sz w:val="22"/></w:rPr><w:t>あ</w:t></w:r></w:p>"#,
+        ));
+        assert_eq!(f.size_pt, Some(11.0), "字の大きさを読んでいない");
+        assert_eq!(f.line_pt, Some(14.15), "行の高さを読んでいない");
+        // `auto` は倍率なので、高さとしては読まない
+        let f = hako(concat!(
+            r#"<w:p><w:pPr><w:spacing w:line="360" w:lineRule="auto"/></w:pPr>"#,
+            r#"<w:r><w:t>あ</w:t></w:r></w:p>"#,
+        ));
+        assert_eq!(f.line_pt, None, "倍率を高さとして読んだ");
+    }
+
     /// **うちが書いた図形は、こちらの道では読まない。**
     /// `extract_shapes` が名前とページ番号ごと読むので、二重になります
     #[test]
