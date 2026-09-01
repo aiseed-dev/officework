@@ -3096,4 +3096,63 @@ mod shade_tests {
             s.fills
         );
     }
+
+    /// **升の中の揃えと、行の高さの下限。**
+    ///
+    /// 内閣府の調査票の表は、見出しの升が中央揃え・チェックの升が縦の
+    /// 中央揃え・行が `w:trHeight` で高さを言っています。組む所がどれも
+    /// 見ていなかったので、字が左上に寄り、行も低いままでした
+    /// (2026-09-01 発注者「調査項目、内容は中央揃え」)。
+    #[test]
+    fn a_table_cell_follows_its_alignment_and_row_height() {
+        use crate::doc::{Align, Block, Cellbox, Document, Paragraph, Run, Table};
+        use crate::{layout, Frame, Metrics};
+        let masu = |t: &str, yose: Align, v: book::VAlign| Cellbox {
+            paragraphs: vec![Paragraph {
+                align: yose,
+                runs: vec![Run { text: t.into(), size_pt: None, font: None,
+                                 fmt: Default::default() }],
+                ..Default::default()
+            }],
+            valign: v,
+            ..Default::default()
+        };
+        let mut t = Table {
+            rows: vec![vec![
+                masu("左", Align::Left, book::VAlign::Top),
+                masu("中", Align::Center, book::VAlign::Middle),
+            ]],
+            col_mm: vec![60.0, 60.0],
+            ..Default::default()
+        };
+        let hiku = |t: &Table| {
+            let mut d = Document::default();
+            d.blocks = vec![Block::Table(t.clone())];
+            let f = crate::font::default_family("ja").expect("書体");
+            let bytes = crate::font::load(f).expect("読めない");
+            let m = Metrics::new(&bytes).expect("測れない");
+            layout(&d, &m, &Frame { measure_mm: 130.0, line_height_mm: 6.0, y0_mm: 20.0 })
+        };
+        let x_of = |t: &Table, ji: char| {
+            hiku(t).lines.iter().flat_map(|l| l.cells.clone())
+                .find(|c| c.ch == ji).map(|c| c.x_mm).expect("字が無い")
+        };
+        // **同じ升を左揃えにしたときより右に来る**のが中央揃えです
+        let migi = x_of(&t, '中');
+        let mut hidari = t.clone();
+        hidari.rows[0][1].paragraphs[0].align = Align::Left;
+        let hidari_x = x_of(&hidari, '中');
+        assert!(migi > hidari_x + 20.0,
+            "中央揃えが効いていない: 左 {hidari_x} / 中央 {migi}");
+        let s = hiku(&t);
+        // 行の高さを言えば、その分だけ縦の中央が下がる
+        let y0 = s.lines.iter().find(|l| l.cells.iter().any(|c| c.ch == '中'))
+            .map(|l| l.y_mm).expect("行が無い");
+        t.row_mm = vec![40.0];
+        let s2 = hiku(&t);
+        let y1 = s2.lines.iter().find(|l| l.cells.iter().any(|c| c.ch == '中'))
+            .map(|l| l.y_mm).expect("行が無い");
+        assert!(y1 > y0 + 10.0, "行の高さか縦の揃えが効いていない: {y0} {y1}");
+    }
+
 }
