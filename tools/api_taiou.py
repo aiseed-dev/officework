@@ -243,6 +243,24 @@ MICHI = {
     "sheet-view": ("", "", ""),
     "show-headings": ("", "", ""),
     "show-zeros": ("", "", ""),
+    # レイアウト(2026-08-31)。図形の並び替え・ページの色・段組みなどは
+    # 文書やファイルを変えますが、officework の口はまだありません(空)。
+    # openpyxl に相当がある物は op に書きます
+    "printarea-add": ('s.print_area', '', 'ws.print_area'),
+    "scale": ('', '', 'ws.page_setup.scale / fitToWidth'),
+    "rtl-sheet": ('', '', 'ws.sheet_view.rightToLeft'),
+    "print-headings": ('', '', 'ws.print_options.headings'),
+    "hyphenation": ('', '', ''),
+    "columns": ('', '', ''),
+    "pagecolor": ('', '', ''),
+    "colorschemas": ('', '', ''),
+    "img-group": ('', '', ''),
+    "img-movefrwd": ('', '', ''),
+    "img-movebkwd": ('', '', ''),
+    "img-align": ('', '', ''),
+    "shapes-merge": ('', '', ''),
+    "show-breaks": ('', '', ''),
+    "line-numbers": ('', '', ''),
     "freeze": ('s.freeze_panes', '', 'ws.freeze_panes'),
     "show-gridlines": ('s.show_gridlines', '', 'ws.sheet_view.showGridLines'),
     # **左右のパネルを出すボタン**(2026-08-30)。
@@ -257,6 +275,9 @@ MICHI = {
 # *ここに載せるのは、決めが記録されている物だけ*です。
 # 決めていない空欄は「未実装」— 作らないと決めたのではなく、まだ作っていません。
 TSUKURANAI = {
+    # レイアウトタブの、画面だけの2つ(2026-08-31)
+    "show-breaks": "紙の切れ目の線を画面に出すだけです。文書は変わりません",
+    "line-numbers": "行番号を画面に出すだけです。文書には入りません",
     # 表示タブ(2026-08-31)。画面の見え方だけで、文書もファイルも変わりません
     "zoom-in": "画面の表示です。文書は変わりません",
     "zoom-out": "画面の表示です。文書は変わりません",

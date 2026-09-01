@@ -183,13 +183,28 @@ def 大文字にする(段落):
 |image:../../face/icons/pagemargins.svg[,16,16] Margins |link:commands/レイアウト/余白.adoc[余白] |✅ |d.sections[0] |section.left_margin |ws.page_margins
 |image:../../face/icons/pageorient.svg[,16,16] Page orientation |link:commands/レイアウト/印刷の向き.adoc[印刷の向き] |✅ |d.sections[0] |section.orientation |ws.page_setup.orientation
 |image:../../face/icons/pagesize.svg[,16,16] Page size |link:commands/レイアウト/ページのサイズ.adoc[ページのサイズ] |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
+|image:../../face/icons/columns.svg[,16,16] Insert column |列の挿入 | |— |— |—
+|image:../../face/icons/line-numbers.svg[,16,16] Show line numbers |行番号を表示する |❌ |行番号を画面に出すだけです。文書には入りません |— |—
+|image:../../face/icons/hyphenation.svg[,16,16] Change hyphenation |ハイフン設定の変更 | |— |— |—
+|image:../../face/icons/img-movefrwd.svg[,16,16] Bring forward |前面ヘ移動 | |— |— |—
+|image:../../face/icons/img-movebkwd.svg[,16,16] Send Backward |背面ヘ移動 | |— |— |—
+|image:../../face/icons/img-align.svg[,16,16] Alignment |配置 | |— |— |—
+|image:../../face/icons/img-group.svg[,16,16] Group |link:commands/データ/グループ化.adoc[グループ化] | |— |— |—
+|image:../../face/icons/shapes-merge.svg[,16,16] Merge shapes |図形を結合 | |— |— |—
 |image:../../face/icons/watermark.svg[,16,16] Edit watermark |link:commands/レイアウト/透かしを編集する.adoc[透かしを編集する] | |— |— |—
+|image:../../face/icons/pagecolor.svg[,16,16] Change page colour |ページ色の変更 | |— |— |—
+|image:../../face/icons/colorschemas.svg[,16,16] Change colour theme |配色の変更 | |— |— |—
 |image:../../face/icons/printarea.svg[,16,16] Print Area |link:commands/レイアウト/印刷範囲.adoc[印刷範囲] |✅ |s.print_area |— |ws.print_area
 |image:../../face/icons/pagebreak.svg[,16,16] Breaks |link:commands/レイアウト/区切り.adoc[区切り]・link:commands/挿入/区切り.adoc[挿入] |✅ |*挿入と同じ* — d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../../face/icons/editheader.svg[,16,16] Edit header |link:commands/レイアウト/ヘッダー_フッター.adoc[ヘッダー/フッター] |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
+|image:../../face/icons/scale.svg[,16,16] Scale To Fit |拡大縮小印刷 | |— |— |ws.page_setup.scale / fitToWidth
 |image:../../face/icons/fit-pages.svg[,16,16] Fit to paper |link:commands/レイアウト/紙に収める.adoc[紙に収める] | |— |— |ws.page_setup.fitToWidth
+|image:../../face/icons/printarea-add.svg[,16,16] Add to area |範囲を足す |✅ |s.print_area |— |ws.print_area
+|image:../../face/icons/show-breaks.svg[,16,16] Page breaks |紙の切れ目 |❌ |紙の切れ目の線を画面に出すだけです。文書は変わりません |— |—
 |image:../../face/icons/printtitles.svg[,16,16] Print titles |link:commands/レイアウト/タイトルを印刷する.adoc[タイトルを印刷する] |✅ |s.print_title_rows |— |ws.print_title_rows
+|image:../../face/icons/rtl-sheet.svg[,16,16] Switch the sheet direction so that the first column is on the right side |最初の列が右側に来るようにシートの方向を切り替える | |— |— |ws.sheet_view.rightToLeft
 |image:../../face/icons/print-gridlines.svg[,16,16] Print gridlines |link:commands/レイアウト/枠線も印刷.adoc[枠線も印刷] |✅ |s.print_gridlines |— |ws.print_options.gridLines
+|image:../../face/icons/print-headings.svg[,16,16] Print headings |見出しも印刷 | |— |— |ws.print_options.headings
 |===
 
 == 数式
@@ -222,7 +237,7 @@ def 大文字にする(段落):
 |image:../../face/icons/data-validation.svg[,16,16] Data Validation |link:commands/データ/データの入力規則.adoc[データの入力規則] |✅ |s.add_data_validation(…) |— |ws.add_data_validation(…)
 |image:../../face/icons/scenario.svg[,16,16] Scenario |link:commands/データ/シナリオ.adoc[シナリオ] | |— |— |—
 |image:../../face/icons/solver.svg[,16,16] Solver |link:commands/データ/ソルバー.adoc[ソルバー] | |— |— |—
-|image:../../face/icons/group.svg[,16,16] Group / image:../../face/icons/ungroup.svg[,16,16] Ungroup |link:commands/データ/グループ化.adoc[グループ化] / link:commands/データ/グループ解除.adoc[グループ解除] |✅ |s.row_groups |— |ws.column_dimensions[…].outline_level
+|image:../../face/icons/group.svg[,16,16] Group / image:../../face/icons/ungroup.svg[,16,16] Ungroup |link:commands/データ/グループ化.adoc[グループ化] / link:commands/データ/グループ解除.adoc[グループ解除] |✅ |*レイアウトと同じ* — s.row_groups |— |ws.column_dimensions[…].outline_level
 |image:../../face/icons/subtotal.svg[,16,16] Subtotals |link:commands/データ/小計.adoc[小計] |✍ |s['A9'] = '=SUBTOTAL(9,A2:A8)' |— |—
 |image:../../face/icons/csv-kind.svg[,16,16] CSV format |link:commands/データ/CSV の形.adoc[CSV の形] |✍ |csv モジュールで読む |— |—
 |image:../../face/icons/flash-fill.svg[,16,16] Fill by example |link:commands/データ/フラッシュフィル.adoc[フラッシュフィル] |✍ |s['B2'] = s['A2'].split()[0](規則を書く) |— |—
