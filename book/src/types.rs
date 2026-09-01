@@ -1224,6 +1224,15 @@ pub struct SheetShape {
     /// **紙にも出ます**(2026-08-29 発注者「紙にも影を出すようにして」)。
     /// それまでは「紙は輪郭だけ」の方針で画面と xlsx だけでした
     pub shadow: bool,
+    /// 右下を留めるセルと、そのセルからのずらし(px)。
+    ///
+    /// xlsx の twoCellAnchor は「セルと一緒に動き、セルと一緒に
+    /// 伸び縮みする」約束なので、大きさは絶対寸法(a:ext)でなく
+    /// セルの並びから出す。これが `Some` のとき、紙は width_px /
+    /// height_px でなくセルの位置で幅と高さを決める(列幅の換算が
+    /// 原本と違っても、図形は同じセルの縁に貼り付く)。
+    /// `editAs="oneCell"` / `"absolute"` のアンカーでは `None` のまま
+    pub to: Option<(Pos, f32, f32)>,
 }
 
 impl Default for SheetShape {
@@ -1250,6 +1259,7 @@ impl Default for SheetShape {
             alpha: 1.0,
             shadow: false,
             group: 0,
+            to: None,
         }
     }
 }

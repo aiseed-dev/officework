@@ -713,6 +713,13 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
     let (mut path_w, mut path_h) = (1000.0f32, 1000.0f32);
     let mut has_custom = false;
     let mut in_from = false;
+    // 右下のアンカー(xdr:to)。twoCellAnchor は「セルと一緒に動き、
+    // セルと一緒に伸び縮みする」約束なので、大きさは a:ext でなく
+    // from→to のセルから出す(editAs が oneCell / absolute なら従来どおり)
+    let mut in_to = false;
+    let (mut to_col, mut to_row) = (None::<u32>, None::<u32>);
+    let (mut to_off_x, mut to_off_y) = (0i64, 0i64);
+    let mut to_cells = false;
     let mut in_ln = false;
     let mut in_sp = false;
     // 束(grpSp)の番号と、いま読んでいる子の束の中での位置(EMU)
@@ -741,10 +748,17 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
         match r.read_event_into(&mut buf) {
             Ok(Event::Eof) | Err(_) => break,
             Ok(Event::Start(e)) => match local(e.name().as_ref()) {
-                b"oneCellAnchor" | b"twoCellAnchor" | b"absoluteAnchor" => {
+                t @ (b"oneCellAnchor" | b"twoCellAnchor" | b"absoluteAnchor") => {
                     (col, row, cx, cy, embed, prst, fill, line) =
                         (None, None, None, None, None, None, None, None);
                     (off_x, off_y) = (0, 0);
+                    (to_col, to_row) = (None, None);
+                    (to_off_x, to_off_y) = (0, 0);
+                    to_cells = t == b"twoCellAnchor"
+                        && !matches!(
+                            attr(&e, "editAs").as_deref(),
+                            Some("oneCell") | Some("absolute")
+                        );
                     text.clear();
                     // **組み方も1つずつ畳む。** 畳まないと、前の図形の
                     // 揃えや箇条書きが次の箱に漏れる — 1つだけの試験では
@@ -770,7 +784,8 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     line_kimatta = false;
                 }
                 b"from" => in_from = true,
-                t @ (b"col" | b"row" | b"colOff" | b"rowOff") if in_from => {
+                b"to" => in_to = true,
+                t @ (b"col" | b"row" | b"colOff" | b"rowOff") if in_from || in_to => {
                     cur = t.to_vec()
                 }
                 // コネクタ(cxnSp)も図形と同じ持ち物(spPr に prstGeom)。
@@ -992,16 +1007,24 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
             Ok(Event::Text(t)) if !cur.is_empty() => {
                 let raw = t.unescape().unwrap_or_default();
                 let v: i64 = raw.trim().parse().unwrap_or(0);
-                match cur.as_slice() {
-                    b"col" => col = Some(v.max(0) as u32),
-                    b"row" => row = Some(v.max(0) as u32),
-                    b"colOff" => off_x = v,
-                    _ => off_y = v,
+                match (cur.as_slice(), in_to) {
+                    (b"col", false) => col = Some(v.max(0) as u32),
+                    (b"row", false) => row = Some(v.max(0) as u32),
+                    (b"colOff", false) => off_x = v,
+                    (_, false) => off_y = v,
+                    (b"col", true) => to_col = Some(v.max(0) as u32),
+                    (b"row", true) => to_row = Some(v.max(0) as u32),
+                    (b"colOff", true) => to_off_x = v,
+                    (_, true) => to_off_y = v,
                 }
             }
             Ok(Event::End(e)) => match local(e.name().as_ref()) {
                 b"from" => {
                     in_from = false;
+                    cur.clear();
+                }
+                b"to" => {
+                    in_to = false;
                     cur.clear();
                 }
                 b"col" | b"row" | b"colOff" | b"rowOff" => cur.clear(),
@@ -1066,6 +1089,14 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         line_w,
                         alpha: alpha.unwrap_or(1.0),
                         shadow,
+                        to: match (to_cells, to_col, to_row) {
+                            (true, Some(c), Some(r)) => Some((
+                                Pos::new(r, c),
+                                to_off_x as f32 / 9525.0,
+                                to_off_y as f32 / 9525.0,
+                            )),
+                            _ => None,
+                        },
                         ..Default::default()
                     };
                     let kind = match (embed.take(), prst.take(), has_custom) {

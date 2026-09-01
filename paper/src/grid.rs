@@ -1767,6 +1767,29 @@ fn draw_sheet(
             }
             let l1 = ink_box.as_mut().expect("筆");
             let (_, x, y_top) = cell_at(sp.at);
+            // twoCellAnchor はセルと一緒に伸び縮みする — 幅と高さを
+            // 右下のセル(to)から出す。列幅の換算が原本の Excel と
+            // 少し違っても、図形は同じセルの縁に貼り付く
+            let futa;
+            let sp = match sp.to {
+                Some((to, tdx, tdy)) if to.col >= sp.at.col && to.row >= sp.at.row => {
+                    let mm = 25.4 / 96.0;
+                    let w_mm: f32 = (sp.at.col..to.col)
+                        .map(|c| {
+                            c.checked_sub(c0)
+                                .and_then(|i| col_mm.get(i as usize).copied())
+                                .unwrap_or(COL_MM * scale)
+                        })
+                        .sum();
+                    let h_mm: f32 = (sp.at.row..to.row).map(row_mm).sum();
+                    let mut s2 = sp.clone();
+                    s2.width_px = (w_mm / (mm * scale) - sp.dx_px + tdx).max(1.0);
+                    s2.height_px = (h_mm / (mm * scale) - sp.dy_px + tdy).max(1.0);
+                    futa = s2;
+                    &futa
+                }
+                _ => sp,
+            };
             zukei(l1, sp, x, y_top, scale);
         }
     }

@@ -44,6 +44,34 @@ mod fmt_round {
         assert_eq!(sp.line, None, "線を引かない図形に色が付いた");
         assert!(sp.text_fmt.vertical, "縦組みを読んでいない");
         assert_eq!(sp.text.as_deref(), Some("For the current year"));
+        // twoCellAnchor は右下のセルも持つ(セルと一緒に伸び縮みする)
+        assert_eq!(
+            sp.to,
+            Some((Pos { row: 3, col: 1 }, 0.0, 0.0)),
+            "右下のアンカーを読んでいない"
+        );
+    }
+
+    /// editAs="oneCell" は「セルと動くが、大きさは変えない」。
+    /// 右下を持たせると、列の幅を変えたとき図形まで伸びてしまう
+    #[test]
+    fn edit_as_one_cell_keeps_the_absolute_size() {
+        let dr = r#"<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+<xdr:twoCellAnchor editAs="oneCell"><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
+<xdr:to><xdr:col>1</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>3</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+<xdr:sp macro="" textlink=""><xdr:nvSpPr><xdr:cNvPr id="1" name="Rect 1"/><xdr:cNvSpPr/></xdr:nvSpPr>
+<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="95250" cy="95250"/></a:xfrm>
+<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:sp>
+<xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>"#;
+        let v = crate::xlsx::read::parse_drawing_anchors(dr);
+        let sp = v
+            .iter()
+            .find_map(|t| match &t.5 {
+                crate::xlsx::read::DrawKind::Shape(s) => Some(s.as_ref()),
+                _ => None,
+            })
+            .expect("図形が読めない");
+        assert_eq!(sp.to, None, "oneCell の図形が右下を持っている");
     }
     use book::{Borders, Cell, CellFormat, Edge, HAlign, Pos, Value};
     use book::{Book, Sheet};
