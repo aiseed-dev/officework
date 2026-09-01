@@ -629,6 +629,7 @@ pub(super) fn parse_notes(
         .unwrap_or("")
         .trim_end_matches('/');
 
+    let xml = xml.strip_prefix('\u{feff}').unwrap_or(xml);
     let mut r = Reader::from_str(xml);
     let mut buf = Vec::new();
     loop {
@@ -1366,6 +1367,11 @@ pub(super) fn parse_document_rels_num(
     targets: &std::collections::BTreeMap<String, String>,
     shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
 ) -> (Document, Report) {
+    // **BOM をここで外します。** quick-xml は位置を BOM の後ろから数えるのに、
+    // こちらの文字列には残っているので、原文を切り出すと3バイトずれます。
+    // 内閣府の document_4 は BOM 付きで、絵を控える所が `</w:drawi` で
+    // 切れ、開いて保存しただけで壊れた XML になっていました(2026-09-01)。
+    let xml = xml.strip_prefix('\u{feff}').unwrap_or(xml);
     let mut r = Reader::from_str(xml);
     r.config_mut().trim_text(false);
 
@@ -1983,7 +1989,12 @@ pub(super) fn parse_document_rels_num(
                     }
                     b"br" => if let Some(p) = para.as_mut() {
                         p.push(Run { text: "\n".into(), size_pt, font: font.clone(), fmt: fmt.clone() }) },
-                    b"tab" => if let Some(p) = para.as_mut() {
+                    // **タブの文字は run の中の `w:tab` だけです。**
+                    // `w:pPr/w:tabs` の中にも同じ名前の要素が並びますが、
+                    // あちらはタブを打ったとき字が止まる位置の定義です。
+                    // 見分けていなかったので、内閣府の調査票は開いて保存
+                    // しただけで行頭にタブが増えていました(2026-09-01)。
+                    b"tab" if !in_ppr => if let Some(p) = para.as_mut() {
                         p.push(Run { text: "\t".into(), size_pt, font: font.clone(), fmt: fmt.clone() }) },
                     b"sz" if in_rpr => {
                         if let Some(v) = attr(&e, "val") {

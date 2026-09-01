@@ -186,7 +186,7 @@ openpyxl と違い、罫線・結合・列幅・図形を保ったまま値を�
 from officework import sheet
 b = sheet.Book.open("様式7.xlsx")
 s = b["提案見積書"]              # b[0] でも
-s["A30"] = "日本フネン株式会社"   # 書式は据え置き。文字列は「打ったのと同じ」解釈
+s["A30"] = "サンプル商事株式会社"   # 書式は据え置き。文字列は「打ったのと同じ」解釈
 s["C30"] = "=B30*100"            # 式。置いた時点で再計算される
 s.insert_row(30)                 # 明細行を増やす。残った式の参照も動く
 b.save("out.xlsx")               # 原本から図形・印刷設定を持ち越す
@@ -215,7 +215,7 @@ xlsx に pysheet が要ったのはopenpyxl が帳票の枠(罫線・結合・�
 import docx
 d = docx.Document("様式1.docx")
 p = d.paragraphs[12]
-p.runs[0].text = "商号または名称　日本フネン株式会社"
+p.runs[0].text = "商号または名称　サンプル商事株式会社"
 for r in p.runs[1:]: r.text = ""
 d.save("記入済.docx")
 ----

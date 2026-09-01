@@ -1603,7 +1603,12 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
                 }
                 // テンプレートを渡されたときは、原本のスタイル定義を
                 // 持ち越さずこちらで作り直す(下の styles_from_theme)
-                if name == "word/styles.xml" {
+                // **名前は `styles.xml` とは限りません。** 部品の在り処は
+                // 関係が決めるので、`styles2.xml` のような名前も来ます。
+                // 内閣府の document_4 がそれで、こちらの `styles.xml` を
+                // 足してしまい、同じ種類の関係が2つある docx になって
+                // いました(2026-09-01。python-docx が読めません)
+                if name.starts_with("word/styles") && name.ends_with(".xml") {
                     if theme.is_some() {
                         continue;
                     }
@@ -1870,12 +1875,6 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
                 esc(&url),
             ));
         }
-        // スタイル定義(styles.xml)への関係。まっさらの文書だけ
-        if !orig_has_styles && !rels.contains("Target=\"styles.xml\"") {
-            add.push_str(&format!(
-                r#"<Relationship Id="rIdJOsty" Type="{RNS_DOC}/styles" Target="styles.xml"/>"#
-            ));
-        }
         // コメント(comments.xml)への関係。無いときだけ足す
         if !cmts_out.is_empty() && !rels.contains("Target=\"comments.xml\"") {
             add.push_str(&format!(
@@ -1902,7 +1901,8 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
                 ("rIdJOsty", "styles", "styles.xml"),
                 ("rIdJOthm", "theme", "theme/theme1.xml"),
             ] {
-                if !rels.contains(&format!("Target=\"{target}\"")) {
+                // 同じ種類の関係は1つだけです。すでに在れば足しません
+                if !rels.contains(&format!("/{kind}\"")) && !add.contains(&format!("/{kind}\"")) {
                     add.push_str(&format!(
                         r#"<Relationship Id="{rid}" Type="{RNS_DOC}/{kind}" Target="{target}"/>"#
                     ));

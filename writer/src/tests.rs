@@ -870,7 +870,7 @@ print(len(fields()))
             ooxml::read(std::io::Cursor::new(std::fs::read(&out_d).unwrap())).unwrap();
         let body = doc2.body_text();
         assert!(body.contains("サンプル商事株式会社"), "記入が残らない");
-        assert!(body.contains("山城町東浜傍示"), "住所が残らない");
+        assert!(body.contains("見本県見本市見本町"), "住所が残らない");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
