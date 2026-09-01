@@ -6767,9 +6767,18 @@ ARRAYTOTEXT・BINOM.DIST.RANGE は LibreOffice に無い)。違う32の
 . 実装の順: 日常の残り(日付・情報・XOR・かっこ内の *B 系)→
   統計の基本 → 財務の主要 → 分布 → エンジニアリング。
   欠けの全一覧は kansu_cases.tsv と、この節の上の測りにある
-. 1つ実装したら: kansu_cases.tsv に場合を足す(無ければ)→
-  `python3 test/kansu_oracle.py` → `cargo run -p sheet --example
-  kansu_check` が緑 → calc/gen_funcs.py の GROUPS に登録 →
-  `python3 calc/gen_funcs.py --all`(小窓とマニュアルに載る)
+. 1つ実装したら、この5つを**同じコミットで**: kansu_cases.tsv に
+  場合を足す(無ければ)→ `python3 test/kansu_oracle.py` →
+  `cargo run -p sheet --example kansu_check` が緑 →
+  calc/gen_funcs.py の GROUPS に登録 → `python3 calc/gen_funcs.py --all`
+. **マニュアルの整備も同じ受け持ち。** 上の `--all` が
+  docs/ja/functions.adoc と docs/en/functions.adoc を作り直す。
+  関数を足したのにマニュアルが古いままなら
+  `python3 calc/gen_funcs.py --check` が止める。生成物を手で
+  直さないこと — 直すのは生成器の側
 . **引数の形は本家の対訳(vendor の formula-lang)のとおり** —
-  勝手に増やさない・減らさない
+  勝手に増やさない・減らさない。対訳に無い関数(VALUETOTEXT・
+  ARRAYTOTEXT・BINOM.DIST.RANGE)は calc/funcs_hand.json に
+  14言語ぶん書く。**日本語で埋めない**
+. 決めが要る場面(標準が2通りある・答えの正が食い違う)は、
+  自分で決めずに Fable へ戻すこと。判断は先に決めてある
