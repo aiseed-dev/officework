@@ -535,7 +535,9 @@ struct Habakei {
 
 impl Habakei {
     /// 書体の中身と、その表に出てくる字から作ります
-    fn new(data: &[Vec<u8>], ji: &std::collections::BTreeSet<char>) -> Self {
+    /// `na` は**原本の書体の名前**の並び(`data` と同じ順)。行送りは
+    /// この名前で引きます — 置き替え先の寸法とは違うためです
+    fn new(data: &[Vec<u8>], na: &[String], ji: &std::collections::BTreeSet<char>) -> Self {
         let hyou = data
             .iter()
             .map(|d| {
@@ -554,9 +556,18 @@ impl Habakei {
                 m
             })
             .collect();
+        // **行送りは原本の書体の名前で引きます**(2026-09-01 発注者)。
+        // docx の道([`kumihan::font::okuri_em`])と同じ1本にします。
+        // 表に無ければ、この機械にある置き替え先そのものから出します
+        // (LibreOffice も実物の書体から取ります — `editeng` の
+        // `FormatterFontMetric`)
         let okuri = data
             .iter()
-            .map(|d| {
+            .enumerate()
+            .map(|(i, d)| {
+                if let Some(em) = kumihan::font::okuri_em(na.get(i).map(|s| s.as_str())) {
+                    return em;
+                }
                 ttf_parser::Face::parse(d, 0)
                     .ok()
                     .filter(|f| f.units_per_em() > 0)
@@ -770,7 +781,7 @@ fn sheet_leaves_haba(
 ) -> Result<Vec<pdfw::Leaf>, String> {
     let mut board = Board::new(paper);
     board.fonts = fonts.to_vec();
-    board.haba = Habakei::new(data, &deru_ji(grid));
+    board.haba = Habakei::new(data, fonts, &deru_ji(grid));
     let (pages, _clipped, margins) = draw_sheet(&mut board, grid, paper, setup, true);
     let total = pages.len();
     draw_header_footer(&mut board, grid, paper, pages, margins, 0, total);
@@ -866,7 +877,9 @@ pub fn sheet_to_pdf<W: Write>(
     out: W,
 ) -> Result<u32, String> {
     let mut board = Board::new(paper);
-    board.haba = Habakei::new(std::slice::from_ref(&font_data.to_vec()), &deru_ji(grid));
+    // この口は書体を1つだけ受けます。名前は分からないので、置き替え先の
+    // 寸法から出します(名前つきの口は [`sheet_leaves_fonts`])
+    board.haba = Habakei::new(std::slice::from_ref(&font_data.to_vec()), &[], &deru_ji(grid));
     let (pages, clipped, margins) = draw_sheet(&mut board, grid, paper, setup, true);
     // 1枚だけの PDF は、そのシートの頁数がそのまま総頁
     let total = pages.len();
@@ -914,7 +927,8 @@ pub fn book_to_pdf_fonts<W: Write>(
         ji.extend(deru_ji(grid));
     }
     let data0: Vec<Vec<u8>> = fonts.iter().map(|(_, d)| d.clone()).collect();
-    board.haba = Habakei::new(&data0, &ji);
+    let na0: Vec<String> = fonts.iter().map(|(n, _)| n.clone()).collect();
+    board.haba = Habakei::new(&data0, &na0, &ji);
     // 版組を先に全部済ませる — **総頁が決まってからでないと &N が書けない**
     let mut laid: Vec<(usize, std::ops::Range<usize>, Margins)> = Vec::new();
     let mut carry = true;
@@ -2043,10 +2057,14 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
                 gyou.push(ima);
             }
             // **行の高さも箱が言います**(`w:spacing w:line` の exact/atLeast)。
-            // 言っていなければ字の大きさの 1.25 倍です
+            // 言っていなければ**書体から出します** — LibreOffice の EditEngine も
+            // 実物の書体から取り、割合は使いません(`editeng` の
+            // `FormatterFontMetric`: `GetHeight() = nMaxAscent + nMaxDescent`)。
+            // 前は字の 1.25 倍という根拠のない割合でした(2026-09-01 発注者)
+            let em = kumihan::font::okuri_em(sp.text_fmt.font.as_deref()).unwrap_or(1.25);
             let takasa = match sp.text_fmt.line_pt {
                 Some(v) => v * scale * 25.4 / 72.0,
-                None => pt * 25.4 / 72.0 * 1.25,
+                None => pt * 25.4 / 72.0 * em,
             };
             // **縦の寄せは `<a:bodyPr anchor>`**(2026-08-31 発注者)。既定は
             // 上で、前はどの箱も真ん中に寄せていました。余白の内側で寄せます
@@ -2057,7 +2075,13 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
                 book::TextAnchor::Middle => aki / 2.0,
                 book::TextAnchor::Bottom => aki,
             };
-            let mut ty = y_top - it - ue - pt * 25.4 / 72.0 * 0.9;
+            // **1行目のベースラインは書体の上がりの所**です。前は字の
+            // 0.9 倍という割合で、内閣府の調査票の担当欄が元より 6pt 下に
+            // 出ていました(2026-09-01 発注者)
+            let agari = kumihan::font::agari_em(sp.text_fmt.font.as_deref())
+                .filter(|e| *e > 0.0 && *e <= em)
+                .unwrap_or(0.9);
+            let mut ty = y_top - it - ue - pt * 25.4 / 72.0 * agari;
             for g in &gyou {
                 let haba: f32 = g.chars().map(hitotsu).sum();
                 let tx = match sp.text_fmt.align {
@@ -2994,7 +3018,7 @@ mod zukei_tests {
             .and_then(|(f, _)| kumihan::font::load(f).ok())
             .expect("書体が無い");
         let ji: std::collections::BTreeSet<char> = "あ".chars().collect();
-        let h = Habakei::new(std::slice::from_ref(&d), &ji);
+        let h = Habakei::new(std::slice::from_ref(&d), &[], &ji);
         let face = ttf_parser::Face::parse(&d, 0).expect("解けない");
         let em = face.units_per_em() as f32;
         let matomo = (f32::from(face.ascender()) - f32::from(face.descender())) / em;

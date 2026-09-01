@@ -3027,6 +3027,17 @@ fn shape_look(a: &str) -> Option<book::SheetShape> {
         if let Some(pt) = hiroi(naka, "<w:sz w:val=\"") {
             sp.text_fmt.size_pt = Some(pt / 2.0);
         }
+        // 書体の名前。行送りとベースラインの位置がこれで決まります
+        if let Some(i) = naka.find("<w:rFonts ") {
+            let e = naka[i..].find('>').map(|e| i + e).unwrap_or(naka.len());
+            for k in ["w:eastAsia", "w:ascii"] {
+                let v = attr_str(&naka[i..e], k);
+                if !v.is_empty() {
+                    sp.text_fmt.font = Some(v);
+                    break;
+                }
+            }
+        }
         // 行の高さは最初の `w:spacing`。`exact` と `atLeast` は twip の
         // 高さそのものです(`auto` は倍率なので、ここでは見ません)
         if let Some(j) = naka.find("<w:spacing ") {

@@ -1111,6 +1111,11 @@ pub struct TextFmt {
     /// 軸の目盛りは同じ大きさでは読めません。xlsx の `a:rPr@sz`
     /// (100分の1pt)と往復します
     pub size_pt: Option<f32>,
+    /// **書体の名前。** 箱の中の字の書体です。`None` は文書の既定。
+    ///
+    /// 行送りとベースラインの位置は書体で決まるので、置き替える前の
+    /// 名前が要ります(2026-09-01)。
+    pub font: Option<String>,
     /// **1行の高さ(pt)。** docx の `w:spacing w:line` が `exact` か
     /// `atLeast` のときに入ります。書いていなければ `None` で、そのときは
     /// 字の大きさから出します。
@@ -1138,6 +1143,7 @@ impl Default for TextFmt {
             sup: false,
             sub: false,
             size_pt: None,
+            font: None,
             line_pt: None,
             // DrawingML の既定(左右 0.1in・上下 0.05in)
             ins_mm: (2.54, 2.54, 1.27, 1.27),

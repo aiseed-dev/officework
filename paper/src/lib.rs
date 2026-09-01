@@ -1559,7 +1559,12 @@ pub fn foreign_shapes(
         // 上の余白はもう `y_mm` に入っているので、足すと二重になります
         let y_para = sheet.lines[li].y_mm - soko;
         for a in &para.anchors {
-            let Some(f) = ooxml::foreign_shape(a) else { continue };
+            let Some(mut f) = ooxml::foreign_shape(a) else { continue };
+            // **箱が書体を言っていなければ文書の既定**です。行送りと
+            // ベースラインの位置がこれで決まります(2026-09-01)
+            if f.look.text_fmt.font.is_none() {
+                f.look.text_fmt.font = doc.font.clone();
+            }
             // 横の基準。`margin` と `column` は本文の左端、`page` は紙の左端
             let x = match f.h_from.as_str() {
                 "page" => f.x_mm,

@@ -525,7 +525,7 @@ mod carry_tests {
                 align: HAlign::Center,
                 anchor: TextAnchor::Middle,
                 vertical: true,
-                ins_mm: TextFmt::default().ins_mm, line_pt: None,
+                ins_mm: TextFmt::default().ins_mm, line_pt: None, font: None,
                 bullet: Some(true),
                 strike: true,
                 sup: true,
