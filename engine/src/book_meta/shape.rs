@@ -1,6 +1,6 @@
 //! **図形を表で持つ。**
 //!
-//! 図形の持ち物は 19 あります(`kind` `points` `text_fmt` `spark_marks` …)。
+//! 図形の持ち物は 23 あります(`kind` `points` `text_fmt` `spark_marks` …)。
 //! 横に 19 列並べると読めないので、書式と同じ**縦長の (名前, 項目, 値)**
 //! にします。設定した項目だけが1行ずつ出ます。
 //!
@@ -41,6 +41,10 @@ pub const FIELDS: &[(&str, &str)] = &[
     ("text_fmt", "text-format"),
     ("spark_marks", "spark-marks"),
     ("points", "points"),
+    // 右下を留めるセルとずらし(twoCellAnchor)。`D5 3.5,7` の形
+    ("to", "to"),
+    // prstGeom の調整値。`adj1=0.35 adj2=1` の形
+    ("adj", "adjust"),
 ];
 
 /// 1つの図形を (項目, 値) の並びにする。**既定のままの欄は出しません。**
@@ -97,6 +101,13 @@ pub fn to_rows(s: &SheetShape) -> Vec<(&'static str, String)> {
     if !s.points.is_empty() {
         put("points", points(&s.points));
     }
+    if let Some((p, dx, dy)) = &s.to {
+        put("to", format!("{} {},{}", p.a1(), num(*dx), num(*dy)));
+    }
+    if !s.adj.is_empty() {
+        let v: Vec<String> = s.adj.iter().map(|(n, v)| format!("{n}={}", num(*v))).collect();
+        put("adj", v.join(" "));
+    }
     out
 }
 
@@ -132,6 +143,22 @@ pub fn from_rows(rows: &[(String, String)]) -> SheetShape {
             "text_fmt" => s.text_fmt = read_text_fmt(v),
             "spark_marks" => s.spark_marks = read_spark(v),
             "points" => s.points = read_points(v),
+            "to" => {
+                if let Some((cell, rest)) = v.split_once(' ') {
+                    if let (Some(p), Some(d)) = (Pos::parse(cell), pair(rest.trim())) {
+                        s.to = Some((p, d.0, d.1));
+                    }
+                }
+            }
+            "adj" => {
+                s.adj = v
+                    .split_whitespace()
+                    .filter_map(|w| {
+                        let (n, x) = w.split_once('=')?;
+                        Some((n.to_string(), x.parse().ok()?))
+                    })
+                    .collect();
+            }
             _ => {}
         }
     }
@@ -315,6 +342,22 @@ mod tests {
         for (k, _) in FIELDS {
             assert!(fields.contains(k), "shape::FIELDS の「{k}」が SheetShape に無い");
         }
+    }
+
+    #[test]
+    fn to_and_adjust_survive_the_round_trip() {
+        let s = SheetShape {
+            at: Pos::new(2, 3),
+            kind: "leftBrace".into(),
+            to: Some((Pos::new(6, 4), 3.5, 7.0)),
+            adj: vec![("adj1".into(), 0.35), ("adj2".into(), 1.0)],
+            ..Default::default()
+        };
+        let rows: Vec<(String, String)> =
+            to_rows(&s).into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+        let back = from_rows(&rows);
+        assert_eq!(back.to, s.to, "右下のアンカーが往復しない");
+        assert_eq!(back.adj, s.adj, "調整値が往復しない");
     }
 
     #[test]
