@@ -346,6 +346,31 @@ pub struct InlineImage {
     pub off: usize,
 }
 
+/// **段落の罫線の、引く辺**(docx の `w:pBdr` の子)。
+///
+/// `between` は「同じ指定の段落が続くとき、その間に引く」です。
+/// 上下の辺と合わせて、記入欄の並びが1本ずつ線で仕切られます。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct ParaBorder {
+    pub top: bool,
+    pub bottom: bool,
+    pub left: bool,
+    pub right: bool,
+    pub between: bool,
+}
+
+impl ParaBorder {
+    /// 1辺でも引くか
+    pub fn aru(&self) -> bool {
+        self.top || self.bottom || self.left || self.right || self.between
+    }
+
+    /// 4辺を囲む(画面の「囲み」の切り替えが作る形)
+    pub fn kakomi() -> Self {
+        ParaBorder { top: true, bottom: true, left: true, right: true, between: false }
+    }
+}
+
 /// 段落の揃え。docx の `w:jc`。
 ///
 /// `Hash` は蒸留([`crate::distill`])が使う — 見た目の鍵にして
@@ -535,8 +560,16 @@ pub struct Paragraph {
     pub space_after_pt: f32,
     /// 段落の背景色 `RRGGBB`(docx の w:shd)。見出しの背景色に使われる
     pub shade: Option<String>,
-    /// 段落を枠で囲む(docx の w:pBdr)。囲みの注意書きに使われる
+    /// 段落を枠で囲む(docx の w:pBdr)。囲みの注意書きに使われる。
+    /// **どの辺かは [`Paragraph::border`] が持ちます** — こちらは
+    /// 「囲みが付いているか」の1つの札で、画面の切り替えが使います
     pub boxed: bool,
+    /// **段落の罫線の、どの辺を引くか**(docx の `w:pBdr` の子)。
+    ///
+    /// 記入欄の下線はこれです。内閣府の調査票の「記入日」以下の6行は
+    /// `w:bottom` と `w:between` を持っていて、紙では欄の下に線が出ます。
+    /// 前は4辺の区別が無く、紙にも出していませんでした(2026-09-01 発注者)。
+    pub border: ParaBorder,
     /// ドロップキャップ(頭の1字を大きく)。docx では w:framePr の
     /// 「枠の段落+本文の段落」に割れるが、モデルでは1つの段落で持つ
     pub dropcap: bool,

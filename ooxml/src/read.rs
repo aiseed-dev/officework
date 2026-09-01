@@ -1417,6 +1417,8 @@ pub(super) fn parse_document_rels_num(
     // 段落の背景色(w:shd)と囲み枠(w:pBdr)
     let mut shade: Option<String> = None;
     let mut boxed = false;
+    let mut in_pbdr = false;
+    let mut para_border = kumihan::ParaBorder::default();
     // 段落の役割(w:pStyle / w:outlineLvl)
     let mut pstyle = ParaStyle::Body;
     let mut pstyle_id: Option<String> = None;
@@ -1523,6 +1525,7 @@ pub(super) fn parse_document_rels_num(
                               space_before_pt = 0.0;
                               space_after_pt = 0.0;
                               page_break_before = false; shade = None; boxed = false;
+                              para_border = kumihan::ParaBorder::default();
                               pstyle = ParaStyle::Body; pstyle_id = None; ilvl = 0;
                               para_comments.clear(); para_bookmarks.clear();
                               dropcap = false; }
@@ -1720,7 +1723,21 @@ pub(super) fn parse_document_rels_num(
                             .filter(|v| !v.is_empty() && v != "auto");
                     }
                     // 段落の囲み枠。辺の別は持たない(あれば囲みとみなす)
-                    b"pBdr" if in_ppr => boxed = true,
+                    b"pBdr" if in_ppr => { boxed = true; in_pbdr = true }
+                    // **どの辺を引くか。** `w:tcBorders`(升の罫線)にも
+                    // 同じ名前の子が並ぶので、`in_pbdr` で見分けます
+                    b"top" | b"bottom" | b"left" | b"right" | b"between" if in_pbdr => {
+                        if !matches!(attr(&e, "val").as_deref(), Some("none") | Some("nil")) {
+                            let b = &mut para_border;
+                            match local(e.name().as_ref()) {
+                                b"top" => b.top = true,
+                                b"bottom" => b.bottom = true,
+                                b"left" => b.left = true,
+                                b"right" => b.right = true,
+                                _ => b.between = true,
+                            }
+                        }
+                    }
                     b"r" => {
                         // 大きさは run ごとに立ち返る。前の run の指定を
                         // 引きずると、無指定の run が「指定あり」に化ける
@@ -2218,7 +2235,21 @@ pub(super) fn parse_document_rels_num(
                             .filter(|v| !v.is_empty() && v != "auto");
                     }
                     // 段落の囲み枠。辺の別は持たない(あれば囲みとみなす)
-                    b"pBdr" if in_ppr => boxed = true,
+                    b"pBdr" if in_ppr => { boxed = true; in_pbdr = true }
+                    // **どの辺を引くか。** `w:tcBorders`(升の罫線)にも
+                    // 同じ名前の子が並ぶので、`in_pbdr` で見分けます
+                    b"top" | b"bottom" | b"left" | b"right" | b"between" if in_pbdr => {
+                        if !matches!(attr(&e, "val").as_deref(), Some("none") | Some("nil")) {
+                            let b = &mut para_border;
+                            match local(e.name().as_ref()) {
+                                b"top" => b.top = true,
+                                b"bottom" => b.bottom = true,
+                                b"left" => b.left = true,
+                                b"right" => b.right = true,
+                                _ => b.between = true,
+                            }
+                        }
+                    }
                     // セル結合(空要素で来るのが普通の形)
                     b"gridSpan" => if stack.last().is_some() {
                         cell_span = attr(&e, "val").and_then(|v| v.parse().ok()).unwrap_or(0);
@@ -2345,6 +2376,7 @@ pub(super) fn parse_document_rels_num(
                     b"rPr" => in_rpr = false,
                     b"hyperlink" => cur_link = None,
                     b"pPr" => in_ppr = false,
+                    b"pBdr" => in_pbdr = false,
                     b"tblPr" => in_tblpr = false,
                     b"p" => {
                         if let Some(runs) = para.take() {
@@ -2371,6 +2403,7 @@ pub(super) fn parse_document_rels_num(
                                 style: pstyle,
                                 style_id: pstyle_id.take(),
                                 shade: shade.take(), boxed,
+                                border: para_border,
                                 dropcap: false,
                                 images_new: Vec::new(),
                                 runs: if runs.is_empty() {

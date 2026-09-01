@@ -932,6 +932,36 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     sheet.lines.push(Line { cells, y_mm: y, from_body: true, byte0, cell: None });
                     y += lh_of(para, frame, base, pfont.as_deref());
                 }
+                // **段落の罫線**(docx の `w:pBdr`)。記入欄の下線はこれです。
+                // 前は「囲みが付いている」という札だけで、辺の区別も無く、
+                // 紙にも出していませんでした(2026-09-01 発注者
+                // 「このラインはなんでできていますか」)。
+                //
+                // `w:between` は同じ指定の段落が続くときの間の線ですが、
+                // どちらも段落の下に1本引けば同じ見え方になります
+                if para.border.aru() {
+                    let (x0, x1) = (indent_mm, indent_mm + measure);
+                    let lh = lh_of(para, frame, base, pfont.as_deref());
+                    // **線は段落の下端に引きます。**`y` はもう次の行の
+                    // ベースラインなので、そこまで下げると次の段落の字に
+                    // 掛かります。字の足のぶんだけ戻した所が下端です
+                    // (行の箱の中でベースラインが上から [`BASE_UP_MM`])
+                    let asi = lh * (LINE_MM - BASE_UP_MM) / LINE_MM;
+                    let sita = y - lh + asi;
+                    let ue = shade_top - lh * 0.8;
+                    if para.border.top {
+                        sheet.rules.push([x0, ue, x1, ue]);
+                    }
+                    if para.border.bottom || para.border.between {
+                        sheet.rules.push([x0, sita, x1, sita]);
+                    }
+                    if para.border.left {
+                        sheet.rules.push([x0, ue, x0, sita]);
+                    }
+                    if para.border.right {
+                        sheet.rules.push([x1, ue, x1, sita]);
+                    }
+                }
                 // **段落の背景色**(2026-08-27)。模型に在り、画面は塗って
                 // いたのに、組む所で落としていたので紙と PDF に出ていません
                 // でした。註記の帯も見出しの背景も印刷で消えます
