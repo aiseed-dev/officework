@@ -511,15 +511,24 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             pages.push(offsets.len());
             continue;
         }
-        let mut forced = false;
+        // **改ページは1行につき1つだけ引き取ります**(2026-09-01 発注者
+        // 「告知書がおかしいのは7ページ。重複している」)。
+        //
+        // 前はその行までに溜まった改ページを全部まとめて1回の紙送りに
+        // していました。改ページが2つ続く文書(空の段落で1つ、次の段落で
+        // もう1つ)では2枚ぶんが1枚に潰れ、内閣府の告知書は法令の抄が
+        // 前の紙の字に重なって出ていました。Word は続けて2枚送ります
+        // その行までに溜まった改ページの数。**数のぶんだけ紙を送ります**
+        let mut kaisu = 0usize;
         while let Some(&b) = breaks.peek() {
             if line.y_mm >= b - 0.01 {
                 breaks.next();
-                forced = true;
+                kaisu += 1;
             } else {
                 break;
             }
         }
+        let forced = kaisu > 0;
         // この行に付いている脚注(まだこの頁に数えていないもの)
         let mine: Vec<usize> = sheet.notes.iter().enumerate()
             .filter(|(i, n)| (n.at_y - line.y_mm).abs() < 0.01
@@ -576,6 +585,17 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             // 上の余白へ出ます。内閣府の調査票の3枚目は、見出しのセルが
             // 余白の外に 28pt 出ていました
             let atama = hako.map(|(a, _)| a).unwrap_or(line.y_mm);
+            // **改ページが続いた分は、白い紙を挟みます。** まとめて1回に
+            // すると2枚ぶんが1枚に潰れます
+            let tsukaeru = (next.height_mm - next.top_mm - next.bottom_mm).max(1.0);
+            for k in 1..kaisu.max(1) {
+                let zure = tsukaeru * (kaisu - k) as f32;
+                offsets.push(atama - next.top_mm - kumihan::BASE_UP_MM - zure);
+                header_h.push(0.0);
+                papers.push(next);
+                starts.push(atama - zure);
+                notes.push(Vec::new());
+            }
             offsets.push(atama - next.top_mm - kumihan::BASE_UP_MM - repeat);
             header_h.push(repeat);
             papers.push(next);

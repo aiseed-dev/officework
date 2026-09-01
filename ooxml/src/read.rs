@@ -1422,6 +1422,8 @@ pub(super) fn parse_document_rels_num(
     let mut space_before_pt = 0.0f32;
     let mut space_after_pt = 0.0f32;
     let mut page_break_before = false;
+    // 次の段落を新しい紙から始めるか(run の中の `<w:br w:type="page"/>`)
+    let mut tsugi_kaipeji = false;
     // 段落の背景色(w:shd)と囲み枠(w:pBdr)
     let mut shade: Option<String> = None;
     let mut boxed = false;
@@ -1532,7 +1534,8 @@ pub(super) fn parse_document_rels_num(
                               line_pt = None;
                               space_before_pt = 0.0;
                               space_after_pt = 0.0;
-                              page_break_before = false; shade = None; boxed = false;
+                              page_break_before = std::mem::take(&mut tsugi_kaipeji);
+                              shade = None; boxed = false;
                               para_border = kumihan::ParaBorder::default();
                               pstyle = ParaStyle::Body; pstyle_id = None; ilvl = 0;
                               para_comments.clear(); para_bookmarks.clear();
@@ -2050,8 +2053,25 @@ pub(super) fn parse_document_rels_num(
                             None => doc.push_para(p),
                         }
                     }
-                    b"br" => if let Some(p) = para.as_mut() {
-                        p.push(Run { text: "\n".into(), size_pt, font: font.clone(), fmt: fmt.clone() }) },
+                    // **`w:type="page"` は改ページ**です(2026-09-01 発注者
+                    // 「告知書がおかしいのは7ページ。重複している」)。
+                    // 種類を見ずに改行として読んでいたので、内閣府の告知書の
+                    // 法令の抄が前の頁に重なって出ていました。
+                    //
+                    // 段落の途中で割れる形は、次の段落の頭で割ります —
+                    // この印は段落の最後の run に置かれるのが普通です
+                    b"br" => {
+                        if attr(&e, "type").as_deref() == Some("page") {
+                            tsugi_kaipeji = true;
+                        } else if let Some(p) = para.as_mut() {
+                            p.push(Run {
+                                text: "\n".into(),
+                                size_pt,
+                                font: font.clone(),
+                                fmt: fmt.clone(),
+                            });
+                        }
+                    }
                     // **タブの文字は run の中の `w:tab` だけです。**
                     // `w:pPr/w:tabs` の中にも同じ名前の要素が並びますが、
                     // あちらはタブを打ったとき字が止まる位置の定義です。
