@@ -180,6 +180,7 @@ IMREAL	=IMREAL("6-9i")
 IMAGINARY	=IMAGINARY("3+4i")
 IMSUM	=IMSUM("3+4i","5-3i")
 IMPRODUCT	=IMPRODUCT("3+4i","5-3i")
+IMSUB	=IMSUB("13+4i","5+3i")
 IMDIV	=IMDIV("-238+240i","10+24i")
 IMCONJUGATE	=IMCONJUGATE("3+4i")
 # ---- データベース(欠け)は表が要るので式1つに畳む ----
