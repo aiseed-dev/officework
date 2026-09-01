@@ -19,7 +19,7 @@
 //!
 //! 縦書き・異体字もこの形なら載ります(`printpdf` では載りませんでした)。
 
-use pdf_writer::types::{FontFlags, SystemInfo};
+use pdf_writer::types::{FontFlags, SystemInfo, TextRenderingMode};
 use pdf_writer::{Content, Filter, Finish, Name, Pdf, Rect, Ref, Str};
 use std::collections::BTreeMap;
 
@@ -476,16 +476,24 @@ pub fn write_pages_fonts<W: std::io::Write>(
             // [a b c d] = 回転 × 剪断。剪断は [1 0; sh 1]
             let (a, b) = (cos, sin);
             let (cc, d) = (-sin + cos * sh, cos + sin * sh);
+            // **太字は輪郭を重ねて作ります。**
+            //
+            // 前は同じ字を 0.12mm ずらして2度打っていました。見た目は太く
+            // なりますが、**PDF の中には字が2つ並びます** — 選んで写すと
+            // 「TotalTotal」になり、語をまたぐ検索も当たりません。読み上げも
+            // 2度読みます(2026-09-01、国税庁の課税状況の PDF で気づきました)。
+            //
+            // PDF には塗りと線の両方で字を描く指示(`Tr 2`)があります。
+            // 線の太さのぶんだけ字が太り、字は1つのままです。
+            if p.bold {
+                c.set_text_rendering_mode(TextRenderingMode::FillStroke);
+                c.set_stroke_rgb(r, g, b);
+                c.set_line_width(pt(0.12));
+            }
             c.set_text_matrix([a, b, cc, d, pt(p.x_mm), pt(p.y_mm)]);
             c.show(Str(&bytes));
             if p.bold {
-                // 0.12mm ずらして二度打つ(いまの道と同じ合成)。
-                // ずらす向きは字の並ぶ向きに合わせます
-                c.set_text_matrix([
-                    a, b, cc, d,
-                    pt(p.x_mm + 0.12 * cos), pt(p.y_mm + 0.12 * sin),
-                ]);
-                c.show(Str(&bytes));
+                c.set_text_rendering_mode(TextRenderingMode::Fill);
             }
             c.end_text();
             // 下線と取り消し線。**字の下に引く線**なので、字を書いた後に
@@ -1086,9 +1094,21 @@ mod tests {
         let pp = crate::Paper::hitoshii(page.w_mm, page.h_mm, page.left_mm);
         let mut out = Vec::new();
         sheet_to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut out)).expect("PDF が出ない");
-        // **太字は 0.12mm ずらして二度打ちます。** 同じ y で x だけ
-        // 0.12mm(= 0.34pt)違う置き方が並ぶのが、その跡です
+        // **太字は輪郭を重ねて作ります**(2026-09-01)。塗りと線の両方で
+        // 描く指示(`Tr 2`)と、線の太さ(0.12mm = 0.34pt)がその跡です。
+        //
+        // 前は同じ字を 0.12mm ずらして二度打っていました。見た目は同じでも、
+        // PDF の中に字が2つ並ぶので、選んで写すと語が二重になります
         let body = unpack(&out);
+        assert!(body.contains("2 Tr"), "太字が出ていない(Tr 2 が無い)");
+        // 線の太さは 0.12mm。pt に直すと 0.34 です
+        let futosa = body
+            .lines()
+            .filter_map(|l| l.strip_suffix(" w")?.trim().parse::<f32>().ok())
+            .any(|w| (w - 0.34).abs() < 0.02);
+        assert!(futosa, "太字の線の太さ(0.34pt)が無い");
+        // **字は1度だけ書きます。** 同じ y で 0.34pt だけずれた置き方が
+        // 並んでいたら、二度打ちに戻っています
         let places: Vec<(f32, f32)> = body
             .lines()
             .filter(|l| l.ends_with(" Tm"))
@@ -1100,7 +1120,7 @@ mod tests {
         let twice = places.windows(2).any(|w| {
             (w[0].1 - w[1].1).abs() < 0.01 && (w[1].0 - w[0].0 - 0.34).abs() < 0.05
         });
-        assert!(twice, "二度打ちの跡が無い(太字が出ていない): {places:?}");
+        assert!(!twice, "二度打ちに戻っている: {places:?}");
     }
 
     /// **塗りと色つきの罫線が出る。** 表計算の帯に要ります(2026-08-27)

@@ -620,6 +620,35 @@ impl Board {
         self.leaves.len()
     }
 
+    /// `first` 枚目から後ろで、**何も描かれていない紙**を捨てます。
+    /// 1枚も残らないときは1枚だけ残します(シートが空でも紙は1枚出す)。
+    fn shirogami_wo_nozoku(&mut self, first: usize) {
+        let nakami = |l: &pdfw::Leaf| {
+            !l.pieces.is_empty()
+                || !l.rules.is_empty()
+                || !l.rules_top.is_empty()
+                || !l.fills.is_empty()
+                || !l.polys.is_empty()
+                || !l.paths.is_empty()
+                || !l.images.is_empty()
+                || l.bg.is_some()
+                || l.watermark.is_some()
+        };
+        let nokoru = self.leaves[first..].iter().filter(|l| nakami(l)).count();
+        if nokoru == 0 {
+            self.leaves.truncate(first + 1);
+            return;
+        }
+        let mut i = first;
+        while i < self.leaves.len() {
+            if nakami(&self.leaves[i]) {
+                i += 1;
+            } else {
+                self.leaves.remove(i);
+            }
+        }
+    }
+
     /// `i` 枚目に描く筆を借ります
     fn ink(&mut self, i: usize) -> Ink<'_> {
         Ink { leaf: &mut self.leaves[i] }
@@ -1677,6 +1706,15 @@ fn draw_sheet(
         }
     }
 
+    // **何も描かれなかった紙は出しません**(2026-09-01)。
+    //
+    // 列で割った右側の紙に、下の方の行が1つも掛からないことがあります。
+    // 国税庁の消費税の表は、注記の行が左端の列にしか無いので、右側の紙が
+    // まっさらのまま1枚出ていました。Excel は中身の無い紙を刷りません。
+    //
+    // ここで消せるのは、ヘッダーとフッターを載せる前だからです。載せた後は
+    // どの紙にも字があるので、まっさらかどうかが分からなくなります。
+    board.shirogami_wo_nozoku(first);
     (first..board.len(), clipped, (ml, mr, mt, mb))
 }
 /// **図形を1つ紙面に描く。**
@@ -2486,6 +2524,53 @@ mod print_extras_tests {
         let mut half = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut half).unwrap();
         assert!(pages(&half) < pages(&full), "縮小しても紙が減らない");
+    }
+
+    /// **何も描かれない紙は出しません。**
+    ///
+    /// 列で割った右側の紙に、下の方の行が1つも掛からないことがあります。
+    /// 国税庁の消費税の表は、注記の行が左端の列にしか無いので、右側の紙が
+    /// まっさらのまま1枚出ていました(2026-09-01)。
+    #[test]
+    fn a_page_with_nothing_on_it_is_not_printed() {
+        let (fam, _) = kumihan::font::for_document(None).unwrap();
+        let data = kumihan::font::load(fam).unwrap();
+        let mut s = Grid { name: "s".into(), ..Default::default() };
+        // 横に広く(紙2枚ぶん)、縦にも長く(紙2枚ぶん)。ただし
+        // **下の方の行は左の列にしか字が無い**
+        let oku = |s: &mut Grid, r: u32, c: u32| {
+            s.set(Pos::new(r, c), Cell {
+                formula: None, value: Value::Number(1.0), fmt: Default::default() });
+        };
+        for r in 0..10 {
+            for c in 0..40 {
+                oku(&mut s, r, c);
+            }
+        }
+        // ここで紙を変えます。**この下は左端の列にしか字がありません**
+        // (注記の行)。列で割った右側の紙には、何も掛かりません
+        s.row_breaks = vec![10];
+        for r in 10..15 {
+            oku(&mut s, r, 0);
+        }
+        let mut buf = Vec::new();
+        sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut buf).unwrap();
+        let n = pages(&buf);
+        // 紙ごとの中身を見て、字も線も無い紙が無いことを確かめます
+        let leaves = sheet_leaves(&s, Paper::default(), &PrintSetup::default()).unwrap();
+        let kara = leaves
+            .iter()
+            .filter(|l| {
+                l.pieces.is_empty()
+                    && l.rules.is_empty()
+                    && l.rules_top.is_empty()
+                    && l.fills.is_empty()
+                    && l.polys.is_empty()
+                    && l.paths.is_empty()
+                    && l.images.is_empty()
+            })
+            .count();
+        assert_eq!(kara, 0, "まっさらな紙が {kara} 枚ある(全 {n} 枚)");
     }
 
     #[test]
