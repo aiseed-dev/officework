@@ -1717,6 +1717,21 @@ pub fn preset_svg(kind: &str, x0: f32, y0: f32, x1: f32, y1: f32, style: &str) -
                 y1 - a
             )
         }
+        // ---- かっこ(酒税の様式が使う。閉じない線の形)----
+        // 弧4つと縦線2本。つまみの位置(avLst の adj)は読まず、
+        // 真ん中の既定で描く
+        "leftBrace" | "rightBrace" => {
+            let r = (w / 2.0).min(h / 4.0);
+            // leftBrace はつまみが左。rightBrace は左右を映す
+            let (e, tip) = if kind == "leftBrace" { (x1, x0) } else { (x0, x1) };
+            format!(
+                r#"<path d="M{e:.1},{y0:.1} Q{cx:.1},{y0:.1} {cx:.1},{:.1} L{cx:.1},{:.1} Q{cx:.1},{cy:.1} {tip:.1},{cy:.1} Q{cx:.1},{cy:.1} {cx:.1},{:.1} L{cx:.1},{:.1} Q{cx:.1},{y1:.1} {e:.1},{y1:.1}" {style} fill-opacity="0"/>"#,
+                y0 + r,
+                cy - r,
+                cy + r,
+                y1 - r
+            )
+        }
         // ---- 吹き出し ----
         "wedgeRectCallout" => {
             let b = y1 - h * 0.22; // 本体の下辺
@@ -1747,6 +1762,233 @@ pub fn preset_svg(kind: &str, x0: f32, y0: f32, x1: f32, y1: f32, style: &str) -
         _ => return None,
     };
     Some(s)
+}
+
+/// [`preset_svg`] の作図を**点の列**にする。紙(PDF)と絵の側が使う。
+///
+/// 作図の表は preset_svg の1箇所だけ。ここはその出力(polygon /
+/// rect / ellipse / path)を読んで、部分ごとに(点の列, 閉じるか)へ
+/// 落とす。表を2つ持つと「画面では星、紙では四角」に割れるので、
+/// 形は2度書かない。曲線は 12〜24 に刻む(紙の他の曲線と同じで、
+/// 見た目に区別が付かない細かさ)。
+pub fn preset_pts(
+    kind: &str,
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+) -> Option<Vec<(Vec<(f32, f32)>, bool)>> {
+    let svg = preset_svg(kind, x0, y0, x1, y1, "")?;
+    let num = |el: &str, name: &str| -> Option<f32> {
+        let pat = format!("{name}=\"");
+        let i = el.find(&pat)? + pat.len();
+        let e = el[i..].find('"')? + i;
+        el[i..e].parse().ok()
+    };
+    let text = |el: &str, name: &str| -> Option<String> {
+        let pat = format!("{name}=\"");
+        let i = el.find(&pat)? + pat.len();
+        let e = el[i..].find('"')? + i;
+        Some(el[i..e].to_string())
+    };
+    let mut out: Vec<(Vec<(f32, f32)>, bool)> = Vec::new();
+    let mut rest = svg.as_str();
+    while let Some(i) = rest.find('<') {
+        let Some(e) = rest[i..].find("/>") else { break };
+        let el = &rest[i..i + e + 2];
+        if el.starts_with("<polygon") {
+            let pts: Vec<(f32, f32)> = text(el, "points")
+                .map(|v| {
+                    v.split_whitespace()
+                        .filter_map(|p| {
+                            let (a, b) = p.split_once(',')?;
+                            Some((a.parse().ok()?, b.parse().ok()?))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            out.push((pts, true));
+        } else if el.starts_with("<rect") {
+            let (rx, ry) = (num(el, "x").unwrap_or(0.0), num(el, "y").unwrap_or(0.0));
+            let (rw, rh) = (
+                num(el, "width").unwrap_or(0.0),
+                num(el, "height").unwrap_or(0.0),
+            );
+            let r = num(el, "rx").unwrap_or(0.0).min(rw / 2.0).min(rh / 2.0);
+            if r > 0.01 {
+                // 角ごとに4分の1円を6辺で(紙の角丸と同じ刻み)。
+                // SVG は y が下向きなので、右下 → 左下 → 左上 → 右上
+                let kado = |cx: f32, cy: f32, kara: f32| {
+                    (0..=6).map(move |i| {
+                        let t = kara + i as f32 / 6.0 * std::f32::consts::FRAC_PI_2;
+                        (cx + r * t.cos(), cy + r * t.sin())
+                    })
+                };
+                let pts: Vec<(f32, f32)> = kado(rx + rw - r, ry + rh - r, 0.0)
+                    .chain(kado(rx + r, ry + rh - r, std::f32::consts::FRAC_PI_2))
+                    .chain(kado(rx + r, ry + r, std::f32::consts::PI))
+                    .chain(kado(rx + rw - r, ry + r, std::f32::consts::PI * 1.5))
+                    .collect();
+                out.push((pts, true));
+            } else {
+                out.push((
+                    vec![(rx, ry), (rx + rw, ry), (rx + rw, ry + rh), (rx, ry + rh)],
+                    true,
+                ));
+            }
+        } else if el.starts_with("<ellipse") {
+            let (cx, cy) = (num(el, "cx").unwrap_or(0.0), num(el, "cy").unwrap_or(0.0));
+            let (rx, ry) = (num(el, "rx").unwrap_or(0.0), num(el, "ry").unwrap_or(0.0));
+            let pts: Vec<(f32, f32)> = (0..24)
+                .map(|i| {
+                    let t = i as f32 / 24.0 * std::f32::consts::TAU;
+                    (cx + rx * t.cos(), cy + ry * t.sin())
+                })
+                .collect();
+            out.push((pts, true));
+        } else if el.starts_with("<path") {
+            if let Some(d) = text(el, "d") {
+                out.append(&mut path_pts(&d));
+            }
+        } else if el.starts_with("<line") {
+            let p = |n| num(el, n).unwrap_or(0.0);
+            out.push((vec![(p("x1"), p("y1")), (p("x2"), p("y2"))], false));
+        }
+        rest = &rest[i + e + 2..];
+    }
+    (!out.is_empty()).then_some(out)
+}
+
+/// SVG の小道(`d="M… L… Q… A… Z"`)を点の列に。[`preset_pts`] の下請け
+fn path_pts(d: &str) -> Vec<(Vec<(f32, f32)>, bool)> {
+    // 字句: 命令1字と数の列に割る
+    let mut tokens: Vec<String> = Vec::new();
+    let mut tok = String::new();
+    for ch in d.chars() {
+        if ch.is_ascii_alphabetic() {
+            if !tok.is_empty() {
+                tokens.push(std::mem::take(&mut tok));
+            }
+            tokens.push(ch.to_string());
+        } else if ch == ',' || ch == ' ' {
+            if !tok.is_empty() {
+                tokens.push(std::mem::take(&mut tok));
+            }
+        } else {
+            tok.push(ch);
+        }
+    }
+    if !tok.is_empty() {
+        tokens.push(tok);
+    }
+    let mut out: Vec<(Vec<(f32, f32)>, bool)> = Vec::new();
+    let mut cur: Vec<(f32, f32)> = Vec::new();
+    let mut i = 0;
+    let take = |i: &mut usize| -> f32 {
+        let v = tokens.get(*i).and_then(|t| t.parse().ok()).unwrap_or(0.0);
+        *i += 1;
+        v
+    };
+    while i < tokens.len() {
+        match tokens[i].as_str() {
+            "M" => {
+                i += 1;
+                if cur.len() > 1 {
+                    out.push((std::mem::take(&mut cur), false));
+                } else {
+                    cur.clear();
+                }
+                let (x, y) = (take(&mut i), take(&mut i));
+                cur.push((x, y));
+            }
+            "L" => {
+                i += 1;
+                let (x, y) = (take(&mut i), take(&mut i));
+                cur.push((x, y));
+            }
+            "Q" => {
+                i += 1;
+                let (cx, cy) = (take(&mut i), take(&mut i));
+                let (x, y) = (take(&mut i), take(&mut i));
+                let p0 = *cur.last().unwrap_or(&(cx, cy));
+                for k in 1..=12 {
+                    let t = k as f32 / 12.0;
+                    let u = 1.0 - t;
+                    cur.push((
+                        u * u * p0.0 + 2.0 * u * t * cx + t * t * x,
+                        u * u * p0.1 + 2.0 * u * t * cy + t * t * y,
+                    ));
+                }
+            }
+            "A" => {
+                i += 1;
+                let (rx, ry) = (take(&mut i), take(&mut i));
+                let _rot = take(&mut i);
+                let laf = take(&mut i) != 0.0;
+                let sf = take(&mut i) != 0.0;
+                let (x, y) = (take(&mut i), take(&mut i));
+                let p0 = *cur.last().unwrap_or(&(x, y));
+                arc_pts(p0, rx, ry, laf, sf, (x, y), &mut cur);
+            }
+            "Z" | "z" => {
+                i += 1;
+                if cur.len() > 1 {
+                    out.push((std::mem::take(&mut cur), true));
+                } else {
+                    cur.clear();
+                }
+            }
+            _ => i += 1,
+        }
+    }
+    if cur.len() > 1 {
+        out.push((cur, false));
+    }
+    out
+}
+
+/// SVG の弧(回転 0)を点で刻む。[`path_pts`] の下請け
+fn arc_pts(
+    p0: (f32, f32),
+    rx: f32,
+    ry: f32,
+    laf: bool,
+    sf: bool,
+    p1: (f32, f32),
+    cur: &mut Vec<(f32, f32)>,
+) {
+    let (mut rx, mut ry) = (rx.abs().max(1e-3), ry.abs().max(1e-3));
+    let (dx, dy) = ((p0.0 - p1.0) / 2.0, (p0.1 - p1.1) / 2.0);
+    // 端2点が半径より遠ければ、届くまで半径を広げる(SVG の決まり)
+    let lam = dx * dx / (rx * rx) + dy * dy / (ry * ry);
+    if lam > 1.0 {
+        let s = lam.sqrt();
+        rx *= s;
+        ry *= s;
+    }
+    let num = (rx * rx * ry * ry - rx * rx * dy * dy - ry * ry * dx * dx).max(0.0);
+    let den = (rx * rx * dy * dy + ry * ry * dx * dx).max(1e-9);
+    let mut c = (num / den).sqrt();
+    if laf == sf {
+        c = -c;
+    }
+    let (ccx, ccy) = (
+        c * rx * dy / ry + (p0.0 + p1.0) / 2.0,
+        -c * ry * dx / rx + (p0.1 + p1.1) / 2.0,
+    );
+    let ang = |p: (f32, f32)| ((p.1 - ccy) / ry).atan2((p.0 - ccx) / rx);
+    let (t1, t2) = (ang(p0), ang(p1));
+    let mut dt = t2 - t1;
+    if sf && dt < 0.0 {
+        dt += std::f32::consts::TAU;
+    }
+    if !sf && dt > 0.0 {
+        dt -= std::f32::consts::TAU;
+    }
+    for k in 1..=24 {
+        let t = t1 + dt * k as f32 / 24.0;
+        cur.push((ccx + rx * t.cos(), ccy + ry * t.sin()));
+    }
 }
 
 /// シートに浮かぶ画像。左上をセルに留める(xlsx の oneCellAnchor)。

@@ -773,7 +773,9 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                 t @ (b"col" | b"row" | b"colOff" | b"rowOff") if in_from => {
                     cur = t.to_vec()
                 }
-                b"sp" => in_sp = true,
+                // コネクタ(cxnSp)も図形と同じ持ち物(spPr に prstGeom)。
+                // 同じ道で読む — 酒税の様式の直線はこれで入っている
+                b"sp" | b"cxnSp" => in_sp = true,
                 // **束(grpSp)。** 名前 `jogrp{番号}` が束の番号です。
                 // 中の図形は1つの入れ物に並ぶので、子ごとに押し出します
                 // (2026-08-29 発注者「グループ化」)
@@ -1009,7 +1011,7 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                 b"t" => in_t = false,
                 // **束の子は、その場で1つ押し出します。** 入れ物の終わりまで
                 // 待つと、最後の子だけになります(2026-08-29)
-                b"sp" if in_grp.is_some() => {
+                b"sp" | b"cxnSp" if in_grp.is_some() => {
                     in_sp = false;
                     let g = in_grp.unwrap_or(0);
                     let tpl = book::SheetShape {

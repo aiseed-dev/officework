@@ -1922,12 +1922,49 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
                 }
                 out
             }
-            _ => vec![
-                (x, y_top),
-                (x + w, y_top),
-                (x + w, y_top - h),
-                (x, y_top - h),
-            ],
+            // 知らない名前はここでは作らない — 下で作図の表から起こす
+            _ => Vec::new(),
+        };
+        // 手で持つ形の他は、**画面と同じ作図の表**(book::preset_svg)
+        // から点の列で起こす。表を2つ持つと「画面では星、紙では四角」に
+        // 割れるので、紙は表を持たない。表にも無い名前だけ四角に落とす
+        // (描けない図形として、開いたときの報告が数える側)
+        let closed = match sp.kind.as_str() {
+            // 閉じるかどうか。**`path` は塗りがあるときだけ閉じます** —
+            // 塗らない折れ線を閉じると、終点から始点へ1本余計に引かれます
+            // (2026-08-27 に折れ線の図を紙で見て気づきました)
+            "line" | "spark" | "ink" | "marker" => false,
+            "path" => sp.fill.is_some(),
+            _ => true,
+        };
+        let mut subs: Vec<(Vec<(f32, f32)>, bool)> = if pts.is_empty()
+            && !matches!(sp.kind.as_str(), "spark" | "ink" | "marker" | "path")
+        {
+            book::preset_pts(&sp.kind, 0.0, 0.0, w, h)
+                .map(|subs| {
+                    subs.into_iter()
+                        .map(|(v, c)| {
+                            let v: Vec<(f32, f32)> = v
+                                .into_iter()
+                                .map(|(px, py)| (x + px, y_top - py))
+                                .collect();
+                            (v, c)
+                        })
+                        .collect()
+                })
+                .unwrap_or_else(|| {
+                    vec![(
+                        vec![
+                            (x, y_top),
+                            (x + w, y_top),
+                            (x + w, y_top - h),
+                            (x, y_top - h),
+                        ],
+                        true,
+                    )]
+                })
+        } else {
+            vec![(pts, closed)]
         };
         // 回転と反転(折れ線もの以外)。紙は y が上向きなので、
         // いったん画面向きのずれに直してから時計回りに回す
@@ -1936,11 +1973,10 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
             sp.kind.as_str(),
             "spark" | "spark-col" | "spark-wl" | "ink" | "marker" | "path"
         );
-        let mut pts = pts;
         if (rot != 0.0 || sp.flip_h || sp.flip_v) && !poly {
             let (ccx, ccy) = (x + w / 2.0, y_top - h / 2.0);
             let (s, c) = (rot.to_radians().sin(), rot.to_radians().cos());
-            for p in pts.iter_mut() {
+            for p in subs.iter_mut().flat_map(|(v, _)| v.iter_mut()) {
                 let mut dx = p.0 - ccx;
                 let mut dy = ccy - p.1; // 下向き正
                 if sp.flip_h {
@@ -1954,52 +1990,52 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
                 p.1 = ccy - ry;
             }
         }
-        // 閉じるかどうか。**`path` は塗りがあるときだけ閉じます** —
-        // 塗らない折れ線を閉じると、終点から始点へ1本余計に引かれます
-        // (2026-08-27 に折れ線の図を紙で見て気づきました)
-        let closed = match sp.kind.as_str() {
-            "line" | "spark" | "ink" | "marker" => false,
-            "path" => sp.fill.is_some(),
-            _ => true,
-        };
         // **影は本体の下。** 同じ形を灰色で右下へずらして先に描きます。
         // 画面(`SheetShape::to_svg`)と同じ 4px・#9E9E9E・濃さ 0.35 です。
         //
         // 2026-08-29 発注者「紙にも影を出すようにして」。それまでは
         // 「紙は輪郭だけ」の決めで、影は画面と xlsx だけでした
         let usu = sp.alpha.clamp(0.0, 1.0);
-        if sp.shadow && !pts.is_empty() {
+        if sp.shadow {
             let zure = 4.0 * 25.4 / 96.0 * scale;
-            let kage: Vec<(f32, f32)> =
-                pts.iter().map(|(x, y)| (x + zure, y - zure)).collect();
             let hai = (0.62, 0.62, 0.62);
-            if closed && sp.fill.is_some() {
-                l1.poly_a(kage.clone(), hai, 0.35);
-            }
-            if pen.is_some() {
-                let ends = if closed { kage.len() } else { kage.len().saturating_sub(1) };
-                for i in 0..ends {
-                    let (x1, y1) = kage[i];
-                    let (x2, y2) = kage[(i + 1) % kage.len()];
-                    l1.line_a(x1, y1, x2, y2, pen_w, hai, 0.35);
+            for (pts, closed) in &subs {
+                if pts.is_empty() {
+                    continue;
+                }
+                let kage: Vec<(f32, f32)> =
+                    pts.iter().map(|(x, y)| (x + zure, y - zure)).collect();
+                if *closed && sp.fill.is_some() {
+                    l1.poly_a(kage.clone(), hai, 0.35);
+                }
+                if pen.is_some() {
+                    let ends =
+                        if *closed { kage.len() } else { kage.len().saturating_sub(1) };
+                    for i in 0..ends {
+                        let (x1, y1) = kage[i];
+                        let (x2, y2) = kage[(i + 1) % kage.len()];
+                        l1.line_a(x1, y1, x2, y2, pen_w, hai, 0.35);
+                    }
                 }
             }
         }
         // **塗ってから輪郭。** 2026-08-27 まで紙は輪郭だけでした。
         // 図をこちらで描く(発注者「チャートは python による独自描画」)
         // には、棒も扇も中が塗れないと形になりません
-        if closed {
-            if let Some(c) = sp.fill.as_deref().and_then(hex_rgb) {
-                l1.poly_a(pts.clone(), c, usu);
+        for (pts, closed) in &subs {
+            if *closed {
+                if let Some(c) = sp.fill.as_deref().and_then(hex_rgb) {
+                    l1.poly_a(pts.clone(), c, usu);
+                }
             }
-        }
-        // 折れ線は辺ごとに引きます。閉じる形なら最後の点から先頭へ1本
-        if let Some(pen) = pen {
-            let ends = if closed { pts.len() } else { pts.len().saturating_sub(1) };
-            for i in 0..ends {
-                let (x1, y1) = pts[i];
-                let (x2, y2) = pts[(i + 1) % pts.len()];
-                l1.line_dash(x1, y1, x2, y2, pen_w, pen, usu, kizami);
+            // 折れ線は辺ごとに引きます。閉じる形なら最後の点から先頭へ1本
+            if let Some(pen) = pen {
+                let ends = if *closed { pts.len() } else { pts.len().saturating_sub(1) };
+                for i in 0..ends {
+                    let (x1, y1) = pts[i];
+                    let (x2, y2) = pts[(i + 1) % pts.len()];
+                    l1.line_dash(x1, y1, x2, y2, pen_w, pen, usu, kizami);
+                }
             }
         }
         // 図形の中の文字(テキストボックス)。揃えの指定があれば従います

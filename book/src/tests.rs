@@ -1117,7 +1117,7 @@ mod month_name_tests {
 /// 図形ギャラリー(台帳 第2便の [中])。**形が形に見えるか**を縛る。
 #[cfg(test)]
 mod preset_shape_tests {
-    use crate::{can_draw, preset_svg, SheetShape};
+    use crate::{can_draw, preset_pts, preset_svg, SheetShape};
     use crate::Pos;
 
     /// 本家の分類に並ぶ、いま描ける形の全部
@@ -1130,6 +1130,7 @@ mod preset_shape_tests {
         "flowChartProcess", "flowChartDecision", "flowChartInputOutput",
         "flowChartConnector", "flowChartTerminator", "flowChartDocument",
         "wedgeRectCallout", "wedgeEllipseCallout",
+        "leftBrace", "rightBrace",
     ];
 
     fn shape(kind: &str) -> SheetShape {
@@ -1158,6 +1159,38 @@ mod preset_shape_tests {
         for k in ["rect", "roundRect", "ellipse", "rightArrow", "diamond", "line",
                   "spark", "spark-col", "spark-wl", "ink", "marker"] {
             assert!(can_draw(k), "{k} を描けない形に数えている");
+        }
+    }
+
+    #[test]
+    fn paper_points_exist_for_every_preset_shape() {
+        // 紙(PDF)は preset_pts の点の列で描く。preset_svg に SVG の
+        // 新しい書き方を足して preset_pts が読めないままだと、画面だけ
+        // 描けて紙では四角になる — 表の割れをここで止める
+        for k in KINDS {
+            let subs = preset_pts(k, 0.0, 0.0, 100.0, 60.0)
+                .unwrap_or_else(|| panic!("{k} が紙の点にならない"));
+            assert!(!subs.is_empty() && subs.iter().all(|(v, _)| v.len() >= 2), "{k} の点が足りない");
+            for (v, _) in &subs {
+                for (x, y) in v {
+                    assert!(x.is_finite() && y.is_finite(), "{k} の点に NaN");
+                    assert!(
+                        (-1.0..=101.0).contains(x) && (-1.0..=61.0).contains(y),
+                        "{k} が箱から出た: {x},{y}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_brace_is_an_open_stroke() {
+        // 大かっこ(酒税の様式で23個)は閉じない線 — 閉じると「{」の
+        // 上端と下端が1本で結ばれて、四角に見える
+        for k in ["leftBrace", "rightBrace"] {
+            let subs = preset_pts(k, 0.0, 0.0, 10.0, 80.0).unwrap();
+            assert_eq!(subs.len(), 1, "{k} が1本の線でない");
+            assert!(!subs[0].1, "{k} が閉じている");
         }
     }
 
