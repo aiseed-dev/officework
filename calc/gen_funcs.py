@@ -40,7 +40,11 @@ GROUPS = {
             "PRODUCT SUMPRODUCT SUMSQ CEILING FLOOR MROUND EVEN ODD SIGN "
             "FACT COMBIN PERMUT GCD LCM PI SIN COS TAN ASIN ACOS ATAN ATAN2 "
             "SINH COSH TANH EXP LN LOG LOG10 DEGREES RADIANS RAND RANDBETWEEN "
-            "SEQUENCE TRUNC QUOTIENT CEILING.MATH FLOOR.MATH SUBTOTAL",
+            "SEQUENCE TRUNC QUOTIENT CEILING.MATH FLOOR.MATH SUBTOTAL "
+            "ACOSH ASINH ATANH ACOT ACOTH COT COTH CSC CSCH SEC SECH "
+            "BASE DECIMAL COMBINA FACTDOUBLE MULTINOMIAL SQRTPI "
+            "CEILING.PRECISE FLOOR.PRECISE ISO.CEILING ROMAN ARABIC "
+            "SERIESSUM SUMX2MY2 SUMX2PY2 SUMXMY2 MDETERM",
     "統計": "AVERAGE COUNT MAX MIN COUNTA COUNTBLANK SUMIF SUMIFS COUNTIF "
             "COUNTIFS AVERAGEIF AVERAGEIFS MINIFS MAXIFS "
             "RANK RANK.EQ RANK.AVG LARGE SMALL MEDIAN MODE STDEV STDEVP "
@@ -347,6 +351,11 @@ def english_signatures(want: dict) -> list[str]:
     **引数の無い関数は数えない。** `PI()` `TODAY()` は英語と同じで当たり前で、
     正しく訳されている言語もちょうどその 7〜10 件だけが一致していた。
     引数があるのに英語と1字も違わないなら、それは訳し忘れ。
+
+    **funcs_args.json に控えのある項目も数えない。** 控えに入れる = 人が
+    本家(Excel など)を引いて確かめた印。インドネシア語は array・radix の
+    ように英語の語をそのまま使う引数名が正しく、それを控えに書いてある
+    (2026-09-02)。確かめていない一致だけを訳し忘れとして数える。
     """
     import re as _re
 
@@ -364,17 +373,22 @@ def english_signatures(want: dict) -> list[str]:
         loc = p.stem[len("funcs_"):]
         if not p.stem.startswith("funcs_") or loc in ("en", "tables"):
             continue
+        # 控え(funcs_args.json)の鍵はダッシュ区切り(zh-tw)、ファイル名は
+        # 下線区切り(funcs_zh_tw.rs)なので合わせる
+        checked = ARGS.get(loc.replace("_", "-"), {})
         # 引数の欄。語がたまたま一致することはある(fr の DEGREES(angle) など)
         # ので少しだけ許す。**多数が一致していたら訳していない**
         same = [n for n, a in sigs(text).items()
-                if a == en_a.get(n) and a.strip("()").strip()]
+                if a == en_a.get(n) and a.strip("()").strip()
+                and "a" not in checked.get(n, {})]
         if len(same) > ALLOW_SAME_SIG:
             bad.append(f"{loc}: 引数の欄が英語のままの関数が {len(same)} 個 "
                        f"— {' '.join(same[:6])}")
         # 引数ごとの説明は**散文**。偶然一致することはまず無いので 0 で締める
         # (実測: 正しい8言語はいずれも 0、台湾語だけ 177 だった)
         same_ad = [n for n, a in helps(text).items()
-                   if a.strip() and a == en_ad.get(n)]
+                   if a.strip() and a == en_ad.get(n)
+                   and "ad" not in checked.get(n, {})]
         if same_ad:
             bad.append(f"{loc}: 引数の説明が英語のままの関数が {len(same_ad)} 個 "
                        f"— {' '.join(same_ad[:6])}")

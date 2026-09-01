@@ -1121,6 +1121,76 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                 _ => Value::Error("#VALUE!".into()),
             });
         }
+        "SUMX2MY2" | "SUMX2PY2" | "SUMXMY2" => {
+            // 2つの並びを対で読む集計。長さが違えば #N/A(Excel と同じ)
+            let (Some(x), Some(y)) = (args.first(), args.get(1)) else {
+                return Ok(Value::Error("#VALUE!".into()));
+            };
+            let (xs, ys) = (x.values(), y.values());
+            if xs.len() != ys.len() {
+                return Ok(Value::Error("#N/A".into()));
+            }
+            if let Some(e) = xs.iter().chain(ys).find(|v| matches!(v, Value::Error(_))) {
+                return Ok(e.clone());
+            }
+            let mut s = 0.0;
+            for (vx, vy) in xs.iter().zip(ys) {
+                // どちらかが数でない組は飛ばす(対の集計の作法)
+                let (Value::Number(px), Value::Number(py)) = (vx, vy) else { continue };
+                s += match name {
+                    "SUMX2MY2" => px * px - py * py,
+                    "SUMX2PY2" => px * px + py * py,
+                    _ => (px - py) * (px - py),
+                };
+            }
+            return Ok(Value::Number(s));
+        }
+        "MDETERM" => {
+            // 行列式。正方形でなければ #VALUE!
+            let Some(Arg::Rect(cols, vals)) = args.first() else {
+                return Ok(Value::Error("#VALUE!".into()));
+            };
+            let n = *cols as usize;
+            if n == 0 || vals.len() != n * n {
+                return Ok(Value::Error("#VALUE!".into()));
+            }
+            if let Some(e) = vals.iter().find(|v| matches!(v, Value::Error(_))) {
+                return Ok(e.clone());
+            }
+            if vals.iter().any(|v| !matches!(v, Value::Number(_))) {
+                return Ok(Value::Error("#VALUE!".into()));
+            }
+            let mut m: Vec<f64> = vals.iter().map(|v| v.as_number()).collect();
+            let mut det = 1.0f64;
+            for i in 0..n {
+                // 絶対値が最大の行を軸に取る(数値の安定のため)
+                let p = (i..n)
+                    .max_by(|&r, &s| {
+                        m[r * n + i]
+                            .abs()
+                            .partial_cmp(&m[s * n + i].abs())
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    })
+                    .expect("i..n は空でない");
+                if m[p * n + i] == 0.0 {
+                    return Ok(Value::Number(0.0));
+                }
+                if p != i {
+                    for c in 0..n {
+                        m.swap(i * n + c, p * n + c);
+                    }
+                    det = -det;
+                }
+                det *= m[i * n + i];
+                for r in i + 1..n {
+                    let f = m[r * n + i] / m[i * n + i];
+                    for c in i..n {
+                        m[r * n + c] -= f * m[i * n + c];
+                    }
+                }
+            }
+            return Ok(Value::Number(det));
+        }
         _ => {}
     }
     let a: Vec<Value> = args.iter().flat_map(|g| g.values().iter().cloned()).collect();
@@ -1819,6 +1889,207 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             }
         }
         "ATAN" => Value::Number(a.first().map(|v| v.as_number()).unwrap_or(0.0).atan()),
+        // 逆双曲線と、正割・余割・余接の一族
+        "ACOSH" | "ASINH" | "ATANH" | "ACOT" | "ACOTH" | "COT" | "COTH" | "CSC" | "CSCH"
+        | "SEC" | "SECH" => {
+            let x = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            let div = |d: f64| {
+                if d == 0.0 {
+                    Value::Error("#DIV/0!".into())
+                } else {
+                    Value::Number(1.0 / d)
+                }
+            };
+            match name {
+                "ACOSH" if x < 1.0 => Value::Error("#NUM!".into()),
+                "ACOSH" => Value::Number(x.acosh()),
+                "ASINH" => Value::Number(x.asinh()),
+                "ATANH" if x.abs() >= 1.0 => Value::Error("#NUM!".into()),
+                "ATANH" => Value::Number(x.atanh()),
+                // Excel の ACOT の答えは 0〜π(atan の逆数版とは範囲が違う)
+                "ACOT" => Value::Number(std::f64::consts::FRAC_PI_2 - x.atan()),
+                "ACOTH" if x.abs() <= 1.0 => Value::Error("#NUM!".into()),
+                "ACOTH" => Value::Number((1.0 / x).atanh()),
+                "COT" => div(x.tan()),
+                "COTH" => div(x.tanh()),
+                "CSC" => div(x.sin()),
+                "CSCH" => div(x.sinh()),
+                "SEC" => div(x.cos()),
+                _ => div(x.cosh()),
+            }
+        }
+        "BASE" => {
+            // BASE(数値, 基数, [最小の桁数]) — 基数 2〜36 の文字列にする
+            let n = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            let r = a.get(1).map(|v| v.as_number()).unwrap_or(0.0) as i64;
+            let min_len = a.get(2).map(|v| v.as_number()).unwrap_or(0.0) as usize;
+            if n < 0.0 || n > 9.007_199_254_740_992e15 || !(2..=36).contains(&r) || min_len > 255
+            {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let digits = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            let (mut v, r) = (n as u64, r as u64);
+            let mut s = Vec::new();
+            loop {
+                s.push(digits[(v % r) as usize]);
+                v /= r;
+                if v == 0 {
+                    break;
+                }
+            }
+            while s.len() < min_len {
+                s.push(b'0');
+            }
+            s.reverse();
+            Value::Text(String::from_utf8(s).expect("ASCII の桁だけ"))
+        }
+        "DECIMAL" => {
+            // DECIMAL(文字列, 基数) — 基数 2〜36 の文字列を数に戻す
+            let s = a.first().map(|v| v.display()).unwrap_or_default();
+            let r = a.get(1).map(|v| v.as_number()).unwrap_or(0.0) as u32;
+            if !(2..=36).contains(&r) {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let mut acc = 0.0f64;
+            for c in s.trim().to_ascii_uppercase().chars() {
+                match c.to_digit(36) {
+                    Some(d) if d < r => acc = acc * r as f64 + d as f64,
+                    _ => return Ok(Value::Error("#NUM!".into())),
+                }
+            }
+            Value::Number(acc)
+        }
+        "COMBINA" => {
+            // 重複を許す組み合わせ = COMBIN(n+k-1, k)
+            let n = a.first().map(|v| v.as_number()).unwrap_or(0.0).floor();
+            let k = a.get(1).map(|v| v.as_number()).unwrap_or(0.0).floor();
+            if n < 0.0 || k < 0.0 || (n == 0.0 && k > 0.0) || n > 1e15 {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let m = n + k - 1.0;
+            let mut r = 1.0f64;
+            for i in 0..k as i64 {
+                r *= (m - i as f64) / (i + 1) as f64;
+                if !r.is_finite() {
+                    return Ok(Value::Error("#NUM!".into()));
+                }
+            }
+            Value::Number(r.round())
+        }
+        "FACTDOUBLE" => {
+            // 二重階乗 n!! — 1つ飛ばしに掛ける
+            let n = a.first().map(|v| v.as_number()).unwrap_or(0.0).floor();
+            if !(0.0..=300.0).contains(&n) {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let mut r = 1.0f64;
+            let mut i = n as i64;
+            while i > 1 {
+                r *= i as f64;
+                i -= 2;
+            }
+            Value::Number(r)
+        }
+        "MULTINOMIAL" => {
+            // (Σn)! / Π(n!) — 大きな階乗を経ずに、組み合わせの積で出す
+            let ns = nums(&a);
+            if ns.iter().any(|x| *x < 0.0) {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            let mut r = 1.0f64;
+            let mut t: i64 = 0;
+            for k in ns.iter().map(|x| x.floor() as i64) {
+                for i in 1..=k {
+                    t += 1;
+                    r *= t as f64 / i as f64;
+                }
+            }
+            if !r.is_finite() {
+                return Ok(Value::Error("#NUM!".into()));
+            }
+            Value::Number(r.round())
+        }
+        "SQRTPI" => {
+            let x = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            if x < 0.0 {
+                Value::Error("#NUM!".into())
+            } else {
+                Value::Number((x * std::f64::consts::PI).sqrt())
+            }
+        }
+        "CEILING.PRECISE" | "ISO.CEILING" | "FLOOR.PRECISE" => {
+            // 符号に関わらず、切り上げは大きい方へ・切り下げは小さい方へ
+            // (CEILING/FLOOR と違い、負の数でも向きが変わらない)
+            let x = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            let s = a.get(1).map(|v| v.as_number()).unwrap_or(1.0).abs();
+            if s == 0.0 {
+                Value::Number(0.0)
+            } else {
+                let q = x / s;
+                Value::Number(if name == "FLOOR.PRECISE" { q.floor() } else { q.ceil() } * s)
+            }
+        }
+        "ROMAN" => {
+            // ローマ数字(正式の形だけ)。省略形(第2引数 1〜4)は
+            // 実装しない — 黙って別の字を返すより正直に断る
+            let n = a.first().map(|v| v.as_number()).unwrap_or(0.0);
+            match a.get(1) {
+                None | Some(Value::Bool(true)) => {}
+                Some(v) if v.as_number() == 0.0 && !matches!(v, Value::Bool(false)) => {}
+                _ => return Ok(Value::Error("#VALUE!".into())),
+            }
+            if !(0.0..=3999.0).contains(&n) {
+                return Ok(Value::Error("#VALUE!".into()));
+            }
+            let mut n = n as i64;
+            let mut out = String::new();
+            for (v, s) in [
+                (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
+                (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
+            ] {
+                while n >= v {
+                    out.push_str(s);
+                    n -= v;
+                }
+            }
+            Value::Text(out)
+        }
+        "ARABIC" => {
+            // ローマ数字 → 数。小さい字が大きい字の前に来たら引く
+            let s = a.first().map(|v| v.display()).unwrap_or_default();
+            let t = s.trim().to_ascii_uppercase();
+            let (neg, t) = match t.strip_prefix('-') {
+                Some(rest) => (true, rest),
+                None => (false, t.as_str()),
+            };
+            let val = |c: char| -> Option<i64> {
+                Some(match c {
+                    'I' => 1, 'V' => 5, 'X' => 10, 'L' => 50,
+                    'C' => 100, 'D' => 500, 'M' => 1000,
+                    _ => return None,
+                })
+            };
+            let ch: Vec<char> = t.chars().collect();
+            let mut sum: i64 = 0;
+            for (i, c) in ch.iter().enumerate() {
+                let Some(v) = val(*c) else {
+                    return Ok(Value::Error("#VALUE!".into()));
+                };
+                let next = ch.get(i + 1).and_then(|c| val(*c)).unwrap_or(0);
+                sum += if v < next { -v } else { v };
+            }
+            Value::Number(if neg { -sum } else { sum } as f64)
+        }
+        "SERIESSUM" => {
+            // SERIESSUM(x, n, m, 係数…) — Σ 係数i × x^(n + (i-1)m)
+            let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
+            let (x, n0, m) = (g(0), g(1), g(2));
+            let mut s = 0.0;
+            for (i, c) in a.get(3..).unwrap_or(&[]).iter().enumerate() {
+                s += c.as_number() * x.powf(n0 + m * i as f64);
+            }
+            if s.is_finite() { Value::Number(s) } else { Value::Error("#NUM!".into()) }
+        }
         "ATAN2" => {
             // Excel の約束: ATAN2(x, y)(数学の atan2(y, x) と引数が逆順)
             let x = a.first().map(|v| v.as_number()).unwrap_or(0.0);

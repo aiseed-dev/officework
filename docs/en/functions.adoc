@@ -18,28 +18,47 @@ Arguments in `[ ]` can be omitted.
 
 |`ABS(number)` |Returns the absolute value of a number, a number without its sign.
 |`ACOS(number)` |Returns the arccosine of a number, in radians in the range 0 to Pi. The arccosine is the angle whose cosine is Number.
+|`ACOSH(number)` |Returns the inverse hyperbolic cosine of a number.
+|`ACOT(number)` |Returns the arccotangent of a number, in radians in the range 0 to Pi.
+|`ACOTH(number)` |Returns the inverse hyperbolic cotangent of a number.
+|`ARABIC(text)` |Converts a Roman numeral to Arabic.
 |`ASIN(number)` |Returns the arcsine of a number in radians, in the range -Pi/2 to Pi/2.
+|`ASINH(number)` |Returns the inverse hyperbolic sine of a number.
 |`ATAN(number)` |Returns the arctangent of a number in radians, in the range -Pi/2 to Pi/2.
 |`ATAN2(x_num, y_num)` |Returns the arctangent of the specified x and y coordinates, in radians between -Pi and Pi, excluding -Pi.
+|`ATANH(number)` |Returns the inverse hyperbolic tangent of a number.
+|`BASE(number, radix, [min_length])` |Converts a number into a text representation with the given radix (base).
 |`CEILING(number, significance)` |Rounds a number up, to the nearest multiple of significance.
 |`CEILING.MATH(number, [significance], [mode])` |Rounds a number up, to the nearest integer or to the nearest multiple of significance.
+|`CEILING.PRECISE( x, [significance] )` |Returns a number that is rounded up to the nearest integer or to the nearest multiple of significance.
 |`COMBIN(number, number_chosen)` |Returns the number of combinations for a given number of items.
+|`COMBINA(number, number_chosen)` |Returns the number of combinations with repetitions for a given number of items.
 |`COS(number)` |Returns the cosine of an angle.
 |`COSH(number)` |Returns the hyperbolic cosine of a number.
+|`COT(number)` |Returns the cotangent of an angle.
+|`COTH(number)` |Returns the hyperbolic cotangent of a number.
+|`CSC(number)` |Returns the cosecant of an angle.
+|`CSCH(number)` |Returns the hyperbolic cosecant of an angle.
+|`DECIMAL(number, radix)` |Converts a text representation of a number in a given base into a decimal number.
 |`DEGREES(angle)` |Converts radians to degrees.
 |`EVEN(number)` |Rounds a positive number up and negative number down to the nearest even integer.
 |`EXP(number)` |Returns e raised to the power of a given number.
 |`FACT(number)` |Returns the factorial of a number, equal to 1*2*3*...* Number.
+|`FACTDOUBLE(number)` |Returns the double factorial of a number.
 |`FLOOR(number, significance)` |Rounds a number down to the nearest multiple of significance.
 |`FLOOR.MATH(number, [significance], [mode])` |Rounds a number down, to the nearest integer or to the nearest multiple of significance.
+|`FLOOR.PRECISE( x, [significance] )` |Returns a number that is rounded down to the nearest integer or to the nearest multiple of significance.
 |`GCD(number1, [number2], ...)` |Returns the greatest common divisor.
 |`INT(number)` |Rounds a number down to the nearest integer.
+|`ISO.CEILING( number, [significance] )` |Returns a number that is rounded up to the nearest integer or to the nearest multiple of significance regardless of the sign of the number. However, if the number or the significance is zero, zero is returned.
 |`LCM(number1, [number2], ...)` |Returns the least common multiple.
 |`LN(number)` |Returns the natural logarithm of a number.
 |`LOG(number, [base])` |Returns the logarithm of a number to the base you specify.
 |`LOG10(number)` |Returns the base-10 logarithm of a number.
+|`MDETERM(array)` |Returns the matrix determinant of an array.
 |`MOD(number, divisor)` |Returns the remainder after a number is divided by a divisor.
 |`MROUND(number, multiple)` |Returns a number rounded to the desired multiple.
+|`MULTINOMIAL(number1, [number2], ...)` |Returns the multinomial of a set of numbers.
 |`ODD(number)` |Rounds a positive number up and negative number down to the nearest odd integer.
 |`PERMUT(number, number_chosen)` |Returns the number of permutations for a given number of objects that can be selected from the total objects.
 |`PI()` |Returns the value of Pi, 3.14159265358979, accurate to 15 digits.
@@ -49,18 +68,26 @@ Arguments in `[ ]` can be omitted.
 |`RADIANS(angle)` |Converts degrees to radians.
 |`RAND()` |Returns a random number greater than or equal to 0 and less than 1, evenly distributed (changes on recalculation).
 |`RANDBETWEEN(bottom, top)` |Returns a random number between the numbers you specify.
+|`ROMAN(number, [form])` |Converts an Arabic numeral to Roman, as text.
 |`ROUND(number, num_digits)` |Rounds a number to a specified number of digits.
 |`ROUNDDOWN(number, num_digits)` |Rounds a number down, towards zero.
 |`ROUNDUP(number, num_digits)` |Rounds a number up, away from zero.
+|`SEC(number)` |Returns the secant of an angle.
+|`SECH(number)` |Returns the hyperbolic secant of an angle.
 |`SEQUENCE(rows, [columns], [start], [step])` |Returns a sequence of numbers.
+|`SERIESSUM(x, n, m, coefficients)` |Returns the sum of a power series based on the formula.
 |`SIGN(number)` |Returns the sign of a number: 1 if the number is positive, zero if the number is zero, or -1 if the number is negative.
 |`SIN(number)` |Returns the sine of an angle.
 |`SINH(number)` |Returns the hyperbolic sine of a number.
 |`SQRT(number)` |Returns the square root of a number.
+|`SQRTPI(number)` |Returns the square root of (number * Pi).
 |`SUBTOTAL(function_num, ref1, ...)` |Returns a subtotal in a list or database.
 |`SUM(number1, [number2], ...)` |Adds all the numbers in a range of cells.
 |`SUMPRODUCT(array1, [array2], [array3], ...)` |Returns the sum of the products of corresponding ranges or arrays.
 |`SUMSQ(number1, [number2], ...)` |Returns the sum of the squares of the arguments. The arguments can be numbers, arrays, names or references to cells that contain numbers.
+|`SUMX2MY2(array_x, array_y)` |Sums the differences between the squares of two corresponding ranges or arrays.
+|`SUMX2PY2(array_x, array_y)` |Returns the sum total of the sums of squares of numbers in two corresponding ranges or arrays.
+|`SUMXMY2(array_x, array_y)` |Sums the squares of the differences in two corresponding ranges or arrays.
 |`TAN(number)` |Returns the tangent of an angle.
 |`TANH(number)` |Returns the hyperbolic tangent of a number.
 |`TRUNC(number, [num_digits])` |Truncates a number to an integer by removing the decimal, or fractional, part of the number.
