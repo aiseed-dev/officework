@@ -12,6 +12,9 @@
 |link:calc-manual.adoc[calc の手引き](link:../en/calc-manual.adoc[English])
 |表計算の画面の使い方ぜんぶ
 
+|link:functions.adoc[関数の一覧](link:../en/functions.adoc[English])
+|数式で使える関数と、その引数を調べる
+
 |link:writer-manual.adoc[writer の手引き](link:../en/writer-manual.adoc[English])
 |文書の画面の使い方ぜんぶ
 

@@ -252,8 +252,9 @@ def manual_source(loc: str) -> str:
     if ja:
         out += [
             "数式で使える関数の一覧です。載っているのは、このアプリが実際に",
-            "計算できる関数だけです。説明は、関数の挿入の小窓(数式タブ、",
-            "または Shift+F3)に出るものと同じ材料から作っています。",
+            "計算できる関数だけです。説明は、関数の挿入のダイアログ",
+            "(数式タブ、または Shift+F3)に出るものと同じ材料から",
+            "作っています。",
             "",
             "引数の `[ ]` は、省略できる引数です。",
         ]
@@ -275,7 +276,12 @@ def manual_source(loc: str) -> str:
             if not info or not info.get("d"):
                 continue
             args = info.get("a", "(…)").replace("; ", ", ")
-            desc = info["d"].replace("|", "\\|")
+            # 本家の説明文は頭の空白と文末の句点がまちまち(188 件のうち
+            # 21 件に句点が無く、2 件は頭に空白)。写すときにそろえる
+            desc = info["d"].strip().replace("|", "\\|")
+            owari = "。" if ja else "."
+            if desc and desc[-1] not in "。.!?":
+                desc += owari
             out.append(f"|`{name}{args}` |{desc}")
         out.append("|===")
     return "\n".join(out) + "\n"
