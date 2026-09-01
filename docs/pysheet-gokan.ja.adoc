@@ -16,9 +16,9 @@
 
 |*ある* |同じ役の API が既にある(名前が違えば互換層で別名を張るだけ)
 |*互換層* |Python の薄い互換層(pysheet/officework/\*.py)だけで書ける。エンジンに手を入れない
-|*足す* |エンジン(Rust)か橋に API を足す。作ると決めた物
+|*足す* |エンジン(Rust)か接続に API を足す。作ると決めた物
 |*足す(書式)* |書式の読み書き。2026-08-12 発注者確定「作る。合否の基準は**定義どおり動作するか**」— 相手の定義(ドキュメントとテスト)が合否の線
-|*要らない* |相手の内部事情・古い API・別の道具の代役。互換の的にしない
+|*要らない* |相手の内部事情・古い API・別の道具の代役。互換の対象にしない
 |*作らない* |設計と衝突する。理由を書いて残す
 |===
 
@@ -30,7 +30,7 @@
 
 |ある |38 |今日の時点で互換
 |互換層 |75 |互換層を書けば互換(エンジン無傷)
-|足す |102 |エンジン・橋への追加。実務の背骨はここ
+|足す |102 |エンジン・接続への追加。実務の背骨はここ
 |足す(書式) |24 |書式の読み書き(基準は定義どおりの動作)
 |要らない |57 |的にしない(全件に理由)
 |作らない |28 |設計と衝突(全件に理由)
@@ -63,7 +63,7 @@
 |✔ remove |足す |シート削除(済 2026-08-12: Book.remove\_sheet。*最後の1枚は抜けない* — シートの無い xlsx は無いので正直に断る。openpyxl は空のブックを許すが、あれは保存で壊れる側)
 |✔ create\_named\_range |足す |名前付き範囲。式が参照する物なのでエンジンの計算にも絡む(*済 2026-08-12 夜*: エンジンに Sheet.names / define\_name / delete\_name(名前は属するシートの物 — 模型どおり)。openpyxl の defined\_names(dict 風)と create\_named\_range の顔つき。定義した名前は式(=単価\*数量)で効き、本家と両方向で往復。scope は持たない — 正直に断る)
 |✔ epoch / excel\_base\_date |足す |1904 起点のブック(古い Mac 由来)を 1899-12-30 として読むと日付が4年ずれる — 黙って壊すのと同じ。起点の読みと解釈をエンジンに(*済 2026-08-13*: Book.date1904 の旗を評価器(funcs::call)・表示(format\_value)・PDF(PrintSetup)・pysheet の datetime 受け渡しまで貫通。内部は 1899 のまま、通し番号↔暦日の**境目だけ**が excel\_epoch(date1904) を通す(1904 は 24107)。元号・曜日・DATEDIF・WEEKNUM の類も同じ道。openpyxl の epoch / excel\_base\_date の顔つき — 読み書きとも、起点替えは「意味が4年動く」と注記して受ける。適合は本家の 1904 ブックと両方向 — 表示・YEAR・datetime 往復まで。*ついでに1つ塞いだ*: core.xml の欄の差し替えが要素に付いた xmlns 宣言を落とし、openpyxl 産のブックを保存すると lxml が開けない壊れた XML になっていた — 属性を保って差し替えるよう正した)
-|✔ named\_styles / style\_names |足す(書式) |名前付き様式は書式の書き込みの一部(*済 2026-08-13*。実測で分かったこと: *往復は既に効いていた* —様式の一覧も、触っていないセルの様式名も、原本の styles.xml 据え置きで残る。口を張った: Book.named\_styles / style\_names(名前の並び)と named\_style\_fmt(様式の書式を fmt と同じ鍵で引く)。`cell.style = "見出し行"` は**その様式の書式をセルに写す** — 見た目は同じになるが、名前の帳簿はセルに持たない(模型の作り)ので、読みは openpyxl の既定どおり "Normal"。無い名前は KeyError で断る)
+|✔ named\_styles / style\_names |足す(書式) |名前付き様式は書式の書き込みの一部(*済 2026-08-13*。実際に動かして分かったこと: *往復は既に効いていた* —様式の一覧も、触っていないセルの様式名も、原本の styles.xml 据え置きで残る。API を足した: Book.named\_styles / style\_names(名前の並び)と named\_style\_fmt(様式の書式を fmt と同じキーで引く)。`cell.style = "見出し行"` は**その様式の書式をセルに写す** — 見た目は同じになるが、名前の帳簿はセルに持たない(模型の作り)ので、読みは openpyxl の既定どおり "Normal"。無い名前は KeyError で断る)
 |✔ add\_named\_style |足す(書式) |様式を**作る**(*済 2026-08-13*: Book.named\_styles\_new に持ち、保存で styles.xml の cellStyleXfs / cellStyles に**追記**する。原本があれば append\_to(既にある書式追記の道)へ相乗り、無ければ build が並べる — どちらも**既存の索引は動かさない**ので、触っていないセルの書式は無傷。openpyxl の NamedStyle をそのまま渡せる。書式の受けは set\_fmt と同じ apply\_fmt(一本道)。適合は往復まで)
 |data\_only |要らない |「式か値か」を開くときに選ばされるのが openpyxl の弱点。うちは常に両方ある(値も式も同時に読める)
 |get\_sheet\_by\_name / get\_sheet\_names / remove\_sheet |要らない |本家でも廃止予定の旧名
@@ -94,16 +94,16 @@
 |✔ freeze\_panes |足す |ウィンドウ枠の固定。実務多い(済 2026-08-12。openpyxl と同じ A1 形式 — "B2" = 上1行・左1列)
 |✔ add\_image |足す |*matplotlib の図をシートに貼る* — アプリのグラフ分業と同じ道を Python にも。oneCellAnchor で書く(済 2026-08-12: 径路でも bytes でも。寸法は ops::image\_px で測り、width\_px/height\_px で上書き。読み側の `images` も付けた — openpyxl はこれを公開 API で持たない)
 |✔ oddHeader / oddFooter |足す |印刷ヘッダー・フッター(*済 2026-08-13*。模型(header / footer)と xlsx の読み書きは既にあり、口だけ欠けていた。openpyxl と同じ left / center / right の三分割(中身は &L&C&R の原文。&P は頁番号)。適合は両方向)
-|✔ evenHeader / firstHeader / evenFooter / firstFooter |足す |奇数・偶数・先頭頁の別(*済 2026-08-13*。*踏んだ穴*: 読まれてすらおらず、開いて保存すると偶数・先頭のヘッダーが消えていた — 左右で綴じる帳票の様式が崩れる。模型に4つの畑と differentOddEven / differentFirst の旗を足し、読み書きを通した。置くと旗が立つ(付け忘れ防止)。適合は往復まで)
+|✔ evenHeader / firstHeader / evenFooter / firstFooter |足す |奇数・偶数・先頭頁の別(*済 2026-08-13*。*踏んだ穴*: 読まれてすらおらず、開いて保存すると偶数・先頭のヘッダーが消えていた — 左右で綴じる帳票の様式が崩れる。模型に4つの欄と differentOddEven / differentFirst の旗を足し、読み書きを通した。置くと旗が立つ(付け忘れ防止)。適合は往復まで)
 |✔ print\_area |足す |印刷設定。calc はモデルに読む所まで済み — 書きを足す(*済 2026-08-12 夜*: 読みは openpyxl と同じ「'シート'!$A$1:$C$10」(複数域は , 区切り)、書きは $ もシート名! も付いていてよい。PDF と印刷がこれに従う。print\_titles 系は模型に無い — 残)
-|✔ print\_titles / print\_title\_rows |足す |見出し行の繰り返し。*畑が無いと書いたのは誤り*(2026-08-13 実測で判明): 模型の print\_title\_rows・xlsx の読み書き(\_xlnm.Print\_Titles)・*PDF の繰り返し*(paper::grid の「タイトル行は2ページ目にも出る」)まで既に完動していた — 欠けていたのは Python の口だけ。張った(openpyxl と同じ "1:2" / print\_titles は "'シート'!$1:$2")。適合は両方向
-|✔ print\_title\_cols |足す |**列**の繰り返し(*済 2026-08-13*: 模型に畑を足し、Print\_Titles の行の部と列の部を別々に解いて往復する(前は列だけの帳票は原文で持ち越すだけだった)。openpyxl と同じ "A:B" の形。適合は両方向。*PDF も列を繰り返す*(済 2026-08-13: 描く側が列を「連番(左端, 本数)」で持っていたのを**列の一覧**に変えた。規則は `paper::grid::band_cols` — 束より左のタイトル列だけを左端に差し込む(束の中や右のものは繰り返さない = 同じ列が1枚に二度出ない)。繰り返す列は**幅の割り付けにも効く**ので、そのぶん本体は狭くなり紙が増える(Excel と同じ)。橋の page\_setup にも title\_cols を足した。12か月の台帳を実機の calc で PDF にし、4枚とも左端に品名が出ることを目で確かめた))
+|✔ print\_titles / print\_title\_rows |足す |見出し行の繰り返し。*欄が無いと書いたのは誤り*(2026-08-13 に実際に動かして判明): 模型の print\_title\_rows・xlsx の読み書き(\_xlnm.Print\_Titles)・*PDF の繰り返し*(paper::grid の「タイトル行は2ページ目にも出る」)まで既に完動していた — 欠けていたのは Python の API だけ。足した(openpyxl と同じ "1:2" / print\_titles は "'シート'!$1:$2")。適合は両方向
+|✔ print\_title\_cols |足す |**列**の繰り返し(*済 2026-08-13*: 模型に欄を足し、Print\_Titles の行の部と列の部を別々に解いて往復する(前は列だけの帳票は原文で持ち越すだけだった)。openpyxl と同じ "A:B" の形。適合は両方向。*PDF も列を繰り返す*(済 2026-08-13: 描く側が列を「連番(左端, 本数)」で持っていたのを**列の一覧**に変えた。規則は `paper::grid::band_cols` — 束より左のタイトル列だけを左端に差し込む(束の中や右のものは繰り返さない = 同じ列が1枚に二度出ない)。繰り返す列は**幅の割り付けにも効く**ので、そのぶん本体は狭くなり紙が増える(Excel と同じ)。接続の page\_setup にも title\_cols を足した。12か月の台帳を実機の calc で PDF にし、4枚とも左端に品名が出ることを目で確かめた))
 |✔ add\_data\_validation |足す |エンジンは list 規則を読み・効かせ・往復済み。追加の API を足す(*済 2026-08-12 夜*: add\_validation(範囲, formula1, kind, operator, formula2, allow\_blank)+ validations の読み。openpyxl の DataValidation の実物を add\_data\_validation に渡しても効く(sqref ごと)。適合は両方向)
-|✔ add\_table / tables |足す |テーブル(構造化参照・フィルタ)。*「原文持ち越しのみ」は誤り*(2026-08-13 実測): 模型の TableDef・xlsx の読み書き(table 部品・tableParts・関係・宣言)・*構造化参照の計算*(2026-08-08 実装)まで既に動いていた — 欠けは Python の口だけ。張った(openpyxl の Table / TableStyleInfo の形。本家の実物も受ける)。*`=SUM(明細[金額])` が計算まで効くのが上位分* — openpyxl は式を計算しない。適合は両方向。名前に空白は断る(式から引けなくなる)
+|✔ add\_table / tables |足す |テーブル(構造化参照・フィルタ)。*「原文持ち越しのみ」は誤り*(2026-08-13 に実際に動かして確認): 模型の TableDef・xlsx の読み書き(table 部品・tableParts・関係・宣言)・*構造化参照の計算*(2026-08-08 実装)まで既に動いていた — 欠けは Python の API だけ。足した(openpyxl の Table / TableStyleInfo の形。本家の実物も受ける)。*`=SUM(明細[金額])` が計算まで効くのが上位分* — openpyxl は式を計算しない。適合は両方向。名前に空白は断る(式から引けなくなる)
 |✔ array\_formulae |足す |配列式。エンジンがスピルを覚える件(pyoffice の「返り値の形で広がる」)と同じ模型(済 2026-08-13: 模型の cse に口を張った。openpyxl と同じ {左上: 式} の形。*うちは値まで計算されている* — `=SUM(A1:A3*2)` が 12 を返す。openpyxl は式を持つだけ)
 |✔ column\_groups |足す |行・列のグループ化(outlineLevel)の読み書き(小)。画面の畳みはアプリの在庫(*済 2026-08-13*: 模型の row\_outline / col\_outline に口を張った。openpyxl と同じ row\_dimensions.group(start, end, outline\_level, hidden) / column\_dimensions.group と、row\_groups / column\_groups の読み。*畳んだ状態は保存に残る* — 畳んだ台帳は畳んだまま次の人に渡る(絞り込みと違う)。適合は両方向)
-|✔ column\_dimensions[…].width / row\_dimensions[…].height / hidden |足す |列の幅・行の高さ・隠し。*塞いだ穴*(2026-08-13、PDF のタイトル列を実機で試そうとして判明): 模型(col\_width / row\_height / col\_hidden / row\_hidden)も xlsx の読み書きも前から動いていたのに、openpyxl 側の口が group だけで、`ws.column_dimensions["A"].width = 20` という**本家で最も使われる書き方**が通らなかった — 帳票の形そのものを Python から作れない。添字で引く窓を足した(書けばその場で載る。本家も同じ)。幅は字数・高さはポイント、指定の無い行列は None(本家と同じ)。行に width・列に height は黙って別の畑へ書かず断る。適合は両方向
-|✔ move\_range |足す |範囲の移動 — 式の参照も付いて動く。insert/remove と同族(*済 2026-08-13*: sheet::model::ops の Sheet::move\_range。*参照の作法は Excel の切り貼りに合わせた* — 外から動かした範囲を指していた式は**付いて動く**(`=B1+1` → `=B6+1`)。openpyxl はここを古びたままにする(空のセルを指す)= うちの上位分。範囲の中の式はそのままで、translate=True なら中の相対参照がずれる(本家と同じ定義 — 適合検査で本家の結果と突き合わせ済み)。移った先は上書き、紙の外へは動かさない、結合も一緒に動く。橋にも rpc(語彙34)+ Range.move()。実機で確認)
+|✔ column\_dimensions[…].width / row\_dimensions[…].height / hidden |足す |列の幅・行の高さ・隠し。*塞いだ穴*(2026-08-13、PDF のタイトル列を実機で試そうとして判明): 模型(col\_width / row\_height / col\_hidden / row\_hidden)も xlsx の読み書きも前から動いていたのに、openpyxl 側の API が group だけで、`ws.column_dimensions["A"].width = 20` という**本家で最も使われる書き方**が通らなかった — 帳票の形そのものを Python から作れない。添字で引く窓を足した(書けばその場で載る。本家も同じ)。幅は字数・高さはポイント、指定の無い行列は None(本家と同じ)。行に width・列に height は黙って別の欄へ書かず断る。適合は両方向
+|✔ move\_range |足す |範囲の移動 — 式の参照も付いて動く。insert/remove と同族(*済 2026-08-13*: sheet::model::ops の Sheet::move\_range。*参照の作法は Excel の切り貼りに合わせた* — 外から動かした範囲を指していた式は**付いて動く**(`=B1+1` → `=B6+1`)。openpyxl はここを古びたままにする(空のセルを指す)= うちの上位分。範囲の中の式はそのままで、translate=True なら中の相対参照がずれる(本家と同じ定義 — 適合検査で本家の結果と突き合わせ済み)。移った先は上書き、紙の外へは動かさない、結合も一緒に動く。接続にも rpc(コマンドは34に)+ Range.move()。実機で確認)
 |✔ show\_gridlines |足す |sheetView の読み書き(小)(済 2026-08-13: 画面の枠線(show\_gridlines。指定なしは None)と**印刷**の枠線(print\_gridlines)は別の設定 — 両方に口を張った。適合は両方向)
 |active\_cell / selected\_cell / sheet\_view |要らない |画面の状態。ファイルの帳簿ではない
 |encoding / mime\_type / path |要らない |内部事情
@@ -115,8 +115,8 @@
 === Cell(28)
 
 うちはセルのオブジェクトを持たず、値を直に読み書きする。
-互換層として**参照だけ持つ Cell**(座標+シートの札)を作れば、下の「互換層」は全部そこに載る(済 2026-08-12 — sheet.py の Cell。
-`s["A1"]` が値を返すうちの口はそのまま、Cell は `s.cell(row=, column=)` から)。
+互換層として**参照だけ持つ Cell**(座標とシートへの参照)を作れば、下の「互換層」は全部そこに載る(済 2026-08-12 — sheet.py の Cell。
+`s["A1"]` が値を返すうちの API はそのまま、Cell は `s.cell(row=, column=)` から)。
 
 [cols="1,1,1"]
 |===
@@ -136,7 +136,7 @@
 
 == xlwings(App 28・Book 21・Sheet 27・Range 63 = 139)
 
-うちの相手は `officework.calc`(動いているアプリへの橋)。
+うちの相手は `officework.calc`(動いているアプリへの接続)。
 *Excel 本体が要らない・Linux でも動く* — これが上位分。
 App クラスは作らない(下記)。
 
@@ -150,7 +150,7 @@ App クラスは作らない(下記)。
 |相手 |判定 |うちの対応・理由
 
 |✔ books |ある |モジュールの books(active / open / add)
-|✔ calculate |足す |橋に「全再計算」のコマンド(済 2026-08-12: rpc calculate)
+|✔ calculate |足す |接続に「全再計算」のコマンド(済 2026-08-12: rpc calculate)
 |✔ selection / get\_selection |足す |*いま選んでいる範囲を Python から読む* — 「選んで、Jupyter で加工」の入り方(済 2026-08-12: rpc selection → app.selection / Book.selection。get\_selection は向こうの async 遠隔 API の対なので selection だけ)
 |✔ version |足す |アプリの版を ping の返事に足す(済 2026-08-12)
 |✔ status\_bar |足す |アプリの status に文言を出す — 長い処理の進み具合を見せる(済 2026-08-12: rpc status。読みは最後に出した文言の覚え — 状態行は読み戻せない)
@@ -158,7 +158,7 @@ App クラスは作らない(下記)。
 |create\_report / render\_template |作らない |向こうの有料(PRO)機能。差し込みは replace と値の代入が本筋
 |alert |作らない |Python からアプリの画面に窓を割り込ませる道は作らない — 邪魔の経路。status\_bar の文言で足りる
 |calculation |作らない |自動/手動の切替という状態を増やさない。エンジンが速いので手動モードの理由(遅さ)が無い
-|quit / activate / range |作らない |橋は動いているアプリに**付くだけ** — 起動も終了も画面の前後も人の物(App ごと作らない、の帰結)
+|quit / activate / range |作らない |接続は動いているアプリに**付くだけ** — 起動も終了も画面の前後も人の物(App ごと作らない、の帰結)
 |api / engine / hwnd / pid / path / startup\_path / properties |要らない |COM・プロセスの露出
 |cut\_copy\_mode / display\_alerts / enable\_events / interactive / screen\_updating / kill / visible |要らない |Excel の画面制御の事情。見えないアプリを作らない
 |===
@@ -173,11 +173,11 @@ App クラスは作らない(下記)。
 |✔ fullname / name / save |ある |
 |✔ sheets |ある |\_Sheets([] / active / iter / len)
 |✔ app / sheet\_names |互換層 |sheets から。app は小さな取っ手(books だけ持つ — App クラスは作らない、の帰結のまま)
-|✔ close |足す |橋に「閉じる」コマンド(済 2026-08-13: rpc close。*未保存があれば断る*(new / open と同じ作法)。アプリは常にブックを1つ持つ造りなので、閉じると新しい空のブックに戻る — 窓は閉じない(起動も終了も人の物))
+|✔ close |足す |接続に「閉じる」コマンド(済 2026-08-13: rpc close。*未保存があれば断る*(new / open と同じ作法)。アプリは常にブックを1つ持つ造りなので、閉じると新しい空のブックに戻る — 窓は閉じない(起動も終了も人の物))
 |✔ selection / get\_selection |足す |App の項と同じ(済 2026-08-12)
 |✔ load |足す |範囲 → DataFrame の直行便。*polars を第一に*(pandas は options で従来どおり)(済 2026-08-12: 選択を読み、1マスなら表に広げる — xw.load / Book.load / Sheet.load)
-|✔ to\_pdf |足す |アプリは PDF 書き出しを持っている(io.rs)— 橋から呼ぶだけ。*Sheet.to\_pdf は済*。*ブック全体も済(2026-08-13 発注者「Book.to\_pdf をつくりましょう」)*: paper に book\_to\_pdf を作り、sheet\_to\_pdf の中身を draw\_sheet(共有の文書へ描く)と draw\_header\_footer(総頁が決まってから描く)に分けた。*頁番号(&P)と総頁(&N)はブック通し* — Excel がブック全体を刷るときと同じ数え方。紙・向き・余白・印刷範囲はシートごとに効き(1冊に縦と横が混ざってよい)、隠したシートは刷らない。xlwings の include / exclude は持たない(visible で選ぶ)。*ついでに1つ塞いだ*: ヘッダーの「&&」(素の & の書き方)が落ちていて「山田&田中」が壊れていた — 一度の走査に直し、頁番号の規則ごと hf\_subst の試験で縛った
-|✔ names |足す |名前付き範囲(openpyxl の create\_named\_range と同じ一件)(済 2026-08-12 夜: rpc names / define\_name / delete\_name(語彙25)。wb.names.add("単価", "=Sheet1!$A$1")・refers\_to・delete — xlwings の形。実機で式の追随まで検査)
+|✔ to\_pdf |足す |アプリは PDF 書き出しを持っている(io.rs)— 接続から呼ぶだけ。*Sheet.to\_pdf は済*。*ブック全体も済(2026-08-13 発注者「Book.to\_pdf をつくりましょう」)*: paper に book\_to\_pdf を作り、sheet\_to\_pdf の中身を draw\_sheet(共有の文書へ描く)と draw\_header\_footer(総頁が決まってから描く)に分けた。*頁番号(&P)と総頁(&N)はブック通し* — Excel がブック全体を刷るときと同じ数え方。紙・向き・余白・印刷範囲はシートごとに効き(1冊に縦と横が混ざってよい)、隠したシートは刷らない。xlwings の include / exclude は持たない(visible で選ぶ)。*ついでに1つ塞いだ*: ヘッダーの「&&」(& そのものを書く書き方)が落ちていて「山田&田中」が壊れていた — 一度の走査に直し、頁番号の規則ごと hf\_subst の試験で縛った
+|✔ names |足す |名前付き範囲(openpyxl の create\_named\_range と同じ一件)(済 2026-08-12 夜: rpc names / define\_name / delete\_name(コマンドは25に)。wb.names.add("単価", "=Sheet1!$A$1")・refers\_to・delete — xlwings の形。実機で式の追随まで検査)
 |activate |要らない |ブックは同時に1つの造り — 前に出す対象が無い
 |set\_mock\_caller |要らない |Excel アドイン開発の道具。caller が attach と同じ物なのでモックが要らない
 |api / flush / json / sync |要らない |COM と xlwings Server の事情
@@ -198,10 +198,10 @@ App クラスは作らない(下記)。
 |✔ freeze\_panes |足す |(済 2026-08-12: rpc freeze。xlwings の定義どおり freeze\_at("B2")=上2行左2列・"1:1"=上1行・"A:A"=左1列・unfreeze。画面の固定(sheet\_ui)に置き、保存の freeze\_into\_book で xlsx へ)
 |✔ load |足す |Book.load と同じ(済 2026-08-12: used\_range から)
 |✔ to\_pdf |足す |シート単位の PDF(済 2026-08-12: rpc to\_pdf。印刷設定の言い分は note で返る)
-|✔ activate / select |足す |画面のシートを Python から切り替える — 「見せる」のは見えるアプリならではの橋(済 2026-08-12: rpc activate\_sheet。切替は画面と同じ switch\_sheet — 打ちかけの確定・絞り込み解除ごと)
+|✔ activate / select |足す |画面のシートを Python から切り替える — 「見せる」のは見えるアプリならではの機能(済 2026-08-12: rpc activate\_sheet。切替は画面と同じ switch\_sheet — 打ちかけの確定・絞り込み解除ごと)
 |✔ visible |足す |隠しシート(sheetState)の読み書き(済 2026-08-12: rpc sheet\_visible。隠す作法はタブのメニューの「非表示」と同じ関数 — 最後の見えている1枚は断る・いまのシートを隠したら見える所へ移る)
-|✔ autofit |足す |列幅の自動調整 — 文字の測りはアプリが持っている。橋から呼ぶ(*済 2026-08-13*: リボンの「自動調整」の腕を `Calc::autofit_at(a, b, col)` に切り出して rpc と共有(タブのメニューと同じ作法)。rpc autofit(語彙33)、Range.autofit("columns"/"rows") と Sheet.autofit。**DataFrame を落とした後に読める幅にする**のがこれ。実機で確認 — 検分中に自分の検査の落とし穴も1つ潰した(実機は前回の幅を持ち越すので、先に狭めてから測る))
-|✔ pictures |足す |画像の一覧と追加(sheet.add\_image と対)(*済 2026-08-13*: rpc pictures / add\_image(bytes は16進で運ぶ・片方だけの大きさは縦横比を保つ)。`sheet.pictures.add(図, anchor="F4")` — 図は 径路 / bytes / *matplotlib の figure*(xlwings と同じ)。「Python で描いて実機のシートに浮かべる」= SEKKEI「calc の分業」の筋が橋から一本通った。実機で目視まで済)
+|✔ autofit |足す |列幅の自動調整 — 文字の測りはアプリが持っている。接続から呼ぶ(*済 2026-08-13*: リボンの「自動調整」の腕を `Calc::autofit_at(a, b, col)` に切り出して rpc と共有(タブのメニューと同じ作法)。rpc autofit(コマンドは33に)、Range.autofit("columns"/"rows") と Sheet.autofit。**DataFrame を落とした後に読める幅にする**のがこれ。実機で確認 — 検分中に自分の検査の落とし穴も1つ潰した(実機は前回の幅を持ち越すので、先に狭めてから測る))
+|✔ pictures |足す |画像の一覧と追加(sheet.add\_image と対)(*済 2026-08-13*: rpc pictures / add\_image(bytes は16進で運ぶ・片方だけの大きさは縦横比を保つ)。`sheet.pictures.add(図, anchor="F4")` — 図は 径路 / bytes / *matplotlib の figure*(xlwings と同じ)。「Python で描いて実機のシートに浮かべる」= SEKKEI「calc の分業」の筋が接続から一本通った。実機で目視まで済)
 |✔ tables / names / page\_setup |足す |openpyxl 側の同じ一件(テーブル・名前付き範囲・印刷設定)(済 2026-08-13: rpc sheet\_tables / page\_setup と、names の絞り込み。page\_setup は**読むだけ** — 紙と余白は見ながら決める物なのでアプリのレイアウトタブが正)
 |✔ clear\_formats |足す(書式) |書式を消すのも書式の書き込み(済 2026-08-12 夜: rpc clear\_formats — 値は残る)
 |render\_template |作らない |PRO 機能
@@ -223,9 +223,9 @@ App クラスは作らない(下記)。
 |✔ sheet / get\_value / raw\_value / formula2 |互換層 |formula2 = formula(動的配列の別名)。get\_value は手(引数なし・value と同じ物 — 実物で確認)
 |✔ merge\_cells |互換層 |merges(rpc)の一覧と自分の重なりで出す(済 2026-08-12 — 互換層はこれで全部済)
 |✔ clear / clear\_contents |足す |(済 2026-08-12 — Sheet の項と同じ rpc)
-|✔ insert / delete |足す |範囲の挿入・削除(詰める向きつき)(*済 2026-08-13*: rpc insert\_rows / delete\_rows / insert\_cols / delete\_cols(語彙32)。Range.insert(shift="down"/"right")・delete(shift="up"/"left")と Sheet.insert\_rows(at, count) 系。**残った式の参照が付いて動く**のが上位分 — 実機で確認(挿入で =H1\*3 が =H2\*3 になり答えも合う)。*部分的なセルのずらしは持たない* — 行・列は丸ごと動く、が家の作法。正直に断る)
+|✔ insert / delete |足す |範囲の挿入・削除(詰める向きつき)(*済 2026-08-13*: rpc insert\_rows / delete\_rows / insert\_cols / delete\_cols(コマンドは32に)。Range.insert(shift="down"/"right")・delete(shift="up"/"left")と Sheet.insert\_rows(at, count) 系。**残った式の参照が付いて動く**のが上位分 — 実機で確認(挿入で =H1\*3 が =H2\*3 になり答えも合う)。*部分的なセルのずらしは持たない* — 行・列は丸ごと動く、が家の作法。正直に断る)
 |✔ merge / unmerge / merge\_area |足す |結合の書きと読み(済 2026-08-12: rpc merge / unmerge / merge\_area。作法はアプリと同じ sheet::model の merge。merge(across=True) は行ごと。unmerge は掛かる物を全部 — xlwings の定義どおり)
-|✔ end |足す |Ctrl+矢印相当。橋に end のコマンド(済 2026-08-12。端は使っている範囲まで — 1048576 行目には飛ばない)
+|✔ end |足す |Ctrl+矢印相当。接続に end のコマンド(済 2026-08-12。端は使っている範囲まで — 1048576 行目には飛ばない)
 |✔ select |足す |Python から選択を動かして見せる(済 2026-08-12: rpc select。打ちかけは確定してから動く)
 |✔ add\_hyperlink / hyperlink |足す |リンクの読み書き(openpyxl Cell.hyperlink と同じ一件)(済 2026-08-13: rpc hyperlink。text\_to\_display も効く。screen\_tip(吹き出し)は模型に無いので断る)
 |✔ note |足す |セルのコメント(openpyxl comment と同じ一件)(済 2026-08-13: rpc note。Note.text / .delete())
@@ -257,7 +257,7 @@ App クラスは作らない(下記)。
 |相手 |判定 |うちの対応・理由
 
 |✔ add\_paragraph / paragraphs / save / tables |ある |
-|✔ add\_heading |足す |当初「互換層(add\_paragraph + style)」としたが、エンジンの Paragraph.style は**読みだけ**(2026-08-12 doc.rs と突き合わせて正した)。style の書きをエンジンに足してから(*済 2026-08-12 夜*: style の書き(body / heading1〜3。本家の "Heading 1" の名前でも受ける)+ add\_heading(level 1〜3。0=Title は持たないので断る)。*まっさらの文書に最小の styles.xml*(Normal+見出し1〜3の名乗り)を書く — これが無いと読み手が pStyle を解決できず Normal に落ちる。原本があれば原本の定義を持ち越すだけ)
+|✔ add\_heading |足す |当初「互換層(add\_paragraph + style)」としたが、エンジンの Paragraph.style は**読みだけ**(2026-08-12 doc.rs と突き合わせて正した)。style の書きをエンジンに足してから(*済 2026-08-12 夜*: style の書き(body / heading1〜3。本家の "Heading 1" の名前でも受ける)+ add\_heading(level 1〜3。0=Title は持たないので断る)。*まっさらの文書に最小の styles.xml*(Normal+見出し1〜3の宣言)を書く — これが無いと読み手が pStyle を解決できず Normal に落ちる。原本があれば原本の定義を持ち越すだけ)
 |✔ add\_page\_break |足す |(済 2026-08-12 夜。本家は「改ページの run」だが、うちは**段落の性質(page\_break\_before)**で持つ — 紙の上の意味は同じで、本家の paragraph\_format.page\_break\_before でも読める)
 |✔ add\_table |足す |表を新しく組む(明細の帳票づくりに要る)(済 2026-08-12。style 引数は「足す(書式)」待ち — 黙って捨てず断る。ついでに ooxml の書き手の穴を1つ塞いだ: 等分の表で tblGrid(必須部品)を省いていて、python-docx が読めなかった)
 |✔ add\_picture |足す |図を入れる(sheet.add\_image と対)(済 2026-08-12 夜: 径路でも bytes でも。大きさは mm の数でも本家の Length(Mm(60))でも。片方だけなら縦横比を保つ。返りは画像を持つ段落 — 本家の InlineShape とはそこだけ流儀が違う)
@@ -266,7 +266,7 @@ App クラスは作らない(下記)。
 |✔ sections / add\_section |足す |エンジンの模型が1節しか持てない既知の残り —*実は持てていた*(途中の節は段落の sect、文書末は sect\_raw / page)。sections は済 2026-08-12。*add\_section も済(2026-08-13 発注者「これにすすみましょう」)*: 切るのは**末尾** — いままで書いた分が前の節になり、これから足す物が新しい節に入る(python-docx と同じ切り方)。中では、いまの文書末の節を「sectPr だけを持つ空の段落」として本文の末尾に置く(docx の途中の節の書き方そのもの)。新しい節は同じ紙と余白を継ぎ、変えたければ返ってきた節に書く。start\_type は new\_page(既定)と continuous (`<w:type w:val="continuous"/>` を原文に置く)だけ — 新しい段・偶数頁・奇数頁は模型に無いので**正直に断る**(黙って改ページに落とすと刷ったとき別物になる)。適合は本家の enum をそのまま渡して両方向
 |✔ comments / add\_comment |足す |コメントの読み書き。変更履歴と同じく、読めて書けて壊さない(済 2026-08-12 夜: 模型の粒度どおり**段落単位** — Paragraph.add\_comment(text, author) と Doc.comments(Comment.paragraph でどの段落かが分かる)。本家(1.2)の comments API もうちの書いた物を読める)
 |✔ inline\_shapes |足す |画像の一件(add\_picture と対の読み)(済 2026-08-12 夜: width / height は自前の Length(EMU。.mm / .pt が本家と同じ算術)。本文の段落の分 — セルの中は数えない(模型の粒度))
-|✔ styles |足す(書式) |スタイルの一覧と定義 — 書式の一件(*済 2026-08-13*。発注者確定「スタイル定義は持たない主義では無理」で主義を改めた: (1) *知らないスタイル名も捨てない* — pStyle / rStyle の原文を Paragraph.style\_id / CharFormat.style\_id が運び、保存で返す(今までは開いて保存で消えていた = 「書式は据え置き」の穴。塞いだ)。(2) 定義の本体は**原文の styles.xml を正として持ち越し**、足した分だけ追記(core.xml と同じ外科術)。(3) Doc.styles(名前で引ける)・add\_style(name, 種類)— 名乗りだけの最小定義で、見た目は直接書式が第一のまま。適合は両方向 — 本家の社内様式がうちの往復で残り、うちが足した様式を本家が読む)
+|✔ styles |足す(書式) |スタイルの一覧と定義 — 書式の一件(*済 2026-08-13*。発注者確定「スタイル定義は持たない主義では無理」で主義を改めた: (1) *知らないスタイル名も捨てない* — pStyle / rStyle の原文を Paragraph.style\_id / CharFormat.style\_id が運び、保存で返す(今までは開いて保存で消えていた = 「書式は据え置き」の穴。塞いだ)。(2) 定義の本体は**原文の styles.xml を正として持ち越し**、足した分だけ追記(core.xml と同じ外科術)。(3) Doc.styles(名前で引ける)・add\_style(name, 種類)— 宣言だけの最小定義で、見た目は直接書式が第一のまま。適合は両方向 — 本家の社内様式がうちの往復で残り、うちが足した様式を本家が読む)
 |element / part / settings |要らない |lxml の露出
 |===
 
@@ -281,8 +281,8 @@ App クラスは作らない(下記)。
 |✔ clear |互換層 |text = ""(段落の性質と先頭 run の書式は残る — 本家と同じ定義。自分を返す)
 |✔ iter\_inner\_content |互換層 |runs から(リンクは hyperlinks(足す)が来たら混ぜる)
 |✔ add\_run |足す |段落に run を継ぎ足す(済 2026-08-12 夜。書式は**末尾の run を継ぐ** — text の代入が先頭を継ぐのと対。style 引数は 2026-08-13 の主義転換で**効くようになった** — styles にある文字スタイルの名前)
-|✔ insert\_paragraph\_before |足す |途中に差す(add\_paragraph は末尾だけ)(済 2026-08-12 夜。手元の札は位置で指すので、差した後は引き直す — シートの札と同じ作法。style 引数は断る)
-|✔ hyperlinks |足す |リンクの一件(*済 2026-08-13*。踏んだ穴: docx のリンクは**読まれず・unsupported にも出ず・保存で消えて**いた(字だけ残るので気づきにくい)。CharFormat に link を足し(field・ruby と同じ持ち場 — run の切り貼りが効く)、読みは w:hyperlink の r:id を関係から URL に解き、書きは包み直して関係も宣言する。Paragraph.hyperlinks / add\_hyperlink・Run.hyperlink。*add\_run はリンクを継がない* — 掛かりを決めるのは囲みで字の書式ではない(検査が捕まえた)。適合は両方向)
+|✔ insert\_paragraph\_before |足す |途中に差す(add\_paragraph は末尾だけ)(済 2026-08-12 夜。手元の参照は位置で指すので、差した後は引き直す — シートの参照と同じ作法。style 引数は断る)
+|✔ hyperlinks |足す |リンクの一件(*済 2026-08-13*。踏んだ穴: docx のリンクは**読まれず・unsupported にも出ず・保存で消えて**いた(字だけ残るので気づきにくい)。CharFormat に link を足し(field・ruby と同じ置き場 — run の切り貼りが効く)、読みは w:hyperlink の r:id を関係から URL に解き、書きは包み直して関係も宣言する。Paragraph.hyperlinks / add\_hyperlink・Run.hyperlink。*add\_run はリンクを継がない* — 掛かりを決めるのは囲みで字の書式ではない(検査が捕まえた)。適合は両方向)
 |✔ paragraph\_format |足す(書式) |段落書式(行間・字下げ・前後の間隔)(*済(部分)2026-08-12 夜*: alignment(本家の enum も受ける)・line\_spacing・page\_break\_before — 模型が持つ物。space\_before / space\_after・left\_indent は**模型に無い**ので読みは None・書きは正直に断る。模型の indent は段数(1段=全角2字)で、本家の Length との対応は決めてから)
 |part / contains\_page\_break / rendered\_page\_breaks |要らない |内部・レイアウト依存
 |===
@@ -311,7 +311,7 @@ App クラスは作らない(下記)。
 |✔ rows |ある |ほかに shape / values(polars 直行)が既にあり、これは相手に**無い**上位分
 |✔ cell(r,c) / row\_cells / column\_cells / columns |互換層 |rows[r].cells[c] から。結合で行の列数が違うとき column\_cells は無い行を飛ばす(長方形しか持てない本家に、この場合の定義が無い)
 |✔ add\_row / add\_column |足す |明細行の継ぎ足し。実務の定番(済 2026-08-12。add\_column の width は python-docx と同じ EMU を受けて mm に直す。等分の表に幅つきの列は形が決まらないので正直に断る)
-|✔ style / alignment / autofit |足す(書式) |表のスタイル・配置・幅の自動調整 — 書式の一件(*済 2026-08-12 夜*: kumihan の Table に style(*名前だけ運ぶ* — 定義は styles.xml の持ち物で、持たない主義のまま)・align・fixed\_layout の畑、ooxml が tblPr の tblStyle / jc / tblLayout を読み書き。本家の enum・スタイルの物("Table Grid" は styleId "TableGrid" に寄せる)も受ける。適合は両方向)
+|✔ style / alignment / autofit |足す(書式) |表のスタイル・配置・幅の自動調整 — 書式の一件(*済 2026-08-12 夜*: kumihan の Table に style(*名前だけ運ぶ* — 定義は styles.xml の持ち物で、持たない主義のまま)・align・fixed\_layout の欄、ooxml が tblPr の tblStyle / jc / tblLayout を読み書き。本家の enum・スタイルの物("Table Grid" は styleId "TableGrid" に寄せる)も受ける。適合は両方向)
 |table\_direction |作らない |右→左の表(アラビア語系の bidi)— このソフトの的の外。日本語の右横書き・縦書きは kumihan の側で扱う
 |part / table |要らない |
 |===
@@ -320,10 +320,10 @@ App クラスは作らない(下記)。
 
 == 消し込みの順番(2026-08-12 当方の見立て)
 
-. ✔ *互換層の一括*(済 2026-08-12)— openpyxl の口は pysheet/officework/sheet.py (新設。\_sheet を包む純 Python — エンジン無傷)、xlwings の算術は calc.py、python-docx の口は \_doc.py(再輸出から包みに変えた)。適合検査はpysheet/test\_gokan.py — *書きは本家と同じ手順を並べて動かし、結果そのものを突き合わせる*(うちが書いた xlsx を openpyxl が読める・計算済みの値まで見える、うちが書いた docx を python-docx が読める、まで)。python\_smoke.rs が回す。当時の残り3件も**済**(2026-08-13 に実測して確認): merge\_cells(家の作法で結合)・create\_sheet の index 引数(move\_sheet が入った)・Range の options に polars(読み書き両方向)
-. *足すの背骨*(102 件のうち実務で頻出の物から)— *前半済 2026-08-12*: merge の書き(家の作法を sheet::model::ops へ移してアプリと共有)・freeze\_panes・シートの複製/削除/改名(改名は参照が追随 — rename\_sheet\_refs をsheet::model::refs へ移してアプリと共有)/並べ替え。*後半も大方済(2026-08-12)*: add\_image(oneCellAnchor・images の読みつき)・add\_table/add\_row/add\_column(docx。ooxml の tblGrid の穴も塞いだ)・options の polars(読み書き両方向)。*橋の背骨も済(2026-08-12 夕)*: ops::handle に 15 語彙(calculate / selection / select / activate\_sheet / status / to\_pdf / copy\_sheet / delete\_sheet / merges / merge / unmerge / merge\_area / clear / clear\_contents / end)、Host に画面側の口(calc/src/rpc.rs。シートの複製・削除はタブのメニューと同じ関数を picks.rs から切り出して共有)。calc.py の対応する口ごと**実機の calc で検査済み** — tools/hashi\_check.py(ribbon\_sweep.py と対)。追って freeze / sheet\_visible も同日に(語彙は 17 に)。*橋も済(2026-08-13)*: 当時の残り(Book.close・Book.to\_pdf(束ね)・Sheet.autofit / pictures / tables / names / page\_setup・Range.insert / delete・細目(note・hyperlink・group / ungroup・has\_array / formula\_array・height / width / left / top・name / table))を全部入れ、語彙は 45 ほどに。どれも実機の calc で確かめてある。
+. ✔ *互換層の一括*(済 2026-08-12)— openpyxl の API は pysheet/officework/sheet.py (新設。\_sheet を包む純 Python — エンジン無傷)、xlwings の算術は calc.py、python-docx の API は \_doc.py(再輸出から包みに変えた)。適合検査はpysheet/test\_gokan.py — *書きは本家と同じ手順を並べて動かし、結果そのものを突き合わせる*(うちが書いた xlsx を openpyxl が読める・計算済みの値まで見える、うちが書いた docx を python-docx が読める、まで)。python\_smoke.rs が回す。当時の残り3件も**済**(2026-08-13 に実際に動かして確認): merge\_cells(家の作法で結合)・create\_sheet の index 引数(move\_sheet が入った)・Range の options に polars(読み書き両方向)
+. *足すの背骨*(102 件のうち実務で頻出の物から)— *前半済 2026-08-12*: merge の書き(家の作法を sheet::model::ops へ移してアプリと共有)・freeze\_panes・シートの複製/削除/改名(改名は参照が追随 — rename\_sheet\_refs をsheet::model::refs へ移してアプリと共有)/並べ替え。*後半も大方済(2026-08-12)*: add\_image(oneCellAnchor・images の読みつき)・add\_table/add\_row/add\_column(docx。ooxml の tblGrid の穴も塞いだ)・options の polars(読み書き両方向)。*接続の背骨も済(2026-08-12 夕)*: ops::handle に 15 コマンド(calculate / selection / select / activate\_sheet / status / to\_pdf / copy\_sheet / delete\_sheet / merges / merge / unmerge / merge\_area / clear / clear\_contents / end)、Host に画面側の入り口(calc/src/rpc.rs。シートの複製・削除はタブのメニューと同じ関数を picks.rs から切り出して共有)。calc.py の対応する口ごと**実機の calc で検査済み** — tools/hashi\_check.py(ribbon\_sweep.py と対)。追って freeze / sheet\_visible も同日に(コマンドは 17 に)。*接続も済(2026-08-13)*: 当時の残り(Book.close・Book.to\_pdf(束ね)・Sheet.autofit / pictures / tables / names / page\_setup・Range.insert / delete・細目(note・hyperlink・group / ungroup・has\_array / formula\_array・height / width / left / top・name / table))を全部入れ、コマンドは 45 ほどに。どれも実機の calc で確かめてある。
 . ✔ *書式の読み書き*(足す(書式)24 件)— エンジンの fmt に Python から書く道。合否は相手の定義どおり動くか(済 2026-08-12〜13)
-. ✔ *適合テストの移植*(済 2026-08-13)— *本家のテストは配り物に入っていない*(openpyxl は sdist にも無く、公式の置き場も外から引けなかった)。入っていたのはpython-docx の**受け入れ仕様** `features/*.feature` 67本 — Gherkin で「利用者から見た約束」が書いてある。こちらの方が移植の的として上等だった(向こうの単体試験は内部の XML を見るものが多く、うちの作りには当たらない)。その約束をうちの口で確かめる `pysheet/test_shiyou.py` を起こし、python\_smoke.rs の走行に繋いだ。出所は NOTICE.md。openpyxl の側は**本家を実際に動かして突き合わせる** `test_gokan.py` がその役をしている(向こうの試験を写すより強い — 実物の xlsx で照合する)。
+. ✔ *適合テストの移植*(済 2026-08-13)— *本家のテストは配り物に入っていない*(openpyxl は sdist にも無く、公式の置き場も外から引けなかった)。入っていたのはpython-docx の**受け入れ仕様** `features/*.feature` 67本 — Gherkin で「利用者から見た約束」が書いてある。こちらの方が移植の対象として適していた(向こうの単体試験は内部の XML を見るものが多く、うちの作りには当たらない)。その約束をうちの API で確かめる `pysheet/test_shiyou.py` を起こし、python\_smoke.rs の走行に繋いだ。出所は NOTICE.md。openpyxl の側は**本家を実際に動かして突き合わせる** `test_gokan.py` がその役をしている(向こうの試験を写すより強い — 実物の xlsx で照合する)。
 
 === 本家の定義とずれている所(2026-08-13、受け入れ仕様に照らして測った)
 
@@ -333,7 +333,7 @@ App クラスは作らない(下記)。
 
 |指定の無い文字の大きさが往復で焼き付く |直した(2026-08-13) |`Run.size_pt` を `Option<f32>` にして根治(195箇所・5クレート)。読みは `w:sz` の無い run を `None` のまま持ち、書きは `Some` のときだけ `w:sz` を出す。画面・紙は写す瞬間に文書の既定(docDefaults の `w:sz`、無ければ 10.5)で解く。Python の `size_pt` も None を返す — 本家の `font.size` と同じ約束。検査は test\_shiyou.py の「無指定は無指定のまま往復する」
 |太字・下線・寄せが三値でない |設計の違い |本家は None(継承)/ False(明示的にオフ)/ True の三値。うちは「既定値 = 指定なし」の二値で、`<w:b w:val="0"/>`(様式の太字をこの run だけ外す)を表せない。*往復では書き換えない*(既定値は書き出さないので原本のまま)ので実害は無く、当面このまま
-|段落の様式名が `body` / `heading1`(本家は `Normal` / `Heading 1`) |直した |模型の呼び名と docx の名乗り(style\_id と UI 名)が別体系で、*段落から読んだ名前で styles[…] が引けなかった*。照合を緩めて(大小・空白を無視、body↔Normal の対応)どれで引いても同じ様式に当たるようにした
+|段落の様式名が `body` / `heading1`(本家は `Normal` / `Heading 1`) |直した |模型の呼び名と docx の宣言(style\_id と UI 名)が別体系で、*段落から読んだ名前で styles[…] が引けなかった*。照合を緩めて(大小・空白を無視、body↔Normal の対応)どれで引いても同じ様式に当たるようにした
 |`add_paragraph` に `style` が無い |直した |本家は `add_paragraph(text, style)`。受け入れ仕様を検査に起こして見つかった
 |`add_heading` の level 0 と 4〜9 |断る |模型の見出しは3段まで。0(Title)も持たない — 黙って1段目にせず ValueError
 |`add_column(width)` |断る |等分の表に1列だけ幅を持たせると形が決まらない。幅なしで足す道を案内する
@@ -358,9 +358,9 @@ shibutan-bloomers.com の連載(python-docx 第1〜3回・openpyxl 第2〜3回)�
 |`ws[1]`(行番号)・`ws['A']`(列文字)・`ws['A1':'C3']`(スライス)が全部使えない |openpyxl の基本の書き方。A1 の文字列しか受けない |\_\_getitem\_\_ を本家の形(A1・範囲・行番号・列文字・スライス)に広げる(互換層)
 |空セルの `ws['B4']` が None を返す |本家はセルを作って返す約束 — 結合の左上に書く形が全部止まる |触ったら作って返す(値は None)— cell(r, c) と同じに
 |`Section.start_type` が読めない |add\_section は済みだが、読む側の属性が無い |読みを張る(new\_page / continuous)
-|スタイル定義の属性(base\_style・hidden・quick\_style・priority・locked)が無い |第3回の題材そのもの |「名乗りだけの最小定義」をどこまで広げるか — 決めてから
+|スタイル定義の属性(base\_style・hidden・quick\_style・priority・locked)が無い |第3回の題材そのもの |「宣言だけの最小定義」をどこまで広げるか — 決めてから
 |書体の名指しが PDF に効くのは文書ぜんたいの `d.font` だけ |run 単位の `font.name` と表の `Font(name=…)` は docx には入るが、PDF は Noto のまま |run・セルの書体名を PDF の組む所へ届ける(0.5.0b2 の直しの続き)
-|セルの中の richtext(1つのセルの一部だけ赤い太字、の類 — openpyxl 3.1 の CellRichText)を持たない。読みは字だけに均され、**触っていないセルでも保存で飾りが消える**(0.5.0b2 で実測) |様式の注意書き(一部だけ赤)は実務にある |模型のセルの字の値に run の並びを持たせる(kumihan の段落が run を持つのと同じ形)。Python は CellRichText / TextBlock / InlineFont の顔で読み書き
+|セルの中の richtext(1つのセルの一部だけ赤い太字、の類 — openpyxl 3.1 の CellRichText)を持たない。読みは字だけに均され、**触っていないセルでも保存で飾りが消える**(0.5.0b2 で実際に動かして確認) |様式の注意書き(一部だけ赤)は実務にある |模型のセルの字の値に run の並びを持たせる(kumihan の段落が run を持つのと同じ形)。Python は CellRichText / TextBlock / InlineFont の顔で読み書き
 |===
 
 採取の道具: link:../tools/gokan_inventory.py[tools/gokan\_inventory.py]。
