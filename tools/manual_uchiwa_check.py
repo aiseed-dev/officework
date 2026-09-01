@@ -30,6 +30,7 @@ MIRU = [
     "docs/ja/tutorial-calc.adoc",
     "docs/ja/genkou-manual.adoc",
     "docs/ja/api-taiou.adoc",
+    "docs/ja/df-manual.adoc",
     "docs/ja/docx-xlsx-tono-chigai.adoc",
     "docs/ja/writer-manual.adoc",
     "docs/ja/calc-manual.adoc",

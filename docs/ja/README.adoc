@@ -15,6 +15,9 @@
 |link:functions.adoc[関数の一覧](link:../en/functions.adoc[English])
 |数式で使える関数と、その引数を調べる
 
+|link:df-manual.adoc[列で計算する](link:../en/df-manual.adoc[English])
+|数式を1つのセルではなく列に書く。見積書や帳簿のように、どの行も同じ計算をする表で使う
+
 |link:writer-manual.adoc[writer の手引き](link:../en/writer-manual.adoc[English])
 |文書の画面の使い方ぜんぶ
 

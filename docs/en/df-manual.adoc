@@ -1,0 +1,174 @@
+= Calculating by column
+
+_日本語版(secondary): link:../ja/df-manual.adoc[df-manual.adoc]_
+
+*Status: not implemented.* You cannot use this yet. This manual describes
+what is going to be built, and the code will be written from it.
+
+A formula normally belongs to one cell. This booklet describes `df`, which
+lets one formula belong to a whole column. Read it if you keep a table
+where every row is worked out the same way, such as a quotation, an order
+book, or a ledger.
+
+== What it does
+
+You write the formula once, and the column is filled.
+
+Take a sales table with a Price column and a Quantity column. The Amount
+of every row is Price times Quantity. Today you write that formula in one
+cell and copy it down every row. With `df` you write it once.
+
+    =df(Sales[Amount] = Sales[Price] * Sales[Quantity])
+
+The table then has an Amount column.
+
+[cols="2,1,1,1"]
+|===
+|Item |Price |Quantity |Amount
+
+|A4 copier paper |420 |30 |12600
+|Toner |8900 |2 |17800
+|Folder |180 |50 |9000
+|===
+
+Three things follow from writing it once.
+
+You read one formula instead of ten thousand. When the same formula is
+copied into ten thousand cells, a single row that someone edited by hand
+does not stand out. One formula per column is read once and checked once.
+
+Add a row and the column fills itself. You do not copy the formula down
+again.
+
+The formula names the columns instead of the cells. `Sales[Price]` says
+what the value is. `C2` says only where it sits.
+
+== How to write it
+
+The form is one equals sign inside `df`.
+
+    =df(<table>[<column>] = <formula>)
+
+The left side names the table and the column that is being defined. The
+right side is the formula for that column. Inside the formula you refer to
+other columns of any table by the same `<table>[<column>]` form.
+
+You can put the formula in any cell of the sheet. The left side already
+names the table, so the definition reads the same wherever it sits.
+
+== It is a definition, not a write
+
+`=df(Sales[Amount] = Sales[Price] * Sales[Quantity])` says "the Amount of
+Sales is Price times Quantity". It does not copy a value into cells that
+happen to be somewhere else.
+
+This is why the formula can sit anywhere. A cell formula that reaches out
+and overwrites a distant table would be hard to find later. A definition
+belongs to the column it names.
+
+The square bracket form is Excel's structured reference, so it is written
+the way you already know. The one difference is that putting it on the
+left of the equals sign defines the column.
+
+== Several definitions at once
+
+Separate them with commas.
+
+    =df(Sales[Amount] = Sales[Price] * Sales[Quantity],
+        Sales[Tax]    = Sales[Amount] * TaxRate)
+
+Both columns are added to the table.
+
+== Names you define yourself
+
+A value that is not a column can be given a name, and the name can be used
+in the formula.
+
+    =df(TaxRate = 0.1,
+        Sales[Tax] = Sales[Amount] * TaxRate)
+
+This is the same mechanism as Excel's defined names. A defined name can
+also be used in an ordinary cell formula.
+
+== The order of calculation
+
+The order is worked out from what depends on what. It is not the order you
+wrote the definitions in.
+
+    =df(Sales[Tax]    = Sales[Amount] * 0.1,
+        Sales[Amount] = Sales[Price] * Sales[Quantity])
+
+Tax is written first and Amount second, but Tax needs Amount, so Amount is
+calculated first. The answer is the same either way round.
+
+== When it is refused
+
+*The same column defined twice.* If two definitions name `Sales[Amount]`,
+neither is used and the cell shows an error. The message names the column
+and both places, so you can go and delete one.
+
+*A loop.* If Amount needs Tax and Tax needs Amount, the cell shows an
+error. The message names the columns in the order they depend on each
+other, so you can read where the loop closes.
+
+*A table or column that does not exist.* The cell shows an error naming
+the part that was not found.
+
+Error messages name columns, not cell addresses. `Sales[Amount]` is the
+thing you wrote, so it is the thing the message talks about.
+
+== What a formula can hold
+
+A formula has four kinds of value: a single value, a column, a table, and
+a function. There is one rule for how they fit together. *Any value a
+function returns can be an argument to any other function.*
+
+This is why `df` returns the table it defined, and why that table can be
+passed straight into another function. There is no step where you have to
+flatten a table before something else will take it.
+
+== The same thing in Python
+
+A definition becomes one `with_columns` call, one for one.
+
+[source,python]
+----
+import polars as pl
+
+売上 = pl.DataFrame({
+    "Item": ["A4 copier paper", "Toner", "Folder"],
+    "Price": [420, 8900, 180],
+    "Quantity": [30, 2, 50],
+})
+売上 = 売上.with_columns((pl.col("Price") * pl.col("Quantity")).alias("Amount"))
+----
+
+A defined name becomes an ordinary Python variable.
+
+[source,python]
+----
+TaxRate = 0.1
+売上 = 売上.with_columns((pl.col("Amount") * TaxRate).alias("Tax"))
+----
+
+The whole sheet is a set of "name = formula" and "table[column] = formula"
+definitions, and the order they run in comes from the dependencies alone.
+That is the spreadsheet's own way of recalculating, widened from cells to
+columns and names.
+
+== Two things not settled yet
+
+*Running totals inside a formula.* A ledger has a balance column, which is
+the running total of the amounts above it. Which summaries can appear
+inside a `df` formula, and how they are written, is not decided.
+
+*Looking a value up in another table.* Writing
+`Journal[AccountName] = Accounts[Name]` needs a rule for which key joins
+the two tables. That rule is not decided.
+
+Both will be settled against the ledger sample when it is built.
+
+== Related manuals
+
+* link:functions.adoc[Functions] — the functions you can use in a formula
+* link:python-manual.adoc[Python manual] — reading and writing from a program
