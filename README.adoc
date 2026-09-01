@@ -241,12 +241,16 @@ See link:docs/engine.adoc[the engine page] for the recipe and for exactly what i
 
 When you open a received xlsx or docx and write it back, the engine's policy is to rewrite only what you changed. Parts it recognises as unreadable are listed in `unsupported`, as far as it can tell.
 
+The aim is a single one: *what Word or Excel shows is what comes out — in the app, on paper (PDF), and on the Web.* A goal rather than a promise; the way there is measurement — real government forms rendered by officework, compared against the office's own PDF published next to them, one discrepancy at a time.
+
+The code below runs *as pasted*, against the sample/ folder of this repository.
+
 [source,python]
 ----
 from officework import sheet
 
-b = sheet.Book.open("form7.xlsx")
-b["Sheet1"]["A30"] = "Sample Trading Co., Ltd."   # only the value is rewritten
+b = sheet.Book.open("sample/見積書.xlsx")
+b["見積書"]["A3"] = "株式会社みほん工業 御中"   # the addressee; only the value changes
 b.save("out.xlsx")     # the xlsx to send on
 b.save("quote.pdf")    # the same content, straight to paper
 ----
@@ -257,10 +261,9 @@ The same applies to docx. `python-docx` rewrites the parts of a file it does not
 ----
 from officework import doc
 
-d = doc.Doc.open("report.docx")
-d.replace("Old Name Ltd.", "New Name Ltd.")   # formatting inside the paragraph is left alone
-d.fill("customer", "Sample Trading K.K.")  # fill a named form field (named in writer)
-d.save("report.pdf")               # the filled-in result, straight to paper
+d = doc.Doc.open("sample/報告書.docx")
+d.replace("業務", "作業")          # replace; formatting inside the paragraph is left alone
+d.save("report.pdf")               # the edited result, straight to paper
 ----
 
 `replace()` is the one to reach for when filling in a form: it keeps each run's formatting, so a bold field label next to a plain value stays that way.
