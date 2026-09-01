@@ -1886,6 +1886,37 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
                 (x, y_top - h / 2.0),
             ],
             "line" => vec![(x, y_top), (x + w, y_top - h)],
+            // **かっこ**(2026-09-01 発注者)。国税庁の酒税の様式が行の
+            // まとまりに使います。画面([`book::SheetShape::to_svg`])は
+            // 弧4つと縦線2本で描いていて、紙だけが直線1本でした。
+            // 同じ形にします — つまみの位置(`avLst` の adj)は読まず、
+            // 真ん中の既定です
+            "leftBrace" | "rightBrace" => {
+                let r = (w / 2.0).min(h / 4.0);
+                let cx = x + w / 2.0;
+                let cy = y_top - h / 2.0;
+                let (e, tip) = if sp.kind == "leftBrace" { (x + w, x) } else { (x, x + w) };
+                // 弧は四分円。画面と同じ数(12)に刻みます
+                let ko = |from: (f32, f32), c: (f32, f32), to: (f32, f32),
+                          out: &mut Vec<(f32, f32)>| {
+                    for k in 1..=12 {
+                        let t = k as f32 / 12.0;
+                        let u = 1.0 - t;
+                        out.push((
+                            u * u * from.0 + 2.0 * u * t * c.0 + t * t * to.0,
+                            u * u * from.1 + 2.0 * u * t * c.1 + t * t * to.1,
+                        ));
+                    }
+                };
+                let mut v = vec![(e, y_top)];
+                ko((e, y_top), (cx, y_top), (cx, y_top - r), &mut v);
+                v.push((cx, cy + r));
+                ko((cx, cy + r), (cx, cy), (tip, cy), &mut v);
+                ko((tip, cy), (cx, cy), (cx, cy - r), &mut v);
+                v.push((cx, y_top - h + r));
+                ko((cx, y_top - h + r), (cx, y_top - h), (e, y_top - h), &mut v);
+                v
+            }
             // 縦棒・勝ち負け: 棒ごとに閉じた長方形を落とす(紙も棒で)
             "spark-col" | "spark-wl" => {
                 let n = sp.points.len().max(1) as f32;
@@ -1956,7 +1987,8 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
             // 閉じるかどうか。**`path` は塗りがあるときだけ閉じます** —
             // 塗らない折れ線を閉じると、終点から始点へ1本余計に引かれます
             // (2026-08-27 に折れ線の図を紙で見て気づきました)
-            "line" | "spark" | "ink" | "marker" => false,
+            // かっこは閉じません(開いた線の形です)
+            "line" | "spark" | "ink" | "marker" | "leftBrace" | "rightBrace" => false,
             "path" => sp.fill.is_some(),
             _ => true,
         };
