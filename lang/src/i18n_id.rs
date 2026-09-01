@@ -690,7 +690,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("editing_formula_bar_enter", "Edit di bilah rumus: Enter untuk konfirmasi / Esc untuk batal"),
     ("insert_function", "Sisipkan fungsi"),
     ("type_filter", "(ketik untuk menyaring)"),
-    ("next", "Berikutnya"),
     ("function_arguments", "Argumen fungsi"),
     ("function_result", "Hasil fungsi = {}"),
     ("click_cell_insert_reference", "Klik sel untuk memasukkan referensi ke bidang saat ini"),
@@ -2129,4 +2128,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fit_width_contents", "Sesuaikan lebar dengan isi"),
     ("fit_height_contents", "Sesuaikan tinggi dengan isi"),
     ("group_menu", "Kelompokkan"),
+    ("function_search", "Cari fungsi"),
+    ("function_category", "Kategori"),
+    ("function_name", "Nama fungsi"),
 ];

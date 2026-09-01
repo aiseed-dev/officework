@@ -2370,6 +2370,7 @@ impl Calc {
                     search: Editor::new(""),
                     group: 0,
                     sel: 0,
+                    open: false,
                 });
                 self.status =
                     ui::t!("insert_function_type_filter").into();

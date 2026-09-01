@@ -6362,7 +6362,8 @@ mod svg_save_tests {
             let two = this.shapes_svg(&[0, 1]);
             assert_eq!(two.matches("<svg").count(), 1, "svg が2枚ある: {two}");
             assert_eq!(two.matches("</svg>").count(), 1);
-            assert!(two.matches("<rect").count() >= 2, "図形が1つしか入っていない: {two}");
+            // rect も定義データから点の列(polygon)で描くようになった
+            assert!(two.matches("<polygon").count() >= 2, "図形が1つしか入っていない: {two}");
             // 束の外接に合わせて広がる(1つぶんより大きい)
             let w1 = this.sheet().shapes_new[0].width_px;
             let w = two
@@ -8346,6 +8347,24 @@ mod file_menu_tests {
             this.fl_job = None;
             this.right_face = 0;
             assert!(!this.fl_takes_keys(), "ファイルの面でないのに効いている");
+        });
+    }
+
+    #[gpui::test]
+    fn the_insert_function_dialog_opens_in_the_classic_shape(cx: &mut gpui::TestAppContext) {
+        // 関数の挿入は本家の伝統の形(2026-09-02 発注者「よく使う
+        // ところなので、伝統的な Excel に合わせて」): 検索・分類の
+        // 引き出し・関数名の一覧・OK。画面なしで開きと持ち物を見張る
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.run_cmd("insert-function", cx);
+            let d = this.fn_dlg.as_ref().expect("小窓が開かない");
+            assert_eq!(d.group, 0, "分類が「すべて」で始まらない");
+            assert!(!d.open, "分類の引き出しが開いた状態で出た");
+            // 選んだ関数で OK → 第2段(関数の引数)へ進む
+            this.fn_next();
+            assert!(this.fn_dlg.is_none(), "第1段が閉じていない");
+            assert!(this.fn_args.is_some(), "第2段(関数の引数)が出ていない");
         });
     }
 

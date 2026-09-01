@@ -690,7 +690,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("editing_formula_bar_enter", "在資料編輯列中編輯:Enter 確定 / Esc 取消"),
     ("insert_function", "插入函數"),
     ("type_filter", "(輸入以篩選)"),
-    ("next", "下一步"),
     ("function_arguments", "函數引數"),
     ("function_result", "函數結果 = {}"),
     ("click_cell_insert_reference", "按一下儲存格即可在目前欄位中輸入參照"),
@@ -2129,4 +2128,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fit_width_contents", "寬度符合內容"),
     ("fit_height_contents", "高度符合內容"),
     ("group_menu", "群組"),
+    ("function_search", "搜尋函數"),
+    ("function_category", "類別"),
+    ("function_name", "函數名稱"),
 ];

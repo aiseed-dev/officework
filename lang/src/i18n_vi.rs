@@ -690,7 +690,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("editing_formula_bar_enter", "Chỉnh sửa trên thanh công thức: Enter để xác nhận / Esc để hủy"),
     ("insert_function", "Chèn hàm"),
     ("type_filter", "(gõ để lọc)"),
-    ("next", "Tiếp theo"),
     ("function_arguments", "Đối số của hàm"),
     ("function_result", "Kết quả của hàm = {}"),
     ("click_cell_insert_reference", "Nhấp vào ô để chèn tham chiếu vào trường hiện tại"),
@@ -2129,4 +2128,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fit_width_contents", "Vừa độ rộng với nội dung"),
     ("fit_height_contents", "Vừa chiều cao với nội dung"),
     ("group_menu", "Nhóm"),
+    ("function_search", "Tìm kiếm hàm"),
+    ("function_category", "Thể loại"),
+    ("function_name", "Tên hàm"),
 ];

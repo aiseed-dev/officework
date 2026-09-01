@@ -690,7 +690,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("editing_formula_bar_enter", "Правка в строке формул: Enter — подтвердить / Esc — отмена"),
     ("insert_function", "Вставка функции"),
     ("type_filter", "(набирайте для фильтрации)"),
-    ("next", "Далее"),
     ("function_arguments", "Аргументы функции"),
     ("function_result", "Результат функции = {}"),
     ("click_cell_insert_reference", "Щелчок по ячейке вставляет ссылку в текущее поле"),
@@ -2129,4 +2128,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fit_width_contents", "Подогнать ширину под содержимое"),
     ("fit_height_contents", "Подогнать высоту под содержимое"),
     ("group_menu", "Сгруппировать"),
+    ("function_search", "Поиск функции"),
+    ("function_category", "Категория"),
+    ("function_name", "Имя функции"),
 ];

@@ -690,7 +690,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("editing_formula_bar_enter", "Formül çubuğunda düzenleme: Enter = onayla / Esc = iptal"),
     ("insert_function", "İşlev ekle"),
     ("type_filter", "(yazdıkça daralır)"),
-    ("next", "İleri"),
     ("function_arguments", "İşlev bağımsız değişkenleri"),
     ("function_result", "İşlev sonucu = {}"),
     ("click_cell_insert_reference", "Bir hücreye tıklayınca geçerli alana başvuru eklenir"),
@@ -2129,4 +2128,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fit_width_contents", "Genişliği içeriğe sığdır"),
     ("fit_height_contents", "Yüksekliği içeriğe sığdır"),
     ("group_menu", "Grupla"),
+    ("function_search", "İşlev ara"),
+    ("function_category", "Kategori"),
+    ("function_name", "İşlev adı"),
 ];

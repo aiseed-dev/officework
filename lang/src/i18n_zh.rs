@@ -690,7 +690,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("editing_formula_bar_enter", "在公式栏中编辑:Enter 确认 / Esc 取消"),
     ("insert_function", "插入函数"),
     ("type_filter", "(输入以筛选)"),
-    ("next", "下一步"),
     ("function_arguments", "函数参数"),
     ("function_result", "函数结果 = {}"),
     ("click_cell_insert_reference", "点击单元格即可在当前栏中输入引用"),
@@ -2129,4 +2128,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fit_width_contents", "宽度适应内容"),
     ("fit_height_contents", "高度适应内容"),
     ("group_menu", "组合"),
+    ("function_search", "搜索函数"),
+    ("function_category", "类别"),
+    ("function_name", "函数名"),
 ];

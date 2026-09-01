@@ -690,7 +690,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("editing_formula_bar_enter", "数式バーで編集: Enter で確定 / Esc で取消"),
     ("insert_function", "関数の挿入"),
     ("type_filter", "(打つと絞り込み)"),
-    ("next", "次へ"),
     ("function_arguments", "関数の引数"),
     ("function_result", "関数の結果 = {}"),
     ("click_cell_insert_reference", "セルをクリックすると、いまの欄に参照が入ります"),
@@ -2129,4 +2128,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fit_width_contents", "幅を中身に合わせる"),
     ("fit_height_contents", "高さを中身に合わせる"),
     ("group_menu", "グループ化"),
+    ("function_search", "関数の検索"),
+    ("function_category", "関数の分類"),
+    ("function_name", "関数名"),
 ];

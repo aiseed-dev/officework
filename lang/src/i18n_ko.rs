@@ -690,7 +690,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("editing_formula_bar_enter", "수식 입력줄에서 편집: Enter로 확정 / Esc로 취소"),
     ("insert_function", "함수 삽입"),
     ("type_filter", "(입력하면 좁혀집니다)"),
-    ("next", "다음"),
     ("function_arguments", "함수 인수"),
     ("function_result", "함수 결과 = {}"),
     ("click_cell_insert_reference", "셀을 클릭하면 현재 입력란에 참조가 입력됩니다"),
@@ -2129,4 +2128,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fit_width_contents", "너비를 내용에 맞춤"),
     ("fit_height_contents", "높이를 내용에 맞춤"),
     ("group_menu", "그룹화"),
+    ("function_search", "함수 검색"),
+    ("function_category", "범주"),
+    ("function_name", "함수 이름"),
 ];

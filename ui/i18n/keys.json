@@ -2752,10 +2752,6 @@
   "kind": "msg"
  },
  {
-  "key": "next",
-  "kind": "msg"
- },
- {
   "key": "function_arguments",
   "kind": "msg"
  },
@@ -9101,6 +9097,18 @@
  },
  {
   "key": "group_menu",
+  "kind": "msg"
+ },
+ {
+  "key": "function_search",
+  "kind": "msg"
+ },
+ {
+  "key": "function_category",
+  "kind": "msg"
+ },
+ {
+  "key": "function_name",
   "kind": "msg"
  }
 ]

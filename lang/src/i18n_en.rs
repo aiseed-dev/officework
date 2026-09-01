@@ -690,7 +690,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("editing_formula_bar_enter", "Editing in the formula bar: Enter to confirm / Esc to cancel"),
     ("insert_function", "Insert function"),
     ("type_filter", "(type to filter)"),
-    ("next", "Next"),
     ("function_arguments", "Function arguments"),
     ("function_result", "Function result = {}"),
     ("click_cell_insert_reference", "Click a cell to insert a reference into the current field"),
@@ -2129,4 +2128,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fit_width_contents", "Fit the width to the contents"),
     ("fit_height_contents", "Fit the height to the contents"),
     ("group_menu", "Group"),
+    ("function_search", "Search for a function"),
+    ("function_category", "Category"),
+    ("function_name", "Function name"),
 ];

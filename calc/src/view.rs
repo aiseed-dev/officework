@@ -920,6 +920,7 @@ impl Render for Calc {
                            search: Editor::new(""),
                            group: 0,
                            sel: 0,
+                           open: false,
                        });
                        cx.notify();
                    }))
@@ -2535,36 +2536,55 @@ impl Render for Calc {
             let mut search_t = d.search.text().to_string();
             let cur = d.search.cursor().min(search_t.len());
             search_t.insert(cur, '|');
-            let mut chips = div().flex().flex_row().flex_wrap().gap_1();
-            for (gi, g) in FN_GROUPS.iter().enumerate() {
-                let on = gi == d.group;
-                chips = chips.child(div()
-                    .id(SharedString::from(format!("fng{gi}")))
-                    .px_2().py_0p5().rounded_sm().text_size(px(us * 11.5))
-                    .border_1()
-                    .border_color(if on { rgb(0x1B6E3C) } else { rgb(0xC6CDD3) })
-                    .bg(if on { rgb(0xE4EFE8) } else { rgb(0xFFFFFF) })
-                    .text_color(if on { rgb(0x1B6E3C) } else { rgb(0x66707A) })
-                    .cursor_pointer()
-                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
-                        cx.stop_propagation();
-                        if let Some(d) = &mut this.fn_dlg {
-                            d.group = gi;
-                            d.sel = 0;
-                        }
-                        cx.notify();
-                    }))
-                    .child(SharedString::from(fn_group_label(g)))); 
-            }
+            // 分類は本家と同じ引き出し。開いている間は下の一覧の箱に
+            // 分類を出す(重ね描きの順に頼らない)
+            let cat_head = div().id("fn-cat").flex_1().px_2().py_0p5()
+                .border_1().border_color(rgb(0xC6CDD3)).rounded_sm().bg(rgb(0xFFFFFF))
+                .cursor_pointer().text_size(px(us * 12.5))
+                .flex().flex_row().items_center()
+                .child(div().flex_1().child(SharedString::from(
+                    fn_group_label(FN_GROUPS[d.group.min(FN_GROUPS.len() - 1)]))))
+                .child(div().text_size(px(us * 10.0)).text_color(rgb(0x66707A))
+                    .child(if d.open { "▲" } else { "▼" }))
+                .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                    cx.stop_propagation();
+                    if let Some(d) = &mut this.fn_dlg {
+                        d.open = !d.open;
+                    }
+                    cx.notify();
+                }));
             let start = sel.saturating_sub(5);
             let mut lst = div().flex().flex_col().h(px(252.0)).overflow_hidden()
                 .border_1().border_color(rgb(0xC6CDD3)).rounded_sm().bg(rgb(0xFFFFFF));
-            if list.is_empty() {
+            if d.open {
+                for (gi, g) in FN_GROUPS.iter().enumerate() {
+                    let on = gi == d.group;
+                    lst = lst.child(div()
+                        .id(SharedString::from(format!("fng{gi}")))
+                        .px_2().py_0p5().text_size(px(us * 12.5)).flex_none()
+                        .bg(if on { rgb(0xE4EFE8) } else { rgb(0xFFFFFF) })
+                        .text_color(rgb(0x1B1B1B))
+                        .cursor_pointer()
+                        .hover(|s| s.bg(rgb(0xF0F4F1)))
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(
+                            move |this, _, _, cx| {
+                                cx.stop_propagation();
+                                if let Some(d) = &mut this.fn_dlg {
+                                    d.group = gi;
+                                    d.sel = 0;
+                                    d.open = false;
+                                }
+                                cx.notify();
+                            }))
+                        .child(SharedString::from(fn_group_label(g))));
+                }
+            } else if list.is_empty() {
                 lst = lst.child(div().px_2().py_1().text_size(px(us * 12.5))
                     .text_color(rgb(0x66707A))
                     .child(ui::t!("no_function_matches")));
             }
-            for (i, f) in list.iter().enumerate().skip(start).take(11) {
+            for (i, f) in list.iter().enumerate().skip(start).take(11)
+                .filter(|_| !d.open) {
                 let on = i == sel;
                 lst = lst.child(div()
                     .id(SharedString::from(format!("fnr{i}")))
@@ -2615,23 +2635,31 @@ impl Render for Calc {
                                 this.fn_dlg = None;
                                 cx.notify();
                             }))))
-                    .child(div().px_2().py_1().bg(rgb(0xFFFFFF))
-                        .border_1().border_color(rgb(0xC6CDD3)).rounded_sm()
-                        .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
-                        .child(SharedString::from(if search_t == "|" {
-                            format!("|{}", ui::t!("type_filter"))
-                        } else {
-                            search_t
-                        })))
-                    .child(chips)
+                    .child(div().flex().flex_row().items_center().gap_1()
+                        .child(div().flex_none().w(px(96.0)).text_size(px(us * 12.0))
+                            .text_color(rgb(0x4A545E)).child(ui::t!("function_search")))
+                        .child(div().flex_1().px_2().py_1().bg(rgb(0xFFFFFF))
+                            .border_1().border_color(rgb(0xC6CDD3)).rounded_sm()
+                            .text_size(px(us * 12.5)).whitespace_nowrap().overflow_hidden()
+                            .child(SharedString::from(if search_t == "|" {
+                                format!("|{}", ui::t!("type_filter"))
+                            } else {
+                                search_t
+                            }))))
+                    .child(div().flex().flex_row().items_center().gap_1()
+                        .child(div().flex_none().w(px(96.0)).text_size(px(us * 12.0))
+                            .text_color(rgb(0x4A545E)).child(ui::t!("function_category")))
+                        .child(cat_head))
+                    .child(div().text_size(px(us * 12.0)).text_color(rgb(0x4A545E))
+                        .child(ui::t!("function_name")))
                     .child(lst)
                     .child(div().text_size(px(us * 12.5)).font_weight(gpui::FontWeight::BOLD)
                         .child(SharedString::from(syntax)))
                     .child(div().text_size(px(us * 11.5)).text_color(rgb(0x4A545E))
                         .min_h(px(48.0))
                         .child(SharedString::from(desc)))
-                    .child(div().flex().flex_row().gap_2().justify_center()
-                        .child(btn("fn-next", ui::t!("next").to_string(), true)
+                    .child(div().flex().flex_row().gap_2().justify_end()
+                        .child(btn("fn-next", ui::t!("ok").to_string(), true)
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
                                 cx.stop_propagation();
                                 this.fn_next();
@@ -2741,6 +2769,7 @@ impl Render for Calc {
                                     search: Editor::new(""),
                                     group: 0,
                                     sel: 0,
+                                    open: false,
                                 });
                                 cx.notify();
                             })))

@@ -390,6 +390,8 @@ pub(crate) struct FnDlg {
     pub(crate) group: usize,
     /// 絞り込み後の一覧の中の選択
     pub(crate) sel: usize,
+    /// 分類の引き出しが開いているか(本家と同じ形の選び方)
+    pub(crate) open: bool,
 }
 
 /// 分類のタブ。「すべて」+ funcs.rs の分類。**日本語のまま持つ** —
