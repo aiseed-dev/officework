@@ -202,6 +202,21 @@ draft_of = """= {label}
 """
 
 
+def annai(q, honmono):
+    """その頁が、説明のある頁への案内かどうか。
+
+    同じ名前の頁が表にあり(段が違うだけ)、そこへのリンクを持っていれば
+    案内です。リンクが指す先が本物として数えられていることまで確かめます —
+    字だけ合っていて行き先が無い頁は、案内ではなく消し忘れです。
+    """
+    text = q.read_text(encoding="utf-8")
+    for rel in re.findall(r"link:([^\[]+)\[", text):
+        saki = (q.parent / rel).resolve()
+        if saki != q.resolve() and saki in honmono and saki.stem == q.stem:
+            return True
+    return False
+
+
 def main() -> int:
     r = list()
     missing = [x for x in r if not x[4].exists()]
@@ -293,8 +308,14 @@ def main() -> int:
             print(f"  {k:<8} {numbers[k]} 枚")
     # 表から消えたのに残っている枚。まとめ直した後の後片づけに要ります
     needed = {x[4].resolve() for x in r}
+    # **案内の頁は残ります。** 同じボタンが2つの段にあるとき、説明は1枚に
+    # まとめて、もう一方の段には「あちらを見てください」の頁を置いています。
+    # 画面には本当に両方あるので、押した段のフォルダを見た人が行き止まりに
+    # ならないためです。表の行は1つなので、これを消せと言っていました
+    honmono = {x[4].resolve() for x in r}
     remainder = [q for q in sorted(SAKI.rglob("*.adoc"))
-            if q.name != "README.adoc" and q.resolve() not in needed]
+            if q.name != "README.adoc" and q.resolve() not in needed
+            and not annai(q, honmono)]
     if remainder:
         print(f"\n表に無い手引きが {len(remainder)} 枚あります(消してください):")
         for q in remainder:
