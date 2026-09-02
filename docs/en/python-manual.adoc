@@ -284,7 +284,7 @@ If the font named in the file is present, it is used; otherwise the machine's st
 Paper starts as A4 with 20 mm margins in every language; change it per section if you need to.
 
 The file that changes the defaults themselves is `~/.config/officework/テンプレート.toml` (this machine's standard).
-The app reads it; Python's `save("x.pdf")` path *does not read it yet* — the same limit as the second item below.
+The app reads it; Python's `save("x.pdf")` path *does not read it yet*. This is the same limit as the second item below.
 When a named font is not installed on the machine, the engine substitutes the machine's standard font rather than raising an error, judging only the family — mincho-like names go to the standard mincho, gothic to gothic, monospace to monospace.
 
 The chosen font may still lack characters the document uses; the English default font has no kana, for example. In that case the engine picks a font that covers every character in the document, keeping the same family (serif stays serif).
@@ -293,7 +293,7 @@ The chosen font may still lack characters the document uses; the English default
 
 Body reading covers paragraphs and tables (sections are separate under `d.sections`, comments under `d.comments`, inline pictures under `d.inline_shapes`).
 
-Footnotes and equations are *listed in `d.unsupported` yet survive save* — the report's own wording says so ("kept on save").
+Footnotes and equations are *listed in `d.unsupported` yet survive save*. The report's own wording says so ("kept on save").
 Read `unsupported` as the record of what could not be _read in full_, not of what was thrown away.
 
 Existing equations do not appear in the body text (they are carried through verbatim). *To write a new equation, use `officework.tex`* (section below) — it takes LaTeX, typesets a picture, and stores the source alongside it.

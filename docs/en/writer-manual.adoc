@@ -170,7 +170,7 @@ Denden-markdown `{漢字|かんじ}` in .md files is also read.
 
 == Paragraph formatting (Home)
 
-* Alignment: left, center, right, justified, and *distributed* — unlike justified, it spreads spacing *through the last line* (the shape used for labels that must fill the column in Japanese forms; stored as `w:jc distribute`)
+* Alignment: left, center, right, justified, and *distributed*. Unlike justified, it spreads spacing *through the last line* (the shape used for labels that must fill the column in Japanese forms; stored as `w:jc distribute`)
 * Bulleted and numbered lists (levels via Tab / Shift+Tab), indent, line spacing (1.0→1.5→2.0), page-break-before, background color, borders, drop caps
 * Toggle display of hidden characters
 
@@ -230,14 +230,14 @@ The status line says how many pictures were made.
 
 Edited in a dialog (shared by all pages).
 Page number and page count go in as placeholders and become real numbers on paper (PDF).
-The date is inserted as *fixed text* at insertion time (not a field that changes every time the file is opened — a classic source of clerical accidents).
+The date is inserted as *fixed text* at insertion time (not a field that changes every time the file is opened, which is a classic source of clerical accidents).
 
 == HTML — reading and filling in, without JavaScript
 
 *Read, fill in, and print web documents in writer.*
 
 * *Open*: an .html file, or File > *Open URL* (http/https). Headings, paragraphs, lists, tables, images, ruby, and forms are typeset onto the page — unreadable elements go to the report. Links are followed *only within the origin host*
-* *JavaScript is never executed* (it is skipped and noted in the report). Pages that require JS won't work — and the app says so
+* *JavaScript is never executed* (it is skipped and noted in the report). Pages that require JS won't work, and the app says so
 * *Filling and submitting*: form fields (input / select / textarea) become form fields; submit is a plain GET / POST round trip. The response becomes a page again
 * *In-page Python* (`<script type="py">`) is *never run on open*. It runs only on explicit command, inside the same sandbox as Python in Calc
 * Opened HTML can be saved as docx and printed as PDF (we don't save HTML — compatibility stops at the format boundary)

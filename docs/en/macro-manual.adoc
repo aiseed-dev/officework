@@ -109,7 +109,7 @@ When a form repeats the same label, distinguish with sectioned names like `rep.a
 
 All of them *refuse loudly on an unknown name* — a typo never becomes a silent no-op.
 
-*Never scan for a label's text and write into the neighbouring cell* — merged cells return the same cell twice, distributed justification inserts spaces into labels, and repeated labels hit the wrong target. Names exist so you never have to.
+*Never scan for a label's text and write into the neighbouring cell.* Merged cells return the same cell twice. Distributed justification inserts spaces into labels. Repeated labels hit the wrong target. Names exist so you never have to.
 
 === Templates — mass-produced one-way documents
 

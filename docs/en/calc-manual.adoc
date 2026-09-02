@@ -223,7 +223,7 @@ Names are alphanumeric plus `_` (must not look like a cell reference) and can be
 * *Sort*: by column, ascending/descending. The header row stays put
 * *Remove duplicates* (Data): shows the count before deleting
 * *Text to data* (Data): pours CSV/TSV in at the cursor. Encoding (including CP932) and delimiter are auto-detected
-* *External links* (Data): imports another workbook's values *as values*. No live links — we don't create forms that break when a link dies
+* *External links* (Data): imports another workbook's values *as values*. No live links, so a form cannot break when a link dies
 * *Goal seek* (Data)
 * *Solver* (Data): the same "Solver parameters" dialog as ONLYOFFICE — target cell (max/min/value), variable cells (a range or comma-separated, up to 64), constraints (cell / <= = >= / number or cell), then "Solve". The method is *simplex LP* (backed by scipy). Coefficients are measured on a copy of the sheet, and *nonlinear problems are refused* (as in the original). The solution lands in the variable cells; one Ctrl+Z restores
 * *Subtotals* (Data): select a table with headings and it asks for the grouping column (e.g. department) → columns to total (empty Enter = every numeric column). Inserts "〜 小計" (=SUM) rows per group and a grand total at the end, and groups *only the detail rows*. *Collapse to show just the subtotals and grand total.* They're formulas, so edits flow through. Sort first to bring groups together (as in Excel). All of it is one Ctrl+Z

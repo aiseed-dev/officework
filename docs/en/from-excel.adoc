@@ -49,7 +49,7 @@ For details see "The screen" and "Basics" in the link:calc-manual.adoc[calc manu
 
 == Entering data and formatting
 
-The finer points of cell formatting (borders, fills, text alignment, wrapping, vertical text and so on) are still thinly compared against Excel's help — see "Sections still to fill" at the end.
+The finer points of cell formatting (borders, fills, text alignment, wrapping, vertical text and so on) are covered in "Cell formatting basics".
 What's here is only what has been verified.
 
 [cols="1,1,1"]
@@ -147,7 +147,7 @@ For details see the link:calc-manual.adoc[calc manual].
 == Number precision and the traps of typing
 
 The container for numbers is a single f64; we don't apply Excel's cosmetic of "cutting at fifteen significant digits".
-In exchange, *we don't guess at what you typed either* — nothing turns into a date, but by the same token neither a leading `'` nor a text number format changes how input is read.
+In exchange, *we don't guess at what you typed either*. Nothing turns into a date, but by the same token neither a leading `'` nor a text number format changes how input is read.
 With the protective tools this thin, work that needs a number held exactly as text is, for now, something we are bad at.
 For number formats, see "Formatting" in the link:calc-manual.adoc[calc manual].
 
@@ -378,7 +378,7 @@ See "Data" in the link:calc-manual.adoc[calc manual].
 
 == Consolidation and the analysis tools
 
-Excel has three answers here: the Consolidate dialog, the data model (Power Pivot), and the Analysis ToolPak. *officework's answer to all three is polars (Python)* — no analysis engine rides inside the workbook; joins, aggregation and statistical tests are the job of Data > Python or of a procedure in plugins.
+Excel has three answers here: the Consolidate dialog, the data model (Power Pivot), and the Analysis ToolPak. *officework's answer to all three is polars (Python)*. No analysis engine rides inside the workbook; joins, aggregation and statistical tests are the job of Data > Python or of a procedure in plugins.
 The report is where results land; the heavy data and the hard arithmetic stay outside it.
 See the link:python-manual.adoc[Python manual].
 
@@ -425,7 +425,7 @@ See the link:python-manual.adoc[Python manual].
 
 == Conditional formatting
 
-The rule types we support round-trip through xlsx; the ones we cannot read are *reported when the file opens, then dropped* — never silently.
+The rule types we support round-trip through xlsx; the ones we cannot read are *reported when the file opens, then dropped*. They are never dropped silently.
 The formatting we apply ourselves is fixed (pale green, pale red and the like); there is no format-picker dialog.
 
 [cols="1,1,1"]
