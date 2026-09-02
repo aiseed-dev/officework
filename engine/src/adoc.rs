@@ -1004,6 +1004,19 @@ fn vendor_only_syntax(l: &str) -> Option<(&'static str, &'static str)> {
     if ts.starts_with("include::") {
         return Some(("取り込み(include::)", "取り込み"));
     }
+    // 条件の行(`ifdef::属性[]` `ifndef::` `ifeval::` `endif::`)
+    if ["ifdef::", "ifndef::", "ifeval::", "endif::"].iter().any(|h| ts.starts_with(h)) {
+        return Some(("条件の行(ifdef::)", "条件"));
+    }
+    // 本文の途中の属性の項目(`:名前: 値`)。頭の外でも本家は受けます
+    if let Some(rest) = ts.strip_prefix(':') {
+        if let Some((k, _)) = rest.split_once(':') {
+            let k = k.strip_suffix('!').unwrap_or(k);
+            if !k.is_empty() && k.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+                return Some(("属性の項目(:名前: 値)", "属性の項目"));
+            }
+        }
+    }
     // **作業のリスト**(`* [ ] やること`)。**段も見ます** —
     // 2026-08-25 まで1段目しか拾わず、`** [ ]` は普通の箇条書きになって
     // `[ ]` が字として残っていました。`- [ ]`(Markdown の書き方)も
@@ -1100,8 +1113,9 @@ fn is_dash_bullet(l: &str) -> Option<&str> {
 /// マクロ(`名前:対象[…]`)と紛れないよう `:: ` を見ます
 fn is_labelled(l: &str) -> bool {
     let ts = l.trim_start();
+    // 項目には空白が入ってよい(`Backend names:: …`。本家の作法。2026-09-02)
     match ts.find(":: ") {
-        Some(i) => i > 0 && !ts[..i].contains(' ') && !ts[..i].contains('['),
+        Some(i) => i > 0 && !ts[..i].contains('[') && !ts[..i].ends_with(':'),
         None => false,
     }
 }
@@ -1318,6 +1332,16 @@ fn split_docs(src: &str) -> Vec<String> {
     out
 }
 
+/// 覚え書きの行の次(覚え書きは飛ばす)が `= 題` か `:名前: 値` か
+fn next_is_head(lines: &std::iter::Peekable<std::iter::Enumerate<std::str::Lines<'_>>>) -> bool {
+    lines
+        .clone()
+        .map(|(_, l)| l.trim_end())
+        .skip(1)
+        .find(|l| !l.starts_with("//"))
+        .is_some_and(|l| l.starts_with("= ") || (l.starts_with(':') && l[1..].contains(':')))
+}
+
 /// `[discrete]` の次(空行は飛ばす)が `= 題` か。
 fn next_is_title(line: &[&str], at: usize) -> bool {
     line[at + 1..]
@@ -1357,6 +1381,8 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     // 印を付けるために要ります(印が無いと書き戻しで空行が消えて、
     // 別々の一覧が1つに繋がります)
     let mut prev_is_desc_list = false;
+    // 字下げの段落(literal)の途中か
+    let mut in_literal = false;
 
     // 文書の頭: `= 題名` と `:鍵: 値`。**空行までが頭**(本家の作法)
     let mut head_done = false;
@@ -1365,6 +1391,14 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     let mut in_head = false;
     while let Some((_, line)) = lines.peek().copied() {
         let l = line.trim_end();
+        // 頭の前や中の覚え書き(`// tag::title[]` など)は、頭の原文の行として
+        // 持ち越します。前は頭を打ち切っていたので、続く `= 題` が本文の
+        // 見出しになり、その次の `:名前: 値` が題に混ざりました(2026-09-02)
+        if !head_done && l.starts_with("//") && (in_head || next_is_head(&lines)) {
+            doc.attrs.push((String::new(), l.to_string()));
+            lines.next();
+            continue;
+        }
         if !head_done && doc.props.title.is_empty() && l.starts_with("= ") {
             let title = l[2..].trim().to_string();
             // **表題は本文の段落にもする**(2026-08-18)。文書の情報にしか
@@ -1426,6 +1460,25 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             prev_is_desc_list = false;
             continue;
         }
+        // **字下げの段落(literal)。** 段落の頭の行が空白で始まれば、その段落は
+        // 字のまま組む物で、行も継ぎません(本家の作法)。原文のまま持ちます
+        let indented = line.starts_with(' ') || line.starts_with('\t');
+        if indented && (!prev_is_body || in_literal) {
+            *ledger.entry("字下げの段落(literal)").or_default() += 1;
+            let mut p = Paragraph {
+                line_spacing: 1.0,
+                style_id: Some("字下げ".to_string()),
+                raw_adoc: Some(if next_is_blank(&mut lines) { format!("{l}\n") } else { l.to_string() }),
+                ..Default::default()
+            };
+            p.runs.push(Run { text: l.to_string(), size_pt: None, font: None, fmt: CharFormat::default() });
+            doc.blocks.push(Block::Para(p));
+            prev_is_body = false;
+            prev_is_desc_list = false;
+            in_literal = true;
+            continue;
+        }
+        in_literal = false;
         if let Some((what, role)) = vendor_only_syntax(l) {
             *ledger.entry(what).or_default() += 1;
             // **原文のまま持ち越し、役割の名前を付けます。**
@@ -1726,8 +1779,12 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         // 空行までが1つの項目です(2026-08-18 に設計文書を読み返して
         // 見つけました — 続きの行が別の段落になり、字下げの塊に化けて
         // いました)
-        prev_is_body =
-            p.raw_adoc.is_none() && !p.style_id.as_deref().is_some_and(one_per_line);
+        // **見出しには続きの行を継ぎません**(見出しは1行の物)。継ぐと
+        // 直後の `:名前: 値` や本文が題名に混ざります(2026-09-02 に本家の
+        // 手引きで見つけた)
+        prev_is_body = p.raw_adoc.is_none()
+            && !p.style_id.as_deref().is_some_and(one_per_line)
+            && !matches!(p.style, ParaStyle::Heading(_) | ParaStyle::Title);
         prev_is_desc_list = p.style_id.as_deref().is_some_and(is_desc_list);
         if continued {
             if let Some((_, src)) = pending.as_mut() {
@@ -1842,6 +1899,13 @@ fn flush_pending(
 /// 行を継ぐときの継ぎ目を原文の字で決める。印の字は飛ばして、
 /// 前の行の最後の字と次の行の最初の字を見ます
 fn seam_src(before: &str, after: &str) -> &'static str {
+    // 行末が裸の URL なら、次の行の字を URL に食わせないために空白を入れます
+    // (URL が `]` や句読点で閉じていれば、そのまま継ぎます)
+    let last_word = before.rsplit(char::is_whitespace).next().unwrap_or("");
+    let url_open = |c: char| c.is_ascii_alphanumeric() || "/_-#%~.?=&+".contains(c);
+    if last_word.contains("://") && last_word.chars().last().is_some_and(url_open) {
+        return " ";
+    }
     let is_mark = |c: &char| crate::inline::MARK_CHARS.contains(c);
     let a: String = before.chars().rev().find(|c| !is_mark(c)).into_iter().collect();
     let b: String = after.chars().find(|c| !is_mark(c)).into_iter().collect();
@@ -2429,6 +2493,31 @@ mod tests {
         // 対の無い `*` は印にならないので、`\` も要らない(付けると見える)
         let d = parse("5 * 3 です。\n").unwrap();
         assert_eq!(write(&d), "5 * 3 です。\n");
+    }
+
+    /// 見出しの次の行は継がない。頭の覚え書きと本文の属性の項目は原文のまま
+    #[test]
+    fn a_heading_does_not_absorb_the_next_line() {
+        let src = "// tag::title[]\n= 題\n:url-x: https://example.jp\n// end::title[]\n\n== 見出し\n本文の1行目。\n\n:page-x: 値\n\n本文。\n";
+        let d = parse(src).unwrap();
+        assert_eq!(d.attrs.iter().find(|(k, _)| k == "url-x").map(|(_, v)| v.as_str()), Some("https://example.jp"));
+        let ps: Vec<&Paragraph> = d.paragraphs().collect();
+        let heading = ps.iter().find(|p| p.style == ParaStyle::Heading(1)).expect("見出し");
+        assert_eq!(heading.runs[0].text, "見出し", "見出しに次の行が混ざった");
+        assert!(ps.iter().any(|p| p.raw_adoc.as_deref().map(str::trim_end) == Some(":page-x: 値")), "属性の項目が原文で残らない");
+        // 書き戻しの正規形: 頭の覚え書きは題の後ろ、見出しの後ろは空行
+        let want = src.replace("// tag::title[]\n= 題\n", "= 題\n// tag::title[]\n").replace("== 見出し\n", "== 見出し\n\n");
+        assert_eq!(write(&d), want);
+    }
+
+    /// 行の中の `image:` の属性にある URL はリンクにしない(本家は画像を先に読む)
+    #[test]
+    fn a_url_inside_an_inline_image_macro_is_not_a_link() {
+        let src = "image:a.jpg[A,100,,link=\"https://example.jp/a.jpg\"] と字。\n";
+        let d = parse(src).unwrap();
+        let p = d.paragraphs().next().unwrap();
+        assert!(p.runs.iter().all(|r| r.fmt.link.is_none()), "画像の属性の URL がリンクになった");
+        assert_eq!(write(&d), src);
     }
 
     #[test]

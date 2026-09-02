@@ -978,6 +978,21 @@ impl Walker<'_> {
                 }
             }
         }
+        // ---- 行の中の画像とアイコン(`image:対象[属性]` `icon:名前[属性]`)。
+        // 模型に無いので字のまま持ちます。本家はリンクより先に読むので、
+        // 属性の中の URL(`link="https://…"`)をリンクにしません
+        for head in ["image:", "icon:"] {
+            if starts_with(t, i, head) && !starts_with(t, i + head.len(), ":") {
+                let c0 = i + head.len();
+                if let Some(k) = (c0..t.len()).find(|&k| t[k] == '[' || t[k].is_whitespace()) {
+                    if t[k] == '[' && k > c0 {
+                        if let Some(j) = close_bracket(k + 1) {
+                            return Ok(Some((j + 1, vec![run(remark(&t[i..j + 1], m), base)])));
+                        }
+                    }
+                }
+            }
+        }
         // ---- リンク(本家の `InlineLinkMacroRx` と `InlineLinkRx`)。
         // 本家はマクロの段でリンクを先に、参照(`<<>>`)を後に読みます
         let link_run = |url: String, raw_text: &str, base: &CharFormat| -> Run {
