@@ -1,0 +1,48 @@
+= The manuals
+
+_日本語版(secondary): link:../ja/README.adoc[README.adoc]_
+
+Pick a booklet by what you want to do.
+
+[cols="2,3"]
+|===
+|Booklet |When you want to
+
+|link:genkou-manual.adoc[Writing manuscripts]
+|Write a manuscript and produce it as AsciiDoc, a Word document, a web page, or a PDF
+
+|link:calc-manual.adoc[calc manual]
+|Everything the spreadsheet window can do
+
+|link:functions.adoc[Functions]
+|Look up a function you can use in a formula, and its arguments
+
+|link:df-manual.adoc[Calculating by column]
+|Write one formula for a whole column instead of one cell, for a quotation or a ledger where every row is worked out the same way
+
+|link:writer-manual.adoc[writer manual]
+|Everything the document window can do
+
+|link:python-manual.adoc[Python manual]
+|Read and write from a program
+
+|link:macro-manual.adoc[Macro manual]
+|Add your own buttons and procedures, including having an AI write one
+
+|link:from-excel.adoc[Coming from Excel]
+|Find out how a job you used to do in Excel is done here
+
+|link:docx-xlsx-tono-chigai.adoc[How this differs from docx and xlsx]
+|See what is the same as Word and Excel and what is not, on one page
+
+|link:../../templates/README.md[Templates] and link:../../sample/README.md[Samples]
+|Learn by opening the real thing
+|===
+
+Booklets that exist in both languages are written in English first.
+
+Three are in Japanese only for now: the command manual
+(link:../ja/commands/README.adoc[コマンドの手引き], one page per button),
+the button-to-API table (link:../ja/api-taiou.adoc[対応表]), and the two
+worked tutorials (link:../ja/tutorial-word.adoc[Word documents] and
+link:../ja/tutorial-calc.adoc[spreadsheets]).

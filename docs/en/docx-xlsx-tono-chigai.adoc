@@ -1,0 +1,328 @@
+= How this differs from docx and xlsx
+
+_日本語版(secondary): link:../ja/docx-xlsx-tono-chigai.adoc[docx-xlsx-tono-chigai.adoc]_
+
+For people arriving from Word or Excel. *The screen is much the same.
+What changed is the format things are saved in.*
+
+The ribbon tabs and the order of the buttons are where you remember them.
+The surprise comes when you save and open again. Every one of those
+surprises is collected here.
+
+== The biggest difference: text and appearance are separate
+
+A docx puts the text and its appearance in one file.
+The `.adoc` this app saves holds *the text only*. The appearance lives in
+a template.
+
+[cols="1,2,2"]
+|===
+| |docx |our `.adoc`
+
+|Text |in the same file |in this file
+|Styles |in the same file |in the template
+|Paper and margins |in the same file |in the template
+|Direct formatting |in the same file |*cannot be held*
+|===
+
+"Direct formatting" means formatting applied on the spot without a style:
+making one place bold, indenting one line. There is nowhere for it in an
+`.adoc`, so it goes away on save.
+
+What you get in exchange is that *the same manuscript can be issued in a
+different form by swapping the template*. When the house style for a
+report changes, you do not rewrite the manuscript.
+
+== It is plain text, and it is still a document
+
+A docx can only be made by this kind of application, because inside it is
+compressed XML. An `.adoc` is *plain text*, which opens up more ways to
+write one.
+
+* Any editor will do, down to Notepad
+* A JupyterLab notebook can export one
+* Python can assemble one
+* git shows a diff, so you can see which line changed
+
+Open what you wrote in this app and *it comes out as a formatted
+document*. Here is a sample you can actually read:
+
+....
+= Monthly report
+
+== Introduction
+
+This is the month's sales. *Bold* and _italic_ both work.
+
+* A bullet
+* A second one
+
+.Sales
+|===
+|Item |Qty |Amount
+
+|Ballpoint pen |12 |1,440
+|Notebook |5 |750
+|===
+....
+
+*You do not have to learn any of it.* Build the same thing with the
+ribbon buttons and it saves to the same form. Use whichever you find
+easier.
+
+The full list of markup is in link:genkou-manual.adoc[the manuscript manual].
+
+=== HTML opens too
+
+A saved web page (`.html`, `.htm`) opens as a document. Headings,
+paragraphs, tables, lists and images are read. Type an address into
+File > Open URL and it is fetched and opened.
+
+*JavaScript is never run.* We do not execute something you cannot see
+just because you opened it. A page with a form can be filled in and
+submitted.
+
+Two things this version does not read: a table nested inside a table (it
+is folded into the text of the outer cell), and an image with no `src`.
+
+== What used to be inside the file now sits beside it
+
+[cols="1,2"]
+|===
+|Used to be inside the document |Where it lives now
+
+|Bundling several documents |*A folder.* A directory is the binder
+|A program attached to the document |*JupyterLab or an editor.* Put an `.ipynb` or a `.py` in the same folder
+|The mail-merge template syntax |*jinja2*, used exactly as it is documented
+|Launching by file type |*The OS association.* `.adoc` opens here, everything else in your usual tool
+|===
+
+This app works alongside the other tools' files in the same folder. We
+stopped building the kind of document that holds everything inside it.
+
+== Paper orientation belongs to a section
+
+In Word one document could mix portrait and landscape pages, and where it
+switched was something you found out by opening it.
+
+Here *the unit is the section*. Section tabs sit across the top of the
+window, so which section is on which paper is visible at a glance. When
+you add a section you choose whether it continues or starts new paper.
+
+*The section tabs are not built yet.* Margins, Orientation and Page size
+on screen apply to *the whole document*, and sections can only be added
+from a program.
+
+[source,python]
+----
+d.add_section("newPage")      # a section that starts on new paper
+d.add_section("continuous")   # a section that carries on
+----
+
+The Breaks button on screen inserts a *page* break, not a section break.
+Word's Breaks menu holds both, which is where the difference lies.
+
+== A sheet is a section that holds a table
+
+An Excel sheet and a document section are *the same thing* here.
+
+* A spreadsheet sheet can be added to a document as a section
+* The order of the sheets is the order of the section tabs
+
+You do not have to open "the sheet" and "the document" in two different
+applications.
+
+== A sheet inside a manuscript holds four things
+
+A sheet placed inside a document holds these and no more.
+
+[cols="1,2"]
+|===
+|What it holds |How it is written
+
+|Sheet name |the table's title
+|Cell values |`\|Apr \|Ballpoint pen \|12`
+|Formulas |`=Sales[@Qty]*150`
+|Merged cells |`.2+` down, `2+` across
+|===
+
+Formatting, column widths, shapes and pivot tables are not held.
+*Buttons for what cannot be held are not shown at all.* Better that than
+letting you build up conditional formatting and then saying "could not
+save".
+
+For a table of any size, open it as `.xlsx` instead. The limits there are
+different.
+
+== Borders: the place and the pen are chosen separately
+
+Excel offered *combination presets*: "outline only", "all borders".
+We split it into two.
+
+. *Where to draw* — top, bottom, left, right, inside
+. *What line* — weight, style, colour
+
+You get the border you had in mind without relearning which preset means
+what.
+
+== Web markup works as it is
+
+Word does not sit well with the web. `.adoc` was made for the web to
+begin with, so it carries forms of expression Word has no equivalent for.
+
+[cols="1,2"]
+|===
+|Markup |What it becomes
+
+|`NOTE:` `TIP:` `IMPORTANT:` `WARNING:` `CAUTION:` |A coloured admonition box
+|Fenced with `----` |A code block (monospaced, no wrapping)
+|Fenced with `....` |A literal block, exactly as typed
+|Fenced with `====` |An example box, with a frame
+|Fenced with `****` |A sidebar, for an aside
+|Fenced with `--` |An open block, holding as many paragraphs as you like
+|Fenced with `++++` |Raw HTML, passed through
+|`Term:: description` |A description list
+|`[qanda]` in front |A question-and-answer list, numbered
+|`* [ ]` `* [x]` |A task list, with checkboxes
+|`**` `***` / `..` `...` |A deeper list level
+|`[loweralpha]` `[upperroman]` |A different numbering style
+|`[start=5]` |Numbering that starts partway
+|A line of three `'` |A horizontal rule
+|===
+
+Admonitions are coloured by kind: warnings orange, cautions red, tips green.
+
+List depth comes from the number of `*`: two for the second level, three
+for the third. Numbered lists work the same way with `.`. Writing
+`* [ ] a task` gives a task list with checkboxes, and `* [x]` marks it
+done. `- [ ]` does the same thing.
+
+In the editor and in a PDF these render as `☐` and `☑`, the same
+characters as a form-field checkbox.
+
+=== Procedures can be written as questions and answers
+
+For a counter guide or a FAQ, put `[qanda]` in front and it becomes a
+question-and-answer list. The questions come out bold and numbered.
+
+....
+[qanda]
+When is the deadline?:: The 31st of March.
+What does it cost?:: 300 yen.
+....
+
+Without `[qanda]` it is an ordinary description list.
+
+=== Numbering follows the order clerical forms use
+
+A numbered list changes style by level: *1 → (1) → ア → (ア)*. That is the
+order government documents use, and Word's Japanese default as well.
+
+....
+. First item
+.. the (1) level
+... the ア level
+....
+
+To change the style, put a marker in front of the list. `[loweralpha]`
+gives a, b, c and `[upperroman]` gives I, II, III. `[start=5]` starts at
+five.
+
+HTML can be written directly inside `++++`, which is also how you get a
+collapsible box.
+
+....
+++++
+<details><summary>Click to open</summary>The contents.</details>
+++++
+....
+
+*It reads correctly without any CSS.* In the HTML that comes out, the
+colours, the frames and the monospacing *belong to the elements
+themselves*, so pasting the body into someone else's page does not break
+it. If you do want to restyle it wholesale, the classes are there for a
+stylesheet to override.
+
+*The editor and the PDF agree with it.* Code blocks are set monospaced,
+and admonitions get a "Note" or "Warning" heading. The `----` and
+`[source,python]` marker lines say where a block begins and ends, so they
+are not printed. If the machine has no monospaced font, it is set in
+whatever it has.
+
+Doing the same in Word means creating and applying a style for each one.
+
+== Where we narrowed what a button does
+
+Some buttons keep their name but *do less*. They are listed here for when
+one surprises you.
+
+[cols="1,2,2"]
+|===
+|Button |Word / Excel |Here
+
+|Paragraph line spacing |Choose At least, Exactly or Multiple, then type a number; space before and after as well |*Three multiples* (1.0 → 1.5 → 2.0), cycled by pressing
+|Bullets and numbering |Pick the marker from a gallery |*The level decides it* (`・`→`○`→`■`, `1.`→`(1)`→`1)`). Tab goes deeper, Shift+Tab comes back
+|Borders |Pick a combination preset |*Where to draw* and *what line*, chosen separately
+|===
+
+The narrowing follows what an `.adoc` can hold. A screen that lets you
+build something the file cannot keep is a screen that loses your work on
+save.
+
+When you need finer control, write it from a program.
+
+== Equations are written in LaTeX
+
+We do not read docx equations (OMML). Enter an equation in LaTeX and it
+is typeset by TeX, or by matplotlib when TeX is not installed.
+
+It is the notation papers and technical documents already use, so what
+you write travels elsewhere.
+
+== Opening a file never runs the program inside it
+
+Macros inside a docx or an xlsx are *not executed*. We do not run
+something whose contents you cannot see, merely because you opened it.
+
+To use a program here, put a `.py` in the folder. You can read it before
+you open anything.
+
+== What happens when you open a docx or an xlsx
+
+*On open, the text moves into this app's own way of holding it.*
+Saving writes back from there, so *you do not get a byte-identical file
+back*.
+
+Tracked changes are accepted, and bookmarks and footnote marks that sit
+outside a paragraph are lost. What could not be read is listed under the
+right-click item
+link:../ja/commands/右クリック/この版で読み飛ばしたもの.adoc[この版で読み飛ばしたもの].
+What happens on the way back out is listed on
+link:../ja/commands/ファイル/保存.adoc[the Save page].
+
+*Take a copy of a docx that matters before you open it.*
+
+== What you gain instead
+
+[cols="1,2"]
+|===
+|What is new |Why
+
+|The folder listing on the left |Because the folder is the binder. No traditional office suite had this
+|Four output formats (`.adoc`, `.docx`, HTML, PDF) |So one manuscript can be issued in any of them
+|Four input formats (`.adoc`, `.docx`, `.html`, plain text) |A web page opens too, from its address
+|Driving it from Python |What the screen can do, a program can write
+|Writing it as text |The file is plain text, so an editor or Python can produce it
+|===
+
+== Where to read next
+
+[cols="1,2"]
+|===
+|What you want |Where
+
+|How a job you did in Excel is done here |link:from-excel.adoc[Coming from Excel]
+|Writing a manuscript and issuing it four ways |link:genkou-manual.adoc[The manuscript manual]
+|One button explained in detail |link:../ja/commands/README.adoc[The command manual] (Japanese)
+|How to write it from a program |link:../ja/api-taiou.adoc[The button-to-API table] (Japanese)
+|===

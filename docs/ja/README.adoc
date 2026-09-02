@@ -1,5 +1,7 @@
 = マニュアルの一覧
 
+_元は英語版(link:../en/README.adoc[README.adoc])です。こちらは日本語訳です。_
+
 読みたいことから冊子を選んでください。
 
 [cols="2,3"]
@@ -36,7 +38,7 @@
 |link:tutorial-word.adoc[実例で覚える(Word 文書)]・link:tutorial-calc.adoc[実例で覚える(表計算)]
 |コードを打ちながら覚える。頁のコードはそのまま動く
 
-|link:docx-xlsx-tono-chigai.adoc[Word / Excel との違い]
+|link:docx-xlsx-tono-chigai.adoc[Word / Excel との違い](link:../en/docx-xlsx-tono-chigai.adoc[English])
 |Word / Excel と何が同じで何が違うか、1枚で
 
 |link:api-taiou.adoc[対応表]
@@ -46,5 +48,7 @@
 |実物を開いて覚える
 |===
 
-英語版のある冊子は、英語版が原文です。English の付いていない冊子は
-日本語だけです(順に英語版を作っています)。
+英語版のある冊子は、英語版が原文です。
+
+English の付いていない3つは日本語だけです。コマンドの手引き・対応表・
+実例で覚える2冊です。

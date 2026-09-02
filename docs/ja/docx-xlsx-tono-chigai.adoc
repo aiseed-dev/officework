@@ -1,5 +1,7 @@
 = docx・xlsx との違い
 
+_元は英語版(link:../en/docx-xlsx-tono-chigai.adoc[docx-xlsx-tono-chigai.adoc])です。こちらは日本語訳です。_
+
 Word や Excel から来た方へ。**画面はほとんど同じです。変えたのは、保存する形です。**
 
 リボンのタブもボタンの並びも、覚えたとおりに使えます。
