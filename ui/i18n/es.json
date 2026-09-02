@@ -2285,5 +2285,13 @@
  "function_category": "Categoría",
  "function_name": "Nombre de la función",
  "engineering": "Ingeniería",
- "database": "Base de datos"
+ "database": "Base de datos",
+ "model_unset": "Sin configurar",
+ "model_connecting": "Conectando",
+ "model_connected": "Conectado",
+ "model_connect_failed": "Error de conexión",
+ "one_step": "1 paso",
+ "agent_no_destination": "No hay destino de IA (se ajusta en Configuración avanzada)",
+ "agent_wants_save": "El agente pide guardar",
+ "save_declined": "No guardado"
 }

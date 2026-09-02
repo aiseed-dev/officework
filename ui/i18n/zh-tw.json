@@ -2285,5 +2285,13 @@
  "function_category": "類別",
  "function_name": "函數名稱",
  "engineering": "工程",
- "database": "資料庫"
+ "database": "資料庫",
+ "model_unset": "未設定",
+ "model_connecting": "連線中",
+ "model_connected": "已連線",
+ "model_connect_failed": "連線失敗",
+ "one_step": "1 步",
+ "agent_no_destination": "沒有 AI 目標(可在進階設定中設定)",
+ "agent_wants_save": "代理程式要求儲存",
+ "save_declined": "未儲存"
 }

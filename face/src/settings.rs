@@ -139,7 +139,7 @@ impl AiDest {
 pub fn parse_ai_list(content: &str) -> Vec<AiDest> {
     let mut out: Vec<AiDest> = Vec::new();
     let mut cur: Option<AiDest> = None;
-    let mut close = |cur: &mut Option<AiDest>, out: &mut Vec<AiDest>| {
+    let close = |cur: &mut Option<AiDest>, out: &mut Vec<AiDest>| {
         if let Some(d) = cur.take() {
             if !d.url.is_empty() {
                 out.push(d);

@@ -2285,5 +2285,13 @@
  "function_category": "Thể loại",
  "function_name": "Tên hàm",
  "engineering": "Kỹ thuật",
- "database": "Cơ sở dữ liệu"
+ "database": "Cơ sở dữ liệu",
+ "model_unset": "Chưa thiết lập",
+ "model_connecting": "Đang kết nối",
+ "model_connected": "Đã kết nối",
+ "model_connect_failed": "Kết nối thất bại",
+ "one_step": "1 bước",
+ "agent_no_destination": "Chưa có đích AI (có thể đặt trong Cài đặt nâng cao)",
+ "agent_wants_save": "Tác nhân yêu cầu lưu",
+ "save_declined": "Không lưu"
 }

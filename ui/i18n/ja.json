@@ -2285,5 +2285,13 @@
  "function_category": "関数の分類",
  "function_name": "関数名",
  "engineering": "エンジニアリング",
- "database": "データベース"
+ "database": "データベース",
+ "model_unset": "未設定",
+ "model_connecting": "接続中",
+ "model_connected": "接続済",
+ "model_connect_failed": "接続失敗",
+ "one_step": "1手",
+ "agent_no_destination": "AI の宛先がありません(詳細設定で書けます)",
+ "agent_wants_save": "エージェントが保存を求めています",
+ "save_declined": "保存はしませんでした"
 }

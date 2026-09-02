@@ -8,6 +8,15 @@ license.workspace = true
 # 試験できて、他の機械でも組める)。道具の実体も持たない — 結線は
 # trait で受け取り、アプリの側が語彙(ops)への結び付けを渡す。
 
+[features]
+# ops の語彙への結線(tools.rs)。スマホの的では外せるように
+# 印を1つ挟む — ループの骨だけなら lang で足りる
+default = ["ops"]
+ops = ["dep:ops", "dep:book"]
+
 [dependencies]
 # モデルの宛先(Endpoint)と道具つきの対話(chat_tools)
 lang = { path = "../lang", default-features = false }
+# 操作の語彙(結線の相手)。書く先のブックの型は book
+ops = { path = "../ops", optional = true }
+book = { path = "../book", optional = true }

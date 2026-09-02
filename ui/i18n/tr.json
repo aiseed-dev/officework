@@ -2285,5 +2285,13 @@
  "function_category": "Kategori",
  "function_name": "İşlev adı",
  "engineering": "Mühendislik",
- "database": "Veritabanı"
+ "database": "Veritabanı",
+ "model_unset": "Ayarlanmadı",
+ "model_connecting": "Bağlanıyor",
+ "model_connected": "Bağlandı",
+ "model_connect_failed": "Bağlantı başarısız",
+ "one_step": "1 adım",
+ "agent_no_destination": "AI hedefi yok (Gelişmiş ayarlardan ayarlanabilir)",
+ "agent_wants_save": "Aracı kaydetmek istiyor",
+ "save_declined": "Kaydedilmedi"
 }

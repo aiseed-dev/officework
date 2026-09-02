@@ -2285,5 +2285,13 @@
  "function_category": "Kategori",
  "function_name": "Nama fungsi",
  "engineering": "Teknik",
- "database": "Database"
+ "database": "Database",
+ "model_unset": "Belum diatur",
+ "model_connecting": "Menghubungkan",
+ "model_connected": "Terhubung",
+ "model_connect_failed": "Koneksi gagal",
+ "one_step": "1 langkah",
+ "agent_no_destination": "Tidak ada tujuan AI (dapat diatur di Pengaturan lanjutan)",
+ "agent_wants_save": "Agen meminta menyimpan",
+ "save_declined": "Tidak disimpan"
 }

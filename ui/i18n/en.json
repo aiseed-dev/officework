@@ -2285,5 +2285,13 @@
  "function_category": "Category",
  "function_name": "Function name",
  "engineering": "Engineering",
- "database": "Database"
+ "database": "Database",
+ "model_unset": "Not set",
+ "model_connecting": "Connecting",
+ "model_connected": "Connected",
+ "model_connect_failed": "Connection failed",
+ "one_step": "1 step",
+ "agent_no_destination": "No AI destination (you can set it in Advanced settings)",
+ "agent_wants_save": "The agent asks to save",
+ "save_declined": "Not saved"
 }

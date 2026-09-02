@@ -532,46 +532,45 @@ impl Calc {
                 chat = chat.child(div().text_size(px(us * 11.0)).text_color(faint).child(
                     ui::t!("e_g_sort_sales").to_string()));
             }
-            for (self_of, text) in &self.chat_log {
-                chat = chat.child(
-                    div().text_size(px(us * 11.5))
-                        .text_color(if *self_of { accent } else { fg })
-                        .child(format!("{} {}", if *self_of { "▸" } else { "◂" }, text)));
+            for row in &self.chat_log {
+                chat = chat.child(match row {
+                    crate::ChatRow::Me(text) => div()
+                        .text_size(px(us * 11.5))
+                        .text_color(accent)
+                        .child(format!("▸ {text}")),
+                    crate::ChatRow::Ai(text) => div()
+                        .text_size(px(us * 11.5))
+                        .text_color(fg)
+                        .child(format!("◂ {text}")),
+                    // 道具呼びは飾らない1行。書き替えには「1手」の印だけ
+                    // (Ctrl+Z で戻せる印 — 2026-09-02 の決め)
+                    crate::ChatRow::Tool(line, one_step) => div()
+                        .text_size(px(us * 10.0))
+                        .text_color(faint)
+                        .child(if *one_step {
+                            format!("· {line} — {}", ui::t!("one_step"))
+                        } else {
+                            format!("· {line}")
+                        }),
+                });
             }
             d = d.child(chat);
 
-            // **落ちたら直してもらう。** 誤りを添えて頼み直す一押し —
-            // 走らせて直す、が Agent Panel の芯(2026-08-16)
-            if self.chat_err.is_some() {
+            // **保存の確認。** 道具 save は実行せずここへ回る —
+            // 確認を取る3つ(保存・削除・外への送信)の1つ目
+            if self.agent_save.is_some() {
+                d = d.child(heading(ui::t!("agent_wants_save").to_string()));
                 d = d.child(row_box().mt_1()
-                    .child(button("chat-fix", ui::t!("ask_fix").to_string(), true).on_click(
-                        cx.listener(|this, _, _, cx| { this.chat_fix(cx); cx.notify() })))
-                    .child(button("chat-err-drop", ui::t!("leave").to_string(), false)
+                    .child(button("chat-save-ok", ui::t!("save").to_string(), true).on_click(
+                        cx.listener(|this, _, _, cx| {
+                            this.agent_confirm_save(true);
+                            cx.notify()
+                        })))
+                    .child(button("chat-save-no", ui::t!("cancel").to_string(), false)
                         .on_click(cx.listener(|this, _, _, cx| {
-                            this.chat_err = None;
+                            this.agent_confirm_save(false);
                             cx.notify()
                         }))));
-            }
-            // 変更案(Python)。**押すまで走らない**
-            if let Some(plan) = self.chat_plan.clone() {
-                d = d.child(heading(ui::t!("proposed_change_nothing_happens").to_string()));
-                d = d.child(div().id("chat-plan")
-                    .max_h(px(us * 150.0)).overflow_y_scroll()
-                    .p_1().rounded_sm()
-                    .bg(if dk { rgb(0x14171A) } else { rgb(0xFFFFFF) })
-                    .border_1().border_color(line)
-                    .text_size(px(us * 10.5)).text_color(fg)
-                    .children(plan.lines().map(|l| div().child(l.to_string()))));
-                let mut r = row_box().mt_1();
-                r = r.child(button("chat-run", ui::t!("apply").to_string(), true).on_click(
-                    cx.listener(|this, _, _, cx| { this.chat_run(cx); cx.notify() })));
-                r = r.child(button("chat-drop", ui::t!("cancel").to_string(), false).on_click(
-                    cx.listener(|this, _, _, cx| {
-                        this.chat_plan = None;
-                        this.status = ui::t!("proposed_change_discarded_nothing").into();
-                        cx.notify()
-                    })));
-                d = d.child(r);
             }
 
             // 入力
@@ -606,17 +605,31 @@ impl Calc {
                     .child(ui::t!("thinking").to_string()));
             }
             d = d.child(r);
-            // **宛先はここで替える**(Agent Panel はモデルを下に出す)。
-            // 詳細設定まで行かずに、話しながら切り替えられる
-            let addressee = ui::ai::backend();
+            // **モデルの状態は4語 + 今の宛先の名前**(2026-09-02 の決め)。
+            // 押すと一覧([[ai]])の次の宛先に替わる — 話しながら切り替えられる
+            let state_word = match self.agent_state {
+                crate::AgentState::Unset => Some(ui::t!("model_unset")),
+                crate::AgentState::Idle => None,
+                crate::AgentState::Connecting => Some(ui::t!("model_connecting")),
+                crate::AgentState::Connected => Some(ui::t!("model_connected")),
+                crate::AgentState::Failed => Some(ui::t!("model_connect_failed")),
+            };
+            let dest_name = self.agent_dest().map(|(n, _)| n);
+            let line_text = match (state_word, dest_name) {
+                (Some(w), Some(n)) => {
+                    format!("{w} · {}", ui::tf!("destination_press_change", n))
+                }
+                (None, Some(n)) => ui::tf!("destination_press_change", n).to_string(),
+                _ => ui::t!("model_unset").to_string(),
+            };
             d = d.child(div()
                 .id("chat-where")
                 .mt_1().px_1().py_0p5().rounded_sm().cursor_pointer()
                 .text_size(px(us * 10.5)).text_color(faint)
                 .hover(move |s| s.bg(if dk { rgb(0x2C333A) } else { rgb(0xEAF5EE) }))
-                .child(ui::tf!("destination_press_change", addressee.label()).to_string())
+                .child(line_text)
                 .on_click(cx.listener(|this, _, _, cx| {
-                    this.run_cmd("ai-where", cx);
+                    this.agent_cycle_dest();
                     cx.notify()
                 })));
             }

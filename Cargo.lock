@@ -133,7 +133,9 @@ dependencies = [
 name = "agent"
 version = "0.1.0"
 dependencies = [
+ "book",
  "lang",
+ "ops",
 ]
 
 [[package]]
@@ -929,6 +931,7 @@ dependencies = [
 name = "calc"
 version = "0.1.0-alpha"
 dependencies = [
+ "agent",
  "book",
  "ed25519-dalek",
  "encoding_rs",
@@ -936,6 +939,7 @@ dependencies = [
  "gpui",
  "gpui_platform",
  "kumihan",
+ "lang",
  "ooxml",
  "ops",
  "paper",

@@ -5316,6 +5316,38 @@
   "kind": "msg"
  },
  {
+  "key": "model_unset",
+  "kind": "msg"
+ },
+ {
+  "key": "model_connecting",
+  "kind": "msg"
+ },
+ {
+  "key": "model_connected",
+  "kind": "msg"
+ },
+ {
+  "key": "model_connect_failed",
+  "kind": "msg"
+ },
+ {
+  "key": "one_step",
+  "kind": "msg"
+ },
+ {
+  "key": "agent_no_destination",
+  "kind": "msg"
+ },
+ {
+  "key": "agent_wants_save",
+  "kind": "msg"
+ },
+ {
+  "key": "save_declined",
+  "kind": "msg"
+ },
+ {
   "key": "card_list",
   "kind": "msg"
  },

@@ -11,6 +11,9 @@
 
 use lang::model::{chat_tools, ChatOut, Endpoint, Msg, ToolDef};
 
+#[cfg(feature = "ops")]
+pub mod tools;
+
 /// モデルへの1往復。実物(宛先)も試験の偽物も同じ面を持つ
 pub trait Model {
     fn chat(&mut self, msgs: &[Msg], tools: &[ToolDef]) -> Result<ChatOut, String>;
@@ -58,11 +61,64 @@ pub struct Agent {
     /// 1つの頼みで道具を呼べる上限。守りの数字で、普通は届かない。
     /// 届いたら Err で止める — 同じ呼びを繰り返すモデルを回し続けない
     pub max_calls: usize,
+    /// いまの頼みで道具を呼んだ数(begin で 0 に戻る)
+    used: usize,
 }
 
 impl Agent {
     pub fn new(system: &str) -> Self {
-        Agent { msgs: vec![Msg::System(system.into())], log: Vec::new(), max_calls: 25 }
+        Agent { msgs: vec![Msg::System(system.into())], log: Vec::new(), max_calls: 25, used: 0 }
+    }
+
+    /// 頼みを1つ積む。返りはモデルへ送る履歴。
+    ///
+    /// 画面のあるアプリは begin と [`Agent::feed`] で1往復ずつ進める —
+    /// モデルの往復は裏の糸で待ち、道具はメインスレッドで実行するため。
+    /// 全部を1息に回してよい所(試験・画面の無い口)は [`Agent::ask`]
+    pub fn begin(&mut self, user: &str) -> Vec<Msg> {
+        self.msgs.push(Msg::User(user.into()));
+        self.log.push(Event::User(user.into()));
+        self.used = 0;
+        self.msgs.clone()
+    }
+
+    /// モデルの答えを1つ受け取り、道具呼びがあれば実行する。
+    /// 答えが出たら Some(答えの字)。まだなら None — [`Agent::msgs`] を
+    /// 添えてもう一度 chat する
+    pub fn feed(
+        &mut self,
+        out: ChatOut,
+        host: &mut dyn ToolHost,
+    ) -> Result<Option<String>, String> {
+        if out.tool_calls.is_empty() {
+            self.msgs.push(Msg::Assistant(out.content.clone()));
+            self.log.push(Event::Assistant(out.content.clone()));
+            return Ok(Some(out.content));
+        }
+        // 呼びは履歴にそのまま残す — 次の往復でモデルに送り返す
+        self.msgs.push(Msg::AssistantCalls(out.tool_calls.clone()));
+        for c in &out.tool_calls {
+            self.used += 1;
+            if self.used > self.max_calls {
+                return Err(format!(
+                    "道具を {} 回呼んでも終わりません — 打ち切りました",
+                    self.max_calls
+                ));
+            }
+            self.log.push(Event::ToolCall { name: c.name.clone(), arguments: c.arguments.clone() });
+            let (content, ok) = match host.call(&c.name, &c.arguments) {
+                Ok(s) => (s, true),
+                Err(e) => (format!("エラー: {e}"), false),
+            };
+            self.log.push(Event::ToolResult { name: c.name.clone(), content: content.clone(), ok });
+            self.msgs.push(Msg::ToolResult { id: c.id.clone(), content });
+        }
+        Ok(None)
+    }
+
+    /// いまの履歴(モデルへ送る形)。feed の続きの chat が使う
+    pub fn msgs(&self) -> Vec<Msg> {
+        self.msgs.clone()
     }
 
     /// 1つの頼みを最後まで回す。道具呼びが無くなったら答えの字を返す
@@ -72,41 +128,13 @@ impl Agent {
         host: &mut dyn ToolHost,
         user: &str,
     ) -> Result<String, String> {
-        self.msgs.push(Msg::User(user.into()));
-        self.log.push(Event::User(user.into()));
+        let mut msgs = self.begin(user);
         let tools = host.tools();
-        let mut used = 0usize;
         loop {
-            let out = model.chat(&self.msgs, &tools)?;
-            if out.tool_calls.is_empty() {
-                self.msgs.push(Msg::Assistant(out.content.clone()));
-                self.log.push(Event::Assistant(out.content.clone()));
-                return Ok(out.content);
-            }
-            // 呼びは履歴にそのまま残す — 次の往復でモデルに送り返す
-            self.msgs.push(Msg::AssistantCalls(out.tool_calls.clone()));
-            for c in &out.tool_calls {
-                used += 1;
-                if used > self.max_calls {
-                    return Err(format!(
-                        "道具を {} 回呼んでも終わりません — 打ち切りました",
-                        self.max_calls
-                    ));
-                }
-                self.log.push(Event::ToolCall {
-                    name: c.name.clone(),
-                    arguments: c.arguments.clone(),
-                });
-                let (content, ok) = match host.call(&c.name, &c.arguments) {
-                    Ok(s) => (s, true),
-                    Err(e) => (format!("エラー: {e}"), false),
-                };
-                self.log.push(Event::ToolResult {
-                    name: c.name.clone(),
-                    content: content.clone(),
-                    ok,
-                });
-                self.msgs.push(Msg::ToolResult { id: c.id.clone(), content });
+            let out = model.chat(&msgs, &tools)?;
+            match self.feed(out, host)? {
+                Some(answer) => return Ok(answer),
+                None => msgs = self.msgs(),
             }
         }
     }

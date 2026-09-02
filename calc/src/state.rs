@@ -447,10 +447,11 @@ impl Calc {
             right_open: false,
             chat_log: Vec::new(),
             chat_in: Editor::new(""),
-            chat_plan: None,
             chat_focus: false,
-            chat_busy: false,
-            chat_err: None,
+            agent: None,
+            agent_shown: 0,
+            agent_state: AgentState::Idle,
+            agent_save: None,
             left_face: 0,
             chosen_folder: None,
             fl_job: None,
@@ -2543,62 +2544,129 @@ impl Calc {
             .join("\n")
     }
 
-    /// AI に頼んで、返事を表に反映する。**別のスレッドで待つ**(画面は止めない)。
-    /// 反映は必ず checkpoint してから = **Ctrl+Z の1手で戻る**。
-    /// 宛先が使えなければ理由を言う(黙って空にしない)
-    pub(crate) fn ai_go(&mut self, job: CalcAi, cx: &mut Context<Self>) {
-        if self.sheet().protected {
-            self.status =
-                ui::t!("sheet_protected_protection_tab").into();
-            return;
+    /// エージェントの宛先(名前, Endpoint)。最後に使った物 → 一覧の1番目。
+    /// 一覧が空でも、環境変数だけで使っている人(OFFICE_URL)は通す
+    pub(crate) fn agent_dest(&self) -> Option<(String, lang::model::Endpoint)> {
+        let rows = face::settings::ai_list();
+        if rows.is_empty() {
+            if std::env::var("OFFICE_URL").is_ok() || std::env::var("OFFICE_HOST").is_ok() {
+                let ep = lang::model::Endpoint::default();
+                return Some((ep.host.clone(), ep));
+            }
+            return None;
         }
+        let last = face::settings::ai_last();
+        let row = last
+            .and_then(|n| rows.iter().find(|r| r.name == n).cloned())
+            .unwrap_or_else(|| rows[0].clone());
+        Some((row.name.clone(), row.endpoint()))
+    }
+
+    /// 宛先を一覧の次へ替える(「押すと替わる」の実体)
+    pub(crate) fn agent_cycle_dest(&mut self) {
+        let rows = face::settings::ai_list();
+        if rows.len() < 2 {
+            return; // 1つ以下なら替える先が無い
+        }
+        let cur = face::settings::ai_last();
+        let i = cur.and_then(|n| rows.iter().position(|r| r.name == n)).unwrap_or(0);
+        let next = &rows[(i + 1) % rows.len()];
+        face::settings::set_ai_last(&next.name);
+        self.agent_state = AgentState::Idle;
+        self.status = ui::tf!("ai_destination_remembered", next.name.clone()).into();
+    }
+
+    /// 会話を1つ送る(エージェントのループ)。**読みは黙って、書きは
+    /// 実行してから1手として見せる** — 事前の「よろしいですか」は
+    /// 出さない(docs/sekkei/agent.ja.adoc「対話の画面の決め」)
+    pub(crate) fn agent_send(&mut self, purpose: String, cx: &mut Context<Self>) {
         if self.ai_busy {
             self.status = ui::t!("still_thinking_please_wait").into();
             return;
         }
-        let back = ui::ai::backend();
-        if let Err(e) = ui::ai::ready(back) {
-            self.status = format!("AI: {e}").into();
+        let Some((name, ep)) = self.agent_dest() else {
+            self.agent_state = AgentState::Unset;
+            self.status = ui::t!("agent_no_destination").into();
             return;
-        }
-        self.commit();
-        // 渡す範囲: 選んでいればそこ。**選んでいなくても通す** —
-        // 「この式の意味は」のように範囲の要らない用件がある
-        // (2026-08-15 実機で門前払いに気づいた)
-        let (a, b) = self.anchor.map(|_| self.sel_rect()).unwrap_or((self.cursor, self.cursor));
-        let body = if self.anchor.is_none() {
-            String::new()
-        } else {
-            self.tsv_display(a, b)
         };
-        let (sys, _ask) = job.prompt();
-        let CalcAi::Chat(q) = &job;
-        // 会話は**用件そのもの**が本体。表は付け合わせで、選んでいる
-        // 場所の番地も渡す(台本が s["A1:C9"] と書けるように)
-        let user = if body.trim().is_empty() {
-            q.clone()
+        self.commit();
+        self.chat_log.push(ChatRow::Me(purpose.clone()));
+        // 選んでいる範囲は付け合わせ(従来の相談と同じ材料)。
+        // 画面には用件だけを出す — 付け足しまで見せると読みづらい
+        let user = if self.anchor.is_none() {
+            purpose
         } else {
+            let (a, b) = self.sel_rect();
             format!(
-                "{q}\n\n---\nいま選んでいるのはシート「{}」の {} です。\n{body}",
+                "{purpose}\n\n---\nいま選んでいるのはシート「{}」の {} です。\n{}",
                 self.sheet().name,
                 self.sel_label(),
+                self.tsv_display(a, b),
             )
         };
-        let sys = sys.to_string();
-        let job2 = job.clone();
+        let agent = self.agent.get_or_insert_with(|| agent::Agent::new(AGENT_SYSTEM));
+        let msgs = agent.begin(&user);
+        // 人の行は上で積んだ(付け足しの文脈まで見せない)ので、写しから外す
+        self.agent_shown = agent.log.len();
         self.ai_busy = true;
-        self.status =
-            ui::tf!("asking_ai", back.label(), job.label()).into();
+        self.agent_state = AgentState::Connecting;
+        self.status = ui::tf!("asking_ai", name, ui::t!("conversation")).into();
+        self.agent_step(ep, msgs, cx);
+    }
+
+    /// モデルとの1往復を裏で待ち、道具をメインスレッドで実行して続ける。
+    /// 道具呼びが無くなるまでこれが自分を呼び直す(agent::Agent の begin/feed)
+    fn agent_step(
+        &mut self,
+        ep: lang::model::Endpoint,
+        msgs: Vec<lang::model::Msg>,
+        cx: &mut Context<Self>,
+    ) {
+        let tools = agent::tools::sheet_tools();
         let task = cx
             .background_executor()
-            .spawn(async move { ui::ai::ask(back, &sys, &user) });
+            .spawn(async move { lang::model::chat_tools(&ep, &msgs, &tools, 0.2) });
         cx.spawn(async move |this, cx| {
             let r = task.await;
             let _ = this.update(cx, |this, cx| {
-                this.ai_busy = false;
                 match r {
-                    Ok(out) => this.ai_apply(job2, out),
-                    Err(e) => this.status = format!("AI: {e}").into(),
+                    Err(e) => {
+                        this.ai_busy = false;
+                        this.agent_state = AgentState::Failed;
+                        this.chat_log.push(ChatRow::Ai(format!("({e})")));
+                        this.status = format!("AI: {e}").into();
+                    }
+                    Ok(out) => {
+                        this.agent_state = AgentState::Connected;
+                        let mut ag = this.agent.take().expect("agent_send が置いた");
+                        let step = {
+                            let mut host = CalcTools { calc: this };
+                            ag.feed(out, &mut host)
+                        };
+                        this.agent = Some(ag);
+                        this.agent_drain_log();
+                        match step {
+                            Err(e) => {
+                                this.ai_busy = false;
+                                this.chat_log.push(ChatRow::Ai(format!("({e})")));
+                                this.status = format!("AI: {e}").into();
+                            }
+                            Ok(Some(_)) => {
+                                this.ai_busy = false;
+                                this.status = ui::t!("answered_left_panel").into();
+                            }
+                            Ok(None) => match this.agent_dest() {
+                                Some((_, ep)) => {
+                                    let msgs = this.agent.as_ref().expect("上で戻した").msgs();
+                                    this.agent_step(ep, msgs, cx);
+                                }
+                                None => {
+                                    this.ai_busy = false;
+                                    this.agent_state = AgentState::Unset;
+                                }
+                            },
+                        }
+                    }
                 }
                 cx.notify();
             });
@@ -2606,35 +2674,59 @@ impl Calc {
         .detach();
     }
 
-    /// 返事を受け取る。**書類には入れない** — 左パネルへ返すだけ
-    /// (2026-08-15、AI タブを廃してからは会話しか通らない)
-    pub(crate) fn ai_apply(&mut self, job: CalcAi, out: String) {
-        let out = out.trim().to_string();
-        if out.is_empty() {
-            self.status = ui::t!("ai_answer_empty_nothing").into();
+    /// エージェントの記録の新しい分を、会話の欄へ写す。
+    /// 道具呼びは飾らない1行(定型文は挟まない — 2026-09-02 発注者)
+    fn agent_drain_log(&mut self) {
+        let Some(ag) = &self.agent else { return };
+        let mut rows: Vec<ChatRow> = Vec::new();
+        for e in &ag.log[self.agent_shown.min(ag.log.len())..] {
+            match e {
+                // 人の行は agent_send が積む
+                agent::Event::User(_) => {}
+                agent::Event::Assistant(t) => rows.push(ChatRow::Ai(t.clone())),
+                agent::Event::ToolCall { name, arguments } => {
+                    let place = ops::Jobj::parse(arguments)
+                        .and_then(|o| o.str("a1").or_else(|| o.str("path")));
+                    let line = match place {
+                        Some(a) => format!("{name} {a}"),
+                        None => name.clone(),
+                    };
+                    let writes =
+                        matches!(name.as_str(), "write_range" | "set_format" | "autofit");
+                    rows.push(ChatRow::Tool(line, writes));
+                }
+                agent::Event::ToolResult { ok, content, .. } => {
+                    // 中身は見せない(値の山になる)。しくじりだけ出す
+                    if !ok {
+                        rows.push(ChatRow::Tool(content.clone(), false));
+                    }
+                }
+            }
+        }
+        self.agent_shown = ag.log.len();
+        self.chat_log.extend(rows);
+    }
+
+    /// 保存の確認に人が答えた(道具 save は実行せずここへ回る)
+    pub(crate) fn agent_confirm_save(&mut self, yes: bool) {
+        let Some(path) = self.agent_save.take() else { return };
+        if !yes {
+            self.status = ui::t!("save_declined").into();
+            self.chat_log.push(ChatRow::Tool(ui::t!("save_declined").to_string(), false));
             return;
         }
-        match job {
-            // **会話は書類に入れない。** 左パネルに返し、変更案(Python)は
-            // 人が「入れる」を押すまで走らせない — **押したのは人**が残る形
-            CalcAi::Chat(_) => {
-                let plan = extract_box(&out);
-                let show = if let Some(code) = &plan {
-                    // 囲みの外の説明だけを会話に出す(台本は下の欄に置く)
-                    let desc = out.replace(&format!("```python\n{code}\n```"), "")
-                        .replace(&format!("```\n{code}\n```"), "");
-                    let t = desc.trim().to_string();
-                    if t.is_empty() { ui::t!("here_change").to_string() } else { t }
-                } else {
-                    out.clone()
-                };
-                self.chat_log.push((false, show));
-                self.chat_plan = plan;
-                self.status = if self.chat_plan.is_some() {
-                    ui::t!("proposed_change_ready_read").into()
-                } else {
-                    ui::t!("answered_left_panel").into()
-                };
+        let args = match path {
+            Some(p) => format!("{{\"path\":{}}}", ops::J::S(p).to_json()),
+            None => "{}".into(),
+        };
+        use agent::ToolHost as _;
+        let mut d = agent::tools::DirectHost { h: self };
+        match d.call("save", &args) {
+            // 状態行は Host の save が言う(保存しました — …)
+            Ok(_) => self.chat_log.push(ChatRow::Tool("save".into(), false)),
+            Err(e) => {
+                self.status = format!("{e}").into();
+                self.chat_log.push(ChatRow::Tool(format!("エラー: {e}"), false));
             }
         }
     }
@@ -2830,15 +2922,37 @@ pub(crate) fn sheet_var(name: &str) -> String {
     }
 }
 
-/// AI の答えから ```python …``` の囲みを取り出す。**囲みが無ければ None**
-/// (表を直さない答え)。囲みの言語札は省かれることもあるので両方見る
-pub(crate) fn extract_box(out: &str) -> Option<String> {
-    let mut it = out.split("```");
-    it.next()?; // 囲みの前
-    let inner = it.next()?;
-    let inner = inner.strip_prefix("python").unwrap_or(inner);
-    let t = inner.trim_start_matches('\n').trim_end().to_string();
-    if t.is_empty() { None } else { Some(t) }
+/// エージェントへの言いつけ(system)。会話の言葉はモデルに任せる —
+/// 定型文を挟まない(2026-09-02 発注者「もっと自由に対話ができるように」)
+const AGENT_SYSTEM: &str = "あなたは表計算アプリの中で働く助手です。\
+道具でいま開いているブックを直接読み書きできます。\
+まず book_info や used_range で様子を見てから触ります。\
+書き替えは1手として入り、利用者が Ctrl+Z で戻せます。\
+保存(save)は利用者がはっきり頼んだときだけ呼びます。\
+答えは利用者の言語に合わせて、短く書きます。";
+
+/// 道具の結線(ops の語彙へ直に)。save だけは実行せず、確認のボタンを
+/// 出して人を待つ — 確認を取る3つ(保存・削除・外への送信)の1つ目
+struct CalcTools<'a> {
+    calc: &'a mut Calc,
+}
+
+impl agent::ToolHost for CalcTools<'_> {
+    fn tools(&self) -> Vec<lang::model::ToolDef> {
+        agent::tools::sheet_tools()
+    }
+    fn call(&mut self, name: &str, arguments: &str) -> Result<String, String> {
+        if name == "save" {
+            let args = if arguments.trim().is_empty() { "{}" } else { arguments };
+            self.calc.agent_save = Some(ops::Jobj::parse(args).and_then(|o| o.str("path")));
+            return Err(
+                "保存には人の確認が要ります。確認のボタンを出したので、答えを待ってください"
+                    .into(),
+            );
+        }
+        let mut d = agent::tools::DirectHost { h: self.calc };
+        agent::ToolHost::call(&mut d, name, arguments)
+    }
 }
 
 impl Calc {
@@ -2914,7 +3028,9 @@ impl Calc {
         };
     }
 
-    /// 会話を送る。**答えは書類でなくパネルへ**返る(CalcAi::Chat)
+    /// 会話を送る。**答えは書類でなくパネルへ**返る。
+    /// 実体はエージェントのループ(agent_send) — それまでのやりとりは
+    /// エージェントが履歴として持っている
     pub(crate) fn chat_send(&mut self, cx: &mut Context<Self>) {
         let t = self.chat_in.text().trim().to_string();
         if t.is_empty() {
@@ -2922,138 +3038,17 @@ impl Calc {
             return;
         }
         self.chat_in = Editor::new("");
-        self.chat_ask(t, cx);
+        self.agent_send(t, cx);
     }
 
-    /// 頼みを1つ送る。**それまでのやりとりを添える**(2026-08-16)。
-    ///
-    /// 前は毎回1往復で切れていて、「さっきの表を今度は昇順に」が通らなかった。
-    /// 一問一答の口(`ask`)しか無いので、**書き起こしを頼みの頭に畳んで**
-    /// 渡す。直近だけにするのは、長い会話でセルの中身ごと膨らませないため
-    pub(crate) fn chat_ask(&mut self, purpose: String, cx: &mut Context<Self>) {
-        self.chat_log.push((true, purpose.clone()));
-        self.chat_plan = None;
-        // 直近の6つ(3往復)まで。**いま足した自分の発言は除く**
-        let n = self.chat_log.len().saturating_sub(1);
-        let before = &self.chat_log[n.saturating_sub(6)..n];
-        let q = if before.is_empty() {
-            purpose
-        } else {
-            let mut s = String::from("これまでのやりとり:\n");
-            for (self_of, text) in before {
-                s.push_str(if *self_of { "私: " } else { "あなた: " });
-                s.push_str(text);
-                s.push('\n');
-            }
-            format!("{s}\n続けて、次の頼みに答えてください。\n{purpose}")
-        };
-        self.ai_go(CalcAi::Chat(q), cx);
-    }
-
-    /// **新しい会話にする。** やりとりも変更案も捨てる(書類は触らない)
+    /// **新しい会話にする。** やりとりも履歴も捨てる(書類は触らない)
     pub(crate) fn chat_reset(&mut self) {
         self.chat_log.clear();
-        self.chat_plan = None;
-        self.chat_err = None;
+        self.agent = None;
+        self.agent_shown = 0;
+        self.agent_save = None;
         self.chat_in = Editor::new("");
         self.status = ui::t!("started_new_conversation_sheet").into();
     }
 
-    /// **落ちた台本を直してもらう。** 出た誤りをそのまま添えて頼み直す —
-    /// Agent Panel の「走らせて、落ちたら直す」の芯はここ(2026-08-16)
-    pub(crate) fn chat_fix(&mut self, cx: &mut Context<Self>) {
-        let Some(err) = self.chat_err.take() else { return };
-        let plan = self.chat_plan.clone().unwrap_or_default();
-        self.chat_ask(
-            ui::tf!(
-                "previous_script_failed_read",
-                err,
-                plan
-            ),
-            cx,
-        );
-    }
-
-    /// **変更案を走らせる。** ここが「人が押した」の一点 —
-    /// 押すまで AI は書類に触らない(2026-08-09 の決めの精神を保つ形)。
-    /// 台本は officework の橋を通ってこのアプリを操るので、走った跡は
-    /// undo の1手として残る。
-    ///
-    /// **裏で走らせる。** ここで待つと自分待ちになる — 台本は橋越しに
-    /// calc へ話しかけるのに、calc は台本の終了を待って命令を捌けない。
-    /// 2026-08-15 実機で踏んだ(「calc が応じません(忙しいか、閉じかけ)」)。
-    pub(crate) fn chat_run(&mut self, cx: &mut Context<Self>) {
-        let Some(plan) = self.chat_plan.clone() else { return };
-        if self.chat_busy {
-            self.status = ui::t!("script_running_please_wait").into();
-            return;
-        }
-        self.commit();
-        self.checkpoint_book();
-        let dir = std::env::temp_dir().join("officework-chat");
-        let _ = std::fs::create_dir_all(&dir);
-        let p = dir.join("plan.py");
-        if let Err(e) = std::fs::write(&p, plan.as_bytes()) {
-            self.status = ui::tf!("cant_place_script", e).into();
-            return;
-        }
-        self.chat_busy = true;
-        self.status = ui::t!("running_proposed_change").into();
-        let py = crate::py::find_python();
-        let task = cx.background_executor().spawn(async move {
-            let mut cmd = std::process::Command::new(py);
-            cmd.arg(&p);
-            crate::py::run_with_timeout(&mut cmd, 60)
-        });
-        cx.spawn(async move |this, cx| {
-            let r = task.await;
-            let _ = this.update(cx, |this, cx| {
-                this.chat_busy = false;
-                match r {
-                    Ok((true, out, _)) => {
-                        this.chat_plan = None;
-                        this.chat_err = None;
-                        let tail = out.lines().rev().take(3).collect::<Vec<_>>().join(" / ");
-                        // **結果を会話に戻す。** 次の頼みがこれを踏まえられる
-                        this.chat_log.push((
-                            false,
-                            if tail.trim().is_empty() {
-                                ui::t!("applied").to_string()
-                            } else {
-                                ui::tf!("applied_2", tail).to_string()
-                            },
-                        ));
-                        this.status = if tail.trim().is_empty() {
-                            ui::t!("proposed_change_applied_ctrl").into()
-                        } else {
-                            ui::tf!("proposed_change_applied_ctrl_z", tail).into()
-                        };
-                        this.reload_from_disk_if_needed();
-                    }
-                    Ok((false, _, err)) => {
-                        // **誤りを控えて会話にも出す。** 「直してもらう」で
-                        // そのまま送れるようにする(Agent Panel の作法)
-                        let tail = err.lines().rev().take(4).collect::<Vec<_>>().join("\n");
-                        this.chat_log.push((false, ui::tf!("failed", tail).to_string()));
-                        this.chat_err = Some(tail.clone());
-                        this.status = ui::tf!("script_failed",
-                            err.lines().rev().take(2).collect::<Vec<_>>().join(" / ")).into();
-                    }
-                    Err(e) => {
-                        this.status = ui::tf!("script_not_run", e).into();
-                    }
-                }
-                cx.notify();
-            });
-        })
-        .detach();
-        cx.notify();
-    }
-
-    /// 橋越しに書き換わった中身を画面へ。**橋は同じアプリを操るので、
-    /// 実際にはこの場で反映済み** — 念のため再計算だけ促す
-    pub(crate) fn reload_from_disk_if_needed(&mut self) {
-        recalc_book(&mut self.book, self.active);
-        self.dirty = true;
-    }
 }

@@ -489,21 +489,23 @@ pub struct Calc {
     /// リボンの表示タブの「左パネル」「右パネル」で開け閉めする
     pub(crate) left_open: bool,
     pub(crate) right_open: bool,
-    /// 会話のやりとり(自分か, 字)。**画面だけの物** — ブックには載らない
+    /// 会話のやりとり。**画面だけの物** — ブックには載らない
     /// (データとプログラムを分ける、の決めのまま)
-    pub(crate) chat_log: Vec<(bool, String)>,
+    pub(crate) chat_log: Vec<ChatRow>,
     /// 会話の入力欄
     pub(crate) chat_in: Editor,
-    /// AI が出した**変更案**(officework の Python)。人が「入れる」を
-    /// 押すまで走らない — **押したのは人**、が残る形にするため
-    pub(crate) chat_plan: Option<String>,
     /// 会話の入力欄に焦点があるか(打鍵をそちらへ回す)
     pub(crate) chat_focus: bool,
-    /// 変更案の台本が裏で走っている間(押し重ねを止める)
-    pub(crate) chat_busy: bool,
-    /// 走らせて落ちたときの誤り(「直してもらう」に添えて送る)。
-    /// 成功したら消える — 古い誤りを持ち回らない
-    pub(crate) chat_err: Option<String>,
+    /// エージェントの対話(ループの骨は agent クレート)。
+    /// None = まだ話していない。新しい会話で捨てて作り直す
+    pub(crate) agent: Option<agent::Agent>,
+    /// agent の記録のうち、会話の欄へ写した数
+    pub(crate) agent_shown: usize,
+    /// モデルの状態(4語で出す — 設計の決め 2026-09-02)
+    pub(crate) agent_state: AgentState,
+    /// 道具 save の確認待ち(渡された path)。保存は人の確認が要る —
+    /// 確認を取る3つ(保存・削除・外への送信)の1つ目
+    pub(crate) agent_save: Option<Option<String>>,
     /// 左パネルのいまの面(0=会話 1=コメント)。柱のアイコンで切り替える
     pub(crate) left_face: u8,
     /// 右パネルのいまの面(0=セルの設定 1=図形と画像)
@@ -718,51 +720,32 @@ impl PropKind {
     }
 }
 
-/// AI に頼む仕事(calc 流)。
+/// 会話の1行。人・エージェント・道具呼びの控え。
 ///
 /// **2026-08-15、9つの動詞を廃した**(発注者「いまの AI のボタンは全部
-/// 要らない」「会話形式にして、書類を修正できるように」)。要約・翻訳・
-/// 敬語・ふりがな…は、左パネルの会話に「〜して」と打てば通る — しかも
-/// ボタンでは作れない頼み方(「表にして、列は日付と金額で」)もできる。
-/// 残るのは会話だけ。
-#[derive(Clone)]
-enum CalcAi {
-    /// **会話**。答えを書類に入れず、**左パネルに返す**。表を直す頼みなら
-    /// officework の Python を書かせ、人が「入れる」を押してから走る
-    Chat(String),
+/// 要らない」「会話形式にして、書類を修正できるように」)。
+/// **2026-09-02、変更案(Python を人が押して走らせる形)も廃した** —
+/// エージェントが道具でブックを直接読み書きし、書き替えは1手として
+/// 入って Ctrl+Z で戻る(docs/sekkei/agent.ja.adoc「対話の画面の決め」)。
+#[derive(Clone, PartialEq)]
+pub(crate) enum ChatRow {
+    /// 人の頼み
+    Me(String),
+    /// エージェントの言葉(モデルが自分の言葉で書く — 定型文は挟まない)
+    Ai(String),
+    /// 道具呼びの事実(飾らない1行)。true = 書き替え(「1手」の印)
+    Tool(String, bool),
 }
 
-impl CalcAi {
-    /// モデルへの言いつけ(system)と、何を渡すか
-    fn prompt(&self) -> (&'static str, &'static str) {
-        match self {
-            // **会話**。表を直す頼みなら officework の Python を書かせる。
-            // 直接いじらせない — 人が見て「入れる」を押して初めて走る。
-            // Python にするのは、AI がいちばん正確に書ける形であり(xlwings と
-            // openpyxl の形)、**人が読んで確かめられる**から
-            CalcAi::Chat(_) => (
-                "あなたは表計算を手伝う相談相手です。日本語で短く答えます。\n\
-                 **表を直す頼み**(並べ替え・色・書式・行や列の出し入れ・\
-                 計算の追加など)のときは、まず1〜2文で何をするかを言い、\
-                 続けて ```python の囲みの中に officework の台本だけを書きます。\
-                 台本の作法: 先頭は `from officework import calc as xw` と\
-                 `wb = xw.Book.attach()` と `s = wb.sheets.active`。\
-                 **attach です** — `xw.Book()` は新しいブックを作ってしまい、\
-                 いま開いている表が消えます。範囲は `s[\"A1:C9\"]`。\
-                 値は `.value`、書式は `.font.bold` `.number_format` `.fill` など。\
-                 **保存はしない**(人が見て決める)。説明は囲みの外に書きます。\n\
-                 表を直さない頼み(意味を訊く・式を1つ教える等)は、\
-                 囲みを使わず本文だけで答えます。",
-                "",
-            ),
-        }
-    }
-
-    fn label(&self) -> &'static str {
-        match self {
-            CalcAi::Chat(_) => ui::t!("conversation"),
-        }
-    }
+/// モデルの状態。パネルに**4語で出す**(2026-09-02 発注者)。
+/// Idle は「宛先はあるが、まだ話していない」— 語は出さない
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum AgentState {
+    Unset,
+    Idle,
+    Connecting,
+    Connected,
+    Failed,
 }
 
 /// **アプリを起動する。** `main.rs` はこれを呼ぶだけです

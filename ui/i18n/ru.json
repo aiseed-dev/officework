@@ -2285,5 +2285,13 @@
  "function_category": "Категория",
  "function_name": "Имя функции",
  "engineering": "Инженерные",
- "database": "База данных"
+ "database": "База данных",
+ "model_unset": "Не настроено",
+ "model_connecting": "Подключение",
+ "model_connected": "Подключено",
+ "model_connect_failed": "Сбой подключения",
+ "one_step": "1 шаг",
+ "agent_no_destination": "Нет адреса ИИ (можно задать в расширенных настройках)",
+ "agent_wants_save": "Агент просит сохранить",
+ "save_declined": "Не сохранено"
 }

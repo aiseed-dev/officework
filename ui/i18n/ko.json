@@ -2285,5 +2285,13 @@
  "function_category": "범주",
  "function_name": "함수 이름",
  "engineering": "공학",
- "database": "데이터베이스"
+ "database": "데이터베이스",
+ "model_unset": "미설정",
+ "model_connecting": "접속 중",
+ "model_connected": "접속됨",
+ "model_connect_failed": "접속 실패",
+ "one_step": "1단계",
+ "agent_no_destination": "AI 대상이 없습니다(고급 설정에서 지정할 수 있습니다)",
+ "agent_wants_save": "에이전트가 저장을 요청합니다",
+ "save_declined": "저장하지 않았습니다"
 }
