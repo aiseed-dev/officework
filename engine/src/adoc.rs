@@ -65,9 +65,24 @@ pub fn write(doc: &Document) -> String {
             head.push_str(&format!(":template: {t}\n"));
         }
     }
+    // 節のある文書は、最初の節の用紙を頭に書きます(`:page-size:` など)。
+    // 読んだ値ではなく**いまの用紙**を書きます — 画面で変えた分が保存で消えないように
+    let geo = crate::layout::section_geometry(doc);
+    let mut page_head_done = false;
+    let mut push_page_head = |head: &mut String| {
+        if page_head_done { return; }
+        page_head_done = true;
+        for (k, v) in page_attr_pairs(&geo[0]) {
+            head.push_str(&format!(":{k}: {v}\n"));
+        }
+    };
     for (k, v) in &doc.attrs {
         if k.is_empty() {
             head.push_str(&format!("{v}\n")); // 原文のままの行(著者の行など)
+            continue;
+        }
+        if !geo.is_empty() && is_page_attr_key(k) {
+            push_page_head(&mut head);
             continue;
         }
         // テンプレートの名前は後から変わりうるので、いまの値で書きます
@@ -79,6 +94,9 @@ pub fn write(doc: &Document) -> String {
             head.push_str(&format!(":{k}: {v}\n"));
         }
     }
+    if !geo.is_empty() {
+        push_page_head(&mut head);
+    }
     if !head.is_empty() {
         out.push_str(&head);
         out.push('\n');
@@ -88,8 +106,30 @@ pub fn write(doc: &Document) -> String {
         if bi == 0 && title_para {
             continue; // 頭で書いた
         }
+        // **節の切れ目。** 前の段落で節が終わっていれば、ここからの用紙を
+        // `[page-…]` で書き、改ページする節なら `<<<` を続けます
+        let prev_sect = match bi.checked_sub(1).map(|i| &doc.blocks[i]) {
+            Some(Block::Para(q)) => q.sect.as_ref(),
+            _ => None,
+        };
+        if let Some(sb) = prev_sect {
+            if quote_open {
+                out.push_str("____\n\n");
+                quote_open = false;
+            }
+            out.push_str(&page_attr_line(&geo[bi]));
+            out.push('\n');
+            if !sb.continuous {
+                out.push_str("<<<\n");
+            }
+            out.push('\n');
+        }
         match b {
             Block::Para(p) => {
+                // 節の印だけを持つ空の段落は、上の切れ目の行が代わりです
+                if p.runs.is_empty() && p.sect.is_some() && p.raw_adoc.is_none() && p.images_new.is_empty() && p.images.is_empty() {
+                    continue;
+                }
                 let is_quote = p.style == ParaStyle::Quote;
                 if quote_open && !is_quote {
                     out.push_str("____\n\n");
@@ -987,6 +1027,143 @@ fn next_is_blank<'a, I: Iterator<Item = (usize, &'a str)>>(
     it.peek().map(|(_, l)| l.trim().is_empty()).unwrap_or(false)
 }
 
+// ---- 節の用紙(asciidoctor-pdf の書き方)---------------------------------
+
+/// 節の用紙の属性の名前。`[page-size=A3, page-layout=landscape, page-margin=15mm]`
+/// を改ページ `<<<` の前に置くと、そこから新しい節になり、用紙が変わります
+/// (asciidoctor-pdf の `page-layout` と同じ形。size と margin はその仲間です)。
+/// 頭の `:page-size:` などは最初の節の用紙です。
+const PAGE_ATTR_KEYS: &[&str] = &["page-size", "page-layout", "page-margin", "page-columns"];
+
+fn is_page_attr_key(k: &str) -> bool {
+    PAGE_ATTR_KEYS.contains(&k)
+}
+
+/// `[k=v, k=v]` の行なら、対を返します。**page- の名前を1つも持たない行は
+/// 節の用紙ではありません**(`[source,python]` などは今までどおり)。
+fn page_attrs(l: &str) -> Option<Vec<(String, String)>> {
+    let inner = l.strip_prefix('[')?.strip_suffix(']')?;
+    if inner.starts_with('[') || inner.starts_with('.') {
+        return None;
+    }
+    // 角括弧の中のコンマ(`page-margin=[20, 15, 20, 15]`)では切りません
+    let mut parts: Vec<String> = Vec::new();
+    let mut depth = 0i32;
+    let mut cur = String::new();
+    for ch in inner.chars() {
+        match ch {
+            '[' => { depth += 1; cur.push(ch); }
+            ']' => { depth -= 1; cur.push(ch); }
+            ',' if depth == 0 => { parts.push(std::mem::take(&mut cur)); }
+            _ => cur.push(ch),
+        }
+    }
+    parts.push(cur);
+    let mut out = Vec::new();
+    for part in parts {
+        let (k, v) = part.trim().split_once('=')?;
+        out.push((k.trim().to_string(), v.trim().trim_matches('"').to_string()));
+    }
+    if out.iter().any(|(k, _)| is_page_attr_key(k)) { Some(out) } else { None }
+}
+
+/// mm の数を読む。`20` も `20mm` も 20。
+fn mm_of(v: &str) -> Result<f32, String> {
+    v.trim().trim_end_matches("mm").trim().parse::<f32>().map_err(|_| format!("mm の数で書いてください: {v}"))
+}
+
+/// 用紙の属性を、いまの用紙に重ねます。
+fn apply_page_attrs(base: crate::PageSetup, attrs: &[(String, String)]) -> Result<crate::PageSetup, String> {
+    let mut pg = base;
+    for (k, v) in attrs {
+        match k.as_str() {
+            "page-size" => {
+                let landscape = pg.w_mm > pg.h_mm;
+                let (w, h) = crate::theme::youshi_mm(v)
+                    .or_else(|| crate::theme::youshi_mm(&v.to_ascii_uppercase()))
+                    .ok_or_else(|| format!("知らない用紙: {v}(A4 / A3 / B5 / Letter)"))?;
+                let (w, h) = (w.min(h), w.max(h));
+                (pg.w_mm, pg.h_mm) = if landscape { (h, w) } else { (w, h) };
+            }
+            "page-layout" => {
+                let landscape = match v.to_ascii_lowercase().as_str() {
+                    "landscape" | "横" => true,
+                    "portrait" | "縦" => false,
+                    other => return Err(format!("page-layout は portrait か landscape: {other}")),
+                };
+                let (w, h) = (pg.w_mm.min(pg.h_mm), pg.w_mm.max(pg.h_mm));
+                (pg.w_mm, pg.h_mm) = if landscape { (h, w) } else { (w, h) };
+            }
+            "page-margin" => {
+                let t = v.trim();
+                if let Some(list) = t.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+                    let ns: Vec<f32> = list.split(',').map(mm_of).collect::<Result<_, _>>()?;
+                    match ns.as_slice() {
+                        [a] => { pg.top_mm = *a; pg.right_mm = *a; pg.bottom_mm = *a; pg.left_mm = *a; }
+                        [tb, lr] => { pg.top_mm = *tb; pg.bottom_mm = *tb; pg.left_mm = *lr; pg.right_mm = *lr; }
+                        [t, r, b, l] => { pg.top_mm = *t; pg.right_mm = *r; pg.bottom_mm = *b; pg.left_mm = *l; }
+                        _ => return Err("page-margin は 1・2・4 つの数(上, 右, 下, 左)で書きます".into()),
+                    }
+                } else {
+                    let m = mm_of(t)?;
+                    (pg.top_mm, pg.right_mm, pg.bottom_mm, pg.left_mm) = (m, m, m, m);
+                }
+            }
+            "page-columns" => {
+                pg.columns = v.trim().parse::<u8>().map_err(|_| format!("page-columns は段の数: {v}"))?;
+            }
+            _ => {} // page- でない属性は、ここでは読みません
+        }
+    }
+    Ok(pg)
+}
+
+/// 頭の `:page-size:` などから最初の節の用紙を作ります。無ければ None
+fn page_from_attrs(attrs: &[(String, String)]) -> Result<Option<crate::PageSetup>, String> {
+    let pairs: Vec<(String, String)> = attrs.iter().filter(|(k, _)| is_page_attr_key(k)).cloned().collect();
+    if pairs.is_empty() {
+        return Ok(None);
+    }
+    apply_page_attrs(crate::PageSetup::default(), &pairs).map(Some)
+}
+
+/// 用紙の名前(英語)。読む側は日本語の名前も受けます
+fn youshi_en(pg: &crate::PageSetup) -> &'static str {
+    match crate::theme::youshi_na((pg.w_mm.min(pg.h_mm), pg.w_mm.max(pg.h_mm))) {
+        "レター" => "Letter",
+        na => na,
+    }
+}
+
+fn mm_text(v: f32) -> String {
+    if (v - v.round()).abs() < 0.01 { format!("{}", v.round() as i64) } else { format!("{v:.1}") }
+}
+
+/// 用紙を属性の対に(書く側)。size・layout・margin は必ず、columns は 2 段以上のとき
+fn page_attr_pairs(pg: &crate::PageSetup) -> Vec<(&'static str, String)> {
+    let margin = if pg.top_mm == pg.right_mm && pg.top_mm == pg.bottom_mm && pg.top_mm == pg.left_mm {
+        format!("{}mm", mm_text(pg.top_mm))
+    } else {
+        format!("[{}mm, {}mm, {}mm, {}mm]", mm_text(pg.top_mm), mm_text(pg.right_mm), mm_text(pg.bottom_mm), mm_text(pg.left_mm))
+    };
+    let mut v = vec![
+        ("page-size", youshi_en(pg).to_string()),
+        ("page-layout", if pg.w_mm > pg.h_mm { "landscape" } else { "portrait" }.to_string()),
+        ("page-margin", margin),
+    ];
+    if pg.cols() > 1 {
+        v.push(("page-columns", pg.cols().to_string()));
+    }
+    v
+}
+
+/// `[page-size=A4, page-layout=portrait, page-margin=20mm]` の行(書く側)
+fn page_attr_line(pg: &crate::PageSetup) -> String {
+    let body: Vec<String> = page_attr_pairs(pg).into_iter().map(|(k, v)| format!("{k}={v}")).collect();
+    format!("[{}]", body.join(", "))
+}
+
+
 fn vendor_only_syntax(l: &str) -> Option<(&'static str, &'static str)> {
     let t = l.trim_end();
     let ts = t.trim_start();
@@ -1383,6 +1560,10 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     let mut prev_is_desc_list = false;
     // 字下げの段落(literal)の途中か
     let mut in_literal = false;
+    // 節。`[page-…]` の行で前の段落に節の印を付け、そこからの用紙を持つ
+    let mut cur_page: Option<crate::PageSetup> = None;
+    // 直前に節の印を付けた塊(次の行が `<<<` なら改ページする節にする)
+    let mut sect_just: Option<usize> = None;
 
     // 文書の頭: `= 題名` と `:鍵: 値`。**空行までが頭**(本家の作法)
     let mut head_done = false;
@@ -1479,6 +1660,28 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             continue;
         }
         in_literal = false;
+        // **節の用紙**(asciidoctor-pdf の書き方)。この行で前の段落までが
+        // 1つの節になり、ここから先は新しい用紙です。次の行が `<<<` なら
+        // 改ページし、無ければ続き(continuous)の節です
+        if let Some(attrs) = page_attrs(l) {
+            let base = match cur_page {
+                Some(pg) => pg,
+                None => match doc.page {
+                    Some(pg) => pg,
+                    None => page_from_attrs(&doc.attrs).map_err(|e| format!("頭の属性: {e}"))?.unwrap_or_default(),
+                },
+            };
+            let brk = crate::SectionBreak { raw: String::new(), page: base, continuous: true };
+            match doc.blocks.last_mut() {
+                Some(Block::Para(p)) if p.sect.is_none() => p.sect = Some(brk),
+                _ => doc.blocks.push(Block::Para(Paragraph { line_spacing: 1.0, sect: Some(brk), ..Default::default() })),
+            }
+            sect_just = Some(doc.blocks.len() - 1);
+            cur_page = Some(apply_page_attrs(base, &attrs).map_err(|e| format!("{} 行目: {e}", ln + 1))?);
+            prev_is_body = false;
+            prev_is_desc_list = false;
+            continue;
+        }
         if let Some((what, role)) = vendor_only_syntax(l) {
             *ledger.entry(what).or_default() += 1;
             // **原文のまま持ち越し、役割の名前を付けます。**
@@ -1560,7 +1763,17 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             continue;
         }
         if l == "<<<" {
-            pending_break = true;
+            // `[page-…]` の直後の `<<<` は、その節の始め方(改ページ)です
+            if sect_just.is_some() && sect_just == doc.blocks.len().checked_sub(1) {
+                if let Some(Block::Para(p)) = doc.blocks.last_mut() {
+                    if let Some(sb) = p.sect.as_mut() {
+                        sb.continuous = false;
+                    }
+                }
+                sect_just = None;
+            } else {
+                pending_break = true;
+            }
             continue;
         }
         if let Some(name) = l.strip_prefix("[[").and_then(|s| s.strip_suffix("]]")) {
@@ -1804,6 +2017,16 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         pending = Some((doc.blocks.len() - 1, body.to_string()));
     }
     flush_pending(&mut pending, &mut doc, &mut fresh_note)?;
+    // 最後の節の用紙。節が無ければ頭の `:page-…:` だけを見ます(無ければ None のまま =
+    // テンプレートが決めます)
+    match cur_page {
+        Some(pg) => doc.page = Some(pg),
+        None => {
+            if doc.page.is_none() {
+                doc.page = page_from_attrs(&doc.attrs).map_err(|e| format!("頭の属性: {e}"))?;
+            }
+        }
+    }
     let ledger = ledger
         .into_iter()
         .map(|(k, n)| if n > 1 { format!("{k} × {n}") } else { k.to_string() })
@@ -2296,6 +2519,63 @@ mod tests {
         let doc = parse(src).expect(src);
         let back = write(&doc);
         assert_eq!(back, src, "往復で崩れた");
+    }
+
+    /// **節ごとの用紙**(2026-09-02 発注者。asciidoctor-pdf の書き方に合わせた)。
+    /// `[page-…]` と `<<<` で新しい節になり、頭の `:page-…:` が最初の節の用紙
+    #[test]
+    fn sections_carry_their_paper() {
+        let src = ":page-size: A4\n:page-layout: portrait\n:page-margin: 20mm\n\n縦の本文です。\n\n[page-size=A3, page-layout=landscape, page-margin=15mm]\n<<<\n\n横の本文です。\n";
+        let d = parse(src).unwrap();
+        let ps: Vec<&Paragraph> = d.paragraphs().collect();
+        assert_eq!(ps.len(), 2);
+        let sb = ps[0].sect.as_ref().expect("前の段落に節の印が無い");
+        assert!(!sb.continuous, "改ページする節になっていない");
+        assert_eq!((sb.page.w_mm, sb.page.h_mm, sb.page.left_mm), (210.0, 297.0, 20.0), "最初の節の用紙");
+        let last = d.page.expect("最後の節の用紙が無い");
+        assert_eq!((last.w_mm, last.h_mm, last.top_mm), (420.0, 297.0, 15.0), "横の A3 になっていない: {last:?}");
+        assert_eq!(write(&d), src, "往復で変わった");
+    }
+
+    #[test]
+    fn a_continuous_section_has_no_page_break_line() {
+        let src = "本文です。\n\n[page-size=A4, page-layout=portrait, page-margin=[25mm, 15mm, 25mm, 15mm]]\n\n続きの本文です。\n";
+        let d = parse(src).unwrap();
+        let sb = d.paragraphs().next().unwrap().sect.as_ref().unwrap();
+        assert!(sb.continuous, "続きの節になっていない");
+        let last = d.page.unwrap();
+        assert_eq!((last.top_mm, last.right_mm, last.bottom_mm, last.left_mm), (25.0, 15.0, 25.0, 15.0));
+        assert_eq!(write(&d), ":page-size: A4\n:page-layout: portrait\n:page-margin: 20mm\n\n".to_string() + src, "往復で変わった");
+    }
+
+    #[test]
+    fn a_section_after_a_table_gets_its_own_empty_paragraph() {
+        let src = "|===\n|a |b\n|===\n\n[page-size=B5, page-layout=portrait, page-margin=20mm]\n<<<\n\n後の本文です。\n";
+        let d = parse(src).unwrap();
+        assert!(matches!(&d.blocks[1], Block::Para(p) if p.runs.is_empty() && p.sect.is_some()), "表の後に節の印の段落が無い: {:?}", d.blocks.len());
+        assert_eq!(d.page.unwrap().w_mm, 182.0);
+        let w = write(&d);
+        assert!(w.contains("|===\n\n[page-size=B5"), "表の後の切れ目が書けていない:\n{w}");
+    }
+
+    #[test]
+    fn unknown_paper_is_refused_by_line() {
+        let e = parse("本文です。\n\n[page-size=Z9]\n<<<\n\n次です。\n").unwrap_err();
+        assert!(e.contains("3 行目") && e.contains("知らない用紙"), "{e}");
+        assert!(parse("本文です。\n\n[page-layout=sideways]\n").is_err());
+        // page- を持たない指定の行は、今までどおり原文のまま持ち越す
+        let d = parse("[source,python]\n----\nprint(1)\n----\n").unwrap();
+        assert!(d.paragraphs().all(|p| p.sect.is_none()));
+    }
+
+    #[test]
+    fn the_header_alone_sets_the_first_paper() {
+        let d = parse(":page-size: Letter\n:page-layout: landscape\n\n本文です。\n").unwrap();
+        let pg = d.page.unwrap();
+        assert_eq!((pg.w_mm, pg.h_mm), (279.4, 215.9));
+        // 節が無ければ頭はそのまま(値も順も変えない)
+        assert_eq!(write(&d), ":page-size: Letter\n:page-layout: landscape\n\n本文です。\n");
+        assert!(parse("本文です。\n").unwrap().page.is_none(), "何も書いていないのに用紙を決めた");
     }
 
     /// **編集できるようにした書き方**(2026-08-18)。原文のまま持ち越すのを
