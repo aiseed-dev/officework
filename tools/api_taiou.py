@@ -53,6 +53,8 @@ class Row(NamedTuple):
     pd: str         # python-docx の書き方
     op: str         # openpyxl の書き方
     group: str = ""  # まとまりの名前(下の GROUPS。無ければ空)
+    id: str = ""     # ボタンの id。**同じ名前で別の操作**を見分けるのに要ります
+                     # (図形の「グループ化」と行の「グループ化」など)
 
 
 # **同じことをするボタンのまとまり**(2026-08-30 発注者「こういうのは、
@@ -778,7 +780,7 @@ def rows():
                     continue
                 ow, pd, op = FILE_MICHI[i]
                 _label_lookup[i] = j
-                out.append(Row(tab, e, j, "", state(i, ow), ow, pd, op))
+                out.append(Row(tab, e, j, "", state(i, ow), ow, pd, op, "", i))
             continue
         seen = set()
         for t in (w.get(tab), c.get(tab)):
@@ -794,12 +796,12 @@ def rows():
                 name, _ids, ow, pd, op = g if g else ("", None, *MICHI[cmd.id])
                 _label_lookup[cmd.id] = cmd.label
                 out.append(Row(tab, eigo.get(cmd.id, ""), cmd.label, cmd.icon,
-                               state(cmd.id, ow), ow, pd, op, name))
+                               state(cmd.id, ow), ow, pd, op, name, cmd.id))
     for tab, spec, ow, pd, op in HOKA:
         e, j = hoka_name(spec)
         mark = "✅" if ow else ("❌" if j in HOKA_TSUKURANAI else "")
         _label_lookup[j] = j
-        out.append(Row(tab, e, j, "", mark, ow, pd, op))
+        out.append(Row(tab, e, j, "", mark, ow, pd, op, "", spec if isinstance(spec, str) else j))
     return out
 
 

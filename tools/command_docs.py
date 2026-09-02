@@ -67,12 +67,18 @@ def list():
         if row.mark == "❌":
             continue
         member = command_name(row.ja)
-        if member in summary:
-            if row.tab not in summary[member][1]:
-                summary[member][1].append(row.tab)
+        # **束ねる鍵は id です。名前ではありません**(2026-08-31)。
+        # 「保存」はファイルとクイックアクセスで同じ id なので1枚に
+        # まとまります。「グループ化」は図形が img-group、行が group で
+        # 別の操作なので、別の頁になります。名前で束ねていたときは、
+        # 後から出た方が行き先を失っていました
+        key = row.id or member
+        if key in summary:
+            if row.tab not in summary[key][1]:
+                summary[key][1].append(row.tab)
             continue
         p = SAKI / name(row.tab) / f"{name(member)}.adoc"
-        summary[member] = [member, [row.tab], row.mark, row.ow, p, row.pd, row.op, row.ja]
+        summary[key] = [member, [row.tab], row.mark, row.ow, p, row.pd, row.op, row.ja]
     return [tuple(v) for v in summary.values()]
 
 
@@ -205,14 +211,17 @@ draft_of = """= {label}
 def annai(q, honmono):
     """その頁が、説明のある頁への案内かどうか。
 
-    同じ名前の頁が表にあり(段が違うだけ)、そこへのリンクを持っていれば
-    案内です。リンクが指す先が本物として数えられていることまで確かめます —
-    字だけ合っていて行き先が無い頁は、案内ではなく消し忘れです。
+    本物として数えられている別の頁へのリンクを持っていれば案内です。
+
+    **名前が同じかどうかは見ません**(2026-08-31)。同じボタンでも段に
+    よって札が違うことがあります(挿入の「ヘッダーの編集」がレイアウトでは
+    「ヘッダー/フッター」)。行き先が本物であることだけを確かめます —
+    行き先の無い頁は、案内ではなく消し忘れです。
     """
     text = q.read_text(encoding="utf-8")
     for rel in re.findall(r"link:([^\[]+)\[", text):
         saki = (q.parent / rel).resolve()
-        if saki != q.resolve() and saki in honmono and saki.stem == q.stem:
+        if saki != q.resolve() and saki in honmono:
             return True
     return False
 
