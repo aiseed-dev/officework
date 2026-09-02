@@ -1252,6 +1252,55 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
 }
 
 /// docx として書き出す(最小の OPC パッケージ)。
+/// **箇条書きと番号付きの定義**(`word/numbering.xml`)。
+///
+/// 段落は `w:numPr` で `numId` 1(中黒)か 2(番号)を指します。その
+/// 定義がファイルに無いと、Word も LibreOffice も**印を出しません** —
+/// スタイルの名前だけでは中黒も番号も付きません(2026-09-01 発注者
+/// 「箇条書きも番号リストもできていない」)。
+///
+/// 9段まで作ります。中黒は Word と同じ3つ(●・○・■)の繰り返し、
+/// 番号は 1. / 1) / (1) の繰り返しです。
+fn numbering_xml() -> String {
+    let mut s = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
+    );
+    for (aid, tsuki) in [(1usize, false), (2, true)] {
+        s.push_str(&format!(r#"<w:abstractNum w:abstractNumId="{aid}">"#));
+        for lv in 0..9 {
+            let (fmt, txt) = if tsuki {
+                match lv % 3 {
+                    0 => ("decimal", format!("%{}.", lv + 1)),
+                    1 => ("decimal", format!("%{})", lv + 1)),
+                    _ => ("decimal", format!("(%{})", lv + 1)),
+                }
+            } else {
+                ("bullet", match lv % 3 { 0 => "●", 1 => "○", _ => "■" }.to_string())
+            };
+            // 字下げは1段 720twip(Word の既定)。ぶら下げも同じ幅です
+            let left = 720 * (lv + 1);
+            s.push_str(&format!(
+                concat!(
+                    r#"<w:lvl w:ilvl="{lv}"><w:start w:val="1"/>"#,
+                    r#"<w:numFmt w:val="{fmt}"/><w:lvlText w:val="{txt}"/>"#,
+                    r#"<w:lvlJc w:val="left"/><w:pPr>"#,
+                    r#"<w:ind w:left="{left}" w:hanging="360"/></w:pPr></w:lvl>"#,
+                ),
+                lv = lv, fmt = fmt, txt = crate::read::esc(&txt), left = left,
+            ));
+        }
+        s.push_str("</w:abstractNum>");
+    }
+    for (nid, aid) in [(1, 1), (2, 2)] {
+        s.push_str(&format!(
+            r#"<w:num w:numId="{nid}"><w:abstractNumId w:val="{aid}"/></w:num>"#
+        ));
+    }
+    s.push_str("</w:numbering>");
+    s
+}
+
 pub fn write<W: Write + Seek>(doc: &Document, dst: W) -> Result<(), String> {
     write_with(doc, None::<std::io::Cursor<Vec<u8>>>, dst)
 }
@@ -1599,6 +1648,9 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
     let mut orig_settings: Option<String> = None;
     let mut orig_core: Option<String> = None;
     let mut orig_root_rels: Option<String> = None;
+    // **箇条書きが1つでもあれば、番号の定義を置きます**(2026-09-01)
+    let iru_ban = doc.paragraphs().any(|p| p.list != ListKind::None);
+    let mut orig_has_num = false;
     let mut orig_has_styles = false;
     let has_props = doc.props != Default::default();
     if let Some(src) = original {
@@ -1620,6 +1672,9 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
                 // 内閣府の document_4 がそれで、こちらの `styles.xml` を
                 // 足してしまい、同じ種類の関係が2つある docx になって
                 // いました(2026-09-01。python-docx が読めません)
+                if name.starts_with("word/numbering") && name.ends_with(".xml") {
+                    orig_has_num = true; // 原本の定義を持ち越す(下で作らない)
+                }
                 if name.starts_with("word/styles") && name.ends_with(".xml") {
                     if theme.is_some() {
                         continue;
@@ -1729,6 +1784,8 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
              "application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml"),
             ((has_props || orig_core.is_some()).then_some("docProps/core.xml"),
              "application/vnd.openxmlformats-package.core-properties+xml"),
+            ((iru_ban && !orig_has_num).then_some("word/numbering.xml"),
+             "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"),
             ((!orig_has_styles).then_some("word/styles.xml"),
              "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"),
             ((!orig_has_styles).then_some("word/theme/theme1.xml"),
@@ -1838,11 +1895,18 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
         zip.write_all(crate::theme::xml().as_bytes()).map_err(|e| e.to_string())?;
     }
 
+    // **番号の定義。** 段落が `w:numPr` で指す先です
+    if iru_ban && !orig_has_num {
+        zip.start_file("word/numbering.xml", opts).map_err(|e| e.to_string())?;
+        zip.write_all(numbering_xml().as_bytes()).map_err(|e| e.to_string())?;
+    }
+
     // 本文の rels。原本の関係(既存の画像・ヘッダー等)は残し、
     // 挿した画像のぶん(rIdJO1〜)と、新しく作るヘッダー・フッターを足す
     if orig_rels.is_some() || !new_media.is_empty() || hdr.is_some() || ftr.is_some()
         || doc.page_color.is_some() || doc.hyphenate || doc.protection.is_some()
         || !cmts_out.is_empty() || !orig_has_styles || !collect_links(doc).is_empty()
+        || (iru_ban && !orig_has_num)
     {
         let mut rels = orig_rels.unwrap_or_else(|| {
             concat!(
@@ -1908,6 +1972,13 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
         // 対で theme1.xml も置くので、両方の関係が要ります。無いと Word が
         // テーマの書体を解けず、役ごとの分け(見出し=ゴシック/本文=明朝)が
         // 効きません
+        if iru_ban && !orig_has_num
+            && !rels.contains("/numbering\"") && !add.contains("/numbering\"")
+        {
+            add.push_str(&format!(
+                r#"<Relationship Id="rIdJOnum" Type="{RNS_DOC}/numbering" Target="numbering.xml"/>"#
+            ));
+        }
         if !orig_has_styles {
             for (rid, kind, target) in [
                 ("rIdJOsty", "styles", "styles.xml"),

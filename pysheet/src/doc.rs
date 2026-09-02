@@ -1961,6 +1961,17 @@ impl PyParagraph {
             PyIndexError::new_err("この段落はもう文書に無い(文書の形が変わった)")
         })?;
         p.style = style;
+        // **箇条書きのスタイルは、箇条書きにします**(2026-09-01 発注者
+        // 「箇条書きも番号リストもできていない」)。前は名前を付けるだけで、
+        // 模型の `list` が None のままでした。中黒も番号も出ません
+        if let Some(id) = style_id.as_deref() {
+            let v = id.to_ascii_lowercase();
+            if v.starts_with("listbullet") {
+                p.list = kumihan::ListKind::Bullet;
+            } else if v.starts_with("listnumber") || v.starts_with("listparagraph") {
+                p.list = kumihan::ListKind::Number;
+            }
+        }
         p.style_id = style_id;
         Ok(())
     }
