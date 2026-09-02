@@ -687,6 +687,75 @@ fn plain(t: &[char], m: &Marked) -> String {
     s
 }
 
+/// 印を元の書き方に戻して字にする(リンクや参照の表示名に使う)。
+///
+/// run は1つに書式1つなので、リンクの字の中の書式は持てません。落とす
+/// 代わりに `*字*` のような元の形で字に残し、書き戻しでも同じ形にします。
+/// 本家はそれを再び書式として組むので、本家の出力は変わりません
+fn remark(t: &[char], m: &Marked) -> String {
+    let mut s = String::new();
+    let mut i = 0;
+    while i < t.len() {
+        let c = t[i];
+        if let Some(k) = kind_of(c, OPEN0) {
+            let attrs = t.get(i + 1).and_then(|&c| attr_idx(c)).and_then(|a| m.attrs.get(a));
+            if let Some(a) = attrs {
+                let mut inner = String::new();
+                if let Some(id) = &a.id {
+                    inner.push('#');
+                    inner.push_str(id);
+                }
+                if let Some(r) = &a.role {
+                    for x in r.split(' ') {
+                        inner.push('.');
+                        inner.push_str(x);
+                    }
+                }
+                s.push('[');
+                s.push_str(&inner);
+                s.push(']');
+                i += 1;
+            }
+            s.push_str(match k {
+                Kind::Strong => "*",
+                Kind::Emph => "_",
+                Kind::Mono => "`",
+                Kind::Mark => "#",
+                Kind::Sup => "^",
+                Kind::Sub => "~",
+                Kind::DQuote => "\"`",
+                Kind::SQuote => "'`",
+            });
+            i += 1;
+            continue;
+        }
+        if let Some(k) = kind_of(c, CLOSE0) {
+            s.push_str(match k {
+                Kind::Strong => "*",
+                Kind::Emph => "_",
+                Kind::Mono => "`",
+                Kind::Mark => "#",
+                Kind::Sup => "^",
+                Kind::Sub => "~",
+                Kind::DQuote => "`\"",
+                Kind::SQuote => "`'",
+            });
+            i += 1;
+            continue;
+        }
+        if let Some(k) = pass_idx(c) {
+            // passthrough は中身の字だけにします。書き手が `\` と `]` を
+            // 包み直すので、往復で壊れません
+            s.push_str(&m.passes[k].text);
+            i += 1;
+            continue;
+        }
+        s.push(c);
+        i += 1;
+    }
+    s
+}
+
 #[derive(Default, Clone)]
 struct State {
     depth: [u8; 8],
@@ -729,8 +798,9 @@ struct Walker<'a> {
 }
 
 /// マクロの頭。`\` の次にこれが来たら、`\` は逃がしの印です
-const MACRO_HEADS: &[&str] =
-    &["footnote:[", "field:", "ruby:", "https://", "http://", "link:", "<<"];
+const MACRO_HEADS: &[&str] = &[
+    "footnote:[", "field:", "ruby:", "https://", "http://", "file://", "ftp://", "irc://", "link:", "<<", "xref:",
+];
 
 impl Walker<'_> {
     fn walk(&mut self, t: &[char], st: &mut State) -> Result<Vec<Run>, String> {
@@ -809,12 +879,30 @@ impl Walker<'_> {
                         i += 2;
                         continue;
                     }
+                    // `\<https://…>` は `<` と URL の頭を字にして、リンクにしない
+                    if n == '<' && scheme_len(t, i + 2).is_some() {
+                        cur.push('<');
+                        cur.push(t[i + 2]);
+                        i += 3;
+                        continue;
+                    }
                 }
                 cur.push(c);
                 i += 1;
                 continue;
             }
-            if let Some((end, run)) = self.macro_at(t, i, st)? {
+            if let Some((end, mut run)) = self.macro_at(t, i, st)? {
+                // 頭が `\u{0}` の印なら、直前に字にした `<` を外す(`<URL>` の形)
+                if run.first().is_some_and(|r| r.text == "\u{0}") {
+                    run.remove(0);
+                    if cur.ends_with('<') {
+                        cur.pop();
+                    } else if let Some(last) = runs.last_mut() {
+                        if last.text.ends_with('<') {
+                            last.text.pop();
+                        }
+                    }
+                }
                 flush(&mut runs, &mut cur, st);
                 runs.extend(run);
                 i = end;
@@ -890,30 +978,197 @@ impl Walker<'_> {
                 }
             }
         }
-        // リンク。`link:` は前が字のときに付く頭で、字には残しません
-        let url_at = if starts_with(t, i, "link:") { i + 5 } else { i };
-        if starts_with(t, url_at, "https://") || starts_with(t, url_at, "http://") {
-            if let Some(open_at) = (url_at..t.len()).find(|&k| t[k] == '[' || t[k].is_whitespace()) {
-                if t[open_at] == '[' {
-                    if let Some(j) = close_bracket(open_at + 1) {
-                        let url = plain(&t[url_at..open_at], m);
-                        let fmt = CharFormat { link: Some(url), ..base };
-                        // 末尾の `^`(別の窓で開く印)は模型に無いので、字のまま
-                        // 残して書き戻します。落とすと本家の出力が変わります
-                        return Ok(Some((j + 1, vec![run(plain(&t[open_at + 1..j], m), fmt)])));
+        // ---- リンク(本家の `InlineLinkMacroRx` と `InlineLinkRx`)。
+        // 本家はマクロの段でリンクを先に、参照(`<<>>`)を後に読みます
+        let link_run = |url: String, raw_text: &str, base: &CharFormat| -> Run {
+            let (text, role) = link_text(raw_text, &url);
+            let mut fmt = CharFormat { link: Some(url), ..base.clone() };
+            if let Some(r) = role {
+                fmt.style_id = Some(r);
+            }
+            run(text, fmt)
+        };
+        // 形1: `link:対象[字]`。対象は空でもよい。`link::` は違います
+        if starts_with(t, i, "link:") && !starts_with(t, i, "link::") {
+            let c0 = i + 5;
+            let mut k = c0;
+            while k < t.len() && !t[k].is_whitespace() && t[k] != '[' {
+                k += 1;
+            }
+            let target_ok = k == c0 || t[c0] != ':';
+            if target_ok && t.get(k) == Some(&'[') {
+                if let Some(j) = close_bracket(k + 1) {
+                    let url = plain(&t[c0..k], m);
+                    return Ok(Some((j + 1, vec![link_run(url, &remark(&t[k + 1..j], m), &base)])));
+                }
+            }
+            // `[` が無い `link:` は字のまま(この位置から URL も読みません)
+            return Ok(None);
+        }
+        // 形2: URL。直前が行頭・空白・`<`・`>()[];"'`・印のどれかのときだけ
+        if let Some(sl) = scheme_len(t, i) {
+            let prev = if i == 0 { None } else { Some(t[i - 1]) };
+            let prev_ok = match prev {
+                None => true,
+                Some(c) => {
+                    c.is_whitespace()
+                        || matches!(c, '<' | '>' | '(' | ')' | '[' | ']' | ';' | '"' | '\'')
+                        || kind_of(c, OPEN0).is_some()
+                        || kind_of(c, CLOSE0).is_some()
+                        || attr_idx(c).is_some()
+                }
+            };
+            if prev_ok {
+                // `URL[字]` の形(`<` の後ろでも先に見ます)
+                let mut k = i;
+                while k < t.len() && !t[k].is_whitespace() && !is_sentinel(t[k]) && t[k] != '[' && t[k] != ']' {
+                    k += 1;
+                }
+                if t.get(k) == Some(&'[') && k > i + sl {
+                    if let Some(j) = close_bracket(k + 1) {
+                        let url = plain(&t[i..k], m);
+                        return Ok(Some((j + 1, vec![link_run(url, &remark(&t[k + 1..j], m), &base)])));
+                    }
+                }
+                // `<URL>` の形。`>` で閉じる物だけがリンクで、閉じなければ何もしません
+                if prev == Some('<') {
+                    let mut k = i;
+                    while k < t.len() && !t[k].is_whitespace() && !is_sentinel(t[k]) && t[k] != '>' {
+                        k += 1;
+                    }
+                    if t.get(k) == Some(&'>') && k > i + sl {
+                        let url = plain(&t[i..k], m);
+                        // 直前の `<` はもう字に入っているので外す
+                        return Ok(Some((k + 1, vec![Run { text: "\u{0}".into(), size_pt: None, font: None, fmt: CharFormat::default() }, link_run(url.clone(), "", &base)])));
+                    }
+                    return Ok(None);
+                }
+                // 裸の URL。末尾の `,.?!)` は URL に入れず、`;` `:`(とその前の `)`)も外に出します。
+                // `<` は URL に入ります(本家は `&lt;` に変えてから見るので、切れ目にならない)
+                let mut k = i;
+                while k < t.len() && !t[k].is_whitespace() && !is_sentinel(t[k]) && !matches!(t[k], '[' | ']') {
+                    k += 1;
+                }
+                while k > i && matches!(t[k - 1], ',' | '.' | '?' | '!' | ')') {
+                    k -= 1;
+                }
+                if k > i && matches!(t[k - 1], ';' | ':') {
+                    k -= 1;
+                    if k > i && t[k - 1] == ')' {
+                        k -= 1;
+                    }
+                }
+                if k > i + sl {
+                    let url = plain(&t[i..k], m);
+                    return Ok(Some((k, vec![link_run(url, "", &base)])));
+                }
+            }
+            return Ok(None);
+        }
+        // ---- 参照。`<<対象>>` `<<対象,字>>` `xref:対象[字]`
+        if starts_with(t, i, "<<") {
+            // 中が `<URL>`(閉じる物)か `link:` なら参照ではない(本家はリンクを先に読む)
+            let closes = |from: usize| -> bool {
+                let mut k = from;
+                while k < t.len() && !t[k].is_whitespace() && !is_sentinel(t[k]) && !matches!(t[k], '>' | '[') {
+                    k += 1;
+                }
+                matches!(t.get(k), Some('>') | Some('['))
+            };
+            let inner_link = t.get(i + 1) == Some(&'<')
+                && (scheme_len(t, i + 2).is_some_and(|_| closes(i + 2)) || starts_with(t, i + 2, "link:"));
+            let head_ok = t.get(i + 2).is_some_and(|&c| is_word(c) || matches!(c, '#' | '/' | '.' | ':' | '{'));
+            if !inner_link && head_ok {
+                if let Some(j) = (i + 2..t.len()).find(|&k| starts_with(t, k, ">>")) {
+                    let inner = remark(&t[i + 2..j], m);
+                    let (name, text) = match inner.split_once(',') {
+                        Some((a, b)) => (a.trim().to_string(), b.trim().to_string()),
+                        None => (inner.trim().to_string(), String::new()),
+                    };
+                    // 頭の `#` は「この文書の中」の印で、名前には入れません
+                    let name = name.strip_prefix('#').unwrap_or(&name).to_string();
+                    let text = if text.is_empty() { name.clone() } else { text };
+                    let fmt = CharFormat { field: Some(RefField { name, page: false }), ..base };
+                    return Ok(Some((j + 2, vec![run(text, fmt)])));
+                }
+            }
+        }
+        if starts_with(t, i, "xref:") {
+            let c0 = i + 5;
+            if t.get(c0).is_some_and(|&c| is_word(c) || matches!(c, '#' | '/' | '.' | ':' | '{')) {
+                if let Some(k) = (c0..t.len()).find(|&k| t[k] == '[' || t[k].is_whitespace()) {
+                    if t[k] == '[' {
+                        if let Some(j) = close_bracket(k + 1) {
+                            let name = plain(&t[c0..k], m);
+                            let name = name.strip_prefix('#').unwrap_or(&name).to_string();
+                            let text = remark(&t[k + 1..j], m).replace("\\]", "]");
+                            let text = if text.is_empty() { name.clone() } else { text };
+                            let fmt = CharFormat { field: Some(RefField { name, page: false }), ..base };
+                            return Ok(Some((j + 1, vec![run(text, fmt)])));
+                        }
                     }
                 }
             }
         }
-        if starts_with(t, i, "<<") {
-            if let Some(j) = (i + 2..t.len()).find(|&k| starts_with(t, k, ">>")) {
-                let name = plain(&t[i + 2..j], m);
-                let fmt = CharFormat { field: Some(RefField { name: name.clone(), page: false }), ..base };
-                return Ok(Some((j + 2, vec![run(name, fmt)])));
-            }
-        }
         Ok(None)
     }
+}
+
+/// 印の字(私用領域)か。URL や字の並びはここで切れます
+fn is_sentinel(c: char) -> bool {
+    (0xE000..=0xF8FF).contains(&(c as u32))
+}
+
+/// URL の頭(`https://` など)の長さ。本家が自動でリンクにする5つ
+fn scheme_len(t: &[char], i: usize) -> Option<usize> {
+    ["https://", "http://", "file://", "ftp://", "irc://"]
+        .iter()
+        .find(|s| starts_with(t, i, s))
+        .map(|s| s.len())
+}
+
+/// リンクの `[…]` の中身 → (表示する字, 役割)。
+///
+/// `=` があれば属性の並びとして読みます(本家と同じ)。最初の名前無しの
+/// 項目が字で、`role=` だけを持ち越します。字が空なら URL を字にします。
+/// 末尾の `^`(別の窓で開く印)は模型に無いので、字に残します
+fn link_text(raw: &str, url: &str) -> (String, Option<String>) {
+    let raw = raw.replace("\\]", "]");
+    if !raw.contains('=') {
+        return (if raw.is_empty() { url.to_string() } else { raw }, None);
+    }
+    // `,` で切る(引用符の中は切らない)
+    let mut items: Vec<String> = Vec::new();
+    let mut cur = String::new();
+    let mut quote: Option<char> = None;
+    for c in raw.chars() {
+        match quote {
+            Some(q) if c == q => quote = None,
+            Some(_) => cur.push(c),
+            None if c == '"' || c == '\'' => quote = Some(c),
+            None if c == ',' => items.push(std::mem::take(&mut cur)),
+            None => cur.push(c),
+        }
+    }
+    items.push(cur);
+    let is_name = |s: &str| !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+    let named: Vec<(String, String)> = items
+        .iter()
+        .filter_map(|it| it.split_once('=').filter(|(k, _)| is_name(k.trim())).map(|(k, v)| (k.trim().to_string(), v.trim().to_string())))
+        .collect();
+    if named.is_empty() {
+        // 属性は無い。ただし引用符で囲んだ字は、引用符を外した物が字
+        let first = items.first().map(|s| s.trim()).unwrap_or("");
+        let quoted = raw.trim().starts_with(['"', '\'']) && items.len() == 1;
+        return (if quoted { first.to_string() } else { raw }, None);
+    }
+    let text = items
+        .first()
+        .filter(|it| !it.split_once('=').is_some_and(|(k, _)| is_name(k.trim())))
+        .map(|s| s.trim().to_string())
+        .unwrap_or_default();
+    let role = named.iter().find(|(k, _)| k == "role").map(|(_, v)| v.replace(' ', "."));
+    (if text.is_empty() { url.to_string() } else { text }, role)
 }
 
 /// 段落の字(行は継いだ後)を run の並びへ
@@ -990,6 +1245,16 @@ pub(crate) fn settle(line: &str, intended: &[Run]) -> String {
         }
         cur.push(u);
     }
+    // マクロの頭(URL など)も、`\` が要るかもしれない場所です
+    for k in 0..cur.len() {
+        if MACRO_HEADS.iter().any(|h| starts_with(&cur, k, h))
+            || (cur[k] == '<' && scheme_len(&cur, k + 1).is_some())
+        {
+            spots.push(k);
+        }
+    }
+    spots.sort_unstable();
+    spots.dedup();
     if spots.is_empty() {
         return cur.into_iter().collect();
     }

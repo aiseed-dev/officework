@@ -411,10 +411,10 @@ One thing per row, shown three ways: how you type it in the text, which ribbon b
 |Ruby (furigana) |`ruby:漢字[かんじ]` |Home > Ruby |`<ruby>` and `<rt>`
 |Style (paragraph) |`[.name]` on the line above |Styles in the right panel |`class="st-name"`
 |Style (characters) |`[.name]#text#` |Styles in the right panel |`<span class="st-name">`
-|Hyperlink |`https://example.jp[label]` |(no button yet) |`<a href="…">`
+|Hyperlink |`https://example.jp[label]`. When the label is the URL itself, only the URL is written |(no button yet) |`<a href="…">`
 |Footnote |`footnote:[the note]` |References > Footnote |a number linked to a list at the end
 |Bookmark |`[[name]]` on the line above |References > Bookmarks |`id="name"` on the paragraph
-|Cross-reference |`<<name>>` |References > Cross-reference |`<a href="#name">`
+|Cross-reference |`<<name>>`, or `<<name,text>>` to show other text |References > Cross-reference |`<a href="#name">`
 |Table |wrap in `\|===`, cells after `\|` |Insert > Table |`<table>` and `<td>`
 |Merge cells across |`2+\|` |(no button yet) |`colspan="2"`
 |Merge cells down |`.2+\|` |(no button yet) |`rowspan="2"`

@@ -211,6 +211,8 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
     //
     // 切るのは**普通の本文の段落だけ**です。見出しと箇条書きは、続く行が
     // 別の段落になってしまうので切りません
+    // 段落の中の改行は ` +` で書きます(本家の書き方)
+    let text = text.replace('\n', " +\n");
     let may_break = head.is_empty() && p.style == ParaStyle::Body;
     if may_break {
         out.push_str(&split_sentences(&text).join("\n"));
@@ -419,9 +421,20 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
             continue;
         }
         if let Some(f) = &r.fmt.field {
-            // 参照。見えている値は写しでしかないので、対象の名前だけ書く
+            // 参照。字が名前と同じなら `<<名前>>`、違えば `<<名前,字>>`
             let _ = f.page;
-            s.push_str(&format!("<<{}>>", f.name));
+            // URL やパスの形の名前(`://` `.` `/` `#` を含む)は `xref:名前[字]` で
+            // 書きます。`<<URL>>` は本家がリンクに読み、`<<page.adoc,字>>` は
+            // 別の文書への参照として読まれないためです(2026-09-02 に本家の
+            // 手引き 176 枚で退行して分かった)
+            if f.name.contains(['/', '.', '#', ':', '{']) {
+                let text = if r.text == f.name { String::new() } else { esc(&r.text) };
+                s.push_str(&format!("xref:{}[{}]", esc(&f.name), text));
+            } else if r.text.is_empty() || r.text == f.name {
+                s.push_str(&format!("<<{}>>", esc(&f.name)));
+            } else {
+                s.push_str(&format!("<<{},{}>>", esc(&f.name), esc(&r.text)));
+            }
             continue;
         }
         // 上付き・下付きは**意味**(x² / H₂O)。AsciiDoc の標準の印。
@@ -448,6 +461,8 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
             || is_space(r.text.chars().last());
         let (open, close) = match role {
             Some(_) if role_on_mark.is_some() => (String::new(), ""),
+            // リンクの役割は `[字,role=名前]` に入れる(下で書く)
+            Some(_) if r.fmt.link.is_some() => (String::new(), ""),
             Some(n) if dbl => (format!("[.{n}]##"), "##"),
             Some(n) => (format!("[.{n}]#"), "#"),
             None if r.fmt.highlight.is_some() && dbl => ("##".to_string(), "##"),
@@ -461,13 +476,46 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
             s.push_str(&format!("ruby:{}[{}]", esc(&r.text), ruby));
         } else if let Some(url) = &r.fmt.link {
             // **前が字なら `link:` を付けます。** 本家は `表計算https://…[名]` を
-            // リンクとして読みません(2026-08-18 に本家で確かめました)
-            let head = if s.chars().last().is_some_and(|c| c.is_alphanumeric()) {
-                "link:"
+            // リンクとして読みません(2026-08-18 に本家で確かめました)。
+            // 裸の URL は、直前が行頭・空白・`<>()[];"'` のときだけリンクに
+            // なるので、それ以外は `link:` を付けます
+            let prev = s.chars().last();
+            // 直前が `<` なら裸で書かない(`<URL>` の形に読まれて `<` が消える)
+            let bare_ok = prev.map_or(true, |c| {
+                c.is_whitespace() || matches!(c, '>' | '(' | ')' | '[' | ']' | ';' | '"' | '\'')
+            });
+            // 裸の URL は後ろの字を飲み込むので、次が空白か `,.?!);:` のときだけ裸で書く
+            let next = runs.get(ri + 1).and_then(first_char);
+            let next_ok = next.map_or(true, |c| c.is_whitespace() || matches!(c, ',' | '.' | '?' | '!' | ')' | ';' | ':'));
+            let url_tail_ok = !url.ends_with([',', '.', '?', '!', ')', ';', ':']);
+            let head = if prev.is_some_and(|c| c.is_alphanumeric()) { "link:" } else { "" };
+            // 対象が空なら `link:[字]` の形しかありません
+            let head = if url.is_empty() { "link:" } else { head };
+            if r.text == *url && role.is_none() {
+                // 字と URL が同じなら裸で書く(本家の `class="bare"` と同じ)
+                if bare_ok && next_ok && url_tail_ok && !url.is_empty() && !url.contains(['[', ']']) {
+                    s.push_str(url);
+                } else {
+                    s.push_str(&format!("{head}{url}[]"));
+                }
             } else {
-                ""
-            };
-            s.push_str(&format!("{head}{url}[{}]", esc(&r.text)));
+                // `]` は `\]` に逃がし、`\` は passthrough で包む(`\]` と紛れないように)
+                let text = if r.text == *url {
+                    String::new()
+                } else {
+                    esc(&r.text.replace('\\', "+\\+").replace(']', "\\]"))
+                };
+                let text = if text.contains('=') || (role.is_some() && text.contains(',')) {
+                    format!("\"{text}\"")
+                } else {
+                    text
+                };
+                match role {
+                    Some(n) if text.is_empty() => s.push_str(&format!("{head}{url}[role={n}]")),
+                    Some(n) => s.push_str(&format!("{head}{url}[{text},role={n}]")),
+                    None => s.push_str(&format!("{head}{url}[{text}]")),
+                }
+            }
         } else {
             s.push_str(&esc(&r.text));
         }
@@ -1683,7 +1731,14 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         prev_is_desc_list = p.style_id.as_deref().is_some_and(is_desc_list);
         if continued {
             if let Some((_, src)) = pending.as_mut() {
-                src.push_str(seam_src(src, body));
+                // **行末の ` +` は AsciiDoc の改行**です。段落の中の改行として
+                // 字に持ち、書くときに ` +` に戻します(2026-09-02)
+                if let Some(head) = src.strip_suffix(" +") {
+                    src.truncate(head.len());
+                    src.push('\n');
+                } else {
+                    src.push_str(seam_src(src, body));
+                }
                 src.push_str(body);
                 continue;
             }
