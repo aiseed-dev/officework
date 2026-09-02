@@ -589,10 +589,13 @@ fn sagari_em(name: Option<&str>) -> Option<f32> {
     let d = load(fam).ok()?;
     let face = ttf_parser::Face::parse(&d, 0).ok()?;
     let upem = face.units_per_em() as f32;
+    // **どれも下向きが負**です。`windows_descender` を正のつもりで
+    // 扱っていたので、いつも `None` を返し、字の足の深さが 0 になって
+    // いました(2026-09-02。writer の画面で数式が前の行に重なる元)
     let sita = match face.tables().os2 {
-        Some(o) if o.use_typographic_metrics() => -o.typographic_descender() as f32,
-        Some(o) => o.windows_descender() as f32,
-        None => -face.descender() as f32,
+        Some(o) if o.use_typographic_metrics() => -(o.typographic_descender() as f32),
+        Some(o) => -(o.windows_descender() as f32),
+        None => -(face.descender() as f32),
     };
     (sita > 0.0).then_some(sita / upem)
 }
@@ -616,6 +619,25 @@ pub fn agari_em(name: Option<&str>) -> Option<f32> {
     let zentai = okuri_em(name)?;
     let sita = sagari_em(name)?;
     (zentai > sita).then_some(zentai - sita)
+}
+
+/// **行の箱の中で、ベースラインから下に何 em あるか。**
+///
+/// 描く書体の足の深さです。行の箱の高さ([`okuri_em`])から上がり
+/// ([`agari_em`])を引いた残りで、**`1 - agari_em` ではありません** —
+/// 行の箱は 1em とは限らないためです(ＭＳ 明朝は 1.292em で、
+/// `1 - agari` だと 0 になり、絵が前の行の字に重なっていました。
+/// 2026-09-02)。
+///
+/// 引けなければ `None`。呼ぶ側が既定を当てます。
+pub fn ashi_em(name: Option<&str>) -> Option<f32> {
+    match (okuri_em(name), agari_em(name)) {
+        (Some(zentai), Some(ue)) if zentai > ue => Some(zentai - ue),
+        // **名前が無ければ、この機械の既定の書体の足**です。行送りは
+        // 名前が要りますが(原本の書体の値を引くため)、足の深さは
+        // 実際に描く書体そのものが決めます
+        _ => sagari_em(name),
+    }
 }
 
 /// **その書体の、数字1文字の幅(画素)。** 96dpi です。

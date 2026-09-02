@@ -3169,6 +3169,7 @@ mod atama_no_gazou_tests {
     #[test]
     fn a_head_image_does_not_climb_into_the_previous_line() {
         let Ok((fam, _)) = crate::font::for_document(None) else { return };
+        let na = fam.name.clone();
         let Ok(data) = crate::font::load(fam) else { return };
         let m = Metrics::new(&data).unwrap();
         for ls in [1.0f32, 1.15, 1.5, 2.0] {
@@ -3187,7 +3188,17 @@ mod atama_no_gazou_tests {
             let s = layout(&d, &m, &frame);
             let mae = s.lines[0].y_mm;
             let (_, r) = &s.images[0];
-            assert!(r[1] >= mae, "行間 {ls}: 絵の上端 {:.2} が前のベースライン {mae:.2} より上", r[1]);
+            // **ベースラインより下、では足りません。** 前の行の字の足が
+            // そこまで伸びています。書体の足の深さを空けます
+            // (2026-09-02。`1 - agari_em` が 0 になっていて、絵の上端が
+            // ちょうどベースラインに乗り、画面で字に重なっていました)
+            let ashi = crate::font::ashi_em(Some(&na))
+                .map(|e| e * d.base_pt() * 25.4 / 72.0)
+                .expect("足の深さが引けない");
+            assert!(ashi > 0.1, "足の深さが 0 に近い: {ashi}");
+            assert!(r[1] >= mae + ashi - 0.01,
+                "行間 {ls}: 絵の上端 {:.2} が前の行の字の足({:.2})に食い込む",
+                r[1], mae + ashi);
             assert!(r[1] - mae < 4.0, "行間 {ls}: 絵の上が空きすぎ({:.2})", r[1] - mae);
             // 絵の下端は自分のベースライン
             assert!((r[1] + r[3] - s.lines[1].y_mm).abs() < 0.01, "行間 {ls}: 絵の下端がベースラインに無い");

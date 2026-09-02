@@ -824,8 +824,12 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     // 上限にして、足りなければそこまで下げます
                     if e_h > 0.0 {
                         if let Some(mae) = sheet.lines.iter().rev().find(|l| l.from_body).map(|l| l.y_mm) {
-                            let ashi = crate::font::agari_em(pfont.as_deref())
-                                .map(|e| (1.0 - e).max(0.0) * base * PT_TO_MM)
+                            // 足の深さは **行の箱の高さ − 上がり** です。
+                            // `1 - 上がり` だと、行の箱が 1em より高い書体
+                            // (ＭＳ 明朝は 1.292em)で 0 になり、絵が前の行の
+                            // 字に重なります(2026-09-02)
+                            let ashi = crate::font::ashi_em(pfont.as_deref())
+                                .map(|e| e * base * PT_TO_MM)
                                 .unwrap_or(base * 0.2 * PT_TO_MM);
                             let hitsuyou = mae + ashi + e_h;
                             if y < hitsuyou {
