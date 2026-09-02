@@ -22,6 +22,7 @@
 
 pub mod crypt;
 
+pub mod omml;
 mod read;
 /// `theme1.xml` — 役ごとの書体(見出しはゴシック、本文は明朝)
 pub mod theme;

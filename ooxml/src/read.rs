@@ -1853,6 +1853,23 @@ pub(super) fn parse_document_rels_num(
                         if r.read_to_end_into(name, &mut Vec::new()).is_ok() {
                             let end = r.buffer_position() as usize;
                             let raw = &xml[start_pos..end];
+                            // **表示用: OMML を LaTeX に直す。** 原文の控えとは
+                            // 別に、組める形にした物を段落に置きます。こちらは
+                            // LaTeX を typst で組めるので、これで数式が絵として
+                            // 出ます(bytes は空のまま — 組むのは表示する側)
+                            if let Some(tex) = crate::omml::to_latex(raw) {
+                                let off = para.as_ref().map_or(0, |ps: &Vec<Run>| {
+                                    ps.iter().map(|r| r.text.len()).sum::<usize>()
+                                }) + cur.len();
+                                images.push(kumihan::InlineImage {
+                                    bytes: std::sync::Arc::new(Vec::new()),
+                                    w_mm: 0.0,
+                                    h_mm: 0.0,
+                                    tex: Some(tex),
+                                    src: None,
+                                    off,
+                                });
+                            }
                             match carry_math(raw, &ns_decls) {
                                 // 段落の並びの中の位置は失われ、段落の頭に寄る
                                 // (画像と同じ、正直な限界)。文そのものは残る

@@ -304,3 +304,34 @@ mod tests {
         assert!(with.w_mm > without.w_mm, "書体が効いていない: {} <= {}", with.w_mm, without.w_mm);
     }
 }
+
+/// **文書の中の数式を組む。** 原文(LaTeX)だけ持っていて絵がまだ無い画像を
+/// 絵にします。返りは組めなかった数です。
+///
+/// docx の数式(OMML)は読むときに LaTeX に直して置いてあります。絵が無いと
+/// PDF にも画面にも何も出ないので、**紙に出す前にここを通します**。
+/// 組めなかった物は絵が空のまま残ります(そこだけ抜けて、他は出ます)。
+///
+/// `moji_font` は数式の中の日本語のための書体のファイルです。無ければ
+/// 数式の書体だけで組むので、日本語は出ません。
+pub fn kumu_bunsho(doc: &mut crate::Document, moji_font: Option<&[u8]>) -> usize {
+    let size = doc.size_pt.unwrap_or(crate::DEFAULT_PT);
+    let mut dame = 0usize;
+    for p in doc.paragraphs_mut() {
+        for im in p.images.iter_mut().chain(p.images_new.iter_mut()) {
+            let Some(tex) = im.tex.clone() else { continue };
+            if !im.bytes.is_empty() {
+                continue;
+            }
+            match kumu(&tex, size, moji_font) {
+                Ok(k) => {
+                    im.bytes = std::sync::Arc::new(k.png);
+                    im.w_mm = k.w_mm;
+                    im.h_mm = k.h_mm;
+                }
+                Err(_) => dame += 1,
+            }
+        }
+    }
+    dame
+}

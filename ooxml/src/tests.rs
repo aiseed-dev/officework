@@ -3362,4 +3362,103 @@ mod track_date_tests {
         assert_eq!(crate::write::iso_from_unix(1788352496), "2026-09-02T12:34:56Z");
         assert_eq!(crate::write::iso_from_unix(951782400), "2000-02-29T00:00:00Z");
     }
+    // ---- OMML を LaTeX に読む(2026-09-02)-------------------------------
+    //
+    // 原文は LibreOffice に StarMath の式を docx へ書かせた物です。**手で
+    // 書いた OMML では確かめません** — 属性の付き方も入れ子も本物と違い、
+    // 通ったつもりで実物が落ちるからです。
+
+    /// 数式1つ分の骨組みに、Word と同じ `w:rPr` を挟んだ字を作る
+    fn m_r(t: &str) -> String {
+        format!(
+            r#"<m:r><w:rPr><w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math"/></w:rPr><m:t xml:space="preserve">{t}</m:t></m:r>"#
+        )
+    }
+
+    #[test]
+    fn omml_bunsuu_to_ruijou() {
+        // 分数 (a+b)/c
+        let x = format!(
+            "<m:oMath><m:f><m:num>{}{}{}</m:num><m:den>{}</m:den></m:f></m:oMath>",
+            m_r("a"), m_r("+"), m_r("b"), m_r("c")
+        );
+        assert_eq!(crate::omml::to_latex(&x).as_deref(), Some("\\frac{a+b}{c}"));
+
+        // 上付き a^2。1文字は中括弧で包まない
+        let x = format!(
+            "<m:oMath><m:sSup><m:e>{}</m:e><m:sup>{}</m:sup></m:sSup></m:oMath>",
+            m_r("a"), m_r("2")
+        );
+        assert_eq!(crate::omml::to_latex(&x).as_deref(), Some("a^2"));
+    }
+
+    #[test]
+    fn omml_souwa_no_ue_shita() {
+        // 総和。演算子は m:chr で来る
+        let x = format!(
+            "<m:oMath><m:nary><m:naryPr><m:chr m:val=\"∑\"/></m:naryPr><m:sub>{}{}{}</m:sub><m:sup>{}</m:sup><m:e>{}</m:e></m:nary></m:oMath>",
+            m_r("i"), m_r("="), m_r("1"), m_r("n"), m_r("i")
+        );
+        assert_eq!(crate::omml::to_latex(&x).as_deref(), Some("\\sum_{i=1}^ni"));
+    }
+
+    #[test]
+    fn omml_kakko_wa_zokusei_kara() {
+        let x = format!(
+            "<m:oMath><m:d><m:dPr><m:begChr m:val=\"(\"/><m:endChr m:val=\")\"/></m:dPr><m:e><m:f><m:num>{}</m:num><m:den>{}</m:den></m:f></m:e></m:d></m:oMath>",
+            m_r("a"), m_r("b")
+        );
+        assert_eq!(
+            crate::omml::to_latex(&x).as_deref(),
+            Some("\\left( \\frac{a}{b} \\right)")
+        );
+    }
+
+    /// 関数の名前は `m:fName` の底まで見る。`\lim` は中括弧で包まない —
+    /// 包むと LaTeX が下付きを右へ回してしまう
+    #[test]
+    fn omml_kansuu_no_namae() {
+        let x = format!(
+            "<m:oMath><m:func><m:fName><m:limLow><m:e>{}</m:e><m:lim>{}{}{}</m:lim></m:limLow></m:fName><m:e>{}</m:e></m:func></m:oMath>",
+            m_r("lim"), m_r("x"), m_r("→"), m_r("0"), m_r("f")
+        );
+        assert_eq!(
+            crate::omml::to_latex(&x).as_deref(),
+            Some("\\lim_{x\\to 0} f")
+        );
+    }
+
+    /// `m:nor`(普通の字)は `\text{}` に入れる。入れないと日本語が組めない
+    #[test]
+    fn omml_nihongo_wa_text_ni() {
+        let x = format!(
+            r#"<m:oMath><m:r><m:rPr><m:lit/><m:nor/></m:rPr><w:rPr><w:rFonts w:ascii="Cambria Math"/></w:rPr><m:t xml:space="preserve">面積</m:t></m:r>{}</m:oMath>"#,
+            m_r("=")
+        );
+        assert_eq!(crate::omml::to_latex(&x).as_deref(), Some("\\text{面積}="));
+
+        // 印が無い日本語も組めないので `\text{}` へ。続く分はまとめる
+        let x = format!("<m:oMath>{}</m:oMath>", m_r("面積"));
+        assert_eq!(crate::omml::to_latex(&x).as_deref(), Some("\\text{面積}"));
+    }
+
+    /// 読んだ docx の段落に、組める形(LaTeX)の数式が載る
+    #[test]
+    fn omml_wo_yomu_to_dansaku_ni_noru() {
+        let x = format!(
+            "<w:p><w:r><w:t>面積は</w:t></w:r><m:oMath><m:sSup><m:e>{}</m:e><m:sup>{}</m:sup></m:sSup></m:oMath></w:p>",
+            m_r("r"), m_r("2")
+        );
+        let xml = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body>{x}</w:body></w:document>"#
+        );
+        let (doc, _) = crate::parse_document_xml(&xml);
+        let p = doc.paragraphs().next().unwrap();
+        let im = p.images.iter().find(|i| i.tex.is_some()).expect("数式が載っていない");
+        assert_eq!(im.tex.as_deref(), Some("r^2"));
+        assert!(im.bytes.is_empty(), "読んだ時点で絵にしてはいけない");
+        // 原文の控えも残る(保存で返すのはこちら)
+        assert_eq!(p.anchors.len(), 1, "数式の原文を控えていない");
+    }
+
 }

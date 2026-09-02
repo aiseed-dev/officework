@@ -1400,7 +1400,18 @@ pub fn doc_to_sheet(
     // `compose_page` は紙の設定と飾りだけで、段落にスタイルを着せません。
     // 間違えると註記の帯も見出しの背景も出ません(2026-08-27 に実物で
     // 気づいた — 試験は緑でした)
-    let d = kumihan::theme::compose(doc, t);
+    let mut d = kumihan::theme::compose(doc, t);
+
+    // **数式を絵にします。** docx の数式(OMML)は読むときに LaTeX へ直して
+    // 置いてあるだけなので、ここで組まないと紙に何も出ません。
+    // 中の日本語のために、文書の書体のファイルを渡します
+    {
+        let na = d.font.clone().or_else(|| t.font.clone());
+        let moji = kumihan::font::for_document(na.as_deref())
+            .ok()
+            .and_then(|(f, _)| kumihan::font::load(f).ok());
+        kumihan::suushiki::kumu_bunsho(&mut d, moji.as_deref());
+    }
 
     // 書体は**文書が名乗った物**が先。次にテンプレートの物。
     // 文中の字も渡します — 選んだ書体がその字を持っていないと、
