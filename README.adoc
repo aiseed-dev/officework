@@ -6,11 +6,21 @@ officework is an Office that modernises data and drawing.
 It was made by Claude distilling and combining published software — Euro-Office, LibreOffice, ONLYOFFICE, Zed, Polars, openpyxl, python-docx.
 It does not compete on the number of features: complex work is left to AI and Python.
 
-It does what Microsoft does not do, and none of it is technically hard.
-Excel and Word keep the data, the look and the code locked inside one file.
-The techniques for unpicking that are published and the materials are all there; what keeps the file closed is compatibility and business.
-officework unpicks it — it is an Office that **sets data, templates, Python and AI free, each on its own**.
-All of its code is public too (AGPL): anyone can read what it does and check.
+officework does what Microsoft does not do, though none of it is hard.
+
+An Excel or Word file cannot be looked into without Excel or Word.
+Taking just the data out for another tool, or changing just the look while the text stays, is not easy either.
+On top of that, the file carries code.
+A VBA macro runs the moment the file is opened, so opening an invoice .xlsm that arrived by mail and finding a virus running is an accident that still happens today.
+Microsoft does not change this design because it keeps a promise: an Excel file from thirty years ago still opens the same today.
+
+officework does these things, in order.
+First, all of its code is public (AGPL). People and AI alike can read it and change it freely.
+Data lives in AsciiDoc text files. They can be read without Excel or Word, and diffs work.
+The look is separated into a template. It can be swapped without touching the text.
+Macros live in .py files. Opening a document never runs them.
+Everything can be driven from Python, and once that is true, asking an AI to automate it is easy.
+That is how officework became an Office that **sets data, templates, Python and AI free, each on its own**.
 
 The four are split into modules, so each is easy to swap:
 
