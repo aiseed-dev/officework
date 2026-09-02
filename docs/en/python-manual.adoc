@@ -228,6 +228,8 @@ s2.header.add_paragraph("Chapter 2")   # header and footer are per section
 ----
 
 `add_section(start_type=)` takes `"new_page"` (the default) or `"continuous"`; anything else is refused with the reason.
+The start type belongs to the section you add (as in python-docx). A `"continuous"` section carries on from the previous section without a page break.
+When saved as docx the start type is written into that section's `w:sectPr`. A continuous section made by Word or python-docx is read as the start of the same section.
 The type is decided at creation and cannot be changed later.
 Lengths are plain EMU integers (1 mm = 36,000); `doc.Mm()`, `doc.Cm()`, `doc.Pt()`, `doc.Inches()`, `doc.Emu()` and `doc.Twips()` convert for you.
 A new document starts as A4 with 20 mm margins (python-docx starts with 1-inch margins).

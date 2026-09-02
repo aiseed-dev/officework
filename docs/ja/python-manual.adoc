@@ -307,6 +307,8 @@ s2.header.add_paragraph("第2章")   # ヘッダーとフッターも節ごと
 ----
 
 `add_section(start_type=)` は `"new_page"`(既定)か `"continuous"` を受けます。それ以外は理由つきで断ります。
+始め方は足した節に付きます(python-docx と同じ)。`"continuous"` の節は、前の節から改ページせずに続きます。
+docx に保存すると、始め方はその節の `w:sectPr` に書かれます。Word や python-docx が作った continuous の節も、同じ節の始め方として読みます。
 種類は作るときに決め、後から変えられません。
 長さはどれも EMU の整数です(1mm = 36,000)。換算には `doc.Mm()`・`doc.Cm()`・`doc.Pt()`・`doc.Inches()`・`doc.Emu()`・`doc.Twips()` があります。
 新規の文書は A4・余白 20mm で始まります(python-docx の新規は余白 1 インチです)。

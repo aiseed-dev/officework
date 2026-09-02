@@ -92,6 +92,42 @@ pub fn sect_xml(p: &kumihan::PageSetup) -> String {
     )
 }
 
+/// sectPr の原文の `w:type` を、節の始め方に合わせます。
+///
+/// docx の `w:type` は「その sectPr で終わる節の始め方」です。
+/// `continuous` が true なら `<w:type w:val="continuous"/>` を置きます。
+/// false なら continuous の印だけを外します(docx の既定は nextPage)。
+/// evenPage や oddPage のような、模型に無い種類はそのまま残します。
+/// 置く位置はスキーマの並びに合わせ、pgSz の前(headerReference や
+/// footnotePr の後)にします。
+pub(super) fn sect_with_start(raw: &str, continuous: bool) -> String {
+    let mark = r#"<w:type w:val="continuous"/>"#;
+    if let Some(i) = raw.find("<w:type") {
+        let Some(n) = raw[i..].find("/>") else { return raw.to_string() };
+        let e = i + n + 2;
+        let now = sect_type(raw) == "continuous";
+        return match (now, continuous) {
+            (true, false) => format!("{}{}", &raw[..i], &raw[e..]),
+            (false, true) => format!("{}{}{}", &raw[..i], mark, &raw[e..]),
+            _ => raw.to_string(),
+        };
+    }
+    if !continuous {
+        return raw.to_string();
+    }
+    // `<w:sectPr/>` の形
+    if !raw.contains("</w:sectPr>") {
+        return format!("<w:sectPr>{mark}</w:sectPr>");
+    }
+    // スキーマで w:type の後ろに来る要素のうち、最初に現れる物の前に置く
+    let after = ["<w:pgSz", "<w:pgMar", "<w:paperSrc", "<w:pgBorders", "<w:lnNumType",
+        "<w:pgNumType", "<w:cols", "<w:formProt", "<w:vAlign", "<w:noEndnote", "<w:titlePg",
+        "<w:textDirection", "<w:bidi", "<w:rtlGutter", "<w:docGrid", "<w:printerSettings",
+        "<w:sectPrChange", "</w:sectPr>"];
+    let at = after.iter().filter_map(|t| raw.find(t)).min().unwrap_or(raw.len());
+    format!("{}{}{}", &raw[..at], mark, &raw[at..])
+}
+
 pub(super) const RNS_DOC: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
 /// テンプレートのスタイル名を、docx の styleId にする。
@@ -1079,9 +1115,31 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
     let mut trkn = 0usize;
     let author = doc.track_author.clone().unwrap_or_default();
     let base = doc.base_pt();
+    // 節の始め方。docx の w:type は「その sectPr で終わる節の始め方」で、
+    // 模型の continuous は「この区切りで改ページしないか」です。
+    // 途中の節の sectPr には1つ前の区切りの値を書きます。
+    // 最初の節の sectPr には前の区切りが無いので、原文のまま書きます。
+    // 文書末の sectPr には最後の区切りの値を書きます(この関数の末尾)。
+    // 読む側([`section_starts`])と同じ対応です
+    let mut prev_break: Option<bool> = None;
     for b in &doc.blocks {
         match b {
-            Block::Para(p) => write_para(&mut w, p, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, &author, base),
+            Block::Para(p) => {
+                match (&p.sect, prev_break) {
+                    (Some(sb), Some(c)) => {
+                        let mut q = p.clone();
+                        q.sect = Some(kumihan::SectionBreak {
+                            raw: sect_with_start(&sb.raw, c),
+                            ..sb.clone()
+                        });
+                        write_para(&mut w, &q, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, &author, base);
+                    }
+                    _ => write_para(&mut w, p, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, &author, base),
+                }
+                if let Some(sb) = &p.sect {
+                    prev_break = Some(sb.continuous);
+                }
+            }
             Block::Table(t) => {
                 w.write_event(Event::Start(BS::new("w:tbl"))).unwrap();
                 // 罫線(事務様式は罫線が見えないと様式にならない)
@@ -1297,6 +1355,11 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
     // — 英語圏の Word なら Letter になります。同じファイルが国によって
     // 違う紙に組まれるので、A4 と余白を名指しします
     let sect = sect.unwrap_or_else(default_sect);
+    // 文書末の節の始め方は、最後の区切りが決めます
+    let sect = match prev_break {
+        Some(c) => sect_with_start(&sect, c),
+        None => sect,
+    };
     let _ = w.get_mut().write_all(sect.as_bytes());
     w.write_event(Event::End(BytesEnd::new("w:body"))).unwrap();
     w.write_event(Event::End(BytesEnd::new("w:document"))).unwrap();

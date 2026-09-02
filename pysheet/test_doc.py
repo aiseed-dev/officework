@@ -199,7 +199,9 @@ with tempfile.TemporaryDirectory() as t:
         x = z.read("word/document.xml").decode("utf-8")
     sects = re.findall(r"<w:sectPr.*?</w:sectPr>|<w:sectPr[^>]*/>", x, re.S)
     check(len(sects) == 3, f"節が3つでない: {len(sects)}")
-    check('w:val="continuous"' in sects[0], "continuous の印が docx に無い")
+    # docx の w:type は「その sectPr で終わる節の始め方」です(Word と同じ)。
+    # 2節目が continuous なので、印は2つ目の sectPr に付きます
+    check('w:val="continuous"' in sects[1], "continuous の印が2節目の sectPr に無い")
     check('w:val="continuous"' not in sects[2], "末尾の節に continuous が残る")
     d2 = doc.Doc(out)
     check([s.start_type for s in d2.sections] == ["new_page", "continuous", "new_page"],

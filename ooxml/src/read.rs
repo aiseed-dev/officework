@@ -717,7 +717,8 @@ pub(super) fn note_mark(
     }
 }
 
-/// 節の種類(`<w:type w:val="continuous"/>`)。無ければ docx の既定 `nextPage`。
+/// sectPr の `w:type`(`<w:type w:val="continuous"/>` の val)。無ければ docx の
+/// 既定 `nextPage`。この値は、その sectPr で終わる節の始め方です。
 pub(super) fn sect_type(raw: &str) -> String {
     let Some(i) = raw.find("<w:type") else { return "nextPage".into() };
     let head = &raw[i..(i + 120).min(raw.len())];
@@ -1814,15 +1815,19 @@ pub(super) fn parse_document_rels_num(
                             let end = r.buffer_position() as usize;
                             let raw = &xml[start_pos..end];
                             if para.is_some() {
-                                // 途中の節の区切り。**段落に持たせて保存で返す**
+                                // 途中の節の区切り。段落に持たせて保存で返します
                                 // (以前はここで doc.sect_raw を上書きしていて、
-                                // 区切りごと保存で消えていた)。
-                                // 用紙は最後の節のもので組むので、そこは言う
-                                // 原文・組版の顔・改ページするかを**一緒に**持つ
+                                // 区切りごと保存で消えていました)。
+                                // 原文・用紙の寸法・改ページするかを一緒に持ちます。
+                                // 改ページするかは、ここでは決められません。
+                                // docx の `w:type` は「この sectPr で終わる節の
+                                // 始め方」なので、この区切りの後で改ページするかは
+                                // 1つ後の sectPr を読まないと分かりません。
+                                // 本文を読み終えてから [`section_starts`] で埋めます
                                 para_sect = Some(kumihan::SectionBreak {
                                     raw: raw.to_string(),
                                     page: parse_sect(raw),
-                                    continuous: sect_type(raw) == "continuous",
+                                    continuous: false,
                                 });
                                 rep.note("節の区切り(用紙ごと組み直す。保存でも残る)");
                             } else {
@@ -2560,7 +2565,45 @@ pub(super) fn parse_document_rels_num(
         }
         buf.clear();
     }
+    section_starts(&mut doc);
     (doc, rep)
+}
+
+/// 節の始め方を、段落が持つ区切りに写します。
+///
+/// docx の `w:type`(nextPage・continuous など)は、その sectPr で終わる
+/// 節の始め方です。Word も python-docx もそう読みます。
+/// 模型の [`kumihan::SectionBreak::continuous`] は「この区切りで改ページ
+/// しないか」、つまり次の節の始め方です。
+/// そのため、区切りの値は1つ後の sectPr(次の区切りか、文書末の sectPr)の
+/// `w:type` から取ります。
+/// 前は区切り自身の `w:type` を読んでいました。Word で continuous にした節が、
+/// officework では1つ前の節にずれて見えていました(2026-09-02)。
+///
+/// 表のセルの中の段落は見ません。Word は表の中に節の区切りを置きません。
+pub(super) fn section_starts(doc: &mut Document) {
+    let idx: Vec<usize> = doc
+        .blocks
+        .iter()
+        .enumerate()
+        .filter(|(_, b)| matches!(b, Block::Para(p) if p.sect.is_some()))
+        .map(|(i, _)| i)
+        .collect();
+    for (k, &i) in idx.iter().enumerate() {
+        let next_raw: Option<String> = match idx.get(k + 1) {
+            Some(&j) => match &doc.blocks[j] {
+                Block::Para(p) => p.sect.as_ref().map(|s| s.raw.clone()),
+                Block::Table(_) => None,
+            },
+            None => doc.sect_raw.clone(),
+        };
+        let cont = next_raw.as_deref().is_some_and(|r| sect_type(r) == "continuous");
+        if let Block::Para(p) = &mut doc.blocks[i] {
+            if let Some(s) = p.sect.as_mut() {
+                s.continuous = cont;
+            }
+        }
+    }
 }
 /// **ページに貼り付く図形を DrawingML にする。**
 ///

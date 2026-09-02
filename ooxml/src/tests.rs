@@ -1189,25 +1189,144 @@ mod sect_tests {
 
     #[test]
     fn reads_the_section_kind() {
-        // `w:type` が無ければ docx の既定は nextPage(改ページする)
-        let xml = |ty: &str| format!(r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
-<w:p><w:pPr><w:sectPr>{ty}<w:pgSz w:w="11906" w:h="16838"/></w:sectPr></w:pPr><w:r><w:t>前</w:t></w:r></w:p>
+        // docx の `w:type` は「その sectPr で終わる節の始め方」です。
+        // 途中の区切りが改ページするかは、1つ後の sectPr(ここでは文書末)の
+        // `w:type` で決まります。`w:type` が無ければ docx の既定は nextPage です
+        let xml = |mid: &str, last: &str| format!(r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:pPr><w:sectPr>{mid}<w:pgSz w:w="11906" w:h="16838"/></w:sectPr></w:pPr><w:r><w:t>前</w:t></w:r></w:p>
 <w:p><w:r><w:t>後</w:t></w:r></w:p>
-<w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>
+<w:sectPr>{last}<w:pgSz w:w="11906" w:h="16838"/></w:sectPr>
 </w:body></w:document>"#);
-        let read_list = |ty: &str| -> kumihan::SectionBreak {
-            let (d, _) = parse_document_xml(&xml(ty));
+        let read_list = |mid: &str, last: &str| -> kumihan::SectionBreak {
+            let (d, _) = parse_document_xml(&xml(mid, last));
             let p = d.paragraphs().next().unwrap();
             p.sect.clone().unwrap()
         };
-        assert!(read_list(r#"<w:type w:val="continuous"/>"#).continuous,
-            "continuous を読めていない");
-        assert!(!read_list(r#"<w:type w:val="nextPage"/>"#).continuous,
-            "nextPage を continuous と読んだ");
-        assert!(!read_list("").continuous, "type 無しの既定が nextPage になっていない");
+        let cont = r#"<w:type w:val="continuous"/>"#;
+        let next = r#"<w:type w:val="nextPage"/>"#;
+        assert!(read_list("", cont).continuous, "文書末の continuous を区切りに写せていない");
+        assert!(!read_list("", next).continuous, "nextPage を continuous と読んだ");
+        assert!(!read_list("", "").continuous, "type 無しの既定が nextPage になっていない");
+        // 途中の sectPr の w:type は最初の節の始め方で、区切りには効かない。
+        // 前はここを読んでいたので、Word の continuous が1つ前にずれていた
+        assert!(!read_list(cont, "").continuous, "最初の節の w:type を区切りに写した");
+        assert!(read_list(next, cont).continuous, "文書末の continuous より途中の nextPage を優先した");
         // 原文はどの種類でもそのまま持ち越す
-        assert!(read_list(r#"<w:type w:val="continuous"/>"#).raw.contains("continuous"),
-            "原文から種類が落ちた");
+        assert!(read_list(cont, "").raw.contains("continuous"), "原文から種類が落ちた");
+    }
+
+    /// Word が書く形の docx。3つの節で、2つ目だけが continuous です
+    fn word_three_sections() -> String {
+        r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>
+<w:p w:rsidR="00A1"><w:r><w:t>1節</w:t></w:r></w:p>
+<w:p w:rsidR="00A2"><w:pPr><w:sectPr w:rsidR="00A2" w:rsidSect="00B1"><w:headerReference w:type="default" r:id="rId8"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1985" w:right="1701" w:bottom="1701" w:left="1701" w:header="851" w:footer="992" w:gutter="0"/><w:cols w:space="425"/><w:docGrid w:type="lines" w:linePitch="360"/></w:sectPr></w:pPr></w:p>
+<w:p w:rsidR="00A3"><w:r><w:t>2節</w:t></w:r></w:p>
+<w:p w:rsidR="00A4"><w:pPr><w:sectPr w:rsidR="00A4" w:rsidSect="00B2"><w:type w:val="continuous"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1985" w:right="1701" w:bottom="1701" w:left="1701" w:header="851" w:footer="992" w:gutter="0"/><w:cols w:num="2" w:space="425"/><w:docGrid w:type="lines" w:linePitch="360"/></w:sectPr></w:pPr></w:p>
+<w:p w:rsidR="00A5"><w:r><w:t>3節</w:t></w:r></w:p>
+<w:sectPr w:rsidR="00A5" w:rsidSect="00B3"><w:type w:val="nextPage"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1985" w:right="1701" w:bottom="1701" w:left="1701" w:header="851" w:footer="992" w:gutter="0"/><w:cols w:space="425"/><w:docGrid w:type="lines" w:linePitch="360"/></w:sectPr>
+</w:body></w:document>"#.to_string()
+    }
+
+    #[test]
+    fn a_word_made_continuous_section_lands_on_the_right_break() {
+        // Word の docx: 2節目が continuous(段組みを変えるだけの節)。
+        // 模型では「1節目の終わりの区切りで改ページしない」になる
+        let (doc, _) = parse_document_xml(&word_three_sections());
+        let breaks: Vec<bool> = doc.paragraphs()
+            .filter_map(|p| p.sect.as_ref().map(|s| s.continuous))
+            .collect();
+        assert_eq!(breaks, vec![true, false],
+            "2節目の continuous が正しい区切りに付いていない");
+        assert_eq!(doc.paragraphs().filter_map(|p| p.sect.as_ref()).nth(1).map(|s| s.page.columns),
+            Some(2), "2節目の段組みが読めていない");
+        // 書き戻しは原文と同じ意味。w:type の場所も数も変わらない
+        let out = write_document_xml(&doc);
+        assert_eq!(out.matches("<w:sectPr").count(), 3, "節の数が変わった: {out}");
+        assert_eq!(out.matches(r#"<w:type w:val="continuous"/>"#).count(), 1,
+            "continuous の数が変わった: {out}");
+        let sects: Vec<&str> = out.split("<w:sectPr").skip(1).collect();
+        assert!(!sects[0].contains("continuous"), "1節目に continuous が付いた");
+        assert!(sects[1].contains(r#"<w:type w:val="continuous"/><w:pgSz"#),
+            "2節目の continuous が動いた: {}", sects[1]);
+        assert!(sects[2].contains(r#"<w:type w:val="nextPage"/>"#), "3節目の nextPage が消えた");
+        // 読み直しても同じ
+        let (doc2, _) = parse_document_xml(&out);
+        let breaks2: Vec<bool> = doc2.paragraphs()
+            .filter_map(|p| p.sect.as_ref().map(|s| s.continuous))
+            .collect();
+        assert_eq!(breaks2, vec![true, false], "読み直すと始め方が変わった");
+    }
+
+    #[test]
+    fn a_continuous_second_section_round_trips_through_docx() {
+        // 模型で「2つ目の節は続き」と作り、docx に書いて読み直す。
+        // 書く側は continuous を2つ目の節の sectPr(=文書末)に付け、
+        // 読む側はそれを1つ目の区切りに写す
+        use kumihan::{Block, Document, Paragraph, Run};
+        let para = |s: &str| Paragraph {
+            line_spacing: 1.0,
+            runs: vec![Run { text: s.into(), size_pt: Some(10.5), font: None, fmt: Default::default() }],
+            ..Default::default()
+        };
+        let page = kumihan::PageSetup::default();
+        let mut first = para("1節");
+        first.sect = Some(kumihan::SectionBreak {
+            raw: crate::sect_xml(&page), page, continuous: true,
+        });
+        let d = Document {
+            blocks: vec![Block::Para(first), Block::Para(para("2節"))],
+            page: Some(page),
+            sect_raw: Some(crate::sect_xml(&page)),
+            ..Default::default()
+        };
+        let round_trip = |d: &Document| -> Document {
+            let mut buf = std::io::Cursor::new(Vec::new());
+            crate::write(d, &mut buf).expect("書けない");
+            buf.set_position(0);
+            crate::read(buf).expect("読めない").0
+        };
+        let texts = |d: &Document| -> Vec<String> {
+            d.paragraphs().map(|p| p.runs.iter().map(|r| r.text.as_str()).collect()).collect()
+        };
+        let out = write_document_xml(&d);
+        let sects: Vec<&str> = out.split("<w:sectPr").skip(1).collect();
+        assert_eq!(sects.len(), 2, "節が2つでない: {out}");
+        assert!(!sects[0].contains("continuous"), "1節目の sectPr に continuous が付いた: {out}");
+        assert!(sects[1].contains(r#"<w:type w:val="continuous"/><w:pgSz"#),
+            "2節目の sectPr に continuous が無い: {out}");
+        let d2 = round_trip(&d);
+        let p0 = d2.paragraphs().next().unwrap();
+        assert!(p0.sect.as_ref().is_some_and(|s| s.continuous),
+            "読み直すと2節目が続きでなくなる");
+        assert_eq!(texts(&d2), vec!["1節", "2節"]);
+        // 続きをやめると、書く側は印を外す
+        let mut d3 = d2.clone();
+        if let Block::Para(p) = &mut d3.blocks[0] {
+            p.sect.as_mut().unwrap().continuous = false;
+        }
+        let out3 = write_document_xml(&d3);
+        assert!(!out3.contains("continuous"), "続きをやめても印が残る: {out3}");
+        let (d4, _) = parse_document_xml(&out3);
+        assert!(d4.paragraphs().next().unwrap().sect.as_ref().is_some_and(|s| !s.continuous));
+    }
+
+    #[test]
+    fn the_section_start_mark_keeps_the_schema_order() {
+        use crate::write::sect_with_start;
+        // 置く位置は pgSz の前、headerReference の後
+        let raw = r#"<w:sectPr w:rsidR="00A1"><w:headerReference w:type="default" r:id="rId8"/><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>"#;
+        let s = sect_with_start(raw, true);
+        assert!(s.contains(r#"r:id="rId8"/><w:type w:val="continuous"/><w:pgSz"#), "{s}");
+        assert_eq!(sect_with_start(&s, true), s, "続きのまま書き直すと変わる");
+        assert_eq!(sect_with_start(&s, false), raw, "印を外すと元に戻らない");
+        assert_eq!(sect_with_start(raw, false), raw, "印の無い原文が変わる");
+        // 模型に無い種類(oddPage)は、改ページするなら残す
+        let odd = r#"<w:sectPr><w:type w:val="oddPage"/><w:pgSz w:w="1" w:h="1"/></w:sectPr>"#;
+        assert_eq!(sect_with_start(odd, false), odd, "oddPage が消えた");
+        assert!(sect_with_start(odd, true).contains(r#"<w:type w:val="continuous"/><w:pgSz"#));
+        // 空の sectPr でも壊れない
+        assert_eq!(sect_with_start("<w:sectPr/>", true), r#"<w:sectPr><w:type w:val="continuous"/></w:sectPr>"#);
+        assert_eq!(sect_with_start("<w:sectPr></w:sectPr>", true), r#"<w:sectPr><w:type w:val="continuous"/></w:sectPr>"#);
     }
 
     #[test]
