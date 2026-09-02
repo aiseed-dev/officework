@@ -513,7 +513,20 @@ def Twips(v):
     return Length(round(v * 635))
 
 
-class RGBColor(tuple):
+# **python-docx が入っていれば、その `RGBColor` を土台にします**
+# (2026-09-01 発注者)。本家の口は `isinstance` で自分の型かどうかを
+# 見るので、別の型だと「RGBColor object でない」と断られます。移り
+# 変わる途中では、本家で組みながら色だけこちらから取る書き方をします。
+# 入っていなければ、こちらだけで同じ物を作ります
+try:  # pragma: no cover - python-docx の有無で分かれます
+    from docx.shared import RGBColor as _hon_rgb
+    _hon_aru = True
+except Exception:  # pragma: no cover
+    _hon_rgb = tuple
+    _hon_aru = False
+
+
+class RGBColor(_hon_rgb):
     """字の色。本家の `docx.shared.RGBColor` と同じ使い方です。
 
     `RGBColor(0xFF, 0x00, 0x00)` で作り、`str()` は `"FF0000"` です。
@@ -526,6 +539,8 @@ class RGBColor(tuple):
         for v in (r, g, b):
             if not isinstance(v, int) or not 0 <= v <= 255:
                 raise ValueError("RGBColor の各成分は 0〜255 の整数です")
+        if _hon_aru:
+            return super().__new__(cls, r, g, b)
         return super().__new__(cls, (r, g, b))
 
     @classmethod
