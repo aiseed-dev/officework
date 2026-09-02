@@ -122,15 +122,15 @@ d.add_section("continuous")   # a section that carries on
 The Breaks button on screen inserts a *page* break, not a section break.
 Word's Breaks menu holds both, which is where the difference lies.
 
-== A sheet is a section that holds a table
+== A sheet is a separate file in the same folder
 
-An Excel sheet and a document section are *the same thing* here.
+A sheet is its own file, `.sheet.adoc`. It sits in the same folder as the document (`.adoc`).
 
-* A spreadsheet sheet can be added to a document as a section
-* The order of the sheets is the order of the section tabs
+* The document and the sheet open as tabs in the same window
+* A spreadsheet sheet cannot be placed inside a document as a section
 
 You do not have to open "the sheet" and "the document" in two different
-applications.
+applications, but they are two files.
 
 == A sheet inside a manuscript holds four things
 
@@ -147,9 +147,7 @@ A sheet placed inside a document holds these and no more.
 |===
 
 Formatting, column widths, shapes and pivot tables are not held.
-*Buttons for what cannot be held are not shown at all.* Better that than
-letting you build up conditional formatting and then saying "could not
-save".
+You can make them, but they are gone once the file is saved as `.sheet.adoc`.
 
 For a table of any size, open it as `.xlsx` instead. The limits there are
 different.
@@ -185,8 +183,8 @@ begin with, so it carries forms of expression Word has no equivalent for.
 |`[qanda]` in front |A question-and-answer list, numbered
 |`* [ ]` `* [x]` |A task list, with checkboxes
 |`**` `***` / `..` `...` |A deeper list level
-|`[loweralpha]` `[upperroman]` |A different numbering style
-|`[start=5]` |Numbering that starts partway
+|`[loweralpha]` `[upperroman]` |A different numbering style (takes effect in the HTML export)
+|`[start=5]` |Numbering that starts partway (takes effect in the HTML export)
 |A line of three `'` |A horizontal rule
 |===
 
@@ -226,7 +224,8 @@ order government documents use, and Word's Japanese default as well.
 
 To change the style, put a marker in front of the list. `[loweralpha]`
 gives a, b, c and `[upperroman]` gives I, II, III. `[start=5]` starts at
-five.
+five. These markers take effect in the HTML export. The editor and the PDF
+keep the level order above.
 
 HTML can be written directly inside `++++`, which is also how you get a
 collapsible box.
@@ -261,7 +260,7 @@ one surprises you.
 |Button |Word / Excel |Here
 
 |Paragraph line spacing |Choose At least, Exactly or Multiple, then type a number; space before and after as well |*Three multiples* (1.0 → 1.5 → 2.0), cycled by pressing
-|Bullets and numbering |Pick the marker from a gallery |*The level decides it* (`・`→`○`→`■`, `1.`→`(1)`→`1)`). Tab goes deeper, Shift+Tab comes back
+|Bullets and numbering |Pick the marker from a gallery |*The level decides it* (`・`→`○`→`■`, `1.`→`(1)`→`ア`). Tab goes deeper, Shift+Tab comes back
 |Borders |Pick a combination preset |*Where to draw* and *what line*, chosen separately
 |===
 
