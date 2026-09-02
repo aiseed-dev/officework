@@ -122,7 +122,7 @@ package" in link:python-manual.adoc[the Python manual].
 |image:../../face/icons/subscript.svg[,16,16] Subscript |下付き | |— |r.font.subscript |c.font = Font(vertAlign=…)
 |image:../../face/icons/highlight.svg[,16,16] Highlight colour |ハイライトの色 |✅ |r.highlight = '色' |r.font.highlight_color |—
 |image:../../face/icons/fontcolor.svg[,16,16] Font colour |フォントの色 |✅ |r.color / c.font |r.font.color.rgb |c.font = Font(color=…)
-|image:../../face/icons/clearstyle.svg[,16,16] Clear style |スタイルのクリア |✅ |r.clear() |r.clear() |—
+|image:../../face/icons/clearstyle.svg[,16,16] Clear style |スタイルのクリア |✍ |r.bold = None(書式を1つずつ None にする) |— |—
 |image:../../face/icons/markers.svg[,16,16] Bullet / image:../../face/icons/numbering.svg[,16,16] Numbering |箇条書き / ナンバリング |✅ |p.style = '箇条書き' / '番号付き' |p.style = 'List Bullet' / 'List Number' |—
 |image:../../face/icons/multilevels.svg[,16,16] Multilevel list |複数レベルのリスト | |— |— |—
 |image:../../face/icons/decoffset.svg[,16,16] Decrease indent / image:../../face/icons/incoffset.svg[,16,16] Increase indent |インデントを減らす / インデントを増やす |✅ |p.paragraph_format.left_indent |p.paragraph_format.left_indent |—
@@ -140,7 +140,7 @@ package" in link:python-manual.adoc[the Python manual].
 |image:../../face/icons/top.svg[,16,16] Align top / image:../../face/icons/middle.svg[,16,16] Align middle / image:../../face/icons/bottom.svg[,16,16] Align bottom |上揃え / 上下中央揃え / 下揃え |✅ |c.alignment = Alignment(vertical='top' / 'center' / 'bottom') |— |c.alignment = Alignment(vertical=…)
 |image:../../face/icons/wrap.svg[,16,16] Wrap text |折り返して全体を表示する |✅ |c.alignment |— |c.alignment = Alignment(wrap_text=True)
 |image:../../face/icons/text-orient.svg[,16,16] Text orientation |文字の向き |✅ |c.alignment = Alignment(text_rotation=角度) |— |c.alignment = Alignment(text_rotation=角度)
-|image:../../face/icons/merge.svg[,16,16] Merge and centre |結合して、中央に配置する |✅ |(col_span / v_merge) / s.merge_cells(…) |cell.merge(…) |ws.merge_cells('A1:B2')
+|image:../../face/icons/merge.svg[,16,16] Merge and centre |結合して、中央に配置する |✅ |cell.merge(相手) / s.merge_cells('A1:B2') |cell.merge(相手) |ws.merge_cells('A1:B2')
 |image:../../face/icons/autosum.svg[,16,16] AutoSum |オートSUM |✅ |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
 |image:../../face/icons/fill-num.svg[,16,16] Fill |フィル |✍ |for i in range(10): s[f'A{i+2}'] = i + 1 |— |—
 |image:../../face/icons/named-range.svg[,16,16] Name manager |名前の管理 |✅ |b.create_named_range(名前, …) |— |wb.defined_names
@@ -239,7 +239,7 @@ package" in link:python-manual.adoc[the Python manual].
 |Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
 
 |image:../../face/icons/additional-formula.svg[,16,16] Insert function |関数の挿入 |✅ |s['A1'] = '=…' |— |ws['A1'] = '=…'
-|image:../../face/icons/py-list.svg[,16,16] Python functions |Python の関数 |✍ |自分の .py を書く(綴りの macros) |— |—
+|image:../../face/icons/py-list.svg[,16,16] Python functions |Python の関数 |✍ |~/.config/officework/funcs/ に自分の .py を置く |— |—
 |image:../../face/icons/autosum.svg[,16,16] AutoSum |オートSUM |✅ |*Same as Home* — s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
 |image:../../face/icons/recent.svg[,16,16] Recently used |最近使った関数 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
 |image:../../face/icons/financial.svg[,16,16] Financial |財務 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
@@ -270,7 +270,7 @@ package" in link:python-manual.adoc[the Python manual].
 |image:../../face/icons/setfilter.svg[,16,16] Filters / image:../../face/icons/clear-filter.svg[,16,16] Clear filter |フィルター / フィルターを解除 | |*Same as Home* |— |ws.auto_filter
 |image:../../face/icons/sortdesc.svg[,16,16] Sort descending / image:../../face/icons/sortasc.svg[,16,16] Sort ascending |降順並べ替え / 昇順並べ替え | |*Same as Home* |— |—
 |image:../../face/icons/custom-sort.svg[,16,16] Sort |並べ替え | |— |— |—
-|image:../../face/icons/text-column.svg[,16,16] Text to columns |区切り位置 |✍ |s['B2'], s['C2'] = s['A2'].split(',') |— |—
+|image:../../face/icons/text-column.svg[,16,16] Text to columns |区切り位置 |✍ |s['B2'], s['C2'] = s['A2'].value.split(',') |— |—
 |image:../../face/icons/rem-duplicates.svg[,16,16] Remove Duplicates |重複の削除 |✍ |見た = set() で行を選り分ける |— |—
 |image:../../face/icons/data-validation.svg[,16,16] Data Validation |データの入力規則 |✅ |s.add_data_validation(…) |— |ws.add_data_validation(…)
 |image:../../face/icons/dv-mark.svg[,16,16] Circle invalid data |無効データのマーク | |— |— |—
@@ -278,14 +278,14 @@ package" in link:python-manual.adoc[the Python manual].
 |image:../../face/icons/scenario.svg[,16,16] Scenario |シナリオ | |— |— |—
 |image:../../face/icons/forecast.svg[,16,16] Forecast Sheet |予測シート | |— |— |—
 |image:../../face/icons/solver.svg[,16,16] Solver |ソルバー | |— |— |—
-|image:../../face/icons/group.svg[,16,16] Group / image:../../face/icons/ungroup.svg[,16,16] Ungroup |グループ化 / グループ解除 |✅ |*Same as Layout* — s.row_groups |— |ws.column_dimensions[…].outline_level
-|image:../../face/icons/show-details.svg[,16,16] Show details |詳細の表示 |✅ |s.row_groups |— |ws.column_dimensions[…].outline_level
-|image:../../face/icons/hide-details.svg[,16,16] Hide detail |詳細の非表示 |✅ |s.row_groups |— |ws.column_dimensions[…].outline_level
+|image:../../face/icons/group.svg[,16,16] Group / image:../../face/icons/ungroup.svg[,16,16] Ungroup |グループ化 / グループ解除 |✅ |*Same as Layout* — s.row_dimensions.group(始, 終) |— |ws.column_dimensions[…].outline_level
+|image:../../face/icons/show-details.svg[,16,16] Show details |詳細の表示 |✅ |s.row_dimensions.group(始, 終, hidden=False) |— |ws.column_dimensions[…].outline_level
+|image:../../face/icons/hide-details.svg[,16,16] Hide detail |詳細の非表示 |✅ |s.row_dimensions.group(始, 終, hidden=True) |— |ws.column_dimensions[…].outline_level
 |image:../../face/icons/subtotal.svg[,16,16] Subtotals |小計 |✍ |s['A9'] = '=SUBTOTAL(9,A2:A8)' |— |—
 |image:../../face/icons/datatable.svg[,16,16] Data table |データテーブル | |— |— |—
 |image:../../face/icons/python.svg[,16,16] Python |Python | |— |— |—
 |image:../../face/icons/csv-kind.svg[,16,16] CSV format |CSV の形 |✍ |csv モジュールで読む |— |—
-|image:../../face/icons/flash-fill.svg[,16,16] Fill by example |フラッシュフィル |✍ |s['B2'] = s['A2'].split()[0](規則を書く) |— |—
+|image:../../face/icons/flash-fill.svg[,16,16] Fill by example |フラッシュフィル |✍ |s['B2'] = s['A2'].value.split()[0](規則を書く) |— |—
 |===
 
 == Pivot Table
@@ -471,7 +471,7 @@ package" in link:python-manual.adoc[the Python manual].
 |===
 |Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
 
-|Page |ページ |✅ |(紙に組んで数える) |— |—
+|Page |ページ |✅ |d.page_count() |— |—
 |characters |文字数 |✅ |len(d.text) |len(d.text) |—
 |Spell |スペル |❌ |画面の表示の切り替えです |— |—
 |Zoom |ズーム |❌ |画面の表示です。文書は変わりません |— |—
@@ -506,13 +506,14 @@ package" in link:python-manual.adoc[the Python manual].
 |Delete |削除 |✅ |b.remove(名前) |— |del wb[名前]
 |Rename |名前の変更 |✅ |s.title = 名前 |— |ws.title = 名前
 |Duplicate |コピーを作成 |✅ |b.copy_worksheet(名前) |— |wb.copy_worksheet(ws)
-|Move left |左へ移動 |✅ |b.move_sheet(名前, 位置) |— |wb.move_sheet(名前, 位置)
-|Move right |右へ移動 |✅ |b.move_sheet(名前, 位置) |— |wb.move_sheet(名前, 位置)
+|Move left |左へ移動 |✅ |b.move_sheet(名前, -1) |— |wb.move_sheet(名前, -1)
+|Move right |右へ移動 |✅ |b.move_sheet(名前, 1) |— |wb.move_sheet(名前, 1)
 |Hide |非表示 | |— |— |ws.sheet_state
 |Unhide |再表示 | |— |— |ws.sheet_state
 |Tab colour |タブの色 | |— |— |ws.sheet_properties.tabColor
 |Protect the sheet |シートを保護 |✅ |s.protect() |— |ws.protection.sheet = True
 |===
+
 // api:taiou:end
 
 == Related manuals

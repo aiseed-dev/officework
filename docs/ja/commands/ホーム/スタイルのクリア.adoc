@@ -14,10 +14,18 @@
 
 == プログラムから
 
+専用の呼び方はありません。書式を1つずつ None にすると、スタイルの値に戻ります。
+
 [source,python]
 ----
-r.clear()
+for r in p.runs:
+    r.bold = None
+    r.italic = None
+    r.underline = None
+    r.color = None
 ----
+
+`r.clear()` は字を消す処理で、書式は残ります。
 
 他のライブラリでは、こう書きます。
 
@@ -25,6 +33,6 @@ r.clear()
 |===
 |道具 |書き方
 
-|python-docx |`r.clear()`
+|python-docx |`r.font.bold = None`
 |===
 

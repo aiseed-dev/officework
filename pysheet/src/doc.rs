@@ -458,6 +458,15 @@ impl PyDoc {
             .map_err(|e| PyIOError::new_err(format!("{path}: 書けない: {e}")))
     }
 
+    /// **ページ数。** PDF と同じ組み方で紙面を組んで数えます(PDF は
+    /// 書きません)。画面の下端に出る「ページ」と同じ数です。
+    fn page_count(&self) -> PyResult<usize> {
+        let g = lock(&self.inner)?;
+        let (sheet, page, _) = paper::doc_to_sheet(&g.doc, None)
+            .map_err(|e| PyValueError::new_err(format!("紙面を組めない: {e}")))?;
+        Ok(paper::doc_leaves(&sheet, page).len())
+    }
+
     /// 読めなかった物の帳簿 [(名前, 回数)]。空なら取りこぼしなし。
     /// **黙って落とさない** — ここに出た物も、原本から持ち越されて保存はされる。
     #[getter]
@@ -1069,11 +1078,12 @@ impl PyDoc {
             .sect_raw
             .clone()
             .unwrap_or_else(|| ooxml::sect_xml(&page));
-        let brk = kumihan::SectionBreak {
-            raw: set_sect_continuous(&raw, continuous),
-            page,
-            continuous,
-        };
+        // 始め方は**新しい節の物**です(python-docx と同じ)。模型は「この
+        // 区切りで改ページするか」を区切りの側に持つので、区切りにも同じ
+        // 印を付けます。文書末の sectPr にも w:type を書くのは、Word が
+        // 節の始め方をその節の sectPr から読むためです
+        let raw = set_sect_continuous(&raw, continuous);
+        let brk = kumihan::SectionBreak { raw: raw.clone(), page, continuous };
         g.doc.blocks.push(Block::Para(Paragraph {
             line_spacing: 1.0,
             sect: Some(brk),
@@ -1407,10 +1417,14 @@ impl PySection {
     fn start_type(&self) -> PyResult<&'static str> {
         let g = lock(&self.inner)?;
         let mids = g.section_blocks();
-        if self.idx >= mids.len() {
+        // 節の始め方は、**その節の前にある区切り**が決めます(python-docx と
+        // 同じ数え方)。最初の節の前には区切りが無いので new_page です。
+        // 前は自分の後ろの区切りを見ていたので、`add_section("continuous")`
+        // の印が1つ前の節に付いて見えました
+        if self.idx == 0 {
             return Ok("new_page");
         }
-        match g.doc.blocks.get(mids[self.idx]) {
+        match g.doc.blocks.get(mids[self.idx - 1]) {
             Some(Block::Para(p)) => Ok(match p.sect.as_ref() {
                 Some(sc) if sc.continuous => "continuous",
                 _ => "new_page",
@@ -1912,13 +1926,29 @@ impl PyParagraph {
     #[setter]
     fn set_style(&self, value: &str) -> PyResult<()> {
         let v = value.to_ascii_lowercase().replace(' ', "");
+        // 見出しと目次は 1〜9 の段を受けます(`style` の getter が返す綴りを
+        // そのまま書き戻せるように)。docx の Heading1〜9 / TOC1〜9 と同じです
+        let dan = |head: &str| -> Option<u8> {
+            v.strip_prefix(head)
+                .and_then(|n| n.parse::<u8>().ok())
+                .filter(|n| (1..=9).contains(n))
+        };
         let role = match v.as_str() {
             "body" | "normal" | "標準" => Some(kumihan::ParaStyle::Body),
-            "heading1" | "見出し1" => Some(kumihan::ParaStyle::Heading(1)),
-            "heading2" | "見出し2" => Some(kumihan::ParaStyle::Heading(2)),
-            "heading3" | "見出し3" => Some(kumihan::ParaStyle::Heading(3)),
+            "title" | "表題" => Some(kumihan::ParaStyle::Title),
             "quote" | "引用" => Some(kumihan::ParaStyle::Quote),
-            _ => None,
+            "tof" | "図表目次" => Some(kumihan::ParaStyle::Tof),
+            _ => dan("heading")
+                .or_else(|| dan("見出し"))
+                .map(kumihan::ParaStyle::Heading)
+                .or_else(|| dan("toc").or_else(|| dan("目次")).map(kumihan::ParaStyle::Toc)),
+        };
+        // 箇条書きと番号付きは日本語の名前でも受けます(手引きがこの
+        // 書き方です)。Word の組み込みスタイルの名前に直してから探します
+        let value = match v.as_str() {
+            "箇条書き" | "listbullet" => "List Bullet",
+            "番号付き" | "番号付きリスト" | "listnumber" => "List Number",
+            _ => value,
         };
         let mut g = lock(&self.inner)?;
         let (style, style_id) = match role {

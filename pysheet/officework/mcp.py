@@ -303,6 +303,9 @@ def doc_fill(values: dict, path: str | None = None) -> str:
 
     表の中で行を増やす群(明細など)はここでは埋められません。
     行の並びを渡す形が要るので、その道具はまだありません。
+
+    名前の付いた記入欄(`doc_fields` で出る物)も、同じ辞書で埋められます。
+    名前が穴でなく記入欄なら、記入欄に入れます。
     """
     if not values:
         return "入れる値がありません"
@@ -310,14 +313,23 @@ def doc_fill(values: dict, path: str | None = None) -> str:
     # *渡さなかった残りの穴*で、渡した名前が入ったかどうかではありません
     ある = set(_doc_call("merge_fields", path).get("merge_fields", []))
     知らない = [str(n) for n in values if str(n) not in ある]
+    # 穴に無い名前は、記入欄(w:sdt)の名前かもしれない
+    記入欄 = set(_doc_call("fields", path).get("fields", [])) if 知らない else set()
+    欄の名前 = [n for n in 知らない if n in 記入欄]
+    知らない = [n for n in 知らない if n not in 記入欄]
     入った = 0
     for 名, 値 in values.items():
         if str(名) in 知らない:
             continue
-        _doc_call("fill_one", path, name=str(名), value=str(値))
+        if str(名) in 欄の名前:
+            _doc_call("fill_field", path, name=str(名), value=str(値))
+        else:
+            _doc_call("fill_one", path, name=str(名), value=str(値))
         入った += 1
     残り = _doc_call("merge_fields", path).get("merge_fields", [])
     文 = f"{入った} 件を入れました"
+    if 欄の名前:
+        文 += f"(記入欄: {'・'.join(欄の名前)})"
     if 知らない:
         文 += f"。その名前の穴はありません: {'・'.join(知らない)}"
     if 残り:

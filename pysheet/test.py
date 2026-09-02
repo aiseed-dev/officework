@@ -159,4 +159,43 @@ else:
     back = pl.DataFrame(ps.values(), orient="row")
     check(back.shape == (3, 2), f"values() が DataFrame にならない: {back.shape}")
 
+# ── シートの名前は文字列でも渡せる(remove / copy_worksheet)────────────
+# 前は Sheet しか受けず、名前を渡すと `.title` が無くて TypeError で
+# 止まっていました。openpyxl の見本は Sheet を渡しますが、手引きは名前で
+# 書いている所があります
+b = office_sheet.Book()
+b.create_sheet("控え")
+c = b.copy_worksheet("控え")
+check(c.title == "控え Copy", f"名前で写した物の名前が違う: {c.title}")
+b.remove("控え Copy")
+check(b.sheetnames == ["Sheet1", "控え"], f"名前で抜けない: {b.sheetnames}")
+b.remove(b["控え"])
+check(b.sheetnames == ["Sheet1"], f"Sheet で抜けない: {b.sheetnames}")
+
+# ── 入力規則の文言(入力メッセージ・エラーメッセージ)が xlsx に残る ──────
+# 前は add_data_validation が promptTitle / prompt / errorTitle / error を
+# 渡していなかったので、Excel で開いても文言が出ませんでした
+with tempfile.TemporaryDirectory() as t:
+    b = office_sheet.Book()
+    s = b[0]
+    dv = office_sheet.DataValidation(type="list", formula1='"見積,注文"', allow_blank=True)
+    dv.promptTitle = "区分"
+    dv.prompt = "一覧から選びます"
+    dv.errorTitle = "区分が違います"
+    dv.error = "見積か注文にしてください"
+    dv.add("B2:B10")
+    s.add_data_validation(dv)
+    out = os.path.join(t, "規則.xlsx")
+    b.save(out)
+    import zipfile
+    with zipfile.ZipFile(out) as z:
+        x = z.read("xl/worksheets/sheet1.xml").decode("utf-8")
+    for k in ('promptTitle="区分"', 'prompt="一覧から選びます"',
+              'errorTitle="区分が違います"', 'error="見積か注文にしてください"',
+              'errorStyle="stop"'):
+        check(k in x, f"入力規則の文言が xlsx に無い: {k}")
+    m = office_sheet.load_workbook(out)[0]._s.validation_messages
+    check(m == [("B2:B10", "区分", "一覧から選びます", "stop", "区分が違います", "見積か注文にしてください")],
+          f"読み直した入力規則の文言が違う: {m}")
+
 print("OK")

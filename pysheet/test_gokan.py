@@ -895,11 +895,8 @@ if pydocx is not None:
         pf_r.first_line_indent = 10.5
         check(abs(pf_r.first_line_indent.pt - 10.5) < 0.1,
               f"1行目の字下げ: {pf_r.first_line_indent}")
-        try:
-            d_h.add_heading("題", level=0)
-            check(False, "level=0(Title)が黙って通った")
-        except ValueError:
-            pass
+        # level=0 は文書の表題(python-docx と同じ)
+        check(d_h.add_heading("題", level=0).style == "title", "level=0 が表題にならない")
 
         # --- 表の書式: style(名前だけ運ぶ)・alignment・autofit ---------------
         from docx.enum.table import WD_TABLE_ALIGNMENT

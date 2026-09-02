@@ -165,4 +165,60 @@ with tempfile.TemporaryDirectory() as t:
     check('w:orient="landscape"' in sects[1], "横長の節に向きの印が無い")
     check('w:w="11906"' in sects[0], f"1節目が A4 でない: {sects[0]}")
 
+# ── 段落のスタイルは日本語の別名と heading4〜9・tof も受ける ─────────────
+# 手引きが `p.style = '箇条書き'` と書いているのに断っていました
+d = doc.Doc()
+p = d.add_paragraph("一")
+p.style = "箇条書き"
+check(p.style == "List Bullet", f"箇条書きが List Bullet にならない: {p.style}")
+p = d.add_paragraph("二")
+p.style = "番号付き"
+check(p.style == "List Number", f"番号付きが List Number にならない: {p.style}")
+for name in ("heading4", "heading9", "tof", "toc2", "見出し5"):
+    p = d.add_paragraph(name)
+    p.style = name
+    yomi = {"見出し5": "heading5"}.get(name, name)
+    check(p.style == yomi, f"{name} を受けない: {p.style}")
+
+# ── add_section("continuous") の始め方は新しい節に付く ────────────────
+# 前は1つ前の節に付いて見えました(python-docx は新しい節に付けます)
+d = doc.Doc()
+d.add_paragraph("1節")
+s2 = d.add_section("continuous")
+d.add_paragraph("2節")
+check(d.sections[0].start_type == "new_page", f"1節目が {d.sections[0].start_type}")
+check(s2.start_type == "continuous", f"足した節が {s2.start_type}")
+check(d.sections[-1].start_type == "continuous", "末尾の節に始め方が付かない")
+s3 = d.add_section()
+check(s3.start_type == "new_page" and d.sections[1].start_type == "continuous",
+      "3節目を足すと2節目の始め方が変わる")
+with tempfile.TemporaryDirectory() as t:
+    out = os.path.join(t, "節.docx")
+    d.save(out)
+    with zipfile.ZipFile(out) as z:
+        x = z.read("word/document.xml").decode("utf-8")
+    sects = re.findall(r"<w:sectPr.*?</w:sectPr>|<w:sectPr[^>]*/>", x, re.S)
+    check(len(sects) == 3, f"節が3つでない: {len(sects)}")
+    check('w:val="continuous"' in sects[0], "continuous の印が docx に無い")
+    check('w:val="continuous"' not in sects[2], "末尾の節に continuous が残る")
+    d2 = doc.Doc(out)
+    check([s.start_type for s in d2.sections] == ["new_page", "continuous", "new_page"],
+          f"読み直した始め方が違う: {[s.start_type for s in d2.sections]}")
+
+# ── 差し込み(render)と記入欄(fill)、ページ数 ────────────────────────
+d = doc.Doc()
+d.add_paragraph("宛先 {{宛名}} 様 合計 {{合計}} 円")
+r = d.render({"宛名": "サンプル商事株式会社", "合計": 1440000})
+check(d.paragraphs[0].text == "宛先 サンプル商事株式会社 様 合計 1440000 円",
+      f"render で差し込めない: {d.paragraphs[0].text}")
+try:
+    d.fill("無い欄", "x")
+    check(False, "無い記入欄に fill が黙って成功する")
+except KeyError:
+    pass
+check(d.page_count() == 1, f"1枚の文書のページ数が {d.page_count()}")
+for i in range(80):
+    d.add_paragraph("行 %d" % i)
+check(d.page_count() >= 2, f"80 行の文書のページ数が {d.page_count()}")
+
 print("OK")

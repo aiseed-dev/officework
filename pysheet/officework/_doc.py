@@ -1863,6 +1863,39 @@ class Doc(NoStrayAttributes):
         # Path も受ける(上の open と同じ理由)
         self._d.save(_os.fspath(path), dpi)
 
+    def fill(self, name, value):
+        """名前の付いた記入欄すべてに値を入れます。返り値は入れた欄の数です。
+
+        名前は writer の「フォーム」タブで記入欄に付けた物です。同じ名前の
+        欄が2つあれば2つとも入ります。その名前の欄が無ければ KeyError で
+        止まります(黙って空振りにしません)。本文の ``{{名前}}`` を埋めるのは
+        `render` です。
+        """
+        n = self._d.fill(str(name), str(value))
+        if n == 0:
+            raise KeyError("記入欄「{}」がありません(d.fields() で名前を確かめられます)".format(name))
+        return n
+
+    def render(self, values, rows=None):
+        """本文の ``{{名前}}`` に値を差し込みます。
+
+        ``values`` は ``{"名前": 値}`` です。``rows`` は ``{"群": [行, …]}`` で、
+        ``{{群.項目}}`` を含む表の行が、行の数だけ増えます。値は文字に直して
+        入れます(数を渡してもかまいません)。データに無い名前は
+        ``{{名前}}`` のまま残り、返り値の文にその名前が出ます。
+        """
+        moji = lambda v: "" if v is None else str(v)  # noqa: E731
+        vals = {str(k): moji(v) for k, v in dict(values or {}).items()}
+        gun = None
+        if rows:
+            gun = {str(g): [{str(k): moji(v) for k, v in dict(row).items()} for row in r]
+                   for g, r in dict(rows).items()}
+        return self._d.render(vals, gun)
+
+    def page_count(self):
+        """ページ数を数えます。PDF と同じ組み方で紙面を組みます(PDF は書きません)。"""
+        return self._d.page_count()
+
     def to_pdf(self, path=None):
         """文書を PDF にします。返り値は保存先です。
 
@@ -1972,8 +2005,8 @@ class Doc(NoStrayAttributes):
         return p
 
     def add_heading(self, text="", level=1):
-        """見出しを足す(python-docx と同じ口)。level は 1〜3 —
-        模型の見出しは3段まで。0(Title)は持たないので正直に断る。"""
+        """見出しを足す(python-docx と同じ呼び方)。level は 0〜3 で、
+        0 は文書の表題です。見出しは3段までなので、4 以上は断ります。"""
         return Paragraph(self._d.add_heading(text, level))
 
     def add_page_break(self):

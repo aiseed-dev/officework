@@ -91,7 +91,7 @@ Python が要るのは、グラフ・数式・ピボットテーブル・マク�
 |===
 |場所 |書き方 |最初から使える変数
 
-|セルの関数(UDF) |`=倍(A1)` — plugins の `def 倍(x)` を呼ぶ |引数が値で渡る(下記)
+|セルの関数(UDF) |`=倍(A1)` — funcs の `def 倍(x)` を呼ぶ |引数が値で渡る(下記)
 |手続き |`@モジュール` / `@モジュール.関数` |自分で `xw.Book.caller()` を呼ぶ
 |外(Jupyter など) |`from officework import calc as xw` |同上
 |calc: データ > Python(一行 / .py) |パネルに直接書く |`b` = ブック、`s` = いまのシート
@@ -142,7 +142,7 @@ s["A1"] = 100      # 書き: 数
 s["A1"] = "文字"   #        文字
 s["A1"] = True     #        論理値(calc では ☑/☐ に見える)
 s["A1"] = "=B1*C1" #        数式("=" で始まる文字列)
-s["A1"] = date(2026, 8, 5)  # date / datetime / time — 読み直すと date で返る
+s["A1"] = date(2026, 8, 5)  # date は date、datetime は datetime、time は time で返る
 s["A1"] = None     #        消す
 ----
 
@@ -152,9 +152,9 @@ s["A1"] = None     #        消す
 
 === 配列(範囲)のやり取り — ここが本題
 
-*範囲の添字は無い*(`s["A2:C3"]` はエラー)。
-*2次元の一括代入も無い*(`s["A1"] = [[…]]` はエラー)。
-配列はこう扱う:
+範囲の添字 `s["A2:C3"]` は行のタプルを返します(中身はセルです)。
+2次元の一括代入 `s["A1"] = [[…]]` はエラーです。
+配列はこう扱います:
 
 [source,python]
 ----
@@ -308,7 +308,7 @@ s2.header.add_paragraph("第2章")   # ヘッダーとフッターも節ごと
 
 `add_section(start_type=)` は `"new_page"`(既定)か `"continuous"` を受けます。それ以外は理由つきで断ります。
 種類は作るときに決め、後から変えられません。
-長さはどれも EMU の整数です(1mm = 36,000)。`Mm()` のような換算の助手はありません。
+長さはどれも EMU の整数です(1mm = 36,000)。換算には `doc.Mm()`・`doc.Cm()`・`doc.Pt()`・`doc.Inches()`・`doc.Emu()`・`doc.Twips()` があります。
 新規の文書は A4・余白 20mm で始まります(python-docx の新規は余白 1 インチです)。
 
 この機械で実際に動かして確かめました: 2節の文書を PDF にすると、1ページ目が A4、2ページ目が 254×180mm で出ます。
@@ -418,7 +418,7 @@ wb.save("out.xlsx")
 
 * まだ何も無い所でも `ws.cell(50, 1)` は参照だけの Cell を返します。value は None です。書けばその場に入ります。openpyxl と同じ感触です
 * `insert_rows` / `delete_rows` / `insert_cols` / `delete_cols` は``amount=`` つき。`merged_cell_ranges`・`freeze_panes` も通る
-* *こちらの流儀もそのまま生きています。* `ws["A1"]` は今までどおり値を返します。openpyxl は Cell を返すので、ここだけ流儀が違います。Cell が欲しいときは `cell()` を使ってください
+* `ws["A1"]` は openpyxl と同じく Cell を返します。値は `.value` で読みます
 * openpyxl が読めるかは、向こうの試験でも確かめてあります。こちらが書いた xlsx を openpyxl がそのまま読みます。*こちらが計算した値も読めます。* openpyxl 自身は式を計算できません
 
 書式と印刷も openpyxl の形で通る:
@@ -450,13 +450,13 @@ xw.Range("B2").address                    # '$B$2'
 xw.Range("B2").offset(1, 2).address       # '$D$3'
 xw.Range("B2").resize(3, 2).address       # '$B$2:$C$4'
 xw.Range("B2:D5").last_cell.address       # '$D$5'
-xw.Range("A1").current_region             # 地続きの表全体(expand の同族)
+xw.Range("A1").current_region             # 地続きの表全体(動いている officework に繋いで読む)
 
 b = xw.Book.attach()                      # 動いている calc に(caller() も同じ)
 b.sheets.active["A1"].value = 42
 ----
 
-calc が居なければ黙って何かの振りをせず、そう言う: `OfficeworkError: calc に繋がりません(…/officework/calc.sock: Connection refused)`
+officework が居なければ黙って何かの振りをせず、そう言います: `OfficeworkError: officework に繋がりません(…/officework.sock: Connection refused)。officework.launch('officework') で起こせます`
 
 *書式まわり*(記録した操作がそのまま動くために必要なもの):
 
@@ -847,7 +847,7 @@ python-docx の普通の API が使える。d.save() は呼ばない。
 自分で据えたコードだから)。ファイルもネットワークも普通に使えます。
 polars・scipy・matplotlib も使える。
 
-【セルの関数(UDF)を書くとき】plugins の .py に普通に def を書けば
+【セルの関数(UDF)を書くとき】funcs の .py に普通に def を書けば
 `=名前(A1:B9)` で呼べる(名前は日本語でよい)。範囲の引数は行×列の
 2次元リスト(値)で来る。返りはスカラ / 1次元(縦に展開)/
 2次元(右下へスピル)。引数が変われば自動で計算し直される。
@@ -892,7 +892,7 @@ AI が書く → 検分(J 列は空きか・net 不要)→ 実行 → 結果を�
 == 実例(そのまま読める見本)
 
 *エンジンだけで動きます。* `pip install officework` で入り、アプリは要りません。
-6本とも実際に動かしてから置いてあります。結果の数字は sample/README.adoc にあります。
+6本とも実際に動かしてから置いてあります。結果の数字は sample/README.md にあります。
 
 * link:../../sample/差し込み.py[sample/差し込み.py] — 見積書に宛名と数量を差し込む。書式据え置き・式は合計まで追従
 * link:../../sample/量産.py[sample/量産.py] — 1つの型紙から宛先3件の見積書

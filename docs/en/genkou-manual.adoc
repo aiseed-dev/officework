@@ -140,10 +140,13 @@ from officework import doc
 d = doc.Doc.open("report-template.docx")
 d.fill("addressee", "Sample Trading Co., Ltd.")
 d.fill("amount", "1,440,000")
-d.save("report_nihon-funen.docx")
+d.save("report_sample-trading.docx")
 ----
 
-Placeholders like `{name}` in a template can be replaced in one call.
+`fill` writes into the form fields you named on writer's Form tab.
+If no field has that name, it stops and tells you.
+
+Placeholders written as `{{name}}` in the template body can be replaced in one call (`{name}` works the same way).
 
 [source,python]
 ----
@@ -152,7 +155,7 @@ d.render({"addressee": "Sample Trading Co., Ltd.", "total": "1,440,000"},
                           {"item": "Copy paper", "qty": "5"}]})
 ----
 
-A table row containing `{detail.item}` repeats once per row of data.
+A table row containing `{{detail.item}}` repeats once per row of data.
 
 See the link:python-manual.adoc[Python manual] for the rest.
 

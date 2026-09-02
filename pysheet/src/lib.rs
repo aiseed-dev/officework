@@ -1893,7 +1893,14 @@ impl PySheet {
     /// 入力規則を足す。list なら formula1 は `"甲,乙"`(直書き)か範囲参照。
     /// エンジンは list を効かせ(規則に合わない入力を堰き止め)、他の種類も
     /// **落とさず持ち越す**(判定は分かる物だけ — 模型の注のとおり)。
-    #[pyo3(signature = (range, formula1, kind="list", operator="", formula2="", allow_blank=true))]
+    ///
+    /// `prompt_title` / `prompt` はセルを選んだときに出る入力メッセージ、
+    /// `error_title` / `error` は規則に合わない入力を断るときの文言です
+    /// (xlsx の promptTitle / prompt / errorTitle / error)。`error_style` は
+    /// "stop"(既定)/ "warning" / "information" です。
+    #[pyo3(signature = (range, formula1, kind="list", operator="", formula2="", allow_blank=true,
+                        prompt_title="", prompt="", error_title="", error="", error_style="stop"))]
+    #[allow(clippy::too_many_arguments)]
     fn add_validation(
         &self,
         range: &str,
@@ -1902,8 +1909,19 @@ impl PySheet {
         operator: &str,
         formula2: &str,
         allow_blank: bool,
+        prompt_title: &str,
+        prompt: &str,
+        error_title: &str,
+        error: &str,
+        error_style: &str,
     ) -> PyResult<()> {
         let (a, b) = parse_range(range)?;
+        let input_msg = (!prompt_title.is_empty() || !prompt.is_empty())
+            .then(|| (prompt_title.to_string(), prompt.to_string()));
+        let error_msg = (!error_title.is_empty() || !error.is_empty()).then(|| {
+            let style = if error_style.is_empty() { "stop" } else { error_style };
+            (style.to_string(), error_title.to_string(), error.to_string())
+        });
         self.with(|s| {
             s.validations.push(book::Validation {
                 range: (a, b),
@@ -1911,12 +1929,36 @@ impl PySheet {
                 kind: kind.to_string(),
                 op: operator.to_string(),
                 formula2: formula2.to_string(),
-                input_msg: None,
-                error_msg: None,
+                input_msg,
+                error_msg,
                 allow_blank,
                 hide_arrow: false,
             });
             Ok(())
+        })
+    }
+
+    /// 入力規則の文言の一覧 [(範囲, 入力メッセージの題, 入力メッセージ,
+    /// エラーの様式, エラーの題, エラーの文言)]。無い所は空文字です。
+    /// `validations` と同じ順に並びます。
+    #[getter]
+    fn validation_messages(
+        &self,
+    ) -> PyResult<Vec<(String, String, String, String, String, String)>> {
+        self.with(|s| {
+            Ok(s.validations
+                .iter()
+                .map(|v| {
+                    let r = if v.range.0 == v.range.1 {
+                        v.range.0.a1()
+                    } else {
+                        format!("{}:{}", v.range.0.a1(), v.range.1.a1())
+                    };
+                    let (pt, pm) = v.input_msg.clone().unwrap_or_default();
+                    let (es, et, em) = v.error_msg.clone().unwrap_or_default();
+                    (r, pt, pm, es, et, em)
+                })
+                .collect())
         })
     }
 

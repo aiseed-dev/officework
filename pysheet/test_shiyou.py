@@ -72,8 +72,8 @@ check(h1.style == "heading1", f"add_heading の既定が1段目でない: {h1.st
 check(h1.text == "見出し", "見出しの字が入らない")
 check(d.add_heading("2段目", 2).style == "heading2", "level=2 が2段目でない")
 check(d.add_heading("3段目", 3).style == "heading3", "level=3 が3段目でない")
-# **うちの見出しは3段まで**(模型の粒度)。本家の 0=Title・4〜9 は正直に断る
-raises(ValueError, lambda: d.add_heading("題", 0), "level=0 を黙って受けている")
+# level=0 は文書の表題(本家と同じ)。**見出しは3段まで**で、4〜9 は断る
+check(d.add_heading("題", 0).style == "title", "level=0 が表題にならない")
 raises(ValueError, lambda: d.add_heading("題", 4), "level=4 を黙って受けている")
 raises(ValueError, lambda: d.add_heading("題", 10), "範囲の外を黙って受けている")
 
@@ -186,7 +186,7 @@ check(abs(pf.left_indent.pt - 21) < 0.1, f"左の字下げが入らない: {pf.l
 pf.left_indent = od.Pt(42)          # 2段
 check(abs(pf.left_indent.pt - 42) < 0.1, f"2段目が入らない: {pf.left_indent}")
 pf.left_indent = None
-check(pf.left_indent.pt == 0.0, f"字下げが外れない: {pf.left_indent}")
+check(pf.left_indent is None, f"字下げが外れない: {pf.left_indent}")  # 外すと None(本家と同じ)
 
 # ── 無指定は無指定のまま往復する(2026-08-13 に塞いだ穴)──────
 # 指定の無い文字の大きさが往復で 10.5pt に焼き付いていた(w:sz を必ず

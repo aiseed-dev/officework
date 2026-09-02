@@ -22,7 +22,7 @@ Both cell functions live in `~/.config/officework/funcs/*.py`, procedures in `~/
 |===
 |Place |How you write it |Bindings
 
-|Cell function (UDF) |`=double(A1)` — calls `def double(x)` in a plugin |arguments passed as values (below)
+|Cell function (UDF) |`=double(A1)` — calls `def double(x)` in funcs |arguments passed as values (below)
 |Procedure |`@module` / `@module.func` |call `xw.Book.caller()` yourself
 |Outside (Jupyter, …) |`from officework import calc as xw` |same
 |calc: Data > Python (one-liner / .py) |typed into the panel |`b` = workbook, `s` = current sheet
@@ -72,7 +72,7 @@ s["A1"] = 100      # write: number
 s["A1"] = "text"   #        text
 s["A1"] = True     #        bool (shows as ☑/☐ in calc)
 s["A1"] = "=B1*C1" #        formula (string starting with "=")
-s["A1"] = date(2026, 8, 5)  # date / datetime / time — reads back as a date
+s["A1"] = date(2026, 8, 5)  # date reads back as date, datetime as datetime, time as time
 s["A1"] = None     #        clear
 ----
 
@@ -82,7 +82,8 @@ s["A1"] = None     #        clear
 
 === Ranges as arrays — the main topic
 
-*There is no range subscript* (`s["A2:C3"]` raises) and *no 2-D bulk assignment* (`s["A1"] = [[…]]` raises).
+A range subscript `s["A2:C3"]` returns a tuple of rows (each item is a Cell).
+A 2-D bulk assignment `s["A1"] = [[…]]` raises.
 Arrays work like this:
 
 [source,python]
@@ -228,7 +229,7 @@ s2.header.add_paragraph("Chapter 2")   # header and footer are per section
 
 `add_section(start_type=)` takes `"new_page"` (the default) or `"continuous"`; anything else is refused with the reason.
 The type is decided at creation and cannot be changed later.
-Lengths are plain EMU integers (1 mm = 36,000); there are no `Mm()` helpers.
+Lengths are plain EMU integers (1 mm = 36,000); `doc.Mm()`, `doc.Cm()`, `doc.Pt()`, `doc.Inches()`, `doc.Emu()` and `doc.Twips()` convert for you.
 A new document starts as A4 with 20 mm margins (python-docx starts with 1-inch margins).
 
 Measured here: a two-section document saved as PDF comes out page 1 A4, page 2 254 x 180 mm.
@@ -327,7 +328,7 @@ wb.save("out.xlsx")
 
 * `ws.cell(50, 1)` returns a *reference-only Cell* even where nothing exists yet (value is None; assign and it lands there — the openpyxl feel)
 * `insert_rows` / `delete_rows` / `insert_cols` / `delete_cols` take `amount=`; `merged_cell_ranges` and `freeze_panes` work too
-* *our own idiom stays alive*: `ws["A1"]` still returns the *value *(openpyxl returns a Cell — that is the one deliberate difference; use `cell()` when you want a Cell)
+* `ws["A1"]` returns a Cell, as in openpyxl. Read the value with `.value`
 * interop is proven with the original's own eyes: openpyxl reads what we write — *including the computed values* it cannot produce itself
 
 Formatting and print setup also speak openpyxl:
@@ -336,7 +337,6 @@ Formatting and print setup also speak openpyxl:
 ----
 from officework.sheet import Font, Border, Side, PatternFill, Alignment
 ws.cell(1, 1).font = Font(bold=True, size=14) # openpyxl's own objects work too
-                                              # (ws["A1"] returns the value — use cell())
 ws.column_dimensions["A"].width = 20          # width (chars), height, hidden
 ws.print_title_rows = "1:1"                   # repeat headings on every page ("A:A" for columns)
 ws.freeze_panes = "B2"
@@ -357,13 +357,13 @@ xw.Range("B2").address                    # '$B$2'
 xw.Range("B2").offset(1, 2).address       # '$D$3'
 xw.Range("B2").resize(3, 2).address       # '$B$2:$C$4'
 xw.Range("B2:D5").last_cell.address       # '$D$5'
-xw.Range("A1").current_region             # the contiguous table (kin of expand)
+xw.Range("A1").current_region             # the contiguous table (read from the running officework)
 
 b = xw.Book.attach()                      # attach to a running calc (caller() too)
 b.sheets.active["A1"].value = 42
 ----
 
-When no calc is running it never pretends — it says so: `OfficeworkError: calc に繋がりません(…/officework/calc.sock: Connection refused)`
+When no officework is running it never pretends — it says so: `OfficeworkError: officework に繋がりません(…/officework.sock: Connection refused)。officework.launch('officework') で起こせます`
 
 *Formatting* (a recording runs as-is):
 
@@ -562,7 +562,7 @@ No decorators — a plain def. However many cells it writes, one Ctrl+Z undoes i
 themselves). Files and the network work normally; polars, scipy, and
 matplotlib are available.
 
-[when writing cell functions] a plain def in a plugin .py is callable as
+[when writing cell functions] a plain def in a funcs .py is callable as
 `=name(A1:B9)` (names may be Japanese). Range arguments arrive as row ×
 column 2-D lists of values. Return a scalar / 1-D list (spills down) / 2-D
 list (spills down-right). It recomputes automatically when arguments change.
@@ -604,7 +604,7 @@ That loop is the basic form of the collaboration.
 
 == Worked examples (readable as-is)
 
-**Engine only (pip install officework — no app needed). **All six were run in that folder before being written down (sample/README.adoc quotes the outputs):
+**Engine only (pip install officework — no app needed). **All six were run in that folder before being written down (sample/README.md quotes the outputs):
 
 * link:../../sample/差し込み.py[sample/差し込み.py] — fill the quote form; formats survive, formulas recalculate through to the total
 * link:../../sample/量産.py[sample/量産.py] — three quotes from one template

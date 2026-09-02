@@ -2,9 +2,8 @@
 
 _日本語版(secondary): link:../ja/tutorial-calc.adoc[tutorial-calc.adoc]_
 
-Type the code and it runs. The code on this page is the same code as the
-acceptance tests under test/, so *if it stops working, a test notices
-before you do*.
+Type the code and it runs. Every example on this page was run before
+it was written down.
 
 Writing against officework feels the same as writing against openpyxl.
 The only difference is the import line. And there is one thing openpyxl
@@ -75,8 +74,8 @@ the numbers.
 
 === Where people trip
 
-* Reading `.value` straight after entering a formula gives you the state
-  before calculation. Call `wb.recalc()` first
+* Reading `.value` straight after entering a formula gives you the
+  calculated value. You do not need to call `wb.recalc()` yourself
 * Inserting a row updates the formulas by itself. `=SUM(D2:D4)` shifts by
   however many you inserted; you do not rewrite it
 * Multiplying decimals can leave a small error at the end

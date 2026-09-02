@@ -17,7 +17,7 @@
 
 [source,python]
 ----
-b.move_sheet(名前, 位置)
+b.move_sheet(名前, 1)   # 第2引数は今の位置からのずれ
 ----
 
 他のライブラリでは、こう書きます。
@@ -26,6 +26,6 @@ b.move_sheet(名前, 位置)
 |===
 |道具 |書き方
 
-|openpyxl |`wb.move_sheet(名前, 位置)`
+|openpyxl |`wb.move_sheet(名前, 1)`
 |===
 

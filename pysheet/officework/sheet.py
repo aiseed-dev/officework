@@ -516,12 +516,20 @@ class DataValidation:
     他の種類も落とさず持ち越す — 判定は分かる物だけ(模型の注のとおり)。"""
 
     def __init__(self, type=None, formula1=None, formula2=None, operator=None,
-                 allow_blank=True, **_rest):
+                 allow_blank=True, promptTitle=None, prompt=None,
+                 errorTitle=None, error=None, errorStyle=None, **_rest):
         self.type = type
         self.formula1 = formula1
         self.formula2 = formula2
         self.operator = operator
         self.allow_blank = allow_blank
+        # 入力メッセージとエラーメッセージ(openpyxl と同じ属性名)。
+        # 後から `dv.prompt = "…"` と入れても効きます
+        self.promptTitle = promptTitle
+        self.prompt = prompt
+        self.errorTitle = errorTitle
+        self.error = error
+        self.errorStyle = errorStyle
         self.sqref = []
 
     def add(self, cell_range):
@@ -1884,14 +1892,22 @@ class Sheet(NoStrayAttributes):
                   else str(sqref).split())
         if not ranges:
             raise ValueError("先に dv.add(範囲) で掛ける範囲を決めてください")
+        moji = lambda name: str(getattr(dv, name, "") or "")  # noqa: E731
         for r in ranges:
             self._s.add_validation(
                 r.replace("$", ""),
-                str(getattr(dv, "formula1", "") or ""),
-                kind=str(getattr(dv, "type", "") or ""),
-                operator=str(getattr(dv, "operator", "") or ""),
-                formula2=str(getattr(dv, "formula2", "") or ""),
+                moji("formula1"),
+                kind=moji("type"),
+                operator=moji("operator"),
+                formula2=moji("formula2"),
                 allow_blank=bool(getattr(dv, "allow_blank", True)),
+                # 入力メッセージとエラーの文言(xlsx の promptTitle / prompt /
+                # errorTitle / error)。無い物は空で渡し、エンジンが省きます
+                prompt_title=moji("promptTitle"),
+                prompt=moji("prompt"),
+                error_title=moji("errorTitle"),
+                error=moji("error"),
+                error_style=moji("errorStyle") or "stop",
             )
 
     def __repr__(self):
@@ -2097,18 +2113,23 @@ class Book(NoStrayAttributes):
         return self[title]
 
     def copy_worksheet(self, worksheet):
+        """シートを写して末尾に足す。openpyxl と同じ呼び方です。
+        Sheet でも名前の文字列でも受けます。"""
         # openpyxl と同じ「〜 Copy」の名前。塞がっていれば番号を継ぐ
-        base = "{} Copy".format(worksheet.title)
+        title = worksheet if isinstance(worksheet, str) else worksheet.title
+        base = "{} Copy".format(title)
         name, n = base, 0
         while name in self._b.sheet_names:
             n += 1
             name = "{}{}".format(base, n)
-        self._b.copy_sheet(worksheet.title, name)
+        self._b.copy_sheet(title, name)
         return self[name]
 
     def remove(self, worksheet):
-        # 最後の1枚は抜けない(エンジンが正直に断る)
-        self._b.remove_sheet(worksheet.title)
+        """シートを抜く。Sheet でも名前の文字列でも受けます。
+        最後の1枚は抜けません(エンジンが断ります)。"""
+        title = worksheet if isinstance(worksheet, str) else worksheet.title
+        self._b.remove_sheet(title)
 
     def move_sheet(self, sheet, offset=0):
         # openpyxl と同じ「相対のずらし」。sheet は Sheet でも名前でも

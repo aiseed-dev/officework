@@ -16,7 +16,8 @@
 
 [source,python]
 ----
-(col_span / v_merge) / s.merge_cells(…)
+cell.merge(相手)          # 文書の表(このセルから相手のセルまで)
+s.merge_cells("A1:B2")   # 表計算
 ----
 
 他のライブラリでは、こう書きます。
@@ -25,7 +26,7 @@
 |===
 |道具 |書き方
 
-|python-docx |`cell.merge(…)`
+|python-docx |`cell.merge(相手)`
 |openpyxl |`ws.merge_cells('A1:B2')`
 |===
 
