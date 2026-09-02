@@ -8747,3 +8747,145 @@ mod filter_reaches_the_formulas {
         });
     }
 }
+
+/// 2026-09-02 に直した4つ(AI の宛先の一覧・表の▼・変更履歴の始め直し・
+/// Enter でキーを渡す)の試験
+#[cfg(test)]
+mod remaining_fixes_tests {
+    use crate::*;
+    use crate::state::{next_ai_dest, pick_ai_dest};
+
+    fn dest(name: &str) -> face::settings::AiDest {
+        face::settings::AiDest {
+            name: name.into(),
+            url: format!("http://{name}.example/v1/chat/completions"),
+            model: "m".into(),
+            key_env: None,
+        }
+    }
+
+    #[test]
+    fn the_destination_is_the_last_used_one_or_the_first() {
+        let rows = vec![dest("a"), dest("b"), dest("c")];
+        assert_eq!(pick_ai_dest(&rows, None).name, "a");
+        assert_eq!(pick_ai_dest(&rows, Some("b")).name, "b");
+        // 一覧に無い名前を覚えていたら1番目
+        assert_eq!(pick_ai_dest(&rows, Some("zz")).name, "a");
+    }
+
+    #[test]
+    fn switching_goes_to_the_next_and_wraps_around() {
+        let rows = vec![dest("a"), dest("b"), dest("c")];
+        assert_eq!(next_ai_dest(&rows, None).map(|d| d.name.as_str()), Some("b"));
+        assert_eq!(next_ai_dest(&rows, Some("b")).map(|d| d.name.as_str()), Some("c"));
+        assert_eq!(next_ai_dest(&rows, Some("c")).map(|d| d.name.as_str()), Some("a"));
+        // 1つ以下なら替える先が無い
+        assert!(next_ai_dest(&rows[..1], None).is_none());
+        assert!(next_ai_dest(&[], None).is_none());
+    }
+
+    #[gpui::test]
+    fn a_new_table_shows_its_filter_buttons(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            for (a1, v) in [("A1", "品名"), ("B1", "数"), ("A2", "鉛筆"), ("B2", "3"), ("A3", "消しゴム"), ("B3", "1")] {
+                this.book.sheets[0].set(Pos::parse(a1).unwrap(), book::Cell::input(v));
+            }
+            this.anchor = Some(Pos::parse("A1").unwrap());
+            this.cursor = Pos::parse("B3").unwrap();
+            let st = crate::util::table_styles()[0].2;
+            this.make_table(st, None);
+            let t = &this.book.sheets[0].tables[0];
+            assert!(t.filter, "表の filter が既定で立っていない");
+            // 旗と同時に ▼ も張られている
+            let f = this.auto_filter.as_ref().expect("表を作ったのに ▼ が張られていない");
+            assert_eq!(f.range, (Pos::parse("A1").unwrap(), Pos::parse("B3").unwrap()));
+            // 1回押すと消え、もう1回押すと戻る(「消しました」から始まらない)
+            this.cursor = Pos::parse("A2").unwrap();
+            this.table_filter_toggle();
+            assert!(this.auto_filter.is_none(), "1回目の入切で消えていない: {}", this.status);
+            assert!(this.status.contains("消しました"), "{}", this.status);
+            this.table_filter_toggle();
+            assert!(this.auto_filter.is_some(), "2回目の入切で戻っていない");
+        });
+    }
+
+    #[gpui::test]
+    fn the_change_list_can_start_a_new_recording(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.book.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("1"));
+            this.track_changes();
+            this.book.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("2"));
+            this.track_changes();
+            assert_eq!(this.book.changes.len(), 1);
+            // run_cmd の先頭の commit() が打ちかけの欄でセルを潰さないよう、欄を合わせる
+            this.sync_input();
+            // 記録が残っているブックで押すと一覧が開き、先頭が「記録を始める」
+            this.run_cmd("track-changes", cx);
+            let (items, _) = this.pick.as_ref().expect("一覧が開いていない");
+            assert_eq!(items[0].0, "track-start", "{items:?}");
+            assert_eq!(items[0].1, ui::t!("start_recording_changes").to_string());
+            assert_eq!(items.len(), 2, "記録の項が続いていない: {items:?}");
+            // Enter で先頭を選ぶと、新しい記録が始まる
+            this.pick_sel = 0;
+            this.pick_confirm(cx);
+            assert!(this.pick.is_none(), "確定後も一覧が開いたまま");
+            assert!(this.track_from.is_some(), "記録が始まっていない: {}", this.status);
+            // 記録中に押すと止まる(一覧ではない)
+            this.book.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("3"));
+            this.sync_input();
+            this.run_cmd("track-changes", cx);
+            assert!(this.track_from.is_none(), "記録が止まっていない");
+            assert_eq!(this.book.changes.len(), 2, "2回目の記録が刻まれていない");
+        });
+    }
+
+    #[gpui::test]
+    fn enter_hands_the_key_just_like_a_click(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        // キーと見出しが違う一覧(名前の適用範囲)を、Enter とクリックで確定する
+        let open = |this: &mut Calc, name: &str| {
+            this.name_new = Some((name.to_string(), "A1:B2".to_string()));
+            this.pick_kind = "name-scope";
+            this.pick = Some((
+                vec![
+                    ("sheet_only".to_string(), "このシートだけ".to_string()),
+                    ("whole_book".to_string(), "ブック全体".to_string()),
+                ],
+                (10.0, 10.0),
+            ));
+            this.pick_sel = 0;
+        };
+        c.update(cx, |this, cx| {
+            open(this, "enter_name");
+            this.pick_confirm(cx);
+            // クリックは view.rs と同じ道(閉じてキーを渡す)
+            open(this, "click_name");
+            this.close_pick();
+            this.apply_pick("sheet_only", cx);
+            let names = &this.book.sheets[0].names;
+            let by = |n: &str| names.iter().find(|d| d.name == n).unwrap_or_else(|| panic!("{n} が入っていない: {names:?}"));
+            assert!(by("enter_name").scoped, "Enter で見出しの字が渡り、キーで引けていない");
+            assert_eq!(by("enter_name").scoped, by("click_name").scoped);
+            assert_eq!(by("enter_name").range, by("click_name").range);
+        });
+    }
+
+    #[gpui::test]
+    fn typed_text_still_commits_when_nothing_matches(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.cursor = Pos::new(0, 0);
+            this.open_combo("size", crate::util::plain(["10", "11"]), (10.0, 10.0), "10");
+            if let Some(ed) = &mut this.pick_filter {
+                ed.insert("13");
+            }
+            this.pick_filter_edited();
+            assert!(this.pick_visible().is_empty());
+            this.pick_confirm(cx);
+            let sz = this.book.sheets[0].get(Pos::new(0, 0)).map(|c| c.fmt.size_c);
+            assert_eq!(sz, Some(Some(1300)), "合致なしのとき打った字が確定していない");
+        });
+    }
+}

@@ -426,6 +426,11 @@ impl Calc {
             b,
             ..Default::default()
         });
+        // 表の filter は既定で true です。filter を true にするだけで ▼ を
+        // 張らないと、表のデザインの「フィルタのボタン」を1回押したときに
+        // 「消しました」になります(2026-09-02)。張る処理は入切と同じ関数を通します
+        let i = self.book.sheets[self.active].tables.len() - 1;
+        self.apply_table_filter(i);
         self.dirty = true;
         self.status = match label {
             Some(l) => ui::tf!(
@@ -944,6 +949,13 @@ impl Calc {
         // 残り、次に開いた一覧の見出しに前の説明が出ていた**(書体の一覧に
         // 「ピボット 1/4 …」が出た。2026-08-08 実機で見つけた)
         self.pick_note = None;
+        // AI の宛先は、表では `[[ai]]` の一覧で替えます。共通の処理の
+        // `ai-where` は文書の校正の宛先を回すので、表の会話には効きません。
+        // だから共通の処理より先に取ります(2026-09-02)
+        if id == "ai-where" {
+            self.agent_cycle_dest();
+            return;
+        }
         // **共通の命令は1本の捌き手へ**(2026-08-19)。同じ id の腕を
         // ここに残すと死ぬので、移したら消す
         if ui::appcmd::run(self, id) {
@@ -4414,9 +4426,16 @@ impl Calc {
             return;
         }
         let at = self.pop_anchor();
+        // 先頭は「記録を始める」。記録が残っているブックでも、ここから
+        // 新しい記録を始められます(2026-09-02。前は一覧が開くだけで、
+        // 始め直す道がありませんでした)。キーは `track-start` の1語
+        let mut items: Vec<(String, String)> = Vec::new();
+        if self.track_from.is_none() {
+            items.push(("track-start".into(), ui::t!("start_recording_changes").to_string()));
+        }
         // 日時・シート!番地・値・名乗りは**中身**。訳すのは「(空)」「(消した)」の
         // 2語だけ。鍵は前のまま — picks.rs は3語目の「シート!A1」で跳ぶ
-        let items: Vec<(String, String)> = self
+        items.extend(self
             .book
             .changes
             .iter()
@@ -4442,8 +4461,7 @@ impl Calc {
                     format!("{head} {arrow_key} [{}]", c.who),
                     format!("{head} {arrow} [{}]", c.who),
                 )
-            })
-            .collect();
+            }));
         self.pick_note = Some(
             ui::tf!(
                 "change_history_entries_newest",

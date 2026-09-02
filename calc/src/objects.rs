@@ -1082,8 +1082,23 @@ impl Calc {
         self.checkpoint();
         let t = &mut self.book.sheets[self.active].tables[i];
         t.filter = !t.filter;
-        let on = t.filter;
-        let (a, b, name) = (t.a, t.b, t.name.clone());
+        let (on, name) = (t.filter, t.name.clone());
+        self.apply_table_filter(i);
+        self.dirty = true;
+        self.status = if on {
+            ui::tf!("table_filter_buttons_shown", name)
+        } else {
+            ui::tf!("table_filter_buttons_hidden", name)
+        }
+        .into();
+    }
+
+    /// 表 `i` の `filter` の値どおりに ▼(auto_filter)を張る・外す。
+    /// 表を作るとき(`make_table`)と入切(`table_filter_toggle`)の両方が
+    /// ここを通ります。合計行があれば、その1つ上までを範囲にします
+    pub(crate) fn apply_table_filter(&mut self, i: usize) {
+        let t = &self.book.sheets[self.active].tables[i];
+        let (on, a, b) = (t.filter, t.a, t.b);
         let last = if t.totals && b.row > a.row { b.row - 1 } else { b.row };
         if on {
             self.auto_filter = Some(AutoFilter {
@@ -1095,12 +1110,5 @@ impl Calc {
             self.filter_panel = None;
         }
         self.sync_filter_hidden();
-        self.dirty = true;
-        self.status = if on {
-            ui::tf!("table_filter_buttons_shown", name)
-        } else {
-            ui::tf!("table_filter_buttons_hidden", name)
-        }
-        .into();
     }
 }

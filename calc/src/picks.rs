@@ -71,12 +71,14 @@ impl Calc {
 
     /// いま選んでいる項を確定する(Enter)。
     ///
+    /// 渡すのは項の**キー**です(クリックと同じ)。見出しを渡すと、キーで引く
+    /// 一覧(推奨グラフ・名前の範囲など)が効きません(2026-09-02 に直した)。
     /// 絞り込みつきで**一覧に合致が無い**ときは、打った字そのものを確定する
     /// (書体は一覧に無い名前も打てる・入力規則は規則側の決めに従う)。
     pub(crate) fn pick_confirm(&mut self, cx: &mut Context<Self>) {
         let vis = self.pick_visible();
-        let chosen = if let Some((_, label)) = vis.get(self.pick_sel) {
-            label.clone()
+        let chosen = if let Some((key, _)) = vis.get(self.pick_sel) {
+            key.clone()
         } else if let Some(ed) = &self.pick_filter {
             // 合致なし — 打った字を確定(空なら何もしない)
             let t = ed.text().trim().to_string();
@@ -831,8 +833,13 @@ impl Calc {
                         ui::tf!("line_colour_applies_when", label).into();
                 }
             }
-            // 変更履歴の一覧。選んだらその場所へ跳ぶ(戻す機能ではない)
+            // 変更履歴の一覧。選んだらその場所へ跳ぶ(戻す機能ではない)。
+            // 先頭の「記録を始める」だけは新しい記録を始める
             "changes-pick" => {
+                if v == "track-start" {
+                    self.track_changes();
+                    return;
+                }
                 // 「日時 シート!A1 …」の形からシート名と番地を取る
                 if let Some(tok) = v.split_whitespace().nth(2) {
                     if let Some((sh, a1)) = tok.rsplit_once('!') {

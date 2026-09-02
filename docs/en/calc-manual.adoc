@@ -337,7 +337,7 @@ key_env = "OFFICE_API_KEY"   # name of the environment variable holding the key
 ----
 
 Without any `\[[ai]]`, the `ai_url` / `ai_model` lines below are used as the single destination; without those, the `OFFICE_URL` environment variable.
-The "AI destination" in File > Advanced settings is the proofreading destination for documents (writer) and does not affect the spreadsheet conversation.
+The "AI destination" row in File > Advanced settings shows the same list: the current destination's name, and pressing it switches to the next one. If the list is empty, the row tells you to add an `\[[ai]]` entry.
 
 If a destination cannot be reached, the app *says why on the spot*.
 
@@ -556,6 +556,7 @@ Everything works *through files* (i.e. in a shared folder):
 * *Collaboration mode*: shows who currently holds editing rights (the lock); if they've left, takes over
 * *Add / remove / show comments*: per cell. Hiding doesn't delete
 * *Chat*: appends named messages to the file next to the workbook (`name.xlsx.chat.txt`). Not live — messages passed through files
+* *Track changes* (Collaboration tab): press to start recording; press again to record the difference from the starting point (edited, added, deleted). Each entry has who, when, which sheet and cell, and the value before and after. *Formulas are kept as formulas.* Once entries exist, pressing the button opens the list, newest first; picking an entry jumps to that cell. The first item, "Start recording", starts a new recording. *It does not undo anything* (use Ctrl+Z or Version history below). The entries are stored in a private part of the xlsx, so they survive reopening, but *Excel does not read them*
 * *Version history*: every overwrite-save keeps a copy under `.jo-history/name/timestamp.xlsx` (9 generations). Picking one opens it as an *untitled copy* — to restore, save it under the original name yourself (nothing is written back silently)
 
 == Searching a folder

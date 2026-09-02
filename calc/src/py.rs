@@ -560,11 +560,11 @@ impl Calc {
     }
 
     /// 推奨グラフの一覧で選んだ物を描く。`v` は一覧の鍵(chart_column など)。
-    /// Enter で確定したときは見出しの字が来るので、見出しでも引き当てる
+    /// Enter もクリックもキーを渡します(`pick_confirm`)
     pub(crate) fn insert_chart_picked(&mut self, v: &str, cx: &mut Context<Self>) {
         let Some(kind) = CHART_KINDS
             .iter()
-            .find(|(k, key)| *key == v || chart_kind_item(k).1.as_ref() == v)
+            .find(|(_, key)| *key == v)
             .map(|(k, _)| *k)
         else {
             return;

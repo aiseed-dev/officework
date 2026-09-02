@@ -132,19 +132,20 @@ impl Calc {
                             cx.notify()
                         }))))
                 // ── AI ────────────────────────────────────────────
-                // **宛先を覚えるのはここ**(発注者 2026-08-15
-                // 「AI の設定を設定メニューに追加して」)。リボンの AI
-                // タブは左パネルの会話に譲って消える予定なので、
-                // 覚える設定の持ち場をこちらへ移しておく
+                // 表の会話の宛先です。settings.toml の `[[ai]]` の一覧を
+                // 見せて、押すと次の宛先に替わります。左パネルの欄の下に
+                // 出る宛先と同じ物です(2026-09-02。前は文書の校正の
+                // 4つの宛先を回していて、表の会話には効いていませんでした)。
+                // 一覧が空なら `[[ai]]` を書く案内を出します
                 .child(div().h(px(10.0)))
                 .child(div().flex().flex_row().items_center().gap_2()
                     .child(div().w(px(us * 200.0)).text_color(dim)
                         .child(ui::t!("ai_destination")))
                     .child(div().id("set-ai")
                         .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
-                        .child(SharedString::from(ui::ai::backend().label().to_string()))
+                        .child(SharedString::from(self.agent_dest_label()))
                         .on_click(cx.listener(|this, _, _, cx| {
-                            this.run_cmd("ai-where", cx);
+                            this.agent_cycle_dest();
                             cx.notify()
                         }))))
                 // **使えないなら理由を出す**(押してみるまで分からない、に

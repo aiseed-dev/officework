@@ -2658,22 +2658,31 @@ impl Calc {
             }
             return None;
         }
-        let last = face::settings::ai_last();
-        let row = last
-            .and_then(|n| rows.iter().find(|r| r.name == n).cloned())
-            .unwrap_or_else(|| rows[0].clone());
+        let row = pick_ai_dest(&rows, face::settings::ai_last().as_deref());
         Some((row.name.clone(), row.endpoint()))
     }
 
-    /// 宛先を一覧の次へ替える(「押すと替わる」の実体)
+    /// ファイル > 詳細設定 の「AI の宛先」の行に出す字。宛先の名前か、
+    /// 一覧が空なら settings.toml に `[[ai]]` を書く案内
+    pub(crate) fn agent_dest_label(&self) -> String {
+        match self.agent_dest() {
+            Some((name, _)) => name,
+            None => ui::t!("ai_list_empty_write_settings").to_string(),
+        }
+    }
+
+    /// 宛先を一覧の次へ替える(「押すと替わる」の実体)。左パネルの欄の下と
+    /// ファイル > 詳細設定 の行が、同じ一覧(`[[ai]]`)をこれで替える。
+    /// 替える先が無いときは、その理由を状態行に出す
     pub(crate) fn agent_cycle_dest(&mut self) {
         let rows = face::settings::ai_list();
-        if rows.len() < 2 {
-            return; // 1つ以下なら替える先が無い
-        }
-        let cur = face::settings::ai_last();
-        let i = cur.and_then(|n| rows.iter().position(|r| r.name == n)).unwrap_or(0);
-        let next = &rows[(i + 1) % rows.len()];
+        let Some(next) = next_ai_dest(&rows, face::settings::ai_last().as_deref()) else {
+            self.status = match rows.first() {
+                None => ui::t!("ai_list_empty_write_settings").into(),
+                Some(only) => ui::tf!("ai_only_one_destination", only.name.clone()).into(),
+            };
+            return;
+        };
         face::settings::set_ai_last(&next.name);
         self.agent_state = AgentState::Idle;
         self.status = ui::tf!("ai_destination_remembered", next.name.clone()).into();
@@ -3233,6 +3242,28 @@ const AGENT_SYSTEM: &str = "あなたは表計算アプリの中で働く助手�
 保存(save)は利用者がはっきり頼んだときだけ呼びます。\
 答えは利用者の言語に合わせて、短く書きます。";
 
+/// 一覧と「最後に使った名前」から、いま使う宛先を選ぶ。
+/// 最後に使った名前が一覧に無ければ1番目
+pub(crate) fn pick_ai_dest<'a>(
+    rows: &'a [face::settings::AiDest],
+    last: Option<&str>,
+) -> &'a face::settings::AiDest {
+    last.and_then(|n| rows.iter().find(|r| r.name == n))
+        .unwrap_or(&rows[0])
+}
+
+/// 次に替える宛先。いまの物の次で、末尾なら先頭へ戻る。
+/// 一覧が2つ未満なら替える先が無いので None
+pub(crate) fn next_ai_dest<'a>(
+    rows: &'a [face::settings::AiDest],
+    last: Option<&str>,
+) -> Option<&'a face::settings::AiDest> {
+    if rows.len() < 2 {
+        return None;
+    }
+    let i = last.and_then(|n| rows.iter().position(|r| r.name == n)).unwrap_or(0);
+    rows.get((i + 1) % rows.len())
+}
 
 impl Calc {
     /// いま選んでいる所の名前(右パネルの見出しに出す)
