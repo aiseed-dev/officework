@@ -294,7 +294,7 @@ The chosen font may still lack characters the document uses; the English default
 Body reading covers paragraphs and tables (sections are separate under `d.sections`, comments under `d.comments`, inline pictures under `d.inline_shapes`).
 
 Footnotes and equations are *listed in `d.unsupported` yet survive save* — the report's own wording says so ("kept on save").
-Read `unsupported` as the ledger of what could not be _read in full_, not of what was thrown away.
+Read `unsupported` as the record of what could not be _read in full_, not of what was thrown away.
 
 Existing equations do not appear in the body text (they are carried through verbatim). *To write a new equation, use `officework.tex`* (section below) — it takes LaTeX, typesets a picture, and stores the source alongside it.
 
@@ -344,7 +344,7 @@ ws.add_table(...)                             # tables — =SUM(Items[Amount]) c
 wb.add_named_style(...)                       # named cell styles are carried too
 ----
 
-Data validation, defined names, outline groups, pictures (`add_image`), headers/footers (down to odd/even/first pages), the 1904 date system, and `move_range` (references follow the move) all work the same way. *The canonical list of what exists is the ledger *(link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc] — every item with a verdict and a reason).
+Data validation, defined names, outline groups, pictures (`add_image`), headers/footers (down to odd/even/first pages), the 1904 date system, and `move_range` (references follow the move) all work the same way. *The canonical list of what exists* is link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc] (every item with a verdict and a reason).
 
 === The xlwings vocabulary (officework.calc — a running calc)
 
@@ -365,7 +365,7 @@ b.sheets.active["A1"].value = 42
 
 When no calc is running it never pretends — it says so: `OfficeworkError: calc に繋がりません(…/officework/calc.sock: Connection refused)`
 
-*Formatting* (levelled up on 2026-08-16, so that a recording runs as-is):
+*Formatting* (a recording runs as-is):
 
 [source,python]
 ----
@@ -420,7 +420,7 @@ Paragraphs also carry `clear` / `iter_inner_content`. *A Run is a live handle re
 After `p.text = ...` or `replace` reshuffles the runs, re-fetch from `p.runs`.
 
 The writing side is complete too — `d.add_heading(text, level)` (1–3; we do not carry level 0 = Title, and say so), `d.add_paragraph(text, style=)`, `d.add_picture`, `d.add_section()`, `d.add_table(rows, cols)`, `d.styles.add_style`, `p.add_comment(text)` (paragraph-level), and `d.core_properties`.
-The full inventory with verdicts and reasons is the ledger (link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc]).
+The full inventory with verdicts and reasons is in link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc].
 
 == Typesetting equations (officework.tex)
 

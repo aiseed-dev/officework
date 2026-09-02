@@ -67,7 +67,7 @@ Sooner or later someone asks where a number in a report came from.
 ....
 [source,python]
 ----
-# Sales table taken from the accounting ledger (2026-08-24)
+# Sales table taken from the accounting ledger
 import polars as pl
 sales = pl.read_excel("accounting/sales.xlsx", sheet_name="2026")
 ----

@@ -3,7 +3,7 @@
 _日本語版(secondary): link:../ja/calc-manual.adoc[calc-manual.ja.adoc]_
 
 The manual for officework's spreadsheet editor.
-It opens, edits, and saves workbooks (.sheet.adoc) and xlsx — and calculates formulas.
+It opens, edits, and saves workbooks (.sheet.adoc) and xlsx. It also calculates formulas.
 
 This manual describes *only what works today*.
 Commands shown grayed out on the ribbon are unimplemented and cannot be pressed (we never make something look usable when it isn't).
@@ -61,7 +61,7 @@ Freeze panes, sheet visibility (unhide/hide sheets), and the interface theme als
 === All keys
 
 The table above covers just the basics.
-Every live binding is listed below (generated from the binding table — a hand-written list goes stale).
+Every live binding is listed below.
 You can rebind in settings.toml: `key.bold = "alt-b"` replaces the default keys for that action (separate several with commas, unbind with an empty string `""`; unreadable lines are reported in the status bar at startup; action names are the English names below).
 
 // keys:gen:start (rewritten by tools/keys\_doc.py --write)
@@ -165,7 +165,7 @@ Arithmetic (`+ - * /`), comparisons (`= <> > >= < <=`), ranges (`A1:B3`), absolu
 Editing triggers recalculation; circular references are detected and reported (never silent).
 
 *Cross-sheet references*: write `=Sheet2!B2` directly (ranges too: `=SUM(Sheet2!B1:B5)`; quote names containing spaces or symbols: `='Q1 actuals'!B2`).
-An unknown sheet name gives *#REF!* — it is never silently read as the current sheet.
+An unknown sheet name gives *#REF!*. It is never silently read as the current sheet.
 Cross-sheet values are *copied as of that moment*, so edit the source and recalculate (F9) to catch up.
 Renaming a sheet rewrites `oldname!` inside formulas (but *not inside strings* such as `INDIRECT("oldname!A1")` — quoted text is left alone).
 
@@ -190,9 +190,9 @@ By category:
 
 Errors (`#N/A` etc.) propagate from arguments to the formula.
 IFERROR catches an error in its first argument, and IF never trips over the error in the branch it didn't take (`=IFERROR(VLOOKUP(…),"")` turns "not found" into a blank).
-Unknown function names return *#NAME?* — the app never silently computes 0.
+Unknown function names return *#NAME?*. The app never silently computes 0.
 
-On top of these, *`=PY(…)` lets you write your own functions in Python* — see link:#writing-cell-functions-in-python-py-udf[the Python section].
+On top of these, *`=PY(…)` lets you write your own functions in Python*. See link:#writing-cell-functions-in-python-py-udf[the Python section].
 
 Formula-tab tools: AutoSum, *Insert Function* (category → function), function lists by category, *calculation mode* (automatic ⇔ manual; manual avoids waiting on big sheets), *watch window* (pins formula cells and shows their values in the bottom band), name manager, trace precedents/dependents (the cells light up; "remove arrows" clears), show formulas.
 
@@ -205,7 +205,7 @@ Names are alphanumeric plus `_` (must not look like a cell reference) and can be
 * *The font box is a combo*: clicking opens the list positioned at the current font. Type to filter (matches both Japanese and English names), ↑↓ to move, Enter to confirm, Esc to close. Each entry is *drawn in its own font*, and *recently used fonts* appear at the top. A font name not in the list can be typed and confirmed as-is (the font list shows *this machine's fonts*)
 * *The size box is also a combo*: the list holds the 17 steps from 6 to 72pt. Typing a free value rounds *silently* to 4–409pt in 0.5pt steps (rounding applies to on-screen input only — an odd size made elsewhere round-trips unchanged). *Grow/shrink* (+/−) walks the list one step at a time (an odd size snaps to the neighbouring list value; it stops at the ends)
 * Cells: fill, borders (each side independently), horizontal and vertical alignment (including *justified*), wrap, *text orientation* (each press: vertical → stacked → back; for the vertical headings of Japanese forms)
-* *Right-to-left text* (Home): characters in a cell run right to left — for Japanese right-to-left horizontal writing (old signboards); Latin bidi is out of scope
+* *Right-to-left text* (Home): characters in a cell run right to left. This is for Japanese right-to-left horizontal writing (old signboards); Latin bidi is out of scope
 * *Sheet direction* (Layout): columns run right to left
 * *Cell styles* (Home): heading, title, good/bad/neutral, note, calculation, currency, percent — one click applies the set (Ctrl+Z undoes)
 * *Theme colors*: modern Excel stores colors as "theme slot + tint". We read and resolve them, so *colors don't disappear*. Switching the *color scheme *(Layout: Office / warm / cool / ink) updates every cell that uses theme colors
@@ -227,7 +227,7 @@ Names are alphanumeric plus `_` (must not look like a cell reference) and can be
 * *Goal seek* (Data)
 * *Solver* (Data): the same "Solver parameters" dialog as ONLYOFFICE — target cell (max/min/value), variable cells (a range or comma-separated, up to 64), constraints (cell / <= = >= / number or cell), then "Solve". The method is *simplex LP* (backed by scipy). Coefficients are measured on a copy of the sheet, and *nonlinear problems are refused* (as in the original). The solution lands in the variable cells; one Ctrl+Z restores
 * *Subtotals* (Data): select a table with headings and it asks for the grouping column (e.g. department) → columns to total (empty Enter = every numeric column). Inserts "〜 小計" (=SUM) rows per group and a grand total at the end, and groups *only the detail rows*. *Collapse to show just the subtotals and grand total.* They're formulas, so edits flow through. Sort first to bring groups together (as in Excel). All of it is one Ctrl+Z
-* *Grouping* (Data): drag across row headings, then "Group". **Hide detail **collapses, *Show detail* expands (with no selection, the group containing the cursor). Works on columns too. Grouping again deepens the nesting (up to 7). Depth and collapsed state round-trip through xlsx outlineLevel / hidden, so Excel shows a normal outline. Collapsed rows/columns don't print (PDF) either. Unlike filtering this *persists in the file* — a collapsed ledger stays collapsed for the next person. The heading of the row just after a group shows a *+/− button*; click to collapse or expand (like Excel's outline margin)
+* *Grouping* (Data): drag across row headings, then "Group". **Hide detail **collapses, *Show detail* expands (with no selection, the group containing the cursor). Works on columns too. Grouping again deepens the nesting (up to 7). Depth and collapsed state round-trip through xlsx outlineLevel / hidden, so Excel shows a normal outline. Collapsed rows/columns don't print (PDF) either. Unlike filtering, this *persists in the file*. A collapsed ledger stays collapsed for the next person. The heading of the row just after a group shows a *+/− button*; click to collapse or expand (like Excel's outline margin)
 * *Pivot tables* (Pivot Table tab): select a table with headings and press Insert; it asks for row headings (multiple allowed) → column headings (optional) → value and aggregation (sum/average/count/max/min). polars does the aggregation and the result is placed *as values* in the empty space to the right of the source (further right if occupied — nothing is overwritten silently). The definition is stored in the workbook (custom part xl/joPivot.xml), so when the source changes, put the cursor on the pivot and press *Refresh* (Refresh All does the whole workbook). *Grand totals *(rows, and columns if you spread by column), *subtotals*, *blank rows *(with 2+ row headings), and *report layout* (tabular ⇔ compact) toggle and re-place on each press. *Select* selects the whole pivot. Every operation re-aggregates from the source data with polars, so even averages in the grand total are correct (not averages of averages). Each is one Ctrl+Z. If Excel re-saves the file the definition part disappears — the pivot then can't refresh and becomes a plain table of values (honest degradation)
 * *Comments*: one per cell. Empty + Enter deletes. Saved into the xlsx
 
@@ -306,14 +306,14 @@ On this path, *the AI quota is between you and the AI product you chose*; office
 
 == AI — talk to it in the left panel
 
-*On 2026-08-15 the AI tab was removed.* Its ten buttons (summarize, rewrite, make polite, …) were replaced by *a conversation in the left panel* — you can just type "sort this table by sales", and you can ask for things no button could express ("turn this into a table with date and amount columns").
+*The AI tab has been removed.* Its ten buttons (summarize, rewrite, make polite, …) were replaced by *a conversation in the left panel* — you can just type "sort this table by sales", and you can ask for things no button could express ("turn this into a table with date and amount columns").
 
 Open it with *View tab > Left panel*.
 
 * *The selected range is what you are asking about* (with nothing selected, the request still goes through — some questions need no range)
 * *Requests that change the sheet come back as an officework Python script. Nothing runs until you press.* Read it, then press Apply. What it did is *one Ctrl+Z* away
 * Requests that don't change the sheet (what does this mean, write me one formula) are simply answered
-* *The conversation continues* (2026-08-16). "Now sort that ascending instead" works — the last three exchanges are sent along
+* *The conversation continues.* "Now sort that ascending instead" works — the last three exchanges are sent along
 * *If it fails, press "Ask it to fix this".* When a script fails, the error appears in the conversation and one press asks for a corrected script. Run, fail, fix — as many rounds as you need
 * *"New conversation"* clears the thread (the sheet is untouched)
 * *The destination* can be switched right under the input box
@@ -400,7 +400,7 @@ Think of it as VS Code and Excel merged: the sheet is an .xlsx, the code is a .p
 ** `~/.config/officework/funcs/` — *functions called from cell formulas* (UDFs)
 ** `~/.config/officework/plugins/` — *macros a person runs by hand*
 
-=== Why the folder was split in two (2026-08-16)
+=== Why the folder was split in two
 
 There used to be one.
 Which meant *a macro's helper functions were also callable from the sheet* — a `def helper():` you wrote for one macro could be reached with `=helper()`.
@@ -548,7 +548,7 @@ Everything works *through files* (i.e. in a shared folder):
 * *Chat*: appends named messages to the file next to the workbook (`name.xlsx.chat.txt`). Not live — messages passed through files
 * *Version history*: every overwrite-save keeps a copy under `.jo-history/name/timestamp.xlsx` (9 generations). Picking one opens it as an *untitled copy* — to restore, save it under the original name yourself (nothing is written back silently)
 
-== Searching a folder (2026-08-17)
+== Searching a folder
 
 File > *Search a folder* walks a folder and searches many files at once.
 
@@ -565,11 +565,11 @@ Picking one *shows it below without opening anything*; it opens when you press *
 
 == Macros tab
 
-*Folded into one tab on 2026-08-16.* It used to be split between "Python" and "Plugins", listing the same folder of .py files two different ways.
+This is one tab now. It used to be split between "Python" and "Plugins", listing the same folder of .py files two different ways.
 
 * *Record actions*: what you do by hand accumulates as Python lines; stop and it lands in `~/.config/officework/records/` as a .py. *It contains only the record* — no line that opens a workbook (which workbook to apply it to is yours to decide)
 
-=== What a recording contains (2026-08-16)
+=== What a recording contains
 
 *While recording, a red "● Recording, N lines" sits in the bottom bar.* Click it to stop.
 The Record actions button turns red too.
@@ -612,7 +612,7 @@ The same note appears when only part of a format change could be written — a m
 The folder is still named `plugins` — renaming it would strand files people have already put there.
 Only the words on screen changed.
 
-=== Putting a macro on the ribbon (2026-08-16)
+=== Putting a macro on the ribbon
 
 *A .py in `~/.config/officework/ribbon/` that declares itself becomes a ribbon button.* Macros tab > "Ribbon macros" shows what is currently there.
 
@@ -661,7 +661,7 @@ They are there to be read, not to be used as a template.
 
 === Only .py files in the folder can be launched
 
-*Macros launched from calc must live in `~/.config/officework/plugins `*(2026-08-16).
+*Macros launched from calc must live in `~/.config/officework/plugins `*.
 There used to be a "From a file" button, and pressing Enter on an empty Data > Python prompt did the same thing.
 Both are closed.
 
