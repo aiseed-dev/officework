@@ -3,12 +3,14 @@
 _日本語版(secondary): link:README.ja.adoc[README.ja.adoc]_
 
 officework is an Office that modernises data and drawing.
-It was made to break out of the closed world of Microsoft 365.
-It was made by Claude distilling and combining published software — Euro-Office, Zed, Polars, openpyxl, python-docx.
+It was made by Claude distilling and combining published software — Euro-Office, LibreOffice, ONLYOFFICE, Zed, Polars, openpyxl, python-docx.
 It does not compete on the number of features: complex work is left to AI and Python.
 
-Microsoft's Excel and Word are a closed world: the data, the look and the code are all locked inside one file.
-officework unpicks that — it is an Office that **sets data, templates, Python and AI free**.
+It does what Microsoft does not do, and none of it is technically hard.
+Excel and Word keep the data, the look and the code locked inside one file.
+The techniques for unpicking that are published and the materials are all there; what keeps the file closed is compatibility and business.
+officework unpicks it — it is an Office that **sets data, templates, Python and AI free, each on its own**.
+All of its code is public too (AGPL): anyone can read what it does and check.
 
 The four are split into modules, so each is easy to swap:
 
