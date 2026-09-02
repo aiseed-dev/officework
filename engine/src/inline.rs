@@ -176,12 +176,10 @@ impl Marked {
 }
 
 fn starts_with(t: &[char], i: usize, s: &str) -> bool {
-    let mut j = i;
-    for c in s.chars() {
-        if t.get(j) != Some(&c) {
+    for (j, c) in s.chars().enumerate() {
+        if t.get(i + j) != Some(&c) {
             return false;
         }
-        j += 1;
     }
     true
 }
@@ -299,7 +297,7 @@ fn pass_macro_at(t: &[char], i: usize, m: &mut Marked) -> Option<(usize, Vec<cha
                 v.push('[');
                 v.extend(a.chars());
                 v.push(']');
-                v.extend(std::iter::repeat('\\').take(esc_n - 1));
+                v.extend(std::iter::repeat_n('\\', esc_n - 1));
                 v.extend(t[bs..end].iter());
                 v
             } else if esc_attr {
@@ -320,7 +318,7 @@ fn pass_macro_at(t: &[char], i: usize, m: &mut Marked) -> Option<(usize, Vec<cha
                 vec![m.pass_char(p).unwrap_or('?')]
             }
         } else if esc_n > 0 {
-            let mut v: Vec<char> = std::iter::repeat('\\').take(esc_n - 1).collect();
+            let mut v: Vec<char> = std::iter::repeat_n('\\', esc_n - 1).collect();
             v.extend(literal(bs));
             v
         } else {

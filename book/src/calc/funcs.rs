@@ -649,14 +649,14 @@ pub(crate) fn weekday0(serial: i64, ep: i64) -> i64 {
 /// 1e-13 程度で、突き合わせの基準(1e-10)に足りる
 pub(super) fn ln_gamma(x: f64) -> f64 {
     const C: [f64; 9] = [
-        0.999_999_999_999_809_93,
+        0.999_999_999_999_809_9,
         676.520_368_121_885_1,
         -1_259.139_216_722_402_8,
-        771.323_428_777_653_13,
-        -176.615_029_162_140_59,
+        771.323_428_777_653_1,
+        -176.615_029_162_140_6,
         12.507_343_278_686_905,
         -0.138_571_095_265_720_12,
-        9.984_369_578_019_571_6e-6,
+        9.984_369_578_019_572e-6,
         1.505_632_735_149_311_6e-7,
     ];
     if x < 0.5 {
@@ -1248,13 +1248,13 @@ pub(super) const CONVERT_UNITS: &[(&str, &str, f64, bool)] = &[
     // 質量(基準 g)
     ("g", "mass", 1.0, true),
     ("sg", "mass", 14593.9029372064, false),
-    ("lbm", "mass", 453.59230974881148, false),
+    ("lbm", "mass", 453.5923097488115, false),
     ("u", "mass", 1.6605402e-24, true),
     ("ozm", "mass", 28.349515207973, false),
     ("grain", "mass", 0.06479891, false),
     ("cwt", "mass", 45359.230974881148, false),
     ("stone", "mass", 6350.29233648336, false),
-    ("ton", "mass", 907184.61949762295, false),
+    ("ton", "mass", 907184.619497623, false),
     ("brton", "mass", 1016046.9088, false),
     // 長さ(基準 m)
     ("m", "length", 1.0, true),
@@ -1284,7 +1284,7 @@ pub(super) const CONVERT_UNITS: &[(&str, &str, f64, bool)] = &[
     ("at", "pressure", 101325.0, true),
     ("mmHg", "pressure", 133.322, true),
     ("Torr", "pressure", 133.32236842105263, false),
-    ("psi", "pressure", 6894.7572931683613, false),
+    ("psi", "pressure", 6894.757293168362, false),
     // 力(基準 N)
     ("N", "force", 1.0, true),
     ("dyn", "force", 1e-5, true),
@@ -1308,8 +1308,8 @@ pub(super) const CONVERT_UNITS: &[(&str, &str, f64, bool)] = &[
     // 仕事率(基準 W)
     ("W", "power", 1.0, true),
     ("w", "power", 1.0, true),
-    ("HP", "power", 745.69987158227022, false),
-    ("h", "power", 745.69987158227022, false),
+    ("HP", "power", 745.6998715822702, false),
+    ("h", "power", 745.6998715822702, false),
     ("PS", "power", 735.49875, false),
     // 磁力(基準 T)
     ("T", "magnetism", 1.0, true),
@@ -1489,7 +1489,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                 return Ok(Value::Error("#REF!".into()));
             };
             let cols = cols as usize;
-            let rows = if cols == 0 { 0 } else { vals.len() / cols };
+            let rows = vals.len().checked_div(cols).unwrap_or(0);
             let mut r = args.get(1).map(|g| g.first().as_number()).unwrap_or(0.0) as usize;
             let mut c = args.get(2).map(|g| g.first().as_number()).unwrap_or(1.0) as usize;
             // 1行だけの範囲で番号を1つだけ渡したら、それは列の番号(Excel と同じ)

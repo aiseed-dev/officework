@@ -1826,7 +1826,7 @@ mod cage_tests {
         let py = std::path::Path::new("python3");
         // /tmp は --tmpfs と HOME にも出るので、別の実在する場所で見る
         let sock = std::env::current_dir().unwrap();
-        let c = caged_python_open(Cage::Bwrap, py, &d, &[], &[sock.clone()], false).unwrap();
+        let c = caged_python_open(Cage::Bwrap, py, &d, &[], std::slice::from_ref(&sock), false).unwrap();
         let a = args_of(&c);
         let s = sock.to_string_lossy().to_string();
         let i = a.iter().position(|x| *x == s).expect("置き場が並んでいない");

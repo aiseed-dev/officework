@@ -193,13 +193,14 @@ mod imp {
         }
         let font_list = families.iter().map(|f| format!("{f:?}")).collect::<Vec<_>>().join(", ");
 
+        // typst の原文に埋める式。`{:?}` は typst の文字列として逃がすため
+        let shiki = format!("$ {math} $");
         let src = format!(
             "#import \"specs/mod.typ\": mitex-scope\n\
              #set page(width: auto, height: auto, margin: 1pt, fill: none)\n\
              #set text(size: {size_pt}pt)\n{fill}\
              #show math.equation: set text(font: ({font_list}))\n\
-             #math.equation(block: true, eval({}, scope: mitex-scope))\n",
-            format!("{:?}", format!("$ {math} $"))
+             #math.equation(block: true, eval({shiki:?}, scope: mitex-scope))\n",
         );
 
         let main = file_id("/main.typ");
