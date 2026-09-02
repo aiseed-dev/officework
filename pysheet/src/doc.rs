@@ -1762,17 +1762,28 @@ impl PyParagraph {
     /// 書式は**末尾の run のものを継ぐ**(text の代入が先頭を継ぐのと対 —
     /// 続きを書くなら続きの書式)。段落が空なら既定の大きさの素の run。
     #[pyo3(signature = (text=""))]
+    /// 段落の末尾に run を足す(python-docx の `add_run`)。
+    ///
+    /// **書式は継ぎません。** 素の run を作り、太字などは呼ぶ側が
+    /// 足します(本家と同じ)。前は直前の run から書式を丸ごと写して
+    /// いたので、`太字 → 普通 → 斜体` と足すと後ろが全部太字のままに
+    /// なっていました(2026-09-01。python-docx の見本で見つかりました)。
+    ///
+    /// 書体と大きさだけは継ぎます — 段落の途中で書体が戻るのは
+    /// 見た目の事故になるためです。どちらも呼ぶ側で上書きできます。
     fn add_run(&self, text: &str) -> PyResult<PyRun> {
         let idx = self.with_mut(|p| {
-            let (pt, font, mut fmt) = p
+            let (pt, font) = p
                 .runs
                 .last()
-                .map(|r| (r.size_pt, r.font.clone(), r.fmt.clone()))
-                .unwrap_or((None, None, CharFormat::default()));
-            // **リンクは継がない** — 掛かりを決めるのは囲み(w:hyperlink)で、
-            // 字の書式ではない。継ぐと、リンクの隣に足した字まで青くなる
-            fmt.link = None;
-            p.runs.push(Run { text: text.to_string(), size_pt: pt, font, fmt });
+                .map(|r| (r.size_pt, r.font.clone()))
+                .unwrap_or((None, None));
+            p.runs.push(Run {
+                text: text.to_string(),
+                size_pt: pt,
+                font,
+                fmt: CharFormat::default(),
+            });
             p.runs.len() - 1
         })?;
         Ok(PyRun { inner: Arc::clone(&self.inner), loc: self.loc.clone(), idx })
