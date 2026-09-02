@@ -2353,5 +2353,19 @@
  "break_section_next_page": "Bagian (halaman berikutnya)",
  "break_section_continuous": "Bagian (berlanjut)",
  "section_starts_here": "Bagian baru dimulai di sini (ubah kertasnya di tab Tata Letak)",
- "section_continues_here": "Bagian berlanjut dimulai di sini (tidak ganti halaman)"
+ "section_continues_here": "Bagian berlanjut dimulai di sini (tidak ganti halaman)",
+ "margins_normal_20mm": "Normal (20 mm)",
+ "margins_narrow_12mm": "Sempit (12 mm)",
+ "margins_wide_30mm": "Lebar (30 mm)",
+ "orient_portrait": "Tegak",
+ "orient_landscape": "Mendatar",
+ "paper_a4": "A4 (210 × 297 mm)",
+ "paper_a3": "A3 (297 × 420 mm)",
+ "paper_b5": "B5 (182 × 257 mm)",
+ "paper_letter": "Letter (8,5 × 11 inci)",
+ "columns_1": "Satu kolom",
+ "columns_2": "Dua kolom",
+ "columns_3": "Tiga kolom",
+ "hyphenation_none": "Tidak ada",
+ "hyphenation_auto": "Otomatis"
 }

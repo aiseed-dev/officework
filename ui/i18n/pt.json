@@ -2353,5 +2353,19 @@
  "break_section_next_page": "Seção (página seguinte)",
  "break_section_continuous": "Seção (contínua)",
  "section_starts_here": "Uma nova secção começa aqui (mude o papel no separador Esquema)",
- "section_continues_here": "Uma secção contínua começa aqui (sem folha nova)"
+ "section_continues_here": "Uma secção contínua começa aqui (sem folha nova)",
+ "margins_normal_20mm": "Normal (20 mm)",
+ "margins_narrow_12mm": "Estreito (12 mm)",
+ "margins_wide_30mm": "Largo (30 mm)",
+ "orient_portrait": "Vertical",
+ "orient_landscape": "Horizontal",
+ "paper_a4": "A4 (210 × 297 mm)",
+ "paper_a3": "A3 (297 × 420 mm)",
+ "paper_b5": "B5 (182 × 257 mm)",
+ "paper_letter": "Carta (8,5 × 11 pol.)",
+ "columns_1": "Uma coluna",
+ "columns_2": "Duas colunas",
+ "columns_3": "Três colunas",
+ "hyphenation_none": "Nenhuma",
+ "hyphenation_auto": "Automática"
 }

@@ -665,6 +665,48 @@ impl Writer {
         )
     }
 
+    /// **レイアウトの一覧で選んだ値を、カーソルのある節に効かせる。**
+    /// 余白は四辺とも同じ値、向きは縦横の入れ替え、用紙は向きを保って大きさだけ、
+    /// 段組みは段の数。ハイフネーションは文書の値(節では持たない)
+    pub(crate) fn choose_layout(&mut self, kind: &str, key: &str) {
+        match kind {
+            "pagemargins" => {
+                let mm = match key { "narrow" => 12.0, "wide" => 30.0, _ => 20.0 };
+                self.set_page(move |pg| { pg.left_mm = mm; pg.right_mm = mm; pg.top_mm = mm; pg.bottom_mm = mm; });
+            }
+            "pageorient" => {
+                let landscape = key == "landscape";
+                self.set_page(move |pg| {
+                    let (w, h) = (pg.w_mm.min(pg.h_mm), pg.w_mm.max(pg.h_mm));
+                    (pg.w_mm, pg.h_mm) = if landscape { (h, w) } else { (w, h) };
+                });
+            }
+            "pagesize" => {
+                let Some((w, h)) = kumihan::theme::youshi_mm(key) else { return };
+                self.set_page(move |pg| {
+                    let landscape = pg.w_mm > pg.h_mm;
+                    (pg.w_mm, pg.h_mm) = if landscape { (h, w) } else { (w, h) };
+                });
+            }
+            "columns" => {
+                let n: u8 = key.parse().unwrap_or(1);
+                self.set_page(move |pg| pg.columns = n.clamp(1, 3));
+            }
+            "hyphenation" => {
+                self.checkpoint(false); // ハイフネーション
+                self.doc.hyphenate = key == "auto";
+                self.dirty = true;
+                self.relayout_keep();
+                self.status = if self.doc.hyphenate {
+                    ui::t!("hyphenation_english_words_break").into()
+                } else {
+                    ui::t!("hyphenation_off").into()
+                };
+            }
+            _ => {}
+        }
+    }
+
     /// **区切りを入れる。** `page` はこの段落の前の改ページ(押すたびに入切)。
     /// `section` と `section-cont` は、この段落から新しい節を始める —
     /// 節の印(sect)は1つ前の段落に付く(docx の作法。「この段落で節が

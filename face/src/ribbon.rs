@@ -336,6 +336,8 @@ pub const WRITER: &[Tab] = &[
         c("pageorient", "Page orientation", "pageorient"),
         c("pagesize", "Page size", "pagesize"),
         c("columns", "Insert column", "columns"),
+        // 区切りは挿入と同じボタン(本家もレイアウトに置いている。2026-09-03)
+        c("pagebreak", "Breaks", "pagebreak"),
         c("line-numbers", "Show line numbers", "line-numbers"),
         c("hyphenation", "Change hyphenation", "hyphenation"),
         // 図形まわり。本家の並びのとおりで、表の側と同じ扱い

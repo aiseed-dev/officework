@@ -2353,5 +2353,19 @@
  "break_section_next_page": "Section (next page)",
  "break_section_continuous": "Section (continuous)",
  "section_starts_here": "A new section starts here (change its paper on the Layout tab)",
- "section_continues_here": "A continuous section starts here (the paper is not renewed)"
+ "section_continues_here": "A continuous section starts here (the paper is not renewed)",
+ "margins_normal_20mm": "Normal (20 mm)",
+ "margins_narrow_12mm": "Narrow (12 mm)",
+ "margins_wide_30mm": "Wide (30 mm)",
+ "orient_portrait": "Portrait",
+ "orient_landscape": "Landscape",
+ "paper_a4": "A4 (210 × 297 mm)",
+ "paper_a3": "A3 (297 × 420 mm)",
+ "paper_b5": "B5 (182 × 257 mm)",
+ "paper_letter": "Letter (8.5 × 11 in)",
+ "columns_1": "One column",
+ "columns_2": "Two columns",
+ "columns_3": "Three columns",
+ "hyphenation_none": "None",
+ "hyphenation_auto": "Automatic"
 }

@@ -299,10 +299,13 @@ mod menu_run_tests {
             this.run_cmd("pagecolor", cx);
             assert!(this.doc.page_color.is_some(), "紙の色が変わらない");
             this.run_cmd("columns", cx);
+            this.choose_list("columns", "2", cx);
             assert!(this.pg.cols() > 1, "段組みにならない");
             this.run_cmd("pageorient", cx);
+            this.choose_list("pageorient", "landscape", cx);
             assert!(this.pg.w_mm > this.pg.h_mm, "向きが変わらない");
             this.run_cmd("hyphenation", cx);
+            this.choose_list("hyphenation", "auto", cx);
             assert!(this.doc.hyphenate, "ハイフネーションが入らない");
         });
         // 見出し → 目次 → 相互参照の的(しおり)
@@ -1550,8 +1553,10 @@ mod undo_coverage_tests {
         // 押すとマス目や一覧が開くだけの形になり、その場では文書を変えなく
         // なったためです(挿すのは `instable-go` と一覧から選んだとき)。
         // **38 になったのは 2026-09-02** — 区切りも一覧を開くだけになった
-        // (ページ / 節 を一覧から選ぶ。Ctrl+Enter は直に改ページ)
-        assert!(seen >= 38, "文書を変える命令が {seen} 件しか無い — 試験の形が壊れている");
+        // (ページ / 節 を一覧から選ぶ。Ctrl+Enter は直に改ページ)。
+        // **33 になったのは 2026-09-03** — 余白・向き・用紙・段組み・
+        // ハイフネーションも一覧から選ぶ形になった
+        assert!(seen >= 33, "文書を変える命令が {seen} 件しか無い — 試験の形が壊れている");
     }
 
     /// やり直しも効く(戻すだけで進めないと片道になる)
@@ -1715,13 +1720,13 @@ mod paged_view_tests {
             assert!(!sb.continuous);
             assert!(sb.raw.contains("<w:pgSz"), "新しい節の sectPr が空: {}", sb.raw);
             // 2段落目(最後の節)で横向きにする → 文書の用紙が変わり、1つ目の節は変わらない
-            this.run_cmd("pageorient", cx);
+            this.choose_list("pageorient", "landscape", cx);
             assert!(this.pg.w_mm > this.pg.h_mm, "文書末の節が横になっていない");
             let sb = this.doc.paragraphs().next().unwrap().sect.as_ref().unwrap();
             assert!(sb.page.w_mm < sb.page.h_mm, "前の節まで横になった");
             // 1段落目(最初の節)で B5 にする → その節だけ変わる
             this.ed.move_to(0, false);
-            this.run_cmd("pagesize", cx);
+            this.choose_list("pagesize", "B5", cx);
             let sb = this.doc.paragraphs().next().unwrap().sect.as_ref().unwrap();
             assert_eq!(sb.page.w_mm, 182.0, "最初の節が B5 になっていない: {:?}", sb.page);
             assert!(sb.raw.contains("w:w=\"10318\""), "節の sectPr に寸法が書けていない: {}", sb.raw);
@@ -1747,6 +1752,33 @@ mod paged_view_tests {
             this.run_cmd("pagebreak", cx);
             this.choose_list("pagebreak", "page", cx);
             assert!(this.doc.paragraphs().nth(1).unwrap().page_break_before, "ページ区切りが付いていない");
+        });
+    }
+
+    /// レイアウトの5つのボタンは一覧を開き、選んだ値がカーソルの節に入る
+    #[gpui::test]
+    fn the_layout_buttons_open_lists_and_a_pick_applies(cx: &mut gpui::TestAppContext) {
+        let w = opens(cx);
+        w.update(cx, |this, cx| {
+            for (id, n) in [("pagemargins", 3), ("pageorient", 2), ("pagesize", 4), ("columns", 3), ("hyphenation", 2)] {
+                this.run_cmd(id, cx);
+                assert_eq!(this.open_list, Some(id), "{id} の一覧が開かない");
+                assert_eq!(this.n_items(id), n, "{id} の項目の数");
+                this.run_cmd(id, cx);
+                assert!(this.open_list.is_none(), "{id} をもう一度押しても閉じない");
+            }
+            this.choose_list("pagemargins", "wide", cx);
+            assert_eq!((this.pg.left_mm, this.pg.top_mm), (30.0, 30.0), "広い余白にならない");
+            this.choose_list("pagesize", "Letter", cx);
+            assert_eq!((this.pg.w_mm, this.pg.h_mm), (215.9, 279.4), "レターにならない");
+            this.choose_list("pageorient", "landscape", cx);
+            assert_eq!((this.pg.w_mm, this.pg.h_mm), (279.4, 215.9), "横にならない");
+            this.choose_list("pagesize", "A4", cx);
+            assert_eq!((this.pg.w_mm, this.pg.h_mm), (297.0, 210.0), "用紙を変えても向きが保たれない");
+            this.choose_list("columns", "3", cx);
+            assert_eq!(this.pg.cols(), 3, "3段にならない");
+            this.choose_list("hyphenation", "off", cx);
+            assert!(!this.doc.hyphenate, "ハイフネーションが切れない");
         });
     }
 

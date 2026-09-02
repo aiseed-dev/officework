@@ -87,6 +87,7 @@ impl Writer {
     /// (パネル)が出て、選んで終わる。腕の目印: `open_list` を立てる物だけ
     pub(crate) const MENU_IDS: &'static [&'static str] = &[
         "fontname", "fontsize", "parastyle", "inssymbol", "insshape", "inssmartart", "pagebreak",
+        "pagemargins", "pageorient", "pagesize", "columns", "hyphenation",
     ];
 
     /// **小窓が開くボタン。** リボンは … を添える(メニュー項目末尾の
@@ -809,40 +810,20 @@ impl Writer {
                     0
                 };
             }
-            // 用紙。向き / サイズ / 余白(選ぶ小窓は無いが、回して選べる)
-            "pageorient" => self.set_page(|pg| {
-                std::mem::swap(&mut pg.w_mm, &mut pg.h_mm);
-            }),
-            "pagesize" => self.set_page(|pg| {
-                // A4 → B5 → A3 → A4(向きは保つ)
-                let landscape = pg.w_mm > pg.h_mm;
-                let (w, h) = match (pg.w_mm.min(pg.h_mm) * 10.0) as u32 {
-                    2100 => (182.0, 257.0), // → B5
-                    1820 => (297.0, 420.0), // → A3
-                    _ => (210.0, 297.0),    // → A4
+            // 用紙。向き / サイズ / 余白 / 段組みは**一覧から選ぶ**(2026-09-03。
+            // 前は押すたびに回していた)。選んだ値は keys.rs の choose_extra_list が
+            // カーソルのある節に効かせる
+            "pageorient" | "pagesize" | "pagemargins" | "columns" => {
+                let kind: &'static str = match id {
+                    "pageorient" => "pageorient",
+                    "pagesize" => "pagesize",
+                    "pagemargins" => "pagemargins",
+                    _ => "columns",
                 };
-                (pg.w_mm, pg.h_mm) = if landscape { (h, w) } else { (w, h) };
-            }),
-            // 段組み。1 → 2 → 3 → 1 と回る(見た目も docx も追随)
-            "columns" => self.set_page(|pg| {
-                pg.columns = match pg.cols() {
-                    1 => 2,
-                    2 => 3,
-                    _ => 1,
-                };
-            }),
-            "pagemargins" => self.set_page(|pg| {
-                // 標準20 → 狭い12 → 広い30 → 標準
-                let next = match pg.left_mm as u32 {
-                    20 => 12.0,
-                    12 => 30.0,
-                    _ => 20.0,
-                };
-                pg.left_mm = next;
-                pg.right_mm = next;
-                pg.top_mm = next;
-                pg.bottom_mm = next;
-            }),
+                let opens = self.open_list != Some(kind);
+                self.open_list = opens.then_some(kind);
+                self.pick_sel = 0;
+            }
             "fontsize" => self.open_list = (self.open_list != Some("fontsize")).then_some("fontsize"),
             // 段落のスタイルの一覧(標準・見出し1〜3)
             "parastyle" => self.open_list = (self.open_list != Some("parastyle")).then_some("parastyle"),
@@ -1061,16 +1042,11 @@ impl Writer {
             // 行番号(見え方だけ)。折り返した行も1行と数える(見た目の行)
             "line-numbers" => self.line_numbers = !self.line_numbers,
             // 欧文のハイフネーション(入切)。日本語は禁則で折るので変わらない
+            // 欧文のハイフネーション。一覧から なし / 自動(日本語は禁則で折るので変わらない)
             "hyphenation" => {
-                self.checkpoint(false); // ハイフネーション
-                self.doc.hyphenate = !self.doc.hyphenate;
-                self.dirty = true;
-                self.relayout_keep();
-                self.status = if self.doc.hyphenate {
-                    ui::t!("hyphenation_english_words_break").into()
-                } else {
-                    ui::t!("hyphenation_off").into()
-                };
+                let opens = self.open_list != Some("hyphenation");
+                self.open_list = opens.then_some("hyphenation");
+                self.pick_sel = 0;
             }
             // コメントの印と一覧の表示(見え方だけ)
             "co-showcomment" => {

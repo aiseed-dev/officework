@@ -2353,5 +2353,19 @@
  "break_section_next_page": "節(次のページから)",
  "break_section_continuous": "節(続き)",
  "section_starts_here": "ここから新しい節です(用紙はレイアウトのタブで変えます)",
- "section_continues_here": "ここから続きの節です(紙は改まりません)"
+ "section_continues_here": "ここから続きの節です(紙は改まりません)",
+ "margins_normal_20mm": "標準(20mm)",
+ "margins_narrow_12mm": "狭い(12mm)",
+ "margins_wide_30mm": "広い(30mm)",
+ "orient_portrait": "縦",
+ "orient_landscape": "横",
+ "paper_a4": "A4(210×297mm)",
+ "paper_a3": "A3(297×420mm)",
+ "paper_b5": "B5(182×257mm)",
+ "paper_letter": "レター(8.5×11インチ)",
+ "columns_1": "1段",
+ "columns_2": "2段",
+ "columns_3": "3段",
+ "hyphenation_none": "なし",
+ "hyphenation_auto": "自動"
 }

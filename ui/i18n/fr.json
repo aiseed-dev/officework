@@ -2353,5 +2353,19 @@
  "break_section_next_page": "Section (page suivante)",
  "break_section_continuous": "Section (continue)",
  "section_starts_here": "Une nouvelle section commence ici (changez le papier dans l'onglet Mise en page)",
- "section_continues_here": "Une section continue commence ici (pas de nouvelle feuille)"
+ "section_continues_here": "Une section continue commence ici (pas de nouvelle feuille)",
+ "margins_normal_20mm": "Normal (20 mm)",
+ "margins_narrow_12mm": "Étroit (12 mm)",
+ "margins_wide_30mm": "Large (30 mm)",
+ "orient_portrait": "Portrait",
+ "orient_landscape": "Paysage",
+ "paper_a4": "A4 (210 × 297 mm)",
+ "paper_a3": "A3 (297 × 420 mm)",
+ "paper_b5": "B5 (182 × 257 mm)",
+ "paper_letter": "Lettre (8,5 × 11 po)",
+ "columns_1": "Une colonne",
+ "columns_2": "Deux colonnes",
+ "columns_3": "Trois colonnes",
+ "hyphenation_none": "Aucune",
+ "hyphenation_auto": "Automatique"
 }

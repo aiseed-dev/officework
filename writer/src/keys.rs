@@ -1415,6 +1415,32 @@ impl Writer {
                     items.into_iter().map(|(k, l, _)| (k.to_string(), l.to_string())).collect()
                 })
                 .unwrap_or_default(),
+            // レイアウトの一覧(2026-09-03。本家と同じく一覧から選ぶ)。
+            // 鍵は値そのもの、見出しだけ訳す
+            "pagemargins" => vec![
+                ("normal".into(), ui::t!("margins_normal_20mm").to_string()),
+                ("narrow".into(), ui::t!("margins_narrow_12mm").to_string()),
+                ("wide".into(), ui::t!("margins_wide_30mm").to_string()),
+            ],
+            "pageorient" => vec![
+                ("portrait".into(), ui::t!("orient_portrait").to_string()),
+                ("landscape".into(), ui::t!("orient_landscape").to_string()),
+            ],
+            "pagesize" => vec![
+                ("A4".into(), ui::t!("paper_a4").to_string()),
+                ("A3".into(), ui::t!("paper_a3").to_string()),
+                ("B5".into(), ui::t!("paper_b5").to_string()),
+                ("Letter".into(), ui::t!("paper_letter").to_string()),
+            ],
+            "columns" => vec![
+                ("1".into(), ui::t!("columns_1").to_string()),
+                ("2".into(), ui::t!("columns_2").to_string()),
+                ("3".into(), ui::t!("columns_3").to_string()),
+            ],
+            "hyphenation" => vec![
+                ("off".into(), ui::t!("hyphenation_none").to_string()),
+                ("auto".into(), ui::t!("hyphenation_auto").to_string()),
+            ],
             // 区切り。ページ区切りと、節の区切り2種(2026-09-02)
             "pagebreak" => vec![
                 ("page".into(), ui::t!("break_page").to_string()),
@@ -1439,6 +1465,7 @@ impl Writer {
             "img-align" => self.shape_align_doc(key),
             "prot-doc" => self.set_protection(key),
             "pagebreak" => self.insert_break(key),
+            "pagemargins" | "pageorient" | "pagesize" | "columns" | "hyphenation" => self.choose_layout(kind, key),
             _ => {}
         }
     }

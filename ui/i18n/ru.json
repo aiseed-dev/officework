@@ -2353,5 +2353,19 @@
  "break_section_next_page": "Раздел (со следующей страницы)",
  "break_section_continuous": "Раздел (продолжение)",
  "section_starts_here": "Здесь начинается новый раздел (бумагу меняйте на вкладке Макет)",
- "section_continues_here": "Здесь начинается раздел-продолжение (без нового листа)"
+ "section_continues_here": "Здесь начинается раздел-продолжение (без нового листа)",
+ "margins_normal_20mm": "Обычные (20 мм)",
+ "margins_narrow_12mm": "Узкие (12 мм)",
+ "margins_wide_30mm": "Широкие (30 мм)",
+ "orient_portrait": "Книжная",
+ "orient_landscape": "Альбомная",
+ "paper_a4": "A4 (210 × 297 мм)",
+ "paper_a3": "A3 (297 × 420 мм)",
+ "paper_b5": "B5 (182 × 257 мм)",
+ "paper_letter": "Letter (8,5 × 11 дюймов)",
+ "columns_1": "Одна колонка",
+ "columns_2": "Две колонки",
+ "columns_3": "Три колонки",
+ "hyphenation_none": "Нет",
+ "hyphenation_auto": "Автоматически"
 }

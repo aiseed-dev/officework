@@ -2353,5 +2353,19 @@
  "break_section_next_page": "Phần (trang tiếp theo)",
  "break_section_continuous": "Phần (liên tục)",
  "section_starts_here": "Một phần mới bắt đầu tại đây (đổi khổ giấy ở thẻ Bố cục)",
- "section_continues_here": "Một phần liên tục bắt đầu tại đây (không sang trang mới)"
+ "section_continues_here": "Một phần liên tục bắt đầu tại đây (không sang trang mới)",
+ "margins_normal_20mm": "Bình thường (20 mm)",
+ "margins_narrow_12mm": "Hẹp (12 mm)",
+ "margins_wide_30mm": "Rộng (30 mm)",
+ "orient_portrait": "Dọc",
+ "orient_landscape": "Ngang",
+ "paper_a4": "A4 (210 × 297 mm)",
+ "paper_a3": "A3 (297 × 420 mm)",
+ "paper_b5": "B5 (182 × 257 mm)",
+ "paper_letter": "Letter (8,5 × 11 inch)",
+ "columns_1": "Một cột",
+ "columns_2": "Hai cột",
+ "columns_3": "Ba cột",
+ "hyphenation_none": "Không",
+ "hyphenation_auto": "Tự động"
 }

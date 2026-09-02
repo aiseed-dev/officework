@@ -9390,5 +9390,61 @@
  {
   "key": "section_continues_here",
   "kind": "msg"
+ },
+ {
+  "key": "margins_normal_20mm",
+  "kind": "msg"
+ },
+ {
+  "key": "margins_narrow_12mm",
+  "kind": "msg"
+ },
+ {
+  "key": "margins_wide_30mm",
+  "kind": "msg"
+ },
+ {
+  "key": "orient_portrait",
+  "kind": "msg"
+ },
+ {
+  "key": "orient_landscape",
+  "kind": "msg"
+ },
+ {
+  "key": "paper_a4",
+  "kind": "msg"
+ },
+ {
+  "key": "paper_a3",
+  "kind": "msg"
+ },
+ {
+  "key": "paper_b5",
+  "kind": "msg"
+ },
+ {
+  "key": "paper_letter",
+  "kind": "msg"
+ },
+ {
+  "key": "columns_1",
+  "kind": "msg"
+ },
+ {
+  "key": "columns_2",
+  "kind": "msg"
+ },
+ {
+  "key": "columns_3",
+  "kind": "msg"
+ },
+ {
+  "key": "hyphenation_none",
+  "kind": "msg"
+ },
+ {
+  "key": "hyphenation_auto",
+  "kind": "msg"
  }
 ]

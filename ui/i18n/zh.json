@@ -2353,5 +2353,19 @@
  "break_section_next_page": "节(下一页起)",
  "break_section_continuous": "节(连续)",
  "section_starts_here": "新的节从此处开始(在“布局”选项卡中更改纸张)",
- "section_continues_here": "连续的节从此处开始(不换纸)"
+ "section_continues_here": "连续的节从此处开始(不换纸)",
+ "margins_normal_20mm": "常规(20 毫米)",
+ "margins_narrow_12mm": "窄(12 毫米)",
+ "margins_wide_30mm": "宽(30 毫米)",
+ "orient_portrait": "纵向",
+ "orient_landscape": "横向",
+ "paper_a4": "A4(210×297 毫米)",
+ "paper_a3": "A3(297×420 毫米)",
+ "paper_b5": "B5(182×257 毫米)",
+ "paper_letter": "Letter(8.5×11 英寸)",
+ "columns_1": "一栏",
+ "columns_2": "两栏",
+ "columns_3": "三栏",
+ "hyphenation_none": "无",
+ "hyphenation_auto": "自动"
 }

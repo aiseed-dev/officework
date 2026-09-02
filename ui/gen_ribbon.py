@@ -763,7 +763,9 @@ EXTRA_CMDS = {
         ("View", 'nav', "fit-page", "Fit to page", "fit-page", "c"),
         ("View", 'fit-page', "fit-width", "Fit to width", "fit-width", "c"),
         ("View", 'fit-width', "zoom100", "Zoom to 100%", "zoom100", "c"),
-        ("View", 'printview', "multipage", "Multiple pages", "multipage", "c"),
+        # 区切りはレイアウトにも置く(本家の並び。挿入と同じボタン。2026-09-03)
+        ("Layout", 'columns', "pagebreak", "Breaks", "pagebreak", "c"),
+        ("View", 'zoom-out', "multipage", "Multiple pages", "multipage", "c"),
         # **表にしかありませんでした**(2026-08-21 発注者「双方でできるように
         # したいです」)。中身は ui::appcmd に1本あります。ダークモードの
         # 隣に置くのは、表と同じ並びにするためです

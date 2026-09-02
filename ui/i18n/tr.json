@@ -2353,5 +2353,19 @@
  "break_section_next_page": "Bölüm (sonraki sayfa)",
  "break_section_continuous": "Bölüm (sürekli)",
  "section_starts_here": "Burada yeni bir bölüm başlıyor (kâğıdı Düzen sekmesinden değiştirin)",
- "section_continues_here": "Burada sürekli bir bölüm başlıyor (yeni sayfa yok)"
+ "section_continues_here": "Burada sürekli bir bölüm başlıyor (yeni sayfa yok)",
+ "margins_normal_20mm": "Normal (20 mm)",
+ "margins_narrow_12mm": "Dar (12 mm)",
+ "margins_wide_30mm": "Geniş (30 mm)",
+ "orient_portrait": "Dikey",
+ "orient_landscape": "Yatay",
+ "paper_a4": "A4 (210 × 297 mm)",
+ "paper_a3": "A3 (297 × 420 mm)",
+ "paper_b5": "B5 (182 × 257 mm)",
+ "paper_letter": "Letter (8,5 × 11 inç)",
+ "columns_1": "Tek sütun",
+ "columns_2": "İki sütun",
+ "columns_3": "Üç sütun",
+ "hyphenation_none": "Yok",
+ "hyphenation_auto": "Otomatik"
 }

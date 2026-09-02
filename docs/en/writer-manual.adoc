@@ -228,7 +228,7 @@ The status line says how many pictures were made.
 
 == Layout
 
-* Paper (A4→B5→A3), orientation, margins (20/12/30mm), columns (1→2→3). **They apply to the section the caret is in.** In a one-section document that is the whole document; to change the paper part-way, split a section with Insert > Breaks first and press the button inside that section
+* Paper (A4 / A3 / B5 / Letter), orientation (portrait / landscape), margins (normal 20 / narrow 12 / wide 30 mm), columns (1 / 2 / 3), breaks. Each opens a list to pick from. **They apply to the section the caret is in.** In a one-section document that is the whole document; to change the paper part-way, split a section with Insert > Breaks first and press the button inside that section
 * Line numbers, page color, watermark (light diagonal text, visible in Word), hyphenation (Latin text broken at syllables)
 * *Color scheme*: cycles through six (standard, indigo, green, dark red, indigo+unbleached paper, ink+gray paper). Heading color and page color change as a pair, and the *actual color values are written*, so Word shows the same colors without needing theme parts. One Ctrl+Z restores
 

@@ -2353,5 +2353,19 @@
  "break_section_next_page": "구역(다음 페이지부터)",
  "break_section_continuous": "구역(이어서)",
  "section_starts_here": "여기서 새 구역이 시작됩니다(용지는 레이아웃 탭에서 바꿉니다)",
- "section_continues_here": "여기서 이어지는 구역이 시작됩니다(용지는 바뀌지 않습니다)"
+ "section_continues_here": "여기서 이어지는 구역이 시작됩니다(용지는 바뀌지 않습니다)",
+ "margins_normal_20mm": "보통(20mm)",
+ "margins_narrow_12mm": "좁게(12mm)",
+ "margins_wide_30mm": "넓게(30mm)",
+ "orient_portrait": "세로",
+ "orient_landscape": "가로",
+ "paper_a4": "A4(210×297mm)",
+ "paper_a3": "A3(297×420mm)",
+ "paper_b5": "B5(182×257mm)",
+ "paper_letter": "레터(8.5×11인치)",
+ "columns_1": "1단",
+ "columns_2": "2단",
+ "columns_3": "3단",
+ "hyphenation_none": "없음",
+ "hyphenation_auto": "자동"
 }

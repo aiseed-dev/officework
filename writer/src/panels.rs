@@ -1918,7 +1918,8 @@ impl Writer {
             .filter(|k| {
                 matches!(
                     *k,
-                    "user-font" | "img-align" | "prot-doc" | "pagebreak" | "insshape" | "insshape-2"
+                    "user-font" | "img-align" | "prot-doc" | "pagebreak" | "pagemargins" | "pageorient"
+                        | "pagesize" | "columns" | "hyphenation" | "insshape" | "insshape-2"
                         | "inssmartart" | "inssmartart-2"
                 )
             })
@@ -1986,7 +1987,8 @@ impl Writer {
             ],
             // 日付の形。**西暦と和暦**(鍵=出す字そのもの — 訳しません)
             "datetime" => crate::cmds::date_shape(),
-            "img-align" | "prot-doc" | "pagebreak" | "insshape" | "insshape-2" | "inssmartart"
+            "img-align" | "prot-doc" | "pagebreak" | "pagemargins" | "pageorient" | "pagesize" | "columns"
+            | "hyphenation" | "insshape" | "insshape-2" | "inssmartart"
             | "inssmartart-2" => self.extra_list_items(kind),
             // **この機械の標準の書体**(2026-08-26)。中身は書体の一覧と同じ
             "user-font" => self.list_items("fontname"),
@@ -2148,7 +2150,8 @@ impl Writer {
             // **この機械の標準の書体を決める**(2026-08-26 発注者
             // 「ユーザーとしての標準設定は、HOME/~.config/ ディレクトリにおく」)
             "user-font" => self.set_user_font(key),
-            "img-align" | "prot-doc" | "pagebreak" => self.choose_extra_list(kind, key),
+            "img-align" | "prot-doc" | "pagebreak" | "pagemargins" | "pageorient" | "pagesize" | "columns"
+            | "hyphenation" => self.choose_extra_list(kind, key),
             "insshape" | "insshape-2" | "inssmartart" | "inssmartart-2" => {
                 self.choose_shape_list(kind, key, cx)
             }
