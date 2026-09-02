@@ -6949,3 +6949,49 @@ Python を同梱し、pyrun の find_python は同梱を見ない。mac と Wind
 * サンドボックスも同梱の Python も要らない。wheel でも動く
 
 順番は数式の後。
+
+=== 数式の引き継ぎ — ここから Opus(2026-09-02 発注者「ある程度できたら SEKKEI に書いて Opus に任せたら」)
+
+済んだ物(コミット 0a6e4033 と 3070bc8f):
+
+* `engine/src/suushiki.rs` — `kumu(tex, size_pt, 文書の書体のバイト列)` が PNG と mm の寸法を返す。
+  `kumu_iro`(色つき)と `kumu_svg`(SVG)もある。括弧の釣り合いと `\begin`/`\end` の対は
+  `tashikameru` で先に断る。試験は同じファイルの中(6本)。目で見る用の example は
+  `cargo run -p kumihan --example suushiki -- '\frac{a}{b}' 出力.png`
+* 同梱物は `engine/suushiki/`(数式の書体 1 つ・mitex の typst 側の定義 3 ファイル・ライセンス)。
+  `.gitignore` の `assets/` に当たらない置き場にしてある
+* writer(`py::kumu_suushiki`)と calc(`insert_equation`)はエンジンを呼ぶ。EQ_PY は消した。
+  `officework.tex` は同じ関数名のまま `_sheet.suushiki_png / suushiki_svg` を呼ぶ
+* 手引き(writer・calc・python の ja/en)と開発者マニュアル、wheel の大きさの上限(170MB)を直した
+* 頭の絵(数式)が前の段落の行に食い込む組版の穴を直した(`layout.rs`、行間 1.0〜2.0 の試験つき)
+
+残っている物。順に:
+
+. **writer の画面で、数式がまだ上の行に重なる。** エンジンの数字は正しい
+  (`Document::plain` の2段落の後に 10.5mm の絵の空段落を置くと、絵の上端 31.14 >
+  前のベースライン 30.40)。だが writer の画面(release、Xephyr :7 で撮った)では
+  「Ctrl+S で保存…」の行の真ん中を分数の横線が横切る。組版の矩形を writer がそのまま
+  描いているので(`view.rs` の `self.page.images`)、writer が組ませている文書の側に
+  違い(段落の行間・空き・Return で作った段落の形)があるはず。`OFFICEWORK_UI_DUMP` で
+  段落の中身を出して、エンジンの試験と同じ条件を作ること。試す道具は
+  `tools/writer_shot.py` の作法で、打鍵は Xephyr を立てて 8 秒待ってから
+  (立てた直後は配列が入っておらず `\` と `{` が落ちた)
+. **OMML を読む。** `ooxml/src/read.rs` の `carry_math` は原文を控えるだけなので、そこで
+  LaTeX に変えて `InlineImage { tex: Some(..), bytes: 空 }` を段落に置く。writer は
+  `render_formulas` が開いた時に組む。読み手は Microsoft の対応表(要素 20 個。
+  https://learn.microsoft.com/en-us/office/math/mathml の「OMML to MathML element mapping」)
+  に沿って自前で書く。easydoc-math(crates.io、Apache-2.0)の `omml_to_latex.rs` が参考になるが、
+  極限(`m:func` + `m:limLow`)と日本語(`m:nor` → `\text{}`)に穴がある。xlsx は
+  `sheet/src/xlsx/read.rs` の drawing の中の `mc:AlternateContent` / `a14:m` から同じ OMML を拾う。
+  **Word と Excel が実際に書いたファイルで確かめること**(手書きの OMML でしか試していない)
+. **docx に OMML を書く。** 手引きの決め(SEKKEI「数式の道(決定)」)。LaTeX → OMML は
+  tex2word-math(crates.io、MIT)が使える。絵と原文の二枚組をやめるかは、読み戻しの
+  往復(LaTeX → OMML → LaTeX)がどれだけ崩れるかを測ってから
+. **HTML に MathML Core を書く。** `engine/src/html_write.rs` の `data-tex` の所。
+  LaTeX → MathML は math-core か pulldown-latex(crates.io)
+. **配り物の使われない Python。** make-macos.sh と release.yml(Windows)が同梱している
+  Python を、外すか find_python に戻すか(上の「同時に見つかった、決めと作りのずれ」)
+. **df を Rust の polars に。** 上の「決め: df は Rust の polars で計算する」。数式の後
+
+手引きの追随待ち: 手引きは「絵と LaTeX の原文が二枚組で docx に入る」のままで、
+OMML の読み書きはまだ書いていない(できてから書く)。
