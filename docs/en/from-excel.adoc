@@ -254,7 +254,7 @@ See "Formulas and functions" in link:calc-manual.adoc[the calc manual].
 |===
 |Excel's name |Mark |How it works here
 
-|Entering a formula |Same |About 190 functions are implemented (see the table below)
+|Entering a formula |Same |403 functions are implemented (see the table below)
 |Relative and absolute references ($) |Same |The same rules on copy, fill and paste
 |Name completion, argument hints, Insert Function |Same |Completion as you type, plus "Insert Function" on the Formulas tab (category, then function). Only the Shift+F3 key is unwired
 |Defining and managing names |Same |You can also type straight into the Name Box. There is no F3 "Paste Name" — completion offering the names stands in for it

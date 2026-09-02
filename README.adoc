@@ -89,7 +89,7 @@ And if you never install git, you lose nothing — plain-text files can join a h
 The highlights only — the full list lives in the link:docs/en/writer-manual.adoc[writer manual] and the link:docs/en/calc-manual.adoc[calc manual], which describe only what works today.
 
 * *writer (documents)* — Japanese typesetting up to vertical writing, ruby (furigana) and distributed justification. Form fields (build a form, protect it, hand it out), TOC, track changes, comments, drawing, printing where the paper changes partway, PDF. A docx can be opened, edited and saved back
-* *calc (spreadsheets)* — about 190 functions (incl. dynamic arrays), recalculation with circular-reference detection, multiple sheets, pivot tables, conditional formatting, data validation, charts (11 types, drawn as shapes), a solver, protection and encryption, PDF. An xlsx can too
+* *calc (spreadsheets)* — about 400 functions (incl. dynamic arrays), recalculation with circular-reference detection, multiple sheets, pivot tables, conditional formatting, data validation, charts (11 types, drawn as shapes), a solver, protection and encryption, PDF. An xlsx can too
 
 The ribbon layout follows Euro-Office, so people who switch don't have to relearn where things are. *Commands that don't work yet are shown grayed out* — we never make something look usable when it isn't.
 
