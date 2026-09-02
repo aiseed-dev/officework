@@ -511,6 +511,240 @@ pub fn put(src: &str, section: &str, key: &str, value: &str) -> String {
     s
 }
 
+/// テンプレートの字から、節の中のキーを1行だけ消した字を返す。
+///
+/// [`put`] と対です。太字を外したときに `太字 = true` の行が残っていては
+/// 困るので、無い物は行ごと消します。節やキーが無ければ何もしません。
+pub fn drop_key(src: &str, section: &str, key: &str) -> String {
+    let mut out: Vec<&str> = Vec::new();
+    let mut in_section = false;
+    for l in src.lines() {
+        let t = l.trim();
+        if let Some(name) = t.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+            in_section = name.trim() == section;
+            out.push(l);
+            continue;
+        }
+        if in_section {
+            if let Some((k, _)) = t.split_once('=') {
+                if k.trim() == key {
+                    continue;
+                }
+            }
+        }
+        out.push(l);
+    }
+    let mut s = out.join("\n");
+    if src.ends_with('\n') {
+        s.push('\n');
+    }
+    s
+}
+
+/// 節の名前を書き替えた字を返す(`[スタイル.旧]` → `[スタイル.新]`)。
+///
+/// 中の行は触りません。節が無ければそのまま返します。
+pub fn rename_section(src: &str, from: &str, to: &str) -> String {
+    let mut out: Vec<String> = Vec::new();
+    for l in src.lines() {
+        let t = l.trim();
+        if let Some(name) = t.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+            if name.trim() == from {
+                out.push(format!("[{to}]"));
+                continue;
+            }
+        }
+        out.push(l.to_string());
+    }
+    let mut s = out.join("\n");
+    if src.ends_with('\n') {
+        s.push('\n');
+    }
+    s
+}
+
+/// スタイル1つの節の名前(`スタイル.名前`)。
+pub fn style_section(name: &str) -> String {
+    format!("スタイル.{name}")
+}
+
+/// スタイル1つを字に書き入れた字を返す。
+///
+/// 持っている項目は [`put`] で書き、持っていない項目は [`drop_key`] で
+/// 消します。人が手で書いた注釈と並び順は残ります。
+pub fn put_style(src: &str, def: &StyleDef) -> String {
+    let section = style_section(&def.name);
+    let lines = style_lines(def);
+    let mut s = src.to_string();
+    for key in STYLE_KEYS {
+        match lines.iter().find(|(k, _)| k == key) {
+            Some((_, v)) => s = put(&s, &section, key, v),
+            None => s = drop_key(&s, &section, key),
+        }
+    }
+    // 何も持たないスタイルでも、節だけは残します(名前を選べるように)
+    if lines.is_empty() && !s.lines().any(|l| l.trim() == format!("[{section}]")) {
+        if !s.is_empty() && !s.ends_with('\n') {
+            s.push('\n');
+        }
+        if !s.is_empty() {
+            s.push('\n');
+        }
+        s.push_str(&format!("[{section}]\n"));
+    }
+    s
+}
+
+/// `[スタイル.名前]` に書けるキーの並び。[`put_style`] と [`write`] が
+/// 同じ表を見ます
+const STYLE_KEYS: &[&str] = &[
+    "大きさ", "書体", "太字", "斜体", "下線", "色", "背景色", "揃え",
+    "前の空き", "後の空き", "行間", "字下げ",
+];
+
+/// スタイル1つを `キー = 値` の並びにする。**指定の無い項目は出しません**
+fn style_lines(d: &StyleDef) -> Vec<(&'static str, String)> {
+    let mut v: Vec<(&'static str, String)> = Vec::new();
+    if let Some(n) = d.size_pt {
+        v.push(("大きさ", num(n)));
+    }
+    if let Some(f) = &d.font {
+        v.push(("書体", format!("{f:?}")));
+    }
+    if d.bold {
+        v.push(("太字", "true".into()));
+    }
+    if d.italic {
+        v.push(("斜体", "true".into()));
+    }
+    if d.underline {
+        v.push(("下線", "true".into()));
+    }
+    if let Some(c) = &d.color {
+        v.push(("色", format!("{c:?}")));
+    }
+    if let Some(c) = &d.shade {
+        v.push(("背景色", format!("{c:?}")));
+    }
+    if let Some(a) = d.align {
+        let k = match a {
+            Align::Left => "左",
+            Align::Center => "中央",
+            Align::Right => "右",
+            Align::Justify => "両端",
+            Align::Distribute => "均等",
+        };
+        v.push(("揃え", format!("{k:?}")));
+    }
+    if d.space_before_pt != 0.0 {
+        v.push(("前の空き", num(d.space_before_pt)));
+    }
+    if d.space_after_pt != 0.0 {
+        v.push(("後の空き", num(d.space_after_pt)));
+    }
+    if let Some(l) = d.line_spacing {
+        v.push(("行間", num(l)));
+    }
+    if let Some(f) = d.first_line_chars {
+        v.push(("字下げ", num(f)));
+    }
+    v
+}
+
+/// 書式を直すときの、**書き先の元**。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Origin {
+    /// いま着ているファイルをその場で書き替える
+    InPlace,
+    /// 配られたファイルの写しを作る(中身はそのファイルから)
+    CopyOf(std::path::PathBuf),
+    /// 同梱の既定の写しを作る
+    CopyOfBuiltIn,
+}
+
+/// 書式を直すときの書き先。
+///
+/// 手引き「配られたテンプレートは書き替わりません」の決めそのものです。
+/// 書き先はいつも開いている文書の隣で、元がそこに無ければ写しを作ります。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Target {
+    /// 書くファイル
+    pub at: std::path::PathBuf,
+    /// その中身の元
+    pub origin: Origin,
+}
+
+impl Target {
+    /// 写しを作るか
+    pub fn copies(&self) -> bool {
+        self.origin != Origin::InPlace
+    }
+}
+
+/// 書き先を決める。
+///
+/// - `template_name` は本文の頭の `:template: 名前`。あればファイル名は
+///   `名前.toml`、無ければ [`user_template_name`](`テンプレート.toml`)
+/// - `tmpl_path` はいま着ているテンプレートを読んだ場所。`None` は
+///   この機械の標準か同梱の既定
+/// - `user_template` はこの機械の標準のファイル(あるときだけ渡す)。
+///   同梱の既定より先に写しの元になります
+pub fn write_target(
+    doc_dir: &std::path::Path,
+    template_name: Option<&str>,
+    tmpl_path: Option<&std::path::Path>,
+    user_template: Option<&std::path::Path>,
+) -> Target {
+    let file = match template_name {
+        Some(n) => format!("{n}.toml"),
+        None => user_template_name().to_string(),
+    };
+    let at = doc_dir.join(file);
+    let origin = match tmpl_path {
+        Some(p) if p == at => Origin::InPlace,
+        Some(p) => Origin::CopyOf(p.to_path_buf()),
+        None => match user_template {
+            Some(u) => Origin::CopyOf(u.to_path_buf()),
+            None => Origin::CopyOfBuiltIn,
+        },
+    };
+    Target { at, origin }
+}
+
+/// 書き先の元の字を読み、`f` で直した字を書き先に書く。
+///
+/// 写しを作るとき、書き先に既にファイルがあれば書きません。そこにある
+/// 物は読めなかったテンプレートのはずで、黙って潰すと直す手がかりが
+/// 消えるためです。返りは、書いた後の字です。
+pub fn rewrite(t: &Target, f: impl FnOnce(&str) -> String) -> Result<String, String> {
+    let base = match &t.origin {
+        Origin::InPlace => std::fs::read_to_string(&t.at).map_err(|e| e.to_string())?,
+        Origin::CopyOf(p) => {
+            if t.at.exists() {
+                return Err(format!("{} は既にあるのに読めていません", t.at.display()));
+            }
+            std::fs::read_to_string(p).map_err(|e| e.to_string())?
+        }
+        Origin::CopyOfBuiltIn => {
+            if t.at.exists() {
+                return Err(format!("{} は既にあるのに読めていません", t.at.display()));
+            }
+            DEFAULT_TOML.to_string()
+        }
+    };
+    let fresh = f(&base);
+    // 書く前に読めることを確かめます。読めない字を書くと、次に開いたとき
+    // 「テンプレートが読めない」になります
+    parse(&fresh)?;
+    std::fs::write(&t.at, &fresh).map_err(|e| e.to_string())?;
+    Ok(fresh)
+}
+
+/// 書き出し先ごとのテンプレートのファイル名(`テンプレート-印刷.toml`)。
+pub fn purpose_template_name(purpose: &str) -> String {
+    format!("テンプレート-{purpose}.toml")
+}
+
 /// 利用者の標準テンプレート。無ければ同梱の既定。
 ///
 /// **壊れていても落ちません。** 手で書く物なので、書き方を間違えたときに
@@ -1083,49 +1317,9 @@ pub fn write(th: &Theme) -> String {
         s.push_str("]\n\n");
     }
     for d in &th.styles {
-        s.push_str(&format!("[スタイル.{}]\n", d.name));
-        if let Some(n) = d.size_pt {
-            s.push_str(&format!("大きさ = {}\n", num(n)));
-        }
-        if let Some(f) = &d.font {
-            s.push_str(&format!("書体 = {f:?}\n"));
-        }
-        if d.bold {
-            s.push_str("太字 = true\n");
-        }
-        if d.italic {
-            s.push_str("斜体 = true\n");
-        }
-        if d.underline {
-            s.push_str("下線 = true\n");
-        }
-        if let Some(c) = &d.color {
-            s.push_str(&format!("色 = {c:?}\n"));
-        }
-        if let Some(c) = &d.shade {
-            s.push_str(&format!("背景色 = {c:?}\n"));
-        }
-        if let Some(a) = d.align {
-            let k = match a {
-                Align::Left => "左",
-                Align::Center => "中央",
-                Align::Right => "右",
-                Align::Justify => "両端",
-                Align::Distribute => "均等",
-            };
-            s.push_str(&format!("揃え = {k:?}\n"));
-        }
-        if d.space_before_pt != 0.0 {
-            s.push_str(&format!("前の空き = {}\n", num(d.space_before_pt)));
-        }
-        if d.space_after_pt != 0.0 {
-            s.push_str(&format!("後の空き = {}\n", num(d.space_after_pt)));
-        }
-        if let Some(l) = d.line_spacing {
-            s.push_str(&format!("行間 = {}\n", num(l)));
-        }
-        if let Some(f) = d.first_line_chars {
-            s.push_str(&format!("字下げ = {}\n", num(f)));
+        s.push_str(&format!("[{}]\n", style_section(&d.name)));
+        for (k, v) in style_lines(d) {
+            s.push_str(&format!("{k} = {v}\n"));
         }
         s.push('\n');
     }
@@ -1836,5 +2030,154 @@ mod tests {
         let p = th.page.unwrap();
         assert_eq!((p.w_mm, p.h_mm), (182.0, 257.0));
         assert_eq!(p.left_mm, 15.0);
+    }
+
+    /// 太字を外したら `太字 = true` の行が消える。他の行は残る
+    #[test]
+    fn dropping_a_key_removes_only_that_line() {
+        let from = "[スタイル.註記]\n# 注釈\n太字 = true\n色 = \"333333\"\n\n[スタイル.本文]\n太字 = true\n";
+        let a = drop_key(from, "スタイル.註記", "太字");
+        assert!(a.contains("# 注釈"), "注釈が消えた:\n{a}");
+        assert!(a.contains("色 = \"333333\""));
+        assert_eq!(a.matches("太字 = true").count(), 1, "別の節の行まで消えた:\n{a}");
+        assert!(!parse(&a).unwrap().style("註記").unwrap().bold);
+        // 無いキーを消しても字は変わらない
+        assert_eq!(drop_key(from, "スタイル.註記", "斜体"), from);
+    }
+
+    /// スタイル1つを書き入れる。**持っていない項目は行ごと消える**
+    #[test]
+    fn putting_a_style_writes_and_clears_its_keys() {
+        let from = "# 上の注釈\n[文書]\n大きさ = 11\n\n[スタイル.見出し1]\n大きさ = 16\n太字 = true\n";
+        let def = StyleDef {
+            name: "見出し1".into(),
+            size_pt: Some(18.0),
+            align: Some(Align::Center),
+            ..Default::default()
+        };
+        let a = put_style(from, &def);
+        assert!(a.contains("# 上の注釈"), "注釈が消えた:\n{a}");
+        let th = parse(&a).unwrap();
+        let d = th.style("見出し1").unwrap();
+        assert_eq!(d.size_pt, Some(18.0));
+        assert_eq!(d.align, Some(Align::Center));
+        assert!(!d.bold, "外した太字が残った:\n{a}");
+        assert_eq!(th.size_pt, Some(11.0), "他の節が消えた");
+        // 無い節は末尾に足す
+        let b = put_style(from, &StyleDef { name: "註記".into(), italic: true, ..Default::default() });
+        assert!(parse(&b).unwrap().style("註記").unwrap().italic, "{b}");
+        // 何も持たないスタイルでも節は残る
+        let c = put_style("", &StyleDef { name: "空".into(), ..Default::default() });
+        assert!(parse(&c).unwrap().style("空").is_some(), "{c}");
+        // write と同じ表を見ている(往復)
+        let th2 = parse(&write(&th)).unwrap();
+        assert_eq!(th2.style("見出し1"), th.style("見出し1"));
+    }
+
+    #[test]
+    fn renaming_a_section_keeps_its_lines() {
+        let from = "[スタイル.見た目1]\n大きさ = 14\n\n[スタイル.見た目2]\n太字 = true\n";
+        let a = rename_section(from, "スタイル.見た目1", "スタイル.小見出し");
+        let th = parse(&a).unwrap();
+        assert_eq!(th.style("小見出し").unwrap().size_pt, Some(14.0));
+        assert!(th.style("見た目1").is_none());
+        assert!(th.style("見た目2").unwrap().bold, "別の節が変わった");
+        assert_eq!(rename_section(from, "スタイル.無い", "スタイル.何か"), from);
+    }
+
+    /// 書き先の決め。**配られた物は書き替えず、文書の隣に写しを作る**
+    #[test]
+    fn write_target_follows_the_handout_rule() {
+        let dir = std::path::Path::new("/綴り");
+        let here = dir.join("テンプレート.toml");
+        // 隣の物を着ている — その場で書く
+        let t = write_target(dir, None, Some(&here), None);
+        assert_eq!(t, Target { at: here.clone(), origin: Origin::InPlace });
+        assert!(!t.copies());
+        // 名指しで置き場の物を着ている — 隣に同じ名前の写し
+        let far = std::path::Path::new("/home/x/.config/officework/templates/社内標準.toml");
+        let t = write_target(dir, Some("社内標準"), Some(far), None);
+        assert_eq!(t.at, dir.join("社内標準.toml"));
+        assert_eq!(t.origin, Origin::CopyOf(far.to_path_buf()));
+        // 何も着ていない — この機械の標準があればそれ、無ければ同梱の既定
+        let user = std::path::Path::new("/home/x/.config/officework/テンプレート.toml");
+        let t = write_target(dir, None, None, Some(user));
+        assert_eq!(t.origin, Origin::CopyOf(user.to_path_buf()));
+        let t = write_target(dir, None, None, None);
+        assert_eq!(t.origin, Origin::CopyOfBuiltIn);
+        assert_eq!(t.at, here);
+    }
+
+    /// 写しを作って直す。**元は変わらず、写しは読める字になっている**
+    #[test]
+    fn rewrite_copies_then_edits_and_leaves_the_original() {
+        let tmp = std::env::temp_dir().join(format!("theme-rewrite-{}", std::process::id()));
+        let handout_dir = tmp.join("配布");
+        let doc_dir = tmp.join("綴り");
+        std::fs::create_dir_all(&handout_dir).unwrap();
+        std::fs::create_dir_all(&doc_dir).unwrap();
+        let handout = handout_dir.join("社内標準.toml");
+        let original = "# 配られた物\n[スタイル.本文]\n大きさ = 10.5\n";
+        std::fs::write(&handout, original).unwrap();
+        let t = write_target(&doc_dir, Some("社内標準"), Some(&handout), None);
+        let def = StyleDef { name: "本文".into(), size_pt: Some(12.0), ..Default::default() };
+        let fresh = rewrite(&t, |src| put_style(src, &def)).unwrap();
+        assert!(fresh.contains("# 配られた物"), "写しに元の注釈が無い");
+        assert_eq!(std::fs::read_to_string(&handout).unwrap(), original, "配られた物が変わった");
+        let th = read_theme(&t.at).expect("写しが読めない");
+        assert_eq!(th.style("本文").unwrap().size_pt, Some(12.0));
+        // 2回目は写しをその場で書く
+        let t2 = write_target(&doc_dir, Some("社内標準"), Some(&t.at), None);
+        assert_eq!(t2.origin, Origin::InPlace);
+        let def2 = StyleDef { name: "本文".into(), size_pt: Some(13.0), ..Default::default() };
+        rewrite(&t2, |src| put_style(src, &def2)).unwrap();
+        assert_eq!(read_theme(&t.at).unwrap().style("本文").unwrap().size_pt, Some(13.0));
+        // 同梱の既定からの写しも読める
+        let t3 = write_target(&doc_dir, None, None, None);
+        rewrite(&t3, |src| put_style(src, &def)).unwrap();
+        let th3 = read_theme(&t3.at).expect("既定の写しが読めない");
+        assert_eq!(th3.style("本文").unwrap().size_pt, Some(12.0));
+        assert!(th3.style("見出し1").is_some(), "既定のスタイルが写っていない");
+        // 写し先に読めないファイルがあれば書かない
+        let broken_dir = tmp.join("壊れ");
+        std::fs::create_dir_all(&broken_dir).unwrap();
+        std::fs::write(broken_dir.join("テンプレート.toml"), "[知らない節]\n").unwrap();
+        let t4 = write_target(&broken_dir, None, None, None);
+        assert!(rewrite(&t4, |s| s.to_string()).is_err());
+        assert_eq!(std::fs::read_to_string(broken_dir.join("テンプレート.toml")).unwrap(), "[知らない節]\n");
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    /// 蒸留した結果を書いて開き直す。**docx → adoc + toml → 同じ見た目**
+    #[test]
+    fn a_distilled_docx_reopens_from_adoc_and_toml() {
+        use crate::doc::{Paragraph, Run};
+        let mut doc = Document::default();
+        let big = Run { text: "題".into(), size_pt: Some(20.0), font: None, fmt: Default::default() };
+        let plain = Run { text: "本文の字。".into(), size_pt: Some(10.5), font: None, fmt: Default::default() };
+        doc.blocks.push(Block::Para(Paragraph { runs: vec![big], ..Default::default() }));
+        for _ in 0..3 {
+            doc.blocks.push(Block::Para(Paragraph { runs: vec![plain.clone()], ..Default::default() }));
+        }
+        let (mut meaning, th, rep) = crate::distill::distill(&doc);
+        // 本文は文書の既定(`[文書]` の大きさ)になり、題だけがスタイルになる
+        assert_eq!(rep.styles, 1);
+        meaning.template = Some("報告書".into());
+        let tmp = std::env::temp_dir().join(format!("theme-distill-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        std::fs::write(tmp.join("報告書.toml"), write(&th)).unwrap();
+        std::fs::write(tmp.join("報告書.adoc"), crate::adoc::write(&meaning)).unwrap();
+        // 開き直す
+        let text = std::fs::read_to_string(tmp.join("報告書.adoc")).unwrap();
+        let (again, _) = crate::adoc::parse_full(&text).expect("本文が読めない");
+        assert_eq!(again.template.as_deref(), Some("報告書"));
+        let th2 = read_theme(&tmp.join("報告書.toml")).expect("テンプレートが読めない");
+        let shown = compose(&again, &th2);
+        let sizes: Vec<Option<f32>> =
+            shown.paragraphs().map(|p| p.runs.first().and_then(|r| r.size_pt)).collect();
+        assert_eq!(sizes[0], Some(20.0), "題の大きさが戻らない");
+        assert_eq!(sizes[1], None, "本文に大きさが焼き付いた");
+        assert_eq!(th2.size_pt, Some(10.5), "本文の大きさが戻らない");
+        std::fs::remove_dir_all(&tmp).ok();
     }
 }

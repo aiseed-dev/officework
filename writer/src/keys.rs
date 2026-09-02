@@ -698,6 +698,8 @@ impl Writer {
             return;
         };
         let now = if time { clock } else { date };
+        // 打鍵とは別の1手にする(Ctrl+Z で日付だけ消える)
+        self.key_checkpoint(false);
         self.editor().insert(now);
         self.on_edited();
         self.status = ui::tf!("put_value_wont_change", now).into();
@@ -739,9 +741,14 @@ impl Writer {
     }
     /// Tab で段落を1段深く、Shift+Tab で1段浅く。
     /// リストではレベル(印も変わる)、普通の段落ではインデントとして効く。
+    /// **表の中では隣のセルへ**(Word と同じ)。
     pub(crate) fn a_tab(&mut self, _: &ui::Tab, _: &mut Window, cx: &mut Context<Self>) {
         if self.find_open || self.hf_edit.is_some() {
             return; // パネルの中では使わない
+        }
+        if self.cell_step(true) {
+            cx.notify();
+            return;
         }
         self.para(|p| p.indent = (p.indent + 1).min(8));
         cx.notify();
@@ -750,8 +757,58 @@ impl Writer {
         if self.find_open || self.hf_edit.is_some() {
             return;
         }
+        if self.cell_step(false) {
+            cx.notify();
+            return;
+        }
         self.para(|p| p.indent = p.indent.saturating_sub(1));
         cx.notify();
+    }
+
+    /// 表の中の Tab(`forward`)と Shift+Tab。隣のセルへ動いたら真。
+    ///
+    /// 行の右端では次の行の左端へ。**最後のセルで Tab を押すと、Word と
+    /// 同じで行を1つ足してそこへ動きます。** 最初のセルで Shift+Tab を
+    /// 押しても動きません。動いた先のセルの字は選んだ状態になります
+    /// (打つと置き換わります。Word と同じ)。
+    pub(crate) fn cell_step(&mut self, forward: bool) -> bool {
+        let Some((ti, row, col, rows, cols)) = self.cursor_table() else { return false };
+        let (nr, nc) = if forward {
+            if col + 1 < cols {
+                (row, col + 1)
+            } else if row + 1 < rows {
+                (row + 1, 0)
+            } else {
+                // 打鍵の道なので、命令の旗を倒してから行を足す(1手で戻せる)
+                self.acted = false;
+                self.table_add_row(true);
+                self.acted = false;
+                (row + 1, 0)
+            }
+        } else if col > 0 {
+            (row, col - 1)
+        } else if row > 0 {
+            (row - 1, cols.saturating_sub(1))
+        } else {
+            self.status = ui::t!("first_cell_of_table").into();
+            return true;
+        };
+        // 行の長さが揃っていない表では、その行の端で止める
+        let len = self
+            .doc
+            .tables()
+            .nth(ti)
+            .and_then(|t| t.rows.get(nr))
+            .map(|r| r.len())
+            .unwrap_or(0);
+        if len == 0 {
+            return true;
+        }
+        let nc = nc.min(len - 1);
+        self.switch_target(Target::Cell { table: ti, row: nr, col: nc });
+        self.ed.select_all();
+        self.follow_caret();
+        true
     }
 
     pub(crate) fn page_up(&mut self, _: &ui::PageUp, _: &mut Window, cx: &mut Context<Self>) {
@@ -818,14 +875,28 @@ impl Writer {
         self.move_line(true, true);
         cx.notify();
     }
+    /// Home / End。本文では見た目の行の頭(末尾)へ。もう一度押すと
+    /// 段落の頭(末尾)へ。パネルの欄では欄の頭(末尾)へ
     pub(crate) fn home(&mut self, _: &ui::Home, _: &mut Window, cx: &mut Context<Self>) {
-        self.editor().move_to(0, false);
+        if self.keys_go_to_body() {
+            self.line_home_end(false);
+        } else {
+            self.editor().move_to(0, false);
+        }
         cx.notify();
     }
     pub(crate) fn end(&mut self, _: &ui::End, _: &mut Window, cx: &mut Context<Self>) {
-        let n = self.editor_ref().text().len();
-        self.editor().move_to(n, false);
+        if self.keys_go_to_body() {
+            self.line_home_end(true);
+        } else {
+            let n = self.editor_ref().text().len();
+            self.editor().move_to(n, false);
+        }
         cx.notify();
+    }
+    /// 打鍵がいま本文(またはセル)に入るか。パネルの欄が開いていれば偽
+    pub(crate) fn keys_go_to_body(&self) -> bool {
+        std::ptr::eq(self.editor_ref(), &self.ed)
     }
     pub(crate) fn enter(&mut self, _: &ui::Enter, _: &mut Window, cx: &mut Context<Self>) {
         if self.fl_takes_keys() {
@@ -960,14 +1031,8 @@ impl Writer {
     }
     /// 一手戻す(窓に依らない中身。試験からも呼べる)
     pub(crate) fn undo_step(&mut self) {
-        // 道具(ペン)の間は筆の一手を戻す
-        if self.tool.is_some() {
-            if let Some(prev) = self.ink_undo.pop() {
-                self.doc.ink = prev;
-                self.dirty = true;
-            }
-            return;
-        }
+        // 筆の一手も文書の控え(下)で戻します。前は道具を持っている間だけ
+        // 別の控えで戻していて、道具を戻した後は筆を戻せませんでした
         // パネル(ヘッダー等)を編集中なら、そのパネルの一手を戻す。
         // **パネルの打鍵は文書を変えない**ので、そこは Editor 自身の取り消し
         if self.in_panel() {
@@ -1073,6 +1138,26 @@ impl Writer {
     }
 }
 
+/// Ctrl+= / Ctrl+-(画面の文字の大きさ)の受け口。calc と同じ `ui-bigger` /
+/// `ui-smaller` の命令へ流します。**窓の全体に結びます** — 編集の面の
+/// 受け口の並びは view.rs にあり、こちらはアプリの起動時に1度結びます
+pub(crate) fn bind_ui_scale_keys(view: &Entity<Writer>, cx: &mut App) {
+    let v = view.clone();
+    cx.on_action(move |_: &ui::UiBigger, cx: &mut App| {
+        v.update(cx, |w, cx| {
+            w.run_cmd("ui-bigger", cx);
+            cx.notify();
+        });
+    });
+    let v = view.clone();
+    cx.on_action(move |_: &ui::UiSmaller, cx: &mut App| {
+        v.update(cx, |w, cx| {
+            w.run_cmd("ui-smaller", cx);
+            cx.notify();
+        });
+    });
+}
+
 impl Writer {
     /// **つまんでいる図形を動かす。** `x_mm` / `y_mm` は巻物の座標です。
     ///
@@ -1146,11 +1231,12 @@ impl Writer {
         };
     }
 
-    /// **同じページの図形を左でそろえる。**(2026-08-30)
+    /// **同じページの図形をそろえる。** `how` は left / centre / right /
+    /// top / middle / bottom(一覧の鍵)。
     ///
-    /// 表の側は6通りの揃えと2通りの分布を一覧から選ばせますが、文書では
-    /// まだ束の選び方が無いので、まず左揃えだけです。
-    pub(crate) fn shape_align_doc(&mut self) {
+    /// 文書には図形を複数選ぶ仕掛けがまだ無いので、選んでいる図形と
+    /// 同じページの図形を全部そろえます。
+    pub(crate) fn shape_align_doc(&mut self, how: &str) {
         let Some(i) = self.shape_sel else {
             self.status = ui::tf!("select_more_shapes_first", 1).into();
             return;
@@ -1169,15 +1255,103 @@ impl Writer {
             self.status = ui::tf!("select_more_shapes_first", 2).into();
             return;
         }
-        let hidari = idx
-            .iter()
-            .map(|&k| self.doc.shapes[k].x_mm)
-            .fold(f32::MAX, f32::min);
-        for k in &idx {
-            self.doc.shapes[*k].x_mm = hidari;
+        let sh = &self.doc.shapes;
+        let min_x = idx.iter().map(|&k| sh[k].x_mm).fold(f32::MAX, f32::min);
+        let max_x = idx.iter().map(|&k| sh[k].x_mm + sh[k].w_mm).fold(f32::MIN, f32::max);
+        let min_y = idx.iter().map(|&k| sh[k].y_mm).fold(f32::MAX, f32::min);
+        let max_y = idx.iter().map(|&k| sh[k].y_mm + sh[k].h_mm).fold(f32::MIN, f32::max);
+        let n = idx.len();
+        for k in idx {
+            let s = &mut self.doc.shapes[k];
+            match how {
+                "left" => s.x_mm = min_x,
+                "centre" => s.x_mm = (min_x + max_x) / 2.0 - s.w_mm / 2.0,
+                "right" => s.x_mm = max_x - s.w_mm,
+                "top" => s.y_mm = min_y,
+                "middle" => s.y_mm = (min_y + max_y) / 2.0 - s.h_mm / 2.0,
+                "bottom" => s.y_mm = max_y - s.h_mm,
+                _ => return,
+            }
         }
         self.dirty = true;
-        self.status = ui::t!("aligned_left").into();
+        self.status = match how {
+            "left" => ui::tf!("aligned_left", n),
+            "centre" => ui::tf!("centred_horizontally", n),
+            "right" => ui::tf!("aligned_right", n),
+            "top" => ui::tf!("aligned_top", n),
+            "middle" => ui::tf!("centred_vertically", n),
+            _ => ui::tf!("aligned_bottom", n),
+        }
+        .into();
+    }
+
+    /// **ボタンから開く一覧の中身**(揃え方・保護の種類)。
+    /// 一覧の仕組みは panels.rs の `list_items` で、そこからここへ来ます
+    pub(crate) fn extra_list_items(&self, kind: &str) -> Vec<(String, String)> {
+        match kind {
+            "img-align" => vec![
+                ("left".into(), ui::t!("left").to_string()),
+                ("centre".into(), ui::t!("centre").to_string()),
+                ("right".into(), ui::t!("right").to_string()),
+                ("top".into(), ui::t!("top").to_string()),
+                ("middle".into(), ui::t!("middle").to_string()),
+                ("bottom".into(), ui::t!("bottom").to_string()),
+            ],
+            // 文書の保護。docx の w:documentProtection の w:edit の4つと「保護しない」
+            "prot-doc" => vec![
+                ("off".into(), ui::t!("protection_off").to_string()),
+                ("readOnly".into(), ui::t!("prot_read_only").to_string()),
+                ("comments".into(), ui::t!("prot_comments").to_string()),
+                ("trackedChanges".into(), ui::t!("prot_tracked").to_string()),
+                ("forms".into(), ui::t!("prot_forms").to_string()),
+            ],
+            _ => Vec::new(),
+        }
+    }
+
+    /// 上の一覧で項を選んだ
+    pub(crate) fn choose_extra_list(&mut self, kind: &str, key: &str) {
+        match kind {
+            "img-align" => self.shape_align_doc(key),
+            "prot-doc" => self.set_protection(key),
+            _ => {}
+        }
+    }
+
+    /// 文書の保護を掛ける・外す。`key` は一覧の鍵(off / readOnly / comments /
+    /// trackedChanges / forms)。docx の documentProtection と往復します。
+    /// パスワードは掛けません(**掛けた振りもしません**)
+    pub(crate) fn set_protection(&mut self, key: &str) {
+        self.acted = false;
+        self.checkpoint(false); // 文書の保護
+        self.acted = false;
+        if key == "off" {
+            if self.doc.protection.take().is_some() {
+                self.dirty = true;
+            }
+            self.status = ui::t!("protection_removed_editing_allowed").into();
+            return;
+        }
+        self.flush_target();
+        self.doc.protection = Some(key.to_string());
+        // 文書を変えるパネルとペンは閉じる
+        self.hf_edit = None;
+        self.wm_edit = false;
+        self.cmt_edit = false;
+        self.tool = None;
+        // 変更履歴つきの編集だけ、のときは記録を始める(止められない)
+        if key == "trackedChanges" && !self.track {
+            self.track = true;
+            self.track_base = Some(self.doc.paragraphs().map(para_text).collect());
+        }
+        self.dirty = true;
+        let label = self
+            .extra_list_items("prot-doc")
+            .into_iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, l)| l)
+            .unwrap_or_else(|| key.to_string());
+        self.status = ui::tf!("protected_as", label).into();
     }
 }
 
@@ -1255,6 +1429,11 @@ impl Writer {
         self.doc.shapes.remove(b);
         self.shape_sel = Some(keep);
         self.dirty = true;
-        self.status = ui::tf!("done_turned_into_outline", "結合").into();
+        let label = match op {
+            book::BoolOp::Intersect => ui::t!("intersect"),
+            book::BoolOp::Subtract => ui::t!("subtract"),
+            _ => ui::t!("union"),
+        };
+        self.status = ui::tf!("done_turned_into_outline", label).into();
     }
 }

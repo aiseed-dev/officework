@@ -7,7 +7,7 @@
 //! いま見ているファイルの詳細と操作 — だけです。編集の中身なので
 //! **画面に残します**(SEKKEI「ページごと差し替え」)。
 
-use crate::Writer;
+use crate::{Document, Target, Writer};
 use gpui::{div, prelude::*, px, rgb, Context, SharedString};
 use crate::io::lock_identity;
 use kumihan::Editor;
@@ -188,6 +188,27 @@ impl Writer {
                         .child(if self.dark { ui::t!("dark") } else { ui::t!("light") })
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.run_cmd("darkmode", cx);
+                            cx.notify()
+                        }))))
+                // **画面の文字の大きさ**(Ctrl+= / Ctrl+- と同じ実体)。
+                // 表の画面と同じ形。紙は変わらない
+                .child(div().flex().flex_row().items_center().gap_2()
+                    .child(div().w(px(us * 200.0)).text_color(th_status)
+                        .child(ui::t!("ui_text_size")))
+                    .child(div().id("set-ui-minus")
+                        .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
+                        .child("−")
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.run_cmd("ui-smaller", cx);
+                            cx.notify()
+                        })))
+                    .child(div().child(SharedString::from(
+                        format!("{}%", (self.ui_scale * 100.0).round() as i32))))
+                    .child(div().id("set-ui-plus")
+                        .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
+                        .child("+")
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.run_cmd("ui-bigger", cx);
                             cx.notify()
                         }))))
                 // **コメントの名乗り**(2026-08-20 発注者「双方でできる
@@ -415,6 +436,29 @@ impl Writer {
                         })),
                 );
             }
+            // **壊れたまま拾って開く。** 読めないファイルから字だけを拾い、
+            // 読み取り専用で開く。道は持たせないので、元のファイルは
+            // 上書きしない(保存は名前を付けて)
+            pane = pane.child(div().h(px(us * 8.0)));
+            pane = pane.child(div().id("salvage-open")
+                .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
+                .child(ui::t!("salvage_open_read_only"))
+                .on_click(cx.listener(|_, _, _, cx| {
+                    let ask = cx.background_executor().spawn(async {
+                        rfd::FileDialog::new().pick_file()
+                    });
+                    cx.spawn(async move |this, cx| {
+                        let r = ask.await;
+                        let _ = this.update(cx, |this, cx| {
+                            if let Some(p) = r {
+                                this.tab = this.prev_tab;
+                                this.salvage_open(&p);
+                            }
+                            cx.notify();
+                        });
+                    })
+                    .detach();
+                })));
         } else {
             let text = self.doc.body_text();
             let words = text.split_whitespace().count();
@@ -496,5 +540,110 @@ impl Writer {
                 .child(ui::t!("click_field_type_enter")));
         }
         pane
+    }
+}
+
+/// 壊れたファイルから字だけを拾う。docx(zip)なら `word/document.xml` の
+/// 段落ごとの字、それ以外は文字として読める分。返すのは段落の並び
+pub(crate) fn salvage_text(bytes: &[u8]) -> Vec<String> {
+    // zip なら document.xml を探す。読める部品が無ければ空
+    if bytes.starts_with(b"PK") {
+        let Some(xml) = document_xml_bytes(bytes) else { return Vec::new() };
+        let xml = String::from_utf8_lossy(&xml);
+        return xml
+            .split("</w:p>")
+            .map(texts_in)
+            .filter(|t| !t.trim().is_empty())
+            .collect();
+    }
+    let text = String::from_utf8_lossy(bytes);
+    text.lines()
+        .map(|l| l.trim_end().to_string())
+        .filter(|l| !l.trim().is_empty() && l.chars().all(|c| !c.is_control() || c == '\t'))
+        .collect()
+}
+
+/// zip から `word/document.xml` の中身を取り出す。目次(central directory)が
+/// 壊れていても、頭から順に部品を読んで探す(後ろが欠けた docx はこれで拾える)
+fn document_xml_bytes(bytes: &[u8]) -> Option<Vec<u8>> {
+    use std::io::Read;
+    if let Ok(mut z) = zip::ZipArchive::new(std::io::Cursor::new(bytes)) {
+        if let Ok(mut f) = z.by_name("word/document.xml") {
+            let mut xml = Vec::new();
+            if f.read_to_end(&mut xml).is_ok() {
+                return Some(xml);
+            }
+        }
+    }
+    let mut cur = std::io::Cursor::new(bytes);
+    while let Ok(Some(mut f)) = zip::read::read_zipfile_from_stream(&mut cur) {
+        if f.name() == "word/document.xml" {
+            let mut xml = Vec::new();
+            return f.read_to_end(&mut xml).ok().map(|_| xml);
+        }
+    }
+    None
+}
+
+/// `<w:t>` の中の字をつなぐ(壊れた XML でも、タグの間の字だけを拾う)
+fn texts_in(xml: &str) -> String {
+    let mut out = String::new();
+    let mut rest = xml;
+    while let Some(i) = rest.find("<w:t") {
+        let after = &rest[i + 4..];
+        // <w:t> か <w:t xml:space=...>。<w:tab/> や <w:tbl> は違う
+        let Some(gt) = after.find('>') else { break };
+        let head = &after[..gt];
+        if !(head.is_empty() || head.starts_with(' ')) || head.ends_with('/') {
+            rest = &after[gt + 1..];
+            continue;
+        }
+        let body = &after[gt + 1..];
+        let Some(end) = body.find("</w:t>") else { break };
+        out.push_str(&unescape(&body[..end]));
+        rest = &body[end + 6..];
+    }
+    out
+}
+
+fn unescape(s: &str) -> String {
+    s.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&amp;", "&")
+}
+
+impl Writer {
+    /// **壊れたまま拾って開く(読み取り専用)。** 普通に読めれば普通に
+    /// 開く。読めなければ字だけを拾い、道を持たない読み取り専用の文書に
+    /// する。保存しても元のファイルは上書きしない
+    pub(crate) fn salvage_open(&mut self, p: &std::path::Path) {
+        let bytes = match std::fs::read(p) {
+            Ok(b) => b,
+            Err(e) => {
+                self.status = ui::tf!("cant_open", e).into();
+                return;
+            }
+        };
+        let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+        let paras = salvage_text(&bytes);
+        if paras.is_empty() {
+            self.status = ui::tf!("salvage_nothing", name).into();
+            return;
+        }
+        let n = paras.len();
+        let mut doc = Document::plain(&paras.join("\n"));
+        doc.protection = Some("readOnly".into());
+        self.target = Target::Body;
+        self.native = false;
+        self.hf_edit = None;
+        self.track = false;
+        self.track_base = None;
+        self.set_doc(doc);
+        self.path = None;
+        self.dirty = true;
+        self.notes.clear();
+        self.status = ui::tf!("salvaged_opened", n, name).into();
     }
 }

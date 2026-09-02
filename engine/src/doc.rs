@@ -219,6 +219,9 @@ pub enum SdtKind {
     Dropdown,
     /// ☐ / ☑(w14:checkbox)
     Checkbox,
+    /// ラジオボタン。docx には Word のチェック(w14:checkbox)として書き、
+    /// tag の `jo:radio` で種類を残します(Word にラジオの部品は無い)
+    Radio,
     /// 絵(w:picture)
     Picture,
     /// 日付(w:date)
@@ -238,6 +241,7 @@ impl SdtKind {
             SdtKind::Combo => "コンボ",
             SdtKind::Dropdown => "ドロップダウン",
             SdtKind::Checkbox => "チェック",
+            SdtKind::Radio => "ラジオ",
             SdtKind::Picture => "画像",
             SdtKind::Date => "日付",
             SdtKind::Email => "メール",
@@ -253,6 +257,7 @@ impl SdtKind {
             SdtKind::Phone => "jo:phone",
             SdtKind::Complex => "jo:complex",
             SdtKind::Signature => "jo:signature",
+            SdtKind::Radio => "jo:radio",
             _ => "",
         }
     }
@@ -262,6 +267,7 @@ impl SdtKind {
             "jo:phone" => Some(SdtKind::Phone),
             "jo:complex" => Some(SdtKind::Complex),
             "jo:signature" => Some(SdtKind::Signature),
+            "jo:radio" => Some(SdtKind::Radio),
             _ => None,
         }
     }
@@ -271,7 +277,7 @@ impl SdtKind {
     /// 「名前」ボタンで付けた名とうちだけの種類の印を、一つの w:tag で両立させる形
     pub fn split_tag(tag: &str) -> Option<(SdtKind, String)> {
         use SdtKind as K;
-        for k in [K::Email, K::Phone, K::Complex, K::Signature] {
+        for k in [K::Email, K::Phone, K::Complex, K::Signature, K::Radio] {
             let m = k.as_tag();
             if tag == m {
                 return Some((k, tag.to_string()));
@@ -1376,6 +1382,49 @@ impl Document {
     /// **run の境(部分書式)・段落の性質・表の位置が編集で流されない**
     /// (以前の「段落番号で写す」方式は、段落の増減で下の性質がずれ、
     /// 表が末尾へ動いていた)。
+    /// 名前(`w:tag`)の付いた記入欄に字を入れる。返りは書いた欄の数。
+    ///
+    /// 同じ名前の欄が何か所あっても全部に書きます(表紙と2枚目に同じ欄が
+    /// ある様式のため)。欄が複数の run に割れていれば、最初の run に
+    /// 入れて残りは空にします。段落の中も表の中も見ます。
+    pub fn set_sdt_text(&mut self, tag: &str, value: &str) -> usize {
+        fn put(p: &mut Paragraph, tag: &str, value: &str) -> usize {
+            let mut n = 0;
+            let mut first = true;
+            for r in &mut p.runs {
+                let hit = r.fmt.sdt.as_deref().is_some_and(|s| s.tag == tag);
+                if !hit {
+                    first = true;
+                    continue;
+                }
+                if first {
+                    r.text = value.to_string();
+                    n += 1;
+                    first = false;
+                } else {
+                    r.text.clear();
+                }
+            }
+            n
+        }
+        let mut n = 0;
+        for b in &mut self.blocks {
+            match b {
+                Block::Para(p) => n += put(p, tag, value),
+                Block::Table(t) => {
+                    for row in &mut t.rows {
+                        for c in row {
+                            for p in &mut c.paragraphs {
+                                n += put(p, tag, value);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        n
+    }
+
     pub fn set_body_text(&mut self, text: &str) {
         let old = self.body_text();
         if old == text {

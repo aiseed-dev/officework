@@ -17,6 +17,37 @@ pub(super) const ROOT_RELS: &str = r#"<?xml version="1.0" encoding="UTF-8" stand
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#;
 
 pub(super) const W_NS: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+/// Word 2010 の拡張(チェックの記入欄 w14:checkbox)
+pub(super) const W14_NS: &str = "http://schemas.microsoft.com/office/word/2010/wordml";
+
+/// いまの時刻を docx の `w:date` の形(`2026-09-02T12:34:56Z`)で返します。
+/// 外の暦のライブラリは使わず、UNIX 時刻から日付を組み立てます
+pub(super) fn iso_now() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    iso_from_unix(secs)
+}
+
+/// UNIX 時刻(秒)→ `YYYY-MM-DDThh:mm:ssZ`。閏年も含めた普通の暦の計算です
+pub(super) fn iso_from_unix(secs: u64) -> String {
+    let days = (secs / 86_400) as i64;
+    let rem = secs % 86_400;
+    let (h, m, s) = (rem / 3600, (rem % 3600) / 60, rem % 60);
+    // 1970-01-01 からの日数を年月日へ(400年の周期で割る方法)
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let mo = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if mo <= 2 { y + 1 } else { y };
+    format!("{y:04}-{mo:02}-{d:02}T{h:02}:{m:02}:{s:02}Z")
+}
 
 
 /// **新規の文書の用紙。** 既定は A4 と余白 20mm(1134 twip)です。
@@ -646,12 +677,14 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 ).as_bytes());
             }
             if chunk.is_empty() { continue }
-            // 変更履歴。挿入・削除は w:ins / w:del で包む(著者つき)
+            // 変更履歴。挿入・削除は w:ins / w:del で包む(著者と日時つき)。
+            // 日時は保存した時刻です。Word はこれを「いつ直したか」に出します
             if mode != 0 {
                 *trkn += 1;
                 let tag = if mode == 1 { "ins" } else { "del" };
                 let _ = w.get_mut().write_all(format!(
-                    r#"<w:{tag} w:id="{}" w:author="{}">"#, *trkn, esc(author)
+                    r#"<w:{tag} w:id="{}" w:author="{}" w:date="{}">"#,
+                    *trkn, esc(author), iso_now()
                 ).as_bytes());
             }
             let ttag = if mode == 2 { "w:delText" } else { "w:t" };
@@ -694,8 +727,22 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                     }
                     K::Picture => pr.push_str("<w:picture/>"),
                     K::Date => pr.push_str("<w:date/>"),
-                    // チェックは Word 2010 の拡張。素の w:text でも中身は残る
-                    K::Checkbox | K::Text | K::Email | K::Phone | K::Complex
+                    // チェックとラジオは Word 2010 の拡張(w14:checkbox)で書く。
+                    // 入っているかは欄の字(☑)で決める。ラジオは tag の
+                    // jo:radio で種類を残す(Word にラジオの部品は無い)
+                    K::Checkbox | K::Radio => {
+                        let on = run.text.contains('☑');
+                        pr.push_str(&format!(
+                            concat!(
+                                r#"<w14:checkbox><w14:checked w14:val="{}"/>"#,
+                                r#"<w14:checkedState w14:val="2611" w14:font="MS Gothic"/>"#,
+                                r#"<w14:uncheckedState w14:val="2610" w14:font="MS Gothic"/>"#,
+                                r#"</w14:checkbox>"#
+                            ),
+                            u8::from(on)
+                        ));
+                    }
+                    K::Text | K::Email | K::Phone | K::Complex
                     | K::Signature => pr.push_str("<w:text/>"),
                 }
                 let _ = w.get_mut().write_all(
@@ -1009,6 +1056,12 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
     root.push_attribute(("xmlns:a", "http://schemas.openxmlformats.org/drawingml/2006/main"));
     root.push_attribute(("xmlns:pic",
         "http://schemas.openxmlformats.org/drawingml/2006/picture"));
+    // チェックの記入欄(w14:checkbox)は Word 2010 の拡張です。宣言と
+    // mc:Ignorable が無いと、古い Word が文書を壊れた物として扱います
+    root.push_attribute(("xmlns:mc",
+        "http://schemas.openxmlformats.org/markup-compatibility/2006"));
+    root.push_attribute(("xmlns:w14", W14_NS));
+    root.push_attribute(("mc:Ignorable", "w14"));
     w.write_event(Event::Start(root)).unwrap();
     // ページの色。w:body の前に置く(スキーマの並び)。
     // 見せるには settings.xml の displayBackgroundShape も要る(write_with が足す)

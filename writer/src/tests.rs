@@ -104,7 +104,7 @@ mod menu_run_tests {
     /// (踏んで確かめた。実機での確認に回す)
     pub(super) const DIALOG: &[&str] = &[
         "open", "save", "pdf", "plug-macros", "insimage", "text-from-file",
-        "insshape", "inssmartart", "inschart", "instextart",
+        "insshape", "inssmartart", "inschart",
         "insequation",
     ];
 
@@ -179,7 +179,7 @@ mod menu_run_tests {
         for id in [
             "ruler", "darkmode", "hidenchars", "line-numbers", "nav",
             "show-statusbar", "show-right", "co-showcomment", "direction",
-            "multipage", "prot-doc",
+            "multipage",
         ] {
             w.update(cx, |this, cx| {
                 let before = this.toggled(id);
@@ -1300,9 +1300,10 @@ mod footnote_undo_tests {
         });
     }
 
-    /// 選択が無ければ何も起きない(履歴も消さない)
+    /// 選択が無ければ、カーソルの所に印を入れて注を打つ欄を開く。
+    /// それも1手で戻り、前の打鍵の履歴は残る
     #[gpui::test]
-    fn no_selection_leaves_the_history_intact(cx: &mut gpui::TestAppContext) {
+    fn no_selection_puts_a_mark_at_the_caret(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             this.doc = Document::plain("あいうえお");
@@ -1313,9 +1314,15 @@ mod footnote_undo_tests {
             this.on_edited();
             this.ed.move_to(3, false); // 選択なし
             this.run_cmd("footnote", cx);
-            assert!(this.doc.footnotes.is_empty(), "選択が無いのに注ができた");
+            assert_eq!(this.doc.footnotes.len(), 1, "カーソルの所に注ができない");
+            assert_eq!(this.doc.body_text(), "あいうえおか", "本文が変わった");
+            assert!(matches!(this.fl_job, Some(FlJob::Footnote(_))), "注を打つ欄が開かない");
+            this.fl_job = None; // Esc
             this.undo_step();
-            assert_eq!(this.doc.body_text(), "あいうえお", "何もしていないのに履歴が壊れた");
+            assert!(this.doc.footnotes.is_empty(), "注が戻らない");
+            assert_eq!(this.doc.body_text(), "あいうえおか");
+            this.undo_step();
+            assert_eq!(this.doc.body_text(), "あいうえお", "前の打鍵の履歴が壊れた");
         });
     }
 }
@@ -2161,9 +2168,11 @@ mod marker_tests {
     }
 
     /// **ネイティブでは見た目を直に変えさせない**(2026-08-16。C-2 の門番)。
-    /// 押すと名前を付ける道に入り、決めるとテンプレートへ入る
+    /// 押すと右のスタイルの面が開き、「新しく作る」で名前を決めると
+    /// **テンプレートに入ります**(2026-09-02 の決め「書く処理を実装する」で、
+    /// 2026-08-18 の「書き替えない」の試験を置き替えました)。
     #[gpui::test]
-    fn in_the_native_app_a_look_becomes_a_new_style(cx: &mut gpui::TestAppContext) {
+    fn in_the_native_app_a_look_becomes_a_style_in_the_template(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-c2-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("見本.adoc");
@@ -2179,33 +2188,48 @@ mod marker_tests {
             let ps: Vec<_> = this.doc.paragraphs().collect();
             assert_eq!(ps[0].runs[0].size_pt, None, "直接書式が本文に入った");
 
-            // そこから名前を付ける → **本文に名前が付くだけ**。
-            // テンプレートは書き替えない(2026-08-18 発注者の決め)
+            // 「新しく作る」→ 名前を決める → テンプレートに節ができる。
+            // 名指しの「見本の型」は隣に無いので、写しが隣にできる
+            this.style_new_start();
+            assert!(this.style_new.is_some(), "名前の欄が開かない");
             this.style_new = Some(kumihan::theme::StyleDef {
                 size_pt: Some(16.0),
-                ..Default::default()
+                ..this.style_new.take().unwrap()
             });
             this.style_ed = kumihan::Editor::new("大見出し");
             this.style_commit();
             assert!(this.style_new.is_none());
-            assert!(this.tmpl.style("大見出し").is_none(), "テンプレートを書き替えた");
-            assert!(this.status.to_string().contains("テンプレートにまだありません"),
-                    "見た目が付かないことを言っていない: {}", this.status);
+            let at = dir.join("見本の型.toml");
+            assert!(at.exists(), "テンプレートが隣に書かれていない: {}", this.status);
+            assert_eq!(
+                this.tmpl.style("大見出し").and_then(|d| d.size_pt),
+                Some(16.0),
+                "書いた定義が画面に効いていない: {}",
+                this.status
+            );
+            assert_eq!(this.tmpl_path.as_deref(), Some(at.as_path()), "書いた物を着ていない");
+            let s = this.status.to_string();
+            assert!(s.contains("書きました"), "書いたことを言っていない: {s}");
+            assert!(s.contains("写し"), "写しを作ったことを言っていない: {s}");
+            let file = std::fs::read_to_string(&at).unwrap();
+            assert!(file.contains("[スタイル.大見出し]"), "節が無い:\n{file}");
+            assert!(file.contains("大きさ = 16"), "大きさが無い:\n{file}");
             let ps: Vec<_> = this.doc.paragraphs().collect();
             assert_eq!(ps[0].style_id.as_deref(), Some("大見出し"));
             assert_eq!(ps[0].runs[0].size_pt, None, "決めた後も本文は意味だけ");
-
-            // **テンプレートのファイルは作られない。** 見た目を決めるのは
-            // テンプレートを書く人の仕事です
-            assert!(!dir.join("見本の型.toml").exists(), "テンプレートを書いた");
 
             // 保存しても本文は意味だけ(**スタイルの名前は載る**)
             this.save_to(path.clone());
             let back = std::fs::read_to_string(&path).unwrap();
             assert!(!back.contains("pt"), "見た目が本文に漏れた: {back}");
-            // 2026-08-16 に実機で見つけた穴 — 段落のスタイル名が黙って
-            // 消えていた(試験は合成しか見ていなかった)
             assert!(back.contains("[.大見出し]"), "段落のスタイル名が保存で消えた: {back}");
+
+            // **既にある名前なら、定義はそのままで着るだけ**
+            this.style_new_start();
+            this.style_ed = kumihan::Editor::new("大見出し");
+            this.style_commit();
+            assert_eq!(this.tmpl.style("大見出し").and_then(|d| d.size_pt), Some(16.0),
+                       "既にある定義を書き替えた");
         });
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -2258,35 +2282,49 @@ mod marker_tests {
         });
     }
 
-    /// **大きさはテンプレートで決める。** writer は本文を書く道具で、
-    /// 見た目はテンプレートを書く人の仕事です(発注者 2026-08-18
-    /// 「テンプレートの編集はできないと割り切ったほうがいいのでは」)。
-    /// 押しても黙って何も起きない、にはしません — どのファイルを直せばよいかを言います。
+    /// **字を大きくすると、隣のテンプレートに書かれる。** 直るのは
+    /// テンプレートなので、同じスタイルの所が一度に変わります
+    /// (2026-09-02 の決め「書く処理を実装する」で、2026-08-18 の
+    /// 「言うだけ」の試験を置き替えました)。
     #[gpui::test]
-    fn says_the_size_comes_from_the_template(cx: &mut gpui::TestAppContext) {
+    fn larger_text_writes_the_size_into_the_template(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-c3-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
-        std::fs::write(dir.join("テンプレート.toml"), "[スタイル.見出し1]\n大きさ = 16\n").unwrap();
+        let at = dir.join("テンプレート.toml");
+        std::fs::write(&at, "# 手で書いた注釈\n[スタイル.見出し1]\n大きさ = 16\n").unwrap();
         let path = dir.join("見本.adoc");
         std::fs::write(&path, "== ひとつめ\n\n本文。\n").unwrap();
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             this.open(path.clone());
-            let before = this.tmpl.style("見出し1").and_then(|d| d.size_pt);
+            assert_eq!(this.tmpl.style("見出し1").and_then(|d| d.size_pt), Some(16.0));
             this.ed.move_to(0, false);
             this.tweak_style(1);
-            assert_eq!(this.tmpl.style("見出し1").and_then(|d| d.size_pt), before,
-                       "テンプレートを書き替えた");
+            assert_eq!(this.tmpl.style("見出し1").and_then(|d| d.size_pt), Some(17.0),
+                       "画面のテンプレートが変わっていない: {}", this.status);
             let s = this.status.to_string();
-            assert!(s.contains("テンプレート"), "言い分がない: {s}");
-            assert!(s.contains("テンプレート.toml"), "直すファイルを言っていない: {s}");
+            assert!(s.contains("見出し1"), "どのスタイルかを言っていない: {s}");
+            assert!(s.contains("テンプレート.toml"), "書いたファイルを言っていない: {s}");
+            assert!(!s.contains("写し"), "隣の物をその場で直したのに写しと言った: {s}");
+            // 合成にも効く
+            let c = kumihan::theme::compose(&this.doc, &this.tmpl);
+            let cps: Vec<_> = c.paragraphs().collect();
+            assert_eq!(cps[0].runs[0].size_pt, Some(17.0), "合成に効いていない");
+            // 太字と揃えも同じ道
+            this.toggle_style_flag("bold");
+            this.set_style_align(kumihan::Align::Center);
+            let d = this.tmpl.style("見出し1").unwrap();
+            assert!(d.bold);
+            assert_eq!(d.align, Some(kumihan::Align::Center));
         });
-        // ファイルも変わっていない
-        assert_eq!(std::fs::read_to_string(dir.join("テンプレート.toml")).unwrap(),
-                   "[スタイル.見出し1]\n大きさ = 16\n", "テンプレートが書き替わった");
+        // **その行だけが変わり、注釈は残る**
+        let file = std::fs::read_to_string(&at).unwrap();
+        assert!(file.contains("# 手で書いた注釈"), "注釈が消えた:\n{file}");
+        assert!(file.contains("大きさ = 17"), "大きさが書かれていない:\n{file}");
+        assert!(file.contains("太字 = true"), "太字が書かれていない:\n{file}");
+        assert!(file.contains("揃え = \"中央\""), "揃えが書かれていない:\n{file}");
         let _ = std::fs::remove_dir_all(&dir);
     }
-
 
     /// 着替えは役割と名前を使い分ける — 役割で出る名前は二重に名乗らない
     #[gpui::test]
@@ -2668,33 +2706,209 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// **配られたテンプレートは書き替えない。**
-    ///
-    /// **配られたテンプレートは書き替えない。** そもそも writer は
-    /// テンプレートを書き替えません(2026-08-18)。押したときは、直すべき
-    /// ファイルの場所を言います。
+    /// **配られたテンプレートは書き替えない。** 直すと、配り元はそのままで
+    /// 文書の隣に写しができ、状態行が写しの文言を言います(2026-09-02 の
+    /// 決め「書く処理を実装する」で、2026-08-18 の「何も書かない」の試験を
+    /// 置き替えました)。
     #[gpui::test]
-    fn a_distributed_template_is_never_rewritten(cx: &mut gpui::TestAppContext) {
+    fn a_distributed_template_gets_a_copy_next_to_the_document(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-tmpl-{}", std::process::id()));
         let distributor = dir.join("配り元");
         let _ = std::fs::create_dir_all(&distributor);
-        std::fs::write(distributor.join("社内標準.toml"), "[スタイル.本文]\n大きさ = 11\n").unwrap();
+        let original = "# 配られた物\n[スタイル.本文]\n大きさ = 11\n";
+        let far = distributor.join("社内標準.toml");
+        std::fs::write(&far, original).unwrap();
         let doc = dir.join("報告.adoc");
-        std::fs::write(&doc, "= 報告\n:template: 社内標準\n\n本文です。\n").unwrap();
+        // 題は付けない(付けると 0 番の段落が「表題」になり、本文を直す試験にならない)
+        std::fs::write(&doc, ":template: 社内標準\n\n本文です。\n").unwrap();
 
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             this.open(doc.clone());
-            this.tmpl_path = Some(distributor.join("社内標準.toml"));
+            // 置き場(~/.config)を試験で触らないので、配り元の物を着た形にする
+            this.tmpl = kumihan::theme::read_theme(&far).unwrap();
+            this.tmpl_path = Some(far.clone());
             this.ed.move_to(0, false);
             this.tweak_style(1);
             let s = this.status.to_string();
-            assert!(s.contains("配り元"), "直す場所を言っていない: {s}");
+            assert!(s.contains("写し"), "写しを作ったことを言っていない: {s}");
+            assert!(s.contains("配り元"), "配り元を言っていない: {s}");
+            // 以後はこの文書だけ写しを見る
+            assert_eq!(this.tmpl_path.as_deref(), Some(dir.join("社内標準.toml").as_path()),
+                       "写しを着ていない");
+            assert_eq!(this.tmpl.style("本文").and_then(|d| d.size_pt), Some(12.0));
+            // 2回目は写しをその場で直す(写しの写しは作らない)
+            this.tweak_style(1);
+            let s = this.status.to_string();
+            assert!(!s.contains("写し"), "2回目も写しを作った: {s}");
+            assert_eq!(this.tmpl.style("本文").and_then(|d| d.size_pt), Some(13.0));
         });
-        // 配り元も、文書の隣も、何も書かれていない
-        assert_eq!(std::fs::read_to_string(distributor.join("社内標準.toml")).unwrap(),
-                   "[スタイル.本文]\n大きさ = 11\n", "配られた側が書き替わった");
-        assert!(!dir.join("社内標準.toml").exists(), "隣に写しを作った");
+        // 配り元はそのまま、隣に写し
+        assert_eq!(std::fs::read_to_string(&far).unwrap(), original, "配られた側が書き替わった");
+        let copy = std::fs::read_to_string(dir.join("社内標準.toml")).expect("隣に写しが無い");
+        assert!(copy.contains("# 配られた物"), "写しに元の注釈が無い:\n{copy}");
+        assert!(copy.contains("大きさ = 13"), "写しに書かれていない:\n{copy}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **名前の変更。** テンプレートの節と、本文の段落・字の名指しの両方が
+    /// 新しい名前になる。役割の名前と既にある名前は断る(2026-09-02)。
+    #[gpui::test]
+    fn renaming_a_style_changes_the_template_and_the_text(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-rename-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let at = dir.join("テンプレート.toml");
+        std::fs::write(&at, "[スタイル.見た目1]\n大きさ = 14\n\n[スタイル.註記]\n斜体 = true\n").unwrap();
+        let path = dir.join("見本.adoc");
+        std::fs::write(&path, "[.見た目1]\nひとつめの段落。\n\nふたつめは [.見た目1]#字# に付く。\n").unwrap();
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(path.clone());
+            let ps: Vec<_> = this.doc.paragraphs().collect();
+            assert_eq!(ps[0].style_id.as_deref(), Some("見た目1"), "見本の前提");
+            assert!(ps[1].runs.iter().any(|r| r.fmt.style_id.as_deref() == Some("見た目1")), "字の名指しの前提");
+            this.ed.move_to(0, false);
+
+            // 既にある名前は断る
+            this.style_rename_start();
+            assert_eq!(this.style_new.as_ref().map(|d| d.name.as_str()), Some("見た目1"));
+            this.style_ed = kumihan::Editor::new("註記");
+            this.style_commit();
+            assert!(this.status.to_string().contains("既にあります"), "{}", this.status);
+            assert!(this.tmpl.style("見た目1").is_some(), "断ったのに変えた");
+
+            // 変える
+            this.style_rename_start();
+            this.style_ed = kumihan::Editor::new("小見出し");
+            this.style_commit();
+            let s = this.status.to_string();
+            assert!(s.contains("「見た目1」を「小見出し」に"), "{s}");
+            assert_eq!(this.tmpl.style("小見出し").and_then(|d| d.size_pt), Some(14.0));
+            assert!(this.tmpl.style("見た目1").is_none());
+            let ps: Vec<_> = this.doc.paragraphs().collect();
+            assert_eq!(ps[0].style_id.as_deref(), Some("小見出し"), "段落の名指しが変わらない");
+            assert!(ps[1].runs.iter().any(|r| r.fmt.style_id.as_deref() == Some("小見出し")),
+                    "字の名指しが変わらない");
+            assert!(!ps[1].runs.iter().any(|r| r.fmt.style_id.as_deref() == Some("見た目1")));
+
+            // 役割の名前は変えられない
+            this.wear_style("本文");
+            this.style_rename_start();
+            assert!(this.style_new.is_none(), "役割の名前で欄が開いた");
+            assert!(this.status.to_string().contains("役割"), "{}", this.status);
+        });
+        let file = std::fs::read_to_string(&at).unwrap();
+        assert!(file.contains("[スタイル.小見出し]"), "節の名前が変わっていない:\n{file}");
+        assert!(!file.contains("[スタイル.見た目1]"), "古い節が残った:\n{file}");
+        assert!(file.contains("斜体 = true"), "別の節が消えた:\n{file}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **字を選んでいれば、右パネルのスタイルは字に掛かる**(2026-09-02)。
+    /// 役割の名前は選んでいても段落に掛かる。
+    #[gpui::test]
+    fn wearing_a_named_style_with_a_selection_applies_to_the_text(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-charstyle-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join("テンプレート.toml"), "[スタイル.強め]\n色 = \"C00000\"\n").unwrap();
+        let path = dir.join("見本.adoc");
+        std::fs::write(&path, "本文の字です。\n").unwrap();
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(path.clone());
+            this.ed.move_to(0, false);
+            this.ed.move_to("本文".len(), true);
+            assert_eq!(this.selected_char_style(), None);
+            this.wear_style("強め");
+            let ps: Vec<_> = this.doc.paragraphs().collect();
+            assert_eq!(ps[0].style_id, None, "段落に掛かった(字に掛かるはず)");
+            assert_eq!(ps[0].runs[0].fmt.style_id.as_deref(), Some("強め"), "字に掛かっていない");
+            assert!(ps[0].runs.len() >= 2, "選んだ字だけに掛かっていない");
+            assert!(this.status.to_string().contains("選んだ字"), "{}", this.status);
+            this.ed.move_to(0, false);
+            this.ed.move_to("本文".len(), true);
+            assert_eq!(this.selected_char_style().as_deref(), Some("強め"), "面に出す名前が取れない");
+            // 役割の名前は段落に
+            this.wear_style("見出し1");
+            let ps: Vec<_> = this.doc.paragraphs().collect();
+            assert_eq!(ps[0].style, kumihan::ParaStyle::Heading(1));
+            // 保存すると `[.強め]#字#` になる
+            this.save_to(path.clone());
+            let back = std::fs::read_to_string(&path).unwrap();
+            assert!(back.contains("[.強め]#本文#"), "字のスタイルが保存で消えた: {back}");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **adoc 形式にすると、隣に .adoc と .toml が書かれ、保存先が .adoc になる。**
+    /// 元の docx は変わらず、書いた .adoc は開き直せる(2026-09-02)。
+    #[gpui::test]
+    fn distilling_writes_adoc_and_toml_and_reopens(cx: &mut gpui::TestAppContext) {
+        let src = ["../sample/カタログ.docx", "../sample/議事録.docx", "../sample/送付状.docx"]
+            .iter()
+            .map(std::path::Path::new)
+            .find(|p| p.exists());
+        let Some(src) = src else {
+            eprintln!("見本の docx が無いので飛ばす");
+            return;
+        };
+        let dir = std::env::temp_dir().join(format!("writer-distill-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let docx = dir.join("報告書.docx");
+        std::fs::copy(src, &docx).unwrap();
+        let docx_bytes = std::fs::read(&docx).unwrap();
+        let adoc = dir.join("報告書.adoc");
+        let toml = dir.join("報告書.toml");
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(docx.clone());
+            this.distill_now();
+            assert!(this.native);
+            assert_eq!(this.path.as_deref(), Some(adoc.as_path()), "保存先が .adoc になっていない");
+            assert!(adoc.is_file(), "本文が書かれていない: {}", this.status);
+            assert!(toml.is_file(), "テンプレートが書かれていない: {}", this.status);
+            assert_eq!(this.tmpl_path.as_deref(), Some(toml.as_path()));
+            assert!(!this.dirty, "書いた直後なのに変更ありのまま");
+            let s = this.status.to_string();
+            assert!(s.contains("報告書.toml") && s.contains("報告書.adoc"), "書いた先を言っていない: {s}");
+            // Ctrl+S は .adoc を書き、docx は触らない
+            this.doc.push_para(kumihan::Paragraph::default());
+            this.save_to(adoc.clone());
+            assert_eq!(std::fs::read(&docx).unwrap(), docx_bytes, "元の docx が書き替わった");
+        });
+        // 開き直す — テンプレートが見つかる
+        let w2 = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w2.update(cx, |this, _cx| {
+            this.open(adoc.clone());
+            assert!(this.native);
+            assert_eq!(this.doc.template.as_deref(), Some("報告書"));
+            assert_eq!(this.tmpl_path.as_deref(), Some(toml.as_path()), "隣の toml を着ていない: {}", this.status);
+            let s = this.status.to_string();
+            assert!(!s.contains("見つからない"), "テンプレートが見つからないと言った: {s}");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// **壊れた `テンプレート-印刷.toml` は、開いたときに状態行で言う**(2026-09-02)。
+    /// 黙って `テンプレート.toml` に落ちると、置いた人には「効かない」としか分からない。
+    #[gpui::test]
+    fn a_broken_print_template_is_reported_when_opening(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("writer-brokenprint-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join("テンプレート-印刷.toml"), "[知らない節]\nx = 1\n").unwrap();
+        let path = dir.join("見本.adoc");
+        std::fs::write(&path, "本文。\n").unwrap();
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            this.open(path.clone());
+            let s = this.status.to_string();
+            assert!(s.contains("テンプレート-印刷.toml"), "壊れたファイルを言っていない: {s}");
+            assert!(s.contains("読めない"), "読めないことを言っていない: {s}");
+            assert!(this.notes.iter().any(|n| n.contains("テンプレート-印刷.toml")), "帳簿に無い");
+            // 紙面の組みは印刷用を使わず、画面の物に落ちる
+            assert!(this.print_layout().is_none(), "壊れた印刷用を使った");
+            assert_eq!(this.purpose_template_error("web"), None);
+        });
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -3513,11 +3727,27 @@ mod doc_shape_tests {
             this.run_cmd("img-group", cx);
             assert_eq!(this.doc.shapes[0].look.group, 0, "解けていない");
         });
-        // 左でそろえる
+        // 配置は一覧から揃え方を選ぶ(左・中央・右・上・中・下)
         w.update(cx, |this, cx| {
             this.shape_sel = Some(0);
             this.run_cmd("img-align", cx);
-            assert_eq!(this.doc.shapes[0].x_mm, this.doc.shapes[1].x_mm, "そろっていない");
+            assert_eq!(this.open_list, Some("img-align"), "揃え方の一覧が開かない");
+            assert_eq!(this.list_items("img-align").len(), 6, "揃え方は6つ");
+            this.choose_list("img-align", "left", cx);
+            assert_eq!(this.open_list, None, "選んだのに一覧が閉じない");
+            assert_eq!(this.doc.shapes[0].x_mm, this.doc.shapes[1].x_mm, "左でそろっていない");
+            this.doc.shapes[1].x_mm = 80.0;
+            this.run_cmd("img-align", cx);
+            this.choose_list("img-align", "right", cx);
+            let r0 = this.doc.shapes[0].x_mm + this.doc.shapes[0].w_mm;
+            let r1 = this.doc.shapes[1].x_mm + this.doc.shapes[1].w_mm;
+            assert!((r0 - r1).abs() < 0.01, "右でそろっていない: {r0} {r1}");
+            this.doc.shapes[1].y_mm = 100.0;
+            this.run_cmd("img-align", cx);
+            this.choose_list("img-align", "bottom", cx);
+            let b0 = this.doc.shapes[0].y_mm + this.doc.shapes[0].h_mm;
+            let b1 = this.doc.shapes[1].y_mm + this.doc.shapes[1].h_mm;
+            assert!((b0 - b1).abs() < 0.01, "下でそろっていない: {b0} {b1}");
         });
         // 図形を選んでいなければ、理由を言って断る
         w.update(cx, |this, cx| {
@@ -3540,6 +3770,510 @@ mod doc_shape_tests {
             assert!((this.doc.shapes[0].x_mm - 45.0).abs() < 0.01, "x: {}", this.doc.shapes[0].x_mm);
             assert!((this.doc.shapes[0].y_mm - 80.0).abs() < 0.01, "y: {}", this.doc.shapes[0].y_mm);
             assert!(this.dirty, "動かしたのに変更の印が立っていない");
+        });
+    }
+}
+
+/// 手引きに「できます」と書いてあった分の実装(2026-09-02)。
+/// Home/End・表の Tab・脚注・図表番号・コメント削除の取り消し・
+/// 記入欄の種類・保護の4択・拾って開く・日付の1手・筆の取り消し
+#[cfg(test)]
+mod tebiki_ni_awaseta_tests {
+    use crate::*;
+
+    fn open(cx: &mut gpui::TestAppContext, text: &str) -> gpui::Entity<Writer> {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.native = false;
+            this.set_doc(Document::plain(text));
+        });
+        w
+    }
+
+    /// 打鍵の道(before_edit → 入力 → on_edited)
+    fn type_in(this: &mut Writer, s: &str) {
+        this.before_edit(true);
+        this.ed.insert(s);
+        this.on_edited();
+    }
+
+    fn doc_with_table(cols: &[&str]) -> Document {
+        let cell = |s: &str| kumihan::Cellbox {
+            paragraphs: vec![kumihan::Paragraph {
+                runs: vec![kumihan::Run {
+                    text: s.into(), size_pt: None, font: None, fmt: Default::default() }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let mut d = Document::plain("本文");
+        d.blocks.push(kumihan::Block::Table(kumihan::Table {
+            col_mm: vec![],
+            rows: vec![cols.iter().map(|c| cell(c)).collect()],
+            ..Default::default()
+        }));
+        d
+    }
+
+    /// Home / End は見た目の行の頭・末尾へ。2度押しで段落の頭・末尾へ
+    #[gpui::test]
+    fn home_and_end_go_to_the_line_then_the_paragraph(cx: &mut gpui::TestAppContext) {
+        // 折り返す長い段落を2つ
+        let long: String = "あ".repeat(120);
+        let w = open(cx, &format!("{long}\n{long}"));
+        w.update(cx, |this, _| {
+            let second = long.len() + 1; // 2つ目の段落の頭
+            let mid = second + "あ".len() * 60; // 2つ目の段落の真ん中あたりの行
+            this.ed.move_to(mid, false);
+            this.line_home_end(false);
+            let ls = this.ed.cursor();
+            assert!(ls > second && ls < mid, "行頭へ動いていない: {ls}");
+            this.line_home_end(false);
+            assert_eq!(this.ed.cursor(), second, "2度目の Home で段落の頭へ行かない");
+            this.ed.move_to(mid, false);
+            this.line_home_end(true);
+            let le = this.ed.cursor();
+            assert!(le > mid && le < this.ed.text().len(), "行末へ動いていない: {le}");
+            this.line_home_end(true);
+            assert_eq!(this.ed.cursor(), this.ed.text().len(), "2度目の End で段落の末尾へ行かない");
+            // 1つ目の段落の末尾で止まる(文書の末尾ではない)
+            this.ed.move_to(3, false);
+            this.line_home_end(true);
+            this.line_home_end(true);
+            assert_eq!(this.ed.cursor(), long.len(), "段落をまたいで動いた");
+        });
+    }
+
+    /// 表の中の Tab は隣のセルへ。最後のセルでは行を足す。Shift+Tab は前へ
+    #[gpui::test]
+    fn tab_moves_between_cells_and_adds_a_row_at_the_end(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.native = false;
+            this.set_doc(doc_with_table(&["品名", "金額"]));
+            this.switch_target(Target::Cell { table: 0, row: 0, col: 0 });
+            assert!(this.cell_step(true), "表の中なのに Tab が効かない");
+            assert_eq!(this.target, Target::Cell { table: 0, row: 0, col: 1 });
+            assert_eq!(this.ed.selection(), 0.."金額".len(), "動いた先の字が選ばれていない");
+            // 最後のセルで Tab → 行が増えてそこへ
+            assert!(this.cell_step(true));
+            assert_eq!(this.doc.tables().next().unwrap().rows.len(), 2, "行が増えていない");
+            assert_eq!(this.target, Target::Cell { table: 0, row: 1, col: 0 });
+            // Shift+Tab で戻る
+            assert!(this.cell_step(false));
+            assert_eq!(this.target, Target::Cell { table: 0, row: 0, col: 1 });
+            assert!(this.cell_step(false));
+            assert_eq!(this.target, Target::Cell { table: 0, row: 0, col: 0 });
+            // 最初のセルでは動かない(表の中なので Tab の字下げにもならない)
+            assert!(this.cell_step(false));
+            assert_eq!(this.target, Target::Cell { table: 0, row: 0, col: 0 });
+            // 足した行は Ctrl+Z で戻る
+            this.undo_step();
+            assert_eq!(this.doc.tables().next().unwrap().rows.len(), 1, "足した行が戻らない");
+            // 本文では Tab は表の仕事をしない
+            this.switch_target(Target::Body);
+            assert!(!this.cell_step(true));
+        });
+    }
+
+    /// 脚注: 選んでいなければ印を入れて欄を開く。Enter で注の文が入る。Ctrl+Z で印ごと消える
+    #[gpui::test]
+    fn a_footnote_at_the_caret_opens_a_field_for_the_note(cx: &mut gpui::TestAppContext) {
+        let w = open(cx, "あいう");
+        w.update(cx, |this, cx| {
+            this.ed.move_to(3, false);
+            this.run_cmd("footnote", cx);
+            assert_eq!(this.doc.footnotes.len(), 1, "印が入っていない");
+            assert_eq!(this.doc.body_text(), "あいう", "本文が変わった");
+            assert!(matches!(this.fl_job, Some(FlJob::Footnote(_))), "注を打つ欄が開かない");
+            let mark_at = this.doc.paragraphs().next().unwrap().runs.iter()
+                .position(|r| r.fmt.footnote.is_some());
+            assert_eq!(mark_at, Some(1), "印の位置が違う: {mark_at:?}");
+            this.fl_ed.insert("出典は年報");
+            this.fl_commit(cx);
+            assert!(this.fl_job.is_none(), "Enter で欄が閉じない");
+            let note: String = this.doc.footnotes[0].paragraphs.iter()
+                .flat_map(|p| p.runs.iter().map(|r| r.text.clone())).collect();
+            assert_eq!(note, "出典は年報", "注の文が入らない");
+            this.undo_step();
+            assert!(this.doc.footnotes.is_empty(), "Ctrl+Z で印が消えない");
+            assert_eq!(this.doc.body_text(), "あいう");
+        });
+    }
+
+    /// 図表番号: 表の中では「表 n」。図とは別に数える
+    #[gpui::test]
+    fn a_caption_inside_a_table_says_table(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.native = false;
+            this.set_doc(doc_with_table(&["品名", "金額"]));
+            this.switch_target(Target::Cell { table: 0, row: 0, col: 1 });
+            this.run_cmd("caption", cx);
+            let body = this.doc.body_text();
+            assert!(body.contains(&ui::tf!("table_caption", 1)), "表 1 が入らない: {body}");
+            assert!(!body.contains(&ui::tf!("figure", 1)), "図の番号になった: {body}");
+            assert_eq!(this.target, Target::Body, "本文へ戻っていない");
+            // 段落は表の直後
+            let after_table = this.doc.blocks.iter()
+                .position(|b| matches!(b, kumihan::Block::Table(_))).unwrap() + 1;
+            assert!(matches!(&this.doc.blocks[after_table],
+                kumihan::Block::Para(p) if p.runs[0].text == ui::tf!("table_caption", 1)),
+                "表の直後に入っていない");
+            this.switch_target(Target::Cell { table: 0, row: 0, col: 0 });
+            this.run_cmd("caption", cx);
+            assert!(this.doc.body_text().contains(&ui::tf!("table_caption", 2)), "2つ目が 2 にならない");
+            // 本文の図は 1 から
+            this.ed.move_to(0, false);
+            this.run_cmd("caption", cx);
+            assert!(this.doc.body_text().contains(&ui::tf!("figure", 1)), "図は別に数える");
+            this.undo_step();
+            assert!(!this.doc.body_text().contains(&ui::tf!("figure", 1)), "Ctrl+Z で戻らない");
+        });
+    }
+
+    /// コメントを削除は Ctrl+Z で戻る
+    #[gpui::test]
+    fn deleting_comments_undoes_in_one_step(cx: &mut gpui::TestAppContext) {
+        let w = open(cx, "本文");
+        w.update(cx, |this, cx| {
+            if let Some(kumihan::Block::Para(p)) = this.doc.blocks.first_mut() {
+                p.comments.push(kumihan::Comment { author: "検査".into(), text: "直す".into() });
+            }
+            this.run_cmd("co-delcomment", cx);
+            assert!(this.doc.paragraphs().next().unwrap().comments.is_empty(), "消えていない");
+            this.undo_step();
+            assert_eq!(this.doc.paragraphs().next().unwrap().comments.len(), 1, "Ctrl+Z で戻らない");
+        });
+    }
+
+    /// 保護は一覧から4種+解除を選ぶ。種類ごとに通す物が違う
+    #[gpui::test]
+    fn protection_is_picked_from_a_list_and_each_kind_behaves(cx: &mut gpui::TestAppContext) {
+        let w = open(cx, "本文の字");
+        w.update(cx, |this, cx| {
+            this.run_cmd("prot-doc", cx);
+            assert_eq!(this.open_list, Some("prot-doc"), "一覧が開かない");
+            let keys: Vec<String> = this.list_items("prot-doc").into_iter().map(|(k, _)| k).collect();
+            assert_eq!(keys, ["off", "readOnly", "comments", "trackedChanges", "forms"]);
+            // 読み取り専用: 打鍵が戻る
+            this.choose_list("prot-doc", "readOnly", cx);
+            assert_eq!(this.doc.protection.as_deref(), Some("readOnly"));
+            assert!(this.toggled("prot-doc"));
+            this.ed.move_to(4, false);
+            type_in(this, "か");
+            assert_eq!(this.doc.body_text(), "本文の字", "読み取り専用なのに打てた");
+            // コメントだけ: 本文は打てず、コメントは付く
+            this.run_cmd("prot-doc", cx);
+            this.choose_list("prot-doc", "comments", cx);
+            type_in(this, "か");
+            assert_eq!(this.doc.body_text(), "本文の字", "コメントだけなのに打てた");
+            assert_eq!(this.status.to_string(), ui::t!("blocked_comments_mode"));
+            this.run_cmd("co-addcomment", cx);
+            assert!(this.cmt_edit, "コメントの欄が開かない");
+            this.cmt_ed.insert("ここを直す");
+            this.on_edited();
+            assert_eq!(this.doc.paragraphs().next().unwrap().comments.len(), 1, "コメントが付かない");
+            this.cmt_edit = false;
+            // 変更履歴つき: 打てて、記録が始まり、止められない
+            this.run_cmd("prot-doc", cx);
+            this.choose_list("prot-doc", "trackedChanges", cx);
+            assert!(this.track, "記録が始まらない");
+            this.ed.move_to(this.ed.text().len(), false);
+            type_in(this, "か");
+            assert_eq!(this.doc.body_text(), "本文の字か", "変更履歴つきなのに打てない");
+            this.run_cmd("track-changes", cx);
+            assert!(this.track, "保護中に記録を止められた");
+            // 解除
+            this.run_cmd("prot-doc", cx);
+            this.choose_list("prot-doc", "off", cx);
+            assert_eq!(this.doc.protection, None);
+            assert!(!this.toggled("prot-doc"));
+        });
+    }
+
+    /// 記入欄の記入だけ: 欄の中は打てて、外は打てない。チェックは切り替わる
+    #[gpui::test]
+    fn forms_protection_allows_typing_only_inside_fields(cx: &mut gpui::TestAppContext) {
+        let w = open(cx, "氏名: 山田 / 同意: ");
+        w.update(cx, |this, cx| {
+            // 「山田」を欄にする
+            let at = "氏名: ".len();
+            this.ed.move_to(at, false);
+            this.ed.move_to(at + "山田".len(), true);
+            this.run_cmd("form-text", cx);
+            // 末尾にチェックの欄
+            this.ed.move_to(this.ed.text().len(), false);
+            this.run_cmd("form-checkbox", cx);
+            assert!(this.ed.text().ends_with("☐"), "チェックの欄が入らない: {}", this.ed.text());
+            this.run_cmd("prot-doc", cx);
+            this.choose_list("prot-doc", "forms", cx);
+            // 欄の外
+            this.ed.move_to(0, false);
+            type_in(this, "×");
+            assert!(!this.doc.body_text().contains('×'), "欄の外で打てた");
+            assert_eq!(this.status.to_string(), ui::t!("blocked_forms_mode"));
+            // 欄の中
+            this.ed.move_to(at + "山田".len(), false);
+            type_in(this, "花子");
+            assert!(this.doc.body_text().contains("山田花子"), "欄の中で打てない: {}", this.doc.body_text());
+            // チェックはボタンでも空白キーでも切り替わる
+            this.ed.move_to(this.ed.text().len(), false);
+            this.run_cmd("form-checkbox", cx);
+            assert!(this.ed.text().ends_with("☑"), "ボタンで切り替わらない");
+            type_in(this, " ");
+            assert!(this.ed.text().ends_with("☐"), "空白キーで切り替わらない: {}", this.ed.text());
+            // 元の字にある空白は4つ。増えていない
+            assert_eq!(this.ed.text().matches(' ').count(), 4, "空白の字が入った: {}", this.ed.text());
+            // 新しい欄は置けない
+            let before = this.doc.body_text();
+            this.ed.move_to(0, false);
+            this.run_cmd("form-text", cx);
+            assert_eq!(this.doc.body_text(), before, "保護中に欄が増えた");
+        });
+    }
+
+    /// ラジオボタンはラジオの種類で入り、空白キーで切り替わる
+    #[gpui::test]
+    fn a_radio_button_keeps_its_kind_and_toggles(cx: &mut gpui::TestAppContext) {
+        let w = open(cx, "選ぶ: ");
+        w.update(cx, |this, cx| {
+            this.ed.move_to(this.ed.text().len(), false);
+            this.run_cmd("form-radio", cx);
+            let kinds: Vec<_> = this.doc.paragraphs().flat_map(|p| &p.runs)
+                .filter_map(|r| r.fmt.sdt.as_ref().map(|s| s.kind)).collect();
+            assert!(kinds.contains(&kumihan::SdtKind::Radio), "ラジオで入らない: {kinds:?}");
+            assert!(this.ed.text().ends_with("☐"));
+            type_in(this, " ");
+            assert!(this.ed.text().ends_with("☑"), "空白で切り替わらない: {}", this.ed.text());
+            this.run_cmd("form-radio", cx);
+            assert!(this.ed.text().ends_with("☐"), "ボタンで切り替わらない");
+        });
+    }
+
+    /// ドロップダウンは打てない。ボタンで次の選択肢へ回る
+    #[gpui::test]
+    fn a_dropdown_cannot_be_typed_into(cx: &mut gpui::TestAppContext) {
+        let w = open(cx, "色: ");
+        w.update(cx, |this, cx| {
+            this.ed.move_to(this.ed.text().len(), false);
+            this.insert_sdt(kumihan::SdtKind::Dropdown, vec!["赤".into(), "青".into()]);
+            assert_eq!(this.doc.body_text(), "色: 赤");
+            type_in(this, "x");
+            assert_eq!(this.doc.body_text(), "色: 赤", "ドロップダウンに打てた");
+            assert_eq!(this.status.to_string(), ui::t!("dropdown_pick_only"));
+            this.run_cmd("form-dropdown", cx);
+            assert_eq!(this.doc.body_text(), "色: 青", "ボタンで回らない");
+        });
+    }
+
+    /// Ctrl+; の日付は打鍵とは別の1手
+    #[gpui::test]
+    fn the_date_stamp_is_its_own_undo_step(cx: &mut gpui::TestAppContext) {
+        let w = open(cx, "あいう");
+        w.update(cx, |this, cx| {
+            this.ed.move_to(3, false);
+            type_in(this, "か");
+            this.insert_stamp(false, cx);
+            assert!(this.doc.body_text().len() > "あかいう".len(), "日付が入らない");
+            this.undo_step();
+            assert_eq!(this.doc.body_text(), "あかいう", "日付だけが戻らない");
+        });
+    }
+
+    /// 筆は道具を戻した後でも Ctrl+Z で戻る
+    #[gpui::test]
+    fn ink_undoes_after_the_tool_is_put_away(cx: &mut gpui::TestAppContext) {
+        let w = open(cx, "本文");
+        w.update(cx, |this, _| {
+            this.tool = Some(0);
+            this.ink_cur = Some(kumihan::Stroke { page: 0, highlighter: false, points: vec![(10.0, 10.0), (20.0, 20.0)] });
+            this.ink_end();
+            assert_eq!(this.doc.ink.len(), 1, "筆が入らない");
+            this.ink_cur = Some(kumihan::Stroke { page: 0, highlighter: false, points: vec![(30.0, 10.0), (40.0, 20.0)] });
+            this.ink_end();
+            assert_eq!(this.doc.ink.len(), 2);
+            this.tool = None; // Esc で道具を戻した
+            this.undo_step();
+            assert_eq!(this.doc.ink.len(), 1, "道具を戻した後に筆が戻らない");
+            this.undo_step();
+            assert!(this.doc.ink.is_empty(), "2筆目が戻らない");
+            this.redo_step();
+            assert_eq!(this.doc.ink.len(), 1, "やり直しが効かない");
+        });
+    }
+
+    /// Ctrl+= / Ctrl+- は画面の文字の大きさ(紙は変わらない)
+    #[gpui::test]
+    fn ui_text_size_changes_from_the_command(cx: &mut gpui::TestAppContext) {
+        let w = open(cx, "本文");
+        w.update(cx, |this, cx| {
+            let keep = this.ui_scale;
+            this.ui_scale = 1.0;
+            let zoom = this.zoom;
+            this.run_cmd("ui-bigger", cx);
+            assert!(this.ui_scale > 1.0, "大きくならない");
+            assert_eq!(this.zoom, zoom, "紙の倍率が変わった");
+            this.run_cmd("ui-smaller", cx);
+            assert_eq!(this.ui_scale, 1.0, "元に戻らない");
+            this.ui_scale = keep;
+        });
+    }
+
+    /// 結合の状態行は掛けた種類を言う
+    #[gpui::test]
+    fn merging_shapes_names_the_operation(cx: &mut gpui::TestAppContext) {
+        let w = open(cx, "本文");
+        let hako = |x: f32| kumihan::DocShape {
+            page: 0, x_mm: x, y_mm: 60.0, w_mm: 40.0, h_mm: 25.0,
+            look: book::SheetShape { kind: "rect".into(), ..Default::default() },
+        };
+        w.update(cx, |this, cx| {
+            this.doc.shapes = vec![hako(25.0), hako(45.0)];
+            this.shape_sel = Some(0);
+            // 押すたびに 結合 → 交差 → 減算 と回る。状態行はその名前を言う
+            this.run_cmd("shapes-merge", cx);
+            assert_eq!(this.status.to_string(), ui::tf!("done_turned_into_outline", ui::t!("union")));
+            this.doc.shapes = vec![hako(25.0), hako(45.0)];
+            this.shape_sel = Some(0);
+            this.run_cmd("shapes-merge", cx);
+            assert_eq!(this.status.to_string(), ui::tf!("done_turned_into_outline", ui::t!("intersect")));
+        });
+    }
+
+    /// 壊れたまま拾って開く: docx から段落の字を拾い、読み取り専用で道を持たない
+    #[test]
+    fn salvage_picks_paragraph_text_out_of_a_docx() {
+        let d = Document::plain("甲\n乙 & 丙");
+        let mut buf = Vec::new();
+        ooxml::write(&d, std::io::Cursor::new(&mut buf)).unwrap();
+        assert_eq!(crate::filepage::salvage_text(&buf), ["甲", "乙 & 丙"]);
+        // 途中で切れた zip でも、document.xml が読めなければ空(黙って嘘を作らない)
+        assert!(crate::filepage::salvage_text(&buf[..buf.len() / 2]).is_empty());
+        // 文字のファイルは行を拾う
+        assert_eq!(crate::filepage::salvage_text("一\n\n二\n".as_bytes()), ["一", "二"]);
+    }
+
+    #[gpui::test]
+    fn salvage_open_is_read_only_and_has_no_path(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("jo-salvage-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("壊れた.docx");
+        let d = Document::plain("拾う字");
+        let mut buf = Vec::new();
+        ooxml::write(&d, std::io::Cursor::new(&mut buf)).unwrap();
+        // 後ろを欠いて壊す
+        std::fs::write(&p, &buf[..buf.len() - 40]).unwrap();
+        let w = open(cx, "");
+        w.update(cx, |this, _| {
+            this.salvage_open(&p);
+            assert_eq!(this.doc.body_text(), "拾う字", "字を拾えない: {}", this.status);
+            assert_eq!(this.doc.protection.as_deref(), Some("readOnly"), "読み取り専用でない");
+            assert!(this.path.is_none(), "元のファイルの道を持っている");
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+/// 挿入タブの Python の絵(グラフ・テキストアート)。描く所は Python なので、
+/// ここでは指図の組み立てと欄の開き方だけを見る
+#[cfg(test)]
+mod python_picture_tests {
+    use crate::*;
+
+    fn table(rows: &[&[&str]]) -> kumihan::Table {
+        let cell = |s: &str| kumihan::Cellbox {
+            paragraphs: vec![kumihan::Paragraph {
+                runs: vec![kumihan::Run {
+                    text: s.into(), size_pt: None, font: None, fmt: Default::default() }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        kumihan::Table {
+            col_mm: vec![],
+            rows: rows.iter().map(|r| r.iter().map(|c| cell(c)).collect()).collect(),
+            ..Default::default()
+        }
+    }
+
+    /// 1列目が項目名、2列目からが系列。先頭行が字なら系列名。数の無い表は断る
+    #[test]
+    fn a_table_becomes_a_chart_spec() {
+        let t = table(&[&["月", "売上", "経費"], &["4月", "1,200", "800"], &["5月", "1500", ""]]);
+        let spec = crate::cmds::chart_spec(&t, "", "/tmp/out.png").expect("指図ができない");
+        assert!(spec.contains(r#""labels":["4月","5月"]"#), "{spec}");
+        assert!(spec.contains(r#"{"name":"売上","values":[1200,1500]}"#), "{spec}");
+        assert!(spec.contains(r#"{"name":"経費","values":[800,null]}"#), "{spec}");
+        assert!(spec.contains(r#""kind":"bar""#));
+        // 見出し行が無ければ、1行目から値
+        let t2 = table(&[&["甲", "1"], &["乙", "2"]]);
+        let spec2 = crate::cmds::chart_spec(&t2, "", "o.png").unwrap();
+        assert!(spec2.contains(r#""labels":["甲","乙"]"#), "{spec2}");
+        assert!(spec2.contains(r#"{"name":"","values":[1,2]}"#), "{spec2}");
+        // 数が無い・1列しか無い表は None
+        assert!(crate::cmds::chart_spec(&table(&[&["a", "b"], &["c", "d"]]), "", "o").is_none());
+        assert!(crate::cmds::chart_spec(&table(&[&["a"], &["1"]]), "", "o").is_none());
+    }
+
+    /// 表の外でグラフを押しても Python は走らない。数の無い表ではそう言う
+    #[gpui::test]
+    fn a_chart_needs_numbers_in_the_table(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.native = false;
+            let mut d = Document::plain("本文");
+            d.blocks.push(kumihan::Block::Table(table(&[&["a", "b"], &["c", "d"]])));
+            this.set_doc(d);
+            this.switch_target(Target::Cell { table: 0, row: 0, col: 0 });
+            this.run_cmd("inschart", cx);
+            assert_eq!(this.status.to_string(), ui::t!("table_has_no_numbers"));
+        });
+    }
+
+    /// テキストアートは字を打つ欄を開く。空のまま Enter は断る
+    #[gpui::test]
+    fn text_art_opens_a_field_for_the_text(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.native = false;
+            this.set_doc(Document::plain("本文"));
+            this.run_cmd("instextart", cx);
+            assert_eq!(this.fl_job, Some(FlJob::TextArt), "字を打つ欄が開かない");
+            this.fl_commit(cx);
+            assert_eq!(this.fl_job, Some(FlJob::TextArt), "空のまま閉じた");
+        });
+    }
+}
+
+mod fill_field_tests {
+    use crate::*;
+
+    /// **名前の付いた記入欄に、受け口(rpc)から入れる**(2026-09-02)。
+    /// `fill_one` は本文の `{{名前}}` の穴で、記入欄には効かなかった。
+    /// MCP の `doc_fill` はこれで記入欄も埋める
+    #[gpui::test]
+    fn the_rpc_fills_a_named_field(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.native = false;
+            this.set_doc(Document::plain("氏名: "));
+            this.ed.move_to(this.ed.text().len(), false);
+            this.insert_sdt(kumihan::SdtKind::Text, vec![]);
+            for p in this.doc.paragraphs_mut() {
+                for r in &mut p.runs {
+                    if let Some(s) = r.fmt.sdt.as_deref_mut() {
+                        s.tag = "name".into();
+                    }
+                }
+            }
+            let r = crate::rpc::handle(this, r#"{"cmd":"fill_field","name":"name","value":"山田"}"#);
+            assert!(r.contains("\"filled\":1"), "入らない: {r}");
+            assert!(this.doc.body_text().contains("山田"), "本文に無い: {}", this.doc.body_text());
+            assert!(this.ed.text().contains("山田"), "画面の字に無い");
+            assert!(this.dirty);
+            let r = crate::rpc::handle(this, r#"{"cmd":"fill_field","name":"nai","value":"x"}"#);
+            assert!(r.contains("見つかりません"), "無い名前を断らない: {r}");
         });
     }
 }

@@ -1335,7 +1335,13 @@ pub(super) fn sdt_pr_elem(
                 sd.get_or_insert_with(Default::default).items.push(v);
             }
         }
-        b"checkbox" => sd.get_or_insert_with(Default::default).kind = K::Checkbox,
+        // w14:checkbox。tag の jo:radio が先に読めていればラジオのまま残す
+        b"checkbox" => {
+            let s = sd.get_or_insert_with(Default::default);
+            if s.kind != K::Radio {
+                s.kind = K::Checkbox;
+            }
+        }
         b"picture" => sd.get_or_insert_with(Default::default).kind = K::Picture,
         b"date" => sd.get_or_insert_with(Default::default).kind = K::Date,
         // 素の記入欄。種類が決まっていなければ Text

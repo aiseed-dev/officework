@@ -116,19 +116,11 @@
   "kind": "msg"
  },
  {
-  "key": "name_not_template_yet",
-  "kind": "msg"
- },
- {
   "key": "format_template",
   "kind": "msg"
  },
  {
   "key": "asciidoc_block_not_handle",
-  "kind": "msg"
- },
- {
-  "key": "sizes_decided_template_change",
   "kind": "msg"
  },
  {
@@ -636,10 +628,6 @@
   "kind": "msg"
  },
  {
-  "key": "select_text_turn_into",
-  "kind": "msg"
- },
- {
   "key": "moved_selected_text_into",
   "kind": "msg"
  },
@@ -777,10 +765,6 @@
  },
  {
   "key": "protection_removed_editing_allowed",
-  "kind": "msg"
- },
- {
-  "key": "protected_read_only_same",
   "kind": "msg"
  },
  {
@@ -9153,6 +9137,278 @@
  },
  {
   "key": "function_name",
+  "kind": "msg"
+ },
+ {
+  "key": "new_style",
+  "kind": "msg"
+ },
+ {
+  "key": "rename_style_give_new_name",
+  "kind": "msg"
+ },
+ {
+  "key": "style_written_to",
+  "kind": "msg"
+ },
+ {
+  "key": "made_copy_for_document",
+  "kind": "msg"
+ },
+ {
+  "key": "role_style_cannot_rename",
+  "kind": "msg"
+ },
+ {
+  "key": "style_name_exists",
+  "kind": "msg"
+ },
+ {
+  "key": "cant_write_template",
+  "kind": "msg"
+ },
+ {
+  "key": "line_spacing_wider",
+  "kind": "msg"
+ },
+ {
+  "key": "line_spacing_narrower",
+  "kind": "msg"
+ },
+ {
+  "key": "space_after_more",
+  "kind": "msg"
+ },
+ {
+  "key": "space_after_less",
+  "kind": "msg"
+ },
+ {
+  "key": "space_after",
+  "kind": "msg"
+ },
+ {
+  "key": "wrote_template_and_body",
+  "kind": "msg"
+ },
+ {
+  "key": "template_written_adoc_exists",
+  "kind": "msg"
+ },
+ {
+  "key": "selected_text_style",
+  "kind": "msg"
+ },
+ {
+  "key": "centered",
+  "kind": "msg"
+ },
+ {
+  "key": "book_structure_locked_refused",
+  "kind": "msg"
+ },
+ {
+  "key": "shift_cells_right",
+  "kind": "msg"
+ },
+ {
+  "key": "shift_cells_down",
+  "kind": "msg"
+ },
+ {
+  "key": "shift_cells_left",
+  "kind": "msg"
+ },
+ {
+  "key": "shift_cells_up",
+  "kind": "msg"
+ },
+ {
+  "key": "entire_row",
+  "kind": "msg"
+ },
+ {
+  "key": "entire_column",
+  "kind": "msg"
+ },
+ {
+  "key": "formats",
+  "kind": "msg"
+ },
+ {
+  "key": "formulas_and_values",
+  "kind": "msg"
+ },
+ {
+  "key": "formatting_cleared_values_kept",
+  "kind": "msg"
+ },
+ {
+  "key": "filled_series",
+  "kind": "msg"
+ },
+ {
+  "key": "formula_placed",
+  "kind": "msg"
+ },
+ {
+  "key": "rows_inserted",
+  "kind": "msg"
+ },
+ {
+  "key": "rows_deleted",
+  "kind": "msg"
+ },
+ {
+  "key": "columns_inserted",
+  "kind": "msg"
+ },
+ {
+  "key": "columns_deleted",
+  "kind": "msg"
+ },
+ {
+  "key": "subtotal_function",
+  "kind": "msg"
+ },
+ {
+  "key": "chart_types_fit_selection",
+  "kind": "msg"
+ },
+ {
+  "key": "chart_column",
+  "kind": "msg"
+ },
+ {
+  "key": "chart_bar",
+  "kind": "msg"
+ },
+ {
+  "key": "chart_line",
+  "kind": "msg"
+ },
+ {
+  "key": "chart_area",
+  "kind": "msg"
+ },
+ {
+  "key": "chart_pie",
+  "kind": "msg"
+ },
+ {
+  "key": "chart_scatter",
+  "kind": "msg"
+ },
+ {
+  "key": "table_filter_buttons_shown",
+  "kind": "msg"
+ },
+ {
+  "key": "table_filter_buttons_hidden",
+  "kind": "msg"
+ },
+ {
+  "key": "opened_csv_rows_save_as",
+  "kind": "msg"
+ },
+ {
+  "key": "csv_cannot_read_as",
+  "kind": "msg"
+ },
+ {
+  "key": "table_caption",
+  "kind": "msg"
+ },
+ {
+  "key": "footnote_type_note_press_enter",
+  "kind": "msg"
+ },
+ {
+  "key": "footnote_written",
+  "kind": "msg"
+ },
+ {
+  "key": "footnote_mark_placed_empty",
+  "kind": "msg"
+ },
+ {
+  "key": "no_footnote_found",
+  "kind": "msg"
+ },
+ {
+  "key": "first_cell_of_table",
+  "kind": "msg"
+ },
+ {
+  "key": "dropdown_pick_only",
+  "kind": "msg"
+ },
+ {
+  "key": "protection_off",
+  "kind": "msg"
+ },
+ {
+  "key": "prot_read_only",
+  "kind": "msg"
+ },
+ {
+  "key": "prot_comments",
+  "kind": "msg"
+ },
+ {
+  "key": "prot_tracked",
+  "kind": "msg"
+ },
+ {
+  "key": "prot_forms",
+  "kind": "msg"
+ },
+ {
+  "key": "protected_as",
+  "kind": "msg"
+ },
+ {
+  "key": "blocked_comments_mode",
+  "kind": "msg"
+ },
+ {
+  "key": "blocked_forms_mode",
+  "kind": "msg"
+ },
+ {
+  "key": "tracked_cannot_stop_protected",
+  "kind": "msg"
+ },
+ {
+  "key": "salvage_open_read_only",
+  "kind": "msg"
+ },
+ {
+  "key": "salvaged_opened",
+  "kind": "msg"
+ },
+ {
+  "key": "salvage_nothing",
+  "kind": "msg"
+ },
+ {
+  "key": "table_has_no_numbers",
+  "kind": "msg"
+ },
+ {
+  "key": "drawing_chart_from_table",
+  "kind": "msg"
+ },
+ {
+  "key": "matplotlib_missing_install",
+  "kind": "msg"
+ },
+ {
+  "key": "python_could_not_draw",
+  "kind": "msg"
+ },
+ {
+  "key": "python_left_no_picture",
   "kind": "msg"
  }
 ]

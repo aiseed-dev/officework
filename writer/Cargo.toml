@@ -36,9 +36,9 @@ paper = { path = "../paper" }
 gpui = { git = "https://github.com/zed-industries/zed", rev = "5e1fd392f67e27fa1da91bad43eef7db1a5dec23" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "5e1fd392f67e27fa1da91bad43eef7db1a5dec23", features = ["wayland", "x11"] }
 rfd = "0.14"
+# 壊れた docx から字を拾う(復旧)。試験でも書き出した部品を直に見る
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
-# 書き出した docx の中の部品を、試験で直に見るため
-zip = { version = "2", default-features = false, features = ["deflate"] }
 # ボタンを全部おす試験のため(GUI は起こさない)
 gpui = { git = "https://github.com/zed-industries/zed", rev = "5e1fd392f67e27fa1da91bad43eef7db1a5dec23", features = ["test-support"] }

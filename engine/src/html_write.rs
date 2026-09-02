@@ -226,6 +226,9 @@ fn field_html(s: &Sdt) -> String {
         SdtKind::Checkbox => {
             format!("<input id=\"{id}\" name=\"{name}\" type=\"checkbox\">")
         }
+        SdtKind::Radio => {
+            format!("<input id=\"{id}\" name=\"{name}\" type=\"radio\">")
+        }
         SdtKind::Date => format!("<input id=\"{id}\" name=\"{name}\" type=\"date\">"),
         SdtKind::Email => format!("<input id=\"{id}\" name=\"{name}\" type=\"email\">"),
         SdtKind::Phone => format!("<input id=\"{id}\" name=\"{name}\" type=\"tel\">"),

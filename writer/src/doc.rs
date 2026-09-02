@@ -730,6 +730,7 @@ impl Writer {
     pub(crate) fn ink_end(&mut self) {
         if let Some(st) = self.ink_cur.take() {
             if st.points.len() >= 2 {
+                self.key_checkpoint(false); // 1筆 = Ctrl+Z の1手
                 self.ink_undo.push(self.doc.ink.clone());
                 self.doc.ink.push(st);
                 self.dirty = true;
@@ -745,6 +746,7 @@ impl Writer {
                 && st.points.iter().any(|(sx, sy)| (sx - x).abs() < 3.0 && (sy - y).abs() < 3.0)
         };
         if self.doc.ink.iter().any(near) {
+            self.key_checkpoint(false); // 消しゴムの1回 = Ctrl+Z の1手
             self.ink_undo.push(self.doc.ink.clone());
             self.doc.ink.retain(|st| !near(st));
             self.dirty = true;
@@ -2350,6 +2352,15 @@ impl Writer {
         if let Some(says) = self.form_status() {
             self.status = ui::tf!("form", self.status.clone(), says).into();
         }
+        // **書き出し先ごとのテンプレートが壊れていれば、開いたときに言います**
+        // (2026-09-02)。前は黙って `テンプレート.toml` に落ちていたので、
+        // 置いた人には「効かない」としか分かりませんでした
+        for purpose_of in ["印刷", "web"] {
+            if let Some(e) = self.purpose_template_error(purpose_of) {
+                self.notes.push(SharedString::from(e.clone()));
+                self.status = format!("{}。{e}", self.status).into();
+            }
+        }
     }
 
     /// 本文の中の数式(LaTeX の原文だけを持つ画像)を組みます。返りは組めなかった数。
@@ -3095,13 +3106,13 @@ impl Writer {
             .map(|s| s.to_string_lossy().to_string())
             .unwrap_or_else(|| ui::t!("documents_template").to_string());
         let mut doc = doc;
-        doc.template = Some(name);
+        doc.template = Some(name.clone());
         self.pg = self.tmpl.page.unwrap_or_default();
         self.set_doc(doc);
         self.adopt_font();
         self.dirty = true;
         // **落ちた物を数えて言う。** 「何も失っていない」と嘘をつかない
-        self.status = if rep.dropped == 0 {
+        let mut says = if rep.dropped == 0 {
             ui::tf!(
                 "converted_adoc_formats_moved",
                 rep.styles.to_string(),
@@ -3115,7 +3126,50 @@ impl Writer {
                 rep.dropped.to_string()
             )
         }
-        .into();
+        .to_string();
+        // **書式と本文を2つのファイルに書き、保存先を .adoc に移します**
+        // (2026-09-02)。前はどちらも書かず、保存先も docx のままだったので、
+        // Ctrl+S が元の docx を上書きし、.adoc を開き直すと「テンプレートが
+        // 見つからない」になっていました
+        if let Some(docx_at) = self.path.clone() {
+            let toml_at = docx_at.with_file_name(format!("{name}.toml"));
+            let adoc_at = docx_at.with_extension("adoc");
+            match std::fs::write(&toml_at, kumihan::theme::write(&self.tmpl)) {
+                Ok(()) => {
+                    self.tmpl_path = Some(toml_at.clone());
+                    // 元の docx の側のロックを外し、.adoc の側を取ります
+                    self.release_lock();
+                    self.acquire_lock(&adoc_at);
+                    self.path = Some(adoc_at.clone());
+                    let toml_name = toml_at.file_name().unwrap_or_default().to_string_lossy().to_string();
+                    let adoc_name = adoc_at.file_name().unwrap_or_default().to_string_lossy().to_string();
+                    if adoc_at.exists() {
+                        // 既にある .adoc を黙って潰しません。保存で上書きになることを言います
+                        says = format!(
+                            "{says}。{}",
+                            ui::tf!("template_written_adoc_exists", toml_name, adoc_name)
+                        );
+                    } else {
+                        match self.save_adoc_to(&adoc_at) {
+                            Ok(()) => {
+                                self.dirty = false;
+                                Self::note_recent(&adoc_at);
+                                says = format!(
+                                    "{says}。{}",
+                                    ui::tf!("wrote_template_and_body", toml_name, adoc_name)
+                                );
+                            }
+                            Err(e) => says = format!("{says}。{}", ui::tf!("cant_save", e)),
+                        }
+                    }
+                }
+                Err(e) => says = format!("{says}。{}", ui::tf!("cant_write_template", e)),
+            }
+        } else {
+            says = format!("{says}。{}", ui::t!("not_file_yet_save_first"));
+        }
+        self.relayout();
+        self.status = says.into();
     }
 
     /// **見た目を直に変える操作**(ネイティブでは封じる)。
@@ -3166,29 +3220,248 @@ impl Writer {
         true
     }
 
-
-
-
-
-    /// スタイルの名前を決める(名前の欄で Enter)。選んでいる所に名前を付けます。
+    /// テンプレートを書く先のフォルダ。開いている文書の隣です。
     ///
-    /// **テンプレートは書き替えません**(発注者 2026-08-18「テンプレートの編集は
-    /// できないと割り切ったほうがいいのでは」)。writer は本文を書く道具で、
-    /// 見た目を決めるのはテンプレートを書く人の仕事です。名前だけが本文に付き、
-    /// その名前の見た目がテンプレートに無ければ、見た目は変わりません
-    /// (**そう言います** — 黙って何も起きないのがいちばん困ります)。
+    /// まだ保存していない文書には隣が無いので、開いている綴りを使います。
+    fn template_dir(&self) -> Option<PathBuf> {
+        self.path
+            .as_ref()
+            .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+            .or_else(|| self.folder())
+    }
+
+    /// いま着ているテンプレートを、ファイルから読み直して着ます。
+    ///
+    /// テンプレートを書いた後に呼びます。書いた字がそのまま画面に効く
+    /// ことを、読み直しで確かめる形です。
+    fn reload_template(&mut self) {
+        let path = self
+            .path
+            .clone()
+            .or_else(|| self.template_dir().map(|d| d.join("まだ保存していない.adoc")));
+        let Some(path) = path else { return };
+        let (th, tp, _) = self.load_template(self.doc.template.as_deref(), &path);
+        self.tmpl = th;
+        self.tmpl_path = tp;
+        self.pg = self.tmpl.page.unwrap_or(self.pg);
+        self.adopt_font();
+        self.relayout_keep();
+    }
+
+    /// **テンプレートを直す**(2026-09-02 発注者「書く処理を実装する」)。
+    ///
+    /// 書き先は手引き「配られたテンプレートは書き替わりません」の決めの
+    /// とおりです。開いている文書の隣にあるテンプレートならその場で
+    /// 書き替え、元が別の場所(この機械の標準・置き場・同梱の既定)なら
+    /// 文書の隣に写しを作って、そちらに書きます。
+    ///
+    /// 返りは、写しを作ったときにその旨を言う字です。書けなかったときは
+    /// Err で理由を返します。書けたときは読み直して画面に効かせます。
+    fn edit_template(
+        &mut self,
+        f: impl FnOnce(&str) -> String,
+    ) -> Result<(PathBuf, Option<String>), String> {
+        if !self.native {
+            return Err(ui::t!("adoc_form_format_given").to_string());
+        }
+        let Some(dir) = self.template_dir() else {
+            return Err(ui::t!("not_file_yet_save_first").to_string());
+        };
+        let user_at = ui::settings::dir().join(kumihan::theme::user_template_name());
+        let user_at = user_at.exists().then_some(user_at);
+        let target = kumihan::theme::write_target(
+            &dir,
+            self.doc.template.as_deref(),
+            self.tmpl_path.as_deref(),
+            user_at.as_deref(),
+        );
+        kumihan::theme::rewrite(&target, f)?;
+        let copied = match &target.origin {
+            kumihan::theme::Origin::InPlace => None,
+            kumihan::theme::Origin::CopyOf(p) => Some(
+                ui::tf!("made_copy_for_document", target.at.display(), p.display()).to_string(),
+            ),
+            kumihan::theme::Origin::CopyOfBuiltIn => Some(
+                ui::tf!("made_copy_for_document", target.at.display(), ui::t!("built_default"))
+                    .to_string(),
+            ),
+        };
+        self.reload_template();
+        Ok((target.at, copied))
+    }
+
+    /// いまの段落が着ているスタイルの名前。名指しが無ければ役割の名前です。
+    pub(crate) fn wearing_style(&self) -> String {
+        let (pi, _) = self.cursor_para();
+        self.doc
+            .paragraphs()
+            .nth(pi)
+            .and_then(|p| {
+                p.style_id
+                    .clone()
+                    .or_else(|| kumihan::theme::Theme::role_name(p.style).map(|s| s.to_string()))
+            })
+            .unwrap_or_else(|| "本文".to_string())
+    }
+
+    /// 選んだ字が着ている文字スタイル。選んでいなければ None です。
+    ///
+    /// 選択の頭の run の名前を見ます。選択の中で名前が混ざっていても、
+    /// 頭の分を出します。
+    pub(crate) fn selected_char_style(&self) -> Option<String> {
+        let sel = self.ed.selection();
+        if sel.start == sel.end {
+            return None;
+        }
+        let mut at = 0usize;
+        for p in self.doc.paragraphs() {
+            for r in &p.runs {
+                let end = at + r.text.len();
+                if sel.start < end {
+                    return r.fmt.style_id.clone();
+                }
+                at = end;
+            }
+            at += 1;
+        }
+        None
+    }
+
+    /// 役割で出る固定の名前か(本文・表題・見出し・引用)。
+    ///
+    /// これらは段落の役割そのものなので、名前を変えられません。
+    pub(crate) fn is_role_style(name: &str) -> bool {
+        matches!(
+            name,
+            "本文" | "表題" | "見出し1" | "見出し2" | "見出し3" | "見出し4" | "見出し5" | "引用"
+        )
+    }
+
+    /// テンプレートが持っているスタイルの定義。無ければ名前だけの空の定義です。
+    fn style_def_now(&self, name: &str) -> kumihan::theme::StyleDef {
+        self.tmpl
+            .style(name)
+            .cloned()
+            .unwrap_or_else(|| kumihan::theme::StyleDef { name: name.to_string(), ..Default::default() })
+    }
+
+    /// **スタイルの定義を直してテンプレートに書く**(右パネル)。
+    ///
+    /// 直るのはテンプレートなので、同じスタイルの所が一度に変わります。
+    /// 写しを作ったときは状態行でそう言います。
+    pub(crate) fn edit_style(&mut self, name: &str, f: impl FnOnce(&mut kumihan::theme::StyleDef)) {
+        let mut def = self.style_def_now(name);
+        f(&mut def);
+        match self.edit_template(|src| kumihan::theme::put_style(src, &def)) {
+            Ok((at, copied)) => {
+                let mut says = ui::tf!("style_written_to", name.to_string(), at.display()).to_string();
+                if let Some(c) = copied {
+                    says = format!("{says}。{c}");
+                }
+                self.status = says.into();
+            }
+            Err(e) => self.status = ui::tf!("cant_write_template", e).into(),
+        }
+    }
+
+    /// **いま着ているスタイルの字の大きさを1段動かす**(右パネル)。
+    ///
+    /// 大きさを持っていないスタイルは、いま効いている大きさから数えます。
+    pub(crate) fn tweak_style(&mut self, step: i32) {
+        let name = self.wearing_style();
+        let base = self.base_pt();
+        self.edit_style(&name, |d| {
+            let now = d.size_pt.unwrap_or(base);
+            d.size_pt = Some((now + step as f32).clamp(4.0, 200.0));
+        });
+    }
+
+    /// 太字・斜体・下線を切り替える(右パネル)。`which` は "bold" / "italic" / "underline"。
+    pub(crate) fn toggle_style_flag(&mut self, which: &str) {
+        let name = self.wearing_style();
+        let which = which.to_string();
+        self.edit_style(&name, |d| match which.as_str() {
+            "bold" => d.bold = !d.bold,
+            "italic" => d.italic = !d.italic,
+            "underline" => d.underline = !d.underline,
+            _ => {}
+        });
+    }
+
+    /// 揃えを決める(右パネル)。
+    pub(crate) fn set_style_align(&mut self, a: kumihan::Align) {
+        let name = self.wearing_style();
+        self.edit_style(&name, |d| d.align = Some(a));
+    }
+
+    /// 行間を 0.25 ずつ動かす(右パネル)。1.0 より下には行きません。
+    pub(crate) fn tweak_style_line_spacing(&mut self, step: i32) {
+        let name = self.wearing_style();
+        self.edit_style(&name, |d| {
+            let now = d.line_spacing.unwrap_or(1.0);
+            d.line_spacing = Some(((now + step as f32 * 0.25) * 100.0).round() / 100.0)
+                .filter(|v| *v > 1.0);
+        });
+    }
+
+    /// 段落の後の空きを 2pt ずつ動かす(右パネル)。0 より下には行きません。
+    pub(crate) fn tweak_style_space_after(&mut self, step: i32) {
+        let name = self.wearing_style();
+        self.edit_style(&name, |d| {
+            d.space_after_pt = (d.space_after_pt + step as f32 * 2.0).max(0.0);
+        });
+    }
+
+    /// **新しく作る**の入り口(右パネル)。名前の欄を開きます。
+    ///
+    /// 中身はいま着ているスタイルの写しから始めます。名前を決めると
+    /// テンプレートに入り、選んだ所がそのスタイルを着ます。
+    pub(crate) fn style_new_start(&mut self) {
+        let wearing = self.wearing_style();
+        let mut def = self.style_def_now(&wearing);
+        // 名前が空 = 新設。名前があれば「名前を変える」の途中です
+        def.name = String::new();
+        self.style_new = Some(def);
+        self.style_ed = Editor::new("");
+        self.find_open = false;
+        self.status = ui::t!("new_style_give_look").into();
+    }
+
+    /// **名前を変える**の入り口(右パネル)。いまの名前を欄に入れて開きます。
+    ///
+    /// 役割の名前(本文・見出し1 など)は段落の役割そのものなので変えられません。
+    pub(crate) fn style_rename_start(&mut self) {
+        let wearing = self.selected_char_style().unwrap_or_else(|| self.wearing_style());
+        if Self::is_role_style(&wearing) {
+            self.status = ui::tf!("role_style_cannot_rename", wearing).into();
+            return;
+        }
+        self.style_new = Some(kumihan::theme::StyleDef { name: wearing.clone(), ..Default::default() });
+        self.style_ed = Editor::new(&wearing);
+        self.find_open = false;
+        self.status = ui::tf!("rename_style_give_new_name", wearing).into();
+    }
+
+    /// スタイルの名前を決める(名前の欄で Enter)。
+    ///
+    /// 名前の欄が「新しく作る」から開いていれば、その名前のスタイルを
+    /// テンプレートに書き、選んでいる所に掛けます。「名前を変える」から
+    /// 開いていれば、テンプレートの節と本文の名指しを新しい名前にします。
     pub(crate) fn style_commit(&mut self) {
-        let Some(_) = self.style_new.take() else { return };
+        let Some(pending) = self.style_new.take() else { return };
         let name = self.style_ed.text().trim().to_string();
         if name.is_empty() {
             self.status = ui::t!("name_empty_cancelled").into();
             return;
         }
-        let has_def = self.tmpl.style(&name).is_some();
+        if !pending.name.is_empty() {
+            self.style_rename_commit(&pending.name, &name);
+            return;
+        }
         self.checkpoint(false);
         // **選んでいれば字に、選んでいなければ段落に**(2026-08-16)。
         // 語を1つ選んで見た目を変えようとしたのに段落ぜんぶが変わる、では
-        // 直接書式の手軽さに勝てない — 選択の有無が意図そのもの
+        // 直接書式の手軽さに勝てません。選択の有無が意図そのものです
         self.switch_target(Target::Body);
         self.flush_target();
         let sel = self.ed.selection();
@@ -3199,22 +3472,81 @@ impl Writer {
         } else {
             self.doc.apply_char_format(sel, |f| f.style_id = Some(n.clone()));
         }
-        let notes = if has_def {
+        self.dirty = true;
+        // **同じ名前が既にあれば、そのまま着ます**(定義は書き替えません)。
+        // 無ければ、開いたときの見た目を写した定義をテンプレートに書きます
+        let notes = if self.tmpl.style(&name).is_some() {
+            self.relayout_keep();
             ui::t!("format_template").to_string()
         } else {
-            ui::tf!("name_not_template_yet",
-                    self.tmpl_path.as_ref().map(|p| p.display().to_string())
-                        .unwrap_or_else(|| Self::FOLDER_TEMPLATE.to_string()))
-                .to_string()
+            let def = kumihan::theme::StyleDef { name: name.clone(), ..pending };
+            match self.edit_template(|src| kumihan::theme::put_style(src, &def)) {
+                Ok((at, copied)) => {
+                    let mut says = ui::tf!("style_written_to", name.clone(), at.display()).to_string();
+                    if let Some(c) = copied {
+                        says = format!("{says}。{c}");
+                    }
+                    says
+                }
+                Err(e) => {
+                    self.relayout_keep();
+                    ui::tf!("cant_write_template", e).to_string()
+                }
+            }
         };
-        self.dirty = true;
-        self.relayout_keep();
         self.status = if text {
             ui::tf!("selected_text_now_uses", name, notes)
         } else {
             ui::tf!("paragraph_now_uses", name, notes)
         }
         .into();
+    }
+
+    /// 名前を変える。テンプレートの節と、本文の中でその名前を指している
+    /// 段落と字の両方を、新しい名前にします。
+    fn style_rename_commit(&mut self, from: &str, to: &str) {
+        if from == to {
+            return;
+        }
+        if Self::is_role_style(to) || self.tmpl.style(to).is_some() {
+            self.status = ui::tf!("style_name_exists", to.to_string()).into();
+            return;
+        }
+        let (old_section, new_section) =
+            (kumihan::theme::style_section(from), kumihan::theme::style_section(to));
+        let (f, t) = (from.to_string(), to.to_string());
+        // テンプレートに節が無いときも本文の名指しだけは変えます
+        let had_def = self.tmpl.style(from).is_some();
+        let written = if had_def {
+            self.edit_template(|src| kumihan::theme::rename_section(src, &old_section, &new_section))
+        } else {
+            Ok((PathBuf::new(), None))
+        };
+        match written {
+            Ok((_, copied)) => {
+                self.checkpoint(false);
+                self.switch_target(Target::Body);
+                self.flush_target();
+                for p in self.doc.paragraphs_mut() {
+                    if p.style_id.as_deref() == Some(f.as_str()) {
+                        p.style_id = Some(t.clone());
+                    }
+                    for r in &mut p.runs {
+                        if r.fmt.style_id.as_deref() == Some(f.as_str()) {
+                            r.fmt.style_id = Some(t.clone());
+                        }
+                    }
+                }
+                self.dirty = true;
+                self.relayout_keep();
+                let mut says = ui::tf!("renamed_2", f, t).to_string();
+                if let Some(c) = copied {
+                    says = format!("{says}。{c}");
+                }
+                self.status = says.into();
+            }
+            Err(e) => self.status = ui::tf!("cant_write_template", e).into(),
+        }
     }
 
     /// **スタイルを着替える**(右パネル。2026-08-16)。役割の名前なら
@@ -3239,6 +3571,11 @@ impl Writer {
         self.status = ui::t!("style_removed").into();
     }
 
+    /// スタイルを着る(右パネル)。
+    ///
+    /// 役割の名前(本文・見出し1 など)は段落の役割を替えます。それ以外の
+    /// 名前は、**字を選んでいれば字に、選んでいなければ段落に**掛けます。
+    /// 字に付いた名前は `[.名前]#字#` として保存されます。
     pub(crate) fn wear_style(&mut self, name: &str) {
         self.switch_target(Target::Body);
         self.checkpoint(false);
@@ -3256,48 +3593,56 @@ impl Writer {
             _ => None,
         };
         let n = name.to_string();
-        self.doc.apply_para(sel, |p| match role {
-            // 役割で出る名前は、役割の側で持つ(二重に名乗らない)
-            Some(r) => {
-                p.style = r;
-                p.style_id = None;
-            }
-            None => p.style_id = Some(n.clone()),
-        });
+        let text = sel.start != sel.end && role.is_none();
+        if text {
+            self.doc.apply_char_format(sel, |f| f.style_id = Some(n.clone()));
+        } else {
+            self.doc.apply_para(sel, |p| match role {
+                // 役割で出る名前は、役割の側で持つ(二重に名乗らない)
+                Some(r) => {
+                    p.style = r;
+                    p.style_id = None;
+                }
+                None => p.style_id = Some(n.clone()),
+            });
+        }
         self.dirty = true;
         self.relayout_keep();
-        self.status = ui::tf!("now_using", name.to_string()).into();
+        self.status = if text {
+            ui::tf!("selected_text_now_uses", name.to_string(), ui::t!("format_template"))
+        } else {
+            ui::tf!("now_using", name.to_string())
+        }
+        .into();
     }
 
-    /// **いま着ているスタイルの字の大きさを1段動かす**(右パネル)。
-    /// 直るのはテンプレートなので、**同じスタイルの所が一度に変わる** —
-    /// ここがライブ合成の効き目そのもの
-    pub(crate) fn tweak_style(&mut self, step: i32) {
-        let _ = step;
-        // **大きさはテンプレートが決めます。**(発注者 2026-08-18
-        // 「テンプレートの編集はできないと割り切ったほうがいいのでは」)
-        // writer は本文を書く道具で、見た目はテンプレートを書く人の仕事です。
-        // ここで書き替えると、同じテンプレートを使う他の文書まで変わります
-        let (pi, _) = self.cursor_para();
-        let name = self
-            .doc
-            .paragraphs()
-            .nth(pi)
-            .and_then(|p| {
-                p.style_id
-                    .clone()
-                    .or_else(|| kumihan::theme::Theme::role_name(p.style).map(|s| s.to_string()))
-            })
-            .unwrap_or_else(|| ui::t!("body").to_string());
-        self.status = ui::tf!(
-            "sizes_decided_template_change",
-            name,
-            self.tmpl_path
-                .as_ref()
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|| Self::FOLDER_TEMPLATE.to_string())
-        )
-        .into();
+    /// 書き出し先ごとのテンプレート(`テンプレート-印刷.toml` など)が
+    /// 壊れていれば、その理由を返します。無い・読めるなら None です。
+    ///
+    /// 開いたときに状態行で言うために使います。黙って `テンプレート.toml`
+    /// に落ちると、置いた人には「効かない」としか分かりません。
+    pub(crate) fn purpose_template_error(&self, purpose_of: &str) -> Option<String> {
+        let dir = self.template_dir()?;
+        let at = dir.join(kumihan::theme::purpose_template_name(purpose_of));
+        let src = std::fs::read_to_string(&at).ok()?;
+        kumihan::theme::parse(&src)
+            .err()
+            .map(|e| ui::tf!("not_read_used", at.display(), Self::FOLDER_TEMPLATE, e).to_string())
+    }
+
+    /// 印刷用のテンプレートが持つ**ページの飾り**。
+    ///
+    /// 返りは(ヘッダー, フッター, 透かし, ページの色)です。印刷用の
+    /// テンプレートが無ければ None で、そのときは画面の飾りが紙にも出ます。
+    /// PDF を書く側(`write_pdf`)がこれを見て、画面の飾りの代わりに使います。
+    pub(crate) fn print_dress(
+        &self,
+    ) -> Option<((kumihan::HeadFoot, kumihan::HeadFoot), (Option<String>, Option<String>))> {
+        let (th, used) = self.template_for("印刷");
+        used?;
+        let mut deco = kumihan::Document::default();
+        kumihan::theme::compose_page(&mut deco, &th);
+        Some(((deco.header, deco.footer), (deco.watermark, deco.page_color)))
     }
 
     /// ネイティブ文書として保存する(.adoc)。**意味だけを書く**

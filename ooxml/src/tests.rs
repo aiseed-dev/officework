@@ -1659,7 +1659,7 @@ mod track_write_tests {
         );
         d.track_author = Some("検査".into());
         let out = write_document_xml(&d);
-        assert!(out.contains(r#"<w:ins w:id="2" w:author="検査">"#), "w:ins が無い: {out}");
+        assert!(out.contains(r#"<w:ins w:id="2" w:author="検査" w:date=""#), "w:ins が無い: {out}");
         assert!(out.contains("<w:delText"), "w:delText が無い: {out}");
         assert!(out.contains(r#"<w:del w:id="#), "w:del が無い: {out}");
         // 読み直すと「確定後の姿」(削除は消え、挿入は残る)
@@ -3158,4 +3158,89 @@ fn shapes_survive_a_round_trip() {
     // **タグごと拾わない。** `<w:txbxContent>` 自身が `<w:t` で始まるので、
     // 探し始める場所を間違えると `<w:p><w:r><w:t …>往復` が入ります
     assert_eq!(a.look.text.as_deref(), Some("往復"), "図形の中の文字");
+}
+
+#[cfg(test)]
+mod check_field_tests {
+    use super::*;
+    use kumihan::{Document, Sdt, SdtKind};
+
+    fn doc_with(kind: SdtKind, text: &str) -> Document {
+        let mut d = Document::plain(&format!("同意: {text}"));
+        let end = "同意: ".len() + text.len();
+        d.apply_char_format("同意: ".len()..end, |f| {
+            f.sdt = Some(Box::new(Sdt { kind, alias: "同意".into(), ..Default::default() }))
+        });
+        d
+    }
+
+    /// チェックの欄は w14:checkbox で書き、開き直しても種類が残る。
+    /// 入っているかは欄の字(☑)で決める
+    #[test]
+    fn a_checkbox_is_written_as_w14_checkbox_and_comes_back() {
+        let d = doc_with(SdtKind::Checkbox, "☑");
+        let out = write_document_xml(&d);
+        assert!(out.contains("<w14:checkbox>"), "w14:checkbox が無い: {out}");
+        assert!(out.contains(r#"<w14:checked w14:val="1"/>"#), "入の印が無い: {out}");
+        assert!(out.contains(r#"xmlns:w14="#), "w14 の宣言が無い: {out}");
+        assert!(out.contains(r#"mc:Ignorable="w14""#), "mc:Ignorable が無い: {out}");
+        let off = write_document_xml(&doc_with(SdtKind::Checkbox, "☐"));
+        assert!(off.contains(r#"<w14:checked w14:val="0"/>"#), "切の印が無い: {off}");
+
+        let mut buf = Vec::new();
+        write(&d, Cursor::new(&mut buf)).unwrap();
+        let (back, _) = read(Cursor::new(&buf)).unwrap();
+        let p = back.paragraphs().next().unwrap();
+        let r = p.runs.iter().find(|r| r.fmt.sdt.is_some()).expect("欄が無い");
+        assert_eq!(r.fmt.sdt.as_ref().unwrap().kind, SdtKind::Checkbox);
+        assert_eq!(r.text, "☑", "欄の字が変わった");
+    }
+
+    /// ラジオは Word に無いので、w14:checkbox + tag「jo:radio」で書く。
+    /// 読み戻すとラジオのまま(tag と checkbox のどちらが先でも)
+    #[test]
+    fn a_radio_button_round_trips_as_a_tagged_checkbox() {
+        let d = doc_with(SdtKind::Radio, "☐");
+        let out = write_document_xml(&d);
+        assert!(out.contains(r#"<w:tag w:val="jo:radio"/>"#), "jo:radio の印が無い: {out}");
+        assert!(out.contains("<w14:checkbox>"), "w14:checkbox が無い: {out}");
+        let (back, _) = parse_document_xml(&out);
+        let p = back.paragraphs().next().unwrap();
+        let r = p.runs.iter().find(|r| r.fmt.sdt.is_some()).expect("欄が無い");
+        assert_eq!(r.fmt.sdt.as_ref().unwrap().kind, SdtKind::Radio, "ラジオがチェックに化けた");
+        // tag が checkbox より後に来る並びでも同じ
+        let swapped = out.replace(
+            r#"<w:tag w:val="jo:radio"/>"#, "",
+        ).replace("</w14:checkbox>", r#"</w14:checkbox><w:tag w:val="jo:radio"/>"#);
+        let (back2, _) = parse_document_xml(&swapped);
+        let r2 = back2.paragraphs().next().unwrap().runs.iter()
+            .find(|r| r.fmt.sdt.is_some()).cloned().expect("欄が無い");
+        assert_eq!(r2.fmt.sdt.unwrap().kind, SdtKind::Radio);
+    }
+}
+
+#[cfg(test)]
+mod track_date_tests {
+    use super::*;
+    use kumihan::{Document, TRK_INS_E, TRK_INS_S};
+
+    /// 変更履歴の w:ins / w:del に w:date が付く(Word の「いつ直したか」)
+    #[test]
+    fn tracked_changes_carry_a_date() {
+        let mut d = Document::plain(&format!("防火{TRK_INS_S}ドア{TRK_INS_E}"));
+        d.track_author = Some("検査".into());
+        let out = write_document_xml(&d);
+        let at = out.find("<w:ins ").expect("w:ins が無い");
+        let head = &out[at..at + 120];
+        assert!(head.contains(r#"w:date=""#), "w:date が無い: {head}");
+        assert!(head.contains("T") && head.contains("Z\""), "日時の形が違う: {head}");
+    }
+
+    /// UNIX 時刻から日時の字を組む計算(閏年をまたぐ値で見る)
+    #[test]
+    fn unix_seconds_become_iso_text() {
+        assert_eq!(crate::write::iso_from_unix(0), "1970-01-01T00:00:00Z");
+        assert_eq!(crate::write::iso_from_unix(1788352496), "2026-09-02T12:34:56Z");
+        assert_eq!(crate::write::iso_from_unix(951782400), "2000-02-29T00:00:00Z");
+    }
 }

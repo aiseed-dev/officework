@@ -15,7 +15,8 @@
 //! {"cmd":"text"}            → 本文(平文)
 //! {"cmd":"set_text","text":"…"} → 本文を差し替える
 //! {"cmd":"fields"}          → 記入欄の名前の一覧
-//! {"cmd":"fill_one","name":"氏名","value":"山田"} → 記入欄に1つ入れる
+//! {"cmd":"fill_one","name":"氏名","value":"山田"} → 差し込みの穴(`{{氏名}}`)に入れる
+//! {"cmd":"fill_field","name":"氏名","value":"山田"} → 名前の付いた記入欄に入れる
 //! {"cmd":"open","path":"…"} / {"cmd":"save","path":"…"}
 //! {"cmd":"to_pdf","path":"…"}
 //! ....
@@ -112,6 +113,23 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
             let (_, rep) = kumihan::fill::fill(&w.doc, &kumihan::fill::Data::new());
             let name: Vec<String> = rep.unknown.iter().map(|n| q(n)).collect();
             ok(&format!("\"merge_fields\":[{}]", name.join(",")))
+        }
+        // **名前の付いた記入欄(w:sdt)に入れる。** `fill_one` は本文の
+        // `{{名前}}` の穴で、こちらは Word の入力コントロールです。
+        // 返りは書いた欄の数。0 ならその名前の欄が無い
+        "fill_field" => {
+            let (Some(name), Some(value)) = (o.str("name"), o.str("value")) else {
+                return ops::err("name と value が要ります");
+            };
+            w.checkpoint(false);
+            let n = w.doc.set_sdt_text(&name, &value);
+            if n == 0 {
+                return ops::err(&format!("記入欄「{name}」が見つかりません"));
+            }
+            w.ed = Editor::new(&w.doc.body_text());
+            w.dirty = true;
+            w.lay();
+            ok(&format!("\"filled\":{n}"))
         }
         // **1つの記入欄に入れる。** まとめて入れる形は、値の並びを浅い
         // JSON で運べないので、呼ぶ側が繰り返します(道具の側で回す)

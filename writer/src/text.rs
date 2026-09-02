@@ -60,6 +60,50 @@ impl Writer {
         }
     }
 
+    /// Home / End。見た目の行の頭(`end` なら末尾)へ動かします。
+    /// 既に行頭(行末)にいるときは、段落の頭(末尾)へ動かします。
+    pub(crate) fn line_home_end(&mut self, end: bool) {
+        let text = self.ed.text().to_string();
+        let pos = self.ed.cursor().min(text.len());
+        let want = match self.target {
+            Target::Body => None,
+            Target::Cell { table, row, col } => Some((table, row, col)),
+        };
+        // 段落(改行で区切った範囲)
+        let ps = text[..pos].rfind('\n').map(|i| i + 1).unwrap_or(0);
+        let pe = text[pos..].find('\n').map(|i| pos + i).unwrap_or(text.len());
+        let lines: Vec<&kumihan::Line> = self
+            .page
+            .lines
+            .iter()
+            .filter(|l| match want {
+                None => l.from_body,
+                Some(id) => l.cell == Some(id),
+            })
+            .collect();
+        // 折り返しの境目では、Home は後ろの行、End は前の行のものとして見る
+        // (境目で End を押したら「その行の末尾にいる」ので、次は段落の末尾へ)
+        let (ls, le) = match lines
+            .iter()
+            .rposition(|l| if end { l.byte0 < pos || l.byte0 == ps } else { l.byte0 <= pos })
+        {
+            Some(i) => {
+                let l = lines[i];
+                (l.byte0.clamp(ps, pe), l.byte_end().clamp(l.byte0.min(pe), pe))
+            }
+            None => (ps, pe),
+        };
+        let target = if end {
+            if pos >= le { pe } else { le }
+        } else if pos <= ls {
+            ps
+        } else {
+            ls
+        };
+        self.ed.move_to(target.min(text.len()), false);
+        self.follow_caret();
+    }
+
     /// 1画面ぶん(PageUp/PageDown)。見た目の行を数えて動く。
     pub(crate) fn page_move(&mut self, down: bool) {
         let pxmm = PX_PER_MM * self.zoom;
@@ -442,8 +486,17 @@ impl Writer {
         // (テンプレート-印刷.toml)。無ければ画面の紙面がそのまま紙になります
         let for_print = self.print_layout();
         let on_print = for_print.as_ref().map(|(_, _, t)| t.clone());
-        // 飾りは合成の写しから(テンプレートの分も入っている)
-        let (hdr, ftr) = self.dress_hf.clone();
+        // 飾りは合成の写しから(テンプレートの分も入っている)。
+        // 印刷用のテンプレートが飾りを持っていれば、そちらが紙に出ます
+        let print_dress = self.print_dress();
+        let (hdr, ftr) = match &print_dress {
+            Some((hf, _)) => hf.clone(),
+            None => self.dress_hf.clone(),
+        };
+        let dress_page = match &print_dress {
+            Some((_, pg)) => pg.clone(),
+            None => self.dress_page.clone(),
+        };
         let pg = for_print.as_ref().map(|(_, pg, _)| *pg).unwrap_or(self.pg);
         let sheet = for_print.as_ref().map(|(s, _, _)| s).unwrap_or(&self.page);
         // **ヘッダーのページ数も紙で数えます**(画面の枚数ではありません)
@@ -461,8 +514,8 @@ impl Writer {
         let base_pt = self.doc.base_pt();
         // ページの色と透かしは紙にも(画面と紙の一致)
         let dress = paper::PageDress {
-            bg: self.dress_page.1.as_deref().map(|c| (hex(c, 0), hex(c, 1), hex(c, 2))),
-            watermark: self.dress_page.0.clone(),
+            bg: dress_page.1.as_deref().map(|c| (hex(c, 0), hex(c, 1), hex(c, 2))),
+            watermark: dress_page.0.clone(),
             ink: self.doc.ink.clone(),
             // **画面の書き出しは printpdf のまま**なので、図形はまだ
             // 載りません(`to_pdf_with` が見ていません)。渡しておけば、

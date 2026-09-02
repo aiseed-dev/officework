@@ -153,6 +153,9 @@ impl Writer {
                         p.file_name().unwrap_or_default().to_string_lossy().to_string())
                     .to_string(),
             ),
+            // 脚注の欄は footnote_at_cursor が開く(ここは通らない)
+            J::Footnote(_) => (String::new(), ui::t!("footnote_type_note_press_enter").to_string()),
+            J::TextArt => (String::new(), ui::t!("text_art_type_text_decorate").to_string()),
         };
         self.fl_ed = Editor::new(&preamble);
         self.fl_job = Some(job);
@@ -200,6 +203,24 @@ impl Writer {
                 ui::tf!("renamed",
                     to.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string()
             }),
+            J::Footnote(id) => {
+                let id = id.clone();
+                self.fl_job = None;
+                let told = self.footnote_write(&id, name.trim());
+                self.status = told.into();
+                cx.notify();
+                return;
+            }
+            J::TextArt => {
+                if name.trim().is_empty() {
+                    self.status = ui::t!("text_art_type_text_decorate").into();
+                    return;
+                }
+                self.fl_job = None;
+                self.text_art(name.trim().to_string(), cx);
+                cx.notify();
+                return;
+            }
             J::Delete(path) => {
                 // **開いたままの物は消しません。** 消してから保存すると
                 // 元に戻るので、消えたのか残ったのか分からなくなります
@@ -271,6 +292,13 @@ impl Writer {
         if self.tbl_open && id != "instable-go" {
             self.tbl_open = false;
         }
+        // 脚注とテキストアートの欄も同じ。開いたままだと `in_panel()` が真で、
+        // 次に押したボタンの控え(Ctrl+Z の1手)が取れません
+        if matches!(self.fl_job, Some(FlJob::Footnote(_) | FlJob::TextArt))
+            && !matches!(id, "footnote" | "instextart")
+        {
+            self.fl_job = None;
+        }
         // **ネイティブ文書では見た目を直に変えさせない**(2026-08-16)。
         // 名前を付けてスタイルにする道へ寄せる — Word の失敗
         // (直接書式が同じくらい簡単なら誰もスタイルを使わない)を
@@ -293,9 +321,20 @@ impl Writer {
             "co-showcomment", "replace", "prot-doc", "coauth-mode",
             "co-history", "co-chat", "prot-sign", "copy",
         ];
-        if self.protected() && !READONLY_OK.contains(&id) {
-            self.status =
-                ui::t!("protected_read_only_protection").into();
+        // 保護の種類ごとに通す物が違う。comments はコメントの付け外し、
+        // forms は記入欄の記入(同じボタンで切り替える・回す)、
+        // trackedChanges は全部(変更履歴を止める道だけ、その腕で断る)
+        const COMMENTS_OK: &[&str] = &["co-addcomment", "comment", "co-delcomment"];
+        const FORMS_OK: &[&str] =
+            &["form-checkbox", "form-radio", "form-combo", "form-dropdown", "undo", "redo"];
+        let blocked = match self.prot_mode() {
+            None | Some("trackedChanges") => false,
+            Some("comments") => !READONLY_OK.contains(&id) && !COMMENTS_OK.contains(&id),
+            Some("forms") => !READONLY_OK.contains(&id) && !FORMS_OK.contains(&id),
+            Some(_) => !READONLY_OK.contains(&id),
+        };
+        if blocked {
+            self.status = self.protection_message().into();
             return;
         }
         // **共通の命令は1本の捌き手へ**(2026-08-19)。同じ id の腕を
@@ -402,15 +441,14 @@ impl Writer {
                 self.status =
                     ui::t!("ruby_type_reading_press").into();
             }
-            // 脚注。**選んだ字を注へ移し**、跡に印を置く。
-            // 空の注を作って別の窓で打たせる形(Word の作法)にはしない —
-            // 注を打つ場所をまだ持っていないので、持っていない物を
-            // 持っている顔をすることになる
+            // 脚注。選んでいなければ、**カーソルの所に印を入れて、注の文を
+            // 打つ欄を開く**(Word の作法)。字を選んでいれば、その字を
+            // 注へ移して跡に印を置く
             "footnote" => {
                 self.switch_target(Target::Body);
                 let sel = self.ed.selection();
                 if sel.is_empty() {
-                    self.status = ui::t!("select_text_turn_into").into();
+                    self.footnote_at_cursor();
                     return;
                 }
                 let at = sel.start;
@@ -541,7 +579,16 @@ impl Writer {
                 };
                 self.shapes_boolean(op);
             }
-            "img-align" => self.shape_align_doc(),
+            // 揃え方は一覧から選ぶ(左・中央・右・上・中・下)
+            "img-align" => {
+                if self.shape_sel.is_none() {
+                    self.status = ui::tf!("select_more_shapes_first", 1).into();
+                    return;
+                }
+                let opens = self.open_list != Some("img-align");
+                self.open_list = opens.then_some("img-align");
+                self.pick_sel = 0;
+            }
             "insequation" => {
                 self.switch_target(Target::Body);
                 self.eq_ed = Editor::new("");
@@ -553,8 +600,12 @@ impl Writer {
                 self.status =
                     ui::t!("equation_type_latex_press_enter").into();
             }
-            "insimage" | "insshape" | "inssmartart" | "inschart"
-            | "instextart" => {
+            // グラフ: カーソルが表の中なら、その表から Python(matplotlib)が
+            // 描いて画像として入れる。表の外なら画像ファイルを選ぶ
+            "inschart" if self.cursor_table().is_some() => self.chart_from_table(cx),
+            // テキストアート: 字を打つ欄を開く。Enter で Python が描いて画像として入れる
+            "instextart" => self.fl_start(FlJob::TextArt),
+            "insimage" | "insshape" | "inssmartart" | "inschart" => {
                 if id != "insimage" {
                     self.status =
                         ui::t!("draw_figures_python_matplotlib").into();
@@ -833,6 +884,11 @@ impl Writer {
             // いなかったので、開き直すと明るさが戻っていた
             // 変更履歴。記録中の編集は、保存で Word の w:ins / w:del になる
             "track-changes" => {
+                // 変更履歴つきの編集だけ、の保護では止められない
+                if self.track && self.prot_mode() == Some("trackedChanges") {
+                    self.status = ui::t!("tracked_cannot_stop_protected").into();
+                    return;
+                }
                 self.flush_target();
                 self.track = !self.track;
                 if self.track {
@@ -864,6 +920,11 @@ impl Writer {
             // 番号は既にある「図 n」の最大 + 1
             "caption" => {
                 self.checkpoint(false); // 図表番号
+                // 表の中にいるときは、その表の下に「表 n」を入れる
+                if self.cursor_table().is_some() {
+                    self.table_caption();
+                    return;
+                }
                 self.switch_target(Target::Body);
                 self.flush_target();
                 let mut n = 0usize;
@@ -1001,6 +1062,7 @@ impl Writer {
             }
             // カーソルの段落のコメントを外す
             "co-delcomment" => {
+                self.checkpoint(false); // コメントを消す(Ctrl+Z で戻る)
                 self.switch_target(Target::Body);
                 let (pi, _) = self.cursor_para();
                 let mut removed = 0usize;
@@ -1046,27 +1108,23 @@ impl Writer {
                 self.status =
                     ui::t!("editing_comment_attaches_paragraph").into();
             }
-            // 文書の保護。readOnly を docx の documentProtection と往復する。
+            // 文書の保護。種類(readOnly / comments / trackedChanges / forms)を
+            // 一覧から選ぶ。docx の documentProtection と往復する。
             // パスワードは掛けない(**掛けた振りもしない**)— Word でも
-            // 「編集の制限」として見え、解除も同じ1手でできる正直な保護
+            // 「編集の制限」として見え、解除も同じ一覧の「保護しない」
             "prot-doc" => {
-                self.checkpoint(false); // 文書の保護
-                if self.doc.protection.is_some() {
-                    self.doc.protection = None;
-                    self.dirty = true;
-                    self.status =
-                        ui::t!("protection_removed_editing_allowed").into();
+                let opens = self.open_list != Some("prot-doc");
+                self.open_list = opens.then_some("prot-doc");
+                // 開いたときは今の種類の位置に居る
+                self.pick_sel = if opens {
+                    let now = self.prot_mode().unwrap_or("off").to_string();
+                    self.extra_list_items("prot-doc")
+                        .iter()
+                        .position(|(k, _)| *k == now)
+                        .unwrap_or(0)
                 } else {
-                    self.flush_target();
-                    self.doc.protection = Some("readOnly".into());
-                    // 文書を変えるパネルとペンは店じまい
-                    self.hf_edit = None;
-                    self.wm_edit = false;
-                    self.cmt_edit = false;
-                    self.tool = None;
-                    self.dirty = true;
-                    self.status = ui::t!("protected_read_only_same").into();
-                }
+                    0
+                };
             }
             // 共同編集モード。実体はファイルの錠(.~lock)による早い者勝ちの
             // 編集権。押すと錠の今を確かめ、先客が去っていれば編集権を取り直す
@@ -1210,10 +1268,29 @@ impl Writer {
             // チェックの欄。**同じボタンで入切**(欄の中にカーソルがあるとき)
             "form-checkbox" | "form-radio" => {
                 self.checkpoint(false); // 記入欄(チェック・ラジオ)
-                if self.toggle_checkbox() {
+                self.switch_target(Target::Body);
+                if self.toggle_check() {
                     return;
                 }
-                self.insert_sdt(kumihan::SdtKind::Checkbox, Vec::new());
+                // 記入だけの保護では、新しい欄は置けない
+                if self.prot_mode() == Some("forms") {
+                    self.status = ui::t!("put_cursor_inside_field").into();
+                    return;
+                }
+                let kind = if id == "form-radio" {
+                    kumihan::SdtKind::Radio
+                } else {
+                    kumihan::SdtKind::Checkbox
+                };
+                // 選んでいなければ ☐ を置いて、それを欄にする
+                if self.ed.selection().is_empty() {
+                    let at = self.ed.cursor();
+                    self.ed.insert("☐");
+                    self.on_edited();
+                    self.ed.move_to(at, false);
+                    self.ed.move_to(at + "☐".len(), true);
+                }
+                self.insert_sdt(kind, Vec::new());
             }
             // 選ばせる欄。選択肢をパネルで聞いてから挿す
             "form-combo" | "form-dropdown" => {
@@ -1233,13 +1310,26 @@ impl Writer {
                                 self.ed.move_to(at, false);
                                 self.ed.move_to(at + now.len(), true);
                                 self.ed.insert(next);
-                                self.on_edited();
+                                // ボタンで回すのは打鍵ではない(ドロップダウンは
+                                // 打てない欄なので、打鍵の検査を通さない)
+                                self.doc.set_body_text(self.ed.text());
+                                // 字を丸ごと入れ替えると欄の印が落ちるので、付け直す
+                                let sd2 = sd.clone();
+                                self.doc.apply_char_format(at..at + next.len(), move |f| {
+                                    f.sdt = Some(Box::new(sd2.clone()))
+                                });
+                                self.edited_by_button();
                                 self.status =
                                     ui::tf!("selected", next).into();
                                 return;
                             }
                         }
                     }
+                }
+                // 記入だけの保護では、新しい欄は置けない
+                if self.prot_mode() == Some("forms") {
+                    self.status = ui::t!("put_cursor_inside_field").into();
+                    return;
                 }
                 self.sd_kind = if id == "form-combo" {
                     kumihan::SdtKind::Combo
@@ -1595,4 +1685,289 @@ pub(crate) fn wareki(y: i32, m: i32, d: i32) -> Option<(&'static str, &'static s
         }
     }
     None
+}
+
+impl Writer {
+    /// **カーソルの所に脚注の印を入れ、注の文を打つ欄を開く。**
+    ///
+    /// 印だけの run を作る道が無いので、仮の字(※)を1字入れてから
+    /// それを注へ移し、注の中身を空にします。欄で打った文が注になります
+    pub(crate) fn footnote_at_cursor(&mut self) {
+        self.checkpoint(false); // 脚注(印と文で1手)
+        let at = self.ed.cursor();
+        let before = self.ed.text().to_string();
+        self.ed.insert("※");
+        self.doc.set_body_text(self.ed.text());
+        match self.doc.make_footnote(at..at + "※".len(), false) {
+            Some(fr) => {
+                if let Some(f) = self
+                    .doc
+                    .footnotes
+                    .iter_mut()
+                    .find(|f| f.id == fr.id && f.endnote == fr.endnote)
+                {
+                    kumihan::set_paras_text(&mut f.paragraphs, "");
+                }
+                self.ed = Editor::new(&self.doc.body_text());
+                let len = self.ed.text().len();
+                self.ed.move_to(at.min(len), false);
+                self.relayout();
+                self.dirty = true;
+                self.fl_ed = Editor::new("");
+                self.fl_job = Some(FlJob::Footnote(fr.id));
+                self.status = ui::t!("footnote_type_note_press_enter").into();
+            }
+            None => {
+                self.doc.set_body_text(&before);
+                self.ed = Editor::new(&before);
+                self.ed.move_to(at.min(before.len()), false);
+                self.status = ui::t!("cannot_make_footnote_selection").into();
+            }
+        }
+    }
+
+    /// 欄で打った文を注(`id`)に入れる。返すのは状態行の文
+    pub(crate) fn footnote_write(&mut self, id: &str, text: &str) -> String {
+        let Some(f) = self.doc.footnotes.iter_mut().find(|f| f.id == id && !f.endnote) else {
+            return ui::t!("no_footnote_found").to_string();
+        };
+        kumihan::set_paras_text(&mut f.paragraphs, text);
+        self.dirty = true;
+        self.relayout_keep();
+        if text.is_empty() {
+            ui::t!("footnote_mark_placed_empty").to_string()
+        } else {
+            ui::t!("footnote_written").to_string()
+        }
+    }
+
+    /// 表の下に「表 n」の段落を入れる(カーソルが表の中にあるとき)。
+    /// 番号は既にある「表 n」の最大 + 1
+    pub(crate) fn table_caption(&mut self) {
+        let Some((ti, _, _, _, _)) = self.cursor_table() else { return };
+        self.switch_target(Target::Body);
+        let head = crate::table_caption_head();
+        let mut n = 0usize;
+        for p in self.doc.paragraphs() {
+            let t: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+            if let Some(rest) = t.trim().strip_prefix(head) {
+                if let Ok(k) = rest.trim().parse::<usize>() {
+                    n = n.max(k);
+                }
+            }
+        }
+        let label = ui::tf!("table_caption", n + 1).to_string();
+        // 表のブロックの直後に段落を差す
+        let Some(bi) = self
+            .doc
+            .blocks
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| matches!(b, kumihan::Block::Table(_)))
+            .nth(ti)
+            .map(|(i, _)| i)
+        else {
+            return;
+        };
+        let cap = kumihan::Paragraph {
+            align: Align::Center,
+            line_spacing: 1.0,
+            runs: vec![kumihan::Run {
+                text: label.clone(),
+                size_pt: None,
+                font: None,
+                fmt: Default::default(),
+            }],
+            ..Default::default()
+        };
+        self.doc.blocks.insert(bi + 1, kumihan::Block::Para(cap));
+        // 差した段落の頭の位置(前にある段落の字の数から)
+        let at: usize = self.doc.blocks[..bi + 1]
+            .iter()
+            .filter_map(|b| match b {
+                kumihan::Block::Para(p) => Some(p.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1),
+                _ => None,
+            })
+            .sum();
+        self.ed = Editor::new(&self.doc.body_text());
+        let len = self.ed.text().len();
+        self.ed.move_to((at + label.len()).min(len), false);
+        self.dirty = true;
+        self.relayout();
+        self.follow_caret();
+        self.status = ui::tf!("inserted_centred_paragraph", label).into();
+    }
+}
+
+/// 表からグラフの指図(JSON)を組む。1列目が項目名、2列目からが系列。
+/// 先頭行の2列目以降が数でなければ見出し行(系列の名前)。
+/// 数が1つも無ければ None
+pub(crate) fn chart_spec(table: &kumihan::Table, font: &str, out: &str) -> Option<String> {
+    let text = |c: &kumihan::Cellbox| cell_text(c).trim().to_string();
+    let num = |t: &str| t.replace([',', '，'], "").trim_end_matches('%').trim().parse::<f64>().ok();
+    let rows: Vec<Vec<String>> = table
+        .rows
+        .iter()
+        .map(|r| r.iter().map(text).collect())
+        .filter(|r: &Vec<String>| r.iter().any(|t| !t.is_empty()))
+        .collect();
+    let first = rows.first()?;
+    let cols = rows.iter().map(|r| r.len()).max().unwrap_or(0);
+    if cols < 2 {
+        return None;
+    }
+    let header = first.iter().skip(1).any(|t| !t.is_empty() && num(t).is_none());
+    let body: &[Vec<String>] = if header { &rows[1..] } else { &rows[..] };
+    if body.is_empty() {
+        return None;
+    }
+    let esc = |t: &str| t.replace('\\', "\\\\").replace('"', "\\\"");
+    let labels: Vec<String> = body
+        .iter()
+        .map(|r| format!("\"{}\"", esc(r.first().map(String::as_str).unwrap_or(""))))
+        .collect();
+    let mut series = Vec::new();
+    let mut any = false;
+    for c in 1..cols {
+        let name = if header { first.get(c).cloned().unwrap_or_default() } else { String::new() };
+        let values: Vec<String> = body
+            .iter()
+            .map(|r| match r.get(c).and_then(|t| num(t)) {
+                Some(v) => {
+                    any = true;
+                    format!("{v}")
+                }
+                None => "null".into(),
+            })
+            .collect();
+        series.push(format!(
+            "{{\"name\":\"{}\",\"values\":[{}]}}",
+            esc(&name),
+            values.join(",")
+        ));
+    }
+    if !any {
+        return None;
+    }
+    Some(format!(
+        "{{\"kind\":\"bar\",\"labels\":[{}],\"series\":[{}],\"font\":\"{}\",\"out\":\"{}\"}}",
+        labels.join(","),
+        series.join(","),
+        esc(font),
+        esc(out)
+    ))
+}
+
+impl Writer {
+    /// **カーソルの表からグラフを描いて、画像として入れる。** 描くのは
+    /// Python(matplotlib)。表の外の段落の下に付く
+    pub(crate) fn chart_from_table(&mut self, cx: &mut Context<Self>) {
+        let Some((ti, _, _, _, _)) = self.cursor_table() else { return };
+        self.flush_target();
+        let dir = pyrun::cage_work_dir("chart");
+        let out = dir.join("chart.png");
+        let font = kumihan::font::for_document(None)
+            .ok()
+            .map(|(fam, _)| fam.path.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let Some(spec) = self
+            .doc
+            .tables()
+            .nth(ti)
+            .and_then(|t| chart_spec(t, &font, &out.to_string_lossy()))
+        else {
+            self.status = ui::t!("table_has_no_numbers").into();
+            return;
+        };
+        self.status = ui::t!("drawing_chart_from_table").into();
+        self.run_py_image(pyrun::CHART_PY, "chart", spec, out, cx);
+    }
+
+    /// **テキストアート。** 打った字を Python(matplotlib)が太字+縁取りで
+    /// 描き、画像として入れる
+    pub(crate) fn text_art(&mut self, text: String, cx: &mut Context<Self>) {
+        let dir = pyrun::cage_work_dir("textart");
+        let out = dir.join("textart.png");
+        let font = kumihan::font::for_document(None)
+            .ok()
+            .map(|(fam, _)| fam.path.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let esc = |t: &str| t.replace('\\', "\\\\").replace('"', "\\\"");
+        let spec = format!(
+            "{{\"tex\":\"{}\",\"font\":\"{}\",\"out\":\"{}\"}}",
+            esc(&text),
+            esc(&font),
+            esc(&out.to_string_lossy())
+        );
+        self.status = ui::t!("typesetting").into();
+        self.run_py_image(pyrun::TEXTART_PY, "textart", spec, out, cx);
+    }
+
+    /// 同梱の Python の script を指図(JSON)つきで別のスレッドで回し、
+    /// できた絵をカーソルの段落の下に入れる。失敗は理由を状態行に出す
+    fn run_py_image(
+        &mut self,
+        script: &'static str,
+        name: &'static str,
+        spec: String,
+        out: std::path::PathBuf,
+        cx: &mut Context<Self>,
+    ) {
+        let task = cx.background_executor().spawn(async move {
+            let dir = pyrun::cage_work_dir(name);
+            std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+            let json_path = dir.join(format!("{name}.json"));
+            let py_path = dir.join(format!("{name}.py"));
+            let _ = std::fs::remove_file(&out);
+            std::fs::write(&json_path, spec)
+                .and_then(|_| std::fs::write(&py_path, script))
+                .map_err(|_| ui::t!("cant_write_temporary_file").to_string())?;
+            let py = pyrun::find_python();
+            // 囲いの中から .venv が見えるようにする(数式と同じ作法)
+            let mut binds: Vec<std::path::PathBuf> = Vec::new();
+            if let Ok(p) = std::fs::canonicalize(".venv") {
+                binds.push(p);
+            }
+            let mut c = match pyrun::caged_python(&py, &dir, &binds, false) {
+                Some(c) => c,
+                None => std::process::Command::new(&py),
+            };
+            let o = c
+                .arg(&py_path)
+                .arg(&json_path)
+                .output()
+                .map_err(|e| ui::tf!("cant_start_python", e).to_string())?;
+            if !o.status.success() {
+                let err = String::from_utf8_lossy(&o.stderr);
+                let last = err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("").to_string();
+                return Err(if err.contains("No module named") {
+                    ui::tf!("matplotlib_missing_install", pyrun::pip_hint("matplotlib")).to_string()
+                } else {
+                    ui::tf!("python_could_not_draw", last).to_string()
+                });
+            }
+            if out.exists() {
+                Ok(out)
+            } else {
+                Err(ui::t!("python_left_no_picture").to_string())
+            }
+        });
+        cx.spawn(async move |this, cx| {
+            let r = task.await;
+            let _ = this.update(cx, |this, cx| {
+                match r {
+                    Ok(p) => {
+                        // ボタンの外(別のスレッドの帰り)なので、命令の旗を倒して控える
+                        this.acted = false;
+                        this.switch_target(Target::Body);
+                        this.insert_image(&p);
+                        this.acted = false;
+                    }
+                    Err(e) => this.status = e.into(),
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
 }

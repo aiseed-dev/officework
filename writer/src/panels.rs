@@ -341,6 +341,7 @@ impl Writer {
             let mut t = self.style_ed.text().to_string();
             let cur = self.style_ed.cursor().min(t.len());
             t.insert(cur, '|');
+            let renaming = !d.name.is_empty();
             // 何を掛けるのかを人の言葉で1行に
             let mut what: Vec<String> = Vec::new();
             if let Some(s) = d.size_pt {
@@ -370,9 +371,18 @@ impl Writer {
                 .flex().flex_col().gap_2()
                 .child(div().text_size(px(us * 11.5)).font_weight(gpui::FontWeight::BOLD)
                     .text_color(rgb(0x165E83))
-                    .child(ui::t!("new_style_give_look")))
+                    // 名前があれば「名前を変える」の途中。無ければ新設
+                    .child(SharedString::from(if renaming {
+                        ui::tf!("rename_style_give_new_name", d.name.clone()).to_string()
+                    } else {
+                        ui::t!("new_style_give_look").to_string()
+                    })))
                 .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
-                    .child(SharedString::from(ui::tf!("what_applies", what.join("・")))))
+                    .child(SharedString::from(if renaming {
+                        String::new()
+                    } else {
+                        ui::tf!("what_applies", what.join("・")).to_string()
+                    })))
                 .child(div().flex().flex_row().gap_2().items_center()
                     .child(div().flex_1().px_2().py_1().rounded_sm()
                         .border_1().border_color(rgb(0x1B6E3C)).bg(gpui::white())
@@ -388,7 +398,7 @@ impl Writer {
                             cx.notify()
                         }))))
                 .child(div().text_size(px(us * 11.0)).text_color(rgb(0x66707A))
-                    .child(ui::t!("existing_name_replaced_goes")))
+                    .child(if renaming { "" } else { ui::t!("existing_name_replaced_goes") }))
         });
 
         let bm_panel = if !self.bm_open {
@@ -1105,41 +1115,106 @@ impl Writer {
                     );
                 }
                 d = d.child(r);
-                // いま着ているスタイルの中身(テンプレートが持っている値)
-                if let Some(def) = self.tmpl.style(&wearing) {
-                    let mut w: Vec<String> = Vec::new();
-                    if let Some(s) = def.size_pt {
-                        w.push(ui::tf!("size_pt_2", s.to_string()).to_string());
-                    }
-                    if let Some(f) = &def.font {
-                        w.push(ui::tf!("typeface", f.clone()).to_string());
-                    }
-                    if def.bold {
-                        w.push(ui::t!("bold").to_string());
-                    }
-                    if def.italic {
-                        w.push(ui::t!("italic").to_string());
-                    }
-                    if def.underline {
-                        w.push(ui::t!("underline").to_string());
-                    }
-                    if let Some(c) = &def.color {
-                        w.push(ui::tf!("colour", c.clone()).to_string());
-                    }
-                    d = d.child(head(ui::t!("what_style_holds")));
+                // 字を選んでいれば、その字が着ている文字スタイルも出す
+                if let Some(cs) = self.selected_char_style() {
                     d = d.child(div().text_size(px(us * 11.0)).text_color(th_status).child(
-                        SharedString::from(if w.is_empty() {
-                            ui::t!("document_default").to_string()
-                        } else {
-                            w.join("・")
-                        }),
+                        SharedString::from(ui::tf!("selected_text_style", cs)),
                     ));
-                    d = d.child(row()
-                        .child(btn(self, "st-bigger", ui::t!("larger_text").into()).on_click(
-                            cx.listener(|t, _, _, cx| { t.tweak_style(1); cx.notify() })))
-                        .child(btn(self, "st-smaller", ui::t!("smaller_text").into()).on_click(
-                            cx.listener(|t, _, _, cx| { t.tweak_style(-1); cx.notify() }))));
                 }
+                // **新しく作る・名前を変える**(2026-09-02)。作った物は
+                // テンプレートに入り、名前を変えると本文の名指しも変わる
+                d = d.child(row()
+                    .child(btn(self, "st-new", ui::t!("new_style").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.style_new_start(); cx.notify() })))
+                    .child(btn(self, "st-rename", ui::t!("rename").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.style_rename_start(); cx.notify() }))));
+                // いま着ているスタイルの中身(テンプレートが持っている値)。
+                // **直すとテンプレートに書かれる**(2026-09-02 発注者「書く処理を
+                // 実装する」)。定義がまだ無いスタイルも、直せば節ができる
+                let def = self.tmpl.style(&wearing).cloned().unwrap_or_default();
+                let mut w: Vec<String> = Vec::new();
+                if let Some(s) = def.size_pt {
+                    w.push(ui::tf!("size_pt_2", s.to_string()).to_string());
+                }
+                if let Some(f) = &def.font {
+                    w.push(ui::tf!("typeface", f.clone()).to_string());
+                }
+                if def.bold {
+                    w.push(ui::t!("bold").to_string());
+                }
+                if def.italic {
+                    w.push(ui::t!("italic").to_string());
+                }
+                if def.underline {
+                    w.push(ui::t!("underline").to_string());
+                }
+                if let Some(c) = &def.color {
+                    w.push(ui::tf!("colour", c.clone()).to_string());
+                }
+                if let Some(a) = def.align {
+                    w.push(match a {
+                        kumihan::Align::Left => ui::t!("left"),
+                        kumihan::Align::Center => ui::t!("centered"),
+                        kumihan::Align::Right => ui::t!("right"),
+                        _ => ui::t!("justify"),
+                    }.to_string());
+                }
+                if let Some(l) = def.line_spacing {
+                    w.push(format!("{} {l}", ui::t!("line_spacing")));
+                }
+                if def.space_after_pt != 0.0 {
+                    w.push(format!("{} {}pt", ui::t!("space_after"), def.space_after_pt));
+                }
+                d = d.child(head(ui::t!("what_style_holds")));
+                d = d.child(div().text_size(px(us * 11.0)).text_color(th_status).child(
+                    SharedString::from(if w.is_empty() {
+                        ui::t!("document_default").to_string()
+                    } else {
+                        w.join("・")
+                    }),
+                ));
+                d = d.child(row()
+                    .child(btn(self, "st-bigger", ui::t!("larger_text").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.tweak_style(1); cx.notify() })))
+                    .child(btn(self, "st-smaller", ui::t!("smaller_text").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.tweak_style(-1); cx.notify() }))));
+                let flag = |id: &'static str, label: SharedString, on: bool| {
+                    div().id(SharedString::from(format!("rp-{id}")))
+                        .px_2().py_0p5().rounded_sm().cursor_pointer()
+                        .border_1()
+                        .border_color(if on { th_btn } else { th_cmd_border })
+                        .bg(if on { th_btn_hover } else { gpui::transparent_black().into() })
+                        .text_size(px(us * 11.5))
+                        .text_color(if on { th_btn } else { th_top_fg })
+                        .hover(move |st| st.bg(th_btn_hover))
+                        .child(label)
+                };
+                d = d.child(row()
+                    .child(flag("st-bold", ui::t!("bold").into(), def.bold).on_click(
+                        cx.listener(|t, _, _, cx| { t.toggle_style_flag("bold"); cx.notify() })))
+                    .child(flag("st-italic", ui::t!("italic").into(), def.italic).on_click(
+                        cx.listener(|t, _, _, cx| { t.toggle_style_flag("italic"); cx.notify() })))
+                    .child(flag("st-underline", ui::t!("underline").into(), def.underline).on_click(
+                        cx.listener(|t, _, _, cx| { t.toggle_style_flag("underline"); cx.notify() }))));
+                d = d.child(head(ui::t!("alignment")));
+                d = d.child(row()
+                    .child(flag("st-left", ui::t!("left").into(), def.align == Some(kumihan::Align::Left)).on_click(
+                        cx.listener(|t, _, _, cx| { t.set_style_align(kumihan::Align::Left); cx.notify() })))
+                    .child(flag("st-center", ui::t!("centered").into(), def.align == Some(kumihan::Align::Center)).on_click(
+                        cx.listener(|t, _, _, cx| { t.set_style_align(kumihan::Align::Center); cx.notify() })))
+                    .child(flag("st-right", ui::t!("right").into(), def.align == Some(kumihan::Align::Right)).on_click(
+                        cx.listener(|t, _, _, cx| { t.set_style_align(kumihan::Align::Right); cx.notify() })))
+                    .child(flag("st-justify", ui::t!("justify").into(), def.align == Some(kumihan::Align::Justify)).on_click(
+                        cx.listener(|t, _, _, cx| { t.set_style_align(kumihan::Align::Justify); cx.notify() }))));
+                d = d.child(row()
+                    .child(btn(self, "st-ls-wider", ui::t!("line_spacing_wider").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.tweak_style_line_spacing(1); cx.notify() })))
+                    .child(btn(self, "st-ls-narrower", ui::t!("line_spacing_narrower").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.tweak_style_line_spacing(-1); cx.notify() })))
+                    .child(btn(self, "st-sa-more", ui::t!("space_after_more").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.tweak_style_space_after(1); cx.notify() })))
+                    .child(btn(self, "st-sa-less", ui::t!("space_after_less").into()).on_click(
+                        cx.listener(|t, _, _, cx| { t.tweak_style_space_after(-1); cx.notify() }))));
                 d = d.child(div().text_size(px(us * 11.0)).text_color(th_status)
                     .child(ui::t!("editing_changes_template_every")));
                 let rail_div = rail()
@@ -1785,6 +1860,8 @@ impl Writer {
                     J::Rename(_) => ui::t!("new_name_type_press").to_string(),
                     J::Delete(p) => ui::tf!("delete_enter_delete_esc_cancel",
                         p.file_name().unwrap_or_default().to_string_lossy().to_string()).to_string(),
+                    J::Footnote(_) => ui::t!("footnote_type_note_press_enter").to_string(),
+                    J::TextArt => ui::t!("text_art_type_text_decorate").to_string(),
                 };
                 let mut d = div().absolute().left(px(us * 16.0)).top(px(us * 8.0)).w(px(us * 400.0))
                     .p_3().rounded_md().bg(rgb(0xF7F9FA))
@@ -1835,8 +1912,11 @@ impl Writer {
             .then(|| self.draw_list("datetime", cx));
         let export_panel = (self.open_list == Some("f-export"))
             .then(|| self.draw_list("f-export", cx));
-        let user_font_panel = (self.open_list == Some("user-font"))
-            .then(|| self.draw_list("user-font", cx));
+        // 揃え方と保護の種類の一覧も、この置き場で描く(中身は keys.rs)
+        let user_font_panel = self
+            .open_list
+            .filter(|k| matches!(*k, "user-font" | "img-align" | "prot-doc"))
+            .map(|k| self.draw_list(k, cx));
 
         // 校正の指摘
         let proof_panel = if self.proof.is_empty() && self.proof_msg.is_empty() {
@@ -1900,6 +1980,7 @@ impl Writer {
             ],
             // 日付の形。**西暦と和暦**(鍵=出す字そのもの — 訳しません)
             "datetime" => crate::cmds::date_shape(),
+            "img-align" | "prot-doc" => self.extra_list_items(kind),
             // **この機械の標準の書体**(2026-08-26)。中身は書体の一覧と同じ
             "user-font" => self.list_items("fontname"),
             "fontname" => {
@@ -2051,6 +2132,7 @@ impl Writer {
             // **この機械の標準の書体を決める**(2026-08-26 発注者
             // 「ユーザーとしての標準設定は、HOME/~.config/ ディレクトリにおく」)
             "user-font" => self.set_user_font(key),
+            "img-align" | "prot-doc" => self.choose_extra_list(kind, key),
             "datetime" => {
                 self.checkpoint(false); // 日付
                 if self.hf_edit.is_some() {

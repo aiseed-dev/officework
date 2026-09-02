@@ -160,6 +160,12 @@ pub(crate) fn caption_head() -> &'static str {
     if head.is_empty() { "図 " } else { head }
 }
 
+/// 表の図表番号(「表 n」)の頭。`caption_head` と同じ作法
+pub(crate) fn table_caption_head() -> &'static str {
+    let head = ui::t!("table_caption").split("{}").next().unwrap_or("");
+    if head.is_empty() { "表 " } else { head }
+}
+
 /// gpui の文字は行の高さが既定で黄金比(1.618×文字サイズ)なので、
 /// グリフは div の頭から余白の半分ぶん下に描かれる。自前で引く線
 /// (変換の下線・下線・取り消し線・蛍光ペン)はそのぶん下げて
@@ -196,6 +202,11 @@ pub(crate) enum FlJob {
     Rename(std::path::PathBuf),
     /// 消す(打つ物はなく、Enter で消します)
     Delete(std::path::PathBuf),
+    /// 脚注の文を打つ(中身は注の id)。一覧の仕事ではありませんが、
+    /// 「見出し+1行の欄」の形が同じなので、この欄を使います
+    Footnote(String),
+    /// テキストアートの字を打つ(Python が描いて画像として入る)
+    TextArt,
 }
 
 pub struct Writer {
@@ -734,6 +745,116 @@ impl Writer {
         }
     }
 
+    /// **打鍵の入口の控え。** 命令(`run_cmd`)の外から文書を変えるときに
+    /// 使います。命令の中で使う `acted` の旗は命令の前後でしか倒れないので、
+    /// 打鍵の道ではここで倒してから控えます。倒さないと、前の打鍵の控えに
+    /// まとめられて、Ctrl+Z の1手になりません
+    pub(crate) fn key_checkpoint(&mut self, typing: bool) {
+        self.acted = false;
+        self.checkpoint(typing);
+        self.acted = false;
+    }
+
+    /// ボタンの側から本文の字を替えたとき(記入欄の切り替えなど)。
+    /// `on_edited` の検査(保護・欄の種類)を通さずに、文書へ写して組み直します
+    pub(crate) fn edited_by_button(&mut self) {
+        self.dirty = true;
+        self.relayout();
+        self.follow_caret();
+    }
+
+    /// 文書の保護の種類(docx の `w:documentProtection` の `w:edit`)。
+    /// `None` は保護なし。値は readOnly / comments / trackedChanges / forms
+    pub(crate) fn prot_mode(&self) -> Option<&str> {
+        self.doc.protection.as_deref()
+    }
+
+    /// いまの打鍵が保護で止まるか。`in_field` は打った所が記入欄の中か。
+    /// readOnly と comments は本文を変えられません。forms は記入欄の中だけ
+    /// 打てます。trackedChanges は打てます(変更履歴が必ず付きます)
+    pub(crate) fn typing_blocked(&self, in_field: bool) -> bool {
+        match self.prot_mode() {
+            None | Some("trackedChanges") => false,
+            Some("forms") => !in_field,
+            Some(_) => true,
+        }
+    }
+
+    /// 保護で止めたときに状態行へ出す文
+    pub(crate) fn protection_message(&self) -> &'static str {
+        match self.prot_mode() {
+            Some("comments") => ui::t!("blocked_comments_mode"),
+            Some("forms") => ui::t!("blocked_forms_mode"),
+            _ => ui::t!("protected_read_only_protection"),
+        }
+    }
+
+    /// 打鍵で本文のどこが変わったか(文書の字と編集中の字の、共通の頭の長さ)。
+    /// 打った後に呼びます。位置は打つ前の文書の側の値です
+    pub(crate) fn edit_pos(&self) -> usize {
+        let old = self.doc.body_text();
+        let new = self.ed.text();
+        let mut n = old
+            .bytes()
+            .zip(new.bytes())
+            .take_while(|(a, b)| a == b)
+            .count();
+        while n > 0 && !old.is_char_boundary(n) {
+            n -= 1;
+        }
+        n
+    }
+
+    /// 打った所(打つ前の文書の位置)にある記入欄。
+    /// その位置の直前の字と、その位置の字のどちらかが欄なら、欄の中と見ます
+    pub(crate) fn field_at_edit(&self, at: usize) -> Option<kumihan::Sdt> {
+        let old = self.doc.body_text();
+        let at = at.min(old.len());
+        let next = old[at..].chars().next().map(|c| at + c.len_utf8());
+        let range = self
+            .doc
+            .sdt_range_at(at)
+            .or_else(|| next.and_then(|n| self.doc.sdt_range_at(n)))?;
+        self.doc.char_format_at(range).sdt.as_deref().cloned()
+    }
+
+    /// カーソルの記入欄(あれば)。`sdt_at` と同じですが、欄の頭でも当たります
+    pub(crate) fn field_here(&self) -> Option<kumihan::Sdt> {
+        if self.target != Target::Body {
+            return None;
+        }
+        self.field_at_edit(self.ed.cursor())
+    }
+
+    /// チェックとラジオの欄を切り替える(☐ ⇄ ☑)。切り替えたら真。
+    /// カーソルの前後の1字を見て入れ替えます
+    pub(crate) fn toggle_check(&mut self) -> bool {
+        let Some(sd) = self.field_here() else { return false };
+        if !matches!(sd.kind, kumihan::SdtKind::Checkbox | kumihan::SdtKind::Radio) {
+            return false;
+        }
+        let text = self.ed.text().to_string();
+        let cur = self.ed.cursor().min(text.len());
+        let (s0, e0) = match text[..cur].char_indices().next_back() {
+            Some((i, c)) if c == '☐' || c == '☑' => (i, cur),
+            _ => match text[cur..].chars().next() {
+                Some(c) if c == '☐' || c == '☑' => (cur, cur + c.len_utf8()),
+                _ => return false,
+            },
+        };
+        let next = if &text[s0..e0] == "☑" { "☐" } else { "☑" };
+        self.ed.move_to(s0, false);
+        self.ed.move_to(e0, true);
+        self.ed.insert(next);
+        self.doc.set_body_text(self.ed.text());
+        // 字を丸ごと入れ替えると欄の印が落ちるので、付け直す
+        let e1 = s0 + next.len();
+        self.doc.apply_char_format(s0..e1, move |f| f.sdt = Some(Box::new(sd.clone())));
+        self.edited_by_button();
+        self.status = ui::tf!("checkbox_set", next).into();
+        true
+    }
+
     /// カーソルのある段落が「原文のまま持ち越した塊」か
     pub(crate) fn raw_para_at_cursor(&self) -> bool {
         let (pi, _) = self.cursor_para();
@@ -892,8 +1013,38 @@ impl HasEditor for Writer {
             .into();
             return;
         }
-        if self.protected() {
-            // 読み取り専用の保護。**打った分を取り消して、文書は変えない。**
+        // 本文を打っているときは、どこを打ったかと、そこが記入欄かを見る
+        let body_edit = self.target == Target::Body
+            && self.hf_edit.is_none()
+            && !self.wm_edit
+            && !self.cmt_edit
+            && !self.bm_open;
+        let (edit_at, field) = if body_edit {
+            let at = self.edit_pos();
+            (at, self.field_at_edit(at))
+        } else {
+            (0, None)
+        };
+        // 空白キーでチェックの欄を切り替える(☐ ⇄ ☑)。打った空白は入れない
+        if let Some(sd) = &field {
+            let typed_space = {
+                let new = self.ed.text();
+                let old_len = self.doc.body_text().len();
+                new.len() == old_len + 1 && new[edit_at..].starts_with(' ')
+            };
+            if typed_space
+                && matches!(sd.kind, kumihan::SdtKind::Checkbox | kumihan::SdtKind::Radio)
+                && !matches!(self.prot_mode(), Some("readOnly") | Some("comments"))
+            {
+                self.undo_typing();
+                self.toggle_check();
+                return;
+            }
+        }
+        // コメントだけの保護では、コメントの欄の打鍵は通す
+        let comment_ok = self.prot_mode() == Some("comments") && self.cmt_edit;
+        if self.typing_blocked(field.is_some()) && !comment_ok {
+            // 保護。**打った分を取り消して、文書は変えない。**
             // パネル(ヘッダー等)の打鍵は文書に入る前なので、パネルごと閉じて捨てる
             if self.hf_edit.is_some() || self.wm_edit || self.cmt_edit {
                 self.hf_edit = None;
@@ -903,8 +1054,13 @@ impl HasEditor for Writer {
             if !self.bm_open {
                 self.undo_typing();
             }
-            self.status =
-                ui::t!("protected_read_only_protection").into();
+            self.status = self.protection_message().into();
+            return;
+        }
+        // ドロップダウンは選ぶだけの欄。打ち足しは入れない
+        if field.as_ref().is_some_and(|sd| sd.kind == kumihan::SdtKind::Dropdown) {
+            self.undo_typing();
+            self.status = ui::t!("dropdown_pick_only").into();
             return;
         }
         if let Some(footer) = self.hf_edit {
@@ -1247,6 +1403,8 @@ pub fn run() {
             move |window, cx| {
                 let view = cx.new(|cx| Writer::new(arg2.clone(), cx));
                 window.focus(&view.focus_handle(cx), cx);
+                // Ctrl+= / Ctrl+-(画面の文字の大きさ)。受け口は keys.rs
+                keys::bind_ui_scale_keys(&view, cx);
                 // **受け口を開く**(2026-08-19)。calc と同じ形で、Python や
                 // AI の道具から文書を操れます(Windows ではソケットを作らない)
                 #[cfg(unix)]

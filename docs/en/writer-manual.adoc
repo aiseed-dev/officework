@@ -72,14 +72,14 @@ Tab order: *File / Home / Insert / Draw / Layout / References / Forms / Header &
 |Action |Keys
 
 |Move |↑ ↓ ← → (visual lines). By word: Ctrl+←→
-|Line start / end |Home / End (Home twice = paragraph start)
+|Line start / end |Home / End (Home twice = paragraph start, End twice = paragraph end)
 |Document start / end |Ctrl+Home / Ctrl+End
 |Select |Shift+arrows, Ctrl+A
 |Undo / redo |Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y too)
 |Copy / cut / paste |Ctrl+C / Ctrl+X / Ctrl+V
 |Find / replace |Ctrl+F / Ctrl+H
 |Open / save |Ctrl+O / Ctrl+S
-|Indent / list level |Tab / Shift+Tab (inside a table: next cell)
+|Indent / list level |Tab / Shift+Tab (inside a table: next cell; Tab in the last cell adds a row)
 |Context menu |Menu key / Shift+F10
 |Close dialog, put tool away |Esc
 |Quit |Ctrl+Q (asks if there are unsaved changes)
@@ -188,7 +188,8 @@ Sample: `sample/writer/02_縦書きの手紙.docx`.
 
 * *Headings*: Home > paragraph styles (or References > Add Text to cycle body → heading 1 → 2 → 3)
 * *TOC / table of figures*: page numbers are computed with *the same layout as print (PDF)*, so they can't disagree with the paper. After edits, press Update to rebuild. Stored in docx as static text
-* *Captions*: "図 N" below the paragraph, numbered automatically
+* *Captions*: "Figure N" below the paragraph; inside a table, "Table N" below the table (figures and tables are numbered separately, automatically)
+* *Footnotes*: References > Footnote puts a mark at the caret and opens a field to type the note. With text selected, the selected text moves into the note
 * *Bookmarks*: add/remove/jump from a dialog. *Cross-references* insert a bookmark's text or page number into the body (shown with a light shade = computed value; stored as REF / PAGEREF fields, so Word can recalculate them)
 
 == Forms (form fields / content controls)
@@ -196,15 +197,17 @@ Sample: `sample/writer/02_縦書きの手紙.docx`.
 Ten kinds on the Forms tab: *text, combo box, dropdown, checkbox, radio, picture, e-mail, phone, composite, signature*.
 
 * Fields appear as light boxes; typing inside them works normally (the content stays part of the field)
-* Checkboxes toggle ☐⇄☑ with the same button (or the space key). Combo/dropdown choices are set comma-separated in a dialog; the same button cycles candidates
-* Stored as `w:sdt` (content controls) and opens in Word. Our own kinds (e-mail, phone, composite, signature) are tagged `jo:*`
-* *Combined with Protection > Protect this becomes a distributable form* — hand out a read-only document where only the fields accept input. Sample: `sample/writer/03_申込書.docx`
+* Checkboxes and radio buttons toggle ☐⇄☑ with the same button (or the space key). Combo/dropdown choices are set comma-separated in a dialog; the same button cycles candidates. A dropdown cannot be typed into (typing is reverted, and the status line says so)
+* Stored as `w:sdt` (content controls) and opens in Word. Checkboxes and radio buttons are stored as Word checkboxes (`w14:checkbox`). Our own kinds (radio, e-mail, phone, composite, signature) are tagged `jo:*`, so the kind comes back when the file is reopened
+* *Choose "Filling in form fields only" under Protection > Protect and this becomes a distributable form* — the recipient can type only inside the fields, toggle checkboxes and cycle choices. Sample: `sample/writer/03_申込書.docx`
 
 == Tables, images, insert
 
-* *Tables*: Insert > Table (3×3). Edit inside cells, Tab to the next cell. Tables with merged cells are read, displayed, saved, and printed (no UI to create new merges yet)
+* *Tables*: Insert > Table. Edit inside cells; Tab moves to the next cell, Shift+Tab to the previous one; Tab in the last cell adds a row (as in Word). Tables with merged cells are read, displayed, saved, and printed (no UI to create new merges yet)
 * *Images*: PNG, JPEG, SVG (SVG is converted to a high-resolution PNG). Saved as proper docx parts, visible in Word
-* *Shapes, SmartArt (9 layouts), charts, text art*: behind the buttons Python (matplotlib etc.) draws the picture and pastes it as an image
+* *Charts*: put the caret inside a table and press Insert > Chart; Python (matplotlib) draws a bar chart from that table and pastes it as an image. Outside a table the button picks an image file
+* *Text art*: a field opens for the text; Enter has Python draw it bold with an outline and paste it as an image
+* *Shapes, SmartArt*: pick an image file (PNG, JPEG, SVG) to paste. Python draws them; there is no gallery to pick from yet
 * *Equations*: Insert > Equation opens a small panel — *type LaTeX and press Enter* (e.g. `\frac{a+b}{2}`). Python typesets it: with TeX installed it typesets there (matrix columns align), otherwise matplotlib. *The picture and the LaTeX source go into the docx as a pair*, so Word shows the picture and writer reopens it as an editable formula. A formula it cannot set is refused with the reason
 * *Text box*: a 1×1 table (text inside a frame)
 * *Text from file*: inserts .txt / .md / .docx
@@ -212,7 +215,7 @@ Ten kinds on the Forms tab: *text, combo box, dropdown, checkbox, radio, picture
 == Drawing (pen, highlighter, eraser)
 
 Drag on the page.
-Strokes are *anchored to the page* (editing the body doesn't move them); one stroke is one undo step.
+Strokes are *anchored to the page* (editing the body doesn't move them); one stroke is one undo step, and Ctrl+Z still undoes strokes after the tool has been put away (Esc).
 In docx they become freeform shapes, visible in Word.
 
 *Strokes are saved as SVG pictures.* They go into an `images` folder beside your text and the text points at them with `image::`, so they come out in HTML, PDF and docx alike, and you can delete them later as pictures.
@@ -255,7 +258,7 @@ Tools that work on a document in a shared folder:
 
 == Protection tab
 
-* *Protect*: read-only toggle (round-trips docx documentProtection — Word shows it as protected too). *No password, and no pretend-password.* The effect is real: typing and every document-changing button are blocked; viewing, printing, and searching still work
+* *Protect*: pick the kind of protection from a list — *Read only* (typing and every document-changing button are blocked), *Comments only* (the text cannot change; comments can be added and removed), *Editing with tracked changes only* (you can type, but recording cannot be stopped), *Filling in form fields only* (typing works only inside form fields) — or *No protection* to remove it. It round-trips the docx documentProtection `w:edit` value, so Word shows the same protection. *No password, and no pretend-password.* The effect is real, and the status line names the protection when it blocks something. Viewing, printing, searching and copying work under every kind
 * *Encrypting is not offered.* What writer saves is adoc, which is not a zip, so there is nothing to wrap. A password-protected docx still *opens*: writer asks for the password (Agile AES-256 and the older AES-128 both work, cross-verified against msoffcrypto-tool)
 * *Digital signature*: a signature file next to the document (`document.docx.sig`, Ed25519; the key is auto-generated at `~/.config/officework/sign.key`). Tamper detection plus a name — it is not the scheme that fills Word's signature line (and says so)
 
@@ -535,6 +538,7 @@ Just put one format file per destination.
 
 *They never mix.* Exactly one is in effect at a time, falling back to``テンプレート.toml`` when the file for that destination is absent.
 The status bar says which one was used.
+If `テンプレート-web.toml` or `テンプレート-印刷.toml` cannot be read, the status bar says so when the document is opened, and `テンプレート.toml` is used instead.
 
 *An app is the same road as the web*: put `[送り先]` in ``テンプレート-web.toml ``and the fields become a form that submits.
 
@@ -588,31 +592,46 @@ A broken template *says what is wrong* and falls back to the built-in default �
 
 A template is made and handed out by *the person who decides the look* — a government form, a house style, a journal's layout all belong to that person, not to whoever writes the text.
 
-When you change a format, it is always written *next to the document you have open*.
-If the template came from somewhere else (``~/.config/officework/templates/ ``or the built-in default), you get:
+When you change a format from the Styles face in the right panel, it is always written *next to the document you have open*.
+Whether a template was handed out is decided by where the template in effect lives.
+
+[cols="1,1"]
+|===
+|Template in effect |Where the change is written
+
+|`テンプレート.toml` next to the document, or the `name.toml` next to the document named by `:template: name` |That file is edited in place
+|`name.toml` inside `~/.config/officework/templates/` |A copy named `name.toml` is made next to the document, and the copy is edited
+|This computer's defaults (`~/.config/officework/テンプレート.toml`) |A copy named `テンプレート.toml` is made next to the document, and the copy is edited
+|The built-in default |A `テンプレート.toml` holding the built-in default is made next to the document, and the copy is edited
+|===
+
+When a copy is made, the status bar says:
 
 [NOTE]
 ====
-Made a copy for this document only at /…/house-style.toml. The
-/home/…/templates/house-style.toml you were given is unchanged
+Made a copy for this document only at /…/house-style.toml.
+/home/…/templates/house-style.toml is unchanged
 ====
 
 *From then on, this document follows the copy.* Updates to the original will not reach it, so if the look itself needs fixing, ask the person who maintains the original.
 
+The copy is the original file's text as it is, so comments and ordering in the original survive.
+A document that has not been saved yet has no "next to", so save it first.
+If a template next to the document exists but cannot be read, no copy is made — overwriting it silently would destroy the clue needed to fix it. The status bar says "already exists but could not be read".
+
 === When you want to change the look
 
 Pressing size, typeface, colour, highlight, underline or strikethrough does not apply anything.
-Instead you get
+Instead *the Styles face on the right opens*, where you
 
-[NOTE]
-====
-*New style — give this look a name*
-What it applies: size 11pt
-`[ Large text ]` [Confirm (Enter)]
-====
+* *pick* one from the list (wear a style that already exists)
+* press *None* (take off the style it wears now)
+* press *New style* (give it a name and put it into the template)
 
-Name it and the style goes *into the template*, so every place with that name changes at once.
-The AI suggests the name (without it you get a draft name).
+Pressing *New style* opens a name field.
+When you confirm the name, a definition copied from the style currently worn goes into the template, and the selection wears that name.
+You then adjust its contents with the buttons on the Styles face.
+If you type a name that already exists, that definition is worn as it is (the definition is not changed).
 
 * *With text selected it applies to the text; without, to the paragraph*
 * A character style is saved as `[.name]#text#`
@@ -622,7 +641,31 @@ The AI suggests the name (without it you get a draft name).
 
 View > Right panel → the third icon on the rail.
 It shows the style this paragraph wears and the ones you can pick.
-Picking changes it; the size buttons edit *the template*, so everywhere with that style changes together.
+With text selected, it also shows the character style that text wears.
+
+Pressing a name in the list changes what is worn.
+Body, Title, Heading 1–5 and Quote are paragraph roles, so they apply to the paragraph even when text is selected.
+Any other name applies to the selected text, or to the paragraph when nothing is selected.
+
+The face has these buttons.
+Pressing one rewrites the template, so every place with that style changes at once.
+
+[cols="1,2"]
+|===
+|Button |What it does
+
+|New style |Opens the name field. See "When you want to change the look" above
+|Rename |Renames the current style. The section in the template and every paragraph and character run in the text that names it get the new name. Body, Title, Heading 1–5 and Quote are role names and cannot be renamed. An existing name cannot be reused
+|Larger text / Smaller text |Moves the size by 1pt (4–200pt). A style with no size of its own starts from the size in effect
+|Bold / Italic / Underline |Switches each on or off
+|Left / Center / Right / Justify |Sets the alignment
+|Line spacing + / Line spacing − |Moves the line spacing by 0.25. It does not go below 1.0
+|Space after + / Space after − |Moves the space after the paragraph by 2pt. It does not go below 0
+|===
+
+Only the lines for that style are written.
+Hand-written comments and ordering in the template survive.
+The status bar says "Wrote style "Body" to /…/テンプレート.toml", followed by the copy note when a copy was made.
 
 === Laying out for the web, or as slides
 
@@ -668,14 +711,34 @@ Our own syntax, ruby annotation `ruby:` and form fields `field:`, shows up as li
 File > *Reduce to meaning (distil)*.
 It pulls the direct formatting out of a docx, groups similar looks into styles and moves them into a template.
 
+[cols="1,1,1"]
+|===
+| |Content |File
+
+|Text |What it says: headings, paragraphs, lists, tables |`document.adoc`
+|Format |How it looks: typeface, size, colour, margins |`document.toml`
+|===
+
+Both files are written next to the original docx, named after it (`report.docx` gives `report.adoc` and `report.toml`).
+The text starts with `:template: report`, so it uses the `report.toml` next to it.
+The original docx is left as it is.
+
+How the names are chosen:
+
+* The most common look becomes *Body*. Its size and typeface go into `[文書]`
+* A paragraph the docx calls "Heading 1" and so on *keeps that name*
+* A look with no name gets a placeholder name, *見た目1*, *見た目2*, … The name is not chosen from the content, so *rename it yourself afterwards* (Rename on the Styles face)
+
 [NOTE]
 ====
-Distilled — 1 style, 15 paragraphs. The look moved into the template
+Converted to adoc — 1 formats moved into the template, 15 paragraphs into the text. Wrote the formatting to report.toml and the text to report.adoc. Ctrl+S now saves the adoc
 ====
 
 * *It is lossy, so it is an explicit step.* Until you press it, the docx stays a docx (original parts included)
 * Anything that does not fit a paragraph's look (one word in a different colour) is dropped, and *the count is reported* — no pretending nothing was lost. Emphasis, footnotes, links and ruby survive
-* Afterwards the document is native and saves as .adoc
+* Afterwards the document saves to `document.adoc`. Ctrl+S does not overwrite the original docx
+* If `document.adoc` already exists it is not written. The status bar says saving will overwrite it
+* A docx that has not been saved yet has no "next to", so no files are written. The status bar says to save first. On screen the document is already in adoc form
 
 == Searching a folder
 
@@ -694,13 +757,12 @@ It opens only when you press *Load* below — so you look first, and a misclick 
 == Printing (PDF) and saving
 
 * File > Print writes a PDF. Real header/footer numbers, watermark, page color, ink, and vertical writing all carry over
-* *Screen and paper can be the same, or different.* Add``テンプレート-印刷.toml`` and paper gets its own look; without it, what you see is what is printed
+* *Screen and paper can be the same, or different.* Add``テンプレート-印刷.toml`` and paper gets its own look; without it, what you see is what is printed. The paragraph formats, paper size and layout of `テンプレート-印刷.toml` reach the paper, and so do its header, footer, watermark and page colour. Where the print template has none of those, the screen's are printed
 * *Anything counted is counted on paper.* Page numbers in the table of contents, the table of figures and cross-references, and the page count in headers, all follow the _printed_ pages, however many pages the screen shows. A "page 3" in the contents is always page 3 on paper
 * *Ctrl+S saves adoc* (blocked if someone else holds the lock). Only the text is written; the formatting stays in the template
 * *docx is produced by "export".* The template's formatting is written as docx style definitions, so Word shows it, and editing a style in Word still changes every place that uses it. Nothing is baked into the text itself. If the folder holds a `テンプレート-docx.toml`, docx exports use that format instead
 * Exporting *does not move where your source is saved.* Ctrl+S afterwards still saves the adoc, not the docx
-* A docx you opened *is not edited and saved back* (coming in 0.2.0-alpha). Press "turn into adoc" first, then export to docx
-* (until 0.2.0-alpha) Ctrl+S saves docx. Body, tables, images, and headers are written back; parts we don't understand are carried over from the original file. Elements we couldn't read are noted as "preserved on save"
+* A docx you opened is *saved back to that docx* with Ctrl+S. Body, tables, images and headers are written back; parts we could not read are carried over from the original file. To keep the text as adoc instead, press "turn into adoc" first, then export to docx
 
 == All commands
 
