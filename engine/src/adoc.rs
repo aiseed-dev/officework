@@ -33,8 +33,8 @@
 //! 実物のほうを直しました
 
 use crate::doc::{
-    Block, Cellbox, CharFormat, Document, InlineImage, ListKind, Paragraph, ParaStyle, Run,
-    Table, VMerge,
+    Block, Cellbox, CharFormat, Document, Footnote, FootnoteRef, InlineImage, ListKind,
+    Paragraph, ParaStyle, RefField, Run, Table, VMerge,
 };
 
 // ---- 書き ------------------------------------------------------------------
@@ -366,27 +366,12 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
         // **隣が字なら二重の印にします**(2026-08-18)。本家 AsciiDoc は
         // `*字*` の外側が字だと強調として読みません(`*太字*続き` はそのまま
         // アスタリスクが出ます)。README を本家に通して分かりました
-        // **役割は、この run で開いてこの run で閉じる印に付けます**
-        // (`[.path]_径路_`。本家の書き方)。太字・斜体がこの run だけなら
-        // その印に、どちらも無ければ `[.名前]#字#` の形にします(2026-09-02)
-        let role = r.fmt.style_id.as_deref().filter(|n| *n != MONO);
-        let closes_after = |thick: bool| {
-            runs.get(ri + 1).map_or(true, |x| if thick { !x.fmt.bold } else { !x.fmt.italic })
-        };
-        let role_on_mark: Option<bool> = match role {
-            Some(_) if r.fmt.italic && !italic && closes_after(false) => Some(false),
-            Some(_) if r.fmt.bold && !bold && closes_after(true) => Some(true),
-            _ => None,
-        };
         if r.fmt.bold != bold {
             let double = if r.fmt.bold {
                 should_double(s.chars().last(), ri, true)
             } else {
                 bold_is_double
             };
-            if r.fmt.bold && role_on_mark == Some(true) {
-                s.push_str(&format!("[.{}]", role.unwrap_or_default()));
-            }
             s.push_str(if double { "**" } else { "*" });
             bold_is_double = double;
             bold = r.fmt.bold;
@@ -397,9 +382,6 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
             } else {
                 italic_is_double
             };
-            if r.fmt.italic && role_on_mark == Some(false) {
-                s.push_str(&format!("[.{}]", role.unwrap_or_default()));
-            }
             s.push_str(if double { "__" } else { "_" });
             italic_is_double = double;
             italic = r.fmt.italic;
@@ -414,29 +396,26 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
         }
         // **文字単位のスタイル**(2026-08-16)。AsciiDoc の役割の書き方
         // `[.名前]#字#`。段落のスタイルと同じ表(テンプレート)を引く
-        // **前後が字なら二重の印。** 本家は一重の印を、直前か直後が字だと
-        // 印として読みません(2026-08-18 に本家で確かめ、2026-09-02 に
-        // 本家の `QUOTE_SUBS` を写して役割とマークにも同じ決めを入れた)
-        let before = s.chars().last();
-        let after = next_char(runs, ri);
-        let is_char = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric());
-        let dbl = is_char(before) || is_char(after);
         let (open, close) = match r.fmt.style_id.as_deref() {
             // **等幅は本家の印で書きます**(2026-08-18)。`[.等幅]#字#` と
             // 書いても意味は同じですが、他の処理系や GitHub では字がそのまま
             // 出てしまいます。本家にある書き方はそちらに寄せる決まりです
-            Some(MONO) if dbl => ("``".to_string(), "``"),
-            Some(MONO) => ("`".to_string(), "`"),
-            // 役割を印に付けたら、囲みは要らない
-            Some(_) if role_on_mark.is_some() => (String::new(), ""),
-            // 文字のスタイルは役割(`[.名前]#字#`)。前後が字なら `##`
-            Some(n) if dbl => (format!("[.{n}]##"), "##"),
+            // **前後が字なら二重の印。** 本家は `字\`等幅\`字` を等幅として
+            // 読みません(2026-08-18 に本家で確かめました)
+            Some(MONO) => {
+                let before = s.chars().last();
+                let after = next_char(runs, ri);
+                let is_char = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric());
+                if is_char(before) || is_char(after) {
+                    ("``".to_string(), "``")
+                } else {
+                    ("`".to_string(), "`")
+                }
+            }
             Some(n) => (format!("[.{n}]#"), "#"),
-            // 蛍光ペンは本家のマーク(`#字#`)。色は運びません
-            None if r.fmt.highlight.is_some() && dbl => ("##".to_string(), "##"),
-            None if r.fmt.highlight.is_some() => ("#".to_string(), "#"),
             None => (String::new(), ""),
         };
+        let mono = r.fmt.style_id.as_deref() == Some(MONO);
         s.push_str(&open);
         if let Some(sdt) = &r.fmt.sdt {
             s.push_str(&field_src(sdt));
@@ -451,6 +430,8 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
                 ""
             };
             s.push_str(&format!("{head}{url}[{}]", esc(&r.text)));
+        } else if mono {
+            s.push_str(&r.text); // 等幅の中は字のまま
         } else {
             s.push_str(&esc(&r.text));
         }
@@ -468,23 +449,38 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
     if italic {
         s.push('_');
     }
-    // **書いた行を読み直して、意図と違う所だけ `\` を足します。**
-    // 本家の `\` は「次の印は字です」の意味で、印として読まれない所に
-    // 付けると `\` がそのまま読者に見えます(2026-09-02)
-    crate::inline::settle(&s, runs)
+    s
 }
 
-/// 本文の字の中の、印にもなりうる字に仮の字を付ける。
-/// 本物に戻して `\` を足すかどうか決めるのは [`crate::inline::settle`]
+/// 本文の字の中の印を逃がす。逃がすのは**行の中で意味を持つ印だけ**
 fn esc(t: &str) -> String {
-    t.chars().map(crate::inline::twin).collect()
+    let mut s = String::with_capacity(t.len());
+    for (i, c) in t.char_indices() {
+        // `~` と `^` は**後ろに相手がいるときだけ**逃がします。
+        // 相手がいないのに逃がすと、`\~/.config` のように**バックスラッシュが
+        // そのまま読者に見えます**(2026-08-18 に README を本家へ通して
+        // 見つけました)
+        let has_pair = |c: char| t[i + c.len_utf8()..].contains(c);
+        if c == '*' || c == '_' || c == '\\' || ((c == '^' || c == '~') && has_pair(c)) {
+            s.push('\\');
+        }
+        // **`[.名前]#` の形だけ逃がす** — 文字スタイルの書き出しと紛れるのは
+        // この形だけです。`[.` を一律に逃がすと、本家の役割の書き方
+        // (`[.path]_…_`)に余計な `\` が入ります(2026-08-18、本家の手引きを
+        // 読ませて見つけた)
+        if c == '[' && looks_char_style(&t[i..]) {
+            s.push('\\');
+        }
+        s.push(c);
+    }
+    s
 }
 
 /// 記入欄の `[…]` の中身 → (表示名, 種類, 選択肢)。
 ///
 /// 種類の名前は日本語で書きます。知らない名前は**文字の欄として扱い、
 /// 黙って捨てません**(表示名の一部として残ります)。
-pub(crate) fn parse_field(s: &str) -> (String, crate::doc::SdtKind, Vec<String>) {
+fn parse_field(s: &str) -> (String, crate::doc::SdtKind, Vec<String>) {
     use crate::doc::SdtKind as K;
     let mut items = Vec::new();
     let (alias, rest) = match s.split_once(',') {
@@ -905,6 +901,9 @@ pub fn dropped(doc: &Document) -> Vec<&'static str> {
             if r.fmt.color.is_some() {
                 push("文字の色");
             }
+            if r.fmt.highlight.is_some() {
+                push("背景の色");
+            }
             if r.size_pt.is_some() {
                 push("字の大きさ");
             }
@@ -1288,8 +1287,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     let mut doc = Document::default();
     let mut lines = src.lines().enumerate().peekable();
     let mut pending_bookmarks: Vec<String> = Vec::new();
-    // 継いでいる段落(塊の番号と、貯めた原文)。段落の終わりでまとめて読む
-    let mut pending: Option<(usize, String)> = None;
+    let mut cont_emph = EmphState::default();
     let mut pending_break = false;
     let mut pending_style: Option<String> = None;
     let mut in_quote = false;
@@ -1642,7 +1640,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             p.style = ParaStyle::Quote;
         }
         // **継ぐかどうかは、字を読む前に決まります**(見出しか・箇条書きか・
-        // 名前つきか)。継ぐなら字を貯めて、段落の終わりでまとめて読みます
+        // 名前つきか)。継ぐなら強調の状態も持ち越します
         let continued = prev_is_body
             && p.style == ParaStyle::Body
             && p.list == ListKind::None
@@ -1650,10 +1648,11 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             && p.style_id.is_none()
             && !p.page_break_before;
         if !continued {
-            flush_pending(&mut pending, &mut doc, &mut fresh_note)?;
+            cont_emph = EmphState::default();
         }
         // 継ぐ行の頭の空白は落とします(続きの印であって、字ではありません)
         let body = if continued { body.trim_start() } else { body };
+        p.runs = parse_inline_cont(body, &mut doc, &mut fresh_note, &mut cont_emph)?;
         // **続く行は同じ段落に継ぐ**(AsciiDoc の作法)。段落の切れ目は空行で、
         // 行の折り返しではありません。80 桁で折った普通の AsciiDoc を開くと、
         // 前は行ごとにバラバラの段落になり、保存で空行が入って構造が変わって
@@ -1673,16 +1672,22 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             p.raw_adoc.is_none() && !p.style_id.as_deref().is_some_and(one_per_line);
         prev_is_desc_list = p.style_id.as_deref().is_some_and(is_desc_list);
         if continued {
-            if let Some((_, src)) = pending.as_mut() {
-                src.push_str(seam_src(src, body));
-                src.push_str(body);
+            if let Some(Block::Para(before)) = doc.blocks.last_mut() {
+                let cont_of = seam(
+                    before.runs.last().map(|r| r.text.as_str()).unwrap_or(""),
+                    p.runs.first().map(|r| r.text.as_str()).unwrap_or(""),
+                );
+                if !cont_of.is_empty() {
+                    if let Some(r) = before.runs.last_mut() {
+                        r.text.push(' ');
+                    }
+                }
+                before.runs.extend(p.runs);
                 continue;
             }
         }
         doc.blocks.push(Block::Para(p));
-        pending = Some((doc.blocks.len() - 1, body.to_string()));
     }
-    flush_pending(&mut pending, &mut doc, &mut fresh_note)?;
     let ledger = ledger
         .into_iter()
         .map(|(k, n)| if n > 1 { format!("{k} × {n}") } else { k.to_string() })
@@ -1750,38 +1755,289 @@ fn split_macro_target(s: &str) -> Option<(&str, &str)> {
     (close == s.len() - 1).then(|| (&s[..open], &s[open + 1..close]))
 }
 
-/// インラインの印を run の並びへ。中身は [`crate::inline`](本家と同じ順で
-/// 置き換えます)
-fn parse_inline(text: &str, doc: &mut Document, fresh_note: &mut usize) -> Result<Vec<Run>, String> {
-    crate::inline::parse(text, doc, fresh_note)
+/// インラインの印を run の並びへ。
+/// `*太*` `_斜_` `ruby:字[よみ]` `footnote:[中身]` `<<参照>>` `https://…[名]` `\逃がし`
+///
+/// **添字は全部バイトで数える。** 字数と混ぜると、日本語の後ろの字が
+/// 食われる(最初の版で `の続き` が消えた — find の返りはバイト)
+/// **行をまたぐ強調の状態。**
+///
+/// 本家は段落まるごとを1つとして読むので、`**太字` で始まり次の行の
+/// `太字**` で閉じる書き方が通ります。行ごとに読み直すと、片方だけの印に
+/// なって字が壊れます(2026-08-18 に README を通して見つけました)。
+#[derive(Debug, Clone, Copy, Default)]
+pub struct EmphState {
+    bold: bool,
+    italic: bool,
+    mono: bool,
 }
 
-/// 継いだ段落の字を、まとめて run の並びにする。
-///
-/// **行ごとに読まず、段落をまるごと読みます。** 本家は段落を1つの
-/// 文字列にして印を探すので、一重の印の前後の条件(直前が字でない・
-/// 直後が字でない)は行をまたいで効きます(2026-09-02)
-fn flush_pending(
-    pending: &mut Option<(usize, String)>,
+fn parse_inline(
+    text: &str,
     doc: &mut Document,
     fresh_note: &mut usize,
-) -> Result<(), String> {
-    if let Some((idx, src)) = pending.take() {
-        let runs = parse_inline(&src, doc, fresh_note)?;
-        if let Some(Block::Para(p)) = doc.blocks.get_mut(idx) {
-            p.runs = runs;
-        }
-    }
-    Ok(())
+) -> Result<Vec<Run>, String> {
+    let mut state = EmphState::default();
+    parse_inline_cont(text, doc, fresh_note, &mut state)
 }
 
-/// 行を継ぐときの継ぎ目を原文の字で決める。印の字は飛ばして、
-/// 前の行の最後の字と次の行の最初の字を見ます
-fn seam_src(before: &str, after: &str) -> &'static str {
-    let is_mark = |c: &char| crate::inline::MARK_CHARS.contains(c);
-    let a: String = before.chars().rev().find(|c| !is_mark(c)).into_iter().collect();
-    let b: String = after.chars().find(|c| !is_mark(c)).into_iter().collect();
-    seam(&a, &b)
+fn parse_inline_cont(
+    text: &str,
+    doc: &mut Document,
+    fresh_note: &mut usize,
+     state: &mut EmphState,
+) -> Result<Vec<Run>, String> {
+    let mut runs: Vec<Run> = Vec::new();
+    let mut cur = String::new();
+    let mut bold = state.bold;
+    let mut italic = state.italic;
+    // **等幅**(`` `字` ``)。字のスタイルとして持つので、見た目はテンプレートの
+    // `[スタイル.等幅]` が決めます(2026-08-18)
+    let mut mono = state.mono;
+    let flush = |runs: &mut Vec<Run>, cur: &mut String, bold: bool, italic: bool, mono: bool| {
+        if cur.is_empty() {
+            return;
+        }
+        let fmt = CharFormat {
+            bold,
+            italic,
+            style_id: mono.then(|| MONO.to_string()),
+            ..Default::default()
+        };
+        runs.push(Run { text: std::mem::take(cur), size_pt: None, font: None, fmt });
+    };
+    let mut i = 0usize; // バイト
+    while i < text.len() {
+        let rest = &text[i..];
+        // **等幅の中は字のままです**(2026-08-18)。閉じの印だけを探します。
+        // 中の `_` を斜体の印として読むと、`i18n_soroi.rs` のような名前が
+        // 壊れます。`\` も字なので、径路の `%USERPROFILE%\.config` が
+        // 消えないようにします
+        if mono {
+            let closing = if rest.starts_with("``") { 2 } else if rest.starts_with('`') { 1 } else { 0 };
+            if closing > 0 {
+                flush(&mut runs, &mut cur, bold, italic, mono);
+                mono = false;
+                i += closing;
+                continue;
+            }
+            let c = rest.chars().next().expect("空でない");
+            cur.push(c);
+            i += c.len_utf8();
+            continue;
+        }
+        if let Some(after) = rest.strip_prefix('\\') {
+            if let Some(c) = after.chars().next() {
+                cur.push(c);
+                i += 1 + c.len_utf8();
+                continue;
+            }
+        }
+        // **二重の印**(`**字**`)。前後が字のときは本家がこちらを求めます
+        if rest.starts_with("**") {
+            flush(&mut runs, &mut cur, bold, italic, mono);
+            bold = !bold;
+            i += 2;
+            continue;
+        }
+        if rest.starts_with('*') {
+            flush(&mut runs, &mut cur, bold, italic, mono);
+            bold = !bold;
+            i += 1;
+            continue;
+        }
+        if rest.starts_with("__") {
+            flush(&mut runs, &mut cur, bold, italic, mono);
+            italic = !italic;
+            i += 2;
+            continue;
+        }
+        if rest.starts_with('_') {
+            flush(&mut runs, &mut cur, bold, italic, mono);
+            italic = !italic;
+            i += 1;
+            continue;
+        }
+        // 二重の印(``字``)。前後が字のときは本家がこちらを求めます
+        if rest.starts_with("``") && (mono || rest[2..].contains("``")) {
+            flush(&mut runs, &mut cur, bold, italic, mono);
+            mono = !mono;
+            i += 2;
+            continue;
+        }
+        // 等幅。**対になっているときだけ**受けます — 片方だけの `
+        // (「7`」のような字)を書式の印だと読むと、後ろが全部等幅になります
+        if rest.starts_with('`') && (mono || rest[1..].contains('`')) {
+            flush(&mut runs, &mut cur, bold, italic, mono);
+            mono = !mono;
+            i += 1;
+            continue;
+        }
+        if let Some(after) = rest.strip_prefix("[.") {
+            if let (Some(rb), Some(_)) = (after.find("]#"), after.find('#')) {
+                let name = &after[..rb];
+                if !name.is_empty() && !name.contains(['[', ']', '#', ' ']) {
+                    let body = &after[rb + 2..];
+                    if let Some(end) = body.find('#') {
+                        flush(&mut runs, &mut cur, bold, italic, mono);
+                        let fmt = CharFormat {
+                            bold,
+                            italic,
+                            style_id: Some(name.to_string()),
+                            ..Default::default()
+                        };
+                        runs.push(Run {
+                            text: body[..end].to_string(),
+                            size_pt: None,
+                            font: None,
+                            fmt,
+                        });
+                        i += 2 + rb + 2 + end + 1;
+                        continue;
+                    }
+                }
+            }
+        }
+        if rest.starts_with('^') || rest.starts_with('~') {
+            let up = rest.starts_with('^');
+            let close = if up { '^' } else { '~' };
+            if let Some(end) = rest[1..].find(close) {
+                flush(&mut runs, &mut cur, bold, italic, mono);
+                let fmt = CharFormat {
+                    bold,
+                    italic,
+                    superscript: up,
+                    subscript: !up,
+                    ..Default::default()
+                };
+                runs.push(Run {
+                    text: rest[1..1 + end].to_string(),
+                    size_pt: None,
+                    font: None,
+                    fmt,
+                });
+                i += 1 + end + 1;
+                continue;
+            }
+        }
+        if let Some(after) = rest.strip_prefix("<<") {
+            if let Some(end) = after.find(">>") {
+                flush(&mut runs, &mut cur, bold, italic, mono);
+                let name = after[..end].to_string();
+                let fmt = CharFormat {
+                    bold,
+                    italic,
+                    field: Some(RefField { name: name.clone(), page: false }),
+                    ..Default::default()
+                };
+                runs.push(Run { text: name, size_pt: None, font: None, fmt });
+                i += 2 + end + 2;
+                continue;
+            }
+        }
+        if let Some(after) = rest.strip_prefix("footnote:[") {
+            let end = after.find(']').ok_or("footnote:[ が閉じていません")?;
+            flush(&mut runs, &mut cur, bold, italic, mono);
+            *fresh_note += 1;
+            let id = format!("adoc{fresh_note}");
+            let np = Paragraph {
+                runs: vec![Run {
+                    text: after[..end].to_string(),
+                    size_pt: None,
+                    font: None,
+                    fmt: CharFormat::default(),
+                }],
+                ..Default::default()
+            };
+            doc.footnotes.push(Footnote {
+                id: id.clone(),
+                endnote: false,
+                paragraphs: vec![np],
+                added: true,
+            });
+            let fmt = CharFormat {
+                footnote: Some(FootnoteRef { id, endnote: false }),
+                ..Default::default()
+            };
+            runs.push(Run { text: String::new(), size_pt: None, font: None, fmt });
+            i += "footnote:[".len() + end + 1;
+            continue;
+        }
+        // 記入欄。`field:タグ[表示名]` / `field:タグ[表示名,種類]` /
+        // `field:タグ[表示名,選ぶ:一般|学生]`
+        //
+        // **記入欄は意味です。** 「ここに名前を書く」という指示であって
+        // 見た目ではないので、意味だけの本文に書けます(2026-08-17。
+        // アプリの形で書き出すときの土台)。
+        if let Some(after) = rest.strip_prefix("field:") {
+            if let Some(open) = after.find('[') {
+                if let Some(close) = after[open..].find(']') {
+                    flush(&mut runs, &mut cur, bold, italic, mono);
+                    let tag = after[..open].to_string();
+                    let inner = &after[open + 1..open + close];
+                    let (alias, kind, items) = parse_field(inner);
+                    let fmt = CharFormat {
+                        sdt: Some(Box::new(crate::doc::Sdt { kind, alias, tag, items })),
+                        ..Default::default()
+                    };
+                    runs.push(Run { text: String::new(), size_pt: None, font: None, fmt });
+                    i += "field:".len() + open + close + 1;
+                    continue;
+                }
+            }
+        }
+        if let Some(after) = rest.strip_prefix("ruby:") {
+            if let Some(open) = after.find('[') {
+                if let Some(close) = after[open..].find(']') {
+                    flush(&mut runs, &mut cur, bold, italic, mono);
+                    let fmt = CharFormat {
+                        bold,
+                        italic,
+                        ruby: Some(after[open + 1..open + close].to_string()),
+                        ..Default::default()
+                    };
+                    runs.push(Run {
+                        text: after[..open].to_string(),
+                        size_pt: None,
+                        font: None,
+                        fmt,
+                    });
+                    i += "ruby:".len() + open + close + 1;
+                    continue;
+                }
+            }
+        }
+        if rest.starts_with("https://") || rest.starts_with("http://") {
+            if let Some(open) = rest.find('[') {
+                if let Some(close) = rest[open..].find(']') {
+                    let url = &rest[..open];
+                    if !url.contains(' ') {
+                        flush(&mut runs, &mut cur, bold, italic, mono);
+                        let fmt = CharFormat {
+                            bold,
+                            italic,
+                            link: Some(url.to_string()),
+                            ..Default::default()
+                        };
+                        runs.push(Run {
+                            text: rest[open + 1..open + close].to_string(),
+                            size_pt: None,
+                            font: None,
+                            fmt,
+                        });
+                        i += open + close + 1;
+                        continue;
+                    }
+                }
+            }
+        }
+        let c = rest.chars().next().unwrap();
+        cur.push(c);
+        i += c.len_utf8();
+    }
+    flush(&mut runs, &mut cur, bold, italic, mono);
+    *state = EmphState { bold, italic, mono };
+    Ok(runs)
 }
 
 fn parse_table_lines(
@@ -1945,8 +2201,7 @@ fn parse_table_lines(
                             fmt: CharFormat::default(),
                         }]
                     } else {
-                        // `\|` はセルの区切りの逃がし。字は `|` です
-                        parse_inline(&p.replace("\\|", "|"), doc, fresh_note)?
+                        parse_inline(p, doc, fresh_note)?
                     },
                     line_spacing: 1.0,
                     ..Default::default()
@@ -2029,6 +2284,13 @@ fn parse_table_lines(
         vstarts = next_vstarts;
     }
     Ok(t)
+}
+
+/// `[.名前]#` の形か(うちの文字のスタイルの書き方)
+fn looks_char_style(s: &str) -> bool {
+    let Some(rest) = s.strip_prefix("[.") else { return false };
+    let Some(k) = rest.find(']') else { return false };
+    !rest[..k].is_empty() && rest[k + 1..].starts_with('#')
 }
 
 /// 行を継ぐときの継ぎ目。**日本語どうしは空白を入れず、欧文は入れます。**
@@ -2186,7 +2448,7 @@ mod tests {
         // 後ろが字なので二重の印(本家は `\`字\`と` を等幅として読まない)
         round_trip("``等幅の字``と普通の字。\n");
         round_trip("等幅は `これ` です。\n");
-        let doc = parse("``等幅の字``と普通の字。\n").unwrap();
+        let doc = parse("`等幅の字`と普通の字。\n").unwrap();
         let p = doc.paragraphs().next().unwrap();
         assert_eq!(p.runs[0].fmt.style_id.as_deref(), Some(MONO));
         assert_eq!(p.runs[0].text, "等幅の字", "印が字に残っている");
@@ -2337,7 +2599,7 @@ mod tests {
 
     #[test]
     fn the_reading_carries_meaning_only() {
-        let d = parse("== 見出し\n\n**太い**字。\n").unwrap();
+        let d = parse("== 見出し\n\n*太い*字。\n").unwrap();
         let ps: Vec<&Paragraph> = d.paragraphs().collect();
         assert_eq!(ps[0].style, ParaStyle::Heading(1));
         // 見た目の欄は触らない — 大きさも書体も色も無指定のまま
@@ -2353,18 +2615,13 @@ mod tests {
 
     #[test]
     fn an_escaped_mark_stays_as_text() {
-        // **`\` は、印として読まれる所にだけ効きます**(本家の決め)。
-        // `\*印*` の `*` は対になっていて印として読まれるので、`\` が
-        // それを止めて字にします。書き戻せば同じ字に戻ります
-        let d = parse("星は \\*印* と書く。\n").unwrap();
+        let d = parse("星は \\* と書く。\n").unwrap();
         let p: Vec<&Paragraph> = d.paragraphs().collect();
         let text: String = p[0].runs.iter().map(|r| r.text.as_str()).collect();
-        assert_eq!(text, "星は *印* と書く。");
+        assert_eq!(text, "星は * と書く。");
         assert!(!p[0].runs.iter().any(|r| r.fmt.bold));
-        assert_eq!(write(&d), "星は \\*印* と書く。\n");
-        // 対の無い `*` は印にならないので、`\` も要らない(付けると見える)
-        let d = parse("5 * 3 です。\n").unwrap();
-        assert_eq!(write(&d), "5 * 3 です。\n");
+        // 書き戻せば逃がしも戻る
+        assert_eq!(write(&d), "星は \\* と書く。\n");
     }
 
     #[test]
