@@ -620,3 +620,149 @@ def projected_pie(ws, at, values, labels=None, *, title=None, width=340.0,
         c.label(na[i], bx + bw + 2.0, y + h / 2.0 - 6.0, 44.0, 12.0, align="left")
         y += h
     return c.place(ws, at, **kw)
+
+
+# ── openpyxl と同じ書き方の口 ────────────────────────────────────
+#
+# openpyxl は「図の入れ物を作り、`Reference` でセルの範囲を指し、
+# `ws.add_chart(図, "E2")` で置く」形です(2026-09-01)。こちらは
+# `ws.add_chart("bar", data=…, at=…)` の1行で置きますが、本家の見本を
+# そのまま持ってこられるよう、同じ名前と同じ手順も用意します。
+#
+# 図そのものはこちらが描きます — 本家は指図を書くだけで、Excel で
+# 開くまで絵は出ません。
+
+
+class Reference:
+    """セルの範囲。**openpyxl の `Reference` と同じ**呼び方です。
+
+        Reference(ws, min_col=2, min_row=3, max_col=4, max_row=7)
+
+    `ws` は省けます(同じシートの中で使うとき)。
+    """
+
+    __slots__ = ("worksheet", "min_col", "min_row", "max_col", "max_row")
+
+    def __init__(self, worksheet=None, min_col=1, min_row=1,
+                 max_col=None, max_row=None, range_string=None):
+        if range_string is not None:
+            raise TypeError(
+                "range_string は受けません。min_col / min_row などで指します")
+        self.worksheet = worksheet
+        self.min_col = int(min_col)
+        self.min_row = int(min_row)
+        self.max_col = int(max_col) if max_col is not None else self.min_col
+        self.max_row = int(max_row) if max_row is not None else self.min_row
+
+    def hani(self):
+        """"B3:D7" の形に直します。"""
+        from .sheet import get_column_letter as _g
+        return "{}{}:{}{}".format(
+            _g(self.min_col), self.min_row, _g(self.max_col), self.max_row)
+
+    def __str__(self):
+        return self.hani()
+
+    def __repr__(self):
+        return "Reference({})".format(self.hani())
+
+
+class _OpenpyxlChart:
+    """図の入れ物。**openpyxl の `BarChart` などと同じ**使い方です。
+
+        c = BarChart()
+        c.title = "売上"
+        c.add_data(Reference(...), titles_from_data=True)
+        c.set_categories(Reference(...))
+        ws.add_chart(c, "G2")
+
+    置くのは `ws.add_chart` で、そのとき初めて描きます。
+    """
+
+    #: この入れ物が作る図の種類(`Sheet.add_chart` の `kind`)
+    kind = "bar"
+
+    def __init__(self):
+        self.title = None
+        self.style = None
+        self.x_axis = _Jiku()
+        self.y_axis = _Jiku()
+        self.width = 15.0    # cm(本家と同じ単位)
+        self.height = 7.5
+        self._data = None
+        self._cats = None
+        self._midashi = False
+
+    def add_data(self, data, titles_from_data=False, from_rows=False):
+        """値の範囲を渡します。`titles_from_data` は本家と同じ意味です。"""
+        if from_rows:
+            raise ValueError("from_rows はまだ受けません(列に並んだ値だけです)")
+        self._data = data
+        self._midashi = bool(titles_from_data)
+
+    def set_categories(self, labels):
+        """区分の名前の範囲を渡します。"""
+        self._cats = labels
+
+    def _hiku(self):
+        """`Sheet.add_chart` に渡す形へ。"""
+        if self._data is None:
+            raise ValueError("add_data で値の範囲を渡してください")
+        d = self._data
+        if self._midashi:
+            # 本家は1行目を系列の名前として外します。こちらの add_chart は
+            # 見出し付きのまま受けるので、そのまま渡します
+            pass
+        return {
+            "kind": self.kind,
+            "data": str(d),
+            "categories": str(self._cats) if self._cats is not None else None,
+            "title": self.title,
+            "width": self.width * 10.0,   # cm → だいたいの px
+            "height": self.height * 10.0,
+        }
+
+
+class _Jiku:
+    """図の軸。題だけ持ちます(本家の `x_axis` / `y_axis` の役)。"""
+
+    __slots__ = ("title", "delete")
+
+    def __init__(self):
+        self.title = None
+        self.delete = False
+
+
+class BarChart(_OpenpyxlChart):
+    """縦棒。"""
+    kind = "bar"
+
+
+class LineChart(_OpenpyxlChart):
+    """折れ線。"""
+    kind = "line"
+
+
+class PieChart(_OpenpyxlChart):
+    """円。"""
+    kind = "pie"
+
+
+class DoughnutChart(_OpenpyxlChart):
+    """ドーナツ。"""
+    kind = "doughnut"
+
+
+class AreaChart(_OpenpyxlChart):
+    """面。"""
+    kind = "area"
+
+
+class ScatterChart(_OpenpyxlChart):
+    """散布。"""
+    kind = "scatter"
+
+
+class RadarChart(_OpenpyxlChart):
+    """レーダー。"""
+    kind = "radar"

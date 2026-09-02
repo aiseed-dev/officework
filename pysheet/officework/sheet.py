@@ -1385,8 +1385,8 @@ class Sheet(NoStrayAttributes):
     def dimensions(self):
         return self.calculate_dimension()
 
-    def add_chart(self, kind, *, data, categories=None, at="A1", title=None,
-                  width=320.0, height=200.0, color=None, **kw):
+    def add_chart(self, kind, *args, data=None, categories=None, at="A1",
+                  title=None, width=320.0, height=200.0, color=None, **kw):
         """**図を置く。** データはセルの範囲("B3:C7")か、数の列で渡します。
 
         図は図形の集まりとして**こちらで描きます**(2026-08-27 発注者
@@ -1402,6 +1402,24 @@ class Sheet(NoStrayAttributes):
         - `categories` — 区分の名前の範囲("A4:A7")
         """
         from . import chart as _chart
+
+        # **openpyxl の書き方も受けます**(2026-09-01)。本家は図の入れ物を
+        # 作ってから `ws.add_chart(図, "E2")` と置きます。第1引数が入れ物
+        # なら、そこから種類と範囲を取り出します
+        if isinstance(kind, _chart._OpenpyxlChart):
+            hako = kind
+            if args:
+                at = args[0]
+            k = hako._hiku()
+            kind = k["kind"]
+            data = k["data"]
+            categories = k["categories"]
+            title = title or k["title"]
+            width, height = k["width"], k["height"]
+        elif args:
+            raise TypeError("add_chart の2つ目の引数は、図の入れ物のときだけです")
+        if data is None:
+            raise TypeError("add_chart には data が要ります")
 
         atai = self._hani_no_atai(data)
         名 = self._hani_no_atai(categories, moji=True) if categories else None
@@ -1909,6 +1927,47 @@ class DocumentProperties:
 
     def __repr__(self):
         return "<DocumentProperties title={!r}>".format(self.title)
+
+
+def Workbook(lang=None):
+    """空のブックを作る。**openpyxl の `Workbook()` と同じ名前**です。
+
+        from officework.sheet import Workbook
+        wb = Workbook()
+
+    中身は [`Book`] と同じで、本家の見本をそのまま持ってくるための
+    別名です(2026-09-01)。
+    """
+    return Book(lang)
+
+
+def load_workbook(path, lang=None, **kw):
+    """ブックを開く。**openpyxl の `load_workbook()` と同じ名前**です。
+
+    `data_only` などの引数は受けますが見ません — こちらは式も値も
+    両方持っていて、`cell.value` は計算後の値、`cell.formula` が式です。
+    捨てた引数は言います。
+    """
+    for k in kw:
+        if k not in ("data_only", "read_only", "keep_vba", "rich_text",
+                     "keep_links", "data_only_"):
+            raise TypeError("load_workbook に知らない引数: {!r}".format(k))
+    return Book.open(path, lang)
+
+
+def get_column_letter(n):
+    """1 → "A"、27 → "AA"。**openpyxl の `utils.get_column_letter`** と同じ。"""
+    if n < 1:
+        raise ValueError("列の番号は1から: {}".format(n))
+    return _col_letter(n)
+
+
+def column_index_from_string(s):
+    """"A" → 1、"AA" → 27。**openpyxl の同名の関数**と同じ。"""
+    t = str(s).strip().upper()
+    if not t or not t.isalpha():
+        raise ValueError("列の名前は英字です: {!r}".format(s))
+    return _col_index(t)
 
 
 class Book(NoStrayAttributes):

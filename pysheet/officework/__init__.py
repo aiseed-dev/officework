@@ -38,6 +38,11 @@ try:
     # **文書を作る口は頭にも置きます**(2026-09-01)。本家は
     # `docx.Document()` と書くので、`officework.Document()` でも通します
     from ._doc import Document  # noqa: F401
+    # **表計算も本家と同じ置き場に出します**(2026-09-01)。openpyxl は
+    # `openpyxl.Workbook()` と `openpyxl.styles` と書きます
+    from . import styles  # noqa: F401
+    from . import utils  # noqa: F401
+    from .sheet import Workbook, load_workbook  # noqa: F401
     _sheet_error = None
 except Exception as e:  # pragma: no cover
     # **名前を作らない** — None を入れると from officework import sheet が
@@ -47,7 +52,8 @@ except Exception as e:  # pragma: no cover
 
 def __getattr__(name):
     # sheet も doc も同じ拡張(_sheet.so)の中にいるので、読めない理由は1つ
-    if name in ("sheet", "doc", "shared", "enum", "Document"):
+    if name in ("sheet", "doc", "shared", "enum", "Document",
+                "styles", "utils", "Workbook", "load_workbook"):
         raise ImportError(
             "officework のエンジン(_sheet)が読めません: {!r}".format(_sheet_error)
         ) from _sheet_error
