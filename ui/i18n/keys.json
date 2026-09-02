@@ -7108,10 +7108,6 @@
   "kind": "msg"
  },
  {
-  "key": "proposed_change_discarded_nothing",
-  "kind": "msg"
- },
- {
   "key": "click_here_type_enter",
   "kind": "msg"
  },
@@ -7136,10 +7132,6 @@
   "kind": "msg"
  },
  {
-  "key": "proposed_change_ready_read",
-  "kind": "msg"
- },
- {
   "key": "answered_left_panel",
   "kind": "msg"
  },
@@ -7148,35 +7140,11 @@
   "kind": "msg"
  },
  {
-  "key": "script_running_please_wait",
-  "kind": "msg"
- },
- {
-  "key": "running_proposed_change",
-  "kind": "msg"
- },
- {
   "key": "applied",
   "kind": "msg"
  },
  {
-  "key": "proposed_change_applied_ctrl",
-  "kind": "msg"
- },
- {
   "key": "number_format_set",
-  "kind": "msg"
- },
- {
-  "key": "proposed_change_applied_ctrl_z",
-  "kind": "msg"
- },
- {
-  "key": "script_failed",
-  "kind": "msg"
- },
- {
-  "key": "script_not_run",
   "kind": "msg"
  },
  {
@@ -7416,10 +7384,6 @@
   "kind": "msg"
  },
  {
-  "key": "proposed_change_nothing_happens",
-  "kind": "msg"
- },
- {
   "key": "can_ask_about_selection",
   "kind": "msg"
  },
@@ -7460,27 +7424,7 @@
   "kind": "msg"
  },
  {
-  "key": "ask_fix",
-  "kind": "msg"
- },
- {
-  "key": "leave",
-  "kind": "msg"
- },
- {
-  "key": "failed",
-  "kind": "msg"
- },
- {
-  "key": "applied_2",
-  "kind": "msg"
- },
- {
   "key": "destination_press_change",
-  "kind": "msg"
- },
- {
-  "key": "previous_script_failed_read",
   "kind": "msg"
  },
  {

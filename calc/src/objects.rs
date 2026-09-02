@@ -736,6 +736,37 @@ impl Calc {
         true
     }
 
+    /// 絞り込みで隠れている行を、評価器(`SUBTOTAL` / `AGGREGATE`)に届ける。
+    ///
+    /// 絞り込みは画面の側(`auto_filter`)だけが持っていて、式からは
+    /// 見えませんでした。`Sheet::filter_hidden` に写し、変わっていれば
+    /// 計算し直します。絞り込みは1枚のシートにしか掛からないので、
+    /// ほかのシートの集合は空にします(シートを切り替えると絞り込みは
+    /// 解かれるため、古い集合が残らないように)。
+    pub(crate) fn sync_filter_hidden(&mut self) {
+        let mut set = std::collections::BTreeSet::new();
+        if let Some(f) = &self.auto_filter {
+            if !f.hide.is_empty() {
+                for r in (f.range.0.row + 1)..=f.range.1.row {
+                    if !self.filter_keeps(r) {
+                        set.insert(r);
+                    }
+                }
+            }
+        }
+        let active = self.active;
+        let changed = self.book.sheets.iter().enumerate().any(|(i, s)| {
+            if i == active { s.filter_hidden != set } else { !s.filter_hidden.is_empty() }
+        });
+        if !changed {
+            return;
+        }
+        for (i, s) in self.book.sheets.iter_mut().enumerate() {
+            if i == active { s.filter_hidden = set.clone() } else { s.filter_hidden.clear() }
+        }
+        book::calc::recalc_book(&mut self.book, active);
+    }
+
     /// 絞り込みが実際に効いているか(どれかの列で値を隠している)
     pub(crate) fn filter_active(&self) -> bool {
         self.auto_filter.as_ref().is_some_and(|f| !f.hide.is_empty())
@@ -1029,6 +1060,47 @@ impl Calc {
             "done_turned_into_outline",
             name
         )
+        .into();
+    }
+}
+
+impl Calc {
+    /// 表のデザイン「フィルタのボタン」。カーソルの居る表の `filter` を入切します
+    /// (手引き `docs/ja/commands/表のデザイン/フィルタのボタン.adoc`)。
+    ///
+    /// 入れると、表の範囲(見出し行から、合計行の手前まで)に絞り込みを張り、
+    /// 見出しに ▼ が出ます。切ると、その表に張ってあった絞り込みを外します。
+    /// 旗は表オブジェクトの物なので、xlsx には `<autoFilter>` として残ります
+    /// (前は データタブの絞り込みを呼ぶだけで、保存すると消えていました)
+    pub(crate) fn table_filter_toggle(&mut self) {
+        self.commit();
+        let p = self.cursor;
+        let Some(i) = self.sheet().tables.iter().position(|t| t.contains(p)) else {
+            self.status = ui::t!("put_cursor_inside_table").into();
+            return;
+        };
+        self.checkpoint();
+        let t = &mut self.book.sheets[self.active].tables[i];
+        t.filter = !t.filter;
+        let on = t.filter;
+        let (a, b, name) = (t.a, t.b, t.name.clone());
+        let last = if t.totals && b.row > a.row { b.row - 1 } else { b.row };
+        if on {
+            self.auto_filter = Some(AutoFilter {
+                range: (a, Pos::new(last, b.col)),
+                hide: Default::default(),
+            });
+        } else if self.auto_filter.as_ref().is_some_and(|f| f.range.0 == a) {
+            self.auto_filter = None;
+            self.filter_panel = None;
+        }
+        self.sync_filter_hidden();
+        self.dirty = true;
+        self.status = if on {
+            ui::tf!("table_filter_buttons_shown", name)
+        } else {
+            ui::tf!("table_filter_buttons_hidden", name)
+        }
         .into();
     }
 }

@@ -641,6 +641,8 @@ pub const CALC: &[Tab] = &[
         c("co-delcomment", "Delete comment", "co-delcomment"),
         c("co-showcomment", "Show comments", "co-showcomment"),
         c("co-chat", "Chat", "co-chat"),
+        // 変更履歴。writer と同じ id — 処理は calc/src/cmds.rs にあります
+        c("track-changes", "Track changes", "track-changes"),
         c("co-history", "Version history", "co-history"),
     ]},
     Tab { name: "Protection", cmds: &[

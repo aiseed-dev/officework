@@ -190,28 +190,14 @@ impl Calc {
         // **連続データ(オートフィル)**: 元が全部数で2つ以上あり、間隔が
         // 一定なら、写すのではなく**続きを作る**(1,2 → 3,4,5…。本家と同じ)。
         // 1つだけ・式・文字は写す(本家の既定と同じ)
+        // 数のドラッグは**連続データが既定**(発注者確定 2026-08-14 —
+        // 1 を引けば 2,3,4)。写したいときは Ctrl(裏返し)。
+        // 判定はリボンの「フィル」と同じ [`number_series`]
         let series_of = |vals: &[Option<book::Cell>]| -> Option<(f64, f64)> {
-            let nums: Vec<f64> = vals
-                .iter()
-                .map(|c| match c {
-                    Some(c) if c.formula.is_none() => match c.value {
-                        Value::Number(x) => Some(x),
-                        _ => None,
-                    },
-                    _ => None,
-                })
-                .collect::<Option<Vec<_>>>()?;
-            match nums.len() {
-                0 => None,
-                // 数のドラッグは**連続データが既定**(発注者確定 2026-08-14 —
-                // 1 を引けば 2,3,4)。写したいときは Ctrl(裏返し)
-                1 => (!invert).then_some((nums[0], 1.0)),
-                _ => {
-                    let step = nums[1] - nums[0];
-                    let ok = nums.windows(2).all(|w| (w[1] - w[0] - step).abs() < 1e-9);
-                    (ok && !invert).then(|| (*nums.last().unwrap(), step))
-                }
+            if invert {
+                return None;
             }
+            number_series(vals)
         };
         if to.row > b.row {
             let h = b.row - a.row + 1;
@@ -352,6 +338,11 @@ impl Calc {
         "merge", "prot-allow", "co-history", "py-list",
         "insslicer", "edit-header", "paste-name", "csv-kind", "defname",
         "currency", "scenario",
+        // 消去(すべて/書式/数式と値/コメント)とセルの挿入・削除
+        // (右へ/下へ/行全体/列全体)は一覧から選ぶ
+        "clear", "cell-ins", "cell-del",
+        // 推奨グラフは種類の一覧が真下に開く
+        "insrecommend",
     ];
 
     /// **小窓が開くボタン。** リボンは … を添える(メニュー項目末尾の
@@ -1074,19 +1065,59 @@ impl Calc {
             "align-dist" => self.fmt(|f| f.align = HAlign::Distribute),
             // 表示形式
             "comma" => self.fmt(|f| f.number_format = Some("#,##0".into())),
-            // 行・列の出し入れ
-            "cell-ins" => self.rowcol(|s, p| s.insert_row(p.row)),
-            "cell-del" => self.rowcol(|s, p| s.remove_row(p.row)),
+            // セルの挿入・削除。何をずらすかを一覧から選ぶ(Excel と同じ4択)。
+            // 選んだ範囲の大きさぶん動く
+            "cell-ins" | "cell-del" => {
+                self.commit();
+                let at = self.pop_anchor();
+                let ins = id == "cell-ins";
+                let shift = if ins {
+                    [ui::item!("shift_cells_right"), ui::item!("shift_cells_down")]
+                } else {
+                    [ui::item!("shift_cells_left"), ui::item!("shift_cells_up")]
+                };
+                self.pick_kind = if ins { "cell-ins-pick" } else { "cell-del-pick" };
+                self.pick = Some((
+                    menu(&[shift[0], shift[1], ui::item!("entire_row"), ui::item!("entire_column")]),
+                    at,
+                ));
+            }
+            // 一覧と右クリックから来る実体。run_cmd を通すので操作の記録に残る
+            "inscell-right" | "inscell-down" | "delcell-left" | "delcell-up" => {
+                self.shift_cells(id)
+            }
+            "insrows" => self.whole_lines(true, true),
+            "delrows" => self.whole_lines(false, true),
+            "inscols" => self.whole_lines(true, false),
+            "delcols" => self.whole_lines(false, false),
+            "clear-all" | "clear-formats" | "clear-formulas_and_values" | "clear-comment"
+            | "clear-link" => self.clear_kind(&id["clear-".len()..]),
             "insrow" => self.rowcol(|s, p| s.insert_row(p.row)),
             "inscol" => self.rowcol(|s, p| s.insert_col(p.col)),
             // 小数点以下の桁
             "digit-inc" => self.decimals(1),
             "digit-dec" => self.decimals(-1),
-            // 書式のクリア。値は消さない
-            "clear" => self.fmt(|f| *f = CellFormat::default()),
-            // フィル(下方向へコピー)。式は相対参照がずれ、$ は止まる。
-            // 書式も一緒に写す(帳票の列は書式ごと揃える)
-            "fill-num" => {
+            // 消去。何を消すかを一覧から選ぶ(すべて/書式/数式と値/コメント)
+            "clear" => {
+                self.commit();
+                let at = self.pop_anchor();
+                self.pick_kind = "clear-pick";
+                self.pick = Some((
+                    menu(&[
+                        ui::item!("all"),
+                        ui::item!("formats"),
+                        ui::item!("formulas_and_values"),
+                        ui::item!("comment"),
+                    ]),
+                    at,
+                ));
+            }
+            // フィル(下方向)。式は相対参照がずれ、$ は止まる。
+            // 書式も一緒に写す(帳票の列は書式ごと揃える)。
+            // `fill-num`(リボンのフィル)は、上に並ぶ数が連続していれば
+            // 続きの数を埋める。`fill-down`(Ctrl+D)はいつも写す
+            "fill-num" | "fill-down" => {
+                let series_ok = id == "fill-num";
                 let (a, b) = self.sel_rect();
                 if a.row == b.row {
                     // 高さ1の選択は**上の行を写す**(本家の Ctrl+D と同じ)。
@@ -1130,7 +1161,44 @@ impl Calc {
                     self.checkpoint();
                     let sh = &mut self.book.sheets[self.active];
                     let mut n = 0usize;
+                    let mut series_cols = 0usize;
                     for c in a.col..=b.col {
+                        // 選択の上端から続く数(式でない)を読む。最後の1行は
+                        // 埋める側に残す。連続した数なら続きを作る(1つだけ
+                        // なら 1 ずつ増やす — フィルハンドルと同じ決め)
+                        let series = if series_ok {
+                            let mut top: Vec<Option<Cell>> = Vec::new();
+                            for r in a.row..b.row {
+                                match sh.get(Pos::new(r, c)) {
+                                    Some(x) if x.formula.is_none()
+                                        && matches!(x.value, Value::Number(_)) =>
+                                    {
+                                        top.push(Some(x.clone()))
+                                    }
+                                    _ => break,
+                                }
+                            }
+                            number_series(&top).map(|(last, step)| (last, step, top.len() as u32))
+                        } else {
+                            None
+                        };
+                        if let Some((last, step, len)) = series {
+                            series_cols += 1;
+                            for r in a.row + len..=b.row {
+                                let p = Pos::new(r, c);
+                                let fmt = sh
+                                    .get(Pos::new(a.row + len - 1, c))
+                                    .map(|c| c.fmt.clone())
+                                    .unwrap_or_default();
+                                let k = (r - (a.row + len - 1)) as f64;
+                                sh.set(
+                                    p,
+                                    Cell { formula: None, value: Value::Number(last + step * k), fmt },
+                                );
+                                n += 1;
+                            }
+                            continue;
+                        }
                         // 一番上が空でも黙って飛ばさない — 空を配る
                         // (中身を消す。書式は残す — 帳票の枠を壊さない)
                         let src = sh.get(Pos::new(a.row, c)).cloned();
@@ -1159,12 +1227,16 @@ impl Calc {
                     // 空に見えた)
                     self.sync_input();
                     let _ = n;
-                    self.status = ui::tf!(
-                        "copied_3",
-                        Self::range_label(Pos::new(a.row, a.col), Pos::new(a.row, b.col)),
-                        Self::range_label(Pos::new(a.row + 1, a.col), b)
-                    )
-                    .into();
+                    self.status = if series_cols > 0 {
+                        ui::tf!("filled_series", Self::range_label(a, b)).into()
+                    } else {
+                        ui::tf!(
+                            "copied_3",
+                            Self::range_label(Pos::new(a.row, a.col), Pos::new(a.row, b.col)),
+                            Self::range_label(Pos::new(a.row + 1, a.col), b)
+                        )
+                        .into()
+                    };
                 }
             }
             // 右へコピー(Ctrl+R)。リボンには無い — 鍵盤の道だけ。
@@ -1302,6 +1374,7 @@ impl Calc {
                     )
                     .into();
                 }
+                self.sync_filter_hidden();
             }
             "clear-filter" => {
                 // **掛かっていないのに「解きました」と言わない**
@@ -1313,6 +1386,7 @@ impl Calc {
                 }
                 self.auto_filter = None;
                 self.filter_panel = None;
+                self.sync_filter_hidden();
                 self.status = ui::t!("filter_cleared").into();
             }
             // 印刷の設定。モデルに置き、保存で原文へ織り込み、PDF が従う。
@@ -1477,7 +1551,12 @@ impl Calc {
                 self.pick_kind = "numfmt-pick";
                 self.pick = Some((items, at));
             }
+            // セルの書式設定のパネル。開いているときにもう一度押すと閉じます
             "cell-format" => {
+                if self.fmt_panel.is_some() {
+                    self.fmt_panel = None;
+                    return;
+                }
                 let at = self
                     .cell_origin_px(self.cursor)
                     .map(|(x, y)| (x + 16.0, y + 16.0))
@@ -1556,7 +1635,10 @@ impl Calc {
                         deps.len()
                     )
                     .into();
+                    // 起点(いまのセル)も入れる。矢印は true(参照元)から
+                    // false(参照先)へ引く — view.rs の矢印がこの向きを読む
                     self.trace = deps.into_iter().map(|p| (p, true)).collect();
+                    self.trace.push((self.cursor, false));
                 }
             }
             "trace-dep" => {
@@ -1583,6 +1665,7 @@ impl Calc {
                     )
                     .into();
                     self.trace = dependents.into_iter().map(|p| (p, false)).collect();
+                    self.trace.push((me, true));
                 }
             }
             "remove-arrows" => {
@@ -1593,16 +1676,10 @@ impl Calc {
                 self.trace.clear();
                 self.status = ui::t!("trace_cleared").into();
             }
-            // 推奨チャート = いまの一手(棒グラフ)をそのまま勧める
+            // 推奨チャート = 範囲の形に合う種類を一覧に並べる(py.rs)
             "insrecommend" => {
                 self.commit();
-                if self.anchor.is_none() {
-                    self.status =
-                        ui::t!("select_range_chart_first").into();
-                } else {
-                    let (a, b) = self.sel_rect();
-                    self.insert_chart(a, b, cx);
-                }
+                self.recommend_chart();
             }
             // ピボットテーブル = polars が裏方。結果は「その時の値」で右に置く
             // (元が変わったら選び直してもう一度 — 開く=再計算の仕掛けは持たない)
@@ -1665,8 +1742,9 @@ impl Calc {
             // **ブックの構造を守る**(2026-08-30 発注者「ブックを保護」)。
             // シートの追加・削除・並べ替え・名前の変更を禁じます。
             // **鍵ではありません** — password は書かず、掛けた振りをしません
-            // **範囲ごとの保護**(2026-08-30 発注者「範囲を保護」)。
-            // 選んだ範囲を守る一覧に入れます。既に入っている範囲を選んで
+            // **範囲の編集を許可**(2026-08-30 発注者「範囲を保護」、意味は
+            // 2026-09-02 に Excel と同じ「保護中でも編集できる範囲」に確定)。
+            // 選んだ範囲を許す一覧に入れます。既に入っている範囲を選んで
             // 押すと外します(シートの保護と同じ入切の作り)。
             //
             // **鍵は持ちません** — password を書かず、掛けた振りをしません
@@ -3073,8 +3151,8 @@ impl Calc {
                     }
                 }
             }
-            // フィルタのボタン = データタブの絞り込みと同じ実体
-            "td-filter" => self.run_cmd("setfilter", cx),
+            // フィルタのボタン = 表の filter を入切する(objects.rs)
+            "td-filter" => self.table_filter_toggle(),
             // 表の挿入 = 選択に表の書式(見出し行の色+縞模様+外枠)を掛ける
             // 表にする。`instable` は既定の色ですぐ、`table-tpl` は
             // **色を選んでから**(2026-08-12、台帳「テンプレート選択ギャラリー」)
@@ -4096,8 +4174,48 @@ impl Calc {
                 self.status = ui::tf!("available_functions", names).into();
             }
             f @ ("sum" | "average" | "count" | "max" | "min") => {
-                // 上の連続した数値をまとめる(表計算の当たり前の動き)
                 let name = f.to_uppercase();
+                // 範囲を選んでいれば、その下(横1行なら右)に式を置く
+                if self.anchor.is_some() {
+                    let (a, b) = self.sel_rect();
+                    if a != b {
+                        self.commit();
+                        self.checkpoint();
+                        let mut dests: Vec<Pos> = Vec::new();
+                        if a.row == b.row {
+                            let d = Pos::new(a.row, b.col + 1);
+                            let text = format!("={name}({}:{})", a.a1(), b.a1());
+                            self.book.sheets[self.active].set(d, Cell::input(&text));
+                            dests.push(d);
+                        } else {
+                            for c in a.col..=b.col {
+                                let d = Pos::new(b.row + 1, c);
+                                let text = format!(
+                                    "={name}({}:{})",
+                                    Pos::new(a.row, c).a1(),
+                                    Pos::new(b.row, c).a1()
+                                );
+                                self.book.sheets[self.active].set(d, Cell::input(&text));
+                                dests.push(d);
+                            }
+                        }
+                        recalc_book(&mut self.book, self.active);
+                        self.dirty = true;
+                        self.anchor = None;
+                        self.cursor = dests[0];
+                        self.sync_input();
+                        let (d0, d1) = (dests[0], *dests.last().unwrap());
+                        self.status = ui::tf!(
+                            "formula_placed",
+                            name,
+                            Self::range_label(a, b),
+                            Self::range_label(d0, d1)
+                        )
+                        .into();
+                        return;
+                    }
+                }
+                // 1セルだけなら、上の連続した数値をまとめる(表計算の当たり前の動き)
                 let (r, c) = (self.cursor.row, self.cursor.col);
                 let mut top = r;
                 while top > 0 && self.sheet().get(Pos::new(top - 1, c))

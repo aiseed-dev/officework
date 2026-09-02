@@ -280,6 +280,57 @@ pub(crate) fn import_delims() -> Vec<(&'static str, &'static str, &'static str)>
     ]
 }
 
+/// サンドボックスの中で走る Command を組む。組めない機械(bwrap が無い・
+/// macOS・Windows)では普通の Python を返す — 自分で置いたマクロは、サンドボックスが
+/// 無くても今までどおり走る(他所から来たコードとは扱いが違う)。
+///
+/// サンドボックスの中に見せる物:
+/// * 読み取り専用 — `.venv`(綴りの物と利用者の物)・`pip install -e` の実体・
+///   Python 本体の置き場・`extra_ro`(plugins / ribbon / funcs の置き場)
+/// * 読み書き — 作業場 `dir` と、**calc のソケットの置き場**。表のマクロは
+///   開いているブックをソケット越しに書くので、ここが見えないと
+///   `cannot connect to officework` で止まる
+pub(crate) fn caged_or_plain(
+    py: &std::path::Path,
+    dir: &std::path::Path,
+    extra_ro: &[std::path::PathBuf],
+) -> std::process::Command {
+    // bwrap があっても起動できない機械(AppArmor がユーザー名前空間を
+    // 禁じている)では、普通の Python で走らせる
+    if !pyrun::cage_works() {
+        return std::process::Command::new(py);
+    }
+    let mut ro: Vec<std::path::PathBuf> = Vec::new();
+    for venv in [std::fs::canonicalize(".venv").ok(), Some(pyrun::venv_dir())]
+        .into_iter()
+        .flatten()
+    {
+        ro.extend(pyrun::editable_paths(&venv));
+        ro.push(venv);
+    }
+    // 見つけた Python の置き場(venv の根 = bin の親)。ホームの下の venv は
+    // 隠れるので、名指しで見せる
+    if let Some(root) = py.parent().and_then(|b| b.parent()) {
+        ro.push(root.to_path_buf());
+    }
+    if let Some(pp) = std::env::var_os("PYTHONPATH") {
+        ro.extend(std::env::split_paths(&pp).filter_map(|p| std::fs::canonicalize(p).ok()));
+    }
+    ro.extend(extra_ro.iter().cloned());
+    // ソケットは unix だけ(Windows にはこのサンドボックスも無い)
+    #[cfg(unix)]
+    let rw: Vec<std::path::PathBuf> = ops::sock_path("calc")
+        .parent()
+        .map(|d| vec![d.to_path_buf()])
+        .unwrap_or_default();
+    #[cfg(not(unix))]
+    let rw: Vec<std::path::PathBuf> = Vec::new();
+    match pyrun::caged_python_open(pyrun::cage_kind(), py, dir, &ro, &rw, false) {
+        Some(c) => c,
+        None => std::process::Command::new(py),
+    }
+}
+
 /// プラグイン(.py)の置き場。**正は pyrun**(writer と共有)。
 /// 呼び出し側を変えないための包み
 pub(crate) fn plugins_dir() -> PathBuf {
@@ -479,6 +530,94 @@ impl Calc {
     /// Python は別のスレッドで回す(メインスレッドを塞がない — ダイアログと同じ作法)。
     pub(crate) fn insert_chart(&mut self, a: Pos, b: Pos, cx: &mut Context<Self>) {
         self.insert_chart_kind(a, b, "bar", cx);
+    }
+
+    /// 推奨グラフ。選んだ範囲の形を見て、合う種類を一覧に並べます。
+    /// 選ぶと [`Self::insert_chart_kind`] がその種類で描きます
+    /// (手引き `docs/ja/commands/挿入/推奨チャートを挿入.adoc`)。
+    pub(crate) fn recommend_chart(&mut self) {
+        if self.anchor.is_none() {
+            self.status = ui::t!("select_range_chart_first").into();
+            return;
+        }
+        let (a, b) = self.sel_rect();
+        let shape = self.range_shape(a, b);
+        if shape.points == 0 {
+            self.status = ui::t!("select_range_chart_first").into();
+            return;
+        }
+        let at = self.pop_anchor();
+        let items: Vec<(String, String)> = recommended_kinds(shape)
+            .iter()
+            .map(|k| {
+                let (key, label) = chart_kind_item(k);
+                (key.to_string(), label.to_string())
+            })
+            .collect();
+        self.pick_note = Some(ui::t!("chart_types_fit_selection").into());
+        self.pick_kind = "chart-kind-pick";
+        self.pick = Some((items, at));
+    }
+
+    /// 推奨グラフの一覧で選んだ物を描く。`v` は一覧の鍵(chart_column など)。
+    /// Enter で確定したときは見出しの字が来るので、見出しでも引き当てる
+    pub(crate) fn insert_chart_picked(&mut self, v: &str, cx: &mut Context<Self>) {
+        let Some(kind) = CHART_KINDS
+            .iter()
+            .find(|(k, key)| *key == v || chart_kind_item(k).1.as_ref() == v)
+            .map(|(k, _)| *k)
+        else {
+            return;
+        };
+        if self.anchor.is_none() {
+            self.status = ui::t!("select_range_chart_first").into();
+            return;
+        }
+        let (a, b) = self.sel_rect();
+        self.insert_chart_kind(a, b, kind, cx);
+    }
+
+    /// 選んだ範囲の形を測る(推奨グラフの判断の材料)。
+    /// 1列目は項目名、2列目からが系列。先頭行に文字があれば見出し行
+    pub(crate) fn range_shape(&self, a: Pos, b: Pos) -> RangeShape {
+        let sh = self.sheet();
+        let header = (a.col + 1..=b.col).any(|c| {
+            matches!(sh.get(Pos::new(a.row, c)).map(|x| &x.value), Some(book::Value::Text(_)))
+        });
+        let r0 = if header { a.row + 1 } else { a.row };
+        let rows: Vec<u32> = (r0..=b.row).collect();
+        let first: Vec<Option<&book::Cell>> =
+            rows.iter().map(|r| sh.get(Pos::new(*r, a.col))).collect();
+        let first_col_numeric = !first.is_empty()
+            && first.iter().all(|c| matches!(c.map(|x| &x.value), Some(book::Value::Number(_))));
+        // 日付の表示形式か、4桁の年か、「4月」のような月の字なら時系列
+        let first_col_time = !first.is_empty()
+            && first.iter().all(|c| match c {
+                Some(x) => {
+                    let t = x.value.display();
+                    x.fmt.number_format.as_deref().is_some_and(|f| {
+                        f.contains('y') || f.contains('m') || f.contains('d')
+                    }) || looks_like_time_label(&t)
+                }
+                None => false,
+            });
+        let mut has_negative = false;
+        for c in a.col + 1..=b.col {
+            for r in &rows {
+                if let Some(x) = sh.get(Pos::new(*r, c)) {
+                    if matches!(x.value, book::Value::Number(n) if n < 0.0) {
+                        has_negative = true;
+                    }
+                }
+            }
+        }
+        RangeShape {
+            points: rows.len(),
+            series: (b.col.saturating_sub(a.col)) as usize,
+            first_col_numeric,
+            first_col_time,
+            has_negative,
+        }
     }
 
     /// 種類を指して差し込む。予測シートは折れ線を使います
@@ -1252,12 +1391,15 @@ impl Calc {
         self.udf_busy = true;
         let task = cx.background_executor().spawn(async move {
             let py = find_python();
+            let funcs = pyrun::funcs_dir();
             let mut results = Vec::new();
             for (i, py_path, out_path, script) in scripts {
                 std::fs::write(&py_path, script).map_err(|e| e.to_string())?;
-                // サンドボックスは着せない — plugins は自分で据えたコード。
+                // 関数もサンドボックスの中で走らせる。呼び出しはシートごとに
+                // 1回にまとめてあるので、サンドボックスの起動(数十ミリ秒)は1セルごとには
+                // 掛からない。funcs の置き場は読み取り専用で見せる。
                 // 時間制限つき(30秒)。関数は値の計算だけ — それより長いのは異常
-                let mut c = std::process::Command::new(&py);
+                let mut c = caged_or_plain(&py, &dir, &[funcs.clone()]);
                 let (ok, _, err) = run_with_timeout(c.arg(&py_path), 30)?;
                 if !ok {
                     let last = err
@@ -1347,8 +1489,9 @@ impl Calc {
     /// 一時ファイルの複製ではなく、子のプロセスが officework のソケット越しに
     /// このブックを書く(記事の「ファイルではなく Excel そのものを操作する」)。
     /// 何回書いても Ctrl+Z 一回で戻る(頭で節目を1つ置き、その間 rpc は置かない)。
-    /// サンドボックスは着せない — plugins は自分で据えたコードで、ブックから
-    /// 旅して来たものではない(2026-08-09 発注者確定)。
+    /// **サンドボックスの中で走らせる**(手引き macro-manual「サンドボックス」)。
+    /// 開いているブックへの書き込みはソケット越しなので、ソケットの置き場だけ
+    /// サンドボックスの中に見せる。bwrap が無い機械では今までどおり普通に走らせる。
     pub(crate) fn run_plugin(&mut self, module: &str, func: Option<&str>, cx: &mut Context<Self>) {
         self.run_plugin_in(plugins_dir(), module, func, cx);
     }
@@ -1389,11 +1532,19 @@ impl Calc {
         };
         self.checkpoint_book();
         self.rpc_batch = true;
-        self.status = ui::tf!("running", name.clone()).into();
+        let caged = pyrun::cage_works();
+        self.status = if caged {
+            ui::tf!("running_macro_python_sandbox", name.clone()).into()
+        } else {
+            ui::tf!("running", name.clone()).into()
+        };
         let task = cx.background_executor().spawn(async move {
             let py_path = dir.join("plugin.py");
             std::fs::write(&py_path, script).map_err(|e| e.to_string())?;
-            let mut c = std::process::Command::new(find_python());
+            let py = find_python();
+            // 置き場(plugins / ribbon)は読み取り専用で見せる。サンドボックスは
+            // ホームを隠すので、見せないと import で落ちる
+            let mut c = caged_or_plain(&py, &dir, &[dir_py.clone()]);
             // 時間制限つき(60秒)。返りは (終わったか, 出力, 誤り)
             let (ok, out, err) = run_with_timeout(c.arg(&py_path), 60)?;
             if !ok {
@@ -2550,4 +2701,166 @@ pub(crate) fn parse_pdf_tables(raw: &str) -> Vec<(u32, String, Vec<Vec<String>>)
             (!rows.is_empty()).then_some((page, how.to_string(), rows))
         })
         .collect()
+}
+
+/// 選んだ範囲の形(推奨グラフの判断に使う)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct RangeShape {
+    /// 項目(行)の数。見出し行は数えない
+    pub(crate) points: usize,
+    /// 系列(2列目以降)の数
+    pub(crate) series: usize,
+    /// 1列目が全部数(項目名でなく X の値)
+    pub(crate) first_col_numeric: bool,
+    /// 1列目が日付・年・月に見える
+    pub(crate) first_col_time: bool,
+    /// 値に負の数がある(円グラフには向かない)
+    pub(crate) has_negative: bool,
+}
+
+/// グラフの種類(chart.py の kind)と、一覧の鍵。並びは手引きの表と同じ
+pub(crate) const CHART_KINDS: &[(&str, &str)] = &[
+    ("bar", "chart_column"),
+    ("barh", "chart_bar"),
+    ("line", "chart_line"),
+    ("area", "chart_area"),
+    ("pie", "chart_pie"),
+    ("scatter", "chart_scatter"),
+];
+
+/// 一覧に出す(鍵, 見出し)。`ui::t!` は literal しか受けないので、ここで結ぶ
+fn chart_kind_item(kind: &str) -> (&'static str, SharedString) {
+    match kind {
+        "barh" => ("chart_bar", ui::t!("chart_bar").into()),
+        "line" => ("chart_line", ui::t!("chart_line").into()),
+        "area" => ("chart_area", ui::t!("chart_area").into()),
+        "pie" => ("chart_pie", ui::t!("chart_pie").into()),
+        "scatter" => ("chart_scatter", ui::t!("chart_scatter").into()),
+        _ => ("chart_column", ui::t!("chart_column").into()),
+    }
+}
+
+/// 「2024」「4月」「Q1」「2024/04」のような、時の流れに見える項目名か
+pub(crate) fn looks_like_time_label(t: &str) -> bool {
+    let t = t.trim();
+    if t.is_empty() {
+        return false;
+    }
+    if t.ends_with('月') || t.ends_with('年') || t.ends_with("年度") {
+        return true;
+    }
+    if t.len() == 4 && t.chars().all(|c| c.is_ascii_digit()) {
+        return true;
+    }
+    let up = t.to_ascii_uppercase();
+    if up.len() == 2 && up.starts_with('Q') && up[1..].chars().all(|c| c.is_ascii_digit()) {
+        return true;
+    }
+    // 2024/04・2024-04-01 のような区切りつきの数
+    let parts: Vec<&str> = t.split(['/', '-', '.']).collect();
+    parts.len() >= 2 && parts.iter().all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()))
+}
+
+/// 範囲の形から、合う種類を合う順に並べる。
+///
+/// 決めは手引きの表のとおりです:
+/// * 1列目が全部数なら散布図を先頭に
+/// * 時系列か 13 行以上なら折れ線・面・縦棒
+/// * 1系列で 2〜8 行、負の数が無ければ円・縦棒・横棒・折れ線
+/// * それ以外は縦棒・横棒・折れ線・面
+/// * 横棒は 20 行まで(それより多いと読めない)
+pub(crate) fn recommended_kinds(sh: RangeShape) -> Vec<&'static str> {
+    let mut v: Vec<&'static str> = Vec::new();
+    let mut push = |k: &'static str| {
+        if !v.contains(&k) {
+            v.push(k);
+        }
+    };
+    let barh_ok = sh.points <= 20;
+    let pie_ok = sh.series == 1 && (2..=8).contains(&sh.points) && !sh.has_negative;
+    if sh.first_col_numeric && sh.series >= 1 {
+        push("scatter");
+    }
+    if sh.first_col_time || sh.points > 12 {
+        push("line");
+        push("area");
+        push("bar");
+        if barh_ok {
+            push("barh");
+        }
+    } else if pie_ok {
+        push("pie");
+        push("bar");
+        push("barh");
+        push("line");
+        push("area");
+    } else {
+        push("bar");
+        if barh_ok {
+            push("barh");
+        }
+        push("line");
+        push("area");
+    }
+    v
+}
+
+#[cfg(test)]
+mod chart_tests {
+    use super::*;
+
+    fn shape(points: usize, series: usize) -> RangeShape {
+        RangeShape { points, series, first_col_numeric: false, first_col_time: false, has_negative: false }
+    }
+
+    #[test]
+    fn one_short_series_recommends_pie_first() {
+        assert_eq!(recommended_kinds(shape(5, 1)), vec!["pie", "bar", "barh", "line", "area"]);
+    }
+
+    #[test]
+    fn negative_values_never_recommend_pie() {
+        let mut s = shape(5, 1);
+        s.has_negative = true;
+        assert!(!recommended_kinds(s).contains(&"pie"));
+    }
+
+    #[test]
+    fn many_points_or_time_labels_recommend_line_first() {
+        assert_eq!(recommended_kinds(shape(30, 2)), vec!["line", "area", "bar"]);
+        let mut s = shape(6, 2);
+        s.first_col_time = true;
+        assert_eq!(recommended_kinds(s), vec!["line", "area", "bar", "barh"]);
+    }
+
+    #[test]
+    fn numeric_first_column_puts_scatter_first() {
+        let mut s = shape(6, 2);
+        s.first_col_numeric = true;
+        assert_eq!(recommended_kinds(s)[0], "scatter");
+    }
+
+    #[test]
+    fn plain_table_recommends_column_first() {
+        assert_eq!(recommended_kinds(shape(6, 3)), vec!["bar", "barh", "line", "area"]);
+    }
+
+    #[test]
+    fn every_recommended_kind_has_a_list_key() {
+        for sh in [shape(5, 1), shape(30, 2), shape(6, 3)] {
+            for k in recommended_kinds(sh) {
+                assert!(CHART_KINDS.iter().any(|(kind, _)| *kind == k), "{k} に鍵が無い");
+            }
+        }
+    }
+
+    #[test]
+    fn time_labels_are_recognised() {
+        for t in ["2024", "4月", "2024年", "Q1", "2024/04", "2024-04-01"] {
+            assert!(looks_like_time_label(t), "{t}");
+        }
+        for t in ["東京", "A", "12345", "", "りんご"] {
+            assert!(!looks_like_time_label(t), "{t}");
+        }
+    }
 }

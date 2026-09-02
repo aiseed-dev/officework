@@ -169,7 +169,7 @@ An unknown sheet name gives *#REF!*. It is never silently read as the current sh
 Cross-sheet values are *copied as of that moment*, so edit the source and recalculate (F9) to catch up.
 Renaming a sheet rewrites `oldname!` inside formulas (but *not inside strings* such as `INDIRECT("oldname!A1")` — quoted text is left alone).
 
-*About 185 functions* are implemented (including modern aliases).
+403 functions are implemented (both the old names and the new ones).
 By category:
 
 [cols="1,1"]
@@ -194,7 +194,7 @@ Unknown function names return *#NAME?*. The app never silently computes 0.
 
 On top of these, *`=PY(…)` lets you write your own functions in Python*. See link:#writing-cell-functions-in-python-py-udf[the Python section].
 
-Formula-tab tools: AutoSum, *Insert Function* (category → function), function lists by category, *calculation mode* (automatic ⇔ manual; manual avoids waiting on big sheets), *watch window* (pins formula cells and shows their values in the bottom band), name manager, trace precedents/dependents (the cells light up; "remove arrows" clears), show formulas.
+Formula-tab tools: AutoSum, *Insert Function* (category → function), function lists by category, *calculation mode* (automatic ⇔ manual; manual avoids waiting on big sheets), *watch window* (pins formula cells and shows their values in the bottom band), name manager, trace precedents/dependents (arrows are drawn between the current cell and the cells involved; "remove arrows" clears), show formulas.
 
 *Defined names*: select a range, then "Define Name" (Home or Formulas).
 Names are alphanumeric plus `_` (must not look like a cell reference) and can be used in formulas.
@@ -204,29 +204,33 @@ Names are alphanumeric plus `_` (must not look like a cell reference) and can be
 * Text: bold, italic, underline, strikethrough, *subscript*, color, font, size
 * *The font box is a combo*: clicking opens the list positioned at the current font. Type to filter (matches both Japanese and English names), ↑↓ to move, Enter to confirm, Esc to close. Each entry is *drawn in its own font*, and *recently used fonts* appear at the top. A font name not in the list can be typed and confirmed as-is (the font list shows *this machine's fonts*)
 * *The size box is also a combo*: the list holds the 17 steps from 6 to 72pt. Typing a free value rounds *silently* to 4–409pt in 0.5pt steps (rounding applies to on-screen input only — an odd size made elsewhere round-trips unchanged). *Grow/shrink* (+/−) walks the list one step at a time (an odd size snaps to the neighbouring list value; it stops at the ends)
-* Cells: fill, borders (each side independently), horizontal and vertical alignment (including *justified*), wrap, *text orientation* (each press: vertical → stacked → back; for the vertical headings of Japanese forms)
+* Cells: fill, borders (each side independently), horizontal and vertical alignment (including *justified*), wrap, *text orientation* (pick from the list: none / 45° up / 45° down / 90° up / 90° down / stacked; for the vertical headings of Japanese forms)
 * *Right-to-left text* (Home): characters in a cell run right to left. This is for Japanese right-to-left horizontal writing (old signboards); Latin bidi is out of scope
 * *Sheet direction* (Layout): columns run right to left
 * *Cell styles* (Home): heading, title, good/bad/neutral, note, calculation, currency, percent — one click applies the set (Ctrl+Z undoes)
 * *Theme colors*: modern Excel stores colors as "theme slot + tint". We read and resolve them, so *colors don't disappear*. Switching the *color scheme *(Layout: Office / warm / cool / ink) updates every cell that uses theme colors
 * Number formats: thousands separator, more/fewer decimals, %, currency
-* Merged cells (hidden values are not destroyed)
+* Merged cells (values outside the top-left cell are cleared, so a hidden value cannot feed a SUM. Ctrl+Z restores them)
+* *Clear* (Home): pick from the list — all / formats / formulas and values / comments. BackSpace and Delete do the same as "formulas and values"
+* *AutoSum* (Home): select a range and press; the =SUM formula goes below it (to the right for a single row). On a single cell it sums the numbers running above
+* *Fill* (Home): if the numbers at the top of the selection form a series, the series continues (a single number steps by 1). Text and formulas are copied. Ctrl+D always copies
 * *Conditional formatting*: greater/less/equal rules changing text color or fill (cellIs type; round-trips through xlsx)
 * *Data validation* (Data tab): list type. Choices are inline (`甲,乙,丙`) or a range reference (`=D2:D5` — edit the referenced cells and the choices follow). Invalid input doesn't enter the cell; Esc restores. Rules we can't resolve (references to another sheet, etc.) don't block input (we don't warn on what we can't check). Non-list rule types are reported as unreadable
-* *Table design* (Table Design tab): tools applied to the selection one step at a time — header-row band, banded rows/columns, first/last column bold, *total row* (adds a =SUM row below; it's a formula, so it follows edits; refuses if something is already below), filter buttons. Tables are stored as named *table objects*, so "Convert to range" (removes the table; band formatting and formulas stay — like Excel) and "Resize table" (type a new range like A1:C9) also work. Saved as real xlsx tables, visible in Excel. To apply everything at once, use Insert > Table
+* *Table design* (Table Design tab): tools applied to the selection one step at a time — header-row band, banded rows/columns, first/last column bold, *total row* (adds a =SUM row below; it's a formula, so it follows edits; refuses if something is already below), filter buttons (toggle the table's ▼; saved into the xlsx). Tables are stored as named *table objects*, so "Convert to range" (removes the table; band formatting and formulas stay — like Excel) and "Resize table" (type a new range like A1:C9) also work. Saved as real xlsx tables, visible in Excel. To apply everything at once, use Insert > Table
 
 == Sheets and data
 
 * *Multiple sheets*: add, delete, rename, switch
-* *Freeze panes* (View): freezes rows above and columns left of the cursor; press again to release
+* *Freeze panes* (View): pick from the list — rows above and columns left of the cursor / top row / first column. To release, pick "Unfreeze" from the same list
+* *Insert / delete cells* (Home): pick from the list — shift right (left) / shift down (up) / entire row / entire column. Cells move by the size of the selection, and references to the moved cells follow
 * *Filter*: filter by cell value (display only; data unchanged). One step to clear
 * *Sort*: by column, ascending/descending. The header row stays put
-* *Remove duplicates* (Data): shows the count before deleting
-* *Text to data* (Data): pours CSV/TSV in at the cursor. Encoding (including CP932) and delimiter are auto-detected
+* *Remove duplicates* (Data): choose the columns to compare and "first row is a header" (on by default) from the list, then press Delete. The count is shown after deleting
+* *Text to data* (Data): pours CSV/TSV in at the cursor. Encoding (including CP932) and delimiter are auto-detected. File > Open also accepts a .csv: it is read with the encoding and delimiter chosen under Data > CSV format, into a new values-only workbook
 * *External links* (Data): imports another workbook's values *as values*. No live links, so a form cannot break when a link dies
 * *Goal seek* (Data)
 * *Solver* (Data): the same "Solver parameters" dialog as ONLYOFFICE — target cell (max/min/value), variable cells (a range or comma-separated, up to 64), constraints (cell / <= = >= / number or cell), then "Solve". The method is *simplex LP* (backed by scipy). Coefficients are measured on a copy of the sheet, and *nonlinear problems are refused* (as in the original). The solution lands in the variable cells; one Ctrl+Z restores
-* *Subtotals* (Data): select a table with headings and it asks for the grouping column (e.g. department) → columns to total (empty Enter = every numeric column). Inserts "〜 小計" (=SUM) rows per group and a grand total at the end, and groups *only the detail rows*. *Collapse to show just the subtotals and grand total.* They're formulas, so edits flow through. Sort first to bring groups together (as in Excel). All of it is one Ctrl+Z
+* *Subtotals* (Data): select a table with headings and it asks for the grouping column (e.g. department) → columns to total (empty Enter = every numeric column) → the function (sum / average / count / max / min). Inserts "〜 小計" rows (the chosen function) per group and a grand total at the end, and groups *only the detail rows*. *Collapse to show just the subtotals and grand total.* They're formulas, so edits flow through. Sort first to bring groups together (as in Excel). All of it is one Ctrl+Z
 * *Grouping* (Data): drag across row headings, then "Group". **Hide detail **collapses, *Show detail* expands (with no selection, the group containing the cursor). Works on columns too. Grouping again deepens the nesting (up to 7). Depth and collapsed state round-trip through xlsx outlineLevel / hidden, so Excel shows a normal outline. Collapsed rows/columns don't print (PDF) either. Unlike filtering, this *persists in the file*. A collapsed ledger stays collapsed for the next person. The heading of the row just after a group shows a *+/− button*; click to collapse or expand (like Excel's outline margin)
 * *Pivot tables* (Pivot Table tab): select a table with headings and press Insert; it asks for row headings (multiple allowed) → column headings (optional) → value and aggregation (sum/average/count/max/min). polars does the aggregation and the result is placed *as values* in the empty space to the right of the source (further right if occupied — nothing is overwritten silently). The definition is stored in the workbook (custom part xl/joPivot.xml), so when the source changes, put the cursor on the pivot and press *Refresh* (Refresh All does the whole workbook). *Grand totals *(rows, and columns if you spread by column), *subtotals*, *blank rows *(with 2+ row headings), and *report layout* (tabular ⇔ compact) toggle and re-place on each press. *Select* selects the whole pivot. Every operation re-aggregates from the source data with polars, so even averages in the grand total are correct (not averages of averages). Each is one Ctrl+Z. If Excel re-saves the file the definition part disappears — the pivot then can't refresh and becomes a plain table of values (honest degradation)
 * *Comments*: one per cell. Empty + Enter deletes. Saved into the xlsx
@@ -235,7 +239,7 @@ Names are alphanumeric plus `_` (must not look like a cell reference) and can be
 
 * *Table*: creates a bordered table frame with a header row in one go
 * *Images*: PNG / JPEG. Shapes (rectangle, rounded, ellipse, arrow, diamond, line — text inside works too), symbols, text boxes, sparklines
-* *Chart / recommended chart*: matplotlib draws the selected range and floats it on the sheet as an image (first column = labels, remaining columns = series; a heading row becomes series names). Japanese fonts are registered from the machine so no tofu. If Python is missing, the status bar explains what to install
+* *Chart / recommended chart*: matplotlib draws the selected range and floats it on the sheet as an image. Recommended chart lists column, bar, line, area, pie and scatter in the order that fits the shape of the range (rows, number of series, whether the first column is numbers or dates, negative values) and draws the one you pick (first column = labels, remaining columns = series; a heading row becomes series names). Japanese fonts are registered from the machine so no tofu. If Python is missing, the status bar explains what to install
 * *SmartArt*: pick a category (list / process / cycle / hierarchy / relationship / matrix / pyramid) then a layout. Categories, order, and names match Euro-Office. What's inserted is *a group of shapes*, so each shape can be selected, Enter to edit text, drag to move, Del to delete — and the whole thing is one Ctrl+Z. Saved to xlsx as ordinary shapes (Excel shows them as shapes; they are not native SmartArt parts — in exchange, any tool can open and edit them). The list shows *only layouts this method can build*
 * *Text art*: decorative text — drawn bold with an outline and floated as an image (matplotlib, same pipeline as equations)
 * Draw tab *pen / highlighter / eraser*: press to arm the tool, drag over the grid to draw (pen: thin black; highlighter: wide translucent yellow). The eraser removes *one stroke at a time*. Press the button again or Esc to return to cell operations. Strokes are saved as *ordinary polyline shapes*, so Excel shows them, Ctrl+Z steps back stroke by stroke, and they print (PDF)
@@ -311,25 +315,31 @@ On this path, *the AI quota is between you and the AI product you chose*; office
 Open it with *View tab > Left panel*.
 
 * *The selected range is what you are asking about* (with nothing selected, the request still goes through — some questions need no range)
-* *Requests that change the sheet come back as an officework Python script. Nothing runs until you press.* Read it, then press Apply. What it did is *one Ctrl+Z* away
+* *Requests that change the sheet are carried out by the AI on the spot.* Writing a range, formatting, and fitting column widths go straight into the workbook. Each such line is marked as one step and is *one Ctrl+Z* away. There is no "are you sure" beforehand
+* *Bigger requests become a macro (.py) that the AI writes and runs.* The file sits next to the workbook where you can read it. It runs inside the sandbox. If it fails, the error comes back into the conversation and the AI corrects it and runs again
 * Requests that don't change the sheet (what does this mean, write me one formula) are simply answered
-* *The conversation continues.* "Now sort that ascending instead" works — the last three exchanges are sent along
-* *If it fails, press "Ask it to fix this".* When a script fails, the error appears in the conversation and one press asks for a corrected script. Run, fail, fix — as many rounds as you need
+* *The only thing you press is Save.* When the AI asks to save, a confirmation button appears
+* *The conversation continues.* "Now sort that ascending instead" works — everything since the last "New conversation" is sent along
 * *"New conversation"* clears the thread (the sheet is untouched)
-* *The destination* can be switched right under the input box
+* *The conversation is recorded next to the workbook* as `<name>.agent.txt`, so what was asked and what changed can be read later. An unnamed new workbook records nothing
+* *The destination* is shown under the input box. Pressing it switches to the next one
 
-A script is the form the model writes most accurately (the xlwings/openpyxl shape) and — more importantly — *the form a person can check*.
+Destinations are listed as `\[[ai]]` entries in `~/.config/officework/settings.toml`.
 
-*Choosing the destination* moved to File > Advanced settings, "AI destination".
-Each press cycles local model → *Claude Agent* → *OpenAI Codex* → Claude (API).
+[source,toml]
+----
+# one destination (list as many as you like)
+[[ai]]
+name = "group server"
+url = "https://ai.example.org/v1/chat/completions"
+model = "gpt-oss-120b"
+key_env = "OFFICE_API_KEY"   # name of the environment variable holding the key
+----
 
-* *Claude Agent* — through Anthropic's Agent SDK. `pip install claude-agent-sdk` is all you need (the SDK bundles its own executable)
-* *OpenAI Codex* — runs the local `codex` (`npm i -g @openai/codex`). It uses whatever credentials that CLI already holds, so a ChatGPT plan works. Install it and sign in once with `codex` first
-* *Claude (API)* — calls the API directly; no Python required
+Without any `\[[ai]]`, the `ai_url` / `ai_model` lines below are used as the single destination; without those, the `OFFICE_URL` environment variable.
+The "AI destination" in File > Advanced settings is the proofreading destination for documents (writer) and does not affect the spreadsheet conversation.
 
-*The two Claude destinations need `ANTHROPIC_API_KEY`.* Anthropic does not allow third-party products to offer claude.ai login or rate limits without prior approval, so those two use API-key authentication only.
-
-Unavailable destinations *say why on the spot*.
+If a destination cannot be reached, the app *says why on the spot*.
 
 === Run one server for your group (one key for everyone)
 
@@ -346,7 +356,7 @@ ai_model = "gpt-oss-120b"
 
 * *`https://` turns on encryption.* Don't send documents off the machine in the clear (`http://` is for 127.0.0.1 only)
 * If the server needs a key, put it in the *`OFFICE_API_KEY` environment variable* (never in the settings file or a document)
-* `OFFICE_URL` overrides it for one run
+* With neither `ai_url` nor `\[[ai]]`, the `OFFICE_URL` environment variable is the destination
 * The current destination, and whether it leaves the machine, are shown on the *Local model destination* row of this screen
 
 Common ports: Ollama `11434`, llama.cpp server `8080`, LM Studio `1234` — all on `/v1/chat/completions`.
@@ -676,13 +686,14 @@ Three paths run Python:
 
 |Macros > List, and `@name(...)` in a cell |*only .py from the folder*
 |Data > Python (typing) |*what you just typed*; no file is read
-|Left panel conversation > Apply |*what the AI wrote, that you read and pressed*
+|Left panel conversation |*a macro the AI wrote*. It is placed next to the workbook as a .py and runs in the sandbox
 |===
 
 Every one starts with a person choosing, typing, or pressing. *Workbooks never carry code* — opening one never runs anything.
 
 == Protection tab
 
+* *Protect Range*: registers a range that stays editable while the sheet is protected (the same meaning as Excel's "Allow Edit Ranges"; round-trips xlsx protectedRanges). Outside the range, cell locks apply as usual. Press again on the same range to remove it. No password
 * *Protect*: makes the current sheet read-only (edits are blocked; same button to release). *No password, and no pretend-password.* Round-trips xlsx sheetProtection, so Excel shows the sheet as protected too
 * *Encrypt*: set a password and the next save is wrapped in *AES-256 (Agile, the Excel 2013+ default)*. Opens in Excel and LibreOffice. Clear the field and press Enter to stop encrypting. Opening prompts for the password (masked). *Reading accepts both Agile and the older AES-128 (2007 Standard)*
 * *Add digital signature*: a signature file next to the workbook (`name.xlsx.sig`, Ed25519). Press once: if a valid signature exists it reports; if missing or the content changed, it (re-)signs. Not the scheme that appears in Excel's signature line — tamper detection plus a name

@@ -2692,3 +2692,47 @@ fn plain_si(s: &str, ruby: Option<&str>) -> String {
         None => format!("<si><t xml:space=\"preserve\">{}</t></si>", esc(s)),
     }
 }
+
+#[cfg(test)]
+mod table_filter_tests {
+    use book::{Book, Cell, Pos};
+    use std::io::Cursor;
+
+    /// 表の「フィルタのボタン」は `<autoFilter>` として表の XML に出て、
+    /// 読み直しても残る。前はボタンを押しても旗が立たず、保存で消えていた
+    #[test]
+    fn a_table_filter_flag_round_trips_as_auto_filter() {
+        let mut b = Book::new();
+        for (r, row) in [["部署", "金額"], ["営業", "100"], ["総務", "50"]].iter().enumerate() {
+            for (c, v) in row.iter().enumerate() {
+                b.sheets[0].set(Pos::new(r as u32, c as u32), Cell::input(v));
+            }
+        }
+        b.sheets[0].tables.push(book::TableDef {
+            name: "売上表".into(),
+            a: Pos::new(0, 0),
+            b: Pos::new(2, 1),
+            filter: true,
+            ..Default::default()
+        });
+        let mut buf = Cursor::new(Vec::new());
+        super::write(&b, &mut buf).expect("書けない");
+        // zip の中の表の XML に autoFilter がある
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.get_ref().clone())).expect("zip でない");
+        let mut xml = String::new();
+        std::io::Read::read_to_string(&mut z.by_name("xl/tables/table1.xml").expect("表が無い"), &mut xml)
+            .unwrap();
+        assert!(xml.contains(r#"<autoFilter ref="A1:B3"/>"#), "autoFilter が出ていない: {xml}");
+        buf.set_position(0);
+        let (back, _) = crate::xlsx::read(buf).expect("読めない");
+        assert!(back.sheets[0].tables[0].filter, "filter が往復しない");
+        // 旗を下ろせば出ない
+        b.sheets[0].tables[0].filter = false;
+        let mut buf2 = Cursor::new(Vec::new());
+        super::write(&b, &mut buf2).expect("書けない");
+        let mut z2 = zip::ZipArchive::new(Cursor::new(buf2.get_ref().clone())).unwrap();
+        let mut xml2 = String::new();
+        std::io::Read::read_to_string(&mut z2.by_name("xl/tables/table1.xml").unwrap(), &mut xml2).unwrap();
+        assert!(!xml2.contains("<autoFilter"), "旗が無いのに autoFilter が出る");
+    }
+}

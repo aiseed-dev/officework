@@ -240,7 +240,12 @@ impl Host for Calc {
     }
     fn open(&mut self, p: &std::path::Path) -> Result<(), String> {
         Calc::open(self, p.to_path_buf());
-        if self.path.as_deref() != Some(p) {
+        // CSV は道を持たずに開く(io.rs の open_csv)。開けたかは
+        // シート名(=ファイル名)で見る
+        let csv_ok = p.extension().is_some_and(|e| e.eq_ignore_ascii_case("csv"))
+            && self.path.is_none()
+            && p.file_stem().is_some_and(|s| self.book.sheets[0].name == s.to_string_lossy());
+        if self.path.as_deref() != Some(p) && !csv_ok {
             return Err(ui::tf!("cant_open", self.status));
         }
         Ok(())

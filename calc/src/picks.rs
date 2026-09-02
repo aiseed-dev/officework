@@ -1120,6 +1120,7 @@ impl Calc {
                 };
                 self.insert_sparkline(kind);
             }
+            "chart-kind-pick" => self.insert_chart_picked(v, cx),
             "dedup-pick" => {
                 let header_label = ui::t!("first_row_header_keep").to_string();
                 if v == format!("→ {}", ui::t!("delete")) {
@@ -1390,6 +1391,56 @@ impl Calc {
                     self.status = ui::t!("sort_cancelled").into();
                 }
             }
+            // 消去の4択(すべて/書式/数式と値/コメント)
+            // run_cmd を通すので操作の記録に残る
+            "clear-pick" => {
+                if matches!(v, "all" | "formats" | "formulas_and_values" | "comment") {
+                    self.run_cmd(&format!("clear-{v}"), cx);
+                }
+            }
+            // セルの挿入・削除の4択。右へ/下へは選んだ範囲の形でずらし、
+            // 行全体・列全体は範囲の行数(列数)ぶん出し入れする
+            "cell-ins-pick" | "cell-del-pick" => {
+                let ins = self.pick_kind == "cell-ins-pick";
+                let id = match (v, ins) {
+                    ("shift_cells_right", _) => "inscell-right",
+                    ("shift_cells_down", _) => "inscell-down",
+                    ("shift_cells_left", _) => "delcell-left",
+                    ("shift_cells_up", _) => "delcell-up",
+                    ("entire_row", true) => "insrows",
+                    ("entire_row", false) => "delrows",
+                    ("entire_column", true) => "inscols",
+                    ("entire_column", false) => "delcols",
+                    _ => return,
+                };
+                self.run_cmd(id, cx);
+            }
+            // 小計の集計方法を選んだ → 挿す
+            "subtotal-agg-pick" => {
+                let Some(pend) = self.sub_pend.take() else { return };
+                let func = SUBTOTAL_FUNCS
+                    .iter()
+                    .find(|(k, _)| *k == v)
+                    .map(|(_, f)| *f)
+                    .unwrap_or("SUM");
+                let by_off =
+                    pend.headers.iter().position(|h| *h == pend.rows_sel[0]).unwrap_or(0);
+                let by = pend.a.col + by_off as u32;
+                let vals: Vec<u32> = pend.cols_sel.iter().filter_map(|c| c.parse().ok()).collect();
+                self.checkpoint();
+                let n = apply_subtotals_with(
+                    &mut self.book.sheets[self.active],
+                    pend.a,
+                    pend.b,
+                    by,
+                    &vals,
+                    func,
+                );
+                recalc_book(&mut self.book, self.active);
+                self.dirty = true;
+                self.sync_input();
+                self.status = ui::tf!("subtotals_grand_total_added", n).into();
+            }
             // 結合の4択(本家のドロップダウン)
             "merge-pick" => {
                 let kind = match v {
@@ -1657,6 +1708,135 @@ impl Calc {
     }
 
     /// 一覧から選んだ値をセルに入れる(書式は据え置き)。
+    /// 消去の実体。`kind` は all / formats / formulas_and_values / comment / link。
+    /// リボンの「消去」の一覧と右クリックの「消去 ▸」の両方から来る
+    pub(crate) fn clear_kind(&mut self, kind: &str) {
+        match kind {
+            "all" => {
+                self.commit();
+                self.checkpoint();
+                let (a, b) = self.sel_rect();
+                let mut n = 0usize;
+                for r in a.row..=b.row {
+                    for c in a.col..=b.col {
+                        n += self.book.sheets[self.active]
+                            .cells
+                            .remove(&Pos::new(r, c))
+                            .is_some() as usize;
+                    }
+                }
+                recalc_book(&mut self.book, self.active);
+                self.dirty = true;
+                self.sync_input();
+                self.status = ui::tf!("cells_cleared_contents_formatting", n).into();
+            }
+            "formulas_and_values" => {
+                self.commit();
+                self.checkpoint();
+                let n = self.clear_range();
+                self.status = ui::tf!("contents_cells_cleared_formatting", n).into();
+            }
+            "formats" => {
+                let (a, b) = self.sel_rect();
+                let n = (b.row - a.row + 1) * (b.col - a.col + 1);
+                self.fmt(|f| *f = CellFormat::default());
+                self.status = ui::tf!("formatting_cleared_values_kept", n).into();
+            }
+            "comment" => {
+                self.checkpoint();
+                let (a, b) = self.sel_rect();
+                let sh = &mut self.book.sheets[self.active];
+                let before = sh.comments.len();
+                sh.comments.retain(|p, _| {
+                    p.row < a.row || p.row > b.row || p.col < a.col || p.col > b.col
+                });
+                let n = before - sh.comments.len();
+                if n == 0 {
+                    self.undo_stack.pop();
+                    self.status = ui::t!("no_comments_range").into();
+                } else {
+                    self.dirty = true;
+                    self.status = ui::tf!("removed_comments", n).into();
+                }
+            }
+            "link" => {
+                self.checkpoint();
+                let (a, b) = self.sel_rect();
+                let sh = &mut self.book.sheets[self.active];
+                let before = sh.links.len();
+                sh.links.retain(|p, _| {
+                    p.row < a.row || p.row > b.row || p.col < a.col || p.col > b.col
+                });
+                let n = before - sh.links.len();
+                if n == 0 {
+                    self.undo_stack.pop();
+                    self.status = ui::t!("no_hyperlinks_range").into();
+                } else {
+                    self.dirty = true;
+                    self.status = ui::tf!("removed_hyperlinks", n).into();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// セル単位のシフト(挿入・削除)。選んだ範囲の大きさぶん動かす。
+    /// 結合をまたぐときは断られる。`id` は inscell-right / inscell-down /
+    /// delcell-left / delcell-up
+    pub(crate) fn shift_cells(&mut self, id: &str) {
+        self.commit();
+        self.checkpoint();
+        let (a, b) = self.sel_rect();
+        let r = match id {
+            "inscell-right" => self.book.sheets[self.active].insert_cells(a, b, true),
+            "inscell-down" => self.book.sheets[self.active].insert_cells(a, b, false),
+            "delcell-left" => self.book.sheets[self.active].delete_cells(a, b, true),
+            _ => self.book.sheets[self.active].delete_cells(a, b, false),
+        };
+        match r {
+            Ok(n) => {
+                recalc_book(&mut self.book, self.active);
+                self.dirty = true;
+                self.anchor = None;
+                self.sync_input();
+                self.status = ui::tf!("cells_shifted_references_moved", n).into();
+            }
+            Err(e) => {
+                // 何も変えていないので、積んだ控えは戻す
+                self.undo_stack.pop();
+                self.status = e.into();
+            }
+        }
+    }
+
+    /// 行全体・列全体の挿入と削除。選んだ範囲の行数(列数)ぶん行う
+    pub(crate) fn whole_lines(&mut self, insert: bool, rows: bool) {
+        self.commit();
+        self.checkpoint();
+        let (a, b) = self.sel_rect();
+        let n = if rows { b.row - a.row + 1 } else { b.col - a.col + 1 };
+        let sh = &mut self.book.sheets[self.active];
+        for _ in 0..n {
+            match (insert, rows) {
+                (true, true) => sh.insert_row(a.row),
+                (false, true) => sh.remove_row(a.row),
+                (true, false) => sh.insert_col(a.col),
+                (false, false) => sh.remove_col(a.col),
+            }
+        }
+        recalc_book(&mut self.book, self.active);
+        self.dirty = true;
+        self.anchor = None;
+        self.sync_input();
+        self.status = match (insert, rows) {
+            (true, true) => ui::tf!("rows_inserted", n),
+            (false, true) => ui::tf!("rows_deleted", n),
+            (true, false) => ui::tf!("columns_inserted", n),
+            (false, false) => ui::tf!("columns_deleted", n),
+        }
+        .into();
+    }
+
     pub(crate) fn pick_value(&mut self, v: &str) {
         self.checkpoint();
         let p = self.cursor;
@@ -1692,66 +1872,12 @@ impl Calc {
             "ps-formulas" => self.paste_special("formulas", cx),
             "ps-formats" => self.paste_special("formats", cx),
             "ps-transpose" => self.paste_special("transpose", cx),
-            // 消去。Euro-Office の「消去 ▸」に対応する3段
-            "clear-all" => {
-                self.commit();
-                self.checkpoint();
-                let (a, b) = self.sel_rect();
-                let mut n = 0usize;
-                for r in a.row..=b.row {
-                    for c in a.col..=b.col {
-                        n += self.book.sheets[self.active]
-                            .cells
-                            .remove(&Pos::new(r, c))
-                            .is_some() as usize;
-                    }
-                }
-                recalc_book(&mut self.book, self.active);
-                self.dirty = true;
-                self.sync_input();
-                self.status = ui::tf!("cells_cleared_contents_formatting", n).into();
-            }
-            "clear-text" => {
-                self.checkpoint();
-                let n = self.clear_range();
-                self.status = ui::tf!("contents_cells_cleared_formatting", n).into();
-            }
-            "clear-fmt" => self.run_cmd("clear", cx),
-            // コメントとハイパーリンクだけを消す(本家の消去は5択)
-            "clear-comment" => {
-                self.checkpoint();
-                let (a, b) = self.sel_rect();
-                let sh = &mut self.book.sheets[self.active];
-                let before = sh.comments.len();
-                sh.comments.retain(|p, _| {
-                    p.row < a.row || p.row > b.row || p.col < a.col || p.col > b.col
-                });
-                let n = before - sh.comments.len();
-                if n == 0 {
-                    self.undo_stack.pop();
-                    self.status = ui::t!("no_comments_range").into();
-                } else {
-                    self.dirty = true;
-                    self.status = ui::tf!("removed_comments", n).into();
-                }
-            }
-            "clear-link" => {
-                self.checkpoint();
-                let (a, b) = self.sel_rect();
-                let sh = &mut self.book.sheets[self.active];
-                let before = sh.links.len();
-                sh.links.retain(|p, _| {
-                    p.row < a.row || p.row > b.row || p.col < a.col || p.col > b.col
-                });
-                let n = before - sh.links.len();
-                if n == 0 {
-                    self.undo_stack.pop();
-                    self.status = ui::t!("no_hyperlinks_range").into();
-                } else {
-                    self.dirty = true;
-                    self.status = ui::tf!("removed_hyperlinks", n).into();
-                }
-            }
+            // 消去。右クリックの「消去 ▸」とリボンの一覧が同じ処理を使う
+            "clear-all" => self.run_cmd("clear-all", cx),
+            "clear-text" => self.run_cmd("clear-formulas_and_values", cx),
+            "clear-fmt" => self.run_cmd("clear-formats", cx),
+            "clear-comment" => self.run_cmd("clear-comment", cx),
+            "clear-link" => self.run_cmd("clear-link", cx),
             "insrow" => {
                 self.rowcol(|s, p| s.insert_row(p.row));
                 self.status = ui::t!("row_inserted_formula_references").into();
@@ -1791,6 +1917,7 @@ impl Calc {
                 } else {
                     f.hide.insert(p.col, hide);
                 }
+                self.sync_filter_hidden();
                 let label = if v.is_empty() { ui::t!("blank").to_string() } else { v };
                 self.status = ui::tf!("showing_only_change_header", label).into();
             }
@@ -1802,32 +1929,9 @@ impl Calc {
                     self.status = ui::tf!("filter_reapplied_rows_shown", total, shown).into();
                 }
             }
-            // セル単位のシフト(挿入・削除)。結合をまたぐときは断られる
+            // セル単位のシフト(挿入・削除)。リボンの一覧と同じ処理
             "inscell-right" | "inscell-down" | "delcell-left" | "delcell-up" => {
-                self.commit();
-                self.checkpoint();
-                let (a, b) = self.sel_rect();
-                let r = match id {
-                    "inscell-right" => self.book.sheets[self.active].insert_cells(a, b, true),
-                    "inscell-down" => self.book.sheets[self.active].insert_cells(a, b, false),
-                    "delcell-left" => self.book.sheets[self.active].delete_cells(a, b, true),
-                    _ => self.book.sheets[self.active].delete_cells(a, b, false),
-                };
-                match r {
-                    Ok(n) => {
-                        recalc_book(&mut self.book, self.active);
-                        self.dirty = true;
-                        self.anchor = None;
-                        self.sync_input();
-                        self.status = ui::tf!("cells_shifted_references_moved", n)
-                        .into();
-                    }
-                    Err(e) => {
-                        // 何も変えていないので、積んだ控えは戻す
-                        self.undo_stack.pop();
-                        self.status = e.into();
-                    }
-                }
+                self.run_cmd(id, cx)
             }
             "cond-neg" => {
                 self.commit();
@@ -3305,6 +3409,7 @@ impl Calc {
 
     /// 絞り込みの操作のたびに、いま何行見えているかを状態行で言う
     fn filter_note(&mut self) {
+        self.sync_filter_hidden();
         self.status = match self.filter_counts() {
             Some((total, shown)) => {
                 ui::tf!("filtering_rows_shown_display", total, shown).into()
@@ -3932,6 +4037,10 @@ impl Calc {
             "sheet-rename" => {
                 let Some(t) = self.sheet_menu_at.take() else { return };
                 if t >= self.book.sheets.len() {
+                    return;
+                }
+                // タブのダブルクリックからも来るので、ここでも構造の保護を見る
+                if self.structure_locked() {
                     return;
                 }
                 let old = self.book.sheets[t].name.clone();
@@ -4816,19 +4925,25 @@ impl Calc {
                         }
                     }
                 }
-                self.checkpoint();
-                let n = apply_subtotals(
-                    &mut self.book.sheets[self.active],
-                    pend.a,
-                    pend.b,
-                    by,
-                    &vals,
-                );
-                recalc_book(&mut self.book, self.active);
-                self.dirty = true;
-                self.sync_input();
-                self.status = ui::tf!("subtotals_grand_total_added", n)
-                .into();
+                // 集計方法を一覧から選ぶ(合計・平均・個数・最大・最小)。
+                // 集計する列の番号は cols_sel に文字で控える
+                let mut pend = pend;
+                pend.cols_sel = vals.iter().map(|c| c.to_string()).collect();
+                self.sub_pend = Some(pend);
+                let at = self.pop_anchor();
+                self.pick_kind = "subtotal-agg-pick";
+                self.pick_note = Some(ui::t!("subtotal_function").into());
+                self.pick = Some((
+                    menu(&[
+                        ui::item!("sum"),
+                        ui::item!("average"),
+                        ui::item!("count"),
+                        ui::item!("maximum"),
+                        ui::item!("minimum"),
+                    ]),
+                    at,
+                ));
+                let _ = by;
             }
             "find" => {
                 if text.is_empty() {
@@ -5028,12 +5143,27 @@ impl Calc {
         self.anchor = None;
         self.auto_filter = None;
         self.filter_panel = None;
+        self.sync_filter_hidden();
         self.sync_input();
         self.status = ui::tf!("sheet", self.sheet().name).into();
     }
 
+    /// ブックの構造が守られているか(保護タブの「ブックを保護する」)。
+    /// 守られていれば状態行に理由を出して真を返します。シートの追加・
+    /// 削除・複製・並べ替え・名前の変更の入り口で呼びます
+    pub(crate) fn structure_locked(&mut self) -> bool {
+        if self.book.lock_structure {
+            self.status = ui::t!("book_structure_locked_refused").into();
+            return true;
+        }
+        false
+    }
+
     /// シートを1枚足して、そこへ移る。
     pub(crate) fn add_sheet(&mut self) {
+        if self.structure_locked() {
+            return;
+        }
         let name = unique_sheet_name(&self.book);
         self.book.sheets.push(book::Sheet::new(&name));
         self.dirty = true;
@@ -5089,6 +5219,9 @@ impl Calc {
         if t >= self.book.sheets.len() {
             return Err(ui::t!("there_no_such_sheet").to_string());
         }
+        if self.book.lock_structure {
+            return Err(ui::t!("book_structure_locked_refused").to_string());
+        }
         if self.book.sheets.len() <= 1 {
             return Err(ui::t!("cant_delete_last_sheet").to_string());
         }
@@ -5134,6 +5267,9 @@ impl Calc {
     pub(crate) fn copy_sheet_at(&mut self, t: usize, name: Option<&str>) -> Result<String, String> {
         if t >= self.book.sheets.len() {
             return Err(ui::t!("there_no_such_sheet").to_string());
+        }
+        if self.book.lock_structure {
+            return Err(ui::t!("book_structure_locked_refused").to_string());
         }
         let new_name = match name {
             None => copy_sheet_name(&self.book, &self.book.sheets[t].name),
@@ -5209,6 +5345,13 @@ impl Calc {
             return;
         }
         self.remember_ui(); // sheet_ui をシート数まで育てておく(挿し外しの前提)
+        // 構造を守っている間は、構成を変える項目を断る(隠す・戻す・色は通す)
+        if matches!(v, "insert" | "delete" | "rename" | "duplicate" | "move_left" | "move_right")
+            && self.structure_locked()
+        {
+            self.sheet_menu_at = None;
+            return;
+        }
         match v {
             "insert" => {
                 let name = unique_sheet_name(&self.book);

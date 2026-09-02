@@ -775,7 +775,7 @@ mod subtotal_tests {
                 s.set(Pos::new(r as u32, c as u32), Cell::input(v));
             }
         }
-        let n = apply_subtotals(&mut s, Pos::new(0, 0), Pos::new(4, 2), 0, &[2]);
+        let n = apply_subtotals_with(&mut s, Pos::new(0, 0), Pos::new(4, 2), 0, &[2], "SUM");
         recalc(&mut s);
         assert_eq!(n, 2, "区切りの数が違う");
         // 並び: 1見出し 2-4営業明細 5営業小計 6総務明細 7総務小計 8総計
@@ -1441,7 +1441,10 @@ mod pivot_tests {
             assert_eq!(f(this).number_format.as_deref(), Some("#,##0.0"));
             this.run_cmd("digit-dec", cx);
             assert_eq!(f(this).number_format.as_deref(), Some("#,##0"));
+            // 消去は一覧から選ぶ(すべて/書式/数式と値/コメント)
             this.run_cmd("clear", cx);
+            assert_eq!(this.pick_kind, "clear-pick", "消去の一覧が開かない");
+            this.apply_pick("formats", cx);
             assert_eq!(f(this), Default::default(), "書式のクリアが効かない");
             // --- パネル・小窓が開く系 ---
             let close = |this: &mut Calc| {
@@ -1519,9 +1522,10 @@ mod pivot_tests {
             this.cursor = Pos::new(11, 0);
             this.sync_input();
             this.run_cmd("fill-num", cx);
+            // 数が1つなら 1 ずつ増やす(7 → 8, 9)
             assert_eq!(
                 this.book.sheets[0].get(Pos::new(11, 0)).unwrap().value.display(),
-                "7", "フィルが効かない"
+                "9", "フィルが効かない"
             );
             this.anchor = None;
             // 絞り込みの張り外し
@@ -1531,13 +1535,17 @@ mod pivot_tests {
             assert!(this.auto_filter.is_some(), "絞り込みが張れない");
             this.run_cmd("clear-filter", cx);
             assert!(this.auto_filter.is_none(), "絞り込みが解けない");
-            // 行の出し入れ(cell-ins/cell-del は行に固定 — 台帳の既知の控え)
+            // セルの挿入・削除は一覧から選ぶ(右へ/下へ/行全体/列全体)
             let rows0 = this.book.sheets[0].extent().0;
             this.cursor = Pos::new(0, 0);
             this.sync_input();
             this.run_cmd("cell-ins", cx);
+            assert_eq!(this.pick_kind, "cell-ins-pick", "セルの挿入の一覧が開かない");
+            this.apply_pick("entire_row", cx);
             assert_eq!(this.book.sheets[0].extent().0, rows0 + 1, "行の挿入が効かない");
             this.run_cmd("cell-del", cx);
+            assert_eq!(this.pick_kind, "cell-del-pick", "セルの削除の一覧が開かない");
+            this.apply_pick("entire_row", cx);
             assert_eq!(this.book.sheets[0].extent().0, rows0, "行の削除が効かない");
             // 表にする。**道が2つある**(2026-08-12、台帳「テンプレート選択
             // ギャラリー」) — `instable` は既定の色ですぐ、`table-tpl` は
@@ -7152,7 +7160,7 @@ mod combo_tests {
             this.cursor = Pos::new(4, 0); // A5(選択の下端 = 空)
             this.sync_input();
             assert_eq!(this.input.text(), "", "埋める前の欄は空");
-            this.run_cmd("fill-num", cx);
+            this.run_cmd("fill-down", cx);
             // モデルにも欄にも 1 が居る — 画面は欄を映すので、ここがずれると
             // 「書けたのに空に見える」
             assert_eq!(this.book.sheets[0].value(Pos::new(4, 0)), book::Value::Number(1.0));
@@ -7735,7 +7743,7 @@ mod rec_honest_tests {
             // 穴の例だった — 消去は註しか残らなかった)
             this.rec = Some(Vec::new());
             let before = this.edits;
-            this.run_cmd("clear", cx);
+            this.run_cmd("clear-formats", cx);
             let lines = this.rec.clone().unwrap();
             assert!(this.edits > before, "消去が中身を変えていない(前提が崩れた)");
             assert!(
@@ -8392,6 +8400,350 @@ mod file_menu_tests {
             this.right_face = 2;
             this.mouse_down_at(100.0, 100.0, false, false, 1);
             assert!(!this.fl_focus, "表を押したのに焦点がパネルに残っている");
+        });
+    }
+}
+
+/// 手引きに「できます」と書いてあった物を実物に揃えた回(2026-09-02)。
+/// 消去・セルの挿入と削除・オートSUM・フィル・小計・Home/End・
+/// ブックの保護・範囲の保護
+#[cfg(test)]
+mod manual_promises_tests {
+    use crate::*;
+
+    fn put(this: &mut Calc, r: u32, c: u32, v: &str) {
+        this.book.sheets[0].set(Pos::new(r, c), book::Cell::input(v));
+    }
+    fn shown(this: &Calc, r: u32, c: u32) -> String {
+        this.book.sheets[0].get(Pos::new(r, c)).map(|x| x.value.display()).unwrap_or_default()
+    }
+    fn formula(this: &Calc, r: u32, c: u32) -> Option<String> {
+        this.book.sheets[0].get(Pos::new(r, c)).and_then(|x| x.formula.clone())
+    }
+
+    #[gpui::test]
+    fn clearing_from_the_list_removes_only_what_was_chosen(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let mut cell = book::Cell::input("5");
+            cell.fmt.bold = true;
+            this.book.sheets[0].set(Pos::new(0, 0), cell);
+            this.book.sheets[0]
+                .comments
+                .insert(Pos::new(0, 0), book::CommentThread::new("メモ", "私"));
+            this.cursor = Pos::new(0, 0);
+            this.anchor = None;
+            this.sync_input();
+            // 書式だけ
+            this.run_cmd("clear", cx);
+            assert_eq!(this.pick_kind, "clear-pick");
+            this.apply_pick("formats", cx);
+            assert_eq!(shown(this, 0, 0), "5", "値まで消えた");
+            assert!(!this.book.sheets[0].get(Pos::new(0, 0)).unwrap().fmt.bold, "書式が残った");
+            // 数式と値だけ(書式は残る)
+            let mut cell = book::Cell::input("5");
+            cell.fmt.bold = true;
+            this.book.sheets[0].set(Pos::new(0, 0), cell);
+            this.sync_input();
+            this.run_cmd("clear", cx);
+            this.apply_pick("formulas_and_values", cx);
+            assert_eq!(shown(this, 0, 0), "", "値が残った");
+            assert!(this.book.sheets[0].get(Pos::new(0, 0)).unwrap().fmt.bold, "書式まで消えた");
+            assert!(this.book.sheets[0].comments.contains_key(&Pos::new(0, 0)), "コメントまで消えた");
+            // コメントだけ
+            this.run_cmd("clear", cx);
+            this.apply_pick("comment", cx);
+            assert!(!this.book.sheets[0].comments.contains_key(&Pos::new(0, 0)), "コメントが残った");
+            assert!(this.book.sheets[0].get(Pos::new(0, 0)).unwrap().fmt.bold, "書式が消えた");
+            // すべて
+            this.run_cmd("clear", cx);
+            this.apply_pick("all", cx);
+            assert!(this.book.sheets[0].get(Pos::new(0, 0)).is_none(), "セルが残った");
+        });
+    }
+
+    #[gpui::test]
+    fn inserting_and_deleting_cells_from_the_list_uses_the_selected_size(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            put(this, 0, 0, "1");
+            put(this, 1, 0, "2");
+            put(this, 2, 0, "3");
+            put(this, 3, 1, "=A3*10");
+            recalc_book(&mut this.book, 0);
+            // 2行選んで行全体 → 2行ぶん下がる。式の参照も付いて動く
+            this.anchor = Some(Pos::new(0, 0));
+            this.cursor = Pos::new(1, 0);
+            this.sync_input();
+            this.run_cmd("cell-ins", cx);
+            assert_eq!(this.pick_kind, "cell-ins-pick");
+            this.apply_pick("entire_row", cx);
+            assert_eq!(shown(this, 2, 0), "1", "2行ぶん下がっていない");
+            assert_eq!(shown(this, 4, 0), "3");
+            assert_eq!(formula(this, 5, 1).as_deref(), Some("A5*10"), "参照が付いて動かない");
+            assert_eq!(shown(this, 3, 0), "2");
+            // 同じ2行を行全体で削除 → 元に戻る
+            this.anchor = Some(Pos::new(0, 0));
+            this.cursor = Pos::new(1, 0);
+            this.sync_input();
+            this.run_cmd("cell-del", cx);
+            assert_eq!(this.pick_kind, "cell-del-pick");
+            this.apply_pick("entire_row", cx);
+            assert_eq!(shown(this, 0, 0), "1");
+            assert_eq!(formula(this, 3, 1).as_deref(), Some("A3*10"));
+            // 1セルを右にシフト → A1 が B1 へ。2行目は動かない
+            this.anchor = None;
+            this.cursor = Pos::new(0, 0);
+            this.sync_input();
+            this.run_cmd("cell-ins", cx);
+            this.apply_pick("shift_cells_right", cx);
+            assert_eq!(shown(this, 0, 1), "1", "右にずれていない");
+            assert_eq!(shown(this, 1, 0), "2", "別の行まで動いた");
+            // 列全体の削除 → B1 が消え、C 以降が詰まる
+            put(this, 0, 2, "c");
+            this.cursor = Pos::new(0, 1);
+            this.sync_input();
+            this.run_cmd("cell-del", cx);
+            this.apply_pick("entire_column", cx);
+            assert_eq!(shown(this, 0, 1), "c", "列が詰まっていない");
+        });
+    }
+
+    #[gpui::test]
+    fn auto_sum_over_a_range_puts_the_formula_below_or_to_the_right(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for (i, v) in ["1", "2", "3"].iter().enumerate() {
+                put(this, i as u32, 0, v);
+                put(this, i as u32, 1, v);
+                put(this, 6, i as u32, v);
+            }
+            // 縦2列 → それぞれの列の下に
+            this.anchor = Some(Pos::new(0, 0));
+            this.cursor = Pos::new(2, 1);
+            this.run_cmd("sum", cx);
+            assert_eq!(formula(this, 3, 0).as_deref(), Some("SUM(A1:A3)"));
+            assert_eq!(formula(this, 3, 1).as_deref(), Some("SUM(B1:B3)"));
+            assert_eq!(shown(this, 3, 0), "6");
+            assert!(this.status.contains("SUM"), "{}", this.status);
+            // 横1行 → 右に
+            this.anchor = Some(Pos::new(6, 0));
+            this.cursor = Pos::new(6, 2);
+            this.run_cmd("sum", cx);
+            assert_eq!(formula(this, 6, 3).as_deref(), Some("SUM(A7:C7)"));
+            // 1セルだけなら今までどおり、上の数を対象にした式が入る
+            this.anchor = None;
+            this.cursor = Pos::new(8, 0);
+            put(this, 7, 0, "4");
+            this.sync_input();
+            this.run_cmd("sum", cx);
+            // A7(1)と A8(4)が続き、A6 が空なのでそこまで
+            assert_eq!(formula(this, 8, 0).as_deref(), Some("SUM(A7:A8)"));
+        });
+    }
+
+    #[gpui::test]
+    fn fill_continues_a_number_series_and_copies_everything_else(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            // 1, 2 → 3, 4, 5, 6
+            put(this, 0, 0, "1");
+            put(this, 1, 0, "2");
+            this.anchor = Some(Pos::new(0, 0));
+            this.cursor = Pos::new(5, 0);
+            this.run_cmd("fill-num", cx);
+            assert_eq!(shown(this, 5, 0), "6", "連続した数が続かない");
+            // 5, 10 → 間隔 5
+            put(this, 0, 1, "5");
+            put(this, 1, 1, "10");
+            this.anchor = Some(Pos::new(0, 1));
+            this.cursor = Pos::new(3, 1);
+            this.run_cmd("fill-num", cx);
+            assert_eq!(shown(this, 3, 1), "20", "間隔が守られない");
+            assert!(this.status.contains("B1"), "{}", this.status);
+            // 文字は写す
+            put(this, 0, 2, "甲");
+            this.anchor = Some(Pos::new(0, 2));
+            this.cursor = Pos::new(2, 2);
+            this.run_cmd("fill-num", cx);
+            assert_eq!(shown(this, 2, 2), "甲", "文字が写らない");
+            // Ctrl+D(fill-down)は数でもいつも写す
+            put(this, 0, 3, "1");
+            this.anchor = Some(Pos::new(0, 3));
+            this.cursor = Pos::new(2, 3);
+            this.run_cmd("fill-down", cx);
+            assert_eq!(shown(this, 2, 3), "1", "下へコピーが連続した数になった");
+        });
+    }
+
+    #[gpui::test]
+    fn home_and_end_move_within_the_row(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            put(this, 2, 0, "x");
+            put(this, 2, 4, "y");
+            this.cursor = Pos::new(2, 2);
+            this.row_edge(true);
+            assert_eq!(this.cursor, Pos::new(2, 4), "End が使っている最後の列へ行かない");
+            this.row_edge(false);
+            assert_eq!(this.cursor, Pos::new(2, 0), "Home が A 列へ行かない");
+            // 中身の無い行では End は動かない
+            this.cursor = Pos::new(7, 3);
+            this.row_edge(true);
+            assert_eq!(this.cursor, Pos::new(7, 3));
+        });
+    }
+
+    #[gpui::test]
+    fn subtotals_use_the_function_chosen_from_the_list(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for (r, row) in [
+                ["部署", "名前", "金額"],
+                ["営業", "a", "100"],
+                ["営業", "b", "120"],
+                ["総務", "c", "30"],
+            ]
+            .iter()
+            .enumerate()
+            {
+                for (col, v) in row.iter().enumerate() {
+                    put(this, r as u32, col as u32, v);
+                }
+            }
+            this.anchor = Some(Pos::new(0, 0));
+            this.cursor = Pos::new(3, 2);
+            this.run_cmd("subtotal", cx);
+            assert!(matches!(this.prompt, Some(("subtotal-by", _))), "区切りの聞き取りが出ない");
+            this.prompt = Some(("subtotal-by", Editor::new("部署")));
+            this.finish_prompt(cx);
+            assert!(matches!(this.prompt, Some(("subtotal-vals", _))), "列の聞き取りが出ない");
+            this.prompt = Some(("subtotal-vals", Editor::new("")));
+            this.finish_prompt(cx);
+            assert_eq!(this.pick_kind, "subtotal-agg-pick", "集計方法の一覧が開かない");
+            this.apply_pick("average", cx);
+            assert_eq!(formula(this, 3, 2).as_deref(), Some("AVERAGE(C2:C3)"), "選んだ関数でない");
+            assert_eq!(shown(this, 3, 2), "110");
+            // 総計は明細の範囲を並べて同じ関数に掛ける(小計の足し算ではない)
+            assert_eq!(formula(this, 6, 2).as_deref(), Some("AVERAGE(C2:C3,C5:C5)"));
+        });
+    }
+
+    #[gpui::test]
+    fn the_cell_format_panel_closes_when_pressed_again(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.run_cmd("cell-format", cx);
+            assert!(this.fmt_panel.is_some(), "開かない");
+            this.run_cmd("cell-format", cx);
+            assert!(this.fmt_panel.is_none(), "もう一度押しても閉じない");
+        });
+    }
+
+    #[gpui::test]
+    fn a_protected_workbook_refuses_changes_to_the_sheets(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.run_cmd("prot-book", cx);
+            assert!(this.book.lock_structure);
+            let n = this.book.sheets.len();
+            this.add_sheet();
+            assert_eq!(this.book.sheets.len(), n, "追加できてしまう");
+            assert!(!this.status.is_empty(), "理由を言わない");
+            this.sheet_menu_at = Some(0);
+            this.sheet_menu_action("duplicate");
+            assert_eq!(this.book.sheets.len(), n, "複製できてしまう");
+            assert!(this.copy_sheet_at(0, None).is_err(), "Python からの複製が通る");
+            assert!(this.delete_sheet_at(0).is_err(), "Python からの削除が通る");
+            let old = this.book.sheets[0].name.clone();
+            this.sheet_menu_at = Some(0);
+            this.prompt = Some(("sheet-rename", Editor::new("別名")));
+            this.finish_prompt(cx);
+            assert_eq!(this.book.sheets[0].name, old, "名前を変えられてしまう");
+            // 解除すれば足せる
+            this.run_cmd("prot-book", cx);
+            this.add_sheet();
+            assert_eq!(this.book.sheets.len(), n + 1, "解除しても足せない");
+        });
+    }
+
+    /// 「範囲を保護する」は Excel の「範囲の編集を許可」と同じ意味。
+    /// シートの保護中に、登録した範囲の中だけは書ける
+    #[gpui::test]
+    fn an_allowed_range_stays_editable_while_the_sheet_is_protected(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.cursor = Pos::new(1, 1);
+            this.anchor = Some(Pos::new(9, 3));
+            this.run_cmd("prot-range", cx);
+            assert!(this.sheet().protected);
+            assert!(!this.cell_locked(Pos::new(2, 2)), "許す範囲の中まで止めた");
+            assert!(this.cell_locked(Pos::new(0, 0)), "範囲の外が書ける");
+            // 中は打てる
+            this.anchor = None;
+            this.cursor = Pos::new(2, 2);
+            this.sync_input();
+            this.input = Editor::new("7");
+            assert!(this.commit(), "許す範囲の中で打てない");
+            assert_eq!(shown(this, 2, 2), "7");
+            // 外は打てない(ロックのあるセル)
+            this.cursor = Pos::new(0, 0);
+            this.sync_input();
+            this.input = Editor::new("8");
+            assert!(!this.commit(), "範囲の外で打ててしまう");
+            assert_eq!(shown(this, 0, 0), "");
+            // 外でもロックを外したセルは書ける(今までどおり)
+            this.sheet_mut().set(Pos::new(0, 5), {
+                let mut c = book::Cell::input("");
+                c.fmt.unlocked = true;
+                c
+            });
+            assert!(!this.cell_locked(Pos::new(0, 5)), "ロックを外したセルまで止めた");
+        });
+    }
+}
+
+mod filter_reaches_the_formulas {
+    use crate::*;
+
+    /// **絞り込みで隠れた行を SUBTOTAL が飛ばす**(2026-09-02 の突き合わせ)。
+    /// 絞り込みは画面の側だけが持っていて、式からは全部の行が見えていた。
+    /// `sync_filter_hidden` が `Sheet::filter_hidden` に写してから計算し直す
+    #[gpui::test]
+    fn subtotal_follows_the_filter(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            for (a1, v) in [
+                ("A1", "区分"), ("B1", "数"),
+                ("A2", "甲"), ("B2", "1"),
+                ("A3", "乙"), ("B3", "2"),
+                ("A4", "甲"), ("B4", "3"),
+                ("A5", "丙"), ("B5", "4"),
+                ("D1", "=SUBTOTAL(109,B2:B5)"),
+                ("D2", "=SUBTOTAL(9,B2:B5)"),
+                ("D3", "=SUM(B2:B5)"),
+            ] {
+                this.cursor = Pos::parse(a1).unwrap();
+                this.sync_input();
+                this.input.select_all();
+                this.input.insert(v);
+                assert!(this.commit());
+            }
+            this.anchor = None;
+            this.cursor = Pos::parse("A1").unwrap();
+            this.sync_input();
+            let at = |this: &Calc, a1: &str| this.sheet().value(Pos::parse(a1).unwrap());
+            assert_eq!(at(this, "D1"), Value::Number(10.0));
+            this.run_cmd("setfilter", cx);
+            this.filter_toggle_value(0, "乙");
+            this.filter_toggle_value(0, "丙");
+            assert_eq!(this.visible_rows(), vec![0, 1, 3], "見える行が違う");
+            assert_eq!(at(this, "D1"), Value::Number(4.0), "109 が隠れた行を数えている");
+            assert_eq!(at(this, "D2"), Value::Number(4.0), "9 も絞り込みの行は飛ばす");
+            assert_eq!(at(this, "D3"), Value::Number(10.0), "SUM まで変わった");
+            this.run_cmd("clear-filter", cx);
+            assert_eq!(at(this, "D1"), Value::Number(10.0), "解いたのに戻らない");
+            assert!(this.sheet().filter_hidden.is_empty());
         });
     }
 }

@@ -449,6 +449,24 @@ pub fn caged_python_with(
     ro_binds: &[PathBuf],
     allow_net: bool,
 ) -> Option<std::process::Command> {
+    caged_python_open(kind, py, dir, ro_binds, &[], allow_net)
+}
+
+/// 読み書きできる場所も見せる形。`rw_binds` は作業場のほかに書ける場所です。
+///
+/// 使うのは **calc のソケットの置き場**(`$XDG_RUNTIME_DIR/officework`)です。
+/// 表のマクロは開いているブックをソケット越しに書きます。ソケットの置き場が
+/// `/tmp` の下に落ちている機械では、`--tmpfs /tmp` で隠れて繋がらないので、
+/// 置き場をそのまま見せます(bwrap だけ。Flatpak は `--sandbox-expose` の
+/// 制限で見せられません)
+pub fn caged_python_open(
+    kind: Cage,
+    py: &std::path::Path,
+    dir: &std::path::Path,
+    ro_binds: &[PathBuf],
+    rw_binds: &[PathBuf],
+    allow_net: bool,
+) -> Option<std::process::Command> {
     match kind {
         Cage::Bwrap => {
             // サンドボックス: / は読み取り専用、ホームは空、書けるのは作業場だけ
@@ -460,6 +478,11 @@ pub fn caged_python_with(
                 }
             }
             c.arg("--bind").arg(dir).arg(dir);
+            for p in rw_binds {
+                if p.exists() {
+                    c.arg("--bind").arg(p).arg(p);
+                }
+            }
             if !allow_net {
                 c.arg("--unshare-net");
             }
@@ -493,6 +516,38 @@ pub fn caged_python_with(
         }
         Cage::None => None,
     }
+}
+
+/// サンドボックスが**本当に起動できるか**を一度だけ試して控える。
+///
+/// bwrap があっても、AppArmor がユーザー名前空間を禁じている機械
+/// (Ubuntu 24.04 以降の既定 `kernel.apparmor_restrict_unprivileged_userns=1`
+/// で、bwrap のプロファイルが無いとき)では `setting up uid map: Permission
+/// denied` で落ちます。自分で置いたマクロは、その機械では普通の Python で
+/// 走らせます(他所から来たコードの扱いは変えません — そちらは呼ぶ側が
+/// `caged_python` の None と同じに断ります)
+pub fn cage_works() -> bool {
+    static WORKS: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *WORKS.get_or_init(|| probe_cage(cage_kind()))
+}
+
+/// `cage_works` の中身(種類を差せる形)。`/bin/true` をサンドボックスの中で
+/// 1回走らせて、終了できたかを見ます
+pub fn probe_cage(kind: Cage) -> bool {
+    if kind == Cage::None {
+        return false;
+    }
+    let dir = std::env::temp_dir();
+    let Some(mut c) =
+        caged_python_open(kind, std::path::Path::new("/bin/true"), &dir, &[], &[], false)
+    else {
+        return false;
+    };
+    c.stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 // ---- 実行 -------------------------------------------------------------------
@@ -726,27 +781,66 @@ series = spec["series"] or [{"name": "", "values": [0] * len(labels)}]
 n = len(series)
 w = 0.8 / n
 fig, ax = plt.subplots(figsize=(6.4, 4.0))
-# 種類は指図から。無ければ棒(これまでどおり)
+# 種類は指図から。無ければ棒(これまでどおり)。
+# 種類は6つ: bar(縦棒) / barh(横棒) / line(折れ線) / area(面) /
+# pie(円) / scatter(散布図)。推奨グラフの一覧と同じ並びです
 kind = spec.get("kind", "bar")
-for i, s in enumerate(series):
-    if kind == "line":
-        # **空の所は線を切る。**予測シートは実績と予測を別の列に置くので、
-        # 0 として繋ぐと谷ができる
-        ys = [float("nan") if v is None else v for v in s["values"]]
-        ax.plot(x, ys, marker="", label=s["name"])
+
+def nums(vs):
+    return [float("nan") if v is None else v for v in vs]
+
+def as_float(t):
+    try:
+        return float(str(t).replace(",", ""))
+    except ValueError:
+        return float("nan")
+
+if kind == "pie":
+    # 円は1系列だけ描く(2列目以降は使わない)。負や空は 0 にする
+    vals = [0 if (v is None or v < 0) else v for v in series[0]["values"]]
+    if sum(vals) > 0:
+        ax.pie(vals, labels=labels, autopct="%1.0f%%", startangle=90,
+               counterclock=False)
+    ax.set_aspect("equal")
+    if series[0]["name"]:
+        ax.set_title(series[0]["name"])
+elif kind == "scatter":
+    # 散布図は1列目を X の数として読む(項目名ではない)
+    xs = [as_float(t) for t in labels]
+    for s in series:
+        ax.scatter(xs, nums(s["values"]), label=s["name"], s=18)
+else:
+    for i, s in enumerate(series):
+        if kind == "line":
+            # **空の所は線を切る。**予測シートは実績と予測を別の列に置くので、
+            # 0 として繋ぐと谷ができる
+            ax.plot(x, nums(s["values"]), marker="", label=s["name"])
+        elif kind == "area":
+            ys = [0 if v is None else v for v in s["values"]]
+            ax.fill_between(x, ys, alpha=0.4, label=s["name"])
+            ax.plot(x, ys, linewidth=1)
+        elif kind == "barh":
+            vals = [0 if v is None else v for v in s["values"]]
+            ax.barh(x + (i - (n - 1) / 2) * w, vals, w, label=s["name"])
+        else:
+            vals = [0 if v is None else v for v in s["values"]]
+            ax.bar(x + (i - (n - 1) / 2) * w, vals, w, label=s["name"])
+    if kind == "barh":
+        ax.set_yticks(x)
+        ax.set_yticklabels(labels)
+        ax.invert_yaxis()
     else:
-        ax.bar(x + (i - (n - 1) / 2) * w, s["values"], w, label=s["name"])
-ax.set_xticks(x)
-ax.set_xticklabels(labels)
-# 目盛りが多いときは間引いて傾ける。全部まっすぐ出すと重なって読めない
-if len(labels) > 10:
-    step = (len(labels) + 9) // 10
-    for k, t in enumerate(ax.get_xticklabels()):
-        t.set_visible(k % step == 0)
-    for t in ax.get_xticklabels():
-        t.set_rotation(45)
-        t.set_ha("right")
-if n > 1:
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels)
+        # 目盛りが多いときは間引いて傾ける。全部まっすぐ出すと重なって読めない
+        if len(labels) > 10:
+            step = (len(labels) + 9) // 10
+            for k, t in enumerate(ax.get_xticklabels()):
+                t.set_visible(k % step == 0)
+            for t in ax.get_xticklabels():
+                t.set_rotation(45)
+                t.set_ha("right")
+if n > 1 and kind != "pie":
     ax.legend()
 fig.tight_layout()
 fig.savefig(spec["out"], dpi=100)
@@ -1388,6 +1482,39 @@ mod cage_tests {
         // net を許したときだけ網が通る
         let c2 = caged_python_with(Cage::Bwrap, py, &d, &[], true).unwrap();
         assert!(!args_of(&c2).contains(&"--unshare-net".into()));
+    }
+
+    /// ソケットの置き場は読み書きで見せる(作業場の後ろに `--bind` が並ぶ)。
+    /// 無い場所は黙って飛ばす — 置き場がまだ無い機械で bwrap が落ちない
+    #[test]
+    fn bwrap_sandbox_exposes_the_socket_dir_read_write() {
+        let d = PathBuf::from("/tmp/jo-py-2");
+        let py = std::path::Path::new("python3");
+        // /tmp は --tmpfs と HOME にも出るので、別の実在する場所で見る
+        let sock = std::env::current_dir().unwrap();
+        let c = caged_python_open(Cage::Bwrap, py, &d, &[], &[sock.clone()], false).unwrap();
+        let a = args_of(&c);
+        let s = sock.to_string_lossy().to_string();
+        let i = a.iter().position(|x| *x == s).expect("置き場が並んでいない");
+        assert_eq!(a[i - 1], "--bind", "読み書きで見せていない: {a:?}");
+        assert_eq!(a[i + 1], s);
+        // 無い場所は飛ばす
+        let c2 = caged_python_open(
+            Cage::Bwrap,
+            py,
+            &d,
+            &[],
+            &[PathBuf::from("/nonexistent/officework-sock")],
+            false,
+        )
+        .unwrap();
+        assert!(!args_of(&c2).iter().any(|x| x.contains("nonexistent")));
+    }
+
+    /// 組めない種類は試すまでもなく偽
+    #[test]
+    fn probing_no_cage_is_false() {
+        assert!(!probe_cage(Cage::None));
     }
 
     #[test]

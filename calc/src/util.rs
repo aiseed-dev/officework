@@ -947,12 +947,56 @@ pub(crate) fn pivot_suggest_label(s: &PivotSuggest) -> String {
 
 
 
+/// 連続した数の判定(フィルハンドルとリボンの「フィル」が共有する)。
+///
+/// 全部が式でない数で、1つなら 1 ずつ増やす、2つ以上なら間隔が一定の
+/// ときだけ `Some((最後の値, 間隔))`。文字や式が混じれば None(写す側へ)
+pub(crate) fn number_series(vals: &[Option<Cell>]) -> Option<(f64, f64)> {
+    let nums: Vec<f64> = vals
+        .iter()
+        .map(|c| match c {
+            Some(c) if c.formula.is_none() => match c.value {
+                Value::Number(x) => Some(x),
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect::<Option<Vec<_>>>()?;
+    match nums.len() {
+        0 => None,
+        1 => Some((nums[0], 1.0)),
+        _ => {
+            let step = nums[1] - nums[0];
+            let ok = nums.windows(2).all(|w| (w[1] - w[0] - step).abs() < 1e-9);
+            ok.then(|| (*nums.last().unwrap(), step))
+        }
+    }
+}
+
+/// 小計の集計方法(一覧のキー → 式に書く関数名)。並びは一覧の並び
+pub(crate) const SUBTOTAL_FUNCS: &[(&str, &str)] = &[
+    ("sum", "SUM"),
+    ("average", "AVERAGE"),
+    ("count", "COUNT"),
+    ("maximum", "MAX"),
+    ("minimum", "MIN"),
+];
+
 /// データタブの「小計」(Excel の集計)。基準の列の値が変わる区切りごとに
 /// 「〜 小計」の行(=SUM)を挿し、明細にグループ化(深さ1)を掛け、最後に
 /// 総計の行を足す。**小計・総計の行はグループ化しない** — 詳細を畳んでも
 /// 合計は見えたまま残る(発注者指摘 2026-08-04)。挿した式は最終の座標で
 /// 書き、既存の式は insert_row が直す。返り値は区切りの数。
-pub(crate) fn apply_subtotals(s: &mut book::Sheet, a: Pos, b: Pos, by: u32, vals: &[u32]) -> usize {
+/// `func` は SUM / AVERAGE / COUNT / MAX / MIN のどれか(画面の
+/// 「集計方法」の一覧から来る)
+pub(crate) fn apply_subtotals_with(
+    s: &mut book::Sheet,
+    a: Pos,
+    b: Pos,
+    by: u32,
+    vals: &[u32],
+    func: &str,
+) -> usize {
     // 区切り = 基準の列で連続する同じ値の並び(Excel と同じく、並べ替えは
     // 済んでいる前提。飛び飛びなら区切りもその数だけできる)
     let mut runs: Vec<(u32, u32, String)> = Vec::new();
@@ -982,16 +1026,18 @@ pub(crate) fn apply_subtotals(s: &mut book::Sheet, a: Pos, b: Pos, by: u32, vals
         s.set(p, cell);
     };
     let mut sub_rows = Vec::new();
+    let mut details: Vec<(u32, u32)> = Vec::new();
     for (k, (start, end, label)) in runs.iter().enumerate() {
         let k = k as u32;
         let (det0, det1, srow) = (start + k, end + k, end + 1 + k);
         sub_rows.push(srow);
+        details.push((det0, det1));
         style(s, Pos::new(srow, by), &ui::tf!("subtotal", label));
         for c in vals {
             style(
                 s,
                 Pos::new(srow, *c),
-                &format!("=SUM({}:{})", Pos::new(det0, *c).a1(), Pos::new(det1, *c).a1()),
+                &format!("={func}({}:{})", Pos::new(det0, *c).a1(), Pos::new(det1, *c).a1()),
             );
         }
         for r in det0..=det1 {
@@ -1003,8 +1049,19 @@ pub(crate) fn apply_subtotals(s: &mut book::Sheet, a: Pos, b: Pos, by: u32, vals
     // 日本語の人の表に英語の見出しが入ります(2026-08-26)
     style(s, Pos::new(trow, by), ui::t!("grand_totals"));
     for c in vals {
-        let refs: Vec<String> = sub_rows.iter().map(|r| Pos::new(*r, *c).a1()).collect();
-        style(s, Pos::new(trow, *c), &format!("={}", refs.join("+")));
+        // 合計は小計の行を足す。平均・個数・最大・最小は小計を足しても
+        // 答えにならないので、明細の範囲を並べて同じ関数に掛ける
+        let text = if func == "SUM" {
+            let refs: Vec<String> = sub_rows.iter().map(|r| Pos::new(*r, *c).a1()).collect();
+            format!("={}", refs.join("+"))
+        } else {
+            let refs: Vec<String> = details
+                .iter()
+                .map(|(d0, d1)| format!("{}:{}", Pos::new(*d0, *c).a1(), Pos::new(*d1, *c).a1()))
+                .collect();
+            format!("={func}({})", refs.join(","))
+        };
+        style(s, Pos::new(trow, *c), &text);
     }
     runs.len()
 }

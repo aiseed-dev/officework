@@ -250,6 +250,11 @@ impl Calc {
             self.open_adoc(p, bytes);
             return;
         }
+        // `.csv` も字のファイル。データタブ「CSV の形」の文字コードと区切りで読む
+        if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("csv")) {
+            self.open_csv(p, bytes);
+            return;
+        }
         if ooxml::crypt::is_encrypted(&bytes) {
             // パネルでパスワードを聞き、Enter が続きをやる
             self.pw_pending = Some(p);
@@ -371,6 +376,53 @@ impl Calc {
             }
             Err(e) => self.status = ui::tf!("cant_open", e).into(),
         }
+    }
+
+    /// CSV を開く(手引き `docs/ja/commands/データ/CSV の形.adoc`)。
+    ///
+    /// 文字コードと区切りは「CSV の形」で選んである組を使います。書き出しと
+    /// 同じ6組で、自動判定はしません — 化けたら形を替えて開き直します。
+    /// 中身は値だけの新しいブック(シート名はファイル名)になります。
+    /// **道は持たせません。** CSV には式も書式も入らないので、Ctrl+S で
+    /// CSV に上書きせず、「名前を付けて保存」で xlsx か adoc にします
+    pub(crate) fn open_csv(&mut self, p: PathBuf, bytes: Vec<u8>) {
+        self.encrypt_pw = None;
+        let (enc, delim) = Self::csv_kinds()
+            .iter()
+            .find(|(k, _, _)| *k == self.csv_kind)
+            .map(|(_, _, (e, d))| (*e, *d))
+            .unwrap_or(("utf8bom", ','));
+        let kind_label = self.csv_kind_label();
+        let Some(text) = decode_csv(&bytes, enc) else {
+            self.status = ui::tf!("csv_cannot_read_as", kind_label).into();
+            return;
+        };
+        let rows = parse_csv(&text, delim);
+        let stem = p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+        let name = if stem.is_empty() { "Sheet1".to_string() } else { stem };
+        let mut sh = book::Sheet::new(&name);
+        for (r, row) in rows.iter().enumerate() {
+            for (c, v) in row.iter().enumerate() {
+                if !v.is_empty() {
+                    sh.set(Pos::new(r as u32, c as u32), book::Cell::input(v));
+                }
+            }
+        }
+        let mut book = book::Book { sheets: vec![sh], ..Default::default() };
+        // 「=SUM(B2:B5)」のような字は数式として入るので、一度計算する
+        book::calc::recalc_all(&mut book);
+        let status = ui::tf!(
+            "opened_csv_rows_save_as",
+            p.file_name().unwrap_or_default().to_string_lossy(),
+            kind_label,
+            rows.len()
+        );
+        self.adopt_book(p, book, Vec::new(), status.to_string());
+        // 道は持たない(上の説明)。開いた印は付ける
+        self.release_lock();
+        self.locked_by = None;
+        self.set_path(None);
+        self.dirty = false;
     }
 
     /// **見た目をテンプレートへ出す**(E群。2026-08-20)。
@@ -1026,9 +1078,10 @@ impl Calc {
     pub(crate) fn open_dialog(&mut self, cx: &mut Context<Self>) {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
-                .add_filter("ブック", &["xlsx", "adoc"])
+                .add_filter("ブック", &["xlsx", "adoc", "csv"])
                 .add_filter("Excelブック", &["xlsx"])
                 .add_filter("officework のブック", &["adoc"])
+                .add_filter("CSV", &["csv"])
                 .pick_file()
         });
         cx.spawn(async move |this, cx| {
@@ -1514,5 +1567,105 @@ impl Calc {
             }
             Err(e) => self.status = ui::tf!("cant_save", e).into(),
         }
+    }
+}
+
+/// CSV のバイト列を、選んだ文字コードで字にする。読めなければ None。
+/// `utf8bom` と `utf8` は同じ読み方(先頭の BOM はあれば外す)。
+/// `sjis` は CP932(Excel の日本語版の CSV)。
+pub(crate) fn decode_csv(bytes: &[u8], enc: &str) -> Option<String> {
+    if enc == "sjis" {
+        let (cow, _, had_err) = encoding_rs::SHIFT_JIS.decode(bytes);
+        if had_err {
+            return None;
+        }
+        return Some(cow.into_owned());
+    }
+    let body = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(bytes);
+    String::from_utf8(body.to_vec()).ok()
+}
+
+/// CSV の字を行と列に分ける(RFC 4180 の作法)。
+/// 二重引用符で囲んだ中の区切り・改行・`""` を扱う。改行は CRLF でも LF でもよい。
+/// 末尾の空行は数えない
+pub(crate) fn parse_csv(text: &str, delim: char) -> Vec<Vec<String>> {
+    let mut rows: Vec<Vec<String>> = Vec::new();
+    let mut row: Vec<String> = Vec::new();
+    let mut field = String::new();
+    let mut quoted = false;
+    let mut chars = text.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if quoted {
+            if ch == '"' {
+                if chars.peek() == Some(&'"') {
+                    chars.next();
+                    field.push('"');
+                } else {
+                    quoted = false;
+                }
+            } else {
+                field.push(ch);
+            }
+            continue;
+        }
+        match ch {
+            '"' if field.is_empty() => quoted = true,
+            c if c == delim => row.push(std::mem::take(&mut field)),
+            '\r' => {
+                if chars.peek() == Some(&'\n') {
+                    chars.next();
+                }
+                row.push(std::mem::take(&mut field));
+                rows.push(std::mem::take(&mut row));
+            }
+            '\n' => {
+                row.push(std::mem::take(&mut field));
+                rows.push(std::mem::take(&mut row));
+            }
+            c => field.push(c),
+        }
+    }
+    if !field.is_empty() || !row.is_empty() {
+        row.push(field);
+        rows.push(row);
+    }
+    rows
+}
+
+#[cfg(test)]
+mod csv_tests {
+    use super::*;
+
+    #[test]
+    fn quoted_fields_keep_commas_newlines_and_doubled_quotes() {
+        let t = "名前,備考\r\n\"山田, 太郎\",\"1行目\n2行目\"\r\n鈴木,\"彼は\"\"はい\"\"と言った\"\r\n";
+        let rows = parse_csv(t, ',');
+        assert_eq!(rows.len(), 3);
+        assert_eq!(rows[1], vec!["山田, 太郎", "1行目\n2行目"]);
+        assert_eq!(rows[2], vec!["鈴木", "彼は\"はい\"と言った"]);
+    }
+
+    #[test]
+    fn tab_and_semicolon_delimiters_split_the_same_way() {
+        assert_eq!(parse_csv("a\tb\n1\t2", '\t'), vec![vec!["a", "b"], vec!["1", "2"]]);
+        assert_eq!(parse_csv("a;b\n1;2\n", ';'), vec![vec!["a", "b"], vec!["1", "2"]]);
+    }
+
+    #[test]
+    fn empty_trailing_line_is_not_a_row() {
+        assert_eq!(parse_csv("a,b\r\n", ',').len(), 1);
+        assert!(parse_csv("", ',').is_empty());
+    }
+
+    #[test]
+    fn utf8_bom_is_dropped_and_shift_jis_is_decoded() {
+        let mut b = vec![0xEF, 0xBB, 0xBF];
+        b.extend_from_slice("部署,金額".as_bytes());
+        assert_eq!(decode_csv(&b, "utf8bom").as_deref(), Some("部署,金額"));
+        assert_eq!(decode_csv(&b, "utf8").as_deref(), Some("部署,金額"));
+        let (sj, _, _) = encoding_rs::SHIFT_JIS.encode("部署,金額");
+        assert_eq!(decode_csv(&sj, "sjis").as_deref(), Some("部署,金額"));
+        // Shift_JIS のバイト列を UTF-8 として読むと断る(黙って化けさせない)
+        assert!(decode_csv(&sj, "utf8bom").is_none());
     }
 }

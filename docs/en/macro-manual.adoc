@@ -138,17 +138,21 @@ Everything is available — `d.paragraphs`, `d.tables`, `d.sections`. Two habits
 
 There is no macro-writing screen inside the app (that is a decision). There are two roads:
 
-* *Ask the chat in the left panel.* "Write a macro that appends (done) to the selected cells" — the code comes back in a block; you place it in the folder as a `.py` yourself and run it from the list
-* *Ask an outside AI (such as Claude).* Connected over MCP, the AI can read the open document's field names and the sheet's contents by itself before writing
+* *Ask the chat in the left panel.* "Write a macro that appends (done) to the selected cells" — in the spreadsheet (calc) the AI writes the `.py` next to the workbook and runs it straight away. If it fails, the error comes back into the conversation and the AI corrects it and runs again. What it did is one Ctrl+Z away. In the document (writer) the AI places the `.py` in `plugins/` and shows it in the list; it runs when a person picks it there
+* *Ask an outside AI (such as Claude).* Connected over MCP, the AI can read the open document's field names and the sheet's contents by itself before writing. You place the `.py` it wrote in the folder yourself and run it from the list
 
-Neither runs anything by itself. Reading, placing and pressing are done by a person — the machine writes, the person reads, the sandbox runs it. That is the whole safety mechanism.
+A spreadsheet macro asked for in the conversation runs by itself; saving the file is the one thing that waits for a person to press the confirmation button, even when the AI asks for it.
+The `.py` can be read at any time. The machine writes, a person can read, the sandbox runs it. That is the whole safety mechanism.
 
 == The sandbox
 
 Macros run inside a bubblewrap sandbox: *no network*, an empty-looking home, and the only writable place is the macro's workspace. Libraries in `.venv` (python-docx, docxtpl, polars, …) are available.
 
 * `~/customers.csv` cannot be read. Put data in the script, pass it via `render()`'s dict, or take it from the document or the sheet
-* The spreadsheet bridge (a socket that never leaves this machine) does work from inside the sandbox
+* The socket a spreadsheet macro talks to the app through (it never leaves this machine) does work from inside the sandbox. Only the socket's directory is exposed inside the sandbox
+* All three spreadsheet folders (`funcs/`, `ribbon/`, `plugins/`) run inside the sandbox. Functions called from cells run once per sheet per recalculation, so the sandbox start-up is not paid per cell
+* The macro folders and `.venv` are visible read-only. A macro cannot write into its own folder
+* On Linux without bubblewrap, the macros you placed run without a sandbox (the same treatment as macOS and Windows in the table below). The same applies on a machine where bubblewrap is installed but cannot start (on Ubuntu 24.04 and later, AppArmor forbids user namespaces by default). The status line says "in the sandbox" when it ran there
 
 == When something goes wrong
 

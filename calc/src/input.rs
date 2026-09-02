@@ -189,9 +189,9 @@ impl Calc {
     /// セルの上での BackSpace / Delete の実体。選択(無ければいまのセル)の
     /// 中身を消す。書式は残す。保護中は断る
     pub(crate) fn clear_selection_now(&mut self) {
-        if self.sheet().protected {
-            self.status =
-                ui::t!("sheet_protected_protection_tab").into();
+        // 保護中でも、ロックを外したセルと守る範囲の外は消せます
+        if self.cell_locked(self.cursor) || self.sel_locked() {
+            self.status = Self::protected_msg().into();
             return;
         }
         // 範囲のセルしか触らないので、差分で控えます(2026-08-31)
@@ -750,25 +750,78 @@ impl Calc {
         }
         cx.notify();
     }
-    /// 行頭へ(字の始まり ⇄ 行頭)。**.py の編集面のときだけ働く** —
-    /// 表では Home に持ち場が無いので、今までどおり何もしない
+    /// Home。.py の編集画面では「字の始まり ⇄ 行頭」を行き来します。
+    /// 表ではその行の A 列へ移ります。セルの文字を打っている途中は
+    /// 打ちかけの文の先頭へ動きます
     pub(crate) fn a_home(&mut self, _: &ui::Home, _: &mut Window, cx: &mut Context<Self>) {
         if let Some(p) = &mut self.py_edit {
             p.home(false);
-            cx.notify();
+        } else if self.name_edit.is_some()
+            || self.fn_args.is_some()
+            || self.fn_dlg.is_some()
+            || self.pick_filter.is_some()
+            || self.solver.is_some()
+            || self.prompt.is_some()
+        {
+            // 小窓の欄は Home を受けません(欄の左右は ← → で動かします)
+        } else if self.editing() || self.edit_armed {
+            self.input.move_to(0, false);
+        } else {
+            self.row_edge(false);
         }
+        cx.notify();
     }
+    /// End。表ではその行で使っている最後の列へ移ります
     pub(crate) fn a_end(&mut self, _: &ui::End, _: &mut Window, cx: &mut Context<Self>) {
         if let Some(p) = &mut self.py_edit {
             p.end(false);
-            cx.notify();
+        } else if self.name_edit.is_some()
+            || self.fn_args.is_some()
+            || self.fn_dlg.is_some()
+            || self.pick_filter.is_some()
+            || self.solver.is_some()
+            || self.prompt.is_some()
+        {
+        } else if self.editing() || self.edit_armed {
+            let n = self.input.text().len();
+            self.input.move_to(n, false);
+        } else {
+            self.row_edge(true);
         }
+        cx.notify();
+    }
+    /// いまの行の端へ。`last` が偽なら A 列、真ならその行で中身のある
+    /// 最後の列です。行に中身が無ければ動きません
+    pub(crate) fn row_edge(&mut self, last: bool) {
+        self.anchor = None;
+        if !self.commit() {
+            return;
+        }
+        let row = self.cursor.row;
+        let col = if last {
+            let Some(c) = self
+                .sheet()
+                .cells
+                .iter()
+                .filter(|(p, c)| p.row == row && (c.formula.is_some() || !c.value.is_empty()))
+                .map(|(p, _)| p.col)
+                .max()
+            else {
+                return;
+            };
+            c
+        } else {
+            0
+        };
+        self.cursor = Pos::new(row, col);
+        self.follow();
+        self.sync_input();
     }
     pub(crate) fn a_tab(&mut self, _: &ui::Tab, _: &mut Window, cx: &mut Context<Self>) {
         // .py では字下げ(空白4つ)。Python は字下げが構文なので、
         // タブ文字ではなく空白で入れる
         if let Some(p) = &mut self.py_edit {
-            p.ed.insert("x");
+            p.ed.insert("    ");
             p.follow();
             cx.notify();
             return;
@@ -779,6 +832,21 @@ impl Calc {
             }
         } else {
             self.move_cursor(0, 1);
+        }
+        cx.notify();
+    }
+    /// Shift+Tab = 左へ(Tab の逆)。関数の引数の小窓では前の欄へ戻ります。
+    pub(crate) fn a_shift_tab(&mut self, _: &ui::ShiftTab, _: &mut Window, cx: &mut Context<Self>) {
+        if self.py_edit.is_some() {
+            cx.notify();
+            return;
+        }
+        if let Some(a) = &mut self.fn_args {
+            if !a.eds.is_empty() {
+                a.focus = (a.focus + a.eds.len() - 1) % a.eds.len();
+            }
+        } else {
+            self.move_cursor(0, -1);
         }
         cx.notify();
     }
@@ -1172,7 +1240,8 @@ impl Calc {
     }
     pub(crate) fn a_recalc(&mut self, _: &ui::Recalc, _: &mut Window, cx: &mut Context<Self>) {
         self.commit();
-        recalc_book(&mut self.book, self.active);
+        // 全部のシートを計算します(状態行の「ブック全体」を嘘にしない)
+        book::calc::recalc_all(&mut self.book);
         self.status = ui::t!("recalculated_whole_workbook").into();
         cx.notify();
     }
@@ -1263,15 +1332,11 @@ impl Calc {
         self.merge_do(a, b, kind);
         if filled >= 2 {
             // 消したことを言う(黙らない。Ctrl+Z 一発で戻るから止めない)
-            self.status = ui::tf!(
-                "values_outside_top_left",
-                self.status
-            )
-            .into();
+            self.status = ui::tf!("values_outside_top_left", self.status).into();
         }
     }
 
-    /// 結合の実体(確認の後もここに来る)。kind: 中央/横方向/結合だけ
+    /// 結合の実体。kind: 中央/横方向/結合だけ
     ///
     /// 呑まれるセルの中身の扱い(消す・空の左上へ移す)は家の作法として
     /// `Sheet::merge`(kumihan::book::ops)にある — Python(pysheet)から

@@ -2371,6 +2371,8 @@ impl Render for Calc {
                 .children(sub_panel)
         });
 
+        // ---- 参照のトレースの矢印(参照元 → 参照先。セルの中心から中心へ) ----
+        let trace_arrows = self.trace_arrow_layer();
         // ---- 選択中の図形の枠と右下の掴み ----
         let img_frame = self.img_sel.and_then(|i| {
             let im = self.sheet().images_new.get(i)?;
@@ -5262,6 +5264,7 @@ impl Render for Calc {
             .on_action(cx.listener(Calc::a_sel_edge_up))
             .on_action(cx.listener(Calc::a_sel_edge_down))
             .on_action(cx.listener(Calc::a_tab))
+            .on_action(cx.listener(Calc::a_shift_tab))
             .on_action(cx.listener(Calc::a_enter))
             .on_action(cx.listener(Calc::a_select_all))
             .on_action(cx.listener(Calc::a_redo))
@@ -5544,6 +5547,7 @@ impl Render for Calc {
                    .children(shape_frames_more)
                    .children(point_marks)
                    .children(img_frame)
+                   .children(trace_arrows)
                    .children(break_lines)
                    .children(ants)
                    .children(tip)
@@ -5699,4 +5703,125 @@ pub(crate) fn zukei_png(sp: &book::SheetShape, pad: f32) -> Option<Vec<u8>> {
         paper::Paper::hitoshii(w_mm, h_mm, 0.0 ),
     );
     paper::e::egaku(&leaf, w_mm, h_mm, KOMAKASA / MM).png().ok()
+}
+
+impl Calc {
+    /// トレースの矢印の線分(格子の左上が原点の px)。
+    /// `trace` の true(参照元)の各セルから false(参照先)の各セルへ引きます。
+    /// 参照元のトレースなら「参照元 → いまのセル」が参照元の数だけ、
+    /// 参照先のトレースなら「いまのセル → 参照先」が参照先の数だけ。
+    /// 画面の外のセルが端なら、その矢印は引きません
+    pub(crate) fn trace_segments(&self) -> Vec<(f32, f32, f32, f32)> {
+        let center = |p: Pos| {
+            self.cell_origin_px(p)
+                .map(|(x, y)| (x + self.col_px(p.col) / 2.0, y + self.row_px(p.row) / 2.0))
+        };
+        let from: Vec<(f32, f32)> =
+            self.trace.iter().filter(|(_, prec)| *prec).filter_map(|(p, _)| center(*p)).collect();
+        let to: Vec<(f32, f32)> =
+            self.trace.iter().filter(|(_, prec)| !*prec).filter_map(|(p, _)| center(*p)).collect();
+        let mut v = Vec::new();
+        for f in &from {
+            for t in &to {
+                if f != t {
+                    v.push((f.0, f.1, t.0, t.1));
+                }
+            }
+        }
+        v
+    }
+
+    /// 矢印を描く層(線と矢じり)。矢印が無ければ None。
+    /// gpui の path で描きます — 線はセルの中心から中心へ、矢じりは先端の三角
+    fn trace_arrow_layer(&self) -> Option<gpui::AnyElement> {
+        let segs = self.trace_segments();
+        if segs.is_empty() {
+            return None;
+        }
+        let color = if self.dark { rgb(0x7FB3FF) } else { rgb(0x1B5FA8) };
+        Some(
+            gpui::canvas(
+                |_, _, _| {},
+                move |b: gpui::Bounds<gpui::Pixels>, _: (), window: &mut Window, _| {
+                    let (ox, oy) = (f32::from(b.origin.x), f32::from(b.origin.y));
+                    let pt = |x: f32, y: f32| gpui::point(px(ox + x), px(oy + y));
+                    for (x1, y1, x2, y2) in &segs {
+                        let (dx, dy) = (x2 - x1, y2 - y1);
+                        let len = (dx * dx + dy * dy).sqrt();
+                        if len < 1.0 {
+                            continue;
+                        }
+                        let (ux, uy) = (dx / len, dy / len);
+                        // 線は矢じりの根元まで(先端まで引くと矢じりが太って見える)
+                        let (bx, by) = (x2 - ux * 9.0, y2 - uy * 9.0);
+                        let mut line = gpui::PathBuilder::stroke(px(1.5));
+                        line.move_to(pt(*x1, *y1));
+                        line.line_to(pt(bx, by));
+                        if let Ok(path) = line.build() {
+                            window.paint_path(path, color);
+                        }
+                        // 起点の印(小さな四角)と、先端の矢じり
+                        let mut marks = gpui::PathBuilder::fill();
+                        marks.add_polygon(
+                            &[pt(x1 - 2.5, y1 - 2.5), pt(x1 + 2.5, y1 - 2.5), pt(x1 + 2.5, y1 + 2.5), pt(x1 - 2.5, y1 + 2.5)],
+                            true,
+                        );
+                        let (nx, ny) = (-uy * 4.5, ux * 4.5);
+                        marks.add_polygon(
+                            &[pt(*x2, *y2), pt(bx + nx, by + ny), pt(bx - nx, by - ny)],
+                            true,
+                        );
+                        if let Ok(path) = marks.build() {
+                            window.paint_path(path, color);
+                        }
+                    }
+                },
+            )
+            .absolute()
+            .left(px(0.0))
+            .top(px(0.0))
+            .size_full()
+            .into_any_element(),
+        )
+    }
+}
+
+#[cfg(test)]
+mod trace_tests {
+    /// 線分の向きの決め: true(参照元)→ false(参照先)。
+    /// `trace_segments` は Calc の幾何(画面の幅)に依るので、ここでは
+    /// 同じ組み合わせの規則だけを純粋な形で確かめる
+    fn pairs(trace: &[((i32, i32), bool)]) -> Vec<((i32, i32), (i32, i32))> {
+        let from: Vec<_> = trace.iter().filter(|(_, p)| *p).map(|(c, _)| *c).collect();
+        let to: Vec<_> = trace.iter().filter(|(_, p)| !*p).map(|(c, _)| *c).collect();
+        let mut v = Vec::new();
+        for f in &from {
+            for t in &to {
+                if f != t {
+                    v.push((*f, *t));
+                }
+            }
+        }
+        v
+    }
+
+    #[test]
+    fn precedents_point_at_the_origin() {
+        // 参照元のトレース: 参照元2つ(true)+ 起点(false)→ 矢印は2本、先は起点
+        let t = [((0, 0), true), ((1, 0), true), ((5, 5), false)];
+        assert_eq!(pairs(&t), vec![((0, 0), (5, 5)), ((1, 0), (5, 5))]);
+    }
+
+    #[test]
+    fn dependents_start_at_the_origin() {
+        // 参照先のトレース: 起点(true)+ 参照先2つ(false)→ 起点から2本
+        let t = [((7, 7), false), ((8, 8), false), ((5, 5), true)];
+        assert_eq!(pairs(&t), vec![((5, 5), (7, 7)), ((5, 5), (8, 8))]);
+    }
+
+    #[test]
+    fn a_trace_without_an_origin_draws_nothing() {
+        // 古い形(片側だけ)は色だけで矢印は出ない
+        assert!(pairs(&[((0, 0), true), ((1, 0), true)]).is_empty());
+    }
 }

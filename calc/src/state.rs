@@ -729,6 +729,7 @@ impl Calc {
             self.anchor = None;
             self.auto_filter = None;
             self.filter_panel = None;
+            self.sync_filter_hidden();
         }
     }
 
@@ -2250,9 +2251,28 @@ impl Calc {
     /// **このセルは保護で堰き止められるか。** 保護していないなら誰でも書ける。
     /// 保護中は、`unlocked` を立てたセル(=書式で「ロックを外した」セル)
     /// だけが書ける — 帳票の「記入欄だけ開ける」作法(Excel と同じ)。
+    ///
+    /// **「範囲を保護する」で登録した範囲の中は、保護中でも書けます**
+    /// (Excel の「範囲の編集を許可」と同じ意味。xlsx の protectedRanges)。
+    /// 範囲の外は、セルのロックの設定どおりに止めます。
     pub(crate) fn cell_locked(&self, p: Pos) -> bool {
-        self.sheet().protected
-            && !self.sheet().get(p).map(|c| c.fmt.unlocked).unwrap_or(false)
+        if !self.sheet().protected {
+            return false;
+        }
+        if self.in_allowed_range(p) {
+            return false;
+        }
+        !self.sheet().get(p).map(|c| c.fmt.unlocked).unwrap_or(false)
+    }
+
+    /// このセルは「範囲を保護する」で登録した許す範囲の中か
+    pub(crate) fn in_allowed_range(&self, p: Pos) -> bool {
+        self.sheet().protect_ranges.iter().any(|(_, sq)| {
+            let Some((x, y)) = sq.split_once(':') else { return false };
+            let (Some(a), Some(b)) = (Pos::parse(x), Pos::parse(y)) else { return false };
+            (a.row.min(b.row)..=a.row.max(b.row)).contains(&p.row)
+                && (a.col.min(b.col)..=a.col.max(b.col)).contains(&p.col)
+        })
     }
 
     /// 選んでいる範囲に、保護で書けないセルが1つでもあるか
