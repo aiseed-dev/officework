@@ -2545,6 +2545,88 @@ impl Calc {
             .join("\n")
     }
 
+    /// 会話に1行足して、記録にも書く(会話へ出る行は必ずここを通す)
+    pub(crate) fn chat_push(&mut self, row: ChatRow) {
+        self.record_row(&row);
+        self.chat_log.push(row);
+    }
+
+    /// 対話の記録の置き場 — **綴りのフォルダの中の字のファイル**
+    /// (ブックの隣の `<名前>.agent.txt`。git に載る形 — 設計の決め)。
+    /// 名前の無いブックは記録しない(置く場所が無い)
+    fn record_path(&self) -> Option<std::path::PathBuf> {
+        let p = self.path.as_ref()?;
+        let stem = p.file_stem()?.to_string_lossy().to_string();
+        Some(p.with_file_name(format!("{stem}.agent.txt")))
+    }
+
+    /// 記録に1行書く。1行=1件(差分が読める形)。改行は \n の字に畳む
+    fn record_row(&mut self, row: &ChatRow) {
+        let Some(p) = self.record_path() else { return };
+        let esc = |s: &str| s.replace('\\', "\\\\").replace('\n', "\\n");
+        let line = match row {
+            ChatRow::Me(t) => format!("人: {}", esc(t)),
+            ChatRow::Ai(t) => format!("答え: {}", esc(t)),
+            ChatRow::Tool(t, one) => {
+                format!("道具: {}{}", esc(t), if *one { "(1手)" } else { "" })
+            }
+        };
+        use std::io::Write as _;
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&p) {
+            let _ = writeln!(f, "{line}");
+        }
+    }
+
+    /// 記録に会話の頭(日付つきの見出し)を書く
+    fn record_header(&mut self) {
+        let Some(p) = self.record_path() else { return };
+        let secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+        let off: i64 = std::env::var("JO_TZ_OFF_HOURS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(9);
+        let (y, m, d) = book::calc::civil_from_days((secs + off * 3600).div_euclid(86400));
+        let hm = (secs + off * 3600).rem_euclid(86400);
+        use std::io::Write as _;
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&p) {
+            let _ = writeln!(f, "== {y}-{m:02}-{d:02} {:02}:{:02}", hm / 3600, hm % 3600 / 60);
+        }
+    }
+
+    /// 記録の読み直し — 最後の会話ぶんを会話の欄へ戻す(左パネルを開いた
+    /// とき、欄が空なら)。**モデルの履歴は戻さない** — 見えるのは控えで、
+    /// 続きを頼めば新しい会話として始まる
+    pub(crate) fn agent_load_record(&mut self) {
+        if !self.chat_log.is_empty() {
+            return;
+        }
+        let Some(p) = self.record_path() else { return };
+        let Ok(s) = std::fs::read_to_string(&p) else { return };
+        let lines: Vec<&str> = s.lines().collect();
+        let from = lines.iter().rposition(|l| l.starts_with("== ")).map(|i| i + 1).unwrap_or(0);
+        let un = |s: &str| s.replace("\\n", "\n").replace("\\\\", "\\");
+        let mut rows = Vec::new();
+        for l in &lines[from..] {
+            if let Some(t) = l.strip_prefix("人: ") {
+                rows.push(ChatRow::Me(un(t)));
+            } else if let Some(t) = l.strip_prefix("答え: ") {
+                rows.push(ChatRow::Ai(un(t)));
+            } else if let Some(t) = l.strip_prefix("道具: ") {
+                let one = t.ends_with("(1手)");
+                rows.push(ChatRow::Tool(un(t.trim_end_matches("(1手)")), one));
+            }
+        }
+        if rows.is_empty() {
+            return;
+        }
+        // 控えである印を頭に(記録から戻した行 — モデルは覚えていない)
+        self.chat_log.push(ChatRow::Tool(ui::t!("previous_record").to_string(), false));
+        self.chat_log.extend(rows);
+    }
+
     /// エージェントの宛先(名前, Endpoint)。最後に使った物 → 一覧の1番目。
     /// 一覧が空でも、環境変数だけで使っている人(OFFICE_URL)は通す
     pub(crate) fn agent_dest(&self) -> Option<(String, lang::model::Endpoint)> {
@@ -2591,7 +2673,11 @@ impl Calc {
             return;
         };
         self.commit();
-        self.chat_log.push(ChatRow::Me(purpose.clone()));
+        if self.agent.is_none() {
+            // 新しい会話 — 記録に日付つきの見出しを置く
+            self.record_header();
+        }
+        self.chat_push(ChatRow::Me(purpose.clone()));
         // 選んでいる範囲は付け合わせ(従来の相談と同じ材料)。
         // 画面には用件だけを出す — 付け足しまで見せると読みづらい
         let user = if self.anchor.is_none() {
@@ -2641,7 +2727,7 @@ impl Calc {
                     Err(e) => {
                         this.ai_busy = false;
                         this.agent_state = AgentState::Failed;
-                        this.chat_log.push(ChatRow::Ai(format!("({e})")));
+                        this.chat_push(ChatRow::Ai(format!("({e})")));
                         this.status = format!("AI: {e}").into();
                     }
                     Ok(out) => {
@@ -2675,7 +2761,7 @@ impl Calc {
                 if let Err(e) = ag.count_call() {
                     self.agent_calls.clear();
                     self.ai_busy = false;
-                    self.chat_log.push(ChatRow::Ai(format!("({e})")));
+                    self.chat_push(ChatRow::Ai(format!("({e})")));
                     self.status = format!("AI: {e}").into();
                     return;
                 }
@@ -2901,7 +2987,9 @@ impl Calc {
             }
         }
         self.agent_shown = ag.log.len();
-        self.chat_log.extend(rows);
+        for r in rows {
+            self.chat_push(r);
+        }
     }
 
     /// 保存の確認に人が答えた(道具 save は実行せずここへ回る)。

@@ -1339,6 +1339,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("agent_no_destination", "AI の宛先がありません(詳細設定で書けます)"),
     ("agent_wants_save", "エージェントが保存を求めています"),
     ("save_declined", "保存はしませんでした"),
+    ("previous_record", "前回の記録"),
     ("card_list", "カード型リスト"),
     ("vertical_list", "縦方向リスト"),
     ("pyramid_list", "ピラミッドのリスト"),

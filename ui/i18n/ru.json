@@ -2293,5 +2293,6 @@
  "one_step": "1 шаг",
  "agent_no_destination": "Нет адреса ИИ (можно задать в расширенных настройках)",
  "agent_wants_save": "Агент просит сохранить",
- "save_declined": "Не сохранено"
+ "save_declined": "Не сохранено",
+ "previous_record": "Прошлая запись"
 }

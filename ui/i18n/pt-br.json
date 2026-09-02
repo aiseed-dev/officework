@@ -2293,5 +2293,6 @@
  "one_step": "1 passo",
  "agent_no_destination": "Sem destino de IA (defina nas configurações avançadas)",
  "agent_wants_save": "O agente pede para salvar",
- "save_declined": "Não salvo"
+ "save_declined": "Não salvo",
+ "previous_record": "Registro anterior"
 }

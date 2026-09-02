@@ -2293,5 +2293,6 @@
  "one_step": "1 bước",
  "agent_no_destination": "Chưa có đích AI (có thể đặt trong Cài đặt nâng cao)",
  "agent_wants_save": "Tác nhân yêu cầu lưu",
- "save_declined": "Không lưu"
+ "save_declined": "Không lưu",
+ "previous_record": "Bản ghi trước"
 }

@@ -2293,5 +2293,6 @@
  "one_step": "1 步",
  "agent_no_destination": "没有 AI 目标(可在高级设置中设置)",
  "agent_wants_save": "代理请求保存",
- "save_declined": "未保存"
+ "save_declined": "未保存",
+ "previous_record": "上次记录"
 }

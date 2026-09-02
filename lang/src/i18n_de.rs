@@ -1339,6 +1339,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("agent_no_destination", "Kein AI-Ziel (in den erweiterten Einstellungen einstellbar)"),
     ("agent_wants_save", "Der Agent möchte speichern"),
     ("save_declined", "Nicht gespeichert"),
+    ("previous_record", "Frühere Aufzeichnung"),
     ("card_list", "Kartenliste"),
     ("vertical_list", "Vertikale Liste"),
     ("pyramid_list", "Pyramidenliste"),

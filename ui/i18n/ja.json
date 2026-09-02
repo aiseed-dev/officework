@@ -2293,5 +2293,6 @@
  "one_step": "1手",
  "agent_no_destination": "AI の宛先がありません(詳細設定で書けます)",
  "agent_wants_save": "エージェントが保存を求めています",
- "save_declined": "保存はしませんでした"
+ "save_declined": "保存はしませんでした",
+ "previous_record": "前回の記録"
 }

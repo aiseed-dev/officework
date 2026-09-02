@@ -2293,5 +2293,6 @@
  "one_step": "1 adım",
  "agent_no_destination": "AI hedefi yok (Gelişmiş ayarlardan ayarlanabilir)",
  "agent_wants_save": "Aracı kaydetmek istiyor",
- "save_declined": "Kaydedilmedi"
+ "save_declined": "Kaydedilmedi",
+ "previous_record": "Önceki kayıt"
 }

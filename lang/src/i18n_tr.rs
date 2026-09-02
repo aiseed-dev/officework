@@ -1339,6 +1339,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("agent_no_destination", "AI hedefi yok (Gelişmiş ayarlardan ayarlanabilir)"),
     ("agent_wants_save", "Aracı kaydetmek istiyor"),
     ("save_declined", "Kaydedilmedi"),
+    ("previous_record", "Önceki kayıt"),
     ("card_list", "Kart listesi"),
     ("vertical_list", "Dikey liste"),
     ("pyramid_list", "Piramit listesi"),

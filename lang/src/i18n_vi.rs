@@ -1339,6 +1339,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("agent_no_destination", "Chưa có đích AI (có thể đặt trong Cài đặt nâng cao)"),
     ("agent_wants_save", "Tác nhân yêu cầu lưu"),
     ("save_declined", "Không lưu"),
+    ("previous_record", "Bản ghi trước"),
     ("card_list", "Danh sách dạng thẻ"),
     ("vertical_list", "Danh sách dọc"),
     ("pyramid_list", "Danh sách kim tự tháp"),

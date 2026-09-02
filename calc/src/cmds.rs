@@ -3454,6 +3454,10 @@ impl Calc {
             // 開け閉めは「すぐ効く」ので印は無印(▾ も … も付けない)
             "show-left" => {
                 self.left_open = !self.left_open;
+                if self.left_open {
+                    // 前の対話の記録があれば控えとして戻す(欄が空のときだけ)
+                    self.agent_load_record();
+                }
                 self.status = if self.left_open {
                     ui::t!("left_panel_ask_ai").into()
                 } else {

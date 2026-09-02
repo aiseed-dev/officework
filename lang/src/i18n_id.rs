@@ -1339,6 +1339,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("agent_no_destination", "Tidak ada tujuan AI (dapat diatur di Pengaturan lanjutan)"),
     ("agent_wants_save", "Agen meminta menyimpan"),
     ("save_declined", "Tidak disimpan"),
+    ("previous_record", "Catatan sebelumnya"),
     ("card_list", "Daftar kartu"),
     ("vertical_list", "Daftar vertikal"),
     ("pyramid_list", "Daftar piramida"),

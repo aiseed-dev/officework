@@ -1339,6 +1339,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("agent_no_destination", "AI 대상이 없습니다(고급 설정에서 지정할 수 있습니다)"),
     ("agent_wants_save", "에이전트가 저장을 요청합니다"),
     ("save_declined", "저장하지 않았습니다"),
+    ("previous_record", "이전 기록"),
     ("card_list", "카드형 목록"),
     ("vertical_list", "세로 목록"),
     ("pyramid_list", "피라미드 목록"),

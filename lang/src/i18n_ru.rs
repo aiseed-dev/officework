@@ -1339,6 +1339,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("agent_no_destination", "Нет адреса ИИ (можно задать в расширенных настройках)"),
     ("agent_wants_save", "Агент просит сохранить"),
     ("save_declined", "Не сохранено"),
+    ("previous_record", "Прошлая запись"),
     ("card_list", "Список карточек"),
     ("vertical_list", "Вертикальный список"),
     ("pyramid_list", "Список-пирамида"),

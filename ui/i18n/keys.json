@@ -5348,6 +5348,10 @@
   "kind": "msg"
  },
  {
+  "key": "previous_record",
+  "kind": "msg"
+ },
+ {
   "key": "card_list",
   "kind": "msg"
  },

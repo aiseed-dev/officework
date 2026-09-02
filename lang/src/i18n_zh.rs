@@ -1339,6 +1339,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("agent_no_destination", "没有 AI 目标(可在高级设置中设置)"),
     ("agent_wants_save", "代理请求保存"),
     ("save_declined", "未保存"),
+    ("previous_record", "上次记录"),
     ("card_list", "卡片列表"),
     ("vertical_list", "垂直列表"),
     ("pyramid_list", "棱锥形列表"),

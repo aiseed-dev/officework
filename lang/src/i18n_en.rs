@@ -1339,6 +1339,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("agent_no_destination", "No AI destination (you can set it in Advanced settings)"),
     ("agent_wants_save", "The agent asks to save"),
     ("save_declined", "Not saved"),
+    ("previous_record", "Previous record"),
     ("card_list", "Card list"),
     ("vertical_list", "Vertical list"),
     ("pyramid_list", "Pyramid list"),

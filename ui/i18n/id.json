@@ -2293,5 +2293,6 @@
  "one_step": "1 langkah",
  "agent_no_destination": "Tidak ada tujuan AI (dapat diatur di Pengaturan lanjutan)",
  "agent_wants_save": "Agen meminta menyimpan",
- "save_declined": "Tidak disimpan"
+ "save_declined": "Tidak disimpan",
+ "previous_record": "Catatan sebelumnya"
 }
