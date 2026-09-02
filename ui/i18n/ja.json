@@ -2344,5 +2344,15 @@
  "drawing_chart_from_table": "表からグラフを描いています(Python)…",
  "matplotlib_missing_install": "matplotlib がありません。入れ方: {}",
  "python_could_not_draw": "Python が描けませんでした: {}",
- "python_left_no_picture": "Python は終わりましたが、絵ができていません"
+ "python_left_no_picture": "Python は終わりましたが、絵ができていません",
+ "ai_list_empty_write_settings": "AI の宛先がありません。~/.config/officework/settings.toml に [[ai]] を書きます",
+ "ai_only_one_destination": "AI の宛先は {} の1つだけです(替える先がありません)",
+ "start_recording_changes": "記録を始める",
+ "shapes_selected_n": "図形を{}つ選んでいます(Ctrl+クリックで足す・外す)",
+ "drawing_shape_python": "{}を Python(matplotlib)で描いています…",
+ "drawing_smartart_python": "{}を箇条書きの{}項目から Python(matplotlib)で描いています…",
+ "smartart_sample_three": "箇条書きを選んでいないので、{}を見本の3項目で描きます",
+ "item_n": "項目 {}",
+ "smartart_pick_category_image": "SmartArt: 分類 → 形の順に選びます(Python が描いて画像として入ります)",
+ "smartart_pick_layout_image": "SmartArt > {}: 形を選ぶと、箇条書きの項目から Python が描いて画像として入ります"
 }

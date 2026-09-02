@@ -207,7 +207,9 @@ Ten kinds on the Forms tab: *text, combo box, dropdown, checkbox, radio, picture
 * *Images*: PNG, JPEG, SVG (SVG is converted to a high-resolution PNG). Saved as proper docx parts, visible in Word
 * *Charts*: put the caret inside a table and press Insert > Chart; Python (matplotlib) draws a bar chart from that table and pastes it as an image. Outside a table the button picks an image file
 * *Text art*: a field opens for the text; Enter has Python draw it bold with an outline and paste it as an image
-* *Shapes, SmartArt*: pick an image file (PNG, JPEG, SVG) to paste. Python draws them; there is no gallery to pick from yet
+* *Shapes*: Insert > Shapes shows the seven categories, then the shapes in the chosen category. Python (matplotlib) draws the chosen shape and pastes it as an image 60 mm wide
+* *SmartArt*: Insert > SmartArt shows the seven categories, then the layouts. Python draws the diagram from the bullet items of the selected paragraphs and pastes it as an image across the text width. Without bullet items it draws three sample items
+* *Selecting shapes*: click a shape to select it; Ctrl+click adds or removes one. Align, Group and Merge shapes on the Layout tab act on the selected shapes. With only one selected they act on every shape on that page
 * *Equations*: Insert > Equation opens a small panel — *type LaTeX and press Enter* (e.g. `\frac{a+b}{2}`). Python typesets it: with TeX installed it typesets there (matrix columns align), otherwise matplotlib. *The picture and the LaTeX source go into the docx as a pair*, so Word shows the picture and writer reopens it as an editable formula. A formula it cannot set is refused with the reason
 * *Text box*: a 1×1 table (text inside a frame)
 * *Text from file*: inserts .txt / .md / .docx

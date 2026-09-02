@@ -86,7 +86,7 @@ impl Writer {
     /// **一覧が開くボタン。** リボンは ▾ を添える。押すと候補の一覧
     /// (パネル)が出て、選んで終わる。腕の目印: `open_list` を立てる物だけ
     pub(crate) const MENU_IDS: &'static [&'static str] = &[
-        "fontname", "fontsize", "parastyle", "inssymbol",
+        "fontname", "fontsize", "parastyle", "inssymbol", "insshape", "inssmartart",
     ];
 
     /// **小窓が開くボタン。** リボンは … を添える(メニュー項目末尾の
@@ -555,6 +555,7 @@ impl Writer {
                 };
                 if j != i {
                     self.doc.shapes.swap(i, j);
+                    self.shape_swapped(i, j);
                     self.shape_sel = Some(j);
                     self.dirty = true;
                 }
@@ -605,7 +606,20 @@ impl Writer {
             "inschart" if self.cursor_table().is_some() => self.chart_from_table(cx),
             // テキストアート: 字を打つ欄を開く。Enter で Python が描いて画像として入れる
             "instextart" => self.fl_start(FlJob::TextArt),
-            "insimage" | "insshape" | "inssmartart" | "inschart" => {
+            // 図形と SmartArt: 分類の一覧 → 形の一覧の2段(表の画面と同じ)。
+            // 選んだ形は Python(matplotlib)が描いて、画像として入れます
+            "insshape" | "inssmartart" => {
+                let kind: &'static str = if id == "insshape" { "insshape" } else { "inssmartart" };
+                let opens = self.open_list != Some(kind);
+                self.open_list = opens.then_some(kind);
+                self.pick_sel = 0;
+                self.status = if id == "insshape" {
+                    ui::t!("shape_category").into()
+                } else {
+                    ui::t!("smartart_pick_category_image").into()
+                };
+            }
+            "insimage" | "inschart" => {
                 if id != "insimage" {
                     self.status =
                         ui::t!("draw_figures_python_matplotlib").into();
@@ -1880,7 +1894,37 @@ impl Writer {
             return;
         };
         self.status = ui::t!("drawing_chart_from_table").into();
-        self.run_py_image(pyrun::CHART_PY, "chart", spec, out, cx);
+        self.run_py_image(pyrun::CHART_PY, "chart", spec, out, None, cx);
+    }
+
+    /// **図形を Python(matplotlib)で描いて、画像として入れる。** `kind` は
+    /// prstGeom の名前、`name` は状態行に出す見出しです。紙の上では幅 60mm で置きます
+    pub(crate) fn shape_image(&mut self, kind: &str, name: &str, cx: &mut Context<Self>) {
+        let dir = pyrun::cage_work_dir("shape");
+        let out = dir.join("shape.png");
+        let spec = crate::keys::shape_spec(kind, &out.to_string_lossy());
+        self.status = ui::tf!("drawing_shape_python", name).into();
+        self.run_py_image(pyrun::SHAPE_PY, "shape", spec, out, Some(60.0), cx);
+    }
+
+    /// **SmartArt を Python(matplotlib)で描いて、画像として入れる。**
+    /// 材料は選んでいる段落の箇条書きの項目です([`Self::smartart_items`])。
+    /// 無ければ見本の3項目で描きます。本文の幅いっぱいに置きます
+    pub(crate) fn smartart_image(&mut self, layout: &str, name: &str, cx: &mut Context<Self>) {
+        let dir = pyrun::cage_work_dir("smartart");
+        let out = dir.join("smartart.png");
+        let font = kumihan::font::for_document(None)
+            .ok()
+            .map(|(fam, _)| fam.path.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let items = self.smartart_items();
+        let spec = crate::keys::smartart_spec(layout, &items, &font, &out.to_string_lossy());
+        self.status = if items.is_empty() {
+            ui::tf!("smartart_sample_three", name).into()
+        } else {
+            ui::tf!("drawing_smartart_python", name, items.len()).into()
+        };
+        self.run_py_image(pyrun::SMARTART_PY, "smartart", spec, out, None, cx);
     }
 
     /// **テキストアート。** 打った字を Python(matplotlib)が太字+縁取りで
@@ -1900,17 +1944,19 @@ impl Writer {
             esc(&out.to_string_lossy())
         );
         self.status = ui::t!("typesetting").into();
-        self.run_py_image(pyrun::TEXTART_PY, "textart", spec, out, cx);
+        self.run_py_image(pyrun::TEXTART_PY, "textart", spec, out, None, cx);
     }
 
     /// 同梱の Python の script を指図(JSON)つきで別のスレッドで回し、
-    /// できた絵をカーソルの段落の下に入れる。失敗は理由を状態行に出す
+    /// できた絵をカーソルの段落の下に入れる。失敗は理由を状態行に出す。
+    /// `w_mm` があれば、絵をその幅で置く(高さは比例)
     fn run_py_image(
         &mut self,
         script: &'static str,
         name: &'static str,
         spec: String,
         out: std::path::PathBuf,
+        w_mm: Option<f32>,
         cx: &mut Context<Self>,
     ) {
         let task = cx.background_executor().spawn(async move {
@@ -1928,9 +1974,14 @@ impl Writer {
             if let Ok(p) = std::fs::canonicalize(".venv") {
                 binds.push(p);
             }
+            // 同梱のスクリプトは自分の物なので、サンドボックスが組めない
+            // 機械(bwrap がユーザー名前空間を作れない等)では普通の Python で
+            // 走らせます。表の画面の自分のマクロと同じ扱いです(2026-09-02)。
+            // 他所から来たコードはこの道を通りません
+            let caged = pyrun::cage_works();
             let mut c = match pyrun::caged_python(&py, &dir, &binds, false) {
-                Some(c) => c,
-                None => std::process::Command::new(&py),
+                Some(c) if caged => c,
+                _ => std::process::Command::new(&py),
             };
             let o = c
                 .arg(&py_path)
@@ -1960,7 +2011,7 @@ impl Writer {
                         // ボタンの外(別のスレッドの帰り)なので、命令の旗を倒して控える
                         this.acted = false;
                         this.switch_target(Target::Body);
-                        this.insert_image(&p);
+                        this.insert_image_with(&p, w_mm);
                         this.acted = false;
                     }
                     Err(e) => this.status = e.into(),

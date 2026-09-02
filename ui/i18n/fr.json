@@ -2344,5 +2344,15 @@
  "drawing_chart_from_table": "Tracé du graphique à partir du tableau avec Python…",
  "matplotlib_missing_install": "matplotlib n'est pas installé. Installez-le avec : {}",
  "python_could_not_draw": "Python n'a pas pu dessiner : {}",
- "python_left_no_picture": "Python a terminé mais n'a laissé aucune image"
+ "python_left_no_picture": "Python a terminé mais n'a laissé aucune image",
+ "ai_list_empty_write_settings": "Pas de destination IA. Ajoutez une entrée [[ai]] dans ~/.config/officework/settings.toml",
+ "ai_only_one_destination": "{} est la seule destination IA (rien d'autre vers quoi basculer)",
+ "start_recording_changes": "Commencer l'enregistrement",
+ "shapes_selected_n": "{} formes sélectionnées (Ctrl+clic en ajoute ou en retire une)",
+ "drawing_shape_python": "Dessin de {} avec Python (matplotlib)…",
+ "drawing_smartart_python": "Dessin de {} à partir de {} éléments de liste avec Python (matplotlib)…",
+ "smartart_sample_three": "Aucun élément de liste n'est sélectionné ; {} est dessiné avec trois éléments d'exemple",
+ "item_n": "Élément {}",
+ "smartart_pick_category_image": "SmartArt : choisissez une catégorie, puis une disposition (Python la dessine en image)",
+ "smartart_pick_layout_image": "SmartArt > {} : choisissez une disposition ; Python la dessine en image à partir des éléments de liste"
 }

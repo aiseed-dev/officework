@@ -9354,5 +9354,45 @@
  {
   "key": "python_left_no_picture",
   "kind": "msg"
+ },
+ {
+  "key": "ai_list_empty_write_settings",
+  "kind": "msg"
+ },
+ {
+  "key": "ai_only_one_destination",
+  "kind": "msg"
+ },
+ {
+  "key": "start_recording_changes",
+  "kind": "msg"
+ },
+ {
+  "key": "shapes_selected_n",
+  "kind": "msg"
+ },
+ {
+  "key": "drawing_shape_python",
+  "kind": "msg"
+ },
+ {
+  "key": "drawing_smartart_python",
+  "kind": "msg"
+ },
+ {
+  "key": "smartart_sample_three",
+  "kind": "msg"
+ },
+ {
+  "key": "item_n",
+  "kind": "msg"
+ },
+ {
+  "key": "smartart_pick_category_image",
+  "kind": "msg"
+ },
+ {
+  "key": "smartart_pick_layout_image",
+  "kind": "msg"
  }
 ]

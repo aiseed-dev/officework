@@ -1915,7 +1915,13 @@ impl Writer {
         // 揃え方と保護の種類の一覧も、この置き場で描く(中身は keys.rs)
         let user_font_panel = self
             .open_list
-            .filter(|k| matches!(*k, "user-font" | "img-align" | "prot-doc"))
+            .filter(|k| {
+                matches!(
+                    *k,
+                    "user-font" | "img-align" | "prot-doc" | "insshape" | "insshape-2"
+                        | "inssmartart" | "inssmartart-2"
+                )
+            })
             .map(|k| self.draw_list(k, cx));
 
         // 校正の指摘
@@ -1980,7 +1986,8 @@ impl Writer {
             ],
             // 日付の形。**西暦と和暦**(鍵=出す字そのもの — 訳しません)
             "datetime" => crate::cmds::date_shape(),
-            "img-align" | "prot-doc" => self.extra_list_items(kind),
+            "img-align" | "prot-doc" | "insshape" | "insshape-2" | "inssmartart"
+            | "inssmartart-2" => self.extra_list_items(kind),
             // **この機械の標準の書体**(2026-08-26)。中身は書体の一覧と同じ
             "user-font" => self.list_items("fontname"),
             "fontname" => {
@@ -2036,7 +2043,9 @@ impl Writer {
         let items = self.list_items(kind);
         // ボタンの箱は窓の座標で控えてあります(`btn_box`)。まだ描いて
         // いなければ左上へ逃がします — 黙って消えるよりは出すほうがよい
-        let (bx, by, bw, bh) = self.btn_box.borrow().get(kind).copied().unwrap_or((16.0, 8.0, 0.0, 0.0));
+        // 2段目の一覧(`-2`)は、1段目と同じボタンの下に重ねます
+        let btn = kind.trim_end_matches("-2");
+        let (bx, by, bw, bh) = self.btn_box.borrow().get(btn).copied().unwrap_or((16.0, 8.0, 0.0, 0.0));
         // 記号はマス目の並び(1行10個)なので、高さは行の数で見積もります
         let want_h = if kind == "inssymbol" {
             (items.len() as f32 / 10.0).ceil() * 32.0 + 16.0
@@ -2096,6 +2105,13 @@ impl Writer {
             match kind {
                 "fontname" => Some(ui::t!("font_applies_selected_paragraph").into()),
                 "parastyle" => Some(ui::t!("paragraph_style_applies_selected").into()),
+                // 分類の一覧には題を、形の一覧には選んだ分類の名前を出します
+                "insshape" => Some(ui::t!("shape_category").into()),
+                "insshape-2" => Some(crate::keys::shape_cat_label(self.list_cat).into()),
+                "inssmartart-2" => crate::keys::smartart()
+                    .into_iter()
+                    .find(|(k, _, _)| *k == self.list_cat)
+                    .map(|(_, l, _)| l.into()),
                 _ => None,
             },
             filter,
@@ -2133,6 +2149,9 @@ impl Writer {
             // 「ユーザーとしての標準設定は、HOME/~.config/ ディレクトリにおく」)
             "user-font" => self.set_user_font(key),
             "img-align" | "prot-doc" => self.choose_extra_list(kind, key),
+            "insshape" | "insshape-2" | "inssmartart" | "inssmartart-2" => {
+                self.choose_shape_list(kind, key, cx)
+            }
             "datetime" => {
                 self.checkpoint(false); // 日付
                 if self.hf_edit.is_some() {

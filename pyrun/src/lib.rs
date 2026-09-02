@@ -934,6 +934,362 @@ fig.set_size_inches(bbox.width / fig.dpi + 0.2, bbox.height / fig.dpi + 0.2)
 plt.savefig(spec["out"], dpi=200, transparent=True)
 "##;
 
+/// 図形のスクリプト(matplotlib)。指図は `{"kind": prstGeom の名前, "out": 出力}`。
+/// 形は 0〜1 の箱の中の点の並びで持ち、透過 PNG に描きます(色は calc の緑)。
+/// 描ける名前は表の画面の図形の一覧(`shape_kind`)と同じです。知らない名前は四角です。
+pub const SHAPE_PY: &str = r##"
+import json, math, sys
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib import patches
+
+spec = json.load(open(sys.argv[1], encoding="utf-8"))
+kind = spec.get("kind", "rect")
+FILL = "#D5E8DC"
+LINE = "#1B6E3C"
+LW = 2.0
+
+# 座標は 0..1 の箱です。y は上が 1 です
+def star(n, inner):
+    pts = []
+    for i in range(2 * n):
+        r = 0.5 if i % 2 == 0 else inner
+        a = math.pi / 2 + i * math.pi / n
+        pts.append((0.5 + r * math.cos(a), 0.5 + r * math.sin(a)))
+    return pts
+
+def regular(n):
+    return [(0.5 + 0.5 * math.cos(math.pi / 2 + 2 * math.pi * i / n),
+             0.5 + 0.5 * math.sin(math.pi / 2 + 2 * math.pi * i / n)) for i in range(n)]
+
+def arrow_right():
+    return [(0, 0.3), (0.6, 0.3), (0.6, 0.05), (1, 0.5), (0.6, 0.95), (0.6, 0.7), (0, 0.7)]
+
+def flip_x(pts):
+    return [(1 - x, y) for x, y in pts]
+
+def swap(pts):
+    return [(y, x) for x, y in pts]
+
+def rot90(pts):
+    return [(y, 1 - x) for x, y in pts]
+
+POLY = {
+    "rect": [(0, 0), (1, 0), (1, 1), (0, 1)],
+    "triangle": [(0.5, 1), (1, 0), (0, 0)],
+    "rtTriangle": [(0, 1), (1, 0), (0, 0)],
+    "parallelogram": [(0.25, 1), (1, 1), (0.75, 0), (0, 0)],
+    "trapezoid": [(0.25, 1), (0.75, 1), (1, 0), (0, 0)],
+    "diamond": [(0.5, 1), (1, 0.5), (0.5, 0), (0, 0.5)],
+    "pentagon": regular(5),
+    "hexagon": [(0.25, 1), (0.75, 1), (1, 0.5), (0.75, 0), (0.25, 0), (0, 0.5)],
+    "octagon": [(0.3, 1), (0.7, 1), (1, 0.7), (1, 0.3), (0.7, 0), (0.3, 0), (0, 0.3), (0, 0.7)],
+    "plus": [(0.35, 1), (0.65, 1), (0.65, 0.65), (1, 0.65), (1, 0.35), (0.65, 0.35),
+             (0.65, 0), (0.35, 0), (0.35, 0.35), (0, 0.35), (0, 0.65), (0.35, 0.65)],
+    "rightArrow": arrow_right(),
+    "leftArrow": flip_x(arrow_right()),
+    "upArrow": swap(arrow_right()),
+    "downArrow": [(x, 1 - y) for x, y in swap(arrow_right())],
+    "leftRightArrow": [(0, 0.5), (0.25, 0.05), (0.25, 0.3), (0.75, 0.3), (0.75, 0.05), (1, 0.5),
+                       (0.75, 0.95), (0.75, 0.7), (0.25, 0.7), (0.25, 0.95)],
+    "upDownArrow": swap([(0, 0.5), (0.25, 0.05), (0.25, 0.3), (0.75, 0.3), (0.75, 0.05), (1, 0.5),
+                         (0.75, 0.95), (0.75, 0.7), (0.25, 0.7), (0.25, 0.95)]),
+    "mathPlus": [(0.4, 0.9), (0.6, 0.9), (0.6, 0.6), (0.9, 0.6), (0.9, 0.4), (0.6, 0.4),
+                 (0.6, 0.1), (0.4, 0.1), (0.4, 0.4), (0.1, 0.4), (0.1, 0.6), (0.4, 0.6)],
+    "mathMinus": [(0.1, 0.6), (0.9, 0.6), (0.9, 0.4), (0.1, 0.4)],
+    "flowChartProcess": [(0, 0), (1, 0), (1, 1), (0, 1)],
+    "flowChartDecision": [(0.5, 1), (1, 0.5), (0.5, 0), (0, 0.5)],
+    "flowChartInputOutput": [(0.2, 1), (1, 1), (0.8, 0), (0, 0)],
+    "star4": star(4, 0.2),
+    "star5": star(5, 0.22),
+    "star6": star(6, 0.3),
+    "star8": star(8, 0.35),
+    "wedgeRectCallout": [(0, 1), (1, 1), (1, 0.3), (0.45, 0.3), (0.25, 0), (0.3, 0.3), (0, 0.3)],
+    "path": [(0.05, 0.1), (0.5, 0.9), (0.95, 0.1)],
+}
+
+fig = plt.figure(figsize=(2.4, 1.6))
+ax = fig.add_axes([0.04, 0.04, 0.92, 0.92])
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.set_aspect("auto")
+ax.axis("off")
+kw = dict(facecolor=FILL, edgecolor=LINE, linewidth=LW, joinstyle="round")
+
+def add_poly(pts, **k):
+    ax.add_patch(patches.Polygon(pts, closed=True, **k))
+
+if kind in POLY:
+    add_poly(POLY[kind], **kw)
+elif kind == "roundRect":
+    ax.add_patch(patches.FancyBboxPatch((0.03, 0.03), 0.94, 0.94,
+                 boxstyle="round,pad=0,rounding_size=0.15", mutation_aspect=1.5, **kw))
+elif kind in ("ellipse", "flowChartConnector"):
+    ax.add_patch(patches.Ellipse((0.5, 0.5), 0.98, 0.98, **kw))
+elif kind == "flowChartTerminator":
+    # 両端が半円の箱。半円は点を並べて作ります
+    pts = []
+    for i in range(25):
+        a = -math.pi / 2 + math.pi * i / 24
+        pts.append((0.8 + 0.2 * math.cos(a), 0.5 + 0.3 * math.sin(a)))
+    for i in range(25):
+        a = math.pi / 2 + math.pi * i / 24
+        pts.append((0.2 + 0.2 * math.cos(a), 0.5 + 0.3 * math.sin(a)))
+    add_poly(pts, **kw)
+elif kind == "flowChartDocument":
+    pts = [(0, 1), (1, 1), (1, 0.2)]
+    for i in range(21):
+        t = i / 20
+        pts.append((1 - t, 0.2 + 0.12 * math.sin(2 * math.pi * t)))
+    add_poly(pts, **kw)
+elif kind == "wedgeEllipseCallout":
+    pts = []
+    for i in range(48):
+        a = 2 * math.pi * i / 48
+        pts.append((0.5 + 0.48 * math.cos(a), 0.62 + 0.36 * math.sin(a)))
+    # 尻尾は左下へ出します
+    pts = pts[:30] + [(0.2, 0.0)] + pts[33:]
+    add_poly(pts, **kw)
+elif kind == "mathMultiply":
+    pts = [(0.15, 0.25), (0.25, 0.15), (0.5, 0.4), (0.75, 0.15), (0.85, 0.25), (0.6, 0.5),
+           (0.85, 0.75), (0.75, 0.85), (0.5, 0.6), (0.25, 0.85), (0.15, 0.75), (0.4, 0.5)]
+    add_poly(pts, **kw)
+elif kind == "mathEqual":
+    add_poly([(0.1, 0.72), (0.9, 0.72), (0.9, 0.56), (0.1, 0.56)], **kw)
+    add_poly([(0.1, 0.44), (0.9, 0.44), (0.9, 0.28), (0.1, 0.28)], **kw)
+elif kind == "mathNotEqual":
+    add_poly([(0.1, 0.72), (0.9, 0.72), (0.9, 0.56), (0.1, 0.56)], **kw)
+    add_poly([(0.1, 0.44), (0.9, 0.44), (0.9, 0.28), (0.1, 0.28)], **kw)
+    ax.plot([0.3, 0.7], [0.08, 0.92], color=LINE, linewidth=LW * 1.5)
+elif kind == "line":
+    ax.plot([0.02, 0.98], [0.5, 0.5], color=LINE, linewidth=LW)
+else:
+    add_poly(POLY["rect"], **kw)
+
+fig.savefig(spec["out"], dpi=200, transparent=True)
+"##;
+
+/// SmartArt のスクリプト(matplotlib)。指図は `{"layout": 図解の種類,
+/// "items": [項目の字…], "font": 書体のファイル, "out": 出力}`。
+/// 図解の種類は表の画面の SmartArt の一覧と同じ 13 種です。項目の数は
+/// いくつでもよく、箱の大きさは数に合わせて決めます。
+pub const SMARTART_PY: &str = r##"
+import json, math, sys
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib import font_manager, patches
+
+spec = json.load(open(sys.argv[1], encoding="utf-8"))
+if spec.get("font"):
+    try:
+        font_manager.fontManager.addfont(spec["font"])
+        plt.rcParams["font.family"] = font_manager.FontProperties(
+            fname=spec["font"]).get_name()
+    except Exception:
+        pass
+layout = spec.get("layout", "block-list")
+items = [str(t) for t in spec.get("items", [])] or ["1", "2", "3"]
+n = len(items)
+FILL = "#D5E8DC"
+LINE = "#1B6E3C"
+LW = 1.6
+
+def wrap(t, width):
+    """長い字は折ります。日本語は字数で、英語は語の切れ目で折ります"""
+    out, line = [], ""
+    for word in t.replace("\n", " ").split(" "):
+        cand = (line + " " + word).strip()
+        if len(cand) > width and line:
+            out.append(line)
+            line = word
+        else:
+            line = cand
+    if line:
+        out.append(line)
+    res = []
+    for l in out:
+        while len(l) > width:
+            res.append(l[:width])
+            l = l[width:]
+        res.append(l)
+    return "\n".join(res)
+
+# 図は 100 × 56 の箱に組みます(横長。本文の幅に合わせて縮みます)
+W, H = 100.0, 56.0
+fig = plt.figure(figsize=(6.4, 3.6))
+ax = fig.add_axes([0, 0, 1, 1])
+ax.set_xlim(0, W)
+ax.set_ylim(0, H)
+ax.axis("off")
+kw = dict(facecolor=FILL, edgecolor=LINE, linewidth=LW)
+fs = 11 if n <= 4 else 9
+
+def box(x, y, w, h, text=None, round_=False, fill=True):
+    k = dict(kw)
+    if not fill:
+        k["facecolor"] = "none"
+    if round_:
+        ax.add_patch(patches.FancyBboxPatch((x, y), w, h,
+                     boxstyle="round,pad=0,rounding_size=%.2f" % (min(w, h) * 0.2), **k))
+    else:
+        ax.add_patch(patches.Rectangle((x, y), w, h, **k))
+    if text is not None:
+        ax.text(x + w / 2, y + h / 2, wrap(text, max(4, int(w / 3.2))),
+                ha="center", va="center", fontsize=fs, color="#1B1B1B")
+
+def ellipse(cx, cy, w, h, text=None, fill=True):
+    k = dict(kw)
+    if not fill:
+        k["facecolor"] = "none"
+    ax.add_patch(patches.Ellipse((cx, cy), w, h, **k))
+    if text is not None:
+        ax.text(cx, cy, wrap(text, max(4, int(w / 3.2))), ha="center", va="center",
+                fontsize=fs, color="#1B1B1B")
+
+def arrow(x0, y0, x1, y1, curve=0.0):
+    ax.annotate("", xy=(x1, y1), xytext=(x0, y0),
+                arrowprops=dict(arrowstyle="-|>", color=LINE, lw=LW,
+                                connectionstyle="arc3,rad=%.2f" % curve))
+
+def row_boxes(round_):
+    gap = 3.0
+    w = (W - 4 - gap * (n - 1)) / n
+    h = min(24.0, w * 0.8)
+    y = (H - h) / 2
+    for i, t in enumerate(items):
+        box(2 + i * (w + gap), y, w, h, t, round_)
+
+if layout == "block-list":
+    row_boxes(True)
+elif layout == "vbox-list":
+    gap = 2.0
+    h = (H - 4 - gap * (n - 1)) / n
+    for i, t in enumerate(items):
+        box(10, H - 2 - (i + 1) * h - i * gap, W - 20, h, t)
+elif layout == "pyramid-list":
+    gap = 2.0
+    h = (H - 4 - gap * (n - 1)) / n
+    for i, t in enumerate(items):
+        w = 40 + (W - 50) * i / max(1, n - 1)
+        box((W - w) / 2, H - 2 - (i + 1) * h - i * gap, w, h, t, True)
+elif layout == "basic-process":
+    gap = 8.0
+    w = (W - 4 - gap * (n - 1)) / n
+    h = min(24.0, w * 0.8)
+    y = (H - h) / 2
+    for i, t in enumerate(items):
+        x = 2 + i * (w + gap)
+        box(x, y, w, h, t)
+        if i < n - 1:
+            arrow(x + w + 0.5, H / 2, x + w + gap - 0.5, H / 2)
+elif layout == "chevron-process":
+    gap = 1.5
+    w = (W - 4 - gap * (n - 1)) / n
+    h = 24.0
+    y = (H - h) / 2
+    tip = min(6.0, w * 0.3)
+    for i, t in enumerate(items):
+        x = 2 + i * (w + gap)
+        pts = [(x, y), (x + w - tip, y), (x + w, y + h / 2), (x + w - tip, y + h),
+               (x, y + h)]
+        if i > 0:
+            pts.append((x + tip, y + h / 2))
+        ax.add_patch(patches.Polygon(pts, closed=True, **kw))
+        ax.text(x + w / 2 + (tip / 2 if i > 0 else 0) - tip / 2, y + h / 2,
+                wrap(t, max(4, int(w / 3.2))), ha="center", va="center", fontsize=fs)
+elif layout == "timeline":
+    ax.plot([4, W - 4], [H / 2, H / 2], color=LINE, linewidth=LW * 1.5)
+    step = (W - 16) / max(1, n - 1) if n > 1 else 0
+    for i, t in enumerate(items):
+        x = 8 + i * step if n > 1 else W / 2
+        ellipse(x, H / 2, 3.2, 3.2 * W / H * 0.56)
+        above = i % 2 == 0
+        y = H / 2 + (6 if above else -6)
+        ax.text(x, y, wrap(t, 12), ha="center", va="bottom" if above else "top", fontsize=fs)
+elif layout in ("basic-cycle", "block-cycle"):
+    cx, cy = W / 2, H / 2
+    rx, ry = W * 0.36, H * 0.36
+    cs = []
+    for i in range(n):
+        a = math.pi / 2 - 2 * math.pi * i / n
+        cs.append((cx + rx * math.cos(a), cy + ry * math.sin(a)))
+    for i, t in enumerate(items):
+        x, y = cs[i]
+        if layout == "basic-cycle":
+            ellipse(x, y, 22, 12, t)
+        else:
+            box(x - 11, y - 6, 22, 12, t)
+    for i in range(n):
+        (x0, y0), (x1, y1) = cs[i], cs[(i + 1) % n]
+        # 箱の縁から縁へ。真ん中同士を結ぶと箱の中を通ります
+        dx, dy = x1 - x0, y1 - y0
+        d = math.hypot(dx / 11, dy / 6) or 1
+        sx, sy = x0 + dx / d, y0 + dy / d
+        ex, ey = x1 - dx / d, y1 - dy / d
+        arrow(sx, sy, ex, ey, curve=-0.25)
+elif layout in ("org-chart", "hierarchy"):
+    root, kids = items[0], items[1:]
+    box(W / 2 - 14, H - 16, 28, 12, root, layout == "hierarchy")
+    if kids:
+        m = len(kids)
+        gap = 2.0
+        w = min(28.0, (W - 4 - gap * (m - 1)) / m)
+        total = m * w + (m - 1) * gap
+        x0 = (W - total) / 2
+        ax.plot([W / 2, W / 2], [H - 16, H - 22], color=LINE, linewidth=LW)
+        if m > 1:
+            ax.plot([x0 + w / 2, x0 + total - w / 2], [H - 22, H - 22], color=LINE, linewidth=LW)
+        for i, t in enumerate(kids):
+            x = x0 + i * (w + gap)
+            ax.plot([x + w / 2, x + w / 2], [H - 22, H - 28], color=LINE, linewidth=LW)
+            box(x, H - 40, w, 12, t, layout == "hierarchy")
+elif layout == "venn":
+    cx, cy = W / 2, H / 2
+    r = 0.22 if n > 2 else 0.3
+    rx, ry = W * r, H * r * 1.35
+    for i, t in enumerate(items):
+        if n == 1:
+            x, y = cx, cy
+        elif n == 2:
+            x, y = cx + (i - 0.5) * rx * 0.9, cy
+        else:
+            a = math.pi / 2 - 2 * math.pi * i / n
+            x, y = cx + rx * 0.5 * math.cos(a), cy + ry * 0.45 * math.sin(a)
+        ax.add_patch(patches.Ellipse((x, y), rx * 2, ry * 2, facecolor=FILL, alpha=0.55,
+                                     edgecolor=LINE, linewidth=LW))
+        if n == 1:
+            tx, ty = x, y
+        elif n == 2:
+            tx, ty = x + (i - 0.5) * rx * 0.9, y
+        else:
+            tx, ty = cx + rx * 1.05 * math.cos(a), cy + ry * 0.95 * math.sin(a)
+        ax.text(tx, ty, wrap(t, 10), ha="center", va="center", fontsize=fs)
+elif layout == "matrix":
+    gap = 2.0
+    w, h = (W - 20 - gap) / 2, (H - 4 - gap) / 2
+    for i in range(4):
+        r, c = divmod(i, 2)
+        t = items[i] if i < n else ""
+        box(10 + c * (w + gap), H - 2 - (r + 1) * h - r * gap, w, h, t)
+elif layout == "pyramid":
+    h = (H - 4) / n
+    for i, t in enumerate(items):
+        top = H - 2 - i * h
+        # いちばん上も少し幅を持たせます。尖らせると字が外にはみ出します
+        wt = (W - 20) * (i + 0.5) / (n + 0.5)
+        wb = (W - 20) * (i + 1.5) / (n + 0.5)
+        pts = [(W / 2 - wt / 2, top), (W / 2 + wt / 2, top),
+               (W / 2 + wb / 2, top - h), (W / 2 - wb / 2, top - h)]
+        ax.add_patch(patches.Polygon(pts, closed=True, **kw))
+        ax.text(W / 2, top - h / 2, wrap(t, 14), ha="center", va="center", fontsize=fs)
+else:
+    row_boxes(False)
+
+fig.savefig(spec["out"], dpi=150, transparent=True)
+"##;
+
 /// ソルバーの台本(scipy)。指図は JSON、答えは \x1f 区切りの変数の値。
 pub const SOLVER_PY: &str = r#"
 import json, sys

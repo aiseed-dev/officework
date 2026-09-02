@@ -770,6 +770,16 @@ fn main() {
                 view.update(cx, |this, cx| {
                     window.focus(&this.showing().focus(cx), cx)
                 });
+                // Ctrl+= / Ctrl+-(画面の文字の大きさ)。文章の画面は窓の全体に
+                // 結ぶ作りなので(`writer::run()` と同じ)、ここでも結びます。
+                // 相手は**いま見ているタブ**です。表のタブは自分で受けます
+                {
+                    let v = view.clone();
+                    writer::bind_ui_scale_keys_with(cx, move |cx| match v.read(cx).showing() {
+                        Pane::Doc(w) => Some(w.clone()),
+                        Pane::Sheet(_) => None,
+                    });
+                }
                 // **受け口を開く。** 名前は officework の1つ。
                 // Windows ではソケットを作らない(決め — SEKKEI「受け口は
                 // writer にも」の節)

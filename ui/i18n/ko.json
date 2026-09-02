@@ -2344,5 +2344,15 @@
  "drawing_chart_from_table": "표에서 그래프를 그리는 중(Python)…",
  "matplotlib_missing_install": "matplotlib이 없습니다. 설치: {}",
  "python_could_not_draw": "Python이 그리지 못했습니다: {}",
- "python_left_no_picture": "Python은 끝났지만 그림이 없습니다"
+ "python_left_no_picture": "Python은 끝났지만 그림이 없습니다",
+ "ai_list_empty_write_settings": "AI 대상이 없습니다. ~/.config/officework/settings.toml 에 [[ai]] 항목을 적습니다",
+ "ai_only_one_destination": "AI 대상은 {} 하나뿐입니다(바꿀 대상이 없습니다)",
+ "start_recording_changes": "기록 시작",
+ "shapes_selected_n": "도형 {}개를 선택했습니다(Ctrl+클릭으로 추가·제외)",
+ "drawing_shape_python": "{}을(를) Python(matplotlib)으로 그리는 중…",
+ "drawing_smartart_python": "{}을(를) 글머리 기호 {}개 항목으로 Python(matplotlib)으로 그리는 중…",
+ "smartart_sample_three": "글머리 기호 항목을 선택하지 않았으므로 {}을(를) 견본 3개 항목으로 그립니다",
+ "item_n": "항목 {}",
+ "smartart_pick_category_image": "SmartArt: 분류 → 형태의 순서로 고릅니다(Python이 그려 이미지로 넣습니다)",
+ "smartart_pick_layout_image": "SmartArt > {}: 형태를 고르면 글머리 기호 항목으로 Python이 그려 이미지로 넣습니다"
 }

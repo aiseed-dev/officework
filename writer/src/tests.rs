@@ -104,7 +104,7 @@ mod menu_run_tests {
     /// (踏んで確かめた。実機での確認に回す)
     pub(super) const DIALOG: &[&str] = &[
         "open", "save", "pdf", "plug-macros", "insimage", "text-from-file",
-        "insshape", "inssmartart", "inschart",
+        "inschart",
         "insequation",
     ];
 
@@ -2428,10 +2428,12 @@ mod marker_tests {
                 .collect();
             assert_eq!(attached, vec!["大事"], "選んだ字だけに付いていない");
 
-            // 保存すると [.注意]#大事# で残る
+            // 保存すると [.注意]#大事# で残る(字の前後が語の切れ目でないときは
+            // Asciidoctor と同じく ## で囲む。2026-09-02 のエンジンの書き換え)
             this.save_to(path.clone());
             let back = std::fs::read_to_string(&path).unwrap();
-            assert!(back.contains("[.注意]#大事#"), "文字スタイルが保存されない: {back}");
+            assert!(back.contains("[.注意]#大事#") || back.contains("[.注意]##大事##"),
+                    "文字スタイルが保存されない: {back}");
         });
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -2835,7 +2837,8 @@ mod marker_tests {
             // 保存すると `[.強め]#字#` になる
             this.save_to(path.clone());
             let back = std::fs::read_to_string(&path).unwrap();
-            assert!(back.contains("[.強め]#本文#"), "字のスタイルが保存で消えた: {back}");
+            assert!(back.contains("[.強め]#本文#") || back.contains("[.強め]##本文##"),
+                    "字のスタイルが保存で消えた: {back}");
         });
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -4274,6 +4277,199 @@ mod fill_field_tests {
             assert!(this.dirty);
             let r = crate::rpc::handle(this, r#"{"cmd":"fill_field","name":"nai","value":"x"}"#);
             assert!(r.contains("見つかりません"), "無い名前を断らない: {r}");
+        });
+    }
+}
+
+/// **図形の複数選択と、図形・SmartArt の一覧**(2026-09-02)。
+#[cfg(test)]
+mod shape_pick_tests {
+    use crate::*;
+
+    fn hako(x: f32, y: f32) -> kumihan::DocShape {
+        kumihan::DocShape {
+            page: 0,
+            x_mm: x,
+            y_mm: y,
+            w_mm: 40.0,
+            h_mm: 25.0,
+            look: book::SheetShape {
+                kind: "rect".into(),
+                fill: Some("DDE7F0".into()),
+                line: Some("2E5A87".into()),
+                line_w: 1.5,
+                alpha: 1.0,
+                ..Default::default()
+            },
+        }
+    }
+
+    /// 図形の真ん中を押したときの、編集領域の px(`click_at` の逆算)
+    fn naka(w: &Writer, i: usize) -> (f32, f32) {
+        let sp = &w.doc.shapes[i];
+        let pxmm = PX_PER_MM * w.zoom;
+        (
+            28.0 + (sp.x_mm + sp.w_mm / 2.0) * pxmm,
+            14.0 + (sp.y_mm + sp.h_mm / 2.0 - w.scroll_mm) * pxmm,
+        )
+    }
+
+    /// **Ctrl+クリックで図形を足す・外す。** 配置・グループ化・結合は
+    /// 選んだ図形だけを相手にし、選んでいない図形には触りません。
+    #[gpui::test]
+    fn ctrl_click_picks_shapes_and_the_layout_buttons_use_only_them(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.doc.shapes = vec![hako(25.0, 60.0), hako(80.0, 60.0), hako(50.0, 120.0)];
+            // 普通のクリック: 1つだけ
+            let (x, y) = naka(this, 0);
+            this.click_at_ctrl(x, y, false, false);
+            assert_eq!(this.shape_sel, Some(0));
+            assert_eq!(this.shape_pick, vec![0]);
+            // Ctrl+クリックで足す
+            let (x, y) = naka(this, 1);
+            this.click_at_ctrl(x, y, false, true);
+            assert_eq!(this.shape_pick, vec![0, 1], "足せていない");
+            assert_eq!(this.shape_sel, Some(1), "最後に押した図形が主になっていない");
+            assert!(this.shape_drag.is_none(), "Ctrl+クリックでつまんでしまう");
+            assert!(this.status.contains("2"), "状態行が数を言わない: {}", this.status);
+            // 配置(左)は選んだ2つだけ
+            this.run_cmd("img-align", cx);
+            this.choose_list("img-align", "left", cx);
+            assert_eq!(this.doc.shapes[1].x_mm, 25.0, "選んだ図形が揃っていない");
+            assert_eq!(this.doc.shapes[2].x_mm, 50.0, "選んでいない図形が動いた");
+            // グループ化も選んだ2つだけ
+            this.run_cmd("img-group", cx);
+            let g = this.doc.shapes[0].look.group;
+            assert_ne!(g, 0);
+            assert_eq!(this.doc.shapes[1].look.group, g);
+            assert_eq!(this.doc.shapes[2].look.group, 0, "選んでいない図形が束ねられた");
+            this.run_cmd("img-group", cx);
+            assert_eq!(this.doc.shapes[0].look.group, 0, "解けていない");
+            // Ctrl+クリックで外す
+            let (x, y) = naka(this, 1);
+            this.click_at_ctrl(x, y, false, true);
+            assert_eq!(this.shape_pick, vec![0], "外せていない");
+            assert_eq!(this.shape_sel, Some(0));
+            // 図形の外を押すと全部外れる
+            this.click_at_ctrl(28.0 + 150.0 * PX_PER_MM, 14.0 + 200.0 * PX_PER_MM, false, false);
+            assert!(this.shape_pick.is_empty());
+            assert_eq!(this.shape_sel, None);
+        });
+        // 結合は先に選んだ2つ。3つ目は残る
+        w.update(cx, |this, cx| {
+            // 0(25〜65)と重ねる。ただし真ん中は互いの外に置く(押す所が
+            // 重なると、後ろの図形が先に当たります)
+            this.doc.shapes[1].x_mm = 55.0;
+            let (x, y) = naka(this, 0);
+            this.click_at_ctrl(x, y, false, false);
+            let (x, y) = naka(this, 1);
+            this.click_at_ctrl(x, y, false, true);
+            this.merge_op = 2; // 次は結合
+            this.run_cmd("shapes-merge", cx);
+            assert_eq!(this.doc.shapes.len(), 2, "結合で1つにならない");
+            assert_eq!(this.doc.shapes[0].look.kind, "path");
+            assert_eq!(this.doc.shapes[1].x_mm, 50.0, "3つ目の図形が消えた");
+            assert_eq!(this.shape_sel, Some(0));
+            assert_eq!(this.shape_pick, vec![0]);
+        });
+        // 1つしか選んでいなければ、前からの動き(同じページの全部)
+        w.update(cx, |this, cx| {
+            this.doc.shapes = vec![hako(25.0, 60.0), hako(80.0, 60.0), hako(50.0, 120.0)];
+            this.shape_pick = vec![0];
+            this.shape_sel = Some(0);
+            this.run_cmd("img-align", cx);
+            this.choose_list("img-align", "left", cx);
+            assert!(this.doc.shapes.iter().all(|s| s.x_mm == 25.0), "同じページの全部が揃わない");
+        });
+    }
+
+    /// **図形の一覧は分類7つ → 形の2段。** 表の画面と同じ並びで、
+    /// どの形も Python のスクリプトが名前を知っています。
+    #[gpui::test]
+    fn the_shape_list_has_seven_categories_and_python_knows_every_shape(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.run_cmd("insshape", cx);
+            assert_eq!(this.open_list, Some("insshape"), "分類の一覧が開かない");
+            let cats = this.list_items("insshape");
+            assert_eq!(cats.len(), 7, "分類は7つ");
+            assert_eq!(cats[0].0, "basic_shapes");
+            this.choose_list("insshape", "flowchart", cx);
+            assert_eq!(this.open_list, Some("insshape-2"), "形の一覧が開かない");
+            assert_eq!(this.list_cat, "flowchart");
+            assert_eq!(this.list_items("insshape-2").len(), 6, "フローチャートは6つ");
+            // もう一度押すと分類からやり直し
+            this.run_cmd("insshape", cx);
+            assert_eq!(this.open_list, Some("insshape"));
+            // 全部の形を Python が知っている(知らない名前は四角に落ちる)
+            let mut seen = std::collections::BTreeSet::new();
+            let mut n = 0;
+            for c in crate::keys::SHAPE_CATS {
+                for (k, _) in crate::keys::shape_gallery(c) {
+                    let (kind, _) = crate::keys::shape_kind(k);
+                    assert!(kind != "rect" || k == "rectangle", "{k} が四角に落ちる");
+                    assert!(
+                        pyrun::SHAPE_PY.contains(&format!("\"{kind}\"")),
+                        "SHAPE_PY が {kind} を知らない"
+                    );
+                    assert!(seen.insert(k), "鍵「{k}」が二度出る");
+                    n += 1;
+                }
+            }
+            assert!(n >= 30, "一覧が痩せている({n} 個)");
+            let spec = crate::keys::shape_spec("star5", "/tmp/a\"b.png");
+            assert_eq!(spec, "{\"kind\":\"star5\",\"out\":\"/tmp/a\\\"b.png\"}");
+        });
+    }
+
+    /// **SmartArt の一覧は分類7つ → 形の2段。** 材料は選んでいる段落の
+    /// 箇条書きで、無ければ見本の3項目です。
+    #[gpui::test]
+    fn smartart_takes_its_items_from_the_selected_bullets(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.run_cmd("inssmartart", cx);
+            assert_eq!(this.open_list, Some("inssmartart"));
+            let cats = this.list_items("inssmartart");
+            assert_eq!(cats.len(), 7, "分類は7つ");
+            this.choose_list("inssmartart", "process", cx);
+            assert_eq!(this.open_list, Some("inssmartart-2"));
+            assert_eq!(this.list_items("inssmartart-2").len(), 3, "手順は3つ");
+            for (_, _, items) in crate::keys::smartart() {
+                for (_, _, layout) in items {
+                    assert!(
+                        pyrun::SMARTART_PY.contains(&format!("\"{layout}\"")),
+                        "SMARTART_PY が {layout} を知らない"
+                    );
+                }
+            }
+            this.open_list = None;
+        });
+        w.update(cx, |this, _cx| {
+            let mut d = Document::plain("題\n甲\n乙\n丙\n結び");
+            for (i, b) in d.blocks.iter_mut().enumerate() {
+                if let kumihan::Block::Para(p) = b {
+                    if (1..=3).contains(&i) {
+                        p.list = kumihan::ListKind::Bullet;
+                    }
+                }
+            }
+            this.set_doc(d);
+            // カーソルが箇条書きの中なら、そのかたまりの全部
+            this.ed.move_to(8, false); // 「乙」の頭
+            assert_eq!(this.smartart_items(), vec!["甲", "乙", "丙"]);
+            // 箇条書きの外なら空(見本の3項目で描く)
+            this.ed.move_to(0, false);
+            assert!(this.smartart_items().is_empty());
+            // 選択があれば、選択にかかる箇条書きだけ
+            this.ed.move_to(4, false);
+            this.ed.move_to(9, true);
+            assert_eq!(this.smartart_items(), vec!["甲", "乙"]);
+            let spec = crate::keys::smartart_spec("venn", &[], "", "/o.png");
+            assert!(spec.contains("\"項目 1\",\"項目 2\",\"項目 3\""), "見本の3項目が無い: {spec}");
+            let spec = crate::keys::smartart_spec("venn", &["a\"b".into()], "", "/o.png");
+            assert!(spec.contains("[\"a\\\"b\"]"), "引用符が逃げていない: {spec}");
         });
     }
 }

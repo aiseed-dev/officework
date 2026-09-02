@@ -556,8 +556,14 @@ pub struct Writer {
     shape_cache: std::cell::RefCell<
         std::collections::HashMap<usize, std::sync::Arc<gpui::Image>>,
     >,
-    /// いま選んでいる図形(`doc.shapes` の番号)
+    /// いま選んでいる図形(`doc.shapes` の番号)。複数選んでいるときは主
+    /// (最後に押した図形)です
     shape_sel: Option<usize>,
+    /// Ctrl+クリックで選んだ図形の番号(選んだ順)。1つだけのときも入ります。
+    /// 2つ以上あるとき、配置・グループ化・結合の相手はこの図形です
+    shape_pick: Vec<usize>,
+    /// 図形と SmartArt の一覧で選んだ分類の鍵(2段目の一覧が中身を引くのに使う)
+    list_cat: &'static str,
     /// 図形を結合するときの掛け方(0=結合 1=交差 2=減算)。押すたびに回ります
     merge_op: u8,
     /// 図形をつまんでいる間(番号, つかんだ画面の位置mm, つかんだ図形の位置mm)
@@ -1345,6 +1351,7 @@ mod panels;
 pub(crate) use panels::Panels;
 mod doc;
 mod keys;
+pub use keys::bind_ui_scale_keys_with;
 // RPC はユニックスソケットが設計(この機械の中だけ・ネイティブファースト)。
 // Windows ではこの受け口ごと開かない — calc の mod rpc と同じ線
 #[cfg(unix)]

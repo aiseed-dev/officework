@@ -2344,5 +2344,15 @@
  "drawing_chart_from_table": "Diagramm aus der Tabelle wird mit Python gezeichnet…",
  "matplotlib_missing_install": "matplotlib ist nicht installiert. Installieren mit: {}",
  "python_could_not_draw": "Python konnte nicht zeichnen: {}",
- "python_left_no_picture": "Python ist fertig, hat aber kein Bild hinterlassen"
+ "python_left_no_picture": "Python ist fertig, hat aber kein Bild hinterlassen",
+ "ai_list_empty_write_settings": "Kein KI-Ziel. Tragen Sie einen [[ai]]-Eintrag in ~/.config/officework/settings.toml ein",
+ "ai_only_one_destination": "{} ist das einzige KI-Ziel (nichts zum Wechseln)",
+ "start_recording_changes": "Aufzeichnung starten",
+ "shapes_selected_n": "{} Formen ausgewählt (Strg+Klick fügt eine hinzu oder entfernt sie)",
+ "drawing_shape_python": "{} wird mit Python (matplotlib) gezeichnet …",
+ "drawing_smartart_python": "{} wird aus {} Listenpunkten mit Python (matplotlib) gezeichnet …",
+ "smartart_sample_three": "Keine Listenpunkte ausgewählt, daher wird {} mit drei Beispielpunkten gezeichnet",
+ "item_n": "Punkt {}",
+ "smartart_pick_category_image": "SmartArt: erst eine Kategorie, dann ein Layout wählen (Python zeichnet es als Bild)",
+ "smartart_pick_layout_image": "SmartArt > {}: ein Layout wählen; Python zeichnet es aus den Listenpunkten als Bild"
 }

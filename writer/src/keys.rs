@@ -4,6 +4,12 @@ use crate::*;
 
 impl Writer {
     pub(crate) fn click_at(&mut self, rel_x: f32, rel_y: f32, extend: bool) {
+        self.click_at_ctrl(rel_x, rel_y, extend, false);
+    }
+
+    /// クリックの本体。`ctrl` が真なら Ctrl を押しながらのクリックで、
+    /// 図形の上なら選択に足す・外すになります(表の画面と同じ作法)。
+    pub(crate) fn click_at_ctrl(&mut self, rel_x: f32, rel_y: f32, extend: bool, ctrl: bool) {
         // 本文を押したら会話の欄とパネルから焦点が離れる(打鍵は本文へ戻る)
         self.ai_chat_focus = false;
         self.fl_focus = false;
@@ -31,14 +37,31 @@ impl Writer {
                     .get(sp.page)
                     .copied()
                     .unwrap_or(sp.page as f32 * self.pg.h_mm);
+                let (sx, sy) = (sp.x_mm, sp.y_mm + oy);
+                if ctrl {
+                    // Ctrl+クリックは選択に足す・外す。つまんで動かしはしません
+                    self.shape_toggle(i);
+                    self.shape_drag = None;
+                    return;
+                }
+                // 選んである図形の1つを普通に押したときは、選択を保ったまま
+                // つまみます(まとめて動かしはまだしません)
+                if !self.shape_pick.contains(&i) {
+                    self.shape_pick = vec![i];
+                }
                 self.shape_sel = Some(i);
-                self.shape_drag = Some((i, (x_mm, y_mm), (sp.x_mm, sp.y_mm + oy)));
-                self.status = ui::t!("shape_selected_drag_move").into();
+                self.shape_drag = Some((i, (x_mm, y_mm), (sx, sy)));
+                self.status = if self.shape_pick.len() >= 2 {
+                    ui::tf!("shapes_selected_n", self.shape_pick.len()).into()
+                } else {
+                    ui::t!("shape_selected_drag_move").into()
+                };
                 return;
             }
             None => {
                 // 図形の外を押したら選びを外します
                 self.shape_sel = None;
+                self.shape_pick.clear();
                 self.shape_drag = None;
             }
         }
@@ -314,6 +337,12 @@ impl Writer {
     /// 画像を読んで、カーソルの段落の下に挿す。
     /// SVG(matplotlib の savefig("図.svg") など)は高精細の PNG に直して貼る。
     pub(crate) fn insert_image(&mut self, path: &std::path::Path) {
+        self.insert_image_with(path, None);
+    }
+
+    /// 同上。`want_w_mm` があれば、その幅で置きます(高さは比例)。
+    /// Python が細かく描いた絵を、紙の上では小さく置きたいときに使います
+    pub(crate) fn insert_image_with(&mut self, path: &std::path::Path, want_w_mm: Option<f32>) {
         match std::fs::read(path) {
             Ok(bytes) => {
                 let is_svg = path
@@ -340,6 +369,11 @@ impl Writer {
                 // 96dpi 相当で置き、行長に収まらなければ比例で縮める
                 let mut w_mm = pw as f32 * 25.4 / 96.0;
                 let mut h_mm = ph as f32 * 25.4 / 96.0;
+                if let Some(want) = want_w_mm.filter(|w| *w > 0.0) {
+                    let k = want / w_mm;
+                    w_mm *= k;
+                    h_mm *= k;
+                }
                 let measure = self.pg.measure_mm();
                 if w_mm > measure {
                     let k = measure / w_mm;
@@ -1143,18 +1177,36 @@ impl Writer {
 /// 受け口の並びは view.rs にあり、こちらはアプリの起動時に1度結びます
 pub(crate) fn bind_ui_scale_keys(view: &Entity<Writer>, cx: &mut App) {
     let v = view.clone();
+    bind_ui_scale_keys_with(cx, move |_| Some(v.clone()));
+}
+
+/// 同じ結びを、**相手の編集画面をそのつど選ぶ形**で作ります。
+///
+/// officework は文章のタブを何枚も持つので、1つの画面に結んでおけません。
+/// 押されたときに「いま見ているタブ」を返す関数を渡してもらいます。
+/// 文章のタブでなければ `None` を返してもらい、何もしません。
+pub fn bind_ui_scale_keys_with(
+    cx: &mut App,
+    pick: impl Fn(&mut App) -> Option<Entity<Writer>> + 'static,
+) {
+    let pick = std::rc::Rc::new(pick);
+    let p = pick.clone();
     cx.on_action(move |_: &ui::UiBigger, cx: &mut App| {
-        v.update(cx, |w, cx| {
-            w.run_cmd("ui-bigger", cx);
-            cx.notify();
-        });
+        if let Some(v) = p(cx) {
+            v.update(cx, |w, cx| {
+                w.run_cmd("ui-bigger", cx);
+                cx.notify();
+            });
+        }
     });
-    let v = view.clone();
+    let p = pick.clone();
     cx.on_action(move |_: &ui::UiSmaller, cx: &mut App| {
-        v.update(cx, |w, cx| {
-            w.run_cmd("ui-smaller", cx);
-            cx.notify();
-        });
+        if let Some(v) = p(cx) {
+            v.update(cx, |w, cx| {
+                w.run_cmd("ui-smaller", cx);
+                cx.notify();
+            });
+        }
     });
 }
 
@@ -1185,26 +1237,74 @@ impl Writer {
 }
 
 impl Writer {
-    /// **図形を束ねる / 束を解く。**(2026-08-30)
+    /// **図形を選択に足す・外す**(Ctrl+クリック)。
     ///
-    /// 文書では Ctrl+クリックで束ねる仕掛けをまだ持たないので、
-    /// **選んでいる図形と同じページの図形**をまとめて束ねます。
-    /// 同じ束を選んでいれば解きます。
+    /// 外したときは、残りの最後の1つが主になります。
+    pub(crate) fn shape_toggle(&mut self, i: usize) {
+        if let Some(k) = self.shape_pick.iter().position(|&x| x == i) {
+            self.shape_pick.remove(k);
+        } else {
+            if self.shape_pick.is_empty() {
+                if let Some(cur) = self.shape_sel.filter(|&c| c != i) {
+                    self.shape_pick.push(cur);
+                }
+            }
+            self.shape_pick.push(i);
+        }
+        self.shape_sel = self.shape_pick.last().copied();
+        self.status = match self.shape_pick.len() {
+            0 => "".into(),
+            1 => ui::t!("shape_selected_drag_move").into(),
+            n => ui::tf!("shapes_selected_n", n).into(),
+        };
+    }
+
+    /// **操作の相手になる図形の番号。**
+    ///
+    /// Ctrl+クリックで2つ以上選んでいればその図形です(選んだ順)。
+    /// 1つしか選んでいなければ、前からの動きどおり、選んでいる図形と
+    /// 同じページの図形を全部返します。何も選んでいなければ空です。
+    pub(crate) fn shape_targets(&self) -> Vec<usize> {
+        let n = self.doc.shapes.len();
+        let picked: Vec<usize> = self.shape_pick.iter().copied().filter(|&k| k < n).collect();
+        if picked.len() >= 2 {
+            return picked;
+        }
+        let Some(i) = self.shape_sel.filter(|&i| i < n) else { return Vec::new() };
+        let page = self.doc.shapes[i].page;
+        self.doc
+            .shapes
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.page == page)
+            .map(|(k, _)| k)
+            .collect()
+    }
+
+    /// 図形2つの並びを入れ替えたので、選択の番号も入れ替えます。
+    pub(crate) fn shape_swapped(&mut self, a: usize, b: usize) {
+        for k in &mut self.shape_pick {
+            if *k == a {
+                *k = b;
+            } else if *k == b {
+                *k = a;
+            }
+        }
+    }
+
+    /// **図形を束ねる / 束を解く。**(2026-08-30、複数選択は 2026-09-02)
+    ///
+    /// Ctrl+クリックで選んだ図形を束ねます。1つしか選んでいなければ、
+    /// 選んでいる図形と同じページの図形をまとめて束ねます。
+    /// 束ねてある図形を選んでいれば解きます。
     pub(crate) fn shape_group(&mut self) {
         let Some(i) = self.shape_sel else {
             self.status = ui::tf!("select_more_shapes_first", 1).into();
             return;
         };
         let Some(sp) = self.doc.shapes.get(i) else { return };
-        let (page, g) = (sp.page, sp.look.group);
-        let nakama: Vec<usize> = self
-            .doc
-            .shapes
-            .iter()
-            .enumerate()
-            .filter(|(_, s)| s.page == page)
-            .map(|(k, _)| k)
-            .collect();
+        let g = sp.look.group;
+        let nakama = self.shape_targets();
         if nakama.len() < 2 && g == 0 {
             self.status = ui::tf!("select_more_shapes_first", 2).into();
             return;
@@ -1216,7 +1316,13 @@ impl Writer {
             self.doc.shapes.iter().map(|s| s.look.group).max().unwrap_or(0) + 1
         };
         let mut n = 0;
-        for k in nakama {
+        // 解くときは、同じ束の図形を全部(選んでいなくても)解きます
+        let aite: Vec<usize> = if toku {
+            (0..self.doc.shapes.len()).collect()
+        } else {
+            nakama
+        };
+        for k in aite {
             if toku && self.doc.shapes[k].look.group != g {
                 continue;
             }
@@ -1231,26 +1337,17 @@ impl Writer {
         };
     }
 
-    /// **同じページの図形をそろえる。** `how` は left / centre / right /
+    /// **図形をそろえる。** `how` は left / centre / right /
     /// top / middle / bottom(一覧の鍵)。
     ///
-    /// 文書には図形を複数選ぶ仕掛けがまだ無いので、選んでいる図形と
-    /// 同じページの図形を全部そろえます。
+    /// 相手は [`Self::shape_targets`] です。Ctrl+クリックで選んだ図形か、
+    /// 1つしか選んでいなければ同じページの図形の全部です。
     pub(crate) fn shape_align_doc(&mut self, how: &str) {
-        let Some(i) = self.shape_sel else {
+        if self.shape_sel.is_none() {
             self.status = ui::tf!("select_more_shapes_first", 1).into();
             return;
-        };
-        let Some(sp) = self.doc.shapes.get(i) else { return };
-        let page = sp.page;
-        let idx: Vec<usize> = self
-            .doc
-            .shapes
-            .iter()
-            .enumerate()
-            .filter(|(_, s)| s.page == page)
-            .map(|(k, _)| k)
-            .collect();
+        }
+        let idx = self.shape_targets();
         if idx.len() < 2 {
             self.status = ui::tf!("select_more_shapes_first", 2).into();
             return;
@@ -1297,6 +1394,27 @@ impl Writer {
                 ("middle".into(), ui::t!("middle").to_string()),
                 ("bottom".into(), ui::t!("bottom").to_string()),
             ],
+            // 図形の分類(7つ)と、分類の中の形。表の画面と同じ一覧です
+            "insshape" => SHAPE_CATS
+                .iter()
+                .map(|c| (c.to_string(), shape_cat_label(c).to_string()))
+                .collect(),
+            "insshape-2" => shape_gallery(self.list_cat)
+                .into_iter()
+                .map(|(k, l)| (k.to_string(), l.to_string()))
+                .collect(),
+            // SmartArt の分類と、分類の中の形。分類・並び・名前は表の画面と同じ
+            "inssmartart" => smartart()
+                .into_iter()
+                .map(|(k, l, _)| (k.to_string(), l.to_string()))
+                .collect(),
+            "inssmartart-2" => smartart()
+                .into_iter()
+                .find(|(k, _, _)| *k == self.list_cat)
+                .map(|(_, _, items)| {
+                    items.into_iter().map(|(k, l, _)| (k.to_string(), l.to_string())).collect()
+                })
+                .unwrap_or_default(),
             // 文書の保護。docx の w:documentProtection の w:edit の4つと「保護しない」
             "prot-doc" => vec![
                 ("off".into(), ui::t!("protection_off").to_string()),
@@ -1316,6 +1434,92 @@ impl Writer {
             "prot-doc" => self.set_protection(key),
             _ => {}
         }
+    }
+
+    /// **図形と SmartArt の一覧で項を選んだ。** 1段目(分類)なら2段目を
+    /// 同じ場所に開きます。2段目(形)なら Python が描いて画像として入れます。
+    /// 一覧はもう閉じてあります(`choose_list` が先に閉じます)
+    pub(crate) fn choose_shape_list(&mut self, kind: &str, key: &str, cx: &mut Context<Self>) {
+        match kind {
+            "insshape" => {
+                let Some(cat) = SHAPE_CATS.iter().find(|c| **c == key) else { return };
+                self.list_cat = cat;
+                self.open_list = Some("insshape-2");
+                self.pick_sel = 0;
+                self.status = shape_cat_label(cat).into();
+            }
+            "insshape-2" => {
+                let (prst, name) = shape_kind(key);
+                self.shape_image(prst, name, cx);
+            }
+            "inssmartart" => {
+                let Some((cat, label, _)) = smartart().into_iter().find(|(k, _, _)| *k == key)
+                else {
+                    return;
+                };
+                self.list_cat = cat;
+                self.open_list = Some("inssmartart-2");
+                self.pick_sel = 0;
+                self.status = ui::tf!("smartart_pick_layout_image", label).into();
+            }
+            "inssmartart-2" => {
+                let hit = smartart()
+                    .into_iter()
+                    .find(|(k, _, _)| *k == self.list_cat)
+                    .and_then(|(_, _, items)| items.into_iter().find(|(k, _, _)| *k == key));
+                let Some((_, name, layout)) = hit else { return };
+                self.smartart_image(layout, name, cx);
+            }
+            _ => {}
+        }
+    }
+
+    /// **SmartArt の材料になる項目。** 選んでいる段落のうち箇条書き
+    /// (中黒か段落番号)の字です。何も選んでいなければ、カーソルの段落が
+    /// 属する箇条書きのひとかたまりを全部取ります。1つも無ければ空です
+    pub(crate) fn smartart_items(&self) -> Vec<String> {
+        let sel = self.ed.selection();
+        let paras: Vec<(usize, usize, bool, String)> = {
+            let mut at = 0usize;
+            self.doc
+                .paragraphs()
+                .map(|p| {
+                    let t = para_text(p);
+                    let (b0, b1) = (at, at + t.len());
+                    at = b1 + 1;
+                    (b0, b1, p.list != kumihan::ListKind::None, t)
+                })
+                .collect()
+        };
+        let on_list = |p: &(usize, usize, bool, String)| p.2 && !p.3.trim().is_empty();
+        if sel.start != sel.end {
+            return paras
+                .iter()
+                .filter(|p| p.0 <= sel.end && sel.start <= p.1)
+                .filter(|p| on_list(p))
+                .map(|p| p.3.trim().to_string())
+                .collect();
+        }
+        let cur = sel.start;
+        let Some(i) = paras.iter().position(|p| p.0 <= cur && cur <= p.1) else {
+            return Vec::new();
+        };
+        if !paras[i].2 {
+            return Vec::new();
+        }
+        let mut lo = i;
+        while lo > 0 && paras[lo - 1].2 {
+            lo -= 1;
+        }
+        let mut hi = i;
+        while hi + 1 < paras.len() && paras[hi + 1].2 {
+            hi += 1;
+        }
+        paras[lo..=hi]
+            .iter()
+            .filter(|p| on_list(p))
+            .map(|p| p.3.trim().to_string())
+            .collect()
     }
 
     /// 文書の保護を掛ける・外す。`key` は一覧の鍵(off / readOnly / comments /
@@ -1362,27 +1566,36 @@ impl Writer {
     /// 座標が mm なので、2つ目の輪郭を1つ目の枠の目盛り(0〜1)へ直して
     /// から渡します。
     ///
-    /// 相手は**同じページの、選んでいる図形の次の1つ**です。文書は
-    /// Ctrl+クリックで束を選ぶ仕掛けをまだ持たないためです。
+    /// 相手は Ctrl+クリックで選んだ**先の2つ**です(減算は先に選んだ方から
+    /// 後の方を引きます)。1つしか選んでいなければ、同じページにある
+    /// その次の図形と組み合わせます。
     pub(crate) fn shapes_boolean(&mut self, op: book::BoolOp) {
         use book::{combine, outline, to_points};
-        let Some(a) = self.shape_sel else {
-            self.status = ui::t!("select_two_shapes_ctrl").into();
-            return;
+        let n = self.doc.shapes.len();
+        let picked: Vec<usize> = self.shape_pick.iter().copied().filter(|&k| k < n).collect();
+        let (a, b) = if picked.len() >= 2 {
+            (picked[0], picked[1])
+        } else {
+            let Some(a) = self.shape_sel.filter(|&a| a < n) else {
+                self.status = ui::t!("select_two_shapes_ctrl").into();
+                return;
+            };
+            let page = self.doc.shapes[a].page;
+            // 同じページの、a の次にある図形
+            let Some(b) = self
+                .doc
+                .shapes
+                .iter()
+                .enumerate()
+                .find(|(k, s)| *k != a && s.page == page)
+                .map(|(k, _)| k)
+            else {
+                self.status = ui::t!("select_two_shapes_ctrl").into();
+                return;
+            };
+            (a, b)
         };
-        let Some(sa) = self.doc.shapes.get(a).cloned() else { return };
-        // 同じページの、a の次にある図形
-        let Some(b) = self
-            .doc
-            .shapes
-            .iter()
-            .enumerate()
-            .find(|(k, s)| *k != a && s.page == sa.page)
-            .map(|(k, _)| k)
-        else {
-            self.status = ui::t!("select_two_shapes_ctrl").into();
-            return;
-        };
+        let sa = self.doc.shapes[a].clone();
         let sb = self.doc.shapes[b].clone();
         // **輪郭を出せない形は断る。** 黙って四角で計算しない
         let (Some(oa), Some(ob)) = (
@@ -1427,6 +1640,7 @@ impl Writer {
         // 引かれた側は消えます(結合・交差・減算のどれでも1つになる)
         let keep = a - usize::from(b < a);
         self.doc.shapes.remove(b);
+        self.shape_pick = vec![keep];
         self.shape_sel = Some(keep);
         self.dirty = true;
         let label = match op {
@@ -1436,4 +1650,189 @@ impl Writer {
         };
         self.status = ui::tf!("done_turned_into_outline", label).into();
     }
+}
+
+/// 図形の分類の鍵(7つ)。**表の画面(calc の `insshape`)と同じ並び**です。
+pub(crate) const SHAPE_CATS: &[&str] = &[
+    "basic_shapes", "block_arrows", "equation_shapes", "flowchart",
+    "stars_ribbons", "callouts", "line_border",
+];
+
+/// 分類の鍵 → 画面の見出し(2段目の題にも出します)。
+pub(crate) fn shape_cat_label(cat: &str) -> &'static str {
+    match cat {
+        "block_arrows" => ui::t!("block_arrows"),
+        "equation_shapes" => ui::t!("equation_shapes"),
+        "flowchart" => ui::t!("flowchart"),
+        "stars_ribbons" => ui::t!("stars_ribbons"),
+        "callouts" => ui::t!("callouts"),
+        "line_border" => ui::t!("line_border"),
+        _ => ui::t!("basic_shapes"),
+    }
+}
+
+/// 分類の中の形の一覧 `(鍵, 見出し)`。
+///
+/// **表の画面の `calc::shape_gallery` の写し**です(2026-09-02)。表と
+/// 文章で並びが食い違わないように、直すときは両方を直してください。
+/// 文章の側は Python(matplotlib)が描くので、描けるかどうかは
+/// `pyrun::SHAPE_PY` の側で決まります
+pub(crate) fn shape_gallery(cat: &str) -> Vec<(&'static str, &'static str)> {
+    match cat {
+        "basic_shapes" => vec![
+            ui::item!("rectangle"),
+            ui::item!("rounded_rectangle"),
+            ui::item!("ellipse"),
+            ui::item!("triangle"),
+            ui::item!("right_triangle"),
+            ui::item!("parallelogram"),
+            ui::item!("trapezium"),
+            ui::item!("diamond"),
+            ui::item!("pentagon"),
+            ui::item!("hexagon"),
+            ui::item!("octagon"),
+            ui::item!("cross"),
+        ],
+        "block_arrows" => vec![
+            ui::item!("right_arrow"),
+            ui::item!("left_arrow"),
+            ui::item!("up_arrow"),
+            ui::item!("down_arrow"),
+            ui::item!("left_right_arrow"),
+            ui::item!("up_down_arrow"),
+        ],
+        "equation_shapes" => vec![
+            ui::item!("plus_sign"),
+            ui::item!("minus_sign"),
+            ui::item!("multiply_sign"),
+            ui::item!("equals_sign"),
+            ui::item!("not_equal_sign"),
+        ],
+        "flowchart" => vec![
+            ui::item!("process_step"),
+            ui::item!("decision"),
+            ui::item!("data"),
+            ui::item!("terminator"),
+            ui::item!("document_shape"),
+            ui::item!("connector"),
+        ],
+        "stars_ribbons" => vec![
+            ui::item!("4_point_star"),
+            ui::item!("5_point_star"),
+            ui::item!("6_point_star"),
+            ui::item!("8_point_star"),
+        ],
+        "callouts" => vec![
+            ui::item!("rectangular_callout"),
+            ui::item!("oval_callout"),
+        ],
+        "line_border" => vec![ui::item!("straight_line"), ui::item!("free_shape_made_points")],
+        _ => Vec::new(),
+    }
+}
+
+/// 図形の鍵 → (prstGeom の名前, 画面の見出し)。表の画面の `shape_kind` と同じ表です。
+/// **知らない鍵は四角**(一覧から来る限り起こりませんが、黙って落としません)
+pub(crate) fn shape_kind(v: &str) -> (&'static str, &'static str) {
+    match v {
+        "rounded_rectangle" => ("roundRect", ui::t!("rounded_rectangle")),
+        "ellipse" => ("ellipse", ui::t!("ellipse")),
+        "triangle" => ("triangle", ui::t!("triangle")),
+        "right_triangle" => ("rtTriangle", ui::t!("right_triangle")),
+        "parallelogram" => ("parallelogram", ui::t!("parallelogram")),
+        "trapezium" => ("trapezoid", ui::t!("trapezium")),
+        "diamond" => ("diamond", ui::t!("diamond")),
+        "pentagon" => ("pentagon", ui::t!("pentagon")),
+        "hexagon" => ("hexagon", ui::t!("hexagon")),
+        "octagon" => ("octagon", ui::t!("octagon")),
+        "cross" => ("plus", ui::t!("cross")),
+        "right_arrow" => ("rightArrow", ui::t!("right_arrow")),
+        "left_arrow" => ("leftArrow", ui::t!("left_arrow")),
+        "up_arrow" => ("upArrow", ui::t!("up_arrow")),
+        "down_arrow" => ("downArrow", ui::t!("down_arrow")),
+        "left_right_arrow" => ("leftRightArrow", ui::t!("left_right_arrow")),
+        "up_down_arrow" => ("upDownArrow", ui::t!("up_down_arrow")),
+        "plus_sign" => ("mathPlus", ui::t!("plus_sign")),
+        "minus_sign" => ("mathMinus", ui::t!("minus_sign")),
+        "multiply_sign" => ("mathMultiply", ui::t!("multiply_sign")),
+        "equals_sign" => ("mathEqual", ui::t!("equals_sign")),
+        "not_equal_sign" => ("mathNotEqual", ui::t!("not_equal_sign")),
+        "process_step" => ("flowChartProcess", ui::t!("process_step")),
+        "decision" => ("flowChartDecision", ui::t!("decision")),
+        "data" => ("flowChartInputOutput", ui::t!("data")),
+        "terminator" => ("flowChartTerminator", ui::t!("terminator")),
+        "document_shape" => ("flowChartDocument", ui::t!("document_shape")),
+        "connector" => ("flowChartConnector", ui::t!("connector")),
+        "4_point_star" => ("star4", ui::t!("4_point_star")),
+        "5_point_star" => ("star5", ui::t!("5_point_star")),
+        "6_point_star" => ("star6", ui::t!("6_point_star")),
+        "8_point_star" => ("star8", ui::t!("8_point_star")),
+        "rectangular_callout" => ("wedgeRectCallout", ui::t!("rectangular_callout")),
+        "oval_callout" => ("wedgeEllipseCallout", ui::t!("oval_callout")),
+        "straight_line" => ("line", ui::t!("straight_line")),
+        "free_shape_made_points" => ("path", ui::t!("free_shape_made_points")),
+        _ => ("rect", ui::t!("rectangle")),
+    }
+}
+
+/// SmartArt の一覧。**表の画面の `calc::smartart` の写し**で、分類・並び・
+/// 名前は Euro-Office の現物から取ってあります。
+/// 分類は (鍵, 見出し, その中の形たち)。形も (鍵, 見出し, 図解の種類)。
+/// 図解の種類は `pyrun::SMARTART_PY` が知っている名前です
+#[allow(clippy::type_complexity)]
+pub(crate) fn smartart(
+) -> Vec<(&'static str, &'static str, Vec<(&'static str, &'static str, &'static str)>)> {
+    fn row<T>((k, l): (&'static str, &'static str), t: T) -> (&'static str, &'static str, T) {
+        (k, l, t)
+    }
+    vec![
+        row(ui::item!("list"), vec![
+            row(ui::item!("card_list"), "block-list"),
+            row(ui::item!("vertical_list"), "vbox-list"),
+            row(ui::item!("pyramid_list"), "pyramid-list"),
+        ]),
+        row(ui::item!("process"), vec![
+            row(ui::item!("basic_steps"), "basic-process"),
+            row(ui::item!("process"), "chevron-process"),
+            row(ui::item!("timeline"), "timeline"),
+        ]),
+        row(ui::item!("cycle"), vec![
+            row(ui::item!("basic_cycle"), "basic-cycle"),
+            row(ui::item!("block_cycle"), "block-cycle"),
+        ]),
+        row(ui::item!("hierarchy"), vec![
+            row(ui::item!("organisation_chart"), "org-chart"),
+            row(ui::item!("hierarchy"), "hierarchy"),
+        ]),
+        row(ui::item!("relationship"), vec![row(ui::item!("basic_venn"), "venn")]),
+        row(ui::item!("matrix"), vec![row(ui::item!("basic_matrix"), "matrix")]),
+        row(ui::item!("pyramid"), vec![row(ui::item!("basic_pyramid"), "pyramid")]),
+    ]
+}
+
+/// JSON の文字列の中に入れられる形にします(`\` と `"` を逃がします)。
+fn json_str(t: &str) -> String {
+    t.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', " ")
+}
+
+/// 図形を描く指図(JSON)。`kind` は prstGeom の名前です。
+pub(crate) fn shape_spec(kind: &str, out: &str) -> String {
+    format!("{{\"kind\":\"{}\",\"out\":\"{}\"}}", json_str(kind), json_str(out))
+}
+
+/// SmartArt を描く指図(JSON)。`items` が空なら見本の3項目で描きます。
+pub(crate) fn smartart_spec(layout: &str, items: &[String], font: &str, out: &str) -> String {
+    let items: Vec<String> = if items.is_empty() {
+        (1..=3).map(|n| ui::tf!("item_n", n).to_string()).collect()
+    } else {
+        items.to_vec()
+    };
+    let list: Vec<String> = items.iter().map(|t| format!("\"{}\"", json_str(t))).collect();
+    format!(
+        "{{\"layout\":\"{}\",\"items\":[{}],\"font\":\"{}\",\"out\":\"{}\"}}",
+        json_str(layout),
+        list.join(","),
+        json_str(font),
+        json_str(out)
+    )
 }

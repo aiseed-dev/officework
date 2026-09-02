@@ -237,6 +237,8 @@ impl Writer {
             page_offsets: vec![0.0],
             shape_cache: Default::default(),
             shape_sel: None,
+            shape_pick: Vec::new(),
+            list_cat: "basic_shapes",
             merge_op: 2,
             shape_drag: None,
             page_starts: vec![f32::NEG_INFINITY],
@@ -2072,31 +2074,6 @@ impl Writer {
         .into();
     }
 
-    /// チェックの欄を切り替える(☐ ⇄ ☑)。カーソルがその欄にあるとき
-    pub(crate) fn toggle_checkbox(&mut self) -> bool {
-        let Some(sd) = self.sdt_at() else { return false };
-        if sd.kind != kumihan::SdtKind::Checkbox {
-            return false;
-        }
-        // カーソルの前後の1字を見て入れ替える
-        let text = self.ed.text().to_string();
-        let cur = self.ed.cursor();
-        let (s0, e0) = match text[..cur].char_indices().next_back() {
-            Some((i, c)) if c == '☐' || c == '☑' => (i, cur),
-            _ => match text[cur..].chars().next() {
-                Some(c) if c == '☐' || c == '☑' => (cur, cur + c.len_utf8()),
-                _ => return false,
-            },
-        };
-        let now = &text[s0..e0];
-        let next = if now == "☑" { "☐" } else { "☑" };
-        self.ed.move_to(s0, false);
-        self.ed.move_to(e0, true);
-        self.ed.insert(next);
-        self.on_edited();
-        self.status = ui::tf!("checkbox_set", next).into();
-        true
-    }
 
     /// 入切のボタンが「いま入っているか」。押した結果が画面に残るものは、
     /// ボタンの側にも出す(押したのに何も変わらないように見えるのを防ぐ)

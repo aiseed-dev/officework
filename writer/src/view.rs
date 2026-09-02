@@ -217,19 +217,7 @@ impl Render for Writer {
             ],
         ];
         // 挿入は一段(発注者の画像 2026-08-04)。主要なボタンは名札つきの大ボタン
-        const INS_ROWS: &[&[LItem]] = &[&[
-            ("blankpage", Some("空白ページ")), ("pagebreak", Some("delimiter")),
-            ("‖", None), ("instable", Some("table_2")), ("‖", None),
-            ("insimage", Some("images")), ("insshape", Some("図形")),
-            ("inssmartart", None), ("inschart", None),
-            ("‖", None), ("instext", None), ("instextart", None),
-            ("dropcap", None), ("text-from-file", None), ("‖", None),
-            ("edit-header", None), ("edit-footer", None), ("pagenum", None),
-            ("numpages", None), ("datetime", None), ("‖", None),
-            ("insequation", None), ("inssymbol", None), ("‖", None),
-            ("controls", None),
-        ]];
-        // 残りのタブも一段(本家 Web 版の並びから起こした。2026-08-04 発注者)
+                // 残りのタブも一段(本家 Web 版の並びから起こした。2026-08-04 発注者)
         const DRAW_ROWS: &[&[LItem]] = &[&[
             ("pen", Some("ペン")), ("highlighter", Some("蛍光ペン")),
             ("eraser", Some("消しゴム")),
@@ -296,14 +284,11 @@ impl Render for Writer {
         // 「一覧」は置き場の .py、「ファイルから」は置き場の外の .py。
         // **マクロを書く**(AI)もここ — 置き場に .py を置く仕事で、
         // 会話では代われない(2026-08-15、AI タブの廃止で移した)
-        const PLUG_ROWS: &[&[LItem]] = &[&[
-            ("py-list", Some("macro_list")),
-            ("py-folder", Some("open_folder_2")),
-            ("ai-macro", Some("write_macro")),
-        ]];
+                // 挿入とマクロの段は行の表を持たない(骨組みの並びで描く)。前は
+        // 小文字の "insert" / "macros" で照合していて届かず、表の方は文言の
+        // 鍵が生のまま出る古い物だったので、表を消した(2026-09-02)
         let rows: Option<&[&[LItem]]> = match ribbon::WRITER[self.tab].name {
             "Home" => Some(HOME_ROWS),
-            "insert" => Some(INS_ROWS),
             "Draw" => Some(DRAW_ROWS),
             "Layout" => Some(LAYOUT_ROWS),
             "References" => Some(REF_ROWS),
@@ -311,7 +296,6 @@ impl Render for Writer {
             "Collaboration" => Some(COLLAB_ROWS),
             "Protection" => Some(PROT_ROWS),
             "View" => Some(VIEW_ROWS),
-            "macros" => Some(PLUG_ROWS),
             _ => None,
         };
         if let Some(rows) = rows {
@@ -588,8 +572,30 @@ impl Render for Writer {
                 // 小窓中は ready でも灰色・無反応(未実装と同じ描き方)
                 if cmd.ready && !dlg_open {
                     let id = cmd.id;
+                    // **この道のボタンも場所を控えます**(2026-09-02)。控えが
+                    // 無いと、一覧(日付・記号・図形・SmartArt)がボタンの下で
+                    // なく画面の左上に出ます。実機の点検の道具も座標を当てる
+                    // しかありませんでした
+                    let mark = {
+                        let rec = self.btn_box.clone();
+                        gpui::canvas(
+                            move |b: gpui::Bounds<gpui::Pixels>, _, _| {
+                                rec.borrow_mut().insert(id, (
+                                    f32::from(b.origin.x),
+                                    f32::from(b.origin.y),
+                                    f32::from(b.size.width),
+                                    f32::from(b.size.height),
+                                ));
+                            },
+                            |_, _: (), _, _| {},
+                        )
+                        .absolute()
+                        .size_full()
+                    };
                     row = row.child(div()
                         .id(SharedString::from(cmd.id))
+                        .relative()
+                        .child(mark)
                         .px_3().py_1().rounded_md()
                         .border_1().border_color(th_btn).text_color(th_btn)
                         .text_size(px(us * 12.0)).cursor_pointer()
@@ -1426,17 +1432,22 @@ impl Render for Writer {
                     .w(px(w + pd * 2.0))
                     .h(px(h + pd * 2.0)),
             );
-            if self.shape_sel == Some(i) {
-                paper = paper.child(
-                    div()
-                        .absolute()
-                        .left(px(x - 2.0))
-                        .top(px(y - 2.0))
-                        .w(px(w + 4.0))
-                        .h(px(h + 4.0))
-                        .border_2()
-                        .border_color(rgb(0x1B6E3C)),
-                );
+            // 選んでいる図形には枠を出します。Ctrl+クリックで足した図形も
+            // 同じ枠で、主(最後に押した図形)だけ太くします
+            let picked = self.shape_pick.contains(&i);
+            if self.shape_sel == Some(i) || picked {
+                let frame = div()
+                    .absolute()
+                    .left(px(x - 2.0))
+                    .top(px(y - 2.0))
+                    .w(px(w + 4.0))
+                    .h(px(h + 4.0))
+                    .border_color(rgb(0x1B6E3C));
+                paper = paper.child(if self.shape_sel == Some(i) {
+                    frame.border_2()
+                } else {
+                    frame.border_1()
+                });
             }
         }
 
@@ -1840,6 +1851,8 @@ impl gpui::Element for InputSink {
             let rel = e.position - bounds.origin;
             let clicks = e.click_count;
             let shift = e.modifiers.shift;
+            // Ctrl+クリックは図形を選択に足す・外す(表の画面と同じ)
+            let ctrl = e.modifiers.control;
             view.update(cx, |w, cx| {
                 if w.tab == 0 {
                     // ファイルのページ。紙は無いのでキャレットも筆も動かさない
@@ -1868,8 +1881,10 @@ impl gpui::Element for InputSink {
                         w.drag_select = false;
                     }
                     _ => {
-                        w.click_at(f32::from(rel.x), f32::from(rel.y), shift);
-                        w.drag_select = true;
+                        w.click_at_ctrl(f32::from(rel.x), f32::from(rel.y), shift, ctrl);
+                        // Ctrl+クリックの後は引いても選択を伸ばしません。伸ばすと
+                        // 図形の上で動いた拍子に、足した選択が1つに戻ります
+                        w.drag_select = !ctrl;
                     }
                 }
                 cx.notify();
