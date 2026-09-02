@@ -815,6 +815,24 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     if e_h > hikui {
                         y += e_h - hikui;
                     }
+                    // **前の行の字の足より上に絵を出しません。** 上の広げ方は
+                    // この段落の行間で数えていますが、このベースラインまでの
+                    // 空きを作ったのは前の段落の行間です。行間 1.5 の段落に
+                    // 数式を置くと、前の段落が 1.0 なら絵が 3mm ほど前の行に
+                    // 食い込んでいました(2026-09-02、writer の画面で見えた)。
+                    // 前のベースラインに書体の足の深さを足した所を絵の上端の
+                    // 上限にして、足りなければそこまで下げます
+                    if e_h > 0.0 {
+                        if let Some(mae) = sheet.lines.iter().rev().find(|l| l.from_body).map(|l| l.y_mm) {
+                            let ashi = crate::font::agari_em(pfont.as_deref())
+                                .map(|e| (1.0 - e).max(0.0) * base * PT_TO_MM)
+                                .unwrap_or(base * 0.2 * PT_TO_MM);
+                            let hitsuyou = mae + ashi + e_h;
+                            if y < hitsuyou {
+                                y = hitsuyou;
+                            }
+                        }
+                    }
                     if cells.is_empty() {
                         // 空の段落も**行として持つ**。持たないと、後ろの行の
                         // バイト勘定が1つずつずれて、カーソルが本文とずれる

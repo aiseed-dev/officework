@@ -3158,3 +3158,39 @@ mod shade_tests {
     }
 
 }
+
+#[cfg(test)]
+mod atama_no_gazou_tests {
+    use crate::{layout, Frame, Metrics};
+
+    /// **頭の絵は前の行の字に食い込みません。** 行間 1.5 の段落に 10mm の
+    /// 絵(数式)を置くと、前の段落が行間 1.0 のとき、絵の上端が前の
+    /// ベースラインより 3mm 上に出ていました(2026-09-02、writer の画面)
+    #[test]
+    fn a_head_image_does_not_climb_into_the_previous_line() {
+        let Ok((fam, _)) = crate::font::for_document(None) else { return };
+        let Ok(data) = crate::font::load(fam) else { return };
+        let m = Metrics::new(&data).unwrap();
+        for ls in [1.0f32, 1.15, 1.5, 2.0] {
+            let mut d = crate::Document::default();
+            let mut t1 = crate::Paragraph::default();
+            t1.line_spacing = 1.0;
+            t1.runs.push(crate::Run { text: "一行目の字です。".into(), size_pt: None, font: None, fmt: Default::default() });
+            d.push_para(t1);
+            let mut p = crate::Paragraph::default();
+            p.line_spacing = ls;
+            p.images_new.push(crate::InlineImage {
+                bytes: std::sync::Arc::new(vec![1]), w_mm: 20.0, h_mm: 10.0, tex: Some("x".into()), src: None, off: 0,
+            });
+            d.push_para(p);
+            let frame = Frame { measure_mm: 150.0, line_height_mm: 6.4, y0_mm: 24.0 };
+            let s = layout(&d, &m, &frame);
+            let mae = s.lines[0].y_mm;
+            let (_, r) = &s.images[0];
+            assert!(r[1] >= mae, "行間 {ls}: 絵の上端 {:.2} が前のベースライン {mae:.2} より上", r[1]);
+            assert!(r[1] - mae < 4.0, "行間 {ls}: 絵の上が空きすぎ({:.2})", r[1] - mae);
+            // 絵の下端は自分のベースライン
+            assert!((r[1] + r[3] - s.lines[1].y_mm).abs() < 0.01, "行間 {ls}: 絵の下端がベースラインに無い");
+        }
+    }
+}
