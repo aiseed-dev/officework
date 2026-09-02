@@ -634,7 +634,7 @@ You then adjust its contents with the buttons on the Styles face.
 If you type a name that already exists, that definition is worn as it is (the definition is not changed).
 
 * *With text selected it applies to the text; without, to the paragraph*
-* A character style is saved as `[.name]#text#`
+* A character style is saved as `[.name]#text#`. When the text is also bold or italic, the name goes on that mark instead (`[.name]_text_`). When a letter or digit touches the outside of the mark, the mark is doubled (`[.name]##text##`, `**bold**`), because a single mark is only read as a mark when it stands apart from words
 * Emphasis, superscript and subscript are *meaning, so they are not blocked*
 
 === The Styles face in the right panel

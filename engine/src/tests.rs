@@ -2390,7 +2390,8 @@ mod html_write_tests {
     /// **本文は意味だけ。** 見た目は CSS の側に出て、HTML には入りません。
     #[test]
     fn the_look_goes_to_css_the_text_to_html() {
-        let d = doc("= 題\n\n== 章の名前\n\n本文です。*ここ*が大事。\n");
+        // 前後が字なので二重の印(本家は `*ここ*が` を強調として読みません)
+        let d = doc("= 題\n\n== 章の名前\n\n本文です。**ここ**が大事。\n");
         let th = theme::parse("[スタイル.見出し1]\n大きさ = 20\n太字 = true\n").unwrap();
         let p = html_write::page(&d, &th);
 

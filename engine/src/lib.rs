@@ -30,6 +30,7 @@
 //! - [`grid`] 式が表に求める面5つ
 
 pub mod adoc;
+pub(crate) mod inline;
 pub mod atomic;
 /// ブック ⇄ AsciiDoc(ブックの正本を .sheet.adoc にする)
 pub mod book_adoc;
