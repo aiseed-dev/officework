@@ -143,99 +143,20 @@ def tpl_fields():
 /// プラグイン(.py)の置き場。~/.config/officework/plugins(正は pyrun)
 pub(crate) use pyrun::plugins_dir;
 
-/// 数式を組む台本。**officework/tex.py をそのまま埋め込む** —
-/// 写しを作らない(py.rs の冒頭が戒めている「写経のずれ」を作らないため)。
-/// 実体は一つで、Python からは `from officework import tex`、
-/// アプリからはこの埋め込みで使う。**officework が入っていなくても動く**
-/// (calc の CHART_PY などと同じで、要るのは matplotlib だけ)
-const TEX_PY: &str = include_str!("../../pysheet/officework/tex.py");
-
-/// 埋め込んだ tex.py の後ろに付ける呼び出し。argv は (式, 大きさ, 出力先)
-const SUUSHIKI_YOBI: &str = r#"
-# ---- ここから writer の呼び出し ----
-import json as _json, sys as _sys
-try:
-    _png, _w, _h = to_png(_sys.argv[1], size_pt=float(_sys.argv[2]))
-except Muri as _e:
-    print(_json.dumps({"e": str(_e)})); raise SystemExit(0)
-except Exception as _e:
-    print(_json.dumps({"e": "%s: %s" % (type(_e).__name__, _e)})); raise SystemExit(0)
-open(_sys.argv[3], "wb").write(_png)
-print(_json.dumps({"w": _w, "h": _h, "kata": kumi_kata()}))
-"#;
-
-/// いま数式を何で組むか(状態行に出す字)。**組めないなら組めないと言う**
+/// いま数式を何で組むか(状態行に出す字)。**エンジンの typst で固定**
+/// (2026-09-02 の決め。前は Python の TeX か matplotlib でした)
 pub(crate) fn suushiki_no_kumi_kata() -> String {
-    // **固有名詞は訳さない**(鍵にすると 14 言語ぶんの無駄な行が増える)
-    match hashiru_kata() {
-        Some(s) if s.trim() == "tex" => "TeX".into(),
-        Some(s) if s.trim() == "mathtext" => "matplotlib".into(),
-        _ => "Python".into(),
-    }
+    "typst".into()
 }
 
-/// 囲いの中から officework が見える道(.venv と PYTHONPATH の置き場)。
-/// bwrap は /home を tmpfs にするので、見せないと import で落ちる
-fn binds_for_python() -> Vec<std::path::PathBuf> {
-    let mut v: Vec<std::path::PathBuf> = Vec::new();
-    if let Ok(p) = std::fs::canonicalize(".venv") {
-        v.push(p);
-    }
-    if let Some(pp) = std::env::var_os("PYTHONPATH") {
-        for part in std::env::split_paths(&pp) {
-            if let Ok(p) = std::fs::canonicalize(&part) {
-                v.push(p);
-            }
-        }
-    }
-    v
-}
-
-/// いま何で組めるかを、埋め込んだ tex.py に聞く(サンドボックスの中)。
-fn hashiru_kata() -> Option<String> {
-    let py = find_python();
-    let dir = pyrun::cage_work_dir("suushiki");
-    std::fs::create_dir_all(&dir).ok()?;
-    let script = dir.join("kata.py");
-    std::fs::write(&script, format!("{TEX_PY}\nprint(kumi_kata())\n")).ok()?;
-    let mut c = pyrun::caged_python(&py, &dir, &binds_for_python(), false)?;
-    c.arg(&script);
-    let out = c.output().ok()?;
-    let s = String::from_utf8_lossy(&out.stdout).to_string();
-    s.lines().last().map(|l| l.to_string())
-}
-
-/// **数式を組む。** 打った LaTeX を Python へ渡し、絵と寸法(mm)をもらう。
+/// **数式を組む。** 打った LaTeX をエンジン(typst + mitex)に渡し、絵と
+/// 寸法(mm)をもらう。Python は使わない。`font` は文書の書体の名前で、
+/// 数式の中の日本語をその書体で出すために渡す。
 /// 組めなければ**理由をそのまま**返す(黙って何も起きない、をしない)。
-pub(crate) fn kumu_suushiki(tex: &str, size_pt: f32) -> Result<(Vec<u8>, f32, f32), String> {
-    let py = find_python();
-    let dir = pyrun::cage_work_dir("suushiki");
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let script = dir.join("kumu.py");
-    std::fs::write(&script, format!("{TEX_PY}{SUUSHIKI_YOBI}"))
-        .map_err(|e| e.to_string())?;
-    let png = dir.join("out.png");
-    let _ = std::fs::remove_file(&png);
-    // **囲いの中から officework が見えるようにする。** bwrap は /home を
-    // tmpfs にするので、.venv も PYTHONPATH の置き場も見せないと import で落ちる
-    // (calc の Python と同じ作法)。組めない機械では素の Python
-    let mut c = match pyrun::caged_python(&py, &dir, &binds_for_python(), false) {
-        Some(c) => c,
-        None => std::process::Command::new(&py),
-    };
-    c.arg(&script).arg(tex).arg(format!("{size_pt}")).arg(&png);
-    let out = c.output().map_err(|e| e.to_string())?;
-    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
-    let last = stdout.lines().last().unwrap_or("").to_string();
-    if let Some(e) = ops::Jobj::parse(&last).and_then(|o| o.str("e")) {
-        return Err(e);
-    }
-    let o = ops::Jobj::parse(&last)
-        .ok_or_else(|| ui::tf!("cannot_read_pythons_reply", last).to_string())?;
-    let (w, h) = (o.num("w").unwrap_or(0.0) as f32, o.num("h").unwrap_or(0.0) as f32);
-    if w <= 0.0 || h <= 0.0 {
-        return Err(ui::t!("no_size_came_back").to_string());
-    }
-    let bytes = std::fs::read(&png).map_err(|e| e.to_string())?;
-    Ok((bytes, w, h))
+pub(crate) fn kumu_suushiki(tex: &str, size_pt: f32, font: Option<&str>) -> Result<(Vec<u8>, f32, f32), String> {
+    let bytes = kumihan::font::for_document(font)
+        .ok()
+        .and_then(|(f, _)| kumihan::font::load(f).ok());
+    let k = kumihan::suushiki::kumu(tex, size_pt, bytes.as_deref())?;
+    Ok((k.png, k.w_mm, k.h_mm))
 }

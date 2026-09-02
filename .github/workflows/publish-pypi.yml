@@ -180,8 +180,11 @@ jobs:
           # universal2 で組んでいて、**1枚に Intel と Apple Silicon の
           # 2つが入る**ためです(2026-08-30 に実測)。中身は polars・
           # vello・PDF の3つでほとんどを占めます
+          # 2026-09-02 に数式の組版(typst)がエンジンに入り、Linux の
+          # .so が 78MB になりました。mac の universal2 はその倍近くになる
+          # ので、上限を 170MB に上げます
           size = sum(f.stat().st_size for f in ne.rglob("*") if f.is_file())
-          assert size < 120_000_000, f"荷物が大きすぎます({size/1e6:.0f}MB)"
+          assert size < 170_000_000, f"荷物が大きすぎます({size/1e6:.0f}MB)"
           print(f"荷物 {size/1e6:.1f}MB")
           PYEOF
       - uses: actions/upload-artifact@v5

@@ -6845,3 +6845,107 @@ python-manual(実測1件)、corpus(錨→基準)、corpus-docx(物差し→
 
 検査の対象はまだ docs 直下+名指しの数枚のまま。広げるなら、上の
 10件が誤検知に化けるので、除外(温度帯・mac-signing)を先に用意する。
+
+== 決め: 数式は Rust で組み、OMML も読む(2026-09-02 発注者)
+
+発注者「数式も rust にできませんか」「OMML のリーダーはないですか。xls の
+読み込みもできればいいので」「これでいきましょう」。
+
+2026-08-29 の「エンジン本体は Python に依存しない」で、数式だけが
+「ユーザーの Python の側に置いたまま。Rust だけで数式を組む道は別の検討」と
+残っていた。その検討を実際に組んで済ませた。2026-08-13 の「OMML は読まない」も
+この決めで変える。
+
+=== 組む道: typst + mitex
+
+typst(Rust の組版システム)と mitex(LaTeX の数式を typst の数式に変える
+Rust のライブラリ)を組み合わせた。作業用の小さなプログラムで、分数・総和・
+行列・場合分け・平方根・積分・極限・日本語入りの式を PNG にした。
+出来上がりは matplotlib より良く、TeX と同じ書体(New Computer Modern)になる。
+
+[cols="1,2"]
+|===
+|項目 |値
+
+|1つの式を組む時間 |5〜40 ミリ秒(Python の起動が無い)
+|実行ファイルの増分 |試作の単体で 48MB(strip 後、typst の書体を全部埋め込んだ場合)。数式の書体 1 つだけ埋め込んでアプリに入れた実測は +32.8MB(officework 83.8MB → 116.6MB)
+|mitex の typst 側の定義 |3ファイル 1,463 行(Apache-2.0)。`\sqrt` `\text{}` 行列がこれに頼るので同梱する
+|===
+
+穴は3つ。どれも対処する。
+
+. mitex は括弧の不足(`\frac{a}{`)を黙って通し、空の分母で組む。括弧の
+  釣り合いはこちらで先に確かめて断る。知らない命令はちゃんとエラーになる
+. 数式の中の日本語は、書体を明示しないと豆腐になる。typst は数式の書体を
+  show ルールで決めるので、`#show math.equation: set text(font: (数式の書体, 文書の日本語の書体))`
+  の形で渡す。文書の書体はエンジンが知っている(kumihan::font)
+. typst は版ごとに API が変わる。版を固定する
+
+=== 読む道: OMML → LaTeX
+
+Rust の easydoc-math 0.1.1(Apache-2.0。Python の markitdown の omml.py の
+移植)で、Word の形に寄せた手書きの OMML 6つを LaTeX にした。分数・2次方程式の
+解・総和・括弧つきの行列・積分は正しく出た。穴は2つ: 極限(`m:func` +
+`m:limLow`)の構造が崩れる、日本語(`m:nor`)が `\text{}` に包まれない。
+
+Microsoft が OMML から MathML への対応表を公開している(要素 20 個)ので、
+読み手はこちらで書く。骨だけなら大きくない。出た LaTeX を typst の道に流すと
+行列も日本語入りの積分も組めた。**docx と xlsx の OMML → LaTeX → 絵が Rust だけで一周する。**
+
+xlsx の数式は、Excel が図形(テキストボックス)として持ち、drawing の XML の中の
+`mc:AlternateContent` と `a14:m` に同じ OMML を入れる(MS-ODRAWXML で確認)。
+xlsx の読み手は図形の位置(xdr の anchor)を読んでいるので、その中の a14:m を
+拾えば同じ変換で LaTeX になる。
+
+試したのは手書きの OMML で、Word と Excel が実際に書いたファイルではない。
+実物で確かめる。
+
+=== Microsoft 365 の MathML Core
+
+発注者「Microsoft 365(Office)アプリの数式対応が MathML Core になっていませんか」。
+半分そのとおり。Version 2606(Windows)・16.110(Mac)から、クリップボード・
+支援技術の木・PDF/UA のタグ・ODF に MathML Core を使う。docx の中は OMML のまま。
+HTML には MathML を書かない。読み込みは MathML 3 を受ける。
+
+こちらへの効き方: 原稿の元は LaTeX のまま。HTML の出口には MathML Core を書く
+(ブラウザがそのまま組む。Office が書かない物をこちらは書ける)。絵と PDF は typst。
+
+=== 数式の道(決定)
+
+. 読む: docx と xlsx の OMML を LaTeX にして原文として持つ(Rust)
+. 組む: LaTeX を typst で絵と PDF にする(Rust)。TeX の有無で分かれていた
+  2つの道は1本になる。wheel からも数式が組める
+. 書く: docx には OMML を書く(Word で本物の数式として見える)。HTML には
+  MathML Core を書き、`data-tex` の原文も残す
+
+matplotlib はまだ使っている(グラフ・テキストアート・図形・SmartArt の4つ)。
+これらは「ユーザーの Python」の側のままで、この決めの範囲の外。
+
+=== 同時に見つかった、決めと作りのずれ
+
+「同梱の Python に polars を入れる」案を調べていて分かった。2026-08-24 に
+Python の同梱をやめたが、make-macos.sh と release.yml(Windows)はいまも
+Python を同梱し、pyrun の find_python は同梱を見ない。mac と Windows の配り物に、
+アプリが一度も使わない Python が入っている。外すか、find_python に戻すかは別の話。
+
+== 決め: df は Rust の polars で計算する(2026-09-02)
+
+発注者「df は、polars が使える式であれば何でも使えるようにしたらどうですか」。
+
+「何でも」が成り立つのは Python の polars だけだが、それは 2026-08-29 の
+「エンジンの機能の実現に Python を使わない」に反する。df は再計算の一部で
+エンジンの機能。だから Rust の polars(ピボットが既に使っている)で計算し、
+右辺は polars の書き方で書く。
+
+* `売上[金額].cum_sum()`、`売上[科目].replace_strict(科目表[番号], 科目表[名前])`、
+  `売上[単価] * 売上[数量]` の形。これを読む小さな読み手をこちらで書き、
+  polars の Expr に写す。書き方は Python の polars と同じにして、手引きの
+  「Python ではこう書く」の対応を保つ
+* 写した操作だけが使える。まず累計・条件・丸め・文字列・日付・引き当てを揃え、
+  知らない操作は「df で使えない操作です(.rolling_mean)」と名前を言って断る
+* いま断っている2つ(累計・別の表からの引き当て)は、新しい書き方を作らずに
+  `.cum_sum()` と `.replace_strict()` で解ける。手引きには例として載せる
+* Excel の関数(IF・ROUND)は df の中では使えなくなる。polars の書き方に置き替わる
+* サンドボックスも同梱の Python も要らない。wheel でも動く
+
+順番は数式の後。

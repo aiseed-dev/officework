@@ -882,29 +882,8 @@ out = meta + "\x1e" + "\x1e".join("\x1f".join(row) for row in rows)
 sys.stdout.buffer.write(out.encode("utf-8"))
 "#;
 
-/// 方程式の台本(matplotlib の mathtext)。式を清書して透過 PNG に描く。
-pub const EQ_PY: &str = r#"
-import json, sys
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-from matplotlib import font_manager
-
-spec = json.load(open(sys.argv[1], encoding="utf-8"))
-if spec.get("font"):
-    try:
-        font_manager.fontManager.addfont(spec["font"])
-        plt.rcParams["font.family"] = font_manager.FontProperties(
-            fname=spec["font"]).get_name()
-    except Exception:
-        pass
-fig = plt.figure()
-t = fig.text(0.05, 0.5, "$%s$" % spec["tex"], fontsize=20)
-fig.canvas.draw()  # 式が読めなければここで止まる(黙って白紙にしない)
-bbox = t.get_window_extent()
-fig.set_size_inches(bbox.width / fig.dpi + 0.15, bbox.height / fig.dpi + 0.15)
-plt.savefig(spec["out"], dpi=200, transparent=True)
-"#;
+// 方程式の台本(EQ_PY)は無くなった。数式はエンジン(kumihan::suushiki、
+// typst + mitex)が組む(2026-09-02)
 
 /// テキストアートの台本(matplotlib)。太字+塗り+縁取りの飾り文字を
 /// 透過 PNG に描く(色は calc の緑)。
@@ -1760,7 +1739,6 @@ pub const BUNDLED: &[(&str, &str)] = &[
     ("forecast", FORECAST_PY),
     ("solver", SOLVER_PY),
     ("csv", CSV_PY),
-    ("equation", EQ_PY),
     ("textart", TEXTART_PY),
 ];
 

@@ -19,7 +19,7 @@
 |crate |行数の目安 |受け持ち
 
 |`book` |1.2万 |**どのエンジンの持ち物でもない共通の置き場**。ブックの模型(ブック・シート・セル・値)と式の計算
-|`engine`(kumihan) |1.9万 |**adoc のエンジン**。文書の模型・組版(禁則・ルビ・字幅)・adoc と HTML の読み書き
+|`engine`(kumihan) |1.9万 |**adoc のエンジン**。文書の模型・組版(禁則・ルビ・字幅)・adoc と HTML の読み書き。数式(LaTeX → 絵)も `suushiki` がここで組む(typst + mitex。書体と mitex の定義は `engine/suushiki/` に同梱)
 |`sheet` |1.0万 |**xlsx の交換だけ**(`styles.xml` と `theme1.xml` も中)。UI 非依存
 |`ooxml` |0.7万 |**docx の交換だけ**。**原本を持ち越して、変えた所だけ書き戻す**
 |`lang` |3.5万 |言語1つぶんの差し込み(14言語の表・ふりがな・校正)。gpui を知らない

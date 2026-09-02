@@ -55,6 +55,8 @@ pub mod html;
 pub mod html_write;
 /// 雛形にデータを流し込む(帳票の芯)
 pub mod fill;
+/// 数式を組む(LaTeX → PNG)。typst + mitex
+pub mod suushiki;
 pub use edit::Editor;
 
 mod doc;

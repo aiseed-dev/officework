@@ -4733,7 +4733,7 @@ impl Calc {
                 if text.is_empty() {
                     self.status = ui::t!("formula_empty_nothing_placed").into();
                 } else {
-                    self.insert_py_image(EQ_PY, "eq", text, cx);
+                    self.insert_equation(text, cx);
                 }
             }
             "textart" => {

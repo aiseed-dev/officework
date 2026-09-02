@@ -507,8 +507,8 @@ pub struct Writer {
     /// (2026-08-31 発注者決め)。真の間は ↑↓←→ と Enter が木に効く
     fl_focus: bool,
     rb_range: std::ops::Range<usize>,
-    /// 数式のパネル(LaTeX を打つ)。**組むのは Python** — 自前で組版は
-    /// 書かない(calc がグラフを matplotlib に任せるのと同じ分業)。
+    /// 数式のパネル(LaTeX を打つ)。**組むのはエンジン(typst + mitex)**
+    /// (2026-09-02。前は Python の TeX か matplotlib でした)。
     /// 打った原文は絵と一緒に持ち越すので、開き直しても直せる
     eq_open: bool,
     eq_ed: Editor,

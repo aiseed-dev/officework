@@ -908,36 +908,31 @@ mod solver_tests {
 mod equation_tests {
     use crate::*;
 
+    /// 方程式はエンジン(kumihan::suushiki)が組む。ここは calc の側の
+    /// 確かめだけ: 組めた絵の寸法が画面の画素に写り、壊れた式は断られる
     #[test]
-    fn the_script_really_typesets_with_mathtext() {
+    fn equations_are_typeset_by_the_engine() {
+        let k = kumihan::suushiki::kumu(r"\frac{a}{b}+\sqrt{x^2+1}", 11.0, None).unwrap();
+        assert!(k.png.starts_with(&[0x89, b'P', b'N', b'G']), "PNG が出ていない");
+        let (w, h) = image_px(&k.png).expect("大きさが読めない");
+        assert!(w > 40 && h > 20, "清書が小さすぎる: {w}x{h}");
+        // 読めない式は黙って白紙にせず、ちゃんと失敗する
+        assert!(kumihan::suushiki::kumu(r"\frac{a", 11.0, None).is_err(), "壊れた式が通ってしまった");
+    }
+
+    #[test]
+    fn the_textart_script_really_draws_with_matplotlib() {
         // .venv が無い機械では黙って飛ぶ(HIKITSUGI の作法)
         let py = ["../.venv/bin/python", ".venv/bin/python"]
             .iter()
             .map(std::path::PathBuf::from)
             .find(|p| p.exists());
         let Some(py) = py else { return };
-        let dir = std::env::temp_dir().join(format!("jo-eq-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("jo-textart-test-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
-        let out = dir.join("eq.png");
-        let spec = format!(
-            "{{\"tex\":\"\\\\frac{{a}}{{b}}+\\\\sqrt{{x^2+1}}\",\"font\":\"\",\"out\":\"{}\"}}",
-            out.to_string_lossy()
-        );
-        let json_path = dir.join("eq.json");
-        let py_path = dir.join("eq.py");
-        std::fs::write(&json_path, spec).unwrap();
-        std::fs::write(&py_path, EQ_PY).unwrap();
-        let o = std::process::Command::new(&py)
-            .arg(&py_path)
-            .arg(&json_path)
-            .output()
-            .unwrap();
-        assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
-        let data = std::fs::read(&out).unwrap();
-        assert!(data.starts_with(&[0x89, b'P', b'N', b'G']), "PNG が出ていない");
-        let (w, h) = image_px(&data).expect("大きさが読めない");
-        assert!(w > 40 && h > 20, "清書が小さすぎる: {w}x{h}");
-        // テキストアートも同じ道(飾り文字が PNG になる)
+        let out = dir.join("ta.png");
+        let json_path = dir.join("ta.json");
+        let py_path = dir.join("ta.py");
         let ta = format!(
             "{{\"tex\":\"見積書\",\"font\":\"\",\"out\":\"{}\"}}",
             out.to_string_lossy()
@@ -952,19 +947,6 @@ mod equation_tests {
         assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
         let data = std::fs::read(&out).unwrap();
         assert!(data.starts_with(&[0x89, b'P', b'N', b'G']), "テキストアートが PNG でない");
-        // 読めない式は黙って白紙にせず、ちゃんと失敗する(台本を式のものに戻す)
-        std::fs::write(&py_path, EQ_PY).unwrap();
-        let bad = format!(
-            "{{\"tex\":\"\\\\frac{{a\",\"font\":\"\",\"out\":\"{}\"}}",
-            out.to_string_lossy()
-        );
-        std::fs::write(&json_path, bad).unwrap();
-        let o = std::process::Command::new(&py)
-            .arg(&py_path)
-            .arg(&json_path)
-            .output()
-            .unwrap();
-        assert!(!o.status.success(), "壊れた式が通ってしまった");
     }
 }
 

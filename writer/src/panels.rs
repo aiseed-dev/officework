@@ -1689,8 +1689,8 @@ impl Writer {
                     .child(SharedString::from(t))))
         };
 
-        // 数式のパネル(LaTeX を打つ)。**組むのは Python** — TeX があれば
-        // そちらで組み、無ければ matplotlib。打った原文は絵と一緒に残る
+        // 数式のパネル(LaTeX を打つ)。**組むのはエンジン(typst + mitex)**。
+        // 打った原文は絵と一緒に残る
         let eq_panel = if !self.eq_open {
             None
         } else {

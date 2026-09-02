@@ -210,7 +210,7 @@ Ten kinds on the Forms tab: *text, combo box, dropdown, checkbox, radio, picture
 * *Shapes*: Insert > Shapes shows the seven categories, then the shapes in the chosen category. Python (matplotlib) draws the chosen shape and pastes it as an image 60 mm wide
 * *SmartArt*: Insert > SmartArt shows the seven categories, then the layouts. Python draws the diagram from the bullet items of the selected paragraphs and pastes it as an image across the text width. Without bullet items it draws three sample items
 * *Selecting shapes*: click a shape to select it; Ctrl+click adds or removes one. Align, Group and Merge shapes on the Layout tab act on the selected shapes. With only one selected they act on every shape on that page
-* *Equations*: Insert > Equation opens a small panel — *type LaTeX and press Enter* (e.g. `\frac{a+b}{2}`). Python typesets it: with TeX installed it typesets there (matrix columns align), otherwise matplotlib. *The picture and the LaTeX source go into the docx as a pair*, so Word shows the picture and writer reopens it as an editable formula. A formula it cannot set is refused with the reason
+* *Equations*: Insert > Equation opens a small panel — *type LaTeX and press Enter* (e.g. `\frac{a+b}{2}`). The typesetter built into writer (typst) sets it; neither Python nor TeX is needed. The font is New Computer Modern Math, the same as TeX. Matrix (`\begin{pmatrix}`) and cases (`\begin{cases}`) columns align. Japanese inside a formula (`\text{売上}`) uses the document font. *The picture and the LaTeX source go into the docx as a pair*, so Word shows the picture and writer reopens it as an editable formula. A formula it cannot set is refused with the reason (an unclosed brace, an unknown command, and so on)
 * *Text box*: a 1×1 table (text inside a frame)
 * *Text from file*: inserts .txt / .md / .docx
 
@@ -442,7 +442,7 @@ The same text also goes into the document title (File > Info), so Word shows it 
 Its look comes from the template style named 表題.
 
 *Equations are typeset when the document is opened.* The text only carries the source (LaTeX).
-Typesetting is done by Python — with TeX if it is installed, otherwise matplotlib.
+Typesetting is done by the part built into writer (typst); neither Python nor TeX is needed.
 If an equation cannot be set, you are told how many failed.
 
 *What is not in the text.* Tables of contents and tables of figures are text produced when you press the button (there is no markup for them).

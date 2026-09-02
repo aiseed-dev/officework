@@ -2294,10 +2294,43 @@ fn col0(s: &str) -> PyResult<u32> {
     Ok(p.col)
 }
 
+/// **数式を組む(PNG)。** `officework.tex.to_png` の中身。返りは
+/// (PNG, 幅 mm, 高さ mm)。組めなければ ValueError(理由つき)。
+/// `font` は日本語の字に使う書体の名前(None なら機械の既定)
+#[pyfunction]
+#[pyo3(signature = (tex, size_pt = 11.0, color = None, font = None))]
+fn suushiki_png<'py>(
+    py: Python<'py>,
+    tex: &str,
+    size_pt: f32,
+    color: Option<&str>,
+    font: Option<&str>,
+) -> PyResult<(Bound<'py, pyo3::types::PyBytes>, f32, f32)> {
+    let bytes = kumihan::font::for_document(font)
+        .ok()
+        .and_then(|(f, _)| kumihan::font::load(f).ok());
+    let k = kumihan::suushiki::kumu_iro(tex, size_pt, bytes.as_deref(), color)
+        .map_err(PyValueError::new_err)?;
+    Ok((pyo3::types::PyBytes::new(py, &k.png), k.w_mm, k.h_mm))
+}
+
+/// **数式を組む(SVG)。** `officework.tex.to_svg` の中身。字は輪郭になる
+#[pyfunction]
+#[pyo3(signature = (tex, size_pt = 11.0, color = None, font = None))]
+fn suushiki_svg(tex: &str, size_pt: f32, color: Option<&str>, font: Option<&str>) -> PyResult<String> {
+    let bytes = kumihan::font::for_document(font)
+        .ok()
+        .and_then(|(f, _)| kumihan::font::load(f).ok());
+    kumihan::suushiki::kumu_svg(tex, size_pt, bytes.as_deref(), color).map_err(PyValueError::new_err)
+}
+
 #[pymodule]
 fn _sheet(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBook>()?;
     m.add_class::<PySheet>()?;
+    // 数式(typst + mitex)。tex.py が呼ぶ
+    m.add_function(wrap_pyfunction!(suushiki_png, m)?)?;
+    m.add_function(wrap_pyfunction!(suushiki_svg, m)?)?;
     // docx の束縛。**同じ .so に同居させる** — maturin が組む拡張は1つなので、
     // 副モジュールとして建て、officework/_doc.py が `officework.doc` の名前で受ける
     doc::register(m)?;

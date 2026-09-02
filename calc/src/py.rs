@@ -197,7 +197,7 @@ pub(crate) fn apply_py_results(
 }
 
 pub(crate) use pyrun::{
-    cage_work_dir, caged_python, find_python, CHART_PY, CSV_PY, EQ_PY, SOLVER_PY,
+    cage_work_dir, caged_python, find_python, CHART_PY, CSV_PY, SOLVER_PY,
     TEXTART_PY,
 };
 
@@ -2083,7 +2083,8 @@ impl Calc {
 
     /// パネルの文字を Python の台本で絵にして、画像としてシートに浮かべる。
     /// writer の方式(図は Python で描いて画像で貼る)の自動化 —
-    /// 方程式(EQ_PY)とテキストアート(TEXTART_PY)が同じ道を通る。
+    /// テキストアート(TEXTART_PY)の道。方程式は [`Self::insert_equation`]
+    /// (エンジンの typst)に移った(2026-09-02)。
     pub(crate) fn insert_py_image(
         &mut self,
         script: &'static str,
@@ -2146,16 +2147,51 @@ impl Calc {
                             data,
                         });
                         this.dirty = true;
-                        this.status = ui::tf!(
-                            "placed_image_goes_into_xlsx",
-                            // **中の語も訳を通す。** ここだけ素の字だと、
-                            // 文は訳されるのに「方程式」が日本語で残ります
-                            if name == "eq" { ui::t!("equation") } else { ui::t!("text_art") },
-                            at.a1()
-                        )
-                        .into();
+                        // **中の語も訳を通す。** ここだけ元の字だと、
+                        // 文は訳されるのに「テキストアート」が日本語で残ります
+                        let _ = name;
+                        this.status = ui::tf!("placed_image_goes_into_xlsx", ui::t!("text_art"), at.a1()).into();
                     }
                     Err(e) => this.status = e.into(),
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    /// **方程式を組んで、画像としてシートに浮かべる。** 組むのはエンジン
+    /// (kumihan::suushiki、typst + mitex)で、Python は使わない(2026-09-02)。
+    /// 組めなければ理由を状態行に出す
+    pub(crate) fn insert_equation(&mut self, tex: String, cx: &mut Context<Self>) {
+        let at = self.cursor;
+        self.status = ui::t!("typesetting").into();
+        let task = cx.background_executor().spawn(async move {
+            let font = kumihan::font::for_document(None)
+                .ok()
+                .and_then(|(f, _)| kumihan::font::load(f).ok());
+            kumihan::suushiki::kumu(&tex, 11.0, font.as_deref())
+        });
+        cx.spawn(async move |this, cx| {
+            let r = task.await;
+            let _ = this.update(cx, |this, cx| {
+                match r {
+                    Ok(k) => {
+                        this.checkpoint();
+                        // 画面の画素は 1 インチ 100 画素で置く(テキストアートと同じ)
+                        let px = |mm: f32| mm / 25.4 * 100.0;
+                        this.sheet_mut().images_new.push(book::SheetImage {
+                            at,
+                            dx_px: 0.0,
+                            dy_px: 0.0,
+                            width_px: px(k.w_mm),
+                            height_px: px(k.h_mm),
+                            data: k.png,
+                        });
+                        this.dirty = true;
+                        this.status = ui::tf!("placed_image_goes_into_xlsx", ui::t!("equation"), at.a1()).into();
+                    }
+                    Err(e) => this.status = ui::tf!("cannot_typeset_equation", e).into(),
                 }
                 cx.notify();
             });

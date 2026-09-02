@@ -731,19 +731,30 @@ docx の雛形に jinja2 を使いたいときは、`docxtpl` がそのまま使
 == 数式を組む(officework.tex)
 
 数式は *LaTeX で受けて絵に組む*。
-組版は自前で書かず、TeX(pdflatex)があればそちらで、無ければ matplotlib の mathtext で組む。
-**要るのは matplotlib だけ**で、TeX はあれば品質が上がる(行列の列まで揃う)。
+組むのは officework の中の組版の部品(typst)で、**Python の側には何も要りません**。
+TeX も matplotlib も使いません。書体は TeX と同じ New Computer Modern Math で、行列の列も揃います。
 
 [source,python]
 ----
 from officework import tex
-tex.kumi_kata()                       # "tex" | "mathtext" | None(今なにで組めるか)
+tex.kumi_kata()                       # "typst"(何で組むか。いまはこれだけ)
 svg = tex.to_svg(r"\frac{a+b}{2}")    # bytes。字は輪郭になるので書体不要
 png, w_mm, h_mm = tex.to_png(r"\sqrt{x^2+y^2}", size_pt=11)  # 文書に入れるのはこちら
 ----
 
-* 組めない式は *`tex.Muri` で断ります。* 理由も付きます。黙って空の絵を返しません
-* mathtext は LaTeX の**部分集合**。`\begin{matrix}` 系は `\substack` に寄せて組みます。*列は揃いません。* TeX があれば揃います
+`to_png` と `to_svg` の引数は同じです。
+
+[cols="1,3"]
+|===
+|引数 |意味
+
+|`size_pt` |文書の字の大きさ(pt)。絵はその大きさで組んだ自然な寸法になります。省略すると 11
+|`color` |字の色。`"#1B6E3C"` のような 6 桁です。省略すると黒。読めない書き方は黒で組みます
+|`font` |数式の中の日本語(`\text{売上}`)に使う書体の名前。省略すると機械の既定の書体です
+|===
+
+* 組めない式は *`tex.Muri` で断ります。* 理由も付きます(「括弧 { が 1 つ閉じていません」「unknown command: \foo」など)。黙って空の絵を返しません
+* 使える書き方は LaTeX の数式(amsmath の環境を含みます)。`\frac` `\sqrt` `\sum` `\int` `\lim` `\begin{pmatrix}` `\begin{cases}` `\text{}` が通ります
 * SymPy から起こす `from_sympy()` もあるが、*式は書き直される*(`(a+b)/2` → `a/2 + b/2`)。書いたとおりの見た目が要るなら LaTeX を直に
 * writer で数式を挿すと(挿入 > 方程式)、絵と LaTeX の原文が二枚組で docx に入ります。渡した先の Word では絵として見え、officework では式として直せます
 

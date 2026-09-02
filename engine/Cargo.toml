@@ -10,6 +10,19 @@ book = { path = "../book" }
 hyphenation = { version = "0.8", features = ["embed_en-us"] }
 toml_edit = { version = "0.25.13", default-features = false, features = ["parse"] }
 ttf-parser = "0.20"
+# **数式を組む係**(2026-09-02 発注者「数式も rust に」)。LaTeX を mitex で
+# typst の数式に変え、typst が組んで PNG にします。Python(TeX/matplotlib)は
+# 使いません。版は固定します(typst は版ごとに API が変わります)
+typst = { version = "=0.15.1", optional = true }
+typst-render = { version = "=0.15.1", optional = true }
+typst-layout = { version = "=0.15.1", optional = true }
+typst-svg = { version = "=0.15.1", optional = true }
+mitex = { version = "0.2.4", optional = true }
+
+[features]
+default = ["suushiki"]
+# 数式を組む。外すと `suushiki::kumu` は「部品が入っていない」と断ります
+suushiki = ["dep:typst", "dep:typst-render", "dep:typst-layout", "dep:typst-svg", "dep:mitex"]
 
 [dev-dependencies]
 printpdf = "0.7"    # 検証用のPDF印字(examples)。エンジン本体は依存しない

@@ -1343,8 +1343,8 @@ impl Writer {
         };
     }
 
-    /// 数式のパネルの Enter。**組むのは Python** — 打った LaTeX を渡して
-    /// 絵をもらい、カーソルの段落に置く。原文も一緒に持たせるので、
+    /// 数式のパネルの Enter。**組むのはエンジン(typst)** — 打った LaTeX を
+    /// 渡して絵をもらい、カーソルの段落に置く。原文も一緒に持たせるので、
     /// 開き直しても直せる(絵だけだと消して打ち直しになる)
     pub(crate) fn eq_commit(&mut self) {
         self.eq_open = false;
@@ -1354,7 +1354,7 @@ impl Writer {
             return;
         }
         let size = self.doc.size_pt.unwrap_or(SIZE_PT);
-        match crate::py::kumu_suushiki(&tex, size) {
+        match crate::py::kumu_suushiki(&tex, size, self.doc.font.as_deref()) {
             Ok((bytes, w_mm, h_mm)) => {
                 self.checkpoint(false);
                 let im = kumihan::InlineImage {
@@ -2342,19 +2342,20 @@ impl Writer {
 
     /// 本文の中の数式(LaTeX の原文だけを持つ画像)を組みます。返りは組めなかった数。
     ///
-    /// 組むのは Python(TeX か matplotlib)です。**画面に出すためだけ**なので、
+    /// 組むのはエンジン(typst)です。**画面に出すためだけ**なので、
     /// 文書が汚れた印は立てません — 保存で本文に入るのは原文の側です。
     pub(crate) fn render_formulas(&mut self) -> usize {
         let size = self.doc.size_pt.unwrap_or(kumihan::DEFAULT_PT);
         let mut cannot_typeset = 0usize;
         let mut laid_out = false;
+        let font = self.doc.font.clone();
         for p in self.doc.paragraphs_mut() {
             for im in p.images_new.iter_mut().chain(p.images.iter_mut()) {
                 let Some(tex) = im.tex.clone() else { continue };
                 if !im.bytes.is_empty() {
                     continue;
                 }
-                match crate::py::kumu_suushiki(&tex, size) {
+                match crate::py::kumu_suushiki(&tex, size, font.as_deref()) {
                     Ok((bytes, w_mm, h_mm)) => {
                         im.bytes = std::sync::Arc::new(bytes);
                         im.w_mm = w_mm;
