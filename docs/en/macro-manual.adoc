@@ -29,6 +29,7 @@ To become a ribbon button, a file declares itself at the top:
 ----
 
 The button appears after the built-in buttons on the declared tab (the order never changes day to day).
+The tab can be named in English (`"Macros"`) or in the language shown on screen (`"マクロ"`).
 Files written with the previous key names still load.
 
 == Spreadsheet macros — routine work on the selection

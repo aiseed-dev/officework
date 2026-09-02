@@ -521,7 +521,7 @@ impl Render for Calc {
         let items: Vec<&ribbon::Cmd> = ribbon::calc_tabs()[self.tab]
             .cmds
             .iter()
-            .chain(ribbon::user_cmds_for(ribbon::CALC[self.tab].name))
+            .chain(ribbon::user_cmds_for(ribbon::App::Calc, self.tab))
             .collect();
         let items = &items[..];
         // 今のセルの書体と大きさ(ホームの欄に出す — 本家はコンボボックスで

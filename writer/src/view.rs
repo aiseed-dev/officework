@@ -556,7 +556,7 @@ impl Render for Writer {
             //
             // **組み込みの後ろ**に置きます — 並びが日によって変わらないよう、
             // 置き場の物は必ず後ろです
-            let user = ribbon::user_cmds_for(ribbon::WRITER[self.tab].name);
+            let user = ribbon::user_cmds_for(ribbon::App::Writer, self.tab);
             if !user.is_empty() {
                 let mut row = div().flex().flex_row().flex_wrap().gap_1().items_center().py_1();
                 for cmd in user {

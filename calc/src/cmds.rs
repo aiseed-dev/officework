@@ -4485,7 +4485,7 @@ impl Calc {
             }
             "f-html" => self.export_html_dialog(cx),
             "f-macro" => {
-                if let Some(i) = ribbon::CALC.iter().position(|t| t.name == "macros") {
+                if let Some(i) = ribbon::CALC.iter().position(|t| t.name == "Macros") {
                     self.prev_tab = i;
                     self.tab = i;
                 }

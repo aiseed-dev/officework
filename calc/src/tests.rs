@@ -3645,6 +3645,19 @@ mod recalc_tests {
         });
     }
 
+    /// **「マクロ」はマクロタブへ移る。** 段名は骨組み(ribbon::CALC)の
+    /// 英語で引く。小文字の "macros" で探していて移らなかった
+    /// (2026-09-02 の突き合わせで発見)
+    #[gpui::test]
+    fn macros_in_the_file_page_jumps_to_the_macros_tab(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.tab = 0;
+            this.file_menu_click("f-macro", cx);
+            assert_eq!(ui::ribbon::CALC[this.tab].name, "Macros", "マクロタブへ移らない");
+        });
+    }
+
     /// **ウィンドウの分割**(2026-08-21 の D群)。
     ///
     /// 固定と同時には立ちません。帯が二重になって、どちらの線か分からなく

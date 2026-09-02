@@ -3164,6 +3164,20 @@ mod file_menu_tests {
         });
     }
 
+    /// **「保護する」は保護タブへ移る。** 文章の側はファイルのページに保護の
+    /// 面を持たないので、リボンの保護タブへ飛ぶのが約束(ui::filemenu)。
+    /// 2026-08-26 に骨組みの段名が英語になった後も「保護」で探していて、
+    /// 押しても何も起きなかった(2026-09-02 の突き合わせで発見)
+    #[gpui::test]
+    fn protect_in_the_file_page_jumps_to_the_protection_tab(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.tab = 0;
+            this.file_menu_click("f-protect", cx);
+            assert_eq!(ui::ribbon::WRITER[this.tab].name, "Protection", "保護タブへ移らない");
+        });
+    }
+
     #[gpui::test]
     fn the_item_for_the_visible_pane_is_marked(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));

@@ -189,10 +189,40 @@ pub fn user_btns() -> &'static [UserBtn] {
     USER.read().ok().and_then(|g| g.as_ref().map(|(_, c)| *c)).unwrap_or(&[])
 }
 
-/// その段に出る利用者のボタン。段は**ja の段名**で照合する — 表の内部の
-/// 照合が ja なのと同じ(添字も名前も言語で動かない)
-pub fn user_cmds_for(tab_ja: &str) -> Vec<&'static Cmd> {
-    user_btns().iter().filter(|b| b.tab == tab_ja).map(|b| &b.cmd).collect()
+/// その段(`skeleton[i]`)に出る利用者のボタン。
+///
+/// マクロの宣言の「タブ」は、骨組みの英語の段名("Macros")・日本語の
+/// 段名("マクロ")・いまの言語の段名のどれで書いてあっても通す。
+/// 2026-08-26 に骨組みの段名が英語になった後も日本語で照合していたので、
+/// 手引きどおり `"タブ": "マクロ"` と書いたボタンが1つも出ていなかった
+/// (2026-09-02 の突き合わせで発見)。
+pub fn user_cmds_for(app: App, i: usize) -> Vec<&'static Cmd> {
+    let names = tab_aliases(app, i);
+    user_btns().iter().filter(|b| names.contains(&b.tab)).map(|b| &b.cmd).collect()
+}
+
+/// どちらの骨組みか(`WRITER` と `CALC` は const なので、番地では見分けられない)
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum App {
+    Writer,
+    Calc,
+}
+
+/// その段を指す名前の一覧: 骨組みの英語・日本語・いまの言語
+pub fn tab_aliases(app: App, i: usize) -> Vec<&'static str> {
+    let side = move |pair: (&'static [Tab], &'static [Tab])| -> &'static [Tab] {
+        if app == App::Writer { pair.0 } else { pair.1 }
+    };
+    let skeleton = if app == App::Writer { WRITER } else { CALC };
+    let mut names = vec![skeleton[i].name];
+    for lang in ["ja", crate::settings::language()] {
+        if let Some(t) = crate::ribbon_tables::tabs(lang).map(side).and_then(|t| t.get(i)) {
+            if !names.contains(&t.name) {
+                names.push(t.name);
+            }
+        }
+    }
+    names
 }
 
 /// 置き場の姿が変わっていればボタンを作り直す。返りは作り直したか。
@@ -768,6 +798,21 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    #[test]
+    fn a_macro_declared_for_the_japanese_tab_name_lands_on_the_macros_tab() {
+        // 手引き(macro-manual)の例は `"タブ": "マクロ"`、pyrun の既定も
+        // 「マクロ」。骨組みの段名は英語なので、英語と日本語の両方で
+        // その段を引けなければ、利用者のボタンはどの段にも出ない
+        for (app, tabs) in [(App::Writer, WRITER), (App::Calc, CALC)] {
+            let i = tabs.iter().position(|t| t.name == "Macros").expect("Macros");
+            let names = tab_aliases(app, i);
+            assert!(names.contains(&"Macros"), "英語の段名で引けない: {names:?}");
+            assert!(names.contains(&"マクロ"), "日本語の段名で引けない: {names:?}");
+            let home = tabs.iter().position(|t| t.name == "Home").expect("Home");
+            assert!(!tab_aliases(app, home).contains(&"マクロ"), "別の段に出てしまう");
         }
     }
 
