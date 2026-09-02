@@ -1,0 +1,229 @@
+= Learn by example: building a spreadsheet from Python
+
+_日本語版(secondary): link:../ja/tutorial-calc.adoc[tutorial-calc.adoc]_
+
+Type the code and it runs. The code on this page is the same code as the
+acceptance tests under test/, so *if it stops working, a test notices
+before you do*.
+
+Writing against officework feels the same as writing against openpyxl.
+The only difference is the import line. And there is one thing openpyxl
+cannot do that this can: *it calculates the formulas.*
+
+[source,python]
+----
+import openpyxl                  # openpyxl (formulas are not calculated)
+wb = openpyxl.Workbook()
+
+from officework import sheet     # officework (formulas are calculated)
+wb = sheet.Book()
+----
+
+== Part 1: let it work out a quotation
+
+Put values and formulas in cells, have them calculated, and save as xlsx.
+
+[source,python]
+----
+from officework import sheet
+
+wb = sheet.Book()
+ws = wb[0]
+ws.title = "Quotation"
+
+for j, label in enumerate(["Item", "Qty", "Price", "Amount"], start=1):
+    ws.cell(1, j).value = label
+
+# The detail lines. Amount is a formula
+items = [("Pen", 5, 100), ("Notebook", 3, 150), ("Eraser", 10, 80)]
+for i, (name, qty, price) in enumerate(items, start=2):
+    ws.cell(i, 1).value = name
+    ws.cell(i, 2).value = qty
+    c = ws.cell(i, 3)
+    c.value = price
+    c.number_format = "#,##0"
+    ws.cell(i, 4).value = f"=B{i}*C{i}"
+
+ws.cell(6, 3).value = "Subtotal"
+ws.cell(6, 4).value = "=SUM(D2:D4)"
+ws.cell(7, 3).value = "With tax"
+c = ws.cell(7, 4)
+c.value = "=ROUND(D6*1.1, 0)"                 # round money
+c.number_format = '"¥"#,##0'
+
+wb.recalc()                                   # this is what openpyxl cannot do
+print("with tax:", ws.cell(7, 4).value)       # -> 1925
+
+wb.save("quotation.xlsx")
+----
+
+The saved quotation.xlsx holds *both the formulas and the calculated
+values*. Open it in Excel and the formulas are live; read it with
+`load_workbook("quotation.xlsx", data_only=True)` and you get the values.
+openpyxl cannot calculate on its own, so this pairing is what gets you
+the numbers.
+
+=== Three things to remember
+
+. *A cell is `ws.cell(row, col)`, and both values and formulas go in
+  `.value`.* A formula starts with `=`, as in `"=B2*C2"`
+. *`wb.recalc()` does the calculating.* Call it again after you replace a
+  formula
+. *Number formats are `.number_format`.* `"#,##0"` for thousands
+  separators, `'"¥"#,##0'` for a currency mark. *Use `"@"` (text) for
+  phone numbers and part numbers* so a leading zero survives
+
+=== Where people trip
+
+* Reading `.value` straight after entering a formula gives you the state
+  before calculation. Call `wb.recalc()` first
+* Inserting a row updates the formulas by itself. `=SUM(D2:D4)` shifts by
+  however many you inserted; you do not rewrite it
+* Multiplying decimals can leave a small error at the end
+  (`1750*1.1` gives `1925.0000000000002`). *Round money with
+  `ROUND(formula, 0)`.* It is also the clerical habit, and it stops a
+  figure that only looks rounded from drifting underneath
+
+== Part 2: formatting, so it becomes a form you can hand over
+
+Take Part 1's quotation and give it a title, borders and colour, so it is
+paper you can pass to someone. The formatting objects (Font, Border,
+PatternFill, Alignment) have the same names and the same shape as
+openpyxl's.
+
+[source,python]
+----
+from officework import sheet
+from officework.sheet import Font, Border, Side, PatternFill, Alignment
+
+wb = sheet.Book()
+ws = wb[0]
+ws.title = "Quotation"
+
+for col, w in zip("ABCD", (16, 8, 10, 12)):
+    ws.column_dimensions[col].width = w
+
+# Title: merge three columns, large and centred
+ws.merge_cells("A1:D1")
+c = ws.cell(1, 1)
+c.value = "QUOTATION"
+c.font = Font(size=16, bold=True)
+c.alignment = Alignment(horizontal="center")
+
+# Header row: filled, bold reversed out, bordered
+box = Border(top=Side(style="thin"), bottom=Side(style="thin"),
+             left=Side(style="thin"), right=Side(style="thin"))
+for j, label in enumerate(["Item", "Qty", "Price", "Amount"], start=1):
+    c = ws.cell(3, j)
+    c.value = label
+    c.font = Font(bold=True, color="FFFFFF")
+    c.fill = PatternFill("solid", fgColor="1B6E3C")
+    c.alignment = Alignment(horizontal="center")
+    c.border = box
+
+# Detail lines: numbers to the right, boxed
+items = [("Pen", 5, 100), ("Notebook", 3, 150), ("Eraser", 10, 80)]
+for i, (name, qty, price) in enumerate(items, start=4):
+    ws.cell(i, 1).value = name
+    ws.cell(i, 2).value = qty
+    c = ws.cell(i, 3)
+    c.value = price
+    c.number_format = "#,##0"
+    c = ws.cell(i, 4)
+    c.value = f"=B{i}*C{i}"
+    c.number_format = "#,##0"
+    for j in range(1, 5):
+        ws.cell(i, j).border = box
+
+ws.cell(8, 3).value = "With tax"
+c = ws.cell(8, 4)
+c.value = "=ROUND(SUM(D4:D6)*1.1, 0)"
+c.number_format = '"¥"#,##0'
+c.font = Font(bold=True)
+c.border = Border(bottom=Side(style="double"))   # a double rule to close
+
+wb.recalc()
+wb.save("quotation2.xlsx")
+----
+
+=== Three things to remember
+
+. *Formatting means putting an object on the cell.* `c.font = Font(...)`,
+  `c.fill = PatternFill("solid", fgColor="1B6E3C")`,
+  `c.border = Border(...)`. The same as openpyxl
+. *Merging is `merge_cells("A1:D1")`.* The value and the formatting go on
+  the top-left cell
+. *Borders are per edge.* `Border(top=…, bottom=…)` combined with
+  `Side(style=…)`. Styles include thin, medium, thick, double and dashed
+
+=== Where people trip
+
+* Colours are six hex digits, `"1B6E3C"`, with no `#`
+* Writing into a cell inside a merged range shows nothing. Write into the
+  top-left cell
+
+== Part 3: data validation, stopping a typo at the door
+
+The commonest way a ledger goes bad is a typo. Decide what a cell is
+allowed to hold and the mistake is stopped before it lands.
+
+[source,python]
+----
+from officework import sheet
+from officework.sheet import DataValidation
+
+wb = sheet.Book()
+ws = wb[0]
+ws.title = "Intake"
+
+for j, label in enumerate(["Date", "Kind", "Qty"], start=1):
+    ws.cell(1, j).value = label
+
+# Kind is picked from a list
+kinds = DataValidation(type="list", formula1='"Quote,Order,Delivery,Invoice"',
+                       allow_blank=True)
+kinds.promptTitle = "Kind"
+kinds.prompt = "Pick from the list"
+kinds.errorTitle = "That is not a kind"
+kinds.error = "Use one of Quote, Order, Delivery or Invoice"
+kinds.add("B2:B100")
+ws.add_data_validation(kinds)
+
+# Qty is a whole number from 1 to 999
+qty = DataValidation(type="whole", operator="between",
+                     formula1="1", formula2="999")
+qty.errorTitle = "That is not a quantity"
+qty.error = "Enter a whole number from 1 to 999"
+qty.add("C2:C100")
+ws.add_data_validation(qty)
+
+wb.save("intake.xlsx")
+----
+
+Open the intake.xlsx it produces and column B has a dropdown, while
+typing 0 or 1000 into column C is refused with the wording you chose. It
+behaves the same in Excel and in this app.
+
+=== Three things to remember
+
+. *Make the rule, attach it to a range, then put it on the sheet.*
+  `DataValidation(…)` then `add("B2:B100")` then
+  `ws.add_data_validation(…)`. *Set the range before you add it* — the
+  other order is refused
+. *A list is `type="list"`.* Pass the choices as
+  `'"Quote,Order,Delivery,Invoice"'`, one string with the whole thing
+  quoted inside
+. *The wording at the door is part of the rule.* `prompt` is the guidance
+  before choosing, `error` the message when refusing. A form that says
+  why it refused is easier to use for that alone
+
+=== Where people trip
+
+* In `formula1='"Quote,Order"'` *both the outer `'` and the inner `"` are
+  needed*. Without the inner quotes it is read as the name of a range
+* A rule applies to values entered from now on. Values already there are
+  left alone, the same as Excel
+
+== Parts still to come
+
+. Part 4: a ledger of dates and times, building an attendance record

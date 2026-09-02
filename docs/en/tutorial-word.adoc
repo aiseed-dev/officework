@@ -1,0 +1,127 @@
+= Learn by example: making a Word document from Python
+
+_日本語版(secondary): link:../ja/tutorial-word.adoc[tutorial-word.adoc]_
+
+Type the code and it runs. The code on this page is the same code as the
+acceptance tests under test/, so *if it stops working, a test notices
+before you do*.
+
+Writing against officework feels the same as writing against python-docx.
+The only difference is the import line:
+
+[source,python]
+----
+import docx                      # with python-docx
+d = docx.Document()
+
+from officework import doc       # with officework
+d = doc.Doc()
+----
+
+The code below runs the same way under either one. test/same_code_docx.py
+confirms that on every run.
+
+== Part 1: one notice
+
+The most basic shape a clerical document takes: date, addressee, title,
+body, the itemised part, and the closing word.
+
+[source,python]
+----
+from officework import doc
+
+d = doc.Doc()
+
+p = d.add_paragraph("26 August 2026")
+p.alignment = "right"
+
+d.add_paragraph("To all members")
+
+h = d.add_heading("Notice of the regular meeting", level=1)
+h.alignment = "center"
+
+p = d.add_paragraph("The regular meeting will be held as follows.")
+r = p.add_run("Please reply by Friday 5 September.")
+r.bold = True
+r.underline = True
+
+t = d.add_table(rows=3, cols=2)
+rows = [("When", "Saturday 12 September, 14:00-16:00"),
+        ("Where", "Industrial Technology Centre, 2F meeting room"),
+        ("Agenda", "Introducing the new tools, with a demonstration")]
+for i, (k, v) in enumerate(rows):
+    t.cell(i, 0).text = k
+    t.cell(i, 1).text = v
+
+p = d.add_paragraph("End")
+p.alignment = "right"
+
+d.save("notice.docx")
+----
+
+The notice.docx it produces opens in Word, in Euro-Office, and in this app.
+
+=== Three things to remember
+
+. *Add a paragraph, then say how it is aligned.* `add_paragraph(text)`
+  and `alignment = "right" / "center"`. python-docx's constants
+  (`WD_ALIGN_PARAGRAPH.CENTER`) work too
+. *Character formatting belongs to a run.* To bold part of a paragraph,
+  `add_run(text)` first, then `bold = True`
+. *A table is made by rows and columns, then filled cell by cell.*
+  `add_table(rows, cols)` and `cell(row, col).text`
+
+=== Where people trip
+
+* To bold a whole paragraph, make an empty one with `d.add_paragraph()`
+  and format the `add_run(text)`. Text passed to `add_paragraph(text)`
+  becomes the first run, so `p.runs[0].bold = True` does the same thing
+* If the saved document will not open, check the folder exists. It cannot
+  save into a folder that is not there
+
+== Part 2: pictures and tables
+
+A circular or an announcement needs a photograph and a tidy table.
+
+[source,python]
+----
+from officework import doc
+
+d = doc.Doc()
+d.add_heading("About the new sign", level=1)
+
+d.add_paragraph("The shopfront sign has been replaced.")
+d.add_picture("sign.png", width=doc.Mm(60))   # width in mm; height follows
+
+d.add_paragraph("The size and the cost are as follows.")
+t = d.add_table(rows=3, cols=2)
+t.style = "Table Grid"
+for i, (k, v) in enumerate([("Width", "1,800 mm"),
+                            ("Height", "600 mm"),
+                            ("Cost", "86,000 yen")]):
+    t.cell(i, 0).text = k
+    t.cell(i, 1).text = v
+
+d.save("sign-notice.docx")
+----
+
+=== Three things to remember
+
+. *A picture is `add_picture(path, width=Mm(n))`.* Give the width and the
+  height follows the original proportions
+. *Table borders come from `style = "Table Grid"`.* That draws the grid.
+  Say nothing and the table has no lines
+. *Paper and margins belong to the section.* Write
+  `d.sections[0].page_width = doc.Mm(210)` in mm. `d.add_section()` adds
+  a section, so the paper can change partway through
+
+=== Where people trip
+
+* If the image file is not found it stops there and says so. It does not
+  quietly leave an empty frame
+
+== Parts still to come
+
+. Part 3: tidying with styles, deciding the typeface and size in one place
+. Part 4: a form with named fields, filled from a macro
+. Part 5: a mail-merge template, producing many documents from one

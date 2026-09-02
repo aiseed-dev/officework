@@ -35,14 +35,15 @@ Pick a booklet by what you want to do.
 |link:docx-xlsx-tono-chigai.adoc[How this differs from docx and xlsx]
 |See what is the same as Word and Excel and what is not, on one page
 
+|link:tutorial-word.adoc[Learn by example: Word documents] and link:tutorial-calc.adoc[spreadsheets]
+|Learn by typing the code. Everything on the page runs as written
+
 |link:../../templates/README.md[Templates] and link:../../sample/README.md[Samples]
 |Learn by opening the real thing
 |===
 
 Booklets that exist in both languages are written in English first.
 
-Three are in Japanese only for now: the command manual
-(link:../ja/commands/README.adoc[コマンドの手引き], one page per button),
-the button-to-API table (link:../ja/api-taiou.adoc[対応表]), and the two
-worked tutorials (link:../ja/tutorial-word.adoc[Word documents] and
-link:../ja/tutorial-calc.adoc[spreadsheets]).
+Two are in Japanese only for now: the command manual
+(link:../ja/commands/README.adoc[コマンドの手引き], one page per button)
+and the button-to-API table (link:../ja/api-taiou.adoc[対応表]).

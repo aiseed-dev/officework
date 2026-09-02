@@ -35,7 +35,7 @@ _元は英語版(link:../en/README.adoc[README.adoc])です。こちらは日本
 |link:from-excel.adoc[Excel から](link:../en/from-excel.adoc[English])
 |Excel でやっていたことを、ここでどうやるか
 
-|link:tutorial-word.adoc[実例で覚える(Word 文書)]・link:tutorial-calc.adoc[実例で覚える(表計算)]
+|link:tutorial-word.adoc[実例で覚える(Word 文書)](link:../en/tutorial-word.adoc[English])・link:tutorial-calc.adoc[実例で覚える(表計算)](link:../en/tutorial-calc.adoc[English])
 |コードを打ちながら覚える。頁のコードはそのまま動く
 
 |link:docx-xlsx-tono-chigai.adoc[Word / Excel との違い](link:../en/docx-xlsx-tono-chigai.adoc[English])
@@ -50,5 +50,4 @@ _元は英語版(link:../en/README.adoc[README.adoc])です。こちらは日本
 
 英語版のある冊子は、英語版が原文です。
 
-English の付いていない3つは日本語だけです。コマンドの手引き・対応表・
-実例で覚える2冊です。
+English の付いていない2つは日本語だけです。コマンドの手引きと対応表です。
