@@ -1,137 +1,780 @@
 {
- "en": {
-  "YEN": {"a": "(number; [decimals])", "d": "Formats a number as text with the yen sign (¥) and thousands separators", "ad": "is the number you want to format!is the number of digits to the right of the decimal point; the default is 2"},
-  "JIS": {"a": "(text)", "d": "Converts half-width (single-byte) characters in a string to full-width (double-byte) characters", "ad": "is the text you want to convert, or a reference to a cell containing it"},
-  "DATESTRING": {"a": "(serial_number)", "d": "Returns a date as text in the Japanese imperial era calendar", "ad": "is the date you want to convert, given as a serial number or a reference to a cell containing a date"},
-  "PHONETIC": {"a": "(range)", "d": "Returns the furigana (phonetic reading) held in the cells, taken from the reading information stored in the xlsx that was opened", "ad": "is the range of cells whose furigana you want"},
-  "VALUETOTEXT": {"a": "(value, [format])", "d": "Returns text from any specified value", "ad": "is the value to return as text!is the format of the returned data: concise = 0 or omitted; strict (text in double quotes) = 1"},
-  "ARRAYTOTEXT": {"a": "(array, [format])", "d": "Returns a text representation of the values in the specified range", "ad": "is the array to return as text!is the format of the returned data: concise = 0 or omitted; strict (text in double quotes) = 1"},
-  "BINOM.DIST.RANGE": {"a": "(trials, probability_s, number_s, [number_s2])", "d": "Returns the probability of a trial result using a binomial distribution", "ad": "is the number of independent trials!is the probability of success on each trial!is the number of successes in trials!if provided, returns the probability that the number of successful trials will fall between number_s and number_s2"}
- },
- "de": {
-  "YEN": {"a": "(Zahl; [Dezimalstellen])", "d": "Formatiert eine Zahl als Text mit dem Yen-Zeichen (¥) und Tausendertrennzeichen", "ad": "ist die Zahl, die Sie formatieren möchten!ist die Anzahl der Ziffern rechts vom Dezimalkomma. Wenn der Parameter fehlt, werden 2 Dezimalstellen zurückgegeben"},
-  "JIS": {"a": "(Text)", "d": "Für Sprachen mit einem Double-Byte-Zeichensatz (DBCS) werden in dieser Funktion Zeichen halber Breite (Single-Byte-Zeichen) in Zeichen normaler Breite (Double-Byte-Zeichen) umgewandelt", "ad": "ist der Text, den Sie ändern möchten, oder ein Bezug auf eine Zelle, die ihn enthält"},
-  "DATESTRING": {"a": "(Zahl)", "d": "Gibt ein Datum als Text in der japanischen Ära-Zeitrechnung zurück (Reiwa, Heisei und frühere Ären)", "ad": "ist der Code für Datum und Zeit, den Spreadsheet Editor für Datums- und Zeitberechnungen verwendet"},
-  "PHONETIC": {"a": "(Bereich)", "d": "Gibt die in den Zellen gespeicherten Furigana (Lesehilfe in Kana) zurück, die aus den Leseinformationen der geöffneten xlsx-Datei stammen", "ad": "ist der Zellbereich, dessen Furigana Sie ermitteln möchten"},
-  "VALUETOTEXT": {"a": "(Wert, [Format])", "d": "Gibt einen beliebigen angegebenen Wert als Text zurück", "ad": "ist der Wert, der als Text zurückgegeben werden soll!ist das Format der zurückgegebenen Daten: kompakt = 0 oder nicht angegeben; streng (Text in Anführungszeichen) = 1"},
-  "ARRAYTOTEXT": {"a": "(Matrix, [Format])", "d": "Gibt die Werte des angegebenen Bereichs als Text zurück", "ad": "ist die Matrix, die als Text zurückgegeben werden soll!ist das Format der zurückgegebenen Daten: kompakt = 0 oder nicht angegeben; streng (Text in Anführungszeichen) = 1"},
-  "BINOM.DIST.RANGE": {"a": "(Versuche, Erfolgswahrsch, Erfolge, [Erfolge2])", "d": "Gibt die Wahrscheinlichkeit eines Versuchsergebnisses als Binomialverteilung zurück", "ad": "ist die Anzahl der unabhängigen Versuche!ist die Erfolgswahrscheinlichkeit je Versuch!ist die Anzahl der Erfolge in den Versuchen!falls angegeben, wird die Wahrscheinlichkeit zurückgegeben, dass die Anzahl der Erfolge zwischen Erfolge und Erfolge2 liegt"}
- },
- "es": {
-  "YEN": {"a": "(número; [núm_de_decimales])", "d": "Convierte un número en texto con el símbolo del yen (¥) y separadores de millares", "ad": "es el número al que se desea dar formato!es el número de dígitos a la derecha del separador decimal. Si se omite se establecerá: Decimales = 2"},
-  "JIS": {"a": "(texto)", "d": "Para los idiomas que empleen juegos de caracteres de dos bytes (DBCS), convierte los caracteres de ancho medio (de un byte) en caracteres de ancho completo (de dos bytes)", "ad": "es el texto que se desea convertir, o una referencia a una celda que lo contiene"},
-  "DATESTRING": {"a": "(núm_de_serie)", "d": "Devuelve una fecha como texto en el calendario japonés de eras imperiales (Reiwa, Heisei y anteriores)", "ad": "es un número en el código de fecha y hora usado por Spreadsheet Editor"},
-  "PHONETIC": {"a": "(rango)", "d": "Devuelve el furigana (lectura fonética en kana) guardado en las celdas, tomado de la información de lectura del archivo xlsx abierto", "ad": "es el rango de celdas cuyo furigana se desea obtener"},
-  "VALUETOTEXT": {"a": "(valor, [formato])", "d": "Devuelve texto a partir de cualquier valor especificado", "ad": "es el valor que se devolverá como texto!es el formato de los datos devueltos: conciso = 0 u omitido; estricto (texto entre comillas) = 1"},
-  "ARRAYTOTEXT": {"a": "(matriz, [formato])", "d": "Devuelve una representación de texto de los valores del rango especificado", "ad": "es la matriz que se devolverá como texto!es el formato de los datos devueltos: conciso = 0 u omitido; estricto (texto entre comillas) = 1"},
-  "BINOM.DIST.RANGE": {"a": "(ensayos, prob_éxito, núm_éxito, [núm_éxito2])", "d": "Devuelve la probabilidad de un resultado de ensayo mediante una distribución binomial", "ad": "es el número de ensayos independientes!es la probabilidad de éxito en cada ensayo!es el número de éxitos en los ensayos!si se proporciona, devuelve la probabilidad de que el número de éxitos esté entre núm_éxito y núm_éxito2"}
- },
- "fr": {
-  "YEN": {"a": "(nombre; [décimales])", "d": "Convertit un nombre en texte avec le symbole du yen (¥) et des séparateurs de milliers", "ad": "est le nombre que vous voulez mettre en forme!est le nombre de chiffres à droite de la virgule. Si omis, 2 décimales"},
-  "JIS": {"a": "(texte)", "d": "En ce qui concerne les langues à jeu de caractères codés sur deux octets (DBCS, Double-byte Character Set), la fonction remplace les caractères à demi-chasse (codés sur un octet) en caractères à pleine chasse (codés sur deux octets)", "ad": "est le texte que vous souhaitez modifier, ou une référence à une cellule le contenant"},
-  "DATESTRING": {"a": "(numéro_de_série)", "d": "Renvoie une date sous forme de texte dans le calendrier japonais des ères impériales (Reiwa, Heisei et précédentes)", "ad": "est un nombre dans le code date-heure utilisé par Spreadsheet Editor"},
-  "PHONETIC": {"a": "(plage)", "d": "Renvoie les furigana (lecture phonétique en kana) conservés dans les cellules, issus des informations de lecture du fichier xlsx ouvert", "ad": "représente la plage de cellules dont vous voulez obtenir les furigana"},
-  "VALUETOTEXT": {"a": "(valeur, [format])", "d": "Renvoie le texte à partir de n'importe quelle valeur spécifiée", "ad": "est la valeur à renvoyer sous forme de texte!est le format des données renvoyées : concis = 0 ou omis ; strict (texte entre guillemets) = 1"},
-  "ARRAYTOTEXT": {"a": "(tableau, [format])", "d": "Renvoie une représentation textuelle des valeurs de la plage spécifiée", "ad": "est le tableau à renvoyer sous forme de texte!est le format des données renvoyées : concis = 0 ou omis ; strict (texte entre guillemets) = 1"},
-  "BINOM.DIST.RANGE": {"a": "(essais, probabilité_s, nb_s, [nb_s2])", "d": "Renvoie la probabilité d'un résultat d'essai à l'aide d'une loi binomiale", "ad": "est le nombre d'essais indépendants!est la probabilité de succès de chaque essai!est le nombre de succès parmi les essais!si fourni, renvoie la probabilité que le nombre de succès soit compris entre nb_s et nb_s2"}
- },
- "id": {
-  "YEN": {"a": "(number; [decimals])", "d": "Mengonversi angka ke teks dengan simbol yen (¥) dan pemisah ribuan", "ad": "adalah angka yang ingin Anda format!adalah jumlah digit di sebelah kanan titik desimal. Jika dihilangkan, Desimal = 2"},
-  "JIS": {"a": "(text)", "d": "Untuk bahasa Perangkat karakter bit ganda (DBCS, Double-byte character set), fungsi tersebut mengubah karakter lebar setengah (bit tunggal) menjadi lebar penuh (bit ganda)", "ad": "Teks atau referensi ke suatu sel yang berisi teks yang ingin Anda ubah."},
-  "DATESTRING": {"a": "(serial_number)", "d": "Mengembalikan tanggal sebagai teks dalam kalender era kekaisaran Jepang (Reiwa, Heisei, dan seterusnya)", "ad": "adalah angka dalam kode tanggal-waktu yang digunakan oleh Spreadsheet Editor"},
-  "PHONETIC": {"a": "(range)", "d": "Mengembalikan furigana (bacaan fonetik dalam huruf kana) yang tersimpan dalam sel, diambil dari informasi bacaan pada file xlsx yang dibuka", "ad": "adalah rentang sel yang furigana-nya ingin Anda ambil"},
-  "VALUETOTEXT": {"a": "(nilai, [format])", "d": "Mengembalikan teks dari nilai apa pun yang ditentukan", "ad": "adalah nilai yang dikembalikan sebagai teks!adalah format data yang dikembalikan: ringkas = 0 atau dihilangkan; ketat (teks dalam tanda kutip) = 1"},
-  "ARRAYTOTEXT": {"a": "(array, [format])", "d": "Mengembalikan representasi teks dari nilai dalam rentang yang ditentukan", "ad": "adalah array yang dikembalikan sebagai teks!adalah format data yang dikembalikan: ringkas = 0 atau dihilangkan; ketat (teks dalam tanda kutip) = 1"},
-  "BINOM.DIST.RANGE": {"a": "(percobaan, probabilitas_sukses, jumlah_sukses, [jumlah_sukses2])", "d": "Mengembalikan probabilitas hasil percobaan menggunakan distribusi binomial", "ad": "adalah jumlah percobaan independen!adalah probabilitas keberhasilan pada setiap percobaan!adalah jumlah keberhasilan dalam percobaan!jika diberikan, mengembalikan probabilitas jumlah keberhasilan berada di antara jumlah_sukses dan jumlah_sukses2"}
- },
- "it": {
-  "YEN": {"a": "(num; [decimali])", "d": "Converte un numero in testo con il simbolo dello yen (¥) e i separatori delle migliaia.", "ad": "è il numero da formattare!è il numero di cifre a destra della virgola decimale. Se viene omesso, Decimali = 2"},
-  "JIS": {"a": "(testo)", "d": "Nelle lingue che utilizzano set di caratteri a byte doppio (DBCS, Double-Byte Character Set), la funzione converte i caratteri a byte singolo (SB, Single-Byte) in caratteri a byte doppio (DB, Double-Byte)", "ad": "è il testo che si desidera modificare o un riferimento a una cella che lo contiene"},
-  "DATESTRING": {"a": "(num_seriale)", "d": "Restituisce una data come testo nel calendario giapponese delle ere imperiali (Reiwa, Heisei e precedenti).", "ad": "è un numero nel codice data-ora utilizzato da Spreadsheet Editor"},
-  "PHONETIC": {"a": "(intervallo)", "d": "Restituisce i furigana (lettura fonetica in kana) memorizzati nelle celle, ricavati dalle informazioni di lettura del file xlsx aperto.", "ad": "è l'intervallo di celle di cui si desidera ottenere i furigana"},
-  "IFS": {"a": "(test; se_vero; ...)", "d": "Verifica se una o più condizioni sono soddisfatte e restituisce un valore corrispondente alla prima condizione VERO.", "ad": "è un valore o un'espressione qualsiasi che può dare come risultato VERO o FALSO!è il valore che viene restituito se test è VERO"},
-  "TIMEVALUE": {"a": "(ora_testo)", "d": "Converte un'ora in formato testo in un numero seriale che rappresenta l'ora, un numero da 0 (00:00:00) a 0,999988426 (23:59:59). Applicare al numero un formato ora dopo aver inserito la formula.", "ad": "è una stringa di testo che indica un'ora in uno dei formati ora di Spreadsheet Editor (le informazioni sulla data nella stringa vengono ignorate)"},
-  "DECIMAL": {"a": "(num; radice)", "d": "Converte la rappresentazione testuale di un numero in una data base in un numero decimale.", "ad": "è il numero che si vuole convertire!è la radice di base del numero da convertire"},
-  "PDURATION": {"a": "(tasso_int; val_attuale; val_futuro)", "d": "Restituisce il numero di periodi necessari a un investimento per raggiungere un valore specificato.", "ad": "è il tasso di interesse per periodo!è il valore attuale dell'investimento!è il valore futuro desiderato dell'investimento"},
-  "NORM.S.INV": {"a": "(probabilità)", "d": "Restituisce l'inversa della distribuzione normale standard cumulativa (ha media pari a zero e deviazione standard pari a 1).", "ad": "è la probabilità corrispondente alla distribuzione normale, un numero tra 0 e 1 inclusi"},
-  "VALUETOTEXT": {"a": "(valore, [formato])", "d": "Restituisce il testo da qualsiasi valore specificato", "ad": "è il valore da restituire come testo!è il formato dei dati restituiti: conciso = 0 oppure omesso; rigoroso (testo tra virgolette) = 1"},
-  "ARRAYTOTEXT": {"a": "(matrice, [formato])", "d": "Restituisce una rappresentazione testuale dei valori dell'intervallo specificato", "ad": "è la matrice da restituire come testo!è il formato dei dati restituiti: conciso = 0 oppure omesso; rigoroso (testo tra virgolette) = 1"},
-  "BINOM.DIST.RANGE": {"a": "(prove, probabilità_s, num_successi, [num_successi2])", "d": "Restituisce la probabilità di un risultato di prova utilizzando una distribuzione binomiale", "ad": "è il numero di prove indipendenti!è la probabilità di successo di ogni prova!è il numero di successi nelle prove!se specificato, restituisce la probabilità che il numero di successi sia compreso tra num_successi e num_successi2"},
-  "CONVERT": {"a": "(num; da_unità; a_unità)", "d": "Converte un numero da un sistema di misura a un altro.", "ad": "è il valore in da_unità da convertire!è l'unità di misura del numero!è l'unità di misura del risultato"}
- },
- "ko": {
-  "YEN": {"a": "(number; [decimals])", "d": "엔화 기호(¥)와 천 단위 구분 기호를 사용하여 숫자를 텍스트로 변환합니다.", "ad": "은(는) 서식을 지정하려는 수입니다.!은(는) 소수점 이하의 자릿수입니다. 생략하면 decimals은 2가 됩니다."},
-  "JIS": {"a": "(text)", "d": "DBCS(더블바이트 문자 집합) 언어의 경우 함수가 반자 문자(싱글바이트)를 전자 문자(더블바이트)로 변경합니다.", "ad": "텍스트 또는 변경할 텍스트가 들어 있는 셀에 대한 참조입니다."},
-  "DATESTRING": {"a": "(serial_number)", "d": "날짜를 일본 연호(레이와, 헤이세이 등)로 표시한 텍스트로 변환합니다.", "ad": "은(는) Spreadsheet Editor에서 사용하는 날짜-시간 코드 형식의 수입니다."},
-  "PHONETIC": {"a": "(range)", "d": "셀에 저장된 후리가나(가나로 표기한 발음)를 구합니다. 열어 놓은 xlsx 파일의 읽기 정보를 사용합니다.", "ad": "은(는) 후리가나를 구할 셀 범위입니다."},
-  "VALUETOTEXT": {"a": "(값, [형식])", "d": "지정한 값을 텍스트로 반환합니다", "ad": "텍스트로 반환할 값입니다!반환되는 데이터의 형식입니다. 간결한 형식 = 0 또는 생략, 엄격한 형식(텍스트를 따옴표로 묶음) = 1"},
-  "ARRAYTOTEXT": {"a": "(배열, [형식])", "d": "지정한 범위의 값을 텍스트로 반환합니다", "ad": "텍스트로 반환할 배열입니다!반환되는 데이터의 형식입니다. 간결한 형식 = 0 또는 생략, 엄격한 형식(텍스트를 따옴표로 묶음) = 1"},
-  "BINOM.DIST.RANGE": {"a": "(시행횟수, 성공확률, 성공수, [성공수2])", "d": "이항 분포를 사용한 시행 결과의 확률을 반환합니다", "ad": "독립적인 시행의 횟수입니다!각 시행의 성공 확률입니다!시행에서의 성공 횟수입니다!지정하면 성공 횟수가 성공수와 성공수2 사이에 들어갈 확률을 반환합니다"}
- },
- "pt": {
-  "YEN": {"a": "(núm; [decimais])", "d": "Converte um número em texto, com o símbolo do iene (¥) e separadores de milhares", "ad": "é o número que deseja formatar!é o número de algarismos à direita da vírgula decimal. Se omisso, Decimais = 2"},
-  "JIS": {"a": "(texto)", "d": "Em tipos de linguagem de conjuntos de carateres de bytes duplos (DBCS), a função altera os carateres de largura média (byte único) para carateres de largura total (bytes duplos)", "ad": "é o texto que pretende alterar, ou uma referência a uma célula que o contém"},
-  "DATESTRING": {"a": "(núm_série)", "d": "Devolve uma data como texto no calendário japonês das eras imperiais (Reiwa, Heisei e anteriores)", "ad": "é um número no código de data e hora utilizado pelo Spreadsheet Editor"},
-  "PHONETIC": {"a": "(intervalo)", "d": "Devolve os furigana (leitura fonética em kana) guardados nas células, obtidos das informações de leitura do ficheiro xlsx aberto", "ad": "é o intervalo de células cujos furigana pretende obter"},
-  "VALUETOTEXT": {"a": "(valor, [formato])", "d": "Devolve texto a partir de qualquer valor especificado", "ad": "é o valor a devolver como texto!é o formato dos dados devolvidos: conciso = 0 ou omitido; rigoroso (texto entre aspas) = 1"},
-  "ARRAYTOTEXT": {"a": "(matriz, [formato])", "d": "Devolve uma representação de texto dos valores do intervalo especificado", "ad": "é a matriz a devolver como texto!é o formato dos dados devolvidos: conciso = 0 ou omitido; rigoroso (texto entre aspas) = 1"},
-  "BINOM.DIST.RANGE": {"a": "(tentativas, probabilidade_s, número_s, [número_s2])", "d": "Devolve a probabilidade de um resultado de tentativa utilizando uma distribuição binomial", "ad": "é o número de tentativas independentes!é a probabilidade de sucesso em cada tentativa!é o número de sucessos nas tentativas!se fornecido, devolve a probabilidade de o número de sucessos ficar entre número_s e número_s2"}
- },
- "pt-br": {
-  "YEN": {"a": "(núm; [decimais])", "d": "Converte um número em texto, com o símbolo do iene (¥) e separadores de milhares", "ad": "é o número que se deseja formatar!é o número de dígitos à direita da vírgula decimal. Quando não especificado, Decimais = 2"},
-  "JIS": {"a": "(texto)", "d": "Para idiomas do conjunto de caracteres de dois bytes (DBCS), a função altera os caracteres de meia largura (byte único) para caracteres de largura total (byte duplo)", "ad": "é o texto a ser alterado, ou uma referência a uma célula que o contém"},
-  "DATESTRING": {"a": "(núm_série)", "d": "Retorna uma data como texto no calendário japonês das eras imperiais (Reiwa, Heisei e anteriores)", "ad": "é um número no código data-hora usado pelo Spreadsheet Editor"},
-  "PHONETIC": {"a": "(intervalo)", "d": "Retorna o furigana (leitura fonética em kana) armazenado nas células, obtido das informações de leitura do arquivo xlsx aberto", "ad": "é o intervalo de células cujo furigana se deseja obter"},
-  "VALUETOTEXT": {"a": "(valor, [formato])", "d": "Retorna o texto de qualquer valor especificado", "ad": "é o valor a ser retornado como texto!é o formato dos dados retornados: conciso = 0 ou omitido; rigoroso (texto entre aspas) = 1"},
-  "ARRAYTOTEXT": {"a": "(matriz, [formato])", "d": "Retorna uma representação de texto dos valores do intervalo especificado", "ad": "é a matriz a ser retornada como texto!é o formato dos dados retornados: conciso = 0 ou omitido; rigoroso (texto entre aspas) = 1"},
-  "BINOM.DIST.RANGE": {"a": "(tentativas, probabilidade_s, número_s, [número_s2])", "d": "Retorna a probabilidade de um resultado de tentativa usando uma distribuição binomial", "ad": "é o número de tentativas independentes!é a probabilidade de sucesso em cada tentativa!é o número de sucessos nas tentativas!se fornecido, retorna a probabilidade de o número de sucessos ficar entre número_s e número_s2"}
- },
- "ru": {
-  "YEN": {"a": "(число; [число_знаков])", "d": "Преобразует число в текст со знаком иены (¥) и разделителями разрядов", "ad": "число, которое требуется отформатировать!число цифр справа от десятичной запятой. При необходимости округляется; если опущено, число знаков после запятой равно 2"},
-  "JIS": {"a": "(текст)", "d": "Для языков с двухбайтовой кодировкой (DBCS) преобразует полуширинные (однобайтовые) знаки в полноширинные (двухбайтовые)", "ad": "текст, который необходимо изменить, либо ссылка на ячейку с этим текстом"},
-  "DATESTRING": {"a": "(дата_в_числовом_формате)", "d": "Возвращает дату в виде текста по японскому летоисчислению эпох правления (Рэйва, Хэйсэй и более ранние)", "ad": "число в коде даты-времени, используемом в Редакторе таблиц"},
-  "PHONETIC": {"a": "(диапазон)", "d": "Возвращает фуригану (фонетическое чтение каной), сохраненную в ячейках по сведениям о чтении из открытого файла xlsx", "ad": "диапазон ячеек, для которых требуется получить фуригану"},
-  "VALUETOTEXT": {"a": "(значение, [формат])", "d": "Возвращает текст из любого указанного значения", "ad": "значение, возвращаемое в виде текста!формат возвращаемых данных: краткий = 0 или опущено; строгий (текст в кавычках) = 1"},
-  "ARRAYTOTEXT": {"a": "(массив, [формат])", "d": "Возвращает текстовое представление значений указанного диапазона", "ad": "массив, возвращаемый в виде текста!формат возвращаемых данных: краткий = 0 или опущено; строгий (текст в кавычках) = 1"},
-  "BINOM.DIST.RANGE": {"a": "(испытания, вероятность_успеха, число_успехов, [число_успехов2])", "d": "Возвращает вероятность результата испытаний с использованием биномиального распределения", "ad": "число независимых испытаний!вероятность успеха в каждом испытании!число успехов в испытаниях!если указано, возвращается вероятность того, что число успехов будет между число_успехов и число_успехов2"}
- },
- "tr": {
-  "YEN": {"a": "(sayı; [onluklar])", "d": "Bir sayıyı yen simgesi (¥) ve binlik ayırıcılar kullanarak metne dönüştürür", "ad": "biçimlendirmek istediğiniz sayı!ondalık virgülün sağında kullanılan rakam sayısı. Atlanırsa, Ondalıklar = 2"},
-  "JIS": {"a": "(metin)", "d": "Çift bayt karakter kümeli (DBCS) dillerde, işlev yarı genişlikli (tek bayt) karakterleri tam genişlikli (çift bayt) karakterlere dönüştürür", "ad": "Dönüştürmek istediğiniz metin veya dönüştürmek istediğiniz metnin bulunduğu hücreye başvurudur."},
-  "DATESTRING": {"a": "(seri_no)", "d": "Bir tarihi Japon imparatorluk dönemi takvimine (Reiwa, Heisei ve öncesi) göre metin olarak döndürür", "ad": "Spreadsheet Editor tarafından kullanılan tarih-saat kodundaki sayı"},
-  "PHONETIC": {"a": "(aralık)", "d": "Hücrelerde saklanan furigana (kana ile fonetik okunuş) bilgisini döndürür; bu bilgi açılan xlsx dosyasındaki okunuş kayıtlarından alınır", "ad": "furiganasını almak istediğiniz hücreler aralığı"},
-  "VALUETOTEXT": {"a": "(değer, [biçim])", "d": "Belirtilen herhangi bir değerden metin döndürür", "ad": "metin olarak döndürülecek değerdir!döndürülen verinin biçimidir: kısa = 0 veya atlanmış; katı (metin tırnak içinde) = 1"},
-  "ARRAYTOTEXT": {"a": "(dizi, [biçim])", "d": "Belirtilen aralıktaki değerlerin metin gösterimini döndürür", "ad": "metin olarak döndürülecek dizidir!döndürülen verinin biçimidir: kısa = 0 veya atlanmış; katı (metin tırnak içinde) = 1"},
-  "BINOM.DIST.RANGE": {"a": "(denemeler, başarı_olasılığı, başarı_sayısı, [başarı_sayısı2])", "d": "Binom dağılımını kullanarak bir deneme sonucunun olasılığını döndürür", "ad": "bağımsız deneme sayısıdır!her denemedeki başarı olasılığıdır!denemelerdeki başarı sayısıdır!verilirse, başarı sayısının başarı_sayısı ile başarı_sayısı2 arasında olma olasılığını döndürür"}
- },
- "vi": {
-  "YEN": {"a": "(number; [decimals])", "d": "Chuyển đổi số sang văn bản với ký hiệu yên (¥) và dấu phân cách hàng nghìn", "ad": "là số cần định dạng!là số chữ số bên phải dấu thập phân. Nếu không có, phần thập phân = 2"},
-  "JIS": {"a": "(text)", "d": "Đối với những ngôn ngữ dùng bộ ký tự byte kép (DBCS), hàm này giúp thay đổi các ký tự có độ rộng bán phần (byte đơn) thành các ký tự có độ rộng toàn phần (byte kép)", "ad": "Văn bản hoặc tham chiếu tới một ô có chứa văn bản mà bạn muốn thay đổi."},
-  "DATESTRING": {"a": "(serial_number)", "d": "Trả về ngày tháng dưới dạng văn bản theo lịch niên hiệu Nhật Bản (Reiwa, Heisei và trước đó)", "ad": "là một số trong mã ngày-giờ được sử dụng bởi Spreadsheet Editor"},
-  "PHONETIC": {"a": "(range)", "d": "Trả về furigana (cách đọc phiên âm bằng chữ kana) lưu trong các ô, lấy từ thông tin cách đọc trong tệp xlsx đã mở", "ad": "là khoảng các ô cần lấy furigana"},
-  "VALUETOTEXT": {"a": "(giá_trị, [định_dạng])", "d": "Trả về văn bản từ bất kỳ giá trị nào được chỉ định", "ad": "là giá trị cần trả về dưới dạng văn bản!là định dạng của dữ liệu trả về: ngắn gọn = 0 hoặc bỏ qua; chặt chẽ (văn bản trong dấu ngoặc kép) = 1"},
-  "ARRAYTOTEXT": {"a": "(mảng, [định_dạng])", "d": "Trả về dạng văn bản của các giá trị trong phạm vi được chỉ định", "ad": "là mảng cần trả về dưới dạng văn bản!là định dạng của dữ liệu trả về: ngắn gọn = 0 hoặc bỏ qua; chặt chẽ (văn bản trong dấu ngoặc kép) = 1"},
-  "BINOM.DIST.RANGE": {"a": "(số_phép_thử, xác_suất_thành_công, số_thành_công, [số_thành_công2])", "d": "Trả về xác suất của một kết quả phép thử bằng phân bố nhị thức", "ad": "là số phép thử độc lập!là xác suất thành công của mỗi phép thử!là số lần thành công trong các phép thử!nếu được cung cấp, trả về xác suất số lần thành công nằm giữa số_thành_công và số_thành_công2"}
- },
- "zh": {
-  "YEN": {"a": "(数字; [小数位数])", "d": "用日元符号(¥)和千位分隔符将数值转换成文本", "ad": "要设置格式的数值!指定小数点右边的位数。如果忽略，小数位数 = 2"},
-  "JIS": {"a": "(文本)", "d": "对于双字节字符集 (DBCS) 语言，该函数将半角（单字节）字符转换成全角（双字节）字符。", "ad": "文本或对包含要更改文本的单元格的引用。"},
-  "DATESTRING": {"a": "(序列号)", "d": "将日期转换为日本年号纪年(令和、平成等)的文本", "ad": "电子表格编辑器进行日期及时间计算的日期-时间代码"},
-  "PHONETIC": {"a": "(范围)", "d": "返回单元格中保存的拼音(日文假名注音)，取自所打开 xlsx 文件中的读音信息", "ad": "要获取拼音的单元格区域"},
-  "ISNONTEXT": {"a": "(值)", "d": "检测一个值是否不是文本(空单元格不是文本)，返回 TRUE 或 FALSE", "ad": "是要测试的值。值可以是单元格、公式或指代单元格、公式或值的名称"},
-  "ISNUMBER": {"a": "(值)", "d": "检测一个值是否为数字，返回 TRUE 或 FALSE", "ad": "是要测试的值。值可以是单元格、公式或指代单元格、公式或值的名称"},
-  "ISTEXT": {"a": "(值)", "d": "检测一个值是否为文本，返回 TRUE 或 FALSE", "ad": "是要测试的值。值可以是单元格、公式或指代单元格、公式或值的名称"},
-  "VALUETOTEXT": {"a": "(值, [格式])", "d": "返回任意指定值的文本形式", "ad": "要以文本形式返回的值!返回数据的格式：简洁格式 = 0 或省略；严格格式（文本加引号）= 1"},
-  "ARRAYTOTEXT": {"a": "(数组, [格式])", "d": "返回指定区域中各值的文本形式", "ad": "要以文本形式返回的数组!返回数据的格式：简洁格式 = 0 或省略；严格格式（文本加引号）= 1"},
-  "BINOM.DIST.RANGE": {"a": "(试验次数, 成功概率, 成功次数, [成功次数2])", "d": "使用二项式分布返回试验结果的概率", "ad": "独立试验的次数!每次试验的成功概率!试验中的成功次数!如果提供，则返回成功次数介于 成功次数 和 成功次数2 之间的概率"}
- },
- "zh-tw": {
-  "YEN": {"a": "(number; [decimals])", "d": "依照日圓符號 (¥) 和千分位分隔符號，將數字轉換為文字", "ad": "is the number you want to format!is the number of digits to the right of the decimal point. If omitted, Decimals = 2"},
-  "JIS": {"a": "(text)", "d": "針對雙位元字元集（DBCS）語言，將半形（單位元）字元轉換為全形（雙位元）字元。", "ad": "is the text you want to change. If text does not contain any half-width letters, text is not changed."},
-  "DATESTRING": {"a": "(serial_number)", "d": "傳回以日本年號紀年（令和、平成等）表示的日期文字", "ad": "is a number in the date-time code used by Spreadsheet Editor"},
-  "PHONETIC": {"a": "(range)", "d": "傳回儲存格中所儲存的注音假名（振假名），取自所開啟 xlsx 檔案中的讀音資訊", "ad": "is the range of cells whose furigana (phonetic reading) you want"},
-  "VALUETOTEXT": {"a": "(值, [格式])", "d": "傳回任何指定值的文字形式", "ad": "要以文字形式傳回的值!傳回資料的格式：簡潔格式 = 0 或省略；嚴格格式（文字加引號）= 1"},
-  "ARRAYTOTEXT": {"a": "(陣列, [格式])", "d": "傳回指定範圍中各值的文字形式", "ad": "要以文字形式傳回的陣列!傳回資料的格式：簡潔格式 = 0 或省略；嚴格格式（文字加引號）= 1"},
-  "BINOM.DIST.RANGE": {"a": "(試驗次數, 成功機率, 成功次數, [成功次數2])", "d": "使用二項分布傳回試驗結果的機率", "ad": "獨立試驗的次數!每次試驗的成功機率!試驗中的成功次數!若提供，則傳回成功次數介於 成功次數 和 成功次數2 之間的機率"}
- }
+  "en": {
+    "YEN": {
+      "a": "(number; [decimals])",
+      "d": "Formats a number as text with the yen sign (¥) and thousands separators",
+      "ad": "is the number you want to format!is the number of digits to the right of the decimal point; the default is 2"
+    },
+    "JIS": {
+      "a": "(text)",
+      "d": "Converts half-width (single-byte) characters in a string to full-width (double-byte) characters",
+      "ad": "is the text you want to convert, or a reference to a cell containing it"
+    },
+    "DATESTRING": {
+      "a": "(serial_number)",
+      "d": "Returns a date as text in the Japanese imperial era calendar",
+      "ad": "is the date you want to convert, given as a serial number or a reference to a cell containing a date"
+    },
+    "PHONETIC": {
+      "a": "(range)",
+      "d": "Returns the furigana (phonetic reading) held in the cells, taken from the reading information stored in the xlsx that was opened",
+      "ad": "is the range of cells whose furigana you want"
+    },
+    "VALUETOTEXT": {
+      "a": "(value, [format])",
+      "d": "Returns text from any specified value",
+      "ad": "is the value to return as text!is the format of the returned data: concise = 0 or omitted; strict (text in double quotes) = 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(array, [format])",
+      "d": "Returns a text representation of the values in the specified range",
+      "ad": "is the array to return as text!is the format of the returned data: concise = 0 or omitted; strict (text in double quotes) = 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(trials, probability_s, number_s, [number_s2])",
+      "d": "Returns the probability of a trial result using a binomial distribution",
+      "ad": "is the number of independent trials!is the probability of success on each trial!is the number of successes in trials!if provided, returns the probability that the number of successful trials will fall between number_s and number_s2"
+    },
+    "DBCS": {
+      "a": "(text)",
+      "d": "Converts half-width (single-byte) characters in a string to full-width (double-byte) characters",
+      "ad": "is the text you want to convert, or a reference to a cell containing it"
+    },
+    "LET": {
+      "a": "(name1; value1; [name2; value2]; ...; calculation)",
+      "d": "Assigns names to values and computes a final expression that can use them",
+      "ad": "is the first name to assign!is the value the name stands for!is the expression that returns the result. It can use the names"
+    },
+    "PY": {
+      "a": "(code)",
+      "d": "Runs Python code and returns the result. It can only be used on its own in a cell",
+      "ad": "is the Python code to run"
+    },
+    "CELL": {
+      "a": "(info_type; [reference])",
+      "d": "Returns information about a cell. Only \"filename\" is supported: the path, the file name in brackets, and the sheet name",
+      "ad": "is the kind of information. Only \"filename\" is supported!is a cell. It is accepted and ignored, because the answer is the same for every cell in the book"
+    }
+  },
+  "de": {
+    "YEN": {
+      "a": "(Zahl; [Dezimalstellen])",
+      "d": "Formatiert eine Zahl als Text mit dem Yen-Zeichen (¥) und Tausendertrennzeichen",
+      "ad": "ist die Zahl, die Sie formatieren möchten!ist die Anzahl der Ziffern rechts vom Dezimalkomma. Wenn der Parameter fehlt, werden 2 Dezimalstellen zurückgegeben"
+    },
+    "JIS": {
+      "a": "(Text)",
+      "d": "Für Sprachen mit einem Double-Byte-Zeichensatz (DBCS) werden in dieser Funktion Zeichen halber Breite (Single-Byte-Zeichen) in Zeichen normaler Breite (Double-Byte-Zeichen) umgewandelt",
+      "ad": "ist der Text, den Sie ändern möchten, oder ein Bezug auf eine Zelle, die ihn enthält"
+    },
+    "DATESTRING": {
+      "a": "(Zahl)",
+      "d": "Gibt ein Datum als Text in der japanischen Ära-Zeitrechnung zurück (Reiwa, Heisei und frühere Ären)",
+      "ad": "ist der Code für Datum und Zeit, den Spreadsheet Editor für Datums- und Zeitberechnungen verwendet"
+    },
+    "PHONETIC": {
+      "a": "(Bereich)",
+      "d": "Gibt die in den Zellen gespeicherten Furigana (Lesehilfe in Kana) zurück, die aus den Leseinformationen der geöffneten xlsx-Datei stammen",
+      "ad": "ist der Zellbereich, dessen Furigana Sie ermitteln möchten"
+    },
+    "VALUETOTEXT": {
+      "a": "(Wert, [Format])",
+      "d": "Gibt einen beliebigen angegebenen Wert als Text zurück",
+      "ad": "ist der Wert, der als Text zurückgegeben werden soll!ist das Format der zurückgegebenen Daten: kompakt = 0 oder nicht angegeben; streng (Text in Anführungszeichen) = 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(Matrix, [Format])",
+      "d": "Gibt die Werte des angegebenen Bereichs als Text zurück",
+      "ad": "ist die Matrix, die als Text zurückgegeben werden soll!ist das Format der zurückgegebenen Daten: kompakt = 0 oder nicht angegeben; streng (Text in Anführungszeichen) = 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(Versuche, Erfolgswahrsch, Erfolge, [Erfolge2])",
+      "d": "Gibt die Wahrscheinlichkeit eines Versuchsergebnisses als Binomialverteilung zurück",
+      "ad": "ist die Anzahl der unabhängigen Versuche!ist die Erfolgswahrscheinlichkeit je Versuch!ist die Anzahl der Erfolge in den Versuchen!falls angegeben, wird die Wahrscheinlichkeit zurückgegeben, dass die Anzahl der Erfolge zwischen Erfolge und Erfolge2 liegt"
+    },
+    "DBCS": {
+      "a": "(Text)",
+      "d": "Für Sprachen mit einem Double-Byte-Zeichensatz (DBCS) werden in dieser Funktion Zeichen halber Breite (Single-Byte-Zeichen) in Zeichen normaler Breite (Double-Byte-Zeichen) umgewandelt",
+      "ad": "ist der Text, den Sie ändern möchten, oder ein Bezug auf eine Zelle, die ihn enthält"
+    },
+    "LET": {
+      "a": "(Name1; Wert1; [Name2; Wert2]; ...; Berechnung)",
+      "d": "Weist Werten Namen zu und berechnet damit einen abschließenden Ausdruck",
+      "ad": "ist der erste zuzuweisende Name!ist der Wert, für den der Name steht!ist der Ausdruck, der das Ergebnis liefert. Er kann die Namen verwenden"
+    },
+    "PY": {
+      "a": "(Code)",
+      "d": "Führt Python-Code aus und gibt das Ergebnis zurück. Nur allein in einer Zelle verwendbar",
+      "ad": "ist der auszuführende Python-Code"
+    }
+  },
+  "es": {
+    "YEN": {
+      "a": "(número; [núm_de_decimales])",
+      "d": "Convierte un número en texto con el símbolo del yen (¥) y separadores de millares",
+      "ad": "es el número al que se desea dar formato!es el número de dígitos a la derecha del separador decimal. Si se omite se establecerá: Decimales = 2"
+    },
+    "JIS": {
+      "a": "(texto)",
+      "d": "Para los idiomas que empleen juegos de caracteres de dos bytes (DBCS), convierte los caracteres de ancho medio (de un byte) en caracteres de ancho completo (de dos bytes)",
+      "ad": "es el texto que se desea convertir, o una referencia a una celda que lo contiene"
+    },
+    "DATESTRING": {
+      "a": "(núm_de_serie)",
+      "d": "Devuelve una fecha como texto en el calendario japonés de eras imperiales (Reiwa, Heisei y anteriores)",
+      "ad": "es un número en el código de fecha y hora usado por Spreadsheet Editor"
+    },
+    "PHONETIC": {
+      "a": "(rango)",
+      "d": "Devuelve el furigana (lectura fonética en kana) guardado en las celdas, tomado de la información de lectura del archivo xlsx abierto",
+      "ad": "es el rango de celdas cuyo furigana se desea obtener"
+    },
+    "VALUETOTEXT": {
+      "a": "(valor, [formato])",
+      "d": "Devuelve texto a partir de cualquier valor especificado",
+      "ad": "es el valor que se devolverá como texto!es el formato de los datos devueltos: conciso = 0 u omitido; estricto (texto entre comillas) = 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(matriz, [formato])",
+      "d": "Devuelve una representación de texto de los valores del rango especificado",
+      "ad": "es la matriz que se devolverá como texto!es el formato de los datos devueltos: conciso = 0 u omitido; estricto (texto entre comillas) = 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(ensayos, prob_éxito, núm_éxito, [núm_éxito2])",
+      "d": "Devuelve la probabilidad de un resultado de ensayo mediante una distribución binomial",
+      "ad": "es el número de ensayos independientes!es la probabilidad de éxito en cada ensayo!es el número de éxitos en los ensayos!si se proporciona, devuelve la probabilidad de que el número de éxitos esté entre núm_éxito y núm_éxito2"
+    },
+    "DBCS": {
+      "a": "(texto)",
+      "d": "Para los idiomas que empleen juegos de caracteres de dos bytes (DBCS), convierte los caracteres de ancho medio (de un byte) en caracteres de ancho completo (de dos bytes)",
+      "ad": "es el texto que se desea convertir, o una referencia a una celda que lo contiene"
+    },
+    "LET": {
+      "a": "(nombre1; valor1; [nombre2; valor2]; ...; cálculo)",
+      "d": "Asigna nombres a valores y calcula una expresión final que puede usarlos",
+      "ad": "es el primer nombre que se asigna!es el valor que representa el nombre!es la expresión que devuelve el resultado. Puede usar los nombres"
+    },
+    "PY": {
+      "a": "(código)",
+      "d": "Ejecuta código de Python y devuelve el resultado. Solo se puede usar solo en una celda",
+      "ad": "es el código de Python que se ejecuta"
+    }
+  },
+  "fr": {
+    "YEN": {
+      "a": "(nombre; [décimales])",
+      "d": "Convertit un nombre en texte avec le symbole du yen (¥) et des séparateurs de milliers",
+      "ad": "est le nombre que vous voulez mettre en forme!est le nombre de chiffres à droite de la virgule. Si omis, 2 décimales"
+    },
+    "JIS": {
+      "a": "(texte)",
+      "d": "En ce qui concerne les langues à jeu de caractères codés sur deux octets (DBCS, Double-byte Character Set), la fonction remplace les caractères à demi-chasse (codés sur un octet) en caractères à pleine chasse (codés sur deux octets)",
+      "ad": "est le texte que vous souhaitez modifier, ou une référence à une cellule le contenant"
+    },
+    "DATESTRING": {
+      "a": "(numéro_de_série)",
+      "d": "Renvoie une date sous forme de texte dans le calendrier japonais des ères impériales (Reiwa, Heisei et précédentes)",
+      "ad": "est un nombre dans le code date-heure utilisé par Spreadsheet Editor"
+    },
+    "PHONETIC": {
+      "a": "(plage)",
+      "d": "Renvoie les furigana (lecture phonétique en kana) conservés dans les cellules, issus des informations de lecture du fichier xlsx ouvert",
+      "ad": "représente la plage de cellules dont vous voulez obtenir les furigana"
+    },
+    "VALUETOTEXT": {
+      "a": "(valeur, [format])",
+      "d": "Renvoie le texte à partir de n'importe quelle valeur spécifiée",
+      "ad": "est la valeur à renvoyer sous forme de texte!est le format des données renvoyées : concis = 0 ou omis ; strict (texte entre guillemets) = 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(tableau, [format])",
+      "d": "Renvoie une représentation textuelle des valeurs de la plage spécifiée",
+      "ad": "est le tableau à renvoyer sous forme de texte!est le format des données renvoyées : concis = 0 ou omis ; strict (texte entre guillemets) = 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(essais, probabilité_s, nb_s, [nb_s2])",
+      "d": "Renvoie la probabilité d'un résultat d'essai à l'aide d'une loi binomiale",
+      "ad": "est le nombre d'essais indépendants!est la probabilité de succès de chaque essai!est le nombre de succès parmi les essais!si fourni, renvoie la probabilité que le nombre de succès soit compris entre nb_s et nb_s2"
+    },
+    "DBCS": {
+      "a": "(texte)",
+      "d": "En ce qui concerne les langues à jeu de caractères codés sur deux octets (DBCS, Double-byte Character Set), la fonction remplace les caractères à demi-chasse (codés sur un octet) en caractères à pleine chasse (codés sur deux octets)",
+      "ad": "est le texte que vous souhaitez modifier, ou une référence à une cellule le contenant"
+    },
+    "LET": {
+      "a": "(nom1; valeur1; [nom2; valeur2]; ...; calcul)",
+      "d": "Attribue des noms à des valeurs et calcule une expression finale qui peut les utiliser",
+      "ad": "est le premier nom à attribuer!est la valeur que représente le nom!est l'expression qui renvoie le résultat. Elle peut utiliser les noms"
+    },
+    "PY": {
+      "a": "(code)",
+      "d": "Exécute du code Python et renvoie le résultat. Utilisable uniquement seul dans une cellule",
+      "ad": "est le code Python à exécuter"
+    }
+  },
+  "id": {
+    "YEN": {
+      "a": "(number; [decimals])",
+      "d": "Mengonversi angka ke teks dengan simbol yen (¥) dan pemisah ribuan",
+      "ad": "adalah angka yang ingin Anda format!adalah jumlah digit di sebelah kanan titik desimal. Jika dihilangkan, Desimal = 2"
+    },
+    "JIS": {
+      "a": "(text)",
+      "d": "Untuk bahasa Perangkat karakter bit ganda (DBCS, Double-byte character set), fungsi tersebut mengubah karakter lebar setengah (bit tunggal) menjadi lebar penuh (bit ganda)",
+      "ad": "Teks atau referensi ke suatu sel yang berisi teks yang ingin Anda ubah."
+    },
+    "DATESTRING": {
+      "a": "(serial_number)",
+      "d": "Mengembalikan tanggal sebagai teks dalam kalender era kekaisaran Jepang (Reiwa, Heisei, dan seterusnya)",
+      "ad": "adalah angka dalam kode tanggal-waktu yang digunakan oleh Spreadsheet Editor"
+    },
+    "PHONETIC": {
+      "a": "(range)",
+      "d": "Mengembalikan furigana (bacaan fonetik dalam huruf kana) yang tersimpan dalam sel, diambil dari informasi bacaan pada file xlsx yang dibuka",
+      "ad": "adalah rentang sel yang furigana-nya ingin Anda ambil"
+    },
+    "VALUETOTEXT": {
+      "a": "(nilai, [format])",
+      "d": "Mengembalikan teks dari nilai apa pun yang ditentukan",
+      "ad": "adalah nilai yang dikembalikan sebagai teks!adalah format data yang dikembalikan: ringkas = 0 atau dihilangkan; ketat (teks dalam tanda kutip) = 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(array, [format])",
+      "d": "Mengembalikan representasi teks dari nilai dalam rentang yang ditentukan",
+      "ad": "adalah array yang dikembalikan sebagai teks!adalah format data yang dikembalikan: ringkas = 0 atau dihilangkan; ketat (teks dalam tanda kutip) = 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(percobaan, probabilitas_sukses, jumlah_sukses, [jumlah_sukses2])",
+      "d": "Mengembalikan probabilitas hasil percobaan menggunakan distribusi binomial",
+      "ad": "adalah jumlah percobaan independen!adalah probabilitas keberhasilan pada setiap percobaan!adalah jumlah keberhasilan dalam percobaan!jika diberikan, mengembalikan probabilitas jumlah keberhasilan berada di antara jumlah_sukses dan jumlah_sukses2"
+    },
+    "DBCS": {
+      "a": "(text)",
+      "d": "Untuk bahasa Perangkat karakter bit ganda (DBCS, Double-byte character set), fungsi tersebut mengubah karakter lebar setengah (bit tunggal) menjadi lebar penuh (bit ganda)",
+      "ad": "Teks atau referensi ke suatu sel yang berisi teks yang ingin Anda ubah."
+    },
+    "LET": {
+      "a": "(nama1; nilai1; [nama2; nilai2]; ...; perhitungan)",
+      "d": "Memberi nama pada nilai dan menghitung ekspresi akhir yang dapat menggunakannya",
+      "ad": "Nama pertama yang diberikan.!Nilai yang diwakili oleh nama tersebut.!Ekspresi yang mengembalikan hasil. Ekspresi ini dapat menggunakan nama-nama tersebut."
+    },
+    "PY": {
+      "a": "(kode)",
+      "d": "Menjalankan kode Python dan mengembalikan hasilnya. Hanya dapat digunakan sendiri dalam satu sel",
+      "ad": "Kode Python yang akan dijalankan."
+    }
+  },
+  "it": {
+    "YEN": {
+      "a": "(num; [decimali])",
+      "d": "Converte un numero in testo con il simbolo dello yen (¥) e i separatori delle migliaia.",
+      "ad": "è il numero da formattare!è il numero di cifre a destra della virgola decimale. Se viene omesso, Decimali = 2"
+    },
+    "JIS": {
+      "a": "(testo)",
+      "d": "Nelle lingue che utilizzano set di caratteri a byte doppio (DBCS, Double-Byte Character Set), la funzione converte i caratteri a byte singolo (SB, Single-Byte) in caratteri a byte doppio (DB, Double-Byte)",
+      "ad": "è il testo che si desidera modificare o un riferimento a una cella che lo contiene"
+    },
+    "DATESTRING": {
+      "a": "(num_seriale)",
+      "d": "Restituisce una data come testo nel calendario giapponese delle ere imperiali (Reiwa, Heisei e precedenti).",
+      "ad": "è un numero nel codice data-ora utilizzato da Spreadsheet Editor"
+    },
+    "PHONETIC": {
+      "a": "(intervallo)",
+      "d": "Restituisce i furigana (lettura fonetica in kana) memorizzati nelle celle, ricavati dalle informazioni di lettura del file xlsx aperto.",
+      "ad": "è l'intervallo di celle di cui si desidera ottenere i furigana"
+    },
+    "IFS": {
+      "a": "(test; se_vero; ...)",
+      "d": "Verifica se una o più condizioni sono soddisfatte e restituisce un valore corrispondente alla prima condizione VERO.",
+      "ad": "è un valore o un'espressione qualsiasi che può dare come risultato VERO o FALSO!è il valore che viene restituito se test è VERO"
+    },
+    "TIMEVALUE": {
+      "a": "(ora_testo)",
+      "d": "Converte un'ora in formato testo in un numero seriale che rappresenta l'ora, un numero da 0 (00:00:00) a 0,999988426 (23:59:59). Applicare al numero un formato ora dopo aver inserito la formula.",
+      "ad": "è una stringa di testo che indica un'ora in uno dei formati ora di Spreadsheet Editor (le informazioni sulla data nella stringa vengono ignorate)"
+    },
+    "DECIMAL": {
+      "a": "(num; radice)",
+      "d": "Converte la rappresentazione testuale di un numero in una data base in un numero decimale.",
+      "ad": "è il numero che si vuole convertire!è la radice di base del numero da convertire"
+    },
+    "PDURATION": {
+      "a": "(tasso_int; val_attuale; val_futuro)",
+      "d": "Restituisce il numero di periodi necessari a un investimento per raggiungere un valore specificato.",
+      "ad": "è il tasso di interesse per periodo!è il valore attuale dell'investimento!è il valore futuro desiderato dell'investimento"
+    },
+    "NORM.S.INV": {
+      "a": "(probabilità)",
+      "d": "Restituisce l'inversa della distribuzione normale standard cumulativa (ha media pari a zero e deviazione standard pari a 1).",
+      "ad": "è la probabilità corrispondente alla distribuzione normale, un numero tra 0 e 1 inclusi"
+    },
+    "VALUETOTEXT": {
+      "a": "(valore, [formato])",
+      "d": "Restituisce il testo da qualsiasi valore specificato",
+      "ad": "è il valore da restituire come testo!è il formato dei dati restituiti: conciso = 0 oppure omesso; rigoroso (testo tra virgolette) = 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(matrice, [formato])",
+      "d": "Restituisce una rappresentazione testuale dei valori dell'intervallo specificato",
+      "ad": "è la matrice da restituire come testo!è il formato dei dati restituiti: conciso = 0 oppure omesso; rigoroso (testo tra virgolette) = 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(prove, probabilità_s, num_successi, [num_successi2])",
+      "d": "Restituisce la probabilità di un risultato di prova utilizzando una distribuzione binomiale",
+      "ad": "è il numero di prove indipendenti!è la probabilità di successo di ogni prova!è il numero di successi nelle prove!se specificato, restituisce la probabilità che il numero di successi sia compreso tra num_successi e num_successi2"
+    },
+    "CONVERT": {
+      "a": "(num; da_unità; a_unità)",
+      "d": "Converte un numero da un sistema di misura a un altro.",
+      "ad": "è il valore in da_unità da convertire!è l'unità di misura del numero!è l'unità di misura del risultato"
+    },
+    "DBCS": {
+      "a": "(testo)",
+      "d": "Nelle lingue che utilizzano set di caratteri a byte doppio (DBCS, Double-Byte Character Set), la funzione converte i caratteri a byte singolo (SB, Single-Byte) in caratteri a byte doppio (DB, Double-Byte)",
+      "ad": "è il testo che si desidera modificare o un riferimento a una cella che lo contiene"
+    },
+    "LET": {
+      "a": "(nome1; valore1; [nome2; valore2]; ...; calcolo)",
+      "d": "Assegna nomi ai valori e calcola un'espressione finale che può utilizzarli",
+      "ad": "è il primo nome da assegnare!è il valore rappresentato dal nome!è l'espressione che restituisce il risultato. Può utilizzare i nomi"
+    },
+    "PY": {
+      "a": "(codice)",
+      "d": "Esegue codice Python e restituisce il risultato. Utilizzabile solo da solo in una cella",
+      "ad": "è il codice Python da eseguire"
+    }
+  },
+  "ko": {
+    "YEN": {
+      "a": "(number; [decimals])",
+      "d": "엔화 기호(¥)와 천 단위 구분 기호를 사용하여 숫자를 텍스트로 변환합니다.",
+      "ad": "은(는) 서식을 지정하려는 수입니다.!은(는) 소수점 이하의 자릿수입니다. 생략하면 decimals은 2가 됩니다."
+    },
+    "JIS": {
+      "a": "(text)",
+      "d": "DBCS(더블바이트 문자 집합) 언어의 경우 함수가 반자 문자(싱글바이트)를 전자 문자(더블바이트)로 변경합니다.",
+      "ad": "텍스트 또는 변경할 텍스트가 들어 있는 셀에 대한 참조입니다."
+    },
+    "DATESTRING": {
+      "a": "(serial_number)",
+      "d": "날짜를 일본 연호(레이와, 헤이세이 등)로 표시한 텍스트로 변환합니다.",
+      "ad": "은(는) Spreadsheet Editor에서 사용하는 날짜-시간 코드 형식의 수입니다."
+    },
+    "PHONETIC": {
+      "a": "(range)",
+      "d": "셀에 저장된 후리가나(가나로 표기한 발음)를 구합니다. 열어 놓은 xlsx 파일의 읽기 정보를 사용합니다.",
+      "ad": "은(는) 후리가나를 구할 셀 범위입니다."
+    },
+    "VALUETOTEXT": {
+      "a": "(값, [형식])",
+      "d": "지정한 값을 텍스트로 반환합니다",
+      "ad": "텍스트로 반환할 값입니다!반환되는 데이터의 형식입니다. 간결한 형식 = 0 또는 생략, 엄격한 형식(텍스트를 따옴표로 묶음) = 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(배열, [형식])",
+      "d": "지정한 범위의 값을 텍스트로 반환합니다",
+      "ad": "텍스트로 반환할 배열입니다!반환되는 데이터의 형식입니다. 간결한 형식 = 0 또는 생략, 엄격한 형식(텍스트를 따옴표로 묶음) = 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(시행횟수, 성공확률, 성공수, [성공수2])",
+      "d": "이항 분포를 사용한 시행 결과의 확률을 반환합니다",
+      "ad": "독립적인 시행의 횟수입니다!각 시행의 성공 확률입니다!시행에서의 성공 횟수입니다!지정하면 성공 횟수가 성공수와 성공수2 사이에 들어갈 확률을 반환합니다"
+    },
+    "DBCS": {
+      "a": "(text)",
+      "d": "DBCS(더블바이트 문자 집합) 언어의 경우 함수가 반자 문자(싱글바이트)를 전자 문자(더블바이트)로 변경합니다.",
+      "ad": "텍스트 또는 변경할 텍스트가 들어 있는 셀에 대한 참조입니다."
+    },
+    "LET": {
+      "a": "(이름1; 값1; [이름2; 값2]; ...; 계산)",
+      "d": "값에 이름을 지정하고 그 이름을 사용하는 마지막 수식을 계산합니다.",
+      "ad": "처음 지정할 이름입니다.!그 이름이 나타내는 값입니다.!결과를 반환하는 수식입니다. 지정한 이름을 사용할 수 있습니다."
+    },
+    "PY": {
+      "a": "(코드)",
+      "d": "Python 코드를 실행하고 결과를 반환합니다. 셀에 단독으로만 사용할 수 있습니다.",
+      "ad": "실행할 Python 코드입니다."
+    }
+  },
+  "pt": {
+    "YEN": {
+      "a": "(núm; [decimais])",
+      "d": "Converte um número em texto, com o símbolo do iene (¥) e separadores de milhares",
+      "ad": "é o número que deseja formatar!é o número de algarismos à direita da vírgula decimal. Se omisso, Decimais = 2"
+    },
+    "JIS": {
+      "a": "(texto)",
+      "d": "Em tipos de linguagem de conjuntos de carateres de bytes duplos (DBCS), a função altera os carateres de largura média (byte único) para carateres de largura total (bytes duplos)",
+      "ad": "é o texto que pretende alterar, ou uma referência a uma célula que o contém"
+    },
+    "DATESTRING": {
+      "a": "(núm_série)",
+      "d": "Devolve uma data como texto no calendário japonês das eras imperiais (Reiwa, Heisei e anteriores)",
+      "ad": "é um número no código de data e hora utilizado pelo Spreadsheet Editor"
+    },
+    "PHONETIC": {
+      "a": "(intervalo)",
+      "d": "Devolve os furigana (leitura fonética em kana) guardados nas células, obtidos das informações de leitura do ficheiro xlsx aberto",
+      "ad": "é o intervalo de células cujos furigana pretende obter"
+    },
+    "VALUETOTEXT": {
+      "a": "(valor, [formato])",
+      "d": "Devolve texto a partir de qualquer valor especificado",
+      "ad": "é o valor a devolver como texto!é o formato dos dados devolvidos: conciso = 0 ou omitido; rigoroso (texto entre aspas) = 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(matriz, [formato])",
+      "d": "Devolve uma representação de texto dos valores do intervalo especificado",
+      "ad": "é a matriz a devolver como texto!é o formato dos dados devolvidos: conciso = 0 ou omitido; rigoroso (texto entre aspas) = 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(tentativas, probabilidade_s, número_s, [número_s2])",
+      "d": "Devolve a probabilidade de um resultado de tentativa utilizando uma distribuição binomial",
+      "ad": "é o número de tentativas independentes!é a probabilidade de sucesso em cada tentativa!é o número de sucessos nas tentativas!se fornecido, devolve a probabilidade de o número de sucessos ficar entre número_s e número_s2"
+    },
+    "DBCS": {
+      "a": "(texto)",
+      "d": "Em tipos de linguagem de conjuntos de carateres de bytes duplos (DBCS), a função altera os carateres de largura média (byte único) para carateres de largura total (bytes duplos)",
+      "ad": "é o texto que pretende alterar, ou uma referência a uma célula que o contém"
+    },
+    "LET": {
+      "a": "(nome1; valor1; [nome2; valor2]; ...; cálculo)",
+      "d": "Atribui nomes a valores e calcula uma expressão final que os pode utilizar",
+      "ad": "é o primeiro nome a atribuir!é o valor que o nome representa!é a expressão que devolve o resultado. Pode utilizar os nomes"
+    },
+    "PY": {
+      "a": "(código)",
+      "d": "Executa código Python e devolve o resultado. Só pode ser utilizado sozinho numa célula",
+      "ad": "é o código Python a executar"
+    }
+  },
+  "pt-br": {
+    "YEN": {
+      "a": "(núm; [decimais])",
+      "d": "Converte um número em texto, com o símbolo do iene (¥) e separadores de milhares",
+      "ad": "é o número que se deseja formatar!é o número de dígitos à direita da vírgula decimal. Quando não especificado, Decimais = 2"
+    },
+    "JIS": {
+      "a": "(texto)",
+      "d": "Para idiomas do conjunto de caracteres de dois bytes (DBCS), a função altera os caracteres de meia largura (byte único) para caracteres de largura total (byte duplo)",
+      "ad": "é o texto a ser alterado, ou uma referência a uma célula que o contém"
+    },
+    "DATESTRING": {
+      "a": "(núm_série)",
+      "d": "Retorna uma data como texto no calendário japonês das eras imperiais (Reiwa, Heisei e anteriores)",
+      "ad": "é um número no código data-hora usado pelo Spreadsheet Editor"
+    },
+    "PHONETIC": {
+      "a": "(intervalo)",
+      "d": "Retorna o furigana (leitura fonética em kana) armazenado nas células, obtido das informações de leitura do arquivo xlsx aberto",
+      "ad": "é o intervalo de células cujo furigana se deseja obter"
+    },
+    "VALUETOTEXT": {
+      "a": "(valor, [formato])",
+      "d": "Retorna o texto de qualquer valor especificado",
+      "ad": "é o valor a ser retornado como texto!é o formato dos dados retornados: conciso = 0 ou omitido; rigoroso (texto entre aspas) = 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(matriz, [formato])",
+      "d": "Retorna uma representação de texto dos valores do intervalo especificado",
+      "ad": "é a matriz a ser retornada como texto!é o formato dos dados retornados: conciso = 0 ou omitido; rigoroso (texto entre aspas) = 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(tentativas, probabilidade_s, número_s, [número_s2])",
+      "d": "Retorna a probabilidade de um resultado de tentativa usando uma distribuição binomial",
+      "ad": "é o número de tentativas independentes!é a probabilidade de sucesso em cada tentativa!é o número de sucessos nas tentativas!se fornecido, retorna a probabilidade de o número de sucessos ficar entre número_s e número_s2"
+    },
+    "DBCS": {
+      "a": "(texto)",
+      "d": "Para idiomas do conjunto de caracteres de dois bytes (DBCS), a função altera os caracteres de meia largura (byte único) para caracteres de largura total (byte duplo)",
+      "ad": "é o texto a ser alterado, ou uma referência a uma célula que o contém"
+    },
+    "LET": {
+      "a": "(nome1; valor1; [nome2; valor2]; ...; cálculo)",
+      "d": "Atribui nomes a valores e calcula uma expressão final que pode usá-los",
+      "ad": "é o primeiro nome a atribuir!é o valor que o nome representa!é a expressão que retorna o resultado. Ela pode usar os nomes"
+    },
+    "PY": {
+      "a": "(código)",
+      "d": "Executa código Python e retorna o resultado. Só pode ser usado sozinho em uma célula",
+      "ad": "é o código Python a ser executado"
+    }
+  },
+  "ru": {
+    "YEN": {
+      "a": "(число; [число_знаков])",
+      "d": "Преобразует число в текст со знаком иены (¥) и разделителями разрядов",
+      "ad": "число, которое требуется отформатировать!число цифр справа от десятичной запятой. При необходимости округляется; если опущено, число знаков после запятой равно 2"
+    },
+    "JIS": {
+      "a": "(текст)",
+      "d": "Для языков с двухбайтовой кодировкой (DBCS) преобразует полуширинные (однобайтовые) знаки в полноширинные (двухбайтовые)",
+      "ad": "текст, который необходимо изменить, либо ссылка на ячейку с этим текстом"
+    },
+    "DATESTRING": {
+      "a": "(дата_в_числовом_формате)",
+      "d": "Возвращает дату в виде текста по японскому летоисчислению эпох правления (Рэйва, Хэйсэй и более ранние)",
+      "ad": "число в коде даты-времени, используемом в Редакторе таблиц"
+    },
+    "PHONETIC": {
+      "a": "(диапазон)",
+      "d": "Возвращает фуригану (фонетическое чтение каной), сохраненную в ячейках по сведениям о чтении из открытого файла xlsx",
+      "ad": "диапазон ячеек, для которых требуется получить фуригану"
+    },
+    "VALUETOTEXT": {
+      "a": "(значение, [формат])",
+      "d": "Возвращает текст из любого указанного значения",
+      "ad": "значение, возвращаемое в виде текста!формат возвращаемых данных: краткий = 0 или опущено; строгий (текст в кавычках) = 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(массив, [формат])",
+      "d": "Возвращает текстовое представление значений указанного диапазона",
+      "ad": "массив, возвращаемый в виде текста!формат возвращаемых данных: краткий = 0 или опущено; строгий (текст в кавычках) = 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(испытания, вероятность_успеха, число_успехов, [число_успехов2])",
+      "d": "Возвращает вероятность результата испытаний с использованием биномиального распределения",
+      "ad": "число независимых испытаний!вероятность успеха в каждом испытании!число успехов в испытаниях!если указано, возвращается вероятность того, что число успехов будет между число_успехов и число_успехов2"
+    },
+    "DBCS": {
+      "a": "(текст)",
+      "d": "Для языков с двухбайтовой кодировкой (DBCS) преобразует полуширинные (однобайтовые) знаки в полноширинные (двухбайтовые)",
+      "ad": "текст, который необходимо изменить, либо ссылка на ячейку с этим текстом"
+    },
+    "LET": {
+      "a": "(имя1; значение1; [имя2; значение2]; ...; вычисление)",
+      "d": "Присваивает имена значениям и вычисляет итоговое выражение, которое может их использовать",
+      "ad": "первое присваиваемое имя!значение, которое обозначает имя!выражение, возвращающее результат. Оно может использовать имена"
+    },
+    "PY": {
+      "a": "(код)",
+      "d": "Выполняет код Python и возвращает результат. Можно использовать только отдельно в ячейке",
+      "ad": "код Python для выполнения"
+    }
+  },
+  "tr": {
+    "YEN": {
+      "a": "(sayı; [onluklar])",
+      "d": "Bir sayıyı yen simgesi (¥) ve binlik ayırıcılar kullanarak metne dönüştürür",
+      "ad": "biçimlendirmek istediğiniz sayı!ondalık virgülün sağında kullanılan rakam sayısı. Atlanırsa, Ondalıklar = 2"
+    },
+    "JIS": {
+      "a": "(metin)",
+      "d": "Çift bayt karakter kümeli (DBCS) dillerde, işlev yarı genişlikli (tek bayt) karakterleri tam genişlikli (çift bayt) karakterlere dönüştürür",
+      "ad": "Dönüştürmek istediğiniz metin veya dönüştürmek istediğiniz metnin bulunduğu hücreye başvurudur."
+    },
+    "DATESTRING": {
+      "a": "(seri_no)",
+      "d": "Bir tarihi Japon imparatorluk dönemi takvimine (Reiwa, Heisei ve öncesi) göre metin olarak döndürür",
+      "ad": "Spreadsheet Editor tarafından kullanılan tarih-saat kodundaki sayı"
+    },
+    "PHONETIC": {
+      "a": "(aralık)",
+      "d": "Hücrelerde saklanan furigana (kana ile fonetik okunuş) bilgisini döndürür; bu bilgi açılan xlsx dosyasındaki okunuş kayıtlarından alınır",
+      "ad": "furiganasını almak istediğiniz hücreler aralığı"
+    },
+    "VALUETOTEXT": {
+      "a": "(değer, [biçim])",
+      "d": "Belirtilen herhangi bir değerden metin döndürür",
+      "ad": "metin olarak döndürülecek değerdir!döndürülen verinin biçimidir: kısa = 0 veya atlanmış; katı (metin tırnak içinde) = 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(dizi, [biçim])",
+      "d": "Belirtilen aralıktaki değerlerin metin gösterimini döndürür",
+      "ad": "metin olarak döndürülecek dizidir!döndürülen verinin biçimidir: kısa = 0 veya atlanmış; katı (metin tırnak içinde) = 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(denemeler, başarı_olasılığı, başarı_sayısı, [başarı_sayısı2])",
+      "d": "Binom dağılımını kullanarak bir deneme sonucunun olasılığını döndürür",
+      "ad": "bağımsız deneme sayısıdır!her denemedeki başarı olasılığıdır!denemelerdeki başarı sayısıdır!verilirse, başarı sayısının başarı_sayısı ile başarı_sayısı2 arasında olma olasılığını döndürür"
+    },
+    "DBCS": {
+      "a": "(metin)",
+      "d": "Çift bayt karakter kümeli (DBCS) dillerde, işlev yarı genişlikli (tek bayt) karakterleri tam genişlikli (çift bayt) karakterlere dönüştürür",
+      "ad": "Dönüştürmek istediğiniz metin veya dönüştürmek istediğiniz metnin bulunduğu hücreye başvurudur."
+    },
+    "LET": {
+      "a": "(ad1; değer1; [ad2; değer2]; ...; hesaplama)",
+      "d": "Değerlere ad atar ve bu adları kullanabilen son ifadeyi hesaplar",
+      "ad": "Atanacak ilk addır.!Adın temsil ettiği değerdir.!Sonucu döndüren ifadedir. Adları kullanabilir."
+    },
+    "PY": {
+      "a": "(kod)",
+      "d": "Python kodunu çalıştırır ve sonucu döndürür. Bir hücrede yalnızca tek başına kullanılabilir",
+      "ad": "Çalıştırılacak Python kodudur."
+    }
+  },
+  "vi": {
+    "YEN": {
+      "a": "(number; [decimals])",
+      "d": "Chuyển đổi số sang văn bản với ký hiệu yên (¥) và dấu phân cách hàng nghìn",
+      "ad": "là số cần định dạng!là số chữ số bên phải dấu thập phân. Nếu không có, phần thập phân = 2"
+    },
+    "JIS": {
+      "a": "(text)",
+      "d": "Đối với những ngôn ngữ dùng bộ ký tự byte kép (DBCS), hàm này giúp thay đổi các ký tự có độ rộng bán phần (byte đơn) thành các ký tự có độ rộng toàn phần (byte kép)",
+      "ad": "Văn bản hoặc tham chiếu tới một ô có chứa văn bản mà bạn muốn thay đổi."
+    },
+    "DATESTRING": {
+      "a": "(serial_number)",
+      "d": "Trả về ngày tháng dưới dạng văn bản theo lịch niên hiệu Nhật Bản (Reiwa, Heisei và trước đó)",
+      "ad": "là một số trong mã ngày-giờ được sử dụng bởi Spreadsheet Editor"
+    },
+    "PHONETIC": {
+      "a": "(range)",
+      "d": "Trả về furigana (cách đọc phiên âm bằng chữ kana) lưu trong các ô, lấy từ thông tin cách đọc trong tệp xlsx đã mở",
+      "ad": "là khoảng các ô cần lấy furigana"
+    },
+    "VALUETOTEXT": {
+      "a": "(giá_trị, [định_dạng])",
+      "d": "Trả về văn bản từ bất kỳ giá trị nào được chỉ định",
+      "ad": "là giá trị cần trả về dưới dạng văn bản!là định dạng của dữ liệu trả về: ngắn gọn = 0 hoặc bỏ qua; chặt chẽ (văn bản trong dấu ngoặc kép) = 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(mảng, [định_dạng])",
+      "d": "Trả về dạng văn bản của các giá trị trong phạm vi được chỉ định",
+      "ad": "là mảng cần trả về dưới dạng văn bản!là định dạng của dữ liệu trả về: ngắn gọn = 0 hoặc bỏ qua; chặt chẽ (văn bản trong dấu ngoặc kép) = 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(số_phép_thử, xác_suất_thành_công, số_thành_công, [số_thành_công2])",
+      "d": "Trả về xác suất của một kết quả phép thử bằng phân bố nhị thức",
+      "ad": "là số phép thử độc lập!là xác suất thành công của mỗi phép thử!là số lần thành công trong các phép thử!nếu được cung cấp, trả về xác suất số lần thành công nằm giữa số_thành_công và số_thành_công2"
+    },
+    "DBCS": {
+      "a": "(text)",
+      "d": "Đối với những ngôn ngữ dùng bộ ký tự byte kép (DBCS), hàm này giúp thay đổi các ký tự có độ rộng bán phần (byte đơn) thành các ký tự có độ rộng toàn phần (byte kép)",
+      "ad": "Văn bản hoặc tham chiếu tới một ô có chứa văn bản mà bạn muốn thay đổi."
+    },
+    "LET": {
+      "a": "(tên1; giá_trị1; [tên2; giá_trị2]; ...; phép_tính)",
+      "d": "Gán tên cho các giá trị và tính biểu thức cuối cùng có thể dùng các tên đó",
+      "ad": "Tên đầu tiên cần gán.!Giá trị mà tên đại diện.!Biểu thức trả về kết quả. Biểu thức này có thể dùng các tên đó."
+    },
+    "PY": {
+      "a": "(mã)",
+      "d": "Chạy mã Python và trả về kết quả. Chỉ dùng được một mình trong một ô",
+      "ad": "Mã Python cần chạy."
+    }
+  },
+  "zh": {
+    "YEN": {
+      "a": "(数字; [小数位数])",
+      "d": "用日元符号(¥)和千位分隔符将数值转换成文本",
+      "ad": "要设置格式的数值!指定小数点右边的位数。如果忽略，小数位数 = 2"
+    },
+    "JIS": {
+      "a": "(文本)",
+      "d": "对于双字节字符集 (DBCS) 语言，该函数将半角（单字节）字符转换成全角（双字节）字符。",
+      "ad": "文本或对包含要更改文本的单元格的引用。"
+    },
+    "DATESTRING": {
+      "a": "(序列号)",
+      "d": "将日期转换为日本年号纪年(令和、平成等)的文本",
+      "ad": "电子表格编辑器进行日期及时间计算的日期-时间代码"
+    },
+    "PHONETIC": {
+      "a": "(范围)",
+      "d": "返回单元格中保存的拼音(日文假名注音)，取自所打开 xlsx 文件中的读音信息",
+      "ad": "要获取拼音的单元格区域"
+    },
+    "ISNONTEXT": {
+      "a": "(值)",
+      "d": "检测一个值是否不是文本(空单元格不是文本)，返回 TRUE 或 FALSE",
+      "ad": "是要测试的值。值可以是单元格、公式或指代单元格、公式或值的名称"
+    },
+    "ISNUMBER": {
+      "a": "(值)",
+      "d": "检测一个值是否为数字，返回 TRUE 或 FALSE",
+      "ad": "是要测试的值。值可以是单元格、公式或指代单元格、公式或值的名称"
+    },
+    "ISTEXT": {
+      "a": "(值)",
+      "d": "检测一个值是否为文本，返回 TRUE 或 FALSE",
+      "ad": "是要测试的值。值可以是单元格、公式或指代单元格、公式或值的名称"
+    },
+    "VALUETOTEXT": {
+      "a": "(值, [格式])",
+      "d": "返回任意指定值的文本形式",
+      "ad": "要以文本形式返回的值!返回数据的格式：简洁格式 = 0 或省略；严格格式（文本加引号）= 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(数组, [格式])",
+      "d": "返回指定区域中各值的文本形式",
+      "ad": "要以文本形式返回的数组!返回数据的格式：简洁格式 = 0 或省略；严格格式（文本加引号）= 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(试验次数, 成功概率, 成功次数, [成功次数2])",
+      "d": "使用二项式分布返回试验结果的概率",
+      "ad": "独立试验的次数!每次试验的成功概率!试验中的成功次数!如果提供，则返回成功次数介于 成功次数 和 成功次数2 之间的概率"
+    },
+    "DBCS": {
+      "a": "(文本)",
+      "d": "对于双字节字符集 (DBCS) 语言，该函数将半角（单字节）字符转换成全角（双字节）字符。",
+      "ad": "文本或对包含要更改文本的单元格的引用。"
+    },
+    "LET": {
+      "a": "(名称1; 值1; [名称2; 值2]; ...; 计算)",
+      "d": "为值指定名称，并计算可以使用这些名称的最终表达式。",
+      "ad": "要指定的第一个名称。!该名称代表的值。!返回结果的表达式。可以使用这些名称。"
+    },
+    "PY": {
+      "a": "(代码)",
+      "d": "运行 Python 代码并返回结果。只能在单元格中单独使用。",
+      "ad": "要运行的 Python 代码。"
+    }
+  },
+  "zh-tw": {
+    "YEN": {
+      "a": "(number; [decimals])",
+      "d": "依照日圓符號 (¥) 和千分位分隔符號，將數字轉換為文字",
+      "ad": "is the number you want to format!is the number of digits to the right of the decimal point. If omitted, Decimals = 2"
+    },
+    "JIS": {
+      "a": "(text)",
+      "d": "針對雙位元字元集（DBCS）語言，將半形（單位元）字元轉換為全形（雙位元）字元。",
+      "ad": "is the text you want to change. If text does not contain any half-width letters, text is not changed."
+    },
+    "DATESTRING": {
+      "a": "(serial_number)",
+      "d": "傳回以日本年號紀年（令和、平成等）表示的日期文字",
+      "ad": "is a number in the date-time code used by Spreadsheet Editor"
+    },
+    "PHONETIC": {
+      "a": "(range)",
+      "d": "傳回儲存格中所儲存的注音假名（振假名），取自所開啟 xlsx 檔案中的讀音資訊",
+      "ad": "is the range of cells whose furigana (phonetic reading) you want"
+    },
+    "VALUETOTEXT": {
+      "a": "(值, [格式])",
+      "d": "傳回任何指定值的文字形式",
+      "ad": "要以文字形式傳回的值!傳回資料的格式：簡潔格式 = 0 或省略；嚴格格式（文字加引號）= 1"
+    },
+    "ARRAYTOTEXT": {
+      "a": "(陣列, [格式])",
+      "d": "傳回指定範圍中各值的文字形式",
+      "ad": "要以文字形式傳回的陣列!傳回資料的格式：簡潔格式 = 0 或省略；嚴格格式（文字加引號）= 1"
+    },
+    "BINOM.DIST.RANGE": {
+      "a": "(試驗次數, 成功機率, 成功次數, [成功次數2])",
+      "d": "使用二項分布傳回試驗結果的機率",
+      "ad": "獨立試驗的次數!每次試驗的成功機率!試驗中的成功次數!若提供，則傳回成功次數介於 成功次數 和 成功次數2 之間的機率"
+    },
+    "DBCS": {
+      "a": "(text)",
+      "d": "針對雙位元字元集（DBCS）語言，將半形（單位元）字元轉換為全形（雙位元）字元。",
+      "ad": "is the text you want to change. If text does not contain any half-width letters, text is not changed."
+    },
+    "LET": {
+      "a": "(名稱1; 值1; [名稱2; 值2]; ...; 計算)",
+      "d": "為值指定名稱，並計算可使用這些名稱的最終運算式。",
+      "ad": "要指定的第一個名稱。!該名稱代表的值。!傳回結果的運算式。可使用這些名稱。"
+    },
+    "PY": {
+      "a": "(程式碼)",
+      "d": "執行 Python 程式碼並傳回結果。只能在儲存格中單獨使用。",
+      "ad": "要執行的 Python 程式碼。"
+    }
+  }
 }

@@ -21,6 +21,7 @@ Arguments in `[ ]` can be omitted.
 |`ACOSH(number)` |Returns the inverse hyperbolic cosine of a number.
 |`ACOT(number)` |Returns the arccotangent of a number, in radians in the range 0 to Pi.
 |`ACOTH(number)` |Returns the inverse hyperbolic cotangent of a number.
+|`AGGREGATE(function_num, options, ref1, ...)` |Returns an aggregate in a list or database.
 |`ARABIC(text)` |Converts a Roman numeral to Arabic.
 |`ASIN(number)` |Returns the arcsine of a number in radians, in the range -Pi/2 to Pi/2.
 |`ASINH(number)` |Returns the inverse hyperbolic sine of a number.
@@ -67,6 +68,7 @@ Arguments in `[ ]` can be omitted.
 |`QUOTIENT(numerator, denominator)` |Returns the integer portion of a division.
 |`RADIANS(angle)` |Converts degrees to radians.
 |`RAND()` |Returns a random number greater than or equal to 0 and less than 1, evenly distributed (changes on recalculation).
+|`RANDARRAY([rows], [columns], [min], [max], [integer])` |Returns an array of random numbers.
 |`RANDBETWEEN(bottom, top)` |Returns a random number between the numbers you specify.
 |`ROMAN(number, [form])` |Converts an Arabic numeral to Roman, as text.
 |`ROUND(number, num_digits)` |Rounds a number to a specified number of digits.
@@ -106,13 +108,19 @@ Arguments in `[ ]` can be omitted.
 |`AVERAGEIFS(average_range, criteria_range, criteria, ...)` |Finds average (arithmetic mean) for the cells specified by a given set of conditions or criteria.
 |`BETA.DIST(x, alpha, beta, cumulative, [A], [B])` |Returns the beta probability distribution function.
 |`BETA.INV(probability, alpha, beta, [A], [B])` |Returns the inverse of the cumulative beta probability density function (BETA.DIST).
+|`BETADIST(x, alpha, beta, [A], [B])` |Returns the cumulative beta probability density function.
+|`BETAINV(probability, alpha, beta, [A], [B])` |Returns the inverse of the cumulative beta probability density function (BETADIST).
 |`BINOM.DIST(number_s, trials, probability_s, cumulative)` |Returns the individual term binomial distribution probability.
 |`BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])` |Returns the probability of a trial result using a binomial distribution.
 |`BINOM.INV(trials, probability_s, alpha)` |Returns the smallest value for which the cumulative binomial distribution is greater than or equal to a criterion value.
+|`BINOMDIST(number_s, trials, probability_s, cumulative)` |Returns the individual term binomial distribution probability.
+|`CHIDIST(x, deg_freedom)` |Returns the right-tailed probability of the chi-squared distribution.
+|`CHIINV(probability, deg_freedom)` |Returns the inverse of the right-tailed probability of the chi-squared distribution.
 |`CHISQ.DIST(x, deg_freedom, cumulative)` |Returns the left-tailed probability of the chi-squared distribution.
 |`CHISQ.DIST.RT(x, deg_freedom)` |Returns the right-tailed probability of the chi-squared distribution.
 |`CHISQ.INV(probability, deg_freedom)` |Returns the inverse of the left-tailed probability of the chi-squared distribution.
 |`CHISQ.INV.RT(probability, deg_freedom)` |Returns the inverse of the right-tailed probability of the chi-squared distribution.
+|`CONFIDENCE(alpha, standard_dev, size)` |Returns the confidence interval for a population mean, using a normal distribution.
 |`CONFIDENCE.NORM(alpha, standard_dev, size)` |Returns the confidence interval for a population mean, using a normal distribution.
 |`CONFIDENCE.T(alpha, standard_dev, size)` |Returns the confidence interval for a population mean, using a Student's T distribution.
 |`CORREL(array1, array2)` |Returns the correlation coefficient between two data sets.
@@ -123,24 +131,31 @@ Arguments in `[ ]` can be omitted.
 |`COUNTIFS(criteria_range, criteria, ...)` |Counts the number of cells specified by a given set of conditions or criteria.
 |`COVARIANCE.P(array1, array2)` |Returns population covariance, the average of the products of deviations for each data point pair in two data sets.
 |`COVARIANCE.S(array1, array2)` |Returns sample covariance, the average of the products of deviations for each data point pair in two data sets.
+|`CRITBINOM(trials, probability_s, alpha)` |Returns the smallest value for which the cumulative binomial distribution is greater than or equal to a criterion value.
 |`DEVSQ(number1, [number2], ...)` |Returns the sum of squares of deviations of data points from their sample mean.
 |`EXPON.DIST(x, lambda, cumulative)` |Returns the exponential distribution.
 |`F.DIST(x, deg_freedom1, deg_freedom2, cumulative)` |Returns the (left-tailed) F probability distribution (degree of diversity) for two data sets.
 |`F.DIST.RT(x, deg_freedom1, deg_freedom2)` |Returns the (right-tailed) F probability distribution (degree of diversity) for two data sets.
 |`F.INV(probability, deg_freedom1, deg_freedom2)` |Returns the inverse of the (left-tailed) F probability distribution: if p = F.DIST(x,...), then F.INV(p,...) = x.
 |`F.INV.RT(probability, deg_freedom1, deg_freedom2)` |Returns the inverse of the (right-tailed) F probability distribution: if p = F.DIST.RT(x,...), then F.INV.RT(p,...) = x.
+|`FDIST(x, deg_freedom1, deg_freedom2)` |Returns the (right-tailed) F probability distribution (degree of diversity) for two data sets.
+|`FINV(probability, deg_freedom1, deg_freedom2)` |Returns the inverse of the (right-tailed) F probability distribution: if p = FDIST(x,...), then FINV(p,...) = x.
 |`FISHER(x)` |Returns the Fisher transformation.
 |`FISHERINV(y)` |Returns the inverse of the Fisher transformation: if y = FISHER(x), then FISHERINV(y) = x.
 |`FORECAST(x, known_y's, known_x's)` |Calculates, or predicts, a future value along a linear trend by using existing values.
+|`FORECAST.LINEAR(x, known_y's, known_x's)` |Calculates, or predicts, a future value along a linear trend by using existing values.
 |`GAMMA(x)` |Returns the Gamma function value.
 |`GAMMA.DIST(x, alpha, beta, cumulative)` |Returns the gamma distribution.
 |`GAMMA.INV(probability, alpha, beta)` |Returns the inverse of the gamma cumulative distribution: if p = GAMMA.DIST(x,...), then GAMMA.INV(p,...) = x.
+|`GAMMADIST(x, alpha, beta, cumulative)` |Returns the gamma distribution.
+|`GAMMAINV(probability, alpha, beta)` |Returns the inverse of the gamma cumulative distribution: if p = GAMMADIST(x,...), then GAMMAINV(p,...) = x.
 |`GAMMALN(x)` |Returns the natural logarithm of the gamma function.
 |`GAMMALN.PRECISE(x)` |Returns the natural logarithm of the gamma function.
 |`GAUSS(x)` |Returns 0.5 less than the standard normal cumulative distribution.
 |`GEOMEAN(number1, [number2], ...)` |Returns the geometric mean of an array or range of positive numeric data.
 |`HARMEAN(number1, [number2], ...)` |Returns the harmonic mean of a data set of positive numbers: the reciprocal of the arithmetic mean of reciprocals.
 |`HYPGEOM.DIST(sample_s, number_sample, population_s, number_pop, cumulative)` |Returns the hypergeometric distribution.
+|`HYPGEOMDIST(sample_s, number_sample, population_s, number_pop)` |Returns the hypergeometric distribution.
 |`INTERCEPT(known_ys, known_xs)` |Calculates the point at which a line will intersect the y-axis by using a best-fit regression line plotted through the known x-values and y-values.
 |`KURT(number1, [number2], ...)` |Returns the kurtosis of a data set.
 |`LARGE(array, k)` |Returns the k-th largest value in a data set. For example, the fifth largest number.
@@ -155,21 +170,31 @@ Arguments in `[ ]` can be omitted.
 |`MINIFS(min_range, criteria_range, criteria, ...)` |Returns the minimum value among cells specified by a given set of conditions or criteria.
 |`MODE(number1, [number2], ...)` |Returns the most frequently occurring, or repetitive, value in an array or range of data.
 |`MODE.MULT(number1, [number2], ...)` |Returns a vertical array of the most frequently occurring, or repetitive, values in an array or range of data. For a horizontal array, use =TRANSPOSE(MODE.MULT(number1,number2,...)).
+|`MODE.SNGL(number1, [number2], ...)` |Returns the most frequently occurring, or repetitive, value in an array or range of data.
 |`NEGBINOM.DIST(number_f, number_s, probability_s, cumulative)` |Returns the negative binomial distribution, the probability that there will be Number_f failures before the Number_s-th success, with Probability_s probability of a success.
+|`NEGBINOMDIST(number_f, number_s, probability_s)` |Returns the negative binomial distribution, the probability that there will be Number_f failures before the Number_s-th success, with Probability_s probability of a success.
 |`NORM.DIST(x, mean, standard_dev, cumulative)` |Returns the normal distribution for the specified mean and standard deviation.
 |`NORM.INV(probability, mean, standard_dev)` |Returns the inverse of the normal cumulative distribution for the specified mean and standard deviation.
 |`NORM.S.DIST(z, cumulative)` |Returns the standard normal distribution (has a mean of zero and a standard deviation of one).
 |`NORM.S.INV(probability)` |Returns the inverse of the standard normal cumulative distribution (has a mean of zero and a standard deviation of one).
+|`NORMDIST(x, mean, standard_dev, cumulative)` |Returns the normal cumulative distribution for the specified mean and standard deviation.
+|`NORMINV(probability, mean, standard_dev)` |Returns the inverse of the normal cumulative distribution for the specified mean and standard deviation.
+|`NORMSDIST(z)` |Returns the standard normal cumulative distribution (has a mean of zero and a standard deviation of one).
+|`NORMSINV(probability)` |Returns the inverse of the standard normal cumulative distribution (has a mean of zero and a standard deviation of one).
 |`PEARSON(array1, array2)` |Returns the Pearson product moment correlation coefficient, r.
 |`PERCENTILE(array, k)` |Returns the k-th percentile of values in a range.
 |`PERCENTILE.EXC(array, k)` |Returns the k-th percentile of values in a range, where k is in the range 0..1, exclusive.
+|`PERCENTILE.INC(array, k)` |Returns the k-th percentile of values in a range, where k is in the range 0..1, inclusive.
+|`PERCENTRANK(array, x, [significance])` |Returns the rank of a value in a data set as a percentage of the data set.
 |`PERCENTRANK.EXC(array, x, [significance])` |Returns the rank of a value in a data set as a percentage of the data set as a percentage (0..1, exclusive) of the data set.
 |`PERCENTRANK.INC(array, x, [significance])` |Returns the rank of a value in a data set as a percentage of the data set as a percentage (0..1, inclusive) of the data set.
 |`PERMUTATIONA(number, number_chosen)` |Returns the number of permutations for a given number of objects (with repetitions) that can be selected from the total objects.
 |`PHI(x)` |Returns the value of the density function for a standard normal distribution.
+|`POISSON(x, mean, cumulative)` |Returns the Poisson distribution.
 |`POISSON.DIST(x, mean, cumulative)` |Returns the Poisson distribution.
 |`QUARTILE(array, quart)` |Returns the quartile of a data set.
 |`QUARTILE.EXC(array, quart)` |Returns the quartile of a data set, based on percentile values from 0..1, exclusive.
+|`QUARTILE.INC(array, quart)` |Returns the quartile of a data set, based on percentile values from 0..1, inclusive.
 |`RANK(number, ref, [order])` |Returns the rank of a number in a list of numbers: its size relative to other values in the list.
 |`RANK.AVG(number, ref, [order])` |Returns the rank of a number in a list of numbers: its size relative to other values in the list; if more than one value has the same rank, the average rank is returned.
 |`RANK.EQ(number, ref, [order])` |Returns the rank of a number in a list of numbers: its size relative to other values in the list; if more than one value has the same rank, the top rank of that set of values is returned.
@@ -180,6 +205,8 @@ Arguments in `[ ]` can be omitted.
 |`SMALL(array, k)` |Returns the k-th smallest value in a data set. For example, the fifth smallest number.
 |`STANDARDIZE(x, mean, standard_dev)` |Returns a normalised value from a distribution characterised by a mean and standard deviation.
 |`STDEV(number1, [number2], ...)` |Estimates standard deviation based on a sample (ignores logical values and text in the sample).
+|`STDEV.P(number1, [number2], ...)` |Calculates standard deviation based on the entire population given as arguments (ignores logical values and text).
+|`STDEV.S(number1, [number2], ...)` |Estimates standard deviation based on a sample (ignores logical values and text in the sample).
 |`STDEVA(value1, [value2], ...)` |Estimates standard deviation based on a sample, including logical values and text. Text and the logical value FALSE have the value 0; the logical value TRUE has the value 1.
 |`STDEVP(number1, [number2], ...)` |Calculates standard deviation based on the entire population given as arguments (ignores logical values and text).
 |`STDEVPA(value1, [value2], ...)` |Calculates standard deviation based on an entire population, including logical values and text. Text and the logical value FALSE have the value 0; the logical value TRUE has the value 1.
@@ -191,11 +218,16 @@ Arguments in `[ ]` can be omitted.
 |`T.DIST.RT(x, deg_freedom)` |Returns the right-tailed Student's t-distribution.
 |`T.INV(probability, deg_freedom)` |Returns the left-tailed inverse of the Student's t-distribution.
 |`T.INV.2T(probability, deg_freedom)` |Returns the two-tailed inverse of the Student's t-distribution.
+|`TDIST(x, deg_freedom, tails)` |Returns the Student's t-distribution.
+|`TINV(probability, deg_freedom)` |Returns the two-tailed inverse of the Student's t-distribution.
 |`TRIMMEAN(array, percent)` |Returns the mean of the interior portion of a set of data values.
 |`VAR(number1, [number2], ...)` |Estimates variance based on a sample (ignores logical values and text in the sample).
+|`VAR.P(number1, [number2], ...)` |Calculates variance based on the entire population (ignores logical values and text in the population).
+|`VAR.S(number1, [number2], ...)` |Estimates variance based on a sample (ignores logical values and text in the sample).
 |`VARA(value1, [value2], ...)` |Estimates variance based on a sample, including logical values and text. Text and the logical value FALSE have the value 0; the logical value TRUE has the value 1.
 |`VARP(number1, [number2], ...)` |Calculates variance based on the entire population (ignores logical values and text in the population).
 |`VARPA(value1, [value2], ...)` |Calculates variance based on the entire population, including logical values and text. Text and the logical value FALSE have the value 0; the logical value TRUE has the value 1.
+|`WEIBULL(x, alpha, beta, cumulative)` |Returns the Weibull distribution.
 |`WEIBULL.DIST(x, alpha, beta, cumulative)` |Returns the Weibull distribution.
 |===
 
@@ -213,6 +245,8 @@ Arguments in `[ ]` can be omitted.
 |`CONCAT(text1, ...)` |Concatenates a list or range of text strings.
 |`CONCATENATE(text1, [text2], ...)` |Joins several text strings into one text string.
 |`DATESTRING(serial_number)` |Returns a date as text in the Japanese imperial era calendar.
+|`DBCS(text)` |Converts half-width (single-byte) characters in a string to full-width (double-byte) characters.
+|`DOLLAR(number, [decimals])` |Converts a number to text, using currency format.
 |`EXACT(text1, text2)` |Checks whether two text strings are exactly the same, and returns TRUE or FALSE. EXACT is case-sensitive.
 |`FIND(find_text, within_text, [start_num])` |Returns the starting position of one text string within another text string. FIND is case-sensitive.
 |`FINDB( string-1, string-2, [start-pos] )` |Finds the specified substring (string-1) within a string (string-2) and is intended for languages the double-byte character set (DBCS) like Japanese, Chinese, Korean etc.
@@ -228,6 +262,7 @@ Arguments in `[ ]` can be omitted.
 |`NUMBERVALUE(text, [decimal_separator], [group_separator])` |Converts text to number in a locale-independent manner.
 |`PHONETIC(range)` |Returns the furigana (phonetic reading) held in the cells, taken from the reading information stored in the xlsx that was opened.
 |`PROPER(text)` |Converts a text string to proper case; the first letter in each word to uppercase, and all other letters to lowercase.
+|`REPLACE(old_text, start_num, num_chars, new_text)` |Replaces part of a text string with a different text string.
 |`REPLACEB( string-1, start-pos, number-chars, string-2 )` |Replaces a set of characters, based on the number of characters and the start position you specify, with a new set of characters and is intended for languages that use the double-byte character set (DBCS) like Japanese, Chinese, Korean etc.
 |`REPT(text, number_times)` |Repeats text a given number of times. Use REPT to fill a cell with a number of instances of a text string.
 |`RIGHT(text, [num_chars])` |Returns the specified number of characters from the end of a text string.
@@ -236,7 +271,10 @@ Arguments in `[ ]` can be omitted.
 |`SEARCHB( string-1, string-2, [start-pos] )` |Returns the location of the specified substring in a string and is intended for languages that use the double-byte character set (DBCS) like Japanese, Chinese, Korean etc.
 |`SUBSTITUTE(text, old_text, new_text, [instance_num])` |Replaces existing text with new text in a text string.
 |`TEXT(value, format_text)` |Converts a value to text in a specific number format.
+|`TEXTAFTER(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])` |Returns text that’s after delimiting characters.
+|`TEXTBEFORE(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])` |Returns text that’s before delimiting characters.
 |`TEXTJOIN(delimiter, ignore_empty, text1, ...)` |Concatenates a list or range of text strings using a delimiter.
+|`TEXTSPLIT(text, col_delimiter, [row_delimiter], [ignore_empty], [match_mode], [pad_with])` |Splits text into rows or columns using delimiters.
 |`TRIM(text)` |Removes all spaces from a text string except for single spaces between words.
 |`UNICHAR(number)` |Returns the Unicode character referenced by the given numeric value.
 |`UNICODE(text)` |Returns the number (code point) corresponding to the first character of the text.
@@ -258,6 +296,7 @@ Arguments in `[ ]` can be omitted.
 |`IFERROR(value, value_if_error)` |Returns value_if_error if expression is an error and the value of the expression itself otherwise.
 |`IFNA(value, value_if_na)` |Returns the value you specify if the expression resolves to #N/A, otherwise returns the result of the expression.
 |`IFS(logical_test, value_if_true, ...)` |Checks whether one or more conditions are met and returns a value corresponding to the first TRUE condition.
+|`LET(name1, value1, [name2, value2], ..., calculation)` |Assigns names to values and computes a final expression that can use them.
 |`NOT(logical)` |Changes FALSE to TRUE, or TRUE to FALSE.
 |`OR(logical1, [logical2], ...)` |Checks whether any of the arguments are TRUE, and returns TRUE or FALSE. Returns FALSE only if all arguments are FALSE.
 |`SWITCH(expression, value1, result1, [default_or_value2], [result2], ...)` |Evaluates an expression against a list of values and returns the result corresponding to the first matching value. If there is no match, an optional default value is returned.
@@ -308,8 +347,10 @@ Arguments in `[ ]` can be omitted.
 |`CHOOSE(index_num, value1, [value2], ...)` |Chooses a value or action to perform from a list of values, based on an index number.
 |`COLUMN([reference])` |Returns the column number of a reference.
 |`COLUMNS(array)` |Returns the number of columns in an array or reference.
+|`DROP(array, rows, [columns])` |Drops rows or columns from array start or end.
 |`FILTER(array, include, [if_empty])` |Filter a range or array.
 |`HLOOKUP(lookup_value, table_array, row_index_num, [range_lookup])` |Looks for a value in the top row of a table or array of values and returns the value in the same column from a row you specify.
+|`HSTACK(array1, [array2], ...)` |Horizontally stacks arrays into one array.
 |`HYPERLINK(link_location, [friendly_name])` |Creates a shortcut or jump that opens a document stored on your hard drive, a network server, or on the Internet.
 |`INDEX(array, row_num, [column_num]!reference, row_num, [column_num], [area_num])` |Returns a value or reference of the cell at the intersection of a particular row and column, in a given range.
 |`INDIRECT(ref_text, [a1])` |Returns the reference specified by a text string.
@@ -319,10 +360,16 @@ Arguments in `[ ]` can be omitted.
 |`ROW([reference])` |Returns the row number of a reference.
 |`ROWS(array)` |Returns the number of rows in a reference or array.
 |`SORT(array, [sort_index], [sort_order], [by_col])` |Sorts a range or array.
+|`SORTBY(array, by_array, [sort_order], ...)` |Sorts a range or array based on the values in a corresponding range or array.
+|`TAKE(array, rows, [columns])` |Returns rows or columns from array start or end.
+|`TOCOL(array, [ignore], [scan_by_column])` |Returns the array as one column.
+|`TOROW(array, [ignore], [scan_by_column])` |Returns the array as one row.
 |`TRANSPOSE(array)` |Converts a vertical range of cells to a horizontal range, or vice versa.
 |`UNIQUE(array, [by_col], [exactly_once])` |Returns the unique values from a range or array.
 |`VLOOKUP(lookup_value, table_array, col_index_num, [range_lookup])` |Looks for a value in the leftmost column of a table and then returns a value in the same row from a column that you specify. By default, the table must be sorted in an ascending order.
+|`VSTACK(array1, [array2], ...)` |Vertically stacks arrays into one array.
 |`XLOOKUP(lookup_value, lookup_array, return_array, [if_not_found], [match_mode], [search_mode])` |Searches a range or an array for a match and returns the corresponding item from a second range or array. By default, an exact match is used.
+|`XMATCH(lookup_value, lookup_array, [match_mode], [search_mode])` |Returns the relative position of an item in an array. By default, an exact match is required.
 |===
 
 == Financial
@@ -366,6 +413,7 @@ Arguments in `[ ]` can be omitted.
 |===
 |Function |Description
 
+|`CELL(info_type, [reference])` |Returns information about a cell. Only "filename" is supported: the path, the file name in brackets, and the sheet name.
 |`ERROR.TYPE(error_val)` |Returns a number matching an error value.
 |`ISBLANK(value)` |Checks whether a reference is to an empty cell, and returns TRUE or FALSE.
 |`ISERR(value)` |Checks whether a value is an error other than #N/A, and returns TRUE or FALSE.
@@ -379,6 +427,7 @@ Arguments in `[ ]` can be omitted.
 |`ISTEXT(value)` |Checks whether a value is text, and returns TRUE or FALSE.
 |`N(value)` |Converts non-number value to a number, dates to serial numbers, TRUE to 1, anything else to 0 (zero).
 |`NA()` |Returns the error value #N/A (value not available).
+|`PY(code)` |Runs Python code and returns the result. It can only be used on its own in a cell.
 |`T(value)` |Checks whether a value is text, and returns the text if it is, or returns double quotes (empty text) if it is not.
 |`TYPE(value)` |Returns an integer representing the data type of a value: number = 1; text = 2; logical value = 4; error value = 16; array = 64; compound data = 128.
 |===

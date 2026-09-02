@@ -44,7 +44,8 @@ GROUPS = {
             "ACOSH ASINH ATANH ACOT ACOTH COT COTH CSC CSCH SEC SECH "
             "BASE DECIMAL COMBINA FACTDOUBLE MULTINOMIAL SQRTPI "
             "CEILING.PRECISE FLOOR.PRECISE ISO.CEILING ROMAN ARABIC "
-            "SERIESSUM SUMX2MY2 SUMX2PY2 SUMXMY2 MDETERM",
+            "SERIESSUM SUMX2MY2 SUMX2PY2 SUMXMY2 MDETERM "
+            "AGGREGATE RANDARRAY",
     "統計": "AVERAGE COUNT MAX MIN COUNTA COUNTBLANK SUMIF SUMIFS COUNTIF "
             "COUNTIFS AVERAGEIF AVERAGEIFS MINIFS MAXIFS "
             "RANK RANK.EQ RANK.AVG LARGE SMALL MEDIAN MODE STDEV STDEVP "
@@ -63,26 +64,34 @@ GROUPS = {
             "NEGBINOM.DIST HYPGEOM.DIST T.DIST T.DIST.RT T.DIST.2T "
             "T.INV T.INV.2T F.DIST F.DIST.RT F.INV F.INV.RT "
             "BETA.DIST BETA.INV CONFIDENCE.NORM CONFIDENCE.T "
-            "BINOM.DIST.RANGE",
+            "BINOM.DIST.RANGE "
+            # 古い名前と .INC 系(Excel の互換関数)。評価器は受けるので載せる
+            "BETADIST BETAINV BINOMDIST CHIDIST CHIINV CONFIDENCE CRITBINOM "
+            "FDIST FINV FORECAST.LINEAR GAMMADIST GAMMAINV HYPGEOMDIST "
+            "MODE.SNGL NEGBINOMDIST NORMDIST NORMINV NORMSDIST NORMSINV "
+            "PERCENTILE.INC PERCENTRANK POISSON QUARTILE.INC "
+            "STDEV.P STDEV.S TDIST TINV VAR.P VAR.S WEIBULL",
     "文字列操作": "LEN LEFT RIGHT MID TRIM UPPER LOWER CONCATENATE CONCAT TEXT "
               "SUBSTITUTE FIND SEARCH VALUE TEXTJOIN REPT CHAR CODE "
               "UNICHAR UNICODE PROPER EXACT CLEAN FIXED YEN NUMBERVALUE "
               "LENB LEFTB RIGHTB MIDB FINDB SEARCHB REPLACEB "
-              "ASC JIS DATESTRING PHONETIC VALUETOTEXT ARRAYTOTEXT",
-    "論理": "IF IFS SWITCH AND OR NOT TRUE FALSE IFERROR IFNA XOR",
+              "ASC JIS DATESTRING PHONETIC VALUETOTEXT ARRAYTOTEXT "
+              "DBCS DOLLAR REPLACE TEXTBEFORE TEXTAFTER TEXTSPLIT",
+    "論理": "IF IFS SWITCH AND OR NOT TRUE FALSE IFERROR IFNA XOR LET",
     "日付/時刻": "TODAY NOW DATE DATEVALUE YEAR MONTH DAY WEEKDAY "
             "TIME HOUR MINUTE SECOND EDATE EOMONTH DATEDIF "
             "WORKDAY NETWORKDAYS DAYS DAYS360 YEARFRAC WEEKNUM ISOWEEKNUM "
             "TIMEVALUE NETWORKDAYS.INTL WORKDAY.INTL",
     "検索/行列": "VLOOKUP HLOOKUP XLOOKUP LOOKUP INDEX MATCH CHOOSE "
             "ROW COLUMN ROWS COLUMNS OFFSET INDIRECT ADDRESS HYPERLINK "
-            "FILTER SORT UNIQUE TRANSPOSE",
+            "FILTER SORT UNIQUE TRANSPOSE XMATCH SORTBY "
+            "VSTACK HSTACK TAKE DROP TOCOL TOROW",
     "財務": "PMT PV FV NPER NPV IRR RATE "
             "IPMT PPMT CUMIPMT CUMPRINC ISPMT SLN SYD DB DDB VDB "
             "EFFECT NOMINAL PDURATION RRI FVSCHEDULE DOLLARDE DOLLARFR "
             "MIRR XNPV XIRR",
     "情報": "ISBLANK ISERROR ISNA ISERR ISLOGICAL ISNONTEXT ISNUMBER ISTEXT "
-            "ISEVEN ISODD NA T N TYPE ERROR.TYPE",
+            "ISEVEN ISODD NA T N TYPE ERROR.TYPE CELL PY",
     "エンジニアリング": "BIN2DEC BIN2HEX BIN2OCT OCT2BIN OCT2DEC OCT2HEX "
             "DEC2BIN DEC2HEX DEC2OCT HEX2BIN HEX2DEC HEX2OCT "
             "BITAND BITOR BITXOR BITLSHIFT BITRSHIFT DELTA GESTEP "
@@ -107,6 +116,17 @@ HAND_JA = {
     "BINOM.DIST.RANGE": {"a": "(試行回数, 成功率, 成功数, [成功数2])",
         "d": "二項分布を使用して、試行結果の確率を返します。",
         "ad": "独立した試行の回数!各試行の成功率!試行における成功数!指定した場合、成功数がこの値と成功数の間に入る確率を返します"},
+    # 本家の対訳に無い3つと、こちらでは一部しか受けない CELL(2026-09-02)
+    "DBCS": {"a": "(文字列)", "d": "半角(1 バイト)文字を全角(2 バイト)文字に変換します。JIS と同じです。",
+        "ad": "変換する文字列、または文字列が入ったセル"},
+    "LET": {"a": "(名前1, 値1, [名前2, 値2], ..., 計算)",
+        "d": "値に名前を付け、その名前を使って最後の式を計算します。",
+        "ad": "最初に付ける名前!その名前が表す値!結果を返す式。付けた名前を使えます"},
+    "PY": {"a": "(コード)", "d": "Python のコードを実行して、その結果を返します。セルに単独でだけ使えます。",
+        "ad": "実行する Python のコード"},
+    "CELL": {"a": "(検査の種類, [参照])",
+        "d": "セルの情報を返します。検査の種類は \"filename\" だけを受けます(パス、[ ] で囲んだファイル名、シート名を返します)。",
+        "ad": "情報の種類。\"filename\" だけを受けます!セル。同じブックならどのセルでも答えが同じなので、受け取って使いません"},
 }
 # 本家の対訳に穴があった語をここで埋める(言語 → 関数名 → {a, d, ad})。
 # **穴を黙って日本語で埋めない** — 埋めていない穴があれば生成を止める。

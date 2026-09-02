@@ -44,6 +44,7 @@ pub const WATCHED: &[(&str, Watch)] = &[
     ("col_outline", Watch::Look),
     ("row_hidden", Watch::Body),
     ("col_hidden", Watch::Body),
+    ("filter_hidden", Watch::Skip("絞り込みで隠れている行。画面が計算の前に入れる物で、\n    // 保存には残らない(SUBTOTAL が飛ばす行を知るためだけ)")),
     ("tables", Watch::Body),
     ("style_of", Watch::Skip("xlsx の <c s=\"…\"> の控え。原本の据え置きに使う物で、\n    // adoc は書式を名前で持つ")),
     ("rtl", Watch::Look),

@@ -1375,6 +1375,192 @@
   "DVARP": {
    "a": "(資料庫, 欄位, 準則)",
    "ad": "組成清單或資料庫的儲存格範圍。資料庫是一份相關資料的清單!以雙引號括住的欄標籤，或代表欄在清單中位置的數字!含有指定條件的儲存格範圍。範圍包含一個欄標籤，以及標籤下方作為條件的一個儲存格"
+  },
+  "AGGREGATE": {
+   "a": "(函數編號, 選項, 參照1, ...)",
+   "ad": "1 到 19 的數字，指定彙總所用的函數。!0 到 7 的數字，指定彙總時要忽略的值!要計算彙總的數值陣列或範圍!指出在陣列中的位置：第 k 個最大值、第 k 個最小值、第 k 個百分位數或第 k 個四分位數。!1 到 19 的數字，指定彙總所用的函數。!0 到 7 的數字，指定彙總時要忽略的值!要彙總的 1 到 253 個範圍或參照"
+  },
+  "BETADIST": {
+   "a": "(x, alpha, beta, [A], [B])",
+   "ad": "要求得分布的值!分布的參數（正數）!分布的參數（正數）!x 區間的選擇性下限。若省略，A = 0!x 區間的選擇性上限。若省略，B = 1"
+  },
+  "BETAINV": {
+   "a": "(機率, alpha, beta, [A], [B])",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!分布的參數（正數）!分布的參數（正數）!x 區間的選擇性下限。若省略，A = 0!x 區間的選擇性上限。若省略，B = 1"
+  },
+  "BINOMDIST": {
+   "a": "(成功次數, 試驗次數, 成功機率, 累積)",
+   "ad": "試驗的成功次數!獨立試驗的次數!每次試驗的成功機率!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "CELL": {
+   "a": "(檢查類型, [參照])"
+  },
+  "CHIDIST": {
+   "a": "(x, 自由度)",
+   "ad": "要求得分布的值!自由度"
+  },
+  "CHIINV": {
+   "a": "(機率, 自由度)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!自由度"
+  },
+  "CONFIDENCE": {
+   "a": "(alpha, 標準差, 樣本數)",
+   "ad": "用來計算信賴水準的顯著水準，大於 0 且小於 1!分布的標準差（正數）!樣本的大小"
+  },
+  "CRITBINOM": {
+   "a": "(試驗次數, 成功機率, alpha)",
+   "ad": "獨立試驗的次數!每次試驗的成功機率!分布的參數（正數）"
+  },
+  "DBCS": {
+   "a": "(文字)"
+  },
+  "DOLLAR": {
+   "a": "(數值, [小數位數])",
+   "ad": "要設定格式的數值!指定小數點右邊的位數。若省略，小數位數 = 2"
+  },
+  "DROP": {
+   "a": "(陣列, 列數, [欄數])",
+   "ad": "要從中移除列或欄的陣列。!要移除的列數。負值表示從陣列結尾移除。!要移除的欄數。負值表示從陣列結尾移除。"
+  },
+  "FDIST": {
+   "a": "(x, 自由度1, 自由度2)",
+   "ad": "要求得分布的值!分子的自由度!分母的自由度"
+  },
+  "FINV": {
+   "a": "(機率, 自由度1, 自由度2)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!分子的自由度!分母的自由度"
+  },
+  "FORECAST.LINEAR": {
+   "a": "(x, 已知的y值, 已知的x值)",
+   "ad": "是要預測其值的資料點，且必須是數值!是相依的陣列或數值資料範圍!是獨立的陣列或數值資料範圍。已知的x值其變異數不得為零"
+  },
+  "GAMMADIST": {
+   "a": "(x, alpha, beta, 累積)",
+   "ad": "要求得分布的值!分布的參數（正數）!分布的參數（正數）!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "GAMMAINV": {
+   "a": "(機率, alpha, beta)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!分布的參數（正數）!分布的參數（正數）"
+  },
+  "HSTACK": {
+   "a": "(陣列1, [陣列2], ...)",
+   "ad": "要堆疊的陣列或參照。"
+  },
+  "HYPGEOMDIST": {
+   "a": "(樣本成功次數, 樣本數, 母體成功次數, 母體大小)",
+   "ad": "樣本中成功的次數!樣本的大小!母體中成功的次數!母體的大小"
+  },
+  "MODE.SNGL": {
+   "a": "(數值1, [數值2], ...)",
+   "ad": "是 1 到 255 個數值、名稱、陣列，或是數值的參照，用來求算眾數"
+  },
+  "NEGBINOMDIST": {
+   "a": "(失敗次數, 成功次數, 成功機率)",
+   "ad": "失敗的次數!試驗的成功次數!每次試驗的成功機率"
+  },
+  "NORMDIST": {
+   "a": "(x, 平均數, 標準差, 累積)",
+   "ad": "要求得分布的值!分布的算術平均數!分布的標準差（正數）!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "NORMINV": {
+   "a": "(機率, 平均數, 標準差)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!分布的算術平均數!分布的標準差（正數）"
+  },
+  "NORMSDIST": {
+   "a": "(z)",
+   "ad": "要求得分布的值"
+  },
+  "NORMSINV": {
+   "a": "(機率)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間"
+  },
+  "PERCENTILE.INC": {
+   "a": "(陣列, k)",
+   "ad": "用來界定相對位置的數值陣列或數值範圍!介於 0 到 1 之間（含 0 與 1）的百分位數值"
+  },
+  "PERCENTRANK": {
+   "a": "(陣列, x, [有效位數])",
+   "ad": "定義相對位置的數值資料陣列或範圍!要求得順位的值!指定傳回百分比之有效位數的選擇性數值。若省略，則為 3 位（0.xxx%）"
+  },
+  "POISSON": {
+   "a": "(x, 平均數, 累積)",
+   "ad": "要求得分布的值!分布的算術平均數!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "QUARTILE.INC": {
+   "a": "(陣列, 四分位數)",
+   "ad": "用來計算四分位數的數值陣列或數值範圍!數值，依四分位由小到大依序為 0 到 4"
+  },
+  "RANDARRAY": {
+   "a": "([列數], [欄數], [最小值], [最大值], [整數])",
+   "ad": "傳回陣列的列數!傳回陣列的欄數!要傳回的最小數值!要傳回的最大數值!傳回整數或小數。TRUE 為整數，FALSE 為小數"
+  },
+  "REPLACE": {
+   "a": "(舊文字, 開始位置, 字元數, 新文字)",
+   "ad": "要取代部分字元的文字!舊文字中要以新文字取代的字元的位置!舊文字中要取代的字元數!用來取代舊文字中字元的文字"
+  },
+  "SORTBY": {
+   "a": "(陣列, 依據陣列, [排序順序], ...)",
+   "ad": "要排序的範圍或陣列!排序所依據的範圍或陣列!指定排序順序的數字：1 為遞增(預設)，-1 為遞減"
+  },
+  "STDEV.P": {
+   "a": "(數值1, [數值2], ...)",
+   "ad": "是對應於整個母體的 1 到 255 個數值，可以是數值，也可以是含有數值的參照"
+  },
+  "STDEV.S": {
+   "a": "(數值1, [數值2], ...)",
+   "ad": "是對應於母體樣本的 1 到 255 個數值，可以是數值，也可以是含有數值的參照"
+  },
+  "TAKE": {
+   "a": "(陣列, 列數, [欄數])",
+   "ad": "要從中取出列或欄的陣列。!要取出的列數。負值表示從陣列結尾取出。!要取出的欄數。負值表示從陣列結尾取出。"
+  },
+  "TDIST": {
+   "a": "(x, 自由度, 尾數)",
+   "ad": "要求得分布的值!自由度!指定要傳回的分佈尾數：單尾分佈 = 1；雙尾分佈 = 2"
+  },
+  "TEXTAFTER": {
+   "a": "(文字, 分隔符號, [出現次數], [比對模式], [結尾比對], [找不到時])",
+   "ad": "要搜尋分隔符號的文字。!用作分隔符號的字元或字串。!分隔符號的第幾次出現。預設為 1。負數表示從結尾搜尋。!如何比對分隔符號。預設會區分大小寫。!是否將文字的結尾視為分隔符號。預設不比對。!找不到時傳回的值。預設傳回 #N/A。"
+  },
+  "TEXTBEFORE": {
+   "a": "(文字, 分隔符號, [出現次數], [比對模式], [結尾比對], [找不到時])",
+   "ad": "要搜尋分隔符號的文字。!用作分隔符號的字元或字串。!分隔符號的第幾次出現。預設為 1。負數表示從結尾搜尋。!如何比對分隔符號。預設會區分大小寫。!是否將文字的結尾視為分隔符號。預設不比對。!找不到時傳回的值。預設傳回 #N/A。"
+  },
+  "TEXTSPLIT": {
+   "a": "(文字, 欄分隔符號, [列分隔符號], [忽略空白], [比對模式], [填補值])",
+   "ad": "要分割的文字!分割欄所用的字元或字串。!分割列所用的字元或字串。!是否忽略空白儲存格。預設為 FALSE。!如何比對分隔符號。預設會區分大小寫。!用來填補的值。預設使用 #N/A。"
+  },
+  "TINV": {
+   "a": "(機率, 自由度)",
+   "ad": "對應到分布的機率，介於 0 和 1 之間!自由度"
+  },
+  "TOCOL": {
+   "a": "(陣列, [忽略], [依欄掃描])",
+   "ad": "要以一欄傳回的陣列或參照。!是否忽略某些類型的值。預設不忽略任何值。!依欄掃描陣列。預設依列掃描。"
+  },
+  "TOROW": {
+   "a": "(陣列, [忽略], [依欄掃描])",
+   "ad": "要以一列傳回的陣列或參照。!是否忽略某些類型的值。預設不忽略任何值。!依欄掃描陣列。預設依列掃描。"
+  },
+  "VAR.P": {
+   "a": "(數值1, [數值2], ...)",
+   "ad": "是對應於整個母體的 1 到 255 個數值引數"
+  },
+  "VAR.S": {
+   "a": "(數值1, [數值2], ...)",
+   "ad": "是對應於母體樣本的 1 到 255 個數值引數"
+  },
+  "VSTACK": {
+   "a": "(陣列1, [陣列2], ...)",
+   "ad": "要堆疊的陣列或參照。"
+  },
+  "WEIBULL": {
+   "a": "(x, alpha, beta, 累積)",
+   "ad": "要求得分布的值!分布的參數（正數）!分布的參數（正數）!邏輯值：累積分布函數 = TRUE；機率密度函數 = FALSE"
+  },
+  "XMATCH": {
+   "a": "(查閱值, 查閱陣列, [比對模式], [搜尋模式])",
+   "ad": "要搜尋的值!要搜尋的陣列或範圍!指定如何以查閱值比對查閱陣列中的值!指定要使用的搜尋模式。預設從第一項搜尋到最後一項"
   }
  },
  "id": {
@@ -2400,6 +2586,147 @@
   },
   "DVARP": {
    "a": "(database, bidang, kriteria)"
+  },
+  "AGGREGATE": {
+   "a": "(nomor_fungsi, opsi, ref1, ...)"
+  },
+  "RANDARRAY": {
+   "a": "([baris], [kolom], [min], [maks], [bilangan_bulat])"
+  },
+  "BETADIST": {
+   "a": "(x, alfa, beta, [A], [B])"
+  },
+  "BETAINV": {
+   "a": "(probabilitas, alfa, beta, [A], [B])"
+  },
+  "BINOMDIST": {
+   "a": "(jumlah_sukses, percobaan, probabilitas_sukses, kumulatif)"
+  },
+  "CHIDIST": {
+   "a": "(x, derajat_kebebasan)"
+  },
+  "CHIINV": {
+   "a": "(probabilitas, derajat_kebebasan)"
+  },
+  "CONFIDENCE": {
+   "a": "(alfa, simpangan_baku, ukuran)"
+  },
+  "CRITBINOM": {
+   "a": "(percobaan, probabilitas_sukses, alfa)"
+  },
+  "FDIST": {
+   "a": "(x, derajat_kebebasan1, derajat_kebebasan2)"
+  },
+  "FINV": {
+   "a": "(probabilitas, derajat_kebebasan1, derajat_kebebasan2)"
+  },
+  "FORECAST.LINEAR": {
+   "a": "(x, y_diketahui, x_diketahui)"
+  },
+  "GAMMADIST": {
+   "a": "(x, alfa, beta, kumulatif)"
+  },
+  "GAMMAINV": {
+   "a": "(probabilitas, alfa, beta)"
+  },
+  "HYPGEOMDIST": {
+   "a": "(sukses_sampel, ukuran_sampel, sukses_populasi, ukuran_populasi)"
+  },
+  "MODE.SNGL": {
+   "a": "(angka1, [angka2], ...)"
+  },
+  "NEGBINOMDIST": {
+   "a": "(jumlah_gagal, jumlah_sukses, probabilitas_sukses)"
+  },
+  "NORMDIST": {
+   "a": "(x, rata_rata, simpangan_baku, kumulatif)"
+  },
+  "NORMINV": {
+   "a": "(probabilitas, rata_rata, simpangan_baku)"
+  },
+  "NORMSDIST": {
+   "a": "(z)"
+  },
+  "NORMSINV": {
+   "a": "(probabilitas)"
+  },
+  "PERCENTILE.INC": {
+   "a": "(array, k)"
+  },
+  "PERCENTRANK": {
+   "a": "(array, x, [signifikansi])"
+  },
+  "POISSON": {
+   "a": "(x, rata_rata, kumulatif)"
+  },
+  "QUARTILE.INC": {
+   "a": "(array, kuartil)"
+  },
+  "STDEV.P": {
+   "a": "(angka1, [angka2], ...)"
+  },
+  "STDEV.S": {
+   "a": "(angka1, [angka2], ...)"
+  },
+  "TDIST": {
+   "a": "(x, derajat_kebebasan, ekor)"
+  },
+  "TINV": {
+   "a": "(probabilitas, derajat_kebebasan)"
+  },
+  "VAR.P": {
+   "a": "(angka1, [angka2], ...)"
+  },
+  "VAR.S": {
+   "a": "(angka1, [angka2], ...)"
+  },
+  "WEIBULL": {
+   "a": "(x, alfa, beta, kumulatif)"
+  },
+  "DBCS": {
+   "a": "(teks)"
+  },
+  "DOLLAR": {
+   "a": "(angka, [desimal])"
+  },
+  "REPLACE": {
+   "a": "(teks_lama, nomor_awal, jumlah_karakter, teks_baru)"
+  },
+  "TEXTBEFORE": {
+   "a": "(teks, pembatas, [nomor_instans], [mode_pencocokan], [pencocokan_akhir], [jika_tidak_ditemukan])"
+  },
+  "TEXTAFTER": {
+   "a": "(teks, pembatas, [nomor_instans], [mode_pencocokan], [pencocokan_akhir], [jika_tidak_ditemukan])"
+  },
+  "TEXTSPLIT": {
+   "a": "(teks, pembatas_kolom, [pembatas_baris], [abaikan_kosong], [mode_pencocokan], [isi_dengan])"
+  },
+  "XMATCH": {
+   "a": "(nilai_pencarian, array_pencarian, [mode_pencocokan], [mode_pencarian])"
+  },
+  "SORTBY": {
+   "a": "(array, array_berdasarkan, [urutan_sortir], ...)"
+  },
+  "VSTACK": {
+   "a": "(array1, [array2], ...)"
+  },
+  "HSTACK": {
+   "a": "(array1, [array2], ...)"
+  },
+  "TAKE": {
+   "a": "(array, baris, [kolom])"
+  },
+  "DROP": {
+   "a": "(array, baris, [kolom])"
+  },
+  "TOCOL": {
+   "a": "(array, [abaikan], [pindai_menurut_kolom])"
+  },
+  "TOROW": {
+   "a": "(array, [abaikan], [pindai_menurut_kolom])"
+  },
+  "CELL": {
+   "a": "(tipe_info, [referensi])"
   }
  },
  "ko": {
@@ -3407,6 +3734,144 @@
   },
   "DVARP": {
    "a": "(데이터베이스, 필드, 조건)"
+  },
+  "AGGREGATE": {
+   "a": "(함수_번호, 옵션, 참조1, ...)"
+  },
+  "BETADIST": {
+   "a": "(x, 알파, 베타, [A], [B])"
+  },
+  "BETAINV": {
+   "a": "(확률, 알파, 베타, [A], [B])"
+  },
+  "BINOMDIST": {
+   "a": "(성공수, 시행횟수, 성공확률, 누적)"
+  },
+  "CHIDIST": {
+   "a": "(x, 자유도)"
+  },
+  "CHIINV": {
+   "a": "(확률, 자유도)"
+  },
+  "CONFIDENCE": {
+   "a": "(알파, 표준_편차, 표본크기)"
+  },
+  "CRITBINOM": {
+   "a": "(시행횟수, 성공확률, 알파)"
+  },
+  "FDIST": {
+   "a": "(x, 자유도1, 자유도2)"
+  },
+  "FINV": {
+   "a": "(확률, 자유도1, 자유도2)"
+  },
+  "FORECAST.LINEAR": {
+   "a": "(x, 알려진_y, 알려진_x)"
+  },
+  "GAMMADIST": {
+   "a": "(x, 알파, 베타, 누적)"
+  },
+  "GAMMAINV": {
+   "a": "(확률, 알파, 베타)"
+  },
+  "HYPGEOMDIST": {
+   "a": "(표본성공수, 표본수, 모집단성공수, 모집단수)"
+  },
+  "MODE.SNGL": {
+   "a": "(숫자1, [숫자2], ...)"
+  },
+  "NEGBINOMDIST": {
+   "a": "(실패수, 성공수, 성공확률)"
+  },
+  "NORMDIST": {
+   "a": "(x, 평균, 표준_편차, 누적)"
+  },
+  "NORMINV": {
+   "a": "(확률, 평균, 표준_편차)"
+  },
+  "NORMSDIST": {
+   "a": "(z)"
+  },
+  "NORMSINV": {
+   "a": "(확률)"
+  },
+  "PERCENTILE.INC": {
+   "a": "(배열, k)"
+  },
+  "PERCENTRANK": {
+   "a": "(배열, x, [유효_자릿수])"
+  },
+  "POISSON": {
+   "a": "(x, 평균, 누적)"
+  },
+  "QUARTILE.INC": {
+   "a": "(배열, 사분위수)"
+  },
+  "STDEV.P": {
+   "a": "(숫자1, [숫자2], ...)"
+  },
+  "STDEV.S": {
+   "a": "(숫자1, [숫자2], ...)"
+  },
+  "TDIST": {
+   "a": "(x, 자유도, 꼬리)"
+  },
+  "TINV": {
+   "a": "(확률, 자유도)"
+  },
+  "VAR.P": {
+   "a": "(숫자1, [숫자2], ...)"
+  },
+  "VAR.S": {
+   "a": "(숫자1, [숫자2], ...)"
+  },
+  "WEIBULL": {
+   "a": "(x, 알파, 베타, 누적)"
+  },
+  "DBCS": {
+   "a": "(텍스트)"
+  },
+  "DOLLAR": {
+   "a": "(숫자, [소수_자릿수])"
+  },
+  "REPLACE": {
+   "a": "(이전_텍스트, 시작_위치, 문자_수, 새_텍스트)"
+  },
+  "TEXTBEFORE": {
+   "a": "(텍스트, 구분_기호, [인스턴스_번호], [일치_모드], [끝_일치], [찾을_수_없는_경우])"
+  },
+  "TEXTAFTER": {
+   "a": "(텍스트, 구분_기호, [인스턴스_번호], [일치_모드], [끝_일치], [찾을_수_없는_경우])"
+  },
+  "TEXTSPLIT": {
+   "a": "(텍스트, 열_구분_기호, [행_구분_기호], [빈_값_무시], [일치_모드], [채우기_값])"
+  },
+  "XMATCH": {
+   "a": "(찾을_값, 찾을_범위, [일치_모드], [검색_모드])"
+  },
+  "SORTBY": {
+   "a": "(배열, 기준_배열, [정렬_순서], ...)"
+  },
+  "VSTACK": {
+   "a": "(배열1, [배열2], ...)"
+  },
+  "HSTACK": {
+   "a": "(배열1, [배열2], ...)"
+  },
+  "TAKE": {
+   "a": "(배열, 행, [열])"
+  },
+  "DROP": {
+   "a": "(배열, 행, [열])"
+  },
+  "TOCOL": {
+   "a": "(배열, [무시], [열_기준_검색])"
+  },
+  "TOROW": {
+   "a": "(배열, [무시], [열_기준_검색])"
+  },
+  "CELL": {
+   "a": "(정보_유형, [참조])"
   }
  },
  "vi": {
@@ -4399,6 +4864,138 @@
   },
   "DVARP": {
    "a": "(cơ_sở_dữ_liệu, trường, tiêu_chí)"
+  },
+  "AGGREGATE": {
+   "a": "(số_hàm, tùy_chọn, tham_chiếu1, ...)"
+  },
+  "BETADIST": {
+   "a": "(x, alpha, beta, [A], [B])"
+  },
+  "BETAINV": {
+   "a": "(xác_suất, alpha, beta, [A], [B])"
+  },
+  "BINOMDIST": {
+   "a": "(số_thành_công, số_phép_thử, xác_suất_thành_công, lũy_tích)"
+  },
+  "CELL": {
+   "a": "(kiểu_thông_tin, [tham_chiếu])"
+  },
+  "CHIDIST": {
+   "a": "(x, bậc_tự_do)"
+  },
+  "CHIINV": {
+   "a": "(xác_suất, bậc_tự_do)"
+  },
+  "CONFIDENCE": {
+   "a": "(alpha, độ_lệch_chuẩn, cỡ_mẫu)"
+  },
+  "CRITBINOM": {
+   "a": "(số_phép_thử, xác_suất_thành_công, alpha)"
+  },
+  "DBCS": {
+   "a": "(văn_bản)"
+  },
+  "DOLLAR": {
+   "a": "(số, [phần_thập_phân])"
+  },
+  "DROP": {
+   "a": "(mảng, số_hàng, [số_cột])"
+  },
+  "FDIST": {
+   "a": "(x, bậc_tự_do1, bậc_tự_do2)"
+  },
+  "FINV": {
+   "a": "(xác_suất, bậc_tự_do1, bậc_tự_do2)"
+  },
+  "GAMMADIST": {
+   "a": "(x, alpha, beta, lũy_tích)"
+  },
+  "GAMMAINV": {
+   "a": "(xác_suất, alpha, beta)"
+  },
+  "HSTACK": {
+   "a": "(mảng1, [mảng2], ...)"
+  },
+  "HYPGEOMDIST": {
+   "a": "(thành_công_mẫu, cỡ_mẫu, thành_công_tổng_thể, cỡ_tổng_thể)"
+  },
+  "MODE.SNGL": {
+   "a": "(số1, [số2], ...)"
+  },
+  "NEGBINOMDIST": {
+   "a": "(số_thất_bại, số_thành_công, xác_suất_thành_công)"
+  },
+  "NORMDIST": {
+   "a": "(x, trung_bình, độ_lệch_chuẩn, lũy_tích)"
+  },
+  "NORMINV": {
+   "a": "(xác_suất, trung_bình, độ_lệch_chuẩn)"
+  },
+  "NORMSDIST": {
+   "a": "(z)"
+  },
+  "NORMSINV": {
+   "a": "(xác_suất)"
+  },
+  "PERCENTILE.INC": {
+   "a": "(mảng, k)"
+  },
+  "PERCENTRANK": {
+   "a": "(mảng, x, [chữ_số_có_nghĩa])"
+  },
+  "POISSON": {
+   "a": "(x, trung_bình, lũy_tích)"
+  },
+  "QUARTILE.INC": {
+   "a": "(mảng, tứ_phân_vị)"
+  },
+  "REPLACE": {
+   "a": "(văn_bản_cũ, vị_trí_bắt_đầu, số_ký_tự, văn_bản_mới)"
+  },
+  "STDEV.P": {
+   "a": "(số1, [số2], ...)"
+  },
+  "STDEV.S": {
+   "a": "(số1, [số2], ...)"
+  },
+  "TAKE": {
+   "a": "(mảng, số_hàng, [số_cột])"
+  },
+  "TDIST": {
+   "a": "(x, bậc_tự_do, số_đuôi)"
+  },
+  "TEXTAFTER": {
+   "a": "(văn_bản, dấu_phân_cách, [lần_xuất_hiện], [chế_độ_khớp], [khớp_cuối], [nếu_không_tìm_thấy])"
+  },
+  "TEXTBEFORE": {
+   "a": "(văn_bản, dấu_phân_cách, [lần_xuất_hiện], [chế_độ_khớp], [khớp_cuối], [nếu_không_tìm_thấy])"
+  },
+  "TEXTSPLIT": {
+   "a": "(văn_bản, dấu_phân_cách_cột, [dấu_phân_cách_hàng], [bỏ_qua_trống], [chế_độ_khớp], [giá_trị_đệm])"
+  },
+  "TINV": {
+   "a": "(xác_suất, bậc_tự_do)"
+  },
+  "TOCOL": {
+   "a": "(mảng, [bỏ_qua], [quét_theo_cột])"
+  },
+  "TOROW": {
+   "a": "(mảng, [bỏ_qua], [quét_theo_cột])"
+  },
+  "VAR.P": {
+   "a": "(số1, [số2], ...)"
+  },
+  "VAR.S": {
+   "a": "(số1, [số2], ...)"
+  },
+  "VSTACK": {
+   "a": "(mảng1, [mảng2], ...)"
+  },
+  "WEIBULL": {
+   "a": "(x, alpha, beta, lũy_tích)"
+  },
+  "XMATCH": {
+   "a": "(giá_trị_tra_cứu, mảng_tra_cứu, [chế_độ_khớp], [chế_độ_tìm_kiếm])"
   }
  },
  "zh": {
@@ -4490,6 +5087,33 @@
   },
   "NORM.S.DIST": {
    "a": "(z, cumulé)"
+  },
+  "NORMSDIST": {
+   "a": "(z)"
+  },
+  "VSTACK": {
+   "a": "(matrice1, [matrice2], ...)"
+  },
+  "HSTACK": {
+   "a": "(matrice1, [matrice2], ...)"
+  },
+  "TAKE": {
+   "a": "(matrice, lignes, [colonnes])"
+  },
+  "DROP": {
+   "a": "(matrice, lignes, [colonnes])"
+  },
+  "TOCOL": {
+   "a": "(matrice, [ignorer], [analyser_par_colonne])"
+  },
+  "TOROW": {
+   "a": "(matrice, [ignorer], [analyser_par_colonne])"
+  },
+  "CELL": {
+   "a": "(type_info, [référence])"
+  },
+  "PY": {
+   "a": "(code)"
   }
  },
  "pt-br": {
@@ -4519,6 +5143,42 @@
   },
   "RRI": {
    "a": "(nper, va, vf)"
+  },
+  "GAMMA": {
+   "a": "(x)"
+  },
+  "NORMSDIST": {
+   "a": "(z)"
+  },
+  "ERF.PRECISE": {
+   "a": "(X)"
+  },
+  "ERFC": {
+   "a": "(x)"
+  },
+  "F.INV": {
+   "a": "(probabilidade; graus_liberdade1; graus_liberdade2)"
+  },
+  "TEXTBEFORE": {
+   "a": "(texto, delimitador, [núm_instância], [modo_correspondência], [correspondência_final], [se_não_encontrado])"
+  },
+  "TEXTAFTER": {
+   "a": "(texto, delimitador, [núm_instância], [modo_correspondência], [correspondência_final], [se_não_encontrado])"
+  },
+  "TEXTSPLIT": {
+   "a": "(texto, delimitador_col, [delimitador_lin], [ignorar_vazio], [modo_correspondência], [preencher_com])"
+  },
+  "XMATCH": {
+   "a": "(valor_procurado, matriz_procurada, [modo_correspondência], [modo_pesquisa])"
+  },
+  "TOROW": {
+   "a": "(matriz, [ignorar], [verificar_por_coluna])"
+  },
+  "BITLSHIFT": {
+   "a": "(número; quantidade_deslocamento)"
+  },
+  "BITRSHIFT": {
+   "a": "(número; quantidade_deslocamento)"
   }
  },
  "de": {
@@ -4551,6 +5211,42 @@
   },
   "ISPMT": {
    "a": "(Zins, Zr, Zzr, Bw)"
+  },
+  "NORMSDIST": {
+   "a": "(z)"
+  },
+  "TEXTBEFORE": {
+   "a": "(Text, Trennzeichen, [Instanz_Nummer], [Übereinstimmungsmodus], [Ende_abgleichen], [Wenn_nicht_gefunden])"
+  },
+  "TEXTAFTER": {
+   "a": "(Text, Trennzeichen, [Instanz_Nummer], [Übereinstimmungsmodus], [Ende_abgleichen], [Wenn_nicht_gefunden])"
+  },
+  "TEXTSPLIT": {
+   "a": "(Text, Spaltentrennzeichen, [Zeilentrennzeichen], [Leere_ignorieren], [Übereinstimmungsmodus], [Auffüllen_mit])"
+  },
+  "XMATCH": {
+   "a": "(Suchkriterium, Suchmatrix, [Vergleichsmodus], [Suchmodus])"
+  },
+  "VSTACK": {
+   "a": "(Matrix1, [Matrix2], ...)"
+  },
+  "HSTACK": {
+   "a": "(Matrix1, [Matrix2], ...)"
+  },
+  "TAKE": {
+   "a": "(Matrix, Zeilen, [Spalten])"
+  },
+  "DROP": {
+   "a": "(Matrix, Zeilen, [Spalten])"
+  },
+  "TOCOL": {
+   "a": "(Matrix, [Ignorieren], [Spaltenweise_scannen])"
+  },
+  "TOROW": {
+   "a": "(Matrix, [Ignorieren], [Spaltenweise_scannen])"
+  },
+  "CELL": {
+   "a": "(Infotyp, [Bezug])"
   }
  },
  "es": {
@@ -4685,6 +5381,36 @@
   },
   "TYPE": {
    "a": "(значение)"
+  },
+  "DROP": {
+   "a": "(массив, строки, [столбцы])"
+  },
+  "HSTACK": {
+   "a": "(массив1, [массив2], ...)"
+  },
+  "NORMSDIST": {
+   "a": "(z)"
+  },
+  "RANDARRAY": {
+   "a": "([строки]; [столбцы]; [минимум]; [максимум]; [целое])"
+  },
+  "TAKE": {
+   "a": "(массив, строки, [столбцы])"
+  },
+  "TEXTAFTER": {
+   "a": "(текст, разделитель, [номер_вхождения], [режим_сопоставления], [сопоставление_с_концом], [если_не_найдено])"
+  },
+  "TEXTBEFORE": {
+   "a": "(текст, разделитель, [номер_вхождения], [режим_сопоставления], [сопоставление_с_концом], [если_не_найдено])"
+  },
+  "TEXTSPLIT": {
+   "a": "(текст, разделитель_столбцов, [разделитель_строк], [игнорировать_пустые], [режим_сопоставления], [заполнитель])"
+  },
+  "TOCOL": {
+   "a": "(массив, [игнорировать], [сканировать_по_столбцам])"
+  },
+  "VSTACK": {
+   "a": "(массив1, [массив2], ...)"
   }
  },
  "tr": {

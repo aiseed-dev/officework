@@ -1622,8 +1622,8 @@ mod subtotal_hidden_tests {
         assert_eq!(val(&mut s, "=SUBTOTAL(102,A1:A4)"), Value::Number(3.0));
         assert_eq!(val(&mut s, "=SUBTOTAL(104,A1:A4)"), Value::Number(40.0));
         assert_eq!(val(&mut s, "=SUBTOTAL(105,A1:A4)"), Value::Number(10.0));
-        // AGGREGATE も同じ(第2引数は無視の指定)
-        assert_eq!(val(&mut s, "=AGGREGATE(109,0,A1:A4)"), Value::Number(80.0));
+        // AGGREGATE は第2引数のオプション(1・3・5・7)が隠れた行を飛ばす
+        assert_eq!(val(&mut s, "=AGGREGATE(9,1,A1:A4)"), Value::Number(80.0));
         assert_eq!(val(&mut s, "=AGGREGATE(9,0,A1:A4)"), Value::Number(100.0));
     }
 
@@ -1941,8 +1941,8 @@ mod new_fn_tests {
         assert_eq!(ev("=XMATCH(\"い\",B1:B3)", &t), "1");
         assert_eq!(ev("=XMATCH(\"い\",B1:B3,0,-1)", &t), "3", "後ろから探せていない");
         assert_eq!(ev("=XMATCH(\"は\",B1:B3)", &t), "#N/A");
-        // 近似(1)は**黙って合わせず**断る
-        assert_eq!(ev("=XMATCH(\"い\",B1:B3,1)", &t), "#VALUE!");
+        // 一致モード 1(完全一致か次に大きい値)。同じ値があればその位置
+        assert_eq!(ev("=XMATCH(\"い\",B1:B3,1)", &t), "1");
     }
 
     #[test]
@@ -2153,5 +2153,313 @@ mod calculation_works_on_tables_outside_a_sheet {
         assert!(!g.any_row_hidden());
         assert!(!g.row_hidden(3));
         assert_eq!(g.phonetic(Pos::new(1, 1)), None);
+    }
+}
+
+/// 引数の一部しか受けていなかった関数を Excel と同じに揃えた(2026-09-02)。
+/// 期待値は Excel の仕様どおりの値
+#[cfg(test)]
+mod excel_argument_tests {
+    use super::*;
+    use crate::Cell;
+
+    fn sheet_with(cells: &[(&str, &str)]) -> Sheet {
+        let mut s = Sheet::new("Sheet1");
+        for (a1, v) in cells {
+            s.set(Pos::parse(a1).unwrap(), Cell::input(v));
+        }
+        s
+    }
+
+    fn val(s: &mut Sheet, f: &str) -> Value {
+        s.set(Pos::parse("Z1").unwrap(), Cell::input(f));
+        recalc(s);
+        s.value(Pos::parse("Z1").unwrap())
+    }
+
+    fn t(s: &mut Sheet, f: &str) -> String {
+        val(s, f).display()
+    }
+
+    fn n(s: &mut Sheet, f: &str) -> f64 {
+        match val(s, f) {
+            Value::Number(x) => x,
+            other => panic!("{f} が数でない: {other:?}"),
+        }
+    }
+
+    /// 期待値は小数 4 桁で書いてあるので、その桁で比べる
+    fn close(a: f64, b: f64) -> bool {
+        (a - b).abs() < 1e-4 * b.abs().max(1.0)
+    }
+
+    #[test]
+    fn left_and_right_take_one_character_when_the_count_is_omitted() {
+        let mut s = sheet_with(&[]);
+        assert_eq!(t(&mut s, "=LEFT(\"abc\")"), "a");
+        assert_eq!(t(&mut s, "=RIGHT(\"abc\")"), "c");
+        assert_eq!(t(&mut s, "=LEFT(\"abc\",2)"), "ab");
+        assert_eq!(t(&mut s, "=LEFT(\"abc\",-1)"), "#VALUE!");
+    }
+
+    #[test]
+    fn vlookup_and_hlookup_match_approximately_by_default() {
+        let mut s = sheet_with(&[
+            ("A1", "1"), ("B1", "a"), ("A2", "5"), ("B2", "b"), ("A3", "10"), ("B3", "c"),
+            ("D1", "apple"), ("E1", "x"), ("D2", "banana"), ("E2", "y"),
+        ]);
+        assert_eq!(t(&mut s, "=VLOOKUP(7,A1:B3,2)"), "b", "省略なら近似一致");
+        assert_eq!(t(&mut s, "=VLOOKUP(7,A1:B3,2,TRUE)"), "b");
+        assert_eq!(t(&mut s, "=VLOOKUP(100,A1:B3,2)"), "c");
+        assert_eq!(t(&mut s, "=VLOOKUP(0,A1:B3,2)"), "#N/A", "最小より小さい");
+        assert_eq!(t(&mut s, "=VLOOKUP(7,A1:B3,2,FALSE)"), "#N/A", "完全一致");
+        assert_eq!(t(&mut s, "=VLOOKUP(5,A1:B3,2,FALSE)"), "b");
+        assert_eq!(t(&mut s, "=VLOOKUP(5,A1:B3,3)"), "#REF!", "列番号が表の外");
+        assert_eq!(t(&mut s, "=VLOOKUP(\"B*\",D1:E2,2,FALSE)"), "y", "ワイルドカードと大小");
+        assert_eq!(t(&mut s, "=HLOOKUP(7,{1,5,10;\"a\",\"b\",\"c\"},2)"), "b");
+        assert_eq!(t(&mut s, "=HLOOKUP(5,{1,5,10;\"a\",\"b\",\"c\"},2,FALSE)"), "b");
+    }
+
+    #[test]
+    fn match_takes_all_three_match_types() {
+        let mut s = sheet_with(&[]);
+        assert_eq!(n(&mut s, "=MATCH(7,{1,5,10},1)"), 2.0);
+        assert_eq!(n(&mut s, "=MATCH(7,{1,5,10})"), 2.0, "省略は 1");
+        assert_eq!(n(&mut s, "=MATCH(7,{10,5,1},-1)"), 1.0, "降順で以上の最小");
+        assert_eq!(n(&mut s, "=MATCH(5,{10,5,1},-1)"), 2.0);
+        assert_eq!(n(&mut s, "=MATCH(4,{10,5,1},-1)"), 2.0);
+        assert_eq!(t(&mut s, "=MATCH(7,{1,5,10},0)"), "#N/A");
+        assert_eq!(n(&mut s, "=MATCH(\"b?\",{\"aa\",\"ba\",\"bc\"},0)"), 2.0);
+        assert_eq!(n(&mut s, "=MATCH(\"BA\",{\"aa\",\"ba\"},0)"), 2.0, "大小は見ない");
+    }
+
+    #[test]
+    fn index_takes_the_area_number_and_a_single_row_index() {
+        let mut s = sheet_with(&[("A1", "1"), ("B1", "2"), ("A2", "3"), ("B2", "4")]);
+        assert_eq!(n(&mut s, "=INDEX(A1:B2,2,1)"), 3.0);
+        assert_eq!(n(&mut s, "=INDEX(A1:B2,2,1,1)"), 3.0, "領域番号 1");
+        assert_eq!(t(&mut s, "=INDEX(A1:B2,2,1,2)"), "#REF!", "領域は1つしか無い");
+        assert_eq!(t(&mut s, "=INDEX(A1:B2,3,1)"), "#REF!");
+        assert_eq!(n(&mut s, "=INDEX(A1:B1,2)"), 2.0, "1行の範囲では列の番号");
+    }
+
+    #[test]
+    fn xlookup_and_xmatch_take_match_and_search_modes() {
+        let mut s = sheet_with(&[
+            ("A1", "1"), ("B1", "a"), ("A2", "5"), ("B2", "b"), ("A3", "10"), ("B3", "c"),
+            ("D1", "5"), ("D2", "5"), ("E1", "first"), ("E2", "last"),
+        ]);
+        assert_eq!(t(&mut s, "=XLOOKUP(7,A1:A3,B1:B3,\"none\")"), "none", "既定は完全一致");
+        assert_eq!(t(&mut s, "=XLOOKUP(7,A1:A3,B1:B3,\"none\",-1)"), "b", "次に小さい");
+        assert_eq!(t(&mut s, "=XLOOKUP(7,A1:A3,B1:B3,\"none\",1)"), "c", "次に大きい");
+        assert_eq!(t(&mut s, "=XLOOKUP(\"B*\",B1:B3,A1:A3,\"none\",2)"), "5", "ワイルドカード");
+        assert_eq!(t(&mut s, "=XLOOKUP(5,D1:D2,E1:E2,\"none\",0,1)"), "first");
+        assert_eq!(t(&mut s, "=XLOOKUP(5,D1:D2,E1:E2,\"none\",0,-1)"), "last", "末尾から");
+        assert_eq!(n(&mut s, "=XMATCH(7,A1:A3,-1)"), 2.0);
+        assert_eq!(n(&mut s, "=XMATCH(7,A1:A3,1)"), 3.0);
+        assert_eq!(n(&mut s, "=XMATCH(5,D1:D2,0,-1)"), 2.0);
+        assert_eq!(t(&mut s, "=XMATCH(7,A1:A3)"), "#N/A");
+    }
+
+    #[test]
+    fn indirect_reads_r1c1_when_told_so() {
+        let mut s = sheet_with(&[("A2", "7"), ("B2", "42"), ("A3", "8")]);
+        assert_eq!(n(&mut s, "=INDIRECT(\"R2C2\",FALSE)"), 42.0);
+        assert_eq!(n(&mut s, "=INDIRECT(\"B2\",TRUE)"), 42.0);
+        assert_eq!(n(&mut s, "=SUM(INDIRECT(\"R2C1:R3C1\",FALSE))"), 15.0);
+        // Z1 から見て R[1]C[-25] は A2
+        assert_eq!(n(&mut s, "=INDIRECT(\"R[1]C[-25]\",FALSE)"), 7.0);
+        assert_eq!(t(&mut s, "=INDIRECT(\"R2C2\")"), "#REF!", "A1 形式としては読めない");
+    }
+
+    #[test]
+    fn address_takes_every_reference_kind_the_style_and_the_sheet_name() {
+        let mut s = sheet_with(&[]);
+        assert_eq!(t(&mut s, "=ADDRESS(2,3)"), "$C$2");
+        assert_eq!(t(&mut s, "=ADDRESS(2,3,2)"), "C$2");
+        assert_eq!(t(&mut s, "=ADDRESS(2,3,3)"), "$C2");
+        assert_eq!(t(&mut s, "=ADDRESS(2,3,4)"), "C2");
+        assert_eq!(t(&mut s, "=ADDRESS(2,3,1,FALSE)"), "R2C3");
+        assert_eq!(t(&mut s, "=ADDRESS(2,3,2,FALSE)"), "R2C[3]");
+        assert_eq!(t(&mut s, "=ADDRESS(2,3,4,FALSE)"), "R[2]C[3]");
+        assert_eq!(t(&mut s, "=ADDRESS(2,3,1,TRUE,\"Sheet1\")"), "Sheet1!$C$2");
+        assert_eq!(t(&mut s, "=ADDRESS(2,3,1,TRUE,\"My Sheet\")"), "'My Sheet'!$C$2");
+        assert_eq!(t(&mut s, "=ADDRESS(2,3,5)"), "#VALUE!");
+    }
+
+    #[test]
+    fn sort_and_unique_work_by_column_and_unique_can_keep_only_singles() {
+        let mut s = sheet_with(&[
+            ("A1", "3"), ("B1", "1"), ("C1", "2"),
+            ("A2", "1"), ("A3", "2"), ("A4", "1"),
+            ("H1", "=SORT(A1:C1,1,1,TRUE)"),
+            ("H2", "=UNIQUE(A2:A4,FALSE,TRUE)"),
+            ("H3", "=UNIQUE(A1:C1,TRUE)"),
+            ("H5", "=UNIQUE({1,2,1},TRUE)"),
+        ]);
+        recalc(&mut s);
+        let g = |a1: &str| s.value(Pos::parse(a1).unwrap());
+        assert_eq!((g("H1"), g("I1"), g("J1")),
+            (Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)), "列方向の並べ替え");
+        assert_eq!(g("H2"), Value::Number(2.0), "1回だけ出る物");
+        assert_eq!(g("I2"), Value::Empty);
+        assert_eq!((g("H5"), g("I5"), g("J5")),
+            (Value::Number(1.0), Value::Number(2.0), Value::Empty), "列の比較");
+    }
+
+    #[test]
+    fn criteria_take_wildcards_and_not_equal_text() {
+        let mut s = sheet_with(&[
+            ("A1", "apple"), ("B1", "10"), ("A2", "banana"), ("B2", "20"),
+            ("A3", "apricot"), ("B3", "30"), ("A4", "*"), ("B4", "40"),
+            ("D1", "5"), ("D2", "x"),
+        ]);
+        assert_eq!(n(&mut s, "=COUNTIF(A1:A4,\"a*\")"), 2.0);
+        assert_eq!(n(&mut s, "=COUNTIF(A1:A4,\"A*\")"), 2.0, "大小は見ない");
+        assert_eq!(n(&mut s, "=COUNTIF(A1:A4,\"?????\")"), 1.0);
+        assert_eq!(n(&mut s, "=COUNTIF(A1:A4,\"~*\")"), 1.0, "~ で * そのもの");
+        assert_eq!(n(&mut s, "=COUNTIF(A1:A4,\"<>apple\")"), 3.0);
+        assert_eq!(n(&mut s, "=COUNTIF(D1:D3,\"<>5\")"), 2.0, "文字も空も 5 ではない");
+        assert_eq!(n(&mut s, "=COUNTIF(D1:D3,\">3\")"), 1.0, "文字は数の比較に入らない");
+        assert_eq!(n(&mut s, "=SUMIF(A1:A4,\"<>apple\",B1:B4)"), 90.0);
+        assert_eq!(n(&mut s, "=SUMIF(A1:A4,\"*an*\",B1:B4)"), 20.0);
+        assert_eq!(n(&mut s, "=SUMIFS(B1:B4,A1:A4,\"a*\",B1:B4,\">15\")"), 30.0);
+        assert_eq!(n(&mut s, "=AVERAGEIF(A1:A4,\"ap*\",B1:B4)"), 20.0);
+        assert_eq!(n(&mut s, "=MAXIFS(B1:B4,A1:A4,\"<>*an*\")"), 40.0);
+    }
+
+    #[test]
+    fn database_functions_take_wildcards_in_the_criteria() {
+        let mut s = sheet_with(&[
+            ("A1", "品名"), ("B1", "金額"),
+            ("A2", "りんご"), ("B2", "100"),
+            ("A3", "りんご酢"), ("B3", "200"),
+            ("A4", "みかん"), ("B4", "300"),
+            ("D1", "品名"), ("D2", "りんご*"),
+            ("F1", "品名"), ("F2", "<>りんご"),
+        ]);
+        assert_eq!(n(&mut s, "=DSUM(A1:B4,\"金額\",D1:D2)"), 300.0);
+        assert_eq!(n(&mut s, "=DCOUNT(A1:B4,\"金額\",D1:D2)"), 2.0);
+        assert_eq!(n(&mut s, "=DSUM(A1:B4,\"金額\",F1:F2)"), 500.0);
+        assert_eq!(n(&mut s, "=DMAX(A1:B4,\"金額\",F1:F2)"), 300.0);
+    }
+
+    #[test]
+    fn search_takes_wildcards_but_find_does_not() {
+        let mut s = sheet_with(&[]);
+        assert_eq!(n(&mut s, "=SEARCH(\"b?n\",\"xbanana\")"), 2.0);
+        assert_eq!(n(&mut s, "=SEARCH(\"*na\",\"banana\")"), 1.0);
+        assert_eq!(n(&mut s, "=SEARCH(\"n*a\",\"banana\",4)"), 5.0, "開始位置から");
+        assert_eq!(n(&mut s, "=SEARCH(\"~?\",\"a?b\")"), 2.0, "~ で ? そのもの");
+        assert_eq!(t(&mut s, "=SEARCH(\"z*\",\"banana\")"), "#VALUE!");
+        assert_eq!(t(&mut s, "=FIND(\"b?n\",\"xbanana\")"), "#VALUE!");
+    }
+
+    #[test]
+    fn roman_takes_the_four_short_forms() {
+        let mut s = sheet_with(&[]);
+        assert_eq!(t(&mut s, "=ROMAN(499)"), "CDXCIX");
+        assert_eq!(t(&mut s, "=ROMAN(499,0)"), "CDXCIX");
+        assert_eq!(t(&mut s, "=ROMAN(499,1)"), "LDVLIV");
+        assert_eq!(t(&mut s, "=ROMAN(499,2)"), "XDIX");
+        assert_eq!(t(&mut s, "=ROMAN(499,3)"), "VDIV");
+        assert_eq!(t(&mut s, "=ROMAN(499,4)"), "ID");
+        assert_eq!(t(&mut s, "=ROMAN(499,FALSE)"), "ID");
+        assert_eq!(t(&mut s, "=ROMAN(499,TRUE)"), "CDXCIX");
+        assert_eq!(t(&mut s, "=ROMAN(2024)"), "MMXXIV");
+        assert_eq!(t(&mut s, "=ROMAN(3999,4)"), "MMMIM");
+        assert_eq!(t(&mut s, "=ROMAN(499,5)"), "#VALUE!");
+    }
+
+    #[test]
+    fn ceiling_and_floor_math_take_the_mode() {
+        let mut s = sheet_with(&[]);
+        assert_eq!(n(&mut s, "=CEILING.MATH(-6.1,2)"), -6.0);
+        assert_eq!(n(&mut s, "=CEILING.MATH(-6.1,2,1)"), -8.0, "0 から遠い方へ");
+        assert_eq!(n(&mut s, "=CEILING.MATH(6.1,2,1)"), 8.0, "正の数は変わらない");
+        assert_eq!(n(&mut s, "=FLOOR.MATH(-6.1,2)"), -8.0);
+        assert_eq!(n(&mut s, "=FLOOR.MATH(-6.1,2,1)"), -6.0, "0 に近い方へ");
+        assert_eq!(n(&mut s, "=FLOOR.MATH(6.1,2,1)"), 6.0);
+    }
+
+    #[test]
+    fn subtotal_skips_filtered_rows_and_the_hundreds_skip_hidden_rows_too() {
+        let mut s = sheet_with(&[("A1", "10"), ("A2", "20"), ("A3", "30"), ("A4", "40")]);
+        // 2行目(20)を絞り込みで隠す
+        s.filter_hidden.insert(1);
+        assert_eq!(n(&mut s, "=SUBTOTAL(9,A1:A4)"), 80.0, "1〜11 も絞り込みの行は飛ばす");
+        assert_eq!(n(&mut s, "=SUBTOTAL(109,A1:A4)"), 80.0);
+        assert_eq!(n(&mut s, "=SUBTOTAL(102,A1:A4)"), 3.0);
+        assert_eq!(n(&mut s, "=SUM(A1:A4)"), 100.0, "普通の SUM は影響を受けない");
+        // 3行目(30)を手で隠す
+        s.row_hidden.insert(2);
+        assert_eq!(n(&mut s, "=SUBTOTAL(9,A1:A4)"), 80.0, "手で隠した行は 1〜11 では数える");
+        assert_eq!(n(&mut s, "=SUBTOTAL(109,A1:A4)"), 50.0);
+        assert_eq!(n(&mut s, "=AGGREGATE(9,1,A1:A4)"), 50.0, "オプション 1 は隠れた行を飛ばす");
+    }
+
+    #[test]
+    fn weekday_takes_every_return_type() {
+        let mut s = sheet_with(&[("A1", "=DATE(2026,9,2)")]); // 水曜
+        for (kind, want) in [(1, 4), (2, 3), (3, 2), (11, 3), (12, 2), (13, 1), (14, 7),
+                             (15, 6), (16, 5), (17, 4)] {
+            assert_eq!(n(&mut s, &format!("=WEEKDAY(A1,{kind})")), want as f64, "種類 {kind}");
+        }
+        assert_eq!(n(&mut s, "=WEEKDAY(A1)"), 4.0);
+        assert_eq!(t(&mut s, "=WEEKDAY(A1,5)"), "#NUM!");
+    }
+
+    #[test]
+    fn weeknum_takes_every_return_type() {
+        let mut s = sheet_with(&[]);
+        // 2026-01-01 は木曜、01-04 は日曜、01-05 は月曜
+        assert_eq!(n(&mut s, "=WEEKNUM(DATE(2026,1,1))"), 1.0);
+        assert_eq!(n(&mut s, "=WEEKNUM(DATE(2026,1,4))"), 2.0, "日曜始まり");
+        assert_eq!(n(&mut s, "=WEEKNUM(DATE(2026,1,4),2)"), 1.0, "月曜始まり");
+        assert_eq!(n(&mut s, "=WEEKNUM(DATE(2026,1,5),2)"), 2.0);
+        assert_eq!(n(&mut s, "=WEEKNUM(DATE(2026,1,5),11)"), 2.0);
+        assert_eq!(n(&mut s, "=WEEKNUM(DATE(2026,1,5),15)"), 2.0, "金曜始まり");
+        assert_eq!(n(&mut s, "=WEEKNUM(DATE(2026,1,1),15)"), 1.0);
+        assert_eq!(n(&mut s, "=WEEKNUM(DATE(2026,1,4),17)"), 2.0, "日曜始まり");
+        assert_eq!(n(&mut s, "=WEEKNUM(DATE(2026,1,4),21)"), 1.0, "ISO");
+        assert_eq!(n(&mut s, "=WEEKNUM(DATE(2025,12,31),21)"), 1.0, "ISO では翌年の第1週");
+        assert_eq!(t(&mut s, "=WEEKNUM(DATE(2026,1,4),3)"), "#NUM!");
+    }
+
+    #[test]
+    fn days360_takes_the_european_method() {
+        let mut s = sheet_with(&[]);
+        assert_eq!(n(&mut s, "=DAYS360(DATE(2026,1,30),DATE(2026,3,31))"), 60.0);
+        assert_eq!(n(&mut s, "=DAYS360(DATE(2026,1,29),DATE(2026,3,31))"), 62.0, "米国方式");
+        assert_eq!(n(&mut s, "=DAYS360(DATE(2026,1,29),DATE(2026,3,31),TRUE)"), 61.0, "ヨーロッパ方式");
+        assert_eq!(n(&mut s, "=DAYS360(DATE(2026,2,28),DATE(2026,3,31))"), 30.0, "2月末は 30 日");
+        assert_eq!(n(&mut s, "=DAYS360(DATE(2026,2,28),DATE(2026,3,31),TRUE)"), 32.0);
+        assert_eq!(n(&mut s, "=DAYS360(DATE(2026,1,31),DATE(2026,3,1))"), 31.0);
+    }
+
+    #[test]
+    fn yearfrac_basis_one_uses_the_actual_year_length() {
+        let mut s = sheet_with(&[]);
+        assert!(close(n(&mut s, "=YEARFRAC(DATE(2024,1,1),DATE(2024,7,1),1)"), 182.0 / 366.0));
+        assert!(close(n(&mut s, "=YEARFRAC(DATE(2025,1,1),DATE(2025,7,1),1)"), 181.0 / 365.0));
+        assert!(close(n(&mut s, "=YEARFRAC(DATE(2023,6,1),DATE(2024,6,1),1)"), 1.0), "閏日を挟む1年");
+        assert!(close(n(&mut s, "=YEARFRAC(DATE(2023,1,1),DATE(2025,1,1),1)"), 731.0 / (1096.0 / 3.0)));
+        assert!(close(n(&mut s, "=YEARFRAC(DATE(2024,2,29),DATE(2024,8,31),0)"), 0.5), "米国方式の2月末");
+        assert!(close(n(&mut s, "=YEARFRAC(DATE(2026,7,1),DATE(2026,1,1))"), 0.5), "逆でも正");
+    }
+
+    #[test]
+    fn payments_take_the_type_and_rate_takes_a_guess() {
+        let mut s = sheet_with(&[]);
+        assert!(close(n(&mut s, "=PMT(0.01,60,1000000)"), -22244.4477));
+        assert!(close(n(&mut s, "=PMT(0.01,60,1000000,0,1)"), -22024.2056), "期首払い");
+        assert!(close(n(&mut s, "=PV(0.05,10,-100,0,1)"), 810.7822));
+        assert!(close(n(&mut s, "=PV(0.05,10,-100)"), 772.1735));
+        assert!(close(n(&mut s, "=FV(0.05,10,-100,0,1)"), 1320.6787));
+        assert!(close(n(&mut s, "=NPER(0.01,-100,1000,0,1)"), 10.4780));
+        assert!(close(n(&mut s, "=NPER(0.01,-100,1000)"), 10.5883));
+        assert!(close(n(&mut s, "=RATE(60,-22244.4477,1000000)"), 0.01));
+        assert!(close(n(&mut s, "=RATE(60,-22024.2056,1000000,0,1)"), 0.01), "期首払い");
+        assert!(close(n(&mut s, "=RATE(60,-22244.4477,1000000,0,0,0.05)"), 0.01), "推定値から");
     }
 }

@@ -39,6 +39,17 @@ pub trait Grid {
         false
     }
 
+    /// 絞り込み(オートフィルター)で隠れた行か。`SUBTOTAL` は 1〜11 でも
+    /// この行を飛ばします(Excel と同じ)。
+    fn row_filtered(&self, _row: u32) -> bool {
+        false
+    }
+
+    /// 絞り込みで隠れた行が1つでもあるか。
+    fn any_row_filtered(&self) -> bool {
+        false
+    }
+
     /// 構造化参照(`売上台帳[金額]`)が引く表の定義。
     fn tables(&self) -> &[TableDef] {
         &[]
@@ -62,6 +73,12 @@ impl Grid for Sheet {
     }
     fn any_row_hidden(&self) -> bool {
         !self.row_hidden.is_empty()
+    }
+    fn row_filtered(&self, row: u32) -> bool {
+        self.filter_hidden.contains(&row)
+    }
+    fn any_row_filtered(&self) -> bool {
+        !self.filter_hidden.is_empty()
     }
     fn tables(&self) -> &[TableDef] {
         &self.tables

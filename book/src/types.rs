@@ -708,6 +708,10 @@ pub struct Sheet {
     /// 保存に残る** — 畳んだ台帳は畳んだまま次の人に渡る
     pub row_hidden: std::collections::BTreeSet<u32>,
     pub col_hidden: std::collections::BTreeSet<u32>,
+    /// 絞り込み(オートフィルター)で隠れている行。画面の側が絞り込みを
+    /// 変えたときに計算の前に入れます。**保存には残りません**(絞り込みは
+    /// 見え方だけ)。`SUBTOTAL` が飛ばす行を知るためだけに持ちます
+    pub filter_hidden: std::collections::BTreeSet<u32>,
     /// この表にある表オブジェクト(xlsx の table)
     pub tables: Vec<TableDef>,
     /// 読み込んだ xlsx でのセルの書式索引(`<c s="…">`)。

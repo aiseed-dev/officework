@@ -315,26 +315,182 @@ pub(super) fn cmp_values(op: &str, lhs: &Value, rhs: &Value) -> bool {
     }
 }
 
-/// SUMIF / COUNTIF の条件合わせ。数は数として、文字は文字として比べる。
-pub(super) fn matches_cond(v: &Value, cond: &Value) -> bool {
-    match cond {
-        Value::Number(n) => cmp_num(v.as_number(), *n) == std::cmp::Ordering::Equal,
-        Value::Text(s) => {
-            // ">100" のような書き方に応える
-            let t = s.trim();
-            // **記号の長い順に見る**(">=" を ">" と読み違えない)。
-            // 比べ方は式の中と同じ1本(cmp_num)
-            for op in [">=", "<=", "<>", ">", "<", "="] {
-                if let Some(rest) = t.strip_prefix(op) {
-                    if let Ok(n) = rest.trim().parse::<f64>() {
-                        return !v.is_empty() && ord_holds(op, cmp_num(v.as_number(), n));
-                    }
-                }
-            }
-            v.display() == *s
+/// ワイルドカードの照合。`*` は何文字でも、`?` は1文字、`~` の次の1字は
+/// そのままの字として見ます。大文字と小文字は区別しません(Excel と同じ)。
+/// `whole` が true なら文字列全体が合うか、false なら先頭の一部が合えば
+/// よい(SEARCH が使います)。
+pub(super) fn wild_match(pat: &str, text: &str, whole: bool) -> bool {
+    let p: Vec<char> = pat.to_lowercase().chars().collect();
+    let t: Vec<char> = text.to_lowercase().chars().collect();
+    fn go(p: &[char], t: &[char], whole: bool) -> bool {
+        match p.first() {
+            None => !whole || t.is_empty(),
+            Some('*') => (0..=t.len()).any(|k| go(&p[1..], &t[k..], whole)),
+            Some('?') => !t.is_empty() && go(&p[1..], &t[1..], whole),
+            Some('~') => match p.get(1) {
+                Some(c) => t.first() == Some(c) && go(&p[2..], &t[1..], whole),
+                None => t.is_empty() || !whole,
+            },
+            Some(c) => t.first() == Some(c) && go(&p[1..], &t[1..], whole),
         }
+    }
+    go(&p, &t, whole)
+}
+
+/// ワイルドカードの記号(`*` `?` `~`)を含むか。
+pub(super) fn has_wildcard(s: &str) -> bool {
+    s.contains(['*', '?', '~'])
+}
+
+/// SUMIF / COUNTIF の条件合わせ。数は数として、文字は文字として比べる。
+///
+/// 文字の条件は Excel と同じ書き方を受けます。`">100"` のような比較、
+/// `"<>りんご"` のような否定、`"り*"` のようなワイルドカードです。
+/// 大文字と小文字は区別しません。
+pub(super) fn matches_cond(v: &Value, cond: &Value) -> bool {
+    // セルの数。数のセルと、数として読める文字のセルだけが数です
+    let cell_num = |v: &Value| -> Option<f64> {
+        match v {
+            Value::Number(n) => Some(*n),
+            Value::Text(t) => t.trim().parse::<f64>().ok(),
+            _ => None,
+        }
+    };
+    match cond {
+        Value::Number(n) => {
+            cell_num(v).is_some_and(|x| cmp_num(x, *n) == std::cmp::Ordering::Equal)
+        }
+        Value::Bool(b) => matches!(v, Value::Bool(x) if x == b),
+        Value::Empty => v.display().is_empty(),
+        Value::Text(s) => {
+            let t = s.trim();
+            // **記号の長い順に見る**(">=" を ">" と読み違えない)
+            let (op, rest) = [">=", "<=", "<>", ">", "<", "="]
+                .iter()
+                .find_map(|op| t.strip_prefix(op).map(|r| (*op, r.trim())))
+                .unwrap_or(("=", t));
+            if let Ok(n) = rest.parse::<f64>() {
+                // 数との比較。比べ方は式の中と同じ1本(cmp_num)。
+                // `<>` は数でないセル(文字・空)も「違う」ので数えます
+                return match cell_num(v) {
+                    Some(x) => ord_holds(op, cmp_num(x, n)),
+                    None => op == "<>",
+                };
+            }
+            if rest.eq_ignore_ascii_case("true") || rest.eq_ignore_ascii_case("false") {
+                let want = rest.eq_ignore_ascii_case("true");
+                let is = matches!(v, Value::Bool(x) if *x == want);
+                return if op == "<>" { !is } else { is };
+            }
+            let text = v.display();
+            match op {
+                // `"="` だけ・空の条件は空のセルに合う。`"<>"` だけは空でないセル
+                "=" => wild_match(rest, &text, true),
+                "<>" => !wild_match(rest, &text, true),
+                // 文字の大小は文字のセルだけを見る(Excel と同じ)
+                _ => matches!(v, Value::Text(_))
+                    && ord_holds(op, text.to_lowercase().cmp(&rest.to_lowercase())),
+            }
+        }
+        Value::Error(_) => false,
+    }
+}
+
+/// 検索の関数(VLOOKUP・MATCH・XLOOKUP)の「同じ値か」。数は数として、
+/// 文字は大文字と小文字を区別せずに比べます。文字の探す値に
+/// ワイルドカードがあれば、その照合をします。
+pub(super) fn lookup_same(v: &Value, key: &Value, wild: bool) -> bool {
+    match (v, key) {
+        (Value::Number(x), Value::Number(y)) => cmp_num(*x, *y) == std::cmp::Ordering::Equal,
+        (Value::Bool(x), Value::Bool(y)) => x == y,
+        (Value::Text(x), Value::Text(y)) => {
+            if wild && has_wildcard(y) {
+                wild_match(y, x, true)
+            } else {
+                x.to_lowercase() == y.to_lowercase()
+            }
+        }
+        (Value::Empty, Value::Empty) => true,
         _ => false,
     }
+}
+
+/// 検索の関数の並び順の比較。数と数、文字と文字だけを比べ、種類が違えば
+/// None(近似一致では飛ばします)。文字は大文字と小文字を区別しません。
+pub(super) fn lookup_cmp(v: &Value, key: &Value) -> Option<std::cmp::Ordering> {
+    match (v, key) {
+        (Value::Number(x), Value::Number(y)) => Some(cmp_num(*x, *y)),
+        (Value::Text(x), Value::Text(y)) => Some(x.to_lowercase().cmp(&y.to_lowercase())),
+        (Value::Bool(x), Value::Bool(y)) => Some(x.cmp(y)),
+        _ => None,
+    }
+}
+
+/// 近似一致。`largest_le` が true なら「探す値を超えない最大」(昇順の
+/// 並びが前提。VLOOKUP・MATCH の 1)、false なら「探す値を下回らない
+/// 最小」(降順の並びが前提。MATCH の -1)。見つかった位置を返します。
+pub(super) fn lookup_approx(hay: &[Value], key: &Value, largest_le: bool) -> Option<usize> {
+    use std::cmp::Ordering::*;
+    let mut best: Option<usize> = None;
+    for (i, v) in hay.iter().enumerate() {
+        let Some(o) = lookup_cmp(v, key) else { continue };
+        if o == Equal {
+            return Some(i);
+        }
+        let ok = if largest_le { o == Less } else { o == Greater };
+        if !ok {
+            continue;
+        }
+        // 前の候補よりも探す値に近ければ取り替える
+        match best {
+            None => best = Some(i),
+            Some(b) => {
+                let closer = lookup_cmp(v, &hay[b]);
+                if closer == Some(if largest_le { Greater } else { Less }) {
+                    best = Some(i);
+                }
+            }
+        }
+    }
+    best
+}
+
+/// XLOOKUP / XMATCH の探し方。一致モードは 0 = 完全一致、-1 = 完全一致か
+/// 次に小さい値、1 = 完全一致か次に大きい値、2 = ワイルドカード。
+/// 検索モードは 1 = 先頭から、-1 = 末尾から(2・-2 の二分探索も同じ
+/// 向きで探します。並びが揃っていれば答えは同じです)。
+pub(super) fn xlookup_find(hay: &[Value], key: &Value, mode: f64, dir: f64) -> Option<usize> {
+    use std::cmp::Ordering::*;
+    let back = dir < 0.0;
+    let wild = mode == 2.0;
+    let exact = if back {
+        hay.iter().rposition(|v| lookup_same(v, key, wild))
+    } else {
+        hay.iter().position(|v| lookup_same(v, key, wild))
+    };
+    if exact.is_some() || mode == 0.0 || wild {
+        return exact;
+    }
+    // 近似。-1 なら探す値より小さい中で最大、1 なら大きい中で最小
+    let want = if mode < 0.0 { Less } else { Greater };
+    let mut best: Option<usize> = None;
+    let order: Vec<usize> =
+        if back { (0..hay.len()).rev().collect() } else { (0..hay.len()).collect() };
+    for i in order {
+        if lookup_cmp(&hay[i], key) != Some(want) {
+            continue;
+        }
+        match best {
+            None => best = Some(i),
+            Some(b) => {
+                // 探す値に近い方(-1 なら大きい方、1 なら小さい方)を取る
+                if lookup_cmp(&hay[i], &hay[b]) == Some(want.reverse()) {
+                    best = Some(i);
+                }
+            }
+        }
+    }
+    best
 }
 
 /// 暦(y,m,d)→ 1970-01-01 からの日数(Howard Hinnant の civil_from_days の逆)。
@@ -746,17 +902,105 @@ pub(super) fn wareki(serial: i64, ep: i64) -> String {
     }
 }
 
-/// 30/360(米国方式)の日数。DAYS360 と YEARFRAC が使う
-pub(super) fn days360(s: i64, e: i64, ep: i64) -> i64 {
+/// 閏年か。
+pub(super) fn is_leap(y: i64) -> bool {
+    (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+}
+
+/// 2月の最終日か。
+fn is_feb_end(y: i64, m: i64, d: i64) -> bool {
+    m == 2 && d == if is_leap(y) { 29 } else { 28 }
+}
+
+/// 30/360 の日数。DAYS360 が使う。
+///
+/// 米国方式(`european` が false): 開始日が月末(2月の最終日も)なら 30 日
+/// とし、終了日が 31 日なら、開始日が 30 日でないときは翌月の 1 日、
+/// 30 日のときは 30 日にします。ヨーロッパ方式: 31 日はどちらも 30 日に
+/// します(Excel と同じ)
+pub(super) fn days360(s: i64, e: i64, ep: i64, european: bool) -> i64 {
     let (sy, sm, mut sd) = civil_from_days(s - ep);
-    let (ey, em, mut ed) = civil_from_days(e - ep);
-    if sd == 31 {
+    let (ey, mut em, mut ed) = civil_from_days(e - ep);
+    if sd == 31 || (!european && is_feb_end(sy, sm, sd)) {
         sd = 30;
     }
-    if ed == 31 && sd == 30 {
-        ed = 30;
+    if ed == 31 {
+        if !european && sd != 30 {
+            ed = 1;
+            em += 1;
+        } else {
+            ed = 30;
+        }
     }
     (ey - sy) * 360 + (em - sm) * 30 + (ed - sd)
+}
+
+/// 年の何週目か(ISO 8601)。木曜を含む週がその年の第1週。
+/// ISOWEEKNUM と WEEKNUM の基準 21 が使う
+pub(super) fn iso_weeknum(serial: i64, ep: i64) -> i64 {
+    // その週の木曜へ動かして年内通算で数える
+    let dow = (weekday0(serial, ep) + 6) % 7; // 0=月曜
+    let thu = serial - dow + 3;
+    let (y, _, _) = civil_from_days(thu - ep);
+    (thu - date_serial_at(y, 1, 1, ep)) / 7 + 1
+}
+
+/// WEEKDAY / WEEKNUM の種類 → 週の始まりの曜日(0=日曜)。
+/// 1 と 17 は日曜、2・3・11 は月曜、12〜16 は火曜〜土曜。それ以外は None
+pub(super) fn week_start(kind: i64) -> Option<i64> {
+    match kind {
+        1 | 17 => Some(0),
+        2 | 3 | 11 => Some(1),
+        12..=16 => Some(kind - 10),
+        _ => None,
+    }
+}
+
+/// ローマ数字。`mode` は 0(正式)〜4(いちばん短い形)。Excel と同じ
+/// 段階で短くします(499 → CDXCIX, LDVLIV, XDIX, VDIV, ID)
+pub(super) fn roman(n: i64, mode: usize) -> String {
+    const CHARS: [char; 7] = ['M', 'D', 'C', 'L', 'X', 'V', 'I'];
+    const VALUES: [i64; 7] = [1000, 500, 100, 50, 10, 5, 1];
+    let mut n = n;
+    let mut out = String::new();
+    for i in 0..=3 {
+        let mut idx = 2 * i;
+        let digit = n / VALUES[idx];
+        if digit % 5 == 4 {
+            // 4 や 9 は「小さい字を前に置く」形。短い書式ほど、前に置く字を
+            // 大きい位から借りる
+            let idx2 = if digit == 4 { idx - 1 } else { idx - 2 };
+            let mut steps = 0;
+            while steps < mode && idx < 6 {
+                steps += 1;
+                if VALUES[idx2] - VALUES[idx + 1] <= n {
+                    idx += 1;
+                } else {
+                    steps = mode;
+                }
+            }
+            out.push(CHARS[idx]);
+            out.push(CHARS[idx2]);
+            n = n + VALUES[idx] - VALUES[idx2];
+        } else {
+            if digit > 4 {
+                out.push(CHARS[idx - 1]);
+            }
+            for _ in 0..(digit % 5) {
+                out.push(CHARS[idx]);
+            }
+            n %= VALUES[idx];
+        }
+    }
+    out
+}
+
+/// シート名を参照に書くときの形。英数字と `_` だけならそのまま、
+/// 空白などが混じれば `'` で囲む(`'` 自体は2つ重ねる)
+pub(super) fn quote_sheet_name(s: &str) -> String {
+    let plain = s.chars().all(|c| c.is_alphanumeric() || c == '_')
+        && !s.chars().next().is_some_and(|c| c.is_ascii_digit());
+    if plain { s.to_string() } else { format!("'{}'", s.replace('\'', "''")) }
 }
 
 /// 符号の変わる区間を粗く探して挟み撃ち(IRR・RATE の反復解)。
@@ -1082,34 +1326,58 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                 return Ok(Value::Error("#VALUE!".into()));
             }
             let rows = vals.len() / cols;
-            let same = |v: &Value| -> bool {
-                match (v, &key) {
-                    (Value::Number(x), Value::Number(y)) => (x - y).abs() < 1e-9,
-                    _ => v.display() == key.display(),
-                }
-            };
-            let hit = if name == "VLOOKUP" {
-                // 1列目を上から探し、その行の idx 列目
-                (0..rows)
-                    .find(|r| same(&vals[r * cols]))
-                    .and_then(|r| vals.get(r * cols + (idx - 1)))
+            // 第4引数(検索方法)。省略か TRUE なら近似一致(昇順の並びで、
+            // 探す値を超えない最大)。FALSE なら完全一致(Excel と同じ)
+            let approx = args.get(3).map(|g| g.first().as_number() != 0.0).unwrap_or(true);
+            // 探す並び: VLOOKUP は1列目、HLOOKUP は1行目
+            let heads: Vec<Value> = if name == "VLOOKUP" {
+                (0..rows).map(|r| vals[r * cols].clone()).collect()
             } else {
-                // 1行目を左から探し、その列の idx 行目
-                (0..cols)
-                    .find(|c| same(&vals[*c]))
-                    .and_then(|c| vals.get((idx - 1) * cols + c))
+                vals[..cols].to_vec()
             };
-            return Ok(hit.cloned().unwrap_or(Value::Error("#N/A".into())));
+            let found = if approx {
+                lookup_approx(&heads, &key, true)
+            } else {
+                heads.iter().position(|v| lookup_same(v, &key, true))
+            };
+            let hit = found.and_then(|i| {
+                if name == "VLOOKUP" {
+                    vals.get(i * cols + (idx - 1))
+                } else {
+                    vals.get((idx - 1) * cols + i)
+                }
+            });
+            // 番号が表の外なら #REF!(見つからなければ #N/A)
+            return Ok(match (found, hit) {
+                (_, Some(v)) if idx <= if name == "VLOOKUP" { cols } else { rows } => v.clone(),
+                (Some(_), _) => Value::Error("#REF!".into()),
+                _ => Value::Error("#N/A".into()),
+            });
         }
         "INDEX" => {
             let Some(Arg::Rect(cols, vals)) = args.first() else {
                 return Ok(Value::Error("#VALUE!".into()));
             };
             let cols = *cols as usize;
-            let r = args.get(1).map(|g| g.first().as_number()).unwrap_or(0.0) as usize;
-            let c = args.get(2).map(|g| g.first().as_number()).unwrap_or(1.0) as usize;
+            let rows = if cols == 0 { 0 } else { vals.len() / cols };
+            let mut r = args.get(1).map(|g| g.first().as_number()).unwrap_or(0.0) as usize;
+            let mut c = args.get(2).map(|g| g.first().as_number()).unwrap_or(1.0) as usize;
+            // 第4引数(領域番号)。範囲は1つしか渡せないので、1 だけを受け、
+            // 2 以上は #REF!(Excel で領域が無いときと同じ答え)
+            let area = args.get(3).map(|g| g.first().as_number()).unwrap_or(1.0) as usize;
+            if area != 1 {
+                return Ok(Value::Error("#REF!".into()));
+            }
+            // 1行だけの範囲で番号を1つだけ渡したら、それは列の番号(Excel と同じ)
+            if rows == 1 && args.get(2).is_none() {
+                c = r;
+                r = 1;
+            }
             if r == 0 || c == 0 {
                 return Ok(Value::Error("#VALUE!".into()));
+            }
+            if r > rows || c > cols {
+                return Ok(Value::Error("#REF!".into()));
             }
             return Ok(vals
                 .get((r - 1) * cols + (c - 1))
@@ -1119,37 +1387,25 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
         "MATCH" => {
             let key = args.first().map(|g| g.first()).unwrap_or(Value::Empty);
             let hay = args.get(1).map(|g| g.values()).unwrap_or(&[]);
-            // 照合の型は 0(完全一致)だけを受ける(それ以外は正直に断る)
-            if let Some(t) = args.get(2) {
-                if t.first().as_number() != 0.0 {
-                    return Ok(Value::Error("#VALUE!".into()));
-                }
-            }
-            return Ok(hay
-                .iter()
-                .position(|v| v.display() == key.display())
+            // 照合の種類。1(省略時)= 昇順の並びで探す値以下の最大、
+            // 0 = 完全一致(ワイルドカードも可)、-1 = 降順の並びで探す値以上の最小
+            let kind = args.get(2).map(|g| g.first().as_number()).unwrap_or(1.0);
+            let hit = if kind == 0.0 {
+                hay.iter().position(|v| lookup_same(v, &key, true))
+            } else {
+                lookup_approx(hay, &key, kind > 0.0)
+            };
+            return Ok(hit
                 .map(|i| Value::Number((i + 1) as f64))
                 .unwrap_or(Value::Error("#N/A".into())));
         }
         "XMATCH" => {
-            // XMATCH(探す値, 探す範囲, [照合の型], [検索の向き])
-            // 完全一致(0)だけを受ける。**近似は断る** — 並びが揃っている
-            // 前提を黙って敷くと、帳票が静かにずれた行を指す
+            // XMATCH(探す値, 探す範囲, [一致モード], [検索モード])
             let key = args.first().map(|g| g.first()).unwrap_or(Value::Empty);
             let hay = args.get(1).map(|g| g.values()).unwrap_or(&[]);
-            if let Some(t) = args.get(2) {
-                if t.first().as_number() != 0.0 {
-                    return Ok(Value::Error("#VALUE!".into()));
-                }
-            }
-            // 検索の向き: -1 なら後ろから
-            let back = args.get(3).map(|g| g.first().as_number() < 0.0).unwrap_or(false);
-            let hit = if back {
-                hay.iter().rposition(|v| v.display() == key.display())
-            } else {
-                hay.iter().position(|v| v.display() == key.display())
-            };
-            return Ok(hit
+            let mode = args.get(2).map(|g| g.first().as_number()).unwrap_or(0.0);
+            let dir = args.get(3).map(|g| g.first().as_number()).unwrap_or(1.0);
+            return Ok(xlookup_find(hay, &key, mode, dir)
                 .map(|i| Value::Number((i + 1) as f64))
                 .unwrap_or(Value::Error("#N/A".into())));
         }
@@ -1255,20 +1511,23 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             });
         }
         "XLOOKUP" => {
-            // XLOOKUP(探す値, 探す範囲, 返す範囲, [見つからないとき]) — 完全一致
+            // XLOOKUP(探す値, 探す範囲, 返す範囲, [見つからないとき],
+            //         [一致モード], [検索モード])
             let key = args.first().map(|g| g.first()).unwrap_or(Value::Empty);
             let hay = args.get(1).map(|g| g.values()).unwrap_or(&[]);
             let ret = args.get(2).map(|g| g.values()).unwrap_or(&[]);
             if hay.is_empty() || hay.len() != ret.len() {
                 return Ok(Value::Error("#VALUE!".into()));
             }
-            let same = |v: &Value| match (v, &key) {
-                (Value::Number(x), Value::Number(y)) => (x - y).abs() < 1e-9,
-                _ => v.display() == key.display(),
-            };
-            return Ok(match hay.iter().position(same) {
+            let mode = args.get(4).map(|g| g.first().as_number()).unwrap_or(0.0);
+            let dir = args.get(5).map(|g| g.first().as_number()).unwrap_or(1.0);
+            return Ok(match xlookup_find(hay, &key, mode, dir) {
                 Some(i) => ret[i].clone(),
-                None => args.get(3).map(|g| g.first()).unwrap_or(Value::Error("#N/A".into())),
+                None => args
+                    .get(3)
+                    .map(|g| g.first())
+                    .filter(|v| !v.is_empty())
+                    .unwrap_or(Value::Error("#N/A".into())),
             });
         }
         "COUNTIFS" | "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" => {
@@ -1645,9 +1904,9 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
         "SUBTOTAL" | "AGGREGATE" => {
             // SUBTOTAL(集計番号, 範囲…) — オートフィルターと「小計」が
             // 自動で埋め込む、実物のファイル頻出の関数。
-            // **101〜111(手で隠した行を飛ばす)は呼ぶ側で範囲から抜いてある**
-            // (P::atom の二度読み。ここへ来る値は既に飛ばした後)。
-            // 絞り込みで隠れた行は app 側の状態なので、まだ数に入る(在庫)
+            // **隠れた行は呼ぶ側で範囲から抜いてある**(P::atom の二度読み。
+            // ここへ来る値は既に飛ばした後)。絞り込みで隠れた行は 1〜11 でも
+            // 飛ばし、101〜111 は手で隠した行も飛ばす(Excel と同じ)
             let f = args.first().map(|g| g.first().as_number()).unwrap_or(0.0) as i64;
             let f = if f > 100 { f - 100 } else { f };
             // AGGREGATE は第2引数が「無視の指定」— 読み飛ばす
@@ -1934,12 +2193,17 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
         "LEFT" | "RIGHT" | "MID" => {
             let s = a.first().map(|v| v.display()).unwrap_or_default();
             let ch: Vec<char> = s.chars().collect();
-            let n = |i: usize| a.get(i).map(|v| v.as_number() as usize).unwrap_or(0);
+            // 負の文字数は #VALUE!(Excel と同じ)
+            if a.iter().skip(1).any(|v| v.as_number() < 0.0) {
+                return Ok(Value::Error("#VALUE!".into()));
+            }
+            // 文字数を省いたら 1 文字(Excel と同じ)。MID の開始と文字数は省けない
+            let n = |i: usize, d: usize| a.get(i).map(|v| v.as_number() as usize).unwrap_or(d);
             Value::Text(match name {
-                "LEFT" => ch.iter().take(n(1).min(ch.len())).collect(),
-                "RIGHT" => ch.iter().skip(ch.len().saturating_sub(n(1))).collect(),
+                "LEFT" => ch.iter().take(n(1, 1).min(ch.len())).collect(),
+                "RIGHT" => ch.iter().skip(ch.len().saturating_sub(n(1, 1))).collect(),
                 // MID は1始まり(表計算の約束)
-                _ => ch.iter().skip(n(1).saturating_sub(1)).take(n(2)).collect(),
+                _ => ch.iter().skip(n(1, 0).saturating_sub(1)).take(n(2, 0)).collect(),
             })
         }
         "TRIM" => Value::Text(a.first().map(|v| v.display()).unwrap_or_default().trim().to_string()),
@@ -2013,9 +2277,15 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             } as f64)
         }
         "WEEKDAY" => {
-            // Excel の既定(1=日曜)。通し番号 1(1900-01-01)は月曜
+            // WEEKDAY(日付, [種類])。種類 1(既定)は日曜が 1、2 は月曜が 1、
+            // 3 は月曜が 0。11〜17 は月曜〜日曜を 1 にします(Excel と同じ)
             let serial = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
-            Value::Number(weekday0(serial, ep) as f64 + 1.0)
+            let kind = a.get(1).map(|v| v.as_number()).unwrap_or(1.0) as i64;
+            let Some(start) = week_start(kind) else {
+                return Ok(Value::Error("#NUM!".into()));
+            };
+            let n = (weekday0(serial, ep) - start).rem_euclid(7);
+            Value::Number(if kind == 3 { n } else { n + 1 } as f64)
         }
         "TIME" => {
             let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
@@ -2385,10 +2655,14 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                 p + frac * f / digits
             })
         }
-        // ---- 財務(閉じた式で解けるものだけ。RATE のような反復解は持たない)----
+        // ---- 財務(閉じた式で解けるもの。RATE は反復解)----
         "PMT" | "PV" | "FV" | "NPER" => {
+            // 第5引数の支払期日: 0(既定)= 期末払い、1 = 期首払い。
+            // 期首払いは定額の支払いが (1+利率) 倍だけ早く効きます(Excel と同じ)
             let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
             let rate = g(0);
+            let t = if g(4) != 0.0 { 1.0 } else { 0.0 };
+            let early = 1.0 + rate * t;
             match name {
                 "PMT" => {
                     let (nper, pv, fv) = (g(1), g(2), g(3));
@@ -2398,7 +2672,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                         Value::Number(-(pv + fv) / nper)
                     } else {
                         let k = (1.0 + rate).powf(nper);
-                        Value::Number(-(pv * k + fv) * rate / (k - 1.0))
+                        Value::Number(-(pv * k + fv) * rate / (early * (k - 1.0)))
                     }
                 }
                 "PV" => {
@@ -2407,7 +2681,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                         Value::Number(-(pmt * nper + fv))
                     } else {
                         let k = (1.0 + rate).powf(nper);
-                        Value::Number(-(pmt * (k - 1.0) / rate + fv) / k)
+                        Value::Number(-(pmt * early * (k - 1.0) / rate + fv) / k)
                     }
                 }
                 "FV" => {
@@ -2416,11 +2690,11 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                         Value::Number(-(pv + pmt * nper))
                     } else {
                         let k = (1.0 + rate).powf(nper);
-                        Value::Number(-(pv * k + pmt * (k - 1.0) / rate))
+                        Value::Number(-(pv * k + pmt * early * (k - 1.0) / rate))
                     }
                 }
                 _ => {
-                    // NPER(rate, pmt, pv, [fv])
+                    // NPER(利率, 定額, 現在価値, [将来価値], [支払期日])
                     let (pmt, pv, fv) = (g(1), g(2), g(3));
                     if rate == 0.0 {
                         if pmt == 0.0 {
@@ -2429,7 +2703,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                             Value::Number(-(pv + fv) / pmt)
                         }
                     } else {
-                        let x = (pmt / rate - fv) / (pv + pmt / rate);
+                        let x = (pmt * early / rate - fv) / (pv + pmt * early / rate);
                         if x <= 0.0 {
                             Value::Error("#NUM!".into())
                         } else {
@@ -2553,6 +2827,18 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             }
             let start = (a.get(2).map(|v| v.as_number()).unwrap_or(1.0) as usize).max(1);
             let ch: Vec<char> = hay.chars().collect();
+            // SEARCH はワイルドカード(* ? と ~ の逃がし)を受ける。FIND は受けない
+            if name == "SEARCH" && has_wildcard(&needle) {
+                let rest: Vec<char> = ch.iter().skip(start - 1).cloned().collect();
+                let hit = (0..=rest.len()).find(|i| {
+                    let tail: String = rest[*i..].iter().collect();
+                    wild_match(&needle, &tail, false)
+                });
+                return Ok(match hit {
+                    Some(i) if start <= ch.len() => Value::Number((start + i) as f64),
+                    _ => Value::Error("#VALUE!".into()),
+                });
+            }
             let from: String = ch.iter().skip(start - 1).collect();
             match from.find(&needle) {
                 Some(b) => {
@@ -3500,29 +3786,19 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             }
         }
         "ROMAN" => {
-            // ローマ数字(正式の形だけ)。省略形(第2引数 1〜4)は
-            // 実装しない — 黙って別の字を返すより正直に断る
+            // ROMAN(数値, [書式])。書式 0(既定・TRUE)は正式な形、1〜3 は
+            // 段階的に短い形、4(FALSE)はいちばん短い形(Excel と同じ)。
+            // 例: 499 → CDXCIX / LDVLIV / XDIX / VDIV / ID
             let n = a.first().map(|v| v.as_number()).unwrap_or(0.0);
-            match a.get(1) {
-                None | Some(Value::Bool(true)) => {}
-                Some(v) if v.as_number() == 0.0 && !matches!(v, Value::Bool(false)) => {}
-                _ => return Ok(Value::Error("#VALUE!".into())),
-            }
-            if !(0.0..=3999.0).contains(&n) {
+            let mode = match a.get(1) {
+                None | Some(Value::Empty) | Some(Value::Bool(true)) => 0,
+                Some(Value::Bool(false)) => 4,
+                Some(v) => v.as_number() as i64,
+            };
+            if !(0.0..=3999.0).contains(&n) || !(0..=4).contains(&mode) {
                 return Ok(Value::Error("#VALUE!".into()));
             }
-            let mut n = n as i64;
-            let mut out = String::new();
-            for (v, s) in [
-                (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
-                (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
-            ] {
-                while n >= v {
-                    out.push_str(s);
-                    n -= v;
-                }
-            }
-            Value::Text(out)
+            Value::Text(roman(n as i64, mode as usize))
         }
         "ARABIC" => {
             // ローマ数字 → 数。小さい字が大きい字の前に来たら引く
@@ -4066,22 +4342,44 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             Value::Text(wareki(serial, ep))
         }
         "ADDRESS" => {
-            // ADDRESS(行, 列, [形式]) — 1=絶対(既定) 4=相対
+            // ADDRESS(行, 列, [参照の種類], [参照形式], [シート名])。
+            // 参照の種類: 1 = 行も列も絶対(既定)、2 = 行だけ絶対、
+            // 3 = 列だけ絶対、4 = 相対。参照形式: TRUE(既定)= A1、FALSE = R1C1
             let r = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
             let c = a.get(1).map(|v| v.as_number()).unwrap_or(0.0) as i64;
-            let abs = a.get(2).map(|v| v.as_number()).unwrap_or(1.0) as i64;
-            if r < 1 || c < 1 {
-                Value::Error("#VALUE!".into())
-            } else {
-                let cell = Pos::new(r as u32 - 1, c as u32 - 1).a1();
-                Value::Text(match abs {
-                    4 => cell,
-                    _ => {
-                        let split = cell.find(|ch: char| ch.is_ascii_digit()).unwrap_or(0);
-                        format!("${}${}", &cell[..split], &cell[split..])
-                    }
-                })
+            let abs = match a.get(2) {
+                None | Some(Value::Empty) => 1,
+                Some(v) => v.as_number() as i64,
+            };
+            let a1 = match a.get(3) {
+                None | Some(Value::Empty) => true,
+                Some(v) => v.as_number() != 0.0,
+            };
+            if r < 1 || c < 1 || !(1..=4).contains(&abs) {
+                return Ok(Value::Error("#VALUE!".into()));
             }
+            let (row_abs, col_abs) = (abs == 1 || abs == 2, abs == 1 || abs == 3);
+            let cell = if a1 {
+                let cell = Pos::new(r as u32 - 1, c as u32 - 1).a1();
+                let split = cell.find(|ch: char| ch.is_ascii_digit()).unwrap_or(0);
+                format!(
+                    "{}{}{}{}",
+                    if col_abs { "$" } else { "" },
+                    &cell[..split],
+                    if row_abs { "$" } else { "" },
+                    &cell[split..]
+                )
+            } else {
+                format!(
+                    "{}{}",
+                    if row_abs { format!("R{r}") } else { format!("R[{r}]") },
+                    if col_abs { format!("C{c}") } else { format!("C[{c}]") }
+                )
+            };
+            Value::Text(match a.get(4).map(|v| v.display()) {
+                Some(s) if !s.is_empty() => format!("{}!{cell}", quote_sheet_name(&s)),
+                _ => cell,
+            })
         }
         "HYPERLINK" => {
             // 表示は文字だけ(飛ぶ仕掛けはセルのリンクの仕事)
@@ -4097,14 +4395,21 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             }
         }
         "CEILING.MATH" | "FLOOR.MATH" => {
-            // 新しい既定の丸め。基準は絶対値で見る(符号の縛りが無い)
+            // 新しい既定の丸め。基準は絶対値で見る(符号の縛りが無い)。
+            // 第3引数のモード: 0(既定)なら負の数は 0 に近い方へ、
+            // 0 以外なら 0 から遠い方(CEILING.MATH)・0 に近い方(FLOOR.MATH)
+            // へ丸める(Excel と同じ)
             let x = a.first().map(|v| v.as_number()).unwrap_or(0.0);
             let s = a.get(1).map(|v| v.as_number().abs()).unwrap_or(1.0);
+            let mode = a.get(2).map(|v| v.as_number() != 0.0).unwrap_or(false);
             if s == 0.0 {
                 Value::Number(0.0)
             } else {
                 let q = x / s;
-                Value::Number(if name == "CEILING.MATH" { q.ceil() } else { q.floor() } * s)
+                let up = name == "CEILING.MATH";
+                // 負の数でモードが立っていれば向きを入れ替える
+                let up = if x < 0.0 && mode { !up } else { up };
+                Value::Number(if up { q.ceil() } else { q.floor() } * s)
             }
         }
         "AVERAGEA" | "MAXA" | "MINA" => {
@@ -4138,41 +4443,87 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             Value::Number(end - start)
         }
         "DAYS360" => {
+            // DAYS360(開始日, 終了日, [方式])。方式 FALSE(既定)= 米国方式、
+            // TRUE = ヨーロッパ方式
             let s = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
             let e = a.get(1).map(|v| v.as_number()).unwrap_or(0.0) as i64;
-            Value::Number(days360(s, e, ep) as f64)
+            let european = a.get(2).map(|v| v.as_number() != 0.0).unwrap_or(false);
+            Value::Number(days360(s, e, ep, european) as f64)
         }
         "YEARFRAC" => {
-            // 基準 0=30/360(既定) 1=実日数/年平均 2=/360 3=/365 4=欧州30/360
-            let s = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
-            let e = a.get(1).map(|v| v.as_number()).unwrap_or(0.0) as i64;
+            // 基準 0=30/360 米国(既定) 1=実際の日数/実際の年の日数 2=/360
+            // 3=/365 4=30/360 ヨーロッパ。開始日と終了日が逆でも正の値(Excel と同じ)
+            let s0 = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
+            let e0 = a.get(1).map(|v| v.as_number()).unwrap_or(0.0) as i64;
+            let (s, e) = (s0.min(e0), s0.max(e0));
             let basis = a.get(2).map(|v| v.as_number()).unwrap_or(0.0) as i64;
             let days = (e - s) as f64;
+            let (sy, sm, sd) = civil_from_days(s - ep);
+            let (ey, em, ed) = civil_from_days(e - ep);
+            let year_len = |y: i64| if is_leap(y) { 366.0 } else { 365.0 };
             Value::Number(match basis {
-                1 => days / 365.25, // 実際の暦の平均(Excel の厳密式の近似)
+                1 => {
+                    // 同じ年ならその年の日数。1年以内なら、間に 2月29日 が
+                    // あるとき 366、無ければ 365。1年を超えるなら、またぐ
+                    // 年の日数の平均(Excel と同じ)
+                    let within_a_year =
+                        ey == sy + 1 && (em < sm || (em == sm && ed <= sd));
+                    let denom = if sy == ey {
+                        year_len(sy)
+                    } else if within_a_year {
+                        let leap_day = (is_leap(sy) && sm <= 2)
+                            || (is_leap(ey) && (em > 2 || (em == 2 && ed == 29)));
+                        if leap_day { 366.0 } else { 365.0 }
+                    } else {
+                        (sy..=ey).map(year_len).sum::<f64>() / (ey - sy + 1) as f64
+                    };
+                    days / denom
+                }
                 2 => days / 360.0,
                 3 => days / 365.0,
-                4 => days360(s, e, ep) as f64 / 360.0,
-                _ => days360(s, e, ep) as f64 / 360.0,
+                4 => days360(s, e, ep, true) as f64 / 360.0,
+                _ => {
+                    // 米国(NASD)方式。開始日が 2月の最終日なら 30 日、
+                    // 終了日も 2月の最終日ならそれも 30 日。31 日は 30 日に
+                    // (終了日は開始日が 30 日のときだけ)
+                    let (mut sd, mut ed) = (sd, ed);
+                    if is_feb_end(sy, sm, sd) {
+                        sd = 30;
+                        if is_feb_end(ey, em, ed) {
+                            ed = 30;
+                        }
+                    }
+                    if sd == 31 {
+                        sd = 30;
+                    }
+                    if ed == 31 && sd == 30 {
+                        ed = 30;
+                    }
+                    ((ey - sy) * 360 + (em - sm) * 30 + (ed - sd)) as f64 / 360.0
+                }
             })
         }
         "WEEKNUM" => {
-            // 年の何週目か(1=日曜始まり(既定)、2=月曜始まり)
+            // WEEKNUM(日付, [基準])。基準 1(既定)は日曜始まり、2 は月曜始まり、
+            // 11〜17 は月曜〜日曜始まり、21 は ISO 8601(月曜始まりで、木曜を
+            // 含む週が第1週)。1 月 1 日を含む週が第1週です(Excel と同じ)
             let serial = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
-            let mon = a.get(1).map(|v| v.as_number()).unwrap_or(1.0) as i64 == 2;
+            let kind = a.get(1).map(|v| v.as_number()).unwrap_or(1.0) as i64;
+            if kind == 21 {
+                return Ok(Value::Number(iso_weeknum(serial, ep) as f64));
+            }
+            let Some(start) = week_start(kind).filter(|_| kind != 3) else {
+                return Ok(Value::Error("#NUM!".into()));
+            };
             let (y, _, _) = civil_from_days(serial - ep);
             let jan1 = date_serial_at(y, 1, 1, ep);
-            let head = if mon { (weekday0(jan1, ep) + 6) % 7 } else { weekday0(jan1, ep) };
+            let head = (weekday0(jan1, ep) - start).rem_euclid(7);
             Value::Number(((serial - jan1 + head) / 7 + 1) as f64)
         }
         "ISOWEEKNUM" => {
             // ISO 8601: 木曜を含む週がその年の第1週
             let serial = a.first().map(|v| v.as_number()).unwrap_or(0.0) as i64;
-            // その週の木曜へ動かして年内通算で数える
-            let dow = (weekday0(serial, ep) + 6) % 7; // 0=月曜
-            let thu = serial - dow + 3;
-            let (y, _, _) = civil_from_days(thu - ep);
-            Value::Number(((thu - date_serial_at(y, 1, 1, ep)) / 7 + 1) as f64)
+            Value::Number(iso_weeknum(serial, ep) as f64)
         }
         "NPV" => {
             // NPV(利率, 額…) — 1期目の終わりから割り引く(Excel と同じ)
@@ -4192,18 +4543,41 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             }
         }
         "RATE" => {
-            // RATE(回数, 定額, 現在価値, [将来価値]) — 反復解
+            // RATE(回数, 定額, 現在価値, [将来価値], [支払期日], [推定値]) — 反復解。
+            // 推定値(既定 10%)から始めるニュートン法で解き、収まらなければ
+            // 区間を狭める方法に切り替える
             let g = |i: usize| a.get(i).map(|v| v.as_number()).unwrap_or(0.0);
             let (nper, pmt, pv, fv) = (g(0), g(1), g(2), g(3));
+            let t = if g(4) != 0.0 { 1.0 } else { 0.0 };
+            let guess = a.get(5).map(|v| v.as_number()).unwrap_or(0.1);
             let f = |r: f64| -> f64 {
                 if r.abs() < 1e-12 {
                     pv + pmt * nper + fv
                 } else {
                     let k = (1.0 + r).powf(nper);
-                    pv * k + pmt * (k - 1.0) / r + fv
+                    pv * k + pmt * (1.0 + r * t) * (k - 1.0) / r + fv
                 }
             };
-            match bisect(&f, -0.9999, 10.0) {
+            let mut r = guess;
+            let mut found = None;
+            for _ in 0..100 {
+                let y = f(r);
+                let h = 1e-6 * r.abs().max(1e-3);
+                let d = (f(r + h) - f(r - h)) / (2.0 * h);
+                if d == 0.0 || !d.is_finite() {
+                    break;
+                }
+                let next = r - y / d;
+                if !next.is_finite() || next <= -1.0 {
+                    break;
+                }
+                if (next - r).abs() <= 1e-10 * r.abs().max(1.0) {
+                    found = Some(next);
+                    break;
+                }
+                r = next;
+            }
+            match found.or_else(|| bisect(&f, -0.9999, 10.0)) {
                 Some(r) => Value::Number(r),
                 None => Value::Error("#NUM!".into()),
             }
@@ -4211,6 +4585,14 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
         "PY" => Value::Error("#PY単独".into()), // =PY(…) はセル単独でだけ使える
         _ => Value::Error("#NAME?".into()),
     })
+}
+
+/// 行と列を入れ替える(SORT・UNIQUE の列方向が使う)
+fn transpose(rows: Vec<Vec<Value>>) -> Vec<Vec<Value>> {
+    let w = rows.iter().map(|r| r.len()).max().unwrap_or(0);
+    (0..w)
+        .map(|c| rows.iter().map(|r| r.get(c).cloned().unwrap_or(Value::Empty)).collect())
+        .collect()
 }
 
 pub(super) fn array_call(name: &str, args: Vec<Arg>) -> Result<Vec<Vec<Value>>, Value> {
@@ -4270,21 +4652,46 @@ pub(super) fn array_call(name: &str, args: Vec<Arg>) -> Result<Vec<Vec<Value>>, 
                 .collect())
         }
         "UNIQUE" => {
-            let rows = rows_of(args.first().ok_or(err("#VALUE!"))?);
+            // UNIQUE(範囲, [列の比較], [回数指定])。列の比較が TRUE なら列どうしを
+            // 比べる。回数指定が TRUE なら 1 回だけ出る物だけを返す。
+            // 文字の大小は区別しない(Excel と同じ)
+            let mut rows = rows_of(args.first().ok_or(err("#VALUE!"))?);
+            let by_col = args.get(1).map(|a| a.first().as_number() != 0.0).unwrap_or(false);
+            let once = args.get(2).map(|a| a.first().as_number() != 0.0).unwrap_or(false);
+            if by_col {
+                rows = transpose(rows);
+            }
+            let key_of = |row: &Vec<Value>| -> String {
+                row.iter().map(|v| v.display().to_lowercase()).collect::<Vec<_>>().join("\u{1}")
+            };
+            let mut count: std::collections::HashMap<String, usize> = Default::default();
+            for row in &rows {
+                *count.entry(key_of(row)).or_insert(0) += 1;
+            }
             let mut seen = HashSet::new();
             let mut out = Vec::new();
             for row in rows {
-                let key: String =
-                    row.iter().map(|v| v.display()).collect::<Vec<_>>().join("\u{1}");
+                let key = key_of(&row);
+                if once && count[&key] != 1 {
+                    continue;
+                }
                 if seen.insert(key) {
                     out.push(row);
                 }
             }
-            Ok(out)
+            if out.is_empty() {
+                return Err(err("#CALC!"));
+            }
+            Ok(if by_col { transpose(out) } else { out })
         }
         "SORT" => {
-            // SORT(範囲, [鍵の列], [順序 1/-1])
+            // SORT(範囲, [並べ替え基準の番号], [順序 1/-1], [列方向])。
+            // 列方向が TRUE なら、番号は行の番号で、列を並べ替える
             let mut rows = rows_of(args.first().ok_or(err("#VALUE!"))?);
+            let by_col = args.get(3).map(|a| a.first().as_number() != 0.0).unwrap_or(false);
+            if by_col {
+                rows = transpose(rows);
+            }
             let w = rows.first().map(|r| r.len()).unwrap_or(0);
             let idx = args.get(1).map(|a| a.first().as_number() as usize).unwrap_or(1);
             let desc = args.get(2).map(|a| a.first().as_number() < 0.0).unwrap_or(false);
@@ -4297,11 +4704,11 @@ pub(super) fn array_call(name: &str, args: Vec<Arg>) -> Result<Vec<Vec<Value>>, 
                     (Value::Number(p), Value::Number(q)) => {
                         p.partial_cmp(q).unwrap_or(std::cmp::Ordering::Equal)
                     }
-                    _ => a.display().cmp(&b.display()),
+                    _ => a.display().to_lowercase().cmp(&b.display().to_lowercase()),
                 };
                 if desc { o.reverse() } else { o }
             });
-            Ok(rows)
+            Ok(if by_col { transpose(rows) } else { rows })
         }
         "TEXTSPLIT" => {
             // TEXTSPLIT(文字, 列の区切り, [行の区切り], [空を飛ばす])

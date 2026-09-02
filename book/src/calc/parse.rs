@@ -284,9 +284,11 @@ pub(super) struct P<'a> {
     /// 自分がブックの何枚目か。**others は「自分より前」+「自分より後」の
     /// 並びなので、これが無いとブックの並び順を復元できない**(串刺し集計が使う)
     pub(super) sheet_at: usize,
-    /// 範囲を読むとき、**手で隠した行(row_hidden)を飛ばす**。
-    /// SUBTOTAL/AGGREGATE の 101〜111 の間だけ立つ(Excel の約束)
-    pub(super) skip_hidden: std::cell::Cell<bool>,
+    /// 範囲を読むとき、隠れた行を飛ばす。0 = 飛ばさない、
+    /// 1 = 絞り込みで隠れた行(filter_hidden)を飛ばす、
+    /// 2 = 手で隠した行(row_hidden)も飛ばす。
+    /// SUBTOTAL/AGGREGATE の引数を読む間だけ立つ(Excel の約束)
+    pub(super) skip_hidden: std::cell::Cell<u8>,
     /// LET が束ねた名前(大文字で持つ)。**後ろが勝ち**= 入れ子や
     /// 同じ名前の付け直しで内側が外側を隠す
     pub(super) lets: Vec<(String, Value)>,
@@ -355,8 +357,10 @@ impl<'a> P<'a> {
         let skip = self.skip_hidden.get();
         let mut v = Vec::new();
         for r in r0..=r1 {
-            // 101〜111 の SUBTOTAL/AGGREGATE のときだけ、隠した行は数に入れない
-            if skip && self.sheet.row_hidden(r) {
+            // SUBTOTAL/AGGREGATE のときだけ、隠れた行は数に入れない
+            if (skip >= 1 && self.sheet.row_filtered(r))
+                || (skip >= 2 && self.sheet.row_hidden(r))
+            {
                 continue;
             }
             for c in c0..=c1 {
@@ -669,12 +673,21 @@ impl<'a> P<'a> {
     /// Ok(RefAns) / Err(構文エラー) の2層
     pub(super) fn ref_call(&mut self, name: &str) -> Result<RefAns, String> {
         if name == "INDIRECT" {
-            // INDIRECT(文字列) — "A1"・"A1:B2"・"別の表!A1" を受ける
+            // INDIRECT(文字列, [参照形式]) — "A1"・"A1:B2"・"別の表!A1" を受ける。
+            // 参照形式が FALSE なら R1C1 形式("R2C3"・"R[1]C[-1]")として読む
             let v = self.expr()?;
-            match self.next() {
-                Some(Tok::RParen) => {}
+            let a1 = match self.next() {
+                Some(Tok::RParen) => true,
+                Some(Tok::Comma) => {
+                    let f = self.expr()?;
+                    match self.next() {
+                        Some(Tok::RParen) => {}
+                        _ => return Err("引数の括弧が閉じていません".into()),
+                    }
+                    f.as_number() != 0.0
+                }
                 _ => return Err("引数の括弧が閉じていません".into()),
-            }
+            };
             if let Value::Error(_) = v {
                 return Ok(RefAns::Bad(v));
             }
@@ -683,6 +696,8 @@ impl<'a> P<'a> {
                 Some((n, r)) => (Some(n.trim_matches('\'').to_string()), r.to_string()),
                 None => (None, s),
             };
+            // R1C1 は A1 に直してから同じ道を通す(R[1] はいまのセルから数える)
+            let rest = if a1 { rest } else { crate::refs::formula_from_r1c1(&rest, self.at) };
             let range = match rest.split_once(':') {
                 Some((a, z)) => Pos::parse(a).zip(Pos::parse(z)),
                 None => Pos::parse(&rest).map(|p| (p, p)),
@@ -880,19 +895,29 @@ impl<'a> P<'a> {
                             self.lets.truncate(depth); // 束縛は LET の中だけ
                             return r;
                         }
-                        // SUBTOTAL/AGGREGATE の 101〜111 は「手で隠した行を
-                        // 飛ばす」。番号は最初の引数なので、**読んでみてから**
-                        // 100 超なら隠れ行を飛ばして読み直す(字句は残って
-                        // いるので安い)。1〜11 は今までどおり全部数える
+                        // SUBTOTAL は絞り込みで隠れた行をいつも飛ばし、
+                        // 101〜111 は手で隠した行も飛ばす。AGGREGATE は
+                        // 第2引数のオプション 1・3・5・7 のとき隠れた行を
+                        // 飛ばす(Excel と同じ)。番号は引数を**読んでみてから**
+                        // 分かるので、飛ばす行があれば読み直す(字句は残って
+                        // いるので安い)
                         if matches!(name.as_str(), "SUBTOTAL" | "AGGREGATE") {
                             let save = self.i;
                             let args = self.args()?;
                             let n = args.first().map(|g| g.first().as_number()).unwrap_or(0.0);
-                            if n > 100.0 && self.sheet.any_row_hidden() {
+                            let mode: u8 = if name == "SUBTOTAL" {
+                                if n > 100.0 { 2 } else { 1 }
+                            } else {
+                                let opt = args.get(1).map(|g| g.first().as_number()).unwrap_or(0.0);
+                                if matches!(opt as i64, 1 | 3 | 5 | 7) { 2 } else { 0 }
+                            };
+                            let again = (mode >= 1 && self.sheet.any_row_filtered())
+                                || (mode >= 2 && self.sheet.any_row_hidden());
+                            if again {
                                 self.i = save;
-                                self.skip_hidden.set(true);
+                                self.skip_hidden.set(mode);
                                 let again = self.args();
-                                self.skip_hidden.set(false);
+                                self.skip_hidden.set(0);
                                 return call(&name, again?, self.date1904);
                             }
                             return call(&name, args, self.date1904);
