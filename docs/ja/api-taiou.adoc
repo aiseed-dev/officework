@@ -169,7 +169,7 @@ def 大文字にする(段落):
 |image:../../face/icons/text-from-file.svg[,16,16] Text from File |link:commands/挿入/ファイルからのテキスト.adoc[ファイルからのテキスト] |✍ |d.add_paragraph(open('メモ.txt').read()) |— |—
 |image:../../face/icons/edit-header.svg[,16,16] Edit header / image:../../face/icons/edit-footer.svg[,16,16] Edit footer |link:commands/挿入/ヘッダーの編集.adoc[ヘッダーの編集] / link:commands/挿入/フッターの編集.adoc[フッターの編集] |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
 |image:../../face/icons/pagenum.svg[,16,16] Page number |link:commands/挿入/ページ番号.adoc[ページ番号] |✍ |(ヘッダーの `#`) |— |—
-|image:../../face/icons/datetime.svg[,16,16] Date & Time |link:commands/挿入/日付_時刻.adoc[日付/時刻] |✍ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
+|image:../../face/icons/datetime.svg[,16,16] Date & Time |link:commands/挿入/日付_時刻.adoc[日付/時刻] |✍ |p.text = date.today().strftime('%Y年%m月%d日') |— |—
 |image:../../face/icons/numpages.svg[,16,16] Number of pages |link:commands/挿入/ページ数.adoc[ページ数] |✍ |(ヘッダーの `##`) |— |—
 |image:../../face/icons/insequation.svg[,16,16] Insert equation |link:commands/挿入/方程式を挿入.adoc[方程式を挿入] | |— |— |—
 |image:../../face/icons/inssymbol.svg[,16,16] Insert symbol |link:commands/挿入/記号を挿入.adoc[記号を挿入] |✍ |r.text += '※'(字をそのまま打つ) |— |—
@@ -264,7 +264,7 @@ def 大文字にする(段落):
 |image:../../face/icons/sortdesc.svg[,16,16] Sort descending / image:../../face/icons/sortasc.svg[,16,16] Sort ascending |link:commands/ホーム/降順並べ替え.adoc[降順並べ替え] / link:commands/ホーム/昇順並べ替え.adoc[昇順並べ替え] | |*ホームと同じ* |— |—
 |image:../../face/icons/custom-sort.svg[,16,16] Sort |link:commands/データ/並べ替え.adoc[並べ替え] | |— |— |—
 |image:../../face/icons/text-column.svg[,16,16] Text to columns |link:commands/データ/区切り位置.adoc[区切り位置] |✍ |s['B2'], s['C2'] = s['A2'].split(',') |— |—
-|image:../../face/icons/rem-duplicates.svg[,16,16] Remove Duplicates |link:commands/データ/重複の削除.adoc[重複の削除] |✍ |— |— |—
+|image:../../face/icons/rem-duplicates.svg[,16,16] Remove Duplicates |link:commands/データ/重複の削除.adoc[重複の削除] |✍ |見た = set() で行を選り分ける |— |—
 |image:../../face/icons/data-validation.svg[,16,16] Data Validation |link:commands/データ/データの入力規則.adoc[データの入力規則] |✅ |s.add_data_validation(…) |— |ws.add_data_validation(…)
 |image:../../face/icons/dv-mark.svg[,16,16] Circle invalid data |link:commands/データ/無効データのマーク.adoc[無効データのマーク] | |— |— |—
 |image:../../face/icons/goal-seek.svg[,16,16] Goal Seek |link:commands/データ/ゴールシーク.adoc[ゴールシーク] | |— |— |—

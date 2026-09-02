@@ -1,0 +1,522 @@
+= The button-to-API table
+
+_日本語版(secondary): link:../ja/api-taiou.adoc[api-taiou.adoc]_
+
+One page for looking up the code behind a button.
+
+* From *the name of the button* you are pressing, find how to write it
+* From *the python-docx or openpyxl call you already know*, find the
+  officework one
+
+The order matches the menus on screen: File, Home, Insert and so on. Find
+the place you press and look there.
+
+After the menus come *Quick access* (the top strip of the window), the
+*side panels* (opened from the View tab), and the *status bar* along the
+bottom.
+
+The *Right-click* section lists only what exists nowhere else. Most of a
+right-click menu repeats the ribbon (cut, copy, bold, alignment), so look
+those up in the ribbon sections.
+
+The same button sometimes appears in two places. Save is on the File page
+and on the quick access strip. *Both are listed*, and the later one says
+"Same as ...". They really are both on the screen, so we do not hide one.
+
+== How to read the mark
+
+The mark says one thing only: *whether a program can reach it*. The
+button itself works from the screen whatever the mark says.
+
+[cols="^1,3"]
+|===
+|Mark |Meaning
+
+|✅ |*A program can call it.* The column to the right shows how
+|✍ |*There is no dedicated call, but you can write it.* The column to the right shows how
+|(blank) |*Not callable yet.* It is on the way
+|❌ |*There is nothing to call.* The operation only changes what is on screen; neither the document nor the file changes
+|===
+
+== How to read the columns
+
+The first two are *the name of the button*: what it says when the screen
+is in English, and what it says in Japanese. Either one will find the
+row. A `—` in the English column means that screen is not in English yet.
+
+The `officework` column is how you write it here. The two columns to its
+right are python-docx and openpyxl, showing *what each of them calls the
+same operation*.
+
+Where two forms are given as `A / B`, either works; which one depends on
+whether you are in a document or a spreadsheet. A `—` means there is no
+such call.
+
+== Writing it makes it an API
+
+A `✍` row can be wrapped in a function of your own and called by whatever
+name you like.
+
+[source,python]
+----
+def upper_case(paragraph):
+    for r in paragraph.runs:
+        r.text = r.text.upper()
+    return paragraph
+----
+
+Package what you use often and hand it round the office. See "Adding a
+package" in link:python-manual.adoc[the Python manual].
+
+// api:taiou:start
+
+== File
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|‹ Back |‹ 戻る | |— |— |—
+|New |新規作成 |✅ |Doc() / Book() |docx.Document() |Workbook()
+|New from template |テンプレートから作成 | |— |docx.Document(雛形) |load_workbook(雛形)
+|Open |開く |✅ |Doc.open(径路) / Book.open(径路) |docx.Document(径路) |load_workbook(径路)
+|Open Folder |フォルダーを開く | |— |— |—
+|Open URL |URLを開く | |— |— |—
+|Recent |最近開いた | |— |— |—
+|Search a folder |フォルダから探す | |— |— |—
+|Recover |復旧 | |— |— |—
+|Save |保存 |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|Save As |名前を付けて保存 |✅ |d.save(別の径路) |d.save(別の径路) |wb.save(別の径路)
+|Print |印刷 | |— |— |—
+|Export |エクスポート |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|Merge data (CSV) |データを差し込む(CSV) |✅ |mcp.doc_merge_fields() / mcp.doc_fill(1行分) |— |—
+|Export for the web (HTML) |Web の形で書き出す(HTML) | |— |— |—
+|Protect |保護する | |— |— |wb.security
+|Convert to adoc (split text and formatting) |adoc 形式にする(本文と書式を分ける) | |— |— |—
+|Formatting defaults |書式の標準 |✅ |Doc(lang=…) / d.font |d.styles["Normal"].font |—
+|Info |詳細情報 |✅ |d.core_properties |d.core_properties |wb.properties
+|Open file location |ファイルの場所を開く | |— |— |—
+|Quit |終了 | |— |— |—
+|Advanced settings |詳細設定 | |— |— |—
+|Help |ヘルプ | |— |— |—
+|Feature request |機能のリクエスト | |— |— |—
+|===
+
+== Home
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/copy.svg[,16,16] Copy / image:../../face/icons/cut.svg[,16,16] Cut / image:../../face/icons/paste.svg[,16,16] Paste |コピー / 切り取り / 貼り付け |✅ |p.text = 値 / s['A1'] = 値 / c.text = 値 |p.text = 値 |ws['A1'] = 値
+|image:../../face/icons/fontname.svg[,16,16] Font |フォント |✅ |r.font / c.font |r.font.name |c.font = Font(name=…)
+|image:../../face/icons/fontsize.svg[,16,16] Font size / image:../../face/icons/incfont.svg[,16,16] Increment font size / image:../../face/icons/decfont.svg[,16,16] Decrement font size |フォントのサイズ / フォントサイズの拡大 / フォントサイズの縮小 |✅ |r.size_pt / c.font |r.font.size |c.font = Font(size=…)
+|image:../../face/icons/changecase.svg[,16,16] Change case |大文字小文字を変更 |✍ |r.text = r.text.upper() |— |—
+|image:../../face/icons/ruby.svg[,16,16] Ruby |ルビ | |— |— |—
+|image:../../face/icons/ai-furigana.svg[,16,16] Furigana |ふりがな | |— |— |—
+|image:../../face/icons/bold.svg[,16,16] Bold |太字 |✅ |r.bold / c.font |r.bold |c.font = Font(bold=True)
+|image:../../face/icons/italic.svg[,16,16] Italic |斜体 |✅ |r.italic / c.font |r.italic |c.font = Font(italic=True)
+|image:../../face/icons/underline.svg[,16,16] Underline |下線 |✅ |r.underline / c.font |r.underline |c.font = Font(underline=…)
+|image:../../face/icons/strikeout.svg[,16,16] Strikethrough |取り消し線 |✅ |r.strike |r.font.strike |—
+|image:../../face/icons/superscript.svg[,16,16] Superscript |上付き | |— |r.font.superscript |—
+|image:../../face/icons/subscript.svg[,16,16] Subscript |下付き | |— |r.font.subscript |c.font = Font(vertAlign=…)
+|image:../../face/icons/highlight.svg[,16,16] Highlight colour |ハイライトの色 |✅ |r.highlight = '色' |r.font.highlight_color |—
+|image:../../face/icons/fontcolor.svg[,16,16] Font colour |フォントの色 |✅ |r.color / c.font |r.font.color.rgb |c.font = Font(color=…)
+|image:../../face/icons/clearstyle.svg[,16,16] Clear style |スタイルのクリア |✅ |r.clear() |r.clear() |—
+|image:../../face/icons/markers.svg[,16,16] Bullet / image:../../face/icons/numbering.svg[,16,16] Numbering |箇条書き / ナンバリング |✅ |p.style = '箇条書き' / '番号付き' |p.style = 'List Bullet' / 'List Number' |—
+|image:../../face/icons/multilevels.svg[,16,16] Multilevel list |複数レベルのリスト | |— |— |—
+|image:../../face/icons/decoffset.svg[,16,16] Decrease indent / image:../../face/icons/incoffset.svg[,16,16] Increase indent |インデントを減らす / インデントを増やす |✅ |p.paragraph_format.left_indent |p.paragraph_format.left_indent |—
+|image:../../face/icons/linespace.svg[,16,16] Paragraph line spacing |段落の行間 |✅ |p.paragraph_format.line_spacing |p.paragraph_format.line_spacing |—
+|image:../../face/icons/direction.svg[,16,16] Text direction |テキスト方向 | |— |— |—
+|image:../../face/icons/align-left.svg[,16,16] Align left / image:../../face/icons/align-center.svg[,16,16] Centre / image:../../face/icons/align-right.svg[,16,16] Align right / image:../../face/icons/align-just.svg[,16,16] Justified / image:../../face/icons/align-dist.svg[,16,16] Distributed |左揃え / 中央揃え / 右揃え / 両端揃え / 均等割付 |✅ |p.align = 'left' / 'center' / 'right' / 'justify' / 'distribute' |p.alignment |c.alignment = Alignment(…)
+|image:../../face/icons/hidenchars.svg[,16,16] Nonprinting characters |非表示文字 |❌ |編集記号を画面に出すだけです。文書には入りません |— |—
+|image:../../face/icons/paracolor.svg[,16,16] Shading |段落の背景色 | |— |— |—
+|image:../../face/icons/borders.svg[,16,16] Borders |罫線 |✅ |c.border |— |c.border = Border(…)
+|image:../../face/icons/styles.svg[,16,16] Paragraph style |段落のスタイル |✅ |p.style |p.style |—
+|image:../../face/icons/replace.svg[,16,16] Replace |置き換え |✅ |d.replace(前, 後) |— |—
+|image:../../face/icons/select-all.svg[,16,16] Select all |すべて選択 |✍ |d.paragraphs(全部を順に回る) |— |—
+|image:../../face/icons/copystyle.svg[,16,16] Format painter |書式のコピー | |— |— |—
+|image:../../face/icons/fillparag.svg[,16,16] Fill colour |塗りつぶしの色 |✅ |c.fill |— |c.fill = PatternFill(…)
+|image:../../face/icons/top.svg[,16,16] Align top / image:../../face/icons/middle.svg[,16,16] Align middle / image:../../face/icons/bottom.svg[,16,16] Align bottom |上揃え / 上下中央揃え / 下揃え |✅ |c.alignment = Alignment(vertical='top' / 'center' / 'bottom') |— |c.alignment = Alignment(vertical=…)
+|image:../../face/icons/wrap.svg[,16,16] Wrap text |折り返して全体を表示する |✅ |c.alignment |— |c.alignment = Alignment(wrap_text=True)
+|image:../../face/icons/text-orient.svg[,16,16] Text orientation |文字の向き |✅ |c.alignment = Alignment(text_rotation=角度) |— |c.alignment = Alignment(text_rotation=角度)
+|image:../../face/icons/merge.svg[,16,16] Merge and centre |結合して、中央に配置する |✅ |(col_span / v_merge) / s.merge_cells(…) |cell.merge(…) |ws.merge_cells('A1:B2')
+|image:../../face/icons/autosum.svg[,16,16] AutoSum |オートSUM |✅ |s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
+|image:../../face/icons/fill-num.svg[,16,16] Fill |フィル |✍ |for i in range(10): s[f'A{i+2}'] = i + 1 |— |—
+|image:../../face/icons/named-range.svg[,16,16] Name manager |名前の管理 |✅ |b.create_named_range(名前, …) |— |wb.defined_names
+|image:../../face/icons/clear.svg[,16,16] Clear |消去 |✅ |r.clear() / s['A1'] = None |r.clear() |ws['A1'] = None
+|image:../../face/icons/sortdesc.svg[,16,16] Sort descending / image:../../face/icons/sortasc.svg[,16,16] Sort ascending |降順並べ替え / 昇順並べ替え | |— |— |—
+|image:../../face/icons/setfilter.svg[,16,16] Filters / image:../../face/icons/clear-filter.svg[,16,16] Clear filter |フィルター / フィルターを解除 | |— |— |ws.auto_filter
+|image:../../face/icons/format.svg[,16,16] Number format / image:../../face/icons/currency.svg[,16,16] Currency style / image:../../face/icons/percents.svg[,16,16] Percent style / image:../../face/icons/comma.svg[,16,16] Comma style |数値の書式 / 通貨スタイル / パーセントのスタイル / カンマスタイル |✅ |c.number_format |— |c.number_format
+|image:../../face/icons/digit-dec.svg[,16,16] Decrease decimal / image:../../face/icons/digit-inc.svg[,16,16] Increase decimal |小数点以下の表示桁数を減らす / 小数点以下の表示桁数を増やす |✅ |c.number_format = '0.00' |— |c.number_format = '0.00'
+|image:../../face/icons/cell-ins.svg[,16,16] Insert cells |セルを挿入 |✅ |t.add_row() / s.insert_rows(行) |t.add_row() |ws.insert_rows(行)
+|image:../../face/icons/cell-del.svg[,16,16] Delete cells |セルを削除 |✅ |s.delete_rows(行) |— |ws.delete_rows(行)
+|image:../../face/icons/cell-format.svg[,16,16] Format cells |セルの書式設定 |✅ |c.font / c.alignment / c.border / c.fill |— |c.font / c.alignment / c.border / c.fill
+|image:../../face/icons/condformat.svg[,16,16] Conditional formatting |条件付き書式 | |— |— |ws.conditional_formatting.add(…)
+|image:../../face/icons/table-tpl.svg[,16,16] Format as table template |表として書式設定 | |— |— |ws.add_table(…)
+|image:../../face/icons/styles.svg[,16,16] Cell Style |セルのスタイル |✅ |b.add_named_style(スタイル) |— |wb.add_named_style(NamedStyle(…))
+|===
+
+== Insert
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/blankpage.svg[,16,16] Insert blank page |空白ページの挿入 |✅ |d.add_page_break() |d.add_page_break() |—
+|image:../../face/icons/pagebreak.svg[,16,16] Breaks |区切り |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../../face/icons/instable.svg[,16,16] Insert table |表の挿入 |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
+|image:../../face/icons/insimage.svg[,16,16] Insert image |画像を挿入 |✅ |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
+|image:../../face/icons/insshape.svg[,16,16] Insert shape |図形を挿入 | |— |— |—
+|image:../../face/icons/inssmartart.svg[,16,16] Insert SmartArt |SmartArtの挿入 | |— |— |—
+|image:../../face/icons/inschart.svg[,16,16] Insert chart |グラフを挿入 | |— |— |ws.add_chart(…)
+|image:../../face/icons/instext.svg[,16,16] Insert text box |テキストボックスの挿入 | |— |— |—
+|image:../../face/icons/instextart.svg[,16,16] Insert Text Art |テキストアートの挿入 | |— |— |—
+|image:../../face/icons/dropcap.svg[,16,16] Insert drop cap |ドロップキャップの挿入 | |— |— |—
+|image:../../face/icons/text-from-file.svg[,16,16] Text from File |ファイルからのテキスト |✍ |d.add_paragraph(open('メモ.txt').read()) |— |—
+|image:../../face/icons/edit-header.svg[,16,16] Edit header / image:../../face/icons/edit-footer.svg[,16,16] Edit footer |ヘッダーの編集 / フッターの編集 |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
+|image:../../face/icons/pagenum.svg[,16,16] Page number |ページ番号 |✍ |(ヘッダーの `#`) |— |—
+|image:../../face/icons/datetime.svg[,16,16] Date & Time |日付/時刻 |✍ |p.text = date.today().strftime('%Y年%m月%d日') |— |—
+|image:../../face/icons/numpages.svg[,16,16] Number of pages |ページ数 |✍ |(ヘッダーの `##`) |— |—
+|image:../../face/icons/insequation.svg[,16,16] Insert equation |方程式を挿入 | |— |— |—
+|image:../../face/icons/inssymbol.svg[,16,16] Insert symbol |記号を挿入 |✍ |r.text += '※'(字をそのまま打つ) |— |—
+|image:../../face/icons/controls.svg[,16,16] Insert content controls |コンテンツコントロールの挿入 |✅ |mcp.doc_fields() |— |—
+|image:../../face/icons/add-pivot.svg[,16,16] Insert Pivot Table |ピボットテーブルを挿入 | |— |— |ws.add_pivot(…)
+|image:../../face/icons/inscheckbox.svg[,16,16] Checkbox |チェックボックス | |— |— |—
+|image:../../face/icons/insrecommend.svg[,16,16] Insert recommended chart |推奨チャートを挿入 |✍ |s.values() を polars に渡して選ぶ |— |—
+|image:../../face/icons/inssparkline.svg[,16,16] Insert sparkline |スパークラインを挿入する | |— |— |—
+|image:../../face/icons/ins-comment.svg[,16,16] Add Comment |コメント |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
+|image:../../face/icons/inshyperlink.svg[,16,16] Add link |ハイパーリンクを追加 |✅ |c.hyperlink |— |c.hyperlink
+|image:../../face/icons/insslicer.svg[,16,16] Insert slicer |スライサーを挿入 | |— |— |—
+|===
+
+== Draw
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/pen.svg[,16,16] Pen / image:../../face/icons/highlighter.svg[,16,16] Highlighter / image:../../face/icons/eraser.svg[,16,16] Eraser / image:../../face/icons/select-tool.svg[,16,16] Select |ペン / 蛍光ペン / 消しゴム / 選択 | |— |— |—
+|===
+
+== Layout
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/pagemargins.svg[,16,16] Margins |余白 |✅ |d.sections[0] |section.left_margin |ws.page_margins
+|image:../../face/icons/pageorient.svg[,16,16] Page orientation |印刷の向き |✅ |d.sections[0] |section.orientation |ws.page_setup.orientation
+|image:../../face/icons/pagesize.svg[,16,16] Page size |ページのサイズ |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
+|image:../../face/icons/columns.svg[,16,16] Insert column |列の挿入 | |— |— |—
+|image:../../face/icons/line-numbers.svg[,16,16] Show line numbers |行番号を表示する |❌ |行番号を画面に出すだけです。文書には入りません |— |—
+|image:../../face/icons/hyphenation.svg[,16,16] Change hyphenation |ハイフン設定の変更 | |— |— |—
+|image:../../face/icons/img-movefrwd.svg[,16,16] Bring forward |前面ヘ移動 | |— |— |—
+|image:../../face/icons/img-movebkwd.svg[,16,16] Send Backward |背面ヘ移動 | |— |— |—
+|image:../../face/icons/img-align.svg[,16,16] Alignment |配置 | |— |— |—
+|image:../../face/icons/img-group.svg[,16,16] Group |グループ化 | |— |— |—
+|image:../../face/icons/shapes-merge.svg[,16,16] Merge shapes |図形を結合 | |— |— |—
+|image:../../face/icons/watermark.svg[,16,16] Edit watermark |透かしを編集する | |— |— |—
+|image:../../face/icons/pagecolor.svg[,16,16] Change page colour |ページ色の変更 | |— |— |—
+|image:../../face/icons/colorschemas.svg[,16,16] Change colour theme |配色の変更 | |— |— |—
+|image:../../face/icons/printarea.svg[,16,16] Print Area |印刷範囲 |✅ |s.print_area |— |ws.print_area
+|image:../../face/icons/pagebreak.svg[,16,16] Breaks |区切り |✅ |*Same as Insert* — d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../../face/icons/editheader.svg[,16,16] Edit header |ヘッダー/フッター |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
+|image:../../face/icons/scale.svg[,16,16] Scale To Fit |拡大縮小印刷 | |— |— |ws.page_setup.scale / fitToWidth
+|image:../../face/icons/fit-pages.svg[,16,16] Fit to paper |紙に収める | |— |— |ws.page_setup.fitToWidth
+|image:../../face/icons/printarea-add.svg[,16,16] Add to area |範囲を足す |✅ |s.print_area |— |ws.print_area
+|image:../../face/icons/show-breaks.svg[,16,16] Page breaks |紙の切れ目 |❌ |紙の切れ目の線を画面に出すだけです。文書は変わりません |— |—
+|image:../../face/icons/printtitles.svg[,16,16] Print titles |タイトルを印刷する |✅ |s.print_title_rows |— |ws.print_title_rows
+|image:../../face/icons/rtl-sheet.svg[,16,16] Switch the sheet direction so that the first column is on the right side |最初の列が右側に来るようにシートの方向を切り替える | |— |— |ws.sheet_view.rightToLeft
+|image:../../face/icons/print-gridlines.svg[,16,16] Print gridlines |枠線も印刷 |✅ |s.print_gridlines |— |ws.print_options.gridLines
+|image:../../face/icons/print-headings.svg[,16,16] Print headings |見出しも印刷 | |— |— |ws.print_options.headings
+|===
+
+== Formula
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/additional-formula.svg[,16,16] Insert function |関数の挿入 |✅ |s['A1'] = '=…' |— |ws['A1'] = '=…'
+|image:../../face/icons/py-list.svg[,16,16] Python functions |Python の関数 |✍ |自分の .py を書く(綴りの macros) |— |—
+|image:../../face/icons/autosum.svg[,16,16] AutoSum |オートSUM |✅ |*Same as Home* — s['A1'] = '=SUM(…)' |— |ws['A1'] = '=SUM(…)'
+|image:../../face/icons/recent.svg[,16,16] Recently used |最近使った関数 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
+|image:../../face/icons/financial.svg[,16,16] Financial |財務 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
+|image:../../face/icons/logical.svg[,16,16] Logical |論理 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
+|image:../../face/icons/text.svg[,16,16] Text functions |文字列操作 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
+|image:../../face/icons/datetime.svg[,16,16] Date & Time |日付/時刻 |❌ |*Same as Insert* — 関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
+|image:../../face/icons/lookup.svg[,16,16] Lookup & Reference |検索/行列 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
+|image:../../face/icons/math.svg[,16,16] Math & Trig |数学/三角 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
+|image:../../face/icons/more.svg[,16,16] More functions |その他の関数 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
+|image:../../face/icons/named-range-huge.svg[,16,16] Name manager |名前の管理 |✅ |*Same as Home* — b.create_named_range(名前, …) |— |wb.defined_names
+|image:../../face/icons/paste-name.svg[,16,16] Paste name |名前を貼り付け | |— |— |wb.defined_names
+|image:../../face/icons/trace-prec.svg[,16,16] Trace Precedents |参照元のトレース |✍ |s.formula('A1') で参照を読む |— |—
+|image:../../face/icons/trace-dep.svg[,16,16] Trace Dependents |参照先のトレース |❌ |参照先を矢印で画面に出します。文書は変わりません |— |—
+|image:../../face/icons/remove-arrows.svg[,16,16] Remove arrows |トレース矢印の削除 |❌ |画面の矢印を消します。文書は変わりません |— |—
+|image:../../face/icons/show-formulas.svg[,16,16] Show formulas |数式の表示 |✍ |s.formula(場所) |— |—
+|image:../../face/icons/watch-window.svg[,16,16] Watch window |ウォッチウィンドウ |❌ |見張る値を画面に並べます。文書は変わりません |— |—
+|image:../../face/icons/calculate.svg[,16,16] Calculation options |計算方法 |✅ |b.recalc() |— |wb.calculation
+|===
+
+== Data
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/data-from-text.svg[,16,16] Text to data |テキストからデータ |✍ |csv モジュールで読んで s['A1'] へ |— |—
+|image:../../face/icons/data-external-links.svg[,16,16] External links (import as values) |外部リンク(値で取り込む) | |— |— |—
+|image:../../face/icons/setfilter.svg[,16,16] Filters / image:../../face/icons/clear-filter.svg[,16,16] Clear filter |フィルター / フィルターを解除 | |*Same as Home* |— |ws.auto_filter
+|image:../../face/icons/sortdesc.svg[,16,16] Sort descending / image:../../face/icons/sortasc.svg[,16,16] Sort ascending |降順並べ替え / 昇順並べ替え | |*Same as Home* |— |—
+|image:../../face/icons/custom-sort.svg[,16,16] Sort |並べ替え | |— |— |—
+|image:../../face/icons/text-column.svg[,16,16] Text to columns |区切り位置 |✍ |s['B2'], s['C2'] = s['A2'].split(',') |— |—
+|image:../../face/icons/rem-duplicates.svg[,16,16] Remove Duplicates |重複の削除 |✍ |見た = set() で行を選り分ける |— |—
+|image:../../face/icons/data-validation.svg[,16,16] Data Validation |データの入力規則 |✅ |s.add_data_validation(…) |— |ws.add_data_validation(…)
+|image:../../face/icons/dv-mark.svg[,16,16] Circle invalid data |無効データのマーク | |— |— |—
+|image:../../face/icons/goal-seek.svg[,16,16] Goal Seek |ゴールシーク | |— |— |—
+|image:../../face/icons/scenario.svg[,16,16] Scenario |シナリオ | |— |— |—
+|image:../../face/icons/forecast.svg[,16,16] Forecast Sheet |予測シート | |— |— |—
+|image:../../face/icons/solver.svg[,16,16] Solver |ソルバー | |— |— |—
+|image:../../face/icons/group.svg[,16,16] Group / image:../../face/icons/ungroup.svg[,16,16] Ungroup |グループ化 / グループ解除 |✅ |*Same as Layout* — s.row_groups |— |ws.column_dimensions[…].outline_level
+|image:../../face/icons/show-details.svg[,16,16] Show details |詳細の表示 |✅ |s.row_groups |— |ws.column_dimensions[…].outline_level
+|image:../../face/icons/hide-details.svg[,16,16] Hide detail |詳細の非表示 |✅ |s.row_groups |— |ws.column_dimensions[…].outline_level
+|image:../../face/icons/subtotal.svg[,16,16] Subtotals |小計 |✍ |s['A9'] = '=SUBTOTAL(9,A2:A8)' |— |—
+|image:../../face/icons/datatable.svg[,16,16] Data table |データテーブル | |— |— |—
+|image:../../face/icons/python.svg[,16,16] Python |Python | |— |— |—
+|image:../../face/icons/csv-kind.svg[,16,16] CSV format |CSV の形 |✍ |csv モジュールで読む |— |—
+|image:../../face/icons/flash-fill.svg[,16,16] Fill by example |フラッシュフィル |✍ |s['B2'] = s['A2'].split()[0](規則を書く) |— |—
+|===
+
+== Pivot Table
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/pivot-insert.svg[,16,16] Insert Pivot Table |ピボットテーブルを挿入 | |*Same as Insert* |— |ws.add_pivot(…)
+|image:../../face/icons/pivot-fields.svg[,16,16] Field list |フィールドリスト |❌ |フィールドの一覧を画面に出します |— |—
+|image:../../face/icons/pivot-refresh.svg[,16,16] Update |更新 | |— |— |—
+|image:../../face/icons/pivot-refresh-all.svg[,16,16] Update all |すべて更新 | |— |— |—
+|image:../../face/icons/pivot-source.svg[,16,16] Data source |データソース | |— |— |—
+|image:../../face/icons/pivot-chart.svg[,16,16] PivotChart |ピボットグラフ | |— |— |—
+|image:../../face/icons/pivot-select.svg[,16,16] Select |選択する |❌ |画面の選択です |— |—
+|image:../../face/icons/pivot-totals.svg[,16,16] Grand Total |総計 |✅ |s.add_pivot(…, totals=True) |— |—
+|image:../../face/icons/pivot-subtotals.svg[,16,16] Subtotals |小計 |✅ |*Same as Data* — s.add_pivot(…, subtotals=True) |— |—
+|image:../../face/icons/pivot-blank.svg[,16,16] Blank Rows |空行 | |— |— |—
+|image:../../face/icons/pivot-showas.svg[,16,16] Show values as |計算の種類 |✅ |s.add_pivot(…, agg='sum' / 'mean' / 'count') |— |—
+|image:../../face/icons/pivot-layout.svg[,16,16] Report Layout |レポートのレイアウト | |— |— |—
+|image:../../face/icons/pivot-style.svg[,16,16] Style |スタイル | |— |— |—
+|===
+
+== Table Design
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/td-header.svg[,16,16] Header row |ヘッダー行 | |— |— |ws.tables[…].tableStyleInfo
+|image:../../face/icons/td-total.svg[,16,16] Total row |合計行 | |— |— |ws.tables[…].totalsRowCount
+|image:../../face/icons/td-band-row.svg[,16,16] Banded Rows / image:../../face/icons/td-first.svg[,16,16] First column / image:../../face/icons/td-last.svg[,16,16] Last column / image:../../face/icons/td-band-col.svg[,16,16] Banded columns |縞模様の行 / 最初の列 / 最後の列 / 縞模様の列 | |— |— |ws.tables[…].tableStyleInfo
+|image:../../face/icons/td-filter.svg[,16,16] Filter button |フィルタのボタン | |— |— |ws.auto_filter
+|image:../../face/icons/td-remdup.svg[,16,16] Remove Duplicates |重複データを削除 |✍ |見た = set() で行を選り分ける |— |—
+|image:../../face/icons/td-torange.svg[,16,16] Convert to range |範囲に変換する | |— |— |del ws.tables[…]
+|image:../../face/icons/td-resize.svg[,16,16] Resize table |テーブルのサイズ変更 | |— |— |ws.tables[…].ref
+|===
+
+== References
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/contents.svg[,16,16] Table of contents |目次 | |— |— |—
+|image:../../face/icons/add-text.svg[,16,16] Add Text |テキストの追加 | |— |— |—
+|image:../../face/icons/contents-update.svg[,16,16] Update table of contents |目次の更新 | |— |— |—
+|image:../../face/icons/bookmarks.svg[,16,16] Bookmark |ブックマーク | |— |— |—
+|image:../../face/icons/caption.svg[,16,16] Caption |図表番号 | |— |— |—
+|image:../../face/icons/crossref.svg[,16,16] Cross-reference |相互参照 | |— |— |—
+|image:../../face/icons/footnote.svg[,16,16] Footnote |脚注 | |— |— |—
+|image:../../face/icons/tof.svg[,16,16] Table of figures |図表目次 | |— |— |—
+|image:../../face/icons/tof-update.svg[,16,16] Update table of figures |図表目次の更新 | |— |— |—
+|===
+
+== Forms
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/form-text.svg[,16,16] Text Field / image:../../face/icons/form-combo.svg[,16,16] Combo box / image:../../face/icons/form-dropdown.svg[,16,16] Dropdown / image:../../face/icons/form-checkbox.svg[,16,16] Checkbox / image:../../face/icons/form-radio.svg[,16,16] Radio Button |テキストフィールド / コンボボックス / ドロップダウン / チェックボックス / ラジオボタン |✅ |mcp.doc_fill({member: 値}) |— |—
+|image:../../face/icons/form-image.svg[,16,16] Picture |画像 | |— |— |—
+|image:../../face/icons/form-email.svg[,16,16] Email Address / image:../../face/icons/form-phone.svg[,16,16] Phone Number / image:../../face/icons/form-complex.svg[,16,16] Complex Field |メールアドレス / 電話番号 / 複合フィールド |✅ |mcp.doc_fill({member: 値}) |— |—
+|image:../../face/icons/form-signature.svg[,16,16] Signature |署名 | |— |— |—
+|image:../../face/icons/form-name.svg[,16,16] Name |名前 |✅ |mcp.doc_fields() |— |—
+|===
+
+== Collaboration
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/coauth-mode.svg[,16,16] Co-editing mode |共同編集モード |❌ |共同編集の入切です。文書は変わりません |— |—
+|image:../../face/icons/co-addcomment.svg[,16,16] Add Comment |コメントを追加 |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
+|image:../../face/icons/co-delcomment.svg[,16,16] Delete comment |コメントを削除 | |— |— |—
+|image:../../face/icons/co-showcomment.svg[,16,16] Show comments |コメントの表示 |✅ |d.comments / c.comment |d.comments |c.comment
+|image:../../face/icons/co-chat.svg[,16,16] Chat |チャット |❌ |画面の会話です。文書は変わりません |— |—
+|image:../../face/icons/track-changes.svg[,16,16] Track changes |変更履歴 | |— |— |—
+|image:../../face/icons/co-history.svg[,16,16] Version history |バージョン履歴 | |— |— |—
+|===
+
+== Protection
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/prot-sign.svg[,16,16] Add digital signature |デジタル署名を追加 | |— |— |—
+|image:../../face/icons/prot-doc.svg[,16,16] Protection |保護 | |— |— |ws.protection
+|image:../../face/icons/prot-encrypt.svg[,16,16] Encrypt |暗号化する | |— |— |wb.security
+|image:../../face/icons/protect-workbook.svg[,16,16] Protect workbook |ブックを保護する | |— |— |wb.security
+|image:../../face/icons/protect-range.svg[,16,16] Protect Range |範囲を保護する | |— |— |ws.protection
+|image:../../face/icons/cell-lock.svg[,16,16] Cell lock |セルのロック |✅ |c.protection = Protection(locked=…) |— |c.protection = Protection(locked=…)
+|image:../../face/icons/prot-allow.svg[,16,16] Allowed actions |許可する操作 | |— |— |ws.protection
+|image:../../face/icons/recover.svg[,16,16] Recover |復旧 | |*Same as File* |— |—
+|image:../../face/icons/recover-every.svg[,16,16] Backup interval |控えの間隔 | |— |— |—
+|image:../../face/icons/read-only-rec.svg[,16,16] Suggest read-only |読み取り専用を勧める | |— |— |wb.security
+|===
+
+== View
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/nav.svg[,16,16] Navigation |ナビゲーション |❌ |左パネルの出し入れです |— |—
+|image:../../face/icons/fit-page.svg[,16,16] Fit to page |ページに合わせる |❌ |画面の表示です。文書は変わりません |— |—
+|image:../../face/icons/fit-width.svg[,16,16] Fit to width |幅に合わせる |❌ |画面の表示です。文書は変わりません |— |—
+|image:../../face/icons/zoom100.svg[,16,16] Zoom to 100% |100%に拡大する |❌ |画面の表示です。文書は変わりません |— |—
+|image:../../face/icons/zoom-in.svg[,16,16] Zoom in |拡大 |❌ |画面の表示です。文書は変わりません |— |—
+|image:../../face/icons/zoom-out.svg[,16,16] Zoom out |縮小 |❌ |画面の表示です。文書は変わりません |— |—
+|image:../../face/icons/printview.svg[,16,16] Print layout |印刷レイアウト |❌ |画面の表示の切り替えです |— |—
+|image:../../face/icons/multipage.svg[,16,16] Multiple pages |複数ページ |❌ |画面の表示です。文書は変わりません |— |—
+|image:../../face/icons/darkmode.svg[,16,16] Dark mode |ダークモード |❌ |画面の色を切り替えます。文書は変わりません |— |—
+|image:../../face/icons/ui-bigger.svg[,16,16] Bigger UI text |画面の文字を大きく |❌ |画面の文字を大きくします。文書の文字は変わりません |— |—
+|image:../../face/icons/ui-smaller.svg[,16,16] Smaller UI text |画面の文字を小さく |❌ |画面の文字を小さくします。文書の文字は変わりません |— |—
+|image:../../face/icons/ruler.svg[,16,16] Rulers |ルーラー |❌ |ルーラーの出し入れです |— |—
+|image:../../face/icons/show-toolbar.svg[,16,16] Always Show Toolbar |ツールバーを常に表示する |❌ |ツールバーの出し入れです |— |—
+|image:../../face/icons/show-statusbar.svg[,16,16] Status Bar |ステータスバー |❌ |ステータスバーの出し入れです |— |—
+|image:../../face/icons/show-left.svg[,16,16] Left Panel |左パネル | |— |— |—
+|image:../../face/icons/show-right.svg[,16,16] Right Panel |右パネル | |— |— |—
+|image:../../face/icons/sheet-view.svg[,16,16] Sheet View |シートの表示 |❌ |画面の表示の切り替えです |— |—
+|image:../../face/icons/view-normal.svg[,16,16] Normal |標準 |❌ |画面の表示の切り替えです |— |—
+|image:../../face/icons/view-pagebreak.svg[,16,16] Page Break Preview |改ページ プレビュー |❌ |画面の表示の切り替えです |— |—
+|image:../../face/icons/freeze.svg[,16,16] Freeze panes |ウィンドウ枠の固定 |✅ |s.freeze_panes |— |ws.freeze_panes
+|image:../../face/icons/split.svg[,16,16] Split |分割 |❌ |画面を分けて表示します。文書は変わりません |— |—
+|image:../../face/icons/formula-bar.svg[,16,16] Formula Bar |数式バー |❌ |数式バーの出し入れです |— |—
+|image:../../face/icons/show-gridlines.svg[,16,16] Gridlines |枠線表示 |✅ |s.show_gridlines |— |ws.sheet_view.showGridLines
+|image:../../face/icons/show-headings.svg[,16,16] Headings |見出し |❌ |行と列の見出しの出し入れです。画面だけの表示です |— |—
+|image:../../face/icons/show-zeros.svg[,16,16] Show zeros |0を表示する |❌ |画面の表示です。0 を隠しても、xlsx には 0 が残ります |— |—
+|===
+
+== Macros
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|image:../../face/icons/plug-manage.svg[,16,16] Macro list / image:../../face/icons/py-folder.svg[,16,16] Open folder / image:../../face/icons/ai-macro.svg[,16,16] Write macro / image:../../face/icons/py-run.svg[,16,16] Record actions / image:../../face/icons/py-new.svg[,16,16] New .py / image:../../face/icons/py-line.svg[,16,16] Ribbon macros |一覧 / 置き場を開く / マクロを書く / 操作を記録 / 新しい .py / リボンのマクロ | |— |— |—
+|===
+
+== Quick access
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|Save |保存 |✅ |*Same as File* — d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|Print |印刷 | |*Same as File* |— |—
+|Undo |元に戻す |❌ |画面の操作です。プログラムは保存する前の写しを持てます |— |—
+|Redo |やり直し |❌ |同じく画面の操作です |— |—
+|===
+
+== Left panel
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|Heading |見出し |✅ |*Same as View* — p.style で拾う |p.style |—
+|Comment |コメント |✅ |*Same as Insert* — d.comments |d.comments |c.comment
+|Find |検索 |✅ |d.find(字) |— |—
+|Agent panel |エージェントパネル | |— |— |—
+|===
+
+== Right panel
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|Settings. Applies where the cursor is |設定。カーソルのある場所に掛かります | |— |— |—
+|Page setup. Applies to the whole document |ページ設定。文書全体に掛かります |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
+|Styles. Edits the template |スタイル。テンプレートを直します |✅ |p.style |p.style |—
+|Project panel |プロジェクトパネル | |— |— |—
+|===
+
+== Status bar
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|Page |ページ |✅ |(紙に組んで数える) |— |—
+|characters |文字数 |✅ |len(d.text) |len(d.text) |—
+|Spell |スペル |❌ |画面の表示の切り替えです |— |—
+|Zoom |ズーム |❌ |画面の表示です。文書は変わりません |— |—
+|— |ファイルの形式 |❌ |画面の表示です。径路の拡張子を見れば分かります |— |—
+|— |状態の文言 |❌ |画面の表示です。プログラムは返り値と unsupported を見ます |— |—
+|— |選んだ範囲の合計・平均・個数 |✅ |sum(…) / len(…)(値を読んで数える) |— |—
+|===
+
+== Right-click
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|Select word |語を選択 |❌ |画面の選択です。プログラムは字を直に切り出せます |— |—
+|Select line |行を選択 |❌ |同じく画面の選択です |— |—
+|Word count |文字数を数える |✅ |len(d.text) |len(d.text) |—
+|Skipped by this version |この版で読み飛ばしたもの |✅ |d.unsupported |— |—
+|— |形式を選択して貼り付け |❌ |画面の貼り付けです。プログラムは入れる値を自分で選べます |— |—
+|— |返信を追加 | |— |— |—
+|— |マクロの割り当て | |— |— |—
+|— |画像として保存(SVG) | |— |— |—
+|===
+
+== Sheet tab right-click
+
+[cols="2,2,^1,3,3,3"]
+|===
+|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
+
+|Insert |挿入 |✅ |b.add_sheet(名前) |— |wb.create_sheet(名前)
+|Delete |削除 |✅ |b.remove(名前) |— |del wb[名前]
+|Rename |名前の変更 |✅ |s.title = 名前 |— |ws.title = 名前
+|Duplicate |コピーを作成 |✅ |b.copy_worksheet(名前) |— |wb.copy_worksheet(ws)
+|Move left |左へ移動 |✅ |b.move_sheet(名前, 位置) |— |wb.move_sheet(名前, 位置)
+|Move right |右へ移動 |✅ |b.move_sheet(名前, 位置) |— |wb.move_sheet(名前, 位置)
+|Hide |非表示 | |— |— |ws.sheet_state
+|Unhide |再表示 | |— |— |ws.sheet_state
+|Tab colour |タブの色 | |— |— |ws.sheet_properties.tabColor
+|Protect the sheet |シートを保護 |✅ |s.protect() |— |ws.protection.sheet = True
+|===
+// api:taiou:end
+
+== Related manuals
+
+* link:python-manual.adoc[Python manual] — how to write it, with examples
+* link:writer-manual.adoc[writer manual] — the document window
+* link:calc-manual.adoc[calc manual] — the spreadsheet window

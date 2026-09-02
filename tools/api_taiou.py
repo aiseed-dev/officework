@@ -546,6 +546,7 @@ ICON_FILE = _icon_file()
 MARK_S = "// api:taiou:start"
 MARK_E = "// api:taiou:end"
 SAKI = ROOT / "docs/ja/api-taiou.adoc"
+SAKI_EN = ROOT / "docs/en/api-taiou.adoc"
 
 
 def tab_layout(tabs):
@@ -808,15 +809,21 @@ def rows():
 _label_lookup: dict = {}
 
 
-def reason(label: str, st: str):
-    """「実装しない」の理由。表の中で読めるようにします"""
+def reason(id_: str, label: str, st: str):
+    """「実装しない」「書けば済む」の理由。表の中で読めるようにします。
+
+    **引き当ては id です。名前ではありません**(2026-08-31)。
+    挿入の「日付/時刻」(datetime)と数式の「日付/時刻」(fn-datetime)は
+    名前が同じなので、名前で引くと後から見つかった方の理由が出ます。
+    実際、挿入の行に「関数の挿入の小窓を絞り込みます」と出ていました。
+    """
     if st not in ("❌", "✍"):
         return None
-    for table in (TSUKURANAI, KAKEBA, HOKA_TSUKURANAI):
-        for k, v in table.items():
-            if _label_lookup.get(k) == label:
-                return v
-    return None
+    for table in (TSUKURANAI, KAKEBA):
+        if id_ in table:
+            return table[id_]
+    # 画面に無いボタン(パネル・右クリック)は、鍵か名前で引きます
+    return HOKA_TSUKURANAI.get(id_) or HOKA_TSUKURANAI.get(label)
 
 
 def overlap(r):
@@ -854,7 +861,36 @@ def matomeru(r):
     return out
 
 
-def table() -> str:
+# 段の名前の日本語 → 英語。英語版の見出しに要ります(2026-08-31)。
+# 行の中身は英語名を持っているのに、段の見出しだけ日本語では引けません
+def tab_eigo() -> dict:
+    ja = ribbon_parse.tables_or_die(RIBBON_JA)
+    en = ribbon_parse.tables_or_die(ribbon_parse.RIBBON)
+    out = {}
+    for app in ("WRITER", "CALC"):
+        for a, b in zip(ja[app], en[app]):
+            out.setdefault(a.name, b.name)
+    # リボンに無い段(クイックアクセス・パネル・下端・右クリック)は手で
+    out.update({
+        "クイックアクセス": "Quick access", "左パネル": "Left panel",
+        "右パネル": "Right panel", "下端": "Status bar",
+        "右クリック": "Right-click", "シート見出しの右クリック": "Sheet tab right-click",
+    })
+    return out
+
+
+# 表の見出しと断りの文言。言語ごとに1組
+_tab_en: dict = {}
+
+MIDASHI = {
+    "ja": "|英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl\n",
+    "en": "|Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl\n",
+}
+
+
+def table(lang: str = "ja") -> str:
+    global _tab_en
+    _tab_en = tab_eigo() if lang != "ja" else {}
     r = rows()
     dup_of = overlap(r)
     o = []
@@ -868,16 +904,18 @@ def table() -> str:
                 o.append("|===\n")
             # **見出しは `==`。** `===` にすると本家が「段が飛んでいる」と
             # 警告します(この節の前に `==` が無いため。2026-08-24 に実際に出た)
-            o.append(f"== {row.tab}")
+            o.append(f"== {row.tab if lang == 'ja' else _tab_en.get(row.tab, row.tab)}")
             o.append("")
             o.append('[cols="2,2,^1,3,3,3"]')
             o.append("|===")
-            o.append("|英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl\n")
+            o.append(MIDASHI[lang])
             current = row.tab
         f = lambda x: x if x else "—"
-        inner = row.ow if row.ow else (reason(row.ja, row.mark) or "—")
+        inner = row.ow if row.ow else (reason(row.id, row.ja, row.mark) or "—")
         if (row.tab, row.ja) in dup_of:
-            inner = (f"*{dup_of[(row.tab, row.ja)]}と同じ*"
+            moto = dup_of[(row.tab, row.ja)]
+            inner = ((f"*{moto}と同じ*" if lang == "ja"
+                      else f"*Same as {_tab_en.get(moto, moto)}*")
                      + (f" — {inner}" if inner != "—" else ""))
         # **絵を名前の前に出します**(2026-08-24 発注者)。画面で見ている物と
         # 同じ絵なので、名前より先に目に入ります。径路は `face/icons` から
@@ -901,7 +939,8 @@ def table() -> str:
         # 「一覧からのリンクをつける」)。この表は引くための1枚なので、
         # 引き当てた行からそのまま詳しい説明へ行けないと途中で止まります
         eng = " / ".join(hitotsu(x) for x in nakama)
-        nihon = " / ".join(manual_link(x.ja) for x in nakama)
+        nihon = " / ".join((manual_link(x.ja) if lang == "ja" else x.ja)
+                           for x in nakama)
         o.append(f"|{eng} |{nihon} |{row.mark} "
                  f"|{inner} |{f(row.pd)} |{f(row.op)}")
     if current is not None:
@@ -1010,6 +1049,15 @@ def main() -> int:
         for w in warui:
             print(f"  {w}", file=sys.stderr)
         return 1
+    # **英語版も同じ道で作ります**(2026-08-31)。日本語だけ作っていた
+    # ときは、英語版が無いこと自体が見えませんでした
+    for saki, lang in ((SAKI_EN, "en"),):
+        if not saki.exists():
+            continue
+        s = saki.read_text(encoding="utf-8")
+        mm = re.search(rf"({re.escape(MARK_S)}[^\n]*\n)(.*?)(\n?{re.escape(MARK_E)})", s, re.S)
+        if mm and mm.group(2).strip() != table(lang).strip():
+            saki.write_text(s[: mm.start(2)] + table(lang) + s[mm.end(2):], encoding="utf-8")
     src = SAKI.read_text(encoding="utf-8")
     m = re.search(rf"({re.escape(MARK_S)}[^\n]*\n)(.*?)(\n?{re.escape(MARK_E)})", src, re.S)
     if not m:

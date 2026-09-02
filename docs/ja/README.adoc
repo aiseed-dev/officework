@@ -41,7 +41,7 @@ _元は英語版(link:../en/README.adoc[README.adoc])です。こちらは日本
 |link:docx-xlsx-tono-chigai.adoc[Word / Excel との違い](link:../en/docx-xlsx-tono-chigai.adoc[English])
 |Word / Excel と何が同じで何が違うか、1枚で
 
-|link:api-taiou.adoc[対応表]
+|link:api-taiou.adoc[対応表](link:../en/api-taiou.adoc[English])
 |メニューのボタンと、openpyxl・python-docx の書き方の対応を引く
 
 |link:../../templates/README.md[テンプレート集]・link:../../sample/README.md[実例集]
@@ -50,4 +50,4 @@ _元は英語版(link:../en/README.adoc[README.adoc])です。こちらは日本
 
 英語版のある冊子は、英語版が原文です。
 
-English の付いていない2つは日本語だけです。コマンドの手引きと対応表です。
+English の付いていないのはコマンドの手引きだけです。

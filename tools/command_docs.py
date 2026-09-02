@@ -234,7 +234,7 @@ def main() -> int:
         for label, tabs_of, mark, ow, p, pd, op, screen in missing:
             p.parent.mkdir(parents=True, exist_ok=True)
             if mark == "✍":
-                writing = ow or api_taiou.reason(label, "✍") or ""
+                writing = ow or api_taiou.reason("", label, "✍") or ""
                 py = ("専用の呼び方はありません。こう書けば同じことができます。\n\n"
                       f"[source,python]\n----\n{writing}\n----")
             elif ow:
