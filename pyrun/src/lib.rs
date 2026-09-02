@@ -401,6 +401,34 @@ pub fn cage_work_dir(tag: &str) -> PathBuf {
     }
 }
 
+/// venv の `.pth` が指す先(絶対の径路のフォルダ)。
+///
+/// `pip install -e` の形は site-packages に `.pth` を置き、実体は外
+/// (このリポジトリなら pysheet/)にある。サンドボックスは /home を
+/// 隠すので、venv だけ見せても import が通らない — `.pth` の指す先も
+/// 読み取り専用の一覧(ro_binds)に足すために引く
+pub fn editable_paths(venv: &std::path::Path) -> Vec<PathBuf> {
+    let mut v = Vec::new();
+    let Ok(libs) = std::fs::read_dir(venv.join("lib")) else { return v };
+    for py in libs.flatten() {
+        let sp = py.path().join("site-packages");
+        let Ok(entries) = std::fs::read_dir(&sp) else { continue };
+        for e in entries.flatten() {
+            if e.path().extension().is_none_or(|x| x != "pth") {
+                continue;
+            }
+            let Ok(s) = std::fs::read_to_string(e.path()) else { continue };
+            for line in s.lines() {
+                let p = PathBuf::from(line.trim());
+                if p.is_absolute() && p.is_dir() {
+                    v.push(p);
+                }
+            }
+        }
+    }
+    v
+}
+
 /// サンドボックスの中で Python を回す Command を組む。dir = cage_work_dir の作業場。
 /// ro_binds = 読み取り専用で見せたい場所(.venv や .so の隣 — bwrap だけが使う。
 /// Flatpak では /app と runtime が最初から見えている)。None = サンドボックスが組めない

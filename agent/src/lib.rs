@@ -9,7 +9,7 @@
 //! モデルも [`Model`] の trait で受け取るので、決まった応答を返す
 //! 偽のモデルで往復を試験できます(実物は [`EndpointModel`])。
 
-use lang::model::{chat_tools, ChatOut, Endpoint, Msg, ToolDef};
+use lang::model::{chat_tools, ChatOut, Endpoint, Msg, ToolCall, ToolDef};
 
 #[cfg(feature = "ops")]
 pub mod tools;
@@ -91,29 +91,61 @@ impl Agent {
         host: &mut dyn ToolHost,
     ) -> Result<Option<String>, String> {
         if out.tool_calls.is_empty() {
-            self.msgs.push(Msg::Assistant(out.content.clone()));
-            self.log.push(Event::Assistant(out.content.clone()));
+            self.finish(&out.content);
             return Ok(Some(out.content));
         }
-        // 呼びは履歴にそのまま残す — 次の往復でモデルに送り返す
-        self.msgs.push(Msg::AssistantCalls(out.tool_calls.clone()));
+        self.note_calls(&out.tool_calls);
         for c in &out.tool_calls {
-            self.used += 1;
-            if self.used > self.max_calls {
-                return Err(format!(
-                    "道具を {} 回呼んでも終わりません — 打ち切りました",
-                    self.max_calls
-                ));
-            }
-            self.log.push(Event::ToolCall { name: c.name.clone(), arguments: c.arguments.clone() });
-            let (content, ok) = match host.call(&c.name, &c.arguments) {
-                Ok(s) => (s, true),
-                Err(e) => (format!("エラー: {e}"), false),
-            };
-            self.log.push(Event::ToolResult { name: c.name.clone(), content: content.clone(), ok });
-            self.msgs.push(Msg::ToolResult { id: c.id.clone(), content });
+            self.count_call()?;
+            self.note_call(c);
+            let r = host.call(&c.name, &c.arguments);
+            self.tool_result(c, r);
         }
         Ok(None)
+    }
+
+    // ---- feed のばら売り ----
+    //
+    // 実行が裏の糸に跨る道具(マクロ・保存の確認)を挟むアプリは、
+    // feed を使わずこの4つで1つずつ進める。順は
+    // note_calls → (count_call → note_call → 実行 → tool_result)×呼びの数 →
+    // 全部済んだら次の chat、呼びの無い答えが来たら finish
+
+    /// 道具呼びの番を履歴に積む(次の往復でモデルに送り返す)
+    pub fn note_calls(&mut self, calls: &[ToolCall]) {
+        self.msgs.push(Msg::AssistantCalls(calls.to_vec()));
+    }
+
+    /// 道具を1つ数える。上限を超えたら Err(打ち切りの文)
+    pub fn count_call(&mut self) -> Result<(), String> {
+        self.used += 1;
+        if self.used > self.max_calls {
+            Err(format!("道具を {} 回呼んでも終わりません — 打ち切りました", self.max_calls))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// 呼びの記録(**実行の前に**出す — 黙って動かさない)
+    pub fn note_call(&mut self, c: &ToolCall) {
+        self.log.push(Event::ToolCall { name: c.name.clone(), arguments: c.arguments.clone() });
+    }
+
+    /// 道具の結果を1つ入れる。しくじりは「エラー:」を頭に付けて
+    /// モデルに渡し、直させる(黙って止めない)
+    pub fn tool_result(&mut self, c: &ToolCall, r: Result<String, String>) {
+        let (content, ok) = match r {
+            Ok(s) => (s, true),
+            Err(e) => (format!("エラー: {e}"), false),
+        };
+        self.log.push(Event::ToolResult { name: c.name.clone(), content: content.clone(), ok });
+        self.msgs.push(Msg::ToolResult { id: c.id.clone(), content });
+    }
+
+    /// 答えで締める(呼びの無い答えが来たとき)
+    pub fn finish(&mut self, content: &str) {
+        self.msgs.push(Msg::Assistant(content.into()));
+        self.log.push(Event::Assistant(content.into()));
     }
 
     /// いまの履歴(モデルへ送る形)。feed の続きの chat が使う

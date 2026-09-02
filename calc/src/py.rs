@@ -1000,7 +1000,12 @@ impl Calc {
             // サンドボックスはあれば必ず使う(深層防御)。他所から来たかもしれないコード
             // (sandbox=true)は、サンドボックスが組めなければ実行しない
             let venv = std::fs::canonicalize(".venv").unwrap_or_default();
-            let mut cmd = match caged_python(&py, &dir, &[venv, so_dir2], allow_net) {
+            // 見せる場所: venv・実行ファイルの隣・editable の実体(.pth の先)。
+            // pip install -e の形は実体が venv の外にあり、見せないと
+            // サンドボックスの中で officework が読めない
+            let mut binds = vec![venv.clone(), so_dir2];
+            binds.extend(pyrun::editable_paths(&venv));
+            let mut cmd = match caged_python(&py, &dir, &binds, allow_net) {
                 Some(c) => c,
                 // **案内は OS で変える。** 前は3つの OS すべてに
                 // 「apt install bubblewrap」と出していましたが、macOS と

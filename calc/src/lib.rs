@@ -503,9 +503,12 @@ pub struct Calc {
     pub(crate) agent_shown: usize,
     /// モデルの状態(4語で出す — 設計の決め 2026-09-02)
     pub(crate) agent_state: AgentState,
-    /// 道具 save の確認待ち(渡された path)。保存は人の確認が要る —
-    /// 確認を取る3つ(保存・削除・外への送信)の1つ目
-    pub(crate) agent_save: Option<Option<String>>,
+    /// 途中の道具呼びの列(先頭が今の1つ)。マクロや保存の確認のように
+    /// **裏や人に跨る道具**の間、続きをここで持つ
+    pub(crate) agent_calls: Vec<lang::model::ToolCall>,
+    /// 道具 save の確認待ち(呼びと、渡された path)。保存は人の確認が
+    /// 要る — 確認を取る3つ(保存・削除・外への送信)の1つ目
+    pub(crate) agent_save: Option<(lang::model::ToolCall, Option<String>)>,
     /// 左パネルのいまの面(0=会話 1=コメント)。柱のアイコンで切り替える
     pub(crate) left_face: u8,
     /// 右パネルのいまの面(0=セルの設定 1=図形と画像)

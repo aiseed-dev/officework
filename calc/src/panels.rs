@@ -563,12 +563,12 @@ impl Calc {
                 d = d.child(row_box().mt_1()
                     .child(button("chat-save-ok", ui::t!("save").to_string(), true).on_click(
                         cx.listener(|this, _, _, cx| {
-                            this.agent_confirm_save(true);
+                            this.agent_confirm_save(true, cx);
                             cx.notify()
                         })))
                     .child(button("chat-save-no", ui::t!("cancel").to_string(), false)
                         .on_click(cx.listener(|this, _, _, cx| {
-                            this.agent_confirm_save(false);
+                            this.agent_confirm_save(false, cx);
                             cx.notify()
                         }))));
             }

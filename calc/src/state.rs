@@ -451,6 +451,7 @@ impl Calc {
             agent: None,
             agent_shown: 0,
             agent_state: AgentState::Idle,
+            agent_calls: Vec::new(),
             agent_save: None,
             left_face: 0,
             chosen_folder: None,
@@ -2614,15 +2615,22 @@ impl Calc {
         self.agent_step(ep, msgs, cx);
     }
 
+    /// calc が名乗る道具: 表の8つ(ops へ直結)+ マクロ
+    fn agent_tools() -> Vec<lang::model::ToolDef> {
+        let mut v = agent::tools::sheet_tools();
+        v.push(agent::tools::macro_tool());
+        v
+    }
+
     /// モデルとの1往復を裏で待ち、道具をメインスレッドで実行して続ける。
-    /// 道具呼びが無くなるまでこれが自分を呼び直す(agent::Agent の begin/feed)
+    /// 道具呼びが無くなるまで、これと agent_run_calls が回し合う
     fn agent_step(
         &mut self,
         ep: lang::model::Endpoint,
         msgs: Vec<lang::model::Msg>,
         cx: &mut Context<Self>,
     ) {
-        let tools = agent::tools::sheet_tools();
+        let tools = Self::agent_tools();
         let task = cx
             .background_executor()
             .spawn(async move { lang::model::chat_tools(&ep, &msgs, &tools, 0.2) });
@@ -2638,36 +2646,222 @@ impl Calc {
                     }
                     Ok(out) => {
                         this.agent_state = AgentState::Connected;
-                        let mut ag = this.agent.take().expect("agent_send が置いた");
-                        let step = {
-                            let mut host = CalcTools { calc: this };
-                            ag.feed(out, &mut host)
-                        };
-                        this.agent = Some(ag);
-                        this.agent_drain_log();
-                        match step {
-                            Err(e) => {
-                                this.ai_busy = false;
-                                this.chat_log.push(ChatRow::Ai(format!("({e})")));
-                                this.status = format!("AI: {e}").into();
-                            }
-                            Ok(Some(_)) => {
-                                this.ai_busy = false;
-                                this.status = ui::t!("answered_left_panel").into();
-                            }
-                            Ok(None) => match this.agent_dest() {
-                                Some((_, ep)) => {
-                                    let msgs = this.agent.as_ref().expect("上で戻した").msgs();
-                                    this.agent_step(ep, msgs, cx);
-                                }
-                                None => {
-                                    this.ai_busy = false;
-                                    this.agent_state = AgentState::Unset;
-                                }
-                            },
+                        if out.tool_calls.is_empty() {
+                            let ag = this.agent.as_mut().expect("agent_send が置いた");
+                            ag.finish(&out.content);
+                            this.agent_drain_log();
+                            this.ai_busy = false;
+                            this.status = ui::t!("answered_left_panel").into();
+                        } else {
+                            let ag = this.agent.as_mut().expect("agent_send が置いた");
+                            ag.note_calls(&out.tool_calls);
+                            this.agent_calls = out.tool_calls;
+                            this.agent_run_calls(cx);
                         }
                     }
                 }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    /// 途中の道具呼びを順に実行する。マクロ(裏の糸)と保存(人の確認)は
+    /// ここで止まり、終わったところが agent_finish_call で続きを呼ぶ
+    fn agent_run_calls(&mut self, cx: &mut Context<Self>) {
+        while let Some(c) = self.agent_calls.first().cloned() {
+            {
+                let ag = self.agent.as_mut().expect("agent_send が置いた");
+                if let Err(e) = ag.count_call() {
+                    self.agent_calls.clear();
+                    self.ai_busy = false;
+                    self.chat_log.push(ChatRow::Ai(format!("({e})")));
+                    self.status = format!("AI: {e}").into();
+                    return;
+                }
+                ag.note_call(&c);
+            }
+            // 呼びの行を**実行の前に**出す — 黙って動かさない
+            self.agent_drain_log();
+            match c.name.as_str() {
+                // 保存は実行せず、確認のボタンを出して人を待つ
+                "save" => {
+                    let args =
+                        if c.arguments.trim().is_empty() { "{}" } else { c.arguments.as_str() };
+                    let path = ops::Jobj::parse(args).and_then(|o| o.str("path"));
+                    self.agent_save = Some((c, path));
+                    cx.notify();
+                    return;
+                }
+                // マクロは裏の糸で走る(終わりの callback が続きを呼ぶ)
+                "run_macro" => {
+                    self.agent_run_macro(c, cx);
+                    return;
+                }
+                _ => {
+                    use agent::ToolHost as _;
+                    let r = {
+                        let mut d = agent::tools::DirectHost { h: self };
+                        d.call(&c.name, &c.arguments)
+                    };
+                    let ag = self.agent.as_mut().expect("agent_send が置いた");
+                    ag.tool_result(&c, r);
+                    self.agent_drain_log();
+                    self.agent_calls.remove(0);
+                }
+            }
+        }
+        // 全部済んだ — 次の往復
+        match self.agent_dest() {
+            Some((_, ep)) => {
+                let msgs = self.agent.as_ref().expect("agent_send が置いた").msgs();
+                self.agent_step(ep, msgs, cx);
+            }
+            None => {
+                self.ai_busy = false;
+                self.agent_state = AgentState::Unset;
+            }
+        }
+    }
+
+    /// 裏や人に跨った道具が終わった。結果を入れて、残りを続ける
+    fn agent_finish_call(
+        &mut self,
+        c: lang::model::ToolCall,
+        r: Result<String, String>,
+        cx: &mut Context<Self>,
+    ) {
+        let ag = self.agent.as_mut().expect("agent_send が置いた");
+        ag.tool_result(&c, r);
+        self.agent_drain_log();
+        if !self.agent_calls.is_empty() {
+            self.agent_calls.remove(0);
+        }
+        self.agent_run_calls(cx);
+    }
+
+    /// マクロを書いて動かす(段階3)。実行は run_python_inner と同じ道具立て:
+    /// **必ず bubblewrap のサンドボックス**(モデルが書いたコード = 他所から
+    /// 来たかもしれない物と同じ扱い。網も遮る)・60秒の制限・複製の上で
+    /// 走らせて、結果のブックを**1手として**取り込む。しくじりはモデルへ
+    /// 返して直させる(エラーの往復)
+    fn agent_run_macro(&mut self, c: lang::model::ToolCall, cx: &mut Context<Self>) {
+        let args = if c.arguments.trim().is_empty() { "{}" } else { c.arguments.as_str() };
+        let o = ops::Jobj::parse(args);
+        let Some(code) = o.as_ref().and_then(|o| o.str("code")) else {
+            self.agent_finish_call(c, Err("code がありません".into()), cx);
+            return;
+        };
+        // 見える .py として置く(見えないコードは運ばない)。置き場は
+        // 綴りのフォルダ(ブックの隣)。名前は1つの語に丸める
+        let name: String = o
+            .as_ref()
+            .and_then(|o| o.str("name"))
+            .unwrap_or_else(|| "agent_macro".into())
+            .chars()
+            .map(|ch| if ch.is_alphanumeric() || ch == '_' || ch == '-' { ch } else { '_' })
+            .collect();
+        let visible = self
+            .path
+            .as_ref()
+            .and_then(|p| p.parent())
+            .map(|d| d.join(format!("{name}.py")));
+        if let Some(p) = &visible {
+            if let Err(e) = std::fs::write(p, code.as_bytes()) {
+                self.agent_finish_call(c, Err(format!("マクロを置けません: {e}")), cx);
+                return;
+            }
+        }
+        if !self.commit() {
+            self.agent_finish_call(c, Err("編集を確定できません".into()), cx);
+            return;
+        }
+        let dir = pyrun::cage_work_dir("jo-agent");
+        let _ = std::fs::create_dir_all(&dir);
+        let in_x = dir.join("in.xlsx");
+        let out_x = dir.join("out.xlsx");
+        let original: Option<std::io::Cursor<Vec<u8>>> =
+            self.path.as_ref().and_then(|old| std::fs::read(old).ok()).map(std::io::Cursor::new);
+        let w = std::fs::File::create(&in_x)
+            .map_err(|e| e.to_string())
+            .and_then(|f| sheet::xlsx::write_with(&self.book, original, std::io::BufWriter::new(f)));
+        if let Err(e) = w {
+            self.agent_finish_call(c, Err(format!("表を渡せません: {e}")), cx);
+            return;
+        }
+        let so_dir = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+            .unwrap_or_default();
+        let script = format!(
+            concat!(
+                "import sys\n",
+                "sys.path.insert(0, {so_dir:?})\n",
+                "from officework import sheet as office_sheet\n",
+                "b = office_sheet.Book.open({in_x:?})\n",
+                "s = b[{active}]\n",
+                "# ---- エージェントのコード ----\n",
+                "{code}\n",
+                "# ----\n",
+                "b.save({out_x:?})\n"
+            ),
+            so_dir = so_dir.to_string_lossy(),
+            in_x = in_x.to_string_lossy(),
+            active = self.active,
+            out_x = out_x.to_string_lossy(),
+            code = code
+        );
+        self.status = ui::t!("running_python").into();
+        let so_dir2 = so_dir.clone();
+        let task = cx.background_executor().spawn(async move {
+            let py_path = dir.join("run.py");
+            std::fs::write(&py_path, script).map_err(|e| e.to_string())?;
+            let py = pyrun::find_python();
+            let venv = std::fs::canonicalize(".venv").unwrap_or_default();
+            // 見せる場所: venv・実行ファイルの隣・editable の実体(.pth の先)
+            let mut binds = vec![venv.clone(), so_dir2];
+            binds.extend(pyrun::editable_paths(&venv));
+            // サンドボックスが組めなければ走らせない(そう言う)
+            let Some(mut cmd) = pyrun::caged_python(&py, &dir, &binds, false) else {
+                return Err(if cfg!(target_os = "linux") {
+                    ui::t!("cant_build_sandbox_code").to_string()
+                } else {
+                    ui::t!("os_no_sandbox_code").to_string()
+                });
+            };
+            let (ok, out, err) = crate::py::run_with_timeout(cmd.arg(&py_path), 60)?;
+            let out = out.trim().to_string();
+            if !ok {
+                // 誤りの尻尾を返す — モデルが読んで直す
+                let tail =
+                    err.lines().rev().take(6).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
+                return Err(if tail.trim().is_empty() { "原因不明".into() } else { tail });
+            }
+            std::fs::read(&out_x).map_err(|e| format!("結果が読めません: {e}")).map(|b| (b, out))
+        });
+        cx.spawn(async move |this, cx| {
+            let r = task.await;
+            let _ = this.update(cx, |this, cx| {
+                let reply = match r {
+                    Ok((bytes, out)) => match sheet::xlsx::read(std::io::Cursor::new(bytes)) {
+                        Ok((mut book, _rep)) => {
+                            book::calc::recalc_all(&mut book);
+                            // 1手として取り込む(Ctrl+Z で戻せる)
+                            this.checkpoint_book();
+                            this.book = book;
+                            if this.active >= this.book.sheets.len() {
+                                this.active = 0;
+                            }
+                            this.freeze_from_book();
+                            this.dirty = true;
+                            this.sync_input();
+                            Ok(if out.is_empty() { "終わりました".to_string() } else { out })
+                        }
+                        Err(e) => Err(format!("結果が読めません: {e}")),
+                    },
+                    Err(e) => Err(e),
+                };
+                this.agent_finish_call(c, reply, cx);
                 cx.notify();
             });
         })
@@ -2685,14 +2879,17 @@ impl Calc {
                 agent::Event::User(_) => {}
                 agent::Event::Assistant(t) => rows.push(ChatRow::Ai(t.clone())),
                 agent::Event::ToolCall { name, arguments } => {
-                    let place = ops::Jobj::parse(arguments)
-                        .and_then(|o| o.str("a1").or_else(|| o.str("path")));
+                    let place = ops::Jobj::parse(arguments).and_then(|o| {
+                        o.str("a1").or_else(|| o.str("path")).or_else(|| o.str("name"))
+                    });
                     let line = match place {
                         Some(a) => format!("{name} {a}"),
                         None => name.clone(),
                     };
-                    let writes =
-                        matches!(name.as_str(), "write_range" | "set_format" | "autofit");
+                    let writes = matches!(
+                        name.as_str(),
+                        "write_range" | "set_format" | "autofit" | "run_macro"
+                    );
                     rows.push(ChatRow::Tool(line, writes));
                 }
                 agent::Event::ToolResult { ok, content, .. } => {
@@ -2707,28 +2904,25 @@ impl Calc {
         self.chat_log.extend(rows);
     }
 
-    /// 保存の確認に人が答えた(道具 save は実行せずここへ回る)
-    pub(crate) fn agent_confirm_save(&mut self, yes: bool) {
-        let Some(path) = self.agent_save.take() else { return };
-        if !yes {
+    /// 保存の確認に人が答えた(道具 save は実行せずここへ回る)。
+    /// 答えは道具の結果としてモデルにも返り、ループは続きから回る
+    pub(crate) fn agent_confirm_save(&mut self, yes: bool, cx: &mut Context<Self>) {
+        let Some((c, path)) = self.agent_save.take() else { return };
+        let r = if !yes {
             self.status = ui::t!("save_declined").into();
-            self.chat_log.push(ChatRow::Tool(ui::t!("save_declined").to_string(), false));
-            return;
-        }
-        let args = match path {
-            Some(p) => format!("{{\"path\":{}}}", ops::J::S(p).to_json()),
-            None => "{}".into(),
-        };
-        use agent::ToolHost as _;
-        let mut d = agent::tools::DirectHost { h: self };
-        match d.call("save", &args) {
+            // 断りはしくじりではない — モデルにはそのまま伝える
+            Ok("保存はしていません(人が断りました)".to_string())
+        } else {
+            let args = match path {
+                Some(p) => format!("{{\"path\":{}}}", ops::J::S(p).to_json()),
+                None => "{}".into(),
+            };
+            use agent::ToolHost as _;
+            let mut d = agent::tools::DirectHost { h: self };
             // 状態行は Host の save が言う(保存しました — …)
-            Ok(_) => self.chat_log.push(ChatRow::Tool("save".into(), false)),
-            Err(e) => {
-                self.status = format!("{e}").into();
-                self.chat_log.push(ChatRow::Tool(format!("エラー: {e}"), false));
-            }
-        }
+            d.call("save", &args)
+        };
+        self.agent_finish_call(c, r, cx);
     }
 
     /// いまの計算方法で再計算する(手動なら何もしない — 「計算」で回す)
@@ -2931,29 +3125,6 @@ const AGENT_SYSTEM: &str = "あなたは表計算アプリの中で働く助手�
 保存(save)は利用者がはっきり頼んだときだけ呼びます。\
 答えは利用者の言語に合わせて、短く書きます。";
 
-/// 道具の結線(ops の語彙へ直に)。save だけは実行せず、確認のボタンを
-/// 出して人を待つ — 確認を取る3つ(保存・削除・外への送信)の1つ目
-struct CalcTools<'a> {
-    calc: &'a mut Calc,
-}
-
-impl agent::ToolHost for CalcTools<'_> {
-    fn tools(&self) -> Vec<lang::model::ToolDef> {
-        agent::tools::sheet_tools()
-    }
-    fn call(&mut self, name: &str, arguments: &str) -> Result<String, String> {
-        if name == "save" {
-            let args = if arguments.trim().is_empty() { "{}" } else { arguments };
-            self.calc.agent_save = Some(ops::Jobj::parse(args).and_then(|o| o.str("path")));
-            return Err(
-                "保存には人の確認が要ります。確認のボタンを出したので、答えを待ってください"
-                    .into(),
-            );
-        }
-        let mut d = agent::tools::DirectHost { h: self.calc };
-        agent::ToolHost::call(&mut d, name, arguments)
-    }
-}
 
 impl Calc {
     /// いま選んでいる所の名前(右パネルの見出しに出す)
@@ -3046,6 +3217,7 @@ impl Calc {
         self.chat_log.clear();
         self.agent = None;
         self.agent_shown = 0;
+        self.agent_calls.clear();
         self.agent_save = None;
         self.chat_in = Editor::new("");
         self.status = ui::t!("started_new_conversation_sheet").into();

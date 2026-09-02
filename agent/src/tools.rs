@@ -60,6 +60,25 @@ pub fn sheet_tools() -> Vec<ToolDef> {
     ]
 }
 
+/// マクロの道具の名乗り。実行は ops の語彙でなく**サンドボックスの
+/// Python** なので、結線はアプリの側(calc)が持つ。DirectHost /
+/// QueueHost はこれを実行できない(知らない道具、と断る)ため、
+/// 一覧に足すのは実行を持つアプリだけ
+pub fn macro_tool() -> ToolDef {
+    ToolDef {
+        name: "run_macro".into(),
+        description: "Python のマクロを書いて動かす。コードでは b(ブック)と \
+                      s(いまのシート)が使える(openpyxl と同じ形)。\
+                      1セルは s[\"A1\"].value = 5、範囲 s[\"A1:C9\"] は\
+                      セルの行の組(それぞれの .value を読める)。\
+                      print の出力が返り、表への変更は1手で入る。\
+                      定型の道具に無い仕事はこれで解く"
+            .into(),
+        parameters: r#"{"type":"object","properties":{"name":{"type":"string","description":"マクロの名前(ファイル名になる)"},"code":{"type":"string"}},"required":["code"]}"#
+            .into(),
+    }
+}
+
 /// 道具呼びを ops の1行に組み替える。used_range だけは2段
 /// (expand を呼んで番地に直す)なので、ここでは None を返す
 fn line_for(name: &str, o: &Jobj) -> Result<String, String> {
