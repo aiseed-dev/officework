@@ -164,7 +164,6 @@ package" in link:python-manual.adoc[the Python manual].
 |Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
 
 |image:../../face/icons/blankpage.svg[,16,16] Insert blank page |空白ページの挿入 |✅ |d.add_page_break() |d.add_page_break() |—
-|image:../../face/icons/pagebreak.svg[,16,16] Breaks |区切り |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../../face/icons/instable.svg[,16,16] Insert table |表の挿入 |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
 |image:../../face/icons/insimage.svg[,16,16] Insert image |画像を挿入 |✅ |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
 |image:../../face/icons/insshape.svg[,16,16] Insert shape |図形を挿入 | |— |— |—
@@ -220,7 +219,7 @@ package" in link:python-manual.adoc[the Python manual].
 |image:../../face/icons/pagecolor.svg[,16,16] Change page colour |ページ色の変更 | |— |— |—
 |image:../../face/icons/colorschemas.svg[,16,16] Change colour theme |配色の変更 | |— |— |—
 |image:../../face/icons/printarea.svg[,16,16] Print Area |印刷範囲 |✅ |s.print_area |— |ws.print_area
-|image:../../face/icons/pagebreak.svg[,16,16] Breaks |区切り |✅ |*Same as Insert* — d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../../face/icons/pagebreak.svg[,16,16] Breaks |区切り |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../../face/icons/editheader.svg[,16,16] Edit header |ヘッダー/フッター |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
 |image:../../face/icons/scale.svg[,16,16] Scale To Fit |拡大縮小印刷 | |— |— |ws.page_setup.scale / fitToWidth
 |image:../../face/icons/fit-pages.svg[,16,16] Fit to paper |紙に収める | |— |— |ws.page_setup.fitToWidth
@@ -399,7 +398,6 @@ package" in link:python-manual.adoc[the Python manual].
 |image:../../face/icons/zoom100.svg[,16,16] Zoom to 100% |100%に拡大する |❌ |画面の表示です。文書は変わりません |— |—
 |image:../../face/icons/zoom-in.svg[,16,16] Zoom in |拡大 |❌ |画面の表示です。文書は変わりません |— |—
 |image:../../face/icons/zoom-out.svg[,16,16] Zoom out |縮小 |❌ |画面の表示です。文書は変わりません |— |—
-|image:../../face/icons/printview.svg[,16,16] Print layout |印刷レイアウト |❌ |画面の表示の切り替えです |— |—
 |image:../../face/icons/multipage.svg[,16,16] Multiple pages |複数ページ |❌ |画面の表示です。文書は変わりません |— |—
 |image:../../face/icons/darkmode.svg[,16,16] Dark mode |ダークモード |❌ |画面の色を切り替えます。文書は変わりません |— |—
 |image:../../face/icons/ui-bigger.svg[,16,16] Bigger UI text |画面の文字を大きく |❌ |画面の文字を大きくします。文書の文字は変わりません |— |—

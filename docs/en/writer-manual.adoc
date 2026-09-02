@@ -228,7 +228,8 @@ The status line says how many pictures were made.
 
 == Layout
 
-* Paper (A4→B5→A3), orientation, margins (20/12/30mm), columns (1→2→3), line numbers, page color, watermark (light diagonal text, visible in Word), hyphenation (Latin text broken at syllables)
+* Paper (A4→B5→A3), orientation, margins (20/12/30mm), columns (1→2→3). **They apply to the section the caret is in.** In a one-section document that is the whole document; to change the paper part-way, split a section with Insert > Breaks first and press the button inside that section
+* Line numbers, page color, watermark (light diagonal text, visible in Word), hyphenation (Latin text broken at syllables)
 * *Color scheme*: cycles through six (standard, indigo, green, dark red, indigo+unbleached paper, ink+gray paper). Heading color and page color change as a pair, and the *actual color values are written*, so Word shows the same colors without needing theme parts. One Ctrl+Z restores
 
 == Header & footer
@@ -266,7 +267,10 @@ Tools that work on a document in a shared folder:
 
 == View tab
 
-Navigation (left panel), fit page / fit width / 100% / zoom in / out, *print layout (sheets stacked one page at a time — the view where a document whose sections change paper size shows the difference; the editing view stays one continuous scroll)*, *multiple pages (spread — screen only; printing stays one page per sheet)*, dark mode (surroundings darken, paper stays white), ruler (mm), toolbar / status bar / side panel toggles.
+The screen shows the paper one sheet at a time. Where sections use different paper, each sheet comes out at its own size, folded the same way as printing (PDF).
+Only a document whose template says `区切り = "なし"` (the Web form) is shown as one continuous flow without sheets.
+
+Navigation (left panel), fit page / fit width / 100% / zoom in / out, *multiple pages (spread — screen only; printing stays one page per sheet)*, dark mode (surroundings darken, paper stays white), ruler (mm), toolbar / status bar / side panel toggles.
 
 == The side panels and their icon rails
 
@@ -422,7 +426,9 @@ One thing per row, shown three ways: how you type it in the text, which ribbon b
 |Merge cells down |`.2+\|` |(no button yet) |`rowspan="2"`
 |Picture |a paragraph of just `image::images/fig1.png[]` |Insert > Picture |`<img>`
 |Equation |a paragraph of just `stem:[x^2]` |Insert > Equation |`<img>` (the source stays with it)
-|Page break |`<<<` |Insert > Page break |breaks only when printed
+|Page break |`<<<` |Insert > Breaks > Page |breaks only when printed
+|Section break (paper changes) |a `[page-size=A3, page-layout=landscape, page-margin=15mm]` line followed by `<<<` |Insert > Breaks > Section (next page) |the paper size changes
+|Section break (continuous) |the same line without `<<<` |Insert > Breaks > Section (continuous) |for a change of columns and the like
 |Form field |`field:name[label,kind]` |Forms > Text field |`<input>` `<select>` `<textarea>`
 |Heading 4, 5 |`=====` `======` |Home > Paragraph style |`<h5>` `<h6>`
 |Monospace |`` ``text`` `` |Right panel > Styles > 等幅 |`<code>`
@@ -694,7 +700,6 @@ Slides (one section per sheet):
 
 * Every section starts a fresh sheet, so the level-1 heading becomes the title of that sheet
 * `跨ぎ = false` moves a paragraph that straddles a sheet boundary onto the next sheet whole. A paragraph too tall for one sheet is left where it is
-* To see them one sheet at a time: View > *Print layout*
 * *You do not need PowerPoint* — slides are just another template
 
 === GitHub renders it as it is

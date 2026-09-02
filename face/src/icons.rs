@@ -155,7 +155,6 @@ pub static OWN_ICONS: &[(&str, &[u8])] = &[
     ("fit-width", include_bytes!("../icons/fit-width.svg")),
     ("zoom100", include_bytes!("../icons/zoom100.svg")),
     ("multipage", include_bytes!("../icons/multipage.svg")),
-    ("printview", include_bytes!("../icons/printview.svg")),
     ("setfilter", include_bytes!("../icons/setfilter.svg")),
     ("cell-format", include_bytes!("../icons/cell-format.svg")),
     ("cell-lock", include_bytes!("../icons/cell-lock.svg")),

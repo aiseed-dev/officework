@@ -183,7 +183,6 @@ pub const WORDS: &[(&str, &str)] = &[
     ("Print Area", "Druckauswahl"),
     ("Print gridlines", "Gitternetzlinien drucken"),
     ("Print headings", "Überschriften drucken"),
-    ("Print layout", "Drucklayout"),
     ("Print titles", "Drucke Titel"),
     ("Protect Range", "Bereich schützen"),
     ("Protect sheet", "Blatt schützen"),

@@ -157,7 +157,6 @@ def 大文字にする(段落):
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
 |image:../../face/icons/blankpage.svg[,16,16] Insert blank page |link:commands/挿入/空白ページの挿入.adoc[空白ページの挿入] |✅ |d.add_page_break() |d.add_page_break() |—
-|image:../../face/icons/pagebreak.svg[,16,16] Breaks |link:commands/レイアウト/区切り.adoc[区切り]・link:commands/挿入/区切り.adoc[挿入] |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../../face/icons/instable.svg[,16,16] Insert table |link:commands/挿入/表の挿入.adoc[表の挿入] |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
 |image:../../face/icons/insimage.svg[,16,16] Insert image |link:commands/挿入/画像を挿入.adoc[画像を挿入] |✅ |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
 |image:../../face/icons/insshape.svg[,16,16] Insert shape |link:commands/挿入/図形を挿入.adoc[図形を挿入] | |— |— |—
@@ -213,7 +212,7 @@ def 大文字にする(段落):
 |image:../../face/icons/pagecolor.svg[,16,16] Change page colour |link:commands/レイアウト/ページ色の変更.adoc[ページ色の変更] | |— |— |—
 |image:../../face/icons/colorschemas.svg[,16,16] Change colour theme |link:commands/レイアウト/配色の変更.adoc[配色の変更] | |— |— |—
 |image:../../face/icons/printarea.svg[,16,16] Print Area |link:commands/レイアウト/印刷範囲.adoc[印刷範囲] |✅ |s.print_area |— |ws.print_area
-|image:../../face/icons/pagebreak.svg[,16,16] Breaks |link:commands/レイアウト/区切り.adoc[区切り]・link:commands/挿入/区切り.adoc[挿入] |✅ |*挿入と同じ* — d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../../face/icons/pagebreak.svg[,16,16] Breaks |link:commands/レイアウト/区切り.adoc[区切り]・link:commands/挿入/区切り.adoc[挿入] |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../../face/icons/editheader.svg[,16,16] Edit header |link:commands/レイアウト/ヘッダー_フッター.adoc[ヘッダー/フッター] |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
 |image:../../face/icons/scale.svg[,16,16] Scale To Fit |link:commands/レイアウト/拡大縮小印刷.adoc[拡大縮小印刷] | |— |— |ws.page_setup.scale / fitToWidth
 |image:../../face/icons/fit-pages.svg[,16,16] Fit to paper |link:commands/レイアウト/紙に収める.adoc[紙に収める] | |— |— |ws.page_setup.fitToWidth
@@ -392,7 +391,6 @@ def 大文字にする(段落):
 |image:../../face/icons/zoom100.svg[,16,16] Zoom to 100% |100%に拡大する |❌ |画面の表示です。文書は変わりません |— |—
 |image:../../face/icons/zoom-in.svg[,16,16] Zoom in |拡大 |❌ |画面の表示です。文書は変わりません |— |—
 |image:../../face/icons/zoom-out.svg[,16,16] Zoom out |縮小 |❌ |画面の表示です。文書は変わりません |— |—
-|image:../../face/icons/printview.svg[,16,16] Print layout |印刷レイアウト |❌ |画面の表示の切り替えです |— |—
 |image:../../face/icons/multipage.svg[,16,16] Multiple pages |複数ページ |❌ |画面の表示です。文書は変わりません |— |—
 |image:../../face/icons/darkmode.svg[,16,16] Dark mode |ダークモード |❌ |画面の色を切り替えます。文書は変わりません |— |—
 |image:../../face/icons/ui-bigger.svg[,16,16] Bigger UI text |画面の文字を大きく |❌ |画面の文字を大きくします。文書の文字は変わりません |— |—

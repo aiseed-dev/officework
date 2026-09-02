@@ -243,7 +243,6 @@ impl Writer {
             shape_drag: None,
             page_starts: vec![f32::NEG_INFINITY],
             page_notes: vec![Vec::new()],
-            paged: false,
             page_tops: vec![0.0],
             page_papers: Vec::new(),
             dress_hf: Default::default(),
@@ -688,6 +687,15 @@ impl Writer {
     /// `page_offsets`(紙の上端)から測る。** 2つの物差しが要るのは、
     /// 巻物が空きを詰めて流れるため — 詳しくは `page_starts` の註。
     pub(crate) fn page_of_roll(&self, y: f32) -> (usize, f32) {
+        // **紙を積んだ表示では、行の y は積んだ後の座標です**(`fold_print` が
+        // 各頁の中身を `page_tops[k]` から置き直す)。だから頁は紙の上端で
+        // 引き、頁の中の位置も紙の上端から測ります。2026-09-02 に紙を積むのが
+        // 普通の表示になって、発表の試験でページの割り当てがずれて見つけた穴
+        // (前の「印刷レイアウト」でも同じでした)
+        if self.sheets() && self.page_tops.len() > 1 && self.page_tops.len() == self.page_offsets.len() {
+            let p = self.page_tops.iter().rposition(|t| y >= *t - 0.01).unwrap_or(0);
+            return (p, y - self.page_tops[p]);
+        }
         let p = self.page_starts.iter().rposition(|s| y >= *s - 0.01).unwrap_or(0);
         (p, y - self.page_offsets.get(p).copied().unwrap_or(0.0))
     }
@@ -946,9 +954,11 @@ impl Writer {
         self.page_starts = pn.starts;
         self.page_notes = pn.notes;
         self.page_papers = pn.papers;
-        // 印刷モードは**紙を1枚ずつ積む**。折らないと紙の絵と中身が重なる
-        // (頁の間隔は紙の高さより詰まっているため)
-        self.page_tops = if self.paged && !self.page.vertical && !self.multipage {
+        // **紙を1枚ずつ積む**(2026-09-02 からこれが普通の表示。前は
+        // 「印刷レイアウト」の切り替えでした)。折らないと紙の絵と中身が
+        // 重なる(頁の間隔は紙の高さより詰まっているため)。節で紙が変わる
+        // 文書は、この形で紙の大きさの違いが出ます
+        self.page_tops = if self.sheets() {
             let offs = self.page_offsets.clone();
             let sts = self.page_starts.clone();
             let papers: Vec<kumihan::PageSetup> = self.page_papers.iter()

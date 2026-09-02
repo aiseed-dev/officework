@@ -548,18 +548,77 @@ impl Writer {
 
     /// 用紙の設定を変える。**文書に書き戻す**(sect_raw を作り替える)ので
     /// 保存で残る。画面と紙は同じ寸法で追随する。
+    /// **カーソルのある節の用紙を変える。** 後ろに節の区切りを持つ段落が
+    /// あれば、その節(区切りの段落までの節)の用紙を変えます。無ければ
+    /// 文書末の節で、それは文書の用紙(`self.pg` / `doc.page`)です。
+    /// 節が1つの文書では、今までどおり文書全体に効きます(2026-09-02)
     pub(crate) fn set_page(&mut self, f: impl Fn(&mut kumihan::PageSetup)) {
         self.checkpoint(false); // 用紙の設定
+        let (pi, _) = self.cursor_para();
+        if let Some(k) = self.section_end_block(pi) {
+            let mut pg = kumihan::PageSetup::default();
+            if let kumihan::Block::Para(p) = &mut self.doc.blocks[k] {
+                if let Some(sb) = p.sect.as_mut() {
+                    pg = sb.page;
+                    f(&mut pg);
+                    sb.page = pg;
+                    sb.raw = Self::sect_raw_with(Some(&sb.raw), &pg);
+                }
+            }
+            self.dirty = true;
+            self.relayout_keep();
+            self.status = ui::tf!("paper_mm_margins_mm", pg.w_mm, pg.h_mm, pg.left_mm, if pg.cols() > 1 { format!(" / {}段組み", pg.cols()) } else { String::new() })
+            .into();
+            return;
+        }
         f(&mut self.pg);
         self.doc.page = Some(self.pg);
+        self.doc.sect_raw = Some(Self::sect_raw_with(self.doc.sect_raw.as_deref(), &self.pg));
+        self.dirty = true;
+        self.relayout_keep();
+        self.status = ui::tf!("paper_mm_margins_mm", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, if self.pg.cols() > 1 { format!(" / {}段組み", self.pg.cols()) } else { String::new() })
+        .into();
+    }
+
+    /// 段落の通し番号 `pi` が入っている節の、**節末の段落**の blocks の位置。
+    /// 後ろに節の区切りが無ければ None(= 文書末の節)
+    fn section_end_block(&self, pi: usize) -> Option<usize> {
+        let mut seen = 0usize;
+        let mut start = None;
+        for (i, b) in self.doc.blocks.iter().enumerate() {
+            if let kumihan::Block::Para(_) = b {
+                if seen == pi {
+                    start = Some(i);
+                    break;
+                }
+                seen += 1;
+            }
+        }
+        let start = start?;
+        self.doc.blocks[start..]
+            .iter()
+            .position(|b| matches!(b, kumihan::Block::Para(p) if p.sect.is_some()))
+            .map(|k| start + k)
+    }
+
+    /// 段落の通し番号 `pi` が入っている節の用紙
+    fn section_page_of(&self, pi: usize) -> kumihan::PageSetup {
+        match self.section_end_block(pi) {
+            Some(k) => match &self.doc.blocks[k] {
+                kumihan::Block::Para(p) => p.sect.as_ref().map(|s| s.page).unwrap_or(self.pg),
+                _ => self.pg,
+            },
+            None => self.pg,
+        }
+    }
+
+    /// **sectPr の原文を、用紙の値で作り替える。** 原文があっても、寸法だけは
+    /// こちらが決めた値で作り替える。ヘッダーの参照などは残したいので、
+    /// pgSz/pgMar/cols 以外は原文から引き継ぐ。原文が無ければ寸法だけ
+    fn sect_raw_with(raw: Option<&str>, pg: &kumihan::PageSetup) -> String {
         let tw = |mm: f32| -> i64 { (mm * 20.0 * 72.0 / 25.4).round() as i64 };
-        let landscape = self.pg.w_mm > self.pg.h_mm;
-        // 原文があっても、寸法だけはこちらが決めた値で作り替える。
-        // ヘッダーの参照などは残したいので、pgSz/pgMar 以外は原文から引き継ぐ
-        let rest = self
-            .doc
-            .sect_raw
-            .as_deref()
+        let landscape = pg.w_mm > pg.h_mm;
+        let rest = raw
             .map(|s| {
                 let mut out = String::new();
                 let mut skip = false;
@@ -588,26 +647,74 @@ impl Writer {
             })
             .unwrap_or_default();
         // 段組みは Word の既定の間(425twip)で書く
-        let cols = if self.pg.cols() > 1 {
-            format!("<w:cols w:num=\"{}\" w:space=\"425\"/>", self.pg.cols())
+        let cols = if pg.cols() > 1 {
+            format!("<w:cols w:num=\"{}\" w:space=\"425\"/>", pg.cols())
         } else {
             String::new()
         };
-        self.doc.sect_raw = Some(format!(
+        format!(
             "<w:sectPr><w:pgSz w:w=\"{}\" w:h=\"{}\"{}/>\
              <w:pgMar w:top=\"{}\" w:right=\"{}\" w:bottom=\"{}\" w:left=\"{}\"/>{cols}{rest}</w:sectPr>",
-            tw(self.pg.w_mm),
-            tw(self.pg.h_mm),
+            tw(pg.w_mm),
+            tw(pg.h_mm),
             if landscape { " w:orient=\"landscape\"" } else { "" },
-            tw(self.pg.top_mm),
-            tw(self.pg.right_mm),
-            tw(self.pg.bottom_mm),
-            tw(self.pg.left_mm),
-        ));
+            tw(pg.top_mm),
+            tw(pg.right_mm),
+            tw(pg.bottom_mm),
+            tw(pg.left_mm),
+        )
+    }
+
+    /// **区切りを入れる。** `page` はこの段落の前の改ページ(押すたびに入切)。
+    /// `section` と `section-cont` は、この段落から新しい節を始める —
+    /// 節の印(sect)は1つ前の段落に付く(docx の作法。「この段落で節が
+    /// 終わる」)。前の段落が無いか表なら、空の段落を1つ前に足して付ける。
+    /// 新しい節は同じ用紙で始まり、変えるならその節でレイアウトのボタンを押す
+    pub(crate) fn insert_break(&mut self, key: &str) {
+        if key == "page" {
+            self.para(|p| p.page_break_before = !p.page_break_before);
+            return;
+        }
+        let continuous = key == "section-cont";
+        self.checkpoint(false); // 節の区切り
+        let (pi, b0) = self.cursor_para();
+        let page = self.section_page_of(pi);
+        let brk = kumihan::SectionBreak { raw: ooxml::sect_xml(&page), page, continuous };
+        // 1つ前の段落に付ける。段落の通し番号 pi の blocks の位置を引く
+        let mut seen = 0usize;
+        let mut bi = None;
+        for (i, b) in self.doc.blocks.iter().enumerate() {
+            if let kumihan::Block::Para(_) = b {
+                if seen == pi { bi = Some(i); break; }
+                seen += 1;
+            }
+        }
+        let prev_para = bi
+            .and_then(|i| i.checked_sub(1))
+            .filter(|&i| matches!(&self.doc.blocks[i], kumihan::Block::Para(p) if p.sect.is_none()));
+        match prev_para {
+            Some(i) => {
+                if let kumihan::Block::Para(p) = &mut self.doc.blocks[i] {
+                    p.sect = Some(brk);
+                }
+            }
+            None => {
+                // 空の段落を前に足す。本文の字も同じ位置に改行を入れて揃える
+                self.ed.move_to(b0, false);
+                self.ed.insert("\n");
+                self.doc.set_body_text(self.ed.text());
+                if let Some(p) = self.doc.paragraphs_mut().nth(pi) {
+                    p.sect = Some(brk);
+                }
+            }
+        }
         self.dirty = true;
         self.relayout_keep();
-        self.status = ui::tf!("paper_mm_margins_mm", self.pg.w_mm, self.pg.h_mm, self.pg.left_mm, if self.pg.cols() > 1 { format!(" / {}段組み", self.pg.cols()) } else { String::new() })
-        .into();
+        self.status = if continuous {
+            ui::t!("section_continues_here").into()
+        } else {
+            ui::t!("section_starts_here").into()
+        };
     }
 
     pub(crate) fn set_align(&mut self, a: Align) {
@@ -1006,7 +1113,7 @@ impl Writer {
         if self.native && self.tmpl.setting.fluid {
             return (self.view_w_px / crate::PX_PER_MM).max(60.0);
         }
-        if self.paged {
+        if self.sheets() {
             // 頁ごとに紙が違いうる(節)。いちばん広い紙に合わせる
             return self.page_papers.iter().map(|q| q.width_mm)
                 .fold(self.pg.w_mm, f32::max);
@@ -1018,8 +1125,15 @@ impl Writer {
         }
     }
 
+    /// **紙を1枚ずつ積んで見せるか。** 普通の文書は積みます。Web の形
+    /// (テンプレートの `区切り = "なし"`)と縦書きと見開きは、1枚の長い紙です
+    pub(crate) fn sheets(&self) -> bool {
+        let endless = self.native && self.tmpl.setting.endless();
+        !endless && !self.page.vertical && !self.multipage
+    }
+
     pub(crate) fn content_mm(&self) -> f32 {
-        if self.paged {
+        if self.sheets() {
             // 最後の紙の下端まで
             let last = self.page_tops.last().copied().unwrap_or(0.0);
             let h = self.page_papers.last().map(|q| q.height_mm).unwrap_or(self.pg.h_mm);

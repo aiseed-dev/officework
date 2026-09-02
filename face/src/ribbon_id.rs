@@ -177,7 +177,6 @@ pub const WORDS: &[(&str, &str)] = &[
     ("Print", "Cetak"),
     ("Print gridlines", "Cetak garis kisi"),
     ("Print headings", "Cetak judul"),
-    ("Print layout", "Tata letak cetak"),
     ("Print titles", "Print judul"),
     ("Protect Range", "Proteksi Rentang"),
     ("Protect sheet", "Proteksi Sheet"),

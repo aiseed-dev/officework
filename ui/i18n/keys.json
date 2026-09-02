@@ -884,15 +884,7 @@
   "kind": "msg"
  },
  {
-  "key": "cannot_read_pythons_reply",
-  "kind": "msg"
- },
- {
   "key": "e_g_frac_sqrt",
-  "kind": "msg"
- },
- {
-  "key": "no_size_came_back",
   "kind": "msg"
  },
  {
@@ -913,18 +905,6 @@
  },
  {
   "key": "back_single_page_view",
-  "kind": "msg"
- },
- {
-  "key": "no_print_layout_vertical",
-  "kind": "msg"
- },
- {
-  "key": "print_layout_sheets_come",
-  "kind": "msg"
- },
- {
-  "key": "back_editing_view_one",
   "kind": "msg"
  },
  {
@@ -8404,10 +8384,6 @@
   "kind": "ribbon"
  },
  {
-  "key": "print_layout",
-  "kind": "ribbon"
- },
- {
   "key": "summarize",
   "kind": "ribbon"
  },
@@ -9393,6 +9369,26 @@
  },
  {
   "key": "smartart_pick_layout_image",
+  "kind": "msg"
+ },
+ {
+  "key": "break_page",
+  "kind": "msg"
+ },
+ {
+  "key": "break_section_next_page",
+  "kind": "msg"
+ },
+ {
+  "key": "break_section_continuous",
+  "kind": "msg"
+ },
+ {
+  "key": "section_starts_here",
+  "kind": "msg"
+ },
+ {
+  "key": "section_continues_here",
   "kind": "msg"
  }
 ]

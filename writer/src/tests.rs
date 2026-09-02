@@ -1548,8 +1548,10 @@ mod undo_coverage_tests {
         // 中身が空でも緑になってしまう。
         // **39 になったのは 2026-08-25** — 表の挿入と日付の挿入が、
         // 押すとマス目や一覧が開くだけの形になり、その場では文書を変えなく
-        // なったためです(挿すのは `instable-go` と一覧から選んだとき)
-        assert!(seen >= 39, "文書を変える命令が {seen} 件しか無い — 試験の形が壊れている");
+        // なったためです(挿すのは `instable-go` と一覧から選んだとき)。
+        // **38 になったのは 2026-09-02** — 区切りも一覧を開くだけになった
+        // (ページ / 節 を一覧から選ぶ。Ctrl+Enter は直に改ページ)
+        assert!(seen >= 38, "文書を変える命令が {seen} 件しか無い — 試験の形が壊れている");
     }
 
     /// やり直しも効く(戻すだけで進めないと片道になる)
@@ -1598,7 +1600,6 @@ mod paged_view_tests {
         let w = opens(cx);
         w.update(cx, |this, _| {
             this.open(f);
-            this.paged = true;
             this.relayout();
             let sizes: Vec<(f32, f32)> = this.page_papers.iter()
                 .map(|q| (q.width_mm.round(), q.height_mm.round())).collect();
@@ -1616,7 +1617,6 @@ mod paged_view_tests {
         w.update(cx, |this, _| {
             this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400));
             this.ed = Editor::new(&this.doc.body_text());
-            this.paged = true;
             this.relayout();
             let kami = paper::paginate_full(&this.page, paper::Paper::from_page(&this.pg));
             assert_eq!(this.page_papers.len(), kami.papers.len(), "頁の数が違う");
@@ -1629,7 +1629,6 @@ mod paged_view_tests {
         w.update(cx, |this, _| {
             this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400));
             this.ed = Editor::new(&this.doc.body_text());
-            this.paged = true;
             this.relayout();
             assert!(this.page_tops.len() >= 3, "頁が足りず試験にならない");
             let mita = this.page.lines.iter().filter(|l| !l.cells.is_empty()).count();
@@ -1684,43 +1683,88 @@ mod paged_view_tests {
         let _ = std::fs::remove_file(&p);
     }
 
-    /// 押す口が実際に効くこと。**機能があってもボタンが繋がっていなければ
-    /// 誰にも届かない** — ここが無いと配線の切れに気づけない
+    /// **紙は1枚ずつ積んで見せるのが普通の表示**(2026-09-02。前は
+    /// 「印刷レイアウト」の切り替えでした)。見開きと縦書きだけが1枚の長い紙
     #[gpui::test]
-    fn the_print_layout_button_toggles_it(cx: &mut gpui::TestAppContext) {
+    fn sheets_are_the_normal_view(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, cx| {
-            assert!(!this.paged, "既定が印刷レイアウトになっている");
-            this.run_cmd("printview", cx);
-            assert!(this.paged, "押しても印刷レイアウトにならない");
-            this.run_cmd("printview", cx);
-            assert!(!this.paged, "もう一度押しても戻らない");
-        });
-    }
-
-    /// 画面だけの折り方どうし、両立させない(どちらを押しても他方が下りる)
-    #[gpui::test]
-    fn print_layout_and_two_page_spread_are_exclusive(cx: &mut gpui::TestAppContext) {
-        let w = opens(cx);
-        w.update(cx, |this, cx| {
+            assert!(this.sheets(), "既定が紙を積む表示になっていない");
+            assert!(this.page_tops.len() >= 1, "紙の位置が無い");
             this.run_cmd("multipage", cx);
-            assert!(this.multipage && !this.paged, "見開きにならない");
-            this.run_cmd("printview", cx);
-            assert!(this.paged && !this.multipage, "印刷レイアウトで見開きが下りない");
+            assert!(this.multipage && !this.sheets(), "見開きで紙を積む表示が下りない");
             this.run_cmd("multipage", cx);
-            assert!(this.multipage && !this.paged, "見開きで印刷レイアウトが下りない");
-        });
-    }
-
-    /// 縦書きは初版の約束で断る。**黙って何もしないのではなく、言って断る**
-    #[gpui::test]
-    fn vertical_writing_does_not_use_print_layout(cx: &mut gpui::TestAppContext) {
-        let w = opens(cx);
-        w.update(cx, |this, cx| {
+            assert!(this.sheets(), "見開きを閉じても戻らない");
             this.doc.vertical = true;
-            this.run_cmd("printview", cx);
-            assert!(!this.paged, "縦書きなのに印刷レイアウトにした");
-            assert!(!this.status.is_empty(), "断ったことを言っていない");
+            this.relayout();
+            assert!(!this.sheets(), "縦書きなのに紙を積んだ");
+        });
+    }
+
+    /// **用紙の設定はカーソルのある節に効く**(2026-09-02)。節が1つなら文書全体
+    #[gpui::test]
+    fn paper_settings_apply_to_the_section_at_the_caret(cx: &mut gpui::TestAppContext) {
+        let w = opens(cx);
+        w.update(cx, |this, cx| {
+            // 2段落目から新しい節(次のページから)
+            let second = this.ed.text().find('\n').unwrap() + 1;
+            this.ed.move_to(second, false);
+            this.insert_break("section");
+            let ps: Vec<&kumihan::Paragraph> = this.doc.paragraphs().collect();
+            let sb = ps[0].sect.as_ref().expect("1段落目に節の印が無い");
+            assert!(!sb.continuous);
+            assert!(sb.raw.contains("<w:pgSz"), "新しい節の sectPr が空: {}", sb.raw);
+            // 2段落目(最後の節)で横向きにする → 文書の用紙が変わり、1つ目の節は変わらない
+            this.run_cmd("pageorient", cx);
+            assert!(this.pg.w_mm > this.pg.h_mm, "文書末の節が横になっていない");
+            let sb = this.doc.paragraphs().next().unwrap().sect.as_ref().unwrap();
+            assert!(sb.page.w_mm < sb.page.h_mm, "前の節まで横になった");
+            // 1段落目(最初の節)で B5 にする → その節だけ変わる
+            this.ed.move_to(0, false);
+            this.run_cmd("pagesize", cx);
+            let sb = this.doc.paragraphs().next().unwrap().sect.as_ref().unwrap();
+            assert_eq!(sb.page.w_mm, 182.0, "最初の節が B5 になっていない: {:?}", sb.page);
+            assert!(sb.raw.contains("w:w=\"10318\""), "節の sectPr に寸法が書けていない: {}", sb.raw);
+            assert!(this.pg.w_mm > this.pg.h_mm && this.pg.h_mm == 210.0, "文書末の節まで変わった: {:?}", this.pg);
+            // 紙が節ごとに違うので、画面の紙も2枚以上・幅が違う
+            assert!(this.page_papers.len() >= 2, "節で頁が割れていない");
+        });
+    }
+
+    /// リボンの「区切り」は一覧を開き、選ぶと入る(配線の確かめ)
+    #[gpui::test]
+    fn the_breaks_button_opens_a_list_and_a_pick_inserts_the_break(cx: &mut gpui::TestAppContext) {
+        let w = opens(cx);
+        w.update(cx, |this, cx| {
+            this.run_cmd("pagebreak", cx);
+            assert_eq!(this.open_list, Some("pagebreak"), "区切りの一覧が開かない");
+            assert_eq!(this.n_items("pagebreak"), 3, "一覧の項目が3つでない");
+            let second = this.ed.text().find('\n').unwrap() + 1;
+            this.ed.move_to(second, false);
+            this.choose_list("pagebreak", "section", cx);
+            assert!(this.open_list.is_none(), "選んだのに一覧が閉じない");
+            assert!(this.doc.paragraphs().next().unwrap().sect.is_some(), "節の印が付いていない");
+            this.run_cmd("pagebreak", cx);
+            this.choose_list("pagebreak", "page", cx);
+            assert!(this.doc.paragraphs().nth(1).unwrap().page_break_before, "ページ区切りが付いていない");
+        });
+    }
+
+    /// 先頭の段落から節を始めると、空の段落を前に足してそこに印が付く。
+    /// 「続き」の節は改ページしない
+    #[gpui::test]
+    fn a_section_at_the_first_paragraph_gets_an_empty_paragraph_before_it(cx: &mut gpui::TestAppContext) {
+        let w = opens(cx);
+        w.update(cx, |this, _cx| {
+            let n = this.doc.paragraphs().count();
+            this.ed.move_to(0, false);
+            this.insert_break("section-cont");
+            assert_eq!(this.doc.paragraphs().count(), n + 1, "空の段落が足されていない");
+            let first = this.doc.paragraphs().next().unwrap();
+            assert!(first.runs.iter().all(|r| r.text.is_empty()), "先頭が空の段落でない");
+            assert!(first.sect.as_ref().is_some_and(|s| s.continuous), "続きの節になっていない");
+            assert!(this.ed.text().starts_with('\n'), "本文の字に改行が入っていない");
+            assert!(!this.status.is_empty(), "何をしたか言っていない");
         });
     }
 
@@ -1771,18 +1815,20 @@ mod paged_view_tests {
         });
     }
 
+    /// **Web の形(区切り=なし)だけは紙に折らない。** 1枚の長い紙で、
+    /// 頁の間隔は紙の高さより詰まる(2026-09-02 までは「編集モード」の
+    /// 既定だった見え方。いまは普通の文書は紙を積む)
     #[gpui::test]
-    fn edit_mode_does_not_wrap(cx: &mut gpui::TestAppContext) {
+    fn the_web_form_does_not_fold_into_sheets(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
         w.update(cx, |this, _| {
             this.doc = Document::plain(&"いろはにほへとちりぬるを。".repeat(400));
             this.ed = Editor::new(&this.doc.body_text());
+            this.native = true;
+            this.tmpl.setting.br = kumihan::theme::Break::None;
             this.relayout();
-            assert!(!this.paged, "既定が印刷モードになっている");
-            assert_eq!(this.page_tops, vec![0.0], "編集モードなのに折った");
-            let d = this.page_offsets.windows(2).map(|w| w[1] - w[0]).next().unwrap_or(0.0);
-            assert!(d > 0.0 && d < this.pg.h_mm,
-                "編集モードの頁の間隔が紙の高さになっている: {d}");
+            assert!(!this.sheets(), "Web の形なのに紙を積んだ");
+            assert!(this.page_tops.len() <= 1, "Web の形なのに紙を積んで折った: {:?}", this.page_tops);
         });
     }
 }

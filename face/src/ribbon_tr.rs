@@ -188,7 +188,6 @@ pub const WORDS: &[(&str, &str)] = &[
     ("Print Area", "Yazdırma Alanı"),
     ("Print gridlines", "Kılavuz çizgileri de yazdır"),
     ("Print headings", "Başlıkları da yazdır"),
-    ("Print layout", "Yazdırma düzeni"),
     ("Print titles", "Başlıkları yazdır"),
     ("Protect Range", "Aralığı koru"),
     ("Protect sheet", "Sayfayı Koruyun"),

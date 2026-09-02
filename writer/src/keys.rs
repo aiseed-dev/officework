@@ -1159,7 +1159,7 @@ impl Writer {
         cx.notify();
     }
     pub(crate) fn do_page_break(&mut self, _: &ui::PageBreak, _: &mut Window, cx: &mut Context<Self>) {
-        self.run_cmd("pagebreak", cx);
+        self.insert_break("page");
         cx.notify();
     }
     pub(crate) fn do_font_bigger(&mut self, _: &ui::FontBigger, _: &mut Window, cx: &mut Context<Self>) {
@@ -1415,6 +1415,12 @@ impl Writer {
                     items.into_iter().map(|(k, l, _)| (k.to_string(), l.to_string())).collect()
                 })
                 .unwrap_or_default(),
+            // 区切り。ページ区切りと、節の区切り2種(2026-09-02)
+            "pagebreak" => vec![
+                ("page".into(), ui::t!("break_page").to_string()),
+                ("section".into(), ui::t!("break_section_next_page").to_string()),
+                ("section-cont".into(), ui::t!("break_section_continuous").to_string()),
+            ],
             // 文書の保護。docx の w:documentProtection の w:edit の4つと「保護しない」
             "prot-doc" => vec![
                 ("off".into(), ui::t!("protection_off").to_string()),
@@ -1432,6 +1438,7 @@ impl Writer {
         match kind {
             "img-align" => self.shape_align_doc(key),
             "prot-doc" => self.set_protection(key),
+            "pagebreak" => self.insert_break(key),
             _ => {}
         }
     }

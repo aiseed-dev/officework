@@ -192,7 +192,6 @@ pub const WORDS: &[(&str, &str)] = &[
     ("Print Area", "印刷範囲"),
     ("Print gridlines", "枠線も印刷"),
     ("Print headings", "見出しも印刷"),
-    ("Print layout", "印刷レイアウト"),
     ("Print titles", "タイトルを印刷する"),
     ("Protect Range", "範囲を保護する"),
     ("Protect sheet", "シートを保護する"),

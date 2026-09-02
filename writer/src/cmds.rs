@@ -86,7 +86,7 @@ impl Writer {
     /// **一覧が開くボタン。** リボンは ▾ を添える。押すと候補の一覧
     /// (パネル)が出て、選んで終わる。腕の目印: `open_list` を立てる物だけ
     pub(crate) const MENU_IDS: &'static [&'static str] = &[
-        "fontname", "fontsize", "parastyle", "inssymbol", "insshape", "inssmartart",
+        "fontname", "fontsize", "parastyle", "inssymbol", "insshape", "inssmartart", "pagebreak",
     ];
 
     /// **小窓が開くボタン。** リボンは … を添える(メニュー項目末尾の
@@ -511,7 +511,14 @@ impl Writer {
             "decoffset" => self.para(|p| p.indent = p.indent.saturating_sub(1)),
             // 行間。1.0 → 1.5 → 2.0 → 1.0 と回す(小窓がまだ無いので)
             // この段落の前で改ページ(押すたびに入切)
-            "pagebreak" => self.para(|p| p.page_break_before = !p.page_break_before),
+            // 区切り。一覧から ページ / 節(次のページから) / 節(続き) を選ぶ
+            // (2026-09-02。前はページ区切りの入切だけだった)。Ctrl+Enter は
+            // 一覧を出さずに `insert_break("page")` を直に呼ぶ
+            "pagebreak" => {
+                let opens = self.open_list != Some("pagebreak");
+                self.open_list = opens.then_some("pagebreak");
+                self.pick_sel = 0;
+            }
             // 段落の背景色。無し → 薄黄 → 薄青 → 無し、で回す
             "paracolor" => self.para(|p| {
                 p.shade = match p.shade.as_deref() {
@@ -1455,34 +1462,12 @@ impl Writer {
                     "".into()
                 };
             }
-            // 印刷レイアウト。**紙を1枚ずつ積んで見せる**(編集は巻物のまま)。
-            // 節で紙が変わる文書は、この形でないと紙の大きさの違いが出せない
-            "printview" => {
-                if self.doc.vertical {
-                    self.status =
-                        ui::t!("no_print_layout_vertical").into();
-                    return;
-                }
-                self.paged = !self.paged;
-                if self.paged {
-                    self.multipage = false; // 画面だけの折り方どうし、両立させない
-                }
-                self.relayout();
-                self.status = if self.paged {
-                    ui::t!("print_layout_sheets_come").into()
-                } else {
-                    ui::t!("back_editing_view_one").into()
-                };
-            }
             "multipage" => {
                 if self.doc.vertical {
                     self.status = ui::t!("no_spread_view_vertical").into();
                     return;
                 }
                 self.multipage = !self.multipage;
-                if self.multipage {
-                    self.paged = false;
-                }
                 self.relayout();
                 self.status = if self.multipage {
                     ui::t!("spread_view_two_pages").into()

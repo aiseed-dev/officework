@@ -192,7 +192,6 @@ pub const WORDS: &[(&str, &str)] = &[
     ("Print Area", "列印範圍"),
     ("Print gridlines", "列印格線"),
     ("Print headings", "列印列標和欄標"),
-    ("Print layout", "整頁模式"),
     ("Print titles", "列印標題"),
     ("Protect Range", "保護範圍"),
     ("Protect sheet", "保護工作表"),

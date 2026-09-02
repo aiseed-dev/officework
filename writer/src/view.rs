@@ -274,7 +274,7 @@ impl Render for Writer {
             &[
                 ("‖", None),
                 ("fit-width", Some("幅に合わせる")),
-                ("multipage", Some("複数ページ")), ("printview", None),
+                ("multipage", Some("複数ページ")),
                 ("zoom-out", None),
                 ("‖", None), ("‖", None),
                 ("‖", None), ("show-statusbar", None), ("show-right", None),
@@ -811,13 +811,14 @@ impl Render for Writer {
             Some(c) => gpui::Rgba { r: hex(c, 0), g: hex(c, 1), b: hex(c, 2), a: 1.0 },
             None => gpui::Rgba { r: 1.0, g: 1.0, b: 1.0, a: 1.0 },
         };
-        // 印刷モードでは容器を透明にして、**紙を1枚ずつ**子として敷く。
-        // 中身の座標は変えない(容器が原点のまま)ので、他は触らずに済む。
-        // 紙を先に足すので、あとから足す字や画像はその上に載る
+        // 紙を1枚ずつ子として敷く(容器は透明)。中身の座標は変えない
+        // (容器が原点のまま)ので、他は触らずに済む。紙を先に足すので、
+        // あとから足す字や画像はその上に載る。Web の形(区切り=なし)と
+        // 縦書きと見開きは1枚の長い紙のまま
         let mut paper = div().absolute()
             .left(px(28.0)).top(px(14.0 - self.scroll_mm * pxmm))
             .w(px(self.paper_w_mm() * pxmm)).h(px(self.content_mm() * pxmm));
-        if self.paged {
+        if self.sheets() {
             for (k, top) in self.page_tops.clone().iter().enumerate() {
                 let q = self.page_papers.get(k).copied().unwrap_or(paper::Paper::from_page(&self.pg));
                 paper = paper.child(div().absolute()

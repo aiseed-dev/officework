@@ -192,7 +192,6 @@ pub const WORDS: &[(&str, &str)] = &[
     ("Print Area", "인쇄 영역"),
     ("Print gridlines", "눈금선 인쇄"),
     ("Print headings", "머리글 인쇄"),
-    ("Print layout", "인쇄 모양"),
     ("Print titles", "제목 인쇄"),
     ("Protect Range", "보호 범위"),
     ("Protect sheet", "시트 보호"),

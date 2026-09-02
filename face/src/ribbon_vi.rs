@@ -188,7 +188,6 @@ pub const WORDS: &[(&str, &str)] = &[
     ("Print Area", "Vùng in"),
     ("Print gridlines", "In cả đường lưới"),
     ("Print headings", "In cả tiêu đề"),
-    ("Print layout", "Bố cục in"),
     ("Print titles", "In tiêu đề"),
     ("Protect Range", "Bảo vệ phạm vi"),
     ("Protect sheet", "Bảo vệ trang tính"),

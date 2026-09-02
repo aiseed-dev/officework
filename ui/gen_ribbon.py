@@ -763,7 +763,6 @@ EXTRA_CMDS = {
         ("View", 'nav', "fit-page", "Fit to page", "fit-page", "c"),
         ("View", 'fit-page', "fit-width", "Fit to width", "fit-width", "c"),
         ("View", 'fit-width', "zoom100", "Zoom to 100%", "zoom100", "c"),
-        ("View", 'zoom-out', "printview", "Print layout", "printview", "c"),
         ("View", 'printview', "multipage", "Multiple pages", "multipage", "c"),
         # **表にしかありませんでした**(2026-08-21 発注者「双方でできるように
         # したいです」)。中身は ui::appcmd に1本あります。ダークモードの
