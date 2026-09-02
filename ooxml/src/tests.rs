@@ -3382,14 +3382,14 @@ mod track_date_tests {
             "<m:oMath><m:f><m:num>{}{}{}</m:num><m:den>{}</m:den></m:f></m:oMath>",
             m_r("a"), m_r("+"), m_r("b"), m_r("c")
         );
-        assert_eq!(crate::omml::to_latex(&x).as_deref(), Some("\\frac{a+b}{c}"));
+        assert_eq!(kumihan::omml::to_latex(&x).as_deref(), Some("\\frac{a+b}{c}"));
 
         // 上付き a^2。1文字は中括弧で包まない
         let x = format!(
             "<m:oMath><m:sSup><m:e>{}</m:e><m:sup>{}</m:sup></m:sSup></m:oMath>",
             m_r("a"), m_r("2")
         );
-        assert_eq!(crate::omml::to_latex(&x).as_deref(), Some("a^2"));
+        assert_eq!(kumihan::omml::to_latex(&x).as_deref(), Some("a^2"));
     }
 
     #[test]
@@ -3399,7 +3399,7 @@ mod track_date_tests {
             "<m:oMath><m:nary><m:naryPr><m:chr m:val=\"∑\"/></m:naryPr><m:sub>{}{}{}</m:sub><m:sup>{}</m:sup><m:e>{}</m:e></m:nary></m:oMath>",
             m_r("i"), m_r("="), m_r("1"), m_r("n"), m_r("i")
         );
-        assert_eq!(crate::omml::to_latex(&x).as_deref(), Some("\\sum_{i=1}^ni"));
+        assert_eq!(kumihan::omml::to_latex(&x).as_deref(), Some("\\sum_{i=1}^ni"));
     }
 
     #[test]
@@ -3409,7 +3409,7 @@ mod track_date_tests {
             m_r("a"), m_r("b")
         );
         assert_eq!(
-            crate::omml::to_latex(&x).as_deref(),
+            kumihan::omml::to_latex(&x).as_deref(),
             Some("\\left( \\frac{a}{b} \\right)")
         );
     }
@@ -3423,7 +3423,7 @@ mod track_date_tests {
             m_r("lim"), m_r("x"), m_r("→"), m_r("0"), m_r("f")
         );
         assert_eq!(
-            crate::omml::to_latex(&x).as_deref(),
+            kumihan::omml::to_latex(&x).as_deref(),
             Some("\\lim_{x\\to 0} f")
         );
     }
@@ -3435,11 +3435,11 @@ mod track_date_tests {
             r#"<m:oMath><m:r><m:rPr><m:lit/><m:nor/></m:rPr><w:rPr><w:rFonts w:ascii="Cambria Math"/></w:rPr><m:t xml:space="preserve">面積</m:t></m:r>{}</m:oMath>"#,
             m_r("=")
         );
-        assert_eq!(crate::omml::to_latex(&x).as_deref(), Some("\\text{面積}="));
+        assert_eq!(kumihan::omml::to_latex(&x).as_deref(), Some("\\text{面積}="));
 
         // 印が無い日本語も組めないので `\text{}` へ。続く分はまとめる
         let x = format!("<m:oMath>{}</m:oMath>", m_r("面積"));
-        assert_eq!(crate::omml::to_latex(&x).as_deref(), Some("\\text{面積}"));
+        assert_eq!(kumihan::omml::to_latex(&x).as_deref(), Some("\\text{面積}"));
     }
 
     /// 読んだ docx の段落に、組める形(LaTeX)の数式が載る

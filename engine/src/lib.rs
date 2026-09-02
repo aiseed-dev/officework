@@ -57,6 +57,10 @@ pub mod html_write;
 pub mod fill;
 /// 数式を組む(LaTeX → PNG)。typst + mitex
 pub mod suushiki;
+
+/// **OMML(docx と xlsx の数式)を LaTeX に読む。**
+/// 組むのは [`suushiki`] なので、読んだ物はそのまま紙に出せます
+pub mod omml;
 pub use edit::Editor;
 
 mod doc;

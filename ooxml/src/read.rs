@@ -1857,7 +1857,7 @@ pub(super) fn parse_document_rels_num(
                             // 別に、組める形にした物を段落に置きます。こちらは
                             // LaTeX を typst で組めるので、これで数式が絵として
                             // 出ます(bytes は空のまま — 組むのは表示する側)
-                            if let Some(tex) = crate::omml::to_latex(raw) {
+                            if let Some(tex) = kumihan::omml::to_latex(raw) {
                                 let off = para.as_ref().map_or(0, |ps: &Vec<Run>| {
                                     ps.iter().map(|r| r.text.len()).sum::<usize>()
                                 }) + cur.len();

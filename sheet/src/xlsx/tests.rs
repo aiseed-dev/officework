@@ -52,6 +52,42 @@ mod fmt_round {
         );
     }
 
+    /// **数式(OMML)を LaTeX に読む。**
+    ///
+    /// Excel はテキストボックスの中に
+    /// `<mc:AlternateContent><mc:Choice><a14:m>` として書きます。
+    /// 読み飛ばさないと、中の `m:t` が図形の文字に混ざります(docx で
+    /// 同じ穴を踏みました)。代わりの字(`mc:Fallback`)も落とします。
+    #[test]
+    fn an_equation_in_a_text_box_becomes_latex() {
+        let dr = r#"<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+<xdr:twoCellAnchor><xdr:from><xdr:col>2</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
+<xdr:to><xdr:col>5</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>4</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+<xdr:sp macro="" textlink=""><xdr:nvSpPr><xdr:cNvPr id="2" name="テキスト ボックス 1"/><xdr:cNvSpPr txBox="1"/></xdr:nvSpPr>
+<xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></xdr:spPr>
+<xdr:txBody><a:bodyPr/><a:lstStyle/><a:p><mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+<mc:Choice xmlns:a14="http://schemas.microsoft.com/office/drawing/2010/main" Requires="a14"><a14:m>
+<m:oMathPara xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:oMath><m:f>
+<m:num><m:r><m:t>a+b</m:t></m:r></m:num><m:den><m:r><m:t>c</m:t></m:r></m:den>
+</m:f></m:oMath></m:oMathPara></a14:m></mc:Choice>
+<mc:Fallback><a:r><a:t>(a+b)/c</a:t></a:r></mc:Fallback></mc:AlternateContent></a:p></xdr:txBody></xdr:sp>
+<xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>"#;
+        let v = crate::xlsx::read::parse_drawing_anchors(dr);
+        let tex = v
+            .iter()
+            .find_map(|t| match &t.5 {
+                crate::xlsx::read::DrawKind::Math(s) => Some(s.as_str()),
+                _ => None,
+            })
+            .expect("数式が読めない");
+        assert_eq!(tex, "\\frac{a+b}{c}");
+        // 図形としては出さない(中の字が図形の文字に混ざっていた)
+        assert!(
+            !v.iter().any(|t| matches!(t.5, crate::xlsx::read::DrawKind::Shape(_))),
+            "数式が図形としても出た"
+        );
+    }
+
     /// editAs="oneCell" は「セルと動くが、大きさは変えない」。
     /// 右下を持たせると、列の幅を変えたとき図形まで伸びてしまう
     #[test]

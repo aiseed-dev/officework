@@ -4172,6 +4172,7 @@ dependencies = [
  "hyphenation",
  "mitex",
  "printpdf",
+ "quick-xml 0.36.2",
  "toml_edit 0.25.13+spec-1.1.0",
  "ttf-parser 0.20.0",
  "typst",

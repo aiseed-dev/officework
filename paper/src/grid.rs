@@ -1792,6 +1792,34 @@ fn draw_sheet(
             };
             zukei(l1, sp, x, y_top, scale);
         }
+
+        // **画像も紙に出します**(2026-09-03)。模型には在るのに紙に
+        // 出ていませんでした。xlsx の数式はテキストボックスの中の OMML
+        // なので、読むときに組んで画像として置いてあります — ここを
+        // 通らないと数式も出ません
+        let mm = 25.4 / 96.0;
+        let mut e_kumi: Vec<(usize, &book::SheetImage)> = grid
+            .images
+            .iter()
+            .chain(grid.images_new.iter())
+            .map(|im| (cell_at(im.at).0, im))
+            .collect();
+        e_kumi.sort_by_key(|(p, _)| *p);
+        for (page, im) in e_kumi {
+            if page >= board.leaves.len() {
+                continue;
+            }
+            let (_, x, y_top) = cell_at(im.at);
+            let (w, h) = (im.width_px * mm * scale, im.height_px * mm * scale);
+            // 紙面は上端の y。PDF は左下からなので、高さのぶん下げます
+            board.ink(page).leaf.images.push(pdfw::Image {
+                x_mm: x + im.dx_px * mm * scale,
+                y_mm: y_top - im.dy_px * mm * scale - h,
+                w_mm: w,
+                h_mm: h,
+                data: std::sync::Arc::new(im.data.clone()),
+            });
+        }
     }
 
     // **何も描かれなかった紙は出しません**(2026-09-01)。
@@ -2781,6 +2809,44 @@ mod print_extras_tests {
         let mut without = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut without).unwrap();
         assert!(with_t.len() > without.len(), "タイトル行の繰り返しが出ていない");
+    }
+
+    /// **画像が紙に出る。**
+    ///
+    /// 模型には在るのに紙に出ていませんでした(2026-09-03)。xlsx の数式は
+    /// テキストボックスの中の OMML で、読むときに組んで画像として置くので、
+    /// ここを通らないと数式も出ません。
+    #[test]
+    fn a_picture_on_the_sheet_is_printed() {
+        let mut s = book::Sheet::default();
+        s.set(book::Pos::new(0, 0), book::Cell {
+            value: book::Value::Text("表".into()), ..Default::default() });
+        // 1x1 の PNG(中身は読めれば何でもよい)
+        let png = {
+            let mut v = Vec::new();
+            let im = image::RgbImage::from_pixel(4, 4, image::Rgb([0, 0, 0]));
+            image::DynamicImage::ImageRgb8(im)
+                .write_to(&mut std::io::Cursor::new(&mut v), image::ImageFormat::Png)
+                .unwrap();
+            v
+        };
+        s.images.push(book::SheetImage {
+            at: book::Pos::new(2, 1),
+            dx_px: 0.0,
+            dy_px: 0.0,
+            width_px: 96.0,
+            height_px: 48.0,
+            data: png,
+        });
+        let leaves = sheet_leaves(&s, Paper::default(), &PrintSetup::default()).unwrap();
+        let n: usize = leaves.iter().map(|l| l.images.len()).sum();
+        assert_eq!(n, 1, "画像が紙に出ていない");
+        let im = leaves.iter().flat_map(|l| l.images.iter()).next().unwrap();
+        // 96px = 1インチ = 25.4mm、48px はその半分
+        assert!((im.w_mm - 25.4).abs() < 0.5, "幅が合わない: {}", im.w_mm);
+        assert!((im.h_mm - 12.7).abs() < 0.5, "高さが合わない: {}", im.h_mm);
+        // 左上のセルではないので、左の余白より右に出る
+        assert!(im.x_mm > Paper::default().margin_mm, "左端に寄っている");
     }
 
     /// タイトル列を差し込む規則そのもの。**同じ列を1枚に二度出さない**のが肝で、

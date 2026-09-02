@@ -584,6 +584,9 @@ pub(super) enum DrawKind {
     /// (2026-08-11。リッチテキストで同じ区別をしたのと同じ形)。
     /// 保存では原本の drawing がそのまま持ち越されるので、**壊れはしない。**
     Chart,
+    /// **数式**(テキストボックスの中の OMML)。中身は LaTeX に直した原文で、
+    /// 絵にするのは受け手です。docx と同じ道([`kumihan::omml`])を通ります
+    Math(String),
 }
 
 /// drawing(xl/drawings/drawingN.xml)から、画像と図形のアンカーを拾う。
@@ -691,6 +694,15 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
     let mut r = Reader::from_str(xml);
     let mut buf = Vec::new();
     let mut out = Vec::new();
+    // **数式(OMML)。** Excel はテキストボックスの中に
+    // `<mc:AlternateContent><mc:Choice><a14:m>` として書きます。
+    // 読み飛ばさないと、中の `m:t` が図形の文字に混ざります
+    let mut math: Option<String> = None;
+    // その数式の代わりの字(`mc:Fallback`)も読み飛ばす印。
+    // 数式を採った所の分だけ落とします — 他の `mc:Fallback` は要ります
+    let mut fallback_wo_tobasu = false;
+    // 直前のイベントの終わり位置(原文の切り出しに使う)
+    let mut last_pos = r.buffer_position() as usize;
     let (mut col, mut row) = (None::<u32>, None::<u32>);
     let (mut off_x, mut off_y) = (0i64, 0i64);
     let (mut cx, mut cy) = (None::<i64>, None::<i64>);
@@ -747,9 +759,34 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
     let (mut fill_kimatta, mut line_kimatta) = (false, false);
     let mut cur: Vec<u8> = Vec::new();
     loop {
-        match r.read_event_into(&mut buf) {
+        let ev = r.read_event_into(&mut buf);
+        let start_pos = last_pos;
+        last_pos = r.buffer_position() as usize;
+        match ev {
             Ok(Event::Eof) | Err(_) => break,
             Ok(Event::Start(e)) => match local(e.name().as_ref()) {
+                // **数式(OMML)。** 部分木ごと読み飛ばし、LaTeX に直して
+                // 控えます。飛ばさないと中の `m:t` が図形の文字に混ざります
+                // (docx で同じ穴を踏みました)。`a14:m` は接頭辞を落とすと `m`
+                b"m" | b"oMath" | b"oMathPara" if in_body => {
+                    let name = e.name().to_owned();
+                    if r.read_to_end_into(name, &mut Vec::new()).is_ok() {
+                        last_pos = r.buffer_position() as usize;
+                        if math.is_none() {
+                            math = kumihan::omml::to_latex(&xml[start_pos..last_pos]);
+                        }
+                        fallback_wo_tobasu = true;
+                    }
+                }
+                // 数式の代わりの字(`mc:Fallback`)。数式を採ったときだけ
+                // 落とします — 他の `mc:Fallback` の中身は要ります
+                b"Fallback" if fallback_wo_tobasu => {
+                    let name = e.name().to_owned();
+                    if r.read_to_end_into(name, &mut Vec::new()).is_ok() {
+                        last_pos = r.buffer_position() as usize;
+                    }
+                    fallback_wo_tobasu = false;
+                }
                 t @ (b"oneCellAnchor" | b"twoCellAnchor" | b"absoluteAnchor") => {
                     (col, row, cx, cy, embed, prst, fill, line) =
                         (None, None, None, None, None, None, None, None);
@@ -1114,6 +1151,9 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         ..Default::default()
                     };
                     let kind = match (embed.take(), prst.take(), has_custom) {
+                        // **数式が先。** 入れ物のテキストボックスではなく、
+                        // 中の式を出します
+                        _ if math.is_some() => math.take().map(DrawKind::Math),
                         (Some(em), _, _) => Some(DrawKind::Image(em)),
                         (None, Some(pr), _) => Some(DrawKind::Shape(Box::new(
                             book::SheetShape { kind: pr, ..tpl },
@@ -2712,6 +2752,28 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                     // 決めなので描かないが、在ったことは帳簿に載せる。
                     // 原本の drawing は保存で持ち越されるので壊れはしない
                     DrawKind::Chart => rep.note("グラフ(chart)"),
+                    // **数式は絵にして置きます。** Excel はテキストボックスの
+                    // 中に OMML で書きますが、こちらは LaTeX を組めるので、
+                    // 読んだ式を組んで画像として置きます。大きさは組んだ
+                    // 結果の寸法です(テキストボックスの大きさではありません)。
+                    // 保存では原本の drawing が持ち越されるので、Excel へ
+                    // 返したときも数式のままです
+                    DrawKind::Math(tex) => {
+                        let moji = kumihan::font::for_document(None)
+                            .ok()
+                            .and_then(|(f, _)| kumihan::font::load(f).ok());
+                        match kumihan::suushiki::kumu(&tex, 11.0, moji.as_deref()) {
+                            Ok(k) => sh.images.push(book::SheetImage {
+                                at,
+                                dx_px: ox_emu as f32 / 9525.0,
+                                dy_px: oy_emu as f32 / 9525.0,
+                                width_px: k.w_mm * 96.0 / 25.4,
+                                height_px: k.h_mm * 96.0 / 25.4,
+                                data: k.png,
+                            }),
+                            Err(e) => rep.note(&format!("数式(組めません: {e})")),
+                        }
+                    }
                 }
             }
         }

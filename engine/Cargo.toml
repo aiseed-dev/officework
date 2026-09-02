@@ -10,6 +10,9 @@ book = { path = "../book" }
 hyphenation = { version = "0.8", features = ["embed_en-us"] }
 toml_edit = { version = "0.25.13", default-features = false, features = ["parse"] }
 ttf-parser = "0.20"
+# OMML(docx と xlsx の数式)を読むのに使います。
+# 書き出しはしません — 読むだけです
+quick-xml = "0.36"
 # **数式を組む係**(2026-09-02 発注者「数式も rust に」)。LaTeX を mitex で
 # typst の数式に変え、typst が組んで PNG にします。Python(TeX/matplotlib)は
 # 使いません。版は固定します(typst は版ごとに API が変わります)
