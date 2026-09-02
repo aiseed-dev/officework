@@ -336,6 +336,218 @@ pub fn post_https(
     ))
 }
 
+// ---------- 道具つきの対話(エージェントパネルのループが使う) ----------
+
+/// 道具の名乗り。`parameters` は JSON Schema の字をそのまま持つ
+/// (書くのはこちらのコードなので、形の検査は呼ぶ側の試験で足りる)
+#[derive(Debug, Clone)]
+pub struct ToolDef {
+    pub name: String,
+    pub description: String,
+    /// 例: `{"type":"object","properties":{"a1":{"type":"string"}},"required":["a1"]}`
+    pub parameters: String,
+}
+
+/// モデルからの道具呼び(OpenAI 互換の tool_calls の1つ)
+#[derive(Debug, Clone, PartialEq)]
+pub struct ToolCall {
+    pub id: String,
+    pub name: String,
+    /// 引数(JSON の字)。読むのは道具の側
+    pub arguments: String,
+}
+
+/// 対話の1つの発言。履歴はこの並びで持ち、毎回まるごと送る
+#[derive(Debug, Clone)]
+pub enum Msg {
+    System(String),
+    User(String),
+    Assistant(String),
+    /// モデルが道具を呼んだ番。**そのまま履歴に残して次で送り返す**
+    /// (送り返さないと、モデルは何を呼んだか思い出せない)
+    AssistantCalls(Vec<ToolCall>),
+    /// 道具の結果。`id` はどの呼びへの答えかを指す
+    ToolResult { id: String, content: String },
+}
+
+/// 道具つきの1往復の答え。道具呼びが無ければ `content` が答えの字
+#[derive(Debug, Clone, Default)]
+pub struct ChatOut {
+    pub content: String,
+    pub tool_calls: Vec<ToolCall>,
+    pub prompt_tokens: u64,
+    pub completion_tokens: u64,
+    pub elapsed_ms: u128,
+}
+
+fn msg_json(m: &Msg) -> String {
+    match m {
+        Msg::System(s) => format!(r#"{{"role":"system","content":"{}"}}"#, esc(s)),
+        Msg::User(s) => format!(r#"{{"role":"user","content":"{}"}}"#, esc(s)),
+        Msg::Assistant(s) => format!(r#"{{"role":"assistant","content":"{}"}}"#, esc(s)),
+        Msg::AssistantCalls(calls) => {
+            let cc: Vec<String> = calls
+                .iter()
+                .map(|c| {
+                    format!(
+                        r#"{{"id":"{}","type":"function","function":{{"name":"{}","arguments":"{}"}}}}"#,
+                        esc(&c.id),
+                        esc(&c.name),
+                        esc(&c.arguments)
+                    )
+                })
+                .collect();
+            format!(r#"{{"role":"assistant","content":null,"tool_calls":[{}]}}"#, cc.join(","))
+        }
+        Msg::ToolResult { id, content } => format!(
+            r#"{{"role":"tool","tool_call_id":"{}","content":"{}"}}"#,
+            esc(id),
+            esc(content)
+        ),
+    }
+}
+
+fn tools_json(tools: &[ToolDef]) -> String {
+    if tools.is_empty() {
+        return String::new();
+    }
+    let tt: Vec<String> = tools
+        .iter()
+        .map(|t| {
+            format!(
+                r#"{{"type":"function","function":{{"name":"{}","description":"{}","parameters":{}}}}}"#,
+                esc(&t.name),
+                esc(&t.description),
+                t.parameters
+            )
+        })
+        .collect();
+    format!(r#","tools":[{}]"#, tt.join(","))
+}
+
+fn tools_body(ep: &Endpoint, msgs: &[Msg], tools: &[ToolDef], temperature: f32) -> String {
+    let mm: Vec<String> = msgs.iter().map(msg_json).collect();
+    format!(
+        r#"{{"model":"{}","temperature":{},"messages":[{}]{}}}"#,
+        esc(&ep.model),
+        temperature,
+        mm.join(","),
+        tools_json(tools)
+    )
+}
+
+/// `"鍵": [ … ]` の中身を切り出す(文字列の中の記号は数えない)。
+/// 値が `null` や数値なら None — 「無い」と同じに扱う
+fn array_after<'a>(raw: &'a str, key: &str) -> Option<&'a str> {
+    let i = raw.find(&format!("\"{key}\""))?;
+    let rest = &raw[i + key.len() + 2..];
+    let c = rest.find(':')?;
+    let after = rest[c + 1..].trim_start();
+    if !after.starts_with('[') {
+        return None;
+    }
+    let (mut depth, mut in_str, mut esc_next) = (0i32, false, false);
+    for (j, ch) in after.char_indices() {
+        if in_str {
+            if esc_next {
+                esc_next = false;
+            } else if ch == '\\' {
+                esc_next = true;
+            } else if ch == '"' {
+                in_str = false;
+            }
+            continue;
+        }
+        match ch {
+            '"' => in_str = true,
+            '[' => depth += 1,
+            ']' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(&after[1..j]);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// `"鍵": "…"` の値を取り出す。値が `null` なら None
+/// ([`extract_content`] は `null` の次の引用符へ食いつくので、
+/// 道具呼びの応答にはこちらを使う)
+fn quoted_after(raw: &str, key: &str) -> Option<String> {
+    let i = raw.find(&format!("\"{key}\""))?;
+    let rest = &raw[i + key.len() + 2..];
+    let c = rest.find(':')?;
+    let after = rest[c + 1..].trim_start();
+    if !after.starts_with('"') {
+        return None;
+    }
+    let mut out = String::new();
+    let mut it = after[1..].chars();
+    while let Some(ch) = it.next() {
+        match ch {
+            '"' => return Some(out),
+            '\\' => match it.next()? {
+                'n' => out.push('\n'),
+                't' => out.push('\t'),
+                'r' => {}
+                'u' => {
+                    let h: String = it.by_ref().take(4).collect();
+                    if let Some(ch) = u32::from_str_radix(&h, 16).ok().and_then(char::from_u32) {
+                        out.push(ch);
+                    }
+                }
+                o => out.push(o),
+            },
+            o => out.push(o),
+        }
+    }
+    None
+}
+
+/// OpenAI 互換の応答から content と tool_calls を読む
+fn parse_chat_out(raw: &str, elapsed_ms: u128) -> Result<ChatOut, String> {
+    let tool_calls: Vec<ToolCall> = array_after(raw, "tool_calls")
+        .map(|seg| {
+            objects(seg)
+                .iter()
+                .map(|o| ToolCall {
+                    id: field(o, "id").unwrap_or_default(),
+                    name: field(o, "name").unwrap_or_default(),
+                    arguments: field(o, "arguments").unwrap_or_else(|| "{}".into()),
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let content = quoted_after(raw, "content").unwrap_or_default();
+    if content.is_empty() && tool_calls.is_empty() {
+        return Err(format!("モデルの応答を読めません: {}", head(raw, 200)));
+    }
+    Ok(ChatOut {
+        content,
+        tool_calls,
+        prompt_tokens: usage(raw, "prompt_tokens"),
+        completion_tokens: usage(raw, "completion_tokens"),
+        elapsed_ms,
+    })
+}
+
+/// 履歴と道具の一覧を投げて、答えか道具呼びを受け取る。
+/// **繋がらなければ Err**(chat と同じ理由 — 黙って空を返さない)
+pub fn chat_tools(
+    ep: &Endpoint,
+    msgs: &[Msg],
+    tools: &[ToolDef],
+    temperature: f32,
+) -> Result<ChatOut, String> {
+    let body = tools_body(ep, msgs, tools, temperature);
+    let t0 = std::time::Instant::now();
+    let raw = post(ep, &body)?;
+    parse_chat_out(&raw, t0.elapsed().as_millis())
+}
+
 /// JSON から `"鍵":"…"` の値を1つ取り出す(完全な処理系は持たない)。
 /// Claude の応答は content[0].text なので、text を引けば足りる
 pub fn extract_text_field(raw: &str, key: &str) -> Option<String> {
@@ -538,6 +750,61 @@ mod tests {
     fn candidate_array_keeps_order() {
         let v = string_array(r#"["のち","あと","うし","ご"]"#);
         assert_eq!(v, vec!["のち", "あと", "うし", "ご"], "候補は順序が意味を持つ");
+    }
+
+    #[test]
+    fn the_tool_body_carries_history_and_tools() {
+        let ep = Endpoint { model: "m".into(), ..Default::default() };
+        let msgs = [
+            Msg::System("s".into()),
+            Msg::User("u".into()),
+            Msg::AssistantCalls(vec![ToolCall {
+                id: "c1".into(),
+                name: "read_range".into(),
+                arguments: r#"{"a1":"A1:B2"}"#.into(),
+            }]),
+            Msg::ToolResult { id: "c1".into(), content: "1\t2".into() },
+        ];
+        let tools = [ToolDef {
+            name: "read_range".into(),
+            description: "範囲を読む".into(),
+            parameters: r#"{"type":"object","properties":{"a1":{"type":"string"}}}"#.into(),
+        }];
+        let b = tools_body(&ep, &msgs, &tools, 0.0);
+        assert!(b.contains(r#""role":"tool","tool_call_id":"c1""#), "{b}");
+        assert!(b.contains(r#""tool_calls":[{"id":"c1""#), "{b}");
+        assert!(b.contains(r#""arguments":"{\"a1\":\"A1:B2\"}""#), "{b}");
+        assert!(b.contains(r#""tools":[{"type":"function""#), "{b}");
+    }
+
+    #[test]
+    fn a_tool_call_response_is_read_with_null_content() {
+        // content が null でも、次の鍵の引用符に食いつかない
+        let raw = r#"{"choices":[{"message":{"role":"assistant","content":null,
+            "tool_calls":[{"id":"call_1","type":"function","function":
+            {"name":"read_range","arguments":"{\"a1\":\"A1:B2\"}"}}]}}],
+            "usage":{"prompt_tokens":10,"completion_tokens":5}}"#;
+        let out = parse_chat_out(raw, 7).unwrap();
+        assert_eq!(out.content, "");
+        assert_eq!(out.tool_calls.len(), 1);
+        assert_eq!(out.tool_calls[0].id, "call_1");
+        assert_eq!(out.tool_calls[0].name, "read_range");
+        assert_eq!(out.tool_calls[0].arguments, r#"{"a1":"A1:B2"}"#);
+        assert_eq!(out.prompt_tokens, 10);
+    }
+
+    #[test]
+    fn a_plain_answer_is_read_without_tool_calls() {
+        let raw = r#"{"choices":[{"message":{"role":"assistant","content":"合計は 10 です"}}]}"#;
+        let out = parse_chat_out(raw, 1).unwrap();
+        assert_eq!(out.content, "合計は 10 です");
+        assert!(out.tool_calls.is_empty());
+    }
+
+    #[test]
+    fn an_unreadable_tool_response_is_an_error() {
+        // 空の応答を「答えが空だった」と読み違えない
+        assert!(parse_chat_out(r#"{"choices":[]}"#, 0).is_err());
     }
 
     #[test]

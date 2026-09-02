@@ -1,5 +1,5 @@
 [workspace]
-members = ["book", "pivot", "engine", "ooxml", "sheet", "lang", "ops", "paper", "pyrun", "face", "ui", "writer", "calc", "officework", "pysheet", "sidecar"]
+members = ["book", "pivot", "engine", "ooxml", "sheet", "lang", "ops", "paper", "pyrun", "face", "ui", "writer", "calc", "officework", "pysheet", "sidecar", "agent"]
 resolver = "2"
 # vendor は参照するだけ。workspace に取り込むと zed 側の
 # `workspace = true` 継承がこちらのルートを見に来て壊れる

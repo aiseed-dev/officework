@@ -1,0 +1,13 @@
+[package]
+name = "agent"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+# エージェントパネルのループの本体。gpui を持たない(face と同じ決め —
+# 試験できて、他の機械でも組める)。道具の実体も持たない — 結線は
+# trait で受け取り、アプリの側が語彙(ops)への結び付けを渡す。
+
+[dependencies]
+# モデルの宛先(Endpoint)と道具つきの対話(chat_tools)
+lang = { path = "../lang", default-features = false }
