@@ -30,6 +30,14 @@ import socket
 try:
     from . import sheet  # noqa: F401
     from . import _doc as doc  # noqa: F401
+    # **長さと色は本家と同じ置き場にも出します**(2026-09-01)。
+    # 本家の見本は `docx.shared.Pt` と書くので、`officework.shared.Pt`
+    # でも通るようにします
+    from . import shared  # noqa: F401
+    from . import enum  # noqa: F401
+    # **文書を作る口は頭にも置きます**(2026-09-01)。本家は
+    # `docx.Document()` と書くので、`officework.Document()` でも通します
+    from ._doc import Document  # noqa: F401
     _sheet_error = None
 except Exception as e:  # pragma: no cover
     # **名前を作らない** — None を入れると from officework import sheet が
@@ -39,7 +47,7 @@ except Exception as e:  # pragma: no cover
 
 def __getattr__(name):
     # sheet も doc も同じ拡張(_sheet.so)の中にいるので、読めない理由は1つ
-    if name in ("sheet", "doc"):
+    if name in ("sheet", "doc", "shared", "enum", "Document"):
         raise ImportError(
             "officework のエンジン(_sheet)が読めません: {!r}".format(_sheet_error)
         ) from _sheet_error

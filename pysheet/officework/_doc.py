@@ -493,6 +493,69 @@ def Mm(v):
     return Length(round(v * 36000))
 
 
+def Cm(v):
+    """cm → Length。本家の docx.shared.Cm と同じ。"""
+    return Length(round(v * 360000))
+
+
+def Inches(v):
+    """インチ → Length。本家の docx.shared.Inches と同じ。"""
+    return Length(round(v * 914400))
+
+
+def Emu(v):
+    """EMU をそのまま Length に。本家の docx.shared.Emu と同じ。"""
+    return Length(int(v))
+
+
+def Twips(v):
+    """twip → Length。本家の docx.shared.Twips と同じ(1pt = 20twip)。"""
+    return Length(round(v * 635))
+
+
+class RGBColor(tuple):
+    """字の色。本家の `docx.shared.RGBColor` と同じ使い方です。
+
+    `RGBColor(0xFF, 0x00, 0x00)` で作り、`str()` は `"FF0000"` です。
+    こちらは色を `RRGGBB` の字で持つので、そのまま渡せます。
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, r, g, b):
+        for v in (r, g, b):
+            if not isinstance(v, int) or not 0 <= v <= 255:
+                raise ValueError("RGBColor の各成分は 0〜255 の整数です")
+        return super().__new__(cls, (r, g, b))
+
+    @classmethod
+    def from_string(cls, s):
+        """`"FF0000"` から作ります(本家と同じ)。"""
+        t = str(s).strip().lstrip("#")
+        if len(t) != 6:
+            raise ValueError("色は RRGGBB の6桁です: {!r}".format(s))
+        return cls(int(t[0:2], 16), int(t[2:4], 16), int(t[4:6], 16))
+
+    def __str__(self):
+        return "{:02X}{:02X}{:02X}".format(*self)
+
+    def __repr__(self):
+        return "RGBColor(0x{:02x}, 0x{:02x}, 0x{:02x})".format(*self)
+
+
+def Document(path=None, lang=None):
+    """空の文書を作る、または開く。**本家の `docx.Document` と同じ名前**です。
+
+        from officework import doc
+        d = doc.Document()            # 空の文書
+        d = doc.Document("報告.docx")  # 開く
+
+    中身は [`Doc`] と同じです。本家の見本をそのまま持ってくるための
+    別名です(2026-09-01。見本が `docx.Document()` で書いてありました)。
+    """
+    return Doc(path, lang)
+
+
 class InlineShape:
     """文書の中の画像(本家の InlineShape の役)。width / height は Length。"""
 
@@ -1216,8 +1279,17 @@ class ParagraphFormat:
 
     @property
     def right_indent(self):
-        """右の字下げ。**まだ模型が持っていません**ので常に None です。"""
+        """右の字下げ。**まだ模型が持っていません**ので常に None です。
+
+        代入は受けますが、捨てます。断ると本家の台本が途中で止まり、
+        持っている物まで書けなくなるためです(2026-09-01)。読めなかった
+        物は `unsupported` と同じ扱いで、`d.unsupported` に出ます。
+        """
         return None
+
+    @right_indent.setter
+    def right_indent(self, v):
+        self._p.note_unsupported("段落の右の字下げ(right_indent)")
 
     @property
     def page_break_before(self):
@@ -1514,9 +1586,18 @@ class _HeadFoot(str):
 
     @property
     def paragraphs(self):
-        """段落の一覧(python-docx と同じ)"""
-        return [Paragraph(p)
-                for p in self._raw.hf_paragraphs(footer=self._which == "footer")]
+        """段落の一覧(python-docx と同じ)。
+
+        **段落が1つも無ければ空の段落を1つ作ります。** python-docx の
+        新しい文書はヘッダーに空の段落を1つ持っていて、見本は
+        `header.paragraphs[0]` から書き始めます(2026-09-01)。
+        """
+        ashi = self._which == "footer"
+        ps = self._raw.hf_paragraphs(footer=ashi)
+        if not ps:
+            self._raw.add_hf_paragraph("", footer=ashi)
+            ps = self._raw.hf_paragraphs(footer=ashi)
+        return [Paragraph(p) for p in ps]
 
 
 class Row:

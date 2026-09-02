@@ -465,6 +465,21 @@ impl PyDoc {
         Ok(lock(&self.inner)?.unsupported.clone())
     }
 
+    /// **持っていない口に書かれたことを帳簿に足す。**
+    ///
+    /// 本家(python-docx)にあってこちらの模型が持たない設定は、断ると
+    /// 台本がそこで止まり、持っている物まで書けなくなります。受けて
+    /// 捨てますが、**黙っては捨てません** — ここに足して `unsupported`
+    /// に出します(2026-09-01)。
+    fn note_unsupported(&self, na: &str) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        match g.unsupported.iter_mut().find(|(n, _)| n == na) {
+            Some((_, k)) => *k += 1,
+            None => g.unsupported.push((na.to_string(), 1)),
+        }
+        Ok(())
+    }
+
     /// 本文の段落の一覧(表の中の段落は入らない)。
     #[getter]
     fn paragraphs(&self) -> PyResult<Vec<PyParagraph>> {
@@ -1124,16 +1139,22 @@ impl PyDoc {
     /// level は 1〜3 — この模型の見出しは3段まで(スタイル定義は持たない主義)。
     /// level=0(Title)は無い物なので正直に断る。
     #[pyo3(signature = (text="", level=1))]
+    /// 見出しを足す。`level` は 0〜3 で、**0 は文書の表題**です
+    /// (python-docx と同じ。模型は `ParaStyle::Title` を持っています)。
     fn add_heading(&self, text: &str, level: u8) -> PyResult<PyParagraph> {
-        if !(1..=3).contains(&level) {
+        if level > 3 {
             return Err(PyValueError::new_err(format!(
-                "見出しは 1〜3(この模型の見出しは3段まで。0=Title は持たない): {level}"
+                "見出しは 0〜3(0 は表題。この模型の見出しは3段まで): {level}"
             )));
         }
         let mut g = lock(&self.inner)?;
         let mut p = Paragraph {
             line_spacing: 1.0,
-            style: kumihan::ParaStyle::Heading(level),
+            style: if level == 0 {
+                kumihan::ParaStyle::Title
+            } else {
+                kumihan::ParaStyle::Heading(level)
+            },
             ..Default::default()
         };
         set_para_text(&mut p, text);
@@ -1821,6 +1842,17 @@ impl PyParagraph {
             s.para.first_line_twips.map(|t| t as f32 / 20.0),
         )?;
         Ok(d)
+    }
+
+    /// **持っていない口に書かれたことを帳簿に足す。**
+    /// 中身は `Doc.note_unsupported` と同じです。
+    fn note_unsupported(&self, na: &str) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        match g.unsupported.iter_mut().find(|(n, _)| n == na) {
+            Some((_, k)) => *k += 1,
+            None => g.unsupported.push((na.to_string(), 1)),
+        }
+        Ok(())
     }
 
     /// **この段落のスタイルの styleId**(docx の `w:pStyle w:val`)。
