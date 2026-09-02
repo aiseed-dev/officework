@@ -72,6 +72,8 @@ pub fn eval_py_call(sheet: &Sheet, formula: &str) -> Option<(String, Vec<PyArg>)
         .map(|a| match a {
             Arg::One(v) => PyArg::One(v),
             Arg::Rect(c, vs) => PyArg::Rect(c, vs),
+            // 参照の和は Python へは渡せない(1つの2次元にならない)
+            Arg::Union(..) => PyArg::One(Value::Error("#VALUE!".into())),
         })
         .collect();
     Some((name, rest))
@@ -430,12 +432,17 @@ pub(super) fn recalc_pass_iter(
             }
         }
     }
+    // `=df(...)` の列の定義を先に埋める。普通の式はその値を読む。
+    // df のセルそのものの値(定義した列の名前かエラー)もここで置く
+    let mut changed = super::df::apply(sheet, others, at, book_path, date1904);
     // 式を集める。あふれる関数の入った式は「配列数式」として別扱い
     let mut formulas: Vec<(Pos, String)> = Vec::new();
     let mut arrays: Vec<(Pos, String)> = Vec::new();
     let mut cse_list: Vec<(Pos, String, (u32, u32))> = Vec::new();
     for (p, c) in &sheet.cells {
-        let Some(f) = c.formula.as_ref().filter(|f| !is_py_formula(f)) else { continue };
+        let Some(f) = c.formula.as_ref().filter(|f| !is_py_formula(f) && !super::df::is_df_formula(f)) else {
+            continue;
+        };
         let f = expand_names(f, &sheet.names);
         // **昔ながらの配列数式(CSE)は、中身に関わらず配列として計算する。**
         // =SUM(A1:A3*B1:B3) は普通に計算すると #VALUE! か1組だけの合計に
@@ -475,7 +482,6 @@ pub(super) fn recalc_pass_iter(
             }
         }
     }
-    let mut changed = false;
 
     let mut resolved: HashMap<Pos, Value> = HashMap::new();
     let mut visiting: HashSet<Pos> = HashSet::new();
@@ -758,5 +764,7 @@ pub(super) fn eval_array(
     Ok(match v {
         AVal::One(x) => vec![vec![x]],
         AVal::Arr(rows) => rows,
+        // 参照の和はそのままでは並びにならない(Excel も #VALUE!)
+        AVal::Union(_) => vec![vec![err("#VALUE!")]],
     })
 }

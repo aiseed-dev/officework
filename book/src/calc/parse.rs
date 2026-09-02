@@ -494,17 +494,33 @@ impl<'a> P<'a> {
                 let mut ap = AP { p: self };
                 ap.expr()?
             };
+            // 2次元の並びを(列数, 行優先の値)に直す
+            let flat = |rows: Vec<Vec<Value>>| -> (u32, Vec<Value>) {
+                let w = rows.iter().map(|r| r.len()).max().unwrap_or(0).max(1);
+                let mut vals = Vec::new();
+                for row in &rows {
+                    for c in 0..w {
+                        vals.push(row.get(c).cloned().unwrap_or(Value::Empty));
+                    }
+                }
+                (w as u32, vals)
+            };
             out.push(match v {
                 AVal::One(x) => Arg::One(x),
                 AVal::Arr(rows) => {
-                    let w = rows.iter().map(|r| r.len()).max().unwrap_or(0).max(1);
+                    let (w, vals) = flat(rows);
+                    Arg::Rect(w, vals)
+                }
+                // 参照の和は領域の形を控えて、値は続けて並べる
+                AVal::Union(areas) => {
+                    let mut shape = Vec::new();
                     let mut vals = Vec::new();
-                    for row in &rows {
-                        for c in 0..w {
-                            vals.push(row.get(c).cloned().unwrap_or(Value::Empty));
-                        }
+                    for rows in areas {
+                        let (w, vs) = flat(rows);
+                        shape.push((w, vs.len()));
+                        vals.extend(vs);
                     }
-                    Arg::Rect(w as u32, vals)
+                    Arg::Union(shape, vals)
                 }
             });
             match self.next() {
@@ -808,6 +824,19 @@ impl<'a> P<'a> {
                 let v = self.expr()?;
                 match self.next() {
                     Some(Tok::RParen) => Ok(v),
+                    // `(A1:B2,C3:D4)` の参照の和。1つの値が要る場面では
+                    // 使えない(Excel も #VALUE!)。残りは読み飛ばす
+                    Some(Tok::Comma) => {
+                        loop {
+                            self.expr()?;
+                            match self.next() {
+                                Some(Tok::Comma) => continue,
+                                Some(Tok::RParen) => break,
+                                _ => return Err("括弧が閉じていません".into()),
+                            }
+                        }
+                        Ok(Value::Error("#VALUE!".into()))
+                    }
                     _ => Err("括弧が閉じていません".into()),
                 }
             }

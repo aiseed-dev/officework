@@ -2463,3 +2463,330 @@ mod excel_argument_tests {
         assert!(close(n(&mut s, "=RATE(60,-22244.4477,1000000,0,0,0.05)"), 0.01), "推定値から");
     }
 }
+
+/// XLOOKUP / XMATCH の二分探索(検索モード 2 と -2)。
+#[cfg(test)]
+mod binary_search_tests {
+    use super::*;
+    use crate::Cell;
+
+    fn sheet_with(cells: &[(&str, &str)]) -> Sheet {
+        let mut s = Sheet::new("Sheet1");
+        for (a1, v) in cells {
+            s.set(Pos::parse(a1).unwrap(), Cell::input(v));
+        }
+        s
+    }
+    fn value_of(s: &mut Sheet, f: &str) -> Value {
+        let p = Pos::parse("Z100").unwrap();
+        s.set(p, Cell::input(f));
+        recalc(s);
+        s.value(p)
+    }
+
+    #[test]
+    fn a_sorted_range_is_found_by_binary_search() {
+        let mut s = sheet_with(&[
+            ("A1", "1"), ("B1", "a"),
+            ("A2", "3"), ("B2", "b"),
+            ("A3", "5"), ("B3", "c"),
+            ("A4", "7"), ("B4", "d"),
+            ("A5", "9"), ("B5", "e"),
+        ]);
+        // 昇順の並び。完全一致
+        assert_eq!(value_of(&mut s, "=XMATCH(7,A1:A5,0,2)"), Value::Number(4.0));
+        assert_eq!(value_of(&mut s, "=XLOOKUP(7,A1:A5,B1:B5,\"無し\",0,2)"), Value::Text("d".into()));
+        // 完全一致か次に小さい値(-1)、次に大きい値(1)
+        assert_eq!(value_of(&mut s, "=XLOOKUP(6,A1:A5,B1:B5,\"無し\",-1,2)"), Value::Text("c".into()));
+        assert_eq!(value_of(&mut s, "=XLOOKUP(6,A1:A5,B1:B5,\"無し\",1,2)"), Value::Text("d".into()));
+        // 端より外
+        assert_eq!(value_of(&mut s, "=XLOOKUP(0,A1:A5,B1:B5,\"無し\",-1,2)"), Value::Text("無し".into()));
+        assert_eq!(value_of(&mut s, "=XLOOKUP(10,A1:A5,B1:B5,\"無し\",1,2)"), Value::Text("無し".into()));
+        assert_eq!(value_of(&mut s, "=XLOOKUP(10,A1:A5,B1:B5,\"無し\",0,2)"), Value::Text("無し".into()));
+        // 文字も二分探索で引ける(大文字と小文字は区別しない)
+        assert_eq!(value_of(&mut s, "=XMATCH(\"C\",B1:B5,0,2)"), Value::Number(3.0));
+    }
+
+    #[test]
+    fn a_descending_range_uses_search_mode_minus_two() {
+        let mut s = sheet_with(&[
+            ("A1", "9"), ("A2", "7"), ("A3", "5"), ("A4", "3"), ("A5", "1"),
+        ]);
+        assert_eq!(value_of(&mut s, "=XMATCH(3,A1:A5,0,-2)"), Value::Number(4.0));
+        // 次に大きい値は上の側、次に小さい値は下の側
+        assert_eq!(value_of(&mut s, "=XMATCH(6,A1:A5,1,-2)"), Value::Number(2.0));
+        assert_eq!(value_of(&mut s, "=XMATCH(6,A1:A5,-1,-2)"), Value::Number(3.0));
+        assert_eq!(value_of(&mut s, "=XMATCH(6,A1:A5,0,-2)"), Value::Error("#N/A".into()));
+    }
+
+    #[test]
+    fn an_unsorted_range_gives_no_guarantee_under_binary_search() {
+        // 並びが崩れている範囲。5 は2番目にあるが、二分探索は真ん中の 3 を
+        // 見て右半分(7, 9)へ進むので見つけられない。
+        // Excel も同じで、並んでいない範囲への二分探索の答えは保証されない
+        let mut s = sheet_with(&[
+            ("A1", "1"), ("A2", "5"), ("A3", "3"), ("A4", "7"), ("A5", "9"),
+        ]);
+        assert_eq!(value_of(&mut s, "=XMATCH(3,A1:A5,0,1)"), Value::Number(3.0), "線形探索なら見つかる");
+        assert_eq!(
+            value_of(&mut s, "=XMATCH(5,A1:A5,0,2)"),
+            Value::Error("#N/A".into()),
+            "二分探索は並びが崩れていると見つからないことがある"
+        );
+    }
+
+    #[test]
+    fn a_wildcard_cannot_be_combined_with_binary_search() {
+        let mut s = sheet_with(&[("A1", "abc"), ("A2", "bcd")]);
+        assert_eq!(value_of(&mut s, "=XMATCH(\"b*\",A1:A2,2,2)"), Value::Error("#VALUE!".into()));
+        assert_eq!(value_of(&mut s, "=XMATCH(\"b*\",A1:A2,2,1)"), Value::Number(2.0));
+        // 知らない検索モードも #VALUE!
+        assert_eq!(value_of(&mut s, "=XMATCH(\"abc\",A1:A2,0,3)"), Value::Error("#VALUE!".into()));
+    }
+}
+
+/// 参照の和 `(A1:B2,C3:D4)` と INDEX の領域番号。
+#[cfg(test)]
+mod reference_union_tests {
+    use super::*;
+    use crate::Cell;
+
+    fn sheet_with(cells: &[(&str, &str)]) -> Sheet {
+        let mut s = Sheet::new("Sheet1");
+        for (a1, v) in cells {
+            s.set(Pos::parse(a1).unwrap(), Cell::input(v));
+        }
+        s
+    }
+    fn value_of(s: &mut Sheet, f: &str) -> Value {
+        let p = Pos::parse("Z100").unwrap();
+        s.set(p, Cell::input(f));
+        recalc(s);
+        s.value(p)
+    }
+
+    fn two_areas() -> Sheet {
+        // A1:B2 と D4:E5 の2つの領域
+        sheet_with(&[
+            ("A1", "1"), ("B1", "2"),
+            ("A2", "3"), ("B2", "4"),
+            ("D4", "10"), ("E4", "20"),
+            ("D5", "30"), ("E5", "40"),
+        ])
+    }
+
+    #[test]
+    fn index_picks_an_area_by_its_number() {
+        let mut s = two_areas();
+        assert_eq!(value_of(&mut s, "=INDEX((A1:B2,D4:E5),2,1)"), Value::Number(3.0), "領域番号を省けば1つ目");
+        assert_eq!(value_of(&mut s, "=INDEX((A1:B2,D4:E5),2,1,1)"), Value::Number(3.0));
+        assert_eq!(value_of(&mut s, "=INDEX((A1:B2,D4:E5),2,1,2)"), Value::Number(30.0));
+        assert_eq!(value_of(&mut s, "=INDEX((A1:B2,D4:E5),1,2,2)"), Value::Number(20.0));
+        // 領域の数を超えた番号は #REF!
+        assert_eq!(value_of(&mut s, "=INDEX((A1:B2,D4:E5),1,1,3)"), Value::Error("#REF!".into()));
+        // 和でない範囲に 2 を渡しても #REF!(今までどおり)
+        assert_eq!(value_of(&mut s, "=INDEX(A1:B2,1,1,2)"), Value::Error("#REF!".into()));
+    }
+
+    #[test]
+    fn aggregates_count_every_area() {
+        let mut s = two_areas();
+        assert_eq!(value_of(&mut s, "=SUM((A1:B2,D4:E5))"), Value::Number(110.0));
+        assert_eq!(value_of(&mut s, "=COUNT((A1:B2,D4:E5))"), Value::Number(8.0));
+        assert_eq!(value_of(&mut s, "=MAX((A1:B2,D4:E5))"), Value::Number(40.0));
+        // 3つ以上も、入れ子の括弧も
+        assert_eq!(value_of(&mut s, "=SUM((A1:A2,B1:B2,D4:E5))"), Value::Number(110.0));
+        assert_eq!(value_of(&mut s, "=SUM(((A1:B2),D4:E5))"), Value::Number(110.0));
+    }
+
+    #[test]
+    fn a_function_that_needs_one_range_refuses_the_union() {
+        let mut s = two_areas();
+        assert_eq!(value_of(&mut s, "=VLOOKUP(3,(A1:B2,D4:E5),2,FALSE)"), Value::Error("#VALUE!".into()));
+        // 四則にも使えない。セルに単独で置いても #VALUE!
+        assert_eq!(value_of(&mut s, "=(A1:B2,D4:E5)*2"), Value::Error("#VALUE!".into()));
+        assert_eq!(value_of(&mut s, "=(A1:B2,D4:E5)"), Value::Error("#VALUE!".into()));
+        // 範囲でない物を和にはできない(式の誤り)
+        assert_eq!(value_of(&mut s, "=SUM((1,2))"), Value::Error("#ERROR!".into()));
+    }
+}
+
+/// `=df(...)` — 列の定義(docs/ja/df-manual.adoc の見積書の例)。
+#[cfg(test)]
+mod df_tests {
+    use super::*;
+    use crate::{Cell, TableDef};
+
+    /// A1:C4 の表「売上」(見出し + 3行)。品名・単価・数量
+    fn quotation() -> Sheet {
+        let mut s = Sheet::new("Sheet1");
+        let rows = [
+            ("A1", "品名"), ("B1", "単価"), ("C1", "数量"),
+            ("A2", "A4 コピー用紙"), ("B2", "420"), ("C2", "30"),
+            ("A3", "トナー"), ("B3", "8900"), ("C3", "2"),
+            ("A4", "ファイル"), ("B4", "180"), ("C4", "50"),
+        ];
+        for (a1, v) in rows {
+            s.set(Pos::parse(a1).unwrap(), Cell::input(v));
+        }
+        s.tables.push(TableDef {
+            name: "売上".into(),
+            a: Pos::parse("A1").unwrap(),
+            b: Pos::parse("C4").unwrap(),
+            header: true,
+            ..Default::default()
+        });
+        s
+    }
+    fn put(s: &mut Sheet, cell: &str, f: &str) {
+        s.set(Pos::parse(cell).unwrap(), Cell::input(f));
+    }
+    fn v(s: &Sheet, a1: &str) -> Value {
+        s.value(Pos::parse(a1).unwrap())
+    }
+    fn t(s: &Sheet, a1: &str) -> String {
+        v(s, a1).display()
+    }
+
+    #[test]
+    fn a_column_is_defined_once_and_fills_every_row() {
+        let mut s = quotation();
+        put(&mut s, "F1", "=df(売上[金額] = 売上[単価] * 売上[数量])");
+        recalc(&mut s);
+        // 列が右端に足され、見出しは列の名前
+        assert_eq!(t(&s, "D1"), "金額");
+        assert_eq!(s.tables[0].b, Pos::parse("D4").unwrap(), "表が1列広がる");
+        assert_eq!(v(&s, "D2"), Value::Number(12600.0));
+        assert_eq!(v(&s, "D3"), Value::Number(17800.0));
+        assert_eq!(v(&s, "D4"), Value::Number(9000.0));
+        // セルに見せる物は定義した列の名前
+        assert_eq!(t(&s, "F1"), "売上[金額]");
+        // 普通の式から定義した列を読める
+        put(&mut s, "F2", "=SUM(売上[金額])");
+        recalc(&mut s);
+        assert_eq!(v(&s, "F2"), Value::Number(39400.0));
+    }
+
+    #[test]
+    fn a_new_row_fills_itself() {
+        let mut s = quotation();
+        put(&mut s, "F1", "=df(売上[金額] = 売上[単価] * 売上[数量])");
+        recalc(&mut s);
+        // 行を足して表を広げれば、次の再計算で埋まる
+        put(&mut s, "A5", "封筒");
+        put(&mut s, "B5", "12");
+        put(&mut s, "C5", "100");
+        s.tables[0].b = Pos::parse("D5").unwrap();
+        recalc(&mut s);
+        assert_eq!(v(&s, "D5"), Value::Number(1200.0));
+    }
+
+    #[test]
+    fn several_definitions_and_a_name() {
+        let mut s = quotation();
+        put(&mut s, "F1", "=df(税率 = 0.1, 売上[金額] = 売上[単価] * 売上[数量], 売上[税額] = 売上[金額] * 税率)");
+        recalc(&mut s);
+        assert_eq!(t(&s, "D1"), "金額");
+        assert_eq!(t(&s, "E1"), "税額");
+        assert_eq!(v(&s, "E2"), Value::Number(1260.0));
+        assert_eq!(v(&s, "E3"), Value::Number(1780.0));
+        assert_eq!(v(&s, "E4"), Value::Number(900.0));
+        assert_eq!(t(&s, "F1"), "売上[金額], 売上[税額]", "名前は列ではないので見せない");
+    }
+
+    #[test]
+    fn the_order_comes_from_the_dependencies_not_the_text() {
+        let mut s = quotation();
+        // 税額を先に、金額を後に書く。別のセルに分けても同じ
+        put(&mut s, "F1", "=df(売上[税額] = 売上[金額] * 0.1)");
+        put(&mut s, "F2", "=df(売上[金額] = 売上[単価] * 売上[数量])");
+        recalc(&mut s);
+        assert_eq!(v(&s, "D2"), Value::Number(12600.0));
+        assert_eq!(t(&s, "E1"), "税額");
+        assert_eq!(v(&s, "E2"), Value::Number(1260.0));
+        assert_eq!(t(&s, "F1"), "売上[税額]");
+        assert_eq!(t(&s, "F2"), "売上[金額]");
+    }
+
+    #[test]
+    fn an_existing_column_is_filled_in_place() {
+        let mut s = quotation();
+        put(&mut s, "D1", "金額");
+        put(&mut s, "D2", "1");
+        put(&mut s, "D3", "=B3");
+        s.tables[0].b = Pos::parse("D4").unwrap();
+        put(&mut s, "F1", "=df(売上[金額] = 売上[単価] * 売上[数量])");
+        recalc(&mut s);
+        assert_eq!(s.tables[0].b, Pos::parse("D4").unwrap(), "列は増えない");
+        assert_eq!(v(&s, "D2"), Value::Number(12600.0));
+        assert_eq!(v(&s, "D3"), Value::Number(17800.0), "その列にあった数式も定義の値になる");
+        assert_eq!(s.get(Pos::parse("D3").unwrap()).unwrap().formula, None);
+    }
+
+    #[test]
+    fn the_same_column_defined_twice_is_refused_on_both() {
+        let mut s = quotation();
+        put(&mut s, "F1", "=df(売上[金額] = 売上[単価] * 売上[数量])");
+        put(&mut s, "F3", "=df(売上[金額] = 売上[単価])");
+        recalc(&mut s);
+        let e = Value::Error("売上[金額] を2回定義しています(F1 と F3)".into());
+        assert_eq!(v(&s, "F1"), e);
+        assert_eq!(v(&s, "F3"), e);
+        assert_eq!(v(&s, "D1"), Value::Empty, "どちらも使わない");
+    }
+
+    #[test]
+    fn a_loop_is_refused_and_named_in_order() {
+        let mut s = quotation();
+        put(&mut s, "F1", "=df(売上[金額] = 売上[税額] * 10, 売上[税額] = 売上[金額] * 0.1)");
+        recalc(&mut s);
+        assert_eq!(
+            v(&s, "F1"),
+            Value::Error("定義が循環しています(売上[金額] → 売上[税額] → 売上[金額])".into())
+        );
+        assert_eq!(v(&s, "D1"), Value::Empty);
+    }
+
+    #[test]
+    fn what_is_not_settled_yet_is_refused_with_its_reason() {
+        let mut s = quotation();
+        put(&mut s, "F1", "=df(売上[累計] = SUM(売上[単価]))");
+        recalc(&mut s);
+        assert_eq!(v(&s, "F1"), Value::Error("df の中の集計はまだ使えません(売上[累計] の SUM)".into()));
+        s.tables.push(TableDef { name: "科目表".into(), a: Pos::parse("H1").unwrap(), b: Pos::parse("H3").unwrap(), header: true, ..Default::default() });
+        put(&mut s, "H1", "名前");
+        put(&mut s, "F2", "=df(売上[科目名] = 科目表[名前])");
+        recalc(&mut s);
+        assert_eq!(v(&s, "F2"), Value::Error("別の表の列はまだ引けません(科目表[名前])".into()));
+    }
+
+    #[test]
+    fn a_missing_table_or_column_is_named() {
+        let mut s = quotation();
+        put(&mut s, "F1", "=df(仕入[金額] = 仕入[単価])");
+        put(&mut s, "F2", "=df(売上[金額] = 売上[原価] * 2)");
+        recalc(&mut s);
+        assert_eq!(v(&s, "F1"), Value::Error("表 仕入 が見つかりません".into()));
+        assert_eq!(v(&s, "F2"), Value::Error("売上[原価] が見つかりません".into()));
+    }
+
+    #[test]
+    fn a_definition_that_uses_a_failed_one_is_not_used_either() {
+        let mut s = quotation();
+        put(&mut s, "F1", "=df(売上[金額] = 売上[原価] * 2)");
+        put(&mut s, "F2", "=df(売上[税額] = 売上[金額] * 0.1)");
+        recalc(&mut s);
+        assert_eq!(v(&s, "F2"), Value::Error("売上[税額] は、エラーになった 売上[金額] を使っています".into()));
+    }
+
+    #[test]
+    fn a_column_that_reads_formula_cells_settles() {
+        // 単価の列が別のセルの式なら、df はその答えを読む(何周かして落ち着く)
+        let mut s = quotation();
+        put(&mut s, "B2", "=H1*2");
+        put(&mut s, "H1", "210");
+        put(&mut s, "F1", "=df(売上[金額] = 売上[単価] * 売上[数量])");
+        recalc(&mut s);
+        assert_eq!(v(&s, "D2"), Value::Number(12600.0));
+    }
+}

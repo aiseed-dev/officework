@@ -85,7 +85,7 @@ GROUPS = {
     "検索/行列": "VLOOKUP HLOOKUP XLOOKUP LOOKUP INDEX MATCH CHOOSE "
             "ROW COLUMN ROWS COLUMNS OFFSET INDIRECT ADDRESS HYPERLINK "
             "FILTER SORT UNIQUE TRANSPOSE XMATCH SORTBY "
-            "VSTACK HSTACK TAKE DROP TOCOL TOROW",
+            "VSTACK HSTACK TAKE DROP TOCOL TOROW DF",
     "財務": "PMT PV FV NPER NPV IRR RATE "
             "IPMT PPMT CUMIPMT CUMPRINC ISPMT SLN SYD DB DDB VDB "
             "EFFECT NOMINAL PDURATION RRI FVSCHEDULE DOLLARDE DOLLARFR "
@@ -124,6 +124,10 @@ HAND_JA = {
         "ad": "最初に付ける名前!その名前が表す値!結果を返す式。付けた名前を使えます"},
     "PY": {"a": "(コード)", "d": "Python のコードを実行して、その結果を返します。セルに単独でだけ使えます。",
         "ad": "実行する Python のコード"},
+    # 列の定義(docs/ja/df-manual.adoc)。このアプリだけの関数(2026-09-02)
+    "DF": {"a": "(定義1, [定義2], ...)",
+        "d": "数式を表の列に属させます。列の各行をその数式で埋め、列が無ければ表に足します。「名前 = 数式」は、この df の中で使える定数です。",
+        "ad": "定義。「表[列] = 数式」で列を定義し、「名前 = 数式」でこの df の中の定数を定義します!2つ目からの定義。順番は依存で決まります"},
     "CELL": {"a": "(検査の種類, [参照])",
         "d": "セルの情報を返します。検査の種類は \"filename\" だけを受けます(パス、[ ] で囲んだファイル名、シート名を返します)。",
         "ad": "情報の種類。\"filename\" だけを受けます!セル。同じブックならどのセルでも答えが同じなので、受け取って使いません"},

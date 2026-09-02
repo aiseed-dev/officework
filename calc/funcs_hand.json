@@ -54,6 +54,11 @@
       "a": "(info_type; [reference])",
       "d": "Returns information about a cell. Only \"filename\" is supported: the path, the file name in brackets, and the sheet name",
       "ad": "is the kind of information. Only \"filename\" is supported!is a cell. It is accepted and ignored, because the answer is the same for every cell in the book"
+    },
+    "DF": {
+      "a": "(definition1; [definition2]; ...)",
+      "d": "Attaches a formula to a table column. Every row of the column is filled by the formula, and the column is added to the table if it does not exist. \"name = formula\" defines a constant for this df",
+      "ad": "is a definition. \"Table[Column] = formula\" defines a column; \"name = formula\" defines a constant for this df!are further definitions. Their order comes from the dependencies"
     }
   },
   "de": {
@@ -106,6 +111,11 @@
       "a": "(Code)",
       "d": "Führt Python-Code aus und gibt das Ergebnis zurück. Nur allein in einer Zelle verwendbar",
       "ad": "ist der auszuführende Python-Code"
+    },
+    "DF": {
+      "a": "(Definition1; [Definition2]; ...)",
+      "d": "Weist einer Tabellenspalte eine Formel zu. Jede Zeile der Spalte wird mit der Formel gefüllt; fehlt die Spalte, wird sie der Tabelle hinzugefügt. „Name = Formel“ definiert eine Konstante für dieses df",
+      "ad": "ist eine Definition. „Tabelle[Spalte] = Formel“ definiert eine Spalte, „Name = Formel“ eine Konstante für dieses df!sind weitere Definitionen. Ihre Reihenfolge ergibt sich aus den Abhängigkeiten"
     }
   },
   "es": {
@@ -158,6 +168,11 @@
       "a": "(código)",
       "d": "Ejecuta código de Python y devuelve el resultado. Solo se puede usar solo en una celda",
       "ad": "es el código de Python que se ejecuta"
+    },
+    "DF": {
+      "a": "(definición1; [definición2]; ...)",
+      "d": "Asigna una fórmula a una columna de tabla. Cada fila de la columna se rellena con la fórmula y, si la columna no existe, se añade a la tabla. «nombre = fórmula» define una constante para este df",
+      "ad": "es una definición. «Tabla[Columna] = fórmula» define una columna; «nombre = fórmula» define una constante para este df!son más definiciones. Su orden se deduce de las dependencias"
     }
   },
   "fr": {
@@ -210,6 +225,11 @@
       "a": "(code)",
       "d": "Exécute du code Python et renvoie le résultat. Utilisable uniquement seul dans une cellule",
       "ad": "est le code Python à exécuter"
+    },
+    "DF": {
+      "a": "(définition1; [définition2]; ...)",
+      "d": "Attribue une formule à une colonne de tableau. Chaque ligne de la colonne est remplie par la formule ; si la colonne n'existe pas, elle est ajoutée au tableau. « nom = formule » définit une constante pour ce df",
+      "ad": "est une définition. « Tableau[Colonne] = formule » définit une colonne ; « nom = formule » définit une constante pour ce df!sont d'autres définitions. Leur ordre découle des dépendances"
     }
   },
   "id": {
@@ -262,6 +282,11 @@
       "a": "(kode)",
       "d": "Menjalankan kode Python dan mengembalikan hasilnya. Hanya dapat digunakan sendiri dalam satu sel",
       "ad": "Kode Python yang akan dijalankan."
+    },
+    "DF": {
+      "a": "(definisi1; [definisi2]; ...)",
+      "d": "Mengaitkan rumus ke kolom tabel. Setiap baris kolom diisi dengan rumus itu, dan kolom ditambahkan ke tabel jika belum ada. \"nama = rumus\" mendefinisikan konstanta untuk df ini.",
+      "ad": "Definisi. \"Tabel[Kolom] = rumus\" mendefinisikan kolom; \"nama = rumus\" mendefinisikan konstanta untuk df ini.!Definisi berikutnya. Urutannya ditentukan oleh ketergantungan."
     }
   },
   "it": {
@@ -344,6 +369,11 @@
       "a": "(codice)",
       "d": "Esegue codice Python e restituisce il risultato. Utilizzabile solo da solo in una cella",
       "ad": "è il codice Python da eseguire"
+    },
+    "DF": {
+      "a": "(definizione1; [definizione2]; ...)",
+      "d": "Assegna una formula a una colonna di tabella. Ogni riga della colonna viene riempita con la formula e, se la colonna non esiste, viene aggiunta alla tabella. \"nome = formula\" definisce una costante per questo df",
+      "ad": "è una definizione. \"Tabella[Colonna] = formula\" definisce una colonna; \"nome = formula\" definisce una costante per questo df!sono altre definizioni. Il loro ordine deriva dalle dipendenze"
     }
   },
   "ko": {
@@ -396,6 +426,11 @@
       "a": "(코드)",
       "d": "Python 코드를 실행하고 결과를 반환합니다. 셀에 단독으로만 사용할 수 있습니다.",
       "ad": "실행할 Python 코드입니다."
+    },
+    "DF": {
+      "a": "(정의1; [정의2]; ...)",
+      "d": "수식을 표의 열에 연결합니다. 열의 각 행을 그 수식으로 채우고, 열이 없으면 표에 추가합니다. \"이름 = 수식\"은 이 df 안에서 쓰는 상수를 정의합니다.",
+      "ad": "정의입니다. \"표[열] = 수식\"은 열을, \"이름 = 수식\"은 이 df 안의 상수를 정의합니다.!이후의 정의입니다. 순서는 종속 관계로 정해집니다."
     }
   },
   "pt": {
@@ -448,6 +483,11 @@
       "a": "(código)",
       "d": "Executa código Python e devolve o resultado. Só pode ser utilizado sozinho numa célula",
       "ad": "é o código Python a executar"
+    },
+    "DF": {
+      "a": "(definição1; [definição2]; ...)",
+      "d": "Atribui uma fórmula a uma coluna de tabela. Cada linha da coluna é preenchida pela fórmula e, se a coluna não existir, é acrescentada à tabela. «nome = fórmula» define uma constante para este df",
+      "ad": "é uma definição. «Tabela[Coluna] = fórmula» define uma coluna; «nome = fórmula» define uma constante para este df!são outras definições. A sua ordem resulta das dependências"
     }
   },
   "pt-br": {
@@ -500,6 +540,11 @@
       "a": "(código)",
       "d": "Executa código Python e retorna o resultado. Só pode ser usado sozinho em uma célula",
       "ad": "é o código Python a ser executado"
+    },
+    "DF": {
+      "a": "(definição1; [definição2]; ...)",
+      "d": "Atribui uma fórmula a uma coluna de tabela. Cada linha da coluna é preenchida pela fórmula e, se a coluna não existir, ela é adicionada à tabela. \"nome = fórmula\" define uma constante para este df",
+      "ad": "é uma definição. \"Tabela[Coluna] = fórmula\" define uma coluna; \"nome = fórmula\" define uma constante para este df!são outras definições. A ordem delas vem das dependências"
     }
   },
   "ru": {
@@ -552,6 +597,11 @@
       "a": "(код)",
       "d": "Выполняет код Python и возвращает результат. Можно использовать только отдельно в ячейке",
       "ad": "код Python для выполнения"
+    },
+    "DF": {
+      "a": "(определение1; [определение2]; ...)",
+      "d": "Привязывает формулу к столбцу таблицы. Каждая строка столбца заполняется по формуле; если столбца нет, он добавляется в таблицу. «имя = формула» задаёт константу для этого df",
+      "ad": "определение. «Таблица[Столбец] = формула» задаёт столбец, «имя = формула» — константу для этого df!следующие определения. Их порядок выводится из зависимостей"
     }
   },
   "tr": {
@@ -604,6 +654,11 @@
       "a": "(kod)",
       "d": "Python kodunu çalıştırır ve sonucu döndürür. Bir hücrede yalnızca tek başına kullanılabilir",
       "ad": "Çalıştırılacak Python kodudur."
+    },
+    "DF": {
+      "a": "(tanım1; [tanım2]; ...)",
+      "d": "Bir formülü tablo sütununa bağlar. Sütunun her satırı formülle doldurulur; sütun yoksa tabloya eklenir. \"ad = formül\" bu df içinde kullanılan bir sabit tanımlar.",
+      "ad": "Bir tanımdır. \"Tablo[Sütun] = formül\" bir sütun, \"ad = formül\" bu df için bir sabit tanımlar.!Sonraki tanımlardır. Sıraları bağımlılıklardan belirlenir."
     }
   },
   "vi": {
@@ -656,6 +711,11 @@
       "a": "(mã)",
       "d": "Chạy mã Python và trả về kết quả. Chỉ dùng được một mình trong một ô",
       "ad": "Mã Python cần chạy."
+    },
+    "DF": {
+      "a": "(định_nghĩa1; [định_nghĩa2]; ...)",
+      "d": "Gắn công thức vào một cột của bảng. Mỗi hàng của cột được điền bằng công thức đó; nếu cột chưa có thì được thêm vào bảng. \"tên = công thức\" định nghĩa một hằng số dùng trong df này.",
+      "ad": "Một định nghĩa. \"Bảng[Cột] = công thức\" định nghĩa một cột; \"tên = công thức\" định nghĩa một hằng số cho df này.!Các định nghĩa tiếp theo. Thứ tự được xác định theo phụ thuộc."
     }
   },
   "zh": {
@@ -723,6 +783,11 @@
       "a": "(代码)",
       "d": "运行 Python 代码并返回结果。只能在单元格中单独使用。",
       "ad": "要运行的 Python 代码。"
+    },
+    "DF": {
+      "a": "(定义1; [定义2]; ...)",
+      "d": "把公式附加到表的列上。列的每一行都用该公式填充；列不存在时添加到表中。“名称 = 公式”定义此 df 内使用的常量。",
+      "ad": "定义。“表[列] = 公式”定义列，“名称 = 公式”定义此 df 内的常量。!后续的定义。顺序由依赖关系决定。"
     }
   },
   "zh-tw": {
@@ -775,6 +840,11 @@
       "a": "(程式碼)",
       "d": "執行 Python 程式碼並傳回結果。只能在儲存格中單獨使用。",
       "ad": "要執行的 Python 程式碼。"
+    },
+    "DF": {
+      "a": "(定義1; [定義2]; ...)",
+      "d": "把公式附加到表格的欄上。欄的每一列都以該公式填入；欄不存在時新增到表格。「名稱 = 公式」定義此 df 內使用的常數。",
+      "ad": "定義。「表格[欄] = 公式」定義欄，「名稱 = 公式」定義此 df 內的常數。!後續的定義。順序由相依關係決定。"
     }
   }
 }

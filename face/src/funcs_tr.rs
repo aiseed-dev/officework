@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 403 関数
+pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "ABS", args: "(sayı)", desc: "Bir sayının mutlak değerini verir, işareti olmayan sayı", arg_desc: &["mutlak değerini istediğiniz gerçek sayı"] },
     FnText { name: "ACOS", args: "(sayı)", desc: "Bir sayının arkkosinüsünü verir, radyan cinsinde ve 0 - Pi aralığındadır. Arkkosinüs, kosinüsü Sayı olan açıdır", arg_desc: &["istediğiniz açının kosinüs değeri, -1 ile 1 arasında olmalıdır"] },
     FnText { name: "ACOSH", args: "(sayı)", desc: "Bir sayının ters hiperbolik kosinüsünü verir", arg_desc: &["1 'e eşit veya 1'den büyük herhangi bir gerçek sayı"] },
@@ -107,6 +107,7 @@ pub static TEXT: &[FnText] = &[  // 403 関数
     FnText { name: "DEGREES", args: "(açı)", desc: "Radyanı dereceye çevirir", arg_desc: &["dönüştürmek istediğiniz radyan cinsinden açı"] },
     FnText { name: "DELTA", args: "(sayı1, [sayı2])", desc: "İki sayının eşitliğini sınar", arg_desc: &["ilk sayı", "ikinci sayı"] },
     FnText { name: "DEVSQ", args: "(sayı1, [sayı2], ...)", desc: "Veri noktalarının kendi örneklerinin ortalamasından sapmaların kareleri toplamını verir", arg_desc: &["SAPKARE'sini hesaplamak istediğiniz En az 1 en fazla 255 bağımsız değişken, ya da bir dizi veya dizi başvurusudur"] },
+    FnText { name: "DF", args: "(tanım1, [tanım2], ...)", desc: "Bir formülü tablo sütununa bağlar. Sütunun her satırı formülle doldurulur; sütun yoksa tabloya eklenir. \"ad = formül\" bu df içinde kullanılan bir sabit tanımlar.", arg_desc: &["Bir tanımdır. \"Tablo[Sütun] = formül\" bir sütun, \"ad = formül\" bu df için bir sabit tanımlar.", "Sonraki tanımlardır. Sıraları bağımlılıklardan belirlenir."] },
     FnText { name: "DGET", args: "(veritabanı, alan, ölçüt)", desc: "Belirttiğiniz koşullara uyan tek bir kaydı veritabanından çıkarır", arg_desc: &["veritabanını ya da listeyi oluşturan hücreler aralığı. Veritabanı ilgili verilerin listesidir", "çift tırnak işareti içindeki sütun etiketi, ya da sütunun listedeki konumunu gösteren sayı", "belirttiğiniz koşulları içeren hücreler aralığı. Aralık, sütun etiketi ile etiketin altında bulunan ve koşulu taşıyan bir hücreyi içerir"] },
     FnText { name: "DMAX", args: "(veritabanı, alan, ölçüt)", desc: "Veritabanındaki kayıt alanında (sütun) bulunan ve belirttiğiniz koşullara uyan en büyük sayıyı verir.", arg_desc: &["veritabanını ya da listeyi oluşturan hücreler aralığı. Veritabanı ilgili verilerin listesidir", "çift tırnak işareti içindeki sütun etiketi, ya da sütunun listedeki konumunu gösteren sayı", "belirttiğiniz koşulları içeren hücreler aralığı. Aralık, sütun etiketi ile etiketin altında bulunan ve koşulu taşıyan bir hücreyi içerir"] },
     FnText { name: "DMIN", args: "(veritabanı, alan, ölçüt)", desc: "Veritabanındaki kayıt alanında (sütun) bulunan ve belirttiğiniz koşullara uyan en küçük sayıyı verir", arg_desc: &["veritabanını ya da listeyi oluşturan hücreler aralığı. Veritabanı ilgili verilerin listesidir", "çift tırnak işareti içindeki sütun etiketi, ya da sütunun listedeki konumunu gösteren sayı", "belirttiğiniz koşulları içeren hücreler aralığı. Aralık, sütun etiketi ile etiketin altında bulunan ve koşulu taşıyan bir hücreyi içerir"] },

@@ -158,6 +158,18 @@ else:
     check(ps["B3"].value == 290, f"polars の集計が差し込めない: {ps['B3'].value}")
     back = pl.DataFrame(ps.values(), orient="row")
     check(back.shape == (3, 2), f"values() が DataFrame にならない: {back.shape}")
+    # docs/ja/df-manual.adoc「Python で書くと」の例。=df(売上[金額] = 売上[単価] * 売上[数量])
+    # と =df(税率 = 0.1, 売上[税額] = 売上[金額] * 税率) を polars で書いた物
+    売上 = pl.DataFrame({
+        "品名": ["A4 コピー用紙", "トナー", "ファイル"],
+        "単価": [420, 8900, 180],
+        "数量": [30, 2, 50],
+    })
+    売上 = 売上.with_columns((pl.col("単価") * pl.col("数量")).alias("金額"))
+    税率 = 0.1
+    売上 = 売上.with_columns((pl.col("金額") * 税率).alias("税額"))
+    check(売上["金額"].to_list() == [12600, 17800, 9000], f"df の手引きの金額が違う: {売上['金額'].to_list()}")
+    check([round(x) for x in 売上["税額"].to_list()] == [1260, 1780, 900], f"df の手引きの税額が違う: {売上['税額'].to_list()}")
 
 # ── シートの名前は文字列でも渡せる(remove / copy_worksheet)────────────
 # 前は Sheet しか受けず、名前を渡すと `.title` が無くて TypeError で

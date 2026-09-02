@@ -16,9 +16,11 @@
 //! - [`parse`] 字句と構文。式を読んで、その場で畳む
 //! - [`funcs`] 関数の library。`SUM` から動的配列まで
 //! - [`run`] 再計算の駆動。依存・順序・スピル・循環の検出・UDF
+//! - [`df`] `=df(...)` の列の定義。再計算の前に表の列を埋める
 //!
 //! 外から見える名前はここに集めてある。呼ぶ側は `kumihan::calc::…` のまま。
 
+mod df;
 pub mod funcs;
 mod parse;
 mod run;
@@ -33,6 +35,7 @@ pub use funcs::civil_from_days;
 // EXCEL_EPOCH_DAYS は 1904 対応(6acc71a)で excel_epoch(date1904) に
 // 置き換わり、再輸出の使い手が消えた
 pub(crate) use funcs::{era_of, weekday0};
+pub use df::is_df_formula;
 pub use parse::cell_filename;
 pub use run::{
     deps, eval_in, eval_once, eval_py_call, is_py_formula, is_udf_name, py_cell_stamp, recalc, recalc_all,

@@ -13,12 +13,15 @@ use super::run::*;
 pub(super) enum AVal {
     One(Value),
     Arr(Vec<Vec<Value>>),
+    /// 参照の和 `(A1:B2,C3:D4)`。領域ごとの2次元の並び。
+    /// 四則には使えず(要素を取ると #VALUE!)、関数の引数にだけ渡せる
+    Union(Vec<Vec<Vec<Value>>>),
 }
 
 impl AVal {
     pub(super) fn dims(&self) -> (usize, usize) {
         match self {
-            AVal::One(_) => (1, 1),
+            AVal::One(_) | AVal::Union(_) => (1, 1),
             AVal::Arr(r) => (r.len(), r.iter().map(|x| x.len()).max().unwrap_or(0)),
         }
     }
@@ -27,6 +30,8 @@ impl AVal {
     pub(super) fn at(&self, r: usize, c: usize) -> Value {
         match self {
             AVal::One(v) => v.clone(),
+            // 参照の和は1つの値にも並びにもならない(Excel も #VALUE!)
+            AVal::Union(_) => Value::Error("#VALUE!".into()),
             AVal::Arr(rows) => {
                 let (h, w) = self.dims();
                 let rr = if h == 1 { 0 } else { r };
@@ -208,6 +213,31 @@ impl AP<'_, '_> {
                 let v = self.expr()?;
                 match self.p.next() {
                     Some(Tok::RParen) => Ok(v),
+                    // `(A1:B2,C3:D4)` — 括弧の中で `,` が続けば参照の和。
+                    // 領域はどれも範囲でなければならない(`(1,2)` は式の誤り)
+                    Some(Tok::Comma) => {
+                        let mut areas = Vec::new();
+                        let mut push = |v: AVal| -> Result<(), String> {
+                            match v {
+                                AVal::Arr(rows) => areas.push(rows),
+                                AVal::Union(more) => areas.extend(more),
+                                AVal::One(_) => {
+                                    return Err("参照の和には範囲だけを書けます".into())
+                                }
+                            }
+                            Ok(())
+                        };
+                        push(v)?;
+                        loop {
+                            push(self.expr()?)?;
+                            match self.p.next() {
+                                Some(Tok::Comma) => continue,
+                                Some(Tok::RParen) => break,
+                                _ => return Err("括弧が閉じていません".into()),
+                            }
+                        }
+                        Ok(AVal::Union(areas))
+                    }
                     _ => Err("括弧が閉じていません".into()),
                 }
             }
@@ -457,10 +487,16 @@ pub(super) fn lookup_approx(hay: &[Value], key: &Value, largest_le: bool) -> Opt
 
 /// XLOOKUP / XMATCH の探し方。一致モードは 0 = 完全一致、-1 = 完全一致か
 /// 次に小さい値、1 = 完全一致か次に大きい値、2 = ワイルドカード。
-/// 検索モードは 1 = 先頭から、-1 = 末尾から(2・-2 の二分探索も同じ
-/// 向きで探します。並びが揃っていれば答えは同じです)。
+/// 検索モードは 1 = 先頭から、-1 = 末尾から、2 = 二分探索(昇順に並んだ
+/// 範囲)、-2 = 二分探索(降順に並んだ範囲)。
+///
+/// 二分探索は [`xlookup_bisect`] が受け持ちます。並びが崩れている範囲に
+/// 二分探索を掛けると、Excel と同じく答えは保証されません。
 pub(super) fn xlookup_find(hay: &[Value], key: &Value, mode: f64, dir: f64) -> Option<usize> {
     use std::cmp::Ordering::*;
+    if dir == 2.0 || dir == -2.0 {
+        return xlookup_bisect(hay, key, mode, dir > 0.0);
+    }
     let back = dir < 0.0;
     let wild = mode == 2.0;
     let exact = if back {
@@ -491,6 +527,71 @@ pub(super) fn xlookup_find(hay: &[Value], key: &Value, mode: f64, dir: f64) -> O
         }
     }
     best
+}
+
+/// XLOOKUP / XMATCH の一致モードと検索モードの組が受けられるか。
+/// 一致モードは 0・-1・1・2、検索モードは 1・-1・2・-2 だけです。
+/// ワイルドカード(2)と二分探索(2・-2)は組み合わせられません
+/// (Excel はこの組を #VALUE! にします)。
+pub(super) fn xlookup_modes_ok(mode: f64, dir: f64) -> bool {
+    let mode_ok = (-1..=2).contains(&(mode as i64)) && mode.fract() == 0.0;
+    let dir_ok = matches!(dir as i64, 1 | -1 | 2 | -2) && dir.fract() == 0.0;
+    mode_ok && dir_ok && !(mode == 2.0 && dir.abs() == 2.0)
+}
+
+/// 二分探索のための並び順。種類が同じなら [`lookup_cmp`] の答え、
+/// 種類が違えば数 < 文字 < 論理値 < 空白 の順(Excel の並べ替えの順)。
+/// 二分探索は毎回どちらへ進むかを決めなければならないので、
+/// 「比べられない」を残せません。
+fn bisect_cmp(v: &Value, key: &Value) -> std::cmp::Ordering {
+    if let Some(o) = lookup_cmp(v, key) {
+        return o;
+    }
+    let rank = |x: &Value| match x {
+        Value::Number(_) => 0,
+        Value::Text(_) => 1,
+        Value::Bool(_) => 2,
+        _ => 3,
+    };
+    rank(v).cmp(&rank(key))
+}
+
+/// XLOOKUP / XMATCH の二分探索(検索モード 2 と -2)。
+/// `ascending` が true なら昇順の並び、false なら降順の並びを前提にします。
+///
+/// 探す値以上(降順なら以下)になる最初の位置を二分探索で求め、そこに
+/// 探す値そのものがあれば完全一致です。無ければ一致モードに従って
+/// 隣を答えます。**並びが崩れていれば、探す値が範囲にあっても見つから
+/// ないことがあります。** これは Excel と同じで、二分探索の性質です。
+pub(super) fn xlookup_bisect(hay: &[Value], key: &Value, mode: f64, ascending: bool) -> Option<usize> {
+    use std::cmp::Ordering::*;
+    // 並びの向きに合わせて「探す値より前にある」を決める
+    let before = |v: &Value| {
+        let o = bisect_cmp(v, key);
+        if ascending { o == Less } else { o == Greater }
+    };
+    let (mut lo, mut hi) = (0usize, hay.len());
+    while lo < hi {
+        let mid = (lo + hi) / 2;
+        if before(&hay[mid]) {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    // lo は「探す値より前」でない最初の位置
+    if lo < hay.len() && lookup_cmp(&hay[lo], key) == Some(Equal) {
+        return Some(lo);
+    }
+    if mode == 0.0 {
+        return None;
+    }
+    // 近似。lo の1つ前は探す値より前の側、lo は探す値より後の側
+    let smaller = if ascending { lo.checked_sub(1) } else { Some(lo).filter(|i| *i < hay.len()) };
+    let larger = if ascending { Some(lo).filter(|i| *i < hay.len()) } else { lo.checked_sub(1) };
+    let pick = if mode < 0.0 { smaller } else { larger };
+    // 種類の違う値(数を探して文字に当たった等)は近似の答えにしない
+    pick.filter(|i| lookup_cmp(&hay[*i], key).is_some())
 }
 
 /// 暦(y,m,d)→ 1970-01-01 からの日数(Howard Hinnant の civil_from_days の逆)。
@@ -1296,6 +1397,11 @@ pub(super) enum Arg {
     One(Value),
     /// (列数, 行優先の値)
     Rect(u32, Vec<Value>),
+    /// 参照の和 `(A1:B2,C3:D4)`。領域ごとの (列数, 値の数) と、
+    /// 全領域の値を続けて並べたもの。集計(SUM 等)は `values()` で
+    /// 全領域を数え、INDEX は領域番号で1つを選ぶ。単一の範囲が要る
+    /// 関数(VLOOKUP 等)には渡せない(#VALUE!)
+    Union(Vec<(u32, usize)>, Vec<Value>),
 }
 
 impl Arg {
@@ -1303,10 +1409,24 @@ impl Arg {
         match self {
             Arg::One(v) => std::slice::from_ref(v),
             Arg::Rect(_, vs) => vs,
+            Arg::Union(_, vs) => vs,
         }
     }
     pub(super) fn first(&self) -> Value {
         self.values().first().cloned().unwrap_or(Value::Empty)
+    }
+    /// 参照の和から領域を1つ取り出す(番号は 1 から)。和でない引数は
+    /// 番号 1 のときだけ自分自身。範囲でも和でもなければ None
+    pub(super) fn area(&self, n: usize) -> Option<(u32, &[Value])> {
+        match self {
+            Arg::Rect(cols, vs) if n == 1 => Some((*cols, vs)),
+            Arg::Union(shape, vs) => {
+                let (cols, len) = *shape.get(n.checked_sub(1)?)?;
+                let start: usize = shape[..n - 1].iter().map(|(_, l)| l).sum();
+                Some((cols, &vs[start..start + len]))
+            }
+            _ => None,
+        }
     }
 }
 
@@ -1355,19 +1475,23 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             });
         }
         "INDEX" => {
-            let Some(Arg::Rect(cols, vals)) = args.first() else {
+            // INDEX(範囲, 行, [列], [領域番号])。範囲は参照の和
+            // `(A1:B2,C3:D4)` でもよく、領域番号でその1つを選ぶ。
+            // 番号が領域の数を超えれば #REF!(Excel と同じ答え)
+            let Some(first) = args.first() else {
                 return Ok(Value::Error("#VALUE!".into()));
             };
-            let cols = *cols as usize;
+            if !matches!(first, Arg::Rect(..) | Arg::Union(..)) {
+                return Ok(Value::Error("#VALUE!".into()));
+            }
+            let area = args.get(3).map(|g| g.first().as_number()).unwrap_or(1.0) as usize;
+            let Some((cols, vals)) = first.area(area) else {
+                return Ok(Value::Error("#REF!".into()));
+            };
+            let cols = cols as usize;
             let rows = if cols == 0 { 0 } else { vals.len() / cols };
             let mut r = args.get(1).map(|g| g.first().as_number()).unwrap_or(0.0) as usize;
             let mut c = args.get(2).map(|g| g.first().as_number()).unwrap_or(1.0) as usize;
-            // 第4引数(領域番号)。範囲は1つしか渡せないので、1 だけを受け、
-            // 2 以上は #REF!(Excel で領域が無いときと同じ答え)
-            let area = args.get(3).map(|g| g.first().as_number()).unwrap_or(1.0) as usize;
-            if area != 1 {
-                return Ok(Value::Error("#REF!".into()));
-            }
             // 1行だけの範囲で番号を1つだけ渡したら、それは列の番号(Excel と同じ)
             if rows == 1 && args.get(2).is_none() {
                 c = r;
@@ -1405,6 +1529,9 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             let hay = args.get(1).map(|g| g.values()).unwrap_or(&[]);
             let mode = args.get(2).map(|g| g.first().as_number()).unwrap_or(0.0);
             let dir = args.get(3).map(|g| g.first().as_number()).unwrap_or(1.0);
+            if !xlookup_modes_ok(mode, dir) {
+                return Ok(Value::Error("#VALUE!".into()));
+            }
             return Ok(xlookup_find(hay, &key, mode, dir)
                 .map(|i| Value::Number((i + 1) as f64))
                 .unwrap_or(Value::Error("#N/A".into())));
@@ -1521,6 +1648,9 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             }
             let mode = args.get(4).map(|g| g.first().as_number()).unwrap_or(0.0);
             let dir = args.get(5).map(|g| g.first().as_number()).unwrap_or(1.0);
+            if !xlookup_modes_ok(mode, dir) {
+                return Ok(Value::Error("#VALUE!".into()));
+            }
             return Ok(match xlookup_find(hay, &key, mode, dir) {
                 Some(i) => ret[i].clone(),
                 None => args
@@ -1954,7 +2084,7 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                     vals.chunks(w).map(|r| r.to_vec()).collect()
                 }
                 Some(Arg::One(v)) => vec![vec![v.clone()]],
-                None => return Ok(Value::Error("#VALUE!".into())),
+                Some(Arg::Union(..)) | None => return Ok(Value::Error("#VALUE!".into())),
             };
             let strict = args.get(1).map(|g| g.first().as_number() != 0.0).unwrap_or(false);
             let cell = |v: &Value| -> String {
@@ -4605,6 +4735,8 @@ pub(super) fn array_call(name: &str, args: Vec<Arg>) -> Result<Vec<Vec<Value>>, 
                 let w = (*w).max(1) as usize;
                 vals.chunks(w).map(|r| r.to_vec()).collect()
             }
+            // 参照の和は1つの並びにならない(Excel も #VALUE!)
+            Arg::Union(..) => vec![vec![Value::Error("#VALUE!".into())]],
         }
     };
     match name {

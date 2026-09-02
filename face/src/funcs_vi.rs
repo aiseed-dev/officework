@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 403 関数
+pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "ABS", args: "(số)", desc: "Trả về giá trị tuyệt đối một số, giá trị số không dấu", arg_desc: &["là phần số thực cần lấy giá trị tuyệt đối"] },
     FnText { name: "ACOS", args: "(số)", desc: "Trả về ArcCosin của một số, theo radian trong khoảng từ 0 đến Pi. ArcCosin là góc có Cosin bằng Số", arg_desc: &["là Cosin của góc mong muốn và phải từ -1 đến 1"] },
     FnText { name: "ACOSH", args: "(số)", desc: "Trả về Cosin hi-péc-bôn đảo của một số", arg_desc: &["là số thực bất kỳ lớn hơn hoặc bằng 1"] },
@@ -107,6 +107,7 @@ pub static TEXT: &[FnText] = &[  // 403 関数
     FnText { name: "DEGREES", args: "(góc)", desc: "Chuyển đổi từ radian sang độ", arg_desc: &["là góc tính theo radian cần chuyển đổi"] },
     FnText { name: "DELTA", args: "(số1, [số2])", desc: "Kiểm tra hai số có bằng nhau không", arg_desc: &["là số thứ nhất", "là số thứ hai"] },
     FnText { name: "DEVSQ", args: "(số1, [số2], ...)", desc: "Trả về tổng bình phương độ lệch của các điểm dữ liệu so với trung bình mẫu của chúng", arg_desc: &["từ 1 đến 255 đối số, hoặc một mảng hoặc tham chiếu mảng, mà bạn cần DEVSQ tính toán trên đó"] },
+    FnText { name: "DF", args: "(định_nghĩa1, [định_nghĩa2], ...)", desc: "Gắn công thức vào một cột của bảng. Mỗi hàng của cột được điền bằng công thức đó; nếu cột chưa có thì được thêm vào bảng. \"tên = công thức\" định nghĩa một hằng số dùng trong df này.", arg_desc: &["Một định nghĩa. \"Bảng[Cột] = công thức\" định nghĩa một cột; \"tên = công thức\" định nghĩa một hằng số cho df này.", "Các định nghĩa tiếp theo. Thứ tự được xác định theo phụ thuộc."] },
     FnText { name: "DGET", args: "(cơ_sở_dữ_liệu, trường, tiêu_chí)", desc: "Trích xuất từ cơ sở dữ liệu một bản ghi trùng khớp với các điều kiện chỉ định", arg_desc: &["là vùng ô tạo thành danh sách hoặc cơ sở dữ liệu. Cơ sở dữ liệu là danh sách các dữ liệu có liên quan", "Hoặc là nhãn của cột trong cặp dấu nháy kép hoặc là số thứ tự của cột trong danh sách", "là khoảng các ô chứa điều kiện chỉ định. Khoảng bao gồm nhãn cột và môt ô bên dưới nhãn chỉ điều kiện"] },
     FnText { name: "DMAX", args: "(cơ_sở_dữ_liệu, trường, tiêu_chí)", desc: "Trả về giá trị lớn nhất trong trường (cột) của các bản ghi thuộc cơ sở dữ liệu thoả mãn điều kiện chỉ định", arg_desc: &["là vùng ô tạo thành danh sách hoặc cơ sở dữ liệu. Cơ sở dữ liệu là danh sách các dữ liệu có liên quan", "Hoặc là nhãn của cột trong cặp dấu nháy kép hoặc là số thứ tự của cột trong danh sách", "là vùng ô chứa điều kiện chỉ định. Vùng này gồm nhãn cột và một ô bên dưới chỉ điều kiện"] },
     FnText { name: "DMIN", args: "(cơ_sở_dữ_liệu, trường, tiêu_chí)", desc: "Trả về giá trị nhỏ nhất trong trường (cột) của các bản ghi thuộc cơ sở dữ liệu thoả mãn điều kiện chỉ định", arg_desc: &["là vùng ô tạo thành danh sách hoặc cơ sở dữ liệu. Cơ sở dữ liệu là danh sách các dữ liệu có liên quan", "Hoặc là nhãn của cột trong cặp dấu nháy kép hoặc là số thứ tự của cột trong danh sách", "là vùng ô chứa điều kiện chỉ định. Vùng này gồm nhãn cột và một ô bên dưới chỉ điều kiện"] },

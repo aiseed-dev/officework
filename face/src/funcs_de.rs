@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 403 関数
+pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "ABS", args: "(Zahl)", desc: "Gibt den Absolutwert einer Zahl zurück", arg_desc: &["ist die reelle Zahl, deren Absolutwert Sie ermitteln möchten"] },
     FnText { name: "ACOS", args: "(Zahl)", desc: "Gibt den Arkuskosinus einer Zahl im Bereich von 0 bis Pi zurück", arg_desc: &["ist der Kosinus des Winkels, den Sie berechnen wollen, und liegt zwischen -1 und 1"] },
     FnText { name: "ACOSH", args: "(Zahl)", desc: "Gibt den umgekehrten hyperbolischen Kosinus einer Zahl zurück.", arg_desc: &["ist eine reelle Zahl größer oder gleich 1 zurück"] },
@@ -107,6 +107,7 @@ pub static TEXT: &[FnText] = &[  // 403 関数
     FnText { name: "DEGREES", args: "(Winkel)", desc: "Wandelt Bogenmaß (Radiant) in Grad um", arg_desc: &["ist ein in Bogenmaß (Radiant) gegebener Winkel, den Sie umwandeln möchten"] },
     FnText { name: "DELTA", args: "(Zahl1, [Zahl2])", desc: "Überprüft, ob zwei Werte gleich sind", arg_desc: &["ist die erste Zahl", "ist die zweite Zahl"] },
     FnText { name: "DEVSQ", args: "(Zahl1, [Zahl2], ...)", desc: "Gibt die Summe der quadrierten Abweichungen der Datenpunkte von ihrem Stichprobenmittelwert zurück.", arg_desc: &["sind 1 bis 255 Argumente bzw. ein Array oder Arraybezug, deren quadratische Abweichungen Sie berechnen möchten"] },
+    FnText { name: "DF", args: "(Definition1, [Definition2], ...)", desc: "Weist einer Tabellenspalte eine Formel zu. Jede Zeile der Spalte wird mit der Formel gefüllt; fehlt die Spalte, wird sie der Tabelle hinzugefügt. „Name = Formel“ definiert eine Konstante für dieses df", arg_desc: &["ist eine Definition. „Tabelle[Spalte] = Formel“ definiert eine Spalte, „Name = Formel“ eine Konstante für dieses df", "sind weitere Definitionen. Ihre Reihenfolge ergibt sich aus den Abhängigkeiten"] },
     FnText { name: "DGET", args: "(Datenbank, Datenbankfeld, Suchkriterien)", desc: "Gibt den Datensatz in einer Datenbank zurück, der mit den angegebenen Suchkriterien übereinstimmt", arg_desc: &["ist der Zellbereich, aus dem die Datenbank besteht", "gibt an, welches Datenbankfeld in der Funktion benutzt wird", "ist der Zellbereich, der die Suchkriterien enthält. Der Bereich besteht aus der Spaltenbeschriftung und der Zelle darunter, in der sich die Bedingung befindet"] },
     FnText { name: "DMAX", args: "(Datenbank, Datenbankfeld, Suchkriterien)", desc: "Gibt den größten Wert aus den ausgewählten Datenbankeinträgen zurück", arg_desc: &["ist der Zellbereich, aus dem die Datenbank besteht", "gibt an, welches Datenbankfeld in der Funktion benutzt wird", "ist der Zellbereich, der die Suchkriterien enthält. Der Bereich besteht aus der Spaltenbeschriftung und der Zelle darunter, in der sich die Bedingung befindet"] },
     FnText { name: "DMIN", args: "(Datenbank, Datenbankfeld, Suchkriterien)", desc: "Gibt den kleinsten Wert aus den ausgewählten Datenbankeinträgen zurück", arg_desc: &["ist der Zellbereich, aus dem die Datenbank besteht", "gibt an, welches Datenbankfeld in der Funktion benutzt wird", "ist der Zellbereich, der die Suchkriterien enthält. Der Bereich besteht aus der Spaltenbeschriftung und der Zelle darunter, in der sich die Bedingung befindet"] },

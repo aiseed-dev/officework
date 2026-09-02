@@ -2,8 +2,7 @@
 
 _日本語版(secondary): link:../ja/df-manual.adoc[df-manual.adoc]_
 
-*Status: not implemented.* You cannot use this yet. This manual describes
-what is going to be built, and the code will be written from it.
+*Status: implemented.*
 
 A formula normally belongs to one cell. This booklet describes `df`, which
 lets one formula belong to a whole column. Read it if you keep a table
@@ -51,10 +50,21 @@ The form is one equals sign inside `df`.
 
 The left side names the table and the column that is being defined. The
 right side is the formula for that column. Inside the formula you refer to
-other columns of any table by the same `<table>[<column>]` form.
+other columns of the same table by the same `<table>[<column>]` form.
 
 You can put the formula in any cell of the sheet. The left side already
-names the table, so the definition reads the same wherever it sits.
+names the table, so the definition reads the same wherever it sits. The
+table is a table object on that sheet (one made with Format as Table).
+
+The cell you wrote it in shows the names of the columns it defines. It
+shows `Sales[Amount]`, or `Sales[Amount], Sales[Tax]` when two columns are
+defined. The values go into the table.
+
+If the table has no such column, it is added at the right edge of the
+table. The column name is written in the header row and the table range
+grows by one column. If the column already exists, every row of it is
+filled with the value of the formula. Whatever was in that column, values
+or formulas, is replaced by the values of the definition.
 
 == It is a definition, not a write
 
@@ -87,8 +97,8 @@ in the formula.
     =df(TaxRate = 0.1,
         Sales[Tax] = Sales[Amount] * TaxRate)
 
-This is the same mechanism as Excel's defined names. A defined name can
-also be used in an ordinary cell formula.
+A defined name can be used in the formulas of the same `df`. It cannot be
+used in an ordinary cell formula or in a `df` written in another cell.
 
 == The order of calculation
 
@@ -114,18 +124,42 @@ other, so you can read where the loop closes.
 *A table or column that does not exist.* The cell shows an error naming
 the part that was not found.
 
+*No room for the new column.* If the column just right of the table holds
+a value or a formula, the column cannot be added. The message names the
+column and the column letter that is not free.
+
+*A definition that uses a failed column.* A definition whose formula reads
+a column that failed for one of the reasons above is not used either. The
+message names that column.
+
 Error messages name columns, not cell addresses. `Sales[Amount]` is the
-thing you wrote, so it is the thing the message talks about.
+thing you wrote, so it is the thing the message talks about. Only the
+message for a double definition also gives the two cell addresses, so you
+can choose which one to delete.
+
+The messages are in Japanese. These are the forms they take:
+
+[cols="1,2"]
+|===
+|Case |Message
+
+|Defined twice |`売上[金額] を2回定義しています(F1 と F3)`
+|Loop |`定義が循環しています(売上[金額] → 売上[税額] → 売上[金額])`
+|No such table |`表 仕入 が見つかりません`
+|No such column |`売上[原価] が見つかりません`
+|No room for the column |`売上[金額] を足す場所(D 列)が空いていません`
+|Uses a failed column |`売上[税額] は、エラーになった 売上[金額] を使っています`
+|===
 
 == What a formula can hold
 
-A formula has four kinds of value: a single value, a column, a table, and
-a function. There is one rule for how they fit together. *Any value a
-function returns can be an argument to any other function.*
+The right side takes the same things as an ordinary cell formula: numbers,
+text, cell references, functions, and columns of the same table. A column
+of the same table is read as the value in the current row. `Sales[Price]`
+is the price in row 2 while row 2 is being worked out.
 
-This is why `df` returns the table it defined, and why that table can be
-passed straight into another function. There is no step where you have to
-flatten a table before something else will take it.
+`df` shows the names of the columns it defined in its cell. The result of
+`df` cannot be passed to another function.
 
 == The same thing in Python
 
@@ -156,22 +190,22 @@ definitions, and the order they run in comes from the dependencies alone.
 That is the spreadsheet's own way of recalculating, widened from cells to
 columns and names.
 
-== Three things not settled yet
+== Two things not settled yet
+
+Both will be settled against the ledger sample when it is built. Until
+then, writing them is refused with an error message.
 
 *Running totals inside a formula.* A ledger has a balance column, which is
 the running total of the amounts above it. Which summaries can appear
-inside a `df` formula, and how they are written, is not decided.
+inside a `df` formula, and how they are written, is not decided. For now,
+a summary function such as `SUM` or `AVERAGE` on the right side is refused
+with `df の中の集計はまだ使えません(売上[累計] の SUM)`.
 
 *Looking a value up in another table.* Writing
 `Journal[AccountName] = Accounts[Name]` needs a rule for which key joins
-the two tables. That rule is not decided.
-
-*How the returned table looks in a cell.* `df` returns the table it
-defined. What a cell shows when you write `=df(…)` straight into it, the
-table itself or nothing at all because the formula is only a definition,
-is not decided.
-
-The first two will be settled against the ledger sample when it is built.
+the two tables. That rule is not decided. For now, a column of a table
+other than the one on the left side is refused with
+`別の表の列はまだ引けません(科目表[名前])`.
 
 == Related manuals
 

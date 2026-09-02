@@ -347,6 +347,7 @@ Arguments in `[ ]` can be omitted.
 |`CHOOSE(index_num, value1, [value2], ...)` |Chooses a value or action to perform from a list of values, based on an index number.
 |`COLUMN([reference])` |Returns the column number of a reference.
 |`COLUMNS(array)` |Returns the number of columns in an array or reference.
+|`DF(definition1, [definition2], ...)` |Attaches a formula to a table column. Every row of the column is filled by the formula, and the column is added to the table if it does not exist. "name = formula" defines a constant for this df.
 |`DROP(array, rows, [columns])` |Drops rows or columns from array start or end.
 |`FILTER(array, include, [if_empty])` |Filter a range or array.
 |`HLOOKUP(lookup_value, table_array, row_index_num, [range_lookup])` |Looks for a value in the top row of a table or array of values and returns the value in the same column from a row you specify.
