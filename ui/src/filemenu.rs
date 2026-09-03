@@ -98,7 +98,7 @@ pub trait FileScreen: crate::appcmd::Screen {
     fn quit_now(&mut self, cx: &mut gpui::Context<Self>)
     where
         Self: Sized;
-    /// 名前の付いた段へ移る。名前は骨組み(ribbon::WRITER / CALC)の英語("Protection" など)
+    /// 名前の付いた段へ移る。名前は骨組み(ribbon::skeleton。リボンは1つ)の英語("Protection" など)
     fn goto_tab_named(&mut self, name: &str);
 
     /// ファイルのページに**保護の一覧**を持っているか。持っていれば自分で
@@ -215,7 +215,7 @@ pub fn run_cx<S: FileScreen + Sized + 'static>(
         "f-protect" => {
             // 表の側はファイルのページに保護の一覧を持っています。文章の側は
             // まだ無いので、リボンの保護タブへ飛ばします
-            // 段名は骨組み(ribbon::WRITER / CALC)の英語で引く。
+            // 段名は骨組み(ribbon::skeleton)の英語で引く。
             // 2026-08-26 に骨組みが英語になった後も「保護」で探していたので、
             // 文章の側は押しても何も起きなかった(2026-09-02 の突き合わせで発見)
             if !s.protect_page() {

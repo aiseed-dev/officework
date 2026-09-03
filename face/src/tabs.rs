@@ -80,16 +80,19 @@ mod tests {
     // その試験を `lang::i18n`(控えを直に触れる場所)へ移したので、
     // 順番の縛りが要らなくなり、`#[ignore]` を外しました。
 
-    /// 段の数。文章 11 + 表 13 のうち共通が 9 で、合わせて 15
+    /// 段の数は 15。**リボンは1つ**(2026-09-04)なので、どの段も両方の画面に
+    /// あり、番号も同じ(前は文章 11 + 表 13 のうち共通 9 だった)
     #[test]
     fn the_result_has_fifteen_tabs() {
         // 段の名前は画面の言語で変わります。替える試験と並ばないよう錠を
         let _lang = lang::i18n::lang_lock();
         let m = merged();
         assert_eq!(m.len(), 15, "段の数が合わない: {:?}", m.iter().map(|s| s.name).collect::<Vec<_>>());
-        assert_eq!(m.iter().filter(|s| s.doc.is_some()).count(), 11);
-        assert_eq!(m.iter().filter(|s| s.sheet.is_some()).count(), 13);
-        assert_eq!(m.iter().filter(|s| s.doc.is_some() && s.sheet.is_some()).count(), 9);
+        assert_eq!(m.iter().filter(|s| s.doc.is_some()).count(), 15);
+        assert_eq!(m.iter().filter(|s| s.sheet.is_some()).count(), 15);
+        for (i, s) in m.iter().enumerate() {
+            assert_eq!((s.doc, s.sheet), (Some(i), Some(i)), "{}: 番号が両方の画面で違う", s.name);
+        }
     }
 
     /// **共通の段は文字が一致する。** ここが崩れると突き合わせが効かない。
@@ -105,7 +108,7 @@ mod tests {
         let m = merged();
         let common: Vec<&Slot> =
             m.iter().filter(|s| s.doc.is_some() && s.sheet.is_some()).collect();
-        assert_eq!(common.len(), 9, "{:?}", common.iter().map(|s| s.name).collect::<Vec<_>>());
+        assert_eq!(common.len(), 15, "{:?}", common.iter().map(|s| s.name).collect::<Vec<_>>());
         for s in common {
             let d = ribbon::writer_tabs()[s.doc.expect("文章の段")].name;
             let c = ribbon::calc_tabs()[s.sheet.expect("表の段")].name;

@@ -3644,7 +3644,7 @@ mod recalc_tests {
         c.update(cx, |this, cx| {
             this.tab = 0;
             this.file_menu_click("f-macro", cx);
-            assert_eq!(ui::ribbon::CALC[this.tab].name, "Macros", "マクロタブへ移らない");
+            assert_eq!(ui::ribbon::skeleton()[this.tab].name, "Macros", "マクロタブへ移らない");
         });
     }
 

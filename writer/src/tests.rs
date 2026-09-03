@@ -3469,7 +3469,7 @@ mod file_menu_tests {
         w.update(cx, |this, cx| {
             this.tab = 0;
             this.file_menu_click("f-protect", cx);
-            assert_eq!(ui::ribbon::WRITER[this.tab].name, "Protection", "保護タブへ移らない");
+            assert_eq!(ui::ribbon::skeleton()[this.tab].name, "Protection", "保護タブへ移らない");
         });
     }
 

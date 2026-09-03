@@ -662,6 +662,23 @@ impl Writer {
         self.embedded = true;
     }
 
+    /// **いまファイルのページを出しているか**(統合の段8)。
+    ///
+    /// 埋め込みのときは、このページを描くのは officework です。
+    /// 左の列は officework が持ち、右側だけ [`Self::file_pane`] で返します
+    pub fn on_file_page(&self) -> bool {
+        self.tab == 0
+    }
+
+    /// **ボタンの場所の控え**(点検の道具が座標を当てずに押せるように)。
+    ///
+    /// officework がファイルのページを描くとき、左の列の位置を控えるのは
+    /// この箱です。渡さないと、実機の点検が座標を当てるしかなくなります
+    /// (2026-09-04。統合の段8)
+    pub fn btn_boxes(&self) -> ui::filemenu::Boxes {
+        self.btn_box.clone()
+    }
+
     /// **いま選んでいるリボンの段**(`officework` が画面をまたいで持ち越す)。
     /// **入切のボタンが、いま入っているか**(2026-08-21 発注者
     /// 「押せるボタンだけでなくトグルボタンを作って」)。表の画面と同じ形です。
@@ -678,6 +695,14 @@ impl Writer {
 
     pub fn ribbon_tab(&self) -> usize {
         self.tab
+    }
+
+    /// 文脈タブ(ピボット・表のデザイン)を隠すか。文章の画面には出す条件が
+    /// まだ無い(表の中の表のデザインは、的の順を付ける回で)
+    pub(crate) fn ctx_tab_hidden(i: usize) -> bool {
+        ribbon::skeleton()
+            .get(i)
+            .is_some_and(|tb| tb.cmds.iter().any(|c| c.id == "pivot-layout" || c.id == "td-header"))
     }
 
     /// リボンの段を選ぶ。**この画面に無い段は動かしません**。

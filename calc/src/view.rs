@@ -323,7 +323,7 @@ impl Render for Calc {
         // 表計算の色は緑(デスクトップ版の app 色分けと同じ)。
         // 2段目 = 白地のタブ+現在地の緑の下線。右端に 🔍。
         // 下端 = ステータスバー(シートのタブ+状態の文言+選択の生きた値)
-        let (ready, all) = ribbon::progress(ribbon::calc_tabs());
+        let (ready, all) = ribbon::progress_for(ribbon::App::Calc);
         // 画面の明暗(インターフェイステーマ)。**セルは白のまま** —
         // 暗くするのは周り(リボン・タブ・ボタン・見出し)だけ
         let dk = self.dark;
@@ -663,8 +663,10 @@ impl Render for Calc {
             // **いまの状況で意味が無いボタンも灰色に**(2026-08-21 の B-5)。
             // ピボットの締めと同じ扱いにします — 押しても腕が断る物を、
             // 押す前に見て分かるようにするためです
+            // リボンは1つ: 文章の画面にしか効かないボタンも灰色(2026-09-04)
             let locked = (on_pivot && Calc::PIVOT_LOCKED.contains(&cmd.id))
-                || !self.can_press(cmd.id);
+                || !self.can_press(cmd.id)
+                || !cmd.apps.sheet;
             // **記録中は「操作を記録」のボタンを赤く**(発注者 2026-08-16
             // 「記録中は、それがわかるようにして」)。下のステータスバーの印と二重にする —
             // 押した所を見ている目と、画面全体を見ている目は別
@@ -703,7 +705,7 @@ impl Render for Calc {
                         .children(marker.map(|m| div()
                             .text_size(px(us * 8.0)).text_color(th_gray)
                             .child(m))));
-                if cmd.ready && !dlg_open {
+                if cmd.ready && cmd.apps.sheet && !dlg_open {
                     let cid = cmd.id;
                     b = b.relative().child(mark(cid))
                         .children(hint_cmd.get(cid).map(|h| badge(h, us)));
@@ -756,7 +758,7 @@ impl Render for Calc {
                             .text_size(px(us * 8.0)).text_color(th_gray)
                             .child(m)))
                 }));
-            if cmd.ready && !dlg_open {
+            if cmd.ready && cmd.apps.sheet && !dlg_open {
                 let cid = cmd.id;
                 b = b.relative().child(mark(cid))
                     .children(hint_cmd.get(cid).map(|h| badge(h, us)));
@@ -768,7 +770,7 @@ impl Render for Calc {
             }
             b.into_any_element()
         };
-        if ribbon::CALC[self.tab].name == "Home" {
+        if ribbon::skeleton()[self.tab].name == "Home" {
             // 本家のホームは**単純な2行割りではない**(発注者 2026-08-06
             // スクショ)。組ごとに上の段と下の段が対になっている —
             // コピーの下に貼り付け、書体の下に B I U…、縦揃えの下に横揃え。
@@ -3927,7 +3929,9 @@ impl Render for Calc {
         });
 
         // ---- ファイルの全面ページ(本家の File メニュー。タブ0で全面) ----
-        let filepage = (self.tab == 0).then(|| {
+        // **埋め込みのときは officework が描きます**(統合の段8。2026-09-04)。
+        // 文章の画面と同じ扱いです
+        let filepage = (self.tab == 0 && !self.embedded).then(|| {
             let item_bg = rgb(0xE2E6EA);
             let gray = rgb(0xB6BDC4);
             let fg = rgb(0x444B52);

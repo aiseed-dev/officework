@@ -60,7 +60,7 @@ impl ui::filemenu::FileScreen for Writer {
         self.request_quit(cx);
     }
     fn goto_tab_named(&mut self, name: &str) {
-        if let Some(i) = ribbon::WRITER.iter().position(|t| t.name == name) {
+        if let Some(i) = ribbon::skeleton().iter().position(|t| t.name == name) {
             self.prev_tab = i;
             self.tab = i;
         }

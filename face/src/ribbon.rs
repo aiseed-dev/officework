@@ -36,6 +36,31 @@ pub enum Kind {
     Mode,
 }
 
+/// **どちらの画面で効くか**(リボンは1つ。2026-09-03 発注者「writer と calc で、
+/// ボタンを共通化する。最初に来るのがセルなのか文章なのかの違いでしょう」)。
+///
+/// 表(WRITER / CALC)は本家の2つの現物から生成したままで、[`skeleton`] が
+/// 1つに合わせるときに、どちらの表に居たかをここへ写します。片方にしか
+/// 無いボタンは、もう片方の画面では灰色(押せない)で同じ場所に出ます。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Apps {
+    /// 文章の画面(writer)で効く
+    pub doc: bool,
+    /// 表の画面(calc)で効く
+    pub sheet: bool,
+}
+
+impl Apps {
+    pub const BOTH: Apps = Apps { doc: true, sheet: true };
+    /// その画面で効くか
+    pub fn has(self, app: App) -> bool {
+        match app {
+            App::Writer => self.doc,
+            App::Calc => self.sheet,
+        }
+    }
+}
+
 /// 1つのコマンド。`ready=false` は未実装(押せない灰色)。
 /// `icon` は Euro-Office の slot 名で、埋め込んだアイコン(icons.rs)を引く鍵。
 #[derive(Clone, Copy)]
@@ -45,51 +70,159 @@ pub struct Cmd {
     pub icon: &'static str,
     pub ready: bool,
     pub kind: Kind,
+    /// どちらの画面で効くか(表の中では両方。[`skeleton`] が実際の値を写す)
+    pub apps: Apps,
 }
 
 /// 押すボタン(押せる)
 pub(crate) const fn c(id: &'static str, label: &'static str, icon: &'static str) -> Cmd {
-    Cmd { id, label, icon, ready: true, kind: Kind::Push }
+    Cmd { id, label, icon, ready: true, kind: Kind::Push, apps: Apps::BOTH }
 }
 /// 入切のボタン(押せる)。画面は今の状態を押された形で見せます
 pub(crate) const fn t(id: &'static str, label: &'static str, icon: &'static str) -> Cmd {
-    Cmd { id, label, icon, ready: true, kind: Kind::Toggle }
+    Cmd { id, label, icon, ready: true, kind: Kind::Toggle, apps: Apps::BOTH }
 }
 /// 表示の切り替え(押せる)。同じ組の中で1つだけが押された形になります
 pub(crate) const fn m(id: &'static str, label: &'static str, icon: &'static str) -> Cmd {
-    Cmd { id, label, icon, ready: true, kind: Kind::Mode }
+    Cmd { id, label, icon, ready: true, kind: Kind::Mode, apps: Apps::BOTH }
 }
 
 /// 押すボタン(まだ押せない灰色)
 #[allow(dead_code)] // 灰色ゼロの今は未使用だが、ロケール表の生成が使う形
 pub(crate) const fn x(label: &'static str, icon: &'static str) -> Cmd {
-    Cmd { id: "", label, icon, ready: false, kind: Kind::Push }
+    Cmd { id: "", label, icon, ready: false, kind: Kind::Push, apps: Apps::BOTH }
 }
 /// 入切のボタン(まだ押せない灰色)
 #[allow(dead_code)]
 pub(crate) const fn xt(label: &'static str, icon: &'static str) -> Cmd {
-    Cmd { id: "", label, icon, ready: false, kind: Kind::Toggle }
+    Cmd { id: "", label, icon, ready: false, kind: Kind::Toggle, apps: Apps::BOTH }
 }
 /// 表示の切り替え(まだ押せない灰色)
 #[allow(dead_code)]
 pub(crate) const fn xm(label: &'static str, icon: &'static str) -> Cmd {
-    Cmd { id: "", label, icon, ready: false, kind: Kind::Mode }
+    Cmd { id: "", label, icon, ready: false, kind: Kind::Mode, apps: Apps::BOTH }
 }
 
-/// いまの言語のリボン。**語だけが違う** — id・並び・ready・icon は
-/// どの言語でも ja(WRITER/CALC)と同一(下の試験が保証)。
-/// 内部の論理(タブ名の照合など)は ja の表で書いてよい —
-/// 添字がそのまま対応する
+// いまの言語のリボンは**語だけが違う** — id・並び・ready・icon は
+// どの言語でも骨組みと同一(試験が保証)。内部の論理(タブ名の照合など)は
+// 骨組み(skeleton。英語)で書いてよい — 添字がそのまま対応する
+//
+// ---- リボンは1つ(2026-09-03 発注者。SEKKEI「決め: リボンは1つ」)----
+//
+// 本家の2つの現物から生成した WRITER / CALC を、ここで1つの並びに合わせる。
+// 生成と検査(ribbon_gen_check・ribbon_locale_check・wiring_check)は
+// 2つの表のまま — 本家の現物が2つなので、生成の元も2つが正直な形。
+// 両方の画面が見るのは、合わせた1つ(`tabs()` / `skeleton()`)だけ。
+
+/// 段の並び(15。SEKKEI の決め)。文章の並びを軸に、表だけの段を
+/// レイアウトの後ろへ入れ、文脈タブ(ピボット・表のデザイン)は共同編集の前
+pub const TAB_ORDER: &[&str] = &[
+    "File", "Home", "Insert", "Draw", "Layout", "Formula", "Data", "References", "Forms",
+    "Pivot Table", "Table Design", "Collaboration", "Protection", "View", "Macros",
+];
+
+/// 同じボタンか。id があれば id、灰色(id 無し)は絵と札で見る
+fn same_cmd(a: &Cmd, b: &Cmd) -> bool {
+    if !a.id.is_empty() || !b.id.is_empty() {
+        a.id == b.id
+    } else {
+        a.icon == b.icon && a.label == b.label
+    }
+}
+
+/// 2つの表を1つに合わせる。段は [`TAB_ORDER`] の順、段の中は文章の並びを
+/// 先に、表だけのボタンを後ろに。各ボタンに [`Apps`](どちらの表に居たか)を写す。
+///
+/// `w` / `c` は骨組み(WRITER / CALC。段名もボタンの id も英語)。`words` は
+/// その言語の表の対(段の並びとボタンの並びは骨組みと同じで、語だけ違う)。
+/// 段の照合は骨組みの英語の名前で行い、出す語は `words` から取る
+fn merge(
+    w: &'static [Tab],
+    c: &'static [Tab],
+    words: Option<(&'static [Tab], &'static [Tab])>,
+) -> &'static [Tab] {
+    let (wl, cl) = words.unwrap_or((w, c));
+    let mut out: Vec<Tab> = Vec::new();
+    let mut names: Vec<&'static str> = TAB_ORDER.to_vec();
+    // 決めの並びに無い段が生成で増えたら、後ろへ(黙って落とさない)
+    for t in w.iter().chain(c.iter()) {
+        if !names.contains(&t.name) {
+            names.push(t.name);
+        }
+    }
+    for name in names {
+        let wi = w.iter().position(|t| t.name == name);
+        let ci = c.iter().position(|t| t.name == name);
+        if wi.is_none() && ci.is_none() {
+            continue;
+        }
+        let mut cmds: Vec<Cmd> = Vec::new();
+        let mut shown: Option<&'static str> = None;
+        if let Some(wi) = wi {
+            let ct = ci.map(|i| &c[i]);
+            shown = Some(wl[wi].name);
+            for (k, x) in w[wi].cmds.iter().enumerate() {
+                let in_sheet = ct.is_some_and(|ct| ct.cmds.iter().any(|y| same_cmd(x, y)));
+                let label = wl[wi].cmds.get(k).map(|l| l.label).unwrap_or(x.label);
+                cmds.push(Cmd { label, apps: Apps { doc: true, sheet: in_sheet }, ..*x });
+            }
+        }
+        if let Some(ci) = ci {
+            shown = shown.or(Some(cl[ci].name));
+            for (k, y) in c[ci].cmds.iter().enumerate() {
+                if cmds.iter().any(|x| same_cmd(x, y)) {
+                    continue;
+                }
+                let label = cl[ci].cmds.get(k).map(|l| l.label).unwrap_or(y.label);
+                cmds.push(Cmd { label, apps: Apps { doc: false, sheet: true }, ..*y });
+            }
+        }
+        out.push(Tab { name: shown.unwrap_or(name), cmds: Box::leak(cmds.into_boxed_slice()) });
+    }
+    Box::leak(out.into_boxed_slice())
+}
+
+/// **骨組み**(ja の表を1つに合わせた物)。段名は英語で、内部の照合はこれで書く
+pub fn skeleton() -> &'static [Tab] {
+    static ONE: std::sync::OnceLock<&'static [Tab]> = std::sync::OnceLock::new();
+    ONE.get_or_init(|| merge(WRITER, CALC, None))
+}
+
+/// その言語のリボン(1つ)。語だけが違い、id・並び・ready・icon・apps は骨組みと同じ
+pub fn tabs_for(lang: &str) -> &'static [Tab] {
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+    static CACHE: OnceLock<Mutex<HashMap<String, &'static [Tab]>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some(hit) = cache.lock().unwrap().get(lang) {
+        return hit;
+    }
+    let built = match crate::ribbon_tables::tabs(lang) {
+        Some(pair) => merge(WRITER, CALC, Some(pair)),
+        None => skeleton(),
+    };
+    cache.lock().unwrap().insert(lang.to_string(), built);
+    built
+}
+
+/// いまの言語のリボン(1つ)。**文章の画面も表の画面も同じ物を見る**
+pub fn tabs() -> &'static [Tab] {
+    tabs_for(crate::settings::language())
+}
+
+/// 今までの名前(両方とも [`tabs`] と同じ物)
 pub fn writer_tabs() -> &'static [Tab] {
-    crate::ribbon_tables::tabs(crate::settings::language())
-        .map(|(w, _)| w)
-        .unwrap_or(WRITER)
+    tabs()
 }
 
 pub fn calc_tabs() -> &'static [Tab] {
-    crate::ribbon_tables::tabs(crate::settings::language())
-        .map(|(_, c)| c)
-        .unwrap_or(CALC)
+    tabs()
+}
+
+/// その画面で効くボタンの (押せる数, 全部)。灰色の目安に使う
+pub fn progress_for(app: App) -> (usize, usize) {
+    let mine: Vec<&Cmd> = skeleton().iter().flat_map(|t| t.cmds.iter()).filter(|c| c.apps.has(app)).collect();
+    (mine.iter().filter(|c| c.ready).count(), mine.len())
 }
 
 /// **語だけの表から、その言語のリボンを組む**(2026-08-31 の作り替え)。
@@ -208,15 +341,13 @@ pub enum App {
     Calc,
 }
 
-/// その段を指す名前の一覧: 骨組みの英語・日本語・いまの言語
-pub fn tab_aliases(app: App, i: usize) -> Vec<&'static str> {
-    let side = move |pair: (&'static [Tab], &'static [Tab])| -> &'static [Tab] {
-        if app == App::Writer { pair.0 } else { pair.1 }
-    };
-    let skeleton = if app == App::Writer { WRITER } else { CALC };
-    let mut names = vec![skeleton[i].name];
+/// その段を指す名前の一覧: 骨組みの英語・日本語・いまの言語。
+/// リボンは1つなので、どちらの画面でも同じ段の番号(`app` は今は見ない)
+pub fn tab_aliases(_app: App, i: usize) -> Vec<&'static str> {
+    let Some(sk) = skeleton().get(i) else { return Vec::new() };
+    let mut names = vec![sk.name];
     for lang in ["ja", crate::settings::language()] {
-        if let Some(t) = crate::ribbon_tables::tabs(lang).map(side).and_then(|t| t.get(i)) {
+        if let Some(t) = tabs_for(lang).get(i) {
             if !names.contains(&t.name) {
                 names.push(t.name);
             }
@@ -251,6 +382,7 @@ pub fn refresh_user_cmds() -> bool {
                     // 利用者のマクロは押すボタン。入切にしたければ .py の側で
                     // 状態を持つことになるので、いまは押す形だけ
                     kind: Kind::Push,
+                    apps: Apps::BOTH,
                 },
                 tab: Box::leak(d.tab.into_boxed_str()),
             }
@@ -694,6 +826,44 @@ pub fn progress(tabs: &[Tab]) -> (usize, usize) {
 mod tests {
     use super::*;
 
+    /// **リボンは1つ。** 骨組みは決めの 15 段の順で、2つの表の全部のボタンを
+    /// 1回ずつ持ち、どちらの表に居たかを apps に写している
+    #[test]
+    fn the_skeleton_merges_both_tables_into_the_fifteen_tabs() {
+        let sk = skeleton();
+        let names: Vec<&str> = sk.iter().map(|t| t.name).collect();
+        assert_eq!(names, TAB_ORDER, "段の並びが決めと違う");
+        let count = |tabs: &[Tab]| tabs.iter().map(|t| t.cmds.len()).sum::<usize>();
+        let shared: usize = WRITER
+            .iter()
+            .map(|wt| {
+                CALC.iter()
+                    .find(|ct| ct.name == wt.name)
+                    .map(|ct| wt.cmds.iter().filter(|x| ct.cmds.iter().any(|y| same_cmd(x, y))).count())
+                    .unwrap_or(0)
+            })
+            .sum();
+        assert_eq!(count(sk), count(WRITER) + count(CALC) - shared, "ボタンが落ちたか二重になった");
+        let both = sk.iter().flat_map(|t| t.cmds).filter(|c| c.apps == Apps::BOTH).count();
+        assert_eq!(both, shared, "両方の表に居るボタンの数が合わない");
+        let forms = sk.iter().find(|t| t.name == "Forms").unwrap();
+        assert!(forms.cmds.iter().all(|c| c.apps == Apps { doc: true, sheet: false }));
+        let data = sk.iter().find(|t| t.name == "Data").unwrap();
+        assert!(data.cmds.iter().all(|c| c.apps == Apps { doc: false, sheet: true }));
+        let home = sk.iter().find(|t| t.name == "Home").unwrap();
+        assert!(home.cmds.iter().any(|c| c.id == "bold" && c.apps == Apps::BOTH));
+        let ja = tabs_for("ja");
+        assert_eq!(ja.len(), sk.len());
+        for (a, b) in ja.iter().zip(sk) {
+            assert_eq!(a.cmds.len(), b.cmds.len(), "{}: 数が違う", b.name);
+            for (x, y) in a.cmds.iter().zip(b.cmds) {
+                assert!((x.id, x.icon, x.ready, x.apps) == (y.id, y.icon, y.ready, y.apps), "{}: {} がずれた", b.name, y.id);
+            }
+        }
+        let (r, all) = progress_for(App::Writer);
+        assert!(r <= all && all == count(WRITER), "文章の画面の数が表と合わない");
+    }
+
 
     /// **どのボタンにも実体のアイコンがある。**
     ///
@@ -809,7 +979,9 @@ mod tests {
         // 手引き(macro-manual)の例は `"タブ": "マクロ"`、pyrun の既定も
         // 「マクロ」。骨組みの段名は英語なので、英語と日本語の両方で
         // その段を引けなければ、利用者のボタンはどの段にも出ない
-        for (app, tabs) in [(App::Writer, WRITER), (App::Calc, CALC)] {
+        // リボンは1つなので、段の番号は骨組み(skeleton)の物
+        for app in [App::Writer, App::Calc] {
+            let tabs = skeleton();
             let i = tabs.iter().position(|t| t.name == "Macros").expect("Macros");
             let names = tab_aliases(app, i);
             assert!(names.contains(&"Macros"), "英語の段名で引けない: {names:?}");

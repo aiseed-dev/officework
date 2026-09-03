@@ -91,7 +91,7 @@ impl ui::filemenu::FileScreen for Calc {
         self.request_quit(cx);
     }
     fn goto_tab_named(&mut self, name: &str) {
-        if let Some(i) = ribbon::CALC.iter().position(|t| t.name == name) {
+        if let Some(i) = ribbon::skeleton().iter().position(|t| t.name == name) {
             self.prev_tab = i;
             self.tab = i;
         }
@@ -4621,7 +4621,7 @@ impl Calc {
             }
             "f-html" => self.export_html_dialog(cx),
             "f-macro" => {
-                if let Some(i) = ribbon::CALC.iter().position(|t| t.name == "Macros") {
+                if let Some(i) = ribbon::skeleton().iter().position(|t| t.name == "Macros") {
                     self.prev_tab = i;
                     self.tab = i;
                 }

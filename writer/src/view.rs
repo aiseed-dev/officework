@@ -36,7 +36,7 @@ impl Render for Writer {
         // 空いている所だけを取っ手にすると、タブが多い窓では幅がゼロになり
         // 掴む場所が無くなる(踏んで直した)。ボタンの類いは stop_propagation で
         // 取っ手より先に効く
-        let (ready, all) = ribbon::progress(ribbon::writer_tabs());
+        let (ready, all) = ribbon::progress_for(ribbon::App::Writer);
         // ダークモードは**紙以外**を暗くする — 紙は白いまま(印刷と同じ)。
         // 文書は何も変わらない(見え方だけ)
         let dk = self.dark;
@@ -158,7 +158,9 @@ impl Render for Writer {
                 ctx_bg: th_tab_on_bg,
             },
             self.btn_box.clone(),
-            |_| false,
+            // 文脈タブ(ピボット・表のデザイン)は、文章の画面では出す条件が
+            // まだ無いので隠す(リボンは1つ。2026-09-04)
+            Writer::ctx_tab_hidden,
             |_| false,
             |_| None,
             |this: &mut Writer, i, cx| {
@@ -287,7 +289,7 @@ impl Render for Writer {
                 // 挿入とマクロの段は行の表を持たない(骨組みの並びで描く)。前は
         // 小文字の "insert" / "macros" で照合していて届かず、表の方は文言の
         // 鍵が生のまま出る古い物だったので、表を消した(2026-09-02)
-        let rows: Option<&[&[LItem]]> = match ribbon::WRITER[self.tab].name {
+        let rows: Option<&[&[LItem]]> = match ribbon::skeleton()[self.tab].name {
             "Home" => Some(HOME_ROWS),
             "Draw" => Some(DRAW_ROWS),
             "Layout" => Some(LAYOUT_ROWS),
@@ -374,6 +376,9 @@ impl Render for Writer {
                     else {
                         continue;
                     };
+                    // **リボンは1つ。** 表の画面にしか効かないボタンは、ここでは
+                    // 未実装と同じ灰色で同じ場所に出す(2026-09-04)
+                    let cmd = ribbon::Cmd { ready: cmd.ready && cmd.apps.doc, ..cmd };
                     let label = cmd.label;
                     // **入切のボタンは、入っている間ずっと押された形**
                     // (2026-08-21 発注者)。押してみないと分からない、をやめる
@@ -569,6 +574,8 @@ impl Render for Writer {
         } else {
             let mut row = div().flex().flex_row().flex_wrap().gap_1().items_center().py_1();
             for cmd in ribbon::writer_tabs()[self.tab].cmds {
+                // リボンは1つ: 表の画面にしか効かないボタンは灰色(2026-09-04)
+                let cmd = &ribbon::Cmd { ready: cmd.ready && cmd.apps.doc, ..*cmd };
                 // 小窓中は ready でも灰色・無反応(未実装と同じ描き方)
                 if cmd.ready && !dlg_open {
                     let id = cmd.id;
@@ -774,7 +781,10 @@ impl Render for Writer {
             })));
 
         // ---- ファイルのページ(本家の File メニュー。タブ0で全面に出す) ----
-        let filepage: Option<gpui::Div> = if self.tab != 0 {
+        // **埋め込みのときは officework が描きます**(統合の段8。2026-09-04)。
+        // 左の列は officework の持ち物で、右側だけ [`Writer::file_pane`] を
+        // 呼ばれます。ここで組むと、同じページが2つの持ち主から出ます
+        let filepage: Option<gpui::Div> = if self.tab != 0 || self.embedded {
             None
         } else {
             let item_bg = th_qa_hover;
