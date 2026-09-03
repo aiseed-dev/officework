@@ -22,8 +22,10 @@ list the gaps we know about. Please report what breaks at
 
 Wheels are abi3 (CPython 3.10+), so one wheel per platform covers every
 version; Linux, macOS and Windows are published. The wheel is **just the
-engines** — a few MB, no GUI, nothing to install alongside. `pandas` is
-imported only if you ask for it (`pip install officework[pandas]`).
+engines** — no GUI, and nothing to install alongside: the equation
+typesetter is inside it, so there is no TeX to set up. That makes it a
+30 MB download, 78 MB installed. `pandas` is imported only if you ask for
+it (`pip install officework[pandas]`).
 
 ## Spreadsheets
 

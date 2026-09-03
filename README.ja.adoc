@@ -114,7 +114,7 @@ git を入れない人にも損はありません — 字のままのファイ�
 
 [source,console]
 ----
-$ pip install officework      # 画面以外の一式が入ります(数 MB)
+$ pip install officework      # 画面以外の一式が入ります(30MB)
 ----
 
 **いまの版は 0.5.0 です。まだ直っていない所が多くあります。**

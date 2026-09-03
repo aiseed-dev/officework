@@ -108,7 +108,7 @@ See the link:docs/en/calc-manual.adoc[calc manual].
 
 [source,console]
 ----
-$ pip install officework      # everything except the GUI (a few MB)
+$ pip install officework      # everything except the GUI (a 30 MB download)
 ----
 
 **The current release is 0.5.0, and plenty in it is still broken.** The gaps
