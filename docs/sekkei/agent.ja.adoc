@@ -526,6 +526,26 @@ python-docx の上にあるので、同じ問いになる — 決め待ちに追
   本文は AsciiDoc で、道具でブロックごとに読み書きできます。まず outline で
   地図を見てから触ります…」)。calc の AGENT_SYSTEM と対にする
 
+==== Python の文書 API もブロックに(2026-09-04 発注者「両方とも AsciiDoc とブロックに寄せる」)
+
+いまの `officework.doc`(_doc.py)は python-docx の形(Document・Paragraph・
+Run・Font)をエンジンの上に写した互換層で、writer のマクロもその形で書かせて
+いる。決め:
+
+- **主の API はブロックと AsciiDoc の字。** 上の表の道具と同じ名前・同じ
+  引数を `officework.doc` に持つ: `outline()` `blocks(a, b)` `replace(a, b, adoc)`
+  `insert(at, adoc)` `delete(a, b)` `find(text)` `fields()` `fill(values)`
+  `text()`(全部の adoc)`to_pdf(path)` `save()`。3つの入り口(パネル・
+  Python・MCP)で同じ語彙、という決めがそのまま形になる
+- **マクロ(パネルの run_macro も、リボンのマクロも)はこの API か、adoc の
+  字の処理で書く。** python-docx の形のコードはモデルに書かせない
+- **python-docx の形の互換層は増やさない。** 既に書かれたスクリプトのために
+  残すが、新しい欄は足さない(書式は数でなく条件で止める、と同じ)。
+  手引き(python-manual・writer-macro-manual・tutorial-word)は、ブロックの
+  API を先に教える形に書き直す(動いてから。追随待ちに載せる)
+- docx は開く・保存する端にだけある。docx そのものを直したい人は、
+  officework の外で python-docx を使えばよい
+
 ==== 段階(writer)
 
 [start=9]
@@ -535,7 +555,10 @@ python-docx の上にあるので、同じ問いになる — 決め待ちに追
 . writer の左パネルを共通の描きに替え、AiJob::Chat の囲みの形を外す。
   run_macro を道具として繋ぐ。実機で「1手で戻ること」と「記入欄を埋めて PDF
   まで通ること」を確かめる
-. 手引き(docs/ja/writer-manual)に calc と同じ節を書く(動いてから)
+. `officework.doc` にブロックの API を足す(道具と同じ名前)。マクロの
+  system の文をその形に替える
+. 手引き(docs/ja/writer-manual)に calc と同じ節を書き、python-manual・
+  writer-macro-manual・tutorial-word をブロックの API が先の形に直す(動いてから)
 
 === 段階(続き)
 
@@ -617,8 +640,8 @@ python-docx の上にあるので、同じ問いになる — 決め待ちに追
   配布版に入れるか)
 - 宛先「Codex」を配布版に入れるか(OpenAI の明言が無い。問い合わせるか、
   自分の機械で使う道に留めるか)
-- python-docx のマクロと officework._doc(python-docx の上の文書 API)を
-  残すか、AsciiDoc の字とブロックの API に寄せるか
+- (決まった 2026-09-04: 両方とも AsciiDoc とブロックに寄せる。下の
+  「Python の文書 API もブロックに」)
 
 (既定のモデルと道具呼びの行の見せ方は決まった — 2026-09-02。
 「提供元の一覧」と「対話の画面の決め」に書いた)
