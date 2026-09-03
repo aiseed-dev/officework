@@ -1749,13 +1749,28 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
         let k = kubun(at[1]).min(pages.len().saturating_sub(1));
         let off = offsets.get(k).copied().unwrap_or(0.0);
         let pp = paper_of(k);
+        // **上の余白へはみ出させません**(2026-09-03)。
+        //
+        // 表の行が紙の切れ目にかかると、頁割りは行の途中で割ることがあり、
+        // 行の上端は前の紙に残ります。塗りは行の上端から敷くので、その分が
+        // 次の紙の余白に出て、**字も罫線も無い色の帯**になります
+        // (python-docx の見本の2枚目の頭)。上の余白まで切り詰めます
+        let mut ue = at[1] - off;
+        let mut takasa = at[3];
+        if ue < pp.top_mm {
+            takasa -= pp.top_mm - ue;
+            ue = pp.top_mm;
+        }
+        if takasa <= 0.01 {
+            continue;
+        }
         if let Some(p) = pages.get_mut(k) {
             p.fills.push(Fill {
                 x_mm: pp.margin_mm + at[0],
                 // 紙面は上端の y。PDF は左下からなので、高さのぶん下げます
-                y_mm: pp.height_mm - (at[1] - off) - at[3],
+                y_mm: pp.height_mm - ue - takasa,
                 w_mm: at[2],
-                h_mm: at[3],
+                h_mm: takasa,
                 rgb: rgb(color),
                 ..Default::default()
             });
