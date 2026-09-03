@@ -711,7 +711,8 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
     // **改行を持つセルも「複数行のセル」です**(2026-08-31)。`a|` で書かれ、
     // 中身が次の行へ続くので、桁の数を `[cols=]` で先に言っておかないと
     // 読む側が行の切れ目を見誤ります(隣のセルが次の行へ落ちました)
-    let has_many_paras = t.rows.iter().flatten().any(|c| {
+    // 原文のまま返すセル(読んだ時の字のまま)は、元の形で書かれるので数えません
+    let has_many_paras = t.rows.iter().flatten().filter(|c| !cell_raw_is_fresh(c)).any(|c| {
         c.paragraphs.len() > 1
             || c.paragraphs.iter().any(|p| p.runs.iter().any(|r| r.text.contains('\n')))
     });
@@ -743,10 +744,28 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
         let mut wrote = false;
         // 直前のセルが複数段落だったか(次のセルを行頭から始めるため)
         let mut prev_is_multi = false;
+        // 直前のセルを原文のまま返したか(原文が区切りの空白を抱えている)
+        let mut prev_was_raw = false;
         for (k, cell) in row.iter().enumerate() {
             // 縦結合の続き = セルを書かない(頭の .N+ が占める)
             if matches!(cell.v_merge, VMerge::Continue) {
                 continue;
+            }
+            // **読んだ時の原文があり、字がそのままなら原文を返す**(指定も中身も)
+            let raw_cell = cell.paragraphs.first().and_then(|p| p.raw_adoc.as_deref());
+            let mut raw_spec: Option<String> = None;
+            if let Some((src, stamp)) = raw_cell.and_then(|r| r.split_once('\u{0}')) {
+                raw_spec = src.split_once('|').map(|(sp, _)| sp.to_string());
+                if stamp == cell_stamp(&cell.paragraphs) {
+                    if wrote && !prev_was_raw {
+                        out.push(if prev_is_multi { '\n' } else { ' ' });
+                    }
+                    out.push_str(src);
+                    wrote = true;
+                    prev_is_multi = false;
+                    prev_was_raw = true;
+                    continue;
+                }
             }
             // **セルの間に空白を1つ置きます**(2026-08-18)。詰めて書くと、
             // 前のセルの終わりの `8*` が「8回くり返す」の指定として読まれ、
@@ -763,15 +782,16 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
                 .iter()
                 .any(|p| p.runs.iter().any(|r| r.text.contains('\n')));
             let many_paras = cell.paragraphs.len() > 1 || ori_ari;
-            if wrote {
+            if wrote && !prev_was_raw {
                 // 前のセルが複数段落なら、行を変えて次のセルを始めます
                 out.push(if prev_is_multi { '\n' } else { ' ' });
             }
             wrote = true;
             prev_is_multi = many_paras;
+            prev_was_raw = false;
             // 読んだセルの指定の字があれば、そのまま返す(結合・揃え・種類が全部入っている)
-            if let Some(spec) = cell.paragraphs.first().and_then(|p| p.raw_adoc.as_deref()) {
-                out.push_str(spec);
+            if let Some(spec) = raw_spec {
+                out.push_str(&spec);
             } else {
                 if let VMerge::Start = cell.v_merge {
                     let n = vspan_of(t, ri, grid_col(row, k));
@@ -2441,6 +2461,23 @@ fn seam_src(before: &str, after: &str) -> &'static str {
     seam(&a, &b)
 }
 
+/// セルの原文があり、字が読んだ時のままか(そのセルは原文で書かれる)
+fn cell_raw_is_fresh(c: &Cellbox) -> bool {
+    match c.paragraphs.first().and_then(|p| p.raw_adoc.as_deref()).and_then(|r| r.split_once('\u{0}')) {
+        Some((_, stamp)) => stamp == cell_stamp(&c.paragraphs),
+        None => false,
+    }
+}
+
+/// セルの字の控え(段落ごとの字を空行で繋いだ物)。原文を返してよいかの照合に使う
+fn cell_stamp(paras: &[Paragraph]) -> String {
+    paras
+        .iter()
+        .map(|p| p.runs.iter().map(|r| r.text.as_str()).collect::<String>())
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
 fn parse_table_lines(
     rows_src: &[&str],
     doc: &mut Document,
@@ -2453,6 +2490,9 @@ fn parse_table_lines(
     // 始める」と断っていたので、本家の手引き 176 枚のうち 11 枚が開けません
     // でした
     let mut joined: Vec<String> = Vec::new();
+    // **原文の行の並び**(`joined` と同じ切り方で、行は改行のまま継ぐ)。
+    // セルの原文を覚えるのに使う(2026-09-03)
+    let mut joined_orig: Vec<String> = Vec::new();
     for l in rows_src {
         // **空行は `a|` のセルの中だけ段落の切れ目にします。**
         // ほかの空行は今までどおり捨てます(表の見た目のための空行なので)
@@ -2460,6 +2500,9 @@ fn parse_table_lines(
             if let Some(before) = joined.last_mut() {
                 if last_cell_is_adoc(before) && !before.ends_with("\n\n") {
                     before.push_str("\n\n");
+                    if let Some(bo) = joined_orig.last_mut() {
+                        bo.push('\n');
+                    }
                 }
             }
             continue;
@@ -2467,7 +2510,12 @@ fn parse_table_lines(
         let head = l.trim_start();
         if joined.is_empty() || head.starts_with('|') || cell_has_attrs(head) {
             joined.push((*l).to_string());
+            joined_orig.push((*l).to_string());
         } else if let Some(before) = joined.last_mut() {
+            if let Some(bo) = joined_orig.last_mut() {
+                bo.push('\n');
+                bo.push_str(l);
+            }
             // 続きの行。**全角の空白は字下げなので残します**
             let cont = trim_edges(l);
             // **行末の ` +` は AsciiDoc の改行**です(2026-08-31)。段落の
@@ -2501,6 +2549,7 @@ fn parse_table_lines(
     let mut first_row_cols = 0usize;
     for (li, l) in joined.iter().enumerate() {
         let mut restv: &str = l;
+        let mut restv_orig: &str = joined_orig.get(li).map(|s| s.as_str()).unwrap_or("");
         let mut this_row_cols = 0usize;
         while !restv.is_empty() {
             let (vspan, after_v) = if let Some(r) = restv.strip_prefix('.') {
@@ -2530,6 +2579,21 @@ fn parse_table_lines(
             let spec: &str = &restv[..restv.len() - body.len() - 1];
             let end = next_cell_start(body);
             let (cell_text, restn) = body.split_at(end);
+            // セルの中身の原文(次のセルの頭まで。区切りの空白や改行も含む)。
+            // 原文の行の並びを、同じ指定の字を目印に同じ所まで進めます
+            let orig_cell: &str = {
+                let ro = restv_orig.trim_start_matches([' ', '\t', '\n']);
+                if ro.starts_with(spec) && ro[spec.len()..].starts_with('|') {
+                    let body_orig = &ro[spec.len() + 1..];
+                    let end_orig = next_cell_start(body_orig);
+                    let (co, rn) = body_orig.split_at(end_orig);
+                    restv_orig = rn;
+                    co
+                } else {
+                    restv_orig = "";
+                    cell_text
+                }
+            };
             let mut cb = Cellbox {
                 col_span: hspan,
                 v_merge: if vspan > 1 { VMerge::Start } else { VMerge::None },
@@ -2622,9 +2686,14 @@ fn parse_table_lines(
                 }
             }
             cb.paragraphs = paras;
-            if !spec.is_empty() {
+            // **セルの原文(指定 + 中身)を覚えます**(2026-09-03)。指定があるか、
+            // 中身が複数行(`a|` の中の塊・一覧、`l|` の改行)のときです。置き場は
+            // 1つ目の段落の raw_adoc で、`原文\u{0}読んだ時の字` の形。書き戻しは
+            // 今の字が読んだ時のままの時だけ原文を返し、画面で直したセルは普通に書きます
+            if !spec.is_empty() || orig_cell.contains('\n') {
+                let stamp = cell_stamp(&cb.paragraphs);
                 if let Some(p0) = cb.paragraphs.first_mut() {
-                    p0.raw_adoc = Some(spec.to_string());
+                    p0.raw_adoc = Some(format!("{spec}|{orig_cell}\u{0}{stamp}"));
                 }
             }
             this_row_cols += cb.span();
@@ -3055,6 +3124,24 @@ mod tests {
         assert!(d.paragraphs().any(|p| p.style_id.as_deref() == Some("字下げ")));
         assert!(is_mono_block("字下げ"));
         assert_eq!(write(&d), src, "往復で変わった");
+    }
+
+    /// **セルの原文は、字がそのままなら原文で返す**(2026-09-03)。指定(`2+^`)も
+    /// `a|` の中の塊も改行も、そのまま戻る。画面で字を直したセルは普通に書く
+    #[test]
+    fn table_cells_keep_their_source_until_edited() {
+        let src = "|===\n|1 2+^|2 |3\n\n^|5 a|--\nNOTE: 中\n\n続き\n-- |7\n|===\n";
+        let d = parse(src).unwrap();
+        assert_eq!(write(&d), src, "往復で変わった");
+        // 2行目の1つ目のセル(`^|5`)の字を直すと、指定は保ったまま普通に書く
+        let mut d2 = d.clone();
+        if let Block::Table(t) = &mut d2.blocks[0] {
+            let c = &mut t.rows[1][0];
+            c.paragraphs[0].runs[0].text = "五".to_string();
+        }
+        let w = write(&d2);
+        assert!(w.contains("^|五"), "直したセルが原文のままか、指定が消えた:\n{w}");
+        assert!(w.contains("a|--\nNOTE: 中\n\n続き\n-- |7"), "直していないセルの原文が崩れた:\n{w}");
     }
 
     #[test]
