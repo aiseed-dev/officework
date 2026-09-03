@@ -6300,6 +6300,10 @@ cover_check や見本作りの検査(しょうもない側)を消せる。
 adoc の中に `|===` で書かず、隣のファイル(Parquet)を `table::名前.parquet[]` で
 指す。画面と PDF には見える。閾値は1つで自動、戻さない。これも Fable の側
 (engine の adoc・ops・book の polars)。
+発注者「これで Excel の中途半端さが消えるでしょう」— Excel は小さな表と
+大きなデータと文書を1つの升目に押し込め、どれにも徹しきれない。ここでは
+小さな表は adoc の字(git で読める)、大きな表は polars の物(Parquet、式で
+作り直せる)、文書は AsciiDoc のブロック、と置き場が3つに分かれる。
 
 触る場所: Opus は face / ui / writer の画面(lib・panels・keys・cmds)/ calc /
 配布。Fable は engine / ops / writer/src/rpc.rs / agent / pysheet の Python。
