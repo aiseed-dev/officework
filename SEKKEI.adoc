@@ -6296,7 +6296,10 @@ cover_check や見本作りの検査(しょうもない側)を消せる。
 発注者(同日)「大きな calc の表は、polars オブジェクトで対応」— エージェントの
 表の道具に table_schema / table_head / table_query(polars の式)/ table_write を
 足し、大きな表はセルで読ませない(agent.ja.adoc「大きな calc の表は polars の
-物として」)。これも Fable の側(ops と book の polars)。
+物として」)。さらに「これは adoc から外す。画像と同じ扱い」— 大きな表は
+adoc の中に `|===` で書かず、隣のファイル(Parquet)を `table::名前.parquet[]` で
+指す。画面と PDF には見える。閾値は1つで自動、戻さない。これも Fable の側
+(engine の adoc・ops・book の polars)。
 
 触る場所: Opus は face / ui / writer の画面(lib・panels・keys・cmds)/ calc /
 配布。Fable は engine / ops / writer/src/rpc.rs / agent / pysheet の Python。
