@@ -26,6 +26,24 @@
 * **コミットは英語**で「何を・なぜ」(2026-08-10 発注者。GitHub で最初に読まれるため)。*設計・注釈・試験名は日本語のまま* — 中の作業の言語で、外の人が最初に読む物ではない。2026-08-09 までの履歴は日本語だが揃えない。設計判断と踏んだ穴は SEKKEI.adoc(部屋割りの先)に追記
 * 方針: できないものを、できるように見せない(未実装は灰色。ready の嘘はwiring\_tests が落とす)/ 黙って落とさない(Report へ)/書式は据え置き / どの操作も1手で戻せる
 
+== Opus への依頼(2026-09-03): エンジンの文書の分離
+
+エンジン(PyPI の officework)の公開作業に付けて、文書の分離をやってください。
+設計は SEKKEI.adoc の「検討: 文書を『エンジンと公開する物』と『それ以外』に分ける」
+(2026-09-03)にあり、そこの「検査と公開の手順(Opus への依頼)」の 6 段がそのまま
+作業の並びです。要点:
+
+* ファイルは動かさない。`docs/engine-docs.txt` の一覧で「エンジンと公開する物」を決める
+* `tools/engine_docs_check.py` を作る(一覧の径路がある・日英の対が揃う・
+  pysheet/README.md のリンク先が一覧にある・一覧の冊子に画面の言葉が無い)
+* publish-pypi.yml の guard と docs/release-tejun.ja.adoc にその検査を足す
+* docs/ja/README.adoc と docs/en/README.adoc の一覧に「エンジンだけで使える」の印
+* wheel には同梱しない。組んだ HTML は安定してから Web へ(発注者 2026-09-03)
+
+Fable(このセッション)は adoc の塊と一覧の作業を続けます。触るのは engine/src と
+engine/tests・engine/examples・tools/honke_*・docs/sekkei/asciidoctor-tsukiawase.ja.adoc です。
+pysheet・CI・packaging・ooxml には触りません。
+
 == 環境の注意
 
 * cargo が PATH に無い機械なら `export PATH="$HOME/.cargo/bin:$PATH"`。そもそも rustup ごと無い機械もある — その場合は user レベルの導入で足りる(`curl https://sh.rustup.rs | sh -s -- -y`。sudo 不要。2026-08-03 に実施済み)
