@@ -205,11 +205,13 @@ models、OpenRouter は openrouter.ai/docs/quickstart。
 - モデルの一覧は `GET /v1/models`(新しい順。`max_input_tokens` `max_tokens`
   `capabilities` 付き)。選ぶ画面はこれを引く
 
-決め(2026-09-04 発注者「テスト・比較用途限定で本番非推奨、これで問題ない。
-開発は本番ではない」): **OpenAI 互換の口で繋ぐ。** native の口(段階6)は、
-prompt caching や structured outputs が要る時に足す。表の anthropic の行は
-「当面は openai-completions でも可」と書いたのがそれ。この機械の
-settings.toml には Claude の行を書いた(鍵は ANTHROPIC_API_KEY)。
+決め(2026-09-04 発注者): **開発の間は OpenAI 互換の口で繋ぐ**(「テスト・
+比較用途限定で本番非推奨、これで問題ない。開発は本番ではない」)。ただし
+「今は動作しているけど、いつ禁止されるかわからない。本番に組み込むと困る」
+ので、**アプリを公開する(本番)までに native の口(messages)を足し、表の
+anthropic の行はそちらに切り替える**。表の「当面は openai-completions でも可」は
+開発の間の話。この機械の settings.toml には Claude の行を書いた(鍵は
+ANTHROPIC_API_KEY)。
 
 === Claude の定額(2026-09-04 発注者「claude 定額は使えるようにしておいて」)
 
@@ -271,7 +273,8 @@ oh-my-pi の「Claude Code へのなりすまし」はこれ
 [start=5]
 . 提供元の表と鍵の探し順(face::settings)、手元のモデルの自動検出
 . 選ぶ画面(モデルの一覧の取得、絞り込み、並び)。実機で確かめる
-. anthropic-messages の口(lang::model)。要る機能が出てから
+. anthropic-messages の口(lang::model)。**アプリの公開までに**(本番は
+  OpenAI 互換の口に頼らない)
 
 実装は Opus(分業の決め)。
 
