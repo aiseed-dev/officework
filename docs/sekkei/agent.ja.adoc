@@ -133,24 +133,32 @@ packages/coding-agent/src/modes/components/model-browser.ts(選ぶ画面)。
 === うちに写す物
 
 . **提供元の表をうちが持つ。** 1行は id・表示名・話し方・接続先・既定の
-  モデル・鍵の環境変数名。最初は次の 10 行ほど(既定のモデルの名前は
-  実装の時に各社の一覧で確かめる)
+  モデル・鍵の環境変数名。最初は次の 10 行(2026-09-04 に各社の公式の資料で
+  確かめた。モデルの名前は替わるので、`/v1/models` が引ける提供元では
+  一覧を引いて出し、表の既定は引けない時の控え)
 +
-[cols="1,1,2,1"]
+[cols="1,1,2,1,1"]
 |===
-|id |話し方 |接続先 |鍵の環境変数
+|id |話し方 |接続先 |既定のモデル |鍵の環境変数
 
-|anthropic |anthropic-messages |https://api.anthropic.com/v1/messages |ANTHROPIC_API_KEY
-|openai |openai-completions |https://api.openai.com/v1/chat/completions |OPENAI_API_KEY
-|google |openai-completions |https://generativelanguage.googleapis.com/v1beta/openai/chat/completions |GEMINI_API_KEY
-|openrouter |openai-completions |https://openrouter.ai/api/v1/chat/completions |OPENROUTER_API_KEY
-|groq |openai-completions |https://api.groq.com/openai/v1/chat/completions |GROQ_API_KEY
-|mistral |openai-completions |https://api.mistral.ai/v1/chat/completions |MISTRAL_API_KEY
-|xai |openai-completions |https://api.x.ai/v1/chat/completions |XAI_API_KEY
-|ollama |openai-completions |http://127.0.0.1:11434/v1/chat/completions(OLLAMA_HOST で変更) |鍵なし
-|llama.cpp |openai-completions |http://127.0.0.1:8080/v1/chat/completions(LLAMA_CPP_BASE_URL で変更) |鍵なし
-|lm-studio |openai-completions |http://127.0.0.1:1234/v1/chat/completions(LM_STUDIO_BASE_URL で変更) |鍵なし
+|anthropic |anthropic-messages(当面は openai-completions でも可) |https://api.anthropic.com/v1/messages |claude-sonnet-5 |ANTHROPIC_API_KEY
+|openai |openai-completions |https://api.openai.com/v1/chat/completions |gpt-5.6-terra |OPENAI_API_KEY
+|google |openai-completions |https://generativelanguage.googleapis.com/v1beta/openai/chat/completions |gemini-3.8-flash |GEMINI_API_KEY
+|openrouter |openai-completions |https://openrouter.ai/api/v1/chat/completions |openrouter/auto |OPENROUTER_API_KEY
+|groq |openai-completions |https://api.groq.com/openai/v1/chat/completions |openai/gpt-oss-120b |GROQ_API_KEY
+|mistral |openai-completions |https://api.mistral.ai/v1/chat/completions |mistral-medium-latest |MISTRAL_API_KEY
+|xai |openai-completions |https://api.x.ai/v1/chat/completions |grok-4.6 |XAI_API_KEY
+|ollama |openai-completions |http://127.0.0.1:11434/v1/chat/completions(OLLAMA_HOST で変更) |一覧から |鍵なし
+|llama.cpp |openai-completions |http://127.0.0.1:8080/v1/chat/completions(LLAMA_CPP_BASE_URL で変更) |一覧から |鍵なし
+|lm-studio |openai-completions |http://127.0.0.1:1234/v1/chat/completions(LM_STUDIO_BASE_URL で変更) |一覧から |鍵なし
 |===
++
+出どころ: Anthropic は platform.claude.com の models/overview と api/messages と
+cli-sdks-libraries/libraries/openai-sdk、OpenAI は developers.openai.com の
+api/docs/models と api-reference/chat、Google は ai.google.dev の
+gemini-api/docs/openai と docs/models、Groq は console.groq.com/docs/models、
+xAI は docs.x.ai の docs/models と api-reference、Mistral は docs.mistral.ai の
+models、OpenRouter は openrouter.ai/docs/quickstart。
 . **鍵の探し順**は、環境変数(表の名前)→ settings.toml の `key_env` の
   変数 → 無ければ「鍵なし」。鍵そのものを設定に書かない決めは変わらない。
   ログインで貼った鍵の保存は作らない(下の「写さない物」)
@@ -176,6 +184,29 @@ packages/coding-agent/src/modes/components/model-browser.ts(選ぶ画面)。
   頼まれてから(機能では勝負しない)
 - 料金と速さの列、モデルの役割(smol / slow など)、サブエージェント
 - OAuth のログインと鍵の保存(下)
+
+=== Claude と直接話す(2026-09-04 発注者「パネルで直接 Claude と話すのも大丈夫」)
+
+公式の資料で確かめた事実(2026-09-04):
+
+- 今の4つ: Claude Fable 5.1(`claude-fable-5-1`、$10/$50 per MTok)、
+  Claude Opus 5(`claude-opus-5`、$5/$25)、Claude Sonnet 5(`claude-sonnet-5`、
+  $2/$10)、Claude Haiku 4.5(`claude-haiku-4-5`、$1/$5)。上の3つは文脈 100 万、
+  出力 128K。Haiku は 200K と 64K。パネルの既定は Sonnet 5(速さと値段)
+- Anthropic は **OpenAI 互換の口も持つ**: `https://api.anthropic.com/v1/chat/completions`、
+  鍵は `Authorization: Bearer`、道具呼びは全部通る。ただし公式は「試験と比較の
+  用途で、多くの場合は本番向けではない」と書き、prompt caching と thinking の
+  細部と structured outputs は native の口だけ。**だから今日でも `[[ai]]` に
+  この url を書けば、いまの実装のままパネルで Claude と話せる**
+- native の口(messages)は `POST /v1/messages`、`x-api-key` と
+  `anthropic-version: 2023-06-01`、`max_tokens` 必須、道具は `input_schema`、
+  返りは `tool_use` の塊、結果は user の `tool_result`(`tool_use_id`、
+  `is_error`)、`stop_reason` は end_turn / tool_use / max_tokens / stop_sequence
+- モデルの一覧は `GET /v1/models`(新しい順。`max_input_tokens` `max_tokens`
+  `capabilities` 付き)。選ぶ画面はこれを引く
+
+決め: 段階6で native の口を足すまでは OpenAI 互換の口で繋ぐ。表の anthropic の
+行は「当面は openai-completions でも可」と書いたのがそれ。
 
 === Claude の定額(2026-09-04 発注者「claude 定額は使えるようにしておいて」)
 
