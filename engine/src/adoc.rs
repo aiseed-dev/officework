@@ -1433,9 +1433,16 @@ fn desc_marker(l: &str) -> Option<(&'static str, usize)> {
         while let Some(k) = ts[from..].find(m) {
             let i = from + k;
             let after = &ts[i + m.len()..];
-            let ok_after = after.is_empty() || after.starts_with(' ');
+            let ok_after = after.is_empty() || after.starts_with(' ') || after.starts_with('\t');
             let term = &ts[..i];
-            if ok_after && i > 0 && !term.contains('[') && !term.ends_with(':') && !term.ends_with(';') {
+            // 項目の頭の錨(`[[名前]]項目::`)は項目の一部。それ以外の `[` は
+            // マクロの印なので項目ではない
+            let term_wo_anchor = if term.starts_with("[[") {
+                term.find("]]").map(|e| &term[e + 2..]).unwrap_or(term)
+            } else {
+                term
+            };
+            if ok_after && i > 0 && !term_wo_anchor.contains('[') && !term.ends_with(':') && !term.ends_with(';') {
                 return Some((m, i));
             }
             from = i + 1;
@@ -1734,6 +1741,8 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     let mut in_literal = false;
     // 直前に続いた空行の数
     let mut blank_run = 0usize;
+    // 直前の段落が一覧の項目か(項目の直後の `.題` `:名前:` `== 見出し` は字として継ぐ)
+    let mut prev_is_list_item = false;
     // 節。`[page-…]` の行で前の段落に節の印を付け、そこからの用紙を持つ
     let mut cur_page: Option<crate::PageSetup> = None;
     // 直前に節の印を付けた塊(次の行が `<<<` なら改ページする節にする)
@@ -1809,10 +1818,12 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     }
 
     while let Some((ln, line)) = lines.next() {
-        let l = line.trim_end();
+        // 行末は半角の空白だけ落とす(全角の空白と U+2028 は字。本家は \n でしか切らない)
+        let l = line.trim_end_matches([' ', '\t', '\r']);
         if l.is_empty() {
             prev_is_body = false; // 空行が段落の切れ目
             prev_is_desc_list = false;
+            prev_is_list_item = false;
             blank_run += 1;
             continue;
         }
@@ -1849,6 +1860,20 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         // **節の用紙**(asciidoctor-pdf の書き方)。この行で前の段落までが
         // 1つの節になり、ここから先は新しい用紙です。次の行が `<<<` なら
         // 改ページし、無ければ続き(continuous)の節です
+        // **一覧の項目の直後(空行なし)の `.題` `:名前: 値` `== 見出し` は、項目の字の続き**
+        // (本家の作法。2026-09-03)。塊の題や属性や見出しとして読みません
+        let folds_into_item = prev_is_body
+            && prev_is_list_item
+            && (l.starts_with('.') && !l.starts_with(". ") && !is_bullet(l, '.').is_some()
+                || (l.starts_with(':') && l[1..].contains(':'))
+                || heading_of(l).is_some());
+        if folds_into_item {
+            if let Some((_, src)) = pending.as_mut() {
+                src.push_str(seam_src(src, l));
+                src.push_str(l);
+            }
+            continue;
+        }
         if let Some(attrs) = page_attrs(l) {
             let base = match cur_page {
                 Some(pg) => pg,
@@ -2274,10 +2299,13 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         // 手引きで見つけた)
         // **項目だけのラベル付きリスト(`項目::`)には、次の行(説明)を継ぎます**
         // (2026-09-03。本家は説明を次の行に書く形も受ける)
+        // ラベル付きリストの項目にも続きの行を継ぎます(本家は説明の続きとして読む。
+        // 2026-09-03。前は「1行で1つ」だったので続きが別の段落になっていた)
         prev_is_body = p.raw_adoc.is_none()
             && (!p.style_id.as_deref().is_some_and(one_per_line)
-                || (p.style_id.as_deref().is_some_and(is_desc_list) && desc_term_only(l)))
+                || p.style_id.as_deref().is_some_and(is_desc_list))
             && !matches!(p.style, ParaStyle::Heading(_) | ParaStyle::Title);
+        prev_is_list_item = p.list != ListKind::None || p.style_id.as_deref().is_some_and(is_desc_list);
         prev_is_desc_list = p.style_id.as_deref().is_some_and(is_desc_list);
         if continued {
             if let Some((_, src)) = pending.as_mut() {
