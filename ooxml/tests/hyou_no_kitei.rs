@@ -223,6 +223,9 @@ fn the_table_rules_survive_a_save() {
         }],
         ..Default::default()
     };
+    let mut midashi = hitotsu("見出し");
+    midashi.borders.bottom = Some(true);
+    midashi.borders.top = Some(false);
     let mut naname = hitotsu("斜め");
     naname.borders.diag_down = true;
     naname.borders.diag_up = true;
@@ -230,7 +233,7 @@ fn the_table_rules_survive_a_save() {
     hiroi.mar_mm = Some([5.0, 2.0, 1.0, 10.0]);
     let mut kubaru = hitotsu("氏名");
     kubaru.fit_text = true;
-    t.rows.push(vec![hitotsu("見出し"), naname]);
+    t.rows.push(vec![midashi, naname]);
     t.rows.push(vec![hiroi, kubaru]);
 
     let mut doc = kumihan::Document::default();
@@ -244,6 +247,10 @@ fn the_table_rules_survive_a_save() {
     assert_eq!(t2.width_pct, Some(100.0), "幅の割合が消えた");
     assert!(t2.header_row, "見出しの行が消えた");
     assert!(t2.rows[0][1].borders.diag_down && t2.rows[0][1].borders.diag_up, "斜線が消えた");
+    // セルが自分で言った辺も返します
+    assert_eq!(t2.rows[0][0].borders.bottom, Some(true), "セルの下罫線が消えた");
+    assert_eq!(t2.rows[0][0].borders.top, Some(false), "「引かない」が消えた");
+    assert_eq!(t2.rows[0][0].borders.left, None, "言っていない辺が付いた");
     assert!(t2.rows[1][1].fit_text, "均等割り付けが消えた");
     let m = t2.rows[1][0].mar_mm.expect("セルの余白が消えた");
     assert!((m[3] - 10.0).abs() < 0.05, "左の余白 {}", m[3]);

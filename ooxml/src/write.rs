@@ -1284,12 +1284,22 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
                         let cw: f32 = (0..cell.span())
                             .filter_map(|k| t.col_mm.get(ci + k))
                             .sum();
-                        let naname = cell.borders.diag_down || cell.borders.diag_up;
+                        let cb = cell.borders;
+                        let naname = cb.diag_down || cb.diag_up;
+                        // **セルが自分で言った辺**(`w:tcBorders`)。
+                        // 言っていない辺(`None`)は書きません — 書くと表の
+                        // 指定やスタイルを黙って上書きします
+                        let hen = [
+                            ("top", cb.top), ("left", cb.left),
+                            ("bottom", cb.bottom), ("right", cb.right),
+                        ];
+                        let kei = hen.iter().any(|(_, v)| v.is_some());
                         if cell.col_span > 1
                             || cell.v_merge != VMerge::None
                             || cell.valign != book::VAlign::Top
                             || cw > 0.0
                             || naname
+                            || kei
                             || cell.mar_mm.is_some()
                             || cell.fit_text
                         {
@@ -1320,22 +1330,35 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
                                 }
                                 VMerge::None => {}
                             }
-                            // **セルの斜線**(`w:tl2br` / `w:tr2bl`)。辺の罫線は
-                            // まだ返していないので、斜線だけの `w:tcBorders` です
-                            if naname {
+                            // **セルの罫線**(`w:tcBorders`)。四方の辺と斜線です。
+                            // 並びは CT_TcBorders のとおり top → left → bottom →
+                            // right → tl2br → tr2bl
+                            if kei || naname {
                                 w.write_event(Event::Start(BS::new("w:tcBorders"))).unwrap();
-                                for (na, hiku) in
-                                    [("tl2br", cell.borders.diag_down), ("tr2bl", cell.borders.diag_up)]
-                                {
-                                    if !hiku {
-                                        continue;
-                                    }
+                                let kaku = |w: &mut quick_xml::Writer<_>, na: &str, hiku: bool| {
                                     let tag = format!("w:{na}");
                                     let mut e = BS::new(tag.as_str());
-                                    e.push_attribute(("w:val", "single"));
-                                    e.push_attribute(("w:sz", "4"));
-                                    e.push_attribute(("w:color", "000000"));
+                                    if hiku {
+                                        e.push_attribute(("w:val", "single"));
+                                        e.push_attribute(("w:sz", "4"));
+                                        e.push_attribute(("w:color", "000000"));
+                                    } else {
+                                        // **「引かない」と明に言います**(表の
+                                        // 罫線と同じ理由 — 黙ると表やスタイルの
+                                        // 指定が出てきます)
+                                        e.push_attribute(("w:val", "nil"));
+                                    }
                                     w.write_event(Event::Empty(e)).unwrap();
+                                };
+                                for (na, v) in hen {
+                                    if let Some(hiku) = v {
+                                        kaku(&mut w, na, hiku);
+                                    }
+                                }
+                                for (na, hiku) in [("tl2br", cb.diag_down), ("tr2bl", cb.diag_up)] {
+                                    if hiku {
+                                        kaku(&mut w, na, true);
+                                    }
                                 }
                                 w.write_event(Event::End(BytesEnd::new("w:tcBorders"))).unwrap();
                             }
