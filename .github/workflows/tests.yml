@@ -1,0 +1,309 @@
+# **普段の検査。公開の門ではありません。**
+#
+# 2026-09-03 発注者「単体検査、将来の検査は、ここからは外す」。
+# ci.yml は「配る物が壊れていないか」だけを見る所にして、単体の試験と
+# clippy はこちらへ移しました。作りかけの所が赤いまま作業を続けられます。
+#
+# **落ちたら直します。** 門ではないというのは「放っておいてよい」ではなく、
+# 「公開を止めない」という意味です。どちらの意味かは
+# docs/release-tejun.ja.adoc の「検査は2つに分けます」に書いてあります。
+#
+# 3 OS で回すのは、書体が違うと字幅が違い、座標を見る試験が OS ごとに
+# 割れるからです(2026-08-13 に mac と Windows で踏みました)。だから
+# 3 OS とも同じ Noto Sans CJK JP を置いて、そこを指させます。
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    name: cargo test (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # 失敗した回でも組んだ物を残します。既定では job が失敗すると
+          # 保存しないので、後ろの段で落ちるたびに次の回も一から組み直しに
+          # なります(2026-08-17)
+          cache-on-failure: "true"
+      - name: 試験が要る物を入れる(フォントと辞書)
+        # 同梱しない物に依っている試験があります。走らせる機械の持ち物を
+        # 使うのが製品の作りなので、CI にも入れます:
+        #   fonts-noto-cjk  paper は font::for_document(None).unwrap() で
+        #                   日本語フォントを引きます。無ければ panic します
+        #   wamerican       lang の綴りの検査が /usr/share/dict/words を読みます
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk fonts-ipaexfont wamerican
+      - name: 試験
+        # --no-fail-fast。既定だと最初に落ちた試験で打ち切るので、1件の
+        # 環境依存が残りのクレートを丸ごと隠します(2026-08-10 に踏みました)。
+        # ci-test.sh 越しに回すと、落ちた試験の名前が走行ページの要約に出ます
+        run: bash tools/ci-test.sh --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops -p face -p pysheet -p book -p pivot
+      - name: 絵にする側も回す(--features e)
+        # 既定では入りません(荷物が大きいので任意にしてあります)。
+        # 付けないと絵の試験が1本も走りません
+        run: bash tools/ci-test.sh -p paper --features e
+      - name: clippy(配る物)
+        # -D warnings で止めます。警告を貯めると新しい指摘が埋もれます。
+        # ただし4つだけ許します。どれも正しさの話ではなく書き方の好みで、
+        # 直すと読みにくくなる方が大きいものです:
+        #   too_many_arguments / type_complexity  組版と xlsx は引数も型も多い
+        #   field_reassign_with_default           試験の下ごしらえ
+        #   needless_range_loop                   同じ添字で複数の配列を歩く
+        run: |
+          bash tools/ci-clippy.sh -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops -p face -p pysheet --all-targets -- \
+            -D warnings \
+            -A clippy::too_many_arguments \
+            -A clippy::type_complexity \
+            -A clippy::field_reassign_with_default \
+            -A clippy::needless_range_loop
+
+  core-mac:
+    name: cargo test (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+      - name: 日本語フォントを入れる
+        # 3 OS とも同じ Noto Sans CJK JP を1枚置いて、font.rs の探索
+        # (OFFICE_FONT_DIR)に指させます。版は固定です(Sans2.004)—
+        # 落ちてくる物が変わると字幅の基準が黙って変わります。
+        # 明朝も要ります。「明朝の書類はゴシックに化けない」の試験が、
+        # 代わりの書体の名前に「明朝」か「Serif」を求めるためです。
+        # env は step に置きます(runner はジョブの env では使えません)
+        env:
+          OFFICE_FONT_DIR: ${{ runner.temp }}/jpfonts
+        run: |
+          mkdir -p "$OFFICE_FONT_DIR"
+          curl -sSL -o "$OFFICE_FONT_DIR/NotoSansCJKjp-Regular.otf" \
+            https://github.com/googlefonts/noto-cjk/raw/Sans2.004/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf
+          curl -sSL -o "$OFFICE_FONT_DIR/NotoSerifCJKjp-Regular.otf" \
+            https://github.com/googlefonts/noto-cjk/raw/Serif2.002/Serif/OTF/Japanese/NotoSerifCJKjp-Regular.otf
+      - name: 試験
+        env:
+          OFFICE_FONT_DIR: ${{ runner.temp }}/jpfonts
+        run: bash tools/ci-test.sh --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops -p pysheet
+
+  core-windows:
+    name: cargo test (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+      - name: 日本語フォントを入れる
+        # mac の段と同じ理由・同じ版です。Windows の runner は日本語書体の
+        # 有無すら保証が無く、明朝はそもそも入っていません
+        env:
+          OFFICE_FONT_DIR: ${{ runner.temp }}/jpfonts
+        run: |
+          New-Item -ItemType Directory -Force "$env:OFFICE_FONT_DIR" | Out-Null
+          Invoke-WebRequest -Uri "https://github.com/googlefonts/noto-cjk/raw/Sans2.004/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf" -OutFile "$env:OFFICE_FONT_DIR/NotoSansCJKjp-Regular.otf"
+          Invoke-WebRequest -Uri "https://github.com/googlefonts/noto-cjk/raw/Serif2.002/Serif/OTF/Japanese/NotoSerifCJKjp-Regular.otf" -OutFile "$env:OFFICE_FONT_DIR/NotoSerifCJKjp-Regular.otf"
+      - name: 試験
+        # shell: bash — Windows でも Git Bash で ci-test.sh をそのまま使います。
+        # pwsh 版を別に持つと必ずずれます
+        shell: bash
+        env:
+          OFFICE_FONT_DIR: ${{ runner.temp }}/jpfonts
+        run: bash tools/ci-test.sh --no-fail-fast -p sheet -p kumihan -p ooxml -p lang -p paper -p sidecar -p pyrun -p ops
+
+  # アプリと、アプリについて書いた文書が食い違っていないか。
+  #
+  # 組み立てのいらない突き合わせです。**公開の門ではありません** —
+  # アプリはまだ配っていないので、赤でも公開は止めません(2026-09-03)。
+  # 配ると決めたときに ci.yml へ戻します。
+  app-match:
+    name: アプリと文書が揃っているか
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+      - name: リボンの表を読む解析器が、崩れたら止まるか
+        # **検査を信じる前に、落ちる所を見る。** 6つの崩し方(新しい種類・
+        # マクロ書き・Tab を関数で作る・引数が増える・`/* */` で囲む・
+        # 表がもう1つ)それぞれで止まることを確かめる。
+        # 下の3つの検査は全部この解析器を通るので、**ここが効かなければ
+        # 3つとも静かに緑になる**(2026-08-12)
+        run: python3 tools/ribbon_parse.py --self-test
+      - name: 押せる見た目のボタンが全部配線されているか
+        # **外した crate の中に、外してはいけない検査が1つ紛れていた。**
+        # 「ready の嘘は wiring_tests が落とす」という方針の当の検査が
+        # calc/writer にあり、ここは gpui のせいで CI から外してある。つまり
+        # その方針は**手元で誰かが cargo test を打ったときだけ**成り立っていた
+        # (2026-08-10、fork セッションが CI の対象を数えて見つけた)。
+        #
+        # 組み立てずに原文の表を突き合わせる。読めなくなったら落ちる作りに
+        # してある — **字面の検査が静かに緑になるのが一番悪い**
+        run: python3 tools/wiring_check.py
+      - name: 生成スクリプトがリボンの表を再現できるか
+        # **手で足した分が消えないか**を見る。生成し直すと実物と離れる、を
+        # 防ぐための検査(2026-08-21。B-1)。離れたときは、本家が変わったのか
+        # うちで変えたのかを人が決める
+        #
+        # **CI には本家(vendor/web-apps)が無いので、ここは飛びます。**
+        # 走行ページには「飛ばしました」と出るので、門番が居るつもりで
+        # 居ないまま、にはならない。実際に見るのは本家を置いた機械です
+        # (2026-08-22。それまではここで赤くなっていました)
+        run: python3 tools/ribbon_gen_check.py
+      - name: 13言語のリボンが ja と同じ骨組みか
+        # **一段下に同じ穴があった。** 上の検査は ja の1枚しか読まない。
+        # `ribbon_<loc>.rs` は13言語ぶんあり「id・並び・ready・icon は ja と
+        # 同じで語だけ違う」という約束だが、それを見ている試験は `ui` にあり、
+        # `ui` にあり、**その `ui` の試験も走っていなかった**。生成で
+        # ボタン1つが灰色に落ちても、その言語で使う人以外は誰も気づかない
+        # (2026-08-10、fork セッション)。
+        #
+        # *`ui` の試験は 2026-08-21 に下の仕事へ入れました。* この検査は
+        # 残します — あちらは gpui を組むので遅く、こちらは字面を読むだけで
+        # 速いので、**先に落ちてくれる**方が直しやすいためです
+        run: python3 tools/ribbon_locale_check.py
+      - name: 同じ日本語に同じ訳が当たっているか
+        # **訳の材料が2つの出どころから来る。** 文言(ui::t! や ui::item!)と
+        # リボンの語(gen_ribbon_locale.py の OVERRIDES)で番号が別につくので、
+        # **同じ日本語に別の訳を書けてしまう**。2026-08-21、「セルの書式設定」が
+        # リボンと保護の設定の一覧で別の語になっている言語が8つあった。
+        # 利用者から見れば同じ機能の名前なので、揃っていないと探せない
+        run: python3 tools/i18n_onaji_go_check.py
+      - name: writer の押せるボタンが段の並びに載っているか
+        # **配線の検査の裏側にもう1つ穴があった。** 上は「腕があるか」しか
+        # 見ない。writer は「何があるか」(ribbon.rs)と「どう並べるか」
+        # (view.rs の *_ROWS)で正本が2つあり、並びに書き忘れたボタンは
+        # **押せる約束なのに画面に出ない**。灰色の裏返しで、同じ嘘。
+        # 2026-08-17 に印刷レイアウトと脚注の2つがこれで消えていた
+        run: python3 tools/writer_rows_check.py
+      - name: AsciiDoc の書き方の表が本家とずれていないか
+        # **表示はすべてできないとダメ**(2026-08-18 発注者)。そのためには
+        # 「本家にどんな書き方があるか」を知っている必要があり、それを記憶で
+        # 書かないための門番。正本は asciidoctor の lib/asciidoctor.rb で、
+        # 写しが docs/sekkei/asciidoctor-syntax.json にある
+        run: python3 tools/adoc_syntax_check.py
+      - name: 手引きの「書き方の一覧」が実物と揃っているか
+        # **利用者はこの表を見てボタンを探す。** 本文の書き方・リボンのボタン・
+        # HTML を1行に並べた表なので、ボタンの札が変わると押しても見つからない
+        # 案内になる。日英で行数が違えば、片方だけ足した印
+        run: python3 tools/manual_table_check.py
+      - name: Windows に無い物を旗の外から呼んでいないか
+        # **この機械では calc を Windows の的で組めない**(ring と stacker が
+        # Windows の C の道具を要る)。だから手元で確かめる道が無く、
+        # Windows の段まで気づけない。2026-08-22 に2回踏んだ —
+        # ops::listen が説明と旗の間に別の関数を挿されて旗の外へ出た件と、
+        # 「開いて修復」の試験が ops::Host::save を旗の外から呼んだ件。
+        # 字で探す門番を Linux の段に置いて、手前で止める
+        run: python3 tools/unix_gate_check.py
+      - name: アプリの絵が揃っているか
+        # **`.desktop` が Icon= で名指ししているのに、絵が1枚も無かった**
+        # (2026-08-17 のアルファの棚卸しで見つけた — ランチャーで無地の
+        # 四角になる)。正本は packaging/icons の SVG 2枚で、配る形
+        # (PNG 9寸法・.ico・.icns)は tools/make_icons.py が起こす。
+        # 起こした物もコミットしてあるので、この門番に絵の道具は要らない
+        run: python3 tools/make_icons.py --check
+      - name: 画面の文言が対訳の表を通っているか
+        # **さらに一段下に同じ穴があった。** 上の2つはリボンの札しか見ない。
+        # 画面の案内・状態行・パネルの札は `ui::t!` で書くが、その日本語が
+        # 対訳の材料に無ければ**13言語すべてで日本語のまま出る** — 試験も
+        # 画面も何も言わない。2026-08-15、左右のパネルで 48 句が素通りした
+        run: python3 tools/t_table_check.py
+      - name: 状態行の文言が訳を通っているか
+        # **さらに一段下。** 上は `ui::t!` で書いた文しか見ない。
+        # `format!` で書くとコンパイルは通り、書いた人の画面(日本語)では
+        # 正しく見えるので、**14 言語で日本語がそのまま出ていても誰も
+        # 気づかない**。2026-08-21 に数えたら 26 件あった(表 25・文章 1)。
+        # 設計が ai-where の例で挙げたのと同じ欠陥が、これだけ残っていた
+        run: python3 tools/status_yaku_check.py
+      - name: 単体の run() の仕掛けが officework にもあるか
+        # **配るのは officework の1本。** 起動のときの仕掛けを単体の run() に
+        # 書くと、配る形では動きません。単体を起こせば動くので、開発中は
+        # 気づけません。2026-08-21 に数えて2つ見つかりました — 自動復旧の
+        # 控え(表も文章も1つも取っていなかった)と、式から呼ぶ Python の
+        # 関数(=倍(A1) が #NAME? になっていた)。どちらも実機で確かめた
+        run: python3 tools/tougou_ochi_check.py
+      - name: 文書が実物より多く名乗っていないか
+        # **家訓を破っていたのは画面ではなく文書だった。** 未実装のボタンは
+        # ちゃんと灰色で並んでいたのに、README と手引きの3箇所が
+        # 「グレー表示ゼロ」と言い続けていた(実際は calc に9個。2026-08-10)。
+        # **読む人は文書を先に読む** — 画面が正直でも、文書が嘘なら嘘になる
+        run: python3 tools/gray_claim_check.py
+      - name: キーの一覧が束縛の表と揃っているか
+        # 手引きの「すべてのキー」は face/src/keys.rs の KEYS_* から自動生成
+        # (tools/keys_doc.py --write)。手で書いた表は必ずずれる —
+        # 鍵を足した回でこの門番が落ちたら、--write で書き直してコミット
+        run: python3 tools/keys_doc.py
+      - name: 操作の一覧が実物と揃っているか
+        # **利用者が引ける一覧が、どこにも無かった**(2026-08-24 発注者
+        # 「操作の一覧はどこにある」)。数えたら writer のリボンは 124 ボタンで、
+        # 手引きに名前が出るのは 83 個 — 41 個はどこにも載っていなかった。
+        # 手引きの本文は使い方を書く場所なので全部は並べない。網羅の一覧は
+        # tools/ribbon_doc.py が face/src/ribbon.rs から起こす(4冊ぶん)。
+        #
+        # 手引きに書いてあった「リボンは 117」という数も古くなっていた。
+        # **数を手で書くと必ずずれる**ので、この節は道具が数える。
+        # 落ちたら --write で書き直してコミット
+        run: python3 tools/ribbon_doc.py
+      - name: コマンドの手引きが揃っているか
+        # **手引きは実物より先に書く**(2026-08-24 発注者)。画面の灰色の
+        # ボタンと同じで、あることは見せて状態で言う(実装済み・未実装・
+        # 廃止予定)。ボタンが増えた回に手引きが無いと、ここで分かる
+        run: python3 tools/command_docs.py
+      - name: 手引きのダイアログの値が画面の文言と合っているか
+        # **利用者は画面に出ている字で探します。** 手引きの選べる値が
+        # 画面と1字でも違うと引けません(2026-08-25 発注者「ダイアログが
+        # 出る場合はパラメータがある。それを調べて」)。台帳から頁へ流した
+        # 回に、写し間違いが3か所ありました — スパークラインの「縦棒」は
+        # 画面では「縦棒(カラム)」、保護の許す操作は8個でなく14個
+        run: python3 tools/dialog_value_check.py
+      - name: 対応表に書いた呼び方が実物と合っているか
+        # **手で書いた字なので、実物と離れても誰も気づきません**
+        # (2026-08-25 発注者「パラメータをきちんとチェックする」)。
+        # 名前・引数の数・キーワードの名前を、実際に引いて確かめる。
+        # 入れた回に4件ずれていた(記入欄の3つと差し込み)。
+        # 綴りの中身を見るので、.venv の写しが古くても効く。
+        # **引けない包みがあると落ちます。** 黙って飛ばすと、何も見ないまま
+        # 「合っています」と出るためです(入れた日にそれで 88 行を素通り
+        # させていました)。本家2つと mcp をここで入れる
+        run: |
+          # mcp は 1.x と 2.x で置き場が違いますが、officework/mcp.py は
+          # 両方から探します。上限を付けずに入れて、新しい版で壊れたら
+          # ここで分かるようにします
+          pip install --quiet openpyxl python-docx mcp
+          # **先に検査が効いているかを見る。** 6通り崩して、全部で落ちること。
+          # 引く先が変われば「名前がありません」を言えなくなることがあり、
+          # そのときは黙って「全部合っています」に化ける
+          python3 tools/api_param_check.py --self-test
+          python3 tools/api_param_check.py
+      - name: face に gpui が混ざっていないか(孫まで)
+        # **持ち運べる層の値打ちは「gpui を持たないこと」そのもの**
+        # (発注者 2026-08-15「GPUI の殻を kotlin と swift で書く」)。
+        # face/src/lib.rs の試験は直の依存しか見ないので、孫まではここで見る。
+        # GPL の3クレート(ztracing / zlog / ztracing_macro)は gpui 経由で
+        # しか来ないため、同じ検査で一緒に止まる
+        run: |
+          if cargo tree -p face -e normal --prefix none \
+             | grep -E '^(gpui|ztracing|zlog|ztracing_macro) '; then
+            echo "::error::face に gpui 系が入りました。描く物は ui / calc / writer の側へ"
+            exit 1
+          fi
+          echo "face は gpui を孫まで含めて引いていません"

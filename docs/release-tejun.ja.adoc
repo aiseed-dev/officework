@@ -41,18 +41,35 @@
 
 === 1. 手元で確かめる
 
+**公開の門はこれだけです。** GitHub の `ci.yml` と同じものを手元で回します。
+
 [source,console]
 ----
-$ cargo test -p book -p sheet -p paper -p kumihan -p ooxml -p ops
-$ OFFICE_LANG=ja cargo test -p calc -p writer -p ui -p officework
+$ cargo build -p sidecar
+$ python3 tools/config_dir_check.py
+$ python3 tools/kotoba_check.py
+$ python3 tools/sunset_check.py
+$ python3 tools/api_taiou.py && python3 tools/api_taiou.py --self-test
+$ python3 tools/manual_uchiwa_check.py
+----
+
+wheel が組めて、手引きの見本がそのまま動くかは `ci.yml` の
+「wheel を入れて見本どおりに動くか」が見ます。手元で同じことをするなら
+`maturin build` で作った wheel を素の venv に入れて、`docs/ja/` の見本を
+順に打ちます。
+
+**普段の検査は別です。** 単体の試験と clippy、アプリについての突き合わせは
+`tests.yml` にあります。普段から回しておくもので、公開の前に改めて全部
+通す必要はありません。
+
+[source,console]
+----
+$ bash tools/ci-test.sh --no-fail-fast -p sheet -p kumihan -p ooxml -p lang \
+    -p paper -p sidecar -p pyrun -p ops -p face -p pysheet -p book -p pivot
 $ bash tools/ci-clippy.sh -p sheet -p kumihan -p ooxml -p lang -p paper \
     -p sidecar -p pyrun -p ops -p face -p pysheet --all-targets -- \
     -D warnings -A clippy::too_many_arguments -A clippy::type_complexity \
     -A clippy::field_reassign_with_default -A clippy::needless_range_loop
-$ bash tools/ci-clippy.sh -p calc -p writer -p ui -p officework --all-targets -- \
-    -D warnings -A clippy::too_many_arguments -A clippy::type_complexity \
-    -A clippy::field_reassign_with_default -A clippy::needless_range_loop
-$ python3 tools/kotoba_check.py
 ----
 
 === 2. wheel を作れるか、上げずに試す
