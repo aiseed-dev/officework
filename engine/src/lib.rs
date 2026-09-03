@@ -30,6 +30,8 @@
 //! - [`grid`] 式が表に求める面5つ
 
 pub mod adoc;
+/// 文書をブロックの番号で読み書きする(エージェント・Python・MCP の共通の語彙)
+pub mod blocks;
 pub(crate) mod inline;
 pub mod atomic;
 /// ブック ⇄ AsciiDoc(ブックの正本を .sheet.adoc にする)
