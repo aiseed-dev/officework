@@ -144,7 +144,7 @@ pub fn write(doc: &Document) -> String {
                 // 1つの一覧が2つに割れます(2026-08-18)
                 let desc = p.style_id.as_deref().is_some_and(is_desc_list);
                 let next_is_cont = matches!(doc.blocks.get(bi + 1), Some(Block::Para(q))
-                    if matches!(q.style_id.as_deref(), Some("一覧の続き") | Some("覚え書き") | Some("コールアウト") | Some("指定の行") | Some("条件") | Some("取り込み")));
+                    if matches!(q.style_id.as_deref(), Some("一覧の続き") | Some("覚え書き") | Some("コールアウト") | Some("指定の行") | Some("条件") | Some("取り込み") | Some("引用の作者")));
                 // 項目だけの `term::` の直後の一覧は、その項目の説明(空行を挟まない)
                 let term_then_list = desc
                     && desc_term_only(&runs_text(&p.runs, doc))
@@ -1912,9 +1912,12 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 // **一覧の中に来る行は、前の空行の数と錨も原文に含めます。**
                 // 空行の数は本家にとって意味(どの項目に付くか・一覧が切れるか)
                 // なので、書き戻しで数を保ちます(2026-09-03)
-                // `[.名前]` の直後に塊の区切りが来たら、その名前は塊の指定の行として
-                // 原文のまま戻す(段落のスタイルとしては付ける先が無い。2026-09-03)
-                if role == "塊の区切り" {
+                // `[.名前]` の直後に原文のままの行(塊の区切り・横の区切り線など)が
+                // 来たら、その名前は指定の行として原文のまま戻す(段落のスタイルと
+                // しては付ける先が無い。2026-09-03)
+                // ただし塊の題(`.題`)の前の役割と錨は、題の後ろの表や塊の物なので
+                // 消費しない(`[.tables]` `.売上台帳` `|===` の並び)
+                if role != "塊の題" {
                     if let Some(name) = pending_style.take() {
                         let mut q = Paragraph {
                             line_spacing: 1.0,
@@ -1926,19 +1929,21 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                         doc.blocks.push(Block::Para(q));
                     }
                 }
-                let keeps_blanks = matches!(role, "覚え書き" | "コールアウト" | "指定の行" | "条件" | "取り込み");
+                let keeps_blanks = matches!(role, "覚え書き" | "コールアウト" | "指定の行" | "条件" | "取り込み" | "引用の作者");
                 // 直前の原文のままの行が後ろの空行を1つ抱えていれば、その分は引く
                 let prev_took_blank = matches!(doc.blocks.last(), Some(Block::Para(q))
                     if q.raw_adoc.as_deref().is_some_and(|r| r.ends_with('\n')));
-                let lead: String = if keeps_blanks {
-                    let mut t = "\n".repeat(blank_before.saturating_sub(prev_took_blank as usize));
-                    for bm in pending_bookmarks.drain(..) {
-                        t.push_str(&format!("[[{bm}]]\n"));
-                    }
-                    t
+                // 塊の前の錨(`[[名前]]` `[[名前,字]]`)も、どの役割でも原文に戻す
+                let mut lead: String = if keeps_blanks {
+                    "\n".repeat(blank_before.saturating_sub(prev_took_blank as usize))
                 } else {
                     String::new()
                 };
+                if role != "塊の題" {
+                    for bm in pending_bookmarks.drain(..) {
+                        lead.push_str(&format!("[[{bm}]]\n"));
+                    }
+                }
                 let raw = |l: &str, blank_line: bool, doc: &mut Document| {
                     let mut p = Paragraph {
                         line_spacing: 1.0,
@@ -2019,6 +2024,21 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         }
         if l == "____" {
             in_quote = !in_quote;
+            continue;
+        }
+        // **引用の段落の作者の行**(`"…"` で始まる段落の直後の `-- 名前, 出典`)。
+        // 原文のまま持ち、前の段落の直後に書き戻す(2026-09-03)
+        if l.starts_with("-- ") && pending.as_ref().is_some_and(|(_, src)| src.starts_with('"')) {
+            flush_pending(&mut pending, &mut doc, &mut fresh_note)?;
+            let mut p = Paragraph {
+                line_spacing: 1.0,
+                style_id: Some("引用の作者".to_string()),
+                raw_adoc: Some(if next_is_blank(&mut lines) { format!("{l}\n") } else { l.to_string() }),
+                ..Default::default()
+            };
+            p.runs.push(Run { text: l.to_string(), size_pt: None, font: None, fmt: CharFormat::default() });
+            doc.blocks.push(Block::Para(p));
+            prev_is_body = false;
             continue;
         }
         // **一覧の続き `+`。** 次の段落を上の項目に付ける印。原文のまま持ち、
@@ -2374,7 +2394,8 @@ fn setext_to_atx(src: &str) -> String {
     while i < lines.len() {
         let l = lines[i].trim_end();
         if let Some(mark) = open {
-            if is_delim(l, mark) {
+            // 閉じは開きと同じ字(長さも同じ)。`~~~~` の中の `~~~~~~` は中身
+            if l == mark {
                 open = None;
             }
             out.push_str(lines[i]);
@@ -2407,9 +2428,9 @@ fn setext_to_atx(src: &str) -> String {
             continue;
         }
         if is_table_delim(l) || l == "____" {
-            open = Some(if l == "____" { "____" } else { "|===" });
-        } else if let Some((mark, _)) = DELIMITED.iter().find(|(d, _)| is_delim(l, d)) {
-            open = Some(mark);
+            open = Some(l);
+        } else if DELIMITED.iter().any(|(d, _)| is_delim(l, d)) {
+            open = Some(if l.starts_with("```") { "```" } else { l });
         }
         out.push_str(lines[i]);
         out.push('\n');
