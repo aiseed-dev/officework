@@ -20,7 +20,9 @@ Three different things:
 |*Saving* |The source you opened *is not damaged*. Blocks we don't know are written back exactly as they were
 |===
 
-Blocks whose meaning we don't know (admonitions `NOTE:`, delimited blocks `----`, `include::` and so on) *are visible but not editable*.
+Delimited blocks are shown with a look of their own and their lines can be edited: code `----` (the language of `[source,python]` is kept), literal `....`, example `====`, sidebar `****`, verse `[verse]`, and admonition blocks (`[NOTE]` with `====`). The look comes from the template's styles (コードの塊, 例の塊 and so on).
+Comments (`//` lines and `////` blocks) are not shown on screen, on paper or on the Web; they are kept on save.
+`include::`, `ifdef::`, `[…]` attribute lines and the delimiter lines themselves *are visible but not editable*.
 Put the caret in one and type, and the app says so instead.
 Edit those in a text editor.
 

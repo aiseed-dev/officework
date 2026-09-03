@@ -709,11 +709,20 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // **塊の印の行は、紙に出しません**(2026-08-25)。
                 // `[source,python]` と `----` がそのまま印刷されていました。
                 // 印はここからここまでが塊だという合図で、文章ではありません
-                if matches!(para.style_id.as_deref(), Some("塊の区切り") | Some("指定の行")) {
+                // 覚え書き(`//` の行と `////` の塊)も、読む人の物ではないので出しません
+                if matches!(para.style_id.as_deref(), Some("塊の区切り") | Some("指定の行"))
+                    || para.style_id.as_deref().is_some_and(crate::adoc::is_hidden_block)
+                {
+                    // **塊の前後は少し空けます**(2026-09-03)。区切りの印は出さない
+                    // ので、空けないと塊の中身が前後の段落にくっついて見えます
+                    // (本家の HTML も塊の上下に空きを持ちます)
+                    if para.style_id.as_deref() == Some("塊の区切り") {
+                        y += frame.line_height_mm * 0.4;
+                    }
                     para_byte0 += para.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
                     continue;
                 }
-                let mono = (para.style_id.as_deref() == Some("塊の中"))
+                let mono = para.style_id.as_deref().is_some_and(crate::adoc::is_mono_block)
                     .then(crate::font::monospace)
                     .flatten()
                     .map(|f| f.name.clone());

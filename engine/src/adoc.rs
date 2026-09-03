@@ -196,7 +196,7 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
     if let Some(n) = &p.style_id {
         // **塊の中は字のまま1行で書きます。** 行の中の書き方として
         // 読んでいないので、書くときも印を付けません。空行もそのまま
-        if n == "塊の中" {
+        if is_block_inner(n) {
             for r in &p.runs {
                 out.push_str(&r.text);
             }
@@ -1248,6 +1248,58 @@ const ADMONITION: &[&str] = &["NOTE:", "TIP:", "IMPORTANT:", "WARNING:", "CAUTIO
 /// どれなのかを字に残さないので、本文を直しても印は壊れません
 const ADMON_STYLE: &[&str] = &["註記", "ヒント", "重要", "警告", "注意"];
 
+/// **塊の中身の段落のスタイル名。** 種類ごとに別の名前にして、テンプレートで
+/// 見た目(等幅・背景・出さない)を決められるようにします(2026-09-03)。
+/// 書くときはどれも字のまま1行で返します(印は付けません)
+const BLOCK_INNER: &[&str] = &[
+    "塊の中", "コードの塊", "字のまま出す塊", "例の塊", "傍注の塊", "覚え書きの塊",
+    "そのまま通す塊", "詩の塊",
+    "註記の塊", "ヒントの塊", "重要の塊", "警告の塊", "注意の塊",
+];
+
+/// 塊の中身の段落か(書くときは字のまま返す)
+pub fn is_block_inner(name: &str) -> bool {
+    BLOCK_INNER.contains(&name)
+}
+
+/// 画面と紙で**等幅**にする塊
+pub fn is_mono_block(name: &str) -> bool {
+    matches!(name, "塊の中" | "コードの塊" | "字のまま出す塊" | "そのまま通す塊")
+}
+
+/// 画面と紙に**出さない**行(覚え書き)
+pub fn is_hidden_block(name: &str) -> bool {
+    matches!(name, "覚え書きの塊" | "覚え書き")
+}
+
+/// 塊の中身のスタイル名を、区切りの印と直前の指定の行(`[source,python]`
+/// `[NOTE]` `[verse]` など)から決めます。
+fn block_inner_style(mark: &str, spec: Option<&str>) -> &'static str {
+    let spec = spec.map(|s| s.trim().trim_start_matches('[').trim_end_matches(']').to_string());
+    let first = spec.as_deref().and_then(|s| s.split(',').next()).map(|s| s.trim().to_string());
+    if let Some(f) = first.as_deref() {
+        if let Some(i) = ADMONITION.iter().position(|m| m.trim_end_matches(':') == f) {
+            return ["註記の塊", "ヒントの塊", "重要の塊", "警告の塊", "注意の塊"][i];
+        }
+        match f {
+            "verse" => return "詩の塊",
+            "literal" => return "字のまま出す塊",
+            "source" | "listing" => return "コードの塊",
+            _ => {}
+        }
+    }
+    match mark.chars().next().unwrap_or(' ') {
+        '-' if mark.trim() == "--" => "塊の中",
+        '-' | '`' => "コードの塊",
+        '.' => "字のまま出す塊",
+        '=' => "例の塊",
+        '*' => "傍注の塊",
+        '/' => "覚え書きの塊",
+        '+' => "そのまま通す塊",
+        _ => "塊の中",
+    }
+}
+
 /// **1行で1つと決まっている段落のスタイル名か。**
 /// 註記とラベル付きリストは、続く行を呑むと形が壊れます
 fn one_per_line(name: &str) -> bool {
@@ -1683,7 +1735,14 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             continue;
         }
         if let Some((what, role)) = vendor_only_syntax(l) {
-            *ledger.entry(what).or_default() += 1;
+            // **種類が分かる塊は帳簿に載せません**(2026-09-03)。コード・字のまま・
+            // 例・傍注・覚え書き・そのまま通す塊は中身に種類の名前が付き、画面と
+            // 紙と Web で種類どおりに出ます。開いた塊(`--` `~~~~`)と表の別記法は
+            // まだ中身を読まないので載せたままです
+            let wakaru = role == "塊の区切り" && !what.starts_with("開いた塊") && !what.starts_with("表(");
+            if !wakaru {
+                *ledger.entry(what).or_default() += 1;
+            }
             // **原文のまま持ち越し、役割の名前を付けます。**
             // 意味は分からなくても、字は壊さず返し、テンプレートで見た目を
             // 決められるようにします(2026-08-18)。役割が空の物
@@ -1713,6 +1772,15 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 prev_is_desc_list = false;
                 if role == "塊の区切り" {
                     let mark = l.trim_end().to_string();
+                    // 中身のスタイル名。直前の指定の行(`[source,python]` など)は
+                    // 今しがた raw() が押した区切りの1つ前に居ます
+                    let spec: Option<String> = match doc.blocks.len().checked_sub(2).map(|i| &doc.blocks[i]) {
+                        Some(Block::Para(q)) if q.style_id.as_deref() == Some("指定の行") => {
+                            Some(q.runs.iter().map(|r| r.text.as_str()).collect())
+                        }
+                        _ => None,
+                    };
+                    let inner_style = block_inner_style(&mark, spec.as_deref());
                     while let Some((_, l2)) = lines.next() {
                         let closing = l2.trim_end() == mark;
                         if closing {
@@ -1744,7 +1812,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                         // 空行も1つの段落として残します(前は落ちていました)
                         doc.blocks.push(Block::Para(Paragraph {
                             line_spacing: 1.0,
-                            style_id: Some("塊の中".to_string()),
+                            style_id: Some(inner_style.to_string()),
                             runs: vec![Run {
                                 text: l2.trim_end().to_string(),
                                 size_pt: None,
@@ -2702,6 +2770,31 @@ mod tests {
         assert_eq!(p.runs[0].text, "二段目");
     }
 
+    /// **塊の中身は種類の名前を持つ**(2026-09-03)。区切りの印と、直前の
+    /// `[…]` の指定で決まる。書き戻しは字のまま(往復は変わらない)
+    #[test]
+    fn block_bodies_carry_their_kind() {
+        let src = "[source,python]\n----\nprint(1)\n----\n\n....\nそのまま\n....\n\n[NOTE]\n====\n註記の中\n====\n\n====\n例の中\n====\n\n****\n傍注の中\n****\n\n////\n見えない\n////\n\n[verse]\n--\n詩の行\n--\n\n++++\n<b>生</b>\n++++\n";
+        let d = parse(src).unwrap();
+        let kinds: Vec<(String, String)> = d
+            .paragraphs()
+            .filter(|p| p.style_id.as_deref().is_some_and(is_block_inner))
+            .map(|p| (p.style_id.clone().unwrap(), p.runs[0].text.clone()))
+            .collect();
+        assert_eq!(kinds, vec![
+            ("コードの塊".to_string(), "print(1)".to_string()),
+            ("字のまま出す塊".to_string(), "そのまま".to_string()),
+            ("註記の塊".to_string(), "註記の中".to_string()),
+            ("例の塊".to_string(), "例の中".to_string()),
+            ("傍注の塊".to_string(), "傍注の中".to_string()),
+            ("覚え書きの塊".to_string(), "見えない".to_string()),
+            ("詩の塊".to_string(), "詩の行".to_string()),
+            ("そのまま通す塊".to_string(), "<b>生</b>".to_string()),
+        ]);
+        assert_eq!(write(&d), src, "往復で変わった");
+        assert!(is_mono_block("コードの塊") && is_hidden_block("覚え書きの塊"));
+    }
+
     #[test]
     fn the_body_of_a_code_block_can_be_edited() {
         // 塊の中の `*` は太字の印ではない。空行も残る
@@ -2709,7 +2802,7 @@ mod tests {
         let doc = parse("----\nprint(1)\n----\n").unwrap();
         let inner: Vec<&Paragraph> = doc
             .paragraphs()
-            .filter(|p| p.style_id.as_deref() == Some("塊の中"))
+            .filter(|p| p.style_id.as_deref() == Some("コードの塊"))
             .collect();
         assert_eq!(inner.len(), 1);
         assert!(inner[0].raw_adoc.is_none(), "字のまま持っていて直せない");

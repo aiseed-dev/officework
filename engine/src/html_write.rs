@@ -468,7 +468,7 @@ const CODE_STYLE: &str = " style=\"font-family:ui-monospace,SFMono-Regular,\
 /// 塊の開きのタグ。`[NOTE]` が前に付いていれば註記にします。
 ///
 /// **見た目は要素そのものに書き込みます。** 中身だけを他所へ貼っても崩れません。
-fn block_open(block: Option<&str>, mark: Option<&str>) -> String {
+fn block_open(block: Option<&str>, mark: Option<&str>, lang: Option<&str>) -> String {
     if let Some(kind) = mark.and_then(admon_kind) {
         return format!(
             "<aside class=\"admonition {kind}\" role=\"note\"{}><p style=\"margin:0\">",
@@ -482,7 +482,12 @@ fn block_open(block: Option<&str>, mark: Option<&str>) -> String {
              padding:.8em 1em;margin:1em 0;border-radius:4px\"><p style=\"margin:0\">".into(),
         Some("open") => "<div class=\"open\" style=\"margin:1em 0\"><p style=\"margin:0\">".into(),
         Some("pass") => String::new(),
-        _ => format!("<pre{CODE_STYLE}><code>"),
+        // コードの言語(`[source,python]`)は class に付けます(highlight.js
+        // などが読む、広く使われている書き方)
+        _ => match lang {
+            Some(l) => format!("<pre{CODE_STYLE}><code class=\"language-{}\">", esc(l)),
+            None => format!("<pre{CODE_STYLE}><code>"),
+        },
     }
 }
 
@@ -591,6 +596,7 @@ fn build(doc: &Document) -> (String, Ctx) {
     let mut block: Option<&'static str> = None;
     // `[NOTE]` のように、塊の直前の指定の行が言う種類
     let mut next_block_mark: Option<String> = None;
+    let mut next_lang: Option<String> = None;
     // **次のリストの番号の付け方**(`[loweralpha]` `[start=5]` など)。
     // 2026-08-25 まで、この指定は読み捨てられていました。番号の種類が
     // 効かないだけでなく、*指定の行でリストが切れず3つが1つに繋がって*
@@ -781,7 +787,11 @@ fn build(doc: &Document) -> (String, Ctx) {
                 _ => "code",
             });
         }
-        if name == Some("塊の中") {
+        if name.is_some_and(crate::adoc::is_block_inner) {
+            // 覚え書きの塊は Web にも出しません
+            if name == Some("覚え書きの塊") {
+                continue;
+            }
             close(&mut o, &mut list);
             if in_dl {
                 o.push_str("</dl>\n");
@@ -794,7 +804,7 @@ fn build(doc: &Document) -> (String, Ctx) {
                 continue;
             }
             if !in_pre {
-                o.push_str(&block_open(block, next_block_mark.as_deref()));
+                o.push_str(&block_open(block, next_block_mark.as_deref(), next_lang.as_deref()));
                 in_pre = true;
             } else {
                 o.push_str(if inner_is_para(block) { "</p>\n<p>" } else { "\n" });
@@ -813,6 +823,7 @@ fn build(doc: &Document) -> (String, Ctx) {
             in_pre = false;
             block = None;
             next_block_mark = None;
+            next_lang = None;
         }
         // **横の区切り線は hr です。** 前は印の字がそのまま出ていました
         if name == Some("横の区切り線") {
@@ -843,6 +854,11 @@ fn build(doc: &Document) -> (String, Ctx) {
             let inner = text.trim().trim_start_matches('[').trim_end_matches(']');
             if admon_kind(inner).is_some() {
                 next_block_mark = Some(inner.to_string());
+            }
+            // `[source,python]` の言語。source だけなら無し
+            let mut parts = inner.split(',').map(str::trim);
+            if parts.next() == Some("source") {
+                next_lang = parts.next().filter(|l| !l.is_empty()).map(str::to_string);
             }
             // **番号の付け方の指定。** ここでリストを切ります —
             // 切らないと、指定の違う3つのリストが1つに繋がります

@@ -893,17 +893,10 @@ impl Render for Writer {
                 .bg(rgb(0x444B52)));
         }
 
-        // 段落の背景色と囲み枠。行の下地として敷く(文字より下に来るよう先に描く)
+        // 段落の背景色と囲み枠。行の下地として敷く(文字より下に来るよう先に描く)。
+        // 元は `lay` が合成後の段落から控えた `para_deco`(テンプレートの背景も含む)
         {
-            let mut deco: Vec<(std::ops::Range<usize>, Option<String>, bool)> = Vec::new();
-            let mut at = 0usize;
-            for p in self.doc.paragraphs() {
-                let len: usize = p.runs.iter().map(|r| r.text.len()).sum();
-                if p.shade.is_some() || p.boxed {
-                    deco.push((at..at + len, p.shade.clone(), p.boxed));
-                }
-                at += len + 1;
-            }
+            let deco = &self.para_deco;
             if !deco.is_empty() {
                 let (bx0, bx1) = (self.pg.left_mm, self.pg.w_mm - self.pg.right_mm);
                 for line in self.page.lines.iter().filter(|l| l.from_body) {

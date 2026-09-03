@@ -2303,8 +2303,12 @@ mod adoc_notes_tests {
     /// 書いてあったので、文書のほうが嘘でした)。
     #[test]
     fn unsupported_notation_is_logged() {
+        // **コードの塊は 2026-09-03 に種類が分かるようになりました。** 帳簿には
+        // 出ず、中身に「コードの塊」の名前が付きます(ここでは逆を確かめます)
+        let (d, notes) = adoc::parse_full("----\nlet x = 1;\n----\n").expect("読めない");
+        assert!(notes.is_empty(), "種類の分かる塊が帳簿に出た: {notes:?}");
+        assert!(d.paragraphs().any(|p| p.style_id.as_deref() == Some("コードの塊")));
         for (what, src) in [
-            ("コードの塊", "----\nlet x = 1;\n----\n"),
             ("塊の題", ".表の題\n\nふつうの段落。\n"),
             ("取り込み", "include::別の.adoc[]\n"),
             ("属性の参照", "宛名は {宛名} です。\n"),
@@ -2775,7 +2779,7 @@ fn blocks_render_as_one_element_per_kind() {
     for (what, mark) in [
         ("註記", "<aside class=\"admonition note\""),
         ("警告", "<aside class=\"admonition warning\""),
-        ("コード", "<code>"),
+        ("コード", "<code class=\"language-python\">"),
         ("字のまま", "字のまま"),
         ("例", "<div class=\"example\""),
         ("傍注", "<aside class=\"sidebar\""),
@@ -2785,7 +2789,7 @@ fn blocks_render_as_one_element_per_kind() {
     }
     // **`pre` はコードと字のままの2つだけ。** 例も傍注も文章です
     assert_eq!(h.matches("<pre").count(), 2, "pre が多すぎます:\n{h}");
-    assert_eq!(h.matches("<code>").count(), 1, "コード以外まで code になっています:\n{h}");
+    assert_eq!(h.matches("<code").count(), 1, "コード以外まで code になっています:\n{h}");
     // 印の字が本文に漏れていないこと
     assert!(!h.contains("****"), "傍注の印が本文に出ています:\n{h}");
     assert!(!h.contains("===="), "例の印が本文に出ています:\n{h}");
@@ -3203,5 +3207,48 @@ mod atama_no_gazou_tests {
             // 絵の下端は自分のベースライン
             assert!((r[1] + r[3] - s.lines[1].y_mm).abs() < 0.01, "行間 {ls}: 絵の下端がベースラインに無い");
         }
+    }
+}
+
+#[cfg(test)]
+mod block_kind_tests {
+    use crate::{adoc, html_write, theme};
+
+    /// コードの塊の言語は `<code class="language-…">` に付く。覚え書きの塊は Web に出ない
+    #[test]
+    fn code_language_and_hidden_comments_in_html() {
+        let d = adoc::parse("[source,python]\n----\nprint(1)\n----\n\n////\n見えない\n////\n\n----\nplain\n----\n").unwrap();
+        let h = html_write::body(&d);
+        assert!(h.contains("<code class=\"language-python\">print(1)"), "言語が付いていない:\n{h}");
+        assert!(!h.contains("見えない"), "覚え書きが Web に出た:\n{h}");
+        assert!(h.contains("<code>plain"), "言語の無い塊に class が付いた:\n{h}");
+    }
+
+    /// 塊の背景は、合成 → 組版 で紙の塗り(`fills`)になる。覚え書きは行にならない
+    #[test]
+    fn block_shading_reaches_the_sheet_and_comments_do_not() {
+        use crate::{layout, Frame, Metrics};
+        let Ok((fam, _)) = crate::font::for_document(None) else { return };
+        let Ok(data) = crate::font::load(fam) else { return };
+        let m = Metrics::new(&data).unwrap();
+        let d = adoc::parse("前の段落。\n\n[source,python]\n----\nprint(1)\n----\n\n////\n見えない\n////\n\n後の段落。\n").unwrap();
+        let d = theme::compose(&d, &theme::default_theme());
+        let code = d.paragraphs().find(|p| p.style_id.as_deref() == Some("コードの塊")).unwrap();
+        assert_eq!(code.shade.as_deref(), Some("F4F6F8"), "合成で背景が付かない");
+        let s = layout(&d, &m, &Frame { measure_mm: 150.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        assert!(s.fills.iter().any(|(_, c)| c == "F4F6F8"), "塗りが紙面に無い: {:?}", s.fills);
+        let shown: Vec<String> = s.lines.iter().map(|l| l.cells.iter().map(|c| c.ch).collect()).collect();
+        assert!(!shown.iter().any(|t| t.contains("見えない")), "覚え書きが行になった: {shown:?}");
+        assert_eq!(shown.iter().filter(|t| !t.is_empty()).count(), 3, "行の数: {shown:?}");
+    }
+
+    /// 既定のテンプレートは塊の種類ごとのスタイルを持つ(読み手が付ける名前と同じ)
+    #[test]
+    fn the_default_template_styles_every_block_kind() {
+        let th = theme::default_theme();
+        for n in ["コードの塊", "字のまま出す塊", "例の塊", "傍注の塊", "詩の塊", "註記の塊", "警告の塊", "そのまま通す塊"] {
+            assert!(th.style(n).is_some(), "{n} のスタイルが既定に無い");
+        }
+        assert!(th.style("コードの塊").unwrap().shade.is_some(), "コードの塊に背景が無い");
     }
 }

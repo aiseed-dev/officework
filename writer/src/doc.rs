@@ -244,6 +244,7 @@ impl Writer {
             page_starts: vec![f32::NEG_INFINITY],
             page_notes: vec![Vec::new()],
             page_tops: vec![0.0],
+            para_deco: Vec::new(),
             page_papers: Vec::new(),
             dress_hf: Default::default(),
             dress_page: (None, None),
@@ -601,6 +602,19 @@ impl Writer {
         // テンプレートに書いたヘッダー・透かし・縦書きが画面と紙に出ます。
         // `self.doc` は意味だけのまま(保存に漏れない)
         let deco = composed.as_ref().unwrap_or(&self.doc);
+        // 段落の背景色と囲みは**合成後**の段落から控える(画面の帯の元)
+        self.para_deco = {
+            let mut v = Vec::new();
+            let mut at = 0usize;
+            for p in deco.paragraphs() {
+                let len: usize = p.runs.iter().map(|r| r.text.len()).sum();
+                if p.shade.is_some() || p.boxed {
+                    v.push((at..at + len, p.shade.clone(), p.boxed));
+                }
+                at += len + 1;
+            }
+            v
+        };
         self.dress_hf = (deco.header.clone(), deco.footer.clone());
         self.dress_page = (deco.watermark.clone(), deco.page_color.clone());
         let vertical = deco.vertical;
