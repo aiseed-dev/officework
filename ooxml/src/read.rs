@@ -3637,11 +3637,28 @@ fn shape_look(a: &str, palette: &[String]) -> Option<book::SheetShape> {
             .unwrap_or(a.len());
         crate::theme::dml_iro(&a[i..owari], palette)
     };
-    if a.contains("<a:noFill/>") && a.find("<a:noFill/>") < a.find("<a:ln ") {
-        sp.fill = None;
-    } else {
-        sp.fill = iro("<a:solidFill>");
-    }
+    // **塗らないと言っている図形は塗りません**(`<a:noFill/>`)。
+    //
+    // 空要素は `<a:noFill />` と間を空けて書かれることもあります。片方しか
+    // 見ていなかったので、内閣府の様式(document_4.docx)の枠が塗り潰され、
+    // 紙が1枚まるごと濃い青になっていました(2026-09-03)。
+    //
+    // `<a:ln>` の中の色は**線の色**です。塗りとして読むと、線だけの図形が
+    // その色で塗り潰されます
+    let nofill = a.find("<a:noFill/>").or_else(|| a.find("<a:noFill />"));
+    let ln_at = a.find("<a:ln ").or_else(|| a.find("<a:ln>"));
+    let nuru = match (nofill, ln_at) {
+        // 線より前の `noFill` は塗りの指定です
+        (Some(i), Some(j)) => i > j,
+        (Some(_), None) => false,
+        (None, _) => true,
+    };
+    sp.fill = match (nuru, a.find("<a:solidFill>"), ln_at) {
+        (false, _, _) => None,
+        (true, Some(i), Some(j)) if i > j => None,
+        (true, Some(_), _) => iro("<a:solidFill>"),
+        (true, None, _) => None,
+    };
     sp.line = iro("<a:ln ");
     // **線の種類**(`<a:prstDash val="dash"/>`)。無ければ実線
     if let Some(i) = a.find("<a:prstDash val=\"") {
