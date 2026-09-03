@@ -114,7 +114,7 @@ pub fn write(doc: &Document) -> String {
         };
         if let Some(sb) = prev_sect {
             if quote_open {
-                out.push_str("____\n\n");
+                close_quote(&mut out);
                 quote_open = false;
             }
             out.push_str(&page_attr_line(&geo[bi]));
@@ -132,7 +132,7 @@ pub fn write(doc: &Document) -> String {
                 }
                 let is_quote = p.style == ParaStyle::Quote;
                 if quote_open && !is_quote {
-                    out.push_str("____\n\n");
+                    close_quote(&mut out);
                     quote_open = false;
                 }
                 if is_quote && !quote_open {
@@ -160,11 +160,11 @@ pub fn write(doc: &Document) -> String {
                                     // **次が新しい一覧の始めなら、空行を残します**
                                     && q.style_id.as_deref() != Some(DESC_LIST_START)
                         );
-                write_para(&mut out, p, doc, quote_open || tight);
+                write_para(&mut out, p, doc, tight);
             }
             Block::Table(t) => {
                 if quote_open {
-                    out.push_str("____\n\n");
+                    close_quote(&mut out);
                     quote_open = false;
                 }
                 write_table(&mut out, t, doc);
@@ -172,7 +172,7 @@ pub fn write(doc: &Document) -> String {
         }
     }
     if quote_open {
-        out.push_str("____\n\n");
+        close_quote(&mut out);
     }
     // 末尾は空行1つに揃える(正規形)
     while out.ends_with("\n\n") {
@@ -182,6 +182,15 @@ pub fn write(doc: &Document) -> String {
         out.push('\n');
     }
     out
+}
+
+/// 引用の塊を閉じる。中の段落は空行付きで書いてあるので、閉じの直前の空行は
+/// 1つ落とす(`____\n段落\n\n段落\n____`)
+fn close_quote(out: &mut String) {
+    if out.ends_with("\n\n") {
+        out.pop();
+    }
+    out.push_str("____\n\n");
 }
 
 fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
@@ -2288,8 +2297,11 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         }
         // **継ぐかどうかは、字を読む前に決まります**(見出しか・箇条書きか・
         // 名前つきか)。継ぐなら字を貯めて、段落の終わりでまとめて読みます
+        // 引用の塊(`____`)の中の行も、空行までは1つの段落(2026-09-03。前は
+        // 1行ごとに別の段落になり、段落の間の空行が書き戻しで消えていた)
         let continued = prev_is_body
-            && p.style == ParaStyle::Body
+            && matches!(p.style, ParaStyle::Body | ParaStyle::Quote)
+            && pending.as_ref().is_none_or(|(i, _)| matches!(doc.blocks.get(*i), Some(Block::Para(q)) if q.style == p.style))
             && p.list == ListKind::None
             && p.bookmarks.is_empty()
             && p.style_id.is_none()
@@ -2414,7 +2426,9 @@ fn setext_to_atx(src: &str) -> String {
             }
             Some(c)
         });
+        // 字も数字も無い行(`!@#$`)は見出しにならない(本家と同じ)
         let candidate = !l.is_empty()
+            && l.chars().any(|c| c.is_alphanumeric())
             && heading_of(l).is_none()
             && !l.starts_with(['[', ':', '<', '|', '.', '*', '-', '+', '/', '=', '~', '^', ' ', '\t'])
             && !is_labelled(l);
