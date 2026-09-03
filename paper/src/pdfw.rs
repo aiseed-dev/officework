@@ -1739,9 +1739,14 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
         }
     }
 
-    // 塗り。**罫線より先に敷きます**(線を塗り潰さないため)
+    // 塗り。**罫線より先に敷きます**(線を塗り潰さないため)。
+    //
+    // **紙の割り当ては罫線と同じ [`kubun`] を使います**(2026-09-03)。
+    // 前は `page_of` の範囲の判定で、紙の切れ目にかかったセルの塗りだけが
+    // 次の紙へ回り、字と罫線は前の紙に残っていました。表の帯の色が1枚
+    // ずれて出ます
     for (at, color) in &sheet.fills {
-        let k = page_of(offsets, at[1], paper.height_mm);
+        let k = kubun(at[1]).min(pages.len().saturating_sub(1));
         let off = offsets.get(k).copied().unwrap_or(0.0);
         let pp = paper_of(k);
         if let Some(p) = pages.get_mut(k) {

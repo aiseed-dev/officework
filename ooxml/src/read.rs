@@ -461,6 +461,10 @@ pub(super) struct TblBuild {
     col_mm: Vec<f32>,
     /// 表のスタイルの名前(w:tblStyle)。定義は持たない — 名前を運ぶだけ
     style: Option<String>,
+    /// 表スタイルのどの条件を効かせるか(`w:tblLook`)
+    look: kumihan::TblLook,
+    /// セルの中の余白(`w:tblCellMar`。mm。上右下左)
+    cell_mar_mm: Option<[f32; 4]>,
     /// 表の置き方(tblPr の w:jc)
     align: Option<Align>,
     /// 列幅の固定(w:tblLayout type="fixed")
@@ -1166,6 +1170,141 @@ fn style_para(
     }
 }
 
+
+/// **表のスタイルが言う書式を読む**(docx の `w:type="table"` のスタイル)。
+///
+/// python-docx の `add_table(style=…)` は本文に色も罫線も書きません。
+/// 全部ここにあります。`w:tblStylePr` が条件ごとの書式で、`w:type` が
+/// `firstRow`(見出し行)・`band1Horz`(1行おきの帯)などです(2026-09-03)。
+fn table_style(body: &str) -> kumihan::TableStyleLook {
+    let mut t = kumihan::TableStyleLook::default();
+    // 条件つきの塊を先に切り分けます。残りが表全体の分です
+    let mut zentai = String::new();
+    let mut at = 0usize;
+    let mut jouken: Vec<(String, &str)> = Vec::new();
+    while let Some(k) = body[at..].find("<w:tblStylePr ") {
+        let i = at + k;
+        zentai.push_str(&body[at..i]);
+        let e = body[i..]
+            .find("</w:tblStylePr>")
+            .map(|e| i + e + 15)
+            .unwrap_or(body.len());
+        let atama = body[i..].find('>').map(|q| i + q).unwrap_or(i);
+        let na = attr_of(&body[i..atama], "w:type");
+        jouken.push((na, &body[i..e]));
+        at = e;
+    }
+    zentai.push_str(&body[at..]);
+    t.base = table_cond(&zentai);
+    for (na, blk) in jouken {
+        let c = table_cond(blk);
+        match na.as_str() {
+            "firstRow" => t.first_row = c,
+            "lastRow" => t.last_row = c,
+            "firstCol" => t.first_col = c,
+            "lastCol" => t.last_col = c,
+            "band1Horz" => t.band1_h = c,
+            "band2Horz" => t.band2_h = c,
+            "band1Vert" => t.band1_v = c,
+            "band2Vert" => t.band2_v = c,
+            // 四隅(nwCell など)は、行と列の条件で決まるので持ちません
+            _ => {}
+        }
+    }
+    let kazu = |na: &str| -> u8 {
+        // **その札の中だけ**を見ます。頭から探すと、手前の別の札の
+        // `w:val` を拾います
+        zentai
+            .find(na)
+            .and_then(|k| zentai[k..].find('>').map(|e| (k, k + e)))
+            .map(|(k, e)| attr_of(&zentai[k..e], "w:val"))
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0)
+    };
+    t.row_band = kazu("<w:tblStyleRowBandSize");
+    t.col_band = kazu("<w:tblStyleColBandSize");
+    t.cell_mar_mm = cell_mar(&zentai);
+    t.borders = tbl_borders(&zentai);
+    t
+}
+
+/// 条件1つ分の書式(塗り・太字・字の色)
+fn table_cond(blk: &str) -> kumihan::TableCond {
+    let mut c = kumihan::TableCond::default();
+    // 段落の書式。`w:pPr` の中だけを見ます
+    if let Some(k) = blk.find("<w:pPr>") {
+        let e = blk[k..].find("</w:pPr>").map(|e| k + e).unwrap_or(blk.len());
+        c.para = style_para(&blk[k..e], &Default::default());
+    }
+    // 塗りは `w:tcPr` の中の `w:shd w:fill`
+    if let Some(k) = blk.find("<w:shd ") {
+        let e = blk[k..].find('>').map(|e| k + e).unwrap_or(blk.len());
+        let v = attr_of(&blk[k..e], "w:fill");
+        if !v.is_empty() && v != "auto" {
+            c.shade = Some(v);
+        }
+    }
+    // 字は `w:rPr` の中
+    if let Some(k) = blk.find("<w:rPr>") {
+        let e = blk[k..].find("</w:rPr>").map(|e| k + e).unwrap_or(blk.len());
+        let rpr = &blk[k..e];
+        let look = style_look(rpr);
+        c.bold = look.bold;
+        c.color = look.color;
+    }
+    c
+}
+
+/// `w:tblCellMar` を mm(上右下左)で
+fn cell_mar(body: &str) -> Option<[f32; 4]> {
+    let k = body.find("<w:tblCellMar>")?;
+    let e = body[k..].find("</w:tblCellMar>").map(|e| k + e)?;
+    let naka = &body[k..e];
+    let hen = |na: &str| -> f32 {
+        // **その辺の札の中だけ**を見ます(上の `kazu` と同じ理由)
+        naka.find(na)
+            .and_then(|p| naka[p..].find('>').map(|q| (p, p + q)))
+            .map(|(p, q)| attr_of(&naka[p..q], "w:w"))
+            .and_then(|v| v.parse::<f32>().ok())
+            // twip → mm
+            .map(|v| v * 25.4 / 1440.0)
+            .unwrap_or(0.0)
+    };
+    Some([hen("<w:top"), hen("<w:right"), hen("<w:bottom"), hen("<w:left")])
+}
+
+/// スタイルの `w:tblBorders`(辺だけ)
+fn tbl_borders(body: &str) -> Option<kumihan::TableBorders> {
+    let k = body.find("<w:tblBorders>")?;
+    let e = body[k..].find("</w:tblBorders>").map(|e| k + e)?;
+    let naka = &body[k..e];
+    let mut b = kumihan::TableBorders::nashi();
+    for (tag, at) in [
+        ("<w:top", 0u8), ("<w:left", 1), ("<w:bottom", 2), ("<w:right", 3),
+        ("<w:insideH", 4), ("<w:insideV", 5),
+    ] {
+        let Some(p) = naka.find(tag) else { continue };
+        let q = naka[p..].find('>').map(|q| p + q).unwrap_or(naka.len());
+        let seg = &naka[p..q];
+        if !matches!(seg.as_bytes().get(tag.len()), Some(b' ') | Some(b'/') | Some(b'>')) {
+            continue;
+        }
+        let v = attr_of(seg, "w:val");
+        if v == "nil" || v == "none" {
+            continue;
+        }
+        match at {
+            0 => b.top = true,
+            1 => b.left = true,
+            2 => b.bottom = true,
+            3 => b.right = true,
+            4 => b.inside_h = true,
+            _ => b.inside_v = true,
+        }
+    }
+    Some(b)
+}
+
 /// スタイルの `w:pPr/w:numPr/w:numId` の値
 fn num_of(body: &str) -> Option<u32> {
     let n = body.find("<w:numPr")?;
@@ -1357,6 +1496,7 @@ fn attr_of(hay: &str, key: &str) -> String {
                 default: matches!(attr_of(head, "w:default").as_str(), "1" | "true"),
                 priority: val("w:uiPriority").and_then(|v| v.parse().ok()),
                 para: style_para(body, shirushi),
+                table: table_style(body),
             });
         }
         from = end.max(i + 1);
@@ -1554,6 +1694,9 @@ pub(super) fn parse_document_rels_num(
     let mut cell_vmerge = VMerge::None;
     // セルの縦位置。**docx の既定は上揃え**(表計算の既定の下揃えとは違う)
     let mut cell_valign = book::VAlign::Top;
+    // **セルの塗り**(`w:tcPr` の中の `w:shd w:fill`)。段落の塗りとは別です
+    let mut cell_shade: Option<String> = None;
+    let mut in_tcpr = false;
     // **罫線の辺の名前は余白にも出ます**(w:tcMar の w:top など)。
     // どの囲みの中に居るかを覚えてから読みます(2026-08-30)
     let mut in_tbl_borders = false;
@@ -1674,7 +1817,14 @@ pub(super) fn parse_document_rels_num(
                             b.borders = Some(kumihan::TableBorders::nashi());
                         }
                     }
+                    b"tcPr" => in_tcpr = true,
                     b"tcBorders" => in_tc_borders = true,
+                    // **セルの塗り。** 段落の `w:shd` と名前が同じなので、
+                    // `w:tcPr` の中に居るかどうかで見分けます(2026-09-03)
+                    b"shd" if in_tcpr => {
+                        cell_shade = attr(&e, "fill")
+                            .filter(|v| !v.is_empty() && v != "auto");
+                    }
                     b"gridCol" => if let Some(b) = stack.last_mut() {
                         if let Some(w) = attr(&e, "w").and_then(|v| v.parse::<f32>().ok()) {
                             b.col_mm.push(twip_mm(w));
@@ -1886,6 +2036,19 @@ pub(super) fn parse_document_rels_num(
                     },
                     b"tblStyle" if in_tblpr => if let Some(b) = stack.last_mut() {
                         b.style = attr(&e, "val").filter(|v| !v.is_empty());
+                    },
+                    // **表スタイルのどの条件を効かせるか**(`w:tblLook`)。
+                    // 見出し行や帯を出すかは表ごとに選べます(2026-09-03)
+                    b"tblLook" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        let on = |k: &str| attr(&e, k).as_deref() == Some("1");
+                        b.look = kumihan::TblLook {
+                            first_row: on("firstRow"),
+                            last_row: on("lastRow"),
+                            first_col: on("firstColumn"),
+                            last_col: on("lastColumn"),
+                            no_h_band: on("noHBand"),
+                            no_v_band: on("noVBand"),
+                        };
                     },
                     b"tblLayout" if in_tblpr => if let Some(b) = stack.last_mut() {
                         b.fixed_layout = attr(&e, "type").as_deref() == Some("fixed");
@@ -2444,6 +2607,19 @@ pub(super) fn parse_document_rels_num(
                     b"tblStyle" if in_tblpr => if let Some(b) = stack.last_mut() {
                         b.style = attr(&e, "val").filter(|v| !v.is_empty());
                     },
+                    // **表スタイルのどの条件を効かせるか**(`w:tblLook`)。
+                    // 見出し行や帯を出すかは表ごとに選べます(2026-09-03)
+                    b"tblLook" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        let on = |k: &str| attr(&e, k).as_deref() == Some("1");
+                        b.look = kumihan::TblLook {
+                            first_row: on("firstRow"),
+                            last_row: on("lastRow"),
+                            first_col: on("firstColumn"),
+                            last_col: on("lastColumn"),
+                            no_h_band: on("noHBand"),
+                            no_v_band: on("noVBand"),
+                        };
+                    },
                     b"tblLayout" if in_tblpr => if let Some(b) = stack.last_mut() {
                         b.fixed_layout = attr(&e, "type").as_deref() == Some("fixed");
                     },
@@ -2674,6 +2850,7 @@ pub(super) fn parse_document_rels_num(
                             col_span: cell_span,
                             v_merge: cell_vmerge,
                             valign: cell_valign,
+                            shade: cell_shade.take(),
                         });
                         cell_span = 0;
                         cell_vmerge = VMerge::None;
@@ -2681,6 +2858,7 @@ pub(super) fn parse_document_rels_num(
                         cell_borders = kumihan::CellBorders::default();
                     },
                     b"tblBorders" => in_tbl_borders = false,
+                    b"tcPr" => in_tcpr = false,
                     b"tcBorders" => in_tc_borders = false,
                     b"tr" => if let Some(b) = stack.last_mut() {
                         let row = std::mem::take(&mut b.row);
@@ -2718,6 +2896,8 @@ pub(super) fn parse_document_rels_num(
                                 // docx の表は題を持たない
                                 title: None,
                                 style: b.style,
+                                look: b.look,
+                                cell_mar_mm: b.cell_mar_mm,
                                 align: b.align,
                                 fixed_layout: b.fixed_layout,
                             };

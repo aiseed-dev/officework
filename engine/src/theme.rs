@@ -1612,6 +1612,164 @@ fn grid_cell(text: &str) -> crate::doc::Cellbox {
 ///
 /// 段落が直に言っている所は触りません。docx の決めどおり、run の `w:rPr` が
 /// スタイルより強く、スタイルは `docDefaults` より強い順です。
+
+/// **表のスタイルと、セルの中の段落の書式を当てる。**
+///
+/// 条件は重ねて効きます。後から当てた物が勝ちます。順は docx の決めで、
+/// 弱い方から: 表全体 → 帯(列) → 帯(行) → 最初の列 / 最後の列 →
+/// 見出し行 / 最後の行。四隅は行と列の条件が重なった所です。
+///
+/// 帯の番号は**見出し行を除いて**数えます。`w:tblStyleRowBandSize` が
+/// 何行ごとかを言います(既定は1行)。
+///
+/// セルの中の段落には、段落スタイル → 表スタイル → 文書の既定の順で
+/// 当てます。**先に当てた物が勝ち**、後の層は空いている所だけ埋めます。
+#[allow(clippy::type_complexity)]
+fn hyou_style_wo_ateru(
+    t: &mut crate::doc::Table,
+    ts: Option<&crate::doc::TableStyleLook>,
+    jibun: &[(String, crate::doc::StyleLook, crate::doc::StyleParaLook)],
+    kitei: Option<&(crate::doc::StyleLook, crate::doc::StyleParaLook)>,
+    doc_after: Option<f32>,
+    doc_line: Option<f32>,
+) {
+    // 罫線とセルの余白は、表が自分で言っていなければスタイルの物
+    if let Some(ts) = ts {
+        if t.style_borders_unset {
+            if let Some(b) = ts.borders {
+                t.borders = b;
+            }
+        }
+        if t.cell_mar_mm.is_none() {
+            t.cell_mar_mm = ts.cell_mar_mm;
+        }
+    }
+    let look = t.look;
+    let gyou = t.rows.len();
+    let obi_g = ts.map(|x| x.row_band.max(1) as usize).unwrap_or(1);
+    let obi_r = ts.map(|x| x.col_band.max(1) as usize).unwrap_or(1);
+    // 見出し行と最後の行は帯の勘定に入りません
+    let atama = if look.first_row { 1 } else { 0 };
+    let oshiri = if look.last_row { 1 } else { 0 };
+    for ri in 0..gyou {
+        let retsu = t.rows[ri].len();
+        for ci in 0..retsu {
+            let mut shade: Option<String> = None;
+            let mut bold: Option<bool> = None;
+            let mut iro: Option<String> = None;
+            let mut pl = crate::doc::StyleParaLook::default();
+            if let Some(ts) = ts {
+                let mut tsumi: Vec<&crate::doc::TableCond> = vec![&ts.base];
+                if !look.no_v_band {
+                    let hidari = if look.first_col { 1 } else { 0 };
+                    if ci >= hidari {
+                        let n = (ci - hidari) / obi_r;
+                        tsumi.push(if n % 2 == 0 { &ts.band1_v } else { &ts.band2_v });
+                    }
+                }
+                if !look.no_h_band && ri >= atama && ri + oshiri < gyou {
+                    let n = (ri - atama) / obi_g;
+                    tsumi.push(if n % 2 == 0 { &ts.band1_h } else { &ts.band2_h });
+                }
+                if look.first_col && ci == 0 {
+                    tsumi.push(&ts.first_col);
+                }
+                if look.last_col && ci + 1 == retsu {
+                    tsumi.push(&ts.last_col);
+                }
+                if look.first_row && ri == 0 {
+                    tsumi.push(&ts.first_row);
+                }
+                if look.last_row && ri + 1 == gyou {
+                    tsumi.push(&ts.last_row);
+                }
+                for c in tsumi {
+                    if c.shade.is_some() {
+                        shade = c.shade.clone();
+                    }
+                    if c.bold.is_some() {
+                        bold = c.bold;
+                    }
+                    if c.color.is_some() {
+                        iro = c.color.clone();
+                    }
+                    if c.para.space_after_pt.is_some() {
+                        pl.space_after_pt = c.para.space_after_pt;
+                    }
+                    if c.para.space_before_pt.is_some() {
+                        pl.space_before_pt = c.para.space_before_pt;
+                    }
+                    if c.para.line_spacing.is_some() {
+                        pl.line_spacing = c.para.line_spacing;
+                    }
+                    if c.para.align.is_some() {
+                        pl.align = c.para.align;
+                    }
+                }
+            }
+            let cell = &mut t.rows[ri][ci];
+            if cell.shade.is_none() {
+                cell.shade = shade;
+            }
+            let n = cell.paragraphs.len();
+            let ids: Vec<Option<String>> =
+                cell.paragraphs.iter().map(|p| p.style_id.clone()).collect();
+            for pi in 0..n {
+                let onaji = |j: Option<usize>| {
+                    j.and_then(|j| ids.get(j)).is_some_and(|o| *o == ids[pi] && o.is_some())
+                };
+                let (mae, tsugi) = (onaji(pi.checked_sub(1)), onaji(Some(pi + 1)));
+                let para = &mut cell.paragraphs[pi];
+                // 1. 段落スタイル(名乗っていなければ、その種類の既定)
+                let mut tsuzuki = false;
+                if let Some((_, lk, spl)) = para
+                    .style_id
+                    .as_deref()
+                    .and_then(|id| jibun.iter().find(|(k, _, _)| k == id))
+                {
+                    jibun_wo_ateru(para, lk, spl);
+                    tsuzuki = spl.contextual_spacing == Some(true);
+                } else if let Some((lk, spl)) = kitei {
+                    jibun_wo_ateru(para, lk, spl);
+                    tsuzuki = spl.contextual_spacing == Some(true);
+                }
+                // 2. 表スタイルの段落の書式、3. 文書の既定。
+                //
+                // **表スタイルが「0」と言うのも指定です。** `.or()` で繋ぐと、
+                // `Some(0.0)` はそこで止まり、文書の既定は入りません。
+                // 分けて書くと 0 が「言っていない」に見えてしまい、表の中の
+                // 段落に文書の既定の空きが入って行が高くなります(2026-09-03)
+                if para.space_after_pt == 0.0 {
+                    para.space_after_pt = pl.space_after_pt.or(doc_after).unwrap_or(0.0);
+                }
+                if para.space_before_pt == 0.0 {
+                    para.space_before_pt = pl.space_before_pt.unwrap_or(0.0);
+                }
+                if para.line_spacing <= 0.0 && para.line_pt.is_none() {
+                    para.line_spacing = pl.line_spacing.or(doc_line).unwrap_or(0.0);
+                }
+                if tsuzuki {
+                    if mae {
+                        para.space_before_pt = 0.0;
+                    }
+                    if tsugi {
+                        para.space_after_pt = 0.0;
+                    }
+                }
+                // 字は表スタイルの条件から
+                for r in &mut para.runs {
+                    if bold == Some(true) {
+                        r.fmt.bold = true;
+                    }
+                    if r.fmt.color.is_none() {
+                        r.fmt.color.clone_from(&iro);
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// **文書の既定を、まだ言っていない段落へ入れる**(docx の `w:docDefaults`)。
 ///
 /// スタイルより下の層なので、スタイルを当てた後に呼びます。
@@ -1747,54 +1905,28 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             })
             .collect()
     };
-    // **表のセルの中の段落にも、同じようにスタイルを当てます**(2026-09-03)。
+    // **表のスタイルと、セルの中の段落。**
     //
-    // 前はここが `Block::Para` だけで、`Block::Table` は素通りでした。
-    // 色も太字も空きも、**表の中だけ効いていません**でした。内閣府の
-    // 面談の記録は記入欄が表で、既定のスタイルの「段落前 4pt」が
-    // 当たらず、行が元より 5.4pt 低くなっていました。
+    // 順は docx の層のとおりです。強い方から:
+    //   段落自身の指定 → 段落スタイル → 表スタイルの `w:pPr` → 文書の既定
     //
-    // 表の中では、隣は同じセルの中の前後の段落です
-    let jibun_hiku = jibun.clone();
+    // 前は表スタイルを当てた後に文書の既定を入れていて、表スタイルが
+    // 「段落後 0」と言っているのに文書の既定の 10pt が入り、行が高く
+    // なっていました(2026-09-03)。
+    //
+    // **表示用の写しにだけ当てます。** 元の模型に焼き付けると、開いて保存
+    // しただけで、元は書いていなかった `w:shd` が全部のセルに付きます
+    let hyou_style: std::collections::BTreeMap<String, crate::doc::TableStyleLook> = out
+        .styles
+        .iter()
+        .chain(out.styles_new.iter())
+        .filter(|s| s.kind == "table" && !s.table.is_empty())
+        .map(|s| (s.id.clone(), s.table.clone()))
+        .collect();
     for block in out.blocks.iter_mut() {
         let crate::doc::Block::Table(t) = block else { continue };
-        for row in &mut t.rows {
-            for cell in row.iter_mut() {
-                let n = cell.paragraphs.len();
-                let ids: Vec<Option<String>> =
-                    cell.paragraphs.iter().map(|p| p.style_id.clone()).collect();
-                for i in 0..n {
-                    let onaji = |j: Option<usize>| {
-                        j.and_then(|j| ids.get(j)).is_some_and(|o| *o == ids[i] && o.is_some())
-                    };
-                    let (mae, tsugi) = (onaji(i.checked_sub(1)), onaji(Some(i + 1)));
-                    let para = &mut cell.paragraphs[i];
-                    if let Some((_, lk, pl)) = para
-                        .style_id
-                        .as_deref()
-                        .and_then(|id| jibun_hiku.iter().find(|(k, _, _)| k == id))
-                    {
-                        jibun_wo_ateru(para, lk, pl);
-                        let tsuzuki = pl.contextual_spacing == Some(true);
-                        bunsho_no_kitei(para, doc_after, doc_line);
-                        if tsuzuki {
-                            if mae {
-                                para.space_before_pt = 0.0;
-                            }
-                            if tsugi {
-                                para.space_after_pt = 0.0;
-                            }
-                        }
-                    } else {
-                        // 名乗らない段落は、その種類の既定のスタイルに従います
-                        if let Some((lk, pl)) = kitei_no_style.clone() {
-                            jibun_wo_ateru(para, &lk, &pl);
-                        }
-                        bunsho_no_kitei(para, doc_after, doc_line);
-                    }
-                }
-            }
-        }
+        let ts = t.style.as_deref().and_then(|id| hyou_style.get(id)).cloned();
+        hyou_style_wo_ateru(t, ts.as_ref(), &jibun, kitei_no_style.as_ref(), doc_after, doc_line);
     }
     for (bi, block) in out.blocks.iter_mut().enumerate() {
         let crate::doc::Block::Para(para) = block else { continue };

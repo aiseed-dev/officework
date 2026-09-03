@@ -692,6 +692,83 @@ pub struct Cellbox {
     /// 表計算の既定は下揃えなので、**docx の既定は `Top`** です
     /// (読み書きの所で `None` に畳みます)。
     pub valign: book::VAlign,
+    /// **セルの塗り**(docx の `w:tcPr/w:shd w:fill`、または表スタイルの帯)。
+    ///
+    /// 前は最初の段落の `shade` を借りていました。表スタイルの帯の色は
+    /// 段落ではなくセルに付くので、セル自身が持ちます(2026-09-03)
+    pub shade: Option<String>,
+}
+
+/// **表スタイルのどの条件を効かせるか**(docx の `w:tblLook`)。
+///
+/// `no_h_band` / `no_v_band` は**裏返し**で持ちます — docx がそう書くので、
+/// `Default` の false がそのまま「帯を出す」になります。
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct TblLook {
+    pub first_row: bool,
+    pub last_row: bool,
+    pub first_col: bool,
+    pub last_col: bool,
+    /// 行の帯を**出さない**
+    pub no_h_band: bool,
+    /// 列の帯を**出さない**
+    pub no_v_band: bool,
+}
+
+/// **表スタイルの1つの条件が言う書式**(docx の `w:tblStylePr` の中身)。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct TableCond {
+    /// **段落の書式**(`w:pPr`)。表スタイルは「段落後 0・行間 1.0」を
+    /// ここで言います。当てないと、文書の既定の段落後がセルにも入って
+    /// 行が高くなります(2026-09-03)
+    pub para: StyleParaLook,
+    /// セルの塗り(`w:tcPr/w:shd w:fill`)
+    pub shade: Option<String>,
+    /// 字を太く(`w:rPr/w:b`)
+    pub bold: Option<bool>,
+    /// 字の色(`w:rPr/w:color`)
+    pub color: Option<String>,
+}
+
+impl TableCond {
+    /// 何か言っているか
+    pub fn nanika(&self) -> bool {
+        *self != Self::default()
+    }
+}
+
+/// **表のスタイルが持つ書式**(docx の `w:style w:type="table"`)。
+///
+/// python-docx の `add_table(style="Light Grid Accent 1")` は、本文に色も
+/// 罫線も1文字も書きません。全部この定義の側にあります(2026-09-03)。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct TableStyleLook {
+    /// 表全体に効く分
+    pub base: TableCond,
+    pub first_row: TableCond,
+    pub last_row: TableCond,
+    pub first_col: TableCond,
+    pub last_col: TableCond,
+    /// 行の帯。1が奇数番、2が偶数番
+    pub band1_h: TableCond,
+    pub band2_h: TableCond,
+    /// 列の帯
+    pub band1_v: TableCond,
+    pub band2_v: TableCond,
+    /// 帯の幅(何行・何列ごとか。0 は 1 と同じ)
+    pub row_band: u8,
+    pub col_band: u8,
+    /// セルの中の余白(mm。上右下左)
+    pub cell_mar_mm: Option<[f32; 4]>,
+    /// 表の罫線
+    pub borders: Option<TableBorders>,
+}
+
+impl TableStyleLook {
+    /// 何も言っていないか
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
 }
 
 /// **表のどこに罫線を引くか**(docx の `w:tblBorders`)。
@@ -750,6 +827,7 @@ impl Default for Cellbox {
             col_span: 0,
             v_merge: VMerge::None,
             valign: book::VAlign::Top,
+            shade: None,
         }
     }
 }
@@ -816,6 +894,13 @@ pub struct Table {
     /// (2026-08-18)。HTML では `thead` になります。docx から読んだ表は
     /// いまのところ false です
     pub header_row: bool,
+    /// **表スタイルのどの条件を効かせるか**(docx の `w:tblLook`)。
+    /// 見出し行・最後の行・最初の列・最後の列を特別扱いするか、
+    /// 行と列の帯を出すかを、表ごとに選びます
+    pub look: TblLook,
+    /// **セルの中の余白**(docx の `w:tblPr/w:tblCellMar`。mm。上右下左)。
+    /// 書いていなければ `None` で、既定(左右 1.9mm・上下 0)になります
+    pub cell_mar_mm: Option<[f32; 4]>,
     /// 列幅を固定する(docx の `w:tblLayout w:type="fixed"`)。
     /// **裏返しで持つ** — docx の既定は autofit(要素なし)なので、
     /// `Default` の false がそのまま「autofit」になる
@@ -1029,6 +1114,8 @@ pub struct StyleInfo {
     pub kind: String,
     /// 字の見た目。**設定した物だけ**を持ちます(None は「言わない」)
     pub look: StyleLook,
+    /// **表のスタイルが言う書式**(`w:type="table"` のときだけ中身が入ります)
+    pub table: TableStyleLook,
     /// 元になるスタイルの `styleId`(docx の `w:basedOn`)。
     /// 書いていない物は自分で全部決めます
     pub based_on: Option<String>,

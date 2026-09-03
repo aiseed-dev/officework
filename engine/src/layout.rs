@@ -1627,7 +1627,13 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32)> = Vec::new();
             // 縦結合の続きは上のセルに呑まれている。中身は組まない
             if cell.v_merge != VMerge::Continue {
-                let inner = (w - 2.0 * CELL_PAD).max(2.0);
+                // **セルの中の余白は表が言う分**(`w:tblCellMar`)。
+                // 書いていなければ既定([`CELL_PAD`])です(2026-09-03)
+                let (pad_l, pad_r) = match table.cell_mar_mm {
+                    Some(m) => (m[3], m[1]),
+                    None => (CELL_PAD, CELL_PAD),
+                };
+                let inner = (w - pad_l - pad_r).max(2.0);
                 let mut para0 = 0usize;
                 // **セルの中でも箇条書きの印を出します**(2026-08-31)。前は
                 // `None` を渡していたので、内閣府の調査票の `○` が8か所
@@ -1667,7 +1673,12 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 }
                 takasa = takasa.max(ls.iter().map(|(_, _, h, _, _)| *h).sum::<f32>());
             }
-            let shade = cell.paragraphs.first().and_then(|p| p.shade.clone());
+            // **セル自身の塗りが先。** 表スタイルの帯の色はここに入ります。
+            // 無ければ最初の段落の塗り(前からの道)(2026-09-03)
+            let shade = cell
+                .shade
+                .clone()
+                .or_else(|| cell.paragraphs.first().and_then(|p| p.shade.clone()));
             laid.push(Laid { ci, gc, span, v: cell.v_merge, lines: ls, x, w, shade,
                              valign: cell.valign });
             gc += span;
@@ -1677,7 +1688,11 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         // 「表の高さが異なる」)。模型は読んでいたのに、組む所で
         // 中身の高さしか見ていませんでした
         let iu = table.row_mm.get(ri_now).copied().unwrap_or(0.0);
-        row_hs.push((takasa + 2.0 * CELL_PAD_V).max(iu));
+        let (pad_t, pad_b) = match table.cell_mar_mm {
+            Some(m) => (m[0], m[2]),
+            None => (CELL_PAD_V, CELL_PAD_V),
+        };
+        row_hs.push((takasa + pad_t + pad_b).max(iu));
     }
 
     // 行の上端(累積)
