@@ -486,8 +486,14 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 0.0
             };
             // [a b c d] = 回転 × 剪断。剪断は [1 0; sh 1]
-            let (a, b) = (cos, sin);
-            let (cc, d) = (-sin + cos * sh, cos + sin * sh);
+            //
+            // **名前は `m0`〜`m3` です。** 前は `a b cc d` と書いていて、
+            // `b` が**色の青**を隠していました(上の `let (r, g, b)`)。
+            // 塗りは隠れる前に済んでいたので気づきにくく、太字のときだけ
+            // 輪郭が青 0 の色で描かれていました。`#17365D` の題が
+            // `#173600` で出ます(2026-09-03、python-docx の見本で発見)
+            let (m0, m1) = (cos, sin);
+            let (m2, m3) = (-sin + cos * sh, cos + sin * sh);
             // **太字は輪郭を重ねて作ります。**
             //
             // 前は同じ字を 0.12mm ずらして2度打っていました。見た目は太く
@@ -509,7 +515,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 // 「議論項目」)。大きい字ほど太らせる量も要ります
                 c.set_line_width(p.size_pt / 30.0);
             }
-            c.set_text_matrix([a, b, cc, d, pt(p.x_mm), pt(p.y_mm)]);
+            c.set_text_matrix([m0, m1, m2, m3, pt(p.x_mm), pt(p.y_mm)]);
             c.show(Str(&bytes));
             if p.bold {
                 c.set_text_rendering_mode(TextRenderingMode::Fill);
