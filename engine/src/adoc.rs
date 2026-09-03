@@ -224,7 +224,19 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
         // 一覧の始めの印も同じ — *印は空行を残すためだけ*の物なので、
         // 字には出しません
         if is_desc_list(n) {
-            out.push_str(&runs_text(&p.runs, doc));
+            // 説明は文の切れ目で行を分ける(本文の段落と同じ。2026-09-03)
+            let text = runs_text(&p.runs, doc);
+            // 印の位置は頭の空白(字下げ)を除いた字で数えてある
+            let lead = text.len() - text.trim_start().len();
+            match desc_marker(&text) {
+                Some((m, i)) if !text[lead + i + m.len()..].trim().is_empty() => {
+                    let at = lead + i + m.len();
+                    out.push_str(&text[..at]);
+                    out.push(' ');
+                    out.push_str(&split_sentences(text[at..].trim_start()).join("\n"));
+                }
+                _ => out.push_str(&text),
+            }
             out.push('\n');
             if !in_quote {
                 out.push('\n');
@@ -235,7 +247,7 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
         if let Some(mark) = admon_mark(n) {
             out.push_str(mark);
             out.push(' ');
-            out.push_str(&runs_text(&p.runs, doc));
+            out.push_str(&split_sentences(&runs_text(&p.runs, doc)).join("\n"));
             out.push_str("\n\n");
             return;
         }
@@ -272,11 +284,11 @@ fn write_para(out: &mut String, p: &Paragraph, doc: &Document, in_quote: bool) {
     // 1文直したときに何を直したのか読めます。読むときは続く行を1つの段落に
     // 継ぐので、開き直すと元の1段落に戻ります。
     //
-    // 切るのは**普通の本文の段落だけ**です。見出しと箇条書きは、続く行が
-    // 別の段落になってしまうので切りません
+    // 切るのは本文の段落と箇条書きの項目です。見出しは1行の物なので切りません
+    // (箇条書きの続きの行は読む側が項目に継ぐので、切ってよい。2026-09-03)
     // 段落の中の改行は ` +` で書きます(本家の書き方)
     let text = text.replace('\n', " +\n");
-    let may_break = head.is_empty() && p.style == ParaStyle::Body;
+    let may_break = p.style == ParaStyle::Body && (head.is_empty() || p.list != ListKind::None);
     if may_break {
         out.push_str(&split_sentences(&text).join("\n"));
     } else {
@@ -357,7 +369,7 @@ fn split_sentences(s: &str) -> Vec<String> {
             '.' => {
                 matches!(
                     (b.get(i + 1), b.get(i + 2)),
-                    (Some(' '), Some(next_of)) if next_of.is_ascii_uppercase()
+                    (Some(' '), Some(next_of)) if next_of.is_ascii_uppercase() || *next_of == '('
                 ) && !after_abbrev(&b[..i])
             }
             _ => false,
@@ -747,6 +759,14 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
         out.push_str(&format!("[cols=\"{}\"]\n", numbers.join(",")));
     }
     out.push_str("|===\n");
+    // **原文の控えがあり、セルが1つも直されていなければ、原文をそのまま返す**
+    if let Some((body, stamp)) = table_raw(t) {
+        if stamp == table_stamp(t) {
+            out.push_str(body);
+            out.push_str("|===\n\n");
+            return;
+        }
+    }
     for (ri, row) in t.rows.iter().enumerate() {
         // この行にもうセルを書いたか(縦の結合の続きは書かないので、
         // 番号ではなく実際に書いたかで見ます)
@@ -761,7 +781,7 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
                 continue;
             }
             // **読んだ時の原文があり、字がそのままなら原文を返す**(指定も中身も)
-            let raw_cell = cell.paragraphs.first().and_then(|p| p.raw_adoc.as_deref());
+            let raw_cell = cell.paragraphs.first().and_then(cell_raw);
             let mut raw_spec: Option<String> = None;
             if let Some((src, stamp)) = raw_cell.and_then(|r| r.split_once('\u{0}')) {
                 raw_spec = src.split_once('|').map(|(sp, _)| sp.to_string());
@@ -1234,13 +1254,8 @@ fn vendor_only_syntax(l: &str) -> Option<(&'static str, &'static str)> {
         return Some(("条件の行(ifdef::)", "条件"));
     }
     // 本文の途中の属性の項目(`:名前: 値`)。頭の外でも本家は受けます
-    if let Some(rest) = ts.strip_prefix(':') {
-        if let Some((k, _)) = rest.split_once(':') {
-            let k = k.strip_suffix('!').unwrap_or(k);
-            if !k.is_empty() && k.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
-                return Some(("属性の項目(:名前: 値)", "属性の項目"));
-            }
-        }
+    if is_attr_entry(ts) {
+        return Some(("属性の項目(:名前: 値)", "属性の項目"));
     }
     // **作業のリスト**(`* [ ] やること`)。**段も見ます** —
     // 2026-08-25 まで1段目しか拾わず、`** [ ]` は普通の箇条書きになって
@@ -1363,10 +1378,6 @@ fn block_inner_style(mark: &str, spec: Option<&str>) -> &'static str {
 
 /// **1行で1つと決まっている段落のスタイル名か。**
 /// 註記とラベル付きリストは、続く行を呑むと形が壊れます
-fn one_per_line(name: &str) -> bool {
-    is_desc_list(name) || admon_mark(name).is_some()
-}
-
 /// **ラベル付きリストの行か**(始めの行も含む)。
 ///
 /// 空行で区切られた2つ目の一覧は [`説明のリストの始め`] という名前です。
@@ -1695,13 +1706,24 @@ fn split_docs(src: &str) -> Vec<String> {
 }
 
 /// 覚え書きの行の次(覚え書きは飛ばす)が `= 題` か `:名前: 値` か
+/// 属性の項目の行か(`:名前: 値` `:名前:` `:名前!:`)。値は空か空白で始まる。
+/// `:accept::` はラベル付きリストの項目で、属性ではない(本家と同じ。2026-09-03)
+fn is_attr_entry(l: &str) -> bool {
+    let Some(rest) = l.strip_prefix(':') else { return false };
+    let Some((k, v)) = rest.split_once(':') else { return false };
+    let k = k.strip_suffix('!').unwrap_or(k);
+    (v.is_empty() || v.starts_with([' ', '\t']))
+        && !k.is_empty()
+        && k.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+}
+
 fn next_is_head(lines: &std::iter::Peekable<std::iter::Enumerate<std::str::Lines<'_>>>) -> bool {
     lines
         .clone()
         .map(|(_, l)| l.trim_end())
         .skip(1)
         .find(|l| !l.starts_with("//"))
-        .is_some_and(|l| l.starts_with("= ") || (l.starts_with(':') && l[1..].contains(':')))
+        .is_some_and(|l| l.starts_with("= ") || is_attr_entry(l))
 }
 
 /// `[discrete]` の次(空行は飛ばす)が `= 題` か。
@@ -1791,7 +1813,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         }
         if !head_done {
             if let Some(rest) = l.strip_prefix(':') {
-                if let Some((k, v)) = rest.split_once(':') {
+                if let Some((k, v)) = rest.split_once(':').filter(|(_, v)| v.is_empty() || v.starts_with([' ', '\t'])) {
                     let (k, v) = (k.trim().to_string(), v.trim().to_string());
                     // **知らない名前も捨てません。** AsciiDoc の文書は頭に
                     // 属性を並べます(`:author:` `:revdate:` など)。捨てると、
@@ -1874,7 +1896,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         let folds_into_item = prev_is_body
             && prev_is_list_item
             && (l.starts_with('.') && !l.starts_with(". ") && !is_bullet(l, '.').is_some()
-                || (l.starts_with(':') && l[1..].contains(':'))
+                || is_attr_entry(l)
                 || heading_of(l).is_some());
         if folds_into_item {
             if let Some((_, src)) = pending.as_mut() {
@@ -2105,6 +2127,8 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             let mut real_line = 0usize;
             // いま `a|` のセルの中にいるか(続きの行では持ち越します)
             let mut in_anchor = false;
+            // `|===` の中身の原文(控えにする)
+            let mut body = String::new();
             for (_, tl) in lines.by_ref() {
                 // **末尾は半角の空きだけ落とします。** 全角の空白(U+3000)は
                 // 日本語の様式では字下げなので、落とすと見た目が変わります
@@ -2113,6 +2137,8 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                     closed = true;
                     break;
                 }
+                body.push_str(tl);
+                body.push('\n');
                 if tl.is_empty() {
                     if real_line == 0 {
                         no_header = true;
@@ -2152,6 +2178,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             };
             let mut t = parse_table_lines(&rows, &mut doc, &mut fresh_note, col_spec)?;
             t.header_row = heading_line && !no_header;
+            keep_table_raw(&mut t, &body);
             // **直前の `[cols="1,3"]` は表の物です**(2026-08-18)。原文のまま
             // 持ち越した段落として残っているので、取り込んで消します。
             // 残したままだと、書くときに二重に出ます
@@ -2333,9 +2360,9 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         // (2026-09-03。本家は説明を次の行に書く形も受ける)
         // ラベル付きリストの項目にも続きの行を継ぎます(本家は説明の続きとして読む。
         // 2026-09-03。前は「1行で1つ」だったので続きが別の段落になっていた)
+        // 註記(`NOTE: 文`)にも続きの行を継ぎます(本家は空行まで1つの註記。
+        // 2026-09-03 に本家の手引きで、2行目が別の段落になっているのを見つけた)
         prev_is_body = p.raw_adoc.is_none()
-            && (!p.style_id.as_deref().is_some_and(one_per_line)
-                || p.style_id.as_deref().is_some_and(is_desc_list))
             && !matches!(p.style, ParaStyle::Heading(_) | ParaStyle::Title);
         prev_is_list_item = p.list != ListKind::None || p.style_id.as_deref().is_some_and(is_desc_list);
         prev_is_desc_list = p.style_id.as_deref().is_some_and(is_desc_list);
@@ -2540,8 +2567,58 @@ fn seam_src(before: &str, after: &str) -> &'static str {
 }
 
 /// セルの原文があり、字が読んだ時のままか(そのセルは原文で書かれる)
+/// **表の原文の控え。** `|===` の中身をそのまま持ち、セルが1つも直されていない
+/// 間は書き戻しでそのまま返す(2026-09-03)。行の切り方(1行に1セルずつ書いた表・
+/// 行の間の空行)は模型に無いので、原文でしか返せない。
+///
+/// 置き場は1つ目のセルの1つ目の段落の `raw_adoc` で、セルの控えの前に
+/// `\u{1}原文\u{0}照合の字\u{1}` を付ける(`Table` の型は doc.rs にあり、欄を足すのは
+/// 別の回)。照合の字は全セルの字と結合と見出しの有無を繋いだ物
+const TABLE_RAW_MARK: char = '\u{1}';
+
+fn table_stamp(t: &Table) -> String {
+    let mut st = String::new();
+    st.push_str(if t.header_row { "h" } else { "-" });
+    for row in &t.rows {
+        st.push('\u{1e}');
+        for c in row {
+            st.push('\u{1f}');
+            st.push_str(&format!("{}{}", c.span(), matches!(c.v_merge, VMerge::Continue) as u8));
+            st.push_str(&cell_stamp(&c.paragraphs));
+        }
+    }
+    st
+}
+
+/// 表の原文の控え(原文, 照合の字)。1つ目のセルから読む
+fn table_raw(t: &Table) -> Option<(&str, &str)> {
+    let r = t.rows.first()?.first()?.paragraphs.first()?.raw_adoc.as_deref()?;
+    let rest = r.strip_prefix(TABLE_RAW_MARK)?;
+    let end = rest.find(TABLE_RAW_MARK)?;
+    rest[..end].split_once('\u{0}')
+}
+
+/// 表の原文の控えを1つ目のセルに付ける
+fn keep_table_raw(t: &mut Table, body: &str) {
+    let stamp = table_stamp(t);
+    if let Some(p) = t.rows.first_mut().and_then(|r| r.first_mut()).and_then(|c| c.paragraphs.first_mut()) {
+        let cell = p.raw_adoc.take().unwrap_or_default();
+        p.raw_adoc = Some(format!("{TABLE_RAW_MARK}{body}\u{0}{stamp}{TABLE_RAW_MARK}{cell}"));
+    }
+}
+
+/// セルの控え(`指定|原文\u{0}照合の字`)。表の控えが前に付いていれば外して返す
+fn cell_raw(p: &Paragraph) -> Option<&str> {
+    let r = p.raw_adoc.as_deref()?;
+    let r = match r.strip_prefix(TABLE_RAW_MARK) {
+        Some(rest) => &rest[rest.find(TABLE_RAW_MARK)? + 1..],
+        None => r,
+    };
+    (!r.is_empty()).then_some(r)
+}
+
 fn cell_raw_is_fresh(c: &Cellbox) -> bool {
-    match c.paragraphs.first().and_then(|p| p.raw_adoc.as_deref()).and_then(|r| r.split_once('\u{0}')) {
+    match c.paragraphs.first().and_then(cell_raw).and_then(|r| r.split_once('\u{0}')) {
         Some((_, stamp)) => stamp == cell_stamp(&c.paragraphs),
         None => false,
     }
@@ -3125,9 +3202,14 @@ mod tests {
     }
 
     #[test]
-    fn headings_and_bullets_are_not_broken() {
-        // 切ると、続く行が別の段落になってしまう
-        round_trip("== 見出し。二文目。\n\n* 一つ。二つ。\n");
+    fn headings_are_not_broken_and_bullet_items_break_at_sentences() {
+        // 見出しは1行の物。箇条書きの項目は本文と同じく一文一行で書き、
+        // 読むときは続きの行を項目に継ぐ(2026-09-03)
+        round_trip("== 見出し。二文目。\n\n* 一つ。\n二つ。\n");
+        let d = parse("* 一つ。二つ。\n").unwrap();
+        assert_eq!(write(&d), "* 一つ。\n二つ。\n");
+        let back = parse(&write(&d)).unwrap();
+        assert_eq!(back.blocks.len(), 1, "続きの行が別の段落になった");
     }
 
     #[test]
