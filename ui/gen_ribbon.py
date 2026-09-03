@@ -814,6 +814,10 @@ EXTRA_CMDS = {
         ("Data", 'datatable', "python", "Python", "python", "c"),
         ("Data", 'python', "csv-kind", "CSV format", "csv-kind", "c"),
         ("Data", 'csv-kind', "flash-fill", "Fill by example", "flash-fill", "c"),
+        # **変更履歴は writer にしかありませんでした**(2026-09-03、リボンを
+        # 1つにした分)。id と語は writer と同じで、処理は calc/src/cmds.rs に
+        # あります。共同のタブの並びは本家と同じで、履歴の1つ前です
+        ("Collaboration", 'co-chat', "track-changes", "Track changes", "track-changes", "c"),
         ("Pivot Table", 'pivot-insert', "pivot-fields", "Field list", "pivot-fields", "c"),
         # 本家は値フィールドの設定の中にある「計算の種類」。うちは指図が
         # 集計の名前ひとつなので、タブに独立したボタンとして置く
