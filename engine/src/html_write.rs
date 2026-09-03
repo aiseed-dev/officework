@@ -897,7 +897,7 @@ fn build(doc: &Document) -> (String, Ctx) {
             }
             continue;
         }
-        if name == Some("塊の区切り") {
+        if name == Some("塊の区切り") || name == Some("一覧の続き") {
             continue;
         }
         // **ラベル付きリスト**(`項目:: 値`)は `dl` / `dt` / `dd` に。

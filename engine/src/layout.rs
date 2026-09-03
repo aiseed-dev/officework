@@ -710,7 +710,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // `[source,python]` と `----` がそのまま印刷されていました。
                 // 印はここからここまでが塊だという合図で、文章ではありません
                 // 覚え書き(`//` の行と `////` の塊)も、読む人の物ではないので出しません
-                if matches!(para.style_id.as_deref(), Some("塊の区切り") | Some("指定の行"))
+                if matches!(para.style_id.as_deref(), Some("塊の区切り") | Some("指定の行") | Some("一覧の続き"))
                     || para.style_id.as_deref().is_some_and(crate::adoc::is_hidden_block)
                 {
                     // **塊の前後は少し空けます**(2026-09-03)。区切りの印は出さない
