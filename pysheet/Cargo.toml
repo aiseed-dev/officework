@@ -1,6 +1,6 @@
 [package]
 name = "pysheet"    # sheet を Python から呼ぶ(pandas で集計 → 帳票の枠を保ったまま差し込む)
-version = "0.5.0-beta.8"
+version = "0.5.0-beta.9"
 edition.workspace = true
 license.workspace = true
 description = "officework のエンジンの Python 束縛(xlsx = sheet、docx = ooxml)。原本を正として、変えた所だけ書き戻す"

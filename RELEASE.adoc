@@ -1,133 +1,161 @@
-= officework 0.5.0-beta.8
+= officework 0.5.0-beta.9
 
 日本語: link:RELEASE.ja.adoc[RELEASE.ja.adoc]
 
 To try it: `pip install --pre officework`
 
-The last release was about one measurement, the height of a line. This one is
-wide instead of deep. The spreadsheet learned four hundred functions and every
-preset shape, equations are typeset by the engine itself, a document's paper
-belongs to its section, and the two apps share one ribbon.
+The last release went wide. This one goes deep. It is about printing a Word
+document the way the file says: table formatting, the layers of default
+formatting, a shape's colour and position, and letter spacing. Numbers are
+now shown the way LibreOffice shows them.
+
+Every fix was checked against the PDF published alongside the original file,
+one document at a time. Where the answer was not obvious, it was settled by reading both the
+spec (ECMA-376) and LibreOffice's importer.
 
 The engine is what ships. `pip install officework` installs it and nothing
 else; the apps are not distributed yet.
 
-== Four hundred functions, and a dialog to find them
+== A table is printed the way the file states it
 
-**The function list is 404 entries.** Statistics, finance, engineering,
-database and the distribution family were the gaps, and they are filled:
-IPMT through XIRR, the incomplete gamma and beta distributions, ACOSH through
-MDETERM, the *B trio and the array constants (`{1,2;3,4}`) that formulas need
-to read them.
+Japanese office work is made of tables, so the provisions that apply to a
+table are read one at a time now.
 
-Every documented function now takes every argument Excel takes. Where we
-accepted three arguments and Excel accepted five, the two extra ones did
-nothing; they work now.
+**Table styles take effect.** A table written by python-docx states its style
+name and carries no colour at all; the whole look lives in `styles.xml`, in
+`w:tblStylePr` blocks. The heading row, the first column and the banded rows
+are applied as the table's own `w:tblLook` selects them.
 
-**Insert Function has Excel's classic shape.** A category on the left, the
-function list, the description, and the argument fields with a running result.
-The function manual is generated from the same material the dialog shows, so
-the two cannot drift apart.
+Also read now:
 
-== Every preset shape draws
+* the width as a percentage (`w:tblW type="pct"`), so a table fills the text
+  width it asks for
+* the table indent (`w:tblInd`), measured the way the file's Word version
+  measures it
+* the heading row (`w:tblHeader`), repeated on every page the table runs onto
+* cell margins (`w:tcMar` and `w:tblCellMar`), the cell's own winning over
+  the table's
+* the diagonal through a cell (`w:tl2br` / `w:tr2bl`) — the stroke through a
+  box that is not to be filled in
+* text spread across the cell width (`w:tcFitText`)
+* paragraph indents, which apply inside a cell as they do in the body
 
-**All 187 shapes in the DrawingML specification now draw from the
-specification's own definitions.** Before, a shape we did not recognise came
-out as a rectangle. Braces draw as braces, connectors are read, and the screen
-and the printed page share one table of shapes, so they cannot disagree.
+**Row heights match.** Paragraph spacing inside a cell was not counted, and a
+table style saying "no space after" could not be told apart from a table
+style saying nothing.
 
-A shape anchored to two cells now takes its size from those cells, which is
-what the anchor promises: widen a column and the shape widens with it.
+A table crossing a page break could leave a band of colour with no text and
+no rules at the top of the next page. Fills were being laid down twice.
 
-== Equations are typeset by the engine
+Borders a cell states for itself were lost on save - the underline under an
+entry field, for one. They are written back now.
 
-**Python and TeX are no longer needed.** Equations are set by typst and mitex,
-both compiled into the engine. Write LaTeX, press Enter, and the formula is
-drawn with the same maths font TeX uses. Japanese inside a formula
-(`\text{売上}`) comes out in the document's own font.
+== The default formatting is read from the bottom up
 
-**A Word or Excel equation now opens as a formula.** OMML is read into LaTeX,
-covering the same elements LibreOffice's own reader handles, so an equation
-from Word prints instead of vanishing. Excel keeps its equations inside a text
-box; those are read the same way.
+Formatting comes in five layers: the application's defaults, `w:docDefaults`,
+the table style, the paragraph style, and direct formatting. The bottom two
+were not being read.
 
-Pictures on a spreadsheet are printed too. They were in the model and never
-reached the page, which is also why an equation could not print.
+A document written by python-docx carries almost no direct formatting; it is
+all in styles. Without those two layers such a document came out at 10.5pt
+with no paragraph spacing and no line spacing, where Word gives 11pt, 10pt
+after, and 1.15 lines.
 
-== The paper belongs to the section
+Bullets and the rule under a title live in styles too. A document that puts no
+`w:numPr` in the body and relies on a style name for its list now reads as a
+list.
 
-**Pages are stacked, one sheet after another, and that is the ordinary view.**
-The separate "print layout" mode is gone. Paper size, orientation, margins and
-columns now apply to the section the caret is in, so one document can hold an
-A4 portrait section and an A3 landscape one.
+== The text on the page is closer to the original
 
-In AsciiDoc this is written the way asciidoctor-pdf writes it, with the
-`page-*` attributes.
+**Letter spacing reaches the page.** The entry cells of one of the survey
+forms we compare against carry `w:spacing` of -12 to -20 twips: Word squeezed
+the text to make it fit. The engine measured the squeeze and broke the lines accordingly,
+but the PDF drew each run as one string, so the viewer advanced by the font's
+own widths. The line came out 11pt longer than the cell, over the column rule
+and over the neighbouring cell's text.
 
-== One ribbon
+Measured against the published PDFs, matching lines by their text:
 
-writer and calc now show the same buttons. The only difference is which target
-comes first: a cell in calc, a character in writer. A button that does not
-apply is not shown greyed out; it is not shown.
+|===
+|Document |Mean error at the end of a line |Lines within 1pt
 
-== Word documents come closer to the original
+|Survey form (110 lines) |9.01pt -> 2.50pt |5 -> 68
+|Notice (141 lines) |3.71pt -> 2.54pt |5 -> 83
+|===
 
-* A paragraph border knows which side it draws, and the page draws it
-* A hanging indent hangs
-* A table cell obeys its own alignment, horizontal and vertical
-* A page break inside a run breaks the page, and two of them break twice
-* A text box is set the way the file says
-* Bold text is one run of glyphs, not one run per character
-* Blank pages are not printed
-* A right-aligned number sits at the right edge of its merge
-* Print centring is read, and a blank line in a cell takes a line's height
-* The baseline sits at the font's ascent, not at four fifths of the box
+Also fixed:
 
-== The Python API runs the originals' own samples
+* artificial bold is one thirtieth of the font height, the number LibreOffice
+  uses. It was a fixed 0.12mm, which left large headings looking unbolded
+* `w:between`, the border between paragraphs that share one, is drawn where
+  LibreOffice draws it
+* a paragraph that holds nothing but a section break gets no border. Page 4 of
+  the survey form opened with a rule across the top
+* a shape's colour comes from the document's own theme palette, with the
+  modifiers (`lumMod` and the rest) resolved
+* a shape's position and size follow the whole relative-from table. A frame
+  centred on the page could end up in its top-left corner
+* a shape that says `<a:noFill/>` is not filled. One document came out as a
+  solid dark blue sheet
+* a shape with no fill of its own takes the one its style reference
+  (`a:fillRef`) points at
 
-**python-docx's sample script and openpyxl's sample script now run against
-officework unchanged.** They were the measure, and what they exercised is what
-was missing: `docx.shared`, `docx.enum`, `docx.styles`, the chart classes,
-`RGBColor` passing python-docx's own type check, and `add_run` starting plain
-the way python-docx starts it.
+== Numbers are shown the way LibreOffice shows them
 
-A misspelt attribute on `Doc`, `Book` or `Sheet` is refused instead of silently
-doing nothing.
+**A cell with no number format prints what Excel prints.** `=1.1-1` is 0.1,
+not 0.10000000000000009. Fifteen significant digits; an integer below 2^53
+stays an integer; a decimal exponent of 15 or more, or -15 or less, switches
+to scientific. All of it follows LibreOffice's `doubleToString`.
 
-== The agent
+**Addition and subtraction round the way Excel rounds.** `=1/3*3` is 1. This
+is LibreOffice's `approxAdd` and `approxSub`: round only when the result loses
+most of its magnitude.
 
-The consult pane is an agent: it calls tools, shows its loop, and writes and
-runs Python macros in a sandbox, with errors going back to it. AI destinations
-are named and switchable, and the model is shown as one of four states.
+**A narrow column drops digits before it gives up.** We printed `#####`
+straight away. In a 1.2cm column `=1/3` now shows 0.3333 and `=1/3*10000000`
+shows 3E+06, as LibreOffice and Excel do.
 
-== The manuals
+== The release gate and the daily tests are separate
 
-* Every button has a command page: 256 of 256
-* English versions for the index, the two tutorials, the button table and the
-  docx/xlsx comparison
-* The booklets are rewritten as plain sentences, one thing per sentence
-* A function manual, generated from the dialog's own material
-* The `=df()` manual, written before the function existed
+The gate looks at one thing: whether what we distribute is broken. A red test
+in something we do not distribute is not a gate.
 
-== Other changes
+Which documents ship is decided by a list. `docs/engine-docs.txt` names 19
+paths, and a tool checks that they exist, that each Japanese booklet has its
+English pair, and that the PyPI page points nowhere outside the list. PyPI
+will not take the same file twice, so a broken link cannot be fixed after the
+upload.
 
-* `=df()` defines a table column once, XLOOKUP searches by bisection, and INDEX
-  takes areas
-* Lists, protection, arrows, filters, CSV and the sandbox do what their pages say
-* A list style makes a list, and the file carries the numbering to prove it
-* The conversation leaves a record beside the book, and comes back
-* Attribute references stay as text, and links and cross references are read the
-  way Asciidoctor reads them
+There is also a tool that counts every tag in a docx or xlsx and lists the
+ones no reader touches (`tools/tag_check.py`). **The ones deliberately left
+unread are recorded with the reason.** No table tag is on the untouched list
+any more.
 
-== Internal changes
+== AsciiDoc reading and writing (not distributed yet)
 
-`kumihan` gained `omml`, which turns OMML into LaTeX, and `suushiki`, which
-typesets LaTeX into a PNG. Both formats reach them: docx through `ooxml` and
-xlsx through `sheet`.
+Work continues on matching how Asciidoctor reads. A tool records the inputs of
+the upstream test suite and compares Asciidoctor's HTML of the original text
+with its HTML of the rewritten text. 129 of the 172 readable upstream pages
+now give the same HTML, up from 114.
 
-`kumihan::Paragraph` gained `line_pt`, `first_line_chars`, `border` and
-`align_itta`; `CharFormat` gained a three-valued `itta` so that "stated off"
-and "not stated" stay apart.
+Lists, description items, two-line titles, comment lines, attribute lines and
+quote attributions round-trip. A table keeps its cell source until its text is
+edited.
 
-The shape table moved out of the drawing code into the specification data, and
-`paper` reads the same table the screen does.
+== Manuals
+
+* the equation pages say what is true: equations are read and printed
+* `fill` refuses a field name it does not know, and the manual says so
+
+== Internals
+
+`kumihan::Table` gained `width_pct` and `indent_mm`; `Cellbox` gained `mar_mm`
+and `fit_text`; `CellBorders` gained the two diagonals.
+
+`kumihan::Document` carries the theme palette (`theme_colors`) and the
+document's default spacing (`space_after_pt`, `line_spacing`).
+
+`paper`'s `Piece` carries letter spacing (`tc_pt`), passed straight to the
+PDF's `Tc`. When glyphs of one format are merged into a single string, the
+merge now breaks where the glyphs stop being contiguous, so the gaps that
+justification and distribution put between them survive.
