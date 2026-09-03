@@ -424,6 +424,79 @@ Claude Code と Codex は「手元のエージェント CLI を子プロセス�
 JSON 行の読み方だけを CLI ごとに持つ(表の「話し方」に `claude -p` と
 `codex exec` の2つが増える)。3つ目の CLI(Gemini CLI など)が出ても同じ形で足せる。
 
+=== writer にも同じパネル(2026-09-04 発注者「Word の方にもいれて。こちらの差がもっと大きくなる」)
+
+==== なぜ差が大きいか
+
+Word の Copilot は文書について話す(要約・下書き・書き直しの提案)だけで、
+文書の中身を意味の単位で読み書きしない。officework の文書は本文が AsciiDoc
+(意味エディタの決め)なので、エージェントは見出し・段落・表・記入欄という
+単位でそのまま読み、そのまま書ける。様式の記入欄を埋める・差し込む・PDF に
+する・マクロで一括で直す、が全部道具として揃う。表計算より「文書の構造を
+道具で扱える」ことの差が大きい。
+
+==== いまの writer
+
+- 左パネルに「AI と相談」の面はあるが道具が無い。直した文を囲みで受け取り、
+  人が「入れる」を押す形(writer/src/lib.rs の AiJob::Chat)
+- ソケット(writer/src/rpc.rs)の命令は text / set_text(本文の丸ごと)・
+  fields / merge_fields / fill_field / fill_one・open / save / to_pdf。
+  officework-mcp の `doc_*` はこれを包んでいる
+- マクロは既にある: bubblewrap の中の python-docx(AiJob::Macro、doc.rs)
+
+==== 決め
+
+. **パネルは calc と同じ物を使う。** リボンを1つにする決めと同じで、
+  描きは ui に1つ、状態(4語)・道具呼びの1行・1手の印・記録の形・宛先の
+  一覧と切り替え、全部共通。違うのは道具の一覧と system の文だけ
+. **calc と同じく、相談の面はエージェントになる。** 「囲みで受けて入れる」
+  形は廃止し、書き替えは道具で直接入り、1手で戻す
+. **文書の道具は意味の単位で。** 本文の丸ごとの読み書きでは、長い文書で
+  1か所直すのに全文を往復することになる。ブロック(段落・見出し・表・
+  塊)の番号で読み書きする道具を ops の語彙に足す。中身は AsciiDoc の
+  そのままの字
++
+[cols="1,2"]
+|===
+|道具 |何をするか
+
+|doc_info |題・テンプレート・ブロックの数・記入欄の数・選んでいる範囲
+|outline |見出しの一覧(段と番号)。長い文書の地図
+|read_blocks(from, to) |その範囲のブロックを AsciiDoc の字で返す(番号付き)
+|replace_blocks(from, to, adoc) |その範囲を書き替える。1手
+|insert_blocks(at, adoc) |その前に差し込む。1手
+|delete_blocks(from, to) |消す。1手
+|find(text) |字を探してブロックの番号で返す
+|fields / fill_fields(values) |記入欄の一覧と記入(今の fill_field を値の組で)
+|to_pdf(path) / save |今の物のまま(保存は確認のボタン)
+|run_macro(code) |python-docx のサンドボックス(今の AiJob::Macro の道)
+|===
++
+ブロックの番号は `Document.blocks` の添字で、読んだ時の字を持たせて
+(表のセルと同じ照合の考え)書き替えの前にずれを見る。**選んでいる範囲が
+相談の相手**(calc の範囲と同じ)。選んでいれば doc_info にブロックの
+番号で入る
+. **3つの入り口に同時に増える。** ops(rpc.rs)に足せば、officework-mcp の
+  `doc_*` と Python(officework._doc)からも同じ物が呼べる。エージェント専用の
+  道具は作らない(決め)
+. **宛先は共通。** settings.toml の `[[ai]]`・提供元の表・Claude Code /
+  Codex の子プロセス、全部 writer からも同じ。記録は文書の隣の
+  `<名前>.agent.txt`
+. system の文は writer 用に1つ(「あなたは文書を作るアプリの中で働く助手です。
+  本文は AsciiDoc で、道具でブロックごとに読み書きできます。まず outline で
+  地図を見てから触ります…」)。calc の AGENT_SYSTEM と対にする
+
+==== 段階(writer)
+
+[start=9]
+. ops に文書のブロックの道具(read / replace / insert / delete / find /
+  outline / fill_fields)。rpc.rs と officework-mcp と _doc.py に同時に出す。
+  試験は偽のモデルで往復
+. writer の左パネルを共通の描きに替え、AiJob::Chat の囲みの形を外す。
+  run_macro を道具として繋ぐ。実機で「1手で戻ること」と「記入欄を埋めて PDF
+  まで通ること」を確かめる
+. 手引き(docs/ja/writer-manual)に calc と同じ節を書く(動いてから)
+
 === 段階(続き)
 
 [start=5]
