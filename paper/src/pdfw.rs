@@ -1777,24 +1777,6 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
         }
     }
 
-    // **塗りは罫線より先に敷きます**(線を塗り潰さないため)
-    for (at, color) in &sheet.fills {
-        let k = page_of(offsets, at[1], paper.height_mm);
-        let off = offsets.get(k).copied().unwrap_or(0.0);
-        let pp = paper_of(k);
-        if let Some(p) = pages.get_mut(k) {
-            p.fills.push(Fill {
-                x_mm: pp.margin_mm + at[0],
-                // 紙面は上端の y。PDF は左下からなので、高さのぶん下げます
-                y_mm: pp.height_mm - (at[1] - off) - at[3],
-                w_mm: at[2],
-                h_mm: at[3],
-                rgb: rgb(color),
-                ..Default::default()
-            });
-        }
-    }
-
     // 画像。どの頁に載るかは上端の y で決めます
     let mut bad = 0;
     let mut wmf_moji = 0usize;
