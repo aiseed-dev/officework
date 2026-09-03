@@ -1,0 +1,50 @@
+# エンジン(PyPI の officework)と一緒に公開する文書の一覧。
+#
+# **場所は動かしません**(2026-08-26 の決め)。PyPI の頁や公開済みのリンクが
+# docs/ の径路に刺さっているためです。代わりに、この一覧に載っている物だけが
+# 「エンジンと公開する物」になります。
+#
+# 見るのは tools/engine_docs_check.py です。この一覧の冊子は、
+# `pip install officework` だけでできることしか書きません。リボン・ボタン・
+# パネル・画面が要る話は、アプリの文書(calc-manual・writer-manual・
+# commands/ ほか)の側にあります。
+#
+# 1行に1つ、リポジトリの根からの径路を書きます。`#` から始まる行は註記です。
+
+# PyPI の頁。版の番号を書くのはここだけです
+pysheet/README.md
+
+# 読み書きの本体
+docs/en/python-manual.adoc
+docs/ja/python-manual.adoc
+
+# 数式で使える関数の一覧(小窓と同じ材料から生成)
+docs/en/functions.adoc
+docs/ja/functions.adoc
+
+# 列で計算する(df)。実装より先に書いた冊子です
+docs/en/df-manual.adoc
+docs/ja/df-manual.adoc
+
+# 実例で覚える2冊。頁のコードは test/ の受け入れ試験と同じ物です
+docs/en/tutorial-word.adoc
+docs/ja/tutorial-word.adoc
+docs/en/tutorial-calc.adoc
+docs/ja/tutorial-calc.adoc
+
+# docx・xlsx との違い。openpyxl / python-docx から来る人が最初に読みます
+docs/en/docx-xlsx-tono-chigai.adoc
+docs/ja/docx-xlsx-tono-chigai.adoc
+
+# 対応表。覚えている呼び方から officework の書き方を引きます
+docs/en/api-taiou.adoc
+docs/ja/api-taiou.adoc
+
+# 原稿の手引き。「Python から4つの形で出す」の節がエンジンの側です。
+# 画面の節はアプリの側ですが、1冊で通して読む物なので分けません
+docs/en/genkou-manual.adoc
+docs/ja/genkou-manual.adoc
+
+# 権利の表示
+LICENSE
+NOTICE.md

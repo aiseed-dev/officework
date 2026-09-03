@@ -161,9 +161,9 @@ d.tables[0].cell(0, 1).text             # python-docx: row_cells, columns,
 d[3].runs[0].font.name                  #   runs, clear …
 ```
 
-The inventory — every core member of the reference libraries, judged one
-by one — is in the repo:
-[docs/pysheet-gokan.ja.adoc](https://github.com/aiseed-dev/officework/blob/main/docs/pysheet-gokan.ja.adoc).
+What is the same as Word and Excel, and what is deliberately not, is set
+out in
+[How this differs from docx and xlsx](https://github.com/aiseed-dev/officework/blob/main/docs/en/docx-xlsx-tono-chigai.adoc).
 Interop is proven with the originals' own eyes: openpyxl reads what this
 engine writes, **including the computed values** it cannot produce itself.
 See the [Python manual](https://github.com/aiseed-dev/officework/blob/main/docs/en/python-manual.adoc)

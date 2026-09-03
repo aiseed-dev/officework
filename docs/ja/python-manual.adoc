@@ -393,7 +393,7 @@ link:api-taiou.adoc[対応表] にあります。引くための表なので分�
 
 いま持っているコードも、覚えている書き方も、そのまま使えます。
 *API と試験は写し、実装は写しません。*
-在庫は台帳 link:../pysheet-gokan.ja.adoc[docs/pysheet-gokan.ja.adoc] にあります。
+在庫は link:../pysheet-gokan.ja.adoc[docs/pysheet-gokan.ja.adoc] にあります(作る側の記録で、日本語だけです)。
 3つのライブラリの中核メンバーを1件ずつ判定してあります。できる物・作る物・作らない物と、その理由が並びます。
 ここに書くのは**いま動くものだけ**で、全部この機械で動かして確かめています。
 
@@ -438,7 +438,7 @@ wb.add_named_style(...)                       # セルのスタイル(名前付�
 ----
 
 データの入力規則・名前付き範囲・グループ化・画像(`add_image`)・ヘッダー/フッター(奇数・偶数・先頭ページの別まで)・1904 日付システム・`move_range`(数式の参照が付いて動く)も同じ流儀で。
-*何がどこまであるかは対応表を見てください。* link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc] に、全件の判定と理由があります。
+*何がどこまであるかは対応表を見てください。* 全件の判定と理由は link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc] にあります(作る側の記録で、日本語だけです)。
 
 === xlwings の書き方(officework.calc — 動いている calc を操る)
 
@@ -519,7 +519,7 @@ p.runs[0].font.name                  # .name でも引ける(書体が run に�
 書く方も一通りそろっています。
 `d.add_heading(字, level)`(1〜3。
 0=Title は持たないので正直に断る)、`d.add_paragraph(字, style=)`、`d.add_picture`、`d.add_section()`、`d.add_table(rows, cols)`、`d.styles.add_style`、`p.add_comment(字)`(段落単位)、`d.core_properties`。
-在庫の全量と判定の理由は台帳(link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc])に。
+在庫の全量と判定の理由は link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc] にあります(作る側の記録で、日本語だけです)。
 
 == 選んだ範囲に同じ処理をする(Excel の Selection)
 

@@ -51,7 +51,17 @@ $ python3 tools/kotoba_check.py
 $ python3 tools/sunset_check.py
 $ python3 tools/api_taiou.py && python3 tools/api_taiou.py --self-test
 $ python3 tools/manual_uchiwa_check.py
+$ python3 tools/engine_docs_check.py
 ----
+
+最後の1つが、*エンジンと一緒に公開する文書*を見ます。一覧は
+`docs/engine-docs.txt` です。径路が実在するか、日英の対が揃っているか、
+PyPI の頁が一覧の外を指していないかを見ます。
+
+**wheel には文書を同梱しません**(2026-09-03 の決め)。PyPI の頁から
+GitHub の `docs/` へリンクする形なので、*上げた後にリンクが切れていても
+直せません*。PyPI は同じファイルを2度受け取らないためです。だから先に
+見ます。同じ検査が `publish-pypi.yml` の `guard` にも入っています。
 
 wheel が組めて、手引きの見本がそのまま動くかは `ci.yml` の
 「wheel を入れて見本どおりに動くか」が見ます。手元で同じことをするなら

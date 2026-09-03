@@ -4,46 +4,50 @@ _日本語版(secondary): link:../ja/README.adoc[README.adoc]_
 
 Pick a booklet by what you want to do.
 
-[cols="2,3"]
+[cols="2,3,^1"]
 |===
-|Booklet |When you want to
+|Booklet |When you want to |pip only
 
 |link:genkou-manual.adoc[Writing manuscripts]
-|Write a manuscript and produce it as AsciiDoc, a Word document, a web page, or a PDF
+|Write a manuscript and produce it as AsciiDoc, a Word document, a web page, or a PDF |✅
 
 |link:calc-manual.adoc[calc manual]
-|Everything the spreadsheet window can do
+|Everything the spreadsheet window can do |
 
 |link:functions.adoc[Functions]
-|Look up a function you can use in a formula, and its arguments
+|Look up a function you can use in a formula, and its arguments |✅
 
 |link:df-manual.adoc[Calculating by column]
-|Write one formula for a whole column instead of one cell, for a quotation or a ledger where every row is worked out the same way
+|Write one formula for a whole column instead of one cell, for a quotation or a ledger where every row is worked out the same way |✅
 
 |link:writer-manual.adoc[writer manual]
-|Everything the document window can do
+|Everything the document window can do |
 
 |link:python-manual.adoc[Python manual]
-|Read and write from a program
+|Read and write from a program |✅
 
 |link:macro-manual.adoc[Macro manual]
-|Add your own buttons and procedures, including having an AI write one
+|Add your own buttons and procedures, including having an AI write one |
 
 |link:from-excel.adoc[Coming from Excel]
-|Find out how a job you used to do in Excel is done here
+|Find out how a job you used to do in Excel is done here |
 
 |link:docx-xlsx-tono-chigai.adoc[How this differs from docx and xlsx]
-|See what is the same as Word and Excel and what is not, on one page
+|See what is the same as Word and Excel and what is not, on one page |✅
 
 |link:tutorial-word.adoc[Learn by example: Word documents] and link:tutorial-calc.adoc[spreadsheets]
-|Learn by typing the code. Everything on the page runs as written
+|Learn by typing the code. Everything on the page runs as written |✅
 
 |link:api-taiou.adoc[The button-to-API table]
-|Look up the openpyxl or python-docx call behind a menu button
+|Look up the openpyxl or python-docx call behind a menu button |✅
 
 |link:../../templates/README.md[Templates] and link:../../sample/README.md[Samples]
-|Learn by opening the real thing
+|Learn by opening the real thing |
 |===
+
+A ✅ in the *pip only* column means the booklet reads through on
+`pip install officework` alone. The application (the writer and calc
+windows) is not needed.
 
 Booklets that exist in both languages are written in English first.
 

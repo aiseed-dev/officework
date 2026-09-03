@@ -4,49 +4,52 @@ _元は英語版(link:../en/README.adoc[README.adoc])です。こちらは日本
 
 読みたいことから冊子を選んでください。
 
-[cols="2,3"]
+[cols="2,3,^1"]
 |===
-|冊子 |こんなとき
+|冊子 |こんなとき |pip だけ
 
 |link:genkou-manual.adoc[原稿の手引き](link:../en/genkou-manual.adoc[English])
-|原稿を書いて、AsciiDoc・Word 文書・Web ページ・PDF の4つの形で出す
+|原稿を書いて、AsciiDoc・Word 文書・Web ページ・PDF の4つの形で出す |✅
 
 |link:calc-manual.adoc[calc の手引き](link:../en/calc-manual.adoc[English])
-|表計算の画面の使い方ぜんぶ
+|表計算の画面の使い方ぜんぶ |
 
 |link:functions.adoc[関数の一覧](link:../en/functions.adoc[English])
-|数式で使える関数と、その引数を調べる
+|数式で使える関数と、その引数を調べる |✅
 
 |link:df-manual.adoc[列で計算する](link:../en/df-manual.adoc[English])
-|数式を1つのセルではなく列に書く。見積書や帳簿のように、どの行も同じ計算をする表で使う
+|数式を1つのセルではなく列に書く。見積書や帳簿のように、どの行も同じ計算をする表で使う |✅
 
 |link:writer-manual.adoc[writer の手引き](link:../en/writer-manual.adoc[English])
-|文書の画面の使い方ぜんぶ
+|文書の画面の使い方ぜんぶ |
 
 |link:commands/README.adoc[コマンドの手引き]
-|ボタン1つを詳しく知りたい。ダイアログで何を選べるかもここ
+|ボタン1つを詳しく知りたい。ダイアログで何を選べるかもここ |
 
 |link:python-manual.adoc[Python の手引き](link:../en/python-manual.adoc[English])
-|プログラムから読み書きする
+|プログラムから読み書きする |✅
 
 |link:macro-manual.adoc[マクロの手引き](link:../en/macro-manual.adoc[English])
-|自分のボタンや処理を足す。AI に書かせる方法もここ
+|自分のボタンや処理を足す。AI に書かせる方法もここ |
 
 |link:from-excel.adoc[Excel から](link:../en/from-excel.adoc[English])
-|Excel でやっていたことを、ここでどうやるか
+|Excel でやっていたことを、ここでどうやるか |
 
 |link:tutorial-word.adoc[実例で覚える(Word 文書)](link:../en/tutorial-word.adoc[English])・link:tutorial-calc.adoc[実例で覚える(表計算)](link:../en/tutorial-calc.adoc[English])
-|コードを打ちながら覚える。頁のコードはそのまま動く
+|コードを打ちながら覚える。頁のコードはそのまま動く |✅
 
 |link:docx-xlsx-tono-chigai.adoc[Word / Excel との違い](link:../en/docx-xlsx-tono-chigai.adoc[English])
-|Word / Excel と何が同じで何が違うか、1枚で
+|Word / Excel と何が同じで何が違うか、1枚で |✅
 
 |link:api-taiou.adoc[対応表](link:../en/api-taiou.adoc[English])
-|メニューのボタンと、openpyxl・python-docx の書き方の対応を引く
+|メニューのボタンと、openpyxl・python-docx の書き方の対応を引く |✅
 
 |link:../../templates/README.md[テンプレート集]・link:../../sample/README.md[実例集]
-|実物を開いて覚える
+|実物を開いて覚える |
 |===
+
+*pip だけ*の列に ✅ が付いた冊子は、`pip install officework` だけで
+読み通せます。アプリ(writer / calc の画面)は要りません。
 
 英語版のある冊子は、英語版が原文です。
 
