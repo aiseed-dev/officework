@@ -6264,6 +6264,45 @@ cover_check や見本作りの検査(しょうもない側)を消せる。
   ここにある。AI が文書を意味の単位でそのまま読み書きできる形にすることが
   先で、docx は交換のための端の形
 
+==== 続き25: 次期に DuckDB・SQLite・PostgreSQL の物を(2026-09-04 発注者提案)
+
+発注者「次期バージョンで、DuckDB SQLite PostgreSQL オブジェクトを導入したら
+どうですか? Access が不要になります」。
+
+Fable の見立て — **賛成。** 続き24 の「大きな表は adoc から外して外の物を
+指す」と同じ形で、指す先がファイル(Parquet)かデータベースかの違いだけになる。
+Access が担っていた4つは、こう置き換わる:
+
+[cols="1,2"]
+|===
+|Access |officework
+
+|テーブル |DB の表(`table::` の `source=` に DB を書く。大きな表は元から外の物)
+|クエリ |SQL(`table_query` に SQL も受ける。結果は小さな表として画面・文書へ)
+|フォーム |writer の様式(記入欄)と calc の表の入力。エージェントが埋める
+|レポート |writer の文書(AsciiDoc)+ PDF
+|===
+
+作りの案(決めではない):
+
+- **問い合わせの口は DuckDB 1つ**にする。DuckDB は組み込み(サーバー不要)で、
+  Parquet・CSV・SQLite・PostgreSQL を同じ SQL で読める(SQLite と PostgreSQL は
+  拡張で繋ぐ)。結果は Arrow なので polars にそのまま渡る。うちの「計算の道は
+  1本」の決めと合う
+- SQLite は最初から(小さい。Rust の rusqlite で足りる。1人の台帳はこれ)。
+  PostgreSQL は共有の台帳(会や課で1つ)。DuckDB の拡張で繋ぐか、Rust の
+  postgres で直に繋ぐかは、拡張を外から取りに行く必要がある点(オフラインで
+  困る)を見て決める
+- adoc の書き方は `table::売上[source="duckdb:台帳.duckdb/売上"]` のように、
+  `source=` の中身で種類を言う(ファイルなら径路、DB なら「種類:場所/表」)。
+  読み手は同じ塊として持つ
+- 気を付ける点: DuckDB の Rust crate(bundled)はビルドが重く、実行ファイルが
+  数十 MB 増える。wheel の大きさと、Windows・Mac のビルドの通しを先に測る
+
+時期: 次期(office v0.1.0 + officework v0.6.0)の柱は3つと決めてある(続き22)。
+これは4つ目にするか、その次にするかを**発注者が決める**。SQLite だけなら
+小さいので、`table::` の `source=` を作る時に一緒に入れられる。
+
 ==== 続き24: 一本化と adoc 化を早く(2026-09-04 発注者「writer と calc を一本化して adoc 化も早くやりましょう」)
 
 残っている物を1本の順番にし、2人で分けて同時に進める(触る場所が重ならない
