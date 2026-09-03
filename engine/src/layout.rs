@@ -990,7 +990,25 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 //
                 // `w:between` は同じ指定の段落が続くときの間の線ですが、
                 // どちらも段落の下に1本引けば同じ見え方になります
-                if para.border.aru() {
+                // **節の区切りだけの段落には引きません**(2026-09-03)。
+                //
+                // `w:pPr` の中に `w:sectPr` を持つ段落は、節の区切りの印
+                // そのものです。字が無ければ Word も LibreOffice も行として
+                // 組まず、罫線も引きません。最小の docx を5通り作って
+                // 確かめました:
+                //
+                //   空の段落 + 罫線                 → 引く
+                //   空の段落 + 罫線 + 節の区切り     → **引かない**
+                //   字のある段落 + 罫線             → 引く
+                //   字のある段落 + 罫線 + 節の区切り → 引く
+                //   空の段落 + 罫線 + 続きの節       → **引かない**
+                //
+                // 内閣府の調査票は、相談窓口のテキストボックスを留めるためだけの
+                // 空の段落が節の区切りを持っていて、その罫線が4ページ目の頭に
+                // 出ていました(2026-09-03 発注者)
+                let sect_dake = para.sect.is_some()
+                    && para.runs.iter().all(|r| r.text.trim().is_empty());
+                if para.border.aru() && !sect_dake {
                     let (x0, x1) = (indent_mm, indent_mm + measure);
                     let lh = lh_of(para, frame, base, pfont.as_deref());
                     // **線は段落を高くします**(2026-09-01)。線の上下に
