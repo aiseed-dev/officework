@@ -1024,10 +1024,31 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     let aki = para.border.space_pt * PT_TO_MM;
                     let sita = y - lh - para.border.takasa_pt() * PT_TO_MM + asi + aki;
                     let ue = shade_top - lh * 0.8;
-                    if para.border.top {
+                    // **`w:between` は「同じ指定の段落が続くときの間の線」です。**
+                    //
+                    // LibreOffice の読み手がこう扱います(`DomainMapper.cxx` の
+                    // `LN_CT_PBdr_between` と `DomainMapper_Impl::
+                    // handlePreviousParagraphBorderInBetween`):
+                    //
+                    //   * `between` を持つ段落は、隣と罫線を繋げません
+                    //   * 前の段落も `between` を持っていれば、その線は
+                    //     **この段落の上**に引き、**前の段落の下の線は消します**
+                    //
+                    // 続きの塊では、線は2番目から後の段落の上と、最後の段落の
+                    // 下に出ます。うちは段落ごとに下へ1本引いていたので、
+                    // 本数は同じでも 3.3pt 下にずれていました(内閣府の調査票の
+                    // 記入欄。2026-09-03 発注者「実測以上に LibreOffice の
+                    // ロジックが重要」)
+                    let onaji = |b: Option<&Block>| {
+                        matches!(b, Some(Block::Para(q))
+                            if q.border.between && q.border == para.border)
+                    };
+                    let mae = onaji(doc.blocks.get(bi.wrapping_sub(1)));
+                    let tsugi = onaji(doc.blocks.get(bi + 1));
+                    if para.border.top || mae {
                         sheet.rules.push([x0, ue, x1, ue]);
                     }
-                    if para.border.bottom || para.border.between {
+                    if para.border.bottom && !tsugi {
                         sheet.rules.push([x0, sita, x1, sita]);
                     }
                     if para.border.left {
