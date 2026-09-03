@@ -184,7 +184,8 @@ They resolve the same way in the body and inside table cells:
 ----
 d.fields()                  # [(name, current value)]
 d.fill("customer", "Sample Trading K.K.")  # writes every field of that name -> count
-                            # (0 means no such field — never a silent success)
+                            # raises KeyError if there is no such field
+                            # (never a silent no-op)
 d.extract("customer")       # value of the first one, or None
 ----
 

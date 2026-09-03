@@ -294,7 +294,13 @@ jobs:
           d = doc.Doc.open("/tmp/fields.docx")
           assert d.fields() == [("宛先", "ここに社名"), ("金額", "0")], d.fields()
           assert d.fill("宛先", "サンプル商事株式会社") == 1
-          assert d.fill("無い名前", "x") == 0, "無い欄で黙って成功してはいけない"
+          # **無い欄は KeyError で止まります。** 原稿の手引きの「その名前の
+          # 記入欄が無ければ、止まって知らせます」に合わせた形です
+          try:
+              d.fill("無い名前", "x")
+              raise AssertionError("無い欄で黙って成功してはいけない")
+          except KeyError:
+              pass
           assert d.extract("宛先") == "サンプル商事株式会社"
           assert d.extract("無い名前") is None
           d.save("/tmp/fields-out.docx")
