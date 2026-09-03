@@ -1664,12 +1664,12 @@ fn hyou_style_wo_ateru(
                     let hidari = if look.first_col { 1 } else { 0 };
                     if ci >= hidari {
                         let n = (ci - hidari) / obi_r;
-                        tsumi.push(if n % 2 == 0 { &ts.band1_v } else { &ts.band2_v });
+                        tsumi.push(if n.is_multiple_of(2) { &ts.band1_v } else { &ts.band2_v });
                     }
                 }
                 if !look.no_h_band && ri >= atama && ri + oshiri < gyou {
                     let n = (ri - atama) / obi_g;
-                    tsumi.push(if n % 2 == 0 { &ts.band1_h } else { &ts.band2_h });
+                    tsumi.push(if n.is_multiple_of(2) { &ts.band1_h } else { &ts.band2_h });
                 }
                 if look.first_col && ci == 0 {
                     tsumi.push(&ts.first_col);

@@ -4333,6 +4333,11 @@ mod fill_field_tests {
     /// **名前の付いた記入欄に、受け口(rpc)から入れる**(2026-09-02)。
     /// `fill_one` は本文の `{{名前}}` の穴で、記入欄には効かなかった。
     /// MCP の `doc_fill` はこれで記入欄も埋める
+    ///
+    /// 受け口は Windows では作りません(`mod rpc` ごと `#[cfg(unix)]`)。
+    /// **呼ぶ試験にも同じ旗が要ります** — 付けないと、この機械では緑のまま
+    /// Windows の CI だけが赤くなります(2026-09-04)
+    #[cfg(unix)]
     #[gpui::test]
     fn the_rpc_fills_a_named_field(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
