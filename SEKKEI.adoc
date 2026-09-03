@@ -6293,6 +6293,11 @@ cover_check や見本作りの検査(しょうもない側)を消せる。
 . 手引き(python-manual・writer-macro-manual・tutorial-word・writer-manual)を
   ブロックが先の形に(動いてから)
 
+発注者(同日)「大きな calc の表は、polars オブジェクトで対応」— エージェントの
+表の道具に table_schema / table_head / table_query(polars の式)/ table_write を
+足し、大きな表はセルで読ませない(agent.ja.adoc「大きな calc の表は polars の
+物として」)。これも Fable の側(ops と book の polars)。
+
 触る場所: Opus は face / ui / writer の画面(lib・panels・keys・cmds)/ calc /
 配布。Fable は engine / ops / writer/src/rpc.rs / agent / pysheet の Python。
 writer/src/rpc.rs だけが境目なので、Fable が動詞を足す間 Opus は rpc.rs を触らない。

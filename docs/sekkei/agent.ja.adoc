@@ -564,6 +564,32 @@ Run・Font)をエンジンの上に写した互換層で、writer のマクロ�
 . 手引き(docs/ja/writer-manual)に calc と同じ節を書き、python-manual・
   writer-macro-manual・tutorial-word をブロックの API が先の形に直す(動いてから)
 
+=== 大きな calc の表は polars の物として(2026-09-04 発注者「大きな calc の表は、polars オブジェクトで対応」)
+
+文書のブロックと同じ考えを表に当てる。数万行の表を read_range で読ませると
+トークンが尽きるので、**大きな表はセルではなく polars のデータフレームとして
+道具に出す**(df は Rust の polars で計算する決め、2026-09-02)。
+
+[cols="1,2"]
+|===
+|道具 |何をするか
+
+|table_schema(表) |列の名前と型と行の数。読むのはこれだけで足りることが多い
+|table_head(表, n) |先頭 n 行(既定 5)。様子を見る用
+|table_query(表, 式) |polars の式で絞る・集計する。返すのは結果の小さな表(上限の行数を持つ)
+|table_write(表, 式) |`=df()` の列の定義として書く(1手)。結果はシートに列として入る(続き6〜10 の df の形)
+|===
+
+- read_range は今までどおり小さな範囲用。**表の行数が閾値(仮に 200 行)を
+  越えたら、read_range は断って table_* を案内する**(黙って切り詰めない)
+- 式は polars の書き方(`col("金額").sum()` など)。モデルはその書き方を知っている
+  ので、うちが式の言葉を作らなくてよい。実行は Rust の polars、計算の道は1本
+  の決めのまま
+- 3つの入り口に同時に増える: officework-mcp と `officework.calc`(Python)にも
+  同じ名前で。Python は polars のデータフレームそのものを返せる
+- 結果の表を文書に貼るときは、writer の道具(insert_blocks)に AsciiDoc の表として
+  渡す。表計算と文書の間を渡るのも「小さな結果の表」だけ
+
 === 段階(続き)
 
 [start=5]
