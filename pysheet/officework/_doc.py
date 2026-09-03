@@ -1853,10 +1853,59 @@ class Doc(NoStrayAttributes):
         """置いた図形の数"""
         return self._d.shapes
 
+    # ── ブロックの語彙(2026-09-04)。エージェントの道具・MCP の doc_*・writer の
+    # 受け口と同じ名前で、ブロック(段落・見出し・表)の番号で AsciiDoc の字を
+    # 読み書きします。長い文書でも触る所だけ読めば済みます ──
+
+    def adoc(self):
+        """文書全体を AsciiDoc の字で返します。"""
+        return self._d.adoc()
+
+    def outline(self):
+        """文書の地図。``[(番号, 段, 字), …]`` で、段は題が 0、``==`` が 1 です。
+
+        長い文書はまずこれで触る所の番号を知り、``blocks`` で読みます。
+        """
+        return self._d.outline()
+
+    @property
+    def block_count(self):
+        """ブロックの数(番号は 0〜block_count-1)"""
+        return self._d.block_count()
+
+    def blocks(self, start, end=None):
+        """ブロック ``start``〜``end``(両端を含む。省けば1つ)を読みます。
+
+        返りは ``[(番号, 照合の字, AsciiDoc), …]`` です。照合の字を
+        ``replace_blocks`` の ``stamps`` に渡すと、読んだ後に文書が変わって
+        いたときに断ってもらえます。
+        """
+        return self._d.blocks(start, end)
+
+    def replace_blocks(self, start, end, adoc, stamps=None):
+        """ブロック ``start``〜``end`` を AsciiDoc の断片 ``adoc`` で書き替えます。
+
+        断片は何ブロックでも(空行で区切る)。返りは入れたブロックの数です。
+        頭の属性(``:名前: 値``)は断片に書けません。
+        """
+        return self._d.replace_blocks(start, end, adoc, stamps)
+
+    def insert_blocks(self, at, adoc):
+        """ブロック ``at`` の前に断片を差し込みます。``at`` が数と同じなら末尾です。"""
+        return self._d.insert_blocks(at, adoc)
+
+    def delete_blocks(self, start, end=None, stamps=None):
+        """ブロック ``start``〜``end`` を消します。返りは消した数です。"""
+        return self._d.delete_blocks(start, end, stamps)
+
+    def find_blocks(self, text):
+        """字を含むブロックを ``[(番号, 前後の字), …]`` で返します。"""
+        return self._d.find_blocks(text)
+
     def save(self, path, dpi=None):
         """保存する。拡張子で行き先が決まります。
 
-        ``.docx`` は文書、``.pdf`` は紙、``.png`` は絵です。
+        ``.docx`` は文書、``.adoc`` はネイティブの字、``.pdf`` は紙、``.png`` は絵です。
         ``dpi`` は絵の細かさで、既定は 150 です(``.png`` のときだけ効きます)。
         頁が複数あるときは、2枚目から名前に ``-2``・``-3`` が付きます。
         """

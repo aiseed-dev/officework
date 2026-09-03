@@ -224,3 +224,38 @@ for i in range(80):
 check(d.page_count() >= 2, f"80 行の文書のページ数が {d.page_count()}")
 
 print("OK")
+
+# --- ブロックの語彙(2026-09-04): 番号で AsciiDoc の字を読み書きする -----------
+with tempfile.TemporaryDirectory() as td:
+    src = "= 報告\n\n== 概況\n\n受注は3件。\n\n|===\n|件名 |金額\n|外壁 |640,200\n|===\n\n== 予定\n\n8月に着手。\n"
+    p = os.path.join(td, "報告.adoc")
+    with open(p, "w", encoding="utf-8") as f:
+        f.write(src)
+    d = doc.Doc(p)
+    check(d.adoc() == src, "adoc を開いて adoc で返すと同じ字にならない")
+    check(d.block_count == 6, f"ブロックの数が違う: {d.block_count}")
+    o = d.outline()
+    check([(i, lv, t) for i, lv, t in o] == [(0, 0, "報告"), (1, 1, "概況"), (4, 1, "予定")], f"地図が違う: {o}")
+    b = d.blocks(2, 3)
+    check(b[0][2] == "受注は3件。\n" and b[1][2].startswith("|==="), f"ブロックが読めない: {b}")
+    stamp = b[0][1]
+    check(d.replace_blocks(2, 2, "受注は4件。\n\n* 外壁\n", stamps=[stamp]) == 2, "書き替えの数が違う")
+    check(d.find_blocks("外壁")[0][0] == 3, f"探せない: {d.find_blocks('外壁')}")
+    try:
+        d.replace_blocks(2, 2, "x\n", stamps=[stamp])
+        check(False, "古い照合の字を断らない")
+    except ValueError as e:
+        check("変わっています" in str(e), f"断りの文が違う: {e}")
+    check(d.insert_blocks(d.block_count, "終わり。\n") == 1, "末尾に足せない")
+    check(d.delete_blocks(1, 3) == 3, "消せない")
+    check([t for _, _, t in d.outline()] == ["報告", "予定"], f"消した後の地図が違う: {d.outline()}")
+    out = os.path.join(td, "out.adoc")
+    d.save(out)
+    with open(out, encoding="utf-8") as f:
+        back = f.read()
+    # 消したのは 1〜3(概況・受注・箇条書き)なので、題の次に表が来る
+    check(back.startswith("= 報告\n\n|===\n") and "== 予定" in back and back.endswith("終わり。\n"), f"adoc で保存できない: {back!r}")
+    # docx から開いた物も adoc で読める
+    dd = doc.Doc(SAMPLE)
+    check(dd.block_count > 0 and len(dd.blocks(0)[0][2]) > 0, "docx の文書をブロックで読めない")
+print("block API: ok")

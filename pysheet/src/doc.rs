@@ -360,6 +360,21 @@ impl PyDoc {
         crate::kotoba(lang);
         let bytes =
             std::fs::read(path).map_err(|e| PyIOError::new_err(format!("{path}: 読めない: {e}")))?;
+        // **`.adoc` はネイティブの文書**(2026-09-04)。エンジンの adoc の読み手で
+        // 読み、読めなかった物は帳簿へ(docx の Report と同じ扱い)
+        if is_adoc(path) {
+            let src = String::from_utf8(bytes)
+                .map_err(|e| PyIOError::new_err(format!("{path}: UTF-8 として読めない: {e}")))?;
+            let (doc, notes) = kumihan::adoc::parse_full(&src)
+                .map_err(|e| PyIOError::new_err(format!("{path}: adoc として読めない: {e}")))?;
+            return Ok(PyDoc {
+                inner: Arc::new(Mutex::new(Inner {
+                    doc,
+                    original: None,
+                    unsupported: notes.into_iter().map(|n| (n, 1)).collect(),
+                })),
+            });
+        }
         let (doc, rep) = ooxml::read(std::io::Cursor::new(&bytes))
             .map_err(|e| PyIOError::new_err(format!("{path}: docx として読めない: {e}")))?;
         Ok(PyDoc {
@@ -414,6 +429,12 @@ impl PyDoc {
     #[pyo3(signature = (path, dpi = None))]
     fn save(&self, path: &str, dpi: Option<f32>) -> PyResult<()> {
         let g = lock(&self.inner)?;
+        // **`.adoc` は本文をそのまま字で**(2026-09-04)。docx から開いた物も
+        // adoc で保存できる(蒸留の出口の1つ)
+        if is_adoc(path) {
+            return std::fs::write(path, kumihan::adoc::write(&g.doc))
+                .map_err(|e| PyIOError::new_err(format!("{path}: 書けない: {e}")));
+        }
         // **`.png` なら絵にします**(2026-08-29)。頁ごとに1枚で、
         // 2枚目からは名前に `-2`・`-3` が付きます
         if std::path::Path::new(path)
@@ -456,6 +477,66 @@ impl PyDoc {
         r.map_err(|e| PyIOError::new_err(format!("{path}: 書けない: {e}")))?;
         std::fs::write(path, buf.into_inner())
             .map_err(|e| PyIOError::new_err(format!("{path}: 書けない: {e}")))
+    }
+
+    // ── ブロックの語彙(2026-09-04。docs/sekkei/agent.ja.adoc「Python の文書 API も
+    // ブロックに」)。エージェントの道具・MCP の `doc_*`・writer の受け口と同じ名前で、
+    // ブロック(段落・見出し・表)の番号で AsciiDoc の字を読み書きする。実体は
+    // kumihan::blocks ──
+
+    /// 文書全体を AsciiDoc の字で
+    fn adoc(&self) -> PyResult<String> {
+        let g = lock(&self.inner)?;
+        Ok(kumihan::adoc::write(&g.doc))
+    }
+
+    /// 地図: 題と見出しの一覧 `[(番号, 段, 字), …]`。段は題が 0、`==` が 1
+    fn outline(&self) -> PyResult<Vec<(usize, u8, String)>> {
+        let g = lock(&self.inner)?;
+        Ok(kumihan::blocks::outline(&g.doc).into_iter().map(|h| (h.index, h.level, h.text)).collect())
+    }
+
+    /// ブロックの数
+    fn block_count(&self) -> PyResult<usize> {
+        Ok(lock(&self.inner)?.doc.blocks.len())
+    }
+
+    /// ブロック `start`〜`end`(両端を含む。`end` を省けば1つ)を
+    /// `[(番号, 照合の字, AsciiDoc), …]` で読む
+    #[pyo3(signature = (start, end = None))]
+    fn blocks(&self, start: usize, end: Option<usize>) -> PyResult<Vec<(usize, String, String)>> {
+        let g = lock(&self.inner)?;
+        kumihan::blocks::read(&g.doc, start, end.unwrap_or(start))
+            .map(|v| v.into_iter().map(|b| (b.index, b.stamp, b.adoc)).collect())
+            .map_err(PyValueError::new_err)
+    }
+
+    /// ブロック `start`〜`end` を AsciiDoc の断片で書き替える。`stamps` に読んだ時の
+    /// 照合の字を並べると、その間に変わっていたら断る。返りは入れた数
+    #[pyo3(signature = (start, end, adoc, stamps = None))]
+    fn replace_blocks(&self, start: usize, end: usize, adoc: &str, stamps: Option<Vec<String>>) -> PyResult<usize> {
+        let mut g = lock(&self.inner)?;
+        kumihan::blocks::replace(&mut g.doc, start, end, adoc, stamps.as_deref()).map_err(PyValueError::new_err)
+    }
+
+    /// ブロック `at` の前に断片を差し込む。`at` が数と同じなら末尾。返りは入れた数
+    fn insert_blocks(&self, at: usize, adoc: &str) -> PyResult<usize> {
+        let mut g = lock(&self.inner)?;
+        kumihan::blocks::insert(&mut g.doc, at, adoc).map_err(PyValueError::new_err)
+    }
+
+    /// ブロック `start`〜`end` を消す。返りは消した数
+    #[pyo3(signature = (start, end = None, stamps = None))]
+    fn delete_blocks(&self, start: usize, end: Option<usize>, stamps: Option<Vec<String>>) -> PyResult<usize> {
+        let mut g = lock(&self.inner)?;
+        kumihan::blocks::delete(&mut g.doc, start, end.unwrap_or(start), stamps.as_deref())
+            .map_err(PyValueError::new_err)
+    }
+
+    /// 字を含むブロック `[(番号, 前後の字), …]`
+    fn find_blocks(&self, text: &str) -> PyResult<Vec<(usize, String)>> {
+        let g = lock(&self.inner)?;
+        Ok(kumihan::blocks::find(&g.doc, text))
     }
 
     /// **ページ数。** PDF と同じ組み方で紙面を組んで数えます(PDF は
@@ -3245,4 +3326,9 @@ mod tests {
             "欄のまとまりが違う: {g:?}"
         );
     }
+}
+
+/// 径路が `.adoc` か(大文字小文字は問わない)
+fn is_adoc(path: &str) -> bool {
+    std::path::Path::new(path).extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc"))
 }
