@@ -274,10 +274,100 @@ oh-my-pi の「Claude Code へのなりすまし」はこれ
 入る。Commercial Terms への同意が要るので、**やるかどうかは発注者の決め**。
 道具は MCP(`officework-mcp`)で渡せるので、作りは今ある物の組み合わせ。
 
+=== 宛先「Claude Code」— `claude -p` を子プロセスで呼ぶ(2026-09-04 発注者「この形で設計して」)
+
+定額(Pro / Max)を規約の内で使う唯一の形。officework は Claude Code を
+改変せず、子プロセスとして起動し、道具は MCP で渡す。ログインは Claude Code
+自身の流れで済ませ、officework は認証の情報に触らない。Anthropic の側からは
+Claude Code の普通の利用として見える。
+
+事実は公式の資料で確かめた(2026-09-04。code.claude.com の headless・
+cli-reference・mcp・agent-sdk/streaming-input)。手元の `claude` は 2.1.259。
+
+==== 起動の形
+
+[source,text]
+----
+claude -p
+  --output-format stream-json --input-format stream-json --verbose
+  --model sonnet                         # 選んだ物。sonnet / opus / haiku / fable
+  --tools ""                             # Claude Code 自身の道具(Bash・Read・Edit…)を全部止める
+  --mcp-config '{"mcpServers":{"officework":{"command":"<綴りの .venv>/bin/officework-mcp","args":["--panel"]}}}'
+  --strict-mcp-config                    # これ以外の MCP を読まない
+  --allowedTools "mcp__officework__*"    # うちの道具は確認なし(読みは黙って、書きは1手)
+  --permission-mode dontAsk              # それ以外は断る(問い合わせの画面は無い)
+  --system-prompt "<AGENT_SYSTEM と同じ文>"
+  --max-turns 30
+----
+
+- **`--bare` は使わない。** bare は OAuth の資格を読まないので定額が効かない
+  (公式に明記)。代わりに `--strict-mcp-config` と、作業ディレクトリを綴りの
+  フォルダでなく `~/.config/officework/agent/` にすることで、プロジェクトの
+  hooks や CLAUDE.md を読ませない
+- **1つの会話 = 1つのプロセス。** 標準入力に
+  `{"type":"user","message":{"role":"user","content":"…"}}` を1行書くと1往復。
+  標準出力の JSON 行を読み、`result` の行が来たら答え。「新しい会話」で
+  SIGINT を送って終え、次の会話で起動し直す
+- 読む行: `system/init`(モデル・MCP の状態。`mcp_server_errors` があれば
+  officework-mcp が立っていない)、`assistant`(文と `tool_use`)、`user`
+  (`tool_result`)、`result`(答え・`session_id`・費用の見積り)、
+  `system/api_retry`(繋ぎ直し中)。道具呼びの行は今の決めどおり
+  `read_range B2:D4` のように小さく出すだけ
+- `result` の `session_id` を記録(`.agent.txt`)に残す。アプリを開き直した後に
+  「続きから」を選べば `--resume <id>` で続く(Claude Code が自分の記録を持つ)
+
+==== 道具
+
+officework-mcp は**動いている本体に AF_UNIX のソケット(ops の命令)で
+話しかける**作りなので、パネルからの書き替えも ops を通り、1手として入る。
+つまり道具の実体は今の物のまま。足すのは2つ。
+
+. `officework-mcp --panel`: パネルから起動された印。今の MCP は「任意の
+  コードを走らせる道具は置かない」決めで run_macro を持たないが、パネルの
+  マクロは見える .py + bubblewrap で本体の機能なので、`--panel` の時だけ
+  `run_macro` を差し出す(実体は ops に `macro` の命令を足し、本体の側で
+  今の agent::tools と同じ道を通す)。外の AI に登録した officework-mcp
+  (`--panel` なし)は今までどおり持たない
+. ソケットの `ask` は 500 ミリ秒で諦める。マクロや自動調整は長いので、
+  `--panel` の呼びは待ち時間を長く取る(ops に待ちの指定を足す)
+
+Windows はソケットを作らない決め(2026-08-20)なので、この宛先は Linux と Mac
+から。Windows は名前付きパイプを足すまで出さない。
+
+==== 宛先としての見せ方
+
+- 表の1行として `claude-code` を持つ(話し方 = `claude -p`、鍵なし)。
+  `claude` が PATH にあれば一覧に出る。無ければ出さない
+- 状態は今の4語のまま。`claude auth status` が 0 を返せば「接続済」の前の
+  「接続中」に進める。1 なら「未設定」で、状態行に「端末で `claude auth login`
+  を実行してください」と出す。**ログインの画面は officework が作らない**
+  (規約: 資格の収集も仲介もしない)
+- モデルの一覧は sonnet / opus / haiku / fable の4つ(Claude Code の別名)。
+  `/v1/models` は引かない(鍵が無いので引けない)
+- 途中で別の宛先に替える時は、Claude Code 側の履歴を持ち出せないので、
+  パネルは「新しい会話」として扱う(他の宛先どうしの切り替えは履歴が続く)。
+  会話の記録(`.agent.txt`)は同じ形で残す
+- 費用は出さない。定額の枠は Anthropic の側で数える。`result` の見積りは
+  記録に残すだけ
+
+==== 守る条件(公式の legal-and-compliance)
+
+- `claude` を改変しない。認証の方法を外さない
+- 利用者が自分でログインし、使う分は利用者の契約に付く。officework が
+  肩代わりも仲介もしない
+- 製品名やロゴに Claude Code の名を使わない。「Claude Code を呼べます」と
+  文で書くのはよい
+- 製品として配る時は Commercial Terms への同意が要る(発注者)。
+  自分の機械で使う分は Claude Code の普通の個人利用
+
 === 段階(続き)
 
 [start=5]
 . 提供元の表と鍵の探し順(face::settings)、手元のモデルの自動検出
+. **宛先「Claude Code」**: `claude -p` の起動と JSON 行の読み書き
+  (agent クレートに `Model` と並ぶ `Process` の形で。gpui を持たない)、
+  officework-mcp の `--panel` と ops の `macro` 命令、`claude auth status` の
+  状態。実機で「定額で通ること」と「1手で戻ること」を確かめる
 . 選ぶ画面(モデルの一覧の取得、絞り込み、並び)。実機で確かめる
 . anthropic-messages の口(lang::model)。**アプリの公開までに**(本番は
   OpenAI 互換の口に頼らない)
@@ -345,8 +435,8 @@ oh-my-pi の「Claude Code へのなりすまし」はこれ
 == 決め待ち
 
 - v1 の着手の時期
-- Claude の定額を Claude Code 経由でパネルから使うか(規約は確かめた —
-  改変しない実行ファイル・利用者自身のログイン・Commercial Terms への同意なら可)
+- 製品として配る時の Commercial Terms への同意(宛先「Claude Code」を
+  配布版に入れるか)
 
 (既定のモデルと道具呼びの行の見せ方は決まった — 2026-09-02。
 「提供元の一覧」と「対話の画面の決め」に書いた)
