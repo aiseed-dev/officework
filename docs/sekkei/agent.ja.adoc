@@ -210,8 +210,14 @@ models、OpenRouter は openrouter.ai/docs/quickstart。
 「今は動作しているけど、いつ禁止されるかわからない。本番に組み込むと困る」
 ので、**アプリを公開する(本番)までに native の口(messages)を足し、表の
 anthropic の行はそちらに切り替える**。表の「当面は openai-completions でも可」は
-開発の間の話。この機械の settings.toml には Claude の行を書いた(鍵は
-ANTHROPIC_API_KEY)。
+開発の間の話。この機械の settings.toml には Claude の行を書いた。
+
+**API キーは定額とは別の従量の課金**(2026-09-04 発注者の指摘)。さらに
+`ANTHROPIC_API_KEY` は Claude Code も読むので、シェルに置くと Claude Code
+まで従量に切り替わる。うちの表の既定の変数名は `ANTHROPIC_API_KEY` のまま
+(本家の作法)だが、**Claude Code を使う人は `key_env` を別の名前
+(`OFFICE_API_KEY_CLAUDE` など)にする**。手引きにもそう書く。定額を使いたい
+なら道は Claude Code 経由(上の「条件付きで可」)しか無い。
 
 === Claude の定額(2026-09-04 発注者「claude 定額は使えるようにしておいて」)
 
