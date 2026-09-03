@@ -535,12 +535,12 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
             // なるので、それ以外は `link:` を付けます
             let prev = s.chars().last();
             // 直前が `<` なら裸で書かない(`<URL>` の形に読まれて `<` が消える)
-            let bare_ok = prev.map_or(true, |c| {
+            let bare_ok = prev.is_none_or(|c| {
                 c.is_whitespace() || matches!(c, '>' | '(' | ')' | '[' | ']' | ';' | '"' | '\'')
             });
             // 裸の URL は後ろの字を飲み込むので、次が空白か `,.?!);:` のときだけ裸で書く
             let next = runs.get(ri + 1).and_then(first_char);
-            let next_ok = next.map_or(true, |c| c.is_whitespace() || matches!(c, ',' | '.' | '?' | '!' | ')' | ';' | ':'));
+            let next_ok = next.is_none_or(|c| c.is_whitespace() || matches!(c, ',' | '.' | '?' | '!' | ')' | ';' | ':'));
             let url_tail_ok = !url.ends_with([',', '.', '?', '!', ')', ';', ':']);
             let head = if prev.is_some_and(|c| c.is_alphanumeric()) { "link:" } else { "" };
             // 対象が空なら `link:[字]` の形しかありません
