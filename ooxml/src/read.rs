@@ -185,7 +185,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     extract_ink(&mut doc);
     extract_shapes(&mut doc);
     if !styxml.is_empty() {
-        doc.styles = parse_styles(&styxml);
+        doc.styles = parse_styles_num(&styxml, &shirushi);
         hyou_no_kei(&mut doc, &styxml);
     }
     if !pxml.is_empty() {
@@ -1094,9 +1094,24 @@ pub(super) fn extract_ink(doc: &mut Document) {
 /// styles.xml から スタイルの名乗り(id・名前・種類)を写す。
 /// 浅い読み(core.xml と同じ流儀)— 定義の本体は理解せず、原本が持ち越す。
 pub(super) fn parse_styles(xml: &str) -> Vec<kumihan::StyleInfo> {
+    parse_styles_num(xml, &Default::default())
+}
+
+/// **箇条書きの印の表つき。** スタイルの `w:numPr/w:numId` を
+/// `numbering.xml` で引いて、中黒か番号かと印の字にします。
+///
+/// python-docx の `add_paragraph(style="List Bullet")` は本文に `w:numPr` を
+/// 書かないので、これを読まないと箇条書きがただの段落になります(2026-09-03)
+pub(super) fn parse_styles_num(
+    xml: &str,
+    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
+) -> Vec<kumihan::StyleInfo> {
     /// スタイルの `w:rPr` と `w:pPr` から見た目を読む。**読むだけ**です。
 /// スタイルの段落の見た目(`w:pPr` の中)。読めない物は「言わない」のまま
-fn style_para(body: &str) -> kumihan::StyleParaLook {
+fn style_para(
+    body: &str,
+    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
+) -> kumihan::StyleParaLook {
     let val = |tag: &str| -> Option<String> {
         let t = format!("<{tag}");
         body.find(&t).map(|n| {
@@ -1127,15 +1142,28 @@ fn style_para(body: &str) -> kumihan::StyleParaLook {
         first_line_twips: ind(body, "w:firstLine")
             .or_else(|| ind(body, "w:hanging").map(|v| -v))
             .map(|v| v as i32),
-        // **箇条書きの番号。** `w:numPr` の中の `w:numId` です
-        num_id: body.find("<w:numPr").and_then(|n| {
-            let k = n + body[n..].find("<w:numId")?;
-            let e = k + body[k..].find('>')?;
-            attr_of(&body[k..e], "w:val").parse().ok()
+        // **箇条書き。** `w:numPr` の `w:numId` を印の表で引きます
+        list: num_of(body).map(|n| {
+            match shirushi.get(&(n, 0)) {
+                Some((_, kazu)) => if *kazu { kumihan::ListKind::Number } else { kumihan::ListKind::Bullet },
+                // 表が無い docx は numId の決め打ち(本文の側と同じ約束)
+                None => if n == 2 { kumihan::ListKind::Number } else { kumihan::ListKind::Bullet },
+            }
         }),
+        list_text: num_of(body).and_then(|n| shirushi.get(&(n, 0)).map(|(t, _)| t.clone())),
         // **段落の罫線。** 本文の `w:pBdr` と同じ辺を読みます
         border: pbdr_of(body),
+        // 同じスタイルが続く間は空きを入れない
+        contextual_spacing: body.contains("<w:contextualSpacing").then_some(true),
     }
+}
+
+/// スタイルの `w:pPr/w:numPr/w:numId` の値
+fn num_of(body: &str) -> Option<u32> {
+    let n = body.find("<w:numPr")?;
+    let k = n + body[n..].find("<w:numId")?;
+    let e = k + body[k..].find('>')?;
+    attr_of(&body[k..e], "w:val").parse().ok()
 }
 
 /// **スタイルの `w:pBdr` を読む。** 本文の側は読み手の流れの中で組み立てますが、
@@ -1320,7 +1348,7 @@ fn attr_of(hay: &str, key: &str) -> String {
                 quick_style: flag("w:qFormat"),
                 default: matches!(attr_of(head, "w:default").as_str(), "1" | "true"),
                 priority: val("w:uiPriority").and_then(|v| v.parse().ok()),
-                para: style_para(body),
+                para: style_para(body, shirushi),
             });
         }
         from = end.max(i + 1);
@@ -2987,6 +3015,40 @@ pub struct ForeignShape {
 }
 
 /// 段落の控え1つを [`ForeignShape`] に。うちの図形と、図形でない物は `None`
+/// **記号の書体の私用領域を、見えている字に直す。**
+///
+/// Word の既定の箇条書きは、印を書体と組で書きます。Symbol の U+F0B7 は
+/// 中黒(•)、Wingdings の U+F0A7 は小さい四角(▪)、Courier New の `o` は
+/// そのままです。書体を持たない所で出すには、字の側を直すしかありません。
+///
+/// 表に無い組は、私用領域の下位バイトが普通の字ならそれを使い、
+/// そうでなければ中黒にします(何も出ないよりは印がある方がよい)。
+fn kigou_wo_naosu(txt: &str, shotai: &str) -> String {
+    let watashi = |c: char| ('\u{f000}'..='\u{f0ff}').contains(&c);
+    if !txt.chars().any(watashi) {
+        return txt.to_string();
+    }
+    let s = shotai.to_ascii_lowercase();
+    txt.chars()
+        .map(|c| {
+            if !watashi(c) {
+                return c;
+            }
+            let shita = (c as u32 - 0xf000) as u8;
+            match (s.as_str(), shita) {
+                ("symbol", 0xb7) => '\u{2022}',       // •
+                ("symbol", 0xa7) => '\u{25aa}',       // ▪
+                ("wingdings", 0xa7) => '\u{25aa}',    // ▪
+                ("wingdings", 0xfc) => '\u{2714}',    // ✔
+                ("wingdings", 0x76) => '\u{2612}',    // ☒
+                ("wingdings", 0x6f) => '\u{25a1}',    // □
+                _ if shita.is_ascii_graphic() => shita as char,
+                _ => '\u{2022}',
+            }
+        })
+        .collect()
+}
+
 /// **箇条書きの印の表**(docx の `numbering.xml`)。
 ///
 /// 返るのは `(numId, 段) → (印, 番号か)` です。印は `w:lvlText` の字で、
@@ -3027,6 +3089,19 @@ pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (S
                     .find("<w:lvlText ")
                     .and_then(|k| attr1(&one[k..], "w:val"))
                     .unwrap_or_default();
+                // **記号の書体の私用領域を、普通の字に直します。**
+                //
+                // Word の既定の箇条書きは、印を Symbol 書体の U+F0B7 と
+                // 書きます。LibreOffice はその書体ごと持つので出せますが
+                // (`NumberingManager.cxx` が `CharFontName` を残します)、
+                // こちらは文書の書体1本で組むので、字が無くて何も出ません。
+                // 見えている物と同じ字に置き替えます(2026-09-03)
+                let shotai = one
+                    .find("<w:rFonts ")
+                    .and_then(|k| one[k..].find('>').map(|e| &one[k..k + e]))
+                    .map(|seg| attr1(seg, "w:ascii").unwrap_or_default())
+                    .unwrap_or_default();
+                let txt = kigou_wo_naosu(&txt, &shotai);
                 if !txt.is_empty() && fmt != "none" {
                     honnin.entry(id).or_default().push((ilvl, txt, fmt != "bullet"));
                 }

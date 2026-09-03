@@ -1655,6 +1655,23 @@ fn jibun_wo_ateru(
     if para.first_line_twips == 0 {
         para.first_line_twips = pl.first_line_twips.unwrap_or(0);
     }
+    // **スタイルの罫線。** python-docx の型紙は、題(`Title`)の下の線を
+    // スタイルに書きます。本文には1文字もありません(2026-09-03)
+    if !para.border.aru() {
+        if let Some(b) = pl.border {
+            para.border = b;
+        }
+    }
+    // **スタイルの箇条書き。** `add_paragraph(style="List Bullet")` は
+    // 本文に `w:numPr` を書きません。中黒も番号もスタイルの側です
+    if para.list == crate::doc::ListKind::None {
+        if let Some(k) = pl.list {
+            para.list = k;
+            if para.list_text.is_none() {
+                para.list_text = pl.list_text.clone();
+            }
+        }
+    }
     for r in &mut para.runs {
         if r.size_pt.is_none() {
             r.size_pt = lk.size_pt;
@@ -1700,15 +1717,46 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
     // (2026-09-03 発注者)
     let doc_after = doc.space_after_pt;
     let doc_line = doc.line_spacing;
-    for block in &mut out.blocks {
+    // **同じスタイルが続く間は空きを入れない**(docx の `w:contextualSpacing`)。
+    // 隣を見る必要があるので、先に「この段落の前後が同じスタイルか」を出します。
+    // 箇条書きの項目がこれで詰まります(2026-09-03)
+    let tonari: Vec<(bool, bool)> = {
+        let ids: Vec<Option<String>> = out
+            .blocks
+            .iter()
+            .map(|b| match b {
+                crate::doc::Block::Para(p) => p.style_id.clone(),
+                _ => None,
+            })
+            .collect();
+        (0..ids.len())
+            .map(|i| {
+                let onaji = |j: Option<usize>| {
+                    j.and_then(|j| ids.get(j)).is_some_and(|o| *o == ids[i] && o.is_some())
+                };
+                (onaji(i.checked_sub(1)), onaji(Some(i + 1)))
+            })
+            .collect()
+    };
+    for (bi, block) in out.blocks.iter_mut().enumerate() {
         let crate::doc::Block::Para(para) = block else { continue };
+        let (mae_onaji, tsugi_onaji) = tonari.get(bi).copied().unwrap_or((false, false));
         if let Some((_, lk, pl)) = para
             .style_id
             .as_deref()
             .and_then(|id| jibun.iter().find(|(i, _, _)| i == id))
         {
             jibun_wo_ateru(para, lk, pl);
+            let tsuzuki = pl.contextual_spacing == Some(true);
             bunsho_no_kitei(para, doc_after, doc_line);
+            if tsuzuki {
+                if mae_onaji {
+                    para.space_before_pt = 0.0;
+                }
+                if tsugi_onaji {
+                    para.space_after_pt = 0.0;
+                }
+            }
             continue;
         }
         bunsho_no_kitei(para, doc_after, doc_line);

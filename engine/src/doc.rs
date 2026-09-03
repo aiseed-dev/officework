@@ -1122,12 +1122,22 @@ pub struct StyleParaLook {
     pub indent: Option<u8>,
     /// 1行目の字下げ(twip。負はぶら下げ)
     pub first_line_twips: Option<i32>,
-    /// **箇条書きの番号の指定**(docx の `w:pPr/w:numPr/w:numId`)。
+    /// **箇条書きの種類**(docx の `w:pPr/w:numPr/w:numId` を
+    /// `numbering.xml` で引いた結果)。
     ///
     /// python-docx の `add_paragraph(style="List Bullet")` は本文に
     /// `w:numPr` を書きません。中黒も番号もスタイルの側にあります。
     /// 読まないと、箇条書きが**ただの段落**になります(2026-09-03)
-    pub num_id: Option<u32>,
+    pub list: Option<ListKind>,
+    /// その印の字(`w:lvlText`。`●` や `1.`)。無ければ種類なりの既定
+    pub list_text: Option<String>,
+    /// **同じスタイルの段落が続く間は、前後の空きを入れない**
+    /// (docx の `w:pPr/w:contextualSpacing`)。
+    ///
+    /// 箇条書きの項目どうしが離れないための指定です。読まないと、
+    /// 文書の既定の「段落後 10pt」が項目ごとに入って間延びします
+    /// (2026-09-03)
+    pub contextual_spacing: Option<bool>,
     /// **段落の罫線**(docx の `w:pPr/w:pBdr`)。
     ///
     /// python-docx の既定の型紙では、題(`Title`)の下の線がここにあります。
@@ -2188,7 +2198,9 @@ impl Document {
             pl.line_spacing = pl.line_spacing.or(s.para.line_spacing);
             pl.indent = pl.indent.or(s.para.indent);
             pl.first_line_twips = pl.first_line_twips.or(s.para.first_line_twips);
-            pl.num_id = pl.num_id.or(s.para.num_id);
+            pl.list = pl.list.or(s.para.list);
+            pl.list_text = pl.list_text.clone().or_else(|| s.para.list_text.clone());
+            pl.contextual_spacing = pl.contextual_spacing.or(s.para.contextual_spacing);
             pl.border = pl.border.or(s.para.border);
             match s.based_on.as_deref() {
                 Some(o) => ima = o,
