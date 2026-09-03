@@ -44,6 +44,23 @@ Fable(このセッション)は adoc の塊と一覧の作業を続けます。�
 engine/tests・engine/examples・tools/honke_*・docs/sekkei/asciidoctor-tsukiawase.ja.adoc です。
 pysheet・CI・packaging・ooxml には触りません。
 
+== Opus への依頼(2026-09-04): 一本化を早く — リボン1本 → 段6の残り → 段8 → writer のパネル → 段11
+
+発注者「writer と calc を一本化して adoc 化も早くやりましょう」。順番と分担は
+SEKKEI「続き24」。Opus の受け持ちは画面の側:
+
+. **リボン1本**(SEKKEI「決め: リボンは1つ」の「進め方(Opus へ)」のとおり。
+  face の `RIBBON` を1つ、ボタンごとの効く先、的の順。ホームとレイアウトから)
+. **段6の残り**(画面の上の2行の描画を officework へ。SEKKEI「統合」の段6)
+. **段8**(ファイルのページを officework の1枚に。約 800 行と測ってある)
+. **writer の左パネルをエージェントに**(calc と同じ描き。docs/sekkei/agent.ja.adoc
+  「writer にも同じパネル」。文書の道具は Fable が ops に足すので、それを繋ぐ)
+. **段11**(配布を officework 1本に)
+
+Fable は同時に engine / ops / writer/src/rpc.rs / agent / pysheet の Python で
+文書のブロックの道具と `officework.doc` のブロック API を作る。**writer/src/rpc.rs は
+Fable が触るので、Opus はそこを触らない。** それ以外の writer の画面は Opus の物。
+
 == 環境の注意
 
 * cargo が PATH に無い機械なら `export PATH="$HOME/.cargo/bin:$PATH"`。そもそも rustup ごと無い機械もある — その場合は user レベルの導入で足りる(`curl https://sh.rustup.rs | sh -s -- -y`。sudo 不要。2026-08-03 に実施済み)

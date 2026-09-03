@@ -6264,6 +6264,39 @@ cover_check や見本作りの検査(しょうもない側)を消せる。
   ここにある。AI が文書を意味の単位でそのまま読み書きできる形にすることが
   先で、docx は交換のための端の形
 
+==== 続き24: 一本化と adoc 化を早く(2026-09-04 発注者「writer と calc を一本化して adoc 化も早くやりましょう」)
+
+残っている物を1本の順番にし、2人で分けて同時に進める(触る場所が重ならない
+ように割った)。
+
+*一本化(Opus)* — 統合の 11 段の残りと、リボン1本の決め(2026-09-03):
+
+. **リボン1本**(face の `RIBBON` を1つ、ボタンごとの「効く先」と的の順。
+  ホームとレイアウトから)。これが済むとエージェントパネルの描きも
+  writer / calc で1つに置ける
+. **段6の残り**(画面の上の2行の描画を officework へ)
+. **段8**(ファイルのページを officework の1枚に。語句の検索は左パネルへ)
+. **段10'**: writer の左パネルをエージェントに(calc と同じ描き。Fable の
+  文書の道具ができてから繋ぐ)
+. **段11**(配布を officework 1本に。`.desktop` と関連付け)
+
+*adoc 化(Fable。エンジンと ops と Python の側)*:
+
+. **文書のブロックの道具を ops に**(agent.ja.adoc の表: outline / read_blocks /
+  replace_blocks / insert_blocks / delete_blocks / find / fields / fill_fields)。
+  engine に「ブロックの番号 ⇄ AsciiDoc の字」の読み書きと照合の字、writer の
+  rpc.rs に動詞、officework-mcp の `doc_*` に同じ物、agent::tools に文書の道具。
+  試験は偽のモデルで往復
+. **`officework.doc` のブロック API**(道具と同じ名前・引数)。python-docx の形は
+  増やさない
+. **run_macro(文書)を adoc の字の受け渡しに**(python-docx を通さない)
+. 手引き(python-manual・writer-macro-manual・tutorial-word・writer-manual)を
+  ブロックが先の形に(動いてから)
+
+触る場所: Opus は face / ui / writer の画面(lib・panels・keys・cmds)/ calc /
+配布。Fable は engine / ops / writer/src/rpc.rs / agent / pysheet の Python。
+writer/src/rpc.rs だけが境目なので、Fable が動詞を足す間 Opus は rpc.rs を触らない。
+
 ==== 続き22: 次期バージョンの枠(2026-09-01 発注者)
 
 - **officework v0.6.0**(エンジン)と **office v0.1.0**(アプリ。
