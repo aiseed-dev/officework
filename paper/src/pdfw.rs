@@ -66,6 +66,12 @@ pub struct Piece {
     /// あってもそれを選べません。**顔を持つ書体はそちらを使うべきです** —
     /// 書体を顔ごとに引ける形にしてから直します
     pub italic: bool,
+    /// **字間**(pt。docx の `w:rPr/w:spacing`)。
+    ///
+    /// PDF の `Tc` にそのまま渡します。組む側はこの分を足し引きして字を
+    /// measure しているので、渡さないと**紙の上だけ書体の送りで描かれ**、
+    /// 詰めた原稿が行からはみ出します(2026-09-03、内閣府の調査票)
+    pub tc_pt: f32,
 }
 
 /// 絵を PDF に載せる形にする。返りは(中身, 幅, 高さ, JPEG か)。
@@ -515,8 +521,16 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 // 「議論項目」)。大きい字ほど太らせる量も要ります
                 c.set_line_width(p.size_pt / 30.0);
             }
+            // **字間**(`Tc`)。組む側が詰めた分を紙にも伝えます。
+            // 単位は字送りと同じ text space(ここでは pt)です
+            if p.tc_pt.abs() > 0.001 {
+                c.set_char_spacing(p.tc_pt);
+            }
             c.set_text_matrix([m0, m1, m2, m3, pt(p.x_mm), pt(p.y_mm)]);
             c.show(Str(&bytes));
+            if p.tc_pt.abs() > 0.001 {
+                c.set_char_spacing(0.0);
+            }
             if p.bold {
                 c.set_text_rendering_mode(TextRenderingMode::Fill);
             }
@@ -1560,6 +1574,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                     font: 0,
                     rotation: 0.0,
                     italic: c.fmt.italic,
+                    tc_pt: c.fmt.spacing_pt,
                 });
             }
             continue;
@@ -1593,6 +1608,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                         font: 0,
                         rotation: 0.0,
                         italic: false,
+                        tc_pt: 0.0,
                     });
                 }
                 continue;
@@ -1604,6 +1620,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                     && r.underline == c.fmt.underline
                     && r.strike == c.fmt.strike
                     && r.highlight == c.fmt.highlight
+                    && (r.tc_pt - c.fmt.spacing_pt).abs() < 0.001
                     // **字が続いている所だけ繋ぎます**(2026-09-03)。
                     //
                     // 繋いだまとまりは1つの文字列として描くので、字の位置は
@@ -1636,6 +1653,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                         font: 0,
                         rotation: 0.0,
                         italic: c.fmt.italic,
+                        tc_pt: c.fmt.spacing_pt,
                     });
                 }
             }
@@ -1747,6 +1765,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                         font: 0,
                         rotation: 0.0,
                         italic: c.fmt.italic,
+                        tc_pt: c.fmt.spacing_pt,
                     });
                 }
             }
@@ -1857,6 +1876,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                     font: 0,
                     rotation: 0.0,
                     italic: c.fmt.italic,
+                    tc_pt: c.fmt.spacing_pt,
                 });
             }
         }
