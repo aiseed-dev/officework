@@ -144,7 +144,7 @@ pub fn write(doc: &Document) -> String {
                 // 1つの一覧が2つに割れます(2026-08-18)
                 let desc = p.style_id.as_deref().is_some_and(is_desc_list);
                 let next_is_cont = matches!(doc.blocks.get(bi + 1), Some(Block::Para(q))
-                    if matches!(q.style_id.as_deref(), Some("一覧の続き") | Some("覚え書き") | Some("コールアウト") | Some("指定の行")));
+                    if matches!(q.style_id.as_deref(), Some("一覧の続き") | Some("覚え書き") | Some("コールアウト") | Some("指定の行") | Some("条件") | Some("取り込み")));
                 // 項目だけの `term::` の直後の一覧は、その項目の説明(空行を挟まない)
                 let term_then_list = desc
                     && desc_term_only(&runs_text(&p.runs, doc))
@@ -1887,7 +1887,21 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 // **一覧の中に来る行は、前の空行の数と錨も原文に含めます。**
                 // 空行の数は本家にとって意味(どの項目に付くか・一覧が切れるか)
                 // なので、書き戻しで数を保ちます(2026-09-03)
-                let keeps_blanks = matches!(role, "覚え書き" | "コールアウト" | "指定の行");
+                // `[.名前]` の直後に塊の区切りが来たら、その名前は塊の指定の行として
+                // 原文のまま戻す(段落のスタイルとしては付ける先が無い。2026-09-03)
+                if role == "塊の区切り" {
+                    if let Some(name) = pending_style.take() {
+                        let mut q = Paragraph {
+                            line_spacing: 1.0,
+                            style_id: Some("指定の行".to_string()),
+                            raw_adoc: Some(format!("{}[.{name}]", "\n".repeat(blank_before))),
+                            ..Default::default()
+                        };
+                        q.runs.push(Run { text: format!("[.{name}]"), size_pt: None, font: None, fmt: CharFormat::default() });
+                        doc.blocks.push(Block::Para(q));
+                    }
+                }
+                let keeps_blanks = matches!(role, "覚え書き" | "コールアウト" | "指定の行" | "条件" | "取り込み");
                 // 直前の原文のままの行が後ろの空行を1つ抱えていれば、その分は引く
                 let prev_took_blank = matches!(doc.blocks.last(), Some(Block::Para(q))
                     if q.raw_adoc.as_deref().is_some_and(|r| r.ends_with('\n')));
@@ -2020,7 +2034,8 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         }
         // 段落のスタイル名(次の塊に掛かる)
         if let Some(name) = l.strip_prefix("[.").and_then(|s| s.strip_suffix(']')) {
-            if !name.is_empty() && !name.contains(['[', ']', '#', ' ']) {
+            // `[.output,subs=…]` のように他の指定が並ぶ物は、指定の行として原文のまま
+            if !name.is_empty() && !name.contains(['[', ']', '#', ' ', ',', '=']) {
                 pending_style = Some(name.to_string());
                 continue;
             }
