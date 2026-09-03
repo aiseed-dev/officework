@@ -1,143 +1,133 @@
-= officework 0.5.0-beta.7
+= officework 0.5.0-beta.8
 
 日本語: link:RELEASE.ja.adoc[RELEASE.ja.adoc]
 
 To try it: `pip install --pre officework`
 
-This release came out of published forms again. Three of them went through
-officework into PDF and were read beside the PDF each office publishes in the
-same place: the National Tax Agency's liquor tax overview, and the Cabinet
-Office's aptitude survey form and interview record.
+The last release was about one measurement, the height of a line. This one is
+wide instead of deep. The spreadsheet learned four hundred functions and every
+preset shape, equations are typeset by the engine itself, a document's paper
+belongs to its section, and the two apps share one ribbon.
 
-Column widths matched after the last release, so this time the vertical
-measurements did not. The same document ran one or two pages longer than
-theirs, and lines drifted downward.
+The engine is what ships. `pip install officework` installs it and nothing
+else; the apps are not distributed yet.
 
-== Line height comes from the font
+== Four hundred functions, and a dialog to find them
 
-**Every line was 6.4mm, whatever the font and the size.** Word and LibreOffice
-both decide it in two steps: the font gives a natural height, then the
-paragraph's setting overrides it. We now do the same two steps.
+**The function list is 404 entries.** Statistics, finance, engineering,
+database and the distribution family were the gaps, and they are filled:
+IPMT through XIRR, the incomplete gamma and beta distributions, ACOSH through
+MDETERM, the *B trio and the array constants (`{1,2;3,4}`) that formulas need
+to read them.
 
-**A substituted font's vertical metrics do not match the original.** Ume Mincho
-is 1.0000em where MS Mincho is 1.292em. The widths were matched; the heights
-were not. Line advance is now looked up under the original font's name. Names
-that are not in the table fall back to the face installed on the machine, the
-way LibreOffice does it — OS/2 usWinAscent plus usWinDescent plus the hhea line
-gap.
+Every documented function now takes every argument Excel takes. Where we
+accepted three arguments and Excel accepted five, the two extra ones did
+nothing; they work now.
 
-**A line height given in points was turned into a multiplier.** `w:lineRule`
-`exact` and `atLeast` state the height itself. Dividing them by the 6.4mm
-constant only worked while that constant was the line height, so they are
-carried as a height in points now.
+**Insert Function has Excel's classic shape.** A category on the left, the
+function list, the description, and the argument fields with a running result.
+The function manual is generated from the same material the dialog shows, so
+the two cannot drift apart.
 
-The survey form goes from six pages to five, matching the reference. Its body
-advance is 15.50pt against the reference's 15.54pt.
+== Every preset shape draws
 
-== Paragraph styles are applied
+**All 187 shapes in the DrawingML specification now draw from the
+specification's own definitions.** Before, a shape we did not recognise came
+out as a rectangle. Braces draw as braces, connectors are read, and the screen
+and the printed page share one table of shapes, so they cannot disagree.
 
-A docx carries its own style definitions. We were overlaying the bundled
-template's heading definition on top of them, so the interview record's
-headings — 20pt, centred, blue in the file — came out at our template's 16pt,
-left aligned and black.
+A shape anchored to two cells now takes its size from those cells, which is
+what the anchor promises: widen a column and the shape widens with it.
 
-When the document defines the style itself, that definition wins. Otherwise the
-template is used as before. The `w:basedOn` chain is followed.
+== Equations are typeset by the engine
 
-Size works the same way: the survey form's body is 12pt in the file and we set
-it at 11pt, because the body style's `w:sz 24` was not being read.
+**Python and TeX are no longer needed.** Equations are set by typst and mitex,
+both compiled into the engine. Write LaTeX, press Enter, and the formula is
+drawn with the same maths font TeX uses. Japanese inside a formula
+(`\text{売上}`) comes out in the document's own font.
 
-== Inline images sit on the line
+**A Word or Excel equation now opens as a formula.** OMML is read into LaTeX,
+covering the same elements LibreOffice's own reader handles, so an equation
+from Word prints instead of vanishing. Excel keeps its equations inside a text
+box; those are read the same way.
 
-A drawing in a docx lives inside a run, so it is part of the text flow. We drew
-images below the paragraph, so a heading's image dropped to its own line and
-the heading could not be centred together with it.
+Pictures on a spreadsheet are printed too. They were in the model and never
+reached the page, which is also why an equation could not print.
 
-An image at the start of a paragraph is now placed to the left of the first
-line's text, and the line grows when the image is taller than the text.
+== The paper belongs to the section
 
-**Transparent images came out as grey squares.** The PNG alpha channel was
-being dropped. It is now written as a separate stream and referenced as a soft
-mask, which is what the PDF format asks for.
+**Pages are stacked, one sheet after another, and that is the ordinary view.**
+The separate "print layout" mode is gone. Paper size, orientation, margins and
+columns now apply to the section the caret is in, so one document can hold an
+A4 portrait section and an A3 landscape one.
 
-== Text box insets
+In AsciiDoc this is written the way asciidoctor-pdf writes it, with the
+`page-*` attributes.
 
-The inset was hardcoded at 1.5mm on the left and every box was centred
-vertically. DrawingML's defaults are 0.1in left and right, 0.05in top and
-bottom, anchored to the top. A file that states `lIns` and friends is followed.
+== One ribbon
 
-== Borders
+writer and calc now show the same buttons. The only difference is which target
+comes first: a cell in calc, a character in writer. A button that does not
+apply is not shown greyed out; it is not shown.
 
-* **A merged cell was drawing borders through its middle.** A merge is one
-  cell, so only its outline is drawn
-* **Diagonal borders are drawn.** Across a merge, one line spans the whole
-  merge
+== Word documents come closer to the original
 
-== Opening and saving leaves the original alone
+* A paragraph border knows which side it draws, and the page draws it
+* A hanging indent hangs
+* A table cell obeys its own alignment, horizontal and vertical
+* A page break inside a run breaks the page, and two of them break twice
+* A text box is set the way the file says
+* Bold text is one run of glyphs, not one run per character
+* Blank pages are not printed
+* A right-aligned number sits at the right edge of its merge
+* Print centring is read, and a blank line in a cell takes a line's height
+* The baseline sits at the font's ascent, not at four fifths of the box
 
-**Tabs were appearing at the start of lines.** A paragraph's tab stop
-definitions were being read as tab characters. Eight paragraphs of the survey
-form changed text on a save.
+== The Python API runs the originals' own samples
 
-**A drawing's stored copy was cut short.** In a docx that starts with a byte
-order mark, the offsets used to slice the original XML are three bytes out. The
-interview record is such a file, and opening and saving it produced XML that no
-longer parsed.
+**python-docx's sample script and openpyxl's sample script now run against
+officework unchanged.** They were the measure, and what they exercised is what
+was missing: `docx.shared`, `docx.enum`, `docx.styles`, the chart classes,
+`RGBColor` passing python-docx's own type check, and `add_run` starting plain
+the way python-docx starts it.
 
-**The styles relationship was written twice.** In a docx whose styles part is
-not called `styles.xml` — the interview record's is `styles2.xml` — we added
-our own on top. A package may only carry one relationship of that type.
+A misspelt attribute on `Doc`, `Book` or `Sheet` is refused instead of silently
+doing nothing.
 
-== The Python API answers like openpyxl and python-docx
+== The agent
 
-A test was written that walks every public property of the originals and
-compares the answers with ours. Nobody picks the list, so it grows whenever the
-originals grow. Its first run found that we were filling in defaults where the
-file states nothing.
+The consult pane is an agent: it calls tools, shows its loop, and writes and
+runs Python macros in a sandbox, with errors going back to it. AI destinations
+are named and switchable, and the model is shown as one of four states.
 
-**Bold, italic, underline and strikethrough have three values now.** A docx
-writes on, off, and says-nothing as three different things. We collapsed the
-last two into `False`, which hid whether the run inherits from its style.
-`None` now means the file says nothing. On save, a run that was explicitly
-turned off is written back that way.
+== The manuals
 
-**Paragraph alignment, line spacing, indents and spacing work the same.** They
-return `None` when the file states nothing.
-
-**Run boundaries survive reading.** Word splits runs even when the formatting
-is identical, and we joined them on read, so run-level formatting was invisible
-from Python. Joining is now the editing side's job.
-
-**A first-line indent given in characters is resolved with the paragraph's own
-size.** One character is 240 twips in a 12pt paragraph and 210 in a 10.5pt one;
-we always used 10.5pt.
-
-**A cell with no format of its own reports the workbook's default font.** It
-used to report `None`, which reads as "this cell has no font".
-
-`ws.merged_cells` was added. It iterates "B2:C3" strings and supports `in`,
-`len()` and `str()`.
-
-A paragraph's style now reaches its base style, its font and its paragraph
-format (`p.style.base_style`, `p.style.font.size`,
-`p.style.paragraph_format`).
+* Every button has a command page: 256 of 256
+* English versions for the index, the two tutorials, the button table and the
+  docx/xlsx comparison
+* The booklets are rewritten as plain sentences, one thing per sentence
+* A function manual, generated from the dialog's own material
+* The `=df()` manual, written before the function existed
 
 == Other changes
 
-* A cell's inner padding is Excel's two pixels
-* A single trailing space no longer gets a line of its own
-* Numbered list markers follow what the document states
-* A shape's fill colour is no longer used as its text colour
-* Fitting to one page allows for the tallest row, so the last row is no longer
-  pushed off
+* `=df()` defines a table column once, XLOOKUP searches by bisection, and INDEX
+  takes areas
+* Lists, protection, arrows, filters, CSV and the sandbox do what their pages say
+* A list style makes a list, and the file carries the numbering to prove it
+* The conversation leaves a record beside the book, and comes back
+* Attribute references stay as text, and links and cross references are read the
+  way Asciidoctor reads them
 
 == Internal changes
 
-`kumihan::Document` gained `style_matome`, which resolves a style definition
-through its `w:basedOn` chain and returns `None` when the document has no such
-definition.
+`kumihan` gained `omml`, which turns OMML into LaTeX, and `suushiki`, which
+typesets LaTeX into a PNG. Both formats reach them: docx through `ooxml` and
+xlsx through `sheet`.
 
-`InlineImage` now records where in the paragraph's text it sits.
+`kumihan::Paragraph` gained `line_pt`, `first_line_chars`, `border` and
+`align_itta`; `CharFormat` gained a three-valued `itta` so that "stated off"
+and "not stated" stay apart.
 
-A differential test against openpyxl and python-docx was added. It walks every
-public property of the originals and compares them with ours.
+The shape table moved out of the drawing code into the specification data, and
+`paper` reads the same table the screen does.
