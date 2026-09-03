@@ -207,6 +207,22 @@ pub(super) fn lex(src: &str) -> Result<Vec<Tok>, String> {
             while i < b.len() && (b[i].is_ascii_digit() || b[i] == '.') {
                 i += 1;
             }
+            // **指数の書き方**(`1E15`・`1.5E-14`)。Excel も LibreOffice も
+            // 数として読みます。数の直後にセル参照は来られないので、
+            // `1E15` を「1 と セル E15」と取り違えることはありません。
+            // 後ろに数字が続くときだけ取ります(`1E` は数ではありません)
+            if i < b.len() && (b[i] == 'e' || b[i] == 'E') {
+                let mut j = i + 1;
+                if j < b.len() && (b[j] == '+' || b[j] == '-') {
+                    j += 1;
+                }
+                if j < b.len() && b[j].is_ascii_digit() {
+                    while j < b.len() && b[j].is_ascii_digit() {
+                        j += 1;
+                    }
+                    i = j;
+                }
+            }
             let s: String = b[st..i].iter().collect();
             out.push(Tok::Num(s.parse().map_err(|_| format!("数値として読めません: {s}"))?));
             continue;
@@ -412,9 +428,15 @@ impl<'a> P<'a> {
             v = match o {
                 // & は文字列連結なので数にしない(表計算の作法)
                 '&' => Value::Text(format!("{}{}", v.display(), r.display())),
+                // **打ち消し合ったら 0 にします**(LibreOffice と同じ)。
+                // 式の評価はここと funcs.rs の2本あるので、両方に入れます
                 _ => match arith2(&v, &r) {
                     Err(e) => e,
-                    Ok((x, y)) => Value::Number(if o == '+' { x + y } else { x - y }),
+                    Ok((x, y)) => Value::Number(if o == '+' {
+                        super::funcs::chikai_tashizan(x, y)
+                    } else {
+                        super::funcs::chikai_hikizan(x, y)
+                    }),
                 },
             };
         }

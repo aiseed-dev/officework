@@ -74,13 +74,11 @@ impl Value {
     pub fn display(&self) -> String {
         match self {
             Value::Empty => String::new(),
-            Value::Number(n) => {
-                if (n.fract()).abs() < 1e-10 && n.abs() < 1e15 {
-                    format!("{}", *n as i64)
-                } else {
-                    format!("{n}")
-                }
-            }
+            // **書式の無いセルの数は、LibreOffice と同じ書き方で**
+            // (2026-09-03 発注者)。有効数字15桁です。前はここで
+            // 「小数部が 1e-10 未満なら整数」という当てずっぽうをしていて、
+            // 本物の小さな数まで 0 と出していました
+            Value::Number(n) => crate::fmt::hyoujun_no_ji(*n),
             Value::Text(s) => s.clone(),
             Value::Bool(b) => if *b { "TRUE" } else { "FALSE" }.into(),
             Value::Error(e) => e.clone(),

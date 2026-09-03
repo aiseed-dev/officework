@@ -425,3 +425,84 @@ pub(super) fn group(s: &str) -> String {
     }
     o
 }
+
+/// **書式の無いセル(標準)の数の書き方。**
+///
+/// LibreOffice の `rtl::math::doubleToString`(`Automatic` と
+/// `DecimalPlaces_Max`)に合わせてあります。Excel も同じ見え方をします。
+/// 発注者 2026-09-03「独自の判断でなくて、LibreOffice に合わせて。
+/// PDF の表示を合わせるのに必要です」。
+///
+/// **10進の有効数字15桁です。** 倍精度は10進で17桁ぶんの情報を持ちますが、
+/// 下の2桁は2進との変換で出る残りかすです。`=1.1-1` の中の値は
+/// 0.1000000000000000888… で、これをそのまま書くと `0.10000000000000009` に
+/// なります。15桁に丸めると `0.1` です。
+///
+/// 決め方は3つです。
+///
+/// 1. 整数で、倍精度が整数を1つ残らず表せる範囲(2^53 未満)なら、整数で書く
+/// 2. 10の指数が -15 以下か 15 以上なら指数の形(仮数の小数は14桁)
+/// 3. それ以外は小数点の形で、小数を `14 - 指数` 桁
+///
+/// 末尾の 0 と、残った小数点は落とします。境界(1E15 と 1E16、1E-14 と
+/// 1E-15)は LibreOffice に実際に打たせて合わせました。
+pub fn hyoujun_no_ji(n: f64) -> String {
+    if n.is_nan() {
+        return "NaN".into();
+    }
+    if n.is_infinite() {
+        return if n > 0.0 { "INF".into() } else { "-INF".into() };
+    }
+    if n == 0.0 {
+        return "0".into();
+    }
+    // 1. 倍精度が1つ残らず表せる範囲の整数は、そのまま整数で
+    const SEIGO: f64 = 9_007_199_254_740_992.0; // 2^53
+    if n.fract() == 0.0 && n.abs() < SEIGO {
+        return format!("{}", n as i64);
+    }
+    let exp = juu_no_shisuu(n.abs());
+    if exp <= -15 || exp >= 15 {
+        // 2. 指数の形。指数は符号と3桁(LibreOffice の書き方)
+        let kasuu = n / 10f64.powi(exp);
+        let mut m = format!("{kasuu:.14}");
+        suso_wo_otosu(&mut m);
+        let fugou = if exp < 0 { '-' } else { '+' };
+        return format!("{m}E{fugou}{:03}", exp.abs());
+    }
+    // 3. 小数点の形。有効数字15桁になるように小数の桁を決めます
+    let keta = (14 - exp).clamp(0, 340) as usize;
+    let mut s = format!("{n:.*}", keta);
+    suso_wo_otosu(&mut s);
+    s
+}
+
+/// 末尾の 0 と、残った小数点を落とします(小数点がある字にだけ効きます)
+fn suso_wo_otosu(s: &mut String) {
+    if !s.contains('.') {
+        return;
+    }
+    while s.ends_with('0') {
+        s.pop();
+    }
+    if s.ends_with('.') {
+        s.pop();
+    }
+}
+
+/// **10 の指数**(`x` は正の有限の数)。
+///
+/// `log10().floor()` では境目でずれます。99999999999999.9 の `log10` は
+/// 倍精度で 14.0 ちょうどに丸まるので、指数が 13 ではなく 14 になり、
+/// 小数の桁が1桁足りずに 100000000000000 と出ていました。
+///
+/// 10 の冪と比べ直す手もありますが、`10f64.powi(100)` は 1e100 と同じ数に
+/// なりません(積み重ねた誤差が出ます)。Rust の `{:e}` は正しく丸めた
+/// 10進を返すので、そこから指数を読みます。
+fn juu_no_shisuu(x: f64) -> i32 {
+    let s = format!("{x:e}");
+    match s.rsplit_once('e') {
+        Some((_, e)) => e.parse().unwrap_or(0),
+        None => 0,
+    }
+}

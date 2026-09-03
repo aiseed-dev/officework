@@ -101,8 +101,8 @@ impl AP<'_, '_> {
             self.p.next();
             let r = self.mul()?;
             v = zip_aval(&v, &r, |x, y| match o {
-                '+' => Value::Number(x.as_number() + y.as_number()),
-                '-' => Value::Number(x.as_number() - y.as_number()),
+                '+' => Value::Number(chikai_tashizan(x.as_number(), y.as_number())),
+                '-' => Value::Number(chikai_hikizan(x.as_number(), y.as_number())),
                 _ => Value::Text(format!("{}{}", x.display(), y.display())),
             });
         }
@@ -5044,4 +5044,71 @@ pub(super) fn array_call(name: &str, args: Vec<Arg>) -> Result<Vec<Vec<Value>>, 
         }
         _ => Err(err("#NAME?")),
     }
+}
+
+/// **足して、打ち消し合ったら 0 にします。**
+///
+/// LibreOffice の `rtl::math::approxAdd` と同じです(2026-09-03 発注者
+/// 「独自の判断でなくて、LibreOffice に合わせて」)。符号が違っていて、
+/// 絶対値が [`chikai`] の意味で等しければ、足さずに 0 を返します。
+pub(super) fn chikai_tashizan(a: f64, b: f64) -> f64 {
+    if ((a < 0.0 && b > 0.0) || (b < 0.0 && a > 0.0)) && chikai(a, -b) {
+        return 0.0;
+    }
+    a + b
+}
+
+/// **引いて、打ち消し合ったら 0 にします。**
+///
+/// LibreOffice の `rtl::math::approxSub` と同じです。符号が同じで、
+/// [`chikai`] の意味で等しければ 0 を返します。
+///
+/// `=1-0.9-0.1` はこれが無いと -2.78e-17 が残ります。LibreOffice も Excel も
+/// 0 を返し、`=(1-0.9-0.1)=0` は TRUE になります。
+pub(super) fn chikai_hikizan(a: f64, b: f64) -> f64 {
+    if ((a < 0.0 && b < 0.0) || (a > 0.0 && b > 0.0)) && chikai(a, b) {
+        return 0.0;
+    }
+    a - b
+}
+
+/// **2つの数が、倍精度の刻みの範囲で同じか。**
+///
+/// LibreOffice の `rtl_math_approxEqual` を写しました。許す幅は2つあり、
+/// 大きい方を使います。
+///
+/// * 小さい方の絶対値の 2^-48 倍(仮数の下4桁ぶん)
+/// * 小さい方の10の指数での、有効数字15桁目の半分(5e-15)
+///
+/// **片方が 0 なら、決して等しくなりません。** 符号が違うときも同じです。
+/// 整数どうしで、倍精度がどちらも正確に表せるときも等しくしません
+/// (1 と 2 を近いと言わないためです)。
+pub(super) fn chikai(a: f64, b: f64) -> bool {
+    // 仮数の下4桁
+    const E48: f64 = 1.0 / 281_474_976_710_656.0; // 2^-48
+    // 有効数字15桁目の半分
+    const HAN15: f64 = 5e-15;
+    // 倍精度が整数を1つ残らず表せる範囲
+    const SEIGO: f64 = 9_007_199_254_740_992.0; // 2^53
+
+    if a == b {
+        return true;
+    }
+    if a == 0.0 || b == 0.0 || a.is_sign_negative() != b.is_sign_negative() {
+        return false;
+    }
+    let d = (a - b).abs();
+    if !d.is_finite() {
+        return false;
+    }
+    let (a, b) = (a.abs(), b.abs());
+    let chiisai = a.min(b);
+    let haba1 = chiisai * E48;
+    let haba2 = 10f64.powi(chiisai.log10().floor() as i32) * HAN15;
+    if d >= haba1.max(haba2) {
+        return false;
+    }
+    // 正確に表せる整数どうしは、近くても別の数です
+    let seisuu = |v: f64| v.fract() == 0.0 && v < SEIGO;
+    !(seisuu(a) && seisuu(b))
 }
