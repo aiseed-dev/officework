@@ -497,8 +497,20 @@ Word で人が書いた docx は run が字ごとに割れ、rsid と rPr が付
 |find(text) |字を探してブロックの番号で返す
 |fields / fill_fields(values) |記入欄の一覧と記入(今の fill_field を値の組で)
 |to_pdf(path) / save |今の物のまま(保存は確認のボタン)
-|run_macro(code) |python-docx のサンドボックス(今の AiJob::Macro の道)
+|run_macro(code) |サンドボックスの Python。**渡すのは AsciiDoc の字、返すのも AsciiDoc の字**(下)
 |===
++
+**マクロは docx を通さない**(2026-09-04 発注者「docx で渡して docx でもらうのは
+効率が悪い」)。今の AiJob::Macro は python-docx に docx を渡して docx を受け取る
+形だが、これは docx を作って読む往復が毎回入る上に、モデルが python-docx の
+書き方(run・段落・表のオブジェクト)を書かなければならない。パネルのマクロは
+`src`(文書の AsciiDoc の字)を受け取り、直した字を返す普通の Python にする。
+本体はそれを adoc として読み直して1手で入れる。ブロックの番号を付けた形で
+渡せるので、「3番から 40 番の見出しを一段下げる」のような一括の直しが
+字の処理で書ける。docx は開く時と保存する時の端にだけ現れる(writer は
+意味エディタ + レンダラの決め)。python-docx のマクロは、docx そのものを直す
+特殊な用途として残すかどうかを別に決める(Python の文書 API officework._doc も
+python-docx の上にあるので、同じ問いになる — 決め待ちに追加)
 +
 ブロックの番号は `Document.blocks` の添字で、読んだ時の字を持たせて
 (表のセルと同じ照合の考え)書き替えの前にずれを見る。**選んでいる範囲が
@@ -605,6 +617,8 @@ Word で人が書いた docx は run が字ごとに割れ、rsid と rPr が付
   配布版に入れるか)
 - 宛先「Codex」を配布版に入れるか(OpenAI の明言が無い。問い合わせるか、
   自分の機械で使う道に留めるか)
+- python-docx のマクロと officework._doc(python-docx の上の文書 API)を
+  残すか、AsciiDoc の字とブロックの API に寄せるか
 
 (既定のモデルと道具呼びの行の見せ方は決まった — 2026-09-02。
 「提供元の一覧」と「対話の画面の決め」に書いた)
