@@ -1621,8 +1621,9 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         gc: usize,     // 占める格子の左端
         span: usize,
         v: VMerge,
-        /// 行の字と、セルの中でのバイト位置と、行の高さ(mm)と、横の揃えと、字の大きさ(pt)
-        lines: Vec<(Vec<Cell>, usize, f32, Align, f32)>,
+        /// 行の字と、セルの中でのバイト位置と、行の高さ(mm)と、横の揃えと、
+        /// 字の大きさ(pt)と、1行目の字下げ(mm)
+        lines: Vec<(Vec<Cell>, usize, f32, Align, f32, f32)>,
         x: f32,
         w: f32,
         /// セルの背景色。**セルの中の最初の段落の物**を使います
@@ -1653,7 +1654,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let span = cell.span().min(ncols.saturating_sub(gc)).max(1);
             let x = xs[gc.min(ncols)];
             let w = xs[(gc + span).min(ncols)] - x;
-            let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32)> = Vec::new();
+            let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32, f32)> = Vec::new();
             // **セルの中の余白**。セル自身の `w:tcMar` が最優先で、次が表の
             // `w:tblCellMar`、どちらも無ければ既定です(2026-09-03)
             let pad: [f32; 4] = cell
@@ -1688,6 +1689,16 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     // なっていました。空きは最初の行と最後の行に足します
                     let mae = space_before_mm(para, pbase);
                     let ato = space_after_mm(para, pbase);
+                    // **段落のインデント**(`w:ind`)。セルの中でも本文と同じに
+                    // 扱います(2026-09-03)。左のインデントは全部の行に、
+                    // 1行目の字下げは1行目だけに効きます。
+                    //
+                    // **2つで1組です。** ぶら下げ(`w:hanging`)は1行目だけを
+                    // 左へ戻す書き方で、左のインデントと必ず一緒に書かれます。
+                    // 片方だけ効かせると、1行目がセルの外へ出ます
+                    let hidari = left_mm(para, pbase * PT_TO_MM);
+                    let sagari = first_line_mm(para, pbase);
+                    let inner = (inner - hidari).max(2.0);
                     let mut kore = break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase);
                     let saigo = kore.len().saturating_sub(1);
                     for (k, cs) in kore.drain(..).enumerate() {
@@ -1699,14 +1710,14 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         // **セルの幅いっぱいに字を配る**(`w:tcFitText`)。
                         // 帳票の項目名で使う書き方です(2026-09-03)
                         let yose = if cell.fit_text { Align::Distribute } else { para.align };
-                        ls.push((cs, b0, h, yose, pt));
+                        ls.push((cs, b0, h, yose, pt, hidari + if k == 0 { sagari } else { 0.0 }));
                     }
                     let plen: usize = para.runs.iter().map(|r| r.text.len()).sum();
                     para0 += plen + 1;
                 }
                 // **上下の余白もそのセルの高さ**です。セルごとに `w:tcMar` が
                 // 違えば、行の高さはいちばん高いセルで決まります
-                let naka: f32 = ls.iter().map(|(_, _, h, _, _)| *h).sum();
+                let naka: f32 = ls.iter().map(|(_, _, h, _, _, _)| *h).sum();
                 takasa = takasa.max(naka + pad[0] + pad[2]);
             }
             // **セル自身の塗りが先。** 表スタイルの帯の色はここに入ります。
@@ -1780,7 +1791,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             // 前はどのセルも上に置いていたので、「□認められる」の行が
             // セルの頭に張り付いていました(2026-09-01 発注者)
             let pfont2 = doc.font.clone();
-            let naka: f32 = l.lines.iter().map(|(_, _, h, _, _)| *h).sum();
+            let naka: f32 = l.lines.iter().map(|(_, _, h, _, _, _)| *h).sum();
             let aki = (h - l.pad[0] - l.pad[2] - naka).max(0.0);
             let ue = match l.valign {
                 book::VAlign::Middle => aki / 2.0,
@@ -1790,7 +1801,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let mut yy = row_top + l.pad[0] + ue;
             let id = Some((table_no, ri, l.ci));
             let uti = (l.w - l.pad[1] - l.pad[3]).max(0.0);
-            for (cells, b0, plh, yose, pt) in l.lines {
+            for (cells, b0, plh, yose, pt, sagari) in l.lines {
                 // **ベースラインは書体の上がりの所**です。LibreOffice と
                 // 同じで、行の箱が字より高いぶんは全部ベースラインより上に
                 // 置き、下に残るのは書体の足の深さだけです
@@ -1822,7 +1833,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 } else {
                     0.0
                 };
-                let mut x = x0 + zure;
+                let mut x = x0 + zure + sagari;
                 let cells: Vec<Cell> = cells
                     .into_iter()
                     .map(|mut c| { c.x_mm = x; x += c.w_mm + aki; c })
