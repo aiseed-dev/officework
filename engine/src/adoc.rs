@@ -1218,6 +1218,10 @@ fn vendor_only_syntax(l: &str) -> Option<(&'static str, &'static str)> {
     if ts.starts_with("//") {
         return Some(("覚え書きの行(//)", "覚え書き"));
     }
+    // markdown 流の引用(`> 文`)。本家はこれも引用として組む。行ごとに原文のまま
+    if ts == ">" || ts.starts_with("> ") {
+        return Some(("引用の行(>)", "引用の行"));
+    }
     // コールアウトの一覧(`<1> 説明`)。コードの塊の後ろに並ぶ。行ごとに原文のまま
     if ts.starts_with('<') {
         if let Some(rest) = ts.strip_prefix('<').and_then(|r| r.split_once('>')) {
@@ -1469,7 +1473,16 @@ fn is_delim(t: &str, mark: &str) -> bool {
     if mark.chars().count() == 4 && mark.chars().all(|c| c == head) {
         return t.chars().count() >= 4 && t.chars().all(|x| x == head);
     }
+    // ``` は言語を続けて書ける(```ruby)。閉じは ``` だけ
+    if mark == "```" {
+        return t.starts_with("```") && !t[3..].contains('`');
+    }
     t == mark
+}
+
+/// 開きの印に対する閉じの印(```ruby を開いたら閉じは ```)
+fn close_mark(open: &str) -> String {
+    if open.starts_with("```") { "```".to_string() } else { open.to_string() }
 }
 
 
@@ -1891,7 +1904,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                     };
                     let inner_style = block_inner_style(&mark, spec.as_deref());
                     while let Some((_, l2)) = lines.next() {
-                        let closing = l2.trim_end() == mark;
+                        let closing = l2.trim_end() == close_mark(&mark);
                         if closing {
                             // 閉じの印。後ろの空行も原文に含めて持ち越す
                             let blank_line = empty(&mut lines);
@@ -2083,7 +2096,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             continue;
         }
         if let Some(rest) = l.strip_prefix("image::") {
-            let (path, _attrs) = split_macro_target(rest)
+            let (path, attrs) = split_macro_target(rest)
                 .ok_or_else(|| format!("{} 行目: image:: の形が読めません", ln + 1))?;
             let mut p = base_para(&mut pending_bookmarks, &mut pending_break, &mut pending_style);
             p.images_new.push(InlineImage {
@@ -2094,6 +2107,13 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 src: Some(path.to_string()),
                 off: 0,
             });
+            // **`[…]` の中身(代替の字・幅・リンク)は原文のまま持ちます**(2026-09-03)。
+            // 模型には代替の字の欄が無いので、行を丸ごと覚えて書き戻しで返します。
+            // 錨や改ページの印を抱えた段落は、原文の道では書けないので普通に書きます
+            if !attrs.trim().is_empty() && p.bookmarks.is_empty() && !p.page_break_before && p.style_id.is_none() {
+                let blank_line = next_is_blank(&mut lines);
+                p.raw_adoc = Some(if blank_line { format!("{l}\n") } else { l.to_string() });
+            }
             doc.blocks.push(Block::Para(p));
             continue;
         }
