@@ -500,7 +500,14 @@ pub fn write_pages_fonts<W: std::io::Write>(
             if p.bold {
                 c.set_text_rendering_mode(TextRenderingMode::FillStroke);
                 c.set_stroke_rgb(r, g, b);
-                c.set_line_width(pt(0.12));
+                // **太さは字の高さの 30 分の1**(2026-09-03)。
+                // LibreOffice の PDF の書き手と同じ数です
+                // (`vcl/source/pdf/pdfwriter_impl.cxx`、artificial bold:
+                // `double fW = GetFontHeight() / 30.0;`)。
+                // 前は 0.12mm の決め打ちで、16pt の見出しでは 0.34pt にしか
+                // ならず、太字に見えていませんでした(内閣府の面談の記録の
+                // 「議論項目」)。大きい字ほど太らせる量も要ります
+                c.set_line_width(p.size_pt / 30.0);
             }
             c.set_text_matrix([a, b, cc, d, pt(p.x_mm), pt(p.y_mm)]);
             c.show(Str(&bytes));
@@ -1107,18 +1114,36 @@ mod tests {
         let mut out = Vec::new();
         sheet_to_pdf(&sheet, &bytes, pp, std::io::Cursor::new(&mut out)).expect("PDF が出ない");
         // **太字は輪郭を重ねて作ります**(2026-09-01)。塗りと線の両方で
-        // 描く指示(`Tr 2`)と、線の太さ(0.12mm = 0.34pt)がその跡です。
+        // 描く指示(`Tr 2`)と、線の太さがその跡です。
         //
         // 前は同じ字を 0.12mm ずらして二度打っていました。見た目は同じでも、
         // PDF の中に字が2つ並ぶので、選んで写すと語が二重になります
         let body = unpack(&out);
         assert!(body.contains("2 Tr"), "太字が出ていない(Tr 2 が無い)");
-        // 線の太さは 0.12mm。pt に直すと 0.34 です
-        let futosa = body
+        // **線の太さは字の高さの 30 分の1**(2026-09-03)。LibreOffice の
+        // PDF の書き手(`vcl/source/pdf/pdfwriter_impl.cxx` の artificial
+        // bold)と同じ数です。前は 0.12mm の決め打ちで、大きい字ほど細く
+        // 見えていました(16pt の見出しで 0.34pt しかありませんでした)。
+        //
+        // この文書で太字になるのは題だけです。本文の `*太い字*` は
+        // AsciiDoc の読み手がまだ太字にしないので、ここには出ません
+        let t = kumihan::theme::default_theme();
+        let d = kumihan::theme::compose(&doc, &t);
+        let hoshii: Vec<f32> = d
+            .paragraphs()
+            .flat_map(|p| p.runs.iter())
+            .filter(|r| r.fmt.bold)
+            .map(|r| r.size_pt.unwrap_or(kumihan::DEFAULT_PT) / 30.0)
+            .collect();
+        assert!(!hoshii.is_empty(), "組んだ文書に太字が1つも無い");
+        let futosa: Vec<f32> = body
             .lines()
             .filter_map(|l| l.strip_suffix(" w")?.trim().parse::<f32>().ok())
-            .any(|w| (w - 0.34).abs() < 0.02);
-        assert!(futosa, "太字の線の太さ(0.34pt)が無い");
+            .collect();
+        assert!(
+            hoshii.iter().any(|h| futosa.iter().any(|w| (w - h).abs() < 0.02)),
+            "太字の線の太さが字の高さの30分の1になっていない: 欲しい {hoshii:?} / 出た {futosa:?}"
+        );
         // **字は1度だけ書きます。** 同じ y で 0.34pt だけずれた置き方が
         // 並んでいたら、二度打ちに戻っています
         let places: Vec<(f32, f32)> = body

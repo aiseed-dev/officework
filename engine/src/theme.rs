@@ -1612,6 +1612,22 @@ fn grid_cell(text: &str) -> crate::doc::Cellbox {
 ///
 /// 段落が直に言っている所は触りません。docx の決めどおり、run の `w:rPr` が
 /// スタイルより強く、スタイルは `docDefaults` より強い順です。
+/// **文書の既定を、まだ言っていない段落へ入れる**(docx の `w:docDefaults`)。
+///
+/// スタイルより下の層なので、スタイルを当てた後に呼びます。
+fn bunsho_no_kitei(
+    para: &mut crate::doc::Paragraph,
+    after_pt: Option<f32>,
+    line: Option<f32>,
+) {
+    if para.space_after_pt == 0.0 {
+        para.space_after_pt = after_pt.unwrap_or(0.0);
+    }
+    if para.line_spacing <= 0.0 && para.line_pt.is_none() {
+        para.line_spacing = line.unwrap_or(0.0);
+    }
+}
+
 fn jibun_wo_ateru(
     para: &mut crate::doc::Paragraph,
     lk: &crate::doc::StyleLook,
@@ -1675,6 +1691,15 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
         .into_iter()
         .filter_map(|id| out.style_matome(&id).map(|(l, p)| (id, l, p)))
         .collect();
+    // **文書の既定(層1)。** `w:docDefaults` が言う段落後の空きと行間です。
+    // スタイルより下の層なので、スタイルを当てた後に、まだ言っていない所へ
+    // 入れます。段落が自分で言っていればそちらが勝ちます。
+    //
+    // **表示用の写しにだけ当てます。** 元の模型に焼き付けると、開いて保存した
+    // だけで、元は書いていなかった `w:spacing` が全部の段落に付きます
+    // (2026-09-03 発注者)
+    let doc_after = doc.space_after_pt;
+    let doc_line = doc.line_spacing;
     for block in &mut out.blocks {
         let crate::doc::Block::Para(para) = block else { continue };
         if let Some((_, lk, pl)) = para
@@ -1683,8 +1708,10 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             .and_then(|id| jibun.iter().find(|(i, _, _)| i == id))
         {
             jibun_wo_ateru(para, lk, pl);
+            bunsho_no_kitei(para, doc_after, doc_line);
             continue;
         }
+        bunsho_no_kitei(para, doc_after, doc_line);
         // 名指しのスタイル(style_id)が役割の固定名より勝つ —
         // 利用者が新設した物は名前で着る
         let def = para

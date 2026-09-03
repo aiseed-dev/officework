@@ -313,7 +313,61 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     if let Ok(mut f) = zip.by_name(&bui("styles", "word/styles.xml")) {
         let _ = f.read_to_string(&mut styles);
     }
+    // **docx を読むときの層0の既定。**
+    //
+    // 規格(ECMA-376 §17.7.2)の層の並びに「アプリの既定」はありません。
+    // どこにも書いていないときに読み手が使う値です。LibreOffice は
+    // 10pt を置き、**言語では変えません**(`StyleSheetTable` の作りはじめと、
+    // tdf#87533「LibreOffice の既定は言語で変わるので、決められた値で読む」)。
+    // うちも同じにします。`DEFAULT_PT`(10.5)は自分で作る文書の既定で、
+    // docx を読む道では使いません(2026-09-03 発注者)
+    doc.size_pt = Some(10.0);
     if let Some(i) = styles.find("docDefaults") {
+        // **層1。** この節が言うことは、スタイルより下・層0より上です。
+        // 字の大きさ・段落後の空き・行間を読みます。python-docx の型紙は
+        // 11pt・段落後 10pt・行間 1.15 を書きます
+        if let Some(e) = styles[i..].find("</w:docDefaults>").map(|e| i + e) {
+            let naka = &styles[i..e];
+            let tag = |from: &str, name: &str| -> Option<String> {
+                let n = from.find(name)?;
+                let k = n + from[n..].find('>')?;
+                Some(from[n..k].to_string())
+            };
+            // 札の中の属性を引く(この節だけの小さな道具)
+            let zoku = |t: &str, key: &str| -> Option<String> {
+                let pat = format!("{key}=\"");
+                let i = t.find(&pat)? + pat.len();
+                let e = t[i..].find('"')? + i;
+                Some(t[i..e].to_string())
+            };
+            // 字の大きさは `w:rPrDefault` の中の `w:sz`(2分の1 pt)
+            if let Some(rp) = naka.find("<w:rPrDefault").and_then(|n| {
+                naka[n..].find("</w:rPrDefault>").map(|e| &naka[n..n + e])
+            }) {
+                if let Some(t) = tag(rp, "<w:sz ") {
+                    if let Some(Ok(h)) = zoku(&t, "w:val").map(|v| v.parse::<f32>()) {
+                        doc.size_pt = Some(h / 2.0);
+                    }
+                }
+            }
+            // 段落の空きと行間は `w:pPrDefault` の中の `w:spacing`
+            if let Some(pp) = naka.find("<w:pPrDefault").and_then(|n| {
+                naka[n..].find("</w:pPrDefault>").map(|e| &naka[n..n + e])
+            }) {
+                if let Some(t) = tag(pp, "<w:spacing") {
+                    // twip の 20 分の1が pt
+                    if let Some(Ok(v)) = zoku(&t, "w:after").map(|v| v.parse::<f32>()) {
+                        doc.space_after_pt = Some(v / 20.0);
+                    }
+                    // 240 が1行(docx の決め)。`w:lineRule` が auto のときだけ倍率
+                    if zoku(&t, "w:lineRule").as_deref() == Some("auto") {
+                        if let Some(Ok(v)) = zoku(&t, "w:line").map(|v| v.parse::<f32>()) {
+                            doc.line_spacing = Some(v / 240.0);
+                        }
+                    }
+                }
+            }
+        }
         let head = &styles[i..(i + 600).min(styles.len())];
         // **書体は <w:rFonts> の中だけから読む。** docDefaults には
         // <w:lang w:val="en-US" w:eastAsia="en-US"/> のような**言語**の指定も
@@ -1073,7 +1127,56 @@ fn style_para(body: &str) -> kumihan::StyleParaLook {
         first_line_twips: ind(body, "w:firstLine")
             .or_else(|| ind(body, "w:hanging").map(|v| -v))
             .map(|v| v as i32),
+        // **箇条書きの番号。** `w:numPr` の中の `w:numId` です
+        num_id: body.find("<w:numPr").and_then(|n| {
+            let k = n + body[n..].find("<w:numId")?;
+            let e = k + body[k..].find('>')?;
+            attr_of(&body[k..e], "w:val").parse().ok()
+        }),
+        // **段落の罫線。** 本文の `w:pBdr` と同じ辺を読みます
+        border: pbdr_of(body),
     }
+}
+
+/// **スタイルの `w:pBdr` を読む。** 本文の側は読み手の流れの中で組み立てますが、
+/// スタイルは字の並びしか無いので、こちらで同じ辺を拾います。
+///
+/// python-docx の既定の型紙は、題(`Title`)の下の線をここに書きます
+/// (本文には1文字もありません)。2026-09-03。
+fn pbdr_of(body: &str) -> Option<kumihan::ParaBorder> {
+    let n = body.find("<w:pBdr")?;
+    let owari = body[n..].find("</w:pBdr>").map(|e| n + e).unwrap_or(body.len());
+    let naka = &body[n..owari];
+    let mut b = kumihan::ParaBorder::default();
+    for (tag, at) in [
+        ("<w:top", 0u8), ("<w:bottom", 1), ("<w:left", 2), ("<w:right", 3), ("<w:between", 4),
+    ] {
+        let Some(k) = naka.find(tag) else { continue };
+        let e = naka[k..].find('>').map(|e| k + e).unwrap_or(naka.len());
+        let seg = &naka[k..e];
+        // 同じ字で始まる別の名前(`<w:topLinePunct` など)を拾わない
+        if !matches!(seg.as_bytes().get(tag.len()), Some(b' ') | Some(b'/') | Some(b'>')) {
+            continue;
+        }
+        let v = attr_of(seg, "w:val");
+        if v == "none" || v == "nil" {
+            continue;
+        }
+        if let Ok(x) = attr_of(seg, "w:space").parse::<f32>() {
+            b.space_pt = b.space_pt.max(x);
+        }
+        if let Ok(x) = attr_of(seg, "w:sz").parse::<f32>() {
+            b.w_pt = b.w_pt.max(x / 8.0);
+        }
+        match at {
+            0 => b.top = true,
+            1 => b.bottom = true,
+            2 => b.left = true,
+            3 => b.right = true,
+            _ => b.between = true,
+        }
+    }
+    b.aru().then_some(b)
 }
 
 /// `w:ind` の値(twip)
@@ -1097,16 +1200,32 @@ fn align_of(v: &str) -> Option<kumihan::Align> {
 fn style_look(body: &str) -> kumihan::StyleLook {
     let mut l = kumihan::StyleLook::default();
     // 三択を守ります。`<w:b/>` は入、`<w:b w:val="0"/>` は切、無ければ言わない
+    //
+    // **同じ字で始まる別の名前を飛ばして、次を探します**(2026-09-03)。
+    // `<w:b` は `<w:basedOn` にも、`<w:u` は `<w:uiPriority` にも当たります。
+    // 前は最初に当たった所で打ち切っていたので、`w:basedOn` を持つスタイルの
+    // 太字が1つも読めていませんでした。内閣府の面談の記録
+    // (document_4.docx)の「議論項目」は heading 2 で、その定義は
+    // `<w:basedOn w:val="a1"/>` の後ろに `<w:b/>` を書いています。
+    // 色と大きさは別の名前で引くので効いていて、太字だけが落ちていました
     let flag = |tag: &str| -> Option<bool> {
         let open = format!("<w:{tag}");
-        let i = body.find(&open)?;
-        let seg = &body[i..body[i..].find('>').map(|e| i + e + 1)?];
-        // `<w:bCs` のような別の札を拾わないよう、次の字で確かめます
-        let after = seg.as_bytes().get(open.len())?;
-        if !matches!(after, b'/' | b'>' | b' ') {
-            return None;
+        let mut from = 0usize;
+        while let Some(k) = body[from..].find(&open) {
+            let i = from + k;
+            let end = body[i..].find('>').map(|e| i + e + 1)?;
+            let seg = &body[i..end];
+            match seg.as_bytes().get(open.len()) {
+                Some(b'/') | Some(b'>') | Some(b' ') => {
+                    return Some(!matches!(
+                        attr_of(seg, "w:val").as_str(),
+                        "0" | "false" | "none"
+                    ));
+                }
+                _ => from = i + open.len(),
+            }
         }
-        Some(!matches!(attr_of(seg, "w:val").as_str(), "0" | "false" | "none"))
+        None
     };
     l.bold = flag("b");
     l.italic = flag("i");

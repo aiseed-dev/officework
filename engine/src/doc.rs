@@ -928,6 +928,15 @@ pub struct Document {
     /// 文書の既定の字の大きさ(docx の `w:docDefaults` の `w:sz`)。
     /// run が `None` のときに効く。これも `None` なら [`DEFAULT_PT`]
     pub size_pt: Option<f32>,
+    /// **文書の既定の段落後の空き**(docx の `w:docDefaults/w:pPrDefault` の
+    /// `w:spacing w:after`。pt)。段落が自分で言っていなければこれを使います。
+    ///
+    /// python-docx の型紙は 10pt を書きます。読まないと段落が全部くっつきます
+    /// (2026-09-03)
+    pub space_after_pt: Option<f32>,
+    /// **文書の既定の行間の倍率**(同じく `w:spacing w:line` ÷ 240)。
+    /// python-docx の型紙は 276/240 = 1.15 です
+    pub line_spacing: Option<f32>,
     /// 用紙の設定。無ければ既定(A4)
     pub page: Option<PageSetup>,
     /// 節の設定の原文(w:sectPr)。ヘッダーの参照などが入っているので、
@@ -1113,6 +1122,17 @@ pub struct StyleParaLook {
     pub indent: Option<u8>,
     /// 1行目の字下げ(twip。負はぶら下げ)
     pub first_line_twips: Option<i32>,
+    /// **箇条書きの番号の指定**(docx の `w:pPr/w:numPr/w:numId`)。
+    ///
+    /// python-docx の `add_paragraph(style="List Bullet")` は本文に
+    /// `w:numPr` を書きません。中黒も番号もスタイルの側にあります。
+    /// 読まないと、箇条書きが**ただの段落**になります(2026-09-03)
+    pub num_id: Option<u32>,
+    /// **段落の罫線**(docx の `w:pPr/w:pBdr`)。
+    ///
+    /// python-docx の既定の型紙では、題(`Title`)の下の線がここにあります。
+    /// 本文には1文字も書いてありません
+    pub border: Option<ParaBorder>,
 }
 
 /// スタイルが持つ字の見た目(docx の `w:rPr`)。三択(入・切・言わない)です。
@@ -2168,6 +2188,8 @@ impl Document {
             pl.line_spacing = pl.line_spacing.or(s.para.line_spacing);
             pl.indent = pl.indent.or(s.para.indent);
             pl.first_line_twips = pl.first_line_twips.or(s.para.first_line_twips);
+            pl.num_id = pl.num_id.or(s.para.num_id);
+            pl.border = pl.border.or(s.para.border);
             match s.based_on.as_deref() {
                 Some(o) => ima = o,
                 None => break,
