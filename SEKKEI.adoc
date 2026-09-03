@@ -7223,3 +7223,82 @@ DataTable に写すのではなく、**officework の文書と表がそのまま
 
 これで builder の「作成だけ、実行はしない」とも揃う — 部品は見せる物と値の
 入れ物で、動きは持たない。
+
+== 検討: 文書を「エンジンと公開する物」と「それ以外」に分ける(2026-09-03 発注者)
+
+発注者「作業を適当なところで、一旦置いて、ドキュメントをエンジンで公開するものと、
+それ以外のものの分離を設計して」。Opus がエンジン(PyPI の officework)の公開作業を
+進めるので、公開に付いて行く文書の範囲を決める。
+
+=== いま
+
+docs/ には 3 種類が混ざっている。利用者向けの冊子(日英の対)、作る側の資料
+(SEKKEI・docs/sekkei・guide-tsukiawase-2・corpus・pysheet-gokan・mac-signing・
+release-tejun)、開発者マニュアル(docs/dev)。利用者向けの冊子の中にも、
+アプリ(writer / calc の画面)が無いと使えない物と、`pip install officework` だけで
+使える物がある。PyPI の頁(pysheet/README.md)は GitHub の docs/ の径路にリンクを
+刺している。2026-08-26 の決め「ファイルの場所は動かさない」はそのまま。
+
+=== 決め(案): 動かさずに、一覧で分ける
+
+場所は動かさない。代わりに**エンジンの文書の一覧**(`docs/engine-docs.txt`)を置き、
+その一覧に載る冊子だけが「エンジンと公開する物」になる。一覧は検査の対象で、
+公開の手順の1段になる。
+
+[cols="1,2,2"]
+|===
+|組 |冊子 |なぜ
+
+|エンジンと公開する物
+|pysheet/README.md(PyPI の頁)・python-manual・functions(関数の一覧)・df-manual・
+tutorial-word・tutorial-calc・docx-xlsx-tono-chigai・api-taiou・genkou-manual の
+「Python から出す」の部分・LICENSE と NOTICE
+|`pip install officework` だけで試せる。例は headless で動く(tutorial は
+受け入れ試験そのもの)。api-taiou は openpyxl / python-docx から来る人が引く表
+
+|アプリの物
+|calc-manual・writer-manual・commands/(263 枚)・macro-manual・from-excel・
+templates/README・sample/README・genkou-manual の画面の部分
+|画面(リボン・パネル・ボタン)が無いと意味が無い。アプリの配り物に付く
+
+|作る側の物
+|SEKKEI・docs/sekkei・docs/dev・guide-tsukiawase-2・corpus・pysheet-gokan・
+mac-signing・release-tejun・docs/articles・docs/engine(genoffice との関係)
+|公開の対象ではない(リポジトリで読む)
+|===
+
+genkou-manual は両方にまたがるので、**Python から4つの形で出す節**をエンジンの側に
+数え、画面の節はアプリの側に数える。分けて2冊にはしない(1冊で通して読む物)。
+
+=== 境の規則
+
+. エンジンの文書は、`pip install officework` だけでできることしか書かない。
+  「リボン」「ボタン」「パネル」「画面」という言葉が出たら、その頁はアプリの物か、
+  境を越えている(検査で拾う)
+. アプリの文書はエンジンの文書へリンクしてよい。逆は「アプリで開く」の一言だけ
+. エンジンの文書の例は、全部この機械で実際に動かしてから載せる(python-manual の
+  「全部この機械で実測してある」の約束をエンジンの文書全体に広げる)
+. 日英の対はエンジンの文書から先に揃える(英語が原本。PyPI の読み手は英語)
+. 版の番号は文書に書かない(書くと公開のたびに直す物が増える)。書くのは
+  pysheet/README.md の 1 か所だけ
+
+=== 検査と公開の手順(Opus への依頼)
+
+. `docs/engine-docs.txt` に上の一覧を書く(径路を1行1つ)
+. `tools/engine_docs_check.py`: 一覧の径路が存在し、日英の対が揃い、
+  pysheet/README.md のリンク先が一覧の中にあり、一覧の冊子に画面の言葉が
+  無いことを見る。落ちたら理由を言う
+. publish-pypi.yml の guard の段にその検査を足す(wheel の中身の検査と同じ所)
+. release-tejun.ja.adoc に「エンジンの文書の検査が緑」を1段足す
+. docs/ja/README.adoc と docs/en/README.adoc の一覧に「エンジンだけで使える」の
+  印(列)を付ける。利用者が pip だけで足りるかを一目で分かるように
+. tutorial の2冊は受け入れ試験(test/)と同じコードなので、公開のたびに試験が回る。
+  python-manual の例も同じ形にする(いまは手で実測)
+
+=== 決めていない物
+
+* エンジンの文書を wheel に同梱するか。いまは同梱せず、PyPI の頁から GitHub へ
+  リンクする。同梱すると wheel が数百 KB 増えるだけだが、docs のリンクが相対で
+  壊れる。当面は同梱しない
+* docs の外(GitHub Pages など)に組んだ HTML を置くか。置くならエンジンの文書だけを
+  先に出す(一覧がそのまま対象になる)
