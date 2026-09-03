@@ -769,20 +769,25 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
             }
             wrote = true;
             prev_is_multi = many_paras;
-            if let VMerge::Start = cell.v_merge {
-                let n = vspan_of(t, ri, grid_col(row, k));
-                if n > 1 {
-                    out.push_str(&format!(".{n}+"));
+            // 読んだセルの指定の字があれば、そのまま返す(結合・揃え・種類が全部入っている)
+            if let Some(spec) = cell.paragraphs.first().and_then(|p| p.raw_adoc.as_deref()) {
+                out.push_str(spec);
+            } else {
+                if let VMerge::Start = cell.v_merge {
+                    let n = vspan_of(t, ri, grid_col(row, k));
+                    if n > 1 {
+                        out.push_str(&format!(".{n}+"));
+                    }
                 }
-            }
-            if cell.span() > 1 {
-                out.push_str(&format!("{}+", cell.span()));
-            }
-            // **段落が2つ以上のセルは `a|`** にします(本家の作法)。
-            // 素のセルは中身を1段落として組むので、詰めて書くと段落の
-            // 切れ目が消えます(実物の様式で 63 セルが当たりました)
-            if many_paras {
-                out.push('a');
+                if cell.span() > 1 {
+                    out.push_str(&format!("{}+", cell.span()));
+                }
+                // **段落が2つ以上のセルは `a|`** にします(本家の作法)。
+                // 素のセルは中身を1段落として組むので、詰めて書くと段落の
+                // 切れ目が消えます(実物の様式で 63 セルが当たりました)
+                if many_paras {
+                    out.push('a');
+                }
             }
             out.push('|');
             // **式は字のまま出します。** `=C2*150` の `*` を逃がすと
@@ -1481,6 +1486,11 @@ fn is_delim(t: &str, mark: &str) -> bool {
 }
 
 /// 開きの印に対する閉じの印(```ruby を開いたら閉じは ```)
+/// 表の区切りか。`|===` と、それより長い `|=======` も受ける(本家の作法)
+fn is_table_delim(t: &str) -> bool {
+    t.starts_with("|===") && t[1..].chars().all(|c| c == '=')
+}
+
 fn close_mark(open: &str) -> String {
     if open.starts_with("```") { "```".to_string() } else { open.to_string() }
 }
@@ -1588,8 +1598,8 @@ fn split_docs(src: &str) -> Vec<String> {
                 }
             }
             None => {
-                if content == "|===" || content == "____" {
-                    opened = Some(content.to_string());
+                if is_table_delim(content) || content == "____" {
+                    opened = Some(if content == "____" { "____".to_string() } else { "|===".to_string() });
                 } else if let Some((mark, _)) = DELIMITED.iter().find(|(d, _)| is_delim(content, d)) {
                     opened = Some((*mark).to_string());
                 } else if content == DOC_SEP_MARK && next_is_title(&lines, i) {
@@ -1995,11 +2005,13 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 continue;
             }
         }
-        if l == "|===" {
+        if is_table_delim(l) {
             let mut rows: Vec<&str> = Vec::new();
             let mut closed = false;
             // **1行目の後ろの空行が「見出しの行」の印**(AsciiDoc の作法)
             let mut heading_line = false;
+            // `|===` の直後が空行なら、見出しの行は無い(本家の作法。2026-09-03)
+            let mut no_header = false;
             // 空行を見た時点で本当の行が何行あったか(印の行は数えません)
             let mut real_line = 0usize;
             // いま `a|` のセルの中にいるか(続きの行では持ち越します)
@@ -2008,15 +2020,19 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 // **末尾は半角の空きだけ落とします。** 全角の空白(U+3000)は
                 // 日本語の様式では字下げなので、落とすと見た目が変わります
                 let tl = tl.trim_end_matches([' ', '\t', '\r']);
-                if tl == "|===" {
+                if is_table_delim(tl) {
                     closed = true;
                     break;
                 }
                 if tl.is_empty() {
+                    if real_line == 0 {
+                        no_header = true;
+                        continue;
+                    }
                     // 1行目の後ろの空行は**見出しの印**(今までどおり)。
                     // ただし `a|` のセルの中の空行は段落の切れ目なので、
                     // 見出しの印と取り違えません
-                    if real_line == 1 && !in_anchor {
+                    if real_line == 1 && !in_anchor && !no_header {
                         heading_line = true;
                         continue;
                     }
@@ -2046,7 +2062,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 _ => None,
             };
             let mut t = parse_table_lines(&rows, &mut doc, &mut fresh_note, col_spec)?;
-            t.header_row = heading_line;
+            t.header_row = heading_line && !no_header;
             // **直前の `[cols="1,3"]` は表の物です**(2026-08-18)。原文のまま
             // 持ち越した段落として残っているので、取り込んで消します。
             // 残したままだと、書くときに二重に出ます
@@ -2327,8 +2343,8 @@ fn setext_to_atx(src: &str) -> String {
             i += 2;
             continue;
         }
-        if l == "|===" || l == "____" {
-            open = Some(if l == "|===" { "|===" } else { "____" });
+        if is_table_delim(l) || l == "____" {
+            open = Some(if l == "____" { "____" } else { "|===" });
         } else if let Some((mark, _)) = DELIMITED.iter().find(|(d, _)| is_delim(l, d)) {
             open = Some(mark);
         }
@@ -2508,6 +2524,10 @@ fn parse_table_lines(
             let body = after_spec
                 .strip_prefix('|')
                 .ok_or_else(|| format!("表の行はセルごとに | で始める: {l}"))?;
+            // **セルの指定の字**(`2.2+^.^` `a` `3*` `>s` など)。結合以外は
+            // 効かせませんが、字は覚えて書き戻しでそのまま返します(2026-09-03)。
+            // 置き場はセルの1つ目の段落の raw_adoc(セルの段落では他に使いません)
+            let spec: &str = &restv[..restv.len() - body.len() - 1];
             let end = next_cell_start(body);
             let (cell_text, restn) = body.split_at(end);
             let mut cb = Cellbox {
@@ -2602,6 +2622,11 @@ fn parse_table_lines(
                 }
             }
             cb.paragraphs = paras;
+            if !spec.is_empty() {
+                if let Some(p0) = cb.paragraphs.first_mut() {
+                    p0.raw_adoc = Some(spec.to_string());
+                }
+            }
             this_row_cols += cb.span();
             cells.push(cb);
             restv = restn;
