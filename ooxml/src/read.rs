@@ -188,6 +188,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         doc.styles = parse_styles_num(&styxml, &shirushi);
         hyou_no_kei(&mut doc, &styxml);
     }
+    tblind_wo_naosu(&mut doc, &sxml);
     if !pxml.is_empty() {
         let field = |tag: &str| -> String {
             let open = format!("<{tag}");
@@ -474,6 +475,13 @@ pub(super) struct TblBuild {
     /// 罫線の指定(w:tblBorders)。**書いてなければ None** で、
     /// そのときは今までどおり四方に引きます
     borders: Option<kumihan::TableBorders>,
+    /// 表の幅を本文の幅の割合で言うとき(`w:tblW w:type="pct"`)の%
+    width_pct: Option<f32>,
+    /// 表の左のインデント(`w:tblInd`)の twip。**原文のまま**持ちます。
+    /// セルの余白を引く補正は、設定(compatibilityMode)を読める所でします
+    ind_twips: Option<f32>,
+    /// 見出しの行(`w:trPr/w:tblHeader`)が最初の行に付いていたか
+    header_row: bool,
 }
 
 /// twip → mm(1twip = 1/20pt)
@@ -1702,8 +1710,17 @@ pub(super) fn parse_document_rels_num(
     let mut in_tbl_borders = false;
     let mut in_tc_borders = false;
     let mut cell_borders = kumihan::CellBorders::default();
+    // **セルだけの余白**(`w:tcPr/w:tcMar`。mm。上右下左)。
+    // 罫線と同じ辺の名前で来るので、どの囲みの中かを覚えて読みます
+    let mut in_tc_mar = false;
+    let mut in_tbl_cell_mar = false;
+    let mut cell_mar: Option<[f32; 4]> = None;
+    // セルの幅いっぱいに字を配るか(`w:tcPr/w:tcFitText`)
+    let mut cell_fit = false;
     // 行の高さ(twip)。w:trPr の w:trHeight
     let mut row_twips: Option<u32> = None;
+    // その行が見出しの行か(`w:trPr/w:tblHeader`)
+    let mut row_header = false;
     // **無指定は None のまま持つ。** ここで数を入れると、往復で
     // 「10.5pt 指定」が焼き付く(2026-08-13、本家 python-docx で発覚)
     let mut size_pt: Option<f32> = None;
@@ -1819,6 +1836,10 @@ pub(super) fn parse_document_rels_num(
                     }
                     b"tcPr" => in_tcpr = true,
                     b"tcBorders" => in_tc_borders = true,
+                    // **余白の子は罫線と同じ辺の名前**(`w:top` など)なので、
+                    // どの囲みの中に居るかを覚えます(2026-09-03)
+                    b"tcMar" => in_tc_mar = true,
+                    b"tblCellMar" if in_tblpr => in_tbl_cell_mar = true,
                     // **セルの塗り。** 段落の `w:shd` と名前が同じなので、
                     // `w:tcPr` の中に居るかどうかで見分けます(2026-09-03)
                     b"shd" if in_tcpr => {
@@ -2053,6 +2074,40 @@ pub(super) fn parse_document_rels_num(
                     b"tblLayout" if in_tblpr => if let Some(b) = stack.last_mut() {
                         b.fixed_layout = attr(&e, "type").as_deref() == Some("fixed");
                     },
+                    // **表の幅**(`w:tblW`)。割合(`pct`)のときだけ覚えます。
+                    // docx は 1/50 % で書くので 5000 が 100% です。`dxa` は
+                    // `w:gridCol` の合計と同じ値なので、読まなくても同じです
+                    b"tblW" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        if attr(&e, "type").as_deref() == Some("pct") {
+                            b.width_pct = attr(&e, "w")
+                                .and_then(|v| v.parse::<f32>().ok())
+                                .map(|v| v / 50.0)
+                                .filter(|v| *v > 0.0);
+                        }
+                    },
+                    // **表の左のインデント**(`w:tblInd`)。原文のまま持ちます
+                    b"tblInd" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        b.ind_twips = attr(&e, "w").and_then(|v| v.parse::<f32>().ok());
+                    },
+                    // **見出しの行**(`w:tblHeader`)。この行は紙をまたぐたびに
+                    // 繰り返します。`w:val="0"` は「繰り返さない」です
+                    b"tblHeader" => if stack.last().is_some() {
+                        row_header = !matches!(attr(&e, "val").as_deref(), Some("0") | Some("false"));
+                    },
+                    // **セルの幅いっぱいに字を配る**(`w:tcFitText`)
+                    b"tcFitText" if in_tcpr => {
+                        cell_fit = !matches!(attr(&e, "val").as_deref(), Some("0") | Some("false"));
+                    }
+                    // **セルの斜線**(`w:tl2br` は左上から右下、`w:tr2bl` は
+                    // 左下から右上)。記入しない欄に引きます
+                    b"tl2br" | b"tr2bl" if in_tc_borders => {
+                        let hiku = !matches!(attr(&e, "val").as_deref(), Some("none") | Some("nil"));
+                        if n.as_slice() == b"tl2br" {
+                            cell_borders.diag_down = hiku;
+                        } else {
+                            cell_borders.diag_up = hiku;
+                        }
+                    }
                     // 段落の背景色。fill が色(auto 以外)のときだけ
                     b"shd" if in_ppr => {
                         shade = attr(&e, "fill")
@@ -2345,6 +2400,27 @@ pub(super) fn parse_document_rels_num(
                     // 記入欄の設定は空要素で来る(<w:alias w:val="…"/> 等)
                     _ if in_sdtpr && sdt_pr_elem(&n, &e, &mut sdt_now) => {}
                     // **罫線の辺**。`w:val="nil"` と `"none"` は引かない印
+                    // **セルの余白の辺**(`w:tcMar` と `w:tblCellMar` の子)。
+                    // 2012 年版の綴りの `w:start` / `w:end` も受けます
+                    b"top" | b"left" | b"bottom" | b"right" | b"start" | b"end"
+                        if in_tc_mar || in_tbl_cell_mar =>
+                    {
+                        let mm = attr(&e, "w")
+                            .and_then(|v| v.parse::<f32>().ok())
+                            .map(twip_mm)
+                            .unwrap_or(0.0);
+                        let at = match n.as_slice() {
+                            b"top" => 0,
+                            b"right" | b"end" => 1,
+                            b"bottom" => 2,
+                            _ => 3,
+                        };
+                        if in_tc_mar {
+                            cell_mar.get_or_insert([0.0; 4])[at] = mm;
+                        } else if let Some(b) = stack.last_mut() {
+                            b.cell_mar_mm.get_or_insert([0.0; 4])[at] = mm;
+                        }
+                    }
                     b"top" | b"left" | b"bottom" | b"right" | b"insideH" | b"insideV"
                         if in_tbl_borders || in_tc_borders =>
                     {
@@ -2623,6 +2699,40 @@ pub(super) fn parse_document_rels_num(
                     b"tblLayout" if in_tblpr => if let Some(b) = stack.last_mut() {
                         b.fixed_layout = attr(&e, "type").as_deref() == Some("fixed");
                     },
+                    // **表の幅**(`w:tblW`)。割合(`pct`)のときだけ覚えます。
+                    // docx は 1/50 % で書くので 5000 が 100% です。`dxa` は
+                    // `w:gridCol` の合計と同じ値なので、読まなくても同じです
+                    b"tblW" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        if attr(&e, "type").as_deref() == Some("pct") {
+                            b.width_pct = attr(&e, "w")
+                                .and_then(|v| v.parse::<f32>().ok())
+                                .map(|v| v / 50.0)
+                                .filter(|v| *v > 0.0);
+                        }
+                    },
+                    // **表の左のインデント**(`w:tblInd`)。原文のまま持ちます
+                    b"tblInd" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        b.ind_twips = attr(&e, "w").and_then(|v| v.parse::<f32>().ok());
+                    },
+                    // **見出しの行**(`w:tblHeader`)。この行は紙をまたぐたびに
+                    // 繰り返します。`w:val="0"` は「繰り返さない」です
+                    b"tblHeader" => if stack.last().is_some() {
+                        row_header = !matches!(attr(&e, "val").as_deref(), Some("0") | Some("false"));
+                    },
+                    // **セルの幅いっぱいに字を配る**(`w:tcFitText`)
+                    b"tcFitText" if in_tcpr => {
+                        cell_fit = !matches!(attr(&e, "val").as_deref(), Some("0") | Some("false"));
+                    }
+                    // **セルの斜線**(`w:tl2br` は左上から右下、`w:tr2bl` は
+                    // 左下から右上)。記入しない欄に引きます
+                    b"tl2br" | b"tr2bl" if in_tc_borders => {
+                        let hiku = !matches!(attr(&e, "val").as_deref(), Some("none") | Some("nil"));
+                        if n.as_slice() == b"tl2br" {
+                            cell_borders.diag_down = hiku;
+                        } else {
+                            cell_borders.diag_up = hiku;
+                        }
+                    }
                     // 段落の背景色。fill が色(auto 以外)のときだけ
                     b"shd" if in_ppr => {
                         shade = attr(&e, "fill")
@@ -2851,16 +2961,28 @@ pub(super) fn parse_document_rels_num(
                             v_merge: cell_vmerge,
                             valign: cell_valign,
                             shade: cell_shade.take(),
+                            mar_mm: cell_mar.take(),
+                            fit_text: cell_fit,
                         });
                         cell_span = 0;
                         cell_vmerge = VMerge::None;
                         cell_valign = book::VAlign::Top;
                         cell_borders = kumihan::CellBorders::default();
+                        cell_fit = false;
                     },
                     b"tblBorders" => in_tbl_borders = false,
                     b"tcPr" => in_tcpr = false,
                     b"tcBorders" => in_tc_borders = false,
+                    b"tcMar" => in_tc_mar = false,
+                    b"tblCellMar" => in_tbl_cell_mar = false,
                     b"tr" => if let Some(b) = stack.last_mut() {
+                        // **見出しの行は最初の行だけ持ちます**(2026-09-03)。
+                        // 模型は「見出しの行があるか」の1つしか持たないので、
+                        // 2行目以降に付いた `w:tblHeader` は落とします
+                        if row_header && b.rows.is_empty() {
+                            b.header_row = true;
+                        }
+                        row_header = false;
                         let row = std::mem::take(&mut b.row);
                         b.rows.push(row);
                         // 指定の無い行は 0(= 中身なり)。**行と同じ長さで
@@ -2891,8 +3013,7 @@ pub(super) fn parse_document_rels_num(
                                 role: None,
                                 // docx は幅を mm で持つので、割合は空のまま
                                 col_ratio: Vec::new(),
-                                // docx の見出しの行(w:tblHeader)はまだ読まない
-                                header_row: false,
+                                header_row: b.header_row,
                                 // docx の表は題を持たない
                                 title: None,
                                 style: b.style,
@@ -2900,6 +3021,11 @@ pub(super) fn parse_document_rels_num(
                                 cell_mar_mm: b.cell_mar_mm,
                                 align: b.align,
                                 fixed_layout: b.fixed_layout,
+                                width_pct: b.width_pct,
+                                // **`w:tblInd` はここでは原文のまま**(mm に
+                                // 直すだけ)です。セルの余白を引く補正は
+                                // 設定を読める [`tblind_wo_naosu`] でします
+                                indent_mm: b.ind_twips.map(twip_mm).unwrap_or(0.0),
                             };
                             if stack.is_empty() {
                                 doc.blocks.push(Block::Table(tb));
@@ -3088,6 +3214,51 @@ pub fn shape_anchor_xml(sp: &kumihan::DocShape, id: usize) -> String {
 pub fn shape_anchor_run(sp: &kumihan::DocShape, id: usize) -> String {
     let inner = shape_anchor_xml(sp, id);
     wrap_with_ns(&inner, &Default::default()).unwrap_or(inner)
+}
+
+/// **`w:tblInd` の測り方は Word の版で違う。**
+///
+/// Word 2013(`compatibilityMode` が 15 以上)からは、`w:tblInd` は表の
+/// 左の罫線の位置です。それより前の書き方では**セルの中の字の位置**を
+/// 指すので、セルの左余白のぶんだけ表は左へ戻ります。LibreOffice も
+/// `DomainMapperTableHandler` で同じ分け方をしています。
+///
+/// 設定に `compatibilityMode` が無い docx は古い方の扱いです
+/// (LibreOffice の `GetWordCompatibilityMode` は無ければ -1 を返します)。
+/// 内閣府の調査票がこれで、`w:tblInd` の 108twip はセルの左余白の
+/// 108twip とちょうど打ち消し合い、表は本文の左端から始まります。
+fn tblind_wo_naosu(doc: &mut Document, sxml: &str) {
+    let mode = sxml
+        .find(r#"w:name="compatibilityMode""#)
+        .and_then(|k| {
+            let seg = &sxml[k..];
+            let e = seg.find("/>").unwrap_or(seg.len());
+            let tag = &seg[..e];
+            let k2 = tag.find("w:val=\"")? + 7;
+            let e2 = tag[k2..].find('"')? + k2;
+            tag[k2..e2].parse::<i32>().ok()
+        })
+        .unwrap_or(-1);
+    if mode >= 15 {
+        return;
+    }
+    // Word の既定のセルの左余白は 108twip(1.9mm)です
+    const KITEI: f32 = 108.0 * 25.4 / 1440.0;
+    for b in &mut doc.blocks {
+        let kumihan::Block::Table(t) = b else { continue };
+        if t.indent_mm == 0.0 {
+            continue;
+        }
+        let hidari = t
+            .rows
+            .first()
+            .and_then(|r| r.first())
+            .and_then(|c| c.mar_mm)
+            .map(|m| m[3])
+            .or_else(|| t.cell_mar_mm.map(|m| m[3]))
+            .unwrap_or(KITEI);
+        t.indent_mm -= hidari;
+    }
 }
 
 /// **表の罫線を、名乗っているスタイルから補う。**

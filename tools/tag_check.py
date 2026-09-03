@@ -57,7 +57,23 @@ WAZATO = {
     "element": "組み込みのスキーマ(customXml)。本文ではない",
     "complexType": "同上", "sequence": "同上", "schema": "同上",
     "attribute": "同上", "simpleType": "同上", "restriction": "同上",
-    "compatSetting": "互換の切り替え。原文のまま持ち越す",
+    "compatSetting": "互換の切り替え。原文のまま持ち越す(compatibilityMode だけは"
+                     "w:tblInd の測り方を決めるので読む)",
+    # --- 表の決まりで、**わざと読まない**物(2026-09-03 に1つずつ判断しました)
+    "cnfStyle": "行やセルが名乗る表スタイルの条件。うちは位置から出していて、"
+                "正しく書かれた文書では同じ答えになる",
+    "cantSplit": "行を紙の切れ目で割らない印。うちは元から割らない"
+                 "(入る行は丸ごと次の紙へ送る)ので、有っても無くても同じ",
+    "gridBefore": "行の頭の空いた格子。実物 55 冊の本文に1つも無い",
+    "gridAfter": "同上(行の末)", "wBefore": "同上", "wAfter": "同上",
+    "hMerge": "Word 2003 までの横の結合。いまの Word は w:gridSpan で書く",
+    "noWrap": "セルの中で折り返さない指定。実物の本文に無い",
+    "tblpPr": "紙に浮かせて置く表。実物の本文に無い",
+    "tblOverlap": "同上(重なりの許し)", "tblCellSpacing": "セルとセルの間の空き。実物の本文に無い",
+    "tblCaption": "表の題。読み上げのための字で、紙には出ない",
+    "tblDescription": "同上", "hideMark": "空のセルの行の高さを詰める印。紙には出ない",
+    "bidiVisual": "右から左へ読む表。日本語の様式では使わない",
+    "hRule": "行の高さの決まり。exact(固定)は実物に1つも無く、いまは常に下限として扱う",
     "customStyle": "自分で作ったスタイルの印。定義は styleId で引く",
 }
 

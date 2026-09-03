@@ -1604,6 +1604,14 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                     && r.underline == c.fmt.underline
                     && r.strike == c.fmt.strike
                     && r.highlight == c.fmt.highlight
+                    // **字が続いている所だけ繋ぎます**(2026-09-03)。
+                    //
+                    // 繋いだまとまりは1つの文字列として描くので、字の位置は
+                    // 書体の送りで決まります。均等割り付け(`distribute` と
+                    // `w:tcFitText`)は字の間に空きを配るので、繋ぐとその
+                    // 空きが消えます。前の字の右端と次の字の左端が離れて
+                    // いれば、そこで切ります
+                    && (r.x_mm + r.w_mm - (mx + c.x_mm)).abs() < 0.05
             });
             match &mut run {
                 Some(r) if same => {
@@ -1720,8 +1728,14 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                         x_mm: pp.margin_mm + c.x_mm,
                         // **縦は上の余白から**です(2026-09-01)。左の余白を
                         // 使っていたので、上下と左右が違う紙では繰り返した
-                        // 見出しが上の余白へ出ていました
-                        y_mm: pp.height_mm - (pp.top_mm + (line.y_mm - base)),
+                        // 見出しが上の余白へ出ていました。
+                        //
+                        // `line.y_mm` はベースラインなので、本文の1行目と
+                        // 同じだけ([`kumihan::BASE_UP_MM`])下げます。
+                        // 足さないと、繰り返した見出しが空けた場所の
+                        // 1行ぶん上に出ます(2026-09-03)
+                        y_mm: pp.height_mm
+                            - (pp.top_mm + kumihan::BASE_UP_MM + (line.y_mm - base)),
                         size_pt: c.size_pt,
                         text: c.ch.to_string(),
                         color: c.fmt.color.clone(),

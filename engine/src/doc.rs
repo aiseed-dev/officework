@@ -697,6 +697,15 @@ pub struct Cellbox {
     /// 前は最初の段落の `shade` を借りていました。表スタイルの帯の色は
     /// 段落ではなくセルに付くので、セル自身が持ちます(2026-09-03)
     pub shade: Option<String>,
+    /// **このセルだけの余白**(docx の `w:tcPr/w:tcMar`)。[上, 右, 下, 左] mm。
+    ///
+    /// 言っていなければ表の [`Table::cell_mar_mm`]、それも無ければ既定です
+    pub mar_mm: Option<[f32; 4]>,
+    /// **セルの幅いっぱいに字を配る**(docx の `w:tcPr/w:tcFitText`)。
+    ///
+    /// 帳票の項目名で使います。組むときは段落の揃えを
+    /// [`Align::Distribute`] にします
+    pub fit_text: bool,
 }
 
 /// **表スタイルのどの条件を効かせるか**(docx の `w:tblLook`)。
@@ -811,6 +820,14 @@ pub struct CellBorders {
     pub left: Option<bool>,
     pub bottom: Option<bool>,
     pub right: Option<bool>,
+    /// **左上から右下への斜線**(docx の `w:tcBorders/w:tl2br`)。
+    ///
+    /// 記入しない欄に斜線を引く様式は事務でよく使います。表計算側は
+    /// [`book::Borders::diag_down`] で同じことをしています(2026-08-31)
+    pub diag_down: bool,
+    /// **左下から右上への斜線**(docx の `w:tcBorders/w:tr2bl`)。
+    /// 両方立てれば×になります
+    pub diag_up: bool,
 }
 
 /// **既定の縦位置は上揃え。**
@@ -828,6 +845,8 @@ impl Default for Cellbox {
             v_merge: VMerge::None,
             valign: book::VAlign::Top,
             shade: None,
+            mar_mm: None,
+            fit_text: false,
         }
     }
 }
@@ -874,6 +893,19 @@ pub struct Table {
     /// 定義(styles.xml)は持たない主義のまま — 名前を運んで返すだけ。
     /// 読めた名前を書きで落とすと様式が崩れるので、往復のために持つ
     pub style: Option<String>,
+    /// **表の幅を本文の幅の割合で言う**(docx の `w:tblW w:type="pct"`)。
+    ///
+    /// 単位は%で、docx の 5000 は 100.0 です(docx は 1/50 %で書きます)。
+    /// `w:tblGrid` は LibreOffice が言うとおり**比でしかない**ので、割合が
+    /// あれば比を保ったまま本文の幅へ伸ばします。無ければ `w:gridCol` の
+    /// 合計をそのまま使います
+    pub width_pct: Option<f32>,
+    /// **表の左のインデント**(mm)。docx の `w:tblInd` から出します。
+    ///
+    /// docx の `w:tblInd` は Word 2013 より前の書き方では**セルの中の字の
+    /// 位置**を指すので、読み手がセルの左余白を引いた後の値を入れます
+    /// (LibreOffice の DomainMapperTableHandler と同じ扱い)
+    pub indent_mm: f32,
     /// 表の置き方(docx の tblPr の `w:jc`)。None は指定なし(左)。
     /// 使うのは Left / Center / Right だけ(表の置き方に両端揃えは無い)
     pub align: Option<Align>,

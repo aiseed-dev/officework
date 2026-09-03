@@ -1570,23 +1570,42 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         .max()
         .unwrap_or(1)
         .max(1);
+    // **表の左のインデント**(docx の `w:tblInd`)。使える幅はその分減ります
+    let ind = table.indent_mm.max(-frame.measure_mm * 0.5);
+    let haba = (frame.measure_mm - ind).max(10.0);
     // 列幅。指定があればそれを使い、行長に収まらなければ**比例で縮める**
     // (右へ黙ってはみ出すより、比率を守って縮む方が様式の見た目が保たれる)
-    let widths: Vec<f32> = if table.col_mm.len() == ncols
+    let mut widths: Vec<f32> = if table.col_mm.len() == ncols
         && table.col_mm.iter().all(|w| *w > 0.5)
     {
         let total: f32 = table.col_mm.iter().sum();
-        if total > frame.measure_mm {
-            let k = frame.measure_mm / total;
+        if total > haba {
+            let k = haba / total;
             table.col_mm.iter().map(|w| w * k).collect()
         } else {
             table.col_mm.clone()
         }
     } else {
-        vec![frame.measure_mm / ncols as f32; ncols]
+        vec![haba / ncols as f32; ncols]
     };
-    // 列の左端(累積)
-    let mut xs = vec![0.0f32];
+    // **幅を割合で言う表**(docx の `w:tblW w:type="pct"`)。
+    //
+    // `w:tblGrid` は LibreOffice が言うとおり比でしかありません
+    // (`DomainMapperTableManager`: "the grid is having no units... it is
+    // containing only relative values")。割合があれば、比を保ったまま
+    // その割合の幅へ伸ばします。python-docx が書く表は grid の合計が
+    // 本文の幅より 3% 狭く、読まないとその分だけ細く出ます
+    if let Some(pct) = table.width_pct {
+        let total: f32 = widths.iter().sum();
+        if total > 0.5 {
+            let k = (haba * pct / 100.0).min(haba) / total;
+            for w in &mut widths {
+                *w *= k;
+            }
+        }
+    }
+    // 列の左端(累積)。**インデントの分だけ右から始めます**
+    let mut xs = vec![ind];
     for w in &widths {
         xs.push(xs.last().unwrap() + w);
     }
@@ -1610,6 +1629,11 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         shade: Option<String>,
         /// セルの中の縦の揃え(docx の `w:tcPr/w:vAlign`)
         valign: book::VAlign,
+        /// **このセルの余白**([上, 右, 下, 左] mm)。セル自身の `w:tcMar`、
+        /// 無ければ表の `w:tblCellMar`、それも無ければ既定です
+        pad: [f32; 4],
+        /// 斜線(docx の `w:tcBorders/w:tl2br` と `w:tr2bl`)
+        diag: (bool, bool),
     }
     let mut rows_laid: Vec<Vec<Laid>> = Vec::new();
     let mut row_hs: Vec<f32> = Vec::new();
@@ -1618,21 +1642,27 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         let mut gc = 0usize;
         // **セルごとに高さを足します。** セルの中の段落が別の大きさなら、
         // 行の高さも別です。行の高さはいちばん高いセルで決まります
-        let mut takasa = lh;
+        // 空の行でも1行ぶんは開けます。表が言う上下の余白はその外側です
+        let (pad_t0, pad_b0) = match table.cell_mar_mm {
+            Some(m) => (m[0], m[2]),
+            None => (CELL_PAD_V, CELL_PAD_V),
+        };
+        let mut takasa = lh + pad_t0 + pad_b0;
         let mut laid: Vec<Laid> = Vec::new();
         for (ci, cell) in row.iter().enumerate() {
             let span = cell.span().min(ncols.saturating_sub(gc)).max(1);
             let x = xs[gc.min(ncols)];
             let w = xs[(gc + span).min(ncols)] - x;
             let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32)> = Vec::new();
+            // **セルの中の余白**。セル自身の `w:tcMar` が最優先で、次が表の
+            // `w:tblCellMar`、どちらも無ければ既定です(2026-09-03)
+            let pad: [f32; 4] = cell
+                .mar_mm
+                .or(table.cell_mar_mm)
+                .unwrap_or([CELL_PAD_V, CELL_PAD, CELL_PAD_V, CELL_PAD]);
             // 縦結合の続きは上のセルに呑まれている。中身は組まない
             if cell.v_merge != VMerge::Continue {
-                // **セルの中の余白は表が言う分**(`w:tblCellMar`)。
-                // 書いていなければ既定([`CELL_PAD`])です(2026-09-03)
-                let (pad_l, pad_r) = match table.cell_mar_mm {
-                    Some(m) => (m[3], m[1]),
-                    None => (CELL_PAD, CELL_PAD),
-                };
+                let (pad_l, pad_r) = (pad[3], pad[1]);
                 let inner = (w - pad_l - pad_r).max(2.0);
                 let mut para0 = 0usize;
                 // **セルの中でも箇条書きの印を出します**(2026-08-31)。前は
@@ -1666,12 +1696,18 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         let h = plh
                             + if k == 0 { mae } else { 0.0 }
                             + if k == saigo { ato } else { 0.0 };
-                        ls.push((cs, b0, h, para.align, pt));
+                        // **セルの幅いっぱいに字を配る**(`w:tcFitText`)。
+                        // 帳票の項目名で使う書き方です(2026-09-03)
+                        let yose = if cell.fit_text { Align::Distribute } else { para.align };
+                        ls.push((cs, b0, h, yose, pt));
                     }
                     let plen: usize = para.runs.iter().map(|r| r.text.len()).sum();
                     para0 += plen + 1;
                 }
-                takasa = takasa.max(ls.iter().map(|(_, _, h, _, _)| *h).sum::<f32>());
+                // **上下の余白もそのセルの高さ**です。セルごとに `w:tcMar` が
+                // 違えば、行の高さはいちばん高いセルで決まります
+                let naka: f32 = ls.iter().map(|(_, _, h, _, _)| *h).sum();
+                takasa = takasa.max(naka + pad[0] + pad[2]);
             }
             // **セル自身の塗りが先。** 表スタイルの帯の色はここに入ります。
             // 無ければ最初の段落の塗り(前からの道)(2026-09-03)
@@ -1680,7 +1716,8 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 .clone()
                 .or_else(|| cell.paragraphs.first().and_then(|p| p.shade.clone()));
             laid.push(Laid { ci, gc, span, v: cell.v_merge, lines: ls, x, w, shade,
-                             valign: cell.valign });
+                             valign: cell.valign, pad,
+                             diag: (cell.borders.diag_down, cell.borders.diag_up) });
             gc += span;
         }
         rows_laid.push(laid);
@@ -1688,11 +1725,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         // 「表の高さが異なる」)。模型は読んでいたのに、組む所で
         // 中身の高さしか見ていませんでした
         let iu = table.row_mm.get(ri_now).copied().unwrap_or(0.0);
-        let (pad_t, pad_b) = match table.cell_mar_mm {
-            Some(m) => (m[0], m[2]),
-            None => (CELL_PAD_V, CELL_PAD_V),
-        };
-        row_hs.push((takasa + pad_t + pad_b).max(iu));
+        row_hs.push(takasa.max(iu));
     }
 
     // 行の上端(累積)
@@ -1742,21 +1775,21 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 continue;
             }
             let h = if l.v == VMerge::Start { merged_h(ri, l.gc) } else { row_hs[ri] };
-            let x0 = l.x + CELL_PAD;
+            let x0 = l.x + l.pad[3];
             // **縦の揃え**(docx の `w:tcPr/w:vAlign`)。既定は上です。
             // 前はどのセルも上に置いていたので、「□認められる」の行が
             // セルの頭に張り付いていました(2026-09-01 発注者)
             let pfont2 = doc.font.clone();
             let naka: f32 = l.lines.iter().map(|(_, _, h, _, _)| *h).sum();
-            let aki = (h - 2.0 * CELL_PAD_V - naka).max(0.0);
+            let aki = (h - l.pad[0] - l.pad[2] - naka).max(0.0);
             let ue = match l.valign {
                 book::VAlign::Middle => aki / 2.0,
                 book::VAlign::Bottom => aki,
                 _ => 0.0,
             };
-            let mut yy = row_top + CELL_PAD_V + ue;
+            let mut yy = row_top + l.pad[0] + ue;
             let id = Some((table_no, ri, l.ci));
-            let uti = (l.w - 2.0 * CELL_PAD).max(0.0);
+            let uti = (l.w - l.pad[1] - l.pad[3]).max(0.0);
             for (cells, b0, plh, yose, pt) in l.lines {
                 // **ベースラインは書体の上がりの所**です。LibreOffice と
                 // 同じで、行の箱が字より高いぶんは全部ベースラインより上に
@@ -1782,10 +1815,17 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     Align::Right => (uti - haba).max(0.0),
                     _ => 0.0,
                 };
+                // **均等割り付け**(段落の `distribute` と `w:tcFitText`)。
+                // 余りを字と字の間に配ります。本文の段落と同じ配り方です
+                let aki = if yose == Align::Distribute && cells.len() >= 2 {
+                    (uti - haba).max(0.0) / (cells.len() - 1) as f32
+                } else {
+                    0.0
+                };
                 let mut x = x0 + zure;
                 let cells: Vec<Cell> = cells
                     .into_iter()
-                    .map(|mut c| { c.x_mm = x; x += c.w_mm; c })
+                    .map(|mut c| { c.x_mm = x; x += c.w_mm + aki; c })
                     .collect();
                 sheet.lines.push(Line { cells, y_mm: yy, from_body: false, byte0: b0, cell: id });
                 yy += plh - agari;
@@ -1796,6 +1836,17 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             // 罫線より先に敷くよう、`fills` は `rules` と別に持ちます
             if let Some(c) = l.shade.as_deref() {
                 sheet.fills.push(([l.x, row_top, l.w, h], c.to_string()));
+            }
+            // **セルの斜線**(docx の `w:tcBorders/w:tl2br` と `w:tr2bl`)。
+            //
+            // 記入しない欄に斜線を引く様式は事務でよく使います。結合の
+            // セルでは結合ぜんぶを1つのセルとして引きます(表計算側の
+            // `paper::grid` と同じ引き方)。2026-09-03
+            if l.diag.0 {
+                sheet.rules.push([l.x, row_top, l.x + l.w, row_top + h]);
+            }
+            if l.diag.1 {
+                sheet.rules.push([l.x, row_top + h, l.x + l.w, row_top]);
             }
             // クリックの当たり判定(結合したセルは結合後の大きさで当てる)
             sheet.cell_boxes.push(CellBox {
