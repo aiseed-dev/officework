@@ -360,14 +360,79 @@ Windows はソケットを作らない決め(2026-08-20)なので、この宛先
 - 製品として配る時は Commercial Terms への同意が要る(発注者)。
   自分の機械で使う分は Claude Code の普通の個人利用
 
+=== 宛先「Codex」— ChatGPT の定額も同じ形で(2026-09-04 発注者「ChatGPT も定額内で使えるようにできます」)
+
+OpenAI の Codex CLI(Apache-2.0)は ChatGPT の定額(Plus / Pro / Business …)で
+ログインして使える。改変していない `codex` を子プロセスで呼び、道具は MCP で
+渡す。形は Claude Code と同じで、違いは起動の引数と JSON 行の名前だけ。
+事実は公式の資料で確かめた(2026-09-04。learn.chatgpt.com の
+non-interactive-mode・config-reference・auth・pricing)。手元の機械に `codex` は
+まだ入っていない。
+
+==== 起動の形
+
+[source,text]
+----
+codex exec --json -
+  -c model="gpt-5.6-terra"                       # 選んだ物
+  -c features.shell_tool=false                   # Codex 自身のシェルを止める
+  -c sandbox_mode="read-only"
+  -c approval_policy="never"                     # 問い合わせの画面は無い
+  -c web_search="disabled"
+  -c 'mcp_servers.officework.command="<綴りの .venv>/bin/officework-mcp"'
+  -c 'mcp_servers.officework.args=["--panel"]'
+  -c mcp_servers.officework.startup_timeout_sec=30
+  --ignore-user-config --ignore-rules            # 利用者の ~/.codex の設定と規則を読まない
+----
+
+- 頼みは標準入力(`-`)で渡す。1回の `codex exec` が1往復。**続きは
+  `codex exec resume <SESSION_ID>`**(Claude Code の `--input-format stream-json`
+  のようにプロセスを生かしたまま続ける形は無いので、1往復ごとに起動する)
+- 読む行: `thread.started`(session の id)、`turn.started` / `turn.completed`、
+  `item.completed`(`agent_message` が文、`mcp_tool_call` が道具呼び)。
+  道具呼びは今の決めどおり小さく1行
+- `--ignore-user-config` は利用者の設定を読まない印なので、必要な設定は全部
+  `-c` で渡す(上の形)。`--ephemeral` は続きが効かなくなるので使わない
+- 状態は `codex login status`。ログインしていなければ「未設定」で、
+  状態行に「端末で `codex login` を実行してください」と出す。ログインの画面は
+  officework が作らない(Claude Code と同じ)
+- モデルは表の既定(gpt-5.6-terra)と、公式の一覧にある gpt-5.6 の3つ
+  (sol / terra / luna)。`/v1/models` は引かない
+
+==== 規約の状態(Claude Code との違い)
+
+- ChatGPT の定額は「web・CLI・IDE 拡張・iOS に加えて **SDK と
+  スクリプトの作業も**」使えると公式が書く(pricing)。Anthropic が Agent SDK を
+  定額から外しているのと違い、`codex exec` を script から呼ぶ形は定額の内
+- **他のアプリから `codex` を呼ぶことの可否は、OpenAI が明言していない。**
+  公式の場(openai/codex の議論 #8338)で 2026-02 から 2026-08 に4人が尋ねて、
+  保守者の答えは「fork も改変も Apache の許す範囲。規約は Terms of Use を
+  読んで」で止まっている。Anthropic のように「載せてよい・条件はこれ」と
+  書いた文が無い
+- だから officework は Claude Code と同じ条件を自分に課す: `codex` を改変
+  しない、利用者が自分でログインし使う分は利用者の契約に付く、資格に触らない、
+  製品名に Codex や ChatGPT の名を使わない。**製品として配る時の可否は、
+  OpenAI に問い合わせるか、明言が出るまで「自分の機械で使う道」に留めるかを
+  発注者が決める**(決め待ちに追加)
+- oh-my-pi の `openai-codex` の提供元は、Codex CLI になりすまして OAuth の
+  トークンを直に使う形(Claude と同じ)。これも写さない
+
+==== 2つに共通の作り
+
+Claude Code と Codex は「手元のエージェント CLI を子プロセスで呼ぶ」という同じ
+宛先の種類なので、agent クレートには1つの `Process` の形を置き、起動の引数と
+JSON 行の読み方だけを CLI ごとに持つ(表の「話し方」に `claude -p` と
+`codex exec` の2つが増える)。3つ目の CLI(Gemini CLI など)が出ても同じ形で足せる。
+
 === 段階(続き)
 
 [start=5]
 . 提供元の表と鍵の探し順(face::settings)、手元のモデルの自動検出
-. **宛先「Claude Code」**: `claude -p` の起動と JSON 行の読み書き
+. **宛先「Claude Code」と「Codex」**: 子プロセスの起動と JSON 行の読み書き
   (agent クレートに `Model` と並ぶ `Process` の形で。gpui を持たない)、
-  officework-mcp の `--panel` と ops の `macro` 命令、`claude auth status` の
-  状態。実機で「定額で通ること」と「1手で戻ること」を確かめる
+  officework-mcp の `--panel` と ops の `macro` 命令、`claude auth status` と
+  `codex login status` の状態。実機で「定額で通ること」と「1手で戻ること」を
+  確かめる(Codex はこの機械に入れてから)
 . 選ぶ画面(モデルの一覧の取得、絞り込み、並び)。実機で確かめる
 . anthropic-messages の口(lang::model)。**アプリの公開までに**(本番は
   OpenAI 互換の口に頼らない)
@@ -437,6 +502,8 @@ Windows はソケットを作らない決め(2026-08-20)なので、この宛先
 - v1 の着手の時期
 - 製品として配る時の Commercial Terms への同意(宛先「Claude Code」を
   配布版に入れるか)
+- 宛先「Codex」を配布版に入れるか(OpenAI の明言が無い。問い合わせるか、
+  自分の機械で使う道に留めるか)
 
 (既定のモデルと道具呼びの行の見せ方は決まった — 2026-09-02。
 「提供元の一覧」と「対話の画面の決め」に書いた)
