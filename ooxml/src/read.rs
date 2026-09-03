@@ -3660,6 +3660,37 @@ fn shape_look(a: &str, palette: &[String]) -> Option<book::SheetShape> {
         (true, None, _) => None,
     };
     sp.line = iro("<a:ln ");
+    // **図形が自分で言わないときは、スタイルの参照を見ます**(2026-09-03)。
+    //
+    // `<wps:style>` の `<a:fillRef>` と `<a:lnRef>` は、テーマの書式の
+    // 並び(`a:fmtScheme`)の何番目かと、そこに差し込む色を持ちます。
+    // `idx="0"` は「無し」です。
+    //
+    // **うちは色だけを取ります。** 模型が持てるのは単色1つなので、
+    // テーマの並びがグラデーションでも、その参照色で塗ります。
+    // 明に `<a:noFill/>` と言っている図形は上で None になっていて、
+    // ここには来ません(規格でも `spPr` の指定がスタイルより強い)
+    let sanshou = |tag: &str| -> Option<String> {
+        let i = a.find(tag)?;
+        let atama = a[i..].find('>').map(|e| i + e)?;
+        // idx="0" は「書式なし」
+        let idx = a[i..atama].find("idx=\"").and_then(|j| {
+            let s2 = i + j + 5;
+            a[s2..].find('"').map(|e| a[s2..s2 + e].to_string())
+        });
+        if idx.as_deref() == Some("0") {
+            return None;
+        }
+        let tojime = format!("</{}>", &tag[1..].trim_end_matches(' '));
+        let sue = a[atama..].find(&tojime).map(|e| atama + e).unwrap_or(a.len());
+        crate::theme::dml_iro(&a[atama..sue], palette)
+    };
+    if sp.fill.is_none() && nuru {
+        sp.fill = sanshou("<a:fillRef ");
+    }
+    if sp.line.is_none() {
+        sp.line = sanshou("<a:lnRef ");
+    }
     // **線の種類**(`<a:prstDash val="dash"/>`)。無ければ実線
     if let Some(i) = a.find("<a:prstDash val=\"") {
         let s2 = i + 17;
