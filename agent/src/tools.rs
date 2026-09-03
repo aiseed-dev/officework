@@ -60,6 +60,105 @@ pub fn sheet_tools() -> Vec<ToolDef> {
     ]
 }
 
+/// **文書の道具**(2026-09-04。docs/sekkei/agent.ja.adoc「writer にも同じパネル」)。
+/// 名前・説明・引数は MCP(`doc_*`)と同じで、ブロックの番号で AsciiDoc の字を
+/// 読み書きする。writer の受け口(rpc.rs)の動詞にそのまま対応する
+pub fn doc_tools() -> Vec<ToolDef> {
+    let t = |name: &str, description: &str, parameters: &str| ToolDef {
+        name: name.into(),
+        description: description.into(),
+        parameters: parameters.into(),
+    };
+    let range = r#"{"type":"object","properties":{"start":{"type":"integer"},"end":{"type":"integer"}},"required":["start"]}"#;
+    vec![
+        t(
+            "doc_outline",
+            "文書の地図: 題と見出しの一覧(ブロックの番号つき)とブロックの数。長い文書はまずこれを呼ぶ。番号は 0 から",
+            r#"{"type":"object","properties":{}}"#,
+        ),
+        t(
+            "doc_read_blocks",
+            "ブロック start〜end(両端を含む。end を省けば1つ)を AsciiDoc の字で読む。返りの stamp は書き替えの時に添える。一度に 30 個まで",
+            range,
+        ),
+        t(
+            "doc_replace_blocks",
+            "ブロック start〜end を AsciiDoc の断片 adoc で書き替える(何ブロックでもよい)。stamps に読んだ時の照合の字を , で並べると、変わっていたら断る。書いた跡は Ctrl+Z で戻せる",
+            r#"{"type":"object","properties":{"start":{"type":"integer"},"end":{"type":"integer"},"adoc":{"type":"string"},"stamps":{"type":"string","description":"読んだ時の stamp を , で並べる"}},"required":["start","end","adoc"]}"#,
+        ),
+        t(
+            "doc_insert_blocks",
+            "ブロック at の前に断片 adoc を差し込む。at がブロックの数と同じなら末尾",
+            r#"{"type":"object","properties":{"at":{"type":"integer"},"adoc":{"type":"string"}},"required":["at","adoc"]}"#,
+        ),
+        t(
+            "doc_delete_blocks",
+            "ブロック start〜end を消す。stamps は doc_replace_blocks と同じ",
+            r#"{"type":"object","properties":{"start":{"type":"integer"},"end":{"type":"integer"},"stamps":{"type":"string","description":"読んだ時の stamp を , で並べる"}},"required":["start"]}"#,
+        ),
+        t(
+            "doc_find",
+            "字を含むブロックを探す。返りは番号と前後の字",
+            r#"{"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}"#,
+        ),
+        t(
+            "doc_fill_fields",
+            "名前の付いた記入欄にまとめて入れる。values は [[名前, 値], …]。無い名前は missing に返る",
+            r#"{"type":"object","properties":{"values":{"type":"array","items":{"type":"array","items":{"type":"string"}}}},"required":["values"]}"#,
+        ),
+        t(
+            "doc_to_pdf",
+            "文書を PDF に書き出す(path は書き出し先)",
+            r#"{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}"#,
+        ),
+        t(
+            "doc_save",
+            "文書を保存する。path を渡すとその名前で。人が保存を頼んだときだけ呼ぶ",
+            r#"{"type":"object","properties":{"path":{"type":"string"}}}"#,
+        ),
+    ]
+}
+
+/// 文書の道具呼びを writer の受け口の1行にする(名前は `doc_` を外した動詞)
+pub fn doc_line_for(name: &str, o: &Jobj) -> Result<String, String> {
+    let verb = name.strip_prefix("doc_").ok_or_else(|| format!("知らない道具です: {name}"))?;
+    let mut parts: Vec<String> = vec![format!("\"cmd\":{}", J::S(verb.to_string()).to_json())];
+    let num = |parts: &mut Vec<String>, key: &str, v: Option<f64>| {
+        if let Some(v) = v {
+            parts.push(format!("\"{key}\":{}", v as i64));
+        }
+    };
+    let txt = |parts: &mut Vec<String>, key: &str, v: Option<String>| {
+        if let Some(v) = v {
+            parts.push(format!("\"{key}\":{}", J::S(v).to_json()));
+        }
+    };
+    match verb {
+        "outline" => {}
+        "read_blocks" | "delete_blocks" | "replace_blocks" => {
+            num(&mut parts, "from", Some(o.num("start").ok_or("start がありません")?));
+            num(&mut parts, "to", o.num("end"));
+            if verb == "replace_blocks" {
+                txt(&mut parts, "adoc", Some(o.str("adoc").ok_or("adoc がありません")?));
+            }
+            txt(&mut parts, "stamps", o.str("stamps"));
+        }
+        "insert_blocks" => {
+            num(&mut parts, "at", Some(o.num("at").ok_or("at がありません")?));
+            txt(&mut parts, "adoc", Some(o.str("adoc").ok_or("adoc がありません")?));
+        }
+        "find" => txt(&mut parts, "text", Some(o.str("text").ok_or("text がありません")?)),
+        "fill_fields" => {
+            let grid = o.grid("values").ok_or("values がありません([[名前, 値], …])")?;
+            parts.push(format!("\"values\":{}", J::A(grid.into_iter().map(J::A).collect()).to_json()));
+        }
+        "to_pdf" => txt(&mut parts, "path", Some(o.str("path").ok_or("path がありません")?)),
+        "save" => txt(&mut parts, "path", o.str("path")),
+        _ => return Err(format!("知らない道具です: {name}")),
+    }
+    Ok(format!("{{{}}}", parts.join(",")))
+}
+
 /// マクロの道具の名乗り。実行は ops の語彙でなく**サンドボックスの
 /// Python** なので、結線はアプリの側(calc)が持つ。DirectHost /
 /// QueueHost はこれを実行できない(知らない道具、と断る)ため、
@@ -232,6 +331,21 @@ impl ToolHost for QueueHost {
 mod tests {
     use super::*;
     use crate::{Agent, Model};
+
+    #[test]
+    fn document_tools_map_onto_the_writer_socket_verbs() {
+        let names: Vec<String> = doc_tools().iter().map(|t| t.name.clone()).collect();
+        assert!(names.iter().all(|n| n.starts_with("doc_")), "{names:?}");
+        let o = Jobj::parse(r#"{"start":2,"end":3,"adoc":"受注は4件。\n","stamps":"a1b2c3d4,e5f6a7b8"}"#).unwrap();
+        let line = doc_line_for("doc_replace_blocks", &o).unwrap();
+        assert_eq!(line, r#"{"cmd":"replace_blocks","from":2,"to":3,"adoc":"受注は4件。\n","stamps":"a1b2c3d4,e5f6a7b8"}"#);
+        let o = Jobj::parse(r#"{"start":5}"#).unwrap();
+        assert_eq!(doc_line_for("doc_read_blocks", &o).unwrap(), r#"{"cmd":"read_blocks","from":5}"#);
+        let o = Jobj::parse(r#"{"values":[["氏名","山田"],["部署","総務"]]}"#).unwrap();
+        assert_eq!(doc_line_for("doc_fill_fields", &o).unwrap(), r#"{"cmd":"fill_fields","values":[["氏名","山田"],["部署","総務"]]}"#);
+        assert!(doc_line_for("doc_insert_blocks", &Jobj::parse(r#"{"adoc":"x"}"#).unwrap()).is_err());
+        assert!(doc_line_for("read_range", &o).is_err());
+    }
     use lang::model::{ChatOut, Msg, ToolCall};
 
     /// 画面の無い最小の口(ファイルの口と同じ立場)

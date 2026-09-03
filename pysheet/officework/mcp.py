@@ -337,6 +337,88 @@ def doc_fill(values: dict, path: str | None = None) -> str:
     return 文
 
 
+# ── ブロックの語彙(2026-09-04。docs/sekkei/agent.ja.adoc「writer にも同じパネル」)──
+# 本文の丸ごと(doc_text / doc_set_text)ではなく、ブロック(段落・見出し・表)の
+# 番号で AsciiDoc の字を読み書きします。長い文書でも触る所だけ読めば済みます。
+# エージェントのパネルと Python(officework.doc)も同じ名前です。
+
+
+@mcp.tool()
+def doc_outline(path: str | None = None) -> dict:
+    """文書の**地図**: 題と見出しの一覧(ブロックの番号つき)と、ブロックの数。
+
+    長い文書はまずこれを呼び、触る所の番号を知ってから `doc_read_blocks` で
+    読みます。番号は 0 から。
+    """
+    r = _doc_call("outline", path)
+    return {"count": r.get("count", 0), "outline": r.get("outline", [])}
+
+
+@mcp.tool()
+def doc_read_blocks(start: int, end: int | None = None, path: str | None = None) -> list:
+    """ブロック `start`〜`end`(両端を含む。`end` を省けば1つ)を **AsciiDoc の字**で読む。
+
+    返りは `[{"index": 番号, "stamp": 照合の字, "adoc": 字}, …]`。`stamp` は
+    書き替えの時に添えると、読んだ後に文書が変わっていたら断ってもらえます。
+    一度に読むのは 30 個までにして、必要な所だけ読んでください。
+    """
+    kw = {"from": start}
+    if end is not None:
+        kw["to"] = end
+    return _doc_call("read_blocks", path, **kw).get("blocks", [])
+
+
+@mcp.tool()
+def doc_replace_blocks(
+    start: int, end: int, adoc: str, stamps: list | None = None, path: str | None = None
+) -> str:
+    """ブロック `start`〜`end`(両端を含む)を AsciiDoc の断片 `adoc` で**書き替える**。
+
+    断片は何ブロックでもよい(空行で区切る)。`stamps` に読んだ時の照合の字を
+    並べると、その間に文書が変わっていたら断ります。書いた跡は officework の
+    Ctrl+Z で戻せます。頭の属性(`:名前: 値`)は断片に書けません。
+    """
+    kw = {"from": start, "to": end, "adoc": adoc}
+    if stamps:
+        kw["stamps"] = ",".join(stamps)
+    r = _doc_call("replace_blocks", path, **kw)
+    return f"{r.get('replaced', 0)} ブロックを入れました"
+
+
+@mcp.tool()
+def doc_insert_blocks(at: int, adoc: str, path: str | None = None) -> str:
+    """ブロック `at` の**前に**断片 `adoc` を差し込む。`at` がブロックの数と同じなら末尾に足す。"""
+    r = _doc_call("insert_blocks", path, at=at, adoc=adoc)
+    return f"{r.get('inserted', 0)} ブロックを差し込みました"
+
+
+@mcp.tool()
+def doc_delete_blocks(start: int, end: int | None = None, stamps: list | None = None, path: str | None = None) -> str:
+    """ブロック `start`〜`end`(両端を含む)を**消す**。`stamps` は `doc_replace_blocks` と同じ。"""
+    kw = {"from": start, "to": start if end is None else end}
+    if stamps:
+        kw["stamps"] = ",".join(stamps)
+    r = _doc_call("delete_blocks", path, **kw)
+    return f"{r.get('deleted', 0)} ブロックを消しました"
+
+
+@mcp.tool()
+def doc_find(text: str, path: str | None = None) -> list:
+    """字 `text` を含むブロックを探す。返りは `[{"index": 番号, "around": 前後の字}, …]`。"""
+    return _doc_call("find", path, text=text).get("hits", [])
+
+
+@mcp.tool()
+def doc_fill_fields(values: dict, path: str | None = None) -> dict:
+    """名前の付いた**記入欄**(Word の入力コントロール)にまとめて入れる。
+    `values` は `{"欄の名前": "入れる字"}`。無い名前は `missing` に返る。
+    本文の `{{名前}}` の穴は `doc_fill` の方です。
+    """
+    rows = [[str(k), str(v)] for k, v in values.items()]
+    r = _doc_call("fill_fields", path, values=rows)
+    return {"filled": r.get("filled", 0), "missing": r.get("missing", [])}
+
+
 @mcp.tool()
 def doc_to_pdf(path: str) -> str:
     """いま前に出ている文書を PDF で書き出す。`path` は**書き出し先**。
