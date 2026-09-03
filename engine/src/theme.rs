@@ -1717,6 +1717,15 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
     // (2026-09-03 発注者)
     let doc_after = doc.space_after_pt;
     let doc_line = doc.line_spacing;
+    // **名乗らない段落が従う、その種類の既定のスタイル**(docx の
+    // `w:style w:default="1"`)。表のセルの中の段落はこれで決まります
+    let kitei_no_style = out
+        .styles
+        .iter()
+        .chain(out.styles_new.iter())
+        .find(|s| s.default && s.kind == "paragraph")
+        .map(|s| s.id.clone())
+        .and_then(|id| out.style_matome(&id));
     // **同じスタイルが続く間は空きを入れない**(docx の `w:contextualSpacing`)。
     // 隣を見る必要があるので、先に「この段落の前後が同じスタイルか」を出します。
     // 箇条書きの項目がこれで詰まります(2026-09-03)
@@ -1738,6 +1747,55 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             })
             .collect()
     };
+    // **表のセルの中の段落にも、同じようにスタイルを当てます**(2026-09-03)。
+    //
+    // 前はここが `Block::Para` だけで、`Block::Table` は素通りでした。
+    // 色も太字も空きも、**表の中だけ効いていません**でした。内閣府の
+    // 面談の記録は記入欄が表で、既定のスタイルの「段落前 4pt」が
+    // 当たらず、行が元より 5.4pt 低くなっていました。
+    //
+    // 表の中では、隣は同じセルの中の前後の段落です
+    let jibun_hiku = jibun.clone();
+    for block in out.blocks.iter_mut() {
+        let crate::doc::Block::Table(t) = block else { continue };
+        for row in &mut t.rows {
+            for cell in row.iter_mut() {
+                let n = cell.paragraphs.len();
+                let ids: Vec<Option<String>> =
+                    cell.paragraphs.iter().map(|p| p.style_id.clone()).collect();
+                for i in 0..n {
+                    let onaji = |j: Option<usize>| {
+                        j.and_then(|j| ids.get(j)).is_some_and(|o| *o == ids[i] && o.is_some())
+                    };
+                    let (mae, tsugi) = (onaji(i.checked_sub(1)), onaji(Some(i + 1)));
+                    let para = &mut cell.paragraphs[i];
+                    if let Some((_, lk, pl)) = para
+                        .style_id
+                        .as_deref()
+                        .and_then(|id| jibun_hiku.iter().find(|(k, _, _)| k == id))
+                    {
+                        jibun_wo_ateru(para, lk, pl);
+                        let tsuzuki = pl.contextual_spacing == Some(true);
+                        bunsho_no_kitei(para, doc_after, doc_line);
+                        if tsuzuki {
+                            if mae {
+                                para.space_before_pt = 0.0;
+                            }
+                            if tsugi {
+                                para.space_after_pt = 0.0;
+                            }
+                        }
+                    } else {
+                        // 名乗らない段落は、その種類の既定のスタイルに従います
+                        if let Some((lk, pl)) = kitei_no_style.clone() {
+                            jibun_wo_ateru(para, &lk, &pl);
+                        }
+                        bunsho_no_kitei(para, doc_after, doc_line);
+                    }
+                }
+            }
+        }
+    }
     for (bi, block) in out.blocks.iter_mut().enumerate() {
         let crate::doc::Block::Para(para) = block else { continue };
         let (mae_onaji, tsugi_onaji) = tonari.get(bi).copied().unwrap_or((false, false));

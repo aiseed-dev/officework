@@ -1513,6 +1513,131 @@ mod doc_pdf_tests {
 ///
 /// 2026-08-30 に足しました。内閣府の告知書の窓口の欄が3つとも、紙にも画面にも
 /// 出ていませんでした(保存では原文のまま残っていたので、往復では気づけません)。
+
+/// **錨の位置を解く**(docx の `wp:positionH` / `wp:positionV`)。
+///
+/// 位置は「基準(`relativeFrom`)」と「距離(`wp:posOffset`)または
+/// 寄せ方(`wp:align`)」の組で書いてあります。基準ごとに原点と、
+/// 寄せるときの幅が違います。ECMA-376 の `ST_RelFromH` / `ST_RelFromV` と、
+/// LibreOffice の `GraphicHelpers.cxx`(`PositionHandler::lcl_attribute`)の
+/// 対応がこの表です(2026-09-03 発注者「急ぎだけでやらずに全部やれ」)。
+///
+/// | 横の基準 | 原点 | 寄せる幅 |
+/// |---|---|---|
+/// | `page` | 紙の左端 | 紙の幅 |
+/// | `margin` / `column` | 本文の左端 | 本文の幅 |
+/// | `leftMargin` | 紙の左端 | 左の余白 |
+/// | `rightMargin` | 本文の右端 | 右の余白 |
+/// | `insideMargin` | 紙の左端 | 左の余白(見開きで左右が入れ替わる) |
+/// | `outsideMargin` | 本文の右端 | 右の余白(同上) |
+/// | `character` | 本文の左端 | 本文の幅 |
+///
+/// | 縦の基準 | 原点 | 寄せる幅 |
+/// |---|---|---|
+/// | `page` | 紙の上端 | 紙の高さ |
+/// | `margin` | 本文の上端 | 本文の高さ |
+/// | `topMargin` | 紙の上端 | 上の余白 |
+/// | `bottomMargin` | 本文の下端 | 下の余白 |
+/// | `paragraph` / `line` | その段落の上端 | 本文の高さ |
+///
+/// `kono` は段落の上端(mm)で、`paragraph` と `line` だけが使います。
+/// `migi_page` は見開きの右の紙か(`inside` / `outside` が使います)。
+fn anchor_place(
+    from: &str,
+    zure: f32,
+    yose: Option<&str>,
+    ookisa: f32,
+    page: &kumihan::PageSetup,
+    tate: bool,
+    kono: f32,
+    migi_page: bool,
+) -> f32 {
+    let (moto, haba) = if tate {
+        let honbun = (page.h_mm - page.top_mm - page.bottom_mm).max(0.0);
+        match from {
+            "page" => (0.0, page.h_mm),
+            "topMargin" => (0.0, page.top_mm),
+            "bottomMargin" => (page.h_mm - page.bottom_mm, page.bottom_mm),
+            "paragraph" | "line" => (kono, honbun),
+            // "margin" と、知らない名前
+            _ => (page.top_mm, honbun),
+        }
+    } else {
+        let honbun = (page.w_mm - page.left_mm - page.right_mm).max(0.0);
+        // 見開きの内・外。右の紙では左右が入れ替わります
+        let (uchi_moto, uchi_haba) = if migi_page {
+            (0.0, page.left_mm)
+        } else {
+            (page.w_mm - page.right_mm, page.right_mm)
+        };
+        match from {
+            "page" => (0.0, page.w_mm),
+            "leftMargin" => (0.0, page.left_mm),
+            "rightMargin" => (page.w_mm - page.right_mm, page.right_mm),
+            "insideMargin" => (uchi_moto, uchi_haba),
+            "outsideMargin" => {
+                if migi_page {
+                    (page.w_mm - page.right_mm, page.right_mm)
+                } else {
+                    (0.0, page.left_mm)
+                }
+            }
+            // "margin" / "column" / "character" と、知らない名前
+            _ => (page.left_mm, honbun),
+        }
+    };
+    let Some(y) = yose else {
+        // 寄せ方が無ければ、基準からの距離です
+        return moto + zure;
+    };
+    // 見開きの内・外は、右の紙で向きが逆になります
+    let uchi = if migi_page { "right" } else { "left" };
+    let soto = if migi_page { "left" } else { "right" };
+    let y = match y {
+        "inside" if !tate => uchi,
+        "outside" if !tate => soto,
+        "inside" if tate => "top",
+        "outside" if tate => "bottom",
+        other => other,
+    };
+    match y {
+        "left" | "top" => moto,
+        "right" | "bottom" => moto + haba - ookisa,
+        "center" => moto + (haba - ookisa) / 2.0,
+        _ => moto + zure,
+    }
+}
+
+
+/// **紙や余白に対する百分率で決まる大きさ**(Word 2010 の `wp14:sizeRelH` /
+/// `wp14:sizeRelV`)。`wp:extent` はそのときの控えで、こちらが本当の大きさです。
+///
+/// 基準は位置の側と同じ名前です([`anchor_place`] の表)。
+fn anchor_size(
+    pct: Option<&(String, f32)>,
+    kitei: f32,
+    page: &kumihan::PageSetup,
+    tate: bool,
+) -> f32 {
+    let Some((from, wari)) = pct else { return kitei };
+    let moto = if tate {
+        match from.as_str() {
+            "page" => page.h_mm,
+            "topMargin" => page.top_mm,
+            "bottomMargin" => page.bottom_mm,
+            _ => page.h_mm - page.top_mm - page.bottom_mm,
+        }
+    } else {
+        match from.as_str() {
+            "page" => page.w_mm,
+            "leftMargin" => page.left_mm,
+            "rightMargin" => page.right_mm,
+            _ => page.w_mm - page.left_mm - page.right_mm,
+        }
+    };
+    (moto * wari).max(0.1)
+}
+
 pub fn foreign_shapes(
     doc: &kumihan::Document,
     sheet: &kumihan::Sheet,
@@ -1536,21 +1661,22 @@ pub fn foreign_shapes(
     let kami_kazu = pg.offsets.len().max(1);
     for a in doc.header.anchors.iter().chain(doc.footer.anchors.iter()) {
         let Some(f) = ooxml::foreign_shape(a) else { continue };
-        let x = match f.h_from.as_str() {
-            "page" => f.x_mm,
-            _ => page.left_mm + f.x_mm,
-        };
-        let y = match f.v_from.as_str() {
-            "page" => f.y_mm,
-            _ => page.top_mm + f.y_mm,
-        };
+        // 大きさが百分率で書いてあれば、そちらが本当の大きさです
+        let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
+        let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
         for k in 0..kami_kazu {
+            // 見開きの内・外は紙ごとに向きが変わるので、紙の中で解きます
+            let migi = k % 2 == 1;
+            let x = anchor_place(&f.h_from, f.x_mm, f.h_align.as_deref(),
+                                 w_mm, &page, false, page.top_mm, migi);
+            let y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(),
+                                 h_mm, &page, true, page.top_mm, migi);
             out.push(kumihan::DocShape {
                 page: k,
                 x_mm: x,
                 y_mm: y,
-                w_mm: f.w_mm,
-                h_mm: f.h_mm,
+                w_mm,
+                h_mm,
                 look: f.look.clone(),
             });
         }
@@ -1576,23 +1702,21 @@ pub fn foreign_shapes(
             if f.look.text_fmt.font.is_none() {
                 f.look.text_fmt.font = doc.font.clone();
             }
-            // 横の基準。`margin` と `column` は本文の左端、`page` は紙の左端
-            let x = match f.h_from.as_str() {
-                "page" => f.x_mm,
-                _ => page.left_mm + f.x_mm,
-            };
-            // 縦の基準。`page` は紙の上端、それ以外はこの段落の頭から
-            let mut y = match f.v_from.as_str() {
-                "page" => f.y_mm,
-                _ => y_para + f.y_mm,
-            };
+            // 基準と寄せ方は [`anchor_place`] の表のとおりに解きます
+            let migi = kami % 2 == 1;
+            let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
+            let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
+            let x = anchor_place(&f.h_from, f.x_mm, f.h_align.as_deref(),
+                                 w_mm, &page, false, y_para, migi);
+            let mut y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(),
+                                     h_mm, &page, true, y_para, migi);
             // **紙に入らない図形は次の紙へ送ります**(2026-08-31)。Word は
             // 錨の段落ごと送ります。内閣府の調査票は窓口の欄2つが 305mm の
             // 所に来ていて、A4(297mm)の下に落ちて紙に出ていませんでした
             let mut kami = kami;
             let tsukaeru = (page.h_mm - page.top_mm - page.bottom_mm).max(1.0);
             let mut nogare = 0;
-            while y + f.h_mm > page.h_mm && nogare < 8 {
+            while y + h_mm > page.h_mm && nogare < 8 {
                 y -= tsukaeru;
                 kami += 1;
                 nogare += 1;
@@ -1601,8 +1725,8 @@ pub fn foreign_shapes(
                 page: kami,
                 x_mm: x,
                 y_mm: y,
-                w_mm: f.w_mm,
-                h_mm: f.h_mm,
+                w_mm,
+                h_mm,
                 look: f.look,
             });
         }

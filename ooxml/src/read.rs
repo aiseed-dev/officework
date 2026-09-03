@@ -3010,6 +3010,17 @@ pub struct ForeignShape {
     pub h_from: String,
     /// 縦の基準。`paragraph` / `page` / `line` など
     pub v_from: String,
+    /// **横の寄せ方**(docx の `<wp:align>`)。距離ではなく、基準の中で
+    /// どちらへ寄せるかです。`left` / `right` / `center` / `inside` /
+    /// `outside`。`posOffset` の代わりに来ます
+    pub h_align: Option<String>,
+    /// **縦の寄せ方**。`top` / `bottom` / `center` / `inside` / `outside`
+    pub v_align: Option<String>,
+    /// **幅が何かの百分率のとき**(`wp14:sizeRelH`)。(基準, 割合)。
+    /// 基準は `page` / `margin` / `leftMargin` など
+    pub w_pct: Option<(String, f32)>,
+    /// **高さが何かの百分率のとき**(`wp14:sizeRelV`)
+    pub h_pct: Option<(String, f32)>,
     /// 形・塗り・線・中の文字
     pub look: book::SheetShape,
 }
@@ -3137,8 +3148,13 @@ pub fn foreign_shape(a: &str) -> Option<ForeignShape> {
     let (w_mm, h_mm) = shape_size(a)?;
     let look = shape_look(a)?;
     // 基準の名前と、そこからのずれ
-    let kijun = |tag: &str| -> (String, f32) {
-        let Some(i) = a.find(tag) else { return (String::new(), 0.0) };
+    //
+    // **`<wp:posOffset>` と `<wp:align>` は二択です。** 前者は基準からの
+    // 距離、後者は基準の中での寄せ方です。`align` を読まないと、寄せて
+    // 置いた図形が全部基準の原点(紙なら左上)へ落ちます。内閣府の
+    // 面談の記録の飾り枠がそれでした(2026-09-03 発注者)
+    let kijun = |tag: &str| -> (String, f32, Option<String>) {
+        let Some(i) = a.find(tag) else { return (String::new(), 0.0, None) };
         let from = a[i..]
             .find("relativeFrom=\"")
             .and_then(|j| {
@@ -3147,12 +3163,46 @@ pub fn foreign_shape(a: &str) -> Option<ForeignShape> {
             })
             .unwrap_or_default();
         let owari = a[i..].find('>').map(|e| i + e).unwrap_or(a.len());
-        let zure = mm_of(&a[owari..], "<wp:posOffset>").unwrap_or(0.0);
-        (from, zure)
+        // この位置の指定が終わる所まで(次の `</wp:positionH>` など)
+        let tojime = format!("</{}>", &tag[1..]);
+        let sue = a[owari..]
+            .find(&tojime)
+            .map(|e| owari + e)
+            .unwrap_or(a.len());
+        let naka = &a[owari..sue];
+        let zure = mm_of(naka, "<wp:posOffset>").unwrap_or(0.0);
+        let yose = naka.find("<wp:align>").and_then(|j| {
+            let s2 = j + 10;
+            naka[s2..].find('<').map(|e| naka[s2..s2 + e].trim().to_string())
+        });
+        (from, zure, yose)
     };
-    let (h_from, x_mm) = kijun("<wp:positionH");
-    let (v_from, y_mm) = kijun("<wp:positionV");
-    Some(ForeignShape { x_mm, y_mm, w_mm, h_mm, h_from, v_from, look })
+    let (h_from, x_mm, h_align) = kijun("<wp:positionH");
+    let (v_from, y_mm, v_align) = kijun("<wp:positionV");
+    // **大きさが紙や余白に対する百分率のことがあります**(Word 2010 の
+    // `wp14:sizeRelH` / `wp14:sizeRelV`)。`wp:extent` はそのときの控えで、
+    // 実際の大きさはこちらです。内閣府の面談の記録の飾り枠は紙の
+    // 92% × 94% で、`wp:extent` の 197.9×261.4mm ではなく
+    // 193.2×279.2mm で出ます(2026-09-03)
+    let pct = |tag: &str, key: &str| -> Option<(String, f32)> {
+        let i = a.find(tag)?;
+        let owari = a[i..].find('>').map(|e| i + e).unwrap_or(a.len());
+        let from = a[i..owari]
+            .find("relativeFrom=\"")
+            .and_then(|j| {
+                let s2 = i + j + 14;
+                a[s2..].find('"').map(|e| a[s2..s2 + e].to_string())
+            })?;
+        let k = a[owari..].find(key)? + owari + key.len();
+        let e = a[k..].find('<')? + k;
+        // 1000 分の1パーセント
+        a[k..e].trim().parse::<f32>().ok().map(|v| (from, v / 100000.0))
+    };
+    let w_pct = pct("<wp14:sizeRelH", "<wp14:pctWidth>");
+    let h_pct = pct("<wp14:sizeRelV", "<wp14:pctHeight>");
+    Some(ForeignShape {
+        x_mm, y_mm, w_mm, h_mm, h_from, v_from, h_align, v_align, w_pct, h_pct, look,
+    })
 }
 
 /// `<wp:extent cx="…" cy="…"/>` を mm で

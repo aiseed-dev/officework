@@ -1645,10 +1645,22 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                             para.marker(kazu - 1)
                         }
                     };
-                    for cs in break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase) {
+                    // **セルの中でも段落の前後の空きを数えます**(2026-09-03)。
+                    // 前は行送りの合計だけで、`w:spacing` を落としていました。
+                    // 内閣府の面談の記録は記入欄が表で、既定のスタイルの
+                    // 「段落前 4pt」が行の高さに入らず、元より低い行に
+                    // なっていました。空きは最初の行と最後の行に足します
+                    let mae = space_before_mm(para, pbase);
+                    let ato = space_after_mm(para, pbase);
+                    let mut kore = break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase);
+                    let saigo = kore.len().saturating_sub(1);
+                    for (k, cs) in kore.drain(..).enumerate() {
                         let b0 = para0 + cs.iter().map(|c| c.off).min().unwrap_or(0);
                         let pt = cs.first().map(|c: &Cell| c.size_pt).unwrap_or(pbase);
-                        ls.push((cs, b0, plh, para.align, pt));
+                        let h = plh
+                            + if k == 0 { mae } else { 0.0 }
+                            + if k == saigo { ato } else { 0.0 };
+                        ls.push((cs, b0, h, para.align, pt));
                     }
                     let plen: usize = para.runs.iter().map(|r| r.text.len()).sum();
                     para0 += plen + 1;
