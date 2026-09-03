@@ -1660,7 +1660,7 @@ pub fn foreign_shapes(
     // 紙ごとに同じ所へ置けば足ります
     let kami_kazu = pg.offsets.len().max(1);
     for a in doc.header.anchors.iter().chain(doc.footer.anchors.iter()) {
-        let Some(f) = ooxml::foreign_shape(a) else { continue };
+        let Some(f) = ooxml::foreign_shape_with(a, &doc.theme_colors) else { continue };
         // 大きさが百分率で書いてあれば、そちらが本当の大きさです
         let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
         let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
@@ -1696,7 +1696,7 @@ pub fn foreign_shapes(
         // 上の余白はもう `y_mm` に入っているので、足すと二重になります
         let y_para = sheet.lines[li].y_mm - soko;
         for a in &para.anchors {
-            let Some(mut f) = ooxml::foreign_shape(a) else { continue };
+            let Some(mut f) = ooxml::foreign_shape_with(a, &doc.theme_colors) else { continue };
             // **箱が書体を言っていなければ文書の既定**です。行送りと
             // ベースラインの位置がこれで決まります(2026-09-01)
             if f.look.text_fmt.font.is_none() {

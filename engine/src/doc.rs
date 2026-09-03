@@ -937,6 +937,12 @@ pub struct Document {
     /// **文書の既定の行間の倍率**(同じく `w:spacing w:line` ÷ 240)。
     /// python-docx の型紙は 276/240 = 1.15 です
     pub line_spacing: Option<f32>,
+    /// **テーマの配色**(docx の `theme1.xml` の `a:clrScheme`)。
+    /// 並びは `dk1 lt1 dk2 lt2 accent1..6 hlink folHlink` の12色です。
+    ///
+    /// 図形の色はこの名前(`<a:schemeClr val="accent1"/>`)で書いてあること
+    /// が多く、読まないと Office の既定の色で出ます(2026-09-03)
+    pub theme_colors: Vec<String>,
     /// 用紙の設定。無ければ既定(A4)
     pub page: Option<PageSetup>,
     /// 節の設定の原文(w:sectPr)。ヘッダーの参照などが入っているので、

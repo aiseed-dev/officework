@@ -27,7 +27,7 @@ mod read;
 pub mod theme;
 mod write;
 
-pub use read::{foreign_shape, ink_anchor_run, ink_anchor_xml, shape_anchor_run, shape_anchor_xml, parse_document_with, parse_document_xml, read, ForeignShape, Report};
+pub use read::{foreign_shape, foreign_shape_with, ink_anchor_run, ink_anchor_xml, shape_anchor_run, shape_anchor_xml, parse_document_with, parse_document_xml, read, ForeignShape, Report};
 pub use write::{
     sect_xml, style_names, write, write_document_parts, write_document_xml, write_with,
     write_with_theme,

@@ -322,6 +322,14 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     // うちも同じにします。`DEFAULT_PT`(10.5)は自分で作る文書の既定で、
     // docx を読む道では使いません(2026-09-03 発注者)
     doc.size_pt = Some(10.0);
+    // **テーマの配色。** 図形の色はここの名前で書いてあります
+    {
+        let mut th = String::new();
+        if let Ok(mut f) = zip.by_name(&bui("theme", "word/theme/theme1.xml")) {
+            let _ = f.read_to_string(&mut th);
+        }
+        doc.theme_colors = crate::theme::clr_scheme(&th);
+    }
     if let Some(i) = styles.find("docDefaults") {
         // **層1。** この節が言うことは、スタイルより下・層0より上です。
         // 字の大きさ・段落後の空き・行間を読みます。python-docx の型紙は
@@ -2972,7 +2980,7 @@ pub(super) fn extract_shapes(doc: &mut Document) {
                     s2[..e].parse::<usize>().ok()
                 })
                 .unwrap_or(0);
-            let (Some(sp), Some((w, h))) = (shape_look(a), shape_size(a)) else {
+            let (Some(sp), Some((w, h))) = (shape_look(a, &[]), shape_size(a)) else {
                 i += 1;
                 continue;
             };
@@ -3142,11 +3150,17 @@ pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (S
 }
 
 pub fn foreign_shape(a: &str) -> Option<ForeignShape> {
+    foreign_shape_with(a, &[])
+}
+
+/// **文書のテーマの配色つき。** 図形の色はテーマの名前で書いてあることが
+/// 多いので、これを渡さないと既定の配色で出ます([`crate::theme::dml_iro`])
+pub fn foreign_shape_with(a: &str, palette: &[String]) -> Option<ForeignShape> {
     if a.contains("name=\"joshape") || a.contains("name=\"joink") {
         return None; // うちが書いた物は extract_shapes が読みます
     }
     let (w_mm, h_mm) = shape_size(a)?;
-    let look = shape_look(a)?;
+    let look = shape_look(a, palette)?;
     // 基準の名前と、そこからのずれ
     //
     // **`<wp:posOffset>` と `<wp:align>` は二択です。** 前者は基準からの
@@ -3224,7 +3238,7 @@ fn mm_of(a: &str, pat: &str) -> Option<f32> {
 }
 
 /// 図形の見た目(形・塗り・線・回転・不透明度・影・中の文字)
-fn shape_look(a: &str) -> Option<book::SheetShape> {
+fn shape_look(a: &str, palette: &[String]) -> Option<book::SheetShape> {
     let mut sp = book::SheetShape { alpha: 1.0, line_w: 1.5, ..Default::default() };
     // 形。prstGeom の名前、無ければ点で作る形
     sp.kind = match a.find("<a:prstGeom prst=\"") {
@@ -3258,48 +3272,26 @@ fn shape_look(a: &str) -> Option<book::SheetShape> {
             }
         }
     }
-    // **テーマの色**(`<a:schemeClr val="tx1"/>`)。`srgbClr` で書いていない
-    // 図形は、これを読まないと色が無い=線を引かない、になります。
-    // 既定のテーマの色に写します — 文書のテーマは読まないので、
-    // 濃さ(`lumMod` など)は見ません(2026-09-01)
-    fn theme_iro(a: &str, from: &str) -> Option<String> {
-        let i = a.find(from)? + from.len();
-        let j = a[i..].find("<a:schemeClr val=\"")? + i + 18;
-        let e = a[j..].find('"')? + j;
-        if a[i..j].contains("</a:ln>") {
-            return None;
-        }
-        Some(match &a[j..e] {
-            "tx1" | "dk1" => "000000",
-            "bg1" | "lt1" => "FFFFFF",
-            "tx2" | "dk2" => "44546A",
-            "bg2" | "lt2" => "E7E6E6",
-            "accent1" => "4472C4",
-            "accent2" => "ED7D31",
-            "accent3" => "A5A5A5",
-            "accent4" => "FFC000",
-            "accent5" => "5B9BD5",
-            "accent6" => "70AD47",
-            "hlink" => "0563C1",
-            "folHlink" => "954F72",
-            _ => "000000",
-        }
-        .to_string())
-    }
-    // 塗りと線の色。**この図形の中の最初の物だけ**を見ます
+    // 塗りと線の色。**この図形の中の最初の物だけ**を見ます。
+    //
+    // 色は `srgbClr` で直に書いてあるとは限りません。テーマの名前
+    // (`schemeClr`)と濃さの修飾(`lumMod` など)で書いてある方が普通です。
+    // 解くのは [`crate::theme::dml_iro`] で、文書のテーマの配色を渡します
     let iro = |from: &str| -> Option<String> {
         let i = a.find(from)? + from.len();
-        let j = a[i..].find("<a:srgbClr val=\"")? + i + 16;
-        let e = a[j..].find('"')? + j;
-        // 別の欄まで飛び越えていないか(影の色を線の色と読まないため)
-        if a[i..j].contains("</a:ln>") { None } else { Some(a[j..e].to_string()) }
+        // その欄の終わりまで(影の色を線の色と読まないため)
+        let owari = a[i..]
+            .find(if from.starts_with("<a:ln") { "</a:ln>" } else { "</a:solidFill>" })
+            .map(|e| i + e + 7)
+            .unwrap_or(a.len());
+        crate::theme::dml_iro(&a[i..owari], palette)
     };
     if a.contains("<a:noFill/>") && a.find("<a:noFill/>") < a.find("<a:ln ") {
         sp.fill = None;
     } else {
         sp.fill = iro("<a:solidFill>");
     }
-    sp.line = iro("<a:ln ").or_else(|| theme_iro(a, "<a:ln "));
+    sp.line = iro("<a:ln ");
     // **線の種類**(`<a:prstDash val="dash"/>`)。無ければ実線
     if let Some(i) = a.find("<a:prstDash val=\"") {
         let s2 = i + 17;
