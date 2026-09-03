@@ -1418,6 +1418,22 @@ fn draw_sheet(
             }
             // 折り返しの指定があるセルは、下の折り返しに任せます
             if matches!(cell.value, Value::Number(_)) && !cell.fmt.wrap && !cell.fmt.shrink {
+                // **書式の無い数は、桁を減らして入れます**(2026-09-03)。
+                // LibreOffice も Excel も、標準の書式では桁を落として入る形に
+                // します。1.2cm の列で `=1/3` は `0.3333`、`=1/3*10000000` は
+                // `3E+06` と出ます。うちは両方 `###` にしていました。
+                // 書式を指定したセルは指定どおりに出すので、ここは通しません
+                if haba_cell(&shown, pt) > naka && cell.fmt.number_format.is_none() {
+                    if let Value::Number(n) = cell.value {
+                        if let Some(mijikai) = book::hyoujun_no_kouho(n)
+                            .into_iter()
+                            .find(|s| haba_cell(s, pt) <= naka)
+                        {
+                            shown = mijikai;
+                        }
+                    }
+                }
+                // いちばん短い形でも入らなければ、入らないと知らせます
                 let hitotsu = haba.ji_mm(ji_fno(fno_cell, '#') as usize, '#', pt);
                 if haba_cell(&shown, pt) > naka && hitotsu > 0.0 {
                     let kazu = (naka / hitotsu).floor().max(1.0) as usize;
@@ -3232,6 +3248,42 @@ mod zukei_tests {
         assert!(15.65 - 2.0 * MASU_PAD_MM > iru, "8桁の数が入らない");
         // 前の 3.0mm では入りませんでした
         assert!(15.65 - 3.0 < iru, "前の余白でも入ってしまう(試験が効かない)");
+    }
+
+    /// **狭い列の数は、桁を減らして入れる。** `###` はその後です。
+    ///
+    /// LibreOffice も Excel も、書式の無いセルの数が列に入らないときは
+    /// 桁を落として入る形にします(実測: 1.2cm の列で `=1/3` は `0.3333`、
+    /// `=1/3*10000000` は `3E+06`)。うちは両方 `###` にしていました
+    /// (2026-09-03 発注者「LibreOffice に合わせて。PDF の表示を合わせるのに
+    /// 必要です」)。
+    #[test]
+    fn a_narrow_column_drops_digits_before_it_gives_up() {
+        let hiku = |n: f64, haba: f32| -> String {
+            let mut g = Grid { name: "見本".into(), ..Default::default() };
+            g.col_width.insert(0, haba);
+            g.set(book::Pos::new(0, 0), book::Cell {
+                formula: None, value: Value::Number(n), fmt: Default::default() });
+            let leaves = sheet_leaves(&g, Paper::default(), &PrintSetup::default()).unwrap();
+            leaves.iter().flat_map(|l| l.pieces.iter()).map(|p| p.text.clone()).collect()
+        };
+        // 幅があれば有効数字15桁のまま
+        assert_eq!(hiku(1.0 / 3.0, 22.0), "0.333333333333333");
+        // 狭くなったら桁を落とす。`#` にはしない
+        for haba in [6.0f32, 8.0, 10.0, 13.0] {
+            let s = hiku(1.0 / 3.0, haba);
+            assert!(s.starts_with("0.3"), "桁を落としていない({haba}): {s}");
+            assert!(!s.contains('#'), "桁を落とせるのに # にした({haba}): {s}");
+        }
+        // 整数の側が入らなければ指数の形へ
+        assert_eq!(hiku(1.0 / 3.0 * 10000000.0, 6.0), "3E+06");
+        assert_eq!(hiku(123456789012345.0, 6.0), "1E+14");
+        // **0 でない数を 0 と見せない。** 有効数字は1桁は残す
+        let s = hiku(0.000012345, 6.0);
+        assert_ne!(s, "0", "0 でない数を 0 と出した");
+        assert_eq!(s, "1E-05");
+        // いちばん短い形でも入らなければ、入らないと知らせる
+        assert!(hiku(123456789012345.0, 3.0).contains('#'), "入らないのに数を出した");
     }
 
     /// **テキストボックスの字は、箱の幅で折り返す。**

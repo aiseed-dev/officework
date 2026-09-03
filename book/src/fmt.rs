@@ -506,3 +506,48 @@ fn juu_no_shisuu(x: f64) -> i32 {
         None => 0,
     }
 }
+
+/// **列に入らない数を、桁を減らして入れる候補。** 長い順に返します。
+///
+/// LibreOffice と Excel は、書式の無いセルの数が列に入らないとき、
+/// 桁を減らして入る形にします。`###` を出すのは、いちばん短い形でも
+/// 入らないときだけです。実測(1.2cm の列)では `=1/3` が `0.3333`、
+/// `=1/3*10000000` が `3E+06` と出ました。うちは `###` にしていました。
+///
+/// 呼ぶ側が、頭から順に「この列に入るか」を見て、最初に入った物を使います。
+/// 幅は書体で測るので、ここでは字の数を決めません。
+///
+/// 並びは、小数点の形を桁の多い順に、次に指数の形を桁の多い順です。
+/// **指数の桁は最低2桁**です(LibreOffice の幅に合わせる道はこの形です。
+/// 幅に余裕があるときの `1E+016` とは違います — あちらは別の道を通ります)。
+pub fn hyoujun_no_kouho(n: f64) -> Vec<String> {
+    let mut v = Vec::new();
+    if !n.is_finite() || n == 0.0 {
+        return v;
+    }
+    let exp = juu_no_shisuu(n.abs());
+    // 小数点の形。小数の桁を減らしていきます。
+    //
+    // **有効数字を1桁は残します。** 0.000012345 で小数を0桁まで減らすと
+    // `0` になり、0 でない数を 0 と見せることになります。LibreOffice は
+    // そうならず、`1E-05` に切り替えます
+    if (-15..15).contains(&exp) {
+        let hajime = (14 - exp).clamp(0, 20);
+        let owari = if exp < 0 { -exp } else { 0 };
+        for d in (owari..=hajime).rev() {
+            let mut s = format!("{n:.*}", d as usize);
+            suso_wo_otosu(&mut s);
+            v.push(s);
+        }
+    }
+    // 指数の形。仮数の桁を減らしていきます
+    let kasuu = n / 10f64.powi(exp);
+    let fugou = if exp < 0 { '-' } else { '+' };
+    for m in (0..=14).rev() {
+        let mut k = format!("{kasuu:.*}", m as usize);
+        suso_wo_otosu(&mut k);
+        v.push(format!("{k}E{fugou}{:02}", exp.abs()));
+    }
+    v.dedup();
+    v
+}

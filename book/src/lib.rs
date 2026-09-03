@@ -41,7 +41,7 @@ mod types;
 
 pub use preset_spec::{spec_has, spec_names, spec_polys, Poly};
 
-pub use fmt::format_value;
+pub use fmt::{format_value, hyoujun_no_kouho};
 pub use refs::{
     formula_from_r1c1, formula_to_r1c1, map_refs, offset_refs, rename_refs_in,
     rename_sheet_refs, shift_refs, MapRef,
