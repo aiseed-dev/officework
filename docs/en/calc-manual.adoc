@@ -707,7 +707,7 @@ Configure on the Layout tab, then File > Print writes a PDF.
 * Orientation, margins (default 20mm / narrow 10mm / wide 30mm), scale (100→90→80→70→50%)
 * Print area (select and set; press again to clear), page breaks, repeated title rows, print gridlines, print headings (row numbers / column letters)
 * These are saved into the xlsx (by patching the original attributes — ones we don't understand are not deleted), so Excel opens with the same print setup
-* The PDF carries values, formatting, borders, fills, and the shapes/images inserted by this app. Columns that don't fit the paper are cut (the status bar says so)
+* The PDF carries values, formatting, borders, fills, and the shapes and pictures — both the ones this app inserted and the ones the xlsx already held. An equation Excel keeps inside a text box is set as a formula and printed. Columns that don't fit the paper are cut (the status bar says so)
 
 == Saving
 
