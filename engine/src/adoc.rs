@@ -1264,7 +1264,7 @@ pub fn is_block_inner(name: &str) -> bool {
 
 /// 画面と紙で**等幅**にする塊
 pub fn is_mono_block(name: &str) -> bool {
-    matches!(name, "塊の中" | "コードの塊" | "字のまま出す塊" | "そのまま通す塊")
+    matches!(name, "塊の中" | "コードの塊" | "字のまま出す塊" | "そのまま通す塊" | "字下げ")
 }
 
 /// 画面と紙に**出さない**行(覚え書き)
@@ -1757,8 +1757,10 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                         raw_adoc: Some(if blank_line { format!("{l}\n") } else { l.to_string() }),
                         ..Default::default()
                     };
+                    // 塊の題は先頭の `.` を取った字で見せます(原文は raw_adoc)
+                    let shown = if role == "塊の題" { l.trim_start().trim_start_matches('.').to_string() } else { l.to_string() };
                     p.runs.push(Run {
-                        text: l.to_string(),
+                        text: shown,
                         size_pt: None,
                         font: None,
                         fmt: CharFormat::default(),
@@ -1931,8 +1933,10 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             // 原文のまま持ち越すのをやめて表に入れます
             if let Some(Block::Para(prev)) = doc.blocks.last() {
                 if prev.style_id.as_deref() == Some("塊の題") {
+                    // 字は `.` を取った題そのもの(2026-09-03。前は原文の字だった)
                     let title: String = prev.runs.iter().map(|r| r.text.as_str()).collect();
-                    if let Some(name) = title.trim().strip_prefix('.') {
+                    if !title.trim().is_empty() {
+                        let name = title.trim();
                         t.title = Some(name.to_string());
                         doc.blocks.pop();
                         // **読めたので帳簿から下げます。** 表の題は取り込んだ
@@ -2793,6 +2797,21 @@ mod tests {
         ]);
         assert_eq!(write(&d), src, "往復で変わった");
         assert!(is_mono_block("コードの塊") && is_hidden_block("覚え書きの塊"));
+    }
+
+    /// 塊の題と字下げの段落(2026-09-03)。題は `.` を取った字で持ち、原文はそのまま。
+    /// 表の前の題は表に入る。字下げは等幅
+    #[test]
+    fn block_titles_show_without_the_dot_and_literal_paragraphs_are_mono() {
+        let src = ".コードの題\n----\nx\n----\n\n.表の題\n|===\n|a\n|===\n\n  字下げの段落\n";
+        let d = parse(src).unwrap();
+        let title = d.paragraphs().find(|p| p.style_id.as_deref() == Some("塊の題")).expect("題が無い");
+        assert_eq!(title.runs[0].text, "コードの題");
+        assert_eq!(title.raw_adoc.as_deref(), Some(".コードの題"));
+        assert_eq!(d.tables().next().unwrap().title.as_deref(), Some("表の題"), "表の題が取り込まれていない");
+        assert!(d.paragraphs().any(|p| p.style_id.as_deref() == Some("字下げ")));
+        assert!(is_mono_block("字下げ"));
+        assert_eq!(write(&d), src, "往復で変わった");
     }
 
     #[test]

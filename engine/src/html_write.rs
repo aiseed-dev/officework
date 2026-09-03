@@ -825,6 +825,28 @@ fn build(doc: &Document) -> (String, Ctx) {
             next_block_mark = None;
             next_lang = None;
         }
+        // **塊の題は title の div です**(本家と同じ class)。字は `.` を取った題
+        if name == Some("塊の題") {
+            close(&mut o, &mut list);
+            if in_dl {
+                o.push_str("</dl>\n");
+                in_dl = false;
+            }
+            let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+            o.push_str(&format!("<div class=\"title\" style=\"font-weight:bold;margin:1em 0 .3em\">{}</div>\n", esc(text.trim())));
+            continue;
+        }
+        // **字下げの段落は pre です**(字のまま組む物。本家の literal paragraph)
+        if name == Some("字下げ") {
+            close(&mut o, &mut list);
+            if in_dl {
+                o.push_str("</dl>\n");
+                in_dl = false;
+            }
+            let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+            o.push_str(&format!("<pre{CODE_STYLE}>{}</pre>\n", esc(&text)));
+            continue;
+        }
         // **横の区切り線は hr です。** 前は印の字がそのまま出ていました
         if name == Some("横の区切り線") {
             close(&mut o, &mut list);

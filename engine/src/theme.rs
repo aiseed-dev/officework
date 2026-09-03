@@ -392,6 +392,10 @@ pub const DEFAULT_TOML: &str = r#"# officework の既定のテンプレート
 [スタイル.字のまま出す塊]
 書体 = "Noto Sans Mono CJK JP"
 
+# 字下げの段落(頭が空白の段落。字のまま組む物)
+[スタイル.字下げ]
+書体 = "Noto Sans Mono CJK JP"
+
 [スタイル.そのまま通す塊]
 書体 = "Noto Sans Mono CJK JP"
 色 = "8A8A8A"

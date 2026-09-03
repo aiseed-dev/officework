@@ -3242,6 +3242,16 @@ mod block_kind_tests {
         assert_eq!(shown.iter().filter(|t| !t.is_empty()).count(), 3, "行の数: {shown:?}");
     }
 
+    /// 塊の題は title の div、字下げの段落は pre(HTML)
+    #[test]
+    fn block_titles_and_literal_paragraphs_in_html() {
+        let d = adoc::parse(".題です\n----\nx\n----\n\n  字下げ\n").unwrap();
+        let h = html_write::body(&d);
+        assert!(h.contains("<div class=\"title\"") && h.contains(">題です</div>"), "題が div になっていない:\n{h}");
+        assert!(!h.contains(".題です"), "題の `.` が出ている:\n{h}");
+        assert!(h.contains("<pre") && h.contains("  字下げ</pre>"), "字下げが pre でない:\n{h}");
+    }
+
     /// 既定のテンプレートは塊の種類ごとのスタイルを持つ(読み手が付ける名前と同じ)
     #[test]
     fn the_default_template_styles_every_block_kind() {
