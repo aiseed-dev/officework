@@ -30,10 +30,12 @@ license-files = ["LICENSE"]
 authors = [{ name = "Yasuhiro Niji" }]
 keywords = ["xlsx", "docx", "pdf", "excel", "word", "spreadsheet", "office", "openpyxl", "python-docx", "report", "invoice"]
 classifiers = [
-    # β です(2026-08-28)。0.5.0 は「バグが多すぎるので延期」(2026-08-25)
-    # のあと、受け入れ試験のやり直しで穴を埋めました。**版の番号にも β を
-    # 付けます**(0.5.0b2 など)ので、`pip install officework` では入りません。
-    # 試す人は `pip install --pre officework` と打ちます
+    # **版の番号から β を外しました**(2026-09-04 発注者「まだバグは多いけど、
+    # そのまま 0.5.0 で公開」)。`pip install officework` で 0.5.0 が入ります。
+    #
+    # 分類はβのままにします。**直っていない所が多くあることを、探す人に
+    # 先に伝えるため**です。分類は版の番号とは別の物で、PyPI の頁の左側に
+    # 出ます。安定と名乗るのは、分かっている穴が埋まってからにします
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
     "Programming Language :: Rust",

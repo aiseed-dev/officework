@@ -4,7 +4,7 @@
 Read a spreadsheet or a document, change it, write back only what you changed,
 and turn it into a PDF. No office suite, no headless browser, no print driver.
 
-Written in Rust (about 109,000 lines in the engine crates, 1,600+ tests), exposed to Python through PyO3.
+Written in Rust (about 88,000 lines across the crates in this wheel, 1,158 tests), exposed to Python through PyO3.
 
 日本語の説明は GitHub にあります (Japanese documentation on GitHub):
 [Python の手引き](https://github.com/aiseed-dev/officework/blob/main/docs/ja/python-manual.adoc)
@@ -15,12 +15,10 @@ Written in Rust (about 109,000 lines in the engine crates, 1,600+ tests), expose
 $ pip install officework
 ```
 
-**0.5.0 is in beta.** It is published as a pre-release, so the line above
-still gives you 0.4.0. To try the beta:
-
-```console
-$ pip install --pre officework
-```
+**0.5.0 is out, and plenty in it is still broken.** The
+[release notes](https://github.com/aiseed-dev/officework/blob/main/RELEASE.adoc)
+list the gaps we know about. Please report what breaks at
+[the issues](https://github.com/aiseed-dev/officework/issues).
 
 Wheels are abi3 (CPython 3.10+), so one wheel per platform covers every
 version; Linux, macOS and Windows are published. The wheel is **just the

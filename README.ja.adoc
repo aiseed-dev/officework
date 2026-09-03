@@ -117,6 +117,11 @@ git を入れない人にも損はありません — 字のままのファイ�
 $ pip install officework      # 画面以外の一式が入ります(数 MB)
 ----
 
+**いまの版は 0.5.0 です。まだ直っていない所が多くあります。**
+分かっている穴は link:RELEASE.ja.adoc[リリースノート]に書いてあります。
+壊れている所は https://github.com/aiseed-dev/officework/issues[issue] へ
+書いてください。
+
 xlsx / docx を読み書きする所までは、これだけで足ります。
 動いているアプリを Python から操る仕組みと、AI に操らせる MCP サーバも同じ荷物に入っています。
 

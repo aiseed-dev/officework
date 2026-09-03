@@ -111,6 +111,11 @@ See the link:docs/en/calc-manual.adoc[calc manual].
 $ pip install officework      # everything except the GUI (a few MB)
 ----
 
+**The current release is 0.5.0, and plenty in it is still broken.** The gaps
+we know about are listed in the link:RELEASE.adoc[release notes]. Please
+report what breaks at
+https://github.com/aiseed-dev/officework/issues[the issues].
+
 That is enough to read and write xlsx and docx. Driving a running app from Python, and the MCP server that lets an AI do the same, are in the same package.
 
 *The screen (aiseed office) will come in the shape your machine wants* — `.deb`, `.tar.gz`, `.dmg`, `setup.exe`, Flatpak. Install one and `officework` will start it; if the engine is already installed, the two connect as they are.
