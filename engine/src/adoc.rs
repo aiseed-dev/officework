@@ -1717,6 +1717,23 @@ fn is_attr_entry(l: &str) -> bool {
         && k.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-')
 }
 
+/// `[.名前]` の直後に原文のままの行が来たとき、その名前を指定の行として
+/// 原文のまま戻す(段落のスタイルとしては付ける先が無い。2026-09-03)
+fn push_pending_style(doc: &mut Document, pending_style: &mut Option<String>, style_blank: &mut usize) {
+    if let Some(name) = pending_style.take() {
+        // 空行は `[.名前]` の行の前にあった数(この行を読んだ時に控えた物)
+        let blank_before = std::mem::take(style_blank);
+        let mut q = Paragraph {
+            line_spacing: 1.0,
+            style_id: Some("指定の行".to_string()),
+            raw_adoc: Some(format!("{}[.{name}]", "\n".repeat(blank_before))),
+            ..Default::default()
+        };
+        q.runs.push(Run { text: format!("[.{name}]"), size_pt: None, font: None, fmt: CharFormat::default() });
+        doc.blocks.push(Block::Para(q));
+    }
+}
+
 fn next_is_head(lines: &std::iter::Peekable<std::iter::Enumerate<std::str::Lines<'_>>>) -> bool {
     lines
         .clone()
@@ -1760,6 +1777,8 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
     let mut pending: Option<(usize, String)> = None;
     let mut pending_break = false;
     let mut pending_style: Option<String> = None;
+    // `[.名前]` の行の前にあった空行の数(指定の行として戻すときに使う)
+    let mut style_blank = 0usize;
     let mut in_quote = false;
     let mut fresh_note = 0usize;
     // 直前の行が「継げる本文」だったか(空行と特別な行で倒れる)
@@ -1874,10 +1893,17 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         let indented = line.starts_with(' ') || line.starts_with('\t');
         if indented && !list_like && (!prev_is_body || in_literal) {
             *ledger.entry("字下げの段落(literal)").or_default() += 1;
+            // 直前の `[.役割]` と錨は、この段落の前に原文のまま戻す(2026-09-03。
+            // 前は次の普通の段落に付いて、字下げの段落の後ろに出ていた)
+            push_pending_style(&mut doc, &mut pending_style, &mut style_blank);
+            let mut lead = String::new();
+            for bm in pending_bookmarks.drain(..) {
+                lead.push_str(&format!("[[{bm}]]\n"));
+            }
             let mut p = Paragraph {
                 line_spacing: 1.0,
                 style_id: Some("字下げ".to_string()),
-                raw_adoc: Some(if next_is_blank(&mut lines) { format!("{l}\n") } else { l.to_string() }),
+                raw_adoc: Some(format!("{lead}{}", if next_is_blank(&mut lines) { format!("{l}\n") } else { l.to_string() })),
                 ..Default::default()
             };
             p.runs.push(Run { text: l.to_string(), size_pt: None, font: None, fmt: CharFormat::default() });
@@ -1949,16 +1975,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 // ただし塊の題(`.題`)の前の役割と錨は、題の後ろの表や塊の物なので
                 // 消費しない(`[.tables]` `.売上台帳` `|===` の並び)
                 if role != "塊の題" {
-                    if let Some(name) = pending_style.take() {
-                        let mut q = Paragraph {
-                            line_spacing: 1.0,
-                            style_id: Some("指定の行".to_string()),
-                            raw_adoc: Some(format!("{}[.{name}]", "\n".repeat(blank_before))),
-                            ..Default::default()
-                        };
-                        q.runs.push(Run { text: format!("[.{name}]"), size_pt: None, font: None, fmt: CharFormat::default() });
-                        doc.blocks.push(Block::Para(q));
-                    }
+                    push_pending_style(&mut doc, &mut pending_style, &mut style_blank);
                 }
                 let keeps_blanks = matches!(role, "覚え書き" | "コールアウト" | "指定の行" | "条件" | "取り込み" | "引用の作者");
                 // 直前の原文のままの行が後ろの空行を1つ抱えていれば、その分は引く
@@ -2113,6 +2130,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             // `[.output,subs=…]` のように他の指定が並ぶ物は、指定の行として原文のまま
             if !name.is_empty() && !name.contains(['[', ']', '#', ' ', ',', '=']) {
                 pending_style = Some(name.to_string());
+                style_blank = blank_before;
                 continue;
             }
         }
