@@ -376,6 +376,80 @@ pub fn ai_list() -> Vec<AiDest> {
     v
 }
 
+/// **`[[ai]]` の並びを書き直す**(2026-09-04。画面の「新しい宛先を足す」の道)。
+/// 他の欄(`ai_last` や `language`)と節(`[writer]` など)は触らない。
+/// 鍵そのものは書かない — 行が持つのは `key_env`(環境変数の名前)だけ
+pub fn set_ai_list(rows: &[AiDest]) -> Result<(), String> {
+    let p = path();
+    if let Some(d) = p.parent() {
+        std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
+    }
+    let cur = std::fs::read_to_string(&p).unwrap_or_default();
+    std::fs::write(&p, write_ai_list_into(&cur, rows)).map_err(|e| format!("{}: {e}", p.display()))
+}
+
+/// [`set_ai_list`] の芯(字だけ。試験のため)。今ある `[[ai]]` の塊を全部外し、
+/// 最初の塊があった所(無ければ末尾)に新しい並びを置く
+pub fn write_ai_list_into(content: &str, rows: &[AiDest]) -> String {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut kept: Vec<String> = Vec::new();
+    let mut at: Option<usize> = None;
+    let mut i = 0;
+    while i < lines.len() {
+        if lines[i].trim() == "[[ai]]" {
+            if at.is_none() {
+                at = Some(kept.len());
+            }
+            // 塊は次の節の頭(`[` で始まる行)まで。塊の直前の空行も1つ引く
+            i += 1;
+            while i < lines.len() && !lines[i].trim_start().starts_with('[') {
+                i += 1;
+            }
+            while kept.last().is_some_and(|l| l.trim().is_empty()) && at == Some(kept.len()) {
+                // 最初の塊の直前の空行は、新しい塊が自分で足す
+                kept.pop();
+                at = Some(kept.len());
+            }
+            continue;
+        }
+        kept.push(lines[i].to_string());
+        i += 1;
+    }
+    let mut block: Vec<String> = Vec::new();
+    for r in rows {
+        if !block.is_empty() || !kept.is_empty() {
+            block.push(String::new());
+        }
+        block.push("[[ai]]".into());
+        block.push(format!("name = {}", toml_str(&r.name)));
+        block.push(format!("url = {}", toml_str(&r.url)));
+        block.push(format!("model = {}", toml_str(&r.model)));
+        if let Some(k) = r.key_env.as_deref().filter(|k| !k.trim().is_empty()) {
+            block.push(format!("key_env = {}", toml_str(k)));
+        }
+    }
+    let at = at.unwrap_or(kept.len()).min(kept.len());
+    // 塊の後ろに節が続くなら、空行で離す
+    if at < kept.len() && !block.is_empty() && !kept[at].trim().is_empty() {
+        block.push(String::new());
+    }
+    let mut out: Vec<String> = kept[..at].to_vec();
+    out.extend(block);
+    out.extend(kept[at..].iter().cloned());
+    let mut s = out.join("\n");
+    if !s.is_empty() && !s.ends_with('\n') {
+        s.push('\n');
+    }
+    s
+}
+
+/// TOML の基本の文字列。読む側(`parse_ai_list`)は逃がしを読まない素朴な
+/// 作りなので、書く側も `"` と `\\` と改行を落とす(名前や URL に要らない字)
+fn toml_str(s: &str) -> String {
+    let body: String = s.chars().filter(|c| !matches!(c, '"' | '\\' | '\n' | '\r')).collect();
+    format!("\"{body}\"")
+}
+
 /// [`ai_list`] に、港が開いている手元のモデルを足した物(パネルを開く時に)
 pub fn ai_list_all() -> Vec<AiDest> {
     let mut v = ai_list();
@@ -475,6 +549,29 @@ mod tests {
         assert_eq!(cc.kind(), AiKind::ClaudeCode);
         assert_eq!(PROVIDERS[0].dest().kind(), AiKind::Chat);
         let _: Provider = PROVIDERS[7];
+    }
+
+    /// `[[ai]]` の書き直し: 他の欄と節は残り、鍵そのものは書かず、読み戻せる
+    #[test]
+    fn rewriting_the_ai_list_keeps_everything_else_and_round_trips() {
+        use super::{write_ai_list_into, AiDest};
+        let before = "language = \"ja\"\nai_last = \"手元\"\n\n[[ai]]\nname = \"手元\"\nurl = \"http://127.0.0.1:8000/v1/chat/completions\"\nmodel = \"local\"\n\n[[ai]]\nurl = \"https://ai.example.org/v1/chat/completions\"\nmodel = \"gpt-oss-120b\"\nkey_env = \"OFFICE_API_KEY_KAI\"\n\n[writer]\ntheme = \"dark\"\n";
+        let rows = vec![
+            AiDest { name: "Claude".into(), url: "https://api.anthropic.com/v1/chat/completions".into(), model: "claude-sonnet-5".into(), key_env: Some("OFFICE_API_KEY_CLAUDE".into()) },
+            AiDest { name: "会の箱".into(), url: "http://box:8080/v1/chat/completions".into(), model: "".into(), key_env: None },
+        ];
+        let after = write_ai_list_into(before, &rows);
+        assert!(after.starts_with("language = \"ja\"\nai_last = \"手元\"\n"), "{after}");
+        assert!(after.ends_with("[writer]\ntheme = \"dark\"\n"), "{after}");
+        assert_eq!(after.matches("[[ai]]").count(), 2);
+        assert!(!after.contains("gpt-oss-120b"), "古い行が残った: {after}");
+        assert!(!after.contains("sk-"), "鍵らしき物を書いた");
+        let back = parse_ai_list(&after);
+        assert_eq!(back, rows, "{after}");
+        // 何も無いファイルには末尾に置く。空の並びは塊を全部消す
+        assert_eq!(parse_ai_list(&write_ai_list_into("", &rows)), rows);
+        let none = write_ai_list_into(&after, &[]);
+        assert!(!none.contains("[[ai]]") && none.contains("[writer]"), "{none}");
     }
 
     #[test]
