@@ -37,6 +37,7 @@ impl Calc {
                 &ui::t!("advanced_settings"),
                 &ui::tf!("location", ui::settings::path().display()),
                 &rows,
+                Some(self.btn_box.clone()),
                 cx,
                 |this: &mut Calc, id: String, cx| this.option_click(&id, cx),
             ));
@@ -473,20 +474,33 @@ impl Calc {
                         pyrun::find_python().display().to_string()),
             OptRow::one(ui::t!("ai_destination"), "set-ai", self.agent_dest_label()).gap(),
         ];
-        // **見つかった Python を選ばせます**(押している間だけ並べます)
+        rows.extend(ui::env_rows(&lock_identity()).into_iter().map(|(k, v)| OptRow::view(k, v)));
+        // **見つかった Python を、その行のすぐ下に並べます**(押している間だけ)。
+        //
+        // 下にまとめて足すと「AI の宛先」の後に出て、何の一覧か分かりません。
+        // いま使っている物には ● を付けます — **道は正して比べます**
+        // (`find_python` は綴りからの相対の道を返すことがあります)
         if let Some(cands) = &self.py_picking {
-            let now = pyrun::find_python();
-            for (i, c) in cands.iter().enumerate() {
-                let mark = if *c == now { "● " } else { "○ " };
-                rows.push(OptRow::one(
-                    format!("{mark}{}", c.display()),
-                    // 番号は押しの側で拾います(`python:3`)
-                    format!("python:{i}"),
-                    ui::t!("use_this").to_string(),
-                ));
+            let now = std::fs::canonicalize(pyrun::find_python()).ok();
+            let at = rows.iter().position(|r| {
+                matches!(r.cells.first(),
+                         Some(ui::filemenu::OptCell::Button { id, .. }) if id == "set-python")
+            });
+            if let Some(at) = at {
+                for (i, c) in cands.iter().enumerate() {
+                    let onaji = std::fs::canonicalize(c).ok() == now;
+                    rows.insert(
+                        at + 1 + i,
+                        OptRow::one(
+                            format!("{} {}", if onaji { "●" } else { "○" }, c.display()),
+                            // 番号は押しの側で拾います(`python:3`)
+                            format!("python:{i}"),
+                            ui::t!("use_this").to_string(),
+                        ),
+                    );
+                }
             }
         }
-        rows.extend(ui::env_rows(&lock_identity()).into_iter().map(|(k, v)| OptRow::view(k, v)));
         rows
     }
 

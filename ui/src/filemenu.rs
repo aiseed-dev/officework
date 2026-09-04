@@ -460,6 +460,8 @@ pub fn options<V: gpui::Render>(
     title: &str,
     note: &str,
     rows: &[OptRow],
+    // 場所の控え(点検の道具が座標を当てずに押せるように)。sidebar と同じ形
+    boxes: Option<Boxes>,
     cx: &mut gpui::Context<V>,
     on: impl Fn(&mut V, String, &mut gpui::Context<V>) + Clone + 'static,
 ) -> gpui::Div {
@@ -499,9 +501,51 @@ pub fn options<V: gpui::Render>(
                 OptCell::Button { id, text } => {
                     let id = id.clone();
                     let on = on.clone();
+                    // **押せる物は場所を控えます**(実機の点検のため)。
+                    // 控えの鍵は `&'static str` なので、一覧の行(`python:3`)は
+                    // 番号ごとに1つずつ漏れないよう、控える数を絞ります
+                    let mark = boxes.clone().map(|rec| {
+                        let key: Option<&'static str> = match id.as_str() {
+                            "set-lang" => Some("set-lang"),
+                            "set-theme" => Some("set-theme"),
+                            "set-ui-minus" => Some("set-ui-minus"),
+                            "set-ui-plus" => Some("set-ui-plus"),
+                            "set-username" => Some("set-username"),
+                            "set-iter" => Some("set-iter"),
+                            "set-refstyle" => Some("set-refstyle"),
+                            "set-autocorrect" => Some("set-autocorrect"),
+                            "set-ai" => Some("set-ai"),
+                            "set-python" => Some("set-python"),
+                            // 一覧の行は先頭の3つだけ控えます(点検はそれで足ります)
+                            "python:0" => Some("python:0"),
+                            "python:1" => Some("python:1"),
+                            "python:2" => Some("python:2"),
+                            _ => None,
+                        };
+                        gpui::canvas(
+                            move |b: gpui::Bounds<gpui::Pixels>, _, _| {
+                                if let Some(k) = key {
+                                    rec.borrow_mut().insert(
+                                        k,
+                                        (
+                                            f32::from(b.origin.x),
+                                            f32::from(b.origin.y),
+                                            f32::from(b.size.width),
+                                            f32::from(b.size.height),
+                                        ),
+                                    );
+                                }
+                            },
+                            |_, _: (), _, _| {},
+                        )
+                        .absolute()
+                        .size_full()
+                    });
                     line.child(
                         div()
                             .id(SharedString::from(id.clone()))
+                            .relative()
+                            .children(mark)
                             .px_3()
                             .py_1()
                             .rounded_sm()
