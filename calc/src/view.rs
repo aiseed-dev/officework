@@ -663,10 +663,10 @@ impl Render for Calc {
             // **いまの状況で意味が無いボタンも灰色に**(2026-08-21 の B-5)。
             // ピボットの締めと同じ扱いにします — 押しても腕が断る物を、
             // 押す前に見て分かるようにするためです
-            // リボンは1つ: 文章の画面にしか効かないボタンも灰色(2026-09-04)
+            // リボンは1つ: この画面が知らないボタン(文章だけの物)も灰色(2026-09-04)
             let locked = (on_pivot && Calc::PIVOT_LOCKED.contains(&cmd.id))
                 || !self.can_press(cmd.id)
-                || !cmd.apps.sheet;
+                || !Calc::HANDLED.contains(&cmd.id);
             // **記録中は「操作を記録」のボタンを赤く**(発注者 2026-08-16
             // 「記録中は、それがわかるようにして」)。下のステータスバーの印と二重にする —
             // 押した所を見ている目と、画面全体を見ている目は別
@@ -705,7 +705,7 @@ impl Render for Calc {
                         .children(marker.map(|m| div()
                             .text_size(px(us * 8.0)).text_color(th_gray)
                             .child(m))));
-                if cmd.ready && cmd.apps.sheet && !dlg_open {
+                if cmd.ready && Calc::HANDLED.contains(&cmd.id) && !dlg_open {
                     let cid = cmd.id;
                     b = b.relative().child(mark(cid))
                         .children(hint_cmd.get(cid).map(|h| badge(h, us)));
@@ -758,7 +758,7 @@ impl Render for Calc {
                             .text_size(px(us * 8.0)).text_color(th_gray)
                             .child(m)))
                 }));
-            if cmd.ready && cmd.apps.sheet && !dlg_open {
+            if cmd.ready && Calc::HANDLED.contains(&cmd.id) && !dlg_open {
                 let cid = cmd.id;
                 b = b.relative().child(mark(cid))
                     .children(hint_cmd.get(cid).map(|h| badge(h, us)));

@@ -530,6 +530,25 @@ impl Writer {
             }),
             // 段落の囲み枠(入切)
             "borders" => self.para(|p| p.boxed = !p.boxed),
+            // **表の中のセルの操作**(リボンは1つ。表の画面のボタンが、文章の表の
+            // 中では同じ意味で効く。2026-09-04)。表の外では的が無いので灰色
+            "top" | "middle" | "bottom" if self.cursor_table().is_some() => {
+                let v = match id {
+                    "top" => book::VAlign::Top,
+                    "middle" => book::VAlign::Middle,
+                    _ => book::VAlign::Bottom,
+                };
+                self.cell(move |c| c.valign = v);
+            }
+            // セルの塗り。表の外では段落の背景色と同じ回し方
+            "fillparag" if self.cursor_table().is_some() => self.cell(|c| {
+                c.shade = match c.shade.as_deref() {
+                    None => Some("FFF2CC".into()),
+                    Some("FFF2CC") => Some("DEEAF6".into()),
+                    _ => None,
+                }
+            }),
+            "fillparag" => self.run_cmd("paracolor", cx),
             // ドロップキャップ(頭の1字を大きく。押すたびに入切)
             "dropcap" => {
                 self.para(|p| p.dropcap = !p.dropcap);

@@ -250,6 +250,27 @@ impl Writer {
         }
     }
 
+    /// **いまのセルそのもの**(揃え・塗り・結合)を直す。表の外では何もしない。
+    /// リボンの的の順で、表の画面のセルの操作が文章の表でも効く形(2026-09-04)
+    pub(crate) fn cell(&mut self, f: impl Fn(&mut kumihan::Cellbox)) {
+        let Target::Cell { table, row, col } = self.target else { return };
+        self.checkpoint(false);
+        self.flush_target();
+        if let Some(kumihan::Block::Table(tb)) = self
+            .doc
+            .blocks
+            .iter_mut()
+            .filter(|b| matches!(b, kumihan::Block::Table(_)))
+            .nth(table)
+        {
+            if let Some(cell) = tb.rows.get_mut(row).and_then(|r| r.get_mut(col)) {
+                f(cell);
+            }
+        }
+        self.dirty = true;
+        self.relayout_keep();
+    }
+
     /// 選択している段落の文字書式を入切する。
     ///
     /// **編集先が本文かセルかで掛け先が違う。** セル編集中に本文へ掛けると、
@@ -1216,5 +1237,35 @@ impl Writer {
         if cy < self.scroll_mm + 5.0 {
             self.scroll_mm = (cy - 5.0).max(0.0);
         }
+    }
+}
+
+/// **的の順**(2026-09-04): 表の中では calc のセルの操作が文章の表にも効く
+#[cfg(test)]
+mod cell_target_tests {
+    use crate::*;
+
+    #[gpui::test]
+    fn cell_alignment_and_fill_work_inside_a_table_and_are_gray_outside(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.native = false;
+            let d = kumihan::adoc::parse("本文。\n\n|===\n|a |b\n|c |d\n|===\n").unwrap();
+            this.set_doc(d);
+            // 表の外: セルの的が無いので押せない
+            let top = ui::ribbon::skeleton().iter().flat_map(|t| t.cmds).find(|c| c.id == "top").copied().unwrap();
+            assert!(!this.usable_here(&top), "表の外で上揃えが押せる");
+            this.switch_target(Target::Cell { table: 0, row: 1, col: 1 });
+            assert!(this.usable_here(&top), "表の中で上揃えが押せない");
+            this.run_cmd("middle", cx);
+            this.run_cmd("fillparag", cx);
+            let t = this.doc.tables().next().unwrap();
+            assert_eq!(t.rows[1][1].valign, book::VAlign::Middle, "縦の揃えが入らない");
+            assert_eq!(t.rows[1][1].shade.as_deref(), Some("FFF2CC"), "塗りが入らない");
+            assert!(this.dirty);
+            this.undo_step();
+            let t = this.doc.tables().next().unwrap();
+            assert_eq!(t.rows[1][1].shade, None, "1手で戻らない");
+        });
     }
 }

@@ -697,6 +697,20 @@ impl Writer {
         self.tab
     }
 
+    /// **このボタンをいま押せるか**(リボンは1つ。2026-09-04)。
+    /// 実装済み(ready)で、この画面が知っていて(HANDLED)、的がいまあること。
+    /// 文章の画面の的の順は [字(段落), 表の中ならセル, 節, 文書]
+    pub(crate) fn usable_here(&self, cmd: &ribbon::Cmd) -> bool {
+        if !cmd.ready || !Self::HANDLED.contains(&cmd.id) {
+            return false;
+        }
+        match ribbon::target_of(cmd.id) {
+            ribbon::Target::Cell => self.cursor_table().is_some(),
+            ribbon::Target::Sheet => false,
+            _ => true,
+        }
+    }
+
     /// 文脈タブ(ピボット・表のデザイン)を隠すか。文章の画面には出す条件が
     /// まだ無い(表の中の表のデザインは、的の順を付ける回で)
     pub(crate) fn ctx_tab_hidden(i: usize) -> bool {

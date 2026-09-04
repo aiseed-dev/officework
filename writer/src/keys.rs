@@ -318,6 +318,8 @@ impl Writer {
         "incoffset", "decoffset", "linespace", "pagebreak",
         "instable", "inssymbol", "replace", "changecase", "blankpage",
         "paracolor", "borders", "insimage",
+        // 表の中のセルの操作(表の画面と同じ id。的の順 2026-09-04)
+        "top", "middle", "bottom", "fillparag",
         "spell", "wordcount", "zoom-in", "zoom-out", "hidenchars", "ruler",
         "fontname", "fontsize",
         "pageorient", "pagesize", "pagemargins",

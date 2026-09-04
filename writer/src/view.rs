@@ -215,7 +215,10 @@ impl Render for Writer {
                 ("align-right", None), ("align-just", None),
                 ("align-dist", None),
                 ("hidenchars", None), ("paracolor", None), ("borders", None),
-                ("‖", None), ("replace", None),
+                    // 表の中で効くセルの操作(表の画面と同じボタン。外では灰色)
+                    ("‖", None), ("top", None), ("middle", None), ("bottom", None),
+                    ("fillparag", None),
+                    ("‖", None), ("replace", None),
             ],
         ];
         // 挿入は一段(発注者の画像 2026-08-04)。主要なボタンは名札つきの大ボタン
@@ -376,9 +379,9 @@ impl Render for Writer {
                     else {
                         continue;
                     };
-                    // **リボンは1つ。** 表の画面にしか効かないボタンは、ここでは
-                    // 未実装と同じ灰色で同じ場所に出す(2026-09-04)
-                    let cmd = ribbon::Cmd { ready: cmd.ready && cmd.apps.doc, ..cmd };
+                    // **リボンは1つ。** この画面が知らないボタンと、的がいま無い
+                    // ボタンは、未実装と同じ灰色で同じ場所に出す(2026-09-04)
+                    let cmd = ribbon::Cmd { ready: self.usable_here(&cmd), ..cmd };
                     let label = cmd.label;
                     // **入切のボタンは、入っている間ずっと押された形**
                     // (2026-08-21 発注者)。押してみないと分からない、をやめる
@@ -574,8 +577,8 @@ impl Render for Writer {
         } else {
             let mut row = div().flex().flex_row().flex_wrap().gap_1().items_center().py_1();
             for cmd in ribbon::writer_tabs()[self.tab].cmds {
-                // リボンは1つ: 表の画面にしか効かないボタンは灰色(2026-09-04)
-                let cmd = &ribbon::Cmd { ready: cmd.ready && cmd.apps.doc, ..*cmd };
+                // リボンは1つ: 知らないボタンと的の無いボタンは灰色(2026-09-04)
+                let cmd = &ribbon::Cmd { ready: self.usable_here(cmd), ..*cmd };
                 // 小窓中は ready でも灰色・無反応(未実装と同じ描き方)
                 if cmd.ready && !dlg_open {
                     let id = cmd.id;

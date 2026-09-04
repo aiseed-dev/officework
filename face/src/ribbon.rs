@@ -114,6 +114,95 @@ pub(crate) const fn xm(label: &'static str, icon: &'static str) -> Cmd {
 // 2つの表のまま — 本家の現物が2つなので、生成の元も2つが正直な形。
 // 両方の画面が見るのは、合わせた1つ(`tabs()` / `skeleton()`)だけ。
 
+/// **的の種類**(そのボタンが効く先。決め 2026-09-03「同じボタンで、先に来る的が
+/// 違うだけ」)。表の画面は [セル, その字, 節, 文書] の順、文章の画面は
+/// [字(段落), 表の中ならセル, 節, 文書] の順で当てる。**的が無ければ灰色**
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Target {
+    /// セル(表の中)
+    Cell,
+    /// 字(選んだ字。表の画面ではセルの字 = セル全体)
+    Text,
+    /// 段落(表の画面ではセルの揃え)
+    Para,
+    /// 節(用紙・余白・段組み)
+    Sect,
+    /// シート(表だけの節: 印刷範囲・並べ替え・関数)
+    Sheet,
+    /// 文書(開く・保存・挿入・参考資料・共同編集…)
+    Doc,
+    /// 表示(拡大・見せ方)
+    View,
+    /// 図形・画像
+    Object,
+}
+
+/// その id の的。名指しの表に無ければ、居る段で決める
+pub fn target_of(id: &str) -> Target {
+    const TEXT: &[&str] = &[
+        "fontname", "fontsize", "incfont", "decfont", "changecase", "bold", "italic", "underline",
+        "strikeout", "subscript", "superscript", "fontcolor", "highlight", "clearstyle", "ruby",
+        "ai-furigana", "copystyle",
+    ];
+    const PARA: &[&str] = &[
+        "direction", "align-left", "align-center", "align-right", "align-just", "align-dist",
+        "markers", "numbering", "multilevels", "decoffset", "incoffset", "linespace", "paracolor",
+        "parastyle", "borders", "dropcap",
+    ];
+    const CELL: &[&str] = &[
+        "fillparag", "top", "middle", "bottom", "wrap", "text-orient", "merge", "format", "currency",
+        "percents", "comma", "digit-dec", "digit-inc", "cell-ins", "cell-del", "cell-format",
+        "condformat", "cell-styles", "clear", "cell-lock",
+    ];
+    const SHEET: &[&str] = &[
+        "sum", "fill-num", "defname", "sort-desc", "sort-asc", "setfilter", "clear-filter", "table-tpl",
+        "printarea", "scale", "fit-pages", "printarea-add", "show-breaks", "printtitles", "rtl-sheet",
+        "print-gridlines", "print-headings", "prot-range", "prot-book",
+    ];
+    const SECT: &[&str] = &[
+        "pagemargins", "pageorient", "pagesize", "pagebreak", "columns", "line-numbers", "hyphenation",
+        "watermark", "pagecolor", "blankpage", "edit-header", "edit-footer", "pagenum", "numpages",
+    ];
+    const OBJECT: &[&str] = &[
+        "pen", "highlighter", "eraser", "draw-select", "img-movefrwd", "img-movebkwd", "img-align",
+        "img-group", "shapes-merge",
+    ];
+    const VIEW: &[&str] = &["hidenchars", "ruler", "nav", "fit-page", "fit-width", "multipage"];
+    if TEXT.contains(&id) {
+        return Target::Text;
+    }
+    if PARA.contains(&id) {
+        return Target::Para;
+    }
+    if CELL.contains(&id) {
+        return Target::Cell;
+    }
+    if SHEET.contains(&id) {
+        return Target::Sheet;
+    }
+    if SECT.contains(&id) {
+        return Target::Sect;
+    }
+    if OBJECT.contains(&id) {
+        return Target::Object;
+    }
+    if VIEW.contains(&id) {
+        return Target::View;
+    }
+    match tab_of(id) {
+        Some("Formula" | "Data" | "Pivot Table" | "Table Design") => Target::Sheet,
+        Some("View") => Target::View,
+        Some("Draw") => Target::Object,
+        Some("Layout") => Target::Sect,
+        _ => Target::Doc,
+    }
+}
+
+/// その id が居る段(骨組みの英語の名前)
+pub fn tab_of(id: &str) -> Option<&'static str> {
+    skeleton().iter().find(|t| t.cmds.iter().any(|c| c.id == id)).map(|t| t.name)
+}
+
 /// 段の並び(15。SEKKEI の決め)。文章の並びを軸に、表だけの段を
 /// レイアウトの後ろへ入れ、文脈タブ(ピボット・表のデザイン)は共同編集の前
 pub const TAB_ORDER: &[&str] = &[
@@ -862,6 +951,28 @@ mod tests {
         }
         let (r, all) = progress_for(App::Writer);
         assert!(r <= all && all == count(WRITER), "文章の画面の数が表と合わない");
+    }
+
+    /// **どの id にも的がある。** 名指しの表と段の既定で全部が決まり、
+    /// 決めの例(太字=字・揃え=段落・結合=セル・印刷範囲=シート)がそのとおり
+    #[test]
+    fn every_command_has_a_target_and_the_decided_examples_hold() {
+        for t in skeleton() {
+            for c in t.cmds.iter().filter(|c| !c.id.is_empty()) {
+                let _ = target_of(c.id); // 全域の関数だが、段の既定に落ちる物が Doc に偏りすぎないかは下で見る
+            }
+        }
+        assert_eq!(target_of("bold"), Target::Text);
+        assert_eq!(target_of("align-left"), Target::Para);
+        assert_eq!(target_of("merge"), Target::Cell);
+        assert_eq!(target_of("printarea"), Target::Sheet);
+        assert_eq!(target_of("insert-function"), Target::Sheet, "数式の段の既定");
+        assert_eq!(target_of("toc"), Target::Doc);
+        assert_eq!(target_of("zoom-in"), Target::View);
+        assert_eq!(target_of("pagemargins"), Target::Sect);
+        assert_eq!(target_of("pen"), Target::Object);
+        let cells = skeleton().iter().flat_map(|t| t.cmds).filter(|c| target_of(c.id) == Target::Cell).count();
+        assert!(cells >= 15, "セルの的が少なすぎる: {cells}");
     }
 
 
