@@ -471,6 +471,7 @@ impl Calc {
             agent_calls: Vec::new(),
             agent_save: None,
             agent_picking: None,
+            py_picking: None,
             left_face: 0,
             chosen_folder: None,
             fl_job: None,

@@ -2214,4 +2214,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("hyphenation_none", "无"),
     ("hyphenation_auto", "自动"),
     ("add_or_edit_destination", "添加或修改目标…"),
+    ("python_location", "Python 的位置"),
+    ("use_this", "使用这个"),
+    ("python_chosen", "Python 现在是 {}"),
 ];

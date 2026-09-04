@@ -512,6 +512,9 @@ pub struct Calc {
     /// **宛先を選んでいる最中の一覧**(2026-09-04 発注者「AI model を
     /// 自由に設定」)。開くときに1度だけ作ります(港を叩くため)
     pub(crate) agent_picking: Option<Vec<face::settings::AiDest>>,
+    /// **Python を選んでいる最中の候補**(2026-09-04 発注者「デフォルトは、
+    /// プロジェクトディレクトリーの .venv にして」)。開くときに1度だけ探します
+    pub(crate) py_picking: Option<Vec<std::path::PathBuf>>,
     /// 左パネルのいまの面(0=会話 1=コメント)。柱のアイコンで切り替える
     pub(crate) left_face: u8,
     /// 右パネルのいまの面(0=セルの設定 1=図形と画像)

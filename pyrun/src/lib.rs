@@ -683,8 +683,99 @@ pub fn work_dir() -> Option<PathBuf> {
     FOLDER.lock().ok().and_then(|g| g.clone())
 }
 
+/// **人が選んだ Python**(2026-09-04 発注者「自由に環境が選択できるのがいい」)。
+///
+/// 設定の「Python の場所」です。アプリが起動のときに渡します。
+/// **`JO_PYTHON` の次に強い** — 環境変数はその場の差し替えなので、
+/// 設定より強いままにします
+static CHOSEN: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+
+/// 使う Python を教える。空を渡すと「決めていない」に戻ります。
+pub fn set_python(p: Option<PathBuf>) {
+    if let Ok(mut g) = CHOSEN.lock() {
+        *g = p.filter(|x| !x.as_os_str().is_empty());
+    }
+}
+
+/// 人が選んだ Python(設定の画面に出すため)。
+pub fn chosen_python() -> Option<PathBuf> {
+    CHOSEN.lock().ok().and_then(|g| g.clone())
+}
+
+/// **この機械にある Python を探す**(2026-09-04 発注者「デフォルトは、
+/// プロジェクトディレクトリーの .venv にして」「あとよくつかわれるものを
+/// さがすようにしたらいい」)。
+///
+/// 設定の「Python の場所」に並べる候補です。**先頭が既定** — 開いている
+/// フォルダの `.venv` です(エディタと同じ作法)。その後は、よく使われる
+/// 置き場を順に見ます。
+///
+/// 実在する物だけを返し、同じ道は1つにまとめます。**中身は確かめません** —
+/// polars や matplotlib が入っているかは走らせて分かることで、
+/// ここで確かめると窓が開くたびに遅くなります。
+pub fn python_candidates() -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = Vec::new();
+    let mut push = |p: PathBuf| {
+        if p.exists() && !out.contains(&p) {
+            out.push(p);
+        }
+    };
+    // 1. **開いているフォルダの仮想環境**(既定)。`.venv` が先で、`venv` も見ます
+    if let Some(d) = work_dir() {
+        for na in [".venv", "venv", ".env"] {
+            push(d.join(na).join("bin/python"));
+            push(d.join(na).join("Scripts/python.exe"));
+        }
+    }
+    // 2. 走っている実行ファイルから遡った `.venv`(綴りの中から起こしたとき)
+    if let Ok(exe) = std::env::current_exe() {
+        for dir in exe.ancestors().skip(1).take(6) {
+            push(dir.join(".venv/bin/python"));
+            push(dir.join(".venv/Scripts/python.exe"));
+        }
+    }
+    // 3. **よく使われる置き場。** 家の下の仮想環境と、環境の管理の道具
+    if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+        for na in [".venv", "venv"] {
+            push(home.join(na).join("bin/python"));
+        }
+        // uv / conda / mamba / pyenv。いずれも「環境ごとに1つ」の形
+        for (base, mid) in [
+            (".local/share/uv/python", ""),
+            ("miniconda3/envs", "bin/python"),
+            ("anaconda3/envs", "bin/python"),
+            ("micromamba/envs", "bin/python"),
+            (".pyenv/versions", "bin/python"),
+            (".virtualenvs", "bin/python"),
+        ] {
+            let d = home.join(base);
+            let Ok(rd) = std::fs::read_dir(&d) else { continue };
+            let mut got: Vec<PathBuf> = rd
+                .flatten()
+                .map(|e| e.path())
+                .map(|p| if mid.is_empty() { p.join("bin/python3") } else { p.join(mid) })
+                .filter(|p| p.exists())
+                .collect();
+            got.sort();
+            for p in got {
+                push(p);
+            }
+        }
+        // conda / miniconda の base
+        for base in ["miniconda3/bin/python", "anaconda3/bin/python"] {
+            push(home.join(base));
+        }
+    }
+    // 4. 機械の Python。**最後** — 仮想環境の方が期待に合います
+    for p in ["/usr/local/bin/python3", "/usr/bin/python3", "/opt/homebrew/bin/python3"] {
+        push(PathBuf::from(p));
+    }
+    out
+}
+
 /// 裏方の Python を探す。
-/// **JO_PYTHON → 綴りの .venv → 開発機の .venv → 利用者の venv → python3**。
+/// **JO_PYTHON → 人が選んだ物 → 綴りの .venv → 開発機の .venv →
+/// 利用者の venv → python3**。
 /// matplotlib が居るかは実行して分かる(居なければ status で言う)。
 ///
 /// # 同梱の Python は見ません(2026-08-24 発注者)
@@ -696,6 +787,10 @@ pub fn work_dir() -> Option<PathBuf> {
 pub fn find_python() -> std::path::PathBuf {
     if let Some(p) = std::env::var_os("JO_PYTHON") {
         return p.into();
+    }
+    // **人が選んだ物**(設定の「Python の場所」)。2026-09-04
+    if let Some(p) = chosen_python() {
+        return p;
     }
     // **開いている綴りの `.venv` がいちばん強い。** エディタと同じ作法です。
     // 同じフォルダを JupyterLab とエディタと officework が見ているとき、

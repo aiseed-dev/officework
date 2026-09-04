@@ -14,6 +14,8 @@ path = "src/main.rs"
 writer = { path = "../writer" }
 calc = { path = "../calc" }
 ui = { path = "../ui" }
+# 使う Python を設定から渡すため(2026-09-04。同梱をやめた分)
+pyrun = { path = "../pyrun" }
 ops = { path = "../ops" }
 # 絵を描かない層。前回の姿(session)とファイルの種類(folder)がここ
 face = { path = "../face" }

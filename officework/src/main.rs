@@ -879,6 +879,12 @@ fn main() {
         cx.open_window(
             WindowOptions { window_bounds: Some(wb), ..Default::default() },
             move |window, cx| {
+                // **使う Python は人が選べます**(2026-09-04 発注者「自由に
+                // 環境が選択できるのがいい」)。同梱はやめたので、設定に
+                // 書いてあればそれを、無ければいつもの探し方になります
+                pyrun::set_python(
+                    ui::settings::get("python").filter(|s| !s.trim().is_empty()).map(Into::into),
+                );
                 let view = cx.new(|cx| Office::new(start2.clone(), cx));
                 // **見張りは実体ができてから掛けます**(統合の段8。2026-09-04)。
                 // `cx.new` の中で掛けると、まだ自分が居ないので届きません

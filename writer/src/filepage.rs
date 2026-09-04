@@ -162,7 +162,7 @@ impl Writer {
                 &ui::tf!("location", ui::settings::path().display()),
                 &rows,
                 cx,
-                |this: &mut Writer, id, cx| this.option_click(id, cx),
+                |this: &mut Writer, id: String, cx| this.option_click(&id, cx),
             ));
         } else if self.file_view == 1 {
             // **最近開いたの面は ui::filemenu の1本**(段8 の3)。
@@ -437,9 +437,9 @@ impl Writer {
             OptRow {
                 label: ui::t!("ui_text_size").to_string(),
                 cells: vec![
-                    OptCell::Button { id: "set-ui-minus", text: "−".into() },
+                    OptCell::Button { id: "set-ui-minus".into(), text: "−".into() },
                     OptCell::Text(format!("{}%", (self.ui_scale * 100.0).round() as i32)),
-                    OptCell::Button { id: "set-ui-plus", text: "+".into() },
+                    OptCell::Button { id: "set-ui-plus".into(), text: "+".into() },
                 ],
                 gap: false,
             },
@@ -462,18 +462,39 @@ impl Writer {
             OptRow::one(ui::t!("math_autocorrect"), "set-autocorrect",
                         if self.autocorrect { ui::t!("type_alpha_get") } else { ui::t!("off_switch") }),
             // **AI の宛先**(2026-08-15 発注者)。表の画面と同じ形です
+            // **使う Python は人が選べます**(2026-09-04 発注者「自由に環境が
+            // 選択できるのがいい」)。同梱はやめたので、機械にある物か、
+            // 開いているフォルダの `.venv` を使います。
+            //
+            // 押すと**この機械で見つかった物が並びます**。既定は開いている
+            // フォルダの `.venv` です(いちばん上)
+            OptRow::one(ui::t!("python_location"), "set-python",
+                        pyrun::find_python().display().to_string()),
             OptRow::one(ui::t!("ai_destination"), "set-ai",
                         ui::ai::backend().label().to_string()).gap(),
         ];
         // **見るだけの7行は ui::env_rows の1本**(2026-08-20)。
         // 鍵そのものは出しません。手元のモデルだけは「使えます」と言いません
         // (繋がるか確かめずに言えば嘘になります)
+        // **見つかった Python を選ばせます**(押している間だけ並べます)
+        if let Some(cands) = &self.py_picking {
+            let now = pyrun::find_python();
+            for (i, c) in cands.iter().enumerate() {
+                let mark = if *c == now { "● " } else { "○ " };
+                rows.push(OptRow::one(
+                    format!("{mark}{}", c.display()),
+                    // 番号は押しの側で拾います(`python:3`)
+                    format!("python:{i}"),
+                    ui::t!("use_this").to_string(),
+                ));
+            }
+        }
         rows.extend(ui::env_rows(&lock_identity()).into_iter().map(|(k, v)| OptRow::view(k, v)));
         rows
     }
 
     /// 詳細設定の行が押されたとき。
-    fn option_click(&mut self, id: &'static str, cx: &mut Context<Self>) {
+    fn option_click(&mut self, id: &str, cx: &mut Context<Self>) {
         match id {
             "set-lang" => self.status = ui::cycle_language().into(),
             "set-theme" => self.run_cmd("darkmode", cx),
@@ -493,6 +514,28 @@ impl Writer {
                 let (on, msg) = ui::toggle_math_autocorrect(self.autocorrect, !cfg!(test));
                 self.autocorrect = on;
                 self.status = msg.into();
+            }
+            // **Python を選び直す**(2026-09-04)。設定に控えて、その場から効かせます。
+            // 空にすると「決めていない」に戻り、いつもの探し方(開いている
+            // フォルダの `.venv` → python3)になります
+            "set-python" => {
+                self.py_picking = match self.py_picking {
+                    Some(_) => None,
+                    // 探すのは**開く時だけ**です(描くたびに走ると遅くなります)
+                    None => Some(pyrun::python_candidates()),
+                };
+            }
+            id if id.starts_with("python:") => {
+                if let (Ok(i), Some(c)) =
+                    (id["python:".len()..].parse::<usize>(), self.py_picking.clone())
+                {
+                    if let Some(p) = c.get(i) {
+                        ui::settings::set("python", &p.display().to_string());
+                        pyrun::set_python(Some(p.clone()));
+                        self.status = ui::tf!("python_chosen", p.display().to_string()).into();
+                    }
+                }
+                self.py_picking = None;
             }
             "set-ai" => self.run_cmd("ai-where", cx),
             // 見るだけの行は押せません(押せる物だけが id を持ちます)

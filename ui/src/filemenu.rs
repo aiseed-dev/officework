@@ -398,8 +398,9 @@ pub fn recent_row(look: &PaneLook, i: usize, p: &std::path::Path) -> gpui::State
 /// 左から順に並びます — 文字の大きさの行は「−」「100%」「+」の3つです
 #[derive(Clone, Debug, PartialEq)]
 pub enum OptCell {
-    /// 押すと変わる値。押しは `id` で画面へ返します
-    Button { id: &'static str, text: String },
+    /// 押すと変わる値。押しは `id` で画面へ返します。
+    /// **`String` です** — 一覧の行は番号を含むため(`python:3`)
+    Button { id: String, text: String },
     /// 見るだけの字
     Text(String),
 }
@@ -415,10 +416,14 @@ pub struct OptRow {
 
 impl OptRow {
     /// 押せる物が1つだけの行(いちばん多い形)。
-    pub fn one(label: impl Into<String>, id: &'static str, text: impl Into<String>) -> OptRow {
+    pub fn one(
+        label: impl Into<String>,
+        id: impl Into<String>,
+        text: impl Into<String>,
+    ) -> OptRow {
         OptRow {
             label: label.into(),
-            cells: vec![OptCell::Button { id, text: text.into() }],
+            cells: vec![OptCell::Button { id: id.into(), text: text.into() }],
             gap: false,
         }
     }
@@ -456,7 +461,7 @@ pub fn options<V: gpui::Render>(
     note: &str,
     rows: &[OptRow],
     cx: &mut gpui::Context<V>,
-    on: impl Fn(&mut V, &'static str, &mut gpui::Context<V>) + Clone + 'static,
+    on: impl Fn(&mut V, String, &mut gpui::Context<V>) + Clone + 'static,
 ) -> gpui::Div {
     use gpui::prelude::*;
     use gpui::{div, px, SharedString};
@@ -492,11 +497,11 @@ pub fn options<V: gpui::Render>(
             line = match c {
                 OptCell::Text(t) => line.child(div().child(SharedString::from(t.clone()))),
                 OptCell::Button { id, text } => {
-                    let id = *id;
+                    let id = id.clone();
                     let on = on.clone();
                     line.child(
                         div()
-                            .id(SharedString::from(id))
+                            .id(SharedString::from(id.clone()))
                             .px_3()
                             .py_1()
                             .rounded_sm()
@@ -504,7 +509,7 @@ pub fn options<V: gpui::Render>(
                             .bg(look.chip)
                             .child(SharedString::from(text.clone()))
                             .on_click(cx.listener(move |this: &mut V, _, _, cx| {
-                                on(this, id, cx);
+                                on(this, id.clone(), cx);
                                 cx.notify()
                             })),
                     )
@@ -537,7 +542,7 @@ mod tests {
     fn an_option_row_holds_a_label_and_what_sits_beside_it() {
         let r = OptRow::one("言語", "set-lang", "日本語").gap();
         assert!(r.gap);
-        assert_eq!(r.cells, vec![OptCell::Button { id: "set-lang", text: "日本語".into() }]);
+        assert_eq!(r.cells, vec![OptCell::Button { id: "set-lang".into(), text: "日本語".into() }]);
         let v = OptRow::view("書体の置き場", "/usr/share/fonts");
         assert_eq!(v.cells, vec![OptCell::Text("/usr/share/fonts".into())]);
         assert!(!v.gap);

@@ -9438,5 +9438,17 @@
  {
   "key": "add_or_edit_destination",
   "kind": "msg"
+ },
+ {
+  "key": "python_location",
+  "kind": "msg"
+ },
+ {
+  "key": "use_this",
+  "kind": "msg"
+ },
+ {
+  "key": "python_chosen",
+  "kind": "msg"
  }
 ]

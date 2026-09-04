@@ -2214,4 +2214,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("hyphenation_none", "없음"),
     ("hyphenation_auto", "자동"),
     ("add_or_edit_destination", "대상 추가·수정…"),
+    ("python_location", "Python 위치"),
+    ("use_this", "이것 사용"),
+    ("python_chosen", "Python을 {} 으로 했습니다"),
 ];

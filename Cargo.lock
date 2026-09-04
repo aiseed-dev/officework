@@ -5269,6 +5269,7 @@ dependencies = [
  "gpui",
  "gpui_platform",
  "ops",
+ "pyrun",
  "rfd",
  "ui",
  "writer",

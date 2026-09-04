@@ -2214,4 +2214,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("hyphenation_none", "なし"),
     ("hyphenation_auto", "自動"),
     ("add_or_edit_destination", "宛先を足す・直す…"),
+    ("python_location", "Python の場所"),
+    ("use_this", "これを使う"),
+    ("python_chosen", "Python を {} にしました"),
 ];

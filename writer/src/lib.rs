@@ -480,6 +480,9 @@ pub struct Writer {
     /// 自由に設定」)。`None` は選んでいない。開くときに1度だけ作ります —
     /// 手元のモデルを探すのに港を叩くので、描くたびに作ると遅くなります
     pub(crate) agent_picking: Option<Vec<face::settings::AiDest>>,
+    /// **Python を選んでいる最中の候補**(2026-09-04 発注者「デフォルトは、
+    /// プロジェクトディレクトリーの .venv にして」)。開くときに1度だけ探します
+    pub(crate) py_picking: Option<Vec<std::path::PathBuf>>,
     /// 複数ページ(見開き。画面だけの見え方 — 紙は1ページずつのまま)
     multipage: bool,
     /// 印刷モードの、頁ごとの上端(折った後の mm)。紙の絵をここへ置く

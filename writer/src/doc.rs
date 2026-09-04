@@ -205,6 +205,7 @@ impl Writer {
             agent_calls: Vec::new(),
             agent_save: None,
             agent_picking: None,
+            py_picking: None,
             ai_chat_in: Editor::new(""),
             ai_chat_focus: false,
             ai_chat_plan: None,
