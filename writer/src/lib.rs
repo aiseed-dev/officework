@@ -1421,8 +1421,9 @@ mod doc;
 mod keys;
 pub use keys::bind_ui_scale_keys_with;
 // RPC はユニックスソケットが設計(この機械の中だけ・ネイティブファースト)。
-// Windows ではこの受け口ごと開かない — calc の mod rpc と同じ線
-#[cfg(unix)]
+// Windows ではソケットを開かないが、**捌き手(`rpc::handle`)は OS を問わず
+// 組む** — エージェントのパネルが道具の呼びをそこへ流すため(2026-09-04)。
+// ソケットを開く `rpc::start` だけが `#[cfg(unix)]`
 /// 受け口(JSON 1行)。`officework` からも捌き手を呼びます
 pub mod rpc;
 mod text;

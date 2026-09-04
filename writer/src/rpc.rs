@@ -25,6 +25,10 @@
 
 use crate::*;
 
+/// ソケットを開いて要求を主スレッドへ流す。**Windows ではソケットを作らない**
+/// (2026-08-20 発注者)ので、ここだけが `#[cfg(unix)]`。捌き手 [`handle`] は
+/// OS を問わず組む(エージェントのパネルが直に呼ぶ)
+#[cfg(unix)]
 pub(crate) fn start(view: gpui::Entity<Writer>, cx: &mut gpui::App) {
     let queue: ops::Queue = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     if !ops::listen("writer", queue.clone()) {
