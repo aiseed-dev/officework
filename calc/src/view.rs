@@ -410,8 +410,12 @@ impl Render for Calc {
         // タブは名前でなく中身の id で見分ける(名前は言語で変わる)。
         // 見分けは `ctx_tab_hidden_with` に1本 — キーヒントの札も同じ物を
         // 使う(別々に書くと、隠れた段に札が配られてずれる)
-        let ctx_hidden =
-            |tb: &ribbon::Tab| Calc::ctx_tab_hidden_with(tb, on_pivot, in_table);
+        // 押せるボタンが1つも無い段(文章だけの段)も、文脈タブと同じく隠す
+        // (リボンは1つ。2026-09-04)
+        let ctx_hidden = |tb: &ribbon::Tab| {
+            Calc::ctx_tab_hidden_with(tb, on_pivot, in_table)
+                || !tb.cmds.iter().any(|c| c.ready && Calc::HANDLED.contains(&c.id))
+        };
         // 開いていたタブの文脈が消えたら、前のタブへ戻る(本家と同じ挙動)
         if ctx_hidden(&ribbon::calc_tabs()[self.tab]) {
             self.tab = if ctx_hidden(&ribbon::calc_tabs()[self.prev_tab]) {

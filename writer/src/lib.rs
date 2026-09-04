@@ -719,6 +719,16 @@ impl Writer {
             .is_some_and(|tb| tb.cmds.iter().any(|c| c.id == "pivot-layout" || c.id == "td-header"))
     }
 
+    /// **いま押せるボタンが1つも無い段は隠す**(文脈タブと同じ扱い。2026-09-04)。
+    /// リボンは1つだが、全部が灰色の段を並べても押す物が無い。表の中で
+    /// セルの操作が効くようになれば、その段は自然に現れる
+    pub(crate) fn tab_hidden_now(&self, i: usize) -> bool {
+        if Self::ctx_tab_hidden(i) {
+            return true;
+        }
+        ribbon::tabs().get(i).is_some_and(|tb| !tb.cmds.iter().any(|c| self.usable_here(c)))
+    }
+
     /// リボンの段を選ぶ。**この画面に無い段は動かしません**。
     pub fn set_ribbon_tab(&mut self, i: usize) {
         if i < ribbon::writer_tabs().len() {

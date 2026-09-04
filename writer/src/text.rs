@@ -1268,4 +1268,19 @@ mod cell_target_tests {
             assert_eq!(t.rows[1][1].shade, None, "1手で戻らない");
         });
     }
+
+    /// 押せるボタンの無い段(数式・データ)は隠れ、ホームと参考資料は出る
+    #[gpui::test]
+    fn tabs_with_nothing_usable_are_hidden(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            let at = |name: &str| ui::ribbon::skeleton().iter().position(|t| t.name == name).unwrap();
+            assert!(this.tab_hidden_now(at("Formula")), "数式の段が出ている");
+            assert!(this.tab_hidden_now(at("Data")), "データの段が出ている");
+            assert!(this.tab_hidden_now(at("Pivot Table")));
+            assert!(!this.tab_hidden_now(at("Home")));
+            assert!(!this.tab_hidden_now(at("References")));
+            assert!(!this.tab_hidden_now(at("Macros")));
+        });
+    }
 }

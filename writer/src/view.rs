@@ -139,6 +139,11 @@ impl Render for Writer {
                 None
             }
         };
+        // 押せるボタンが無い段(文脈タブも)は隠す。開いていた段が消えたらホームへ
+        let hidden_tabs: Vec<bool> = (0..ribbon::tabs().len()).map(|i| self.tab_hidden_now(i)).collect();
+        if hidden_tabs.get(self.tab).copied().unwrap_or(false) {
+            self.tab = 1;
+        }
         // ---- リボンのタブの行(実装は ui::tabrow に1本。統合の段6の後半)----
         let tabs = ui::tabrow::build(
             cx,
@@ -158,9 +163,8 @@ impl Render for Writer {
                 ctx_bg: th_tab_on_bg,
             },
             self.btn_box.clone(),
-            // 文脈タブ(ピボット・表のデザイン)は、文章の画面では出す条件が
-            // まだ無いので隠す(リボンは1つ。2026-09-04)
-            Writer::ctx_tab_hidden,
+            // 文脈タブと、押せるボタンの無い段は隠す(リボンは1つ。2026-09-04)
+            move |i| hidden_tabs.get(i).copied().unwrap_or(false),
             |_| false,
             |_| None,
             |this: &mut Writer, i, cx| {
