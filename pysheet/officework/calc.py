@@ -914,6 +914,46 @@ class TableRef:
     def __repr__(self):
         return "<officework.calc Table {} {}>".format(self.name, self.ref)
 
+    # ── 大きな表は polars の物として(2026-09-04)。エージェントの道具・MCP と
+    # 同じ名前で、セルで読まずに型・先頭・SQL で触る。実体は calc の ops ──
+
+    def schema(self):
+        """列の名前と型(``"数"`` / ``"字"``)と行の数。
+
+            t = sheet.tables["売上"]
+            t.schema()   # {"rows": 12345, "cols": [["品名", "字"], ["金額", "数"]]}
+        """
+        r = _call("table_schema", table=self.name)
+        return {"rows": r.get("rows", 0), "cols": r.get("cols", [])}
+
+    def head(self, n=5):
+        """先頭 ``n`` 行(見出しつき。``n`` は 50 まで)。"""
+        return _call("table_head", table=self.name, n=n).get("values", [])
+
+    def query(self, sql, limit=200):
+        """SQL で絞る・集計する。``FROM`` には表の名前を書きます。
+
+            t.query("SELECT 品名, SUM(金額) AS 計 FROM 売上 GROUP BY 品名")
+            # {"total": 3, "values": [["品名", "計"], ["鉛筆", "400"], ...]}
+
+        ``values`` は見出しつきの小さな表(``limit`` 行まで)、``total`` は
+        絞った後の全行数です。数万行の表でも返るのは答えの分だけです。
+        """
+        r = _call("table_query", table=self.name, sql=sql, limit=limit)
+        return {"total": r.get("total", 0), "values": r.get("values", [])}
+
+    def frame(self, sql=None, limit=200):
+        """``query`` の答えを polars の DataFrame で(polars が入っていれば)。
+        ``sql`` を省くと表の全部(``limit`` 行まで)。"""
+        import polars as pl
+
+        r = self.query(sql or "SELECT * FROM {}".format(self.name), limit)
+        rows = r["values"]
+        if not rows:
+            return pl.DataFrame()
+        head, body = rows[0], rows[1:]
+        return pl.DataFrame({h: [row[i] for row in body] for i, h in enumerate(head)})
+
 
 class Picture:
     """シートに浮かぶ画像(読みの札)。anchor は留めたセル、大きさは px。"""

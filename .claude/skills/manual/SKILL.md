@@ -108,3 +108,7 @@ ruby -I vendor/asciidoctor/lib vendor/asciidoctor/bin/asciidoctor -o /dev/null <
   グループ化、スパークライン3種、テキスト取り込みウィザード、R1C1、
   反復計算などが「挿入」「データ」節にまだ薄い
 - from-excel: 第3稿+英語版。残りは本文の「在庫候補」印を台帳へ移す整理だけ
+- python-manual(ja/en)と api-taiou: 表の道具 `TableRef.schema / head / query / frame`
+  (2026-09-04。calc が動いている時だけ効く。実機で確かめてから書く)。
+  officework.doc のブロック API(outline / blocks / replace_blocks …)と
+  `.adoc` の開く・保存も同じ回に
