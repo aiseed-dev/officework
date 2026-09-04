@@ -3026,7 +3026,7 @@ impl Writer {
     /// calc の rpc `{"cmd":"ribbon"}` に当たるものを、writer には受け口が
     /// 無いのでファイルで渡す(2026-08-16。座標を目分量で当てて3回外し、
     /// 外した拍子に発注者の打鍵まで拾った)。
-    pub(crate) fn dump_ui(&self) {
+    pub fn dump_ui(&self) {
         let Some(path) = std::env::var_os("OFFICEWORK_UI_DUMP") else { return };
         let boxes: Vec<String> = self
             .btn_box

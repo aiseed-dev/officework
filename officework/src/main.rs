@@ -100,6 +100,7 @@ fn is_table(p: &std::path::Path) -> bool {
 
 /// 開いているファイル1枚ぶん。**タブ1つ = ファイル1つ = 編集画面1つ**
 /// (SEKKEI「writer と calc を officework に統合する」段2)。
+#[derive(Clone)]
 enum Pane {
     /// 文章(`.adoc` `.docx` …)
     Doc(Entity<writer::Writer>),
@@ -121,6 +122,31 @@ impl Pane {
         match self {
             Pane::Doc(v) => v.read(cx).has_unsaved(),
             Pane::Sheet(v) => v.read(cx).has_unsaved(),
+        }
+    }
+
+    /// **いまファイルのページを出しているか**(統合の段8。2026-09-04)。
+    fn on_file_page(&self, cx: &App) -> bool {
+        match self {
+            Pane::Doc(v) => v.read(cx).on_file_page(),
+            Pane::Sheet(v) => v.read(cx).on_file_page(),
+        }
+    }
+
+    /// ファイルのページに並べる項目(左の列)。
+    fn file_items(&self, cx: &App) -> Vec<ui::filemenu::Item> {
+        match self {
+            Pane::Doc(v) => v.read(cx).file_menu(),
+            Pane::Sheet(v) => v.read(cx).file_menu(),
+        }
+    }
+
+    /// **場所の控え**(点検の道具が座標を当てずに押せるように)。
+    /// 編集画面の物を借ります — 押した先もその画面なので、控えも1つで足ります
+    fn boxes(&self, cx: &App) -> ui::filemenu::Boxes {
+        match self {
+            Pane::Doc(v) => v.read(cx).btn_boxes(),
+            Pane::Sheet(v) => v.read(cx).btn_boxes(),
         }
     }
 
@@ -198,6 +224,12 @@ struct Office {
     at: usize,
     /// 次に描くときに焦点を移すか(受け口には `Window` が無いため)
     move_focus: bool,
+    /// **編集画面が変わったら描き直すための見張り**(統合の段8。2026-09-04)。
+    ///
+    /// ファイルのページの右側は編集画面が組みます。その中の押しは編集画面に
+    /// しか届かないので、こちらが見張っていないと**押しても画面が変わりません**。
+    /// `Subscription` は落とすと止まるので、ここで持ちます
+    subs: Vec<gpui::Subscription>,
 }
 
 impl Office {
@@ -213,7 +245,7 @@ impl Office {
                 });
             }
             let at = before.at.min(tabs.len().saturating_sub(1));
-            let o = Office { tabs, at, move_focus: true };
+            let o = Office { tabs, at, move_focus: true, subs: Vec::new() };
             // **黙って減らさない。** 開けなかった数は状態行で言います
             if *dropped > 0 {
                 o.told(&ui::tf!("file_s_open_not", dropped.to_string()), cx);
@@ -237,7 +269,7 @@ impl Office {
             }
             Pane::Doc(w)
         };
-        Office { tabs: vec![pane], at: 0, move_focus: false }
+        Office { tabs: vec![pane], at: 0, move_focus: false, subs: Vec::new() }
     }
 }
 
@@ -263,6 +295,80 @@ fn doc_to_make(path: Option<std::path::PathBuf>, cx: &mut Context<Office>) -> En
 }
 
 impl Office {
+    /// **編集画面が変わったら描き直す**(統合の段8。2026-09-04)。
+    ///
+    /// ファイルのページの右側は編集画面が組むので、その中で何か押されても
+    /// 変わるのは編集画面だけです。こちらも描き直さないと、押した結果が
+    /// 見えません。タブの名前と書きかけの印も、これで新しくなります
+    fn watch_all(&mut self, cx: &mut Context<Self>) {
+        let mina: Vec<Pane> = self.tabs.clone();
+        for p in &mina {
+            self.watch(p, cx);
+        }
+    }
+
+    fn watch(&mut self, pane: &Pane, cx: &mut Context<Self>) {
+        let s = match pane {
+            Pane::Doc(v) => cx.observe(v, |_, _, cx| cx.notify()),
+            Pane::Sheet(v) => cx.observe(v, |_, _, cx| cx.notify()),
+        };
+        self.subs.push(s);
+    }
+
+    /// **ファイルのページを描く**(統合の段8 の本体。2026-09-04)。
+    ///
+    /// このページは全面で、ほかの部品と隣り合いません。だから割り込みでは
+    /// なく**ページごと差し替え**ます。編集画面は埋め込みのとき自分では
+    /// 組まず、officework がここで組みます(SEKKEI「ページごと差し替え」)。
+    ///
+    /// * 左の列(戻る・新規・開く・最近…)は **officework の持ち物**です。
+    ///   並びは編集画面に聞き([`Pane::file_items`])、押しはその画面へ返します
+    /// * 右側(いま見ているファイルの詳細と操作)は**編集画面が組みます**。
+    ///   編集の中身なので、層の線を越えないためです
+    fn file_page(&mut self, cx: &mut Context<Self>) -> gpui::AnyElement {
+        let dk = self.showing().is_dark(cx);
+        let look = ui::filemenu::SideLook {
+            bg: if dk { gpui::rgb(0x1B1E21) } else { gpui::rgb(0xF1F3F5) },
+            border: if dk { gpui::rgb(0x33383D) } else { gpui::rgb(0xE1E6EA) },
+            fg: if dk { gpui::rgb(0xCFD6DC) } else { gpui::rgb(0x444B52) },
+            gray: if dk { gpui::rgb(0x565D64) } else { gpui::rgb(0xB6BDC4) },
+            hover: if dk { gpui::rgb(0x2C333A) } else { gpui::rgb(0xE2E6EA) },
+            scale: ui::ui_scale(),
+        };
+        let items = self.showing().file_items(cx);
+        // **押しは、いま見ている画面へそのまま返します。** 捌くのは
+        // `ui::filemenu::run` と各画面の `file_menu_click` で、単体で
+        // 動くときと同じ道です
+        let hako = self.showing().boxes(cx);
+        let sb = ui::filemenu::sidebar(&look, &items, Some(hako), cx, |this: &mut Office, id, cx| {
+            match this.showing().clone() {
+                Pane::Doc(v) => v.update(cx, |w, cx| w.file_menu_click(id, cx)),
+                Pane::Sheet(v) => v.update(cx, |c, cx| c.file_menu_click(id, cx)),
+            }
+            cx.notify()
+        });
+        // 右側。**編集画面の文脈で組みます** — 中の押しはその画面に届き、
+        // こちらは [`Office::watch`] の見張りで描き直します
+        let pane = match self.showing().clone() {
+            Pane::Doc(v) => v.update(cx, |w, cx| w.file_pane(cx)),
+            Pane::Sheet(v) => v.update(cx, |c, cx| c.file_pane(cx)),
+        };
+        // **控えを書き出します**(点検の道具のため)。ページを描くのが
+        // officework になったので、編集画面の `render` は通りません —
+        // ここで頼まないと、実機の点検が左の列を押せなくなります
+        if let Pane::Doc(v) = self.showing() {
+            v.read(cx).dump_ui();
+        }
+        div()
+            .flex_1()
+            .min_h(px(0.0))
+            .flex()
+            .flex_row()
+            .child(sb)
+            .child(pane)
+            .into_any_element()
+    }
+
     /// **「このファイルを開いてほしい」を受け取る**(統合の段1)。
     ///
     /// 埋め込みの編集画面は、一覧を押されると**種類を問わず** `open_request`
@@ -435,6 +541,7 @@ impl Office {
             } else {
                 Pane::Doc(doc_to_make(Some(p), cx))
             };
+            self.watch(&pane, cx);
             self.tabs.push(pane);
             self.at = self.tabs.len() - 1;
         }
@@ -689,10 +796,17 @@ impl Render for Office {
             .flex()
             .flex_col()
             .children(tabs)
-            .child(div().flex_1().min_h(px(0.0)).child(match self.showing() {
-                Pane::Doc(v) => v.clone().into_any_element(),
-                Pane::Sheet(v) => v.clone().into_any_element(),
-            }))
+            // **ファイルのページはページごと差し替えます**(段8。2026-09-04)。
+            // 編集画面は埋め込みのとき自分では組まないので、ここで組まないと
+            // 何も出ません
+            .child(if self.showing().on_file_page(cx) {
+                self.file_page(cx)
+            } else {
+                div().flex_1().min_h(px(0.0)).child(match self.showing() {
+                    Pane::Doc(v) => v.clone().into_any_element(),
+                    Pane::Sheet(v) => v.clone().into_any_element(),
+                }).into_any_element()
+            })
     }
 }
 
@@ -766,6 +880,9 @@ fn main() {
             WindowOptions { window_bounds: Some(wb), ..Default::default() },
             move |window, cx| {
                 let view = cx.new(|cx| Office::new(start2.clone(), cx));
+                // **見張りは実体ができてから掛けます**(統合の段8。2026-09-04)。
+                // `cx.new` の中で掛けると、まだ自分が居ないので届きません
+                view.update(cx, |this, cx| this.watch_all(cx));
                 // 焦点は中の編集画面へ渡します
                 view.update(cx, |this, cx| {
                     window.focus(&this.showing().focus(cx), cx)

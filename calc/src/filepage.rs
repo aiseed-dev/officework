@@ -14,7 +14,9 @@ impl Calc {
     ///
     /// 単体で動くときは `render` が左の列と並べます。officework に
     /// 埋め込まれているときは officework が呼びます。
-    pub fn file_pane(&mut self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+    /// **返す型は [`gpui::AnyElement`] です**(2026-09-04。統合の段8)。
+    /// 文章の画面と同じ形で officework に置けるようにするためです
+    pub fn file_pane(&mut self, cx: &mut Context<Self>) -> gpui::AnyElement {
         let us = self.ui_scale;
         let item_bg = rgb(0xE2E6EA);
         let gray = rgb(0xB6BDC4);
@@ -558,6 +560,6 @@ impl Calc {
                 .child(div().text_size(px(us * 11.5)).text_color(dim)
                     .child(ui::t!("sheet_protection_read_only")));
         }
-        pane
+        pane.into_any_element()
     }
 }

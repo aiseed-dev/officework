@@ -17,7 +17,10 @@ impl Writer {
     ///
     /// 単体で動くときは `render` が左の列と並べます。officework に
     /// 埋め込まれているときは officework が呼びます。
-    pub fn file_pane(&mut self, cx: &mut Context<Self>) -> gpui::Div {
+    /// **返す型は [`gpui::AnyElement`] です**(2026-09-04。統合の段8)。
+    /// officework は文章の画面と表の画面を同じ形で置くので、
+    /// 片方が `Div`・もう片方が `Stateful<Div>` だと受けられません
+    pub fn file_pane(&mut self, cx: &mut Context<Self>) -> gpui::AnyElement {
         let us = self.ui_scale;
         let dk = self.dark;
         let th_cmd_bg = if dk { rgb(0x22262A) } else { rgb(0xFFFFFF) };
@@ -539,7 +542,7 @@ impl Writer {
             pane = pane.child(div().text_size(px(us * 11.5)).text_color(th_status)
                 .child(ui::t!("click_field_type_enter")));
         }
-        pane
+        pane.into_any_element()
     }
 }
 
