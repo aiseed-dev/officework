@@ -297,6 +297,19 @@ pub fn err(msg: &str) -> String {
 
 // ---- 口の向こう(アプリが実装する) ----------------------------------------
 
+/// [`Host::macro_start`] で始めたマクロの様子
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MacroStatus {
+    /// まだ走っている
+    Running,
+    /// 終わった(print の出力。結果はもうブックに入っている)
+    Done(String),
+    /// しくじった(誤りの尻尾。モデルが読んで直す)
+    Failed(String),
+    /// その番号は知らない
+    Unknown,
+}
+
 /// 口の向こうの実装。**gpui を知らない** — 「動いているアプリの都合」を
 /// 名前のある数個のメソッドに閉じ込める(切れない部分が名前で見える形)。
 /// 既定の実装は「何もしない/断る」— この口に無い動詞は黙って動かない
@@ -342,6 +355,19 @@ pub trait Host {
     /// アプリの版(ping の返事に載せる)。ファイルの口は名乗らなくてよい
     fn version(&self) -> &'static str {
         ""
+    }
+
+    /// **マクロを始める**(2026-09-04。パネルから起こした officework-mcp の
+    /// run_macro が通る道)。code を見える .py として置き、サンドボックスで
+    /// 走らせ始めて番号を返す。**待たない** — 受け口は主スレッドなので、
+    /// 60 秒の実行で画面を止めないため。終わりは [`Host::macro_status`] で見る。
+    /// 画面の無い口は既定で断る
+    fn macro_start(&mut self, _code: &str, _name: &str) -> Result<u64, String> {
+        Err("この口ではマクロを走らせられません(表の画面が要ります)".into())
+    }
+    /// 始めたマクロの様子。結果はブックに1手として入り、返りは print の出力
+    fn macro_status(&mut self, _id: u64) -> MacroStatus {
+        MacroStatus::Unknown
     }
     /// いま選んでいる範囲(シート, 左上, 右下)。画面のあるアプリだけが持つ
     fn selection(&self) -> Option<(usize, book::Pos, book::Pos)> {
@@ -725,6 +751,26 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
         // ── 大きな表は polars の物として(2026-09-04。table_schema / table_head /
         // table_query)。表は名前で指す。実体は pivot::table(feature `df` の時だけ)──
         "table_schema" | "table_head" | "table_query" => table_verb(h, cmd.as_str(), &o),
+        // ── マクロ(パネルから起こした officework-mcp の run_macro。2026-09-04)──
+        // 始めて番号を返し、様子は別の動詞で見る(受け口を止めない)
+        "macro_start" => {
+            let Some(code) = o.str("code") else { return err("code がありません") };
+            let name = o.str("name").unwrap_or_else(|| "agent_macro".into());
+            match h.macro_start(&code, &name) {
+                Ok(id) => format!("{{\"ok\":true,\"id\":{id}}}"),
+                Err(e) => err(&e),
+            }
+        }
+        "macro_status" => {
+            let Some(id) = o.num("id") else { return err("id がありません") };
+            let (state, text) = match h.macro_status(id as u64) {
+                MacroStatus::Running => ("running", String::new()),
+                MacroStatus::Done(t) => ("done", t),
+                MacroStatus::Failed(t) => ("failed", t),
+                MacroStatus::Unknown => return err("その番号のマクロはありません"),
+            };
+            format!("{{\"ok\":true,\"state\":\"{state}\",\"text\":{}}}", J::S(text).to_json())
+        }
         "sheet_tables" => {
             let si = match sheet_index(h, &o) {
                 Ok(i) => i,
@@ -2383,5 +2429,42 @@ mod df_tests {
         assert!(r.contains("\"total\":2") && r.contains("[\"鉛筆\",\"400\"]"), "{r}");
         let r = handle(&mut h, r#"{"cmd":"table_query","table":"無い","sql":"SELECT 1"}"#);
         assert!(r.contains("がありません"), "{r}");
+    }
+}
+
+#[cfg(test)]
+mod macro_verb_tests {
+    use super::*;
+
+    struct NoScreen {
+        book: book::Book,
+    }
+    impl Host for NoScreen {
+        fn app(&self) -> &'static str {
+            "test"
+        }
+        fn book(&self) -> &book::Book {
+            &self.book
+        }
+        fn book_mut(&mut self) -> &mut book::Book {
+            &mut self.book
+        }
+        fn active(&self) -> usize {
+            0
+        }
+        fn path(&self) -> Option<&std::path::Path> {
+            None
+        }
+    }
+
+    /// 画面の無い口では、始めるのも様子を見るのも断る(黙って成功しない)
+    #[test]
+    fn a_screenless_host_refuses_macros_by_default() {
+        let mut h = NoScreen { book: book::Book::new() };
+        let r = handle(&mut h, r#"{"cmd":"macro_start","code":"print(1)"}"#);
+        assert!(r.contains("\"err\"") && r.contains("マクロ"), "{r}");
+        let r = handle(&mut h, r#"{"cmd":"macro_status","id":1}"#);
+        assert!(r.contains("\"err\""), "{r}");
+        assert!(handle(&mut h, r#"{"cmd":"macro_start"}"#).contains("code"));
     }
 }

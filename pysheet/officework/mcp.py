@@ -469,12 +469,44 @@ def doc_to_pdf(path: str) -> str:
     return f"PDF を書きました: {os.path.abspath(path)}"
 
 
+def run_macro(code: str, name: str = "agent_macro") -> str:
+    """Python の**マクロを書いて動かす**(表)。`b`(ブック)と `s`(いまのシート)が
+    使えます(openpyxl と同じ形。`s["A1"].value = 5`、範囲は `s["A1:C9"]`)。
+
+    コードは見える .py としてブックの隣に置かれ、サンドボックス(網なし・60秒)で
+    走ります。表への変更は1手で入り、officework の Ctrl+Z で戻せます。
+    print の出力が返り、誤りはその尻尾が返るので、直してもう一度呼べます。
+    定型の道具に無い仕事はこれで解きます。
+
+    **パネルから起こした時だけ出る道具です**(`officework-mcp --panel`)。外の
+    AI に登録した officework-mcp には出しません(任意のコードを走らせる道具は
+    置かない決め)。
+    """
+    import time
+
+    from . import app_name, call
+
+    app = app_name("calc")
+    r = call(app, "macro_start", code=code, name=name)
+    job = r.get("id")
+    deadline = time.monotonic() + 120.0
+    while time.monotonic() < deadline:
+        st = call(app, "macro_status", id=job)
+        state = st.get("state")
+        if state == "done":
+            return st.get("text") or "終わりました"
+        if state == "failed":
+            raise RuntimeError(st.get("text") or "原因不明")
+        time.sleep(0.5)
+    raise RuntimeError("マクロが 120 秒で終わりません")
+
+
 def main() -> None:
     """`officework-mcp` の入口(標準入出力で MCP を話す)。
 
     `--panel` はエージェントのパネルから起こされた印(2026-09-04。宛先
-    「Claude Code」が `claude -p` の MCP として渡す)。いまは受けるだけで、
-    パネルだけに出す道具(run_macro)は ops に `macro` の命令が入ってから。
+    「Claude Code」が `claude -p` の MCP として渡す)。この印がある時だけ
+    `run_macro` を道具に足します(実体は ops の macro_start / macro_status)。
     """
     import sys
 
@@ -482,6 +514,8 @@ def main() -> None:
     if args:
         print("officework-mcp: 知らない引数: " + " ".join(args), file=sys.stderr)
         sys.exit(2)
+    if "--panel" in sys.argv[1:]:
+        mcp.tool()(run_macro)
     mcp.run()
 
 
