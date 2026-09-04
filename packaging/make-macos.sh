@@ -124,6 +124,8 @@ PLIST
 # フォルダの `.venv` → `python3`(`pyrun::find_python` の順)。
 
 cp -r sample/plugins "$DIST/"
+# 組んだ跡(`__pycache__`)は配りません
+find "$DIST/plugins" -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
 cp packaging/README.ja.md "$DIST/はじめに.md"
 
 # ---- 4. 署名・公証 ----------------------------------------------------------

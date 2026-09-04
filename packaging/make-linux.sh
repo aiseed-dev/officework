@@ -39,9 +39,17 @@ mkdir -p "$OUT/$NAME"/{bin,share/officework}
 # calc と writer の単体は開発と試験の道具として残しますが、包みません
 cp target/release/officework "$OUT/$NAME/bin/"
 cp -r sample/plugins "$OUT/$NAME/share/officework/"
-cp docs/calc-manual.ja.md docs/writer-manual.ja.md docs/python-manual.ja.md \
-   "$OUT/$NAME/share/officework/" 2>/dev/null || true
-cp README.ja.md LICENSE "$OUT/$NAME/" 2>/dev/null || true
+# **組んだ跡は配りません。** `__pycache__` は走らせた機械の物で、
+# 配る意味がないうえ、別の版の Python では読めません
+find "$OUT/$NAME/share/officework/plugins" -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
+# **手引きは docs/ja の adoc です**(2026-09-04 に直しました)。
+# 前は `docs/calc-manual.ja.md` という**もう無い径路**を見ていて、
+# `|| true` が付いていたので**黙って手引き無しの包み**が出来ていました
+for m in calc-manual writer-manual python-manual genkou-manual; do
+  cp "docs/ja/$m.adoc" "$OUT/$NAME/share/officework/"
+done
+cp LICENSE "$OUT/$NAME/"
+cp packaging/README.ja.md "$OUT/$NAME/はじめに.md"
 
 # **Python は同梱しません**(2026-09-04 発注者「Python の同梱はなくてもいい」
 # 「自由に環境が選択できるのがいい」)。実行の側は 2026-08-24 から同梱を

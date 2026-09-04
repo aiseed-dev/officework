@@ -161,7 +161,8 @@ jobs:
           # matplotlib も polars も入っていないので、利用者は結局自分の
           # 環境を用意します。使う物は設定で選べます
           cp -r sample/plugins "$D/"
-          cp packaging/README.ja.adoc "$D/はじめに.md"
+          find "$D/plugins" -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
+          cp packaging/README.ja.md "$D/はじめに.md"
       - name: 入れ物を作る(Inno Setup)
         # **zip をやめた**(発注者 2026-08-17)。スタートメニュー・
         # アンインストール・関連付けが zip では作れない。
