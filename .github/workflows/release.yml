@@ -7,9 +7,10 @@
 # officework(いま 0.5.0)、アプリはこれが初回で 0.1.0-alpha。だから
 # タグの頭を `app-v` にして、publish-pypi.yml の `v*` と取り違えないようにする。
 #
-# **Python を同梱する。** 機械に Python が入っていなくてもマクロが動く
-# (Windows は入っていないのが普通)。中身は python-build-standalone
-# (astral-sh・PSF ライセンスで再配布できる)の 3.14 系。
+# **Python は同梱しません**(2026-09-04 発注者「Python の同梱はなくてもいい」)。
+# マクロと `=df()` の重い所は利用者の Python を使います — 同梱した物には
+# matplotlib も polars も入っておらず、どちらにせよ利用者が入れるためです。
+# 使う Python は設定で選べます(`pyrun::find_python` の順)。
 name: release
 
 on:
@@ -32,10 +33,6 @@ on:
 
 permissions:
   contents: write   # Releases に置くのに要る
-
-env:
-  PY_VER: "3.14.6"
-  PY_TAG: "20260610"
 
 jobs:
   linux:
@@ -159,10 +156,10 @@ jobs:
           D="packaging/out/windows"
           mkdir -p "$D"
           cp target/release/officework.exe "$D/"
-          curl -fsSL -o py.tar.gz \
-            "https://github.com/astral-sh/python-build-standalone/releases/download/${PY_TAG}/cpython-${PY_VER}%2B${PY_TAG}-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
-          tar xzf py.tar.gz -C "$D"
-          "$D/python/python.exe" -m pip install --quiet officework || true
+          # **Python は同梱しません**(2026-09-04 発注者)。実行の側は
+          # 前から同梱を見ておらず(2026-08-24)、同梱の Python には
+          # matplotlib も polars も入っていないので、利用者は結局自分の
+          # 環境を用意します。使う物は設定で選べます
           cp -r sample/plugins "$D/"
           cp packaging/README.ja.adoc "$D/はじめに.md"
       - name: 入れ物を作る(Inno Setup)

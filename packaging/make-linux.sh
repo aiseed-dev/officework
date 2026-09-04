@@ -4,13 +4,16 @@
 # 仮想環境を優先でいいでしょう」)。
 #
 #   packaging/make-linux.sh            tar.gz と .deb を作る
-#   packaging/make-linux.sh --with-py  Python を同梱する(前の形。ふつうは要りません)
 #
 # 出来上がりは packaging/out/ に置く。
 #
 # **なぜやめたか。** 同梱した Python は読むだけの物で、matplotlib も polars も
 # 入っていませんでした。その2つは結局あとから `.venv` に入れる必要があり、
 # *同梱があってもなくても利用者の手順は同じ*でした。荷物だけが大きくなります。
+#
+# **同梱する道そのものを外しました**(2026-09-04 発注者「Python の同梱は
+# なくてもいいのでは」「自由に環境が選択できるのがいい」)。mac と Windows の
+# 包みからも外し、3つの OS で同じ形になりました。
 #
 # 探し方の順は JO_PYTHON → **開いている綴りの .venv** → 開発機の .venv →
 # 利用者の venv → python3(pyrun/src/lib.rs)。
@@ -19,15 +22,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 VER=$(grep -m1 '^version' officework/Cargo.toml | cut -d'"' -f2)
-PY_VER="3.14.6"
-PY_TAG="20260610"
 ARCH="x86_64"
 OUT="packaging/out"
 NAME="officework-${VER}-linux-${ARCH}"
-WITH_PY=0
-[ "${1:-}" = "--with-py" ] && WITH_PY=1
 
-echo "== officework ${VER} を包みます(Python 同梱: $([ $WITH_PY = 1 ] && echo あり || echo なし))"
+echo "== officework ${VER} を包みます"
 
 # ---- 1. 組む ----------------------------------------------------------------
 echo "-- cargo build --release"
@@ -44,22 +43,10 @@ cp docs/calc-manual.ja.md docs/writer-manual.ja.md docs/python-manual.ja.md \
    "$OUT/$NAME/share/officework/" 2>/dev/null || true
 cp README.ja.md LICENSE "$OUT/$NAME/" 2>/dev/null || true
 
-# ---- 3. Python を同梱 -------------------------------------------------------
-if [ $WITH_PY = 1 ]; then
-  PY_TGZ="packaging/cache/cpython-${PY_VER}-linux.tar.gz"
-  mkdir -p packaging/cache
-  if [ ! -f "$PY_TGZ" ]; then
-    echo "-- CPython ${PY_VER} を落とします(初回だけ)"
-    curl -fsSL -o "$PY_TGZ" \
-      "https://github.com/astral-sh/python-build-standalone/releases/download/${PY_TAG}/cpython-${PY_VER}%2B${PY_TAG}-${ARCH}-unknown-linux-gnu-install_only_stripped.tar.gz"
-  fi
-  echo "-- Python を実行ファイルの隣へ"
-  tar xzf "$PY_TGZ" -C "$OUT/$NAME/bin"      # bin/python/ に展開される
-  # officework パッケージ(手続きから calc を操るのに要る)を同梱の python へ
-  echo "-- officework パッケージを同梱の python に入れます"
-  "$OUT/$NAME/bin/python/bin/python3" -m pip install --quiet --disable-pip-version-check \
-    officework || echo "   (PyPI から入れられませんでした — 手続きは動きません)"
-fi
+# **Python は同梱しません**(2026-09-04 発注者「Python の同梱はなくてもいい」
+# 「自由に環境が選択できるのがいい」)。実行の側は 2026-08-24 から同梱を
+# 見ておらず、同梱の物には matplotlib も polars も入っていないので、
+# 利用者は結局自分の環境を用意します。使う Python は設定で選べます
 
 # ---- 4. 起動の台本(どこに置いても動く)-------------------------------------
 cat > "$OUT/$NAME/officework" <<'SH'

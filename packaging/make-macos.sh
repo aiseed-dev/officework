@@ -21,14 +21,10 @@
 #
 # **.p12 への書き出しは要らない。** 鍵は既にこの Mac の中にあり、codesign が
 # そのまま使う。書き出しが要るのは、鍵の無い機械(CI)へ持っていくときだけ。
-#
-# 同梱する Python は python-build-standalone の 3.14 系(make-linux.sh と同じ)。
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 VER=$(grep -m1 '^version' officework/Cargo.toml | cut -d'"' -f2)
-PY_VER="3.14.6"
-PY_TAG="20260610"
 OUT="packaging/out"
 DIST="$OUT/macos"
 SIGN=1
@@ -116,11 +112,16 @@ PLIST
 # Resources の中身はハッシュで封をするだけなので、ディレクトリがあっても
 # 問題になりません。中の Mach-O には署名が要りますが、それは sign.sh が
 # Contents 全体を歩いて行います。
-PY_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PY_TAG}/cpython-${PY_VER}%2B${PY_TAG}-${PY_ARCH}-install_only_stripped.tar.gz"
-curl -fsSL -o "$OUT/py.tar.gz" "$PY_URL"
-tar xzf "$OUT/py.tar.gz" -C "$APP/Contents/Resources"
-rm -f "$OUT/py.tar.gz"
-"$APP/Contents/Resources/python/bin/python3" -m pip install --quiet officework || true
+# **Python は同梱しません**(2026-09-04 発注者「Python の同梱はなくてもいい」
+# 「自由に環境が選択できるのがいい」)。
+#
+# 実行の側は前から同梱を見ていません(2026-08-24 の決め。`pyrun::find_python`)。
+# 同梱の Python には matplotlib も polars も入っておらず、**結局その2つは
+# 利用者が自分の環境に入れる**ので、同梱があってもなくても手順は同じでした。
+# 包みにだけ 40MB ほど残っていたのを外します。
+#
+# 使う Python は利用者が選びます: 設定の「Python の場所」→ 開いている
+# フォルダの `.venv` → `python3`(`pyrun::find_python` の順)。
 
 cp -r sample/plugins "$DIST/"
 cp packaging/README.ja.md "$DIST/はじめに.md"
