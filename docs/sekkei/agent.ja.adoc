@@ -661,11 +661,21 @@ Run・Font)をエンジンの上に写した互換層で、writer のマクロ�
 
 [start=5]
 . 提供元の表と鍵の探し順(face::settings)、手元のモデルの自動検出
+  (2026-09-04 済 — `PROVIDERS` 10 行、`providers_with_keys()`(環境変数が
+  入っている物だけ)、`probe_local()`(港が開いている手元の物。1秒で諦め、
+  60 秒は控え)、`claude_code_dest()`(`claude` が PATH にあれば)、
+  `ai_list()` = `[[ai]]` → 鍵のある提供元 → Claude Code、`ai_list_all()` は
+  それに手元を足す。宛先の話し方は `AiDest::kind()`(url の `claude-code:` の
+  印。設定の行の形は変えない)。鍵の無い提供元を灰色で出すのは段階7の
+  選ぶ画面で)
 . **宛先「Claude Code」と「Codex」**: 子プロセスの起動と JSON 行の読み書き
   (agent クレートに `Model` と並ぶ `Process` の形で。gpui を持たない)、
   officework-mcp の `--panel` と ops の `macro` 命令、`claude auth status` と
   `codex login status` の状態。実機で「定額で通ること」と「1手で戻ること」を
   確かめる(Codex はこの機械に入れてから)
+  (2026-09-04 一部済 — `agent::claude_code`(上の「実測と部品」)と
+  officework-mcp の `--panel`(受けるだけ)。残りはパネルへの結線(段階10 と
+  一緒に Opus)、ops の `macro` 命令、Codex、「1手で戻ること」の実機の確認)
 . 選ぶ画面(モデルの一覧の取得、絞り込み、並び)。実機で確かめる
 . anthropic-messages の口(lang::model)。**アプリの公開までに**(本番は
   OpenAI 互換の口に頼らない)

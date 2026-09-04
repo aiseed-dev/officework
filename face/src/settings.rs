@@ -109,7 +109,29 @@ pub struct AiDest {
     pub key_env: Option<String>,
 }
 
+/// 宛先の話し方
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiKind {
+    /// OpenAI 互換の chat/completions(`lang::model`)
+    Chat,
+    /// 宛先「Claude Code」: 改変していない `claude` を子プロセスで
+    /// (`agent::claude_code`。定額の道。url は `claude-code:`)
+    ClaudeCode,
+}
+
+/// 宛先「Claude Code」の url の印(Endpoint にはならない)
+pub const CLAUDE_CODE_URL: &str = "claude-code:";
+
 impl AiDest {
+    /// 話し方。url の印で見分ける(欄を増やさない — 設定の行の形はそのまま)
+    pub fn kind(&self) -> AiKind {
+        if self.url.starts_with(CLAUDE_CODE_URL) {
+            AiKind::ClaudeCode
+        } else {
+            AiKind::Chat
+        }
+    }
+
     /// 宛先(Endpoint)にする。鍵は key_env の環境変数から読む。
     /// key_env が無ければ鍵なし — 他の行の鍵を黙って使い回さない
     pub fn endpoint(&self) -> lang::model::Endpoint {
@@ -197,9 +219,137 @@ fn host_of(url: &str) -> String {
         .to_string()
 }
 
-/// 宛先の一覧。`[[ai]]` が無ければ、今までの `ai_url` / `ai_model` を
-/// 1行にして返す(後方互換 — 鍵も従来どおり OFFICE_API_KEY)。
-/// それも無ければ空 = パネルの「未設定」
+// ---- 提供元の表(oh-my-pi の蒸留。docs/sekkei/agent.ja.adoc「宛先を選ぶ」2026-09-04)----
+//
+// 鍵は環境変数の名前だけを持つ。変数が入っていれば、設定なしで宛先に出る。
+// 手元のモデル(Ollama・llama.cpp・LM Studio)は港が開いていれば出る。
+// 表は 10 行で始め、増やすのは頼まれてから(機能では勝負しない)。
+// モデルの名前は 2026-09-04 に各社の公式の資料で確かめた既定。
+
+/// 提供元の1行
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Provider {
+    pub id: &'static str,
+    /// 一覧に出す名前
+    pub name: &'static str,
+    pub url: &'static str,
+    /// 既定のモデル(手元の物は空 = 一覧から選ぶ)
+    pub model: &'static str,
+    /// 鍵の環境変数。None は鍵なし(手元の物)
+    pub key_env: Option<&'static str>,
+    /// 接続先を変える環境変数(手元の物。`OLLAMA_HOST` など)
+    pub url_env: Option<&'static str>,
+}
+
+pub const PROVIDERS: &[Provider] = &[
+    Provider { id: "anthropic", name: "Anthropic", url: "https://api.anthropic.com/v1/chat/completions", model: "claude-sonnet-5", key_env: Some("ANTHROPIC_API_KEY"), url_env: None },
+    Provider { id: "openai", name: "OpenAI", url: "https://api.openai.com/v1/chat/completions", model: "gpt-5.6-terra", key_env: Some("OPENAI_API_KEY"), url_env: None },
+    Provider { id: "google", name: "Google", url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", model: "gemini-3.8-flash", key_env: Some("GEMINI_API_KEY"), url_env: None },
+    Provider { id: "openrouter", name: "OpenRouter", url: "https://openrouter.ai/api/v1/chat/completions", model: "openrouter/auto", key_env: Some("OPENROUTER_API_KEY"), url_env: None },
+    Provider { id: "groq", name: "Groq", url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-120b", key_env: Some("GROQ_API_KEY"), url_env: None },
+    Provider { id: "mistral", name: "Mistral", url: "https://api.mistral.ai/v1/chat/completions", model: "mistral-medium-latest", key_env: Some("MISTRAL_API_KEY"), url_env: None },
+    Provider { id: "xai", name: "xAI", url: "https://api.x.ai/v1/chat/completions", model: "grok-4.6", key_env: Some("XAI_API_KEY"), url_env: None },
+    Provider { id: "ollama", name: "Ollama", url: "http://127.0.0.1:11434/v1/chat/completions", model: "", key_env: None, url_env: Some("OLLAMA_HOST") },
+    Provider { id: "llama.cpp", name: "llama.cpp", url: "http://127.0.0.1:8080/v1/chat/completions", model: "", key_env: None, url_env: Some("LLAMA_CPP_BASE_URL") },
+    Provider { id: "lm-studio", name: "LM Studio", url: "http://127.0.0.1:1234/v1/chat/completions", model: "", key_env: None, url_env: Some("LM_STUDIO_BASE_URL") },
+];
+
+impl Provider {
+    /// 宛先の行にする。手元の物は `url_env` があればそちらの接続先
+    pub fn dest(&self) -> AiDest {
+        let url = self
+            .url_env
+            .and_then(|k| std::env::var(k).ok())
+            .filter(|s| !s.trim().is_empty())
+            .map(|s| local_url(&s))
+            .unwrap_or_else(|| self.url.to_string());
+        AiDest { name: self.name.to_string(), url, model: self.model.to_string(), key_env: self.key_env.map(|k| k.to_string()) }
+    }
+}
+
+/// `OLLAMA_HOST=127.0.0.1:11434` や `http://box:8080` を chat/completions の url に
+fn local_url(s: &str) -> String {
+    let s = s.trim().trim_end_matches('/');
+    let with_scheme = if s.contains("://") { s.to_string() } else { format!("http://{s}") };
+    if with_scheme.ends_with("/chat/completions") {
+        with_scheme
+    } else if with_scheme.ends_with("/v1") {
+        format!("{with_scheme}/chat/completions")
+    } else {
+        format!("{with_scheme}/v1/chat/completions")
+    }
+}
+
+/// 鍵の環境変数が入っている提供元(設定なしで出る)。`env` は試験のために差し替えられる
+pub fn providers_with_keys_from(env: impl Fn(&str) -> Option<String>) -> Vec<AiDest> {
+    PROVIDERS
+        .iter()
+        .filter(|p| p.key_env.is_some_and(|k| env(k).is_some_and(|v| !v.trim().is_empty())))
+        .map(|p| p.dest())
+        .collect()
+}
+
+pub fn providers_with_keys() -> Vec<AiDest> {
+    providers_with_keys_from(|k| std::env::var(k).ok())
+}
+
+/// 手元のモデル(鍵の無い提供元)のうち、港が開いている物。1つ 1 秒で諦める。
+/// 60 秒は控えを返す(描くたびに探しに行かない)
+pub fn probe_local() -> Vec<AiDest> {
+    use std::sync::{Mutex, OnceLock};
+    use std::time::{Duration, Instant};
+    type Found = Option<(Instant, Vec<AiDest>)>;
+    static CACHE: OnceLock<Mutex<Found>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(None));
+    if let Some((t, v)) = cache.lock().unwrap().as_ref() {
+        if t.elapsed() < Duration::from_secs(60) {
+            return v.clone();
+        }
+    }
+    let found: Vec<AiDest> = PROVIDERS
+        .iter()
+        .filter(|p| p.key_env.is_none())
+        .map(|p| p.dest())
+        .filter(|d| port_open(&d.url, Duration::from_secs(1)))
+        .collect();
+    *cache.lock().unwrap() = Some((Instant::now(), found.clone()));
+    found
+}
+
+/// url のホストの港が開いているか(TCP の接続だけ。HTTP は話さない)
+fn port_open(url: &str, wait: std::time::Duration) -> bool {
+    let rest = url.split("://").nth(1).unwrap_or(url);
+    let hostport = rest.split('/').next().unwrap_or("");
+    let (host, port) = match hostport.rsplit_once(':') {
+        Some((h, p)) => (h, p.parse::<u16>().unwrap_or(80)),
+        None => (hostport, if url.starts_with("https") { 443 } else { 80 }),
+    };
+    use std::net::ToSocketAddrs;
+    let Ok(mut addrs) = (host, port).to_socket_addrs() else { return false };
+    addrs.any(|a| std::net::TcpStream::connect_timeout(&a, wait).is_ok())
+}
+
+/// 宛先「Claude Code」。`claude` が PATH にあれば出る(ログインの有無は
+/// 状態の4語の側で見る)。有無は初回だけ確かめて控える
+pub fn claude_code_dest() -> Option<AiDest> {
+    use std::sync::OnceLock;
+    static HAVE: OnceLock<bool> = OnceLock::new();
+    let have = *HAVE.get_or_init(|| {
+        std::process::Command::new("claude")
+            .arg("--version")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_ok_and(|s| s.success())
+    });
+    have.then(|| AiDest { name: "Claude Code".into(), url: CLAUDE_CODE_URL.into(), model: "sonnet".into(), key_env: None })
+}
+
+/// 宛先の一覧。並びは、自分で書いた `[[ai]]`(無ければ今までの `ai_url` /
+/// `ai_model` を1行に。鍵は従来どおり OFFICE_API_KEY)→ 鍵の入っている
+/// 提供元 → Claude Code。**手元のモデルは入れない**(港を探すのに時間が
+/// 掛かるので、パネルを開く所が [`ai_list_all`] で足す)。
+/// 空 = パネルの「未設定」
 pub fn ai_list() -> Vec<AiDest> {
     let content = std::fs::read_to_string(path()).unwrap_or_default();
     let mut v = parse_ai_list(&content);
@@ -211,6 +361,27 @@ pub fn ai_list() -> Vec<AiDest> {
                 model: get("ai_model").unwrap_or_default(),
                 key_env: Some("OFFICE_API_KEY".into()),
             });
+        }
+    }
+    for d in providers_with_keys() {
+        if !v.iter().any(|x| x.name == d.name || x.url == d.url) {
+            v.push(d);
+        }
+    }
+    if let Some(cc) = claude_code_dest() {
+        if !v.iter().any(|x| x.kind() == AiKind::ClaudeCode) {
+            v.push(cc);
+        }
+    }
+    v
+}
+
+/// [`ai_list`] に、港が開いている手元のモデルを足した物(パネルを開く時に)
+pub fn ai_list_all() -> Vec<AiDest> {
+    let mut v = ai_list();
+    for d in probe_local() {
+        if !v.iter().any(|x| x.url == d.url) {
+            v.push(d);
         }
     }
     v
@@ -267,6 +438,58 @@ pub fn language() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{parse_ai_list, AiDest};
+
+    /// 提供元の表: id は一意、鍵つきは https の chat/completions、手元は鍵なしで
+    /// 接続先の変数を持つ
+    #[test]
+    fn the_provider_table_is_well_formed_and_keys_pick_rows() {
+        use super::{providers_with_keys_from, AiKind, Provider, PROVIDERS, CLAUDE_CODE_URL};
+        assert_eq!(PROVIDERS.len(), 10);
+        let mut ids: Vec<&str> = PROVIDERS.iter().map(|p| p.id).collect();
+        ids.sort();
+        ids.dedup();
+        assert_eq!(ids.len(), PROVIDERS.len(), "id が重なっている");
+        for p in PROVIDERS {
+            assert!(p.url.ends_with("/chat/completions"), "{}: {}", p.id, p.url);
+            match p.key_env {
+                Some(k) => {
+                    assert!(p.url.starts_with("https://"), "{}: 鍵つきは https", p.id);
+                    assert!(k.ends_with("_API_KEY"), "{}: {k}", p.id);
+                    assert!(!p.model.is_empty(), "{}: 既定のモデルが無い", p.id);
+                }
+                None => {
+                    assert!(p.url.starts_with("http://127.0.0.1:"), "{}: 手元は 127.0.0.1", p.id);
+                    assert!(p.url_env.is_some(), "{}: 接続先の変数が無い", p.id);
+                }
+            }
+        }
+        // 鍵の変数が入っている物だけが出る
+        let got = providers_with_keys_from(|k| (k == "GROQ_API_KEY" || k == "XAI_API_KEY").then(|| "x".to_string()));
+        assert_eq!(got.iter().map(|d| d.name.as_str()).collect::<Vec<_>>(), vec!["Groq", "xAI"]);
+        assert_eq!(got[0].key_env.as_deref(), Some("GROQ_API_KEY"));
+        assert!(providers_with_keys_from(|_| None).is_empty());
+        // 空の値は入っていない扱い
+        assert!(providers_with_keys_from(|_| Some(String::new())).is_empty());
+        // 話し方の見分け
+        let cc = AiDest { name: "Claude Code".into(), url: CLAUDE_CODE_URL.into(), model: "sonnet".into(), key_env: None };
+        assert_eq!(cc.kind(), AiKind::ClaudeCode);
+        assert_eq!(PROVIDERS[0].dest().kind(), AiKind::Chat);
+        let _: Provider = PROVIDERS[7];
+    }
+
+    #[test]
+    fn a_local_host_setting_becomes_a_chat_url() {
+        use super::local_url;
+        assert_eq!(local_url("127.0.0.1:11434"), "http://127.0.0.1:11434/v1/chat/completions");
+        assert_eq!(local_url("http://box:8080/v1"), "http://box:8080/v1/chat/completions");
+        assert_eq!(local_url("http://box:8080/v1/chat/completions/"), "http://box:8080/v1/chat/completions");
+    }
+
+    #[test]
+    fn a_closed_port_is_not_open() {
+        // 9 番(discard)は普通閉じている。1秒で諦めるので試験は長くならない
+        assert!(!super::port_open("http://127.0.0.1:9/v1/chat/completions", std::time::Duration::from_millis(300)));
+    }
 
     #[test]
     fn the_ai_list_reads_named_destinations() {
