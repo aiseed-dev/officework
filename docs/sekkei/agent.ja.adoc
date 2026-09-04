@@ -679,9 +679,13 @@ Run・Font)をエンジンの上に写した互換層で、writer のマクロ�
   officework-mcp の `--panel` と ops の `macro` 命令、`claude auth status` と
   `codex login status` の状態。実機で「定額で通ること」と「1手で戻ること」を
   確かめる(Codex はこの機械に入れてから)
-  (2026-09-04 一部済 — `agent::claude_code`(上の「実測と部品」)と
-  officework-mcp の `--panel`(受けるだけ)。残りはパネルへの結線(段階10 と
-  一緒に Opus)、ops の `macro` 命令、Codex、「1手で戻ること」の実機の確認)
+  (2026-09-04 一部済 — `agent::claude_code`(上の「実測と部品」)、
+  officework-mcp の `--panel`(その時だけ `run_macro` を出す)、ops の
+  `macro_start` / `macro_status`(Host の口。受け口を止めないよう、始めて
+  番号を返し、様子は別の動詞で見る。b1be89c6)。残りは calc の Host の実装
+  (agent_run_macro と同じ道を番号つきで。Opus)、パネルの宛先の一覧に
+  「Claude Code」を出して `ClaudeCode` を持つ結線(Opus。段階10 で一覧に出る所
+  まで済)、Codex、「1手で戻ること」の実機の確認)
 . 選ぶ画面(モデルの一覧の取得、絞り込み、並び)。実機で確かめる
 . anthropic-messages の口(lang::model)。**アプリの公開までに**(本番は
   OpenAI 互換の口に頼らない)
