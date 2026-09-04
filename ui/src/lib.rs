@@ -18,6 +18,8 @@ pub mod appcmd;
 /// リボンのタブの行(文章と表で1本)
 /// ファイルのページの項目(表で持つ。段8 の1)
 pub mod filemenu;
+/// エージェントのパネルの描き(文章の画面と表計算で1つ)
+pub mod agentpanel;
 /// フォルダの中身の一覧(文章と表で1本)
 pub mod filelist;
 pub mod tabrow;

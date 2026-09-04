@@ -730,26 +730,10 @@ impl PropKind {
 /// **2026-09-02、変更案(Python を人が押して走らせる形)も廃した** —
 /// エージェントが道具でブックを直接読み書きし、書き替えは1手として
 /// 入って Ctrl+Z で戻る(docs/sekkei/agent.ja.adoc「対話の画面の決め」)。
-#[derive(Clone, PartialEq)]
-pub(crate) enum ChatRow {
-    /// 人の頼み
-    Me(String),
-    /// エージェントの言葉(モデルが自分の言葉で書く — 定型文は挟まない)
-    Ai(String),
-    /// 道具呼びの事実(飾らない1行)。true = 書き替え(「1手」の印)
-    Tool(String, bool),
-}
-
-/// モデルの状態。パネルに**4語で出す**(2026-09-02 発注者)。
-/// Idle は「宛先はあるが、まだ話していない」— 語は出さない
-#[derive(Clone, Copy, PartialEq)]
-pub(crate) enum AgentState {
-    Unset,
-    Idle,
-    Connecting,
-    Connected,
-    Failed,
-}
+/// **やりとりの1行と、モデルの状態は [`ui::agentpanel`] の物**
+/// (2026-09-04。agent.ja.adoc の段10)。文章の画面にも同じパネルを
+/// 付けるので、型も描きも1つにしました。名前はここから使えます
+pub(crate) use ui::agentpanel::{AgentState, Chat as ChatRow};
 
 /// **アプリを起動する。** `main.rs` はこれを呼ぶだけです
 /// (2026-08-19 に切り出しました。1つのウィンドウに表と文章の両方を

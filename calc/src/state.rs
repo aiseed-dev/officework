@@ -2691,6 +2691,24 @@ impl Calc {
     /// 宛先を一覧の次へ替える(「押すと替わる」の実体)。左パネルの欄の下と
     /// ファイル > 詳細設定 の行が、同じ一覧(`[[ai]]`)をこれで替える。
     /// 替える先が無いときは、その理由を状態行に出す
+
+    /// **エージェントのパネルが押されたとき**(2026-09-04。agent.ja.adoc の段10)。
+    ///
+    /// 描くのは [`ui::agentpanel::body`] で共通ですが、**することは画面の物**
+    /// です(保存の仕方も、送る材料の集め方も違います)
+    pub(crate) fn agent_panel_click(&mut self, id: &'static str, cx: &mut Context<Self>) {
+        use ui::agentpanel::id as pid;
+        match id {
+            pid::NEW => self.chat_reset(),
+            pid::INPUT => self.chat_focus = true,
+            pid::SEND => self.chat_send(cx),
+            pid::WHERE => self.agent_cycle_dest(),
+            pid::SAVE_OK => self.agent_confirm_save(true, cx),
+            pid::SAVE_NO => self.agent_confirm_save(false, cx),
+            _ => {}
+        }
+    }
+
     pub(crate) fn agent_cycle_dest(&mut self) {
         let rows = face::settings::ai_list();
         let Some(next) = next_ai_dest(&rows, face::settings::ai_last().as_deref()) else {

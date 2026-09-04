@@ -5356,6 +5356,7 @@ dependencies = [
  "getrandom 0.3.4",
  "kumihan",
  "paper",
+ "pivot",
  "pyrun",
 ]
 
@@ -11117,12 +11118,15 @@ checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
 name = "writer"
 version = "0.1.0-alpha"
 dependencies = [
+ "agent",
  "book",
  "ed25519-dalek",
  "encoding_rs",
+ "face",
  "gpui",
  "gpui_platform",
  "kumihan",
+ "lang",
  "ooxml",
  "ops",
  "paper",

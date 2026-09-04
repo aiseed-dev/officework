@@ -199,6 +199,11 @@ impl Writer {
             ai_ed: Editor::new(""),
             ai_busy: false,
             ai_chat_log: Vec::new(),
+            agent: None,
+            agent_shown: 0,
+            agent_state: AgentState::Idle,
+            agent_calls: Vec::new(),
+            agent_save: None,
             ai_chat_in: Editor::new(""),
             ai_chat_focus: false,
             ai_chat_plan: None,
@@ -1804,7 +1809,7 @@ impl Writer {
                 }
                 None => out.clone(),
             };
-            self.ai_chat_log.push((false, show));
+            self.ai_chat_log.push(ChatRow::Ai(show));
             self.ai_chat_plan = plan;
             self.status = if self.ai_chat_plan.is_some() {
                 ui::t!("revised_text_ready_read").into()
@@ -1940,18 +1945,9 @@ impl Writer {
         true
     }
 
-    /// 会話を送る。**答えは文書でなくパネルへ**返る(AiJob::Chat)
-    pub(crate) fn ai_chat_send(&mut self, cx: &mut Context<Self>) {
-        let q = self.ai_chat_in.text().trim().to_string();
-        if q.is_empty() {
-            self.status = ui::t!("nothing_ask").into();
-            return;
-        }
-        self.ai_chat_log.push((true, q.clone()));
-        self.ai_chat_in = Editor::new("");
-        self.ai_chat_plan = None;
-        self.ai_go(AiJob::Chat(q), cx);
-    }
+    // **会話の送りは [`crate::agentloop`] に移りました**(2026-09-04。
+    // agent.ja.adoc の段10)。前は1往復で答えを囲みに入れ、人が「入れる」を
+    // 押す形でした。いまは道具で文書を読み書きし、書き替えは1手で入ります
 
     /// **直した文を入れる。** ここが「人が押した」の一点 —
     /// 押すまで AI は文書に触らない(2026-08-09 の決めを、人の一押しとして残す)。
@@ -1984,7 +1980,7 @@ impl Writer {
         self.dirty = true;
         self.relayout();
         self.ai_chat_plan = None;
-        self.ai_chat_log.push((false, ui::t!("applied").to_string()));
+        self.ai_chat_log.push(ChatRow::Ai(ui::t!("applied").to_string()));
         self.status = if replaced {
             ui::t!("replaced_selection_ctrl_z").into()
         } else {

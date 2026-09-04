@@ -840,95 +840,41 @@ impl Writer {
                     }
                 }
                 // ── AI と相談する ─────────────────────────────────
-                // **答えは文書に入れない。** 直した文は下の欄に置き、
-                // 「入れる」を押して初めて文書が変わる。writer には
-                // calc のような Python の橋が無いので、入るのは**文そのもの**
+                //
+                // **描くのは [`ui::agentpanel::body`] の1本**(2026-09-04。
+                // agent.ja.adoc の段10)。表計算と同じパネルです。
+                //
+                // *囲みの形は外しました。* 前は答えを下の欄に置き、人が
+                // 「入れる」を押して初めて文書が変わる形でした。いまは
+                // エージェントが道具で読み書きし、**書き替えは1手で入って
+                // Ctrl+Z で戻ります**
                 _ => {
                     let accent = rgb(0x165E83);
-                    let button = move |id: &'static str, label: String, enabled: bool| {
-                        div().id(SharedString::from(id))
-                            .px_2().py_0p5().rounded_sm().cursor_pointer()
-                            .text_size(px(us * 11.5))
-                            .text_color(if enabled { th_top_fg } else { th_status })
-                            .border_1()
-                            .border_color(if enabled { accent } else { th_cmd_border })
-                            .hover(move |st| st.bg(th_btn_hover))
-                            .child(SharedString::from(label))
+                    let view = ui::agentpanel::View {
+                        log: &self.ai_chat_log,
+                        input: &self.ai_chat_in.text().to_string(),
+                        cursor: self.ai_chat_in.cursor(),
+                        focus: self.ai_chat_focus,
+                        busy: self.ai_busy,
+                        asking_save: self.agent_save.is_some(),
+                        state: self.agent_state,
+                        dest: self.agent_dest().map(|(n, _)| n),
+                        example: ui::t!("e_g_make_paragraph").to_string(),
+                        note: ui::t!("can_ask_about_selection").to_string(),
                     };
-                    d = d.child(div().text_size(px(us * 10.5)).text_color(th_status).child(
-                        ui::t!("can_ask_about_selection").to_string()));
-                    let mut chat = div().id("ai-chat-log").flex().flex_col().gap_1().mt_1()
-                        .flex_1().min_h(px(us * 0.0)).overflow_y_scroll();
-                    if self.ai_chat_log.is_empty() {
-                        chat = chat.child(div().text_size(px(us * 11.0)).text_color(th_status)
-                            .child(ui::t!("e_g_make_paragraph").to_string()));
-                    }
-                    for (self_of, text) in &self.ai_chat_log {
-                        chat = chat.child(div().text_size(px(us * 11.5))
-                            .text_color(if *self_of { accent } else { th_top_fg })
-                            .child(format!("{} {}", if *self_of { "▸" } else { "◂" }, text)));
-                    }
-                    d = d.child(chat);
-                    if let Some(plan) = self.ai_chat_plan.clone() {
-                        d = d.child(div().text_size(px(us * 10.5)).text_color(th_status).mt_1()
-                            .child(ui::t!("text_insert_nothing_goes").to_string()));
-                        d = d.child(div().id("ai-chat-plan")
-                            .max_h(px(us * 160.0)).overflow_y_scroll()
-                            .p_1().rounded_sm()
-                            .bg(if dk { rgb(0x14171A) } else { rgb(0xFFFFFF) })
-                            .border_1().border_color(th_cmd_border)
-                            .text_size(px(us * 11.0)).text_color(th_top_fg)
-                            .children(plan.lines().map(|l| div().child(l.to_string()))));
-                        d = d.child(div().flex().flex_row().gap_1().mt_1()
-                            .child(button("ai-chat-run", ui::t!("apply").to_string(), true)
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.ai_chat_insert();
-                                    cx.notify()
-                                })))
-                            .child(button("ai-chat-drop", ui::t!("cancel").to_string(), false)
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.ai_chat_plan = None;
-                                    this.status =
-                                        ui::t!("discarded_text_nothing_changed").into();
-                                    cx.notify()
-                                }))));
-                    }
-                    d = d.child(div()
-                        .id("ai-chat-in")
-                        .mt_1().p_1().rounded_sm().cursor_text()
-                        .bg(if dk { rgb(0x14171A) } else { rgb(0xFFFFFF) })
-                        .border_1()
-                        .border_color(if self.ai_chat_focus { accent } else { th_cmd_border })
-                        .text_size(px(us * 11.5)).text_color(th_top_fg)
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.ai_chat_focus = true;
-                            cx.notify()
-                        }))
-                        .child(if self.ai_chat_in.text().is_empty() {
-                            if self.ai_chat_focus {
-                                "|".to_string()
-                            } else {
-                                ui::t!("click_here_type_enter").to_string()
-                            }
-                        } else if self.ai_chat_focus {
-                            let mut s = self.ai_chat_in.text().to_string();
-                            let cur = self.ai_chat_in.cursor().min(s.len());
-                            s.insert(cur, '|');
-                            s
-                        } else {
-                            self.ai_chat_in.text().to_string()
-                        }));
-                    let mut r = div().flex().flex_row().gap_1().mt_1();
-                    r = r.child(button("ai-chat-send", ui::t!("send").to_string(), !self.ai_busy)
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.ai_chat_send(cx);
-                            cx.notify()
-                        })));
-                    if self.ai_busy {
-                        r = r.child(div().text_size(px(us * 10.5)).text_color(th_status)
-                            .child(ui::t!("thinking").to_string()));
-                    }
-                    d = d.child(r);
+                    d = d.child(ui::agentpanel::body(
+                        &ui::agentpanel::Look {
+                            dark: dk,
+                            fg: th_top_fg,
+                            faint: th_status,
+                            line: th_cmd_border,
+                            accent,
+                            scale: us,
+                        },
+                        &view,
+                        cx,
+                        |this: &mut Writer, id, cx| this.agent_panel_click(id, cx),
+                    ));
                 }
             }
             let rail_div = rail()

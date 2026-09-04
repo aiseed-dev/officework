@@ -65,6 +65,11 @@ fn strip_ruby_marks(src: &str, base: usize) -> (String, Vec<(std::ops::Range<usi
 }
 
 /// AI に頼む仕事。**返事をどう使うかまで決めてから頼む**
+
+/// **やりとりの1行と、モデルの状態は [`ui::agentpanel`] の物**
+/// (2026-09-04。agent.ja.adoc の段10)。表計算と同じ型・同じ描きです
+pub(crate) use ui::agentpanel::{AgentState, Chat as ChatRow};
+
 /// (使い道の決まっていない答えは受け取らない)
 #[derive(Clone, Debug)]
 enum AiJob {
@@ -449,14 +454,28 @@ pub struct Writer {
     // ── 左パネルの会話(2026-08-15。ナビの4つ目のタブ)────────────────
     // **co-chat(共同編集のチャット)とは別物。** あちらは人と人、
     // こちらは人と AI。名前を ai_chat_* にして取り違えを断つ
-    /// やりとり(自分か, 字)
-    pub(crate) ai_chat_log: Vec<(bool, String)>,
+    /// やりとり。**表計算と同じ型**([`ui::agentpanel::Chat`])です
+    /// (2026-09-04。agent.ja.adoc の段10)。前は「自分か, 字」の組で、
+    /// 道具呼びの行を持てませんでした
+    pub(crate) ai_chat_log: Vec<ChatRow>,
     /// 用件の欄
     pub(crate) ai_chat_in: Editor,
     /// 欄に焦点があるか。**旗が立っている間だけ**打鍵を奪う
     pub(crate) ai_chat_focus: bool,
     /// 置き換える文の案(囲みの中身)。**押すまで文書に触らない**
     pub(crate) ai_chat_plan: Option<String>,
+    // ── エージェント(2026-09-04。agent.ja.adoc の段10)──────────────
+    // 表計算と同じ作りです。**道具は文書の物**(`agent::tools::doc_tools`)で、
+    // 実行は writer の受け口(`crate::rpc::handle`)へ流します
+    /// いまの会話。`None` は「まだ始めていない」
+    pub(crate) agent: Option<agent::Agent>,
+    /// 画面に写した所まで(`agent.log` の何番目まで出したか)
+    pub(crate) agent_shown: usize,
+    pub(crate) agent_state: AgentState,
+    /// 途中の道具呼びの列(先頭が今の1つ)
+    pub(crate) agent_calls: Vec<lang::model::ToolCall>,
+    /// 道具 save の確認待ち(呼びと、渡された path)
+    pub(crate) agent_save: Option<(lang::model::ToolCall, Option<String>)>,
     /// 複数ページ(見開き。画面だけの見え方 — 紙は1ページずつのまま)
     multipage: bool,
     /// 印刷モードの、頁ごとの上端(折った後の mm)。紙の絵をここへ置く
@@ -1393,6 +1412,8 @@ pub(crate) use py::*;
 mod util;
 pub(crate) use util::*;
 mod filepage;
+/// エージェント(agent.ja.adoc の段10)。表計算と同じ形で、道具は文書の物
+mod agentloop;
 mod view;
 mod panels;
 pub(crate) use panels::Panels;

@@ -30,6 +30,10 @@ book = { path = "../book" }
 ui = { path = "../ui" }
 pyrun = { path = "../pyrun" }
 ops = { path = "../ops" }
+# エージェント(agent.ja.adoc の段10。2026-09-04)。表計算と同じ物を使います
+agent = { path = "../agent" }
+face = { path = "../face" }
+lang = { path = "../lang" }
 ooxml = { path = "../ooxml" }
 paper = { path = "../paper" }
 # GPUI は crates.io に無いので、版を固定して zed から直に取る

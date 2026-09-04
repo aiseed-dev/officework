@@ -513,125 +513,29 @@ impl Calc {
                 .p_2()
                 .flex().flex_col().gap_1();
             if face == 0 {
-            // 見出しの行。**新しい会話**は Agent Panel と同じく頭に置く
-            d = d.child(div().flex().flex_row().items_center().gap_2()
-                .child(div().flex_1().text_size(px(us * 12.5))
-                    .font_weight(gpui::FontWeight::BOLD)
-                    .text_color(fg).child(ui::t!("ask_ai").to_string()))
-                .child(button("chat-new", ui::t!("new_conversation").to_string(), false).on_click(
-                    cx.listener(|this, _, _, cx| { this.chat_reset(); cx.notify() }))));
-            d = d.child(div().text_size(px(us * 10.5)).text_color(faint).child(
-                ui::t!("can_ask_about_selected").to_string()));
-
-            // やりとり
-            // **残りの高さを全部使う**(固定の高さ + 余白の詰め物、だと
-            // 上に空きが溜まる)。やりとりが増えたらここが伸びて巻物になる
-            let mut chat = div().id("chat-log").flex().flex_col().gap_1().mt_1()
-                .flex_1().min_h(px(0.0)).overflow_y_scroll();
-            if self.chat_log.is_empty() {
-                chat = chat.child(div().text_size(px(us * 11.0)).text_color(faint).child(
-                    ui::t!("e_g_sort_sales").to_string()));
-            }
-            for row in &self.chat_log {
-                chat = chat.child(match row {
-                    crate::ChatRow::Me(text) => div()
-                        .text_size(px(us * 11.5))
-                        .text_color(accent)
-                        .child(format!("▸ {text}")),
-                    crate::ChatRow::Ai(text) => div()
-                        .text_size(px(us * 11.5))
-                        .text_color(fg)
-                        .child(format!("◂ {text}")),
-                    // 道具呼びは飾らない1行。書き替えには「1手」の印だけ
-                    // (Ctrl+Z で戻せる印 — 2026-09-02 の決め)
-                    crate::ChatRow::Tool(line, one_step) => div()
-                        .text_size(px(us * 10.0))
-                        .text_color(faint)
-                        .child(if *one_step {
-                            format!("· {line} — {}", ui::t!("one_step"))
-                        } else {
-                            format!("· {line}")
-                        }),
-                });
-            }
-            d = d.child(chat);
-
-            // **保存の確認。** 道具 save は実行せずここへ回る —
-            // 確認を取る3つ(保存・削除・外への送信)の1つ目
-            if self.agent_save.is_some() {
-                d = d.child(heading(ui::t!("agent_wants_save").to_string()));
-                d = d.child(row_box().mt_1()
-                    .child(button("chat-save-ok", ui::t!("save").to_string(), true).on_click(
-                        cx.listener(|this, _, _, cx| {
-                            this.agent_confirm_save(true, cx);
-                            cx.notify()
-                        })))
-                    .child(button("chat-save-no", ui::t!("cancel").to_string(), false)
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.agent_confirm_save(false, cx);
-                            cx.notify()
-                        }))));
-            }
-
-            // 入力
-            d = d.child(div()
-                .p_1().rounded_sm()
-                .bg(if dk { rgb(0x14171A) } else { rgb(0xFFFFFF) })
-                .border_1().border_color(if self.chat_focus { accent } else { line })
-                .text_size(px(us * 11.5)).text_color(fg)
-                .id("chat-in")
-                .cursor_text()
-                .on_click(cx.listener(|this, _, _, cx| { this.chat_focus = true; cx.notify() }))
-                // 焦点があるときは打った所に「|」を差す(fn_dlg と同じ描き方)
-                .child(if self.chat_in.text().is_empty() {
-                    if self.chat_focus {
-                        "|".to_string()
-                    } else {
-                        ui::t!("click_here_type_enter").to_string()
-                    }
-                } else if self.chat_focus {
-                    let mut t = self.chat_in.text().to_string();
-                    let cur = self.chat_in.cursor().min(t.len());
-                    t.insert(cur, '|');
-                    t
-                } else {
-                    self.chat_in.text().to_string()
-                }));
-            let mut r = row_box().mt_1();
-            r = r.child(button("chat-send", ui::t!("send").to_string(), !self.ai_busy).on_click(
-                cx.listener(|this, _, _, cx| { this.chat_send(cx); cx.notify() })));
-            if self.ai_busy {
-                r = r.child(div().text_size(px(us * 10.5)).text_color(faint)
-                    .child(ui::t!("thinking").to_string()));
-            }
-            d = d.child(r);
-            // **モデルの状態は4語 + 今の宛先の名前**(2026-09-02 の決め)。
-            // 押すと一覧([[ai]])の次の宛先に替わる — 話しながら切り替えられる
-            let state_word = match self.agent_state {
-                crate::AgentState::Unset => Some(ui::t!("model_unset")),
-                crate::AgentState::Idle => None,
-                crate::AgentState::Connecting => Some(ui::t!("model_connecting")),
-                crate::AgentState::Connected => Some(ui::t!("model_connected")),
-                crate::AgentState::Failed => Some(ui::t!("model_connect_failed")),
-            };
-            let dest_name = self.agent_dest().map(|(n, _)| n);
-            let line_text = match (state_word, dest_name) {
-                (Some(w), Some(n)) => {
-                    format!("{w} · {}", ui::tf!("destination_press_change", n))
-                }
-                (None, Some(n)) => ui::tf!("destination_press_change", n).to_string(),
-                _ => ui::t!("model_unset").to_string(),
-            };
-            d = d.child(div()
-                .id("chat-where")
-                .mt_1().px_1().py_0p5().rounded_sm().cursor_pointer()
-                .text_size(px(us * 10.5)).text_color(faint)
-                .hover(move |s| s.bg(if dk { rgb(0x2C333A) } else { rgb(0xEAF5EE) }))
-                .child(line_text)
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.agent_cycle_dest();
-                    cx.notify()
-                })));
+                // **会話の面は [`ui::agentpanel::body`] の1本**(2026-09-04。
+                // agent.ja.adoc の段10)。文章の画面にも同じパネルを付けるので、
+                // 描きを1つにしました。ここが持つのは**何が並ぶか**だけです
+                let view = ui::agentpanel::View {
+                    log: &self.chat_log,
+                    input: &self.chat_in.text().to_string(),
+                    cursor: self.chat_in.cursor(),
+                    focus: self.chat_focus,
+                    busy: self.ai_busy,
+                    asking_save: self.agent_save.is_some(),
+                    state: self.agent_state,
+                    dest: self.agent_dest().map(|(n, _)| n),
+                    example: ui::t!("e_g_sort_sales").to_string(),
+                    note: ui::t!("can_ask_about_selected").to_string(),
+                };
+                d = d.child(ui::agentpanel::body(
+                    &ui::agentpanel::Look {
+                        dark: dk, fg, faint, line, accent, scale: us,
+                    },
+                    &view,
+                    cx,
+                    |this: &mut Calc, id, cx| this.agent_panel_click(id, cx),
+                ));
             }
             // **外側の柱**(左パネルは窓の左端の側)。会話とコメントを切り替える
             let rail_div = rail()
