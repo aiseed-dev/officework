@@ -14,6 +14,9 @@ use lang::model::{chat_tools, ChatOut, Endpoint, Msg, ToolCall, ToolDef};
 #[cfg(feature = "ops")]
 pub mod tools;
 
+/// 宛先「Claude Code」: 改変していない `claude` を子プロセスで(定額の道)
+pub mod claude_code;
+
 /// モデルへの1往復。実物(宛先)も試験の偽物も同じ面を持つ
 pub trait Model {
     fn chat(&mut self, msgs: &[Msg], tools: &[ToolDef]) -> Result<ChatOut, String>;

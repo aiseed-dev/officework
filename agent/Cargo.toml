@@ -20,3 +20,6 @@ lang = { path = "../lang", default-features = false }
 # 操作の語彙(結線の相手)。書く先のブックの型は book
 ops = { path = "../ops", optional = true }
 book = { path = "../book", optional = true }
+# 宛先「Claude Code」の JSON 行を読む(claude_code.rs)。lang の簡易な読み手は
+# 入れ子の content を読めない
+serde_json = "1"

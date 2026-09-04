@@ -431,7 +431,18 @@ def doc_to_pdf(path: str) -> str:
 
 
 def main() -> None:
-    """`officework-mcp` の入口(標準入出力で MCP を話す)"""
+    """`officework-mcp` の入口(標準入出力で MCP を話す)。
+
+    `--panel` はエージェントのパネルから起こされた印(2026-09-04。宛先
+    「Claude Code」が `claude -p` の MCP として渡す)。いまは受けるだけで、
+    パネルだけに出す道具(run_macro)は ops に `macro` の命令が入ってから。
+    """
+    import sys
+
+    args = [a for a in sys.argv[1:] if a != "--panel"]
+    if args:
+        print("officework-mcp: 知らない引数: " + " ".join(args), file=sys.stderr)
+        sys.exit(2)
     mcp.run()
 
 
