@@ -389,6 +389,133 @@ pub fn recent_row(look: &PaneLook, i: usize, p: &std::path::Path) -> gpui::State
         )
 }
 
+
+// ---- 詳細設定の面(統合の段8。2026-09-04)------------------------------
+
+/// **詳細設定の1行の中の1つ。**
+///
+/// 押せる物(押すと値が変わる)と、見るだけの字の2つです。
+/// 左から順に並びます — 文字の大きさの行は「−」「100%」「+」の3つです
+#[derive(Clone, Debug, PartialEq)]
+pub enum OptCell {
+    /// 押すと変わる値。押しは `id` で画面へ返します
+    Button { id: &'static str, text: String },
+    /// 見るだけの字
+    Text(String),
+}
+
+/// **詳細設定の1行**(見出しと、その右に並ぶ物)。
+#[derive(Clone, Debug, PartialEq)]
+pub struct OptRow {
+    pub label: String,
+    pub cells: Vec<OptCell>,
+    /// 前に空きを入れる(組の区切り)
+    pub gap: bool,
+}
+
+impl OptRow {
+    /// 押せる物が1つだけの行(いちばん多い形)。
+    pub fn one(label: impl Into<String>, id: &'static str, text: impl Into<String>) -> OptRow {
+        OptRow {
+            label: label.into(),
+            cells: vec![OptCell::Button { id, text: text.into() }],
+            gap: false,
+        }
+    }
+    /// 見るだけの行。
+    pub fn view(label: impl Into<String>, text: impl Into<String>) -> OptRow {
+        OptRow { label: label.into(), cells: vec![OptCell::Text(text.into())], gap: false }
+    }
+    /// 前に空きを入れる。
+    pub fn gap(mut self) -> OptRow {
+        self.gap = true;
+        self
+    }
+}
+
+/// 詳細設定の面の色と大きさ。
+pub struct OptLook {
+    /// 見出しの字
+    pub dim: gpui::Rgba,
+    /// 押せる物の下地
+    pub chip: gpui::Rgba,
+    pub scale: f32,
+}
+
+/// **詳細設定の面を描く**(統合の段8。2026-09-04)。
+///
+/// 何が並ぶかは画面が決め([`OptRow`] の列)、どう描くかはここが持ちます。
+/// [`sidebar`] と同じ分け方です。
+///
+/// 前は writer と calc に同じ 220 行が写してあり、8行のうち7行までが
+/// 同じ物でした(違うのは表の「参照形式」だけ)。**写しは揃いません** —
+/// 片方に足した行が、もう片方から抜けたままになります。
+pub fn options<V: gpui::Render>(
+    look: &OptLook,
+    title: &str,
+    note: &str,
+    rows: &[OptRow],
+    cx: &mut gpui::Context<V>,
+    on: impl Fn(&mut V, &'static str, &mut gpui::Context<V>) + Clone + 'static,
+) -> gpui::Div {
+    use gpui::prelude::*;
+    use gpui::{div, px, SharedString};
+    let s = look.scale;
+    let mut pane = div()
+        .flex()
+        .flex_col()
+        .gap_3()
+        .child(
+            div()
+                .text_size(px(s * 16.0))
+                .font_weight(gpui::FontWeight::BOLD)
+                .child(SharedString::from(title.to_string())),
+        )
+        .child(div().text_color(look.dim).child(SharedString::from(note.to_string())))
+        .child(div().h(px(s * 6.0)));
+    for r in rows {
+        if r.gap {
+            pane = pane.child(div().h(px(s * 10.0)));
+        }
+        let mut line = div()
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap_2()
+            .child(
+                div()
+                    .w(px(s * 200.0))
+                    .text_color(look.dim)
+                    .child(SharedString::from(r.label.clone())),
+            );
+        for c in &r.cells {
+            line = match c {
+                OptCell::Text(t) => line.child(div().child(SharedString::from(t.clone()))),
+                OptCell::Button { id, text } => {
+                    let id = *id;
+                    let on = on.clone();
+                    line.child(
+                        div()
+                            .id(SharedString::from(id))
+                            .px_3()
+                            .py_1()
+                            .rounded_sm()
+                            .cursor_pointer()
+                            .bg(look.chip)
+                            .child(SharedString::from(text.clone()))
+                            .on_click(cx.listener(move |this: &mut V, _, _, cx| {
+                                on(this, id, cx);
+                                cx.notify()
+                            })),
+                    )
+                }
+            };
+        }
+        pane = pane.child(line);
+    }
+    pane
+}
+
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod tests {
@@ -404,5 +531,15 @@ mod tests {
     fn greyed_spacer_and_bottom_can_be_combined() {
         let i = Item::new("f-help", "ヘルプ").grey().gap().tail();
         assert!(!i.ready && i.gap && i.tail);
+    }
+
+    #[test]
+    fn an_option_row_holds_a_label_and_what_sits_beside_it() {
+        let r = OptRow::one("言語", "set-lang", "日本語").gap();
+        assert!(r.gap);
+        assert_eq!(r.cells, vec![OptCell::Button { id: "set-lang", text: "日本語".into() }]);
+        let v = OptRow::view("書体の置き場", "/usr/share/fonts");
+        assert_eq!(v.cells, vec![OptCell::Text("/usr/share/fonts".into())]);
+        assert!(!v.gap);
     }
 }

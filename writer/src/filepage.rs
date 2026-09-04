@@ -149,153 +149,21 @@ impl Writer {
                     self.fd_peek.clone()
                 })));
         } else if self.file_view == 2 {
-            // 詳細設定 — 器は ~/.config/officework/settings.toml
+            // **詳細設定は行の表で持ちます**(統合の段8。2026-09-04)。
+            // 描くのは [`ui::filemenu::options`] の1本で、表の画面と共通です。
+            // 前は同じ 220 行が両方に写してあり、8行のうち7行が同じ物でした。
+            //
+            // 器は `~/.config/officework/settings.toml`
             // (SEKKEI「設定 — 器と言語」。環境変数が一時上書きで優先)
-            let lang_now = ui::settings::get("language").unwrap_or_else(|| "ja".into());
-            // 見出しが String の版(ui::env_rows が返す形)
-            let row_owned = |label: String, value: String| {
-                div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(SharedString::from(label)))
-                    .child(div().child(SharedString::from(value)))
-            };
-            pane = pane
-                .child(div().text_size(px(us * 16.0))
-                    .font_weight(gpui::FontWeight::BOLD)
-                    .child(ui::t!("advanced_settings")))
-                .child(div().text_color(th_status).child(SharedString::from(
-                    ui::tf!("location", ui::settings::path().display()))))
-                .child(div().h(px(us * 6.0)))
-                .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(ui::t!("language_ribbon_messages")))
-                    .child(div().id("set-lang")
-                        .px_3().py_1().rounded_sm().cursor_pointer()
-                        .bg(item_bg)
-                        // 札ではなく**その言語自身の名前**を出す。
-                        // `pt` と `pt-br` は札のままでは見分けられない
-                        .child(SharedString::from(
-                            ui::language_label(&lang_now).to_string()))
-                        // 中身は ui::cycle_language の1本(段8)
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.status = ui::cycle_language().into();
-                            cx.notify()
-                        }))))
-                // **画面の明暗**(2026-08-20 発注者「双方でできるように
-                // したいです」)。**紙は白いまま** — 暗くするのは周りだけ
-                .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(ui::t!("interface_theme_light_dark")))
-                    .child(div().id("set-theme")
-                        .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
-                        .child(if self.dark { ui::t!("dark") } else { ui::t!("light") })
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.run_cmd("darkmode", cx);
-                            cx.notify()
-                        }))))
-                // **画面の文字の大きさ**(Ctrl+= / Ctrl+- と同じ実体)。
-                // 表の画面と同じ形。紙は変わらない
-                .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(ui::t!("ui_text_size")))
-                    .child(div().id("set-ui-minus")
-                        .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
-                        .child("−")
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.run_cmd("ui-smaller", cx);
-                            cx.notify()
-                        })))
-                    .child(div().child(SharedString::from(
-                        format!("{}%", (self.ui_scale * 100.0).round() as i32))))
-                    .child(div().id("set-ui-plus")
-                        .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
-                        .child("+")
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.run_cmd("ui-bigger", cx);
-                            cx.notify()
-                        }))))
-                // **コメントの名乗り**(2026-08-20 発注者「双方でできる
-                // ようにしたいです」)。器は表と同じ `user_name`。
-                // **未設定なら名乗りません** — 機械のユーザー名は使わない
-                .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(ui::t!("comment_signature")))
-                    .child(div().id("set-username")
-                        .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
-                        .child(SharedString::from({
-                            let a = ui::comment_author();
-                            if a.is_empty() { ui::t!("anonymous").to_string() } else { a }
-                        }))
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.cmt_name_edit = true;
-                            this.cmt_name_ed = Editor::new(&ui::comment_author());
-                            this.status =
-                                ui::t!("type_name_press_enter").into();
-                            cx.notify()
-                        }))))
-                // **反復計算**(2026-08-20 発注者「双方でできるように
-                // したいです」)。文書の表もセル関数を持つので、循環参照を
-                // 回して解く道は表計算と同じに要る。器はアプリの設定 —
-                // `.adoc` の文書には xlsx の `calcPr` に当たる置き場が無い
-                .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(ui::t!("iterative_calculation_circular_references")))
-                    .child(div().id("set-iter")
-                        .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
-                        .child(match ui::calc_iter_setting() {
-                            Some((n, _)) => ui::tf!("up_passes", n),
-                            None => ui::t!("off_switch").to_string(),
-                        })
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            let (_, msg) =
-                                ui::toggle_calc_iter(ui::calc_iter_setting(), !cfg!(test));
-                            this.status = msg.into();
-                            this.lay();
-                            cx.notify()
-                        }))))
-                // **数学オートコレクト**(2026-08-20 発注者「双方でできる
-                // ようにしたいです」)。仕掛けは前から共通で、表だけが
-                // 名乗り出ていた。器も表と同じ1つの綴りを見る
-                .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(ui::t!("math_autocorrect")))
-                    .child(div().id("set-autocorrect")
-                        .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
-                        .child(if self.autocorrect {
-                            ui::t!("type_alpha_get")
-                        } else {
-                            ui::t!("off_switch")
-                        })
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            let (on, msg) = ui::toggle_math_autocorrect(this.autocorrect, !cfg!(test));
-                            this.autocorrect = on;
-                            this.status = msg.into();
-                            cx.notify()
-                        }))))
-                // ── AI ────────────────────────────────────────────
-                // **宛先を覚えるのはここ**(発注者 2026-08-15
-                // 「AI の設定を設定メニューに追加して」)。calc と同じ形
-                .child(div().h(px(us * 10.0)))
-                .child(div().flex().flex_row().items_center().gap_2()
-                    .child(div().w(px(us * 200.0)).text_color(th_status)
-                        .child(ui::t!("ai_destination")))
-                    .child(div().id("set-ai")
-                        .px_3().py_1().rounded_sm().cursor_pointer().bg(item_bg)
-                        .child(SharedString::from(ui::ai::backend().label().to_string()))
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.run_cmd("ai-where", cx);
-                            cx.notify()
-                        }))))
-                // **使えないなら理由を出す。** 鍵そのものは出さない。
-                // 手元のモデルだけは「使えます」と言わない(繋がるか
-                // 確かめずに言えば嘘になる)
-                // **見るだけの7行は ui::env_rows の1本**(2026-08-20)。
-                // 前は writer と calc に同じ物が写してあった
-                .children(
-                    ui::env_rows(&lock_identity())
-                        .into_iter()
-                        .map(|(k, v)| row_owned(k, v)),
-                );
+            let rows = self.option_rows();
+            pane = pane.child(ui::filemenu::options(
+                &ui::filemenu::OptLook { dim: th_status, chip: item_bg, scale: us },
+                &ui::t!("advanced_settings"),
+                &ui::tf!("location", ui::settings::path().display()),
+                &rows,
+                cx,
+                |this: &mut Writer, id, cx| this.option_click(id, cx),
+            ));
         } else if self.file_view == 1 {
             // **最近開いたの面は ui::filemenu の1本**(段8 の3)。
             // 押したときの行き先だけがアプリの物
@@ -547,6 +415,92 @@ impl Writer {
 }
 
 /// 壊れたファイルから字だけを拾う。docx(zip)なら `word/document.xml` の
+
+impl Writer {
+    /// **詳細設定に並べる行**(統合の段8。2026-09-04)。
+    ///
+    /// 表の画面の同じ関数と**並びを揃えます**。違うのは、表だけが持つ
+    /// 「参照形式」の行が向こうにあることだけです
+    fn option_rows(&self) -> Vec<ui::filemenu::OptRow> {
+        use ui::filemenu::{OptCell, OptRow};
+        let lang = ui::settings::get("language").unwrap_or_else(|| "ja".into());
+        let mut rows = vec![
+            // 札ではなく**その言語自身の名前**を出します。`pt` と `pt-br` は
+            // 札のままでは見分けられません
+            OptRow::one(ui::t!("language_ribbon_messages"), "set-lang",
+                        ui::language_label(&lang).to_string()),
+            // **画面の明暗**(2026-08-20 発注者)。**紙は白いまま** —
+            // 暗くするのは周りだけです
+            OptRow::one(ui::t!("interface_theme_light_dark"), "set-theme",
+                        if self.dark { ui::t!("dark") } else { ui::t!("light") }),
+            // **画面の文字の大きさ**(Ctrl+= / Ctrl+- と同じ実体)。紙は変わりません
+            OptRow {
+                label: ui::t!("ui_text_size").to_string(),
+                cells: vec![
+                    OptCell::Button { id: "set-ui-minus", text: "−".into() },
+                    OptCell::Text(format!("{}%", (self.ui_scale * 100.0).round() as i32)),
+                    OptCell::Button { id: "set-ui-plus", text: "+".into() },
+                ],
+                gap: false,
+            },
+            // **コメントの名乗り。** 器は表と同じ `user_name` です。
+            // **未設定なら名乗りません** — 機械のユーザー名は使いません
+            OptRow::one(ui::t!("comment_signature"), "set-username", {
+                let a = ui::comment_author();
+                if a.is_empty() { ui::t!("anonymous").to_string() } else { a }
+            }),
+            // **反復計算。** 文書の表もセル関数を持つので、循環参照を回して
+            // 解く道は表計算と同じに要ります。器はアプリの設定です —
+            // `.adoc` の文書には xlsx の `calcPr` に当たる置き場がありません
+            OptRow::one(ui::t!("iterative_calculation_circular_references"), "set-iter",
+                        match ui::calc_iter_setting() {
+                            Some((n, _)) => ui::tf!("up_passes", n),
+                            None => ui::t!("off_switch").to_string(),
+                        }),
+            // **数学オートコレクト。** 仕掛けは前から共通で、表だけが名乗って
+            // いました。器も表と同じ1つの綴りを見ます
+            OptRow::one(ui::t!("math_autocorrect"), "set-autocorrect",
+                        if self.autocorrect { ui::t!("type_alpha_get") } else { ui::t!("off_switch") }),
+            // **AI の宛先**(2026-08-15 発注者)。表の画面と同じ形です
+            OptRow::one(ui::t!("ai_destination"), "set-ai",
+                        ui::ai::backend().label().to_string()).gap(),
+        ];
+        // **見るだけの7行は ui::env_rows の1本**(2026-08-20)。
+        // 鍵そのものは出しません。手元のモデルだけは「使えます」と言いません
+        // (繋がるか確かめずに言えば嘘になります)
+        rows.extend(ui::env_rows(&lock_identity()).into_iter().map(|(k, v)| OptRow::view(k, v)));
+        rows
+    }
+
+    /// 詳細設定の行が押されたとき。
+    fn option_click(&mut self, id: &'static str, cx: &mut Context<Self>) {
+        match id {
+            "set-lang" => self.status = ui::cycle_language().into(),
+            "set-theme" => self.run_cmd("darkmode", cx),
+            "set-ui-minus" => self.run_cmd("ui-smaller", cx),
+            "set-ui-plus" => self.run_cmd("ui-bigger", cx),
+            "set-username" => {
+                self.cmt_name_edit = true;
+                self.cmt_name_ed = Editor::new(&ui::comment_author());
+                self.status = ui::t!("type_name_press_enter").into();
+            }
+            "set-iter" => {
+                let (_, msg) = ui::toggle_calc_iter(ui::calc_iter_setting(), !cfg!(test));
+                self.status = msg.into();
+                self.lay();
+            }
+            "set-autocorrect" => {
+                let (on, msg) = ui::toggle_math_autocorrect(self.autocorrect, !cfg!(test));
+                self.autocorrect = on;
+                self.status = msg.into();
+            }
+            "set-ai" => self.run_cmd("ai-where", cx),
+            // 見るだけの行は押せません(押せる物だけが id を持ちます)
+            _ => {}
+        }
+    }
+}
+
 /// 段落ごとの字、それ以外は文字として読める分。返すのは段落の並び
 pub(crate) fn salvage_text(bytes: &[u8]) -> Vec<String> {
     // zip なら document.xml を探す。読める部品が無ければ空
