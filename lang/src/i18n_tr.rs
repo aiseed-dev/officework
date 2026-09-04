@@ -2213,4 +2213,5 @@ pub const TABLE: &[(&str, &str)] = &[
     ("columns_3", "Üç sütun"),
     ("hyphenation_none", "Yok"),
     ("hyphenation_auto", "Otomatik"),
+    ("add_or_edit_destination", "Hedef ekle veya düzenle…"),
 ];

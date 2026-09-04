@@ -9434,5 +9434,9 @@
  {
   "key": "hyphenation_auto",
   "kind": "msg"
+ },
+ {
+  "key": "add_or_edit_destination",
+  "kind": "msg"
  }
 ]

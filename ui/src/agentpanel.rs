@@ -54,6 +54,17 @@ impl AgentState {
     }
 }
 
+/// **宛先の一覧の1行**(押すとその宛先に替わります)。
+#[derive(Clone, Debug, PartialEq)]
+pub struct DestRow {
+    /// 一覧に出す名前
+    pub name: String,
+    /// 名前の下に小さく出す字(モデル名や繋ぎ先)
+    pub detail: String,
+    /// いま使っている宛先か
+    pub now: bool,
+}
+
 /// パネルに出す物(画面が用意します)。
 pub struct View<'a> {
     /// やりとり
@@ -74,6 +85,9 @@ pub struct View<'a> {
     pub example: String,
     /// 見出しの下の断り書き(何について聞けるか)
     pub note: String,
+    /// **宛先を選んでいる最中なら、その一覧**(2026-09-04 発注者
+    /// 「AI model を自由に設定」)。`None` は選んでいない
+    pub picking: Option<&'a [DestRow]>,
 }
 
 /// パネルの色と大きさ。
@@ -108,6 +122,10 @@ pub mod id {
     pub const SAVE_OK: &str = "chat-save-ok";
     /// 保存しない
     pub const SAVE_NO: &str = "chat-save-no";
+    /// 宛先の一覧の1行(後ろに番号が付きます: `dest:3`)
+    pub const DEST: &str = "dest:";
+    /// 宛先を足す・直す(設定の画面へ)
+    pub const DEST_EDIT: &str = "dest-edit";
 }
 
 /// **会話の面を描く**(外側の柱は含みません)。
@@ -117,7 +135,7 @@ pub fn body<V: gpui::Render>(
     look: &Look,
     view: &View,
     cx: &mut Context<V>,
-    on: impl Fn(&mut V, &'static str, &mut Context<V>) + Clone + 'static,
+    on: impl Fn(&mut V, &str, &mut Context<V>) + Clone + 'static,
 ) -> gpui::Div {
     let (us, dk) = (look.scale, look.dark);
     let (fg, faint, line, accent) = (look.fg, look.faint, look.line, look.accent);
@@ -279,6 +297,71 @@ pub fn body<V: gpui::Render>(
         );
     }
     d = d.child(r);
+
+    // **宛先の一覧**(2026-09-04 発注者「AI model を自由に設定」)。
+    //
+    // 前は押すたびに次へ回るだけで、5つあるうちの3つ目を選ぶのに3回
+    // 押す必要がありました。一覧から選びます。手元で動いているモデルも
+    // 画面が入れて渡します(港を叩くのはパネルを開く時だけ)
+    if let Some(rows) = view.picking {
+        let mut list = div()
+            .id("dest-list")
+            .mt_1()
+            .flex()
+            .flex_col()
+            .gap_0p5()
+            .max_h(px(us * 180.0))
+            .overflow_y_scroll();
+        for (i, r) in rows.iter().enumerate() {
+            let on = on.clone();
+            let id = format!("{}{i}", id::DEST);
+            list = list.child(
+                div()
+                    .id(SharedString::from(id.clone()))
+                    .px_1()
+                    .py_0p5()
+                    .rounded_sm()
+                    .cursor_pointer()
+                    .bg(if r.now { hover_bg } else { gpui::transparent_black().into() })
+                    .hover(move |s| s.bg(hover_bg))
+                    .child(
+                        div()
+                            .text_size(px(us * 11.5))
+                            .text_color(if r.now { accent } else { fg })
+                            .child(SharedString::from(r.name.clone())),
+                    )
+                    .child(
+                        div()
+                            .text_size(px(us * 10.0))
+                            .text_color(faint)
+                            .child(SharedString::from(r.detail.clone())),
+                    )
+                    .on_click(cx.listener(move |this: &mut V, _, _, cx| {
+                        on(this, &id, cx);
+                        cx.notify()
+                    })),
+            );
+        }
+        let edit = {
+            let on = on.clone();
+            div()
+                .id(SharedString::from(id::DEST_EDIT))
+                .mt_1()
+                .px_1()
+                .py_0p5()
+                .rounded_sm()
+                .cursor_pointer()
+                .text_size(px(us * 10.5))
+                .text_color(accent)
+                .hover(move |s| s.bg(hover_bg))
+                .child(crate::t!("add_or_edit_destination").to_string())
+                .on_click(cx.listener(move |this: &mut V, _, _, cx| {
+                    on(this, id::DEST_EDIT, cx);
+                    cx.notify()
+                }))
+        };
+        d = d.child(list).child(edit);
+    }
 
     // **モデルの状態は4語 + 今の宛先の名前**(2026-09-02 の決め)。
     // 押すと一覧(`[[ai]]`)の次の宛先に替わります — 話しながら切り替えられます

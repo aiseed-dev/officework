@@ -306,14 +306,64 @@ impl Writer {
         self.agent_run_calls(cx);
     }
 
+
+
+    /// **宛先を足す・直す画面へ**(2026-09-04)。ファイルのページの詳細設定に
+    /// AI の宛先の一覧があります。パネルからそこへ跳びます
+    fn open_ai_settings(&mut self) {
+        self.agent_picking = None;
+        self.prev_tab = self.tab.max(1);
+        self.tab = 0;
+        self.file_view = 2;
+        self.status = ui::t!("add_or_edit_destination").into();
+    }
+
+    /// **宛先の一覧を画面の行に直す**(2026-09-04)。
+    ///
+    /// いま使っている物に印を付けます。細かい字はモデル名 — 同じ提供元に
+    /// 別のモデルを並べたときに見分けが付きません
+    pub(crate) fn dest_rows(&self) -> Option<Vec<ui::agentpanel::DestRow>> {
+        let rows = self.agent_picking.as_ref()?;
+        let now = self.agent_dest().map(|(n, _)| n);
+        Some(
+            rows.iter()
+                .map(|d| ui::agentpanel::DestRow {
+                    name: d.name.clone(),
+                    detail: if d.model.is_empty() { d.url.clone() } else { d.model.clone() },
+                    now: Some(&d.name) == now.as_ref(),
+                })
+                .collect(),
+        )
+    }
+
     /// パネルの物が押されたとき(描きは [`ui::agentpanel::body`] と共通)。
-    pub(crate) fn agent_panel_click(&mut self, id: &'static str, cx: &mut Context<Self>) {
+    pub(crate) fn agent_panel_click(&mut self, id: &str, cx: &mut Context<Self>) {
         use ui::agentpanel::id as pid;
+        // **宛先の一覧の行**(`dest:3`)。番号で選びます
+        if let Some(n) = id.strip_prefix(pid::DEST) {
+            if let (Ok(i), Some(rows)) = (n.parse::<usize>(), self.agent_picking.clone()) {
+                if let Some(d) = rows.get(i) {
+                    face::settings::set_ai_last(&d.name);
+                    self.agent_state = ui::agentpanel::AgentState::Idle;
+                    self.status = ui::tf!("ai_destination_remembered", d.name.clone()).into();
+                }
+            }
+            self.agent_picking = None;
+            return;
+        }
         match id {
             pid::NEW => self.chat_reset(),
             pid::INPUT => self.ai_chat_focus = true,
             pid::SEND => self.ai_chat_send(cx),
-            pid::WHERE => self.agent_cycle_dest(),
+            // **押すと一覧が開きます**(前は次へ回るだけでした)。
+            // 手元のモデルを探すのはここだけ — 描くたびに港は叩きません
+            pid::WHERE => {
+                self.agent_picking = match self.agent_picking {
+                    Some(_) => None,
+                    None => Some(face::settings::ai_list_all()),
+                };
+            }
+            pid::DEST_EDIT => self.open_ai_settings(),
             pid::SAVE_OK => self.agent_confirm_save(true, cx),
             pid::SAVE_NO => self.agent_confirm_save(false, cx),
             _ => {}

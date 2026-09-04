@@ -850,6 +850,7 @@ impl Writer {
                 // Ctrl+Z で戻ります**
                 _ => {
                     let accent = rgb(0x165E83);
+                    let hako = self.dest_rows();
                     let view = ui::agentpanel::View {
                         log: &self.ai_chat_log,
                         input: &self.ai_chat_in.text().to_string(),
@@ -861,6 +862,7 @@ impl Writer {
                         dest: self.agent_dest().map(|(n, _)| n),
                         example: ui::t!("e_g_make_paragraph").to_string(),
                         note: ui::t!("can_ask_about_selection").to_string(),
+                        picking: hako.as_deref(),
                     };
                     d = d.child(ui::agentpanel::body(
                         &ui::agentpanel::Look {

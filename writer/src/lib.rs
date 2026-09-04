@@ -476,6 +476,10 @@ pub struct Writer {
     pub(crate) agent_calls: Vec<lang::model::ToolCall>,
     /// 道具 save の確認待ち(呼びと、渡された path)
     pub(crate) agent_save: Option<(lang::model::ToolCall, Option<String>)>,
+    /// **宛先を選んでいる最中の一覧**(2026-09-04 発注者「AI model を
+    /// 自由に設定」)。`None` は選んでいない。開くときに1度だけ作ります —
+    /// 手元のモデルを探すのに港を叩くので、描くたびに作ると遅くなります
+    pub(crate) agent_picking: Option<Vec<face::settings::AiDest>>,
     /// 複数ページ(見開き。画面だけの見え方 — 紙は1ページずつのまま)
     multipage: bool,
     /// 印刷モードの、頁ごとの上端(折った後の mm)。紙の絵をここへ置く

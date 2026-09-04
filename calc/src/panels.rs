@@ -513,6 +513,7 @@ impl Calc {
                 .p_2()
                 .flex().flex_col().gap_1();
             if face == 0 {
+                let hako = self.dest_rows();
                 // **会話の面は [`ui::agentpanel::body`] の1本**(2026-09-04。
                 // agent.ja.adoc の段10)。文章の画面にも同じパネルを付けるので、
                 // 描きを1つにしました。ここが持つのは**何が並ぶか**だけです
@@ -527,6 +528,7 @@ impl Calc {
                     dest: self.agent_dest().map(|(n, _)| n),
                     example: ui::t!("e_g_sort_sales").to_string(),
                     note: ui::t!("can_ask_about_selected").to_string(),
+                    picking: hako.as_deref(),
                 };
                 d = d.child(ui::agentpanel::body(
                     &ui::agentpanel::Look {
