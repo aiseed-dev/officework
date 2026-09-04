@@ -945,7 +945,12 @@ class TableRef:
     def frame(self, sql=None, limit=200):
         """``query`` の答えを polars の DataFrame で(polars が入っていれば)。
         ``sql`` を省くと表の全部(``limit`` 行まで)。"""
-        import polars as pl
+        try:
+            import polars as pl
+        except ImportError as e:
+            raise RuntimeError(
+                "polars が入っていません。次で入ります:\n  pip install polars"
+            ) from e
 
         r = self.query(sql or "SELECT * FROM {}".format(self.name), limit)
         rows = r["values"]

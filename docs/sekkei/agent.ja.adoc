@@ -617,8 +617,10 @@ Run・Font)をエンジンの上に写した互換層で、writer のマクロ�
 - 実装(2026-09-04 済、52851efb): `pivot::table`(schema / head / query)、ops の
   動詞 `table_schema` `table_head` `table_query`(feature `df`。calc だけが
   入れる — writer と wheel は polars を持たない)、agent の道具と MCP の
-  `table_*`、read_range の 200 行の断り。`table_write`(`=df()` の列の定義で書く)は
-  df の言葉が固まってから
+  `table_*`、read_range の 200 行の断り、Python の `TableRef.schema / head /
+  query / frame`。実機で確かめた(動いている calc の 売上台帳.xlsx に表を作り、
+  Python から型・先頭・`GROUP BY 月` の集計が返る)。`table_write`(`=df()` の
+  列の定義で書く)は df の言葉が固まってから
 - 3つの入り口に同時に増える: officework-mcp と `officework.calc`(Python)にも
   同じ名前で。Python は polars のデータフレームそのものを返せる
 - 結果の表を文書に貼るときは、writer の道具(insert_blocks)に AsciiDoc の表として
