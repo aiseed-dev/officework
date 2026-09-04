@@ -38,6 +38,24 @@ There are two editors: *writer* for documents and *calc* for spreadsheets. You o
 
 == Why we built this
 
+=== One AI, chosen for you
+
+**Copilot is the only AI you can use directly inside Microsoft Office.**
+Reaching any other model leaves two routes.
+
+* *Write an add-in* — build an Office.js add-in and call your own AI from inside it. The add-in runs in a web view inside the app, so it can do what the add-in API allows and no more
+* *Hand over the whole file* — let an outside tool read the document or the workbook. All of it goes to that tool
+
+Neither is switching models on a whim.
+
+officework lets you choose where the AI is.
+Anything that speaks the OpenAI-compatible API (`/v1/chat/completions`) will do.
+Point it at a model running on your own machine and the data never leaves it.
+The destination is a setting.
+
+Register the MCP server and you can ask an AI to operate the running app,
+rather than handing it a file: it works on **what you have open**.
+
 === Internal documents and AI
 
 Built-in enterprise AI such as Microsoft 365 Copilot answers by first searching data across the company — mail, documents, meetings, chat (the mechanism called RAG).
