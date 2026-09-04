@@ -350,6 +350,34 @@ Windows はソケットを作らない決め(2026-08-20)なので、この宛先
 - 費用は出さない。定額の枠は Anthropic の側で数える。`result` の見積りは
   記録に残すだけ
 
+==== 実測と部品(2026-09-04 夕)
+
+この機械(Claude Max でログイン済み。`claude auth status` が 0)で1回だけ
+本物を呼んだ: `claude -p --input-format stream-json --output-format stream-json
+--tools "" --strict-mcp-config --mcp-config {officework-mcp} --allowedTools
+"mcp__officework__*" --permission-mode dontAsk --model sonnet`。**定額の道は
+通った** — Claude Code が officework-mcp に繋がり(`system/init` の
+mcp_servers が connected)、`book_info` を呼び、アプリが動いていない旨の
+エラーを受けて短く答え、`result` に session_id が返った。返る行の形は
+agent/src/claude_code.rs の頭に書いた。
+
+部品は `agent::claude_code`(gpui なし):
+
+- `Launch`(model・officework-mcp の径路・system の文・作業ディレクトリ・
+  max_turns・続きの session_id)と `Launch::args()`(引数の1本。試験で
+  「`--bare` を使わない」「`--tools ""`」「`--allowedTools mcp__officework__*`」を
+  固定)
+- `ClaudeCode::spawn / send / try_recv / recv_timeout / interrupt / stop`。
+  標準出力は別の糸で行ごとに拾い、画面は `try_recv` を刻みで呼ぶ
+- `Parser` が行を `Cc`(Init / Event / Done / Retry / Exit)に読む。`Event` は
+  今の `agent::Event` と同じ型なので、パネルの1行表示と `.agent.txt` の記録は
+  そのまま使える。道具の名前は `mcp__officework__` を外して出す
+- `available(bin)` / `logged_in(bin)`(状態の4語の材料)
+- 偽の `claude`(Python の台本)で起動 → 送る → 受ける → 終える を試験で通す
+
+パネルへの結線(宛先の一覧に「Claude Code」を出し、`agent_send` で
+`ClaudeCode` を持つ)は、writer のパネルの共通化(段階10)と同じ回に。
+
 ==== 守る条件(公式の legal-and-compliance)
 
 - `claude` を改変しない。認証の方法を外さない
