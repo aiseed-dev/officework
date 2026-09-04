@@ -895,6 +895,18 @@ impl Render for Writer {
             );
         }
 
+        // **セルの塗り**(組んだ紙の fills)。前は PDF だけが描き、画面は
+        // 落としていた — 表スタイルの帯もセルの塗りも紙にだけ出ていた
+        // (2026-09-04、的の順で writer の表にセルの塗りを入れて気づいた)。
+        // 罫線と文字より先に敷く
+        for (at, c) in &self.page.fills {
+            let [x, y, w, h] = *at;
+            paper = paper.child(div().absolute()
+                .left(px((self.pg.left_mm + x) * pxmm)).top(px(y * pxmm))
+                .w(px(w * pxmm)).h(px(h * pxmm))
+                .bg(gpui::Rgba { r: hex(c, 0), g: hex(c, 1), b: hex(c, 2), a: 1.0 }));
+        }
+
         // 表の罫線。紙面の座標をそのまま引く
         for r in &self.page.rules {
             let [x1, y1, x2, y2] = *r;
