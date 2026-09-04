@@ -29,6 +29,13 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 # Windows には無い物。呼ぶ側は `#[cfg(unix)]` の内側に居なければなりません
 UNIX_ONLY = re.compile(r"\b(ops::Host\b|crate::rpc::|ops::listen|ops::ask|ops::sock_path|std::os::unix)")
 
+# **writer の受け口は分かれました**(2026-09-04)。動詞を捌く `rpc::handle` は
+# どの OS でも組み、ソケットを開く `rpc::start` だけが `#[cfg(unix)]` です。
+# エージェントのパネルが道具の呼びを `handle` へ流すので、そこまで旗の中に
+# 入れると Windows でパネルごと消えます。**calc の `rpc` は今までどおり
+# 丸ごと Unix**(あちらはまだ分けていない)なので、writer だけを外します
+SPLIT_OK = {"writer/src": re.compile(r"crate::rpc::(handle|Reply)\b")}
+
 # 見る場所。生成物と外から持ってきた物は見ません
 check = ["calc/src", "writer/src", "ui/src", "officework/src", "ops/src", "sheet/src"]
 
@@ -102,6 +109,12 @@ def main() -> int:
                 if l.lstrip().startswith(("///", "//", "#[cfg")):
                     continue
                 if not UNIX_ONLY.search(l):
+                    continue
+                # 分けた所は数えない(その crate だけ)
+                ok_pat = SPLIT_OK.get(d)
+                if ok_pat is not None and ok_pat.search(l) and not re.search(
+                    r"ops::Host\b|ops::listen|ops::ask|ops::sock_path|std::os::unix", l
+                ):
                     continue
                 numbers += 1
                 if not inside_flag(lines, i):

@@ -221,22 +221,14 @@ impl Writer {
         let args = if c.arguments.trim().is_empty() { "{}" } else { c.arguments.as_str() };
         let o = ops::Jobj::parse(args).ok_or_else(|| "引数が読めません".to_string())?;
         let line = agent::tools::doc_line_for(&c.name, &o)?;
-        // **受け口は Windows では作りません**(`mod rpc` ごと `#[cfg(unix)]`)。
-        // 動詞を捌く所そのものには Unix の物は要らないので、いずれ
-        // ソケットと分けるのが筋です。それまではここで旗を持ちます
-        #[cfg(unix)]
-        {
-            let reply = crate::rpc::handle(self, &line);
-            // 受け口は `{"ok":true,…}` か `{"err":"…"}` を返します
-            match ops::Jobj::parse(&reply).and_then(|r| r.str("err")) {
-                Some(e) => Err(e),
-                None => Ok(reply),
-            }
-        }
-        #[cfg(not(unix))]
-        {
-            let _ = line;
-            Err("この OS では道具を使えません(受け口が Unix のソケットの中にあります)".to_string())
+        // **捌き手はどの OS でも組みます**(2026-09-04。ソケットを開く
+        // `rpc::start` だけが `#[cfg(unix)]`)。道具の呼びはここを通り、
+        // `officework-mcp` の `doc_*` と同じ動詞に届きます
+        let reply = crate::rpc::handle(self, &line);
+        // 受け口は `{"ok":true,…}` か `{"err":"…"}` を返します
+        match ops::Jobj::parse(&reply).and_then(|r| r.str("err")) {
+            Some(e) => Err(e),
+            None => Ok(reply),
         }
     }
 
@@ -296,18 +288,10 @@ impl Writer {
                 Some(p) => format!("{{\"cmd\":\"save\",\"path\":{}}}", ops::J::S(p.clone()).to_json()),
                 None => "{\"cmd\":\"save\"}".to_string(),
             };
-            #[cfg(unix)]
-            {
-                let reply = crate::rpc::handle(self, &line);
-                match ops::Jobj::parse(&reply).and_then(|x| x.str("err")) {
-                    Some(e) => Err(e),
-                    None => Ok(reply),
-                }
-            }
-            #[cfg(not(unix))]
-            {
-                let _ = line;
-                Err("この OS では保存の道具を使えません".to_string())
+            let reply = crate::rpc::handle(self, &line);
+            match ops::Jobj::parse(&reply).and_then(|x| x.str("err")) {
+                Some(e) => Err(e),
+                None => Ok(reply),
             }
         };
         let ag = self.agent.as_mut().expect("agent_send が置いた");
