@@ -7084,10 +7084,6 @@
   "kind": "msg"
  },
  {
-  "key": "apply",
-  "kind": "msg"
- },
- {
   "key": "click_here_type_enter",
   "kind": "msg"
  },
@@ -7141,14 +7137,6 @@
  },
  {
   "key": "back_document_conversation_panel",
-  "kind": "msg"
- },
- {
-  "key": "text_insert_nothing_goes",
-  "kind": "msg"
- },
- {
-  "key": "discarded_text_nothing_changed",
   "kind": "msg"
  },
  {
