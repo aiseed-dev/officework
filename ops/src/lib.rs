@@ -722,6 +722,9 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
             }
         }
         // シートの表(テーブル)[[名前, 範囲], …]
+        // ── 大きな表は polars の物として(2026-09-04。table_schema / table_head /
+        // table_query)。表は名前で指す。実体は pivot::table(feature `df` の時だけ)──
+        "table_schema" | "table_head" | "table_query" => table_verb(h, cmd.as_str(), &o),
         "sheet_tables" => {
             let si = match sheet_index(h, &o) {
                 Ok(i) => i,
@@ -1998,6 +2001,71 @@ pub fn sign_or_verify(path: &std::path::Path) -> Result<Signed, SignErr> {
 }
 
 /// 要求のシート(名前。省略はいまのシート)を添字に。
+/// 名前の表を字の表にする(見出し, 中身)。見出しの行が無い表は `列1` `列2` … と呼ぶ
+#[cfg(feature = "df")]
+fn table_strings(h: &impl Host, name: &str) -> Result<(Vec<String>, Vec<Vec<String>>), String> {
+    let book = h.book();
+    let (sh, t) = book
+        .sheets
+        .iter()
+        .find_map(|s| s.tables.iter().find(|t| t.name == name).map(|t| (s, t)))
+        .ok_or_else(|| format!("表「{name}」がありません(sheet_tables で名前を見てください)"))?;
+    let cell = |r: u32, c: u32| match sh.value(book::Pos::new(r, c)) {
+        book::Value::Number(n) => n.to_string(),
+        book::Value::Empty => String::new(),
+        v => v.display(),
+    };
+    let mut rows: Vec<Vec<String>> = (t.a.row..=t.b.row)
+        .map(|r| (t.a.col..=t.b.col).map(|c| cell(r, c)).collect())
+        .collect();
+    let head: Vec<String> = if t.header && !rows.is_empty() {
+        rows.remove(0)
+    } else {
+        (1..=(t.b.col - t.a.col + 1)).map(|i| format!("列{i}")).collect()
+    };
+    Ok((head, rows))
+}
+
+#[cfg(feature = "df")]
+fn table_verb(h: &impl Host, cmd: &str, o: &Jobj) -> String {
+    let Some(name) = o.str("table") else { return err("table(表の名前)がありません") };
+    let (head, body) = match table_strings(h, &name) {
+        Ok(x) => x,
+        Err(e) => return err(&e),
+    };
+    let grid = |rows: &[Vec<String>]| J::A(rows.iter().map(|r| J::A(r.iter().map(|c| J::S(c.clone())).collect())).collect()).to_json();
+    match cmd {
+        "table_schema" => match pivot::table::schema(&head, &body) {
+            Ok(sc) => {
+                let cols: Vec<J> = sc.cols.iter().map(|(n, t)| J::A(vec![J::S(n.clone()), J::S(t.to_string())])).collect();
+                format!("{{\"ok\":true,\"rows\":{},\"cols\":{}}}", sc.rows, J::A(cols).to_json())
+            }
+            Err(e) => err(&e),
+        },
+        "table_head" => {
+            let n = o.num("n").map(|x| x as usize).unwrap_or(5).clamp(1, 50);
+            format!("{{\"ok\":true,\"rows\":{},\"values\":{}}}", body.len(), grid(&pivot::table::head(&head, &body, n)))
+        }
+        _ => {
+            let Some(sql) = o.str("sql") else { return err("sql がありません") };
+            let limit = o.num("limit").map(|x| x as usize).unwrap_or(200).clamp(1, 1000);
+            match pivot::table::query(&name, &head, &body, &sql, limit) {
+                Ok(a) => {
+                    let mut rows = vec![a.cols.clone()];
+                    rows.extend(a.rows);
+                    format!("{{\"ok\":true,\"total\":{},\"values\":{}}}", a.total, grid(&rows))
+                }
+                Err(e) => err(&e),
+            }
+        }
+    }
+}
+
+#[cfg(not(feature = "df"))]
+fn table_verb(_h: &impl Host, _cmd: &str, _o: &Jobj) -> String {
+    err("この組み方には表の道具(polars)が入っていません(ops の df の機能)")
+}
+
 fn sheet_index(h: &impl Host, o: &Jobj) -> Result<usize, String> {
     match o.str("sheet") {
         None => Ok(h.active()),
@@ -2255,5 +2323,65 @@ mod recover_tests {
             None => unsafe { std::env::remove_var("HOME") },
         }
         let _ = std::fs::remove_dir_all(&home);
+    }
+}
+
+#[cfg(all(test, feature = "df"))]
+mod df_tests {
+    use super::*;
+
+    struct TestHost {
+        book: book::Book,
+    }
+    impl Host for TestHost {
+        fn app(&self) -> &'static str {
+            "test"
+        }
+        fn book(&self) -> &book::Book {
+            &self.book
+        }
+        fn book_mut(&mut self) -> &mut book::Book {
+            &mut self.book
+        }
+        fn active(&self) -> usize {
+            0
+        }
+        fn path(&self) -> Option<&std::path::Path> {
+            None
+        }
+    }
+
+    fn host() -> TestHost {
+        let mut b = book::Book::new();
+        let s = &mut b.sheets[0];
+        for (a1, v) in [
+            ("A1", "品名"), ("B1", "金額"),
+            ("A2", "鉛筆"), ("B2", "100"),
+            ("A3", "ノート"), ("B3", "250"),
+            ("A4", "鉛筆"), ("B4", "300"),
+        ] {
+            s.set(book::Pos::parse(a1).unwrap(), book::Cell::input(v));
+        }
+        s.tables.push(book::TableDef {
+            name: "売上".into(),
+            a: book::Pos::new(0, 0),
+            b: book::Pos::new(3, 1),
+            header: true,
+            ..Default::default()
+        });
+        TestHost { book: b }
+    }
+
+    #[test]
+    fn the_table_verbs_read_schema_head_and_sql() {
+        let mut h = host();
+        let r = handle(&mut h, r#"{"cmd":"table_schema","table":"売上"}"#);
+        assert!(r.contains("\"rows\":3") && r.contains("[\"金額\",\"数\"]"), "{r}");
+        let r = handle(&mut h, r#"{"cmd":"table_head","table":"売上","n":1}"#);
+        assert!(r.contains("[[\"品名\",\"金額\"],[\"鉛筆\",\"100\"]]"), "{r}");
+        let r = handle(&mut h, r#"{"cmd":"table_query","table":"売上","sql":"SELECT 品名, SUM(金額) AS 計 FROM 売上 GROUP BY 品名 ORDER BY 計 DESC"}"#);
+        assert!(r.contains("\"total\":2") && r.contains("[\"鉛筆\",\"400\"]"), "{r}");
+        let r = handle(&mut h, r#"{"cmd":"table_query","table":"無い","sql":"SELECT 1"}"#);
+        assert!(r.contains("がありません"), "{r}");
     }
 }

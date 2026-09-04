@@ -337,6 +337,45 @@ def doc_fill(values: dict, path: str | None = None) -> str:
     return 文
 
 
+# ── 大きな表は polars の物として(2026-09-04)。セルで読ませず、名前の表を
+# 型と先頭と SQL で触る。実体は calc の ops(pivot::table) ──
+
+
+@mcp.tool()
+def table_schema(table: str) -> dict:
+    """名前の表(テーブル)の**列の名前と型**(数/字)と行の数。大きな表はまずこれ。
+
+    表の名前は `book_info` か各シートの表の一覧で分かります。
+    """
+    from . import app_name, call
+
+    r = call(app_name("calc"), "table_schema", table=table)
+    return {"rows": r.get("rows", 0), "cols": r.get("cols", [])}
+
+
+@mcp.tool()
+def table_head(table: str, n: int = 5) -> list:
+    """名前の表の**先頭 n 行**(見出しつき)。様子を見る用で、`n` は 50 まで。"""
+    from . import app_name, call
+
+    return call(app_name("calc"), "table_head", table=table, n=n).get("values", [])
+
+
+@mcp.tool()
+def table_query(table: str, sql: str, limit: int = 200) -> dict:
+    """名前の表を **SQL** で絞る・集計する。`FROM` には表の名前を書きます。
+
+        SELECT 品名, SUM(金額) AS 計 FROM 売上 GROUP BY 品名 ORDER BY 計 DESC
+
+    返りは `values`(見出しつきの小さな表。`limit` 行まで)と `total`
+    (絞った後の全行数)。数万行の表でも、返るのは答えの分だけです。
+    """
+    from . import app_name, call
+
+    r = call(app_name("calc"), "table_query", table=table, sql=sql, limit=limit)
+    return {"total": r.get("total", 0), "values": r.get("values", [])}
+
+
 # ── ブロックの語彙(2026-09-04。docs/sekkei/agent.ja.adoc「writer にも同じパネル」)──
 # 本文の丸ごと(doc_text / doc_set_text)ではなく、ブロック(段落・見出し・表)の
 # 番号で AsciiDoc の字を読み書きします。長い文書でも触る所だけ読めば済みます。

@@ -18,6 +18,7 @@ polars = { version = "0.55", default-features = false, features = [
     "lazy",       # 遅延で組む(集計の骨)
     "pivot",      # ピボット
     "dtype-full", # 日付や小さい整数も落とさない
+    "sql",        # 表の道具の問い合わせ(table_query。2026-09-04)
 ] }
 
 [dev-dependencies]

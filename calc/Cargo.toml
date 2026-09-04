@@ -22,7 +22,8 @@ book = { path = "../book" }
 pivot = { path = "../pivot" }
 sheet = { path = "../sheet" }
 pyrun = { path = "../pyrun" }
-ops = { path = "../ops" }
+# 表の道具(table_schema / table_head / table_query)は calc だけが持つ(polars)
+ops = { path = "../ops", features = ["df"] }
 # CSV を Shift_JIS でも書けるように(日本の会計ソフトはまだ CP932)
 encoding_rs = "0.8"
 

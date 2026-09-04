@@ -23,6 +23,9 @@
 use polars::prelude::*;
 use std::collections::BTreeMap;
 
+/// 大きな表を polars の物として扱う道具(table_schema / table_head / table_query)
+pub mod table;
+
 /// 集計の指図。[`book::PivotDef`] から写した物です
 #[derive(Debug, Clone, Default)]
 pub struct Spec {
@@ -641,7 +644,7 @@ fn cell(df: &DataFrame, name: &str, i: usize) -> String {
 
 /// 字の表を DataFrame に。**数に見える欄は数として読みます** —
 /// 合計や平均は数でないと出せません
-fn to_frame(head: &[String], body: &[Vec<String>]) -> Result<DataFrame, String> {
+pub(crate) fn to_frame(head: &[String], body: &[Vec<String>]) -> Result<DataFrame, String> {
     let mut cols: Vec<Column> = Vec::with_capacity(head.len());
     for (i, name) in head.iter().enumerate() {
         let moji: Vec<&str> =

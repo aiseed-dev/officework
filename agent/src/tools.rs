@@ -57,7 +57,36 @@ pub fn sheet_tools() -> Vec<ToolDef> {
             "ブックを保存する。path を渡すとその名前で書き出す。人が保存を頼んだときだけ呼ぶ",
             r#"{"type":"object","properties":{"path":{"type":"string"}}}"#,
         ),
+        // **大きな表は polars の物として**(2026-09-04)。セルで読ませない
+        t(
+            "table_schema",
+            "名前の表(テーブル)の列の名前と型(数/字)と行の数。大きな表はまずこれ。表の名前は book_info か sheet_tables で",
+            r#"{"type":"object","properties":{"table":{"type":"string"}},"required":["table"]}"#,
+        ),
+        t(
+            "table_head",
+            "名前の表の先頭 n 行(既定 5)を見出しつきで読む。様子を見る用",
+            r#"{"type":"object","properties":{"table":{"type":"string"},"n":{"type":"integer"}},"required":["table"]}"#,
+        ),
+        t(
+            "table_query",
+            "名前の表を SQL で絞る・集計する(FROM には表の名前を書く。例: SELECT 品名, SUM(金額) AS 計 FROM 売上 GROUP BY 品名)。返りは見出しつきの小さな表と、絞った後の全行数 total。limit の既定は 200",
+            r#"{"type":"object","properties":{"table":{"type":"string"},"sql":{"type":"string"},"limit":{"type":"integer"}},"required":["table","sql"]}"#,
+        ),
     ]
+}
+
+/// read_range で一度に読ませる行の上限。越えたら断って table_* を案内する
+/// (黙って切り詰めない。docs/sekkei/agent.ja.adoc「大きな calc の表は polars の物として」)
+pub const READ_ROWS_MAX: u32 = 200;
+
+/// `A1:C9` の行の数(読めなければ 1)
+fn rows_of(a1: &str) -> u32 {
+    let num = |s: &str| s.trim_start_matches(|c: char| c.is_ascii_alphabetic() || c == '$').parse::<u32>().unwrap_or(1);
+    match a1.split_once(':') {
+        Some((a, b)) => num(b).abs_diff(num(a)) + 1,
+        None => 1,
+    }
 }
 
 /// **文書の道具**(2026-09-04。docs/sekkei/agent.ja.adoc「writer にも同じパネル」)。
@@ -194,8 +223,25 @@ fn line_for(name: &str, o: &Jobj) -> Result<String, String> {
                 "\"cmd\":\"{}\"",
                 if name == "read_range" { "get" } else { "get_formula" }
             ));
-            put_str(&mut parts, "a1", Some(o.str("a1").ok_or("a1 がありません")?));
+            let a1 = o.str("a1").ok_or("a1 がありません")?;
+            let rows = rows_of(&a1);
+            if rows > READ_ROWS_MAX {
+                return Err(format!(
+                    "{a1} は {rows} 行あります。一度に読めるのは {READ_ROWS_MAX} 行までです。大きな表は table_schema / table_head / table_query(SQL)で触ってください"
+                ));
+            }
+            put_str(&mut parts, "a1", Some(a1));
             put_str(&mut parts, "sheet", o.str("sheet"));
+        }
+        "table_schema" | "table_head" | "table_query" => {
+            parts.push(format!("\"cmd\":\"{name}\""));
+            put_str(&mut parts, "table", Some(o.str("table").ok_or("table がありません")?));
+            put_str(&mut parts, "sql", o.str("sql"));
+            for k in ["n", "limit"] {
+                if let Some(v) = o.num(k) {
+                    parts.push(format!("\"{k}\":{}", v as i64));
+                }
+            }
         }
         "write_range" => {
             parts.push("\"cmd\":\"set\"".into());
@@ -331,6 +377,20 @@ impl ToolHost for QueueHost {
 mod tests {
     use super::*;
     use crate::{Agent, Model};
+
+    #[test]
+    fn big_ranges_are_refused_with_a_pointer_to_the_table_tools() {
+        let o = Jobj::parse(r#"{"a1":"A1:D5000"}"#).unwrap();
+        let e = line_for("read_range", &o).unwrap_err();
+        assert!(e.contains("table_query") && e.contains("5000"), "{e}");
+        let o = Jobj::parse(r#"{"a1":"A1:D200"}"#).unwrap();
+        assert!(line_for("read_range", &o).is_ok(), "200 行までは読める");
+        let o = Jobj::parse(r#"{"table":"売上","sql":"SELECT 1","limit":10}"#).unwrap();
+        assert_eq!(line_for("table_query", &o).unwrap(), r#"{"cmd":"table_query","table":"売上","sql":"SELECT 1","limit":10}"#);
+        let o = Jobj::parse(r#"{"table":"売上","n":3}"#).unwrap();
+        assert_eq!(line_for("table_head", &o).unwrap(), r#"{"cmd":"table_head","table":"売上","n":3}"#);
+        assert!(sheet_tools().iter().any(|t| t.name == "table_query"));
+    }
 
     #[test]
     fn document_tools_map_onto_the_writer_socket_verbs() {
