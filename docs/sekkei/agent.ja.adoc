@@ -402,12 +402,22 @@ macro_start を送ると番号 1 が返り、macro_status が様子を返し、�
 もう一度聞いても同じ答えだった。ただしこの機械では、この日は bubblewrap が
 「loopback: Failed RTM_NEWADDR: Operation not permitted」で止まり、マクロ
 そのものは走らなかった(受け口は failed とその1行を返す — 設計どおり)。
-原因は Ubuntu の `kernel.apparmor_restrict_unprivileged_userns = 1` で、
-`bwrap` に AppArmor のプロファイルが無いと網の名前空間を作れない。端末から
-`bwrap --unshare-net true` を打っても同じなので officework の側ではない。
-直すのは管理者(`/etc/apparmor.d/bwrap-userns-restrict` を入れる)。
+原因は Ubuntu の `kernel.apparmor_restrict_unprivileged_userns = 1`。
+プロファイルの無い(plain unconfined の)プロセスが作る利用者名前空間は
+権限を落とされ、bwrap が loopback を上げられない。端末から
+`bwrap --ro-bind / / --unshare-net /bin/true` を打っても同じ。一方、Opus の
+セッションでは同じ命令が通る — Claude Desktop の下で動いていて、その木は
+`/etc/apparmor.d/claude-desktop`(`flags=(unconfined)` のプロファイル)に
+包まれているため。`aa-exec -p claude-desktop -- bwrap …` で確かめると exit 0
+だった。**つまり配布の問題**: Ubuntu 24.04 以降で端末やランチャーから
+officework を起こすと、この機械と同じくマクロが走らない。.deb は
+`Depends: bubblewrap` だけでなく、アプリのプロファイル
+(`profile officework /usr/bin/officework flags=(unconfined) { userns, }` の
+形。Chrome や Electron の物と同じ)を `/etc/apparmor.d/` に置く必要がある
+(Opus に伝えた。配布は Opus の受け持ち)。
 結果を1手として入れる所(`macro_apply`)は、結果の xlsx / adoc を手で作って
 当てる試験で固定した(入る・控えは1回・Ctrl+Z で戻る・読めない物は断る)。
+マクロそのものの通しは、プロファイルが入ってから実機で見る。
 
 **文書の道具の往復も本物で確かめた**(2026-09-05)。動いている writer
 (報告書.docx)に対し、`claude -p`(Max のログイン)+ `officework-mcp --panel`
