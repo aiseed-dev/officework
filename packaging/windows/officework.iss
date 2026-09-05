@@ -1,6 +1,6 @@
 ; officework の Windows の入れ物(Inno Setup)。
 ;
-;   ISCC.exe /DVersion=0.1.0-alpha /DSrc=<包んだフォルダ> packaging\windows\officework.iss
+;   ISCC.exe /DVersion=0.1.0-alpha.1 /DSrc=<包んだフォルダ> packaging\windows\officework.iss
 ;
 ; **zip をやめてこれにした**(発注者 2026-08-17「Windows は zip では
 ; よくないのでは」)。zip では

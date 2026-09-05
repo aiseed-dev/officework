@@ -8,7 +8,7 @@ packaging/make-linux.sh            # tar.gz と .deb
 
 出来上がりは `packaging/out/` に置かれます(git には入れません)。
 
-大きさの目安(0.1.0-alpha):
+大きさの目安(0.1.0-alpha.1):
 
 | 形 | 大きさ | 中身 |
 |---|---|---|
@@ -20,8 +20,8 @@ packaging/make-linux.sh            # tar.gz と .deb
 **tar.gz(入れずに試す)**
 
 ```
-tar xzf officework-0.1.0-alpha-linux-x86_64.tar.gz
-cd officework-0.1.0-alpha-linux-x86_64
+tar xzf officework-0.1.0-alpha.1-linux-x86_64.tar.gz
+cd officework-0.1.0-alpha.1-linux-x86_64
 ./officework              # 空の画面で始める
 ./officework 台帳.xlsx    # ファイルを開く
 ```
@@ -32,7 +32,7 @@ cd officework-0.1.0-alpha-linux-x86_64
 **.deb(入れて試す)**
 
 ```
-sudo dpkg -i officework_0.1.0-alpha_amd64.deb
+sudo dpkg -i officework_0.1.0-alpha.1_amd64.deb
 sudo apt-get -f install     # 足りない物があれば
 officework
 ```

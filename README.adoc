@@ -310,7 +310,7 @@ The socket opens on Linux and macOS only; on Windows it is not created.
 [source,console]
 ----
 $ echo '{"cmd":"ping"}' | nc -q 1 -U $XDG_RUNTIME_DIR/officework/officework.sock
-{"ok":true,"app":"officework","showing":"doc","version":"0.1.0-alpha"}
+{"ok":true,"app":"officework","showing":"doc","version":"0.1.0-alpha.1"}
 ----
 
 The reference for programmers is the link:docs/en/python-manual.adoc[Python manual] — ranges vs. arrays (`values()` and per-cell writes), 2-D lists and spilling with `=PY`, the `d` variable in writer macros, and what the sandbox allows.

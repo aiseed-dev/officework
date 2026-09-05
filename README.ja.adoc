@@ -328,7 +328,7 @@ JSON を書ければ、どの言語のどのアプリからでも繋げます �
 [source,console]
 ----
 $ echo '{"cmd":"ping"}' | nc -q 1 -U $XDG_RUNTIME_DIR/officework/officework.sock
-{"ok":true,"app":"officework","showing":"doc","version":"0.1.0-alpha"}
+{"ok":true,"app":"officework","showing":"doc","version":"0.1.0-alpha.1"}
 ----
 
 コードを書く人向けの説明は link:docs/ja/python-manual.adoc[Python の手引き] にあります —*範囲⇄配列のやり取り*(values() と1セルずつの書き込み)、=PY の2次元リストとスピル、writer マクロの `d`、サンドボックスの中の約束、まで、実際に動かして確かめた内容つきです。

@@ -43,7 +43,7 @@ packaging/macos/setup-ci-secrets.sh ~/Downloads/AuthKey_XXXX.p8 <Issuer ID>
 
 [source,sh]
 ----
-git tag app-v0.1.0-alpha && git push origin app-v0.1.0-alpha
+git tag app-v0.1.0-alpha.1 && git push origin app-v0.1.0-alpha.1
 ----
 
 [NOTE]
@@ -243,8 +243,8 @@ packaging/macos/setup-ci-secrets.sh ~/Downloads/AuthKey_XXXX.p8 <Issuer ID>
 
 [source,sh]
 ----
-git tag app-v0.1.0-alpha
-git push origin app-v0.1.0-alpha
+git tag app-v0.1.0-alpha.1
+git push origin app-v0.1.0-alpha.1
 ----
 
 GitHub の macOS の機械が、手元と**同じスクリプト**(link:../packaging/make-macos.sh[packaging/make-macos.sh])を回す:
