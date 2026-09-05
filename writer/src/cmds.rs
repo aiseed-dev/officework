@@ -1481,7 +1481,13 @@ impl Writer {
                 };
             }
             "show-statusbar" => self.show_statusbar = !self.show_statusbar,
-            "show-left" => self.nav_open = !self.nav_open,
+            "show-left" => {
+                self.nav_open = !self.nav_open;
+                if self.nav_open {
+                    // 欄が空なら前回の記録を控えとして戻す(表計算と同じ)
+                    self.agent_load_record();
+                }
+            }
             "show-right" => {
                 self.rp_open = !self.rp_open;
                 self.status = if self.rp_open {

@@ -2370,5 +2370,8 @@
  "use_this": "Pakai ini",
  "python_chosen": "Python sekarang {}",
  "settings_file": "Berkas setelan (tambah atau ubah)",
- "ai_destination_deleted": "Tujuan {} dihapus"
+ "ai_destination_deleted": "Tujuan {} dihapus",
+ "claude_code_login_in_terminal": "Belum masuk ke Claude Code. Jalankan `claude auth login` di terminal",
+ "officework_mcp_not_connected": "officework-mcp tidak terhubung: {}",
+ "claude_code_exited": "Claude Code berhenti (kode {})"
 }

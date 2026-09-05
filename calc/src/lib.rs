@@ -509,6 +509,9 @@ pub struct Calc {
     /// 道具 save の確認待ち(呼びと、渡された path)。保存は人の確認が
     /// 要る — 確認を取る3つ(保存・削除・外への送信)の1つ目
     pub(crate) agent_save: Option<(lang::model::ToolCall, Option<String>)>,
+    /// 宛先「Claude Code」の子プロセス(1つの会話 = 1つのプロセス。
+    /// `agent::claude_code`)。他の宛先では None
+    pub(crate) agent_cc: Option<agent::claude_code::ClaudeCode>,
     /// **宛先を選んでいる最中の一覧**(2026-09-04 発注者「AI model を
     /// 自由に設定」)。開くときに1度だけ作ります(港を叩くため)
     pub(crate) agent_picking: Option<Vec<face::settings::AiDest>>,

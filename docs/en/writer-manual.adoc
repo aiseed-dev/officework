@@ -310,15 +310,15 @@ Open it with *View tab > Left panel*.
 * *The only thing you press is Save.* When the AI asks to save, a confirmation button appears
 * *The conversation continues.* "Now make that paragraph a little shorter" works. *"New conversation"* clears the thread (the document is untouched)
 * Exporting to PDF works too (say where the file should go)
-
-*Not there yet*: the AI writing and running a Python macro exists on the spreadsheet side, not yet for documents. The conversation record file (`<name>.agent.txt` for workbooks) is not written for documents yet either.
+* *Bigger requests become a macro (.py) that the AI writes and runs.* It is plain Python that receives the document as AsciiDoc text and returns the corrected text — no python-docx. The file sits next to the document, it runs inside the sandbox, the result goes in as one step, and an error comes back into the conversation for the AI to fix
+* *The conversation is recorded next to the document* as `<name>.agent.txt` (an unnamed new document records nothing). When you open the left panel with an empty thread, the previous record is shown as a note
 
 *Two things stayed on the ribbon* — work the conversation cannot do:
 
 * *Home > Furigana* — what goes in is ruby _formatting_, not plain text
 * *Plugins > Write a macro* — it puts a .py in the plugins folder (never run automatically; read it, then run it yourself)
 
-*The destination* is shown under the input box. Pressing it opens the list to choose from. The list is built the same way as in the spreadsheet manual, "AI — talk to it in the left panel" (`\[[ai]]` entries in `~/.config/officework/settings.toml`; providers whose key is in an environment variable, and local model servers that are running, appear by themselves).
+*The destination* is shown under the input box. Pressing it opens the list to choose from. The list is built the same way as in the spreadsheet manual, "AI — talk to it in the left panel" (`\[[ai]]` entries in `~/.config/officework/settings.toml`; providers whose key is in an environment variable, local model servers that are running, and "Claude Code" when it is installed on this machine, appear by themselves).
 Unavailable destinations *say why on the spot*.
 
 == Proofreading (review)

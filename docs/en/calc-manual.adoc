@@ -324,7 +324,7 @@ Open it with *View tab > Left panel*.
 * *The conversation is recorded next to the workbook* as `<name>.agent.txt`, so what was asked and what changed can be read later. An unnamed new workbook records nothing
 * *The destination* is shown under the input box. Pressing it opens the list to choose from
 
-The list holds three kinds of entries: destinations you wrote yourself (the `\[[ai]]` entries below), *providers whose key is in an environment variable* (`ANTHROPIC_API_KEY` gives Anthropic, `OPENAI_API_KEY` gives OpenAI; also Google, OpenRouter, Groq, Mistral and xAI — no settings needed), and *local model servers that are running* (Ollama, llama.cpp, LM Studio — they appear when their usual port is open).
+The list holds four kinds of entries: destinations you wrote yourself (the `\[[ai]]` entries below), *providers whose key is in an environment variable* (`ANTHROPIC_API_KEY` gives Anthropic, `OPENAI_API_KEY` gives OpenAI; also Google, OpenRouter, Groq, Mistral and xAI — no settings needed), *local model servers that are running* (Ollama, llama.cpp, LM Studio — they appear when their usual port is open), and *Claude Code* (when `claude` is installed on this machine; it uses your Claude subscription (Pro / Max). The unmodified Claude Code is run as it is; sign in beforehand with `claude auth login` in a terminal — officework never touches the login).
 
 Destinations you write yourself are `\[[ai]]` entries in `~/.config/officework/settings.toml`.
 

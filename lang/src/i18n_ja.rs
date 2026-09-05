@@ -2219,4 +2219,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("python_chosen", "Python を {} にしました"),
     ("settings_file", "設定のファイル(足す・直す)"),
     ("ai_destination_deleted", "宛先「{}」を消しました"),
+    ("claude_code_login_in_terminal", "Claude Code にログインしていません。端末で `claude auth login` を実行してください"),
+    ("officework_mcp_not_connected", "officework-mcp が繋がりません: {}"),
+    ("claude_code_exited", "Claude Code が終わりました(終了コード {})"),
 ];

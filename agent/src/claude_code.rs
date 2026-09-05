@@ -231,6 +231,57 @@ fn json_list(v: &[String]) -> String {
     serde_json::Value::Array(v.iter().map(|s| serde_json::Value::String(s.clone())).collect()).to_string()
 }
 
+/// **officework-mcp の在り処。** 開いている綴りの `.venv` → 設定の置き場の
+/// `.venv`(`~/.config/officework/.venv`)→ PATH の順(Python の探し方と同じ
+/// 並び)。無ければ None(状態行で「pip install officework[mcp]」を案内する)
+pub fn find_mcp(near: Option<&std::path::Path>) -> Option<PathBuf> {
+    let bin = if cfg!(windows) { "Scripts/officework-mcp.exe" } else { "bin/officework-mcp" };
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    if let Some(d) = near {
+        dirs.push(d.join(".venv"));
+    }
+    if let Ok(cwd) = std::env::current_dir() {
+        dirs.push(cwd.join(".venv"));
+    }
+    dirs.push(pyrun::venv_dir());
+    for d in dirs {
+        let p = d.join(bin);
+        if p.is_file() {
+            return Some(p);
+        }
+    }
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path)
+        .map(|d| d.join(if cfg!(windows) { "officework-mcp.exe" } else { "officework-mcp" }))
+        .find(|p| p.is_file())
+}
+
+/// パネルの宛先「Claude Code」の起動の指定を組む。作業ディレクトリは設定の
+/// 置き場の `agent/`(綴りのフォルダにすると、そこの hooks や CLAUDE.md を
+/// 読んでしまう)。`near` は開いているファイルのフォルダ(その `.venv` を先に見る)
+pub fn launch_for(
+    model: &str,
+    system: &str,
+    resume: Option<String>,
+    near: Option<&std::path::Path>,
+) -> Result<Launch, String> {
+    let mcp = find_mcp(near).ok_or_else(|| {
+        "officework-mcp がありません。次で入ります:\n  pip install \"officework[mcp]\"".to_string()
+    })?;
+    let cwd = pyrun::config_dir().join("agent");
+    std::fs::create_dir_all(&cwd).map_err(|e| format!("{}: {e}", cwd.display()))?;
+    Ok(Launch {
+        claude: "claude".into(),
+        model: if model.trim().is_empty() { "sonnet".into() } else { model.to_string() },
+        mcp_command: mcp.to_string_lossy().to_string(),
+        mcp_args: vec!["--panel".into()],
+        system: system.to_string(),
+        cwd,
+        max_turns: 30,
+        resume,
+    })
+}
+
 /// 動いている子プロセス
 pub struct ClaudeCode {
     child: Child,

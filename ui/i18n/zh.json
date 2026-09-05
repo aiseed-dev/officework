@@ -2370,5 +2370,8 @@
  "use_this": "使用这个",
  "python_chosen": "Python 现在是 {}",
  "settings_file": "设置文件(添加或修改)",
- "ai_destination_deleted": "已删除目标 {}"
+ "ai_destination_deleted": "已删除目标 {}",
+ "claude_code_login_in_terminal": "尚未登录 Claude Code。请在终端运行 `claude auth login`",
+ "officework_mcp_not_connected": "officework-mcp 未能连接: {}",
+ "claude_code_exited": "Claude Code 已退出(代码 {})"
 }

@@ -23,3 +23,5 @@ book = { path = "../book", optional = true }
 # 宛先「Claude Code」の JSON 行を読む(claude_code.rs)。lang の簡易な読み手は
 # 入れ子の content を読めない
 serde_json = "1"
+# 設定の置き場と .venv の在り処(officework-mcp を探す。claude_code.rs)
+pyrun = { path = "../pyrun" }

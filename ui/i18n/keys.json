@@ -9458,5 +9458,17 @@
  {
   "key": "ai_destination_deleted",
   "kind": "msg"
+ },
+ {
+  "key": "claude_code_login_in_terminal",
+  "kind": "msg"
+ },
+ {
+  "key": "officework_mcp_not_connected",
+  "kind": "msg"
+ },
+ {
+  "key": "claude_code_exited",
+  "kind": "msg"
  }
 ]

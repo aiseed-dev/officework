@@ -394,7 +394,7 @@ AI の客に `officework-mcp` を登録すると、こう言えます:
 * *会話の記録は、ブックの隣の `<名前>.agent.txt` に残ります。* 何を頼んで何が変わったかが、後から読めます。名前の無い新しいブックには残りません
 * **宛先は欄の下**に出ます。押すと一覧が出て、選べます
 
-一覧には3種類が並びます。自分で書いた宛先(下の `\[[ai]]`)、**鍵の環境変数が入っている提供元**(`ANTHROPIC_API_KEY` なら Anthropic、`OPENAI_API_KEY` なら OpenAI、ほかに Google・OpenRouter・Groq・Mistral・xAI。設定は要りません)、**動いている手元のモデル**(Ollama・llama.cpp・LM Studio。いつもの港が開いていれば出ます)。
+一覧には4種類が並びます。自分で書いた宛先(下の `\[[ai]]`)、**鍵の環境変数が入っている提供元**(`ANTHROPIC_API_KEY` なら Anthropic、`OPENAI_API_KEY` なら OpenAI、ほかに Google・OpenRouter・Groq・Mistral・xAI。設定は要りません)、**動いている手元のモデル**(Ollama・llama.cpp・LM Studio。いつもの港が開いていれば出ます)、そして **Claude Code**(この機械に `claude` が入っていれば出ます。Claude の定額(Pro / Max)で使えます。改変していない Claude Code をそのまま呼ぶだけで、ログインは端末で `claude auth login` を済ませておきます。officework はログインの情報に触りません)。
 
 自分で書く宛先は `~/.config/officework/settings.toml` の `\[[ai]]` に並べます。
 

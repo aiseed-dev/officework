@@ -35,7 +35,20 @@ impl Writer {
     /// マクロ(`run_macro`)はまだ足しません — 文書のマクロを
     /// サンドボックスで走らせる道は、表計算の側にしかありません
     fn agent_tools() -> Vec<lang::model::ToolDef> {
-        agent::tools::doc_tools()
+        let mut v = agent::tools::doc_tools();
+        // 文書のマクロ: adoc の字を受け渡す Python(2026-09-05)
+        v.push(agent::tools::doc_macro_tool());
+        v
+    }
+
+    /// いまの宛先の行(種類で分岐するため。`agent_dest` は Endpoint の形)
+    pub(crate) fn agent_dest_row(&self) -> Option<face::settings::AiDest> {
+        let rows = face::settings::ai_list();
+        let last = face::settings::ai_last();
+        rows.iter()
+            .find(|r| Some(r.name.as_str()) == last.as_deref())
+            .or(rows.first())
+            .cloned()
     }
 
     /// いまの宛先(名前と繋ぎ先)。表計算と同じ一覧を見ます
@@ -74,15 +87,86 @@ impl Writer {
         self.status = ui::tf!("ai_destination_remembered", next.name.clone()).into();
     }
 
-    /// パネルに1行積む。
+    /// パネルに1行積む(記録にも1行書く)。
     pub(crate) fn chat_push(&mut self, row: ChatRow) {
+        self.record_row(&row);
         self.ai_chat_log.push(row);
+    }
+
+    // ── 会話の記録(表計算と同じ形。2026-09-05)──
+    // 文書の隣の `<名前>.agent.txt` に1行1件。名前の無い文書は記録しない
+
+    fn record_path(&self) -> Option<std::path::PathBuf> {
+        let p = self.path.as_ref()?;
+        let stem = p.file_stem()?.to_string_lossy().to_string();
+        Some(p.with_file_name(format!("{stem}.agent.txt")))
+    }
+
+    fn record_row(&mut self, row: &ChatRow) {
+        let Some(p) = self.record_path() else { return };
+        let esc = |s: &str| s.replace('\\', "\\\\").replace('\n', "\\n");
+        let line = match row {
+            ChatRow::Me(t) => format!("人: {}", esc(t)),
+            ChatRow::Ai(t) => format!("答え: {}", esc(t)),
+            ChatRow::Tool(t, one) => format!("道具: {}{}", esc(t), if *one { "(1手)" } else { "" }),
+        };
+        use std::io::Write as _;
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&p) {
+            let _ = writeln!(f, "{line}");
+        }
+    }
+
+    fn record_header(&mut self) {
+        let Some(p) = self.record_path() else { return };
+        let secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+        let off: i64 = std::env::var("JO_TZ_OFF_HOURS").ok().and_then(|v| v.parse().ok()).unwrap_or(9);
+        let (y, m, d) = book::calc::civil_from_days((secs + off * 3600).div_euclid(86400));
+        let hm = (secs + off * 3600).rem_euclid(86400);
+        use std::io::Write as _;
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&p) {
+            let _ = writeln!(f, "== {y}-{m:02}-{d:02} {:02}:{:02}", hm / 3600, hm % 3600 / 60);
+        }
+    }
+
+    /// 記録の読み直し — 最後の会話ぶんを欄へ戻す(左パネルを開いたとき、欄が
+    /// 空なら)。モデルの履歴は戻さない — 見えるのは控え
+    pub(crate) fn agent_load_record(&mut self) {
+        if !self.ai_chat_log.is_empty() {
+            return;
+        }
+        let Some(p) = self.record_path() else { return };
+        let Ok(s) = std::fs::read_to_string(&p) else { return };
+        let lines: Vec<&str> = s.lines().collect();
+        let from = lines.iter().rposition(|l| l.starts_with("== ")).map(|i| i + 1).unwrap_or(0);
+        let un = |s: &str| s.replace("\\n", "\n").replace("\\\\", "\\");
+        let mut rows = Vec::new();
+        for l in &lines[from..] {
+            if let Some(t) = l.strip_prefix("人: ") {
+                rows.push(ChatRow::Me(un(t)));
+            } else if let Some(t) = l.strip_prefix("答え: ") {
+                rows.push(ChatRow::Ai(un(t)));
+            } else if let Some(t) = l.strip_prefix("道具: ") {
+                let one = t.ends_with("(1手)");
+                rows.push(ChatRow::Tool(un(t.trim_end_matches("(1手)")), one));
+            }
+        }
+        if rows.is_empty() {
+            return;
+        }
+        self.ai_chat_log.push(ChatRow::Tool(ui::t!("previous_record").to_string(), false));
+        self.ai_chat_log.extend(rows);
     }
 
     /// **新しい会話にする。** やりとりも履歴も捨てます(文書は触りません)
     pub(crate) fn chat_reset(&mut self) {
         self.ai_chat_log.clear();
         self.agent = None;
+        if let Some(mut cc) = self.agent_cc.take() {
+            cc.stop();
+        }
         self.agent_shown = 0;
         self.agent_calls.clear();
         self.agent_save = None;
@@ -112,6 +196,10 @@ impl Writer {
             self.status = ui::t!("agent_no_destination").into();
             return;
         };
+        if self.agent.is_none() {
+            // 新しい会話 — 記録に日付つきの見出しを置く
+            self.record_header();
+        }
         self.chat_push(ChatRow::Me(purpose.clone()));
         // **選んでいる所は付け合わせ**(表計算が選んだ範囲を付けるのと同じ)。
         // 画面には用件だけを出します — 付け足しまで見せると読みづらいので
@@ -128,7 +216,114 @@ impl Writer {
         self.ai_busy = true;
         self.agent_state = AgentState::Connecting;
         self.status = ui::tf!("asking_ai", name, ui::t!("conversation")).into();
+        // **宛先「Claude Code」**は、改変していない claude を子プロセスで(定額の道)。
+        // 道具は officework-mcp が受け口へ運ぶので、ここでは道具を回さない
+        if self.agent_dest_row().is_some_and(|r| r.kind() == face::settings::AiKind::ClaudeCode) {
+            self.agent_send_cc(user, cx);
+            return;
+        }
         self.agent_step(ep, msgs, cx);
+    }
+
+    /// 宛先「Claude Code」に1つ送り、返りを刻みで拾う(agent::claude_code)
+    fn agent_send_cc(&mut self, user: String, cx: &mut Context<Self>) {
+        use agent::claude_code as cc;
+        if self.agent_cc.is_none() {
+            if !cc::logged_in("claude") {
+                self.ai_busy = false;
+                self.agent_state = AgentState::Unset;
+                self.status = ui::t!("claude_code_login_in_terminal").into();
+                return;
+            }
+            let model = self.agent_dest_row().map(|r| r.model).unwrap_or_default();
+            let near = self.path.as_ref().and_then(|p| p.parent().map(|d| d.to_path_buf()));
+            let launch = match cc::launch_for(&model, AGENT_SYSTEM, None, near.as_deref()) {
+                Ok(l) => l,
+                Err(e) => {
+                    self.ai_busy = false;
+                    self.agent_state = AgentState::Failed;
+                    self.chat_push(ChatRow::Ai(format!("({e})")));
+                    self.status = format!("AI: {e}").into();
+                    return;
+                }
+            };
+            match cc::ClaudeCode::spawn(&launch) {
+                Ok(p) => self.agent_cc = Some(p),
+                Err(e) => {
+                    self.ai_busy = false;
+                    self.agent_state = AgentState::Failed;
+                    self.chat_push(ChatRow::Ai(format!("({e})")));
+                    self.status = format!("AI: {e}").into();
+                    return;
+                }
+            }
+        }
+        if let Err(e) = self.agent_cc.as_mut().expect("上で置いた").send(&user) {
+            self.ai_busy = false;
+            self.agent_state = AgentState::Failed;
+            self.chat_push(ChatRow::Ai(format!("({e})")));
+            return;
+        }
+        // 100ms ごとに拾う(rpc の 30ms と同じ作法。往復が終わるまで)
+        cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor().timer(std::time::Duration::from_millis(100)).await;
+                let done = this.update(cx, |this, cx| {
+                    let d = this.agent_cc_poll();
+                    cx.notify();
+                    d
+                });
+                match done {
+                    Ok(false) => continue,
+                    _ => break,
+                }
+            }
+        })
+        .detach();
+    }
+
+    /// 子プロセスの返りを拾って画面へ。1往復が終わったら true
+    fn agent_cc_poll(&mut self) -> bool {
+        use agent::claude_code::Cc;
+        let Some(cc) = self.agent_cc.as_mut() else { return true };
+        let got = cc.try_recv();
+        let mut done = false;
+        for c in got {
+            match c {
+                Cc::Init { mcp_ok, errors, .. } => {
+                    self.agent_state = AgentState::Connected;
+                    if !mcp_ok {
+                        self.chat_push(ChatRow::Tool(ui::tf!("officework_mcp_not_connected", errors.join(" / ")).to_string(), false));
+                    }
+                }
+                Cc::Event(e) => {
+                    if let Some(ag) = self.agent.as_mut() {
+                        ag.log.push(e);
+                    }
+                    self.agent_drain_log();
+                }
+                Cc::Retry(_) => self.agent_state = AgentState::Connecting,
+                Cc::Done { ok, text, .. } => {
+                    if !ok {
+                        self.chat_push(ChatRow::Ai(format!("({text})")));
+                        self.agent_state = AgentState::Failed;
+                    } else {
+                        self.agent_state = AgentState::Connected;
+                        self.status = ui::t!("answered_left_panel").into();
+                    }
+                    self.ai_busy = false;
+                    done = true;
+                }
+                Cc::Exit(code) => {
+                    self.chat_push(ChatRow::Ai(ui::tf!("claude_code_exited", code.unwrap_or(-1)).to_string()));
+                    self.agent_state = AgentState::Failed;
+                    self.ai_busy = false;
+                    self.agent_cc = None;
+                    done = true;
+                }
+            }
+        }
+        done
     }
 
     /// モデルとの1往復を裏で待ち、道具はメインスレッドで実行して続けます。
@@ -197,6 +392,11 @@ impl Writer {
                 let path = ops::Jobj::parse(args).and_then(|o| o.str("path"));
                 self.agent_save = Some((c, path));
                 cx.notify();
+                return;
+            }
+            if c.name == "run_macro" {
+                // マクロは裏の糸で走る(終わりの callback が続きを呼ぶ)
+                self.agent_run_macro(c, cx);
                 return;
             }
             let r = self.agent_call_tool(&c);
@@ -276,6 +476,102 @@ impl Writer {
         for r in rows {
             self.chat_push(r);
         }
+    }
+
+    /// 裏に跨った道具(マクロ)が終わった。結果を入れて、残りを続ける
+    fn agent_finish_call(&mut self, c: lang::model::ToolCall, r: Result<String, String>, cx: &mut Context<Self>) {
+        let ag = self.agent.as_mut().expect("agent_send が置いた");
+        ag.tool_result(&c, r);
+        self.agent_drain_log();
+        if !self.agent_calls.is_empty() {
+            self.agent_calls.remove(0);
+        }
+        self.agent_run_calls(cx);
+    }
+
+    /// **文書のマクロ**(2026-09-05)。docx を通さず、文書の AsciiDoc の字を
+    /// `src` で渡し、`out` に入った字を読み直して1手で入れる。コードは見える
+    /// .py として文書の隣に置く(見えないコードは運ばない)。実行は
+    /// サンドボックス(pyrun。網なし・60秒)。誤りの尻尾はモデルに返して直させる
+    fn agent_run_macro(&mut self, c: lang::model::ToolCall, cx: &mut Context<Self>) {
+        let args = if c.arguments.trim().is_empty() { "{}" } else { c.arguments.as_str() };
+        let o = ops::Jobj::parse(args);
+        let Some(code) = o.as_ref().and_then(|o| o.str("code")) else {
+            self.agent_finish_call(c, Err("code がありません".into()), cx);
+            return;
+        };
+        let name: String = o
+            .as_ref()
+            .and_then(|o| o.str("name"))
+            .unwrap_or_else(|| "agent_macro".into())
+            .chars()
+            .map(|ch| if ch.is_alphanumeric() || ch == '_' || ch == '-' { ch } else { '_' })
+            .collect();
+        if let Some(dir) = self.path.as_ref().and_then(|p| p.parent()) {
+            if let Err(e) = std::fs::write(dir.join(format!("{name}.py")), code.as_bytes()) {
+                self.agent_finish_call(c, Err(format!("マクロを置けません: {e}")), cx);
+                return;
+            }
+        }
+        self.flush_target();
+        let src = kumihan::adoc::write(&self.doc);
+        let dir = pyrun::cage_work_dir("jo-wagent");
+        let _ = std::fs::create_dir_all(&dir);
+        let in_a = dir.join("in.adoc");
+        let out_a = dir.join("out.adoc");
+        if let Err(e) = std::fs::write(&in_a, src) {
+            self.agent_finish_call(c, Err(format!("文書を渡せません: {e}")), cx);
+            return;
+        }
+        let script = doc_macro_script(&in_a, &out_a, &code);
+        self.status = ui::t!("running_python").into();
+        let task = cx.background_executor().spawn(async move {
+            let py_path = dir.join("run.py");
+            std::fs::write(&py_path, script).map_err(|e| e.to_string())?;
+            let py = pyrun::find_python();
+            let venv = std::fs::canonicalize(".venv").unwrap_or_default();
+            let Some(mut cmd) = pyrun::caged_python(&py, &dir, &[venv], false) else {
+                return Err(if cfg!(target_os = "linux") {
+                    ui::t!("cant_build_sandbox_code").to_string()
+                } else {
+                    ui::t!("os_no_sandbox_code").to_string()
+                });
+            };
+            let (ok, out, err) = pyrun::run_with_timeout(cmd.arg(&py_path), 60).map_err(|e| match e {
+                pyrun::RunErr::Spawn(e) => format!("Python が起動できません: {e}"),
+                pyrun::RunErr::Timeout(s) => ui::tf!("stopped_after_seconds_endless", s).to_string(),
+                pyrun::RunErr::Wait(e) => e,
+            })?;
+            let out = out.trim().to_string();
+            if !ok {
+                let tail = err.lines().rev().take(6).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
+                return Err(if tail.trim().is_empty() { "原因不明".into() } else { tail });
+            }
+            std::fs::read_to_string(&out_a).map_err(|e| format!("結果が読めません: {e}")).map(|s| (s, out))
+        });
+        let task: gpui::Task<Result<(String, String), String>> = task;
+        cx.spawn(async move |this, cx| {
+            let r = task.await;
+            let _ = this.update(cx, |this, cx| {
+                let reply = match r {
+                    Ok((adoc, out)) => match kumihan::adoc::parse_full(&adoc) {
+                        Ok((d, _notes)) => {
+                            // 1手として取り込む(頭の属性はそのまま、本文だけ差し替え)
+                            this.acted = false;
+                            this.checkpoint(false);
+                            this.doc.blocks = d.blocks;
+                            this.after_block_edit();
+                            Ok(if out.is_empty() { "終わりました".to_string() } else { out })
+                        }
+                        Err(e) => Err(format!("直した字が AsciiDoc として読めません: {e}")),
+                    },
+                    Err(e) => Err(e),
+                };
+                this.agent_finish_call(c, reply, cx);
+                cx.notify();
+            });
+        })
+        .detach();
     }
 
     /// 保存の確認に人が答えた。答えは道具の結果としてモデルにも返り、
@@ -371,10 +667,74 @@ impl Writer {
     }
 }
 
+/// 文書のマクロの台本。`src` を渡し、`out` を受け取る。**利用者のコードの前後
+/// だけ**をこちらが書く(python-docx は使わない)
+pub(crate) fn doc_macro_script(in_a: &std::path::Path, out_a: &std::path::Path, code: &str) -> String {
+    format!(
+        concat!(
+            "import io, sys\n",
+            "sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')\n",
+            "src = open({in_a:?}, encoding='utf-8').read()\n",
+            "out = None\n",
+            "# ---- エージェントのコード ----\n",
+            "{code}\n",
+            "# ----\n",
+            "if out is None:\n",
+            "    raise SystemExit('out に、直した AsciiDoc の字を入れてください')\n",
+            "if not isinstance(out, str):\n",
+            "    raise SystemExit('out は字(str)にしてください')\n",
+            "open({out_a:?}, 'w', encoding='utf-8').write(out)\n"
+        ),
+        in_a = in_a.to_string_lossy(),
+        out_a = out_a.to_string_lossy(),
+        code = code
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use crate::*;
     use lang::model::ToolCall;
+
+    /// マクロの台本は src を渡して out を受け取る。out が無ければ止まる
+    #[test]
+    fn the_document_macro_script_hands_src_and_takes_out() {
+        let s = crate::agentloop::doc_macro_script(
+            std::path::Path::new("/tmp/in.adoc"),
+            std::path::Path::new("/tmp/out.adoc"),
+            "out = src.replace('旧', '新')",
+        );
+        assert!(s.contains("src = open(\"/tmp/in.adoc\""));
+        assert!(s.contains("out = src.replace('旧', '新')"));
+        assert!(s.contains("if out is None"));
+        assert!(s.contains("write(out)"));
+        assert!(!s.contains("docx"), "python-docx を通さない");
+    }
+
+    /// 会話の記録: 名前のある文書なら隣の .agent.txt に残り、開き直すと戻る
+    #[gpui::test]
+    fn the_conversation_is_recorded_next_to_the_document(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("officework-wrec-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("報告.adoc");
+        std::fs::write(&p, "本文。\n").unwrap();
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.native = false;
+            this.set_doc(kumihan::adoc::parse("本文。\n").unwrap());
+            this.path = Some(p.clone());
+            this.chat_push(ChatRow::Me("短くして".into()));
+            this.chat_push(ChatRow::Tool("doc_replace_blocks 2".into(), true));
+            this.chat_push(ChatRow::Ai("直しました".into()));
+            let rec = std::fs::read_to_string(dir.join("報告.agent.txt")).unwrap();
+            assert!(rec.contains("人: 短くして") && rec.contains("道具: doc_replace_blocks 2(1手)") && rec.contains("答え: 直しました"), "{rec}");
+            this.ai_chat_log.clear();
+            this.agent_load_record();
+            assert_eq!(this.ai_chat_log.len(), 4, "控えの印 + 3 行: {:?}", this.ai_chat_log);
+            assert_eq!(this.ai_chat_log[3], ChatRow::Ai("直しました".into()));
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     fn call(name: &str, args: &str) -> ToolCall {
         ToolCall { id: "c1".into(), name: name.into(), arguments: args.into() }
@@ -436,8 +796,10 @@ mod tests {
             // 宛先が決まっていなければ、送りは断って状態を言う
             this.ai_chat_in = Editor::new("直して");
             this.agent_panel_click(ui::agentpanel::id::SEND, cx);
+            // この機械の宛先の一覧で答えが変わる(宛先「Claude Code」なら、
+            // officework-mcp が無い試験の環境では Failed と言って止まる)
             assert!(
-                this.ai_busy || this.agent_state == AgentState::Unset,
+                this.ai_busy || matches!(this.agent_state, AgentState::Unset | AgentState::Failed),
                 "送りが何も起こさない"
             );
         });

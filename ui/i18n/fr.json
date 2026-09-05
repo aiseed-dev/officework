@@ -2370,5 +2370,8 @@
  "use_this": "Utiliser",
  "python_chosen": "Python est maintenant {}",
  "settings_file": "Fichier de réglages (ajouter ou modifier)",
- "ai_destination_deleted": "Destination {} supprimée"
+ "ai_destination_deleted": "Destination {} supprimée",
+ "claude_code_login_in_terminal": "Non connecté à Claude Code. Exécutez `claude auth login` dans un terminal",
+ "officework_mcp_not_connected": "officework-mcp ne s'est pas connecté : {}",
+ "claude_code_exited": "Claude Code s'est terminé (code {})"
 }

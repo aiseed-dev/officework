@@ -136,6 +136,7 @@ dependencies = [
  "book",
  "lang",
  "ops",
+ "pyrun",
  "serde_json",
 ]
 

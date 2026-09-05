@@ -470,6 +470,7 @@ impl Calc {
             agent_state: AgentState::Idle,
             agent_calls: Vec::new(),
             agent_save: None,
+            agent_cc: None,
             agent_picking: None,
             py_picking: None,
             ai_editing: false,
@@ -2815,7 +2816,123 @@ impl Calc {
         self.ai_busy = true;
         self.agent_state = AgentState::Connecting;
         self.status = ui::tf!("asking_ai", name, ui::t!("conversation")).into();
+        // **宛先「Claude Code」**は、改変していない claude を子プロセスで(定額の道)。
+        // 道具は officework-mcp が受け口へ運ぶので、ここでは道具を回さない
+        if self.agent_dest_row().is_some_and(|r| r.kind() == face::settings::AiKind::ClaudeCode) {
+            self.agent_send_cc(user, cx);
+            return;
+        }
         self.agent_step(ep, msgs, cx);
+    }
+
+    /// いまの宛先の行(種類で分岐するため。`agent_dest` は Endpoint の形)
+    pub(crate) fn agent_dest_row(&self) -> Option<face::settings::AiDest> {
+        let rows = face::settings::ai_list();
+        if rows.is_empty() {
+            return None;
+        }
+        Some(pick_ai_dest(&rows, face::settings::ai_last().as_deref()).clone())
+    }
+
+    /// 宛先「Claude Code」に1つ送り、返りを刻みで拾う(agent::claude_code。
+    /// 文章の画面と同じ作り)
+    fn agent_send_cc(&mut self, user: String, cx: &mut Context<Self>) {
+        use agent::claude_code as cc;
+        if self.agent_cc.is_none() {
+            if !cc::logged_in("claude") {
+                self.ai_busy = false;
+                self.agent_state = AgentState::Unset;
+                self.status = ui::t!("claude_code_login_in_terminal").into();
+                return;
+            }
+            let model = self.agent_dest_row().map(|r| r.model).unwrap_or_default();
+            let near = self.path.as_ref().and_then(|p| p.parent().map(|d| d.to_path_buf()));
+            let launch = match cc::launch_for(&model, AGENT_SYSTEM, None, near.as_deref()) {
+                Ok(l) => l,
+                Err(e) => {
+                    self.ai_busy = false;
+                    self.agent_state = AgentState::Failed;
+                    self.chat_push(ChatRow::Ai(format!("({e})")));
+                    self.status = format!("AI: {e}").into();
+                    return;
+                }
+            };
+            match cc::ClaudeCode::spawn(&launch) {
+                Ok(p) => self.agent_cc = Some(p),
+                Err(e) => {
+                    self.ai_busy = false;
+                    self.agent_state = AgentState::Failed;
+                    self.chat_push(ChatRow::Ai(format!("({e})")));
+                    self.status = format!("AI: {e}").into();
+                    return;
+                }
+            }
+        }
+        if let Err(e) = self.agent_cc.as_mut().expect("上で置いた").send(&user) {
+            self.ai_busy = false;
+            self.agent_state = AgentState::Failed;
+            self.chat_push(ChatRow::Ai(format!("({e})")));
+            return;
+        }
+        cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor().timer(std::time::Duration::from_millis(100)).await;
+                let done = this.update(cx, |this, cx| {
+                    let d = this.agent_cc_poll();
+                    cx.notify();
+                    d
+                });
+                match done {
+                    Ok(false) => continue,
+                    _ => break,
+                }
+            }
+        })
+        .detach();
+    }
+
+    /// 子プロセスの返りを拾って画面へ。1往復が終わったら true
+    fn agent_cc_poll(&mut self) -> bool {
+        use agent::claude_code::Cc;
+        let Some(cc) = self.agent_cc.as_mut() else { return true };
+        let got = cc.try_recv();
+        let mut done = false;
+        for c in got {
+            match c {
+                Cc::Init { mcp_ok, errors, .. } => {
+                    self.agent_state = AgentState::Connected;
+                    if !mcp_ok {
+                        self.chat_push(ChatRow::Tool(ui::tf!("officework_mcp_not_connected", errors.join(" / ")).to_string(), false));
+                    }
+                }
+                Cc::Event(e) => {
+                    if let Some(ag) = self.agent.as_mut() {
+                        ag.log.push(e);
+                    }
+                    self.agent_drain_log();
+                }
+                Cc::Retry(_) => self.agent_state = AgentState::Connecting,
+                Cc::Done { ok, text, .. } => {
+                    if !ok {
+                        self.chat_push(ChatRow::Ai(format!("({text})")));
+                        self.agent_state = AgentState::Failed;
+                    } else {
+                        self.agent_state = AgentState::Connected;
+                        self.status = ui::t!("answered_left_panel").into();
+                    }
+                    self.ai_busy = false;
+                    done = true;
+                }
+                Cc::Exit(code) => {
+                    self.chat_push(ChatRow::Ai(ui::tf!("claude_code_exited", code.unwrap_or(-1)).to_string()));
+                    self.agent_state = AgentState::Failed;
+                    self.ai_busy = false;
+                    self.agent_cc = None;
+                    done = true;
+                }
+            }
+        }
+        done
     }
 
     /// calc が名乗る道具: 表の8つ(ops へ直結)+ マクロ
@@ -3443,6 +3560,9 @@ impl Calc {
     pub(crate) fn chat_reset(&mut self) {
         self.chat_log.clear();
         self.agent = None;
+        if let Some(mut cc) = self.agent_cc.take() {
+            cc.stop();
+        }
         self.agent_shown = 0;
         self.agent_calls.clear();
         self.agent_save = None;

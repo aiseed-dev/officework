@@ -2219,4 +2219,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("python_chosen", "Python is now {}"),
     ("settings_file", "Settings file (add or edit)"),
     ("ai_destination_deleted", "Removed the destination {}"),
+    ("claude_code_login_in_terminal", "Not signed in to Claude Code. Run `claude auth login` in a terminal"),
+    ("officework_mcp_not_connected", "officework-mcp did not connect: {}"),
+    ("claude_code_exited", "Claude Code exited (code {})"),
 ];

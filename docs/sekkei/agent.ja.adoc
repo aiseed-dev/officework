@@ -376,7 +376,13 @@ agent/src/claude_code.rs の頭に書いた。
 - 偽の `claude`(Python の台本)で起動 → 送る → 受ける → 終える を試験で通す
 
 パネルへの結線(宛先の一覧に「Claude Code」を出し、`agent_send` で
-`ClaudeCode` を持つ)は、writer のパネルの共通化(段階10)と同じ回に。
+`ClaudeCode` を持つ)は 2026-09-05 に入れた(writer と calc の両方。
+`agent_dest_row().kind()` で分岐し、`agent_send_cc` が子プロセスを起こして
+100ms ごとに `try_recv` で拾う。officework-mcp は `launch_for` が綴りの `.venv`
+→ 設定の `.venv` → PATH の順で探す。ログインしていなければ状態行で
+「端末で claude auth login」)。同じ回で writer に会話の記録(`<名前>.agent.txt`)と
+文書のマクロ(`run_macro`: adoc の字を `src` で渡し `out` を読み直して1手)を
+足した。
 
 **文書の道具の往復も本物で確かめた**(2026-09-05)。動いている writer
 (報告書.docx)に対し、`claude -p`(Max のログイン)+ `officework-mcp --panel`

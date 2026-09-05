@@ -148,6 +148,24 @@ pub fn doc_tools() -> Vec<ToolDef> {
     ]
 }
 
+/// **文書のマクロの道具**(2026-09-05)。表の run_macro と違い、**docx を通さず、
+/// 文書の AsciiDoc の字を受け渡す**(決め: agent.ja.adoc「マクロは docx を通さない」)。
+/// コードには `src`(文書の全部の AsciiDoc の字)が渡り、直した字を `out` に
+/// 入れて返す。本体はそれを読み直して1手で入れる
+pub fn doc_macro_tool() -> ToolDef {
+    ToolDef {
+        name: "run_macro".into(),
+        description: "Python のマクロを書いて動かす(文書)。コードでは src(文書の全部の \
+                      AsciiDoc の字。見出しは == 、段落は空行で区切り、表は |=== )が使える。\
+                      直した字を out に入れると、本体がそれを読み直して1手で入れる(Ctrl+Z で \
+                      戻せる)。print の出力が返る。一括の直し(見出しを一段下げる・語を \
+                      全部置き替える など)はこれで解く。python-docx は使わない"
+            .into(),
+        parameters: r#"{"type":"object","properties":{"name":{"type":"string","description":"マクロの名前(ファイル名になる)"},"code":{"type":"string"}},"required":["code"]}"#
+            .into(),
+    }
+}
+
 /// 文書の道具呼びを writer の受け口の1行にする(名前は `doc_` を外した動詞)
 pub fn doc_line_for(name: &str, o: &Jobj) -> Result<String, String> {
     let verb = name.strip_prefix("doc_").ok_or_else(|| format!("知らない道具です: {name}"))?;
