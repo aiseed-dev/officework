@@ -384,6 +384,18 @@ agent/src/claude_code.rs の頭に書いた。
 文書のマクロ(`run_macro`: adoc の字を `src` で渡し `out` を読み直して1手)を
 足した。
 
+**パネルそのものも本物で通した**(2026-09-05)。writer(報告書.docx)の
+左パネルで宛先を「Claude Code」にし、欄に「Shorten block 2 to two short
+sentences.」と打って Enter を押すと、`claude -p`(Max のログイン、モデルは
+sonnet)が起き、パネルには doc_outline → doc_read_blocks 2 →
+doc_replace_blocks 2(1手)の3行と答えが並び、文書の段落が替わった。隣の
+`報告書.agent.txt` に同じ4行が書かれ、本文を押して Ctrl+Z を1回押すと元の
+段落に戻った(受け口で読んで確かめた)。子プロセスは会話の間は生きたままで、
+「新しい会話」か終了で止める。
+踏んだ穴(試験の道具の側): XWayland では、XTEST で打つ間に X の入力の焦点が
+writer の窓から離れ、途中から打鍵が別の窓へ行く。tools/ribbon_sweep.py と
+同じく、1打鍵ごとに焦点を確かめて取り直すと全部届く。
+
 **文書の道具の往復も本物で確かめた**(2026-09-05)。動いている writer
 (報告書.docx)に対し、`claude -p`(Max のログイン)+ `officework-mcp --panel`
 で「概況の段落を2つの短い文に」と頼むと、doc_outline → doc_read_blocks(1〜3、
@@ -607,8 +619,9 @@ Run・Font)をエンジンの上に写した互換層で、writer のマクロ�
   outline / fill_fields)。rpc.rs と officework-mcp と _doc.py に同時に出す。
   試験は偽のモデルで往復
 . writer の左パネルを共通の描きに替え、AiJob::Chat の囲みの形を外す。
-  run_macro を道具として繋ぐ。実機で「1手で戻ること」と「記入欄を埋めて PDF
-  まで通ること」を確かめる
+  run_macro を道具として繋ぐ。実機で「1手で戻ること」を確かめる
+  (2026-09-05 済 — 宛先「Claude Code」で通した。記入欄の試験は
+  発注者の指示で行わない)
 . `officework.doc` にブロックの API を足す(道具と同じ名前)。マクロの
   system の文をその形に替える
 . 手引き(docs/ja/writer-manual)に calc と同じ節を書き、python-manual・
@@ -708,8 +721,8 @@ Run・Font)をエンジンの上に写した互換層で、writer のマクロ�
   `macro_start` / `macro_status`(Host の口。受け口を止めないよう、始めて
   番号を返し、様子は別の動詞で見る。b1be89c6)。残りは calc の Host の実装
   (agent_run_macro と同じ道を番号つきで。Opus)、パネルの宛先の一覧に
-  「Claude Code」を出して `ClaudeCode` を持つ結線(Opus。段階10 で一覧に出る所
-  まで済)、Codex、「1手で戻ること」の実機の確認)
+  「Claude Code」を出して `ClaudeCode` を持つ結線と「1手で戻ること」の実機の
+  確認は 2026-09-05 済(上の「パネルそのものも本物で通した」)。残りは Codex)
 . 選ぶ画面(モデルの一覧の取得、絞り込み、並び)。実機で確かめる
 . anthropic-messages の口(lang::model)。**アプリの公開までに**(本番は
   OpenAI 互換の口に頼らない)
