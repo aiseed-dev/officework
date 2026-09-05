@@ -617,7 +617,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("solver_parameters", "ソルバーのパラメータ"),
     ("add", "追加"),
     ("change", "変更"),
-    ("delete", "消す"),
+    ("delete", "削除"),
     ("make_unconstrained_variables_non", "制約のない変数を非負にする"),
     ("solving_method", "解法の方法"),
     ("simplex_lp", "単体法 LP"),
