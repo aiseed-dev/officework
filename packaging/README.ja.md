@@ -65,6 +65,39 @@ cp /opt/officework/share/officework/plugins/*.py ~/.config/officework/plugins/  
 
 matplotlib や polars を使う仕事は、選んだ環境にそれらが入っている必要が
 あります(`pip install polars matplotlib`)。
+
+## マクロが「サンドボックスが止められています」と言うとき
+
+**Ubuntu 24.04 以降で、`.deb` を使わずに置いた場合**に出ます。
+
+マクロは bubblewrap のサンドボックスの中で走ります。Ubuntu 24.04 から
+`kernel.apparmor_restrict_unprivileged_userns` が既定で 1 になり、
+**AppArmor のプロファイルを持たないプロセス**が作る利用者名前空間は
+権限を落とされます。端末やランチャーから起こしたアプリがこれに当たり、
+サンドボックスが組めません。
+
+`.deb` で入れた場合は、入れる回にプロファイルを置くので何もしなくて
+構いません。tar.gz や自分で組んだ物は、次の1枚を置いてください
+(`/opt/officework/bin/officework` の所は、実行ファイルの実際の道に
+直します)。
+
+```
+sudo tee /etc/apparmor.d/officework > /dev/null <<'EOF'
+abi <abi/4.0>,
+include <tunables/global>
+
+profile officework /opt/officework/bin/officework flags=(unconfined) {
+  userns,
+
+  include if exists <local/officework>
+}
+EOF
+sudo apparmor_parser -r -T -W /etc/apparmor.d/officework
+```
+
+**中身は何も制限しません。** 名前空間を作れるようにするだけで、
+守るのはサンドボックスの側です(Chrome や Electron のアプリも同じ形の
+プロファイルを置いています)。
 `~/.config/officework/plugins/` に `.py` を置くだけで、`def` の名前がそのまま
 セルの関数になります(日本語の名前も使えます)。
 
