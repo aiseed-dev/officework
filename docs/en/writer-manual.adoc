@@ -301,18 +301,24 @@ The panel *takes space* (it never covers the page) and scrolls if its contents g
 
 *The AI tab has been removed.* Its eleven buttons (summarize, rewrite, make polite, …) were replaced by *a conversation in the left panel* — you can just type "make this paragraph polite", and you can ask for things no button could express.
 
-Open it with *View tab > Navigation* (left panel), then the *AI* ear.
+Open it with *View tab > Left panel*.
 
 * *The selection is what you are asking about* (with nothing selected, the whole document)
-* *Revised text is shown before it goes in.* Press Apply and it replaces the selection, or is inserted after the cursor if nothing is selected. Either way *one Ctrl+Z* undoes it
-* Requests that don't change the text (advice on wording) are simply answered
+* *Requests that change the document are carried out by the AI on the spot.* The document is a sequence of blocks — headings, paragraphs, tables, form fields. The AI first looks at that outline, reads only the blocks it needs, and rewrites them by number; it never rereads a long document in full. Each such line is marked as one step and is *one Ctrl+Z* away. There is no "are you sure" beforehand
+* *The AI never invents values.* Fixed facts such as names, numbers and dates come only from what you said or from material you pointed it at; when unsure, it asks
+* Requests that don't change the text (advice on wording, what something means) are simply answered
+* *The only thing you press is Save.* When the AI asks to save, a confirmation button appears
+* *The conversation continues.* "Now make that paragraph a little shorter" works. *"New conversation"* clears the thread (the document is untouched)
+* Exporting to PDF works too (say where the file should go)
+
+*Not there yet*: the AI writing and running a Python macro exists on the spreadsheet side, not yet for documents. The conversation record file (`<name>.agent.txt` for workbooks) is not written for documents yet either.
 
 *Two things stayed on the ribbon* — work the conversation cannot do:
 
 * *Home > Furigana* — what goes in is ruby _formatting_, not plain text
 * *Plugins > Write a macro* — it puts a .py in the plugins folder (never run automatically; read it, then run it yourself)
 
-*Choosing the destination* lives in File > Advanced settings, "AI destination".
+*The destination* is shown under the input box. Pressing it opens the list to choose from. The list is built the same way as in the spreadsheet manual, "AI — talk to it in the left panel" (`\[[ai]]` entries in `~/.config/officework/settings.toml`; providers whose key is in an environment variable, and local model servers that are running, appear by themselves).
 Unavailable destinations *say why on the spot*.
 
 == Proofreading (review)

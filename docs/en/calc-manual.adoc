@@ -322,9 +322,11 @@ Open it with *View tab > Left panel*.
 * *The conversation continues.* "Now sort that ascending instead" works — everything since the last "New conversation" is sent along
 * *"New conversation"* clears the thread (the sheet is untouched)
 * *The conversation is recorded next to the workbook* as `<name>.agent.txt`, so what was asked and what changed can be read later. An unnamed new workbook records nothing
-* *The destination* is shown under the input box. Pressing it switches to the next one
+* *The destination* is shown under the input box. Pressing it opens the list to choose from
 
-Destinations are listed as `\[[ai]]` entries in `~/.config/officework/settings.toml`.
+The list holds three kinds of entries: destinations you wrote yourself (the `\[[ai]]` entries below), *providers whose key is in an environment variable* (`ANTHROPIC_API_KEY` gives Anthropic, `OPENAI_API_KEY` gives OpenAI; also Google, OpenRouter, Groq, Mistral and xAI — no settings needed), and *local model servers that are running* (Ollama, llama.cpp, LM Studio — they appear when their usual port is open).
+
+Destinations you write yourself are `\[[ai]]` entries in `~/.config/officework/settings.toml`.
 
 [source,toml]
 ----
@@ -337,7 +339,7 @@ key_env = "OFFICE_API_KEY"   # name of the environment variable holding the key
 ----
 
 Without any `\[[ai]]`, the `ai_url` / `ai_model` lines below are used as the single destination; without those, the `OFFICE_URL` environment variable.
-The "AI destination" row in File > Advanced settings shows the same list: the current destination's name, and pressing it switches to the next one. If the list is empty, the row tells you to add an `\[[ai]]` entry.
+The "AI destination" row in File > Advanced settings shows the same list and the current destination's name. If the list is empty, the row tells you to add an `\[[ai]]` entry.
 
 If a destination cannot be reached, the app *says why on the spot*.
 
