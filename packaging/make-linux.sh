@@ -80,6 +80,10 @@ ln -sf "/opt/officework/officework" "$DEB/usr/bin/officework"
 # マクロのサンドボックスがこれを使います。入っていない機械では、他所から
 # 来たコードは実行を断る作りなので、機能が1つ丸ごと使えません。
 # 「入っていれば効く」だと、守りが効くかどうかが機械任せになります。
+#
+# **python3 は Recommends です**(2026-09-04。同梱をやめた分)。アプリは
+# Python 無しでも動きます — 要るのはマクロと重い集計のときだけです。
+# 入っていれば、設定の「Python の場所」の一覧にも出ます
 cat > "$DEB/DEBIAN/control" <<CTRL
 Package: officework
 Version: ${VER}
@@ -87,7 +91,7 @@ Section: office
 Priority: optional
 Architecture: amd64
 Depends: libxkbcommon0, libxkbcommon-x11-0, libxcb1, libxcb-xkb1, libfontconfig1, bubblewrap
-Recommends: fonts-noto-cjk
+Recommends: fonts-noto-cjk, python3
 Maintainer: aiseed-dev <https://github.com/aiseed-dev/officework>
 Description: officework — 表計算と文書(Python でマクロが書ける)
  xlsx と docx を読み書きする、ネイティブの表計算とワープロ。
