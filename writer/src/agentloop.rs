@@ -578,6 +578,11 @@ impl Writer {
         })?;
         let out = out.trim().to_string();
         if !ok {
+            // サンドボックスが機械の設定(Ubuntu 24.04 以降の利用者名前空間の
+            // 制限)で止まった時は、Python の誤りではなくそう言う(表と同じ文言)
+            if pyrun::userns_blocked(&err) {
+                return Err(ui::t!("sandbox_blocked_by_userns").to_string());
+            }
             let tail = err.lines().rev().take(6).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
             return Err(if tail.trim().is_empty() { "原因不明".into() } else { tail });
         }
