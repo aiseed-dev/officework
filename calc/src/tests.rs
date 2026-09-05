@@ -1117,6 +1117,62 @@ mod pivot_tests {
         });
     }
 
+    /// **マクロの結果は1手として入り、Ctrl+Z で戻る**(受け口とパネルの両方が
+    /// 通る `macro_apply`)。サンドボックスを使わずに、結果の xlsx を手で作って当てる
+    #[cfg(unix)]
+    #[gpui::test]
+    fn a_macro_result_lands_as_one_undo_step(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            crate::rpc::handle(this, r#"{"cmd":"set","a1":"A1","values":[["元"]]}"#, cx);
+            let a1 = |this: &mut Calc, cx: &mut Context<Calc>| crate::rpc::handle(this, r#"{"cmd":"get","a1":"A1"}"#, cx);
+            let mut after = this.book.clone();
+            after.sheets[0].set(Pos::new(0, 0), book::Cell::input("マクロが書いた"));
+            after.sheets[0].set(Pos::new(0, 1), book::Cell::input("12345"));
+            let mut bytes = Vec::new();
+            sheet::xlsx::write_with(&after, None::<std::io::Cursor<Vec<u8>>>, std::io::Cursor::new(&mut bytes)).unwrap();
+            let before = this.undo_stack.len();
+            let r = this.macro_apply(bytes, "print の出力".into()).unwrap();
+            assert_eq!(r, "print の出力");
+            assert!(a1(this, cx).contains("マクロが書いた"), "{}", a1(this, cx));
+            assert_eq!(this.undo_stack.len(), before + 1, "控えは1回だけ");
+            assert!(this.dirty);
+            this.undo_sheet();
+            assert!(a1(this, cx).contains("元"), "Ctrl+Z で戻らない: {}", a1(this, cx));
+            // 出力が空なら「終わりました」
+            let mut bytes = Vec::new();
+            sheet::xlsx::write_with(&after, None::<std::io::Cursor<Vec<u8>>>, std::io::Cursor::new(&mut bytes)).unwrap();
+            assert_eq!(this.macro_apply(bytes, String::new()).unwrap(), "終わりました");
+            // 読めない物は断る(ブックは変わらない)
+            assert!(this.macro_apply(b"not xlsx".to_vec(), String::new()).is_err());
+        });
+    }
+
+    /// **受け口のマクロは、始めて番号を返し、様子は別の動詞で見る**
+    /// (2026-09-05。パネルから起こした officework-mcp の run_macro の道)。
+    /// 走らせる中身(サンドボックス)はこの機械の都合で変わるので、ここでは
+    /// 断り方と番号の作法だけを固定する
+    #[cfg(unix)]
+    #[gpui::test]
+    fn the_socket_starts_a_macro_and_reports_its_state_by_number(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            let r = crate::rpc::handle(this, r#"{"cmd":"macro_start"}"#, cx);
+            assert!(r.contains("code"), "code 無しを断らない: {r}");
+            let r = crate::rpc::handle(this, r#"{"cmd":"macro_status","id":99}"#, cx);
+            assert!(r.contains("\"err\"") && r.contains("番号"), "知らない番号を断らない: {r}");
+            let r = crate::rpc::handle(this, r#"{"cmd":"macro_start","code":"s[\"A1\"].value = 5"}"#, cx);
+            // 始まれば番号 1。サンドボックスが組めない機械では、その旨のしくじり
+            if r.contains("\"id\":1") {
+                let r = crate::rpc::handle(this, r#"{"cmd":"macro_status","id":1}"#, cx);
+                assert!(r.contains("\"state\":\""), "様子が返らない: {r}");
+                assert!(this.macro_jobs.contains_key(&1));
+            } else {
+                assert!(r.contains("\"err\""), "始まりも断りもしない: {r}");
+            }
+        });
+    }
+
     /// **unix だけ**。この口はユニックスソケットが設計で、`mod rpc` 自体が
     /// `#[cfg(unix)]` の向こうに居る(main.rs)。試験だけ的を選ばずに居ると
     /// Windows で組めない(2026-08-17、Windows を CI の的に足して分かった)

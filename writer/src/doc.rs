@@ -205,6 +205,8 @@ impl Writer {
             agent_calls: Vec::new(),
             agent_save: None,
             agent_cc: None,
+            macro_jobs: std::collections::HashMap::new(),
+            macro_next: 0,
             agent_picking: None,
             py_picking: None,
             ai_editing: false,

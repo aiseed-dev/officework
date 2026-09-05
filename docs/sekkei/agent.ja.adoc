@@ -396,6 +396,19 @@ doc_replace_blocks 2(1手)の3行と答えが並び、文書の段落が替わ�
 writer の窓から離れ、途中から打鍵が別の窓へ行く。tools/ribbon_sweep.py と
 同じく、1打鍵ごとに焦点を確かめて取り直すと全部届く。
 
+**受け口のマクロ(macro_start / macro_status)も同じ日に通した。** 動いている
+calc(客の台帳.xlsx)と writer(報告書.docx)の受け口に Python から
+macro_start を送ると番号 1 が返り、macro_status が様子を返し、同じ番号を
+もう一度聞いても同じ答えだった。ただしこの機械では、この日は bubblewrap が
+「loopback: Failed RTM_NEWADDR: Operation not permitted」で止まり、マクロ
+そのものは走らなかった(受け口は failed とその1行を返す — 設計どおり)。
+原因は Ubuntu の `kernel.apparmor_restrict_unprivileged_userns = 1` で、
+`bwrap` に AppArmor のプロファイルが無いと網の名前空間を作れない。端末から
+`bwrap --unshare-net true` を打っても同じなので officework の側ではない。
+直すのは管理者(`/etc/apparmor.d/bwrap-userns-restrict` を入れる)。
+結果を1手として入れる所(`macro_apply`)は、結果の xlsx / adoc を手で作って
+当てる試験で固定した(入る・控えは1回・Ctrl+Z で戻る・読めない物は断る)。
+
 **文書の道具の往復も本物で確かめた**(2026-09-05)。動いている writer
 (報告書.docx)に対し、`claude -p`(Max のログイン)+ `officework-mcp --panel`
 で「概況の段落を2つの短い文に」と頼むと、doc_outline → doc_read_blocks(1〜3、
@@ -719,8 +732,12 @@ Run・Font)をエンジンの上に写した互換層で、writer のマクロ�
   (2026-09-04 一部済 — `agent::claude_code`(上の「実測と部品」)、
   officework-mcp の `--panel`(その時だけ `run_macro` を出す)、ops の
   `macro_start` / `macro_status`(Host の口。受け口を止めないよう、始めて
-  番号を返し、様子は別の動詞で見る。b1be89c6)。残りは calc の Host の実装
-  (agent_run_macro と同じ道を番号つきで。Opus)、パネルの宛先の一覧に
+  番号を返し、様子は別の動詞で見る。b1be89c6)。calc の Host の実装は
+  2026-09-05 済 — パネルの run_macro と同じ道を `macro_prepare` / `macro_run` /
+  `macro_apply` の3つに分け、受け口は `macro_start` で別のスレッドに走らせて
+  番号を返し、`macro_status` で終わりを見た時に結果を1手として入れる。writer の
+  受け口にも同じ動詞を足し、officework-mcp は `--panel=doc` の時に文書の形
+  (`src` / `out`)の run_macro を出す(`launch_for_panel`)。パネルの宛先の一覧に
   「Claude Code」を出して `ClaudeCode` を持つ結線と「1手で戻ること」の実機の
   確認は 2026-09-05 済(上の「パネルそのものも本物で通した」)。残りは Codex)
 . 選ぶ画面(モデルの一覧の取得、絞り込み、並び)。実機で確かめる

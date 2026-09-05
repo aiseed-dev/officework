@@ -2,6 +2,22 @@
 
 use crate::*;
 
+/// マクロの支度の結果([`Calc::macro_prepare`])。走らせるのに要る物だけ
+pub(crate) struct MacroPrep {
+    pub(crate) dir: std::path::PathBuf,
+    pub(crate) script: String,
+    pub(crate) out_x: std::path::PathBuf,
+    pub(crate) so_dir: std::path::PathBuf,
+}
+
+/// 受け口から起こしたマクロ1つ(`Calc::macro_jobs`)
+pub(crate) struct MacroJob {
+    /// 走らせているスレッドからの結果
+    rx: std::sync::mpsc::Receiver<Result<(Vec<u8>, String), String>>,
+    /// 終わった後の答え(ブックにはもう入っている)
+    done: Option<ops::MacroStatus>,
+}
+
 impl Calc {
     /// **いま押せるか**(2026-08-21 の B-5「灰色をボタン単位に」)。
     ///
@@ -471,6 +487,8 @@ impl Calc {
             agent_calls: Vec::new(),
             agent_save: None,
             agent_cc: None,
+            macro_jobs: std::collections::HashMap::new(),
+            macro_next: 0,
             agent_picking: None,
             py_picking: None,
             ai_editing: false,
@@ -3072,29 +3090,41 @@ impl Calc {
             self.agent_finish_call(c, Err("code がありません".into()), cx);
             return;
         };
-        // 見える .py として置く(見えないコードは運ばない)。置き場は
-        // 綴りのフォルダ(ブックの隣)。名前は1つの語に丸める
-        let name: String = o
-            .as_ref()
-            .and_then(|o| o.str("name"))
-            .unwrap_or_else(|| "agent_macro".into())
-            .chars()
-            .map(|ch| if ch.is_alphanumeric() || ch == '_' || ch == '-' { ch } else { '_' })
-            .collect();
-        let visible = self
-            .path
-            .as_ref()
-            .and_then(|p| p.parent())
-            .map(|d| d.join(format!("{name}.py")));
-        if let Some(p) = &visible {
-            if let Err(e) = std::fs::write(p, code.as_bytes()) {
-                self.agent_finish_call(c, Err(format!("マクロを置けません: {e}")), cx);
+        let name = o.as_ref().and_then(|o| o.str("name")).unwrap_or_else(|| "agent_macro".into());
+        let prep = match self.macro_prepare(&code, &name) {
+            Ok(p) => p,
+            Err(e) => {
+                self.agent_finish_call(c, Err(e), cx);
                 return;
             }
+        };
+        let task = cx.background_executor().spawn(async move { Self::macro_run(prep) });
+        cx.spawn(async move |this, cx| {
+            let r = task.await;
+            let _ = this.update(cx, |this, cx| {
+                let reply = r.and_then(|(bytes, out)| this.macro_apply(bytes, out));
+                this.agent_finish_call(c, reply, cx);
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    /// **マクロの支度**(パネルの run_macro と受け口の macro_start に共通)。
+    /// 見える .py としてブックの隣に置き、編集を確定し、いまのブックを
+    /// in.xlsx に書いて、走らせるスクリプトを組む。走らせるのは
+    /// [`Self::macro_run`]、結果を入れるのは [`Self::macro_apply`]
+    pub(crate) fn macro_prepare(&mut self, code: &str, name: &str) -> Result<MacroPrep, String> {
+        // 見える .py として置く(見えないコードは運ばない)。置き場は
+        // 綴りのフォルダ(ブックの隣)。名前は1つの語に丸める
+        let name: String =
+            name.chars().map(|ch| if ch.is_alphanumeric() || ch == '_' || ch == '-' { ch } else { '_' }).collect();
+        let visible = self.path.as_ref().and_then(|p| p.parent()).map(|d| d.join(format!("{name}.py")));
+        if let Some(p) = &visible {
+            std::fs::write(p, code.as_bytes()).map_err(|e| format!("マクロを置けません: {e}"))?;
         }
         if !self.commit() {
-            self.agent_finish_call(c, Err("編集を確定できません".into()), cx);
-            return;
+            return Err("編集を確定できません".into());
         }
         let dir = pyrun::cage_work_dir("jo-agent");
         let _ = std::fs::create_dir_all(&dir);
@@ -3102,13 +3132,10 @@ impl Calc {
         let out_x = dir.join("out.xlsx");
         let original: Option<std::io::Cursor<Vec<u8>>> =
             self.path.as_ref().and_then(|old| std::fs::read(old).ok()).map(std::io::Cursor::new);
-        let w = std::fs::File::create(&in_x)
+        std::fs::File::create(&in_x)
             .map_err(|e| e.to_string())
-            .and_then(|f| sheet::xlsx::write_with(&self.book, original, std::io::BufWriter::new(f)));
-        if let Err(e) = w {
-            self.agent_finish_call(c, Err(format!("表を渡せません: {e}")), cx);
-            return;
-        }
+            .and_then(|f| sheet::xlsx::write_with(&self.book, original, std::io::BufWriter::new(f)))
+            .map_err(|e| format!("表を渡せません: {e}"))?;
         let so_dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|d| d.to_path_buf()))
@@ -3132,60 +3159,95 @@ impl Calc {
             code = code
         );
         self.status = ui::t!("running_python").into();
-        let so_dir2 = so_dir.clone();
-        let task = cx.background_executor().spawn(async move {
-            let py_path = dir.join("run.py");
-            std::fs::write(&py_path, script).map_err(|e| e.to_string())?;
-            let py = pyrun::find_python();
-            let venv = std::fs::canonicalize(".venv").unwrap_or_default();
-            // 見せる場所: venv・実行ファイルの隣・editable の実体(.pth の先)
-            let mut binds = vec![venv.clone(), so_dir2];
-            binds.extend(pyrun::editable_paths(&venv));
-            // サンドボックスが組めなければ走らせない(そう言う)
-            let Some(mut cmd) = pyrun::caged_python(&py, &dir, &binds, false) else {
-                return Err(if cfg!(target_os = "linux") {
-                    ui::t!("cant_build_sandbox_code").to_string()
-                } else {
-                    ui::t!("os_no_sandbox_code").to_string()
-                });
-            };
-            let (ok, out, err) = crate::py::run_with_timeout(cmd.arg(&py_path), 60)?;
-            let out = out.trim().to_string();
-            if !ok {
-                // 誤りの尻尾を返す — モデルが読んで直す
-                let tail =
-                    err.lines().rev().take(6).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
-                return Err(if tail.trim().is_empty() { "原因不明".into() } else { tail });
-            }
-            std::fs::read(&out_x).map_err(|e| format!("結果が読めません: {e}")).map(|b| (b, out))
-        });
-        cx.spawn(async move |this, cx| {
-            let r = task.await;
-            let _ = this.update(cx, |this, cx| {
-                let reply = match r {
-                    Ok((bytes, out)) => match sheet::xlsx::read(std::io::Cursor::new(bytes)) {
-                        Ok((mut book, _rep)) => {
-                            book::calc::recalc_all(&mut book);
-                            // 1手として取り込む(Ctrl+Z で戻せる)
-                            this.checkpoint_book();
-                            this.book = book;
-                            if this.active >= this.book.sheets.len() {
-                                this.active = 0;
-                            }
-                            this.freeze_from_book();
-                            this.dirty = true;
-                            this.sync_input();
-                            Ok(if out.is_empty() { "終わりました".to_string() } else { out })
-                        }
-                        Err(e) => Err(format!("結果が読めません: {e}")),
-                    },
-                    Err(e) => Err(e),
-                };
-                this.agent_finish_call(c, reply, cx);
-                cx.notify();
+        Ok(MacroPrep { dir, script, out_x, so_dir })
+    }
+
+    /// **マクロを走らせる**(待つ。主スレッドでは呼ばない)。サンドボックスが
+    /// 組めなければ走らせない(そう言う)。返りは結果の xlsx の中身と print の出力
+    pub(crate) fn macro_run(p: MacroPrep) -> Result<(Vec<u8>, String), String> {
+        let py_path = p.dir.join("run.py");
+        std::fs::write(&py_path, p.script).map_err(|e| e.to_string())?;
+        let py = pyrun::find_python();
+        let venv = std::fs::canonicalize(".venv").unwrap_or_default();
+        // 見せる場所: venv・実行ファイルの隣・editable の実体(.pth の先)
+        let mut binds = vec![venv.clone(), p.so_dir];
+        binds.extend(pyrun::editable_paths(&venv));
+        let Some(mut cmd) = pyrun::caged_python(&py, &p.dir, &binds, false) else {
+            return Err(if cfg!(target_os = "linux") {
+                ui::t!("cant_build_sandbox_code").to_string()
+            } else {
+                ui::t!("os_no_sandbox_code").to_string()
             });
-        })
-        .detach();
+        };
+        let (ok, out, err) = crate::py::run_with_timeout(cmd.arg(&py_path), 60)?;
+        let out = out.trim().to_string();
+        if !ok {
+            // 誤りの尻尾を返す — モデルが読んで直す
+            let tail = err.lines().rev().take(6).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
+            return Err(if tail.trim().is_empty() { "原因不明".into() } else { tail });
+        }
+        std::fs::read(&p.out_x).map_err(|e| format!("結果が読めません: {e}")).map(|b| (b, out))
+    }
+
+    /// **結果のブックを1手として入れる**(Ctrl+Z で戻せる)。返りは print の出力
+    pub(crate) fn macro_apply(&mut self, bytes: Vec<u8>, out: String) -> Result<String, String> {
+        let (mut book, _rep) =
+            sheet::xlsx::read(std::io::Cursor::new(bytes)).map_err(|e| format!("結果が読めません: {e}"))?;
+        book::calc::recalc_all(&mut book);
+        self.checkpoint_book();
+        self.book = book;
+        if self.active >= self.book.sheets.len() {
+            self.active = 0;
+        }
+        self.freeze_from_book();
+        self.dirty = true;
+        self.sync_input();
+        Ok(if out.is_empty() { "終わりました".to_string() } else { out })
+    }
+
+    /// **受け口からマクロを始める**(`Host::macro_start`)。走らせるのは別の
+    /// スレッドで、受け口(主スレッド)は待たない。終わりは
+    /// [`Self::macro_poll`] で見る
+    pub(crate) fn macro_start_job(&mut self, code: &str, name: &str) -> Result<u64, String> {
+        let prep = self.macro_prepare(code, name)?;
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(Self::macro_run(prep));
+        });
+        // 終わった物は新しい物を始める時に片づける(番号は使い回さない)
+        self.macro_jobs.retain(|_, j| j.done.is_none());
+        self.macro_next += 1;
+        let id = self.macro_next;
+        self.macro_jobs.insert(id, MacroJob { rx, done: None });
+        Ok(id)
+    }
+
+    /// **始めたマクロの様子**(`Host::macro_status`)。終わっていれば、ここで
+    /// 結果をブックに1手として入れ、その答えを覚えておく
+    pub(crate) fn macro_poll(&mut self, id: u64) -> ops::MacroStatus {
+        use ops::MacroStatus as M;
+        let Some(job) = self.macro_jobs.get_mut(&id) else { return M::Unknown };
+        if let Some(d) = &job.done {
+            return d.clone();
+        }
+        let r = match job.rx.try_recv() {
+            Ok(r) => r,
+            Err(std::sync::mpsc::TryRecvError::Empty) => return M::Running,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => Err("マクロのスレッドが落ちました".to_string()),
+        };
+        let st = match r.and_then(|(bytes, out)| self.macro_apply(bytes, out)) {
+            Ok(t) => M::Done(t),
+            Err(e) => M::Failed(e),
+        };
+        self.status = match &st {
+            M::Done(t) => t.lines().next().unwrap_or("").to_string().into(),
+            M::Failed(e) => e.lines().last().unwrap_or("").to_string().into(),
+            _ => self.status.clone(),
+        };
+        if let Some(job) = self.macro_jobs.get_mut(&id) {
+            job.done = Some(st.clone());
+        }
+        st
     }
 
     /// エージェントの記録の新しい分を、会話の欄へ写す。

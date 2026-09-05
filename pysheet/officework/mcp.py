@@ -469,24 +469,12 @@ def doc_to_pdf(path: str) -> str:
     return f"PDF を書きました: {os.path.abspath(path)}"
 
 
-def run_macro(code: str, name: str = "agent_macro") -> str:
-    """Python の**マクロを書いて動かす**(表)。`b`(ブック)と `s`(いまのシート)が
-    使えます(openpyxl と同じ形。`s["A1"].value = 5`、範囲は `s["A1:C9"]`)。
-
-    コードは見える .py としてブックの隣に置かれ、サンドボックス(網なし・60秒)で
-    走ります。表への変更は1手で入り、officework の Ctrl+Z で戻せます。
-    print の出力が返り、誤りはその尻尾が返るので、直してもう一度呼べます。
-    定型の道具に無い仕事はこれで解きます。
-
-    **パネルから起こした時だけ出る道具です**(`officework-mcp --panel`)。外の
-    AI に登録した officework-mcp には出しません(任意のコードを走らせる道具は
-    置かない決め)。
-    """
+def _macro_via(app: str, code: str, name: str) -> str:
+    """受け口の macro_start / macro_status で走らせて、終わりまで待つ"""
     import time
 
-    from . import app_name, call
+    from . import call
 
-    app = app_name("calc")
     r = call(app, "macro_start", code=code, name=name)
     job = r.get("id")
     deadline = time.monotonic() + 120.0
@@ -501,22 +489,71 @@ def run_macro(code: str, name: str = "agent_macro") -> str:
     raise RuntimeError("マクロが 120 秒で終わりません")
 
 
+def doc_run_macro(code: str, name: str = "agent_macro") -> str:
+    """Python の**マクロを書いて動かす**(文書)。コードでは `src`(文書の全部の
+    AsciiDoc の字。見出しは `==`、段落は空行で区切り、表は `|===`)が使えます。
+    直した字を `out` に入れると、本体がそれを読み直して1手で入れます(officework の
+    Ctrl+Z で戻せます)。print の出力が返り、誤りはその尻尾が返るので、直して
+    もう一度呼べます。一括の直し(見出しを一段下げる・語を全部置き替える など)は
+    これで解きます。python-docx は使いません。
+
+    コードは見える .py として文書の隣に置かれ、サンドボックス(網なし・60秒)で
+    走ります。**文書のパネルから起こした時だけ出る道具です**
+    (`officework-mcp --panel=doc`)。
+    """
+    from . import app_name
+
+    return _macro_via(app_name("writer"), code, name)
+
+
+def run_macro(code: str, name: str = "agent_macro") -> str:
+    """Python の**マクロを書いて動かす**(表)。`b`(ブック)と `s`(いまのシート)が
+    使えます(openpyxl と同じ形。`s["A1"].value = 5`、範囲は `s["A1:C9"]`)。
+
+    コードは見える .py としてブックの隣に置かれ、サンドボックス(網なし・60秒)で
+    走ります。表への変更は1手で入り、officework の Ctrl+Z で戻せます。
+    print の出力が返り、誤りはその尻尾が返るので、直してもう一度呼べます。
+    定型の道具に無い仕事はこれで解きます。
+
+    **パネルから起こした時だけ出る道具です**(`officework-mcp --panel`)。外の
+    AI に登録した officework-mcp には出しません(任意のコードを走らせる道具は
+    置かない決め)。
+    """
+    from . import app_name
+
+    return _macro_via(app_name("calc"), code, name)
+
+
 def main() -> None:
     """`officework-mcp` の入口(標準入出力で MCP を話す)。
 
     `--panel` はエージェントのパネルから起こされた印(2026-09-04。宛先
     「Claude Code」が `claude -p` の MCP として渡す)。この印がある時だけ
-    `run_macro` を道具に足します(実体は ops の macro_start / macro_status)。
+    `run_macro` を道具に足します(実体は受け口の macro_start / macro_status)。
+    `--panel=doc` は文書のパネルの印で、run_macro の中身が文書の形になります。
     """
     import sys
 
-    args = [a for a in sys.argv[1:] if a != "--panel"]
+    args = [a for a in sys.argv[1:] if a not in ("--panel", "--panel=sheet", "--panel=doc")]
     if args:
         print("officework-mcp: 知らない引数: " + " ".join(args), file=sys.stderr)
         sys.exit(2)
-    if "--panel" in sys.argv[1:]:
-        mcp.tool()(run_macro)
+    tool = panel_macro_tool(sys.argv[1:])
+    if tool is not None:
+        mcp.tool(name="run_macro")(tool)
     mcp.run()
+
+
+def panel_macro_tool(argv):
+    """`--panel` の印から、出す run_macro を選ぶ。表のパネル(`--panel` か
+    `--panel=sheet`)は `run_macro`、文書のパネル(`--panel=doc`)は
+    `doc_run_macro`。印が無ければ None(外の AI には出さない)。
+    """
+    if "--panel=doc" in argv:
+        return doc_run_macro
+    if "--panel" in argv or "--panel=sheet" in argv:
+        return run_macro
+    return None
 
 
 if __name__ == "__main__":

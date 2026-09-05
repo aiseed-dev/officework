@@ -479,6 +479,10 @@ pub struct Writer {
     /// 宛先「Claude Code」の子プロセス(1つの会話 = 1つのプロセス。
     /// `agent::claude_code`)。他の宛先では None
     pub(crate) agent_cc: Option<agent::claude_code::ClaudeCode>,
+    /// **受け口から起こしたマクロ**(`macro_start` の動詞。パネルから起こした
+    /// officework-mcp の run_macro が通る道)。番号で引き、終わった物の結果も置く
+    pub(crate) macro_jobs: std::collections::HashMap<u64, agentloop::MacroJob>,
+    pub(crate) macro_next: u64,
     /// **宛先を選んでいる最中の一覧**(2026-09-04 発注者「AI model を
     /// 自由に設定」)。`None` は選んでいない。開くときに1度だけ作ります —
     /// 手元のモデルを探すのに港を叩くので、描くたびに作ると遅くなります

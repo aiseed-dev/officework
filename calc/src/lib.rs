@@ -512,6 +512,11 @@ pub struct Calc {
     /// 宛先「Claude Code」の子プロセス(1つの会話 = 1つのプロセス。
     /// `agent::claude_code`)。他の宛先では None
     pub(crate) agent_cc: Option<agent::claude_code::ClaudeCode>,
+    /// **受け口から起こしたマクロ**(`Host::macro_start`。パネルから起こした
+    /// officework-mcp の run_macro が通る道)。番号で引き、終わった物の結果も
+    /// 置いておく(同じ番号を何度聞かれても同じ答え)
+    pub(crate) macro_jobs: std::collections::HashMap<u64, state::MacroJob>,
+    pub(crate) macro_next: u64,
     /// **宛先を選んでいる最中の一覧**(2026-09-04 発注者「AI model を
     /// 自由に設定」)。開くときに1度だけ作ります(港を叩くため)
     pub(crate) agent_picking: Option<Vec<face::settings::AiDest>>,

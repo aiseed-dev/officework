@@ -286,6 +286,27 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
                 Ok(format!("\"filled\":{filled},\"missing\":[{}]", missing.join(",")))
             })
         }
+        // ── マクロ(パネルから起こした officework-mcp の run_macro。2026-09-05)──
+        // 始めて番号を返し、様子は別の動詞で見る(受け口を止めない)。形は
+        // 表の受け口(ops)と同じ
+        "macro_start" => {
+            let Some(code) = o.str("code") else { return ops::err("code がありません") };
+            let name = o.str("name").unwrap_or_else(|| "agent_macro".into());
+            match w.macro_start_job(&code, &name) {
+                Ok(id) => ok(&format!("\"id\":{id}")),
+                Err(e) => ops::err(&e),
+            }
+        }
+        "macro_status" => {
+            let Some(id) = o.num("id") else { return ops::err("id がありません") };
+            let (state, text) = match w.macro_poll(id as u64) {
+                ops::MacroStatus::Running => ("running", String::new()),
+                ops::MacroStatus::Done(t) => ("done", t),
+                ops::MacroStatus::Failed(t) => ("failed", t),
+                ops::MacroStatus::Unknown => return ops::err("その番号のマクロはありません"),
+            };
+            ok(&format!("\"state\":\"{state}\",\"text\":{}", q(&text)))
+        }
         "end" => ok(""),
         other => ops::err(&format!("知らない動詞です: {other}")),
     }
@@ -320,6 +341,47 @@ impl Writer {
 #[cfg(test)]
 mod tests {
     use crate::*;
+
+    /// **マクロの直した字は1手として入り、Ctrl+Z で戻る**(受け口とパネルの
+    /// 両方が通る `macro_apply`)。サンドボックスを使わずに、直した字を手で当てる
+    #[gpui::test]
+    fn a_document_macro_result_lands_as_one_undo_step(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let (d, _) = kumihan::adoc::parse_full("= 報告\n\n== 概況\n\n受注は3件。\n").unwrap();
+            this.set_doc(d);
+            let before = this.undo_stack.len();
+            let r = this.macro_apply("= 報告\n\n== 概況(改)\n\n受注は4件。\n", String::new()).unwrap();
+            assert_eq!(r, "終わりました");
+            assert!(this.doc.body_text().contains("受注は4件"), "本文が替わらない: {}", this.doc.body_text());
+            assert_eq!(this.undo_stack.len(), before + 1, "控えは1回だけ");
+            this.undo_step();
+            assert!(this.doc.body_text().contains("受注は3件"), "Ctrl+Z で戻らない: {}", this.doc.body_text());
+            // 読めない字は断る(文書は変わらない)
+            assert!(this.macro_apply("|===\n|閉じない表\n", String::new()).is_err());
+            assert!(this.doc.body_text().contains("受注は3件"));
+        });
+    }
+
+    /// **受け口のマクロは、始めて番号を返し、様子は別の動詞で見る**(表の
+    /// 受け口と同じ形。2026-09-05)。断り方と番号の作法だけを固定する
+    #[gpui::test]
+    fn the_rpc_starts_a_macro_and_reports_its_state_by_number(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let r = crate::rpc::handle(this, r#"{"cmd":"macro_start"}"#);
+            assert!(r.contains("code"), "code 無しを断らない: {r}");
+            let r = crate::rpc::handle(this, r#"{"cmd":"macro_status","id":99}"#);
+            assert!(r.contains("\"err\"") && r.contains("番号"), "知らない番号を断らない: {r}");
+            let r = crate::rpc::handle(this, r#"{"cmd":"macro_start","code":"out = src"}"#);
+            if r.contains("\"id\":1") {
+                let r = crate::rpc::handle(this, r#"{"cmd":"macro_status","id":1}"#);
+                assert!(r.contains("\"state\":\""), "様子が返らない: {r}");
+            } else {
+                assert!(r.contains("\"err\""), "始まりも断りもしない: {r}");
+            }
+        });
+    }
 
     #[cfg(unix)]
     #[gpui::test]

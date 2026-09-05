@@ -29,6 +29,19 @@ const AGENT_SYSTEM: &str = "\
 分からなければ聞き返してください。\
 保存は人の確認が要ります。求められたときだけ doc_save を呼んでください。";
 
+/// マクロの支度の結果([`Writer::macro_prepare`])
+pub(crate) struct MacroPrep {
+    pub(crate) dir: std::path::PathBuf,
+    pub(crate) script: String,
+    pub(crate) out_a: std::path::PathBuf,
+}
+
+/// 受け口から起こしたマクロ1つ(`Writer::macro_jobs`)
+pub(crate) struct MacroJob {
+    rx: std::sync::mpsc::Receiver<Result<(String, String), String>>,
+    done: Option<ops::MacroStatus>,
+}
+
 impl Writer {
     /// **文章の画面が名乗る道具**: 文書の9つ(受け口へ直結)。
     ///
@@ -237,7 +250,7 @@ impl Writer {
             }
             let model = self.agent_dest_row().map(|r| r.model).unwrap_or_default();
             let near = self.path.as_ref().and_then(|p| p.parent().map(|d| d.to_path_buf()));
-            let launch = match cc::launch_for(&model, AGENT_SYSTEM, None, near.as_deref()) {
+            let launch = match cc::launch_for_panel(&model, AGENT_SYSTEM, None, near.as_deref(), "doc") {
                 Ok(l) => l,
                 Err(e) => {
                     self.ai_busy = false;
@@ -500,18 +513,37 @@ impl Writer {
             self.agent_finish_call(c, Err("code がありません".into()), cx);
             return;
         };
-        let name: String = o
-            .as_ref()
-            .and_then(|o| o.str("name"))
-            .unwrap_or_else(|| "agent_macro".into())
-            .chars()
-            .map(|ch| if ch.is_alphanumeric() || ch == '_' || ch == '-' { ch } else { '_' })
-            .collect();
-        if let Some(dir) = self.path.as_ref().and_then(|p| p.parent()) {
-            if let Err(e) = std::fs::write(dir.join(format!("{name}.py")), code.as_bytes()) {
-                self.agent_finish_call(c, Err(format!("マクロを置けません: {e}")), cx);
+        let name = o.as_ref().and_then(|o| o.str("name")).unwrap_or_else(|| "agent_macro".into());
+        let prep = match self.macro_prepare(&code, &name) {
+            Ok(p) => p,
+            Err(e) => {
+                self.agent_finish_call(c, Err(e), cx);
                 return;
             }
+        };
+        let task: gpui::Task<Result<(String, String), String>> =
+            cx.background_executor().spawn(async move { Self::macro_run(prep) });
+        cx.spawn(async move |this, cx| {
+            let r = task.await;
+            let _ = this.update(cx, |this, cx| {
+                let reply = r.and_then(|(adoc, out)| this.macro_apply(&adoc, out));
+                this.agent_finish_call(c, reply, cx);
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    /// **マクロの支度**(パネルの run_macro と受け口の macro_start に共通)。
+    /// 見える .py として文書の隣に置き、文書の AsciiDoc を in.adoc に書いて、
+    /// 走らせるスクリプトを組む。走らせるのは [`Self::macro_run`]、結果を
+    /// 入れるのは [`Self::macro_apply`]
+    pub(crate) fn macro_prepare(&mut self, code: &str, name: &str) -> Result<MacroPrep, String> {
+        let name: String =
+            name.chars().map(|ch| if ch.is_alphanumeric() || ch == '_' || ch == '-' { ch } else { '_' }).collect();
+        if let Some(dir) = self.path.as_ref().and_then(|p| p.parent()) {
+            std::fs::write(dir.join(format!("{name}.py")), code.as_bytes())
+                .map_err(|e| format!("マクロを置けません: {e}"))?;
         }
         self.flush_target();
         let src = kumihan::adoc::write(&self.doc);
@@ -519,59 +551,92 @@ impl Writer {
         let _ = std::fs::create_dir_all(&dir);
         let in_a = dir.join("in.adoc");
         let out_a = dir.join("out.adoc");
-        if let Err(e) = std::fs::write(&in_a, src) {
-            self.agent_finish_call(c, Err(format!("文書を渡せません: {e}")), cx);
-            return;
-        }
-        let script = doc_macro_script(&in_a, &out_a, &code);
+        std::fs::write(&in_a, src).map_err(|e| format!("文書を渡せません: {e}"))?;
+        let script = doc_macro_script(&in_a, &out_a, code);
         self.status = ui::t!("running_python").into();
-        let task = cx.background_executor().spawn(async move {
-            let py_path = dir.join("run.py");
-            std::fs::write(&py_path, script).map_err(|e| e.to_string())?;
-            let py = pyrun::find_python();
-            let venv = std::fs::canonicalize(".venv").unwrap_or_default();
-            let Some(mut cmd) = pyrun::caged_python(&py, &dir, &[venv], false) else {
-                return Err(if cfg!(target_os = "linux") {
-                    ui::t!("cant_build_sandbox_code").to_string()
-                } else {
-                    ui::t!("os_no_sandbox_code").to_string()
-                });
-            };
-            let (ok, out, err) = pyrun::run_with_timeout(cmd.arg(&py_path), 60).map_err(|e| match e {
-                pyrun::RunErr::Spawn(e) => format!("Python が起動できません: {e}"),
-                pyrun::RunErr::Timeout(s) => ui::tf!("stopped_after_seconds_endless", s).to_string(),
-                pyrun::RunErr::Wait(e) => e,
-            })?;
-            let out = out.trim().to_string();
-            if !ok {
-                let tail = err.lines().rev().take(6).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
-                return Err(if tail.trim().is_empty() { "原因不明".into() } else { tail });
-            }
-            std::fs::read_to_string(&out_a).map_err(|e| format!("結果が読めません: {e}")).map(|s| (s, out))
-        });
-        let task: gpui::Task<Result<(String, String), String>> = task;
-        cx.spawn(async move |this, cx| {
-            let r = task.await;
-            let _ = this.update(cx, |this, cx| {
-                let reply = match r {
-                    Ok((adoc, out)) => match kumihan::adoc::parse_full(&adoc) {
-                        Ok((d, _notes)) => {
-                            // 1手として取り込む(頭の属性はそのまま、本文だけ差し替え)
-                            this.acted = false;
-                            this.checkpoint(false);
-                            this.doc.blocks = d.blocks;
-                            this.after_block_edit();
-                            Ok(if out.is_empty() { "終わりました".to_string() } else { out })
-                        }
-                        Err(e) => Err(format!("直した字が AsciiDoc として読めません: {e}")),
-                    },
-                    Err(e) => Err(e),
-                };
-                this.agent_finish_call(c, reply, cx);
-                cx.notify();
+        Ok(MacroPrep { dir, script, out_a })
+    }
+
+    /// **マクロを走らせる**(待つ。主スレッドでは呼ばない)。返りは直した
+    /// AsciiDoc の字と print の出力
+    pub(crate) fn macro_run(p: MacroPrep) -> Result<(String, String), String> {
+        let py_path = p.dir.join("run.py");
+        std::fs::write(&py_path, p.script).map_err(|e| e.to_string())?;
+        let py = pyrun::find_python();
+        let venv = std::fs::canonicalize(".venv").unwrap_or_default();
+        let Some(mut cmd) = pyrun::caged_python(&py, &p.dir, &[venv], false) else {
+            return Err(if cfg!(target_os = "linux") {
+                ui::t!("cant_build_sandbox_code").to_string()
+            } else {
+                ui::t!("os_no_sandbox_code").to_string()
             });
-        })
-        .detach();
+        };
+        let (ok, out, err) = pyrun::run_with_timeout(cmd.arg(&py_path), 60).map_err(|e| match e {
+            pyrun::RunErr::Spawn(e) => format!("Python が起動できません: {e}"),
+            pyrun::RunErr::Timeout(s) => ui::tf!("stopped_after_seconds_endless", s).to_string(),
+            pyrun::RunErr::Wait(e) => e,
+        })?;
+        let out = out.trim().to_string();
+        if !ok {
+            let tail = err.lines().rev().take(6).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
+            return Err(if tail.trim().is_empty() { "原因不明".into() } else { tail });
+        }
+        std::fs::read_to_string(&p.out_a).map_err(|e| format!("結果が読めません: {e}")).map(|s| (s, out))
+    }
+
+    /// **直した字を1手として入れる**(頭の属性はそのまま、本文だけ差し替え。
+    /// Ctrl+Z で戻せる)。返りは print の出力
+    pub(crate) fn macro_apply(&mut self, adoc: &str, out: String) -> Result<String, String> {
+        let (d, _notes) =
+            kumihan::adoc::parse_full(adoc).map_err(|e| format!("直した字が AsciiDoc として読めません: {e}"))?;
+        self.acted = false;
+        self.checkpoint(false);
+        self.doc.blocks = d.blocks;
+        self.after_block_edit();
+        Ok(if out.is_empty() { "終わりました".to_string() } else { out })
+    }
+
+    /// **受け口からマクロを始める**(動詞 macro_start)。走らせるのは別の
+    /// スレッドで、受け口(主スレッド)は待たない。終わりは [`Self::macro_poll`]
+    pub(crate) fn macro_start_job(&mut self, code: &str, name: &str) -> Result<u64, String> {
+        let prep = self.macro_prepare(code, name)?;
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(Self::macro_run(prep));
+        });
+        self.macro_jobs.retain(|_, j| j.done.is_none());
+        self.macro_next += 1;
+        let id = self.macro_next;
+        self.macro_jobs.insert(id, MacroJob { rx, done: None });
+        Ok(id)
+    }
+
+    /// **始めたマクロの様子**(動詞 macro_status)。終わっていれば、ここで
+    /// 結果を文書に1手として入れ、その答えを覚えておく
+    pub(crate) fn macro_poll(&mut self, id: u64) -> ops::MacroStatus {
+        use ops::MacroStatus as M;
+        let Some(job) = self.macro_jobs.get_mut(&id) else { return M::Unknown };
+        if let Some(d) = &job.done {
+            return d.clone();
+        }
+        let r = match job.rx.try_recv() {
+            Ok(r) => r,
+            Err(std::sync::mpsc::TryRecvError::Empty) => return M::Running,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => Err("マクロのスレッドが落ちました".to_string()),
+        };
+        let st = match r.and_then(|(adoc, out)| self.macro_apply(&adoc, out)) {
+            Ok(t) => M::Done(t),
+            Err(e) => M::Failed(e),
+        };
+        self.status = match &st {
+            M::Done(t) => t.lines().next().unwrap_or("").to_string().into(),
+            M::Failed(e) => e.lines().last().unwrap_or("").to_string().into(),
+            _ => self.status.clone(),
+        };
+        if let Some(job) = self.macro_jobs.get_mut(&id) {
+            job.done = Some(st.clone());
+        }
+        st
     }
 
     /// 保存の確認に人が答えた。答えは道具の結果としてモデルにも返り、

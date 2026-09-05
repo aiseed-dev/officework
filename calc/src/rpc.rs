@@ -54,6 +54,15 @@ pub(crate) fn handle(calc: &mut Calc, line: &str, _cx: &mut Context<Calc>) -> St
 /// 「動いているアプリの都合」の実装。切れない部分がここに名前で並ぶ —
 /// undo の節目・状態行・行の高さ合わせ・画面の点検。これ以外の意味は ops
 impl Host for Calc {
+    /// パネルから起こした officework-mcp の run_macro が通る道(2026-09-05)。
+    /// 中身は panel の run_macro と同じ(`macro_prepare` / `macro_run` /
+    /// `macro_apply`)。ここでは待たずに番号を返す
+    fn macro_start(&mut self, code: &str, name: &str) -> Result<u64, String> {
+        self.macro_start_job(code, name)
+    }
+    fn macro_status(&mut self, id: u64) -> ops::MacroStatus {
+        self.macro_poll(id)
+    }
     fn app(&self) -> &'static str {
         "calc"
     }

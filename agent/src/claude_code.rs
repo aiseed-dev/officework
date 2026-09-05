@@ -265,6 +265,19 @@ pub fn launch_for(
     resume: Option<String>,
     near: Option<&std::path::Path>,
 ) -> Result<Launch, String> {
+    launch_for_panel(model, system, resume, near, "sheet")
+}
+
+/// [`launch_for`] の、どの画面のパネルから起こすかを言う形。`panel` は
+/// "sheet"(表)か "doc"(文書)。officework-mcp はこれで run_macro の中身を
+/// 選ぶ(表は `b` と `s`、文書は `src` と `out`)
+pub fn launch_for_panel(
+    model: &str,
+    system: &str,
+    resume: Option<String>,
+    near: Option<&std::path::Path>,
+    panel: &str,
+) -> Result<Launch, String> {
     let mcp = find_mcp(near).ok_or_else(|| {
         "officework-mcp がありません。次で入ります:\n  pip install \"officework[mcp]\"".to_string()
     })?;
@@ -274,7 +287,7 @@ pub fn launch_for(
         claude: "claude".into(),
         model: if model.trim().is_empty() { "sonnet".into() } else { model.to_string() },
         mcp_command: mcp.to_string_lossy().to_string(),
-        mcp_args: vec!["--panel".into()],
+        mcp_args: vec![if panel == "doc" { "--panel=doc".into() } else { "--panel".into() }],
         system: system.to_string(),
         cwd,
         max_turns: 30,
@@ -477,6 +490,23 @@ mod tests {
             p.line(l),
             vec![Cc::Init { model: "claude-sonnet-5".into(), mcp_ok: false, errors: vec!["officework: no such file".into()] }]
         );
+    }
+
+    /// 文書のパネルから起こす時は officework-mcp に `--panel=doc` を渡す
+    /// (run_macro の中身が文書の形になる)。表は `--panel` のまま
+    #[test]
+    fn the_document_panel_tells_the_mcp_which_macro_to_offer() {
+        let sheet = launch_for("sonnet", "x", None, None);
+        let doc = launch_for_panel("sonnet", "x", None, None, "doc");
+        match (sheet, doc) {
+            (Ok(s), Ok(d)) => {
+                assert_eq!(s.mcp_args, vec!["--panel".to_string()]);
+                assert_eq!(d.mcp_args, vec!["--panel=doc".to_string()]);
+            }
+            // officework-mcp が無い機械では両方とも同じ断り
+            (Err(a), Err(b)) => assert_eq!(a, b),
+            other => panic!("片方だけ起こせる: {other:?}"),
+        }
     }
 
     #[test]
