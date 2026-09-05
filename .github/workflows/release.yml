@@ -60,9 +60,12 @@ jobs:
         run: packaging/make-linux.sh
       - name: 入れて確かめる(.deb を入れ、消す)
         # Windows と同じ理由で、**入るところまで機械にやらせる**。
-        # 置かれた物・デスクトップの項目・アイコンを見て、消えることも見る
+        # 置かれた物・デスクトップの項目・アイコンを見て、消えることも見る。
+        # `dpkg -i` ではなく `apt-get install ./…deb` で入れる — .deb は
+        # bubblewrap に Depends で、素の runner にはそれが無い。dpkg は
+        # 依存を入れないので、そこで止まる(2026-09-06 app-v0.1.0-alpha.1 で)
         run: |
-          sudo dpkg -i packaging/out/officework_*_amd64.deb
+          sudo apt-get install -y ./packaging/out/officework_*_amd64.deb
           for f in /opt/officework/officework /opt/officework/bin/officework \
                    /usr/bin/officework \
                    /usr/share/applications/officework.desktop \
