@@ -378,6 +378,17 @@ agent/src/claude_code.rs の頭に書いた。
 パネルへの結線(宛先の一覧に「Claude Code」を出し、`agent_send` で
 `ClaudeCode` を持つ)は、writer のパネルの共通化(段階10)と同じ回に。
 
+**文書の道具の往復も本物で確かめた**(2026-09-05)。動いている writer
+(報告書.docx)に対し、`claude -p`(Max のログイン)+ `officework-mcp --panel`
+で「概況の段落を2つの短い文に」と頼むと、doc_outline → doc_read_blocks(1〜3、
+照合の字つき)→ doc_replace_blocks(2, stamps 付き)の順に呼び、文書が
+変わって「1 ブロックを入れました」と返った(4往復、見積り $0.046。定額なので
+請求は無い)。踏んだ穴: 落ちたアプリのソケットのファイルが残っていると、
+Python の `app_name()` が存在だけを見て死んだ相手(officework.sock)を選び
+「つながりません」になる → 今つながるかで選ぶように直した。もう1つ、
+MCP の子プロセスは claude の環境を継ぐので、XDG_RUNTIME_DIR が違うと相手を
+見失う(試験の都合。本番は同じ環境)。
+
 ==== 守る条件(公式の legal-and-compliance)
 
 - `claude` を改変しない。認証の方法を外さない

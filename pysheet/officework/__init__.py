@@ -102,11 +102,28 @@ def app_name(単体="calc"):
         return "officework"
     for 名 in ("officework", 単体):
         try:
-            if os.path.exists(sock_path(名)):
+            if _alive(sock_path(名)):
                 return 名
         except OfficeworkError:
             break
     return "officework"
+
+
+def _alive(path):
+    """そのソケットに**今つながるか**。ファイルがあるだけでは足りない —
+    落ちたアプリのソケットは残るので、存在で見ると死んだ相手を選んで
+    「つながりません」になる(2026-09-05、Claude Code の道具で実際に踏んだ)。
+    """
+    if not os.path.exists(path):
+        return False
+    try:
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.settimeout(0.5)
+        s.connect(path)
+        s.close()
+        return True
+    except OSError:
+        return False
 
 
 def _find_app(app):
