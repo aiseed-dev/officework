@@ -391,8 +391,17 @@ impl Render for Writer {
                     // (2026-08-21 発注者)。押してみないと分からない、をやめる
                     let on_of = cmd.kind == ribbon::Kind::Toggle && self.is_on(cmd.id);
                     // 名札の短い形は ja 向け — 他の言語では表の語を使う
+                    // 大ボタンの名札。**鍵で書いてある物は引きます**(2026-09-05)。
+                    //
+                    // この表は日本語の短い名札を直に書く形ですが、鍵を書いた
+                    // 物が混ざっていて(`zoom_100` ほか5つ)、`ui::tr` が
+                    // 引けないと**鍵をそのまま画面に出して**いました。
+                    // 引けなければ直書きの字とみなして、そのまま出します
                     let big = if ui::settings::language() == "ja" {
-                        big
+                        big.map(|b| {
+                            let v = ui::tr(b);
+                            if v == b { b } else { v }
+                        })
                     } else {
                         big.map(|_| cmd.label)
                     };

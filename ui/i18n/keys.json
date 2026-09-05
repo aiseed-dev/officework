@@ -8485,15 +8485,15 @@
  },
  {
   "key": "co_editing_mode",
-  "kind": "ribbon"
+  "kind": "msg"
  },
  {
   "key": "version_history",
-  "kind": "ribbon"
+  "kind": "msg"
  },
  {
   "key": "chat",
-  "kind": "ribbon"
+  "kind": "msg"
  },
  {
   "key": "encrypt",
@@ -8513,7 +8513,7 @@
  },
  {
   "key": "zoom_100",
-  "kind": "ribbon"
+  "kind": "msg"
  },
  {
   "key": "interface_theme",

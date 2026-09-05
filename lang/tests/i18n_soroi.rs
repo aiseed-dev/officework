@@ -200,6 +200,31 @@ fn app_keys() -> BTreeSet<String> {
             out.extend(keys_in(&src));
         }
     }
+    // **表のデータに書いた鍵も数えます**(2026-09-05)。
+    //
+    // リボンの大ボタンの名札は `writer/src/view.rs` の表に
+    // `("zoom100", Some("zoom_100"))` の形で書きます。`t!` を通らないので
+    // ここからは見えず、**使っているのに「使っていない訳」と言われて**
+    // いました(そのうえ、生成の表に無ければ画面に鍵が出ます)。
+    // 走らせる側は `ui::tr` で引くので、鍵として数えるのが正しい姿です
+    {
+        let f = root().join("writer/src/view.rs");
+        let src = std::fs::read_to_string(&f).expect("読める").replace("\r\n", "\n");
+        let mut rest = src.as_str();
+        while let Some(i) = rest.find(", Some(\"") {
+            rest = &rest[i + 8..];
+            if let Some(e) = rest.find('"') {
+                let k = &rest[..e];
+                // ASCII の小文字・数字・下線だけなら鍵(日本語の直書きは除く)
+                if !k.is_empty()
+                    && k.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+                {
+                    out.insert(k.to_string());
+                }
+                rest = &rest[e..];
+            }
+        }
+    }
     assert!(out.len() > 500, "鍵の取り出しが壊れています(いま {} 句)", out.len());
     out
 }

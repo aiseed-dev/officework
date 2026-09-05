@@ -97,7 +97,41 @@ def main() -> int:
             bad = 1
         else:
             print(f"{app}: ready {len(ready)} 件、全部配線されています")
-    return bad
+    return bad or bare_keys()
+
+
+def bare_keys() -> int:
+    """**鍵が画面に出ていないか**(2026-09-05。Fable の指摘)。
+
+    リボンの大ボタンの名札は `writer/src/view.rs` の表に直に書きます。
+    日本語の短い字を書く所ですが、**鍵を書いた物が混ざる**ことがあります
+    (`("zoom100", Some("zoom_100"))`)。引けない鍵は `ui::tr` がそのまま
+    返すので、**画面に `zoom_100` と出ます**。
+
+    `cargo test -p lang` は緑のままでした — あちらは「アプリが使う鍵が
+    表にあるか」を見ますが、この表の字は鍵として書かれていないので
+    数えられません。**字で探すのはここの仕事**です。
+    """
+    import json
+
+    view = (ROOT / "writer/src/view.rs").read_text(encoding="utf-8")
+    # **見るのは生成された表**(`lang/src/i18n_ja.rs`)です。材料の
+    # `ui/i18n/ja.json` にあっても、`keys.json` の `kind` が `ribbon` だと
+    # 文言の表には入らず、`ui::tr` は鍵をそのまま返します — これが
+    # `zoom_100` が画面に出ていた理由でした(2026-09-05)
+    table = (ROOT / "lang/src/i18n_ja.rs").read_text(encoding="utf-8")
+    # (id, Some("札")) の形。札が ASCII の小文字と _ と - だけなら鍵の疑い
+    pat = re.compile(r'\("([a-z0-9-]+)",\s*Some\("([a-z0-9_]+)"\)\)')
+    bad = []
+    for cid, label in pat.findall(view):
+        if f'("{label}",' not in table:
+            bad.append((cid, label))
+    for cid, label in bad:
+        print(f"::error::writer の {cid} の名札 {label!r} は訳の表にありません(そのまま画面に出ます)")
+    if bad:
+        return 1
+    print(f"writer の名札: 鍵で書いてある物は全部引けます")
+    return 0
 
 
 if __name__ == "__main__":
