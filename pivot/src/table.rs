@@ -13,20 +13,20 @@
 use polars::prelude::*;
 use polars::sql::SQLContext;
 
-/// 列の名前と型(`数` / `字`)と行の数
+/// 列の名前と型(`number` / `text`。API の語は英語)と行の数
 #[derive(Debug)]
 pub struct Schema {
     pub cols: Vec<(String, &'static str)>,
     pub rows: usize,
 }
 
-/// 型を見る(数として読めた列は `数`、それ以外は `字`)
+/// 型を見る(数として読めた列は `number`、それ以外は `text`)
 pub fn schema(head: &[String], body: &[Vec<String>]) -> Result<Schema, String> {
     let df = super::to_frame(head, body)?;
     let cols = df
         .columns()
         .iter()
-        .map(|c| (c.name().to_string(), if c.dtype().is_numeric() { "数" } else { "字" }))
+        .map(|c| (c.name().to_string(), if c.dtype().is_numeric() { "number" } else { "text" }))
         .collect();
     Ok(Schema { cols, rows: body.len() })
 }
@@ -120,7 +120,7 @@ mod tests {
         let (h, b) = sample();
         let sc = schema(&h, &b).unwrap();
         assert_eq!(sc.rows, 4);
-        assert_eq!(sc.cols, vec![("品名".to_string(), "字"), ("地区".to_string(), "字"), ("金額".to_string(), "数")]);
+        assert_eq!(sc.cols, vec![("品名".to_string(), "text"), ("地区".to_string(), "text"), ("金額".to_string(), "number")]);
         assert_eq!(head(&h, &b, 2).len(), 3, "見出し + 2 行");
     }
 

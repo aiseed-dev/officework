@@ -343,7 +343,7 @@ def doc_fill(values: dict, path: str | None = None) -> str:
 
 @mcp.tool()
 def table_schema(table: str) -> dict:
-    """名前の表(テーブル)の**列の名前と型**(数/字)と行の数。大きな表はまずこれ。
+    """名前の表(テーブル)の**列の名前と型**(number / text)と行の数。大きな表はまずこれ。
 
     表の名前は `book_info` か各シートの表の一覧で分かります。
     """

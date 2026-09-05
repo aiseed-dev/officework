@@ -60,7 +60,7 @@ pub fn sheet_tools() -> Vec<ToolDef> {
         // **大きな表は polars の物として**(2026-09-04)。セルで読ませない
         t(
             "table_schema",
-            "名前の表(テーブル)の列の名前と型(数/字)と行の数。大きな表はまずこれ。表の名前は book_info か sheet_tables で",
+            "名前の表(テーブル)の列の名前と型(number / text)と行の数。大きな表はまずこれ。表の名前は book_info か sheet_tables で",
             r#"{"type":"object","properties":{"table":{"type":"string"}},"required":["table"]}"#,
         ),
         t(

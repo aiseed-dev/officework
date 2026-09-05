@@ -143,6 +143,32 @@ d.to_pdf("out.pdf")    # to PDF; omit the name to reuse the file's own
 *Read `d.unsupported` before you trust anything else.* An empty list means everything was read.
 A non-empty one names what was not — and those parts are still carried over from the original on save; "we could not read it" and "we dropped it" are different statements.
 
+`Doc.open` also reads `.adoc` (the native document), and `save("report.adoc")` writes one — so turning a docx into AsciiDoc is two lines.
+
+=== Blocks — read and rewrite the document by number
+
+A document is a sequence of *blocks*: headings, paragraphs, tables. The block methods read and write them as AsciiDoc text, so a long document never has to be read in full. They are the same operations the AI panel and `officework-mcp` use, under the same names.
+
+[source,python]
+----
+d = doc.Doc("report.adoc")            # .docx works the same
+d.block_count                         # 6
+d.outline()                           # [(0, 0, "Report"), (1, 1, "Overview"), (4, 1, "Plan")]
+                                      #   (index, level, text): the title is level 0, "==" is 1
+d.blocks(2, 3)                        # [(2, "a1b2c3d4", "Orders: 3.\n"), (3, "9f0e…", "|===\n…\n|===\n")]
+                                      #   (index, stamp, AsciiDoc)
+d.replace_blocks(2, 2, "Orders: 4.\n\n* wall\n", stamps=["a1b2c3d4"])   # → 2 (blocks put in)
+d.insert_blocks(d.block_count, "The end.\n")                        # before index; the count means "append"
+d.delete_blocks(1, 3)
+d.find_blocks("640,200")              # [(3, "…the text around it…")]
+d.adoc()                              # the whole document as AsciiDoc
+d.save("report.adoc")
+----
+
+* Indexes are 0-based positions in the block list; a range includes both ends.
+* `blocks` returns a *stamp* with every block. Pass the stamps you read to `replace_blocks` / `delete_blocks` and the call is refused with "changed since you read it" if the document moved in between. Leave them out to overwrite regardless.
+* A fragment may hold any number of blocks (separate them with blank lines). It cannot carry head attributes (`:name: value`); those belong to the document head.
+
 === Paragraphs
 
 [source,python]
@@ -403,6 +429,21 @@ xw.run_macro("month_end")                 # run one macro from the folder
 
 *`table_style(…, False)` does not strip the fill* — the state before it was applied is not remembered, so stripping would wipe colours that were already there.
 Only the table property is turned off; use `clear_formats()` to remove colour.
+
+*Large tables as data frames* — the same three operations the AI panel and `officework-mcp` use, so a table of tens of thousands of rows is never read cell by cell:
+
+[source,python]
+----
+t = s.tables["Table1"]                    # by name (s.tables lists them)
+t.schema()                                # {"rows": 36, "cols": [["Month", "text"], …, ["Amount", "number"]]}
+t.head(2)                                 # the header and the first 2 rows
+t.query("SELECT Month, SUM(Amount) AS Total, COUNT(*) AS N "
+        "FROM Table1 GROUP BY Month ORDER BY Total DESC")
+                                          # {"total": 3, "values": [["Month", "Total", "N"], ["June", "79780", "12"], …]}
+t.frame(sql, limit=200)                   # the same answer as a polars DataFrame (pip install polars)
+----
+
+The query language is SQL (polars' SQL); write the table's name after `FROM`. `values` is a small table with a header row, at most `limit` rows (default 200), and `total` is the row count after filtering. Numbers come back as text without spurious decimals ("79780"); empty cells are "".
 
 === The python-docx vocabulary (officework.doc)
 

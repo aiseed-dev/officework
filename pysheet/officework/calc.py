@@ -918,10 +918,10 @@ class TableRef:
     # 同じ名前で、セルで読まずに型・先頭・SQL で触る。実体は calc の ops ──
 
     def schema(self):
-        """列の名前と型(``"数"`` / ``"字"``)と行の数。
+        """列の名前と型(``"number"`` / ``"text"``)と行の数。
 
             t = sheet.tables["売上"]
-            t.schema()   # {"rows": 12345, "cols": [["品名", "字"], ["金額", "数"]]}
+            t.schema()   # {"rows": 12345, "cols": [["品名", "text"], ["金額", "number"]]}
         """
         r = _call("table_schema", table=self.name)
         return {"rows": r.get("rows", 0), "cols": r.get("cols", [])}

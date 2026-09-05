@@ -218,6 +218,35 @@ d.to_pdf("out.pdf")    # PDF に。省くと開いた名前の .pdf
 *そこに出た物も、保存では原本から持ち越されます。*
 「読めなかった」と「落とした」は別の話です。
 
+`Doc.open` は `.adoc`(ネイティブの文書)も読み、`save("報告.adoc")` で書けます。
+docx を AsciiDoc にするのは2行です。
+
+=== ブロック — 番号で文書を読み書きする
+
+文書は見出し・段落・表という**ブロック**の並びです。
+ブロックの口はそれを AsciiDoc の字で読み書きするので、長い文書でも全文を読む必要がありません。
+AI のパネルと `officework-mcp` が使うのと同じ操作で、名前も同じです。
+
+[source,python]
+----
+d = doc.Doc("報告.adoc")               # .docx でも同じ
+d.block_count                         # 6
+d.outline()                           # [(0, 0, "報告"), (1, 1, "概況"), (4, 1, "予定")]
+                                      #   (番号, 段, 字)。題が 0、"==" が 1
+d.blocks(2, 3)                        # [(2, "a1b2c3d4", "受注は3件。\n"), (3, "9f0e…", "|===\n…\n|===\n")]
+                                      #   (番号, 照合の字, AsciiDoc)
+d.replace_blocks(2, 2, "受注は4件。\n\n* 外壁\n", stamps=["a1b2c3d4"])   # → 2(入れたブロックの数)
+d.insert_blocks(d.block_count, "終わり。\n")                        # 番号の前に。数と同じ番号なら末尾
+d.delete_blocks(1, 3)
+d.find_blocks("640,200")              # [(3, "…前後の字…")]
+d.adoc()                              # 文書の全部を AsciiDoc の字で
+d.save("報告.adoc")
+----
+
+* 番号は 0 から数えたブロックの位置で、範囲は両端を含みます。
+* `blocks` はブロックごとに**照合の字**を返します。読んだ時の物を `replace_blocks` / `delete_blocks` の `stamps` に渡すと、その間に文書が変わっていれば「読んだ後に変わっています」と断られます。渡さなければそのまま上書きします。
+* 断片は何ブロックでも書けます(空行で区切る)。頭の属性(`:名前: 値`)は書けません。文書の頭の物です。
+
 === 段落
 
 [source,python]
@@ -497,6 +526,23 @@ xw.run_macro("締め")                       # plugins のマクロを1つ動か
 *`table_style(…, False)` は塗りを剥がしません。*
 掛ける前の姿を覚えていないので、剥がすと元の色まで消えるためです。
 外れるのは表の性質だけで、色を消すなら `clear_formats()`。
+
+*大きな表はデータフレームで* — AI のパネルと `officework-mcp` が使うのと同じ3つの操作です。数万行の表をセルで読むことはしません:
+
+[source,python]
+----
+t = s.tables["テーブル1"]                 # 名前で(s.tables に一覧)
+t.schema()                                # {"rows": 36, "cols": [["月", "text"], …, ["金額", "number"]]}
+t.head(2)                                 # 見出しと先頭2行
+t.query("SELECT 月, SUM(金額) AS 計, COUNT(*) AS 件 "
+        "FROM テーブル1 GROUP BY 月 ORDER BY 計 DESC")
+                                          # {"total": 3, "values": [["月", "計", "件"], ["6月", "79780", "12"], …]}
+t.frame(sql, limit=200)                   # 同じ答えを polars の DataFrame で(pip install polars)
+----
+
+問い合わせの言葉は SQL(polars の SQL)で、`FROM` には表の名前を書きます。
+`values` は見出し行つきの小さな表で `limit` 行まで(既定 200)、`total` は絞った後の全行数です。
+数は余分な小数を付けない字("79780")で、空のセルは "" です。
 
 === python-docx の書き方(officework.doc)
 

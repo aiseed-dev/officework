@@ -2422,7 +2422,7 @@ mod df_tests {
     fn the_table_verbs_read_schema_head_and_sql() {
         let mut h = host();
         let r = handle(&mut h, r#"{"cmd":"table_schema","table":"売上"}"#);
-        assert!(r.contains("\"rows\":3") && r.contains("[\"金額\",\"数\"]"), "{r}");
+        assert!(r.contains("\"rows\":3") && r.contains("[\"金額\",\"number\"]"), "{r}");
         let r = handle(&mut h, r#"{"cmd":"table_head","table":"売上","n":1}"#);
         assert!(r.contains("[[\"品名\",\"金額\"],[\"鉛筆\",\"100\"]]"), "{r}");
         let r = handle(&mut h, r#"{"cmd":"table_query","table":"売上","sql":"SELECT 品名, SUM(金額) AS 計 FROM 売上 GROUP BY 品名 ORDER BY 計 DESC"}"#);
