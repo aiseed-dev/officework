@@ -8871,3 +8871,43 @@ mod remaining_fixes_tests {
         });
     }
 }
+
+/// **エージェントの道具は「1つ = 1手」**(2026-09-04。agent.ja.adoc の
+/// 「対話の画面の決め」)。パネルは書き替えの行に「1手」と出すので、
+/// 実際にそうでなければ嘘になります。
+///
+/// 文章の画面では、受け口からの書き替えが戻らないことがありました
+/// (2026-09-05 に Fable が直した `acted` の印)。**表の側は器が違う**
+/// (`ops` の `mark_once` → `checkpoint`)ので、同じ形かをここで縛ります
+#[cfg(test)]
+mod agent_one_step_tests {
+    use crate::*;
+
+    #[gpui::test]
+    fn one_tool_call_is_one_undo_step(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _| {
+            use agent::ToolHost as _;
+            let before = this.book.sheets[0].cells.len();
+            let call = |this: &mut Calc, args: &str| {
+                let mut d = agent::tools::DirectHost { h: this };
+                d.call("write_range", args).expect("道具が動かない")
+            };
+            let ji = |this: &Calc, r: u32| {
+                this.book.sheets[0].get(Pos::new(r, 0)).map(|c| c.value.display())
+            };
+            call(this, r#"{"a1":"A1","values":[["一"]]}"#);
+            assert_eq!(ji(this, 0).as_deref(), Some("一"), "1回目が入らない");
+            call(this, r#"{"a1":"A2","values":[["二"]]}"#);
+            assert_eq!(ji(this, 1).as_deref(), Some("二"), "2回目が入らない");
+
+            // **1手ずつ戻ります。** 2回の呼びは2手で、まとめて消えません
+            this.undo_sheet();
+            assert_eq!(ji(this, 1), None, "2回目が1手で戻らない");
+            assert_eq!(ji(this, 0).as_deref(), Some("一"), "1回目まで戻ってしまった");
+            this.undo_sheet();
+            assert_eq!(ji(this, 0), None, "1回目が戻らない");
+            assert_eq!(this.book.sheets[0].cells.len(), before, "元に戻っていない");
+        });
+    }
+}
