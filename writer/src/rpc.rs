@@ -90,6 +90,11 @@ fn stamps_of(o: &ops::Jobj) -> Option<Vec<String>> {
 
 /// 1要求を捌く(主スレッド)。答えは JSON 1行。
 pub fn handle(w: &mut Writer, line: &str) -> String {
+    // **受け口の要求は、それぞれが1つの操作。** 控え(checkpoint)は「この一手では
+    // もう控えた」の印(acted)が立っていると取らない。印はキーやボタンの操作の
+    // 始めに戻るが、受け口には戻す所が無く、前の操作の印が残ったままだと
+    // 書き替えが Ctrl+Z で戻らなかった(2026-09-05、実機で見つけた)
+    w.acted = false;
     let Some(o) = ops::Jobj::parse(line) else { return ops::err("JSON が読めません") };
     let Some(cmd) = o.str("cmd") else { return ops::err("cmd がありません") };
     match cmd.as_str() {
@@ -226,26 +231,14 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
             };
             let Some(src) = o.str("adoc") else { return ops::err("adoc がありません") };
             let stamps = stamps_of(&o);
-            w.checkpoint(false);
-            match kumihan::blocks::replace(&mut w.doc, from, to, &src, stamps.as_deref()) {
-                Ok(n) => {
-                    w.after_block_edit();
-                    ok(&format!("\"replaced\":{n}"))
-                }
-                Err(e) => ops::err(&e),
-            }
+            one_step(w, |w| {
+                kumihan::blocks::replace(&mut w.doc, from, to, &src, stamps.as_deref()).map(|n| format!("\"replaced\":{n}"))
+            })
         }
         "insert_blocks" => {
             let Some(at) = o.num("at") else { return ops::err("at がありません") };
             let Some(src) = o.str("adoc") else { return ops::err("adoc がありません") };
-            w.checkpoint(false);
-            match kumihan::blocks::insert(&mut w.doc, at as usize, &src) {
-                Ok(n) => {
-                    w.after_block_edit();
-                    ok(&format!("\"inserted\":{n}"))
-                }
-                Err(e) => ops::err(&e),
-            }
+            one_step(w, |w| kumihan::blocks::insert(&mut w.doc, at as usize, &src).map(|n| format!("\"inserted\":{n}")))
         }
         "delete_blocks" => {
             let (from, to) = match range_of(&o, w.doc.blocks.len()) {
@@ -253,14 +246,7 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
                 Err(e) => return ops::err(&e),
             };
             let stamps = stamps_of(&o);
-            w.checkpoint(false);
-            match kumihan::blocks::delete(&mut w.doc, from, to, stamps.as_deref()) {
-                Ok(n) => {
-                    w.after_block_edit();
-                    ok(&format!("\"deleted\":{n}"))
-                }
-                Err(e) => ops::err(&e),
-            }
+            one_step(w, |w| kumihan::blocks::delete(&mut w.doc, from, to, stamps.as_deref()).map(|n| format!("\"deleted\":{n}")))
         }
         "find" => {
             let Some(text) = o.str("text") else { return ops::err("text がありません") };
@@ -286,22 +272,39 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
                     _ => return ops::err("values の各行は [名前, 値] です"),
                 }
             }
-            w.checkpoint(false);
-            let mut filled = 0usize;
-            let mut missing: Vec<String> = Vec::new();
-            for (n, v) in &pairs {
-                let k = w.doc.set_sdt_text(n, v);
-                if k == 0 {
-                    missing.push(q(n));
-                } else {
-                    filled += k;
+            one_step(w, |w| {
+                let mut filled = 0usize;
+                let mut missing: Vec<String> = Vec::new();
+                for (n, v) in &pairs {
+                    let k = w.doc.set_sdt_text(n, v);
+                    if k == 0 {
+                        missing.push(q(n));
+                    } else {
+                        filled += k;
+                    }
                 }
-            }
-            w.after_block_edit();
-            ok(&format!("\"filled\":{filled},\"missing\":[{}]", missing.join(",")))
+                Ok(format!("\"filled\":{filled},\"missing\":[{}]", missing.join(",")))
+            })
         }
         "end" => ok(""),
         other => ops::err(&format!("知らない動詞です: {other}")),
+    }
+}
+
+/// **書き替えの1手。** 控えを取ってから直し、断ったら控えを捨てる(断った
+/// 要求の控えが残ると、次の Ctrl+Z がそれを戻して見た目が変わらない)
+fn one_step(w: &mut Writer, f: impl FnOnce(&mut Writer) -> Result<String, String>) -> String {
+    w.checkpoint(false);
+    match f(w) {
+        Ok(body) => {
+            w.after_block_edit();
+            ok(&body)
+        }
+        Err(e) => {
+            w.undo_stack.pop();
+            w.acted = false;
+            ops::err(&e)
+        }
     }
 }
 
@@ -344,6 +347,12 @@ mod tests {
             // Ctrl+Z 1手で戻る
             this.undo_step();
             assert!(!this.doc.body_text().contains("受注は4件"), "1手で戻らない");
+            // 前の操作の印(acted)が残っていても、受け口の要求は自分の一手として控える
+            this.acted = true;
+            let r = crate::rpc::handle(this, r#"{"cmd":"replace_blocks","from":2,"to":2,"adoc":"受注は9件。\n"}"#);
+            assert!(r.contains("\"replaced\":1"), "{r}");
+            this.undo_step();
+            assert!(!this.doc.body_text().contains("受注は9件"), "印が残っていると1手で戻らない");
         });
     }
 }
