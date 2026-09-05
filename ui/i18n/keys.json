@@ -9470,5 +9470,9 @@
  {
   "key": "claude_code_exited",
   "kind": "msg"
+ },
+ {
+  "key": "sandbox_blocked_by_userns",
+  "kind": "msg"
  }
 ]

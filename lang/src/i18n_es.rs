@@ -2226,4 +2226,5 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_login_in_terminal", "No ha iniciado sesión en Claude Code. Ejecute `claude auth login` en una terminal"),
     ("officework_mcp_not_connected", "officework-mcp no se conectó: {}"),
     ("claude_code_exited", "Claude Code terminó (código {})"),
+    ("sandbox_blocked_by_userns", "El sandbox que ejecuta las macros está bloqueado por la configuración de esta máquina (la restricción de espacios de nombres de usuario de Ubuntu 24.04 en adelante). Instalar el .deb lo resuelve: coloca /etc/apparmor.d/officework"),
 ];

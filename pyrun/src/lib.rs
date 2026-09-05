@@ -368,6 +368,21 @@ pub enum Cage {
     None,
 }
 
+/// **サンドボックスが「利用者名前空間の制限」で止まったか**(2026-09-05)。
+///
+/// Ubuntu 24.04 から `kernel.apparmor_restrict_unprivileged_userns = 1` が
+/// 既定です。**AppArmor のプロファイルを持たないプロセス**が作る利用者
+/// 名前空間は権限を落とされ、bubblewrap は loopback を上げられません。
+/// 端末やランチャーから起こしたアプリがちょうどそれに当たります。
+///
+/// bwrap の言い分そのままでは何のことか分からないので、画面はこれを見て
+/// 言い換えます。**直し方は `.deb` が置くプロファイル**で、それが無い機械
+/// (tar.gz で置いた・自分で組んだ)では手で置くことになります。
+pub fn userns_blocked(stderr: &str) -> bool {
+    (stderr.contains("RTM_NEWADDR") || stderr.contains("uid map") || stderr.contains("setting up uid map"))
+        && stderr.contains("bwrap")
+}
+
 /// いまの環境で組めるサンドボックス。Flatpak の中かは /.flatpak-info で見分ける(公式の印)
 pub fn cage_kind() -> Cage {
     if std::path::Path::new("/.flatpak-info").exists() {
@@ -2118,3 +2133,22 @@ mod cage_tests {
     }
 }
 
+
+#[cfg(test)]
+mod userns_tests {
+    /// **bwrap の言い分から「名前空間の制限」を見分ける**(2026-09-05)。
+    ///
+    /// 実機で出た字をそのまま入れます(この機械の素の unconfined で出た物)。
+    /// 関係のない失敗まで拾うと、直し方の案内が嘘になります
+    #[test]
+    fn the_userns_refusal_is_told_apart_from_other_failures() {
+        assert!(super::userns_blocked(
+            "bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted\n"
+        ));
+        assert!(super::userns_blocked("bwrap: setting up uid map: Permission denied\n"));
+        // 関係のない失敗
+        assert!(!super::userns_blocked("Traceback (most recent call last):\n"));
+        assert!(!super::userns_blocked("bwrap: execvp true: No such file or directory\n"));
+        assert!(!super::userns_blocked(""));
+    }
+}

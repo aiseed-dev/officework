@@ -2226,4 +2226,5 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_login_in_terminal", "Nicht bei Claude Code angemeldet. Führen Sie `claude auth login` in einem Terminal aus"),
     ("officework_mcp_not_connected", "officework-mcp hat keine Verbindung hergestellt: {}"),
     ("claude_code_exited", "Claude Code wurde beendet (Code {})"),
+    ("sandbox_blocked_by_userns", "Die Sandbox für Makros wird von den Einstellungen dieses Rechners blockiert (Einschränkung unprivilegierter User-Namespaces ab Ubuntu 24.04). Die Installation des .deb behebt es: es legt /etc/apparmor.d/officework an"),
 ];

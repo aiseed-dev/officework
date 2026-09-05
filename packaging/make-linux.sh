@@ -136,6 +136,30 @@ cat > "$DEB/usr/share/mime/packages/officework.xml" <<MIME
 </mime-info>
 MIME
 
+# ---- AppArmor のプロファイル(Ubuntu 24.04 以降)----------------------------
+#
+# **これが無いとマクロが走りません**(2026-09-05)。Ubuntu 24.04 から
+# `kernel.apparmor_restrict_unprivileged_userns = 1` が既定で、**プロファイルの
+# 無いプロセスが作る利用者名前空間は権限を落とされます**。マクロの
+# サンドボックス(bubblewrap)はそこで loopback を上げられず、
+# `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted` で止まります。
+#
+# 端末やランチャーから起こした officework は、まさにその「プロファイルの無い
+# プロセス」です。Chrome や Electron のアプリが置いているのと同じ形の
+# プロファイルを置いて、名前空間だけを許します(**中身は制限しません** —
+# `flags=(unconfined)` なので、守りはサンドボックスの側が持ちます)。
+mkdir -p "$DEB/etc/apparmor.d"
+cat > "$DEB/etc/apparmor.d/officework" <<'AA'
+abi <abi/4.0>,
+include <tunables/global>
+
+profile officework /opt/officework/bin/officework flags=(unconfined) {
+  userns,
+
+  include if exists <local/officework>
+}
+AA
+
 # **絵も一緒に入れる。** `.desktop` が Icon= で名指ししているのに絵が
 # 無ければ、ランチャーで無地の四角になる(2026-08-17 のアルファの
 # 棚卸しまで、まさにその状態だった)。正本は packaging/icons の SVG 1枚で、
@@ -157,6 +181,9 @@ set -e
 update-mime-database /usr/share/mime >/dev/null 2>&1 || true
 update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
+# **プロファイルを読ませます**(入れた回に効かせるため)。
+# AppArmor の無い機械では黙って何もしません
+apparmor_parser -r -T -W /etc/apparmor.d/officework >/dev/null 2>&1 || true
 POST
 chmod 755 "$DEB/DEBIAN/postinst"
 cp "$DEB/DEBIAN/postinst" "$DEB/DEBIAN/postrm"

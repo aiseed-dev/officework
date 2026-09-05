@@ -1179,6 +1179,11 @@ impl Calc {
                     || err.contains("エンジン(_sheet)が読めません")
                 {
                     ui::t!("officework_engine_missing_pip").to_string()
+                } else if pyrun::userns_blocked(&err) {
+                    // **bwrap の言い分は何のことか分かりません**(2026-09-05)。
+                    // `Failed RTM_NEWADDR: Operation not permitted` は
+                    // Ubuntu の利用者名前空間の制限で、直し方は決まっています
+                    ui::t!("sandbox_blocked_by_userns").to_string()
                 } else {
                     last
                 });

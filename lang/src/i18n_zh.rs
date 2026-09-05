@@ -2226,4 +2226,5 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_login_in_terminal", "尚未登录 Claude Code。请在终端运行 `claude auth login`"),
     ("officework_mcp_not_connected", "officework-mcp 未能连接: {}"),
     ("claude_code_exited", "Claude Code 已退出(代码 {})"),
+    ("sandbox_blocked_by_userns", "运行宏的沙箱被这台机器的设置挡住了(Ubuntu 24.04 起的用户命名空间限制)。用 .deb 安装即可解决 — 它会放置 /etc/apparmor.d/officework"),
 ];
