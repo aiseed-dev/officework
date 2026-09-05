@@ -3,20 +3,17 @@
 ## 作る
 
 ```
-packaging/make-linux.sh            # tar.gz と .deb(Python 同梱)
-packaging/make-linux.sh --no-py    # Python を同梱しない(小さい)
+packaging/make-linux.sh            # tar.gz と .deb
 ```
 
 出来上がりは `packaging/out/` に置かれます(git には入れません)。
-初回は CPython(約36MB)を落とすので少し待ちます — 2回目からは
-`packaging/cache/` の物を使うので速いです。
 
 大きさの目安(0.1.0-alpha):
 
 | 形 | 大きさ | 中身 |
 |---|---|---|
-| tar.gz | 55MB | officework・Python 3.14・見本の .py・手引き |
-| .deb | 42MB | 同じ物を /opt/officework へ。`officework` で起動 |
+| tar.gz | 47MB | officework・見本の .py・手引き4冊 |
+| .deb | 34MB | 同じ物を /opt/officework へ。`officework` で起動 |
 
 ## 試す
 
@@ -59,7 +56,15 @@ cp /opt/officework/share/officework/plugins/*.py ~/.config/officework/plugins/  
 =合計(A1:A10)        → 範囲をまとめて
 ```
 
-**Python は同梱しています。** 機械に Python が入っていなくても動きます。
+**Python は同梱していません。** 使う物は選べます。
+
+既定は**開いているフォルダの `.venv`** です(エディタと同じ作法)。
+別の物にしたいときは、ファイル > 詳細設定 の「Python の場所」を押して
+ください。この機械で見つかった物(`.venv` / uv / conda / pyenv / 機械の
+`python3`)が並ぶので、選ぶだけです。
+
+matplotlib や polars を使う仕事は、選んだ環境にそれらが入っている必要が
+あります(`pip install polars matplotlib`)。
 `~/.config/officework/plugins/` に `.py` を置くだけで、`def` の名前がそのまま
 セルの関数になります(日本語の名前も使えます)。
 
