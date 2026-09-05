@@ -392,6 +392,23 @@ pub fn recent_row(look: &PaneLook, i: usize, p: &std::path::Path) -> gpui::State
 
 // ---- 詳細設定の面(統合の段8。2026-09-04)------------------------------
 
+/// **AI の宛先の書き方の見本**(2026-09-04)。設定のファイルがまだ無いときに
+/// これを置いてから開きます。
+///
+/// **訳しません。** 中身は TOML の鍵と URL で、どの言語でも同じ字です
+pub const AI_EXAMPLE: &str = "\
+# officework の設定\n\
+\n\
+# AI の宛先。いくつでも並べられます\n\
+# key_env は**鍵そのものではなく、鍵の入った環境変数の名前**です\n\
+[[ai]]\n\
+name = \"my-model\"\n\
+url = \"https://api.example.com/v1/chat/completions\"\n\
+model = \"model-name\"\n\
+key_env = \"MY_API_KEY\"\n\
+";
+
+
 /// **詳細設定の1行の中の1つ。**
 ///
 /// 押せる物(押すと値が変わる)と、見るだけの字の2つです。

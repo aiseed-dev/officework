@@ -2368,5 +2368,7 @@
  "add_or_edit_destination": "Tambah atau ubah tujuan…",
  "python_location": "Lokasi Python",
  "use_this": "Pakai ini",
- "python_chosen": "Python sekarang {}"
+ "python_chosen": "Python sekarang {}",
+ "settings_file": "Berkas setelan (tambah atau ubah)",
+ "ai_destination_deleted": "Tujuan {} dihapus"
 }

@@ -2368,5 +2368,7 @@
  "add_or_edit_destination": "대상 추가·수정…",
  "python_location": "Python 위치",
  "use_this": "이것 사용",
- "python_chosen": "Python을 {} 으로 했습니다"
+ "python_chosen": "Python을 {} 으로 했습니다",
+ "settings_file": "설정 파일(추가·수정)",
+ "ai_destination_deleted": "대상 {} 을(를) 지웠습니다"
 }

@@ -476,6 +476,9 @@ pub struct Writer {
     pub(crate) agent_calls: Vec<lang::model::ToolCall>,
     /// 道具 save の確認待ち(呼びと、渡された path)
     pub(crate) agent_save: Option<(lang::model::ToolCall, Option<String>)>,
+    /// 宛先「Claude Code」の子プロセス(1つの会話 = 1つのプロセス。
+    /// `agent::claude_code`)。他の宛先では None
+    pub(crate) agent_cc: Option<agent::claude_code::ClaudeCode>,
     /// **宛先を選んでいる最中の一覧**(2026-09-04 発注者「AI model を
     /// 自由に設定」)。`None` は選んでいない。開くときに1度だけ作ります —
     /// 手元のモデルを探すのに港を叩くので、描くたびに作ると遅くなります
@@ -483,6 +486,9 @@ pub struct Writer {
     /// **Python を選んでいる最中の候補**(2026-09-04 発注者「デフォルトは、
     /// プロジェクトディレクトリーの .venv にして」)。開くときに1度だけ探します
     pub(crate) py_picking: Option<Vec<std::path::PathBuf>>,
+    /// **宛先を直している最中か**(2026-09-04 発注者「AI model を自由に
+    /// 設定」)。詳細設定で「AI の宛先」を押している間だけ、書いた行が並びます
+    pub(crate) ai_editing: bool,
     /// 複数ページ(見開き。画面だけの見え方 — 紙は1ページずつのまま)
     multipage: bool,
     /// 印刷モードの、頁ごとの上端(折った後の mm)。紙の絵をここへ置く

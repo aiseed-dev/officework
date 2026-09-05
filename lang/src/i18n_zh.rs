@@ -2217,4 +2217,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("python_location", "Python 的位置"),
     ("use_this", "使用这个"),
     ("python_chosen", "Python 现在是 {}"),
+    ("settings_file", "设置文件(添加或修改)"),
+    ("ai_destination_deleted", "已删除目标 {}"),
 ];

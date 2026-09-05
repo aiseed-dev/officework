@@ -2368,5 +2368,7 @@
  "add_or_edit_destination": "Ajouter ou modifier des destinations…",
  "python_location": "Emplacement de Python",
  "use_this": "Utiliser",
- "python_chosen": "Python est maintenant {}"
+ "python_chosen": "Python est maintenant {}",
+ "settings_file": "Fichier de réglages (ajouter ou modifier)",
+ "ai_destination_deleted": "Destination {} supprimée"
 }

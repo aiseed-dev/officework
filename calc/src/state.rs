@@ -472,6 +472,7 @@ impl Calc {
             agent_save: None,
             agent_picking: None,
             py_picking: None,
+            ai_editing: false,
             left_face: 0,
             chosen_folder: None,
             fl_job: None,

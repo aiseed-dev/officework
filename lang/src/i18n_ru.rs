@@ -2217,4 +2217,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("python_location", "Расположение Python"),
     ("use_this", "Использовать"),
     ("python_chosen", "Python теперь {}"),
+    ("settings_file", "Файл настроек (добавить или изменить)"),
+    ("ai_destination_deleted", "Адресат {} удалён"),
 ];

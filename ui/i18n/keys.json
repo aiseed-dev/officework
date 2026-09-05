@@ -9450,5 +9450,13 @@
  {
   "key": "python_chosen",
   "kind": "msg"
+ },
+ {
+  "key": "settings_file",
+  "kind": "msg"
+ },
+ {
+  "key": "ai_destination_deleted",
+  "kind": "msg"
  }
 ]

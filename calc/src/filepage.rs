@@ -472,9 +472,51 @@ impl Calc {
             // フォルダの `.venv` です(いちばん上)
             OptRow::one(ui::t!("python_location"), "set-python",
                         pyrun::find_python().display().to_string()),
+            // **宛先の一覧は設定のファイルが正本**(2026-09-04 発注者
+            // 「AI model を自由に設定」)。ここに出るのは `[[ai]]` に**書いた
+            // 行だけ**です — 鍵の環境変数から見つけた提供元と、動いている
+            // 手元のモデルは自動で並ぶので、消す物がありません
             OptRow::one(ui::t!("ai_destination"), "set-ai", self.agent_dest_label()).gap(),
         ];
         rows.extend(ui::env_rows(&lock_identity()).into_iter().map(|(k, v)| OptRow::view(k, v)));
+        // **書いた宛先を並べます**(押している間だけ)。消すのはここから、
+        // 足す・直すは設定のファイルを開いて書きます — 名前・URL・モデル名・
+        // 鍵の環境変数の4つを1つの窓で打たせるより、**書いてある物を
+        // そのまま見せる**方が分かります(アプリ自身が文書エディタです)
+        if self.ai_editing {
+            let mine = face::settings::parse_ai_list(
+                &std::fs::read_to_string(ui::settings::path()).unwrap_or_default(),
+            );
+            let at = rows.iter().position(|r| {
+                matches!(r.cells.first(),
+                         Some(ui::filemenu::OptCell::Button { id, .. }) if id == "set-ai")
+            });
+            if let Some(at) = at {
+                let mut k = 1;
+                if mine.is_empty() {
+                    rows.insert(at + k, OptRow::view("", ui::t!("ai_list_empty_write_settings")));
+                    k += 1;
+                }
+                for (i, d) in mine.iter().enumerate() {
+                    rows.insert(
+                        at + k + i,
+                        OptRow::one(
+                            format!("{}  {}", d.name, if d.model.is_empty() { d.url.clone() } else { d.model.clone() }),
+                            format!("ai-del:{i}"),
+                            ui::t!("delete").to_string(),
+                        ),
+                    );
+                }
+                rows.insert(
+                    at + k + mine.len(),
+                    OptRow::one(
+                        ui::t!("settings_file"),
+                        "ai-open-settings",
+                        ui::t!("open").to_string(),
+                    ),
+                );
+            }
+        }
         // **見つかった Python を、その行のすぐ下に並べます**(押している間だけ)。
         //
         // 下にまとめて足すと「AI の宛先」の後に出て、何の一覧か分かりません。
@@ -544,7 +586,41 @@ impl Calc {
                 }
                 self.py_picking = None;
             }
-            "set-ai" => self.agent_cycle_dest(),
+            // **押すと、書いた宛先が並びます**(消す・設定のファイルを開く)
+            "set-ai" if !self.ai_editing => {
+                self.ai_editing = true;
+            }
+            "set-ai" if self.ai_editing => {
+                self.ai_editing = false;
+            }
+            id if id.starts_with("ai-del:") => {
+                let mut mine = face::settings::parse_ai_list(
+                    &std::fs::read_to_string(ui::settings::path()).unwrap_or_default(),
+                );
+                if let Ok(i) = id["ai-del:".len()..].parse::<usize>() {
+                    if i < mine.len() {
+                        let na = mine.remove(i).name;
+                        self.status = match face::settings::set_ai_list(&mine) {
+                            Ok(()) => ui::tf!("ai_destination_deleted", na).into(),
+                            Err(e) => e.into(),
+                        };
+                    }
+                }
+            }
+            // **足す・直すは設定のファイルを開いて書きます。** 名前・URL・
+            // モデル名・鍵の環境変数の4つを窓で打たせるより、書いてある物を
+            // そのまま見せる方が分かります(アプリ自身が文書エディタです)
+            "ai-open-settings" => {
+                let p = ui::settings::path();
+                if !p.exists() {
+                    if let Some(d) = p.parent() {
+                        let _ = std::fs::create_dir_all(d);
+                    }
+                    let _ = std::fs::write(&p, ui::filemenu::AI_EXAMPLE);
+                }
+                self.open_request = Some(p);
+                self.ai_editing = false;
+            }
             _ => {}
         }
     }

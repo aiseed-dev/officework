@@ -2368,5 +2368,7 @@
  "add_or_edit_destination": "Adicionar ou editar destinos…",
  "python_location": "Local do Python",
  "use_this": "Usar este",
- "python_chosen": "O Python agora é {}"
+ "python_chosen": "O Python agora é {}",
+ "settings_file": "Arquivo de configurações (adicionar ou editar)",
+ "ai_destination_deleted": "Destino {} removido"
 }

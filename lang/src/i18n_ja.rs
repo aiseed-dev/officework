@@ -617,7 +617,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("solver_parameters", "ソルバーのパラメータ"),
     ("add", "追加"),
     ("change", "変更"),
-    ("delete", "削除"),
+    ("delete", "消す"),
     ("make_unconstrained_variables_non", "制約のない変数を非負にする"),
     ("solving_method", "解法の方法"),
     ("simplex_lp", "単体法 LP"),
@@ -2217,4 +2217,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("python_location", "Python の場所"),
     ("use_this", "これを使う"),
     ("python_chosen", "Python を {} にしました"),
+    ("settings_file", "設定のファイル(足す・直す)"),
+    ("ai_destination_deleted", "宛先「{}」を消しました"),
 ];
