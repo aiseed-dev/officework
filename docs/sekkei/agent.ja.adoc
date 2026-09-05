@@ -417,7 +417,16 @@ officework を起こすと、この機械と同じくマクロが走らない。
 (Opus に伝えた。配布は Opus の受け持ち)。
 結果を1手として入れる所(`macro_apply`)は、結果の xlsx / adoc を手で作って
 当てる試験で固定した(入る・控えは1回・Ctrl+Z で戻る・読めない物は断る)。
-マクロそのものの通しは、プロファイルが入ってから実機で見る。
+マクロそのものの通しは、同じ日に Opus がプロファイルの中(Claude Desktop の
+木)で当てて通った: calc は `s["Z1"].value = 12345` が done になり Z1 に
+入り、Ctrl+Z で消えた。writer は `out = src.replace("来月の予定",
+"来月の予定(改)")` が done になり見出しが替わり、Ctrl+Z で戻った。
+`replace_blocks` も受け口から効いた。.deb に `/etc/apparmor.d/officework` を
+入れる直しは 3a6ad00c。
+再現の時の落とし穴が2つ。実機の道具(tools/ribbon_sweep.py など)は
+`target/release` の実行ファイルを起こすので、debug しか組んでいないと古い版が
+動いて「知らない cmd」になる。もう1つ、Ctrl+Z は窓へ焦点を移してから送る
+(移さずに送ると別の窓へ行き「戻らない」に見える)。
 
 **文書の道具の往復も本物で確かめた**(2026-09-05)。動いている writer
 (報告書.docx)に対し、`claude -p`(Max のログイン)+ `officework-mcp --panel`
