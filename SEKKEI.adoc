@@ -6242,6 +6242,22 @@ cover_check や見本作りの検査(しょうもない側)を消せる。
 載せた物は gokan_diff の側で 意図 として除外してよい — その場合は
 除外の一覧に理由を書くこと。
 
+==== 続き27: aiseed office 0.1.0-alpha.1 を公開(2026-09-06)
+
+続き22 の「2本が動くこと」(エージェントパネルと polars の df)が揃ったので、
+発注者がタグ `app-v0.1.0-alpha.1` を押して公開した(GitHub Releases。
+Linux の tar.gz と .deb、macOS の arm64 .dmg は署名と公証つき、Windows の
+setup.exe は署名なし)。宛先「Claude Code」は入れたまま出す。Commercial
+Terms への同意は Yasuhiro Niji 個人の Console のアカウントで済んでいる扱い
+(docs/sekkei/agent.ja.adoc「決め待ち」)。
+
+タグを押して初めて分かって直した物が3つ: .deb の Depends の bubblewrap を
+CI の runner が持たない(apt-get で入れる)、calc の `impl ops::Host` が unix
+だけで組まれていて Windows で落ちる(モジュールを全 OS に)、Windows の
+確かめる段が同梱をやめた Python を探す。あわせて、Ubuntu 24.04 以降では
+プロファイルの無いプロセスのサンドボックスが止まるので、.deb が AppArmor の
+プロファイルを置く(3a6ad00c)。
+
 ==== 続き23: エージェントの宛先と、文書はブロックで(2026-09-04 発注者)
 
 設計は docs/sekkei/agent.ja.adoc。決めだけここに:
