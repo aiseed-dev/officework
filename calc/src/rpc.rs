@@ -16,6 +16,8 @@ use crate::*;
 use ops::{Host, J, Jobj};
 
 /// 口を開く。聞き取りのスレッドを立て、メインスレッドに 30ms の汲み取りを付ける。
+/// ソケットは unix だけ(Windows には無い)。印は関数のすぐ上に置く
+#[cfg(unix)]
 pub(crate) fn start(view: gpui::Entity<Calc>, cx: &mut gpui::App) {
     // **ソケットの世話は ops に1本**(2026-08-19)。writer も同じ物を使います
     let queue: ops::Queue = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));

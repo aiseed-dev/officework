@@ -46,9 +46,11 @@ mod io;
 pub(crate) use io::*;
 mod picks;
 // RPC は**ユニックスソケットが設計**(この機械の中だけ・ネイティブファースト)。
-// Windows ではこの受け口ごと開かない — ops が cfg(unix) で学んだのと同じ線
-// (0.2.0 で Windows の wheel を壊した教訓)
-#[cfg(unix)]
+// Windows ではソケットを開かない(`rpc::start` だけが `#[cfg(unix)]`)。
+// **モジュールごと外してはいけない** — `impl ops::Host for Calc` がここに
+// あり、パネルのエージェント(agent::DirectHost)がどの OS でも使う。
+// 2026-09-06、app-v0.1.0-alpha.1 の Windows の組みで「Calc: ops::Host が
+// 無い」と落ちて分かった(writer は前から同じ形)
 /// 受け口(JSON 1行)。捌き手の本体は ops::handle
 pub mod rpc;
 mod cmds;
