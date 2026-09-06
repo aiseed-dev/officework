@@ -46,7 +46,7 @@ UninstallDisplayIcon={app}\officework.exe
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
-; 同梱 Python があるので素で 200MB ほどになる
+; Python は同梱しない(2026-09-04)。本体だけで 130MB ほど
 DiskSpanning=no
 
 [Languages]
@@ -97,7 +97,7 @@ Root: HKCU; Subkey: "Software\Classes\.adoc"; ValueType: string; ValueName: ""; 
 Filename: "{app}\officework.exe"; Description: "{cm:LaunchProgram,officework}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
-; 同梱 Python が入れた物(__pycache__ など)は [Files] の控えに無いので、
-; 消し残さないように畳む。**利用者の ~/.config\officework には触らない** —
+; 前の版が同梱していた Python の残り(__pycache__ など)は [Files] の控えに
+; 無いので、あれば消す。**利用者の ~/.config\officework には触らない** —
 ; マクロと設定は利用者の物
 Type: filesandordirs; Name: "{app}\python"

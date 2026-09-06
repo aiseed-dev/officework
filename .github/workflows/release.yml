@@ -195,7 +195,8 @@ jobs:
             -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
 
           $app = "$env:LOCALAPPDATA\Programs\officework"
-          foreach ($f in @("officework.exe", "python\python.exe")) {
+          # Python は同梱しない(2026-09-04)ので、見るのは本体だけ
+          foreach ($f in @("officework.exe")) {
             if (-not (Test-Path "$app\$f")) { throw "入っていません: $f" }
             $mb = [math]::Round((Get-Item "$app\$f").Length / 1MB, 1)
             Write-Host "  入った: $f ($mb MB)"
