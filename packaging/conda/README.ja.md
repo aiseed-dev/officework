@@ -61,7 +61,13 @@ README が「v0 の meta.yaml は新規には非推奨」と明言。下書き�
 - [x] 公開の版のタグ → PyPI(0.2.0 は 2026-08-12 に済)
 - [x] v0.3.0 のタグ → PyPI(2026-08-14 に済。recipe は 0.3.0 の sha256 入り)
 - [x] `extra.recipe-maintainers` = awoni(発注者の個人アカウント。2026-08-14)
-- [ ] staged-recipes へ PR(下の「出し方」— recipe.yaml はそのまま写せる形にした)
+- [x] staged-recipes へ PR(2026-08-13、conda-forge/staged-recipes#34525。
+  awoni の PR。CI は linux_64 / osx_64 とも緑。2026-08-13 に
+  `@conda-forge/help-python-c, ready for review!` を出したが、2026-09-06 の
+  時点で審査の返事は無い)
+- [ ] PR を 0.5.0 に上げる(2026-09-06 に recipe.yaml を 0.5.0 にした。
+  sdist が LICENSE を運ぶので第二の source は消した。fork の枝
+  aiseed-dev/staged-recipes:officework に写して push する — 下の「PR を上げ直す」)
 - [x] recipe を v1(recipe.yaml)に(2026-08-14。v0 の meta.yaml は消した)
 
 ## 出し方(そのまま打てる形。fork と PR は awoni のアカウントで)
@@ -93,6 +99,22 @@ PR を出した後の作法(テンプレートから 2026-08-14 に採取):
 maintainer は awoni。PR の作者が awoni 本人なら同意のコメントは不要
 (他人が出す PR に名を載せるときだけ「I agree to be a maintainer」が要る)。
 
+## PR を上げ直す(版が上がった時。awoni のアカウントで)
+
+```console
+$ gh repo clone aiseed-dev/staged-recipes
+$ cd staged-recipes
+$ git switch officework
+$ git fetch https://github.com/conda-forge/staged-recipes main && git merge FETCH_HEAD
+$ cp /home/dev/dev/officework/packaging/conda/recipe/recipe.yaml recipes/officework/
+$ git add recipes/officework && git commit -m "officework 0.5.0"
+$ git push
+```
+
+push すると PR #34525 の CI が回り直す。緑になったら、審査の催促は
+`@conda-forge-admin, please ping conda-forge/help-python-c` を1回だけ
+コメントする(3週間以上返事が無い時の作法。急かす文は書かない)。
+
 ## 踏んだ穴
 
 - **0.3.0 の sdist に LICENSE が入っていない**(2026-08-14、PR のチェック
@@ -107,4 +129,5 @@ maintainer は awoni。PR の作者が awoni 本人なら同意のコメント�
   使われる** — 直し(`skip-existing`)はタグの 28 分後に入ったので中に無く、
   既にある wheel の重複で止まって sdist まで届かなかった。
   **タグを動かすと 0.4.0 の中身が wheel と食い違う**ので、次の版(0.5.0)で
-  揃えて出す
+  揃えて出す(2026-09-06 確認: 0.5.0 の sdist は PyPI にあり、根に LICENSE を
+  運ぶ。PKG-INFO の License-File も LICENSE)
