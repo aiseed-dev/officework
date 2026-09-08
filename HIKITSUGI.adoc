@@ -63,6 +63,25 @@ Fable が触るので、Opus はそこを触らない。** それ以外の write
 
 == 環境の注意
 
+* **この Mac(2026-09-08 から)**: Rust は `curl https://sh.rustup.rs | sh -s -- -y --profile minimal`
+  でユーザー領域に入れた(sudo 不要)。GPUI の macOS の組み立てには Metal の
+  ツールが要る — `xcodebuild -downloadComponent MetalToolchain`(無いと
+  `metal shader compilation failed` で止まる)。Python は miniforge の 3.13 で
+  `.venv` を作った(`~/miniforge3/bin/python -m venv .venv`、pip で maturin・
+  python-docx・openpyxl・pdfplumber)。**`cargo check --workspace` は
+  `PYO3_PYTHON=$PWD/.venv/bin/python` を付けて回す** — 付けないと pysheet が
+  システムの Python 3.9 を掴んで「abi3-py310 より低い」で止まる。
+  `cargo test -p pysheet` はさらに `DYLD_FALLBACK_LIBRARY_PATH=$HOME/miniforge3/lib`
+  (libpython の置き場)と `PATH=$PWD/.venv/bin:$PATH`(python_smoke が `python3` を
+  引くので、3.9 でなく 3.13 を先に)が要る。clippy は `rustup component add clippy`
+* **Word と Excel がこの Mac にある(16.112)。** 比べる道具は `tools/ms_pdf.py`
+  (Word / Excel で PDF に)・`tools/ms_compare.py`(2つの PDF の行と位置を比べる)・
+  `tools/ms_values.py`(xlsx の式の答えを Excel と比べる)・`tools/ms_round.sh`
+  (受け入れ試験の10枚で1周)。関数の答えの表は `python3 test/kansu_oracle.py --excel`。
+  Excel の AppleScript で踏んだ穴は各道具の頭に書いてある(開くのは `open -a`
+  で、名前が `workbooks` に出るまで待つ。`repeat with w in workbooks` は -50 を返す。
+  保存先は `~/Documents` の下。同じ名前のブックは2つ開けない)
+
 * cargo が PATH に無い機械なら `export PATH="$HOME/.cargo/bin:$PATH"`。そもそも rustup ごと無い機械もある — その場合は user レベルの導入で足りる(`curl https://sh.rustup.rs | sh -s -- -y`。sudo 不要。2026-08-03 に実施済み)
 * `.cargo/config.toml` と `.linklibs/` は**この機械固有**(libxkbcommon-x11 の開発リンク回避)。別の機械では不要か、作り直しが要る。作り直しは2手: `.linklibs/libxkbcommon-x11.so` → 実行時の `.so.0` へ symlink、`.cargo/config.toml` に `rustflags = ["-L", "<絶対パス>/.linklibs"]`
 * 実物の様式(検査の材料)は``/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/`` にある。*無い環境ではテストは黙って飛ぶ*(失敗はしない)。可能ならコピーして持つ
