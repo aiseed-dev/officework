@@ -104,6 +104,9 @@ pub(super) fn tsume_yoyuu(c: char, w: f32) -> (f32, f32) {
     }
 }
 
+/// 表の罫線の太さ(pt)。docx の既定 `w:sz="4"`(1/8pt 単位)
+pub const KEISEN_PT: f32 = 0.5;
+
 /// 行に入っている約物の、詰められる空きの合計(mm)
 pub(super) fn tsume_goukei(cells: &[Cell]) -> f32 {
     cells.iter().map(|c| { let (l, r) = tsume_yoyuu(c.ch, c.w_mm); l + r }).sum()
@@ -1952,7 +1955,18 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         // 「表の高さが異なる」)。模型は読んでいたのに、組む所で
         // 中身の高さしか見ていませんでした
         let iu = table.row_mm.get(ri_now).copied().unwrap_or(0.0);
-        row_hs.push(takasa.max(iu));
+        // **罫線の太さも行の高さに入ります**(2026-09-09、Word の PDF で測った)。
+        // Word は行の高さ(指定か中身の高い方)に横の罫線の太さを足して送る。
+        // 岐阜労働局の様式で、474 twip(23.7pt)の行の送りは 24.2pt、中身だけ
+        // (18pt のグリッド)の行は 18.5pt だった。罫線の太さはまだ持って
+        // いないので、Word の既定(sz=4 = 0.5pt)を当てる。横の罫線を引かない
+        // 表は足さない
+        let keisen = if table.borders.inside_h || table.borders.top || table.borders.bottom {
+            KEISEN_PT * PT_TO_MM
+        } else {
+            0.0
+        };
+        row_hs.push(takasa.max(iu) + keisen);
     }
 
     // 行の上端(累積)

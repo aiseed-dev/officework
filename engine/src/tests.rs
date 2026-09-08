@@ -720,6 +720,30 @@ mod table_layout_tests {
         assert!(b - hikui > 3.0, "箱の底に寄っていない: {hikui} → {b}");
     }
 
+    /// **表の行の送りは、行の高さに罫線の太さ(0.5pt)を足した物**
+    /// (2026-09-09、Word の PDF で測った。続き30)
+    #[test]
+    fn a_table_row_is_taller_by_the_border_width() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let mut d = doc_with_table();
+        if let Block::Table(t) = &mut d.blocks[1] {
+            t.row_mm = vec![8.0, 8.0];
+        }
+        let s = layout(&d, &m, &frame);
+        let y = |t: &str| s.lines.iter().find(|l| l.text().contains(t)).unwrap().y_mm;
+        let okuri = y("防火戸") - y("品名");
+        assert!((okuri - (8.0 + 0.5 * 25.4 / 72.0)).abs() < 0.01, "行の送りが 8mm + 0.5pt でない: {okuri}");
+        // 罫線を引かない表は足さない
+        if let Block::Table(t) = &mut d.blocks[1] {
+            t.borders = TableBorders { top: false, left: false, bottom: false, right: false, inside_h: false, inside_v: false };
+        }
+        let s = layout(&d, &m, &frame);
+        let y = |t: &str| s.lines.iter().find(|l| l.text().contains(t)).unwrap().y_mm;
+        assert!((y("防火戸") - y("品名") - 8.0).abs() < 0.01, "罫線の無い表に太さを足した");
+    }
+
     #[test]
     fn table_contents_reach_the_page() {
         let s = sheet();
