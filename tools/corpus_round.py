@@ -94,6 +94,8 @@ def main():
             if a.redo_ms or not os.path.exists(ms):
                 e = word(src, ms)
                 print(f"{'×' if e else '+'} {rel}: {e or 'Word の PDF'} {time.time() - t0:.0f}s", flush=True)
+                if e and "閉じません" in e:
+                    break
             continue
         e = ours(src, ow)
         if e:
@@ -102,6 +104,10 @@ def main():
             continue
         if a.redo_ms or not os.path.exists(ms):
             e = word(src, ms)
+            if e and "閉じません" in e:
+                # Word が文書を閉じない状態。続けると窓が溜まるので、ここで止める
+                print(f"× {rel}: {e}", flush=True)
+                break
             if e:
                 rows.append((rel, -1, pages(ow), 0, f"Word が PDF にできない: {e}"))
                 print(f"× {rel}: Word: {e}", flush=True)
