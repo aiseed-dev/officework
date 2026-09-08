@@ -197,6 +197,13 @@ pub const LINE_MM: f32 = 6.4;
 /// 1ページあたり1行ずれていました)。
 pub const BASE_UP_MM: f32 = 4.0;
 
+/// **ヘッダーの位置**(用紙の上端から字の頭まで。mm)。docx の `w:header="851"`
+/// (twip)と同じ 15.0mm。[`layout_hf`] が使う
+pub const HEADER_MM: f32 = 15.0;
+/// **フッターの位置**(用紙の下端から字の底まで。mm)。docx の `w:footer="992"` と
+/// 同じ 17.5mm
+pub const FOOTER_MM: f32 = 17.5;
+
 pub struct Frame {
     pub measure_mm: f32,   // 行長
     pub line_height_mm: f32,
@@ -599,6 +606,29 @@ pub(super) fn space_after_mm(para: &Paragraph, base: f32) -> f32 {
 ///
 /// 書体の名前が分からない段落(AsciiDoc から起こした文書など)は、
 /// [`Frame::line_height_mm`] をそのまま使います。
+/// **行の箱の中で字を置く高さ。** 返りは `y_mm`(箱の上から [`BASE_UP_MM`])
+/// からの下がり(mm)。
+///
+/// 決めは OOXML の仕様(ECMA-376 第1部 §17.3.1.33 `spacing`)にある:
+/// `lineRule` が `atLeast` / `exact` のとき、字は**その行の高さの底に置く**
+/// (高さが足りなければ上から切れる)。Word は余りを上 80% / 下 20% に配る。
+/// 実測(2026-09-08、開催通知・議事録の Word の PDF)では、ベースラインは箱の
+/// 底から 0.28 × 字の大きさ上 — 11pt(箱 18.15pt)で箱の上から 15.1pt、
+/// 16pt(箱 27.2pt)で 22.5pt。倍率(`auto`)の余りは Word は**下**に置く
+/// (字は箱の上)ので、箱でなく字の自然な高さで置く。
+/// `w:noExtraLineSpacing`(互換の設定。余りを全部下に置く)はまだ見ない
+pub(super) fn dip_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&str>, size_pt: f32) -> f32 {
+    let lh = lh_of(para, frame, base, font);
+    let hako = match para.line_pt {
+        Some(_) => lh,
+        None => syotai_lh_mm(para, base, font)
+            .unwrap_or(frame.line_height_mm * head_scale(para.style))
+            .min(lh),
+    };
+    let oki = hako - size_pt * 0.28 * PT_TO_MM;
+    (oki - BASE_UP_MM).max(0.0)
+}
+
 pub(super) fn lh_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&str>) -> f32 {
     let kihon = match syotai_lh_mm(para, base, font) {
         Some(mm) => mm,
@@ -860,6 +890,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                             from_body: true,
                             byte0: para_byte0,
                             cell: None,
+                            dip_mm: 0.0,
                         });
                         let mut rest = para.clone();
                         if let Some(r0) = rest.runs.first_mut() {
@@ -918,7 +949,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                         // バイト勘定が1つずつずれて、カーソルが本文とずれる
                         sheet.lines.push(Line {
                             cells: Vec::new(), y_mm: y, from_body: true,
-                            byte0: para_byte0 + cap_len, cell: None });
+                            byte0: para_byte0 + cap_len, cell: None, dip_mm: 0.0 });
                         // 字が無くても絵は置きます(絵だけの段落)
                         if line_no == 0 && e_h > 0.0 {
                             let hiroi: f32 = atama_no_gazou_mm(para_eff);
@@ -1038,6 +1069,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                                 from_body: false,
                                 byte0: para_byte0 + cells[i].off,
                                 cell: None,
+                                dip_mm: 0.0,
                             });
                             i = j;
                         }
@@ -1047,7 +1079,10 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     // 1行目(印+本文頭)も続きの行も正しく出る
                     let byte0 = para_byte0
                         + cells.iter().map(|c| c.off).min().unwrap_or(0);
-                    sheet.lines.push(Line { cells, y_mm: y, from_body: true, byte0, cell: None });
+                    let size_pt = cells.iter().map(|c| c.size_pt).fold(0.0f32, f32::max);
+                    let size_pt = if size_pt > 0.0 { size_pt } else { base * head_scale(para.style) };
+                    let dip_mm = dip_of(para, frame, base, pfont.as_deref(), size_pt);
+                    sheet.lines.push(Line { cells, y_mm: y, from_body: true, byte0, cell: None, dip_mm });
                     y += lh_of(para, frame, base, pfont.as_deref());
                 }
                 // **段落の罫線**(docx の `w:pBdr`)。記入欄の下線はこれです。
@@ -1244,7 +1279,7 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
                     .map(|mut c| { c.x_mm = x; x += c.w_mm; c })
                     .collect();
                 y += note_lh;
-                lines.push(Line { cells, y_mm: y, from_body: false, byte0: 0, cell: None });
+                lines.push(Line { cells, y_mm: y, from_body: false, byte0: 0, cell: None, dip_mm: 0.0 });
             }
         }
         if lines.is_empty() {
@@ -1300,11 +1335,17 @@ pub fn layout_hf(
     let num = page_no.to_string();
     let tot = total.to_string();
     let measure = pg.measure_mm();
-    // ヘッダーは上余白の中を上から、フッターは下余白の頭から下へ
+    // **ヘッダーは用紙の上端から [`HEADER_MM`]、フッターは下端から [`FOOTER_MM`]**
+    // (docx の `w:pgMar` の `w:header="851"` / `w:footer="992"` — こちらが書く値で、
+    // Word はヘッダーの字の頭をその距離に、フッターの字の底をその距離に置く。
+    // 2026-09-08、Word の PDF と並べて測った: 上から 42.5pt + 字の高さ、
+    // 下から 17.5mm − 字の足)。前は上余白の 45% と下余白の頭に置いていた。
+    // 余白が狭い紙では本文域に食い込まないよう、余白の 3/4 で止める
+    let size_mm = base_pt * PT_TO_MM;
     let mut y = if footer {
-        pg.h_mm - pg.bottom_mm + line_height_mm * 0.8
+        pg.h_mm - FOOTER_MM.min(pg.bottom_mm * 0.75) - size_mm * 0.28
     } else {
-        (pg.top_mm * 0.45).max(line_height_mm * 0.8)
+        HEADER_MM.min(pg.top_mm * 0.75) + size_mm * 0.88
     };
     let mut out = Vec::new();
     for para in &hf.paragraphs {
@@ -1339,7 +1380,7 @@ pub fn layout_hf(
                     c
                 })
                 .collect();
-            out.push(Line { cells, y_mm: y, from_body: false, byte0: 0, cell: None });
+            out.push(Line { cells, y_mm: y, from_body: false, byte0: 0, cell: None, dip_mm: 0.0 });
             y += line_height_mm;
         }
     }
@@ -1905,7 +1946,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     .into_iter()
                     .map(|mut c| { c.x_mm = x; x += c.w_mm + aki; c })
                     .collect();
-                sheet.lines.push(Line { cells, y_mm: yy, from_body: false, byte0: b0, cell: id });
+                sheet.lines.push(Line { cells, y_mm: yy, from_body: false, byte0: b0, cell: id, dip_mm: 0.0 });
                 yy += plh - agari;
             }
             // **セルの塗り**(2026-08-27)。段落の背景色は模型に在り、画面は

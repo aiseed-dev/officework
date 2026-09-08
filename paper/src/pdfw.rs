@@ -972,6 +972,7 @@ mod tests {
                 from_body: false,
                 byte0: 0,
                 cell: None,
+                dip_mm: 0.0,
             }]
         };
         let mut out = Vec::new();
@@ -1622,7 +1623,9 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
         let off = offsets.get(k).copied().unwrap_or(0.0);
         let pp = paper_of(k);
         let (mx, ph) = (pp.margin_mm, pp.height_mm);
-        let y_roll = line.y_mm - off;
+        // **字は行の箱の中の置き場(`dip_mm`)だけ下げて描く**(2026-09-08)。
+        // 頁割りやカーソルは `y_mm` のまま(箱の物差し)
+        let y_roll = line.y_mm + line.dip_mm - off;
         let y = ph - y_roll;
         let Some(p) = pages.get_mut(k) else { continue };
         if sheet.vertical {

@@ -1164,7 +1164,8 @@ impl Render for Writer {
             let pt = line.cells[0].size_pt;
             let sz = pt * 96.0 / 72.0 * self.zoom;
             let x0 = self.pg.left_mm + line.cells[0].x_mm;
-            let top = line.y_mm * pxmm - sz * 0.88;
+            // 字は行の箱の中の置き場(`dip_mm`)だけ下げて描く(紙と同じ。2026-09-08)
+            let top = (line.y_mm + line.dip_mm) * pxmm - sz * 0.88;
 
             if let Some(m) = &marked {
                 let mine = match self.target {
@@ -1357,7 +1358,7 @@ impl Render for Writer {
                 let pt = line.cells[0].size_pt;
                 let sz = pt * 96.0 / 72.0 * self.zoom;
                 let x0 = self.pg.left_mm + line.cells[0].x_mm;
-                let top = (line.y_mm + dy) * pxmm - sz * 0.88;
+                let top = (line.y_mm + line.dip_mm + dy) * pxmm - sz * 0.88;
                 paper = paper.child(div().absolute()
                     .left(px(x0 * pxmm)).top(px(top))
                     .text_size(px(sz))

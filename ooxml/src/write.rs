@@ -275,7 +275,21 @@ fn styles_from_theme(theme: &kumihan::theme::Theme) -> String {
             esc(&id),
             esc(&name),
         ));
-        s.push_str(&style_body_xml(d, lvl));
+        // **見出しの前後の空きは、テンプレートが言っていなければ組版の既定を書く**
+        // (`kumihan::layout::space_before_mm`: 前は基準の 0.9 倍、2 以下は 0.7 倍、
+        // 後は 0.25 倍)。書かないと Word は空き 0 で組み、見出しの位置が
+        // 10pt ほどこちらと違う(2026-09-08、Word と並べて見つけた)
+        let mut d2 = d.clone();
+        if let Some(n) = lvl {
+            let base = theme.size_pt.unwrap_or(kumihan::DEFAULT_PT);
+            if d2.space_before_pt <= 0.0 {
+                d2.space_before_pt = base * if n == 0 { 0.9 } else { 0.7 };
+            }
+            if d2.space_after_pt <= 0.0 {
+                d2.space_after_pt = base * 0.25;
+            }
+        }
+        s.push_str(&style_body_xml(&d2, lvl));
         // **タイトルと見出しはゴシック**(テーマの major)。テンプレートが
         // 書体を名指ししていなければ、役の参照を入れます
         // (2026-08-26 発注者「タイトルはゴシック、本文は明朝」)

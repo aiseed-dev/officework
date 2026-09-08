@@ -2400,6 +2400,13 @@ pub struct Line {
     pub byte0: usize,
     /// 表のセル由来なら (表の番号, 行, 列)
     pub cell: Option<(usize, usize, usize)>,
+    /// **描くときに字を下げる量(mm)。** `y_mm` は行の箱の上から
+    /// [`BASE_UP_MM`](crate::BASE_UP_MM) の所(頁割りやカーソルの物差し)で、
+    /// 字はそこからこれだけ下に描く。Word は行の箱の余り(`atLeast` の指定と
+    /// 字の高さの差)を字の**上**に置くので、見出しのように箱が高い行ほど
+    /// 字が下がる(2026-09-08、Word の PDF と並べて測った。16pt の見出しで
+    /// 11pt、本文で 4pt)。行間 1.5 の余りは Word も下に置くので、そこは下げない
+    pub dip_mm: f32,
 }
 
 impl Line {

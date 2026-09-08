@@ -373,6 +373,24 @@ mod list_tests {
         assert!(texts[3].starts_with("2."), "2番目が違う: {:?}", texts);
     }
 
+    /// **行の箱の中で、字は底に寄る**(OOXML §17.3.1.33 の `atLeast` の決め。
+    /// Word の PDF で測ると、箱が高い見出しほどベースラインが下がる。2026-09-08)。
+    /// `y_mm`(箱の物差し)は変えず、描くときの下がり `dip_mm` に出る
+    #[test]
+    fn text_sits_at_the_bottom_of_a_tall_line_box() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain("見出し\n本文の行\n行間の広い段落");
+        if let Block::Para(p) = &mut d.blocks[0] { p.style = ParaStyle::Heading(1); }
+        if let Block::Para(p) = &mut d.blocks[2] { p.line_spacing = 1.5; }
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.4, y0_mm: 20.0 });
+        let dip: Vec<f32> = s.lines.iter().map(|l| l.dip_mm).collect();
+        assert!(dip[1] > 0.0, "本文の行も箱の底に寄る(11pt で約 1.3mm): {dip:?}");
+        assert!(dip[0] > dip[1] + 1.5, "見出し(箱 1.5 倍)は本文より下がる: {dip:?}");
+        // 倍率の余りは下に置く — 単段の本文と同じ所に字が来る
+        assert!((dip[2] - dip[1]).abs() < 0.3, "行間 1.5 の字が下がった: {dip:?}");
+    }
+
     /// **docx の番号付きは、間に普通の段落を挟んでも続く。** 同じ `numId` の
     /// 段落は1つの箇条書きです(Word の約束。手順書の「1. 2. 3.」の間の説明文)。
     /// AsciiDoc の箇条書き(`list_id` なし)は今までどおり数え直します
@@ -1872,7 +1890,7 @@ mod fold_print_tests {
     fn line(y: f32) -> Line {
         Line { cells: vec![Cell { ch: 'あ', x_mm: 0.0, w_mm: 4.0, size_pt: 10.5,
                                   off: 0, fmt: Default::default(), font: None }],
-               y_mm: y, from_body: true, byte0: 0, cell: None }
+               y_mm: y, from_body: true, byte0: 0, cell: None, dip_mm: 0.0 }
     }
 
     #[test]
