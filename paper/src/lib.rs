@@ -1906,6 +1906,24 @@ pub fn foreign_shapes(
             if f.look.text_fmt.font.is_none() {
                 f.look.text_fmt.font = doc.font.clone();
             }
+            // **テキストボックスの中も行グリッドに合わせます**(2026-09-09、Word の
+            // PDF で測った。岐阜労働局の規則の規定例の頭の箱は、11pt の字が
+            // 18pt 送りだった)。箱が行の高さを言っていなければ、書体の自然な
+            // 高さをグリッドの行送りに切り上げ、余りの半分を上の余白に足して
+            // 字を升のまん中に置く(本文の `dip_of` と同じ)。中の段落が
+            // `w:snapToGrid w:val="0"` なら合わせない
+            if f.look.text_fmt.line_pt.is_none()
+                && page.line_pitch_pt > 0.0
+                && !a.contains("<w:snapToGrid w:val=\"0\"")
+                && !a.contains("<w:snapToGrid w:val=\"false\"")
+            {
+                let pt = f.look.text_fmt.size_pt.unwrap_or(doc.base_pt());
+                let em = kumihan::font::okuri_em(f.look.text_fmt.font.as_deref()).unwrap_or(1.292);
+                let sizen = pt * em * 25.4 / 72.0;
+                let masu = kumihan::grid_up(sizen, page.line_pitch_pt);
+                f.look.text_fmt.line_pt = Some(masu * 72.0 / 25.4);
+                f.look.text_fmt.ins_mm.2 += (masu - sizen) / 2.0;
+            }
             // 基準と寄せ方は [`anchor_place`] の表のとおりに解きます
             let migi = kami % 2 == 1;
             let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);

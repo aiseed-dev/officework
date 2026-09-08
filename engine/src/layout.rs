@@ -720,7 +720,7 @@ pub(super) fn dip_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&s
 /// (`w:docGrid w:linePitch`)の整数倍に**切り上げる**。10.5pt の MS 明朝
 /// (自然な高さ 12.2pt ほど)は 18pt に、18pt を超える書体(游明朝の 10.5pt は
 /// 18.4pt)は 36pt になる — 「游明朝だと行間が広がる」の正体です
-pub(super) fn grid_up(mm: f32, pitch_pt: f32) -> f32 {
+pub fn grid_up(mm: f32, pitch_pt: f32) -> f32 {
     if pitch_pt <= 0.0 {
         return mm;
     }
