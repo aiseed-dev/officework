@@ -1416,7 +1416,7 @@ pub fn doc_laid(
 ) -> Result<(kumihan::Document, LaidDoc, Vec<(String, Vec<u8>)>), String> {
     let mut d = compose_doc(doc, theme);
     let mut fonts = resolve_run_fonts(&mut d);
-    let laid = layout_doc(&d, &DocOpts::default())?;
+    let laid = layout_doc(&d, &DocOpts::default(), &fonts)?;
     fonts.insert(0, (laid.family.clone(), laid.font.clone()));
     Ok((d, laid, fonts))
 }
@@ -1523,7 +1523,7 @@ pub struct LaidDoc {
 /// **文書を組む本体。** 書体を選び、行に組み、縦書き・段組みは紙の座標へ折る。
 /// 画面も PDF も PNG もここ1つ(writer の `Look::lay_once` と PDF の
 /// `doc_to_sheet` に同じ手順が2つあったのを寄せた。2026-09-08)
-pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts) -> Result<LaidDoc, String> {
+pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, Vec<u8>)]) -> Result<LaidDoc, String> {
     // 書体は**文書が名乗った物**が先(合成でテンプレートの物が入っている)。
     // 文中の字も渡します — 選んだ書体がその字を持っていないと、
     // PDF ではその字だけ消え、画面では幅を測り違えます(2026-08-30・2026-09-08)。
@@ -1538,7 +1538,8 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts) -> Result<LaidDoc, Stri
     });
     let (family, _) = kumihan::font::for_text(want.as_deref(), d.chars())?;
     let bytes = kumihan::font::load(family)?;
-    let m = kumihan::Metrics::new(&bytes)?;
+    // run の書体でも測る(`resolve_run_fonts` が解決した名前と実体)
+    let m = kumihan::Metrics::with_fonts(&bytes, run_fonts)?;
 
     let page = opts.page.or(d.page).unwrap_or_default();
     // **行送りはエンジンの1つを見ます**(画面と紙と PDF で同じ)

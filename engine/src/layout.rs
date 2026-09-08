@@ -9,6 +9,10 @@ use super::doc::*;
 pub struct Metrics<'a> {
     face: Face<'a>,
     upem: f32,
+    /// **run が名乗る書体ごとの顔**(名前 → 顔。2026-09-08)。run の字の幅は
+    /// その書体で測る — 前は主の書体1本で測っていて、run の書体が違う所で
+    /// 折れる位置が描く字と合わなかった。無い名前は主の顔で測る
+    others: Vec<(String, Face<'a>, f32)>,
 }
 
 pub(super) const PT_TO_MM: f32 = 25.4 / 72.0;
@@ -17,16 +21,41 @@ impl<'a> Metrics<'a> {
     pub fn new(font_data: &'a [u8]) -> Result<Metrics<'a>, String> {
         let face = Face::parse(font_data, 0).map_err(|e| e.to_string())?;
         let upem = face.units_per_em() as f32;
-        Ok(Metrics { face, upem })
+        Ok(Metrics { face, upem, others: Vec::new() })
+    }
+
+    /// 主の書体に、run が名乗る書体(名前, 実体)を足した形。読めない物は飛ばす
+    pub fn with_fonts(font_data: &'a [u8], others: &'a [(String, Vec<u8>)]) -> Result<Metrics<'a>, String> {
+        let mut m = Metrics::new(font_data)?;
+        for (name, data) in others {
+            if let Ok(face) = Face::parse(data, 0) {
+                let upem = face.units_per_em() as f32;
+                m.others.push((name.clone(), face, upem));
+            }
+        }
+        Ok(m)
     }
 
     /// 1文字の送り幅(mm)。フォントに無い文字は全角の半分で仮置きする。
     pub fn advance_mm(&self, ch: char, size_pt: f32) -> f32 {
-        let adv = self
-            .face
+        Self::adv(&self.face, self.upem, ch, size_pt)
+    }
+
+    /// その書体の名前で測る。名前が無い・知らない書体なら主の書体
+    pub fn advance_for(&self, font: Option<&str>, ch: char, size_pt: f32) -> f32 {
+        if let Some(name) = font {
+            if let Some((_, face, upem)) = self.others.iter().find(|(n, ..)| n == name) {
+                return Self::adv(face, *upem, ch, size_pt);
+            }
+        }
+        self.advance_mm(ch, size_pt)
+    }
+
+    fn adv(face: &Face<'_>, upem: f32, ch: char, size_pt: f32) -> f32 {
+        let adv = face
             .glyph_index(ch)
-            .and_then(|g| self.face.glyph_hor_advance(g))
-            .map(|a| a as f32 / self.upem)
+            .and_then(|g| face.glyph_hor_advance(g))
+            .map(|a| a as f32 / upem)
             .unwrap_or(0.5);
         adv * size_pt * PT_TO_MM
     }
@@ -116,14 +145,14 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
             let mut fmt = run.fmt.clone();
             fmt.superscript = true;
             for ch in label.chars() {
-                out.push(Tok::One(ch, m.advance_mm(ch, size), size,
+                out.push(Tok::One(ch, m.advance_for(run.font.as_deref(), ch, size), size,
                                   fmt.clone(), run.font.clone(), off));
             }
             continue;
         }
         // **字間**(`w:rPr` の `w:spacing`)。1文字ごとに足します
         let aki = run.fmt.spacing_pt * PT_TO_MM;
-        let okuri = |ch: char| (m.advance_mm(ch, rpt) + aki).max(0.0);
+        let okuri = |ch: char| (m.advance_for(run.font.as_deref(), ch, rpt) + aki).max(0.0);
         let mut word: Vec<(char, f32, usize)> = Vec::new();
         for ch in run.text.chars() {
             if is_word_char(ch) {
@@ -301,7 +330,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
         let fmt = para.runs.first().map(|r| r.fmt.clone()).unwrap_or_default();
         let font = para.runs.first().and_then(|r| r.font.clone());
         for ch in mk.chars() {
-            let w = m.advance_mm(ch, size);
+            let w = m.advance_for(font.as_deref(), ch, size);
             // 印は本文の一部ではないので off は段落頭(0)のまま
             cur.push(Cell { ch, x_mm: 0.0, w_mm: w, size_pt: size, fmt: fmt.clone(),
                             font: font.clone(), off: 0 });
@@ -389,7 +418,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
             // 欧文の語は、設定が入っていれば音節で折って - を付ける
             if hyphenate {
                 if let Tok::Word(cs, sz, f, ft) = &tok {
-                    if let Some(k) = hyphen_split(cs, *sz, m, measure - w_cur) {
+                    if let Some(k) = hyphen_split(cs, *sz, m, ft.as_deref(), measure - w_cur) {
                         for (c, wch, o) in &cs[..k] {
                             cur.push(Cell { ch: *c, x_mm: 0.0, w_mm: *wch,
                                 size_pt: *sz, fmt: f.clone(), font: ft.clone(), off: *o });
@@ -397,7 +426,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
                         }
                         // ハイフンは本文の字ではない。バイト位置は直前の字に重ねる
                         // (欧文の字は1バイトなので、行末の勘定が壊れない)
-                        let hw = m.advance_mm('-', *sz);
+                        let hw = m.advance_for(ft.as_deref(), '-', *sz);
                         let off_h = cs[k - 1].2;
                         cur.push(Cell { ch: '-', x_mm: 0.0, w_mm: hw,
                             size_pt: *sz, fmt: f.clone(), font: ft.clone(), off: off_h });
@@ -451,7 +480,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
 
 /// 欧文の語の分割点(Knuth-Liang のパターン。TeX と同じ方式)。
 /// 前半の字数を返す。avail(残りの幅)に「前半 + '-'」が収まる最長の点を選ぶ。
-pub(super) fn hyphen_split(cs: &[(char, f32, usize)], size_pt: f32, m: &Metrics, avail: f32) -> Option<usize> {
+pub(super) fn hyphen_split(cs: &[(char, f32, usize)], size_pt: f32, m: &Metrics, font: Option<&str>, avail: f32) -> Option<usize> {
     use hyphenation::{Hyphenator, Load};
     static DICT: std::sync::OnceLock<Option<hyphenation::Standard>> = std::sync::OnceLock::new();
     let dict = DICT
@@ -464,7 +493,7 @@ pub(super) fn hyphen_split(cs: &[(char, f32, usize)], size_pt: f32, m: &Metrics,
     if word.chars().any(|c| c.is_ascii_digit()) {
         return None;
     }
-    let hyphen_w = m.advance_mm('-', size_pt);
+    let hyphen_w = m.advance_for(font, '-', size_pt);
     let mut best = None;
     for b in dict.hyphenate(&word).breaks {
         // 語は ASCII なのでバイト位置 = 字数
@@ -2006,6 +2035,21 @@ fn task_list(p: &Paragraph) -> Option<(&'static str, String, u8)> {
 #[cfg(test)]
 mod kaigyou_tests {
     use super::*;
+
+    /// run の書体で幅を測る。知らない名前は主の書体
+    #[test]
+    fn a_run_font_measures_with_its_own_face() {
+        let (serif, _) = crate::font::for_text(None, "あ".chars()).expect("書体");
+        let main = crate::font::load(serif).expect("読めない");
+        let sans = crate::font::default_generic(&crate::font::default_language(), crate::font::Generic::SansSerif)
+            .and_then(|f| crate::font::load(f).ok());
+        let Some(sans) = sans else { return };
+        let others = vec![("ゴシック".to_string(), sans.clone())];
+        let m = Metrics::with_fonts(&main, &others).unwrap();
+        let alone = Metrics::new(&sans).unwrap();
+        assert_eq!(m.advance_for(Some("ゴシック"), 'W', 12.0), alone.advance_mm('W', 12.0), "run の書体で測っていない");
+        assert_eq!(m.advance_for(Some("無い書体"), 'W', 12.0), m.advance_mm('W', 12.0), "知らない名前は主の書体");
+    }
 
     /// 段落の中の改行(`w:br`)で行が切れる。画面も紙も同じ組みを通るので、
     /// ここで切れれば両方で切れる(2026-09-08)

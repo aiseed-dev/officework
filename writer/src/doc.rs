@@ -38,7 +38,7 @@ impl Look {
     /// 1箇所**(2026-09-08 発注者「画面と PDF はできるだけ共通ルーチンを使って」)。
     /// ここは画面の都合(横幅=可変・区切り=なし・画面が持つ用紙)を渡すだけ。
     /// 縦書き・段組みの折りも向こうで、PDF と同じ座標になる
-    pub(crate) fn lay_once(&self, src: &Document) -> Result<paper::LaidDoc, String> {
+    pub(crate) fn lay_once(&self, src: &Document, run_fonts: &[(String, Vec<u8>)]) -> Result<paper::LaidDoc, String> {
         // **組み方の3値**(2026-08-16 の決め、2026-08-17 に通した)。
         // 横幅=可変 なら紙の幅ではなく窓の幅で組み、区切り=なし なら
         // ページに折らない(1本の流れ = Web の姿)。
@@ -54,6 +54,7 @@ impl Look {
         paper::layout_doc(
             src,
             &paper::DocOpts { measure_mm, page: Some(self.pg), endless: self.group.endless() },
+            run_fonts,
         )
     }
 }
@@ -601,7 +602,7 @@ impl Writer {
         }
         // run の書体を、この機械にある名前に解決する(画面はその名前で描き、
         // PDF はその名前の書体を埋める — 決め方は kumihan::font の1か所)
-        paper::resolve_run_fonts(&mut composed);
+        let run_fonts = paper::resolve_run_fonts(&mut composed);
         let group = if self.native { self.tmpl.setting } else { Default::default() };
         // **ページの飾りは合成の写しから取ります**(2026-08-18)。
         // テンプレートに書いたヘッダー・透かし・縦書きが画面と紙に出ます。
@@ -624,13 +625,13 @@ impl Writer {
         self.dress_page = (deco.watermark.clone(), deco.page_color.clone());
         let vertical = deco.vertical;
         let snapshot = Look { pg: self.pg, vertical, group, view_w_px: self.view_w_px };
-        self.take_laid(snapshot.lay_once(&composed));
+        self.take_laid(snapshot.lay_once(&composed, &run_fonts));
         self.refresh_hf();
         // **跨がない**(発表)。折った結果を見て、境をまたいだ段落があれば
         // 写しにその段落の改ページの印を足し、**折り手に折り直させる**。
         // refresh_hf の後でないと頁の境が分からない
         if group.keep {
-            self.keep_paragraphs_whole(&mut composed, &snapshot);
+            self.keep_paragraphs_whole(&mut composed, &snapshot, &run_fonts);
         }
     }
 
@@ -660,7 +661,7 @@ impl Writer {
     ///
     /// **印を付けて組み直す**のがこの手の要。組んだ後の `breaks` に境だけ
     /// 足しても、行は巻物の位置のまま動かない(2026-08-17 の踏み跡)。
-    fn keep_paragraphs_whole(&mut self, c: &mut Document, snapshot: &Look) {
+    fn keep_paragraphs_whole(&mut self, c: &mut Document, snapshot: &Look, run_fonts: &[(String, Vec<u8>)]) {
         let n = c.paragraphs().count();
         for _ in 0..n.min(200) {
             let Some(i) = self.straddling_para(c) else { return };
@@ -671,7 +672,7 @@ impl Writer {
                 return;
             }
             p.page_break_before = true;
-            self.take_laid(snapshot.lay_once(c));
+            self.take_laid(snapshot.lay_once(c, run_fonts));
             self.refresh_hf();
         }
     }
@@ -2661,8 +2662,8 @@ impl Writer {
         };
         // 画面と同じ共通ルーチン(合成 → 書体の解決 → 組み)
         let mut composed = paper::compose_doc(&self.doc, Some(&th));
-        paper::resolve_run_fonts(&mut composed);
-        Some((snapshot.lay_once(&composed).ok()?.sheet, pg, used))
+        let run_fonts = paper::resolve_run_fonts(&mut composed);
+        Some((snapshot.lay_once(&composed, &run_fonts).ok()?.sheet, pg, used))
     }
 
     /// 保存した先のフォルダに書式のファイルがあれば着る。返りは着た場所。
