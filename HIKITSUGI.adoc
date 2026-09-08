@@ -74,6 +74,13 @@ Fable が触るので、Opus はそこを触らない。** それ以外の write
   `cargo test -p pysheet` はさらに `DYLD_FALLBACK_LIBRARY_PATH=$HOME/miniforge3/lib`
   (libpython の置き場)と `PATH=$PWD/.venv/bin:$PATH`(python_smoke が `python3` を
   引くので、3.9 でなく 3.13 を先に)が要る。clippy は `rustup component add clippy`
+* **梅フォントをこの Mac に入れた(2026-09-09 発注者「梅明朝と梅ゴシックはインストールしてもいい。昔の Excel 書類対策として」)。**
+  `~/Library/Fonts` に ume-tmo3(梅明朝)・ume-tgo4(梅ゴシック)・ume-pmo3(梅P明朝)・
+  ume-pgo4(梅Pゴシック)。出所は Debian の fonts-horai-umefont 670-5(梅フォントの
+  ライセンス)。ＭＳ 明朝・ＭＳ ゴシックの代替に当たり、半角 95 字が 0.5em で Word と
+  同じ字送りになる。**入れていない機械のための代替**はエンジンにある
+  (`kumihan::font::hankaku_em`: ヒラギノで描きつつ半角だけ 0.5em で組む)。
+  利用者向けの説明は from-excel と writer-manual の「困ったとき」「印刷」に書いた
 * **Word と Excel がこの Mac にある(16.112)。** 比べる道具は `tools/ms_pdf.py`
   (Word / Excel で PDF に)・`tools/ms_compare.py`(2つの PDF の行と位置を比べる)・
   `tools/ms_values.py`(xlsx の式の答えを Excel と比べる)・`tools/ms_round.sh`

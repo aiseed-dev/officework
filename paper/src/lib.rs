@@ -1547,7 +1547,13 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
         let hit = cache.entry(name.clone()).or_insert_with(|| {
             let (fam, _) = kumihan::font::for_document(Some(&name)).ok()?;
             let bytes = kumihan::font::load(fam).ok()?;
-            Some((fam.name.clone(), bytes))
+            // 字送りの合う書体が無ければ、名前に半角の送りの印を付けて登録する
+            // (`Metrics` が半角を 0.5em で測る。描く側は印を外して描く)
+            let resolved = match kumihan::font::hankaku_em(&name) {
+                Some(em) => kumihan::font::hankaku_name(&fam.name, em),
+                None => fam.name.clone(),
+            };
+            Some((resolved, bytes))
         });
         if let Some((resolved, bytes)) = hit {
             if !out.iter().any(|(n, _)| n == resolved) {
@@ -1612,7 +1618,9 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
     let (family, _) = kumihan::font::for_text(want.as_deref(), d.chars())?;
     let bytes = kumihan::font::load(family)?;
     // run の書体でも測る(`resolve_run_fonts` が解決した名前と実体)
-    let m = kumihan::Metrics::with_fonts(&bytes, run_fonts)?;
+    let mut m = kumihan::Metrics::with_fonts(&bytes, run_fonts)?;
+    // 主の書体がＭＳ 明朝などで、字送りの合う書体が無い機械なら、半角を 0.5em で測る
+    m.set_hankaku(want.as_deref().and_then(kumihan::font::hankaku_em));
 
     let mut page = opts.page.or(d.page).unwrap_or_default();
     // **ヘッダー・フッターが本文を押す**(2026-09-09)。Word は本文の頭を

@@ -391,6 +391,35 @@ mod list_tests {
         assert!((dip[2] - dip[1]).abs() < 0.3, "行間 1.5 の字が下がった: {dip:?}");
     }
 
+    /// **半角の送りの代替**(2026-09-09 発注者「Mac 用の IPA フォントの代替を作って」)。
+    /// ＭＳ 明朝の字送りの合う書体が無い機械では、半角を 0.5em で測る。
+    /// 名前の印は描く側で外せる
+    #[test]
+    fn half_width_advances_can_be_replaced_for_ms_fonts() {
+        let data = test_font();
+        let mut m = Metrics::new(&data).unwrap();
+        let moto = m.advance_mm(' ', 10.0);
+        m.set_hankaku(Some(0.5));
+        assert!((m.advance_mm(' ', 10.0) - 5.0 * 25.4 / 72.0).abs() < 0.001, "半角の空白が 0.5em でない");
+        assert!((m.advance_mm('A', 10.0) - 5.0 * 25.4 / 72.0).abs() < 0.001);
+        assert_eq!(m.advance_mm('あ', 10.0), Metrics::new(&data).unwrap().advance_mm('あ', 10.0), "全角まで変わった");
+        m.set_hankaku(None);
+        assert_eq!(m.advance_mm(' ', 10.0), moto);
+        // run の書体は名前の印で差し替える
+        let na = crate::font::hankaku_name("Hiragino Mincho ProN", 0.5);
+        let others = vec![(na.clone(), data.clone())];
+        let m2 = Metrics::with_fonts(&data, &others).unwrap();
+        assert!((m2.advance_for(Some(&na), '1', 12.0) - 6.0 * 25.4 / 72.0).abs() < 0.001, "印の付いた書体で半角が 0.5em でない");
+        assert_eq!(crate::font::split_hankaku(&na), ("Hiragino Mincho ProN", Some(0.5)));
+        assert_eq!(crate::font::split_hankaku("Hiragino Sans"), ("Hiragino Sans", None));
+        // ＭＳ 明朝は、字送りの合う書体が無い機械でだけ代替が出る。Ｐ明朝は出ない
+        let deru = crate::font::hankaku_em("ＭＳ 明朝").is_some();
+        let aru = crate::font::substitute("ＭＳ 明朝").is_some_and(|f| f.name.contains("IPA") || f.name.contains("梅") || f.name.contains("Ume"));
+        assert_eq!(deru, !aru, "字送りの合う書体の有無と代替の出方が合わない");
+        assert!(crate::font::hankaku_em("ＭＳ Ｐ明朝").is_none());
+        assert!(crate::font::hankaku_em("游明朝").is_none());
+    }
+
     /// **ヘッダーが本文を押し下げる**(2026-09-09、Word の PDF で測った)。
     /// 本文の頭は「上の余白」と「ヘッダーの距離 + ヘッダーの高さ」の高い方
     #[test]

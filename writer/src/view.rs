@@ -1144,7 +1144,7 @@ impl Render for Writer {
                         .left(px(colx * pxmm))
                         .top(px((line.y_mm + c.x_mm) * pxmm))
                         .text_size(px(spt))
-                        .font_family(c.font.clone().map(SharedString::from)
+                        .font_family(c.font.as_deref().map(|n| SharedString::from(kumihan::font::split_hankaku(n).0.to_string()))
                             .unwrap_or_else(|| self.font_name.clone()))
                         .whitespace_nowrap()
                         .child(SharedString::from(c.ch.to_string()));
@@ -1294,7 +1294,7 @@ impl Render for Writer {
                 let mut d = div().absolute()
                     .left(px(sx * pxmm)).top(px(stop))
                     .text_size(px(spt))
-                    .font_family(c0.font.clone().map(SharedString::from)
+                    .font_family(c0.font.as_deref().map(|n| SharedString::from(kumihan::font::split_hankaku(n).0.to_string()))
                         .unwrap_or_else(|| self.font_name.clone()))
                     .whitespace_nowrap()
                     .child(SharedString::from(text));

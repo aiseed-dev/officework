@@ -30,6 +30,7 @@ For details see "The screen" and "Basics" in the link:calc-manual.adoc[calc manu
 [cols="1,1,1"]
 |===
 |Excel's name |Mark |How it works here
+|Documents in MS Mincho / MS Gothic come out with the wrong widths |Different |On a machine without the Windows fonts (MS Mincho, MS Gothic, MS PMincho, MS PGothic), install the free Ume fonts (Ume Mincho, Ume Gothic, Ume P Mincho, Ume P Gothic), which have the same advance widths. Half-width digits and spaces then measure as in Excel, so column widths and table rows of old documents keep their shape. Put the ttf files in `~/Library/Fonts` on a Mac or `~/.fonts` on Linux. Without them, text is drawn in a system font such as Hiragino while half-width characters are still advanced by 0.5em as MS Mincho does, so widths and line breaks match even though the typeface differs
 
 |New, Open, Save |Same |The File tab, plus Ctrl+O / Ctrl+S. xlsx is the canonical save format; there is a CSV export (UTF-8 with BOM, CRLF, values only). ODS and XLTX are pending
 |Recent workbooks |Same |Twelve of them on the File tab

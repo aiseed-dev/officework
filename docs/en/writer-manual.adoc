@@ -771,6 +771,8 @@ It opens only when you press *Load* below — so you look first, and a misclick 
 
 == Printing (PDF) and saving
 
+* *Fonts of Word documents.* When you open a docx set in MS Mincho or MS Gothic on a machine without the Windows fonts, install the free Ume fonts (Ume Mincho, Ume Gothic, Ume P Mincho, Ume P Gothic), which have the same advance widths (`~/Library/Fonts` on a Mac, `~/.fonts` on Linux). Half-width spaces and digits then measure as in Word, so line breaks and table rows match. Without them, text is drawn in a system font such as Hiragino while half-width characters are advanced as MS Mincho does
+
 * File > Print writes a PDF. Real header/footer numbers, watermark, page color, ink, and vertical writing all carry over
 * *Screen and paper can be the same, or different.* Add``テンプレート-印刷.toml`` and paper gets its own look; without it, what you see is what is printed. The paragraph formats, paper size and layout of `テンプレート-印刷.toml` reach the paper, and so do its header, footer, watermark and page colour. Where the print template has none of those, the screen's are printed
 * *Anything counted is counted on paper.* Page numbers in the table of contents, the table of figures and cross-references, and the page count in headers, all follow the _printed_ pages, however many pages the screen shows. A "page 3" in the contents is always page 3 on paper

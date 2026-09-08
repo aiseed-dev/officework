@@ -740,6 +740,48 @@ fn script_of_name(name: &str) -> Option<Script> {
 /// どの一覧から選ぶかは**画面の言語**で変わります(2026-08-26)。日本語の
 /// 一覧しか持っていなかったので、ドイツ語の画面で Times New Roman の
 /// 文書を開くと日本語の明朝になっていました。
+/// **字送りの合う書体が無い機械での、半角の幅の代替**(2026-09-09 発注者
+/// 「Mac 用の IPA フォントの代替を作って」)。
+///
+/// ＭＳ 明朝・ＭＳ ゴシックは半角 95 字がすべて 0.500em の固定幅です
+/// ([`ONAJI_HABA`] の註)。IPA明朝や梅明朝が入っていない機械(この Mac)では
+/// ヒラギノで代用しますが、ヒラギノの半角は proportional(空白 0.33em)なので、
+/// 「採 用 証 明 書」のように空白で間を空けた題や、半角の数字の並ぶ表で
+/// 幅が Word と合いません。書体のファイルは作れない(ヒラギノは改変できない)ので、
+/// **描く字はヒラギノのまま、字送りだけ原本の幅にします**。
+///
+/// 返りは半角(U+0020〜U+007E)の送り(em)。字送りの合う書体が入っていれば
+/// `None`(その書体で測ればよい)。Ｐ明朝・Ｐゴシックは proportional なので対象外
+pub fn hankaku_em(original: &str) -> Option<f32> {
+    let key = norm(original);
+    let kotei = ["ＭＳ明朝", "msmincho", "ＭＳゴシック", "msgothic"];
+    if !kotei.iter().any(|k| norm(k) == key) {
+        return None;
+    }
+    if umeru(original).is_some() {
+        return None;
+    }
+    Some(0.5)
+}
+
+/// [`hankaku_em`] の代替を掛けた書体の**名前の印**。run の書体の名前の末尾に
+/// 付け、[`crate::Metrics`] がこれを見て半角の送りを差し替えます。描く側
+/// (PDF・画面)は [`split_hankaku`] で外して本来の名前を使います
+pub const HANKAKU_MARK: &str = "#hankaku=";
+
+/// 解決した書体の名前に、半角の送り(em)の印を付ける
+pub fn hankaku_name(resolved: &str, em: f32) -> String {
+    format!("{resolved}{HANKAKU_MARK}{em}")
+}
+
+/// 名前から印を外す。(本来の名前, 半角の送り)
+pub fn split_hankaku(name: &str) -> (&str, Option<f32>) {
+    match name.find(HANKAKU_MARK) {
+        Some(i) => (&name[..i], name[i + HANKAKU_MARK.len()..].parse::<f32>().ok()),
+        None => (name, None),
+    }
+}
+
 pub fn substitute(name: &str) -> Option<&'static Family> {
     if let Some(f) = umeru(name) {
         return Some(f);

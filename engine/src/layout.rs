@@ -9,10 +9,13 @@ use super::doc::*;
 pub struct Metrics<'a> {
     face: Face<'a>,
     upem: f32,
+    /// 主の書体の半角の送り(em)の差し替え([`crate::font::hankaku_em`])
+    hankaku: Option<f32>,
     /// **run が名乗る書体ごとの顔**(名前 → 顔。2026-09-08)。run の字の幅は
     /// その書体で測る — 前は主の書体1本で測っていて、run の書体が違う所で
-    /// 折れる位置が描く字と合わなかった。無い名前は主の顔で測る
-    others: Vec<(String, Face<'a>, f32)>,
+    /// 折れる位置が描く字と合わなかった。無い名前は主の顔で測る。
+    /// 4つめは半角の送りの差し替え(名前の印 [`crate::font::HANKAKU_MARK`] から)
+    others: Vec<(String, Face<'a>, f32, Option<f32>)>,
 }
 
 pub(super) const PT_TO_MM: f32 = 25.4 / 72.0;
@@ -21,7 +24,13 @@ impl<'a> Metrics<'a> {
     pub fn new(font_data: &'a [u8]) -> Result<Metrics<'a>, String> {
         let face = Face::parse(font_data, 0).map_err(|e| e.to_string())?;
         let upem = face.units_per_em() as f32;
-        Ok(Metrics { face, upem, others: Vec::new() })
+        Ok(Metrics { face, upem, hankaku: None, others: Vec::new() })
+    }
+
+    /// **主の書体の半角の送りを差し替える**(em)。字送りの合う書体が無い機械で、
+    /// ＭＳ 明朝の文書をヒラギノで組むときに 0.5 を入れる
+    pub fn set_hankaku(&mut self, em: Option<f32>) {
+        self.hankaku = em;
     }
 
     /// 主の書体に、run が名乗る書体(名前, 実体)を足した形。読めない物は飛ばす
@@ -30,7 +39,8 @@ impl<'a> Metrics<'a> {
         for (name, data) in others {
             if let Ok(face) = Face::parse(data, 0) {
                 let upem = face.units_per_em() as f32;
-                m.others.push((name.clone(), face, upem));
+                let (_, hankaku) = crate::font::split_hankaku(name);
+                m.others.push((name.clone(), face, upem, hankaku));
             }
         }
         Ok(m)
@@ -38,20 +48,26 @@ impl<'a> Metrics<'a> {
 
     /// 1文字の送り幅(mm)。フォントに無い文字は全角の半分で仮置きする。
     pub fn advance_mm(&self, ch: char, size_pt: f32) -> f32 {
-        Self::adv(&self.face, self.upem, ch, size_pt)
+        Self::adv(&self.face, self.upem, ch, size_pt, self.hankaku)
     }
 
     /// その書体の名前で測る。名前が無い・知らない書体なら主の書体
     pub fn advance_for(&self, font: Option<&str>, ch: char, size_pt: f32) -> f32 {
         if let Some(name) = font {
-            if let Some((_, face, upem)) = self.others.iter().find(|(n, ..)| n == name) {
-                return Self::adv(face, *upem, ch, size_pt);
+            if let Some((_, face, upem, hankaku)) = self.others.iter().find(|(n, ..)| n == name) {
+                return Self::adv(face, *upem, ch, size_pt, *hankaku);
             }
         }
         self.advance_mm(ch, size_pt)
     }
 
-    fn adv(face: &Face<'_>, upem: f32, ch: char, size_pt: f32) -> f32 {
+    fn adv(face: &Face<'_>, upem: f32, ch: char, size_pt: f32, hankaku: Option<f32>) -> f32 {
+        // 半角の送りの差し替え(ＭＳ 明朝の 0.5em。[`crate::font::hankaku_em`])
+        if let Some(em) = hankaku {
+            if (' '..='~').contains(&ch) {
+                return em * size_pt * PT_TO_MM;
+            }
+        }
         let adv = face
             .glyph_index(ch)
             .and_then(|g| face.glyph_hor_advance(g))
