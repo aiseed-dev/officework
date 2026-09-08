@@ -391,6 +391,26 @@ mod list_tests {
         assert!((dip[2] - dip[1]).abs() < 0.3, "行間 1.5 の字が下がった: {dip:?}");
     }
 
+    /// **文書の頭の段落にも前の空きを置く**(2026-09-09、Word の PDF と
+    /// 並べて見つけた)。Word は1頁目の頭でも見出しの前の空きを置きます。
+    /// 前は1行目だけ空けていなかったので、操作手順書と議事録の見出しが
+    /// Word より 9.9pt 上にありました
+    #[test]
+    fn the_first_paragraph_keeps_its_space_before() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.4, y0_mm: 20.0 };
+        let plain = layout(&Document::plain("本文"), &m, &frame);
+        let mut d = Document::plain("見出し");
+        if let Block::Para(p) = &mut d.blocks[0] {
+            p.style = ParaStyle::Heading(1);
+            p.space_before_pt = 9.9;
+        }
+        let head = layout(&d, &m, &frame);
+        let sa = head.lines[0].y_mm - plain.lines[0].y_mm;
+        assert!((sa - 9.9 * 25.4 / 72.0).abs() < 0.05, "頭の見出しの前の空きが違う: {sa}mm");
+    }
+
     /// **docx の番号付きは、間に普通の段落を挟んでも続く。** 同じ `numId` の
     /// 段落は1つの箇条書きです(Word の約束。手順書の「1. 2. 3.」の間の説明文)。
     /// AsciiDoc の箇条書き(`list_id` なし)は今までどおり数え直します
@@ -609,6 +629,35 @@ mod table_layout_tests {
         let m = Metrics::new(&data).unwrap();
         layout(&doc_with_table(), &m,
                &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 })
+    }
+
+    /// **段落が行の高さを言っているセルは、字を箱の底に置く**(2026-09-09)。
+    /// 本文と同じ OOXML の決め(ECMA-376 §17.3.1.33)です。議事録の表(行
+    /// 18.15pt の `atLeast`、11pt の字)で、Word のベースラインはうちより
+    /// 5.5pt 下にありました。言っていないセルは今までどおり書体の上がりです
+    #[test]
+    fn cell_text_sits_at_the_bottom_of_a_declared_line_box() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let base = |d: &Document| -> f32 {
+            let s = layout(d, &m, &frame);
+            s.lines.iter().find(|l| l.text().contains("品名")).expect("セルが無い").y_mm
+        };
+        let mut d = doc_with_table();
+        let hikui = base(&d);
+        let mut at = |pt: f32| -> f32 {
+            if let Block::Table(t) = &mut d.blocks[1] {
+                t.rows[0][0].paragraphs[0].line_pt = Some((pt, true));
+            }
+            base(&d)
+        };
+        // 箱を 20pt から 30pt にすると、字はそのぶん(10pt)そっくり下がる。
+        // 箱の上に字を置く置き方なら動かない
+        let (a, b) = (at(20.0), at(30.0));
+        assert!(((b - a) - 10.0 * 25.4 / 72.0).abs() < 0.05, "字が箱の底に寄っていない: {a} → {b}");
+        // 30pt の箱では、書体の上がりに置くよりはっきり下にある
+        assert!(b - hikui > 3.0, "箱の底に寄っていない: {hikui} → {b}");
     }
 
     #[test]

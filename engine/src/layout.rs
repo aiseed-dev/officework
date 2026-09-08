@@ -750,10 +750,14 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 }
                 // **段落の前の空き。** 文書が言っていればそれ、言っていなくて
                 // 見出しなら既定の空き(見出しが本文に貼り付いて見えるのを防ぐ)。
-                // **紙の頭では空けない** — 上の余白が二重になる
-                if !sheet.lines.is_empty() {
-                    y += space_before_mm(para, base);
-                }
+                //
+                // **文書の頭でも空けます**(2026-09-09、Word の PDF と並べて
+                // 見つけた)。前は「上の余白が二重になる」と1行目では空けて
+                // いませんでしたが、Word は1頁目の頭でも前の空きを置きます
+                // (操作手順書と議事録の見出しが Word より 9.9pt 上にあった)。
+                // 頁が自然に変わった所では、紙に割る側(paper)が行の箱の上端を
+                // 頁の頭に合わせるので、空きは落ちます。これも Word と同じです
+                y += space_before_mm(para, base);
                 // **段落の背景色の始まり**を覚えます。終わりは行を積んだ
                 // 後に分かるので、そこで四角にします
                 let shade_top = y;
@@ -1731,8 +1735,8 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         span: usize,
         v: VMerge,
         /// 行の字と、セルの中でのバイト位置と、行の高さ(mm)と、横の揃えと、
-        /// 字の大きさ(pt)と、1行目の字下げ(mm)
-        lines: Vec<(Vec<Cell>, usize, f32, Align, f32, f32)>,
+        /// 字の大きさ(pt)と、1行目の字下げ(mm)と、字を箱の底に置くか
+        lines: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, bool)>,
         x: f32,
         w: f32,
         /// セルの背景色。**セルの中の最初の段落の物**を使います
@@ -1763,7 +1767,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let span = cell.span().min(ncols.saturating_sub(gc)).max(1);
             let x = xs[gc.min(ncols)];
             let w = xs[(gc + span).min(ncols)] - x;
-            let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32, f32)> = Vec::new();
+            let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, bool)> = Vec::new();
             // **セルの中の余白**。セル自身の `w:tcMar` が最優先で、次が表の
             // `w:tblCellMar`、どちらも無ければ既定です(2026-09-03)
             let pad: [f32; 4] = cell
@@ -1819,14 +1823,17 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         // **セルの幅いっぱいに字を配る**(`w:tcFitText`)。
                         // 帳票の項目名で使う書き方です(2026-09-03)
                         let yose = if cell.fit_text { Align::Distribute } else { para.align };
-                        ls.push((cs, b0, h, yose, pt, hidari + if k == 0 { sagari } else { 0.0 }));
+                        // 行の高さを段落が言っている(`atLeast` / `exact`)なら、
+                        // 字は箱の底に置きます(下の第2走を見てください)
+                        let soko = para.line_pt.is_some();
+                        ls.push((cs, b0, h, yose, pt, hidari + if k == 0 { sagari } else { 0.0 }, soko));
                     }
                     let plen: usize = para.runs.iter().map(|r| r.text.len()).sum();
                     para0 += plen + 1;
                 }
                 // **上下の余白もそのセルの高さ**です。セルごとに `w:tcMar` が
                 // 違えば、行の高さはいちばん高いセルで決まります
-                let naka: f32 = ls.iter().map(|(_, _, h, _, _, _)| *h).sum();
+                let naka: f32 = ls.iter().map(|(_, _, h, _, _, _, _)| *h).sum();
                 takasa = takasa.max(naka + pad[0] + pad[2]);
             }
             // **セル自身の塗りが先。** 表スタイルの帯の色はここに入ります。
@@ -1900,7 +1907,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             // 前はどのセルも上に置いていたので、「□認められる」の行が
             // セルの頭に張り付いていました(2026-09-01 発注者)
             let pfont2 = doc.font.clone();
-            let naka: f32 = l.lines.iter().map(|(_, _, h, _, _, _)| *h).sum();
+            let naka: f32 = l.lines.iter().map(|(_, _, h, _, _, _, _)| *h).sum();
             let aki = (h - l.pad[0] - l.pad[2] - naka).max(0.0);
             let ue = match l.valign {
                 book::VAlign::Middle => aki / 2.0,
@@ -1910,7 +1917,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let mut yy = row_top + l.pad[0] + ue;
             let id = Some((table_no, ri, l.ci));
             let uti = (l.w - l.pad[1] - l.pad[3]).max(0.0);
-            for (cells, b0, plh, yose, pt, sagari) in l.lines {
+            for (cells, b0, plh, yose, pt, sagari, soko) in l.lines {
                 // **ベースラインは書体の上がりの所**です。LibreOffice と
                 // 同じで、行の箱が字より高いぶんは全部ベースラインより上に
                 // 置き、下に残るのは書体の足の深さだけです
@@ -1919,12 +1926,22 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 // 0.8 という割合の決め打ちで、字と下の罫線の間が元の
                 // 2.5pt に対して 1.2pt でした(2026-09-01 発注者)。
                 //
-                // 書体が引けないときと、箱に収まらないときは 0.8 のままです
+                // 書体が引けないときと、箱に収まらないときは 0.8 のままです。
+                //
+                // **段落が行の高さを言っている(`atLeast` / `exact`)なら、字は
+                // 箱の底に置きます**(2026-09-09)。OOXML の仕様(ECMA-376
+                // §17.3.1.33)の決めで、本文の [`dip_of`] と同じ置き方です。
+                // 議事録の表(行 18.15pt、11pt の字)で、Word のベースラインは
+                // うちより 5.5pt 下にありました
                 let ji = cells.first().and_then(|c| c.font.clone()).or_else(|| pfont2.clone());
-                let agari = crate::font::agari_em(ji.as_deref())
-                    .map(|e| pt * e * PT_TO_MM)
-                    .filter(|v| *v > 0.0 && *v <= plh)
-                    .unwrap_or(plh * 0.8);
+                let agari = if soko {
+                    (plh - pt * 0.28 * PT_TO_MM).max(0.0)
+                } else {
+                    crate::font::agari_em(ji.as_deref())
+                        .map(|e| pt * e * PT_TO_MM)
+                        .filter(|v| *v > 0.0 && *v <= plh)
+                        .unwrap_or(plh * 0.8)
+                };
                 yy += agari;
                 // **横の揃え**は段落が言います。前はセルの中を全部左に
                 // 寄せていたので、「調査項目」「内容」の中央揃えが
