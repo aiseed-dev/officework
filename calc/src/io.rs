@@ -1219,12 +1219,15 @@ impl Calc {
     /// **このブックの数字1文字の幅(画素)。** 列幅を紙の長さに直す物差し
     /// です(2026-08-31)。標準の書体が分からなければ 0 を返し、紙の側が
     /// ＭＳ 明朝 10.5pt と同じ 7 に落とします
+    /// 大きさを言っていないセルの字の大きさ(pt)。ブックの標準の書体の大きさ。
+    /// 無ければ 9.5(こちらが書く xlsx の標準)
+    pub(crate) fn default_pt(&self) -> f32 {
+        self.book.default_font.as_ref().map(|(_, pt)| *pt).filter(|p| *p > 0.0).unwrap_or(book::DEFAULT_CELL_PT)
+    }
+
     pub(crate) fn suuji_haba(&self) -> f32 {
-        self.book
-            .default_font
-            .as_ref()
-            .and_then(|(na, pt)| kumihan::font::digit_px(na, *pt))
-            .unwrap_or(0.0)
+        // 紙と同じ物差し(`ops::suuji_haba_of`)。名前の無い標準の書体でも測る
+        ops::suuji_haba_of(&self.book)
     }
 
     /// 画面に見せる**紙の切れ目**(行, 列)。刷る側と同じ規則で数える
@@ -1236,6 +1239,7 @@ impl Calc {
             margins_mm: sh.margins_mm,
             date1904: self.book.date1904,
             mdw_px: self.suuji_haba(),
+            default_pt: self.default_pt(),
         };
         paper::grid::page_starts(sh, paper, &setup)
     }
@@ -1273,6 +1277,7 @@ impl Calc {
                     margins_mm: sh.margins_mm,
                     date1904: self.book.date1904,
             mdw_px: self.suuji_haba(),
+            default_pt: self.default_pt(),
                 },
             ));
         }
@@ -1338,6 +1343,7 @@ impl Calc {
             margins_mm: sh.margins_mm,
             date1904: self.book.date1904,
             mdw_px: self.suuji_haba(),
+            default_pt: self.default_pt(),
         };
         match areas.len() {
             0 => {}

@@ -195,6 +195,18 @@ pub(super) fn sheet_rids(xml: &str) -> Vec<Option<String>> {
 /// **原本の的を持ち越すと `<sheet>` が別の部品を指す** — 消した跡や
 /// 並べ替えで、rId の順と部品の番号は離れているため。
 /// `rids` は原本の `<sheet>` の並び順の `r:id`
+/// **ブックの標準の書体(名前, pt)。** ブックが言っていれば(読んだ xlsx)それ、
+/// 無ければ名前なしの標準の大きさ(`book::DEFAULT_CELL_PT`、11pt)。
+/// Excel は標準の大きさで行の既定の高さを決めるので、書かないと機械ごとに
+/// 違う紙になる(2026-09-08)
+pub(super) fn default_font_of(book: &Book) -> (String, f32) {
+    // 名前はブックが言っているときだけ。こちらの機械の書体の名前は書かない
+    // (読み戻しで素のセルに名前が付いて、往復で書式が変わる)。Excel は
+    // 名前の無い書体を自分の既定の字面で描く — 大きさが同じなら行の高さも
+    // 同じになり、こちらの紙とほぼ同じ紙になる
+    book.default_font.clone().unwrap_or((String::new(), book::DEFAULT_CELL_PT))
+}
+
 /// コメントを書いた人の一覧(xl/persons/person.xml)への関係。**部品を書くなら
 /// 必ず一緒に書く。** 部品だけあって関係が無いと、Excel はスレッド形式の
 /// コメントの人を引けず、壊れたファイルと見て開かない(2026-09-08、Mac の
@@ -1047,7 +1059,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     {
         Some(r) => r,
         // 原本が無い(新規)か、節の見つからない styles.xml なら作り直し
-        None => crate::xlsx::styles::build(&used, &book.named_styles_new),
+        None => crate::xlsx::styles::build(&used, &book.named_styles_new, Some(&default_font_of(book))),
     };
     // 条件付き書式の見た目(dxfs)。全シートの規則から集めて番号を振る
     let dxf_list: Vec<book::CondLook> = {
@@ -1711,11 +1723,17 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             }
             w.write_event(Event::End(BytesEnd::new("sheetViews"))).unwrap();
         }
-        // グループ化があるときは sheetFormatPr に深さの最大を書く
-        // (Excel のアウトライン欄の 1 2 3 ボタンがこれを見る)。cols より前が作法
-        if !sh.row_outline.is_empty() || !sh.col_outline.is_empty() {
+        // **行の既定の高さは必ず書き、`customHeight="1"` を付けます**(2026-09-08、
+        // Excel と並べて見つけた)。付けないと Excel は defaultRowHeight を無視して
+        // 標準の書体から高さを決め直すので(游ゴシック 12pt で 20pt)、高さを
+        // 言っていない行がこちらの紙と合わない。
+        // グループ化があるときは深さの最大も書く(Excel のアウトライン欄の
+        // 1 2 3 ボタンがこれを見る)。cols より前が作法
+        {
             let mut fp = BytesStart::new("sheetFormatPr");
-            fp.push_attribute(("defaultRowHeight", "15"));
+            let dh = sh.default_row_height.unwrap_or(book::DEFAULT_ROW_PT);
+            fp.push_attribute(("defaultRowHeight", dh.to_string().as_str()));
+            fp.push_attribute(("customHeight", "1"));
             if let Some(m) = sh.row_outline.values().max() {
                 fp.push_attribute(("outlineLevelRow", m.to_string().as_str()));
             }

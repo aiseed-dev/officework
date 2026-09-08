@@ -4,6 +4,14 @@ use std::collections::BTreeMap;
 
 use super::refs::*;
 
+/// **大きさを言っていないセルの字の大きさ(pt)。** 日本語の Excel の標準
+/// (11pt)にそろえる。前は紙が 9.5pt、画面が 11pt と別々だった(2026-09-08、
+/// Excel の PDF と並べて見つけた)。xlsx の標準の書体にもこの値を書く
+pub const DEFAULT_CELL_PT: f32 = 11.0;
+/// **高さを言っていない行の高さ(pt)。** 日本語の Excel の標準(18.75pt)。
+/// xlsx の `sheetFormatPr defaultRowHeight` にこの値を書き、紙もこれで組む
+pub const DEFAULT_ROW_PT: f32 = 18.75;
+
 /// A1 形式のセル位置。0起点の (行, 列) で持つ。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Pos {

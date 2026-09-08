@@ -1087,7 +1087,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 (f64::from(chars) * 7.0 + 5.0) * 72.0 / 96.0
             };
             let row_pt = |r: u32| -> f64 {
-                f64::from(sh.row_height.get(&r).copied().or(sh.default_row_height).unwrap_or(15.0))
+                f64::from(sh.row_height.get(&r).copied().or(sh.default_row_height).unwrap_or(book::DEFAULT_ROW_PT))
             };
             let left: f64 = (0..a.col).map(col_pt).sum();
             let top: f64 = (0..a.row).map(row_pt).sum();
@@ -1747,6 +1747,52 @@ pub fn try_font_data() -> Result<&'static [u8], String> {
              Red Hat 系なら `dnf install google-noto-sans-cjk-fonts` で入ります。"
         )
     })
+}
+
+/// **ブックの字が全部組める書体。** 紙(PDF / PNG)の1本目に使います。
+///
+/// [`try_font_data`] は画面の言語だけで選ぶので、英語の設定の Mac では
+/// Helvetica や Times になり、日本語のブックの PDF が全部 □ で出ました
+/// (2026-09-08、Excel の PDF と並べて見つけた。5枚とも)。文書の PDF は
+/// 前から字を見て選んでいる(`paper::layout_doc`)ので、表も同じにします
+pub fn font_for_book(b: &book::Book) -> Result<Vec<u8>, String> {
+    kumihan::font::load(book_family(b)?)
+}
+
+/// ブックの字が全部組める書体の家族(名前を引くのに使う)。ブックが標準の
+/// 書体を名指ししていればそれを先に(字が組めるなら、そのまま)
+pub fn book_family(b: &book::Book) -> Result<&'static kumihan::font::Family, String> {
+    let text: String = b
+        .sheets
+        .iter()
+        .flat_map(|s| {
+            s.cells.values().filter_map(|c| match &c.value {
+                book::Value::Text(t) => Some(t.as_str()),
+                _ => None,
+            }).chain(std::iter::once(s.name.as_str()))
+        })
+        .collect();
+    let want = b.default_font.as_ref().map(|(n, _)| n.as_str()).filter(|n| !n.is_empty());
+    let (fam, _) = kumihan::font::for_text(want, text.chars())?;
+    Ok(fam)
+}
+
+/// **そのブックの数字1文字の幅(画素)。** 列幅(数字が何文字ぶん入るか)を
+/// ミリに直す物差し。標準の書体が名前を持たなければ(こちらが書いた xlsx)、
+/// 紙が描く書体([`book_family`])で測る — 前は名前が無いと 0 を返し、紙の側が
+/// ＭＳ 明朝 10.5pt と同じ 7 に落としていたので、Excel(游ゴシック 11pt で 8)
+/// より列が 1 割狭かった(2026-09-08)。分からなければ 0
+pub fn suuji_haba_of(b: &book::Book) -> f32 {
+    let Some((na, pt)) = b.default_font.as_ref() else { return 0.0 };
+    if !na.is_empty() {
+        if let Some(px) = kumihan::font::digit_px(na, *pt) {
+            return px;
+        }
+    }
+    book_family(b)
+        .ok()
+        .and_then(|f| kumihan::font::digit_px(&f.name, *pt))
+        .unwrap_or(0.0)
 }
 
 /// PNG / JPEG の画素数 (幅, 高さ)。読めなければ None。

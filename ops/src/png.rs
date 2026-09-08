@@ -109,11 +109,13 @@ pub fn doc(
 /// 見えないシート(hidden)は刷りません — [`crate::pdf::book`] と同じです。
 /// 紙の大きさはシートごとに効くので、1冊に縦と横が混ざっていて構いません。
 pub fn book(b: &book::Book, to: &Path, dpi: f32) -> Result<usize, String> {
-    let font = crate::try_font_data()?;
+    // ブックの字が全部組める書体(PDF と同じ。`crate::font_for_book`)
+    let font_v = crate::font_for_book(b)?;
+    let font: &[u8] = &font_v;
     let mut leaves = Vec::new();
     for s in b.sheets.iter().filter(|s| !s.hidden) {
         let p = crate::pdf::paper_of(s);
-        let setup = crate::pdf::setup_of(s, b.date1904);
+        let setup = crate::pdf::setup_of_mdw(s, b.date1904, crate::pdf::suuji_haba(b), crate::pdf::default_pt_of(b));
         for leaf in paper::grid::sheet_leaves(s, p, &setup)? {
             leaves.push((leaf, (p.width_mm, p.height_mm)));
         }

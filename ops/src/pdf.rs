@@ -37,14 +37,14 @@ pub fn doc(
 /// 見えないシート(hidden)は刷りません — 画面と同じです。
 /// 返りは切れた列の数の合計で、0 でなければ紙からはみ出しています。
 pub fn book(b: &book::Book, to: &Path) -> Result<u32, String> {
-    let font = crate::try_font_data()?;
+    let font = crate::font_for_book(b)?;
     // **列幅の物差し。** ブックの標準の書体の数字1文字の幅(画素)
     let mdw = suuji_haba(b);
     let sheets: Vec<(&book::Sheet, paper::Paper, paper::grid::PrintSetup)> = b
         .sheets
         .iter()
         .filter(|s| !s.hidden)
-        .map(|s| (s, paper_of(s), setup_of_mdw(s, b.date1904, mdw)))
+        .map(|s| (s, paper_of(s), setup_of_mdw(s, b.date1904, mdw, default_pt_of(b))))
         .collect();
     if sheets.is_empty() {
         return Err("刷るシートがありません(全部隠れています)".into());
@@ -105,31 +105,34 @@ pub(crate) fn paper_of(s: &book::Sheet) -> paper::Paper {
     paper::Paper { width_mm: w, height_mm: h, margin_mm: l, top_mm: t, bottom_mm: b }
 }
 
-pub(crate) fn setup_of(s: &book::Sheet, date1904: bool) -> paper::grid::PrintSetup {
-    setup_of_mdw(s, date1904, 0.0)
-}
 
-/// 数字1文字の幅つき([`suuji_haba`] が出します)
+/// 数字1文字の幅つき([`suuji_haba`] が出します)。`default_pt` は大きさを
+/// 言っていないセルの字の大きさ(ブックの標準の書体。[`default_pt_of`])
 pub(crate) fn setup_of_mdw(
     s: &book::Sheet,
     date1904: bool,
     mdw_px: f32,
+    default_pt: f32,
 ) -> paper::grid::PrintSetup {
     paper::grid::PrintSetup {
         areas: s.print_areas.clone(),
         margins_mm: s.margins_mm,
         date1904,
         mdw_px,
+        default_pt,
     }
+}
+
+/// **大きさを言っていないセルの字の大きさ(pt)。** ブックの標準の書体の
+/// 大きさ。無ければ `book::DEFAULT_CELL_PT`
+pub(crate) fn default_pt_of(b: &book::Book) -> f32 {
+    b.default_font.as_ref().map(|(_, pt)| *pt).filter(|p| *p > 0.0).unwrap_or(book::DEFAULT_CELL_PT)
 }
 
 /// **そのブックの数字1文字の幅(画素)。** 標準の書体から測ります。
 /// 分からなければ 0(紙の側が 7 に落とします)
 pub(crate) fn suuji_haba(b: &book::Book) -> f32 {
-    b.default_font
-        .as_ref()
-        .and_then(|(na, pt)| kumihan::font::digit_px(na, *pt))
-        .unwrap_or(0.0)
+    crate::suuji_haba_of(b)
 }
 
 

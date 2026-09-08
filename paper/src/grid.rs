@@ -165,6 +165,11 @@ pub struct PrintSetup {
     /// (`sc/source/filter/oox/unitconverter.cxx`。標準の書体を取って
     /// 「get maximum width of all digits」)
     pub mdw_px: f32,
+    /// **大きさを言っていないセルの字の大きさ(pt)。** ブックの標準の書体の
+    /// 大きさです(styles.xml の1本目の書体)。Excel はこれで描くので、
+    /// 決め打ちだと Excel の紙と行の高さや折り返しが合わない(2026-09-08)。
+    /// 0 なら `book::DEFAULT_CELL_PT`
+    pub default_pt: f32,
 }
 
 /// **紙 N 枚に収めるための縮尺。** `fit_to_w`/`fit_to_h` のどちらかが
@@ -1113,6 +1118,8 @@ fn draw_sheet(
         haba: &Habakei,
         // 数字1文字の幅(画素)。列幅をミリに直すのに要ります
         mdw_px: f32,
+        // 大きさを言っていないセルの字の大きさ(pt)
+        default_pt: f32,
     ) {
         let ncols = cols.len();
         // 印刷の枠線(printOptions gridLines)。薄い灰で先に敷く
@@ -1307,7 +1314,9 @@ fn draw_sheet(
             // 9.5pt の決め打ちで、6pt に設定した英文が大きく出ていました
             // (国税庁の酒税の表の I7「Number of licensed sites to sell
             // liquors」)。折り返しの位置もそのぶんずれます
-            let pt = cell.fmt.size_c.map_or(9.5, |c| c as f32 / 100.0) * scale;
+            // 0 は「言っていない」(PrintSetup を Default で作った所)。9.5 に落とす
+            let default_pt = if default_pt > 0.0 { default_pt } else { book::DEFAULT_CELL_PT };
+            let pt = cell.fmt.size_c.map_or(default_pt, |c| c as f32 / 100.0) * scale;
             // **セルの中で折り返す**(2026-08-31 発注者。xlsx の `wrapText`)。
             //
             // 前は折り返しを見ておらず、長い見出しが右のセルへ流れて、
@@ -1731,7 +1740,7 @@ fn draw_sheet(
                 for tr in &title_rows {
                     let th = row_mm(*tr);
                     let y_top = paper.height_mm - mt - y_used;
-                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.mdw_px);
+                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.mdw_px, setup.default_pt);
                     y_used += th;
                 }
             }
@@ -1743,7 +1752,7 @@ fn draw_sheet(
             row_place.entry(r).or_insert((cur, y_top));
         }
         y_used += rh;
-        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.mdw_px);
+        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.mdw_px, setup.default_pt);
     }
     }
     // 図形(挿した分も読んだ分も)。塗りと輪郭を紙に出します
@@ -2555,7 +2564,7 @@ mod tests {
         let one = pages(&PrintSetup {
             areas: vec![(Pos::new(0, 0), Pos::new(2, 0))],
             margins_mm: None,
-            date1904: false, mdw_px: 0.0,
+            date1904: false, mdw_px: 0.0, default_pt: 11.0,
         });
         // 同じ大きさの域を2つ = 紙も2枚(**繋げて1枚に詰めない**)
         let two = pages(&PrintSetup {
@@ -2564,7 +2573,7 @@ mod tests {
                 (Pos::new(5, 0), Pos::new(7, 0)),
             ],
             margins_mm: None,
-            date1904: false, mdw_px: 0.0,
+            date1904: false, mdw_px: 0.0, default_pt: 11.0,
         });
         assert_eq!(one, 1, "1域なのに {one} 枚になった");
         assert_eq!(two, 2, "2域が {two} 枚 — 域ごとに紙を変えていない");
@@ -2700,7 +2709,7 @@ mod print_setup_tests {
         let setup = PrintSetup {
             areas: vec![(Pos::new(0, 0), Pos::new(4, 0))],
             margins_mm: None,
-            date1904: false, mdw_px: 0.0,
+            date1904: false, mdw_px: 0.0, default_pt: 11.0,
         };
         let mut part = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(), &setup, &mut part).unwrap();
@@ -2714,11 +2723,11 @@ mod print_setup_tests {
         let s = long_sheet();
         let mut narrow = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(),
-            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 10.0, 10.0)) , date1904: false, mdw_px: 0.0 },
+            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 10.0, 10.0)) , date1904: false, mdw_px: 0.0, default_pt: 11.0 },
             &mut narrow).unwrap();
         let mut wide = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(),
-            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 100.0, 100.0)) , date1904: false, mdw_px: 0.0 },
+            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 100.0, 100.0)) , date1904: false, mdw_px: 0.0, default_pt: 11.0 },
             &mut wide).unwrap();
         assert!(pages(&wide) > pages(&narrow), "余白が紙の枚数に効いていない");
     }
@@ -3277,7 +3286,10 @@ mod zukei_tests {
             g.col_width.insert(0, haba);
             g.set(book::Pos::new(0, 0), book::Cell {
                 formula: None, value: Value::Number(n), fmt: Default::default() });
-            let leaves = sheet_leaves(&g, Paper::default(), &PrintSetup::default()).unwrap();
+            // この試験の幅と桁の対応は 9.5pt の字で決めてある(標準は 11pt に変えた。
+            // 2026-09-08)。字の大きさを固定して、桁を落とす仕組みだけを見る
+            let setup = PrintSetup { default_pt: 9.5, ..Default::default() };
+            let leaves = sheet_leaves(&g, Paper::default(), &setup).unwrap();
             leaves.iter().flat_map(|l| l.pieces.iter()).map(|p| p.text.clone()).collect()
         };
         // 幅があれば有効数字15桁のまま

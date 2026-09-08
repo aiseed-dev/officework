@@ -3711,6 +3711,32 @@ mod package_tests {
         assert!(dangling_targets(&buf).is_empty());
     }
 
+    /// **標準の書体と行の既定の高さは、Excel が決め直せない形で書く。**
+    /// 空の `<font/>` だと Excel は自分の既定(游ゴシック 12pt など)を当て、
+    /// 列の幅と行の高さがこちらの紙と合わない(2026-09-08、Excel の PDF と
+    /// 並べて見つけた)
+    #[test]
+    fn the_default_font_and_row_height_are_written_explicitly() {
+        let mut s = Sheet { name: "帳票".into(), ..Default::default() };
+        s.set(Pos { row: 0, col: 0 }, Cell {
+            formula: None, value: Value::Text("品名".into()), fmt: CellFormat::default() });
+        let book = Book { sheets: vec![s], ..Default::default() };
+        let mut buf = Vec::new();
+        write(&book, Cursor::new(&mut buf)).unwrap();
+        let mut z = zip::ZipArchive::new(Cursor::new(&buf)).unwrap();
+        let mut st = String::new();
+        z.by_name("xl/styles.xml").unwrap().read_to_string(&mut st).unwrap();
+        let font0 = st.split("<font>").nth(1).expect("書体が無い");
+        assert!(font0.contains(r#"<sz val="11"/>"#), "標準の大きさが無い: {font0}");
+        let mut sh = String::new();
+        z.by_name("xl/worksheets/sheet1.xml").unwrap().read_to_string(&mut sh).unwrap();
+        assert!(sh.contains(r#"<sheetFormatPr defaultRowHeight="18.75" customHeight="1""#), "行の既定の高さが無い: {sh}");
+        // 読み戻すと同じ既定になる
+        let (back, _) = crate::xlsx::read(Cursor::new(&buf)).unwrap();
+        assert_eq!(back.sheets[0].default_row_height, Some(book::DEFAULT_ROW_PT));
+        assert_eq!(back.default_font.as_ref().map(|(_, pt)| *pt), Some(book::DEFAULT_CELL_PT));
+    }
+
     #[test]
     fn every_relationship_points_at_a_part_in_a_fresh_book() {
         let mut s = Sheet { name: "帳票".into(), ..Default::default() };

@@ -244,6 +244,11 @@ pub fn list() -> &'static [Family] {
         for d in dirs() {
             scan(&d, &mut out, 0);
         }
+        // **名前が `.` で始まる書体は外す。** macOS の内部の書体
+        // (`.Hiragino Kaku Gothic Interface` など)で、選ぶ側には見えない名前。
+        // これが選ばれると、xlsx の標準の書体にその名前が書かれ、Excel が
+        // 引けない(2026-09-08)
+        out.retain(|f| !f.name.starts_with('.'));
         // 同じ書体名の中では**素の字面を先に**。
         // 並び順で先頭を採ると「BIZ UDPゴシック」を頼んで Bold が返る
         out.sort_by(|a, b| a.name.cmp(&b.name).then(b.regular.cmp(&a.regular)));

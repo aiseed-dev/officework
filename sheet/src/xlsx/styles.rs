@@ -143,7 +143,9 @@ pub fn default_font(xml: &str) -> Option<(String, f32)> {
         }
         buf.clear();
     }
-    Some((na?, pt?))
+    // 名前の無い標準の書体(こちらが書く xlsx)は、大きさだけ持つ。
+    // 名前は空 — 描く側は字が組める書体を選び、大きさはこれに従う
+    Some((na.unwrap_or_default(), pt?))
 }
 
 fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
@@ -479,7 +481,19 @@ fn resolve(
     align: Option<HAlign>,
     rot: Option<i32>,
 ) -> CellFormat {
-    let f = fonts.get(fid).cloned().unwrap_or_default();
+    let mut f = fonts.get(fid).cloned().unwrap_or_default();
+    // **標準の書体と同じ大きさは「言っていない」に戻す。** こちらが書く xlsx は
+    // 全部の書体に標準の大きさを入れる(Excel が自分の既定 — この Mac では
+    // 游ゴシック 12pt — を当てて行を広げないように)ので、そのまま読むと
+    // 素のセルが「11pt を指定した」に化けて往復で書式が変わる。標準と同じ
+    // 大きさは None にし、描くときはブックの標準の大きさ(`Book::default_font`、
+    // `PrintSetup::default_pt`)に落とす(2026-09-08)。名前はそのまま持つ
+    // (Normal の書体の名前は書式の一部 — 下の `default_font_is_kept_as_a_style`)
+    if let Some(f0) = fonts.first() {
+        if f.size_c == f0.size_c {
+            f.size_c = None;
+        }
+    }
     let fl = fills.get(fillid).cloned().unwrap_or_default();
     CellFormat {
         bold: f.bold,
@@ -636,6 +650,7 @@ mod tests {
 pub fn build(
     used: &[CellFormat],
     named: &[(String, CellFormat)],
+    default_font: Option<&(String, f32)>,
 ) -> (String, BTreeMap<CellFormat, usize>) {
     // 素の書式は必ず 0 番。xlsx はそれを前提にしている道具が多い
     let mut order: Vec<CellFormat> = vec![CellFormat::default()];
@@ -644,8 +659,18 @@ pub fn build(
             order.push(f.clone());
         }
     }
-    let mut fonts: Vec<Fnt> =
-        vec![Fnt::default()];
+    // **標準の書体は名前と大きさを書きます**(2026-09-08、Excel と並べて見つけた)。
+    // 空の `<font/>` にすると、Excel は自分の既定(この Mac では游ゴシック 12pt、
+    // Windows では Calibri 11pt)を当てるので、列の幅(標準の書体の数字の幅が
+    // 単位)と行の既定の高さが機械ごとに変わり、こちらの紙と合わない。
+    // ブックが言っていなければ、こちらが組むときの大きさ(`book::DEFAULT_CELL_PT`)
+    let mut fonts: Vec<Fnt> = vec![Fnt {
+        size_c: Some((default_font.map(|(_, pt)| *pt).unwrap_or(book::DEFAULT_CELL_PT) * 100.0).round() as u32),
+        // 名前はブックが言っているときだけ(読んだ xlsx)。こちらの機械の書体の
+        // 名前を書くと、読み戻しで素のセルに名前が付き、往復で書式が変わる
+        name: default_font.map(|(n, _)| n.clone()).filter(|n| !n.is_empty()),
+        ..Fnt::default()
+    }];
     // 0=none 1=gray125 は xlsx の予約席
     let mut fills: Vec<FillDef> = vec![FillDef::default(), FillDef::default()];
     let mut borders: Vec<Borders> = vec![Borders::NONE];
@@ -653,9 +678,13 @@ pub fn build(
     let mut xfs: Vec<(usize, usize, usize, usize, CellFormat)> = Vec::new();
 
     for f in &order {
+        // 大きさを言っていないセルの書体にも、標準の大きさを入れる。
+        // 空のままだと Excel は自分の既定(游ゴシック 12pt)で描き、行の高さを
+        // それに合わせて広げるので、こちらの紙と合わない
         let font = Fnt {
             bold: f.bold, italic: f.italic, underline: f.underline,
-            strike: f.strike, subscript: f.subscript, size_c: f.size_c,
+            strike: f.strike, subscript: f.subscript,
+            size_c: f.size_c.or(fonts[0].size_c),
             color_theme: f.color_theme,
             color: f.color.clone(), name: f.font.clone(),
         };
@@ -732,14 +761,16 @@ pub fn build(
 /// 読み戻しで「11pt の指定がある」ことになってしまう
 fn font_xml(f: &Fnt) -> String {
     let mut s = String::from("<font>");
+    // 子の並びはスキーマの順(b, i, strike, u, vertAlign, sz, color, name)。
+    // 前は sz を頭に書いていた(2026-09-08 に Excel と並べたときに直した)
+    if f.bold { s.push_str("<b/>") }
+    if f.italic { s.push_str("<i/>") }
+    if f.strike { s.push_str("<strike/>") }
+    if f.underline { s.push_str("<u/>") }
+    if f.subscript { s.push_str("<vertAlign val=\"subscript\"/>") }
     if let Some(c) = f.size_c {
         s.push_str(&format!("<sz val=\"{}\"/>", c as f32 / 100.0));
     }
-    if f.bold { s.push_str("<b/>") }
-    if f.italic { s.push_str("<i/>") }
-    if f.underline { s.push_str("<u/>") }
-    if f.strike { s.push_str("<strike/>") }
-    if f.subscript { s.push_str("<vertAlign val=\"subscript\"/>") }
     // テーマ由来の色は由来のまま返す(配色を変えたら色も追う)
     if let Some((i, t)) = f.color_theme {
         if t == 0 {
@@ -1221,7 +1252,7 @@ mod build_tests {
 
     #[test]
     fn the_plain_style_is_number_zero() {
-        let (_, map) = build(&[ruled()], &[]);
+        let (_, map) = build(&[ruled()], &[], None);
         assert_eq!(map[&CellFormat::default()], 0, "素の書式が0番でない");
     }
 
@@ -1229,7 +1260,7 @@ mod build_tests {
     fn what_was_written_reads_back() {
         // 罫線を落とすと帳票として通らない。往復で守る
         let f = ruled();
-        let (xml, map) = build(std::slice::from_ref(&f), &[]);
+        let (xml, map) = build(std::slice::from_ref(&f), &[], None);
         let back = parse(&xml, &[]);
         let i = map[&f];
         assert_eq!(back[i].borders, Borders::ALL, "罫線が消えた: {:?}", back[i]);
@@ -1245,7 +1276,7 @@ mod build_tests {
             align: HAlign::Center,
             ..Default::default()
         };
-        let (xml, map) = build(std::slice::from_ref(&f), &[]);
+        let (xml, map) = build(std::slice::from_ref(&f), &[], None);
         let back = &parse(&xml, &[])[map[&f]];
         assert_eq!(back.fill.as_deref(), Some("FFFF00"));
         assert_eq!(back.color.as_deref(), Some("FF0000"));
@@ -1256,7 +1287,7 @@ mod build_tests {
     #[test]
     fn identical_styles_are_merged() {
         let f = ruled();
-        let (_, map) = build(&[f.clone(), f.clone(), f.clone()], &[]);
+        let (_, map) = build(&[f.clone(), f.clone(), f.clone()], &[], None);
         assert_eq!(map.len(), 2, "素の書式 + 1 のはず: {map:?}");
     }
 
@@ -1267,7 +1298,7 @@ mod build_tests {
             borders: Borders { bottom: Edge::THIN, ..Borders::NONE },
             ..Default::default()
         };
-        let (xml, map) = build(std::slice::from_ref(&f), &[]);
+        let (xml, map) = build(std::slice::from_ref(&f), &[], None);
         let back = &parse(&xml, &[])[map[&f]];
         assert!(back.borders.bottom.on, "下線が消えた");
         assert!(!back.borders.top.on, "無い罫線が増えた");
@@ -1282,7 +1313,7 @@ mod font_name_tests {
     fn font_name_round_trips() {
         // ＭＳ 明朝の帳票を保存して書体が消えると、開き直したとき別の字になる
         let f = CellFormat { font: Some("ＭＳ 明朝".into()), bold: true, ..Default::default() };
-        let (xml, map) = build(std::slice::from_ref(&f), &[]);
+        let (xml, map) = build(std::slice::from_ref(&f), &[], None);
         let back = &parse(&xml, &[])[map[&f]];
         assert_eq!(back.font.as_deref(), Some("ＭＳ 明朝"), "書体名が消えた");
         assert!(back.bold);
@@ -1302,7 +1333,7 @@ mod more_fmt_tests {
             wrap: true,
             ..Default::default()
         };
-        let (xml, map) = build(std::slice::from_ref(&f), &[]);
+        let (xml, map) = build(std::slice::from_ref(&f), &[], None);
         let back = &parse(&xml, &[])[map[&f]];
         assert_eq!(back.size_c, Some(1400), "大きさが消えた");
         assert!(back.strike, "取り消し線が消えた");
@@ -1314,7 +1345,7 @@ mod more_fmt_tests {
     fn default_vertical_align_is_not_written() {
         // xlsx の既定は下揃え。書かないことが既定を表す
         let f = CellFormat { bold: true, ..Default::default() };
-        let (xml, _) = build(&[f], &[]);
+        let (xml, _) = build(&[f], &[], None);
         assert!(!xml.contains("vertical="), "既定なのに縦揃えを書いた");
     }
 
@@ -1324,7 +1355,7 @@ mod more_fmt_tests {
         // ロックとは別の印。**組み合わせも往復する**
         for (lock, hide) in [(false, true), (true, true), (true, false), (false, false)] {
             let f = CellFormat { unlocked: lock, formula_hidden: hide, ..Default::default() };
-            let (xml, map) = build(std::slice::from_ref(&f), &[]);
+            let (xml, map) = build(std::slice::from_ref(&f), &[], None);
             let back = &parse(&xml, &[])[map[&f]];
             assert_eq!(back.unlocked, lock, "ロックが往復しない({lock},{hide})");
             assert_eq!(back.formula_hidden, hide, "式を隠すが往復しない({lock},{hide})");
@@ -1336,7 +1367,7 @@ mod more_fmt_tests {
         // **書かないことが既定を表す。** hidden="0" を書くと、Excel では
         // 「わざわざ隠さないことにした」になる
         let f = CellFormat { bold: true, ..Default::default() };
-        let (xml, _) = build(std::slice::from_ref(&f), &[]);
+        let (xml, _) = build(std::slice::from_ref(&f), &[], None);
         assert!(!xml.contains("hidden="), "既定なのに hidden を書いた: {xml}");
         assert!(!xml.contains("<protection"), "要らない protection を書いた: {xml}");
     }
@@ -1352,7 +1383,7 @@ mod more_fmt_tests {
         // 始まりの方は、終わりに辿り着けない壊れた原文への備え
         let a = CellFormat { unlocked: true, formula_hidden: true, ..Default::default() };
         let b = CellFormat { bold: true, ..Default::default() };
-        let (xml, map) = build(&[a.clone(), b.clone()], &[]);
+        let (xml, map) = build(&[a.clone(), b.clone()], &[], None);
         let t = parse(&xml, &[]);
         assert!(t[map[&a]].unlocked && t[map[&a]].formula_hidden, "印が往復しない");
         assert!(!t[map[&b]].unlocked, "ロックの印が次のセルへ漏れた");
@@ -1367,7 +1398,7 @@ mod more_fmt_tests {
             fill_bg: Some("00FF00".into()),    // 地
             ..Default::default()
         };
-        let (xml, map) = build(std::slice::from_ref(&f), &[]);
+        let (xml, map) = build(std::slice::from_ref(&f), &[], None);
         assert!(xml.contains(r#"patternType="lightGrid""#), "柄を書いていない: {xml}");
         let back = &parse(&xml, &[])[map[&f]];
         assert_eq!(back.fill_pattern.as_deref(), Some("lightGrid"), "柄が消えた");
@@ -1385,7 +1416,7 @@ mod more_fmt_tests {
             }),
             ..Default::default()
         };
-        let (xml, map) = build(std::slice::from_ref(&f), &[]);
+        let (xml, map) = build(std::slice::from_ref(&f), &[], None);
         assert!(xml.contains(r#"degree="45""#), "角度が書けていない: {xml}");
         let back = &parse(&xml, &[])[map[&f]];
         assert_eq!(back.fill_grad, f.fill_grad, "グラデーションが往復しない");
@@ -1395,14 +1426,14 @@ mod more_fmt_tests {
     fn solid_and_no_fill_unchanged() {
         // 柄の欄を足しても、いちばん多い2つの姿を変えない
         let solid = CellFormat { fill: Some("FFF2CC".into()), ..Default::default() };
-        let (xml, map) = build(std::slice::from_ref(&solid), &[]);
+        let (xml, map) = build(std::slice::from_ref(&solid), &[], None);
         assert!(xml.contains(r#"patternType="solid""#), "べた塗りが solid でない");
         let back = &parse(&xml, &[])[map[&solid]];
         assert_eq!(back.fill.as_deref(), Some("FFF2CC"));
         assert_eq!(back.fill_pattern, None, "べた塗りに柄の名前が付いた");
 
         let none = CellFormat { bold: true, ..Default::default() };
-        let (xml, map) = build(std::slice::from_ref(&none), &[]);
+        let (xml, map) = build(std::slice::from_ref(&none), &[], None);
         let back = &parse(&xml, &[])[map[&none]];
         assert_eq!(back.fill, None, "塗り無しに色が付いた");
         assert_eq!(back.fill_grad, None);
@@ -1421,7 +1452,7 @@ mod more_fmt_tests {
             ..Default::default()
         };
         let touched = CellFormat { bold: true, ..orig.clone() };
-        let (xml, map) = build(std::slice::from_ref(&touched), &[]);
+        let (xml, map) = build(std::slice::from_ref(&touched), &[], None);
         let back = &parse(&xml, &[])[map[&touched]];
         assert!(back.bold, "触った印が付いていない");
         assert_eq!(back.fill_pattern.as_deref(), Some("darkTrellis"), "柄がべた塗りに化けた");
@@ -1439,7 +1470,7 @@ mod more_fmt_tests {
             }),
             ..Default::default()
         };
-        let (xml, map) = build(std::slice::from_ref(&f), &[]);
+        let (xml, map) = build(std::slice::from_ref(&f), &[], None);
         assert!(xml.contains(r#"type="path""#), "放射の型を書いていない: {xml}");
         assert!(!xml.contains("degree="), "path に角度を書いた: {xml}");
         let back = &parse(&xml, &[])[map[&f]];
@@ -1463,7 +1494,7 @@ mod xml_wellformed_tests {
         let mut f = CellFormat::default();
         f.bold = true;
         f.fill = Some("FFF2CC".into());
-        let (xml, _) = build(&[f], &[]);
+        let (xml, _) = build(&[f], &[], None);
         // 引用符の開閉を数え、**閉じた直後**だけ見る。閉じたあとに来てよいのは
         // 空白・`/`・`>`・`?` だけ(属性が続くなら必ず空白が要る)
         let b: Vec<char> = xml.chars().collect();
