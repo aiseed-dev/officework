@@ -1340,12 +1340,13 @@ pub fn layout_hf(
     // Word はヘッダーの字の頭をその距離に、フッターの字の底をその距離に置く。
     // 2026-09-08、Word の PDF と並べて測った: 上から 42.5pt + 字の高さ、
     // 下から 17.5mm − 字の足)。前は上余白の 45% と下余白の頭に置いていた。
-    // 余白が狭い紙では本文域に食い込まないよう、余白の 3/4 で止める
+    // 余白が狭い紙では本文域に食い込まないよう、余白の 9 割で止める
+    // (余白 20mm で 17.5mm が入るように。3/4 だと 15mm に縮んで 7pt ずれた)
     let size_mm = base_pt * PT_TO_MM;
     let mut y = if footer {
-        pg.h_mm - FOOTER_MM.min(pg.bottom_mm * 0.75) - size_mm * 0.28
+        pg.h_mm - FOOTER_MM.min(pg.bottom_mm * 0.9) - size_mm * 0.28
     } else {
-        HEADER_MM.min(pg.top_mm * 0.75) + size_mm * 0.88
+        HEADER_MM.min(pg.top_mm * 0.9) + size_mm * 0.88
     };
     let mut out = Vec::new();
     for para in &hf.paragraphs {

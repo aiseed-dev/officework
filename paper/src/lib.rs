@@ -506,7 +506,13 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
     // 明示の改ページ(文書側の指定)。高さ超過とは別に、ここでも頁を割る
     let mut breaks = sheet.breaks.iter().copied().peekable();
     for line in &sheet.lines {
-        if line.cells.is_empty() {
+        // **改ページを背負った空行は、新しい頁の1行目になる**(Word と同じ。
+        // 2026-09-09、Word の PDF と並べて見つけた)。前は空行を全部いまの頁に
+        // 残し、改ページを次の字のある行まで持ち越していたので、改ページだけの
+        // 段落(`w:pageBreakBefore` の空の段落)の次の見出しが頁の頭に来て、
+        // Word より 1 行(18pt)上にあった
+        let kaipeji_koko = breaks.peek().is_some_and(|&b| line.y_mm >= b - 0.01);
+        if line.cells.is_empty() && !kaipeji_koko {
             // 空行は頁を進めない(描かれないので)。いまの頁に属するとみなす
             pages.push(offsets.len());
             continue;
@@ -1105,6 +1111,26 @@ mod break_tests {
         let n: usize = hay[i..].chars().take_while(|c| c.is_ascii_digit())
             .collect::<String>().parse().unwrap();
         assert_eq!(n, 2, "2行の文書が改ページで2頁にならず {n} 頁");
+    }
+
+    /// **改ページだけの空の段落は、新しい頁の1行目になる**(Word と同じ。
+    /// 2026-09-09)。次の見出しは、その空行の1行ぶん下に来る
+    #[test]
+    fn an_empty_paragraph_with_a_page_break_opens_the_next_page() {
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain("一頁目\n\n二頁目の見出し");
+        if let Block::Para(p) = &mut d.blocks[1] {
+            p.page_break_before = true;
+        }
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let pn = paginate_full(&s, Paper::default());
+        assert_eq!(pn.pages, vec![1, 2, 2], "空行が新しい頁の頭に来ていない: {:?}", pn.pages);
+        // 見出しは空行の1行ぶん下(2頁目の1行目ではない)
+        let top1 = s.lines[1].y_mm - pn.offsets[1];
+        let top2 = s.lines[2].y_mm - pn.offsets[1];
+        assert!(top2 - top1 > 5.0, "見出しが空行と同じ高さ: {top1} {top2}");
     }
 
     #[test]
