@@ -293,6 +293,12 @@ fn styles_from_theme(theme: &kumihan::theme::Theme) -> String {
     // 定義が無いと読み手は Normal に落とすので、引用や見出しが本文と同じに
     // 見えます(2026-08-18 に python-docx で確かめて見つけました)。
     // テンプレートが何も言っていないスタイルなので中身は空 — 名乗りだけです
+    // **見出しの前後の空きも書きます**(2026-09-08、Word と並べて見つけた)。
+    // 組版は見出しの前に基準の 0.9 倍(2以下は 0.7 倍)、後に 0.25 倍の空きを
+    // 置きます(`kumihan::layout::space_before_mm`)。スタイルに書かないと、
+    // Word は空き 0 で組むので、同じ文書の見出しの位置が 10pt ほど違いました
+    let base_pt = theme.size_pt.unwrap_or(kumihan::DEFAULT_PT);
+    let twips = |r: f32| (base_pt * r * 20.0).round() as i64;
     for (id, name, lvl) in [
         ("Title", "Title", None),
         ("Quote", "Quote", None),
@@ -304,7 +310,13 @@ fn styles_from_theme(theme: &kumihan::theme::Theme) -> String {
             continue;
         }
         let outline = lvl
-            .map(|n| format!(r#"<w:pPr><w:outlineLvl w:val="{n}"/></w:pPr>"#))
+            .map(|n| {
+                let before = twips(if n == 0 { 0.9 } else { 0.7 });
+                let after = twips(0.25);
+                format!(
+                    r#"<w:pPr><w:spacing w:before="{before}" w:after="{after}"/><w:outlineLvl w:val="{n}"/></w:pPr>"#
+                )
+            })
             .unwrap_or_default();
         s.push_str(&format!(
             r#"<w:style w:type="paragraph" w:styleId="{id}"><w:name w:val="{name}"/><w:basedOn w:val="Normal"/>{outline}</w:style>"#
@@ -1489,7 +1501,7 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
 ///
 /// 9段まで作ります。中黒は Word と同じ3つ(●・○・■)の繰り返し、
 /// 番号は 1. / 1) / (1) の繰り返しです。
-fn numbering_xml() -> String {
+pub(crate) fn numbering_xml() -> String {
     let mut s = String::from(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
@@ -1506,14 +1518,22 @@ fn numbering_xml() -> String {
             } else {
                 ("bullet", match lv % 3 { 0 => "●", 1 => "○", _ => "■" }.to_string())
             };
-            // 字下げは1段 720twip(Word の既定)。ぶら下げも同じ幅です
-            let left = 720 * (lv + 1);
+            // **字下げは組版と同じにします**(2026-09-08、Word と並べて見つけた)。
+            // 組版は印を段の左端に置き、印と本文の間は空白1つです。1段は
+            // 全角2文字(420twip。読む側の「1段 = 420twip」と同じ)。前は
+            // Word の既定(1段 720twip、ぶら下げ 360)を書いていたので、Word で
+            // 開くと本文が 36pt 右へ寄り、こちらの画面や PDF と違っていました。
+            // `w:suff` を space にしないと、Word は印の後にタブを置いて
+            // 次のタブ位置(36pt)まで飛ばします
+            let left = 420 * lv;
             s.push_str(&format!(
                 concat!(
+                    // 子の並びはスキーマの順(start, numFmt, suff, lvlText, lvlJc, pPr)。
+                    // 順が違うと Word は壊れたファイルと見ます
                     r#"<w:lvl w:ilvl="{lv}"><w:start w:val="1"/>"#,
-                    r#"<w:numFmt w:val="{fmt}"/><w:lvlText w:val="{txt}"/>"#,
+                    r#"<w:numFmt w:val="{fmt}"/><w:suff w:val="space"/><w:lvlText w:val="{txt}"/>"#,
                     r#"<w:lvlJc w:val="left"/><w:pPr>"#,
-                    r#"<w:ind w:left="{left}" w:hanging="360"/></w:pPr></w:lvl>"#,
+                    r#"<w:ind w:left="{left}" w:hanging="0"/></w:pPr></w:lvl>"#,
                 ),
                 lv = lv, fmt = fmt, txt = crate::read::esc(&txt), left = left,
             ));

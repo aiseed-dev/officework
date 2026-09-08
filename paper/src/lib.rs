@@ -1031,6 +1031,28 @@ mod hf_tests {
 
     use super::*;
 
+    /// **文書のヘッダーとフッターが、頁ごとの行として紙に渡る。** 前は
+    /// `doc_to_pdf` が空の閉包を渡していて、PDF に頭も足も無かった
+    /// (2026-09-08、Word と並べて見つけた)
+    #[test]
+    fn the_documents_header_and_footer_are_laid_out_for_each_page() {
+        let mut d = Document::plain(&vec!["行"; 100].join("\n"));
+        let hf = |t: &str| HeadFoot {
+            paragraphs: Document::plain(t).paragraphs().cloned().collect(),
+            part: None,
+            anchors: Vec::new(),
+        };
+        d.header = hf("頭の字");
+        d.footer = hf(&format!("足 {PAGE_MARK}"));
+        let (dd, laid, _) = doc_laid(&d, None).expect("組めない");
+        let lines = doc_hf_lines(&dd, &laid.font, &laid.sheet, laid.page).expect("頭と足が組めない");
+        let p1: Vec<String> = lines(1).iter().map(|l| l.text()).collect();
+        assert!(p1.iter().any(|t| t.contains("頭の字")), "1頁目にヘッダーが無い: {p1:?}");
+        assert!(p1.iter().any(|t| t.contains("足 1")), "1頁目のフッターに頁番号が無い: {p1:?}");
+        let p2: Vec<String> = lines(2).iter().map(|l| l.text()).collect();
+        assert!(p2.iter().any(|t| t.contains("足 2")), "2頁目の番号が違う: {p2:?}");
+    }
+
     #[test]
     fn page_numbers_on_every_page_without_changing_the_count() {
         let (fam, _) = font::for_document(None).unwrap();
@@ -1342,18 +1364,43 @@ pub fn doc_to_pdf<W: Write>(
         shapes,
         ..Default::default()
     };
+    // **ヘッダーとフッターも紙に出します**(2026-09-08、Word と並べて
+    // 見つけた。`d.header.text` を持つ文書の PDF に、画面にはある頭と足の
+    // 行が無かった)。画面(writer の `refresh_hf`)と同じ関数・同じ物差し
+    // (`LINE_MM`、文書の基準の大きさ)で、頁ごとに組みます
+    let hf = doc_hf_lines(doc, &laid.font, &sheet, page)?;
     let lost = pdfw::sheet_to_pdf_fonts(
         &sheet,
         &fonts,
         Paper::from_page(&page),
         &dress,
-        |_| Vec::new(),
+        hf,
         out,
     )?;
     // 載らなかった物は呼ぶ側へ言えないので、ここでは黙るしかありません。
     // **数える口が要るなら [`pdfw::sheet_to_pdf`] を直に呼びます**
     let _ = lost;
     Ok(())
+}
+
+/// **頁ごとのヘッダーとフッターの行を組む閉包。** `k` は 1 始まりの頁。
+/// 総頁は紙と同じ折り方([`paginate_full`])で数えます。画面の
+/// `refresh_hf` と同じ関数([`kumihan::layout_hf`])を同じ物差しで呼ぶので、
+/// 頭と足の位置は画面と紙で同じになります(2026-09-08)。
+pub fn doc_hf_lines<'a>(
+    doc: &'a kumihan::Document,
+    font: &'a [u8],
+    sheet: &kumihan::Sheet,
+    page: kumihan::PageSetup,
+) -> Result<impl Fn(usize) -> Vec<kumihan::Line> + 'a, String> {
+    let m = kumihan::Metrics::new(font)?;
+    let total = paginate_full(sheet, Paper::from_page(&page)).offsets.len().max(1);
+    let base_pt = doc.base_pt();
+    Ok(move |k: usize| {
+        let mut v = kumihan::layout_hf(&doc.header, &m, &page, kumihan::LINE_MM, k, total, false, base_pt);
+        v.extend(kumihan::layout_hf(&doc.footer, &m, &page, kumihan::LINE_MM, k, total, true, base_pt));
+        v
+    })
 }
 
 /// **文書の紙面を全部取り出す。** PDF は書きません。
@@ -1609,24 +1656,26 @@ mod doc_pdf_tests {
     }
 }
 
-/// **ページごとの「先頭の段落」を出す。**
-///
-/// docx の図形は「どの段落に留まるか」でページが決まります(紙からの mm は
-/// 持てても、何ページ目かは持てません)。だから、そのページに載っている
-/// 段落へ結び付けないと違うページに出ます。
-///
-/// 返りは(ページ番号(0始まり)→ 段落の番号, 段落の番号 → 塊の番号)。
-///
-/// 2026-08-29 に writer の中から出しました。画面と同じ答えを Python の
-/// 保存からも使うためです — **別に書くとページが食い違います**。
-/// **他所のソフトが作った図形を、紙の上の場所へ置き直す。**
-///
-/// Word のテキストボックスは「この段落から下へ○mm」のような相対の位置で
-/// 書いてあるので、組んでみないと場所が決まりません。うちが書く図形は名前に
-/// ページ番号を持っているので、この道は通りません。
-///
-/// 2026-08-30 に足しました。内閣府の告知書の窓口の欄が3つとも、紙にも画面にも
-/// 出ていませんでした(保存では原文のまま残っていたので、往復では気づけません)。
+// (下の2つの説明は、関数が別の場所へ移った後に残っていた物です。
+//  clippy の empty_line_after_doc_comments で見つけたので、普通の注釈にします)
+// **ページごとの「先頭の段落」を出す。**
+//
+// docx の図形は「どの段落に留まるか」でページが決まります(紙からの mm は
+// 持てても、何ページ目かは持てません)。だから、そのページに載っている
+// 段落へ結び付けないと違うページに出ます。
+//
+// 返りは(ページ番号(0始まり)→ 段落の番号, 段落の番号 → 塊の番号)。
+//
+// 2026-08-29 に writer の中から出しました。画面と同じ答えを Python の
+// 保存からも使うためです — **別に書くとページが食い違います**。
+// **他所のソフトが作った図形を、紙の上の場所へ置き直す。**
+//
+// Word のテキストボックスは「この段落から下へ○mm」のような相対の位置で
+// 書いてあるので、組んでみないと場所が決まりません。うちが書く図形は名前に
+// ページ番号を持っているので、この道は通りません。
+//
+// 2026-08-30 に足しました。内閣府の告知書の窓口の欄が3つとも、紙にも画面にも
+// 出ていませんでした(保存では原文のまま残っていたので、往復では気づけません)。
 
 /// **錨の位置を解く**(docx の `wp:positionH` / `wp:positionV`)。
 ///

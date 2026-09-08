@@ -236,7 +236,7 @@ fn moji(
         }
         let c = p.color.as_deref().map(crate::pdfw::rgb).unwrap_or((0.0, 0.0, 0.0));
         cx.set_paint(iro(c, 1.0));
-        cx.glyph_run(res, &fd)
+        cx.glyph_run(res, fd)
             .font_size(size as f32)
             .hint(false)
             .fill_glyphs(gs.into_iter());

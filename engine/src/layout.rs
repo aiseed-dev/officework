@@ -685,6 +685,13 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
     // 段落番号は「何番目の箇条書きか」で決まる。段落の位置ではない。
     // レベル(インデント)ごとに数え、浅い番号が進んだら深い数えは振り出しへ
     let mut counters: Vec<usize> = Vec::new();
+    // **普通の段落を挟んだ後の番号の続き具合。** docx の箇条書き(`list_id`
+    // あり)は、同じ `numId` なら間に段落を挟んでも番号が続きます(Word の
+    // 約束。手順書の「1. 2. 3.」の間の説明文)。AsciiDoc の箇条書き
+    // (`list_id` なし)は今までどおり数え直します(2026-09-08、Word と
+    // 並べて見つけた。1. 1. 1. と出ていた)
+    let mut last_list_id: Option<u32> = None;
+    let mut list_interrupted = false;
     // **段ごとの種類**(箇条書きか番号付きか)。種類が変われば別のリストなので
     // 番号は1から振り直す。前は種類を見ていなかったので、箇条書き2つの後の
     // 番号付きが「3.」から始まっていた(2026-08-18 に実機で見つけた)
@@ -784,14 +791,31 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 };
                 let marker = match para.list {
                     ListKind::None => {
-                        counters.clear();
-                        kinds.clear();
+                        // 見出しで区切られたら、その後の箇条書きは数え直し。
+                        // 普通の段落なら、docx の同じ箇条書きが続くかもしれない
+                        // ので、消さずに「挟んだ」と覚えておく
+                        if matches!(para.style, ParaStyle::Heading(_)) {
+                            counters.clear();
+                            kinds.clear();
+                            last_list_id = None;
+                        } else {
+                            list_interrupted = true;
+                        }
                         // **註記は印を紙にも出します。** 読むときに
                         // `NOTE: ` を字から外しているので、ここで戻さないと
                         // 紙の上では普通の段落と見分けが付きません
                         admon_heading(para.style_id.as_deref()).map(str::to_string)
                     }
                     _ => {
+                        let tsuzuku = para.list_id.is_some() && para.list_id == last_list_id;
+                        if (list_interrupted && !tsuzuku)
+                            || (para.list_id.is_some() && last_list_id.is_some() && !tsuzuku)
+                        {
+                            counters.clear();
+                            kinds.clear();
+                        }
+                        list_interrupted = false;
+                        last_list_id = para.list_id;
                         let l = para.indent as usize;
                         counters.truncate(l + 1);
                         kinds.truncate(l + 1);

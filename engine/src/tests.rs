@@ -373,6 +373,41 @@ mod list_tests {
         assert!(texts[3].starts_with("2."), "2番目が違う: {:?}", texts);
     }
 
+    /// **docx の番号付きは、間に普通の段落を挟んでも続く。** 同じ `numId` の
+    /// 段落は1つの箇条書きです(Word の約束。手順書の「1. 2. 3.」の間の説明文)。
+    /// AsciiDoc の箇条書き(`list_id` なし)は今までどおり数え直します
+    /// (2026-09-08、Word と並べて見つけた。1. 1. 1. と出ていた)
+    #[test]
+    fn a_docx_list_keeps_counting_across_a_plain_paragraph() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain("一\n説明\n二\n三");
+        for i in [0usize, 2, 3] {
+            if let Block::Para(p) = &mut d.blocks[i] {
+                p.list = ListKind::Number;
+                p.list_id = Some(2);
+            }
+        }
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        let texts: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
+        assert!(texts[2].starts_with("2."), "段落を挟むと数え直した: {:?}", texts);
+        assert!(texts[3].starts_with("3."), "{:?}", texts);
+
+        // 別の numId なら別の箇条書き。1 から
+        if let Block::Para(p) = &mut d.blocks[3] { p.list_id = Some(5); }
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        let texts: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
+        assert!(texts[3].starts_with("1."), "別の numId が続いた: {:?}", texts);
+
+        // AsciiDoc(numId なし)は、段落を挟むと数え直す
+        for i in [0usize, 2, 3] {
+            if let Block::Para(p) = &mut d.blocks[i] { p.list_id = None; }
+        }
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        let texts: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
+        assert!(texts[2].starts_with("1."), "AsciiDoc の数え直しが消えた: {:?}", texts);
+    }
+
     #[test]
     fn deep_numbering_restarts_when_a_shallow_level_advances() {
         let data = test_font();

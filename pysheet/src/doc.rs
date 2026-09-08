@@ -3200,6 +3200,14 @@ fn align_of(v: &str) -> Option<kumihan::Align> {
 }
 
 
+
+
+/// 径路が `.adoc` か(大文字小文字は問わない)
+fn is_adoc(path: &str) -> bool {
+    std::path::Path::new(path).extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc"))
+}
+
+// 試験は末尾に置きます(clippy の items_after_test_module)
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3326,9 +3334,4 @@ mod tests {
             "欄のまとまりが違う: {g:?}"
         );
     }
-}
-
-/// 径路が `.adoc` か(大文字小文字は問わない)
-fn is_adoc(path: &str) -> bool {
-    std::path::Path::new(path).extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc"))
 }

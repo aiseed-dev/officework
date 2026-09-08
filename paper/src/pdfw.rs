@@ -201,6 +201,34 @@ pub fn write_pages<W: std::io::Write>(
 ///
 /// 表計算のセルは書体を名指しします(明朝・ゴシック・欧文)。1本しか
 /// 埋めないと、明朝のセルまでゴシックで出ます(2026-08-31。Fable の指摘2)。
+/// **その塊を描く書体の番号。** 名指しの書体(`want`)に塊の字が全部あれば
+/// それ、1つでも無ければ1本目。無い書体で描くとその字だけ消えるためです
+/// (2026-08-31)。①(字を集める)と③(描く)が**同じ判定**を使います —
+/// 別々に判じていた頃、①は名指しの書体に在る字だけを集め、③は部分集合で
+/// 判じて1本目に落としたので、落ちた塊の字が1本目の部分集合に無く、
+/// 字形 0(空白)で出ていました(2026-09-08、Word と並べて見つけた。
+/// Courier New の run の「選ん」が消えていた)
+fn face_for(text: &str, want: u8, faces: &[ttf_parser::Face]) -> usize {
+    let k = (want as usize).min(faces.len() - 1);
+    if text.chars().all(|c| faces[k].glyph_index(c).is_some()) { k } else { 0 }
+}
+
+/// ① 使った字を、**描く書体ごとに**集めて字形の番号に直す(同じ字は1つ)
+fn used_glyphs(pages: &[Leaf], faces: &[ttf_parser::Face]) -> Vec<BTreeMap<char, u16>> {
+    let mut used_all: Vec<BTreeMap<char, u16>> = vec![BTreeMap::new(); faces.len()];
+    for page in pages {
+        for p in &page.pieces {
+            let fi = face_for(&p.text, p.font, faces);
+            for c in p.text.chars() {
+                if let Some(g) = faces[fi].glyph_index(c) {
+                    used_all[fi].insert(c, g.0);
+                }
+            }
+        }
+    }
+    used_all
+}
+
 pub fn write_pages_fonts<W: std::io::Write>(
     pages: &[Leaf],
     page_w_mm: f32,
@@ -217,16 +245,8 @@ pub fn write_pages_fonts<W: std::io::Write>(
 
     // ① 使った字を、**書体ごとに**集めて字形の番号に直します。
     // 同じ字は1つにまとめます
-    let mut used_all: Vec<BTreeMap<char, u16>> = vec![BTreeMap::new(); faces.len()];
+    let mut used_all = used_glyphs(pages, &faces);
     for page in pages {
-        for p in &page.pieces {
-            let fi = (p.font as usize).min(faces.len() - 1);
-            for c in p.text.chars() {
-                if let Some(g) = faces[fi].glyph_index(c) {
-                    used_all[fi].insert(c, g.0);
-                }
-            }
-        }
         // 透かしの字も埋めないと、**透かしだけ豆腐**になります。1本目で描きます
         if let Some(w) = page.watermark.as_deref() {
             for c in w.chars() {
@@ -463,10 +483,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
             // **その字を持っている書体で描きます**(2026-08-31)。
             // 名指しの書体に無い字は1本目に落とします — 無い書体で描くと
             // その字だけ消えます
-            let fi = {
-                let k = (p.font as usize).min(faces.len() - 1);
-                if p.text.chars().all(|ch| new_gid_all[k].contains_key(&ch)) { k } else { 0 }
-            };
+            let fi = face_for(&p.text, p.font, &faces);
             let mut bytes = Vec::with_capacity(p.text.chars().count() * 2);
             for ch in p.text.chars() {
                 let g = new_gid_all[fi].get(&ch).copied().unwrap_or(0);
@@ -808,6 +825,29 @@ mod tests {
         );
         // 200KB を超えたら、何かを丸ごと埋めています
         assert!(out.len() < 200_000, "{} バイトある", out.len());
+    }
+
+    /// **名指しの書体に無い字は、1本目の書体の側に集まる。** 集めないと、
+    /// 描く段で1本目に落ちた塊が字形 0(空白)になります(2026-09-08)
+    #[test]
+    fn a_glyph_missing_from_the_named_font_is_collected_for_the_first_font() {
+        let ja = font();
+        // 数式の書体(同梱)。仮名も漢字も持たない
+        let math = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/../engine/suushiki/NewCMMath-Book.otf"))
+            .expect("数式の書体が無い");
+        let faces = vec![
+            ttf_parser::Face::parse(&ja, 0).unwrap(),
+            ttf_parser::Face::parse(&math, 0).unwrap(),
+        ];
+        let pages = vec![Leaf {
+            pieces: vec![Piece { text: "選ん".into(), font: 1, size_pt: 10.5, ..Default::default() }],
+            ..Default::default()
+        }];
+        assert_eq!(face_for("選ん", 1, &faces), 0, "無い字の塊が1本目に落ちない");
+        assert_eq!(face_for("ab", 1, &faces), 1, "ある字の塊は名指しの書体のまま");
+        let used = used_glyphs(&pages, &faces);
+        assert!(used[0].contains_key(&'選') && used[0].contains_key(&'ん'), "1本目に集まっていない: {:?}", used[0].keys());
+        assert!(used[1].is_empty(), "無い書体の側に集めた");
     }
 
     /// **紙面をそのまま受けても、いまの道と同じ字が出る。**

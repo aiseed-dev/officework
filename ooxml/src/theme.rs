@@ -79,28 +79,7 @@ fn esc(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
 
-    #[test]
-    fn the_title_is_gothic_and_the_body_is_mincho() {
-        kumihan::font::set_default_language("ja");
-        let (major, minor) = fonts();
-        assert!(major.contains("ゴシック"), "タイトルがゴシックでない: {major}");
-        assert!(minor.contains("明朝"), "本文が明朝でない: {minor}");
-    }
-
-    #[test]
-    fn the_theme_names_both_roles() {
-        kumihan::font::set_default_language("ja");
-        let x = xml();
-        assert!(x.contains("<a:majorFont>"), "major が無い");
-        assert!(x.contains("<a:minorFont>"), "minor が無い");
-        assert!(x.contains("BIZ UDPゴシック"), "ゴシックが入らない");
-        assert!(x.contains("BIZ UDP明朝"), "明朝が入らない");
-    }
-}
 
 /// **DrawingML の色を RGB に解く。**
 ///
@@ -280,4 +259,28 @@ pub fn clr_scheme(xml: &str) -> Vec<String> {
         out.push(iro.unwrap_or_default());
     }
     out
+}
+
+// 試験は末尾に置きます(clippy の items_after_test_module)
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_title_is_gothic_and_the_body_is_mincho() {
+        kumihan::font::set_default_language("ja");
+        let (major, minor) = fonts();
+        assert!(major.contains("ゴシック"), "タイトルがゴシックでない: {major}");
+        assert!(minor.contains("明朝"), "本文が明朝でない: {minor}");
+    }
+
+    #[test]
+    fn the_theme_names_both_roles() {
+        kumihan::font::set_default_language("ja");
+        let x = xml();
+        assert!(x.contains("<a:majorFont>"), "major が無い");
+        assert!(x.contains("<a:minorFont>"), "minor が無い");
+        assert!(x.contains("BIZ UDPゴシック"), "ゴシックが入らない");
+        assert!(x.contains("BIZ UDP明朝"), "明朝が入らない");
+    }
 }

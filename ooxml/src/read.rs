@@ -1739,6 +1739,7 @@ pub(super) fn parse_document_rels_num(
     let mut first_line = 0i32; // w:ind の firstLine(正)/ hanging(負)。twip のまま持つ
     let mut first_line_chars: Option<f32> = None;
     let mut left_twips = 0i32; // w:ind の left。段数と違って丸めない(2026-08-30)
+    let mut list_id: Option<u32> = None; // w:numPr の numId(番号の続き具合を決める)
     let mut line_spacing = 0.0f32;
     let mut line_pt: Option<(f32, bool)> = None;
     let mut space_before_pt = 0.0f32;
@@ -1863,6 +1864,12 @@ pub(super) fn parse_document_rels_num(
                               tab_stops.clear();
                               first_line_chars = None;
                               list = ListKind::default(); indent = 0; first_line = 0;
+                              // **左の字下げ(twip)も段落ごとに戻します。** 戻さないと、
+                              // `w:ind` の無い次の段落まで同じ字下げが付いたままに
+                              // なります(2026-09-08、Word と並べて見つけた。
+                              // 「以上」と問い合わせの行が 20mm 右へずれていた)
+                              left_twips = 0;
+                              list_id = None;
                               line_spacing = 0.0;
                               line_pt = None;
                               space_before_pt = 0.0;
@@ -1936,6 +1943,7 @@ pub(super) fn parse_document_rels_num(
                     }
                     b"numId" if in_ppr => {
                         let n: Option<u32> = attr(&e, "val").and_then(|v| v.parse().ok());
+                        list_id = n.filter(|n| *n > 0);
                         // **文書が決めた印を先に引きます**(2026-08-31)。
                         // 無い docx は今までどおり numId の決め打ちです
                         list_text = n.and_then(|n| shirushi.get(&(n, ilvl)).cloned()).map(
@@ -2565,6 +2573,7 @@ pub(super) fn parse_document_rels_num(
                     }
                     b"numId" if in_ppr => {
                         let n: Option<u32> = attr(&e, "val").and_then(|v| v.parse().ok());
+                        list_id = n.filter(|n| *n > 0);
                         // **文書が決めた印を先に引きます**(2026-08-31)。
                         // 無い docx は今までどおり numId の決め打ちです
                         list_text = n.and_then(|n| shirushi.get(&(n, ilvl)).cloned()).map(
@@ -2913,6 +2922,7 @@ pub(super) fn parse_document_rels_num(
                                 // 深さ: w:ind(直接指定)が無ければ w:ilvl から
                                 indent: indent.max(ilvl),
                                 left_twips,
+                                list_id: if list == ListKind::None { None } else { list_id },
                                 first_line_twips: first_line,
                                 first_line_chars,
                                 align_itta,
@@ -3691,7 +3701,7 @@ fn shape_look(a: &str, palette: &[String]) -> Option<book::SheetShape> {
         if idx.as_deref() == Some("0") {
             return None;
         }
-        let tojime = format!("</{}>", &tag[1..].trim_end_matches(' '));
+        let tojime = format!("</{}>", tag[1..].trim_end_matches(' '));
         let sue = a[atama..].find(&tojime).map(|e| atama + e).unwrap_or(a.len());
         crate::theme::dml_iro(&a[atama..sue], palette)
     };

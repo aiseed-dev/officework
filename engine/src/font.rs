@@ -696,6 +696,34 @@ fn umeru(name: &str) -> Option<&'static Family> {
     None
 }
 
+/// 書体の名前から、その書体の言語を読みます(読めなければ `None`)。
+///
+/// 「ＭＳ 明朝」「游ゴシック」「Hiragino Sans」は日本語、「바탕」「Malgun Gothic」は
+/// 韓国語、「宋体」「SimSun」は簡体字、「新細明體」「PMingLiU」は繁体字の書体です。
+/// 代替を探すときに、画面の言語でなく**その書体の言語**の一覧を引くために使います
+fn script_of_name(name: &str) -> Option<Script> {
+    let lower = name.to_lowercase();
+    let has = |ws: &[&str]| ws.iter().any(|w| lower.contains(w));
+    if has(&[
+        "明朝", "ゴシック", "メイリオ", "游", "ヒラギノ", "ｍｓ ", "ms mincho", "ms gothic",
+        "ms pmincho", "ms pgothic", "ms ui gothic", "mincho", "meiryo", "hiragino", "yu gothic",
+        "yu mincho", "yumincho", "yugothic", "ipa", "biz ud", "cjk jp", "源ノ", "小塚", "kozuka",
+        "hgp", "hgs", "hg丸", "ud デジタル", "ud digi",
+    ]) {
+        return Some(Script::Japanese);
+    }
+    if has(&["바탕", "고딕", "굴림", "돋움", "batang", "gulim", "malgun", "nanum", "dotum", "gungsuh", "cjk kr", "apple sd gothic", "applemyungjo"]) {
+        return Some(Script::Korean);
+    }
+    if has(&["宋体", "黑体", "楷体", "仿宋", "微软雅黑", "simsun", "simhei", "yahei", "fangsong", "kaiti", "cjk sc", "stsong", "stheiti", "pingfang sc"]) {
+        return Some(Script::SimplifiedChinese);
+    }
+    if has(&["細明體", "正黑", "標楷", "mingliu", "jhenghei", "cjk tc", "pingfang tc"]) {
+        return Some(Script::TraditionalChinese);
+    }
+    None
+}
+
 /// 無い書体の筋の通った代替。**明朝の書類を黙ってゴシックにしない。**
 ///
 /// Windows の書体(ＭＳ 明朝、Times New Roman など)は Linux に無いのが
@@ -718,15 +746,23 @@ pub fn substitute(name: &str) -> Option<&'static Family> {
     // (2026-08-13、CI の3 OS 化で気づいた製品側の穴)。
     // 書体は日本語名と英語名の両方で名乗ることがあるので、両方書く
     // (resolve は空白・大小文字の揺れは吸うが、言語までは翻訳しない)
-    let candidates: &[&str] = match (script_of(&default_language()), k) {
+    // **名前に言語が出ている書体は、その言語の一覧から選びます**(2026-09-08)。
+    // 画面の言語だけで決めると、英語の設定の Mac で「ＭＳ 明朝」の代替が
+    // Times New Roman(仮名も漢字も無い)になりました。Linux の CI では
+    // Times New Roman が入っていないので、たまたま明朝系に落ちて
+    // 気付きませんでした
+    let s = script_of_name(name).unwrap_or_else(|| script_of(&default_language()));
+    let candidates: &[&str] = match (s, k) {
         (Script::Japanese, Generic::Serif) => &[
             "IPAex明朝", "Noto Serif CJK JP", "BIZ UDP明朝", "BIZ UD明朝", "IPA P明朝", "IPA明朝",
             "ヒラギノ明朝 ProN", "Hiragino Mincho ProN",
+            "ヒラギノ明朝 ProN W3", "Hiragino Mincho ProN W3",
             "游明朝", "游明朝体", "Yu Mincho", "ＭＳ 明朝", "MS Mincho",
         ],
         (Script::Japanese, Generic::SansSerif) => &[
             "IPAexゴシック", "Noto Sans CJK JP", "BIZ UDPゴシック", "IPA Pゴシック",
             "ヒラギノ角ゴシック", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+            "ヒラギノ角ゴシック W3", "ヒラギノ角ゴ ProN W3", "Hiragino Kaku Gothic ProN W3",
             "游ゴシック", "Yu Gothic", "メイリオ", "Meiryo", "ＭＳ ゴシック", "MS Gothic",
         ],
         (Script::Korean, Generic::Serif) => {
@@ -786,7 +822,11 @@ fn default_cands(s: Script) -> &'static [&'static str] {
     }
     #[cfg(target_os = "macos")]
     match s {
-        Script::Japanese => &["ヒラギノ角ゴシック", "Hiragino Sans", "Hiragino Kaku Gothic ProN"],
+        Script::Japanese => &[
+            "ヒラギノ角ゴシック", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+            // 重さつきの名前(上の serif_cands と同じ理由)
+            "ヒラギノ角ゴシック W3", "ヒラギノ角ゴ ProN W3", "Hiragino Kaku Gothic ProN W3",
+        ],
         Script::Korean => &["Apple SD Gothic Neo", "애플 SD 산돌고딕 Neo", "AppleGothic"],
         Script::SimplifiedChinese => &["PingFang SC", "苹方-简", "Heiti SC", "STHeiti"],
         Script::TraditionalChinese => &["PingFang TC", "蘋方-繁", "Heiti TC"],
@@ -827,7 +867,15 @@ fn serif_cands(s: Script) -> &'static [&'static str] {
     }
     #[cfg(target_os = "macos")]
     match s {
-        Script::Japanese => &["ヒラギノ明朝 ProN", "Hiragino Mincho ProN", "YuMincho"],
+        // **重さつきの名前も並べます。** Mac のヒラギノは家族の名前に
+        // W3 / W6 が付いていて(「ヒラギノ明朝 ProN W3」)、重さ無しの名前では
+        // 引けません。引けないと明朝の候補が1つも当たらず、docx のテーマの
+        // 東アジアの書体が Times New Roman になっていました(2026-09-08、
+        // Mac で Word と並べて見つけた)
+        Script::Japanese => &[
+            "ヒラギノ明朝 ProN", "Hiragino Mincho ProN",
+            "ヒラギノ明朝 ProN W3", "Hiragino Mincho ProN W3", "YuMincho",
+        ],
         Script::Korean => &["AppleMyungjo", "Apple SD Gothic Neo"],
         Script::SimplifiedChinese => &["Songti SC", "宋体-简", "STSong"],
         Script::TraditionalChinese => &["Songti TC", "宋体-繁", "LiSong Pro"],
