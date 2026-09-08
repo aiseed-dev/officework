@@ -709,7 +709,7 @@ pub(super) fn grid_up(mm: f32, pitch_pt: f32) -> f32 {
         return mm;
     }
     let p = pitch_pt * PT_TO_MM;
-    (mm / p - 0.01).ceil().max(1.0) * p
+    (mm / p - 0.001).ceil().max(1.0) * p
 }
 
 /// `pitch` は行グリッドの行送り(pt。0 で無し)。`exact` の段落は
@@ -1441,11 +1441,14 @@ pub fn layout_hf(
     // 下から 17.5mm − 字の足)。前は上余白の 45% と下余白の頭に置いていた。
     // 余白が狭い紙では本文域に食い込まないよう、余白の 9 割で止める
     // (余白 20mm で 17.5mm が入るように。3/4 だと 15mm に縮んで 7pt ずれた)
+    // 距離は用紙が言う(`w:pgMar` の `w:header` / `w:footer`。2026-09-09)。
+    // 本文がヘッダーに食い込まないよう、本文の頭は [`crate::hf_push_mm`] が
+    // 押し下げるので、ここでは余白で止めない
     let size_mm = base_pt * PT_TO_MM;
     let mut y = if footer {
-        pg.h_mm - FOOTER_MM.min(pg.bottom_mm * 0.9) - size_mm * 0.28
+        pg.h_mm - pg.footer_mm - size_mm * 0.28
     } else {
-        HEADER_MM.min(pg.top_mm * 0.9) + size_mm * 0.88
+        pg.header_mm + size_mm * 0.88
     };
     let mut out = Vec::new();
     for para in &hf.paragraphs {
@@ -1485,6 +1488,32 @@ pub fn layout_hf(
         }
     }
     out
+}
+
+/// **ヘッダー(フッター)が本文を押し下げる(押し上げる)高さ**(mm)。
+///
+/// Word は本文の頭を「上の余白」と「ヘッダーの距離 + ヘッダーの高さ」の
+/// 高い方に置く(2026-09-09、Word の PDF で測った。岐阜労働局の開示請求書は
+/// 上の余白 680 twip = 34pt だが、空のヘッダーの段落 1 つ(10.5pt、13.6pt)が
+/// 851 twip = 42.5pt の位置にあるので、本文は 56pt から始まる)。
+/// 返りは本文の頭(下端)を置く、用紙の端からの距離。ヘッダーが無ければ余白そのまま
+pub fn hf_push_mm(hf: &HeadFoot, pg: &PageSetup, font: Option<&str>, base_pt: f32, footer: bool) -> f32 {
+    let yohaku = if footer { pg.bottom_mm } else { pg.top_mm };
+    if hf.paragraphs.is_empty() {
+        return yohaku;
+    }
+    let em = crate::font::okuri_em(font).unwrap_or(1.292);
+    let takasa: f32 = hf
+        .paragraphs
+        .iter()
+        .map(|p| {
+            let pt = p.runs.iter().filter_map(|r| r.size_pt).fold(0.0f32, f32::max);
+            let pt = if pt > 0.0 { pt } else { base_pt };
+            pt * em * PT_TO_MM
+        })
+        .sum();
+    let kyori = if footer { pg.footer_mm } else { pg.header_mm };
+    yohaku.max(kyori + takasa)
 }
 
 /// 段組み。**細い行長(column_measure_mm)で組んだ巻物**を、

@@ -391,6 +391,22 @@ mod list_tests {
         assert!((dip[2] - dip[1]).abs() < 0.3, "行間 1.5 の字が下がった: {dip:?}");
     }
 
+    /// **ヘッダーが本文を押し下げる**(2026-09-09、Word の PDF で測った)。
+    /// 本文の頭は「上の余白」と「ヘッダーの距離 + ヘッダーの高さ」の高い方
+    #[test]
+    fn a_header_pushes_the_body_down_when_the_margin_is_short() {
+        let mut pg = PageSetup { top_mm: 12.0, header_mm: 15.0, ..Default::default() };
+        let mut hf = HeadFoot::default();
+        assert_eq!(hf_push_mm(&hf, &pg, None, 10.5, false), 12.0, "ヘッダーが無いのに押した");
+        hf.paragraphs.push(Paragraph::default());
+        let oshita = hf_push_mm(&hf, &pg, None, 10.5, false);
+        let takasa = 10.5 * 1.292 * 25.4 / 72.0;
+        assert!((oshita - (15.0 + takasa)).abs() < 0.05, "距離 + 高さになっていない: {oshita}");
+        // 余白のほうが広ければ余白のまま
+        pg.top_mm = 35.0;
+        assert_eq!(hf_push_mm(&hf, &pg, None, 10.5, false), 35.0);
+    }
+
     /// **句読点の詰め**(Word の compressPunctuation。2026-09-09)。行長を少し
     /// 超える字は、約物の空きを詰めて行に留める。詰めても入らなければ折る。
     /// 詰めた分だけ後ろの字が左へ寄り、開く括弧は自分が左へ寄る
@@ -1496,7 +1512,7 @@ mod section_layout_tests {
 
     fn paper(w: f32, h: f32) -> PageSetup {
         PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0 }
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5 }
     }
 
     fn tab(text: &str, sect: Option<PageSetup>) -> Block {
@@ -2018,7 +2034,7 @@ mod fold_print_tests {
 
     fn paper(w: f32, h: f32) -> PageSetup {
         PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0 }
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5 }
     }
     fn line(y: f32) -> Line {
         Line { cells: vec![Cell { ch: 'あ', x_mm: 0.0, w_mm: 4.0, size_pt: 10.5,

@@ -674,6 +674,8 @@ pub(super) fn parse_sect(raw: &str) -> kumihan::PageSetup {
         bottom_mm: g("<w:pgMar", "w:bottom").unwrap_or(d.bottom_mm),
         columns: cols.clamp(1, 8),
         line_pitch_pt: grid_pitch_pt(raw),
+        header_mm: g("<w:pgMar", "w:header").unwrap_or(d.header_mm),
+        footer_mm: g("<w:pgMar", "w:footer").unwrap_or(d.footer_mm),
     }
 }
 
@@ -1726,6 +1728,9 @@ pub(super) fn parse_document_rels_num(
     let mut stack: Vec<TblBuild> = Vec::new();
 
     let mut para: Option<Vec<Run>> = None;
+    // 行の頭と尻の空の格子(w:trPr の gridBefore / gridAfter)
+    let mut row_grid_before: u8 = 0;
+    let mut row_grid_after: u8 = 0;
     // いま読んでいるセルの結合(w:tcPr の gridSpan / vMerge)
     let mut cell_span = 0u8;
     let mut cell_vmerge = VMerge::None;
@@ -1882,7 +1887,11 @@ pub(super) fn parse_document_rels_num(
                             b.col_mm.push(twip_mm(w));
                         }
                     },
-                    b"tr" => if let Some(b) = stack.last_mut() { b.row.clear() },
+                    b"tr" => if let Some(b) = stack.last_mut() {
+                        b.row.clear();
+                        row_grid_before = 0;
+                        row_grid_after = 0;
+                    },
                     b"tc" => if let Some(b) = stack.last_mut() {
                         b.cell.clear();
                         cell_span = 0;
@@ -2203,6 +2212,16 @@ pub(super) fn parse_document_rels_num(
                     // セル結合。横は列数、縦は restart/continue の区別で持つ
                     b"gridSpan" => if stack.last().is_some() {
                         cell_span = attr(&e, "val").and_then(|v| v.parse().ok()).unwrap_or(0);
+                    },
+                    // **行の頭(尻)の空の格子**(`w:trPr/w:gridBefore` / `w:gridAfter`)。
+                    // その数の格子を飛ばして最初のセルを置く。読まないと、セルが
+                    // 1つ目の格子から詰まって細い列に入り、1字ずつ折れる
+                    // (岐阜労働局の認定申請書。54 頁になっていた。2026-09-09)
+                    b"gridBefore" => if stack.last().is_some() {
+                        row_grid_before = attr(&e, "val").and_then(|v| v.parse().ok()).unwrap_or(0);
+                    },
+                    b"gridAfter" => if stack.last().is_some() {
+                        row_grid_after = attr(&e, "val").and_then(|v| v.parse().ok()).unwrap_or(0);
                     },
                     b"vMerge" => if stack.last().is_some() {
                         cell_vmerge = match attr(&e, "val").as_deref() {
@@ -2819,6 +2838,16 @@ pub(super) fn parse_document_rels_num(
                     b"gridSpan" => if stack.last().is_some() {
                         cell_span = attr(&e, "val").and_then(|v| v.parse().ok()).unwrap_or(0);
                     },
+                    // **行の頭(尻)の空の格子**(`w:trPr/w:gridBefore` / `w:gridAfter`)。
+                    // その数の格子を飛ばして最初のセルを置く。読まないと、セルが
+                    // 1つ目の格子から詰まって細い列に入り、1字ずつ折れる
+                    // (岐阜労働局の認定申請書。54 頁になっていた。2026-09-09)
+                    b"gridBefore" => if stack.last().is_some() {
+                        row_grid_before = attr(&e, "val").and_then(|v| v.parse().ok()).unwrap_or(0);
+                    },
+                    b"gridAfter" => if stack.last().is_some() {
+                        row_grid_after = attr(&e, "val").and_then(|v| v.parse().ok()).unwrap_or(0);
+                    },
                     b"vMerge" => if stack.last().is_some() {
                         cell_vmerge = match attr(&e, "val").as_deref() {
                             Some("restart") => VMerge::Start,
@@ -3039,7 +3068,24 @@ pub(super) fn parse_document_rels_num(
                             b.header_row = true;
                         }
                         row_header = false;
-                        let row = std::mem::take(&mut b.row);
+                        let mut row = std::mem::take(&mut b.row);
+                        // 頭と尻の空の格子は、罫線の無い空のセルで埋める
+                        let kara = |n: u8| Cellbox {
+                            col_span: n,
+                            borders: kumihan::CellBorders {
+                                top: Some(false), left: Some(false), bottom: Some(false), right: Some(false),
+                                diag_down: false, diag_up: false,
+                            },
+                            ..Default::default()
+                        };
+                        if row_grid_before > 0 {
+                            row.insert(0, kara(row_grid_before));
+                        }
+                        if row_grid_after > 0 {
+                            row.push(kara(row_grid_after));
+                        }
+                        row_grid_before = 0;
+                        row_grid_after = 0;
                         b.rows.push(row);
                         // 指定の無い行は 0(= 中身なり)。**行と同じ長さで
                         // 持つ**ので、後ろの行だけ高さが付いていても

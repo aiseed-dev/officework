@@ -717,7 +717,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5,
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -777,7 +777,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5,
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -826,7 +826,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5,
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -872,7 +872,7 @@ mod tests {
         let pg = kumihan::PageSetup {
             w_mm: 210.0, h_mm: 297.0,
             left_mm: 25.0, right_mm: 25.0, top_mm: 30.0, bottom_mm: 30.0,
-            columns: 1, line_pitch_pt: 0.0,
+            columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5,
         };
         // 助手の `sheet` は固定の枠で組むので、ここは紙の設定に合わせて
         // 自分で組みます(1頁目の頭も `top_mm + BASE_UP_MM` になります)
@@ -924,7 +924,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5,
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -1614,7 +1614,14 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
     // run の書体でも測る(`resolve_run_fonts` が解決した名前と実体)
     let m = kumihan::Metrics::with_fonts(&bytes, run_fonts)?;
 
-    let page = opts.page.or(d.page).unwrap_or_default();
+    let mut page = opts.page.or(d.page).unwrap_or_default();
+    // **ヘッダー・フッターが本文を押す**(2026-09-09)。Word は本文の頭を
+    // 「上の余白」と「ヘッダーの距離 + ヘッダーの高さ」の高い方に置く
+    // (フッターも同じ)。余白の値そのものを置き替えて、組みも頁割りも
+    // 押した後の余白で行う
+    let base_pt = d.base_pt();
+    page.top_mm = kumihan::hf_push_mm(&d.header, &page, d.font.as_deref(), base_pt, false);
+    page.bottom_mm = kumihan::hf_push_mm(&d.footer, &page, d.font.as_deref(), base_pt, true);
     // **行送りはエンジンの1つを見ます**(画面と紙と PDF で同じ)
     let line_mm = kumihan::LINE_MM;
     let y0 = page.top_mm + kumihan::BASE_UP_MM;

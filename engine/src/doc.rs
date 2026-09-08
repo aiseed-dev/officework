@@ -4,6 +4,7 @@
 
 
 
+use crate::layout::{FOOTER_MM, HEADER_MM};
 /// 相互参照(docx の REF / PAGEREF フィールド)。**run 1つが1つの参照**で、
 /// run の text は「いま見えている値」(更新で計算し直す)。
 /// 編集で参照の中を割ったら、参照は普通の文字に降りる(予測できる形で壊す)。
@@ -1001,13 +1002,20 @@ pub struct PageSetup {
     /// 行の高さをこの整数倍に切り上げます。官公庁の様式 45 枚のうち 45 枚が
     /// 持っていました(2026-09-09)。段落ごとに `w:snapToGrid w:val="0"` で外せます
     pub line_pitch_pt: f32,
+    /// **ヘッダーの位置**(用紙の上端から字の頭まで。mm。docx の `w:pgMar w:header`)。
+    /// 既定は Word と同じ 851 twip = 15.0mm
+    pub header_mm: f32,
+    /// **フッターの位置**(用紙の下端から字の底まで。mm。docx の `w:pgMar w:footer`)。
+    /// 既定は 992 twip = 17.5mm
+    pub footer_mm: f32,
 }
 
 impl Default for PageSetup {
     fn default() -> Self {
         // A4 縦・余白 20mm(日本の事務の慣行に近い値)
         PageSetup { w_mm: 210.0, h_mm: 297.0, left_mm: 20.0, right_mm: 20.0,
-                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0 }
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0,
+                    header_mm: HEADER_MM, footer_mm: FOOTER_MM }
     }
 }
 

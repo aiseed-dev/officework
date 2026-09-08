@@ -9,6 +9,25 @@ use super::write::*;
 #[cfg(test)]
 mod round {
 
+    /// **行の頭の空の格子**(`w:trPr/w:gridBefore`)は、罫線の無い空のセルで
+    /// 埋める(2026-09-09)。読まないとセルが細い列に入って1字ずつ折れる
+    #[test]
+    fn grid_before_leaves_empty_cells_at_the_start_of_the_row() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:tbl><w:tblGrid><w:gridCol w:w="1000"/><w:gridCol w:w="1000"/><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:gridSpan w:val="2"/></w:tcPr><w:p><w:r><w:t>甲</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>乙</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:trPr><w:gridBefore w:val="2"/><w:wBefore w:w="2000" w:type="dxa"/></w:trPr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>丙</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:sectPr><w:pgMar w:top="680" w:header="851" w:footer="992"/></w:sectPr></w:body></w:document>"#;
+        let (d, _) = crate::read::parse_document_xml(xml);
+        let t = d.tables().next().expect("表が無い");
+        assert_eq!(t.rows[1].len(), 2, "空のセルが足されていない");
+        assert_eq!(t.rows[1][0].col_span, 2, "空のセルが 2 格子を占めない");
+        assert!(t.rows[1][0].paragraphs.is_empty());
+        assert_eq!(t.rows[1][0].borders.top, Some(false), "空のセルに罫線が付く");
+        let text: String = t.rows[1][1].paragraphs.iter().flat_map(|p| p.runs.iter()).map(|r| r.text.as_str()).collect();
+        assert_eq!(text, "丙");
+        // ヘッダー・フッターの距離も用紙に入る
+        let pg = d.page.unwrap();
+        assert!((pg.header_mm - 851.0 * 25.4 / 1440.0).abs() < 0.01, "w:header が読めていない: {}", pg.header_mm);
+        assert!((pg.footer_mm - 992.0 * 25.4 / 1440.0).abs() < 0.01);
+    }
+
     /// **行グリッドの行送りは sectPr の `w:docGrid` から読む**(2026-09-09)。
     /// `w:type` が `lines` / `linesAndChars` のときだけ効き、`default` は無し。
     /// 段落の `w:snapToGrid w:val="0"` は「合わせない」の印
