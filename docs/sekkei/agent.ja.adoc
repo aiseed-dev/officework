@@ -444,6 +444,40 @@ MCP の子プロセスは claude の環境を継ぐので、XDG_RUNTIME_DIR が�
 新しい Writer だったので通っていた)。受け口の要求ごとに印を戻し、断った
 要求の控えは捨てる(`one_step`)ようにして、実機で戻ることを確かめた。
 
+==== 作り直し: 道具は渡さない(2026-09-08 発注者「1 の形で作り直して」)
+
+発注者「officework-mcp でなくて直接繋げないのですか」から。前の形は
+officework-mcp を MCP のサーバーとして `claude -p` に渡し、うちの道具
+(doc_outline や read_range)を呼ばせていた。これは「Claude Code は別の
+プログラムだから道具は MCP でしか渡せない」と決め込んだ物で、Claude Code が
+**自分の道具を持っている**ことを見落としていた。Fable は「定額のまま直接は
+なりすまし以外に道が無い」と言い切り、発注者に「嘘を言うな」と正された。
+
+新しい形(agent::claude_code の `Give`):
+
+- **文書(writer)**: 頼むたびに、開いている文書を AsciiDoc の字で作業フォルダ
+  (設定の置き場の `agent/<名前>.adoc`)に写し、system の文でその径路を伝える。
+  `--tools Read,Edit,Write` で Claude Code 自身のファイルの道具だけを出す。
+  Edit / Write が済むたび(tool_result)と往復の終わりに本体がファイルを読み直し、
+  字が変わっていれば本文だけを差し替えて1手として入れる(`macro_apply` と同じ道。
+  Ctrl+Z で戻る)。AsciiDoc として読めない字はパネルでそう言って入れない。
+  利用者の元のファイルには触らない(保存は今までどおり人が押す)
+- **表(calc)**: `--tools Bash,Read`、`--allowedTools Bash(<python>:*),Read` で、
+  指定の Python から始まる命令だけを許す。Python は開いているブックの綴りの
+  `.venv` → いまのフォルダの `.venv` → 設定の置き場の `.venv` → 設定で選んだ物
+  (`python_for`)。system の文に `officework.calc` の書き方(`xw.books.active`)を
+  入れ、動いている calc のソケットに直接つながせる。受け口の1要求が1手なので
+  Ctrl+Z の作法は同じ
+- どちらも MCP のサーバーを渡さない(`--strict-mcp-config` は利用者の MCP を
+  読まないために残す)。`.venv` の officework-mcp も要らない。officework-mcp は
+  外の AI(Claude Desktop など)向けにそのまま残る。受け口の macro_start /
+  macro_status(前日の物)は呼ぶ側が無くなったが、ソケットからサンドボックスの
+  マクロを走らせる道として残す
+
+Bash で走らせる Python はサンドボックスの外で動く。これは利用者自身が端末で
+Claude Code を使う時と同じ(Claude Code の許可の仕組みの内)で、officework が
+広げている物ではない。走らせられるのは指定の Python だけに絞ってある。
+
 ==== 守る条件(公式の legal-and-compliance)
 
 - `claude` を改変しない。認証の方法を外さない

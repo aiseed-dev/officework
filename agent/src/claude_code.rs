@@ -2,16 +2,23 @@
 //! (docs/sekkei/agent.ja.adoc「宛先『Claude Code』— `claude -p` を子プロセスで呼ぶ」。
 //! 2026-09-04)。
 //!
-//! 定額(Pro / Max)を規約の内で使う唯一の形です。officework は `claude` を
+//! 定額(Pro / Max)を規約の内で使う形です。officework は `claude` を
 //! 改変せず、ログインは Claude Code 自身の流れで済ませ、ここは認証の情報に
-//! 触りません。道具は MCP(officework-mcp)で渡します。
+//! 触りません。
+//!
+//! **道具は渡しません**(2026-09-08 発注者「1 の形で作り直して」)。前は
+//! officework-mcp を MCP のサーバーとして渡していましたが、Claude Code は
+//! 自分の道具を持っています。文書は AsciiDoc のファイルを置いて Read / Edit /
+//! Write で直させ、表は Bash で Python(`officework.calc`)を走らせて動いている
+//! calc に直接つながせます。どちらも MCP のサーバーも `.venv` の officework-mcp も
+//! 要りません。ファイルの変わりは本体が読み直して1手として入れます。
 //!
 //! 1つの会話 = 1つのプロセス。標準入力に JSON を1行書くと1往復で、標準出力の
 //! JSON 行を [`Parser`] が [`Cc`] に読みます。gpui を持たないので、画面は
 //! [`ClaudeCode::try_recv`] を刻みで呼んで拾います(rpc の 30ms と同じ作法)。
 //!
 //! 行の形は 2026-09-04 に実物(claude 2.1.259、Max のログイン)で確かめました:
-//! `system/init`(model・mcp_servers の status)、`assistant`(content に
+//! `system/init`(model)、`assistant`(content に
 //! `tool_use{id,name,input}` か `text`)、`user`(content に
 //! `tool_result{tool_use_id,content,is_error}`)、`result`(subtype・session_id・
 //! total_cost_usd)、`rate_limit_event`、`system/api_retry`。
@@ -31,9 +38,8 @@ pub struct Launch {
     pub claude: String,
     /// `sonnet` / `opus` / `haiku` / `fable`(Claude Code の別名)
     pub model: String,
-    /// officework-mcp の径路と引数(`--panel` など)
-    pub mcp_command: String,
-    pub mcp_args: Vec<String>,
+    /// Claude Code に何を使わせるか
+    pub give: Give,
     /// system の文(パネルの AGENT_SYSTEM と同じ)
     pub system: String,
     /// 作業ディレクトリ。綴りではなく設定の置き場にして、プロジェクトの
@@ -44,16 +50,35 @@ pub struct Launch {
     pub resume: Option<String>,
 }
 
+/// Claude Code に何を使わせるか。Claude Code 自身の道具のうち、要る物だけを
+/// `--tools` で出し、同じ物だけを `--allowedTools` で許す
+#[derive(Debug, Clone, PartialEq)]
+pub enum Give {
+    /// 文書: 作業フォルダに置いた AsciiDoc のファイルを Read / Edit / Write で直す
+    File,
+    /// 表: この径路の Python だけを Bash で走らせる(`officework.calc` で
+    /// 動いている calc につながる)。Read はスクリプトの見直し用
+    Python(PathBuf),
+}
+
+impl Give {
+    /// `--tools` に出す物と `--allowedTools` で許す物(同じ並びで2つ)
+    fn tools(&self) -> (String, String) {
+        match self {
+            Give::File => ("Read,Edit,Write".into(), "Read,Edit,Write".into()),
+            Give::Python(py) => {
+                ("Bash,Read".into(), format!("Bash({}:*),Read", py.to_string_lossy()))
+            }
+        }
+    }
+}
+
 impl Launch {
     /// `claude` に渡す引数。**`--bare` は使わない**(OAuth を読まないので定額が
-    /// 効かない。公式に明記)。`--tools ""` で Claude Code 自身の道具を全部止め、
-    /// `--strict-mcp-config` でこれ以外の MCP を読まない
+    /// 効かない。公式に明記)。`--tools` で Claude Code 自身の道具を要る物だけに
+    /// 絞り、`--strict-mcp-config` で(何も渡さないので)利用者の MCP も読まない
     pub fn args(&self) -> Vec<String> {
-        let mcp = format!(
-            "{{\"mcpServers\":{{\"officework\":{{\"command\":{},\"args\":{}}}}}}}",
-            json_str(&self.mcp_command),
-            json_list(&self.mcp_args)
-        );
+        let (tools, allowed) = self.give.tools();
         let mut a: Vec<String> = vec![
             "-p".into(),
             "--output-format".into(),
@@ -64,12 +89,10 @@ impl Launch {
             "--model".into(),
             self.model.clone(),
             "--tools".into(),
-            String::new(),
-            "--mcp-config".into(),
-            mcp,
+            tools,
             "--strict-mcp-config".into(),
             "--allowedTools".into(),
-            "mcp__officework__*".into(),
+            allowed,
             "--permission-mode".into(),
             "dontAsk".into(),
             "--system-prompt".into(),
@@ -88,8 +111,8 @@ impl Launch {
 /// 子プロセスから来た1つ
 #[derive(Debug, Clone, PartialEq)]
 pub enum Cc {
-    /// 始まった。`mcp_ok` は officework-mcp が繋がったか
-    Init { model: String, mcp_ok: bool, errors: Vec<String> },
+    /// 始まった(model は Claude Code が解いた正式な名前)
+    Init { model: String },
     /// 会話の記録の1行(パネルの表示と `.agent.txt` の材料)
     Event(Event),
     /// 1往復が終わった。`ok` でなければ `text` はしくじりの文
@@ -117,31 +140,7 @@ impl Parser {
         match (t, sub) {
             ("system", "init") => {
                 let model = v.get("model").and_then(|x| x.as_str()).unwrap_or("").to_string();
-                let mcp_ok = v
-                    .get("mcp_servers")
-                    .and_then(|x| x.as_array())
-                    .is_some_and(|a| {
-                        a.iter().any(|s| {
-                            s.get("name").and_then(|n| n.as_str()) == Some("officework")
-                                && s.get("status").and_then(|n| n.as_str()) == Some("connected")
-                        })
-                    });
-                let errors = v
-                    .get("mcp_server_errors")
-                    .and_then(|x| x.as_array())
-                    .map(|a| {
-                        a.iter()
-                            .map(|e| {
-                                format!(
-                                    "{}: {}",
-                                    e.get("name").and_then(|n| n.as_str()).unwrap_or(""),
-                                    e.get("message").and_then(|n| n.as_str()).unwrap_or("")
-                                )
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_default();
-                vec![Cc::Init { model, mcp_ok, errors }]
+                vec![Cc::Init { model }]
             }
             ("system", "api_retry") => {
                 let n = v.get("attempt").and_then(|x| x.as_u64()).unwrap_or(0);
@@ -201,7 +200,8 @@ impl Parser {
     }
 }
 
-/// `mcp__officework__read_range` → `read_range`(パネルの行は道具の名前で)
+/// `mcp__officework__read_range` → `read_range`(MCP の道具は名前だけに。
+/// Claude Code 自身の道具(Edit など)はそのまま)
 fn short_name(name: &str) -> String {
     match name.strip_prefix("mcp__") {
         Some(rest) => rest.split_once("__").map(|(_, n)| n).unwrap_or(rest).to_string(),
@@ -227,15 +227,11 @@ fn json_str(s: &str) -> String {
     serde_json::Value::String(s.to_string()).to_string()
 }
 
-fn json_list(v: &[String]) -> String {
-    serde_json::Value::Array(v.iter().map(|s| serde_json::Value::String(s.clone())).collect()).to_string()
-}
-
-/// **officework-mcp の在り処。** 開いている綴りの `.venv` → 設定の置き場の
-/// `.venv`(`~/.config/officework/.venv`)→ PATH の順(Python の探し方と同じ
-/// 並び)。無ければ None(状態行で「pip install officework[mcp]」を案内する)
-pub fn find_mcp(near: Option<&std::path::Path>) -> Option<PathBuf> {
-    let bin = if cfg!(windows) { "Scripts/officework-mcp.exe" } else { "bin/officework-mcp" };
+/// **表のパネルが Claude Code に走らせる Python。** officework が入っている物を、
+/// 開いているブックの綴りの `.venv` → いまのフォルダの `.venv` → 設定の置き場の
+/// `.venv` → 設定で選んだ Python の順に探す
+pub fn python_for(near: Option<&std::path::Path>) -> PathBuf {
+    let bin = if cfg!(windows) { "Scripts/python.exe" } else { "bin/python" };
     let mut dirs: Vec<PathBuf> = Vec::new();
     if let Some(d) = near {
         dirs.push(d.join(".venv"));
@@ -247,52 +243,33 @@ pub fn find_mcp(near: Option<&std::path::Path>) -> Option<PathBuf> {
     for d in dirs {
         let p = d.join(bin);
         if p.is_file() {
-            return Some(p);
+            return p;
         }
     }
-    let path = std::env::var_os("PATH")?;
-    std::env::split_paths(&path)
-        .map(|d| d.join(if cfg!(windows) { "officework-mcp.exe" } else { "officework-mcp" }))
-        .find(|p| p.is_file())
+    pyrun::find_python()
 }
 
 /// パネルの宛先「Claude Code」の起動の指定を組む。作業ディレクトリは設定の
 /// 置き場の `agent/`(綴りのフォルダにすると、そこの hooks や CLAUDE.md を
-/// 読んでしまう)。`near` は開いているファイルのフォルダ(その `.venv` を先に見る)
-pub fn launch_for(
-    model: &str,
-    system: &str,
-    resume: Option<String>,
-    near: Option<&std::path::Path>,
-) -> Result<Launch, String> {
-    launch_for_panel(model, system, resume, near, "sheet")
-}
-
-/// [`launch_for`] の、どの画面のパネルから起こすかを言う形。`panel` は
-/// "sheet"(表)か "doc"(文書)。officework-mcp はこれで run_macro の中身を
-/// 選ぶ(表は `b` と `s`、文書は `src` と `out`)
-pub fn launch_for_panel(
-    model: &str,
-    system: &str,
-    resume: Option<String>,
-    near: Option<&std::path::Path>,
-    panel: &str,
-) -> Result<Launch, String> {
-    let mcp = find_mcp(near).ok_or_else(|| {
-        "officework-mcp がありません。次で入ります:\n  pip install \"officework[mcp]\"".to_string()
-    })?;
-    let cwd = pyrun::config_dir().join("agent");
-    std::fs::create_dir_all(&cwd).map_err(|e| format!("{}: {e}", cwd.display()))?;
+/// 読んでしまう)。文書のファイルもここに置く
+pub fn launch_for(model: &str, system: &str, resume: Option<String>, give: Give) -> Result<Launch, String> {
+    let cwd = work_dir()?;
     Ok(Launch {
         claude: "claude".into(),
         model: if model.trim().is_empty() { "sonnet".into() } else { model.to_string() },
-        mcp_command: mcp.to_string_lossy().to_string(),
-        mcp_args: vec![if panel == "doc" { "--panel=doc".into() } else { "--panel".into() }],
+        give,
         system: system.to_string(),
         cwd,
         max_turns: 30,
         resume,
     })
+}
+
+/// Claude Code の作業フォルダ(設定の置き場の `agent/`)。無ければ作る
+pub fn work_dir() -> Result<PathBuf, String> {
+    let cwd = pyrun::config_dir().join("agent");
+    std::fs::create_dir_all(&cwd).map_err(|e| format!("{}: {e}", cwd.display()))?;
+    Ok(cwd)
 }
 
 /// 動いている子プロセス
@@ -451,7 +428,7 @@ mod tests {
         let mut p = Parser::default();
         assert_eq!(
             p.line(INIT),
-            vec![Cc::Init { model: "claude-sonnet-5".into(), mcp_ok: true, errors: vec![] }]
+            vec![Cc::Init { model: "claude-sonnet-5".into() }]
         );
         assert_eq!(p.line(r#"{"type":"rate_limit_event","rate_limit_info":{}}"#), vec![]);
         assert_eq!(
@@ -482,31 +459,17 @@ mod tests {
         assert_eq!(p.line("not json"), vec![]);
     }
 
+    /// 文書は Claude Code 自身の道具(Read / Edit / Write)だけ、表は指定の
+    /// Python から始まる Bash だけ。MCP は渡さない
     #[test]
-    fn a_failed_mcp_server_shows_in_init() {
-        let mut p = Parser::default();
-        let l = r#"{"type":"system","subtype":"init","model":"claude-sonnet-5","mcp_servers":[{"name":"officework","status":"failed"}],"mcp_server_errors":[{"name":"officework","type":"invalid_config","message":"no such file"}]}"#;
-        assert_eq!(
-            p.line(l),
-            vec![Cc::Init { model: "claude-sonnet-5".into(), mcp_ok: false, errors: vec!["officework: no such file".into()] }]
-        );
-    }
-
-    /// 文書のパネルから起こす時は officework-mcp に `--panel=doc` を渡す
-    /// (run_macro の中身が文書の形になる)。表は `--panel` のまま
-    #[test]
-    fn the_document_panel_tells_the_mcp_which_macro_to_offer() {
-        let sheet = launch_for("sonnet", "x", None, None);
-        let doc = launch_for_panel("sonnet", "x", None, None, "doc");
-        match (sheet, doc) {
-            (Ok(s), Ok(d)) => {
-                assert_eq!(s.mcp_args, vec!["--panel".to_string()]);
-                assert_eq!(d.mcp_args, vec!["--panel=doc".to_string()]);
-            }
-            // officework-mcp が無い機械では両方とも同じ断り
-            (Err(a), Err(b)) => assert_eq!(a, b),
-            other => panic!("片方だけ起こせる: {other:?}"),
-        }
+    fn what_claude_code_may_use_is_named_in_tools_and_allowed_tools() {
+        let l = launch_for("sonnet", "x", None, Give::Python(PathBuf::from("/x/.venv/bin/python"))).unwrap();
+        let a = l.args();
+        let at = |k: &str| a.iter().position(|x| x == k).map(|i| a[i + 1].clone()).unwrap();
+        assert_eq!(at("--tools"), "Bash,Read");
+        assert_eq!(at("--allowedTools"), "Bash(/x/.venv/bin/python:*),Read");
+        assert!(!a.iter().any(|x| x == "--mcp-config"), "MCP は渡さない");
+        assert!(l.cwd.ends_with("agent"), "作業フォルダは設定の置き場の agent: {:?}", l.cwd);
     }
 
     #[test]
@@ -514,8 +477,7 @@ mod tests {
         let l = Launch {
             claude: "claude".into(),
             model: "sonnet".into(),
-            mcp_command: "/x/.venv/bin/officework-mcp".into(),
-            mcp_args: vec!["--panel".into()],
+            give: Give::File,
             system: "助手です".into(),
             cwd: PathBuf::from("/tmp"),
             max_turns: 30,
@@ -526,18 +488,14 @@ mod tests {
         assert!(has("-p") && has("--strict-mcp-config") && has("--verbose"));
         assert!(!has("--bare"), "bare は OAuth を読まないので使わない");
         let at = |k: &str| a.iter().position(|x| x == k).map(|i| a[i + 1].clone()).unwrap();
-        assert_eq!(at("--tools"), "", "Claude Code 自身の道具を止める");
-        assert_eq!(at("--allowedTools"), "mcp__officework__*");
+        assert_eq!(at("--tools"), "Read,Edit,Write", "文書はファイルの道具だけ");
+        assert_eq!(at("--allowedTools"), "Read,Edit,Write");
         assert_eq!(at("--permission-mode"), "dontAsk");
         assert_eq!(at("--input-format"), "stream-json");
         assert_eq!(at("--output-format"), "stream-json");
         assert_eq!(at("--model"), "sonnet");
         assert_eq!(at("--max-turns"), "30");
         assert_eq!(at("--resume"), "abc");
-        assert_eq!(
-            at("--mcp-config"),
-            r#"{"mcpServers":{"officework":{"command":"/x/.venv/bin/officework-mcp","args":["--panel"]}}}"#
-        );
     }
 
     /// 偽の `claude`(Python の台本)で、起動 → 送る → 受ける → 終える を通す
@@ -562,8 +520,7 @@ mod tests {
         let l = Launch {
             claude: bin.to_string_lossy().to_string(),
             model: "sonnet".into(),
-            mcp_command: "officework-mcp".into(),
-            mcp_args: vec![],
+            give: Give::File,
             system: "x".into(),
             cwd: dir.clone(),
             max_turns: 3,
@@ -576,7 +533,7 @@ mod tests {
         while !got.iter().any(|c| matches!(c, Cc::Done { .. })) && t0.elapsed() < Duration::from_secs(20) {
             got.extend(cc.recv_timeout(Duration::from_millis(200)));
         }
-        assert!(matches!(got.first(), Some(Cc::Init { mcp_ok: true, .. })), "{got:?}");
+        assert!(matches!(got.first(), Some(Cc::Init { .. })), "{got:?}");
         assert!(got.iter().any(|c| matches!(c, Cc::Event(Event::ToolCall { name, .. }) if name == "book_info")));
         assert!(got.iter().any(|c| matches!(c, Cc::Event(Event::Assistant(s)) if s == "答え: こんにちは")));
         assert!(matches!(got.last(), Some(Cc::Done { ok: true, session_id: Some(s), .. }) if s == "s1"), "{got:?}");

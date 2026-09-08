@@ -318,7 +318,7 @@ Open it with *View tab > Left panel*.
 * *Home > Furigana* — what goes in is ruby _formatting_, not plain text
 * *Plugins > Write a macro* — it puts a .py in the plugins folder (never run automatically; read it, then run it yourself)
 
-*The destination* is shown under the input box. Pressing it opens the list to choose from. The list is built the same way as in the spreadsheet manual, "AI — talk to it in the left panel" (`\[[ai]]` entries in `~/.config/officework/settings.toml`; providers whose key is in an environment variable, local model servers that are running, and "Claude Code" when it is installed on this machine, appear by themselves).
+*The destination* is shown under the input box. Pressing it opens the list to choose from. The list is built the same way as in the spreadsheet manual, "AI — talk to it in the left panel" (`\[[ai]]` entries in `~/.config/officework/settings.toml`; providers whose key is in an environment variable, local model servers that are running, and "Claude Code" when it is installed on this machine, appear by themselves). With Claude Code, a copy of the document (an AsciiDoc file) is edited by Claude Code with its own tools, and each edit lands in the document right away; every edit is one Ctrl+Z step.
 Unavailable destinations *say why on the spot*.
 
 == Proofreading (review)

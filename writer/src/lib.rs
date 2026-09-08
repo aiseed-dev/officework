@@ -479,6 +479,9 @@ pub struct Writer {
     /// 宛先「Claude Code」の子プロセス(1つの会話 = 1つのプロセス。
     /// `agent::claude_code`)。他の宛先では None
     pub(crate) agent_cc: Option<agent::claude_code::ClaudeCode>,
+    /// **Claude Code に直させる文書のファイル**(作業フォルダの `<名前>.adoc`)と、
+    /// 本体が最後に書いた・入れた字。字が違えば Claude Code が直した印
+    pub(crate) agent_file: Option<(std::path::PathBuf, String)>,
     /// **受け口から起こしたマクロ**(`macro_start` の動詞。パネルから起こした
     /// officework-mcp の run_macro が通る道)。番号で引き、終わった物の結果も置く
     pub(crate) macro_jobs: std::collections::HashMap<u64, agentloop::MacroJob>,

@@ -29,6 +29,20 @@ const AGENT_SYSTEM: &str = "\
 分からなければ聞き返してください。\
 保存は人の確認が要ります。求められたときだけ doc_save を呼んでください。";
 
+/// 宛先「Claude Code」の system の文。道具は渡さず、文書のファイルを Claude Code
+/// 自身の道具で直させる(2026-09-08 発注者「1 の形で作り直して」)。ファイルの
+/// 径路は起こす時に末尾へ足す
+const AGENT_SYSTEM_FILE: &str = "\
+あなたは文書を作るアプリの中で働く助手です。開いている文書は AsciiDoc の字で、\
+下に書いたファイルにあります。Read で読み、Edit で直します(Write で丸ごと書き直しても\
+構いません)。見出しは = と ==、段落は空行で区切り、表は |=== で囲みます。\
+直した分は本体がすぐ読み直して文書に入れ、利用者が Ctrl+Z で戻せます。\
+長い文書は必要な所だけ読んでください。\
+**値を自分で作らないでください。** 記入欄・数値・日付・氏名のような\
+「決まっている値」は、人が言った物か、人が指した資料にある物だけを入れます。\
+分からなければ聞き返してください。\
+答えは利用者の言語に合わせて、短く書きます。\n文書のファイル: ";
+
 /// マクロの支度の結果([`Writer::macro_prepare`])
 pub(crate) struct MacroPrep {
     pub(crate) dir: std::path::PathBuf,
@@ -249,8 +263,18 @@ impl Writer {
                 return;
             }
             let model = self.agent_dest_row().map(|r| r.model).unwrap_or_default();
-            let near = self.path.as_ref().and_then(|p| p.parent().map(|d| d.to_path_buf()));
-            let launch = match cc::launch_for_panel(&model, AGENT_SYSTEM, None, near.as_deref(), "doc") {
+            let path = match self.agent_file_write() {
+                Ok(p) => p,
+                Err(e) => {
+                    self.ai_busy = false;
+                    self.agent_state = AgentState::Failed;
+                    self.chat_push(ChatRow::Ai(format!("({e})")));
+                    self.status = format!("AI: {e}").into();
+                    return;
+                }
+            };
+            let system = format!("{AGENT_SYSTEM_FILE}{}", path.display());
+            let launch = match cc::launch_for(&model, &system, None, cc::Give::File) {
                 Ok(l) => l,
                 Err(e) => {
                     self.ai_busy = false;
@@ -270,6 +294,13 @@ impl Writer {
                     return;
                 }
             }
+        }
+        // 続きの会話でも、人が触った分をファイルに写してから頼む
+        if let Err(e) = self.agent_file_write() {
+            self.ai_busy = false;
+            self.agent_state = AgentState::Failed;
+            self.chat_push(ChatRow::Ai(format!("({e})")));
+            return;
         }
         if let Err(e) = self.agent_cc.as_mut().expect("上で置いた").send(&user) {
             self.ai_busy = false;
@@ -303,20 +334,22 @@ impl Writer {
         let mut done = false;
         for c in got {
             match c {
-                Cc::Init { mcp_ok, errors, .. } => {
-                    self.agent_state = AgentState::Connected;
-                    if !mcp_ok {
-                        self.chat_push(ChatRow::Tool(ui::tf!("officework_mcp_not_connected", errors.join(" / ")).to_string(), false));
-                    }
-                }
+                Cc::Init { .. } => self.agent_state = AgentState::Connected,
                 Cc::Event(e) => {
+                    // Edit / Write が済んだら、その場で読み直して1手として入れる
+                    let touched = matches!(&e, agent::Event::ToolResult { name, ok: true, .. }
+                        if matches!(name.as_str(), "Edit" | "Write" | "MultiEdit"));
                     if let Some(ag) = self.agent.as_mut() {
                         ag.log.push(e);
                     }
                     self.agent_drain_log();
+                    if touched {
+                        self.agent_file_reload();
+                    }
                 }
                 Cc::Retry(_) => self.agent_state = AgentState::Connecting,
                 Cc::Done { ok, text, .. } => {
+                    self.agent_file_reload();
                     if !ok {
                         self.chat_push(ChatRow::Ai(format!("({text})")));
                         self.agent_state = AgentState::Failed;
@@ -337,6 +370,43 @@ impl Writer {
             }
         }
         done
+    }
+
+    /// **文書を Claude Code のファイルに写す。** 作業フォルダ(設定の置き場の
+    /// `agent/`)の `<名前>.adoc`。書いた字を控えて、後で変わったかを見る
+    pub(crate) fn agent_file_write(&mut self) -> Result<std::path::PathBuf, String> {
+        self.flush_target();
+        let dir = agent::claude_code::work_dir()?;
+        let name = self
+            .path
+            .as_ref()
+            .and_then(|p| p.file_stem())
+            .map(|s| s.to_string_lossy().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "文書".into());
+        let path = dir.join(format!("{name}.adoc"));
+        let text = kumihan::adoc::write(&self.doc);
+        std::fs::write(&path, &text).map_err(|e| format!("文書を渡せません: {e}"))?;
+        self.agent_file = Some((path.clone(), text));
+        Ok(path)
+    }
+
+    /// **Claude Code が直したファイルを読み直す。** 字が変わっていれば、
+    /// 本文だけを差し替えて1手として入れる(Ctrl+Z で戻る)。AsciiDoc として
+    /// 読めなければ、そう言って入れない(元の字はそのまま)
+    pub(crate) fn agent_file_reload(&mut self) {
+        let Some((path, last)) = self.agent_file.clone() else { return };
+        let Ok(now) = std::fs::read_to_string(&path) else { return };
+        if now == last {
+            return;
+        }
+        match self.macro_apply(&now, String::new()) {
+            Ok(_) => {
+                self.agent_file = Some((path, now));
+                self.status = ui::t!("answered_left_panel").into();
+            }
+            Err(e) => self.chat_push(ChatRow::Tool(e, false)),
+        }
     }
 
     /// モデルとの1往復を裏で待ち、道具はメインスレッドで実行して続けます。

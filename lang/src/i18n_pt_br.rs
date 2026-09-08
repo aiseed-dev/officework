@@ -2224,7 +2224,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("settings_file", "Arquivo de configurações (adicionar ou editar)"),
     ("ai_destination_deleted", "Destino {} removido"),
     ("claude_code_login_in_terminal", "Você não está conectado ao Claude Code. Execute `claude auth login` em um terminal"),
-    ("officework_mcp_not_connected", "officework-mcp não se conectou: {}"),
     ("claude_code_exited", "Claude Code foi encerrado (código {})"),
     ("sandbox_blocked_by_userns", "O sandbox que executa as macros está bloqueado pelas configurações desta máquina (restrição de namespaces de usuário a partir do Ubuntu 24.04). Instalar o .deb resolve: ele coloca /etc/apparmor.d/officework"),
 ];

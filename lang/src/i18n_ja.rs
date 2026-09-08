@@ -2224,7 +2224,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("settings_file", "設定のファイル(足す・直す)"),
     ("ai_destination_deleted", "宛先「{}」を消しました"),
     ("claude_code_login_in_terminal", "Claude Code にログインしていません。端末で `claude auth login` を実行してください"),
-    ("officework_mcp_not_connected", "officework-mcp が繋がりません: {}"),
     ("claude_code_exited", "Claude Code が終わりました(終了コード {})"),
     ("sandbox_blocked_by_userns", "マクロを走らせるサンドボックスが、この機械の設定で止められています(Ubuntu 24.04 以降の利用者名前空間の制限)。.deb で入れ直すと直ります — /etc/apparmor.d/officework が要ります"),
 ];

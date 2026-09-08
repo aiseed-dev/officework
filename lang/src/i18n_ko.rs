@@ -2224,7 +2224,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("settings_file", "설정 파일(추가·수정)"),
     ("ai_destination_deleted", "대상 {} 을(를) 지웠습니다"),
     ("claude_code_login_in_terminal", "Claude Code에 로그인되어 있지 않습니다. 터미널에서 `claude auth login`을 실행하세요"),
-    ("officework_mcp_not_connected", "officework-mcp가 연결되지 않았습니다: {}"),
     ("claude_code_exited", "Claude Code가 종료되었습니다(코드 {})"),
     ("sandbox_blocked_by_userns", "매크로를 실행하는 샌드박스가 이 기기의 설정으로 막혀 있습니다(Ubuntu 24.04 이후의 사용자 네임스페이스 제한). .deb로 설치하면 해결됩니다 — /etc/apparmor.d/officework 가 필요합니다"),
 ];

@@ -2372,7 +2372,6 @@
  "settings_file": "Fichier de réglages (ajouter ou modifier)",
  "ai_destination_deleted": "Destination {} supprimée",
  "claude_code_login_in_terminal": "Non connecté à Claude Code. Exécutez `claude auth login` dans un terminal",
- "officework_mcp_not_connected": "officework-mcp ne s'est pas connecté : {}",
  "claude_code_exited": "Claude Code s'est terminé (code {})",
  "sandbox_blocked_by_userns": "Le bac à sable qui exécute les macros est bloqué par la configuration de cette machine (restriction des espaces de noms utilisateur depuis Ubuntu 24.04). Installer le .deb corrige cela : il place /etc/apparmor.d/officework"
 }

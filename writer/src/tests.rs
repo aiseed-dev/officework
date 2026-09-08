@@ -116,6 +116,37 @@ mod menu_run_tests {
     ///
     /// 前は bool が4つあり、開くたびに残り3つを倒す行が要りました。
     /// 1つにしたので「倒し忘れ」が書けません。それを見ます。
+    /// **Claude Code が直したファイルは、読み直して1手で入る**(2026-09-08)。
+    /// 道具は渡さず、作業フォルダの .adoc を Claude Code 自身の Edit で直させる形
+    #[gpui::test]
+    fn a_file_edited_by_claude_code_lands_as_one_undo_step(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let (d, _) = kumihan::adoc::parse_full("= 報告\n\n== 概況\n\n受注は3件。\n").unwrap();
+            this.set_doc(d);
+            let path = this.agent_file_write().unwrap();
+            assert!(path.ends_with("文書.adoc"), "名前の無い文書は「文書」: {path:?}");
+            let text = std::fs::read_to_string(&path).unwrap();
+            assert!(text.contains("受注は3件"), "文書がファイルに写らない: {text}");
+            // 変わっていなければ何もしない
+            let before = this.undo_stack.len();
+            this.agent_file_reload();
+            assert_eq!(this.undo_stack.len(), before);
+            // Claude Code が直した(ここでは手で書き替える)
+            std::fs::write(&path, text.replace("3件", "4件")).unwrap();
+            this.agent_file_reload();
+            assert!(this.doc.body_text().contains("受注は4件"), "直しが入らない: {}", this.doc.body_text());
+            assert_eq!(this.undo_stack.len(), before + 1, "控えは1回");
+            this.undo_step();
+            assert!(this.doc.body_text().contains("受注は3件"), "Ctrl+Z で戻らない");
+            // 読めない字は入れず、そう言う
+            std::fs::write(&path, "|===\n|閉じない表\n").unwrap();
+            this.agent_file_reload();
+            assert!(this.doc.body_text().contains("受注は3件"));
+            assert!(this.ai_chat_log.iter().any(|r| matches!(r, ChatRow::Tool(t, false) if t.contains("AsciiDoc"))), "断りが出ない");
+        });
+    }
+
     /// **docx の画面も、文書自身の既定(段落後の空き・行間)を当てて組む**
     /// (2026-09-08)。前は互換の文書を素通しで組んでいたので、`w:docDefaults`
     /// の 10pt の空きと 1.15 の行間が画面だけ消え、行が重なって見えた

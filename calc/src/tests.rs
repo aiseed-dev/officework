@@ -1117,6 +1117,16 @@ mod pivot_tests {
         });
     }
 
+    /// 宛先「Claude Code」に渡す文は、走らせてよい Python の径路と、動いている
+    /// calc につながる書き方を持つ(道具は渡さない。2026-09-08)
+    #[test]
+    fn the_claude_code_prompt_names_the_python_and_the_way_in() {
+        let s = crate::state::agent_system_python(std::path::Path::new("/x/.venv/bin/python"));
+        assert!(s.contains("/x/.venv/bin/python -c"), "{s}");
+        assert!(s.contains("xw.books.active"), "{s}");
+        assert!(s.contains("Ctrl+Z"), "{s}");
+    }
+
     /// **マクロの結果は1手として入り、Ctrl+Z で戻る**(受け口とパネルの両方が
     /// 通る `macro_apply`)。サンドボックスを使わずに、結果の xlsx を手で作って当てる
     #[cfg(unix)]

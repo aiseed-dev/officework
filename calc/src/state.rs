@@ -2865,7 +2865,9 @@ impl Calc {
             }
             let model = self.agent_dest_row().map(|r| r.model).unwrap_or_default();
             let near = self.path.as_ref().and_then(|p| p.parent().map(|d| d.to_path_buf()));
-            let launch = match cc::launch_for(&model, AGENT_SYSTEM, None, near.as_deref()) {
+            let py = cc::python_for(near.as_deref());
+            let system = agent_system_python(&py);
+            let launch = match cc::launch_for(&model, &system, None, cc::Give::Python(py)) {
                 Ok(l) => l,
                 Err(e) => {
                     self.ai_busy = false;
@@ -2917,12 +2919,7 @@ impl Calc {
         let mut done = false;
         for c in got {
             match c {
-                Cc::Init { mcp_ok, errors, .. } => {
-                    self.agent_state = AgentState::Connected;
-                    if !mcp_ok {
-                        self.chat_push(ChatRow::Tool(ui::tf!("officework_mcp_not_connected", errors.join(" / ")).to_string(), false));
-                    }
-                }
+                Cc::Init { .. } => self.agent_state = AgentState::Connected,
                 Cc::Event(e) => {
                     if let Some(ag) = self.agent.as_mut() {
                         ag.log.push(e);
@@ -3508,6 +3505,24 @@ const AGENT_SYSTEM: &str = "あなたは表計算アプリの中で働く助手�
 書き替えは1手として入り、利用者が Ctrl+Z で戻せます。\
 保存(save)は利用者がはっきり頼んだときだけ呼びます。\
 答えは利用者の言語に合わせて、短く書きます。";
+
+/// 宛先「Claude Code」の system の文。道具は渡さず、指定の Python だけを Bash で
+/// 走らせて、動いている calc に `officework.calc` でつながせる
+/// (2026-09-08 発注者「1 の形で作り直して」)
+pub(crate) fn agent_system_python(py: &std::path::Path) -> String {
+    let py = py.to_string_lossy();
+    format!(
+        "あなたは表計算アプリの中で働く助手です。いま開いているブックには Python でつながります。\
+使える命令は {py} から始まる物だけです。例:\n\
+{py} -c \"from officework import calc as xw; s = xw.books.active.sheets.active; print(s.range('A1:D10').value)\"\n\
+書き替えは s.range('B2').value = 5 や s.range('A1').value = [[…], […]] のようにします。\
+1回の書き替えが1手として入り、利用者が Ctrl+Z で戻せます。\
+まず様子を見てから触り、長い表は必要な範囲だけ読みます。\
+値を自分で作らないでください。決まっている値は、人が言った物か、人が指した資料にある物だけです。\
+保存は利用者がはっきり頼んだときだけ wb.save() を呼びます。\
+答えは利用者の言語に合わせて、短く書きます。"
+    )
+}
 
 /// 一覧と「最後に使った名前」から、いま使う宛先を選ぶ。
 /// 最後に使った名前が一覧に無ければ1番目
