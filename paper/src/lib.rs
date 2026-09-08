@@ -1325,12 +1325,8 @@ pub fn doc_to_pdf<W: Write>(
     theme: Option<&kumihan::theme::Theme>,
     out: W,
 ) -> Result<(), String> {
-    let mut d = compose_doc(doc, theme);
-    let mut fonts = resolve_run_fonts(&mut d);
-    let laid = layout_doc(&d, &DocOpts::default())?;
-    let (sheet, page, bytes) = (laid.sheet, laid.page, laid.font);
-    // 既定の書体が1本目。run の書体はその後ろ(名前で引く)
-    fonts.insert(0, (laid.family.clone(), bytes.clone()));
+    let (d, laid, fonts) = doc_laid(doc, theme)?;
+    let (sheet, page) = (laid.sheet, laid.page);
     let doc = &d;
     // **低い層の書き手を通します**(2026-08-27)。使った字だけ埋めるので、
     // 1枚物が 20MB から 10KB になります。ここが最初の差し替えです —
@@ -1381,6 +1377,20 @@ pub fn doc_leaves_with(
     pages
 }
 
+/// [`doc_leaves_with`] の、run の書体の番号を付ける形(PNG が書体を何本も
+/// 持てるように。2026-09-08)
+pub fn doc_leaves_fonts(
+    sheet: &kumihan::Sheet,
+    page: kumihan::PageSetup,
+    dress: &PageDress,
+    fonts: &[(String, Vec<u8>)],
+) -> Vec<pdfw::Leaf> {
+    let paper = Paper::from_page(&page);
+    let font_of = font_index_of(fonts);
+    let (pages, _lost) = pdfw::sheet_leaves_fonts(sheet, paper, dress, |_| Vec::new(), &font_of);
+    pages
+}
+
 /// 文書の紙面を1枚だけ取り出す。`k` は0から数えた頁です
 pub fn doc_leaf(sheet: &kumihan::Sheet, page: kumihan::PageSetup, k: usize) -> Option<pdfw::Leaf> {
     doc_leaves(sheet, page).into_iter().nth(k)
@@ -1393,10 +1403,29 @@ pub fn doc_to_sheet(
     doc: &kumihan::Document,
     theme: Option<&kumihan::theme::Theme>,
 ) -> Result<(kumihan::Sheet, kumihan::PageSetup, Vec<u8>), String> {
+    let (_d, laid, _fonts) = doc_laid(doc, theme)?;
+    Ok((laid.sheet, laid.page, laid.font))
+}
+
+/// **合成 → run の書体の解決 → 組み**を1つに。返りは(表示用の写し, 組んだ物,
+/// 埋める書体の一覧)。書体の1本目は既定(測った物)で、run の書体が続く。
+/// PDF と PNG はこれを通り、画面(writer)は同じ3つを自分の順で呼ぶ
+pub fn doc_laid(
+    doc: &kumihan::Document,
+    theme: Option<&kumihan::theme::Theme>,
+) -> Result<(kumihan::Document, LaidDoc, Vec<(String, Vec<u8>)>), String> {
     let mut d = compose_doc(doc, theme);
-    resolve_run_fonts(&mut d);
-    let l = layout_doc(&d, &DocOpts::default())?;
-    Ok((l.sheet, l.page, l.font))
+    let mut fonts = resolve_run_fonts(&mut d);
+    let laid = layout_doc(&d, &DocOpts::default())?;
+    fonts.insert(0, (laid.family.clone(), laid.font.clone()));
+    Ok((d, laid, fonts))
+}
+
+/// 埋める書体の一覧から、セルの書体の名前 → 番号を引く閉包
+pub fn font_index_of(fonts: &[(String, Vec<u8>)]) -> impl Fn(Option<&str>) -> u8 + '_ {
+    move |name: Option<&str>| {
+        name.and_then(|n| fonts.iter().position(|(x, _)| x == n)).map(|i| i.min(255) as u8).unwrap_or(0)
+    }
 }
 
 /// **組みの前の支度。** テンプレートを合成し、数式を絵にします。

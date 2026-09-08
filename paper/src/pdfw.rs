@@ -1591,6 +1591,9 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
             // (いまの道と同じ決め)
             let colx = sheet.vert_x.get(i).copied().unwrap_or(0.0);
             for c in &line.cells {
+                if c.ch == '\n' {
+                    continue;
+                }
                 let em = c.size_pt * 0.3528;
                 p.pieces.push(Piece {
                     x_mm: mx + colx,
@@ -1621,6 +1624,10 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
             // 書体はタブの字形を持たないので、描くと豆腐(□)になります
             // (2026-09-01、内閣府の調査票の氏名欄で見つけました)。
             // 下線はタブの上にも引きます — 記入欄の下線はこれで出ます
+            // 改行の字(段落の中の `w:br`)は幅 0 で行末にあるだけ。字形は出さない
+            if c.ch == '\n' {
+                continue;
+            }
             if c.ch == '\t' {
                 if let Some(r) = run.take() {
                     p.pieces.push(r);

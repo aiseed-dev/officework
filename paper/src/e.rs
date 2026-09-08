@@ -89,6 +89,13 @@ pub fn egaku(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32) -> E {
 /// サブセット後の番号とは別で、こちらは元の書体の番号です。絵は
 /// 書体を丸ごと持っているので、番号を詰め直す必要がありません。
 pub fn egaku_with(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, font: Option<&[u8]>) -> E {
+    let fonts: Vec<&[u8]> = font.into_iter().collect();
+    egaku_fonts(leaf, w_mm, h_mm, bai, &fonts)
+}
+
+/// **書体を何本でも持つ形**(2026-09-08。PDF の `write_pages_fonts` と対)。
+/// `Piece::font` がどれで描くかを指します。1本目が既定
+pub fn egaku_fonts(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, fonts: &[&[u8]]) -> E {
     // **四捨五入します。** 切り捨てると A4 の 150 dpi が 1754 でなく 1753
     // 画素になり、1画素足りません(297mm × 150 ÷ 25.4 = 1753.94)
     let (w, h) = ((w_mm * bai).round() as u16, (h_mm * bai).round() as u16);
@@ -156,11 +163,11 @@ pub fn egaku_with(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, font: Option<&[u8
 
     let mut res = Resources::new();
     // **字はいちばん上。** 塗りと罫線の後に置きます
-    if let Some(data) = font {
-        moji(&mut cx, &mut res, leaf, h_mm, mm, data);
+    if !fonts.is_empty() {
+        moji(&mut cx, &mut res, leaf, h_mm, mm, fonts);
         // **透かしも字です。** 敷いた後の紙に薄く斜めで重ねます
         if let Some(s) = &leaf.watermark {
-            sukashi(&mut cx, &mut res, s, w_mm, h_mm, mm, data);
+            sukashi(&mut cx, &mut res, s, w_mm, h_mm, mm, fonts[0]);
         }
     }
     // **字の上に引く線**(手描きのペン)。字を書いた後に引きます
@@ -192,15 +199,24 @@ fn moji(
     leaf: &Leaf,
     h_mm: f32,
     mm: f64,
-    data: &[u8],
+    fonts: &[&[u8]],
 ) {
-    let Ok(face) = ttf_parser::Face::parse(data, 0) else { return };
-    let fd = FontData::new(Blob::new(std::sync::Arc::new(data.to_vec())), 0);
-    let em = face.units_per_em() as f64;
+    // 書体ごとに1回だけ開く。`Piece::font` の番号で引く(無い番号は既定)
+    let faces: Vec<Option<(ttf_parser::Face<'_>, FontData)>> = fonts
+        .iter()
+        .map(|data| {
+            let face = ttf_parser::Face::parse(data, 0).ok()?;
+            let fd = FontData::new(Blob::new(std::sync::Arc::new(data.to_vec())), 0);
+            Some((face, fd))
+        })
+        .collect();
     for p in &leaf.pieces {
         if p.text.is_empty() {
             continue;
         }
+        let k = (p.font as usize).min(faces.len().saturating_sub(1));
+        let Some((face, fd)) = faces.get(k).and_then(|f| f.as_ref()).or_else(|| faces.first().and_then(|f| f.as_ref())) else { continue };
+        let em = face.units_per_em() as f64;
         // pt を画素に(1pt = 1/72 インチ = 25.4/72 mm)
         let size = p.size_pt as f64 * 25.4 / 72.0 * mm;
         // **`y_mm` は字の下端**です(pdfw と同じ)。紙は下からの y なので
@@ -242,7 +258,7 @@ fn moji(
                 })
                 .collect();
             if !gs2.is_empty() {
-                cx.glyph_run(res, &fd)
+                cx.glyph_run(res, fd)
                     .font_size(size as f32)
                     .hint(false)
                     .fill_glyphs(gs2.into_iter());

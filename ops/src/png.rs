@@ -54,7 +54,7 @@ fn na(to: &Path, k: usize) -> PathBuf {
 /// 紙面の並びを PNG の並びにして置く。返りは書いた枚数
 fn kaku(
     leaves: &[(paper::pdfw::Leaf, (f32, f32))],
-    font: &[u8],
+    fonts: &[&[u8]],
     to: &Path,
     dpi: f32,
 ) -> Result<usize, String> {
@@ -73,7 +73,7 @@ fn kaku(
     }
     let b = bai(dpi);
     for (k, (leaf, (w, h))) in leaves.iter().enumerate() {
-        let e = paper::e::egaku_with(leaf, *w, *h, b, Some(font));
+        let e = paper::e::egaku_fonts(leaf, *w, *h, b, fonts);
         let png = e.png()?;
         // **書けてから置き替えます。** 途中で落ちても元の絵が残ります
         kumihan::atomic::save(&na(to, k), |mut f| {
@@ -93,11 +93,15 @@ pub fn doc(
     to: &Path,
     dpi: f32,
 ) -> Result<usize, String> {
-    let (sheet, page, font) = paper::doc_to_sheet(d, theme)?;
-    let ookisa = (page.w_mm, page.h_mm);
-    let leaves: Vec<_> =
-        paper::doc_leaves(&sheet, page).into_iter().map(|l| (l, ookisa)).collect();
-    kaku(&leaves, &font, to, dpi)
+    // PDF と同じ道(合成 → run の書体の解決 → 組み)。書体も run ごとに持つ
+    let (_d, laid, fonts) = paper::doc_laid(d, theme)?;
+    let ookisa = (laid.page.w_mm, laid.page.h_mm);
+    let leaves: Vec<_> = paper::doc_leaves_fonts(&laid.sheet, laid.page, &paper::PageDress::default(), &fonts)
+        .into_iter()
+        .map(|l| (l, ookisa))
+        .collect();
+    let datas: Vec<&[u8]> = fonts.iter().map(|(_, d)| d.as_slice()).collect();
+    kaku(&leaves, &datas, to, dpi)
 }
 
 /// **ブックを PNG にする。** シートの頁ごとに1枚です。
@@ -117,7 +121,7 @@ pub fn book(b: &book::Book, to: &Path, dpi: f32) -> Result<usize, String> {
     if leaves.is_empty() {
         return Err("刷るシートがありません(全部隠れています)".into());
     }
-    kaku(&leaves, font, to, dpi)
+    kaku(&leaves, &[font], to, dpi)
 }
 
 #[cfg(test)]

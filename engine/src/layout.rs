@@ -353,6 +353,20 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
         };
 
         // 1行目だけ行長が短い(字下げのぶん)
+        // **段落の中の改行(docx の `w:br`、AsciiDoc の行末の ` +`)は、ここで
+        // 行を切ります**(2026-09-08)。前は空白と同じ扱いで、画面は次の行に
+        // 見えて紙では1行に繋がっていました。字は幅 0 で行末に残します —
+        // 打鍵の位置(off)が字と対応しているためです
+        if matches!(&tok, Tok::Space('\n', ..) | Tok::One('\n', ..)) {
+            let mut nl = cells;
+            for c in &mut nl {
+                c.w_mm = 0.0;
+            }
+            cur.extend(nl);
+            done.push(std::mem::take(&mut cur));
+            w_cur = 0.0;
+            continue;
+        }
         let measure = if done.is_empty() { (measure - first_mm).max(1.0) } else { measure };
         // **行頭に置けない字は、はみ出させて行末に留めます**(追い込み)。
         //
@@ -1987,4 +2001,33 @@ fn task_list(p: &Paragraph) -> Option<(&'static str, String, u8)> {
         ("☐ ", rest.strip_prefix("[ ] ")?)
     };
     Some((mark, body.to_string(), stars.saturating_sub(1) as u8))
+}
+
+#[cfg(test)]
+mod kaigyou_tests {
+    use super::*;
+
+    /// 段落の中の改行(`w:br`)で行が切れる。画面も紙も同じ組みを通るので、
+    /// ここで切れれば両方で切れる(2026-09-08)
+    #[test]
+    fn a_line_break_inside_a_paragraph_starts_a_new_line() {
+        let (fam, _) = crate::font::for_text(None, "あ".chars()).expect("書体");
+        let bytes = crate::font::load(fam).expect("読めない");
+        let m = Metrics::new(&bytes).expect("Metrics");
+        let mut d = crate::adoc::parse("一行目\n\n二行目\n").expect("読めない");
+        if let Some(crate::Block::Para(p)) = d.blocks.first_mut() {
+            p.runs.push(crate::Run { text: "\n".into(), size_pt: None, font: None, fmt: Default::default() });
+            p.runs.push(crate::Run { text: "続き".into(), size_pt: None, font: None, fmt: Default::default() });
+        }
+        let sheet = layout(&d, &m, &Frame { measure_mm: 150.0, line_height_mm: LINE_MM, y0_mm: 20.0 });
+        let texts: Vec<String> = sheet
+            .lines
+            .iter()
+            .filter(|l| l.from_body)
+            .map(|l| l.cells.iter().map(|c| c.ch).filter(|c| *c != '\n').collect())
+            .collect();
+        assert_eq!(texts, vec!["一行目", "続き", "二行目"], "{texts:?}");
+        let first = &sheet.lines.iter().find(|l| l.from_body).unwrap().cells;
+        assert!(first.last().is_some_and(|c| c.ch == '\n' && c.w_mm == 0.0));
+    }
 }
