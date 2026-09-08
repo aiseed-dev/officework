@@ -77,6 +77,26 @@ r.offset(0, 1).value = [[x * 1.1 for x in row] for row in r.value]
 
 橋の口の全部(`Range` の書式・シート・保存など)は link:python-manual.adoc[Python の手引き]にあります。
 
+=== リボンのボタンをマクロから押す
+
+`xw.press("ボタンの id")` で、リボンのボタンを押したのと同じことが起きます。
+id はボタンの名前です(`bold`・`align-center`・`instable`・`autosum` など。
+「すべての操作」の一覧と同じ名前)。前に出ているタブが文書なら文書のボタンが、表なら表のボタンが効きます。
+`xw.press("escape")` は Esc と同じで、開いた一覧や小窓を閉じます。
+`xw.ui_state()` は、いま開いている物と状態行の字を返します。押した結果を確かめるのに使います。
+
+[source,python]
+----
+from officework import calc as xw
+
+xw.press("bold")            # 選んでいる範囲を太字に
+xw.press("align-center")    # 中央揃え
+xw.press("escape")          # 開いた物を閉じる
+print(xw.ui_state()["status"])
+----
+
+灰色のボタンと知らない名前は断られます。
+
 == 文書のマクロ — 記入欄と雛形
 
 文書のマクロは、**開いている文書の複製**をサンドボックスの中で python-docx で直します。

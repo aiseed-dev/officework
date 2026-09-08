@@ -76,6 +76,22 @@ Two habits:
 
 The full bridge surface (`Range` formatting, sheets, saving, …) is in the link:python-manual.adoc[Python manual].
 
+=== Pressing ribbon buttons from a macro
+
+`xw.press("button-id")` does what clicking that ribbon button does. The id is the button's name (`bold`, `align-center`, `instable`, `autosum`, and so on, the same names as in the list of all operations). When the front tab is a document, the document's buttons apply; when it is a sheet, the sheet's. `xw.press("escape")` is the same as Esc and closes an open list or dialog. `xw.ui_state()` returns what is open and the status line, so a macro can check what happened.
+
+[source,python]
+----
+from officework import calc as xw
+
+xw.press("bold")            # make the selection bold
+xw.press("align-center")
+xw.press("escape")          # close whatever opened
+print(xw.ui_state()["status"])
+----
+
+Greyed-out buttons and unknown names are refused.
+
 == Document macros — form fields and templates
 
 A document macro edits *a copy of the open document* inside the sandbox, using python-docx.

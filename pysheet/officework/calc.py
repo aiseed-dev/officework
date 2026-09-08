@@ -1537,3 +1537,27 @@ def selection():
 def ping():
     """calc が応じるかの確かめ。"""
     return _call("ping")
+
+
+def press(button):
+    """**リボンのボタンを id で押します。**(2026-09-09 発注者「マクロで使えるので、
+    製品版にも組み込んで」)
+
+    id はリボンの各ボタンの名前(`bold`・`align-center`・`instable` など。
+    docs の commands の一覧と同じ)です。前に出ているタブが文書なら文書の、表なら
+    表のボタンが効きます。`escape` を渡すと Esc と同じで、開いた一覧や小窓を閉じます。
+
+        from officework import calc as xw
+
+        xw.press("bold")        # 選んでいる範囲を太字に
+        xw.press("escape")      # 開いた物を閉じる
+
+    押せない id(灰色のボタン・知らない名前)は断られます(OfficeworkError)。
+    """
+    return _call("press", id=str(button))
+
+
+def ui_state():
+    """**いま画面で開いている物。** 状態行の字と、開いている一覧・小窓・パネルの名前。
+    `press` の後に「何が起きたか」を確かめる用です(点検の道具 tools/ribbon_press.py が使う)。"""
+    return _call("ui_state")
