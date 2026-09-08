@@ -116,6 +116,31 @@ mod menu_run_tests {
     ///
     /// 前は bool が4つあり、開くたびに残り3つを倒す行が要りました。
     /// 1つにしたので「倒し忘れ」が書けません。それを見ます。
+    /// **docx の画面も、文書自身の既定(段落後の空き・行間)を当てて組む**
+    /// (2026-09-08)。前は互換の文書を素通しで組んでいたので、`w:docDefaults`
+    /// の 10pt の空きと 1.15 の行間が画面だけ消え、行が重なって見えた
+    /// (PDF と PNG は合成していたので正しかった)
+    #[gpui::test]
+    fn a_docx_screen_keeps_the_documents_default_spacing(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let mut d = kumihan::adoc::parse("一つ目の段落。\n\n二つ目の段落。\n").unwrap();
+            let second_y = |this: &mut Writer, d: &kumihan::Document| {
+                this.set_doc(d.clone());
+                this.native = false;
+                this.lay();
+                let ys: Vec<f32> = this.page.lines.iter().filter(|l| l.from_body).map(|l| l.y_mm).collect();
+                assert!(ys.len() >= 2, "行が2本出ない: {ys:?}");
+                ys[1] - ys[0]
+            };
+            let plain = second_y(this, &d);
+            d.space_after_pt = Some(10.0);
+            let spaced = second_y(this, &d);
+            // 10pt = 3.5mm ほど広がる
+            assert!(spaced > plain + 3.0, "段落後の空きが画面で消えている: {plain} → {spaced}");
+        });
+    }
+
     #[gpui::test]
     fn at_most_one_list_is_open(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));

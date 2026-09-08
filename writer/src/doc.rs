@@ -593,7 +593,18 @@ impl Writer {
         //
         // 発表(跨がない)のときだけ、写しに改ページの印を足しながら
         // 何度か組み直すので、写しは**書ける形**で持つ
-        let mut composed = self.native.then(|| kumihan::theme::compose(&self.doc, &self.tmpl));
+        //
+        // **互換の文書(docx)も合成はします。ただし相手は同梱の既定の
+        // テンプレートです**(2026-09-08)。フォルダのテンプレートを docx に
+        // 着せないのは前からの決めのままで、合成が要るのは文書自身の既定
+        // (`w:docDefaults` の行間と段落後の空き)と `styles.xml` の見た目を
+        // 段落に当てるため。PDF と PNG は前からこの道で、画面だけが素通し
+        // だったので、同じ docx が画面では行が重なり紙では正しく出ていた
+        let mut composed = Some(if self.native {
+            kumihan::theme::compose(&self.doc, &self.tmpl)
+        } else {
+            kumihan::theme::compose(&self.doc, &kumihan::theme::default_theme())
+        });
         // **様式(セル)は写しの側で組みます**(2026-08-18)。本文は
         // `項目:: 値` のまま残るので、保存してもセルは本文に漏れません。
         // 対応の付かない項目と埋まらないセルは、ここで受け取って状態行に出します
@@ -1044,7 +1055,11 @@ impl Writer {
         // 自分で言っていないことを言い出して、保存したときに書体が本文へ
         // 焼き付いてしまいます。
         let wanted = self.doc.font.clone().or_else(|| self.tmpl.font.clone());
-        match kumihan::font::for_document(wanted.as_deref()) {
+        // **文中の字も渡します**(2026-09-08)。文書の書体が Arial のような
+        // 欧文の書体だと、名前どおりに取った書体に日本語の字が無く、字の幅を
+        // 半分ほどに測って行が右へはみ出していました(PDF は前から
+        // `for_text` で組める書体に換えていました)
+        match kumihan::font::for_text(wanted.as_deref(), self.doc.chars()) {
             Ok((fam, exact)) => {
                 if let Ok(b) = kumihan::font::load(fam) {
                     self.font_bytes = std::sync::Arc::new(b);

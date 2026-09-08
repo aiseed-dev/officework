@@ -2114,11 +2114,16 @@ pub(super) fn parse_document_rels_num(
                             .filter(|v| !v.is_empty() && v != "auto");
                     }
                     // 段落の囲み枠。辺の別は持たない(あれば囲みとみなす)
-                    b"pBdr" if in_ppr => { boxed = true; in_pbdr = true }
+                    // **囲みは辺が1つでも引かれて初めて囲みです。** 空の
+                    // `<w:pBdr></w:pBdr>` は ONLYOFFICE が全部の段落に書くので、
+                    // 要素があるだけで囲むと文書中の段落が全部枠に入ります
+                    // (2026-09-08、発注者の文書で)
+                    b"pBdr" if in_ppr => in_pbdr = true,
                     // **どの辺を引くか。** `w:tcBorders`(セルの罫線)にも
                     // 同じ名前の子が並ぶので、`in_pbdr` で見分けます
                     b"top" | b"bottom" | b"left" | b"right" | b"between" if in_pbdr => {
                         if !matches!(attr(&e, "val").as_deref(), Some("none") | Some("nil")) {
+                            boxed = true;
                             let b = &mut para_border;
                             // `w:space` は pt そのもの、`w:sz` は 1/8 pt
                             if let Some(v) = attr(&e, "space").and_then(|v| v.parse::<f32>().ok()) {
@@ -2739,11 +2744,16 @@ pub(super) fn parse_document_rels_num(
                             .filter(|v| !v.is_empty() && v != "auto");
                     }
                     // 段落の囲み枠。辺の別は持たない(あれば囲みとみなす)
-                    b"pBdr" if in_ppr => { boxed = true; in_pbdr = true }
+                    // **囲みは辺が1つでも引かれて初めて囲みです。** 空の
+                    // `<w:pBdr></w:pBdr>` は ONLYOFFICE が全部の段落に書くので、
+                    // 要素があるだけで囲むと文書中の段落が全部枠に入ります
+                    // (2026-09-08、発注者の文書で)
+                    b"pBdr" if in_ppr => in_pbdr = true,
                     // **どの辺を引くか。** `w:tcBorders`(セルの罫線)にも
                     // 同じ名前の子が並ぶので、`in_pbdr` で見分けます
                     b"top" | b"bottom" | b"left" | b"right" | b"between" if in_pbdr => {
                         if !matches!(attr(&e, "val").as_deref(), Some("none") | Some("nil")) {
+                            boxed = true;
                             let b = &mut para_border;
                             // `w:space` は pt そのもの、`w:sz` は 1/8 pt
                             if let Some(v) = attr(&e, "space").and_then(|v| v.parse::<f32>().ok()) {

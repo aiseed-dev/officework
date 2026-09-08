@@ -585,9 +585,14 @@ mod para_tests {
             (false, true, false, false, true),
             "引く辺が違う"
         );
-        // `w:val="none"` は「引かない」
-        let (_, b) = yomu(r#"<w:pBdr><w:bottom w:val="none" w:sz="0"/></w:pBdr>"#);
+        // `w:val="none"` は「引かない」— 囲みの札も立たない
+        let (boxed, b) = yomu(r#"<w:pBdr><w:bottom w:val="none" w:sz="0"/></w:pBdr>"#);
         assert!(!b.bottom, "引かない指定を引くと読んだ");
+        assert!(!boxed, "引く辺が無いのに囲みの札が立った");
+        // **空の `<w:pBdr></w:pBdr>` は囲みではない**(ONLYOFFICE が全部の
+        // 段落に書く。2026-09-08 に発注者の文書で全段落が枠に入った)
+        let (boxed, b) = yomu("<w:pBdr></w:pBdr>");
+        assert!(!boxed && !b.aru(), "空の pBdr を囲みと読んだ");
     }
 
     /// **テキストボックスの書き方も読む。**
