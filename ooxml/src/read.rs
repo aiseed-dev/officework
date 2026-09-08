@@ -224,6 +224,12 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         let head = &sxml[i..(i + 60).min(sxml.len())];
         doc.hyphenate = !(head.contains("w:val=\"0\"") || head.contains("w:val=\"false\""));
     }
+    // 句読点の詰め(`w:characterSpacingControl`)。無ければ Word の既定
+    // (doNotCompress)。日本語の Word は compressPunctuation を書きます
+    if let Some(i) = sxml.find("<w:characterSpacingControl") {
+        let head = &sxml[i..(i + 80).min(sxml.len())];
+        doc.compress_punct = head.contains("compressPunctuation");
+    }
     // 縦書き(sectPr の textDirection=tbRl)
     if doc.sect_raw.as_deref().is_some_and(|t| {
         t.contains("textDirection") && t.contains("tbRl")
@@ -667,6 +673,27 @@ pub(super) fn parse_sect(raw: &str) -> kumihan::PageSetup {
         top_mm: g("<w:pgMar", "w:top").unwrap_or(d.top_mm),
         bottom_mm: g("<w:pgMar", "w:bottom").unwrap_or(d.bottom_mm),
         columns: cols.clamp(1, 8),
+        line_pitch_pt: grid_pitch_pt(raw),
+    }
+}
+
+/// sectPr の `w:docGrid` から行グリッドの行送り(pt)を引く。`w:type` が
+/// `lines` か `linesAndChars` のときだけ効く(`default` は線を引かない)。
+/// `w:linePitch` は twip
+fn grid_pitch_pt(raw: &str) -> f32 {
+    let Some(i) = raw.find("<w:docGrid") else { return 0.0 };
+    let head = &raw[i..(i + 200).min(raw.len())];
+    let head = &head[..head.find('>').unwrap_or(head.len())];
+    let at = |k: &str| -> Option<&str> {
+        let s = head.find(&format!("{k}=\"")).map(|p| p + k.len() + 2)?;
+        let e = head[s..].find('"')? + s;
+        Some(&head[s..e])
+    };
+    match at("w:type") {
+        Some("lines") | Some("linesAndChars") => {
+            at("w:linePitch").and_then(|v| v.parse::<f32>().ok()).map(|v| v / 20.0).unwrap_or(0.0)
+        }
+        _ => 0.0,
     }
 }
 
@@ -1175,6 +1202,8 @@ fn style_para(
         border: pbdr_of(body),
         // 同じスタイルが続く間は空きを入れない
         contextual_spacing: body.contains("<w:contextualSpacing").then_some(true),
+        // 行グリッドに合わせない(`w:val="0"` のときだけ)
+        no_grid: val("w:snapToGrid").map(|v| v == "0" || v == "false" || v == "off"),
     }
 }
 
@@ -1742,6 +1771,7 @@ pub(super) fn parse_document_rels_num(
     let mut list_id: Option<u32> = None; // w:numPr の numId(番号の続き具合を決める)
     let mut line_spacing = 0.0f32;
     let mut line_pt: Option<(f32, bool)> = None;
+    let mut no_grid = false; // w:pPr の w:snapToGrid w:val="0"
     let mut space_before_pt = 0.0f32;
     let mut space_after_pt = 0.0f32;
     let mut page_break_before = false;
@@ -1872,6 +1902,7 @@ pub(super) fn parse_document_rels_num(
                               list_id = None;
                               line_spacing = 0.0;
                               line_pt = None;
+                              no_grid = false;
                               space_before_pt = 0.0;
                               space_after_pt = 0.0;
                               page_break_before = std::mem::take(&mut tsugi_kaipeji);
@@ -2042,6 +2073,9 @@ pub(super) fn parse_document_rels_num(
                             })
                             .unwrap_or(0);
                     }
+                    // **行グリッドに合わせない**(`w:pPr` の `w:snapToGrid`。
+                    // `w:rPr` の中の同名は字の格子の話なので分ける)
+                    b"snapToGrid" if in_ppr && !in_rpr => no_grid = !on(&e),
                     b"spacing" if in_ppr => {
                         (line_spacing, line_pt) = gyou_bairitsu(
                             attr(&e, "line").and_then(|v| v.parse::<f32>().ok()),
@@ -2672,6 +2706,7 @@ pub(super) fn parse_document_rels_num(
                             })
                             .unwrap_or(0);
                     }
+                    b"snapToGrid" if in_ppr && !in_rpr => no_grid = !on(&e),
                     b"spacing" if in_ppr => {
                         (line_spacing, line_pt) = gyou_bairitsu(
                             attr(&e, "line").and_then(|v| v.parse::<f32>().ok()),
@@ -2929,6 +2964,7 @@ pub(super) fn parse_document_rels_num(
                                 tab_stops: std::mem::take(&mut tab_stops),
                                 line_spacing,
                                 line_pt,
+                                no_grid,
                                 space_before_pt,
                                 space_after_pt,
                                 style: pstyle,
@@ -3583,8 +3619,12 @@ pub fn foreign_shape_with(a: &str, palette: &[String]) -> Option<ForeignShape> {
         // 1000 分の1パーセント
         a[k..e].trim().parse::<f32>().ok().map(|v| (from, v / 100000.0))
     };
-    let w_pct = pct("<wp14:sizeRelH", "<wp14:pctWidth>");
-    let h_pct = pct("<wp14:sizeRelV", "<wp14:pctHeight>");
+    // **0% は「百分率で決めていない」の印**です(2026-09-09)。Word は相対
+    // 指定を使わない図形にも `<wp14:pctWidth>0</wp14:pctWidth>` を書きます。
+    // 0 を大きさにすると幅 0 の箱になり、テキストボックスの題が1字ずつ
+    // 折れて縦に並びました(岐阜労働局の「公正採用選考人権啓発推進員選任・変更届」)
+    let w_pct = pct("<wp14:sizeRelH", "<wp14:pctWidth>").filter(|(_, v)| *v > 0.0);
+    let h_pct = pct("<wp14:sizeRelV", "<wp14:pctHeight>").filter(|(_, v)| *v > 0.0);
     Some(ForeignShape {
         x_mm, y_mm, w_mm, h_mm, h_from, v_from, h_align, v_align, w_pct, h_pct, look,
     })

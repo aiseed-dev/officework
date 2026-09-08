@@ -391,6 +391,66 @@ mod list_tests {
         assert!((dip[2] - dip[1]).abs() < 0.3, "行間 1.5 の字が下がった: {dip:?}");
     }
 
+    /// **句読点の詰め**(Word の compressPunctuation。2026-09-09)。行長を少し
+    /// 超える字は、約物の空きを詰めて行に留める。詰めても入らなければ折る。
+    /// 詰めた分だけ後ろの字が左へ寄り、開く括弧は自分が左へ寄る
+    #[test]
+    fn punctuation_is_compressed_to_keep_a_character_on_the_line() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let mut p = Paragraph::default();
+        p.runs.push(Run { text: "あ、い（う）えお".into(), size_pt: Some(10.0), font: None, fmt: Default::default() });
+        let w = m.advance_for(None, 'あ', 10.0);
+        // 8字ぶんより少し短い行長。詰め無しでは7字で折れる
+        let measure = w * 8.0 - w * 0.5;
+        let nashi = break_para(&p, &m, measure, None, false, &mut NoteCount::default(), 10.0, false);
+        assert_eq!(nashi.len(), 2, "詰め無しで1行に入った: {:?}", nashi.iter().map(|l| l.len()).collect::<Vec<_>>());
+        let ari = break_para(&p, &m, measure, None, false, &mut NoteCount::default(), 10.0, true);
+        assert_eq!(ari.len(), 1, "詰めれば入るのに折った: {:?}", ari.iter().map(|l| l.len()).collect::<Vec<_>>());
+        // 3つの約物で w/4 ずつ = 0.75w まで詰められる。足りない 0.5w を同じ割合で
+        let mut cells = ari.into_iter().next().unwrap();
+        let sum = tsumeru(&mut cells, measure, true);
+        narabe(&mut cells, 0.0, 0.0);
+        assert!((sum - measure).abs() < 0.01, "詰めた後の幅が行長と違う: {sum} / {measure}");
+        // 「（」は自分が左へ寄る(x が前の字の右端より左)
+        let i = cells.iter().position(|c| c.ch == '（').unwrap();
+        assert!(cells[i].x_mm < cells[i - 1].x_mm + w - 0.01, "開く括弧が左へ寄っていない");
+        // 詰めても入らない量なら折る
+        let mienai = break_para(&p, &m, w * 8.0 - w * 1.0, None, false, &mut NoteCount::default(), 10.0, true);
+        assert_eq!(mienai.len(), 2, "詰められる量を超えて1行に押し込んだ");
+    }
+
+    /// **行グリッド**(docx の `w:docGrid w:linePitch`、2026-09-09)。Word は行の
+    /// 高さをグリッドの行送りの整数倍に切り上げる。`exact` の段落と
+    /// `w:snapToGrid w:val="0"` の段落は合わせない
+    #[test]
+    fn lines_snap_up_to_the_document_grid() {
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let mut p = Paragraph::default();
+        // 8pt なら書体の自然な高さは 18pt に届かない(既定の書体は 1.75 倍の行送り)
+        p.runs.push(Run { text: "あ".into(), size_pt: Some(8.0), font: None, fmt: Default::default() });
+        let pitch = 18.0; // 360 twip
+        let hitotsu = 18.0 * 25.4 / 72.0;
+        let nashi = lh_of(&p, &frame, 10.5, None, 0.0);
+        assert!(nashi < hitotsu, "グリッド無しで 18pt を超えている: {nashi}");
+        let aru = lh_of(&p, &frame, 10.5, None, pitch);
+        assert!((aru - hitotsu).abs() < 0.01, "1行送り(18pt)に切り上がっていない: {aru}");
+        // 行送りを超える高さは2行分(書体の無い試験なので切り上げだけを見る)
+        let futatsu = grid_up(hitotsu + 0.1, pitch);
+        assert!((futatsu - hitotsu * 2.0).abs() < 0.01, "2行分に切り上がっていない: {futatsu}");
+        assert!((grid_up(hitotsu, pitch) - hitotsu).abs() < 0.01, "ちょうど1行が2行になった");
+        // 合わせない段落はそのまま
+        p.no_grid = true;
+        assert_eq!(lh_of(&p, &frame, 10.5, None, pitch), lh_of(&p, &frame, 10.5, None, 0.0));
+        // exact はグリッドを見ない
+        p.no_grid = false;
+        p.line_pt = Some((13.0, true));
+        assert!((lh_of(&p, &frame, 10.5, None, pitch) - 13.0 * 25.4 / 72.0).abs() < 0.01);
+        // atLeast は下限を当ててから切り上げる
+        p.line_pt = Some((20.0, false));
+        assert!((lh_of(&p, &frame, 10.5, None, pitch) - hitotsu * 2.0).abs() < 0.01);
+    }
+
     /// **文書の頭の段落にも前の空きを置く**(2026-09-09、Word の PDF と
     /// 並べて見つけた)。Word は1頁目の頭でも見出しの前の空きを置きます。
     /// 前は1行目だけ空けていなかったので、操作手順書と議事録の見出しが
@@ -699,7 +759,7 @@ mod table_layout_tests {
             }],
             ..Default::default()
         };
-        let mut d = Document { note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
+        let mut d = Document { note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
         d.blocks.push(Block::Table(Table {
             col_mm: vec![],
             rows: vec![vec![cell(&"あ".repeat(30)), cell("短い")]],
@@ -740,7 +800,7 @@ mod merge_layout_tests {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let d = Document { shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
-            font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
+            font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Table(Table { col_mm: vec![], rows,
         ..Default::default()
     })],
@@ -819,7 +879,7 @@ mod gridcol_tests {
         let d = Document { shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
             font: None,
             page: None,
-            sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, protection: None, props: Default::default(), vertical: false,
+            sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Table(Table {
                 col_mm,
                 rows: vec![vec![cell("項目"), cell("値")]],
@@ -1412,7 +1472,7 @@ mod section_layout_tests {
 
     fn paper(w: f32, h: f32) -> PageSetup {
         PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-                    top_mm: 20.0, bottom_mm: 20.0, columns: 1 }
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0 }
     }
 
     fn tab(text: &str, sect: Option<PageSetup>) -> Block {
@@ -1934,7 +1994,7 @@ mod fold_print_tests {
 
     fn paper(w: f32, h: f32) -> PageSetup {
         PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-                    top_mm: 20.0, bottom_mm: 20.0, columns: 1 }
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0 }
     }
     fn line(y: f32) -> Line {
         Line { cells: vec![Cell { ch: 'あ', x_mm: 0.0, w_mm: 4.0, size_pt: 10.5,
@@ -2857,9 +2917,9 @@ mod midashi_tests {
     fn a_heading_line_follows_in_height_too() {
         let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0 };
         let p = |style: ParaStyle| Paragraph { style, ..Default::default() };
-        assert!(lh_of(&p(ParaStyle::Heading(1)), &frame, 10.5, None) > lh_of(&p(ParaStyle::Body), &frame, 10.5, None),
+        assert!(lh_of(&p(ParaStyle::Heading(1)), &frame, 10.5, None, 0.0) > lh_of(&p(ParaStyle::Body), &frame, 10.5, None, 0.0),
                 "H1 の行が本文と同じ高さ(重なる)");
-        assert_eq!(lh_of(&p(ParaStyle::Body), &frame, 10.5, None), 6.0, "本文の高さが変わった");
+        assert_eq!(lh_of(&p(ParaStyle::Body), &frame, 10.5, None, 0.0), 6.0, "本文の高さが変わった");
     }
 /// **塊の種類ごとに、正しい要素で出るか。**
 ///

@@ -717,7 +717,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0,
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -777,7 +777,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0,
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -826,7 +826,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0,
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -872,7 +872,7 @@ mod tests {
         let pg = kumihan::PageSetup {
             w_mm: 210.0, h_mm: 297.0,
             left_mm: 25.0, right_mm: 25.0, top_mm: 30.0, bottom_mm: 30.0,
-            columns: 1,
+            columns: 1, line_pitch_pt: 0.0,
         };
         // 助手の `sheet` は固定の枠で組むので、ここは紙の設定に合わせて
         // 自分で組みます(1頁目の頭も `top_mm + BASE_UP_MM` になります)
@@ -924,7 +924,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0,
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],

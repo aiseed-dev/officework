@@ -513,6 +513,9 @@ pub struct Paragraph {
     pub align: Align,
     /// この段落の前で改ページする(docx の w:pageBreakBefore)
     pub page_break_before: bool,
+    /// **行グリッドに合わせない**(docx の `w:pPr/w:snapToGrid w:val="0"`)。
+    /// 既定(false)は合わせる。[`PageSetup::line_pitch_pt`] が 0 なら意味を持たない
+    pub no_grid: bool,
     pub list: ListKind,
     /// **文書が決めている箇条書きの印**(docx の `numbering.xml` の
     /// `w:lvlText`)。`○` や `(%1)` のような書き方で、`%1` はその段の番号に
@@ -991,13 +994,20 @@ pub struct PageSetup {
     pub bottom_mm: f32,
     /// 段組みの段数(docx の w:cols w:num)。1 が普通の1段
     pub columns: u8,
+    /// **行グリッドの行送り**(pt。docx の `w:docGrid w:linePitch`、
+    /// `w:type` が `lines` か `linesAndChars` のとき)。0 はグリッド無し。
+    ///
+    /// 日本語の Word の文書はほぼ全部これを持ち(既定 360 twip = 18pt)、
+    /// 行の高さをこの整数倍に切り上げます。官公庁の様式 45 枚のうち 45 枚が
+    /// 持っていました(2026-09-09)。段落ごとに `w:snapToGrid w:val="0"` で外せます
+    pub line_pitch_pt: f32,
 }
 
 impl Default for PageSetup {
     fn default() -> Self {
         // A4 縦・余白 20mm(日本の事務の慣行に近い値)
         PageSetup { w_mm: 210.0, h_mm: 297.0, left_mm: 20.0, right_mm: 20.0,
-                    top_mm: 20.0, bottom_mm: 20.0, columns: 1 }
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0 }
     }
 }
 
@@ -1107,6 +1117,13 @@ pub struct Document {
     /// 欧文のハイフネーション(docx の settings の autoHyphenation)。
     /// 日本語には掛からない(禁則で折る)。英語の語を音節で折って - を付ける
     pub hyphenate: bool,
+    /// **句読点を詰めて行に収める**(docx の settings の
+    /// `w:characterSpacingControl` が `compressPunctuation` か
+    /// `compressPunctuationAndJapaneseKana`)。日本語の Word の既定で、
+    /// 官公庁の様式 45 枚のうち 40 枚が持っていました(2026-09-09)。
+    /// 行が行長を超えるとき、約物(、。（）「」・)の空きを字幅の 1/4 まで、
+    /// 足りない分だけ比例して詰めます。詰めても入らなければ折ります
+    pub compress_punct: bool,
     /// 文書の保護(docx の settings の documentProtection の w:edit)。
     /// Some("readOnly") なら読み取り専用。パスワード無しの保護は Word と
     /// 同じく「注意書き」— 解除のボタンで誰でも外せる(そう見せる)
@@ -1268,6 +1285,10 @@ pub struct StyleParaLook {
     /// 文書の既定の「段落後 10pt」が項目ごとに入って間延びします
     /// (2026-09-03)
     pub contextual_spacing: Option<bool>,
+    /// **行グリッドに合わせない**(docx の `w:pPr/w:snapToGrid w:val="0"`)。
+    /// 日本語の Word のヘッダー・フッター・表の文字などのスタイルが持ちます
+    /// (官公庁の様式 45 枚で 80 か所。2026-09-09)
+    pub no_grid: Option<bool>,
     /// **段落の罫線**(docx の `w:pPr/w:pBdr`)。
     ///
     /// python-docx の既定の型紙では、題(`Title`)の下の線がここにあります。
@@ -2331,6 +2352,7 @@ impl Document {
             pl.list = pl.list.or(s.para.list);
             pl.list_text = pl.list_text.clone().or_else(|| s.para.list_text.clone());
             pl.contextual_spacing = pl.contextual_spacing.or(s.para.contextual_spacing);
+            pl.no_grid = pl.no_grid.or(s.para.no_grid);
             pl.border = pl.border.or(s.para.border);
             match s.based_on.as_deref() {
                 Some(o) => ima = o,

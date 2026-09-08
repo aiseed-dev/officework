@@ -1805,6 +1805,11 @@ fn jibun_wo_ateru(
     if para.line_spacing <= 0.0 && para.line_pt.is_none() {
         para.line_spacing = pl.line_spacing.unwrap_or(0.0);
     }
+    // スタイルが「行グリッドに合わせない」なら段落もそう(段落の側で
+    // 明示して合わせ直す書き方は稀なので見ない)
+    if pl.no_grid == Some(true) {
+        para.no_grid = true;
+    }
     if para.indent == 0 {
         para.indent = pl.indent.unwrap_or(0);
     }
