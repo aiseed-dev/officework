@@ -70,35 +70,84 @@ end timeout
     )
 
 
+def _excel_ready():
+    """Excel を、AppleScript の `open workbook` と PDF の保存が効く状態にする。
+
+    踏んだ跡(2026-09-08、一日かけて分かった組み合わせ):
+    * Finder 経由(`open -a` にファイル)で開いたブックは、`save as` が黙って
+      何も書かず、`close` も効かない。さらにそのブックがある間は、AppleScript の
+      `open workbook` が -50 で断られる。**目当てのファイルを `open -a` で開いては
+      いけない**
+    * `quit saving no` で静かに終了すると、次の起動で最初の画面(テンプレートの
+      一覧)が出て、`make new workbook` が 2 分待たされる
+    * 効いた順: 開いているブックを全部閉じる → `killall` → ファイル無しで
+      `open -a` → `make new workbook`(空のブックで窓を持たせる)→ AppleScript の
+      `open workbook`(Macintosh HD: の径路)→ `save as … PDF`。
+      未保存のブックを残したまま落とすと、次の起動に復旧の画面が出て崩れるので、
+      先に閉じる
+    """
+    import time
+
+    r = subprocess.run(["pgrep", "-f", "MacOS/Microsoft Excel"], capture_output=True, text=True)
+    if r.stdout.strip():
+        subprocess.run(["osascript", "-e", 'tell application "Microsoft Excel" to close every workbook saving no'],
+                       capture_output=True, text=True, timeout=120)
+        subprocess.run(["killall", "Microsoft Excel"], capture_output=True, text=True)
+        for _ in range(30):
+            r = subprocess.run(["pgrep", "-f", "MacOS/Microsoft Excel"], capture_output=True, text=True)
+            if not r.stdout.strip():
+                break
+            time.sleep(1)
+    subprocess.run(["open", "-a", "Microsoft Excel"], check=False)
+    time.sleep(10)
+
+
 def excel_pdf(src, out):
+    """Excel に開かせて、見えているシートを PDF にします。
+
+    効いた手順(2026-09-08、3通り試して唯一これだけ書けた):
+    1. 先に空のブックを1つ作って窓を持たせる(窓が無いと `open workbook` が -50)
+    2. `open workbook workbook file name` に「Macintosh HD:…」の径路で開かせる。
+       `open -a`(Finder 経由)で開いたブックは、別の径路への `save as` が
+       黙って何も書かない(サンドボックスの都合と思われる)
+    3. 名前が `workbooks` に出るまで待つ(open は読み込みの前に返る)
+    4. `save as active sheet … file format PDF file format`。保存先は POSIX の径路
+    """
     name = os.path.basename(src)
-    name_src = src
-    src, out = _hfs(src), os.path.abspath(out)
-    # **Finder 経由で開かせます。** AppleScript の `open workbook` は、Excel が
-    # 起動直後で窓を持たないときに -50 を返しました(2026-09-08)。
-    # `open -a` は必ず開き、読み込みは後から終わるので、下で名前を待ちます
-    subprocess.run(["open", "-a", "Microsoft Excel", os.path.abspath(name_src)], check=True)
+    hfs, out = _hfs(src), os.path.abspath(out)
+    _excel_ready()
     _osa(
         f'''
 with timeout of 600 seconds
 tell application "Microsoft Excel"
     set display alerts to false
-    -- open はすぐ返り、読み込みは後から終わる。名前が一覧に出るまで待つ
+    -- 空のブックで窓を持たせる。最初の画面が出ていると待たされるので 10 秒で切って繰り返す
+    set nb to missing value
+    repeat 20 times
+        try
+            with timeout of 10 seconds
+                set nb to make new workbook
+            end timeout
+            exit repeat
+        on error
+            delay 3
+        end try
+    end repeat
+    if nb is missing value then error "Excel が空のブックを作れませんでした(最初の画面が消えない)"
+    open workbook workbook file name "{hfs}"
     set wb to missing value
     repeat 180 times
-        -- 読み込みの途中は workbooks を引くだけで -50 が返ることがある。
-        -- 失敗は飲み込んで、次の秒にもう一度見る
         try
-            -- `repeat with w in workbooks` は -50 を返すことがある(2026-09-08)。
-            -- 名前の一覧で見てから、名前で引く
             if (name of every workbook) contains "{name}" then set wb to workbook "{name}"
         end try
         if wb is not missing value then exit repeat
         delay 1
     end repeat
-    if wb is missing value then error "Excel が 3 分たっても開きませんでした(壊れたファイルと見た可能性): {src}"
+    if wb is missing value then error "Excel が 3 分たっても開きませんでした(壊れたファイルと見た可能性): {hfs}"
+    activate object wb
     save as active sheet filename "{out}" file format PDF file format
     close wb saving no
+    close nb saving no
     set display alerts to true
 end tell
 end timeout

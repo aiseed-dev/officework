@@ -20,6 +20,7 @@
 * ページの大きさは pt で、1pt までの違いは同じと見ます
 """
 import sys
+import unicodedata
 
 import pdfplumber
 
@@ -46,10 +47,13 @@ def lines_of(page, ytol=2.0):
     out = []
     for r in sorted(rows, key=lambda r: r["top"]):
         cs = sorted(r["chars"], key=lambda c: c["x0"])
+        # Excel の PDF は「月」を康熙部首の「⽉」(U+2F49)で書き、円記号を
+        # バックスラッシュで書く(MS 明朝の JIS の癖)。字の比べでは同じと見る
+        text = unicodedata.normalize("NFKC", "".join(c["text"] for c in cs))
         out.append({
             "top": r["top"],
             "x0": cs[0]["x0"],
-            "text": "".join(c["text"] for c in cs).replace("(cid:0)", "□"),
+            "text": text.replace("(cid:0)", "□").replace("\\", "¥"),
             "size": cs[0].get("size"),
         })
     return out
