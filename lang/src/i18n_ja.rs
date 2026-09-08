@@ -2086,7 +2086,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("co_editing_mode", "共同編集モード"),
     ("version_history", "バージョン履歴"),
     ("chat", "チャット"),
-    ("zoom_100", "100%に拡大する"),
     ("arrange", "配置"),
     ("align_shapes", "整列"),
     ("merge_shapes_menu", "図形を結合"),

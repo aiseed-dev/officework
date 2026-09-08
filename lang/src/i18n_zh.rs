@@ -2086,7 +2086,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("co_editing_mode", "共同编辑模式"),
     ("version_history", "版本历史"),
     ("chat", "聊天"),
-    ("zoom_100", "缩放到 100%"),
     ("arrange", "排列"),
     ("align_shapes", "对齐"),
     ("merge_shapes_menu", "合并形状"),

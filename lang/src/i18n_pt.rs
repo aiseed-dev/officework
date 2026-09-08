@@ -2086,7 +2086,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("co_editing_mode", "Modo de coedição"),
     ("version_history", "Histórico de versões"),
     ("chat", "Conversa"),
-    ("zoom_100", "Ampliar para 100%"),
     ("arrange", "Organizar"),
     ("align_shapes", "Alinhar"),
     ("merge_shapes_menu", "Unir formas"),
