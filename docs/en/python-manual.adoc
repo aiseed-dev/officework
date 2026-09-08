@@ -542,7 +542,7 @@ Cells, colours and borders have always refused this way.
 
 == writer macros (d = python-docx)
 
-*Full manual: link:macro-manual.adoc[macro-manual.adoc]* — named fields (`fill` / `extract` / `fields`), templates (`render` / `tpl_fields`, docxtpl), selection macros for the spreadsheet, the sandbox, and having an AI write the script.
+*Full manual: link:macro-manual.adoc[macro-manual.adoc]* — named fields (`fill` / `extract` / `fields`), templates (`render` / `tpl_fields`, docxtpl), selection macros for the spreadsheet, pressing ribbon buttons from a macro (`press` / `ui_state`), the sandbox, and having an AI write the script.
 
 [source,python]
 ----
