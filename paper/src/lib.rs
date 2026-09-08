@@ -1325,7 +1325,13 @@ pub fn doc_to_pdf<W: Write>(
     theme: Option<&kumihan::theme::Theme>,
     out: W,
 ) -> Result<(), String> {
-    let (sheet, page, bytes) = doc_to_sheet(doc, theme)?;
+    let mut d = compose_doc(doc, theme);
+    let mut fonts = resolve_run_fonts(&mut d);
+    let laid = layout_doc(&d, &DocOpts::default())?;
+    let (sheet, page, bytes) = (laid.sheet, laid.page, laid.font);
+    // 既定の書体が1本目。run の書体はその後ろ(名前で引く)
+    fonts.insert(0, (laid.family.clone(), bytes.clone()));
+    let doc = &d;
     // **低い層の書き手を通します**(2026-08-27)。使った字だけ埋めるので、
     // 1枚物が 20MB から 10KB になります。ここが最初の差し替えです —
     // 画面(writer)の書き出しはまだ printpdf のままです
@@ -1340,9 +1346,9 @@ pub fn doc_to_pdf<W: Write>(
         shapes,
         ..Default::default()
     };
-    let lost = pdfw::sheet_to_pdf_with(
+    let lost = pdfw::sheet_to_pdf_fonts(
         &sheet,
-        &bytes,
+        &fonts,
         Paper::from_page(&page),
         &dress,
         |_| Vec::new(),
@@ -1387,6 +1393,17 @@ pub fn doc_to_sheet(
     doc: &kumihan::Document,
     theme: Option<&kumihan::theme::Theme>,
 ) -> Result<(kumihan::Sheet, kumihan::PageSetup, Vec<u8>), String> {
+    let mut d = compose_doc(doc, theme);
+    resolve_run_fonts(&mut d);
+    let l = layout_doc(&d, &DocOpts::default())?;
+    Ok((l.sheet, l.page, l.font))
+}
+
+/// **組みの前の支度。** テンプレートを合成し、数式を絵にします。
+/// 画面(writer)も紙(PDF / PNG)もここを通ります(2026-09-08 発注者
+/// 「画面と PDF はできるだけ共通ルーチンを使って」)。返りは表示用の写しで、
+/// 元の文書は触りません
+pub fn compose_doc(doc: &kumihan::Document, theme: Option<&kumihan::theme::Theme>) -> kumihan::Document {
     // **見た目はテンプレートが決めます。** 渡されなければ同梱の既定です
     let fallback;
     let t = match theme {
@@ -1401,7 +1418,6 @@ pub fn doc_to_sheet(
     // 間違えると註記の帯も見出しの背景も出ません(2026-08-27 に実物で
     // 気づいた — 試験は緑でした)
     let mut d = kumihan::theme::compose(doc, t);
-
     // **数式を絵にします。** docx の数式(OMML)は読むときに LaTeX へ直して
     // 置いてあるだけなので、ここで組まないと紙に何も出ません。
     // 中の日本語のために、文書の書体のファイルを渡します
@@ -1412,18 +1428,79 @@ pub fn doc_to_sheet(
             .and_then(|(f, _)| kumihan::font::load(f).ok());
         kumihan::suushiki::kumu_bunsho(&mut d, moji.as_deref());
     }
+    d
+}
 
-    // 書体は**文書が名乗った物**が先。次にテンプレートの物。
+/// **run が名乗った書体を、この機械にある書体の名前に解決します**(2026-09-08)。
+/// 置き替えの決め方は kumihan::font の1か所(`for_document`)で、画面はその
+/// 名前で描き、紙はその名前の書体を埋めます。前は画面が gpui に選ばせ、紙は
+/// 1本で出していて、同じ文書が別の書体になっていました。
+/// 返りは解決した書体(名前, 実体)の一覧(重複なし。文書の既定の書体は含まない)
+pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
+    use std::collections::BTreeMap;
+    let mut cache: BTreeMap<String, Option<(String, Vec<u8>)>> = BTreeMap::new();
+    let mut out: Vec<(String, Vec<u8>)> = Vec::new();
+    let mut fix = |r: &mut kumihan::Run| {
+        let Some(name) = r.font.clone() else { return };
+        let hit = cache.entry(name.clone()).or_insert_with(|| {
+            let (fam, _) = kumihan::font::for_document(Some(&name)).ok()?;
+            let bytes = kumihan::font::load(fam).ok()?;
+            Some((fam.name.clone(), bytes))
+        });
+        if let Some((resolved, bytes)) = hit {
+            if !out.iter().any(|(n, _)| n == resolved) {
+                out.push((resolved.clone(), bytes.clone()));
+            }
+            r.font = Some(resolved.clone());
+        }
+    };
+    for b in d.blocks.iter_mut() {
+        match b {
+            kumihan::Block::Para(p) => p.runs.iter_mut().for_each(&mut fix),
+            kumihan::Block::Table(t) => {
+                for row in t.rows.iter_mut() {
+                    for cell in row.iter_mut() {
+                        for p in cell.paragraphs.iter_mut() {
+                            p.runs.iter_mut().for_each(&mut fix);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+/// [`layout_doc`] の指定。画面の都合はここで渡し、別の関数は作らない
+#[derive(Debug, Clone, Default)]
+pub struct DocOpts {
+    /// 行長を紙からでなく、これにする(画面の「横幅 = 可変」)
+    pub measure_mm: Option<f32>,
+    /// 紙の設定を文書のものでなく、これにする(画面が持っている用紙)
+    pub page: Option<kumihan::PageSetup>,
+    /// 頁や段に折らない(画面の「区切り = なし」。1本の流れ)
+    pub endless: bool,
+}
+
+/// 組んだ結果
+pub struct LaidDoc {
+    pub sheet: kumihan::Sheet,
+    pub page: kumihan::PageSetup,
+    /// 測るのに使った書体の実体(画面の Metrics もこれから作る)
+    pub font: Vec<u8>,
+    pub family: String,
+}
+
+/// **文書を組む本体。** 書体を選び、行に組み、縦書き・段組みは紙の座標へ折る。
+/// 画面も PDF も PNG もここ1つ(writer の `Look::lay_once` と PDF の
+/// `doc_to_sheet` に同じ手順が2つあったのを寄せた。2026-09-08)
+pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts) -> Result<LaidDoc, String> {
+    // 書体は**文書が名乗った物**が先(合成でテンプレートの物が入っている)。
     // 文中の字も渡します — 選んだ書体がその字を持っていないと、
-    // PDF ではその字だけ消えます(2026-08-30)
+    // PDF ではその字だけ消え、画面では幅を測り違えます(2026-08-30・2026-09-08)。
     //
-    // **どちらも名乗らなければ本文の書体(明朝・セリフ)です**(2026-08-31)。
-    // 同梱の既定テンプレートは書体の名前を書きません(機械にある物から
-    // 選ぶため)ので、ここが空のまま `default_family` に落ちていました。
-    // それはゴシック・サンセリフなので、**同じ文書が docx では明朝、
-    // PDF ではゴシック**で出ていました。手引きはこれを「この版の限界」と
-    // 断り書きしていたところです。
-    let want = d.font.clone().or_else(|| t.font.clone()).or_else(|| {
+    // **名乗らなければ本文の書体(明朝・セリフ)です**(2026-08-31)。
+    let want = d.font.clone().or_else(|| {
         kumihan::font::default_generic(
             &kumihan::font::default_language(),
             kumihan::font::Generic::Serif,
@@ -1434,19 +1511,26 @@ pub fn doc_to_sheet(
     let bytes = kumihan::font::load(family)?;
     let m = kumihan::Metrics::new(&bytes)?;
 
-    let page = d.page.unwrap_or_default();
-    // **行送りはエンジンの1つを見ます**(画面と紙と PDF で同じ)。
-    // ここで計算し直すと、同じ文書が別の頁数に折れます
+    let page = opts.page.or(d.page).unwrap_or_default();
+    // **行送りはエンジンの1つを見ます**(画面と紙と PDF で同じ)
     let line_mm = kumihan::LINE_MM;
-    // 段組みも紙の設定から。writer の画面と同じ関数を通します
-    let measure = page.column_measure_mm();
     let y0 = page.top_mm + kumihan::BASE_UP_MM;
-    let sheet = kumihan::layout(
-        &d,
-        &m,
-        &kumihan::Frame { measure_mm: measure, line_height_mm: line_mm, y0_mm: y0 },
-    );
-    Ok((sheet, page, bytes))
+    let mut sheet;
+    if d.vertical {
+        // 縦書き: 行長 = 紙の縦の使い幅で組み、右からの列へ写す
+        let measure = (page.h_mm - page.top_mm - page.bottom_mm - 8.0).max(20.0);
+        sheet = kumihan::layout(d, &m, &kumihan::Frame { measure_mm: measure, line_height_mm: line_mm, y0_mm: y0 });
+        if !opts.endless {
+            kumihan::fold_vertical(&mut sheet, &page, y0, line_mm);
+        }
+    } else {
+        let measure = opts.measure_mm.unwrap_or_else(|| page.column_measure_mm());
+        sheet = kumihan::layout(d, &m, &kumihan::Frame { measure_mm: measure, line_height_mm: line_mm, y0_mm: y0 });
+        if !opts.endless {
+            kumihan::fold_columns(&mut sheet, &page, y0);
+        }
+    }
+    Ok(LaidDoc { sheet, page, font: bytes, family: family.name.clone() })
 }
 
 #[cfg(test)]

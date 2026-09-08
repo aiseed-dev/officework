@@ -1517,6 +1517,27 @@ pub fn sheet_to_pdf_with<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
     Ok(lost)
 }
 
+/// **書体を何本でも埋める形**(2026-09-08。文書も表と同じに)。`fonts` の
+/// 1本目が既定で、run が名乗った書体(セルの `font`)は名前で引いて、その
+/// 番号の書体で出します。名前が無ければ既定
+pub fn sheet_to_pdf_fonts<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>(
+    sheet: &kumihan::Sheet,
+    fonts: &[(String, Vec<u8>)],
+    paper: crate::Paper,
+    dress: &crate::PageDress,
+    page_decor: F,
+    out: W,
+) -> Result<Vec<String>, String> {
+    let names: Vec<&str> = fonts.iter().map(|(n, _)| n.as_str()).collect();
+    let font_of = |name: Option<&str>| -> u8 {
+        name.and_then(|n| names.iter().position(|x| *x == n)).map(|i| i.min(255) as u8).unwrap_or(0)
+    };
+    let (pages, lost) = sheet_leaves_fonts(sheet, paper, dress, page_decor, &font_of);
+    let datas: Vec<&[u8]> = fonts.iter().map(|(_, d)| d.as_slice()).collect();
+    write_pages_fonts(&pages, paper.width_mm, paper.height_mm, &datas, out)?;
+    Ok(lost)
+}
+
 /// **紙面だけを組む。** PDF は書きません。
 ///
 /// 絵にする道([`crate::e`])と回帰検査の入り口です。書く所と組む所を
@@ -1527,6 +1548,17 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
     paper: crate::Paper,
     dress: &crate::PageDress,
     page_decor: F,
+) -> (Vec<Leaf>, Vec<String>) {
+    sheet_leaves_fonts(sheet, paper, dress, page_decor, &|_| 0)
+}
+
+/// [`sheet_leaves_with`] の、セルの書体の名前から埋める書体の番号を引く形
+pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
+    sheet: &kumihan::Sheet,
+    paper: crate::Paper,
+    dress: &crate::PageDress,
+    page_decor: F,
+    font_of: &dyn Fn(Option<&str>) -> u8,
 ) -> (Vec<Leaf>, Vec<String>) {
     // **紙面の x は左余白からの距離**です。紙の左端からではありません。
     // 足さないと字が左端に寄ります(2026-08-27 に pdftotext -bbox で
@@ -1571,7 +1603,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                     strike: c.fmt.strike,
                     bold: c.fmt.bold,
                     highlight: c.fmt.highlight.clone(),
-                    font: 0,
+                    font: font_of(c.font.as_deref()),
                     rotation: 0.0,
                     italic: c.fmt.italic,
                     tc_pt: c.fmt.spacing_pt,
@@ -1605,7 +1637,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                         strike: c.fmt.strike,
                         bold: false,
                         highlight: c.fmt.highlight.clone(),
-                        font: 0,
+                        font: font_of(c.font.as_deref()),
                         rotation: 0.0,
                         italic: false,
                         tc_pt: 0.0,
@@ -1629,6 +1661,8 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                     // 空きが消えます。前の字の右端と次の字の左端が離れて
                     // いれば、そこで切ります
                     && (r.x_mm + r.w_mm - (mx + c.x_mm)).abs() < 0.05
+                    // 書体が変わる所でも切る(run ごとの書体を埋めるため)
+                    && r.font == font_of(c.font.as_deref())
             });
             match &mut run {
                 Some(r) if same => {
@@ -1650,7 +1684,7 @@ pub fn sheet_leaves_with<F: Fn(usize) -> Vec<kumihan::Line>>(
                         strike: c.fmt.strike,
                         bold: c.fmt.bold,
                         highlight: c.fmt.highlight.clone(),
-                        font: 0,
+                        font: font_of(c.font.as_deref()),
                         rotation: 0.0,
                         italic: c.fmt.italic,
                         tc_pt: c.fmt.spacing_pt,

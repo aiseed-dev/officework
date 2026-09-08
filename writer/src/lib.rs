@@ -21,7 +21,7 @@ pub(crate) use gpui::{
     WindowBounds, WindowOptions,
 };
 pub(crate) use gpui_platform::application;
-pub(crate) use kumihan::{layout, Align, Document, Editor, Frame, ListKind, Metrics, Sheet as Page};
+pub(crate) use kumihan::{Align, Document, Editor, ListKind, Metrics, Sheet as Page};
 pub(crate) use ui::{handler, ribbon, HasEditor};
 
 /// 画面の 1mm。**96dpi 固定**(機械の実 dpi は読まない — 発注者確定

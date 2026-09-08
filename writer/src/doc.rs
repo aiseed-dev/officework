@@ -34,46 +34,27 @@ pub(crate) struct Look {
 }
 
 impl Look {
-    /// 1回ぶんの組み(合成済みの写し → 紙面)。**組みの本体はここ1箇所**。
-    pub(crate) fn lay_once(&self, src: &Document, m: &Metrics) -> Page {
-        // 段組みなら1段の行長で組み、ページの物理座標へ折る。
-        // 折った後の座標は画面もクリックも PDF もそのまま使える
-        let y0 = self.pg.top_mm + 4.0;
-        let mut page;
-        if self.vertical {
-            // 縦書き: 行長 = 紙の縦の使い幅で組み、右からの列へ写す(K4)
-            let measure = (self.pg.h_mm - self.pg.top_mm - self.pg.bottom_mm - 8.0).max(20.0);
-            page = layout(
-                src,
-                m,
-                &Frame { measure_mm: measure, line_height_mm: LINE_MM, y0_mm: y0 },
-            );
-            kumihan::fold_vertical(&mut page, &self.pg, y0, LINE_MM);
-        } else {
-            // **組み方の3値**(2026-08-16 の決め、2026-08-17 に通した)。
-            // 横幅=可変 なら紙の幅ではなく窓の幅で組み、区切り=なし なら
-            // ページに折らない(1本の流れ = Web の姿)。
-            // 区切り=節(発表)は**合成の側**で見出し1 に改ページの印が
-            // 付いているので、ここでは何もしない — 折り手がそこで割る
-            let measure = if self.group.fluid {
-                // 画面の画素 → mm(紙の幅は使わない)。**余白は紙と同じだけ
-                // 左右に空ける** — 前は 16mm 決め打ちで、窓が広い機械では
-                // 本文と表が紙からはみ出していた(2026-08-18 実機で見つけた)
-                let margins = self.pg.left_mm + self.pg.right_mm;
-                ((self.view_w_px / crate::PX_PER_MM) - margins).max(40.0)
-            } else {
-                self.pg.column_measure_mm()
-            };
-            page = layout(
-                src,
-                m,
-                &Frame { measure_mm: measure, line_height_mm: LINE_MM, y0_mm: y0 },
-            );
-            if !self.group.endless() {
-                kumihan::fold_columns(&mut page, &self.pg, y0);
-            }
-        }
-        page
+    /// 1回ぶんの組み(合成済みの写し → 紙面)。**組みの本体は paper::layout_doc の
+    /// 1箇所**(2026-09-08 発注者「画面と PDF はできるだけ共通ルーチンを使って」)。
+    /// ここは画面の都合(横幅=可変・区切り=なし・画面が持つ用紙)を渡すだけ。
+    /// 縦書き・段組みの折りも向こうで、PDF と同じ座標になる
+    pub(crate) fn lay_once(&self, src: &Document) -> Result<paper::LaidDoc, String> {
+        // **組み方の3値**(2026-08-16 の決め、2026-08-17 に通した)。
+        // 横幅=可変 なら紙の幅ではなく窓の幅で組み、区切り=なし なら
+        // ページに折らない(1本の流れ = Web の姿)。
+        // 区切り=節(発表)は**合成の側**で見出し1 に改ページの印が
+        // 付いているので、ここでは何もしない — 折り手がそこで割る
+        let measure_mm = (self.group.fluid && !self.vertical).then(|| {
+            // 画面の画素 → mm(紙の幅は使わない)。**余白は紙と同じだけ
+            // 左右に空ける** — 前は 16mm 決め打ちで、窓が広い機械では
+            // 本文と表が紙からはみ出していた(2026-08-18 実機で見つけた)
+            let margins = self.pg.left_mm + self.pg.right_mm;
+            ((self.view_w_px / crate::PX_PER_MM) - margins).max(40.0)
+        });
+        paper::layout_doc(
+            src,
+            &paper::DocOpts { measure_mm, page: Some(self.pg), endless: self.group.endless() },
+        )
     }
 }
 
@@ -587,47 +568,45 @@ impl Writer {
     /// 組んだ直後だけ、色や書体が消えた紙面になっていました(2026-08-18 に
     /// 見本を実機で見て気づきました)。
     pub(crate) fn lay(&mut self) {
-        // 字の寸法は **Arc の写しの上**で持つ — 組みの本体(lay_once)は
-        // self を書くので、self を借りたままにできない
-        let fb = self.font_bytes.clone();
-        let m = Metrics::new(&fb).expect("フォント");
         // **画面は常に「本文×テンプレート」の合成**(2026-08-16)。
         // 合成は写しの上で行い、`self.doc`(意味の正本)は触らない —
-        // 保存されるのは意味だけ、が守られる。互換の文書は素通し
+        // 保存されるのは意味だけ、が守られる。
         //
-        // 発表(跨がない)のときだけ、写しに改ページの印を足しながら
-        // 何度か組み直すので、写しは**書ける形**で持つ
-        //
-        // **互換の文書(docx)も合成はします。ただし相手は同梱の既定の
-        // テンプレートです**(2026-09-08)。フォルダのテンプレートを docx に
-        // 着せないのは前からの決めのままで、合成が要るのは文書自身の既定
-        // (`w:docDefaults` の行間と段落後の空き)と `styles.xml` の見た目を
-        // 段落に当てるため。PDF と PNG は前からこの道で、画面だけが素通し
-        // だったので、同じ docx が画面では行が重なり紙では正しく出ていた
-        let mut composed = Some(if self.native {
-            kumihan::theme::compose(&self.doc, &self.tmpl)
+        // **合成・書体の解決・組みは paper の共通ルーチン**(2026-09-08 発注者
+        // 「画面と PDF はできるだけ共通ルーチンを使って」)。互換の文書(docx)は
+        // 同梱の既定のテンプレートで合成する(フォルダのテンプレートを docx に
+        // 着せないのは前からの決め)。PDF と PNG も同じ関数を通るので、画面だけが
+        // 素通しで行が重なる(2026-09-08 の朝の不具合)はもう起きない
+        let default_theme;
+        let theme: &kumihan::theme::Theme = if self.native {
+            &self.tmpl
         } else {
-            kumihan::theme::compose(&self.doc, &kumihan::theme::default_theme())
-        });
+            default_theme = kumihan::theme::default_theme();
+            &default_theme
+        };
+        let mut composed = paper::compose_doc(&self.doc, Some(theme));
         // **様式(セル)は写しの側で組みます**(2026-08-18)。本文は
         // `項目:: 値` のまま残るので、保存してもセルは本文に漏れません。
         // 対応の付かない項目と埋まらないセルは、ここで受け取って状態行に出します
-        self.form_notes = match composed.as_mut() {
-            Some(c) => kumihan::theme::apply_forms(c, &self.tmpl),
-            None => Vec::new(),
+        self.form_notes = if self.native {
+            kumihan::theme::apply_forms(&mut composed, &self.tmpl)
+        } else {
+            Vec::new()
         };
         // **表の式を計算して、見せる字にします**(2026-08-19)。
         // 写しの上だけで置き換えるので、保存されるのは `=SUM(…)` の式のまま
-        // です(式が正本)。式が1つも無ければ写しも作りません
-        if ops::table::has_formula(composed.as_ref().unwrap_or(&self.doc)) {
-            let c = composed.get_or_insert_with(|| self.doc.clone());
-            ops::table::fill_with(c, ui::calc_iter_setting());
+        // です(式が正本)
+        if ops::table::has_formula(&composed) {
+            ops::table::fill_with(&mut composed, ui::calc_iter_setting());
         }
+        // run の書体を、この機械にある名前に解決する(画面はその名前で描き、
+        // PDF はその名前の書体を埋める — 決め方は kumihan::font の1か所)
+        paper::resolve_run_fonts(&mut composed);
         let group = if self.native { self.tmpl.setting } else { Default::default() };
         // **ページの飾りは合成の写しから取ります**(2026-08-18)。
         // テンプレートに書いたヘッダー・透かし・縦書きが画面と紙に出ます。
         // `self.doc` は意味だけのまま(保存に漏れない)
-        let deco = composed.as_ref().unwrap_or(&self.doc);
+        let deco = &composed;
         // 段落の背景色と囲みは**合成後**の段落から控える(画面の帯の元)
         self.para_deco = {
             let mut v = Vec::new();
@@ -645,14 +624,29 @@ impl Writer {
         self.dress_page = (deco.watermark.clone(), deco.page_color.clone());
         let vertical = deco.vertical;
         let snapshot = Look { pg: self.pg, vertical, group, view_w_px: self.view_w_px };
-        self.page = snapshot.lay_once(composed.as_ref().unwrap_or(&self.doc), &m);
+        self.take_laid(snapshot.lay_once(&composed));
         self.refresh_hf();
         // **跨がない**(発表)。折った結果を見て、境をまたいだ段落があれば
         // 写しにその段落の改ページの印を足し、**折り手に折り直させる**。
         // refresh_hf の後でないと頁の境が分からない
         if group.keep {
-            if let Some(c) = composed.as_mut() {
-                self.keep_paragraphs_whole(c, &m, &snapshot);
+            self.keep_paragraphs_whole(&mut composed, &snapshot);
+        }
+    }
+
+    /// 組んだ結果を受け取る。**測った書体は画面の書体でもある**(キャレットや
+    /// 字の幅は同じ Metrics から出す)ので、変わっていれば持ち替える
+    fn take_laid(&mut self, laid: Result<paper::LaidDoc, String>) {
+        match laid {
+            Ok(l) => {
+                if *self.font_bytes != l.font {
+                    self.font_bytes = std::sync::Arc::new(l.font);
+                }
+                self.font_name = SharedString::from(l.family);
+                self.page = l.sheet;
+            }
+            Err(e) => {
+                self.status = e.into();
             }
         }
     }
@@ -666,7 +660,7 @@ impl Writer {
     ///
     /// **印を付けて組み直す**のがこの手の要。組んだ後の `breaks` に境だけ
     /// 足しても、行は巻物の位置のまま動かない(2026-08-17 の踏み跡)。
-    fn keep_paragraphs_whole(&mut self, c: &mut Document, m: &Metrics, snapshot: &Look) {
+    fn keep_paragraphs_whole(&mut self, c: &mut Document, snapshot: &Look) {
         let n = c.paragraphs().count();
         for _ in 0..n.min(200) {
             let Some(i) = self.straddling_para(c) else { return };
@@ -677,7 +671,7 @@ impl Writer {
                 return;
             }
             p.page_break_before = true;
-            self.page = snapshot.lay_once(c, m);
+            self.take_laid(snapshot.lay_once(c));
             self.refresh_hf();
         }
     }
@@ -2658,7 +2652,6 @@ impl Writer {
         // 形式の値なので日本語のままです
         let (th, used) = self.template_for("印刷");
         let used = used?;
-        let m = Metrics::new(&self.font_bytes).ok()?;
         let pg = th.page.unwrap_or(self.pg);
         let snapshot = Look {
             pg,
@@ -2666,7 +2659,10 @@ impl Writer {
             group: th.setting,
             view_w_px: self.view_w_px,
         };
-        Some((snapshot.lay_once(&kumihan::theme::compose(&self.doc, &th), &m), pg, used))
+        // 画面と同じ共通ルーチン(合成 → 書体の解決 → 組み)
+        let mut composed = paper::compose_doc(&self.doc, Some(&th));
+        paper::resolve_run_fonts(&mut composed);
+        Some((snapshot.lay_once(&composed).ok()?.sheet, pg, used))
     }
 
     /// 保存した先のフォルダに書式のファイルがあれば着る。返りは着た場所。
