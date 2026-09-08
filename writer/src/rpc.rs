@@ -47,6 +47,10 @@ pub(crate) fn start(view: gpui::Entity<Writer>, cx: &mut gpui::App) {
             view.update(cx, |w, cx| {
                 for req in reqs {
                     let resp = handle(w, &req.line);
+                    // 「押す」(press)はここで実行する(run_cmd は画面の文脈が要る)
+                    if let Some(id) = w.press.take() {
+                        if id == "escape" { w.cancel_now(cx) } else { w.run_cmd(&id, cx) }
+                    }
                     let _ = req.reply.send(resp);
                 }
                 cx.notify();
@@ -99,6 +103,47 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
     let Some(cmd) = o.str("cmd") else { return ops::err("cmd がありません") };
     match cmd.as_str() {
         "ping" => ok(&format!("\"app\":\"writer\",\"version\":{}", q(env!("CARGO_PKG_VERSION")))),
+        // **リボンのボタンを id で押す**(2026-09-09。calc と同じ)。実行は受け口の
+        // 処理の後で、画面の文脈を持つ所が行う
+        "press" => match o.str("id") {
+            Some(id) => {
+                // 文書の画面で押せるボタンだけ(灰色の物は画面と同じく断る)
+                let aru = face::ribbon::skeleton().iter()
+                    .flat_map(|t| t.cmds.iter())
+                    .any(|c| c.id == id && c.ready && c.apps.doc);
+                if !aru && id != "escape" {
+                    return ops::err(&format!("no such ready button on the document: {id}"));
+                }
+                w.press = Some(id);
+                ok("")
+            }
+            None => ops::err("id がありません"),
+        },
+        // いま開いている物(点検用)。状態行の字と、開いている小窓・パネル
+        "ui_state" => {
+            // 開いている物の名前(点検の道具が「押して何かが起きた」を見る)
+            let open: Vec<&str> = [
+                ("menu", w.menu_at.is_some()),
+                ("find", w.find_open),
+                ("hf_edit", w.hf_edit.is_some()),
+                ("nav", w.nav_open),
+                ("file_field", w.file_field.is_some()),
+                ("pw", w.pw_open),
+                ("tool", w.tool.is_some()),
+                ("shape_sel", w.shape_sel.is_some()),
+            ]
+            .iter()
+            .filter(|(_, on)| *on)
+            .map(|(k, _)| *k)
+            .collect();
+            let open: Vec<String> = open.iter().map(|k| q(k)).collect();
+            ok(&format!(
+                "\"status\":{},\"tab\":{},\"open\":[{}]",
+                q(&w.status.to_string()),
+                w.ribbon_tab(),
+                open.join(",")
+            ))
+        }
         "status" => {
             let path = w.path.as_ref().map(|p| p.display().to_string()).unwrap_or_default();
             ok(&format!(

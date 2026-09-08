@@ -277,7 +277,7 @@ impl Writer {
         self.run_cmd("instable-go", cx);
     }
 
-    pub(crate) fn run_cmd(&mut self, id: &str, cx: &mut Context<Self>) {
+    pub fn run_cmd(&mut self, id: &str, cx: &mut Context<Self>) {
         // 一覧(▾)は**他を押したら閉じ、押した操作はそのまま効く**
         // (発注者 2026-08-14)。自分のボタンだけは畳まない — トグル
         // (もう一度押すと閉じる)の動きを壊さないため

@@ -6,6 +6,17 @@
 
 == 進め方の作法(発注者と確立済み)
 
+* **2026-09-09 の中断点(雷で電源を落とした)。** (1) docx の Word 比較: 続き30(SEKKEI)。
+  ~/docx-corpus に 288 枚、Word の PDF は ~/Documents/officework-cmp/corpus/ に途中まで。
+  比較を回すときは `tools/corpus_round.py`(Word が閉じないと止まる形に直した)。
+  (2) リボンの点検: 受け口に `press`(ボタンを id で押す)を足し、`tools/ribbon_press.py`
+  で全ボタンを押す。文書の画面で1周した結果: 落ちる物なし、`fillparag`→`copystyle` の
+  配線切れ(表専用の id を文書で押した物。灰色の分は `press` でも断るよう直した)。
+  表の画面はまだ回していない。本体は `cargo build --release -p officework` を組み直してから
+  `target/release/officework <docx か xlsx>` で起動して `python3 tools/ribbon_press.py`。
+  (3) xlsx 側は Opus の作業者(docs/sekkei/excel-tsukiawase.ja.adoc を書く約束)、docx の
+  収集は Opus Mac(docs/corpus-docx.ja.adoc 第4便)。(4) Python エンジンは 5本目まで組んだ。
+  テキストボックスの行送りと半角の代替は 6本目が要る(`maturin develop --release`)
 * **開いた物は閉じる**(2026-09-09 発注者「開いたものは閉じるように」)。道具や検査で Word・Excel・officework に開かせたファイルや窓はその都度閉じる。閉じられない状態(Word が `close` を -1708 で断るなど)になったら、次を開かずに止まる(tools/ms_pdf.py の `word_close_ours` が数えて止める)。この日、閉じ損ねた Word の窓が 100 枚を超え、発注者が強制終了した
 * **設計は Fable、実装は Opus。基本は同時に走らせない**(2026-08-20 発注者「並行稼働させると衝突が多くて効率が落ちますね」)。作業木と index が共有なので、並んで走ると巻き込み事故になる — 実際にこの日、Fable の1行の clippy 直しのコミットが Opus の段8 の書きかけを巻き込み、`git reset --soft` で戻した。逆に Fable の SEKKEI の直しが Opus のコミットに乗って入った。**やむを得ず並ぶときは、コミットの直前に `git status` で相手の書きかけを確かめ、名指しの add だけ**
 * **`git add -A` を使わない。触ったファイルを名指しで add する。**同じ置き場で別の作業が同時に走っていることがあり、`-A` はその**作業途中を自分のコミットに巻き込む**(2026-08-09 に実際にやった。別の作業がマークダウンのセル描画と Python の作りを直している最中だった。`git reset --soft HEAD~1` → `git reset` で戻した)

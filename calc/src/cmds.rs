@@ -877,7 +877,7 @@ impl Calc {
         true
     }
 
-    pub(crate) fn run_cmd(&mut self, id: &str, cx: &mut Context<Self>) {
+    pub fn run_cmd(&mut self, id: &str, cx: &mut Context<Self>) {
         // 操作の記録(始めていれば)。**押す前に取る** — 掛けた後の姿を
         // 書くので、いまの状態から次の姿を組み立てる
         let rec_len = self.rec.as_ref().map(|v| v.len());

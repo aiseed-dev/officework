@@ -636,8 +636,20 @@ impl Office {
             }
         };
         match &self.tabs[peer] {
-            Pane::Doc(v) => v.update(cx, |w, _| writer::rpc::handle(w, line)),
-            Pane::Sheet(v) => v.update(cx, |c, _| ops::handle(c, line)),
+            Pane::Doc(v) => v.update(cx, |w, cx| {
+                let r = writer::rpc::handle(w, line);
+                if let Some(id) = w.press.take() {
+                    if id == "escape" { w.cancel_now(cx) } else { w.run_cmd(&id, cx) }
+                }
+                r
+            }),
+            Pane::Sheet(v) => v.update(cx, |c, cx| {
+                let r = ops::handle(c, line);
+                if let Some(id) = c.press.take() {
+                    if id == "escape" { c.cancel_now(cx) } else { c.run_cmd(&id, cx) }
+                }
+                r
+            }),
         }
     }
 

@@ -37,6 +37,11 @@ pub(crate) fn start(view: gpui::Entity<Calc>, cx: &mut gpui::App) {
             view.update(cx, |calc, cx| {
                 for req in reqs {
                     let resp = ops::handle(calc, &req.line);
+                    // 「押す」(press)は受け口では受けるだけで、ここで実行する
+                    // (run_cmd は画面の文脈 cx が要る)
+                    if let Some(id) = calc.press.take() {
+                        if id == "escape" { calc.cancel_now(cx) } else { calc.run_cmd(&id, cx) }
+                    }
                     let _ = req.reply.send(resp);
                 }
                 cx.notify();
@@ -288,7 +293,22 @@ impl Host for Calc {
 
     fn extra(&mut self, cmd: &str, _o: &Jobj) -> Option<String> {
         match cmd {
-            // --- 画面の点検用(tools/ribbon_sweep.py が使う)---
+            // --- 画面の点検用(tools/ribbon_sweep.py・ribbon_press.py が使う)---
+            // **リボンのボタンを id で押す**(2026-09-09)。Mac では画面のクリックを
+            // 外から送れない(補助アクセスが要る)ので、受け口から押す。実行は
+            // 受け口の処理の後(`start` の中)で、画面の文脈を持つ所が行う
+            "press" => {
+                let id = _o.str("id")?;
+                // 表の画面で押せるボタンだけ(灰色の物は画面と同じく断る)
+                let aru = face::ribbon::skeleton().iter()
+                    .flat_map(|t| t.cmds.iter())
+                    .any(|c| c.id == id && c.ready && c.apps.sheet);
+                if !aru && id != "escape" {
+                    return Some(ops::err(&format!("no such ready button on the sheet: {id}")));
+                }
+                self.press = Some(id);
+                Some("{\"ok\":true}".into())
+            }
             // いまのリボンの段と、押せるボタンの窓の中での場所。
             // **画素を見比べずに位置を検算する**ためにここから読む
             "ribbon" => {

@@ -62,6 +62,7 @@ impl Look {
 impl Writer {
     pub fn new(path: Option<PathBuf>, cx: &mut Context<Self>) -> Writer {
         let mut w = Writer {
+            press: None,
             focus: cx.focus_handle(),
             doc: Document::default(),
             docs: Vec::new(),

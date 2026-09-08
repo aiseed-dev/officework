@@ -550,6 +550,11 @@ impl Writer {
     }
 
     pub(crate) fn a_cancel(&mut self, _: &ui::Cancel, _: &mut Window, cx: &mut Context<Self>) {
+        self.cancel_now(cx);
+    }
+
+    /// Esc の中身。窓を要らないので、受け口の「押す」(`press` の id `escape`)からも呼べる
+    pub fn cancel_now(&mut self, cx: &mut Context<Self>) {
         // 会話の欄は Esc で焦点を返す(パネルは開いたまま — 本文へ戻るだけ)
         if self.ai_chat_focus {
             self.ai_chat_focus = false;

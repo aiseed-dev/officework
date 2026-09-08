@@ -3426,6 +3426,11 @@ impl Calc {
     }
 
     pub(crate) fn a_cancel(&mut self, _: &ui::Cancel, _: &mut Window, cx: &mut Context<Self>) {
+        self.cancel_now(cx);
+    }
+
+    /// Esc の中身。窓を要らないので、受け口の「押す」(`press` の id `escape`)からも呼べる
+    pub fn cancel_now(&mut self, cx: &mut Context<Self>) {
         // **開いているドロップダウンだけ閉じる**(小窓は残す。手順3)。
         // Esc で小窓ごと消えると、打ち込んだ設定まで捨てることになります
         if self.dv_menu_esc() {

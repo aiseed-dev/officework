@@ -317,6 +317,7 @@ impl Calc {
 
     pub fn new(path: Option<PathBuf>, cx: &mut Context<Self>) -> Calc {
         let mut c = Calc {
+            press: None,
             focus: cx.focus_handle(),
             book: Book::new(),
             active: 0,

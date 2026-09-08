@@ -420,6 +420,9 @@ pub struct Calc {
     input: Editor,
     path: Option<PathBuf>,
     status: SharedString,
+    /// 受け口の「押す」(press)で頼まれたリボンのボタンの id。受け口の処理の後で
+    /// 画面の文脈を持つ所が `run_cmd` する(2026-09-09、リボンの点検用)
+    pub press: Option<String>,
     notes: Vec<SharedString>,
     dirty: bool,
     /// 選んでいるリボンのタブ

@@ -60,29 +60,48 @@ def rpc(path, obj, timeout=20.0):
     return json.loads(buf.decode() or "{}")
 
 
-def ribbon_ids():
-    """face/src/ribbon.rs から押せるボタンの id を、並びのまま(重複なし)"""
-    src = open(os.path.join(ROOT, "face", "src", "ribbon.rs"), encoding="utf-8").read()
+def ribbon_ids(pane):
+    """その画面(doc / sheet)で押せるボタンの id(ui/gen_ribbon.py の READY から)"""
+    import ast
+    src = open(os.path.join(ROOT, "ui", "gen_ribbon.py"), encoding="utf-8").read()
+    m = re.search(r"READY = (\{.*?\n\})\n", src, re.S)
+    ready = ast.literal_eval(m.group(1))
+    key = "writer" if pane == "doc" else "calc"
     ids, seen = [], set()
-    for m in re.finditer(r'\b[ctm]\("([a-z0-9\-_]+)"', src):
-        if m.group(1) not in seen:
-            seen.add(m.group(1))
-            ids.append(m.group(1))
+    for v in ready[key].values():
+        if v not in seen:
+            seen.add(v)
+            ids.append(v)
     return ids
+
+
+# 押さない物: ファイルの小窓を開く・外のアプリを起動する・ファイルを作る・
+# モデルが要る・アプリを終える。押すと点検が止まるか、後片付けが要る
+SKIP = {
+    "open", "save", "saveas", "print", "pdf", "quit", "close", "new", "blankpage",
+    "insimage", "insertimage", "text-from-file", "py-new", "py-edit", "py-line",
+    "py-folder", "py-run", "py-list", "py-calc", "plug-macros", "plug-manage", "terminal",
+    "ai-where", "ai-summary", "ai-rewrite", "ai-polite", "ai-plain", "ai-translate",
+    "ai-furigana", "ai-continue", "ai-table", "ai-ask", "ai-macro", "coauth-mode",
+    "co-chat", "co-history", "prot-encrypt", "prot-sign", "macro-run", "rec-toggle",
+    "python", "from-file", "insert-file", "hyperlink", "darkmode",
+}
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--app", default="officework")
     ap.add_argument("--only", nargs="*")
-    ap.add_argument("--skip", nargs="*", default=["open", "save", "print", "pdf", "quit", "close", "new", "saveas"])
+    ap.add_argument("--skip", nargs="*", default=[])
     a = ap.parse_args()
     path = sock_path(a.app)
     if not os.path.exists(path):
         raise SystemExit(f"受け口が無い: {path}(アプリを起動してください)")
     pong = rpc(path, {"cmd": "ping"})
     print("ping:", pong)
-    ids = a.only or [i for i in ribbon_ids() if i not in a.skip]
+    pane = pong.get("showing", "sheet")
+    ids = a.only or [i for i in ribbon_ids(pane) if i not in SKIP and i not in a.skip]
+    print(f"pane={pane} buttons={len(ids)}")
     before = rpc(path, {"cmd": "ui_state"})
     print("state:", json.dumps(before, ensure_ascii=False)[:200])
     nothing, refused, dead, ok = [], [], [], []
