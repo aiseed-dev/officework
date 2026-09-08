@@ -50,6 +50,9 @@ def lines_of(page, ytol=2.0):
         # Excel の PDF は「月」を康熙部首の「⽉」(U+2F49)で書き、円記号を
         # バックスラッシュで書く(MS 明朝の JIS の癖)。字の比べでは同じと見る
         text = unicodedata.normalize("NFKC", "".join(c["text"] for c in cs))
+        # MS 明朝の全角ハイフン「－」は Word の PDF で U+2212(マイナス)に
+        # なる(書体の cmap の癖)。字の比べでは同じと見る
+        text = text.replace("\u2212", "-").replace("\u2010", "-").replace("\u2015", "-").replace("\u2014", "-")
         out.append({
             "top": r["top"],
             "x0": cs[0]["x0"],
@@ -60,27 +63,42 @@ def lines_of(page, ytol=2.0):
 
 
 def compare(a_path, b_path, tol=6.0):
+    """行を**字で対応付けてから**位置を比べます(2026-09-09)。
+
+    前は何行目どうしを並べて比べていたので、1行ずれると後ろが全部「字が違う」に
+    なり、違いの数が本当の違いを表しませんでした。difflib で同じ字の行を
+    突き合わせ、片方にしか無い行と、同じ行の y・x のずれを数えます。
+    ページごとに対応付け、ページ数が違うときは残りのページを「だけ」に数えます
+    """
+    import difflib
+
     diffs = []
     with pdfplumber.open(a_path) as a, pdfplumber.open(b_path) as b:
         if len(a.pages) != len(b.pages):
             diffs.append(f"ページ数: うち {len(a.pages)} / 本家 {len(b.pages)}")
-        for i, (pa, pb) in enumerate(zip(a.pages, b.pages), 1):
-            if abs(pa.width - pb.width) > 1 or abs(pa.height - pb.height) > 1:
-                diffs.append(f"p{i} 用紙: うち {pa.width:.0f}x{pa.height:.0f} / 本家 {pb.width:.0f}x{pb.height:.0f}")
-            la, lb = lines_of(pa), lines_of(pb)
+        for i in range(max(len(a.pages), len(b.pages))):
+            pa = a.pages[i] if i < len(a.pages) else None
+            pb = b.pages[i] if i < len(b.pages) else None
+            la = lines_of(pa) if pa else []
+            lb = lines_of(pb) if pb else []
+            if pa and pb and (abs(pa.width - pb.width) > 1 or abs(pa.height - pb.height) > 1):
+                diffs.append(f"p{i + 1} 用紙: うち {pa.width:.0f}x{pa.height:.0f} / 本家 {pb.width:.0f}x{pb.height:.0f}")
             if len(la) != len(lb):
-                diffs.append(f"p{i} 行数: うち {len(la)} / 本家 {len(lb)}")
-            for j, (x, y) in enumerate(zip(la, lb), 1):
-                if x["text"] != y["text"]:
-                    diffs.append(f"p{i} 行{j} 字: うち「{x['text'][:40]}」/ 本家「{y['text'][:40]}」")
+                diffs.append(f"p{i + 1} 行数: うち {len(la)} / 本家 {len(lb)}")
+            sm = difflib.SequenceMatcher(None, [x["text"] for x in la], [y["text"] for y in lb], autojunk=False)
+            for tag, a0, a1, b0, b1 in sm.get_opcodes():
+                if tag == "equal":
+                    for j in range(a1 - a0):
+                        x, y = la[a0 + j], lb[b0 + j]
+                        if abs(x["top"] - y["top"]) > tol:
+                            diffs.append(f"p{i + 1} 行{a0 + j + 1} y: うち {x['top']:.1f} / 本家 {y['top']:.1f} 「{x['text'][:20]}」")
+                        if abs(x["x0"] - y["x0"]) > tol:
+                            diffs.append(f"p{i + 1} 行{a0 + j + 1} x: うち {x['x0']:.1f} / 本家 {y['x0']:.1f} 「{x['text'][:20]}」")
                     continue
-                if abs(x["top"] - y["top"]) > tol:
-                    diffs.append(f"p{i} 行{j} y: うち {x['top']:.1f} / 本家 {y['top']:.1f} 「{x['text'][:20]}」")
-                if abs(x["x0"] - y["x0"]) > tol:
-                    diffs.append(f"p{i} 行{j} x: うち {x['x0']:.1f} / 本家 {y['x0']:.1f} 「{x['text'][:20]}」")
-            for j in range(min(len(la), len(lb)), max(len(la), len(lb))):
-                side, line = ("うち", la[j]) if j < len(la) else ("本家", lb[j])
-                diffs.append(f"p{i} 行{j + 1} {side}だけ: 「{line['text'][:40]}」 y={line['top']:.1f}")
+                for j in range(a0, a1):
+                    diffs.append(f"p{i + 1} 行{j + 1} うちだけ: 「{la[j]['text'][:40]}」 y={la[j]['top']:.1f}")
+                for j in range(b0, b1):
+                    diffs.append(f"p{i + 1} 行{j + 1} 本家だけ: 「{lb[j]['text'][:40]}」 y={lb[j]['top']:.1f}")
     return diffs
 
 

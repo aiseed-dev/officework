@@ -713,17 +713,21 @@ pub(super) fn grid_up(mm: f32, pitch_pt: f32) -> f32 {
 }
 
 /// `pitch` は行グリッドの行送り(pt。0 で無し)。`exact` の段落は
-/// グリッドを見ません(その高さで固定)。`atLeast` は下限を当てた後に切り上げます
+/// グリッドを見ません(その高さで固定)。`atLeast` は下限を当てた後に切り上げます。
+/// ただし **`atLeast` で値が 0 の段落は合わせません**(2026-09-09、Word の PDF で
+/// 3枚確かめた: 12pt の字が 18pt の升でなく自然な 15.6pt で送られていた。
+/// 値が 240 の atLeast は升に合っていた)
 pub(super) fn lh_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&str>, pitch: f32) -> f32 {
-    let kihon = match syotai_lh_mm(para, base, font) {
+    let sizen = match syotai_lh_mm(para, base, font) {
         Some(mm) => mm,
         None => frame.line_height_mm * head_scale(para.style),
     };
     let snap = pitch > 0.0 && !para.no_grid;
-    let kihon = if snap { grid_up(kihon, pitch) } else { kihon };
+    let kihon = if snap { grid_up(sizen, pitch) } else { sizen };
     match para.line_pt {
         // exact は書体を見ません。atLeast は下限です
         Some((pt, true)) => pt * PT_TO_MM,
+        Some((pt, false)) if pt <= 0.0 => sizen,
         Some((pt, false)) => {
             let v = kihon.max(pt * PT_TO_MM);
             if snap { grid_up(v, pitch) } else { v }

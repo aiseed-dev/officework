@@ -465,6 +465,9 @@ mod list_tests {
         // atLeast は下限を当ててから切り上げる
         p.line_pt = Some((20.0, false));
         assert!((lh_of(&p, &frame, 10.5, None, pitch) - hitotsu * 2.0).abs() < 0.01);
+        // atLeast で値が 0 なら、グリッドに合わせず自然な高さ(Word の PDF で確かめた)
+        p.line_pt = Some((0.0, false));
+        assert_eq!(lh_of(&p, &frame, 10.5, None, pitch), lh_of(&p, &frame, 10.5, None, 0.0), "atLeast 0 が升に合った");
     }
 
     /// **文書の頭の段落にも前の空きを置く**(2026-09-09、Word の PDF と
