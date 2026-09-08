@@ -1248,7 +1248,9 @@ pub(super) const CONVERT_UNITS: &[(&str, &str, f64, bool)] = &[
     // 質量(基準 g)
     ("g", "mass", 1.0, true),
     ("sg", "mass", 14593.9029372064, false),
-    ("lbm", "mass", 453.5923097488115, false),
+    // 1 lbm = 453.59237 g(国際ポンドの定義値)。Excel もこの値を返す
+    // (2026-09-08、Excel に打たせて 0.45359237 kg。前の値は 8 桁目から違っていた)
+    ("lbm", "mass", 453.59237, false),
     ("u", "mass", 1.6605402e-24, true),
     ("ozm", "mass", 28.349515207973, false),
     ("grain", "mass", 0.06479891, false),
@@ -2094,7 +2096,10 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
                     other => other.display(),
                 }
             };
-            let (col_sep, row_sep) = if strict { (",", ";") } else { (", ", "; ") };
+            // **簡潔な形は行の区切りも ", "。** Mac の Excel(16.112)に打たせると
+            // `{1,2;3,4}` は "1, 2, 3, 4" になった(2026-09-08、test/kansu_oracle.py --excel)。
+            // 前は "; " で行を区切っていた。厳密な形は "{1,2;3,4}" のまま
+            let (col_sep, row_sep) = if strict { (",", ";") } else { (", ", ", ") };
             let body = rows
                 .iter()
                 .map(|r| r.iter().map(&cell).collect::<Vec<_>>().join(col_sep))

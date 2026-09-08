@@ -1462,6 +1462,21 @@ impl PySheet {
         })
     }
 
+    /// **シートを隠してあるか**(xlsx の `state="hidden"`)。Python の
+    /// `ws.sheet_state` はこれを "visible" / "hidden" の字で見せます
+    #[getter]
+    fn hidden(&self) -> PyResult<bool> {
+        self.with(|s| Ok(s.hidden))
+    }
+
+    #[setter]
+    fn set_hidden(&self, value: bool) -> PyResult<()> {
+        self.with(|s| {
+            s.hidden = value;
+            Ok(())
+        })
+    }
+
     /// 列を隠す/出す(xlsx の hidden。**絞り込みと違って保存に残る**)
     fn col_hidden(&self, col: &str) -> PyResult<bool> {
         let c = col0(col)?;

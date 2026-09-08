@@ -531,9 +531,15 @@ class DataValidation:
         self.error = error
         self.errorStyle = errorStyle
         self.sqref = []
+        # `ws.add_data_validation(dv)` の後に `dv.add("D12")` と書く openpyxl の
+        # 順でも効くように、足された先のシートを覚えておく(2026-09-08、
+        # 受け入れ試験の申込書がこの順だった)
+        self._sheet = None
 
     def add(self, cell_range):
         self.sqref.append(str(cell_range))
+        if self._sheet is not None:
+            self._sheet._apply_validation(self, [str(cell_range)])
 
 
 class DefinedName:
@@ -759,6 +765,12 @@ def _serial_to_datetime(v, nf, epoch):
     """
     import datetime
 
+    # **経過時間の形式(`[h]:mm` など)は timedelta。** 1日を超える値を time に
+    # すると日の分が消えます(出勤簿の合計 38:30 が 14:30 になった。
+    # 2026-09-08、Excel と比べて見つけた)。openpyxl も timedelta を返します
+    low = (nf or "").lower()
+    if any(t in low for t in ("[h", "[m", "[s")):
+        return datetime.timedelta(days=float(v))
     body = _fmt_body(nf)
     hi = any(t in body for t in "hs") or "m" in body and ":" in body
     hizuke = any(t in body for t in "yd")
@@ -1129,6 +1141,7 @@ class Sheet(NoStrayAttributes):
 
     # 自分で持つ属性。ここに無い名前への代入は断ります(打ち間違い避け)
     _own = ("_s", "_book", "_append_row")
+    _engine_attr = "_s"
 
     # openpyxl の Worksheet が持つ定数(値は openpyxl 3.1.5 の実物)
     BREAK_NONE = 0
@@ -1311,6 +1324,12 @@ class Sheet(NoStrayAttributes):
             range_string = "{}:{}".format(
                 _coord(start_row, start_column), _coord(end_row, end_column)
             )
+        # **1マスだけの範囲は何もしません。** openpyxl は "D12:D12" を受けるので、
+        # 同じ口として通します(記入用紙を行ごとに結合する書き方で出てくる。
+        # 2026-09-08、受け入れ試験の申込書)。エンジンは1マスの結合を断ります
+        a, _, b = range_string.partition(":")
+        if b and a.upper() == b.upper():
+            return
         self._s.merge_cells(range_string)
 
     def unmerge_cells(self, range_string=None, start_row=None, start_column=None,
@@ -1576,6 +1595,29 @@ class Sheet(NoStrayAttributes):
         """画面の設定(目盛線・固定枠・拡大)。openpyxl は入れ物を返しますが、
         こちらは**シートが直に持ちます** — `ws.show_gridlines` などです。"""
         return _SheetView(self)
+
+    @property
+    def sheet_state(self):
+        """シートの見え方(openpyxl と同じ口)。"visible" か "hidden"。
+        エンジンは「隠す」の1段しか持たないので、"veryHidden" で隠しても
+        読み戻すと "hidden" になります(2026-09-08、受け入れ試験の棚卸表で)"""
+        return self.SHEETSTATE_HIDDEN if self._s.hidden else self.SHEETSTATE_VISIBLE
+
+    @sheet_state.setter
+    def sheet_state(self, value):
+        if value not in (self.SHEETSTATE_VISIBLE, self.SHEETSTATE_HIDDEN, self.SHEETSTATE_VERYHIDDEN):
+            raise ValueError(f"sheet_state は visible / hidden / veryHidden のどれかです: {value!r}")
+        self._s.hidden = value != self.SHEETSTATE_VISIBLE
+
+    @property
+    def paper_size(self):
+        """用紙の番号(openpyxl と同じ。9 = A4、8 = A3、11 = A5)。
+        `ws.PAPERSIZE_A4` は openpyxl と同じく文字の "9" なので、数に直して渡します"""
+        return self._s.paper_size
+
+    @paper_size.setter
+    def paper_size(self, value):
+        self._s.paper_size = None if value is None else int(value)
 
     def set_printer_settings(self, paper_size=None, orientation=None):
         """紙の設定(openpyxl と同じ口)。`ws.paper_size` などと同じ所です"""
@@ -1890,8 +1932,14 @@ class Sheet(NoStrayAttributes):
         sqref = getattr(dv, "sqref", None)
         ranges = ([str(r) for r in sqref] if isinstance(sqref, (list, tuple))
                   else str(sqref).split())
-        if not ranges:
+        if isinstance(dv, DataValidation):
+            # 後から `dv.add(範囲)` と書いても、このシートに効く(openpyxl の順)
+            dv._sheet = self
+        elif not ranges:
             raise ValueError("先に dv.add(範囲) で掛ける範囲を決めてください")
+        self._apply_validation(dv, ranges)
+
+    def _apply_validation(self, dv, ranges):
         moji = lambda name: str(getattr(dv, name, "") or "")  # noqa: E731
         for r in ranges:
             self._s.add_validation(
@@ -1991,6 +2039,7 @@ class Book(NoStrayAttributes):
 
     # 自分で持つ属性。ここに無い名前への代入は断ります
     _own = ("_b", "_path")
+    _engine_attr = "_b"
 
     def __init__(self, lang=None):
         """``lang`` は組むときの言語です(``"ja"``, ``"en"`` など)。渡さない

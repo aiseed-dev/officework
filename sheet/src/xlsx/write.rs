@@ -195,7 +195,28 @@ pub(super) fn sheet_rids(xml: &str) -> Vec<Option<String>> {
 /// **原本の的を持ち越すと `<sheet>` が別の部品を指す** — 消した跡や
 /// 並べ替えで、rId の順と部品の番号は離れているため。
 /// `rids` は原本の `<sheet>` の並び順の `r:id`
-pub(super) fn patch_book_rels(rels: &str, rids: &[Option<String>], n_sheets: usize) -> String {
+/// コメントを書いた人の一覧(xl/persons/person.xml)への関係。**部品を書くなら
+/// 必ず一緒に書く。** 部品だけあって関係が無いと、Excel はスレッド形式の
+/// コメントの人を引けず、壊れたファイルと見て開かない(2026-09-08、Mac の
+/// Excel で確かめた。出勤簿の xlsx が黙って開かなかった)
+/// Excel が xlsx の `<v>` に受けるエラーの字。他(エンジンの `#ERROR!` など)は
+/// `#VALUE!` に寄せる — Excel は知らない字を壊れたファイルと見る
+pub(super) fn excel_error(e: &str) -> &str {
+    const OK: &[&str] = &[
+        "#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#NUM!", "#N/A",
+        "#GETTING_DATA", "#SPILL!", "#CALC!", "#FIELD!", "#CONNECT!", "#BLOCKED!", "#UNKNOWN!",
+    ];
+    if OK.contains(&e) { e } else { "#VALUE!" }
+}
+
+pub(super) const PERSON_REL: &str = r#"<Relationship Id="rIdPS" Type="http://schemas.microsoft.com/office/2017/10/relationships/person" Target="persons/person.xml"/>"#;
+
+/// スレッド形式のコメントが1つでもあるか(= persons の部品を書くか)
+pub(super) fn has_persons(book: &Book) -> bool {
+    book.sheets.iter().any(|s| s.comments.values().any(|t| !t.entries.is_empty()))
+}
+
+pub(super) fn patch_book_rels(rels: &str, rids: &[Option<String>], n_sheets: usize, persons: bool) -> String {
     let mut inner = String::new();
     for (id, ty, target, ext) in parse_rels(rels) {
         let at = rids.iter().take(n_sheets).position(|r| r.as_deref() == Some(id.as_str()));
@@ -220,6 +241,9 @@ pub(super) fn patch_book_rels(rels: &str, rids: &[Option<String>], n_sheets: usi
     // (openpyxl / lxml)は文字列の表を見つけられず添字が外れる。
     // openpyxl が作った原本には**この関係が無い**ので、持ち越しだけでは
     // 落ちる(2026-08-13、テーブルの検分で踏んだ)
+    if persons && !inner.contains("/relationships/person\"") {
+        inner.push_str(PERSON_REL);
+    }
     if !inner.contains("/sharedStrings\"") {
         let mut id = "rIdSS".to_string();
         let mut n = 2;
@@ -950,7 +974,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 if name == "xl/_rels/workbook.xml.rels" {
                     // 本体は並び順の番号で書き出すので、的もそこへ向け直す
                     let s = String::from_utf8_lossy(&buf).to_string();
-                    let fixed = patch_book_rels(&s, &orig_rids, book.sheets.len());
+                    let fixed = patch_book_rels(&s, &orig_rids, book.sheets.len(), has_persons(book));
                     carried.push((name, fixed.into_bytes()));
                     continue;
                 }
@@ -1531,7 +1555,17 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         .collect();
     put("xl/_rels/workbook.xml.rels", &format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{wrels}<Relationship Id="rIdSS" Type="{RNS}/sharedStrings" Target="sharedStrings.xml"/><Relationship Id="rIdST" Type="{RNS}/styles" Target="styles.xml"/><Relationship Id="rIdTH" Type="{RNS}/theme" Target="theme/theme1.xml"/></Relationships>"#))?;
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{wrels}<Relationship Id="rIdSS" Type="{RNS}/sharedStrings" Target="sharedStrings.xml"/><Relationship Id="rIdST" Type="{RNS}/styles" Target="styles.xml"/>{}{}</Relationships>"#,
+        // **テーマの部品を書く時だけ、テーマへの関係を書く。** 部品が無いのに
+        // 関係だけがあると、Excel はファイルが壊れていると見て開かない
+        // (2026-09-08、Mac の Excel で確かめた。警告を止めた状態では黙って
+        // 開かず、修復の問い合わせを出す)。LibreOffice と openpyxl は
+        // 見過ごすので、Excel を相手にするまで気付かなかった
+        if book.theme.is_empty() { "" } else {
+            r#"<Relationship Id="rIdTH" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>"#
+        },
+        // 人の一覧の部品を書くなら、その関係も(上の PERSON_REL の説明)
+        if has_persons(book) { PERSON_REL } else { "" }))?;
     }
 
     // テーマの色。読んだものをそのまま返し、配色を変えたときは新しい組を書く
@@ -1784,7 +1818,11 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                     Value::Text(t) => ("s", idx[t].to_string()),
                     Value::Number(n) => ("", n.to_string()),
                     Value::Bool(b) => ("b", (*b as u8).to_string()),
-                    Value::Error(e) => ("e", e.clone()),
+                    // **Excel に無いエラーの字は書かない。** エンジンの `#ERROR!`
+                    // (式が読めない)を `<v>` に書くと、Excel は壊れたファイルと
+                    // 見て開かない(2026-09-08、棚卸表で見つけた)。Excel の
+                    // エラーの字だけ通し、他は #VALUE! にする
+                    Value::Error(e) => ("e", excel_error(e).to_string()),
                     Value::Empty => ("", String::new()),
                 };
                 if !ty.is_empty() { ce.push_attribute(("t", ty)); }

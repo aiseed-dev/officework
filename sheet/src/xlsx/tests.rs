@@ -3616,3 +3616,131 @@ fn protected_ranges_round_trip() {
     assert_eq!(b2.sheets[0].protect_ranges[0], ("入力欄".into(), "B2:D10".into()));
     assert_eq!(b2.sheets[0].protect_ranges[1].1, "F2:F10");
 }
+
+#[cfg(test)]
+mod package_tests {
+    //! **関係(rels)が指す部品は、必ず包みの中にある。** 部品が無いのに関係だけ
+    //! あると、Excel はファイルが壊れていると見て開きません(2026-09-08、
+    //! Mac の Excel で確かめた。テーマの関係が空のブックにも書かれていた)。
+    //! LibreOffice と openpyxl は見過ごすので、この試験が代わりに見ます。
+    use super::*;
+    use book::{CellFormat, Sheet};
+
+    /// 包みの中の全部の .rels を読み、Target が指す部品が包みにあるか数える
+    fn dangling_targets(buf: &[u8]) -> Vec<String> {
+        let mut z = zip::ZipArchive::new(Cursor::new(buf)).unwrap();
+        let names: Vec<String> = (0..z.len()).map(|i| z.by_index(i).unwrap().name().to_string()).collect();
+        let mut bad = Vec::new();
+        for name in names.iter().filter(|n| n.ends_with(".rels")) {
+            let mut xml = String::new();
+            z.by_name(name).unwrap().read_to_string(&mut xml).unwrap();
+            // "_rels/.rels" は根、"xl/_rels/workbook.xml.rels" は xl/ の中の関係
+            let base = name.strip_suffix(".rels").unwrap();
+            let dir = base.rsplit_once("/_rels/").map(|(d, _)| format!("{d}/")).unwrap_or_default();
+            for piece in xml.split("<Relationship ").skip(1) {
+                if piece.contains(r#"TargetMode="External""#) { continue }
+                let Some(t) = piece.split("Target=\"").nth(1).and_then(|s| s.split('"').next()) else { continue };
+                let mut parts: Vec<&str> = if let Some(abs) = t.strip_prefix('/') {
+                    abs.split('/').collect()
+                } else {
+                    dir.split('/').filter(|s| !s.is_empty()).chain(t.split('/')).collect()
+                };
+                let mut path: Vec<&str> = Vec::new();
+                for p in parts.drain(..) {
+                    if p == ".." { path.pop(); } else if p != "." { path.push(p); }
+                }
+                let full = path.join("/");
+                if !names.contains(&full) {
+                    bad.push(format!("{name} → {full}"));
+                }
+            }
+        }
+        bad
+    }
+
+    /// 包みの中の部品で、どの関係からも指されていない物(.rels と
+    /// [Content_Types].xml は除く)
+    fn unreferenced_parts(buf: &[u8]) -> Vec<String> {
+        let mut z = zip::ZipArchive::new(Cursor::new(buf)).unwrap();
+        let names: Vec<String> = (0..z.len()).map(|i| z.by_index(i).unwrap().name().to_string()).collect();
+        let mut targets: Vec<String> = Vec::new();
+        for name in names.iter().filter(|n| n.ends_with(".rels")) {
+            let mut xml = String::new();
+            z.by_name(name).unwrap().read_to_string(&mut xml).unwrap();
+            let base = name.strip_suffix(".rels").unwrap();
+            let dir = base.rsplit_once("/_rels/").map(|(d, _)| format!("{d}/")).unwrap_or_default();
+            for piece in xml.split("<Relationship ").skip(1) {
+                if piece.contains(r#"TargetMode="External""#) { continue }
+                let Some(t) = piece.split("Target=\"").nth(1).and_then(|s| s.split('"').next()) else { continue };
+                let parts: Vec<&str> = if let Some(abs) = t.strip_prefix('/') {
+                    abs.split('/').collect()
+                } else {
+                    dir.split('/').filter(|s| !s.is_empty()).chain(t.split('/')).collect()
+                };
+                let mut path: Vec<&str> = Vec::new();
+                for p in parts {
+                    if p == ".." { path.pop(); } else if p != "." { path.push(p); }
+                }
+                targets.push(path.join("/"));
+            }
+        }
+        names
+            .into_iter()
+            .filter(|n| !n.ends_with(".rels") && n != "[Content_Types].xml" && !targets.contains(n))
+            .collect()
+    }
+
+    /// **スレッド形式のコメントを書くと、人の一覧の部品にブックからの関係が付く。**
+    /// 部品だけあって関係が無いと、Excel は開かない(2026-09-08、出勤簿で)
+    #[test]
+    fn a_threaded_comment_ties_the_persons_part_to_the_workbook() {
+        let mut s = Sheet { name: "出勤簿".into(), ..Default::default() };
+        s.set(Pos { row: 0, col: 0 }, Cell {
+            formula: None, value: Value::Text("出勤".into()), fmt: CellFormat::default() });
+        s.comments.insert(Pos { row: 0, col: 0 }, book::CommentThread {
+            entries: vec![book::CommentEntry { who: "事務局".into(), when: String::new(), text: "確認".into() }],
+            ..Default::default()
+        });
+        let book = Book { sheets: vec![s], ..Default::default() };
+        let mut buf = Vec::new();
+        write(&book, Cursor::new(&mut buf)).unwrap();
+        let mut z = zip::ZipArchive::new(Cursor::new(&buf)).unwrap();
+        assert!(z.by_name("xl/persons/person.xml").is_ok(), "人の一覧の部品が無い");
+        let bad = unreferenced_parts(&buf);
+        assert!(bad.is_empty(), "どの関係からも指されていない部品: {bad:?}");
+        assert!(dangling_targets(&buf).is_empty());
+    }
+
+    #[test]
+    fn every_relationship_points_at_a_part_in_a_fresh_book() {
+        let mut s = Sheet { name: "帳票".into(), ..Default::default() };
+        s.set(Pos { row: 0, col: 0 }, Cell {
+            formula: None, value: Value::Text("品名".into()), fmt: CellFormat::default() });
+        let book = Book { sheets: vec![s], ..Default::default() };
+        assert!(book.theme.is_empty(), "新しいブックはテーマを持たない前提");
+        let mut buf = Vec::new();
+        write(&book, Cursor::new(&mut buf)).unwrap();
+        let bad = dangling_targets(&buf);
+        assert!(bad.is_empty(), "包みに無い部品を指す関係: {bad:?}");
+        let bad = unreferenced_parts(&buf);
+        assert!(bad.is_empty(), "どの関係からも指されていない部品: {bad:?}");
+    }
+
+    #[test]
+    fn every_relationship_points_at_a_part_when_a_theme_is_kept() {
+        let mut s = Sheet { name: "帳票".into(), ..Default::default() };
+        s.set(Pos { row: 0, col: 0 }, Cell {
+            formula: None, value: Value::Text("品名".into()), fmt: CellFormat::default() });
+        let book = Book {
+            sheets: vec![s],
+            theme: vec!["FFFFFF".into(), "000000".into()],
+            ..Default::default()
+        };
+        let mut buf = Vec::new();
+        write(&book, Cursor::new(&mut buf)).unwrap();
+        let bad = dangling_targets(&buf);
+        assert!(bad.is_empty(), "包みに無い部品を指す関係: {bad:?}");
+        let mut z = zip::ZipArchive::new(Cursor::new(&buf)).unwrap();
+        assert!(z.by_name("xl/theme/theme1.xml").is_ok(), "テーマがある時は部品も書く");
+    }
+}

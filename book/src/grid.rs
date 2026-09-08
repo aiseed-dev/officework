@@ -33,6 +33,13 @@ pub trait Grid {
         false
     }
 
+    /// 中身のある範囲(行数, 列数)。列全体の参照(`A:B`)をここまでで
+    /// 止めるのに使います(2026-09-08)。分からない表は「無限」と答えて
+    /// よい — その場合は Excel の最大まで回ります
+    fn extent(&self) -> (u32, u32) {
+        (super::calc::WHOLE_ROWS + 1, super::calc::WHOLE_COLS + 1)
+    }
+
     /// 隠した行が1つでもあるか。`SUBTOTAL` は、隠した行が無ければ
     /// 読み直しをしません(その確認だけに使います)。
     fn any_row_hidden(&self) -> bool {
@@ -62,6 +69,10 @@ pub trait Grid {
 }
 
 impl Grid for Sheet {
+    fn extent(&self) -> (u32, u32) {
+        Sheet::extent(self)
+    }
+
     fn name(&self) -> &str {
         &self.name
     }

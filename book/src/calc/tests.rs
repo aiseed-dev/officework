@@ -934,7 +934,7 @@ mod dan3_tests {
         };
         assert!((n("A1") - 0.083_974_967_429_051).abs() < 1e-12);
         assert!((n("A2") - 0.523_629_793_471_887).abs() < 1e-12);
-        assert_eq!(v(&s, "A3"), Value::Text("1, 2; 3, 4".into()));
+        assert_eq!(v(&s, "A3"), Value::Text("1, 2, 3, 4".into()));
         assert_eq!(v(&s, "A4"), Value::Text("{1,\"あ\";3,4}".into()));
         assert_eq!(v(&s, "A5"), Value::Text("\"あい\"".into()));
         assert_eq!(v(&s, "A6"), Value::Text("1.25".into()));
@@ -1520,6 +1520,24 @@ mod cross_sheet_tests {
             s.set(Pos::parse(a1).unwrap(), Cell::input(v));
         }
         s
+    }
+
+    /// **列全体・行全体の参照。** `A:B`・`前月!A:B`・`1:3`。他所の xlsx で
+    /// VLOOKUP の表に列全体を渡す形が並の頻度で出てくる(2026-09-08、Excel と
+    /// 並べて見つけた。棚卸表の `VLOOKUP(A7,前月!A:B,2,FALSE)` が #ERROR! だった)
+    #[test]
+    fn whole_columns_and_rows_are_ranges() {
+        assert_eq!(ans("=SUM(4月!B:B)"), Value::Number(300.0), "別シートの列全体");
+        assert_eq!(ans("=VLOOKUP(\"文\",4月!B:B,1,FALSE)"), Value::Text("文".into()));
+        assert_eq!(ans("=ROWS(4月!A:A)"), Value::Number(1_048_576.0), "列全体の行数は Excel と同じ");
+        let mut book = crate::Book::new();
+        // 行全体の式は、その行の外(5行目)に置く。同じ行に置くと自分を含んで循環になる
+        book.sheets[0] = sheet_named("表", &[("A1", "1"), ("A2", "2"), ("B2", "10"), ("C1", "=SUM(A:A)"), ("C5", "=SUM(2:2)"), ("C3", "=SUM($A:$B)")]);
+        recalc_all(&mut book);
+        let v = |a1: &str| book.sheets[0].value(Pos::parse(a1).unwrap());
+        assert_eq!(v("C1"), Value::Number(3.0), "自シートの列全体");
+        assert_eq!(v("C5"), Value::Number(12.0), "行全体");
+        assert_eq!(v("C3"), Value::Number(13.0), "$ つきの列全体");
     }
 
     /// 表紙 + 4月 + '5月 実績' の3枚。表紙の式を引数で差し替えて値を見る

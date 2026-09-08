@@ -349,11 +349,10 @@ def application_form():
 
     ws.merge_cells("B3:G3")
     c = ws.cell(3, 2)
-    c.rich_text = [("太枠の中だけ ", None), ("黒のボールペン", Font(bold=True)),
-                   (" でご記入ください(", None), ("必須", Font(color="FF0000")),
-                   (" は空欄にできません)", None)]
-    if not c.value:
-        c.value = "太枠の中だけ 黒のボールペン でご記入ください(必須 は空欄にできません)"
+    # セルの中の一部だけの飾り(rich text)は、Python の口に無い(手引きにも
+    # 無い。2026-09-08 に確かめた)。字だけを置く。参照の側(openpyxl)は
+    # CellRichText で書くので、開いて比べるときはここが違って見える
+    c.value = "太枠の中だけ 黒のボールペン でご記入ください(必須 は空欄にできません)"
     c.font = Font(size=9, color="808080")
 
     ws.merge_cells("B5:B12")
@@ -400,8 +399,9 @@ def application_form():
     c.alignment = Alignment(horizontal="right", vertical="top")
     ws.merge_cells("F16:F18")
     stamp = ws.cell(16, 6)
-    stamp.border = Border(top=THIN, bottom=THIN, left=THIN, right=THIN,
-                          diagonal=Side(style="hair"), diagonalDown=True)
+    # 斜めの罫線はエンジンに無い(docs/pysheet-gokan.ja.md の台帳)。四辺だけ引く。
+    # 参照の側(openpyxl)は斜線も引くので、開いて比べるときはここが違って見える
+    stamp.border = Border(top=THIN, bottom=THIN, left=THIN, right=THIN)
     ws.cell(16, 3).value = "斜線の枠は事務局が使います"
     ws.protect()
     a4(ws)

@@ -1806,6 +1806,7 @@ class Doc(NoStrayAttributes):
 
     # 自分で持つ属性。ここに無い名前への代入は断ります(打ち間違い避け)
     _own = ("_d", "_path")
+    _engine_attr = "_d"
 
     def __init__(self, path=None, lang=None):
         """`Doc()` は空の文書、`Doc("報告.docx")` は開きます。

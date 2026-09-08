@@ -11,6 +11,51 @@ use super::funcs::*;
 
 // ---------- 字句 ----------
 
+/// 列全体の参照(`A:B`)の終わりの行。Excel の最大行(1,048,576 行)の添字。
+/// 値を取り出すときは [`clamp_span`] で中身のある所まで縮めます
+pub const WHOLE_ROWS: u32 = 1_048_575;
+/// 行全体の参照(`1:3`)の終わりの列。Excel の最大列(16,384 列)の添字
+pub const WHOLE_COLS: u32 = 16_383;
+
+/// `A1:B3` のほか、**列全体 `A:B` と行全体 `1:3`** も (始点, 終点) にする。
+/// 前は列全体が字句で落ちて #ERROR! になり、`VLOOKUP(A7,前月!A:B,2,FALSE)` の
+/// ような他所の xlsx で並の頻度の式が計算できなかった(2026-09-08、Excel と
+/// 並べて見つけた。棚卸表)
+pub(super) fn span_pair(w1: &str, w2: &str) -> Option<(Pos, Pos)> {
+    if let (Some(a), Some(z)) = (Pos::parse(w1), Pos::parse(w2)) {
+        return Some((a, z));
+    }
+    let strip = |s: &str| s.trim().chars().filter(|c| *c != '$').collect::<String>();
+    let (s1, s2) = (strip(w1), strip(w2));
+    if s1.is_empty() || s2.is_empty() {
+        return None;
+    }
+    if s1.chars().all(|c| c.is_ascii_alphabetic()) && s2.chars().all(|c| c.is_ascii_alphabetic()) {
+        let a = Pos::parse(&format!("{s1}1"))?;
+        let z = Pos::parse(&format!("{s2}1"))?;
+        return Some((Pos::new(0, a.col.min(z.col)), Pos::new(WHOLE_ROWS, a.col.max(z.col))));
+    }
+    if let (Ok(r1), Ok(r2)) = (s1.parse::<u32>(), s2.parse::<u32>()) {
+        if r1 >= 1 && r2 >= 1 {
+            return Some((Pos::new(r1.min(r2) - 1, 0), Pos::new(r1.max(r2) - 1, WHOLE_COLS)));
+        }
+    }
+    None
+}
+
+/// 列全体・行全体の参照を、そのシートに中身のある所まで縮める。
+/// 縮めないと 100 万行を回ることになる。`extent` は (行数, 列数)
+pub fn clamp_span(extent: (u32, u32), a: Pos, z: Pos) -> (Pos, Pos) {
+    let mut z = z;
+    if z.row >= WHOLE_ROWS {
+        z.row = extent.0.saturating_sub(1).max(a.row);
+    }
+    if z.col >= WHOLE_COLS {
+        z.col = extent.1.saturating_sub(1).max(a.col);
+    }
+    (a, z)
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum Tok {
     Num(f64),
@@ -143,22 +188,22 @@ pub(super) fn lex_sheet_ref(
     if b.get(after) != Some(&'!') {
         return None;
     }
-    // `!` の後ろの A1 か A1:B3
-    let one = |from: usize| -> (Option<Pos>, usize) {
+    // `!` の後ろの A1 か A1:B3(列全体 A:B・行全体 1:3 も)
+    let one = |from: usize| -> (String, usize) {
         let mut j = from;
         while j < b.len() && (b[j].is_ascii_alphanumeric() || b[j] == '$') {
             j += 1;
         }
-        (Pos::parse(&b[from..j].iter().collect::<String>()), j)
+        (b[from..j].iter().collect::<String>(), j)
     };
-    let (a, j) = one(after + 1);
-    let a = a?;
+    let (w1, j) = one(after + 1);
     if b.get(j) == Some(&':') {
-        let (z, k) = one(j + 1);
-        if let Some(z) = z {
+        let (w2, k) = one(j + 1);
+        if let Some((a, z)) = span_pair(&w1, &w2) {
             return Some((name, name2, a, z, k));
         }
     }
+    let a = Pos::parse(&w1)?;
     Some((name, name2, a, a, j))
 }
 
@@ -202,6 +247,25 @@ pub(super) fn lex(src: &str) -> Result<Vec<Tok>, String> {
             i = k;
             continue;
         }
+        // 行全体の参照 `1:3`(数の前に見る。`1:3` は数と `:` ではない)
+        if c.is_ascii_digit() {
+            let mut j = i;
+            while j < b.len() && b[j].is_ascii_digit() {
+                j += 1;
+            }
+            if b.get(j) == Some(&':') && b.get(j + 1).is_some_and(|d| d.is_ascii_digit()) {
+                let mut k = j + 1;
+                while k < b.len() && b[k].is_ascii_digit() {
+                    k += 1;
+                }
+                let (w1, w2): (String, String) = (b[i..j].iter().collect(), b[j + 1..k].iter().collect());
+                if let Some((a, z)) = span_pair(&w1, &w2) {
+                    out.push(Tok::Range(a, z));
+                    i = k;
+                    continue;
+                }
+            }
+        }
         if c.is_ascii_digit() || (c == '.' && i + 1 < b.len() && b[i + 1].is_ascii_digit()) {
             let st = i;
             while i < b.len() && (b[i].is_ascii_digit() || b[i] == '.') {
@@ -243,7 +307,8 @@ pub(super) fn lex(src: &str) -> Result<Vec<Tok>, String> {
                     j += 1;
                 }
                 let word2: String = b[st2..j].iter().collect();
-                if let (Some(a), Some(z)) = (Pos::parse(&word), Pos::parse(&word2)) {
+                // A1:B3 のほか、列全体 A:B も
+                if let Some((a, z)) = span_pair(&word, &word2) {
                     out.push(Tok::Range(a, z));
                     i = j;
                     continue;
@@ -368,6 +433,7 @@ impl<'a> P<'a> {
     }
 
     pub(super) fn range_values(&self, a: Pos, z: Pos) -> Vec<Value> {
+        let (a, z) = clamp_span(self.sheet.extent(), a, z);
         let (r0, r1) = (a.row.min(z.row), a.row.max(z.row));
         let (c0, c1) = (a.col.min(z.col), a.col.max(z.col));
         let skip = self.skip_hidden.get();
@@ -591,6 +657,7 @@ impl<'a> P<'a> {
         match self.others.iter().find(|s| s.name() == name) {
             // 別のシートの値は**その時の値**を写す(位置では持ち帰れない)
             Some(other) => {
+                let (a, z) = clamp_span(other.extent(), a, z);
                 let cols = a.col.abs_diff(z.col) + 1;
                 let mut vals = Vec::new();
                 for r in a.row.min(z.row)..=a.row.max(z.row) {
@@ -689,6 +756,12 @@ impl<'a> P<'a> {
             return RefAns::Bad(Value::Error("#REF!".into()));
         };
         let (i, j) = (i.min(j), i.max(j));
+        // 列全体なら、串刺しの全シートの中で一番広い所まで
+        let widest = all[i..=j].iter().fold((0u32, 0u32), |(r, c), sh| {
+            let e = sh.extent();
+            (r.max(e.0), c.max(e.1))
+        });
+        let (a, z) = clamp_span(widest, a, z);
         let cols = a.col.abs_diff(z.col) + 1;
         let mut vals = Vec::new();
         for sh in &all[i..=j] {
@@ -791,6 +864,11 @@ impl<'a> P<'a> {
                 (p, p)
             }
             Some(Tok::Range(a, z)) => {
+                self.next();
+                (a, z)
+            }
+            // 別シートの参照も位置と大きさは同じに答える(ROWS(前月!A:A))
+            Some(Tok::Sheet(_, a, z)) => {
                 self.next();
                 (a, z)
             }
@@ -904,6 +982,7 @@ impl<'a> P<'a> {
                                 _ => return Err("引数の括弧が閉じていません".into()),
                             }
                             let mut out = String::new();
+                            let (a, z) = clamp_span(self.sheet.extent(), a, z);
                             for r in a.row.min(z.row)..=a.row.max(z.row) {
                                 for c in a.col.min(z.col)..=a.col.max(z.col) {
                                     let p = Pos::new(r, c);

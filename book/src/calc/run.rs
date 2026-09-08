@@ -83,12 +83,19 @@ pub fn eval_py_call(sheet: &Sheet, formula: &str) -> Option<(String, Vec<PyArg>)
 
 /// 式が参照しているセルを集める(依存関係)。トレース(参照元の可視化)にも使う。
 pub fn deps(formula: &str) -> Vec<Pos> {
+    deps_within(formula, (WHOLE_ROWS + 1, WHOLE_COLS + 1))
+}
+
+/// [`deps`] と同じで、列全体・行全体の参照は `extent`(行数, 列数)まで。
+/// 再計算の並びを決めるときは、シートに中身のある所までで足りる
+pub fn deps_within(formula: &str, extent: (u32, u32)) -> Vec<Pos> {
     let mut out = Vec::new();
     if let Ok(toks) = lex(formula) {
         for t in toks {
             match t {
                 Tok::Ref(p) => out.push(p),
                 Tok::Range(a, z) => {
+                    let (a, z) = clamp_span(extent, a, z);
                     for r in a.row.min(z.row)..=a.row.max(z.row) {
                         for c in a.col.min(z.col)..=a.col.max(z.col) {
                             out.push(Pos::new(r, c));
@@ -519,7 +526,7 @@ pub(super) fn recalc_pass_iter(
             return Value::Error("#CIRC!".into());
         }
         // 先に依存を解く
-        for d in deps(f) {
+        for d in deps_within(f, sheet.extent()) {
             if map.contains_key(&d) && !resolved.contains_key(&d) {
                 let v = eval_at(d, map, sheet, others, at, book_path, date1904, resolved, visiting, iter_mode);
                 resolved.insert(d, v);

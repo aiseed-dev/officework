@@ -1636,7 +1636,8 @@ impl Calc {
                     .sheet()
                     .get(self.cursor)
                     .and_then(|c| c.formula.as_ref())
-                    .map(|f| book::calc::deps(f))
+                    // 列全体の参照は、中身のある所まで(100 万行を光らせない)
+                    .map(|f| book::calc::deps_within(f, self.sheet().extent()))
                     .unwrap_or_default();
                 if deps.is_empty() {
                     self.status = ui::t!("cells_formula_references_no").into();
@@ -1656,6 +1657,7 @@ impl Calc {
             "trace-dep" => {
                 self.commit();
                 let me = self.cursor;
+                let ext = self.sheet().extent();
                 let dependents: Vec<Pos> = self
                     .sheet()
                     .cells
@@ -1663,7 +1665,7 @@ impl Calc {
                     .filter(|(_, c)| {
                         c.formula
                             .as_ref()
-                            .is_some_and(|f| book::calc::deps(f).contains(&me))
+                            .is_some_and(|f| book::calc::deps_within(f, ext).contains(&me))
                     })
                     .map(|(p, _)| *p)
                     .collect();

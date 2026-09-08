@@ -36,10 +36,10 @@ pub use funcs::civil_from_days;
 // 置き換わり、再輸出の使い手が消えた
 pub(crate) use funcs::{era_of, weekday0};
 pub use df::is_df_formula;
-pub use parse::cell_filename;
+pub use parse::{cell_filename, clamp_span, WHOLE_COLS, WHOLE_ROWS};
 pub use run::{
-    deps, eval_in, eval_once, eval_py_call, is_py_formula, is_udf_name, py_cell_stamp, recalc, recalc_all,
-    recalc_book, set_udf_names, PyArg,
+    deps, deps_within, eval_in, eval_once, eval_py_call, is_py_formula, is_udf_name, py_cell_stamp,
+    recalc, recalc_all, recalc_book, set_udf_names, PyArg,
 };
 
 #[cfg(test)]

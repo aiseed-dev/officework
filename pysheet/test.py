@@ -210,4 +210,30 @@ with tempfile.TemporaryDirectory() as t:
     check(m == [("B2:B10", "区分", "一覧から選びます", "stop", "区分が違います", "見積か注文にしてください")],
           f"読み直した入力規則の文言が違う: {m}")
 
+# **エンジンの側にある名前は、包みからも代入できる。** 読む側は前から
+# 通していたのに代入だけ断っていたので、`ws.paper_size = ws.PAPERSIZE_A4` が
+# 「項目はありません」で止まりました(2026-09-08、受け入れ試験の5枚で)
+b = office_sheet.Book()
+s = b[0]
+s.paper_size = s.PAPERSIZE_A4
+check(s.paper_size == 9, f"paper_size が入らない: {s.paper_size!r}")
+s.orientation = "landscape"
+check(s.orientation == "landscape", f"orientation が入らない: {s.orientation!r}")
+try:
+    s.paper_sizee = 9
+    check(False, "打ち間違いの代入が通った")
+except AttributeError as e:
+    check("paper_size" in str(e), f"近い名前を添えていない: {e}")
+
+# **入力規則は、シートに足した後で範囲を決めてもよい**(openpyxl の順。
+# `ws.add_data_validation(dv)` → `dv.add("D12")`。2026-09-08、受け入れ試験の申込書で)
+b = office_sheet.Book()
+s = b[0]
+dv = office_sheet.DataValidation(type="list", formula1='"はい,いいえ"')
+s.add_data_validation(dv)
+dv.add("D12")
+check(any(r == "D12" for r, *_ in s._s.validation_messages), "後から足した範囲に入力規則が付かない")
+# 1マスだけの結合は何もしない(openpyxl は "D12:D12" を受ける)
+s.merge_cells("D12:D12")
+
 print("OK")
