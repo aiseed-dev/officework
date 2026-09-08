@@ -121,3 +121,262 @@ PDF は 1頁目 A4 縦・2頁目 A4 横。
 * **Word 本体**の書き出し(まだ1枚も無い。名前空間の癖が3つ目として出る見込み)
 * **Google ドキュメント**の書き出し
 * 節が3つ以上で**途中だけ向きが違う**もの(いまは2節どまり)
+
+== 第4便(2026-09-09。官公庁の様式集から 243 枚)
+
+SEKKEI.adoc の続き30で、岐阜労働局と千葉労働局の様式集から 45 枚を集めて
+Word と比べ始めました(`~/docx-corpus/jsite.mhlw.go.jp/`)。ここでは出所を
+広げて、あと 243 枚を集めました。置き場は同じ `~/docx-corpus/<ホスト名>/` で、
+合わせて 288 枚です。PDF にするのと特徴を数えるのは 288 枚の全部に対して
+行い、特徴の表は新しい 243 枚だけで数えています。現物は repo に置きません。目録は
+`~/docx-corpus/目録.tsv` にあります(取った日、出所の URL、大きさ、sha256 の頭、
+置いた径路)。
+
+狙いは「世の中の日本語の Word 文書で officework の読み手がどこで落ちるか」を
+洗うことです。先に結果を書きます。**288 枚の全部が officework で PDF に
+なりました。**落ちた物は 0 枚、120 秒を超えた物は 0 枚です。50 頁を超えた物は
+1 枚で、第1便の岐阜労働局の様式(002320469、Word ではおよそ 10 頁)が 54 頁に
+なっています。同じ作りの 002320443 も Word のおよそ 8 頁が 44 頁です。
+どちらも行グリッドが `linesAndChars` で `linePitch` が 148 twip(7.4pt)という
+珍しい値です。落ちる物が無かったので、「Word が保存した頁の区切りと
+officework の頁数が合わない物」を候補として挙げました(下)。Word での確認は
+別の作業で回します。
+
+=== 出所と枚数
+
+一覧のページに docx へのリンクが多い所を選びました。個人情報の入った物
+(記入済みの書類)と、20MB を超える物は道具の側で飛ばしています。
+
+[cols="3,4,1,1"]
+|===
+|出所 |一覧のページ |枚数 |大きさの合計
+
+|横浜市(建築の手続きの書式) |www.city.yokohama.lg.jp/business/bunyabetsu/kenchiku/tetsuduki/kakunin/dl/dl.html |47 |1.6MB
+|厚労省本省(厚生労働科学研究費の様式、雇用調整助成金の様式) |www.mhlw.go.jp/stf/seisakunitsuite/bunya/hokabunya/kenkyujigyou/toriatukai10/download.html、同 koyouchouseijoseikin_20200410_forms.html |41 |2.2MB
+|裁判所(民事訴訟・その他の民事の書式) |www.courts.go.jp/saiban/syosiki/syosiki_minzi_sosyou/index.html、同 syosiki_sonota_minzi/index.html |32 |0.7MB
+|法務局(不動産登記の申請書の様式) |houmukyoku.moj.go.jp/homu/minji79 |29 |0.9MB
+|中小機構(中小企業省力化投資補助金の様式) |shoryokuka.smrj.go.jp/ippan/download/ |24 |1.0MB
+|北海道大学 教育学院(院生向けの様式) |www.edu.hokudai.ac.jp/graduate/download/ |17 |0.4MB
+|NEDO(委託業務の書式参考例) |www.nedo.go.jp/itaku-gyomu/manual_syoshiki_2025.html |14 |0.4MB
+|JST(産学共創プラットフォームの計画書・報告書) |www.jst.go.jp/opera/download.html |13 |3.0MB
+|名古屋市立大学(学生向けの申請用紙) |www.nagoya-cu.ac.jp/education/procedures/download/ |10 |0.2MB
+|福岡県(県土整備部発注工事の様式) |www.pref.fukuoka.lg.jp/contents/koujiyousiki.html |8 |0.1MB
+|大阪府(建設業許可の申請書類) |www.pref.osaka.lg.jp/o130200/kenshin/kenkyoka/r2youshikihoujin.html |3 |0.1MB
+|愛知県(建設業許可の様式) |www.pref.aichi.jp/site/kensetsugyo-fudosangyo/dl-page-kyoka.html |2 |0.1MB
+|北陸地方整備局(建設業許可の様式) |www.hrr.mlit.go.jp/kensei/sangyo/kensetsu/kyoka/kensetsu_youshiki.html |2 |0.1MB
+|JETRO(ロゴマークの申込書) |www.jetro.go.jp/services/tradefair/jjlogo.html |1 |26KB
+|===
+
+探したが docx が無かった所も書いておきます。国交省本省の建設業許可のページ、
+経産省本省の公募のページ、JSPS の科研費の様式のページ、総務省の統計調査票の
+ページ、NEDO の公募のページは、PDF か Excel か zip だけで、docx への直の
+リンクがありませんでした。建設業許可の docx は都道府県と地方整備局のページに
+ありました。JSPS と総務省はこの回には入っていません。
+
+=== 目録の作り方(取り直す)
+
+    cd ~/dev/officework
+    python3 tools/corpus_fetch.py <一覧のページの URL> …
+
+一覧のページを渡すと、ページの中の `.docx` へのリンクを全部落とし、
+`~/docx-corpus/目録.tsv` に1行ずつ足します。同じ名前の物は飛ばします。
+一覧のページを選ぶときは、先に curl で取って docx へのリンクの数を数えました。
+
+    curl -sL -A "Mozilla/5.0" <URL> | grep -oiE 'href="[^"]*\.docx' | sort -u | wc -l
+
+=== officework で PDF にした結果
+
+1枚ずつ次のコマンドで PDF にしました。出力は
+`~/Documents/officework-cmp/corpus2/<ホスト>__<名前>.ow.pdf` です。1枚ごとに
+120 秒で打ち切ります。
+
+    DYLD_FALLBACK_LIBRARY_PATH=$HOME/miniforge3/lib .venv/bin/python -c \
+      'import sys; from officework import doc; doc.Doc.open(sys.argv[1]).to_pdf(sys.argv[2])' \
+      元.docx 出力.pdf
+
+結果は同じ置き場の `結果.tsv` にあります(ファイル、結果、秒、頁数、最後の
+エラー行)。
+
+[cols="2,1"]
+|===
+|結果 |枚数
+
+|PDF になった |288(第1便の 45 枚を含む)
+|落ちた(例外で止まった) |0
+|120 秒を超えた |0
+|50 頁を超えた |1(第1便の jsite.mhlw.go.jp/002320469.docx、54 頁)
+|===
+
+1枚(jsite.mhlw.go.jp/002320469.docx)は最初の回で「PDF にできない:
+入れ替えできません: No such file or directory」で止まりましたが、これは
+3本の作業を並べて回したときに一時ファイルを取り合ったためで、単独で回すと
+35 秒で通りました。読み手の問題ではありません。
+
+時間がかかった物(10 秒超え)は 11 枚です(うち第1便の物が 2 枚)。どれも
+図形やテキストボックスの多い物です。
+
+[cols="4,1,1"]
+|===
+|ファイル |秒 |頁
+
+|jsite.mhlw.go.jp/002320469.docx |35 |54(Word はおよそ 10)
+|jsite.mhlw.go.jp/002320443.docx |20 |44(Word はおよそ 8)
+|www.jst.go.jp/keikaku1_ikusei_opera.docx |18 |34
+|www.mhlw.go.jp/000782394.docx |13 |5
+|www.jst.go.jp/keikaku1_H28_opera.docx |12 |34
+|www.jst.go.jp/keikaku1_ikusei-honkaku_opera-h30.docx |12 |31
+|www.mhlw.go.jp/000782340.docx |12 |5
+|www.mhlw.go.jp/000782302.docx |11 |6
+|www.mhlw.go.jp/001469330.docx |11 |17
+|www.mhlw.go.jp/000782406.docx |11 |6
+|www.mhlw.go.jp/000782274.docx |10 |5
+|===
+
+=== 頁数が Word と合わなさそうな物(Word で確かめる候補)
+
+Word で保存した docx は、頁の変わり目に `w:lastRenderedPageBreak` の印を
+持っています。243 枚のうち 143 枚にこの印がありました。「印の数 + 1」と
+「改頁(`w:br w:type="page"`、`w:pageBreakBefore`)の数 + 1」の大きい方を
+Word の頁数の推定にして、officework の頁数と比べました。この印は保存した
+ときの物なので、あとから直した文書では古いことがあります。あくまで候補です。
+
+143 枚のうち 94 枚は差が 1 以内で、officework の方が少なくなってはいません。
+残りの 49 枚を、差の大きい順に書きます。差が正なら officework の方が多い
+(どこかで行や表があふれている)、負なら officework の方が少ない(何かを
+落としているか、行の高さが足りない)と読めます。
+
+[cols="1,5,1,1,1,1"]
+|===
+|差 |ファイル |Word の推定 |officework |改頁の印 |節
+
+|+19 |www.jst.go.jp/keikaku1_ikusei_opera.docx |15 |34 |14 |13
+|+7 |www.jst.go.jp/keikaku1_H28_opera.docx |27 |34 |14 |13
+|+7 |www.jst.go.jp/keikaku1_oi-renkei_opera-r1.docx |23 |30 |11 |14
+|+6 |www.jst.go.jp/keikaku1_H29_opera.docx |22 |28 |11 |13
+|+6 |www.jst.go.jp/keikaku1_oi-renkei_opera-h30.docx |25 |31 |11 |14
+|+6 |www.mhlw.go.jp/001086206.docx |10 |16 |9 |1
+|+6 |www.mhlw.go.jp/001142988.docx |7 |13 |4 |1
+|+5 |www.mhlw.go.jp/001142983.docx |7 |12 |3 |1
+|+5 |www.mhlw.go.jp/001363895.docx |10 |15 |9 |1
+|+5 |www.mhlw.go.jp/001469330.docx |12 |17 |10 |1
+|+4 |www.jst.go.jp/keikaku1_ikusei-honkaku_opera-r1.docx |28 |32 |13 |13
+|+4 |www.mhlw.go.jp/000782302.docx |2 |6 |1 |1
+|+4 |www.mhlw.go.jp/000782406.docx |2 |6 |1 |1
+|+4 |www.mhlw.go.jp/001142984.docx |8 |12 |3 |1
+|+4 |www.mhlw.go.jp/001142992.docx |6 |10 |3 |1
+|+4 |www.mhlw.go.jp/001469323.docx |11 |15 |8 |1
+|+3 |houmukyoku.moj.go.jp/001469877.docx |4 |7 |3 |2
+|+3 |houmukyoku.moj.go.jp/001469879.docx |5 |8 |4 |2
+|-3 |www.city.yokohama.lg.jp/0733_20221012.docx |6 |3 |5 |1
+|+3 |www.city.yokohama.lg.jp/0845_20250330.docx |3 |6 |0 |1
+|+3 |www.jst.go.jp/keikaku4_opera.docx |6 |9 |3 |1
+|+3 |www.mhlw.go.jp/001086207.docx |7 |10 |6 |1
+|+3 |www.mhlw.go.jp/001142985.docx |6 |9 |2 |1
+|+3 |www.mhlw.go.jp/001142993.docx |7 |10 |3 |1
+|+3 |www.mhlw.go.jp/001142994.docx |5 |8 |3 |1
+|+3 |www.mhlw.go.jp/001469331.docx |7 |10 |6 |1
+|+2 |houmukyoku.moj.go.jp/001189447.docx |5 |7 |0 |4
+|+2 |houmukyoku.moj.go.jp/001365862.docx |3 |5 |0 |3
+|+2 |houmukyoku.moj.go.jp/001365913.docx |4 |6 |3 |2
+|+2 |houmukyoku.moj.go.jp/001469881.docx |5 |7 |2 |2
+|+2 |houmukyoku.moj.go.jp/001469889.docx |7 |9 |4 |2
+|+2 |houmukyoku.moj.go.jp/001469891.docx |6 |8 |2 |2
+|+2 |shoryokuka.smrj.go.jp/yoshiki_business_plan_part1_part2_ippan.docx |7 |9 |1 |2
+|+2 |www.city.yokohama.lg.jp/0582_20210225.docx |2 |4 |0 |1
+|+2 |www.city.yokohama.lg.jp/0659_20210915.docx |2 |4 |1 |1
+|-2 |www.city.yokohama.lg.jp/0791_20241007.docx |4 |2 |1 |1
+|+2 |www.jst.go.jp/keikaku1_ikusei-honkaku_opera-h30.docx |29 |31 |13 |13
+|+2 |www.mhlw.go.jp/000782274.docx |3 |5 |1 |1
+|+2 |www.mhlw.go.jp/000782354.docx |4 |6 |1 |1
+|+2 |www.mhlw.go.jp/000782394.docx |3 |5 |1 |1
+|+2 |www.mhlw.go.jp/001469325.docx |8 |10 |6 |1
+|-1 |houmukyoku.moj.go.jp/001440255.docx |5 |4 |0 |1
+|-1 |houmukyoku.moj.go.jp/001440262.docx |6 |5 |0 |1
+|-1 |www.city.yokohama.lg.jp/0789_20241007.docx |2 |1 |0 |1
+|-1 |www.hrr.mlit.go.jp/17_2ab.docx |6 |5 |0 |1
+|-1 |www.mhlw.go.jp/001142986.docx |6 |5 |4 |1
+|-1 |www.mhlw.go.jp/001143000.docx |4 |3 |2 |1
+|-1 |www.mhlw.go.jp/001689417.docx |6 |5 |4 |1
+|-1 |www.pref.osaka.lg.jp/yoshiki17-2_chuki.docx |7 |6 |1 |1
+|===
+
+多い方に外れる物は3つの群にまとまります。
+
+* JST の計画書(keikaku1_*)。節が 13〜14 個あり、表が 11 個、テキスト
+  ボックスが 36 個、図形が 20 個入っています。行グリッドは `linePitch` だけで
+  `type` がありません
+* 厚労省の研究費の様式(001142983〜001142994、001469323〜001469331、
+  001086206)。表の行の高さ(`w:trHeight`)と均等割り付け(`w:fitText`)が
+  多く、`w:cantSplit` の行もあります
+* 雇用調整助成金の様式(000782274〜000782406)。テキストボックスが 12 個、
+  余白が上 454 twip と狭く、行グリッドは `lines` の 361 twip です。Word では
+  2 頁の物が officework では 6 頁になっています
+
+少ない方に外れる物(横浜市の 0733、0789、0791、法務局の 001440255、
+001440262、北陸地整の 17_2ab など)は、何かを描いていないか、行の高さが
+足りていない見込みです。
+
+=== 中身の特徴(243 枚のうち出現した枚数)
+
+第1便の 45 枚と同じ形で数えました。document.xml、styles.xml、settings.xml と
+ヘッダー・フッターの部品を unzip して、要素の有無を枚数にしています。
+
+[cols="3,1,4"]
+|===
+|特徴 |枚数 |補足
+
+|行グリッド(`w:docGrid`) |203 |`lines` 94、`linesAndChars` 88、`type` なし 21。無い物 40
+|同 `linePitch` |— |360 が 62 枚、365 が 17、290 が 10、318 が 9、331・398・333 が 8 ずつ。以下 315、335、361、325、291 など。第1便より値がばらけています
+|`w:snapToGrid w:val="0"`(段落) |54 |スタイルに持つ物は 235
+|`w:characterSpacingControl` |243 |`compressPunctuation` 225、`doNotCompress` 18
+|テキストボックス(`txbxContent`) |91 |
+|図形(`w:drawing`) |128 |全部 `wp:anchor`(浮動)。`wp:inline` は 8
+|同(`w:pict`、VML の控え) |137 |`v:shape` 115、`v:imagedata` 17
+|`mc:AlternateContent` |128 |DrawingML の図形(`wps:wsp`)128、グループ(`wpg:wgp`)2
+|表(`w:tbl`) |182 |`gridSpan` 112、`vMerge` 106、`trHeight` 150(うち `exact` 43)、`tblpPr`(浮動の表)36、入れ子の表 9
+|同 `tblW` の型 |— |`auto` 141、`dxa` 101、`pct` 12。`tblLayout fixed` 113
+|均等割り付け(`w:fitText`) |106 |
+|`w:jc distribute` |26 |
+|記入欄(`w:sdt`) |8 |裁判所の書式(202605*)
+|`w:framePr` |1 |横浜市 0827
+|脚注・文末脚注の部品 |233 |中身のある物は 0 枚(全部 separator だけ)
+|ヘッダーの部品 |88 |字のある物 57
+|フッターの部品 |112 |字のある物 75。`titlePg` 31、`evenAndOddHeaders` 3
+|縦書き |32 |全部セルの中(`w:tcPr` の `textDirection tbRlV`)。節の縦書きは 0 枚
+|ルビ(`w:ruby`) |5 |横浜市 0827、北陸地整 17ab・17_2ab など
+|ルビの代わりの `EQ` フィールド |13 |法務局の様式。`eq \o\ad(\s\up11(ふひょう),附票)` の形で、字の上に小さい字を重ねています
+|段組み(`w:cols num≥2`) |3 |横浜市 0594、0606、0628
+|改頁(`w:br w:type="page"`) |121 |`pageBreakBefore` は 0
+|節が 2 つ以上 |43 |JST の計画書は 13〜14 個
+|`lineRule` |— |`exact` 156、`auto` 79、`atLeast` 67
+|文字間隔(`w:spacing w:val`) |150 |文字幅(`w:w`)60、`w:kern` 208、`w:position` 6
+|字下げ(`w:ind` の `hanging` / `firstLine`) |230 |`*Chars`(字数指定)214
+|タブ(`w:tabs`) |238 |
+|箇条書き・番号(`w:numPr`) |48 |numbering.xml は 131 枚にある
+|網掛け(`w:shd`) |78 |
+|下線(`w:u`) |151 |
+|`w:autoSpaceDE=0` / `DN=0` |106 |
+|`w:adjustRightInd=0` |97 |
+|`w:overflowPunct=0` |82 |
+|`w:topLinePunct` |2 |NEDO 800022856、800022857
+|`w:widowControl=0` |240 |
+|`w:keepNext` / `keepLines` |37 |
+|`w:mirrorMargins` |2 |NEDO
+|横向きの頁 |15 |
+|用紙 |— |A4 縦(11906×16838)215、A4 横 15、A4 に近い値(11907×16840 など)20、Letter 2
+|数式(`m:oMath`) |0 |
+|画像(`a:blip`) |15 |埋め込み(`w:object`)17
+|フィールド |82 |`PAGE` 77、`EQ` 13、`TOC` 8、`PAGEREF` 8。`fldSimple` は 0
+|コメント |5 |JST 報告書、厚労省 001086206・001086207 など
+|変更履歴(`w:ins` / `w:del`) |0 |
+|ブックマーク |125 |
+|ハイパーリンク |34 |
+|書体(`rFonts` の `eastAsia`) |— |ＭＳ 明朝 213、ＭＳ ゴシック 164、ＭＳ Ｐゴシック 58、游ゴシック Light 31、ＭＳ Ｐ明朝 23、游明朝 16、PMingLiU 13、Meiryo UI 11、游ゴシック 10、HGSｺﾞｼｯｸM 9、HG丸ｺﾞｼｯｸM-PRO 9
+|互換モード |— |15 が 204、11 が 20、14 が 13、12 が 4、無し 2
+|保存したアプリ(app.xml) |— |Microsoft Office Word 162、無し 81。AppVersion は 16.0 が 148、15.0 が 17、14.0 が 3、12.0 が 2
+|大きさ |— |50KB 未満 199、200KB 未満 35、1MB 未満 9
+|===
+
+第1便(45 枚)と比べて増えた物は、節の多い文書(JST)、`linePitch` が 360 以外の
+行グリッド、`EQ` フィールドのルビ、段組み、`w:framePr`、コメントです。
+数式と変更履歴と中身のある脚注は、この回にもありませんでした。
