@@ -272,7 +272,7 @@ Tools that work on a document in a shared folder:
 The screen shows the paper one sheet at a time. Where sections use different paper, each sheet comes out at its own size, folded the same way as printing (PDF).
 Only a document whose template says `区切り = "なし"` (the Web form) is shown as one continuous flow without sheets.
 
-Navigation (left panel), fit page / fit width / 100% / zoom in / out, *multiple pages (spread — screen only; printing stays one page per sheet)*, dark mode (surroundings darken, paper stays white), ruler (mm), toolbar / status bar / side panel toggles.
+Navigation (left panel), fit page / fit width / 100% / zoom in / out, *multiple pages (spread — screen only; printing stays one page per sheet)*, dark mode (surroundings darken, paper stays white), ruler (mm), toolbar / status bar / side panel toggles, *Terminal* (a shell pane at the bottom; the shell starts in the open document's folder, so Python and AI tools can be run there; press again to close).
 
 == The side panels and their icon rails
 

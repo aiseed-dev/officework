@@ -246,6 +246,7 @@ pub const WORDS: &[(&str, &str)] = &[
     ("Table Design", "표 디자인"),
     ("Table of contents", "목차"),
     ("Table of figures", "그림 목차"),
+    ("Terminal", "터미널"),
     ("Text Field", "텍스트 필드"),
     ("Text direction", "텍스트 방향"),
     ("Text from File", "파일에서 텍스트 삽입"),

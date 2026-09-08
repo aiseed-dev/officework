@@ -514,6 +514,10 @@ pub struct Calc {
     /// 宛先「Claude Code」の子プロセス(1つの会話 = 1つのプロセス。
     /// `agent::claude_code`)。他の宛先では None
     pub(crate) agent_cc: Option<agent::claude_code::ClaudeCode>,
+    /// **端末のパネル**(表示 > ターミナル。2026-09-08)
+    pub(crate) terminal: Option<gpui::Entity<term::TermView>>,
+    pub(crate) terminal_open: bool,
+    pub(crate) terminal_focus: bool,
     /// **受け口から起こしたマクロ**(`Host::macro_start`。パネルから起こした
     /// officework-mcp の run_macro が通る道)。番号で引き、終わった物の結果も
     /// 置いておく(同じ番号を何度聞かれても同じ答え)

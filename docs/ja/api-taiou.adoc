@@ -396,6 +396,7 @@ def 大文字にする(段落):
 |image:../../face/icons/darkmode.svg[,16,16] Dark mode |ダークモード |❌ |画面の色を切り替えます。文書は変わりません |— |—
 |image:../../face/icons/ui-bigger.svg[,16,16] Bigger UI text |画面の文字を大きく |❌ |画面の文字を大きくします。文書の文字は変わりません |— |—
 |image:../../face/icons/ui-smaller.svg[,16,16] Smaller UI text |画面の文字を小さく |❌ |画面の文字を小さくします。文書の文字は変わりません |— |—
+|image:../../face/icons/terminal.svg[,16,16] Terminal |link:commands/表示/ターミナル.adoc[ターミナル] | |— |— |—
 |image:../../face/icons/ruler.svg[,16,16] Rulers |ルーラー |❌ |ルーラーの出し入れです |— |—
 |image:../../face/icons/show-toolbar.svg[,16,16] Always Show Toolbar |ツールバーを常に表示する |❌ |ツールバーの出し入れです |— |—
 |image:../../face/icons/show-statusbar.svg[,16,16] Status Bar |ステータスバー |❌ |ステータスバーの出し入れです |— |—

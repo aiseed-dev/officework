@@ -240,6 +240,7 @@ pub const WORDS: &[(&str, &str)] = &[
     ("Table Design", "Struttura tabella"),
     ("Table of contents", "Sommario"),
     ("Table of figures", "Indice delle figure"),
+    ("Terminal", "Terminale"),
     ("Text Field", "‎Campo di testo‎"),
     ("Text direction", "Direzione del testo"),
     ("Text from File", "Testo da file"),

@@ -658,7 +658,11 @@ fn make_binding(key: &str, name: &str, context: &'static str) -> Option<KeyBindi
     macro_rules! table {
         ($($n:ident),+ $(,)?) => {
             $(if name.eq_ignore_ascii_case(stringify!($n)) {
-                return Some(KeyBinding::new(key, $n, Some(context)));
+                // **端末のパネル(key_context "term")の中では効かせない**
+                // (2026-09-08)。Enter や Ctrl+U がここで先に取られて、
+                // 端末に届かず本文に入っていた
+                let pred = format!("{context} && !term");
+                return Some(KeyBinding::new(key, $n, Some(&pred)));
             })+
         };
     }

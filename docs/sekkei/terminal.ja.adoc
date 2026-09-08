@@ -1,0 +1,38 @@
+= 端末のパネル
+:toc:
+
+2026-09-08 発注者「ターミナルをつくって。claude を使うのはそれでいい」。
+
+== 何を作ったか
+
+アプリ(writer / calc)の下に端末のパネルを置く。表示タブの「ターミナル」で
+出し入れする。中身は crate `term`(workspace の新しい member)。
+
+- 芯は https://crates.io/crates/alacritty_terminal[alacritty_terminal](端末の
+  エミュレータと pty。Apache-2.0)。Zed の terminal / terminal_view の蒸留で、
+  持つのは「シェルを起こして読み書きする」「キーをバイト列にする」「描く」の
+  3つだけ。検索・リンク・タスク・vi モード・選択は持たない(要る時に足す)
+- 描くのは gpui の canvas。行ごとに1本の字列に組み(色が変わる所で run を
+  切る)、地の色は四角で敷く。カーソルは半透明の四角
+- キーは gpui の `key_char`(普通の字)をそのまま送り、制御の字と矢印だけ
+  `keys::to_esc` で変える(Zed の mappings/keys.rs の蒸留)。DECCKM(アプリの
+  カーソルキー)を見る
+- 33ms ごとに知らせを引き取り、変わっていれば描き直す(受け口の 30ms と同じ作法)
+- シェルは開いているファイルのフォルダで始める。`TERM=xterm-256color`
+- 閉じてもシェルは殺さない。アプリを閉じる時に `Msg::Shutdown` を送る
+
+== 決めたこと
+
+- 書体は等幅で、日本語の幅が半角の2倍に揃う物: Linux は Noto Sans Mono CJK JP、
+  macOS は Menlo、Windows は Consolas。字の大きさは 13px × 画面の倍率
+- パネルの高さは 240px × 画面の倍率(固定。つかんで変えるのは後)
+- Claude Code や codex など、AI の道具は利用者がこのパネルで普通に動かす。
+  パネルの会話(エージェント)とは別の道で、どちらも使える
+
+== 残り
+
+- パネルの高さをつかんで変える
+- 字の選択とコピー(いまは貼り付けだけ)
+- IME の入力(日本語)。いまは `key_char` を送るだけなので、変換の途中の字は
+  端末に出ない
+- Windows は alacritty_terminal の conpty で動くはずだが、実機で未確認

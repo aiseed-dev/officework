@@ -2226,4 +2226,5 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_login_in_terminal", "Not signed in to Claude Code. Run `claude auth login` in a terminal"),
     ("claude_code_exited", "Claude Code exited (code {})"),
     ("sandbox_blocked_by_userns", "The sandbox that runs macros is blocked by this machine's settings (the unprivileged user namespace restriction in Ubuntu 24.04 and later). Installing the .deb fixes it: it places /etc/apparmor.d/officework"),
+    ("terminal_cannot_start", "Cannot start the terminal (no shell could be started)"),
 ];

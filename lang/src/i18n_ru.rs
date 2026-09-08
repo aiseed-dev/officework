@@ -2226,4 +2226,5 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_login_in_terminal", "Вы не вошли в Claude Code. Выполните `claude auth login` в терминале"),
     ("claude_code_exited", "Claude Code завершил работу (код {})"),
     ("sandbox_blocked_by_userns", "Песочница для макросов заблокирована настройками этой машины (ограничение пользовательских пространств имён в Ubuntu 24.04 и новее). Установка .deb исправит это: он добавляет /etc/apparmor.d/officework"),
+    ("terminal_cannot_start", "Не удалось запустить терминал (оболочка не запустилась)"),
 ];

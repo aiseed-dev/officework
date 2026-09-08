@@ -624,6 +624,7 @@ pub const WRITER: &[Tab] = &[
         t("darkmode", "Dark mode", "darkmode"),
         c("ui-bigger", "Bigger UI text", "ui-bigger"),
         c("ui-smaller", "Smaller UI text", "ui-smaller"),
+        t("terminal", "Terminal", "terminal"),
         c("ruler", "Rulers", "ruler"),
         t("show-toolbar", "Always Show Toolbar", "show-toolbar"),
         t("show-statusbar", "Status Bar", "show-statusbar"),
@@ -890,6 +891,7 @@ pub const CALC: &[Tab] = &[
         c("zoom100", "Zoom to 100%", "zoom100"),
         c("ui-bigger", "Bigger UI text", "ui-bigger"),
         c("ui-smaller", "Smaller UI text", "ui-smaller"),
+        t("terminal", "Terminal", "terminal"),
         t("darkmode", "Dark mode", "theme"),
         c("freeze", "Freeze panes", "freeze"),
         t("split", "Split", "split"),
@@ -1164,6 +1166,21 @@ mod tests {
                     assert!(!cmd.label.is_empty(), "{} に名無しのコマンド", t.name);
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod terminal_tests {
+    use super::*;
+    /// 端末のパネルのボタンは表示タブに、両方の画面で出る(2026-09-08)
+    #[test]
+    fn the_terminal_toggle_is_in_the_view_tab() {
+        for lang in ["en", "ja"] {
+            let view = tabs_for(lang).iter().find(|t| t.name == "View" || t.name == "表示").expect("表示タブ");
+            let c = view.cmds.iter().find(|c| c.id == "terminal").expect("terminal が無い");
+            assert!(c.apps.doc && c.apps.sheet && c.ready && c.kind == Kind::Toggle);
+            assert_eq!(target_of("terminal"), Target::View);
         }
     }
 }

@@ -245,6 +245,7 @@ pub const WORDS: &[(&str, &str)] = &[
     ("Table Design", "表のデザイン"),
     ("Table of contents", "目次"),
     ("Table of figures", "図表目次"),
+    ("Terminal", "ターミナル"),
     ("Text Field", "テキストフィールド"),
     ("Text direction", "テキスト方向"),
     ("Text from File", "ファイルからのテキスト"),

@@ -1481,6 +1481,8 @@ impl Writer {
                 };
             }
             "show-statusbar" => self.show_statusbar = !self.show_statusbar,
+            // 端末のパネル(2026-09-08 発注者「ターミナルをつくって」)
+            "terminal" => self.toggle_terminal(cx),
             "show-left" => {
                 self.nav_open = !self.nav_open;
                 if self.nav_open {
@@ -2006,5 +2008,28 @@ impl Writer {
             });
         })
         .detach();
+    }
+}
+
+impl Writer {
+    /// **端末のパネルを出す・閉じる。** 最初に開く時にシェルを起こす(開いている
+    /// 文書のフォルダで)。閉じてもシェルは生かしておく
+    pub(crate) fn toggle_terminal(&mut self, cx: &mut Context<Self>) {
+        if self.terminal_open {
+            self.terminal_open = false;
+            return;
+        }
+        if self.terminal.is_none() {
+            let cwd = self.path.as_ref().and_then(|p| p.parent().map(|d| d.to_path_buf()));
+            let us = self.ui_scale;
+            let t = cx.new(|cx| term::TermView::new(cwd, us, cx));
+            if let Some(e) = t.read(cx).error() {
+                self.status = format!("{} — {e}", ui::t!("terminal_cannot_start")).into();
+                return;
+            }
+            self.terminal = Some(t);
+        }
+        self.terminal_open = true;
+        self.terminal_focus = true;
     }
 }

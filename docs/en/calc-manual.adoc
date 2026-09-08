@@ -32,7 +32,7 @@ The button band is a single row of icon buttons like the original (major buttons
 Tab order matches Euro-Office: *File / Home / Insert / Draw / Layout / Formulas / Data / Pivot Table / Table Design / Collaboration / Protection / View / Plugins* (all the original tabs). *Interface theme* (View tab) darkens the surroundings — *cells stay white* (screen and paper must agree). *Bottom edge*: the status bar — sheet tabs, results/warnings/errors, and when a range is selected its *sum, average, and count* update live (like Excel's status bar).
 Protected sheets get a 🔒 on their tab.
 
-*View tab* (matching the original desktop app): zoom (50–200%; cells and text scale together — paper is unaffected), formula bar on/off, gridlines, headings (row numbers and column letters; hide them for a clean table look), show zeros (hides zero values — *display only; the value stays 0* and formulas still see it).
+*View tab* (matching the original desktop app): zoom (50–200%; cells and text scale together — paper is unaffected), formula bar on/off, gridlines, headings (row numbers and column letters; hide them for a clean table look), show zeros (hides zero values — *display only; the value stays 0* and formulas still see it), *Terminal* (a shell pane at the bottom, started in the open workbook's folder; run Python — `from officework import calc as xw` — or AI tools there; press again to close).
 Freeze panes, sheet visibility (unhide/hide sheets), and the interface theme also live here.
 
 == Basics

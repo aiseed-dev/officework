@@ -246,6 +246,7 @@ pub const WORDS: &[(&str, &str)] = &[
     ("Table Design", "表格設計"),
     ("Table of contents", "目錄"),
     ("Table of figures", "圖表目錄"),
+    ("Terminal", "終端機"),
     ("Text Field", "文字段落"),
     ("Text direction", "文字方向"),
     ("Text from File", "從檔案匯入文字"),

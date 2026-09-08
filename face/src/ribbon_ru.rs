@@ -244,6 +244,7 @@ pub const WORDS: &[(&str, &str)] = &[
     ("Table Design", "Дизайн таблицы"),
     ("Table of contents", "Оглавление"),
     ("Table of figures", "Список иллюстраций"),
+    ("Terminal", "Терминал"),
     ("Text Field", "Текстовое поле"),
     ("Text direction", "Направление текста"),
     ("Text from File", "Текст из файла"),

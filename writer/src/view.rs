@@ -28,6 +28,14 @@ impl Render for Writer {
         ));
         // **点検の道具へ、ボタンの場所を渡す。** 環境変数が無ければ何もしない
         self.dump_ui();
+        // 端末を開いた直後は、打鍵が端末へ行くように焦点を移す(1回だけ)
+        if self.terminal_focus {
+            self.terminal_focus = false;
+            if let Some(t) = &self.terminal {
+                let h = t.read(cx).focus_handle().clone();
+                window.focus(&h, cx);
+            }
+        }
         let marked = self.ed.marked_range();
         let (cx_mm, cy_mm, caret_pt) = self.caret_xy();
 
@@ -273,7 +281,7 @@ impl Render for Writer {
             &[
                 ("nav", Some("ナビゲーション")), ("‖", None),
                 ("fit-page", Some("ページに合わせる")),
-                ("zoom100", Some("zoom_100")), ("zoom-in", None),
+                ("zoom100", Some("100%")), ("zoom-in", None),
                 ("‖", None), ("darkmode", None),
                 // **表にしかありませんでした**(2026-08-21 発注者)
                 ("ui-bigger", None), ("ui-smaller", None),
@@ -287,6 +295,8 @@ impl Render for Writer {
                 ("zoom-out", None),
                 ("‖", None), ("‖", None),
                 ("‖", None), ("show-statusbar", None), ("show-right", None),
+                // 端末のパネル(2026-09-08)
+                ("terminal", Some("ターミナル")),
             ],
         ];
         // **マクロの段**(2026-08-16 に「プラグイン」から改名)。
@@ -1775,6 +1785,11 @@ impl Render for Writer {
                     .children(menu))
                 .children(rp_panel)
             })
+            // 端末のパネル(表示 > ターミナル)。本文の下、文書のタブの上
+            .children(self.terminal_open.then(|| {
+                div().flex_none().h(px(us * 240.0)).border_t_1().border_color(th_cmd_border)
+                    .children(self.terminal.clone())
+            }))
             // **文書のタブはステータスバーの上**(calc のシートのタブと同じ位置)
             .children(docs_bar)
             .children(self.show_statusbar.then_some(statusbar))

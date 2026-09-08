@@ -116,6 +116,22 @@ mod menu_run_tests {
     ///
     /// 前は bool が4つあり、開くたびに残り3つを倒す行が要りました。
     /// 1つにしたので「倒し忘れ」が書けません。それを見ます。
+    /// **表示 > ターミナル** で端末のパネルが出て、もう一度で閉じる。閉じても
+    /// シェルは残る(2026-09-08)
+    #[cfg(unix)]
+    #[gpui::test]
+    fn the_terminal_pane_toggles_and_keeps_its_shell(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            assert!(!this.terminal_open && this.terminal.is_none());
+            this.run_cmd("terminal", cx);
+            assert!(this.terminal_open, "開かない: {}", this.status);
+            assert!(this.terminal.is_some(), "シェルが起きない: {}", this.status);
+            this.run_cmd("terminal", cx);
+            assert!(!this.terminal_open && this.terminal.is_some(), "閉じてもシェルは残す");
+        });
+    }
+
     /// **Claude Code が直したファイルは、読み直して1手で入る**(2026-09-08)。
     /// 道具は渡さず、作業フォルダの .adoc を Claude Code 自身の Edit で直させる形
     #[gpui::test]

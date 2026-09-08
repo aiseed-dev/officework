@@ -2226,4 +2226,5 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_login_in_terminal", "Chưa đăng nhập Claude Code. Hãy chạy `claude auth login` trong terminal"),
     ("claude_code_exited", "Claude Code đã thoát (mã {})"),
     ("sandbox_blocked_by_userns", "Hộp cát chạy macro bị chặn bởi cài đặt của máy này (hạn chế user namespace từ Ubuntu 24.04). Cài bằng .deb sẽ khắc phục: nó đặt /etc/apparmor.d/officework"),
+    ("terminal_cannot_start", "Không thể khởi động terminal (không chạy được shell)"),
 ];

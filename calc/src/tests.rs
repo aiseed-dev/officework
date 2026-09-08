@@ -1117,6 +1117,19 @@ mod pivot_tests {
         });
     }
 
+    /// **表示 > ターミナル** で端末のパネルが出て、もう一度で閉じる(2026-09-08)
+    #[cfg(unix)]
+    #[gpui::test]
+    fn the_terminal_pane_toggles_and_keeps_its_shell(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.run_cmd("terminal", cx);
+            assert!(this.terminal_open && this.terminal.is_some(), "開かない: {}", this.status);
+            this.run_cmd("terminal", cx);
+            assert!(!this.terminal_open && this.terminal.is_some());
+        });
+    }
+
     /// 宛先「Claude Code」に渡す文は、走らせてよい Python の径路と、動いている
     /// calc につながる書き方を持つ(道具は渡さない。2026-09-08)
     #[test]

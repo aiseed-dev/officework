@@ -482,6 +482,12 @@ pub struct Writer {
     /// **Claude Code に直させる文書のファイル**(作業フォルダの `<名前>.adoc`)と、
     /// 本体が最後に書いた・入れた字。字が違えば Claude Code が直した印
     pub(crate) agent_file: Option<(std::path::PathBuf, String)>,
+    /// **端末のパネル**(表示 > ターミナル。2026-09-08)。開いた時に起こし、
+    /// 閉じても殺さない(もう一度開くと続きから)
+    pub(crate) terminal: Option<gpui::Entity<term::TermView>>,
+    pub(crate) terminal_open: bool,
+    /// 開いた直後の1回だけ、端末に焦点を移す
+    pub(crate) terminal_focus: bool,
     /// **受け口から起こしたマクロ**(`macro_start` の動詞。パネルから起こした
     /// officework-mcp の run_macro が通る道)。番号で引き、終わった物の結果も置く
     pub(crate) macro_jobs: std::collections::HashMap<u64, agentloop::MacroJob>,

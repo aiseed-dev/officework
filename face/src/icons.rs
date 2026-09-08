@@ -149,6 +149,7 @@ pub static OWN_ICONS: &[(&str, &[u8])] = &[
     ("ai-continue", include_bytes!("../icons/ai-continue.svg")),
     ("ai-table", include_bytes!("../icons/ai-table.svg")),
     ("ai-ask", include_bytes!("../icons/ai-ask.svg")),
+    ("terminal", include_bytes!("../icons/terminal.svg")),
     ("ai-macro", include_bytes!("../icons/ai-macro.svg")),
     ("nav", include_bytes!("../icons/nav.svg")),
     ("fit-page", include_bytes!("../icons/fit-page.svg")),

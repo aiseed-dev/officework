@@ -1,0 +1,10 @@
+[package]
+name = "term"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "端末のパネル(alacritty_terminal の芯を gpui で描く。Zed の terminal の蒸留)"
+
+[dependencies]
+alacritty_terminal = "0.25"
+gpui = { git = "https://github.com/zed-industries/zed", rev = "5e1fd392f67e27fa1da91bad43eef7db1a5dec23" }

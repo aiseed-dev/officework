@@ -2226,4 +2226,5 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_login_in_terminal", "Claude Code'da oturum açılmamış. Bir terminalde `claude auth login` çalıştırın"),
     ("claude_code_exited", "Claude Code sonlandı (kod {})"),
     ("sandbox_blocked_by_userns", "Makroları çalıştıran kum havuzu bu makinenin ayarlarınca engelleniyor (Ubuntu 24.04 ve sonrasındaki kullanıcı ad alanı kısıtlaması). .deb ile kurmak sorunu çözer: /etc/apparmor.d/officework dosyasını koyar"),
+    ("terminal_cannot_start", "Terminal başlatılamıyor (kabuk başlatılamadı)"),
 ];

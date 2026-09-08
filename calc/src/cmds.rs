@@ -159,7 +159,7 @@ impl Calc {
         "view-normal", "view-pagebreak",
         "zoom-in", "zoom-out", "zoom100", "ui-bigger", "ui-smaller", "formula-bar", "show-headings", "show-zeros",
         // 左右のパネル(2026-08-15)
-        "show-left", "show-right",
+        "show-left", "show-right", "terminal",
         "subscript", "align-just", "align-dist", "text-orient", "calc-mode",
         "td-torange", "td-resize", "rtl-sheet", "direction",
         "colorschemas", "darkmode",
@@ -3542,6 +3542,8 @@ impl Calc {
             // まだ CP932 のものがある** — UTF-8 固定では渡せない
             // **左右のパネル**(2026-08-15)。writer と同じ id・同じ札。
             // 開け閉めは「すぐ効く」ので印は無印(▾ も … も付けない)
+            // 端末のパネル(2026-09-08 発注者「ターミナルをつくって」)
+            "terminal" => self.toggle_terminal(cx),
             "show-left" => {
                 self.left_open = !self.left_open;
                 if self.left_open {
@@ -4629,5 +4631,28 @@ impl Calc {
             }
             _ => {}
         }
+    }
+}
+
+impl Calc {
+    /// **端末のパネルを出す・閉じる。** 最初に開く時にシェルを起こす(開いている
+    /// ブックのフォルダで)。閉じてもシェルは生かしておく
+    pub(crate) fn toggle_terminal(&mut self, cx: &mut Context<Self>) {
+        if self.terminal_open {
+            self.terminal_open = false;
+            return;
+        }
+        if self.terminal.is_none() {
+            let cwd = self.path.as_ref().and_then(|p| p.parent().map(|d| d.to_path_buf()));
+            let us = self.ui_scale;
+            let t = cx.new(|cx| term::TermView::new(cwd, us, cx));
+            if let Some(e) = t.read(cx).error() {
+                self.status = format!("{} — {e}", ui::t!("terminal_cannot_start")).into();
+                return;
+            }
+            self.terminal = Some(t);
+        }
+        self.terminal_open = true;
+        self.terminal_focus = true;
     }
 }

@@ -313,7 +313,7 @@ impl Writer {
         "colorschemas",
         "ai-where", "ai-furigana", "ai-macro",
         "nav", "fit-page", "fit-width", "zoom100", "multipage", "printview",
-        "show-toolbar", "show-statusbar", "show-left", "show-right",
+        "show-toolbar", "show-statusbar", "show-left", "show-right", "terminal",
         "incfont", "decfont", "markers", "numbering",
         "incoffset", "decoffset", "linespace", "pagebreak",
         "instable", "inssymbol", "replace", "changecase", "blankpage",

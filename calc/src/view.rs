@@ -323,6 +323,14 @@ impl Render for Calc {
         // 表計算の色は緑(デスクトップ版の app 色分けと同じ)。
         // 2段目 = 白地のタブ+現在地の緑の下線。右端に 🔍。
         // 下端 = ステータスバー(シートのタブ+状態の文言+選択の生きた値)
+        // 端末を開いた直後は、打鍵が端末へ行くように焦点を移す(1回だけ)
+        if self.terminal_focus {
+            self.terminal_focus = false;
+            if let Some(t) = &self.terminal {
+                let h = t.read(cx).focus_handle().clone();
+                window.focus(&h, cx);
+            }
+        }
         let (ready, all) = ribbon::progress_for(ribbon::App::Calc);
         // 画面の明暗(インターフェイステーマ)。**セルは白のまま** —
         // 暗くするのは周り(リボン・タブ・ボタン・見出し)だけ
@@ -5577,6 +5585,11 @@ impl Render for Calc {
                    .children(slicer_cfg_panel)
                    .children(comment_panel))
                    .children(right_panel))
+            // 端末のパネル(表示 > ターミナル)。格子の下、シートのタブの上
+            .children(self.terminal_open.then(|| {
+                div().flex_none().h(px(us * 240.0)).border_t_1().border_color(th_line)
+                    .children(self.terminal.clone())
+            }))
             .children(watch_bar)
             .child(sheets_bar)
             .children(notes)

@@ -2226,4 +2226,5 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_login_in_terminal", "尚未登入 Claude Code。請在終端機執行 `claude auth login`"),
     ("claude_code_exited", "Claude Code 已結束(代碼 {})"),
     ("sandbox_blocked_by_userns", "執行巨集的沙箱被這台機器的設定擋住了(Ubuntu 24.04 起的使用者命名空間限制)。用 .deb 安裝即可解決 — 它會放置 /etc/apparmor.d/officework"),
+    ("terminal_cannot_start", "無法啟動終端機(未能啟動 shell)"),
 ];

@@ -32,6 +32,7 @@ pyrun = { path = "../pyrun" }
 ops = { path = "../ops" }
 # エージェント(agent.ja.adoc の段10。2026-09-04)。表計算と同じ物を使います
 agent = { path = "../agent" }
+term = { path = "../term" }
 face = { path = "../face" }
 lang = { path = "../lang" }
 ooxml = { path = "../ooxml" }

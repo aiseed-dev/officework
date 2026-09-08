@@ -2226,4 +2226,5 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_login_in_terminal", "Belum masuk ke Claude Code. Jalankan `claude auth login` di terminal"),
     ("claude_code_exited", "Claude Code berhenti (kode {})"),
     ("sandbox_blocked_by_userns", "Sandbox untuk menjalankan makro diblokir oleh setelan mesin ini (pembatasan user namespace sejak Ubuntu 24.04). Memasang .deb memperbaikinya: berkas /etc/apparmor.d/officework dipasang"),
+    ("terminal_cannot_start", "Terminal tidak dapat dimulai (shell tidak dapat dijalankan)"),
 ];
