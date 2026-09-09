@@ -40,6 +40,11 @@ pub(super) fn on(e: &quick_xml::events::BytesStart) -> bool {
     !matches!(attr(e, "val").as_deref(), Some("0") | Some("false") | Some("none"))
 }
 
+/// 属性の値が「入」か(`1` / `true` / `on`)
+pub(super) fn on_str(v: &str) -> bool {
+    matches!(v, "1" | "true" | "on")
+}
+
 pub(super) fn local(name: &[u8]) -> &[u8] {
     match name.iter().position(|b| *b == b':') {
         Some(i) => &name[i + 1..],
@@ -230,6 +235,14 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     if let Some(i) = sxml.find("<w:autoHyphenation") {
         let head = &sxml[i..(i + 60).min(sxml.len())];
         doc.hyphenate = !(head.contains("w:val=\"0\"") || head.contains("w:val=\"false\""));
+    }
+    // 段落の「自動」の空きを 5pt にする設定(無ければ HTML 流の 14pt)
+    if let Some(i) = sxml.find("<w:doNotUseHTMLParagraphAutoSpacing") {
+        let head = &sxml[i..(i + 80).min(sxml.len())];
+        let e = head.find('>').unwrap_or(head.len());
+        let head = &head[..e];
+        doc.no_html_auto_space =
+            !(head.contains("w:val=\"0\"") || head.contains("w:val=\"false\""));
     }
     // 句読点の詰め(`w:characterSpacingControl`)。無ければ Word の既定
     // (doNotCompress)。日本語の Word は compressPunctuation を書きます
@@ -1324,10 +1337,19 @@ fn style_para(
         // twip の 20 分の1が pt
         v.parse::<f32>().ok().map(|t| t / 20.0)
     };
+    // 「自動」の空きの旗。書いてあれば入・切、無ければ「言わない」
+    let spacing_flag = |key: &str| -> Option<bool> {
+        let n = body.find("<w:spacing")?;
+        let e = body[n..].find('>').map(|e| n + e)?;
+        let v = attr_of(&body[n..e], key);
+        if v.is_empty() { None } else { Some(v == "1" || v == "true" || v == "on") }
+    };
     kumihan::StyleParaLook {
         align: val("w:jc").as_deref().and_then(align_of),
         space_before_pt: spacing("w:before"),
         space_after_pt: spacing("w:after"),
+        auto_before: spacing_flag("w:beforeAutospacing"),
+        auto_after: spacing_flag("w:afterAutospacing"),
         // 行間は 240 が1行(docx の決め)
         line_spacing: {
             let n = body.find("<w:spacing");
@@ -1936,6 +1958,10 @@ pub(super) fn parse_document_rels_num(
     let mut ind_itta = false; // 段落自身が w:ind を言ったか
     let mut space_before_pt = 0.0f32;
     let mut space_after_pt = 0.0f32;
+    let mut auto_before: Option<bool> = None;
+    let mut auto_after: Option<bool> = None;
+    let mut before_itta = false;
+    let mut after_itta = false;
     let mut page_break_before = false;
     // 次の段落を新しい紙から始めるか(run の中の `<w:br w:type="page"/>`)
     let mut tsugi_kaipeji = false;
@@ -2036,6 +2062,24 @@ pub(super) fn parse_document_rels_num(
                                 row_exact,
                                 row_header,
                             });
+                            // **中の表は白紙の状態から読む**(2026-09-09)。外側の行の
+                            // `w:trHeight` やセルの `w:gridSpan` は読み手の変数に
+                            // 残っているので、消さないと中の表の最初の行がそれを
+                            // 受け継ぐ。省力化の事業計画書は、外側の行の高さ 7222
+                            // twip(127mm)を中の表の見出しの行が受け継いで、
+                            // その見出しだけで 1 頁を使っていた
+                            row_twips = None;
+                            row_exact = false;
+                            row_header = false;
+                            row_grid_before = 0;
+                            row_grid_after = 0;
+                            cell_span = 0;
+                            cell_vmerge = VMerge::None;
+                            cell_valign = book::VAlign::Top;
+                            cell_shade = None;
+                            cell_borders = kumihan::CellBorders::default();
+                            cell_mar = None;
+                            cell_fit = false;
                         }
                         stack.push(TblBuild::default())
                     }
@@ -2092,6 +2136,10 @@ pub(super) fn parse_document_rels_num(
                               ind_itta = false;
                               space_before_pt = 0.0;
                               space_after_pt = 0.0;
+                              auto_before = None;
+                              auto_after = None;
+                              before_itta = false;
+                              after_itta = false;
                               page_break_before = std::mem::take(&mut tsugi_kaipeji);
                               shade = None; boxed = false;
                               para_border = kumihan::ParaBorder::default();
@@ -2297,6 +2345,12 @@ pub(super) fn parse_document_rels_num(
                         };
                         space_before_pt = twips("before").unwrap_or(0.0).max(0.0);
                         space_after_pt = twips("after").unwrap_or(0.0).max(0.0);
+                        // 「自動」の空き。値は Word が決める(段落の側の `w:before`
+                        // は使われない)。kumihan::Paragraph::auto_before を見てください
+                        auto_before = attr(&e, "beforeAutospacing").map(|v| on_str(&v));
+                        auto_after = attr(&e, "afterAutospacing").map(|v| on_str(&v));
+                        before_itta = attr(&e, "before").is_some();
+                        after_itta = attr(&e, "after").is_some();
                     }
                     b"jc" if in_ppr => {
                         align_itta = true;
@@ -2964,6 +3018,12 @@ pub(super) fn parse_document_rels_num(
                         };
                         space_before_pt = twips("before").unwrap_or(0.0).max(0.0);
                         space_after_pt = twips("after").unwrap_or(0.0).max(0.0);
+                        // 「自動」の空き。値は Word が決める(段落の側の `w:before`
+                        // は使われない)。kumihan::Paragraph::auto_before を見てください
+                        auto_before = attr(&e, "beforeAutospacing").map(|v| on_str(&v));
+                        auto_after = attr(&e, "afterAutospacing").map(|v| on_str(&v));
+                        before_itta = attr(&e, "before").is_some();
+                        after_itta = attr(&e, "after").is_some();
                     }
                     b"jc" if in_ppr => {
                         align_itta = true;
@@ -3236,6 +3296,11 @@ pub(super) fn parse_document_rels_num(
                                 ind_itta,
                                 space_before_pt,
                                 space_after_pt,
+                                auto_before: std::mem::take(&mut auto_before),
+                                auto_after: std::mem::take(&mut auto_after),
+                                before_itta: std::mem::take(&mut before_itta),
+                                after_itta: std::mem::take(&mut after_itta),
+                                nested: None,
                                 style: pstyle,
                                 style_id: pstyle_id.take(),
                                 shade: shade.take(), boxed,
@@ -3375,17 +3440,13 @@ pub(super) fn parse_document_rels_num(
                             if stack.is_empty() {
                                 doc.blocks.push(Block::Table(tb));
                             } else if let Some(outer) = stack.last_mut() {
-                                // **入れ子の表は、外側のセルの中に段落として置く**
-                                // (2026-09-09)。前は本文の流れに出していたので、
-                                // 中身が外側の表の前に出て順が狂っていた。模型は
-                                // セルの中の表を持たないので、中の表のセルの段落を
-                                // 行の順に外側のセルへ並べる(格子は失う。報告つき)
-                                rep.note("入れ子の表(外側のセルの中に段落として置いた)");
-                                for row in tb.rows {
-                                    for c in row {
-                                        outer.cell.extend(c.paragraphs);
-                                    }
-                                }
+                                // **入れ子の表は、外側のセルの中に「表を持つ段落」
+                                // として置く**(2026-09-09。`Paragraph::nested`)。
+                                // 前は本文の流れに出していたので中身が外側の表の
+                                // 前に出て順が狂い、その後は中の表のセルの段落を
+                                // 縦に並べていたので 35 列のスケジュール表が
+                                // 20 頁になっていた。組む所が中の表をセルの幅で組む
+                                outer.cell.push(Paragraph { nested: Some(Box::new(tb)), ..Default::default() });
                                 // 外側のセルと行の読みかけを戻す
                                 if let Some(sv) = outer.saved.take() {
                                     cell_span = sv.span;

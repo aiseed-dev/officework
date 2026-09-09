@@ -595,6 +595,36 @@ pub struct Paragraph {
     /// (2026-08-15 に見出しの詰まり方を直すとき見つけた)。
     pub space_before_pt: f32,
     pub space_after_pt: f32,
+    /// **前後の空きを Word の「自動」にする**(docx の `w:spacing` の
+    /// `w:beforeAutospacing` / `w:afterAutospacing`)。HTML から貼った文書や
+    /// 古い様式のスタイルが持ちます。立っていると `w:before` / `w:after` の
+    /// 値は使われず、Word は本文では 14pt(設定
+    /// `doNotUseHTMLParagraphAutoSpacing` なら 5pt)、表のセルの最初の段落の
+    /// 前と最後の段落の後、文書の先頭の段落の前は 0 にします。読まないと
+    /// 表の行が前後 5pt ずつ高くなりました(省力化の事業計画書。2026-09-09)。
+    /// [`crate::theme::compose`] が解いて `space_before_pt` などに入れ、
+    /// 解いた後は旗を下ろします。三択です — 段落が `="0"` と書いて切る
+    /// (`Some(false)`)のと、書かずにスタイルから受け継ぐ(`None`)のは別です
+    pub auto_before: Option<bool>,
+    pub auto_after: Option<bool>,
+    /// **段落が前(後)の空きを自分で書いた**(docx の `w:spacing` に
+    /// `w:before` / `w:after` がある)。`space_before_pt` は 0 を「無指定」と
+    /// 見るので、段落が `w:before="0"` と書いてスタイルの 5pt を打ち消して
+    /// いるのを見分けられませんでした。省力化の事業計画書は表の中の注が
+    /// 全部これで、1段落に 10pt ずつ余計に入って 9 頁が 29 頁になりました
+    /// (2026-09-09)
+    pub before_itta: bool,
+    pub after_itta: bool,
+    /// **セルの中の表**(docx の入れ子の表。2026-09-09)。
+    ///
+    /// 模型のセルは段落の列しか持たないので、入れ子の表は「表を1つ持つ
+    /// 段落」としてセルの段落の列に置きます。この段落の `runs` は空です。
+    /// 官公庁の様式は 1 列の表を枠にして中に表を置く物が多く(コーパス
+    /// 288 枚のうち 80 枚以上)、前は中の表のセルを段落として縦に並べていた
+    /// ので、35 列のスケジュール表が 20 頁になっていました(省力化の
+    /// 事業計画書。Word は 1 頁)。組む所([`crate::layout`])が中の表を
+    /// セルの幅で組んで、その高さをセルの高さに足します
+    pub nested: Option<Box<Table>>,
     /// 段落の背景色 `RRGGBB`(docx の w:shd)。見出しの背景色に使われる
     pub shade: Option<String>,
     /// 段落を枠で囲む(docx の w:pBdr)。囲みの注意書きに使われる。
@@ -970,6 +1000,35 @@ impl Table {
     /// そうしないと結合の右にある列が1つずつずれ、見出しで引く
     /// 構造化参照(`売上台帳[金額]`)が別の列を指してしまいます。
     /// 表計算の結合セルも同じ持ち方です。
+    /// **セルの中の段落を、入れ子の表の中まで順に見る**(2026-09-09)。
+    /// 段落を歩く処理(スタイルの適用・書体の解決・コメントの回収)は
+    /// これで歩くと、中の表の段落も漏れません
+    pub fn all_paragraphs(&self) -> Vec<&Paragraph> {
+        fn go<'a>(t: &'a Table, v: &mut Vec<&'a Paragraph>) {
+            for c in t.rows.iter().flatten() {
+                for p in &c.paragraphs {
+                    v.push(p);
+                    if let Some(n) = p.nested.as_deref() {
+                        go(n, v);
+                    }
+                }
+            }
+        }
+        let mut v = Vec::new();
+        go(self, &mut v);
+        v
+    }
+    /// [`Table::all_paragraphs`] の書き替え版
+    pub fn for_each_paragraph_mut(&mut self, f: &mut dyn FnMut(&mut Paragraph)) {
+        for c in self.rows.iter_mut().flatten() {
+            for p in c.paragraphs.iter_mut() {
+                f(p);
+                if let Some(n) = p.nested.as_deref_mut() {
+                    n.for_each_paragraph_mut(f);
+                }
+            }
+        }
+    }
     pub fn text_rows(&self) -> Vec<Vec<String>> {
         self.rows
             .iter()
@@ -1167,6 +1226,10 @@ pub struct Document {
     /// 行が行長を超えるとき、約物(、。（）「」・)の空きを字幅の 1/4 まで、
     /// 足りない分だけ比例して詰めます。詰めても入らなければ折ります
     pub compress_punct: bool,
+    /// **段落の「自動」の空きを HTML 流(14pt)にしない**(docx の settings の
+    /// `w:doNotUseHTMLParagraphAutoSpacing`)。立っていると「自動」は 5pt です。
+    /// 使う所は [`Paragraph::auto_before`]
+    pub no_html_auto_space: bool,
     /// **節ごとのヘッダー・フッター**(2026-09-09)。鍵は節を終える段落のブロック番号
     /// (その段落の `sect` と対)。最後の節(文書の末尾の sectPr)は `header` /
     /// `footer` で持つ。JST の計画書は 13 の節がそれぞれ別のヘッダーを持ち、
@@ -1316,6 +1379,10 @@ pub struct StyleParaLook {
     /// 段落の前後の空き(pt)
     pub space_before_pt: Option<f32>,
     pub space_after_pt: Option<f32>,
+    /// 前後の空きを「自動」にする(`w:beforeAutospacing` / `w:afterAutospacing`)。
+    /// 意味は [`crate::Paragraph::auto_before`] と同じ
+    pub auto_before: Option<bool>,
+    pub auto_after: Option<bool>,
     /// 行間の倍率
     pub line_spacing: Option<f32>,
     /// 左のインデント段数(1段 = 全角2文字ぶん)
@@ -1645,15 +1712,7 @@ impl Document {
         for b in &mut self.blocks {
             match b {
                 Block::Para(p) => n += put(p, tag, value),
-                Block::Table(t) => {
-                    for row in &mut t.rows {
-                        for c in row {
-                            for p in &mut c.paragraphs {
-                                n += put(p, tag, value);
-                            }
-                        }
-                    }
-                }
+                Block::Table(t) => t.for_each_paragraph_mut(&mut |p| n += put(p, tag, value)),
             }
         }
         n
@@ -2185,13 +2244,7 @@ impl Document {
         for b in &mut self.blocks {
             match b {
                 Block::Para(p) => heal(p),
-                Block::Table(t) => {
-                    for row in &mut t.rows {
-                        for c in row {
-                            c.paragraphs.iter_mut().for_each(heal);
-                        }
-                    }
-                }
+                Block::Table(t) => t.for_each_paragraph_mut(&mut |p| heal(p)),
             }
         }
         self.header.paragraphs.iter_mut().for_each(heal);
@@ -2351,6 +2404,11 @@ impl Document {
         self.size_pt.unwrap_or(DEFAULT_PT)
     }
 
+    /// 段落の「自動」の空き(pt)。[`Paragraph::auto_before`] を見てください
+    pub fn auto_space_pt(&self) -> f32 {
+        if self.no_html_auto_space { 5.0 } else { 14.0 }
+    }
+
     /// **段落スタイルが言う字の大きさ(pt)。**
     ///
     /// docx は3段で決めます。run の `w:rPr` が一番強く、次が段落スタイルの
@@ -2399,6 +2457,8 @@ impl Document {
             pl.align = pl.align.or(s.para.align);
             pl.space_before_pt = pl.space_before_pt.or(s.para.space_before_pt);
             pl.space_after_pt = pl.space_after_pt.or(s.para.space_after_pt);
+            pl.auto_before = pl.auto_before.or(s.para.auto_before);
+            pl.auto_after = pl.auto_after.or(s.para.auto_after);
             pl.line_spacing = pl.line_spacing.or(s.para.line_spacing);
             pl.indent = pl.indent.or(s.para.indent);
             pl.first_line_twips = pl.first_line_twips.or(s.para.first_line_twips);

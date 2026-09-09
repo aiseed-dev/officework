@@ -422,12 +422,294 @@ pub fn write_document_parts(doc: &Document) -> (String, Vec<std::sync::Arc<Vec<u
 /// 画像の番号(rIdJO1〜)とコメントの番号(1〜)はこの順で振られる。
 // **引数を束ねません。** どれも別々の物で、まとめた構造体を作ると
 // 「何を渡したか」が呼ぶ側から見えなくなります
+/// **表を1つ書く。** 本文の表も、セルの中の表([`Paragraph::nested`])も
+/// これで書きます(2026-09-09)。段落を書く [`write_para`] と互いに呼び合います
+#[allow(clippy::too_many_arguments)]
+pub(super) fn write_table(w: &mut Writer<Cursor<Vec<u8>>>, t: &kumihan::Table,
+        imgn: &mut usize, media: &mut Vec<std::sync::Arc<Vec<u8>>>,
+        cmts: &mut Vec<Comment>, bmn: &mut usize,
+        trkn: &mut usize, author: &str, base: f32) {
+    use quick_xml::events::{BytesEnd, BytesStart as BS};
+    w.write_event(Event::Start(BS::new("w:tbl"))).unwrap();
+    // 罫線(事務様式は罫線が見えないと様式にならない)
+    w.write_event(Event::Start(BS::new("w:tblPr"))).unwrap();
+    // スタイル名(読んだ名前を返すだけ — 定義は styles.xml の持ち物)。
+    // スキーマ(CT_TblPr)の並び: tblStyle → jc → tblBorders → tblLayout
+    if let Some(st) = &t.style {
+        let mut e = BS::new("w:tblStyle");
+        e.push_attribute(("w:val", st.as_str()));
+        w.write_event(Event::Empty(e)).unwrap();
+    }
+    // **幅の割合**(`w:tblW w:type="pct"`)。docx は 1/50 % で書きます
+    if let Some(pct) = t.width_pct {
+        let mut e = BS::new("w:tblW");
+        let v = ((pct * 50.0).round() as i64).to_string();
+        e.push_attribute(("w:w", v.as_str()));
+        e.push_attribute(("w:type", "pct"));
+        w.write_event(Event::Empty(e)).unwrap();
+    }
+    if let Some(a) = t.align {
+        let mut e = BS::new("w:jc");
+        e.push_attribute(("w:val", a.as_docx()));
+        w.write_event(Event::Empty(e)).unwrap();
+    }
+    // **表の左のインデント**(`w:tblInd`)。読むときにセルの左余白を
+    // 引いてあるので、返すときは足し直します(古い測り方に戻す)
+    if t.indent_mm.abs() > 0.01 {
+        let hidari = t
+            .rows
+            .first()
+            .and_then(|r| r.first())
+            .and_then(|c| c.mar_mm)
+            .map(|m| m[3])
+            .or_else(|| t.cell_mar_mm.map(|m| m[3]))
+            .unwrap_or(108.0 * 25.4 / 1440.0);
+        let mut e = BS::new("w:tblInd");
+        let tw = ((t.indent_mm + hidari) * 1440.0 / 25.4).round() as i64;
+        let tw = tw.to_string();
+        e.push_attribute(("w:w", tw.as_str()));
+        e.push_attribute(("w:type", "dxa"));
+        w.write_event(Event::Empty(e)).unwrap();
+    }
+    // **読んだ辺をそのまま返します**(2026-08-30)。前は必ず
+    // 6辺とも書いていたので、下線だけの様式を開いて保存すると
+    // 枠だらけになりました
+    let bd = t.borders;
+    w.write_event(Event::Start(BS::new("w:tblBorders"))).unwrap();
+    for (side, hiku) in [
+        ("top", bd.top), ("left", bd.left), ("bottom", bd.bottom),
+        ("right", bd.right), ("insideH", bd.inside_h), ("insideV", bd.inside_v),
+    ] {
+        let tag = format!("w:{side}");
+        let mut e = BS::new(tag.as_str());
+        if hiku {
+            e.push_attribute(("w:val", "single"));
+            e.push_attribute(("w:sz", "4"));
+            e.push_attribute(("w:color", "000000"));
+        } else {
+            // **「引かない」と明に言います。** 黙って書かないと、
+            // 表のスタイルの罫線が出てきます
+            e.push_attribute(("w:val", "nil"));
+        }
+        w.write_event(Event::Empty(e)).unwrap();
+    }
+    w.write_event(Event::End(BytesEnd::new("w:tblBorders"))).unwrap();
+    // 列幅の固定。既定(autofit)は書かない — docx の既定と同じ
+    if t.fixed_layout {
+        let mut e = BS::new("w:tblLayout");
+        e.push_attribute(("w:type", "fixed"));
+        w.write_event(Event::Empty(e)).unwrap();
+    }
+    // **表のセルの余白**(`w:tblCellMar`)
+    if let Some(m) = t.cell_mar_mm {
+        w.write_event(Event::Start(BS::new("w:tblCellMar"))).unwrap();
+        for (na, mm) in [("top", m[0]), ("left", m[3]), ("bottom", m[2]), ("right", m[1])] {
+            let tag = format!("w:{na}");
+            let mut e = BS::new(tag.as_str());
+            let tw = ((mm * 1440.0 / 25.4).round() as i64).max(0).to_string();
+            e.push_attribute(("w:w", tw.as_str()));
+            e.push_attribute(("w:type", "dxa"));
+            w.write_event(Event::Empty(e)).unwrap();
+        }
+        w.write_event(Event::End(BytesEnd::new("w:tblCellMar"))).unwrap();
+    }
+    w.write_event(Event::End(BytesEnd::new("w:tblPr"))).unwrap();
+    // 列幅を返す(読んだものを捨てると、保存で表の形が変わる)。
+    // tblGrid は ECMA-376 の必須部品 — 幅の指定が無い(等分)表でも
+    // **幅なしの gridCol を格子の列数ぶん書く**。省くと python-docx が
+    // 表を読めない(2026-08-12 の突き合わせで発覚)
+    w.write_event(Event::Start(BS::new("w:tblGrid"))).unwrap();
+    if t.col_mm.is_empty() {
+        let cols = t
+            .rows
+            .iter()
+            .map(|r| r.iter().map(|c| c.span()).sum::<usize>())
+            .max()
+            .unwrap_or(1);
+        for _ in 0..cols {
+            w.write_event(Event::Empty(BS::new("w:gridCol"))).unwrap();
+        }
+    } else {
+        for mm in &t.col_mm {
+            let mut g = BS::new("w:gridCol");
+            let tw = (mm * 20.0 * 72.0 / 25.4).round() as i64;
+            g.push_attribute(("w:w", tw.to_string().as_str()));
+            w.write_event(Event::Empty(g)).unwrap();
+        }
+    }
+    w.write_event(Event::End(BytesEnd::new("w:tblGrid"))).unwrap();
+    for (ri, row) in t.rows.iter().enumerate() {
+        w.write_event(Event::Start(BS::new("w:tr"))).unwrap();
+        // 行の高さ。0 は「中身なり」なので何も書きません
+        let h = t.row_mm.get(ri).copied().unwrap_or(0.0);
+        // **見出しの行**(`w:tblHeader`)は最初の行だけです
+        let midashi = t.header_row && ri == 0;
+        if h > 0.0 || midashi {
+            w.write_event(Event::Start(BS::new("w:trPr"))).unwrap();
+            if h > 0.0 {
+                let mut e = BS::new("w:trHeight");
+                let tw = (h * 1440.0 / 25.4).round().max(1.0) as u32;
+                let tw = tw.to_string();
+                e.push_attribute(("w:val", tw.as_str()));
+                // **少なくともこの高さ**(atLeast)。中身が入り切らない
+                // ときに字を切らないための決めで、Word の既定と同じです
+                e.push_attribute(("w:hRule", "atLeast"));
+                w.write_event(Event::Empty(e)).unwrap();
+            }
+            // 並びは CT_TrPr のとおり trHeight の後です
+            if midashi {
+                w.write_event(Event::Empty(BS::new("w:tblHeader"))).unwrap();
+            }
+            w.write_event(Event::End(BytesEnd::new("w:trPr"))).unwrap();
+        }
+        // 格子の何列目かは、前のセルが呑んだ分も数えます
+        let mut ci = 0usize;
+        for cell in row {
+            w.write_event(Event::Start(BS::new("w:tc"))).unwrap();
+            // セル結合を返す(読んだものを捨てると様式の枠が壊れる)
+            // セルの幅。**格子(w:tblGrid)だけでは足りません** —
+            // Word も python-docx もセルごとの `w:tcW` を見ます
+            // (2026-08-27 に python-docx で開いて気づきました)
+            let cw: f32 = (0..cell.span())
+                .filter_map(|k| t.col_mm.get(ci + k))
+                .sum();
+            let cb = cell.borders;
+            let naname = cb.diag_down || cb.diag_up;
+            // **セルが自分で言った辺**(`w:tcBorders`)。
+            // 言っていない辺(`None`)は書きません — 書くと表の
+            // 指定やスタイルを黙って上書きします
+            let hen = [
+                ("top", cb.top), ("left", cb.left),
+                ("bottom", cb.bottom), ("right", cb.right),
+            ];
+            let kei = hen.iter().any(|(_, v)| v.is_some());
+            if cell.col_span > 1
+                || cell.v_merge != VMerge::None
+                || cell.valign != book::VAlign::Top
+                || cw > 0.0
+                || naname
+                || kei
+                || cell.mar_mm.is_some()
+                || cell.fit_text
+            {
+                w.write_event(Event::Start(BS::new("w:tcPr"))).unwrap();
+                if cw > 0.0 {
+                    let mut e = BS::new("w:tcW");
+                    let tw = (cw * 1440.0 / 25.4).round().max(1.0) as u32;
+                    let tw = tw.to_string();
+                    e.push_attribute(("w:w", tw.as_str()));
+                    e.push_attribute(("w:type", "dxa"));
+                    w.write_event(Event::Empty(e)).unwrap();
+                }
+                if cell.col_span > 1 {
+                    let mut g = BS::new("w:gridSpan");
+                    let v = cell.col_span.to_string();
+                    g.push_attribute(("w:val", v.as_str()));
+                    w.write_event(Event::Empty(g)).unwrap();
+                }
+                match cell.v_merge {
+                    VMerge::Start => {
+                        let mut m = BS::new("w:vMerge");
+                        m.push_attribute(("w:val", "restart"));
+                        w.write_event(Event::Empty(m)).unwrap();
+                    }
+                    VMerge::Continue => {
+                        // val 無しが「続き」(docx の既定)
+                        w.write_event(Event::Empty(BS::new("w:vMerge"))).unwrap();
+                    }
+                    VMerge::None => {}
+                }
+                // **セルの罫線**(`w:tcBorders`)。四方の辺と斜線です。
+                // 並びは CT_TcBorders のとおり top → left → bottom →
+                // right → tl2br → tr2bl
+                if kei || naname {
+                    w.write_event(Event::Start(BS::new("w:tcBorders"))).unwrap();
+                    let kaku = |w: &mut quick_xml::Writer<_>, na: &str, hiku: bool| {
+                        let tag = format!("w:{na}");
+                        let mut e = BS::new(tag.as_str());
+                        if hiku {
+                            e.push_attribute(("w:val", "single"));
+                            e.push_attribute(("w:sz", "4"));
+                            e.push_attribute(("w:color", "000000"));
+                        } else {
+                            // **「引かない」と明に言います**(表の
+                            // 罫線と同じ理由 — 黙ると表やスタイルの
+                            // 指定が出てきます)
+                            e.push_attribute(("w:val", "nil"));
+                        }
+                        w.write_event(Event::Empty(e)).unwrap();
+                    };
+                    for (na, v) in hen {
+                        if let Some(hiku) = v {
+                            kaku(w, na, hiku);
+                        }
+                    }
+                    for (na, hiku) in [("tl2br", cb.diag_down), ("tr2bl", cb.diag_up)] {
+                        if hiku {
+                            kaku(w, na, true);
+                        }
+                    }
+                    w.write_event(Event::End(BytesEnd::new("w:tcBorders"))).unwrap();
+                }
+                // **このセルだけの余白**(`w:tcMar`)
+                if let Some(m) = cell.mar_mm {
+                    w.write_event(Event::Start(BS::new("w:tcMar"))).unwrap();
+                    for (na, mm) in
+                        [("top", m[0]), ("left", m[3]), ("bottom", m[2]), ("right", m[1])]
+                    {
+                        let tag = format!("w:{na}");
+                        let mut e = BS::new(tag.as_str());
+                        let tw = ((mm * 1440.0 / 25.4).round() as i64).max(0).to_string();
+                        e.push_attribute(("w:w", tw.as_str()));
+                        e.push_attribute(("w:type", "dxa"));
+                        w.write_event(Event::Empty(e)).unwrap();
+                    }
+                    w.write_event(Event::End(BytesEnd::new("w:tcMar"))).unwrap();
+                }
+                // **セルの幅いっぱいに字を配る**(`w:tcFitText`)
+                if cell.fit_text {
+                    w.write_event(Event::Empty(BS::new("w:tcFitText"))).unwrap();
+                }
+                // 縦位置。**docx の既定は上揃え**なので、上のときは
+                // 何も書きません(書くと原本と差分が出ます)
+                if let Some(v) = match cell.valign {
+                    book::VAlign::Middle => Some("center"),
+                    book::VAlign::Bottom => Some("bottom"),
+                    _ => None,
+                } {
+                    let mut e = BS::new("w:vAlign");
+                    e.push_attribute(("w:val", v));
+                    w.write_event(Event::Empty(e)).unwrap();
+                }
+                w.write_event(Event::End(BytesEnd::new("w:tcPr"))).unwrap();
+            }
+            if cell.paragraphs.is_empty() {
+                write_para(w, &Paragraph { line_spacing: 1.0, ..Default::default() },
+                     imgn, media, cmts, bmn, trkn, author, base);
+            } else {
+                for p in &cell.paragraphs {
+                    write_para(w, p, imgn, media, cmts, bmn, trkn, author, base)
+                }
+            }
+            w.write_event(Event::End(BytesEnd::new("w:tc"))).unwrap();
+            ci += cell.span();
+        }
+        w.write_event(Event::End(BytesEnd::new("w:tr"))).unwrap();
+    }
+    w.write_event(Event::End(BytesEnd::new("w:tbl"))).unwrap();
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
         imgn: &mut usize, media: &mut Vec<std::sync::Arc<Vec<u8>>>,
         cmts: &mut Vec<Comment>, bmn: &mut usize,
         trkn: &mut usize, author: &str, base: f32) {
         use quick_xml::events::{BytesEnd, BytesStart as BS, BytesText};
+        // **セルの中の表**を持つ段落は、表そのものを書きます
+        if let Some(t) = p.nested.as_deref() {
+            write_table(w, t, imgn, media, cmts, bmn, trkn, author, base);
+            return;
+        }
         // ドロップキャップは Word の作法どおり
         // 「枠の段落(頭の1字・大きめ)+本文の段落」に割って書く
         if p.dropcap {
@@ -1065,12 +1347,8 @@ pub(super) fn collect_links(doc: &Document) -> Vec<String> {
         match b {
             Block::Para(p) => push(p, &mut out),
             Block::Table(t) => {
-                for row in &t.rows {
-                    for c in row {
-                        for p in &c.paragraphs {
-                            push(p, &mut out);
-                        }
-                    }
+                for p in t.all_paragraphs() {
+                    push(p, &mut out);
                 }
             }
         }
@@ -1166,275 +1444,7 @@ pub(super) fn write_document_full(doc: &Document) -> (String, Vec<std::sync::Arc
                     prev_break = Some(sb.continuous);
                 }
             }
-            Block::Table(t) => {
-                w.write_event(Event::Start(BS::new("w:tbl"))).unwrap();
-                // 罫線(事務様式は罫線が見えないと様式にならない)
-                w.write_event(Event::Start(BS::new("w:tblPr"))).unwrap();
-                // スタイル名(読んだ名前を返すだけ — 定義は styles.xml の持ち物)。
-                // スキーマ(CT_TblPr)の並び: tblStyle → jc → tblBorders → tblLayout
-                if let Some(st) = &t.style {
-                    let mut e = BS::new("w:tblStyle");
-                    e.push_attribute(("w:val", st.as_str()));
-                    w.write_event(Event::Empty(e)).unwrap();
-                }
-                // **幅の割合**(`w:tblW w:type="pct"`)。docx は 1/50 % で書きます
-                if let Some(pct) = t.width_pct {
-                    let mut e = BS::new("w:tblW");
-                    let v = ((pct * 50.0).round() as i64).to_string();
-                    e.push_attribute(("w:w", v.as_str()));
-                    e.push_attribute(("w:type", "pct"));
-                    w.write_event(Event::Empty(e)).unwrap();
-                }
-                if let Some(a) = t.align {
-                    let mut e = BS::new("w:jc");
-                    e.push_attribute(("w:val", a.as_docx()));
-                    w.write_event(Event::Empty(e)).unwrap();
-                }
-                // **表の左のインデント**(`w:tblInd`)。読むときにセルの左余白を
-                // 引いてあるので、返すときは足し直します(古い測り方に戻す)
-                if t.indent_mm.abs() > 0.01 {
-                    let hidari = t
-                        .rows
-                        .first()
-                        .and_then(|r| r.first())
-                        .and_then(|c| c.mar_mm)
-                        .map(|m| m[3])
-                        .or_else(|| t.cell_mar_mm.map(|m| m[3]))
-                        .unwrap_or(108.0 * 25.4 / 1440.0);
-                    let mut e = BS::new("w:tblInd");
-                    let tw = ((t.indent_mm + hidari) * 1440.0 / 25.4).round() as i64;
-                    let tw = tw.to_string();
-                    e.push_attribute(("w:w", tw.as_str()));
-                    e.push_attribute(("w:type", "dxa"));
-                    w.write_event(Event::Empty(e)).unwrap();
-                }
-                // **読んだ辺をそのまま返します**(2026-08-30)。前は必ず
-                // 6辺とも書いていたので、下線だけの様式を開いて保存すると
-                // 枠だらけになりました
-                let bd = t.borders;
-                w.write_event(Event::Start(BS::new("w:tblBorders"))).unwrap();
-                for (side, hiku) in [
-                    ("top", bd.top), ("left", bd.left), ("bottom", bd.bottom),
-                    ("right", bd.right), ("insideH", bd.inside_h), ("insideV", bd.inside_v),
-                ] {
-                    let tag = format!("w:{side}");
-                    let mut e = BS::new(tag.as_str());
-                    if hiku {
-                        e.push_attribute(("w:val", "single"));
-                        e.push_attribute(("w:sz", "4"));
-                        e.push_attribute(("w:color", "000000"));
-                    } else {
-                        // **「引かない」と明に言います。** 黙って書かないと、
-                        // 表のスタイルの罫線が出てきます
-                        e.push_attribute(("w:val", "nil"));
-                    }
-                    w.write_event(Event::Empty(e)).unwrap();
-                }
-                w.write_event(Event::End(BytesEnd::new("w:tblBorders"))).unwrap();
-                // 列幅の固定。既定(autofit)は書かない — docx の既定と同じ
-                if t.fixed_layout {
-                    let mut e = BS::new("w:tblLayout");
-                    e.push_attribute(("w:type", "fixed"));
-                    w.write_event(Event::Empty(e)).unwrap();
-                }
-                // **表のセルの余白**(`w:tblCellMar`)
-                if let Some(m) = t.cell_mar_mm {
-                    w.write_event(Event::Start(BS::new("w:tblCellMar"))).unwrap();
-                    for (na, mm) in [("top", m[0]), ("left", m[3]), ("bottom", m[2]), ("right", m[1])] {
-                        let tag = format!("w:{na}");
-                        let mut e = BS::new(tag.as_str());
-                        let tw = ((mm * 1440.0 / 25.4).round() as i64).max(0).to_string();
-                        e.push_attribute(("w:w", tw.as_str()));
-                        e.push_attribute(("w:type", "dxa"));
-                        w.write_event(Event::Empty(e)).unwrap();
-                    }
-                    w.write_event(Event::End(BytesEnd::new("w:tblCellMar"))).unwrap();
-                }
-                w.write_event(Event::End(BytesEnd::new("w:tblPr"))).unwrap();
-                // 列幅を返す(読んだものを捨てると、保存で表の形が変わる)。
-                // tblGrid は ECMA-376 の必須部品 — 幅の指定が無い(等分)表でも
-                // **幅なしの gridCol を格子の列数ぶん書く**。省くと python-docx が
-                // 表を読めない(2026-08-12 の突き合わせで発覚)
-                w.write_event(Event::Start(BS::new("w:tblGrid"))).unwrap();
-                if t.col_mm.is_empty() {
-                    let cols = t
-                        .rows
-                        .iter()
-                        .map(|r| r.iter().map(|c| c.span()).sum::<usize>())
-                        .max()
-                        .unwrap_or(1);
-                    for _ in 0..cols {
-                        w.write_event(Event::Empty(BS::new("w:gridCol"))).unwrap();
-                    }
-                } else {
-                    for mm in &t.col_mm {
-                        let mut g = BS::new("w:gridCol");
-                        let tw = (mm * 20.0 * 72.0 / 25.4).round() as i64;
-                        g.push_attribute(("w:w", tw.to_string().as_str()));
-                        w.write_event(Event::Empty(g)).unwrap();
-                    }
-                }
-                w.write_event(Event::End(BytesEnd::new("w:tblGrid"))).unwrap();
-                for (ri, row) in t.rows.iter().enumerate() {
-                    w.write_event(Event::Start(BS::new("w:tr"))).unwrap();
-                    // 行の高さ。0 は「中身なり」なので何も書きません
-                    let h = t.row_mm.get(ri).copied().unwrap_or(0.0);
-                    // **見出しの行**(`w:tblHeader`)は最初の行だけです
-                    let midashi = t.header_row && ri == 0;
-                    if h > 0.0 || midashi {
-                        w.write_event(Event::Start(BS::new("w:trPr"))).unwrap();
-                        if h > 0.0 {
-                            let mut e = BS::new("w:trHeight");
-                            let tw = (h * 1440.0 / 25.4).round().max(1.0) as u32;
-                            let tw = tw.to_string();
-                            e.push_attribute(("w:val", tw.as_str()));
-                            // **少なくともこの高さ**(atLeast)。中身が入り切らない
-                            // ときに字を切らないための決めで、Word の既定と同じです
-                            e.push_attribute(("w:hRule", "atLeast"));
-                            w.write_event(Event::Empty(e)).unwrap();
-                        }
-                        // 並びは CT_TrPr のとおり trHeight の後です
-                        if midashi {
-                            w.write_event(Event::Empty(BS::new("w:tblHeader"))).unwrap();
-                        }
-                        w.write_event(Event::End(BytesEnd::new("w:trPr"))).unwrap();
-                    }
-                    // 格子の何列目かは、前のセルが呑んだ分も数えます
-                    let mut ci = 0usize;
-                    for cell in row {
-                        w.write_event(Event::Start(BS::new("w:tc"))).unwrap();
-                        // セル結合を返す(読んだものを捨てると様式の枠が壊れる)
-                        // セルの幅。**格子(w:tblGrid)だけでは足りません** —
-                        // Word も python-docx もセルごとの `w:tcW` を見ます
-                        // (2026-08-27 に python-docx で開いて気づきました)
-                        let cw: f32 = (0..cell.span())
-                            .filter_map(|k| t.col_mm.get(ci + k))
-                            .sum();
-                        let cb = cell.borders;
-                        let naname = cb.diag_down || cb.diag_up;
-                        // **セルが自分で言った辺**(`w:tcBorders`)。
-                        // 言っていない辺(`None`)は書きません — 書くと表の
-                        // 指定やスタイルを黙って上書きします
-                        let hen = [
-                            ("top", cb.top), ("left", cb.left),
-                            ("bottom", cb.bottom), ("right", cb.right),
-                        ];
-                        let kei = hen.iter().any(|(_, v)| v.is_some());
-                        if cell.col_span > 1
-                            || cell.v_merge != VMerge::None
-                            || cell.valign != book::VAlign::Top
-                            || cw > 0.0
-                            || naname
-                            || kei
-                            || cell.mar_mm.is_some()
-                            || cell.fit_text
-                        {
-                            w.write_event(Event::Start(BS::new("w:tcPr"))).unwrap();
-                            if cw > 0.0 {
-                                let mut e = BS::new("w:tcW");
-                                let tw = (cw * 1440.0 / 25.4).round().max(1.0) as u32;
-                                let tw = tw.to_string();
-                                e.push_attribute(("w:w", tw.as_str()));
-                                e.push_attribute(("w:type", "dxa"));
-                                w.write_event(Event::Empty(e)).unwrap();
-                            }
-                            if cell.col_span > 1 {
-                                let mut g = BS::new("w:gridSpan");
-                                let v = cell.col_span.to_string();
-                                g.push_attribute(("w:val", v.as_str()));
-                                w.write_event(Event::Empty(g)).unwrap();
-                            }
-                            match cell.v_merge {
-                                VMerge::Start => {
-                                    let mut m = BS::new("w:vMerge");
-                                    m.push_attribute(("w:val", "restart"));
-                                    w.write_event(Event::Empty(m)).unwrap();
-                                }
-                                VMerge::Continue => {
-                                    // val 無しが「続き」(docx の既定)
-                                    w.write_event(Event::Empty(BS::new("w:vMerge"))).unwrap();
-                                }
-                                VMerge::None => {}
-                            }
-                            // **セルの罫線**(`w:tcBorders`)。四方の辺と斜線です。
-                            // 並びは CT_TcBorders のとおり top → left → bottom →
-                            // right → tl2br → tr2bl
-                            if kei || naname {
-                                w.write_event(Event::Start(BS::new("w:tcBorders"))).unwrap();
-                                let kaku = |w: &mut quick_xml::Writer<_>, na: &str, hiku: bool| {
-                                    let tag = format!("w:{na}");
-                                    let mut e = BS::new(tag.as_str());
-                                    if hiku {
-                                        e.push_attribute(("w:val", "single"));
-                                        e.push_attribute(("w:sz", "4"));
-                                        e.push_attribute(("w:color", "000000"));
-                                    } else {
-                                        // **「引かない」と明に言います**(表の
-                                        // 罫線と同じ理由 — 黙ると表やスタイルの
-                                        // 指定が出てきます)
-                                        e.push_attribute(("w:val", "nil"));
-                                    }
-                                    w.write_event(Event::Empty(e)).unwrap();
-                                };
-                                for (na, v) in hen {
-                                    if let Some(hiku) = v {
-                                        kaku(&mut w, na, hiku);
-                                    }
-                                }
-                                for (na, hiku) in [("tl2br", cb.diag_down), ("tr2bl", cb.diag_up)] {
-                                    if hiku {
-                                        kaku(&mut w, na, true);
-                                    }
-                                }
-                                w.write_event(Event::End(BytesEnd::new("w:tcBorders"))).unwrap();
-                            }
-                            // **このセルだけの余白**(`w:tcMar`)
-                            if let Some(m) = cell.mar_mm {
-                                w.write_event(Event::Start(BS::new("w:tcMar"))).unwrap();
-                                for (na, mm) in
-                                    [("top", m[0]), ("left", m[3]), ("bottom", m[2]), ("right", m[1])]
-                                {
-                                    let tag = format!("w:{na}");
-                                    let mut e = BS::new(tag.as_str());
-                                    let tw = ((mm * 1440.0 / 25.4).round() as i64).max(0).to_string();
-                                    e.push_attribute(("w:w", tw.as_str()));
-                                    e.push_attribute(("w:type", "dxa"));
-                                    w.write_event(Event::Empty(e)).unwrap();
-                                }
-                                w.write_event(Event::End(BytesEnd::new("w:tcMar"))).unwrap();
-                            }
-                            // **セルの幅いっぱいに字を配る**(`w:tcFitText`)
-                            if cell.fit_text {
-                                w.write_event(Event::Empty(BS::new("w:tcFitText"))).unwrap();
-                            }
-                            // 縦位置。**docx の既定は上揃え**なので、上のときは
-                            // 何も書きません(書くと原本と差分が出ます)
-                            if let Some(v) = match cell.valign {
-                                book::VAlign::Middle => Some("center"),
-                                book::VAlign::Bottom => Some("bottom"),
-                                _ => None,
-                            } {
-                                let mut e = BS::new("w:vAlign");
-                                e.push_attribute(("w:val", v));
-                                w.write_event(Event::Empty(e)).unwrap();
-                            }
-                            w.write_event(Event::End(BytesEnd::new("w:tcPr"))).unwrap();
-                        }
-                        if cell.paragraphs.is_empty() {
-                            write_para(&mut w, &Paragraph { line_spacing: 1.0, ..Default::default() },
-                                 &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, &author, base);
-                        } else {
-                            for p in &cell.paragraphs {
-                                write_para(&mut w, p, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, &author, base)
-                            }
-                        }
-                        w.write_event(Event::End(BytesEnd::new("w:tc"))).unwrap();
-                        ci += cell.span();
-                    }
-                    w.write_event(Event::End(BytesEnd::new("w:tr"))).unwrap();
-                }
-                w.write_event(Event::End(BytesEnd::new("w:tbl"))).unwrap();
-            }
+            Block::Table(t) => write_table(&mut w, t, &mut imgn, &mut media, &mut cmts, &mut bmn, &mut trkn, &author, base),
         }
     }
 

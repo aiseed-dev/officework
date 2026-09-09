@@ -1869,6 +1869,37 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
 /// 線が横切ると、様式の枠が壊れて見える。
 // 上と同じ理由で束ねません
 #[allow(clippy::too_many_arguments)]
+/// **0 を原点に組んだ紙面を、(dx, dy) だけずらして写す。** セルの中の表
+/// ([`Paragraph::nested`])は先に 0 を上端に組んでおき、位置が決まってから
+/// これで本体の紙面へ移します
+fn utsusu(tmp: Sheet, dx: f32, dy: f32, sheet: &mut Sheet) {
+    for mut ln in tmp.lines {
+        ln.y_mm += dy;
+        for c in &mut ln.cells {
+            c.x_mm += dx;
+        }
+        sheet.lines.push(ln);
+    }
+    for r in tmp.rules {
+        sheet.rules.push([r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy]);
+    }
+    for (b, c) in tmp.fills {
+        sheet.fills.push(([b[0] + dx, b[1] + dy, b[2], b[3]], c));
+    }
+    for mut cb in tmp.cell_boxes {
+        cb.x_mm += dx;
+        cb.top_mm += dy;
+        sheet.cell_boxes.push(cb);
+    }
+    for (im, b) in tmp.images {
+        sheet.images.push((im, [b[0] + dx, b[1] + dy, b[2], b[3]]));
+    }
+    for mut n in tmp.notes {
+        n.at_y += dy;
+        sheet.notes.push(n);
+    }
+}
+
 pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32, sheet: &mut Sheet,
                 table_no: usize, hyphenate: bool, notes: &mut NoteCount, base: f32,
                 doc: &Document, pitch: f32, tsume: bool, moji: f32,
@@ -1946,6 +1977,10 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         pad: [f32; 4],
         /// 斜線(docx の `w:tcBorders/w:tl2br` と `w:tr2bl`)
         diag: (bool, bool),
+        /// **セルの中の表**([`Paragraph::nested`])。(何行目の前に置くか、
+        /// セルの幅で組んだ物、高さ mm)。第1走で組んで高さだけ使い、
+        /// 第2走で位置をずらして写す
+        naka_hyou: Vec<(usize, Sheet, f32)>,
     }
     let mut rows_laid: Vec<Vec<Laid>> = Vec::new();
     let mut row_hs: Vec<f32> = Vec::new();
@@ -1970,6 +2005,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let x = xs[gc.min(ncols)];
             let w = xs[(gc + span).min(ncols)] - x;
             let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (bool, f32))> = Vec::new();
+            let mut hyou_no: Vec<(usize, Sheet, f32)> = Vec::new();
             // **セルの中の余白**。セル自身の `w:tcMar` が最優先で、次が表の
             // `w:tblCellMar`、どちらも無ければ既定です(2026-09-03)
             let pad: [f32; 4] = cell
@@ -1986,6 +2022,20 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 // 消えていました。番号はセルごとに数え直します
                 let mut kazu = 0usize;
                 for para in &cell.paragraphs {
+                    // **セルの中の表**(2026-09-09)。セルの内側の幅で組み、高さを
+                    // セルの高さに足す。位置は第2走で決まるので、ここでは
+                    // 0 を上端にして組んでおき、後でずらす
+                    if let Some(naka) = para.nested.as_deref() {
+                        let fr = Frame { measure_mm: inner, line_height_mm: frame.line_height_mm, y0_mm: 0.0 };
+                        let mut tmp = Sheet::default();
+                        // 中の表の番号。本文の表と重ならない所から振る
+                        let no = usize::MAX / 2 + table_no * 64 + hyou_no.len();
+                        let owari = layout_table(naka, m, &fr, lh * 0.55, &mut tmp, no, hyphenate, notes,
+                                                 base, doc, pitch, tsume, moji, list_counts);
+                        hyou_no.push((ls.len(), tmp, (owari - lh).max(0.0)));
+                        para0 += 1;
+                        continue;
+                    }
                     let pbase = doc.style_pt(para.style_id.as_deref()).unwrap_or(base);
                     let pfont =
                         doc.style_font(para.style_id.as_deref()).or_else(|| doc.font.clone());
@@ -2059,7 +2109,8 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 }
                 // **上下の余白もそのセルの高さ**です。セルごとに `w:tcMar` が
                 // 違えば、行の高さはいちばん高いセルで決まります
-                let naka: f32 = ls.iter().map(|(_, _, h, _, _, _, _)| *h).sum();
+                let naka: f32 = ls.iter().map(|(_, _, h, _, _, _, _)| *h).sum::<f32>()
+                    + hyou_no.iter().map(|(_, _, h)| *h).sum::<f32>();
                 // **縦に結合したセルの中身は、結合した行の全体に配ります**(2026-09-09、
                 // Opus Mac が厚労省の研究費様式で切り分けた)。前は先頭の行に全部
                 // 載せていたので、36 段落のセルが先頭の行を 1 頁ぶん高くしていた。
@@ -2076,7 +2127,8 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 .or_else(|| cell.paragraphs.first().and_then(|p| p.shade.clone()));
             laid.push(Laid { ci, gc, span, v: cell.v_merge, lines: ls, x, w, shade,
                              valign: cell.valign, pad,
-                             diag: (cell.borders.diag_down, cell.borders.diag_up) });
+                             diag: (cell.borders.diag_down, cell.borders.diag_up),
+                             naka_hyou: hyou_no });
             gc += span;
         }
         rows_laid.push(laid);
@@ -2116,8 +2168,10 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     }
                     k += 1;
                 }
-                let need: f32 =
-                    l.lines.iter().map(|(_, _, h, _, _, _, _)| *h).sum::<f32>() + l.pad[0] + l.pad[2];
+                let need: f32 = l.lines.iter().map(|(_, _, h, _, _, _, _)| *h).sum::<f32>()
+                    + l.naka_hyou.iter().map(|(_, _, h)| *h).sum::<f32>()
+                    + l.pad[0]
+                    + l.pad[2];
                 let have: f32 = row_hs[ri..=k].iter().sum();
                 nobasu.push((k, (need - have).max(0.0)));
             }
@@ -2182,7 +2236,8 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             // 前はどのセルも上に置いていたので、「□認められる」の行が
             // セルの頭に張り付いていました(2026-09-01 発注者)
             let pfont2 = doc.font.clone();
-            let naka: f32 = l.lines.iter().map(|(_, _, h, _, _, _, _)| *h).sum();
+            let naka: f32 = l.lines.iter().map(|(_, _, h, _, _, _, _)| *h).sum::<f32>()
+                + l.naka_hyou.iter().map(|(_, _, h)| *h).sum::<f32>();
             let aki = (h - l.pad[0] - l.pad[2] - naka).max(0.0);
             let ue = match l.valign {
                 book::VAlign::Middle => aki / 2.0,
@@ -2192,7 +2247,15 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let mut yy = row_top + l.pad[0] + ue;
             let id = Some((table_no, ri, l.ci));
             let uti = (l.w - l.pad[1] - l.pad[3]).max(0.0);
-            for (cells, b0, plh, yose, pt, sagari, (soko, sage)) in l.lines {
+            // セルの中の表を、何行目の前に置くかの順に写す
+            let mut hyou_no = l.naka_hyou.into_iter().peekable();
+            let n_gyou = l.lines.len();
+            for (j, (cells, b0, plh, yose, pt, sagari, (soko, sage))) in l.lines.into_iter().enumerate() {
+                while hyou_no.peek().is_some_and(|(at, _, _)| *at <= j) {
+                    let (_, tmp, th) = hyou_no.next().unwrap();
+                    utsusu(tmp, x0, yy, sheet);
+                    yy += th;
+                }
                 // **ベースラインは書体の上がりの所**です。LibreOffice と
                 // 同じで、行の箱が字より高いぶんは全部ベースラインより上に
                 // 置き、下に残るのは書体の足の深さだけです
@@ -2240,6 +2303,12 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 narabe(&mut cells, x0 + zure + sagari, aki);
                 sheet.lines.push(Line { cells, y_mm: yy, from_body: false, byte0: b0, cell: id, dip_mm: 0.0 });
                 yy += plh - agari;
+            }
+            // 最後の段落より後に置く表
+            while hyou_no.peek().is_some_and(|(at, _, _)| *at >= n_gyou) {
+                let (_, tmp, th) = hyou_no.next().unwrap();
+                utsusu(tmp, x0, yy, sheet);
+                yy += th;
             }
             // **セルの塗り**(2026-08-27)。段落の背景色は模型に在り、画面は
             // 塗っていたのに、**組む所で落としていた**ので紙と PDF に出て

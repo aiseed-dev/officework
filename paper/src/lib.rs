@@ -1515,7 +1515,7 @@ pub fn doc_hf_lines<'a>(
     let m = kumihan::Metrics::new(font)?;
     let pn = paginate_full(sheet, Paper::from_page(&page));
     let total = pn.offsets.len().max(1);
-    let base_pt = doc.base_pt();
+    let base_pt = doc.style_pt(None).unwrap_or(doc.base_pt());
     // **その頁の節のヘッダー・フッター**(2026-09-09)。頁の頭の高さ(`starts`)が
     // どの節に入るかで引く。節の先頭の頁で `w:titlePg` なら「先頭頁だけ」の物
     // (無ければ空)。節が1つなら文書の物
@@ -1698,7 +1698,7 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
     let ids: Vec<Option<String>> = d
         .paragraphs()
         .map(|p| p.style_id.clone())
-        .chain(d.tables().flat_map(|t| t.rows.iter().flatten().flat_map(|c| c.paragraphs.iter().map(|p| p.style_id.clone()))))
+        .chain(d.tables().flat_map(|t| t.all_paragraphs().into_iter().map(|p| p.style_id.clone())))
         .collect();
     for id in ids {
         hyou.entry(id.clone())
@@ -1716,28 +1716,14 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
     for b in d.blocks.iter_mut() {
         match b {
             kumihan::Block::Para(p) => ateru(p),
-            kumihan::Block::Table(t) => {
-                for row in t.rows.iter_mut() {
-                    for cell in row.iter_mut() {
-                        for p in cell.paragraphs.iter_mut() {
-                            ateru(p);
-                        }
-                    }
-                }
-            }
+            kumihan::Block::Table(t) => t.for_each_paragraph_mut(&mut |p| ateru(p)),
         }
     }
     for b in d.blocks.iter_mut() {
         match b {
             kumihan::Block::Para(p) => p.runs.iter_mut().for_each(&mut fix),
             kumihan::Block::Table(t) => {
-                for row in t.rows.iter_mut() {
-                    for cell in row.iter_mut() {
-                        for p in cell.paragraphs.iter_mut() {
-                            p.runs.iter_mut().for_each(&mut fix);
-                        }
-                    }
-                }
+                t.for_each_paragraph_mut(&mut |p| p.runs.iter_mut().for_each(&mut fix))
             }
         }
     }
@@ -1792,7 +1778,9 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
     // 「上の余白」と「ヘッダーの距離 + ヘッダーの高さ」の高い方に置く
     // (フッターも同じ)。余白の値そのものを置き替えて、組みも頁割りも
     // 押した後の余白で行う
-    let base_pt = d.base_pt();
+    // 字の大きさの既定は「標準」スタイル(無ければ docDefaults)。裁判所の
+    // 様式は docDefaults 10pt・標準 12pt で、ヘッダーは 12pt で組まれる
+    let base_pt = d.style_pt(None).unwrap_or(d.base_pt());
     page.top_mm = kumihan::hf_push_mm(&d.header, &page, d.font.as_deref(), base_pt, false);
     page.bottom_mm = kumihan::hf_push_mm(&d.footer, &page, d.font.as_deref(), base_pt, true);
     // **行送りはエンジンの1つを見ます**(画面と紙と PDF で同じ)

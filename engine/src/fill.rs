@@ -167,10 +167,8 @@ pub fn groups(doc: &Document) -> Vec<String> {
         match b {
             Block::Para(p) => see(p),
             Block::Table(t) => {
-                for c in t.rows.iter().flat_map(|r| r.iter()) {
-                    for p in &c.paragraphs {
-                        see(p);
-                    }
+                for p in t.all_paragraphs() {
+                    see(p);
                 }
             }
         }

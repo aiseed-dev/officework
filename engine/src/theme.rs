@@ -1630,6 +1630,8 @@ fn hyou_style_wo_ateru(
     kitei: Option<&(crate::doc::StyleLook, crate::doc::StyleParaLook)>,
     doc_after: Option<f32>,
     doc_line: Option<f32>,
+    auto_pt: f32,
+    hyou_style: &std::collections::BTreeMap<String, crate::doc::TableStyleLook>,
 ) {
     // 罫線とセルの余白は、表が自分で言っていなければスタイルの物
     if let Some(ts) = ts {
@@ -1706,6 +1708,13 @@ fn hyou_style_wo_ateru(
                 }
             }
             let cell = &mut t.rows[ri][ci];
+            // **入れ子の表**にも同じ手順を掛けます(中の表のスタイルで)
+            for para in cell.paragraphs.iter_mut() {
+                if let Some(naka) = para.nested.as_deref_mut() {
+                    let ts2 = naka.style.as_deref().and_then(|id| hyou_style.get(id)).cloned();
+                    hyou_style_wo_ateru(naka, ts2.as_ref(), jibun, kitei, doc_after, doc_line, auto_pt, hyou_style);
+                }
+            }
             if cell.shade.is_none() {
                 cell.shade = shade;
             }
@@ -1737,15 +1746,17 @@ fn hyou_style_wo_ateru(
                 // `Some(0.0)` はそこで止まり、文書の既定は入りません。
                 // 分けて書くと 0 が「言っていない」に見えてしまい、表の中の
                 // 段落に文書の既定の空きが入って行が高くなります(2026-09-03)
-                if para.space_after_pt == 0.0 {
+                if para.space_after_pt == 0.0 && !para.after_itta {
                     para.space_after_pt = pl.space_after_pt.or(doc_after).unwrap_or(0.0);
                 }
-                if para.space_before_pt == 0.0 {
+                if para.space_before_pt == 0.0 && !para.before_itta {
                     para.space_before_pt = pl.space_before_pt.unwrap_or(0.0);
                 }
                 if para.line_spacing <= 0.0 && para.line_pt.is_none() {
                     para.line_spacing = pl.line_spacing.or(doc_line).unwrap_or(0.0);
                 }
+                // 「自動」の空きは、セルの最初の段落の前と最後の段落の後が 0
+                jidou_no_aki(para, pi == 0, pi + 1 == n, auto_pt);
                 if tsuzuki {
                     if mae {
                         para.space_before_pt = 0.0;
@@ -1771,12 +1782,27 @@ fn hyou_style_wo_ateru(
 /// **文書の既定を、まだ言っていない段落へ入れる**(docx の `w:docDefaults`)。
 ///
 /// スタイルより下の層なので、スタイルを当てた後に呼びます。
+/// **「自動」の前後の空きを値に直す**([`crate::Paragraph::auto_before`])。
+///
+/// Word は本文で `auto_pt`(14pt か 5pt)、表のセルの最初の段落の前・最後の
+/// 段落の後・文書の先頭の段落の前は 0 にします。解いたら旗を下ろします
+fn jidou_no_aki(para: &mut crate::doc::Paragraph, first: bool, last: bool, auto_pt: f32) {
+    if para.auto_before == Some(true) {
+        para.space_before_pt = if first { 0.0 } else { auto_pt };
+    }
+    if para.auto_after == Some(true) {
+        para.space_after_pt = if last { 0.0 } else { auto_pt };
+    }
+    para.auto_before = None;
+    para.auto_after = None;
+}
+
 fn bunsho_no_kitei(
     para: &mut crate::doc::Paragraph,
     after_pt: Option<f32>,
     line: Option<f32>,
 ) {
-    if para.space_after_pt == 0.0 {
+    if para.space_after_pt == 0.0 && !para.after_itta {
         para.space_after_pt = after_pt.unwrap_or(0.0);
     }
     if para.line_spacing <= 0.0 && para.line_pt.is_none() {
@@ -1796,11 +1822,20 @@ fn jibun_wo_ateru(
             para.align = a;
         }
     }
-    if para.space_before_pt == 0.0 {
+    // 段落が自分で書いた 0 はスタイルに勝つ(`before_itta`)
+    if para.space_before_pt == 0.0 && !para.before_itta {
         para.space_before_pt = pl.space_before_pt.unwrap_or(0.0);
     }
-    if para.space_after_pt == 0.0 {
+    if para.space_after_pt == 0.0 && !para.after_itta {
         para.space_after_pt = pl.space_after_pt.unwrap_or(0.0);
+    }
+    // 「自動」の旗は属性ごとに受け継ぐ。段落が `w:before` の値だけ書いて
+    // 旗を書かなくても、スタイルが自動ならその段落も自動です
+    if para.auto_before.is_none() {
+        para.auto_before = pl.auto_before;
+    }
+    if para.auto_after.is_none() {
+        para.auto_after = pl.auto_after;
     }
     if para.line_spacing <= 0.0 && para.line_pt.is_none() {
         para.line_spacing = pl.line_spacing.unwrap_or(0.0);
@@ -1930,7 +1965,16 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
     for block in out.blocks.iter_mut() {
         let crate::doc::Block::Table(t) = block else { continue };
         let ts = t.style.as_deref().and_then(|id| hyou_style.get(id)).cloned();
-        hyou_style_wo_ateru(t, ts.as_ref(), &jibun, kitei_no_style.as_ref(), doc_after, doc_line);
+        hyou_style_wo_ateru(
+            t,
+            ts.as_ref(),
+            &jibun,
+            kitei_no_style.as_ref(),
+            doc_after,
+            doc_line,
+            doc.auto_space_pt(),
+            &hyou_style,
+        );
     }
     for (bi, block) in out.blocks.iter_mut().enumerate() {
         let crate::doc::Block::Para(para) = block else { continue };
@@ -1943,6 +1987,7 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             jibun_wo_ateru(para, lk, pl);
             let tsuzuki = pl.contextual_spacing == Some(true);
             bunsho_no_kitei(para, doc_after, doc_line);
+            jidou_no_aki(para, bi == 0, false, doc.auto_space_pt());
             if tsuzuki {
                 if mae_onaji {
                     para.space_before_pt = 0.0;
@@ -1954,6 +1999,7 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             continue;
         }
         bunsho_no_kitei(para, doc_after, doc_line);
+        jidou_no_aki(para, bi == 0, false, doc.auto_space_pt());
         // 名指しのスタイル(style_id)が役割の固定名より勝つ —
         // 利用者が新設した物は名前で着る
         let def = para
@@ -1968,10 +2014,10 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
         if para.shade.is_none() {
             para.shade = def.shade.clone();
         }
-        if para.space_before_pt == 0.0 {
+        if para.space_before_pt == 0.0 && !para.before_itta {
             para.space_before_pt = def.space_before_pt;
         }
-        if para.space_after_pt == 0.0 {
+        if para.space_after_pt == 0.0 && !para.after_itta {
             para.space_after_pt = def.space_after_pt;
         }
         if let Some(ls) = def.line_spacing {
