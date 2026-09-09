@@ -288,11 +288,6 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
 /// 同じ文書が別の頁数に折れる形になっていました(2026-08-27)。
 pub const LINE_MM: f32 = 6.4;
 
-/// **行末の空白が右の余白へぶら下がれる幅(mm)の見当。** Word は行末の空白を紙の端
-/// まで置く(右の余白の幅まで)。本文は用紙の右の余白を [`Frame::hang_mm`] で渡す。
-/// 余白が分からない所(ヘッダーなど)は日本語の Word の様式に多い 851 twip(15mm)
-pub const HANG_MM: f32 = 15.0;
-
 /// **行の箱の中で、ベースラインが上端から何 mm 下か。**
 ///
 /// 残りの `LINE_MM - BASE_UP_MM`(2.4mm)が字の足の分です。
@@ -314,9 +309,6 @@ pub struct Frame {
     pub measure_mm: f32,   // 行長
     pub line_height_mm: f32,
     pub y0_mm: f32,        // 最初のベースライン
-    /// 行末の空白が右の余白へぶら下がれる幅(mm)。用紙の右の余白
-    /// ([`HANG_MM`] は余白が分からないときの見当)
-    pub hang_mm: f32,
 }
 
 /// 段落の列を行に組む。
@@ -396,7 +388,7 @@ pub(super) fn left_mm(para: &Paragraph, em: f32) -> f32 {
 
 pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
               hyphenate: bool, notes: &mut NoteCount, base: f32, tsume: bool, moji: f32,
-              hang: f32) -> Vec<Vec<Cell>> {
+              wrap_trail: bool) -> Vec<Vec<Cell>> {
     // **見出しは大きく太く組む**([`head_scale`])。大きさは「基準」を
     // 持ち上げる形にするので、run が自分で大きさを言っていればそちらが勝つ
     // (docx の作法どおり — run の指定はスタイルより強い)
@@ -531,12 +523,13 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
         let yoyuu = if tsume { tsume_goukei(&cur) + tsume_goukei(&cells) } else { 0.0 };
         if w_cur + w - yoyuu > measure && !cur.is_empty() && !oikomi {
             if let Tok::Space(..) = tok {
-                // **行末の空白は右の余白へぶら下がります**(2026-09-09、Word の PDF で
-                // 測った)。裁判所の訴状の「住所（送達場所）＋全角空白 32 字」は
-                // 40 字で行の 39 升を超えるが、Word は 40 字目を余白に置いて折らない。
-                // 紙の端まで([`HANG_MM`])を超える分は折る(厚労省の研究報告の
-                // 署名欄は空白が 100 字を超え、Word も次の行に空白の行を作る)
-                if w_cur + w <= measure + hang {
+                // **行末の空白は折らず、右の余白へぶら下げます**(2026-09-09、Word の
+                // PDF で測った)。半角も全角も同じで、幅の上限は無い。裁判所の訴状の
+                // 「住所（送達場所）＋全角空白 32 字」は 40 字目を余白に置き、厚労省の
+                // 届は全角空白 38 字を紙の端を 43pt 越えて置いていた。docx の設定
+                // `w:wrapTrailSpaces`(`Document::wrap_trail_spaces`)が立っている
+                // 文書だけ、余白の所で折る
+                if !wrap_trail {
                     w_cur += w;
                     cur.extend(cells);
                     continue;
@@ -792,7 +785,18 @@ pub(super) fn lh_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&st
         // 38.6pt になり、横浜市の道路廃止通知は行が倍の高さだった(Word の行は
         // 28pt = 20.6pt + 余白)
         Some((pt, false)) => sizen.max(pt * PT_TO_MM),
-        None => kihon * para.spacing(),
+        // **倍率(1.5 行など)は升の倍率です**(2026-09-09、Word の PDF で測った)。
+        // 字が升に収まる段落は 升 × 倍率(14.55pt の升で 1.5 行は 21.8pt)。字が升より
+        // 高い段落は、切り上げた高さの方が大きければそちら(12pt の字が 14.55pt の
+        // 升で 1.5 行なら 2 升 = 29.1pt。前は 2 升 × 1.5 = 43.7pt で、厚労省の届が
+        // 1 頁に収まらなかった)
+        None => {
+            if snap && para.spacing() != 1.0 {
+                (pitch * PT_TO_MM * para.spacing()).max(kihon)
+            } else {
+                kihon * para.spacing()
+            }
+        }
     }
 }
 
@@ -900,6 +904,11 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
     // 本文(段落を \n で繋いだもの)における、いまの段落の頭のバイト位置
     let mut para_byte0 = 0usize;
     let mut table_no = 0usize;
+    // 直前に浮かぶ表を組んだか(直後の空の段落は表の横に置かれるので場所を取らない)
+    let mut ukabu = false;
+    // **横に字を流す浮かぶ表**の占める所(下端 y, 左 x, 右 x。mm)。この下端より上の
+    // 段落は、表の横の幅で組む(Word の「文字列の折り返し」)
+    let mut yoke: Option<(f32, f32, f32)> = None;
     for (bi, block) in doc.blocks.iter().enumerate() {
         // この段落に効いている行長。節が変われば紙の幅も余白も変わるので、
         // **折り返しそのものがやり直しになる**(折る所だけの話ではない)
@@ -928,6 +937,22 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
         };
         match block {
             Block::Para(para) => {
+                // **浮かぶ表の直後の空の段落は場所を取らない**(Word は表の横に置く)。
+                // 行としては持つ(バイトの勘定とカーソルのため)が、y を進めない
+                if std::mem::take(&mut ukabu)
+                    && para.runs.iter().all(|r| r.text.trim().is_empty())
+                    && para.images.is_empty()
+                    && para.images_new.is_empty()
+                    && para.anchors.is_empty()
+                    && !para.page_break_before
+                    && para.sect.is_none()
+                {
+                    sheet.lines.push(Line {
+                        cells: Vec::new(), y_mm: y, from_body: true,
+                        byte0: para_byte0, cell: None, dip_mm: 0.0 });
+                    para_byte0 += para.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
+                    continue;
+                }
                 // **段落スタイルが大きさを言っていればそちらが勝ちます。**
                 // run の指定はさらに強く、下の break_para が見ます
                 let base = doc.style_pt(para.style_id.as_deref()).unwrap_or(base);
@@ -978,9 +1003,26 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // 本文と同じ字だと、コードなのか文章なのか分かりません。
                 // 等幅の書体がこの機械に無ければ、そのまま組みます
                 let em = para.runs.first().and_then(|r| r.size_pt).unwrap_or(base) * 25.4 / 72.0;
-                let indent_mm = left_mm(para, em);
+                let mut indent_mm = left_mm(para, em);
                 // 右のインデント(`w:ind w:right`)も行長から引く
-                let migi_mm = (para.right_twips.max(0) as f32) * 25.4 / 1440.0;
+                let mut migi_mm = (para.right_twips.max(0) as f32) * 25.4 / 1440.0;
+                // **浮かぶ表の横**にいる段落は、表を避けた幅で組む(2026-09-09)。
+                // 表が右にあれば行長を縮め、左にあれば左を空ける。表の下端を過ぎたら
+                // 元の幅に戻る。横浜市の届は右の「受付欄」の横に注意書きが並ぶ
+                if let Some((soko, hidari, migi)) = yoke {
+                    if y < soko {
+                        let aki = 2.5; // `w:leftFromText` / `w:rightFromText` の 142 twip
+                        if hidari > block_measure - migi {
+                            // 表が右
+                            migi_mm = migi_mm.max(block_measure - hidari + aki);
+                        } else {
+                            // 表が左
+                            indent_mm = indent_mm.max(migi + aki);
+                        }
+                    } else {
+                        yoke = None;
+                    }
+                }
                 let measure = (block_measure - indent_mm - migi_mm).max(em);
                 // **塊の印の行は、紙に出しません**(2026-08-25)。
                 // `[source,python]` と `----` がそのまま印刷されていました。
@@ -1100,7 +1142,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 let first_mm = first_line_mm(para_eff, base);
                 let gyou = break_para(para_eff, m, measure, marker.as_deref(),
                                       doc.hyphenate, &mut note_no, base, doc.compress_punct, moji,
-                                      frame.hang_mm);
+                                      doc.wrap_trail_spaces);
                 let gyou_kazu = gyou.len();
                 for (line_no, mut cells) in gyou.into_iter().enumerate() {
                     // 1行目だけ字下げのぶん右へ(行長は組み手が縮めている)
@@ -1403,9 +1445,38 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 }
             }
             Block::Table(table) => {
-                y = layout_table(table, m, frame, y, &mut sheet, table_no, doc.hyphenate,
-                                 &mut note_no, base, doc, pitch, doc.compress_punct, moji,
-                                 &mut list_counts);
+                // 横に字を流していた浮かぶ表の下に出る
+                if let Some((soko, _, _)) = yoke.take() {
+                    y = y.max(soko);
+                }
+                // 浮かぶ表は `w:tblpY` の分だけずらして置く(負なら上へ)
+                let y_in = y + table.float_y_mm.unwrap_or(0.0);
+                let haba: f32 = table.col_mm.iter().sum();
+                let lh = frame.line_height_mm;
+                if table.float_y_mm.is_some() && haba > 0.5 && haba < block_measure * 0.85 {
+                    // **細い浮かぶ表は横に字を流す。** 表を自分の幅で別に組み、横の
+                    // 置き方(`w:tblpXSpec`)の位置へ写す。y は進めない(後ろの段落が
+                    // 横に並ぶ)。表の下端を `yoke` に覚え、段落の側が幅を縮める
+                    let fr = Frame { measure_mm: haba, line_height_mm: lh, y0_mm: 0.0 };
+                    let mut tmp = Sheet::default();
+                    let owari = layout_table(table, m, &fr, y_in, &mut tmp, table_no, doc.hyphenate,
+                                             &mut note_no, base, doc, pitch, doc.compress_punct, moji,
+                                             &mut list_counts);
+                    let dx = match table.float_x {
+                        Some(FloatX::Right) => block_measure - haba,
+                        Some(FloatX::Center) => (block_measure - haba) / 2.0,
+                        Some(FloatX::At(x)) => x.min(block_measure - haba),
+                        _ => 0.0,
+                    }
+                    .max(0.0);
+                    utsusu(tmp, dx, 0.0, &mut sheet);
+                    yoke = Some((owari - lh, dx, dx + haba));
+                } else {
+                    y = layout_table(table, m, frame, y_in, &mut sheet, table_no, doc.hyphenate,
+                                     &mut note_no, base, doc, pitch, doc.compress_punct, moji,
+                                     &mut list_counts);
+                }
+                ukabu = table.float_y_mm.is_some();
                 table_no += 1;
             }
         }
@@ -1473,7 +1544,7 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
             let mut throwaway = NoteCount::default();
             for cells in break_para(para, m, frame.measure_mm, marker.as_deref(),
                                     doc.hyphenate, &mut throwaway, base, doc.compress_punct, 0.0,
-                                    frame.hang_mm) {
+                                    doc.wrap_trail_spaces) {
                 let mut x = 0.0f32;
                 let cells: Vec<Cell> = cells.into_iter()
                     .map(|mut c| { c.x_mm = x; x += c.w_mm; c })
@@ -1562,7 +1633,7 @@ pub fn layout_hf(
             }
         }
         for cells in break_para(&para, m, measure, None, false, &mut NoteCount::default(),
-                                base_pt, false, 0.0, HANG_MM) {
+                                base_pt, false, 0.0, false) {
             let w: f32 = cells.iter().map(|c| c.w_mm).sum();
             let slack = (measure - w).max(0.0);
             let mut x = match para.align {
@@ -2081,7 +2152,6 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                             measure_mm: inner.max(jibun),
                             line_height_mm: frame.line_height_mm,
                             y0_mm: 0.0,
-                            hang_mm: frame.hang_mm,
                         };
                         let mut tmp = Sheet::default();
                         // 中の表の番号。本文の表と重ならない所から振る
@@ -2095,7 +2165,12 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     let pbase = doc.style_pt(para.style_id.as_deref()).unwrap_or(base);
                     let pfont =
                         doc.style_font(para.style_id.as_deref()).or_else(|| doc.font.clone());
-                    let plh = lh_of(para, frame, pbase, pfont.as_deref(), pitch);
+                    // **縦書きのセル**は 1 字ずつ字の幅で積む(行送りではなく)
+                    let plh = if para.tate {
+                        pbase * PT_TO_MM
+                    } else {
+                        lh_of(para, frame, pbase, pfont.as_deref(), pitch)
+                    };
                     // **docx の番号(`numId`)は表の中でも文書全体で続きます**(2026-09-09、
                     // Word と並べて見つけた)。前はセルごとに 1 から数え直していたので、
                     // 別のセルの「２ 事業内容」「３ 従業員数」が全部「１」になり、逆に
@@ -2135,8 +2210,10 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     let hidari = left_mm(para, pbase * PT_TO_MM);
                     let sagari = first_line_mm(para, pbase);
                     let migi = (para.right_twips.max(0) as f32) * 25.4 / 1440.0;
-                    let inner = (inner - hidari - migi).max(2.0);
-                    let mut kore = break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase, tsume, moji, HANG_MM);
+                    // 縦書きのセルは 1 字ずつ折る(行長を 1 字にする)
+                    let inner = if para.tate { (pbase * PT_TO_MM).max(2.0) } else { (inner - hidari - migi).max(2.0) };
+                    let mut kore = break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase, tsume, moji,
+                                              doc.wrap_trail_spaces);
                     let saigo = kore.len().saturating_sub(1);
                     for (k, cs) in kore.drain(..).enumerate() {
                         let b0 = para0 + cs.iter().map(|c| c.off).min().unwrap_or(0);
@@ -2559,7 +2636,7 @@ mod kaigyou_tests {
             p.runs.push(crate::Run { text: "\n".into(), size_pt: None, font: None, fmt: Default::default() });
             p.runs.push(crate::Run { text: "続き".into(), size_pt: None, font: None, fmt: Default::default() });
         }
-        let sheet = layout(&d, &m, &Frame { measure_mm: 150.0, line_height_mm: LINE_MM, y0_mm: 20.0, hang_mm: HANG_MM });
+        let sheet = layout(&d, &m, &Frame { measure_mm: 150.0, line_height_mm: LINE_MM, y0_mm: 20.0});
         let texts: Vec<String> = sheet
             .lines
             .iter()

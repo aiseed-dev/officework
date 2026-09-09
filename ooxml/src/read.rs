@@ -236,6 +236,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         let head = &sxml[i..(i + 60).min(sxml.len())];
         doc.hyphenate = !(head.contains("w:val=\"0\"") || head.contains("w:val=\"false\""));
     }
+    // 行末の空白を折り返す設定(無ければ Word は紙の端を越えても置く)
+    doc.wrap_trail_spaces = sxml.contains("<w:wrapTrailSpaces");
     // 段落の「自動」の空きを 5pt にする設定(無ければ HTML 流の 14pt)
     if let Some(i) = sxml.find("<w:doNotUseHTMLParagraphAutoSpacing") {
         let head = &sxml[i..(i + 80).min(sxml.len())];
@@ -574,6 +576,9 @@ pub(super) struct TblBuild {
     /// 表の左のインデント(`w:tblInd`)の twip。**原文のまま**持ちます。
     /// セルの余白を引く補正は、設定(compatibilityMode)を読める所でします
     ind_twips: Option<f32>,
+    /// 浮かぶ表(`w:tblpPr`)の縦のずれ(mm)。無ければ普通の表
+    float_y: Option<f32>,
+    float_x: Option<kumihan::FloatX>,
     /// 見出しの行(`w:trPr/w:tblHeader`)が最初の行に付いていたか
     header_row: bool,
     /// **入れ子の表を読む間、外側のセルと行の読みかけ**(2026-09-09)。
@@ -594,6 +599,7 @@ pub(super) struct SavedCell {
     borders: kumihan::CellBorders,
     mar: Option<[f32; 4]>,
     fit: bool,
+    tate: bool,
     grid_before: u8,
     grid_after: u8,
     row_twips: Option<u32>,
@@ -1975,6 +1981,7 @@ pub(super) fn parse_document_rels_num(
     let mut cell_mar: Option<[f32; 4]> = None;
     // セルの幅いっぱいに字を配るか(`w:tcPr/w:tcFitText`)
     let mut cell_fit = false;
+    let mut cell_tate = false; // w:tcPr の w:textDirection(縦書きのセル)
     // 行の高さ(twip)。w:trPr の w:trHeight
     let mut row_twips: Option<u32> = None;
     let mut row_exact = false; // w:trHeight の hRule="exact"
@@ -2111,6 +2118,7 @@ pub(super) fn parse_document_rels_num(
                                 borders: cell_borders,
                                 mar: cell_mar,
                                 fit: cell_fit,
+                                tate: cell_tate,
                                 grid_before: row_grid_before,
                                 grid_after: row_grid_after,
                                 row_twips,
@@ -2137,6 +2145,7 @@ pub(super) fn parse_document_rels_num(
                             cell_borders = kumihan::CellBorders::default();
                             cell_mar = None;
                             cell_fit = false;
+                            cell_tate = false;
                         }
                         stack.push(TblBuild::default())
                     }
@@ -2452,6 +2461,23 @@ pub(super) fn parse_document_rels_num(
                     b"tblLayout" if in_tblpr => if let Some(b) = stack.last_mut() {
                         b.fixed_layout = attr(&e, "type").as_deref() == Some("fixed");
                     },
+                    // **浮かぶ表**(`w:tblpPr`)。縦のずれ(`w:tblpY`。twip)を持つ。
+                    // 用紙や余白に対する位置(`vertAnchor` が page / margin)はまだ
+                    // 解かないので、ずれ 0 の浮かぶ表として扱う
+                    b"tblpPr" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        let text = !matches!(attr(&e, "vertAnchor").as_deref(), Some("page") | Some("margin"));
+                        let y = attr(&e, "tblpY").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
+                        b.float_y = Some(if text { twip_mm(y) } else { 0.0 });
+                        // 横の位置。`tblpXSpec`(左・中央・右)か `tblpX`(twip)
+                        b.float_x = match attr(&e, "tblpXSpec").as_deref() {
+                            Some("center") => Some(kumihan::FloatX::Center),
+                            Some("right") | Some("outside") => Some(kumihan::FloatX::Right),
+                            Some("left") | Some("inside") => Some(kumihan::FloatX::Left),
+                            _ => attr(&e, "tblpX")
+                                .and_then(|v| v.parse::<f32>().ok())
+                                .map(|x| kumihan::FloatX::At(twip_mm(x).max(0.0))),
+                        };
+                    },
                     // **表の幅**(`w:tblW`)。割合(`pct`)のときだけ覚えます。
                     // docx は 1/50 % で書くので 5000 が 100% です。`dxa` は
                     // `w:gridCol` の合計と同じ値なので、読まなくても同じです
@@ -2479,6 +2505,10 @@ pub(super) fn parse_document_rels_num(
                     // **セルの幅いっぱいに字を配る**(`w:tcFitText`)
                     b"tcFitText" if in_tcpr => {
                         cell_fit = !matches!(attr(&e, "val").as_deref(), Some("0") | Some("false"));
+                    }
+                    // **セルの縦書き**(`w:textDirection` が tbRl / tbRlV)
+                    b"textDirection" if in_tcpr => {
+                        cell_tate = attr(&e, "val").is_some_and(|v| v.starts_with("tbRl") || v.starts_with("btLr"));
                     }
                     // **セルの斜線**(`w:tl2br` は左上から右下、`w:tr2bl` は
                     // 左下から右上)。記入しない欄に引きます
@@ -3156,6 +3186,23 @@ pub(super) fn parse_document_rels_num(
                     b"tblLayout" if in_tblpr => if let Some(b) = stack.last_mut() {
                         b.fixed_layout = attr(&e, "type").as_deref() == Some("fixed");
                     },
+                    // **浮かぶ表**(`w:tblpPr`)。縦のずれ(`w:tblpY`。twip)を持つ。
+                    // 用紙や余白に対する位置(`vertAnchor` が page / margin)はまだ
+                    // 解かないので、ずれ 0 の浮かぶ表として扱う
+                    b"tblpPr" if in_tblpr => if let Some(b) = stack.last_mut() {
+                        let text = !matches!(attr(&e, "vertAnchor").as_deref(), Some("page") | Some("margin"));
+                        let y = attr(&e, "tblpY").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
+                        b.float_y = Some(if text { twip_mm(y) } else { 0.0 });
+                        // 横の位置。`tblpXSpec`(左・中央・右)か `tblpX`(twip)
+                        b.float_x = match attr(&e, "tblpXSpec").as_deref() {
+                            Some("center") => Some(kumihan::FloatX::Center),
+                            Some("right") | Some("outside") => Some(kumihan::FloatX::Right),
+                            Some("left") | Some("inside") => Some(kumihan::FloatX::Left),
+                            _ => attr(&e, "tblpX")
+                                .and_then(|v| v.parse::<f32>().ok())
+                                .map(|x| kumihan::FloatX::At(twip_mm(x).max(0.0))),
+                        };
+                    },
                     // **表の幅**(`w:tblW`)。割合(`pct`)のときだけ覚えます。
                     // docx は 1/50 % で書くので 5000 が 100% です。`dxa` は
                     // `w:gridCol` の合計と同じ値なので、読まなくても同じです
@@ -3183,6 +3230,10 @@ pub(super) fn parse_document_rels_num(
                     // **セルの幅いっぱいに字を配る**(`w:tcFitText`)
                     b"tcFitText" if in_tcpr => {
                         cell_fit = !matches!(attr(&e, "val").as_deref(), Some("0") | Some("false"));
+                    }
+                    // **セルの縦書き**(`w:textDirection` が tbRl / tbRlV)
+                    b"textDirection" if in_tcpr => {
+                        cell_tate = attr(&e, "val").is_some_and(|v| v.starts_with("tbRl") || v.starts_with("btLr"));
                     }
                     // **セルの斜線**(`w:tl2br` は左上から右下、`w:tr2bl` は
                     // 左下から右上)。記入しない欄に引きます
@@ -3417,6 +3468,7 @@ pub(super) fn parse_document_rels_num(
                                 auto_after: std::mem::take(&mut auto_after),
                                 before_itta: std::mem::take(&mut before_itta),
                                 after_itta: std::mem::take(&mut after_itta),
+                                tate: cell_tate,
                                 nested: None,
                                 style: pstyle,
                                 style_id: pstyle_id.take(),
@@ -3476,6 +3528,7 @@ pub(super) fn parse_document_rels_num(
                         cell_valign = book::VAlign::Top;
                         cell_borders = kumihan::CellBorders::default();
                         cell_fit = false;
+                        cell_tate = false;
                     },
                     b"tblBorders" => in_tbl_borders = false,
                     b"tcPr" => in_tcpr = false,
@@ -3556,6 +3609,8 @@ pub(super) fn parse_document_rels_num(
                                 // 直すだけ)です。セルの余白を引く補正は
                                 // 設定を読める [`tblind_wo_naosu`] でします
                                 indent_mm: b.ind_twips.map(twip_mm).unwrap_or(0.0),
+                                float_y_mm: b.float_y,
+                                float_x: b.float_x,
                             };
                             if stack.is_empty() {
                                 doc.blocks.push(Block::Table(tb));
@@ -3576,6 +3631,7 @@ pub(super) fn parse_document_rels_num(
                                     cell_borders = sv.borders;
                                     cell_mar = sv.mar;
                                     cell_fit = sv.fit;
+                                    cell_tate = sv.tate;
                                     row_grid_before = sv.grid_before;
                                     row_grid_after = sv.grid_after;
                                     row_twips = sv.row_twips;

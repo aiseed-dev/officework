@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         use printpdf::*;
         let m = Metrics::new(font_data()).map_err(|e| e.to_string())?;
         let sheet = layout(&doc, &m,
-            &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
+            &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0});
         let (p, page, layer) = PdfDocument::new("docx", Mm(210.0), Mm(297.0), "L1");
         let font = p.add_external_font(std::io::Cursor::new(font_data()))?;
         let l = p.get_page(page).get_layer(layer);

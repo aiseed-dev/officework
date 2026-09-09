@@ -48,7 +48,7 @@ mod kihon {
         let data = font();
         let m = Metrics::new(&data).unwrap();
         let doc = Document::plain(text);
-        layout(&doc, &m, &Frame { measure_mm: measure, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM })
+        layout(&doc, &m, &Frame { measure_mm: measure, line_height_mm: 6.0, y0_mm: 20.0})
     }
 
     const SAMPLE: &str = "日本の事務の実態は、文書ではなく様式です。その様式の定義をテキストにして、記入用の帳票・検証・データベースを全部そこから派生させます。「原本はテキスト。」と、私たちは Rust で書きます。";
@@ -232,7 +232,7 @@ mod align_tests {
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain(text);
         d.apply_align(0..text.len(), a);
-        layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM })
+        layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0})
     }
 
     #[test]
@@ -264,7 +264,7 @@ mod align_tests {
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("太字");
         d.apply_char_format(0..6, |f| f.bold = true);
-        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0});
         assert!(s.lines[0].cells.iter().all(|c| c.fmt.bold), "字に書式が届いていない");
     }
 }
@@ -311,7 +311,7 @@ mod list_tests {
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("一つ目\n二つ目\n三つ目");
         setup(&mut d);
-        layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM })
+        layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0})
     }
 
     fn text(s: &Sheet, i: usize) -> String {
@@ -367,7 +367,7 @@ mod list_tests {
                 p.list = kind;
             }
         }
-        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0});
         let texts: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
         assert!(texts[2].starts_with("1."), "番号が1から始まらない: {:?}", texts);
         assert!(texts[3].starts_with("2."), "2番目が違う: {:?}", texts);
@@ -383,7 +383,7 @@ mod list_tests {
         let mut d = Document::plain("見出し\n本文の行\n行間の広い段落");
         if let Block::Para(p) = &mut d.blocks[0] { p.style = ParaStyle::Heading(1); }
         if let Block::Para(p) = &mut d.blocks[2] { p.line_spacing = 1.5; }
-        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.4, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.4, y0_mm: 20.0});
         let dip: Vec<f32> = s.lines.iter().map(|l| l.dip_mm).collect();
         assert!(dip[1] > 0.0, "本文の行も箱の底に寄る(11pt で約 1.3mm): {dip:?}");
         assert!(dip[0] > dip[1] + 1.5, "見出し(箱 1.5 倍)は本文より下がる: {dip:?}");
@@ -425,7 +425,7 @@ mod list_tests {
     fn a_right_indent_shortens_the_line() {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let frame = Frame { measure_mm: 60.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM };
+        let frame = Frame { measure_mm: 60.0, line_height_mm: 6.0, y0_mm: 20.0};
         let mut d = Document::plain("あいうえおかきくけこさしすせそたちつてとなにぬねの");
         let n0 = layout(&d, &m, &frame).lines.len();
         if let Block::Para(p) = &mut d.blocks[0] { p.right_twips = 1440; } // 25.4mm
@@ -531,9 +531,9 @@ mod list_tests {
         let w = m.advance_for(None, 'あ', 10.0);
         // 8字ぶんより少し短い行長。詰め無しでは7字で折れる
         let measure = w * 8.0 - w * 0.5;
-        let nashi = break_para(&p, &m, measure, None, false, &mut NoteCount::default(), 10.0, false, 0.0, 0.0);
+        let nashi = break_para(&p, &m, measure, None, false, &mut NoteCount::default(), 10.0, false, 0.0, false);
         assert_eq!(nashi.len(), 2, "詰め無しで1行に入った: {:?}", nashi.iter().map(|l| l.len()).collect::<Vec<_>>());
-        let ari = break_para(&p, &m, measure, None, false, &mut NoteCount::default(), 10.0, true, 0.0, 0.0);
+        let ari = break_para(&p, &m, measure, None, false, &mut NoteCount::default(), 10.0, true, 0.0, false);
         assert_eq!(ari.len(), 1, "詰めれば入るのに折った: {:?}", ari.iter().map(|l| l.len()).collect::<Vec<_>>());
         // 3つの約物で w/4 ずつ = 0.75w まで詰められる。足りない 0.5w を同じ割合で
         let mut cells = ari.into_iter().next().unwrap();
@@ -544,7 +544,7 @@ mod list_tests {
         let i = cells.iter().position(|c| c.ch == '（').unwrap();
         assert!(cells[i].x_mm < cells[i - 1].x_mm + w - 0.01, "開く括弧が左へ寄っていない");
         // 詰めても入らない量なら折る
-        let mienai = break_para(&p, &m, w * 8.0 - w * 1.0, None, false, &mut NoteCount::default(), 10.0, true, 0.0, 0.0);
+        let mienai = break_para(&p, &m, w * 8.0 - w * 1.0, None, false, &mut NoteCount::default(), 10.0, true, 0.0, false);
         assert_eq!(mienai.len(), 2, "詰められる量を超えて1行に押し込んだ");
     }
 
@@ -553,7 +553,7 @@ mod list_tests {
     /// `w:snapToGrid w:val="0"` の段落は合わせない
     #[test]
     fn lines_snap_up_to_the_document_grid() {
-        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM };
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0};
         let mut p = Paragraph::default();
         // 8pt なら書体の自然な高さは 18pt に届かない(既定の書体は 1.75 倍の行送り)
         p.runs.push(Run { text: "あ".into(), size_pt: Some(8.0), font: None, fmt: Default::default() });
@@ -591,7 +591,7 @@ mod list_tests {
     fn the_first_paragraph_keeps_its_space_before() {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.4, y0_mm: 20.0, hang_mm: crate::HANG_MM };
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.4, y0_mm: 20.0};
         let plain = layout(&Document::plain("本文"), &m, &frame);
         let mut d = Document::plain("見出し");
         if let Block::Para(p) = &mut d.blocks[0] {
@@ -618,14 +618,14 @@ mod list_tests {
                 p.list_id = Some(2);
             }
         }
-        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0});
         let texts: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
         assert!(texts[2].starts_with("2."), "段落を挟むと数え直した: {:?}", texts);
         assert!(texts[3].starts_with("3."), "{:?}", texts);
 
         // 別の numId なら別の箇条書き。1 から
         if let Block::Para(p) = &mut d.blocks[3] { p.list_id = Some(5); }
-        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0});
         let texts: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
         assert!(texts[3].starts_with("1."), "別の numId が続いた: {:?}", texts);
 
@@ -633,7 +633,7 @@ mod list_tests {
         for i in [0usize, 2, 3] {
             if let Block::Para(p) = &mut d.blocks[i] { p.list_id = None; }
         }
-        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0});
         let texts: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
         assert!(texts[2].starts_with("1."), "AsciiDoc の数え直しが消えた: {:?}", texts);
     }
@@ -649,7 +649,7 @@ mod list_tests {
                 p.indent = ind;
             }
         }
-        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0});
         let texts: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
         assert!(texts[1].starts_with("(1) "), "{:?}", texts[1]);
         assert!(texts[2].starts_with("(2) "), "{:?}", texts[2]);
@@ -698,7 +698,7 @@ mod list_tests {
         let long = "あ".repeat(60);
         let mut d = Document::plain(&long);
         if let Block::Para(p) = &mut d.blocks[0] { p.indent = 3 }
-        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0});
         for l in &s.lines {
             let right = l.cells.last().map(|c| c.x_mm + c.w_mm).unwrap_or(0.0);
             assert!(right <= 100.5, "行長を超えた: {right}mm");
@@ -719,7 +719,7 @@ mod vertical_tests {
         let y0 = pg.top_mm + 4.0;
         let measure = pg.h_mm - pg.top_mm - pg.bottom_mm - 8.0;
         let mut sheet = layout(&d, &m,
-            &Frame { measure_mm: measure, line_height_mm: 6.0, y0_mm: y0, hang_mm: crate::HANG_MM });
+            &Frame { measure_mm: measure, line_height_mm: 6.0, y0_mm: y0});
         fold_vertical(&mut sheet, &pg, y0, 6.0);
         assert!(sheet.vertical);
         assert_eq!(sheet.vert_x.len(), sheet.lines.len());
@@ -748,7 +748,7 @@ mod ruby_tests {
         // 「組版」にだけルビを振る
         d.apply_char_format(0..6, |f| f.ruby = Some("くみはん".into()));
         let sheet = layout(&d, &m,
-            &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+            &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0});
         let body: Vec<&Line> = sheet.lines.iter().filter(|l| l.from_body).collect();
         let ruby: Vec<&Line> = sheet.lines.iter().filter(|l| !l.from_body).collect();
         assert_eq!(body.len(), 1);
@@ -779,7 +779,7 @@ mod distribute_tests {
             p.align = Align::Distribute;
         }
         let sheet = layout(&d, &m,
-            &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+            &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0});
         let line = &sheet.lines[0];
         let last = line.cells.last().unwrap();
         assert!(
@@ -820,7 +820,7 @@ mod table_layout_tests {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
         layout(&doc_with_table(), &m,
-               &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM })
+               &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0})
     }
 
     /// **段落が行の高さを言っているセルは、字を箱の底に置く**(2026-09-09)。
@@ -831,7 +831,7 @@ mod table_layout_tests {
     fn cell_text_sits_at_the_bottom_of_a_declared_line_box() {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM };
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0};
         let base = |d: &Document| -> f32 {
             let s = layout(d, &m, &frame);
             s.lines.iter().find(|l| l.text().contains("品名")).expect("セルが無い").y_mm
@@ -858,7 +858,7 @@ mod table_layout_tests {
     fn numbering_continues_across_table_cells_per_num_id() {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM };
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0};
         let cell = |s: &str, id: Option<u32>| Cellbox {
             paragraphs: vec![Paragraph {
                 runs: vec![Run { text: s.into(), size_pt: Some(10.0), font: None, fmt: Default::default() }],
@@ -892,7 +892,7 @@ mod table_layout_tests {
     fn exact_rows_stay_and_merged_content_spreads_over_its_rows() {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM };
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0};
         let cell = |s: &str| Cellbox {
             paragraphs: vec![Paragraph {
                 runs: vec![Run { text: s.into(), size_pt: Some(10.0), font: None, fmt: Default::default() }],
@@ -936,7 +936,7 @@ mod table_layout_tests {
     fn a_table_row_is_taller_by_the_border_width() {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM };
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0};
         let mut d = doc_with_table();
         if let Block::Table(t) = &mut d.blocks[1] {
             t.row_mm = vec![8.0, 8.0];
@@ -993,7 +993,7 @@ mod table_layout_tests {
             }],
             ..Default::default()
         };
-        let mut d = Document { no_html_auto_space: false, font_latin: None, note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
+        let mut d = Document { no_html_auto_space: false, wrap_trail_spaces: false, font_latin: None, note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
         d.blocks.push(Block::Table(Table {
             col_mm: vec![],
             rows: vec![vec![cell(&"あ".repeat(30)), cell("短い")]],
@@ -1001,7 +1001,7 @@ mod table_layout_tests {
     }));
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0});
         // 50mm の列に 30文字(約110mm)は3行になる
         let cell_lines = s.lines.iter().filter(|l| !l.from_body).count();
         assert!(cell_lines >= 3, "セルの中で折り返していない: {cell_lines} 行");
@@ -1033,13 +1033,13 @@ mod merge_layout_tests {
     fn sheet_of(rows: Vec<Vec<Cellbox>>) -> Sheet {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let d = Document { no_html_auto_space: false, font_latin: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
+        let d = Document { no_html_auto_space: false, wrap_trail_spaces: false, font_latin: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
             font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Table(Table { col_mm: vec![], rows,
         ..Default::default()
     })],
         };
-        layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM })
+        layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0})
     }
 
     #[test]
@@ -1110,7 +1110,7 @@ mod gridcol_tests {
     fn rules_of(col_mm: Vec<f32>) -> Vec<[f32; 4]> {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let d = Document { no_html_auto_space: false, font_latin: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
+        let d = Document { no_html_auto_space: false, wrap_trail_spaces: false, font_latin: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
             font: None,
             page: None,
             sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
@@ -1120,7 +1120,7 @@ mod gridcol_tests {
         ..Default::default()
     })],
         };
-        layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM }).rules
+        layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0}).rules
     }
 
     #[test]
@@ -1156,7 +1156,7 @@ mod empty_line_tests {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let d = Document::plain("一行目\n\n三行目");
-        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0});
         let body: Vec<&Line> = s.lines.iter().filter(|l| l.from_body).collect();
         assert_eq!(body.len(), 3, "空行が消えた: {} 行", body.len());
         assert!(body[1].cells.is_empty());
@@ -1173,7 +1173,7 @@ mod byte0_tests {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let d = Document::plain(text);
-        layout(&d, &m, &Frame { measure_mm: measure, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM })
+        layout(&d, &m, &Frame { measure_mm: measure, line_height_mm: 6.0, y0_mm: 20.0})
             .lines
     }
 
@@ -1248,7 +1248,7 @@ mod byte0_tests {
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("項目");
         if let Block::Para(p) = &mut d.blocks[0] { p.list = ListKind::Bullet }
-        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0});
         let l = &s.lines[0];
         assert_eq!(l.byte0, 0);
         // 印(・)ぶんが byte_end に乗っていない
@@ -1474,7 +1474,7 @@ mod hyphen_tests {
         let text = "The quick information hyphenation representation communication demonstration";
         let mut d = Document::plain(text);
         d.hyphenate = true;
-        let s = layout(&d, &m, &Frame { measure_mm: 45.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 45.0, line_height_mm: 6.0, y0_mm: 20.0});
         let joined: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
         assert!(joined.iter().any(|l| l.ends_with('-')),
             "どの行末にもハイフンが無い: {joined:?}");
@@ -1493,7 +1493,7 @@ mod hyphen_tests {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let d = Document::plain("The quick information hyphenation");
-        let s = layout(&d, &m, &Frame { measure_mm: 45.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 45.0, line_height_mm: 6.0, y0_mm: 20.0});
         assert!(s.lines.iter().all(|l| !l.text().ends_with('-')),
             "設定していないのに折った");
     }
@@ -1511,7 +1511,7 @@ mod dropcap_tests {
         if let Block::Para(p) = &mut d.blocks[0] {
             p.dropcap = true;
         }
-        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0});
         let cap = &s.lines[0];
         assert_eq!(cap.text(), "春");
         assert!(cap.cells[0].size_pt > 25.0, "頭の字が大きくない: {}", cap.cells[0].size_pt);
@@ -1538,7 +1538,7 @@ mod column_tests {
         let mut s = layout(&d, &m, &Frame {
             measure_mm: pg.column_measure_mm(),
             line_height_mm: 6.4,
-            y0_mm: 24.0, hang_mm: crate::HANG_MM
+            y0_mm: 24.0
         });
         fold_columns(&mut s, &pg, 24.0);
         s
@@ -1586,7 +1586,7 @@ mod column_tests {
         let b = layout(&d, &m, &Frame {
             measure_mm: PageSetup::default().column_measure_mm(),
             line_height_mm: 6.4,
-            y0_mm: 24.0, hang_mm: crate::HANG_MM
+            y0_mm: 24.0
         });
         assert_eq!(a.lines.len(), b.lines.len());
         for (x, y) in a.lines.iter().zip(&b.lines) {
@@ -1814,7 +1814,7 @@ mod section_layout_tests {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0, hang_mm: crate::HANG_MM })
+        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0})
     }
 
     #[test]
@@ -1878,7 +1878,7 @@ mod footnote_layout_tests {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0, hang_mm: crate::HANG_MM })
+        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0})
     }
 
     fn mark(id: &str) -> Run {
@@ -2024,7 +2024,7 @@ mod endnote_tests {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0, hang_mm: crate::HANG_MM })
+        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0})
     }
     fn mark(id: &str, endnote: bool) -> Run {
         Run { text: String::new(), size_pt: Some(10.5), font: None,
@@ -2207,7 +2207,7 @@ mod make_footnote_tests {
         let (fam, _) = font::for_document(None).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0});
         assert_eq!(s.notes.len(), 1, "紙の下に出ていない");
         let t: String = s.notes[0].lines.iter()
             .flat_map(|l| l.cells.iter()).map(|c| c.ch).collect();
@@ -2488,7 +2488,7 @@ mod indent_tests {
         let p0 = c.paragraphs().next().unwrap();
         assert_eq!(p0.first_line_twips, 210, "合成で字下げが乗らない");
 
-        let s = layout(&c, &m, &Frame { measure_mm: 60.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        let s = layout(&c, &m, &Frame { measure_mm: 60.0, line_height_mm: 6.0, y0_mm: 20.0});
         assert!(s.lines.len() >= 2, "2行以上に折れていない");
         // 1行目は下がり、2行目は下がらない
         let head = |i: usize| s.lines[i].cells[0].x_mm;
@@ -3102,7 +3102,7 @@ mod midashi_tests {
     fn headings_are_laid_out_larger_and_bolder_than_the_body() {
         let data = font();
         let m = Metrics::new(&data).unwrap();
-        let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM };
+        let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0};
         let mk = |style: ParaStyle| {
             let mut d = Document::plain("");
             d.blocks = vec![Block::Para(Paragraph {
@@ -3132,7 +3132,7 @@ mod midashi_tests {
     fn a_runs_size_beats_the_heading() {
         let data = font();
         let m = Metrics::new(&data).unwrap();
-        let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM };
+        let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0};
         let mut d = Document::plain("");
         d.blocks = vec![Block::Para(Paragraph {
             runs: vec![Run { text: "見出し".into(), size_pt: Some(9.0), font: None,
@@ -3149,7 +3149,7 @@ mod midashi_tests {
     /// 行の高さも見出しに追従する。**しないと次の行と重なる**
     #[test]
     fn a_heading_line_follows_in_height_too() {
-        let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM };
+        let frame = Frame { measure_mm: 120.0, line_height_mm: 6.0, y0_mm: 20.0};
         let p = |style: ParaStyle| Paragraph { style, ..Default::default() };
         assert!(lh_of(&p(ParaStyle::Heading(1)), &frame, 10.5, None, 0.0) > lh_of(&p(ParaStyle::Body), &frame, 10.5, None, 0.0),
                 "H1 の行が本文と同じ高さ(重なる)");
@@ -3358,7 +3358,7 @@ fn blocks_and_admonitions_are_distinguishable_on_paper_too() {
     let data = crate::font::load(fam).expect("読めない");
     let m = crate::Metrics::new(&data).expect("読めない");
     let sheet = crate::layout(
-        &d, &m, &crate::Frame { measure_mm: 160.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        &d, &m, &crate::Frame { measure_mm: 160.0, line_height_mm: 6.0, y0_mm: 20.0});
     let line: Vec<String> = sheet.lines.iter()
         .map(|l| l.cells.iter().map(|c| c.ch).collect::<String>())
         .filter(|t| !t.trim().is_empty())
@@ -3399,7 +3399,7 @@ fn task_lists_render_as_boxes_on_paper_too() {
     let data = crate::font::load(fam).expect("読めない");
     let m = crate::Metrics::new(&data).expect("読めない");
     let sheet = crate::layout(
-        &d, &m, &crate::Frame { measure_mm: 160.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        &d, &m, &crate::Frame { measure_mm: 160.0, line_height_mm: 6.0, y0_mm: 20.0});
     let all: String = sheet.lines.iter()
         .map(|l| l.cells.iter().map(|c| c.ch).collect::<String>())
         .collect::<Vec<_>>().join("\n");
@@ -3413,7 +3413,7 @@ fn task_lists_render_as_boxes_on_paper_too() {
     // **段も効くこと。** `**` なら1段下がって組まれます
     let d2 = crate::adoc::parse("= 題\n\n* [ ] 親\n** [ ] 子\n").expect("読めない");
     let s2 = crate::layout(
-        &d2, &m, &crate::Frame { measure_mm: 160.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM });
+        &d2, &m, &crate::Frame { measure_mm: 160.0, line_height_mm: 6.0, y0_mm: 20.0});
     let search_for = |text: &str| -> f32 {
         s2.lines.iter()
             .find(|l| l.cells.iter().map(|c| c.ch).collect::<String>().contains(text))
@@ -3466,7 +3466,7 @@ mod shade_tests {
         let s = crate::layout(
             &d,
             &m,
-            &crate::Frame { measure_mm: 170.0, line_height_mm: crate::LINE_MM, y0_mm: 24.0, hang_mm: crate::HANG_MM },
+            &crate::Frame { measure_mm: 170.0, line_height_mm: crate::LINE_MM, y0_mm: 24.0},
         );
         assert!(!s.fills.is_empty(), "註記の帯が紙面に落ちていない");
         assert_eq!(s.fills[0].1, "FFF6E0", "既定のテンプレートの色でない");
@@ -3490,7 +3490,7 @@ mod shade_tests {
         let s = crate::layout(
             &d,
             &m,
-            &crate::Frame { measure_mm: 170.0, line_height_mm: crate::LINE_MM, y0_mm: 24.0, hang_mm: crate::HANG_MM },
+            &crate::Frame { measure_mm: 170.0, line_height_mm: crate::LINE_MM, y0_mm: 24.0},
         );
         assert!(
             s.fills.iter().any(|(_, c)| c == "4472C4"),
@@ -3533,7 +3533,7 @@ mod shade_tests {
             let f = crate::font::default_family("ja").expect("書体");
             let bytes = crate::font::load(f).expect("読めない");
             let m = Metrics::new(&bytes).expect("測れない");
-            layout(&d, &m, &Frame { measure_mm: 130.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: crate::HANG_MM })
+            layout(&d, &m, &Frame { measure_mm: 130.0, line_height_mm: 6.0, y0_mm: 20.0})
         };
         let x_of = |t: &Table, ji: char| {
             hiku(t).lines.iter().flat_map(|l| l.cells.clone())
@@ -3584,7 +3584,7 @@ mod atama_no_gazou_tests {
                 bytes: std::sync::Arc::new(vec![1]), w_mm: 20.0, h_mm: 10.0, tex: Some("x".into()), src: None, off: 0,
             });
             d.push_para(p);
-            let frame = Frame { measure_mm: 150.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: crate::HANG_MM };
+            let frame = Frame { measure_mm: 150.0, line_height_mm: 6.4, y0_mm: 24.0};
             let s = layout(&d, &m, &frame);
             let mae = s.lines[0].y_mm;
             let (_, r) = &s.images[0];
@@ -3631,7 +3631,7 @@ mod block_kind_tests {
         let d = theme::compose(&d, &theme::default_theme());
         let code = d.paragraphs().find(|p| p.style_id.as_deref() == Some("コードの塊")).unwrap();
         assert_eq!(code.shade.as_deref(), Some("F4F6F8"), "合成で背景が付かない");
-        let s = layout(&d, &m, &Frame { measure_mm: 150.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: crate::HANG_MM });
+        let s = layout(&d, &m, &Frame { measure_mm: 150.0, line_height_mm: 6.4, y0_mm: 24.0});
         assert!(s.fills.iter().any(|(_, c)| c == "F4F6F8"), "塗りが紙面に無い: {:?}", s.fills);
         let shown: Vec<String> = s.lines.iter().map(|l| l.cells.iter().map(|c| c.ch).collect()).collect();
         assert!(!shown.iter().any(|t| t.contains("見えない")), "覚え書きが行になった: {shown:?}");

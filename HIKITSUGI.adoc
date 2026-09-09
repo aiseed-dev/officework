@@ -12,12 +12,12 @@
   起動して受け口が `"version":"0.1.0-alpha.2"` を返した。**タグ `app-v0.1.0-alpha.2` を
   押して push するのは発注者。** 表の画面のリボンは 173 個を押して落ちる物なし(0e41a774)
 * **2026-09-09 の続き(再開後)。** docx の Word 比較は続き30 の 9〜12 回目(SEKKEI)。
-  頁数の一致は 288 枚のうち 232。確かめ方は Python エンジンを組み直さずに
+  頁数の一致は 288 枚のうち 239。確かめ方は Python エンジンを組み直さずに
   `cargo run --release -p paper --example docx_pdf -- 元.docx 出.pdf` と
   `--example gyou_probe -- 元.docx 探す字` で行い、Word の PDF は
   ~/Documents/officework-cmp/corpus/*.ms.pdf と pdfplumber で並べる。
-  次に見る物: 浮かぶ表(`w:tblpPr`。42 枚)、JST の計画書(34 / 31)、
-  横浜市 0845(6 / 5)。回帰試験 `paper/tests/kaiki.rs` はこの Mac で通る
+  次に見る物: 浮かぶ表のうち用紙や余白に対する位置の物(`vertAnchor` が page /
+  margin。横浜市 0791)、JST の計画書(34 / 31)、縦書きのセルの回転して描く分。回帰試験 `paper/tests/kaiki.rs` はこの Mac で通る
   (2026-09-09 に指紋を取り直した)
 * **2026-09-09 の中断点(雷で電源を落とした)。** (1) docx の Word 比較: 続き30(SEKKEI)。
   ~/docx-corpus に 288 枚、Word の PDF は ~/Documents/officework-cmp/corpus/ に途中まで。

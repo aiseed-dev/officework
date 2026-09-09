@@ -620,6 +620,11 @@ pub struct Paragraph {
     /// (2026-09-09)
     pub before_itta: bool,
     pub after_itta: bool,
+    /// **縦書きのセルの中**(docx の `w:tcPr/w:textDirection` が `tbRl` / `tbRlV`)。
+    /// 字は上から下へ並ぶ。組む所は 1 字ずつ字の幅の送りで積む(横書きの
+    /// 行送りだと 1 字ごとに 1 行分の高さになり、「※受付欄」の 4 字が 91pt に
+    /// なった。Word は 42pt。2026-09-09)。描くときの回転はまだしない
+    pub tate: bool,
     /// **セルの中の表**(docx の入れ子の表。2026-09-09)。
     ///
     /// 模型のセルは段落の列しか持たないので、入れ子の表は「表を1つ持つ
@@ -711,6 +716,17 @@ impl Paragraph {
             }),
         }
     }
+}
+
+/// **浮かぶ表の横の位置**(docx の `w:tblpPr` の `w:tblpXSpec` か `w:tblpX`)。
+/// 余白の左端からの mm、または左・中央・右
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum FloatX {
+    Left,
+    Center,
+    Right,
+    /// 余白の左端から(mm)
+    At(f32),
 }
 
 /// 縦のセル結合(docx の w:vMerge)。
@@ -965,6 +981,16 @@ pub struct Table {
     /// 位置**を指すので、読み手がセルの左余白を引いた後の値を入れます
     /// (LibreOffice の DomainMapperTableHandler と同じ扱い)
     pub indent_mm: f32,
+    /// **浮かぶ表**(docx の `w:tblPr/w:tblpPr`。文字列の折り返しを設定した表)の
+    /// 縦のずれ(mm。`w:tblpY`。負は上へ)。`None` は普通の表。
+    ///
+    /// Word は表を次の段落の位置から `tblpY` だけずらして置き、後ろの字は表の
+    /// 周りに流す。まだ周りに流すことはしないが、ずれと「表の直後の空の段落は
+    /// 表の横に置かれて場所を取らない」の 2 つは合わせる(288 枚のうち 42 枚が
+    /// 持ち、19 枚で頁数が違っていた。2026-09-09)
+    pub float_y_mm: Option<f32>,
+    /// 浮かぶ表の横の置き方(docx の `w:tblpXSpec` / `w:tblpX`)。`None` は左
+    pub float_x: Option<FloatX>,
     /// 表の置き方(docx の tblPr の `w:jc`)。None は指定なし(左)。
     /// 使うのは Left / Center / Right だけ(表の置き方に両端揃えは無い)
     pub align: Option<Align>,
@@ -1245,6 +1271,10 @@ pub struct Document {
     /// `w:doNotUseHTMLParagraphAutoSpacing`)。立っていると「自動」は 5pt です。
     /// 使う所は [`Paragraph::auto_before`]
     pub no_html_auto_space: bool,
+    /// **行末の空白を折り返す**(docx の settings の `w:compat/w:wrapTrailSpaces`)。
+    /// 無いのが普通で、そのとき Word は行末の空白を紙の端を越えても置く。
+    /// 立っていると余白の所で折る(288 枚のうち法務局の 7 枚。2026-09-09)
+    pub wrap_trail_spaces: bool,
     /// **節ごとのヘッダー・フッター**(2026-09-09)。鍵は節を終える段落のブロック番号
     /// (その段落の `sect` と対)。最後の節(文書の末尾の sectPr)は `header` /
     /// `footer` で持つ。JST の計画書は 13 の節がそれぞれ別のヘッダーを持ち、
