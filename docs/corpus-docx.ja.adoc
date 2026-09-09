@@ -498,3 +498,55 @@ Word の PDF の作り直し(2026-09-09 12:30 以降)は、`corpus2/watch_ms.py`
 docx の字と突き合わせました。288 枚のうち、食い違いと出た物は 3 枚(横浜市
 0553・0733、北大 gakuironbunnaiyounoyoushi)ですが、3 枚とも頭の字は合っていて、
 表の中の字の取り出し順が違うだけです。作り直した PDF は全部、元の docx の物です。
+
+=== Word 自身の頁数は docProps/app.xml にある(2026-09-09)
+
+上の「頁数が Word と合わなさそうな物」は `lastRenderedPageBreak` からの推定
+でしたが、Word で保存した docx には `docProps/app.xml` に `<Pages>` があり、
+Word が保存したときの頁数がそのまま入っています。288 枚のうち 284 枚に
+ありました。Word を動かさずに頁数を比べるなら、こちらを使う方が確かです
+(ただし保存後に直した文書では古いことがあり、横浜市の 0856 は app.xml が 1 頁、
+Word の PDF は 8 頁でした)。
+
+app.xml の頁数と officework の頁数は、284 枚のうち 173 枚で同じ、111 枚で
+違います。違いの内訳は、+1 が 74 枚、-1 が 12 枚、±2 以上が 25 枚です。
+±2 以上の物を書きます(Word の PDF の頁数は、作り直した後の実際の値)。
+
+[cols="1,5,1,1,1"]
+|===
+|差 |ファイル |app.xml |officework |Word の PDF
+
+|+43 |jsite.mhlw.go.jp/002320469.docx |11 |54 |11
+|+34 |jsite.mhlw.go.jp/002320443.docx |10 |44 |10
+|+7 |www.city.yokohama.lg.jp/0856_20250330.docx |1 |8 |8
+|+5 |www.mhlw.go.jp/001142988.docx |8 |13 |8
+|+4 |www.jst.go.jp/keikaku1_ikusei-honkaku_opera-r1.docx |28 |32 |28
+|+4 |www.mhlw.go.jp/001142983.docx |8 |12 |8
+|+4 |www.mhlw.go.jp/001142984.docx |8 |12 |8
+|+3 |jsite.mhlw.go.jp/000615007.docx |1 |4 |3
+|+3 |shoryokuka.smrj.go.jp/subsidy_cancellation_approval_ippan.docx |1 |4 |2
+|+3 |www.jst.go.jp/keikaku1_H28_opera.docx |31 |34 |31
+|+3 |www.jst.go.jp/keikaku1_ikusei-honkaku_opera-h30.docx |28 |31 |28
+|-2 |houmukyoku.moj.go.jp/001440255.docx |6 |4 |6
+|-2 |houmukyoku.moj.go.jp/001440262.docx |7 |5 |7
+|+2 |shoryokuka.smrj.go.jp/yoshiki_business_plan_part1_part2_ippan.docx |7 |9 |7
+|+2 |www.city.yokohama.lg.jp/0427_20190628.docx |1 |3 |3
+|+2 |www.city.yokohama.lg.jp/0582_20210225.docx |2 |4 |2
+|+2 |www.city.yokohama.lg.jp/0659_20210915.docx |2 |4 |2
+|+2 |www.city.yokohama.lg.jp/0766_20240329.docx |2 |4 |2
+|+2 |www.city.yokohama.lg.jp/0855_20250330.docx |1 |3 |3
+|+2 |www.jst.go.jp/keikaku1_ikusei_opera.docx |32 |34 |32
+|+2 |www.jst.go.jp/keikaku1_oi-renkei_opera-h30.docx |29 |31 |29
+|+2 |www.jst.go.jp/keikaku1_oi-renkei_opera-r1.docx |28 |30 |28
+|+2 |www.mhlw.go.jp/000497691.docx |2 |4 |2
+|+2 |www.mhlw.go.jp/001086206.docx |14 |16 |14
+|+2 |www.mhlw.go.jp/001142985.docx |7 |9 |7
+|+2 |www.mhlw.go.jp/001142992.docx |8 |10 |8
+|+2 |www.mhlw.go.jp/001142993.docx |8 |10 |8
+|===
+
+全体の表は `~/Documents/officework-cmp/corpus2/頁数_app.txt` にあります。
+officework の方が少ない物(法務局の 001440255・001440262、厚労省の 001142986・
+001143000・001688526・001689417、北陸地整の 17_2ab、大阪府の yoshiki17-2_chuki、
+岐阜労働局の 002261488・002261490)は、何かを描いていないか、行の高さが足りない
+物なので、増える物とは別に見る必要があります。
