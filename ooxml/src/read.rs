@@ -180,7 +180,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         let _ = f.read_to_string(&mut cxml);
     }
     let cmap = parse_comments(&cxml);
-    let (mut doc, mut rep) = parse_document_rels_num(&xml, &media, &cmap, &targets, &shirushi);
+    let sagari = num_indents(&numxml);
+    let (mut doc, mut rep) = parse_document_rels_num(&xml, &media, &cmap, &targets, &shirushi, &sagari);
     // このアプリのペン(joink)は原文控えから筆へ読み戻す
     extract_ink(&mut doc);
     extract_shapes(&mut doc);
@@ -510,6 +511,20 @@ pub(super) struct SavedCell {
     grid_after: u8,
     row_twips: Option<u32>,
     row_header: bool,
+}
+
+/// **run の書体を、字の種類で選ぶ。** Word は和文(全角)を `w:eastAsia` の書体、
+/// 欧文(半角)を `w:ascii` / `w:hAnsi` の書体で組みます。模型は run に書体を
+/// 1つしか持てないので、**和文を含む run は和文の書体**(言っていなければ
+/// `None` = 文書の既定の和文の書体)、半角だけの run は欧文の書体にします。
+/// `w:hint="eastAsia"` の run は半角も和文の書体です
+pub(super) fn erabu_font(text: &str, ea: &Option<String>, latin: &Option<String>, hint_ea: bool) -> Option<String> {
+    let wabun = hint_ea || text.chars().any(|c| !c.is_ascii());
+    if wabun {
+        ea.clone()
+    } else {
+        latin.clone().or_else(|| ea.clone())
+    }
 }
 
 /// twip → mm(1twip = 1/20pt)
@@ -1726,7 +1741,7 @@ pub(super) fn parse_document_num(
     cmts: &std::collections::BTreeMap<String, Comment>,
     shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
 ) -> (Document, Report) {
-    parse_document_rels_num(xml, media, cmts, &Default::default(), shirushi)
+    parse_document_rels_num(xml, media, cmts, &Default::default(), shirushi, &Default::default())
 }
 
 /// 関係と、箇条書きの印の表([`num_markers`])つき。ここが本体です
@@ -1736,6 +1751,7 @@ pub(super) fn parse_document_rels_num(
     cmts: &std::collections::BTreeMap<String, Comment>,
     targets: &std::collections::BTreeMap<String, String>,
     shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
+    sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32)>,
 ) -> (Document, Report) {
     // **BOM をここで外します。** quick-xml は位置を BOM の後ろから数えるのに、
     // こちらの文字列には残っているので、原文を切り出すと3バイトずれます。
@@ -1782,6 +1798,10 @@ pub(super) fn parse_document_rels_num(
     let mut size_pt: Option<f32> = None;
     // **書体は文書の設定**。docx が w:rFonts で持っているものを捨てない
     let mut font: Option<String> = None;
+    // 和文の書体・欧文の書体・「半角も和文で」の印(rFonts)
+    let mut font_ea: Option<String> = None;
+    let mut font_latin: Option<String> = None;
+    let mut hint_ea = false;
     // 文字の書式(w:rPr)と段落の揃え(w:jc)。読んで捨てると開き直したとき消える
     let mut fmt = CharFormat::default();
     let mut align = Align::default();
@@ -1795,6 +1815,7 @@ pub(super) fn parse_document_rels_num(
     let mut first_line = 0i32; // w:ind の firstLine(正)/ hanging(負)。twip のまま持つ
     let mut first_line_chars: Option<f32> = None;
     let mut left_twips = 0i32; // w:ind の left。段数と違って丸めない(2026-08-30)
+    let mut right_twips = 0i32; // w:ind の right
     let mut list_id: Option<u32> = None; // w:numPr の numId(番号の続き具合を決める)
     let mut line_spacing = 0.0f32;
     let mut line_pt: Option<(f32, bool)> = None;
@@ -1948,6 +1969,7 @@ pub(super) fn parse_document_rels_num(
                               // なります(2026-09-08、Word と並べて見つけた。
                               // 「以上」と問い合わせの行が 20mm 右へずれていた)
                               left_twips = 0;
+                              right_twips = 0;
                               list_id = None;
                               line_spacing = 0.0;
                               line_pt = None;
@@ -1978,10 +2000,17 @@ pub(super) fn parse_document_rels_num(
                     }
                     // 日本語の書体は eastAsia に入る。ascii しか見ないと明朝が消える
                     b"rFonts" if in_rpr => {
-                        font = attr(&e, "eastAsia")
-                            .or_else(|| attr(&e, "ascii"))
+                        // **和文の書体と欧文の書体は別です**(2026-09-09)。前は
+                        // eastAsia → ascii → hAnsi の順に1つ取っていたので、
+                        // `w:hAnsi="Times New Roman"` だけの run の和文を Times で
+                        // 測り、全角空白が半分の幅になっていた(岐阜労働局の様式)。
+                        // `w:hint="eastAsia"` は「半角も和文の書体で」の印
+                        font_ea = attr(&e, "eastAsia").filter(|s| !s.is_empty());
+                        font_latin = attr(&e, "ascii")
                             .or_else(|| attr(&e, "hAnsi"))
                             .filter(|s| !s.is_empty());
+                        hint_ea = attr(&e, "hint").as_deref() == Some("eastAsia");
+                        font = erabu_font("", &font_ea, &font_latin, hint_ea);
                     }
                     // w:val="0"/"false" は「付けない」の意味なので、有無だけで判定しない。
                     // **要素が在ったこと自体も覚えます**(2026-09-01)。
@@ -2024,6 +2053,12 @@ pub(super) fn parse_document_rels_num(
                     b"numId" if in_ppr => {
                         let n: Option<u32> = attr(&e, "val").and_then(|v| v.parse().ok());
                         list_id = n.filter(|n| *n > 0);
+                        // 段の字下げ(numbering.xml の `w:ind`)を既定として当てる。
+                        // 段落自身の `w:ind` は後に来るので、あれば上書きされる
+                        if let Some((left, hang)) = n.and_then(|n| sagari.get(&(n, ilvl)).copied()) {
+                            left_twips = left;
+                            first_line = -hang;
+                        }
                         // **文書が決めた印を先に引きます**(2026-08-31)。
                         // 無い docx は今までどおり numId の決め打ちです
                         list_text = n.and_then(|n| shirushi.get(&(n, ilvl)).cloned()).map(
@@ -2086,6 +2121,14 @@ pub(super) fn parse_document_rels_num(
                             .map(|v| (v / 100.0 * 210.0) as i32)
                             .or_else(|| {
                                 attr(&e, "left").and_then(|v| v.parse::<f32>().ok()).map(|v| v as i32)
+                            })
+                            .unwrap_or(0);
+                        // 右のインデント(`w:right` / `w:rightChars`)。行長を縮める
+                        right_twips = attr(&e, "rightChars")
+                            .and_then(|v| v.parse::<f32>().ok())
+                            .map(|v| (v / 100.0 * 210.0) as i32)
+                            .or_else(|| {
+                                attr(&e, "right").and_then(|v| v.parse::<f32>().ok()).map(|v| v as i32)
                             })
                             .unwrap_or(0);
                         // 1行目の字下げは twip のまま(段落を触っても落とさない —
@@ -2621,10 +2664,17 @@ pub(super) fn parse_document_rels_num(
                         }
                     }
                     b"rFonts" if in_rpr => {
-                        font = attr(&e, "eastAsia")
-                            .or_else(|| attr(&e, "ascii"))
+                        // **和文の書体と欧文の書体は別です**(2026-09-09)。前は
+                        // eastAsia → ascii → hAnsi の順に1つ取っていたので、
+                        // `w:hAnsi="Times New Roman"` だけの run の和文を Times で
+                        // 測り、全角空白が半分の幅になっていた(岐阜労働局の様式)。
+                        // `w:hint="eastAsia"` は「半角も和文の書体で」の印
+                        font_ea = attr(&e, "eastAsia").filter(|s| !s.is_empty());
+                        font_latin = attr(&e, "ascii")
                             .or_else(|| attr(&e, "hAnsi"))
                             .filter(|s| !s.is_empty());
+                        hint_ea = attr(&e, "hint").as_deref() == Some("eastAsia");
+                        font = erabu_font("", &font_ea, &font_latin, hint_ea);
                     }
                     // w:val="0"/"false" は「付けない」の意味なので、有無だけで判定しない。
                     // **要素が在ったこと自体も覚えます**(2026-09-01)。
@@ -2667,6 +2717,12 @@ pub(super) fn parse_document_rels_num(
                     b"numId" if in_ppr => {
                         let n: Option<u32> = attr(&e, "val").and_then(|v| v.parse().ok());
                         list_id = n.filter(|n| *n > 0);
+                        // 段の字下げ(numbering.xml の `w:ind`)を既定として当てる。
+                        // 段落自身の `w:ind` は後に来るので、あれば上書きされる
+                        if let Some((left, hang)) = n.and_then(|n| sagari.get(&(n, ilvl)).copied()) {
+                            left_twips = left;
+                            first_line = -hang;
+                        }
                         // **文書が決めた印を先に引きます**(2026-08-31)。
                         // 無い docx は今までどおり numId の決め打ちです
                         list_text = n.and_then(|n| shirushi.get(&(n, ilvl)).cloned()).map(
@@ -2729,6 +2785,14 @@ pub(super) fn parse_document_rels_num(
                             .map(|v| (v / 100.0 * 210.0) as i32)
                             .or_else(|| {
                                 attr(&e, "left").and_then(|v| v.parse::<f32>().ok()).map(|v| v as i32)
+                            })
+                            .unwrap_or(0);
+                        // 右のインデント(`w:right` / `w:rightChars`)。行長を縮める
+                        right_twips = attr(&e, "rightChars")
+                            .and_then(|v| v.parse::<f32>().ok())
+                            .map(|v| (v / 100.0 * 210.0) as i32)
+                            .or_else(|| {
+                                attr(&e, "right").and_then(|v| v.parse::<f32>().ok()).map(|v| v as i32)
                             })
                             .unwrap_or(0);
                         // 1行目の字下げは twip のまま(段落を触っても落とさない —
@@ -3002,7 +3066,11 @@ pub(super) fn parse_document_rels_num(
                             field_buf.push_str(&std::mem::take(&mut cur));
                         } else if !cur.is_empty() {
                             if let Some(p) = para.as_mut() {
-                                p.push(Run { text: std::mem::take(&mut cur), size_pt, font: font.clone(), fmt: fmt.clone() });
+                                {
+                                    let text = std::mem::take(&mut cur);
+                                    let font = erabu_font(&text, &font_ea, &font_latin, hint_ea);
+                                    p.push(Run { text, size_pt, font, fmt: fmt.clone() });
+                                }
                             }
                         }
                     }
@@ -3026,6 +3094,7 @@ pub(super) fn parse_document_rels_num(
                                 // 深さ: w:ind(直接指定)が無ければ w:ilvl から
                                 indent: indent.max(ilvl),
                                 left_twips,
+                                right_twips,
                                 list_id: if list == ListKind::None { None } else { list_id },
                                 first_line_twips: first_line,
                                 first_line_chars,
@@ -3592,6 +3661,58 @@ fn kigou_wo_naosu(txt: &str, shotai: &str) -> String {
 /// docx は2段構えで、`w:num` が `numId` を `abstractNumId` に結び付け、
 /// 本体の `w:abstractNum` が段ごとの印を持ちます。**両方引かないと**
 /// 印にたどり着けません。
+/// **箇条書きの段の字下げ**(numbering.xml の `w:lvl/w:pPr/w:ind`)。
+/// (numId, ilvl) → (left, hanging) twip。Word は `w:numPr` の段落に、段の
+/// 字下げを段落自身の `w:ind` が無いときの既定として当てます。読まないと
+/// 番号付きの段落が余白に貼り付く(横浜市の建築の書式で 11pt 左。2026-09-09)
+pub(crate) fn num_indents(xml: &str) -> std::collections::BTreeMap<(u32, u8), (i32, i32)> {
+    let attr1 = |seg: &str, k: &str| -> Option<String> {
+        let pat = format!("{k}=\"");
+        let i = seg.find(&pat)? + pat.len();
+        seg[i..].find('"').map(|e| seg[i..i + e].to_string())
+    };
+    let mut honnin: std::collections::BTreeMap<u32, Vec<(u8, i32, i32)>> = Default::default();
+    let mut rest = xml;
+    while let Some(i) = rest.find("<w:abstractNum ") {
+        let owari = rest[i..].find("</w:abstractNum>").map(|e| i + e).unwrap_or(rest.len());
+        let blk = &rest[i..owari];
+        if let Some(id) = attr1(blk, "w:abstractNumId").and_then(|v| v.parse::<u32>().ok()) {
+            let mut lv = blk;
+            while let Some(j) = lv.find("<w:lvl ") {
+                let le = lv[j..].find("</w:lvl>").map(|e| j + e).unwrap_or(lv.len());
+                let one = &lv[j..le];
+                let ilvl = attr1(one, "w:ilvl").and_then(|v| v.parse::<u8>().ok()).unwrap_or(0);
+                if let Some(k) = one.find("<w:ind ") {
+                    let seg = &one[k..one[k..].find('>').map(|e| k + e).unwrap_or(one.len())];
+                    let left = attr1(seg, "w:left").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0) as i32;
+                    let hang = attr1(seg, "w:hanging").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0) as i32;
+                    honnin.entry(id).or_default().push((ilvl, left, hang));
+                }
+                lv = &lv[le.max(j + 7)..];
+            }
+        }
+        rest = &rest[owari.max(i + 15)..];
+    }
+    let mut out = std::collections::BTreeMap::new();
+    let mut rest = xml;
+    while let Some(i) = rest.find("<w:num ") {
+        let owari = rest[i..].find("</w:num>").map(|e| i + e).unwrap_or(rest.len());
+        let blk = &rest[i..owari];
+        let num: Option<u32> = attr1(blk, "w:numId").and_then(|v| v.parse().ok());
+        let abs: Option<u32> = blk
+            .find("<w:abstractNumId ")
+            .and_then(|k| attr1(&blk[k..], "w:val"))
+            .and_then(|v| v.parse().ok());
+        if let (Some(n), Some(a)) = (num, abs) {
+            for (ilvl, left, hang) in honnin.get(&a).into_iter().flatten() {
+                out.insert((n, *ilvl), (*left, *hang));
+            }
+        }
+        rest = &rest[owari.max(i + 7)..];
+    }
+    out
+}
+
 pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (String, bool)> {
     let mut out = std::collections::BTreeMap::new();
     if xml.is_empty() {

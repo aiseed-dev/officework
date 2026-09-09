@@ -420,6 +420,19 @@ mod list_tests {
         assert!(crate::font::hankaku_em("游明朝").is_none());
     }
 
+    /// **右のインデントは行長を縮める**(docx の `w:ind w:right`。2026-09-09)
+    #[test]
+    fn a_right_indent_shortens_the_line() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 60.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let mut d = Document::plain("あいうえおかきくけこさしすせそたちつてとなにぬねの");
+        let n0 = layout(&d, &m, &frame).lines.len();
+        if let Block::Para(p) = &mut d.blocks[0] { p.right_twips = 1440; } // 25.4mm
+        let n1 = layout(&d, &m, &frame).lines.len();
+        assert!(n1 > n0, "右のインデントで行が増えない: {n0} → {n1}");
+    }
+
     /// **ヘッダーが本文を押し下げる**(2026-09-09、Word の PDF で測った)。
     /// 本文の頭は「上の余白」と「ヘッダーの距離 + ヘッダーの高さ」の高い方
     #[test]

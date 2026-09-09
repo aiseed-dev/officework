@@ -9,6 +9,36 @@ use super::write::*;
 #[cfg(test)]
 mod round {
 
+    /// **run の書体は字の種類で選ぶ**(2026-09-09)。和文を含む run は `w:eastAsia`
+    /// (無ければ文書の既定)、半角だけの run は `w:ascii` / `w:hAnsi`。
+    /// `w:hint="eastAsia"` の run は半角も和文の書体。右のインデントも読む
+    #[test]
+    fn a_run_font_follows_the_script_of_its_text() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:ind w:right="420"/></w:pPr><w:r><w:rPr><w:rFonts w:hAnsi="Times New Roman"/></w:rPr><w:t>　なお、</w:t></w:r><w:r><w:rPr><w:rFonts w:hAnsi="Times New Roman"/></w:rPr><w:t>2024</w:t></w:r><w:r><w:rPr><w:rFonts w:hAnsi="Times New Roman" w:hint="eastAsia"/></w:rPr><w:t>(1)</w:t></w:r><w:r><w:rPr><w:rFonts w:ascii="Century" w:eastAsia="ＭＳ ゴシック"/></w:rPr><w:t>甲</w:t></w:r></w:p></w:body></w:document>"#;
+        let (d, _) = crate::read::parse_document_xml(xml);
+        let p = d.paragraphs().next().unwrap();
+        let f: Vec<Option<&str>> = p.runs.iter().map(|r| r.font.as_deref()).collect();
+        assert_eq!(f[0], None, "和文の run が欧文の書体になった");
+        assert_eq!(f[1], Some("Times New Roman"), "半角だけの run は欧文の書体");
+        assert_eq!(f[2], None, "hint=eastAsia の半角は和文の書体");
+        assert_eq!(f[3], Some("ＭＳ ゴシック"), "eastAsia の指定が効いていない");
+        assert_eq!(p.right_twips, 420, "右のインデントが読めていない");
+    }
+
+    /// **箇条書きの段の字下げは numbering.xml から**(2026-09-09)。段落自身の
+    /// `w:ind` が無い `w:numPr` の段落は、段の `w:ind` を既定として持つ
+    #[test]
+    fn a_numbered_paragraph_takes_its_indent_from_the_numbering_level() {
+        let num = r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:pPr><w:ind w:left="420" w:hanging="420"/></w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>"#;
+        let hyou = crate::read::num_indents(num);
+        assert_eq!(hyou.get(&(1, 0)), Some(&(420, 420)), "段の字下げが引けない: {hyou:?}");
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>建築物の名称</w:t></w:r></w:p><w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr><w:ind w:left="840" w:hanging="210"/></w:pPr><w:r><w:t>自分で言う</w:t></w:r></w:p></w:body></w:document>"#;
+        let (d, _) = crate::read::parse_document_rels_num(xml, &Default::default(), &Default::default(), &Default::default(), &crate::read::num_markers(num), &hyou);
+        let ps: Vec<&kumihan::Paragraph> = d.paragraphs().collect();
+        assert_eq!((ps[0].left_twips, ps[0].first_line_twips), (420, -420), "段の字下げが段落に当たらない");
+        assert_eq!((ps[1].left_twips, ps[1].first_line_twips), (840, -210), "段落自身の w:ind が負けた");
+    }
+
     /// **入れ子の表は外側の表を壊さない**(2026-09-09、Opus Mac が切り分けた)。
     /// 外側のセルの結合は残り、中の表の段落は外側のセルの中に並ぶ
     #[test]
@@ -98,7 +128,7 @@ mod round {
     fn para(s: &str) -> Paragraph {
         Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![Run { text: s.to_string(), size_pt: Some(10.5), font: None, fmt: Default::default() }] }
+                    list: Default::default(), indent: 0, left_twips: 0, right_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![Run { text: s.to_string(), size_pt: Some(10.5), font: None, fmt: Default::default() }] }
     }
     fn doc(parts: &[&str]) -> Document {
         Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: parts.iter().map(|s| Block::Para(para(s))).collect() }
@@ -133,7 +163,7 @@ mod round {
     fn font_size_is_preserved() {
         let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![
+                    list: Default::default(), indent: 0, left_twips: 0, right_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![
             Run { text: "大見出し".into(), size_pt: Some(16.0), font: None, fmt: Default::default() },
             Run { text: "本文".into(), size_pt: Some(10.5), font: None, fmt: Default::default() },
         ]})]};
@@ -166,7 +196,7 @@ mod round {
     fn line_breaks_inside_a_paragraph_are_preserved() {
         let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![
+                    list: Default::default(), indent: 0, left_twips: 0, right_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![
             Run { text: "一行目\n二行目".into(), size_pt: Some(10.5), font: None, fmt: Default::default() }]})]};
         let (back, _) = round_trip(&d);
         assert_eq!(texts(&back)[0], "一行目\n二行目");
@@ -334,7 +364,7 @@ mod font_tests {
                 page_break_before: false,
                     list: Default::default(),
                 indent: 0,
-                left_twips: 0, first_line_twips: 0,
+                left_twips: 0, right_twips: 0, first_line_twips: 0,
                 line_spacing: 1.0,
                 shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![Run {
                     text: "サンプル商事".into(),
@@ -443,7 +473,7 @@ mod fmt_tests {
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, space_before_pt: 0.0, space_after_pt: 0.0,  align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![run("見出し", f.clone())] })],
+                    list: Default::default(), indent: 0, left_twips: 0, right_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![run("見出し", f.clone())] })],
         };
         let back = roundtrip(&d);
         assert_eq!(back.paragraphs().next().unwrap().runs[0].fmt, f, "書式が消えた");
@@ -462,7 +492,7 @@ mod fmt_tests {
             sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, space_before_pt: 0.0, space_after_pt: 0.0,  align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
-                    list: Default::default(), indent: 0, left_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![run("赤", f.clone())] })],
+                    list: Default::default(), indent: 0, left_twips: 0, right_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![run("赤", f.clone())] })],
         };
         assert_eq!(roundtrip(&d).paragraphs().next().unwrap().runs[0].fmt, f);
     }
@@ -481,7 +511,7 @@ mod fmt_tests {
                     page_break_before: false,
                     list: Default::default(),
                     indent: 0,
-                    left_twips: 0, first_line_twips: 0,
+                    left_twips: 0, right_twips: 0, first_line_twips: 0,
                     line_spacing: 1.0,
                     shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![run("表題", CharFormat::default())],
                 })],
@@ -530,7 +560,7 @@ mod para_tests {
             page_break_before: false,
             list,
             indent,
-            left_twips: 0, first_line_twips: 0,
+            left_twips: 0, right_twips: 0, first_line_twips: 0,
             line_spacing: spacing,
             shade: None, boxed: false, border: Default::default(), images_new: Vec::new(),
             runs: vec![Run {
@@ -556,7 +586,7 @@ mod para_tests {
         let mut p = Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, space_before_pt: 12.0, space_after_pt: 6.0,
             align: Default::default(), style: Default::default(), comments: Vec::new(),
             bookmarks: Vec::new(), anchors: Vec::new(), sect: None, images: Vec::new(),
-            page_break_before: false, list: ListKind::None, indent: 0, left_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(),
+            page_break_before: false, list: ListKind::None, indent: 0, left_twips: 0, right_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(),
             line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), dropcap: false,
             images_new: Vec::new(),
             runs: vec![Run { text: "間の空いた段落".into(), size_pt: Some(10.5),
@@ -573,7 +603,7 @@ mod para_tests {
         let p = Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, space_before_pt: 0.0, space_after_pt: 0.0,
             align: Default::default(), style: Default::default(), comments: Vec::new(),
             bookmarks: Vec::new(), anchors: Vec::new(), sect: None, images: Vec::new(),
-            page_break_before: false, list: ListKind::None, indent: 0, left_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(),
+            page_break_before: false, list: ListKind::None, indent: 0, left_twips: 0, right_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(),
             line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), dropcap: false,
             images_new: Vec::new(),
             runs: vec![Run { text: "素の段落".into(), size_pt: Some(10.5),

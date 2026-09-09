@@ -904,7 +904,9 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // 等幅の書体がこの機械に無ければ、そのまま組みます
                 let em = para.runs.first().and_then(|r| r.size_pt).unwrap_or(base) * 25.4 / 72.0;
                 let indent_mm = left_mm(para, em);
-                let measure = (block_measure - indent_mm).max(em);
+                // 右のインデント(`w:ind w:right`)も行長から引く
+                let migi_mm = (para.right_twips.max(0) as f32) * 25.4 / 1440.0;
+                let measure = (block_measure - indent_mm - migi_mm).max(em);
                 // **塊の印の行は、紙に出しません**(2026-08-25)。
                 // `[source,python]` と `----` がそのまま印刷されていました。
                 // 印はここからここまでが塊だという合図で、文章ではありません
@@ -1955,7 +1957,8 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     // 片方だけ効かせると、1行目がセルの外へ出ます
                     let hidari = left_mm(para, pbase * PT_TO_MM);
                     let sagari = first_line_mm(para, pbase);
-                    let inner = (inner - hidari).max(2.0);
+                    let migi = (para.right_twips.max(0) as f32) * 25.4 / 1440.0;
+                    let inner = (inner - hidari - migi).max(2.0);
                     let mut kore = break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase, tsume);
                     let saigo = kore.len().saturating_sub(1);
                     for (k, cs) in kore.drain(..).enumerate() {

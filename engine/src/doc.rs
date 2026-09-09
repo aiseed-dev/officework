@@ -545,6 +545,9 @@ pub struct Paragraph {
     ///
     /// 0 は「指定なし」で、そのときは `indent` の段数を使います。
     pub left_twips: i32,
+    /// **右のインデント**(docx の `w:ind w:right`。twip)。行長をこの分だけ縮める
+    /// (2026-09-09、福岡県の様式で右寄せの行が 21pt ずれていた)
+    pub right_twips: i32,
     /// **タブの止まる位置**(docx の `w:pPr/w:tabs`。twip、左からの距離)。
     ///
     /// 行にタブ(`\t`)が来たら、この一覧の中でいまの位置より右にある
