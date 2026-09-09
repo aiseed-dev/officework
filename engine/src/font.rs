@@ -1107,8 +1107,13 @@ pub fn default_language() -> String {
     // **決め方は book に1本あります**(環境変数 → 設定 → OS → en)。
     // 2026-08-30 まではここが `ja` の決め打ちで、設定も OS も見ていません
     // でした。Python から使うと、ドイツ語の設定にしてある機械でも
-    // 日本語の既定で組まれます
-    book::lang::decide(None)
+    // 日本語の既定で組まれます。
+    // **決めた値は控えます**(2026-09-09)。設定のファイルを読むので、寸法の控えの
+    // 鍵を作るたびに呼ぶと、ファイルを開く所が組版の 4 割になっていた
+    // (Opus Mac の sample: `__open` が 1512)。設定を変えたら起動し直す物なので、
+    // 1 回決めれば足りる
+    static KIMETA: OnceLock<String> = OnceLock::new();
+    KIMETA.get_or_init(|| book::lang::decide(None)).clone()
 }
 
 /// 文書の指定を実体に結び付ける。
