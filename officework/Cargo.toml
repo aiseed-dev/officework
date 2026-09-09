@@ -1,6 +1,6 @@
 [package]
 name = "officework"   # 1つになったアプリ(2026-08-19 発注者「バイナリは officework にする」)
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 edition.workspace = true
 license.workspace = true
 description = "officework — フォルダを開いて、文章も表も同じウィンドウで編集する"
