@@ -489,6 +489,11 @@ mod list_tests {
         }).collect();
         assert!((w[0] - masu).abs() < 0.001, "全角が升の幅でない: {w:?}");
         assert!(w[1] < masu * 0.8, "半角まで升に乗った: {w:?}");
+        // 升より広い字は 2 升
+        let mut big = Paragraph::default();
+        big.runs.push(Run { text: "訴".into(), size_pt: Some(18.0), font: None, fmt: Default::default() });
+        let toks = tokenize(&big, &m, &mut NoteCount::default(), 10.0, masu);
+        if let Tok::One(_, w0, ..) = &toks[0] { assert!((w0 - masu * 2.0).abs() < 0.001, "18pt の字が 2 升でない: {w0}"); }
         // 合わせない段落はそのまま
         p.no_grid = true;
         let toks = tokenize(&p, &m, &mut NoteCount::default(), 10.0, masu);

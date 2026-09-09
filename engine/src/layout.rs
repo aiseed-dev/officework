@@ -244,10 +244,13 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
         // **文字グリッド**(2026-09-09)。全角の字は升の幅で送る(字間の指定より強い)
         let masu = if moji > 0.0 && !p.no_grid { moji } else { 0.0 };
         let okuri = |ch: char| {
+            let sizen = (m.advance_for(run.font.as_deref(), ch, rpt) + aki).max(0.0);
             if masu > 0.0 && zenkaku(ch) {
-                masu
+                // 升より広い字(18pt の題など)は、入る数の升を占める(Word と同じ)
+                let n = (sizen / masu - 0.001).ceil().max(1.0);
+                masu * n
             } else {
-                (m.advance_for(run.font.as_deref(), ch, rpt) + aki).max(0.0)
+                sizen
             }
         };
         let mut word: Vec<(char, f32, usize)> = Vec::new();
