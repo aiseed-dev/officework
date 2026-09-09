@@ -6,7 +6,12 @@
 
 == 進め方の作法(発注者と確立済み)
 
-* **2026-09-09 の続き(再開後)。** docx の Word 比較は続き30 の 9〜11 回目(SEKKEI)。
+* **2026-09-09 の夜: 0.1.0-alpha.2 を出す用意ができている。** officework / calc / writer の
+  Cargo.toml と README の版名を上げ、release.yml の本文に alpha.2 で変わった物を書いた
+  (0fc5cdf0)。公開の門の検査 6 つと `cargo build -p sidecar` は通り、組み直した本体は
+  起動して受け口が `"version":"0.1.0-alpha.2"` を返した。**タグ `app-v0.1.0-alpha.2` を
+  押して push するのは発注者。** 表の画面のリボンは 173 個を押して落ちる物なし(0e41a774)
+* **2026-09-09 の続き(再開後)。** docx の Word 比較は続き30 の 9〜12 回目(SEKKEI)。
   頁数の一致は 288 枚のうち 232。確かめ方は Python エンジンを組み直さずに
   `cargo run --release -p paper --example docx_pdf -- 元.docx 出.pdf` と
   `--example gyou_probe -- 元.docx 探す字` で行い、Word の PDF は
