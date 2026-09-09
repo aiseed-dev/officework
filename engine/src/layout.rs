@@ -2005,7 +2005,13 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 // **上下の余白もそのセルの高さ**です。セルごとに `w:tcMar` が
                 // 違えば、行の高さはいちばん高いセルで決まります
                 let naka: f32 = ls.iter().map(|(_, _, h, _, _, _, _)| *h).sum();
-                takasa = takasa.max(naka + pad[0] + pad[2]);
+                // **縦に結合したセルの中身は、結合した行の全体に配ります**(2026-09-09、
+                // Opus Mac が厚労省の研究費様式で切り分けた)。前は先頭の行に全部
+                // 載せていたので、36 段落のセルが先頭の行を 1 頁ぶん高くしていた。
+                // 足りない分は下の `nobasu` が最後の行に足す
+                if cell.v_merge != VMerge::Start {
+                    takasa = takasa.max(naka + pad[0] + pad[2]);
+                }
             }
             // **セル自身の塗りが先。** 表スタイルの帯の色はここに入ります。
             // 無ければ最初の段落の塗り(前からの道)(2026-09-03)
@@ -2034,7 +2040,39 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         } else {
             0.0
         };
-        row_hs.push(takasa.max(iu) + keisen);
+        // **`hRule="exact"` の行は固定**です(中身が多くても伸びない。Word は切る)
+        let kotei = table.row_exact.get(ri_now).copied().unwrap_or(false) && iu > 0.0;
+        row_hs.push(if kotei { iu } else { takasa.max(iu) } + keisen);
+    }
+
+    // **縦に結合したセルの中身が、結合した行の合計より高ければ、最後の行を伸ばす**
+    // (固定の行は伸ばさない)。Word と同じ配り方です
+    {
+        let mut nobasu: Vec<(usize, f32)> = Vec::new();
+        for (ri, laid) in rows_laid.iter().enumerate() {
+            for l in laid.iter().filter(|l| l.v == VMerge::Start) {
+                let mut k = ri;
+                while let Some(next) = rows_laid.get(k + 1) {
+                    let tsuzuku = next
+                        .iter()
+                        .any(|x| x.gc <= l.gc && l.gc < x.gc + x.span && x.v == VMerge::Continue);
+                    if !tsuzuku {
+                        break;
+                    }
+                    k += 1;
+                }
+                let need: f32 =
+                    l.lines.iter().map(|(_, _, h, _, _, _, _)| *h).sum::<f32>() + l.pad[0] + l.pad[2];
+                let have: f32 = row_hs[ri..=k].iter().sum();
+                nobasu.push((k, (need - have).max(0.0)));
+            }
+        }
+        for (k, tarinai) in nobasu {
+            let kotei = table.row_exact.get(k).copied().unwrap_or(false);
+            if tarinai > 0.0 && !kotei {
+                row_hs[k] += tarinai;
+            }
+        }
     }
 
     // 行の上端(累積)

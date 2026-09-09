@@ -534,6 +534,8 @@ pub(super) struct TblBuild {
     fixed_layout: bool,
     /// 行の高さ(mm)。w:trPr の w:trHeight から
     row_mm: Vec<f32>,
+    /// 行の高さが固定か(`w:hRule="exact"`)。`row_mm` と同じ並び
+    row_exact: Vec<bool>,
     /// 罫線の指定(w:tblBorders)。**書いてなければ None** で、
     /// そのときは今までどおり四方に引きます
     borders: Option<kumihan::TableBorders>,
@@ -565,6 +567,7 @@ pub(super) struct SavedCell {
     grid_before: u8,
     grid_after: u8,
     row_twips: Option<u32>,
+    row_exact: bool,
     row_header: bool,
 }
 
@@ -1852,6 +1855,7 @@ pub(super) fn parse_document_rels_num(
     let mut cell_fit = false;
     // 行の高さ(twip)。w:trPr の w:trHeight
     let mut row_twips: Option<u32> = None;
+    let mut row_exact = false; // w:trHeight の hRule="exact"
     // その行が見出しの行か(`w:trPr/w:tblHeader`)
     let mut row_header = false;
     // **無指定は None のまま持つ。** ここで数を入れると、往復で
@@ -1980,6 +1984,7 @@ pub(super) fn parse_document_rels_num(
                                 grid_before: row_grid_before,
                                 grid_after: row_grid_after,
                                 row_twips,
+                                row_exact,
                                 row_header,
                             });
                         }
@@ -2383,6 +2388,9 @@ pub(super) fn parse_document_rels_num(
                     },
                     b"trHeight" => if stack.last().is_some() {
                         row_twips = attr(&e, "val").and_then(|v| v.parse().ok());
+                        // `hRule="exact"` は固定(中身が多くても伸びない)。無しと
+                        // `atLeast` は下限
+                        row_exact = attr(&e, "hRule").as_deref() == Some("exact");
                     },
                     b"sectPr" => {
                         // 節の設定。用紙・余白のほか、ヘッダーの参照も入っている。
@@ -3028,6 +3036,9 @@ pub(super) fn parse_document_rels_num(
                     },
                     b"trHeight" => if stack.last().is_some() {
                         row_twips = attr(&e, "val").and_then(|v| v.parse().ok());
+                        // `hRule="exact"` は固定(中身が多くても伸びない)。無しと
+                        // `atLeast` は下限
+                        row_exact = attr(&e, "hRule").as_deref() == Some("exact");
                     },
                     b"drawing" | b"pict" | b"object" =>
                         rep.note(&format!("w:{}", String::from_utf8_lossy(&n))),
@@ -3261,6 +3272,8 @@ pub(super) fn parse_document_rels_num(
                         // 持つ**ので、後ろの行だけ高さが付いていても
                         // 添字がずれません
                         b.row_mm.push(row_twips.take().map_or(0.0, |t| twip_mm(t as f32)));
+                        b.row_exact.push(row_exact);
+                        row_exact = false;
                     },
                     b"tbl" => {
                         if let Some(b) = stack.pop() {
@@ -3281,6 +3294,7 @@ pub(super) fn parse_document_rels_num(
                                 } else {
                                     b.row_mm
                                 },
+                                row_exact: if b.row_exact.iter().any(|x| *x) { b.row_exact } else { Vec::new() },
                                 // 役割は `.sheet.adoc` の印なので docx には無い
                                 role: None,
                                 // docx は幅を mm で持つので、割合は空のまま
@@ -3325,6 +3339,7 @@ pub(super) fn parse_document_rels_num(
                                     row_grid_before = sv.grid_before;
                                     row_grid_after = sv.grid_after;
                                     row_twips = sv.row_twips;
+                                    row_exact = sv.row_exact;
                                     row_header = sv.row_header;
                                 }
                             }

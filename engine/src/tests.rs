@@ -781,6 +781,51 @@ mod table_layout_tests {
         assert!(b - hikui > 3.0, "箱の底に寄っていない: {hikui} → {b}");
     }
 
+    /// **固定の行(`hRule="exact"`)は中身が多くても伸びない。縦に結合したセルの
+    /// 中身は結合した行の全体に配り、足りない分だけ最後の行が伸びる**
+    /// (2026-09-09、Opus Mac が厚労省の研究費様式で切り分けた)
+    #[test]
+    fn exact_rows_stay_and_merged_content_spreads_over_its_rows() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let cell = |s: &str| Cellbox {
+            paragraphs: vec![Paragraph {
+                runs: vec![Run { text: s.into(), size_pt: Some(10.0), font: None, fmt: Default::default() }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let nagai = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん";
+        let mut naka = cell(nagai);
+        naka.v_merge = VMerge::Start;
+        let mut tsuzuki = cell("");
+        tsuzuki.v_merge = VMerge::Continue;
+        let mut d = Document::plain("前");
+        d.blocks.push(Block::Table(Table {
+            col_mm: vec![30.0, 70.0],
+            rows: vec![
+                vec![naka, cell("一")],
+                vec![tsuzuki.clone(), cell("二")],
+                vec![tsuzuki, cell("三")],
+            ],
+            row_mm: vec![6.0, 6.0, 6.0],
+            row_exact: vec![true, true, false],
+            ..Default::default()
+        }));
+        let s = layout(&d, &m, &frame);
+        let y = |t: &str| s.lines.iter().find(|l| l.text().contains(t)).unwrap().y_mm;
+        // 固定の行は 6mm(+罫線)。結合したセルの中身が先頭の行を伸ばさない
+        assert!((y("二") - y("一") - (6.0 + 0.5 * 25.4 / 72.0)).abs() < 0.05, "固定の行が伸びた: {}", y("二") - y("一"));
+        assert!((y("三") - y("二") - (6.0 + 0.5 * 25.4 / 72.0)).abs() < 0.05, "2 行目も固定のはず");
+        // 結合したセルの中身(3 行以上)は 3 行の合計に入らない分だけ最後の行を伸ばす
+        let bottom = s.rules.iter().map(|r| r[3].max(r[1])).fold(0.0f32, f32::max);
+        let top = s.rules.iter().map(|r| r[1].min(r[3])).fold(f32::MAX, f32::min);
+        let lines_in = s.lines.iter().filter(|l| l.cell.is_some() && l.cells.first().is_some_and(|c| nagai.contains(c.ch))).count();
+        assert!(lines_in >= 3, "結合したセルの中身が折れていない: {lines_in}");
+        assert!(bottom - top > 18.0 + 1.0, "最後の行が中身のぶん伸びていない: {}", bottom - top);
+    }
+
     /// **表の行の送りは、行の高さに罫線の太さ(0.5pt)を足した物**
     /// (2026-09-09、Word の PDF で測った。続き30)
     #[test]
