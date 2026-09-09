@@ -519,7 +519,7 @@ pub(super) struct SavedCell {
 /// `None` = 文書の既定の和文の書体)、半角だけの run は欧文の書体にします。
 /// `w:hint="eastAsia"` の run は半角も和文の書体です
 pub(super) fn erabu_font(text: &str, ea: &Option<String>, latin: &Option<String>, hint_ea: bool) -> Option<String> {
-    let wabun = hint_ea || text.chars().any(|c| !c.is_ascii());
+    let wabun = hint_ea || !text.is_ascii();
     if wabun {
         ea.clone()
     } else {
