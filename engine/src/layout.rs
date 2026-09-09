@@ -1948,7 +1948,11 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             Some(m) => (m[0], m[2]),
             None => (CELL_PAD_V, CELL_PAD_V),
         };
-        let mut takasa = lh + pad_t0 + pad_b0;
+        // **床は置きません**(2026-09-09)。前は `frame.line_height_mm`(18pt)を最低の
+        // 高さにしていたので、10.5pt の字を 14.6pt のグリッドで組む行(trHeight
+        // 16pt)が 19pt になっていた(岐阜労働局の照会書)。空のセルも段落 1 つ分の
+        // 高さを持つので、床が無くても行は潰れない
+        let mut takasa = pad_t0 + pad_b0;
         let mut laid: Vec<Laid> = Vec::new();
         for (ci, cell) in row.iter().enumerate() {
             let span = cell.span().min(ncols.saturating_sub(gc)).max(1);
