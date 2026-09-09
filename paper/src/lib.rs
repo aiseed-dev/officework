@@ -1701,10 +1701,8 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
         .chain(d.tables().flat_map(|t| t.rows.iter().flatten().flat_map(|c| c.paragraphs.iter().map(|p| p.style_id.clone()))))
         .collect();
     for id in ids {
-        if !hyou.contains_key(&id) {
-            let sf = d.style_font(id.as_deref()).filter(|na| Some(na) != kitei.as_ref());
-            hyou.insert(id, sf);
-        }
+        hyou.entry(id.clone())
+            .or_insert_with(|| d.style_font(id.as_deref()).filter(|na| Some(na) != kitei.as_ref()));
     }
     let ateru = |p: &mut kumihan::Paragraph| {
         if let Some(Some(na)) = hyou.get(&p.style_id) {
