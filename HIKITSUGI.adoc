@@ -86,6 +86,9 @@ Fable が触るので、Opus はそこを触らない。** それ以外の write
   `cargo test -p pysheet` はさらに `DYLD_FALLBACK_LIBRARY_PATH=$HOME/miniforge3/lib`
   (libpython の置き場)と `PATH=$PWD/.venv/bin:$PATH`(python_smoke が `python3` を
   引くので、3.9 でなく 3.13 を先に)が要る。clippy は `rustup component add clippy`
+* **紙面の回帰試験 `paper/tests/kaiki.rs`(`the_same_paper_draws_the_same_picture`)はこの Mac では落ちる。**
+  控えの hash は Linux(Noto Sans CJK JP)で取った物で、梅フォントと Office の書体が入った
+  この機械では絵が変わる。CI(Linux)で見る試験なので、この機械の結果は当てにしない
 * **Office の同梱書体を書体の探索先に入れた(2026-09-09)。** `/Applications/Microsoft Word.app/Contents/Resources/DFonts`
   (Excel・PowerPoint も同じ)に ＭＳ 明朝・ゴシック・游・メイリオ・Century など 280 本。
   Office の入った Mac では置き替え無しで原本の書体で組む(発注者確認済み)。書体は読むだけ
