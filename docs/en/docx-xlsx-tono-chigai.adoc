@@ -301,6 +301,24 @@ link:../ja/commands/ファイル/保存.adoc[the Save page].
 
 *Take a copy of a docx that matters before you open it.*
 
+=== Where printing differs from the original
+
+These are the ones known in this version. They stay listed here until
+they are fixed.
+
+* *Table column widths* are taken from the list of widths the document
+  carries. In documents where Word uses a width held by each cell, a
+  line can wrap one character early or late
+* *Embedded objects* (an Excel worksheet, for example) are not drawn.
+  Room of the same size is left, so the page breaks match Word, but that
+  area stays blank
+* *A table with text wrapping* is placed in the flow of the body text
+* *A gradient fill on a shape* is painted in the single nearest colour
+
+The settings that are now laid out as Word lays them out are listed
+under "Printing a docx you were sent" in the
+link:writer-manual.adoc[writer manual].
+
 == What you gain instead
 
 [cols="1,2"]
