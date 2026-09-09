@@ -87,12 +87,18 @@ pub fn book(b: &book::Book, to: &Path) -> Result<u32, String> {
 
 /// シートの紙の設定。**シートごとに効きます**(1冊に縦と横が混ざってよい)
 pub(crate) fn paper_of(s: &book::Sheet) -> paper::Paper {
-    // 用紙の番号は Excel の決め。9 = A4
+    // 用紙の番号は Excel の決め(ECMA-376 第1部 `ST_PaperSize`)。9 = A4。
+    //
+    // **12 と 13 は JIS の B です**(2026-09-09)。仕様書は 12 を
+    // 「B4 (JIS) 257mm × 364mm」、13 を「B5 (JIS) 182mm × 257mm」と書いて
+    // います。前は ISO の B4(250×353)と B5(176×250)を入れていたので、
+    // 岐阜労働局の様式(001823803.xlsx)で Excel の 1032×729pt に対して
+    // 1001×709pt の紙になり、1枚に入る行が減って紙が増えていました
     let (w, h) = match s.paper_size.unwrap_or(9) {
         8 => (297.0, 420.0),
         11 => (148.0, 210.0),
-        12 => (250.0, 353.0),
-        13 => (176.0, 250.0),
+        12 => (257.0, 364.0),
+        13 => (182.0, 257.0),
         1 => (215.9, 279.4),
         5 => (215.9, 355.6),
         _ => (210.0, 297.0),
@@ -111,14 +117,14 @@ pub(crate) fn paper_of(s: &book::Sheet) -> paper::Paper {
 pub(crate) fn setup_of_mdw(
     s: &book::Sheet,
     date1904: bool,
-    mdw_px: f32,
+    mdw_pt: f32,
     default_pt: f32,
 ) -> paper::grid::PrintSetup {
     paper::grid::PrintSetup {
         areas: s.print_areas.clone(),
         margins_mm: s.margins_mm,
         date1904,
-        mdw_px,
+        mdw_pt,
         default_pt,
     }
 }
@@ -138,6 +144,23 @@ pub(crate) fn suuji_haba(b: &book::Book) -> f32 {
 
 #[cfg(test)]
 mod tests {
+    /// **用紙の番号 12・13 は JIS の B。**
+    ///
+    /// ECMA-376 は 12 を「B4 (JIS) 257mm × 364mm」、13 を
+    /// 「B5 (JIS) 182mm × 257mm」と決めています。ISO の B4(250×353)を
+    /// 入れていたので、岐阜労働局の様式(001823803.xlsx)で Excel より
+    /// 紙が 3cm 小さく、1枚に入る行が減っていました(2026-09-09)。
+    #[test]
+    fn paper_twelve_and_thirteen_are_the_jis_b_sizes() {
+        let mut s = book::Sheet::default();
+        for (no, w, h) in [(12u32, 257.0, 364.0), (13, 182.0, 257.0), (9, 210.0, 297.0)] {
+            s.paper_size = Some(no);
+            let p = super::paper_of(&s);
+            assert!((p.width_mm - w).abs() < 0.1 && (p.height_mm - h).abs() < 0.1,
+                    "用紙 {no} は {w}×{h}mm のはずが {}×{}mm", p.width_mm, p.height_mm);
+        }
+    }
+
     /// **アプリが動いていなくても文書が PDF になる。**
     #[test]
     fn a_document_becomes_a_pdf_without_the_app() {

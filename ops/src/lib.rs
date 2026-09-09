@@ -1777,22 +1777,108 @@ pub fn book_family(b: &book::Book) -> Result<&'static kumihan::font::Family, Str
     Ok(fam)
 }
 
-/// **そのブックの数字1文字の幅(画素)。** 列幅(数字が何文字ぶん入るか)を
-/// ミリに直す物差し。標準の書体が名前を持たなければ(こちらが書いた xlsx)、
-/// 紙が描く書体([`book_family`])で測る — 前は名前が無いと 0 を返し、紙の側が
-/// ＭＳ 明朝 10.5pt と同じ 7 に落としていたので、Excel(游ゴシック 11pt で 8)
-/// より列が 1 割狭かった(2026-09-08)。分からなければ 0
+/// **標準の Windows / Office の書体の、数字1文字の幅(em)。**
+///
+/// 列幅の物差しは**ファイルが名指しした書体**で決まります。その書体が
+/// この機械に無くても、Excel は同じ列幅で刷ります(Excel は自分で
+/// 持っている物か、幅の同じ置き替えを使うため)。こちらは字を
+/// ヒラギノで描きますが、**列幅だけは名指しの書体で数えます** —
+/// ヒラギノの数字は ＭＳ Ｐゴシック より 3 割広いので、そのまま測ると
+/// 表全体が 3 割広がります(2026-09-09、集めた xlsx で見つけました)。
+///
+/// 値は Office が同梱している書体そのものから測りました
+/// (`/Applications/Microsoft Excel.app/Contents/Resources/DFonts/`)。
+/// 表に無い名前は、この機械で引ける書体で測ります。
+const SUUJI_EM: &[(&str, f32)] = &[
+    // ＭＳ ゴシック系・明朝系は半角の数字(0.5em)
+    ("msゴシック", 0.5),
+    ("mspゴシック", 0.5),
+    ("msuiゴシック", 0.5),
+    ("ms明朝", 0.5),
+    ("msp明朝", 0.5),
+    ("msgothic", 0.5),
+    ("mspgothic", 0.5),
+    ("msuigothic", 0.5),
+    ("msmincho", 0.5),
+    ("mspmincho", 0.5),
+    ("timesnewroman", 0.5),
+    // 游書体・メイリオ
+    ("游ゴシック", 0.5562),
+    ("游ゴシックlight", 0.5562),
+    ("游ゴシックmedium", 0.5562),
+    ("yugothic", 0.5562),
+    ("yugothicui", 0.5762),
+    ("游明朝", 0.542),
+    ("yumincho", 0.542),
+    ("メイリオ", 0.6211),
+    ("meiryo", 0.6211),
+    ("meiryoui", 0.6211),
+    // 欧文
+    ("calibri", 0.5068),
+    ("arial", 0.5562),
+    ("aptos", 0.5342),
+    ("aptosnarrow", 0.5342),
+    ("century", 0.5562),
+    ("centurygothic", 0.5601),
+    ("tahoma", 0.5459),
+    ("verdana", 0.7109),
+    // HG 系(Office 同梱の日本語)
+    ("hggothice", 0.5),
+    ("hgpgothice", 0.543),
+    ("hgsgothice", 0.543),
+    ("hgminchoe", 0.5),
+    ("hgpminchoe", 0.5195),
+    ("hgsminchoe", 0.5195),
+    ("hg創英角ｺﾞｼｯｸub", 0.5),
+    ("hgp創英角ｺﾞｼｯｸub", 0.6289),
+    ("hgs創英角ｺﾞｼｯｸub", 0.6289),
+    ("hg丸ｺﾞｼｯｸm-pro", 0.7422),
+];
+
+/// 書体の名前を [`SUUJI_EM`] の見出しの形にします。全角の英数を半角に、
+/// 大文字を小文字に、空白を落とします(`ＭＳ Ｐゴシック` → `mspゴシック`)。
+fn haba_key(na: &str) -> String {
+    na.chars()
+        .filter(|c| !c.is_whitespace() && *c != '\u{3000}')
+        .map(|c| match c {
+            'Ａ'..='Ｚ' => char::from_u32(c as u32 - 'Ａ' as u32 + 'a' as u32).unwrap_or(c),
+            'ａ'..='ｚ' => char::from_u32(c as u32 - 'ａ' as u32 + 'a' as u32).unwrap_or(c),
+            '０'..='９' => char::from_u32(c as u32 - '０' as u32 + '0' as u32).unwrap_or(c),
+            _ => c.to_ascii_lowercase(),
+        })
+        .collect()
+}
+
+/// **そのブックの数字1文字の幅(pt。整数)。** 列幅(数字が何文字ぶん入るか)を
+/// ミリに直す物差しです([`paper::grid::PrintSetup::mdw_pt`])。
+///
+/// 名指しの書体が [`SUUJI_EM`] にあればその幅で、無ければこの機械で引ける
+/// 書体で測ります。標準の書体が名前を持たなければ(こちらが書いた xlsx)、
+/// 紙が描く書体([`book_family`])で測ります。分からなければ 0
+/// (紙の側が 6 に落とします)。
+///
+/// **点に丸めるのは Excel と同じです。** Excel は「その機械が描く一点」で
+/// 数えた整数を使い、macOS では 1 点 = 1pt です。ＭＳ Ｐゴシック 11pt の
+/// 数字は 5.5pt なので 6 になります(2026-09-09)。
 pub fn suuji_haba_of(b: &book::Book) -> f32 {
     let Some((na, pt)) = b.default_font.as_ref() else { return 0.0 };
-    if !na.is_empty() {
-        if let Some(px) = kumihan::font::digit_px(na, *pt) {
-            return px;
-        }
-    }
-    book_family(b)
-        .ok()
-        .and_then(|f| kumihan::font::digit_px(&f.name, *pt))
+    let pt = if *pt > 0.0 { *pt } else { book::DEFAULT_CELL_PT };
+    suuji_haba_pt(na, pt)
+        .or_else(|| book_family(b).ok().and_then(|f| suuji_haba_pt(&f.name, pt)))
         .unwrap_or(0.0)
+}
+
+/// 書体の名前と大きさから、数字1文字の幅(pt。整数)。引けなければ None
+pub fn suuji_haba_pt(na: &str, pt: f32) -> Option<f32> {
+    if na.is_empty() {
+        return None;
+    }
+    let key = haba_key(na);
+    if let Some((_, em)) = SUUJI_EM.iter().find(|(k, _)| *k == key) {
+        return Some((em * pt).round().max(1.0));
+    }
+    // 表に無い書体は、この機械で引ける物で測ります(96dpi の画素で返るので点へ)
+    kumihan::font::digit_px(na, pt).map(|px| (px * 72.0 / 96.0).round().max(1.0))
 }
 
 /// PNG / JPEG の画素数 (幅, 高さ)。読めなければ None。
@@ -2512,5 +2598,40 @@ mod macro_verb_tests {
         let r = handle(&mut h, r#"{"cmd":"macro_status","id":1}"#);
         assert!(r.contains("\"err\""), "{r}");
         assert!(handle(&mut h, r#"{"cmd":"macro_start"}"#).contains("code"));
+    }
+}
+
+#[cfg(test)]
+mod suuji_haba_tests {
+    /// **列幅の物差しは、名指しの書体で数える。**
+    ///
+    /// ＭＳ Ｐゴシック 11pt の数字は 0.5em = 5.5pt なので 6pt です。この機械に
+    /// ＭＳ Ｐゴシック は入っていない(Office の中にしか無い)ので、字は
+    /// ヒラギノで描きますが、**幅だけは名指しの書体で数えます** —
+    /// ヒラギノで測ると 7pt になり、表全体が 1 割広がります(2026-09-09)。
+    #[test]
+    fn the_column_unit_follows_the_font_the_file_names() {
+        for (na, pt, machi) in [
+            ("ＭＳ Ｐゴシック", 11.0, 6.0),
+            ("ＭＳ ゴシック", 11.0, 6.0),
+            ("ＭＳ 明朝", 11.0, 6.0),
+            ("MS PGothic", 11.0, 6.0),
+            ("ＭＳ 明朝", 10.5, 5.0),
+            ("游ゴシック", 11.0, 6.0),
+            ("Yu Gothic", 11.0, 6.0),
+            ("メイリオ", 11.0, 7.0),
+            ("Calibri", 11.0, 6.0),
+        ] {
+            let deta = super::suuji_haba_pt(na, pt).expect("引けない");
+            assert_eq!(deta, machi, "{na} {pt}pt は {machi}pt のはず");
+        }
+    }
+
+    /// 名前を持たないブック(こちらが書いた xlsx)は 0 を返さない
+    #[test]
+    fn a_book_without_a_font_name_still_has_a_unit() {
+        let mut b = book::Book::new();
+        b.default_font = Some((String::new(), 11.0));
+        assert!(super::suuji_haba_of(&b) > 0.0, "物差しが出ない");
     }
 }

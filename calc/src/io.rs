@@ -1238,7 +1238,7 @@ impl Calc {
             areas: sh.print_areas.clone(),
             margins_mm: sh.margins_mm,
             date1904: self.book.date1904,
-            mdw_px: self.suuji_haba(),
+            mdw_pt: self.suuji_haba(),
             default_pt: self.default_pt(),
         };
         paper::grid::page_starts(sh, paper, &setup)
@@ -1276,7 +1276,7 @@ impl Calc {
                     areas: sh.print_areas.clone(),
                     margins_mm: sh.margins_mm,
                     date1904: self.book.date1904,
-            mdw_px: self.suuji_haba(),
+            mdw_pt: self.suuji_haba(),
             default_pt: self.default_pt(),
                 },
             ));
@@ -1342,7 +1342,7 @@ impl Calc {
             areas: areas.clone(),
             margins_mm: sh.margins_mm,
             date1904: self.book.date1904,
-            mdw_px: self.suuji_haba(),
+            mdw_pt: self.suuji_haba(),
             default_pt: self.default_pt(),
         };
         match areas.len() {

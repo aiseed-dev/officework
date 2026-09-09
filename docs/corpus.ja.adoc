@@ -260,3 +260,38 @@ openpyxl は式のセルに `<v>`(前回の答え)を**書かない**。
 *この 2 枚で `当たり 0 セル` は正しい。* C 列は「品目2」など**3文字**しか入っていないので `LEN(C2)>3` は偽になる。
 *0 を見て「効いていない」と早合点しない* —ずらした式(`LEN(C3)>3`, `LEN(C4)>3`…)と各セルの値まで出して確かめた。
 当たる側は試験(`数式で指定した縞模様が往復して効く`)が``MOD(ROW(),2)=0`` で A2/A4 が真・A1/A3 が偽・範囲外は偽まで押さえている。
+
+== 第5便(2026-09-09。55枚 — 紙面を Excel と比べるため)
+
+これまでの4便は**値と書式**を openpyxl / LibreOffice と比べる物でした。
+第5便は**紙面**が狙いです。officework が出す PDF と、本物の Excel が出す
+PDF を並べて、列の幅・行の高さ・改ページを合わせます。
+
+集める道具に拡張子の選択肢を足しました。
+
+    python3 tools/corpus_fetch.py --ext xlsx --out ~/xlsx-corpus <一覧のページの URL> …
+
+1周させる道具は `tools/corpus_round_xlsx.py` です(docx 用の
+`tools/corpus_round.py` と同じ形)。
+
+    .venv/bin/python tools/corpus_round_xlsx.py
+
+[cols="3,1,3"]
+|===
+|出所 |枚数 |中身
+
+|https://jsite.mhlw.go.jp/gifu-roudoukyoku/[岐阜労働局]の様式集 |26 |雇用保険・労働保険の申請書と証明書
+|https://www.pref.hokkaido.lg.jp/kn/ksk/youshikisyu.html[北海道]の工事関係様式 |19 |入札の参加資格・工程表・内訳書
+|https://www.city.hino.lg.jp/shisei/nyusatsu/keiyaku/1005467.html[日野市]の入札関係 |8 |労務台帳・契約の様式
+|https://www.town.ibaraki-yachiyo.lg.jp/page/page000493.html[八千代町]の入札 |3 |入札・契約の様式
+|===
+
+**申請書の類を選びました。** 統計の表(第1便)は値と結合には強い代わりに、
+印刷範囲・拡大縮小・ヘッダー・結合だらけの罫線がほとんど入っていません。
+役所の様式は逆で、1枚に収める工夫が全部入っています。
+
+分かったことと直した物は docs/sekkei/excel-tsukiawase.ja.adoc に書きました。
+いちばん大きかったのは**列の幅の物差し**で、表全体が横に3割広がっていました。
+
+*マクロつき(`.xlsm`)は1周から外します。* Excel がマクロの有効化を画面で
+聞くので、画面の見えない所では止まります。
