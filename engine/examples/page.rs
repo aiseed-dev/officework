@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ],
     };
 
-    let frame = Frame { measure_mm: 210.0 - 2.0 * MARGIN, line_height_mm: 6.4, y0_mm: 24.0 };
+    let frame = Frame { measure_mm: 210.0 - 2.0 * MARGIN, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM };
     let sheet = layout(&doc, &m, &frame);
 
     let (pdf, page, layer) = PdfDocument::new("kumihan K0", Mm(210.0), Mm(297.0), "L1");

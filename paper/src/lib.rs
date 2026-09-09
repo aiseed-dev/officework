@@ -698,7 +698,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain(text);
         d.apply_align(0..text.len(), align);
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
         (s, data)
     }
 
@@ -720,7 +720,7 @@ mod tests {
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
         let d = Document::plain("一行だけ");
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
         let page = kumihan::PageSetup::default();
         assert_eq!(doc_leaves(&s, page).len(), 1);
         let mut dress = PageDress::default();
@@ -797,7 +797,7 @@ mod tests {
         };
         d.sect_hf.insert(0, SectionHf { header: hf("一"), ..Default::default() });
         d.sect_hf.insert(1, SectionHf { header: hf("二"), title_pg: true, ..Default::default() });
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
         assert_eq!(s.sect_hfs.len(), 3, "節ごとのヘッダーが揃っていない");
         let lines = doc_hf_lines(&d, &data, &s, paper).unwrap();
         let text = |k: usize| -> String { lines(k).iter().map(|l| l.text()).collect::<Vec<_>>().join("|") };
@@ -833,7 +833,7 @@ mod tests {
             ],
             ..Default::default()
         };
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
         assert_eq!(s.sect_pages.len(), 3, "節ごとの紙が揃っていない: {:?}", s.sect_pages);
 
         let papers = paginate_full(&s, Paper::default()).papers;
@@ -894,7 +894,7 @@ mod tests {
         // 2つ目の節は Document::page(縦)なので、横は1つ目…ではない。
         // 節末に紙を置いた1段目が縦、残りが最後の節。ここでは横紙を最後に置く
         let d = Document { page: Some(paper(297.0, 210.0)), ..d };
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
         let pf = paginate_full(&s, Paper::default());
         let (pages, offsets, papers) = (pf.pages, pf.offsets, pf.papers);
         for (i, line) in s.lines.iter().enumerate() {
@@ -941,7 +941,7 @@ mod tests {
             ..Default::default()
         };
         // 上の余白より上を引いても、最初の節が返らねばならない
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0, hang_mm: kumihan::HANG_MM });
         assert_eq!(s.setup_at(0.0).map(|g| (g.w_mm, g.h_mm)), Some((210.0, 297.0)),
             "巻物の頭で最初の節が引けない: {:?}", s.sect_pages);
 
@@ -980,7 +980,7 @@ mod tests {
         let s = layout(&d, &m, &Frame {
             measure_mm: pg.column_measure_mm(),
             line_height_mm: kumihan::LINE_MM,
-            y0_mm: pg.top_mm + kumihan::BASE_UP_MM,
+            y0_mm: pg.top_mm + kumihan::BASE_UP_MM, hang_mm: kumihan::HANG_MM
         });
         let pg2 = paginate_full(&s, Paper::from_page(&pg));
         assert!(pg2.offsets.len() >= 3, "頁が足りず試験にならない");
@@ -1039,7 +1039,7 @@ mod tests {
             ],
             ..Default::default()
         };
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0, hang_mm: kumihan::HANG_MM });
         let pg = paginate_full(&s, Paper::default());
         assert!(pg.papers.iter().any(|q| q.width_mm == 297.0), "横の紙が出ていない");
         for (i, line) in s.lines.iter().enumerate() {
@@ -1099,7 +1099,7 @@ mod page_tests {
         let m = Metrics::new(&data).unwrap();
         let text = vec!["行"; n_lines].join("\n");
         let d = Document::plain(&text);
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
         let mut buf = Vec::new();
         to_pdf(&s, &data, Paper::default(), &mut buf).unwrap();
         // ページ数は PDF の /Count に書かれている
@@ -1163,7 +1163,7 @@ mod hf_tests {
         let m = Metrics::new(&data).unwrap();
         let text = vec!["行"; 100].join("\n");
         let d = Document::plain(&text);
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
         let pg = PageSetup::default();
         let hf = HeadFoot {
             paragraphs: Document::plain(&PAGE_MARK.to_string())
@@ -1199,7 +1199,7 @@ mod break_tests {
         if let Block::Para(p) = &mut d.blocks[1] {
             p.page_break_before = true;
         }
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
         assert_eq!(s.breaks.len(), 1, "改ページが紙面に伝わっていない");
         let mut buf = Vec::new();
         to_pdf(&s, &data, Paper::default(), &mut buf).unwrap();
@@ -1221,7 +1221,7 @@ mod break_tests {
         if let Block::Para(p) = &mut d.blocks[1] {
             p.page_break_before = true;
         }
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
         let pn = paginate_full(&s, Paper::default());
         assert_eq!(pn.pages, vec![1, 2, 2], "空行が新しい頁の頭に来ていない: {:?}", pn.pages);
         // 見出しは空行の1行ぶん下(2頁目の1行目ではない)
@@ -1240,7 +1240,7 @@ mod break_tests {
         if let Block::Para(p) = &mut d.blocks[0] {
             p.page_break_before = true;
         }
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
         assert!(s.breaks.is_empty(), "先頭で頁を割った");
     }
 }
@@ -1277,7 +1277,7 @@ mod image_tests {
                 off: 0,
             });
         }
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
         assert_eq!(s.images.len(), 1, "紙面に画像が無い");
         let mut buf = Vec::new();
         to_pdf(&s, &data, Paper::default(), &mut buf).unwrap();
@@ -1303,7 +1303,7 @@ mod image_tests {
                 off: 0,
             });
         }
-        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
         let mut buf = Vec::new();
         to_pdf(&s, &data, Paper::default(), &mut buf).unwrap();
         assert_eq!(&buf[..5], b"%PDF-");
@@ -1325,7 +1325,7 @@ mod footnote_area_tests {
         let (fam, _) = font::for_text(None, d.chars()).unwrap();
         let data = font::load(fam).unwrap();
         let m = Metrics::new(&data).unwrap();
-        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0 })
+        layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0, hang_mm: kumihan::HANG_MM })
     }
     fn mark(id: &str) -> Run {
         Run { text: String::new(), size_pt: None, font: None,
@@ -1794,13 +1794,13 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
     if d.vertical {
         // 縦書き: 行長 = 紙の縦の使い幅で組み、右からの列へ写す
         let measure = (page.h_mm - page.top_mm - page.bottom_mm - 8.0).max(20.0);
-        sheet = kumihan::layout(d, &m, &kumihan::Frame { measure_mm: measure, line_height_mm: line_mm, y0_mm: y0 });
+        sheet = kumihan::layout(d, &m, &kumihan::Frame { measure_mm: measure, line_height_mm: line_mm, y0_mm: y0, hang_mm: page.right_mm });
         if !opts.endless {
             kumihan::fold_vertical(&mut sheet, &page, y0, line_mm);
         }
     } else {
         let measure = opts.measure_mm.unwrap_or_else(|| page.column_measure_mm());
-        sheet = kumihan::layout(d, &m, &kumihan::Frame { measure_mm: measure, line_height_mm: line_mm, y0_mm: y0 });
+        sheet = kumihan::layout(d, &m, &kumihan::Frame { measure_mm: measure, line_height_mm: line_mm, y0_mm: y0, hang_mm: page.right_mm });
         if !opts.endless {
             kumihan::fold_columns(&mut sheet, &page, y0);
         }

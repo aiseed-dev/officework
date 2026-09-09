@@ -9,7 +9,7 @@ fn main() {
     d.apply_align(0.."実施要領に基づく提案書".len(), kumihan::Align::Center);
     d.apply_size(0.."実施要領に基づく提案書".len(), |_| 16.0);
     d.apply_char_format(0.."実施要領に基づく提案書".len(), |f| f.bold = true);
-    let s = kumihan::layout(&d, &m, &kumihan::Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+    let s = kumihan::layout(&d, &m, &kumihan::Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0, hang_mm: kumihan::HANG_MM });
     let f = std::fs::File::create(std::env::args().nth(1).unwrap()).unwrap();
     paper::to_pdf(&s, &data, paper::Paper::default(), std::io::BufWriter::new(f)).unwrap();
     println!("{} 行を印字。表題: 中央・16pt・太字", s.lines.len());

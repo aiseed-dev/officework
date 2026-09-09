@@ -216,7 +216,7 @@ pub(super) fn zenkaku(ch: char) -> bool {
         || (0x20000..=0x2FFFF).contains(&c)
 }
 
-/// `moji` は文字グリッドの升(mm。0 で無し)。全角の字はこの送りにそろえる
+/// `moji` は文字グリッドが字ごとに足す空き(mm。0 で無し。負もある)。全角の字に足す
 pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: f32, moji: f32) -> Vec<Tok> {
     let mut out = Vec::new();
     // 段落の頭からのバイト位置。run をまたいで通しで数える
@@ -242,17 +242,12 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
         // **字間**(`w:rPr` の `w:spacing`)。1文字ごとに足します
         let aki = run.fmt.spacing_pt * PT_TO_MM;
         // **文字グリッド**(2026-09-09)。全角の字は升の幅で送る(字間の指定より強い)
-        let masu = if moji > 0.0 && !p.no_grid { moji } else { 0.0 };
+        let masu = if moji != 0.0 && !p.no_grid { moji } else { 0.0 };
         let okuri = |ch: char| {
             let sizen = (m.advance_for(run.font.as_deref(), ch, rpt) + aki).max(0.0);
-            if masu > 0.0 && zenkaku(ch) {
-                // 升より広い字(18pt の題など)は、入る数の升を占める(Word と同じ)
-                // **升より 1 割まで広い字は 1 升に入れます**(2026-09-09)。裁判所の
-                // 訴状は `w:charSpace="-200"` で、升(11.95pt)が字(12pt)より僅かに
-                // 狭い。Word はその升の送りで字を並べる。ceil のままだと全部の
-                // 字が 2 升を取って行の字数が半分になり、4 頁が 7 頁になっていた
-                let n = (sizen / masu - 0.1).ceil().max(1.0);
-                masu * n
+            if masu != 0.0 && zenkaku(ch) {
+                // 全角の字はグリッドの空きを足して送る(字の大きさに関わらず一定)
+                (sizen + masu).max(0.0)
             } else {
                 sizen
             }
@@ -291,9 +286,9 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
 /// 同じ文書が別の頁数に折れる形になっていました(2026-08-27)。
 pub const LINE_MM: f32 = 6.4;
 
-/// **行末の空白が右の余白へぶら下がれる幅(mm)。** Word は行末の空白を紙の端まで
-/// 置く(右の余白の幅まで)。用紙の余白は組む所に来ていないので、日本語の Word の
-/// 様式に多い 851 twip(15mm)を当てる(2026-09-09)
+/// **行末の空白が右の余白へぶら下がれる幅(mm)の見当。** Word は行末の空白を紙の端
+/// まで置く(右の余白の幅まで)。本文は用紙の右の余白を [`Frame::hang_mm`] で渡す。
+/// 余白が分からない所(ヘッダーなど)は日本語の Word の様式に多い 851 twip(15mm)
 pub const HANG_MM: f32 = 15.0;
 
 /// **行の箱の中で、ベースラインが上端から何 mm 下か。**
@@ -317,6 +312,9 @@ pub struct Frame {
     pub measure_mm: f32,   // 行長
     pub line_height_mm: f32,
     pub y0_mm: f32,        // 最初のベースライン
+    /// 行末の空白が右の余白へぶら下がれる幅(mm)。用紙の右の余白
+    /// ([`HANG_MM`] は余白が分からないときの見当)
+    pub hang_mm: f32,
 }
 
 /// 段落の列を行に組む。
@@ -395,7 +393,8 @@ pub(super) fn left_mm(para: &Paragraph, em: f32) -> f32 {
 }
 
 pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
-              hyphenate: bool, notes: &mut NoteCount, base: f32, tsume: bool, moji: f32) -> Vec<Vec<Cell>> {
+              hyphenate: bool, notes: &mut NoteCount, base: f32, tsume: bool, moji: f32,
+              hang: f32) -> Vec<Vec<Cell>> {
     // **見出しは大きく太く組む**([`head_scale`])。大きさは「基準」を
     // 持ち上げる形にするので、run が自分で大きさを言っていればそちらが勝つ
     // (docx の作法どおり — run の指定はスタイルより強い)
@@ -535,7 +534,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
                 // 40 字で行の 39 升を超えるが、Word は 40 字目を余白に置いて折らない。
                 // 紙の端まで([`HANG_MM`])を超える分は折る(厚労省の研究報告の
                 // 署名欄は空白が 100 字を超え、Word も次の行に空白の行を作る)
-                if w_cur + w <= measure + HANG_MM {
+                if w_cur + w <= measure + hang {
                     w_cur += w;
                     cur.extend(cells);
                     continue;
@@ -914,9 +913,13 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
         // 升の基準は「標準の字の大きさ」= 既定の段落スタイル(Normal)の大きさ。
         // docDefaults に大きさが無く Normal が 12pt を言う裁判所の書式で、10.5 に
         // なっていた(2026-09-09)
-        let kijun = doc.style_pt(None).unwrap_or(base);
+        // **文字グリッドは字ごとに一定の空きを足す**(2026-09-09、Word の PDF で
+        // 測った)。`w:charSpace` / 4096 pt が 1 字ごとの空きで、標準の 10.5pt なら
+        // 送りが 10.6pt(1 行 40 字)、12pt の字は 12.1pt、負なら詰まる(裁判所の
+        // 訴状は 11.95pt)。前は「升の倍数に切り上げ」にしていたので、12pt の字が
+        // 10.6pt の升 2 つ(21.2pt)を取り、1 行の字数が半分になっていた
         let moji = match pg_now {
-            Some(pg) if pg.char_grid => ((kijun + pg.char_space_pt) * PT_TO_MM).max(0.0),
+            Some(pg) if pg.char_grid => pg.char_space_pt * PT_TO_MM,
             _ => 0.0,
         };
         match block {
@@ -1092,7 +1095,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 let measure = (measure - cap_shift).max(em);
                 let first_mm = first_line_mm(para_eff, base);
                 let gyou = break_para(para_eff, m, measure, marker.as_deref(),
-                                      doc.hyphenate, &mut note_no, base, doc.compress_punct, moji);
+                                      doc.hyphenate, &mut note_no, base, doc.compress_punct, moji,
+                                      frame.hang_mm);
                 let gyou_kazu = gyou.len();
                 for (line_no, mut cells) in gyou.into_iter().enumerate() {
                     // 1行目だけ字下げのぶん右へ(行長は組み手が縮めている)
@@ -1464,7 +1468,8 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
             let marker = (pi == 0).then(|| format!("{label} "));
             let mut throwaway = NoteCount::default();
             for cells in break_para(para, m, frame.measure_mm, marker.as_deref(),
-                                    doc.hyphenate, &mut throwaway, base, doc.compress_punct, 0.0) {
+                                    doc.hyphenate, &mut throwaway, base, doc.compress_punct, 0.0,
+                                    frame.hang_mm) {
                 let mut x = 0.0f32;
                 let cells: Vec<Cell> = cells.into_iter()
                     .map(|mut c| { c.x_mm = x; x += c.w_mm; c })
@@ -1553,7 +1558,7 @@ pub fn layout_hf(
             }
         }
         for cells in break_para(&para, m, measure, None, false, &mut NoteCount::default(),
-                                base_pt, false, 0.0) {
+                                base_pt, false, 0.0, HANG_MM) {
             let w: f32 = cells.iter().map(|c| c.w_mm).sum();
             let slack = (measure - w).max(0.0);
             let mut x = match para.align {
@@ -2067,6 +2072,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                             measure_mm: inner.max(jibun),
                             line_height_mm: frame.line_height_mm,
                             y0_mm: 0.0,
+                            hang_mm: frame.hang_mm,
                         };
                         let mut tmp = Sheet::default();
                         // 中の表の番号。本文の表と重ならない所から振る
@@ -2121,7 +2127,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     let sagari = first_line_mm(para, pbase);
                     let migi = (para.right_twips.max(0) as f32) * 25.4 / 1440.0;
                     let inner = (inner - hidari - migi).max(2.0);
-                    let mut kore = break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase, tsume, moji);
+                    let mut kore = break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase, tsume, moji, HANG_MM);
                     let saigo = kore.len().saturating_sub(1);
                     for (k, cs) in kore.drain(..).enumerate() {
                         let b0 = para0 + cs.iter().map(|c| c.off).min().unwrap_or(0);
@@ -2530,7 +2536,7 @@ mod kaigyou_tests {
             p.runs.push(crate::Run { text: "\n".into(), size_pt: None, font: None, fmt: Default::default() });
             p.runs.push(crate::Run { text: "続き".into(), size_pt: None, font: None, fmt: Default::default() });
         }
-        let sheet = layout(&d, &m, &Frame { measure_mm: 150.0, line_height_mm: LINE_MM, y0_mm: 20.0 });
+        let sheet = layout(&d, &m, &Frame { measure_mm: 150.0, line_height_mm: LINE_MM, y0_mm: 20.0, hang_mm: HANG_MM });
         let texts: Vec<String> = sheet
             .lines
             .iter()

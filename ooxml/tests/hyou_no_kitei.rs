@@ -164,7 +164,7 @@ fn the_diagonal_reaches_the_page() {
     let sheet = kumihan::layout(
         &doc,
         &m,
-        &kumihan::Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 },
+        &kumihan::Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: kumihan::HANG_MM },
     );
     let naname = sheet
         .rules
@@ -191,7 +191,7 @@ fn the_spread_text_reaches_the_page() {
     let sheet = kumihan::layout(
         &doc,
         &m,
-        &kumihan::Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 },
+        &kumihan::Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0, hang_mm: kumihan::HANG_MM },
     );
     let line = sheet.lines.first().expect("字が無い");
     let hi: Vec<f32> = line.cells.iter().map(|c| c.x_mm).collect();

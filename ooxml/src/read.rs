@@ -771,11 +771,33 @@ pub(super) fn image_of(
         let end = raw[i..].find('"')? + i;
         Some(raw[i..end].to_string())
     };
-    let rid = grab("r:embed=\"")?;
+    // **埋め込みの物(`w:object` の Excel など)と VML の絵**は `v:imagedata` の
+    // `r:id` で実体を、`v:shape` の `style` の width/height(pt)で大きさを持つ
+    // (2026-09-09)。実体は EMF/WMF で描けないことが多いが、大きさが分かれば
+    // 同じ高さの場所を空けられるので、頁割りが Word と揃う(厚労省の収支
+    // 決算書は 422pt の Excel の表がこれで、前は 1 頁少なかった)
+    let vml = raw.contains("<v:imagedata");
+    let rid = grab("r:embed=\"").or_else(|| if vml { grab("<v:imagedata r:id=\"") } else { None })?;
     let bytes = media.get(&rid)?.clone();
     // wp:extent cx/cy(EMU)。無ければ表示しない(大きさを勝手に決めない)
-    let cx: f32 = grab("cx=\"")?.parse().ok()?;
-    let cy: f32 = grab("cy=\"")?.parse().ok()?;
+    let pt_of = |key: &str| -> Option<f32> {
+        // 頭に空白を付けて探す(`joinstyle="miter"` を拾わないため)
+        let st = grab(" style=\"")?;
+        let i = st.find(key)? + key.len();
+        let v: String = st[i..].chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect();
+        let n: f32 = v.parse().ok()?;
+        // 単位は pt が普通。in / cm も一応
+        let rest = &st[i + v.len()..];
+        Some(if rest.starts_with("in") { n * 72.0 } else if rest.starts_with("cm") { n * 72.0 / 2.54 } else { n })
+    };
+    let (cx, cy): (f32, f32) = match (grab("cx=\"").and_then(|v| v.parse().ok()), grab("cy=\"").and_then(|v| v.parse().ok())) {
+        (Some(cx), Some(cy)) => (cx, cy),
+        _ => {
+            let w = pt_of("width:")?;
+            let h = pt_of("height:")?;
+            (w * 12700.0, h * 12700.0)
+        }
+    };
     // **数式なら原文(LaTeX)が代替テキストに積んである。** 拾わないと、
     // こちらで書いた数式を開き直したとき絵のままで直せない
     let tex = grab("descr=\"")
