@@ -1810,10 +1810,11 @@ fn jibun_wo_ateru(
     if pl.no_grid == Some(true) {
         para.no_grid = true;
     }
-    if para.indent == 0 {
+    // 段落自身が `w:ind` を言っていれば、スタイルの字下げは当てない(0 も指定)
+    if para.indent == 0 && !para.ind_itta {
         para.indent = pl.indent.unwrap_or(0);
     }
-    if para.first_line_twips == 0 {
+    if para.first_line_twips == 0 && !para.ind_itta {
         para.first_line_twips = pl.first_line_twips.unwrap_or(0);
     }
     // **スタイルの罫線。** python-docx の型紙は、題(`Title`)の下の線を

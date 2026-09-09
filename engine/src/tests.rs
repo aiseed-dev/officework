@@ -449,6 +449,29 @@ mod list_tests {
         assert_eq!(hf_push_mm(&hf, &pg, None, 10.5, false), 35.0);
     }
 
+    /// **段落自身の `w:ind` はスタイルの字下げに負けない**(2026-09-09)。
+    /// `w:ind w:leftChars="0"` の箇条書きが List Paragraph の 4 字下げを受けていた
+    #[test]
+    fn a_paragraphs_own_indent_beats_the_style() {
+        let mut d = Document::plain("甲\n乙");
+        d.styles.push(StyleInfo {
+            id: "a3".into(), name: "List Paragraph".into(), kind: "paragraph".into(),
+            para: StyleParaLook { indent: Some(2), ..Default::default() },
+            ..Default::default()
+        });
+        for (i, b) in d.blocks.iter_mut().enumerate() {
+            if let Block::Para(p) = b {
+                p.style_id = Some("a3".into());
+                p.ind_itta = i == 0;
+            }
+        }
+        let t = crate::theme::default_theme();
+        let c = crate::theme::compose(&d, &t);
+        let ps: Vec<&Paragraph> = c.paragraphs().collect();
+        assert_eq!(ps[0].indent, 0, "自分で 0 と言った段落にスタイルの字下げが付いた");
+        assert_eq!(ps[1].indent, 2, "言っていない段落はスタイルの字下げ");
+    }
+
     /// **文字グリッド**(`w:docGrid w:type="linesAndChars"`。2026-09-09)。全角の字は
     /// 升(基準の字の大きさ + charSpace)の幅で送り、半角はそのまま。負の上余白は
     /// 絶対値で持ち、ヘッダーがあっても押さない

@@ -1908,6 +1908,7 @@ pub(super) fn parse_document_rels_num(
     let mut line_spacing = 0.0f32;
     let mut line_pt: Option<(f32, bool)> = None;
     let mut no_grid = false; // w:pPr の w:snapToGrid w:val="0"
+    let mut ind_itta = false; // 段落自身が w:ind を言ったか
     let mut space_before_pt = 0.0f32;
     let mut space_after_pt = 0.0f32;
     let mut page_break_before = false;
@@ -2063,6 +2064,7 @@ pub(super) fn parse_document_rels_num(
                               line_spacing = 0.0;
                               line_pt = None;
                               no_grid = false;
+                              ind_itta = false;
                               space_before_pt = 0.0;
                               space_after_pt = 0.0;
                               page_break_before = std::mem::take(&mut tsugi_kaipeji);
@@ -2192,6 +2194,7 @@ pub(super) fn parse_document_rels_num(
                         page_break_before = on(&e);
                     }
                     b"ind" if in_ppr => {
+                        ind_itta = true;
                         // twip。1段 = 全角2文字 = 10.5pt×2 ≒ 420twip
                         indent = attr(&e, "left")
                             .and_then(|v| v.parse::<f32>().ok())
@@ -2859,6 +2862,7 @@ pub(super) fn parse_document_rels_num(
                         page_break_before = on(&e);
                     }
                     b"ind" if in_ppr => {
+                        ind_itta = true;
                         // twip。1段 = 全角2文字 = 10.5pt×2 ≒ 420twip
                         indent = attr(&e, "left")
                             .and_then(|v| v.parse::<f32>().ok())
@@ -3198,6 +3202,7 @@ pub(super) fn parse_document_rels_num(
                                 line_spacing,
                                 line_pt,
                                 no_grid,
+                                ind_itta,
                                 space_before_pt,
                                 space_after_pt,
                                 style: pstyle,

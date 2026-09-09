@@ -514,6 +514,10 @@ pub struct Paragraph {
     pub align: Align,
     /// この段落の前で改ページする(docx の w:pageBreakBefore)
     pub page_break_before: bool,
+    /// **段落自身が `w:ind` を言った印**(2026-09-09)。「言っていない」と「0 と言った」を
+    /// 分ける。言っていればスタイルの字下げを当てない(`w:ind w:leftChars="0"` の
+    /// 箇条書きが、List Paragraph の 4 字下げを受けて 48pt 右にずれていた)
+    pub ind_itta: bool,
     /// **行グリッドに合わせない**(docx の `w:pPr/w:snapToGrid w:val="0"`)。
     /// 既定(false)は合わせる。[`PageSetup::line_pitch_pt`] が 0 なら意味を持たない
     pub no_grid: bool,
