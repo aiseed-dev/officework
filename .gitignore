@@ -56,3 +56,8 @@ pysheet/dist/
 
 # 受け入れ試験の出来上がり(test/README.ja.adoc — 道具があれば作り直せる)
 test/out/
+
+# 署名の鍵と証明書(Mac の署名に使う)。**決して追跡しない**
+*.p12
+# macOS が勝手に作るフォルダの情報
+.DS_Store
