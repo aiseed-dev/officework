@@ -188,6 +188,13 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     if !styxml.is_empty() {
         doc.styles = parse_styles_num(&styxml, &shirushi);
         hyou_no_kei(&mut doc, &styxml);
+        // **文書の既定の書体は、既定の段落スタイル(Normal)が言えばそちら**
+        // (2026-09-09)。docDefaults がテーマ(游明朝)を指し、Normal が ＭＳ 明朝を
+        // 言う docx で、無指定の run を游明朝で描き測っていた(半角の幅と ⑦ の幅が
+        // Word と違い、折れる所がずれた)。Word の重ね順は docDefaults < スタイル
+        if let Some(na) = doc.style_font(None) {
+            doc.font = Some(na);
+        }
     }
     tblind_wo_naosu(&mut doc, &sxml);
     if !pxml.is_empty() {
