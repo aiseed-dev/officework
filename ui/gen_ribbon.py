@@ -196,7 +196,11 @@ READY = {
         "ai-plain": "ai-plain", "ai-translate": "ai-translate",
         "ai-furigana": "ai-furigana", "ai-continue": "ai-continue",
         "ai-table": "ai-table", "ai-ask": "ai-ask",
-        "colorschemas": "colorschemas", "theme": "theme",
+        # `"theme": "theme"` を外しました(2026-09-09)。表の並びに theme と
+        # いう欄は無く、calc に theme という命令もありません。生成物には
+        # 出ないまま、点検の道具が「押せるはずなのに灰色」と数えていました。
+        # 表示タブの暗い色は下の EXTRA_CMDS の darkmode(絵の名前が theme)です
+        "colorschemas": "colorschemas",
         "td-torange": "td-torange", "td-resize": "td-resize",
         "rtl-sheet": "rtl-sheet", "direction": "direction",
         "zoom-in": "zoom-in", "zoom-out": "zoom-out",

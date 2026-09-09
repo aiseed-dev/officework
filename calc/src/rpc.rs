@@ -299,10 +299,12 @@ impl Host for Calc {
             // 受け口の処理の後(`start` の中)で、画面の文脈を持つ所が行う
             "press" => {
                 let id = _o.str("id")?;
-                // 表の画面で押せるボタンだけ(灰色の物は画面と同じく断る)
-                let aru = face::ribbon::skeleton().iter()
-                    .flat_map(|t| t.cmds.iter())
-                    .any(|c| c.id == id && c.ready && c.apps.sheet);
+                // 表の画面で押せるボタンだけ(灰色の物は画面と同じく断る)。
+                // タイトルバーの4つはリボンの表に無いので、別に見る
+                let aru = face::tabs::TITLEBAR.contains(&id.as_str())
+                    || face::ribbon::skeleton().iter()
+                        .flat_map(|t| t.cmds.iter())
+                        .any(|c| c.id == id && c.ready && c.apps.sheet);
                 if !aru && id != "escape" {
                     return Some(ops::err(&format!("no such ready button on the sheet: {id}")));
                 }

@@ -61,17 +61,30 @@ def rpc(path, obj, timeout=20.0):
 
 
 def ribbon_ids(pane):
-    """その画面(doc / sheet)で押せるボタンの id(ui/gen_ribbon.py の READY から)"""
-    import ast
-    src = open(os.path.join(ROOT, "ui", "gen_ribbon.py"), encoding="utf-8").read()
-    m = re.search(r"READY = (\{.*?\n\})\n", src, re.S)
-    ready = ast.literal_eval(m.group(1))
-    key = "writer" if pane == "doc" else "calc"
-    ids, seen = [], set()
-    for v in ready[key].values():
-        if v not in seen:
-            seen.add(v)
-            ids.append(v)
+    """その画面(doc / sheet)で押せるボタンの id。
+
+    **face/src/ribbon.rs から読みます**(2026-09-09 に直しました)。前は
+    ui/gen_ribbon.py の READY を読んでいましたが、あの表は生成の元の一部で、
+    後から EXTRA_CMDS で足したボタン(コピー・書式のコピー・並べ替え・
+    ピボットの一部など)が入っていません。表の画面で押せる 191 個のうち
+    42 個が点検から漏れていました。アプリが実際に見るのは ribbon.rs なので、
+    そちらを読みます。
+
+    その画面の表(WRITER か CALC)にあるボタンだけを返します。もう片方に
+    しか無いボタンは、この画面では灰色なので押しません。タイトルバーの4つ
+    (face/src/tabs.rs の TITLEBAR)も押せるので、頭に足します。
+    """
+    src = open(os.path.join(ROOT, "face", "src", "ribbon.rs"), encoding="utf-8").read()
+    konst = "WRITER" if pane == "doc" else "CALC"
+    i = src.index(f"pub const {konst}: &[Tab] = &[")
+    mine = re.findall(r'\n\s*[ctm]\("([^"]+)"', src[i:src.index("\n];\n", i)])
+
+    tb = open(os.path.join(ROOT, "face", "src", "tabs.rs"), encoding="utf-8").read()
+    m = re.search(r"pub const TITLEBAR: &\[&str\] = &\[(.*?)\];", tb, re.S)
+    ids = re.findall(r'"([^"]+)"', m.group(1)) if m else []
+    for i in mine:
+        if i not in ids:
+            ids.append(i)
     return ids
 
 
@@ -87,6 +100,10 @@ SKIP = {
     "python", "from-file", "insert-file", "hyperlink", "darkmode",
     # ファイルの小窓(rfd)を開く物。小窓が出ている間は受け口が答えない
     "inschart", "smartpicker", "insequation-image", "prot-doc",
+    # 表の画面でファイル選択の窓を開く2つ(2026-09-09 に踏みました)。
+    # 窓が出たまま主スレッドが止まり、以降のボタンが全部「応じません」に
+    # なります。calc/src/tests.rs の DIALOG と同じ顔ぶれです
+    "data-from-text", "data-external-links",
 }
 
 

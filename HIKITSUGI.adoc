@@ -19,7 +19,16 @@
   (2) リボンの点検: 受け口に `press`(ボタンを id で押す)を足し、`tools/ribbon_press.py`
   で全ボタンを押す。文書の画面で1周した結果: 落ちる物なし、`fillparag`→`copystyle` の
   配線切れ(表専用の id を文書で押した物。灰色の分は `press` でも断るよう直した)。
-  表の画面はまだ回していない。本体は `cargo build --release -p officework` を組み直してから
+  表の画面も1周しました(2026-09-09 夜)。押した 173 個、落ちる物も配線切れもありません。
+  直した物は3つです。(a) 受け口の `press` がタイトルバーの4つ(保存・PDF・元に戻す・
+  やり直し)を断っていました。リボンの表に無いためで、`face/src/tabs.rs` の `TITLEBAR` を
+  別に見るようにしました(文書の画面も同じ)。(b) `tools/ribbon_press.py` が押すボタンを
+  `ui/gen_ribbon.py` の READY から作っていて、後から足した 42 個(書式のコピー・並べ替え・
+  ピボットの一部など)が点検から漏れていました。`face/src/ribbon.rs` から取ります。
+  (c) `data-from-text` と `data-external-links` はファイル選択の窓を開き、窓が出ている間は
+  アプリが答えません。道具の SKIP に入れました。まだ作っていない機能は見当たらず、
+  残る 10 個は「カーソルをピボットの上に置いてください」の類の案内で、押す前の用意が
+  要るだけです。本体は `cargo build --release -p officework` を組み直してから
   `target/release/officework <docx か xlsx>` で起動して `python3 tools/ribbon_press.py`。
   (3) xlsx 側は Opus の作業者(docs/sekkei/excel-tsukiawase.ja.adoc を書く約束)、docx の
   収集は Opus Mac(docs/corpus-docx.ja.adoc 第4便)。(4) Python エンジンは 5本目まで組んだ。

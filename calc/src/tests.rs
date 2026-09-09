@@ -4132,6 +4132,27 @@ mod menu_run_tests {
         ui::ai::set_backend(keep_ai);
     }
 
+    /// **タイトルバーの4つも動く。** この4つ(保存・PDF・元に戻す・やり直し)は
+    /// リボンの表に無いので、上の輪が見ていません。受け口の `press` は
+    /// `face::tabs::TITLEBAR` を見て通すので、名前がずれると外から押せなく
+    /// なります(2026-09-09 に元に戻すとやり直しが断られていました)。
+    /// 窓を開く2つは実機での確認に回します。
+    #[gpui::test]
+    fn the_titlebar_buttons_run(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        for id in ui::tabs::TITLEBAR {
+            if DIALOG.contains(id) {
+                continue;
+            }
+            c.update(cx, |this, cx| {
+                seed(this);
+                this.run_cmd(id, cx);
+                let st = this.status.to_string();
+                assert!(!st.contains("未配線"), "タイトルバーの {id} が未配線: {st}");
+            });
+        }
+    }
+
     /// リボンの「すべて選択」は**セル**に効く(バーの文字選択に化けない —
     /// Ctrl+A と同じ実体を通ることの検査。2026-08-05 に別実装のサボりを直した)
     #[gpui::test]

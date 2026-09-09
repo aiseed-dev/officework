@@ -15,6 +15,18 @@
 
 use crate::ribbon;
 
+/// **タイトルバーのボタン**(2026-09-09)。リボンの外にあり、
+/// [`crate::ribbon`] の表には出てきません。文章の画面も表の画面も同じ4つで、
+/// `calc/src/view.rs` と `writer/src/view.rs` の `qa("qa-…")` がこれを描きます。
+///
+/// 受け口の `press` は、リボンの表に無い id を断ります。この4つも断って
+/// いたので、道具から元に戻す(undo)を押せませんでした。両方の rpc が
+/// この一覧を見ます。
+///
+/// ここに書くのは、`ribbon.rs` が `gen_ribbon.py` の生成物で、書いても
+/// 次に生成した時に消えるからです。
+pub const TITLEBAR: &[&str] = &["save", "pdf", "undo", "redo"];
+
 /// 段1つぶんの居場所。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Slot {

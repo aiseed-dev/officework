@@ -107,10 +107,12 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
         // 処理の後で、画面の文脈を持つ所が行う
         "press" => match o.str("id") {
             Some(id) => {
-                // 文書の画面で押せるボタンだけ(灰色の物は画面と同じく断る)
-                let aru = face::ribbon::skeleton().iter()
-                    .flat_map(|t| t.cmds.iter())
-                    .any(|c| c.id == id && c.ready && c.apps.doc);
+                // 文書の画面で押せるボタンだけ(灰色の物は画面と同じく断る)。
+                // タイトルバーの4つはリボンの表に無いので、別に見る
+                let aru = face::tabs::TITLEBAR.contains(&id.as_str())
+                    || face::ribbon::skeleton().iter()
+                        .flat_map(|t| t.cmds.iter())
+                        .any(|c| c.id == id && c.ready && c.apps.doc);
                 if !aru && id != "escape" {
                     return ops::err(&format!("no such ready button on the document: {id}"));
                 }
