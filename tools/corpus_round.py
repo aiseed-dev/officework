@@ -49,10 +49,51 @@ def word(src, out):
     return None
 
 
+def strip_comments(path):
+    """写しからコメントを外します(2026-09-09)。コメントのある docx は、Word の PDF に
+    コメントの欄が右に付いて紙面全体が 0.72 倍に縮み、比べられません(厚労省の
+    研究費様式 4 枚)。comments.xml と本文の印(commentRangeStart / End /
+    commentReference)を消します。うちも同じ写しを読むので、両方とも本文だけになります"""
+    import re
+    import zipfile
+    with zipfile.ZipFile(path) as z:
+        names = z.namelist()
+        if "word/comments.xml" not in names:
+            return False
+        items = [(n, z.read(n)) for n in names]
+    tmp = path + ".tmp"
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as out:
+        for n, data in items:
+            if n in ("word/comments.xml", "word/commentsExtended.xml", "word/commentsIds.xml", "word/commentsExtensible.xml"):
+                continue
+            if n == "word/document.xml":
+                t = data.decode("utf-8")
+                t = re.sub(r"<w:commentRange(?:Start|End) [^>]*/>", "", t)
+                t = re.sub(r"<w:r>(?:<w:rPr>(?:(?!</w:rPr>).)*</w:rPr>)?<w:commentReference [^>]*/></w:r>", "", t)
+                t = re.sub(r"<w:commentReference [^>]*/>", "", t)
+                data = t.encode("utf-8")
+            if n == "word/_rels/document.xml.rels":
+                t = data.decode("utf-8")
+                t = re.sub(r'<Relationship [^>]*Target="comments[^"]*\.xml"[^>]*/>', "", t)
+                data = t.encode("utf-8")
+            if n == "[Content_Types].xml":
+                t = data.decode("utf-8")
+                t = re.sub(r'<Override [^>]*PartName="/word/comments[^"]*\.xml"[^>]*/>', "", t)
+                data = t.encode("utf-8")
+            out.writestr(n, data)
+    os.replace(tmp, path)
+    return True
+
+
 def copy_in(src, dst):
     import shutil
     if not os.path.exists(dst) or os.path.getmtime(dst) < os.path.getmtime(src):
         shutil.copyfile(src, dst)
+        if strip_comments(dst):
+            # コメントを外した写しは Word の PDF も作り直す
+            ms = dst[:-5] + ".ms.pdf"
+            if os.path.exists(ms):
+                os.remove(ms)
     return dst
 
 
