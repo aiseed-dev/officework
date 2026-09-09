@@ -131,6 +131,7 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
                 ("pw", w.pw_open),
                 ("tool", w.tool.is_some()),
                 ("shape_sel", w.shape_sel.is_some()),
+                ("list", w.open_list.is_some()),
             ]
             .iter()
             .filter(|(_, on)| *on)
@@ -138,10 +139,11 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
             .collect();
             let open: Vec<String> = open.iter().map(|k| q(k)).collect();
             ok(&format!(
-                "\"status\":{},\"tab\":{},\"open\":[{}]",
+                "\"status\":{},\"tab\":{},\"open\":[{}],\"list\":{}",
                 q(&w.status.to_string()),
                 w.ribbon_tab(),
-                open.join(",")
+                open.join(","),
+                w.open_list.map(q).unwrap_or_else(|| "null".into())
             ))
         }
         "status" => {

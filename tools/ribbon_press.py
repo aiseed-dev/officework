@@ -85,6 +85,8 @@ SKIP = {
     "ai-furigana", "ai-continue", "ai-table", "ai-ask", "ai-macro", "coauth-mode",
     "co-chat", "co-history", "prot-encrypt", "prot-sign", "macro-run", "rec-toggle",
     "python", "from-file", "insert-file", "hyperlink", "darkmode",
+    # ファイルの小窓(rfd)を開く物。小窓が出ている間は受け口が答えない
+    "inschart", "smartpicker", "insequation-image", "prot-doc",
 }
 
 
@@ -104,7 +106,7 @@ def main():
     print(f"pane={pane} buttons={len(ids)}")
     before = rpc(path, {"cmd": "ui_state"})
     print("state:", json.dumps(before, ensure_ascii=False)[:200])
-    nothing, refused, dead, ok = [], [], [], []
+    nothing, refused, dead, ok, grey = [], [], [], [], []
     for i in ids:
         t0 = time.time()
         try:
@@ -114,8 +116,13 @@ def main():
             print(f"× {i}: 受け口が答えない: {e}")
             break
         if not r.get("ok"):
-            refused.append((i, r.get("error") or r))
-            print(f"- {i}: 断られた: {r.get('error') or r}")
+            err = str(r.get("error") or r.get("err") or r)
+            if "no such ready button" in err:
+                grey.append(i)
+                print(f"  {i}: この画面では灰色")
+                continue
+            refused.append((i, err))
+            print(f"- {i}: 断られた: {err}")
             continue
         try:
             after = rpc(path, {"cmd": "ui_state"})
@@ -138,7 +145,9 @@ def main():
             dead.append((i, f"escape の後に答えない: {e}"))
             print(f"× {i}: escape の後に受け口が答えない: {e}")
             break
-    print(f"\n押した {len(ok) + len(nothing)} / 断られた {len(refused)} / 何も起きない {len(nothing)} / 落ちた {len(dead)}")
+    print(f"\n押した {len(ok) + len(nothing)} / 灰色 {len(grey)} / 断られた {len(refused)} / 何も起きない {len(nothing)} / 落ちた {len(dead)}")
+    if grey:
+        print("  灰色(この画面では効かない):", " ".join(grey))
     for i, s in nothing:
         print(f"  何も起きない: {i} {s[:60]!r}")
     for i, e in refused:
