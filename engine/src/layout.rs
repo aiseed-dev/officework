@@ -891,8 +891,12 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
             .unwrap_or_else(|| doc.page.map(|pg| pg.line_pitch_pt).unwrap_or(0.0));
         // 文字グリッドの升(mm)。`linesAndChars` の節だけ。基準の字の大きさ + charSpace
         let pg_now = sect_geo.get(bi).copied().or(doc.page);
+        // 升の基準は「標準の字の大きさ」= 既定の段落スタイル(Normal)の大きさ。
+        // docDefaults に大きさが無く Normal が 12pt を言う裁判所の書式で、10.5 に
+        // なっていた(2026-09-09)
+        let kijun = doc.style_pt(None).unwrap_or(base);
         let moji = match pg_now {
-            Some(pg) if pg.char_grid => ((base + pg.char_space_pt) * PT_TO_MM).max(0.0),
+            Some(pg) if pg.char_grid => ((kijun + pg.char_space_pt) * PT_TO_MM).max(0.0),
             _ => 0.0,
         };
         match block {

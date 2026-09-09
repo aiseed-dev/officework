@@ -1688,6 +1688,47 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
             r.font = Some(resolved.clone());
         }
     };
+    // **書体の無い run は、段落のスタイル(無ければ Normal)の書体を持つ**(2026-09-09)。
+    // 前は文書の既定(テーマの游明朝)で描き、測りは Normal の ＭＳ 明朝だったので、
+    // 半角の幅と ⑦ の幅が Word と違い、折れる所がずれた(岐阜労働局の様式)。
+    // Word の重ね順は docDefaults < スタイル < run。文書の既定と同じ名前なら触らない
+    let kitei = d.font.clone();
+    // スタイル名 → 書体の表を先に引く(段落を書き替えながら文書を引けないため)
+    let mut hyou: BTreeMap<Option<String>, Option<String>> = BTreeMap::new();
+    let ids: Vec<Option<String>> = d
+        .paragraphs()
+        .map(|p| p.style_id.clone())
+        .chain(d.tables().flat_map(|t| t.rows.iter().flatten().flat_map(|c| c.paragraphs.iter().map(|p| p.style_id.clone()))))
+        .collect();
+    for id in ids {
+        if !hyou.contains_key(&id) {
+            let sf = d.style_font(id.as_deref()).filter(|na| Some(na) != kitei.as_ref());
+            hyou.insert(id, sf);
+        }
+    }
+    let ateru = |p: &mut kumihan::Paragraph| {
+        if let Some(Some(na)) = hyou.get(&p.style_id) {
+            for r in p.runs.iter_mut() {
+                if r.font.is_none() {
+                    r.font = Some(na.clone());
+                }
+            }
+        }
+    };
+    for b in d.blocks.iter_mut() {
+        match b {
+            kumihan::Block::Para(p) => ateru(p),
+            kumihan::Block::Table(t) => {
+                for row in t.rows.iter_mut() {
+                    for cell in row.iter_mut() {
+                        for p in cell.paragraphs.iter_mut() {
+                            ateru(p);
+                        }
+                    }
+                }
+            }
+        }
+    }
     for b in d.blocks.iter_mut() {
         match b {
             kumihan::Block::Para(p) => p.runs.iter_mut().for_each(&mut fix),

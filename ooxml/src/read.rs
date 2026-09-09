@@ -188,18 +188,12 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     if !styxml.is_empty() {
         doc.styles = parse_styles_num(&styxml, &shirushi);
         hyou_no_kei(&mut doc, &styxml);
-        // **文書の既定の書体は、既定の段落スタイル(Normal)が言えばそちら**
-        // (2026-09-09)。docDefaults がテーマ(游明朝)を指し、Normal が ＭＳ 明朝を
-        // 言う docx で、無指定の run を游明朝で描き測っていた(半角の幅と ⑦ の幅が
-        // Word と違い、折れる所がずれた)。Word の重ね順は docDefaults < スタイル
-        if let Some(na) = doc.style_font(None) {
-            doc.font = Some(na);
-        }
-        // 字の大きさも同じ(裁判所の書式は docDefaults に大きさが無く、Normal が 12pt を
-        // 言う。読まないと 10.5pt で組み、文字グリッドの升も 10.5 になる)
-        if let Some(pt) = doc.style_pt(None) {
-            doc.size_pt = Some(pt);
-        }
+        // (2026-09-09 の註)Normal の書体・大きさを文書の既定に写す直しは戻した。
+        // Normal に基づかないスタイルの段落まで Normal の値を受けてしまい、288 枚の
+        // 比較で頁数の一致が 187 → 148 に落ちた。Word の重ね順は docDefaults <
+        // スタイルで、Normal は「pStyle の無い段落のスタイル」にすぎない。
+        // 書体の無い run は paper の `resolve_run_fonts` が段落のスタイルの書体を当て、
+        // 文字グリッドの升の基準は組む側が `style_pt(None)` を引く
     }
     tblind_wo_naosu(&mut doc, &sxml);
     if !pxml.is_empty() {
