@@ -9,6 +9,24 @@ use super::write::*;
 #[cfg(test)]
 mod round {
 
+    /// **入れ子の表は外側の表を壊さない**(2026-09-09、Opus Mac が切り分けた)。
+    /// 外側のセルの結合は残り、中の表の段落は外側のセルの中に並ぶ
+    #[test]
+    fn a_nested_table_keeps_the_outer_cell_span() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:tbl><w:tblGrid><w:gridCol w:w="1000"/><w:gridCol w:w="1000"/><w:gridCol w:w="1000"/></w:tblGrid><w:tr><w:trPr><w:trHeight w:val="600"/></w:trPr><w:tc><w:tcPr><w:tcW w:w="3000" w:type="dxa"/><w:gridSpan w:val="3"/></w:tcPr><w:p><w:r><w:t>外</w:t></w:r></w:p><w:tbl><w:tblGrid><w:gridCol w:w="500"/><w:gridCol w:w="500"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>内1</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>内2</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:r><w:t>後</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:p><w:r><w:t>甲</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>乙</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>丙</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>"#;
+        let (d, _) = crate::read::parse_document_xml(xml);
+        let ts: Vec<&kumihan::Table> = d.tables().collect();
+        assert_eq!(ts.len(), 1, "外側の表が 1 つだけ残るはず(中の表は外側のセルの中へ): {}", ts.len());
+        let t = ts[0];
+        assert_eq!(t.rows.len(), 2, "外側の行が落ちた");
+        assert_eq!(t.rows[0][0].col_span, 3, "外側のセルの結合が消えた(中の表に上書きされた)");
+        let text: Vec<String> = t.rows[0][0].paragraphs.iter()
+            .map(|p| p.runs.iter().map(|r| r.text.as_str()).collect::<String>()).collect();
+        assert_eq!(text, vec!["外", "内1", "内2", "後"], "中の表の段落が外側のセルの中に並んでいない");
+        assert!((t.row_mm[0] - 600.0 * 25.4 / 1440.0).abs() < 0.01, "外側の行の高さが消えた");
+        assert_eq!(t.rows[1].len(), 3);
+    }
+
     /// **行の頭の空の格子**(`w:trPr/w:gridBefore`)は、罫線の無い空のセルで
     /// 埋める(2026-09-09)。読まないとセルが細い列に入って1字ずつ折れる
     #[test]

@@ -488,6 +488,28 @@ pub(super) struct TblBuild {
     ind_twips: Option<f32>,
     /// 見出しの行(`w:trPr/w:tblHeader`)が最初の行に付いていたか
     header_row: bool,
+    /// **入れ子の表を読む間、外側のセルと行の読みかけ**(2026-09-09)。
+    /// セルの結合(gridSpan)や行の高さは読み手の変数1組で持っているので、
+    /// 中の表を読むとその変数が上書きされ、外側の結合が消えていた。
+    /// 岐阜労働局の認定申請書は 7 列の結合が 1 列になり、段落が 5 字ずつ
+    /// 折れて 54 頁になっていた(Word は 11 頁。Opus Mac が切り分けた)
+    saved: Option<SavedCell>,
+}
+
+/// 入れ子の表に入る前の、外側のセルと行の読みかけ
+#[derive(Default)]
+pub(super) struct SavedCell {
+    span: u8,
+    vmerge: VMerge,
+    valign: book::VAlign,
+    shade: Option<String>,
+    borders: kumihan::CellBorders,
+    mar: Option<[f32; 4]>,
+    fit: bool,
+    grid_before: u8,
+    grid_after: u8,
+    row_twips: Option<u32>,
+    row_header: bool,
 }
 
 /// twip → mm(1twip = 1/20pt)
@@ -1862,7 +1884,25 @@ pub(super) fn parse_document_rels_num(
                             }
                         }
                     }
-                    b"tbl" => stack.push(TblBuild::default()),
+                    b"tbl" => {
+                        // 入れ子なら、外側のセルと行の読みかけを外側の表に預ける
+                        if let Some(outer) = stack.last_mut() {
+                            outer.saved = Some(SavedCell {
+                                span: cell_span,
+                                vmerge: cell_vmerge,
+                                valign: cell_valign,
+                                shade: cell_shade.clone(),
+                                borders: cell_borders,
+                                mar: cell_mar,
+                                fit: cell_fit,
+                                grid_before: row_grid_before,
+                                grid_after: row_grid_after,
+                                row_twips,
+                                row_header,
+                            });
+                        }
+                        stack.push(TblBuild::default())
+                    }
                     b"tblBorders" => {
                         in_tbl_borders = true;
                         // 書いてある辺だけ引きます。まず全部消してから足します
@@ -3131,10 +3171,32 @@ pub(super) fn parse_document_rels_num(
                             };
                             if stack.is_empty() {
                                 doc.blocks.push(Block::Table(tb));
-                            } else {
-                                // 入れ子の表は v0 では本文の流れに出す(報告つき)
-                                rep.note("入れ子の表(親セルの外に出した)");
-                                doc.blocks.push(Block::Table(tb));
+                            } else if let Some(outer) = stack.last_mut() {
+                                // **入れ子の表は、外側のセルの中に段落として置く**
+                                // (2026-09-09)。前は本文の流れに出していたので、
+                                // 中身が外側の表の前に出て順が狂っていた。模型は
+                                // セルの中の表を持たないので、中の表のセルの段落を
+                                // 行の順に外側のセルへ並べる(格子は失う。報告つき)
+                                rep.note("入れ子の表(外側のセルの中に段落として置いた)");
+                                for row in tb.rows {
+                                    for c in row {
+                                        outer.cell.extend(c.paragraphs);
+                                    }
+                                }
+                                // 外側のセルと行の読みかけを戻す
+                                if let Some(sv) = outer.saved.take() {
+                                    cell_span = sv.span;
+                                    cell_vmerge = sv.vmerge;
+                                    cell_valign = sv.valign;
+                                    cell_shade = sv.shade;
+                                    cell_borders = sv.borders;
+                                    cell_mar = sv.mar;
+                                    cell_fit = sv.fit;
+                                    row_grid_before = sv.grid_before;
+                                    row_grid_after = sv.grid_after;
+                                    row_twips = sv.row_twips;
+                                    row_header = sv.row_header;
+                                }
                             }
                         }
                     }
