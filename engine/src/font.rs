@@ -1530,9 +1530,12 @@ mod tests {
     #[test]
     fn a_serif_document_does_not_turn_sans() {
         let _lang = lang_lock();
-        // ＭＳ 明朝は Linux に無い。でも代替は明朝系であるべき
+        // ＭＳ 明朝は Linux に無い。でも代替は明朝系であるべき。
+        // 原本が入っている機械(Office の同梱)では原本がそのまま返る
         let (f, exact) = for_document(Some("ＭＳ 明朝")).unwrap();
-        assert!(!exact);
+        if exact {
+            return;
+        }
         assert!(
             f.name.contains("明朝") || f.name.contains("Serif"),
             "明朝の代替がゴシックになった: {}",
