@@ -195,6 +195,11 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         if let Some(na) = doc.style_font(None) {
             doc.font = Some(na);
         }
+        // 字の大きさも同じ(裁判所の書式は docDefaults に大きさが無く、Normal が 12pt を
+        // 言う。読まないと 10.5pt で組み、文字グリッドの升も 10.5 になる)
+        if let Some(pt) = doc.style_pt(None) {
+            doc.size_pt = Some(pt);
+        }
     }
     tblind_wo_naosu(&mut doc, &sxml);
     if !pxml.is_empty() {

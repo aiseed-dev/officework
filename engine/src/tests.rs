@@ -832,6 +832,39 @@ mod table_layout_tests {
         assert!(b - hikui > 3.0, "箱の底に寄っていない: {hikui} → {b}");
     }
 
+    /// **docx の番号は表のセルをまたいで続く**(2026-09-09)。同じ numId は続き、
+    /// 別の numId は 1 から。AsciiDoc の箇条書き(numId なし)はセルごと
+    #[test]
+    fn numbering_continues_across_table_cells_per_num_id() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let cell = |s: &str, id: Option<u32>| Cellbox {
+            paragraphs: vec![Paragraph {
+                runs: vec![Run { text: s.into(), size_pt: Some(10.0), font: None, fmt: Default::default() }],
+                list: ListKind::Number,
+                list_id: id,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let mut d = Document::plain("前");
+        d.blocks.push(Block::Table(Table {
+            col_mm: vec![50.0, 50.0],
+            rows: vec![
+                vec![cell("甲", Some(1)), cell("乙", Some(1))],
+                vec![cell("丙", Some(1)), cell("丁", Some(2))],
+            ],
+            ..Default::default()
+        }));
+        let s = layout(&d, &m, &frame);
+        let text = |t: &str| s.lines.iter().find(|l| l.text().contains(t)).unwrap().text();
+        assert!(text("甲").starts_with("1."), "{}", text("甲"));
+        assert!(text("乙").starts_with("2."), "同じ numId が別のセルで続いていない: {}", text("乙"));
+        assert!(text("丙").starts_with("3."), "{}", text("丙"));
+        assert!(text("丁").starts_with("1."), "別の numId が 1 から始まらない: {}", text("丁"));
+    }
+
     /// **固定の行(`hRule="exact"`)は中身が多くても伸びない。縦に結合したセルの
     /// 中身は結合した行の全体に配り、足りない分だけ最後の行が伸びる**
     /// (2026-09-09、Opus Mac が厚労省の研究費様式で切り分けた)

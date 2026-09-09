@@ -865,6 +865,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
     // 並べて見つけた。1. 1. 1. と出ていた)
     let mut last_list_id: Option<u32> = None;
     let mut list_interrupted = false;
+    // 表の中の番号(numId ごとに文書全体で続く)
+    let mut list_counts: std::collections::BTreeMap<u32, usize> = Default::default();
     // **段ごとの種類**(箇条書きか番号付きか)。種類が変われば別のリストなので
     // 番号は1から振り直す。前は種類を見ていなかったので、箇条書き2つの後の
     // 番号付きが「3.」から始まっていた(2026-08-18 に実機で見つけた)
@@ -1367,7 +1369,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
             }
             Block::Table(table) => {
                 y = layout_table(table, m, frame, y, &mut sheet, table_no, doc.hyphenate,
-                                 &mut note_no, base, doc, pitch, doc.compress_punct, moji);
+                                 &mut note_no, base, doc, pitch, doc.compress_punct, moji,
+                                 &mut list_counts);
                 table_no += 1;
             }
         }
@@ -1861,7 +1864,8 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32, sheet: &mut Sheet,
                 table_no: usize, hyphenate: bool, notes: &mut NoteCount, base: f32,
-                doc: &Document, pitch: f32, tsume: bool, moji: f32) -> f32 {
+                doc: &Document, pitch: f32, tsume: bool, moji: f32,
+                list_counts: &mut std::collections::BTreeMap<u32, usize>) -> f32 {
     // 列数は「セルの数」ではなく「セルが占める格子の数」
     let ncols = table
         .rows
@@ -1979,11 +1983,26 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     let pfont =
                         doc.style_font(para.style_id.as_deref()).or_else(|| doc.font.clone());
                     let plh = lh_of(para, frame, pbase, pfont.as_deref(), pitch);
+                    // **docx の番号(`numId`)は表の中でも文書全体で続きます**(2026-09-09、
+                    // Word と並べて見つけた)。前はセルごとに 1 から数え直していたので、
+                    // 別のセルの「２ 事業内容」「３ 従業員数」が全部「１」になり、逆に
+                    // 別の numId が同じセルに並ぶ法務局の様式は 1,2,3 と続いていた。
+                    // AsciiDoc の箇条書き(`list_id` なし)は今までどおりセルごと
                     let mk = match para.list {
                         ListKind::None => None,
                         _ => {
-                            kazu += 1;
-                            para.marker(kazu - 1)
+                            let n = match para.list_id {
+                                Some(id) => {
+                                    let c = list_counts.entry(id).or_insert(0);
+                                    *c += 1;
+                                    *c - 1
+                                }
+                                None => {
+                                    kazu += 1;
+                                    kazu - 1
+                                }
+                            };
+                            para.marker(n)
                         }
                     };
                     // **セルの中でも段落の前後の空きを数えます**(2026-09-03)。
