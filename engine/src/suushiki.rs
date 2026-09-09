@@ -296,8 +296,10 @@ mod tests {
 
     #[test]
     fn nihongo_wa_bunsho_no_shotai_de() {
-        // 文書の書体が機械に無ければ、この検査は飛ばす
-        let Ok((fam, _)) = crate::font::for_document(None) else { return };
+        // 文書の書体が機械に無ければ、この検査は飛ばす。**和文の書体を名指しで**引く
+        // (名無しは画面の言語で決まり、英語の設定では欧文の書体になって
+        // 日本語の字を持たない。2026-09-09、Office の同梱書体を足したときに落ちた)
+        let Ok((fam, _)) = crate::font::for_document(Some("ＭＳ 明朝")) else { return };
         let Ok(bytes) = crate::font::load(fam) else { return };
         let with = kumu(r"\text{売上} = \text{単価} \times \text{数量}", 11.0, Some(&bytes)).unwrap();
         let without = kumu(r"\text{売上} = \text{単価} \times \text{数量}", 11.0, None).unwrap();
