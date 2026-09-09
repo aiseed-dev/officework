@@ -1004,8 +1004,11 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // 等幅の書体がこの機械に無ければ、そのまま組みます
                 let em = para.runs.first().and_then(|r| r.size_pt).unwrap_or(base) * 25.4 / 72.0;
                 let mut indent_mm = left_mm(para, em);
-                // 右のインデント(`w:ind w:right`)も行長から引く
-                let mut migi_mm = (para.right_twips.max(0) as f32) * 25.4 / 1440.0;
+                // 右のインデント(`w:ind w:right`)も行長から引く。**負なら行が右の余白へ
+                // 伸びる**(2026-09-09、Word の PDF で測った。厚労省の申出書は
+                // `w:right="-1394"` で、行が余白へ 70pt 出る。前は 0 に丸めていたので
+                // 折り返しが増え、1 頁が 2 頁になっていた)
+                let mut migi_mm = (para.right_twips as f32) * 25.4 / 1440.0;
                 // **浮かぶ表の横**にいる段落は、表を避けた幅で組む(2026-09-09)。
                 // 表が右にあれば行長を縮め、左にあれば左を空ける。表の下端を過ぎたら
                 // 元の幅に戻る。横浜市の届は右の「受付欄」の横に注意書きが並ぶ
@@ -2209,7 +2212,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     // 片方だけ効かせると、1行目がセルの外へ出ます
                     let hidari = left_mm(para, pbase * PT_TO_MM);
                     let sagari = first_line_mm(para, pbase);
-                    let migi = (para.right_twips.max(0) as f32) * 25.4 / 1440.0;
+                    let migi = (para.right_twips as f32) * 25.4 / 1440.0;
                     // 縦書きのセルは 1 字ずつ折る(行長を 1 字にする)
                     let inner = if para.tate { (pbase * PT_TO_MM).max(2.0) } else { (inner - hidari - migi).max(2.0) };
                     let mut kore = break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase, tsume, moji,
