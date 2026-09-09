@@ -4149,6 +4149,18 @@ fn shape_look(a: &str, palette: &[String]) -> Option<book::SheetShape> {
                 }
             }
         }
+        // **箱の内側の余白**(`<wps:bodyPr lIns rIns tIns bIns>`。EMU)。読まないと
+        // どの箱も既定(左右 0.1 インチ)になり、岐阜の掲示は Word が左端から 15.2pt に
+        // 置く字を 7.2pt に置いていた(2026-09-09、Opus Mac の切り分け)
+        if let Some(i) = a.find("<wps:bodyPr") {
+            let e = a[i..].find('>').map(|e| i + e).unwrap_or(a.len());
+            let tag = &a[i..e];
+            let emu = |k: &str, kitei: f32| -> f32 {
+                attr_str(tag, k).parse::<f32>().map(|v| v / 36000.0).unwrap_or(kitei)
+            };
+            let (l0, r0, t0, b0) = sp.text_fmt.ins_mm;
+            sp.text_fmt.ins_mm = (emu("lIns", l0), emu("rIns", r0), emu("tIns", t0), emu("bIns", b0));
+        }
         // 行の高さは最初の `w:spacing`。`exact` と `atLeast` は twip の
         // 高さそのものです(`auto` は倍率なので、ここでは見ません)
         if let Some(j) = naka.find("<w:spacing ") {

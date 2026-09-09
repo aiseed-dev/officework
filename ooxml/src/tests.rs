@@ -700,6 +700,11 @@ mod para_tests {
             Some("＜相談窓口＞\n住所と電話\n電子メール"),
             "行が落ちている(前は最初の1行だけでした)"
         );
+        // **箱の内側の余白**(`wps:bodyPr` の lIns など。EMU)。2026-09-09
+        let ai = a.replace("</wps:txbx></wps:wsp>", r#"</wps:txbx><wps:bodyPr lIns="288000" tIns="0" rIns="36000" bIns="45720"/></wps:wsp>"#);
+        let fi = crate::foreign_shape(&ai).expect("他所の図形が読めない");
+        let (l, r, t, b) = fi.look.text_fmt.ins_mm;
+        assert!((l - 8.0).abs() < 0.01 && (r - 1.0).abs() < 0.01 && t.abs() < 0.01 && (b - 1.27).abs() < 0.01, "余白が読めていない: {:?}", fi.look.text_fmt.ins_mm);
         // **0% は百分率で決めていない印**(2026-09-09)。Word は相対指定の無い
         // 図形にも `pctWidth 0` を書く。0 を大きさにすると幅 0 の箱になる
         let a0 = a.replace(

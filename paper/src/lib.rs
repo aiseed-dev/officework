@@ -709,6 +709,29 @@ mod tests {
     /// **途中で用紙の向きが変わる文書。** engine が節ごとに行を組み、
     /// paper が節ごとの紙で折る — その2つが噛み合っているかを端から端まで見る。
     /// (紙の大きさが違えば1ページに入る行数も違うので、折り目もずれる)
+    /// **グループの子を 1 つずつ描く**(2026-09-09)。子の位置はグループの座標に写す
+    #[test]
+    fn a_group_opens_into_its_children() {
+        let a = concat!(
+            r#"<w:drawing><wp:anchor><wp:positionH relativeFrom="column"><wp:posOffset>360000</wp:posOffset></wp:positionH>"#,
+            r#"<wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV>"#,
+            r#"<wp:extent cx="7200000" cy="1080000"/><wp:docPr id="1" name="g"/>"#,
+            r#"<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"><wpg:wgp>"#,
+            r#"<wpg:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="7200000" cy="1080000"/><a:chOff x="0" y="100"/><a:chExt cx="7200000" cy="1080000"/></a:xfrm></wpg:grpSpPr>"#,
+            r#"<wps:wsp><wps:spPr><a:xfrm><a:off x="0" y="100"/><a:ext cx="3600000" cy="360000"/></a:xfrm><a:prstGeom prst="rect"/></wps:spPr><wps:txbx><w:txbxContent><w:p><w:r><w:t>甲</w:t></w:r></w:p></w:txbxContent></wps:txbx></wps:wsp>"#,
+            r#"<wps:wsp><wps:spPr><a:xfrm><a:off x="3600000" y="720100"/><a:ext cx="3600000" cy="360000"/></a:xfrm><a:prstGeom prst="rect"/></wps:spPr><wps:txbx><w:txbxContent><w:p><w:r><w:t>乙</w:t></w:r></w:p></w:txbxContent></wps:txbx></wps:wsp>"#,
+            r#"</wpg:wgp></a:graphicData></a:graphic></wp:anchor></w:drawing>"#);
+        let parts = split_anchors(a);
+        assert_eq!(parts.len(), 2, "子が 2 つに開いていない: {}", parts.len());
+        let f: Vec<_> = parts.iter().map(|p| ooxml::foreign_shape(p).expect("子が読めない")).collect();
+        assert_eq!(f[0].look.text.as_deref(), Some("甲"));
+        assert_eq!(f[1].look.text.as_deref(), Some("乙"));
+        assert!((f[0].x_mm - 10.0).abs() < 0.1, "1 つ目の x: {}", f[0].x_mm);
+        assert!((f[1].x_mm - 110.0).abs() < 0.1, "2 つ目の x(グループの座標に写す): {}", f[1].x_mm);
+        assert!((f[1].y_mm - 20.0).abs() < 0.1, "2 つ目の y(chOff を引く): {}", f[1].y_mm);
+        assert!((f[0].w_mm - 100.0).abs() < 0.1);
+    }
+
     /// **1 つの run の 2 つ以上の図形を全部読む**(2026-09-09)
     #[test]
     fn every_anchor_in_a_run_is_read() {
@@ -1805,9 +1828,99 @@ mod doc_pdf_tests {
 // 2026-08-30 に足しました。内閣府の告知書の窓口の欄が3つとも、紙にも画面にも
 // 出ていませんでした(保存では原文のまま残っていたので、往復では気づけません)。
 
+/// **グループ(`wpg:wgp`)の子を、1 つずつの図形に開く**(2026-09-09、Opus Mac の
+/// 切り分け。岐阜の掲示の「相談窓口」は 6 個の子を持つのに 1 つ目しか描いていなかった)。
+/// 子の位置は `a:chOff` / `a:chExt` の座標で書いてあるので、グループの `a:off` /
+/// `a:ext` の座標に写して、錨の距離(`wp:posOffset`)と大きさ(`wp:extent`)を
+/// 子ごとに書き替えた錨を作る。子の中身(`wps:wsp`)はそのまま
+fn open_group(anchor: &str) -> Option<Vec<String>> {
+    let gi = anchor.find("<wpg:wgp")?;
+    let num = |seg: &str, tag: &str, key: &str| -> Option<f32> {
+        let i = seg.find(tag)?;
+        let e = seg[i..].find('>')? + i;
+        let head = &seg[i..e];
+        let k = format!("{key}=\"");
+        let s = head.find(&k)? + k.len();
+        head[s..].find('"').and_then(|e2| head[s..s + e2].parse::<f32>().ok())
+    };
+    // グループの座標系
+    let gp_i = anchor.find("<wpg:grpSpPr")?;
+    let gp_e = anchor[gp_i..].find("</wpg:grpSpPr>").map(|e| gp_i + e).unwrap_or(anchor.len());
+    let gp = &anchor[gp_i..gp_e];
+    let (gx, gy) = (num(gp, "<a:off", "x")?, num(gp, "<a:off", "y")?);
+    let (gw, gh) = (num(gp, "<a:ext", "cx")?, num(gp, "<a:ext", "cy")?);
+    let (cx0, cy0) = (num(gp, "<a:chOff", "x").unwrap_or(0.0), num(gp, "<a:chOff", "y").unwrap_or(0.0));
+    let (cw, ch) = (num(gp, "<a:chExt", "cx").unwrap_or(gw), num(gp, "<a:chExt", "cy").unwrap_or(gh));
+    let (sx, sy) = (if cw > 0.0 { gw / cw } else { 1.0 }, if ch > 0.0 { gh / ch } else { 1.0 });
+    // 錨の距離
+    let px = num(anchor, "<wp:positionH", "x").or_else(|| {
+        let i = anchor.find("<wp:positionH")?;
+        let j = anchor[i..].find("<wp:posOffset>")? + i + 14;
+        anchor[j..].find('<').and_then(|e| anchor[j..j + e].trim().parse::<f32>().ok())
+    });
+    let py = {
+        let i = anchor.find("<wp:positionV")?;
+        let j = anchor[i..].find("<wp:posOffset>")? + i + 14;
+        anchor[j..].find('<').and_then(|e| anchor[j..j + e].trim().parse::<f32>().ok())
+    };
+    let (px, py) = (px?, py?);
+    let head_end = anchor.find("<a:graphic")?;
+    let head = &anchor[..head_end];
+    let mut out = Vec::new();
+    let mut at = gi;
+    while let Some(i) = anchor[at..].find("<wps:wsp") {
+        let s = at + i;
+        let Some(e) = anchor[s..].find("</wps:wsp>") else { break };
+        let e = s + e + "</wps:wsp>".len();
+        let ko = &anchor[s..e];
+        at = e;
+        let sp_i = ko.find("<wps:spPr").unwrap_or(0);
+        let sp = &ko[sp_i..];
+        let (ox, oy) = (num(sp, "<a:off", "x").unwrap_or(0.0), num(sp, "<a:off", "y").unwrap_or(0.0));
+        let (ow, oh) = (num(sp, "<a:ext", "cx").unwrap_or(0.0), num(sp, "<a:ext", "cy").unwrap_or(0.0));
+        let nx = px + gx + (ox - cx0) * sx;
+        let ny = py + gy + (oy - cy0) * sy;
+        let (nw, nh) = ((ow * sx).round(), (oh * sy).round());
+        // 錨の頭の距離と大きさを子の物に書き替える
+        let mut h = head.to_string();
+        if let Some(i) = h.find("<wp:positionH") {
+            if let Some(j) = h[i..].find("<wp:posOffset>") {
+                let js = i + j + 14;
+                if let Some(je) = h[js..].find('<') {
+                    h.replace_range(js..js + je, &format!("{}", nx.round() as i64));
+                }
+            }
+        }
+        if let Some(i) = h.find("<wp:positionV") {
+            if let Some(j) = h[i..].find("<wp:posOffset>") {
+                let js = i + j + 14;
+                if let Some(je) = h[js..].find('<') {
+                    h.replace_range(js..js + je, &format!("{}", ny.round() as i64));
+                }
+            }
+        }
+        if let Some(i) = h.find("<wp:extent ") {
+            if let Some(e2) = h[i..].find("/>") {
+                h.replace_range(i..i + e2 + 2, &format!(r#"<wp:extent cx="{}" cy="{}"/>"#, nw as i64, nh as i64));
+            }
+        }
+        out.push(format!(
+            "{h}<a:graphic><a:graphicData uri=\"http://schemas.microsoft.com/office/word/2010/wordprocessingShape\">{ko}</a:graphicData></a:graphic></wp:anchor></w:drawing>"
+        ));
+    }
+    (!out.is_empty()).then_some(out)
+}
+
 /// 控えの原文を `<wp:anchor>` / `<wp:inline>` ごとに切る。1 つも無ければ原文のまま
-/// (VML の `w:pict` などは読み手がそのまま見る)
+/// (VML の `w:pict` などは読み手がそのまま見る)。グループは子ごとに開く
 pub(crate) fn split_anchors(a: &str) -> Vec<String> {
+    split_anchors_1(a)
+        .into_iter()
+        .flat_map(|x| open_group(&x).unwrap_or_else(|| vec![x]))
+        .collect()
+}
+
+fn split_anchors_1(a: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut at = 0usize;
     loop {
