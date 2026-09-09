@@ -709,6 +709,22 @@ mod tests {
     /// **途中で用紙の向きが変わる文書。** engine が節ごとに行を組み、
     /// paper が節ごとの紙で折る — その2つが噛み合っているかを端から端まで見る。
     /// (紙の大きさが違えば1ページに入る行数も違うので、折り目もずれる)
+    /// **1 つの run の 2 つ以上の図形を全部読む**(2026-09-09)
+    #[test]
+    fn every_anchor_in_a_run_is_read() {
+        let one = |name: &str| format!(concat!(
+            r#"<w:drawing><wp:anchor><wp:positionH relativeFrom="column"><wp:posOffset>0</wp:posOffset></wp:positionH>"#,
+            r#"<wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV>"#,
+            r#"<wp:extent cx="720000" cy="360000"/><wp:docPr id="1" name="{}"/>"#,
+            r#"<wps:wsp><wps:spPr><a:prstGeom prst="rect"/></wps:spPr><wps:txbx><w:txbxContent><w:p><w:r><w:t>{}</w:t></w:r></w:p></w:txbxContent></wps:txbx></wps:wsp></wp:anchor></w:drawing>"#), name, name);
+        let raw = format!("<w:r>{}{}{}</w:r>", one("一"), one("二"), one("三"));
+        let parts = split_anchors(&raw);
+        assert_eq!(parts.len(), 3, "3 つに切れていない: {}", parts.len());
+        let texts: Vec<Option<String>> = parts.iter().map(|p| ooxml::foreign_shape(p).and_then(|f| f.look.text)).collect();
+        assert_eq!(texts, vec![Some("一".into()), Some("二".into()), Some("三".into())]);
+        assert_eq!(split_anchors("<w:pict>x</w:pict>").len(), 1, "wp: の無い控えはそのまま");
+    }
+
     /// **節ごとにヘッダーが替わる**(2026-09-09)。JST の計画書は 13 の節が別々の
     /// ヘッダーを持ち、前は最後の節の物を全頁に出していた。`w:titlePg` の節は
     /// 先頭頁に「先頭頁だけ」の物(無ければ空)を出す
@@ -1789,6 +1805,29 @@ mod doc_pdf_tests {
 // 2026-08-30 に足しました。内閣府の告知書の窓口の欄が3つとも、紙にも画面にも
 // 出ていませんでした(保存では原文のまま残っていたので、往復では気づけません)。
 
+/// 控えの原文を `<wp:anchor>` / `<wp:inline>` ごとに切る。1 つも無ければ原文のまま
+/// (VML の `w:pict` などは読み手がそのまま見る)
+pub(crate) fn split_anchors(a: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut at = 0usize;
+    loop {
+        let (i, tag) = match (a[at..].find("<wp:anchor"), a[at..].find("<wp:inline")) {
+            (Some(x), Some(y)) if x <= y => (at + x, "</wp:anchor>"),
+            (Some(x), None) => (at + x, "</wp:anchor>"),
+            (_, Some(y)) => (at + y, "</wp:inline>"),
+            (None, None) => break,
+        };
+        let Some(e) = a[i..].find(tag) else { break };
+        let e = i + e + tag.len();
+        out.push(a[i..e].to_string());
+        at = e;
+    }
+    if out.len() <= 1 {
+        return vec![a.to_string()];
+    }
+    out
+}
+
 /// **錨の位置を解く**(docx の `wp:positionH` / `wp:positionV`)。
 ///
 /// 位置は「基準(`relativeFrom`)」と「距離(`wp:posOffset`)または
@@ -1934,8 +1973,8 @@ pub fn foreign_shapes(
     // 紙の飾り枠がこれです。位置は紙が基準(`relativeFrom="page"`)なので、
     // 紙ごとに同じ所へ置けば足ります
     let kami_kazu = pg.offsets.len().max(1);
-    for a in doc.header.anchors.iter().chain(doc.footer.anchors.iter()) {
-        let Some(f) = ooxml::foreign_shape_with(a, &doc.theme_colors) else { continue };
+    for a in doc.header.anchors.iter().chain(doc.footer.anchors.iter()).flat_map(|a| split_anchors(a)) {
+        let Some(f) = ooxml::foreign_shape_with(&a, &doc.theme_colors) else { continue };
         // 大きさが百分率で書いてあれば、そちらが本当の大きさです
         let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
         let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
@@ -1970,7 +2009,12 @@ pub fn foreign_shapes(
         // 行を紙に置くときと同じ数え方です(`pdfw` の `y_roll`)。
         // 上の余白はもう `y_mm` に入っているので、足すと二重になります
         let y_para = sheet.lines[li].y_mm - soko;
-        for a in &para.anchors {
+        // **1つの run に図形が2つ以上あれば、全部を読みます**(2026-09-09、Opus Mac が
+        // 岐阜のハラスメント掲示で切り分けた。同じ段落の 2 個目の箱「ＳＴＯＰ！
+        // ハラスメント」を描いていなかった)。控えは run ごとの原文なので、
+        // `<wp:anchor>` ごとに切って1つずつ読む
+        for a in para.anchors.iter().flat_map(|a| split_anchors(a)) {
+            let a = &a;
             let Some(mut f) = ooxml::foreign_shape_with(a, &doc.theme_colors) else { continue };
             // **箱が書体を言っていなければ文書の既定**です。行送りと
             // ベースラインの位置がこれで決まります(2026-09-01)
