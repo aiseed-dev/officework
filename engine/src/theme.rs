@@ -1702,6 +1702,9 @@ fn hyou_style_wo_ateru(
                     if c.para.line_spacing.is_some() {
                         pl.line_spacing = c.para.line_spacing;
                     }
+                    if c.para.line_pt.is_some() {
+                        pl.line_pt = c.para.line_pt;
+                    }
                     if c.para.align.is_some() {
                         pl.align = c.para.align;
                     }
@@ -1753,7 +1756,11 @@ fn hyou_style_wo_ateru(
                     para.space_before_pt = pl.space_before_pt.unwrap_or(0.0);
                 }
                 if para.line_spacing <= 0.0 && para.line_pt.is_none() {
-                    para.line_spacing = pl.line_spacing.or(doc_line).unwrap_or(0.0);
+                    if pl.line_pt.is_some() {
+                        para.line_pt = pl.line_pt;
+                    } else {
+                        para.line_spacing = pl.line_spacing.or(doc_line).unwrap_or(0.0);
+                    }
                 }
                 // 「自動」の空きは、セルの最初の段落の前と最後の段落の後が 0
                 jidou_no_aki(para, pi == 0, pi + 1 == n, auto_pt);
@@ -1838,7 +1845,11 @@ fn jibun_wo_ateru(
         para.auto_after = pl.auto_after;
     }
     if para.line_spacing <= 0.0 && para.line_pt.is_none() {
-        para.line_spacing = pl.line_spacing.unwrap_or(0.0);
+        if pl.line_pt.is_some() {
+            para.line_pt = pl.line_pt;
+        } else {
+            para.line_spacing = pl.line_spacing.unwrap_or(0.0);
+        }
     }
     // スタイルが「行グリッドに合わせない」なら段落もそう(段落の側で
     // 明示して合わせ直す書き方は稀なので見ない)

@@ -553,7 +553,11 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
         let hh = *header_h.last().unwrap();
         // **行の箱ごと入る分しか置きません。** ベースラインだけで見ると、
         // 字の足(箱の下 2.4mm)が余白へはみ出します(2026-08-29 に測りました)
-        let asi = kumihan::LINE_MM - kumihan::BASE_UP_MM;
+        // **足は字の大きさなり**(2026-09-09)。前は 2.4mm の決め打ちで、12pt の行
+        // (足 3.4pt = 1.2mm)を Word より 1 行早く次の頁へ送っていた(裁判所の
+        // 訴状)。字の無い行(表の空のセルなど)は今までどおり
+        let ji = line.cells.iter().map(|c| c.size_pt).fold(0.0f32, f32::max);
+        let asi = if ji > 0.0 { ji * 0.28 * 25.4 / 72.0 } else { kumihan::LINE_MM - kumihan::BASE_UP_MM };
         // **下の余白は下の余白で見ます**(2026-08-30)。前は左の余白を
         // 上下にも使っていました
         let soko = cur.height_mm - cur.bottom_mm - reserve - hh - asi;
@@ -1781,8 +1785,8 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
     // 字の大きさの既定は「標準」スタイル(無ければ docDefaults)。裁判所の
     // 様式は docDefaults 10pt・標準 12pt で、ヘッダーは 12pt で組まれる
     let base_pt = d.style_pt(None).unwrap_or(d.base_pt());
-    page.top_mm = kumihan::hf_push_mm(&d.header, &page, d.font.as_deref(), base_pt, false);
-    page.bottom_mm = kumihan::hf_push_mm(&d.footer, &page, d.font.as_deref(), base_pt, true);
+    page.top_mm = kumihan::hf_push_mm(&d.header, &page, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false);
+    page.bottom_mm = kumihan::hf_push_mm(&d.footer, &page, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true);
     // **行送りはエンジンの1つを見ます**(画面と紙と PDF で同じ)
     let line_mm = kumihan::LINE_MM;
     let y0 = page.top_mm + kumihan::BASE_UP_MM;

@@ -477,6 +477,15 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                     }
                 }
             }
+            // 欧文の既定(`w:ascii`)は別に持つ
+            if let Some(j) = tag.find("w:ascii=\"") {
+                let s = j + "w:ascii=\"".len();
+                if let Some(e) = tag[s..].find('"') {
+                    if e > 0 {
+                        doc.font_latin = Some(tag[s..s + e].to_string());
+                    }
+                }
+            }
             // 名前が直に無く、テーマ名(minorEastAsia など)で書いてある docx は
             // theme1.xml の fontScheme を引いて名前にする。python-docx の既定が
             // この形(w:asciiTheme="minorHAnsi")
@@ -1337,6 +1346,19 @@ fn style_para(
         // twip の 20 分の1が pt
         v.parse::<f32>().ok().map(|t| t / 20.0)
     };
+    let gyou = {
+        let line = body
+            .find("<w:spacing")
+            .and_then(|n| body[n..].find('>').map(|e| (n, n + e)))
+            .map(|(n, e)| (attr_of(&body[n..e], "w:line"), attr_of(&body[n..e], "w:lineRule")));
+        match line {
+            Some((l, rule)) => {
+                let (bai, pt) = gyou_bairitsu(l.parse::<f32>().ok(), Some(rule));
+                ((bai > 0.0).then_some(bai), pt)
+            }
+            None => (None, None),
+        }
+    };
     // 「自動」の空きの旗。書いてあれば入・切、無ければ「言わない」
     let spacing_flag = |key: &str| -> Option<bool> {
         let n = body.find("<w:spacing")?;
@@ -1350,14 +1372,9 @@ fn style_para(
         space_after_pt: spacing("w:after"),
         auto_before: spacing_flag("w:beforeAutospacing"),
         auto_after: spacing_flag("w:afterAutospacing"),
-        // 行間は 240 が1行(docx の決め)
-        line_spacing: {
-            let n = body.find("<w:spacing");
-            n.and_then(|n| body[n..].find('>').map(|e| n + e))
-                .map(|e| attr_of(&body[n.unwrap()..e], "w:line"))
-                .and_then(|v| v.parse::<f32>().ok())
-                .map(|l| l / 240.0)
-        },
+        // 行間は 240 が1行(docx の決め)。`exact` / `atLeast` は pt で持つ
+        line_spacing: gyou.0,
+        line_pt: gyou.1,
         indent: ind(body, "w:left").map(|t| (t / 480.0).round().clamp(0.0, 9.0) as u8),
         first_line_twips: ind(body, "w:firstLine")
             .or_else(|| ind(body, "w:hanging").map(|v| -v))
@@ -2807,7 +2824,17 @@ pub(super) fn parse_document_rels_num(
                     // この印は段落の最後の run に置かれるのが普通です
                     b"br" => {
                         if attr(&e, "type").as_deref() == Some("page") {
-                            tsugi_kaipeji = true;
+                            // **段落の頭の改ページは、その段落を新しい紙から始める**
+                            // (2026-09-09)。`<w:p><w:r><w:br w:type="page"/></w:r>
+                            // <w:r><w:t>別紙５</w:t></w:r></w:p>` の形で、Word は
+                            // 「別紙５」を次の紙の頭に置く。次の段落に回すと
+                            // 「別紙５」だけが前の紙の尻に残る(厚労省の研究報告)
+                            let atama = para.as_ref().is_some_and(|p| p.iter().all(|r| r.text.trim().is_empty()));
+                            if atama {
+                                page_break_before = true;
+                            } else {
+                                tsugi_kaipeji = true;
+                            }
                         } else if let Some(p) = para.as_mut() {
                             p.push(Run {
                                 text: "\n".into(),

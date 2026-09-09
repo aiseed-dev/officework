@@ -247,7 +247,11 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
             let sizen = (m.advance_for(run.font.as_deref(), ch, rpt) + aki).max(0.0);
             if masu > 0.0 && zenkaku(ch) {
                 // 升より広い字(18pt の題など)は、入る数の升を占める(Word と同じ)
-                let n = (sizen / masu - 0.001).ceil().max(1.0);
+                // **升より 1 割まで広い字は 1 升に入れます**(2026-09-09)。裁判所の
+                // 訴状は `w:charSpace="-200"` で、升(11.95pt)が字(12pt)より僅かに
+                // 狭い。Word はその升の送りで字を並べる。ceil のままだと全部の
+                // 字が 2 升を取って行の字数が半分になり、4 頁が 7 頁になっていた
+                let n = (sizen / masu - 0.1).ceil().max(1.0);
                 masu * n
             } else {
                 sizen
@@ -286,6 +290,11 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
 /// エンジンから PDF を作る道を足したとき 6.30mm と 6.40mm の2つになり、
 /// 同じ文書が別の頁数に折れる形になっていました(2026-08-27)。
 pub const LINE_MM: f32 = 6.4;
+
+/// **行末の空白が右の余白へぶら下がれる幅(mm)。** Word は行末の空白を紙の端まで
+/// 置く(右の余白の幅まで)。用紙の余白は組む所に来ていないので、日本語の Word の
+/// 様式に多い 851 twip(15mm)を当てる(2026-09-09)
+pub const HANG_MM: f32 = 15.0;
 
 /// **行の箱の中で、ベースラインが上端から何 mm 下か。**
 ///
@@ -521,7 +530,16 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
         let yoyuu = if tsume { tsume_goukei(&cur) + tsume_goukei(&cells) } else { 0.0 };
         if w_cur + w - yoyuu > measure && !cur.is_empty() && !oikomi {
             if let Tok::Space(..) = tok {
-                // 行末に空白は要らない。行を折るだけ
+                // **行末の空白は右の余白へぶら下がります**(2026-09-09、Word の PDF で
+                // 測った)。裁判所の訴状の「住所（送達場所）＋全角空白 32 字」は
+                // 40 字で行の 39 升を超えるが、Word は 40 字目を余白に置いて折らない。
+                // 紙の端まで([`HANG_MM`])を超える分は折る(厚労省の研究報告の
+                // 署名欄は空白が 100 字を超え、Word も次の行に空白の行を作る)
+                if w_cur + w <= measure + HANG_MM {
+                    w_cur += w;
+                    cur.extend(cells);
+                    continue;
+                }
                 cur = close(&mut done, &mut cur, &mut w_cur, None);
                 continue;
             }
@@ -561,8 +579,10 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
         // `w:ind` を使わず全角スペースで字下げすることが多く、内閣府の
         // 告知書では「　あなたは、」の1字と「　　…　様」の9字がそれです。
         // 落とすと字下げが消えて、宛名が余白に貼り付きます
+        // 全角の空白は字なので、折り返した行の頭でも落とさない(Word は
+        // 空白だけの行を作る)
         if cur.is_empty() && !done.is_empty() {
-            if let Tok::Space(..) = tok {
+            if let Tok::Space(' ', ..) = tok {
                 continue;
             }
         }
@@ -1517,11 +1537,10 @@ pub fn layout_hf(
     // 本文がヘッダーに食い込まないよう、本文の頭は [`crate::hf_push_mm`] が
     // 押し下げるので、ここでは余白で止めない
     let size_mm = base_pt * PT_TO_MM;
-    let mut y = if footer {
-        pg.h_mm - pg.footer_mm - size_mm * 0.28
-    } else {
-        pg.header_mm + size_mm * 0.88
-    };
+    // フッターは**最後の行の底**が距離の所に来る。行が増えたぶんは上へ積む
+    // (Word と同じ。2 行のフッターの 1 行目は距離より 1 行上。2026-09-09)。
+    // 先に 0 から組んで、行数が分かってからずらす
+    let mut y = if footer { 0.0 } else { pg.header_mm + size_mm * 0.88 };
     let mut out = Vec::new();
     for para in &hf.paragraphs {
         let mut para = para.clone();
@@ -1559,6 +1578,13 @@ pub fn layout_hf(
             y += line_height_mm;
         }
     }
+    if footer {
+        let last = out.last().map(|l| l.y_mm).unwrap_or(0.0);
+        let soko = pg.h_mm - pg.footer_mm - size_mm * 0.28;
+        for l in &mut out {
+            l.y_mm += soko - last;
+        }
+    }
     out
 }
 
@@ -1569,20 +1595,26 @@ pub fn layout_hf(
 /// 上の余白 680 twip = 34pt だが、空のヘッダーの段落 1 つ(10.5pt、13.6pt)が
 /// 851 twip = 42.5pt の位置にあるので、本文は 56pt から始まる)。
 /// 返りは本文の頭(下端)を置く、用紙の端からの距離。ヘッダーが無ければ余白そのまま
-pub fn hf_push_mm(hf: &HeadFoot, pg: &PageSetup, font: Option<&str>, base_pt: f32, footer: bool) -> f32 {
+pub fn hf_push_mm(hf: &HeadFoot, pg: &PageSetup, font: Option<&str>, latin: Option<&str>, base_pt: f32, footer: bool) -> f32 {
     let yohaku = if footer { pg.bottom_mm } else { pg.top_mm };
     // 負の余白(固定)は、ヘッダーがあっても押さない
     if hf.paragraphs.is_empty() || (if footer { pg.bottom_fixed } else { pg.top_fixed }) {
         return yohaku;
     }
     let em = crate::font::okuri_em(font).unwrap_or(1.292);
+    // **半角だけ(か空)の段落は欧文の書体の行送り**(2026-09-09、Word の PDF で
+    // 測った)。裁判所の訴状のフッターは「1」と空の段落で、Word は Century の
+    // 14.6pt で 2 行送る(ＭＳ 明朝なら 15.5pt)。1.8pt の差で本文の最後の行が
+    // 次の頁へ押されていた
+    let em_latin = crate::font::okuri_em(latin).unwrap_or(1.22);
     let takasa: f32 = hf
         .paragraphs
         .iter()
         .map(|p| {
             let pt = p.runs.iter().filter_map(|r| r.size_pt).fold(0.0f32, f32::max);
             let pt = if pt > 0.0 { pt } else { base_pt };
-            pt * em * PT_TO_MM
+            let hankaku = p.runs.iter().all(|r| r.text.is_ascii());
+            pt * if hankaku && latin.is_some() { em_latin } else { em } * PT_TO_MM
         })
         .sum();
     let kyori = if footer { pg.footer_mm } else { pg.header_mm };
@@ -2026,7 +2058,16 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     // セルの高さに足す。位置は第2走で決まるので、ここでは
                     // 0 を上端にして組んでおき、後でずらす
                     if let Some(naka) = para.nested.as_deref() {
-                        let fr = Frame { measure_mm: inner, line_height_mm: frame.line_height_mm, y0_mm: 0.0 };
+                        // **中の表はセルに合わせて縮めません。** Word は中の表を
+                        // 自分の幅(`w:tblW` / `w:tblGrid`)で組み、外側のセルより
+                        // 広ければはみ出させる。縮めると列が狭くなって字が折れ、
+                        // 行が増える(厚労省の研究報告の ＣＯＩ の表。2026-09-09)
+                        let jibun: f32 = naka.col_mm.iter().sum::<f32>() + naka.indent_mm.max(0.0);
+                        let fr = Frame {
+                            measure_mm: inner.max(jibun),
+                            line_height_mm: frame.line_height_mm,
+                            y0_mm: 0.0,
+                        };
                         let mut tmp = Sheet::default();
                         // 中の表の番号。本文の表と重ならない所から振る
                         let no = usize::MAX / 2 + table_no * 64 + hyou_no.len();

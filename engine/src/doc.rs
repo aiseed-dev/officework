@@ -1159,6 +1159,12 @@ pub struct Document {
     /// 文書の既定の書体(docx の `w:docDefaults`)。
     /// 段落側が指定していなければこれを使う
     pub font: Option<String>,
+    /// **文書の既定の欧文の書体**(docx の `w:docDefaults` の `w:ascii`。
+    /// Century など)。半角だけの段落(ページ番号のフッター)の行の高さは
+    /// Word がこの書体で決める(Century 12pt は 14.6pt、ＭＳ 明朝なら 15.5pt)。
+    /// 裁判所の訴状はフッターが 2 行で、この差が本文の最後の行を次の頁へ
+    /// 押していた(2026-09-09)
+    pub font_latin: Option<String>,
     /// 文書の既定の字の大きさ(docx の `w:docDefaults` の `w:sz`)。
     /// run が `None` のときに効く。これも `None` なら [`DEFAULT_PT`]
     pub size_pt: Option<f32>,
@@ -1385,6 +1391,11 @@ pub struct StyleParaLook {
     pub auto_after: Option<bool>,
     /// 行間の倍率
     pub line_spacing: Option<f32>,
+    /// **行の高さを pt で言う**(`w:spacing w:lineRule="exact"` / `"atLeast"`)。
+    /// 意味は [`Paragraph::line_pt`] と同じ。一太郎から来た様式のスタイル
+    /// (`w:line="230" w:lineRule="exact"`)が持ちます。読まないと 11.5pt の
+    /// 行が書体なりの 13pt で送られ、8 頁が 11 頁になりました(2026-09-09)
+    pub line_pt: Option<(f32, bool)>,
     /// 左のインデント段数(1段 = 全角2文字ぶん)
     pub indent: Option<u8>,
     /// 1行目の字下げ(twip。負はぶら下げ)
@@ -2459,7 +2470,11 @@ impl Document {
             pl.space_after_pt = pl.space_after_pt.or(s.para.space_after_pt);
             pl.auto_before = pl.auto_before.or(s.para.auto_before);
             pl.auto_after = pl.auto_after.or(s.para.auto_after);
-            pl.line_spacing = pl.line_spacing.or(s.para.line_spacing);
+            // 倍率と pt は 1 組。子がどちらかを言っていれば親の物は受け継がない
+            if pl.line_spacing.is_none() && pl.line_pt.is_none() {
+                pl.line_spacing = s.para.line_spacing;
+                pl.line_pt = s.para.line_pt;
+            }
             pl.indent = pl.indent.or(s.para.indent);
             pl.first_line_twips = pl.first_line_twips.or(s.para.first_line_twips);
             pl.list = pl.list.or(s.para.list);
