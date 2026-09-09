@@ -290,6 +290,61 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                 }
             }
         }
+        // **節ごとのヘッダー・フッターと、先頭頁だけ別の物**(2026-09-09)。
+        // 部品を読む手順は上と同じなので、閉包にまとめて使い回す
+        let mut yomu = |rid: &str, rep: &mut Report| -> Option<kumihan::HeadFoot> {
+            let target = targets.get(rid)?;
+            let part = format!("word/{}", target.trim_start_matches('/').trim_start_matches("word/"));
+            let mut hxml = String::new();
+            zip.by_name(&part).ok()?.read_to_string(&mut hxml).ok()?;
+            let (hdoc, hrep) = parse_document_with(&hxml, &media);
+            let mut hf = kumihan::HeadFoot { part: Some(part), ..Default::default() };
+            hf.anchors = hdoc
+                .paragraphs()
+                .flat_map(|p| p.anchors.iter().cloned())
+                .filter(|a| a.contains("<w:drawing") || a.contains("<w:pict"))
+                .collect();
+            if hdoc.tables().next().is_none() {
+                hf.paragraphs = hdoc.paragraphs().cloned().collect();
+                if hf.paragraphs.is_empty() {
+                    hf.paragraphs.push(Paragraph::default());
+                }
+            }
+            for (n, k) in hrep.unsupported {
+                for _ in 0..k {
+                    rep.note(&format!("ヘッダー・フッター: {n}"));
+                }
+            }
+            Some(hf)
+        };
+        doc.title_pg = sect.contains("<w:titlePg");
+        if doc.title_pg {
+            doc.first_header = hf_ref_of(&sect, "headerReference", "first").and_then(|r| yomu(&r, &mut rep));
+            doc.first_footer = hf_ref_of(&sect, "footerReference", "first").and_then(|r| yomu(&r, &mut rep));
+        }
+        let owari: Vec<(usize, String)> = doc
+            .blocks
+            .iter()
+            .enumerate()
+            .filter_map(|(j, b)| match b {
+                Block::Para(p) => p.sect.as_ref().map(|s| (j, s.raw.clone())),
+                _ => None,
+            })
+            .collect();
+        for (j, raw) in owari {
+            let mut hf = kumihan::SectionHf { title_pg: raw.contains("<w:titlePg"), ..Default::default() };
+            if let Some(h) = hf_ref(&raw, "headerReference").and_then(|r| yomu(&r, &mut rep)) {
+                hf.header = h;
+            }
+            if let Some(f) = hf_ref(&raw, "footerReference").and_then(|r| yomu(&r, &mut rep)) {
+                hf.footer = f;
+            }
+            if hf.title_pg {
+                hf.first_header = hf_ref_of(&raw, "headerReference", "first").and_then(|r| yomu(&r, &mut rep));
+                hf.first_footer = hf_ref_of(&raw, "footerReference", "first").and_then(|r| yomu(&r, &mut rep));
+            }
+            doc.sect_hf.insert(j, hf);
+        }
         // 透かし(ヘッダーの中の VML)。原文控えからモデルへ引き上げる
         // (保存はモデルから作り直すので、控えは外す — 二重になるため)
         for p in &mut doc.header.paragraphs {
@@ -874,13 +929,19 @@ pub(super) fn sect_type(raw: &str) -> String {
 /// sectPr の中から、全ページ同じヘッダー(フッター)の参照 r:id を引く。
 /// `<w:headerReference w:type="default" r:id="rId8"/>`。type 無しは default 扱い。
 pub(super) fn hf_ref(sect: &str, tag: &str) -> Option<String> {
+    hf_ref_of(sect, tag, "default")
+}
+
+/// 種類(`default` / `first` / `even`)を指定して参照を引く
+pub(super) fn hf_ref_of(sect: &str, tag: &str, kind: &str) -> Option<String> {
     let needle = format!("<w:{tag}");
+    let want = format!("w:type=\"{kind}\"");
     let mut at = 0usize;
     while let Some(i) = sect[at..].find(&needle) {
         let s = at + i;
         let e = sect[s..].find('>')? + s;
         let head = &sect[s..e];
-        if !head.contains("w:type=") || head.contains("w:type=\"default\"") {
+        if (kind == "default" && !head.contains("w:type=")) || head.contains(&want) {
             if let Some(j) = head.find("r:id=\"") {
                 let js = j + 6;
                 if let Some(je) = head[js..].find('"') {

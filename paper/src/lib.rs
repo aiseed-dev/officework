@@ -709,6 +709,44 @@ mod tests {
     /// **途中で用紙の向きが変わる文書。** engine が節ごとに行を組み、
     /// paper が節ごとの紙で折る — その2つが噛み合っているかを端から端まで見る。
     /// (紙の大きさが違えば1ページに入る行数も違うので、折り目もずれる)
+    /// **節ごとにヘッダーが替わる**(2026-09-09)。JST の計画書は 13 の節が別々の
+    /// ヘッダーを持ち、前は最後の節の物を全頁に出していた。`w:titlePg` の節は
+    /// 先頭頁に「先頭頁だけ」の物(無ければ空)を出す
+    #[test]
+    fn each_section_gets_its_own_header() {
+        use kumihan::{Block, HeadFoot, PageSetup, Paragraph, Run, SectionHf};
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let paper = PageSetup::default();
+        let para = |t: &str| Paragraph {
+            runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
+            line_spacing: 1.0,
+            ..Default::default()
+        };
+        let hf = |t: &str| HeadFoot { paragraphs: vec![para(t)], ..Default::default() };
+        let owari = |t: &str| {
+            let mut p = para(t);
+            p.sect = Some(kumihan::SectionBreak { raw: String::new(), page: paper, continuous: false });
+            Block::Para(p)
+        };
+        let mut d = Document {
+            page: Some(paper),
+            header: hf("三"),
+            blocks: vec![owari("一の節"), owari("二の節"), Block::Para(para("三の節"))],
+            ..Default::default()
+        };
+        d.sect_hf.insert(0, SectionHf { header: hf("一"), ..Default::default() });
+        d.sect_hf.insert(1, SectionHf { header: hf("二"), title_pg: true, ..Default::default() });
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        assert_eq!(s.sect_hfs.len(), 3, "節ごとのヘッダーが揃っていない");
+        let lines = doc_hf_lines(&d, &data, &s, paper).unwrap();
+        let text = |k: usize| -> String { lines(k).iter().map(|l| l.text()).collect::<Vec<_>>().join("|") };
+        assert_eq!(text(0), "一", "1 頁目は最初の節のヘッダー: {}", text(0));
+        assert_eq!(text(1), "", "titlePg の節の先頭頁は空のはず: {}", text(1));
+        assert_eq!(text(2), "三", "最後の節は文書のヘッダー: {}", text(2));
+    }
+
     #[test]
     fn paper_size_changes_per_section() {
         use kumihan::{Block, PageSetup, Paragraph, Run};
@@ -1420,11 +1458,44 @@ pub fn doc_hf_lines<'a>(
     page: kumihan::PageSetup,
 ) -> Result<impl Fn(usize) -> Vec<kumihan::Line> + 'a, String> {
     let m = kumihan::Metrics::new(font)?;
-    let total = paginate_full(sheet, Paper::from_page(&page)).offsets.len().max(1);
+    let pn = paginate_full(sheet, Paper::from_page(&page));
+    let total = pn.offsets.len().max(1);
     let base_pt = doc.base_pt();
+    // **その頁の節のヘッダー・フッター**(2026-09-09)。頁の頭の高さ(`starts`)が
+    // どの節に入るかで引く。節の先頭の頁で `w:titlePg` なら「先頭頁だけ」の物
+    // (無ければ空)。節が1つなら文書の物
+    let starts = pn.starts.clone();
+    let sect_pages = sheet.sect_pages.clone();
+    let sect_hfs = sheet.sect_hfs.clone();
+    let sect_ys: Vec<f32> = sect_pages.iter().map(|(at, _)| *at).collect();
+    let sect_of = move |k: usize| -> Option<usize> {
+        let y = starts.get(k).copied().unwrap_or(f32::NEG_INFINITY);
+        let mut hit = None;
+        for (i, at) in sect_ys.iter().enumerate() {
+            if *at <= y.max(0.0) {
+                hit = Some(i);
+            }
+        }
+        hit
+    };
     Ok(move |k: usize| {
-        let mut v = kumihan::layout_hf(&doc.header, &m, &page, kumihan::LINE_MM, k, total, false, base_pt);
-        v.extend(kumihan::layout_hf(&doc.footer, &m, &page, kumihan::LINE_MM, k, total, true, base_pt));
+        let si = sect_of(k);
+        let atama = k == 0 || sect_of(k.saturating_sub(1)) != si;
+        let pg = si.and_then(|i| sect_pages.get(i)).map(|(_, p)| *p).unwrap_or(page);
+        let kara = kumihan::HeadFoot::default();
+        let (head, foot): (&kumihan::HeadFoot, &kumihan::HeadFoot) =
+            match si.and_then(|i| sect_hfs.get(i)).and_then(|h| h.as_ref()) {
+                Some(h) if atama && h.title_pg => {
+                    (h.first_header.as_ref().unwrap_or(&kara), h.first_footer.as_ref().unwrap_or(&kara))
+                }
+                Some(h) => (&h.header, &h.footer),
+                None if atama && doc.title_pg => {
+                    (doc.first_header.as_ref().unwrap_or(&kara), doc.first_footer.as_ref().unwrap_or(&kara))
+                }
+                None => (&doc.header, &doc.footer),
+            };
+        let mut v = kumihan::layout_hf(head, &m, &pg, kumihan::LINE_MM, k, total, false, base_pt);
+        v.extend(kumihan::layout_hf(foot, &m, &pg, kumihan::LINE_MM, k, total, true, base_pt));
         v
     })
 }

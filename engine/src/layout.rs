@@ -787,6 +787,20 @@ fn syotai_lh_mm(para: &Paragraph, base: f32, font: Option<&str>) -> Option<f32> 
 /// 必ず1つずれる(節末の段落自身がどちらの節かを取り違える)。
 ///
 /// 節が1つも無ければ空を返す。呼ぶ側はそのとき今までどおりに振る舞う。
+/// ブロック `bi` が属する節のヘッダー・フッター。節を終える段落(`sect` を持つ物)
+/// を `bi` から先に探し、その番号で [`Document::sect_hf`] を引く。無ければ
+/// `None`(最後の節 = 文書の `header` / `footer`)
+pub(super) fn section_hf_at(doc: &Document, bi: usize) -> Option<crate::doc::SectionHf> {
+    for (j, b) in doc.blocks.iter().enumerate().skip(bi) {
+        if let Block::Para(p) = b {
+            if p.sect.is_some() {
+                return doc.sect_hf.get(&j).cloned();
+            }
+        }
+    }
+    None
+}
+
 pub(super) fn section_geometry(doc: &Document) -> Vec<PageSetup> {
     if !doc.blocks.iter().any(|b| matches!(b, Block::Para(p) if p.sect.is_some())) {
         return Vec::new();
@@ -820,6 +834,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
         // 「節が無い」と読めてしまい、**1ページ目だけ最後の節の紙**で刷られる
         // (2026-08-10、実物の2節 docx を PDF まで通して見つけた)
         sheet.sect_pages.push((0.0, *first));
+        sheet.sect_hfs.push(section_hf_at(doc, 0));
     }
 
     // 段落番号は「何番目の箇条書きか」で決まる。段落の位置ではない。
@@ -1321,6 +1336,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                         if !(sb.continuous && same) {
                             sheet.breaks.push(y);
                             sheet.sect_pages.push((y, next));
+                            sheet.sect_hfs.push(section_hf_at(doc, bi + 1));
                         }
                     }
                 }

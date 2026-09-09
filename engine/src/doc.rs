@@ -1040,6 +1040,17 @@ pub struct SectionBreak {
     pub continuous: bool,
 }
 
+/// **1つの節のヘッダー・フッター**(docx の sectPr の `headerReference` /
+/// `footerReference`)。`title_pg` は `w:titlePg`(先頭頁だけ別)
+#[derive(Debug, Clone, Default)]
+pub struct SectionHf {
+    pub header: HeadFoot,
+    pub footer: HeadFoot,
+    pub first_header: Option<HeadFoot>,
+    pub first_footer: Option<HeadFoot>,
+    pub title_pg: bool,
+}
+
 /// 段の間(mm)。Word の既定(425twip ≒ 7.5mm)に合わせる
 pub const COLUMN_GAP_MM: f32 = 7.5;
 
@@ -1135,6 +1146,16 @@ pub struct Document {
     /// 行が行長を超えるとき、約物(、。（）「」・)の空きを字幅の 1/4 まで、
     /// 足りない分だけ比例して詰めます。詰めても入らなければ折ります
     pub compress_punct: bool,
+    /// **節ごとのヘッダー・フッター**(2026-09-09)。鍵は節を終える段落のブロック番号
+    /// (その段落の `sect` と対)。最後の節(文書の末尾の sectPr)は `header` /
+    /// `footer` で持つ。JST の計画書は 13 の節がそれぞれ別のヘッダーを持ち、
+    /// 前は最後の節の物を全頁に出していた
+    pub sect_hf: std::collections::BTreeMap<usize, SectionHf>,
+    /// **先頭頁だけ別のヘッダー・フッター**(docx の `w:titlePg`)。最後の節の分。
+    /// 真で `first_header` が無ければ、先頭頁のヘッダーは空
+    pub title_pg: bool,
+    pub first_header: Option<HeadFoot>,
+    pub first_footer: Option<HeadFoot>,
     /// 文書の保護(docx の settings の documentProtection の w:edit)。
     /// Some("readOnly") なら読み取り専用。パスワード無しの保護は Word と
     /// 同じく「注意書き」— 解除のボタンで誰でも外せる(そう見せる)
@@ -2503,6 +2524,9 @@ pub struct Sheet {
     /// 節の切れ目は必ず [`Sheet::breaks`] にも入るので、折る側は
     /// 「頁が変わった所で用紙を引き直す」だけでよい
     pub sect_pages: Vec<(f32, PageSetup)>,
+    /// `sect_pages` と同じ並びで、その節のヘッダー・フッター。`None` は文書の物
+    /// (最後の節)を使う
+    pub sect_hfs: Vec<Option<SectionHf>>,
 }
 
 impl Sheet {

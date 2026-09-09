@@ -131,7 +131,7 @@ mod round {
                     list: Default::default(), indent: 0, left_twips: 0, right_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![Run { text: s.to_string(), size_pt: Some(10.5), font: None, fmt: Default::default() }] }
     }
     fn doc(parts: &[&str]) -> Document {
-        Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: parts.iter().map(|s| Block::Para(para(s))).collect() }
+        Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: parts.iter().map(|s| Block::Para(para(s))).collect() }
     }
     fn round_trip(d: &Document) -> (Document, Report) {
         let mut buf = Cursor::new(Vec::new());
@@ -161,7 +161,7 @@ mod round {
 
     #[test]
     fn font_size_is_preserved() {
-        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
+        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, left_twips: 0, right_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![
             Run { text: "大見出し".into(), size_pt: Some(16.0), font: None, fmt: Default::default() },
@@ -194,7 +194,7 @@ mod round {
 
     #[test]
     fn line_breaks_inside_a_paragraph_are_preserved() {
-        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
+        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, space_before_pt: 0.0, space_after_pt: 0.0,  align: Default::default(), style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, left_twips: 0, right_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![
             Run { text: "一行目\n二行目".into(), size_pt: Some(10.5), font: None, fmt: Default::default() }]})]};
@@ -210,7 +210,7 @@ mod round {
 
     #[test]
     fn tables_round_trip() {
-        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: vec![
+        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![
             Block::Para(para("(様式3) 会社概要")),
             Block::Table(Table { col_mm: vec![], rows: vec![
                 vec![cell("会　社　名"), cell("サンプル商事株式会社")],
@@ -235,7 +235,7 @@ mod round {
 
     #[test]
     fn the_order_of_tables_and_body_text_is_preserved() {
-        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: vec![
+        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![
             Block::Para(para("前")),
             Block::Table(Table { col_mm: vec![], rows: vec![vec![cell("表1")]],
         ..Default::default()
@@ -255,7 +255,7 @@ mod round {
     #[test]
     fn an_empty_cell_still_holds_its_column() {
         // 事務様式は「記入欄が空の表」が本体。空セルが消えると様式が壊れる
-        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Table(Table { col_mm: vec![], rows: vec![
+        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Table(Table { col_mm: vec![], rows: vec![
             vec![cell("氏名"), Cellbox::default()],
             vec![cell("所属"), Cellbox::default()],
         ],
@@ -297,7 +297,7 @@ mod round {
         vstart.v_merge = kumihan::VMerge::Start;
         let mut vcont = Cellbox::default();
         vcont.v_merge = kumihan::VMerge::Continue;
-        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: vec![
+        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![
             Block::Table(Table { col_mm: vec![], rows: vec![
                 vec![head],
                 vec![vstart, cell("本社")],
@@ -356,7 +356,7 @@ mod font_tests {
         let doc = Document { shapes: Vec::new(), size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
             font: None,
             page: None,
-            sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false,
+            sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, line_pt: None, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), space_before_pt: 0.0, space_after_pt: 0.0,  style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
                 align: Default::default(),
                 anchors: Vec::new(),
@@ -470,7 +470,7 @@ mod fmt_tests {
         let d = Document { shapes: Vec::new(), size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
             font: None,
             page: None,
-            sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false,
+            sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, space_before_pt: 0.0, space_after_pt: 0.0,  align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, left_twips: 0, right_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![run("見出し", f.clone())] })],
@@ -489,7 +489,7 @@ mod fmt_tests {
         let d = Document { shapes: Vec::new(), size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
             font: None,
             page: None,
-            sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false,
+            sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, space_before_pt: 0.0, space_after_pt: 0.0,  align: Align::Left, style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, anchors: Vec::new(), sect: None,
                     images: Vec::new(), page_break_before: false,
                     list: Default::default(), indent: 0, left_twips: 0, right_twips: 0, first_line_twips: 0, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), line_spacing: 1.0, line_pt: None, shade: None, boxed: false, border: Default::default(), images_new: Vec::new(), runs: vec![run("赤", f.clone())] })],
@@ -503,7 +503,7 @@ mod fmt_tests {
             let d = Document { shapes: Vec::new(), size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
                 font: None,
                 page: None,
-                sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false,
+                sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
                 blocks: vec![Block::Para(Paragraph { style_id: None, raw_adoc: None, list_text: None, list_id: None, no_grid: false, line_pt: None, first_line_chars: None, align_itta: false, tab_stops: Vec::new(), space_before_pt: 0.0, space_after_pt: 0.0,  style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
                     align: a,
                     anchors: Vec::new(),
@@ -570,7 +570,7 @@ mod para_tests {
     }
 
     fn roundtrip(p: Paragraph) -> Paragraph {
-        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(p)] };
+        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(p)] };
         let mut buf = Vec::new();
         crate::write(&d, std::io::Cursor::new(&mut buf)).unwrap();
         crate::read(std::io::Cursor::new(&buf)).unwrap().0.paragraphs().next().unwrap().clone()
@@ -850,7 +850,7 @@ mod para_tests {
 
     #[test]
     fn a_default_paragraph_gets_no_extra_spec() {
-        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(para(ListKind::None, 0, 1.0))] };
+        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(para(ListKind::None, 0, 1.0))] };
         let mut buf = Vec::new();
         crate::write(&d, std::io::Cursor::new(&mut buf)).unwrap();
         let mut z = zip::ZipArchive::new(std::io::Cursor::new(&buf)).unwrap();
@@ -894,7 +894,7 @@ mod break_round {
         para.page_break_before = true;
         para.runs.push(Run {
             text: "二頁目".into(), size_pt: Some(10.5), font: None, fmt: Default::default() });
-        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(para)] };
+        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![Block::Para(para)] };
         let mut buf = Vec::new();
         crate::write(&d, std::io::Cursor::new(&mut buf)).unwrap();
         let back = crate::read(std::io::Cursor::new(&buf)).unwrap().0;
@@ -1247,7 +1247,7 @@ mod vertalign_tests {
         Document { shapes: Vec::new(), size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
             font: None,
             page: None,
-            sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false,
+            sect_raw: None, header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Para(Paragraph { style: Default::default(), comments: Vec::new(), bookmarks: Vec::new(), dropcap: false, sect: None,
                 align: Align::Left,
                 runs: vec![Run { text: "x2".into(), size_pt: Some(10.5), font: None, fmt }],
@@ -1552,7 +1552,7 @@ mod shade_tests {
         };
         p.shade = Some("FFF2CC".into());
         p.boxed = true;
-        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false,
+        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
                            blocks: vec![Block::Para(p)] };
         let mut buf = Cursor::new(Vec::new());
         write(&d, &mut buf).expect("書けない");
@@ -2539,7 +2539,7 @@ mod image_insert_tests {
             tex: None, off: 0,
                     src: None,
         });
-        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, protection: None, props: Default::default(), vertical: false,
+        let d = Document { size_pt: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
                            blocks: vec![Block::Para(p)] };
         let mut buf = Cursor::new(Vec::new());
         write(&d, &mut buf).expect("書けない");
