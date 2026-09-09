@@ -135,6 +135,13 @@ fn dirs() -> Vec<PathBuf> {
     if let Ok(d) = std::env::var("OFFICE_FONT_DIR") {
         v.push(PathBuf::from(d));
     }
+    // **Mac の Office が同梱する書体**(2026-09-09)。Word・Excel のアプリの中に
+    // Century など 280 本があり、Word はこれで組む。同じ書体で測れば置き替えの
+    // 幅の違いが消える(ＭＳ 明朝・ゴシックはこの中にも無い — それは梅で代える)
+    for app in ["Microsoft Word", "Microsoft Excel", "Microsoft PowerPoint"] {
+        v.push(PathBuf::from(format!("/Applications/{app}.app/Contents/Resources/DFonts")));
+        v.push(PathBuf::from(format!("/Applications/{app}.app/Contents/Resources/Fonts")));
+    }
     // **同じ所を2度走査しない。** 走査は再帰なので、重なると目に見えて遅くなります
     let mut mita = std::collections::HashSet::new();
     v.retain(|p| mita.insert(p.clone()));

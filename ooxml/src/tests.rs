@@ -33,6 +33,17 @@ mod round {
         assert_eq!(f[2], None, "hint=eastAsia の半角は和文の書体");
         assert_eq!(f[3], Some("ＭＳ ゴシック"), "eastAsia の指定が効いていない");
         assert_eq!(p.right_twips, 420, "右のインデントが読めていない");
+        // **混ざる run は字の種類で切れる**: 「平成28年度」は 3 つ(和・欧・和)
+        let xml2 = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:rPr><w:rFonts w:ascii="Century" w:eastAsia="ＭＳ 明朝" w:hAnsi="Century"/></w:rPr><w:t>平成28年度 A</w:t></w:r></w:p></w:body></w:document>"#;
+        let (d2, _) = crate::read::parse_document_xml(xml2);
+        let p2 = d2.paragraphs().next().unwrap();
+        let rs: Vec<(String, Option<String>)> = p2.runs.iter().map(|r| (r.text.clone(), r.font.clone())).collect();
+        assert_eq!(rs, vec![
+            ("平成".into(), Some("ＭＳ 明朝".into())),
+            ("28".into(), Some("Century".into())),
+            ("年度 ".into(), Some("ＭＳ 明朝".into())),
+            ("A".into(), Some("Century".into())),
+        ], "字の種類で切れていない: {rs:?}");
     }
 
     /// **箇条書きの段の字下げは numbering.xml から**(2026-09-09)。段落自身の

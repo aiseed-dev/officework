@@ -585,6 +585,25 @@ pub(super) fn erabu_font(text: &str, ea: &Option<String>, latin: &Option<String>
     }
 }
 
+/// **run の字を、和文と欧文の塊に切る。** 返りは (字, 和文か)。欧文の書体が無い、
+/// `w:hint="eastAsia"`、全部同じ種類、のときは 1 つのまま。空白は前の塊に付ける
+/// (Word も空白は前後の字の書体に従う)
+pub(super) fn kiru_moji(text: &str, ea: &Option<String>, latin: &Option<String>, hint_ea: bool) -> Vec<(String, bool)> {
+    let wabun_all = hint_ea || latin.is_none() || latin == ea;
+    if wabun_all || text.is_ascii() || text.chars().all(|c| !c.is_ascii()) {
+        return vec![(text.to_string(), hint_ea || !text.is_ascii())];
+    }
+    let mut out: Vec<(String, bool)> = Vec::new();
+    for c in text.chars() {
+        let wa = !c.is_ascii();
+        match out.last_mut() {
+            Some((s, w)) if *w == wa || c == ' ' => s.push(c),
+            _ => out.push((c.to_string(), wa)),
+        }
+    }
+    out
+}
+
 /// twip → mm(1twip = 1/20pt)
 pub(super) fn twip_mm(v: f32) -> f32 {
     v * 25.4 / (20.0 * 72.0)
@@ -3166,9 +3185,15 @@ pub(super) fn parse_document_rels_num(
                         } else if !cur.is_empty() {
                             if let Some(p) = para.as_mut() {
                                 {
+                                    // **和文と欧文が混ざる run は、字の種類で切って別の run にする**
+                                    // (2026-09-09)。Word は「平成28年度」の 28 を欧文の書体
+                                    // (Century)で組む。1 つの書体で測ると幅がずれ、折れる所が
+                                    // 変わる(288 枚の違いの大半が折り返しの違いだった)
                                     let text = std::mem::take(&mut cur);
-                                    let font = erabu_font(&text, &font_ea, &font_latin, hint_ea);
-                                    p.push(Run { text, size_pt, font, fmt: fmt.clone() });
+                                    for (kire, ea) in kiru_moji(&text, &font_ea, &font_latin, hint_ea) {
+                                        let font = if ea { font_ea.clone() } else { font_latin.clone().or_else(|| font_ea.clone()) };
+                                        p.push(Run { text: kire, size_pt, font, fmt: fmt.clone() });
+                                    }
                                 }
                             }
                         }
