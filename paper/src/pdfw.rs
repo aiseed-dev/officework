@@ -1606,7 +1606,15 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
     // 突き合わせて見つけた — 字が取れるかを見るだけでは分かりません)
     let full = crate::paginate_full(sheet, paper);
     let (pages_of, offsets) = (&full.pages, &full.offsets);
-    let n = pages_of.iter().copied().max().unwrap_or(1);
+    // **図形が本文より後ろの頁に置かれていれば、その頁まで紙を足します**
+    // (2026-09-09)。Word は段落から 600pt 下に置いた箱を次の頁に送り、その頁には
+    // 箱しか無い。前は本文の頁数で切っていたので、箱ごと消えていた(岐阜の掲示)
+    let n = pages_of
+        .iter()
+        .copied()
+        .max()
+        .unwrap_or(1)
+        .max(dress.shapes.iter().map(|s| s.page + 1).max().unwrap_or(0));
     // **紙は頁ごと**です(節で A4 縦と横が混ざる)。余白も紙ごとに変わるので、
     // 字の位置を決めるときの左余白もその頁の物を使います
     let paper_of = |k: usize| full.papers.get(k).copied().unwrap_or(paper);

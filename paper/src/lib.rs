@@ -709,6 +709,22 @@ mod tests {
     /// **途中で用紙の向きが変わる文書。** engine が節ごとに行を組み、
     /// paper が節ごとの紙で折る — その2つが噛み合っているかを端から端まで見る。
     /// (紙の大きさが違えば1ページに入る行数も違うので、折り目もずれる)
+    /// **本文より後ろの頁に置かれた図形のために紙を足す**(2026-09-09)
+    #[test]
+    fn a_shape_on_a_later_page_adds_the_page() {
+        let (fam, _) = font::for_document(None).unwrap();
+        let data = font::load(fam).unwrap();
+        let m = Metrics::new(&data).unwrap();
+        let d = Document::plain("一行だけ");
+        let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0 });
+        let page = kumihan::PageSetup::default();
+        assert_eq!(doc_leaves(&s, page).len(), 1);
+        let mut dress = PageDress::default();
+        dress.shapes.push(kumihan::DocShape { page: 2, x_mm: 20.0, y_mm: 20.0, w_mm: 50.0, h_mm: 20.0, look: Default::default() });
+        let leaves = doc_leaves_with(&s, page, &dress);
+        assert_eq!(leaves.len(), 3, "箱の頁まで紙が足されていない: {}", leaves.len());
+    }
+
     /// **グループの子を 1 つずつ描く**(2026-09-09)。子の位置はグループの座標に写す
     #[test]
     fn a_group_opens_into_its_children() {
