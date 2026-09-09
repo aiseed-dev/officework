@@ -2156,8 +2156,12 @@ pub fn foreign_shapes(
             // 高さをグリッドの行送りに切り上げ、余りの半分を上の余白に足して
             // 字を升のまん中に置く(本文の `dip_of` と同じ)。中の段落が
             // `w:snapToGrid w:val="0"` なら合わせない
+            // `atLeast` で値が 0 の段落は、本文と同じくグリッドを見ない(2026-09-09、
+            // Opus Mac が厚労省の様式の箱で見つけた。Word 13.7pt に対して 18.0pt だった)
+            let at_least_zero = a.contains("w:line=\"0\" w:lineRule=\"atLeast\"");
             if f.look.text_fmt.line_pt.is_none()
                 && page.line_pitch_pt > 0.0
+                && !at_least_zero
                 && !a.contains("<w:snapToGrid w:val=\"0\"")
                 && !a.contains("<w:snapToGrid w:val=\"false\"")
             {
