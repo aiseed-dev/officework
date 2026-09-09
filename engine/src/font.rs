@@ -558,7 +558,33 @@ const OKURI_EM: &[(&str, f32)] = &[
 /// OS/2 の fsSelection の7ビット目が立っていれば sTypo 系に切り替えます。
 ///
 /// 書体が引けなければ `None` を返します。呼ぶ側が既定を決めます。
+/// **寸法の控え**(2026-09-09 発注者「使ってみたらやはり重い」)。行や run のたびに
+/// 書体のファイル(ヒラギノは 7〜18MB)を読み直して解いていたのが、組版の時間の
+/// ほとんどだった(JST の計画書 28 頁で 2.6 秒、標本の 9 割が read。Opus Mac が
+/// sample で測った)。名前と言語を鍵に、求めた em を控える
+fn memo_em(tag: &str, name: Option<&str>, f: impl FnOnce() -> Option<f32>) -> Option<f32> {
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+    static CACHE: OnceLock<Mutex<HashMap<(String, String), Option<f32>>>> = OnceLock::new();
+    let key = (format!("{tag}:{}", default_language()), name.unwrap_or("").to_string());
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Ok(c) = cache.lock() {
+        if let Some(v) = c.get(&key) {
+            return *v;
+        }
+    }
+    let v = f();
+    if let Ok(mut c) = cache.lock() {
+        c.insert(key, v);
+    }
+    v
+}
+
 pub fn okuri_em(name: Option<&str>) -> Option<f32> {
+    memo_em("okuri", name, || okuri_em_yomu(name))
+}
+
+fn okuri_em_yomu(name: Option<&str>) -> Option<f32> {
     let name = name?;
     let key = norm(name);
     if let Some((_, em)) = OKURI_EM.iter().find(|(n, _)| norm(n) == key) {
@@ -590,6 +616,10 @@ pub fn okuri_em(name: Option<&str>) -> Option<f32> {
 /// この機械にある書体(置き替え先)の OS/2 から取ります。字の足が
 /// どこまで伸びるかは、原本の書体ではなく**実際に描く書体**が決めます。
 fn sagari_em(name: Option<&str>) -> Option<f32> {
+    memo_em("sagari", name, || sagari_em_yomu(name))
+}
+
+fn sagari_em_yomu(name: Option<&str>) -> Option<f32> {
     let (fam, _) = for_document(name).ok()?;
     let d = load(fam).ok()?;
     let face = ttf_parser::Face::parse(&d, 0).ok()?;
@@ -659,6 +689,11 @@ pub fn ashi_em(name: Option<&str>) -> Option<f32> {
 /// 幅の合う相手([`ONAJI_HABA`])に置き替わっているので、そちらの数字を
 /// 測ることになります。名前が引けないときは `None`。
 pub fn digit_px(name: &str, pt: f32) -> Option<f32> {
+    // 数字の幅(em)を控え、丸めは大きさを掛けた後に行う
+    memo_em("digit", Some(name), || digit_em_yomu(name)).map(|hiro| (hiro * pt * 96.0 / 72.0).round())
+}
+
+fn digit_em_yomu(name: &str) -> Option<f32> {
     let (fam, _) = for_document(Some(name)).ok()?;
     let d = load(fam).ok()?;
     let face = ttf_parser::Face::parse(&d, 0).ok()?;
@@ -671,7 +706,7 @@ pub fn digit_px(name: &str, pt: f32) -> Option<f32> {
         .filter_map(|c| face.glyph_index(c).and_then(|g| face.glyph_hor_advance(g)))
         .map(|a| a as f32 / em)
         .fold(0.0f32, f32::max);
-    (hiro > 0.0).then(|| (hiro * pt * 96.0 / 72.0).round())
+    (hiro > 0.0).then_some(hiro)
 }
 
 /// **頭で見る組。** 名前の変種が多い書体はこちらです。
@@ -1170,7 +1205,22 @@ fn missing(wanted: Option<&str>) -> String {
 
 /// 実体を読む。
 pub fn load(f: &Family) -> Result<Vec<u8>, String> {
-    std::fs::read(&f.path).map_err(|e| format!("{}: {e}", f.path.display()))
+    // **径路ごとに控える**(2026-09-09)。同じ書体を文書ごと・run ごとに読み直さない。
+    // 返す物は写し(呼ぶ側が持ち主になる作りのまま)。ディスクの読みと比べれば安い
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex, OnceLock};
+    static CACHE: OnceLock<Mutex<HashMap<std::path::PathBuf, Arc<Vec<u8>>>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Ok(c) = cache.lock() {
+        if let Some(v) = c.get(&f.path) {
+            return Ok((**v).clone());
+        }
+    }
+    let data = std::fs::read(&f.path).map_err(|e| format!("{}: {e}", f.path.display()))?;
+    if let Ok(mut c) = cache.lock() {
+        c.insert(f.path.clone(), Arc::new(data.clone()));
+    }
+    Ok(data)
 }
 
 
