@@ -680,14 +680,30 @@ pub fn write_pages_fonts<W: std::io::Write>(
             .descent(scale(face.descender()))
             .cap_height(face.capital_height().map(scale).unwrap_or(scale(face.ascender())))
             .stem_v(80.0);
+        // **書体の埋め込みの許可(OS/2 の fsType)を守ります**(2026-09-09)。
+        // 「埋め込み禁止」(Restricted)の書体は PDF に入れず、名前だけ書きます
+        // (読む側が代わりの書体で出す)。Office の同梱書体を使うようになったので、
+        // 権利者の指定を見てから埋める。ＭＳ 明朝・游・メイリオは「編集可能な
+        // 埋め込み」(fsType=8)、Century は制限なし(0)で、どれも埋め込める
+        let umeru = face
+            .tables()
+            .os2
+            .and_then(|o| o.permissions())
+            .map(|p| p != ttf_parser::Permissions::Restricted)
+            .unwrap_or(true);
         // 埋める所も型で分かれます。CFF は FontFile3(OpenType)。
         // **同じ番号の物を2度書かない** — 1つの記述に足します
-        if is_cff {
-            fd.font_file3(file);
-        } else {
-            fd.font_file2(file);
+        if umeru {
+            if is_cff {
+                fd.font_file3(file);
+            } else {
+                fd.font_file2(file);
+            }
         }
         fd.finish();
+        if !umeru {
+            continue;
+        }
         // **圧縮は自分で掛けます。** `filter` は「掛けた」と名乗るだけで、
         // 中身は触りません。名乗りだけ書いて圧縮しないと、読む側が
         // 「壊れた書体」と言います(2026-08-27 に pdftotext で見つけた)
