@@ -574,9 +574,10 @@ mod list_tests {
         p.no_grid = false;
         p.line_pt = Some((13.0, true));
         assert!((lh_of(&p, &frame, 10.5, None, pitch) - 13.0 * 25.4 / 72.0).abs() < 0.01);
-        // atLeast は下限を当ててから切り上げる
+        // atLeast は下限を当てるだけで、グリッドには合わせない(Word の PDF で確かめた。
+        // 19.3pt のグリッドで「最小 20.6pt」の行は 20.6pt のまま)
         p.line_pt = Some((20.0, false));
-        assert!((lh_of(&p, &frame, 10.5, None, pitch) - hitotsu * 2.0).abs() < 0.01);
+        assert!((lh_of(&p, &frame, 10.5, None, pitch) - 20.0 * 25.4 / 72.0).abs() < 0.01);
         // atLeast で値が 0 なら、グリッドに合わせず自然な高さ(Word の PDF で確かめた)
         p.line_pt = Some((0.0, false));
         assert_eq!(lh_of(&p, &frame, 10.5, None, pitch), lh_of(&p, &frame, 10.5, None, 0.0), "atLeast 0 が升に合った");

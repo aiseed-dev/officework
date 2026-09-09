@@ -784,10 +784,12 @@ pub(super) fn lh_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&st
         // exact は書体を見ません。atLeast は下限です
         Some((pt, true)) => pt * PT_TO_MM,
         Some((pt, false)) if pt <= 0.0 => sizen,
-        Some((pt, false)) => {
-            let v = kihon.max(pt * PT_TO_MM);
-            if snap { grid_up(v, pitch) } else { v }
-        }
+        // **最小値(`atLeast`)の段落は行グリッドに合わせません**(2026-09-09、
+        // Word の PDF で測った)。前は指定を満たした後さらにグリッドへ切り上げて
+        // いたので、19.3pt のグリッドの表のセルで「最小 20.6pt」の空の段落が
+        // 38.6pt になり、横浜市の道路廃止通知は行が倍の高さだった(Word の行は
+        // 28pt = 20.6pt + 余白)
+        Some((pt, false)) => sizen.max(pt * PT_TO_MM),
         None => kihon * para.spacing(),
     }
 }
@@ -841,7 +843,7 @@ pub(super) fn section_hf_at(doc: &Document, bi: usize) -> Option<crate::doc::Sec
     None
 }
 
-pub(super) fn section_geometry(doc: &Document) -> Vec<PageSetup> {
+pub fn section_geometry(doc: &Document) -> Vec<PageSetup> {
     if !doc.blocks.iter().any(|b| matches!(b, Block::Para(p) if p.sect.is_some())) {
         return Vec::new();
     }
@@ -1935,6 +1937,7 @@ fn utsusu(tmp: Sheet, dx: f32, dy: f32, sheet: &mut Sheet) {
         n.at_y += dy;
         sheet.notes.push(n);
     }
+    sheet.keep_rows.extend(tmp.keep_rows);
 }
 
 pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32, sheet: &mut Sheet,
@@ -1958,7 +1961,11 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         && table.col_mm.iter().all(|w| *w > 0.5)
     {
         let total: f32 = table.col_mm.iter().sum();
-        if total > haba {
+        // **列幅を固定した表(`w:tblLayout w:type="fixed"`)は縮めません**
+        // (2026-09-09、Word の PDF で測った)。Word はその幅のまま右の余白へ
+        // はみ出させる。縮めると狭い列で字が折れ、行が増える(横浜市の道路
+        // 廃止通知は「※１」の列が 1 字ずつ折れて 1 頁が 3 頁になっていた)
+        if total > haba && !table.fixed_layout {
             let k = haba / total;
             table.col_mm.iter().map(|w| w * k).collect()
         } else {
@@ -2269,6 +2276,12 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     // **見出しの行を持つ表**を覚えます。紙が頁をまたぐとき繰り返します
     if table.header_row && !sheet.header_tables.contains(&table_no) {
         sheet.header_tables.push(table_no);
+    }
+    // **頁の境で割らない行**(`w:cantSplit`)。頁割りが丸ごと次の紙へ送る
+    for (ri, keep) in table.row_keep.iter().enumerate() {
+        if *keep {
+            sheet.keep_rows.push((table_no, ri));
+        }
     }
     // 第2走: 中身と当たり判定(from_body=false。本文の位置合わせに入れない)
     for (ri, laid) in rows_laid.into_iter().enumerate() {

@@ -6,6 +6,13 @@
 
 == 進め方の作法(発注者と確立済み)
 
+* **2026-09-09 の続き(再開後)。** docx の Word 比較は続き30 の 9〜11 回目(SEKKEI)。
+  頁数の一致は 288 枚のうち 228。確かめ方は Python エンジンを組み直さずに
+  `cargo run --release -p paper --example docx_pdf -- 元.docx 出.pdf` と
+  `--example gyou_probe -- 元.docx 探す字` で行い、Word の PDF は
+  ~/Documents/officework-cmp/corpus/*.ms.pdf と pdfplumber で並べる。
+  次に見る物: Word が行を割らない条件(省力化の事業計画書の「２.」の行)、
+  `w:w`(文字の横倍率)、浮かぶ表(`w:tblpPr`)、JST の計画書(30 / 28)
 * **2026-09-09 の中断点(雷で電源を落とした)。** (1) docx の Word 比較: 続き30(SEKKEI)。
   ~/docx-corpus に 288 枚、Word の PDF は ~/Documents/officework-cmp/corpus/ に途中まで。
   比較を回すときは `tools/corpus_round.py`(Word が閉じないと止まる形に直した)。

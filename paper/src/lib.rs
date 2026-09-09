@@ -298,25 +298,31 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
     {
         for r in &sheet.rules {
             let [x1, y1, x2, y2] = *r;
-            let k = page_of(y1.min(y2));
-            if k >= layers.len() {
+            // **頁をまたぐ縦線は、またいだ頁ぜんぶに引く**(2026-09-09)。表の行が
+            // 頁の境で割れる(Word と同じ)ようになったので、続きの頁にも縦の
+            // 罫線が要る。前は最初の頁だけに引いて窓で切っていた
+            let k0 = page_of(y1.min(y2));
+            let k1 = page_of(y1.max(y2)).min(layers.len().saturating_sub(1));
+            if k0 >= layers.len() {
                 continue;
             }
-            let off = offsets[k];
-            let pp = papers.get(k).copied().unwrap_or(paper);
-            let bottom = pp.height_mm - pp.margin_mm;
-            let l = &layers[k];
-            let (ry1, ry2) = (
-                pp.height_mm - (y1 - off).clamp(pp.margin_mm, bottom),
-                pp.height_mm - (y2 - off).clamp(pp.margin_mm, bottom),
-            );
-            l.add_line(Line {
-                points: vec![
-                    (Point::new(Mm(pp.margin_mm + x1), Mm(ry1)), false),
-                    (Point::new(Mm(pp.margin_mm + x2), Mm(ry2)), false),
-                ],
-                is_closed: false,
-            });
+            for k in k0..=k1.max(k0) {
+                let off = offsets[k];
+                let pp = papers.get(k).copied().unwrap_or(paper);
+                let bottom = pp.height_mm - pp.margin_mm;
+                let l = &layers[k];
+                let (ry1, ry2) = (
+                    pp.height_mm - (y1 - off).clamp(pp.margin_mm, bottom),
+                    pp.height_mm - (y2 - off).clamp(pp.margin_mm, bottom),
+                );
+                l.add_line(Line {
+                    points: vec![
+                        (Point::new(Mm(pp.margin_mm + x1), Mm(ry1)), false),
+                        (Point::new(Mm(pp.margin_mm + x2), Mm(ry2)), false),
+                    ],
+                    is_closed: false,
+                });
+            }
         }
     }
     // 脚注。**紙の下**に、仕切り線を挟んで置く。
@@ -472,29 +478,37 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             _ => 0.0,
         }
     };
-    // **表の1行は、セルごとに別の紙へ割りません**(2026-09-01 発注者
-    // 「罫線が前ページ、内容がこちらのページと別れてしまっている」)。
-    //
-    // 組む所はセルごとに行を並べるので、`sheet.lines` の並びはセル1の全行 →
-    // セル2の全行です。1行ずつ紙に振ると、同じ表の行でもセル1が前の紙・セル2が
-    // 次の紙になります。罫線は表の行の位置で引くので、字だけが次の紙へ
-    // 動き、上の余白にも出ていました。
-    //
-    // その表の行に属する行の**いちばん下**で判断すれば、行の頭で紙が
-    // 変わり、セルが揃って動きます。紙1枚に収まらない行だけは今までどおり
-    // (途中で割らないと永遠に入らないため)
+    // **表の行は頁の境で割ります**(2026-09-09、Word と同じ。`w:cantSplit` は
+    // まだ読まない)。前は「紙 1 枚に入る行は丸ごと次の紙へ送る」だったので、
+    // 様式の大きな記入欄が入り切らない頁が余った(省力化の事業計画書は 9 頁が
+    // 11 頁)。組む所はセルごとに行を並べるので、**y の順で**紙に振る。並びの
+    // 順で振ると、同じ表の行でも先のセルが前の紙・後のセルが次の紙になり、
+    // 罫線は表の行の位置で引くので字だけが次の紙へ動く(2026-09-01 発注者
+    // 「罫線が前ページ、内容がこちらのページと別れてしまっている」)
+    // **割らない行**(`w:cantSplit`)の上端と下端。行の頭でこの下端が入るかを見て、
+    // 入らなければ行ごと次の紙へ送る(紙 1 枚に入らない行は今までどおり割る)
     let waku: std::collections::HashMap<(usize, usize), (f32, f32)> = {
         let mut m: std::collections::HashMap<(usize, usize), (f32, f32)> = Default::default();
         for l in &sheet.lines {
             if let Some((t, ri, _)) = l.cell {
-                let e = m.entry((t, ri)).or_insert((l.y_mm, l.y_mm));
-                e.0 = e.0.min(l.y_mm);
-                e.1 = e.1.max(l.y_mm);
+                if sheet.keep_rows.contains(&(t, ri)) {
+                    let e = m.entry((t, ri)).or_insert((l.y_mm, l.y_mm));
+                    e.0 = e.0.min(l.y_mm);
+                    e.1 = e.1.max(l.y_mm);
+                }
             }
         }
         m
     };
-    let mut pages = Vec::with_capacity(sheet.lines.len());
+    let mut pages = vec![0usize; sheet.lines.len()];
+    let mut order: Vec<usize> = (0..sheet.lines.len()).collect();
+    order.sort_by(|&a, &b| {
+        sheet.lines[a]
+            .y_mm
+            .partial_cmp(&sheet.lines[b].y_mm)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.cmp(&b))
+    });
     let mut offsets = vec![0.0f32];
     let mut header_h = vec![0.0f32];
     let mut papers = vec![paper_at(0.0)];
@@ -505,7 +519,8 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
     let mut starts = vec![f32::NEG_INFINITY];
     // 明示の改ページ(文書側の指定)。高さ超過とは別に、ここでも頁を割る
     let mut breaks = sheet.breaks.iter().copied().peekable();
-    for line in &sheet.lines {
+    for &li in &order {
+        let line = &sheet.lines[li];
         // **改ページを背負った空行は、新しい頁の1行目になる**(Word と同じ。
         // 2026-09-09、Word の PDF と並べて見つけた)。前は空行を全部いまの頁に
         // 残し、改ページを次の字のある行まで持ち越していたので、改ページだけの
@@ -514,7 +529,7 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
         let kaipeji_koko = breaks.peek().is_some_and(|&b| line.y_mm >= b - 0.01);
         if line.cells.is_empty() && !kaipeji_koko {
             // 空行は頁を進めない(描かれないので)。いまの頁に属するとみなす
-            pages.push(offsets.len());
+            pages[li] = offsets.len();
             continue;
         }
         // **改ページは1行につき1つだけ引き取ります**(2026-09-01 発注者
@@ -561,10 +576,6 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
         // **下の余白は下の余白で見ます**(2026-08-30)。前は左の余白を
         // 上下にも使っていました
         let soko = cur.height_mm - cur.bottom_mm - reserve - hh - asi;
-        // 表の行は、その行のいちばん下で判断します。紙1枚に収まらない行は
-        // 自分の位置で判断します(そうしないと入る所が無くなります)
-        // 表の行の上端と下端。紙1枚に収まらない行は、今までどおり自分の
-        // 位置で見ます(そうしないと入る所が無くなります)
         let hako = line
             .cell
             .and_then(|(t, ri, _)| waku.get(&(t, ri)))
@@ -617,7 +628,7 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             notes.last_mut().unwrap().extend(mine.iter().copied());
             note_h += add;
         }
-        pages.push(offsets.len());
+        pages[li] = offsets.len();
     }
     Pagination { pages, offsets, papers, starts, notes, header_h }
 }
@@ -1778,6 +1789,15 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
     m.set_hankaku(want.as_deref().and_then(kumihan::font::hankaku_em));
 
     let mut page = opts.page.or(d.page).unwrap_or_default();
+    // **1 頁目は最初の節の用紙で始める**(2026-09-09)。`d.page` は最後の節
+    // (文書の末尾の sectPr)なので、節ごとに余白が違う文書では 1 頁目の頭が
+    // 最後の節の余白から始まっていた(法務局の記載例は最初の節の上余白が
+    // 10mm、最後の節が 21mm で、1 頁目の字が全部 31pt 下にあった)
+    if opts.page.is_none() {
+        if let Some(first) = kumihan::section_geometry(d).first() {
+            page = *first;
+        }
+    }
     // **ヘッダー・フッターが本文を押す**(2026-09-09)。Word は本文の頭を
     // 「上の余白」と「ヘッダーの距離 + ヘッダーの高さ」の高い方に置く
     // (フッターも同じ)。余白の値そのものを置き替えて、組みも頁割りも
@@ -1804,6 +1824,18 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
         if !opts.endless {
             kumihan::fold_columns(&mut sheet, &page, y0);
         }
+    }
+    // **節ごとの用紙にも、その節のヘッダー・フッターの押し下げを掛ける。**
+    // 頁割りは節の用紙で本文の頭と底を見るので、ここで直さないと 2 節目
+    // からは押されない
+    let hfs = sheet.sect_hfs.clone();
+    for (i, (_, pg)) in sheet.sect_pages.iter_mut().enumerate() {
+        let (h, f) = match hfs.get(i).and_then(|x| x.as_ref()) {
+            Some(s) => (&s.header, &s.footer),
+            None => (&d.header, &d.footer),
+        };
+        pg.top_mm = kumihan::hf_push_mm(h, pg, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false);
+        pg.bottom_mm = kumihan::hf_push_mm(f, pg, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true);
     }
     Ok(LaidDoc { sheet, page, font: bytes, family: family.name.clone() })
 }

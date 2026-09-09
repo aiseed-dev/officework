@@ -19,6 +19,10 @@ fn main() -> Result<(), String> {
         "用紙 {}x{}mm 上 {} 下 {} / 行 {} / 改ページ {:?}",
         page.w_mm, page.h_mm, page.top_mm, page.bottom_mm, sheet.lines.len(), sheet.breaks
     );
+    for (at, pg) in &sheet.sect_pages {
+        println!("節 y={at:.1} 用紙 {}x{} 上 {} 下 {}", pg.w_mm, pg.h_mm, pg.top_mm, pg.bottom_mm);
+    }
+    let pn = paper::paginate_full(&sheet, paper::Paper::from_page(&page));
     let at = sheet.lines.iter().position(|l| l.text().contains(&key)).unwrap_or(0);
     for (i, l) in sheet.lines.iter().enumerate() {
         if i + 5 < at || i > at + n {
@@ -30,7 +34,8 @@ fn main() -> Result<(), String> {
             let t = if t > usize::MAX / 2 { format!("n{}", t - usize::MAX / 2) } else { t.to_string() };
             format!("({t},{r},{c})")
         });
-        println!("{i:5} y={:8.2} x={:6.1} {:>12} {:?}", l.y_mm, x, cell.unwrap_or_default(), t);
+        let pg = pn.pages.get(i).copied().unwrap_or(0);
+        println!("{i:5} p{pg:<3} y={:8.2} x={:6.1} {:>12} {:?}", l.y_mm, x, cell.unwrap_or_default(), t);
     }
     Ok(())
 }

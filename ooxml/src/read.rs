@@ -564,6 +564,8 @@ pub(super) struct TblBuild {
     row_mm: Vec<f32>,
     /// 行の高さが固定か(`w:hRule="exact"`)。`row_mm` と同じ並び
     row_exact: Vec<bool>,
+    /// 行を頁の境で割らない(`w:cantSplit`)。`row_mm` と同じ並び
+    row_keep: Vec<bool>,
     /// 罫線の指定(w:tblBorders)。**書いてなければ None** で、
     /// そのときは今までどおり四方に引きます
     borders: Option<kumihan::TableBorders>,
@@ -596,6 +598,7 @@ pub(super) struct SavedCell {
     grid_after: u8,
     row_twips: Option<u32>,
     row_exact: bool,
+    row_keep: bool,
     row_header: bool,
 }
 
@@ -1965,6 +1968,7 @@ pub(super) fn parse_document_rels_num(
     // 行の高さ(twip)。w:trPr の w:trHeight
     let mut row_twips: Option<u32> = None;
     let mut row_exact = false; // w:trHeight の hRule="exact"
+    let mut row_keep = false; // w:trPr の w:cantSplit
     // その行が見出しの行か(`w:trPr/w:tblHeader`)
     let mut row_header = false;
     // **無指定は None のまま持つ。** ここで数を入れると、往復で
@@ -2004,6 +2008,8 @@ pub(super) fn parse_document_rels_num(
     let mut page_break_before = false;
     // 次の段落を新しい紙から始めるか(run の中の `<w:br w:type="page"/>`)
     let mut tsugi_kaipeji = false;
+    // この段落の頭の `w:br` で改ページを立てたか(段落が空のままなら次へ回す)
+    let mut br_kara = false;
     // 段落の背景色(w:shd)と囲み枠(w:pBdr)
     let mut shade: Option<String> = None;
     let mut boxed = false;
@@ -2099,6 +2105,7 @@ pub(super) fn parse_document_rels_num(
                                 grid_after: row_grid_after,
                                 row_twips,
                                 row_exact,
+                                row_keep,
                                 row_header,
                             });
                             // **中の表は白紙の状態から読む**(2026-09-09)。外側の行の
@@ -2109,6 +2116,7 @@ pub(super) fn parse_document_rels_num(
                             // その見出しだけで 1 頁を使っていた
                             row_twips = None;
                             row_exact = false;
+                            row_keep = false;
                             row_header = false;
                             row_grid_before = 0;
                             row_grid_after = 0;
@@ -2290,14 +2298,14 @@ pub(super) fn parse_document_rels_num(
                     b"rStyle" if in_rpr => {
                         fmt.style_id = attr(&e, "val").filter(|v| !v.is_empty());
                     }
-                    // スタイル名で見出しと分からなくても、outlineLvl があれば見出し
-                    b"outlineLvl" if in_ppr => {
-                        if pstyle == ParaStyle::Body {
-                            if let Some(n) = attr(&e, "val").and_then(|v| v.parse::<u8>().ok()) {
-                                if n < 3 { pstyle = ParaStyle::Heading(n + 1); }
-                            }
-                        }
-                    }
+                    // **`w:outlineLvl` は見出しにしません**(2026-09-09)。前は
+                    // スタイル名で見出しと分からなくても outlineLvl があれば見出しに
+                    // していたが、Word では outlineLvl は目次の段階を言うだけで
+                    // 書式は変えない。見出しにすると見出しの既定の空き(前 9.5pt)と
+                    // 大きさが付き、法務局の契約書の例は「一 甲は…」の段落が 1 つ
+                    // ごとに 14pt 開いて 8 頁が 9 頁になっていた。保存でも
+                    // `w:pStyle` が見出しに書き替わるので、読まない
+                    b"outlineLvl" if in_ppr => {}
                     b"framePr" if in_ppr => {
                         dropcap = matches!(attr(&e, "dropCap").as_deref(),
                             Some("drop") | Some("margin"));
@@ -2437,6 +2445,10 @@ pub(super) fn parse_document_rels_num(
                     // 繰り返します。`w:val="0"` は「繰り返さない」です
                     b"tblHeader" => if stack.last().is_some() {
                         row_header = !matches!(attr(&e, "val").as_deref(), Some("0") | Some("false"));
+                    },
+                    // 行を頁の境で割らない(`w:cantSplit`)
+                    b"cantSplit" => if stack.last().is_some() {
+                        row_keep = !matches!(attr(&e, "val").as_deref(), Some("0") | Some("false"));
                     },
                     // **セルの幅いっぱいに字を配る**(`w:tcFitText`)
                     b"tcFitText" if in_tcpr => {
@@ -2854,6 +2866,7 @@ pub(super) fn parse_document_rels_num(
                             let atama = para.as_ref().is_some_and(|p| p.iter().all(|r| r.text.trim().is_empty()));
                             if atama {
                                 page_break_before = true;
+                                br_kara = true;
                             } else {
                                 tsugi_kaipeji = true;
                             }
@@ -2974,14 +2987,14 @@ pub(super) fn parse_document_rels_num(
                     b"rStyle" if in_rpr => {
                         fmt.style_id = attr(&e, "val").filter(|v| !v.is_empty());
                     }
-                    // スタイル名で見出しと分からなくても、outlineLvl があれば見出し
-                    b"outlineLvl" if in_ppr => {
-                        if pstyle == ParaStyle::Body {
-                            if let Some(n) = attr(&e, "val").and_then(|v| v.parse::<u8>().ok()) {
-                                if n < 3 { pstyle = ParaStyle::Heading(n + 1); }
-                            }
-                        }
-                    }
+                    // **`w:outlineLvl` は見出しにしません**(2026-09-09)。前は
+                    // スタイル名で見出しと分からなくても outlineLvl があれば見出しに
+                    // していたが、Word では outlineLvl は目次の段階を言うだけで
+                    // 書式は変えない。見出しにすると見出しの既定の空き(前 9.5pt)と
+                    // 大きさが付き、法務局の契約書の例は「一 甲は…」の段落が 1 つ
+                    // ごとに 14pt 開いて 8 頁が 9 頁になっていた。保存でも
+                    // `w:pStyle` が見出しに書き替わるので、読まない
+                    b"outlineLvl" if in_ppr => {}
                     b"framePr" if in_ppr => {
                         dropcap = matches!(attr(&e, "dropCap").as_deref(),
                             Some("drop") | Some("margin"));
@@ -3120,6 +3133,10 @@ pub(super) fn parse_document_rels_num(
                     // 繰り返します。`w:val="0"` は「繰り返さない」です
                     b"tblHeader" => if stack.last().is_some() {
                         row_header = !matches!(attr(&e, "val").as_deref(), Some("0") | Some("false"));
+                    },
+                    // 行を頁の境で割らない(`w:cantSplit`)
+                    b"cantSplit" => if stack.last().is_some() {
+                        row_keep = !matches!(attr(&e, "val").as_deref(), Some("0") | Some("false"));
                     },
                     // **セルの幅いっぱいに字を配る**(`w:tcFitText`)
                     b"tcFitText" if in_tcpr => {
@@ -3323,6 +3340,15 @@ pub(super) fn parse_document_rels_num(
                         if let Some(runs) = para.take() {
                             rep.runs += runs.len();
                             rep.paragraphs += 1;
+                            // **改ページだけの段落**(`<w:p><w:r><w:br w:type="page"/></w:r></w:p>`)は
+                            // 次の段落を新しい紙から始める。Word はこの段落の空の行を新しい紙の
+                            // 頭に置かない(法務局の記載例で測った)。字のある段落の頭の改ページは
+                            // その段落から(厚労省の「別紙５」)
+                            if br_kara && runs.iter().all(|r| r.text.trim().is_empty()) {
+                                page_break_before = false;
+                                tsugi_kaipeji = true;
+                            }
+                            br_kara = false;
                             let mut p = Paragraph { align, raw_adoc: None, list_text: list_text.take(),
                                             anchors: std::mem::take(&mut anchors),
                                 sect: para_sect.take(),
@@ -3446,7 +3472,9 @@ pub(super) fn parse_document_rels_num(
                         // 添字がずれません
                         b.row_mm.push(row_twips.take().map_or(0.0, |t| twip_mm(t as f32)));
                         b.row_exact.push(row_exact);
+                        b.row_keep.push(row_keep);
                         row_exact = false;
+                        row_keep = false;
                     },
                     b"tbl" => {
                         if let Some(b) = stack.pop() {
@@ -3468,6 +3496,7 @@ pub(super) fn parse_document_rels_num(
                                     b.row_mm
                                 },
                                 row_exact: if b.row_exact.iter().any(|x| *x) { b.row_exact } else { Vec::new() },
+                                row_keep: if b.row_keep.iter().any(|x| *x) { b.row_keep } else { Vec::new() },
                                 // 役割は `.sheet.adoc` の印なので docx には無い
                                 role: None,
                                 // docx は幅を mm で持つので、割合は空のまま
@@ -3509,6 +3538,7 @@ pub(super) fn parse_document_rels_num(
                                     row_grid_after = sv.grid_after;
                                     row_twips = sv.row_twips;
                                     row_exact = sv.row_exact;
+                                    row_keep = sv.row_keep;
                                     row_header = sv.row_header;
                                 }
                             }

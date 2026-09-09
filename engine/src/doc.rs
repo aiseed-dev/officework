@@ -932,6 +932,10 @@ pub struct Table {
     /// 固定の行は中身が多くても伸びない(Word は切れる)。空なら全部「下限」
     /// (2026-09-09、厚労省の研究費様式の詰め物の行 94 本が伸びて 3 頁増えていた)
     pub row_exact: Vec<bool>,
+    /// **行を頁の境で割らない**(docx の `w:trPr/w:cantSplit`)。`row_mm` と同じ並び。
+    /// 空なら全部「割ってよい」(Word の既定)。頁割り(`paper::paginate_full`)が
+    /// 見て、入り切らない行を丸ごと次の紙へ送る(2026-09-09。288 枚のうち 63 枚が持つ)
+    pub row_keep: Vec<bool>,
     /// **列の幅の割合**(AsciiDoc の `[cols="1,3"]`)。2026-08-18。
     ///
     /// adoc は幅を mm で言わず、比で言います。紙の幅が決まって初めて mm に
@@ -2606,6 +2610,9 @@ pub struct Sheet {
     /// 同じものがあるはず」)。`Table::header_row` は模型に在り、adoc も
     /// HTML も docx も見ていましたが、**紙だけが見ていません**でした
     pub header_tables: Vec<usize>,
+    /// **頁の境で割らない表の行**((表の番号, 行)。docx の `w:cantSplit`)。
+    /// 頁割りがこれを見て、入り切らない行を丸ごと次の紙へ送る(2026-09-09)
+    pub keep_rows: Vec<(usize, usize)>,
     /// 表のセルの当たり判定(クリックでセルを選ぶため)
     pub cell_boxes: Vec<CellBox>,
     /// 置いた画像(実体, [x, 上端y, 幅, 高さ] mm)。画面も紙もこれを見る

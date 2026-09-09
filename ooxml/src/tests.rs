@@ -2328,7 +2328,8 @@ mod style_tests {
 
     #[test]
     fn headings_from_japanese_word_also_read() {
-        // 日本語版 Word の見出し1は style id が「1」。outlineLvl だけでも見出し
+        // 日本語版 Word の見出し1は style id が「1」。**outlineLvl だけでは見出しにしない**
+        // (Word は outlineLvl で書式を変えない。2026-09-09)
         let xml = r#"<w:document xmlns:w="x"><w:body>
             <w:p><w:pPr><w:pStyle w:val="1"/></w:pPr><w:r><w:t>甲</w:t></w:r></w:p>
             <w:p><w:pPr><w:outlineLvl w:val="1"/></w:pPr><w:r><w:t>乙</w:t></w:r></w:p>
@@ -2336,7 +2337,7 @@ mod style_tests {
         </w:body></w:document>"#;
         let (doc, _) = parse_document_xml(xml);
         let ps: Vec<ParaStyle> = doc.paragraphs().map(|p| p.style).collect();
-        assert_eq!(ps, vec![ParaStyle::Heading(1), ParaStyle::Heading(2), ParaStyle::Body]);
+        assert_eq!(ps, vec![ParaStyle::Heading(1), ParaStyle::Body, ParaStyle::Body]);
     }
 }
 
