@@ -51,6 +51,38 @@ fn gyou_mm(grid: &Grid, r: u32) -> f32 {
 /// 書体が `hhea` を持っていれば、そちらを使います([`Habakei::okuri_em`])。
 const OKURI_KITEI: f32 = 1.2;
 
+/// **セルの中で、行と行の間隔が字の大きさより最低どれだけ広いか(点)。**
+///
+/// Excel はセルの中で行を折り返すときも、縦書き(`textRotation="255"`)で
+/// 字を縦に並べるときも、書体の行の高さより広く取ります。集めた xlsx の
+/// Excel の PDF で測った間隔です(倍率の掛かっている物は等倍に戻した値)。
+///
+/// [cols="1,1,1,1"]
+/// |===
+/// |書体 |大きさ |Excel |書体の高さ
+///
+/// |ＭＳ Ｐ明朝 |6pt |10pt |7.8pt
+/// |ＭＳ Ｐ明朝 |8pt |12pt |10.3pt
+/// |ＭＳ 明朝 |9pt |13pt |11.6pt
+/// |ＭＳ Ｐ明朝 |10pt |14pt |12.9pt
+/// |ＭＳ Ｐゴシック |11pt |14pt |14.2pt
+/// |メイリオ |12pt |20pt |18.0pt
+/// |===
+///
+/// 差は大きさによらず 4 点前後です。書体の高さの方が高ければそちらを
+/// 使います(メイリオのように行の高さが 1.5em ある書体)。
+///
+/// **まだ合っていません** — 11pt のＭＳ Ｐゴシックは Excel が 14 点、
+/// この式だと 15 点になります。メイリオ 12pt も 18 点で、Excel の 20 点に
+/// 2 点足りません。Excel の本当の決め方は分かっていません(2026-09-09)。
+const MASU_OKURI_SITAJI_PT: f32 = 4.0;
+
+/// **セルの中の、行と行の間隔(mm)。** 書体の行の高さ(`okuri_mm`)と
+/// 「字の大きさ + [`MASU_OKURI_SITAJI_PT`]」の、広い方です。
+fn masu_hiraki_mm(okuri_mm: f32, pt: f32) -> f32 {
+    okuri_mm.max((pt + MASU_OKURI_SITAJI_PT) * 25.4 / 72.0)
+}
+
 /// **書体が読めないときの下がり**(1em あたり)。
 const SAGARI_KITEI: f32 = 0.12;
 
@@ -229,9 +261,16 @@ pub struct PrintSetup {
 /// 指定なら小さい方(=きつい方)を採る。**縮めるだけで拡大はしない** —
 /// Excel と同じ。小さな表が紙いっぱいに膨らむと帳票が別物になる。
 ///
-/// 行の高さは改ページを跨ぐぶんの端数を無視した概算。厳密に詰めるには
-/// 縮尺を変えて行送りをやり直す繰り返しが要るが、**紙に収める**という
-/// 目的にはこれで足りる(足りない分は下限 10% で頭打ち)。
+/// **倍率は 1% きざみに切り捨てます。** Excel の「拡大縮小」の欄は整数の
+/// パーセントで、紙に収める倍率もそこに入る整数です。北海道の請負代金
+/// 内訳書(fitToPage、A4 横)は使える高さ 489 点に対して中身が 496 点で、
+/// ちょうどの倍率 0.9859 を 98% に切り捨てた大きさで刷られていました
+/// (2026-09-09、Excel の PDF の罫線で測りました)。
+///
+/// 切り捨てるので、行の高さの端数で最後の1行が押し出されることもありません
+/// (前は「いちばん高い行のぶんだけ余分に縮める」という当て推量で避けて
+/// いました。これは Excel より 4 点ほど余計に縮めていて、同じ内訳書で
+/// 94% になっていました)。
 fn fit_scale(
     grid: &Grid,
     paper: Paper,
@@ -268,24 +307,9 @@ fn fit_scale(
             k = k.min(usable_h * n as f32 / total_h);
         }
     }
-    // **端数のぶんだけ余分に縮めます**(2026-08-31)。上の割り算は行が
-    // 途中で切れる前提の概算です。実際は行の途中では切れないので、
-    // ちょうどの倍率だと最後の1行が入らず紙が1枚増えます。国税庁の
-    // 酒税の総括表の1シート目がこれで2枚になっていました。
-    //
-    // 見るのはいちばん高い行です — 端数がどれだけ大きくても、その1行ぶんを
-    // 超えることはありません
-    if let Some(n) = nh.filter(|n| *n > 0) {
-        let takai = (r0..r1)
-            .filter(|r| !grid.row_hidden.contains(r))
-            .map(|r| gyou_mm(grid, r))
-            .fold(0.0f32, f32::max);
-        let waku = usable_h * n as f32;
-        if total_h > 0.0 && (total_h + takai) * k > waku {
-            k = k.min(waku / (total_h + takai));
-        }
-    }
-    Some(k.clamp(0.1, 1.0))
+    // 1% きざみに切り捨てます。ちょうどの倍率だと行の高さの端数で最後の
+    // 1行が押し出されますが、切り捨てた倍率なら隙間ができます
+    Some(((k * 100.0).floor() / 100.0).clamp(0.1, 1.0))
 }
 
 /// **紙の切れ目**(この行/この列から新しい紙になる、の一覧)。
@@ -557,6 +581,39 @@ struct Board {
     haba: Habakei,
 }
 
+/// **ＭＳ の書体で、縦の寸法が同じ仲間の名前。**
+///
+/// ＭＳ Ｐ明朝とＭＳ 明朝は同じファイル(`msmincho.ttc`)に入っていて、
+/// 縦の寸法はそっくり同じです(1em = 256、上 220、下 36)。ＭＳ Ｐゴシック・
+/// ＭＳ UI ゴシックとＭＳ ゴシックも同じ(`msgothic.ttc`)です。「Ｐ」は
+/// 字の幅が字ごとに変わるという意味で、行の高さには関わりません。
+const MS_ONAJI_TAKASA: &[(&str, &str)] = &[
+    ("ＭＳ Ｐ明朝", "ＭＳ 明朝"),
+    ("MS PMincho", "MS Mincho"),
+    ("ＭＳ Ｐゴシック", "ＭＳ ゴシック"),
+    ("MS PGothic", "MS Gothic"),
+    ("ＭＳ UI ゴシック", "ＭＳ ゴシック"),
+    ("MS UI Gothic", "MS Gothic"),
+];
+
+/// **書体の名前から、1行の高さ(em)を引きます。**
+///
+/// [`kumihan::font::okuri_em`] を呼びますが、ＭＳ の「Ｐ」つきの名前は
+/// [`MS_ONAJI_TAKASA`] で「Ｐ」の無い名前に読み替えてから渡します。
+/// 組版が持っている表には「Ｐ」の無い名前しか無く、「Ｐ」つきの名前は
+/// 表を外れて、この機械の置き替え先(梅明朝など)の寸法 1.0em に
+/// 落ちていました。集めた xlsx の 43 枚がＭＳ ＰゴシックかＭＳ Ｐ明朝
+/// なので、セルの中の行の間隔がそのぶん詰まっていました(2026-09-09)。
+fn okuri_em_na(na: Option<&str>) -> Option<f32> {
+    let na = na?;
+    let tsumeta = na.split_whitespace().collect::<String>();
+    let yomikae = MS_ONAJI_TAKASA
+        .iter()
+        .find(|(p, _)| p.split_whitespace().collect::<String>() == tsumeta)
+        .map(|(_, m)| *m);
+    kumihan::font::okuri_em(Some(yomikae.unwrap_or(na)))
+}
+
 /// **書体ごとの、1字の幅(em)。**
 ///
 /// 前は書体に関わらず「半角 0.55em・全角 1.0em」で見積もっていました
@@ -624,7 +681,7 @@ impl Habakei {
             .iter()
             .enumerate()
             .map(|(i, d)| {
-                if let Some(em) = kumihan::font::okuri_em(na.get(i).map(|s| s.as_str())) {
+                if let Some(em) = okuri_em_na(na.get(i).map(|s| s.as_str())) {
                     return em;
                 }
                 ttf_parser::Face::parse(d, 0)
@@ -1661,7 +1718,24 @@ fn draw_sheet(
                     .map(|(_, rp, rf)| haba.okuri_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp))
                     .fold(0.0f32, f32::max)
             };
-            let takasa: f32 = gyou.iter().map(|g| okuri_of(g)).sum();
+            // **行と行の間隔**は、書体の高さと「字の大きさ + 4 点」の高い方です
+            // ([`MASU_OKURI_SITAJI_PT`])。行が1つだけのセルには効きません —
+            // 測ったのは Excel の行と行の間隔で、行の箱そのものの高さでは
+            // ないためです
+            let hiraki_of = |g: &[Kata]| -> f32 {
+                if g.is_empty() {
+                    return masu_hiraki_mm(okuri_of(g), pt);
+                }
+                g.iter()
+                    .map(|(_, rp, rf)| {
+                        let o = haba.okuri_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp);
+                        masu_hiraki_mm(o, *rp)
+                    })
+                    .fold(0.0f32, f32::max)
+            };
+            // 最後の行だけは箱の高さ、その手前は行と行の間隔で積みます
+            let takasa: f32 = gyou[..gyou.len() - 1].iter().map(|g| hiraki_of(g)).sum::<f32>()
+                + okuri_of(&gyou[gyou.len() - 1]);
             // **縦の揃え**(2026-08-31 発注者)。前はどのセルも下から積んで
             // いて、`valign` を一度も見ていませんでした。上下に結合した
             // 見出しが結合の1行目の下端に出ていたのはこれと結合の高さの
@@ -1738,7 +1812,7 @@ fn draw_sheet(
                         }
                     }
                 }
-                ty -= okuri_of(g);
+                ty -= hiraki_of(g);
             }
         }
     }
@@ -3369,8 +3443,13 @@ mod zukei_tests {
         let matomo = (f32::from(face.ascender()) - f32::from(face.descender())) / em;
         assert!((h.okuri_em(0) - matomo).abs() < 0.001,
                 "行送りが書体の値でない: {} 対 {matomo}", h.okuri_em(0));
-        // 決め打ちの 1.2 ではないこと(日本語の書体は 1.0 前後)
-        assert!(h.okuri_em(0) < 1.15 || h.okuri_em(0) > 1.25,
+        // 決め打ちの 1.2 ではないこと。
+        //
+        // 前は「1.15 から 1.25 の間に入らない」で見ていました。梅明朝を
+        // この機械に入れたら 1.165em で、書体から取っているのに落ちます
+        // (2026-09-09)。上の行で書体の値と突き合わせているので、ここは
+        // 1.2 ちょうどでないことだけ見ます
+        assert!((h.okuri_em(0) - 1.2).abs() > 1e-4,
                 "1.2 の決め打ちのまま: {}", h.okuri_em(0));
         // 下がりは descent。8pt なら 1mm を大きく下回ります
         let s = h.sagari_mm(0, 8.0);
@@ -3395,6 +3474,65 @@ mod zukei_tests {
         g.fit_to_h = Some(1);
         let paper = Paper::hitoshii(210.0, 140.0, 20.0);
         let setup = PrintSetup { date1904: false, mdw_pt: 0.0, ..Default::default() };
+        let leaves = sheet_leaves(&g, paper, &setup).expect("組めない");
+        assert_eq!(leaves.len(), 1, "1枚に収まっていない: {} 枚", leaves.len());
+    }
+
+    /// **「Ｐ」つきのＭＳ の書体は、「Ｐ」の無い方と同じ行の高さ。**
+    ///
+    /// ＭＳ Ｐ明朝は表を外れて、置き替え先(梅明朝)の 1.0em に落ちて
+    /// いました。Excel は 10pt のＭＳ Ｐ明朝で 14 点の間隔を取ります
+    /// (2026-09-09、岐阜労働局 000785764.xlsx の縦書きのセルで測った)。
+    #[test]
+    fn the_p_faces_of_ms_have_the_same_line_height() {
+        let p = okuri_em_na(Some("ＭＳ Ｐ明朝")).expect("ＭＳ Ｐ明朝 の行の高さが引けない");
+        let nashi = okuri_em_na(Some("ＭＳ 明朝")).expect("ＭＳ 明朝 の行の高さが引けない");
+        assert!((p - nashi).abs() < 1e-6, "ＭＳ Ｐ明朝 {p} と ＭＳ 明朝 {nashi} で違う");
+        assert!(p > 1.0, "置き替え先の 1.0em に落ちたまま: {p}");
+        let g = okuri_em_na(Some("ＭＳ Ｐゴシック")).expect("ＭＳ Ｐゴシック の行の高さが引けない");
+        assert!((g - okuri_em_na(Some("ＭＳ ゴシック")).unwrap()).abs() < 1e-6, "ゴシックで違う: {g}");
+    }
+
+    /// **セルの中の行と行の間隔は、字の大きさより 4 点以上広い。**
+    ///
+    /// Excel はＭＳ Ｐ明朝 10pt のセルで 14 点の間隔を取ります(縦書きの
+    /// セルで測りました)。書体そのものの高さは 12.9 点です。1行だけの
+    /// セルには効かせません。
+    #[test]
+    fn lines_in_a_cell_stand_at_least_four_points_apart() {
+        let mm = |pt: f32| pt * 25.4 / 72.0;
+        // ＭＳ Ｐ明朝 10pt。書体の高さは 12.92 点だが、Excel は 14 点あける
+        assert!((masu_hiraki_mm(mm(12.92), 10.0) - mm(14.0)).abs() < 1e-4,
+                "10pt の間隔が {}mm(14 点 = {}mm のはず)",
+                masu_hiraki_mm(mm(12.92), 10.0), mm(14.0));
+        // メイリオ 12pt。書体の高さ 18 点の方が広いので、そちらを使う
+        assert!((masu_hiraki_mm(mm(18.0), 12.0) - mm(18.0)).abs() < 1e-4,
+                "12pt の間隔が {}mm(18 点のはず)", masu_hiraki_mm(mm(18.0), 12.0));
+    }
+
+    /// **紙に収める倍率は、1% きざみの整数。**
+    ///
+    /// Excel の「拡大縮小」の欄は整数のパーセントです。北海道の請負代金
+    /// 内訳書は、使える高さ 489 点に中身 496 点を収める指定で、98% の
+    /// 大きさで刷られていました(2026-09-09、Excel の PDF の罫線で測った)。
+    /// こちらは端数まで使ったうえに「いちばん高い行のぶんだけ余分に縮める」
+    /// を掛けていて、94% になっていました。
+    #[test]
+    fn the_scale_that_fits_a_page_is_a_whole_percent() {
+        let mut g = Grid::default();
+        // 25 点の行を 20 本 = 500 点(176.4mm)。使える高さは 173.5mm なので、
+        // ちょうどの倍率は 0.9836 — Excel と同じく 98% に切り捨てます
+        for r in 0..20u32 {
+            g.row_height.insert(r, 25.0);
+            g.set(book::Pos::new(r, 0), book::Cell::input("あ"));
+        }
+        g.fit_to_h = Some(1);
+        let setup = PrintSetup { date1904: false, mdw_pt: 0.0, ..Default::default() };
+        let paper = Paper::hitoshii(210.0, 213.5, 20.0);
+        let k = fit_scale(&g, paper, &setup, (0, 20, 0, 1), (20.0, 20.0, 20.0, 20.0))
+            .expect("収める指定なのに倍率が出ない");
+        assert!((k - 0.98).abs() < 1e-6, "倍率が {k} — 98% に切り捨てていない");
+        // 20 本ぶんが使える高さに収まる = 紙は1枚
         let leaves = sheet_leaves(&g, paper, &setup).expect("組めない");
         assert_eq!(leaves.len(), 1, "1枚に収まっていない: {} 枚", leaves.len());
     }

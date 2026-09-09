@@ -37,6 +37,21 @@ mod basic {
         assert_eq!(v(&sh, "A5"), "-2");
     }
 
+    /// **空のセルを指す式は 0 になります。**
+    ///
+    /// Excel と同じです。式のあるセルは、答えが空になっても空のセルには
+    /// なりません。日野市の労務台帳(r6daicho_itaku.xlsx)は入力用の
+    /// シートを指す式ばかりで、Excel の PDF には 0 が並ぶのに、こちらは
+    /// 25 か所が空でした(2026-09-09)。
+    #[test]
+    fn a_formula_that_points_at_a_blank_cell_shows_zero() {
+        let sh = s(&[("A1", "=B1"), ("A2", "=IF(B1=\"\",\"\",1)"), ("A3", "=B1+1")]);
+        assert_eq!(v(&sh, "A1"), "0", "空のセルを指す式が 0 になっていない");
+        // 「空文字」を返す式はそのまま空文字です(0 にはしません)
+        assert_eq!(v(&sh, "A2"), "");
+        assert_eq!(v(&sh, "A3"), "1");
+    }
+
     #[test]
     fn cell_references_and_chains_resolve() {
         // 定義の順序が逆でも解ける(依存を先に解く)

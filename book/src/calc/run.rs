@@ -555,6 +555,14 @@ pub(super) fn recalc_pass_iter(
     }
     let mut max_delta = 0.0f64;
     for (p, v) in resolved {
+        // **式の答えが「空」なら 0 です。** Excel は空のセルを指す式
+        // (`=基本情報入力!D5`)を 0 と出します。式のあるセルは、答えが
+        // 空になっても空のセルにはなりません。こちらは空のまま出していた
+        // ので、日野市の労務台帳(r6daicho_itaku.xlsx)では商号・所在地・
+        // 担当者名など 25 か所の 0 が抜け、日付の欄も「1900年1月0日」に
+        // なりませんでした(2026-09-09、Excel の PDF と比べて見つけました)。
+        // 空の文字列を返す式(`IF(A1="","",…)`)は文字列なので、そのままです
+        let v = if v.is_empty() { Value::Number(0.0) } else { v };
         if let Some(c) = sheet.cells.get_mut(&p) {
             if c.formula.is_some() {
                 if c.value != v && !volatile.contains(&p) {
@@ -674,6 +682,8 @@ pub(super) fn recalc_pass_iter(
                         .cloned()
                         .unwrap_or_else(|| Value::Error("#N/A".into())),
                 };
+                // 配列の式でも、答えの「空」は 0 です(上の普通の式と同じ)
+                let v = if v.is_empty() { Value::Number(0.0) } else { v };
                 if p == *origin {
                     if let Some(cell) = sheet.cells.get_mut(origin) {
                         if cell.value != v && !volatile.contains(origin) {
