@@ -117,6 +117,12 @@ def main():
         for f in sorted(fs):
             if f.lower().endswith(".docx") and not f.startswith("~$"):
                 files.append(os.path.join(d, f))
+    # 比べる対象から外す物(Word の PDF が普通でない)。理由を添えて増やす
+    hazusu = {
+        # Word の PDF で 1 行目の字が 2 つの文に重なって出る。Word 側の出力が普通でない
+        "jsite.mhlw.go.jp/002517302.docx",
+    }
+    files = [f for f in files if os.path.relpath(f, a.corpus) not in hazusu]
     if a.only:
         files = [f for f in files if a.only in f]
     if a.limit:

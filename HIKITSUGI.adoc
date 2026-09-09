@@ -7,12 +7,13 @@
 == 進め方の作法(発注者と確立済み)
 
 * **2026-09-09 の続き(再開後)。** docx の Word 比較は続き30 の 9〜11 回目(SEKKEI)。
-  頁数の一致は 288 枚のうち 228。確かめ方は Python エンジンを組み直さずに
+  頁数の一致は 288 枚のうち 232。確かめ方は Python エンジンを組み直さずに
   `cargo run --release -p paper --example docx_pdf -- 元.docx 出.pdf` と
   `--example gyou_probe -- 元.docx 探す字` で行い、Word の PDF は
   ~/Documents/officework-cmp/corpus/*.ms.pdf と pdfplumber で並べる。
-  次に見る物: Word が行を割らない条件(省力化の事業計画書の「２.」の行)、
-  `w:w`(文字の横倍率)、浮かぶ表(`w:tblpPr`)、JST の計画書(30 / 28)
+  次に見る物: 浮かぶ表(`w:tblpPr`。42 枚)、JST の計画書(34 / 31)、
+  横浜市 0845(6 / 5)。回帰試験 `paper/tests/kaiki.rs` はこの Mac で通る
+  (2026-09-09 に指紋を取り直した)
 * **2026-09-09 の中断点(雷で電源を落とした)。** (1) docx の Word 比較: 続き30(SEKKEI)。
   ~/docx-corpus に 288 枚、Word の PDF は ~/Documents/officework-cmp/corpus/ に途中まで。
   比較を回すときは `tools/corpus_round.py`(Word が閉じないと止まる形に直した)。
@@ -102,9 +103,10 @@ Fable が触るので、Opus はそこを触らない。** それ以外の write
   `cargo test -p pysheet` はさらに `DYLD_FALLBACK_LIBRARY_PATH=$HOME/miniforge3/lib`
   (libpython の置き場)と `PATH=$PWD/.venv/bin:$PATH`(python_smoke が `python3` を
   引くので、3.9 でなく 3.13 を先に)が要る。clippy は `rustup component add clippy`
-* **紙面の回帰試験 `paper/tests/kaiki.rs`(`the_same_paper_draws_the_same_picture`)はこの Mac では落ちる。**
-  控えの hash は Linux(Noto Sans CJK JP)で取った物で、梅フォントと Office の書体が入った
-  この機械では絵が変わる。CI(Linux)で見る試験なので、この機械の結果は当てにしない
+* **紙面の回帰試験 `paper/tests/kaiki.rs`(`the_same_paper_draws_the_same_picture`)の控えは
+  2026-09-09 にこの Mac で取り直した。** 表計算の紙面を Excel に合わせた分(`paper::grid`)で
+  罫線の指紋が変わっていた。字の指紋は控えと同じ書体のときだけ突き合わせるので、
+  CI(Linux、Noto Sans CJK JP)では罫線の指紋だけを見る
 * **Office の同梱書体を書体の探索先に入れた(2026-09-09)。** `/Applications/Microsoft Word.app/Contents/Resources/DFonts`
   (Excel・PowerPoint も同じ)に ＭＳ 明朝・ゴシック・游・メイリオ・Century など 280 本。
   Office の入った Mac では置き替え無しで原本の書体で組む(発注者確認済み)。書体は読むだけ

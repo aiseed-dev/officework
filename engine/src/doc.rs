@@ -185,6 +185,11 @@ pub struct CharFormat {
     /// 持っていて、うちは1行あたり2文字ほど多く詰めていました
     /// (2026-09-01 発注者「漢字の横幅は同じはず。どうして文字数が違ってくる」)。
     pub spacing_pt: f32,
+    /// **文字の横倍率**(%。docx の `w:rPr/w:w`。0 は無指定 = 100%)。
+    /// 「文字の幅を 150% にする」の指定で、官公庁の様式 288 枚のうち 68 枚が
+    /// 持つ。字送りをこの倍率で伸縮し、PDF は字形も横に伸縮する(`Tz`)。
+    /// 画面は字送りだけ合わせる(2026-09-09)
+    pub w_pct: f32,
     /// **どの書式を「言った」か。**
     ///
     /// docx の `<w:b/>` は入、`<w:b w:val="0"/>` は切、要素そのものが
@@ -1444,6 +1449,12 @@ pub struct StyleLook {
     pub color: Option<String>,
     /// 書体の名前
     pub font: Option<String>,
+    /// **欧文の書体**(docx の `w:rFonts` の `w:ascii`。`font` は和文の
+    /// `w:eastAsia`、無ければ `w:ascii`)。日本語の Word の「標準」は
+    /// ascii=Century / eastAsia=ＭＳ 明朝 で、和文の run に Century を当てると
+    /// 字幅が 0.7em になり 1 行の字数が 4 割増える(北陸地方整備局の注記表。
+    /// 2026-09-09)。書体の無い run は字の種類でどちらかを受ける
+    pub font_latin: Option<String>,
     /// 背景の塗り(RRGGBB)
     pub fill: Option<String>,
 }
@@ -2445,6 +2456,11 @@ impl Document {
         self.style_look(id, |l| l.font.clone())
     }
 
+    /// スタイルの欧文の書体([`StyleLook::font_latin`])
+    pub fn style_font_latin(&self, id: Option<&str>) -> Option<String> {
+        self.style_look(id, |l| l.font_latin.clone())
+    }
+
     /// **スタイル定義を1つにまとめる。** 元になるスタイル(`w:basedOn`)を
     /// たどり、手前のスタイルが言っていない所だけ先のスタイルで埋めます。
     ///
@@ -2468,6 +2484,7 @@ impl Document {
             lk.size_pt = lk.size_pt.or(s.look.size_pt);
             lk.color = lk.color.clone().or_else(|| s.look.color.clone());
             lk.font = lk.font.clone().or_else(|| s.look.font.clone());
+            lk.font_latin = lk.font_latin.clone().or_else(|| s.look.font_latin.clone());
             lk.fill = lk.fill.clone().or_else(|| s.look.fill.clone());
             pl.align = pl.align.or(s.para.align);
             pl.space_before_pt = pl.space_before_pt.or(s.para.space_before_pt);

@@ -72,6 +72,8 @@ pub struct Piece {
     /// measure しているので、渡さないと**紙の上だけ書体の送りで描かれ**、
     /// 詰めた原稿が行からはみ出します(2026-09-03、内閣府の調査票)
     pub tc_pt: f32,
+    /// **文字の横倍率**(%。docx の `w:w`。0 は 100)。PDF の `Tz` に渡す
+    pub tz: f32,
 }
 
 /// 絵を PDF に載せる形にする。返りは(中身, 幅, 高さ, JPEG か)。
@@ -543,8 +545,16 @@ pub fn write_pages_fonts<W: std::io::Write>(
             if p.tc_pt.abs() > 0.001 {
                 c.set_char_spacing(p.tc_pt);
             }
+            // **文字の横倍率**(`Tz`)。組む側の字送りと同じ倍率で字形も伸縮する
+            let nobasu = p.tz > 0.0 && (p.tz - 100.0).abs() > 0.001;
+            if nobasu {
+                c.set_horizontal_scaling(p.tz);
+            }
             c.set_text_matrix([m0, m1, m2, m3, pt(p.x_mm), pt(p.y_mm)]);
             c.show(Str(&bytes));
+            if nobasu {
+                c.set_horizontal_scaling(100.0);
+            }
             if p.tc_pt.abs() > 0.001 {
                 c.set_char_spacing(0.0);
             }
@@ -1677,6 +1687,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                     rotation: 0.0,
                     italic: c.fmt.italic,
                     tc_pt: c.fmt.spacing_pt,
+                    tz: c.fmt.w_pct,
                 });
             }
             continue;
@@ -1715,6 +1726,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                         rotation: 0.0,
                         italic: false,
                         tc_pt: 0.0,
+                        tz: 0.0,
                     });
                 }
                 continue;
@@ -1727,6 +1739,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                     && r.strike == c.fmt.strike
                     && r.highlight == c.fmt.highlight
                     && (r.tc_pt - c.fmt.spacing_pt).abs() < 0.001
+                    && (r.tz - c.fmt.w_pct).abs() < 0.001
                     // **字が続いている所だけ繋ぎます**(2026-09-03)。
                     //
                     // 繋いだまとまりは1つの文字列として描くので、字の位置は
@@ -1762,6 +1775,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                         rotation: 0.0,
                         italic: c.fmt.italic,
                         tc_pt: c.fmt.spacing_pt,
+                    tz: c.fmt.w_pct,
                     });
                 }
             }
@@ -1874,6 +1888,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                         rotation: 0.0,
                         italic: c.fmt.italic,
                         tc_pt: c.fmt.spacing_pt,
+                    tz: c.fmt.w_pct,
                     });
                 }
             }
@@ -1985,6 +2000,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                     rotation: 0.0,
                     italic: c.fmt.italic,
                     tc_pt: c.fmt.spacing_pt,
+                    tz: c.fmt.w_pct,
                 });
             }
         }

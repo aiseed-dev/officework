@@ -1672,11 +1672,17 @@ fn style_look(body: &str) -> kumihan::StyleLook {
         .map(|seg| attr_of(seg, "w:fill"))
         .filter(|c| !c.is_empty() && c != "auto");
     l.size_pt = val_of("sz").and_then(|v| v.parse::<f32>().ok()).map(|h| h / 2.0);
-    l.font = body
+    // 和文は `w:eastAsia`、無ければ `w:ascii`。欧文は `w:ascii` を別に持つ
+    let rfonts = body
         .find("<w:rFonts ")
-        .and_then(|i| body[i..].find('>').map(|e| &body[i..i + e + 1]))
-        .map(|seg| attr_of(seg, "w:ascii"))
+        .and_then(|i| body[i..].find('>').map(|e| &body[i..i + e + 1]));
+    l.font = rfonts
+        .map(|seg| {
+            let ea = attr_of(seg, "w:eastAsia");
+            if ea.is_empty() { attr_of(seg, "w:ascii") } else { ea }
+        })
         .filter(|f| !f.is_empty());
+    l.font_latin = rfonts.map(|seg| attr_of(seg, "w:ascii")).filter(|f| !f.is_empty());
     l
 }
 
@@ -1800,7 +1806,11 @@ pub(super) fn fldchar(
         }
         Some("separate") => {
             if *in_field {
-                *field_hide = true;
+                // **こちらで置き替える物だけ隠す**(PAGE / NUMPAGES / REF)。それ以外
+                // (TOC など)は Word が計算して置いた見た目をそのまま本文に流す。
+                // 前は全部隠していたので、目次の頁が丸ごと無かった(JST の計画書。
+                // 2026-09-09)
+                *field_hide = field_mark(field_instr).is_some() || ref_instr(field_instr).is_some();
             }
         }
         Some("end")
@@ -2242,6 +2252,10 @@ pub(super) fn parse_document_rels_num(
                             .map(|v| v / 20.0)
                             .unwrap_or(0.0);
                     }
+                    // **文字の横倍率**(`w:rPr` の `w:w`。%)
+                    b"w" if in_rpr => {
+                        fmt.w_pct = attr(&e, "val").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
+                    }
                     b"color" if in_rpr => {
                         fmt.color = attr(&e, "val").filter(|v| !v.is_empty() && v != "auto");
                     }
@@ -2325,14 +2339,20 @@ pub(super) fn parse_document_rels_num(
                         // 2文字になり、3文字が4文字になっていました。内閣府の
                         // 告知書で 123 か所ずれていました。
                         //
-                        // `w:leftChars` は文字数(100 = 1文字)での指定で、
-                        // 日本語の Word がよく使います。**Word はこちらを
-                        // 優先する**ので、両方あればこちらを採ります
-                        left_twips = attr(&e, "leftChars")
+                        // `w:leftChars` は文字数(100 = 1文字)での指定で、日本語の
+                        // Word がよく使います。**両方あれば twip を採ります**
+                        // (2026-09-09)。Word は文字数から自分の決まり(文字グリッドの
+                        // 送りなど)で解いた twip を書き置くので、そちらが Word の
+                        // 置いた位置そのもの。北陸地方整備局の注記表は leftChars=200
+                        // / left=777 で、Word の位置は 777 twip の方だった。文字数だけ
+                        // の docx(python-docx の出力など)は 10.5pt で解く
+                        left_twips = attr(&e, "left")
                             .and_then(|v| v.parse::<f32>().ok())
-                            .map(|v| (v / 100.0 * 210.0) as i32)
+                            .map(|v| v as i32)
                             .or_else(|| {
-                                attr(&e, "left").and_then(|v| v.parse::<f32>().ok()).map(|v| v as i32)
+                                attr(&e, "leftChars")
+                                    .and_then(|v| v.parse::<f32>().ok())
+                                    .map(|v| (v / 100.0 * 210.0) as i32)
                             })
                             .unwrap_or(0);
                         // 右のインデント(`w:right` / `w:rightChars`)。行長を縮める
@@ -2354,13 +2374,19 @@ pub(super) fn parse_document_rels_num(
                         };
                         // 文字数の指定は、そのまま覚えておきます。組むときは
                         // その段落の字の大きさで解き直します
-                        first_line_chars = attr(&e, "firstLineChars")
-                            .and_then(|v| v.parse::<f32>().ok())
-                            .or_else(|| {
-                                attr(&e, "hangingChars")
-                                    .and_then(|v| v.parse::<f32>().ok())
-                                    .map(|v| -v)
-                            });
+                        // twip が書いてあれば文字数は見ない(上の `w:left` と同じ理由)
+                        let twip_ari = attr(&e, "firstLine").is_some() || attr(&e, "hanging").is_some();
+                        first_line_chars = if twip_ari {
+                            None
+                        } else {
+                            attr(&e, "firstLineChars")
+                                .and_then(|v| v.parse::<f32>().ok())
+                                .or_else(|| {
+                                    attr(&e, "hangingChars")
+                                        .and_then(|v| v.parse::<f32>().ok())
+                                        .map(|v| -v)
+                                })
+                        };
                         // **twip は原文のまま持ちます。** Word が書き置いた
                         // `w:firstLine` はその段落の字の大きさで解いた値で、
                         // python-docx が返すのもこれです。組むときは上で
@@ -2931,6 +2957,10 @@ pub(super) fn parse_document_rels_num(
                             .map(|v| v / 20.0)
                             .unwrap_or(0.0);
                     }
+                    // **文字の横倍率**(`w:rPr` の `w:w`。%)
+                    b"w" if in_rpr => {
+                        fmt.w_pct = attr(&e, "val").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
+                    }
                     b"color" if in_rpr => {
                         fmt.color = attr(&e, "val").filter(|v| !v.is_empty() && v != "auto");
                     }
@@ -3014,14 +3044,20 @@ pub(super) fn parse_document_rels_num(
                         // 2文字になり、3文字が4文字になっていました。内閣府の
                         // 告知書で 123 か所ずれていました。
                         //
-                        // `w:leftChars` は文字数(100 = 1文字)での指定で、
-                        // 日本語の Word がよく使います。**Word はこちらを
-                        // 優先する**ので、両方あればこちらを採ります
-                        left_twips = attr(&e, "leftChars")
+                        // `w:leftChars` は文字数(100 = 1文字)での指定で、日本語の
+                        // Word がよく使います。**両方あれば twip を採ります**
+                        // (2026-09-09)。Word は文字数から自分の決まり(文字グリッドの
+                        // 送りなど)で解いた twip を書き置くので、そちらが Word の
+                        // 置いた位置そのもの。北陸地方整備局の注記表は leftChars=200
+                        // / left=777 で、Word の位置は 777 twip の方だった。文字数だけ
+                        // の docx(python-docx の出力など)は 10.5pt で解く
+                        left_twips = attr(&e, "left")
                             .and_then(|v| v.parse::<f32>().ok())
-                            .map(|v| (v / 100.0 * 210.0) as i32)
+                            .map(|v| v as i32)
                             .or_else(|| {
-                                attr(&e, "left").and_then(|v| v.parse::<f32>().ok()).map(|v| v as i32)
+                                attr(&e, "leftChars")
+                                    .and_then(|v| v.parse::<f32>().ok())
+                                    .map(|v| (v / 100.0 * 210.0) as i32)
                             })
                             .unwrap_or(0);
                         // 右のインデント(`w:right` / `w:rightChars`)。行長を縮める
@@ -3043,13 +3079,19 @@ pub(super) fn parse_document_rels_num(
                         };
                         // 文字数の指定は、そのまま覚えておきます。組むときは
                         // その段落の字の大きさで解き直します
-                        first_line_chars = attr(&e, "firstLineChars")
-                            .and_then(|v| v.parse::<f32>().ok())
-                            .or_else(|| {
-                                attr(&e, "hangingChars")
-                                    .and_then(|v| v.parse::<f32>().ok())
-                                    .map(|v| -v)
-                            });
+                        // twip が書いてあれば文字数は見ない(上の `w:left` と同じ理由)
+                        let twip_ari = attr(&e, "firstLine").is_some() || attr(&e, "hanging").is_some();
+                        first_line_chars = if twip_ari {
+                            None
+                        } else {
+                            attr(&e, "firstLineChars")
+                                .and_then(|v| v.parse::<f32>().ok())
+                                .or_else(|| {
+                                    attr(&e, "hangingChars")
+                                        .and_then(|v| v.parse::<f32>().ok())
+                                        .map(|v| -v)
+                                })
+                        };
                         // **twip は原文のまま持ちます。** Word が書き置いた
                         // `w:firstLine` はその段落の字の大きさで解いた値で、
                         // python-docx が返すのもこれです。組むときは上で

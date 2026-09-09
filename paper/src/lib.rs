@@ -487,15 +487,15 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
     // 「罫線が前ページ、内容がこちらのページと別れてしまっている」)
     // **割らない行**(`w:cantSplit`)の上端と下端。行の頭でこの下端が入るかを見て、
     // 入らなければ行ごと次の紙へ送る(紙 1 枚に入らない行は今までどおり割る)
+    // 行の上端と下端は**セルの箱**(`cell_boxes`)で見る。字の行で見ると、指定の
+    // 高さで中身より高い行(下に空きのある記入欄)の下端が分からない
     let waku: std::collections::HashMap<(usize, usize), (f32, f32)> = {
         let mut m: std::collections::HashMap<(usize, usize), (f32, f32)> = Default::default();
-        for l in &sheet.lines {
-            if let Some((t, ri, _)) = l.cell {
-                if sheet.keep_rows.contains(&(t, ri)) {
-                    let e = m.entry((t, ri)).or_insert((l.y_mm, l.y_mm));
-                    e.0 = e.0.min(l.y_mm);
-                    e.1 = e.1.max(l.y_mm);
-                }
+        for cb in &sheet.cell_boxes {
+            if sheet.keep_rows.contains(&(cb.table, cb.row)) {
+                let e = m.entry((cb.table, cb.row)).or_insert((cb.top_mm, cb.top_mm + cb.h_mm));
+                e.0 = e.0.min(cb.top_mm);
+                e.1 = e.1.max(cb.top_mm + cb.h_mm);
             }
         }
         m
@@ -581,8 +581,9 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             .and_then(|(t, ri, _)| waku.get(&(t, ri)))
             .copied()
             .filter(|(a, b)| b - a < soko - cur.top_mm);
+        // 箱の下端は字の足を含まないので、足の分(asi)を引いて同じ物差しに乗せる
         let mite = match hako {
-            Some((_, b)) => b - offsets.last().unwrap(),
+            Some((_, b)) => b - offsets.last().unwrap() - asi,
             None => y_roll,
         };
         if forced || mite > soko {
@@ -605,7 +606,8 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             // 変えた行を基準にすると、同じ行でもそれより上にあるセルの行が
             // 上の余白へ出ます。内閣府の調査票の3枚目は、見出しのセルが
             // 余白の外に 28pt 出ていました
-            let atama = hako.map(|(a, _)| a).unwrap_or(line.y_mm);
+            // 箱の上端を紙の頭に置く(行の y はベースラインなので、その分を足す)
+            let atama = hako.map(|(a, _)| a + kumihan::BASE_UP_MM).unwrap_or(line.y_mm);
             // **改ページが続いた分は、白い紙を挟みます。** まとめて1回に
             // すると2枚ぶんが1枚に潰れます
             let tsukaeru = (next.height_mm - next.top_mm - next.bottom_mm).max(1.0);
@@ -1709,21 +1711,29 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
     // Word の重ね順は docDefaults < スタイル < run。文書の既定と同じ名前なら触らない
     let kitei = d.font.clone();
     // スタイル名 → 書体の表を先に引く(段落を書き替えながら文書を引けないため)
-    let mut hyou: BTreeMap<Option<String>, Option<String>> = BTreeMap::new();
+    // (和文の書体, 欧文の書体)。run の字の種類で使い分ける(和文を含む run は和文)
+    let mut hyou: BTreeMap<Option<String>, (Option<String>, Option<String>)> = BTreeMap::new();
     let ids: Vec<Option<String>> = d
         .paragraphs()
         .map(|p| p.style_id.clone())
         .chain(d.tables().flat_map(|t| t.all_paragraphs().into_iter().map(|p| p.style_id.clone())))
         .collect();
     for id in ids {
-        hyou.entry(id.clone())
-            .or_insert_with(|| d.style_font(id.as_deref()).filter(|na| Some(na) != kitei.as_ref()));
+        hyou.entry(id.clone()).or_insert_with(|| {
+            (
+                d.style_font(id.as_deref()).filter(|na| Some(na) != kitei.as_ref()),
+                d.style_font_latin(id.as_deref()).filter(|na| Some(na) != kitei.as_ref()),
+            )
+        });
     }
     let ateru = |p: &mut kumihan::Paragraph| {
-        if let Some(Some(na)) = hyou.get(&p.style_id) {
+        if let Some((ea, latin)) = hyou.get(&p.style_id) {
             for r in p.runs.iter_mut() {
                 if r.font.is_none() {
-                    r.font = Some(na.clone());
+                    let na = if r.text.is_ascii() { latin.as_ref().or(ea.as_ref()) } else { ea.as_ref() };
+                    if let Some(na) = na {
+                        r.font = Some(na.clone());
+                    }
                 }
             }
         }

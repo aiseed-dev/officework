@@ -243,8 +243,10 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
         let aki = run.fmt.spacing_pt * PT_TO_MM;
         // **文字グリッド**(2026-09-09)。全角の字は升の幅で送る(字間の指定より強い)
         let masu = if moji != 0.0 && !p.no_grid { moji } else { 0.0 };
+        // 文字の横倍率(`w:w`)。字送りをその倍率にする
+        let bai = if run.fmt.w_pct > 0.0 { run.fmt.w_pct / 100.0 } else { 1.0 };
         let okuri = |ch: char| {
-            let sizen = (m.advance_for(run.font.as_deref(), ch, rpt) + aki).max(0.0);
+            let sizen = (m.advance_for(run.font.as_deref(), ch, rpt) * bai + aki).max(0.0);
             if masu != 0.0 && zenkaku(ch) {
                 // 全角の字はグリッドの空きを足して送る(字の大きさに関わらず一定)
                 (sizen + masu).max(0.0)
@@ -2204,6 +2206,14 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         // **`hRule="exact"` の行は固定**です(中身が多くても伸びない。Word は切る)
         let kotei = table.row_exact.get(ri_now).copied().unwrap_or(false) && iu > 0.0;
         row_hs.push(if kotei { iu } else { takasa.max(iu) } + keisen);
+        // **高さの指定で決まる行は、頁の境で割らない**(2026-09-09、Word の PDF で
+        // 見た)。省力化の事業計画書の「２.」の行(`w:trHeight` 8637 twip、中身は
+        // それより低い)を、Word は前の頁に 400pt 余っていても割らずに次の頁へ
+        // 送った。中身の方が高い行(指定は下限でしかない)は割る。cantSplit と
+        // 同じ印を付けて、頁割りに任せる
+        if !kotei && iu > 0.0 && takasa <= iu {
+            sheet.keep_rows.push((table_no, ri_now));
+        }
     }
 
     // **縦に結合したセルの中身が、結合した行の合計より高ければ、最後の行を伸ばす**

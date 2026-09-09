@@ -2262,15 +2262,20 @@ mod list_level_tests {
 
     /// **文字数での指定も読む。** 日本語の Word がよく使う書き方で、
     /// `w:leftChars="100"` は全角1文字(210 twip)です。twip と両方あるとき、
-    /// Word はこちらを優先します(2026-08-30)
+    /// Word は自分が文字数から解いて書き置いた twip の位置に置くので、twip を
+    /// 採ります(2026-09-09、北陸地方整備局の注記表で測った。前は文字数を
+    /// 採っていた)。文字数だけなら 10.5pt で解きます
     #[test]
-    fn a_character_based_indent_wins_over_twips() {
+    fn written_twips_win_over_a_character_based_indent() {
         let xml = r#"<w:document xmlns:w="x"><w:body><w:p><w:pPr>
-            <w:ind w:left="9999" w:leftChars="200"/>
+            <w:ind w:left="777" w:leftChars="200"/>
+            </w:pPr><w:r><w:t>字</w:t></w:r></w:p><w:p><w:pPr>
+            <w:ind w:leftChars="200"/>
             </w:pPr><w:r><w:t>字</w:t></w:r></w:p></w:body></w:document>"#;
         let (doc, _) = parse_document_xml(xml);
-        let p = doc.paragraphs().next().unwrap();
-        assert_eq!(p.left_twips, 420, "文字数の指定を読んでいない(2文字 = 420twip)");
+        let mut it = doc.paragraphs();
+        assert_eq!(it.next().unwrap().left_twips, 777, "twip があるのに文字数で解いた");
+        assert_eq!(it.next().unwrap().left_twips, 420, "文字数の指定を読んでいない(2文字 = 420twip)");
     }
 
     #[test]

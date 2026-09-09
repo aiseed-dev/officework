@@ -1187,6 +1187,17 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 col.push_attribute(("w:val", c.as_str()));
                 w.write_event(Event::Empty(col)).unwrap();
             }
+            // 字間(`w:spacing`、1/20 pt)と文字の横倍率(`w:w`、%)。読んだ物を返す
+            if run.fmt.spacing_pt.abs() > 0.001 {
+                let mut sp = BS::new("w:spacing");
+                sp.push_attribute(("w:val", ((run.fmt.spacing_pt * 20.0).round() as i64).to_string().as_str()));
+                w.write_event(Event::Empty(sp)).unwrap();
+            }
+            if run.fmt.w_pct > 0.0 && (run.fmt.w_pct - 100.0).abs() > 0.001 {
+                let mut ww = BS::new("w:w");
+                ww.push_attribute(("w:val", (run.fmt.w_pct.round() as i64).to_string().as_str()));
+                w.write_event(Event::Empty(ww)).unwrap();
+            }
             // **指定のある run だけ w:sz を書く。** 常に書くと、無指定
             // (文書の既定に従う)が往復のたびに「10.5pt 指定」へ化ける
             // (2026-08-13、本家 python-docx との突き合わせで発覚した焼き付き)

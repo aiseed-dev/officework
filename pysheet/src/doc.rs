@@ -1002,7 +1002,7 @@ impl PyDoc {
             kind: kind.to_string(),
             look: kumihan::StyleLook {
                 bold, italic, underline, strike,
-                size_pt: size, color, font, fill,
+                size_pt: size, color, font, fill, font_latin: None,
             },
             ..Default::default()
         });
