@@ -760,18 +760,41 @@ pub(super) fn parse_sect(raw: &str) -> kumihan::PageSetup {
             head[s..e].parse::<u8>().ok()
         })
         .unwrap_or(1);
+    // 負の余白は「紙の端からその距離で固定」(絶対値で持ち、印を立てる)
+    let top = g("<w:pgMar", "w:top").unwrap_or(d.top_mm);
+    let bottom = g("<w:pgMar", "w:bottom").unwrap_or(d.bottom_mm);
     kumihan::PageSetup {
         w_mm: g("<w:pgSz", "w:w").unwrap_or(d.w_mm),
         h_mm: g("<w:pgSz", "w:h").unwrap_or(d.h_mm),
         left_mm: g("<w:pgMar", "w:left").unwrap_or(d.left_mm),
         right_mm: g("<w:pgMar", "w:right").unwrap_or(d.right_mm),
-        top_mm: g("<w:pgMar", "w:top").unwrap_or(d.top_mm),
-        bottom_mm: g("<w:pgMar", "w:bottom").unwrap_or(d.bottom_mm),
+        top_mm: top.abs(),
+        bottom_mm: bottom.abs(),
         columns: cols.clamp(1, 8),
         line_pitch_pt: grid_pitch_pt(raw),
         header_mm: g("<w:pgMar", "w:header").unwrap_or(d.header_mm),
         footer_mm: g("<w:pgMar", "w:footer").unwrap_or(d.footer_mm),
+        char_grid: grid_type(raw) == "linesAndChars",
+        char_space_pt: grid_char_space_pt(raw),
+        top_fixed: top < 0.0,
+        bottom_fixed: bottom < 0.0,
     }
+}
+
+/// `w:docGrid` の `w:type`(無ければ空)
+fn grid_type(raw: &str) -> String {
+    let Some(i) = raw.find("<w:docGrid") else { return String::new() };
+    let head = &raw[i..(i + 200).min(raw.len())];
+    let head = &head[..head.find('>').unwrap_or(head.len())];
+    attr_str(head, "w:type")
+}
+
+/// `w:docGrid` の `w:charSpace`(1/4096 pt)を pt で。無ければ 0
+fn grid_char_space_pt(raw: &str) -> f32 {
+    let Some(i) = raw.find("<w:docGrid") else { return 0.0 };
+    let head = &raw[i..(i + 200).min(raw.len())];
+    let head = &head[..head.find('>').unwrap_or(head.len())];
+    attr_str(head, "w:charSpace").parse::<f32>().map(|v| v / 4096.0).unwrap_or(0.0)
 }
 
 /// sectPr の `w:docGrid` から行グリッドの行送り(pt)を引く。`w:type` が

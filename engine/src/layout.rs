@@ -207,7 +207,17 @@ impl NoteCount {
     }
 }
 
-pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: f32) -> Vec<Tok> {
+/// **全角の字か**(文字グリッドで 1 升を占める字)。CJK・仮名・全角の記号。
+/// 半角(ASCII・半角カナ)は升に乗らない
+pub(super) fn zenkaku(ch: char) -> bool {
+    let c = ch as u32;
+    c == 0x3000 || (0x2E80..=0x9FFF).contains(&c) || (0xAC00..=0xD7AF).contains(&c)
+        || (0xF900..=0xFAFF).contains(&c) || (0xFF01..=0xFF60).contains(&c) || (0xFFE0..=0xFFE6).contains(&c)
+        || (0x20000..=0x2FFFF).contains(&c)
+}
+
+/// `moji` は文字グリッドの升(mm。0 で無し)。全角の字はこの送りにそろえる
+pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: f32, moji: f32) -> Vec<Tok> {
     let mut out = Vec::new();
     // 段落の頭からのバイト位置。run をまたいで通しで数える
     let mut off = 0usize;
@@ -231,7 +241,15 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
         }
         // **字間**(`w:rPr` の `w:spacing`)。1文字ごとに足します
         let aki = run.fmt.spacing_pt * PT_TO_MM;
-        let okuri = |ch: char| (m.advance_for(run.font.as_deref(), ch, rpt) + aki).max(0.0);
+        // **文字グリッド**(2026-09-09)。全角の字は升の幅で送る(字間の指定より強い)
+        let masu = if moji > 0.0 && !p.no_grid { moji } else { 0.0 };
+        let okuri = |ch: char| {
+            if masu > 0.0 && zenkaku(ch) {
+                masu
+            } else {
+                (m.advance_for(run.font.as_deref(), ch, rpt) + aki).max(0.0)
+            }
+        };
         let mut word: Vec<(char, f32, usize)> = Vec::new();
         for ch in run.text.chars() {
             if is_word_char(ch) {
@@ -365,7 +383,7 @@ pub(super) fn left_mm(para: &Paragraph, em: f32) -> f32 {
 }
 
 pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
-              hyphenate: bool, notes: &mut NoteCount, base: f32, tsume: bool) -> Vec<Vec<Cell>> {
+              hyphenate: bool, notes: &mut NoteCount, base: f32, tsume: bool, moji: f32) -> Vec<Vec<Cell>> {
     // **見出しは大きく太く組む**([`head_scale`])。大きさは「基準」を
     // 持ち上げる形にするので、run が自分で大きさを言っていればそちらが勝つ
     // (docx の作法どおり — run の指定はスタイルより強い)
@@ -443,7 +461,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
             });
         (tugi / 20.0) * 25.4 / 72.0
     };
-    for tok in tokenize(para, m, notes, base) {
+    for tok in tokenize(para, m, notes, base, moji) {
         // タブの幅は、いまの位置から次の止まる所までです
         let tok = match &tok {
             Tok::One('\t', _, s, f, ft, o) => {
@@ -866,6 +884,12 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
             .get(bi)
             .map(|pg| pg.line_pitch_pt)
             .unwrap_or_else(|| doc.page.map(|pg| pg.line_pitch_pt).unwrap_or(0.0));
+        // 文字グリッドの升(mm)。`linesAndChars` の節だけ。基準の字の大きさ + charSpace
+        let pg_now = sect_geo.get(bi).copied().or(doc.page);
+        let moji = match pg_now {
+            Some(pg) if pg.char_grid => ((base + pg.char_space_pt) * PT_TO_MM).max(0.0),
+            _ => 0.0,
+        };
         match block {
             Block::Para(para) => {
                 // **段落スタイルが大きさを言っていればそちらが勝ちます。**
@@ -1039,7 +1063,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 let measure = (measure - cap_shift).max(em);
                 let first_mm = first_line_mm(para_eff, base);
                 let gyou = break_para(para_eff, m, measure, marker.as_deref(),
-                                      doc.hyphenate, &mut note_no, base, doc.compress_punct);
+                                      doc.hyphenate, &mut note_no, base, doc.compress_punct, moji);
                 let gyou_kazu = gyou.len();
                 for (line_no, mut cells) in gyou.into_iter().enumerate() {
                     // 1行目だけ字下げのぶん右へ(行長は組み手が縮めている)
@@ -1343,7 +1367,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
             }
             Block::Table(table) => {
                 y = layout_table(table, m, frame, y, &mut sheet, table_no, doc.hyphenate,
-                                 &mut note_no, base, doc, pitch, doc.compress_punct);
+                                 &mut note_no, base, doc, pitch, doc.compress_punct, moji);
                 table_no += 1;
             }
         }
@@ -1410,7 +1434,7 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
             let marker = (pi == 0).then(|| format!("{label} "));
             let mut throwaway = NoteCount::default();
             for cells in break_para(para, m, frame.measure_mm, marker.as_deref(),
-                                    doc.hyphenate, &mut throwaway, base, doc.compress_punct) {
+                                    doc.hyphenate, &mut throwaway, base, doc.compress_punct, 0.0) {
                 let mut x = 0.0f32;
                 let cells: Vec<Cell> = cells.into_iter()
                     .map(|mut c| { c.x_mm = x; x += c.w_mm; c })
@@ -1500,7 +1524,7 @@ pub fn layout_hf(
             }
         }
         for cells in break_para(&para, m, measure, None, false, &mut NoteCount::default(),
-                                base_pt, false) {
+                                base_pt, false, 0.0) {
             let w: f32 = cells.iter().map(|c| c.w_mm).sum();
             let slack = (measure - w).max(0.0);
             let mut x = match para.align {
@@ -1537,7 +1561,8 @@ pub fn layout_hf(
 /// 返りは本文の頭(下端)を置く、用紙の端からの距離。ヘッダーが無ければ余白そのまま
 pub fn hf_push_mm(hf: &HeadFoot, pg: &PageSetup, font: Option<&str>, base_pt: f32, footer: bool) -> f32 {
     let yohaku = if footer { pg.bottom_mm } else { pg.top_mm };
-    if hf.paragraphs.is_empty() {
+    // 負の余白(固定)は、ヘッダーがあっても押さない
+    if hf.paragraphs.is_empty() || (if footer { pg.bottom_fixed } else { pg.top_fixed }) {
         return yohaku;
     }
     let em = crate::font::okuri_em(font).unwrap_or(1.292);
@@ -1836,7 +1861,7 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32, sheet: &mut Sheet,
                 table_no: usize, hyphenate: bool, notes: &mut NoteCount, base: f32,
-                doc: &Document, pitch: f32, tsume: bool) -> f32 {
+                doc: &Document, pitch: f32, tsume: bool, moji: f32) -> f32 {
     // 列数は「セルの数」ではなく「セルが占める格子の数」
     let ncols = table
         .rows
@@ -1975,7 +2000,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     let sagari = first_line_mm(para, pbase);
                     let migi = (para.right_twips.max(0) as f32) * 25.4 / 1440.0;
                     let inner = (inner - hidari - migi).max(2.0);
-                    let mut kore = break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase, tsume);
+                    let mut kore = break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase, tsume, moji);
                     let saigo = kore.len().saturating_sub(1);
                     for (k, cs) in kore.drain(..).enumerate() {
                         let b0 = para0 + cs.iter().map(|c| c.off).min().unwrap_or(0);

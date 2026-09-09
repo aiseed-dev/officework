@@ -449,6 +449,34 @@ mod list_tests {
         assert_eq!(hf_push_mm(&hf, &pg, None, 10.5, false), 35.0);
     }
 
+    /// **文字グリッド**(`w:docGrid w:type="linesAndChars"`。2026-09-09)。全角の字は
+    /// 升(基準の字の大きさ + charSpace)の幅で送り、半角はそのまま。負の上余白は
+    /// 絶対値で持ち、ヘッダーがあっても押さない
+    #[test]
+    fn full_width_characters_sit_on_the_character_grid() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let mut p = Paragraph::default();
+        p.runs.push(Run { text: "あa".into(), size_pt: Some(10.0), font: None, fmt: Default::default() });
+        let masu = 12.0 * 25.4 / 72.0;
+        let toks = tokenize(&p, &m, &mut NoteCount::default(), 10.0, masu);
+        let w: Vec<f32> = toks.iter().map(|t| match t {
+            Tok::One(_, w, ..) | Tok::Space(_, w, ..) => *w,
+            Tok::Word(cs, ..) => cs.iter().map(|(_, w, _)| *w).sum(),
+        }).collect();
+        assert!((w[0] - masu).abs() < 0.001, "全角が升の幅でない: {w:?}");
+        assert!(w[1] < masu * 0.8, "半角まで升に乗った: {w:?}");
+        // 合わせない段落はそのまま
+        p.no_grid = true;
+        let toks = tokenize(&p, &m, &mut NoteCount::default(), 10.0, masu);
+        if let Tok::One(_, w0, ..) = &toks[0] { assert!((w0 - masu).abs() > 0.01, "snapToGrid=0 なのに升に乗った"); }
+        // 負の余白は固定: ヘッダーがあっても押さない
+        let pg = PageSetup { top_mm: 20.0, top_fixed: true, header_mm: 15.0, ..Default::default() };
+        let mut hf = HeadFoot::default();
+        hf.paragraphs.push(Paragraph::default());
+        assert_eq!(hf_push_mm(&hf, &pg, None, 10.5, false), 20.0, "固定の余白を押した");
+    }
+
     /// **句読点の詰め**(Word の compressPunctuation。2026-09-09)。行長を少し
     /// 超える字は、約物の空きを詰めて行に留める。詰めても入らなければ折る。
     /// 詰めた分だけ後ろの字が左へ寄り、開く括弧は自分が左へ寄る
@@ -461,9 +489,9 @@ mod list_tests {
         let w = m.advance_for(None, 'あ', 10.0);
         // 8字ぶんより少し短い行長。詰め無しでは7字で折れる
         let measure = w * 8.0 - w * 0.5;
-        let nashi = break_para(&p, &m, measure, None, false, &mut NoteCount::default(), 10.0, false);
+        let nashi = break_para(&p, &m, measure, None, false, &mut NoteCount::default(), 10.0, false, 0.0);
         assert_eq!(nashi.len(), 2, "詰め無しで1行に入った: {:?}", nashi.iter().map(|l| l.len()).collect::<Vec<_>>());
-        let ari = break_para(&p, &m, measure, None, false, &mut NoteCount::default(), 10.0, true);
+        let ari = break_para(&p, &m, measure, None, false, &mut NoteCount::default(), 10.0, true, 0.0);
         assert_eq!(ari.len(), 1, "詰めれば入るのに折った: {:?}", ari.iter().map(|l| l.len()).collect::<Vec<_>>());
         // 3つの約物で w/4 ずつ = 0.75w まで詰められる。足りない 0.5w を同じ割合で
         let mut cells = ari.into_iter().next().unwrap();
@@ -474,7 +502,7 @@ mod list_tests {
         let i = cells.iter().position(|c| c.ch == '（').unwrap();
         assert!(cells[i].x_mm < cells[i - 1].x_mm + w - 0.01, "開く括弧が左へ寄っていない");
         // 詰めても入らない量なら折る
-        let mienai = break_para(&p, &m, w * 8.0 - w * 1.0, None, false, &mut NoteCount::default(), 10.0, true);
+        let mienai = break_para(&p, &m, w * 8.0 - w * 1.0, None, false, &mut NoteCount::default(), 10.0, true, 0.0);
         assert_eq!(mienai.len(), 2, "詰められる量を超えて1行に押し込んだ");
     }
 
@@ -1602,7 +1630,7 @@ mod section_layout_tests {
 
     fn paper(w: f32, h: f32) -> PageSetup {
         PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5 }
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false }
     }
 
     fn tab(text: &str, sect: Option<PageSetup>) -> Block {
@@ -2124,7 +2152,7 @@ mod fold_print_tests {
 
     fn paper(w: f32, h: f32) -> PageSetup {
         PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5 }
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false }
     }
     fn line(y: f32) -> Line {
         Line { cells: vec![Cell { ch: 'あ', x_mm: 0.0, w_mm: 4.0, size_pt: 10.5,

@@ -1004,6 +1004,8 @@ impl Writer {
                     top_mm: self.pg.top_mm, bottom_mm: self.pg.bottom_mm,
                     columns: self.pg.columns, line_pitch_pt: self.pg.line_pitch_pt,
                     header_mm: self.pg.header_mm, footer_mm: self.pg.footer_mm,
+                    char_grid: self.pg.char_grid, char_space_pt: self.pg.char_space_pt,
+                    top_fixed: self.pg.top_fixed, bottom_fixed: self.pg.bottom_fixed,
                 })
                 .collect();
             kumihan::fold_print(&mut self.page, &papers, &offs, &sts, PAGE_GAP_MM)
@@ -2286,7 +2288,7 @@ impl Writer {
         self.pg = kumihan::PageSetup {
             w_mm: 297.0, h_mm: 210.0,
             left_mm: 12.0, right_mm: 12.0, top_mm: 12.0, bottom_mm: 12.0,
-            columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5,
+            columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false,
         };
         self.set_doc(doc);
         self.adopt_font();

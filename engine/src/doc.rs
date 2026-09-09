@@ -1015,6 +1015,18 @@ pub struct PageSetup {
     /// **フッターの位置**(用紙の下端から字の底まで。mm。docx の `w:pgMar w:footer`)。
     /// 既定は 992 twip = 17.5mm
     pub footer_mm: f32,
+    /// **文字グリッド**(docx の `w:docGrid w:type="linesAndChars"`)。真なら全角の
+    /// 字送りを `基準の字の大きさ + char_space_pt` にそろえる(2026-09-09、Opus Mac が
+    /// Word の PDF で確かめた: 10.5pt + 5734/4096 = 11.9pt → 12.0pt)。288 枚のうち
+    /// 0.5pt 以上ずれる物が 53 枚(法務局・裁判所)
+    pub char_grid: bool,
+    /// `w:charSpace` を pt にした物(1/4096 pt 単位。負もある)
+    pub char_space_pt: f32,
+    /// **上(下)の余白が負**(docx の `w:top="-1134"`)。Word は負の余白を
+    /// 「ヘッダーに関わらず紙の端からその距離」と読む。値は絶対値で持ち、
+    /// ヘッダーによる押し下げをしない(法務局の様式 29 枚。2026-09-09)
+    pub top_fixed: bool,
+    pub bottom_fixed: bool,
 }
 
 impl Default for PageSetup {
@@ -1022,7 +1034,8 @@ impl Default for PageSetup {
         // A4 縦・余白 20mm(日本の事務の慣行に近い値)
         PageSetup { w_mm: 210.0, h_mm: 297.0, left_mm: 20.0, right_mm: 20.0,
                     top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0,
-                    header_mm: HEADER_MM, footer_mm: FOOTER_MM }
+                    header_mm: HEADER_MM, footer_mm: FOOTER_MM,
+                    char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false }
     }
 }
 

@@ -87,7 +87,16 @@ mod round {
         let raw2 = raw.replace(r#"w:type="lines""#, r#"w:type="default""#);
         assert_eq!(crate::read::parse_sect(&raw2).line_pitch_pt, 0.0, "default はグリッド無し");
         let raw3 = raw.replace(r#"w:type="lines""#, r#"w:type="linesAndChars" w:charSpace="409""#);
-        assert!((crate::read::parse_sect(&raw3).line_pitch_pt - 18.0).abs() < 0.01);
+        let pg3 = crate::read::parse_sect(&raw3);
+        assert!((pg3.line_pitch_pt - 18.0).abs() < 0.01);
+        // 文字グリッド: charSpace は 1/4096 pt
+        assert!(pg3.char_grid && (pg3.char_space_pt - 409.0 / 4096.0).abs() < 0.001, "文字グリッドが読めていない: {} {}", pg3.char_grid, pg3.char_space_pt);
+        assert!(!pg.char_grid, "lines だけの docGrid を文字グリッドにした");
+        // 負の上余白は絶対値で持ち、固定の印が立つ(法務局の様式)
+        let raw4 = raw.replace(r#"w:top="1985""#, r#"w:top="-1134""#);
+        let pg4 = crate::read::parse_sect(&raw4);
+        assert!((pg4.top_mm - 1134.0 * 25.4 / 1440.0).abs() < 0.01 && pg4.top_fixed, "負の余白: {} {}", pg4.top_mm, pg4.top_fixed);
+        assert!(!pg.top_fixed);
 
         let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:snapToGrid w:val="0"/><w:rPr><w:snapToGrid w:val="0"/></w:rPr></w:pPr><w:r><w:t>外す</w:t></w:r></w:p><w:p><w:pPr><w:rPr><w:snapToGrid w:val="0"/></w:rPr></w:pPr><w:r><w:t>字だけ</w:t></w:r></w:p><w:sectPr><w:docGrid w:type="lines" w:linePitch="360"/></w:sectPr></w:body></w:document>"#;
         let (d, _) = crate::read::parse_document_xml(xml);
