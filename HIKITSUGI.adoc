@@ -86,6 +86,10 @@ Fable が触るので、Opus はそこを触らない。** それ以外の write
   `cargo test -p pysheet` はさらに `DYLD_FALLBACK_LIBRARY_PATH=$HOME/miniforge3/lib`
   (libpython の置き場)と `PATH=$PWD/.venv/bin:$PATH`(python_smoke が `python3` を
   引くので、3.9 でなく 3.13 を先に)が要る。clippy は `rustup component add clippy`
+* **Office の同梱書体を書体の探索先に入れた(2026-09-09)。** `/Applications/Microsoft Word.app/Contents/Resources/DFonts`
+  (Excel・PowerPoint も同じ)に ＭＳ 明朝・ゴシック・游・メイリオ・Century など 280 本。
+  Office の入った Mac では置き替え無しで原本の書体で組む(発注者確認済み)。書体は読むだけ
+  で写さない。PDF への埋め込みは fsType を見る(`paper::pdfw`)
 * **梅フォントをこの Mac に入れた(2026-09-09 発注者「梅明朝と梅ゴシックはインストールしてもいい。昔の Excel 書類対策として」)。**
   `~/Library/Fonts` に ume-tmo3(梅明朝)・ume-tgo4(梅ゴシック)・ume-pmo3(梅P明朝)・
   ume-pgo4(梅Pゴシック)。出所は Debian の fonts-horai-umefont 670-5(梅フォントの
