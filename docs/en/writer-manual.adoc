@@ -84,7 +84,7 @@ Tab order: *File / Home / Insert / Draw / Layout / References / Forms / Header &
 |Indent / list level |Tab / Shift+Tab (inside a table: next cell; Tab in the last cell adds a row)
 |Context menu |Menu key / Shift+F10
 |Close dialog, put tool away |Esc
-|Quit |Ctrl+Q (asks if there are unsaved changes)
+|Quit |Ctrl+Q (asks if there are unsaved changes; on a Mac also ⌘Q)
 |===
 
 Uncommitted IME text appears underlined in the body and becomes one undo step when committed.

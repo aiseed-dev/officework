@@ -55,7 +55,7 @@ Freeze panes, sheet visibility (unhide/hide sheets), and the interface theme als
 |Open / save |Ctrl+O / Ctrl+S
 |Context menu |Menu key / Shift+F10
 |Cancel / close |Esc
-|Quit |Ctrl+Q
+|Quit |Ctrl+Q (on a Mac also ⌘Q; closing the window quits too)
 |===
 
 === All keys

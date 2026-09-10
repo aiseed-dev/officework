@@ -154,7 +154,7 @@ macOS and Windows need nothing extra, and the engine alone needs nothing anywher
 | |file |state
 
 |Linux |`.deb`, or `.tar.gz` to just unpack |built and checked here
-|macOS |`.dmg` |signing and notarization are set up, *not yet run end to end*
+|macOS |`.dmg` |signed and notarized (checked end to end with alpha.2)
 |Windows |`setup.exe` |installs without administrator rights. Unsigned, so SmartScreen will ask — _More info → Run anyway_. A Microsoft Store listing is meant to replace that
 |===
 

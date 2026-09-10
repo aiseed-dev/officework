@@ -232,7 +232,7 @@ impl Terminal {
         }
         let cursor = if content.mode.contains(TermMode::SHOW_CURSOR) && content.display_offset == 0 {
             let p = content.cursor.point;
-            (p.line.0 >= 0).then(|| (p.column.0, p.line.0 as usize))
+            (p.line.0 >= 0).then_some((p.column.0, p.line.0 as usize))
         } else {
             None
         };

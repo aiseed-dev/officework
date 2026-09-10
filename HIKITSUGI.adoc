@@ -6,6 +6,17 @@
 
 == 進め方の作法(発注者と確立済み)
 
+* **2026-09-10: alpha.2 の .dmg を発注者が入れて、Mac の画面に字が一つも無かった。**
+  原因は gpui_platform の `font-kit` の機能が抜けていたこと(SEKKEI「Mac の alpha.2 を
+  入れて分かった物」)。officework / calc / writer の Cargo.toml に足した。合わせて
+  Mac のメニューバー(⌘Q・Dock の終了)、窓を閉じたら終わる、Finder から開いたときの
+  言語(`defaults read -g AppleLanguages`)、`.dmg` の Applications の近道、同梱の
+  「はじめに」の Mac / Windows の節を直した。**Mac の画面はターミナルの
+  `screencapture -x` で撮って目で見る**(画面収録の許可が要る。無いと真っ黒の絵になる。
+  2026-09-09 まではそれで「見た」つもりになっていた)。字が出るかだけなら
+  `cargo run --release -p officework --example moji`。alpha.3 を出すときは、この直しが
+  入った `.dmg` を発注者が入れて確かめてから。残り: 割り当てを Mac で ⌘ にするか
+  (`secondary-`)、Windows の言語の判定
 * **2026-09-09 の夜: 0.1.0-alpha.2 を出す用意ができている。** officework / calc / writer の
   Cargo.toml と README の版名を上げ、release.yml の本文に alpha.2 で変わった物を書いた
   (0fc5cdf0)。公開の門の検査 6 つと `cargo build -p sidecar` は通り、組み直した本体は

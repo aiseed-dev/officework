@@ -8072,3 +8072,39 @@ genkou-manual は両方にまたがるので、**Python から4つの形で出�
 * **組んだ HTML は、安定してから Web で公開する。** 発注者「安定すれば、Web で公開」。
   出すのはエンジンの文書の一覧(`docs/engine-docs.txt`)の冊子から。組むのはうちの
   engine(adoc → HTML)で、置き場はその時に決める
+
+== Mac の alpha.2 を入れて分かった物(2026-09-10)
+
+発注者が Releases の `.dmg` を入れて、3 つの報告がありました。「アプリケーションへドラッグしても見えない」「終了ができない」「立ち上がった時に、これではどうしようもない」(字が一つも無い画面)。順に原因を見ました。
+
+=== 字が描かれない — gpui_platform の `font-kit`
+
+*症状:* 画面の字が一つも出ない。アイコンと枠は出る。カーソルも出る。ローカルで組んだ `target/release/officework` も同じで、`.dmg` の問題ではありません。
+
+*調べ方:* 小さな窓を出す例(`officework/examples/moji.rs`)を書いて、gpui の書体の様子を標準エラーに出しました。機械の書体が 11 個しか見えず(gpui の落ち先の名前だけ)、`.SystemUIFont` も Helvetica もヒラギノも全部 `FontId(1)` に落ちていました。字の幅は出るのに描かれない状態です。
+
+*原因:* gpui の Mac 側(gpui_macos)は、`font-kit` の機能を付けないと機械の書体を一つも見つけません。Zed 本体は `gpui` の既定の機能で `font-kit` を付けていますが、うちは `gpui_platform` を `wayland` と `x11` だけで使っていました。Linux はそれで動くので、気づきませんでした。Mac の画面は今まで誰も目で確かめていませんでした(前に撮った screencapture は権限が無く真っ黒でした)。
+
+*直し:* officework / calc / writer の Cargo.toml の `gpui_platform` に `font-kit` を足しました。例の窓で 3 行(既定・Helvetica・ヒラギノ)が出ることを確かめました。
+
+=== ⌘Q で終わらない — メニューバーが無い
+
+*原因:* Mac の ⌘Q と Dock の「終了」は、アプリのメニューから来ます。メニューを出していなかったので、どちらも効きませんでした。割り当ての表(face::keys)の `ctrl-q` は Mac では control キーなので、Ctrl+Q なら終われましたが、Mac の人はそれを知りません。窓を閉じてもアプリは Dock に残っていました。
+
+*直し:* `officework/src/main.rs` の `mac_menus` で、Mac だけメニューバーを出します(officework: 終了 / ファイル: 開く・保存・名前を付けて保存 / 編集: 切り取り・コピー・貼り付け・すべて選択)。言葉はリボンの訳の表から引きます。`cmd-q` を `ui::Quit` に結びます(文脈なし)。窓を閉じたときは `cx.quit()` でアプリも終わります。割り当ての表は触っていません。表を `secondary-` に変えれば Mac で ⌘S や ⌘C も効きますが、手引きの表(tools/keys_doc.py)にも掛かるので、発注者の判断を待ちます(下の残り)。
+
+=== 画面が英語になる — Finder から開くと `LANG` が無い
+
+*原因:* 言語は環境変数(`LC_ALL` / `LC_MESSAGES` / `LANG`)→ 設定 → 落ち先 en の順でした。Finder や Dock から開いたアプリには `LANG` が付かないので、日本語の Mac でも英語で出ました。ターミナルから開くと `LANG` があるので、これも気づきませんでした。
+
+*直し:* `book/src/lang.rs` の `os_language` が、環境変数に無いとき Mac では `defaults read -g AppleLanguages` の先頭(`ja-JP` など)を見ます。Windows も同じ問題があり得ます(スタートメニューから開くと `LANG` は無い)。まだ手を付けていません。
+
+=== ドラッグ先が分からない — `.dmg` に Applications の近道が無い
+
+`.dmg` の窓に `.app` しか無く、どこへ入れるのか分かりません。`packaging/make-macos.sh` で `/Applications` へのシンボリックリンクを入れます。同梱の「はじめに.md」も Linux の話しか無かったので、Mac と Windows の入れ方を頭に足しました。
+
+=== 残り
+
+* 割り当ての表を Mac で ⌘ にするか(`secondary-` にすると Linux / Windows は Ctrl のまま、Mac は ⌘)。手引きの表の生成(tools/keys_doc.py)に「secondary」の見せ方を足す必要があります。
+* Windows の言語の判定(環境変数が無いときに OS の設定を見る)。
+* Mac の画面の点検は、`cargo run --release -p officework --example moji` で字が出ることを見てから、本体を `screencapture -x` で撮って目で見ます(ターミナルに画面収録の許可が要ります)。

@@ -847,6 +847,65 @@ fn hand_to_running(_arg: Option<&std::path::Path>) -> bool {
     false
 }
 
+/// **Mac のメニューバー**(2026-09-10)。
+///
+/// Mac では ⌘Q も「officework を終了」も、アプリのメニューから来ます。
+/// メニューを出していなかったので、alpha.2 は ⌘Q で終わらず、Dock の
+/// 「終了」も効きませんでした(発注者「officework 終了ができない」)。
+/// Ctrl+Q は効いていましたが、Mac の人はそれを知りません。
+///
+/// 出すのは、終了と、ファイル・編集の定番だけです。項目の右に出る
+/// ショートカットは、割り当て(face::keys)から gpui が拾います。
+/// 他の OS では何もしません。メニューバーは Mac にしか無いからです。
+fn mac_menus(cx: &mut App) {
+    if !cfg!(target_os = "macos") {
+        return;
+    }
+    use gpui::{KeyBinding, Menu, MenuItem};
+    // ⌘Q。割り当ての表(face::keys)は Ctrl+Q で、Mac ではそのまま
+    // control キーです。ここで ⌘ を足します。文脈は付けません —
+    // どこに焦点があっても終われるように
+    cx.bind_keys([KeyBinding::new("cmd-q", ui::Quit, None)]);
+    // 言葉はリボンと同じ物を使います(リボンの訳の表から、id で引く)。
+    // 「ファイル」の段の名前は、その言語のリボンの先頭の段です
+    let tabs = face::ribbon::tabs();
+    let word = |id: &str, en: &'static str| -> &'static str {
+        tabs.iter()
+            .flat_map(|t| t.cmds.iter())
+            .find(|c| c.id == id)
+            .map(|c| c.label)
+            .unwrap_or(en)
+    };
+    let file_tab = tabs.first().map(|t| t.name).unwrap_or("File");
+    cx.set_menus([
+        Menu {
+            name: "officework".into(),
+            disabled: false,
+            items: vec![MenuItem::action(ui::t!("quit"), ui::Quit)],
+        },
+        Menu {
+            name: file_tab.into(),
+            disabled: false,
+            items: vec![
+                MenuItem::action(ui::t!("open"), ui::Open),
+                MenuItem::separator(),
+                MenuItem::action(ui::t!("save"), ui::Save),
+                MenuItem::action(ui::t!("save_2"), ui::SaveAs),
+            ],
+        },
+        Menu {
+            name: ui::t!("edit").into(),
+            disabled: false,
+            items: vec![
+                MenuItem::action(word("cut", "Cut"), ui::Cut),
+                MenuItem::action(word("copy", "Copy"), ui::Copy),
+                MenuItem::action(word("paste", "Paste"), ui::Paste),
+                MenuItem::action(word("selectall", "Select all"), ui::SelectAll),
+            ],
+        },
+    ]);
+}
+
 fn main() {
     let arg = std::env::args().nth(1).map(std::path::PathBuf::from);
     // **2つ目は窓を増やさず、動いている方のタブにします**(段11)
@@ -877,6 +936,7 @@ fn main() {
         // 名乗るので、いま見ているタブの側の割り当てが効きます
         cx.bind_keys(ui::bindings_for("writer", "jo_doc"));
         cx.bind_keys(ui::bindings_for("calc", "jo_sheet"));
+        mac_menus(cx);
         let saved = ui::winstate::load("officework");
         let bounds = match saved {
             Some(st) => Bounds::new(gpui::point(px(st.x), px(st.y)), size(px(st.w), px(st.h))),
@@ -939,9 +999,13 @@ fn main() {
                 //
                 // いまは「書きかけがあるなら閉じない」と断るだけです。
                 // 保存するか捨てるかを選ばせる確認は段3 で作ります
+                //
+                // **窓を閉じたらアプリも終わります**(2026-09-10)。Mac では窓を
+                // 閉じてもアプリは残るので、前は Dock に居座ったままでした。
+                // 窓は1つしか無いので、閉じる=終わる、で構いません
                 let v = view.clone();
                 window.on_window_should_close(cx, move |_, cx| {
-                    v.update(cx, |this, cx| {
+                    let close = v.update(cx, |this, cx| {
                         let rest: Vec<String> = this.draft_name(cx);
                         if rest.is_empty() {
                             return true;
@@ -953,7 +1017,11 @@ fn main() {
                         );
                         cx.notify();
                         false
-                    })
+                    });
+                    if close {
+                        cx.quit();
+                    }
+                    close
                 });
                 // 覚えているフォルダが無ければ、**窓が出てから**選んでもらう
                 if matches!(start2, Start::AskFolder) {

@@ -60,6 +60,7 @@ pub const FALLBACK: &str = "en-us";
 /// OS の言語設定を札に直す。無い・読めないなら `None`。
 ///
 /// 見る順は `LC_ALL` → `LC_MESSAGES` → `LANG`(POSIX の決まりの順)。
+/// どれも無ければ、Mac では OS の言語の設定を見ます([`mac_language`])。
 pub fn os_language() -> Option<String> {
     for k in ["LC_ALL", "LC_MESSAGES", "LANG"] {
         let Ok(v) = std::env::var(k) else { continue };
@@ -70,6 +71,31 @@ pub fn os_language() -> Option<String> {
             return Some(t);
         }
     }
+    mac_language()
+}
+
+/// **Mac の「言語と地域」の設定を読みます**(2026-09-10)。
+///
+/// Finder や Dock からアプリを開くと、環境変数 `LANG` は付きません。
+/// 環境変数だけを見ていた頃は、日本語の Mac でも画面が英語で出ていました
+/// (alpha.2 の .dmg を入れて分かりました)。ターミナルから開くと `LANG` が
+/// あるので気づきませんでした。
+///
+/// `defaults read -g AppleLanguages` の答えは
+/// `(\n    "ja-JP",\n    "en-JP"\n)` の形なので、最初の引用符の中を取ります。
+#[cfg(target_os = "macos")]
+fn mac_language() -> Option<String> {
+    let out = std::process::Command::new("defaults")
+        .args(["read", "-g", "AppleLanguages"])
+        .output()
+        .ok()?;
+    let text = String::from_utf8_lossy(&out.stdout);
+    let first = text.split('"').nth(1)?;
+    to_tag(first)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn mac_language() -> Option<String> {
     None
 }
 

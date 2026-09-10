@@ -39,7 +39,10 @@ ooxml = { path = "../ooxml" }
 paper = { path = "../paper" }
 # GPUI は crates.io に無いので、版を固定して zed から直に取る
 gpui = { git = "https://github.com/zed-industries/zed", rev = "5e1fd392f67e27fa1da91bad43eef7db1a5dec23" }
-gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "5e1fd392f67e27fa1da91bad43eef7db1a5dec23", features = ["wayland", "x11"] }
+# **font-kit は Mac に要ります**(2026-09-10)。無いと gpui の Mac 側は機械の
+# 書体を1つも見つけず、字を描きません(alpha.2 の .dmg は字が無い画面で
+# 立ち上がりました)。Linux は font-kit 無しでも動くので気づきませんでした
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "5e1fd392f67e27fa1da91bad43eef7db1a5dec23", features = ["wayland", "x11", "font-kit"] }
 rfd = "0.14"
 # 壊れた docx から字を拾う(復旧)。試験でも書き出した部品を直に見る
 zip = { version = "2", default-features = false, features = ["deflate"] }

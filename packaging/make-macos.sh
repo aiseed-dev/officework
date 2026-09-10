@@ -143,6 +143,11 @@ if [ $SIGN = 1 ]; then
 fi
 
 # ---- 5. .dmg -----------------------------------------------------------------
+# **「アプリケーション」への近道を入れます**(2026-09-10)。無いと、.dmg の
+# 窓に .app しか無く、どこへ入れるのかが分かりません。入れた後も Finder
+# で探す手間が要りました(発注者「ドラッグしても見えない」)。
+# 署名の後に足します。ただの近道なので署名には入りません
+ln -sfn /Applications "$DIST/Applications"
 hdiutil create -volname "officework $VER" -srcfolder "$DIST" -ov -format UDZO "$DMG"
 if [ $SIGN = 1 ]; then
   packaging/macos/sign.sh dmg "$DMG"

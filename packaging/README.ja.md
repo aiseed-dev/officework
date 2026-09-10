@@ -1,6 +1,24 @@
 # 包み方と、試し方
 
-## 作る
+## Mac で入れる(.dmg)
+
+1. `.dmg` をダブルクリックして開きます。
+2. 開いた窓の `officework.app` を、同じ窓にある「Applications」へドラッグします。
+3. アプリケーションフォルダの officework を開きます。署名と公証が付いているので、そのまま開けます。
+
+Finder で見つからないときは、Spotlight(⌘ + スペース)で「officework」と打ってください。
+
+終了は ⌘Q か、メニューバーの「officework」→「終了」です。窓を閉じても終わります。
+
+Python のマクロは、この `.dmg` の `plugins` フォルダの見本を `~/.config/officework/plugins/` にコピーして、officework を開き直します(下の「Python のマクロを試す」)。
+
+## Windows で入れる(setup.exe)
+
+`setup.exe` を実行します。管理者権限は要りません。署名がまだ無いので「Windows によって PC が保護されました」が出ます。**詳細情報 → 実行** で進めます。
+
+## Linux で入れる
+
+### 作る
 
 ```
 packaging/make-linux.sh            # tar.gz と .deb
@@ -15,7 +33,7 @@ packaging/make-linux.sh            # tar.gz と .deb
 | tar.gz | 47MB | officework・見本の .py・手引き4冊 |
 | .deb | 34MB | 同じ物を /opt/officework へ。`officework` で起動 |
 
-## 試す
+### 試す
 
 **tar.gz(入れずに試す)**
 
