@@ -1253,7 +1253,7 @@ impl Render for Writer {
                 let f = &c0.fmt;
                 let sx = self.pg.left_mm + c0.x_mm;
                 let spt = c0.size_pt * 96.0 / 72.0 * self.zoom;
-                let stop = line.y_mm * pxmm - spt * 0.88;
+                let stop = (line.y_mm + line.dip_mm) * pxmm - spt * 0.88;
                 // 上付き・下付きは小さく描き、少し上下へずらす
                 let (spt, stop) = if f.superscript {
                     (spt * 0.7, stop - spt * 0.25)
