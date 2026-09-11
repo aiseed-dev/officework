@@ -288,6 +288,19 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
 /// 同じ文書が別の頁数に折れる形になっていました(2026-08-27)。
 pub const LINE_MM: f32 = 6.4;
 
+/// **取り消し線の位置**(字の大きさに対する割合。ベースラインから上が正)。
+/// 画面と紙で同じ値を使います(2026-09-11 発注者「取り消し線が上すぎないか」。
+/// 画面だけ 0.53 em の高さに引いていました)。
+///
+/// OOXML(ECMA-376 §17.3.2.37 `w:strike`)は「1本の横線を引く」としか言わず、
+/// 位置は書体の OS/2 テーブル(yStrikeoutPosition)が持ちます。この機械の書体を
+/// 読むと、Noto Serif CJK 0.31・Noto Sans CJK 0.33・梅 0.26・IPA 明朝 0.42・
+/// Liberation Serif 0.21 em でした。その中ほどの 0.28 を使います
+pub const STRIKE_EM: f32 = 0.28;
+/// **下線の位置**(同上。負はベースラインの下)。書体の値は −0.02〜−0.13 em で、
+/// Word の PDF と並べて 0.18 em 下に決めてあります
+pub const UNDERLINE_EM: f32 = -0.18;
+
 /// **行の箱の中で、ベースラインが上端から何 mm 下か。**
 ///
 /// 残りの `LINE_MM - BASE_UP_MM`(2.4mm)が字の足の分です。

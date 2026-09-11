@@ -1290,9 +1290,10 @@ impl Render for Writer {
                 };
                 paper = paper.child(d);
                 // 下線・取り消し線は連なりごとに引く(gpui の text に無い)
+                // 位置は紙と同じ定数(ベースラインは `stop` から 0.88 字下)
                 for (on, dy) in [
-                    (f.underline, spt * (1.05 + HALF_LEADING)),
-                    (f.strike, spt * (0.35 + HALF_LEADING)),
+                    (f.underline, spt * (0.88 - kumihan::UNDERLINE_EM + HALF_LEADING)),
+                    (f.strike, spt * (0.88 - kumihan::STRIKE_EM + HALF_LEADING)),
                 ] {
                     if on {
                         paper = paper.child(div().absolute()

@@ -563,7 +563,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
             }
             c.end_text();
             // 下線と取り消し線。**字の下に引く線**なので、字を書いた後に
-            for (on, at) in [(p.underline, -0.18f32), (p.strike, 0.28)] {
+            for (on, at) in [(p.underline, kumihan::UNDERLINE_EM), (p.strike, kumihan::STRIKE_EM)] {
                 if !on || p.w_mm <= 0.0 {
                     continue;
                 }
