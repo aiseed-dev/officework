@@ -155,9 +155,10 @@ impl Writer {
         // いまの x(紙の座標)を保ったまま、隣の行で一番近い字の境へ
         let (x_now, _, _) = self.caret_xy();
         let ln = lines[target];
-        let base = ln.cells.iter().map(|c| c.off).min().unwrap_or(0);
+        let body = ln.body_cells();
+        let base = body.iter().map(|c| c.off).min().unwrap_or(0);
         let mut byte = ln.byte_end();
-        for c in &ln.cells {
+        for c in body {
             let cx = self.pg.left_mm + c.x_mm;
             if x_now < cx + c.w_mm / 2.0 {
                 byte = ln.byte0 + (c.off - base);
@@ -192,12 +193,9 @@ impl Writer {
                 continue;
             }
             let within = cur.saturating_sub(line.byte0);
-            let base = line.cells.iter().map(|c| c.off).min().unwrap_or(0);
-            let at = line.cells.iter().find(|c| c.off - base >= within);
-            let x = at
-                .map(|c| c.x_mm)
-                .or_else(|| line.cells.last().map(|c| c.x_mm + c.w_mm))
-                .unwrap_or(0.0);
+            // 頭の印(・や番号)は飛ばして本文の字に立つ(2026-09-11)
+            let at = line.cell_at(within);
+            let x = line.x_at(within);
             let pt = at
                 .or_else(|| line.cells.last())
                 .map(|c| c.size_pt)
@@ -313,6 +311,86 @@ impl Writer {
         }
         self.dirty = true;
         self.relayout_keep();
+    }
+
+    /// **空の項目で Enter を押したら、その段落の印を外して普通の段落にします**
+    /// (Word と同じ。2026-09-11 発注者「OOXML に合わせること」)。段落は増やしません。
+    /// 前は空の項目がもう1つ増え、次の Enter で2つとも消えていました。
+    /// 処理したら true を返します。false なら呼んだ側が普通に改行を入れます
+    pub(crate) fn enter_on_empty_list_item(&mut self) -> bool {
+        if self.target != Target::Body || !self.keys_go_to_body() || self.ed.has_selection() {
+            return false;
+        }
+        let (pi, b0) = self.cursor_para();
+        let text = self.ed.text();
+        let line = text[b0..].split('\n').next().unwrap_or("");
+        if !line.trim().is_empty() {
+            return false;
+        }
+        if self.doc.paragraphs().nth(pi).is_none_or(|p| p.list == ListKind::None) {
+            return false;
+        }
+        self.para(|p| {
+            p.list = ListKind::None;
+            p.list_text = None;
+            p.list_id = None;
+            p.indent = 0;
+            p.left_twips = 0;
+            p.first_line_twips = 0;
+            p.first_line_chars = None;
+        });
+        true
+    }
+
+    /// **項目の頭で Backspace を押したときの Word の動き**(2026-09-11)。
+    ///
+    /// 1. 印(・や番号)を外します。本文の位置は動きません
+    /// 2. もう一度押すと字下げが外れ、本文が左の余白に戻ります
+    /// 3. さらに押すと、いつもの Backspace で前の段落とつながります
+    ///
+    /// 2 は印の無い字下げの段落でも同じです(Word の「Backspace で左インデントを
+    /// 設定する」の既定)。処理したら true を返します
+    pub(crate) fn backspace_at_para_head(&mut self) -> bool {
+        if self.target != Target::Body || !self.keys_go_to_body() || self.ed.has_selection() {
+            return false;
+        }
+        let (pi, b0) = self.cursor_para();
+        if self.ed.cursor() != b0 {
+            return false;
+        }
+        let Some(p) = self.doc.paragraphs().nth(pi) else { return false };
+        if p.list != ListKind::None {
+            self.para(|p| {
+                let jibun = p.left_twips != 0 || p.first_line_twips != 0 || p.first_line_chars.is_some();
+                if jibun {
+                    // docx の項目: 左のインデントは残し、ぶら下げだけ外す
+                    p.first_line_twips = 0;
+                    p.first_line_chars = None;
+                } else {
+                    // このアプリの項目: 本文は 2 字ぶら下がっていたので、その段数を残す
+                    p.indent = (p.indent + 1).min(20);
+                }
+                p.list = ListKind::None;
+                p.list_text = None;
+                p.list_id = None;
+            });
+            return true;
+        }
+        let sagatte = p.indent > 0
+            || p.left_twips > 0
+            || p.first_line_twips > 0
+            || p.first_line_chars.is_some_and(|c| c > 0.0);
+        if sagatte {
+            self.para(|p| {
+                p.indent = 0;
+                p.left_twips = 0;
+                p.first_line_twips = 0;
+                p.first_line_chars = None;
+                p.ind_itta = true;
+            });
+            return true;
+        }
+        false
     }
 
     pub(crate) fn size(&mut self, f: impl Fn(f32) -> f32 + Copy) {

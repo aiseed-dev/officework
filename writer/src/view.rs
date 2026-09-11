@@ -1108,14 +1108,7 @@ impl Render for Writer {
                     }
                 };
                 let (ls, le) = (line.byte0, line.byte_end());
-                let base = line.cells.iter().map(|c| c.off).min().unwrap_or(0);
-                let yr = |upto: usize| -> f32 {
-                    line.cells.iter()
-                        .find(|c| c.off - base >= upto)
-                        .map(|c| c.x_mm)
-                        .or_else(|| line.cells.last().map(|c| c.x_mm + c.w_mm))
-                        .unwrap_or(0.0)
-                };
+                let yr = |upto: usize| -> f32 { line.x_at(upto) };
                 let selr = self.ed.selection();
                 if mine && !selr.is_empty() && selr.start < le && selr.end > ls {
                     let a = selr.start.max(ls) - ls;
@@ -1179,16 +1172,9 @@ impl Render for Writer {
                 if m.start < le && m.end > ls {
                     let a = m.start.max(ls) - ls;
                     let b = m.end.min(le) - ls;
-                    let base = line.cells.iter().map(|c| c.off).min().unwrap_or(0);
-                    // 幅は x 位置から出す(均等割付で字間が広がってもずれない)
-                    let xr = |upto: usize| -> f32 {
-                        line.cells.iter()
-                            .find(|c| c.off - base >= upto)
-                            .map(|c| c.x_mm)
-                            .or_else(|| line.cells.last().map(|c| c.x_mm + c.w_mm))
-                            .unwrap_or(0.0)
-                            - line.cells[0].x_mm
-                    };
+                    // 幅は x 位置から出す(均等割付で字間が広がってもずれない)。
+                    // 頭の印は飛ばす(2026-09-11)
+                    let xr = |upto: usize| -> f32 { line.x_at(upto) - line.cells[0].x_mm };
                     paper = paper.child(div().absolute()
                         .left(px((x0 + xr(a)) * pxmm))
                         .top(px(top + sz * (1.05 + HALF_LEADING)))
@@ -1209,15 +1195,7 @@ impl Render for Writer {
                 if mine && selr.start < le && selr.end > ls {
                     let a = selr.start.max(ls) - ls;
                     let b = selr.end.min(le) - ls;
-                    let base = line.cells.iter().map(|c| c.off).min().unwrap_or(0);
-                    let xr = |upto: usize| -> f32 {
-                        line.cells.iter()
-                            .find(|c| c.off - base >= upto)
-                            .map(|c| c.x_mm)
-                            .or_else(|| line.cells.last().map(|c| c.x_mm + c.w_mm))
-                            .unwrap_or(0.0)
-                            - line.cells[0].x_mm
-                    };
+                    let xr = |upto: usize| -> f32 { line.x_at(upto) - line.cells[0].x_mm };
                     paper = paper.child(div().absolute()
                         .left(px((x0 + xr(a)) * pxmm))
                         .top(px(top + sz * HALF_LEADING))

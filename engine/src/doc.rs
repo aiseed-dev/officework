@@ -2608,19 +2608,47 @@ pub struct Line {
     /// 字が下がる(2026-09-08、Word の PDF と並べて測った。16pt の見出しで
     /// 11pt、本文で 4pt)。行間 1.5 の余りは Word も下に置くので、そこは下げない
     pub dip_mm: f32,
+    /// **行の頭にある印のセルの数**(箇条書きの「・」や番号、脚注の番号。
+    /// 2026-09-11)。印は本文の字ではなく、`off` は 0 のまま入っている。
+    /// キャレットや選択の位置を出すときは、この数だけ飛ばして本文の字を見る。
+    /// 前は印のセルも見ていたので、項目の頭のキャレットが「・」の左に立ち、
+    /// 空の項目では本文の位置に立たなかった
+    pub head: usize,
 }
 
 impl Line {
     /// この行が本文の何バイト目までを含むか(行末の改行は含まない)。
     ///
     /// 行の中の字は連続しているとは限らない(折り返しで空白が落ちる)ので、
-    /// 最後の字の段落内位置から出す。
+    /// 最後の字の段落内位置から出す。頭の印は数えない
     pub fn byte_end(&self) -> usize {
-        let base = self.cells.iter().map(|c| c.off).min().unwrap_or(0);
-        self.cells
-            .last()
+        let body = self.body_cells();
+        let base = body.iter().map(|c| c.off).min().unwrap_or(0);
+        body.last()
             .map(|c| self.byte0 + (c.off + c.ch.len_utf8()) - base)
             .unwrap_or(self.byte0)
+    }
+
+    /// 本文の字のセル(頭の印を除く)
+    pub fn body_cells(&self) -> &[Cell] {
+        &self.cells[self.head.min(self.cells.len())..]
+    }
+
+    /// 行頭から `upto` バイト目に立つ字のセル(頭の印は見ない)。
+    /// 行末なら None
+    pub fn cell_at(&self, upto: usize) -> Option<&Cell> {
+        let body = self.body_cells();
+        let base = body.iter().map(|c| c.off).min().unwrap_or(0);
+        body.iter().find(|c| c.off - base >= upto)
+    }
+
+    /// 行頭から `upto` バイト目のキャレットの x(行の座標 mm)。
+    /// 行末(空の項目なら印の直後)は最後のセルの右端
+    pub fn x_at(&self, upto: usize) -> f32 {
+        self.cell_at(upto)
+            .map(|c| c.x_mm)
+            .or_else(|| self.cells.last().map(|c| c.x_mm + c.w_mm))
+            .unwrap_or(0.0)
     }
 }
 

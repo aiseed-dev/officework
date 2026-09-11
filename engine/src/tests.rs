@@ -373,6 +373,43 @@ mod list_tests {
         assert!(texts[3].starts_with("2."), "2番目が違う: {:?}", texts);
     }
 
+    /// **項目は印を左に出し、本文を 2 字ぶら下げる**(Word の日本語の既定
+    /// `w:ind w:left="420" w:hanging="420"`。2026-09-11 発注者「項目には字下げが必要」)。
+    /// 折り返した行も本文の位置に揃う。印が 2 字より短くても本文は 2 字の所から
+    #[test]
+    fn list_items_hang_two_characters_below_the_marker() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain("あ\nいろはにほへとちりぬるをわかよたれそつねならむ\n普通\n");
+        for (i, b) in d.blocks.iter_mut().enumerate() {
+            if let Block::Para(p) = b { if i != 2 { p.list = ListKind::Number; } }
+        }
+        let s = layout(&d, &m, &Frame { measure_mm: 40.0, line_height_mm: 6.0, y0_mm: 20.0});
+        let l0 = &s.lines[0];
+        let em2 = l0.cells[0].size_pt * 25.4 / 72.0 * 2.0;
+        assert!(l0.cells[0].x_mm.abs() < 0.01, "印は左の余白から: {:?}", l0.text());
+        let honbun = l0.cells.iter().find(|c| c.ch == 'あ').unwrap();
+        assert!((honbun.x_mm - em2).abs() < 0.05, "本文は 2 字の所から: {} vs {em2}", honbun.x_mm);
+        // 2 つ目の項目は折り返す。2 行目の頭も本文の位置
+        let l1 = &s.lines[1];
+        assert!(l1.text().starts_with("2."), "2 番目の番号: {:?}", l1.text());
+        let l2 = &s.lines[2];
+        assert!(!l2.text().starts_with('3'), "折り返しの行に番号は付かない: {:?}", l2.text());
+        assert!((l2.cells[0].x_mm - em2).abs() < 0.05, "折り返しも 2 字の所から: {}", l2.cells[0].x_mm);
+        // 普通の段落は左の余白から
+        let l3 = s.lines.iter().find(|l| l.text().starts_with("普通")).unwrap();
+        assert!(l3.cells[0].x_mm.abs() < 0.01, "普通の段落は余白から: {}", l3.cells[0].x_mm);
+        // 行は印のセルの数を知っている。キャレットは印を飛ばして本文に立つ
+        assert_eq!(l0.head, 3, "「1. 」の 3 セル: {:?}", l0.text());
+        assert!((l0.x_at(0) - em2).abs() < 0.05, "項目の頭のキャレットは本文の位置: {}", l0.x_at(0));
+        assert_eq!(l2.head, 0, "折り返しの行に印は無い");
+        // 空の項目: 印だけの行。本文は無いので byte_end は行頭、キャレットは印の右
+        let l4 = s.lines.last().unwrap();
+        assert_eq!(l4.head, l4.cells.len(), "空の項目は印のセルだけ: {:?}", l4.text());
+        assert_eq!(l4.byte_end(), l4.byte0, "空の項目に本文のバイトは無い");
+        assert!((l4.x_at(0) - em2).abs() < 0.05, "空の項目のキャレットも本文の位置: {}", l4.x_at(0));
+    }
+
     /// **行の箱の中で、字は底に寄る**(OOXML §17.3.1.33 の `atLeast` の決め。
     /// Word の PDF で測ると、箱が高い見出しほどベースラインが下がる。2026-09-08)。
     /// `y_mm`(箱の物差し)は変えず、描くときの下がり `dip_mm` に出る
@@ -2233,7 +2270,7 @@ mod fold_print_tests {
     fn line(y: f32) -> Line {
         Line { cells: vec![Cell { ch: 'あ', x_mm: 0.0, w_mm: 4.0, size_pt: 10.5,
                                   off: 0, fmt: Default::default(), font: None }],
-               y_mm: y, from_body: true, byte0: 0, cell: None, dip_mm: 0.0 }
+               y_mm: y, from_body: true, byte0: 0, cell: None, dip_mm: 0.0, head: 0 }
     }
 
     #[test]

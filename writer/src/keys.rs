@@ -84,13 +84,13 @@ impl Writer {
                     continue;
                 }
                 hit = line.byte0;
-                let base = line.cells.iter().map(|c| c.off).min().unwrap_or(0);
-                let mut x = line.cells.first().map(|c| c.x_mm - self.pg.left_mm).unwrap_or(0.0);
-                for c in &line.cells {
-                    if x_mm < x + c.w_mm / 2.0 {
+                // 頭の印(・や番号)は本文の字ではないので飛ばす(2026-09-11)
+                let body = line.body_cells();
+                let base = body.iter().map(|c| c.off).min().unwrap_or(0);
+                for c in body {
+                    if x_mm < c.x_mm - self.pg.left_mm + c.w_mm / 2.0 {
                         break;
                     }
-                    x += c.w_mm;
                     hit = line.byte0 + (c.off + c.ch.len_utf8()) - base;
                 }
             }
@@ -130,8 +130,9 @@ impl Writer {
             let Some((_, i)) = best else { return };
             let line = &self.page.lines[i];
             let mut byte = line.byte0;
-            let base = line.cells.iter().map(|c| c.off).min().unwrap_or(0);
-            for c in &line.cells {
+            let body = line.body_cells();
+            let base = body.iter().map(|c| c.off).min().unwrap_or(0);
+            for c in body {
                 if y_mm < line.y_mm + c.x_mm + c.w_mm / 2.0 {
                     break;
                 }
@@ -166,13 +167,12 @@ impl Writer {
             }
             if nth == want {
                 byte = line.byte0;
-                let base = line.cells.iter().map(|c| c.off).min().unwrap_or(0);
-                let mut x = line.cells.first().map(|c| c.x_mm).unwrap_or(0.0);
-                for c in &line.cells {
-                    if x_mm < x + c.w_mm / 2.0 {
+                let body = line.body_cells();
+                let base = body.iter().map(|c| c.off).min().unwrap_or(0);
+                for c in body {
+                    if x_mm < c.x_mm + c.w_mm / 2.0 {
                         break;
                     }
-                    x += c.w_mm;
                     byte = line.byte0 + (c.off + c.ch.len_utf8()) - base;
                 }
                 break;
@@ -481,6 +481,11 @@ impl Writer {
     }
 
     pub(crate) fn backspace(&mut self, _: &ui::Backspace, _: &mut Window, cx: &mut Context<Self>) {
+        // 項目の頭では、まず印、次に字下げを外す(Word と同じ)
+        if self.backspace_at_para_head() {
+            cx.notify();
+            return;
+        }
         self.checkpoint(true);
         self.editor().backspace();
         self.on_edited();
@@ -1020,6 +1025,8 @@ impl Writer {
                 let job = if macro_mode { AiJob::Macro(q) } else { AiJob::Ask(q) };
                 self.ai_go(job, cx);
             }
+        } else if self.enter_on_empty_list_item() {
+            // 空の項目の Enter は印を外すだけ(段落は増やさない)
         } else {
             self.checkpoint(true);
             self.editor().insert("\n");

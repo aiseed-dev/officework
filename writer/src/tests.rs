@@ -188,6 +188,45 @@ mod menu_run_tests {
         });
     }
 
+    /// **項目での Enter と Backspace は Word と同じ**(2026-09-11 発注者)。
+    /// 空の項目で Enter → 印が外れて普通の段落(段落は増えない)。
+    /// 項目の頭で Backspace → 1 回目は印、2 回目は字下げ、3 回目で前とつながる
+    #[gpui::test]
+    fn enter_and_backspace_on_a_list_item_follow_word(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let mut d = Document::plain("甲\n乙\n");
+            for b in d.blocks.iter_mut() {
+                if let kumihan::Block::Para(p) = b { p.list = kumihan::ListKind::Bullet; }
+            }
+            this.set_doc(d);
+            // 3 つ目(空)の項目で Enter: 印だけ外れ、段落は 3 つのまま
+            let n = this.ed.text().len();
+            this.ed.move_to(n, false);
+            assert!(this.enter_on_empty_list_item(), "空の項目の Enter は印を外す");
+            let lists: Vec<_> = this.doc.paragraphs().map(|p| p.list).collect();
+            assert_eq!(lists, vec![kumihan::ListKind::Bullet, kumihan::ListKind::Bullet, kumihan::ListKind::None]);
+            assert_eq!(this.doc.paragraphs().count(), 3, "段落は増えない");
+            // 字のある項目では Enter は普通の改行に任せる
+            this.ed.move_to(0, false);
+            assert!(!this.enter_on_empty_list_item());
+            // 「乙」の頭で Backspace: 1 回目は印が外れて字下げが残る
+            this.ed.move_to(4, false);
+            assert!(this.backspace_at_para_head());
+            let p = this.doc.paragraphs().nth(1).unwrap();
+            assert_eq!(p.list, kumihan::ListKind::None);
+            assert_eq!(p.indent, 1, "本文の位置を保つ字下げ");
+            // 2 回目: 字下げが外れる
+            assert!(this.backspace_at_para_head());
+            assert_eq!(this.doc.paragraphs().nth(1).unwrap().indent, 0);
+            // 3 回目: もう何も外す物が無い → 普通の Backspace に任せる
+            assert!(!this.backspace_at_para_head());
+            // 段落の途中(「甲」の後ろ)では触らない
+            this.ed.move_to(3, false);
+            assert!(!this.backspace_at_para_head());
+        });
+    }
+
     #[gpui::test]
     fn at_most_one_list_is_open(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));

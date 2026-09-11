@@ -999,6 +999,7 @@ mod tests {
                 byte0: 0,
                 cell: None,
                 dip_mm: 0.0,
+                head: 0,
             }]
         };
         let mut out = Vec::new();
