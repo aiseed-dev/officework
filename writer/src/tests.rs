@@ -227,6 +227,30 @@ mod menu_run_tests {
         });
     }
 
+    /// **下線と取り消し線は adoc の文書でも効く**(2026-09-11 発注者。太字・斜体と
+    /// 同じ「意味の書式」)。文字色などの見た目のボタンは今までどおりスタイルの
+    /// 一覧へ案内する
+    #[gpui::test]
+    fn underline_and_strike_apply_in_a_native_document(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.set_doc(Document::plain("下線の試し。\n二つ目。"));
+            assert!(this.native, "adoc の文書のはず");
+            this.ed.select_all();
+            this.run_cmd("underline", cx);
+            assert!(this.doc.paragraphs().flat_map(|p| p.runs.iter()).all(|r| r.fmt.underline), "下線が付かない");
+            this.run_cmd("strikeout", cx);
+            assert!(this.doc.paragraphs().flat_map(|p| p.runs.iter()).all(|r| r.fmt.strike), "取り消し線が付かない");
+            // もう一度押すと外れる
+            this.run_cmd("underline", cx);
+            assert!(this.doc.paragraphs().flat_map(|p| p.runs.iter()).all(|r| !r.fmt.underline), "下線が外れない");
+            // 文字色はスタイルの一覧へ
+            assert!(!this.rp_open);
+            this.run_cmd("fontcolor", cx);
+            assert!(this.rp_open, "文字色はスタイルの一覧を開く");
+        });
+    }
+
     #[gpui::test]
     fn at_most_one_list_is_open(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));

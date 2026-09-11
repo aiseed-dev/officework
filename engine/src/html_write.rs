@@ -147,6 +147,13 @@ fn run_html(r: &Run, doc: &Document, ctx: &mut Ctx) -> String {
     if r.fmt.bold {
         s = format!("<strong>{s}</strong>");
     }
+    // 下線と取り消し線は意味の書式(2026-09-11)。HTML の要素で出す
+    if r.fmt.underline {
+        s = format!("<u>{s}</u>");
+    }
+    if r.fmt.strike {
+        s = format!("<s>{s}</s>");
+    }
     if let Some(href) = &r.fmt.link {
         s = format!("<a href=\"{}\">{s}</a>", esc(href));
     }

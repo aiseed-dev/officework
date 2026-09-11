@@ -420,6 +420,8 @@ One thing per row, shown three ways: how you type it in the text, which ribbon b
 |Numbering |start with `. ` |Home > Numbering |`<ol>` and `<li>`
 |Bold |`*bold*` |Home > Bold |`<strong>`
 |Italic |`_italic_` |Home > Italic |`<em>`
+|Underline |`[.underline]#text#` |Home > Underline |`<u>`
+|Strikethrough |`[.line-through]#text#` |Home > Strikethrough |`<s>`
 |Superscript |`x^2^` |Home > Superscript |`<sup>`
 |Subscript |`H~2~O` |Home > Subscript |`<sub>`
 |Ruby (furigana) |`ruby:漢字[かんじ]` |Home > Ruby |`<ruby>` and `<rt>`
@@ -446,7 +448,8 @@ One thing per row, shown three ways: how you type it in the text, which ribbon b
 |Table column spec |`[cols="1,3"]` |(written in the text) |`<colgroup>`
 |===
 
-*What you do not write in the text.* Underline, strikethrough, font colour, highlight colour, font, font size, line spacing, alignment and borders — and the *page dressing* (header, footer, watermark, page colour, vertical writing) — go in the template, not in the text.
+*What you do not write in the text.* Font colour, highlight colour, font, font size, line spacing, alignment and borders — and the *page dressing* (header, footer, watermark, page colour, vertical writing) — go in the template, not in the text.
+Underline and strikethrough are written in the text, like bold and italic. They carry a meaning (attention, deletion), and their marks are the roles built into AsciiDoc.
 In a header or footer, `{ページ}` and `{ページ数}` become the page number and the page count.
 Pressing those ribbon buttons opens the Styles face on the right.
 On the web they become CSS.
@@ -637,7 +640,7 @@ If a template next to the document exists but cannot be read, no copy is made �
 
 === When you want to change the look
 
-Pressing size, typeface, colour, highlight, underline or strikethrough does not apply anything.
+Pressing size, typeface, colour or highlight does not apply anything.
 Instead *the Styles face on the right opens*, where you
 
 * *pick* one from the list (wear a style that already exists)

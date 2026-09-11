@@ -2784,10 +2784,10 @@ mod adoc_dropped_tests {
         let mut d = Document::default();
         let mut p = Paragraph::default();
         p.runs.push(Run {
-            text: "下線つき".into(),
+            text: "色つき".into(),
             size_pt: Some(16.0),
             font: None,
-            fmt: CharFormat { underline: true, ..Default::default() },
+            fmt: CharFormat { color: Some("FF0000".into()), ..Default::default() },
         });
         p.align = crate::doc::Align::Center;
         d.push_para(p);
@@ -2801,7 +2801,7 @@ mod adoc_dropped_tests {
         });
 
         let got = adoc::dropped(&d);
-        for what in ["下線", "字の大きさ", "段落の揃え", "透かし", "ヘッダー"] {
+        for what in ["文字の色", "字の大きさ", "段落の揃え", "透かし", "ヘッダー"] {
             assert!(got.contains(&what), "「{what}」が挙がっていない: {got:?}");
         }
     }

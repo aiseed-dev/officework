@@ -463,7 +463,22 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
         // **役割は、この run で開いてこの run で閉じる印に付けます**
         // (`[.path]_径路_`。本家の書き方)。斜体・太字の順に見て、
         // どちらも無ければ `[.名前]#字#` の形にします(2026-09-02)
-        let role = r.fmt.style_id.as_deref().filter(|n| *n != MONO);
+        // **下線と取り消し線は本家の組み込みの役割**(`underline` / `line-through`)
+        // で書く(2026-09-11)。文字スタイルの名前があれば `.` でつなぐ
+        let role_s: Option<String> = {
+            let mut names: Vec<&str> = Vec::new();
+            if let Some(n) = r.fmt.style_id.as_deref().filter(|n| *n != MONO) {
+                names.push(n);
+            }
+            if r.fmt.underline {
+                names.push("underline");
+            }
+            if r.fmt.strike {
+                names.push("line-through");
+            }
+            (!names.is_empty()).then(|| names.join("."))
+        };
+        let role = role_s.as_deref();
         let opens_alone = |k: Span| {
             want.contains(&k) && !stack.iter().any(|(q, _)| *q == k) && end_of(ri, k) == ri + 1
         };
@@ -1060,12 +1075,6 @@ pub fn dropped(doc: &Document) -> Vec<&'static str> {
             // `<<名前>>` の1種類しか持たない。ページ番号は文字の参照になる
             if r.fmt.field.as_ref().is_some_and(|f| f.page) {
                 push("相互参照のページ番号");
-            }
-            if r.fmt.underline {
-                push("下線");
-            }
-            if r.fmt.strike {
-                push("取り消し線");
             }
             if r.fmt.color.is_some() {
                 push("文字の色");
@@ -3339,6 +3348,32 @@ mod tests {
     #[test]
     fn headings_body_and_lists_round_trip() {
         round_trip("= 月次報告\n:template: 社内標準\n\n== まとめ\n\n売上は前月比で伸びた。\n\n* 東京\n* 大阪\n\n. 一番\n. 二番\n");
+    }
+
+    /// **下線と取り消し線は本家の役割で往復する**(2026-09-11 発注者「太字・斜体と
+    /// 同じ意味の書式として通す」)。docx から来た run の旗が adoc に書かれ、
+    /// 読むと旗に戻る。文字スタイルの名前があれば `.` でつなぐ
+    #[test]
+    fn underline_and_strike_round_trip_as_roles() {
+        // 前後が字なので二重の印(本家の決まり。一重の `#` は字の隣で閉じない)
+        round_trip("[.underline]##下線##と[.line-through]##消し##と[.注意.underline]##両方##。\n");
+        let d = parse("[.underline]##下線##と[.line-through]##消し##と[.注意.underline]##両方##。\n").unwrap();
+        let runs: Vec<&Run> = d.paragraphs().flat_map(|p| p.runs.iter()).collect();
+        let r = |t: &str| runs.iter().find(|r| r.text == t).copied().unwrap_or_else(|| panic!("{t} が無い: {runs:?}"));
+        assert!(r("下線").fmt.underline && !r("下線").fmt.strike && r("下線").fmt.style_id.is_none());
+        assert!(r("消し").fmt.strike && !r("消し").fmt.underline && r("消し").fmt.style_id.is_none());
+        assert!(r("両方").fmt.underline && r("両方").fmt.style_id.as_deref() == Some("注意"));
+        assert!(!r("と").fmt.underline && !r("と").fmt.strike);
+        // 旗を立てた run を書くと役割になる
+        let mut d = Document::plain("下線と消し");
+        if let Block::Para(p) = &mut d.blocks[0] {
+            let run = |t: &str, ul: bool, st: bool| Run {
+                text: t.to_string(), size_pt: None, font: None,
+                fmt: CharFormat { underline: ul, strike: st, ..Default::default() },
+            };
+            p.runs = vec![run("下線", true, false), run("と", false, false), run("消し", false, true)];
+        }
+        assert_eq!(write(&d), "[.underline]##下線##と[.line-through]##消し##\n");
     }
 
     #[test]

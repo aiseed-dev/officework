@@ -3209,8 +3209,9 @@ impl Writer {
         "decfont",
         "fontcolor",
         "highlight",
-        "underline",
-        "strikeout",
+        // 下線と取り消し線は太字・斜体と同じ「意味の書式」として通す
+        // (2026-09-11 発注者)。adoc には本家の役割 `underline` /
+        // `line-through` で書くので、docx との往復でも落ちない
     ];
 
     /// ネイティブ文書で見た目の操作が来たら遮り、スタイルの新設へ誘導する。

@@ -783,9 +783,27 @@ impl State {
             f.style_id = Some(MONO.to_string());
         }
         if let Some(r) = self.roles.last() {
-            f.style_id = Some(r.replace(' ', "."));
+            apply_role(&mut f, r);
         }
         f
+    }
+}
+
+/// **役割を run の書式に写す。** 本家の組み込みの役割 `underline` と
+/// `line-through` は下線と取り消し線の意味なので、名前ではなく書式の旗に
+/// します(2026-09-11 発注者「下線と取り消し線は太字・斜体と同じ意味の書式」)。
+/// 残りの役割は `.` でつないで文字スタイルの名前にします
+pub(crate) fn apply_role(f: &mut CharFormat, r: &str) {
+    let mut names: Vec<&str> = Vec::new();
+    for n in r.split([' ', '.']).filter(|n| !n.is_empty()) {
+        match n {
+            "underline" => f.underline = true,
+            "line-through" => f.strike = true,
+            _ => names.push(n),
+        }
+    }
+    if !names.is_empty() {
+        f.style_id = Some(names.join("."));
     }
 }
 
@@ -863,7 +881,7 @@ impl Walker<'_> {
                     fmt.style_id = Some(MONO.to_string());
                 }
                 if let Some(r) = p.attrs.as_ref().and_then(|a| a.role.as_ref()) {
-                    fmt.style_id = Some(r.replace(' ', "."));
+                    apply_role(&mut fmt, r);
                 }
                 runs.push(Run { text: p.text.clone(), size_pt: None, font: None, fmt });
                 i += 1;
@@ -997,7 +1015,7 @@ impl Walker<'_> {
             let (text, role) = link_text(raw_text, &url);
             let mut fmt = CharFormat { link: Some(url), ..base.clone() };
             if let Some(r) = role {
-                fmt.style_id = Some(r);
+                apply_role(&mut fmt, &r);
             }
             run(text, fmt)
         };
