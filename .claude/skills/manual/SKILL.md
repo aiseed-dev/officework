@@ -58,7 +58,7 @@ description: マニュアル(docs/ の手引き・docs/ja/commands/ のコマン
   (どちらにも誤訳や癖がある — 順に機械的に落ちない)。迷ったら「使う人が
   ヘルプや検索で探す言葉はどちらか」。独自の機能は両方とも参考にできない —
   普通の言葉で名前を決めてから使う(決めるのは発注者)
-- 言葉づかいは CLAUDE.md の表のとおり(kotoba_check が見る)
+- 言葉づかいは普通の日本語で(`python3 tools/kotoba_list.py` が、Excel と Word の用語と役所の文書に無い言葉を一覧にする。合否は出ないので、読んで決める)
 
 ## 生成した節は手で直さない
 
@@ -75,7 +75,7 @@ description: マニュアル(docs/ の手引き・docs/ja/commands/ のコマン
 ## 出す前の検査(全部回す)
 
 ```
-python3 tools/kotoba_check.py          # 言葉づかい
+python3 tools/kotoba_list.py           # 言葉づかい(一覧。読んで決める)
 python3 tools/manual_uchiwa_check.py   # 内輪の注記(見る対象に入っているかも確かめる)
 python3 tools/command_docs.py          # コマンドの手引きの枚数と状態
 python3 tools/api_taiou.py             # 対応表と実物のずれ

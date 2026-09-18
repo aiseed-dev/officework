@@ -6,6 +6,13 @@
 
 == 進め方の作法(発注者と確立済み)
 
+* **言葉づかいの検査は「使う言葉」の側で見る**(2026-09-18 発注者「否定形をやめませんか。
+  否定だけを外せばいいので意味ないです」)。tools/kotoba_check.py(使わない言葉の表)は消し、
+  `python3 tools/kotoba_list.py` が、利用者の文書と画面の文言から、Excel と Word の用語と
+  役所の docx の本文(tools/kotoba_tsukau.txt、`--make` で作り直す)に無い言葉を多い順に出す。
+  合否は無い。出た言葉は言い換えるか、普通の言葉なら tools/kotoba_tsukau_tsuika.txt に足す
+  (決めるのは発注者)。最初の一覧は 2,409 語で、上位は 画面・道具・本文・図形・中身・台帳・
+  状態行・本家・往復・径路・雛形。CI からも外した(一覧は人が読む物)
 * **2026-09-18: 0.1.0-alpha.3 を出す用意ができている。** 発注者の決め「画面も最低限は保つ。
   Mac の直しを alpha.3 で出して、以後は PDF 化に専念する」。officework / calc / writer の
   Cargo.toml と README・writer の手引きの版名を alpha.3 に上げ、release.yml の本文に

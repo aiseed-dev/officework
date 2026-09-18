@@ -83,7 +83,7 @@ face / ui / ops → エンジン(engine / sheet / ooxml / lang)。
 |回す物 |何を見るか
 
 |`cargo test --workspace` |単体と結合の全部(エンジンの共有の型を触ったら `cargo check --workspace --all-targets` も)
-|`python3 tools/kotoba_check.py` |言葉づかい
+|`python3 tools/kotoba_list.py` |言葉づかい(普通の日本語に無い言葉の一覧。合否は出ない)
 |`python3 tools/manual_uchiwa_check.py` |利用者文書に内輪の注記が無いか
 |`python3 tools/command_docs.py` |コマンドの手引きの枚数と状態の印
 |`python3 tools/api_taiou.py` |対応表と実物のずれ

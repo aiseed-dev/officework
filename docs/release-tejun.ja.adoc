@@ -47,7 +47,6 @@
 ----
 $ cargo build -p sidecar
 $ python3 tools/config_dir_check.py
-$ python3 tools/kotoba_check.py
 $ python3 tools/sunset_check.py
 $ python3 tools/api_taiou.py && python3 tools/api_taiou.py --self-test
 $ python3 tools/manual_uchiwa_check.py
