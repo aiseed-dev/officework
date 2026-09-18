@@ -39,4 +39,8 @@ location / {
 
 == 書体
 
-Flutter(Flet の描画)は日本語の書体を持たず、字ごとに Google の Noto から補います。そのままだと「、」「。」が中国語(繁体字)用の中央寄せの字形で出ることがあります(2026-09-19 発注者の指摘)。`assets/fonts/NotoSansJP-Regular.ttf` は Noto Sans JP(SIL Open Font License。`assets/fonts/OFL.txt`)を、かな・JIS 第 1 水準・このページの字に絞った物(1.3MB)です。`main.py` の `page.fonts` と `page.theme` でこれを使います。ページの文に新しい漢字を足したら、作り直しが要ることがあります(無い字は Noto の補いに戻るだけで、落ちはしません)。
+Flutter(Flet の描画)は日本語の書体を持たず、字ごとに Google の Noto から補います。どの Noto(日本語・簡体字・繁体字・韓国語)で補うかはブラウザの言語設定で決まり、アプリからは指定できません。日本語以外の設定のブラウザでは「、」「。」が繁体字用の中央寄せの字形で出ます(2026-09-19 発注者の指摘)。
+
+書体は同梱しません(発注者「書体の同梱は厳しい」)。代わりに `assets/index.html`(Flet の index.html の写しに 1 か所足した物)で、Flutter が動き出す前に `navigator.language` を `ja` にします。Flet は assets に index.html があればそれを使います。**Flet の版を上げたら、Flet の index.html(`flet_web/web/index.html`)を写し直して、同じ 1 か所を足します。**
+
+根本の直しは Flutter の側です(起動の設定で補いの言語を指定できるようにする)。SEKKEI「検討: Flutter の Web の日本語」を見てください。

@@ -59,13 +59,9 @@ def shot(src, caption):
 
 def main(page: ft.Page):
     page.title = "aiseed office — Word と Excel のファイルを、同じに開いて刷る"
-    # Flutter on the web has no Japanese font of its own and borrows glyphs
-    # from Google's Noto per character, so 、 and 。 could come out as the
-    # centred Traditional Chinese forms. A Japanese font of our own
-    # (Noto Sans JP, OFL, subset to kana, JIS level 1 and this page's text)
-    # keeps every glyph Japanese
-    page.fonts = {"Noto Sans JP": "fonts/NotoSansJP-Regular.ttf"}
-    page.theme = ft.Theme(font_family="Noto Sans JP")
+    # Japanese glyphs: see assets/index.html. Flutter fills in CJK characters
+    # from Google's Noto by the browser language, so the page declares itself
+    # Japanese there instead of bundling a font
     page.bgcolor = BG
     page.scroll = ft.ScrollMode.AUTO
     page.padding = 0

@@ -8196,3 +8196,13 @@ Word と Excel に合わせるのは、ファイルの読み書きと印刷(docx
 *決めていない物:* 置き場(GitHub Pages か自前のサーバー)、ドメイン、有料サポートの値段と範囲、文面。載せるのは動いている物だけ(手引きと同じ決め)。
 
 *順番:* 突き合わせ(Word・Excel との一致)を止めずに、1 枚の頁から始める。
+
+== 検討: Flutter の Web の日本語(2026-09-19)
+
+紹介ページ(Flet)で「、」「。」が上に上がって見えた(発注者)。Flutter の Web は自分で字を描く方式で、日本語の字は Google の Noto を字ごとに取って補う。どの Noto(JP / SC / TC / KR)で補うかは `font_fallback_service.dart` の表で、言語は `navigator.language`(ブラウザの設定)から取る。アプリからは指定できない。日本語以外のブラウザでは繁体字用の TC で句読点が補われ、中央寄せになる。
+
+*いまの手当て:* 書体の同梱は発注者が「厳しい」と言ったので外した。`web/assets/index.html` で Flutter が動く前に `navigator.language` を `ja` にする。書体は今までどおり Google から来る。
+
+*根本の直し(未着手):* (1) Flutter へ、起動の設定(engine の config)に補いの言語を足す PR。数十行と試験。Web 用の試験環境(felt)を組むのに半日から 1 日。(2) Flet へ、`fontFallbackBaseUrl`(書体の置き場)を Python から渡せるようにする PR。自分のサーバーに Noto を置けば Google に届かない環境でも出る。どちらも Flet の宣伝の材料になる。
+
+*HTML 描画の復活は無理。* Flutter 3.29 で外され、戻す気配は無い。読ませる頁(手引き・記事)は普通の HTML で作る。
