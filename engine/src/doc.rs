@@ -895,6 +895,14 @@ pub struct CellBorders {
     /// **左下から右上への斜線**(docx の `w:tcBorders/w:tr2bl`)。
     /// 両方立てれば×になります
     pub diag_up: bool,
+    /// Width of the top border in pt (docx `w:sz` is eighths of a point);
+    /// 0 when the file gives none. Word adds this width to the row's height:
+    /// the border sits inside the row, above the content (2026-09-19,
+    /// measured on the Nagoya loan form: every row was taller than its
+    /// `w:trHeight` by exactly its top border, 19pt over 31 rows)
+    pub top_pt: f32,
+    /// Width of the bottom border in pt; see [`Self::top_pt`]
+    pub bottom_pt: f32,
 }
 
 /// **既定の縦位置は上揃え。**

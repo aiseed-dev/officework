@@ -59,8 +59,8 @@
   `cargo run --release -p paper --example docx_pdf -- 元.docx 出.pdf` と
   `--example gyou_probe -- 元.docx 探す字` で行い、Word の PDF は
   ~/Documents/officework-cmp/corpus/*.ms.pdf と pdfplumber で並べる。
-  2026-09-19: 一致は 246(SEKKEI 続き30 の 14 回目。ttc の顔の取り違えと
-  balanceSingleByteDoubleByteWidth)。次に見る物: 浮かぶ表のうち用紙や余白に対する位置の物
+  2026-09-19: 一致は 258(SEKKEI 続き30 の 15 回目。罫線の太さを行に足す・表の前後の位置・
+  縦結合の高さの配り方)。原因は推測せず OOXML と Word の PDF の罫線の位置で突き止める(発注者)。次に見る物: 浮かぶ表のうち用紙や余白に対する位置の物
   (`vertAnchor` が page / margin。横浜市 0791)、横浜市 0766(3 / 2)、JST の計画書(34 / 31)、
   縦書きのセルの回転して描く分。頁数の集計はスクラッチの pages_sweep.py(tools には無い。
   docx_pdf を全部に掛けて Word の PDF と頁数を比べるだけの物)。回帰試験 `paper/tests/kaiki.rs` はこの Mac で通る

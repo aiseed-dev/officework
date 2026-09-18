@@ -1512,7 +1512,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     }
                     .max(0.0);
                     utsusu(tmp, dx, 0.0, &mut sheet);
-                    yoke = Some((owari - lh, dx, dx + haba));
+                    yoke = Some((owari - BASE_UP_MM, dx, dx + haba));
                 } else {
                     y = layout_table(table, m, frame, y_in, &mut sheet, table_no, doc.hyphenate,
                                      &mut note_no, base, doc, pitch, doc.compress_punct, moji,
@@ -2115,10 +2115,14 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     for w in &widths {
         xs.push(xs.last().unwrap() + w);
     }
-    let lh = frame.line_height_mm;
 
-    // 表の上端。直前のベースラインから少し空ける
-    let table_top = y_in - lh * 0.55;
+    // The table starts where the next line's box would start. A line's box
+    // begins BASE_UP_MM above its baseline (that is how paper splits pages),
+    // and `y_in` is the baseline the next line would take, so the table's
+    // top is `y_in - BASE_UP_MM`: at the top of a page that is the margin
+    // itself. Until 2026-09-19 it was `y_in - 0.55 lh`, which put the Nagoya
+    // loan form's first rule 1.5pt below Word's
+    let table_top = y_in - BASE_UP_MM;
 
     // 第1走: 各セルを折り、格子の位置と行の高さを決める。
     // 行はセルの文章(段落を \n で繋いだもの)の中のバイト位置を持つ
@@ -2203,9 +2207,9 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         let mut tmp = Sheet::default();
                         // 中の表の番号。本文の表と重ならない所から振る
                         let no = usize::MAX / 2 + table_no * 64 + hyou_no.len();
-                        let owari = layout_table(naka, m, &fr, lh * 0.55, &mut tmp, no, hyphenate, notes,
+                        let owari = layout_table(naka, m, &fr, BASE_UP_MM, &mut tmp, no, hyphenate, notes,
                                                  base, doc, pitch, tsume, moji, list_counts);
-                        hyou_no.push((ls.len(), tmp, (owari - lh).max(0.0)));
+                        hyou_no.push((ls.len(), tmp, (owari - BASE_UP_MM).max(0.0)));
                         para0 += 1;
                         continue;
                     }
@@ -2324,7 +2328,30 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         // (18pt のグリッド)の行は 18.5pt だった。罫線の太さはまだ持って
         // いないので、Word の既定(sz=4 = 0.5pt)を当てる。横の罫線を引かない
         // 表は足さない
-        let keisen = if table.borders.inside_h || table.borders.top || table.borders.bottom {
+        // The width is the rule actually drawn at the top of this row: the
+        // widest `w:tcBorders/w:top` among its cells when the cells say so,
+        // the default 0.5pt when the table itself draws the rule, nothing
+        // otherwise (2026-09-19, the Nagoya loan form: every border is on the
+        // cells, none on the table, and each row was taller than its
+        // `w:trHeight` by its top border, 19pt over 31 rows)
+        // The edge belongs to two rows: this row's `w:top` and the row
+        // above's `w:bottom` both describe it. When they differ, Word draws
+        // the heavier one (ECMA-376 17.4.39: the border with the larger
+        // width, then the more visible style, wins), so the wider counts
+        let cells = &table.rows[ri_now];
+        let haba = |side: Option<bool>, pt: f32| -> f32 {
+            if side == Some(true) { if pt > 0.0 { pt } else { KEISEN_PT } } else { 0.0 }
+        };
+        let jibun = cells
+            .iter()
+            .map(|c| haba(c.borders.top, c.borders.top_pt))
+            .chain(ri_now.checked_sub(1).into_iter().flat_map(|r| table.rows[r].iter())
+                .map(|c| haba(c.borders.bottom, c.borders.bottom_pt)))
+            .fold(0.0f32, f32::max);
+        let hyou = if ri_now == 0 { table.borders.top } else { table.borders.inside_h };
+        let keisen = if jibun > 0.0 {
+            jibun * PT_TO_MM
+        } else if hyou && cells.iter().any(|c| c.borders.top.is_none()) {
             KEISEN_PT * PT_TO_MM
         } else {
             0.0
@@ -2345,7 +2372,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     // **縦に結合したセルの中身が、結合した行の合計より高ければ、最後の行を伸ばす**
     // (固定の行は伸ばさない)。Word と同じ配り方です
     {
-        let mut nobasu: Vec<(usize, f32)> = Vec::new();
+        let mut nobasu: Vec<(usize, usize, f32)> = Vec::new();
         for (ri, laid) in rows_laid.iter().enumerate() {
             for l in laid.iter().filter(|l| l.v == VMerge::Start) {
                 let mut k = ri;
@@ -2363,15 +2390,38 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     + l.pad[0]
                     + l.pad[2];
                 let have: f32 = row_hs[ri..=k].iter().sum();
-                nobasu.push((k, (need - have).max(0.0)));
+                nobasu.push((ri, k, (need - have).max(0.0)));
             }
         }
-        for (k, tarinai) in nobasu {
-            let kotei = table.row_exact.get(k).copied().unwrap_or(false);
-            if tarinai > 0.0 && !kotei {
-                row_hs[k] += tarinai;
+        // Two merged cells over the same rows both ask for the same room:
+        // the larger request is the one to satisfy, not their sum (the
+        // Yokohama 0848 form had two such cells over rows 1-2, and the 11pt
+        // they needed was added twice). Word spreads the extra evenly over
+        // the rows the cell covers, not onto the last row only: in that
+        // form both rows came out 18.2pt, from 12.5pt of their own content
+        // and a 3-line merged cell of 36.5pt (2026-09-19, Word's PDF)
+        let mut moto = row_hs.clone();
+        for (ri, k, tarinai) in nobasu {
+            if tarinai <= 0.0 {
+                continue;
+            }
+            let yuru: Vec<usize> = (ri..=k)
+                .filter(|r| !table.row_exact.get(*r).copied().unwrap_or(false))
+                .collect();
+            if yuru.is_empty() {
+                continue;
+            }
+            // What this cell still lacks after earlier stretches of the
+            // same rows, spread over the rows that may grow
+            let ima: f32 = row_hs[ri..=k].iter().sum();
+            let moto_sum: f32 = moto[ri..=k].iter().sum();
+            let nokori = (tarinai - (ima - moto_sum)).max(0.0);
+            let wari = nokori / yuru.len() as f32;
+            for r in yuru {
+                row_hs[r] += wari;
             }
         }
+        moto.clear();
     }
 
     // 行の上端(累積)
@@ -2631,8 +2681,11 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             }
         }
     }
-    // 次のベースライン
-    table_bottom + lh
+    // The next line's baseline: its box starts at the table's bottom, so the
+    // baseline is BASE_UP_MM below it (2026-09-19; `+ lh` before, which
+    // left a full line's pitch between the last rule and the next text, 9pt
+    // more than Word on the Yokohama 0908 form)
+    table_bottom + BASE_UP_MM
 }
 
 /// 註記のスタイル名 → 紙に出す見出し。

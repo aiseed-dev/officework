@@ -2869,10 +2869,23 @@ pub(super) fn parse_document_rels_num(
                                 }
                             }
                         } else {
+                            // Width in pt. `w:sz` counts eighths of a point for the
+                            // line itself (ECMA-376 17.3.4 / 17.18.2 ST_Border); a
+                            // `double` border is two such lines with a gap of the
+                            // same width, `triple` three, so the space they take is
+                            // 3 and 5 times `sz`. Word grows the row by that space
+                            // (2026-09-19, measured on the Nagoya loan form: a
+                            // `double` sz=4 edge took 1.5pt, its lines 1pt apart)
+                            let sz = attr(&e, "sz").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
+                            let pt = match attr(&e, "val").as_deref() {
+                                Some("double") => sz * 3.0 / 8.0,
+                                Some("triple") => sz * 5.0 / 8.0,
+                                _ => sz / 8.0,
+                            };
                             match n.as_slice() {
-                                b"top" => cell_borders.top = Some(hiku),
+                                b"top" => { cell_borders.top = Some(hiku); cell_borders.top_pt = if hiku { pt } else { 0.0 }; }
                                 b"left" => cell_borders.left = Some(hiku),
-                                b"bottom" => cell_borders.bottom = Some(hiku),
+                                b"bottom" => { cell_borders.bottom = Some(hiku); cell_borders.bottom_pt = if hiku { pt } else { 0.0 }; }
                                 b"right" => cell_borders.right = Some(hiku),
                                 _ => {}
                             }
@@ -3550,7 +3563,7 @@ pub(super) fn parse_document_rels_num(
                             col_span: n,
                             borders: kumihan::CellBorders {
                                 top: Some(false), left: Some(false), bottom: Some(false), right: Some(false),
-                                diag_down: false, diag_up: false,
+                                ..Default::default()
                             },
                             ..Default::default()
                         };
