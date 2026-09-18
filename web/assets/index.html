@@ -119,6 +119,25 @@
       Object.defineProperty(navigator, 'languages', { get: () => ['ja'], configurable: true });
     } catch (e) { }
   </script>
+  <script>
+    // Copy an image to the clipboard. Flutter draws images on a canvas, so
+    // the browser's own "copy image" is not available, and the URL is owned
+    // by Flutter's router, so the Flet side signals through the page title:
+    // it sets it to "copy:<file>" for a moment after the button is pressed.
+    // The click is what lets the browser allow the clipboard write
+    // (2026-09-19, the owner: copying is enough, no download needed).
+    new MutationObserver(async () => {
+      const m = /^copy:([\w.-]+)$/.exec(document.title);
+      if (!m) { return; }
+      try {
+        const blob = await (await fetch(m[1])).blob();
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        console.log('copied ' + m[1]);
+      } catch (e) {
+        console.log('copy failed: ' + e);
+      }
+    }).observe(document.querySelector('title'), { childList: true, characterData: true, subtree: true });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

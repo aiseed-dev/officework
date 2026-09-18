@@ -7,6 +7,8 @@
 
 載せるのは動いている物だけです(手引きと同じ決め)。
 """
+import asyncio
+
 import flet as ft
 
 RELEASES = "https://github.com/aiseed-dev/officework/releases/latest"
@@ -47,11 +49,31 @@ def section(title, *body):
     )
 
 
-def shot(src, caption):
+def shot(src, caption, page):
+    async def copy(_):
+        # assets/index.html watches the page title and copies the image
+        # while it reads "copy:<file>"; the title goes back right after
+        title = page.title
+        page.title = f"copy:{src}"
+        page.update()
+        # two updates in one handler are sent as one, so the page would
+        # never see the marker; let the first one reach the browser
+        await asyncio.sleep(0.3)
+        page.title = title
+        page.update()
+        page.show_dialog(ft.SnackBar(ft.Text("画像をクリップボードに入れました。")))
+
     return ft.Column(
         [
             ft.Image(src=src, fit=ft.BoxFit.CONTAIN, border_radius=6),
-            ft.Text(caption, size=15, color=SUB, text_align=ft.TextAlign.CENTER, selectable=True),
+            ft.Row(
+                [
+                    ft.Text(caption, size=15, color=SUB, selectable=True),
+                    ft.TextButton(content="画像をコピー", on_click=copy),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=12,
+            ),
         ],
         col={"xs": 12, "md": 6},
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -100,9 +122,19 @@ def main(page: ft.Page):
         p("名古屋市立大学が公開している「物品借用願」(docx)を、Word と aiseed office で開いた物です。"
           "表の列幅、全角スペースの送り、行の折れ方まで同じになるように作っています。"),
         ft.ResponsiveRow(
-            [shot("word.png", "Word で開いた"), shot("office.png", "aiseed office で開いた")],
+            [shot("word.png", "Word で開いた", page),
+             shot("office.png", "aiseed office で開いた", page)],
             spacing=16,
             run_spacing=16,
+        ),
+        ft.Row(
+            [
+                ft.FilledButton(content="この様式(docx)をダウンロード", url="buppin202411.docx"),
+                p("名古屋市立大学の物品借用願です。お手元の Word と aiseed office で開いて、並べてみてください。", 14),
+            ],
+            wrap=True,
+            spacing=12,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
         ),
         p("役所が公開している様式 288 枚で、Word の PDF と頁数を比べています。"
           "2026 年 9 月 19 日の時点で 246 枚が一致しています。残りも 1 枚ずつ原因を調べて直しています。", 15),

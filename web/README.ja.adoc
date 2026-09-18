@@ -34,7 +34,8 @@ location / {
 == 載せる物の決め
 
 * 載せるのは動いている物だけです(手引きと同じ)。
-* 比較の絵(`assets/word.png` と `assets/office.png`)は、名古屋市立大学が公開している「物品借用願」を Word と aiseed office で開いた物です。版を上げたら撮り直します。
+* 比較の絵(`assets/word.png` と `assets/office.png`)は、名古屋市立大学が公開している「物品借用願」を Word と aiseed office で開いた物です。版を上げたら撮り直します。様式そのもの(`assets/buppin202411.docx`)も置いてあり、見る人が自分の Word で試せます(発注者 2026-09-19「ダウンロードできたらいいのは docx」)。
+* 「画像をコピー」は、Flutter が絵を canvas に描くためブラウザの「画像をコピー」が使えないので、`assets/index.html` の script がページの題名を合図にしてクリップボードへ入れます。
 * 版の数字(`VERSION`)はリリースのたびに直します。
 
 == 書体
