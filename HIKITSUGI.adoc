@@ -6,6 +6,14 @@
 
 == 進め方の作法(発注者と確立済み)
 
+* **2026-09-18: 0.1.0-alpha.3 を出す用意ができている。** 発注者の決め「画面も最低限は保つ。
+  Mac の直しを alpha.3 で出して、以後は PDF 化に専念する」。officework / calc / writer の
+  Cargo.toml と README・writer の手引きの版名を alpha.3 に上げ、release.yml の本文に
+  alpha.3 の節(Mac の直し、頁の一致 232 → 243)を書いた。**タグ `app-v0.1.0-alpha.3` を
+  押して push するのは発注者。** 出た `.dmg` を Mac に入れて、字が出ること・⌘Q で終わる
+  ことを発注者が確かめる。以後の作業は docx / xlsx の PDF 化(Word・Excel との突き合わせ)。
+  Unicode 18.0(2026-09-16)は調べた: 仮名も約物も増えておらず、うちの組版への影響は無い
+  (詳しくは 2026-09-18 の返答。SEKKEI には書いていない)
 * **2026-09-10: alpha.2 の .dmg を発注者が入れて、Mac の画面に字が一つも無かった。**
   原因は gpui_platform の `font-kit` の機能が抜けていたこと(SEKKEI「Mac の alpha.2 を
   入れて分かった物」)。officework / calc / writer の Cargo.toml に足した。合わせて

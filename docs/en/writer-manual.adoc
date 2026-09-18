@@ -2,7 +2,7 @@
 
 _日本語版(secondary): link:../ja/writer-manual.adoc[writer-manual.ja.adoc]_
 
-*This manual describes the next version of writer.* Anything not yet in the released 0.1.0-alpha.2 is marked *(coming in the next version)*.
+*This manual describes the next version of writer.* Anything not yet in the released 0.1.0-alpha.3 is marked *(coming in the next version)*.
 Those parts describe what we are building, not what ships today.
 
 The manual for officework's document editor.
