@@ -1275,6 +1275,12 @@ pub struct Document {
     /// 無いのが普通で、そのとき Word は行末の空白を紙の端を越えても置く。
     /// 立っていると余白の所で折る(288 枚のうち法務局の 7 枚。2026-09-09)
     pub wrap_trail_spaces: bool,
+    /// **Half-width characters take half a full-width one** (docx settings
+    /// `w:compat/w:balanceSingleByteDoubleByteWidth`). Word then advances
+    /// ASCII in an East Asian font by 0.5em whatever the font says: in the
+    /// Nagoya loan form (ＭＳ Ｐゴシック, space 0.305em) Word drew every ASCII
+    /// space at 0.5em (2026-09-19, measured in Word's PDF)
+    pub balance_sbcs: bool,
     /// **節ごとのヘッダー・フッター**(2026-09-09)。鍵は節を終える段落のブロック番号
     /// (その段落の `sect` と対)。最後の節(文書の末尾の sectPr)は `header` /
     /// `footer` で持つ。JST の計画書は 13 の節がそれぞれ別のヘッダーを持ち、

@@ -52,9 +52,11 @@
   `cargo run --release -p paper --example docx_pdf -- 元.docx 出.pdf` と
   `--example gyou_probe -- 元.docx 探す字` で行い、Word の PDF は
   ~/Documents/officework-cmp/corpus/*.ms.pdf と pdfplumber で並べる。
-  次に見る物: 表の列幅の自動調整(`w:tblW auto` で `w:tcW` が `w:tblGrid` より広い。
-  名古屋市大の物品借用願)、浮かぶ表のうち用紙や余白に対する位置の物(`vertAnchor` が
-  page / margin。横浜市 0791)、JST の計画書(34 / 31)、縦書きのセルの回転して描く分。回帰試験 `paper/tests/kaiki.rs` はこの Mac で通る
+  2026-09-19: 一致は 246(SEKKEI 続き30 の 14 回目。ttc の顔の取り違えと
+  balanceSingleByteDoubleByteWidth)。次に見る物: 浮かぶ表のうち用紙や余白に対する位置の物
+  (`vertAnchor` が page / margin。横浜市 0791)、横浜市 0766(3 / 2)、JST の計画書(34 / 31)、
+  縦書きのセルの回転して描く分。頁数の集計はスクラッチの pages_sweep.py(tools には無い。
+  docx_pdf を全部に掛けて Word の PDF と頁数を比べるだけの物)。回帰試験 `paper/tests/kaiki.rs` はこの Mac で通る
   (2026-09-09 に指紋を取り直した)
 * **2026-09-09 の中断点(雷で電源を落とした)。** (1) docx の Word 比較: 続き30(SEKKEI)。
   ~/docx-corpus に 288 枚、Word の PDF は ~/Documents/officework-cmp/corpus/ に途中まで。

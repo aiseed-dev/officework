@@ -1247,18 +1247,67 @@ pub fn load(f: &Family) -> Result<Vec<u8>, String> {
     // where the caller owns it; that copy is cheap next to a disk read.
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex, OnceLock};
-    static CACHE: OnceLock<Mutex<HashMap<std::path::PathBuf, Arc<Vec<u8>>>>> = OnceLock::new();
+    static CACHE: OnceLock<Mutex<HashMap<(std::path::PathBuf, u32), Arc<Vec<u8>>>>> = OnceLock::new();
     let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    let key = (f.path.clone(), f.index);
     if let Ok(c) = cache.lock() {
-        if let Some(v) = c.get(&f.path) {
+        if let Some(v) = c.get(&key) {
             return Ok((**v).clone());
         }
     }
     let data = std::fs::read(&f.path).map_err(|e| format!("{}: {e}", f.path.display()))?;
+    // A collection (.ttc) is cut down to the one face the family names.
+    // Every reader of these bytes parsed face 0 (2026-09-19): for msgothic.ttc
+    // that is MS Gothic, so ＭＳ Ｐゴシック was measured and drawn with the
+    // monospaced widths (a full-width space is 0.664em in the P face, 1em in
+    // MS Gothic), and the Nagoya loan form wrapped where Word did not
+    let data = face_bytes(&data, f.index).unwrap_or(data);
     if let Ok(mut c) = cache.lock() {
-        c.insert(f.path.clone(), Arc::new(data.clone()));
+        c.insert(key, Arc::new(data.clone()));
     }
     Ok(data)
+}
+
+/// One face of a TrueType collection as a standalone font. `None` when the
+/// data is not a collection or the index is out of range. Table bytes are
+/// copied as they are; only the directory offsets are rewritten (the head
+/// table's checksum adjustment is left alone, which parsers and PDF readers
+/// accept)
+pub fn face_bytes(data: &[u8], index: u32) -> Option<Vec<u8>> {
+    let be32 = |at: usize| -> Option<u32> {
+        Some(u32::from_be_bytes(data.get(at..at + 4)?.try_into().ok()?))
+    };
+    if data.get(0..4)? != b"ttcf" {
+        return None;
+    }
+    let num = be32(8)? as usize;
+    if index as usize >= num {
+        return None;
+    }
+    let off = be32(12 + 4 * index as usize)? as usize;
+    let num_tables = u16::from_be_bytes(data.get(off + 4..off + 6)?.try_into().ok()?) as usize;
+    let mut out = Vec::new();
+    out.extend_from_slice(data.get(off..off + 12)?);
+    let base = 12 + 16 * num_tables;
+    let mut dir = Vec::with_capacity(16 * num_tables);
+    let mut body: Vec<u8> = Vec::new();
+    for i in 0..num_tables {
+        let e = off + 12 + 16 * i;
+        let tag = data.get(e..e + 8)?; // tag + checksum
+        let toff = be32(e + 8)? as usize;
+        let tlen = be32(e + 12)? as usize;
+        let table = data.get(toff..toff + tlen)?;
+        dir.extend_from_slice(tag);
+        dir.extend_from_slice(&((base + body.len()) as u32).to_be_bytes());
+        dir.extend_from_slice(&(tlen as u32).to_be_bytes());
+        body.extend_from_slice(table);
+        while !body.len().is_multiple_of(4) {
+            body.push(0);
+        }
+    }
+    out.extend_from_slice(&dir);
+    out.extend_from_slice(&body);
+    Some(out)
 }
 
 

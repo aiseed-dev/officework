@@ -238,6 +238,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     }
     // 行末の空白を折り返す設定(無ければ Word は紙の端を越えても置く)
     doc.wrap_trail_spaces = sxml.contains("<w:wrapTrailSpaces");
+    doc.balance_sbcs = sxml.contains("<w:balanceSingleByteDoubleByteWidth");
     // 段落の「自動」の空きを 5pt にする設定(無ければ HTML 流の 14pt)
     if let Some(i) = sxml.find("<w:doNotUseHTMLParagraphAutoSpacing") {
         let head = &sxml[i..(i + 80).min(sxml.len())];

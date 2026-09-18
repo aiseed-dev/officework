@@ -14,6 +14,32 @@ fn main() -> Result<(), String> {
     let n: usize = a.next().and_then(|v| v.parse().ok()).unwrap_or(60);
     let f = std::fs::File::open(&moto).map_err(|e| e.to_string())?;
     let (doc, _) = ooxml::read(std::io::BufReader::new(f))?;
+    // FONT=name: print how the engine resolves a font name on this machine
+    if let Ok(name) = std::env::var("FONT") {
+        match kumihan::font::resolve(&name) {
+            Some(f) => println!("font {name:?} -> {:?} index {} ({})", f.path, f.index, f.name),
+            None => println!("font {name:?} -> none; substitute {:?}",
+                kumihan::font::substitute(&name).map(|f| (f.path.clone(), f.index))),
+        }
+    }
+    // TABLE=1: print every table's grid and cells as read from the docx
+    if std::env::var("TABLE").is_ok() {
+        for (ti, b) in doc.blocks.iter().enumerate() {
+            if let kumihan::Block::Table(t) = b {
+                let mm: Vec<String> = t.col_mm.iter().map(|w| format!("{w:.1}")).collect();
+                println!("table {ti}: cols {} = [{}] fixed={}", t.col_mm.len(), mm.join(" "), t.fixed_layout);
+                for (ri, r) in t.rows.iter().enumerate() {
+                    let cells: Vec<String> = r.iter().map(|c| {
+                        let txt: String = c.paragraphs.iter().flat_map(|p| p.runs.iter())
+                            .map(|run| run.text.as_str()).collect::<String>().chars().take(8).collect();
+                        format!("{}{}:{txt:?}", c.span(), match c.v_merge {
+                            kumihan::VMerge::None => "", kumihan::VMerge::Start => "S", kumihan::VMerge::Continue => "C" })
+                    }).collect();
+                    println!("  row {ri:2} spans={:2} | {}", r.iter().map(|c| c.span()).sum::<usize>(), cells.join(" "));
+                }
+            }
+        }
+    }
     let (sheet, page, _) = paper::doc_to_sheet(&doc, None)?;
     println!(
         "用紙 {}x{}mm 上 {} 下 {} / 行 {} / 改ページ {:?}",

@@ -1685,14 +1685,19 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
     use std::collections::BTreeMap;
     let mut cache: BTreeMap<String, Option<(String, Vec<u8>)>> = BTreeMap::new();
     let mut out: Vec<(String, Vec<u8>)> = Vec::new();
+    let balance = d.balance_sbcs;
     let mut fix = |r: &mut kumihan::Run| {
         let Some(name) = r.font.clone() else { return };
         let hit = cache.entry(name.clone()).or_insert_with(|| {
             let (fam, _) = kumihan::font::for_document(Some(&name)).ok()?;
             let bytes = kumihan::font::load(fam).ok()?;
             // 字送りの合う書体が無ければ、名前に半角の送りの印を付けて登録する
-            // (`Metrics` が半角を 0.5em で測る。描く側は印を外して描く)
-            let resolved = match kumihan::font::hankaku_em(&name) {
+            // (`Metrics` が半角を 0.5em で測る。描く側は印を外して描く)。
+            // The compat flag balanceSingleByteDoubleByteWidth does the same
+            // for any East Asian font: Word advances ASCII by 0.5em there
+            let em = kumihan::font::hankaku_em(&name)
+                .or(if balance && fam.japanese { Some(0.5) } else { None });
+            let resolved = match em {
                 Some(em) => kumihan::font::hankaku_name(&fam.name, em),
                 None => fam.name.clone(),
             };

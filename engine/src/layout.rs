@@ -2072,8 +2072,13 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     let haba = (frame.measure_mm - ind).max(10.0);
     // 列幅。指定があればそれを使い、行長に収まらなければ**比例で縮める**
     // (右へ黙ってはみ出すより、比率を守って縮む方が様式の見た目が保たれる)
+    // The grid counts as given when it has one entry per column and is not
+    // all zero. Word's grids often carry hairline columns (6 to 54 twips)
+    // left behind by merges; the Nagoya loan form has four of them. They
+    // used to disqualify the whole grid, so every column fell back to an
+    // equal share and narrow cells wrapped (2 pages instead of 1)
     let mut widths: Vec<f32> = if table.col_mm.len() == ncols
-        && table.col_mm.iter().all(|w| *w > 0.5)
+        && table.col_mm.iter().sum::<f32>() > 0.5
     {
         let total: f32 = table.col_mm.iter().sum();
         // **列幅を固定した表(`w:tblLayout w:type="fixed"`)は縮めません**
