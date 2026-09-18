@@ -2582,30 +2582,51 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             sheet.rules.push([xs[start], y, xs[g], y]);
         }
     }
-    // 罫線・縦: 行ごとに、結合後のセルの縁に引く(結合の中には引かない)
+    // 罫線・縦: 行ごとに、結合後のセルの縁に引く(結合の中には引かない)。
+    // A cell's own `w:tcBorders` (left / right) wins over the table's rule for
+    // that edge, the same way the horizontal rules above take the cell's top
+    // and bottom. Until 2026-09-19 only the table's rule was consulted, so a
+    // form whose borders are all on the cells (no `w:tblBorders`, as Word
+    // writes for many public forms) had no vertical rules at all
     for (ri, row) in grid.iter().enumerate() {
         let (top, bottom) = (tops[ri], tops[ri + 1]);
-        let mut edges: Vec<f32> = Vec::new();
+        // (x, what the cells on either side say about this edge)
+        let mut edges: Vec<(f32, Option<bool>)> = Vec::new();
         for (gc, span, _) in row {
-            edges.push(xs[*gc]);
-            edges.push(xs[(gc + span).min(ncols)]);
+            let c = cell_at(ri, *gc);
+            edges.push((xs[*gc], c.and_then(|c| c.borders.left)));
+            edges.push((xs[(gc + span).min(ncols)], c.and_then(|c| c.borders.right)));
         }
         if row.is_empty() {
-            edges.push(xs[0]);
-            edges.push(xs[ncols]);
+            edges.push((xs[0], None));
+            edges.push((xs[ncols], None));
         }
-        edges.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        edges.dedup_by(|a, b| (*a - *b).abs() < 0.01);
-        for x in edges {
+        edges.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        // Two cells share an edge: a line is drawn when either of them asks
+        // for one (Word draws the more visible of two conflicting borders)
+        let mut merged: Vec<(f32, Option<bool>)> = Vec::new();
+        for (x, say) in edges {
+            match merged.last_mut() {
+                Some((lx, lsay)) if (*lx - x).abs() < 0.01 => {
+                    *lsay = match (*lsay, say) {
+                        (Some(true), _) | (_, Some(true)) => Some(true),
+                        (Some(false), _) | (_, Some(false)) => Some(false),
+                        _ => None,
+                    };
+                }
+                _ => merged.push((x, say)),
+            }
+        }
+        for (x, say) in merged {
             // 左端・右端・その間で、引く決まりが違います
-            let hiku = if (x - xs[0]).abs() < 0.01 {
+            let hiku_hyou = if (x - xs[0]).abs() < 0.01 {
                 table.borders.left
             } else if (x - xs[ncols]).abs() < 0.01 {
                 table.borders.right
             } else {
                 table.borders.inside_v
             };
-            if hiku {
+            if say.unwrap_or(hiku_hyou) {
                 sheet.rules.push([x, top, x, bottom]);
             }
         }

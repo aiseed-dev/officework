@@ -1,0 +1,38 @@
+= aiseed office の紹介ページ(office.aiseed.dev)
+
+Flet(Python の UI の仕組み)で作った 1 枚のページです。aiseed office の紹介と、Flet の紹介を兼ねます。
+
+== 手元で見る
+
+[source,console]
+----
+$ pip install flet
+$ flet run --web --port 8550 web/main.py
+----
+
+ブラウザで `http://localhost:8550` を開きます。
+
+== サーバーで動かす
+
+自前のサーバー(office.aiseed.dev)で動かします。
+
+. `pip install flet` を入れた Python を用意します。
+. `web/` を置き、`flet run --web --host 127.0.0.1 --port 8550 web/main.py` を systemd などで動かします。
+. nginx で `office.aiseed.dev` を `127.0.0.1:8550` へ渡します。Flet は WebSocket を使うので、`Upgrade` と `Connection` のヘッダーを通します。
+
+[source,nginx]
+----
+location / {
+    proxy_pass http://127.0.0.1:8550;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+}
+----
+
+== 載せる物の決め
+
+* 載せるのは動いている物だけです(手引きと同じ)。
+* 比較の絵(`assets/word.png` と `assets/office.png`)は、名古屋市立大学が公開している「物品借用願」を Word と aiseed office で開いた物です。版を上げたら撮り直します。
+* 版の数字(`VERSION`)はリリースのたびに直します。

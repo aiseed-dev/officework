@@ -61,3 +61,7 @@ test/out/
 *.p12
 # macOS が勝手に作るフォルダの情報
 .DS_Store
+
+# Flet の実行時の控え(web/ の紹介ページ)
+web/.flet/
+!web/assets/

@@ -6,6 +6,10 @@
 
 == 進め方の作法(発注者と確立済み)
 
+* **紹介の Web(office.aiseed.dev、名前は aiseed office)は web/ に Flet で作った**(2026-09-19 発注者。
+  SEKKEI「決め: 紹介の Web は自前のサーバーで Flet」)。手元で見るのは `flet run --web --port 8550 web/main.py`。
+  サーバーへの置き方は web/README.ja.adoc。版を上げたら `VERSION` と比較の絵(web/assets)を直す。
+  メールの窓口と有料サポートの値段は未定
 * **開発の目標は、まず docx と xlsx を読み込んで Word・Excel と同じに表示し、印刷すること**
   (2026-09-19 発注者。SEKKEI「決め: 開発の目標は…」)。新しい機能より先に、この一致を上げる。
   画面の作りは Euro-Office のまま。基準は Word・Excel の PDF との突き合わせ(頁数の一致 246 / 288)
