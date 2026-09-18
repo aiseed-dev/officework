@@ -16,7 +16,7 @@
 
 [source,python]
 ----
-d.add_picture(径路)
+d.add_picture(パス)
 ----
 
 他のライブラリでは、こう書きます。
@@ -25,7 +25,7 @@ d.add_picture(径路)
 |===
 |道具 |書き方
 
-|python-docx |`d.add_picture(径路)`
+|python-docx |`d.add_picture(パス)`
 |openpyxl |`ws.add_image(…)`
 |===
 

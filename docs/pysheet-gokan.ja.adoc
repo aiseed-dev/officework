@@ -57,7 +57,7 @@
 |✔ sheetnames |ある |sheet\_names。互換層で別名
 |✔ create\_sheet |ある |add\_sheet。名前の自動付け(Sheet, Sheet1, …)は互換層、index 引数も済(2026-08-12 に move\_sheet が入った)
 |✔ active |互換層 |先頭のシートを返す(xlsx の activeTab を読むならエンジンに小さな API)
-|✔ close / worksheets / index / get\_index / path |互換層 |close は何もしないメソッドとして置く。worksheets = list(book)。path は**開いた元の径路**(openpyxl の内部定数 "/xl/workbook.xml" は真似しない — 誰の役にも立たない)
+|✔ close / worksheets / index / get\_index / path |互換層 |close は何もしないメソッドとして置く。worksheets = list(book)。path は**開いた元のパス**(openpyxl の内部定数 "/xl/workbook.xml" は真似しない — 誰の役にも立たない)
 |✔ copy\_worksheet |足す |シート複製 — 月次の様式の写しは実務の定番(済 2026-08-12: Book.copy\_sheet。中身・書式・結合・列幅ごと写し、写しは独立)
 |✔ move\_sheet |足す |シートの並べ替え(済 2026-08-12: Book.move\_sheet。openpyxl の「相対のずらし」は互換層で)
 |✔ remove |足す |シート削除(済 2026-08-12: Book.remove\_sheet。*最後の1枚は抜けない* — シートの無い xlsx は無いので正直に断る。openpyxl は空のブックを許すが、あれは保存で壊れる側)
@@ -92,7 +92,7 @@
 |✔ parent |互換層 |book へ戻る
 |✔ merge\_cells / unmerge\_cells |足す |結合の**書き**(済 2026-08-12)。家の作法(アプリの結合と同じ — sheet::model::ops へ移して共有): 左上以外の中身は消え、空の左上へは最初の中身が書式ごと移る。unmerge は openpyxl どおり**厳密一致で ValueError**(掛かる結合をまとめて解く口はエンジン側)
 |✔ freeze\_panes |足す |ウィンドウ枠の固定。実務多い(済 2026-08-12。openpyxl と同じ A1 形式 — "B2" = 上1行・左1列)
-|✔ add\_image |足す |*matplotlib の図をシートに貼る* — アプリのグラフ分業と同じ道を Python にも。oneCellAnchor で書く(済 2026-08-12: 径路でも bytes でも。寸法は ops::image\_px で測り、width\_px/height\_px で上書き。読み側の `images` も付けた — openpyxl はこれを公開 API で持たない)
+|✔ add\_image |足す |*matplotlib の図をシートに貼る* — アプリのグラフ分業と同じ道を Python にも。oneCellAnchor で書く(済 2026-08-12: パスでも bytes でも。寸法は ops::image\_px で測り、width\_px/height\_px で上書き。読み側の `images` も付けた — openpyxl はこれを公開 API で持たない)
 |✔ oddHeader / oddFooter |足す |印刷ヘッダー・フッター(*済 2026-08-13*。模型(header / footer)と xlsx の読み書きは既にあり、口だけ欠けていた。openpyxl と同じ left / center / right の三分割(中身は &L&C&R の原文。&P は頁番号)。適合は両方向)
 |✔ evenHeader / firstHeader / evenFooter / firstFooter |足す |奇数・偶数・先頭頁の別(*済 2026-08-13*。*踏んだ穴*: 読まれてすらおらず、開いて保存すると偶数・先頭のヘッダーが消えていた — 左右で綴じる帳票の様式が崩れる。模型に4つの欄と differentOddEven / differentFirst の旗を足し、読み書きを通した。置くと旗が立つ(付け忘れ防止)。適合は往復まで)
 |✔ print\_area |足す |印刷設定。calc はモデルに読む所まで済み — 書きを足す(*済 2026-08-12 夜*: 読みは openpyxl と同じ「'シート'!$A$1:$C$10」(複数域は , 区切り)、書きは $ もシート名! も付いていてよい。PDF と印刷がこれに従う。print\_titles 系は模型に無い — 残)
@@ -153,7 +153,7 @@ App クラスは作らない(下記)。
 |✔ calculate |足す |接続に「全再計算」のコマンド(済 2026-08-12: rpc calculate)
 |✔ selection / get\_selection |足す |*いま選んでいる範囲を Python から読む* — 「選んで、Jupyter で加工」の入り方(済 2026-08-12: rpc selection → app.selection / Book.selection。get\_selection は向こうの async 遠隔 API の対なので selection だけ)
 |✔ version |足す |アプリの版を ping の返事に足す(済 2026-08-12)
-|✔ status\_bar |足す |アプリの status に文言を出す — 長い処理の進み具合を見せる(済 2026-08-12: rpc status。読みは最後に出した文言の覚え — 状態行は読み戻せない)
+|✔ status\_bar |足す |アプリの status に文言を出す — 長い処理の進み具合を見せる(済 2026-08-12: rpc status。読みは最後に出した文言の覚え — ステータスバーは読み戻せない)
 |macro |作らない |VBA を持たない(データとプログラムを分ける、2026-08-09 確定)。アプリ側の plugins が同じ役
 |create\_report / render\_template |作らない |向こうの有料(PRO)機能。差し込みは replace と値の代入が本筋
 |alert |作らない |Python からアプリの画面に窓を割り込ませる道は作らない — 邪魔の経路。status\_bar の文言で足りる
@@ -201,7 +201,7 @@ App クラスは作らない(下記)。
 |✔ activate / select |足す |画面のシートを Python から切り替える — 「見せる」のは見えるアプリならではの機能(済 2026-08-12: rpc activate\_sheet。切替は画面と同じ switch\_sheet — 打ちかけの確定・絞り込み解除ごと)
 |✔ visible |足す |隠しシート(sheetState)の読み書き(済 2026-08-12: rpc sheet\_visible。隠す作法はタブのメニューの「非表示」と同じ関数 — 最後の見えている1枚は断る・いまのシートを隠したら見える所へ移る)
 |✔ autofit |足す |列幅の自動調整 — 文字の測りはアプリが持っている。接続から呼ぶ(*済 2026-08-13*: リボンの「自動調整」の腕を `Calc::autofit_at(a, b, col)` に切り出して rpc と共有(タブのメニューと同じ作法)。rpc autofit(コマンドは33に)、Range.autofit("columns"/"rows") と Sheet.autofit。**DataFrame を落とした後に読める幅にする**のがこれ。実機で確認 — 検分中に自分の検査の落とし穴も1つ潰した(実機は前回の幅を持ち越すので、先に狭めてから測る))
-|✔ pictures |足す |画像の一覧と追加(sheet.add\_image と対)(*済 2026-08-13*: rpc pictures / add\_image(bytes は16進で運ぶ・片方だけの大きさは縦横比を保つ)。`sheet.pictures.add(図, anchor="F4")` — 図は 径路 / bytes / *matplotlib の figure*(xlwings と同じ)。「Python で描いて実機のシートに浮かべる」= SEKKEI「calc の分業」の筋が接続から一本通った。実機で目視まで済)
+|✔ pictures |足す |画像の一覧と追加(sheet.add\_image と対)(*済 2026-08-13*: rpc pictures / add\_image(bytes は16進で運ぶ・片方だけの大きさは縦横比を保つ)。`sheet.pictures.add(図, anchor="F4")` — 図は パス / bytes / *matplotlib の figure*(xlwings と同じ)。「Python で描いて実機のシートに浮かべる」= SEKKEI「calc の分業」の筋が接続から一本通った。実機で目視まで済)
 |✔ tables / names / page\_setup |足す |openpyxl 側の同じ一件(テーブル・名前付き範囲・印刷設定)(済 2026-08-13: rpc sheet\_tables / page\_setup と、names の絞り込み。page\_setup は**読むだけ** — 紙と余白は見ながら決める物なのでアプリのレイアウトタブが正)
 |✔ clear\_formats |足す(書式) |書式を消すのも書式の書き込み(済 2026-08-12 夜: rpc clear\_formats — 値は残る)
 |render\_template |作らない |PRO 機能
@@ -260,7 +260,7 @@ App クラスは作らない(下記)。
 |✔ add\_heading |足す |当初「互換層(add\_paragraph + style)」としたが、エンジンの Paragraph.style は**読みだけ**(2026-08-12 doc.rs と突き合わせて正した)。style の書きをエンジンに足してから(*済 2026-08-12 夜*: style の書き(body / heading1〜3。本家の "Heading 1" の名前でも受ける)+ add\_heading(level 1〜3。0=Title は持たないので断る)。*まっさらの文書に最小の styles.xml*(Normal+見出し1〜3の宣言)を書く — これが無いと読み手が pStyle を解決できず Normal に落ちる。原本があれば原本の定義を持ち越すだけ)
 |✔ add\_page\_break |足す |(済 2026-08-12 夜。本家は「改ページの run」だが、うちは**段落の性質(page\_break\_before)**で持つ — 紙の上の意味は同じで、本家の paragraph\_format.page\_break\_before でも読める)
 |✔ add\_table |足す |表を新しく組む(明細の帳票づくりに要る)(済 2026-08-12。style 引数は「足す(書式)」待ち — 黙って捨てず断る。ついでに ooxml の書き手の穴を1つ塞いだ: 等分の表で tblGrid(必須部品)を省いていて、python-docx が読めなかった)
-|✔ add\_picture |足す |図を入れる(sheet.add\_image と対)(済 2026-08-12 夜: 径路でも bytes でも。大きさは mm の数でも本家の Length(Mm(60))でも。片方だけなら縦横比を保つ。返りは画像を持つ段落 — 本家の InlineShape とはそこだけ流儀が違う)
+|✔ add\_picture |足す |図を入れる(sheet.add\_image と対)(済 2026-08-12 夜: パスでも bytes でも。大きさは mm の数でも本家の Length(Mm(60))でも。片方だけなら縦横比を保つ。返りは画像を持つ段落 — 本家の InlineShape とはそこだけ流儀が違う)
 |✔ iter\_inner\_content |足す |段落と表を**文書の順で**返す。うちの paragraphs / tables は種類別 — 順序を返す API をエンジンに(済 2026-08-12 夜)
 |✔ core\_properties |足す |文書情報の読み書き(小)(済 2026-08-12 夜: author / title / keywords / subject / comments — 呼び名は本家、中身は docProps/core.xml の5欄)
 |✔ sections / add\_section |足す |エンジンの模型が1節しか持てない既知の残り —*実は持てていた*(途中の節は段落の sect、文書末は sect\_raw / page)。sections は済 2026-08-12。*add\_section も済(2026-08-13 発注者「これにすすみましょう」)*: 切るのは**末尾** — いままで書いた分が前の節になり、これから足す物が新しい節に入る(python-docx と同じ切り方)。中では、いまの文書末の節を「sectPr だけを持つ空の段落」として本文の末尾に置く(docx の途中の節の書き方そのもの)。新しい節は同じ紙と余白を継ぎ、変えたければ返ってきた節に書く。start\_type は new\_page(既定)と continuous (`<w:type w:val="continuous"/>` を原文に置く)だけ — 新しい段・偶数頁・奇数頁は模型に無いので**正直に断る**(黙って改ページに落とすと刷ったとき別物になる)。適合は本家の enum をそのまま渡して両方向
@@ -352,7 +352,7 @@ shibutan-bloomers.com の連載(python-docx 第1〜3回・openpyxl 第2〜3回)�
 |===
 |ずれ |重さ |どうする(案 2026-08-28)
 
-|`Document('径路')` で開けない(`Doc.open` だけ) |入り口の1行目で止まる |生成の引数に径路を受けて open へ回す(互換層)
+|`Document('パス')` で開けない(`Doc.open` だけ) |入り口の1行目で止まる |生成の引数にパスを受けて open へ回す(互換層)
 |`font.size` が本家の `Pt(12)`(EMU の Length)を「152400 で変」と断る |本家のコードがそのまま動かない |int(EMU)も受けて pt に直す — add\_picture が Length を受けるのと同じ作法
 |`paragraph.style` が str を返し `.style.name` が無い |記事の定番の書き方 |run の font と同じ「str の子」で両対応(\_doc.py の \_Font の手)
 |`ws[1]`(行番号)・`ws['A']`(列文字)・`ws['A1':'C3']`(スライス)が全部使えない |openpyxl の基本の書き方。A1 の文字列しか受けない |\_\_getitem\_\_ を本家の形(A1・範囲・行番号・列文字・スライス)に広げる(互換層)

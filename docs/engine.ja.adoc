@@ -28,7 +28,7 @@ link:ja/python-manual.adoc[Python の手引き]へ。
 == genoffice の中で動かす
 
 https://github.com/genspark-ai/genoffice[genoffice] は Electron のオフィススイートで、その表計算は Rust の助手と *stdin/stdout で JSON 1行ずつ*、12 のコマンドで話します。
-助手の径路は `XLSX_SIDECAR_PATH` から読みます。
+助手のパスは `XLSX_SIDECAR_PATH` から読みます。
 
 *その環境変数が全部です。* officework のエンジンを指せば、genoffice の表計算が officework で動きます:
 

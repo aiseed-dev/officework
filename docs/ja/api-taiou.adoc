@@ -71,17 +71,17 @@ def 大文字にする(段落):
 
 |‹ Back |link:commands/ファイル/戻る.adoc[‹ 戻る] | |— |— |—
 |New |link:commands/ファイル/新規作成.adoc[新規作成] |✅ |Doc() / Book() |docx.Document() |Workbook()
-|New from template |link:commands/ファイル/テンプレートから作成.adoc[テンプレートから作成] | |— |docx.Document(雛形) |load_workbook(雛形)
-|Open |link:commands/ファイル/開く.adoc[開く] |✅ |Doc.open(径路) / Book.open(径路) |docx.Document(径路) |load_workbook(径路)
+|New from template |link:commands/ファイル/テンプレートから作成.adoc[テンプレートから作成] | |— |docx.Document(テンプレート) |load_workbook(テンプレート)
+|Open |link:commands/ファイル/開く.adoc[開く] |✅ |Doc.open(パス) / Book.open(パス) |docx.Document(パス) |load_workbook(パス)
 |Open Folder |link:commands/ファイル/フォルダーを開く.adoc[フォルダーを開く] | |— |— |—
 |Open URL |link:commands/ファイル/URLを開く.adoc[URLを開く] | |— |— |—
 |Recent |link:commands/ファイル/最近開いた.adoc[最近開いた] | |— |— |—
 |Search a folder |link:commands/ファイル/フォルダから探す.adoc[フォルダから探す] | |— |— |—
 |Recover |link:commands/ファイル/復旧.adoc[復旧]・link:commands/保護/復旧.adoc[保護] | |— |— |—
-|Save |link:commands/クイックアクセス/保存.adoc[保存]・link:commands/ファイル/保存.adoc[ファイル] |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
-|Save As |link:commands/ファイル/名前を付けて保存.adoc[名前を付けて保存] |✅ |d.save(別の径路) |d.save(別の径路) |wb.save(別の径路)
+|Save |link:commands/クイックアクセス/保存.adoc[保存]・link:commands/ファイル/保存.adoc[ファイル] |✅ |d.save(パス) / b.save(パス) |d.save(パス) |wb.save(パス)
+|Save As |link:commands/ファイル/名前を付けて保存.adoc[名前を付けて保存] |✅ |d.save(別のパス) |d.save(別のパス) |wb.save(別のパス)
 |Print |link:commands/クイックアクセス/印刷.adoc[印刷]・link:commands/ファイル/印刷.adoc[ファイル] | |— |— |—
-|Export |link:commands/ファイル/エクスポート.adoc[エクスポート] |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|Export |link:commands/ファイル/エクスポート.adoc[エクスポート] |✅ |d.save(パス) / b.save(パス) |d.save(パス) |wb.save(パス)
 |Merge data (CSV) |link:commands/ファイル/データを差し込む.adoc[データを差し込む(CSV)] |✅ |mcp.doc_merge_fields() / mcp.doc_fill(1行分) |— |—
 |Export for the web (HTML) |link:commands/ファイル/Web の形で書き出す.adoc[Web の形で書き出す(HTML)] | |— |— |—
 |Protect |link:commands/ファイル/保護する.adoc[保護する] | |— |— |wb.security
@@ -159,7 +159,7 @@ def 大文字にする(段落):
 |image:../../face/icons/blankpage.svg[,16,16] Insert blank page |link:commands/挿入/空白ページの挿入.adoc[空白ページの挿入] |✅ |d.add_page_break() |d.add_page_break() |—
 |image:../../face/icons/pagebreak.svg[,16,16] Breaks |link:commands/レイアウト/区切り.adoc[区切り]・link:commands/挿入/区切り.adoc[挿入] |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../../face/icons/instable.svg[,16,16] Insert table |link:commands/挿入/表の挿入.adoc[表の挿入] |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
-|image:../../face/icons/insimage.svg[,16,16] Insert image |link:commands/挿入/画像を挿入.adoc[画像を挿入] |✅ |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
+|image:../../face/icons/insimage.svg[,16,16] Insert image |link:commands/挿入/画像を挿入.adoc[画像を挿入] |✅ |d.add_picture(パス) |d.add_picture(パス) |ws.add_image(…)
 |image:../../face/icons/insshape.svg[,16,16] Insert shape |link:commands/挿入/図形を挿入.adoc[図形を挿入] | |— |— |—
 |image:../../face/icons/inssmartart.svg[,16,16] Insert SmartArt |link:commands/挿入/SmartArtの挿入.adoc[SmartArtの挿入] | |— |— |—
 |image:../../face/icons/inschart.svg[,16,16] Insert chart |link:commands/挿入/グラフを挿入.adoc[グラフを挿入] | |— |— |ws.add_chart(…)
@@ -428,7 +428,7 @@ def 大文字にする(段落):
 |===
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
-|Save |link:commands/クイックアクセス/保存.adoc[保存]・link:commands/ファイル/保存.adoc[ファイル] |✅ |*ファイルと同じ* — d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|Save |link:commands/クイックアクセス/保存.adoc[保存]・link:commands/ファイル/保存.adoc[ファイル] |✅ |*ファイルと同じ* — d.save(パス) / b.save(パス) |d.save(パス) |wb.save(パス)
 |Print |link:commands/クイックアクセス/印刷.adoc[印刷]・link:commands/ファイル/印刷.adoc[ファイル] | |*ファイルと同じ* |— |—
 |Undo |元に戻す |❌ |画面の操作です。プログラムは保存する前の写しを持てます |— |—
 |Redo |やり直し |❌ |同じく画面の操作です |— |—
@@ -468,7 +468,7 @@ def 大文字にする(段落):
 |characters |link:commands/下端/文字数.adoc[文字数] |✅ |len(d.text) |len(d.text) |—
 |Spell |スペル |❌ |画面の表示の切り替えです |— |—
 |Zoom |ズーム |❌ |画面の表示です。文書は変わりません |— |—
-|— |ファイルの形式 |❌ |画面の表示です。径路の拡張子を見れば分かります |— |—
+|— |ファイルの形式 |❌ |画面の表示です。パスの拡張子を見れば分かります |— |—
 |— |状態の文言 |❌ |画面の表示です。プログラムは返り値と unsupported を見ます |— |—
 |— |link:commands/下端/選んだ範囲の合計・平均・個数.adoc[選んだ範囲の合計・平均・個数] |✅ |sum(…) / len(…)(値を読んで数える) |— |—
 |===

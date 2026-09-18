@@ -755,7 +755,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("apply_changes_all_other", "これらの変更を同じ設定の他のすべてのセルに適用する"),
     ("title", "タイトル"),
     ("message", "メッセージ"),
-    ("shown_status_line_below", "セルを選ぶと、下の状態行にこの説明が出ます"),
+    ("shown_status_line_below", "セルを選ぶと、下のステータスバーにこの説明が出ます"),
     ("style", "スタイル"),
     ("error_message", "エラーメッセージ"),
     ("stop_blocks_input_warning", "停止は入力を止め、警告・情報は通して言うだけ(Excel と同じ)"),

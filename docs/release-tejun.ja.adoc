@@ -54,7 +54,7 @@ $ python3 tools/engine_docs_check.py
 ----
 
 最後の1つが、*エンジンと一緒に公開する文書*を見ます。一覧は
-`docs/engine-docs.txt` です。径路が実在するか、日英の対が揃っているか、
+`docs/engine-docs.txt` です。パスが実在するか、日英の対が揃っているか、
 PyPI の頁が一覧の外を指していないかを見ます。
 
 **wheel には文書を同梱しません**(2026-09-03 の決め)。PyPI の頁から

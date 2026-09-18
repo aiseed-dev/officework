@@ -469,7 +469,7 @@ security find-certificate -c "Developer ID Application" -p \
 
 === 「code object is not signed at all」で止まる
 
-`In subcomponent:` に続く径路が、署名し漏れた物。
+`In subcomponent:` に続くパスが、署名し漏れた物。
 *Mach-O とは限らない* —同梱 Python の `bin/pip3.14` のような shebang のスクリプトも、実行権があればcodesign は包みの中身と見なす(2026-08-17 に踏んだ)。
 
 スクリプトは Mach-O だけでなく**実行権のあるファイルも署名する**ようにした。
