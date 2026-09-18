@@ -36,3 +36,7 @@ location / {
 * 載せるのは動いている物だけです(手引きと同じ)。
 * 比較の絵(`assets/word.png` と `assets/office.png`)は、名古屋市立大学が公開している「物品借用願」を Word と aiseed office で開いた物です。版を上げたら撮り直します。
 * 版の数字(`VERSION`)はリリースのたびに直します。
+
+== 書体
+
+Flutter(Flet の描画)は日本語の書体を持たず、字ごとに Google の Noto から補います。そのままだと「、」「。」が中国語(繁体字)用の中央寄せの字形で出ることがあります(2026-09-19 発注者の指摘)。`assets/fonts/NotoSansJP-Regular.ttf` は Noto Sans JP(SIL Open Font License。`assets/fonts/OFL.txt`)を、かな・JIS 第 1 水準・このページの字に絞った物(1.3MB)です。`main.py` の `page.fonts` と `page.theme` でこれを使います。ページの文に新しい漢字を足したら、作り直しが要ることがあります(無い字は Noto の補いに戻るだけで、落ちはしません)。
