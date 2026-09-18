@@ -34,7 +34,7 @@ use std::time::Duration;
 /// 起動の指定
 #[derive(Debug, Clone)]
 pub struct Launch {
-    /// `claude` の実行ファイル(PATH の名前でも径路でも)
+    /// The `claude` executable (either a name on PATH or a path)
     pub claude: String,
     /// `sonnet` / `opus` / `haiku` / `fable`(Claude Code の別名)
     pub model: String,
@@ -56,8 +56,9 @@ pub struct Launch {
 pub enum Give {
     /// 文書: 作業フォルダに置いた AsciiDoc のファイルを Read / Edit / Write で直す
     File,
-    /// 表: この径路の Python だけを Bash で走らせる(`officework.calc` で
-    /// 動いている calc につながる)。Read はスクリプトの見直し用
+    /// Sheet: run only the Python at this path through Bash (it connects to
+    /// the calc that is running, through `officework.calc`). Read is there so
+    /// the script can be reviewed
     Python(PathBuf),
 }
 

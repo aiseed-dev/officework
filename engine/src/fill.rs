@@ -1,9 +1,10 @@
-//! **差し込み** — 雛形にデータを流し込みます(帳票の芯)。
+//! **Merge** — pours data into a template (the heart of forms).
 //!
-//! 発注者 2026-08-17「帳票ビルダー」。請求書や納品書は、頭と足は決まっていて
-//! **明細の行数だけがデータで決まります**。そこを埋めるのがここです。
+//! The owner asked for a form builder on 2026-08-17. In an invoice or a delivery
+//! note the top and the bottom are fixed, and **only the number of detail rows
+//! comes from the data**. Filling in that part is what this module does.
 //!
-//! ## 書き方
+//! ## How a template is written
 //!
 //! ```text
 //! 請求先: {宛名} 様
@@ -16,21 +17,21 @@
 //! 合計 {合計} 円
 //! ```
 //!
-//! `{member}` はそのまま置き換えます(AsciiDoc の属性の参照と同じ書き方です。
-//! 前からの `{{member}}` も受けます)。`{群.項目}` を含む**表の行は、その群の
-//! データの数だけ増えます**。増やす印を別に書かせないのは、書く人が覚える
-//! ことを増やさないためです。
+//! `{member}` is replaced as it stands (the same notation as an AsciiDoc attribute
+//! reference; the earlier `{{member}}` is still accepted). **A table row that
+//! contains `{群.項目}` is repeated once for each row of that group.** We do not ask
+//! for a separate marker for the repeat, so that the writer has less to learn.
 //!
-//! ## 出力形式ごとに作らない
+//! ## Not written once per output format
 //!
-//! 差し込みは**文書の模型の上**で行い、出来上がった文書を PDF にも HTML にも
-//! docx にもします。形式ごとに差し込みを書くと、同じ雛形が形式によって違う
-//! 結果になります。
+//! Merging is done **on the document model**, and the finished document is then
+//! turned into PDF, HTML or docx. If merging were written per format, the same
+//! template would give different results in different formats.
 //!
-//! ## 分からない名前は黙って空にしない
+//! ## An unknown name is not silently blanked
 //!
-//! データに無い名前は書いたまま残し、[`Report`] に挙げます。空にすると
-//! 「金額が空欄の請求書」が黙って出来上がります。
+//! A name that is not in the data is left as written and listed in [`Report`].
+//! Blanking it would quietly produce an invoice with an empty amount.
 
 use crate::doc::{Block, Document, Paragraph, Run, Table};
 use std::collections::BTreeMap;
@@ -308,9 +309,10 @@ fn fill_table(t: &Table, d: &Data, rep: &mut Report) -> Table {
     out
 }
 
-/// 雛形 + データ → 差し込み済みの文書と報告。
+/// Template + data → the merged document and a report.
 ///
-/// **原本は触りません。** 写しを返すので、雛形は何度でも使えます。
+/// **The original is not touched.** A copy is returned, so the template can be used
+/// any number of times.
 pub fn fill(doc: &Document, d: &Data) -> (Document, Report) {
     let mut out = doc.clone();
     let mut rep = Report::default();

@@ -105,8 +105,9 @@ pub fn tables_of(s: &Sheet) -> Vec<Table> {
     }
     push(&mut out, "shapes", &["shape", "item", "value"], shapes);
 
-    // **画像は実体を隣のファイルに出します。** binary は adoc に入りません。
-    // 名前はシート名と番号から決まるので、模型に径路の欄を足さずに済みます
+    // **Image data is written to a file next to this one.** Binary data does not
+    // fit in adoc. The name is derived from the sheet name and a number, so the
+    // model does not need a field for the path.
     push(&mut out, "images", &["file", "at", "dx", "dy", "width", "height"],
         s.images.iter().enumerate().map(|(i, im)| vec![
             image_file(&s.name, i, &im.data), im.at.a1(),
@@ -147,10 +148,10 @@ fn n2(v: f32) -> String {
     }
 }
 
-/// **書き出す画像の実体。**(径路, 中身)を返します。
+/// **The image data to write out.** Returns (path, contents).
 ///
-/// `.sheet.adoc` を保存する側が、隣にこのファイルを置きます
-/// (writer の [`crate::adoc::assign_image_paths`] と同じ作法)。
+/// Whoever saves the `.sheet.adoc` file puts these files next to it (the same way
+/// the writer's [`crate::adoc::assign_image_paths`] works).
 pub fn image_files(book: &book::Book) -> Vec<(String, Vec<u8>)> {
     let mut out = Vec::new();
     for s in &book.sheets {
@@ -289,8 +290,9 @@ pub fn take(role: &str, sheet_name: &str, rows: &[Vec<String>], s: &mut Sheet) {
             }
         }
         "images" => {
-            // **中身は隣のファイルにあります。** ここで持つのは置き場と
-            // 大きさだけで、実体は開く側が径路から読みます
+            // **The contents live in a file next to this one.** All we keep here
+            // is the location and the size; whoever opens the file reads the data
+            // from the path.
             for r in rows {
                 let Some(at) = Pos::parse(g(r, 1)) else { continue };
                 s.images.push(book::SheetImage {

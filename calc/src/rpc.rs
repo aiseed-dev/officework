@@ -1,16 +1,19 @@
-//! Python(officework)からの遠隔操作の口。
+//! The API for driving calc remotely from Python (officework).
 //!
-//! Jupyter の xlwings 流の使い勝手(Book / Range / .value / DataFrame)を
-//! **動いている calc** に向ける(発注者 2026-08-08 — Qiita の記事の車線)。
-//! ユニックスソケット `$XDG_RUNTIME_DIR/officework/calc.sock` に JSON を
-//! 1行ずつ。**この機械の中だけ**(TCP は開かない — ネイティブファースト)。
+//! It points the xlwings style of working in Jupyter (Book / Range / .value / DataFrame) at a
+//! **running calc**. The owner asked for this on 2026-08-08, as a separate piece of work that
+//! came out of the Qiita article. JSON goes over the Unix socket
+//! `$XDG_RUNTIME_DIR/officework/calc.sock`, one line at a time. **Inside this machine only**
+//! (no TCP port is opened; native first).
 //!
-//! スレッドの作法: ソケットのスレッドは状態に触らない。要求を溜め、GPUI の側が
-//! 30ms ごとにメインスレッドで捌いて答えを返す(Editor 系と同じ「主で触る」を守る)。
+//! Thread rules: the socket thread never touches the state. It queues the requests, and the
+//! GPUI side handles them on the main thread every 30ms and sends the answers back (the same
+//! "touch it on the main thread" rule the editor side follows).
 //!
-//! **命令の意味は ops へ移した**(SEKKEI「操作の言葉を1本に」段A。2026-08-12)。
-//! ここに残るのは calc にしか無い物: ソケットと汲み取り(gpui)、Host の実装
-//! (undo の節目・状態行・行の高さ合わせ)、点検用の ribbon / ui_state。
+//! **The meaning of the commands moved to ops** (SEKKEI "one wording for operations", step A,
+//! 2026-08-12). What stays here is what only calc has: the socket and its polling (gpui), the
+//! Host implementation (undo checkpoints, the status bar, matching row heights), and
+//! ribbon / ui_state for inspection.
 
 use crate::*;
 use ops::{Host, J, Jobj};
@@ -58,8 +61,9 @@ pub(crate) fn handle(calc: &mut Calc, line: &str, _cx: &mut Context<Calc>) -> St
     ops::handle(calc, line)
 }
 
-/// 「動いているアプリの都合」の実装。切れない部分がここに名前で並ぶ —
-/// undo の節目・状態行・行の高さ合わせ・画面の点検。これ以外の意味は ops
+/// The implementation of "what the running app needs". The parts that cannot be split out are
+/// listed here by name: undo checkpoints, the status bar, matching row heights, and inspecting
+/// the screen. Everything else lives in ops.
 impl Host for Calc {
     /// パネルから起こした officework-mcp の run_macro が通る道(2026-09-05)。
     /// 中身は panel の run_macro と同じ(`macro_prepare` / `macro_run` /
@@ -150,7 +154,8 @@ impl Host for Calc {
         if si != self.active {
             self.switch_sheet(si);
             if self.active != si {
-                // 打ちかけが入力規則で戻された等 — 理由は状態行にある
+                // For example the half-typed entry was rejected by data validation; the
+                // reason is in the status bar
                 return Err(format!("{}", self.status));
             }
         }

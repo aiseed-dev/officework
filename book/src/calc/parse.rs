@@ -373,8 +373,9 @@ pub(super) struct P<'a> {
     /// LET が束ねた名前(大文字で持つ)。**後ろが勝ち**= 入れ子や
     /// 同じ名前の付け直しで内側が外側を隠す
     pub(super) lets: Vec<(String, Value)>,
-    /// ブックの出どころ(絶対の径路)。`CELL("filename")` だけが使う。
-    /// **空 = まだ保存していない**(Excel も空文字を返す)
+    /// Where the workbook came from (an absolute path). Only `CELL("filename")`
+    /// uses it. **Empty = it has not been saved yet** (Excel also returns an
+    /// empty string)
     pub(super) book_path: &'a str,
     /// 1904 起点のブックか(日付の関数と表示の境目が使う)
     pub(super) date1904: bool,
@@ -994,17 +995,20 @@ impl<'a> P<'a> {
                             }
                             return Ok(Value::Text(out));
                         }
-                        // CELL("filename") — **`径路[ファイル名]シート名`**。
-                        // 実物では `]` の後ろを取ってシート名にする常套句と
-                        // して使われる(=MID(CELL("filename",A1),
-                        // FIND("]",…)+1, 31))。**この形しか実装しない** —
-                        // "address"・"row"・"width" などは今までどおり
-                        // #NAME? で、要ると分かってから足す。
+                        // CELL("filename") returns **`path[file name]sheet
+                        // name`**. In real workbooks it is used as the standard
+                        // way to take the part after `]` as the sheet name
+                        // (=MID(CELL("filename",A1), FIND("]",…)+1, 31)).
+                        // **Only this form is implemented.** "address", "row",
+                        // "width" and the rest stay #NAME? as before, and are
+                        // added once we know they are needed.
                         //
-                        // 第2引数は参照だが、同じブックなら答えは変わらない
-                        // ので受け取って捨てる。保存前は空文字(Excel と同じ。
-                        // #NAME? のままにはしない — 実装できる物を
-                        // 誤りにして回避させない)
+                        // The second argument is a reference, but the answer
+                        // does not change within the same workbook, so we take
+                        // it and drop it. Before the file is saved the answer is
+                        // an empty string (the same as Excel. We do not leave it
+                        // as #NAME?, because something we can implement should
+                        // not be an error people have to work around)
                         if name == "CELL" {
                             let args = self.args()?;
                             let kind = args
@@ -1071,13 +1075,15 @@ impl<'a> P<'a> {
     }
 }
 
-/// `CELL("filename")` の答え — **`径路[ファイル名]シート名`**。
+/// The answer of `CELL("filename")`, which is **`path[file name]sheet name`**.
 ///
-/// 径路が空(まだ保存していない)なら空文字。Excel と同じで、
-/// このとき `FIND("]",…)` は #VALUE! になる — それが本家の姿。
+/// When the path is empty (the file has not been saved yet) the answer is an
+/// empty string. As in Excel, `FIND("]",…)` then gives #VALUE!, which is how
+/// the original behaves.
 ///
-/// 径路の区切りは OS のものをそのまま使う(Windows なら `\`)。
-/// Excel も同じで、式が拾うのは `]` の後ろだけなので影響しない
+/// The path separator is the one the OS uses, as it is (`\` on Windows). Excel
+/// does the same, and a formula only picks up the part after `]`, so this makes
+/// no difference
 pub fn cell_filename(book_path: &str, sheet_name: &str) -> String {
     if book_path.is_empty() {
         return String::new();
@@ -1085,7 +1091,7 @@ pub fn cell_filename(book_path: &str, sheet_name: &str) -> String {
     let p = std::path::Path::new(book_path);
     let file = p.file_name().map(|s| s.to_string_lossy()).unwrap_or_default();
     let dir = p.parent().map(|s| s.to_string_lossy()).unwrap_or_default();
-    // Excel は径路の末尾に区切りを付ける(`C:\帳票\[売上.xlsx]4月`)
+    // Excel puts a separator at the end of the path (`C:\帳票\[売上.xlsx]4月`)
     let sep = std::path::MAIN_SEPARATOR;
     if dir.is_empty() {
         format!("[{file}]{sheet_name}")

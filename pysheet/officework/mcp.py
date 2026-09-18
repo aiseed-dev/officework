@@ -87,9 +87,10 @@ def _sheet(name: str | None):
 
 @mcp.tool()
 def book_info() -> dict:
-    """いま開いているブックの様子(名前・径路・シートの一覧・選択範囲)。
+    """The state of the workbook that is open now (name, path, list of sheets,
+    selected range).
 
-    **最初にこれを呼ぶ。** どのシートに何があるかを知らずに書き込まない。
+    **Call this first.** Do not write without knowing which sheet holds what.
     """
     wb = _book()
     return {
@@ -234,9 +235,11 @@ def _doc_call(cmd: str, 宛先: str | None = None, **kw):
 
 @mcp.tool()
 def doc_info(path: str | None = None) -> dict:
-    """いま開いている**文書**の様子(径路・書きかけかどうか・何枚目か)。
+    """The state of the **document** that is open now (path, whether it has
+    unsaved changes, and which one of the open documents is in front).
 
-    **文書を触る前にこれを呼ぶ。** 表が前に出ているとここで分かります。
+    **Call this before touching a document.** If the spreadsheet is the one in
+    front, you find that out here.
     """
     r = _doc_call("status", path)
     return {

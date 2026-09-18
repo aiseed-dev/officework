@@ -1,27 +1,29 @@
 # -*- coding: utf-8 -*-
-"""officework.sheet — xlsx のエンジン(Rust)+ openpyxl 互換層。
+"""officework.sheet — the xlsx engine (Rust) plus an openpyxl compatibility layer.
 
     from officework import sheet
 
     b = sheet.Book.open("見積.xlsx")
     s = b["quote"]
-    s["A30"] = "日本不燃株式会社"   # うちの口(値の直の読み書き)
-    s.cell(row=30, column=3, value=125000)   # openpyxl の口も通る
+    s["A30"] = "日本不燃株式会社"   # our own API (reads and writes values directly)
+    s.cell(row=30, column=3, value=125000)   # openpyxl's API works too
     for row in s.iter_rows(values_only=True):
         ...
     b.save("out.xlsx")
 
-中身は Rust(officework._sheet)。**原本を正として、変えた所だけ書き戻す**ので
-罫線・結合・列幅・図形が壊れず、式は**その場で再計算される** — この2点が
-openpyxl に無い上位分。この階は純 Python の互換層で、エンジンには手を入れない
-(台帳: docs/pysheet-gokan.ja.md)。
+Inside it is Rust (officework._sheet). It **keeps the original as the source of
+truth and writes back only what changed**, so borders, merged cells, column widths
+and shapes are not broken, and formulas are **recalculated on the spot**. Those
+two points are what openpyxl does not have. This layer is pure Python and does
+not touch the engine (tracking list: docs/pysheet-gokan.ja.md).
 
-openpyxl との違いをはっきり書いておく:
+The differences from openpyxl, stated plainly:
 
-- `s["A1"]` は **値そのもの**を返す(openpyxl は Cell を返す)。Cell が
-  欲しいときは `s.cell(row=1, column=1)`。ここはうちの口を正とする
-- `Workbook.path` は**開いた元のファイルの径路**(無ければ None)。
-  openpyxl の path("/xl/workbook.xml" という内部の定数)は真似しない
+- `s["A1"]` returns **the value itself** (openpyxl returns a Cell). When you want
+  a Cell, use `s.cell(row=1, column=1)`. Our own API is the one that counts here.
+- `Workbook.path` is **the path of the file that was opened** (None when there is
+  none). We do not copy openpyxl's path, which is the internal constant
+  "/xl/workbook.xml".
 """
 
 import os as _os
@@ -1627,16 +1629,16 @@ class Sheet(NoStrayAttributes):
             self.orientation = str(orientation)
 
     def add_image(self, img, anchor=None, width_px=None, height_px=None):
-        """**シートに画像を置く**(openpyxl と同じ口)。
+        """**Place a picture on the sheet** (the same API as openpyxl).
 
-        `img` は径路でも bytes でも、openpyxl の `Image` でも受けます。
-        `anchor` は左上を留めるセル("B2")。`Image` が `anchor` を持って
-        いればそちらを使います。大きさは絵の実寸(96dpi)が既定で、
-        `Image` に `width` / `height`(px)があればそれを使います。
+        `img` can be a path, bytes, or an openpyxl `Image`. `anchor` is the cell
+        the top left is anchored to ("B2"). When the `Image` has an `anchor` of
+        its own, that one is used. The size defaults to the picture's own size
+        (96dpi), and when the `Image` has `width` / `height` (px), those are used.
         """
-        # **openpyxl の `Image` は `path` に部品の名前を持ちます**
-        # (`/xl/media/image1.png`)。実体は `ref` の側です — 径路のことも
-        # あれば、開いたファイルや PIL の絵のこともあります
+        # **openpyxl's `Image` keeps the name of the part in `path`**
+        # (`/xl/media/image1.png`). The real data is on the `ref` side, which can
+        # be a path, an open file, or a PIL image.
         moto = getattr(img, "ref", None) or getattr(img, "path", None) or img
         if hasattr(moto, "read"):          # 開いたファイル
             moto = moto.read()
@@ -2050,8 +2052,9 @@ class Book(NoStrayAttributes):
 
     @staticmethod
     def open(path, lang=None):
-        # **pathlib.Path も受ける**(openpyxl と同じ。2026-08-15)。
-        # 芯は文字しか取らないので、ここで径路の形に直してから渡す
+        # **pathlib.Path is accepted too** (the same as openpyxl, 2026-08-15).
+        # The core takes only a string, so turn it into a path string here before
+        # passing it on.
         path = _os.fspath(path)
         b = Book.__new__(Book)
         b._b = _engine.Book.open(path, lang)

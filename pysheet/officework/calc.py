@@ -976,7 +976,7 @@ class Picture:
 
 
 def _image_bytes(image):
-    # 径路 / bytes / matplotlib の figure(savefig を持つ物)→ PNG/JPEG の bytes
+    # path / bytes / matplotlib figure (anything with savefig) -> PNG/JPEG bytes
     if isinstance(image, bytes):
         return image
     if hasattr(image, "savefig"):  # matplotlib の figure
@@ -1000,9 +1000,10 @@ class _Pictures:
         return [Picture(a, w, h) for a, w, h in r["pictures"]]
 
     def add(self, image, anchor=None, width=None, height=None):
-        """画像を貼る。image は 径路 / bytes / matplotlib の figure。
-        anchor は "E2" か Range(省略は A1)。width / height は px
-        (片方だけなら縦横比を保つ)。保存で xlsx にも入る。"""
+        """Paste a picture. image is a path, bytes, or a matplotlib figure.
+        anchor is "E2" or a Range (A1 when omitted). width / height are in px
+        (give only one and the aspect ratio is kept). Saving puts it in the
+        xlsx as well."""
         data = _image_bytes(image)
         a1 = "A1"
         if anchor is not None:
@@ -1204,8 +1205,9 @@ class Sheet:
         self.activate()
 
     def to_pdf(self, path):
-        """このシートを PDF に(帳票の印刷設定に従う)。返りは保存先。
-        効かせた設定はアプリの状態行と同じ文言で返事の note に載る。"""
+        """Save this sheet as a PDF (following the form's print settings). It
+        returns where it was saved. The settings that took effect are put in the
+        reply's note, in the same wording as the app's status bar."""
         _call("to_pdf", path=os.path.abspath(path), sheet=self.name)
         return os.path.abspath(path)
 
@@ -1218,9 +1220,9 @@ class Sheet:
 
     @property
     def pictures(self):
-        """シートの画像(xlwings の pictures の役)。
-        `pictures.add(図, anchor="E2")` — 図は 径路 / bytes /
-        **matplotlib の figure** のどれでも(xlwings と同じ)。"""
+        """The pictures on the sheet (the role of xlwings' pictures).
+        `pictures.add(図, anchor="E2")`, where the picture can be a path, bytes,
+        or a **matplotlib figure** (the same as xlwings)."""
         return _Pictures(self)
 
     def __repr__(self):
@@ -1500,7 +1502,8 @@ class _App:
 
     @property
     def status_bar(self):
-        # アプリの状態行は読み戻せない — こちらから出した最後の文言を覚えて返す
+        # The app's status bar cannot be read back, so we remember the last text
+        # we sent and return that.
         return self._status_bar
 
     @status_bar.setter
@@ -1558,6 +1561,7 @@ def press(button):
 
 
 def ui_state():
-    """**いま画面で開いている物。** 状態行の字と、開いている一覧・小窓・パネルの名前。
-    `press` の後に「何が起きたか」を確かめる用です(点検の道具 tools/ribbon_press.py が使う)。"""
+    """**What is open on screen right now.** The text of the status bar, and the
+    names of the open menus, dialogs and panels. It is meant for checking what
+    happened after a `press` (used by the check tool tools/ribbon_press.py)."""
     return _call("ui_state")

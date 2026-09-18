@@ -1,37 +1,41 @@
 #!/usr/bin/env python3
-"""**Word / Excel で開いて PDF にする道具(macOS)。**
+"""Open a file in Word or Excel and save it as PDF (macOS).
 
-officework が書いた docx / xlsx を、本物の Word / Excel に開かせて PDF に
-します。officework 自身が書いた PDF と並べて、ページの割り・行の折れ・
-値の見え方を比べるための材料です(`tools/ms_compare.py` が比べます)。
+Takes a docx or xlsx that officework wrote, has the real Word or Excel open it,
+and saves it as PDF. The result is the material for comparing page breaks, line
+wrapping and how values look against the PDF officework writes itself
+(`tools/ms_compare.py` does the comparison).
 
-    python3 tools/ms_pdf.py 文書.docx [出力.pdf]
-    python3 tools/ms_pdf.py 台帳.xlsx [出力.pdf]
+    python3 tools/ms_pdf.py document.docx [output.pdf]
+    python3 tools/ms_pdf.py ledger.xlsx [output.pdf]
 
-出力を省くと、同じ名前の `.ms.pdf` を隣に置きます。
+If the output is left out, a `.ms.pdf` with the same name is written next to
+the source file.
 
-## 踏んだ跡
+## What we ran into
 
-* Word / Excel は AppleScript で操ります(`osascript`)。最初の1回は
-  「オートメーションを許可するか」を macOS が聞くので、画面で許可します
-* Word の `save as` は `file format format PDF`、Excel の `save as` は
-  `file format PDF file format` と書き方が違います
-* Excel の `open` は「Macintosh HD:Users:…」の形の径路しか受けません。
-  POSIX の径路を渡すと何も開かずに黙って返ります。Word は POSIX で開けます
-* 開くときの警告(互換モード・リンクの更新)を止めるため、Excel は
-  `display alerts` を切ります。**その状態では、壊れたファイルは黙って
-  開かれません**(`active workbook` が missing value のまま)。
-  2026-09-08 に、テーマの関係だけあって部品が無い xlsx がこれで見つかりました
-* Word の `save as` は、名指しした文書でなく**手前の文書**を書きます。
-  5枚を開いたまま名指しで回すと、5枚とも同じ PDF になりました。
-  1枚ずつ開いて `active document` を書き、閉じてから次へ進みます
-* 開くのに2分を超えることがあり、既定の AppleEvent の待ち(2分)で
-  切れます。`with timeout of 600 seconds` で包みます
-* Excel の `open workbook` は読み込みが終わる前に返ります。すぐに
-  `active workbook` を見ると missing value です。名前が `workbooks` に
-  出るまで 1 秒ずつ待ちます(式の多いブックは 10 秒を超えます)
-* 出力先は `~/Documents` の下など、普通のフォルダにします。Excel は
-  `/private/tmp` の下へは書けませんでした
+* Word and Excel are driven with AppleScript (`osascript`). The first time,
+  macOS asks whether to allow automation, so allow it on screen.
+* Word's `save as` is written `file format format PDF`, while Excel's `save as`
+  is written `file format PDF file format`. The two differ.
+* Excel's `open` only accepts a path in the form "Macintosh HD:Users:…". Given a
+  POSIX path it opens nothing and returns silently. Word accepts a POSIX path.
+* To stop the alerts shown while opening (compatibility mode, updating links),
+  Excel has `display alerts` turned off. In that state a broken file is silently
+  not opened (`active workbook` stays missing value). On 2026-09-08 this is how
+  we found an xlsx that had only the theme relationship and was missing its
+  parts.
+* Word's `save as` writes the front document, not the one you named. Running
+  five documents by name with all five open produced the same PDF five times.
+  Open one at a time, write `active document`, then close it before the next.
+* Opening can take more than two minutes, which hits the default AppleEvent
+  timeout (two minutes). Wrap the call in `with timeout of 600 seconds`.
+* Excel's `open workbook` returns before loading has finished. Looking at
+  `active workbook` right away gives missing value. Wait one second at a time
+  until the name appears in `workbooks` (a workbook with many formulas takes
+  more than 10 seconds).
+* Write the output to an ordinary folder such as one under `~/Documents`. Excel
+  could not write under `/private/tmp`.
 """
 import os
 import subprocess
@@ -46,17 +50,17 @@ def _osa(script):
 
 
 def _hfs(path):
-    """POSIX の径路を「Macintosh HD:Users:…」の形にします。Excel の open は
-    この形しか受けません(POSIX の径路を渡すと、何も開かずに黙って返る)。
-    `POSIX file` を tell の中に書くと Excel に送られて -50 になるので、
-    ここで別に変えておきます。"""
+    """Turn a POSIX path into the form "Macintosh HD:Users:…". Excel's open only
+    accepts this form (given a POSIX path it opens nothing and returns silently).
+    Writing `POSIX file` inside the tell block sends it to Excel and fails with
+    -50, so the conversion is done separately here."""
     return _osa(f'POSIX file "{os.path.abspath(path)}" as string')
 
 
 def word_close_ours():
-    """こちらが開かせた文書(径路に officework-cmp を含む物)を全部閉じます。
-    発注者の文書には触りません(2026-09-09 発注者「画面にひらけているファイルは
-    閉じながらやって」)"""
+    """Close every document we had opened (the ones whose path contains
+    officework-cmp). The owner's own documents are left alone. The owner decided on
+    2026-09-09 that files opened on screen must be closed as the work goes along."""
     # `repeat with d in (every document)` は Word が -1708 で断る(Excel の
     # `repeat with w in workbooks` が -50 なのと同じ癖)。名前を先に取り、名指しで閉じる
     _osa('''
@@ -121,20 +125,21 @@ end timeout
 
 
 def _excel_ready():
-    """Excel を、AppleScript の `open workbook` と PDF の保存が効く状態にする。
+    """Put Excel into a state where AppleScript's `open workbook` and saving a PDF
+    both work.
 
-    踏んだ跡(2026-09-08、一日かけて分かった組み合わせ):
-    * Finder 経由(`open -a` にファイル)で開いたブックは、`save as` が黙って
-      何も書かず、`close` も効かない。さらにそのブックがある間は、AppleScript の
-      `open workbook` が -50 で断られる。**目当てのファイルを `open -a` で開いては
-      いけない**
-    * `quit saving no` で静かに終了すると、次の起動で最初の画面(テンプレートの
-      一覧)が出て、`make new workbook` が 2 分待たされる
-    * 効いた順: 開いているブックを全部閉じる → `killall` → ファイル無しで
-      `open -a` → `make new workbook`(空のブックで窓を持たせる)→ AppleScript の
-      `open workbook`(Macintosh HD: の径路)→ `save as … PDF`。
-      未保存のブックを残したまま落とすと、次の起動に復旧の画面が出て崩れるので、
-      先に閉じる
+    What we ran into (2026-09-08, the combination found over a whole day):
+    * A workbook opened through the Finder (`open -a` with a file) makes `save as`
+      write nothing at all, and `close` has no effect either. While that workbook
+      is around, AppleScript's `open workbook` is refused with -50. Do not open the
+      file you want with `open -a`.
+    * Quitting quietly with `quit saving no` makes the next launch show the start
+      screen (the list of templates), and `make new workbook` then waits 2 minutes.
+    * The order that worked: close every open workbook, `killall`, `open -a` with
+      no file, `make new workbook` (an empty workbook so there is a window), then
+      AppleScript's `open workbook` (a Macintosh HD: path), then `save as … PDF`.
+      Quitting while an unsaved workbook is still open makes the next launch show
+      the recovery screen and go wrong, so close it first.
     """
     import time
 
@@ -153,15 +158,19 @@ def _excel_ready():
 
 
 def excel_pdf(src, out):
-    """Excel に開かせて、見えているシートを PDF にします。
+    """Have Excel open the file and save the visible sheet as PDF.
 
-    効いた手順(2026-09-08、3通り試して唯一これだけ書けた):
-    1. 先に空のブックを1つ作って窓を持たせる(窓が無いと `open workbook` が -50)
-    2. `open workbook workbook file name` に「Macintosh HD:…」の径路で開かせる。
-       `open -a`(Finder 経由)で開いたブックは、別の径路への `save as` が
-       黙って何も書かない(サンドボックスの都合と思われる)
-    3. 名前が `workbooks` に出るまで待つ(open は読み込みの前に返る)
-    4. `save as active sheet … file format PDF file format`。保存先は POSIX の径路
+    The steps that worked (2026-09-08; of three approaches tried, only this one
+    actually wrote a file):
+    1. First make one empty workbook so there is a window (without a window,
+       `open workbook` fails with -50).
+    2. Have it open the file by passing a "Macintosh HD:…" path to
+       `open workbook workbook file name`. A workbook opened with `open -a`
+       (through the Finder) makes `save as` to another path write nothing at all
+       (probably because of the sandbox).
+    3. Wait until the name appears in `workbooks` (open returns before loading).
+    4. `save as active sheet … file format PDF file format`. The destination is a
+       POSIX path.
     """
     _excel_ready()
     _excel_one(src, out)
@@ -216,14 +225,17 @@ end timeout
 
 
 def excel_pdf_many(pairs, wait=120, on_done=None):
-    """**何枚もまとめて PDF にします。** `pairs` は (xlsx の径路, 出す PDF)の一覧。
+    """Convert several files to PDF in one run. `pairs` is a list of
+    (path of the xlsx, PDF to write).
 
-    Excel を落として起動し直すのは**最初の1回だけ**です。1枚あたり 30 秒
-    ほど縮みます(集めた xlsx を1周させるとき、この差が効きます)。
-    1枚が失敗しても続けます。返りは (径路, 誤りの文言 or None) の一覧です。
+    Excel is quit and restarted only once, at the start. That saves about 30
+    seconds per file, which matters when running through a whole collection of
+    xlsx files. A failure on one file does not stop the rest. The return value is
+    a list of (path, error message or None).
 
-    Excel が一度おかしくなると後の全部が失敗するので、続けて 3 枚落ちたら
-    起動し直します。`on_done` を渡すと1枚ごとに (径路, 誤り) で呼びます。
+    Once Excel goes wrong, everything after it fails, so it is restarted after
+    three failures in a row. If `on_done` is given, it is called once per file
+    with (path, error).
     """
     _excel_ready()
     out = []

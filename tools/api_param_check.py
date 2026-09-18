@@ -1,33 +1,34 @@
 #!/usr/bin/env python3
-"""対応表に書いた呼び方が、本物と合っているかを確かめる。
+"""Check that the calls written in the mapping table match the real ones.
 
-    .venv/bin/python tools/api_param_check.py             # 確かめる
-    .venv/bin/python tools/api_param_check.py --self-test # 検査が効いているか
+    .venv/bin/python tools/api_param_check.py             # run the check
+    .venv/bin/python tools/api_param_check.py --self-test # see that the check works
 
-**引く先の包みが入っている Python で動かします。** openpyxl・python-docx・
-officework・mcp が要ります。素の `python3` で動かすと、受け取り手が1つも
-引けず「48 件の受け取り手が引けませんでした」と言って止まります
-(黙って通さないのは正しい形ですが、直す所を探して回ることになります)。
-CI は先に `pip install` してから `python3` で動かしています。
+**Run this with a Python that has the packages installed.** openpyxl, python-docx,
+officework and mcp are required. With a plain `python3` not a single receiver can be
+imported, so the tool stops and reports that 48 receivers could not be imported.
+Stopping instead of passing silently is the right behaviour, but you then have to go
+looking for what to fix. CI runs `pip install` first and then uses `python3`.
 
-発注者 2026-08-25「パラメータをきちんとチェックする」。
+The owner decided on 2026-08-25 that the parameters must be checked properly.
 
-対応表(`tools/api_taiou.py`)の `officework` の列には
-`Doc.open(径路)` や `d.replace(前, 後)` のような呼び方が並んでいます。
-**手で書いた字なので、実物と離れても誰も気づきません。**
-この道具は、書いてある呼び方を実際に引いて確かめます。
+The `officework` column of the mapping table (`tools/api_taiou.py`) lists calls such as
+`Doc.open(path)` and `d.replace(before, after)`. They are written by hand, so nobody
+notices when they drift away from the real thing. This tool imports the calls that are
+written down and checks them.
 
-見るのは3つです。
+It looks at three things.
 
-. その名前が本当にあるか(`Doc.render` が無いのに ✅ になっていないか)
-. 渡している数が合っているか(`d.replace(前, 後)` は2つ受け取るか)
-. キーワードの名前が合っているか(`rows=` という引数があるか)
+. whether the name really exists (is a row marked ✅ when `Doc.render` does not exist?)
+. whether the number of arguments matches (does `d.replace(before, after)` take two?)
+. whether the keyword names match (is there a `rows=` argument?)
 
-✅ の行だけ見ます。✍ と空と ❌ は、まだ呼び方が無いか、呼ぶ相手が
-ありません。本家(python-docx / openpyxl)の列は、入っていれば一緒に見ます。
+Only the ✅ rows are checked. ✍, empty and ❌ mean there is no call yet, or there is
+nothing to call. The upstream columns (python-docx / openpyxl) are checked as well when
+they are filled in.
 
-**受け取り手の字は決めてあります。** `d` は Doc、`b` は Book、
-`p` は Paragraph、`r` は Run、`c` は Cell、`s` は Sheet、`t` は Table です。
+**The receiver letters are fixed.** `d` is Doc, `b` is Book, `p` is Paragraph,
+`r` is Run, `c` is Cell, `s` is Sheet and `t` is Table.
 """
 import ast
 import importlib

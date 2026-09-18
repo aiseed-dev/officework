@@ -1,22 +1,25 @@
 # -*- coding: utf-8 -*-
-"""officework — 帳票を壊さないエンジンと、動いているオフィスソフトを操る橋。
+"""officework — an engine that does not break forms, and a way to drive office apps.
 
-    from officework import sheet      # エンジン: xlsx。アプリは要らない
-    from officework import doc        # エンジン: docx。アプリは要らない
-    from officework import calc as xw # 橋: 動いている officework を操る
+    from officework import sheet      # engine: xlsx. No app needed
+    from officework import doc        # engine: docx. No app needed
+    from officework import calc as xw # connection: drives a running officework
 
-**エンジン**は Rust(pyo3)。原本を正として、変えた所だけ書き戻すので、
-罫線・結合・列幅・図形が openpyxl のように壊れない。docx も同じで、
-様式・ヘッダー・図形・変更履歴が python-docx のように崩れない。読めなかった物は
-`unsupported` に出る(黙って落とさない)。pptx のエンジンも
-同じ名前空間に足す予定(officework.slide)。
+The **engine** is Rust (pyo3). It keeps the original as the source of truth and
+writes back only what changed, so borders, merged cells, column widths and shapes
+are not broken the way openpyxl breaks them. docx works the same way: styles,
+headers, shapes and tracked changes do not fall apart the way python-docx makes
+them. Anything that could not be read is listed in `unsupported` (nothing is
+dropped silently). A pptx engine is planned in the same namespace
+(officework.slide).
 
-**橋**は純 Python。ソケット($XDG_RUNTIME_DIR/officework/officework.sock、
-径路が AF_UNIX の 108 字上限を超えるときは /tmp/officework-UID/)へ
-JSON を1行ずつ。**この機械の中だけ**で、ネットには出ない。
+The **connection** is pure Python. It sends JSON one line at a time to a socket
+($XDG_RUNTIME_DIR/officework/officework.sock, or /tmp/officework-UID/ when the
+path would go over the 108-character limit of AF_UNIX). It stays **inside this
+machine** and never goes out to the network.
 
-表計算は `from officework import calc as xw`(xlwings 流の Book / Range)。
-文書(writer)の橋は今後ここに増える。
+For spreadsheets, use `from officework import calc as xw` (Book / Range in the
+xlwings style). The connection for documents (writer) will be added here later.
 """
 
 import json

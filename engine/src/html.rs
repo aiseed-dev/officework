@@ -111,8 +111,9 @@ struct Builder {
     sel: Option<Field>,
     in_option: bool,
     ta: Option<Field>,
-    /// **この段落に付く画像**(`img` の径路)。中身は持たない — 実体は
-    /// ファイルが元で、読むのは呼ぶ側(engine はファイルを触らない)
+    /// **Images attached to this paragraph** (the paths of the `img` tags). The
+    /// contents are not kept here. The file holds the original data and the caller
+    /// reads it, because the engine does not touch files.
     imgs: Vec<InlineImage>,
 }
 
@@ -304,8 +305,9 @@ impl Builder {
                 self.end_cell();
                 self.cell = Some(Vec::new());
             }
-            // **画像は径路で持つ。** 中身は読まない(engine はファイルを
-            // 触らない)ので、bytes は空のまま。開く側が隣から読む
+            // **Images are held as a path.** The contents are not read, because the
+            // engine does not touch files, so bytes stays empty. Whoever opens the
+            // document reads the file next to it.
             "img" => {
                 let Some(src) = attr_of(tag, "src") else {
                     self.note("画像(img。src がない)");
@@ -745,9 +747,10 @@ mod tests {
         assert!((im.h_mm - 108.0 * 25.4 / 96.0).abs() < 0.1, "高さが読めない: {}", im.h_mm);
     }
 
-    /// **画像は径路で残る。** 2026-08-18 まで捨てていたので、Word が書き出した
-    /// ページを読むと看板の絵が消えていた。中身は読まない(engine はファイルを
-    /// 触らない)ので、bytes は空で src だけが入る
+    /// **Images are kept as a path.** Until 2026-08-18 they were dropped, so a page
+    /// written out by Word lost its banner picture when read back. The contents are
+    /// not read, because the engine does not touch files, so bytes is empty and only
+    /// src is filled in.
     #[test]
     fn images_are_kept_by_path() {
         let (d, _) = parse(

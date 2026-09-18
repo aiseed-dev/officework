@@ -29,10 +29,10 @@ pub struct Look {
     pub scale: f32,
 }
 
-/// 一覧の頭(フォルダ名、または「開いていません」)。
+/// The header of the list: the folder name, or a note that nothing is open.
 ///
-/// **フォルダの名前だけ**を出します。長い径路を全部出すと折り返して、
-/// 一覧の場所を食うためです。
+/// Only the folder name is shown. Showing the whole path would wrap onto
+/// several lines and take up room in the list.
 pub fn header(look: &Look, dir: Option<&std::path::Path>) -> Div {
     let s = look.scale;
     match dir {

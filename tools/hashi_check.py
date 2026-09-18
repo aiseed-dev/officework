@@ -1,11 +1,13 @@
-# 橋(officework.calc)の実機検査 — 動いている calc に繋いで、xlwings 互換の
-# 口をひととおり動かす。画面まわりの直しの ribbon_sweep.py と対になる道具。
+# A check of the connection (officework.calc) against the real app. It attaches to a
+# running calc and exercises the xlwings-compatible API. It is the counterpart of
+# ribbon_sweep.py, which covers the screen.
 #
-# 使い方(起動と**同じ XDG_RUNTIME_DIR** で回すこと — ソケットの径路を揃える):
+# Usage (run it with the same XDG_RUNTIME_DIR as the app, so the socket path matches):
 #   env -u WAYLAND_DISPLAY XDG_RUNTIME_DIR=$SP/xdg DISPLAY=:0 ./target/release/calc &
 #   XDG_RUNTIME_DIR=$SP/xdg .venv/bin/python tools/hashi_check.py
 #
-# 検査はいま出ているブックに書き込む(未保存の変更が残っていても attach で続ける)。
+# The check writes into the workbook that is currently shown. It attaches and carries on
+# even when there are unsaved changes.
 import os
 import sys
 import tempfile
@@ -105,7 +107,7 @@ sh["A2:D2"].clear_contents()
 check(sh["A2"].value is None and sh["D2"].value is None, "clear_contents で消えない")
 check(sh.used_range.shape == (1, 4), f"clear_contents 後の used_range: {sh.used_range.shape}")
 
-# status_bar: アプリの状態行に文言を出す
+# status_bar: show a message on the app's status bar
 wb.app.status_bar = "橋の検査中(hashi_check.py)"
 check(wb.app.status_bar == "橋の検査中(hashi_check.py)", "status_bar の覚えが違う")
 

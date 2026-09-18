@@ -383,12 +383,14 @@ impl Calc {
         "setfilter", "merge", "inshyperlink", "instable", "data-validation", "rem-duplicates",
     ];
 
-    /// 選んだ範囲を表にする。**見た目は書式として掛ける**(表を外しても残る
-    /// — SEKKEI「表そのもの」の節)。`style` は色の組、`label` は状態行に出す
-    /// スタイルの名前(既定で作ったときは出さない)。
+    /// Turns the selected range into a table. **The look is applied as formatting**, so it
+    /// stays even after the table is removed (the "the table itself" section of SEKKEI).
+    /// `style` is the set of colors, and `label` is the name of the style shown in the status
+    /// bar (nothing is shown when the table was made with the default style).
     ///
-    /// `instable`(すぐ作る)と `table-tpl`(色を選んでから作る)の両方から
-    /// 呼ぶ。**2箇所に同じ組み立てを書かない** — 片方だけ直る事故を避ける
+    /// Called both from `instable` (make it right away) and from `table-tpl` (pick the colors
+    /// first). **The same setup is not written in two places**, so a fix cannot land in only
+    /// one of them.
     pub(crate) fn make_table(&mut self, style: crate::util::TableStyle, label: Option<&str>) {
         if self.anchor.is_none() {
             self.status = ui::t!("select_range_turn_into").into();
@@ -1531,8 +1533,8 @@ impl Calc {
             "format" => {
                 self.commit();
                 let at = self.pop_anchor();
-                // 今の書式に ✓ を付け、状態行にも言う(本家はコンボが
-                // 選択セルの書式に追従する — その代わり)
+                // Mark the current format with ✓ and say it in the status bar too (in Excel
+                // the combo box follows the selected cell's format; this stands in for that)
                 let cur = self
                     .sheet()
                     .get(self.cursor)
@@ -1973,9 +1975,10 @@ impl Calc {
                     ),
                     (
                         "tips".to_string(),
-                        // **札は短く。** 小窓の幅を越えると切れて読めない
-                        // (実機で見た)。「付いたままです」は押したあとの
-                        // 状態行が言う
+                        // **Keep the label short.** Anything wider than the popup is cut
+                        // off and cannot be read (seen by actually running the app). That
+                        // the notes stay attached is said by the status bar after the
+                        // item is chosen.
                         if self.show_comments {
                             ui::t!("hide_notes_cells").to_string()
                         } else {
@@ -2637,9 +2640,10 @@ impl Calc {
                 self.status =
                     ui::t!("right_left_text_cell").into();
             }
-            // 表示タブ(本家のデスクトップ版に合わせる)。どれも見え方だけ
-            // 画面の文字の大きさ(リボン・数式バー・メニュー・状態行まで全部)。
-            // 格子のズームとは別。設定に覚えて、次回も同じ大きさで開く
+            // View tab (matches Excel's desktop build). Everything here changes the look only.
+            // The UI font size (the ribbon, the formula bar, the menus and the status bar, all
+            // of it). It is separate from the grid zoom. It is saved in the settings, so the
+            // app opens at the same size next time.
             "formula-bar" => {
                 self.show_formula_bar = !self.show_formula_bar;
                 self.status = if self.show_formula_bar {

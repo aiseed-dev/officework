@@ -302,8 +302,9 @@ pub fn ask(b: Backend, system: &str, user: &str) -> Result<String, String> {
     }
 }
 
-/// Agent SDK(Python)に頼む。**文書の中身はコマンド行に載せない** —
-/// 一時のファイルに JSON で置いて径路だけ渡し、終わったら消す
+/// Ask the Agent SDK (Python). The document text is never put on the command
+/// line. It is written to a temporary JSON file, only the path is passed on,
+/// and the file is deleted when the work is done.
 fn agent_sdk_ask(system: &str, user: &str) -> Result<String, String> {
     let dir = std::env::temp_dir().join("officework-ai");
     std::fs::create_dir_all(&dir).map_err(|e| format!("置き場を作れません: {e}"))?;

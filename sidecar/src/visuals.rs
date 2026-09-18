@@ -83,10 +83,11 @@ pub(crate) fn rels_map(z: &mut zip::ZipArchive<impl Read + Seek>, part: &str) ->
     out
 }
 
-/// workbook の並び順で、シートの本体の部品の径路を返す。
+/// Return the paths of the main sheet parts, in workbook order.
 ///
-/// **`r:id` を rels で解く。** 名前の番号(`sheet3.xml`)と並びは一致しない
-/// (`sheet` 側も 127e762 で同じ直しをしている)。
+/// `r:id` is resolved through the rels file. The number in the name
+/// (`sheet3.xml`) does not match the order (`sheet` got the same fix in
+/// 127e762).
 pub(crate) fn sheet_parts(z: &mut zip::ZipArchive<impl Read + Seek>) -> Vec<String> {
     let rels = rels_map(z, "xl/workbook.xml");
     let Some(s) = part_text(z, "xl/workbook.xml") else { return Vec::new() };
@@ -339,10 +340,12 @@ pub(crate) fn visuals_of(
     out
 }
 
-/// `open` の答えから、絵の id → (原本の中の径路, 種類) を拾う。
+/// Build the map from picture id to (path inside the original file, kind) out
+/// of the answer returned by `open`.
 ///
-/// **答えそのものを正とする。** 別に数え直すと、返した物と引ける物が
-/// ずれる余地ができる — 今日それで何度も転んだ。
+/// The answer itself is the source of truth. Counting the pictures separately
+/// would leave room for what was returned and what can be looked up to drift
+/// apart, which went wrong several times today.
 pub(crate) fn media_index(open: &Value) -> BTreeMap<String, (String, String)> {
     open.get("visuals")
         .and_then(Value::as_array)
@@ -398,9 +401,10 @@ pub(crate) fn base64(bytes: &[u8]) -> String {
 mod tests {
     use super::*;
 
-    /// **部品の径路を素直に畳む。** `xl/worksheets/sheet1.xml` から見た
-    /// `../drawings/drawing1.xml` は `xl/drawings/drawing1.xml`。ここを
-    /// 間違えると絵が1枚も出ない — しかも**黙って**出ない
+    /// Resolve a part path in the plain way. Seen from
+    /// `xl/worksheets/sheet1.xml`, `../drawings/drawing1.xml` is
+    /// `xl/drawings/drawing1.xml`. Getting this wrong means not a single
+    /// picture is drawn, and nothing says why.
     #[test]
     fn part_paths_can_be_resolved() {
         assert_eq!(

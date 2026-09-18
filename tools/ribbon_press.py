@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
-"""**リボンのボタンを受け口から全部押して、動くかを確かめる道具**(2026-09-09
-発注者「OfficeWork のリボンのボタンが動作するかどうか確認して、動作しなければ
-修正して」)。
+"""**A tool that presses every ribbon button through the API and checks that it works.**
+The owner asked on 2026-09-09 for the ribbon buttons of OfficeWork to be checked, and
+fixed where they do not work.
 
-Mac では画面のクリックを外から送れない(補助アクセスの許可が要る)ので、
-アプリの受け口(unix ソケット)の `press` でボタンを id で押し、`ui_state` と
-`ping` で「落ちていない・何かが起きた」を見ます。tools/ribbon_sweep.py
-(X11 で実際にクリックする道具)の Mac 版です。
+On the Mac, clicks cannot be sent to the screen from outside without permission for
+assistive access. So this tool presses a button by id with `press` on the app's API (a
+unix socket) and uses `ui_state` and `ping` to see that the app has not crashed and that
+something happened. It is the Mac counterpart of tools/ribbon_sweep.py, which really
+clicks through X11.
 
-    python3 tools/ribbon_press.py                # 起動中の officework に繋ぐ
-    python3 tools/ribbon_press.py --app calc     # calc.sock に繋ぐ
+    python3 tools/ribbon_press.py                # connect to a running officework
+    python3 tools/ribbon_press.py --app calc     # connect to calc.sock
     python3 tools/ribbon_press.py --only bold italic
 
-やること: face/src/ribbon.rs の押せるボタン(`c(`/`t(`/`m(`)の id を集め、
-いま前に出ている画面(表か文書か)で効く物を順に押す。押すたびに
+What it does: it collects the ids of the buttons in face/src/ribbon.rs that can be
+pressed (`c(`, `t(` and `m(`), and presses the ones that work on the screen that is in
+front (the sheet or the document) one after another. For each press it checks
 
-1. 受け口が答える(落ちていない)
-2. `ui_state` か状態行が変わった、または状態行に「まだ」「未対応」の断りが無い
-3. `escape` を押して、開いた物を閉じる
+1. the API answers (the app has not crashed)
+2. `ui_state` or the status bar changed, or the status bar does not say the command is
+   not supported yet
+3. `escape` is pressed to close whatever opened
 
-を見て、結果を1行ずつ出します。最後に「押した数・何も起きなかった物・
-断られた物・落ちた所」をまとめます。
+and prints one line per result. At the end it sums up how many buttons were pressed,
+which did nothing, which were refused, and where the app crashed.
 """
 import argparse
 import json

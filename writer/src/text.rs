@@ -432,11 +432,11 @@ impl Writer {
         self.relayout_keep();
     }
 
-    /// PDF として保存。保存先の選択は**別のスレッド**(rfd は同期)。
-    /// **CSV を差し込みます**(帳票。2026-08-17)。
+    /// Save as PDF. Choosing where to save runs on another thread (rfd is
+    /// synchronous). It merges a CSV (forms, 2026-08-17).
     ///
-    /// 雛形に `{{member}}` と `{{群.項目}}` を書いておき、CSV を選ぶと、
-    /// 明細の行が CSV の行数だけ増えます。
+    /// You write `{{member}}` and `{{群.項目}}` in the template, and when you pick a
+    /// CSV the detail rows grow to match the number of rows in the CSV.
     pub(crate) fn merge_csv(&mut self, cx: &mut Context<Self>) {
         self.flush_target();
         let gs = kumihan::fill::groups(&self.doc);
@@ -522,8 +522,9 @@ impl Writer {
             self.status = ui::tf!("cant_export", e).into();
             return;
         }
-        // **画像は隣に置きます**(HTML に埋め込みません)。HTML から見た相対の
-        // 径路で参照しているので、同じ場所に同じ形で並べる必要があります
+        // The images are written next to the HTML, not embedded in it. They are
+        // referenced by a path relative to the HTML, so they have to sit in the same
+        // place, laid out the same way
         let dir = path.parent().unwrap_or(std::path::Path::new("."));
         let mut cannot_write = 0usize;
         for (rel, bytes) in &page.assets {
@@ -1186,7 +1187,8 @@ impl Writer {
         self.flush_target();
         let mut items: Vec<(String, usize)> = Vec::new();
         let mut at = 0usize;
-        // 探す頭は貼る雛形と同じところから(caption_head の註)
+        // The prefix we search for comes from the same template we insert
+        // (see the notes on caption_head)
         let head = caption_head();
         for p in self.doc.paragraphs() {
             let t: String = p.runs.iter().map(|r| r.text.as_str()).collect();

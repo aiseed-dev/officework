@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
-"""エンジン(PyPI の officework)と一緒に公開する文書を見る。
+"""Check the documents published together with the engine (officework on PyPI).
 
-    python3 tools/engine_docs_check.py           # 揃っているか見る
-    python3 tools/engine_docs_check.py --screen  # 画面の言葉が出る所を出す
+    python3 tools/engine_docs_check.py           # check that everything is in place
+    python3 tools/engine_docs_check.py --screen  # show where the screen words appear
 
-一覧は `docs/engine-docs.txt` です。**場所は動かしません**(2026-08-26 の
-決め。PyPI の頁や公開済みのリンクが docs/ の径路に刺さっているためです)。
-どれを公開するかは、この一覧だけが持ちます。
+The list is `docs/engine-docs.txt`. **The files are not moved**, decided on 2026-08-26,
+because the PyPI page and links that are already published point at paths under docs/.
+This list is the only place that says what gets published.
 
-見るのは4つです。
+There are four checks.
 
-1. 一覧に書いた径路が実在すること
-2. 日英の対が揃っていること(英語が原本。PyPI の読み手は英語です)
-3. `pysheet/README.md` のリンク先が、一覧の中にあること
-4. 画面の言葉(リボン・ボタン・パネルなど)が出る所を数えること
+1. every path in the list exists
+2. the Japanese and English pairs are complete (English is the original; PyPI readers
+   read English)
+3. the links in `pysheet/README.md` point at something in the list
+4. how often screen words (ribbon, button, panel and so on) appear
 
-4だけは**落としません**。対応表は画面のボタンから引く表なので、その言葉が
-出るのが正しい形です。数えて出すだけにして、増えたかどうかを人が見ます。
-`--screen` で場所まで出ます。
+Only check 4 never fails. The mapping table is looked up from the buttons on screen, so
+those words belong there. The tool just counts them and prints the count, and a person
+decides whether it has grown. `--screen` also prints where they appear.
 """
 import pathlib
 import re
@@ -35,7 +36,7 @@ KAZOENAI = {"LICENSE", "NOTICE.md"}
 
 
 def ichiran() -> list:
-    """一覧の径路。`#` から始まる行と空行は註記です"""
+    """The paths in the list. Lines starting with `#` and blank lines are notes"""
     out = []
     for line in ICHIRAN.read_text(encoding="utf-8").splitlines():
         line = line.strip()
@@ -65,10 +66,10 @@ SOTO_DEMO_II = {
 
 
 def pypi_no_link(paths: list) -> list:
-    """PyPI の頁が指す docs/ の径路が、一覧の中にあるか。
+    """Whether the docs/ paths the PyPI page points at are in the list.
 
-    **一覧の外を指していたら、公開しない物へ読者を送っています。**
-    断って案内している物だけ `SOTO_DEMO_II` で許します。
+    **A link outside the list sends readers to something that is not published.**
+    Only files that are introduced with a note are allowed, through `SOTO_DEMO_II`.
     """
     src = (ROOT / "pysheet/README.md").read_text(encoding="utf-8")
     ari = set(paths) | SOTO_DEMO_II

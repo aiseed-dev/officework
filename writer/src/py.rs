@@ -7,14 +7,17 @@
 /// (2026-08-07)が入っていなかった** — 写経のずれの実物。共有で自然に直る
 pub(crate) use pyrun::find_python;
 
-/// マクロ台本の全文を組む。前置きで d(python-docx の文書)のほかに、
-/// 記入欄へ**名前で**書く fill / fill_one、読む extract、名前と値の一覧
-/// fields を渡す(記入=出口と吸い上げ=入口の対)。鍵は docx の w:tag
-/// (フォームタブの「名前」ボタンで付ける)。無い名前は例外で断る —
-/// ラベルの字を探して隣に書く走査より、名前が様式の背骨(発注者 2026-08-05)。
-/// もう一車線が雛形: render(辞書)= docxtpl の {{member}} / {%tr %} 差し込み、
-/// tpl_fields()= 差し込み口の一覧。往復する様式は記入欄、出して終わりの
-/// 量産文書(通知書・契約書)は雛形、の使い分け(SEKKEI 参照)
+/// Builds the whole macro script. Besides d (the python-docx document), the preamble
+/// hands over fill / fill_one, which write into the fill-in fields **by name**, extract,
+/// which reads one, and fields, which lists the names and their values (writing out and
+/// reading back are a pair). The key is the docx w:tag, which the Name button on the
+/// Form tab attaches. A name that does not exist raises an exception. The owner decided
+/// on 2026-08-05 that the name is the backbone of the form, rather than scanning for
+/// the text of a label and writing next to it.
+/// The other way is a template: render(dict) fills in docxtpl's {{member}} and {%tr %},
+/// and tpl_fields() lists the placeholders. A form that goes back and forth uses fill-in
+/// fields, while documents produced in bulk and sent out (notices, contracts) use a
+/// template (see SEKKEI).
 pub(crate) fn macro_script(
     in_d: &std::path::Path,
     out_d: &std::path::Path,
@@ -143,8 +146,9 @@ def tpl_fields():
 /// プラグイン(.py)の置き場。~/.config/officework/plugins(正は pyrun)
 pub(crate) use pyrun::plugins_dir;
 
-/// いま数式を何で組むか(状態行に出す字)。**エンジンの typst で固定**
-/// (2026-09-02 の決め。前は Python の TeX か matplotlib でした)
+/// What formulas are laid out with right now (the text shown in the status bar).
+/// **Fixed to typst in the engine.** The owner decided this on 2026-09-02; before that
+/// it was TeX or matplotlib in Python.
 pub(crate) fn suushiki_no_kumi_kata() -> String {
     "typst".into()
 }

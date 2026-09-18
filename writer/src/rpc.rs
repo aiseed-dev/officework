@@ -121,7 +121,8 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
             }
             None => ops::err("id がありません"),
         },
-        // いま開いている物(点検用)。状態行の字と、開いている小窓・パネル
+        // What is open right now (for checking). The status bar text, plus the dialogs
+        // and panels that are open
         "ui_state" => {
             // 開いている物の名前(点検の道具が「押して何かが起きた」を見る)
             let open: Vec<&str> = [

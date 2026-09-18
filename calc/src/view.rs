@@ -309,8 +309,9 @@ impl Render for Calc {
         // 窓の大きさを控える(見える行数・列数がこれに追従する)
         self.view_w_px = f32::from(window.viewport_size().width);
         self.view_h_px = f32::from(window.viewport_size().height);
-        // 画面の文字の大きさ(Ctrl+= / Ctrl+- 、表示タブ)。リボン・数式バー・
-        // メニュー・見出し・状態行の文字とボタンがこれに追従する。格子のズームとは別
+        // The on-screen text size (Ctrl+= / Ctrl+-, View tab). The text and buttons of the
+        // ribbon, formula bar, menus, headings and status bar follow it. Separate from the
+        // grid zoom
         let us = self.ui_scale;
         if std::env::var_os("JO_SELFTEST").is_some() {
             // 実際に描画が走った証拠を残す(notify だけでは画面は変わらない —
@@ -549,10 +550,11 @@ impl Render for Calc {
                 format!("{pt:.1}").into()
             }
         };
-        // 1つのボタンを組み立てる(名札つきの大ボタン / 絵だけ / 文字の小ボタン)。
-        // ホームの対の並びと、他タブの一段の並びの両方から使う
-        // 絵の無いボタンの**短い札**(ja)。長い正式名はツールチップと状態行へ。
-        // 場所を食う文字のボタンを細くする(発注者 2026-08-07)
+        // Builds one button (a large button with a label / icon only / a small text button).
+        // Used both by the paired layout on Home and by the single row on the other tabs.
+        // **Short labels** (ja) for buttons that have no icon. The full name goes to the
+        // tooltip and the status bar. The owner decided on 2026-08-07 to make text buttons
+        // that take up space narrower
         const SHORT: &[(&str, &str)] = &[
             ("fillparag", "塗り"), ("text-orient", "向き"),
             ("clear-filter", "解除"), ("format", "書式"),
@@ -752,8 +754,9 @@ impl Render for Calc {
                     div().text_size(px(us * 8.0)).text_color(th_gray).child(m)
                 }))
                 .children((!has_icon).then(|| {
-                    // 短い札があればそちら(正式名はツールチップと状態行)。
-                    // 短縮は ja だけ — 他の言語は表の語のまま
+                    // Use the short label when there is one (the full name goes to the
+                    // tooltip and the status bar). Shortening applies to ja only — other
+                    // languages keep the word from the table
                     let text = if ui::settings::language() == "ja" {
                         SHORT
                             .iter()
@@ -2031,11 +2034,12 @@ impl Render for Calc {
             w
         });
 
-        // 下端はステータスバーを兼ねる(デスクトップ版の形):
-        // 状態の文言と、選択の生きた値(合計・平均・個数)
-        // **記録中は見て分かるようにする**(発注者 2026-08-16)。状態行は次の
-        // 操作で流れてしまうので、印は消えずに残る場所に置く。赤い丸と件数 —
-        // 何件溜まったかが見えないと、押した操作が拾われたか分からない
+        // The bottom edge doubles as the status bar (the desktop layout): the status text
+        // and the live values for the selection (sum, average, count).
+        // **Recording has to be visible while it is on.** The owner decided this on
+        // 2026-08-16. The status bar is replaced by the next operation, so the indicator
+        // goes somewhere it will not disappear. A red dot and a count — without seeing how
+        // many have piled up, you cannot tell whether the operation you pressed was picked up
         if let Some(n) = self.rec.as_ref().map(|v| v.len()) {
             sheets_bar = sheets_bar.child(
                 div()
@@ -3066,8 +3070,9 @@ impl Render for Calc {
                 let inside = on_pivot
                     && self.cursor.row >= a.row && self.cursor.row <= b.row
                     && self.cursor.col >= a.col && self.cursor.col <= b.col;
-                // 札は出さない(セルの中身に被って邪魔 — 発注者 2026-08-07)。
-                // 濃い枠+紫のタブ+状態行の案内で足りる
+                // No label is drawn; the owner decided on 2026-08-07 that it covers the
+                // cell contents and gets in the way. A heavy border, the purple tab and
+                // the note in the status bar are enough
                 let mut f = div().absolute()
                     .left(px(x0)).top(px(y0))
                     .w(px((x1 - x0).max(2.0))).h(px((y1 - y0).max(2.0)))
@@ -5593,12 +5598,14 @@ impl Render for Calc {
             .children(watch_bar)
             .child(sheets_bar)
             .children(notes)
-            // **一覧と罫線のパレットは窓の根に置く**(2026-08-15)。格子の
-            // 面の中にいると `overflow_hidden` で切られ、リボンから開いた
-            // 一覧が必ず面の上端に出ていた(発注者「テキスト表示のすぐ下に
-            // 出したほうがいい」)。根なら面より上にも出せる。
-            // 座標は窓のもの(面の原点を足してある)。**シートのタブや状態行より後に
-            // 置く** — 後に描く=手前なので、下の方で開いた一覧が隠れない
+            // **The list and the border palette go at the root of the window**
+            // (2026-08-15). Inside the grid area they were clipped by `overflow_hidden`,
+            // so a list opened from the ribbon always came out at the top edge of the
+            // grid. The owner decided it should open just below the text display. At the
+            // root it can be drawn above the grid as well. The coordinates are the
+            // window's (the grid's origin is already added). **Place it after the sheet
+            // tabs and the status bar** — drawn later means in front, so a list opened
+            // near the bottom is not hidden
             .children(border_palette)
             .children(pick_panel)
             // 窓の縁のつかみ(最後に描く = 最初にマウスを受ける)

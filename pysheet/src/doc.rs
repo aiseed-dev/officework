@@ -386,17 +386,19 @@ impl PyDoc {
         })
     }
 
-    /// **雛形にデータを流し込む**(帳票。2026-08-17)。
+    /// **Fill a template with data** (forms, 2026-08-17).
     ///
-    /// 記入欄に1つ書く [`fill`](Self::fill) とは別物です。あちらは欄1つ、
-    /// こちらは雛形まるごとです。
+    /// This is a different thing from [`fill`](Self::fill), which writes one
+    /// entry field. That one handles a single field; this one handles the whole
+    /// template.
     ///
-    /// `{{member}}` を置き換え、`{{群.項目}}` を含む表の行はデータの数だけ
-    /// 増やします。**この文書を書き換えます**(雛形を残したいときは、
-    /// 先に別名で保存してください)。
+    /// It replaces `{{member}}`, and a table row that contains `{{群.項目}}` is
+    /// repeated once per data row. **This rewrites the document** (save under
+    /// another name first if you want to keep the template).
     ///
-    /// データに無い名前は `{{member}}` のまま残し、返り値で知らせます。
-    /// 空にすると、金額の欄が空いた請求書が黙って出来上がるためです。
+    /// A name that is not in the data is left as `{{member}}` and reported in the
+    /// return value. Blanking it would quietly produce an invoice with an empty
+    /// amount field.
     ///
     /// ```python
     /// d = doc.Doc.open("請求書.docx")
@@ -1187,9 +1189,10 @@ impl PyDoc {
         Ok((0..n).map(|idx| PySection { inner: Arc::clone(&self.inner), idx }).collect())
     }
 
-    /// 画像を足す(python-docx の add_picture の役)。径路でも bytes でも。
-    /// 大きさは mm(省略は絵の実寸を 96dpi で mm に直した値。片方だけ
-    /// 渡せば縦横比を保つ)。返りは画像を持つ段落。
+    /// Add a picture (the role of python-docx's add_picture). A path or bytes.
+    /// The size is in mm (omitted, it is the picture's own size converted from
+    /// 96dpi to mm; give only one side and the aspect ratio is kept). It returns
+    /// the paragraph that holds the picture.
     #[pyo3(signature = (image, width_mm=None, height_mm=None))]
     fn add_picture(
         &self,
@@ -1204,8 +1207,8 @@ impl PyDoc {
             bytes: std::sync::Arc::new(data),
             w_mm,
             h_mm,
-            tex: None, // python-docx の add_picture。数式は別の口
-            src: None, // ネイティブ文書の相対の径路。ここは中身を直に持つ
+            tex: None, // python-docx's add_picture. Formulas use a different API
+            src: None, // relative path in a native document. Here we hold the bytes
             off: 0,
         });
         g.doc.blocks.push(Block::Para(p));
@@ -2322,12 +2325,13 @@ impl PyRun {
 
 #[pymethods]
 impl PyRun {
-    /// **この run の段落に画像を足す**(python-docx の
-    /// `run.add_picture` の役)。径路でも bytes でも。
+    /// **Add a picture to this run's paragraph** (the role of python-docx's
+    /// `run.add_picture`). A path or bytes.
     ///
-    /// 本家は run の中に絵を置きますが、こちらの模型は絵を**段落**が
-    /// 持ちます。同じ段落に載るので、刷った紙は同じ所に出ます。
-    /// 台帳に「run 内の画像」として残っていた物です(2026-08-28)。
+    /// The original puts the picture inside the run, but in this model the
+    /// **paragraph** holds pictures. It sits in the same paragraph, so it prints
+    /// in the same place. This was listed as "picture inside a run" on the
+    /// tracking list (2026-08-28).
     #[pyo3(signature = (image, width_mm=None, height_mm=None))]
     fn add_picture(
         &self,
@@ -2769,9 +2773,10 @@ impl PyTable {
         }
     }
 
-    /// 表のスタイルの**名前だけ**(docx の w:tblStyle の styleId)。
-    /// 定義(styles.xml)は持たない主義 — 読んだ名前を運んで返すだけ。
-    /// 定義が要る名前は、原本(雛形)の styles.xml が持っているのが前提。
+    /// **Only the name** of the table style (the styleId of docx's w:tblStyle).
+    /// We do not keep the definition (styles.xml); we carry the name we read and
+    /// return it. A name that needs a definition is expected to be defined in the
+    /// styles.xml of the original template.
     #[getter]
     fn style(&self) -> PyResult<Option<String>> {
         let g = lock(&self.inner)?;
@@ -3202,7 +3207,7 @@ fn align_of(v: &str) -> Option<kumihan::Align> {
 
 
 
-/// 径路が `.adoc` か(大文字小文字は問わない)
+/// Whether the path ends in `.adoc` (case does not matter)
 fn is_adoc(path: &str) -> bool {
     std::path::Path::new(path).extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc"))
 }

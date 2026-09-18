@@ -150,16 +150,20 @@ impl AiJob {
     }
 }
 
-/// 図表番号の頭(「図 」)。**貼る字と探す字を同じ雛形から取る**ための1箇所。
+/// The caption number prefix ("図 "). The one place that takes the text we insert
+/// and the text we search for from the same template.
 ///
-/// 番号を付けるときは `ui::tf!("figure", n)` で貼り、次の番号を決めるときと
-/// 図表目次を作るときは段落の頭がこれで始まるかを見る。雛形は訳されるので
-/// (独 "Abbildung {}"、韓 "그림 {}")、探す側に生の「図 」を書くと**日本語
-/// 以外では一度も見つからず、図がすべて 1 番になり、図表目次も空になる**。
-/// 同じ鍵 `"図 {}"` から穴の手前を切り出せば、二つが食い違う余地がない。
+/// We insert a number with `ui::tf!("figure", n)`, and when we decide the next number
+/// or build a table of figures we check whether the paragraph starts with this prefix.
+/// The template is translated (German "Abbildung {}", Korean "그림 {}"), so if the
+/// search side hard-coded the Japanese "図 " it would never match in any other
+/// language: every figure would come out as number 1 and the table of figures would
+/// be empty. Cutting the part before the placeholder out of the same key `"図 {}"`
+/// leaves no room for the two sides to disagree.
 ///
-/// 穴が頭に来る訳(「{} 図」)が来たら頭は空になる — 空の頭は
-/// `strip_prefix` が必ず通ってしまうので、そのときは日本語の形に戻す
+/// If a translation puts the placeholder first ("{} 図"), the prefix comes out empty.
+/// `strip_prefix` always succeeds on an empty prefix, so in that case we fall back to
+/// the Japanese form.
 pub(crate) fn caption_head() -> &'static str {
     let head = ui::t!("figure").split("{}").next().unwrap_or("");
     if head.is_empty() { "図 " } else { head }
@@ -321,10 +325,11 @@ pub struct Writer {
     pub(crate) recover_secs: u64,
     /// 最後に控えを取った時刻
     pub(crate) recover_at: std::time::Instant,
-    /// **画面の文字の大きさ**(2026-08-21 発注者「双方でできるように
-    /// したいです」)。リボン・タブの行・状態行・パネル・ファイルのページ
-    /// が追従します。**紙は変わりません** — 紙の大きさは `zoom` の話で、
-    /// こちらは画面の設えの話です。表の画面と同じ作りです
+    /// The text size of the user interface. The owner decided on 2026-08-21 that both
+    /// apps should be able to do this. The ribbon, the tab row, the status bar,
+    /// the panels and the file page all follow it. The paper does not change: the size
+    /// of the paper is what `zoom` controls, while this is about how the screen is set
+    /// up. It works the same way as in the spreadsheet app.
     pub(crate) ui_scale: f32,
     /// 画像の実体 → gpui の画像(作り直すと毎フレーム復号されるため控える)
     image_cache: std::collections::HashMap<usize, std::sync::Arc<gpui::Image>>,
@@ -592,7 +597,8 @@ pub struct Writer {
     ink_cur: Option<kumihan::Stroke>,
     /// 筆の取り消しの控え(1操作 = 1枚)
     ink_undo: Vec<Vec<kumihan::Stroke>>,
-    /// 直前の adoc 保存で、筆を何枚の絵にしたか(状態行で言うため)
+    /// How many images the ink strokes became in the last adoc save (to say in the
+    /// status bar)
     ink_svg_count: usize,
     /// 様式(セル)で対応が付かなかった物。組むたびに入れ替わる
     form_notes: Vec<String>,
@@ -698,7 +704,7 @@ impl Writer {
         self.dirty || (0..self.files.len()).any(|i| self.file_dirty(i))
     }
 
-    /// 状態行に出す(持ち替えを断った理由を言うため)。
+    /// Show a message in the status bar (to say why switching was refused).
     pub fn say(&mut self, msg: impl Into<gpui::SharedString>) {
         self.status = msg.into();
     }
@@ -881,7 +887,7 @@ impl Writer {
         }
     }
 
-    /// 保護で止めたときに状態行へ出す文
+    /// The message to show in the status bar when protection blocked the edit
     pub(crate) fn protection_message(&self) -> &'static str {
         match self.prot_mode() {
             Some("comments") => ui::t!("blocked_comments_mode"),

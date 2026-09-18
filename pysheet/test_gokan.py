@@ -977,7 +977,7 @@ if pydocx is not None:
 
         d_mix.core_properties.author = "日本不燃 太郎"
         d_mix.core_properties.title = "見積書"
-        # 画像(2×2 の最小 PNG)を径路の代わりに bytes で
+        # A picture (a minimal 2x2 PNG) passed as bytes instead of a path
         png = (b"\x89PNG\r\n\x1a\n" +
                b"\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x02"
                b"\x08\x02\x00\x00\x00\xfd\xd4\x9as" +
@@ -1318,7 +1318,7 @@ with tempfile.TemporaryDirectory() as t:
         media = [n for n in z.namelist() if n.startswith("xl/media/")]
     check(len(media) == 2, f"xl/media に絵が入っていない: {media}")
 
-    # 径路の文字列でも渡せる(matplotlib の savefig の出口をそのまま)
+    # A path string works too (the output of matplotlib's savefig as it is)
     p = os.path.join(t, "e.png")
     with open(p, "wb") as f:
         f.write(PNG_1x1)

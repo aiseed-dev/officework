@@ -220,8 +220,9 @@ pub fn svg_to_png(data: &[u8], scale: f32) -> Result<(Vec<u8>, u32, u32), String
     Ok((png, w.round() as u32, h.round() as u32))
 }
 
-/// 外の世界へ開いた結果。呼び手はこれで状態行の文言を分ける —
-/// 「黙って何も起きない」を作らないため
+/// The result of opening something outside the app. The caller uses it to
+/// choose the status bar message, so that nothing ever looks as if it silently
+/// did nothing.
 pub enum Opened {
     /// 渡した(窓なりブラウザなりが来る)
     Yes,
@@ -248,15 +249,18 @@ fn open_gate(
     true
 }
 
-/// `.py` を編集する道具で開く。**プログラムの編集は表計算の仕事ではない**
-/// (発注者 2026-08-15。データとプログラムを分けた以上、calc の中に
-/// 編集面を持つのは筋が通らない)。順は:
+/// Open a `.py` file in a tool that edits it. The owner decided on 2026-08-15
+/// that editing programs is not the spreadsheet's job. Data and programs are
+/// kept apart, so an editing screen inside calc would not make sense. The
+/// order is:
 ///
-/// 1. settings.toml の `editor`(利用者が決めた道具。zed でも何でも)
-/// 2. 隣にいる officework の writer(素の文字として開ける)
-/// 3. 機械の既定(xdg-open — .py に何が結ばれていても、それが答え)
+/// 1. `editor` in settings.toml (the tool the user chose, zed or anything else)
+/// 2. the officework writer next to it (it opens the file as plain text)
+/// 3. the machine default (xdg-open; whatever is associated with .py is the
+///    answer)
 ///
-/// 返りは開いた道具の名前(状態行に出すため)
+/// The return value is the name of the tool that was opened, so that it can be
+/// shown in the status bar.
 pub fn open_for_edit(path: &str) -> Result<String, String> {
     // (1) 利用者の決めが最優先
     if let Some(ed) = settings::get("editor").filter(|s| !s.trim().is_empty()) {
@@ -686,8 +690,10 @@ fn make_binding(key: &str, name: &str, context: &'static str) -> Option<KeyBindi
 
 static KEY_WARNINGS: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
 
-/// 起動時の鍵の合成で見つけた言い分(知らない操作名・読めない鍵・
-/// 取り合い)。アプリが状態行に出す。**黙って捨てない**ための出口
+/// Warnings found while building the key bindings at startup: an unknown
+/// command name, a key that cannot be read, or two bindings that want the same
+/// key. The app shows them in the status bar. This is the way out, so that they
+/// are not dropped silently.
 pub fn key_warnings() -> &'static [String] {
     KEY_WARNINGS.get().map(Vec::as_slice).unwrap_or(&[])
 }
@@ -751,8 +757,8 @@ pub trait HasEditor {
     fn math_autocorrect(&self) -> bool {
         false
     }
-    /// オートコレクトが働いたときに呼ばれる(状態行に出す用)。
-    /// `was` は元の綴り
+    /// Called when autocorrect has changed something, so that it can be shown
+    /// in the status bar. `was` is the original spelling.
     fn on_autocorrect(&mut self, _was: &str) {}
 }
 

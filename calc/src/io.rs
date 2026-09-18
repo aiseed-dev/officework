@@ -28,9 +28,10 @@ pub(crate) fn key_err_msg(e: ops::KeyErr) -> String {
 }
 
 impl Calc {
-    /// ブックの道を差し替える。**`book.path` も一緒に動かす** —
-    /// `CELL("filename")` が `径路[ファイル名]シート名` を返すのに要る。
-    /// 別々に持つと片方だけ古くなり、式が前のファイル名を答える
+    /// Replace the workbook's path. **Move `book.path` along with it** —
+    /// `CELL("filename")` needs it to return `path[filename]sheetname`.
+    /// If the two are kept apart, one goes stale and the formula answers with the old
+    /// file name.
     pub(crate) fn set_path(&mut self, p: Option<PathBuf>) {
         self.book.path =
             p.as_ref().map(|x| x.display().to_string()).unwrap_or_default();
@@ -466,13 +467,14 @@ impl Calc {
         }
     }
 
-    /// 読み終えたブックを画面に据える。**xlsx と adoc の共通の続き** —
-    /// 片方だけ直して食い違うのを防ぐため、1本にしてあります。
-    /// **拾い集めたブックを受け取る**(開いて修復)。
+    /// Put a workbook that has finished loading on screen. **The shared tail of xlsx
+    /// and adoc** — it is one routine so that fixing only one of them cannot make the
+    /// two disagree. **Takes in a salvaged workbook** (opened and repaired).
     ///
-    /// 普通に開いたときと違うのは2つだけです — 上書きを断る旗を立てることと、
-    /// **画面の下の帯に「拾い集めたもの」と出し続ける**ことです。状態行は
-    /// 次の操作で流れるので、そこだけでは足りません。
+    /// Only two things differ from an ordinary open. It raises the flag that refuses
+    /// to overwrite, and it **keeps showing "salvaged" in the band at the bottom of
+    /// the window**. The status bar is replaced by the next operation, so the status
+    /// bar alone is not enough.
     pub(crate) fn adopt_salvaged(
         &mut self,
         p: PathBuf,
@@ -665,9 +667,10 @@ impl Calc {
         ops::recover_path_for(orig, "xlsx", "未保存のブック")
     }
 
-    /// 自動復旧の控えを書く。**中身を写してから別スレッドで書く** —
-    /// 大きな帳票で画面が止まらないように。成否は状態行に出さない
-    /// (数分ごとに出ては邪魔なので、しくじったときだけ言う)
+    /// Write the autorecover backup. **Copy the contents first, then write on another
+    /// thread** — so that a large report does not freeze the screen. Success or failure
+    /// is not shown in the status bar (a message every few minutes would be in the way,
+    /// so it speaks only when it fails).
     pub(crate) fn write_recover(&mut self, cx: &mut Context<Self>) {
         let dst = Self::recover_path_for(self.path.as_deref());
         // 控えにも固定枠を載せる(復旧したときに画面が変わらないように)
@@ -789,7 +792,7 @@ impl Calc {
                         let fixed_name =
                             p.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string();
                         this.save_to(p);
-                        // **黙って名前を変えない。** 変えたときは状態行で言う
+                        // **Do not rename silently.** When it is changed, say so in the status bar
                         if fixed_name != typed_name {
                             this.status =
                                 ui::tf!("saved_spreadsheets_named_double", fixed_name)
@@ -920,23 +923,23 @@ impl Calc {
         }
     }
 
-    /// **いまのシートを Web の頁(HTML)に書き出す**(発注者 2026-08-15
-    /// 「calc に web 書き出しを作ると楽になるでしょう」)。
+    /// **Write the current sheet out as a web page (HTML).** The owner decided on
+    /// 2026-08-15 that a web export in calc would make the work easier.
     ///
-    /// 台帳を正本にして頁を作る仕事は Python の台本でやってきたが、
-    /// **1枚の表を1枚の頁にするだけなら、アプリから直に出せたほうが早い** —
-    /// Python を持っていない人にも届く。
+    /// Building pages from a ledger has been done with Python scripts so far, but
+    /// **when it is just one table turned into one page, getting it straight out of
+    /// the app is quicker** — and it reaches people who do not have Python.
     ///
-    /// 決め:
+    /// Decisions:
     ///
-    /// - **JavaScript を使わない。** 表と字だけ。電波の細い所でも古い機械でも開く
-    /// - **表示形式を通す**(`format_value`)。`0001` は `0001` のまま、
-    ///   `¥#,##0` は `¥360` で出る。画面と同じ字が頁に出るのが筋
-    /// - **1行目は見出し**(`<th>`)にする。表の頭は見出しである方が多い
-    /// - **太字と揃えは持っていく**(それ以外の書式は落とす)
-    /// - **式は結果を出す。** 頁を見る人に式は要らない
-    /// - **結合は扱わない。** 落とすのではなく**そう言う** — 結合のあるシートは
-    ///   状態行で件数を告げる(黙って崩さない)
+    /// - **No JavaScript.** Tables and text only, so it opens on a slow line or an old machine
+    /// - **Run values through the number format** (`format_value`). `0001` stays `0001`,
+    ///   and `¥#,##0` comes out as `¥360`. The page should show what the screen shows
+    /// - **The first row becomes the header** (`<th>`). The top of a table is usually a header
+    /// - **Bold and alignment are carried over** (other formatting is dropped)
+    /// - **Formulas show their result.** Someone reading the page does not need the formula
+    /// - **Merged cells are not handled.** Rather than dropping them silently, **say so** —
+    ///   a sheet with merged cells reports the count in the status bar (nothing breaks quietly)
     pub(crate) fn write_html(&mut self, p: &std::path::Path) {
         use std::fmt::Write as _;
         let s = &self.book.sheets[self.active];

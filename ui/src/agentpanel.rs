@@ -42,7 +42,7 @@ pub enum AgentState {
 }
 
 impl AgentState {
-    /// 状態行に出す語。`Idle` は出しません
+    /// The word shown in the status bar. `Idle` shows nothing.
     pub fn word(self) -> Option<String> {
         match self {
             AgentState::Unset => Some(crate::t!("model_unset").to_string()),

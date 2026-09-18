@@ -3414,7 +3414,7 @@ impl Calc {
         self.filter_note();
     }
 
-    /// 絞り込みの操作のたびに、いま何行見えているかを状態行で言う
+    /// After every filtering operation, says in the status bar how many rows are now visible
     fn filter_note(&mut self) {
         self.sync_filter_hidden();
         self.status = match self.filter_counts() {
@@ -5160,9 +5160,9 @@ impl Calc {
         self.status = ui::tf!("sheet", self.sheet().name).into();
     }
 
-    /// ブックの構造が守られているか(保護タブの「ブックを保護する」)。
-    /// 守られていれば状態行に理由を出して真を返します。シートの追加・
-    /// 削除・複製・並べ替え・名前の変更の入り口で呼びます
+    /// Whether the workbook structure is protected ("Protect Workbook" on the Protection tab).
+    /// If it is, the reason is shown in the status bar and this returns true. Call it at the
+    /// start of adding, deleting, copying, reordering and renaming a sheet.
     pub(crate) fn structure_locked(&mut self) -> bool {
         if self.book.lock_structure {
             self.status = ui::t!("book_structure_locked_refused").into();

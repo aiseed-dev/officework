@@ -890,8 +890,9 @@ impl Calc {
         self.status = ui::t!("zoom_back_100").into();
         cx.notify();
     }
-    /// F1 = 手引き。**中に画面を作らない** — 手引きは docs にある文書なので、
-    /// その道を状態行で示す(嘘の「ヘルプ画面」を出すより確か)
+    /// F1 = the manual. **No help screen is built into the app.** The manual is a document
+    /// under docs, so the status bar shows its path (more reliable than putting up a fake
+    /// "help screen")
     pub(crate) fn a_help(&mut self, _: &ui::Help, _: &mut Window, cx: &mut Context<Self>) {
         self.status = ui::t!(
             "manual_docs_ja_calc"
@@ -1240,7 +1241,7 @@ impl Calc {
     }
     pub(crate) fn a_recalc(&mut self, _: &ui::Recalc, _: &mut Window, cx: &mut Context<Self>) {
         self.commit();
-        // 全部のシートを計算します(状態行の「ブック全体」を嘘にしない)
+        // Calculate every sheet, so that "the whole workbook" in the status bar is true
         book::calc::recalc_all(&mut self.book);
         self.status = ui::t!("recalculated_whole_workbook").into();
         cx.notify();
@@ -1256,7 +1257,7 @@ impl Calc {
     pub(crate) fn a_ins_link(&mut self, _: &ui::InsLink, _: &mut Window, cx: &mut Context<Self>) {
         self.run_cmd("inshyperlink", cx);
     }
-    /// Ctrl+= / Ctrl+- = 画面の文字の大きさ(リボンから状態行まで全部)
+    /// Ctrl+= / Ctrl+- = the UI font size (everything from the ribbon to the status bar)
     pub(crate) fn a_ui_bigger(&mut self, _: &ui::UiBigger, _: &mut Window, cx: &mut Context<Self>) {
         self.run_cmd("ui-bigger", cx);
     }

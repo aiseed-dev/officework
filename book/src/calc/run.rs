@@ -252,7 +252,8 @@ pub(super) const ARRAY_FNS: &[&str] = &[
 ];
 
 pub fn recalc(sheet: &mut Sheet) {
-    // 1枚だけの計算にはブックが無い = 径路も無く、起点は 1899 の既定
+    // A single-sheet calculation has no workbook, so there is no path either,
+    // and the date system stays at the 1899 default
     recalc_impl(sheet, &[], 0, "", false);
 }
 

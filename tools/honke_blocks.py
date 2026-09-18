@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""本家の試験の入力で、往復(読んで書き戻す)の合否を本家の HTML で見る。
+"""Judge the round trip (read and write back) on upstream's test inputs, using
+upstream's HTML.
 
     ruby tools/honke_record.rb vendor/asciidoctor/test/lists_test.rb lists.json
-    python3 tools/honke_blocks.py lists.json [--show N] [--bin 径路]
+    python3 tools/honke_blocks.py lists.json [--show N] [--bin path]
 
-1つの入力につき、本家で組んだ HTML(元)と、うちで往復させた字を本家で組んだ
-HTML を比べる。`<pre>` の外では空白の並びを1つと見なす(第3歩の比べ方)。
-opts の付いた呼び出し(属性や backend の指定)は数えない。
+For each input it compares the HTML upstream produces from the original with the HTML
+upstream produces from the text we have round-tripped. Outside `<pre>`, a run of
+whitespace counts as one space (the comparison used in step 3). Calls that carry opts
+(attributes or a backend) are not counted.
 """
 import json, os, re, subprocess, sys
 

@@ -458,18 +458,20 @@ _manual_table = None
 
 
 def manual_link(label: str) -> str:
-    """ボタンの名前を、手引きへのリンクにして返す。
+    """Return the button name as a link to the manual.
 
-    **一覧から手引きへ飛べるようにします**(2026-08-25 発注者「一覧からの
-    リンクをつける」)。この表は引くための1枚なので、行を引き当てた人が
-    そのまま詳しい説明へ行けないと、そこで止まります。
+    This lets a reader jump from the table to the manual. The owner decided on
+    2026-08-25 that the table should carry links. The table is something people
+    look things up in, so if the reader who finds the right row cannot go straight
+    to the detailed explanation, they stop there.
 
-    手引きがまだ無いボタンは、名前をそのまま返します(リンクにしません)。
+    For a button that has no manual page yet, the name is returned as is, with no
+    link.
 
-    **径路はこの文書(`docs/ja/api-taiou.adoc`)から見た相対です。**
-    `docs` から数えると `ja/commands/…` になり、`docs/ja/ja/commands/…` を
-    指してリンクが全部切れます(2026-08-26 の言語別フォルダへの移動で
-    こうなっていました)。
+    The path is relative to this document (`docs/ja/api-taiou.adoc`). Counting
+    from `docs` gives `ja/commands/…`, which points at `docs/ja/ja/commands/…` and
+    breaks every link. That is what happened with the move to per-language folders
+    on 2026-08-26.
     """
     global _manual_table
     if _manual_table is None:
@@ -519,9 +521,9 @@ def state(id_: str, ow: str) -> str:
     return ""
 
 
-# アイコンの置き場(この文書から見た相対の径路)。
-# **文書は `docs/ja/` にあります**(2026-08-26 に言語別のフォルダへ移りました)。
-# ここが `../face/icons` のままだと `docs/face/icons` を指し、絵が1つも出ません
+# Where the icons live (a path relative to this document).
+# The document is in `docs/ja/` (it moved to a per-language folder on 2026-08-26).
+# If this stays `../face/icons` it points at `docs/face/icons` and no icon shows up.
 ICON_DIR = "../../face/icons"
 
 ICONS_RS = ROOT / "face/src/icons.rs"
@@ -719,9 +721,10 @@ FILE_MICHI = {
     "f-new": ('Doc() / Book()', 'docx.Document()', 'Workbook()'),
     "f-tpl": ('', 'docx.Document(雛形)', 'load_workbook(雛形)'),
     "f-open": ('Doc.open(径路) / Book.open(径路)', 'docx.Document(径路)', 'load_workbook(径路)'),
-    # **フォルダを開き直す**(2026-08-25 発注者「どうしてフォルダーを開くが
-    # ないのだ」)。綴りはフォルダなので、仕事を替えるとはフォルダを替えること。
-    # プログラムは径路を直に書けるので、専用の呼び方は要りません
+    # Open another folder. The owner asked on 2026-08-25 why there was no command
+    # for opening a folder. A project is a folder, so moving to different work means
+    # switching folder. A program can write the path directly, so it needs no
+    # dedicated call for this.
     "f-folder": ('', '', ''),
     # **形を選んで書き出す1つの入り口**。形ごとの呼び方は save に寄せます
     "f-export": ('d.save(径路) / b.save(径路)', 'd.save(径路)', 'wb.save(径路)'),
@@ -921,19 +924,23 @@ def table(lang: str = "ja") -> str:
             inner = ((f"*{moto}と同じ*" if lang == "ja"
                       else f"*Same as {_tab_en.get(moto, moto)}*")
                      + (f" — {inner}" if inner != "—" else ""))
-        # **絵を名前の前に出します**(2026-08-24 発注者)。画面で見ている物と
-        # 同じ絵なので、名前より先に目に入ります。径路は `face/icons` から
-        # この文書の場所への相対です
-        # **絵の名前とファイル名は、同じとは限りません。**
-        # `face/src/icons.rs` が名前とファイルを繋いでいます(例: `insertimage`
-        # の実体は `insimage.svg`)。画面はそちらを通るので出ますが、
-        # 文書から直に指すと届きません。ここで解いてから書きます
+        # Put the icon before the name. The owner decided this on 2026-08-24. It is
+        # the same icon the reader sees on screen, so it catches the eye before the
+        # name does. The path is relative from `face/icons` to where this document
+        # sits.
+        # The icon name and the file name are not always the same.
+        # `face/src/icons.rs` links the name to the file (for example the file behind
+        # `insertimage` is `insimage.svg`). The screen goes through that mapping, so
+        # it works there, but pointing straight at it from the document does not
+        # reach the file. The name is resolved here before it is written out.
         #
-        # **絵の説明文は空にします**(2026-08-30)。名前がすぐ隣にあるので、
-        # 入れると読み上げも本文の写しも名前が2回出ます
+        # Leave the icon's alt text empty (2026-08-30). The name is right next to it,
+        # so filling it in makes both a screen reader and a copy of the text say the
+        # name twice.
         #
-        # **まとまりの行は、入っているボタンを全部並べます**(2026-08-30)。
-        # 名前を1つに省くと、画面で押しているボタンから引けなくなります
+        # For a row that stands for a group, list every button it contains
+        # (2026-08-30). Shortening it to a single name means a reader cannot look it
+        # up from the button they are pressing on screen.
         def hitotsu(x):
             name = ICON_FILE.get(x.icon, x.icon)
             tag = f'image:{ICON_DIR}/{name}.svg[,16,16] ' if name else ""

@@ -43,11 +43,13 @@ pub(crate) fn archive_manifest(path: &str) -> Result<Vec<Value>, String> {
         .collect()
 }
 
-/// `read_entries` — 名前で指した部品を `output_dir` へ出し、置いた径路を返す。
+/// `read_entries` writes the parts named by the caller into `output_dir` and
+/// returns the paths they were written to.
 ///
-/// **名前をそのまま径路にしない。** `xl/worksheets/sheet1.xml` の `/` で
-/// 掘るのは呼ぶ側の想定ではないし、`..` を含む名前(zip slip)を渡されたら
-/// 出力先の外へ書いてしまう。**平らな名前に潰して置く。**
+/// The name is not used as the path. The caller does not expect the `/` in
+/// `xl/worksheets/sheet1.xml` to create directories, and a name that contains
+/// `..` (zip slip) would write outside the output directory. The name is
+/// flattened into a single file name before the file is written.
 pub(crate) fn read_entries(path: &str, want: &[String], output_dir: &str) -> Result<Vec<Value>, String> {
     let mut z = open_zip(path)?;
     std::fs::create_dir_all(output_dir).map_err(|e| format!("{output_dir}: 作れません: {e}"))?;

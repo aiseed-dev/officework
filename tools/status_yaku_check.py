@@ -1,31 +1,34 @@
 #!/usr/bin/env python3
-"""**状態行の文言が訳を通っているか**(2026-08-21)。
+"""Check that status bar text goes through translation (2026-08-21).
 
-画面の下に出る1行(`self.status`)は `ui::t!` / `ui::tf!` で書きます。
-そうすると対訳の表に載り、14 言語で各国語が出ます。
+The single line shown at the bottom of the screen (`self.status`) is written
+with `ui::t!` or `ui::tf!`. That puts it in the translation table, so it appears
+in each of the 14 languages.
 
-ところが `format!` で書いても**コンパイルは通ります**。書いた人の画面
-(日本語)では正しく見えるので、そのまま気づかれません。**その言語で
-使う人以外は誰も気づかない**という、この一連の欠陥と同じ形です。
+Writing it with `format!` compiles just as well. On the author's own screen (in
+Japanese) it looks right, so nobody notices. It is the same shape of defect as
+the rest of this series: nobody except a user of that language ever notices.
 
-## 実際にあった数
+## The count we actually found
 
-2026-08-21 に数えたら、**日本語を含む `format!` の状態行が 26 件**
-ありました(表 25・文章 1)。どれも 14 言語で日本語がそのまま出ます。
-設計が `ai-where` の例で挙げたのと同じ欠陥が、これだけ残っていました。
+Counting on 2026-08-21 there were 26 status bar strings written with `format!`
+that contained Japanese (25 in tables and 1 in prose). All of them show Japanese
+as is in all 14 languages. That many instances of the defect the design document
+gives as the `ai-where` example were still left.
 
-## 拾わないもの
+## What is not reported
 
-穴と英数字だけの物は訳が要りません(`"{}:{}"`、`"AI: {e}"` など)。
-だから**日本語の字が入っているかどうか**で見ます。
+A string made only of placeholders and ASCII needs no translation (`"{}:{}"`,
+`"AI: {e}"` and the like). So the test looks at whether the string contains any
+Japanese characters.
 
-## 直し方
+## How to fix it
 
-`format!` を `ui::tf!` に替え、名前つきの差し込み(`{name}`)は位置
-(`{}`)に直します。訳す人が名前を保つ必要がなくなるためです。
-そのあと `ui/gen_i18n.py --missing` から始まる i18n の手順を通します。
+Replace `format!` with `ui::tf!`, and change named placeholders (`{name}`) to
+positional ones (`{}`), so that translators no longer have to keep the names.
+Then go through the i18n steps starting with `ui/gen_i18n.py --missing`.
 
-## 使い方
+## Usage
 
     python3 tools/status_yaku_check.py
 """

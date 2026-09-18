@@ -1,14 +1,17 @@
-//! 画面の文言の言語 — **日本語の文がそのまま鍵**。
+//! The language of the screen text. The Japanese sentence itself is the key.
 //!
-//! 設計(SEKKEI「設定 — 器と言語」段階③):
-//! - 呼び出しは `t!("…")`(そのままの文)と `tf!("…{}…", 値)`(穴埋め)。
-//!   ja では鍵をそのまま返すので、**日本語の挙動は1バイトも変わらない**
-//! - en は [`i18n_en`](crate::i18n_en) の対訳表で引く。**表に無い文は
-//!   ja のまま出る**(嘘の英語を作らない)— 表の完全性は
-//!   `python3 ui/gen_i18n.py` が検査する(未訳があれば止まる)
-//! - 穴埋めは実行時の簡易整形(format! は雛形がコンパイル時定数でないと
-//!   使えないため)。対応する書式は `{}`・`{:.0}`・`{:?}` — このアプリの
-//!   文言が実際に使う3種だけ(増やすときはここに足す)
+//! Design (SEKKEI, "Settings - framework and language", step 3):
+//! - You call `t!("…")` for a plain sentence and `tf!("…{}…", value)` when
+//!   values are filled in. In ja the key is returned as it is, so the Japanese
+//!   behaviour does not change by a single byte.
+//! - en is looked up in the translation table in
+//!   [`i18n_en`](crate::i18n_en). A sentence that is not in the table is shown
+//!   in ja, so that no made-up English appears. `python3 ui/gen_i18n.py`
+//!   checks that the table is complete and stops when something is untranslated.
+//! - Values are filled in at run time by a small formatter, because `format!`
+//!   needs the template to be a compile-time constant. The supported forms are
+//!   `{}`, `{:.0}` and `{:?}`, the three this app's text actually uses. Add
+//!   another one here when it is needed.
 
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -193,7 +196,8 @@ pub fn tr_dyn(key: &str) -> String {
     }
 }
 
-/// 穴埋めつきの文。雛形を tr で引いてから、実行時に埋める
+/// A sentence with values filled in. The template is looked up with tr, then
+/// filled in at run time.
 pub fn trf(key: &'static str, args: &[&dyn Display]) -> String {
     fill(tr(key), args)
 }

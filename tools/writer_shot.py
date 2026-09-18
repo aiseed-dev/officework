@@ -38,11 +38,12 @@ WRITER = os.path.join(rs.ROOT, "target", "release", "writer")
 
 class W:
     def __init__(self, shots, path=None, home_files=None):
-        """`home_files` は偽の HOME に**起こす前に**置くファイル。
+        """`home_files` are files placed in the fake HOME **before the app starts**.
 
-        `{"…/templates/社内標準.toml": "中身"}` のように、HOME からの相対の
-        径路で渡します。配られたテンプレートのように、**アプリが起動時に
-        読む物**を試すために要ります(2026-08-18)。
+        Pass them with paths relative to HOME, as in
+        `{"…/templates/社内標準.toml": "contents"}`. They are needed to test
+        **what the app reads at startup**, such as a template that has been handed out
+        (2026-08-18).
         """
         self.shots = shots
         os.makedirs(shots, exist_ok=True)
@@ -178,12 +179,13 @@ class W:
         time.sleep(wait)
 
     def ui(self, tries=20, want_boxes=True):
-        """いまの画面の様子(段・ボタンの箱・状態行)。**writer が描いた
-        ものを読む** — 目分量で座標を当てない。
+        """The state of the screen right now (tabs, button boxes, status bar). It reads
+        what writer has drawn, rather than guessing coordinates by eye.
 
-        **控えは描いた後に埋まる**(canvas の prepaint は render の後)ので、
-        読む前にマウスを動かして1フレーム描かせる。踏み跡「押した直後の1手は
-        画に出ない」と同じ理由(2026-08-16)。
+        **The dump is filled in after drawing** (the canvas prepaint runs after render),
+        so before reading it the mouse is moved to make the app draw one frame. This is
+        the same reason as the earlier finding that the first step right after a press
+        does not show up in the screenshot (2026-08-16).
         """
         for i in range(tries):
             self._nudge()

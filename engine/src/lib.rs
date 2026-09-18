@@ -55,7 +55,7 @@ pub mod font;
 pub mod html;
 /// 意味だけの本文 + テンプレート → HTML + CSS(Web・アプリ・帳票の土台)
 pub mod html_write;
-/// 雛形にデータを流し込む(帳票の芯)
+/// Pours data into a template (the heart of forms)
 pub mod fill;
 /// 数式を組む(LaTeX → PNG)。typst + mitex
 pub mod suushiki;

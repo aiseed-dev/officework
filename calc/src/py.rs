@@ -1791,8 +1791,9 @@ impl Calc {
             sh.set(Pos::new(r, 3), book::Cell::input(&format!("{:.2}", lo[j])));
             sh.set(Pos::new(r, 4), book::Cell::input(&format!("{:.2}", up[j])));
         }
-        // **断りはシートに残します。**状態行はこの後グラフの報せで流れるので、
-        // そこだけに書くと、区間の意味が誰にも伝わりません
+        // **The note is left on the sheet.** The status bar is overwritten right after by the
+        // message about the chart, so writing it only there would leave no one knowing what
+        // the interval means.
         let season = if season > 1 {
             ui::tf!("season_periods_found_automatically", season).to_string()
         } else {
@@ -1846,13 +1847,14 @@ impl Calc {
         self.insert_chart_kind(a, b, "bar", cx);
     }
 
-    /// **予測シート**(2026-08-22。台帳の [大])。
+    /// **Forecast sheet** (2026-08-22, the [large] item on the task list).
     ///
-    /// 選んだ範囲の**いちばん右の数の列**を実績とし、その左の列をラベルに
-    /// します。指数平滑で先を出し、新しいシートに 実績・予測・下限・上限 を
-    /// 並べて、折れ線のグラフを添えます。
+    /// The **rightmost numeric column** of the selected range is taken as the actuals, and the
+    /// column to its left as the labels. It forecasts ahead with exponential smoothing, lays
+    /// out actuals, forecast, lower bound and upper bound on a new sheet, and adds a line
+    /// chart.
     ///
-    /// **区間は見込みであって約束ではありません。**そう状態行で言います。
+    /// **The interval is an estimate, not a promise.** The status bar says so.
     pub(crate) fn forecast_run(&mut self, h: usize, cx: &mut Context<Self>) {
         let (a, b) = if self.anchor.is_some() {
             self.sel_rect()
@@ -2165,9 +2167,9 @@ impl Calc {
         .detach();
     }
 
-    /// **方程式を組んで、画像としてシートに浮かべる。** 組むのはエンジン
-    /// (kumihan::suushiki、typst + mitex)で、Python は使わない(2026-09-02)。
-    /// 組めなければ理由を状態行に出す
+    /// **Typesets an equation and floats it on the sheet as an image.** The typesetting is
+    /// done by the engine (kumihan::suushiki, typst + mitex), not by Python (2026-09-02).
+    /// If it cannot be typeset, the reason is shown in the status bar.
     pub(crate) fn insert_equation(&mut self, tex: String, cx: &mut Context<Self>) {
         let at = self.cursor;
         self.status = ui::t!("typesetting").into();

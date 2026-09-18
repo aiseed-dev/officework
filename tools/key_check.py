@@ -1,25 +1,29 @@
 #!/usr/bin/env python3
-"""鍵(ショートカット)を実機で押して確かめる。
+"""Press keyboard shortcuts in the running app and check that they work.
 
-**「キーの嘘」を落とす試験がこれまで無かった**(sekkei/sugata.ja.md)。
-束縛は ui にあり受け口は各アプリ、という作りなので、`KeyBinding` を足して
-`on_action` を忘れても、単体試験も wiring_tests も何も言わない。
-2026-08-10、7つ足して7つとも受け口を書き忘れたまま「入れた」と言い掛けた。
-それを落とすためにこれを置く。
+Until now there was no test that caught a shortcut which only looked wired up
+(sekkei/sugata.ja.md). The key bindings live in ui while the handlers live in
+each app, so you can add a `KeyBinding`, forget `on_action`, and neither the
+unit tests nor wiring_tests will say anything. On 2026-08-10 seven shortcuts
+were added, all seven were missing their handlers, and they were almost
+reported as done. This script is here to catch that.
 
-    python3 tools/key_check.py            # calc(rpc で中身を見る)
-    python3 tools/key_check.py --writer   # writer(絵を撮る。rpc の口が無い)
-    python3 tools/key_check.py --keep     # 終わっても閉じない
+    python3 tools/key_check.py            # calc (reads the state over rpc)
+    python3 tools/key_check.py --writer   # writer (screenshots; it has no rpc API)
+    python3 tools/key_check.py --keep     # leave the app open after the run
 
-ribbon_sweep.py の App をそのまま借りる(窓の世話・焦点・後始末が同じ)。
-判定は画素比べでなく rpc(ui_state / get / get_formula / book_info)。
+It borrows the App class from ribbon_sweep.py as is (window handling, focus and
+cleanup are the same). The result is decided from rpc (ui_state / get /
+get_formula / book_info), not by comparing pixels.
 
-**打ってすぐ聞かない。** rpc は別の糸から答えるので、押した直後に聞くと
-まだ前の状態が返る。それで同じ日、効いている鍵を4つ「効かない」と数えた。
-状態行が変わるまで待ってから見る。
+Do not ask right after pressing a key. The rpc answers from another thread, so
+a question sent immediately after a key press still returns the previous state.
+That is how four working shortcuts were counted as broken on the same day. Wait
+until the status bar changes, then read it.
 
-いま見ているのは 2026-08-10 に足した束(Ctrl+0 / F1 / Ctrl+; / Ctrl+: /
-Alt+PageUp / Alt+PageDown / F4 と、スライサーの Alt+S / Alt+C)。鍵を足したらここにも足す。
+The shortcuts covered here are the ones added on 2026-08-10 (Ctrl+0 / F1 /
+Ctrl+; / Ctrl+: / Alt+PageUp / Alt+PageDown / F4, and Alt+S / Alt+C for the
+slicer). When you add a shortcut, add it here as well.
 """
 import os, sys, tempfile, time, zipfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -102,12 +106,13 @@ def chord(app, mods, name, wait=0.7):
 
 
 def chord_until(app, mods, key, tries=3):
-    """状態行が変わるまで最大 `tries` 回押す。変わった後の状態を返す。
-    `mods` が空なら修飾なしの1打鍵。
+    """Press up to `tries` times until the status bar changes, and return the new state.
+    If `mods` is empty, press the key once with no modifier.
 
-    **打鍵の取りこぼしを鍵のせいにしないため。** XTEST の打鍵はときどき
-    落ちる(修飾2つで6回に1回ほど、修飾なしでも稀に)。死んだ束縛なら
-    3回とも落ちるので、ここで隠れるのは道具の取りこぼしだけ
+    This is here so that a dropped key press is not blamed on the shortcut. XTEST
+    key presses are dropped now and then (roughly one in six with two modifiers,
+    and rarely even with none). A dead binding fails all three times, so the only
+    thing hidden here is the tool's own dropped presses.
     """
     before = app.state()["status"]
     for _ in range(tries):
@@ -122,7 +127,7 @@ def chord_until(app, mods, key, tries=3):
 
 
 def settle(app, before, secs=4.0):
-    """状態行が `before` から変わるまで待って、変わった後の状態を返す"""
+    """Wait until the status bar changes from `before`, and return the new state."""
     end = time.time() + secs
     st = app.state()
     while time.time() < end and st["status"] == before:
@@ -293,8 +298,9 @@ def main():
 
 
 def writer_shots(keep):
-    """writer には rpc の口が無いので**絵を撮る**。状態行と文字数を目で読む。
-    (文字数が 10 増えていれば日付が本当に入っている、という読み方をする)"""
+    """writer has no rpc API, so take screenshots instead. Read the status bar and
+    the character count by eye. (If the character count went up by 10, the date
+    really was inserted.)"""
     shots = tempfile.mkdtemp(prefix="key-check-writer-")
     ribbon_sweep.CALC = WRITER
 

@@ -260,7 +260,7 @@ mod validation_tests {
             this.input.select_all();
             this.input.insert("50");
             assert!(this.commit());
-            // 入力メッセージはセルに乗ると状態行に出る
+            // The input message appears in the status bar when the cursor lands on the cell
             this.cursor = Pos::parse("B4").unwrap();
             this.sync_input();
             assert!(this.status.contains("数量"), "{}", this.status);
@@ -344,7 +344,8 @@ mod numfmt_tests {
                 this.sheet().get(a1).unwrap().fmt.number_format.as_deref(),
                 Some("0.00%")
             );
-            // 開き直すと今の書式に ✓ が付き、状態行にも出る(本家のコンボの追従の代わり)
+            // Reopening marks the current format with a ✓ and shows it in the status bar
+            // too (this stands in for the way Excel's combo box follows the selection)
             this.run_cmd("format", cx);
             {
                 let (items, _) = this.pick.as_ref().expect("一覧が開かない");
@@ -1130,8 +1131,9 @@ mod pivot_tests {
         });
     }
 
-    /// 宛先「Claude Code」に渡す文は、走らせてよい Python の径路と、動いている
-    /// calc につながる書き方を持つ(道具は渡さない。2026-09-08)
+    /// The text handed to the "Claude Code" destination carries the path of the Python
+    /// it may run and the way to connect to the running calc (no tools are handed
+    /// over. 2026-09-08)
     #[test]
     fn the_claude_code_prompt_names_the_python_and_the_way_in() {
         let s = crate::state::agent_system_python(std::path::Path::new("/x/.venv/bin/python"));
@@ -2102,7 +2104,7 @@ mod pivot_tests {
                 let (x, y) = this.cell_origin_px(sp.at).unwrap();
                 (x + sp.dx_px, y + sp.dy_px, sp.width_px, sp.height_px)
             };
-            // 2個未満は動かず、状態行で案内する
+            // With fewer than two it does nothing and explains in the status bar
             this.shape_sel = Some(0);
             let before = pos(this, 0);
             this.shape_align("sh-al-l");
@@ -3184,8 +3186,8 @@ mod recalc_tests {
             let lo = sh.get(Pos::new(25, 3)).map(|x| x.value.as_number()).unwrap_or(0.0);
             let up = sh.get(Pos::new(25, 4)).map(|x| x.value.as_number()).unwrap_or(0.0);
             assert!(lo <= guess1 && guess1 <= up, "区間が予測を挟んでいない: {lo} {guess1} {up}");
-            // **約束ではないと、シートに書いてある。**状態行はこの後グラフの
-            // 報せで流れるので、そこだけでは伝わらない
+            // **The sheet itself says this is not a promise.** The status bar is
+            // replaced by the chart notice right after, so it alone does not get through
             let note_div = sh
                 .get(Pos::new(32, 0))
                 .map(|x| x.value.display())
@@ -3977,7 +3979,7 @@ mod recalc_tests {
                 show_as: String::new(),
                 sort: String::new(),
             });
-            // ピボットに乗ると状態行が「タブで操作」と案内する
+            // On a PivotTable the status bar points to the PivotTable tab for working with it
             this.cursor = Pos::parse("D2").unwrap();
             this.anchor = None;
             this.sync_input();
@@ -7939,10 +7941,11 @@ mod web_export_tests {
         let _ = std::fs::remove_file(&p);
     }
 
-    /// **右パネルの3つ(塗り・字下げ・向き)が模型に届く。**
+    /// **The three side-panel controls (fill, indent, orientation) reach the model.**
     ///
-    /// 実機では「掛けました」と状態行が言うのに画面の印が変わらず、
-    /// どちらが嘘か分からなかった(2026-08-15)。模型を直に見て決める。
+    /// In the running app the status bar said the change had been applied while the
+    /// mark on screen did not change, and there was no telling which of the two was
+    /// wrong (2026-08-15). This test looks at the model directly.
     #[gpui::test]
     fn the_side_panels_fill_indent_and_orientation_work(cx: &mut gpui::TestAppContext) {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));

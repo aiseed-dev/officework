@@ -711,10 +711,11 @@ impl PySheet {
         self.with(|s| Ok(s.unmerge(a, b)))
     }
 
-    /// 画像(PNG / JPEG)をシートに浮かべる。左上を `at` のセルに留める
-    /// (xlsx の oneCellAnchor)。アプリの「挿入 > グラフ」と同じ道 —
-    /// matplotlib で描いた PNG の径路か bytes をそのまま渡せる。
-    /// 大きさは絵から測る(width_px / height_px で上書きできる)。
+    /// Float a picture (PNG / JPEG) on the sheet. The top left is anchored to the
+    /// `at` cell (xlsx's oneCellAnchor). This is the same route as the app's
+    /// Insert > Chart: you can pass the path or the bytes of a PNG drawn with
+    /// matplotlib as they are. The size is measured from the picture (override it
+    /// with width_px / height_px).
     #[pyo3(signature = (image, at="A1", width_px=None, height_px=None))]
     fn add_image(
         &self,

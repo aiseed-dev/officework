@@ -2741,7 +2741,8 @@ pub struct PivotDef {
     /// `None` = 図なし。入っていれば、ピボットを作り直すたびに同じ場所へ
     /// 描き直します。**図はピボットの写しなので、指図はここが持ちます**
     pub chart_at: Option<Pos>,
-    /// 名前(ピボットテーブル1, 2, …)。パネルの題と状態行で名指しする
+    /// The name (ピボットテーブル1, 2, …). It is used to refer to this pivot
+    /// table in the panel title and in the status bar
     pub name: String,
     /// 値のフィルター: (比較 ">" ">=" "<" "<=" "=", しきい値)。
     /// 集計した後の行に掛ける(列に広げていれば行の総計で判定)
@@ -2926,12 +2927,14 @@ pub struct Book {
     /// 変更履歴(校閲の記録)。**記録中の差分を刻んだもの**で、
     /// xl/joChanges.xml で往復する独自部品 — Excel は読まない(正直な劣化)
     pub changes: Vec<ChangeRec>,
-    /// このブックの出どころ(絶対の径路)。**ファイルには入れない** —
-    /// 開いた側が入れる。空 = まだ保存していない。
+    /// Where this workbook came from (an absolute path). **It is not written
+    /// into the file.** The side that opens the file fills it in. Empty = it
+    /// has not been saved yet.
     ///
-    /// `CELL("filename")` だけが使う。Excel は `径路[ファイル名]シート名`
-    /// を返し、実物では **`]` の後ろを取ってシート名にする常套句**として
-    /// 使われている(`=MID(CELL("filename",A1), FIND("]",…)+1, 31)`)
+    /// Only `CELL("filename")` uses it. Excel returns `path[file name]sheet
+    /// name`, and in real workbooks that is used as **the standard way to take
+    /// the part after `]` as the sheet name**
+    /// (`=MID(CELL("filename",A1), FIND("]",…)+1, 31)`)
     pub path: String,
 }
 

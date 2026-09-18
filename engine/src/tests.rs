@@ -2483,7 +2483,7 @@ mod fill_tests {
         assert!(fill::groups(&plain).is_empty(), "無い所を有ると言った");
     }
 
-    /// **雛形は何度でも使える**(原本を書き換えない)。
+    /// **A template can be used any number of times** (the original is not changed).
     #[test]
     fn the_template_is_not_modified() {
         let d = adoc::parse(TMPL_OF).expect("雛形が読めない");

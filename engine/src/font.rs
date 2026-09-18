@@ -1242,8 +1242,9 @@ fn missing(wanted: Option<&str>) -> String {
 
 /// 実体を読む。
 pub fn load(f: &Family) -> Result<Vec<u8>, String> {
-    // **径路ごとに控える**(2026-09-09)。同じ書体を文書ごと・run ごとに読み直さない。
-    // 返す物は写し(呼ぶ側が持ち主になる作りのまま)。ディスクの読みと比べれば安い
+    // **Cache by path** (2026-09-09), so the same font is not read again for every
+    // document and every run. What we return is a copy, keeping the arrangement
+    // where the caller owns it; that copy is cheap next to a disk read.
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex, OnceLock};
     static CACHE: OnceLock<Mutex<HashMap<std::path::PathBuf, Arc<Vec<u8>>>>> = OnceLock::new();

@@ -1,27 +1,29 @@
 #!/usr/bin/env python3
-"""writer のリボンの全ボタンを実機で一巡して点検する。
+"""Go through every button on writer's ribbon in the real app and check it.
 
-calc の tools/ribbon_sweep.py の writer 版。writer には socket の受け口が
-無いので、様子は OFFICEWORK_UI_DUMP の ui.json から読む(writer_shot.py と
-同じ道)。ui.json には一覧(ドロップダウン)の位置が入っていないため、
-calc 版の「押したボタンの真下か」の検査はここでは出来ない。見るのは:
+This is the writer version of calc's tools/ribbon_sweep.py. writer has no socket API, so
+the state is read from the ui.json of OFFICEWORK_UI_DUMP, the same way writer_shot.py
+does it. ui.json does not carry the position of the list (the dropdown), so the calc
+version's check for whether the list is directly under the button cannot be done here.
+What is checked:
 
-1. 落ちない
-2. 押したあとも応える(ui.json が読み直せる = 描けている)
-3. Esc のあとも応える(開いた物を引きずって固まらない)
+1. the app does not crash
+2. it still answers after a press (ui.json can be read again, which means it is drawing)
+3. it still answers after Esc (it does not hang on to whatever opened and freeze)
 
-「何かが起きたか」は状態行と選択と段の変化を**記録するだけ**にする —
-calc 版で誤報が多かった検査なので、落とす材料にはしない(--strict で落とす)。
+Whether something happened is only **recorded**, from changes to the status bar, the
+selection and the tab. That check produced many false reports in the calc version, so it
+is not used to fail the run (use --strict to fail on it).
 
-使い方:
+Usage:
 
-    python3 tools/writer_sweep.py                 # ぜんぶの段
-    python3 tools/writer_sweep.py --tabs 1 2      # 段を選ぶ
+    python3 tools/writer_sweep.py                 # all tabs
+    python3 tools/writer_sweep.py --tabs 1 2      # pick tabs
 
-前提は writer_shot.py と同じ(X11・python-xlib・cargo build --release -p writer)。
-ファイルを選ぶ小窓は、XDG_RUNTIME_DIR が偽物で rfd のポータルに届かない
-ため**そもそも開かない**(writer_shot.py の註)。だから calc 版のような
-SKIP の表は要らない。
+The requirements are the same as writer_shot.py (X11, python-xlib,
+cargo build --release -p writer). The file selection dialog **never opens at all**,
+because XDG_RUNTIME_DIR is a fake one and requests do not reach the rfd portal (see the
+note in writer_shot.py). So the SKIP table of the calc version is not needed here.
 """
 
 import argparse

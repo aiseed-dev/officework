@@ -1144,7 +1144,8 @@ mod cond_tests {
             .cloned()
             .unwrap_or_default()
         };
-        // 向こうの試験が使っている形(xlsx-sidecar.test.ts の雛形)
+        // The shape the tests on the other side use (the template in
+        // xlsx-sidecar.test.ts)
         let lk = look(
             r#"<font><b/><color rgb="FF9C0006"/></font><fill><patternFill><bgColor rgb="FFFFC7CE"/></patternFill></fill>"#,
         );

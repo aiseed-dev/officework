@@ -1,19 +1,22 @@
-//! ブックの操作の言葉 — **誰が呼んでも同じ意味**(SEKKEI「操作の言葉を
-//! 1本に」段A。2026-08-12 に calc/src/rpc.rs から純移動)。
+//! The vocabulary for operating a workbook, with the same meaning for every
+//! caller (SEKKEI, "One vocabulary for operations", step A; moved unchanged
+//! from calc/src/rpc.rs on 2026-08-12).
 //!
-//! JSON 1行の命令(ping / book_info / new / open / save / get /
-//! get_formula / set / expand と、橋の背骨 2026-08-12: calculate /
-//! selection / select / activate_sheet / status / to_pdf / copy_sheet /
-//! delete_sheet / merges / merge / unmerge / merge_area / clear /
-//! clear_contents / end)をここで捌く。**動いているアプリの都合**
-//! (未保存の確認・undo の節目・状態行・画面の通知)は [`Host`] の向こう —
-//! calc が実装すれば生きた表への口、pysheet が実装すればファイルへの口に
-//! なる。**この口に無い動詞は既定で断る**(「できないものを、できるように
-//! 見せない」を型で言う)。
+//! The one-line JSON commands are handled here: ping / book_info / new / open /
+//! save / get / get_formula / set / expand, together with the backbone of the
+//! connection added on 2026-08-12: calculate / selection / select /
+//! activate_sheet / status / to_pdf / copy_sheet / delete_sheet / merges /
+//! merge / unmerge / merge_area / clear / clear_contents / end. Everything that
+//! belongs to a running app (asking about unsaved changes, undo checkpoints,
+//! the status bar, notices on screen) lives behind [`Host`]. When calc
+//! implements it, the API talks to a live sheet; when pysheet implements it,
+//! the API talks to a file. A verb this API does not have is refused by
+//! default, so the types say that we do not present something as possible when
+//! it is not.
 //!
-//! アプリ固有の命令(calc の ribbon / ui_state — 点検の道具用)は
-//! [`Host::extra`] に残す。ソケットを開く・スレッド・30ms の汲み取りはアプリ側
-//! (calc/src/rpc.rs)のまま — ここは意味だけ。
+//! App-specific commands (calc's ribbon / ui_state, used by the inspection
+//! tools) stay in [`Host::extra`]. Opening the socket, the thread and the 30ms
+//! polling stay in the app (calc/src/rpc.rs); only the meaning lives here.
 
 use std::path::PathBuf;
 
@@ -28,18 +31,19 @@ pub mod pdf;
 /// 紙面を PNG にする。pdf と同じ紙面から、片方は紙、片方は絵になります
 pub mod png;
 
-/// ソケットの置き場所。`$XDG_RUNTIME_DIR/officework/<app>.sock`。
-/// AF_UNIX の径路は 108 字までなので、長すぎるときは
-/// `/tmp/officework-UID/<app>.sock` へ落とす(Python 側も同じ規則)。
-/// **unix だけ** — 橋は「この機械の unix ソケット」が設計で、Windows の
-/// wheel(エンジンだけを配る)はこれを使わない。0.2.0 のタグで Windows の
-/// wheel がここで組めなくなって気づいた(2026-08-12 — publish の門は効き、
-/// PyPI には何も出ていない)
+/// Where the socket lives: `$XDG_RUNTIME_DIR/officework/<app>.sock`.
+/// An AF_UNIX path may be at most 108 characters, so when it would be too long
+/// we fall back to `/tmp/officework-UID/<app>.sock` (the Python side uses the
+/// same rule). Unix only: the connection is designed as a unix socket on this
+/// machine, and the Windows wheel, which ships only the engine, does not use
+/// it. We noticed this when the 0.2.0 tag could no longer build the Windows
+/// wheel here (2026-08-12; the publish check did its job and nothing reached
+/// PyPI).
 ///
-/// **印は関数のすぐ上に置くこと。** 2026-08-27 に `pub mod pdf;` を
-/// この説明と関数の間へ差し込んでしまい、`#[cfg(unix)]` が pdf の方に
-/// 掛かりました。Windows で PDF が消え、代わりにソケットが組まれて
-/// 落ちました(2026-08-28、Windows の走行で分かりました)
+/// Keep the attribute directly above the function. On 2026-08-27 `pub mod pdf;`
+/// was inserted between this comment and the function, so `#[cfg(unix)]`
+/// applied to pdf instead. PDF disappeared on Windows and a socket was built in
+/// its place, which crashed (found on 2026-08-28 in a Windows run).
 #[cfg(unix)]
 pub fn sock_path(app: &str) -> PathBuf {
     if let Some(base) = std::env::var_os("XDG_RUNTIME_DIR") {
@@ -334,7 +338,8 @@ pub trait Host {
     fn mark_once(&mut self) {}
     /// 書き込みの後片づけ(行の高さ合わせ等)。written はセルの並び
     fn after_write(&mut self, _si: usize, _written: &[book::Pos]) {}
-    /// 書き込みの報告(状態行に「{n} セル」等)。ファイルの口では黙ってよい
+    /// Report a write (for example "{n} cells" in the status bar).
+    /// A file API may stay silent.
     fn wrote(&mut self, _n: usize) {}
 
     /// この口に無い動詞は既定で断る
@@ -381,7 +386,8 @@ pub trait Host {
     fn activate_sheet(&mut self, _si: usize) -> Result<(), String> {
         Err("この口では activate はできません".into())
     }
-    /// 状態行に文言を出す(長い処理の進み具合を見せる)。画面のあるアプリだけ
+    /// Show a message in the status bar (the progress of a long operation).
+    /// Only for apps that have a screen.
     fn set_status(&mut self, _text: &str) -> Result<(), String> {
         Err("この口では status はできません".into())
     }
@@ -647,7 +653,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 Err(e) => err(&e),
             }
         }
-        // 状態行に文言を出す(長い処理の進み具合)
+        // Show a message in the status bar (the progress of a long operation)
         "status" => {
             let Some(text) = o.str("text") else { return err("text がありません") };
             match h.set_status(&text) {

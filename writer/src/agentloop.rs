@@ -29,9 +29,10 @@ const AGENT_SYSTEM: &str = "\
 分からなければ聞き返してください。\
 保存は人の確認が要ります。求められたときだけ doc_save を呼んでください。";
 
-/// 宛先「Claude Code」の system の文。道具は渡さず、文書のファイルを Claude Code
-/// 自身の道具で直させる(2026-09-08 発注者「1 の形で作り直して」)。ファイルの
-/// 径路は起こす時に末尾へ足す
+/// The system text for the "Claude Code" destination. We hand it no tools and let
+/// Claude Code edit the document file with its own tools. The owner asked on 2026-09-08
+/// to rebuild it this way, as option 1. The path of the file is appended at the end
+/// when we start it
 const AGENT_SYSTEM_FILE: &str = "\
 あなたは文書を作るアプリの中で働く助手です。開いている文書は AsciiDoc の字で、\
 下に書いたファイルにあります。Read で読み、Edit で直します(Write で丸ごと書き直しても\

@@ -1399,8 +1399,8 @@ pub fn find_for(book: &std::path::Path) -> Option<std::path::PathBuf> {
     (cands.len() == 1).then(|| cands.remove(0))
 }
 
-/// このブックのフォルダに**新しく置く**テンプレートの径路。
-/// 既定の名前は `既定.tmpl.adoc` です。
+/// The path of a template to be **newly placed** in this workbook's folder.
+/// The default name is `既定.tmpl.adoc`.
 pub fn default_path(book: &std::path::Path) -> std::path::PathBuf {
     book.parent().unwrap_or(std::path::Path::new(".")).join("既定.tmpl.adoc")
 }

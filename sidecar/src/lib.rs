@@ -54,10 +54,12 @@ struct Session {
     path: String,
     stamp: (u64, u64),
     book: Book,
-    /// 図形と画像の id → (原本の中の径路, 絵の種類)。`read_media` が引く。
+    /// Id of a shape or image → (path inside the original file, kind of
+    /// picture). `read_media` looks it up.
     ///
-    /// **絵の中身はここに持たない。** 何十 MB にもなるし、向こうは要る物だけ
-    /// 1つずつ聞きに来る作り。聞かれたときに原本から出す
+    /// The picture data is not kept here. It can run to tens of megabytes, and
+    /// the other side asks for the pictures it needs one at a time. Each one is
+    /// read out of the original file when it is asked for.
     media: BTreeMap<String, (String, String)>,
     // **書式の番号は持たない。** 原本の `<c s="…">`(`Sheet::style_of`)を
     // そのまま返すので、こちらで採番する物が無くなった(2026-08-10)
@@ -373,9 +375,11 @@ fn dispatch(
                 Err(e) => fail(&rid, "io_error", &e),
             }
         }
-        // **計算**(設計の「進め方」の2)。ironcalc の代わりに kumihan::calc が答える。
-        // セッションではなく**径路**で来る(向こうもそう作られている)ので、
-        // 開き直しを避けるために計算用の居座りを別に持つ
+        // Calculation (step 2 of "How we proceed" in the design). kumihan::calc
+        // answers instead of ironcalc. The request arrives with a path rather
+        // than a session, because the other side is built that way, so we keep
+        // a separate resident workbook for calculation and avoid reopening the
+        // file every time.
         "recalc_cells" => {
             let path = s("path");
             if path.is_empty() {
@@ -404,8 +408,9 @@ fn open_book(path: &str) -> Result<(Book, Vec<String>, usize), String> {
         .unwrap_or(0);
     let (mut book, rep) = sheet::xlsx::read(std::io::Cursor::new(&bytes))
         .map_err(|e| format!("{path}: xlsx として読めない: {e}"))?;
-    // **出どころを教える。** CELL("filename") が `径路[名前]シート名` を
-    // 返すのに要る。ファイルには入っていない情報なので、開いた側が入れる
+    // Record where the workbook came from. CELL("filename") needs it so that it
+    // can return `path[name]sheet name`. The file itself does not carry this,
+    // so the side that opened it fills it in.
     book.path = std::fs::canonicalize(path)
         .map(|p| p.display().to_string())
         .unwrap_or_else(|_| path.to_string());
@@ -428,10 +433,11 @@ fn sheet_index(book: &Book, sheet_id: &str) -> Option<usize> {
         .filter(|n| *n >= 1 && *n <= book.sheets.len())
         .map(|n| n - 1)
 }
-/// 計算のために居座らせたブック。**径路で引く。**
+/// A workbook kept resident for calculation. It is looked up by path.
 ///
-/// 向こうは ironcalc の Model をセッションに残す。こちらも同じく、毎回
-/// ZIP を開き直さない。原本が変われば捨てる(`open` の居座りと同じ作法)。
+/// The other side keeps an ironcalc Model in the session. We do the same and do
+/// not reopen the ZIP every time. It is dropped when the original file changes,
+/// the same way the resident workbook for `open` works.
 struct Resident {
     stamp: (u64, u64),
     book: Book,

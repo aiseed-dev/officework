@@ -115,10 +115,10 @@ def 読む(path):
 
 
 def 足す(*写真):
-    """写真を読んで、表の続きに足す。
+    """Read the photos and add them to the end of the table.
 
-    引数を渡さなければ、いま選んでいるセルに書いてある径路を読みます
-    (A1 に写真の径路を並べておいて、選んで @家計簿 と打つ使い方)。
+    With no argument, it reads the paths written in the cells that are selected
+    now (list the photo paths from A1 down, select them, and type @家計簿).
     """
     b = xw.Book.attach()
     s = b.active

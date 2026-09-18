@@ -72,7 +72,7 @@ impl Calc {
         self.dirty
     }
 
-    /// 状態行に出す(持ち替えを断った理由を言うため)。
+    /// Show a message in the status bar (used to say why a switch was refused).
     pub fn say(&mut self, msg: impl Into<gpui::SharedString>) {
         self.status = msg.into();
     }
@@ -626,17 +626,19 @@ impl Calc {
         .into();
     }
 
-    /// 記録を止めて、**記録そのもの**を返す。
+    /// Stop recording and return **the recording itself**.
     ///
-    /// 2026-08-16 発注者「記録した台本の頭に wb = xw.Book(径路) を持ってくるのが
-    /// おかしい。記録だけを記述すればいい。記録をそのままで動かそうとするのが
-    /// おかしい」。
+    /// On 2026-08-16 the owner decided that putting `wb = xw.Book(path)` at the top of
+    /// a recorded script is wrong. The recording should only describe what was
+    /// recorded, and trying to run the recording as it stands is wrong.
     ///
-    /// 前はブックを開く行とシートを束ねる行を頭に足して「そのまま走ります」と
-    /// 名乗っていた。**走らなかった** — calc がそのブックを開いたままなので
-    /// `xw.Book(径路)` は「未保存の変更があります」で断られる。走ると言って
-    /// 走らないより、**記録は記録だと言う**方がいい。走らせる物にするのは人の手
-    /// (どのブックに掛けるかは、記録した当人しか決められない)。
+    /// It used to add a line that opens the workbook and a line that binds the sheet
+    /// at the top, and called itself a script that runs as it is. **It did not run** —
+    /// calc still has that workbook open, so `xw.Book(path)` is refused with a message
+    /// about unsaved changes. Rather than promising to run and then not running, it is
+    /// better to **say that a recording is a recording**. Turning it into something
+    /// runnable is left to a person (only whoever recorded it can decide which
+    /// workbook to apply it to).
     pub(crate) fn rec_stop(&mut self) -> Option<String> {
         let lines = self.rec.take()?;
         let sheet = self.book.sheets[self.active].name.clone();
@@ -1290,8 +1292,9 @@ impl Calc {
         n.max(3)
     }
 
-    /// 端の追従・ページ移動用: 中身でない部分(リボン・数式バー・シートのタブ・状態行)を
-    /// 差し引いた「確実に丸ごと見える」行数
+    /// For edge scrolling and page moves: the number of rows that are certainly fully
+    /// visible, with the parts that are not content (ribbon, formula bar, sheet tabs,
+    /// status bar) subtracted
     pub(crate) fn rows_snug(&self) -> u32 {
         self.rows_fit_in(self.view_h_px - 270.0)
     }
@@ -2714,9 +2717,10 @@ impl Calc {
         }
     }
 
-    /// 宛先を一覧の次へ替える(「押すと替わる」の実体)。左パネルの欄の下と
-    /// ファイル > 詳細設定 の行が、同じ一覧(`[[ai]]`)をこれで替える。
-    /// 替える先が無いときは、その理由を状態行に出す
+    /// Switch the destination to the next one in the list (what "press to switch"
+    /// actually does). The area under the left panel's field and the File > Advanced
+    /// settings row both switch the same list (`[[ai]]`) through this.
+    /// When there is nothing to switch to, the reason is shown in the status bar
 
 
 
@@ -3304,7 +3308,7 @@ impl Calc {
             };
             use agent::ToolHost as _;
             let mut d = agent::tools::DirectHost { h: self };
-            // 状態行は Host の save が言う(保存しました — …)
+            // The status bar message comes from Host's save (saved — …)
             d.call("save", &args)
         };
         self.agent_finish_call(c, r, cx);

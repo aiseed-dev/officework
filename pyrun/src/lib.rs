@@ -15,28 +15,30 @@ use std::path::PathBuf;
 
 // ---- 設定の置き場 ----------------------------------------------------------
 
-/// 設定と控えの置き場。**`~/.config/officework`**。
+/// The directory for settings and backups. **`~/.config/officework`**.
 ///
-/// # なぜここに在るのか
+/// # Why it lives here
 ///
-/// 置き場を決める所が散らばると必ずずれる(実際、9箇所が別々に径路を
-/// 書いていた)。**1箇所に集める**。pyrun は依存ゼロのいちばん下の層で、
-/// lang → face → アプリの全部から見えるので、置き場としてここが都合よい
-/// (pyrun の口上「ここに何かを足したくなったら pyrun の仕事ではない
-/// 合図」の例外 — これは依存ではなく径路の一言)。
+/// When the decision about this location is spread around, it always drifts
+/// apart (in fact, 9 places each wrote their own path). **Keep it in one
+/// place.** pyrun is the bottom layer with no dependencies, and it is visible
+/// from lang, face and every app, so it is a convenient home for this (an
+/// exception to pyrun's own line, "wanting to add something here is a sign it
+/// is not pyrun's job" — this is one path, not a dependency).
 ///
-/// # 名前を直した経緯(2026-08-16)
+/// # How the name was corrected (2026-08-16)
 ///
-/// 2026-08-08 に製品名を office → **officework** に改めたのに、設定の
-/// 置き場だけ `~/.config/office` のまま残っていた(発注者が気づいた)。
-/// **まだ公開前なので、古い名前は残さず移した** — 二重に読む道を作ると、
-/// どちらが正かが分からなくなる。
+/// The product was renamed from office to **officework** on 2026-08-08, but
+/// the settings directory alone stayed at `~/.config/office` (the owner
+/// noticed it). **We have not released yet, so the old name was moved rather
+/// than kept.** Two ways to read the settings would make it unclear which one
+/// is the real one.
 ///
-/// # 定義は1つです(2026-08-30)
+/// # There is one definition (2026-08-30)
 ///
-/// 言語の設定も同じ `settings.toml` から読みます。読む所が2つに分かれると、
-/// 片方だけ別の場所を見て、設定が効かなくなります。場所を決めるのは
-/// [`book::lang::settings_path`] です。
+/// The language setting is read from the same `settings.toml`. If two places
+/// read it, one of them looks somewhere else and the setting stops taking
+/// effect. [`book::lang::settings_path`] decides the location.
 pub fn config_dir() -> PathBuf {
     book::lang::settings_path()
         .parent()
@@ -128,7 +130,8 @@ pub fn venv_python() -> Option<PathBuf> {
     p.exists().then_some(p)
 }
 
-/// 利用者の venv の pip(案内に出す径路。**在らなくても綴りは返す**)。
+/// pip in the user's venv (the path shown in the guidance. **The path is
+/// returned even when it does not exist**).
 pub fn venv_pip() -> PathBuf {
     if cfg!(windows) {
         venv_dir().join("Scripts/pip.exe")
@@ -137,11 +140,12 @@ pub fn venv_pip() -> PathBuf {
     }
 }
 
-/// 利用者の venv が**壊れていないか**。
+/// Whether the user's venv is **still working**.
 ///
-/// venv は作った時の Python の径路を `pyvenv.cfg` に焼き付けるので、
-/// **アプリを入れ直して径路が変わると動かなくなる**(2026-08-14 に一度
-/// 踏んだ)。焼き付いた先が消えていたら作り直す合図。
+/// A venv bakes the path of the Python it was created from into `pyvenv.cfg`,
+/// so **it stops working when the app is reinstalled and that path changes**
+/// (this happened once on 2026-08-14). If the baked-in target is gone, that is
+/// the sign to create the venv again.
 pub fn venv_broken() -> bool {
     let cfg = venv_dir().join("pyvenv.cfg");
     let Ok(s) = std::fs::read_to_string(&cfg) else {
@@ -168,7 +172,7 @@ pub fn ensure_venv() -> Result<PathBuf, String> {
         if !venv_broken() {
             return Ok(p);
         }
-        // 焼き付いた径路が消えている — 畳んで作り直す
+        // The baked-in path is gone, so delete the venv and create it again
         let _ = std::fs::remove_dir_all(venv_dir());
     }
     let base = base_python();
@@ -183,14 +187,16 @@ pub fn ensure_venv() -> Result<PathBuf, String> {
     venv_python().ok_or_else(|| "作った venv に python が居ません".to_string())
 }
 
-/// **入れ方の案内**。利用者の venv を用意して、**そのまま打てる1行**を返す。
+/// **Guidance on installing.** Prepares the user's venv and returns **a single
+/// line they can type as it is**.
 ///
-/// 「pip で入れてください」だけでは、**どの pip か**が利用者に分からない
-/// (機械に python が何本も入っているのが普通)。ここで径路まで言う。
+/// Saying only "please install it with pip" does not tell the user **which
+/// pip** to use (a machine normally has several pythons). Here we give the
+/// path as well.
 ///
-/// 呼ばれるのは「〜がありません」と言う瞬間だけなので、**Python を使わない
-/// 人の所には venv を作らない**。作れなかったときは素の `pip` と言う —
-/// 動かない径路を見せない。
+/// This is called only at the moment we say "... is missing", so **no venv is
+/// created for people who do not use Python**. When it could not be created we
+/// say plain `pip`, because we do not want to show a path that will not work.
 pub fn pip_hint(pkg: &str) -> String {
     match ensure_venv() {
         Ok(_) => format!("{} install {pkg}", venv_pip().display()),
@@ -416,12 +422,13 @@ pub fn cage_work_dir(tag: &str) -> PathBuf {
     }
 }
 
-/// venv の `.pth` が指す先(絶対の径路のフォルダ)。
+/// What the venv's `.pth` files point at (folders given as absolute paths).
 ///
-/// `pip install -e` の形は site-packages に `.pth` を置き、実体は外
-/// (このリポジトリなら pysheet/)にある。サンドボックスは /home を
-/// 隠すので、venv だけ見せても import が通らない — `.pth` の指す先も
-/// 読み取り専用の一覧(ro_binds)に足すために引く
+/// `pip install -e` puts a `.pth` into site-packages while the real files stay
+/// outside it (pysheet/ in this repository). The sandbox hides /home, so
+/// showing only the venv is not enough for import to work. We look these up so
+/// that the targets of the `.pth` can also be added to the read-only list
+/// (ro_binds)
 pub fn editable_paths(venv: &std::path::Path) -> Vec<PathBuf> {
     let mut v = Vec::new();
     let Ok(libs) = std::fs::read_dir(venv.join("lib")) else { return v };
@@ -588,9 +595,10 @@ pub fn run_with_timeout(
 ) -> Result<(bool, String, String), RunErr> {
     use std::io::Read;
     use std::process::Stdio;
-    // 証明書の道を渡す(py_env)。**ここが全部の実行の通り道** — 同梱の
-    // Python は組んだ機械の径路を焼き付けていて、そのままだと https が
-    // 全部落ちる(2026-08-14)。囲いの中でも /etc は読み取り専用で見える
+    // Pass the certificate location (py_env). **Every run goes through here.**
+    // The bundled Python bakes in the path of the machine it was built on, and
+    // as it is, every https request fails (2026-08-14). Inside the sandbox /etc
+    // is still visible read-only
     for (k, v) in py_env() {
         cmd.env(k, v);
     }
@@ -649,14 +657,16 @@ fn base_python() -> PathBuf {
 }
 
 
-/// 機械の証明書の束を探す(見つからなければ None)。
+/// Looks for the machine's certificate bundle (None when it is not found).
 ///
-/// **配る Python は自分の径路を焼き付けている** — 同梱した python は
-/// 「組んだ機械の /install/ssl/cert.pem」を見に行き、配った先には無いので
-/// **https が全部落ちる**(2026-08-14 に見本の天気予報で踏んだ。この機械の
-/// venv も旧名の径路を指したまま壊れていた)。だから走らせる側が
-/// `SSL_CERT_FILE` で機械の束を教える。置き場は配り物ごとに違うので、
-/// よくある順に探す
+/// **A Python that is shipped bakes in its own path.** The bundled python
+/// looked for "/install/ssl/cert.pem" on the machine it was built on, which is
+/// not there on the machine it was shipped to, so **every https request
+/// failed** (hit on 2026-08-14 with the sample weather forecast. The venv on
+/// this machine was broken too, still pointing at a path under the old name).
+/// So the side that runs Python tells it the machine's bundle through
+/// `SSL_CERT_FILE`. The location differs between distributions, so we look in
+/// the order they are commonly found
 pub fn ca_bundle() -> Option<PathBuf> {
     const CANDS: &[&str] = &[
         "/etc/ssl/certs/ca-certificates.crt",       // Debian/Ubuntu
@@ -1866,9 +1876,10 @@ mod venv_tests {
         assert_eq!(funcs_dir().parent(), venv_dir().parent());
     }
 
-    /// **焼き付いた素の Python が消えていたら壊れている。**
-    /// venv は作った時の径路を pyvenv.cfg に持つので、アプリを入れ直して
-    /// 径路が変わると動かない(2026-08-14 に一度踏んだ)
+    /// **If the baked-in base Python is gone, the venv is broken.**
+    /// A venv keeps the path it was created with in pyvenv.cfg, so it stops
+    /// working when the app is reinstalled and that path changes (hit once on
+    /// 2026-08-14)
     #[test]
     fn venv_without_python_is_detected_as_broken() {
         let dir = std::env::temp_dir().join(format!("ow-venv-{}", std::process::id()));
@@ -1884,9 +1895,9 @@ mod venv_tests {
                 None => true,
             }
         };
-        // 在る径路を指していれば壊れていない
+        // Pointing at a path that exists means it is not broken
         assert!(!check(&format!("home = {}\n", dir.display())), "在る径路を壊れていると言った");
-        // 消えた径路を指していれば壊れている
+        // Pointing at a path that is gone means it is broken
         assert!(check("home = /nowhere/bin\n"), "消えた径路を見逃した");
         // home が無い pyvenv.cfg も壊れている扱い
         assert!(check("version = 3.14.6\n"), "home の無い cfg を見逃した");
@@ -1894,7 +1905,8 @@ mod venv_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// pip の径路は**在らなくても綴りを返す**(案内に出すため)
+    /// The pip path is **returned even when it does not exist** (it is shown in
+    /// the guidance)
     #[test]
     fn pip_path_is_always_printable_for_guidance() {
         let p = venv_pip();
@@ -2090,8 +2102,9 @@ mod cage_tests {
     #[test]
     fn finds_the_cert_bundle_on_the_machine() {
         let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        // 配る Python は自分の径路を焼き付けているので、走らせる側が
-        // 機械の束を教える(2026-08-14 に見本の天気予報で踏んだ)
+        // A Python that is shipped bakes in its own path, so the side that runs
+        // it tells it the machine's bundle (hit on 2026-08-14 with the sample
+        // weather forecast)
         match super::ca_bundle() {
             Some(p) => assert!(p.exists(), "在ると言った物が無い: {}", p.display()),
             None => eprintln!("この機械には既知の置き場に証明書の束が無い(飛ばす)"),

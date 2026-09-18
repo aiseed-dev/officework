@@ -587,9 +587,9 @@ impl Writer {
             &default_theme
         };
         let mut composed = paper::compose_doc(&self.doc, Some(theme));
-        // **様式(セル)は写しの側で組みます**(2026-08-18)。本文は
-        // `項目:: 値` のまま残るので、保存してもセルは本文に漏れません。
-        // 対応の付かない項目と埋まらないセルは、ここで受け取って状態行に出します
+        // **The form (its cells) is built on the copy** (2026-08-18). The body keeps
+        // `項目:: 値` as it is, so cells do not leak into the body when you save.
+        // Items with no match and cells left empty are taken here for the status bar.
         self.form_notes = if self.native {
             kumihan::theme::apply_forms(&mut composed, &self.tmpl)
         } else {
@@ -1134,9 +1134,9 @@ impl Writer {
         }
     }
 
-    /// **様式(セル)で言うことがあれば、状態行に出します。**
-    /// 対応の付かない項目と埋まらないセルを黙って落とすと、空欄の申請書が
-    /// できあがります(2026-08-18)
+    /// **If the form (its cells) has something to report, it goes to the status bar.**
+    /// Dropping items with no match and cells left empty silently produces an
+    /// application form full of blanks (2026-08-18).
     pub(crate) fn form_status(&self) -> Option<String> {
         (!self.form_notes.is_empty()).then(|| self.form_notes.join("・"))
     }
@@ -3058,8 +3058,8 @@ impl Writer {
                 format!("{{\"id\":\"{id}\",\"x\":{x},\"y\":{y},\"w\":{w},\"h\":{h}}}")
             })
             .collect();
-        // プロジェクトパネルの木(見える行の数と、選ばれている径路)。
-        // 画が古くても、reveal が効いたかはここで分かる
+        // The tree in the project panel (how many rows are visible, and the selected path).
+        // Even when the drawing is stale, this tells you whether reveal worked.
         let fl_sel = self
             .fl_tree
             .selected
@@ -3370,10 +3370,10 @@ impl Writer {
             .unwrap_or_else(|| kumihan::theme::StyleDef { name: name.to_string(), ..Default::default() })
     }
 
-    /// **スタイルの定義を直してテンプレートに書く**(右パネル)。
+    /// **Edits a style definition and writes it to the template** (right panel).
     ///
-    /// 直るのはテンプレートなので、同じスタイルの所が一度に変わります。
-    /// 写しを作ったときは状態行でそう言います。
+    /// What changes is the template, so every place using that style changes at once.
+    /// When a copy is made, the status bar says so.
     pub(crate) fn edit_style(&mut self, name: &str, f: impl FnOnce(&mut kumihan::theme::StyleDef)) {
         let mut def = self.style_def_now(name);
         f(&mut def);
@@ -3641,11 +3641,13 @@ impl Writer {
         .into();
     }
 
-    /// 書き出し先ごとのテンプレート(`テンプレート-印刷.toml` など)が
-    /// 壊れていれば、その理由を返します。無い・読めるなら None です。
+    /// Returns the reason when the template for an export target
+    /// (`テンプレート-印刷.toml` and the like) is broken. Returns None when it is
+    /// missing or when it reads correctly.
     ///
-    /// 開いたときに状態行で言うために使います。黙って `テンプレート.toml`
-    /// に落ちると、置いた人には「効かない」としか分かりません。
+    /// This is used to report it in the status bar when the file is opened. Falling
+    /// back to `テンプレート.toml` silently leaves the person who put the file there
+    /// knowing only that it does not work.
     pub(crate) fn purpose_template_error(&self, purpose_of: &str) -> Option<String> {
         let dir = self.template_dir()?;
         let at = dir.join(kumihan::theme::purpose_template_name(purpose_of));
@@ -3670,17 +3672,19 @@ impl Writer {
         Some(((deco.header, deco.footer), (deco.watermark, deco.page_color)))
     }
 
-    /// ネイティブ文書として保存する(.adoc)。**意味だけを書く**
-    /// **筆(手描きの線)を SVG の絵にして本文に置きます**(2026-08-18)。
+    /// Saves as a native document (.adoc). **Only the meaning is written.**
+    /// **Turns ink (hand-drawn strokes) into SVG pictures and puts them in the body**
+    /// (2026-08-18).
     ///
-    /// ネイティブ文書(.adoc)は手描きの線を持てません。前は保存で黙って
-    /// 消えていました。いまは、そのページの線をまとめて1枚の SVG にし、
-    /// `image::` の段落としてそのページの先頭の段落の後ろに入れます。
-    /// 独自の書き方を1つも足さずに済み、HTML にも PDF にも docx にも
-    /// 画像として乗り、後から段落ごと消せます。
+    /// A native document (.adoc) cannot hold hand-drawn strokes. They used to disappear
+    /// silently on save. Now the strokes on a page are collected into a single SVG and
+    /// inserted as an `image::` paragraph after the first paragraph of that page.
+    /// This adds no markup of our own, the picture rides along into HTML, PDF and docx,
+    /// and it can be deleted later together with its paragraph.
     ///
-    /// **紙の上の位置は残りません。** 線は本文の流れの中の絵になります。
-    /// 返りは作った絵の枚数(呼ぶ側が状態行で言います)。
+    /// **The position on the paper is not kept.** The strokes become a picture in the
+    /// flow of the body. The return value is the number of pictures made, which the
+    /// caller says in the status bar.
     fn ink_to_images(&mut self, dir: &std::path::Path) -> Result<usize, String> {
         if self.doc.ink.is_empty() {
             return Ok(0);
@@ -3769,9 +3773,10 @@ impl Writer {
         // 作った絵が名前の無い画像として二重に扱われます
         let dir0 = p.parent().unwrap_or(std::path::Path::new("."));
         self.ink_svg_count = self.ink_to_images(dir0)?;
-        // **画像に径路を与えてから書きます。** adoc は画像を `image::径路[]` で
-        // 指すので、径路の無い画像(docx 由来・画面から挿した物)は書けません。
-        // 名前を付けて本文の隣に置きます
+        // **Give the images a path before writing.** adoc points at an image with
+        // `image::径路[]`, so an image with no path (one that came from docx, or was
+        // inserted from the screen) cannot be written. We name them and put them
+        // next to the body.
         let image = kumihan::adoc::assign_image_paths(&mut self.doc);
         let dir = p.parent().unwrap_or(std::path::Path::new("."));
         for (rel, bytes) in &image {

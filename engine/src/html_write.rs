@@ -23,11 +23,12 @@ use std::sync::Arc;
 pub struct Page {
     pub html: String,
     pub css: String,
-    /// 一緒に書き出す画像(HTML から見た相対の径路, 中身)。
+    /// The images written out together with the page (path relative to the HTML,
+    /// contents).
     ///
-    /// **画像を HTML の中に埋め込みません。** 埋め込むと文字数が何倍にもなり、
-    /// 直すときに画像だけ差し替えることも出来なくなります。呼ぶ側が
-    /// この並びをファイルに書きます。
+    /// **Images are not embedded in the HTML.** Embedding them multiplies the
+    /// number of characters, and it also makes it impossible to replace just an
+    /// image later. The caller writes this list to files.
     pub assets: Vec<(String, Arc<Vec<u8>>)>,
 }
 
@@ -41,10 +42,10 @@ struct Ctx {
 }
 
 impl Ctx {
-    /// 画像を控えて、HTML から参照する径路を返します。
+    /// Records an image and returns the path the HTML refers to.
     ///
-    /// 径路はファイルが持っているもの(`src`)を使います。docx 由来の画像は
-    /// 径路を持たないので、こちらで名前を付けます。
+    /// The path is the one the file already has (`src`). Images that came from docx
+    /// have no path, so they are named here.
     fn asset(&mut self, im: &InlineImage) -> String {
         if let Some(s) = &im.src {
             if !im.bytes.is_empty() && !self.assets.iter().any(|(p, _)| p == s) {
@@ -176,9 +177,10 @@ fn runs_html(runs: &[Run], doc: &Document, ctx: &mut Ctx) -> String {
 fn imgs_html(p: &crate::doc::Paragraph, ctx: &mut Ctx) -> String {
     let mut o = String::new();
     for im in p.images_new.iter().chain(p.images.iter()) {
-        // **絵が無い数式は、原文をそのまま出します。** 空の img を出すと
-        // 壊れた画像の印が並ぶだけです(絵はまだ組んでいないだけなので)。
-        // 径路を持つ画像は、中身が無くてもファイルが隣にあるので出します
+        // **A formula with no picture is written out as its source.** An empty img
+        // would only show a row of broken-image marks, since the picture has simply
+        // not been laid out yet. An image that has a path is written out even when
+        // the contents are missing, because the file sits next to the page.
         if im.bytes.is_empty() && im.src.is_none() {
             if let Some(tex) = &im.tex {
                 o.push_str(&format!(

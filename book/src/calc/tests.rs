@@ -2039,8 +2039,8 @@ mod cell_filename_tests {
     use super::*;
     use crate::Book;
 
-    /// Excel の `CELL("filename")` は **`径路[ファイル名]シート名`**。
-    /// 実物はここから `]` の後ろを取ってシート名にする
+    /// Excel's `CELL("filename")` is **`path[file name]sheet name`**.
+    /// Real workbooks take the part after `]` from this as the sheet name
     #[test]
     fn lays_out_the_path_file_name_and_sheet_name() {
         let sep = std::path::MAIN_SEPARATOR;
@@ -2048,7 +2048,7 @@ mod cell_filename_tests {
             cell_filename(&format!("{sep}帳票{sep}売上.xlsx"), "4月"),
             format!("{sep}帳票{sep}[売上.xlsx]4月")
         );
-        // 径路の無い名前だけでも壊れない
+        // A bare name with no path does not break it either
         assert_eq!(cell_filename("売上.xlsx", "4月"), "[売上.xlsx]4月");
     }
 
@@ -2096,7 +2096,8 @@ mod cell_filename_tests {
         );
     }
 
-    /// 1枚だけの再計算(ブックが無い)では径路を知らない = 空文字
+    /// A single-sheet recalculation (with no workbook) does not know the path,
+    /// so the answer is an empty string
     #[test]
     fn recalculation_without_a_workbook_yields_an_empty_string() {
         let mut s = Sheet::new("Sheet1");

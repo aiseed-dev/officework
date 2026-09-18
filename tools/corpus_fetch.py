@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-"""**公開されている docx や xlsx を、一覧のページから集める道具。**
+"""**A tool that collects published docx and xlsx files from an index page.**
 
-官公庁・自治体の「様式集」「申請書のダウンロード」のページには、Word や
-Excel で作った書類がまとまって置いてあります。ページの中のリンクを抜いて、
-`~/docx-corpus/<ホスト名>/` に落とします(2026-09-09 発注者)。
+Pages such as the form collections and application-form downloads of national and local
+government sites keep documents made with Word and Excel in one place. This tool pulls
+the links out of the page and downloads the files into `~/docx-corpus/<host name>/`
+(decided by the owner on 2026-09-09).
 
-    python3 tools/corpus_fetch.py <一覧のページの URL> [URL …]
+    python3 tools/corpus_fetch.py <URL of the index page> [URL …]
     python3 tools/corpus_fetch.py --out DIR URL …
     python3 tools/corpus_fetch.py --ext xlsx --out ~/xlsx-corpus URL …
 
-`--ext` は落とす拡張子です(既定は docx)。`xlsx` を渡すと `.xlsx` と
-`.xlsm` を拾います。落とした物の目録は `<置き場>/目録.tsv` に足します
-(取った日、出所の URL、大きさ、sha256 の頭、置いた径路)。現物は repo に
-置きません(docs/corpus-docx.ja.adoc、docs/corpus.ja.adoc)。同じ名前の
-物があれば飛ばします。
+`--ext` is the extension to download (docx by default). Passing `xlsx` picks up both
+`.xlsx` and `.xlsm`. A list of what was downloaded is appended to `<directory>/目録.tsv`
+(the date, the source URL, the size, the start of the sha256 and the path it was saved
+to). The files themselves are not kept in the repo (docs/corpus-docx.ja.adoc,
+docs/corpus.ja.adoc). A file whose name is already there is skipped.
 """
 import datetime
 import hashlib

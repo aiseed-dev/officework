@@ -1127,7 +1127,8 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         in_grp = None;
                         continue;
                     }
-                    // 図形の雛形(場所と大きさは受け手が埋める)
+                    // Template for the shape (position and size are filled in
+                    // by the receiver)
                     let tpl = book::SheetShape {
                         fill: fill.take(),
                         line: line.take(),

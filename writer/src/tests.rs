@@ -466,9 +466,10 @@ mod menu_run_tests {
                     .any(|p| matches!(p.style, kumihan::ParaStyle::Toc(_))),
                 "目次が入らない"
             );
-            // 「図 」と直に書かない — 訳の入る言語では雛形が変わる。
-            // **2つ目が 2 番になる**ことまで見る(1つ目を数えそこねると、
-            // どの図も 1 番のままになる。日本語では気づけない不具合だった)
+            // Do not write the prefix here by hand, because the template changes
+            // in translated languages. **Check that the second one becomes number 2**
+            // as well. If the first one is not counted, every figure stays at number 1,
+            // which is a bug you cannot notice in Japanese.
             this.run_cmd("caption", cx);
             assert!(
                 this.doc.body_text().contains(&ui::tf!("figure", 1)),
@@ -682,10 +683,10 @@ mod menu_run_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// render(辞書)= docxtpl の雛形差し込みが台本から使える。
-    /// 雛形は Word の編集を模して {{担当者}} を run 分断で割っておき、
-    /// writer の読み書き(heal_runs)を通してから差し込む。
-    /// docxtpl が無い環境では黙って飛ばす
+    /// render(dict), which fills in a docxtpl template, can be used from a script.
+    /// The template imitates editing in Word: the placeholder is split across runs,
+    /// and it goes through writer's reading and writing (heal_runs) before it is filled.
+    /// Skipped quietly where docxtpl is not installed.
     #[test]
     fn the_templates_render_fills_it_in() {
         let py = if std::path::Path::new("../.venv/bin/python").exists() {
@@ -706,7 +707,8 @@ mod menu_run_tests {
             std::env::temp_dir().join(format!("jo-render-test-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let tpl = dir.join("tpl.docx");
-        // 雛形: 差し込み口3つ+行くり返しの表。{{担当者}} は割っておく
+        // Template: three placeholders plus a table that repeats rows. One placeholder
+        // is split across runs on purpose.
         let mk = format!(
             r#"import docx
 d = docx.Document()
@@ -1289,13 +1291,15 @@ mod image_px_tests {
     }
 }
 
-/// 図表番号の頭は、**貼る字と探す字が同じ雛形から出ている**か。
+/// Does the caption prefix **come from the same template on the writing side and on
+/// the searching side**?
 ///
-/// 番号を付けるのは `ui::tf!("figure", n)`、次の番号を決めるのと図表目次を
-/// 作るのは段落の頭の照合。雛形は訳されるので、探す側に生の「図 」を書くと
-/// 日本語以外では一度も当たらず、図がすべて 1 番になり目次も空になる
-/// (2026-08-10 に見つけた)。二つを [`crate::caption_head`] に寄せたので、
-/// ここではその一致だけを見張る
+/// The number is written by `ui::tf!("figure", n)`, while deciding the next number and
+/// building the list of figures both match on the head of a paragraph. The template is
+/// translated, so a literal prefix written on the searching side never matches outside
+/// Japanese: every figure stays at number 1 and the list comes out empty (found on
+/// 2026-08-10). Both sides now go through [`crate::caption_head`], so this test only
+/// watches that the two agree.
 #[cfg(test)]
 mod caption_head_tests {
     #[test]
@@ -1967,7 +1971,8 @@ mod paged_view_tests {
         });
     }
 
-    /// 組めない式は**黙って何も起きない、をしない**。理由を状態行に出す
+    /// An equation that cannot be laid out **never just does nothing silently**.
+    /// The reason is shown in the status bar.
     #[gpui::test]
     fn an_unlayoutable_equation_gives_a_reason(cx: &mut gpui::TestAppContext) {
         let w = opens(cx);
@@ -2261,7 +2266,7 @@ mod marker_tests {
             // 本文は image:: で指す(独自の書き方を足していない)
             let adoc = std::fs::read_to_string(&path).unwrap();
             assert!(adoc.contains("image::images/筆1.svg[]"), "image:: が無い: {adoc}");
-            // **黙って変えない** — 状態行で言う
+            // **Do not change it silently.** Say so in the status bar.
             assert!(this.status.contains("SVG"), "状態行が言っていない: {}", this.status);
         });
         let _ = std::fs::remove_dir_all(&dir);
@@ -2921,10 +2926,10 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// **配られたテンプレートは書き替えない。** 直すと、配り元はそのままで
-    /// 文書の隣に写しができ、状態行が写しの文言を言います(2026-09-02 の
-    /// 決め「書く処理を実装する」で、2026-08-18 の「何も書かない」の試験を
-    /// 置き替えました)。
+    /// **A distributed template is never rewritten.** When it is edited, the distributed
+    /// file stays as it is, a copy is made next to the document, and the status bar says
+    /// that a copy was made. The owner decided on 2026-09-02 that writing is implemented,
+    /// which replaced the 2026-08-18 test that nothing is written.
     #[gpui::test]
     fn a_distributed_template_gets_a_copy_next_to_the_document(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-tmpl-{}", std::process::id()));
@@ -3105,8 +3110,9 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// **壊れた `テンプレート-印刷.toml` は、開いたときに状態行で言う**(2026-09-02)。
-    /// 黙って `テンプレート.toml` に落ちると、置いた人には「効かない」としか分からない。
+    /// **A broken `テンプレート-印刷.toml` is reported in the status bar when the file is
+    /// opened** (2026-09-02). Falling back to `テンプレート.toml` silently leaves the
+    /// person who put the file there knowing only that it does not work.
     #[gpui::test]
     fn a_broken_print_template_is_reported_when_opening(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-brokenprint-{}", std::process::id()));
@@ -3128,10 +3134,10 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// **adoc で保存すると、画像も隣に並ぶ。**
+    /// **Saving as adoc puts the images alongside the file.**
     ///
-    /// adoc は画像を径路で指すので、径路を与えないと保存で絵が消えます
-    /// (画面から挿した画像は径路を持っていません)。
+    /// adoc points at images by path, so without a path the pictures are lost on save
+    /// (an image inserted from the screen has no path).
     #[gpui::test]
     fn saving_as_adoc_puts_the_images_alongside(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-adocimg-{}", std::process::id()));
@@ -3260,10 +3266,10 @@ mod marker_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// **HTML に書き出すと、画像も隣に並ぶ。**
+    /// **Exporting to HTML puts the images alongside the file.**
     ///
-    /// HTML は画像を相対の径路で参照するので、HTML だけ書いても絵が出ません
-    /// (2026-08-17、4つの面を揃えるときに足しました)。
+    /// HTML refers to images by relative path, so writing the HTML alone shows no
+    /// pictures (added on 2026-08-17, while making the four screens consistent).
     #[gpui::test]
     fn html_export_puts_the_images_alongside(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("writer-html-{}", std::process::id()));
@@ -4336,7 +4342,7 @@ mod tebiki_ni_awaseta_tests {
         });
     }
 
-    /// 結合の状態行は掛けた種類を言う
+    /// The status bar for merging names the operation that was applied.
     #[gpui::test]
     fn merging_shapes_names_the_operation(cx: &mut gpui::TestAppContext) {
         let w = open(cx, "本文");
@@ -4347,7 +4353,8 @@ mod tebiki_ni_awaseta_tests {
         w.update(cx, |this, cx| {
             this.doc.shapes = vec![hako(25.0), hako(45.0)];
             this.shape_sel = Some(0);
-            // 押すたびに 結合 → 交差 → 減算 と回る。状態行はその名前を言う
+            // Each press cycles through union, intersect and subtract. The status bar
+            // names the one that was applied.
             this.run_cmd("shapes-merge", cx);
             assert_eq!(this.status.to_string(), ui::tf!("done_turned_into_outline", ui::t!("union")));
             this.doc.shapes = vec![hako(25.0), hako(45.0)];

@@ -394,8 +394,9 @@ pub struct Calc {
     filter_panel: Option<(u32, Editor)>,
     /// 「データの入力規則」のパネル(本家の3タブのダイアログの形)
     dv_dlg: Option<DvDlg>,
-    /// 画面の文字の大きさ(リボン・メニュー・状態行まで全部に掛かる倍率。
-    /// 格子のズームとは別。設定に覚える — 次回も同じ大きさで開く)
+    /// The UI font size (a scale applied to everything: the ribbon, the menus and the status
+    /// bar. It is separate from the grid zoom, and it is saved in the settings, so the app
+    /// opens at the same size next time)
     ui_scale: f32,
     /// 表の操作(書式・フィル・行列・結合・並べ替え)を戻すための控え。
     /// 入力欄の undo とは別 — **戻せない操作は事故のとき逃げ道が無い**。
@@ -788,12 +789,15 @@ pub fn run() {
         cx.text_system()
             .add_fonts(vec![std::borrow::Cow::Borrowed(font_data())])
             .expect("フォント登録");
-        // 共通+calc の表と、settings.toml の key.* の上書き。読めなかった
-        // 行の言い分は起動後に状態行へ(ui::key_warnings — 黙って捨てない)
-        // 設定ファイルに書いた AI の宛先を環境変数へ移す(起動に一度)。
-        // **環境変数が先** — その場の上書きは触らない
-        // **いまの言語をエンジンへ渡す**(2026-08-26)。標準の書体と
-        // 大きさは言語で変わるので、これを忘れると日本語の既定で出ます
+        // The shared key table plus calc's own, with key.* in settings.toml on top. Lines that
+        // could not be read are reported in the status bar after startup (ui::key_warnings, so
+        // nothing is dropped silently).
+        // Move the AI endpoint written in the settings file into an environment variable (once
+        // at startup). **The environment variable wins** — an override already in place is
+        // left alone.
+        // **Pass the current language to the engine** (2026-08-26). The default font and size
+        // depend on the language, so forgetting this makes it come out with the Japanese
+        // defaults.
         ui::init_language();
         ui::settings::ai_env_from_settings();
         cx.bind_keys(ui::bindings_for("calc", "jo_sheet"));

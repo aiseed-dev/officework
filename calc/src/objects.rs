@@ -1039,8 +1039,9 @@ impl Calc {
             let sp = &mut self.sheet_mut().shapes_new[a];
             sp.kind = "path".into();
             sp.points = pts;
-            // 回転と反転は輪郭に焼き込んでいないので落とす(掛けたままだと
-            // 二重に掛かる)。**落とすことは状態行で言う**
+            // Rotation and flipping are not baked into the outline, so they are dropped
+            // (leaving them on would apply them twice). **The status bar says that they
+            // were dropped.**
             sp.rot = 0.0;
             sp.flip_h = false;
             sp.flip_v = false;

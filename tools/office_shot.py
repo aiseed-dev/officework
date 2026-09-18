@@ -1,43 +1,45 @@
 #!/usr/bin/env python3
-"""**統合したアプリ(officework)を実機で起こして、押して、撮る道具。**
+"""**A tool that starts the combined app (officework) for real, presses buttons and
+takes screenshots.**
 
-`ribbon_sweep.py` は calc 単体、`writer_shot.py` は writer 単体を相手に
-します。配るのは統合した `officework` 1本(SEKKEI 段11)なので、それを
-相手にする道具がありませんでした。2026-08-22 までは、画面を直すたびに
-同じ仕掛けを使い捨ての場所に書き直していました。ここに置きます。
+`ribbon_sweep.py` drives calc on its own and `writer_shot.py` drives writer on its own.
+What we ship is the single combined `officework` (SEKKEI step 11), and there was no tool
+for it. Until 2026-08-22 the same machinery was rewritten in a throwaway place every
+time the screen was changed. It lives here now.
 
-X まわり(窓を引く・倍率・押す・撮る・片づける)は `ribbon_sweep.App` の
-物をそのまま借ります。違うのは**起こす相手**と**ソケットの名前**だけです。
+Everything around X (finding the window, the scale, pressing, screenshots, cleaning up)
+is borrowed from `ribbon_sweep.App` as it is. The only differences are which app is
+started and the name of the socket.
 
-    from tools import office_shot            # 使うとき
-    a = office_shot.Office(出し先, path="台帳.sheet.adoc")
-    箱 = a.boxes()                            # リボンのボタンの箱(id → 箱)
-    a.press("freeze")                         # id で押す
-    print(a.state()["status"])                # 状態行を読む
-    a.shot("freeze-after")                    # 撮る
+    from tools import office_shot             # to use it
+    a = office_shot.Office(out_dir, path="ledger.sheet.adoc")
+    boxes = a.boxes()                         # the ribbon button boxes (id -> box)
+    a.press("freeze")                         # press by id
+    print(a.state()["status"])                # read the status bar
+    a.shot("freeze-after")                    # take a screenshot
     a.close()
 
-単体で走らせると、起こして1枚撮って終わります。
+Run on its own, it starts the app, takes one screenshot and stops.
 
-    python3 tools/office_shot.py [出し先]
+    python3 tools/office_shot.py [out_dir]
 
-## この道具で踏んだ跡(同じ所で止まらないように)
+## What we found out with this tool (so we do not get stuck in the same places)
 
-* **`WAYLAND_DISPLAY` を外さないと落ちます。** gpui が Wayland を掴んで
-  `NoCompositor` で panic します。X の画面を使うので必ず外します
-* **ファイル選択の窓は開きません。** HOME と `XDG_RUNTIME_DIR` を偽物に
-  差し替えているので、rfd が使う DBus のポータルに届きません。窓が1つも
-  増えないことを X の一覧で確かめました。開く・保存を試すときは rpc の
-  `open` / `save` に径路を直に渡してください
-* **撮った絵の y は、窓の中の y より 16 少なくなります**(窓の飾りのぶん)。
-  絵から座標を測って押すときは 16 足してください
-* **一覧の座標(`ui_state` の `pick`)は格子の面の中の座標です。**
-  窓の座標に直すには `ribbon` の `pane` の左上を足します
-* **Esc はスライサーごと閉じます。** 一覧だけ閉じたいときは、空のセルを
-  押してください
-* 前の回の `officework` が `:2` に残っていると窓を取り違えます。
-  `Office` は自分の PID の窓しか見ないので取り違えませんが、絵を撮る前に
-  `pkill -f target/release/officework` で掃除しておくと確実です
+* **The app crashes unless `WAYLAND_DISPLAY` is unset.** gpui grabs Wayland and panics
+  with `NoCompositor`. We use the X screen, so it must always be unset
+* **The file selection window never opens.** HOME and `XDG_RUNTIME_DIR` are replaced
+  with fake ones, so the request does not reach the DBus portal that rfd uses. The X
+  window list confirmed that no window is added. To try opening and saving, pass the
+  path directly to the rpc `open` / `save`
+* **The y in a screenshot is 16 less than the y inside the window** (the window
+  decoration). When you measure coordinates from a screenshot in order to press, add 16
+* **The list coordinates (`pick` in `ui_state`) are coordinates inside the grid pane.**
+  To turn them into window coordinates, add the top left of `pane` from `ribbon`
+* **Esc closes the slicer as well.** To close only the list, click an empty cell
+* If an `officework` from an earlier run is still on `:2`, the wrong window is picked
+  up. `Office` only looks at windows belonging to its own PID, so it does not pick the
+  wrong one, but running `pkill -f target/release/officework` before taking screenshots
+  makes it certain
 """
 
 import json
@@ -154,7 +156,7 @@ class Office:
         return json.loads(buf)
 
     def state(self):
-        """いま何が開いているか・状態行・一覧の位置。"""
+        """What is open right now, the status bar, and the position of the list."""
         return self.rpc({"cmd": "ui_state"})
 
     def showing(self):

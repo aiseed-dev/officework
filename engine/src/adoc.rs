@@ -460,11 +460,13 @@ fn runs_text(runs: &[Run], doc: &Document) -> String {
             let (k, dbl) = stack.pop().expect("空でない");
             s.push_str(mark_of(k, dbl));
         }
-        // **役割は、この run で開いてこの run で閉じる印に付けます**
-        // (`[.path]_径路_`。本家の書き方)。斜体・太字の順に見て、
-        // どちらも無ければ `[.名前]#字#` の形にします(2026-09-02)
-        // **下線と取り消し線は本家の組み込みの役割**(`underline` / `line-through`)
-        // で書く(2026-09-11)。文字スタイルの名前があれば `.` でつなぐ
+        // **A role is attached to a mark that opens and closes inside this run**
+        // (`[.path]_径路_`, the way AsciiDoc itself writes it). We look at italic
+        // first, then bold; if neither is set we use the `[.名前]#字#` form
+        // (2026-09-02).
+        // **Underline and strikethrough use AsciiDoc's built-in roles**
+        // (`underline` / `line-through`), decided on 2026-09-11. If there is a
+        // character style name, join it with `.`.
         let role_s: Option<String> = {
             let mut names: Vec<&str> = Vec::new();
             if let Some(n) = r.fmt.style_id.as_deref().filter(|n| *n != MONO) {
@@ -939,15 +941,16 @@ pub fn image_ext(bytes: &[u8]) -> &'static str {
     }
 }
 
-/// **径路の無い画像に径路を与えます。** 返りは、本文と一緒に書き出す
-/// ファイル(本文から見た相対の径路, 中身)。
+/// **Gives a path to images that do not have one.** The return value lists the
+/// files to write together with the text (path relative to the text, contents).
 ///
-/// adoc は画像を `image::径路[]` で指すので、径路が無い画像は書けません。
-/// docx から来た画像や、画面から挿した画像は径路を持っていないので、ここで
-/// 名前を付けます。**付けないと保存で絵が消えます**(2026-08-18 に直した)。
+/// adoc points at an image with `image::径路[]`, so an image without a path cannot
+/// be written. Images that came from docx, and images inserted on screen, have no
+/// path, so they are named here. **Without a name the picture is lost on save**
+/// (fixed on 2026-08-18).
 ///
-/// 画像の実体を書くのはこの関数の仕事ではありません(engine はファイルを
-/// 触りません)。呼ぶ側が返りをファイルに書きます。
+/// Writing the image data itself is not this function's job (the engine does not
+/// touch files). The caller writes the returned files.
 pub fn assign_image_paths(doc: &mut Document) -> Vec<(String, std::sync::Arc<Vec<u8>>)> {
     // すでに使われている名前(同じ名前で上書きしないため)
     let mut used: Vec<String> = Vec::new();
@@ -3463,9 +3466,10 @@ mod tests {
     #[test]
     fn character_level_styles_round_trip() {
         round_trip("ここは[.注意]#気をつける#ところ。\n");
-        // **普通の文の `[.` は逃がしません**(2026-08-18)。逃がすのは
-        // `[.名前]#` の形だけです。本家には `[.path]_径路_` のような役割の
-        // 書き方があり、一律に逃がすと `\\` が入って別物になります
+        // **A `[.` in ordinary text is not escaped** (2026-08-18). Only the
+        // `[.名前]#` form is escaped. AsciiDoc itself has role syntax such as
+        // `[.path]_径路_`, so escaping every `[.` would insert `\\` and turn the
+        // text into something else.
         round_trip("配列は [.5] と書く。\n");
         round_trip("径路は [.path]_data/x_ です。\n");
     }

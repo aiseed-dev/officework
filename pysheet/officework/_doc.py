@@ -1809,13 +1809,15 @@ class Doc(NoStrayAttributes):
     _engine_attr = "_d"
 
     def __init__(self, path=None, lang=None):
-        """`Doc()` は空の文書、`Doc("報告.docx")` は開きます。
+        """`Doc()` makes an empty document, `Doc("報告.docx")` opens one.
 
-        python-docx の `Document(径路)` と同じ形です。前は `Doc.open` しか
-        無く、本家の台本が1行目で止まりました(2026-08-28)。
+        This is the same shape as python-docx's `Document(path)`. Before, there
+        was only `Doc.open`, so a script written for python-docx stopped on its
+        first line (2026-08-28).
 
-        ``lang`` は組むときの言語です(``"ja"``, ``"en"`` など)。渡さない
-        ときは、設定ファイルと OS の言語から決めます(2026-08-30)。
+        ``lang`` is the language used for layout (``"ja"``, ``"en"`` and so on).
+        When it is not given, it is decided from the settings file and the OS
+        language (2026-08-30).
         """
         if path is not None:
             self._d = _doc.Doc.open(str(path), lang)
@@ -1826,9 +1828,10 @@ class Doc(NoStrayAttributes):
 
     @staticmethod
     def open(path, lang=None):
-        # **pathlib.Path も受ける**(python-docx と同じ。2026-08-15)。
-        # 芯は文字しか取らないので、ここで径路の形に直してから渡す。
-        # sheet.Book と揃えること — 片方だけ受けるのがいちばん困る
+        # **pathlib.Path is accepted too** (the same as python-docx, 2026-08-15).
+        # The core takes only a string, so turn it into a path string here before
+        # passing it on. Keep this in step with sheet.Book, because accepting it
+        # on only one of the two is the most confusing result.
         d = Doc.__new__(Doc)
         d._path = _os.fspath(path)
         d._d = _doc.Doc.open(d._path, lang)
@@ -2066,9 +2069,10 @@ class Doc(NoStrayAttributes):
         return Paragraph(self._d.add_page_break())
 
     def add_picture(self, image, width=None, height=None):
-        """画像を足す(python-docx と同じ口)。径路でも bytes でも。
-        大きさは mm の数でも、本家の Length(Mm(60) 等)でもよい。
-        返りは画像を持つ段落(本家は InlineShape — そこだけ流儀が違う)。"""
+        """Add a picture (the same API as python-docx). A path or bytes.
+        The size can be a number of mm, or python-docx's Length (Mm(60) and so on).
+        It returns the paragraph that holds the picture (python-docx returns an
+        InlineShape; that is the one place where the two differ)."""
         def _mm(v):
             if v is None:
                 return None
@@ -2135,12 +2139,14 @@ class Doc(NoStrayAttributes):
         return out
 
     def add_table(self, rows, cols, style=None):
-        """表を新しく組む(明細の帳票づくり)。各セルは空の段落を1つ持つ。
+        """Build a new table (for making itemized forms). Each cell holds one
+        empty paragraph.
 
-        `style` は**名前を運ぶだけ**です。定義(styles.xml)はこちらでは
-        持たず、原本(雛形)が持っている前提です。名前を運べば Word で
-        開いたときにその見た目になります。**組む所は名前を見ません**ので、
-        officework の画面と PDF では罫線も帯も付きません。
+        `style` **only carries the name**. We do not keep the definition
+        (styles.xml) here; the original template is expected to have it. Carrying
+        the name is enough for the table to look that way when it is opened in
+        Word. **The layout code does not look at the name**, so in officework's
+        own screen and in the PDF there are no borders and no banding.
         """
         t = Table(self._d.add_table(rows, cols))
         if style is not None:

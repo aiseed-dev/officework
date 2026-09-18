@@ -1,30 +1,34 @@
 #!/usr/bin/env python3
-"""リボンの全ボタンを実機で一巡して点検する。
+"""Go through every ribbon button in the real app and check it.
 
-**画面は見ないと分からない。** 2026-08-08、一覧の位置を直したつもりで
-「リボンを押すと格子から焦点が外れ、Esc も他のキーも一切効かなくなる」
-不具合を実機ではじめて見つけた。40 個の一覧が開くボタン全部に効いていた
-のに、単体試験も台帳も何も言わなかった。そこでこの道具を置く。
+**You cannot tell without looking at the screen.** On 2026-08-08, after what was meant
+to be a fix to the position of a list, we saw a bug in the real app for the first time:
+pressing a ribbon button moved the focus off the grid, and neither Esc nor any other key
+worked afterwards. It affected all 40 buttons that open a list, yet neither the unit
+tests nor the ledger said anything. That is why this tool exists.
 
-やること: 段(タブ)ごとに押せるボタンを順に押し、押すたびに calc.sock
-から画面の状態を聞いて、下の4点を確かめる。
+What it does: it presses the buttons that can be pressed, tab by tab, and after each
+press asks calc.sock for the state of the screen and checks these four points.
 
-1. 落ちない
-2. 押して**何かが起きる**(一覧・パネル・状態行・中身のどれかが変わる)
-3. 一覧が開いたら、**押したボタンの真下**に出ている(横のずれが小さい)
-4. Esc で閉じ、**閉じたあとキーが効く**(= 焦点が格子に戻っている)
+1. the app does not crash
+2. the press **makes something happen** (the list, a panel, the status bar or the
+   content changes)
+3. when a list opens it appears **directly under the button** that was pressed (the
+   horizontal offset is small)
+4. Esc closes it and **keys work after it closes** (the focus is back on the grid)
 
-判定は画素比べでなく rpc の `ribbon` / `ui_state` を使う。撮るのは
-しくじった時だけ(scratch/ 以下に置く)。
+The judgement uses the rpc `ribbon` / `ui_state` rather than comparing pixels.
+Screenshots are taken only when something failed (they go under scratch/).
 
-使い方:
+Usage:
 
-    python3 tools/ribbon_sweep.py                 # ぜんぶの段
-    python3 tools/ribbon_sweep.py --tabs 1 2      # 段を選ぶ
-    python3 tools/ribbon_sweep.py --keep          # 終わっても閉じない
+    python3 tools/ribbon_sweep.py                 # all tabs
+    python3 tools/ribbon_sweep.py --tabs 1 2      # pick tabs
+    python3 tools/ribbon_sweep.py --keep          # do not close at the end
 
-前提: X11(この機械は GNOME Wayland なので XWayland 経由)、python-xlib、
-ImageMagick の import。Xephyr は DRI3 が無く GPUI が真っ黒になるので使わない。
+Requirements: X11 (this machine runs GNOME Wayland, so through XWayland), python-xlib,
+and ImageMagick's import. Xephyr is not used because it has no DRI3 and GPUI comes out
+completely black.
 """
 
 import argparse
@@ -378,12 +382,13 @@ class App:
         return path
 
     def close(self, keep=False):
-        """calc を止めて、**実行時ディレクトリごと片づける**。
+        """Stop calc and **clean up the whole runtime directory**.
 
-        2026-08-16 発注者「/tmp に calc や writer を保存するのはおかしい」。
-        `mkdtemp` で作ったまま消していなかったので、/tmp に 101 個
-        (2日分)積もっていた。試験用の HOME と socket と控えが丸ごと残る。
-        調べたいときだけ `keep=True`(径路を言ってから残す)。
+        On 2026-08-16 the owner said it is wrong to leave calc and writer files in /tmp.
+        Directories made with `mkdtemp` were never deleted, so 101 of them (two days'
+        worth) had piled up in /tmp. The HOME used for testing, the socket and the dumps
+        all stay behind. Use `keep=True` only when you want to look into them, and print
+        the path before keeping them.
         """
         try:
             self.proc.terminate()

@@ -246,7 +246,8 @@ impl Office {
             }
             let at = before.at.min(tabs.len().saturating_sub(1));
             let o = Office { tabs, at, move_focus: true, subs: Vec::new() };
-            // **黙って減らさない。** 開けなかった数は状態行で言います
+            // Do not drop files silently. The number of files that could not
+            // be opened is reported in the status bar.
             if *dropped > 0 {
                 o.told(&ui::tf!("file_s_open_not", dropped.to_string()), cx);
                 // **控えも今の姿に直します。** 直さないと、消えたファイルが
@@ -707,7 +708,7 @@ impl Office {
         .detach();
     }
 
-    /// いま見ているタブの状態行に出す。
+    /// Show the message in the status bar of the tab that is currently visible.
     fn told(&self, msg: &str, cx: &mut Context<Self>) {
         match self.showing() {
             Pane::Doc(v) => v.update(cx, |w, _| w.say(msg.to_string())),

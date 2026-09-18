@@ -250,7 +250,8 @@ impl Editor {
         true
     }
 
-    /// いま置き換えたばかりの綴り(状態行に「Backspace で戻せます」と出す用)
+    /// The spelling that was just replaced (used to show "Backspace で戻せます" in
+    /// the status bar).
     pub fn just_autocorrected(&self) -> Option<&str> {
         self.autocorrected
             .as_ref()

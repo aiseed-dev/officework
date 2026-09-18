@@ -593,11 +593,12 @@ impl Writer {
                 };
             }
             "img-group" => self.shape_group(),
-            // **図形を結合する。** 芯は表の側と同じ `book::combine` です。
+            // Merge shapes. The core is the same `book::combine` as on the
+            // spreadsheet side.
             //
-            // 文書には一覧を出す仕組みがまだ無いので、**押すたびに
-            // 結合 → 交差 → 減算**と回します。どれを掛けたかは状態行に
-            // 出るので、押しても分からない、にはなりません
+            // The document side has no menu for this yet, so each press cycles
+            // through union, intersect and subtract. The status bar says which one
+            // was applied, so pressing it is never a guess.
             "shapes-merge" => {
                 self.merge_op = (self.merge_op + 1) % 3;
                 let op = match self.merge_op {
@@ -949,7 +950,8 @@ impl Writer {
                 self.switch_target(Target::Body);
                 self.flush_target();
                 let mut n = 0usize;
-                // 探す頭は貼る雛形と同じところから(crate::caption_head の註)
+                // The prefix we search for comes from the same template we insert
+                // (see the notes on crate::caption_head)
                 let head = crate::caption_head();
                 for p in self.doc.paragraphs() {
                     let t: String = p.runs.iter().map(|r| r.text.as_str()).collect();
@@ -1728,7 +1730,8 @@ impl Writer {
         }
     }
 
-    /// 欄で打った文を注(`id`)に入れる。返すのは状態行の文
+    /// Put the text typed in the box into the footnote (`id`). Returns the message for
+    /// the status bar
     pub(crate) fn footnote_write(&mut self, id: &str, text: &str) -> String {
         let Some(f) = self.doc.footnotes.iter_mut().find(|f| f.id == id && !f.endnote) else {
             return ui::t!("no_footnote_found").to_string();
@@ -1885,8 +1888,9 @@ impl Writer {
         self.run_py_image(pyrun::CHART_PY, "chart", spec, out, None, cx);
     }
 
-    /// **図形を Python(matplotlib)で描いて、画像として入れる。** `kind` は
-    /// prstGeom の名前、`name` は状態行に出す見出しです。紙の上では幅 60mm で置きます
+    /// Draw a shape with Python (matplotlib) and insert it as an image. `kind` is the
+    /// prstGeom name and `name` is the title shown in the status bar. On the paper it
+    /// is placed 60 mm wide
     pub(crate) fn shape_image(&mut self, kind: &str, name: &str, cx: &mut Context<Self>) {
         let dir = pyrun::cage_work_dir("shape");
         let out = dir.join("shape.png");
@@ -1935,9 +1939,10 @@ impl Writer {
         self.run_py_image(pyrun::TEXTART_PY, "textart", spec, out, None, cx);
     }
 
-    /// 同梱の Python の script を指図(JSON)つきで別のスレッドで回し、
-    /// できた絵をカーソルの段落の下に入れる。失敗は理由を状態行に出す。
-    /// `w_mm` があれば、絵をその幅で置く(高さは比例)
+    /// Run the bundled Python script on another thread with its instructions (JSON),
+    /// and insert the resulting image below the paragraph the cursor is in. On failure
+    /// the reason is shown in the status bar. If `w_mm` is given, the image is placed
+    /// at that width (the height follows in proportion)
     fn run_py_image(
         &mut self,
         script: &'static str,

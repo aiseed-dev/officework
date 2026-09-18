@@ -345,9 +345,9 @@ pub struct InlineImage {
     /// 渡した先の Word では絵として見え、こちらでは式として直せる。
     /// 普通の画像は None
     pub tex: Option<String>,
-    /// ネイティブ文書(.adoc)での**相対の径路**(`image::images/図1.png[]`)。
-    /// 画像の実体はファイルが正本で、bytes は開いたときの写し。
-    /// docx 由来の画像は None(bytes が正本)
+    /// The **relative path** in a native document (.adoc) (`image::images/図1.png[]`).
+    /// The file holds the original image data; bytes is the copy made when opening.
+    /// For images that came from docx this is None (bytes is the original).
     pub src: Option<String>,
     /// **段落の字の中でこの画像が居る位置**(先頭からのバイト数)。
     ///
@@ -2286,13 +2286,17 @@ impl Document {
         self.paragraphs().nth(target.start).map(|p| p.align).unwrap_or_default()
     }
 
-    /// 読み込み後の整え: 空 run を除き、同じ書式の隣り合う run を繋ぐ
-    /// (本文・表のセル・ヘッダー・フッターの全段落)。
-    /// Word の編集は同じ書式でも run を細切れにする(校正・rsid)。
-    /// モデルを軽く保つのが主目的で、雛形の「{{差し込み口}}」が
-    /// 道具の目に割れて見える事故の保険にもなる(docxtpl 0.20 は多くの
-    /// 分断を自力で繋ぐと実測した — が、賭けにはしない)。
-    /// 書式の違う分断は繋がない(書式は据え置きの方針どおり)
+    /// Tidy-up after loading: drop empty runs and join adjacent runs that have the
+    /// same formatting (all paragraphs in the body, table cells, headers and
+    /// footers).
+    /// Editing in Word splits runs even when the formatting is the same (proofing,
+    /// rsid).
+    /// The main purpose is to keep the model small. It also guards against a
+    /// template's {{差し込み口}} merge field looking split to other tools. We ran
+    /// docxtpl 0.20 and saw that it joins many of those splits by itself, but we do
+    /// not rely on that.
+    /// Runs with different formatting are not joined (formatting is left as it is,
+    /// as decided).
     pub fn heal_runs(&mut self) {
         fn heal(p: &mut Paragraph) {
             normalize_runs(&mut p.runs);
