@@ -1,0 +1,148 @@
+= Word のテンプレートを英語版と日本語版で突き合わせる(2026-09-19)
+
+発注者「word のサンプルを英語版と日本語版で全てやってみるのはどうか」「落とす手段と置き場を Fable が考えろ」「実装は Opus に任せろ」「結果は、Web ページでギャラリーとして見せること」。
+
+== 落とす手段(調べた結果)
+
+Word の「新規」の一覧は、Microsoft の公開ギャラリー(`https://word.cloud.microsoft/create/<言語>/<種類>-templates/`)と同じ物を出しています。言語は `en`(英語)と `ja`(日本語)で、ファイルは公開の CDN にあります。
+
+* 一覧の頁(例: `https://word.cloud.microsoft/create/en/resume-templates/`)の HTML に、テンプレートごとの「Word で開く」のリンクがあり、その `src` に docx の URL が入っています。
+* docx の URL は `https://createcatalog.public.onecdn.static.microsoft/catalog-assets/<en-us|ja-jp>/<GUID>/TF<GUID><ハッシュ>_wac-<ハッシュ>.docx` の形です。ハッシュは頁から読むしかありません。
+* **同じ GUID が英語版と日本語版の両方にあります**(確かめた物: `ce343500-4aff-4dfa-b337-57c78459c6ee` は en-us 100KB、ja-jp 6.4MB)。だから「同じテンプレートの英語版と日本語版」を組で集められます。
+* サムネイルも同じ CDN にあります(`…/<GUID>/thumbnails/564/…`)が、使いません(下の「見せ方」)。
+* 古い配信(`omextemplates.content.office.net/support/templates/<言語>/tf<番号>.dotx`)は言語ごとに番号が違い、日本語版が無い物が多いので使いません。
+
+== 置き場
+
+`~/Documents/officework-cmp/templates/` の下に、git の外で置きます(Microsoft の著作物なので配りません。試験に使うだけです)。
+
+----
+templates/
+  目録.tsv            GUID、種類、英語の題、日本語の題、en の URL、ja の URL、落とした日
+  en-us/<GUID>.docx   英語版
+  en-us/<GUID>.ms.pdf Word で刷った PDF(tools/ms_pdf.py)
+  ja-jp/<GUID>.docx   日本語版
+  ja-jp/<GUID>.ms.pdf
+----
+
+== 道具(Opus が作る)
+
+. `tools/templates_fetch.py` — 一覧の頁を種類ごとに読み、GUID と docx の URL と題を集め、英語と日本語の両方にある GUID だけを落として `目録.tsv` を書く。`--kinds resume,letter,report,...`、`--limit 30`。落とすときは 1 秒に 1 つ、User-Agent を付ける。落とし直しは `--force` のときだけ。
+. `tools/templates_round.py` — 目録の docx を Word で PDF にし(tools/ms_pdf.py を使う。開いた物は閉じる)、うちで刷り、頁数と行の位置を比べて `結果.tsv` を書く。役所の様式の集計(スクラッチの pages_sweep.py)と同じ形。これを機に、頁数の集計は tools に入れる(`tools/pages_sweep.py`: 集めのフォルダを引数で受ける)。
+. `tools/templates_gallery.py` — 結果からギャラリーの Web ページを作る。`web/gallery/index.html`(普通の HTML。読む頁なので Flet ではない)と、`web/gallery/<GUID>-<言語>-{word,ours}.png`(1 頁目を 60dpi で)。1 枚のカードに、題(英語と日本語)、種類、頁数(Word / うち)、一致の印、Word とうちの絵を横に並べる。並びは「一致していない物が先」。頁の頭に、日付と、一致した数 / 全部の数。
+
+== 見せ方(決めてもらう物)
+
+ギャラリーには Word の描いた絵(Microsoft のテンプレートの見た目)が入ります。**公開してよいかは発注者が決めます。** それまでは手元で見る物として作ります(`web/gallery/` は .gitignore に入れる)。公開するなら、絵を小さくし、各カードから Microsoft の元の頁へリンクを置きます。
+
+== 種類の候補(最初の 30 種)
+
+履歴書(resume)、送付状(cover-letter)、手紙(letter)、レポート(report)、議事録(minutes)、議題(agenda)、メモ(memo)、請求書(invoice)、見積書(quote)、領収書(receipt)、パンフレット(brochure)、チラシ(flyer)、ポスター(poster)、ニュースレター(newsletter)、カレンダー(calendar)、予定表(planner / schedule)、名刺(business-card)、証明書(certificate)、案内状(invitation)、はがき(postcard)、ラベル(label)、しおり(bookmark)、家系図(family-tree)、履歴(timeline)、企画書(proposal)、契約書(contract)、履歴書(CV)、封筒(envelope)、賞状(award)、メニュー(menu)。一覧の頁の URL は `/create/<言語>/<種類>-templates/` で、無い種類は飛ばす。
+
+== 進め方
+
+. Opus が 3 つの道具を作り、英語 30 種・日本語 30 種を落として 1 回目の突き合わせを回す(この Mac。Word が要る)。
+. 結果のギャラリーを発注者が見て、公開するかどうかと、直す順を決める。
+. 直すのは Fable(原因は OOXML と Word の PDF で確かめる。推測で直さない)。
+
+== 1 回目の結果(2026-09-19)
+
+=== 作った道具
+
+`tools/templates_fetch.py`、`tools/pages_sweep.py`、`tools/templates_round.py`、
+`tools/templates_gallery.py` の 4 つです。`pages_sweep.py` は、これまでスクラッチに
+置いていた頁数の集計を、フォルダを引数で受け取る形にして tools に入れた物です。
+
+=== 集めた数
+
+1 種類につき 3 つ、27 種類で 78 組(docx は英語と日本語で 156 個、合わせて 163MB)。
+
+[cols="1,1"]
+|===
+|種類 |組の数
+
+|resume、cover-letter、ats、letters、memo、minutes、agenda、business、business-plan、business-card、email-signature、fax-cover、brochure、flyer、newsletter、card、invitation、label、menu、wedding、mothers-day、learning、teacher-communication、writing |各 3
+
+|pamphlet、birthday-card、postcard |各 2
+|===
+
+pamphlet と birthday-card と postcard が 2 つなのは、同じテンプレートが複数の種類の頁に
+出てくるためです(pamphlet の 3 つのうち 1 つは booklet と同じ物でした)。booklet は
+3 つとも pamphlet と同じで、目録には 1 つも増えませんでした。
+
+=== 種類の一覧は sitemap から取りました
+
+設計に書いた 30 種のうち、頁があったのは 13 種だけでした。無かったのは letter、report、
+invoice、quote、receipt、poster、calendar、planner、schedule、certificate、bookmark、
+family-tree、timeline、proposal、contract、cv、envelope、award の 18 種です。これらは
+404 ではなく、`https://word.cloud.microsoft/` への転送(307)で答えます。
+
+`https://word.cloud.microsoft/create/sitemap.xml` に種類の一覧があり、英語と日本語の
+両方にある種類はちょうど 28 種でした。`templates_fetch.py` の既定の一覧は、この 28 種に
+しています。設計の一覧に無かった種類は、ats、business、business-plan、email-signature、
+fax-cover、pamphlet、booklet、card、birthday-card、learning、teacher-communication、
+writing、wedding、mothers-day です。
+
+落とすのに失敗したのは 1 つだけです(learning の 1598f8d7… の日本語版が docx ではない物を
+返しました)。この組は目録に入れていません。
+
+=== Word の PDF が作れませんでした
+
+**1 組目を刷った後、Word が止まりました。** 2 組目の履歴書
+(a60c389b…、英語版 237KB)を開かせたところ、AppleScript の `open` が 10 分たっても
+返らず(-1712)、そのあと Word は次のようになりました。
+
+* `count documents` には答えるので、Word 自体は動いています。
+* `open` は何も開かず、`active document` が missing value のままです。
+* `close` を送ると「document 1 は close メッセージを認識できません」(-1708)と断ります。
+* `quit` も「利用者によってキャンセルされました」(-128)と断ります。
+
+この状態は `tools/ms_pdf.py` が前から書いている「Word が close を -1708 で断る状態」と
+同じです。道具は決まりどおりそこで止まりました。発注者の Word を強制終了はしていません。
+Word を一度終了して開き直せば、`python3 tools/templates_round.py` を動かすだけで続きから
+刷り直せます(すでにある `.ms.pdf` は飛ばします)。a60c389b… は Word が開けずに止まる
+ファイルなので、`--only` で外して回すか、先に手で開いて確かめてください。
+
+調べている途中で分かったこと: 止まった Word でも、AppleScript を
+`open "パス"` ではなく `open file name "パス"` と書くと文書が開きました。`close` は
+どちらにしても断られるので、`ms_pdf.py` は直していません。
+
+=== 突き合わせできた数
+
+[cols="1,1,1,1"]
+|===
+|言語 |刷った数 |Word の PDF がある数 |頁数が合った数
+
+|en-us |78 |1 |0
+|ja-jp |78 |1 |1
+|===
+
+うちの変換器(`target/release/examples/docx_pdf`)は 156 個すべてで PDF を書きました。
+途中で落ちた物はありません。頁数は 1 頁が 61 件、2 頁が 46 件、3 頁が 18 件で、いちばん
+多いのは 24 頁(writing の 2 件)でした。
+
+=== 1 組だけ見えた違い
+
+比べられたのは履歴書 ce343500…(Modern nursing resume / 現代的な写真付き履歴書)の
+英語版と日本語版だけです。この 1 組から見えることを書きます。直しはしていません。
+
+* **写真と図形が出ていません。** Word の 1 頁目には人物写真と色の帯がありますが、うちの
+  PDF は文字だけです。ギャラリーの絵で見えます。
+* **大文字にする文字書式が効いていません。** Word は「KRISTI LAAR」「REGISTERED NURSE」と
+  大文字で出しますが、うちは「kristi laar」「registerednurse」と元の文字のまま出ます。
+* **本文が上にずれています。** 1 行目の位置は Word が 75.1pt、うちが 58.6pt です。以降の
+  行も 10pt ほど上にあります。
+* **折り返す位置が違います。** 説明文が Word では 2 行、うちでは 3 行になり、そのぶん
+  英語版は 2 頁になりました(Word は 1 頁)。
+* 行の得点が 0.03 前後と低いのは、上の 2 つ(大文字と 10pt のずれ)がほとんどの行に
+  掛かるためです。得点は「Word の 1 頁目の行のうち、うちにも 2pt 以内の同じ高さに、
+  同じ文字で始まる行がある割合」で、大文字小文字は区別します。
+
+=== 道具について気づいたこと
+
+* 同じテンプレートが複数の種類の頁に出るので、目録に同じ GUID が重ならないようにしました。
+* 頁の題に HTML の文字参照(`&#x27;` など)が入るので、元の文字に戻しています。
+* ギャラリーは `web/gallery/index.html` です。絵は Microsoft の著作物なので
+  `web/gallery/` は .gitignore に入れました。開くときは
+  `python3 -m http.server 8731 --directory web/gallery` のように出してから見ます
+  (file:// のままでも見られます)。

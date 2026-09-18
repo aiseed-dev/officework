@@ -65,3 +65,7 @@ test/out/
 # Flet の実行時の控え(web/ の紹介ページ)
 web/.flet/
 !web/assets/
+
+# Word のテンプレートの突き合わせのギャラリー(絵は Microsoft の著作物。
+# 公開してよいかは発注者が決める — docs/sekkei/word-templates.ja.adoc)
+web/gallery/
