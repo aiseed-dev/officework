@@ -13,8 +13,6 @@
 //! ボタンは gen_ribbon_locale.py の OVERRIDES 表で訳す。
 
 pub const WORDS: &[(&str, &str)] = &[
-    ("Zoom in", "ZoomIn"),
-    ("Zoom out", "ZoomOut"),
 ];
 
 /// 同じ札で働きが違うボタンの語(id か icon で引く)

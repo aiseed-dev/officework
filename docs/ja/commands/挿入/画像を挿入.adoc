@@ -1,4 +1,4 @@
-= ヘッダー
+= 画像を挿入
 
 挿入にあります。
 
@@ -6,7 +6,7 @@
 
 == 何をするか
 
-全ページの上に出る字を決めます。
+画像のファイルを選んで、本文に置きます。
 
 == ダイアログ
 
@@ -16,7 +16,7 @@
 
 [source,python]
 ----
-d.header / s.oddHeader
+d.add_picture(パス)
 ----
 
 他のライブラリでは、こう書きます。
@@ -25,7 +25,7 @@ d.header / s.oddHeader
 |===
 |道具 |書き方
 
-|python-docx |`section.header`
-|openpyxl |`ws.oddHeader`
+|python-docx |`d.add_picture(パス)`
+|openpyxl |`ws.add_image(…)`
 |===
 

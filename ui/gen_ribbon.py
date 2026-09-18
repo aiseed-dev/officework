@@ -346,16 +346,6 @@ rename_map = {
         "shapes-merge": "Merge shapes",
         "text-from-file": "Text from File",
     },
-    # **Word's Insert tab** (2026-09-18, the owner asked for the writer's Insert
-    # tab to follow Word: order, names, and grey placeholders for what Word has).
-    # Names are Word's; the Japanese words come from ui/i18n/ja.json
-    "documenteditor-insert": {
-        "blankpage": "Blank Page", "pagebreak": "Page Break", "instable": "Table",
-        "insertimage": "Pictures", "insshape": "Shapes", "inssmartart": "SmartArt",
-        "inschart": "Chart", "instext": "Text Box", "instextart": "WordArt",
-        "dropcap": "Drop Cap", "edit-header": "Header", "edit-footer": "Footer",
-        "pagenum": "Page Number", "insequation": "Equation", "inssymbol": "Symbol",
-    },
     # **同じ欄でも、アプリで言い方が変わる物。** 文章は段落、表はセルが
     # 相手なので、同じ「スタイル」でも指す物が違います
     "documenteditor": {
@@ -465,18 +455,14 @@ def british_spelling(s: str) -> str:
     return respell("en", s)
 
 
-def label_of(app_loc, prefix, slot, tab=None):
-    return british_spelling(_label_of(app_loc, prefix, slot, tab))
+def label_of(app_loc, prefix, slot):
+    return british_spelling(_label_of(app_loc, prefix, slot))
 
 
-def _label_of(app_loc, prefix, slot, tab=None):
+def _label_of(app_loc, prefix, slot):
     # 言い換えが先。**本家に札があっても、こちらを使う**
     app = "documenteditor" if prefix == "DE" else "spreadsheeteditor"
-    tables = [rename_map[app], rename_map["*"]]
-    # Tab-specific renames come first (Word's Insert tab names)
-    if tab is not None and f"{app}-{tab.lower()}" in rename_map:
-        tables.insert(0, rename_map[f"{app}-{tab.lower()}"])
-    for table in tables:
+    for table in (rename_map[app], rename_map["*"]):
         if slot in table:
             return table[slot]
     key = LABEL.get(slot)
@@ -775,21 +761,6 @@ DYN_ICONS = {}
 # この一覧は手で書いていません。素の出力と実物を突き合わせて機械に出させました。
 EXTRA_CMDS = {
     "writer": [
-        # **Word's Insert tab** (2026-09-18). Grey placeholders (kind "x") for
-        # what Word has and we do not; Bookmark, Cross-reference and Comment
-        # are the same buttons as in References / Collaboration. The order is
-        # fixed by FIXED_ORDER below, so the "after" anchors here only matter
-        # for reading
-        ("Insert", None, "", "Cover Page", "cover-page", "x"),
-        ("Insert", 'insshape', "", "Icons", "icons", "x"),
-        ("Insert", 'inschart', "", "Screenshot", "screenshot", "x"),
-        ("Insert", 'screenshot', "", "Link", "inshyperlink", "x"),
-        ("Insert", 'inshyperlink', "bookmarks", "Bookmark", "bookmarks", "c"),
-        ("Insert", 'bookmarks', "crossref", "Cross-reference", "crossref", "c"),
-        ("Insert", 'crossref', "co-addcomment", "Comment", "ins-comment", "c"),
-        ("Insert", 'instext', "", "Quick Parts", "quick-parts", "x"),
-        ("Insert", 'dropcap', "", "Signature Line", "form-signature", "x"),
-        ("Insert", 'datetime', "", "Object", "object", "x"),
         ("Home", 'ruby', "ai-furigana", "Furigana", "ai-furigana", "c"),
         ("References", 'crossref', "footnote", "Footnote", "footnote", "c"),
         ("View", None, "nav", "Navigation", "nav", "t"),
@@ -962,26 +933,6 @@ drop_from = [
 ]
 
 
-# **A whole tab in a fixed order** (2026-09-18). `reorder` moves one button at
-# a time; the writer's Insert tab follows Word's order end to end, which is
-# easier to read as one list. Entries are ids, or icon names for grey buttons.
-# Buttons not in the list keep their relative order after the listed ones.
-FIXED_ORDER = {
-    ("documenteditor", "Insert"): [
-        "cover-page", "blankpage", "pagebreak",            # Pages
-        "instable",                                        # Tables
-        "insimage", "insshape", "icons", "inssmartart", "inschart", "screenshot",  # Illustrations
-        "inshyperlink", "bookmarks", "crossref",           # Links
-        "co-addcomment",                                   # Comments
-        "edit-header", "edit-footer", "pagenum", "numpages",  # Header & Footer
-        "instext", "quick-parts", "instextart", "dropcap", "form-signature",
-        "datetime", "object", "text-from-file",            # Text
-        "insequation", "inssymbol",                        # Symbols
-        "controls",
-    ],
-}
-
-
 def emit():
     print(HEAD)
     for app, prefix, konst, which in [
@@ -996,7 +947,7 @@ def emit():
             # 本家の並びをそのまま行にする。押せない物は灰色の行
             rows = []
             for s in slots:
-                lab = label_of(loc, prefix, s, name).replace('"', "'")
+                lab = label_of(loc, prefix, s).replace('"', "'")
                 # 絵は本家の名前がそのまま鍵。本家に無いボタンだけ別に決める。
                 # アプリで絵が違う物は差し替える
                 icon = icon_swap.get(app, {}).get(s) or DYN_ICONS.get(s, s)
@@ -1037,13 +988,6 @@ def emit():
                     (i + 1 for i, r in enumerate(rows) if r[0] == after or r[2] == after),
                     len(rows))
                 rows.insert(k, hit)
-            # A tab in a fixed order (Word's Insert tab)
-            if (app, name) in FIXED_ORDER:
-                order = FIXED_ORDER[(app, name)]
-                def rank(r):
-                    key = r[0] if r[0] is not None else r[2]
-                    return order.index(key) if key in order else len(order)
-                rows = sorted(rows, key=rank)
             print(f'    Tab {{ name: "{name}", cmds: &[')
             for cid, lab, icon, kind in rows:
                 if cid is None:

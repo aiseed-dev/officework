@@ -372,16 +372,9 @@ VENDOR_JA_TAB = {
 
 OVERRIDES = {
     "en": {
-        # Word's Insert tab names (2026-09-18, the owner asked for the writer's
-        # Insert tab to follow Word). Translations live in ui/i18n/<lang>.json
-        "Cover Page": "Cover Page", "Blank Page": "Blank Page",
-        "Page Break": "Page Break", "Table": "Table", "Pictures": "Pictures",
-        "Shapes": "Shapes", "Icons": "Icons", "SmartArt": "SmartArt",
-        "Chart": "Chart", "Screenshot": "Screenshot", "Link": "Link",
-        "Header": "Header", "Footer": "Footer", "Page Number": "Page Number",
-        "Text Box": "Text Box", "Quick Parts": "Quick Parts", "WordArt": "WordArt",
-        "Drop Cap": "Drop Cap", "Signature Line": "Signature Line",
-        "Object": "Object", "Symbol": "Symbol", "Equation": "Equation",
+        # The vendor checkout of 2026-09-18 writes "ZoomIn" / "ZoomOut" for
+        # these in English; keep the plain words
+        "Zoom in": "Zoom in", "Zoom out": "Zoom out",
         # 端末のパネル(2026-09-08。本家に無い)
         "Terminal": "Terminal",
         # **セルの中の文字を回すボタン**(2026-08-21)。本家の日本語は
@@ -537,6 +530,10 @@ OVERRIDES = {
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "it": {
+        # Words the vendor checkout of 2026-09-18 replaced with bare identifiers
+        "Select all": "Seleziona tutto",
+        "Zoom in": "Zoom avanti",
+        "Zoom out": "Zoom indietro",
         # 端末のパネル(2026-09-08。本家に無い)
         "Terminal": "Terminale",
         "Filter button": "Pulsante filtro",
@@ -695,16 +692,24 @@ OVERRIDES = {
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "de": {
+        # Words the vendor checkout of 2026-09-18 replaced with bare identifiers
+        "Zoom in": "Vergrößern",
+        "Zoom out": "Verkleinern",
         # 端末のパネル(2026-09-08。本家に無い)
         "Terminal": "Terminal",
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "es": {
+        # Words the vendor checkout of 2026-09-18 replaced with bare identifiers
+        "Zoom in": "Acercar",
         # 端末のパネル(2026-09-08。本家に無い)
         "Terminal": "Terminal",
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "fr": {
+        # Words the vendor checkout of 2026-09-18 replaced with bare identifiers
+        "Zoom in": "Zoom avant",
+        "Zoom out": "Zoom arrière",
         # zoom100: the vendor checkout of 2026-09-18 has no word for it here
         "Zoom to 100%": "Zoom à 100 %",
         # 端末のパネル(2026-09-08。本家に無い)
@@ -712,6 +717,8 @@ OVERRIDES = {
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "pt-br": {
+        # Words the vendor checkout of 2026-09-18 replaced with bare identifiers
+        "Zoom in": "Ampliar",
         # 端末のパネル(2026-09-08。本家に無い)
         "Terminal": "Terminal",
         # ブラジル**だけ**を分ける札(2026-08-11 発注者)
@@ -763,6 +770,9 @@ OVERRIDES = {
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "ru": {
+        # Words the vendor checkout of 2026-09-18 replaced with bare identifiers
+        "Zoom in": "Увеличить",
+        "Zoom out": "Уменьшить",
         # zoom100: the vendor checkout of 2026-09-18 has no word for it here
         "Zoom to 100%": "Масштаб 100%",
         # 端末のパネル(2026-09-08。本家に無い)
