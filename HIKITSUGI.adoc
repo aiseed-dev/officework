@@ -6,8 +6,9 @@
 
 == 進め方の作法(発注者と確立済み)
 
-* **リボンは Euro-Office の現物のまま。Word には合わせない**(2026-09-19 発注者「Word に合わせるのは
-  ハードすぎる」。前日に writer の挿入タブを Word に合わせたが取り消した。SEKKEI「挿入タブを Word に
+* **画面は当面 Euro-Office に合わせる。Word と Excel には合わせない**(2026-09-19 発注者「ユーザー
+  インターフェースは、当面 euro-office に合わせるのが合理的」「Word、Excel は難しすぎる」。SEKKEI「決め:
+  画面は当面 Euro-Office に合わせる」)。リボンだけでなくダイアログや右パネルも同じ。前日に writer の挿入タブを Word に合わせたが取り消した。SEKKEI「挿入タブを Word に
   合わせた — 翌日に取り消し」)。リボンを変えるときは face/src/ribbon.rs を直に触らず ui/gen_ribbon.py の表
   (`EXTRA_CMDS`・`reorder`・`rename_map`)に書いてから、生成の出力を写して `python3 tools/ribbon_gen_check.py`
   で合わせる。言葉は `python3 ui/gen_lang.py <言語>` を 15 言語ぶん回す。どちらも vendor/web-apps
