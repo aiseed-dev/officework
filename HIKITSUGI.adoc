@@ -6,6 +6,12 @@
 
 == 進め方の作法(発注者と確立済み)
 
+* **writer の挿入タブは Word の並びと名前**(2026-09-18 発注者。SEKKEI「挿入タブを Word に合わせた」)。
+  変えるときは face/src/ribbon.rs を直に触らず、ui/gen_ribbon.py の表(`rename_map`・`EXTRA_CMDS`・
+  `FIXED_ORDER`)に書いてから、生成の出力を ribbon.rs へ写し、`python3 tools/ribbon_gen_check.py` で
+  合わせる。言葉は ui/i18n/<言語>.json に足して `python3 ui/gen_lang.py <言語>` を 15 言語ぶん回す。
+  どちらも vendor/web-apps(`git clone --depth 1 https://github.com/ONLYOFFICE/web-apps.git vendor/web-apps`)が
+  要る。この Mac には 2026-09-18 に置いた。次の候補は calc の挿入タブを Excel に合わせること
 * **言葉づかいの検査は「使う言葉」の側で見る**(2026-09-18 発注者「否定形をやめませんか。
   否定だけを外せばいいので意味ないです」)。tools/kotoba_check.py(使わない言葉の表)は消し、
   `python3 tools/kotoba_list.py` が、利用者の文書と画面の文言から、Excel と Word の用語と

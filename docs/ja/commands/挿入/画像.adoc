@@ -1,4 +1,4 @@
-= 空白ページの挿入
+= 画像
 
 挿入にあります。
 
@@ -6,7 +6,7 @@
 
 == 何をするか
 
-いまの場所に空のページを差し込みます。
+画像のファイルを選んで、本文に置きます。
 
 == ダイアログ
 
@@ -16,7 +16,7 @@
 
 [source,python]
 ----
-d.add_page_break()
+d.add_picture(パス)
 ----
 
 他のライブラリでは、こう書きます。
@@ -25,6 +25,7 @@ d.add_page_break()
 |===
 |道具 |書き方
 
-|python-docx |`d.add_page_break()`
+|python-docx |`d.add_picture(パス)`
+|openpyxl |`ws.add_image(…)`
 |===
 

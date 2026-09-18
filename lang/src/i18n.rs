@@ -290,7 +290,11 @@ mod how_language_is_chosen {
 
     /// OS の言語設定を見る環境変数。試験では**全部押さえます** —
     /// 1つでも残っていると、回す機械の言語で答えが変わります
-    const LOCALE_ENV_VARS: [&str; 3] = ["LC_ALL", "LC_MESSAGES", "LANG"];
+    // `__CFBundleIdentifier` marks an app opened from the Finder on a Mac;
+    // book::lang reads the Mac language setting only then. The tests run
+    // inside such an app now and then (a terminal in the desktop app), so
+    // it is cleared like the locale variables
+    const LOCALE_ENV_VARS: [&str; 4] = ["LC_ALL", "LC_MESSAGES", "LANG", "__CFBundleIdentifier"];
 
     /// 控えを空にしてから、環境変数を立てて引き直す。
     /// **必ず元に戻します**(呼ぶ側が錠を持っている前提)

@@ -804,7 +804,7 @@ Python が走る道は、これで3つです:
 == すべての操作
 
 // ribbon:gen:start(この間は tools/ribbon\_doc.py --write が書く)
-リボンの全部です。199 個のうち 199 個が動きます(残り 0 個はグレー表示です)。
+リボンの全部です。201 個のうち 201 個が動きます(残り 0 個はグレー表示です)。
 
 *File*
 
@@ -1063,6 +1063,7 @@ Python が走る道は、これで3つです:
 |Delete comment |動きます
 |Show comments |動きます
 |Chat |動きます
+|Track changes |動きます
 |Version history |動きます
 |===
 
@@ -1098,6 +1099,7 @@ Python が走る道は、これで3つです:
 |Zoom to 100% |動きます
 |Bigger UI text |動きます
 |Smaller UI text |動きます
+|Terminal |動きます
 |Dark mode |動きます
 |Freeze panes |動きます
 |Split |動きます

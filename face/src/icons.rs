@@ -122,6 +122,11 @@ pub static ICONS: &[(&str, &[u8])] = &[
 /// 自作のアイコン(Euro-Office に無い分を同じ流儀で描いた。
 /// extract_icons.py の再生成はこの表を消さないこと)
 pub static OWN_ICONS: &[(&str, &[u8])] = &[
+    ("cover-page", include_bytes!("../icons/cover-page.svg")),
+    ("icons", include_bytes!("../icons/icons.svg")),
+    ("screenshot", include_bytes!("../icons/screenshot.svg")),
+    ("quick-parts", include_bytes!("../icons/quick-parts.svg")),
+    ("object", include_bytes!("../icons/object.svg")),
     ("markers", include_bytes!("../icons/markers.svg")),
     ("align-left", include_bytes!("../icons/align-left.svg")),
     ("align-right", include_bytes!("../icons/align-right.svg")),

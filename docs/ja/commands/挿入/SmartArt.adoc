@@ -1,4 +1,4 @@
-= SmartArtの挿入
+= SmartArt
 
 挿入にあります。
 

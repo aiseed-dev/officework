@@ -71,17 +71,17 @@ def 大文字にする(段落):
 
 |‹ Back |link:commands/ファイル/戻る.adoc[‹ 戻る] | |— |— |—
 |New |link:commands/ファイル/新規作成.adoc[新規作成] |✅ |Doc() / Book() |docx.Document() |Workbook()
-|New from template |link:commands/ファイル/テンプレートから作成.adoc[テンプレートから作成] | |— |docx.Document(テンプレート) |load_workbook(テンプレート)
-|Open |link:commands/ファイル/開く.adoc[開く] |✅ |Doc.open(パス) / Book.open(パス) |docx.Document(パス) |load_workbook(パス)
+|New from template |link:commands/ファイル/テンプレートから作成.adoc[テンプレートから作成] | |— |docx.Document(雛形) |load_workbook(雛形)
+|Open |link:commands/ファイル/開く.adoc[開く] |✅ |Doc.open(径路) / Book.open(径路) |docx.Document(径路) |load_workbook(径路)
 |Open Folder |link:commands/ファイル/フォルダーを開く.adoc[フォルダーを開く] | |— |— |—
 |Open URL |link:commands/ファイル/URLを開く.adoc[URLを開く] | |— |— |—
 |Recent |link:commands/ファイル/最近開いた.adoc[最近開いた] | |— |— |—
 |Search a folder |link:commands/ファイル/フォルダから探す.adoc[フォルダから探す] | |— |— |—
 |Recover |link:commands/ファイル/復旧.adoc[復旧]・link:commands/保護/復旧.adoc[保護] | |— |— |—
-|Save |link:commands/クイックアクセス/保存.adoc[保存]・link:commands/ファイル/保存.adoc[ファイル] |✅ |d.save(パス) / b.save(パス) |d.save(パス) |wb.save(パス)
-|Save As |link:commands/ファイル/名前を付けて保存.adoc[名前を付けて保存] |✅ |d.save(別のパス) |d.save(別のパス) |wb.save(別のパス)
+|Save |link:commands/クイックアクセス/保存.adoc[保存]・link:commands/ファイル/保存.adoc[ファイル] |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
+|Save As |link:commands/ファイル/名前を付けて保存.adoc[名前を付けて保存] |✅ |d.save(別の径路) |d.save(別の径路) |wb.save(別の径路)
 |Print |link:commands/クイックアクセス/印刷.adoc[印刷]・link:commands/ファイル/印刷.adoc[ファイル] | |— |— |—
-|Export |link:commands/ファイル/エクスポート.adoc[エクスポート] |✅ |d.save(パス) / b.save(パス) |d.save(パス) |wb.save(パス)
+|Export |link:commands/ファイル/エクスポート.adoc[エクスポート] |✅ |d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
 |Merge data (CSV) |link:commands/ファイル/データを差し込む.adoc[データを差し込む(CSV)] |✅ |mcp.doc_merge_fields() / mcp.doc_fill(1行分) |— |—
 |Export for the web (HTML) |link:commands/ファイル/Web の形で書き出す.adoc[Web の形で書き出す(HTML)] | |— |— |—
 |Protect |link:commands/ファイル/保護する.adoc[保護する] | |— |— |wb.security
@@ -156,29 +156,31 @@ def 大文字にする(段落):
 |===
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
-|image:../../face/icons/blankpage.svg[,16,16] Insert blank page |link:commands/挿入/空白ページの挿入.adoc[空白ページの挿入] |✅ |d.add_page_break() |d.add_page_break() |—
-|image:../../face/icons/pagebreak.svg[,16,16] Breaks |link:commands/レイアウト/区切り.adoc[区切り]・link:commands/挿入/区切り.adoc[挿入] |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
-|image:../../face/icons/instable.svg[,16,16] Insert table |link:commands/挿入/表の挿入.adoc[表の挿入] |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
-|image:../../face/icons/insimage.svg[,16,16] Insert image |link:commands/挿入/画像を挿入.adoc[画像を挿入] |✅ |d.add_picture(パス) |d.add_picture(パス) |ws.add_image(…)
-|image:../../face/icons/insshape.svg[,16,16] Insert shape |link:commands/挿入/図形を挿入.adoc[図形を挿入] | |— |— |—
-|image:../../face/icons/inssmartart.svg[,16,16] Insert SmartArt |link:commands/挿入/SmartArtの挿入.adoc[SmartArtの挿入] | |— |— |—
-|image:../../face/icons/inschart.svg[,16,16] Insert chart |link:commands/挿入/グラフを挿入.adoc[グラフを挿入] | |— |— |ws.add_chart(…)
-|image:../../face/icons/instext.svg[,16,16] Insert text box |link:commands/挿入/テキストボックスの挿入.adoc[テキストボックスの挿入] | |— |— |—
-|image:../../face/icons/instextart.svg[,16,16] Insert Text Art |link:commands/挿入/テキストアートの挿入.adoc[テキストアートの挿入] | |— |— |—
-|image:../../face/icons/dropcap.svg[,16,16] Insert drop cap |link:commands/挿入/ドロップキャップの挿入.adoc[ドロップキャップの挿入] | |— |— |—
-|image:../../face/icons/text-from-file.svg[,16,16] Text from File |link:commands/挿入/ファイルからのテキスト.adoc[ファイルからのテキスト] |✍ |d.add_paragraph(open('メモ.txt').read()) |— |—
-|image:../../face/icons/edit-header.svg[,16,16] Edit header / image:../../face/icons/edit-footer.svg[,16,16] Edit footer |link:commands/挿入/ヘッダーの編集.adoc[ヘッダーの編集] / link:commands/挿入/フッターの編集.adoc[フッターの編集] |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
-|image:../../face/icons/pagenum.svg[,16,16] Page number |link:commands/挿入/ページ番号.adoc[ページ番号] |✍ |(ヘッダーの `#`) |— |—
-|image:../../face/icons/datetime.svg[,16,16] Date & Time |link:commands/挿入/日付_時刻.adoc[日付/時刻] |✍ |p.text = date.today().strftime('%Y年%m月%d日') |— |—
+|image:../../face/icons/blankpage.svg[,16,16] Blank Page |link:commands/挿入/空白のページ.adoc[空白のページ] |✅ |d.add_page_break() |d.add_page_break() |—
+|image:../../face/icons/pagebreak.svg[,16,16] Breaks |link:commands/挿入/ページ区切り.adoc[ページ区切り] |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../../face/icons/instable.svg[,16,16] Table |link:commands/挿入/表.adoc[表] |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
+|image:../../face/icons/insimage.svg[,16,16] Pictures |link:commands/フォーム/画像.adoc[画像]・link:commands/挿入/画像.adoc[挿入] |✅ |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
+|image:../../face/icons/insshape.svg[,16,16] Shapes |link:commands/挿入/図形.adoc[図形] | |— |— |—
+|image:../../face/icons/inssmartart.svg[,16,16] SmartArt |link:commands/挿入/SmartArt.adoc[SmartArt] | |— |— |—
+|image:../../face/icons/inschart.svg[,16,16] Chart |link:commands/挿入/グラフ.adoc[グラフ] | |— |— |ws.add_chart(…)
+|image:../../face/icons/bookmarks.svg[,16,16] Bookmark |link:commands/挿入/ブックマーク.adoc[ブックマーク] | |— |— |—
+|image:../../face/icons/crossref.svg[,16,16] Cross-reference |link:commands/挿入/相互参照.adoc[相互参照] | |— |— |—
+|image:../../face/icons/ins-comment.svg[,16,16] Add Comment |link:commands/左パネル/コメント.adoc[コメント]・link:commands/挿入/コメント.adoc[挿入] |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
+|image:../../face/icons/edit-header.svg[,16,16] Header / image:../../face/icons/edit-footer.svg[,16,16] Footer |link:commands/挿入/ヘッダー.adoc[ヘッダー] / link:commands/挿入/フッター.adoc[フッター] |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
+|image:../../face/icons/pagenum.svg[,16,16] Page Number |link:commands/挿入/ページ番号.adoc[ページ番号] |✍ |(ヘッダーの `#`) |— |—
 |image:../../face/icons/numpages.svg[,16,16] Number of pages |link:commands/挿入/ページ数.adoc[ページ数] |✍ |(ヘッダーの `##`) |— |—
-|image:../../face/icons/insequation.svg[,16,16] Insert equation |link:commands/挿入/方程式を挿入.adoc[方程式を挿入] | |— |— |—
-|image:../../face/icons/inssymbol.svg[,16,16] Insert symbol |link:commands/挿入/記号を挿入.adoc[記号を挿入] |✍ |r.text += '※'(字をそのまま打つ) |— |—
+|image:../../face/icons/instext.svg[,16,16] Text Box |link:commands/挿入/テキスト ボックス.adoc[テキスト ボックス] | |— |— |—
+|image:../../face/icons/instextart.svg[,16,16] WordArt |link:commands/挿入/ワードアート.adoc[ワードアート] | |— |— |—
+|image:../../face/icons/dropcap.svg[,16,16] Drop Cap |link:commands/挿入/ドロップ キャップ.adoc[ドロップ キャップ] | |— |— |—
+|image:../../face/icons/datetime.svg[,16,16] Date & Time |link:commands/挿入/日付と時刻.adoc[日付と時刻] |✍ |p.text = date.today().strftime('%Y年%m月%d日') |— |—
+|image:../../face/icons/text-from-file.svg[,16,16] Text from File |link:commands/挿入/ファイルからのテキスト.adoc[ファイルからのテキスト] |✍ |d.add_paragraph(open('メモ.txt').read()) |— |—
+|image:../../face/icons/insequation.svg[,16,16] Equation |link:commands/挿入/数式.adoc[数式] | |— |— |—
+|image:../../face/icons/inssymbol.svg[,16,16] Symbol |link:commands/挿入/記号と特殊文字.adoc[記号と特殊文字] |✍ |r.text += '※'(字をそのまま打つ) |— |—
 |image:../../face/icons/controls.svg[,16,16] Insert content controls |link:commands/挿入/コンテンツコントロールの挿入.adoc[コンテンツコントロールの挿入] |✅ |mcp.doc_fields() |— |—
 |image:../../face/icons/add-pivot.svg[,16,16] Insert Pivot Table |link:commands/挿入/ピボットテーブルを挿入.adoc[ピボットテーブルを挿入] | |— |— |ws.add_pivot(…)
 |image:../../face/icons/inscheckbox.svg[,16,16] Checkbox |link:commands/フォーム/チェックボックス.adoc[チェックボックス]・link:commands/挿入/チェックボックス.adoc[挿入] | |— |— |—
 |image:../../face/icons/insrecommend.svg[,16,16] Insert recommended chart |link:commands/挿入/推奨チャートを挿入.adoc[推奨チャートを挿入] |✍ |s.values() を polars に渡して選ぶ |— |—
 |image:../../face/icons/inssparkline.svg[,16,16] Insert sparkline |link:commands/挿入/スパークラインを挿入する.adoc[スパークラインを挿入する] | |— |— |—
-|image:../../face/icons/ins-comment.svg[,16,16] Add Comment |link:commands/左パネル/コメント.adoc[コメント]・link:commands/挿入/コメント.adoc[挿入] |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
 |image:../../face/icons/inshyperlink.svg[,16,16] Add link |link:commands/挿入/ハイパーリンクを追加.adoc[ハイパーリンクを追加] |✅ |c.hyperlink |— |c.hyperlink
 |image:../../face/icons/insslicer.svg[,16,16] Insert slicer |link:commands/挿入/スライサーを挿入.adoc[スライサーを挿入] | |— |— |—
 |===
@@ -202,7 +204,7 @@ def 大文字にする(段落):
 |image:../../face/icons/pageorient.svg[,16,16] Page orientation |link:commands/レイアウト/印刷の向き.adoc[印刷の向き] |✅ |d.sections[0] |section.orientation |ws.page_setup.orientation
 |image:../../face/icons/pagesize.svg[,16,16] Page size |link:commands/レイアウト/ページのサイズ.adoc[ページのサイズ] |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
 |image:../../face/icons/columns.svg[,16,16] Insert column |link:commands/レイアウト/列の挿入.adoc[列の挿入] | |— |— |—
-|image:../../face/icons/pagebreak.svg[,16,16] Breaks |link:commands/レイアウト/区切り.adoc[区切り]・link:commands/挿入/区切り.adoc[挿入] |✅ |*挿入と同じ* — d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../../face/icons/pagebreak.svg[,16,16] Breaks |区切り |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../../face/icons/line-numbers.svg[,16,16] Show line numbers |行番号を表示する |❌ |行番号を画面に出すだけです。文書には入りません |— |—
 |image:../../face/icons/hyphenation.svg[,16,16] Change hyphenation |link:commands/レイアウト/ハイフン設定の変更.adoc[ハイフン設定の変更] | |— |— |—
 |image:../../face/icons/img-movefrwd.svg[,16,16] Bring forward |link:commands/レイアウト/前面ヘ移動.adoc[前面ヘ移動] | |— |— |—
@@ -214,7 +216,7 @@ def 大文字にする(段落):
 |image:../../face/icons/pagecolor.svg[,16,16] Change page colour |link:commands/レイアウト/ページ色の変更.adoc[ページ色の変更] | |— |— |—
 |image:../../face/icons/colorschemas.svg[,16,16] Change colour theme |link:commands/レイアウト/配色の変更.adoc[配色の変更] | |— |— |—
 |image:../../face/icons/printarea.svg[,16,16] Print Area |link:commands/レイアウト/印刷範囲.adoc[印刷範囲] |✅ |s.print_area |— |ws.print_area
-|image:../../face/icons/editheader.svg[,16,16] Edit header |link:commands/レイアウト/ヘッダー_フッター.adoc[ヘッダー/フッター] |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
+|image:../../face/icons/editheader.svg[,16,16] Header |ヘッダー/フッター |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
 |image:../../face/icons/scale.svg[,16,16] Scale To Fit |link:commands/レイアウト/拡大縮小印刷.adoc[拡大縮小印刷] | |— |— |ws.page_setup.scale / fitToWidth
 |image:../../face/icons/fit-pages.svg[,16,16] Fit to paper |link:commands/レイアウト/紙に収める.adoc[紙に収める] | |— |— |ws.page_setup.fitToWidth
 |image:../../face/icons/printarea-add.svg[,16,16] Add to area |link:commands/レイアウト/範囲を足す.adoc[範囲を足す] |✅ |s.print_area |— |ws.print_area
@@ -238,7 +240,7 @@ def 大文字にする(段落):
 |image:../../face/icons/financial.svg[,16,16] Financial |財務 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
 |image:../../face/icons/logical.svg[,16,16] Logical |論理 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
 |image:../../face/icons/text.svg[,16,16] Text functions |文字列操作 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
-|image:../../face/icons/datetime.svg[,16,16] Date & Time |link:commands/挿入/日付_時刻.adoc[日付/時刻] |❌ |*挿入と同じ* — 関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
+|image:../../face/icons/datetime.svg[,16,16] Date & Time |link:commands/挿入/日付と時刻.adoc[日付と時刻] |❌ |*挿入と同じ* — 関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
 |image:../../face/icons/lookup.svg[,16,16] Lookup & Reference |検索/行列 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
 |image:../../face/icons/math.svg[,16,16] Math & Trig |数学/三角 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
 |image:../../face/icons/more.svg[,16,16] More functions |その他の関数 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
@@ -326,9 +328,9 @@ def 大文字にする(段落):
 |image:../../face/icons/contents.svg[,16,16] Table of contents |link:commands/参考資料/目次.adoc[目次] | |— |— |—
 |image:../../face/icons/add-text.svg[,16,16] Add Text |link:commands/参考資料/テキストの追加.adoc[テキストの追加] | |— |— |—
 |image:../../face/icons/contents-update.svg[,16,16] Update table of contents |link:commands/参考資料/目次の更新.adoc[目次の更新] | |— |— |—
-|image:../../face/icons/bookmarks.svg[,16,16] Bookmark |link:commands/参考資料/ブックマーク.adoc[ブックマーク] | |— |— |—
+|image:../../face/icons/bookmarks.svg[,16,16] Bookmark |link:commands/挿入/ブックマーク.adoc[ブックマーク] | |*挿入と同じ* |— |—
 |image:../../face/icons/caption.svg[,16,16] Caption |link:commands/参考資料/図表番号.adoc[図表番号] | |— |— |—
-|image:../../face/icons/crossref.svg[,16,16] Cross-reference |link:commands/参考資料/相互参照.adoc[相互参照] | |— |— |—
+|image:../../face/icons/crossref.svg[,16,16] Cross-reference |link:commands/挿入/相互参照.adoc[相互参照] | |*挿入と同じ* |— |—
 |image:../../face/icons/footnote.svg[,16,16] Footnote |link:commands/参考資料/脚注.adoc[脚注] | |— |— |—
 |image:../../face/icons/tof.svg[,16,16] Table of figures |link:commands/参考資料/図表目次.adoc[図表目次] | |— |— |—
 |image:../../face/icons/tof-update.svg[,16,16] Update table of figures |link:commands/参考資料/図表目次の更新.adoc[図表目次の更新] | |— |— |—
@@ -341,7 +343,7 @@ def 大文字にする(段落):
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
 |image:../../face/icons/form-text.svg[,16,16] Text Field / image:../../face/icons/form-combo.svg[,16,16] Combo box / image:../../face/icons/form-dropdown.svg[,16,16] Dropdown / image:../../face/icons/form-checkbox.svg[,16,16] Checkbox / image:../../face/icons/form-radio.svg[,16,16] Radio Button |link:commands/フォーム/テキストフィールド.adoc[テキストフィールド] / link:commands/フォーム/コンボボックス.adoc[コンボボックス] / link:commands/フォーム/ドロップダウン.adoc[ドロップダウン] / link:commands/フォーム/チェックボックス.adoc[チェックボックス]・link:commands/挿入/チェックボックス.adoc[挿入] / link:commands/フォーム/ラジオボタン.adoc[ラジオボタン] |✅ |mcp.doc_fill({member: 値}) |— |—
-|image:../../face/icons/form-image.svg[,16,16] Picture |link:commands/フォーム/画像.adoc[画像] | |— |— |—
+|image:../../face/icons/form-image.svg[,16,16] Picture |link:commands/フォーム/画像.adoc[画像]・link:commands/挿入/画像.adoc[挿入] | |*挿入と同じ* |— |—
 |image:../../face/icons/form-email.svg[,16,16] Email Address / image:../../face/icons/form-phone.svg[,16,16] Phone Number / image:../../face/icons/form-complex.svg[,16,16] Complex Field |link:commands/フォーム/メールアドレス.adoc[メールアドレス] / link:commands/フォーム/電話番号.adoc[電話番号] / link:commands/フォーム/複合フィールド.adoc[複合フィールド] |✅ |mcp.doc_fill({member: 値}) |— |—
 |image:../../face/icons/form-signature.svg[,16,16] Signature |link:commands/フォーム/署名.adoc[署名] | |— |— |—
 |image:../../face/icons/form-name.svg[,16,16] Name |link:commands/フォーム/名前.adoc[名前] |✅ |mcp.doc_fields() |— |—
@@ -428,7 +430,7 @@ def 大文字にする(段落):
 |===
 |英語の名前 |日本語の名前 |印 |officework |python-docx |openpyxl
 
-|Save |link:commands/クイックアクセス/保存.adoc[保存]・link:commands/ファイル/保存.adoc[ファイル] |✅ |*ファイルと同じ* — d.save(パス) / b.save(パス) |d.save(パス) |wb.save(パス)
+|Save |link:commands/クイックアクセス/保存.adoc[保存]・link:commands/ファイル/保存.adoc[ファイル] |✅ |*ファイルと同じ* — d.save(径路) / b.save(径路) |d.save(径路) |wb.save(径路)
 |Print |link:commands/クイックアクセス/印刷.adoc[印刷]・link:commands/ファイル/印刷.adoc[ファイル] | |*ファイルと同じ* |— |—
 |Undo |元に戻す |❌ |画面の操作です。プログラムは保存する前の写しを持てます |— |—
 |Redo |やり直し |❌ |同じく画面の操作です |— |—
@@ -468,7 +470,7 @@ def 大文字にする(段落):
 |characters |link:commands/下端/文字数.adoc[文字数] |✅ |len(d.text) |len(d.text) |—
 |Spell |スペル |❌ |画面の表示の切り替えです |— |—
 |Zoom |ズーム |❌ |画面の表示です。文書は変わりません |— |—
-|— |ファイルの形式 |❌ |画面の表示です。パスの拡張子を見れば分かります |— |—
+|— |ファイルの形式 |❌ |画面の表示です。径路の拡張子を見れば分かります |— |—
 |— |状態の文言 |❌ |画面の表示です。プログラムは返り値と unsupported を見ます |— |—
 |— |link:commands/下端/選んだ範囲の合計・平均・個数.adoc[選んだ範囲の合計・平均・個数] |✅ |sum(…) / len(…)(値を読んで数える) |— |—
 |===

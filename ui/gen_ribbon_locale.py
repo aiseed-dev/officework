@@ -327,7 +327,8 @@ VENDOR_JA = {
     "wrap|wrap": "折り返して全体を表示する",
     "zoom-in|zoom-in": "拡大",
     "zoom-out|zoom-out": "縮小",
-    "zoom100|zoom100": "100%に拡大する",
+    # The vendor writes a full-width ％ here since 2026 (was ASCII %)
+    "zoom100|zoom100": "100％に拡大する",
     # **id が付いた分**(2026-08-29。灰色のときは id が空でした)
     "img-align|img-align": "配置",
     "img-movebkwd|img-movebkwd": "背面ヘ移動",
@@ -371,6 +372,16 @@ VENDOR_JA_TAB = {
 
 OVERRIDES = {
     "en": {
+        # Word's Insert tab names (2026-09-18, the owner asked for the writer's
+        # Insert tab to follow Word). Translations live in ui/i18n/<lang>.json
+        "Cover Page": "Cover Page", "Blank Page": "Blank Page",
+        "Page Break": "Page Break", "Table": "Table", "Pictures": "Pictures",
+        "Shapes": "Shapes", "Icons": "Icons", "SmartArt": "SmartArt",
+        "Chart": "Chart", "Screenshot": "Screenshot", "Link": "Link",
+        "Header": "Header", "Footer": "Footer", "Page Number": "Page Number",
+        "Text Box": "Text Box", "Quick Parts": "Quick Parts", "WordArt": "WordArt",
+        "Drop Cap": "Drop Cap", "Signature Line": "Signature Line",
+        "Object": "Object", "Symbol": "Symbol", "Equation": "Equation",
         # 端末のパネル(2026-09-08。本家に無い)
         "Terminal": "Terminal",
         # **セルの中の文字を回すボタン**(2026-08-21)。本家の日本語は
@@ -507,7 +518,14 @@ OVERRIDES = {
         "Suggest read-only": "Suggest read-only",
     },
     # vendor のロケールに無い語の穴埋め(gen_lang.py が材料の訳と併用する)
+    # The vendor checkout of 2026-09-18 no longer carries this word for
+    # zoom100; keep the word the tables have had
+    "ja": {
+        "Zoom to 100%": "100%に拡大する",
+    },
     "zh-tw": {
+        # zoom100: the vendor checkout of 2026-09-18 has no word for it here
+        "Zoom to 100%": "縮放至 100%",
         # 端末のパネル(2026-09-08。本家に無い)
         "Terminal": "終端機",
         # 本家の台湾語は「尋找和引用」— **引用は大陸の言い方**。
@@ -531,6 +549,8 @@ OVERRIDES = {
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "tr": {
+        # zoom100: the vendor checkout of 2026-09-18 has no word for it here
+        "Zoom to 100%": "%100'e yakınlaştır",
         # 端末のパネル(2026-09-08。本家に無い)
         "Terminal": "Terminal",
         # 表の「罫線」。本家の日本語は「表の枠線」でしたが、セルに引く線
@@ -568,6 +588,8 @@ OVERRIDES = {
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "id": {
+        # zoom100: the vendor checkout of 2026-09-18 has no word for it here
+        "Zoom to 100%": "Zoom ke 100%",
         # 端末のパネル(2026-09-08。本家に無い)
         "Terminal": "Terminal",
         "Merge shapes": "Gabungkan bentuk",
@@ -584,6 +606,8 @@ OVERRIDES = {
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "vi": {
+        # zoom100: the vendor checkout of 2026-09-18 has no word for it here
+        "Zoom to 100%": "Thu phóng về 100%",
         # 端末のパネル(2026-09-08。本家に無い)
         "Terminal": "Terminal",
         # 表の「罫線」。本家の日本語は「表の枠線」でしたが、セルに引く線
@@ -681,6 +705,8 @@ OVERRIDES = {
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "fr": {
+        # zoom100: the vendor checkout of 2026-09-18 has no word for it here
+        "Zoom to 100%": "Zoom à 100 %",
         # 端末のパネル(2026-09-08。本家に無い)
         "Terminal": "Terminal",
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
@@ -737,6 +763,8 @@ OVERRIDES = {
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "ru": {
+        # zoom100: the vendor checkout of 2026-09-18 has no word for it here
+        "Zoom to 100%": "Масштаб 100%",
         # 端末のパネル(2026-09-08。本家に無い)
         "Terminal": "Терминал",
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
@@ -747,6 +775,8 @@ OVERRIDES = {
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。
 },
     "zh": {
+        # zoom100: the vendor checkout of 2026-09-18 has no word for it here
+        "Zoom to 100%": "缩放到 100%",
         # 端末のパネル(2026-09-08。本家に無い)
         "Terminal": "终端",
             # **face へ移したときに落ちていた分**(2026-08-15 に戻した)。

@@ -62,8 +62,10 @@ pub const FALLBACK: &str = "en-us";
 /// 見る順は `LC_ALL` → `LC_MESSAGES` → `LANG`(POSIX の決まりの順)。
 /// どれも無ければ、Mac では OS の言語の設定を見ます([`mac_language`])。
 pub fn os_language() -> Option<String> {
+    let mut any_set = false;
     for k in ["LC_ALL", "LC_MESSAGES", "LANG"] {
         let Ok(v) = std::env::var(k) else { continue };
+        any_set = true;
         if v.is_empty() || v == "C" || v == "POSIX" {
             continue;
         }
@@ -71,12 +73,16 @@ pub fn os_language() -> Option<String> {
             return Some(t);
         }
     }
-    mac_language()
+    // The Mac setting is consulted only when no locale variable is set at
+    // all (an app opened from the Finder). `LANG=C` is a deliberate choice
+    // and stays English; the tests rely on that
+    if any_set { None } else { mac_language() }
 }
 
 /// **Mac の「言語と地域」の設定を読みます**(2026-09-10)。
 ///
-/// Finder や Dock からアプリを開くと、環境変数 `LANG` は付きません。
+/// Finder や Dock からアプリを開くと、環境変数 `LANG` は付きません
+/// (代わりに `__CFBundleIdentifier` が付くので、それで見分けます)。
 /// 環境変数だけを見ていた頃は、日本語の Mac でも画面が英語で出ていました
 /// (alpha.2 の .dmg を入れて分かりました)。ターミナルから開くと `LANG` が
 /// あるので気づきませんでした。
@@ -85,6 +91,10 @@ pub fn os_language() -> Option<String> {
 /// `(\n    "ja-JP",\n    "en-JP"\n)` の形なので、最初の引用符の中を取ります。
 #[cfg(target_os = "macos")]
 fn mac_language() -> Option<String> {
+    // Only for an app opened from the Finder or the Dock: Launch Services
+    // sets `__CFBundleIdentifier` there and nowhere else. A binary run from a
+    // terminal (and the tests) keeps the POSIX rules above
+    std::env::var_os("__CFBundleIdentifier")?;
     let out = std::process::Command::new("defaults")
         .args(["read", "-g", "AppleLanguages"])
         .output()

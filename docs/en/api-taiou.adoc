@@ -163,29 +163,31 @@ package" in link:python-manual.adoc[the Python manual].
 |===
 |Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
 
-|image:../../face/icons/blankpage.svg[,16,16] Insert blank page |空白ページの挿入 |✅ |d.add_page_break() |d.add_page_break() |—
-|image:../../face/icons/pagebreak.svg[,16,16] Breaks |区切り |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
-|image:../../face/icons/instable.svg[,16,16] Insert table |表の挿入 |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
-|image:../../face/icons/insimage.svg[,16,16] Insert image |画像を挿入 |✅ |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
-|image:../../face/icons/insshape.svg[,16,16] Insert shape |図形を挿入 | |— |— |—
-|image:../../face/icons/inssmartart.svg[,16,16] Insert SmartArt |SmartArtの挿入 | |— |— |—
-|image:../../face/icons/inschart.svg[,16,16] Insert chart |グラフを挿入 | |— |— |ws.add_chart(…)
-|image:../../face/icons/instext.svg[,16,16] Insert text box |テキストボックスの挿入 | |— |— |—
-|image:../../face/icons/instextart.svg[,16,16] Insert Text Art |テキストアートの挿入 | |— |— |—
-|image:../../face/icons/dropcap.svg[,16,16] Insert drop cap |ドロップキャップの挿入 | |— |— |—
-|image:../../face/icons/text-from-file.svg[,16,16] Text from File |ファイルからのテキスト |✍ |d.add_paragraph(open('メモ.txt').read()) |— |—
-|image:../../face/icons/edit-header.svg[,16,16] Edit header / image:../../face/icons/edit-footer.svg[,16,16] Edit footer |ヘッダーの編集 / フッターの編集 |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
-|image:../../face/icons/pagenum.svg[,16,16] Page number |ページ番号 |✍ |(ヘッダーの `#`) |— |—
-|image:../../face/icons/datetime.svg[,16,16] Date & Time |日付/時刻 |✍ |p.text = date.today().strftime('%Y年%m月%d日') |— |—
+|image:../../face/icons/blankpage.svg[,16,16] Blank Page |空白のページ |✅ |d.add_page_break() |d.add_page_break() |—
+|image:../../face/icons/pagebreak.svg[,16,16] Breaks |ページ区切り |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../../face/icons/instable.svg[,16,16] Table |表 |✅ |d.add_table(行, 列) / s.add_table(…) |d.add_table(行, 列) |ws.add_table(…)
+|image:../../face/icons/insimage.svg[,16,16] Pictures |画像 |✅ |d.add_picture(径路) |d.add_picture(径路) |ws.add_image(…)
+|image:../../face/icons/insshape.svg[,16,16] Shapes |図形 | |— |— |—
+|image:../../face/icons/inssmartart.svg[,16,16] SmartArt |SmartArt | |— |— |—
+|image:../../face/icons/inschart.svg[,16,16] Chart |グラフ | |— |— |ws.add_chart(…)
+|image:../../face/icons/bookmarks.svg[,16,16] Bookmark |ブックマーク | |— |— |—
+|image:../../face/icons/crossref.svg[,16,16] Cross-reference |相互参照 | |— |— |—
+|image:../../face/icons/ins-comment.svg[,16,16] Add Comment |コメント |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
+|image:../../face/icons/edit-header.svg[,16,16] Header / image:../../face/icons/edit-footer.svg[,16,16] Footer |ヘッダー / フッター |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
+|image:../../face/icons/pagenum.svg[,16,16] Page Number |ページ番号 |✍ |(ヘッダーの `#`) |— |—
 |image:../../face/icons/numpages.svg[,16,16] Number of pages |ページ数 |✍ |(ヘッダーの `##`) |— |—
-|image:../../face/icons/insequation.svg[,16,16] Insert equation |方程式を挿入 | |— |— |—
-|image:../../face/icons/inssymbol.svg[,16,16] Insert symbol |記号を挿入 |✍ |r.text += '※'(字をそのまま打つ) |— |—
+|image:../../face/icons/instext.svg[,16,16] Text Box |テキスト ボックス | |— |— |—
+|image:../../face/icons/instextart.svg[,16,16] WordArt |ワードアート | |— |— |—
+|image:../../face/icons/dropcap.svg[,16,16] Drop Cap |ドロップ キャップ | |— |— |—
+|image:../../face/icons/datetime.svg[,16,16] Date & Time |日付と時刻 |✍ |p.text = date.today().strftime('%Y年%m月%d日') |— |—
+|image:../../face/icons/text-from-file.svg[,16,16] Text from File |ファイルからのテキスト |✍ |d.add_paragraph(open('メモ.txt').read()) |— |—
+|image:../../face/icons/insequation.svg[,16,16] Equation |数式 | |— |— |—
+|image:../../face/icons/inssymbol.svg[,16,16] Symbol |記号と特殊文字 |✍ |r.text += '※'(字をそのまま打つ) |— |—
 |image:../../face/icons/controls.svg[,16,16] Insert content controls |コンテンツコントロールの挿入 |✅ |mcp.doc_fields() |— |—
 |image:../../face/icons/add-pivot.svg[,16,16] Insert Pivot Table |ピボットテーブルを挿入 | |— |— |ws.add_pivot(…)
 |image:../../face/icons/inscheckbox.svg[,16,16] Checkbox |チェックボックス | |— |— |—
 |image:../../face/icons/insrecommend.svg[,16,16] Insert recommended chart |推奨チャートを挿入 |✍ |s.values() を polars に渡して選ぶ |— |—
 |image:../../face/icons/inssparkline.svg[,16,16] Insert sparkline |スパークラインを挿入する | |— |— |—
-|image:../../face/icons/ins-comment.svg[,16,16] Add Comment |コメント |✅ |p.add_comment(文) / c.comment |p.add_comment(文) |c.comment = Comment(…)
 |image:../../face/icons/inshyperlink.svg[,16,16] Add link |ハイパーリンクを追加 |✅ |c.hyperlink |— |c.hyperlink
 |image:../../face/icons/insslicer.svg[,16,16] Insert slicer |スライサーを挿入 | |— |— |—
 |===
@@ -209,7 +211,7 @@ package" in link:python-manual.adoc[the Python manual].
 |image:../../face/icons/pageorient.svg[,16,16] Page orientation |印刷の向き |✅ |d.sections[0] |section.orientation |ws.page_setup.orientation
 |image:../../face/icons/pagesize.svg[,16,16] Page size |ページのサイズ |✅ |d.sections[0] |section.page_width |ws.page_setup.paperSize
 |image:../../face/icons/columns.svg[,16,16] Insert column |列の挿入 | |— |— |—
-|image:../../face/icons/pagebreak.svg[,16,16] Breaks |区切り |✅ |*Same as Insert* — d.add_page_break() |d.add_page_break() |ws.row_breaks
+|image:../../face/icons/pagebreak.svg[,16,16] Breaks |区切り |✅ |d.add_page_break() |d.add_page_break() |ws.row_breaks
 |image:../../face/icons/line-numbers.svg[,16,16] Show line numbers |行番号を表示する |❌ |行番号を画面に出すだけです。文書には入りません |— |—
 |image:../../face/icons/hyphenation.svg[,16,16] Change hyphenation |ハイフン設定の変更 | |— |— |—
 |image:../../face/icons/img-movefrwd.svg[,16,16] Bring forward |前面ヘ移動 | |— |— |—
@@ -221,7 +223,7 @@ package" in link:python-manual.adoc[the Python manual].
 |image:../../face/icons/pagecolor.svg[,16,16] Change page colour |ページ色の変更 | |— |— |—
 |image:../../face/icons/colorschemas.svg[,16,16] Change colour theme |配色の変更 | |— |— |—
 |image:../../face/icons/printarea.svg[,16,16] Print Area |印刷範囲 |✅ |s.print_area |— |ws.print_area
-|image:../../face/icons/editheader.svg[,16,16] Edit header |ヘッダー/フッター |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
+|image:../../face/icons/editheader.svg[,16,16] Header |ヘッダー/フッター |✅ |d.header / d.footer |section.header / section.footer |ws.oddHeader
 |image:../../face/icons/scale.svg[,16,16] Scale To Fit |拡大縮小印刷 | |— |— |ws.page_setup.scale / fitToWidth
 |image:../../face/icons/fit-pages.svg[,16,16] Fit to paper |紙に収める | |— |— |ws.page_setup.fitToWidth
 |image:../../face/icons/printarea-add.svg[,16,16] Add to area |範囲を足す |✅ |s.print_area |— |ws.print_area
@@ -245,7 +247,7 @@ package" in link:python-manual.adoc[the Python manual].
 |image:../../face/icons/financial.svg[,16,16] Financial |財務 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
 |image:../../face/icons/logical.svg[,16,16] Logical |論理 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
 |image:../../face/icons/text.svg[,16,16] Text functions |文字列操作 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
-|image:../../face/icons/datetime.svg[,16,16] Date & Time |日付/時刻 |❌ |*Same as Insert* — 関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
+|image:../../face/icons/datetime.svg[,16,16] Date & Time |日付と時刻 |❌ |*Same as Insert* — 関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
 |image:../../face/icons/lookup.svg[,16,16] Lookup & Reference |検索/行列 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
 |image:../../face/icons/math.svg[,16,16] Math & Trig |数学/三角 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
 |image:../../face/icons/more.svg[,16,16] More functions |その他の関数 |❌ |関数の挿入の小窓を、この族で絞り込みます。文書は変わりません |— |—
@@ -333,9 +335,9 @@ package" in link:python-manual.adoc[the Python manual].
 |image:../../face/icons/contents.svg[,16,16] Table of contents |目次 | |— |— |—
 |image:../../face/icons/add-text.svg[,16,16] Add Text |テキストの追加 | |— |— |—
 |image:../../face/icons/contents-update.svg[,16,16] Update table of contents |目次の更新 | |— |— |—
-|image:../../face/icons/bookmarks.svg[,16,16] Bookmark |ブックマーク | |— |— |—
+|image:../../face/icons/bookmarks.svg[,16,16] Bookmark |ブックマーク | |*Same as Insert* |— |—
 |image:../../face/icons/caption.svg[,16,16] Caption |図表番号 | |— |— |—
-|image:../../face/icons/crossref.svg[,16,16] Cross-reference |相互参照 | |— |— |—
+|image:../../face/icons/crossref.svg[,16,16] Cross-reference |相互参照 | |*Same as Insert* |— |—
 |image:../../face/icons/footnote.svg[,16,16] Footnote |脚注 | |— |— |—
 |image:../../face/icons/tof.svg[,16,16] Table of figures |図表目次 | |— |— |—
 |image:../../face/icons/tof-update.svg[,16,16] Update table of figures |図表目次の更新 | |— |— |—
@@ -348,7 +350,7 @@ package" in link:python-manual.adoc[the Python manual].
 |Name in English |Name in Japanese |Mark |officework |python-docx |openpyxl
 
 |image:../../face/icons/form-text.svg[,16,16] Text Field / image:../../face/icons/form-combo.svg[,16,16] Combo box / image:../../face/icons/form-dropdown.svg[,16,16] Dropdown / image:../../face/icons/form-checkbox.svg[,16,16] Checkbox / image:../../face/icons/form-radio.svg[,16,16] Radio Button |テキストフィールド / コンボボックス / ドロップダウン / チェックボックス / ラジオボタン |✅ |mcp.doc_fill({member: 値}) |— |—
-|image:../../face/icons/form-image.svg[,16,16] Picture |画像 | |— |— |—
+|image:../../face/icons/form-image.svg[,16,16] Picture |画像 | |*Same as Insert* |— |—
 |image:../../face/icons/form-email.svg[,16,16] Email Address / image:../../face/icons/form-phone.svg[,16,16] Phone Number / image:../../face/icons/form-complex.svg[,16,16] Complex Field |メールアドレス / 電話番号 / 複合フィールド |✅ |mcp.doc_fill({member: 値}) |— |—
 |image:../../face/icons/form-signature.svg[,16,16] Signature |署名 | |— |— |—
 |image:../../face/icons/form-name.svg[,16,16] Name |名前 |✅ |mcp.doc_fields() |— |—
