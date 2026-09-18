@@ -8206,3 +8206,5 @@ Word と Excel に合わせるのは、ファイルの読み書きと印刷(docx
 *根本の直し(未着手):* (1) Flutter へ、起動の設定(engine の config)に補いの言語を足す PR。数十行と試験。Web 用の試験環境(felt)を組むのに半日から 1 日。(2) Flet へ、`fontFallbackBaseUrl`(書体の置き場)を Python から渡せるようにする PR。自分のサーバーに Noto を置けば Google に届かない環境でも出る。どちらも Flet の宣伝の材料になる。
 
 *HTML 描画の復活は無理。* Flutter 3.29 で外され、戻す気配は無い。読ませる頁(手引き・記事)は普通の HTML で作る。
+
+*発注者の決め(2026-09-19):* 「ja に設定できればいい」。いまの手当て(index.html で `navigator.language` を `ja` にする)で足りる。Flutter への PR は出さない。手間を減らす候補として、Flet に「言語を指定する設定」を足す小さな PR(Python 1 行と index.html の数行)を残す。

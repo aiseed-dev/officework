@@ -24,15 +24,17 @@ BG = ft.Colors.BLUE_GREY_50
 
 
 def h1(s):
-    return ft.Text(s, size=40, weight=ft.FontWeight.BOLD, color=INK)
+    return ft.Text(s, size=40, weight=ft.FontWeight.BOLD, color=INK, selectable=True)
 
 
 def h2(s):
-    return ft.Text(s, size=26, weight=ft.FontWeight.BOLD, color=INK)
+    return ft.Text(s, size=26, weight=ft.FontWeight.BOLD, color=INK, selectable=True)
 
 
 def p(s, size=17):
-    return ft.Text(s, size=size, color=SUB)
+    # Every line of text on the page can be selected and copied (2026-09-19,
+    # the owner). Flutter draws text itself, so this has to be asked for
+    return ft.Text(s, size=size, color=SUB, selectable=True)
 
 
 def section(title, *body):
@@ -49,7 +51,7 @@ def shot(src, caption):
     return ft.Column(
         [
             ft.Image(src=src, fit=ft.BoxFit.CONTAIN, border_radius=6),
-            ft.Text(caption, size=15, color=SUB, text_align=ft.TextAlign.CENTER),
+            ft.Text(caption, size=15, color=SUB, text_align=ft.TextAlign.CENTER, selectable=True),
         ],
         col={"xs": 12, "md": 6},
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
