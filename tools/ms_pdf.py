@@ -29,7 +29,7 @@ the source file.
   five documents by name with all five open produced the same PDF five times.
   Open one at a time, write `active document`, then close it before the next.
 * Opening can take more than two minutes, which hits the default AppleEvent
-  timeout (two minutes). Wrap the call in `with timeout of 600 seconds`.
+  timeout (two minutes). Wrap the call in `with timeout of 120 seconds`.
 * Excel's `open workbook` returns before loading has finished. Looking at
   `active workbook` right away gives missing value. Wait one second at a time
   until the name appears in `workbooks` (a workbook with many formulas takes
@@ -88,7 +88,7 @@ def word_pdf(src, out):
     try:
         _osa(
             f'''
-with timeout of 600 seconds
+with timeout of 120 seconds
 tell application "Microsoft Word"
     open "{src}"
     delay 1

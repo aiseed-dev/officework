@@ -48,19 +48,29 @@ class Tomeru(Exception):
 
 
 def lines(page):
-    """Group the words of a page into lines of (top position, text)."""
-    words = sorted(page.extract_words(use_text_flow=False), key=lambda w: (w["top"], w["x0"]))
+    """Group the characters of a page into lines of (baseline from the top, text).
+
+    The baseline comes from the text matrix. pdfplumber's `top` is the
+    baseline minus the font's declared ascent, and Word's PDFs and ours embed
+    the same faces with different ascent values, so `top` differed by several
+    points on lines whose baselines agreed within 0.4pt (2026-09-19).
+    """
+    h = page.height
+    chars = sorted(page.chars, key=lambda c: (h - c["matrix"][5], c["x0"]))
     out = []
-    for w in words:
-        if out and abs(w["top"] - out[-1][0]) <= 1.5:
-            out[-1][1].append(w)
+    for c in chars:
+        if not c["text"].strip():
+            continue
+        base = h - c["matrix"][5]
+        if out and abs(base - out[-1][0]) <= 1.5:
+            out[-1][1].append(c)
         else:
-            out.append([w["top"], [w]])
+            out.append([base, [c]])
     rows = []
-    for top, ws in out:
-        text = "".join(x["text"] for x in sorted(ws, key=lambda x: x["x0"]))
+    for base, cs in out:
+        text = "".join(x["text"] for x in sorted(cs, key=lambda x: x["x0"]))
         if text.strip():
-            rows.append((top, text.strip()))
+            rows.append((base, text.strip()))
     return rows
 
 
@@ -101,7 +111,11 @@ def read_mokuroku(path):
     return rows
 
 
+SKIP_FILE = [os.path.join(ROOT, "飛ばす.txt")]
+
+
 def one(guid, kind, title, lang, skip_word):
+    skip_file = SKIP_FILE[0]
     """One locale of one template. Returns the row for 結果.tsv."""
     base = os.path.join(ROOT, LOCALE[lang], guid)
     docx, ms, our = base + ".docx", base + ".ms.pdf", base + ".ours.pdf"
@@ -131,6 +145,9 @@ def one(guid, kind, title, lang, skip_word):
             # every later `save as` fails with -1708 on a missing document.
             # Going on would only write 130 rows of the same error
             if "-1712" in str(e) or "-1708" in str(e):
+                # Remember the file so the next run skips it from the start
+                with open(skip_file, "a", encoding="utf-8") as f:
+                    f.write(f"{guid}\t{LOCALE[lang]}\t{kind}\t{str(e).splitlines()[-1][:80]}\n")
                 raise Tomeru("Word が開きません(" + str(e).splitlines()[-1][:120]
                              + ")。Word を終了して開き直してから、もう一度動かしてください") from e
             row[8] = "Word: " + (str(e).splitlines()[-1][:200] if str(e).strip() else type(e).__name__)
@@ -167,6 +184,8 @@ def main(argv=None):
     p.add_argument("--limit", type=int, default=0, help="目録の先頭から何組までか(0 は全部)")
     p.add_argument("--only", default="", help="この GUID だけ")
     p.add_argument("--skip", default="", help="飛ばす GUID(コンマ区切り。Word が開けない物)")
+    p.add_argument("--skip-file", default=os.path.join(ROOT, "飛ばす.txt"),
+                   help="飛ばす GUID を 1 行 1 つで持つファイル(Word が開けなかった物を道具が足します)")
     p.add_argument("--skip-word", action="store_true", help="Word を動かさず、ある PDF を使います")
     p.add_argument("--root", default=ROOT, help="置き場")
     a = p.parse_args(argv)
@@ -182,8 +201,13 @@ def main(argv=None):
     rows = read_mokuroku(mokuroku)
     if a.only:
         rows = [r for r in rows if r[0] == a.only]
-    if a.skip:
-        skip = set(a.skip.split(","))
+    skip = set(x for x in a.skip.split(",") if x)
+    skip_file = os.path.expanduser(a.skip_file)
+    SKIP_FILE[0] = skip_file
+    if os.path.exists(skip_file):
+        with open(skip_file, encoding="utf-8") as f:
+            skip |= {ln.split("\t")[0].strip() for ln in f if ln.strip() and not ln.startswith("#")}
+    if skip:
         rows = [r for r in rows if r[0] not in skip]
     if a.limit:
         rows = rows[:a.limit]
