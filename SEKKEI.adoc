@@ -8536,3 +8536,5 @@ Word と Excel に合わせるのは、ファイルの読み書きと印刷(docx
 == 渡し物: AI 革命は下から(2026-09-20 発注者「この点をまとめて。作業は website の新しく作る Opus にさせましょう」)
 
 2026-09-19〜20 の主張 13〜17 と例を、docs/sekkei/ai-kakumei-shita-kara.ja.adoc に 1 枚でまとめた。Web サイト(連載)に足す章は、Web サイト用の Opus のセッションが書く。まとめの末尾に、書き方・確かめる物・触らない物を書いた。
+
+発注者(同日)「Claude がここまで進化したということは、officework を開発するだけの能力を持ったということでは」(Anthropic の 2026-09-16 の発表: Cowork とチャットの統合、Claude Docs・Slides・Design)。17 番目の主張の証拠に足した。officework との対は、中心が持つ形(Claude Docs)と自分の側で持つ形(officework)、新しい文書を作る物と受け取った様式を同じに開いて返す物。officework そのものが「能力を持った」の証拠。
