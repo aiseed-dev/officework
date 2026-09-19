@@ -8400,3 +8400,5 @@ Word と Excel に合わせるのは、ファイルの読み書きと印刷(docx
 *決め:* 普通の人の会の最初の 30 分を「Python を入れる」にする。Debian は入れた PC を持ち込んで見せ、手順を 1 枚で渡す。手引きを 2 枚 docs/ja に書く(Windows の手順は発注者の Windows で 1 度通してもらう)。
 
 発注者(同日)「Windows PC を Debian にして、Windows は仮想環境で動かす」。docs/articles/pc-wo-debian-ni.ja.adoc に「7. Windows は仮想環境で」を足した(GNOME Boxes、Microsoft の Windows 11 の ISO、メモリ 4GB・ディスク 64GB、プロダクトキーは先に控える、USB の機器は Boxes から渡す、BIOS の仮想化の有効)。「Windows でしか動く物があるなら今の PC を残す」はやめ、PC は 1 台のままにした。Boxes で Windows 11 が動くことは、Debian の PC で通すときに確かめる。
+
+発注者(同日)「gnome よりも Free 系がいいのでは」。軽くて余計な物の無いデスクトップの意味に取り、Debian の 1 枚のデスクトップを GNOME から Xfce に替えた(Windows と同じ形、軽い、何年も変わらない。officework は X11、Flet と Boxes は GTK なので Xfce でそのまま動く)。LXQt は日本語入力の設定が 1 手多いので普通の人には Xfce。FreeBSD の意味なら、officework は Linux 向けにしか組んでいないので土台は Debian のまま。

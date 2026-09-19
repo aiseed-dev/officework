@@ -4,7 +4,7 @@
 配布用の 1 枚(普通の人の会で配る)。*マニュアルではない。*
 * 2026-09-20 時点の書き物。発注者(yniji)の一人称で書いてある
 * Debian の手順は Mac では通せないので、配る前に Debian を入れた PC で 1 度通す
-  (Releases の .deb が Debian 13 で入ることと、GNOME Boxes で Windows 11 が
+  (Releases の .deb が Debian 13 の Xfce で入ることと、GNOME Boxes で Windows 11 が
   動くことも、その時に確かめる)
 * 貼り付けるときはこの注記ごと消してよい
 ////
@@ -65,10 +65,12 @@ wmic path softwarelicensingservice get OA3xOriginalProductKey
 . 名前とパスワードを決めます。パスワードは後で `sudo` のたびに使います
 . ディスクは「ガイド - ディスク全体を使う」を選びます。この PC の中身は
   ここで消えます
-. ソフトウェアの選択は「Debian デスクトップ環境」と「GNOME」に印を付けた
-  ままにします
-. 終わったら USB を抜いて再起動します。ログインすると Windows と同じ
-  ように画面が出ます
+. ソフトウェアの選択は「Debian デスクトップ環境」と「Xfce」に印を付けます
+  (「GNOME」の印は外します)。Xfce は画面の作りが Windows と同じ形で、
+  軽く、何年も変わりません。仮想環境の Windows にメモリを渡すので、外は
+  軽い方がよいです
+. 終わったら USB を抜いて再起動します。ログインすると、下にパネル、左に
+  メニューの、Windows と同じ形の画面が出ます
 
 == 3. 最初に入れる物(5 分)
 
