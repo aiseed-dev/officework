@@ -19,6 +19,7 @@ a pixel comparison.
     python3 tools/templates_round.py --limit 10
     python3 tools/templates_round.py --only ce343500-4aff-4dfa-b337-57c78459c6ee
     python3 tools/templates_round.py --skip-word
+    python3 tools/templates_round.py --skip a60c389b-9052-4d35-bcfe-b7918b8aad5e
 
 `--skip-word` reuses the PDFs that are already there and never starts Word. The
 result is written to `templates/結果.tsv`. A file that fails is written with its
@@ -126,6 +127,12 @@ def one(guid, kind, title, lang, skip_word):
             # opened. Going on would leave window after window open.
             if "閉じません" in str(e):
                 raise Tomeru(str(e)) from e
+            # After an `open` times out (-1712), Word opens nothing more and
+            # every later `save as` fails with -1708 on a missing document.
+            # Going on would only write 130 rows of the same error
+            if "-1712" in str(e) or "-1708" in str(e):
+                raise Tomeru("Word が開きません(" + str(e).splitlines()[-1][:120]
+                             + ")。Word を終了して開き直してから、もう一度動かしてください") from e
             row[8] = "Word: " + (str(e).splitlines()[-1][:200] if str(e).strip() else type(e).__name__)
             return row
         if not os.path.exists(ms):
@@ -159,6 +166,7 @@ def main(argv=None):
     p = argparse.ArgumentParser(description="集めたテンプレートを Word とうちで刷って比べます")
     p.add_argument("--limit", type=int, default=0, help="目録の先頭から何組までか(0 は全部)")
     p.add_argument("--only", default="", help="この GUID だけ")
+    p.add_argument("--skip", default="", help="飛ばす GUID(コンマ区切り。Word が開けない物)")
     p.add_argument("--skip-word", action="store_true", help="Word を動かさず、ある PDF を使います")
     p.add_argument("--root", default=ROOT, help="置き場")
     a = p.parse_args(argv)
@@ -174,6 +182,9 @@ def main(argv=None):
     rows = read_mokuroku(mokuroku)
     if a.only:
         rows = [r for r in rows if r[0] == a.only]
+    if a.skip:
+        skip = set(a.skip.split(","))
+        rows = [r for r in rows if r[0] not in skip]
     if a.limit:
         rows = rows[:a.limit]
 

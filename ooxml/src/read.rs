@@ -33,7 +33,6 @@ impl Report {
     }
 }
 
-
 /// `<w:b/>` は付ける、`<w:b w:val="0"/>` は付けない。
 /// 有無だけで見ると「太字を解除した文書」を太字にしてしまう。
 pub(super) fn on(e: &quick_xml::events::BytesStart) -> bool {
@@ -126,8 +125,13 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     let mut media: std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>> =
         Default::default();
     for (id, target) in &targets {
-        if target.starts_with("media/") {
-            let path = format!("word/{target}");
+        // Word's own templates write the target as "/word/media/image1.jpeg"
+        // (absolute); documents saved by Word write "media/image1.jpeg"
+        // (relative to word/). Both name the same part (2026-09-19)
+        let rel = target.trim_start_matches('/');
+        let rel = rel.strip_prefix("word/").unwrap_or(rel);
+        if rel.starts_with("media/") {
+            let path = format!("word/{rel}");
             if let Ok(mut mf) = zip.by_name(&path) {
                 let mut buf = Vec::new();
                 if mf.read_to_end(&mut buf).is_ok() {
@@ -414,6 +418,20 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
             let _ = f.read_to_string(&mut th);
         }
         doc.theme_colors = crate::theme::clr_scheme(&th);
+        // Styles that name their fonts through the theme
+        for s in doc.styles.iter_mut() {
+            let major = |t: &Option<String>| t.as_deref().is_some_and(|t| t.starts_with("major"));
+            if s.look.font_latin.is_none() && s.look.font_theme.is_some() {
+                s.look.font_latin = theme_face(&th, major(&s.look.font_theme), false);
+            }
+            if s.look.font.is_none() {
+                if s.look.font_theme_ea.is_some() {
+                    s.look.font = theme_face(&th, major(&s.look.font_theme_ea), true);
+                } else if s.look.font_theme.is_some() {
+                    s.look.font = s.look.font_latin.clone();
+                }
+            }
+        }
     }
     if let Some(i) = styles.find("docDefaults") {
         // **層1。** この節が言うことは、スタイルより下・層0より上です。
@@ -787,6 +805,21 @@ pub(super) fn image_of(
     // 同じ高さの場所を空けられるので、頁割りが Word と揃う(厚労省の収支
     // 決算書は 422pt の Excel の表がこれで、前は 1 頁少なかった)
     let vml = raw.contains("<v:imagedata");
+    // A VML shape with `position:absolute` floats: Word draws it behind or
+    // beside the text and it takes no room in the flow. Word's own resume
+    // template puts a page-sized group of shapes in a table cell this way,
+    // and laying it out pushed the whole first page down (2026-09-19).
+    // An embedded object (`w:object`, the Excel sheets of the corpus) has no
+    // `position`, so it still takes its own room
+    if vml && raw.contains("position:absolute") {
+        return None;
+    }
+    // The same for DrawingML: `wp:anchor` with `wp:wrapNone` floats over or
+    // behind the text (ECMA-376 20.4.2.3). Word's resume template puts a
+    // page-sized background picture in a cell that way
+    if raw.contains("<wp:anchor") && raw.contains("<wp:wrapNone") {
+        return None;
+    }
     let rid = grab("r:embed=\"").or_else(|| if vml { grab("<v:imagedata r:id=\"") } else { None })?;
     let bytes = media.get(&rid)?.clone();
     // wp:extent cx/cy(EMU)。無ければ表示しない(大きさを勝手に決めない)
@@ -1345,6 +1378,35 @@ pub(super) fn extract_ink(doc: &mut Document) {
 
 /// styles.xml から スタイルの名乗り(id・名前・種類)を写す。
 /// 浅い読み(core.xml と同じ流儀)— 定義の本体は理解せず、原本が持ち越す。
+/// A face of the theme's font scheme (theme1.xml). `major` picks the
+/// heading fonts, `japanese` the East Asian face (`a:ea`, else the
+/// `script="Jpan"` entry, else the Latin face)
+pub(super) fn theme_face(theme: &str, major: bool, japanese: bool) -> Option<String> {
+    let (open, close) = if major {
+        ("<a:majorFont>", "</a:majorFont>")
+    } else {
+        ("<a:minorFont>", "</a:minorFont>")
+    };
+    let g = theme.find(open)?;
+    let sect = &theme[g..theme[g..].find(close).map(|e| g + e).unwrap_or(theme.len())];
+    let keys: &[&str] = if japanese {
+        &["<a:ea typeface=\"", "<a:font script=\"Jpan\" typeface=\"", "<a:latin typeface=\""]
+    } else {
+        &["<a:latin typeface=\""]
+    };
+    for key in keys {
+        if let Some(j) = sect.find(key) {
+            let s = j + key.len();
+            if let Some(e) = sect[s..].find('"') {
+                if e > 0 {
+                    return Some(sect[s..s + e].to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
 pub(super) fn parse_styles(xml: &str) -> Vec<kumihan::StyleInfo> {
     parse_styles_num(xml, &Default::default())
 }
@@ -1428,7 +1490,6 @@ fn style_para(
         no_grid: val("w:snapToGrid").map(|v| v == "0" || v == "false" || v == "off"),
     }
 }
-
 
 /// **表のスタイルが言う書式を読む**(docx の `w:type="table"` のスタイル)。
 ///
@@ -1665,6 +1726,18 @@ fn style_look(body: &str) -> kumihan::StyleLook {
     l.italic = flag("i");
     l.strike = flag("strike");
     l.underline = flag("u");
+    l.caps = flag("caps");
+    // Character spacing lives in `w:rPr/w:spacing w:val` (twentieths of a
+    // point). The paragraph's `w:pPr/w:spacing` has no `w:val`, so only a
+    // `w:spacing` inside `w:rPr` counts
+    l.spacing_pt = body
+        .find("<w:rPr>")
+        .map(|i| &body[i..body[i..].find("</w:rPr>").map(|e| i + e).unwrap_or(body.len())])
+        .and_then(|rpr| {
+            let i = rpr.find("<w:spacing ")?;
+            let seg = &rpr[i..rpr[i..].find('>').map(|e| i + e + 1)?];
+            attr_of(seg, "w:val").parse::<f32>().ok().map(|v| v / 20.0)
+        });
     let val_of = |tag: &str| -> Option<String> {
         let open = format!("<w:{tag} ");
         let i = body.find(&open)?;
@@ -1690,6 +1763,11 @@ fn style_look(body: &str) -> kumihan::StyleLook {
         })
         .filter(|f| !f.is_empty());
     l.font_latin = rfonts.map(|seg| attr_of(seg, "w:ascii")).filter(|f| !f.is_empty());
+    // Theme font names ("majorHAnsi" and the like). Word's own templates
+    // name every heading font this way; `read` resolves them once the
+    // theme part is in hand (2026-09-19)
+    l.font_theme = rfonts.map(|seg| attr_of(seg, "w:asciiTheme")).filter(|f| !f.is_empty());
+    l.font_theme_ea = rfonts.map(|seg| attr_of(seg, "w:eastAsiaTheme")).filter(|f| !f.is_empty());
     l
 }
 
@@ -2254,6 +2332,7 @@ pub(super) fn parse_document_rels_num(
                         fmt.itta.underline = true;
                     }
                     b"strike" if in_rpr => { fmt.strike = on(&e); fmt.itta.strike = true }
+                    b"caps" if in_rpr => fmt.caps = on(&e),
                     // **字間**(`w:rPr` の `w:spacing`。1/20 pt)。段落の
                     // `w:spacing`(行の高さ)とは別物なので、`in_rpr` で分けます
                     b"spacing" if in_rpr => {
@@ -2993,6 +3072,7 @@ pub(super) fn parse_document_rels_num(
                         fmt.itta.underline = true;
                     }
                     b"strike" if in_rpr => { fmt.strike = on(&e); fmt.itta.strike = true }
+                    b"caps" if in_rpr => fmt.caps = on(&e),
                     // **字間**(`w:rPr` の `w:spacing`。1/20 pt)。段落の
                     // `w:spacing`(行の高さ)とは別物なので、`in_rpr` で分けます
                     b"spacing" if in_rpr => {
@@ -4511,7 +4591,6 @@ fn txbx_text(naka: &str) -> String {
     }
     gyou.join("\n")
 }
-
 
 /// **`w:spacing` の行の高さを読む。** 返すのは (倍率, 高さ) の組です。
 ///

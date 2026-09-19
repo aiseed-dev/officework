@@ -145,6 +145,9 @@ pub struct CharFormat {
     pub italic: bool,
     pub underline: bool,
     pub strike: bool,
+    /// All capitals (`w:caps`). The text keeps its own case; the layout
+    /// draws it in upper case (2026-09-19, Word's resume templates)
+    pub caps: bool,
     /// 上付き(x²)・下付き(H₂O)。docx の w:vertAlign
     pub superscript: bool,
     pub subscript: bool,
@@ -1501,6 +1504,15 @@ pub struct StyleLook {
     pub font_latin: Option<String>,
     /// 背景の塗り(RRGGBB)
     pub fill: Option<String>,
+    /// All capitals (`w:caps`)
+    pub caps: Option<bool>,
+    /// Character spacing (`w:rPr/w:spacing`, pt per character)
+    pub spacing_pt: Option<f32>,
+    /// Theme font names (`w:asciiTheme` and `w:eastAsiaTheme`, such as
+    /// "majorHAnsi"). The reader resolves them through theme1.xml into
+    /// `font_latin` and `font`; they stay here for the record
+    pub font_theme: Option<String>,
+    pub font_theme_ea: Option<String>,
 }
 
 impl StyleLook {
@@ -2534,6 +2546,8 @@ impl Document {
             lk.font = lk.font.clone().or_else(|| s.look.font.clone());
             lk.font_latin = lk.font_latin.clone().or_else(|| s.look.font_latin.clone());
             lk.fill = lk.fill.clone().or_else(|| s.look.fill.clone());
+            lk.caps = lk.caps.or(s.look.caps);
+            lk.spacing_pt = lk.spacing_pt.or(s.look.spacing_pt);
             pl.align = pl.align.or(s.para.align);
             pl.space_before_pt = pl.space_before_pt.or(s.para.space_before_pt);
             pl.space_after_pt = pl.space_after_pt.or(s.para.space_after_pt);

@@ -1831,10 +1831,16 @@ fn jibun_wo_ateru(
     }
     // 段落が自分で書いた 0 はスタイルに勝つ(`before_itta`)
     if para.space_before_pt == 0.0 && !para.before_itta {
+        // A style that gives a value, even 0, has decided: the document
+        // default (`docDefaults`) fills in only what no style says. Word's
+        // resume template has Normal after=0 over docDefaults after=12pt,
+        // and every body line used to sit 12pt lower than Word's (2026-09-19)
         para.space_before_pt = pl.space_before_pt.unwrap_or(0.0);
+        para.before_itta |= pl.space_before_pt.is_some();
     }
     if para.space_after_pt == 0.0 && !para.after_itta {
         para.space_after_pt = pl.space_after_pt.unwrap_or(0.0);
+        para.after_itta |= pl.space_after_pt.is_some();
     }
     // 「自動」の旗は属性ごとに受け継ぐ。段落が `w:before` の値だけ書いて
     // 旗を書かなくても、スタイルが自動ならその段落も自動です
@@ -1885,11 +1891,22 @@ fn jibun_wo_ateru(
             r.size_pt = lk.size_pt;
         }
         if r.font.is_none() {
-            r.font = lk.font.clone();
+            // ASCII text takes the style's `w:ascii` font, the rest the
+            // East Asian one (ECMA-376 17.3.2.26). A subtitle whose theme
+            // fonts differ was drawn in the body font (2026-09-19)
+            r.font = if r.text.is_ascii() {
+                lk.font_latin.clone().or_else(|| lk.font.clone())
+            } else {
+                lk.font.clone()
+            };
         }
         r.fmt.bold |= lk.bold.unwrap_or(false);
         r.fmt.italic |= lk.italic.unwrap_or(false);
         r.fmt.underline |= lk.underline.unwrap_or(false);
+        r.fmt.caps |= lk.caps.unwrap_or(false);
+        if r.fmt.spacing_pt == 0.0 {
+            r.fmt.spacing_pt = lk.spacing_pt.unwrap_or(0.0);
+        }
         if r.fmt.color.is_none() {
             r.fmt.color = lk.color.clone();
         }
@@ -1905,13 +1922,20 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
     // 色・揃えを、こちらのテンプレートで上書きしていました。内閣府の
     // document_4 は見出しが 20pt・中央揃え・色付きなのに、うちの
     // テンプレートの 16pt・左揃え・黒で出ていました。
+    // Every style a paragraph names, in the body and inside tables. Table
+    // paragraphs used to be left out, so a "Title" used only in a table
+    // cell fell back to Normal and its 36pt became 10pt (2026-09-19,
+    // Word's nursing resume template)
     let jibun: Vec<(String, crate::doc::StyleLook, crate::doc::StyleParaLook)> = out
         .blocks
         .iter()
-        .filter_map(|b| match b {
-            crate::doc::Block::Para(p) => p.style_id.clone(),
-            _ => None,
+        .flat_map(|b| match b {
+            crate::doc::Block::Para(p) => vec![p.style_id.clone()],
+            crate::doc::Block::Table(t) => {
+                t.all_paragraphs().into_iter().map(|p| p.style_id.clone()).collect()
+            }
         })
+        .flatten()
         .collect::<std::collections::BTreeSet<_>>()
         .into_iter()
         .filter_map(|id| out.style_matome(&id).map(|(l, p)| (id, l, p)))

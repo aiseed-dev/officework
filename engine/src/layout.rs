@@ -255,10 +255,17 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
             }
         };
         let mut word: Vec<(char, f32, usize)> = Vec::new();
-        for ch in run.text.chars() {
+        for moto in run.text.chars() {
+            // `w:caps` draws the text in capitals; the model keeps the
+            // original case and the byte offsets stay those of the original
+            // character (one lower-case letter can become two capitals)
+            let ue: Vec<char> = if run.fmt.caps { moto.to_uppercase().collect() } else { vec![moto] };
+            let ch = ue[0];
             if is_word_char(ch) {
-                word.push((ch, okuri(ch), off));
-                off += ch.len_utf8();
+                for c in ue {
+                    word.push((c, okuri(c), off));
+                }
+                off += moto.len_utf8();
                 continue;
             }
             if !word.is_empty() {
@@ -272,7 +279,7 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
                 out.push(Tok::One(ch, okuri(ch), rpt,
                                   run.fmt.clone(), run.font.clone(), off));
             }
-            off += ch.len_utf8();
+            off += moto.len_utf8();
         }
         if !word.is_empty() {
             out.push(Tok::Word(word, rpt, run.fmt.clone(), run.font.clone()));
@@ -2110,6 +2117,16 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             }
         }
     }
+    // Table alignment (`w:tblPr/w:jc`): a table narrower than the text
+    // width is placed at the centre or the right edge. Word's nursing
+    // resume template is a 91.76% table centred on the page; its text
+    // started 24pt too far left until this was read (2026-09-19)
+    let amari = (haba - widths.iter().sum::<f32>()).max(0.0);
+    let ind = ind + match table.align {
+        Some(Align::Center) => amari / 2.0,
+        Some(Align::Right) => amari,
+        _ => 0.0,
+    };
     // 列の左端(累積)。**インデントの分だけ右から始めます**
     let mut xs = vec![ind];
     for w in &widths {
@@ -2133,7 +2150,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         v: VMerge,
         /// 行の字と、セルの中でのバイト位置と、行の高さ(mm)と、横の揃えと、
         /// 字の大きさ(pt)と、1行目の字下げ(mm)と、字を箱の底に置くか
-        lines: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (bool, f32), usize)>,
+        lines: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (bool, f32, f32, f32), usize)>,
         x: f32,
         w: f32,
         /// セルの背景色。**セルの中の最初の段落の物**を使います
@@ -2149,6 +2166,8 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         /// セルの幅で組んだ物、高さ mm)。第1走で組んで高さだけ使い、
         /// 第2走で位置をずらして写す
         naka_hyou: Vec<(usize, Sheet, f32)>,
+        /// Images: (line index, bytes, w, h, at the head of that line)
+        images: Vec<(usize, std::sync::Arc<Vec<u8>>, f32, f32, bool)>,
     }
     let mut rows_laid: Vec<Vec<Laid>> = Vec::new();
     let mut row_hs: Vec<f32> = Vec::new();
@@ -2172,8 +2191,10 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let span = cell.span().min(ncols.saturating_sub(gc)).max(1);
             let x = xs[gc.min(ncols)];
             let w = xs[(gc + span).min(ncols)] - x;
-            let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (bool, f32), usize)> = Vec::new();
+            let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (bool, f32, f32, f32), usize)> = Vec::new();
             let mut hyou_no: Vec<(usize, Sheet, f32)> = Vec::new();
+            // Images of the cell: (line they belong to, bytes, w, h, at the head)
+            let mut gazou: Vec<(usize, std::sync::Arc<Vec<u8>>, f32, f32, bool)> = Vec::new();
             // **セルの中の余白**。セル自身の `w:tcMar` が最優先で、次が表の
             // `w:tblCellMar`、どちらも無ければ既定です(2026-09-03)
             let pad: [f32; 4] = cell
@@ -2264,6 +2285,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     // 縦書きのセルは 1 字ずつ折る(行長を 1 字にする)
                     let inner = if para.tate { (pbase * PT_TO_MM).max(2.0) } else { (inner - hidari - migi).max(2.0) };
                     let mk_len = mk.as_deref().map(|s| s.chars().count()).unwrap_or(0);
+                    let saisho = ls.len();
                     let mut kore = break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase, tsume, moji,
                                               doc.wrap_trail_spaces);
                     let saigo = kore.len().saturating_sub(1);
@@ -2287,8 +2309,31 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         } else {
                             0.0
                         };
-                        ls.push((cs, b0, h, yose, pt, hidari + if k == 0 { sagari } else { 0.0 }, (soko, sage),
+                        ls.push((cs, b0, h, yose, pt, hidari + if k == 0 { sagari } else { 0.0 },
+                                 (soko, sage, if k == 0 { mae } else { 0.0 }, if k == saigo { ato } else { 0.0 }),
                                  if k == 0 { mk_len } else { 0 }));
+                    }
+                    // Images of the paragraph, as in the body: one at the
+                    // head sits in the first line with its bottom on the
+                    // baseline and the line grows to it; the others follow
+                    // the last line in a line of their own. Cells used to
+                    // drop them (2026-09-19, the photo of Word's resume)
+                    for im in para.images.iter().chain(para.images_new.iter()) {
+                        let k = if im.w_mm > inner { inner / im.w_mm } else { 1.0 };
+                        let (iw, ih) = (im.w_mm * k, im.h_mm * k);
+                        if im.off == 0 {
+                            if let Some(l) = ls.get_mut(saisho) {
+                                if ih + mae > l.2 {
+                                    l.2 = ih + mae;
+                                }
+                                // the baseline goes to the bottom of the box
+                                l.6 = (true, 0.0, l.6.2, l.6.3);
+                            }
+                            gazou.push((saisho, im.bytes.clone(), iw, ih, true));
+                        } else {
+                            gazou.push((ls.len(), im.bytes.clone(), iw, ih, false));
+                            ls.push((Vec::new(), para0, ih, para.align, pbase, hidari, (false, 0.0, 0.0, 0.0), 0));
+                        }
                     }
                     let plen: usize = para.runs.iter().map(|r| r.text.len()).sum();
                     para0 += plen + 1;
@@ -2314,7 +2359,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             laid.push(Laid { ci, gc, span, v: cell.v_merge, lines: ls, x, w, shade,
                              valign: cell.valign, pad,
                              diag: (cell.borders.diag_down, cell.borders.diag_up),
-                             naka_hyou: hyou_no });
+                             naka_hyou: hyou_no, images: gazou });
             gc += span;
         }
         rows_laid.push(laid);
@@ -2495,8 +2540,9 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let uti = (l.w - l.pad[1] - l.pad[3]).max(0.0);
             // セルの中の表を、何行目の前に置くかの順に写す
             let mut hyou_no = l.naka_hyou.into_iter().peekable();
+            let gazou = l.images;
             let n_gyou = l.lines.len();
-            for (j, (cells, b0, plh, yose, pt, sagari, (soko, sage), head)) in l.lines.into_iter().enumerate() {
+            for (j, (cells, b0, plh, yose, pt, sagari, (soko, sage, mae, ato), head)) in l.lines.into_iter().enumerate() {
                 while hyou_no.peek().is_some_and(|(at, _, _)| *at <= j) {
                     let (_, tmp, th) = hyou_no.next().unwrap();
                     utsusu(tmp, x0, yy, sheet);
@@ -2518,16 +2564,32 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 // 議事録の表(行 18.15pt、11pt の字)で、Word のベースラインは
                 // うちより 5.5pt 下にありました
                 let ji = cells.first().and_then(|c| c.font.clone()).or_else(|| pfont2.clone());
+                // The box of a first line holds the space before the
+                // paragraph above the text, and a last line the space after
+                // below it; the baseline is measured from the text's own
+                // box. Until 2026-09-19 the space before was left below the
+                // text, so a title with 24pt before sat 24pt too high
                 let agari = if soko {
-                    (plh - pt * 0.28 * PT_TO_MM).max(0.0)
+                    (plh - ato - pt * 0.28 * PT_TO_MM).max(0.0)
                 } else {
                     crate::font::agari_em(ji.as_deref())
                         .map(|e| pt * e * PT_TO_MM)
-                        .filter(|v| *v > 0.0 && *v <= plh)
-                        .unwrap_or(plh * 0.8)
-                        + sage
+                        .filter(|v| *v > 0.0 && *v <= plh - mae)
+                        .unwrap_or((plh - mae) * 0.8)
+                        + sage + mae
                 };
                 yy += agari;
+                // Images of this line: a head image ends on the baseline,
+                // an image in its own line fills the box from its top
+                // (`first_line_mm` already counted the head images as the
+                // first line's indent, so they start that much to the left)
+                let atama_haba: f32 = gazou.iter().filter(|g| g.0 == j && g.4).map(|g| g.2).sum();
+                let mut ix = x0 + sagari - atama_haba;
+                for (_, bytes, iw, ih, atama) in gazou.iter().filter(|g| g.0 == j) {
+                    let top = if *atama { yy - ih } else { yy - agari };
+                    sheet.images.push((bytes.clone(), [ix, top, *iw, *ih]));
+                    ix += iw;
+                }
                 // **横の揃え**は段落が言います。前はセルの中を全部左に
                 // 寄せていたので、「調査項目」「内容」の中央揃えが
                 // 効いていませんでした(2026-09-01 発注者)

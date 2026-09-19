@@ -1157,6 +1157,7 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 ("w:b", run.fmt.bold, run.fmt.itta.bold),
                 ("w:i", run.fmt.italic, run.fmt.itta.italic),
                 ("w:strike", run.fmt.strike, run.fmt.itta.strike),
+                ("w:caps", run.fmt.caps, false),
             ] {
                 if on {
                     w.write_event(Event::Empty(BS::new(tag))).unwrap();
@@ -1684,7 +1685,7 @@ fn style_look_xml_with(
             r#"<w:rFonts w:ascii="{f}" w:hAnsi="{f}" w:eastAsia="{f}" w:cs="{f}"/>"#
         ));
     }
-    for (on, tag) in [(l.bold, "b"), (l.italic, "i"), (l.strike, "strike")] {
+    for (on, tag) in [(l.bold, "b"), (l.italic, "i"), (l.strike, "strike"), (l.caps, "caps")] {
         match on {
             Some(true) => r.push_str(&format!("<w:{tag}/>")),
             // **わざわざ切る**のと「言わない」は違います

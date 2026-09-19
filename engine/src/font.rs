@@ -127,6 +127,10 @@ fn dirs() -> Vec<PathBuf> {
         v.push(PathBuf::from(&h).join(".fonts"));
         v.push(PathBuf::from(&h).join(".local/share/fonts"));
         v.push(PathBuf::from(&h).join("Library/Fonts"));
+        // Fonts Office downloaded on demand (Source Sans Pro, Aptos, ...).
+        // Word's own templates use them, and Word embeds them in its PDFs
+        // (2026-09-19)
+        v.push(PathBuf::from(&h).join("Library/Group Containers/UBF8T346G9.Office/FontCache/4/CloudFonts"));
     }
     // XDG の置き場(`XDG_DATA_DIRS` は `:` 区切り)
     for base in xdg_data_dirs() {
@@ -548,6 +552,10 @@ pub fn hankaku_no_kae(name: &str) -> Option<&'static Family> {
 ///
 /// **これ以上は増やしません。** 系統が同じという理由で足すと、
 /// ＭＳ Ｐ明朝のように別の値を持つ書体で外れます。
+///
+/// Yu Mincho and Yu Gothic were added on 2026-09-19 all the same, because
+/// Word's pitch for them was measured, not guessed from a family. The entries
+/// below say where.
 const OKURI_EM: &[(&str, f32)] = &[
     ("ＭＳ明朝", 1.292),
     ("msmincho", 1.292),
@@ -579,6 +587,20 @@ const OKURI_EM: &[(&str, f32)] = &[
     ("IPAMincho", 1.292),
     ("IPAゴシック", 1.292),
     ("IPAGothic", 1.292),
+    // Yu Mincho and Yu Gothic (2026-09-19). Word draws a 10.5pt line of Yu
+    // Gothic 15.98pt high (JETRO's form, no grid: 16.8pt at the PDF's 11.04pt),
+    // and it writes `w:docGrid w:linePitch="315"` = 15.75pt into the documents
+    // whose default east Asian font is Yu Mincho at 10.5pt. The face's hhea
+    // says 1.602 em, which is 1.2pt too tall per line and pushed four of the
+    // corpus files onto an extra page. The OS/2 typographic set is 1.5000 em
+    ("游明朝", 1.5),
+    ("yumincho", 1.5),
+    ("游明朝Light", 1.5),
+    ("游明朝Demibold", 1.5),
+    ("游ゴシック", 1.5),
+    ("yugothic", 1.5),
+    ("游ゴシックLight", 1.5),
+    ("游ゴシックMedium", 1.5),
 ];
 
 /// **1行の高さ(em)。** 書体の名前から引きます。
@@ -617,7 +639,12 @@ pub fn okuri_em(name: Option<&str>) -> Option<f32> {
 }
 
 fn okuri_em_yomu(name: Option<&str>) -> Option<f32> {
-    let name = name?;
+    // A run whose half-width advance is replaced carries the `#hankaku=` mark
+    // on its font name (`hankaku_name`). The mark has to come off before the
+    // name is looked up, or the measured table is missed and the metrics of a
+    // substitute face are read instead: ＭＳ Ｐ明朝 read 1.5 em instead of
+    // 1.292 em, and 34 files of the corpus gained a page (2026-09-19)
+    let name = split_hankaku(name?).0;
     let key = norm(name);
     if let Some((_, em)) = OKURI_EM.iter().find(|(n, _)| norm(n) == key) {
         return Some(*em);
@@ -626,13 +653,15 @@ fn okuri_em_yomu(name: Option<&str>) -> Option<f32> {
     let d = load(fam).ok()?;
     let face = ttf_parser::Face::parse(&d, 0).ok()?;
     let upem = face.units_per_em() as f32;
-    let (ue, sita) = match face.tables().os2 {
-        Some(o) if o.use_typographic_metrics() => {
-            (o.typographic_ascender() as f32, -o.typographic_descender() as f32)
-        }
-        Some(o) => (o.windows_ascender() as f32, o.windows_descender() as f32),
-        None => (face.ascender() as f32, -face.descender() as f32),
-    };
+    // Word's single line is hhea ascender + |descender| + line gap (or the
+    // OS/2 typographic set when USE_TYPO_METRICS is on, which is what
+    // ttf-parser's `ascender`/`descender`/`line_gap` return). Measured in
+    // Word's PDFs: Bookman Old Style 1.174 (the OS/2 Windows pair gives
+    // 1.125), Source Sans Pro 1.257, and ＭＳ 明朝 1.292 as in the table
+    // above. Until 2026-09-19 the Windows pair was summed with ttf-parser's
+    // already negated `windows_descender`, so every font not in the table
+    // fell under 1 and was clamped to exactly 1.0
+    let (ue, sita) = (face.ascender() as f32, -face.descender() as f32);
     let aki = face.line_gap() as f32;
     let em = (ue + sita + aki) / upem;
     // **行の箱は字より低くなりません。** 置き替え先の書体の寸法が
@@ -652,18 +681,14 @@ fn sagari_em(name: Option<&str>) -> Option<f32> {
 }
 
 fn sagari_em_yomu(name: Option<&str>) -> Option<f32> {
-    let (fam, _) = for_document(name).ok()?;
+    // The same `#hankaku=` mark as in `okuri_em_yomu`
+    let (fam, _) = for_document(Some(split_hankaku(name?).0)).ok()?;
     let d = load(fam).ok()?;
     let face = ttf_parser::Face::parse(&d, 0).ok()?;
     let upem = face.units_per_em() as f32;
-    // **どれも下向きが負**です。`windows_descender` を正のつもりで
-    // 扱っていたので、いつも `None` を返し、字の足の深さが 0 になって
-    // いました(2026-09-02。writer の画面で数式が前の行に重なる元)
-    let sita = match face.tables().os2 {
-        Some(o) if o.use_typographic_metrics() => -(o.typographic_descender() as f32),
-        Some(o) => -(o.windows_descender() as f32),
-        None => -(face.descender() as f32),
-    };
+    // The same metrics as `okuri_em_yomu` (hhea, or the typographic set).
+    // Every descender is negative downwards, so it is negated here
+    let sita = -(face.descender() as f32);
     (sita > 0.0).then_some(sita / upem)
 }
 
