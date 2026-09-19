@@ -137,7 +137,6 @@ def main(page: ft.Page):
           "機密の様式は手元から出ません。AI が要るときだけ、自分で選んだ AI を繋ぎます。"),
         p("Microsoft 365 は、AI が要らない人にも Copilot を付けて、その分の料金を取ります。"
           "こういう Office は、いまは誰でも作れます。作り方は下に書きました。"),
-        p("Windows を消した Debian の上で、現場が自分の様式を自分の道具で扱うための Office です。"),
     )
 
     goal = section(

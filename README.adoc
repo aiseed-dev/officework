@@ -45,8 +45,6 @@ Confidential forms never leave the machine. When AI is needed, you connect the A
 
 Microsoft 365 attaches Copilot to people who do not need AI and charges for it. An Office like this one, anyone can build now. How is written below.
 
-An Office with which the people who do the work handle their own forms with their own tools, on Debian with Windows gone.
-
 === One AI, chosen for you
 
 **Copilot is the only AI you can use directly inside Microsoft Office.**

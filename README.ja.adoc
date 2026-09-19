@@ -45,8 +45,6 @@ AI が必要でない場所で使うための Office です。
 
 Microsoft 365 は、AI が要らない人にも Copilot を付けて、その分の料金を取ります。こういう Office は、いまは誰でも作れます。作り方は下に書きました。
 
-Windows を消した Debian の上で、現場が自分の様式を自分の道具で扱うための Office です。
-
 === 使える AI が1つに決まっています
 
 Microsoft Office の中から**そのまま使える AI は Copilot だけ**です。
