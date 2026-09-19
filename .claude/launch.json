@@ -12,6 +12,18 @@
         "web/main.py"
       ],
       "port": 8550
+    },
+    {
+      "name": "flet-insatsu",
+      "runtimeExecutable": ".venv/bin/flet",
+      "runtimeArgs": [
+        "run",
+        "--web",
+        "--port",
+        "8551",
+        "sample/flet_insatsu/main.py"
+      ],
+      "port": 8551
     }
   ]
 }

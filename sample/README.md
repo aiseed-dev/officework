@@ -36,6 +36,12 @@
 - **送付状.docx** — 右揃え(日付・差出・敬具)と中央揃え(表題・記)の定型
 - **議事録.docx** — 見出し+表(開催情報)+決定事項
 
+## Flet から刷る(sample/flet_insatsu/)
+
+- **flet_insatsu/** — docx / xlsx を officework で PDF にして、flet-printing で
+  OS の印刷ダイアログを開く Flet アプリ。`flet run --web` で画面と PDF まで、
+  `flet build` で印刷ダイアログまで。詳しくは中の README
+
 ## 文書の見どころ(sample/writer/)
 
 **日本語一級とうちだけの機能**を実際に使った見本。docx なので Word でも

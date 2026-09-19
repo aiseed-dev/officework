@@ -1,0 +1,14 @@
+[project]
+name = "flet-insatsu"
+version = "0.1.0"
+description = "docx / xlsx を officework で PDF にして、flet-printing で刷る見本"
+requires-python = ">=3.10"
+dependencies = [
+    "flet>=1.0.0",
+    "flet-printing>=0.2.0",
+    "officework>=0.5.0",
+]
+
+[tool.flet]
+org = "dev.aiseed"
+product = "flet-insatsu"

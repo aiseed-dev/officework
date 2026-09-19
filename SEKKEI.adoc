@@ -8332,3 +8332,13 @@ Word と Excel に合わせるのは、ファイルの読み書きと印刷(docx
 *やったこと:* 手元で `flet run --web`(Flet 1.0.0、.venv)で動かして、パソコンの幅と携帯の幅で見た。(1) 携帯の幅で右が切れていた(本文の列が 1040 固定)。`page.on_resize` で画面の幅に合わせた。(2) 箇条書き(`ft.Markdown`)の字が薄くて読めなかった。`md_style_sheet` で本文と同じ色と大きさにした。(3) サーバーに置く物を `web/deploy/` にそろえた(systemd の unit、nginx の設定、install.sh)。Flet の版は `web/requirements.txt` で 1.0.0 に決めた(assets/index.html はこの版の写し)。(4) README.ja.adoc と README.adoc の「配布はしていません」を、Releases の実態(0.1.0-alpha.3 を Mac・Windows・Linux で配っている)に直した。紹介ページと食い違っていた。
 
 *残り(発注者):* サーバーで `sh web/deploy/install.sh` と certbot を回す。メールの窓口と有料サポートの値段は未定のまま「準備中」。
+
+== Flet から刷る: officework の PDF と flet-printing(2026-09-19 発注者)
+
+発注者「印刷ができるようにしましょう」「すでに作っていた https://github.com/aiseed-dev/flet-printing」。
+
+*見立て:* 印刷は発注者の flet-printing(Flutter の printing を包んだ Flet の拡張。OS の印刷ダイアログと共有シート。PdfPreview も持つ)が受け持つ。officework 側で足す物は PDF を渡す所だけで、`to_pdf` がすでにある。OS の `lp` を呼ぶような物は作らない。
+
+*作った物:* sample/flet_insatsu/(main.py、pyproject.toml、README.md)。docx / xlsx を officework で PDF にして、`printing.print_pdf(bytes)` で刷る。flet-printing は Flutter の拡張なので `flet run` の実行には入っていない(PdfPreview は「Unknown control」、print_pdf は返ってこない)。`FLET_PLATFORM`(組んだアプリだけが持つ)で見分け、`flet run` では代わりに PDF をブラウザで開く。手元で `flet run --web` で、PDF ができて開く所まで確かめた。印刷ダイアログは `flet build` が要るので、ここでは動かしていない。
+
+*文書:* docs/sns.ja.adoc の「Flet とは何か」に、VB との比べと印刷の 2 点を足した。前の回で「Flet には印刷が無い」と書いた所を直した。
