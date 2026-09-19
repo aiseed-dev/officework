@@ -307,6 +307,30 @@ Flet runs best on Debian: building a desktop app takes one apt line instead of V
 {URL}
 ----
 
+=== 考え方の投稿の例(16 番目: 現場を本来の姿に戻す)
+
+企業の中の人と予算の話は、外に出す投稿にするときに重要な内容(2026-09-20 発注者)。隠さず、そのまま出します。
+
+日本語:
+
+----
+SIer と情シスの代わりは AI ができる。だから、現場を本来の姿に戻すだけ。現場でソフトウェアの開発もできるようにするだけのこと。
+
+企業の中では、情シスの人と予算を減らして、開発部門・企画部門でソフトウェアを作る人と予算を増やす。移すのは予算で、人は移さない。情シスの人には Microsoft 依存が身につきすぎている。
+
+最初の 1 歩は、開発と企画の PC を Debian にすること。
+----
+
+英語(同じスレッドに):
+
+----
+AI can do what system integrators and internal IT departments did. So this is just returning the workplace to its own shape: the people who do the work also build the software.
+
+Inside a company: cut the IT department's headcount and budget, and add people and budget for building software in development and planning. Move the budget, not the people. IT staff are too used to depending on Microsoft.
+
+Step one: put Debian on the development and planning teams' machines.
+----
+
 === 発注者の前の記事と、その続き
 
 発注者の Qiita「AI x Python - 独学個人開発者(アーキテクト)のすすめ」(2025-12-19、https://qiita.com/yniji/items/c7f458b899f7e8fdfe5a)は、今日の話の元になっている記事です。「実装は AI、人はドメイン知識と設計力」「GUI はパターンが決まっていて、見た目で正しいか確認できるから AI に向く」は、そのまま X の「1 行の主張」の 1(答え合わせ)と 3(書かなくてもいい)の元です。この記事では天気のアプリを tkinter・PyQt6・Flet・Flutter で全部作って比べ、モバイルとエージェントの組み込みのために Flutter を選んでいます。
