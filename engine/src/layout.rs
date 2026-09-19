@@ -435,7 +435,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
     // **見出しは大きく太く組む**([`head_scale`])。大きさは「基準」を
     // 持ち上げる形にするので、run が自分で大きさを言っていればそちらが勝つ
     // (docx の作法どおり — run の指定はスタイルより強い)
-    let scale = head_scale(para.style);
+    let scale = para_scale(para);
     let base = base * scale;
     let mut done: Vec<Vec<Cell>> = Vec::new();
     let mut cur: Vec<Cell> = Vec::new();
@@ -720,6 +720,14 @@ pub fn head_scale_of(style: ParaStyle) -> f32 {
     head_scale(style)
 }
 
+/// The heading scale of a paragraph. A paragraph that names a docx style
+/// (`style_id`) is sized by that style's chain and gets no scale: Word's
+/// memo template has "To:" in a Heading 1 whose chain says 9pt, and the
+/// 1.5 of the AsciiDoc heading made it 13.5pt (2026-09-19)
+pub(super) fn para_scale(para: &Paragraph) -> f32 {
+    if para.style_id.is_some() { 1.0 } else { head_scale(para.style) }
+}
+
 pub(super) fn head_scale(style: ParaStyle) -> f32 {
     match style {
         // 文書の表題。見出し1 より大きい(テンプレートが言えばそちらが勝つ)
@@ -748,7 +756,7 @@ pub(super) fn space_before_mm(para: &Paragraph, base: f32) -> f32 {
     // default below is for documents that say nothing (2026-09-19,
     // Word's resume: Heading 2 sits on Normal's before=0, and every row
     // of its table started 9.8pt too low)
-    if para.before_itta {
+    if para.before_itta || para.style_id.is_some() {
         return 0.0;
     }
     match para.style {
@@ -765,7 +773,7 @@ pub(super) fn space_after_mm(para: &Paragraph, base: f32) -> f32 {
     if para.space_after_pt > 0.0 {
         return para.space_after_pt * 25.4 / 72.0;
     }
-    if para.after_itta {
+    if para.after_itta || para.style_id.is_some() {
         return 0.0;
     }
     match para.style {
@@ -799,7 +807,7 @@ pub(super) fn space_after_mm(para: &Paragraph, base: f32) -> f32 {
 /// `w:noExtraLineSpacing`(互換の設定。余りを全部下に置く)はまだ見ない
 pub(super) fn dip_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&str>, size_pt: f32, pitch: f32) -> f32 {
     let lh = lh_of(para, frame, base, font, pitch);
-    let sizen = syotai_lh_mm(para, base, font).unwrap_or(frame.line_height_mm * head_scale(para.style));
+    let sizen = syotai_lh_mm(para, base, font).unwrap_or(frame.line_height_mm * para_scale(para));
     let hako = match para.line_pt {
         Some(_) => lh,
         None => sizen.min(lh),
@@ -834,7 +842,7 @@ pub fn grid_up(mm: f32, pitch_pt: f32) -> f32 {
 pub(super) fn lh_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&str>, pitch: f32) -> f32 {
     let sizen = match syotai_lh_mm(para, base, font) {
         Some(mm) => mm,
-        None => frame.line_height_mm * head_scale(para.style),
+        None => frame.line_height_mm * para_scale(para),
     };
     let snap = pitch > 0.0 && !para.no_grid;
     let kihon = if snap { grid_up(sizen, pitch) } else { sizen };
@@ -868,7 +876,7 @@ pub(super) fn lh_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&st
 /// その行に乗る一番大きい字が決めます。書体を1つも名乗っていない段落は
 /// `None` を返します。行送りの倍率は [`crate::font::okuri_em`] が引きます。
 fn syotai_lh_mm(para: &Paragraph, base: f32, font: Option<&str>) -> Option<f32> {
-    let base = base * head_scale(para.style);
+    let base = base * para_scale(para);
     // **字が1つも無い段落も高さを持ちます。** run が無いとここが None に
     // なり、書体を見ない既定に落ちていました。
     //
@@ -1392,7 +1400,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     let byte0 = para_byte0
                         + cells.iter().map(|c| c.off).min().unwrap_or(0);
                     let size_pt = cells.iter().map(|c| c.size_pt).fold(0.0f32, f32::max);
-                    let size_pt = if size_pt > 0.0 { size_pt } else { base * head_scale(para.style) };
+                    let size_pt = if size_pt > 0.0 { size_pt } else { base * para_scale(para) };
                     let dip_mm = dip_of(para, frame, base, pfont.as_deref(), size_pt, pitch);
                     sheet.lines.push(Line { cells, y_mm: y, from_body: true, byte0, cell: None, dip_mm,
                                             head: if line_no == 0 { marker_len } else { 0 } });
@@ -2247,6 +2255,15 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         // 16pt)が 19pt になっていた(岐阜労働局の照会書)。空のセルも段落 1 つ分の
         // 高さを持つので、床が無くても行は潰れない
         let mut takasa = pad_t0 + pad_b0;
+        // `w:trHeight` (atLeast) is a floor for the cell's content, and the
+        // cell margins come on top of it. Measured in Word's PDFs
+        // (2026-09-19): the resume's first row, trHeight 165.6pt with
+        // 161.5pt of text and 14.4pt margins top and bottom, is 194.3pt
+        // (165.6 + 28.8), and the memo's "Re:" row, trHeight 65.25pt with a
+        // 28.8pt bottom margin, is 96pt. Before, the floor was compared
+        // with content plus margins and both rows came out short
+        let iu_row = table.row_mm.get(ri_now).copied().unwrap_or(0.0);
+        let mut naka_max = 0.0f32;
         let mut laid: Vec<Laid> = Vec::new();
         for (ci, cell) in row.iter().enumerate() {
             let span = cell.span().min(ncols.saturating_sub(gc)).max(1);
@@ -2260,10 +2277,13 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let mut ikari: Vec<(usize, String)> = Vec::new();
             // **セルの中の余白**。セル自身の `w:tcMar` が最優先で、次が表の
             // `w:tblCellMar`、どちらも無ければ既定です(2026-09-03)
-            let pad: [f32; 4] = cell
-                .mar_mm
-                .or(table.cell_mar_mm)
-                .unwrap_or([CELL_PAD_V, CELL_PAD, CELL_PAD_V, CELL_PAD]);
+            // side by side: the cell's own value, else the table's, else the
+            // default (a `w:tcMar` names only the sides it changes)
+            let moto = table.cell_mar_mm.unwrap_or([CELL_PAD_V, CELL_PAD, CELL_PAD_V, CELL_PAD]);
+            let pad: [f32; 4] = match cell.mar_mm {
+                Some(m) => [0, 1, 2, 3].map(|i| if m[i].is_nan() { moto[i] } else { m[i] }),
+                None => moto,
+            };
             // 縦結合の続きは上のセルに呑まれている。中身は組まない
             if cell.v_merge != VMerge::Continue {
                 let (pad_l, pad_r) = (pad[3], pad[1]);
@@ -2366,7 +2386,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         // 行グリッドの倍率の段落は、切り上げた分の半分だけ下げます
                         let soko = para.line_pt.is_some();
                         let sizen = syotai_lh_mm(para, pbase, pfont.as_deref())
-                            .unwrap_or(frame.line_height_mm * head_scale(para.style));
+                            .unwrap_or(frame.line_height_mm * para_scale(para));
                         let sage = if pitch > 0.0 && !para.no_grid && !soko {
                             (grid_up(sizen, pitch) - sizen) / 2.0
                         } else {
@@ -2420,7 +2440,8 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 // 載せていたので、36 段落のセルが先頭の行を 1 頁ぶん高くしていた。
                 // 足りない分は下の `nobasu` が最後の行に足す
                 if cell.v_merge != VMerge::Start {
-                    takasa = takasa.max(naka + pad[0] + pad[2]);
+                    takasa = takasa.max(naka.max(iu_row) + pad[0] + pad[2]);
+                    naka_max = naka_max.max(naka);
                 }
             }
             // **セル自身の塗りが先。** 表スタイルの帯の色はここに入ります。
@@ -2476,13 +2497,13 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         };
         // **`hRule="exact"` の行は固定**です(中身が多くても伸びない。Word は切る)
         let kotei = table.row_exact.get(ri_now).copied().unwrap_or(false) && iu > 0.0;
-        row_hs.push(if kotei { iu } else { takasa.max(iu) } + keisen);
+        row_hs.push(if kotei { iu } else { takasa } + keisen);
         // **高さの指定で決まる行は、頁の境で割らない**(2026-09-09、Word の PDF で
         // 見た)。省力化の事業計画書の「２.」の行(`w:trHeight` 8637 twip、中身は
         // それより低い)を、Word は前の頁に 400pt 余っていても割らずに次の頁へ
         // 送った。中身の方が高い行(指定は下限でしかない)は割る。cantSplit と
         // 同じ印を付けて、頁割りに任せる
-        if !kotei && iu > 0.0 && takasa <= iu {
+        if !kotei && iu > 0.0 && naka_max <= iu {
             sheet.keep_rows.push((table_no, ri_now));
         }
     }

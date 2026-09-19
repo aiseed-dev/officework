@@ -657,6 +657,9 @@ pub(super) fn write_table(w: &mut Writer<Cursor<Vec<u8>>>, t: &kumihan::Table,
                     for (na, mm) in
                         [("top", m[0]), ("left", m[3]), ("bottom", m[2]), ("right", m[1])]
                     {
+                        if mm.is_nan() {
+                            continue; // a side the document did not name
+                        }
                         let tag = format!("w:{na}");
                         let mut e = BS::new(tag.as_str());
                         let tw = ((mm * 1440.0 / 25.4).round() as i64).max(0).to_string();

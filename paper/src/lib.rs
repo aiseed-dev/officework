@@ -814,9 +814,10 @@ mod tests {
         assert_eq!(s.sect_hfs.len(), 3, "節ごとのヘッダーが揃っていない");
         let lines = doc_hf_lines(&d, &data, &s, paper).unwrap();
         let text = |k: usize| -> String { lines(k).iter().map(|l| l.text()).collect::<Vec<_>>().join("|") };
-        assert_eq!(text(0), "一", "1 頁目は最初の節のヘッダー: {}", text(0));
-        assert_eq!(text(1), "", "titlePg の節の先頭頁は空のはず: {}", text(1));
-        assert_eq!(text(2), "三", "最後の節は文書のヘッダー: {}", text(2));
+        // page numbers are 1-based, as the PDF writer asks for them
+        assert_eq!(text(1), "一", "1 頁目は最初の節のヘッダー: {}", text(1));
+        assert_eq!(text(2), "", "titlePg の節の先頭頁は空のはず: {}", text(2));
+        assert_eq!(text(3), "三", "最後の節は文書のヘッダー: {}", text(3));
     }
 
     #[test]
@@ -1550,9 +1551,15 @@ pub fn doc_hf_lines<'a>(
         }
         hit
     };
+    // `k` is the printed page number, 1-based, as `sheet_to_pdf_fonts` calls
+    // it (`page_decor(k + 1)`); the section lookups below index pages from
+    // 0. Until 2026-09-19 they took `k` as 0-based, so the first page was
+    // never the "first page" of `w:titlePg` and got the default footer,
+    // and every section boundary was seen one page late
     Ok(move |k: usize| {
-        let si = sect_of(k);
-        let atama = k == 0 || sect_of(k.saturating_sub(1)) != si;
+        let idx = k.saturating_sub(1);
+        let si = sect_of(idx);
+        let atama = idx == 0 || sect_of(idx.saturating_sub(1)) != si;
         let pg = si.and_then(|i| sect_pages.get(i)).map(|(_, p)| *p).unwrap_or(page);
         let kara = kumihan::HeadFoot::default();
         let (head, foot): (&kumihan::HeadFoot, &kumihan::HeadFoot) =
@@ -1731,6 +1738,7 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
             )
         });
     }
+    let kitei_latin = d.font_latin.clone();
     let ateru = |p: &mut kumihan::Paragraph| {
         if let Some((ea, latin)) = hyou.get(&p.style_id) {
             for r in p.runs.iter_mut() {
@@ -1742,6 +1750,14 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
                         r.font = Some(na.clone());
                     }
                 }
+            }
+        }
+        // ASCII runs still without a face take the document's own Latin
+        // default (`docDefaults` `w:ascii` or its theme face), not the East
+        // Asian default that `doc.font` holds
+        for r in p.runs.iter_mut() {
+            if r.font.is_none() && r.text.is_ascii() && !r.text.is_empty() {
+                r.font = kitei_latin.clone();
             }
         }
     };

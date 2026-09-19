@@ -17,6 +17,8 @@ fn main() -> Result<(), String> {
     // FONT=name: print how the engine resolves a font name on this machine
     if let Ok(name) = std::env::var("FONT") {
         println!("doc.font={:?} doc.font_latin={:?} base={}", doc.font, doc.font_latin, doc.base_pt());
+        println!("title_pg={} first_footer={} footer paras={} text={:?} sect_hf={}", doc.title_pg, doc.first_footer.is_some(),
+            doc.footer.paragraphs.len(), doc.footer.paragraphs.iter().map(|p| p.runs.iter().map(|r| r.text.clone()).collect::<String>()).collect::<Vec<_>>(), doc.sect_hf.len());
         match kumihan::font::resolve(&name) {
             Some(f) => println!("font {name:?} -> {:?} index {} ({}) okuri={:?} agari={:?}", f.path, f.index, f.name, kumihan::font::okuri_em(Some(&name)), kumihan::font::agari_em(Some(&name))),
             None => println!("font {name:?} -> none; substitute {:?}",
@@ -72,6 +74,16 @@ fn main() -> Result<(), String> {
         }
     }
     let (sheet, page, _) = paper::doc_to_sheet(&doc, None)?;
+    // HF=1: the header and footer lines of the first two pages, as printed
+    if std::env::var("HF").is_ok() {
+        let (d2, laid, _) = paper::doc_laid(&doc, None)?;
+        println!("composed title_pg={} first_footer={} sect_pages={} sect_hfs={:?}", d2.title_pg, d2.first_footer.is_some(),
+            laid.sheet.sect_pages.len(), laid.sheet.sect_hfs.iter().map(|h| h.as_ref().map(|x| x.title_pg)).collect::<Vec<_>>());
+        let hf = paper::doc_hf_lines(&d2, &laid.font, &laid.sheet, laid.page)?;
+        for k in 0..2 {
+            println!("hf page {k}: {:?}", hf(k).iter().map(|l| l.text()).collect::<Vec<_>>());
+        }
+    }
     println!(
         "用紙 {}x{}mm 上 {} 下 {} / 行 {} / 改ページ {:?}",
         page.w_mm, page.h_mm, page.top_mm, page.bottom_mm, sheet.lines.len(), sheet.breaks

@@ -543,6 +543,15 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                         }
                     }
                 }
+                // The Latin face of the same theme set, for ASCII runs that
+                // name no font. With only `doc.font` (the East Asian face,
+                // ＭＳ Ｐゴシック from the Jpan entry of an English theme)
+                // the lines of Word's memo template were 15% too tall:
+                // Garamond is 1.125 em, ＭＳ Ｐゴシック 1.292 (2026-09-19)
+                if doc.font_latin.is_none() && tag.contains("asciiTheme=\"") {
+                    let major = tag.contains("asciiTheme=\"major");
+                    doc.font_latin = theme_face(&theme, major, false);
+                }
             }
         }
         // 既定の大きさも同じ場所(w:sz)。読まないと、無指定の run を
@@ -2974,7 +2983,11 @@ pub(super) fn parse_document_rels_num(
                             _ => 3,
                         };
                         if in_tc_mar {
-                            cell_mar.get_or_insert([0.0; 4])[at] = mm;
+                            // A side the cell does not name stays NaN and is
+                            // taken from the table's tblCellMar in the layout;
+                            // it used to become 0 (Word's memo template names
+                            // only the bottom, and its row lost 28.8pt)
+                            cell_mar.get_or_insert([f32::NAN; 4])[at] = mm;
                         } else if let Some(b) = stack.last_mut() {
                             b.cell_mar_mm.get_or_insert([0.0; 4])[at] = mm;
                         }
@@ -4030,6 +4043,7 @@ fn tblind_wo_naosu(doc: &mut Document, sxml: &str) {
             .and_then(|r| r.first())
             .and_then(|c| c.mar_mm)
             .map(|m| m[3])
+            .filter(|v| !v.is_nan())
             .or_else(|| t.cell_mar_mm.map(|m| m[3]))
             .unwrap_or(KITEI);
         t.indent_mm -= hidari;
