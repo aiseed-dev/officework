@@ -32,7 +32,14 @@ WSL の逆です。
   Visual Studio 2022 の「C++ によるデスクトップ開発」が要る。数 GB です。
   Debian なら `apt install clang cmake ninja-build libgtk-3-dev` の 1 行です
 
-どれも「土台が Windows で、Linux が客」だから起きます。
+* 組織の道具(認証、メール、会議、コードの置き場)を WSL の中に置いて動かし
+  続けることはできない。WSL には cron も systemd も、Windows の更新を
+  止める手も無い。土台が Windows のままなので、Windows の利用規約
+  (サーバーとしての使用を認めない、接続は 20 台まで)もそのまま掛かる。
+  Windows Server にすれば条項は外れるが、料金がコア数と人数で乗る
+
+どれも「土台が Windows で、Linux が客」だから起きます。WSL を良くしても
+解決しません。土台を替えると、全部が一度に消えます。
 
 == 逆にすると
 
@@ -96,8 +103,9 @@ officework 見積書.xlsx
 == まとめ
 
 WSL を使っている人は、もう半分は逆になっています。残りの半分は、土台を
-替えるだけです。Word と Excel のファイルが同じに開くなら、替えない理由は
-ほとんど残りません。
+替えるだけです。WSL を工夫して解決しようとしていた物の多くは、Debian を
+本体にすると、工夫なしで消えます。Word と Excel のファイルが同じに開く
+なら、替えない理由はほとんど残りません。
 
 * コード: https://github.com/aiseed-dev/officework
 * 普通の人向けの 1 枚(Debian にする手順): (公開したら URL)
