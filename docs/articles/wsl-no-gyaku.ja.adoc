@@ -65,9 +65,21 @@ officework 見積書.xlsx
 
 == 実際にやった手順
 
-(ここは手元で通してから書く。Debian 13 の netinst、GNOME、`apt install
-gnome-boxes`、Windows 11 の ISO、メモリ 4GB とディスク 64GB、プロダクトキー、
-USB の機器の受け渡し、共有フォルダ。詰まった所と、その直し方)
+2026 年 9 月 20 日にやりました。詰まる所はありませんでした。
+
+. Debian 13 の netinst の iso を落として、Rufus で USB に書く
+. USB から起動して入れる。言語は日本語、デスクトップは GNOME
+. `sudo apt install fonts-noto-cjk python3-pip python3-venv git gnome-boxes`
+. Microsoft の頁から Windows 11 の ISO を落とす
+. Boxes で「仮想マシンを新規作成」→ ISO を選ぶ → メモリ {n}GB、ディスク {n}GB
+. Windows の入れ方は普通の PC と同じ。プロダクトキーは {控えた物を入れた / 「プロダクト キーがありません」で進めた}
+. officework の `.deb` を Releases から落として `sudo apt install ./officework_0.1.0-alpha.3_amd64.deb`
+
+かかった時間は {n} 時間で、そのうち待っていた時間がほとんどです。
+
+(PC の機種とメモリ、Boxes に渡した量、Windows の認証をどうしたか、を
+埋めてから公開する。Debian で様式が同じに開いている画面の写真を 1 枚
+添える)
 
 == 向かない人
 
