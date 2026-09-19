@@ -1140,6 +1140,11 @@ pub struct PageSetup {
     /// ヘッダーによる押し下げをしない(法務局の様式 29 枚。2026-09-09)
     pub top_fixed: bool,
     pub bottom_fixed: bool,
+    /// Margins of the section's first page when `w:titlePg` gives it its own
+    /// header and footer (or none): the body then starts and ends where those
+    /// leave room. `None` means the same as the other pages (2026-09-19)
+    pub first_top_mm: Option<f32>,
+    pub first_bottom_mm: Option<f32>,
 }
 
 impl Default for PageSetup {
@@ -1148,7 +1153,8 @@ impl Default for PageSetup {
         PageSetup { w_mm: 210.0, h_mm: 297.0, left_mm: 20.0, right_mm: 20.0,
                     top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0,
                     header_mm: HEADER_MM, footer_mm: FOOTER_MM,
-                    char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false }
+                    char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false,
+                    first_top_mm: None, first_bottom_mm: None }
     }
 }
 

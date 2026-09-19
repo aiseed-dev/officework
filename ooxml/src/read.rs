@@ -935,6 +935,8 @@ pub(super) fn parse_sect(raw: &str) -> kumihan::PageSetup {
         char_space_pt: grid_char_space_pt(raw),
         top_fixed: top < 0.0,
         bottom_fixed: bottom < 0.0,
+        first_top_mm: None,
+        first_bottom_mm: None,
     }
 }
 

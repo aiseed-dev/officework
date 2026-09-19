@@ -108,7 +108,7 @@ pub(crate) fn paper_of(s: &book::Sheet) -> paper::Paper {
     // それを上下にも使っていました。上下と左右が違う設定の表では、
     // 2頁目からの本文の頭がずれます
     let (l, _r, t, b) = s.margins_mm.unwrap_or((20.0, 20.0, 20.0, 20.0));
-    paper::Paper { width_mm: w, height_mm: h, margin_mm: l, top_mm: t, bottom_mm: b }
+    paper::Paper { width_mm: w, height_mm: h, margin_mm: l, top_mm: t, bottom_mm: b, first_top_mm: None, first_bottom_mm: None }
 }
 
 

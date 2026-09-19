@@ -47,11 +47,16 @@ pub struct Paper {
     pub top_mm: f32,
     /// 下の余白。ここまで来たら頁を折ります
     pub bottom_mm: f32,
+    /// Margins of a section's first page under `w:titlePg` (see
+    /// `PageSetup::first_top_mm`); `None` means the same as the other pages
+    pub first_top_mm: Option<f32>,
+    pub first_bottom_mm: Option<f32>,
 }
 
 impl Default for Paper {
     fn default() -> Self {
-        Paper { width_mm: 210.0, height_mm: 297.0, margin_mm: 20.0, top_mm: 20.0, bottom_mm: 20.0 }
+        Paper { width_mm: 210.0, height_mm: 297.0, margin_mm: 20.0, top_mm: 20.0, bottom_mm: 20.0,
+                first_top_mm: None, first_bottom_mm: None }
     }
 }
 
@@ -60,7 +65,8 @@ impl Paper {
     /// 使います。docx から来た文書は4つとも別なので、そちらは
     /// [`from_page`](Paper::from_page) を通します
     pub fn hitoshii(width_mm: f32, height_mm: f32, margin_mm: f32) -> Paper {
-        Paper { width_mm, height_mm, margin_mm, top_mm: margin_mm, bottom_mm: margin_mm }
+        Paper { width_mm, height_mm, margin_mm, top_mm: margin_mm, bottom_mm: margin_mm,
+                first_top_mm: None, first_bottom_mm: None }
     }
 
     /// 紙の設定から。**上下と左右を別に持ちます**(2026-08-30)。
@@ -76,6 +82,8 @@ impl Paper {
             margin_mm: pg.left_mm,
             top_mm: pg.top_mm,
             bottom_mm: pg.bottom_mm,
+            first_top_mm: pg.first_top_mm,
+            first_bottom_mm: pg.first_bottom_mm,
         }
     }
 }
@@ -511,7 +519,16 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
     });
     let mut offsets = vec![0.0f32];
     let mut header_h = vec![0.0f32];
-    let mut papers = vec![paper_at(0.0)];
+    // The first page of a section under `w:titlePg` has its own header and
+    // footer heights: Word's memo template has none there, and its body runs
+    // to the bottom margin on page 1 while page 2 keeps room for the page
+    // number (2026-09-19)
+    let sect_no = |y: f32| -> usize { sheet.sect_pages.iter().filter(|(at, _)| y >= *at - 0.01).count() };
+    let first_of = |p: Paper| -> Paper {
+        Paper { top_mm: p.first_top_mm.unwrap_or(p.top_mm), bottom_mm: p.first_bottom_mm.unwrap_or(p.bottom_mm), ..p }
+    };
+    let mut sect_now = sect_no(0.0);
+    let mut papers = vec![first_of(paper_at(0.0))];
     // 頁ごとの脚注と、その高さ。**脚注が増えるとその頁の本文の底が上がる**
     let mut notes: Vec<Vec<usize>> = vec![Vec::new()];
     let mut note_h = 0.0f32;
@@ -588,7 +605,13 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
         };
         if forced || mite > soko {
             // 次のページへ。行の紙面上の高さは(余白ぶんを除いて)そのまま続ける
-            let next = paper_at(line.y_mm);
+            let si = sect_no(line.y_mm);
+            let next = if si != sect_now {
+                sect_now = si;
+                first_of(paper_at(line.y_mm))
+            } else {
+                paper_at(line.y_mm)
+            };
             // **見出しを繰り返す表の途中なら、その高さぶん頭を下げます。**
             // 数えないと、繰り返した見出しが次の行と重なります
             let repeat = match line.cell {
@@ -828,7 +851,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None,
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -888,7 +911,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None,
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -937,7 +960,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None,
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -983,7 +1006,7 @@ mod tests {
         let pg = kumihan::PageSetup {
             w_mm: 210.0, h_mm: 297.0,
             left_mm: 25.0, right_mm: 25.0, top_mm: 30.0, bottom_mm: 30.0,
-            columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false,
+            columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None,
         };
         // 助手の `sheet` は固定の枠で組むので、ここは紙の設定に合わせて
         // 自分で組みます(1頁目の頭も `top_mm + BASE_UP_MM` になります)
@@ -1035,7 +1058,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None,
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -1838,8 +1861,14 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
     // 字の大きさの既定は「標準」スタイル(無ければ docDefaults)。裁判所の
     // 様式は docDefaults 10pt・標準 12pt で、ヘッダーは 12pt で組まれる
     let base_pt = d.style_pt(None).unwrap_or(d.base_pt());
-    page.top_mm = kumihan::hf_push_mm(&d.header, &page, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false);
-    page.bottom_mm = kumihan::hf_push_mm(&d.footer, &page, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true);
+    let raw = page;
+    page.top_mm = kumihan::hf_push_mm(&d.header, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false);
+    page.bottom_mm = kumihan::hf_push_mm(&d.footer, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true);
+    let kara = kumihan::HeadFoot::default();
+    if d.title_pg {
+        page.first_top_mm = Some(kumihan::hf_push_mm(d.first_header.as_ref().unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false));
+        page.first_bottom_mm = Some(kumihan::hf_push_mm(d.first_footer.as_ref().unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true));
+    }
     // **行送りはエンジンの1つを見ます**(画面と紙と PDF で同じ)
     let line_mm = kumihan::LINE_MM;
     let y0 = page.top_mm + kumihan::BASE_UP_MM;
@@ -1867,8 +1896,17 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
             Some(s) => (&s.header, &s.footer),
             None => (&d.header, &d.footer),
         };
-        pg.top_mm = kumihan::hf_push_mm(h, pg, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false);
-        pg.bottom_mm = kumihan::hf_push_mm(f, pg, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true);
+        let raw = *pg;
+        pg.top_mm = kumihan::hf_push_mm(h, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false);
+        pg.bottom_mm = kumihan::hf_push_mm(f, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true);
+        let (title_pg, fh, ff) = match hfs.get(i).and_then(|x| x.as_ref()) {
+            Some(s) => (s.title_pg, s.first_header.as_ref(), s.first_footer.as_ref()),
+            None => (d.title_pg, d.first_header.as_ref(), d.first_footer.as_ref()),
+        };
+        if title_pg {
+            pg.first_top_mm = Some(kumihan::hf_push_mm(fh.unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false));
+            pg.first_bottom_mm = Some(kumihan::hf_push_mm(ff.unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true));
+        }
     }
     Ok(LaidDoc { sheet, page, font: bytes, family: family.name.clone() })
 }

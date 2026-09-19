@@ -1743,7 +1743,7 @@ mod section_layout_tests {
 
     fn paper(w: f32, h: f32) -> PageSetup {
         PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false }
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None }
     }
 
     fn tab(text: &str, sect: Option<PageSetup>) -> Block {
@@ -2265,7 +2265,7 @@ mod fold_print_tests {
 
     fn paper(w: f32, h: f32) -> PageSetup {
         PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false }
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None }
     }
     fn line(y: f32) -> Line {
         Line { cells: vec![Cell { ch: 'あ', x_mm: 0.0, w_mm: 4.0, size_pt: 10.5,
