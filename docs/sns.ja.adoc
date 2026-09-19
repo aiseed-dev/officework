@@ -382,7 +382,10 @@ It is built from published software, LibreOffice among them. The difference is t
 
 === 中身(案)
 
-. Flet とは何か。Python だけで Web と Mac・Windows・Linux のアプリが作れる(10 分)
+. Flet とは何か(10 分)。柱は 2 つです(2026-09-19 発注者)
+* 言語が 1 つ。HTML と CSS と JavaScript を分けず、Python のファイル 1 枚で画面と処理が書ける。`pip install flet` と `flet run` だけで動き、間違いは Python の例外で出る。AI に書かせて、動かして、直す、の回転が速い
+* 手元でそのまま動く。HTML はブラウザが手元のファイルに触れさせないので、手元で動かすにはサーバーか Electron のような包みが要る。Flet は Flutter の窓で開き、処理は同じ Python なので、手元のファイルにも、officework のエンジンにも、プリンターにも、手元で動く AI にもそのまま触れる。`flet build` で Mac・Windows・Linux のアプリになり、同じコードが `--web` で Web にもなる
+* 弱い所も言う。AI が Flet を知っている量は HTML より少なく、古い書き方を出すことがある。版を決めて、その版の書き方の見本を渡すと直る
 . 紹介ページを最初から作る。`pip install flet` から `flet run --web` まで、web/main.py を手で写しながら(25 分)。題名・段落・ボタン・写真の並び・リンク
 . 日本語の書体の話。Flutter は日本語の書体を持たず、ブラウザの言語設定で Noto を選ぶこと。index.html で navigator.language を ja にする手当て(10 分)
 . 質問(15 分)。答えられない物は #日本語 に持ち帰って書く
