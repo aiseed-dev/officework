@@ -38,9 +38,12 @@ There are two editors: *writer* for documents and *calc* for spreadsheets. You o
 
 == Why we built this
 
-Documents are now something AI writes from a conversation. But the work of an office is not writing them: it is opening the docx and xlsx you receive exactly as Word and Excel do, processing them, sending the form back, and printing it.
-And doing that without confidential forms leaving the machine, without everyone paying for an AI, running every day on code alone with no AI, on Debian with Windows gone.
-Nothing else does these four things at once, so we are building it.
+An Office for the places where AI is not needed.
+
+AI can now write documents from a conversation. But most of the daily work needs no AI.
+Open the docx and xlsx you receive exactly as Word and Excel do, process them, send the form back, print it. That is a fixed procedure, and code alone runs it.
+There, no paid AI, no Microsoft 365 and no Windows are needed. Confidential forms never leave the machine. When AI is needed, you connect the AI you chose.
+We are building it as the Office with which the people who do the work handle their own forms with their own tools, on Debian.
 
 === One AI, chosen for you
 
