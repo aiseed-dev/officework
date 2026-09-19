@@ -104,9 +104,16 @@ end timeout
             word_close_ours()
         except RuntimeError:
             pass
-    # **閉じられなかったら止まる。** 2026-09-09、Word が `close` を -1708 で断る
-    # 状態になったのに気づかず、100 枚の窓を開いたまま次々に進んでしまった。
-    # 残っている写しを数え、残っていれば呼ぶ側に止めてもらう
+        # **閉じられなかったら止まる。** 2026-09-09、Word が `close` を -1708 で断る
+        # 状態になったのに気づかず、100 枚の窓を開いたまま次々に進んでしまった。
+        # 残っている写しを数え、残っていれば呼ぶ側に止めてもらう。
+        # The count runs on the failure path as well: on 2026-09-19 `save as`
+        # raised first, this check was skipped, and 114 documents piled up
+        _nokori_check()
+
+
+def _nokori_check():
+    """Raise when Word still holds documents of ours; the caller must stop."""
     nokori = _osa('''
 with timeout of 60 seconds
 tell application "Microsoft Word"
