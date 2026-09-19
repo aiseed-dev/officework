@@ -1,0 +1,122 @@
+= 古い Windows PC を Debian にして、様式の仕事をそちらでやる
+
+////
+配布用の 1 枚(普通の人の会で配る)。*マニュアルではない。*
+* 2026-09-20 時点の書き物。発注者(yniji)の一人称で書いてある
+* Debian の手順は Mac では通せないので、配る前に Debian を入れた PC で 1 度通す
+  (Releases の .deb が Debian 13 で入ることも、その時に確かめる)
+* 貼り付けるときはこの注記ごと消してよい
+////
+
+Windows の PC を Debian にすると、Python、git、apt が最初からそろいます。
+Copilot に誘われることも、更新で勝手に再起動されることもありません。
+
+今までこれをしなかった理由は 1 つでした。Word と Excel のファイルが、
+同じに開かないことです。officework がそこを埋めます。役所の様式や
+取引先の帳票を、Word と同じ頁数、同じ折れ方、同じ列幅で開いて、刷ります。
+
+== 誰に向くか
+
+* 自分の PC を持っている人(個人事業主、小さな会社)。会社が管理している
+  PC はできません
+* 古い PC が 1 台余っている人。その 1 台を Debian にして、様式の仕事を
+  そちらでやります。Windows でしか動く物(会計ソフトなど)があるなら、
+  今の PC はそのまま残します
+
+== 0. 先にすること
+
+* 残したいファイル(書類、写真)を USB か外付けのディスクに写します。
+  Debian を入れると、その PC の中身は消えます
+* Wi-Fi のパスワードを控えます
+* 8GB 以上の USB メモリを 1 本用意します。中身は消えます
+
+== 1. Debian の USB を作る(15 分)
+
+. https://www.debian.org/ の「ダウンロード」から、`debian-13.x.x-amd64-netinst.iso`
+  を落とします
+. Windows で https://rufus.ie/ の Rufus を落として開き、USB メモリと上の
+  iso を選んで「スタート」を押します。聞かれたら「ISO イメージモード」の
+  ままで進めます
+
+== 2. USB から起動して入れる(30 分)
+
+. USB を挿したまま PC を再起動し、起動のメニューを出します(メーカーに
+  よって F12、F2、Esc、Delete のどれかを起動直後に押します)。USB を
+  選びます
+. 「Graphical install」を選びます。言語は日本語、場所は日本、キーボードは
+  日本語です
+. 名前とパスワードを決めます。パスワードは後で `sudo` のたびに使います
+. ディスクは「ガイド - ディスク全体を使う」を選びます。この PC の中身は
+  ここで消えます
+. ソフトウェアの選択は「Debian デスクトップ環境」と「GNOME」に印を付けた
+  ままにします
+. 終わったら USB を抜いて再起動します。ログインすると Windows と同じ
+  ように画面が出ます
+
+== 3. 最初に入れる物(5 分)
+
+「端末」を開いて打ちます。
+
+[source,console]
+----
+sudo apt update
+sudo apt install fonts-noto-cjk python3-pip python3-venv git
+----
+
+`fonts-noto-cjk` は日本語の書体です。これが無いと字が □ になります。
+
+== 4. officework を入れる(5 分)
+
+https://github.com/aiseed-dev/officework/releases から
+`officework_..._amd64.deb` を落として、端末で打ちます(ファイル名は
+落とした物に合わせます)。
+
+[source,console]
+----
+cd ~/ダウンロード
+sudo apt install ./officework_0.1.0-alpha.3_amd64.deb
+----
+
+アプリの一覧に officework が出ます。端末からも開けます。
+
+[source,console]
+----
+officework 見積書.xlsx
+----
+
+Word と Excel のファイルが、タブで開きます。刷るときは Ctrl+P で PDF に
+なります。
+
+== 5. Python から様式を触る(5 分)
+
+[source,console]
+----
+python3 -m venv ~/venv
+~/venv/bin/pip install officework
+~/venv/bin/python
+----
+
+`>>>` が出たら、Windows の 1 枚と同じことを打ちます。
+
+[source,python]
+----
+from officework import sheet
+b = sheet.Book.open("/home/自分の名前/見積書.xlsx")
+b.recalc()
+b.to_pdf()
+----
+
+== 6. プリンター
+
+Debian は最初から印刷の仕組み(CUPS)を持っています。「設定」の
+「プリンター」で、同じネットワークにあるプリンターは自動で出ます。
+ここ数年のプリンターはドライバー無しで刷れます。
+
+== 困ったら
+
+* *字が □ になる:* `sudo apt install fonts-noto-cjk` を打ち直します
+* *officework の窓が開かない:* `sudo apt-get -f install` で足りない物が
+  入ります
+* *様式が Word と違って見える:* その様式(中身を空にした物)を GitHub の
+  Issues に付けてください。直します
+  https://github.com/aiseed-dev/officework/issues

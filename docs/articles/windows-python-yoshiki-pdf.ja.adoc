@@ -1,0 +1,112 @@
+= Windows に Python を入れて、自分の様式を PDF にする(30 分)
+
+////
+配布用の 1 枚(普通の人の会で配る)。*マニュアルではない。*
+* 2026-09-20 時点の書き物。発注者(yniji)の一人称で書いてある
+* Windows の手順は Mac では通せないので、配る前に発注者の Windows で 1 度通す
+* 貼り付けるときはこの注記ごと消してよい
+////
+
+会社の書類は Word と Excel のファイルです。この 1 枚は、そのファイルを
+自分の PC で、Python から開いて PDF にする所までをやります。
+かかるのは 30 分で、失う物はありません。Word と Excel はそのまま使えます。
+
+会社が管理している PC では、Python を入れられないことがあります。その
+ときは、自分の PC でやってください。
+
+== 1. Python を入れる(10 分)
+
+2 つのやり方があります。どちらでも同じです。
+
+*Microsoft Store から:* Store で「Python 3.13」を探して入れます。Python
+Software Foundation の物を選びます。
+
+*python.org から:* https://www.python.org/downloads/ の「Download Python
+3.13」を押して、落ちたファイルを開きます。最初の画面で
+**「Add python.exe to PATH」に印を付けてから** Install Now を押します。
+この印を忘れると、次の手順で `python` が見つかりません。
+
+入ったら、スタートメニューで「ターミナル」(または「コマンド プロンプト」)
+を開いて、次を打ちます。
+
+[source,console]
+----
+python --version
+----
+
+`Python 3.13.x` のように出れば入っています。
+
+== 2. officework を入れる(3 分)
+
+同じターミナルで打ちます。
+
+[source,console]
+----
+pip install officework
+----
+
+Word と Excel のファイルを読み書きして PDF にするエンジンです。Python
+3.10 以上で入ります。Word や Excel が無い PC でも動きます。
+
+== 3. 自分の様式を PDF にする(10 分)
+
+自分の様式(xlsx か docx)を、デスクトップに置きます。ここでは
+`見積書.xlsx` と `報告書.docx` として書きます。名前は自分の物に
+替えてください。
+
+ターミナルで `python` と打つと `>>>` が出ます。そこに 1 行ずつ打ちます。
+
+Excel のファイル:
+
+[source,python]
+----
+from officework import sheet
+b = sheet.Book.open(r"C:\Users\自分の名前\Desktop\見積書.xlsx")
+b.recalc()
+b.to_pdf()
+----
+
+Word のファイル:
+
+[source,python]
+----
+from officework import doc
+d = doc.Doc.open(r"C:\Users\自分の名前\Desktop\報告書.docx")
+d.to_pdf()
+----
+
+同じ場所に `見積書.pdf` と `報告書.pdf` ができます。`to_pdf()` の括弧の
+中を省くと、元のファイルと同じ名前の PDF になります。
+
+== 4. Word・Excel と並べて見る(5 分)
+
+できた PDF を開いて、Word か Excel の印刷プレビューと並べます。見る所は
+3 つです。
+
+* 頁数が同じか
+* 行の折れる所が同じか
+* 表の列の幅が同じか
+
+同じなら、この様式は officework で扱えます。違って見える所があれば、
+それが私たちの直す所です。
+
+== 5. 違って見えたら
+
+その様式を、中身を空にするか書き換えた物にして、GitHub の Issues に
+付けてください。原因を調べて直します。
+
+https://github.com/aiseed-dev/officework/issues
+
+個人情報や社外秘の入った物は、そのまま送らないでください。
+
+== この先
+
+ここまでで、自分の様式を Python から触れるようになりました。次は 2 つの
+道があります。
+
+* *画面を作る:* `pip install flet` で、Python だけで画面が作れます。様式に
+  入力して PDF にするアプリが、Python のファイル 1 枚でできます。開発者の
+  勉強会でやっているのはこれです
+* *PC を Debian にする:* 古い PC を 1 台 Debian にすると、Python も git も
+  最初からそろいます。Word と Excel のファイルは officework で同じに開きます。
+  別の 1 枚に書きました

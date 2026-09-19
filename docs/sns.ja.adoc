@@ -370,6 +370,8 @@ Flet の勉強会は開発者の会です。普通の人(中小企業の事務�
 * 開発者の会: この節の「Flet で Web のページを 1 枚作る」
 * 普通の人の会: 「自分の様式を持ってきて、同じに開いて、刷る」だけの会。コードは出さない。持ってきた docx / xlsx を Word と aiseed office で並べて、「ここが違う」をその場で言ってもらう。テスターの募集と同じ物になり、差があった様式は集めに入れる(本人が認めた物だけ)。入るのに要る物はアカウント無し、インストーラー 1 つ、自分のファイル
 
+最初の 30 分は「Windows に Python を入れる」です(2026-09-20 発注者「まずやるのは、Windows に Python をインストールするか、Windows PC を Debian にしてしまうか」)。配る 1 枚は docs/articles/windows-python-yoshiki-pdf.ja.adoc です。Debian は、入れた PC を 1 台持ち込んで同じ様式が同じに開く所を見せ、docs/articles/pc-wo-debian-ni.ja.adoc を渡します。どちらも配る前に、発注者の Windows と Debian で 1 度通します。
+
 普通の人の会は、開発者の会の 1 回目が終わってから、同じ形(connpass と Discord か、対面)で 1 回目を出します。
 
 === 形(案)
