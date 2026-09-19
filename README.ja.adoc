@@ -32,7 +32,7 @@ officework は、Microsoft Office ができないことをできるようにす�
 自動化の結果を目で確かめ、手で仕上げ、起動中のブックを Python から直に操れます。
 
 アプリは開発中です。
-アルファ版としても公開できる状態ではなく、配布はしていません。いま公開していて使えるのはエンジン(`pip install officework`)だけです。試すにはソースから組みます(下の「組む」)。
+試験公開の段階です。Mac・Windows・Linux の版を https://github.com/aiseed-dev/officework/releases[GitHub の Releases] に置いています(いまは 0.1.0-alpha.3)。壊れている所は https://github.com/aiseed-dev/officework/issues[Issues] に書いてください。エンジンは `pip install officework` で入ります。ソースから組む手順は下の「組む」にあります。
 
 編集画面は2つあります。文書編集の *writer* と表計算の *calc* で、フォルダを開いて、どちらも同じウィンドウのタブで編集します(link:docs/ja/writer-manual.adoc[writer の手引き]・link:docs/ja/calc-manual.adoc[calc の手引き])。
 

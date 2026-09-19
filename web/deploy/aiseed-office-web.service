@@ -1,0 +1,16 @@
+# systemd unit for the aiseed office introduction page (office.aiseed.dev).
+# Install: copy to /etc/systemd/system/, adjust User and paths, then
+#   systemctl daemon-reload && systemctl enable --now aiseed-office-web
+[Unit]
+Description=aiseed office introduction page (Flet)
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/srv/officework/web
+ExecStart=/srv/officework/web/.venv/bin/flet run --web --host 127.0.0.1 --port 8550 main.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

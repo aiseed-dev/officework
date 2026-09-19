@@ -14,11 +14,21 @@ $ flet run --web --port 8550 web/main.py
 
 == サーバーで動かす
 
-自前のサーバー(office.aiseed.dev)で動かします。
+自前のサーバー(office.aiseed.dev)で動かします。置く物は `deploy/` にそろえてあります。
 
-. `pip install flet` を入れた Python を用意します。
-. `web/` を置き、`flet run --web --host 127.0.0.1 --port 8550 web/main.py` を systemd などで動かします。
-. nginx で `office.aiseed.dev` を `127.0.0.1:8550` へ渡します。Flet は WebSocket を使うので、`Upgrade` と `Connection` のヘッダーを通します。
+[source,console]
+----
+$ sh web/deploy/install.sh              # サーバーで root で 1 回
+$ certbot --nginx -d office.aiseed.dev  # TLS
+----
+
+`install.sh` がすることは次のとおりです。手で置くときも同じ順です。
+
+. `/srv/officework/web` に `main.py`・`assets`・`requirements.txt` を写し、venv を作って `pip install -r requirements.txt` を入れます。Flet の版は `requirements.txt` で決めています(手元と同じ版)。
+. `deploy/aiseed-office-web.service` を systemd に置き、`flet run --web --host 127.0.0.1 --port 8550 main.py` を動かします。
+. `deploy/office.aiseed.dev.nginx.conf` を nginx に置き、`office.aiseed.dev` を `127.0.0.1:8550` へ渡します。Flet は WebSocket を使うので、`Upgrade` と `Connection` のヘッダーを通します。
+
+版を上げるときは、`main.py` と `assets` を写し直して `systemctl restart aiseed-office-web` です。
 
 [source,nginx]
 ----
@@ -37,6 +47,8 @@ location / {
 * 比較の絵(`assets/word.png` と `assets/office.png`)は、名古屋市立大学が公開している「物品借用願」を Word と aiseed office で開いた物です。版を上げたら撮り直します。様式そのもの(`assets/buppin202411.docx`)も置いてあり、見る人が自分の Word で試せます(発注者 2026-09-19「ダウンロードできたらいいのは docx」)。
 * 「画像をコピー」は、Flutter が絵を canvas に描くためブラウザの「画像をコピー」が使えないので、`assets/index.html` の script がページの題名を合図にしてクリップボードへ入れます。
 * 版の数字(`VERSION`)はリリースのたびに直します。
+* 幅は 1040 までで、それより狭いブラウザ(携帯)では画面の幅に合わせます(`page.on_resize`)。
+* 箇条書き(`ft.Markdown`)は、そのままだと字が薄いので、`md()` で本文と同じ色と大きさにしています。
 
 == 書体
 

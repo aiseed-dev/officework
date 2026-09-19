@@ -39,6 +39,18 @@ def p(s, size=17):
     return ft.Text(s, size=size, color=SUB, selectable=True)
 
 
+def md(text):
+    # Markdown's own default text is too light against the card; give the
+    # paragraphs and bullets the same colour and size as p()
+    style = ft.TextStyle(color=SUB, size=17)
+    return ft.Markdown(
+        text,
+        selectable=True,
+        auto_follow_links=True,
+        md_style_sheet=ft.MarkdownStyleSheet(p_text_style=style, list_bullet_text_style=style),
+    )
+
+
 def section(title, *body):
     return ft.Container(
         content=ft.Column([h2(title), *body], spacing=14),
@@ -142,16 +154,12 @@ def main(page: ft.Page):
 
     what = section(
         "できること",
-        ft.Markdown(
-            "\n".join([
-                "* **文書(docx)**: 開く、直す、刷る(PDF)。縦書き、ルビ、均等割り付け、表の中の表、脚注、目次。",
-                "* **表(xlsx)**: 開く、計算する(関数 400 あまり)、刷る(PDF)。列の幅、行の高さ、拡大縮小、用紙は Excel と同じです。",
-                "* **Python から**: `pip install officework` で、同じエンジンを Python から使えます。docx と xlsx の読み書きと PDF 化ができます。",
-                "* **マクロ**: Python で書きます。ファイルの中に実行コードは入れません。",
-            ]),
-            selectable=True,
-            auto_follow_links=True,
-        ),
+        md("\n".join([
+            "* **文書(docx)**: 開く、直す、刷る(PDF)。縦書き、ルビ、均等割り付け、表の中の表、脚注、目次。",
+            "* **表(xlsx)**: 開く、計算する(関数 400 あまり)、刷る(PDF)。列の幅、行の高さ、拡大縮小、用紙は Excel と同じです。",
+            "* **Python から**: `pip install officework` で、同じエンジンを Python から使えます。docx と xlsx の読み書きと PDF 化ができます。",
+            "* **マクロ**: Python で書きます。ファイルの中に実行コードは入れません。",
+        ])),
         ft.Row([ft.TextButton(content="PyPI の officework", url=PYPI)]),
     )
 
@@ -165,14 +173,11 @@ def main(page: ft.Page):
     support = section(
         "企業向けの有料サポート",
         p("会社で使うときの困りごとを、有料で引き受けます。"),
-        ft.Markdown(
-            "\n".join([
-                "* **様式が合わないときに直します。** お使いの様式が Word や Excel と違って見えるときは、そのファイルを元に原因を調べて直します。",
-                "* **優先して答えます。** 不具合の報告と質問に、順番を待たずに答えます。",
-                "* **導入を手伝います。** 社内の配布、Python のマクロの書き方、既存の帳票の移し方。",
-            ]),
-            selectable=True,
-        ),
+        md("\n".join([
+            "* **様式が合わないときに直します。** お使いの様式が Word や Excel と違って見えるときは、そのファイルを元に原因を調べて直します。",
+            "* **優先して答えます。** 不具合の報告と質問に、順番を待たずに答えます。",
+            "* **導入を手伝います。** 社内の配布、Python のマクロの書き方、既存の帳票の移し方。",
+        ])),
         ft.Row([ft.FilledButton(content="問い合わせ(GitHub の Issues)", url=ISSUES)]),
         p("メールの窓口は準備中です。", 14),
     )
@@ -202,7 +207,18 @@ def main(page: ft.Page):
         padding=ft.Padding.symmetric(vertical=24, horizontal=24),
     )
 
-    body = ft.Column([hero, compare, what, agent, support, footer], spacing=0, width=1040)
+    body = ft.Column([hero, compare, what, agent, support, footer], spacing=0)
+
+    def fit(width):
+        # at most 1040 wide, never wider than the browser (phones)
+        body.width = min(1040, width or 1040)
+
+    def on_resize(e):
+        fit(e.width)
+        page.update()
+
+    page.on_resize = on_resize
+    fit(page.width)
     page.add(ft.Row([body], alignment=ft.MainAxisAlignment.CENTER))
 
 
