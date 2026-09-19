@@ -8390,3 +8390,11 @@ Word と Excel に合わせるのは、ファイルの読み書きと印刷(docx
 * GSA の Forms Library(SF / OF)は PDF だけ。NSF は SciENcv と PDF で、docx の公式は無い
 
 *進め方(案):* 1. 上から 20 枚ほど落として ~/Documents/officework-cmp/us/ に置き、出どころを docs/corpus-docx.ja.adoc の形で一覧にする。2. Windows か Mac の Word で PDF にして、役所の様式と同じ比較に掛ける。3. 合った物を英語向けの写真と、紹介ページの「ダウンロードして自分で試す」に使う。日本の様式と違って、表より本文と見出しのスタイルが多いので、Word のテンプレートで出る種類のずれの一部が先に見える。
+
+== 決め: 普通の人の最初の 1 歩は、Windows に Python か、PC を Debian に(2026-09-20 発注者)
+
+発注者「まずやるのは、Windows に Python をインストールするか、Windows PC を Debian にしてしまうかです。Debian にしてしまえば開発環境が揃う」。
+
+*見立て:* 道は 2 つ。(1) Windows に Python(python.org か winget、`pip install officework flet`、10 分、何も失わない。会社の PC では入れられないことがある)。(2) PC を Debian に(Python・git・apt がそろう。連載 AI-native ways に乗る。自分の PC を持つ人の道。Word/Excel のファイルが同じに開かないことが今までの壁で、officework がそれを埋める。Releases の amd64 .deb で入る)。
+
+*決め:* 普通の人の会の最初の 30 分を「Python を入れる」にする。Debian は入れた PC を持ち込んで見せ、手順を 1 枚で渡す。手引きを 2 枚 docs/ja に書く(Windows の手順は発注者の Windows で 1 度通してもらう)。
