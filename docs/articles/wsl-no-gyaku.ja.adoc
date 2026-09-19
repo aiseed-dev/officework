@@ -28,6 +28,10 @@ WSL の逆です。
 * AI の道具(Claude Code など)は WSL の中で一番素直に動くのに、その結果を
   見るのは Windows の側、という往復
 
+* Python で画面を作る Flet を、配れるアプリに組む(`flet build windows`)には
+  Visual Studio 2022 の「C++ によるデスクトップ開発」が要る。数 GB です。
+  Debian なら `apt install clang cmake ninja-build libgtk-3-dev` の 1 行です
+
 どれも「土台が Windows で、Linux が客」だから起きます。
 
 == 逆にすると

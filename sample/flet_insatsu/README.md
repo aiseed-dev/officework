@@ -20,6 +20,12 @@ flet-printing は Flutter の拡張なので、`flet run` の実行には入っ�
 cd sample/flet_insatsu && flet build macos     # windows / linux / apk / ipa も同じ
 ```
 
+組むのに要る物は OS で違います。`flet run` には要りません。
+
+- Linux(Debian): `sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev`
+- Windows: Visual Studio 2022 の「C++ によるデスクトップ開発」(数 GB)
+- Mac: Xcode
+
 やっていることは 4 行です。
 
 ```python
