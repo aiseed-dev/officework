@@ -13,7 +13,9 @@ Python は WSL の中で、Windows は「その外にある物」です。それ
 入れ替えませんか、という話です。
 
 Debian を PC の土台にして、Windows は仮想環境(GNOME Boxes)の中で動かします。
-WSL の逆です。
+WSL の逆、というより、そもそも WSL は要りません。WSL は「Windows を土台に
+したまま Linux を使う」ための物で、土台を Debian にすれば、その工夫ごと
+要らなくなります。
 
 == WSL で困っていたこと
 
