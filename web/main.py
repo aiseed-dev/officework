@@ -150,6 +150,18 @@ def main(page: ft.Page):
         ])),
     )
 
+    how = section(
+        "作り方",
+        p("Office のソフトを作るのは、もう難しいことではありません。理屈はこうです。"),
+        md("\n".join([
+            "* **AI は、すでに docx と xlsx を作れます。** 2026 年 9 月 16 日(米国時間)、Anthropic は、会話から文書とスライドを作り、PowerPoint と PDF で落とせる Claude Docs と Claude Slides を出しました。AI はファイルの形式を正しく書けます。",
+            "* **形式は公開されています。** docx と xlsx の中身(OOXML)は仕様が公開されていて、書ける物は読めます。",
+            "* **答え合わせができます。** 同じファイルを Word と両方で開いて並べれば、合っているかは誰でも分かります。ルールが決まっていて、答え合わせが機械でできる物は、AI が得意になります。囲碁と同じです。",
+            "* **だから作り方は 1 つです。** 人が決めて(何を同じにするか、その順番)、AI が書いて、動かして比べて、違った所を直す。この繰り返しです。難しい所はなく、あるのは回数だけです。",
+            "* **要る物は、回線と月 100 ドルです。** Claude の Max は月 100 ドルからです。",
+        ])),
+    )
+
     compare = section(
         "同じファイルを両方で開けば、誰でも確かめられます",
         p("名古屋市立大学が公開している「物品借用願」(docx)を、Word と aiseed office で開いた物です。"
@@ -228,7 +240,7 @@ def main(page: ft.Page):
         padding=ft.Padding.symmetric(vertical=24, horizontal=24),
     )
 
-    body = ft.Column([hero, why, goal, compare, what, agent, support, footer], spacing=0)
+    body = ft.Column([hero, why, goal, how, compare, what, agent, support, footer], spacing=0)
 
     def fit(width):
         # at most 1040 wide, never wider than the browser (phones)

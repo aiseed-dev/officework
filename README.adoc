@@ -120,6 +120,16 @@ These are the goals. What works today is in the next section.
 * Print, to PDF and to the printer
 * Made for the people who do not need a paid AI. AI is used by the person who builds and maintains, not by everyone every day
 
+== How it is built
+
+Building office software is no longer hard. The reasoning goes like this.
+
+* AI can already write docx and xlsx. On 16 September 2026 (US time) Anthropic released Claude Docs and Claude Slides, which write documents and slides from a conversation and download them as PowerPoint and PDF. AI writes the file formats correctly
+* The formats are public. What is inside docx and xlsx (OOXML) is a published specification, and what can be written can be read
+* The answer can be checked. Open the same file in Word and here, side by side, and anyone can see whether they match. Where the rules are fixed and the result can be checked by a machine, AI gets good. Go is the same
+* So there is one way to build it. A person decides (what must match, in what order), the AI writes, you run it and compare, and you fix what differs. Repeat. Nothing in it is hard; what it takes is repetitions
+* What you need is an internet connection and about $100 a month. Claude Max starts at $100 a month
+
 == What works today
 
 The highlights only — the full list lives in the link:docs/en/writer-manual.adoc[writer manual] and the link:docs/en/calc-manual.adoc[calc manual], which describe only what works today.
