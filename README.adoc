@@ -40,11 +40,12 @@ There are two editors: *writer* for documents and *calc* for spreadsheets. You o
 
 An Office for the places where AI is not needed.
 
-AI can now write documents from a conversation. But most of the daily work needs no AI.
-Open the docx and xlsx you receive exactly as Word and Excel do, process them, send the form back, print it. That is a fixed procedure, and code alone runs it.
-There, no paid AI, no Microsoft 365 and no Windows are needed. Confidential forms never leave the machine. When AI is needed, you connect the AI you chose.
-Microsoft 365 goes the other way. It attaches Copilot to people who do not need AI and charges for it. An Office like this one, anyone can build now. How is written below.
-We are building it as the Office with which the people who do the work handle their own forms with their own tools, on Debian.
+Most of the daily work needs no AI. Open the docx and xlsx you receive exactly as Word and Excel do, process them, send the form back, print it. That is a fixed procedure, and code alone runs it.
+Confidential forms never leave the machine. When AI is needed, you connect the AI you chose.
+
+Microsoft 365 attaches Copilot to people who do not need AI and charges for it. An Office like this one, anyone can build now. How is written below.
+
+An Office with which the people who do the work handle their own forms with their own tools, on Debian with Windows gone.
 
 === One AI, chosen for you
 
