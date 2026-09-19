@@ -8470,3 +8470,5 @@ Word と Excel に合わせるのは、ファイルの読み書きと印刷(docx
 発注者(同日)「今回は、officework の話をする必要はない。Flet の話だけでいい」。WSL 向けの記事から officework を外し、「Flet が素直に動く」の節(flet run は同じ、flet build linux は apt の 1 行、手元のファイル・cron・systemd に同じ Python から触れる)に替えた。投稿の下書きと相手の表も同じに直した。
 
 発注者(同日)「今回は、Flet の会です」。10 月 7 日の会を「Flet の会 — AI と一緒に、自分の業務の画面を 1 枚作る」にし、officework と aiseed office の話を外した。例は、項目を打ち込んで一覧に足し、ファイル(CSV か JSON)に残す画面(Python 1 枚、外の道具は使わない)。印刷は flet-printing の話だけ。連載の一式につなぐ画面は次の回から。告知の下書き 3 つと準備の項目も直した。docs/sns.ja.adoc。
+
+発注者(同日)「今回のテーマは、Flet を動かす環境を作るです。Windows の人だけは、Debian に載せ替え作業です」。10 月 7 日の 1 回目を「Flet を動かす環境を作る」にした。Mac・Linux は Python と Flet を入れて flet run まで、Windows は PC を Debian に載せ替えて同じ所まで(会の前に写し・USB・プロダクトキー)。見本は項目を打ち込んで一覧に足す 20 行。業務の画面を AI と作るのは 2 回目。告知 3 つと準備を直した。docs/sns.ja.adoc。

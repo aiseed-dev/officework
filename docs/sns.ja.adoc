@@ -390,13 +390,13 @@ It is built from published software, LibreOffice among them. The difference is t
 
 連載の一式(PocketBase、Forgejo、Stalwart、Jitsi、Cal.com、FastAPI、Ollama、aiseed office)は、それぞれ API を持ちます。その間をつなぐ小さな画面を作る道具が Flet です。承認と差し戻しの画面(3 段目の「人が決める」)、様式に打ち込む画面、様式を見て刷る画面、集計を見る画面。どれも Python 1 枚で、PocketBase の認証の後ろに置けます。各道具の管理画面や公開の Web(Cloudflare Pages)は作り直しません。作るのは、その一式を自分の業務に合わせる所だけです。
 
-Flet の会の題は、この位置づけです。「自分の業務に合わせる画面を、Flet で 1 枚作る」。1 回目の例は、項目を打ち込んで一覧に足し、ファイルに残す画面。外の道具はつながず、Flet だけで見せます(2026-09-20 発注者「今回は、Flet の会です」)。連載の一式につなぐ画面は、次の回から。
+Flet の会は、この位置づけに向かって回を重ねます。1 回目は環境を作る(Windows の人は Debian に載せ替え)。2 回目は項目を打ち込んで一覧に足し、ファイルに残す画面を Flet だけで。連載の一式につなぐ画面は、その後(2026-09-20 発注者「今回は、Flet の会です」「今回のテーマは、Flet を動かす環境を作る」)。
 
 === 2 本立て(2026-09-20 発注者「普通の人に参加してほしい」)
 
 Flet の会は開発者向けです。普通の人(中小企業の事務の人、顧問)には別の会を開きます。
 
-* Flet の会: この節の「AI と一緒に、自分の業務の画面を 1 枚作る」。officework の話はしない
+* Flet の会: 1 回目は「Flet を動かす環境を作る」(Windows の人は Debian に載せ替え)、2 回目から「自分の業務の画面を 1 枚作る」。officework の話はしない
 * 普通の人の会: 「自分の様式を持ってきて、同じに開いて、刷る」だけの会。コードは出さない。持ってきた docx / xlsx を Word と aiseed office で並べて、「ここが違う」をその場で言ってもらう。テスターの募集と同じ物になり、差があった様式は集めに入れる(本人が認めた物だけ)。入るのに要る物はアカウント無し、インストーラー 1 つ、自分のファイル
 
 最初の 15 分は「Windows に aiseed office を入れて、自分の様式を開く」です。Python も端末も使いません(2026-09-20 発注者「Python を使うのも面倒」)。配る 1 枚は docs/articles/windows-yoshiki-onaji.ja.adoc です。Python と AI の道は Debian の側にあります。入れた PC を 1 台持ち込んで同じ様式が同じに開く所を見せ、docs/articles/pc-wo-debian-ni.ja.adoc を渡します。Windows の 1 枚は配る前に発注者の Windows で 1 度通します。Debian の方は 2026-09-20 に通しました。
@@ -412,7 +412,7 @@ Flet の会は開発者向けです。普通の人(中小企業の事務の人�
 | 項目 | 案
 
 | 題
-| Flet の会 — AI と一緒に、自分の業務の画面を 1 枚作る(2026-09-20 発注者「ビルダー向けの会にした方がいい」「今回は、Flet の会です」)。Flet だけの会で、officework の話はしない。ビルダーは連載の導入編 4 の役(何を作るか決め、AI と対話し、確かめ、組み合わせる)
+| Flet の会(1 回目)— Flet を動かす環境を作る(2026-09-20 発注者「今回のテーマは、Flet を動かす環境を作るです。Windows の人だけは、Debian に載せ替え作業です」)。Mac と Linux の人は Python と Flet を入れて `flet run` まで。Windows の人は PC を Debian にして(Windows は Boxes の中へ)、同じ所まで。officework の話はしない。業務の画面を AI と作るのは 2 回目。ビルダーは連載の導入編 4 の役(何を作るか決め、AI と対話し、確かめ、組み合わせる)
 
 | 長さ
 | 60 分。説明 10 分、手を動かす 25 分、日本語の書体の話 10 分、質問 15 分
@@ -435,15 +435,15 @@ Flet の会は開発者向けです。普通の人(中小企業の事務の人�
 
 === 中身(案)
 
-. ビルダーとは何か(10 分)。AI がコードを書く。人は、何を作るか決め、AI と対話し、出てきた物を確かめ、既存の物と組み合わせる。連載「AI ネイティブな仕事の作法」の導入編(https://aiseed.dev/ai-native-ways/software/)がそのまま元。個人開発者(1 人で全部を書く人)は、ソフトウェアだけをやっていれば AI に代わられる。ビルダーになって、コミュニティで働く。業務を知っている人、他のビルダー、道具の作者と一緒に、既存が埋めない隙間を埋める。具体的な仕事は 2 つ。組織に OSS の一式(連載の自立編)を入れて動かすこと、その上に業務の画面と基幹の流れ(様式に書く → 受け取る → 処理する → 様式で返す)を Flet と Python で作ること。これをできる人はいまほとんどいなくて、SIer は金にならないのでやらない。汎用の物を作っても評価されず、評価されるのは隙間と自分だけが知っている業務。ソフトウェアの中は AI の世界で、人は外に出て答えを決める
-. 自分の業務の画面を AI と作る(25 分)。業務の画面を Flet で 1 枚、その場で AI に書かせて動かす。例は、見積の項目を打ち込んで一覧に足し、ファイル(CSV か JSON)に残す画面。Python 1 枚で、外の道具は使わない。道具に Flet を使う理由は 3 つ
-* 言語が 1 つ。HTML と CSS と JavaScript を分けず、Python のファイル 1 枚で画面と処理が書ける。`pip install flet` と `flet run` だけで動き、間違いは Python の例外で出る。AI に書かせて、動かして、直す、の回転が速い
-* 手元でそのまま動く。HTML はブラウザが手元のファイルに触れさせないので、手元で動かすにはサーバーか Electron のような包みが要る。Flet は Flutter の窓で開き、処理は同じ Python なので、手元のファイルにも、プリンターにも、手元で動く AI にもそのまま触れる。`flet build` で Mac・Windows・Linux のアプリになり、同じコードが `--web` で Web にもなる
-* ノーコードとの違い。AI を使えば、人はコードを書かなくてもいい。ノーコードは、人がコードを書けない。書かなくてもいい、は、書きたければ書ける、直したければ直せる、ということで、コードが手元に残る。残ったコードが Python なので、できることに天井が無い。言い方に注意: 「人が書かない」と「コードが無い」を分け、保管し(git)、動かし、確かめる人(ビルダー)が要ることを言う
+. なぜ環境から始めるか(5 分)。AI がコードを書く時代に、人に残る仕事は、何を作るか決め、AI と対話し、確かめ、組み合わせること(ビルダー)。その全部が「AI に書かせて、動かして、直す」の回転で、回転が速い環境が要る。Flet は Python 1 枚で画面と処理が書け、`flet run` で動き、間違いが Python の例外で出るので、この回転に向く。Windows はその回転を止める(割り込み、cron も systemd も無い、flet build に Visual Studio、利用規約、料金)。だから Windows の人は Debian に載せ替える
+. 環境を作る(45 分)。参加者が自分の PC で手を動かす。3 つの道
+* Mac: python.org の Python か `brew install python`、`python3 -m venv ~/venv`、`~/venv/bin/pip install flet`、`flet run` で見本が動く所まで
+* Linux(Debian、Ubuntu): `sudo apt install python3-venv`、venv、`pip install flet`、`flet run`。組む人は `sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev`
+* Windows: PC を Debian にする(Debian の 1 枚 docs/articles/pc-wo-debian-ni.ja.adoc の順)。会の前に、写しを取り、Debian 13 の USB を作り、プロダクトキーを控えておく。会の中で入れて、GNOME にログインし、上の Linux の道を通る。Windows は GNOME Boxes の中に入れる(これは会の後でよい)
 +
-VB との比べ(フォームに部品を置き、イベントに処理を書く、言語は 1 つ、の同じ形。VB と違って Mac・Windows・Linux と Web で同じコードが動く)と、印刷(発注者の拡張 flet-printing で OS の印刷ダイアログが開く)も、ここで見せる
-. 動かし続ける(10 分)。作れることと動かし続けられることは別。版は止めずに保守する(Flet 1.0 で `page.launch_url` が消えて直した記録)。答え合わせを作る(動かして見る、テスト)。ビルダーの仕事の半分はここ
-. 質問(15 分)。答えられない物は #日本語 に持ち帰って書く
+見本は、項目を 1 つ打ち込んで一覧に足す Python 1 枚(20 行)。動いたら、その場で AI に 1 か所変えさせて、直る所まで見る
+. 動かし続ける(5 分)。版は止めずに保守する(Flet 1.0 で `page.launch_url` が消えて直した記録)。次の回は、この環境の上で自分の業務の画面を 1 枚作る
+. 質問(5 分)。終わらなかった人は #日本語 で続ける
 
 officework と aiseed office の話はしません(2026-09-20 発注者)。
 
@@ -451,9 +451,11 @@ officework と aiseed office の話はしません(2026-09-20 発注者)。
 
 * 会は Debian の上でやる。PocketBase のような物は先に立てておかず、その場で AI に聞いて入れる(2026-09-20 発注者「こういうのは、AI が教えてくれるからやる必要がない」)。Debian なら 1 行で入る物が、Windows では大変で、それ自体が「Windows を消すこと」が最初の 1 歩である証拠になる
 * 参加者には、会の前に「WSL の逆」の記事と Debian の 1 枚を渡す。Windows のままの人は、見るだけでも構わない
-* 例の画面(見積の項目を打ち込んで一覧に足し、ファイルに残す)が、その日の Flet の版で動くことを前の日に確かめる(`pip install -U flet` で上げてから)
-* 途中の形を 3 段階(題名だけ、段落とボタン、写真とリンク)で用意して、詰まっても先に進めるようにする
-* 質問が出なかったときのために、自分で 3 つ用意する(日本語の書体、版を上げたら壊れたときの直し方、flet build に要る物)
+* 見本(項目を打ち込んで一覧に足す 20 行)が、その日の Flet の版で、Mac と Debian の両方で動くことを前の日に確かめる(`pip install -U flet` で上げてから)
+* Windows の人向けに、会の前にやっておくこと(写し、Debian 13 の USB、プロダクトキー、8GB 以上のメモリ)を告知に書く。Debian の 1 枚を渡す
+* Debian の入れ方は、発注者の Debian の PC で画面共有して見せる(2026-09-20 に通した手順)
+* 詰まりやすい所(PATH が通らない、venv の有効化、Debian の起動メニュー、Wi-Fi のドライバー)の答えを先に用意する
+* 質問が出なかったときのために、自分で 3 つ用意する(Windows を消して困ることは何か、flet build に要る物、版を上げたら壊れたときの直し方)
 * 前の週に Discord の音声チャンネルで 2 人で試して、画面共有と録画(OBS など)が動くことを確かめる
 * connpass の頁と、Discord と X の告知は発注者が出す。文面は下にある。告知は決めた日にすぐ出す(長く取らない)
 
@@ -462,11 +464,12 @@ officework と aiseed office の話はしません(2026-09-20 発注者)。
 connpass と Discord の #日本語(日本語):
 
 ----
-【オンライン勉強会】Flet の会 — AI と一緒に、自分の業務の画面を 1 枚作る
+【オンライン勉強会】Flet の会(1 回目)— Flet を動かす環境を作る
 
-AI がコードを書く時代に、開発者の仕事は「何を作るか決め、AI と対話し、確かめ、組み合わせる」に変わりました。この役をビルダーと呼びます。
-この会では、自分の業務の画面(項目を打ち込んで一覧に足し、ファイルに残す画面)を、Python の Flet で 1 枚、その場で AI に書かせて動かします。作った後に動かし続ける話(保守と答え合わせ)までやります。
-自分の業務の項目(見積、日報、名簿など)を持ってくると、それで作れます。
+AI がコードを書く時代に、開発者の仕事は「何を作るか決め、AI と対話し、確かめ、組み合わせる」に変わりました。その回転が速い環境を、この会で自分の PC に作ります。
+Mac と Linux の人は、Python と Flet を入れて、見本が動く所まで。
+Windows の人は、PC を Debian に載せ替えます(Windows は仮想環境の中に残せます。失う物はありません)。会の前に、書類の写しを取り、Debian 13 の USB を作り、Windows のプロダクトキーを控えておいてください。手順の 1 枚を渡します。
+2 回目は、この環境の上で自分の業務の画面を 1 枚作ります。
 
 日時: 2026 年 10 月 7 日(水)20:00〜21:00
 場所: Discord の Flet サーバー、音声チャンネル(画面共有)
@@ -479,15 +482,15 @@ AI がコードを書く時代に、開発者の仕事は「何を作るか決�
 X(日本語):
 
 ----
-Flet の会をやります。AI がコードを書く時代の、開発者の進む道です。
-自分の業務の画面を、Flet で 1 枚、その場で AI に書かせて動かします。作った後に動かし続ける話まで。
+Flet の会(1 回目)をやります。題は「Flet を動かす環境を作る」。
+Mac と Linux の人は Python と Flet を入れる所まで。Windows の人は PC を Debian に載せ替えます(Windows は仮想環境に残せます)。
 10 月 7 日(水)20 時から 1 時間、Discord で。申し込みはこちら: {connpass の URL}
 ----
 
 Feodor への一言(英語。Flet の側で知らせてもらえるかもしれない):
 
 ----
-We're holding the first Japanese online meetup on October 7 (Wed), 20:00 JST, in a voice channel here: building a one-page business app with Flet together with AI, and keeping it running afterwards. Feel free to mention it in announcements if that fits.
+We're holding the first Japanese online meetup on October 7 (Wed), 20:00 JST, in a voice channel here: setting up a machine to run Flet, from Python and pip on Mac and Linux to replacing Windows with Debian. Feel free to mention it in announcements if that fits.
 ----
 
 === 発注者に決めてもらう物
