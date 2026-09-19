@@ -8370,3 +8370,23 @@ Word と Excel に合わせるのは、ファイルの読み書きと印刷(docx
 *確かめた:* Microsoft の permissions の頁は、画面の写しを宣伝・文書・Web に断りなく使ってよいとしている。条件は、手を加えない(大きさ以外)、一部を切り出さない、「Used with permission from Microsoft」を添える、製品名を正式に書く、推薦と読ませない、第三者の物が写っていない。テンプレートの中の写真は第三者の物に当たる。
 
 *決め:* 写真やイラストの無いテンプレートを 1 つ、Word の窓ごと写し、添え書きを付けて出す。ファイルは置かない。選ぶのは英語版の比較で合った物から。docs/sns.ja.adoc の決め 3 と「やらないこと」を直した。
+
+== 検討: アメリカ連邦政府の docx を集めに入れる(2026-09-19 発注者)
+
+発注者「アメリカ政府で、Word で提供されているものはありませんか」。
+
+*見立て:* ある。連邦政府の職員が職務で作った文書は著作権が無い(17 U.S.C. §105、パブリックドメイン)。写真に出しても、ファイルを置いても、Microsoft のテンプレートのような条件が付かない。世界向けの比較(英語版)の材料として、Microsoft のテンプレートより先にこちらを使える。ただし州政府の物は州ごとに扱いが違うので、連邦の物だけを集める。
+
+*見つけた置き場(2026-09-19、curl で docx が返ることを確かめた物に ✓):*
+
+* NIST CSRC: SP 800-34 の BIA テンプレート ✓、緊急時計画のテンプレート(High / Low) ✓、SP 800-171 の CUI Plan of Action ✓(csrc.nist.gov/files/pubs/…/docs/*.docx)
+* EPA: Work Plan Template ✓(epa.gov/system/files/documents/2023-09/Work Plan Template.docx)、参加型科学の QA テンプレート(Word)
+* NIH: Biosketch の様式(grants.nih.gov/grants/forms/biosketch-*.docx。curl は 403 で、ブラウザから落とす)
+* DOE: RFP テンプレート(energy.gov/sites/prod/files/2018/06/f52/rfp_template.docx)、WAP の是正計画テンプレート
+* USDA: RISE 申請テンプレート(rd.usda.gov)、persona テンプレート
+* NASA: SRS テンプレート(tsc.jsc.nasa.gov)、Fermi シンポジウムの Word テンプレート
+* SBA: 7(a) の Borrower's Certification(docx)
+* RegInfo.gov: 規制情報の様式が Word で置いてある
+* GSA の Forms Library(SF / OF)は PDF だけ。NSF は SciENcv と PDF で、docx の公式は無い
+
+*進め方(案):* 1. 上から 20 枚ほど落として ~/Documents/officework-cmp/us/ に置き、出どころを docs/corpus-docx.ja.adoc の形で一覧にする。2. Windows か Mac の Word で PDF にして、役所の様式と同じ比較に掛ける。3. 合った物を英語向けの写真と、紹介ページの「ダウンロードして自分で試す」に使う。日本の様式と違って、表より本文と見出しのスタイルが多いので、Word のテンプレートで出る種類のずれの一部が先に見える。
