@@ -337,11 +337,13 @@ It is built from published software, LibreOffice among them. The difference is t
 
 == オンラインの勉強会(2026-09-19 発注者の提案)
 
-発注者「オンラインで勉強会を開催したらどうですか」「できれば自前オンライン」。投稿を重ねるより、1 回の勉強会の方が人が集まります。録画を残せば、後の投稿の材料にもなります。場所も申し込みも録画も、Discord や外の会議サービスに頼らず、自前のサーバーで持ちます。紹介ページと同じ考え方です。
+発注者「オンラインで勉強会を開催したらどうですか」「できれば自前オンライン」「最初は connpass のような既存のものを使う方がいい」。投稿を重ねるより、1 回の勉強会の方が人が集まります。録画を残せば、後の投稿の材料にもなります。
 
-=== 元にする物
+順番は 2 段です。1 回目は connpass と Discord のような既存の物で開き、まず人が来るかと中身が通じるかを見ます。自前の仕組み(下の「元にする物」)は、連載の準備ができてから移します。
 
-発注者のサイトの連載「AI-native ways」の 2-07「自分のドメインで会議と予約」(https://aiseed.dev/ai-native-ways/software/meetings/、2026-07-11)が、そのまま設計図です。発注者「将来的には、こういうのを整備していきたい」(2026-09-19)。勉強会は、この連載で書いた物を実際に使う最初の場にします。
+=== 元にする物(自前に移すとき)
+
+発注者のサイトの連載「AI-native ways」の 2-07「自分のドメインで会議と予約」(https://aiseed.dev/ai-native-ways/software/meetings/、2026-07-11)が、自前に移すときの設計図です。発注者「将来的には、こういうのを整備していきたい」(2026-09-19)。移した後の勉強会は、この連載で書いた物を実際に使う場になります。
 
 * 会議は Jitsi Meet。記事の Docker Compose の構成(web・Prosody・Jicofo・JVB)をそのまま立てます。参加者はブラウザだけで、アカウントは要りません
 * 申し込みの確認と会議のリンクは、自前のメール(連載 2-06)から送ります
@@ -363,10 +365,10 @@ It is built from published software, LibreOffice among them. The difference is t
 | 60 分。説明 10 分、手を動かす 25 分、日本語の書体の話 10 分、質問 15 分
 
 | 場所
-| 自前のサーバーで動かすビデオ会議。候補は Jitsi Meet(公開されているビデオ会議のソフトウェア。Docker で立てられ、ブラウザだけで入れる)。参加者はリンクを開くだけで、アカウントは要らない。万一動かないときの代えとして、Discord の音声チャンネルを用意しておく
+| 1 回目は Discord の Flet サーバーの音声チャンネル(画面共有)。参加する人がすでにいる場所で、立てる物が無い。自前に移すときは Jitsi Meet(上の「元にする物」)
 
 | 申し込み
-| 自前の頁を Flet で作る(紹介ページと同じ仕組みで、office.aiseed.dev の下に置く)。名前とメールを受け取り、会議のリンクを返す。Flet で申し込みの頁が作れることも、そのまま勉強会の材料になる。connpass は、置くとしても告知だけで、申し込みは自前の頁に寄せる
+| 1 回目は connpass。日本の勉強会は connpass で探す人が多く、申し込みと人数の把握と当日の連絡がそろっている。Discord の #日本語 と X にも同じ内容を書く。自前に移すときは Cal.com か Flet の頁
 
 | 日時
 | 平日の 20 時か、土曜の 14 時。告知から 2 週間は空ける
@@ -375,7 +377,7 @@ It is built from published software, LibreOffice among them. The difference is t
 | 上限は置かない。音声チャンネルなので 5 人でも成り立つ
 
 | 録画
-| 画面と声を録り、自前のサーバーに置いて紹介ページから見られるようにする。参加者の声は録らない。YouTube にも置くかは発注者の決め
+| 画面と声を録り、まず YouTube に置く。参加者の声は録らない。自前のサーバーに置くのは移すときに
 |===
 
 === 中身(案)
@@ -392,13 +394,12 @@ It is built from published software, LibreOffice among them. The difference is t
 * web/main.py が、その日の Flet の版で動くことを前の日に確かめる(`pip install -U flet` で上げてから)
 * 途中の形を 3 段階(題名だけ、段落とボタン、写真とリンク)で用意して、詰まっても先に進めるようにする
 * 質問が出なかったときのために、自分で 3 つ用意する(書体、nginx、画像のコピー)
-* 自前のサーバーに Jitsi Meet を立て、前の週に 2 人で試して、画面共有と録画が動くことを確かめる
-* 申し込みの頁(Flet)を作り、受け取った名前とメールはサーバーの中だけに置く。勉強会が終わったら消す
-* Discord と X の告知は発注者が出す。文面は下にある
+* 前の週に Discord の音声チャンネルで 2 人で試して、画面共有と録画(OBS など)が動くことを確かめる
+* connpass の頁と、Discord と X の告知は発注者が出す。文面は下にある
 
 === 告知の下書き
 
-Discord の #日本語 と申し込みの頁(日本語):
+connpass と Discord の #日本語(日本語):
 
 ----
 【オンライン勉強会】Flet で Web のページを 1 枚作る
@@ -408,9 +409,9 @@ Word と Excel のファイルを開いて刷るアプリ(aiseed office)の紹�
 Flet の Web で日本語の「、」「。」がずれる件と、その手当ても話します。
 
 日時: {日付} {時刻}(60 分)
-場所: オンライン(申し込みの後にリンクを送ります。ブラウザだけで入れます)
+場所: Discord の Flet サーバー、音声チャンネル(画面共有)
 用意する物: Python 3.10 以上と、pip install flet
-申し込み: {申し込みの頁の URL}
+申し込み: {connpass の URL}
 
 初めての方も、途中から来る方も歓迎です。
 ----
@@ -420,22 +421,21 @@ X(日本語):
 ----
 Flet(Python だけで Web とデスクトップのアプリが作れる)のオンライン勉強会をやります。
 Web のページを 1 枚、最初から作ります。日本語の書体のずれの手当ても話します。
-{日付} {時刻}、オンラインで。申し込みはこちら: {申し込みの頁の URL}
+{日付} {時刻}、Discord で。申し込みはこちら: {connpass の URL}
 ----
 
 Feodor への一言(英語。Flet の側で知らせてもらえるかもしれない):
 
 ----
-We're holding the first Japanese online Flet meetup on {date}: building a one-page web app from scratch, plus the Japanese font workaround. The sign-up page is itself a Flet app. Feel free to mention it in announcements if that fits.
+We're holding the first Japanese online Flet meetup on {date} in a voice channel here: building a one-page web app from scratch, plus the Japanese font workaround. Feel free to mention it in announcements if that fits.
 ----
 
 === 発注者に決めてもらう物
 
 * 日時(平日 20 時か、土曜 14 時か)
 * 録画を残して YouTube に置くか
-* 申し込みの頁の置き場(office.aiseed.dev の下か、別の名前か)と、主催の名前(個人か、aiseed か)
-* 申し込みは Flet の頁で作るか、連載の Cal.com を使うか。Flet の頁は勉強会の材料になり、Cal.com は連載の道具をそのまま使えます。どちらでも、確認のメールは自前のメールから送ります
-* サーバーの余裕(Jitsi Meet は会議の人数に応じて CPU とメモリを使う。10 人ほどなら小さな機械で足りる)
+* connpass の主催の名前(個人か、aiseed か)
+* 自前に移す時期(連載 2-07 の Jitsi Meet と Cal.com が立ってから。何回目からかは、1 回目の様子を見て決める)
 * 話すのは発注者か。Claude は話す原稿ではなく、手順と途中の形と、質問への答えの下書きを用意します
 
 == 出す前の確認

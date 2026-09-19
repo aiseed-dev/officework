@@ -8294,3 +8294,9 @@ Word と Excel に合わせるのは、ファイルの読み書きと印刷(docx
 発注者「https://aiseed.dev/ai-native-ways/software/meetings/ 将来的には、こういうのを整備していきたいです」。
 
 *決め:* 勉強会の会議・申し込み・予定・録画は、発注者の連載「AI-native ways」2-07(Jitsi Meet を Docker Compose で、予約は Cal.com、予定は Radicale、確認は自前のメール 2-06)の構成をそのまま使う。勉強会は連載で書いた物を実際に使う最初の場で、1 回ごとに連載の記事を 1 本足す。申し込みを Flet の頁にするか Cal.com にするかは発注者の決め。docs/sns.ja.adoc「オンラインの勉強会」に書いた。
+
+=== 勉強会の 1 回目は既存の物で(2026-09-19 発注者)
+
+発注者「最初は connpass のような既存のものを使う方がいい」。
+
+*決め:* 1 回目は connpass(申し込み)と Discord の Flet サーバーの音声チャンネル(会議)で開く。録画はまず YouTube。自前の仕組み(連載 2-07 の Jitsi Meet と Cal.com)は、連載の準備ができてから移す。何回目から移すかは 1 回目の様子を見て決める。docs/sns.ja.adoc「オンラインの勉強会」を直した。
