@@ -4,12 +4,15 @@
 配布用の 1 枚(普通の人の会で配る)。*マニュアルではない。*
 * 2026-09-20 時点の書き物。発注者(yniji)の一人称で書いてある
 * Debian の手順は Mac では通せないので、配る前に Debian を入れた PC で 1 度通す
-  (Releases の .deb が Debian 13 で入ることも、その時に確かめる)
+  (Releases の .deb が Debian 13 で入ることと、GNOME Boxes で Windows 11 が
+  動くことも、その時に確かめる)
 * 貼り付けるときはこの注記ごと消してよい
 ////
 
 Windows の PC を Debian にすると、Python、git、apt が最初からそろいます。
 Copilot に誘われることも、更新で勝手に再起動されることもありません。
+Windows でしか動く物(会計ソフトなど)は、Debian の中の仮想環境で Windows を
+動かして、そこで使います。PC は 1 台のままです。
 
 今までこれをしなかった理由は 1 つでした。Word と Excel のファイルが、
 同じに開かないことです。officework がそこを埋めます。役所の様式や
@@ -19,15 +22,23 @@ Copilot に誘われることも、更新で勝手に再起動されることも
 
 * 自分の PC を持っている人(個人事業主、小さな会社)。会社が管理している
   PC はできません
-* 古い PC が 1 台余っている人。その 1 台を Debian にして、様式の仕事を
-  そちらでやります。Windows でしか動く物(会計ソフトなど)があるなら、
-  今の PC はそのまま残します
+* メモリが 8GB 以上、ディスクが 128GB 以上の PC。仮想環境の Windows に
+  4GB と 64GB を渡すためです。メモリが 16GB あれば楽です
+* 古い PC が 1 台余っている人は、まずそちらで試すと安心です
 
 == 0. 先にすること
 
 * 残したいファイル(書類、写真)を USB か外付けのディスクに写します。
   Debian を入れると、その PC の中身は消えます
 * Wi-Fi のパスワードを控えます
+* Windows のプロダクトキーを控えます。ターミナルで次を打つと出ます(出ない
+  PC もあります。その場合は仮想環境の Windows は認証なしで使います。壁紙の
+  右下に印が出るだけで、動きます)
++
+[source,console]
+----
+wmic path softwarelicensingservice get OA3xOriginalProductKey
+----
 * 8GB 以上の USB メモリを 1 本用意します。中身は消えます
 
 == 1. Debian の USB を作る(15 分)
@@ -111,6 +122,29 @@ b.to_pdf()
 Debian は最初から印刷の仕組み(CUPS)を持っています。「設定」の
 「プリンター」で、同じネットワークにあるプリンターは自動で出ます。
 ここ数年のプリンターはドライバー無しで刷れます。
+
+== 7. Windows は仮想環境で(30 分)
+
+会計ソフトのように Windows でしか動く物は、Debian の中で Windows を
+動かして使います。GNOME Boxes を使います。
+
+. https://www.microsoft.com/software-download/windows11 から
+  「Windows 11 ディスク イメージ (ISO)」を落とします
+. 端末で `sudo apt install gnome-boxes` と打ちます。アプリの一覧に
+  「Boxes」が出ます
+. Boxes で「+」→「仮想マシンを新規作成」→ 落とした ISO を選びます。
+  メモリは 4GB 以上、ディスクは 64GB 以上にします
+. Windows の入れ方は普通の PC と同じです。プロダクトキーは、控えた物を
+  入れるか、「プロダクト キーがありません」で進めます
+. 入ったら、Windows の中に会計ソフトなどを入れます。USB の機器(認証の
+  キーなど)は、Boxes の「デバイスと共有」で Windows に渡せます
+
+Boxes の窓の中で Windows が動き、外は Debian のままです。様式の仕事は
+外の officework と Python でやり、Windows でしか動く物だけを中でやります。
+
+前提が 1 つあります。PC の設定(BIOS / UEFI)で「Virtualization」か
+「VT-x」「SVM」が有効になっていることです。無効だと Boxes が遅いか
+動きません。ここ 10 年の PC は有効になっている物がほとんどです。
 
 == 困ったら
 
