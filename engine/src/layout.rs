@@ -408,7 +408,10 @@ pub(super) fn atama_no_gazou_mm(para: &Paragraph) -> f32 {
 /// docx から読んだ細かい値は `left_twips` が持っているので、それを先に
 /// 見ます(2026-08-30)。`em` は全角1文字の幅(mm)です。
 pub(super) fn left_mm(para: &Paragraph, em: f32) -> f32 {
-    if para.left_twips > 0 {
+    // A negative left indent (`w:ind w:left="-945"`) pulls the text into
+    // the margin; it used to count as no indent (2026-09-19, a MHLW form
+    // whose text box sat 16.7mm too far right)
+    if para.left_twips != 0 {
         return (para.left_twips as f32 / 20.0) * 25.4 / 72.0;
     }
     para.indent as f32 * em * 2.0 + list_hang_mm(para, em)
@@ -741,6 +744,13 @@ pub(super) fn space_before_mm(para: &Paragraph, base: f32) -> f32 {
     if para.space_before_pt > 0.0 {
         return para.space_before_pt * 25.4 / 72.0;
     }
+    // A document (or its style) that says 0 has decided; the heading
+    // default below is for documents that say nothing (2026-09-19,
+    // Word's resume: Heading 2 sits on Normal's before=0, and every row
+    // of its table started 9.8pt too low)
+    if para.before_itta {
+        return 0.0;
+    }
     match para.style {
         ParaStyle::Heading(1) => base * 0.9 * 25.4 / 72.0,
         ParaStyle::Heading(_) => base * 0.7 * 25.4 / 72.0,
@@ -754,6 +764,9 @@ pub(super) fn space_before_mm(para: &Paragraph, base: f32) -> f32 {
 pub(super) fn space_after_mm(para: &Paragraph, base: f32) -> f32 {
     if para.space_after_pt > 0.0 {
         return para.space_after_pt * 25.4 / 72.0;
+    }
+    if para.after_itta {
+        return 0.0;
     }
     match para.style {
         ParaStyle::Heading(_) => base * 0.25 * 25.4 / 72.0,
@@ -2373,11 +2386,18 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         let (iw, ih) = (im.w_mm * k, im.h_mm * k);
                         if im.off == 0 {
                             if let Some(l) = ls.get_mut(saisho) {
-                                if ih + mae > l.2 {
-                                    l.2 = ih + mae;
-                                }
-                                // the baseline goes to the bottom of the box
-                                l.6 = (true, 0.0, l.6.2, l.6.3);
+                                // The image stands on the baseline: the line's
+                                // ascent is the taller of the text's and the
+                                // image's, its descent stays the text's
+                                // (Word's PDF of the resume: a 0-high connector
+                                // leaves the line at the text's height)
+                                let pt = l.4;
+                                let moji_agari = crate::font::agari_em(pfont.as_deref())
+                                    .map(|e| e * pt * PT_TO_MM)
+                                    .unwrap_or(l.2 * 0.8);
+                                let ue = (ih - moji_agari).max(0.0);
+                                l.2 += ue;
+                                l.6 = (false, l.6.1 + ue, l.6.2, l.6.3);
                             }
                             gazou.push((saisho, im.clone(), iw, ih, true));
                         } else {

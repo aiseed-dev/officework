@@ -16,6 +16,7 @@ fn main() -> Result<(), String> {
     let (doc, _) = ooxml::read(std::io::BufReader::new(f))?;
     // FONT=name: print how the engine resolves a font name on this machine
     if let Ok(name) = std::env::var("FONT") {
+        println!("doc.font={:?} doc.font_latin={:?} base={}", doc.font, doc.font_latin, doc.base_pt());
         match kumihan::font::resolve(&name) {
             Some(f) => println!("font {name:?} -> {:?} index {} ({}) okuri={:?} agari={:?}", f.path, f.index, f.name, kumihan::font::okuri_em(Some(&name)), kumihan::font::agari_em(Some(&name))),
             None => println!("font {name:?} -> none; substitute {:?}",
@@ -25,14 +26,24 @@ fn main() -> Result<(), String> {
     // RUNS=1: print the paragraphs of every table with their style, the
     // size and font the style resolves to, every run, and the images
     if std::env::var("RUNS").is_ok() {
-        for (ti, b) in doc.blocks.iter().enumerate() {
+        // the same document after the theme is composed, as paper prints it
+        let d2 = kumihan::theme::compose(&doc, &kumihan::theme::Theme::default());
+        for (ti, b) in d2.blocks.iter().enumerate() {
+            if let kumihan::Block::Para(p) = b {
+                println!("body {ti} style={:?} before={} after={} line_spacing={} line_pt={:?} runs={} font0={:?} pt0={:?} images={} anchors={}",
+                    p.style_id, p.space_before_pt, p.space_after_pt, p.line_spacing, p.line_pt, p.runs.len(),
+                    p.runs.first().and_then(|r| r.font.clone()), p.runs.first().and_then(|r| r.size_pt), p.images.len(), p.anchors.len());
+            }
+        }
+        for (ti, b) in d2.blocks.iter().enumerate() {
             if let kumihan::Block::Table(t) = b {
                 for (ri, row) in t.rows.iter().enumerate() {
                     for (ci, c) in row.iter().enumerate() {
                         for p in &c.paragraphs {
                             let sid = p.style_id.as_deref();
-                            println!("table {ti} ({ri},{ci}) style={sid:?} pt={:?} font={:?} latin={:?} images={}",
-                                doc.style_pt(sid), doc.style_font(sid), doc.style_font_latin(sid), p.images.len());
+                            println!("table {ti} ({ri},{ci}) style={sid:?} pt={:?} font={:?} latin={:?} images={} before={} after={} line={} line_pt={:?} auto={:?}/{:?} list={:?}",
+                                doc.style_pt(sid), doc.style_font(sid), doc.style_font_latin(sid), p.images.len(),
+                                p.space_before_pt, p.space_after_pt, p.line_spacing, p.line_pt, p.auto_before, p.auto_after, p.list);
                             for r in &p.runs {
                                 println!("    run pt={:?} font={:?} bold={} {:?}", r.size_pt, r.font, r.fmt.bold, r.text.chars().take(30).collect::<String>());
                             }

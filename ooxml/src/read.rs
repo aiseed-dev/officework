@@ -2106,6 +2106,12 @@ pub(super) fn parse_document_rels_num(
     // **無指定は None のまま持つ。** ここで数を入れると、往復で
     // 「10.5pt 指定」が焼き付く(2026-08-13、本家 python-docx で発覚)
     let mut size_pt: Option<f32> = None;
+    // Run properties of the paragraph mark (`w:pPr/w:rPr`): the height of
+    // an empty paragraph comes from them (ECMA-376 17.3.1.29)
+    #[allow(unused_mut, unused_variables)]
+    let mut mark_pt: Option<f32> = None;
+    #[allow(unused_mut, unused_variables)]
+    let mut mark_font: Option<String> = None;
     // **書体は文書の設定**。docx が w:rFonts で持っているものを捨てない
     let mut font: Option<String> = None;
     // 和文の書体・欧文の書体・「半角も和文で」の印(rFonts)
@@ -2298,7 +2304,7 @@ pub(super) fn parse_document_rels_num(
                         cell_span = 0;
                         cell_vmerge = VMerge::None;
                     },
-                    b"p" => { para = Some(Vec::new()); size_pt = None; font = None;
+                    b"p" => { para = Some(Vec::new()); size_pt = None; font = None; mark_pt = None; mark_font = None;
                               fmt = CharFormat::default(); align = Align::default();
                               align_itta = false;
                               tab_stops.clear();
@@ -2340,7 +2346,11 @@ pub(super) fn parse_document_rels_num(
                     }
                     b"sz" if in_rpr => {
                         if let Some(v) = attr(&e, "val") {
-                            if let Ok(h) = v.parse::<f32>() { size_pt = Some(h / 2.0); }
+                            if let Ok(h) = v.parse::<f32>() {
+                                size_pt = Some(h / 2.0);
+                                // the paragraph mark's own size (`w:pPr/w:rPr`)
+                                if in_ppr { mark_pt = size_pt; }
+                            }
                         }
                     }
                     // 日本語の書体は eastAsia に入る。ascii しか見ないと明朝が消える
@@ -2356,6 +2366,7 @@ pub(super) fn parse_document_rels_num(
                             .filter(|s| !s.is_empty());
                         hint_ea = attr(&e, "hint").as_deref() == Some("eastAsia");
                         font = erabu_font("", &font_ea, &font_latin, hint_ea);
+                        if in_ppr { mark_font = font.clone(); }
                     }
                     // w:val="0"/"false" は「付けない」の意味なので、有無だけで判定しない。
                     // **要素が在ったこと自体も覚えます**(2026-09-01)。
@@ -3082,7 +3093,11 @@ pub(super) fn parse_document_rels_num(
                         p.push(Run { text: "\t".into(), size_pt, font: font.clone(), fmt: fmt.clone() }) },
                     b"sz" if in_rpr => {
                         if let Some(v) = attr(&e, "val") {
-                            if let Ok(h) = v.parse::<f32>() { size_pt = Some(h / 2.0); }
+                            if let Ok(h) = v.parse::<f32>() {
+                                size_pt = Some(h / 2.0);
+                                // the paragraph mark's own size (`w:pPr/w:rPr`)
+                                if in_ppr { mark_pt = size_pt; }
+                            }
                         }
                     }
                     b"rFonts" if in_rpr => {
@@ -3097,6 +3112,7 @@ pub(super) fn parse_document_rels_num(
                             .filter(|s| !s.is_empty());
                         hint_ea = attr(&e, "hint").as_deref() == Some("eastAsia");
                         font = erabu_font("", &font_ea, &font_latin, hint_ea);
+                        if in_ppr { mark_font = font.clone(); }
                     }
                     // w:val="0"/"false" は「付けない」の意味なので、有無だけで判定しない。
                     // **要素が在ったこと自体も覚えます**(2026-09-01)。
@@ -3557,10 +3573,20 @@ pub(super) fn parse_document_rels_num(
                     b"instrText" => in_instr = false,
                     b"rPr" => in_rpr = false,
                     b"hyperlink" => cur_link = None,
-                    b"pPr" => in_ppr = false,
+                    b"pPr" => {
+                        in_ppr = false;
+                        // The mark's size and font (`w:pPr/w:rPr`) must not leak
+                        // into the runs that follow: a run without `w:sz` has the
+                        // style's size, not the mark's (2026-09-19, Word's resume:
+                        // the run holding a rule under the subtitle came out 14pt)
+                        size_pt = None;
+                        font = None;
+                    }
                     b"pBdr" => in_pbdr = false,
                     b"tblPr" => in_tblpr = false,
                     b"p" => {
+                        // decided before the fields below take `images` and `anchors`
+                        let karappo = images.is_empty() && anchors.is_empty();
                         if let Some(runs) = para.take() {
                             rep.runs += runs.len();
                             rep.paragraphs += 1;
@@ -3608,7 +3634,19 @@ pub(super) fn parse_document_rels_num(
                                 dropcap: false,
                                 images_new: Vec::new(),
                                 runs: if runs.is_empty() {
-                                vec![Run { text: String::new(), size_pt: None, font: None, fmt: Default::default() }]
+                                // An empty paragraph is as high as its paragraph
+                                // mark, whose run properties sit in `w:pPr/w:rPr`
+                                // (ECMA-376 17.3.1.29). Word's resume has such a
+                                // paragraph at 14pt between two headings; at the
+                                // style's 10pt the row below ended 5.7pt too high
+                                // (2026-09-19)
+                                // (a paragraph whose only run holds a drawing is
+                                // not empty: its line is the run's, not the mark's)
+                                if karappo {
+                                    vec![Run { text: String::new(), size_pt: mark_pt.or(size_pt), font: mark_font.clone().or_else(|| font.clone()), fmt: Default::default() }]
+                                } else {
+                                    vec![Run { text: String::new(), size_pt, font: font.clone(), fmt: Default::default() }]
+                                }
                             } else { runs } };
                             // ドロップキャップの枠の段落は、次の段落の頭に合流する
                             if dropcap && !p.runs.iter().all(|r| r.text.is_empty()) {

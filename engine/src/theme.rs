@@ -2032,6 +2032,16 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             }
             continue;
         }
+        // A paragraph that names no style follows the default paragraph
+        // style (Normal), as a cell paragraph already did. Without this the
+        // document defaults filled in its spacing: Word's resume has an
+        // unstyled empty paragraph before its table, Normal says after=0,
+        // docDefaults say 12pt, and the table sat 12pt too low (2026-09-19)
+        if para.style_id.is_none() {
+            if let Some((lk, pl)) = kitei_no_style.as_ref() {
+                jibun_wo_ateru(para, lk, pl);
+            }
+        }
         bunsho_no_kitei(para, doc_after, doc_line);
         jidou_no_aki(para, bi == 0, false, doc.auto_space_pt());
         // 名指しのスタイル(style_id)が役割の固定名より勝つ —
