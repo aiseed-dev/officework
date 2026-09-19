@@ -1,0 +1,305 @@
+= SNS の受け持ち(方針と投稿の下書き)
+
+作業用の文書です。利用者向けのマニュアルではありません。
+投稿の文面は利用者が読むので、docs/ の手引きと同じ言葉の決まりで書きます
+(CLAUDE.md の「言葉づかい」)。
+
+== 受け持ち
+
+SNS 担当(Claude)がすること:
+
+* 投稿の文面を英語と日本語で書き、この文書に置く
+* 投稿に使う写真を、リポジトリにある物(web/assets)か、自分で作った文書から用意する
+* 出す前の確認(下の一覧)を通す
+* 反応(不具合の報告、質問)への返事の下書きを書く
+
+発注者がすること:
+
+* アカウントを持ち、投稿のボタンを押す(push と同じで、外に出す操作は発注者がします)
+* 報酬や募集の条件のように、お金と人に関わる決めを下す
+
+== 決め
+
+. **動いている物だけを書きます。** 手引きと紹介ページ(web/main.py)と同じ決めです。「〜できます(予定)」は書きません。これから作る物は「作っています」と書きます。
+. **数字には日付を付けます。** 例:「2026 年 9 月 19 日の時点で 288 枚のうち 246 枚」。数字は SEKKEI.adoc の突き合わせの記録(「docx の Word 比較」の回ごとの集計)と紹介ページ(web/main.py)の数字と同じ物を使います。
+. **写真に使えるのは、自分の文書と、役所が公開している様式だけです。** Word のテンプレート(web/gallery の物)は Microsoft の著作物なので、試験に使うだけで、写真にも投稿にも出しません(SEKKEI.adoc「Word のテンプレートを英語版と日本語版で全部通す」)。
+. **英語が先です。** 発注者の決め(2026-09-19)「日本に訴えるよりもまず世界に訴えた方がいい」に従い、英語の投稿を先に出し、日本語は同じ内容を後から出します。
+. **売りは 1 つです。** 「受け取った docx と xlsx を、Word と Excel と同じに開いて刷る。同じファイルを両方で開けば誰でも確かめられる」。機能の数や AI の話は、この売りの後に添えます。
+. **秘密の値と人の情報は出しません。** 様式を送ってくれた人の名前は、本人が認めた場合だけ、docs/corpus-docx.ja.adoc に書く形で残します。投稿には出しません。
+. **同じ言葉の決まりで書きます。** 比喩や造語を使いません。Word と Excel のヘルプの言葉を使います。
+
+== 出す場所と順番
+
+[cols="1,2,2"]
+|===
+| 場所 | 出す物 | 備考
+
+| X(英語)
+| 比較の写真、週ごとの数字、版の告知、テスターの募集
+| 最初に作るアカウントです。名前は aiseed office に合わせます
+
+| X(日本語)
+| 英語と同じ内容の日本語。役所の様式の話はこちらが中心
+| 発注者の既存のアカウントで出すか、別に作るかは発注者の決め
+
+| Qiita
+| docs/articles の 2 本(発注者の一人称の記事)
+| 記事の公開に合わせて X で 1 回ずつ知らせます
+
+| GitHub Releases
+| 版の告知の元。X には Releases へのリンクを貼ります
+| RELEASE.adoc と RELEASE.ja.adoc をそのまま元にします
+
+| office.aiseed.dev
+| 投稿からのリンク先。比較の写真と、様式のダウンロード
+| 公開されるまでは GitHub のリンクを使います
+|===
+
+Bluesky と Mastodon は、X と同じ文面をそのまま出せます。手間が増えるだけなので、X が回ってから決めます。
+
+== 投稿の型と間隔
+
+[cols="1,3,1"]
+|===
+| 型 | 中身 | 間隔
+
+| 比較の写真
+| 1 つの様式を Word と aiseed office で開いた写真を 2 枚並べる。様式の出どころと、合っている点を 1 行
+| 週 1 回
+
+| 数字
+| 突き合わせの数(288 枚のうち何枚が一致)と、その週に直したずれの種類を 1 つ
+| 週 1 回
+
+| 版の告知
+| Releases のリンクと、その版で直った物を 3 つまで
+| 版を出したとき
+
+| 募集
+| 手元の様式で確かめてくれる人を集める
+| 月 1 回、または反応が止まったとき
+
+| 返事
+| 報告と質問に答える。直したら、直したことを同じスレッドに書く
+| 届いたとき
+|===
+
+== 下書き
+
+英語の文字数は X の 280 字に収めてあります。日本語も 140 字を目安にします。
+`{n}` `{date}` の所は出すときに埋めます。
+
+=== 固定の投稿(プロフィールの先頭)
+
+英語:
+
+----
+aiseed office opens the Word and Excel files you receive and shows and prints them the way Word and Excel do. Same page count, same line breaks, same column widths.
+
+Open the same file in both and compare. Anyone can check it.
+
+Source (AGPL): github.com/aiseed-dev/officework
+----
+
+日本語:
+
+----
+aiseed office は、受け取った Word と Excel のファイルを、Word や Excel と同じに開いて刷ります。同じ頁数、同じ折れ方、同じ列幅です。
+
+同じファイルを両方で開いて並べれば、誰でも確かめられます。
+
+コードは全部公開しています(AGPL)。
+github.com/aiseed-dev/officework
+----
+
+=== 比較の写真(1 回目は名古屋市立大学の物品借用願)
+
+写真は web/assets/word.png と web/assets/office.png です。
+
+英語:
+
+----
+Left: Word. Right: aiseed office.
+
+The file is a public equipment-loan form from Nagoya City University (docx). Column widths, full-width spaces and line breaks come out the same.
+
+The docx is in the repo. Open it in your Word and compare.
+----
+
+日本語:
+
+----
+左が Word、右が aiseed office です。
+
+名古屋市立大学が公開している「物品借用願」(docx)を開きました。表の列幅、全角スペースの送り、行の折れ方まで同じに出ます。
+
+この docx はリポジトリにあります。お手元の Word で開いて、並べてみてください。
+----
+
+=== 数字(週 1 回)
+
+英語:
+
+----
+Progress, {date}: {n} of 288 public Japanese government forms (docx) now match Word's PDF in page count.
+
+This week's fix: {one kind of mismatch, in one line}.
+
+The list of forms and how we compare: github.com/aiseed-dev/officework
+----
+
+日本語:
+
+----
+{date} の時点で、役所が公開している様式 288 枚(docx)のうち {n} 枚が、Word の PDF と頁数で一致しました。
+
+今週直したずれ: {ずれの種類を 1 行}。
+
+様式の一覧と比べ方はリポジトリにあります。
+----
+
+2026 年 9 月 19 日の数字は 246 枚です。
+
+=== 募集(手元の様式で確かめてくれる人)
+
+発注者の決め(2026-09-19)に沿って、こちらが配る様式ではなく、その人が日々使っている様式で確かめてもらいます。報酬は発注者が決めてから埋めます。
+
+英語:
+
+----
+Looking for people who use Word forms every day.
+
+Open one of your own forms in Word and in aiseed office. Send us two screenshots and the page count. If they differ, send the file too (blank or with details replaced).
+
+Windows Word preferred. {reward}. Details: {link}
+----
+
+日本語:
+
+----
+毎日 Word の様式を使っている方に、お願いです。
+
+お使いの様式を Word と aiseed office で開いて、画面の写真を 1 枚ずつと頁数を送ってください。違って見えたら、そのファイルも送ってください(空の様式か、中身を書き換えた物で)。
+
+Windows の Word でお願いします。{報酬}。手順: {link}
+----
+
+=== 版の告知
+
+英語:
+
+----
+aiseed office {version} is out.
+
+- {fix 1}
+- {fix 2}
+- {fix 3}
+
+Mac, Windows, Linux: github.com/aiseed-dev/officework/releases
+Python: pip install officework
+----
+
+日本語:
+
+----
+aiseed office {version} を出しました。
+
+- {直した物 1}
+- {直した物 2}
+- {直した物 3}
+
+Mac・Windows・Linux: github.com/aiseed-dev/officework/releases
+Python から: pip install officework
+----
+
+=== Qiita の記事を知らせる
+
+docs/articles の 2 本です。記事を公開した日に出します。
+
+----
+Excel に Python が載る、と 2017 年に書きました。8 年待って、自分で作りました。
+xlsx と docx を読み書きして PDF にするエンジンを、`pip install officework` で使えます。
+{Qiita の URL}
+----
+
+----
+Python の Office 自動化の解説ブログのサンプル 24 本を、import の行を替えただけで走らせました。
+openpyxl と python-docx の書き方をそのまま受け継いでいます。
+{Qiita の URL}
+----
+
+=== 返事の下書き
+
+不具合の報告に:
+
+----
+ありがとうございます。そのファイル(または空にした物)を GitHub の Issues に付けていただけると、原因を調べて直します。直したら、ここに書きます。
+github.com/aiseed-dev/officework/issues
+----
+
+----
+Thank you. If you can attach the file (or a blank copy) to a GitHub issue, we will find the cause and fix it, and reply here when it is done.
+github.com/aiseed-dev/officework/issues
+----
+
+「LibreOffice と何が違うのか」に:
+
+----
+LibreOffice を含む公開のソフトウェアを元に作っています。違いは目標の立て方です。受け取った docx と xlsx を Word・Excel と同じ頁数・折れ方・列幅で開くことを、他の何より先にしています。役所の様式 288 枚で毎日比べています。
+----
+
+----
+It is built from published software, LibreOffice among them. The difference is the goal: opening the docx and xlsx you receive with the same page count, line breaks and column widths as Word and Excel comes before anything else. We compare against 288 public forms every day.
+----
+
+「なぜ AGPL か」に:
+
+----
+人も AI も読めて、自由に直せるようにするためです。直した物は同じ条件で公開してもらいます。
+----
+
+== テスター向けの 1 枚の手引き(下書き)
+
+募集の投稿からリンクする 1 枚です。公開する場所は紹介ページ(office.aiseed.dev)か、リポジトリの docs/ です。
+
+----
+= 手元の様式で確かめる手順
+
+1. aiseed office を入れます(Mac・Windows・Linux)。
+   github.com/aiseed-dev/officework/releases
+
+2. お使いの様式(docx)を、Word と aiseed office の両方で開きます。
+
+3. 次の 3 つを送ってください。
+   - Word の画面の写真 1 枚
+   - aiseed office の画面の写真 1 枚
+   - それぞれの頁数
+
+4. 違って見えた所があれば、一言で書いてください(例:「表の 2 列目が広い」)。
+
+5. 違いがあったときだけ、そのファイルを送ってください。
+   個人情報や社外秘が入っている物は、空の様式か、中身を書き換えた物にしてください。
+   送っていただいたファイルは、直す確認に使い、認めていただいた場合は比べる集めに入れます。
+
+送り先: {GitHub の Issues か、メール}
+----
+
+== 出す前の確認
+
+投稿を出す前に、この順で見ます。
+
+. 書いてあることは、いま動いている物か(手引きに載っているか)
+. 数字に日付が付いているか。数字は SEKKEI.adoc の突き合わせの記録と同じか
+. 写真は自分の文書か、役所の公開の様式か(Word のテンプレートではないか)
+. 人の名前、ファイルの中身、秘密の値が写っていないか
+. リンク先は開くか(紹介ページは公開後だけ)
+. 言葉づかいは普通か(CLAUDE.md の表の言葉が入っていないか)
+. 英語は 280 字、日本語は 140 字を目安に収まっているか
+
+== 発注者に決めてもらう物
+
+* X のアカウント(英語用を新しく作るか、既存の物で出すか。名前は aiseed office に合わせるか)
+* 募集の報酬(写真の報告と、ファイルを送って再現できた物とで分けるか)
+* テスターの送り先(GitHub の Issues か、メールか。メールの窓口は準備中)
+* 紹介ページ(office.aiseed.dev)の公開の日。公開までは投稿のリンクは GitHub にします
+* アプリの配布の書き方。README.ja.adoc は「配布はしていません」、紹介ページは「試験公開」で Releases へ案内しています。投稿はどちらに合わせるか。合わせた方に README も直します
