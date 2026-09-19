@@ -284,6 +284,29 @@ github.com/aiseed-dev/officework/blob/main/web/assets/index.html
 Flet の版を上げたら index.html を写し直す必要があるので、Flet 側に言語を指定する設定があれば、この手当ては要らなくなります。
 ----
 
+=== WSL を使う人向けの記事を知らせる投稿
+
+記事(docs/articles/wsl-no-gyaku.ja.adoc)を Qiita に出した日に、X に出します。
+
+日本語:
+
+----
+WSL を使っているなら、逆にしませんか。
+Debian を土台にして、Windows は GNOME Boxes の中で動かす。更新も再起動も Windows の都合では来ない。
+「でも Word と Excel が」には officework で答えます。役所の様式 288 枚のうち {n} 枚が Word と同じ頁数で開きます。
+{Qiita の URL}
+----
+
+英語(同じスレッドに):
+
+----
+If you use WSL, you are already half way. Flip it: Debian as the host, Windows as a guest in GNOME Boxes.
+
+The usual blocker is Word and Excel files. officework opens them the way Word and Excel do; {n} of 288 public forms match Word's page count today.
+
+{URL}
+----
+
 === 発注者の前の記事と、その続き
 
 発注者の Qiita「AI x Python - 独学個人開発者(アーキテクト)のすすめ」(2025-12-19、https://qiita.com/yniji/items/c7f458b899f7e8fdfe5a)は、今日の話の元になっている記事です。「実装は AI、人はドメイン知識と設計力」「GUI はパターンが決まっていて、見た目で正しいか確認できるから AI に向く」は、そのまま X の「1 行の主張」の 1(答え合わせ)と 3(書かなくてもいい)の元です。この記事では天気のアプリを tkinter・PyQt6・Flet・Flutter で全部作って比べ、モバイルとエージェントの組み込みのために Flutter を選んでいます。
@@ -483,6 +506,10 @@ X で集めるのは、次の 3 つです。フォロワーの数は目的にし
 |===
 | 相手 | 何に反応するか | 言葉
 
+| WSL を使っている開発者(最初の相手。2026-09-20 発注者「まず、WSL を使っている人向けに」)
+| 「WSL の逆」。Debian を土台に、Windows は Boxes の中。Word と Excel のファイルが同じに開くから替えられる、という話。もう半分 Linux で仕事をしている人なので、一番近い
+| 日本語が先(Qiita の記事)。英語は後から同じ物
+
 | 世界の Python と Flet の開発者
 | Flet で 1 枚のページ、印刷、AI に書かせて動かす話、Rust と Python の組み合わせ
 | 英語
@@ -573,7 +600,7 @@ Word と Excel のファイルも同じ形です。形式は公開されてい�
 | 月 | やること
 
 | 2026 年 9 月(残り)
-| アカウントを作る。固定の投稿と写真の投稿を出す。Discord の #日本語 に最初の投稿。勉強会(10 月 7 日)の告知を connpass と X に出す
+| アカウントを作る。固定の投稿と写真の投稿を出す。Discord の #日本語 に最初の投稿。勉強会(10 月 7 日)の告知を connpass と X に出す。**WSL を使う人向けの記事**(docs/articles/wsl-no-gyaku.ja.adoc)を、手元で通してから Qiita に出し、X で知らせる。これが最初の「考え方」の投稿
 
 | 10 月
 | 勉強会(7 日)。その録画と分かったことを投稿。ハッカソン(見積書と請求書のエージェント)の出来を投稿。PyCon JP の発表への感想と、発表者への連絡。Word のテンプレート(英語版)の比較の結果が出始めたら、英語の写真の投稿に切り替える

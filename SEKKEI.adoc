@@ -8404,3 +8404,9 @@ Word と Excel に合わせるのは、ファイルの読み書きと印刷(docx
 発注者(同日)「gnome よりも Free 系がいいのでは」。軽くて余計な物の無いデスクトップの意味に取り、Debian の 1 枚のデスクトップを GNOME から Xfce に替えた(Windows と同じ形、軽い、何年も変わらない。officework は X11、Flet と Boxes は GTK なので Xfce でそのまま動く)。LXQt は日本語入力の設定が 1 手多いので普通の人には Xfce。FreeBSD の意味なら、officework は Linux 向けにしか組んでいないので土台は Debian のまま。
 
 発注者(同日)「やはり、debian+Gnome がいいのでは」。Debian の 1 枚を GNOME に戻した。理由: Debian の既定で、Wayland と高解像度の拡大縮小と Boxes の組み合わせが一番手入れされている。packaging/README.ja.md の「画面が小さすぎる」の手当ても GNOME の設定で書いてある。普通の人に渡す物は既定から外さない。
+
+== 決め: 最初の相手は WSL を使っている人(2026-09-20 発注者)
+
+発注者「まず、WSL を使っている人向けに、この話をしたらどうですか」。
+
+*決め:* 「WSL の逆」(Debian が土台、Windows は Boxes の中、Word と Excel は officework で同じに開く)を、WSL を使う開発者に最初に出す。もう半分 Linux で仕事をしている人なので、一番近い相手。Qiita の記事の草稿を docs/articles/wsl-no-gyaku.ja.adoc に書いた(「実際にやった手順」は手元で通してから埋める)。X の相手の表と 9 月の予定と投稿の下書きを docs/sns.ja.adoc に足した。
