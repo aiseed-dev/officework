@@ -25,7 +25,10 @@ Python、Node、Docker は、全部 Linux の物です。Windows が足してい
 ありません。開発者で Windows のネイティブアプリを作っている人は少数です。
 その少数も、C# で作れば Windows 専用になりますが、Flet なら同じコードが
 Mac、Windows、Linux、Web、モバイルの全部で動きます。作る道具を替えれば、
-Windows を土台にする理由は残りません。
+Windows を土台にする理由は残りません。なおかつ、AI は Flet の方が得意です。
+Flet には MCP(flet-mcp)があり、AI が入っている版の Flet の書き方をその場で
+引けるので、古い書き方を出す問題がほぼ無くなります。C# の画面には、これに
+当たる物がありません。
 
 == WSL では消えないこと
 
@@ -93,6 +96,9 @@ flet build linux
 
 * 手元のファイルにも、cron にも、systemd にも、同じ Python から触れます。
   AI に書かせた画面を、そのまま動かし続けられます
+* `pip install flet-mcp` で、AI の道具(Claude Code、Cursor など)に Flet の
+  MCP を登録できます。AI が入っている版の API と例を引くので、古い書き方を
+  出しません
 
 AI に書かせて、動かして、直す、を Python 1 枚で回す道具なので、土台が
 Debian になると、その回転が一番速くなります。
