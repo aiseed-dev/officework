@@ -291,18 +291,18 @@ Flet の版を上げたら index.html を写し直す必要があるので、Fle
 日本語:
 
 ----
-WSL を使っているなら、逆にしませんか。
-Debian を土台にして、Windows は GNOME Boxes の中で動かす。更新も再起動も Windows の都合では来ない。
-「でも Word と Excel が」には officework で答えます。役所の様式 288 枚のうち {n} 枚が Word と同じ頁数で開きます。
+そもそも WSL は要りません。
+Debian を土台にして、Windows は GNOME Boxes の中で動かす。Word と Excel は箱の中に残るので、失う物はありません。更新も再起動も Windows の都合では来ません。
+様式の仕事は箱を開けずに officework で。役所の様式 288 枚のうち {n} 枚が Word と同じ頁数で開きます。
 {Qiita の URL}
 ----
 
 英語(同じスレッドに):
 
 ----
-If you use WSL, you are already half way. Flip it: Debian as the host, Windows as a guest in GNOME Boxes.
+If you use WSL, you do not need it. Make Debian the host and keep Windows as a guest in GNOME Boxes. Word and Excel stay in the box, so nothing is lost.
 
-The usual blocker is Word and Excel files. officework opens them the way Word and Excel do; {n} of 288 public forms match Word's page count today.
+For the forms you receive, officework opens docx and xlsx outside the box, the way Word and Excel do; {n} of 288 public forms match Word's page count today.
 
 {URL}
 ----
@@ -516,7 +516,7 @@ X で集めるのは、次の 3 つです。フォロワーの数は目的にし
 | 相手 | 何に反応するか | 言葉
 
 | WSL を使っている開発者(最初の相手。2026-09-20 発注者「まず、WSL を使っている人向けに」)
-| 「WSL の逆」。Debian を土台に、Windows は Boxes の中。Word と Excel のファイルが同じに開くから替えられる、という話。もう半分 Linux で仕事をしている人なので、一番近い
+| 「そもそも WSL は要らない」。Debian を土台に、Windows は Boxes の中。Word と Excel は箱に残るので失う物が無く、様式の仕事は officework で箱の外に出せる、という話。もう半分 Linux で仕事をしている人なので、一番近い
 | 日本語が先(Qiita の記事)。英語は後から同じ物
 
 | 世界の Python と Flet の開発者
