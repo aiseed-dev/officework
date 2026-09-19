@@ -439,7 +439,7 @@ Flet の会は開発者向けです。普通の人(中小企業の事務の人�
 . 環境を作る(45 分)。参加者が自分の PC で手を動かす。3 つの道
 * Mac: python.org の Python か `brew install python`、`python3 -m venv ~/venv`、`~/venv/bin/pip install flet`、`flet run` で見本が動く所まで
 * Linux(Debian、Ubuntu): `sudo apt install python3-venv`、venv、`pip install flet`、`flet run`。組む人は `sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev`
-* Windows: PC を Debian にする(Debian の 1 枚 docs/articles/pc-wo-debian-ni.ja.adoc の順)。会の前に、写しを取り、Debian 13 の USB を作り、プロダクトキーを控えておく。会の中で入れて、GNOME にログインし、上の Linux の道を通る。Windows は GNOME Boxes の中に入れる(これは会の後でよい)
+* Windows: PC を Debian にする(Debian の 1 枚 docs/articles/pc-wo-debian-ni.ja.adoc の順)。発注者が自分の Debian の PC で画面共有して見せる。その場でやる人は、消す前に書類の写しを取り、Debian 13 の USB を作って入れる。見てから後でやる人は、それでよい。Windows は GNOME Boxes の中に入れる(これは会の後でよい)
 +
 見本は、項目を 1 つ打ち込んで一覧に足す Python 1 枚(20 行)。動いたら、その場で AI に 1 か所変えさせて、直る所まで見る
 . 動かし続ける(5 分)。版は止めずに保守する(Flet 1.0 で `page.launch_url` が消えて直した記録)。次の回は、この環境の上で自分の業務の画面を 1 枚作る
@@ -449,15 +449,11 @@ officework と aiseed office の話はしません(2026-09-20 発注者)。
 
 === 準備
 
-* 会は Debian の上でやる。PocketBase のような物は先に立てておかず、その場で AI に聞いて入れる(2026-09-20 発注者「こういうのは、AI が教えてくれるからやる必要がない」)。Debian なら 1 行で入る物が、Windows では大変で、それ自体が「Windows を消すこと」が最初の 1 歩である証拠になる
-* 参加者には、会の前に「WSL の逆」の記事と Debian の 1 枚を渡す。Windows のままの人は、見るだけでも構わない
-* 見本(項目を打ち込んで一覧に足す 20 行)が、その日の Flet の版で、Mac と Debian の両方で動くことを前の日に確かめる(`pip install -U flet` で上げてから)
-* Windows の人向けに、会の前にやっておくこと(写し、Debian 13 の USB、プロダクトキー、8GB 以上のメモリ)を告知に書く。Debian の 1 枚を渡す
-* Debian の入れ方は、発注者の Debian の PC で画面共有して見せる(2026-09-20 に通した手順)
-* 詰まりやすい所(PATH が通らない、venv の有効化、Debian の起動メニュー、Wi-Fi のドライバー)の答えを先に用意する
-* 質問が出なかったときのために、自分で 3 つ用意する(Windows を消して困ることは何か、flet build に要る物、版を上げたら壊れたときの直し方)
-* 前の週に Discord の音声チャンネルで 2 人で試して、画面共有と録画(OBS など)が動くことを確かめる
-* connpass の頁と、Discord と X の告知は発注者が出す。文面は下にある。告知は決めた日にすぐ出す(長く取らない)
+先にやることはありません(2026-09-20 発注者「会の前にやる必要もない。結果を見てからでもいい」)。見本はその場で AI に書かせ、詰まったらその場で直します。詰まった所と直し方が、そのまま次の回の材料と記事になります。
+
+参加者にも、会の前に頼むことはありません。Windows の人は、会で載せ替えを見てから、自分の PC でやるかを決めればよいです。会の中で自分の PC を載せ替える人にだけ、消す前に書類の写しを取ることを、その場で言います。
+
+前の週に Discord の音声チャンネルで 2 人で試して、画面共有と録画が動くことだけは確かめます。connpass の頁と、Discord と X の告知は発注者が出します。文面は下にあります。
 
 === 告知の下書き
 
@@ -468,8 +464,8 @@ connpass と Discord の #日本語(日本語):
 
 AI がコードを書く時代に、開発者の仕事は「何を作るか決め、AI と対話し、確かめ、組み合わせる」に変わりました。その回転が速い環境を、この会で自分の PC に作ります。
 Mac と Linux の人は、Python と Flet を入れて、見本が動く所まで。
-Windows の人は、PC を Debian に載せ替えます(Windows は仮想環境の中に残せます。失う物はありません)。会の前に、書類の写しを取り、Debian 13 の USB を作り、Windows のプロダクトキーを控えておいてください。手順の 1 枚を渡します。
-2 回目は、この環境の上で自分の業務の画面を 1 枚作ります。
+Windows の人は、PC を Debian に載せ替えます(Windows は仮想環境の中に残せます。失う物はありません)。会で載せ替えを見てから、自分の PC でやるかを決めて構いません。手順の 1 枚を渡します。
+準備は要りません。2 回目は、この環境の上で自分の業務の画面を 1 枚作ります。
 
 日時: 2026 年 10 月 7 日(水)20:00〜21:00
 場所: Discord の Flet サーバー、音声チャンネル(画面共有)
