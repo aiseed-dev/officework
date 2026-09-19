@@ -2580,7 +2580,7 @@ mod image_insert_tests {
                              fmt: Default::default() }],
             ..Default::default()
         };
-        p.images_new.push(InlineImage {
+        p.images_new.push(InlineImage { shape: None,
             bytes: std::sync::Arc::new(png_bytes()),
             w_mm: 50.0,
             h_mm: 30.0,
@@ -2617,7 +2617,7 @@ mod image_insert_tests {
     fn equations_round_trip_with_their_source() {
         let shiki = r"\frac{a+b}{2} < \sqrt{x^2} & \alpha";  // < と & も逃がせるか
         let mut p = Paragraph { line_spacing: 1.0, ..Default::default() };
-        p.images_new.push(InlineImage {
+        p.images_new.push(InlineImage { shape: None,
             bytes: std::sync::Arc::new(png_bytes()),
             w_mm: 12.0,
             h_mm: 8.0,

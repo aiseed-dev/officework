@@ -1410,7 +1410,7 @@ impl Writer {
         match crate::py::kumu_suushiki(&tex, size, self.doc.font.as_deref()) {
             Ok((bytes, w_mm, h_mm)) => {
                 self.checkpoint(false);
-                let im = kumihan::InlineImage {
+                let im = kumihan::InlineImage { shape: None,
                     bytes: std::sync::Arc::new(bytes),
                     w_mm,
                     h_mm,
@@ -3731,7 +3731,7 @@ impl Writer {
                 std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
             }
             std::fs::write(&to, svg.as_bytes()).map_err(|e| e.to_string())?;
-            let im = kumihan::InlineImage {
+            let im = kumihan::InlineImage { shape: None,
                 bytes: std::sync::Arc::new(png),
                 w_mm,
                 h_mm,

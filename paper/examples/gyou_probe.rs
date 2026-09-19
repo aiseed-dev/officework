@@ -69,6 +69,35 @@ fn main() -> Result<(), String> {
         println!("節 y={at:.1} 用紙 {}x{} 上 {} 下 {}", pg.w_mm, pg.h_mm, pg.top_mm, pg.bottom_mm);
     }
     let pn = paper::paginate_full(&sheet, paper::Paper::from_page(&page));
+    // ANCHORS=1: floating drawings as read, as placed, and as shapes
+    if std::env::var("ANCHORS").is_ok() {
+        for (ti, b) in doc.blocks.iter().enumerate() {
+            let paras: Vec<&kumihan::Paragraph> = match b {
+                kumihan::Block::Para(p) => vec![p],
+                kumihan::Block::Table(t) => t.all_paragraphs(),
+            };
+            for p in paras {
+                for a in &p.anchors {
+                    let fs = ooxml::foreign_shapes_in(a, &doc.theme_colors);
+                    println!("block {ti} anchor len={} inline={} anchor={} wgp={} -> {} shapes", a.len(),
+                        a.contains("<wp:inline"), a.contains("<wp:anchor"), a.contains("<wpg:wgp>"), fs.len());
+                    for f in fs {
+                        println!("    {} fill={:?} line={:?} w={:.1} h={:.1} dx={:.1} dy={:.1} from={}/{} off={:.1}/{:.1}",
+                            f.look.kind, f.look.fill, f.look.line, f.w_mm, f.h_mm, f.dx_mm, f.dy_mm, f.h_from, f.v_from, f.x_mm, f.y_mm);
+                    }
+                }
+            }
+        }
+        for cb in sheet.cell_boxes.iter().filter(|c| c.table == 0) {
+            println!("cell ({},{}) x={:.1} top={:.1} w={:.1} h={:.1}", cb.row, cb.col, cb.x_mm, cb.top_mm, cb.w_mm, cb.h_mm);
+        }
+        println!("sheet.anchors_at = {}", sheet.anchors_at.len());
+        for (a, x, y) in &sheet.anchors_at { println!("    at x={x:.1} y={y:.1} len={}", a.len()); }
+        println!("sheet.inline_shapes = {}", sheet.inline_shapes.len());
+        let shapes = paper::foreign_shapes(&doc, &sheet, page);
+        println!("doc shapes = {}", shapes.len());
+        for s in &shapes { println!("    p{} {} x={:.1} y={:.1} w={:.1} h={:.1} fill={:?}", s.page, s.look.kind, s.x_mm, s.y_mm, s.w_mm, s.h_mm, s.look.fill); }
+    }
     let at = sheet.lines.iter().position(|l| l.text().contains(&key)).unwrap_or(0);
     for (i, l) in sheet.lines.iter().enumerate() {
         if i + 5 < at || i > at + n {

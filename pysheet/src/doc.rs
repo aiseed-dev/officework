@@ -1005,6 +1005,9 @@ impl PyDoc {
             look: kumihan::StyleLook {
                 bold, italic, underline, strike,
                 size_pt: size, color, font, fill, font_latin: None,
+                // fields the engine added later (caps, theme fonts) keep
+                // their defaults here
+                ..Default::default()
             },
             ..Default::default()
         });
@@ -1210,6 +1213,7 @@ impl PyDoc {
             tex: None, // python-docx's add_picture. Formulas use a different API
             src: None, // relative path in a native document. Here we hold the bytes
             off: 0,
+            shape: None, // a picture, never a drawn shape
         });
         g.doc.blocks.push(Block::Para(p));
         let b = g.doc.blocks.len() - 1;
@@ -2351,6 +2355,7 @@ impl PyRun {
             tex: None,
             src: None,
             off: 0,
+            shape: None, // a picture, never a drawn shape
         });
         Ok(())
     }

@@ -2261,7 +2261,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             let (path, attrs) = split_macro_target(rest)
                 .ok_or_else(|| format!("{} 行目: image:: の形が読めません", ln + 1))?;
             let mut p = base_para(&mut pending_bookmarks, &mut pending_break, &mut pending_style);
-            p.images_new.push(InlineImage {
+            p.images_new.push(InlineImage { shape: None,
                 bytes: std::sync::Arc::new(Vec::new()),
                 w_mm: 0.0,
                 h_mm: 0.0,
@@ -2284,7 +2284,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 .strip_suffix(']')
                 .ok_or_else(|| format!("{} 行目: stem:[ が閉じていません", ln + 1))?;
             let mut p = base_para(&mut pending_bookmarks, &mut pending_break, &mut pending_style);
-            p.images_new.push(InlineImage {
+            p.images_new.push(InlineImage { shape: None,
                 bytes: std::sync::Arc::new(Vec::new()),
                 w_mm: 0.0,
                 h_mm: 0.0,

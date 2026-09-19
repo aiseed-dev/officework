@@ -382,7 +382,7 @@ impl Writer {
                     w_mm *= k;
                     h_mm *= k;
                 }
-                let im = kumihan::InlineImage {
+                let im = kumihan::InlineImage { shape: None,
                     bytes: std::sync::Arc::new(bytes),
                     w_mm,
                     h_mm,

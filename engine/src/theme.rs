@@ -1894,11 +1894,10 @@ fn jibun_wo_ateru(
             // ASCII text takes the style's `w:ascii` font, the rest the
             // East Asian one (ECMA-376 17.3.2.26). A subtitle whose theme
             // fonts differ was drawn in the body font (2026-09-19)
-            r.font = if r.text.is_ascii() {
-                lk.font_latin.clone().or_else(|| lk.font.clone())
-            } else {
-                lk.font.clone()
-            };
+            // A style that names only an East Asian face leaves ASCII to
+            // the document's `w:ascii` default (Word's resume: Heading 1
+            // is Source Sans Pro in Word, not the heading theme font)
+            r.font = if r.text.is_ascii() { lk.font_latin.clone() } else { lk.font.clone() };
         }
         r.fmt.bold |= lk.bold.unwrap_or(false);
         r.fmt.italic |= lk.italic.unwrap_or(false);

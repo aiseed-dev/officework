@@ -385,6 +385,14 @@ pub(super) fn atama_no_gazou_takasa(para: &Paragraph) -> f32 {
         .fold(0.0, f32::max)
 }
 
+/// Put an image, or a drawn shape, on the sheet at `rect` ([x, top, w, h])
+fn oku_gazou(sheet: &mut Sheet, im: &InlineImage, rect: [f32; 4]) {
+    match &im.shape {
+        Some(xml) => sheet.inline_shapes.push((xml.clone(), rect)),
+        None => sheet.images.push((im.bytes.clone(), rect)),
+    }
+}
+
 pub(super) fn atama_no_gazou_mm(para: &Paragraph) -> f32 {
     para.images
         .iter()
@@ -1249,11 +1257,14 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                                 if im.off != 0 {
                                     continue;
                                 }
-                                sheet.images.push((
-                                    im.bytes.clone(),
-                                    [ix, y - im.h_mm, im.w_mm, im.h_mm],
-                                ));
+                                oku_gazou(&mut sheet, im, [ix, y - im.h_mm, im.w_mm, im.h_mm]);
                                 ix += im.w_mm;
+                            }
+                        }
+                        // Floating drawings hang from this paragraph
+                        if line_no == 0 {
+                            for a in &para.anchors {
+                                sheet.anchors_at.push((a.clone(), indent_mm, y));
                             }
                         }
                         y += hikui;
@@ -1293,11 +1304,12 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                                 continue;
                             }
                             // 絵の下端を行のベースラインに合わせます(Word と同じ)
-                            sheet.images.push((
-                                im.bytes.clone(),
-                                [ix, y - im.h_mm, im.w_mm, im.h_mm],
-                            ));
+                            oku_gazou(&mut sheet, im, [ix, y - im.h_mm, im.w_mm, im.h_mm]);
                             ix += im.w_mm;
+                        }
+                        // Floating drawings hang from this paragraph
+                        for a in &para.anchors {
+                            sheet.anchors_at.push((a.clone(), x, y));
                         }
                     }
                     // 幅はもう詰めてあるので、ここは並べるだけ
@@ -1468,7 +1480,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     }
                     let scale = if im.w_mm > measure { measure / im.w_mm } else { 1.0 };
                     let (w, h) = (im.w_mm * scale, im.h_mm * scale);
-                    sheet.images.push((im.bytes.clone(), [indent_mm, y - lh_of(para, frame, base, pfont.as_deref(), pitch) * 0.6, w, h]));
+                    oku_gazou(&mut sheet, im, [indent_mm, y - lh_of(para, frame, base, pfont.as_deref(), pitch) * 0.6, w, h]);
                     y += h + frame.line_height_mm * 0.4;
                 }
                 // 次の段落の頭 = この段落のバイト数 + 改行1つ
@@ -1872,6 +1884,14 @@ pub fn fold_print(
         im[1] = shift(im[1]);
         im[3] = h;
     }
+    for (_, im) in &mut sheet.inline_shapes {
+        let h = im[3];
+        im[1] = shift(im[1]);
+        im[3] = h;
+    }
+    for (_, _, y) in &mut sheet.anchors_at {
+        *y = shift(*y);
+    }
     // 脚注は「印のある行」を手掛かりに置くので、その y も折る
     for nb in &mut sheet.notes {
         nb.at_y = shift(nb.at_y);
@@ -1926,6 +1946,16 @@ pub fn fold_pages(
         let (dx, ny) = shift(b[1]);
         b[0] += dx;
         b[1] = ny;
+    }
+    for (_, b) in &mut sheet.inline_shapes {
+        let (dx, ny) = shift(b[1]);
+        b[0] += dx;
+        b[1] = ny;
+    }
+    for (_, x, y) in &mut sheet.anchors_at {
+        let (dx, ny) = shift(*y);
+        *x += dx;
+        *y = ny;
     }
     for cb in &mut sheet.cell_boxes {
         let (dx, ny) = shift(cb.top_mm);
@@ -2010,6 +2040,16 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
         rect[1] = place(rect[1], k);
         rect[0] += dx(k);
     }
+    for (_, rect) in &mut sheet.inline_shapes {
+        let k = strip_of(rect[1]);
+        rect[1] = place(rect[1], k);
+        rect[0] += dx(k);
+    }
+    for (_, x, y) in &mut sheet.anchors_at {
+        let k = strip_of(*y);
+        *y = place(*y, k);
+        *x += dx(k);
+    }
     for b in &mut sheet.cell_boxes {
         let k = strip_of(b.top_mm);
         b.top_mm = place(b.top_mm, k);
@@ -2054,6 +2094,12 @@ fn utsusu(tmp: Sheet, dx: f32, dy: f32, sheet: &mut Sheet) {
     }
     for (im, b) in tmp.images {
         sheet.images.push((im, [b[0] + dx, b[1] + dy, b[2], b[3]]));
+    }
+    for (xml, b) in tmp.inline_shapes {
+        sheet.inline_shapes.push((xml, [b[0] + dx, b[1] + dy, b[2], b[3]]));
+    }
+    for (a, x, y) in tmp.anchors_at {
+        sheet.anchors_at.push((a, x + dx, y + dy));
     }
     for mut n in tmp.notes {
         n.at_y += dy;
@@ -2166,8 +2212,10 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         /// セルの幅で組んだ物、高さ mm)。第1走で組んで高さだけ使い、
         /// 第2走で位置をずらして写す
         naka_hyou: Vec<(usize, Sheet, f32)>,
-        /// Images: (line index, bytes, w, h, at the head of that line)
-        images: Vec<(usize, std::sync::Arc<Vec<u8>>, f32, f32, bool)>,
+        /// Images: (line index, image, w, h, at the head of that line)
+        images: Vec<(usize, InlineImage, f32, f32, bool)>,
+        /// Floating drawings: (line index of their paragraph, anchor XML)
+        anchors: Vec<(usize, String)>,
     }
     let mut rows_laid: Vec<Vec<Laid>> = Vec::new();
     let mut row_hs: Vec<f32> = Vec::new();
@@ -2193,8 +2241,10 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let w = xs[(gc + span).min(ncols)] - x;
             let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (bool, f32, f32, f32), usize)> = Vec::new();
             let mut hyou_no: Vec<(usize, Sheet, f32)> = Vec::new();
-            // Images of the cell: (line they belong to, bytes, w, h, at the head)
-            let mut gazou: Vec<(usize, std::sync::Arc<Vec<u8>>, f32, f32, bool)> = Vec::new();
+            // Images of the cell: (line they belong to, image, w, h, at the head)
+            let mut gazou: Vec<(usize, InlineImage, f32, f32, bool)> = Vec::new();
+            // Floating drawings of the cell: (line of their paragraph, anchor XML)
+            let mut ikari: Vec<(usize, String)> = Vec::new();
             // **セルの中の余白**。セル自身の `w:tcMar` が最優先で、次が表の
             // `w:tblCellMar`、どちらも無ければ既定です(2026-09-03)
             let pad: [f32; 4] = cell
@@ -2329,11 +2379,14 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                                 // the baseline goes to the bottom of the box
                                 l.6 = (true, 0.0, l.6.2, l.6.3);
                             }
-                            gazou.push((saisho, im.bytes.clone(), iw, ih, true));
+                            gazou.push((saisho, im.clone(), iw, ih, true));
                         } else {
-                            gazou.push((ls.len(), im.bytes.clone(), iw, ih, false));
+                            gazou.push((ls.len(), im.clone(), iw, ih, false));
                             ls.push((Vec::new(), para0, ih, para.align, pbase, hidari, (false, 0.0, 0.0, 0.0), 0));
                         }
+                    }
+                    for a in &para.anchors {
+                        ikari.push((saisho, a.clone()));
                     }
                     let plen: usize = para.runs.iter().map(|r| r.text.len()).sum();
                     para0 += plen + 1;
@@ -2359,7 +2412,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             laid.push(Laid { ci, gc, span, v: cell.v_merge, lines: ls, x, w, shade,
                              valign: cell.valign, pad,
                              diag: (cell.borders.diag_down, cell.borders.diag_up),
-                             naka_hyou: hyou_no, images: gazou });
+                             naka_hyou: hyou_no, images: gazou, anchors: ikari });
             gc += span;
         }
         rows_laid.push(laid);
@@ -2541,6 +2594,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             // セルの中の表を、何行目の前に置くかの順に写す
             let mut hyou_no = l.naka_hyou.into_iter().peekable();
             let gazou = l.images;
+            let ikari = l.anchors;
             let n_gyou = l.lines.len();
             for (j, (cells, b0, plh, yose, pt, sagari, (soko, sage, mae, ato), head)) in l.lines.into_iter().enumerate() {
                 while hyou_no.peek().is_some_and(|(at, _, _)| *at <= j) {
@@ -2578,16 +2632,20 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         .unwrap_or((plh - mae) * 0.8)
                         + sage + mae
                 };
+                let hako_ue = yy;
                 yy += agari;
+                for (_, a) in ikari.iter().filter(|g| g.0 == j) {
+                    sheet.anchors_at.push((a.clone(), x0 + sagari, hako_ue + BASE_UP_MM));
+                }
                 // Images of this line: a head image ends on the baseline,
                 // an image in its own line fills the box from its top
                 // (`first_line_mm` already counted the head images as the
                 // first line's indent, so they start that much to the left)
                 let atama_haba: f32 = gazou.iter().filter(|g| g.0 == j && g.4).map(|g| g.2).sum();
                 let mut ix = x0 + sagari - atama_haba;
-                for (_, bytes, iw, ih, atama) in gazou.iter().filter(|g| g.0 == j) {
+                for (_, im, iw, ih, atama) in gazou.iter().filter(|g| g.0 == j) {
                     let top = if *atama { yy - ih } else { yy - agari };
-                    sheet.images.push((bytes.clone(), [ix, top, *iw, *ih]));
+                    oku_gazou(sheet, im, [ix, top, *iw, *ih]);
                     ix += iw;
                 }
                 // **横の揃え**は段落が言います。前はセルの中を全部左に

@@ -320,7 +320,7 @@ impl Builder {
                         .map(|px| px * 25.4 / 96.0)
                         .unwrap_or(0.0)
                 };
-                self.imgs.push(InlineImage {
+                self.imgs.push(InlineImage { shape: None,
                     bytes: std::sync::Arc::new(Vec::new()),
                     w_mm: mm("width"),
                     h_mm: mm("height"),

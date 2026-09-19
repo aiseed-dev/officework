@@ -2838,8 +2838,9 @@ mod marker_tests {
                     assert_eq!(r.size_pt, None, "本文に大きさが焼き付いている");
                 }
             }
-            // 見た目のボタンは右のスタイルへ案内する(docx とは違う扱い)
-            this.run_cmd("underline", cx);
+            // A look-only button goes to the Styles list (2026-09-11: underline
+            // and strikethrough apply directly, like bold and italic).
+            this.run_cmd("fontcolor", cx);
             assert!(this.rp_open && this.rp_tab == 2, "スタイルの面が開かない");
         });
     }
@@ -3147,7 +3148,7 @@ mod marker_tests {
         w.update(cx, |this, _cx| {
             let mut d = kumihan::Document::default();
             let mut p = kumihan::Paragraph::default();
-            p.images_new.push(kumihan::InlineImage {
+            p.images_new.push(kumihan::InlineImage { shape: None,
                 bytes: std::sync::Arc::new(vec![0x89, b'P', b'N', b'G', 9]),
                 w_mm: 30.0,
                 h_mm: 20.0,
@@ -3279,7 +3280,7 @@ mod marker_tests {
         w.update(cx, |this, _cx| {
             let mut d = kumihan::Document::default();
             let mut p = kumihan::Paragraph::default();
-            p.images_new.push(kumihan::InlineImage {
+            p.images_new.push(kumihan::InlineImage { shape: None,
                 bytes: std::sync::Arc::new(vec![0x89, b'P', b'N', b'G', 1, 2]),
                 w_mm: 30.0,
                 h_mm: 20.0,

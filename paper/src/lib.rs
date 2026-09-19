@@ -1281,7 +1281,7 @@ mod image_tests {
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("写真の前\n写真の後");
         if let kumihan::Block::Para(p) = &mut d.blocks[0] {
-            p.images.push(InlineImage {
+            p.images.push(InlineImage { shape: None,
                 bytes: std::sync::Arc::new(png()),
                 w_mm: 40.0,
                 h_mm: 30.0,
@@ -1307,7 +1307,7 @@ mod image_tests {
         let m = Metrics::new(&data).unwrap();
         let mut d = Document::plain("本文");
         if let kumihan::Block::Para(p) = &mut d.blocks[0] {
-            p.images.push(InlineImage {
+            p.images.push(InlineImage { shape: None,
                 bytes: std::sync::Arc::new(b"not an image".to_vec()),
                 w_mm: 40.0,
                 h_mm: 30.0,
@@ -1735,7 +1735,9 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
         if let Some((ea, latin)) = hyou.get(&p.style_id) {
             for r in p.runs.iter_mut() {
                 if r.font.is_none() {
-                    let na = if r.text.is_ascii() { latin.as_ref().or(ea.as_ref()) } else { ea.as_ref() };
+                    // ASCII takes the style's `w:ascii` face only (ECMA-376
+                    // 17.3.2.26); with none, the document default applies
+                    let na = if r.text.is_ascii() { latin.as_ref() } else { ea.as_ref() };
                     if let Some(na) = na {
                         r.font = Some(na.clone());
                     }
@@ -2073,6 +2075,24 @@ fn anchor_place(
     kono: f32,
     migi_page: bool,
 ) -> f32 {
+    anchor_place_at(from, zure, yose, ookisa, page, tate, kono, migi_page, page.left_mm)
+}
+
+/// `kono_x` is where the paragraph's text starts (page mm): the left
+/// margin in the body, the cell's text edge inside a table. `column` and
+/// `character` count from there (2026-09-19)
+#[allow(clippy::too_many_arguments)]
+fn anchor_place_at(
+    from: &str,
+    zure: f32,
+    yose: Option<&str>,
+    ookisa: f32,
+    page: &kumihan::PageSetup,
+    tate: bool,
+    kono: f32,
+    migi_page: bool,
+    kono_x: f32,
+) -> f32 {
     let (moto, haba) = if tate {
         let honbun = (page.h_mm - page.top_mm - page.bottom_mm).max(0.0);
         match from {
@@ -2104,7 +2124,7 @@ fn anchor_place(
                 }
             }
             // "margin" / "column" / "character" と、知らない名前
-            _ => (page.left_mm, honbun),
+            _ => (kono_x, honbun),
         }
     };
     let Some(y) = yose else {
@@ -2168,116 +2188,111 @@ pub fn foreign_shapes(
         sheet,
         Paper::from_page(&page),
     );
-    // 段落の頭が本文の何バイト目か([`page_head_paras`] と同じ数え方)
-    let mut starts: Vec<usize> = Vec::new();
-    let mut at = 0usize;
-    for p in doc.paragraphs() {
-        starts.push(at);
-        at += p.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
-    }
     let mut out: Vec<kumihan::DocShape> = Vec::new();
-    // **ヘッダーとフッターの図形は、どの紙にも出します**(2026-09-01)。
-    // 紙の飾り枠がこれです。位置は紙が基準(`relativeFrom="page"`)なので、
-    // 紙ごとに同じ所へ置けば足ります
     let kami_kazu = pg.offsets.len().max(1);
+    // the page a sheet y falls on, and where that page starts
+    let kami_no = |y: f32| -> (usize, f32) {
+        let k = pg.offsets.iter().rposition(|o| *o <= y).unwrap_or(0);
+        (k, pg.offsets.get(k).copied().unwrap_or(0.0))
+    };
     for a in doc.header.anchors.iter().chain(doc.footer.anchors.iter()).flat_map(|a| split_anchors(a)) {
-        let Some(f) = ooxml::foreign_shape_with(&a, &doc.theme_colors) else { continue };
-        // 大きさが百分率で書いてあれば、そちらが本当の大きさです
-        let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
-        let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
-        for k in 0..kami_kazu {
-            // 見開きの内・外は紙ごとに向きが変わるので、紙の中で解きます
-            let migi = k % 2 == 1;
-            let x = anchor_place(&f.h_from, f.x_mm, f.h_align.as_deref(),
-                                 w_mm, &page, false, page.top_mm, migi);
-            let y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(),
-                                 h_mm, &page, true, page.top_mm, migi);
-            out.push(kumihan::DocShape {
-                page: k,
-                x_mm: x,
-                y_mm: y,
-                w_mm,
-                h_mm,
-                look: f.look.clone(),
-            });
-        }
-    }
-    for (pi, para) in doc.paragraphs().enumerate() {
-        if para.anchors.is_empty() {
-            continue;
-        }
-        // その段落の1行目が、どの頁の、頁の中のどの高さに来たか
-        let hajime = starts[pi];
-        let Some(li) = sheet.lines.iter().position(|l| l.from_body && l.byte0 >= hajime) else {
-            continue;
-        };
-        let kami = pg.pages.get(li).copied().unwrap_or(1) - 1;
-        let soko = pg.offsets.get(kami).copied().unwrap_or(0.0);
-        // 行を紙に置くときと同じ数え方です(`pdfw` の `y_roll`)。
-        // 上の余白はもう `y_mm` に入っているので、足すと二重になります
-        let y_para = sheet.lines[li].y_mm - soko;
-        // **1つの run に図形が2つ以上あれば、全部を読みます**(2026-09-09、Opus Mac が
-        // 岐阜のハラスメント掲示で切り分けた。同じ段落の 2 個目の箱「ＳＴＯＰ！
-        // ハラスメント」を描いていなかった)。控えは run ごとの原文なので、
-        // `<wp:anchor>` ごとに切って1つずつ読む
-        for a in para.anchors.iter().flat_map(|a| split_anchors(a)) {
-            let a = &a;
-            let Some(mut f) = ooxml::foreign_shape_with(a, &doc.theme_colors) else { continue };
-            // **箱が書体を言っていなければ文書の既定**です。行送りと
-            // ベースラインの位置がこれで決まります(2026-09-01)
-            if f.look.text_fmt.font.is_none() {
-                f.look.text_fmt.font = doc.font.clone();
-            }
-            // **テキストボックスの中も行グリッドに合わせます**(2026-09-09、Word の
-            // PDF で測った。岐阜労働局の規則の規定例の頭の箱は、11pt の字が
-            // 18pt 送りだった)。箱が行の高さを言っていなければ、書体の自然な
-            // 高さをグリッドの行送りに切り上げ、余りの半分を上の余白に足して
-            // 字を升のまん中に置く(本文の `dip_of` と同じ)。中の段落が
-            // `w:snapToGrid w:val="0"` なら合わせない
-            // `atLeast` で値が 0 の段落は、本文と同じくグリッドを見ない(2026-09-09、
-            // Opus Mac が厚労省の様式の箱で見つけた。Word 13.7pt に対して 18.0pt だった)
-            let at_least_zero = a.contains("w:line=\"0\" w:lineRule=\"atLeast\"");
-            if f.look.text_fmt.line_pt.is_none()
-                && page.line_pitch_pt > 0.0
-                && !at_least_zero
-                && !a.contains("<w:snapToGrid w:val=\"0\"")
-                && !a.contains("<w:snapToGrid w:val=\"false\"")
-            {
-                let pt = f.look.text_fmt.size_pt.unwrap_or(doc.base_pt());
-                let em = kumihan::font::okuri_em(f.look.text_fmt.font.as_deref()).unwrap_or(1.292);
-                let sizen = pt * em * 25.4 / 72.0;
-                let masu = kumihan::grid_up(sizen, page.line_pitch_pt);
-                f.look.text_fmt.line_pt = Some(masu * 72.0 / 25.4);
-                f.look.text_fmt.ins_mm.2 += (masu - sizen) / 2.0;
-            }
-            // 基準と寄せ方は [`anchor_place`] の表のとおりに解きます
-            let migi = kami % 2 == 1;
+        for f in ooxml::foreign_shapes_in(&a, &doc.theme_colors) {
             let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
             let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
-            let x = anchor_place(&f.h_from, f.x_mm, f.h_align.as_deref(),
-                                 w_mm, &page, false, y_para, migi);
-            let mut y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(),
-                                     h_mm, &page, true, y_para, migi);
-            // **紙に入らない図形は次の紙へ送ります**(2026-08-31)。Word は
-            // 錨の段落ごと送ります。内閣府の調査票は窓口の欄2つが 305mm の
-            // 所に来ていて、A4(297mm)の下に落ちて紙に出ていませんでした
-            let mut kami = kami;
-            let tsukaeru = (page.h_mm - page.top_mm - page.bottom_mm).max(1.0);
-            let mut nogare = 0;
-            while y + h_mm > page.h_mm && nogare < 8 {
-                y -= tsukaeru;
-                kami += 1;
-                nogare += 1;
+            for k in 0..kami_kazu {
+                let migi = k % 2 == 1;
+                let x = anchor_place(&f.h_from, f.x_mm, f.h_align.as_deref(),
+                                     w_mm, &page, false, page.top_mm, migi);
+                let y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(),
+                                     h_mm, &page, true, page.top_mm, migi);
+                out.push(kumihan::DocShape {
+                    page: k,
+                    x_mm: x + f.dx_mm,
+                    y_mm: y + f.dy_mm,
+                    w_mm,
+                    h_mm,
+                    look: f.look.clone(),
+                });
             }
-            out.push(kumihan::DocShape {
-                page: kami,
-                x_mm: x,
-                y_mm: y,
-                w_mm,
-                h_mm,
-                look: f.look,
-            });
         }
+    }
+    // Floating drawings of the body and of table cells, from where the
+    // layout put their paragraphs. Until 2026-09-19 only body paragraphs
+    // were found (by byte offset), so a band anchored in a table cell,
+    // as in Word's resume template, never appeared
+    for (a, x_para, y_sheet) in &sheet.anchors_at {
+        let (kami0, soko) = kami_no(*y_sheet);
+        // `paragraph` counts from the top of the paragraph's first line
+        // box; the recorded y is BASE_UP_MM below that (the line's y_mm)
+        let y_para = y_sheet - soko - kumihan::BASE_UP_MM;
+        let x_moto = page.left_mm + x_para;
+        for part in split_anchors(a) {
+            // an inline drawing is placed by the layout itself (a lone one
+            // comes back whole from split_anchors, wrapped in its run)
+            if part.contains("<wp:inline") && !part.contains("<wp:anchor") {
+                continue;
+            }
+            for mut f in ooxml::foreign_shapes_in(&part, &doc.theme_colors) {
+                if f.look.text_fmt.font.is_none() {
+                    f.look.text_fmt.font = doc.font.clone();
+                }
+                let at_least_zero = part.contains("w:line=\"0\" w:lineRule=\"atLeast\"");
+                if f.look.text_fmt.line_pt.is_none()
+                    && page.line_pitch_pt > 0.0
+                    && !at_least_zero
+                    && !part.contains("<w:snapToGrid w:val=\"0\"")
+                    && !part.contains("<w:snapToGrid w:val=\"false\"")
+                {
+                    let pt = f.look.text_fmt.size_pt.unwrap_or(doc.base_pt());
+                    let em = kumihan::font::okuri_em(f.look.text_fmt.font.as_deref()).unwrap_or(1.292);
+                    let sizen = pt * em * 25.4 / 72.0;
+                    let masu = kumihan::grid_up(sizen, page.line_pitch_pt);
+                    f.look.text_fmt.line_pt = Some(masu * 72.0 / 25.4);
+                    f.look.text_fmt.ins_mm.2 += (masu - sizen) / 2.0;
+                }
+                let migi = kami0 % 2 == 1;
+                let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
+                let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
+                let x = anchor_place_at(&f.h_from, f.x_mm, f.h_align.as_deref(),
+                                        w_mm, &page, false, y_para, migi, x_moto) + f.dx_mm;
+                let mut y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(),
+                                         h_mm, &page, true, y_para, migi) + f.dy_mm;
+                let mut kami = kami0;
+                let tsukaeru = (page.h_mm - page.top_mm - page.bottom_mm).max(1.0);
+                let mut nogare = 0;
+                // A shape that starts below the page goes to the next one; a
+                // page-high band that merely runs past the bottom stays and
+                // is clipped, as Word does (2026-09-19)
+                while y >= page.h_mm && nogare < 8 {
+                    y -= tsukaeru;
+                    kami += 1;
+                    nogare += 1;
+                }
+                out.push(kumihan::DocShape {
+                    page: kami,
+                    x_mm: x,
+                    y_mm: y,
+                    w_mm,
+                    h_mm,
+                    look: f.look,
+                });
+            }
+        }
+    }
+    // Drawn shapes in the line (rules under headings), placed by the layout
+    for (xml, [x, top, w, h]) in &sheet.inline_shapes {
+        let (kami, soko) = kami_no(*top);
+        let Some(f) = ooxml::foreign_shapes_in(xml, &doc.theme_colors).into_iter().next() else {
+            continue;
+        };
+        out.push(kumihan::DocShape {
+            page: kami,
+            x_mm: page.left_mm + x,
+            y_mm: top - soko,
+            w_mm: *w,
+            h_mm: *h,
+            look: f.look,
+        });
     }
     out
 }

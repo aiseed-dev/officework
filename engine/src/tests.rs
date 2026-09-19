@@ -3029,7 +3029,7 @@ mod html_write_tests {
         use crate::doc::{Document, InlineImage, Paragraph};
         let mut d = Document::default();
         let mut p = Paragraph::default();
-        p.images_new.push(InlineImage {
+        p.images_new.push(InlineImage { shape: None,
             bytes: std::sync::Arc::new(vec![0xFF, 0xD8, 1, 2, 3]), // jpeg の頭
             w_mm: 40.0,
             h_mm: 30.0,
@@ -3617,7 +3617,7 @@ mod atama_no_gazou_tests {
             d.push_para(t1);
             let mut p = crate::Paragraph::default();
             p.line_spacing = ls;
-            p.images_new.push(crate::InlineImage {
+            p.images_new.push(crate::InlineImage { shape: None,
                 bytes: std::sync::Arc::new(vec![1]), w_mm: 20.0, h_mm: 10.0, tex: Some("x".into()), src: None, off: 0,
             });
             d.push_para(p);

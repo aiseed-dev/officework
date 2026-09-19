@@ -340,6 +340,10 @@ impl Run {
 pub struct InlineImage {
     /// 画像ファイルの中身(png/jpeg のまま)
     pub bytes: std::sync::Arc<Vec<u8>>,
+    /// A drawn shape instead of a picture: the raw `w:drawing` XML of an
+    /// inline `wps:wsp` (a rule under a heading, a box). `bytes` is empty
+    /// then; the paper side turns the XML into a `DocShape` (2026-09-19)
+    pub shape: Option<String>,
     pub w_mm: f32,
     pub h_mm: f32,
     /// **数式なら、その原文(LaTeX)。** 絵は組んだ結果でしかないので、
@@ -2724,6 +2728,13 @@ pub struct Sheet {
     pub cell_boxes: Vec<CellBox>,
     /// 置いた画像(実体, [x, 上端y, 幅, 高さ] mm)。画面も紙もこれを見る
     pub images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4])>,
+    /// Inline shapes placed like images: (raw drawing XML, [x, top, w, h] mm)
+    pub inline_shapes: Vec<(String, [f32; 4])>,
+    /// Where each paragraph that carries anchored drawings starts:
+    /// (anchor XML, x of the text in mm, y of the first line's box top plus
+    /// BASE_UP_MM). Body paragraphs and table cells alike; the paper side
+    /// places the floating shapes from here (2026-09-19)
+    pub anchors_at: Vec<(String, f32, f32)>,
     /// **紙面の下に出す脚注**。組み上がった行を、印のある本文の行の y と
     /// 一緒に持つ。どのページに載るかは折る側([`paper`] の頁割り)が決める —
     /// **脚注の高さは本文に使える高さを削る**ので、頁割りと切り離せない

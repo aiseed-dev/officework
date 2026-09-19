@@ -742,13 +742,25 @@ pub(super) fn ns_attrs(
     } else {
         Default::default()
     };
+    // A prefix declared on an element inside the fragment (Word writes
+    // `xmlns:adec` on the decorative marker of a group) needs nothing from
+    // us. Until 2026-09-19 such a fragment was dropped as unresolvable, and
+    // with it the page-high band of Word's resume template
+    let naka_decls: std::collections::BTreeSet<String> = raw
+        .match_indices("xmlns:")
+        .map(|(at, _)| {
+            let s = at + "xmlns:".len();
+            let n: usize = raw[s..].bytes().take_while(|c| is_name(*c)).count();
+            raw[s..s + n].to_string()
+        })
+        .collect();
     let mut out = String::new();
     for p in &prefixes {
         // `xml:` は XML の定めで**最初から結びついている**。宣言してはいけないし、
         // 解決できない接頭辞として数えてもいけない。
         // LibreOffice の数式は `<m:t xml:space="preserve">` を書くので、
         // ここで弾いていた頃は数式が丸ごと落ちていた(2026-08-10、実物で判明)
-        if p == "w" || p == "xml" || self_decls.contains(p) {
+        if p == "w" || p == "xml" || self_decls.contains(p) || naka_decls.contains(p) {
             continue; // root で宣言済み / XML の既定 / 原文が自分で宣言している
         }
         let uri = decls
@@ -820,8 +832,32 @@ pub(super) fn image_of(
     if raw.contains("<wp:anchor") && raw.contains("<wp:wrapNone") {
         return None;
     }
-    let rid = grab("r:embed=\"").or_else(|| if vml { grab("<v:imagedata r:id=\"") } else { None })?;
-    let bytes = media.get(&rid)?.clone();
+    let rid = grab("r:embed=\"").or_else(|| if vml { grab("<v:imagedata r:id=\"") } else { None });
+    let bytes = match rid.and_then(|r| media.get(&r).cloned()) {
+        Some(b) => b,
+        None => {
+            // A drawn shape in the line (a rule under a heading): no
+            // picture, a preset geometry, and the size in wp:extent. It is
+            // carried as an image with the XML in `shape` (2026-09-19)
+            let kaku = raw.contains("<wp:inline")
+                && raw.contains("<wps:wsp")
+                && (raw.contains("<a:prstGeom") || raw.contains("<a:custGeom"));
+            if !kaku {
+                return None;
+            }
+            let cx: f32 = grab("cx=\"")?.parse().ok()?;
+            let cy: f32 = grab("cy=\"")?.parse().ok()?;
+            return Some(kumihan::InlineImage {
+                bytes: std::sync::Arc::new(Vec::new()),
+                w_mm: cx / 36000.0,
+                h_mm: cy / 36000.0,
+                tex: None,
+                src: None,
+                off: 0,
+                shape: Some(raw.to_string()),
+            });
+        }
+    };
     // wp:extent cx/cy(EMU)。無ければ表示しない(大きさを勝手に決めない)
     let pt_of = |key: &str| -> Option<f32> {
         // 頭に空白を付けて探す(`joinstyle="miter"` を拾わないため)
@@ -847,7 +883,7 @@ pub(super) fn image_of(
         .filter(|d| d.starts_with(TEX_SIRUSI))
         .map(|d| unesc(&d[TEX_SIRUSI.len()..]));
     Some(kumihan::InlineImage { bytes, w_mm: cx / 36000.0, h_mm: cy / 36000.0, tex, src: None,
-        off: 0 })
+        off: 0, shape: None })
 }
 
 /// sectPr から用紙の寸法を読む(twip → mm)。
@@ -2751,6 +2787,7 @@ pub(super) fn parse_document_rels_num(
                                     tex: Some(tex),
                                     src: None,
                                     off,
+                                    shape: None,
                                 });
                             }
                             match carry_math(raw, &ns_decls) {
@@ -4082,6 +4119,10 @@ pub struct ForeignShape {
     pub h_pct: Option<(String, f32)>,
     /// 形・塗り・線・中の文字
     pub look: book::SheetShape,
+    /// Offset inside the anchor's box (mm), for a child of a group
+    /// (`wpg:wgp`). Zero for a shape that is the anchor itself
+    pub dx_mm: f32,
+    pub dy_mm: f32,
 }
 
 /// 段落の控え1つを [`ForeignShape`] に。うちの図形と、図形でない物は `None`
@@ -4323,7 +4364,80 @@ pub fn foreign_shape_with(a: &str, palette: &[String]) -> Option<ForeignShape> {
     let h_pct = pct("<wp14:sizeRelV", "<wp14:pctHeight>").filter(|(_, v)| *v > 0.0);
     Some(ForeignShape {
         x_mm, y_mm, w_mm, h_mm, h_from, v_from, h_align, v_align, w_pct, h_pct, look,
+        dx_mm: 0.0, dy_mm: 0.0,
     })
+}
+
+/// The shapes of one anchor. A group (`wpg:wgp`) yields one shape per
+/// `wps:wsp` child, each placed inside the group's box by its `a:off` and
+/// `a:ext` against the group's `a:chOff`/`a:chExt` (ECMA-376 20.1.7.6;
+/// Word's resume template has a page-high band drawn as a group of two
+/// rectangles, 2026-09-19). Anything else yields the anchor's own shape
+pub fn foreign_shapes_in(a: &str, palette: &[String]) -> Vec<ForeignShape> {
+    let Some(base) = foreign_shape_with(a, palette) else { return Vec::new() };
+    let Some(g) = a.find("<wpg:wgp>") else { return vec![base] };
+    let emu = |seg: &str, key: &str| -> Option<f32> {
+        let pat = format!("{key}=\"");
+        let i = seg.find(&pat)? + pat.len();
+        let e = seg[i..].find('"')? + i;
+        seg[i..e].parse::<f32>().ok()
+    };
+    let tag = |from: &str, open: &str| -> Option<String> {
+        let i = from.find(open)?;
+        let e = from[i..].find('>')? + i;
+        Some(from[i..e].to_string())
+    };
+    // The group's child coordinate space
+    let grp = a[g..].find("</wpg:grpSpPr>").map(|e| &a[g..g + e]).unwrap_or(&a[g..]);
+    let ch_off = tag(grp, "<a:chOff ");
+    let ch_ext = tag(grp, "<a:chExt ").or_else(|| tag(grp, "<a:ext "));
+    let (ox, oy) = ch_off
+        .as_deref()
+        .map(|t| (emu(t, "x").unwrap_or(0.0), emu(t, "y").unwrap_or(0.0)))
+        .unwrap_or((0.0, 0.0));
+    let (Some(cw), Some(ch)) = (
+        ch_ext.as_deref().and_then(|t| emu(t, "cx")).filter(|v| *v > 0.0),
+        ch_ext.as_deref().and_then(|t| emu(t, "cy")).filter(|v| *v > 0.0),
+    ) else {
+        return vec![base];
+    };
+    let mut out = Vec::new();
+    let mut at = g;
+    while let Some(i) = a[at..].find("<wps:wsp>") {
+        let s = at + i;
+        let Some(e) = a[s..].find("</wps:wsp>") else { break };
+        let e = s + e + "</wps:wsp>".len();
+        let child = &a[s..e];
+        at = e;
+        let Some(look) = shape_look(child, palette) else { continue };
+        let xfrm = child.find("<a:xfrm").map(|i| &child[i..]).unwrap_or("");
+        let off = tag(xfrm, "<a:off ");
+        let ext = tag(xfrm, "<a:ext ");
+        let (x, y) = off
+            .as_deref()
+            .map(|t| (emu(t, "x").unwrap_or(0.0), emu(t, "y").unwrap_or(0.0)))
+            .unwrap_or((0.0, 0.0));
+        let (w, h) = ext
+            .as_deref()
+            .map(|t| (emu(t, "cx").unwrap_or(0.0), emu(t, "cy").unwrap_or(0.0)))
+            .unwrap_or((0.0, 0.0));
+        out.push(ForeignShape {
+            x_mm: base.x_mm,
+            y_mm: base.y_mm,
+            w_mm: w / cw * base.w_mm,
+            h_mm: h / ch * base.h_mm,
+            h_from: base.h_from.clone(),
+            v_from: base.v_from.clone(),
+            h_align: base.h_align.clone(),
+            v_align: base.v_align.clone(),
+            w_pct: None,
+            h_pct: None,
+            look,
+            dx_mm: (x - ox) / cw * base.w_mm,
+            dy_mm: (y - oy) / ch * base.h_mm,
+        });
+    }
+    if out.is_empty() { vec![base] } else { out }
 }
 
 /// `<wp:extent cx="…" cy="…"/>` を mm で
@@ -4444,7 +4558,18 @@ fn shape_look(a: &str, palette: &[String]) -> Option<book::SheetShape> {
     if sp.fill.is_none() && nuru {
         sp.fill = sanshou("<a:fillRef ");
     }
-    if sp.line.is_none() {
+    // `<a:ln><a:noFill/></a:ln>` says no outline at all; the style's
+    // `a:lnRef` must not bring one back (the band of Word's resume
+    // template got a dark edge that way, 2026-09-19)
+    let ln_nashi = ln_at
+        .map(|i| {
+            let e = a[i..].find("</a:ln>").map(|e| i + e).unwrap_or(a.len());
+            a[i..e].contains("<a:noFill")
+        })
+        .unwrap_or(false);
+    if ln_nashi {
+        sp.line = None;
+    } else if sp.line.is_none() {
         sp.line = sanshou("<a:lnRef ");
     }
     // **線の種類**(`<a:prstDash val="dash"/>`)。無ければ実線
