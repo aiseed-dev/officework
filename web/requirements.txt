@@ -1,4 +1,4 @@
-# The page is written against this Flet. assets/index.html is a copy of
-# this version's flet_web index.html with two scripts added; copy it again
-# when the version changes (see README.ja.adoc).
+# The version the page was last run and checked with. Not a freeze: it
+# is raised every month (README.ja.adoc, 保守), and assets/index.html is
+# copied again from that version's flet_web index.html.
 flet==1.0.0

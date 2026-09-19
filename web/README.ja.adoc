@@ -50,6 +50,18 @@ location / {
 * 幅は 1040 までで、それより狭いブラウザ(携帯)では画面の幅に合わせます(`page.on_resize`)。
 * 箇条書き(`ft.Markdown`)は、そのままだと字が薄いので、`md()` で本文と同じ色と大きさにしています。
 
+== 保守
+
+版を止めて放っておくことはしません。API は版の間で変わります(Flet 1.0 で `page.launch_url` が `UrlLauncher` に変わりました)。月に 1 回、次をやります。
+
+. `pip install -U flet` で上げ、`requirements.txt` の版をその番号にします。
+. `flet_web/web/index.html` を `assets/index.html` に写し直し、2 つの script を足し直します(下の「書体」)。
+. `flet run --web --port 8550 web/main.py` で開いて、パソコンの幅と携帯の幅で最後まで見ます。sample/flet_insatsu も同じように開きます。
+. 壊れた所を直します。何が変わったかは SEKKEI.adoc に 1 行残します。
+. サーバーに写して `systemctl restart aiseed-office-web` です。
+
+`requirements.txt` の版は「この版で動くことを確かめた」という記録です。
+
 == 書体
 
 Flutter(Flet の描画)は日本語の書体を持たず、字ごとに Google の Noto から補います。どの Noto(日本語・簡体字・繁体字・韓国語)で補うかはブラウザの言語設定で決まり、アプリからは指定できません。日本語以外の設定のブラウザでは「、」「。」が繁体字用の中央寄せの字形で出ます(2026-09-19 発注者の指摘)。
