@@ -50,6 +50,10 @@ SNS 担当(Claude)がすること:
 | 版の告知の元。X には Releases へのリンクを貼ります
 | RELEASE.adoc と RELEASE.ja.adoc をそのまま元にします
 
+| Discord(Flet の日本語チャンネル)
+| 紹介ページを Flet で作った話と、Flet で日本語を出すときの手当て。製品の話はその後に添えます
+| 2026-09-19 にチャンネルができました。Flet の話が主で、宣伝だけの投稿はしません
+
 | office.aiseed.dev
 | 投稿からのリンク先。比較の写真と、様式のダウンロード
 | 公開されるまでは GitHub のリンクを使います
@@ -228,6 +232,35 @@ openpyxl と python-docx の書き方をそのまま受け継いでいます。
 {Qiita の URL}
 ----
 
+=== Discord の Flet 日本語チャンネル
+
+Flet を使う人の場所なので、Flet の話を先に書き、製品の話は 1 行に留めます。
+コードは web/ にあるので、リンクは GitHub の web/ です。紹介ページが公開されたら URL を足します。
+
+1 つ目(自己紹介と、ページの作り):
+
+----
+はじめまして。Word と Excel のファイルを同じに開いて刷るアプリ(aiseed office)を作っていて、その紹介ページを Flet で作りました。
+
+Python のファイル 1 枚(200 行ほど)です。サーバーでは flet run --web を systemd で動かし、nginx から 127.0.0.1:8550 へ渡しています(WebSocket を通すために Upgrade と Connection のヘッダーを付けています)。
+
+コードと動かし方はここにあります。
+github.com/aiseed-dev/officework/tree/main/web
+----
+
+2 つ目(日本語の書体の手当て。同じことで困る人がいるので、先に出してもよい):
+
+----
+Flet の Web で、「、」「。」が字の中央に寄って出る件です。
+
+Flutter は日本語の書体を持たず、字ごとに Google の Noto から補います。どの Noto(日本語・簡体字・繁体字・韓国語)で補うかはブラウザの言語設定で決まり、アプリからは指定できません。日本語以外の設定のブラウザで開くと、繁体字用の字形になります。
+
+手当てとして、assets/index.html(Flet の index.html の写し)で、Flutter が動き出す前に navigator.language を ja にしています。足したのは 1 か所です。
+github.com/aiseed-dev/officework/blob/main/web/assets/index.html
+
+Flet の版を上げたら index.html を写し直す必要があるので、Flet 側に言語を指定する設定があれば、この手当ては要らなくなります。
+----
+
 === 返事の下書き
 
 不具合の報告に:
@@ -298,6 +331,7 @@ It is built from published software, LibreOffice among them. The difference is t
 
 == 発注者に決めてもらう物
 
+* Discord の Flet 日本語チャンネルに、紹介ページの公開前に出すか(コードは GitHub にあるので、公開前でも出せます)
 * X のアカウント(英語用を新しく作るか、既存の物で出すか。名前は aiseed office に合わせるか)
 * 募集の報酬(写真の報告と、ファイルを送って再現できた物とで分けるか)
 * テスターの送り先(GitHub の Issues か、メールか。メールの窓口は準備中)
