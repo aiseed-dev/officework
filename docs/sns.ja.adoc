@@ -234,7 +234,25 @@ openpyxl と python-docx の書き方をそのまま受け継いでいます。
 
 === Discord の Flet 日本語チャンネル
 
-Flet を使う人の場所なので、Flet の話を先に書き、製品の話は 1 行に留めます。
+チャンネルは、発注者が 2026-09-16 に Feodor(Flet の作者)へ頼み、翌日に作ってもらった物です。発注者は「最初の投稿を書いて、活発に保つのを手伝う」と伝えています。
+
+Feodor への礼(英語。頼んだスレッドか、チャンネルの中で):
+
+----
+Thank you, Feodor! The channel is up. I'll post the first messages in Japanese and keep it going. If Japanese-speaking Flet users show up, please point them here.
+----
+
+#日本語 の最初の投稿(日本語):
+
+----
+こんにちは。ここは Flet の日本語のチャンネルです。Feodor さんに頼んで作ってもらいました。
+
+Flet の質問、作った物の紹介、日本語で困った話(書体の出方など)を、気軽に書いてください。英語のチャンネルで聞くより先に、ここで聞いてもらって構いません。
+
+私は、Word と Excel のファイルを同じに開いて刷るアプリの紹介ページを Flet で作っています。そのときに分かったことを、順に書いていきます。
+----
+
+その後の投稿です。Flet を使う人の場所なので、Flet の話を先に書き、製品の話は 1 行に留めます。
 コードは web/ にあるので、リンクは GitHub の web/ です。紹介ページが公開されたら URL を足します。
 
 1 つ目(自己紹介と、ページの作り):
