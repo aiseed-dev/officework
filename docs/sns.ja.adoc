@@ -293,7 +293,7 @@ Flet の版を上げたら index.html を写し直す必要があるので、Fle
 ----
 そもそも WSL は要りません。
 Debian を土台にして、Windows は GNOME Boxes の中で動かす。Word と Excel は箱の中に残るので、失う物はありません。更新も再起動も Windows の都合では来ません。
-様式の仕事は箱を開けずに officework で。役所の様式 288 枚のうち {n} 枚が Word と同じ頁数で開きます。
+Flet は Debian の上で一番素直に動きます。組むのに要る物は apt の 1 行です。
 {Qiita の URL}
 ----
 
@@ -302,7 +302,7 @@ Debian を土台にして、Windows は GNOME Boxes の中で動かす。Word �
 ----
 If you use WSL, you do not need it. Make Debian the host and keep Windows as a guest in GNOME Boxes. Word and Excel stay in the box, so nothing is lost.
 
-For the forms you receive, officework opens docx and xlsx outside the box, the way Word and Excel do; {n} of 288 public forms match Word's page count today.
+Flet runs best on Debian: building a desktop app takes one apt line instead of Visual Studio.
 
 {URL}
 ----
@@ -516,7 +516,7 @@ X で集めるのは、次の 3 つです。フォロワーの数は目的にし
 | 相手 | 何に反応するか | 言葉
 
 | WSL を使っている開発者(最初の相手。2026-09-20 発注者「まず、WSL を使っている人向けに」)
-| 「そもそも WSL は要らない」。Debian を土台に、Windows は Boxes の中。Word と Excel は箱に残るので失う物が無く、様式の仕事は officework で箱の外に出せる、という話。もう半分 Linux で仕事をしている人なので、一番近い
+| 「そもそも WSL は要らない」。Debian を土台に、Windows は Boxes の中。Word と Excel は箱に残るので失う物が無く、Flet は Debian で一番素直に動く、という話。officework の話はしない(2026-09-20 発注者「今回は officework の話をする必要はない。Flet の話だけでいい」)。もう半分 Linux で仕事をしている人なので、一番近い
 | 日本語が先(Qiita の記事)。英語は後から同じ物
 
 | 世界の Python と Flet の開発者

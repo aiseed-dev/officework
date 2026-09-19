@@ -67,17 +67,26 @@ Debian を本体にすると、この 4 つが一度に消えます。
 
 それだけです。Word と Excel を Linux で開く道具は要りません。
 
-officework の役は、その先にあります。様式の仕事(受け取った docx と xlsx を
-開いて、直して、刷る)を箱を開けずに Debian の側でやれるようにする物です。
-箱の外にあれば、ファイルは AI に渡せ、Python から触れ、cron で回せます。
-役所が公開している様式 288 枚で Word の PDF と比べていて、2026 年 9 月
-19 日の時点で 246 枚が頁数まで一致しています。
+== Flet が素直に動く
+
+Python で画面を作る Flet は、Debian の上で一番素直に動きます。
+
+* `pip install flet` と `flet run` で動く所は Windows と同じです
+* 配れるアプリに組む(`flet build linux`)のに要る物は、apt の 1 行です。
+  Windows では Visual Studio 2022 の「C++ によるデスクトップ開発」(数 GB)
+  が要ります
 
 [source,console]
 ----
-sudo apt install ./officework_0.1.0-alpha.3_amd64.deb
-officework 見積書.xlsx
+sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev
+flet build linux
 ----
+
+* 手元のファイルにも、cron にも、systemd にも、同じ Python から触れます。
+  AI に書かせた画面を、そのまま動かし続けられます
+
+AI に書かせて、動かして、直す、を Python 1 枚で回す道具なので、土台が
+Debian になると、その回転が一番速くなります。
 
 == Windows は箱の中で
 
@@ -101,7 +110,7 @@ Windows でしか動く物(会計ソフトなど)は、GNOME Boxes の中の Win
 . Microsoft の頁から Windows 11 の ISO を落とす
 . Boxes で「仮想マシンを新規作成」→ ISO を選ぶ → メモリ {n}GB、ディスク {n}GB
 . Windows の入れ方は普通の PC と同じ。プロダクトキーは {控えた物を入れた / 「プロダクト キーがありません」で進めた}
-. officework の `.deb` を Releases から落として `sudo apt install ./officework_0.1.0-alpha.3_amd64.deb`
+. `pip install flet` と `flet run` で、Python の画面が動くことを見る
 
 PC は {機種}、メモリ {n}GB です。かかった時間は {n} 時間で、そのうち
 待っていた時間がほとんどです。
@@ -133,5 +142,4 @@ WSL を使っている人は、もう半分は Linux です。残りの半分は
 工夫なしで消えます。Word と Excel は箱の中に残るので、替えない理由は
 ほとんど残りません。
 
-* コード: https://github.com/aiseed-dev/officework
 * Debian にする手順の 1 枚: (公開したら URL)
