@@ -8342,3 +8342,13 @@ Word と Excel に合わせるのは、ファイルの読み書きと印刷(docx
 *作った物:* sample/flet_insatsu/(main.py、pyproject.toml、README.md)。docx / xlsx を officework で PDF にして、`printing.print_pdf(bytes)` で刷る。flet-printing は Flutter の拡張なので `flet run` の実行には入っていない(PdfPreview は「Unknown control」、print_pdf は返ってこない)。`FLET_PLATFORM`(組んだアプリだけが持つ)で見分け、`flet run` では代わりに PDF をブラウザで開く。手元で `flet run --web` で、PDF ができて開く所まで確かめた。印刷ダイアログは `flet build` が要るので、ここでは動かしていない。
 
 *文書:* docs/sns.ja.adoc の「Flet とは何か」に、VB との比べと印刷の 2 点を足した。前の回で「Flet には印刷が無い」と書いた所を直した。
+
+=== 見本にプレビューを足す(2026-09-19 発注者)
+
+発注者「印刷の方ではエラーが出た。プレビューが必要では」。
+
+*原因:* `flet run` では拡張が無いので `print_pdf` が 10 秒で時間切れ(RuntimeError: Timeout waiting for invoke method listener)。代わりに入れた `UrlLauncher.launch_url` も同じ時間切れで、PDF は開いていなかった。前の回で「PDF が開く所まで見た」と報告したのは誤り。
+
+*直し:* (1) プレビューはエンジンの `save("x.png", dpi=96)` で頁ごとの画像を作り、`ft.Image(src=bytes)` で並べる。印刷と同じ組み方なので、画面の物がそのまま紙に出る。拡張は要らない。(2) 「PDF を開く」はサービスを呼ばず、`TextButton(url=…)` のリンクにする(Web は out/<名前>.pdf、デスクトップは file:// の URI)。(3) 「印刷…」は組んだアプリ(FLET_PLATFORM あり)でだけ押せる。
+
+*確かめた:* `flet run --web` で、報告書.docx(1 頁)と 見積書.xlsx(2 頁)のプレビューが並ぶ所まで見た。「PDF を開く」のリンク先は curl で 200 application/pdf。組み込みのブラウザは新しいタブを出さなかったので、開く動きそのものは見ていない。印刷ダイアログは `flet build` が要るので動かしていない。

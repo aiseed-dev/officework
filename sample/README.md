@@ -38,9 +38,10 @@
 
 ## Flet から刷る(sample/flet_insatsu/)
 
-- **flet_insatsu/** — docx / xlsx を officework で PDF にして、flet-printing で
-  OS の印刷ダイアログを開く Flet アプリ。`flet run --web` で画面と PDF まで、
-  `flet build` で印刷ダイアログまで。詳しくは中の README
+- **flet_insatsu/** — docx / xlsx を officework で PDF と頁の画像にして
+  画面に並べ(プレビュー)、flet-printing で OS の印刷ダイアログを開く Flet
+  アプリ。`flet run --web` でプレビューと PDF まで、`flet build` で
+  印刷ダイアログまで。詳しくは中の README
 
 ## 文書の見どころ(sample/writer/)
 
