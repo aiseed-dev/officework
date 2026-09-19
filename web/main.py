@@ -129,6 +129,27 @@ def main(page: ft.Page):
         padding=ft.Padding.symmetric(vertical=48, horizontal=24),
     )
 
+    why = section(
+        "なぜ作ったか",
+        p("文書は、AI が会話から作る物になりました。しかし現場の仕事は、作ることではなく、受け取った docx と xlsx を"
+          " Word と Excel と同じに開いて、処理して、様式で返して、刷ることです。"),
+        p("それを、機密の様式を外に出さず、現場の全員が有料の AI を払わず、毎日 AI 無しでコードだけで回し、"
+          "Windows を消した Debian の上でやります。この 4 つを同時に満たす物が他に無いので、作っています。"),
+    )
+
+    goal = section(
+        "持つようにする機能",
+        p("これは目指す物です。いまできることは、下の節にあります。", 15),
+        md("\n".join([
+            "* **受け取った docx と xlsx を、Word と Excel と同じ頁数、同じ折れ方、同じ列幅で開いて、刷る。** これが第一です。",
+            "* **様式の流れを Python で回す。** 様式に書く → 受け取る → 処理する → 様式で返す。",
+            "* **機密を外に出さない。** ファイルは手元にあり、繋ぐ AI は自分で選べ、毎日の運用は AI 無しでコードだけで回ります。",
+            "* **Debian で動く。** Windows を消して、Windows でしか動く物は仮想環境の中に置きます。",
+            "* **印刷。** PDF と、プリンターへ。",
+            "* **有料の AI が要らない現場のための物。** AI を使うのは、作る人が開発と保守をするときだけです。",
+        ])),
+    )
+
     compare = section(
         "同じファイルを両方で開けば、誰でも確かめられます",
         p("名古屋市立大学が公開している「物品借用願」(docx)を、Word と aiseed office で開いた物です。"
@@ -153,7 +174,7 @@ def main(page: ft.Page):
     )
 
     what = section(
-        "できること",
+        "いまできること",
         md("\n".join([
             "* **文書(docx)**: 開く、直す、刷る(PDF)。縦書き、ルビ、均等割り付け、表の中の表、脚注、目次。",
             "* **表(xlsx)**: 開く、計算する(関数 400 あまり)、刷る(PDF)。列の幅、行の高さ、拡大縮小、用紙は Excel と同じです。",
@@ -207,7 +228,7 @@ def main(page: ft.Page):
         padding=ft.Padding.symmetric(vertical=24, horizontal=24),
     )
 
-    body = ft.Column([hero, compare, what, agent, support, footer], spacing=0)
+    body = ft.Column([hero, why, goal, compare, what, agent, support, footer], spacing=0)
 
     def fit(width):
         # at most 1040 wide, never wider than the browser (phones)

@@ -38,6 +38,10 @@ There are two editors: *writer* for documents and *calc* for spreadsheets. You o
 
 == Why we built this
 
+Documents are now something AI writes from a conversation. But the work of an office is not writing them: it is opening the docx and xlsx you receive exactly as Word and Excel do, processing them, sending the form back, and printing it.
+And doing that without confidential forms leaving the machine, without everyone paying for an AI, running every day on code alone with no AI, on Debian with Windows gone.
+Nothing else does these four things at once, so we are building it.
+
 === One AI, chosen for you
 
 **Copilot is the only AI you can use directly inside Microsoft Office.**
@@ -104,6 +108,17 @@ There is no encoding trap either.
 Windows CSV is still code page 932 with CRLF line endings — mojibake and noisy diffs the moment it meets the git world (UTF-8 and LF) — while officework files are *always UTF-8 with LF* (and files with stray CRLF still open).
 writer even saves one sentence per line, so *a diff shows exactly the sentence you changed*.
 And if you never install git, you lose nothing — plain-text files can join a history at any time, past versions and all.
+
+== What it is meant to do
+
+These are the goals. What works today is in the next section.
+
+* Open the docx and xlsx you receive with the same page count, line breaks and column widths as Word and Excel, and print them. This comes first; we check it against 288 public Japanese government forms and Word's PDF (246 match in page count as of 19 September 2026)
+* Run the flow of forms in Python: fill a form, receive it, process it, return a form
+* Keep confidential files at home. Files stay on your machine, you choose the AI you connect, and daily operation runs on code alone without AI
+* Run on Debian. Remove Windows; whatever runs only on Windows goes into a virtual machine
+* Print, to PDF and to the printer
+* Made for the people who do not need a paid AI. AI is used by the person who builds and maintains, not by everyone every day
 
 == What works today
 
