@@ -8454,3 +8454,5 @@ Word と Excel に合わせるのは、ファイルの読み書きと印刷(docx
 発注者(同日)「PocketBase を手元に立てる所から始めます、こういうのは AI が教えてくれるからやる必要がない。Windows を消すこと。Windows に PocketBase をインストールするのは、大変です」。PocketBase を先に立てる作業はやめた。会は Debian の上でやり、その場で AI に聞いて入れる。参加者には会の前に「WSL の逆」の記事と Debian の 1 枚を渡す。11 番目の主張の頭を「現場で開発できるようにする最初の 1 歩は、Windows を消すこと」にした。docs/sns.ja.adoc。
 
 発注者(同日)「Windows に、PocketBase, Stalwart, Jitsi またはそれらと同等のものをインストールして運用するのは、ほぼ不可能。cron さえない」。11 番目の主張に足した。動かし続ける土台(cron、systemd、apt、certbot、更新の再起動)が無いこと。Windows を消すのは好みではなく、連載の自立編を使う前提。
+
+発注者(同日)「それに、利用規約上」。11 番目の主張に足した。Windows 10 / 11 のライセンス条項はサーバーとしての使用(商用のホスティング、複数の利用者の同時使用)を認めず、接続できる機器は 20 台まで。Windows Server はサーバーの料金と CAL。Docker Desktop も規模で有料。Debian にはこの条項が無い。
