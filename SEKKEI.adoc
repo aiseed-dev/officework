@@ -8412,3 +8412,5 @@ Word と Excel に合わせるのは、ファイルの読み書きと印刷(docx
 *決め:* 「WSL の逆」(Debian が土台、Windows は Boxes の中、Word と Excel は officework で同じに開く)を、WSL を使う開発者に最初に出す。もう半分 Linux で仕事をしている人なので、一番近い相手。Qiita の記事の草稿を docs/articles/wsl-no-gyaku.ja.adoc に書いた(「実際にやった手順」は手元で通してから埋める)。X の相手の表と 9 月の予定と投稿の下書きを docs/sns.ja.adoc に足した。
 
 発注者(同日)「簡単にできました」— Debian 13 + GNOME Boxes + Windows 11 を手元で通した。詰まる所は無かった。記事(docs/articles/wsl-no-gyaku.ja.adoc)の「実際にやった手順」を、やった順で埋めた。残りは機種・メモリ・Boxes に渡した量・認証の扱い・かかった時間と、Debian で様式が同じに開く写真 1 枚。これがそろえば記事は出せる。
+
+発注者(同日)「Python を使うのも面倒」。Windows の 1 枚から Python を外した。docs/articles/windows-yoshiki-onaji.ja.adoc(setup.exe を入れる、ファイル > 開く、ファイル > 印刷で PDF、Word・Excel と並べて頁数・折れ方・列幅を見る、違えば Issues)。15 分、端末なし。Python と AI の道は Debian の 1 枚の側に置く。普通の人の会の最初の 15 分もこれにした。
