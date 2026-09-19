@@ -20,10 +20,16 @@ a pixel comparison.
     python3 tools/templates_round.py --only ce343500-4aff-4dfa-b337-57c78459c6ee
     python3 tools/templates_round.py --skip-word
     python3 tools/templates_round.py --skip a60c389b-9052-4d35-bcfe-b7918b8aad5e
+    python3 tools/templates_round.py --redo
 
 `--skip-word` reuses the PDFs that are already there and never starts Word. The
 result is written to `templates/結果.tsv`. A file that fails is written with its
 error text and the run keeps going.
+
+A pair that was already compared is kept as it stands: its row in `結果.tsv`
+holds both page counts and both PDFs are newer than the docx. Such a pair is
+neither printed nor read again. `--redo` compares every pair again, which is
+what to use after the converter has changed.
 """
 import argparse
 import os
@@ -111,6 +117,37 @@ def read_mokuroku(path):
     return rows
 
 
+def read_kekka(path):
+    """The rows of an earlier run, keyed by (GUID, locale)."""
+    old = {}
+    if not os.path.exists(path):
+        return old
+    for line in open(path, encoding="utf-8").read().splitlines()[1:]:
+        c = line.split("\t")
+        if len(c) >= 9 and c[0].strip():
+            old[(c[0], c[1])] = c
+    return old
+
+
+def reusable(row, guid, lang):
+    """True when the earlier row can be kept as it stands.
+
+    That asks for both page counts in the row and for both PDFs to be newer
+    than the docx, so neither Word nor our converter has to run again.
+    """
+    if not row or not row[4].strip() or not row[5].strip():
+        return False
+    base = os.path.join(ROOT, LOCALE[lang], guid)
+    docx = base + ".docx"
+    if not os.path.exists(docx):
+        return False
+    made = os.path.getmtime(docx)
+    for pdf in (base + ".ms.pdf", base + ".ours.pdf"):
+        if not os.path.exists(pdf) or os.path.getmtime(pdf) <= made:
+            return False
+    return True
+
+
 SKIP_FILE = [os.path.join(ROOT, "飛ばす.txt")]
 
 
@@ -187,6 +224,8 @@ def main(argv=None):
     p.add_argument("--skip-file", default=os.path.join(ROOT, "飛ばす.txt"),
                    help="飛ばす GUID を 1 行 1 つで持つファイル(Word が開けなかった物を道具が足します)")
     p.add_argument("--skip-word", action="store_true", help="Word を動かさず、ある PDF を使います")
+    p.add_argument("--redo", action="store_true",
+                   help="前の結果を使わず、全部を刷り直して比べます(変換器を直した後に使います)")
     p.add_argument("--root", default=ROOT, help="置き場")
     a = p.parse_args(argv)
 
@@ -213,10 +252,17 @@ def main(argv=None):
         rows = rows[:a.limit]
 
     out = os.path.join(ROOT, "結果.tsv")
+    old = {} if a.redo else read_kekka(out)
     res = []
     for i, c in enumerate(rows, 1):
         guid, kind, title_en, title_ja = c[0], c[1], c[2], c[3]
         for lang, title in (("en", title_en), ("ja", title_ja)):
+            keep = old.get((guid, LOCALE[lang]))
+            if reusable(keep, guid, lang):
+                res.append(keep)
+                print(f"[{i}/{len(rows)}] {LOCALE[lang]} {guid} {kind} "
+                      f"Word {keep[4] or '-'} / うち {keep[5] or '-'} {keep[6]} {keep[7]} 前の結果")
+                continue
             try:
                 r = one(guid, kind, title, lang, a.skip_word)
             except Tomeru as e:
@@ -230,6 +276,7 @@ def main(argv=None):
             print(f"[{i}/{len(rows)}] {LOCALE[lang]} {guid} {kind} "
                   f"Word {r[4] or '-'} / うち {r[5] or '-'} {r[6]} {r[7]} {r[8]}")
             write(out, res)
+    write(out, res)
     n = len(res)
     ok = sum(1 for r in res if r[6] == "○")
     print(f"\n結果: {out}")
