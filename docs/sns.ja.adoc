@@ -371,7 +371,7 @@ It is built from published software, LibreOffice among them. The difference is t
 | 1 回目は connpass。日本の勉強会は connpass で探す人が多く、申し込みと人数の把握と当日の連絡がそろっている。Discord の #日本語 と X にも同じ内容を書く。自前に移すときは Cal.com か Flet の頁
 
 | 日時
-| 2026 年 10 月の平日の夜、20:00〜21:00(2026-09-19 発注者「10 月の平日の夜で」)。候補は 10 月 14 日(水)と 10 月 21 日(水)。水曜は月曜の祝日(10 月 12 日)と金曜の予定から離れていて、告知から 2 週間以上空く。10 月のハッカソン(見積書と請求書のエージェント)と重ならない日を発注者が選ぶ。告知は 9 月中に出す
+| 2026 年 10 月 7 日(水)20:00〜21:00(2026-09-19 発注者)。告知は長く取らず、すぐ出す。発注者「告知を長くとらないで、どんどんやっていく」「最近は、準備期間は早くできますね」。1 回目で人が少なくても、続けて次の回を出す
 
 | 人数
 | 上限は置かない。音声チャンネルなので 5 人でも成り立つ
@@ -399,7 +399,7 @@ It is built from published software, LibreOffice among them. The difference is t
 * 途中の形を 3 段階(題名だけ、段落とボタン、写真とリンク)で用意して、詰まっても先に進めるようにする
 * 質問が出なかったときのために、自分で 3 つ用意する(書体、nginx、画像のコピー)
 * 前の週に Discord の音声チャンネルで 2 人で試して、画面共有と録画(OBS など)が動くことを確かめる
-* connpass の頁と、Discord と X の告知は発注者が出す。文面は下にある。告知は 9 月中(遅くとも 9 月 30 日)に出す
+* connpass の頁と、Discord と X の告知は発注者が出す。文面は下にある。告知は決めた日にすぐ出す(長く取らない)
 
 === 告知の下書き
 
@@ -412,7 +412,7 @@ Python だけで Web のページを作る Flet を、実際に 1 枚作りな�
 Word と Excel のファイルを開いて刷るアプリ(aiseed office)の紹介ページを例に、題名・段落・ボタン・写真・リンクを並べて、サーバーで動かす所までやります。
 Flet の Web で日本語の「、」「。」がずれる件と、その手当ても話します。
 
-日時: 2026 年 10 月 {日}日({曜日}) 20:00〜21:00
+日時: 2026 年 10 月 7 日(水)20:00〜21:00
 場所: Discord の Flet サーバー、音声チャンネル(画面共有)
 用意する物: Python 3.10 以上と、pip install flet
 申し込み: {connpass の URL}
@@ -425,18 +425,17 @@ X(日本語):
 ----
 Flet(Python だけで Web とデスクトップのアプリが作れる)のオンライン勉強会をやります。
 Web のページを 1 枚、最初から作ります。日本語の書体のずれの手当ても話します。
-10 月 {日}日({曜日}) 20 時から 1 時間、Discord で。申し込みはこちら: {connpass の URL}
+10 月 7 日(水)20 時から 1 時間、Discord で。申し込みはこちら: {connpass の URL}
 ----
 
 Feodor への一言(英語。Flet の側で知らせてもらえるかもしれない):
 
 ----
-We're holding the first Japanese online Flet meetup on {date} (20:00 JST) in a voice channel here: building a one-page web app from scratch, plus the Japanese font workaround. Feel free to mention it in announcements if that fits.
+We're holding the first Japanese online Flet meetup on October 7 (Wed), 20:00 JST, in a voice channel here: building a one-page web app from scratch, plus the Japanese font workaround. Feel free to mention it in announcements if that fits.
 ----
 
 === 発注者に決めてもらう物
 
-* 日(10 月 14 日か 21 日か、別の平日か)。ハッカソンの日と重ねません
 * 録画を残して YouTube に置くか
 * connpass の主催の名前(個人か、aiseed か)
 * 自前に移す時期(連載 2-07 の Jitsi Meet と Cal.com が立ってから。何回目からかは、1 回目の様子を見て決める)
