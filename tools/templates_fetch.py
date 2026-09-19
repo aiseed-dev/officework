@@ -47,11 +47,20 @@ KINDS = [
     "fax-cover", "brochure", "pamphlet", "booklet", "flyer", "newsletter",
     "card", "birthday-card", "invitation", "postcard", "label", "menu",
     "wedding", "mothers-day", "learning", "teacher-communication", "writing",
+    # Pages whose address has no "-templates" (2026-09-19): the reports
+    # live here, 8 in each language
+    "papers-and-reports", "meeting-minutes", "meeting-agendas",
 ]
 
 ROOT = os.path.expanduser("~/Documents/officework-cmp/templates")
 LOCALE = {"en": "en-us", "ja": "ja-jp"}
 PAGE = "https://word.cloud.microsoft/create/{lang}/{kind}-templates/"
+# A kind that already names its page in full ("papers-and-reports")
+PAGE_ASIS = "https://word.cloud.microsoft/create/{lang}/{kind}/"
+
+
+def page_url(kind, lang):
+    return (PAGE_ASIS if "-" in kind and kind.endswith(("-reports", "-minutes", "-agendas")) else PAGE).format(lang=lang, kind=kind)
 
 _last = [0.0]
 
@@ -74,10 +83,12 @@ GUID = re.compile(r"/catalog-assets/[a-z-]+/([0-9a-f-]{36})/")
 TAG = re.compile(r"<[^>]+>")
 
 
-def cards(html):
+def cards(page):
     """Return [(GUID, title, docx URL)] in the order the page shows them."""
+    # The parameter used to be named `html`, which hid the `html` module
+    # that `html.unescape` needs below (2026-09-19)
     out, seen = [], set()
-    for block in html.split(CARD)[1:]:
+    for block in page.split(CARD)[1:]:
         m = SRC.search(block)
         if not m:
             continue
@@ -95,7 +106,7 @@ def cards(html):
 
 def one_kind(kind, lang):
     """Read one category page. Returns None when the page does not exist."""
-    url = PAGE.format(lang=lang, kind=kind)
+    url = page_url(kind, lang)
     try:
         final, body = get(url)
     except urllib.error.HTTPError as e:
@@ -105,7 +116,7 @@ def one_kind(kind, lang):
         print(f"  × {lang}: {e}")
         return None
     # A kind that does not exist answers 307 to the hub page.
-    if "-templates/" not in final:
+    if not final.rstrip("/").endswith(url.rstrip("/").rsplit("/", 1)[-1]):
         print(f"  - {lang}: この種類の頁はありません")
         return None
     return cards(body.decode("utf-8", "replace"))
@@ -126,7 +137,7 @@ def download(url, dst, force=False):
 def main(argv=None):
     p = argparse.ArgumentParser(description="Word のテンプレートを英語と日本語の組で集めます")
     p.add_argument("--kinds", default=",".join(KINDS), help="種類をコンマで並べます")
-    p.add_argument("--per-kind", type=int, default=3, help="1 種類あたりの数(既定 3)")
+    p.add_argument("--per-kind", type=int, default=3, help="1 種類あたりの数(既定 3。0 で全部)")
     p.add_argument("--limit", type=int, default=0, help="全体の数の上限(0 は無制限)")
     p.add_argument("--force", action="store_true", help="すでにあるファイルも落とし直します")
     p.add_argument("--out", default=ROOT, help="置き場")
@@ -156,7 +167,7 @@ def main(argv=None):
         print(f"  英語 {len(en)} 個、日本語 {len(ja)} 個、両方にある物 {len(pair)} 個")
         n = 0
         for guid, title_en, url_en in pair:
-            if n >= a.per_kind:
+            if a.per_kind and n >= a.per_kind:
                 break
             if a.limit and len(rows) + len(have) >= a.limit:
                 break
