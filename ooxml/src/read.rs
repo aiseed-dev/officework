@@ -253,7 +253,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     extract_ink(&mut doc);
     extract_shapes(&mut doc);
     if !styxml.is_empty() {
-        doc.styles = parse_styles_num(&styxml, &shirushi);
+        doc.styles = parse_styles_num(&styxml, &shirushi, &sagari);
         hyou_no_kei(&mut doc, &styxml);
         // (2026-09-09 の註)Normal の書体・大きさを文書の既定に写す直しは戻した。
         // Normal に基づかないスタイルの段落まで Normal の値を受けてしまい、288 枚の
@@ -1629,7 +1629,7 @@ pub(super) fn theme_face(theme: &str, major: bool, japanese: bool) -> Option<Str
 }
 
 pub(super) fn parse_styles(xml: &str) -> Vec<kumihan::StyleInfo> {
-    parse_styles_num(xml, &Default::default())
+    parse_styles_num(xml, &Default::default(), &Default::default())
 }
 
 /// **箇条書きの印の表つき。** スタイルの `w:numPr/w:numId` を
@@ -1640,12 +1640,16 @@ pub(super) fn parse_styles(xml: &str) -> Vec<kumihan::StyleInfo> {
 pub(super) fn parse_styles_num(
     xml: &str,
     shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
+    // The indent of every numbering level ([`num_indents`]), for a style that
+    // names a `w:numPr` and no `w:ind` of its own
+    sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32)>,
 ) -> Vec<kumihan::StyleInfo> {
     /// スタイルの `w:rPr` と `w:pPr` から見た目を読む。**読むだけ**です。
 /// スタイルの段落の見た目(`w:pPr` の中)。読めない物は「言わない」のまま
 fn style_para(
     body: &str,
     shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
+    sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32)>,
 ) -> kumihan::StyleParaLook {
     let val = |tag: &str| -> Option<String> {
         let t = format!("<{tag}");
@@ -1681,6 +1685,19 @@ fn style_para(
         let v = attr_of(&body[n..e], key);
         if v.is_empty() { None } else { Some(v == "1" || v == "true" || v == "on") }
     };
+    // **The indent of the numbering level the style names** (`w:numPr/w:numId`
+    // into `w:lvl/w:pPr/w:ind`, ECMA-376 17.9.6). It sits below the style's
+    // own `w:ind` in the order of ECMA-376 17.7.2, so only a style that names
+    // no indent takes it.
+    //
+    // Word's booklet template 22568a97 puts `w:numPr` in the `List Bullet`
+    // style and `w:ind w:left="432" w:hanging="288"` in the level. The body
+    // paragraphs carry neither, so Word draws the bullet 7.2pt in and the text
+    // 21.6pt in, and we drew both at the cell's left edge (2026-09-21)
+    let (dan_left, dan_hang) = match num_of(body).and_then(|n| sagari.get(&(n, 0))) {
+        Some((left, hang)) => (Some(*left as f32), Some(-*hang as f32)),
+        None => (None, None),
+    };
     // The `w:pPr` block on its own. `w:shd` is a run property as well
     // (ECMA-376 17.3.2.32), and that one paints behind the characters, not
     // behind the paragraph
@@ -1700,14 +1717,17 @@ fn style_para(
         // 行間は 240 が1行(docx の決め)。`exact` / `atLeast` は pt で持つ
         line_spacing: gyou.0,
         line_pt: gyou.1,
-        indent: ind(body, "w:left").map(|t| (t / 480.0).round().clamp(0.0, 9.0) as u8),
+        indent: ind(body, "w:left")
+            .or(dan_left)
+            .map(|t| (t / 480.0).round().clamp(0.0, 9.0) as u8),
         // `w:left` is twips (ECMA-376 17.3.1.12); the step count above
         // cannot hold it exactly
-        left_twips: ind(body, "w:left").map(|t| t as i32),
+        left_twips: ind(body, "w:left").or(dan_left).map(|t| t as i32),
         // `w:right` shortens the line (ECMA-376 17.3.1.12)
         right_twips: ind(body, "w:right").map(|t| t as i32),
         first_line_twips: ind(body, "w:firstLine")
             .or_else(|| ind(body, "w:hanging").map(|v| -v))
+            .or(dan_hang)
             .map(|v| v as i32),
         // Tab stops (`w:pPr/w:tabs/w:tab w:pos`, ECMA-376 17.3.1.38).
         // Only the stops inside `w:tabs` count; a `w:tab` elsewhere is
@@ -1803,7 +1823,7 @@ fn table_cond(blk: &str) -> kumihan::TableCond {
     // 段落の書式。`w:pPr` の中だけを見ます
     if let Some(k) = blk.find("<w:pPr>") {
         let e = blk[k..].find("</w:pPr>").map(|e| k + e).unwrap_or(blk.len());
-        c.para = style_para(&blk[k..e], &Default::default());
+        c.para = style_para(&blk[k..e], &Default::default(), &Default::default());
     }
     // 塗りは `w:tcPr` の中の `w:shd w:fill`
     if let Some(k) = blk.find("<w:shd ") {
@@ -2126,7 +2146,7 @@ fn attr_of(hay: &str, key: &str) -> String {
                 quick_style: flag("w:qFormat"),
                 default: matches!(attr_of(head, "w:default").as_str(), "1" | "true"),
                 priority: val("w:uiPriority").and_then(|v| v.parse().ok()),
-                para: style_para(body, shirushi),
+                para: style_para(body, shirushi, sagari),
                 table: table_style(body),
             });
         }
