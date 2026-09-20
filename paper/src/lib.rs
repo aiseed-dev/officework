@@ -2500,10 +2500,12 @@ pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, pa
             pictures.extend(p.images.iter().filter(|im| im.off == usize::MAX && im.shape.is_some()));
         }
     }
+    let mut out = Vec::new();
+    hf_pictures(doc, &pg, page, &mut out);
     if pictures.is_empty() {
+        sheet.float_images.extend(out);
         return;
     }
-    let mut out = Vec::new();
     for (a, x_para, y_sheet) in &sheet.anchors_at {
         let (kami0, soko) = kami_no(*y_sheet);
         let y_para = y_sheet - soko - kumihan::BASE_UP_MM;
@@ -2531,6 +2533,66 @@ pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, pa
         }
     }
     sheet.float_images.extend(out);
+}
+
+/// **A picture anchored in the header or the footer is drawn on every page.**
+///
+/// `w:headerReference` names a part that belongs to the whole section, so a
+/// `wp:anchor` there repeats on each of the section's pages (ECMA-376
+/// 17.10.5). The shapes of such a part were already placed by
+/// [`foreign_shapes`]; a `pic:pic` was not, so the full-page picture of
+/// Word's ATS resume template (`word/header11.xml`, `behindDoc="1"`,
+/// `wp:extent cx="7773035" cy="10059035"`) never appeared (2026-09-21).
+///
+/// `wp:positionV relativeFrom="paragraph"` counts from the top of the
+/// header's own first paragraph, which `w:pgMar w:header` puts below the
+/// top edge of the page (ECMA-376 17.6.11); the footer's paragraph starts
+/// `w:pgMar w:footer` above the bottom edge.
+fn hf_pictures(
+    doc: &kumihan::Document,
+    pg: &Pagination,
+    page: kumihan::PageSetup,
+    out: &mut Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], i32)>,
+) {
+    let kami_kazu = pg.offsets.len().max(1);
+    for (hf, footer) in [(&doc.header, false), (&doc.footer, true)] {
+        if hf.anchors.is_empty() {
+            continue;
+        }
+        let pictures: Vec<&kumihan::InlineImage> = hf
+            .paragraphs
+            .iter()
+            .flat_map(|p| p.images.iter())
+            .filter(|im| im.off == usize::MAX && im.shape.is_some())
+            .collect();
+        if pictures.is_empty() {
+            continue;
+        }
+        let kono = if footer { page.h_mm - page.footer_mm } else { page.header_mm };
+        for a in hf.anchors.iter().flat_map(|a| split_anchors(a)) {
+            for (part, z) in split_anchors_z(&a) {
+                if !part.contains("<wp:anchor") || !part.contains("<pic:pic") {
+                    continue;
+                }
+                let Some(im) = pictures
+                    .iter()
+                    .find(|im| im.shape.as_deref().is_some_and(|s| s.contains(&part) || part.contains(s)))
+                else {
+                    continue;
+                };
+                let Some(f) = ooxml::foreign_shape_with(&part, &doc.theme_colors) else { continue };
+                let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
+                let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
+                for k in 0..kami_kazu {
+                    let migi = k % 2 == 1;
+                    let x = anchor_place(&f.h_from, f.x_mm, f.h_align.as_deref(), w_mm, &page, false, kono, migi);
+                    let y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(), h_mm, &page, true, kono, migi);
+                    let soko = pg.offsets.get(k).copied().unwrap_or(0.0);
+                    out.push((im.bytes.clone(), [x - page.left_mm, y + soko, w_mm, h_mm], z));
+                }
+            }
+        }
+    }
 }
 
 /// **A text box's paragraph takes its paragraph style, like a body one.**

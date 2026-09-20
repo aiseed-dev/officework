@@ -63,6 +63,64 @@ pub(super) fn attr(e: &BytesStart, want: &str) -> Option<String> {
 
 // ---------- 読む ----------
 
+/// **A part's pictures are named by that part's own relationships.**
+///
+/// `r:embed` and `r:id` are relationship ids resolved against the part that
+/// holds them (ECMA-376 Part 2, 9.3), so `word/header11.xml` looks its
+/// picture up in `word/_rels/header11.xml.rels`. We looked every id up in
+/// the document's relationships, where the same `rId1` names something
+/// else, and the full-page background of Word's ATS resume template was
+/// dropped (2026-09-21).
+///
+/// The document's map stays as the fallback for a part with no
+/// relationships of its own.
+fn part_media<R: Read + Seek>(
+    zip: &mut zip::ZipArchive<R>,
+    part: &str,
+    moto: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
+) -> std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>> {
+    let mut out = moto.clone();
+    let (dir, name) = part.rsplit_once('/').unwrap_or(("", part));
+    let rels_path = if dir.is_empty() {
+        format!("_rels/{name}.rels")
+    } else {
+        format!("{dir}/_rels/{name}.rels")
+    };
+    let mut rels = String::new();
+    match zip.by_name(&rels_path) {
+        Ok(mut f) => {
+            let _ = f.read_to_string(&mut rels);
+        }
+        Err(_) => return out,
+    }
+    let mut mato: Vec<(String, String)> = Vec::new();
+    for r in rels.split("<Relationship").skip(1) {
+        let r = &r[..r.find('>').unwrap_or(r.len())];
+        let hiku = |k: &str| -> Option<String> {
+            let i = r.find(k)? + k.len();
+            let e = r[i..].find('"')? + i;
+            Some(r[i..e].to_string())
+        };
+        let (Some(id), Some(t)) = (hiku("Id=\""), hiku("Target=\"")) else { continue };
+        // absolute ("/word/media/image1.png") and relative ("media/image1.png")
+        // both name the same part
+        let rel = t.trim_start_matches('/');
+        let rel = rel.strip_prefix("word/").unwrap_or(rel);
+        if rel.starts_with("media/") {
+            mato.push((id, format!("word/{rel}")));
+        }
+    }
+    for (id, path) in mato {
+        if let Ok(mut mf) = zip.by_name(&path) {
+            let mut buf = Vec::new();
+            if mf.read_to_end(&mut buf).is_ok() {
+                out.insert(id, std::sync::Arc::new(buf));
+            }
+        }
+    }
+    out
+}
+
 /// docx を読む。返るのは文書と、読めなかったものの帳簿。
 pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     let mut zip = zip::ZipArchive::new(src).map_err(|e| format!("zipを開けません: {e}"))?;
@@ -290,7 +348,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                 Ok(mut f) => { let _ = f.read_to_string(&mut hxml); }
                 Err(_) => continue,
             }
-            let (hdoc, hrep) = parse_document_with(&hxml, &media);
+            let hmedia = part_media(&mut zip, &part, &media);
+            let (hdoc, hrep) = parse_document_with(&hxml, &hmedia);
             let which = if footer { "フッター" } else { "ヘッダー" };
             let hf = if footer { &mut doc.footer } else { &mut doc.header };
             hf.part = Some(part);
@@ -323,7 +382,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
             let part = format!("word/{}", target.trim_start_matches('/').trim_start_matches("word/"));
             let mut hxml = String::new();
             zip.by_name(&part).ok()?.read_to_string(&mut hxml).ok()?;
-            let (hdoc, hrep) = parse_document_with(&hxml, &media);
+            let hmedia = part_media(&mut zip, &part, &media);
+            let (hdoc, hrep) = parse_document_with(&hxml, &hmedia);
             let mut hf = kumihan::HeadFoot { part: Some(part), ..Default::default() };
             hf.anchors = hdoc
                 .paragraphs()
