@@ -333,6 +333,16 @@ pub struct Writer {
     pub(crate) ui_scale: f32,
     /// 画像の実体 → gpui の画像(作り直すと毎フレーム復号されるため控える)
     image_cache: std::collections::HashMap<usize, std::sync::Arc<gpui::Image>>,
+    /// Shapes the document carries in its docx (floating and inline
+    /// drawings), placed by the paper side after the layout; drawn like
+    /// `doc.shapes` but never picked or edited (2026-09-20)
+    yosomono: Vec<kumihan::DocShape>,
+    /// Font files the layout resolved for this document, waiting to be
+    /// registered with the screen's text system (name, bytes); the names
+    /// already registered. Word's own fonts live in its app bundle and are
+    /// not system fonts, so the screen drew them with a substitute
+    fonts_pending: Vec<(String, Vec<u8>)>,
+    fonts_added: std::collections::HashSet<String>,
     /// 組版に使うフォントの実体。**文書の書体に従う**(開くたびに引き直す)
     font_bytes: std::sync::Arc<Vec<u8>>,
     /// 用紙。**文書の設定に従う**(既定 A4・余白20mm)

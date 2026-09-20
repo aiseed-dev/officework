@@ -44,7 +44,7 @@ location / {
 == 載せる物の決め
 
 * 載せるのは動いている物だけです(手引きと同じ)。
-* 比較の絵(`assets/word.png` と `assets/office.png`)は、名古屋市立大学が公開している「物品借用願」を Word と aiseed office で開いた物です。版を上げたら撮り直します。様式そのもの(`assets/buppin202411.docx`)も置いてあり、見る人が自分の Word で試せます(発注者 2026-09-19「ダウンロードできたらいいのは docx」)。
+* 比較の絵は 2 組です。`assets/menu-word.png` と `assets/menu-office.png` は、Microsoft Word のテンプレート『Elegant dinner menu』を Microsoft Word と aiseed office で開いた窓の写しです(Microsoft の permissions の決まりに従い、窓ごと写し、手を加えず、「Used with permission from Microsoft」を添えます。テンプレートのファイルは置きません)。`assets/hokoku-word.png` と `assets/hokoku-office.png` は、自分で作った『事業のご報告』(`sample/gen_hokoku.py`。中身は架空)を Word と aiseed office で開いた 1 頁目です。文書そのもの(`assets/事業のご報告.docx`)も置いてあり、見る人が自分の Word で試せます。版を上げたら撮り直します。
 * 「画像をコピー」は、Flutter が絵を canvas に描くためブラウザの「画像をコピー」が使えないので、`assets/index.html` の script がページの題名を合図にしてクリップボードへ入れます。
 * 版の数字(`VERSION`)はリリースのたびに直します。
 * 幅は 1040 までで、それより狭いブラウザ(携帯)では画面の幅に合わせます(`page.on_resize`)。

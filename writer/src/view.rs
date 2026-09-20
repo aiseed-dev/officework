@@ -28,6 +28,19 @@ impl Render for Writer {
         ));
         // **点検の道具へ、ボタンの場所を渡す。** 環境変数が無ければ何もしない
         self.dump_ui();
+        // Register the fonts the layout resolved, so the screen draws the
+        // faces the print uses (Word's bundled fonts are not system fonts)
+        if !self.fonts_pending.is_empty() {
+            let mut fonts = Vec::new();
+            for (name, bytes) in self.fonts_pending.drain(..) {
+                if self.fonts_added.insert(name) {
+                    fonts.push(std::borrow::Cow::Owned(bytes));
+                }
+            }
+            if !fonts.is_empty() {
+                let _ = cx.text_system().add_fonts(fonts);
+            }
+        }
         // 端末を開いた直後は、打鍵が端末へ行くように焦点を移す(1回だけ)
         if self.terminal_focus {
             self.terminal_focus = false;
@@ -895,8 +908,20 @@ impl Render for Writer {
             }
         }
 
+        // The document's own drawings without text (page-wide bands, rules
+        // under headings), placed by the paper side. They go under the body
+        // text and under the pictures, which is where the print puts them
+        // (the PDF writes them as fills, and fills are painted first)
+        for (src, at) in self.yosomono_imgs(pxmm, false) {
+            paper = paper.child(
+                gpui::img(src).absolute().left(px(at[0])).top(px(at[1])).w(px(at[2])).h(px(at[3])),
+            );
+        }
+
         // 画像。組版が置いた位置に、そのまま出す
-        for (i, (bytes, [x, top, w_mm, h_mm])) in self.page.images.iter().enumerate() {
+        for (i, (bytes, [x, top, w_mm, h_mm])) in
+            self.page.images.iter().chain(self.page.float_images.iter()).enumerate()
+        {
             let src = self.image_cache.entry(std::sync::Arc::as_ptr(bytes) as usize)
                 .or_insert_with(|| {
                     let format = match bytes.get(..4) {
@@ -1414,6 +1439,13 @@ impl Render for Writer {
         // **ページに貼り付く図形**(2026-08-30)。calc と同じ SVG の道です —
         // 大きさを織り込んで作るので、拡げても鮮明です。
         // 選んでいる図形には枠を出します
+        // The document's own text boxes, over the body text as the print
+        // puts them. The plain bands went under the text, further up
+        for (src, at) in self.yosomono_imgs(pxmm, true) {
+            paper = paper.child(
+                gpui::img(src).absolute().left(px(at[0])).top(px(at[1])).w(px(at[2])).h(px(at[3])),
+            );
+        }
         for (i, sp) in self.doc.shapes.iter().enumerate() {
             let oy = self
                 .page_offsets
@@ -1789,6 +1821,59 @@ impl Render for Writer {
             .children(date_panel)
             .children(export_panel)
             .children(ui::resize_edges(window))
+    }
+}
+
+impl Writer {
+    /// The document's own drawings, ready to place on the paper: the image
+    /// of each shape and its box in px, `[left, top, width, height]`.
+    ///
+    /// `with_text` picks which half to return. The print separates them: a
+    /// shape's fill is written first and its text last, so a page-wide band
+    /// ends up under the body text and a text box's words over it. The
+    /// screen draws a whole shape as one picture, so it calls this twice —
+    /// once for the plain bands before the text, once for the text boxes
+    /// after it (2026-09-20)
+    fn yosomono_imgs(&self, pxmm: f32, with_text: bool) -> Vec<(std::sync::Arc<gpui::Image>, [f32; 4])> {
+        let mut out = Vec::new();
+        for sp in &self.yosomono {
+            let has_text = sp.look.text.as_deref().is_some_and(|t| !t.trim().is_empty());
+            if has_text != with_text {
+                continue;
+            }
+            let oy = self
+                .page_offsets
+                .get(sp.page)
+                .copied()
+                .unwrap_or(sp.page as f32 * self.pg.h_mm);
+            let mut look = sp.look.clone();
+            look.width_px = sp.w_mm * PX_PER_MM;
+            look.height_px = sp.h_mm * PX_PER_MM;
+            let pad = look.pad();
+            let svg = look.to_svg();
+            let key = {
+                use std::hash::{Hash, Hasher};
+                let mut h = std::collections::hash_map::DefaultHasher::new();
+                svg.hash(&mut h);
+                h.finish() as usize
+            };
+            let src = self
+                .shape_cache
+                .borrow_mut()
+                .entry(key)
+                .or_insert_with(|| {
+                    std::sync::Arc::new(gpui::Image::from_bytes(
+                        gpui::ImageFormat::Svg,
+                        svg.into_bytes(),
+                    ))
+                })
+                .clone();
+            let (x, y) = (sp.x_mm * pxmm, (sp.y_mm + oy) * pxmm);
+            let (w, h) = (sp.w_mm * pxmm, sp.h_mm * pxmm);
+            let pd = pad / PX_PER_MM * pxmm;
+            out.push((src, [x - pd, y - pd, w + pd * 2.0, h + pd * 2.0]));
+        }
+        out
     }
 }
 

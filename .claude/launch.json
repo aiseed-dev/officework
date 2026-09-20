@@ -24,6 +24,18 @@
         "sample/flet_insatsu/main.py"
       ],
       "port": 8551
+    },
+    {
+      "name": "aiseed-office-web-8560",
+      "runtimeExecutable": ".venv/bin/flet",
+      "runtimeArgs": [
+        "run",
+        "--web",
+        "--port",
+        "8560",
+        "web/main.py"
+      ],
+      "port": 8560
     }
   ]
 }

@@ -107,6 +107,9 @@ impl Writer {
                 .unwrap_or(300),
             recover_at: std::time::Instant::now(),
             image_cache: Default::default(),
+            yosomono: Vec::new(),
+            fonts_pending: Vec::new(),
+            fonts_added: Default::default(),
             font_bytes: std::sync::Arc::new(font_data().to_vec()),
             pg: kumihan::PageSetup::default(),
             btn_box: Default::default(),
@@ -634,6 +637,18 @@ impl Writer {
         if group.keep {
             self.keep_paragraphs_whole(&mut composed, &snapshot, &run_fonts);
         }
+        // The same extras the paper side adds before printing: floating
+        // pictures placed by their anchors, and the document's drawings
+        // (bands, rules, boxes) as shapes on the page (2026-09-20). They
+        // come after the last layout, because each layout hands back a new
+        // sheet and the pictures live on that sheet
+        paper::anchored_pictures(&composed, &mut self.page, self.pg);
+        self.yosomono = paper::foreign_shapes(&composed, &self.page, self.pg);
+        self.fonts_pending = run_fonts
+            .iter()
+            .filter(|(n, _)| !self.fonts_added.contains(n))
+            .cloned()
+            .collect();
     }
 
     /// 組んだ結果を受け取る。**測った書体は画面の書体でもある**(キャレットや
