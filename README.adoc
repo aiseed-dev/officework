@@ -119,7 +119,7 @@ These are the goals. What works today is in the next section.
 * Open the docx and xlsx you receive with the same page count, line breaks and column widths as Word and Excel, and print them. This comes first; we check it against 288 public Japanese government forms and Word's PDF (246 match in page count as of 19 September 2026)
 * Use Microsoft's templates as they are. Open what Word's "New" offers, edit it, print it
 * Edit government documents as they are. Open the application and notification forms ministries publish, fill them in, send them back
-* Keep the manuscript as text (AsciiDoc). git shows the differences, the look lives in a template, and it writes out to docx and PDF
+* Keep the manuscript as text (AsciiDoc). Only the manuscript goes into git; the design lives in a template and stays out of git. It writes out to docx and PDF
 * Run the flow of forms in Python: fill a form, receive it, process it, return a form
 * Keep confidential files at home. Files stay on your machine, you choose the AI you connect, and daily operation runs on code alone without AI
 * Run on Debian. Remove Windows; whatever runs only on Windows goes into a virtual machine
