@@ -23,7 +23,7 @@ SNS 担当(Claude)がすること:
 . **動いている物だけを書きます。** 手引きと紹介ページ(web/main.py)と同じ決めです。「〜できます(予定)」は書きません。これから作る物は「作っています」と書きます。
 . **数字には日付を付けます。** 例:「2026 年 9 月 19 日の時点で 288 枚のうち 246 枚」。数字は SEKKEI.adoc の突き合わせの記録(「docx の Word 比較」の回ごとの集計)と紹介ページ(web/main.py)の数字と同じ物を使います。
 . **写真に使えるのは、自分の文書と、役所が公開している様式です。** Word のテンプレート(web/gallery の物)は Microsoft の著作物なので、試験に使うのが基本です(SEKKEI.adoc「Word のテンプレートを英語版と日本語版で全部通す」)。Word のテンプレートがそのまま使えることは大きな売りなので(2026-09-20 発注者「テンプレートが使えるというのは大きい」)、次の形で出します。Microsoft の決まり(https://www.microsoft.com/en-us/legal/intellectualproperty/permissions)は、画面の写しを宣伝や Web に断りなく使ってよいとしていて、条件は、大きさを変える以外に手を加えない、一部を切り出さない、「Used with permission from Microsoft」と添える、製品名を「Microsoft Word」と正式に書く、Microsoft が推していると読める書き方をしない、第三者の物が写っていない、です。
-* 写真が入っていれば、自分の写真に入れ替えてから開く(中の写真は Microsoft が借りている物なので写さない)。イラストはそのままでよい(2026-09-20 発注者)
+* 写真が入っていれば、Web に公開できる写真(パブリックドメイン、CC0、Unsplash などの約束の物)に入れ替えてから開く(中の写真は Microsoft が借りている物なので写さない)。出どころと約束は web/assets/PHOTOS.md に書く。イラストはそのままでよい(2026-09-20 発注者)
 * Word の窓ごと写す。aiseed office も窓ごと。切り出さない
 * 添え書き:「Microsoft Word のテンプレート『○○』を、Microsoft Word と aiseed office で開いた物です。Used with permission from Microsoft」
 * テンプレートのファイルは置かない。ダウンロードして試す形は役所の様式だけ
