@@ -892,3 +892,115 @@ Word を終了して開き直してから動かしてください。今の Word 
 開き直すと、続きを 4 組ほど作れます。1 回目がそうでした。今の Word は 1 回
 開き直すごとに数組しか進みません。目録には 339 組あり、比べ終わったのは 58 組
 です。
+
+== 9 回目: Word の PDF はここまで(2026-09-20)
+
+発注者が Word の回を終わりにしました。Word に作らせた PDF は 240 個です。
+英語版が 127 個で、日本語版が 113 個です。これ以上 Word は動かしません。
+
+=== 日本語版について分かったこと
+
+日本語版は、英語版のテンプレートの文字を日本語に置き換えた物です。GUID は
+英語版と同じです。レイアウトも同じです。テーマの欧文フォントもそのまま
+残っています。日本語版は別に設計された物ではありません。
+
+そのため、これからの確認は次のように分けます。世界向けの表示の確認は英語版
+のテンプレートで行います。日本語向けの表示の確認は役所の様式 288 件で行い
+ます。
+
+=== 今回やったこと
+
+今の変換の処理(`target/release/examples/docx_pdf`)で、集めたテンプレートを
+すべて刷り直しました。Word は動かしていません
+(`tools/templates_round.py --skip-word --redo`)。目録の 339 組のうち、
+飛ばす一覧にある 16 組を除いた 323 組を刷りました。行の数は 646 件です。
+変換が失敗した件は 0 件です。
+
+Word の PDF と比べられたのは 226 件です。英語版が 113 件で、日本語版が
+113 件です。残りの英語版 14 個の PDF は比べていません。その GUID は日本語版
+で Word が止まった物で、飛ばす一覧に入っているからです。
+
+=== 数
+
+|===
+|言語 |比べた件数 |頁数が合った件数 |0 以上 0.2 未満 |0.2 以上 0.5 未満 |0.5 以上 0.8 未満 |0.8 以上 1 以下 |平均
+
+|英語版 |113 |99 |65 |14 |15 |19 |0.309
+|日本語版 |113 |103 |101 |4 |4 |4 |0.095
+|===
+
+得点が 0.000 だったのは英語版 30 件、日本語版 61 件です。得点が 1.000 だった
+のは英語版 15 件、日本語版 4 件です。英語版の平均は日本語版の 3 倍ほどです。
+
+=== 英語版で得点の低い 10 種類
+
+|===
+|種類 |平均の得点 |件数
+
+|birthday-card |0.000 |2
+|business-plan |0.000 |1
+|pamphlet |0.000 |1
+|agenda |0.012 |3
+|business |0.062 |2
+|cover-letter |0.136 |12
+|ats |0.167 |3
+|wedding |0.167 |3
+|fax-cover |0.176 |3
+|resume |0.196 |27
+|===
+
+件数が 1 件や 2 件の種類は、その 1 件の出来がそのまま平均になります。件数の
+多い種類では cover-letter が 12 件で 0.136、resume が 27 件で 0.196 です。
+
+=== 英語版で得点の高い 10 組
+
+|===
+|GUID |種類 |題 |Word の頁数 |うちの頁数 |得点
+
+|`daf06f46` |card |Birthday cards (2 per page) |1 |1 |1.000
+|`d10e1e77` |mothers-day |Cool mom Mother's Day card |2 |2 |1.000
+|`cf1df00c` |business-card |Geometric business cards |4 |4 |1.000
+|`ce343500` |resume |Modern nursing resume |1 |1 |1.000
+|`cdc7cee5` |postcard |Chameleon postcards |2 |2 |1.000
+|`b1c069f4` |writing |Write a novel |7 |7 |1.000
+|`a0890bc7` |teacher-communication |Teacher-parent conference record |1 |1 |1.000
+|`5da08db9` |email-signature |Classic tri-color email signature |3 |2 |1.000
+|`4b66df9e` |label |Christmas tree address labels (30 per page) |1 |1 |1.000
+|`48b182e2` |postcard |Ladybug postcards |2 |2 |1.000
+|===
+
+得点が 1.000 の組は 15 件あります。上の表はそのうちの 10 件です。得点は
+1 頁目の行だけで付けています。`5da08db9` は頁数が合っていませんが、1 頁目の
+行はそろっています。
+
+=== 英語版で得点の低い 15 組
+
+|===
+|GUID |種類 |題 |Word の頁数 |うちの頁数 |得点
+
+|`027ecc7a` |wedding |Wedding invitations (watercolor design, 2 per page, works with Avery 5389) |1 |1 |0.000
+|`04b85589` |fax-cover |Fax cover |1 |1 |0.000
+|`0c8d491f` |letters |Business letter (sales stripes design) |2 |1 |0.000
+|`1138bdc2` |resume |Creative teaching resume |1 |2 |0.000
+|`16da075b` |writing |Write a screenplay |6 |6 |0.000
+|`1dd4b3a8` |cover-letter |Geometric cover letter |3 |3 |0.000
+|`2228e0d1` |agenda |Financial meeting agenda |2 |2 |0.000
+|`22568a97` |pamphlet |Tech booklet |4 |5 |0.000
+|`25409d45` |agenda |Classic meeting agenda |1 |1 |0.000
+|`2e58ab59` |resume |Clean elegant resume |3 |3 |0.000
+|`36057f4e` |wedding |Engagement wedding celebration card |2 |2 |0.000
+|`43f3478d` |menu |Menu (Elegant Party design, color) |1 |1 |0.000
+|`52ffe4b2` |birthday-card |Milestone birthday cards (2 per page, for Avery 8315) |1 |1 |0.000
+|`54d67107` |birthday-card |Birthday invitation postcards (2 per page) |2 |2 |0.000
+|`5559888d` |cover-letter |Bold food service cover letter |1 |1 |0.000
+|===
+
+得点が 0.000 の組は 30 件あります。上の表はそのうちの 15 件を GUID の順に
+並べた物です。得点が 0.000 でも頁数は合っている組が多くあります。文字の
+位置が 2pt より大きくずれている、ということです。
+
+=== ギャラリー
+
+`tools/templates_gallery.py` で作り直しました。絵は 872 枚です。8 回目は
+232 枚でした。今回はすべての組でうちの PDF を刷り直したので、Word の PDF が
+無い組も絵が出ます。
