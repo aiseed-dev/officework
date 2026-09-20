@@ -890,6 +890,11 @@ pub(super) const TEX_SIRUSI: &str = "officework:tex:";
 ///
 /// An SVG picture (`asvg:svgBlip`) keeps the PNG of `a:blip r:embed`, which
 /// is the first relationship in the element and the one we can draw.
+///
+/// A `wps:wsp` whose `wps:spPr` holds an `a:blipFill` (ECMA-376 20.1.8.14)
+/// is a shape filled with a picture, and it draws that picture over its own
+/// box. Word's restaurant brochure fills a panel of the fold with a photo
+/// that way (2026-09-21).
 pub(super) fn group_pictures(
     raw: &str,
     media: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
@@ -899,12 +904,20 @@ pub(super) fn group_pictures(
         return out;
     }
     let mut at = 0usize;
-    while let Some(s) = raw[at..].find("<pic:pic").map(|i| at + i) {
-        let Some(e) = raw[s..].find("</pic:pic>").map(|i| s + i + "</pic:pic>".len()) else {
+    loop {
+        let next = [("<pic:pic", "</pic:pic>"), ("<wps:wsp", "</wps:wsp>")]
+            .into_iter()
+            .filter_map(|(o, c)| raw[at..].find(o).map(|i| (at + i, c)))
+            .min_by_key(|(i, _)| *i);
+        let Some((s, close)) = next else { break };
+        let Some(e) = raw[s..].find(close).map(|i| s + i + close.len()) else {
             break;
         };
         let ko = &raw[s..e];
         at = e;
+        if ko.starts_with("<wps:wsp") && !shape_has_picture_fill(ko) {
+            continue;
+        }
         let bytes = ko
             .find("r:embed=\"")
             .map(|i| i + 9)
@@ -4799,6 +4812,22 @@ fn mm_of(a: &str, pat: &str) -> Option<f32> {
     a[i..e].parse::<f32>().ok().map(|v| v / 36000.0)
 }
 
+/// **Does this shape fill itself with a picture?** (`a:blipFill` inside the
+/// shape's own `wps:spPr`, ECMA-376 20.1.8.14.)
+///
+/// A `pic:pic` carries its picture in `pic:blipFill`, which is the picture
+/// itself and not a shape fill, so only the `spPr` of a `wps:wsp` counts
+/// here.
+pub fn shape_has_picture_fill(a: &str) -> bool {
+    let Some(i) = a.find("<wps:spPr").or_else(|| a.find("<a:spPr")) else { return false };
+    let e = a[i..]
+        .find("</wps:spPr>")
+        .or_else(|| a[i..].find("</a:spPr>"))
+        .map(|x| i + x)
+        .unwrap_or(a.len());
+    a[i..e].contains("<a:blipFill")
+}
+
 /// 図形の見た目(形・塗り・線・回転・不透明度・影・中の文字)
 fn shape_look(a: &str, palette: &[String]) -> Option<book::SheetShape> {
     let mut sp = book::SheetShape { alpha: 1.0, line_w: 1.5, ..Default::default() };
@@ -4900,7 +4929,13 @@ fn shape_look(a: &str, palette: &[String]) -> Option<book::SheetShape> {
         let sue = a[atama..].find(&tojime).map(|e| atama + e).unwrap_or(a.len());
         crate::theme::dml_iro(&a[atama..sue], palette)
     };
-    if sp.fill.is_none() && nuru {
+    // **A picture fill is a fill.** `a:blipFill` is one of the fill choices
+    // of a shape's `a:spPr` (ECMA-376 20.1.8.14), so the style's
+    // `a:fillRef` (20.1.4.1.24) must not colour the shape on top of it.
+    // Word's restaurant brochure fills a whole panel with a photo this way,
+    // and the accent colour behind `a:fillRef idx="1"` painted a third of
+    // the page orange (2026-09-21)
+    if sp.fill.is_none() && nuru && !shape_has_picture_fill(a) {
         sp.fill = sanshou("<a:fillRef ");
     }
     // `<a:ln><a:noFill/></a:ln>` says no outline at all; the style's

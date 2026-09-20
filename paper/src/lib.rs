@@ -2517,7 +2517,12 @@ pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, pa
         let y_para = y_sheet - soko - kumihan::BASE_UP_MM;
         let x_moto = page.left_mm + x_para;
         for (part, z) in split_anchors_z(a) {
-            if !part.contains("<wp:anchor") || !part.contains("<pic:pic") {
+            // A shape filled with a picture (`a:blipFill` in `wps:spPr`,
+            // ECMA-376 20.1.8.14) draws that picture over its own box, the
+            // same as a `pic:pic` (Word's restaurant brochure, 2026-09-21)
+            if !part.contains("<wp:anchor")
+                || !(part.contains("<pic:pic") || ooxml::shape_has_picture_fill(&part))
+            {
                 continue;
             }
             // (a lone anchor comes back from split_anchors whole, wrapped in
@@ -2577,7 +2582,12 @@ fn hf_pictures(
         let kono = if footer { page.h_mm - page.footer_mm } else { page.header_mm };
         for a in hf.anchors.iter().flat_map(|a| split_anchors(a)) {
             for (part, z) in split_anchors_z(&a) {
-                if !part.contains("<wp:anchor") || !part.contains("<pic:pic") {
+                // A shape filled with a picture (`a:blipFill` in `wps:spPr`,
+                // ECMA-376 20.1.8.14) draws that picture over its own box, the
+                // same as a `pic:pic` (Word's restaurant brochure, 2026-09-21)
+                if !part.contains("<wp:anchor")
+                    || !(part.contains("<pic:pic") || ooxml::shape_has_picture_fill(&part))
+                {
                     continue;
                 }
                 let Some(im) = pictures
