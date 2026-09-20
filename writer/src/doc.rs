@@ -644,11 +644,47 @@ impl Writer {
         // sheet and the pictures live on that sheet
         paper::anchored_pictures(&composed, &mut self.page, self.pg);
         self.yosomono = paper::foreign_shapes(&composed, &self.page, self.pg);
-        self.fonts_pending = run_fonts
+        self.fonts_pending = self.faces_to_add(&run_fonts);
+    }
+
+    /// The font faces the screen still has to register, for the families the
+    /// layout resolved and for the document's own default family.
+    ///
+    /// Every face of a family goes in, not only the regular one
+    /// (2026-09-20). The screen asks GPUI for a family name and a weight, so
+    /// with only the regular face registered a bold run drew regular, while
+    /// the PDF, which picks the face file itself, was right. The key is the
+    /// file and the face number, because two faces of one family share the
+    /// family name.
+    fn faces_to_add(&self, run_fonts: &[(String, Vec<u8>)]) -> Vec<(String, Vec<u8>)> {
+        let mut want: Vec<(String, Vec<u8>)> = Vec::new();
+        let names = run_fonts
             .iter()
-            .filter(|(n, _)| !self.fonts_added.contains(n))
-            .cloned()
-            .collect();
+            .map(|(n, _)| kumihan::font::split_hankaku(n).0.to_string())
+            .chain(std::iter::once(self.font_name.to_string()));
+        for name in names {
+            let faces = kumihan::font::faces(&name);
+            if faces.is_empty() {
+                // The family is not on this machine under that name. Keep the
+                // bytes the layout handed back, as before
+                if let Some((n, b)) = run_fonts.iter().find(|(n, _)| n.starts_with(&name)) {
+                    if !self.fonts_added.contains(n) && !want.iter().any(|(k, _)| k == n) {
+                        want.push((n.clone(), b.clone()));
+                    }
+                }
+                continue;
+            }
+            for f in faces {
+                let key = format!("{}#{}", f.path.display(), f.index);
+                if self.fonts_added.contains(&key) || want.iter().any(|(k, _)| *k == key) {
+                    continue;
+                }
+                if let Ok(b) = kumihan::font::load(f) {
+                    want.push((key, b));
+                }
+            }
+        }
+        want
     }
 
     /// 組んだ結果を受け取る。**測った書体は画面の書体でもある**(キャレットや

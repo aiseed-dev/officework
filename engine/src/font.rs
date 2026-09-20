@@ -44,6 +44,14 @@ pub struct Family {
     pub vietnamese: bool,
     /// 太字・斜体でない、素の書体か
     pub regular: bool,
+    /// Bold face of its family (OS/2 or head says so)
+    pub bold: bool,
+    /// Italic (or oblique) face of its family
+    pub italic: bool,
+    /// Typographic family name (name id 16), or the ASCII name when the font
+    /// has none. Faces of one family share it even when their own names
+    /// differ ("High Tower Text" and "High Tower Text Bold")
+    pub group: String,
 }
 
 impl Family {
@@ -251,6 +259,18 @@ fn dir_tags(text: &str) -> Vec<(&str, &str)> {
 pub fn list() -> &'static [Family] {
     static CACHE: OnceLock<Vec<Family>> = OnceLock::new();
     CACHE.get_or_init(|| {
+        let mut out = all().to_vec();
+        out.dedup_by(|a, b| a.name == b.name);
+        out
+    })
+}
+
+/// Every face found on this machine, the bold and italic ones included.
+/// [`list`] keeps only the first face of each family name, so the screen
+/// cannot find a bold face through it (2026-09-20).
+pub fn all() -> &'static [Family] {
+    static CACHE: OnceLock<Vec<Family>> = OnceLock::new();
+    CACHE.get_or_init(|| {
         let mut out: Vec<Family> = Vec::new();
         for d in dirs() {
             scan(&d, &mut out, 0);
@@ -263,9 +283,38 @@ pub fn list() -> &'static [Family] {
         // 同じ書体名の中では**素の字面を先に**。
         // 並び順で先頭を採ると「BIZ UDPゴシック」を頼んで Bold が返る
         out.sort_by(|a, b| a.name.cmp(&b.name).then(b.regular.cmp(&a.regular)));
-        out.dedup_by(|a, b| a.name == b.name);
+        out.dedup_by(|a, b| {
+            a.name == b.name && a.path == b.path && a.index == b.index
+        });
         out
     })
+}
+
+/// Every face of one family, by the family's name. The regular face comes
+/// first, then the bold, italic and bold italic ones. The screen registers
+/// all of them so it can draw a bold run bold (2026-09-20); one face per
+/// family left bold text looking regular while the PDF was right.
+pub fn faces(name: &str) -> Vec<&'static Family> {
+    let Some(head) = resolve(name) else { return Vec::new() };
+    let mut out: Vec<&'static Family> = all()
+        .iter()
+        .filter(|f| f.name == head.name || f.group == head.group)
+        .collect();
+    // The regular face first, so a caller that registers them in order
+    // gives the screen the plain face to fall back on
+    out.sort_by_key(|f| (!f.regular, f.italic, f.bold));
+    // The same face often sits in several directories (arialbd.ttf three
+    // times here). One copy of each weight and style is enough
+    let mut seen = Vec::new();
+    out.retain(|f| {
+        let key = (f.name.clone(), f.bold, f.italic, f.regular);
+        if seen.contains(&key) {
+            return false;
+        }
+        seen.push(key);
+        true
+    });
+    out
 }
 
 fn scan(dir: &Path, out: &mut Vec<Family>, depth: usize) {
@@ -299,7 +348,19 @@ fn read_family(data: &[u8], index: u32, path: &Path) -> Option<Family> {
     // name_id 1 = 書体名。日本語名があればそちらを採る(画面に出すのは人が読む名前)
     let mut ascii: Option<String> = None;
     let mut local: Option<String> = None;
+    // name_id 16 = typographic family. A bold face often names itself
+    // "Foo Bold" in name_id 1 and "Foo" here, and that is the name macOS
+    // groups the family by, so keep it to find a family's other faces
+    let mut group: Option<String> = None;
     for n in face.names() {
+        if n.name_id == 16 {
+            if let Some(s) = n.to_string() {
+                if !s.is_empty() {
+                    group.get_or_insert(s);
+                }
+            }
+            continue;
+        }
         if n.name_id != 1 {
             continue;
         }
@@ -330,6 +391,9 @@ fn read_family(data: &[u8], index: u32, path: &Path) -> Option<Family> {
     // OS/2 の標準の旗も立てていて(2026-08-28 に実物で確認)、標準の顔と
     // 見分けが付きません。太字と斜体でないことも見ます
     let regular = face.is_regular() && !face.is_bold() && !face.is_italic();
+    let bold = face.is_bold();
+    let italic = face.is_italic();
+    let group = group.unwrap_or_else(|| ascii_name.clone());
     Some(Family {
         name,
         ascii: ascii_name,
@@ -342,6 +406,9 @@ fn read_family(data: &[u8], index: u32, path: &Path) -> Option<Family> {
         latin,
         vietnamese,
         regular,
+        bold,
+        italic,
+        group,
     })
 }
 
