@@ -1888,6 +1888,10 @@ fn jibun_wo_ateru(
     if para.left_twips == 0 && !para.ind_itta {
         para.left_twips = pl.left_twips.unwrap_or(0);
     }
+    // The style's own `w:ind w:right`, which shortens the line
+    if para.right_twips == 0 && !para.ind_itta {
+        para.right_twips = pl.right_twips.unwrap_or(0);
+    }
     if para.first_line_twips == 0 && !para.ind_itta {
         para.first_line_twips = pl.first_line_twips.unwrap_or(0);
     }

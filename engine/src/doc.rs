@@ -1478,6 +1478,12 @@ pub struct StyleParaLook {
     /// both at 36pt (2026-09-21, Word's ATS resume template). The exact
     /// value is kept here and wins.
     pub left_twips: Option<i32>,
+    /// **The style's right indent in twips** (`w:pPr/w:ind w:right`,
+    /// ECMA-376 17.3.1.12). It shortens the line the same way the body's
+    /// own `w:ind w:right` does. Word's ATS resume template writes it on
+    /// the Normal style only, and the body wrapped 25pt too wide without
+    /// it (2026-09-21).
+    pub right_twips: Option<i32>,
     /// 1行目の字下げ(twip。負はぶら下げ)
     pub first_line_twips: Option<i32>,
     /// **箇条書きの種類**(docx の `w:pPr/w:numPr/w:numId` を
@@ -2598,6 +2604,7 @@ impl Document {
             }
             pl.indent = pl.indent.or(s.para.indent);
             pl.left_twips = pl.left_twips.or(s.para.left_twips);
+            pl.right_twips = pl.right_twips.or(s.para.right_twips);
             pl.first_line_twips = pl.first_line_twips.or(s.para.first_line_twips);
             pl.list = pl.list.or(s.para.list);
             pl.list_text = pl.list_text.clone().or_else(|| s.para.list_text.clone());

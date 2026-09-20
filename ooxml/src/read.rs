@@ -1679,6 +1679,8 @@ fn style_para(
         // `w:left` is twips (ECMA-376 17.3.1.12); the step count above
         // cannot hold it exactly
         left_twips: ind(body, "w:left").map(|t| t as i32),
+        // `w:right` shortens the line (ECMA-376 17.3.1.12)
+        right_twips: ind(body, "w:right").map(|t| t as i32),
         first_line_twips: ind(body, "w:firstLine")
             .or_else(|| ind(body, "w:hanging").map(|v| -v))
             .map(|v| v as i32),
