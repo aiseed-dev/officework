@@ -895,23 +895,37 @@ fn drop_break_over_empty(sheet: &mut Sheet, y: f32) {
     sheet.breaks.pop();
 }
 
-/// **グリッドに収まったと見る余り**(pt)。0.1pt は Word の刻み(twip)の 2 つ分です。
+/// **How far a line may sit over the grid pitch and still count as one grid
+/// line** (pt). 0.1pt is two of Word's twips.
 ///
-/// 横浜市の 0581 で測りました(2026-09-20)。14pt の空の段落が 2 つ続く所で、
-/// Word の PDF のベースラインは 113.52pt と 131.52pt です。差はちょうど
-/// 18.00pt で、18pt のグリッド 1 つに収まっています。この行の自然な高さは
-/// ここでは 14 × 1.292 = 18.09pt なので、グリッドを 0.09pt(1.8 twip)だけ
-/// 超えます。そのまま切り上げるとグリッド 2 つになり、この文書は 1 頁でなく
-/// 2 頁になっていました。
+/// Measured in Yokohama's `0581_20210225` (2026-09-20). Two empty 14pt
+/// paragraphs have baselines 113.52pt and 131.52pt in Word's PDF, exactly
+/// 18.00pt apart, so Word keeps the line inside one 18pt grid line. Rounding
+/// straight up gave it two, and the document came out two pages instead of
+/// one.
 ///
-/// 1.292 という行送りは実測を丸めた値で、0.5% ほどの幅があります。超え方が
-/// Word の刻み 2 つ分までなら、グリッドに収まったものとして扱います。
+/// **This is a tolerance, and it stands in for a rule we have not found.**
+/// It was re-examined on 2026-09-21; SEKKEI.adoc has the numbers. Word's own
+/// PDFs put ＭＳ 明朝's line advance at 1.297 em, not the 1.292 em of the
+/// table in `engine/src/font.rs` (13.6224pt over 26 lines and 13.6145pt over
+/// 12 lines, both at 10.5pt, in documents with no line grid and no
+/// `w:spacing w:line`). At 14pt that is 18.16pt, which is 0.16pt over the
+/// grid and past this allowance, so the measured advance and this constant do
+/// not agree. Word still keeps that line in one grid line, while it gives the
+/// same document's 16pt title two, so Word is not counting
+/// `ceil(advance / pitch)` at all.
 ///
-/// **同じ 14pt でも、Word がグリッド 2 つにする書体があります。** 中小機構の
-/// 財産シール(`shoryokuka.smrj.go.jp__property_label_ippan`)の 14pt の
-/// ＭＳ Ｐゴシックは、Word の PDF で 36.00pt 送りです。ＭＳ 明朝と
-/// ＭＳ Ｐゴシックに同じ 1.292 を当てている間は、この 2 つを分けられません。
-/// 行送りを書体ごとに測り直すまでは、どちらもグリッド 1 つになります。
+/// The face's own metrics cannot settle it either. ＭＳ 明朝 and
+/// ＭＳ Ｐゴシック are not on this machine, and Word writes the same
+/// descriptor for both into its PDFs (`/Ascent` 859, `/Descent` -141, exactly
+/// 1.000 em), over a subset rebuilt at 256 units per em with a rewritten
+/// hhea.
+///
+/// **Word does give 14pt two grid lines in another document.** The 14pt
+/// ＭＳ Ｐゴシック of 中小機構's `shoryokuka.smrj.go.jp__property_label_ippan`
+/// is 36.00pt apart on the same 18pt pitch. Those runs are bold, and Word's
+/// PDF draws them 50/51 short in y while drawing the same file's non-bold
+/// text square, so Word is using some other face for them.
 const GRID_YURUSU_PT: f32 = 0.1;
 
 /// `pitch` は行グリッドの行送り(pt。0 で無し)。`exact` の段落は
