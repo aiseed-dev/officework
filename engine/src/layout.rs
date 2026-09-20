@@ -1234,8 +1234,24 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     // はみ出す分は上へ伸びます。広げないと前の行に重なります
                     let e_h = if line_no == 0 { atama_no_gazou_takasa(para_eff) } else { 0.0 };
                     let hikui = lh_of(para, frame, base, pfont.as_deref(), pitch);
-                    if e_h > hikui {
-                        y += e_h - hikui;
+                    // The picture stands on the baseline and its top is the
+                    // line box's top, so the baseline moves down by what the
+                    // picture exceeds the text's ascent, not the whole line
+                    // height. With the line height the picture began at the
+                    // previous baseline, 7pt above Word's (2026-09-20,
+                    // sample/事業のご報告.docx)
+                    let agari = crate::font::agari_em(pfont.as_deref())
+                        .map(|e| e * base * PT_TO_MM)
+                        .filter(|v| *v > 0.0 && *v <= hikui)
+                        .unwrap_or(hikui * 0.8);
+                    // A line of a picture alone is a box of the picture's
+                    // height starting at the box top; only a picture beside
+                    // text moves the baseline (Word's PDF of the sample
+                    // report: the text after each chart starts at the
+                    // picture's bottom, 2026-09-20)
+                    let gazou_dake = cells.is_empty() && line_no == 0 && e_h > 0.0;
+                    if !gazou_dake && e_h > agari {
+                        y += e_h - agari;
                     }
                     // **前の行の字の足より上に絵を出しません。** 上の広げ方は
                     // この段落の行間で数えていますが、このベースラインまでの
@@ -1253,7 +1269,10 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                             let ashi = crate::font::ashi_em(pfont.as_deref())
                                 .map(|e| e * base * PT_TO_MM)
                                 .unwrap_or(base * 0.2 * PT_TO_MM);
-                            let hitsuyou = mae + ashi + e_h;
+                            // (a picture-only line starts at its box top,
+                            // BASE_UP_MM above y; a picture beside text ends
+                            // on the baseline y)
+                            let hitsuyou = mae + ashi + if gazou_dake { BASE_UP_MM } else { e_h };
                             if y < hitsuyou {
                                 y = hitsuyou;
                             }
@@ -1278,7 +1297,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                                 if im.off != 0 {
                                     continue;
                                 }
-                                oku_gazou(&mut sheet, im, [ix, y - im.h_mm, im.w_mm, im.h_mm]);
+                                oku_gazou(&mut sheet, im, [ix, y - BASE_UP_MM, im.w_mm, im.h_mm]);
                                 ix += im.w_mm;
                             }
                         }
@@ -1288,7 +1307,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                                 sheet.anchors_at.push((a.clone(), indent_mm, y));
                             }
                         }
-                        y += hikui;
+                        y += if gazou_dake { e_h.max(hikui) } else { hikui };
                         continue;
                     }
                     // 揃え。**行の幅と行長の差を、どこに置くか**の話でしかない
@@ -1495,8 +1514,9 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 y += space_after_mm(para, base);
                 // 画像は段落の下に置く。幅が行長を超えるなら比例で縮める
                 for im in para.images.iter().chain(para.images_new.iter()) {
-                    // 頭の画像はもう1行目の中に置いてあります
-                    if im.off == 0 {
+                    // 頭の画像はもう1行目の中に置いてあります(floating ones,
+                    // off == usize::MAX, are placed by the paper side)
+                    if im.off == 0 || im.off == usize::MAX {
                         continue;
                     }
                     let scale = if im.w_mm > measure { measure / im.w_mm } else { 1.0 };
@@ -2402,6 +2422,9 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     // the last line in a line of their own. Cells used to
                     // drop them (2026-09-19, the photo of Word's resume)
                     for im in para.images.iter().chain(para.images_new.iter()) {
+                        if im.off == usize::MAX {
+                            continue; // floating: placed by the paper side
+                        }
                         let k = if im.w_mm > inner { inner / im.w_mm } else { 1.0 };
                         let (iw, ih) = (im.w_mm * k, im.h_mm * k);
                         if im.off == 0 {

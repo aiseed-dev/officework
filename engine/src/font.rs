@@ -1201,6 +1201,16 @@ pub fn for_text(
     // 系統(明朝・ゴシック・等幅)は保ったまま、字が足りる物を探します
     let g = read_generic(&f.name);
     let ok = |c: &&Family| need.iter().all(|s| c.covers(*s));
+    // Word draws Japanese that the named face cannot show in ＭＳ 明朝: its
+    // PDF of a document whose theme fonts are Times New Roman and Helvetica
+    // Neue embeds MS-Mincho for every Japanese run, headings included
+    // (2026-09-20, sample/事業のご報告.docx). We used to take the first
+    // serif face in the list that covers Japanese, HGP明朝E, which is bold
+    if need.contains(&Script::Japanese) {
+        if let Some(c) = resolve("ＭＳ 明朝").filter(|c| ok(c)) {
+            return Ok((c, false));
+        }
+    }
     let pick = list()
         .iter()
         .find(|c| c.regular && read_generic(&c.name) == g && ok(c))

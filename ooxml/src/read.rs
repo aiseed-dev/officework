@@ -839,6 +839,24 @@ pub(super) fn image_of(
     // behind the text (ECMA-376 20.4.2.3). Word's resume template puts a
     // page-sized background picture in a cell that way
     if raw.contains("<wp:anchor") && raw.contains("<wp:wrapNone") {
+        // A floating picture keeps its bytes and its anchor XML; the paper
+        // side places it by the anchor, outside the text flow (2026-09-20:
+        // the flowers of Word's menu template, the photos of its reports)
+        if raw.contains("<pic:pic") {
+            let rid = grab("r:embed=\"")?;
+            let bytes = media.get(&rid)?.clone();
+            let cx: f32 = grab("cx=\"")?.parse().ok()?;
+            let cy: f32 = grab("cy=\"")?.parse().ok()?;
+            return Some(kumihan::InlineImage {
+                bytes,
+                w_mm: cx / 36000.0,
+                h_mm: cy / 36000.0,
+                tex: None,
+                src: None,
+                off: usize::MAX,
+                shape: Some(raw.to_string()),
+            });
+        }
         return None;
     }
     let rid = grab("r:embed=\"").or_else(|| if vml { grab("<v:imagedata r:id=\"") } else { None });
@@ -2842,9 +2860,12 @@ pub(super) fn parse_document_rels_num(
                             if let Some(mut im) = image_of(raw, media) {
                                 // **字の中のどこに居るか**を覚えます。
                                 // 段落の頭に在る絵は行の中に置きます
-                                im.off = para.as_ref().map_or(0, |ps: &Vec<Run>| {
-                                    ps.iter().map(|r| r.text.len()).sum::<usize>()
-                                }) + cur.len();
+                                // (a floating picture keeps usize::MAX: it has no place in the text)
+                                if im.off != usize::MAX {
+                                    im.off = para.as_ref().map_or(0, |ps: &Vec<Run>| {
+                                        ps.iter().map(|r| r.text.len()).sum::<usize>()
+                                    }) + cur.len();
+                                }
                                 images.push(im);
                             }
                             match wrap_with_ns(raw, &ns_decls) {

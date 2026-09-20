@@ -2736,6 +2736,9 @@ pub struct Sheet {
     pub images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4])>,
     /// Inline shapes placed like images: (raw drawing XML, [x, top, w, h] mm)
     pub inline_shapes: Vec<(String, [f32; 4])>,
+    /// Floating pictures (`wp:anchor` + `wp:wrapNone`), placed by the paper
+    /// side after pagination; drawn like `images`, never part of a line
+    pub float_images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4])>,
     /// Where each paragraph that carries anchored drawings starts:
     /// (anchor XML, x of the text in mm, y of the first line's box top plus
     /// BASE_UP_MM). Body paragraphs and table cells alike; the paper side

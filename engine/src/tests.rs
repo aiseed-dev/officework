@@ -3637,8 +3637,11 @@ mod atama_no_gazou_tests {
                 "行間 {ls}: 絵の上端 {:.2} が前の行の字の足({:.2})に食い込む",
                 r[1], mae + ashi);
             assert!(r[1] - mae < 4.0, "行間 {ls}: 絵の上が空きすぎ({:.2})", r[1] - mae);
-            // 絵の下端は自分のベースライン
-            assert!((r[1] + r[3] - s.lines[1].y_mm).abs() < 0.01, "行間 {ls}: 絵の下端がベースラインに無い");
+            // A picture alone in its paragraph is a line box of the picture's
+            // height: the line's y is BASE_UP_MM below the picture's top, as for
+            // any line box (Word's PDF of sample/事業のご報告.docx: the text after
+            // a chart starts at the picture's bottom, 2026-09-20)
+            assert!((r[1] + crate::BASE_UP_MM - s.lines[1].y_mm).abs() < 0.01, "行間 {ls}: 絵の上端が行の箱の上に無い");
         }
     }
 }

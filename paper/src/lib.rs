@@ -536,6 +536,17 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
     let mut starts = vec![f32::NEG_INFINITY];
     // 明示の改ページ(文書側の指定)。高さ超過とは別に、ここでも頁を割る
     let mut breaks = sheet.breaks.iter().copied().peekable();
+    // An empty line that carries a picture (the picture's bottom sits on
+    // its baseline) is as tall as the picture and breaks pages like text.
+    // Word puts a pie chart that does not fit on the next page; we drew it
+    // over the bottom margin (2026-09-20, sample/事業のご報告.docx)
+    // (bottom, top) of every picture, in sheet mm
+    let gazou_soko: Vec<(f32, f32)> = sheet
+        .images
+        .iter()
+        .map(|(_, r)| (r[1] + r[3], r[1]))
+        .chain(sheet.inline_shapes.iter().map(|(_, r)| (r[1] + r[3], r[1])))
+        .collect();
     for &li in &order {
         let line = &sheet.lines[li];
         // **改ページを背負った空行は、新しい頁の1行目になる**(Word と同じ。
@@ -544,7 +555,15 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
         // 段落(`w:pageBreakBefore` の空の段落)の次の見出しが頁の頭に来て、
         // Word より 1 行(18pt)上にあった
         let kaipeji_koko = breaks.peek().is_some_and(|&b| line.y_mm >= b - 0.01);
-        if line.cells.is_empty() && !kaipeji_koko {
+        // the box of a picture standing in this line (its top is the line
+        // box's top, BASE_UP_MM above the line's y): (top, bottom)
+        let gazou_hako: Option<(f32, f32)> = gazou_soko
+            .iter()
+            .filter(|(_, t)| (t - (line.y_mm - kumihan::BASE_UP_MM)).abs() < 0.6)
+            .fold(None, |m: Option<(f32, f32)>, (b, t)| {
+                Some(m.map_or((*t, *b), |(mt, mb)| (mt.min(*t), mb.max(*b))))
+            });
+        if line.cells.is_empty() && !kaipeji_koko && gazou_hako.is_none() {
             // 空行は頁を進めない(描かれないので)。いまの頁に属するとみなす
             pages[li] = offsets.len();
             continue;
@@ -597,6 +616,7 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             .cell
             .and_then(|(t, ri, _)| waku.get(&(t, ri)))
             .copied()
+            .or(gazou_hako)
             .filter(|(a, b)| b - a < soko - cur.top_mm);
         // 箱の下端は字の足を含まないので、足の分(asi)を引いて同じ物差しに乗せる
         let mite = match hako {
@@ -630,6 +650,8 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             // 上の余白へ出ます。内閣府の調査票の3枚目は、見出しのセルが
             // 余白の外に 28pt 出ていました
             // 箱の上端を紙の頭に置く(行の y はベースラインなので、その分を足す)
+            // A line carrying a picture starts at the picture's top, so the
+            // picture lands at the new page's top margin (2026-09-20)
             let atama = hako.map(|(a, _)| a + kumihan::BASE_UP_MM).unwrap_or(line.y_mm);
             // **改ページが続いた分は、白い紙を挟みます。** まとめて1回に
             // すると2枚ぶんが1枚に潰れます
@@ -1508,8 +1530,9 @@ pub fn doc_to_pdf<W: Write>(
     out: W,
 ) -> Result<(), String> {
     let (d, laid, fonts) = doc_laid(doc, theme)?;
-    let (sheet, page) = (laid.sheet, laid.page);
+    let (mut sheet, page) = (laid.sheet, laid.page);
     let doc = &d;
+    anchored_pictures(doc, &mut sheet, page);
     // **低い層の書き手を通します**(2026-08-27)。使った字だけ埋めるので、
     // 1枚物が 20MB から 10KB になります。ここが最初の差し替えです —
     // 画面(writer)の書き出しはまだ printpdf のままです
@@ -2233,6 +2256,57 @@ fn anchor_size(
     (moto * wari).max(0.1)
 }
 
+/// Place the floating pictures (`wp:anchor` with `wp:wrapNone`, kept by
+/// the reader with `off == usize::MAX` and their anchor XML in `shape`) by
+/// their anchors, into `sheet.float_images` (2026-09-20)
+pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, page: kumihan::PageSetup) {
+    let pg = paginate_full(sheet, Paper::from_page(&page));
+    let kami_no = |y: f32| -> (usize, f32) {
+        let k = pg.offsets.iter().rposition(|o| *o <= y).unwrap_or(0);
+        (k, pg.offsets.get(k).copied().unwrap_or(0.0))
+    };
+    let mut pictures: Vec<&kumihan::InlineImage> = Vec::new();
+    for p in doc.paragraphs() {
+        pictures.extend(p.images.iter().filter(|im| im.off == usize::MAX && im.shape.is_some()));
+    }
+    for t in doc.tables() {
+        for p in t.all_paragraphs() {
+            pictures.extend(p.images.iter().filter(|im| im.off == usize::MAX && im.shape.is_some()));
+        }
+    }
+    if pictures.is_empty() {
+        return;
+    }
+    let mut out = Vec::new();
+    for (a, x_para, y_sheet) in &sheet.anchors_at {
+        let (kami0, soko) = kami_no(*y_sheet);
+        let y_para = y_sheet - soko - kumihan::BASE_UP_MM;
+        let x_moto = page.left_mm + x_para;
+        for part in split_anchors(a) {
+            if !part.contains("<wp:anchor") || !part.contains("<pic:pic") {
+                continue;
+            }
+            // (a lone anchor comes back from split_anchors whole, wrapped in
+            // its run, so the match is tried both ways)
+            let Some(im) = pictures
+                .iter()
+                .find(|im| im.shape.as_deref().is_some_and(|s| s.contains(&part) || part.contains(s)))
+            else {
+                continue;
+            };
+            let Some(f) = ooxml::foreign_shape_with(&part, &doc.theme_colors) else { continue };
+            let migi = kami0 % 2 == 1;
+            let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
+            let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
+            let x = anchor_place_at(&f.h_from, f.x_mm, f.h_align.as_deref(), w_mm, &page, false, y_para, migi, x_moto);
+            let y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(), h_mm, &page, true, y_para, migi);
+            // sheet coordinates: x from the left margin, y continuous over pages
+            out.push((im.bytes.clone(), [x - page.left_mm, y + soko, w_mm, h_mm]));
+        }
+    }
+    sheet.float_images.extend(out);
+}
+
 pub fn foreign_shapes(
     doc: &kumihan::Document,
     sheet: &kumihan::Sheet,
@@ -2283,8 +2357,8 @@ pub fn foreign_shapes(
         for part in split_anchors(a) {
             // an inline drawing is placed by the layout itself (a lone one
             // comes back whole from split_anchors, wrapped in its run)
-            if part.contains("<wp:inline") && !part.contains("<wp:anchor") {
-                continue;
+            if (part.contains("<wp:inline") && !part.contains("<wp:anchor")) || part.contains("<pic:pic") {
+                continue; // a floating picture is placed by `anchored_pictures`
             }
             for mut f in ooxml::foreign_shapes_in(&part, &doc.theme_colors) {
                 if f.look.text_fmt.font.is_none() {

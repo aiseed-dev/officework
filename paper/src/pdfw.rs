@@ -1937,7 +1937,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
     // 画像。どの頁に載るかは上端の y で決めます
     let mut bad = 0;
     let mut wmf_moji = 0usize;
-    for (data, at) in &sheet.images {
+    for (data, at) in sheet.images.iter().chain(sheet.float_images.iter()) {
         let k = page_of(offsets, at[1], paper.height_mm);
         let off = offsets.get(k).copied().unwrap_or(0.0);
         let pp = paper_of(k);
