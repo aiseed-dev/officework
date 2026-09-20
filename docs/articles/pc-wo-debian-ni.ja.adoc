@@ -78,10 +78,13 @@ wmic path softwarelicensingservice get OA3xOriginalProductKey
 [source,console]
 ----
 sudo apt update
-sudo apt install fonts-noto-cjk python3-pip python3-venv git
+sudo apt install fonts-noto-cjk ibus-mozc python3-pip python3-venv git
 ----
 
 `fonts-noto-cjk` は日本語の書体です。これが無いと字が □ になります。
+`ibus-mozc` は日本語入力です。入れた後に 1 度ログインし直すと、設定 →
+キーボードの「入力ソース」に「日本語(Mozc)」を足せます。切り替えは
+半角/全角キーです。
 
 == 4. officework を入れる(5 分)
 
