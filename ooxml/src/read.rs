@@ -490,8 +490,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                 s.look.font_latin = theme_face(&th, major(&s.look.font_theme), false);
             }
             if s.look.font.is_none() {
-                if s.look.font_theme_ea.is_some() {
-                    s.look.font = theme_face(&th, major(&s.look.font_theme_ea), true);
+                if let Some(t) = s.look.font_theme_ea.clone() {
+                    s.look.font = theme_ref_face(&th, &t);
                 } else if s.look.font_theme.is_some() {
                     s.look.font = s.look.font_latin.clone();
                 }
@@ -590,34 +590,21 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                 if let Ok(mut f) = zip.by_name(&bui("theme", "word/theme/theme1.xml")) {
                     let _ = f.read_to_string(&mut theme);
                 }
-                // 本文の既定は minor の組。major は見出し用
-                let group = if tag.contains("Theme=\"major") {
-                    "<a:majorFont>"
-                } else {
-                    "<a:minorFont>"
+                // The East Asian default follows the value of
+                // `w:eastAsiaTheme`, which may name the Latin face
+                // (see [`theme_ref_face`]). Without that attribute the
+                // East Asian face of the same set is taken: `<a:ea>`
+                // first, else the `script="Jpan"` entry, else `<a:latin>`
+                let ea_ref = {
+                    let k = "w:eastAsiaTheme=\"";
+                    tag.find(k).map(|j| j + k.len()).and_then(|s| {
+                        tag[s..].find('"').map(|e| tag[s..s + e].to_string())
+                    })
                 };
-                if let Some(g) = theme.find(group) {
-                    let sect = &theme[g..(g + 400).min(theme.len())];
-                    // 日本語の書体(<a:ea>)を先に。Office の既定のテーマは
-                    // <a:ea typeface=""/> が**空**で、日本語は script="Jpan" の
-                    // 表で持つ(本物の python-docx の出力で確かめた)。
-                    // どちらも無ければ欧文(<a:latin>)
-                    for key in [
-                        "<a:ea typeface=\"",
-                        "<a:font script=\"Jpan\" typeface=\"",
-                        "<a:latin typeface=\"",
-                    ] {
-                        if let Some(j) = sect.find(key) {
-                            let s = j + key.len();
-                            if let Some(e) = sect[s..].find('"') {
-                                if e > 0 {
-                                    doc.font = Some(sect[s..s + e].to_string());
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
+                doc.font = match ea_ref.as_deref().filter(|t| !t.is_empty()) {
+                    Some(t) => theme_ref_face(&theme, t),
+                    None => theme_face(&theme, tag.contains("Theme=\"major"), true),
+                };
                 // The Latin face of the same theme set, for ASCII runs that
                 // name no font. With only `doc.font` (the East Asian face,
                 // ＭＳ Ｐゴシック from the Jpan entry of an English theme)
@@ -1579,6 +1566,22 @@ pub(super) fn extract_ink(doc: &mut Document) {
 /// A face of the theme's font scheme (theme1.xml). `major` picks the
 /// heading fonts, `japanese` the East Asian face (`a:ea`, else the
 /// `script="Jpan"` entry, else the Latin face)
+/// **A theme reference names which face of the scheme to take.**
+///
+/// `w:asciiTheme`, `w:eastAsiaTheme`, `w:hAnsiTheme` and `w:cstheme` all
+/// hold an `ST_Theme` value such as `minorHAnsi` or `majorEastAsia`
+/// (ECMA-376 17.3.2.26, ST_Theme in 17.18.87). The prefix picks the major
+/// or the minor set, and the suffix picks the face: `EastAsia` the `a:ea`
+/// one, `Ascii` and `HAnsi` the `a:latin` one.
+///
+/// The East Asian slot took the East Asian face whatever the value said,
+/// so `w:eastAsiaTheme="minorHAnsi"` in Word's ATS resume template gave
+/// 游明朝 where Word draws Aptos (2026-09-21). A `Bidi` value falls to the
+/// Latin face, which is what we drew before.
+pub(super) fn theme_ref_face(theme: &str, name: &str) -> Option<String> {
+    theme_face(theme, name.starts_with("major"), name.ends_with("EastAsia"))
+}
+
 pub(super) fn theme_face(theme: &str, major: bool, japanese: bool) -> Option<String> {
     let (open, close) = if major {
         ("<a:majorFont>", "</a:majorFont>")
