@@ -660,7 +660,7 @@ impl Writer {
         let mut want: Vec<(String, Vec<u8>)> = Vec::new();
         let names = run_fonts
             .iter()
-            .map(|(n, _)| kumihan::font::split_hankaku(n).0.to_string())
+            .map(|(n, _)| kumihan::font::plain_name(n).to_string())
             .chain(std::iter::once(self.font_name.to_string()));
         for name in names {
             let faces = kumihan::font::faces(&name);

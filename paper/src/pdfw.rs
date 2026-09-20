@@ -551,7 +551,12 @@ pub fn write_pages_fonts<W: std::io::Write>(
             //
             // PDF には塗りと線の両方で字を描く指示(`Tr 2`)があります。
             // 線の太さのぶんだけ字が太り、字は1つのままです。
-            if p.bold {
+            // **A face that is already bold is not stroked.** The run
+            // resolves to the family's bold face when the machine has one
+            // (see `paper::resolve_run_fonts`), and stroking it again made
+            // it heavier than Word's (2026-09-20)
+            let futoraseru = p.bold && !faces[fi].is_bold();
+            if futoraseru {
                 c.set_text_rendering_mode(TextRenderingMode::FillStroke);
                 c.set_stroke_rgb(r, g, b);
                 // **太さは字の高さの 30 分の1**(2026-09-03)。
@@ -581,7 +586,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
             if p.tc_pt.abs() > 0.001 {
                 c.set_char_spacing(0.0);
             }
-            if p.bold {
+            if futoraseru {
                 c.set_text_rendering_mode(TextRenderingMode::Fill);
             }
             c.end_text();

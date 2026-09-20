@@ -711,7 +711,7 @@ fn okuri_em_yomu(name: Option<&str>) -> Option<f32> {
     // name is looked up, or the measured table is missed and the metrics of a
     // substitute face are read instead: ＭＳ Ｐ明朝 read 1.5 em instead of
     // 1.292 em, and 34 files of the corpus gained a page (2026-09-19)
-    let name = split_hankaku(name?).0;
+    let name = plain_name(split_hankaku(name?).0);
     let key = norm(name);
     if let Some((_, em)) = OKURI_EM.iter().find(|(n, _)| norm(n) == key) {
         return Some(*em);
@@ -749,7 +749,7 @@ fn sagari_em(name: Option<&str>) -> Option<f32> {
 
 fn sagari_em_yomu(name: Option<&str>) -> Option<f32> {
     // The same `#hankaku=` mark as in `okuri_em_yomu`
-    let (fam, _) = for_document(Some(split_hankaku(name?).0)).ok()?;
+    let (fam, _) = for_document(Some(plain_name(split_hankaku(name?).0))).ok()?;
     let d = load(fam).ok()?;
     let face = ttf_parser::Face::parse(&d, 0).ok()?;
     let upem = face.units_per_em() as f32;
@@ -939,6 +939,43 @@ pub fn split_hankaku(name: &str) -> (&str, Option<f32>) {
         Some(i) => (&name[..i], name[i + HANKAKU_MARK.len()..].parse::<f32>().ok()),
         None => (name, None),
     }
+}
+
+/// **The mark of the face a bold or italic run is drawn with.**
+///
+/// A run names a family, not a weight. The value after the mark says which
+/// face of that family the run was resolved to, so the print embeds and
+/// measures that face. The screen takes the family back with
+/// [`plain_name`] and asks for the weight itself.
+pub const WEIGHT_MARK: &str = "#weight=";
+
+/// 解決した書体の名前に、太字・斜体の印を付ける。`regular` の顔には付けません
+pub fn weight_name(resolved: &str, bold: bool, italic: bool) -> String {
+    let which = match (bold, italic) {
+        (true, true) => "bolditalic",
+        (true, false) => "bold",
+        (false, true) => "italic",
+        (false, false) => return resolved.to_string(),
+    };
+    format!("{resolved}{WEIGHT_MARK}{which}")
+}
+
+/// 印を全部外した、書体そのものの名前
+pub fn plain_name(name: &str) -> &str {
+    match name.find('#') {
+        Some(i) => &name[..i],
+        None => name,
+    }
+}
+
+/// **その太さ・傾きの顔**。無ければ `None`(呼ぶ側は素の顔のままにします)
+pub fn face_for_weight(name: &str, bold: bool, italic: bool) -> Option<&'static Family> {
+    if !bold && !italic {
+        return None;
+    }
+    faces(plain_name(name))
+        .into_iter()
+        .find(|f| f.bold == bold && f.italic == italic && !(f.regular && (bold || italic)))
 }
 
 pub fn substitute(name: &str) -> Option<&'static Family> {

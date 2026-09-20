@@ -2407,6 +2407,16 @@ pub(super) fn parse_document_rels_num(
                         cell_vmerge = VMerge::None;
                     },
                     b"p" => { para = Some(Vec::new()); size_pt = None; font = None; mark_pt = None; mark_font = None;
+                              // **The faces a run names are the run's own.**
+                              // `w:pPr/w:rPr/w:rFonts` describes the
+                              // paragraph mark (ECMA-376 17.3.1.29), so it
+                              // must not reach the next paragraph. The second
+                              // ticket of Word's "Scroll banner every day
+                              // card" names `w:eastAsia="Bookman Old Style"`
+                              // on its Title mark, and every paragraph after
+                              // it drew in Bookman where Word uses Cambria
+                              // (2026-09-20)
+                              font_ea = None; font_latin = None; hint_ea = false;
                               fmt = CharFormat::default(); align = Align::default();
                               align_itta = false;
                               tab_stops.clear();

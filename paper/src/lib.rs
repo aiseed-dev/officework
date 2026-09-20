@@ -1754,23 +1754,38 @@ pub fn compose_doc(doc: &kumihan::Document, theme: Option<&kumihan::theme::Theme
 /// 返りは解決した書体(名前, 実体)の一覧(重複なし。文書の既定の書体は含まない)
 pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
     use std::collections::BTreeMap;
-    let mut cache: BTreeMap<String, Option<(String, Vec<u8>)>> = BTreeMap::new();
+    // **The key holds the weight.** A run names a family, not a face, so a
+    // bold run and a plain one of the same family used to resolve to the
+    // same face; the print then drew the bold one by stroking the regular
+    // outline, which is both thinner and narrower than the real bold face.
+    // Word's ticket template writes "ADMIT ONE" in the `Title` style, which
+    // says `<w:b/>`, and Word's PDF draws it in BookmanOldStyle-Bold
+    // (2026-09-20)
+    let mut cache: BTreeMap<(String, bool, bool), Option<(String, Vec<u8>)>> = BTreeMap::new();
     let mut out: Vec<(String, Vec<u8>)> = Vec::new();
     let balance = d.balance_sbcs;
     let mut fix = |r: &mut kumihan::Run| {
         let Some(name) = r.font.clone() else { return };
-        let hit = cache.entry(name.clone()).or_insert_with(|| {
+        let (futoi, nanameta) = (r.fmt.bold, r.fmt.italic);
+        let hit = cache.entry((name.clone(), futoi, nanameta)).or_insert_with(|| {
             let (fam, _) = kumihan::font::for_document(Some(&name)).ok()?;
-            let bytes = kumihan::font::load(fam).ok()?;
+            // その太さ・傾きの顔があれば、その顔で測り、その顔を埋めます
+            let kao = kumihan::font::face_for_weight(&fam.name, futoi, nanameta);
+            let hon = kao.unwrap_or(fam);
+            let bytes = kumihan::font::load(hon).ok()?;
             // 字送りの合う書体が無ければ、名前に半角の送りの印を付けて登録する
             // (`Metrics` が半角を 0.5em で測る。描く側は印を外して描く)。
             // The compat flag balanceSingleByteDoubleByteWidth does the same
             // for any East Asian font: Word advances ASCII by 0.5em there
             let em = kumihan::font::hankaku_em(&name)
                 .or(if balance && fam.japanese { Some(0.5) } else { None });
-            let resolved = match em {
-                Some(em) => kumihan::font::hankaku_name(&fam.name, em),
+            let resolved = match kao {
+                Some(_) => kumihan::font::weight_name(&fam.name, futoi, nanameta),
                 None => fam.name.clone(),
+            };
+            let resolved = match em {
+                Some(em) => kumihan::font::hankaku_name(&resolved, em),
+                None => resolved,
             };
             Some((resolved, bytes))
         });
