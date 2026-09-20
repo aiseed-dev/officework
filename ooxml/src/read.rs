@@ -3261,8 +3261,14 @@ pub(super) fn parse_document_rels_num(
                     //  xlsx の sheetView を Empty の枝でしか読んでいなかったのと**同じ形の穴**)
                     b"p" => {
                         rep.paragraphs += 1;
+                        // The line height is left unsaid, so the default
+                        // paragraph style decides it (ECMA-376 17.3.1.33).
+                        // A fixed 1.0 here blocked that: Word's ATS resume
+                        // has Normal at `w:line="320" w:lineRule="exact"`,
+                        // and its empty paragraphs came out 12.9pt instead
+                        // of 16pt, which walked the page up by 25pt by the
+                        // last line (2026-09-21)
                         let p = Paragraph {
-                            line_spacing: 1.0,
                             runs: vec![Run {
                                 text: String::new(),
                                 size_pt: None,
