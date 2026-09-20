@@ -1909,7 +1909,20 @@ fn layout_hf_blocks(
 /// 上の余白 680 twip = 34pt だが、空のヘッダーの段落 1 つ(10.5pt、13.6pt)が
 /// 851 twip = 42.5pt の位置にあるので、本文は 56pt から始まる)。
 /// 返りは本文の頭(下端)を置く、用紙の端からの距離。ヘッダーが無ければ余白そのまま
-pub fn hf_push_mm(hf: &HeadFoot, pg: &PageSetup, font: Option<&str>, latin: Option<&str>, base_pt: f32, footer: bool) -> f32 {
+pub fn hf_push_mm(
+    hf: &HeadFoot,
+    pg: &PageSetup,
+    font: Option<&str>,
+    latin: Option<&str>,
+    base_pt: f32,
+    footer: bool,
+    // `style_pt` gives the size a paragraph style names, for a paragraph
+    // whose runs name none. Word's ticket template has an empty footer in
+    // the `Footer` style, which is 2pt there; taking the document's 18pt
+    // instead left 20pt of the paper unused and split a table that fits
+    // (2026-09-20)
+    style_pt: &dyn Fn(Option<&str>) -> Option<f32>,
+) -> f32 {
     let yohaku = if footer { pg.bottom_mm } else { pg.top_mm };
     // 負の余白(固定)は、ヘッダーがあっても押さない
     if (hf.paragraphs.is_empty() && hf.blocks.is_empty())
@@ -1927,11 +1940,13 @@ pub fn hf_push_mm(hf: &HeadFoot, pg: &PageSetup, font: Option<&str>, latin: Opti
                 Block::Table(t) => t.row_mm.iter().sum::<f32>(),
                 Block::Para(p) => {
                     let pt = p.runs.iter().filter_map(|r| r.size_pt).fold(0.0f32, f32::max);
-                    if pt > 0.0 { pt } else { base_pt }
+                    let pt = if pt > 0.0 {
+                        pt
+                    } else {
+                        style_pt(p.style_id.as_deref()).unwrap_or(base_pt)
+                    };
+                    pt * crate::font::okuri_em(font).unwrap_or(1.292) * PT_TO_MM
                 }
-                .max(base_pt)
-                    * crate::font::okuri_em(font).unwrap_or(1.292)
-                    * PT_TO_MM,
             })
             .sum();
         return yohaku.max(kyori + takasa);
@@ -1947,7 +1962,7 @@ pub fn hf_push_mm(hf: &HeadFoot, pg: &PageSetup, font: Option<&str>, latin: Opti
         .iter()
         .map(|p| {
             let pt = p.runs.iter().filter_map(|r| r.size_pt).fold(0.0f32, f32::max);
-            let pt = if pt > 0.0 { pt } else { base_pt };
+            let pt = if pt > 0.0 { pt } else { style_pt(p.style_id.as_deref()).unwrap_or(base_pt) };
             let hankaku = p.runs.iter().all(|r| r.text.is_ascii());
             pt * if hankaku && latin.is_some() { em_latin } else { em } * PT_TO_MM
         })

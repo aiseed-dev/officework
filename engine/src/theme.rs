@@ -1630,6 +1630,7 @@ fn hyou_style_wo_ateru(
     kitei: Option<&(crate::doc::StyleLook, crate::doc::StyleParaLook)>,
     doc_after: Option<f32>,
     doc_line: Option<f32>,
+    doc_yose: Option<crate::doc::Align>,
     auto_pt: f32,
     hyou_style: &std::collections::BTreeMap<String, crate::doc::TableStyleLook>,
 ) {
@@ -1715,7 +1716,7 @@ fn hyou_style_wo_ateru(
             for para in cell.paragraphs.iter_mut() {
                 if let Some(naka) = para.nested.as_deref_mut() {
                     let ts2 = naka.style.as_deref().and_then(|id| hyou_style.get(id)).cloned();
-                    hyou_style_wo_ateru(naka, ts2.as_ref(), jibun, kitei, doc_after, doc_line, auto_pt, hyou_style);
+                    hyou_style_wo_ateru(naka, ts2.as_ref(), jibun, kitei, doc_after, doc_line, doc_yose, auto_pt, hyou_style);
                 }
             }
             if cell.shade.is_none() {
@@ -1732,6 +1733,7 @@ fn hyou_style_wo_ateru(
                 let para = &mut cell.paragraphs[pi];
                 // 1. 段落スタイル(名乗っていなければ、その種類の既定)
                 let mut tsuzuki = false;
+                let mut yose_itta = pl.align.is_some();
                 if let Some((_, lk, spl)) = para
                     .style_id
                     .as_deref()
@@ -1739,10 +1741,13 @@ fn hyou_style_wo_ateru(
                 {
                     jibun_wo_ateru(para, lk, spl);
                     tsuzuki = spl.contextual_spacing == Some(true);
+                    yose_itta |= spl.align.is_some();
                 } else if let Some((lk, spl)) = kitei {
                     jibun_wo_ateru(para, lk, spl);
                     tsuzuki = spl.contextual_spacing == Some(true);
+                    yose_itta |= spl.align.is_some();
                 }
+                kitei_no_yose(para, yose_itta, doc_yose);
                 // 2. 表スタイルの段落の書式、3. 文書の既定。
                 //
                 // **表スタイルが「0」と言うのも指定です。** `.or()` で繋ぐと、
@@ -1814,6 +1819,18 @@ fn bunsho_no_kitei(
     }
     if para.line_spacing <= 0.0 && para.line_pt.is_none() {
         para.line_spacing = line.unwrap_or(0.0);
+    }
+}
+
+/// **文書の既定の揃え**(`w:docDefaults/w:pPrDefault` の `w:jc`)を当てる。
+/// 段落も、段落スタイルも、表スタイルも揃えを言っていないときだけ効きます
+/// (`said` がそれを言います)
+fn kitei_no_yose(para: &mut crate::doc::Paragraph, said: bool, yose: Option<crate::doc::Align>) {
+    if said || para.align_itta || para.align != crate::doc::Align::Left {
+        return;
+    }
+    if let Some(a) = yose {
+        para.align = a;
     }
 }
 
@@ -1948,6 +1965,7 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
     // (2026-09-03 発注者)
     let doc_after = doc.space_after_pt;
     let doc_line = doc.line_spacing;
+    let doc_yose = doc.align;
     // **名乗らない段落が従う、その種類の既定のスタイル**(docx の
     // `w:style w:default="1"`)。表のセルの中の段落はこれで決まります
     let kitei_no_style = out
@@ -2006,6 +2024,7 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             kitei_no_style.as_ref(),
             doc_after,
             doc_line,
+            doc_yose,
             doc.auto_space_pt(),
             &hyou_style,
         );
@@ -2019,6 +2038,7 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             .and_then(|id| jibun.iter().find(|(i, _, _)| i == id))
         {
             jibun_wo_ateru(para, lk, pl);
+            kitei_no_yose(para, pl.align.is_some(), doc_yose);
             let tsuzuki = pl.contextual_spacing == Some(true);
             bunsho_no_kitei(para, doc_after, doc_line);
             jidou_no_aki(para, bi == 0, false, doc.auto_space_pt());
@@ -2037,11 +2057,14 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
         // document defaults filled in its spacing: Word's resume has an
         // unstyled empty paragraph before its table, Normal says after=0,
         // docDefaults say 12pt, and the table sat 12pt too low (2026-09-19)
+        let mut yose_itta = false;
         if para.style_id.is_none() {
             if let Some((lk, pl)) = kitei_no_style.as_ref() {
                 jibun_wo_ateru(para, lk, pl);
+                yose_itta = pl.align.is_some();
             }
         }
+        kitei_no_yose(para, yose_itta, doc_yose);
         bunsho_no_kitei(para, doc_after, doc_line);
         jidou_no_aki(para, bi == 0, false, doc.auto_space_pt());
         // 名指しのスタイル(style_id)が役割の固定名より勝つ —

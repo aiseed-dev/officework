@@ -482,6 +482,16 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                         }
                     }
                 }
+                // 揃え(`w:jc`)。Word の入場券の型紙は中央寄せと言います
+                if let Some(t) = tag(pp, "<w:jc ") {
+                    doc.align = match zoku(&t, "w:val").as_deref() {
+                        Some("center") => Some(kumihan::Align::Center),
+                        Some("right") | Some("end") => Some(kumihan::Align::Right),
+                        Some("both") => Some(kumihan::Align::Justify),
+                        Some("distribute") => Some(kumihan::Align::Distribute),
+                        _ => None,
+                    };
+                }
             }
         }
         let head = &styles[i..(i + 600).min(styles.len())];
@@ -815,6 +825,61 @@ pub(super) fn carry_math(raw: &str, decls: &std::collections::BTreeMap<String, S
 /// 見なす — 人が書いた説明文を式と読み違えない。読み書きの両側で使う
 pub(super) const TEX_SIRUSI: &str = "officework:tex:";
 
+/// The pictures a floating group (`wpg:wgp`) holds, one entry per
+/// `pic:pic`, each keeping the `pic:pic` element as its mark.
+///
+/// A group draws its own children, so the whole anchor is one drawing with
+/// several pictures in it. The paper side opens the group into one anchor
+/// per child and finds the bytes again by that mark. Word's ticket template
+/// draws a plum branch and a scroll banner this way, and neither appeared
+/// (2026-09-20).
+///
+/// An SVG picture (`asvg:svgBlip`) keeps the PNG of `a:blip r:embed`, which
+/// is the first relationship in the element and the one we can draw.
+pub(super) fn group_pictures(
+    raw: &str,
+    media: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
+) -> Vec<kumihan::InlineImage> {
+    let mut out = Vec::new();
+    if !raw.contains("<wpg:wgp") || !raw.contains("<wp:anchor") || !raw.contains("<wp:wrapNone") {
+        return out;
+    }
+    let mut at = 0usize;
+    while let Some(s) = raw[at..].find("<pic:pic").map(|i| at + i) {
+        let Some(e) = raw[s..].find("</pic:pic>").map(|i| s + i + "</pic:pic>".len()) else {
+            break;
+        };
+        let ko = &raw[s..e];
+        at = e;
+        let bytes = ko
+            .find("r:embed=\"")
+            .map(|i| i + 9)
+            .and_then(|i| ko[i..].find('"').map(|x| &ko[i..i + x]))
+            .and_then(|rid| media.get(rid).cloned());
+        let Some(bytes) = bytes else { continue };
+        let emu = |key: &str| -> f32 {
+            ko.find("<a:ext ")
+                .and_then(|i| {
+                    let e = ko[i..].find('>')? + i;
+                    let k = format!("{key}=\"");
+                    let j = ko[i..e].find(&k)? + i + k.len();
+                    ko[j..e].find('"').and_then(|x| ko[j..j + x].parse::<f32>().ok())
+                })
+                .unwrap_or(0.0)
+        };
+        out.push(kumihan::InlineImage {
+            bytes,
+            w_mm: emu("cx") / 36000.0,
+            h_mm: emu("cy") / 36000.0,
+            tex: None,
+            src: None,
+            off: usize::MAX,
+            shape: Some(ko.to_string()),
+        });
+    }
+    out
+}
+
 /// 原文から表示用の画像を引く。EMU(914400/inch)→ mm は ÷36000。
 pub(super) fn image_of(
     raw: &str,
@@ -847,7 +912,10 @@ pub(super) fn image_of(
         // A floating picture keeps its bytes and its anchor XML; the paper
         // side places it by the anchor, outside the text flow (2026-09-20:
         // the flowers of Word's menu template, the photos of its reports)
-        if raw.contains("<pic:pic") {
+        //
+        // A group holds a picture of its own, in the group's coordinates and
+        // often more than one; [`group_pictures`] takes those
+        if raw.contains("<pic:pic") && !raw.contains("<wpg:wgp") {
             let rid = grab("r:embed=\"")?;
             let bytes = media.get(&rid)?.clone();
             let cx: f32 = grab("cx=\"")?.parse().ok()?;
@@ -2873,6 +2941,8 @@ pub(super) fn parse_document_rels_num(
                                 }
                                 images.push(im);
                             }
+                            // a group draws several pictures in one drawing
+                            images.extend(group_pictures(raw, media));
                             match wrap_with_ns(raw, &ns_decls) {
                                 Some(wrapped) => {
                                     anchors.push(wrapped);
@@ -3628,6 +3698,14 @@ pub(super) fn parse_document_rels_num(
                     b"p" => {
                         // decided before the fields below take `images` and `anchors`
                         let karappo = images.is_empty() && anchors.is_empty();
+                        // nothing of this paragraph's own drawings sits in the
+                        // line: every one of them floats
+                        let uku = !karappo
+                            && images.iter().all(|im| im.off == usize::MAX)
+                            && anchors.iter().all(|a| {
+                                (a.contains("<wp:anchor") && a.contains("<wp:wrapNone"))
+                                    || a.contains("position:absolute")
+                            });
                         if let Some(runs) = para.take() {
                             rep.runs += runs.len();
                             rep.paragraphs += 1;
@@ -3681,10 +3759,20 @@ pub(super) fn parse_document_rels_num(
                                 // paragraph at 14pt between two headings; at the
                                 // style's 10pt the row below ended 5.7pt too high
                                 // (2026-09-19)
-                                // (a paragraph whose only run holds a drawing is
-                                // not empty: its line is the run's, not the mark's)
+                                // (a paragraph whose only run holds an inline
+                                // drawing is not empty: its line is the run's)
                                 if karappo {
                                     vec![Run { text: String::new(), size_pt: mark_pt.or(size_pt), font: mark_font.clone().or_else(|| font.clone()), fmt: Default::default() }]
+                                } else if uku {
+                                    // Only a floating drawing (`wp:anchor` with
+                                    // `wp:wrapNone`). It sits outside the line
+                                    // (ECMA-376 20.4.2.3), so the line is the
+                                    // paragraph mark's. `None` lets the
+                                    // paragraph style say how big the mark is:
+                                    // the ticket template writes the run that
+                                    // carries the drawing at 2pt, and the table
+                                    // under it started 24pt too high (2026-09-20)
+                                    vec![Run { text: String::new(), size_pt: mark_pt, font: mark_font.clone(), fmt: Default::default() }]
                                 } else {
                                     vec![Run { text: String::new(), size_pt, font: font.clone(), fmt: Default::default() }]
                                 }
@@ -4609,7 +4697,11 @@ fn shape_look(a: &str, palette: &[String]) -> Option<book::SheetShape> {
         (true, Some(_), _) => iro("<a:solidFill>"),
         (true, None, _) => None,
     };
-    sp.line = iro("<a:ln ");
+    // `<a:ln>` may carry no attribute at all (a line of the theme's width).
+    // Looking only for `<a:ln ` missed the white edge Word draws round the
+    // plaques of the ticket template, and the theme's line came instead
+    // (2026-09-20)
+    sp.line = iro("<a:ln ").or_else(|| iro("<a:ln>"));
     // **図形が自分で言わないときは、スタイルの参照を見ます**(2026-09-03)。
     //
     // `<wps:style>` の `<a:fillRef>` と `<a:lnRef>` は、テーマの書式の

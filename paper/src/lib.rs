@@ -1886,13 +1886,15 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
     // 字の大きさの既定は「標準」スタイル(無ければ docDefaults)。裁判所の
     // 様式は docDefaults 10pt・標準 12pt で、ヘッダーは 12pt で組まれる
     let base_pt = d.style_pt(None).unwrap_or(d.base_pt());
+    // the size a header or footer paragraph's style gives
+    let sty = |id: Option<&str>| d.style_pt(id);
     let raw = page;
-    page.top_mm = kumihan::hf_push_mm(&d.header, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false);
-    page.bottom_mm = kumihan::hf_push_mm(&d.footer, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true);
+    page.top_mm = kumihan::hf_push_mm(&d.header, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false, &sty);
+    page.bottom_mm = kumihan::hf_push_mm(&d.footer, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true, &sty);
     let kara = kumihan::HeadFoot::default();
     if d.title_pg {
-        page.first_top_mm = Some(kumihan::hf_push_mm(d.first_header.as_ref().unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false));
-        page.first_bottom_mm = Some(kumihan::hf_push_mm(d.first_footer.as_ref().unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true));
+        page.first_top_mm = Some(kumihan::hf_push_mm(d.first_header.as_ref().unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false, &sty));
+        page.first_bottom_mm = Some(kumihan::hf_push_mm(d.first_footer.as_ref().unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true, &sty));
     }
     // **行送りはエンジンの1つを見ます**(画面と紙と PDF で同じ)
     let line_mm = kumihan::LINE_MM;
@@ -1922,15 +1924,15 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
             None => (&d.header, &d.footer),
         };
         let raw = *pg;
-        pg.top_mm = kumihan::hf_push_mm(h, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false);
-        pg.bottom_mm = kumihan::hf_push_mm(f, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true);
+        pg.top_mm = kumihan::hf_push_mm(h, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false, &sty);
+        pg.bottom_mm = kumihan::hf_push_mm(f, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true, &sty);
         let (title_pg, fh, ff) = match hfs.get(i).and_then(|x| x.as_ref()) {
             Some(s) => (s.title_pg, s.first_header.as_ref(), s.first_footer.as_ref()),
             None => (d.title_pg, d.first_header.as_ref(), d.first_footer.as_ref()),
         };
         if title_pg {
-            pg.first_top_mm = Some(kumihan::hf_push_mm(fh.unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false));
-            pg.first_bottom_mm = Some(kumihan::hf_push_mm(ff.unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true));
+            pg.first_top_mm = Some(kumihan::hf_push_mm(fh.unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false, &sty));
+            pg.first_bottom_mm = Some(kumihan::hf_push_mm(ff.unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true, &sty));
         }
     }
     Ok(LaidDoc { sheet, page, font: bytes, family: family.name.clone() })
@@ -2003,36 +2005,179 @@ mod doc_pdf_tests {
 // 2026-08-30 に足しました。内閣府の告知書の窓口の欄が3つとも、紙にも画面にも
 // 出ていませんでした(保存では原文のまま残っていたので、往復では気づけません)。
 
+/// Find `<{name}` where it opens an element (the next character is `>`,
+/// `/` or a space), from `from` on
+fn tag_at(s: &str, from: usize, name: &str) -> Option<usize> {
+    let pat = format!("<{name}");
+    let mut at = from;
+    loop {
+        let i = s[at..].find(&pat)? + at;
+        match s[i + pat.len()..].chars().next() {
+            Some('>') | Some('/') | Some(' ') => return Some(i),
+            None => return None,
+            _ => at = i + pat.len(),
+        }
+    }
+}
+
+/// The byte just past `</{name}>` that closes the element opening at `i`,
+/// counting elements of the same name nested inside it
+fn tag_end(s: &str, i: usize, name: &str) -> Option<usize> {
+    let close = format!("</{name}>");
+    let mut depth = 1usize;
+    let mut at = i + 1 + name.len();
+    for _ in 0..4096 {
+        let c = s[at..].find(&close).map(|e| at + e)?;
+        match tag_at(s, at, name) {
+            Some(o) if o < c => {
+                depth += 1;
+                at = o + 1 + name.len();
+            }
+            _ => {
+                depth -= 1;
+                at = c + close.len();
+                if depth == 0 {
+                    return Some(at);
+                }
+            }
+        }
+    }
+    None
+}
+
+/// The place a group puts its children: `world = a * child + b` for each
+/// axis, plus the rotations of the groups above, each about its own centre
+#[derive(Clone)]
+struct GroupXf {
+    ax: f32,
+    bx: f32,
+    ay: f32,
+    by: f32,
+    /// (centre x, centre y, degrees), outermost first
+    rot: Vec<(f32, f32, f32)>,
+}
+
+impl GroupXf {
+    fn x(&self, v: f32) -> f32 {
+        self.ax * v + self.bx
+    }
+    fn y(&self, v: f32) -> f32 {
+        self.ay * v + self.by
+    }
+    /// Turn a child's centre by the rotations of the groups above it. The
+    /// innermost group turns first, then the ones outside it
+    fn turn(&self, x: f32, y: f32) -> (f32, f32) {
+        let mut p = (x, y);
+        for (cx, cy, deg) in self.rot.iter().rev() {
+            let t = deg.to_radians();
+            let (dx, dy) = (p.0 - cx, p.1 - cy);
+            p = (cx + dx * t.cos() - dy * t.sin(), cy + dx * t.sin() + dy * t.cos());
+        }
+        p
+    }
+}
+
+/// The attribute `key` of the first `tag` in `seg`, as a number
+fn xf_num(seg: &str, tag: &str, key: &str) -> Option<f32> {
+    let i = seg.find(tag)?;
+    let e = seg[i..].find('>')? + i;
+    let head = &seg[i..e];
+    let k = format!("{key}=\"");
+    let s = head.find(&k)? + k.len();
+    head[s..].find('"').and_then(|e2| head[s..s + e2].parse::<f32>().ok())
+}
+
+/// The `a:xfrm` of a group (`wpg:grpSpPr`) read into a place for its
+/// children, on top of the place `up` gives the group itself.
+///
+/// A group's `a:off` and `a:ext` are in the coordinates of the group that
+/// holds it, while its `a:chOff` and `a:chExt` name the coordinates its own
+/// children are written in (ECMA-376 20.1.7.6)
+fn group_xf(gp: &str, up: &GroupXf) -> GroupXf {
+    let (gx, gy) = (xf_num(gp, "<a:off", "x").unwrap_or(0.0), xf_num(gp, "<a:off", "y").unwrap_or(0.0));
+    let (gw, gh) = (xf_num(gp, "<a:ext", "cx").unwrap_or(0.0), xf_num(gp, "<a:ext", "cy").unwrap_or(0.0));
+    let (cx0, cy0) =
+        (xf_num(gp, "<a:chOff", "x").unwrap_or(0.0), xf_num(gp, "<a:chOff", "y").unwrap_or(0.0));
+    let (cw, ch) = (
+        xf_num(gp, "<a:chExt", "cx").filter(|v| *v > 0.0).unwrap_or(gw.max(1.0)),
+        xf_num(gp, "<a:chExt", "cy").filter(|v| *v > 0.0).unwrap_or(gh.max(1.0)),
+    );
+    let (sx, sy) = (if cw > 0.0 { gw / cw } else { 1.0 }, if ch > 0.0 { gh / ch } else { 1.0 });
+    let mut rot = up.rot.clone();
+    if let Some(deg) = xf_num(gp, "<a:xfrm", "rot").map(|v| v / 60_000.0).filter(|v| *v != 0.0) {
+        rot.push((up.x(gx + gw / 2.0), up.y(gy + gh / 2.0), deg));
+    }
+    GroupXf {
+        ax: up.ax * sx,
+        bx: up.x(gx) - cx0 * up.ax * sx,
+        ay: up.ay * sy,
+        by: up.y(gy) - cy0 * up.ay * sy,
+        rot,
+    }
+}
+
+/// One leaf of a group: its XML and its box in the anchor's coordinates (EMU)
+struct GroupKo<'a> {
+    xml: &'a str,
+    /// the namespace of the leaf, for `a:graphicData uri`
+    pic: bool,
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+}
+
+/// Walk the children of one group, going into the groups nested in it
+fn group_leaves<'a>(body: &'a str, xf: &GroupXf, out: &mut Vec<GroupKo<'a>>) {
+    let mut at = 0usize;
+    for _ in 0..4096 {
+        let next = [("wpg:grpSp", 0u8), ("wps:wsp", 1), ("pic:pic", 2)]
+            .into_iter()
+            .filter_map(|(n, k)| tag_at(body, at, n).map(|i| (i, n, k)))
+            .min_by_key(|(i, _, _)| *i);
+        let Some((s, name, kind)) = next else { return };
+        let Some(e) = tag_end(body, s, name) else { return };
+        let ko = &body[s..e];
+        at = e;
+        if kind == 0 {
+            // a nested group: read its own place, then walk its children
+            let Some(gp_i) = ko.find("<wpg:grpSpPr") else { continue };
+            let gp_e = ko[gp_i..].find("</wpg:grpSpPr>").map(|x| gp_i + x).unwrap_or(ko.len());
+            let inner = group_xf(&ko[gp_i..gp_e], xf);
+            group_leaves(&ko[gp_e..], &inner, out);
+            continue;
+        }
+        // a shape or a picture: its `a:xfrm` sits in `wps:spPr` / `pic:spPr`
+        let sp_i = ko.find("<wps:spPr").or_else(|| ko.find("<pic:spPr")).unwrap_or(0);
+        let sp = &ko[sp_i..];
+        let (ox, oy) =
+            (xf_num(sp, "<a:off", "x").unwrap_or(0.0), xf_num(sp, "<a:off", "y").unwrap_or(0.0));
+        let (ow, oh) =
+            (xf_num(sp, "<a:ext", "cx").unwrap_or(0.0), xf_num(sp, "<a:ext", "cy").unwrap_or(0.0));
+        let (w, h) = (ow * xf.ax, oh * xf.ay);
+        let (cx, cy) = xf.turn(xf.x(ox) + w / 2.0, xf.y(oy) + h / 2.0);
+        out.push(GroupKo { xml: ko, pic: kind == 2, x: cx - w / 2.0, y: cy - h / 2.0, w, h });
+    }
+}
+
 /// **グループ(`wpg:wgp`)の子を、1 つずつの図形に開く**(2026-09-09、Opus Mac の
 /// 切り分け。岐阜の掲示の「相談窓口」は 6 個の子を持つのに 1 つ目しか描いていなかった)。
 /// 子の位置は `a:chOff` / `a:chExt` の座標で書いてあるので、グループの `a:off` /
 /// `a:ext` の座標に写して、錨の距離(`wp:posOffset`)と大きさ(`wp:extent`)を
-/// 子ごとに書き替えた錨を作る。子の中身(`wps:wsp`)はそのまま
+/// 子ごとに書き替えた錨を作る。子の中身(`wps:wsp`・`pic:pic`)はそのまま。
+///
+/// A group inside a group composes: the inner group's `a:off` is in the
+/// outer group's child coordinates, and its `a:chOff` / `a:chExt` name its
+/// own. Reading only the outermost group put the two tickets of Word's
+/// "Scroll banner every day card" on top of each other (2026-09-20)
 fn open_group(anchor: &str) -> Option<Vec<String>> {
     let gi = anchor.find("<wpg:wgp")?;
-    let num = |seg: &str, tag: &str, key: &str| -> Option<f32> {
-        let i = seg.find(tag)?;
-        let e = seg[i..].find('>')? + i;
-        let head = &seg[i..e];
-        let k = format!("{key}=\"");
-        let s = head.find(&k)? + k.len();
-        head[s..].find('"').and_then(|e2| head[s..s + e2].parse::<f32>().ok())
-    };
-    // グループの座標系
-    let gp_i = anchor.find("<wpg:grpSpPr")?;
-    let gp_e = anchor[gp_i..].find("</wpg:grpSpPr>").map(|e| gp_i + e).unwrap_or(anchor.len());
-    let gp = &anchor[gp_i..gp_e];
-    let (gx, gy) = (num(gp, "<a:off", "x")?, num(gp, "<a:off", "y")?);
-    let (gw, gh) = (num(gp, "<a:ext", "cx")?, num(gp, "<a:ext", "cy")?);
-    let (cx0, cy0) = (num(gp, "<a:chOff", "x").unwrap_or(0.0), num(gp, "<a:chOff", "y").unwrap_or(0.0));
-    let (cw, ch) = (num(gp, "<a:chExt", "cx").unwrap_or(gw), num(gp, "<a:chExt", "cy").unwrap_or(gh));
-    let (sx, sy) = (if cw > 0.0 { gw / cw } else { 1.0 }, if ch > 0.0 { gh / ch } else { 1.0 });
     // 錨の距離
-    let px = num(anchor, "<wp:positionH", "x").or_else(|| {
+    let px = {
         let i = anchor.find("<wp:positionH")?;
         let j = anchor[i..].find("<wp:posOffset>")? + i + 14;
         anchor[j..].find('<').and_then(|e| anchor[j..j + e].trim().parse::<f32>().ok())
-    });
+    };
     let py = {
         let i = anchor.find("<wp:positionV")?;
         let j = anchor[i..].find("<wp:posOffset>")? + i + 14;
@@ -2041,46 +2186,55 @@ fn open_group(anchor: &str) -> Option<Vec<String>> {
     let (px, py) = (px?, py?);
     let head_end = anchor.find("<a:graphic")?;
     let head = &anchor[..head_end];
+    // グループの座標系
+    let gp_i = anchor[gi..].find("<wpg:grpSpPr").map(|e| gi + e)?;
+    let gp_e = anchor[gp_i..].find("</wpg:grpSpPr>").map(|e| gp_i + e)?;
+    // a group that gives no box of its own says nothing about where its
+    // children go, so the anchor is left whole
+    let gp = &anchor[gp_i..gp_e];
+    if xf_num(gp, "<a:ext", "cx").unwrap_or(0.0) <= 0.0
+        || xf_num(gp, "<a:ext", "cy").unwrap_or(0.0) <= 0.0
+    {
+        return None;
+    }
+    let ne = GroupXf { ax: 1.0, bx: px, ay: 1.0, by: py, rot: Vec::new() };
+    let xf = group_xf(&anchor[gp_i..gp_e], &ne);
+    let mut leaves = Vec::new();
+    group_leaves(&anchor[gp_e..], &xf, &mut leaves);
     let mut out = Vec::new();
-    let mut at = gi;
-    while let Some(i) = anchor[at..].find("<wps:wsp") {
-        let s = at + i;
-        let Some(e) = anchor[s..].find("</wps:wsp>") else { break };
-        let e = s + e + "</wps:wsp>".len();
-        let ko = &anchor[s..e];
-        at = e;
-        let sp_i = ko.find("<wps:spPr").unwrap_or(0);
-        let sp = &ko[sp_i..];
-        let (ox, oy) = (num(sp, "<a:off", "x").unwrap_or(0.0), num(sp, "<a:off", "y").unwrap_or(0.0));
-        let (ow, oh) = (num(sp, "<a:ext", "cx").unwrap_or(0.0), num(sp, "<a:ext", "cy").unwrap_or(0.0));
-        let nx = px + gx + (ox - cx0) * sx;
-        let ny = py + gy + (oy - cy0) * sy;
-        let (nw, nh) = ((ow * sx).round(), (oh * sy).round());
+    for ko in leaves {
         // 錨の頭の距離と大きさを子の物に書き替える
         let mut h = head.to_string();
-        if let Some(i) = h.find("<wp:positionH") {
-            if let Some(j) = h[i..].find("<wp:posOffset>") {
-                let js = i + j + 14;
-                if let Some(je) = h[js..].find('<') {
-                    h.replace_range(js..js + je, &format!("{}", nx.round() as i64));
-                }
-            }
-        }
-        if let Some(i) = h.find("<wp:positionV") {
-            if let Some(j) = h[i..].find("<wp:posOffset>") {
-                let js = i + j + 14;
-                if let Some(je) = h[js..].find('<') {
-                    h.replace_range(js..js + je, &format!("{}", ny.round() as i64));
+        for (tag, v) in [("<wp:positionH", ko.x), ("<wp:positionV", ko.y)] {
+            if let Some(i) = h.find(tag) {
+                if let Some(j) = h[i..].find("<wp:posOffset>") {
+                    let js = i + j + 14;
+                    if let Some(je) = h[js..].find('<') {
+                        h.replace_range(js..js + je, &format!("{}", v.round() as i64));
+                    }
                 }
             }
         }
         if let Some(i) = h.find("<wp:extent ") {
             if let Some(e2) = h[i..].find("/>") {
-                h.replace_range(i..i + e2 + 2, &format!(r#"<wp:extent cx="{}" cy="{}"/>"#, nw as i64, nh as i64));
+                h.replace_range(
+                    i..i + e2 + 2,
+                    &format!(
+                        r#"<wp:extent cx="{}" cy="{}"/>"#,
+                        ko.w.round() as i64,
+                        ko.h.round() as i64
+                    ),
+                );
             }
         }
+        let uri = if ko.pic {
+            "http://schemas.openxmlformats.org/drawingml/2006/picture"
+        } else {
+            "http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+        };
+        let xml = ko.xml;
         out.push(format!(
-            "{h}<a:graphic><a:graphicData uri=\"http://schemas.microsoft.com/office/word/2010/wordprocessingShape\">{ko}</a:graphicData></a:graphic></wp:anchor></w:drawing>"
+            "{h}<a:graphic><a:graphicData uri=\"{uri}\">{xml}</a:graphicData></a:graphic></wp:anchor></w:drawing>"
         ));
     }
     (!out.is_empty()).then_some(out)
@@ -2392,8 +2546,19 @@ pub fn foreign_shapes(
                 let mut nogare = 0;
                 // A shape that starts below the page goes to the next one; a
                 // page-high band that merely runs past the bottom stays and
-                // is clipped, as Word does (2026-09-19)
+                // is clipped, as Word does (2026-09-19).
+                //
+                // **A floating drawing never adds a page.** It can move onto
+                // a page the text already made; past the last one it is held
+                // at the bottom of that page. Word's ticket template anchors
+                // a text box 494pt under the last paragraph, and opening a
+                // third page for it made 3 pages where Word has 2
+                // (2026-09-20)
                 while y >= page.h_mm && nogare < 8 {
+                    if kami + 1 >= kami_kazu {
+                        y = (page.h_mm - page.bottom_mm - h_mm).max(page.top_mm);
+                        break;
+                    }
                     y -= tsukaeru;
                     kami += 1;
                     nogare += 1;

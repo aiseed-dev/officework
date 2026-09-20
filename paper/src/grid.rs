@@ -2076,7 +2076,15 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
             // 気づきました)。丸めの大きさは画面と同じ短辺の 15%
             "roundRect" => {
                 let px = 25.4 / 96.0 * scale; // 4px を mm に
-                let r = (w.min(h) * 0.15).max(4.0 * px).min(w.min(h) / 2.0);
+                // **角の丸みは `avLst` の adj が決めます**(ECMA-376 20.1.9.18)。
+                // 短辺の adj/100000 で、Word の既定は 16667 です。言っていない
+                // 図形は画面と同じ 15% のまま。Word の入場券の枠は 5867 で、
+                // 読まないと丸みが3倍になっていました(2026-09-20)
+                let mijika = w.min(h);
+                let r = match sp.adj.iter().find(|(n, _)| n == "adj") {
+                    Some((_, v)) => (mijika * (v / 100_000.0)).clamp(0.0, mijika / 2.0),
+                    None => (mijika * 0.15).max(4.0 * px).min(mijika / 2.0),
+                };
                 // 角ごとに4分の1円を6辺で近づけます
                 let kado = |cx: f32, cy: f32, kara: f32| {
                     (0..=6).map(move |i| {

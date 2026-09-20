@@ -1233,6 +1233,11 @@ pub struct Document {
     /// **文書の既定の行間の倍率**(同じく `w:spacing w:line` ÷ 240)。
     /// python-docx の型紙は 276/240 = 1.15 です
     pub line_spacing: Option<f32>,
+    /// **文書の既定の揃え**(同じく `w:pPrDefault` の `w:jc`)。段落も、
+    /// 段落スタイルも、表スタイルも揃えを言わないときに効きます。
+    /// Word の入場券の型紙はここで中央寄せと言っていて、読まないと
+    /// 表の中の字が全部左に寄っていました(2026-09-20)
+    pub align: Option<Align>,
     /// **テーマの配色**(docx の `theme1.xml` の `a:clrScheme`)。
     /// 並びは `dk1 lt1 dk2 lt2 accent1..6 hlink folHlink` の12色です。
     ///
