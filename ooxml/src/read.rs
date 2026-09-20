@@ -1684,6 +1684,10 @@ fn style_para(
         first_line_twips: ind(body, "w:firstLine")
             .or_else(|| ind(body, "w:hanging").map(|v| -v))
             .map(|v| v as i32),
+        // Tab stops (`w:pPr/w:tabs/w:tab w:pos`, ECMA-376 17.3.1.38).
+        // Only the stops inside `w:tabs` count; a `w:tab` elsewhere is
+        // the tab character itself
+        tab_stops: tabs_of(body),
         // **箇条書き。** `w:numPr` の `w:numId` を印の表で引きます
         list: num_of(body).map(|n| {
             match shirushi.get(&(n, 0)) {
@@ -1849,6 +1853,38 @@ fn num_of(body: &str) -> Option<u32> {
 ///
 /// python-docx の既定の型紙は、題(`Title`)の下の線をここに書きます
 /// (本文には1文字もありません)。2026-09-03。
+/// The tab stops a style's `w:pPr/w:tabs` lists, in twips from the left
+/// text margin (ECMA-376 17.3.1.38, `w:tab w:pos`). A stop at or before
+/// the margin is dropped, as it is on the body side.
+///
+/// Only the left stops are taken. `w:val` names the kind (ECMA-376
+/// 17.3.1.37, ST_TabJc), and a centre, right, decimal or bar stop places
+/// the text around the position instead of starting it there, which the
+/// layout does not do yet. Reading them as left stops pushed the page
+/// numbers of a table of contents to the right and added a page to seven
+/// JST documents (2026-09-21). `clear` removes a stop and is skipped too.
+fn tabs_of(body: &str) -> Vec<i32> {
+    let Some(n) = body.find("<w:tabs") else { return Vec::new() };
+    let owari = body[n..].find("</w:tabs>").map(|e| n + e).unwrap_or(body.len());
+    let naka = &body[n..owari];
+    let mut out: Vec<i32> = Vec::new();
+    let mut i = 0;
+    while let Some(k) = naka[i..].find("<w:tab ") {
+        let s = i + k;
+        let e = naka[s..].find('>').map(|e| s + e).unwrap_or(naka.len());
+        let kind = attr_of(&naka[s..e], "w:val");
+        let hidari = kind.is_empty() || kind == "left" || kind == "start";
+        if let Ok(v) = attr_of(&naka[s..e], "w:pos").parse::<i32>() {
+            if hidari && v > 0 && !out.contains(&v) {
+                out.push(v);
+            }
+        }
+        i = e;
+    }
+    out.sort_unstable();
+    out
+}
+
 fn pbdr_of(body: &str) -> Option<kumihan::ParaBorder> {
     let n = body.find("<w:pBdr")?;
     let owari = body[n..].find("</w:pBdr>").map(|e| n + e).unwrap_or(body.len());

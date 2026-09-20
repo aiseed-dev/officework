@@ -1486,6 +1486,14 @@ pub struct StyleParaLook {
     pub right_twips: Option<i32>,
     /// 1行目の字下げ(twip。負はぶら下げ)
     pub first_line_twips: Option<i32>,
+    /// **The style's tab stops** (`w:pPr/w:tabs/w:tab w:pos`, ECMA-376
+    /// 17.3.1.37 and 17.3.1.38, in twips from the left text margin).
+    ///
+    /// Word's ATS resume template puts the three Skills columns on a
+    /// style with `w:pos="3874"` and `w:pos="7027"` and writes only
+    /// `<w:tab/>` in the body, so without this the three ran together
+    /// (2026-09-21).
+    pub tab_stops: Vec<i32>,
     /// **箇条書きの種類**(docx の `w:pPr/w:numPr/w:numId` を
     /// `numbering.xml` で引いた結果)。
     ///
@@ -2606,6 +2614,9 @@ impl Document {
             pl.left_twips = pl.left_twips.or(s.para.left_twips);
             pl.right_twips = pl.right_twips.or(s.para.right_twips);
             pl.first_line_twips = pl.first_line_twips.or(s.para.first_line_twips);
+            if pl.tab_stops.is_empty() {
+                pl.tab_stops = s.para.tab_stops.clone();
+            }
             pl.list = pl.list.or(s.para.list);
             pl.list_text = pl.list_text.clone().or_else(|| s.para.list_text.clone());
             pl.contextual_spacing = pl.contextual_spacing.or(s.para.contextual_spacing);

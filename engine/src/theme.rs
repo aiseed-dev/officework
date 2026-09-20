@@ -1895,6 +1895,11 @@ fn jibun_wo_ateru(
     if para.first_line_twips == 0 && !para.ind_itta {
         para.first_line_twips = pl.first_line_twips.unwrap_or(0);
     }
+    // The style's tab stops, when the paragraph lists none of its own
+    // (ECMA-376 17.3.1.38)
+    if para.tab_stops.is_empty() {
+        para.tab_stops = pl.tab_stops.clone();
+    }
     // **スタイルの罫線。** python-docx の型紙は、題(`Title`)の下の線を
     // スタイルに書きます。本文には1文字もありません(2026-09-03)
     if !para.border.aru() {

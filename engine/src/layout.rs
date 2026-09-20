@@ -504,8 +504,15 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
     // 前は1文字ぶんの幅しか送らず、字形も持っていないので豆腐が出ていました。
     // 内閣府の調査票の氏名欄は、下線が 78.6pt ぶん縮んでいました。
     // 止まる位置は段落の `w:tabs`、どれも越えていれば既定の刻みです。
+    //
+    // `w:pos` counts from the page text margin, not from the paragraph's
+    // own left edge (ECMA-376 17.3.1.38), so the left indent comes off it.
+    // Word's ATS resume puts the Skills columns at `w:pos="3874"` on a
+    // paragraph indented `w:left="994"`, and we placed them 49.7pt too far
+    // right (2026-09-21)
+    let hidari_tw = left_mm(para, base * 25.4 / 72.0) * 72.0 * 20.0 / 25.4;
     let tab_saki = |ima_mm: f32| -> f32 {
-        let ima_tw = ima_mm * 72.0 * 20.0 / 25.4;
+        let ima_tw = ima_mm * 72.0 * 20.0 / 25.4 + hidari_tw;
         let tugi = para
             .tab_stops
             .iter()
@@ -517,7 +524,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
                 let k = crate::TAB_TWIPS as f32;
                 ((ima_tw / k).floor() + 1.0) * k
             });
-        (tugi / 20.0) * 25.4 / 72.0
+        ((tugi - hidari_tw) / 20.0) * 25.4 / 72.0
     };
     for tok in tokenize(para, m, notes, base, moji) {
         // タブの幅は、いまの位置から次の止まる所までです
