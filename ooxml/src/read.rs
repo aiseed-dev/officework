@@ -1920,7 +1920,14 @@ fn pbdr_of(body: &str) -> Option<kumihan::ParaBorder> {
             _ => b.between = true,
         }
     }
-    b.aru().then_some(b)
+    // **A `w:pBdr` whose every edge says `none` turns the inherited
+    // borders off** (ECMA-376 17.3.1.24, and 17.3.1.7 for the edges), so
+    // it is an answer, not silence. Word's business plan template bases
+    // TOC Heading on Heading 1 and writes `<w:pBdr><w:bottom
+    // w:val="none"/></w:pBdr>`; we returned None there, inherited
+    // Heading 1's rule and drew a line under "Table of contents" that
+    // Word does not draw (2026-09-21)
+    Some(b)
 }
 
 /// `w:ind` の値(twip)
