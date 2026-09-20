@@ -131,12 +131,16 @@ def main(page: ft.Page):
 
     why = section(
         "なぜ作ったか",
-        p("AI が必要でない場所で使うための Office です。AI が作った文書を、AI が無くても使えるようにします。", 20),
-        p("AI は、すでに docx と xlsx を作れます。でも、adoc で交換した方がいい。"),
-        p("毎日の仕事の大半に、AI は要りません。受け取った docx と xlsx を、Word と Excel と同じに開いて、"
-          "処理して、様式で返して、刷る。これは決まった手順で、コードだけで回ります。"
-          "機密の様式は手元から出ません。AI が要るときだけ、自分で選んだ AI を繋ぎます。"),
-        p("こういう Office は、いまは誰でも作れます。作り方は下に書きました。"),
+        # one Markdown block, so the whole section can be selected and copied
+        # across paragraphs (the owner, 2026-09-20)
+        md("\n\n".join([
+            "AI が必要でない場所で使うための Office です。AI が作った文書を、AI が無くても使えるようにします。",
+            "毎日の仕事の大半に、AI は要りません。受け取った docx と xlsx を、Word と Excel と同じに開いて、"
+            "処理して、様式で返して、刷る。これは決まった手順で、コードだけで回ります。"
+            "機密の様式は手元から出ません。AI が要るときだけ、自分で選んだ AI を繋ぎます。",
+            "AI は、すでに docx と xlsx を作れます。でも、adoc で交換した方がいい。",
+            "こういう Office は、いまは誰でも作れます。作り方は下に書きました。",
+        ])),
     )
 
     goal = section(
