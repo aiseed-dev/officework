@@ -1739,11 +1739,11 @@ fn hyou_style_wo_ateru(
                     .as_deref()
                     .and_then(|id| jibun.iter().find(|(k, _, _)| k == id))
                 {
-                    jibun_wo_ateru(para, lk, spl);
+                    jibun_wo_ateru(para, lk, spl, jibun);
                     tsuzuki = spl.contextual_spacing == Some(true);
                     yose_itta |= spl.align.is_some();
                 } else if let Some((lk, spl)) = kitei {
-                    jibun_wo_ateru(para, lk, spl);
+                    jibun_wo_ateru(para, lk, spl, jibun);
                     tsuzuki = spl.contextual_spacing == Some(true);
                     yose_itta |= spl.align.is_some();
                 }
@@ -1838,6 +1838,7 @@ fn jibun_wo_ateru(
     para: &mut crate::doc::Paragraph,
     lk: &crate::doc::StyleLook,
     pl: &crate::doc::StyleParaLook,
+    jibun: &[(String, crate::doc::StyleLook, crate::doc::StyleParaLook)],
 ) {
     // 揃えは、段落が既定(左)のままのときだけスタイルの物にします。
     // docx は「左」と「言わない」を書き分けないので、ここは見分けられません
@@ -1918,8 +1919,19 @@ fn jibun_wo_ateru(
         }
     }
     for r in &mut para.runs {
+        // **The character style the run names** (`w:rStyle`, ECMA-376
+        // 17.3.2.29). It sits between the paragraph style and the run's
+        // own `w:rPr` (ECMA-376 17.7.2), so what it says wins over the
+        // paragraph style here.
+        let ck = r
+            .fmt
+            .style_id
+            .as_deref()
+            .and_then(|id| jibun.iter().find(|(k, _, _)| k == id))
+            .map(|(_, l, _)| l);
+        let moji = |f: fn(&crate::doc::StyleLook) -> Option<bool>| ck.and_then(f);
         if r.size_pt.is_none() {
-            r.size_pt = lk.size_pt;
+            r.size_pt = ck.and_then(|c| c.size_pt).or(lk.size_pt);
         }
         if r.font.is_none() {
             // The East Asian blocks take the style's `w:eastAsia` font,
@@ -1929,17 +1941,31 @@ fn jibun_wo_ateru(
             // the document's `w:ascii` default (Word's resume: Heading 1
             // is Source Sans Pro in Word, not the heading theme font)
             let wabun = crate::font::east_asian_text(&r.text, false);
-            r.font = if wabun { lk.font.clone() } else { lk.font_latin.clone() };
+            let (ea, latin) = match ck {
+                Some(c) if c.font.is_some() || c.font_latin.is_some() => {
+                    (c.font.clone().or_else(|| lk.font.clone()),
+                     c.font_latin.clone().or_else(|| lk.font_latin.clone()))
+                }
+                _ => (lk.font.clone(), lk.font_latin.clone()),
+            };
+            r.font = if wabun { ea } else { latin };
         }
-        r.fmt.bold |= lk.bold.unwrap_or(false);
-        r.fmt.italic |= lk.italic.unwrap_or(false);
-        r.fmt.underline |= lk.underline.unwrap_or(false);
-        r.fmt.caps |= lk.caps.unwrap_or(false);
+        // **`w:b`, `w:i`, `w:caps` are toggle properties** (ECMA-376
+        // 17.7.3): the paragraph style's value and the character style's
+        // value combine with XOR, not with OR. Word's ATS resume has a
+        // bold Heading 1 with an Italics character style that says both
+        // `w:b` and `w:i`, and Word draws the company name in Calibri
+        // Italic, not in Calibri Bold Italic (2026-09-21).
+        r.fmt.bold |= lk.bold.unwrap_or(false) ^ moji(|c| c.bold).unwrap_or(false);
+        r.fmt.italic |= lk.italic.unwrap_or(false) ^ moji(|c| c.italic).unwrap_or(false);
+        r.fmt.caps |= lk.caps.unwrap_or(false) ^ moji(|c| c.caps).unwrap_or(false);
+        // `w:u` is not a toggle: the nearer value wins
+        r.fmt.underline |= moji(|c| c.underline).or(lk.underline).unwrap_or(false);
         if r.fmt.spacing_pt == 0.0 {
-            r.fmt.spacing_pt = lk.spacing_pt.unwrap_or(0.0);
+            r.fmt.spacing_pt = ck.and_then(|c| c.spacing_pt).or(lk.spacing_pt).unwrap_or(0.0);
         }
         if r.fmt.color.is_none() {
-            r.fmt.color = lk.color.clone();
+            r.fmt.color = ck.and_then(|c| c.color.clone()).or_else(|| lk.color.clone());
         }
     }
 }
@@ -1961,10 +1987,16 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
         .blocks
         .iter()
         .flat_map(|b| match b {
-            crate::doc::Block::Para(p) => vec![p.style_id.clone()],
-            crate::doc::Block::Table(t) => {
-                t.all_paragraphs().into_iter().map(|p| p.style_id.clone()).collect()
-            }
+            crate::doc::Block::Para(p) => vec![p],
+            crate::doc::Block::Table(t) => t.all_paragraphs(),
+        })
+        // The character styles the runs name (`w:rStyle`, ECMA-376
+        // 17.3.2.29) go in the same list as the paragraph styles, so the
+        // run loop can look them up by id
+        .flat_map(|p| {
+            let mut v: Vec<Option<String>> = vec![p.style_id.clone()];
+            v.extend(p.runs.iter().map(|r| r.fmt.style_id.clone()));
+            v
         })
         .flatten()
         .collect::<std::collections::BTreeSet<_>>()
@@ -2069,7 +2101,7 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             .as_deref()
             .and_then(|id| jibun.iter().find(|(i, _, _)| i == id))
         {
-            jibun_wo_ateru(para, lk, pl);
+            jibun_wo_ateru(para, lk, pl, &jibun);
             kitei_no_yose(para, pl.align.is_some(), doc_yose);
             let tsuzuki = pl.contextual_spacing == Some(true);
             bunsho_no_kitei(para, doc_after, doc_line);
@@ -2092,7 +2124,7 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
         let mut yose_itta = false;
         if para.style_id.is_none() {
             if let Some((lk, pl)) = kitei_no_style.as_ref() {
-                jibun_wo_ateru(para, lk, pl);
+                jibun_wo_ateru(para, lk, pl, &jibun);
                 yose_itta = pl.align.is_some();
             }
         }
