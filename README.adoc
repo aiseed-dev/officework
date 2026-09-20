@@ -40,6 +40,8 @@ There are two editors: *writer* for documents and *calc* for spreadsheets. You o
 
 An Office for the places where AI is not needed. It makes the documents AI writes usable without AI.
 
+AI can already write docx and xlsx. But text (AsciiDoc) is the better way to exchange with AI. officework reads adoc, prints it, and writes out docx when one is needed.
+
 Most of the daily work needs no AI. Open the docx and xlsx you receive exactly as Word and Excel do, process them, send the form back, print it. That is a fixed procedure, and code alone runs it.
 Confidential forms never leave the machine. When AI is needed, you connect the AI you chose.
 
