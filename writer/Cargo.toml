@@ -1,6 +1,6 @@
 [package]
 name = "writer"     # docx互換のワープロ。calc とは別のソフト
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 edition.workspace = true
 license.workspace = true
 

@@ -17,7 +17,7 @@ DOCS = "https://github.com/aiseed-dev/officework/tree/main/docs/ja"
 PYPI = "https://pypi.org/project/officework/"
 ISSUES = "https://github.com/aiseed-dev/officework/issues"
 FLET = "https://flet.dev"
-VERSION = "0.1.0-alpha.3"
+VERSION = "0.1.0-alpha.4"
 
 INK = ft.Colors.BLUE_GREY_900
 SUB = ft.Colors.BLUE_GREY_700
