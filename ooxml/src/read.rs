@@ -3768,6 +3768,18 @@ pub(super) fn parse_document_rels_num(
                         // the run holding a rule under the subtitle came out 14pt)
                         size_pt = None;
                         font = None;
+                        // The faces of the mark go the same way. A run's text is
+                        // split and measured with `font_ea` / `font_latin`, so
+                        // leaving them set let `w:pPr/w:rPr/w:rFonts` pick the
+                        // face of every run in the paragraph (ECMA-376 17.3.1.29
+                        // says those run properties belong to the paragraph mark).
+                        // Word's "Creative teaching resume" names
+                        // `w:ascii="Times"` on the mark of its OBJECTIVE heading
+                        // and `w:eastAsia="MS Mincho"` on the mark of its first
+                        // date line, and Word draws both in the style's Posterama
+                        font_ea = None;
+                        font_latin = None;
+                        hint_ea = false;
                     }
                     b"pBdr" => in_pbdr = false,
                     b"tblPr" => in_tblpr = false,
