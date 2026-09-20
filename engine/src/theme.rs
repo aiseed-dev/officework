@@ -1908,6 +1908,12 @@ fn jibun_wo_ateru(
             para.border = b;
         }
     }
+    // **The style's band** (`w:pPr/w:shd`, ECMA-376 17.3.1.31). Word's
+    // booklet template puts the green bar behind `Heading 1` in the style
+    // and writes nothing in the body (2026-09-21)
+    if para.shade.is_none() {
+        para.shade = pl.shade.clone();
+    }
     // **スタイルの箇条書き。** `add_paragraph(style="List Bullet")` は
     // 本文に `w:numPr` を書きません。中黒も番号もスタイルの側です
     if para.list == crate::doc::ListKind::None {

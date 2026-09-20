@@ -1681,6 +1681,16 @@ fn style_para(
         let v = attr_of(&body[n..e], key);
         if v.is_empty() { None } else { Some(v == "1" || v == "true" || v == "on") }
     };
+    // The `w:pPr` block on its own. `w:shd` is a run property as well
+    // (ECMA-376 17.3.2.32), and that one paints behind the characters, not
+    // behind the paragraph
+    let ppr = body
+        .find("<w:pPr>")
+        .map(|n| {
+            let e = body[n..].find("</w:pPr>").map(|e| n + e).unwrap_or(body.len());
+            &body[n..e]
+        })
+        .unwrap_or("");
     kumihan::StyleParaLook {
         align: val("w:jc").as_deref().and_then(align_of),
         space_before_pt: spacing("w:before"),
@@ -1714,6 +1724,15 @@ fn style_para(
         list_text: num_of(body).and_then(|n| shirushi.get(&(n, 0)).map(|(t, _)| t.clone())),
         // **段落の罫線。** 本文の `w:pBdr` と同じ辺を読みます
         border: pbdr_of(body),
+        // **The paragraph's band** (`w:pPr/w:shd w:fill`, ECMA-376 17.3.1.31).
+        // Only when the fill names a colour
+        shade: ppr
+            .find("<w:shd")
+            .map(|n| {
+                let e = ppr[n..].find('>').map(|e| n + e).unwrap_or(ppr.len());
+                attr_of(&ppr[n..e], "w:fill")
+            })
+            .filter(|v| !v.is_empty() && v != "auto"),
         // 同じスタイルが続く間は空きを入れない
         contextual_spacing: body.contains("<w:contextualSpacing").then_some(true),
         // 行グリッドに合わせない(`w:val="0"` のときだけ)

@@ -1529,6 +1529,12 @@ pub struct StyleParaLook {
     /// python-docx の既定の型紙では、題(`Title`)の下の線がここにあります。
     /// 本文には1文字も書いてありません
     pub border: Option<ParaBorder>,
+    /// **The paragraph's band** (docx `w:pPr/w:shd w:fill`, ECMA-376
+    /// 17.3.1.31), when the style names it and the paragraph does not.
+    ///
+    /// Word's booklet template puts the green bar behind every `Heading 1`
+    /// here and writes nothing in the body (2026-09-21).
+    pub shade: Option<String>,
 }
 
 /// スタイルが持つ字の見た目(docx の `w:rPr`)。三択(入・切・言わない)です。
@@ -2632,6 +2638,7 @@ impl Document {
             pl.contextual_spacing = pl.contextual_spacing.or(s.para.contextual_spacing);
             pl.no_grid = pl.no_grid.or(s.para.no_grid);
             pl.border = pl.border.or(s.para.border);
+            pl.shade = pl.shade.clone().or_else(|| s.para.shade.clone());
             match s.based_on.as_deref() {
                 Some(o) => ima = o,
                 None => break,
