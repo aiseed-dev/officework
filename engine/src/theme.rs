@@ -1883,6 +1883,11 @@ fn jibun_wo_ateru(
     if para.indent == 0 && !para.ind_itta {
         para.indent = pl.indent.unwrap_or(0);
     }
+    // The style's own `w:ind w:left` in twips, which is exact where the
+    // step count is not (ECMA-376 17.3.1.12)
+    if para.left_twips == 0 && !para.ind_itta {
+        para.left_twips = pl.left_twips.unwrap_or(0);
+    }
     if para.first_line_twips == 0 && !para.ind_itta {
         para.first_line_twips = pl.first_line_twips.unwrap_or(0);
     }

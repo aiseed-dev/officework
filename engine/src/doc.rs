@@ -1469,6 +1469,15 @@ pub struct StyleParaLook {
     pub line_pt: Option<(f32, bool)>,
     /// 左のインデント段数(1段 = 全角2文字ぶん)
     pub indent: Option<u8>,
+    /// **The style's left indent in twips** (`w:pPr/w:ind w:left`).
+    ///
+    /// `w:left` is a measure in twentieths of a point (ECMA-376 17.3.1.12),
+    /// not a count of characters. [`indent`](Self::indent) rounds it to
+    /// steps of two full-width characters, so `w:left="720"` became 4 em:
+    /// 44pt under an 11pt face and 48pt under a 12pt one, where Word puts
+    /// both at 36pt (2026-09-21, Word's ATS resume template). The exact
+    /// value is kept here and wins.
+    pub left_twips: Option<i32>,
     /// 1行目の字下げ(twip。負はぶら下げ)
     pub first_line_twips: Option<i32>,
     /// **箇条書きの種類**(docx の `w:pPr/w:numPr/w:numId` を
@@ -2588,6 +2597,7 @@ impl Document {
                 pl.line_pt = s.para.line_pt;
             }
             pl.indent = pl.indent.or(s.para.indent);
+            pl.left_twips = pl.left_twips.or(s.para.left_twips);
             pl.first_line_twips = pl.first_line_twips.or(s.para.first_line_twips);
             pl.list = pl.list.or(s.para.list);
             pl.list_text = pl.list_text.clone().or_else(|| s.para.list_text.clone());

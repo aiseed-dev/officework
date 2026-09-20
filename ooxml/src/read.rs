@@ -1671,6 +1671,9 @@ fn style_para(
         line_spacing: gyou.0,
         line_pt: gyou.1,
         indent: ind(body, "w:left").map(|t| (t / 480.0).round().clamp(0.0, 9.0) as u8),
+        // `w:left` is twips (ECMA-376 17.3.1.12); the step count above
+        // cannot hold it exactly
+        left_twips: ind(body, "w:left").map(|t| t as i32),
         first_line_twips: ind(body, "w:firstLine")
             .or_else(|| ind(body, "w:hanging").map(|v| -v))
             .map(|v| v as i32),
