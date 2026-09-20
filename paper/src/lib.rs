@@ -2482,6 +2482,74 @@ pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, pa
     sheet.float_images.extend(out);
 }
 
+/// **A text box's paragraph takes its paragraph style, like a body one.**
+///
+/// `w:pStyle` inside `w:txbxContent` names a style in `styles.xml`, and the
+/// style decides the size, the face, the weight, the colour, the alignment
+/// and the line height the box does not decide itself (ECMA-376 17.3.1.27).
+/// The reader only takes what the box writes out, so Word's ticket
+/// template, whose box says nothing but `<w:pStyle w:val="Date"/>`, drew
+/// "150220YY" in the document's 11pt instead of the style's 18pt bold
+/// orange (2026-09-20).
+///
+/// The style the first `w:pStyle` of the box names applies, the same way
+/// the reader takes the first `w:sz` of the box.
+fn shape_text_style(doc: &kumihan::Document, xml: &str, look: &mut book::SheetShape) {
+    if look.text.is_none() {
+        return;
+    }
+    let Some(i) = xml.find("<w:txbxContent>").map(|i| i + "<w:txbxContent>".len()) else {
+        return;
+    };
+    let owari = xml[i..].find("</w:txbxContent>").map(|e| i + e).unwrap_or(xml.len());
+    let naka = &xml[i..owari];
+    let id = naka.find("<w:pStyle ").map(|j| &naka[j..]).and_then(|seg| {
+        let e = seg.find('>')?;
+        let k = seg[..e].find("w:val=\"")? + 7;
+        seg[k..e].find('"').map(|x| seg[k..k + x].to_string())
+    });
+    let matome = id.as_deref().and_then(|id| doc.style_matome(id));
+    if let Some((lk, pl)) = &matome {
+        let tf = &mut look.text_fmt;
+        if tf.size_pt.is_none() {
+            tf.size_pt = lk.size_pt;
+        }
+        if tf.font.is_none() {
+            // ASCII text takes the style's `w:ascii` face, the rest the
+            // East Asian one (ECMA-376 17.3.2.26)
+            let ascii = look.text.as_deref().is_some_and(|t| t.is_ascii());
+            tf.font = if ascii { lk.font_latin.clone().or_else(|| lk.font.clone()) } else { lk.font.clone() };
+        }
+        tf.bold |= lk.bold.unwrap_or(false);
+        if tf.color.is_none() {
+            tf.color = lk.color.clone();
+        }
+        if tf.line_pt.is_none() {
+            tf.line_pt = pl.line_pt.map(|(v, _)| v);
+        }
+        if tf.align == book::HAlign::General {
+            tf.align = match pl.align {
+                Some(kumihan::Align::Center) => book::HAlign::Center,
+                Some(kumihan::Align::Right) => book::HAlign::Right,
+                Some(kumihan::Align::Justify) => book::HAlign::Justify,
+                Some(kumihan::Align::Distribute) => book::HAlign::Distribute,
+                _ => book::HAlign::General,
+            };
+        }
+    }
+    // The document default (`w:docDefaults/w:pPrDefault/w:jc`) is the last
+    // layer, as it is for a body paragraph
+    if look.text_fmt.align == book::HAlign::General {
+        look.text_fmt.align = match doc.align {
+            Some(kumihan::Align::Center) => book::HAlign::Center,
+            Some(kumihan::Align::Right) => book::HAlign::Right,
+            Some(kumihan::Align::Justify) => book::HAlign::Justify,
+            Some(kumihan::Align::Distribute) => book::HAlign::Distribute,
+            _ => book::HAlign::General,
+        };
+    }
+}
+
 pub fn foreign_shapes(
     doc: &kumihan::Document,
     sheet: &kumihan::Sheet,
@@ -2499,7 +2567,8 @@ pub fn foreign_shapes(
         (k, pg.offsets.get(k).copied().unwrap_or(0.0))
     };
     for a in doc.header.anchors.iter().chain(doc.footer.anchors.iter()).flat_map(|a| split_anchors(a)) {
-        for f in ooxml::foreign_shapes_in(&a, &doc.theme_colors) {
+        for mut f in ooxml::foreign_shapes_in(&a, &doc.theme_colors) {
+            shape_text_style(doc, &a, &mut f.look);
             let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
             let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
             for k in 0..kami_kazu {
@@ -2537,6 +2606,7 @@ pub fn foreign_shapes(
                 continue; // a floating picture is placed by `anchored_pictures`
             }
             for mut f in ooxml::foreign_shapes_in(&part, &doc.theme_colors) {
+                shape_text_style(doc, &part, &mut f.look);
                 if f.look.text_fmt.font.is_none() {
                     f.look.text_fmt.font = doc.font.clone();
                 }

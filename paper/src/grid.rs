@@ -2062,10 +2062,14 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
         // (2026-08-27 に図を紙で見て気づきました)
         let pen = sp.line.as_deref().and_then(hex_rgb);
         let pen_w = sp.line_w.max(0.1) * scale * 25.4 / 72.0;
-        // **線の種類**(`<a:prstDash>`)。刻みは線の太さに比例させます —
-        // DrawingML も同じで、太い線ほど刻みが大きくなります
+        // **線の種類**(`<a:prstDash>`)。刻みは**線の太さそのもの**の
+        // 倍数です(ECMA-376 20.1.10.49 ST_PresetLineDashVal。`dash` は
+        // 4 引いて 3 空ける)。前は 0.2mm を下限にしていたので、Word の
+        // 入場券の型紙の切り取り線(`<a:ln w="6350">` = 0.5pt、
+        // `<a:prstDash val="dash"/>`)が 2.27pt / 1.70pt になり、
+        // Word の 2.0pt / 1.5pt と合いませんでした(2026-09-20)
         let kizami = sp.dash.as_deref().map(|d| {
-            let w = pen_w.max(0.2);
+            let w = pen_w.max(0.01);
             match d {
                 "dot" | "sysDot" => (w, w * 2.0),
                 "dashDot" | "sysDashDot" => (w * 3.0, w * 2.0),
@@ -2361,7 +2365,9 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
                 let tx = x + (w - pt * 25.4 / 72.0) / 2.0 + pt * 25.4 / 72.0 * 0.8;
                 let ty = y_top - (h - haba).max(0.0) / 2.0;
                 let hito: String = t.chars().filter(|c| *c != '\n').collect();
-                l1.text_kazari(&hito, pt, tx, ty, (0.0, 0.0, 0.0), false, 0, haba,
+                let iro =
+                    sp.text_fmt.color.as_deref().and_then(hex_rgb).unwrap_or((0.0, 0.0, 0.0));
+                l1.text_kazari(&hito, pt, tx, ty, iro, sp.text_fmt.bold, 0, haba,
                                false, false, -90.0, false);
                 return;
             }
@@ -2421,6 +2427,9 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
             let agari = kumihan::font::agari_em(sp.text_fmt.font.as_deref())
                 .filter(|e| *e > 0.0 && *e <= em)
                 .unwrap_or(0.9);
+            // **字の色は箱が言います**(`w:color`、または名乗った段落
+            // スタイルの色)。言っていなければ黒です
+            let iro = sp.text_fmt.color.as_deref().and_then(hex_rgb).unwrap_or((0.0, 0.0, 0.0));
             let mut ty = y_top - it - ue - pt * 25.4 / 72.0 * agari;
             for g in &gyou {
                 let haba: f32 = g.chars().map(hitotsu).sum();
@@ -2429,7 +2438,7 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
                     book::HAlign::Right => x + w - ir - haba,
                     _ => x + il,
                 };
-                l1.text(g, pt, tx, ty, (0.0, 0.0, 0.0), false);
+                l1.text(g, pt, tx, ty, iro, sp.text_fmt.bold);
                 ty -= takasa;
             }
         }

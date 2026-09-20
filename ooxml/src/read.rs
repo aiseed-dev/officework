@@ -4803,6 +4803,30 @@ fn shape_look(a: &str, palette: &[String]) -> Option<book::SheetShape> {
         if let Some(pt) = hiroi(naka, "<w:sz w:val=\"") {
             sp.text_fmt.size_pt = Some(pt / 2.0);
         }
+        // **太字と字の色**(`w:b` と `w:color`)。読まないと、箱の中の字が
+        // いつも黒の細字で出ます。Word の入場券の型紙の箱は `Date` を
+        // 名乗り、そのスタイルが太字と橙を言っています(2026-09-20)
+        if naka.contains("<w:b/>") || naka.contains("<w:b ") {
+            sp.text_fmt.bold = true;
+        }
+        if let Some(i) = naka.find("<w:color ") {
+            let e = naka[i..].find('>').map(|e| i + e).unwrap_or(naka.len());
+            let v = attr_str(&naka[i..e], "w:val");
+            if v.len() == 6 && v.chars().all(|c| c.is_ascii_hexdigit()) {
+                sp.text_fmt.color = Some(v);
+            }
+        }
+        // 段落の揃え(`w:jc`)。図形の `a:pPr@algn` と同じ働きです
+        if let Some(i) = naka.find("<w:jc ") {
+            let e = naka[i..].find('>').map(|e| i + e).unwrap_or(naka.len());
+            sp.text_fmt.align = match attr_str(&naka[i..e], "w:val").as_str() {
+                "center" => book::HAlign::Center,
+                "right" | "end" => book::HAlign::Right,
+                "both" => book::HAlign::Justify,
+                "distribute" => book::HAlign::Distribute,
+                _ => sp.text_fmt.align,
+            };
+        }
         // 書体の名前。行送りとベースラインの位置がこれで決まります
         if let Some(i) = naka.find("<w:rFonts ") {
             let e = naka[i..].find('>').map(|e| i + e).unwrap_or(naka.len());

@@ -591,6 +591,7 @@ mod carry_tests {
                 anchor: TextAnchor::Middle,
                 vertical: true,
                 ins_mm: TextFmt::default().ins_mm, line_pt: None, font: None,
+                bold: false, color: None,
                 bullet: Some(true),
                 strike: true,
                 sup: true,

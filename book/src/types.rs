@@ -1141,6 +1141,15 @@ pub struct TextFmt {
     /// 前は紙の側が 1.5mm の決め打ちで、内閣府の調査票の担当欄の字が
     /// 箱の縁に寄っていました
     pub ins_mm: (f32, f32, f32, f32),
+    /// **太字。** docx の `w:b`、DrawingML の `a:rPr@b`。
+    ///
+    /// テキストボックスの段落がスタイルを名乗るときは、そのスタイルの
+    /// 太字もここへ入ります。Word の入場券の型紙の箱は `Date` を名乗り、
+    /// そのスタイルが `w:b` と言っています(2026-09-20)
+    pub bold: bool,
+    /// **字の色(RRGGBB)。** `None` は黒です。docx の `w:color`、
+    /// DrawingML の `a:solidFill` です
+    pub color: Option<String>,
 }
 impl Default for TextFmt {
     fn default() -> Self {
@@ -1157,6 +1166,8 @@ impl Default for TextFmt {
             line_pt: None,
             // DrawingML の既定(左右 0.1in・上下 0.05in)
             ins_mm: (2.54, 2.54, 1.27, 1.27),
+            bold: false,
+            color: None,
         }
     }
 }
