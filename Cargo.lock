@@ -6809,7 +6809,7 @@ dependencies = [
 
 [[package]]
 name = "pysheet"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "book",
  "kumihan",

@@ -1,142 +1,211 @@
-= officework 0.5.0
+= officework 0.6.0 and aiseed office 0.1.0-alpha.4
 
 日本語: link:RELEASE.ja.adoc[RELEASE.ja.adoc]
 
-To try it: `pip install officework`
+To try it: the engine installs with `pip install officework`. The app (aiseed
+office) is on https://github.com/aiseed-dev/officework/releases[GitHub Releases].
 
-This is the release after 0.4.0, and it carries everything the nine betas
-fixed. It was all one job: **the engine reads what the file says, and prints
-what the file says.**
+This is the engine release after 0.5.0 and the app release after
+0.1.0-alpha.3. It was all one job: **open the docx and xlsx you were sent the
+way Word and Excel open them, and print them onto the same pages.**
 
-**Plenty is still broken.** There is a list of what we know about below. It is
-a clear improvement on 0.4.0 all the same, so the beta marker comes off.
+The check is one thing too. Open the same file in Word and in officework and
+put the printed pages side by side. We run that every day against 288 public
+forms from Japanese government sites and against Word's own templates.
+
+**Plenty is still broken.** There is a list of what we know about below.
 Please report what breaks at
 https://github.com/aiseed-dev/officework/issues[the GitHub issues].
 
-The engine is what ships. `pip install officework` installs it and nothing
-else; the apps are not distributed yet.
+== A Word document lands on Word's pages
 
-== The spreadsheet gives Excel's answer
+**270 of the 288 public forms now match Word's page count.** The previous
+release matched 243.
 
-**The function list is 404 entries.** Statistics, finance, engineering,
-database and the distribution family are in. Every documented function takes
-every argument Excel takes, and array constants (`{1,2;3,4}`) parse.
+The fixes you can see:
 
-**Insert Function has Excel's classic shape**: a category list, the functions,
-the description, and the argument fields with a running result. The function
-manual is generated from the same material the dialog shows, so the two cannot
-drift apart.
+* a table row grows by the width of the rule above it. The width comes from
+  `w:sz`, with a double rule counted three times and a triple rule five times
+* a table starts where the next line would start, and the text after it
+  resumes at the table's bottom. That one change fixed 12 documents
+* the height a vertically merged cell lacks is spread evenly over the rows it
+  covers
+* the first page of a section can have margins of its own (`w:titlePg`)
+* an empty paragraph takes its size and font from the paragraph mark's
+  formatting (`w:pPr/w:rPr`)
+* an "At least" row height (`w:trHeight`) is a floor for the cell's content,
+  and the cell margins are added on top of it
+* cell margins merge side by side with the table's defaults
+* a table whose borders are written on the cells only now draws its vertical
+  rules
+* a line whose height sits a hair above the line grid pitch stays in one grid
+  line. An overshoot of up to 0.1pt counts as fitting
+* a page break with nothing but empty paragraphs between it and a section
+  break breaks the page once. We used to break it twice and produce a page
+  that showed only the header
+* a header or footer built out of a table now draws the text in its cells.
+  Word's own templates put the date, the title and the page number in a
+  one-row table, and that came out blank
 
-**Numbers are shown the way LibreOffice shows them.** In a cell with no number
-format `=1.1-1` is 0.1. Fifteen significant digits; an integer below 2^53 stays
-an integer; a decimal exponent of 15 or more, or -15 or less, switches to
-scientific. `=1/3*3` is 1, following `approxAdd` and `approxSub`. A narrow
-column drops digits before it falls back to `#####`.
+== Fonts are chosen the way Word chooses them
 
-Column widths match Excel's, numbers no longer spill into the next cell, and a
-cell's format is read in full: number format, borders, fill, alignment, font.
+**A font collection (.ttc) is cut down to the face the file names.** Face 0
+used to be measured for every name, so the full-width space of MS PGothic came
+out too wide and lines broke where Word does not break them.
 
-== A Word document prints the way the file states it
+* where the theme font has no Japanese glyphs, the Japanese is drawn in MS
+  Mincho
+* where the document defaults name a theme font for Latin, the Latin default
+  comes from the theme as well
+* line height comes from the font's `hhea` values
+* `w:caps` and the character spacing a style carries are read
+* with `w:balanceSingleByteDoubleByteWidth` set, ASCII in a Japanese font
+  advances by 0.5em
 
-**Table provisions are read one at a time**: table styles (`w:tblStylePr`
-conditions, bands, the heading row, the first column), the width as a
-percentage, the table indent, the heading row repeated across pages, cell
-margins, the diagonal through a cell, text spread across a cell, and paragraph
-indents inside cells.
+== Shapes and pictures appear where they were placed
 
-**Default formatting comes in five layers**: the application's defaults,
-`w:docDefaults`, the table style, the paragraph style, direct formatting. The
-bottom two were not being read. A document written by python-docx carries
-almost no direct formatting, so without them it looked like a different
-document.
+* a picture with no text wrapping is placed at the position it declares
+* a paragraph holding only a picture is a line of the picture's own height. A
+  picture that does not fit in what is left of the page starts at the top
+  margin of the next page
+* bands, rules, boxes and groups are drawn, including shapes placed inside a
+  table cell
+* a shape with no text is drawn under the body text and a text box over it
 
-**Letter spacing reaches the page.** Text that the file squeezes with
-`w:spacing` is printed squeezed. It used to be laid out by the font's own
-advances, so lines grew and ran over the rules.
+The sample report (`sample/事業のご報告.docx`) breaks onto the same two pages
+as Word. Every line is within 0.7pt of Word's, and the two charts sit where
+Word puts them.
 
-Also fixed:
+== Word's own templates print too
 
-* pagination follows Word's rules; line heights are written into the file
-* paragraph styles take effect, and bullets and the rule under a title come
-  from styles
-* line height comes from the font, and the baseline sits at the font's ascent
-* a paragraph border draws the sides the file names, and `w:between` lands
-  where LibreOffice puts it
-* bold is one run, not one glyph at a time, and its weight is a thirtieth of
-  the font height
-* opening and saving leaves the original parts untouched
+We collected the templates Word offers under "New" and ran the same
+comparison. **99 of the 113 English templates that have a Word PDF match
+Word's page count.**
 
-Measured against the published PDFs, matching lines by their text:
+On the nursing resume, all 38 lines of page 1 are within 0.2pt of Word.
 
-|===
-|Document |Mean error at the end of a line |Lines within 1pt
+== A workbook lands on Excel's pages
 
-|Survey form (110 lines) |9.01pt -> 2.50pt |5 -> 68
-|Notice (141 lines) |3.71pt -> 2.54pt |5 -> 83
-|===
+**The default font size is 11pt and the default row height 18.75pt**, and the
+screen, the page and the file all use those values.
 
-== Shapes, pictures and equations
+* column widths are measured with the digit width of the font the file names,
+  in whole points
+* vertical centring, the default column width and the JIS B4 and B5 paper
+  sizes are followed
+* the scale that fits a sheet to N pages is a whole percent, as Excel's own
+  box holds
+* lines inside a cell are spaced the way Excel spaces them
+* a formula that reads a blank cell returns 0
 
-**All 187 DrawingML preset shapes are drawn from the spec's own definitions.**
-An unknown shape used to come out as a rectangle. Colours come from the
-document's theme palette with the modifiers (`lumMod` and the rest) resolved,
-and position and size follow the whole relative-from table.
+The xlsx we write opens in Excel again. The theme part and its relationship
+now match, only Excel's own error literals are written, and whole-column and
+whole-row references (`A:B`, `1:3`) evaluate.
 
-Text boxes made by other software print. Pictures placed on a sheet print. A
-shape anchored to two cells takes its size from those cells.
+We compare against 55 public-sector workbooks with Excel's PDFs. Exact matches
+went from 1 to 5.
 
-**The engine typesets equations itself.** No Python, no TeX: typst and mitex
-are inside it. Word's and Excel's equations (OMML) are read as LaTeX, so they
-print instead of vanishing.
+== The Python API
 
-== Paper belongs to the section
+**A large table is handled as a data frame**, so tens of thousands of rows are
+not read cell by cell.
 
-Pages are stacked one after another as the ordinary view. Paper, orientation,
-margins and columns apply to the section the cursor is in, so one document can
-hold an A4 portrait section and an A3 landscape one.
+[source,python]
+----
+t = s.tables["Table1"]
+t.schema()                    # the row count, and each column's name and type
+t.head(2)                     # the header and the first two rows
+t.query("SELECT month, SUM(amount) AS total FROM Table1 GROUP BY month")
+t.frame(sql, limit=200)       # the same answer as a polars DataFrame
+----
 
-== The Python API runs the upstream examples unchanged
+The query language is SQL. `t.frame()` needs polars installed.
 
-**python-docx's and openpyxl's own examples run without edits.**
-`docx.shared`, `docx.enum`, `docx.styles`, the chart classes and an `RGBColor`
-that passes python-docx's own type checks are in. Misspell an attribute of
-`Doc`, `Book` or `Sheet` and it is refused rather than silently ignored.
+`xw.press("bold")` does what pressing that ribbon button does. `xw.ui_state()`
+returns what is open and the text in the status bar.
 
-The xlwings idiom (`from officework import calc as xw`) is unchanged.
+`Doc.open` reads `.adoc` as well, and `save("report.adoc")` writes it.
+
+Smaller things now follow openpyxl: `sheet_state` and `paper_size`, adding
+ranges to a data validation after it has been added, a single-cell merge doing
+nothing, and elapsed-time formats returning `timedelta`.
+
+== It is faster
+
+**Counting the pages of a 34-page document took 3.85 seconds and now takes
+0.13 seconds.** Writing the PDF went from 3.68 seconds to 0.18. Font files and
+font metrics are read once and kept.
+
+== The app (aiseed office 0.1.0-alpha.4)
+
+**The editor screen draws what the page draws.** Pictures and shapes are
+placed where the page places them, and the fonts the layout chose are used on
+screen too. Word's template fonts live inside Word rather than in the system,
+so without registering them the screen drew something else.
+
+Bold and italic runs are drawn with the bold and italic faces. The screen used
+to register one face per family, the regular one, so a bold run drew regular.
+
+Everything above about Word and Excel applies to the app's display and
+printing as well.
+
+The screen wording follows Office: status bar, path and template.
+
+The ribbon keeps Euro-Office's order and names. Matching Word and Excel on
+reading, writing and printing comes first.
 
 == What is still broken
 
-**The apps are not distributed.** `pip install officework` gives you the
-engine. The GUI can be built from source (see "Building from source" in the
-README).
-
 Known gaps in the engine:
 
-* table column widths come from `w:gridCol`. Where Word uses the per-cell
-  `w:tcW`, a line can break one character early
-* a nested table is lifted out of its parent and placed in the body flow
-* some spreadsheet forms paginate differently from the original. Two tax
-  forms come out at 11 and 12 pages against the original's 8 and 7
-* a shape's style reference (`a:fillRef`) contributes its colour only; a
-  gradient in the theme is painted as one colour
-* AsciiDoc reading and writing **is not distributed yet**. Against
-  Asciidoctor's own pages, 129 of the 172 readable ones give the same HTML
+* a table set to automatic width is not widened to fit its content
+* a floating table anchored to the page or the margin is placed in the body
+  flow
+* a double rule counts its full width toward the row height, but only one line
+  is drawn
+* an empty paragraph left after a table is not carried to the next page, so a
+  form that Word prints on two pages comes out on one
+* a header built out of a table draws the text in its cells but not its rules
+* Word puts a 14pt line of MS PGothic in two grid lines. We measure it with
+  the line spacing of MS Mincho, so the two fonts are not told apart
+* an embedded Excel object reserves its space and stays blank
+* a vertical cell stacks its characters one by one without rotating them
+* a font the machine does not have is laid out with the substitute's widths,
+  so lines break differently
+* on the spreadsheet side, 24 of the 55 collected workbooks differ from Excel
+  in page count. 19 of them come out shorter than Excel's
+* HTML written from an AsciiDoc document does not yet match Asciidoctor's HTML
+  exactly
+
+Known gaps in the app:
+
+* a font with no bold face of its own (MS Mincho, for one) stays regular on
+  the editor screen
+* the editor screen does not follow `w:titlePg`, a header of its own on the
+  first page of a section. It draws the same header on every page
+* the Windows `setup.exe` is not signed yet. Windows shows "Windows protected
+  your PC"; open "More info" and run it from there
+* Python is not bundled. Macros and heavy aggregation run on the Python
+  already on the machine
 
 == Manuals
 
-There is one page per button (256 of them). The index, the two
-learn-by-example booklets, the button reference and the Word/Excel
-differences have English versions. The booklets are written as plain prose:
-one thing per sentence.
+The writer manual gained a list of the settings that a received docx is
+printed by, the way Word handles them, and a list of what still differs. The
+Python manual gained reading and writing a document by block, `.adoc` reading
+and writing, and tables as data frames. It also says that a Mac with Microsoft
+Office installed needs no extra fonts.
 
 == Internals
 
-`kumihan` gained `omml` (OMML to LaTeX) and `suushiki` (typesetting LaTeX).
-The shape table moved out of the drawing code into definition data, so the
-screen and the page read the same table.
+The screen and the page go through one routine: compose the document, resolve
+the run fonts, lay it out. PNG goes the same way, so the screen, the PDF and
+the PNG use the same fonts.
 
-The release gate and the daily tests are separate; the gate looks only at
-whether what we distribute is broken. Which documents ship is decided by
-`docs/engine-docs.txt`. A tool counts every tag in a docx or xlsx and lists
-the ones no reader touches, with a reason for each deliberate omission
-(`tools/tag_check.py`).
+Tools that make the Word and Excel on the developer's machine the reference
+are in. They export PDFs from Word and Excel, compare lines and text, and take
+formula answers from Excel. Every document they open is closed again, and they
+stop if it will not close.
+
+`tools/` gained the collectors for the public forms and for Word's templates,
+and the page-count sweep.
