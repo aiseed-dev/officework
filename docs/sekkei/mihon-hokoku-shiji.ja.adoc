@@ -1,0 +1,33 @@
+= 指示: 絵の入った見本を、Word と同じに出して紹介ページに載せる(Fable Mac へ)
+
+発注者(2026-09-20)「サンプルももっと絵が入って綺麗なものを載せろ」「これを、Fable Mac に指示する」。
+
+== 目的
+
+紹介ページ(web/main.py)の「同じファイルを両方で開けば、誰でも確かめられます」に、絵(グラフ)の入った見栄えのよい文書を、Word で開いた写真と aiseed office で開いた写真の対で載せる。いまの物品借用願(表と罫線だけ)は、その下に 2 つ目の対として残す。載せるのは、頁数と行の位置が Word と一致した物だけ。
+
+== いまある物
+
+* `sample/gen_hokoku.py` — 事業のご報告.docx を作る。中身は架空。棒グラフと円グラフを Pillow で描いて `add_picture`、見出し 4 つ、表 1 つ。`.venv/bin/python sample/gen_hokoku.py` で `sample/事業のご報告.docx` ができる(コミット済み)。
+* Word の側: `.venv/bin/python tools/ms_pdf.py sample/事業のご報告.docx out.pdf`(Word を AppleScript で動かす。開いた文書は閉じる)。PDF の 1 頁目を PNG にするのは pypdfium2(`PdfDocument(...)[0].render(scale=110/72).to_pil().save(...)`)。
+* うちの側: `doc.Doc.open(path).save("office.png", dpi=110)`(頁ごとに office.png、office-2.png)。
+* 紹介ページの写真は `web/assets/word.png` と `office.png`、`shot()` で並べている。docx のダウンロードは `buppin202411.docx` と同じ形で置ける。
+
+== 分かっている違い(2026-09-20 に 1 度比べた)
+
+* 両方とも 2 頁。ただし Word は「地域の内訳」の見出しで 1 頁目が終わり、円グラフは 2 頁目。うちは円グラフが 1 頁目に入る。
+* うちの本文が太字に見える。docx は書体を指定しておらず、`w:docDefaults` がテーマの書体(`minorHAnsi` / `minorEastAsia`)、`w:lang` は en-US。Word はテーマを Times New Roman と明朝の系統に解いていて、うちは太いゴシックに解いている。**テーマの書体の解き方の違い**が原因と見ている。
+* 見出しの書体も Word は明朝、うちはゴシック。
+
+== やること
+
+. 原因の側を直す。第一目標(docx を Word と同じに出す)に当たるので、生成スクリプトで書体を明示して逃げるのではなく、エンジンのテーマの書体の解き方(minorHAnsi / minorEastAsia / majorHAnsi / majorEastAsia を、theme1.xml の `a:latin` / `a:ea` と、無ければ Word の既定に解く)を Word に合わせる。theme1.xml が docx に無いときの Word の既定も確かめる(この docx に theme があるかを先に見る)。
+. 直したら、上の手順で両方を出し直して、頁数と円グラフの位置と本文の太さが合うことを見る。合うまで繰り返す。
+. 合ったら、`web/assets/` に `hokoku-word.png` と `hokoku-office.png` と `事業のご報告.docx` を置き、web/main.py の compare の節に 1 つ目の対として足す(見出しの文は「株式会社みほん商事の『事業のご報告』(docx、中身は架空)を、Word と aiseed office で開いた物です。グラフと表と見出しが同じに出ます」の形)。物品借用願は 2 つ目の対として残す。
+. `flet run --web --port 8550 web/main.py` で開いて、2 つの対が出ることを見てからコミットする。SEKKEI.adoc に、直したテーマの書体の解き方を 1 節書く。
+
+== やらないこと
+
+* 数字(288 枚のうち 246 枚)や細かい経緯を紹介ページに書かない(発注者「こういう細かいことは書かない」)。
+* Microsoft のテンプレートを見本にしない。
+* Word で開いた文書を開いたままにしない(閉じられなければ止まる)。

@@ -183,8 +183,6 @@ def main(page: ft.Page):
             spacing=12,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         ),
-        p("役所が公開している様式 288 枚で、Word の PDF と頁数を比べています。"
-          "2026 年 9 月 19 日の時点で 246 枚が一致しています。残りも 1 枚ずつ原因を調べて直しています。", 15),
     )
 
     what = section(
