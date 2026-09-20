@@ -834,6 +834,48 @@ pub fn grid_up(mm: f32, pitch_pt: f32) -> f32 {
     ((mm - GRID_YURUSU_PT * PT_TO_MM) / p).ceil().max(1.0) * p
 }
 
+/// **空の段落しか無い頁は作らない**(2026-09-20)。
+///
+/// `<w:br w:type="page"/>` の後に空の段落が並び、そこで節が切れる形では、
+/// Word は頁を 1 回しか割りません。JST の計画書(`keikaku1_*`)がこの形で、
+/// うちはヘッダーだけの空の頁を 1 枚多く作っていました。Word の PDF では
+/// 「8．研究開発計画」の頁の見出しが y=91.96pt にあり、ほかの節の頭の頁と
+/// 同じ位置です。空の段落は前の頁の末尾に残り、新しい頁には出ていません。
+///
+/// そこで、節の区切りで頁を割るとき、直前の改ページとの間に字も絵も無ければ、
+/// **直前の改ページの方を取り消します**。節の区切りが持っている紙の指定を
+/// 生かすためです。直前が別の節の区切りなら触りません(紙の指定が対になって
+/// いるため)。
+fn drop_break_over_empty(sheet: &mut Sheet, y: f32) {
+    let Some(&last) = sheet.breaks.last() else { return };
+    if last >= y - 0.01 {
+        return;
+    }
+    // A break that a section made carries the paper for the next section
+    if sheet.sect_pages.iter().any(|(at, _)| (at - last).abs() < 0.01) {
+        return;
+    }
+    let mut aru = false;
+    for l in sheet.lines.iter().filter(|l| l.y_mm >= last - 0.01 && l.y_mm < y - 0.01) {
+        aru = true;
+        if l.cells.iter().any(|c| !c.ch.is_whitespace()) {
+            return;
+        }
+    }
+    if !aru {
+        return;
+    }
+    let ari = |ys: f32, h: f32| ys + h > last - 0.01 && ys < y - 0.01;
+    if sheet.images.iter().any(|(_, b)| ari(b[1], b[3]))
+        || sheet.inline_shapes.iter().any(|(_, b)| ari(b[1], b[3]))
+        || sheet.float_images.iter().any(|(_, b)| ari(b[1], b[3]))
+        || sheet.rules.iter().any(|r| ari(r[1].min(r[3]), (r[3] - r[1]).abs()))
+    {
+        return;
+    }
+    sheet.breaks.pop();
+}
+
 /// **グリッドに収まったと見る余り**(pt)。0.1pt は Word の刻み(twip)の 2 つ分です。
 ///
 /// 横浜市の 0581 で測りました(2026-09-20)。14pt の空の段落が 2 つ続く所で、
@@ -1558,6 +1600,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                         let same = (here.w_mm - next.w_mm).abs() < 0.01
                             && (here.h_mm - next.h_mm).abs() < 0.01;
                         if !(sb.continuous && same) {
+                            drop_break_over_empty(&mut sheet, y);
                             sheet.breaks.push(y);
                             sheet.sect_pages.push((y, next));
                             sheet.sect_hfs.push(section_hf_at(doc, bi + 1));
