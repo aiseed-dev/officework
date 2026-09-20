@@ -1203,6 +1203,7 @@ mod hf_tests {
             paragraphs: Document::plain(t).paragraphs().cloned().collect(),
             part: None,
             anchors: Vec::new(),
+            blocks: Vec::new(),
         };
         d.header = hf("頭の字");
         d.footer = hf(&format!("足 {PAGE_MARK}"));
@@ -1229,6 +1230,7 @@ mod hf_tests {
                 .paragraphs().cloned().collect(),
             part: None,
             anchors: Vec::new(),
+            blocks: Vec::new(),
         };
         let mut buf = Vec::new();
         to_pdf_with(&s, &data, Paper::default(), &PageDress::default(),

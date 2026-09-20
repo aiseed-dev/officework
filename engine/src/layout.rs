@@ -1764,6 +1764,9 @@ pub fn layout_hf(
     footer: bool,
     base_pt: f32,
 ) -> Vec<Line> {
+    if !hf.blocks.is_empty() {
+        return layout_hf_blocks(hf, m, pg, page_no, total, footer, base_pt);
+    }
     if hf.paragraphs.is_empty() {
         return Vec::new();
     }
@@ -1832,6 +1835,73 @@ pub fn layout_hf(
     out
 }
 
+/// **表を持つヘッダー・フッターを組む**(2026-09-20)。
+///
+/// Word のテンプレートは、日付・題・頁番号を 1 行の表に入れたヘッダーを
+/// よく使います。段落を平らに並べる道では欄の位置を持てないので、本文と
+/// 同じ [`layout`] に通します。返る行は段落の道と同じ約束で、`y_mm` は
+/// 用紙の上端からの mm、`Cell::x_mm` は本文の左端からの mm です。
+fn layout_hf_blocks(
+    hf: &HeadFoot,
+    m: &Metrics,
+    pg: &PageSetup,
+    page_no: usize,
+    total: usize,
+    footer: bool,
+    base_pt: f32,
+) -> Vec<Line> {
+    let num = page_no.to_string();
+    let tot = total.to_string();
+    let mut doc = Document { size_pt: Some(base_pt), ..Default::default() };
+    doc.blocks = hf.blocks.clone();
+    let mut ireru = |p: &mut Paragraph| {
+        for r in p.runs.iter_mut() {
+            if r.text.contains(PAGE_MARK) {
+                r.text = r.text.replace(PAGE_MARK, &num);
+            }
+            if r.text.contains(PAGES_MARK) {
+                r.text = r.text.replace(PAGES_MARK, &tot);
+            }
+        }
+    };
+    for b in doc.blocks.iter_mut() {
+        match b {
+            Block::Para(p) => ireru(p),
+            Block::Table(t) => t.for_each_paragraph_mut(&mut ireru),
+        }
+    }
+    let size_mm = base_pt * PT_TO_MM;
+    let frame = Frame { measure_mm: pg.measure_mm(), line_height_mm: LINE_MM, y0_mm: 0.0 };
+    let sheet = layout(&doc, m, &frame);
+    let mut out: Vec<Line> = sheet
+        .lines
+        .into_iter()
+        .map(|mut l| {
+            l.from_body = false;
+            l.cell = None;
+            l
+        })
+        .collect();
+    // **表の上端を `w:header`(フッターは `w:footer`)の距離に置きます。**
+    // 行の箱の上端はベースラインの [`BASE_UP_MM`] 上なので、一番上の行を
+    // そこへ送ります。裁判所の特例執行文の申立書(ヘッダーが 3 欄の表)で、
+    // Word のベースラインは 54.72pt、こちらは 53.89pt です(0.83pt 差)。
+    // フッターは段落の道と同じで、一番下の行の底を距離の所に置きます
+    let zure = if footer {
+        let sita = out.iter().map(|l| l.y_mm).fold(f32::NEG_INFINITY, f32::max);
+        pg.h_mm - pg.footer_mm - size_mm * 0.28 - sita
+    } else {
+        let atama = out.iter().map(|l| l.y_mm).fold(f32::INFINITY, f32::min);
+        pg.header_mm + BASE_UP_MM - atama
+    };
+    if zure.is_finite() {
+        for l in &mut out {
+            l.y_mm += zure;
+        }
+    }
+    out
+}
+
 /// **ヘッダー(フッター)が本文を押し下げる(押し上げる)高さ**(mm)。
 ///
 /// Word は本文の頭を「上の余白」と「ヘッダーの距離 + ヘッダーの高さ」の
@@ -1842,8 +1912,29 @@ pub fn layout_hf(
 pub fn hf_push_mm(hf: &HeadFoot, pg: &PageSetup, font: Option<&str>, latin: Option<&str>, base_pt: f32, footer: bool) -> f32 {
     let yohaku = if footer { pg.bottom_mm } else { pg.top_mm };
     // 負の余白(固定)は、ヘッダーがあっても押さない
-    if hf.paragraphs.is_empty() || (if footer { pg.bottom_fixed } else { pg.top_fixed }) {
+    if (hf.paragraphs.is_empty() && hf.blocks.is_empty())
+        || (if footer { pg.bottom_fixed } else { pg.top_fixed })
+    {
         return yohaku;
+    }
+    // A part made of a table is measured from its rows' heights
+    if !hf.blocks.is_empty() {
+        let kyori = if footer { pg.footer_mm } else { pg.header_mm };
+        let takasa: f32 = hf
+            .blocks
+            .iter()
+            .map(|b| match b {
+                Block::Table(t) => t.row_mm.iter().sum::<f32>(),
+                Block::Para(p) => {
+                    let pt = p.runs.iter().filter_map(|r| r.size_pt).fold(0.0f32, f32::max);
+                    if pt > 0.0 { pt } else { base_pt }
+                }
+                .max(base_pt)
+                    * crate::font::okuri_em(font).unwrap_or(1.292)
+                    * PT_TO_MM,
+            })
+            .sum();
+        return yohaku.max(kyori + takasa);
     }
     let em = crate::font::okuri_em(font).unwrap_or(1.292);
     // **半角だけ(か空)の段落は欧文の書体の行送り**(2026-09-09、Word の PDF で

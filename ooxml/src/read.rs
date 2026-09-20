@@ -335,6 +335,11 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                 if hf.paragraphs.is_empty() {
                     hf.paragraphs.push(Paragraph::default());
                 }
+            } else {
+                // A header or footer built out of a table keeps its blocks, so
+                // the cells' text is laid out where Word puts it (2026-09-20).
+                // The size the part was written for comes from the document
+                hf.blocks = hdoc.blocks.clone();
             }
             for (n, k) in hrep.unsupported {
                 for _ in 0..k {

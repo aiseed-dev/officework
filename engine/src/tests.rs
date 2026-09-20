@@ -1645,6 +1645,7 @@ mod hf_layout_tests {
             paragraphs: Document::plain(text).paragraphs().cloned().collect(),
             part: None,
             anchors: Vec::new(),
+            blocks: Vec::new(),
         }
     }
 
