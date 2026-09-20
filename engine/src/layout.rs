@@ -812,7 +812,19 @@ pub(super) fn dip_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&s
         Some(_) => lh,
         None => sizen.min(lh),
     };
-    let mut oki = hako - size_pt * 0.28 * PT_TO_MM;
+    // **`w:lineRule="exact"` の行は、箱の 4/5 の所に腰が来ます。**
+    //
+    // ECMA-376 17.3.1.33 は行の高さを固定するとだけ書いていて、その中の
+    // どこに字を置くかは書いていません。Word の PDF で測ると、腰は箱の
+    // 上から高さの 0.8 倍の所です。Word の入場券の型紙の `Title`
+    // (`w:line="500" w:lineRule="exact"` = 25pt、字は 28pt)は
+    // 20.04pt、`Subtitle`(`w:line="400"` = 20pt、字は 23pt)は 16.04pt
+    // で、どちらも高さ × 0.8 と 0.04pt しか違いません。字の大きさにも
+    // 書体にもよりません(2026-09-20)
+    let mut oki = match para.line_pt {
+        Some((_, true)) => hako * 0.8,
+        _ => hako - size_pt * 0.28 * PT_TO_MM,
+    };
     // **行グリッド**(2026-09-09)。倍率の段落は、グリッドに切り上げた1行の中に
     // 字を**まん中**に置く(LibreOffice の Word 互換の組み方と同じ。Word の PDF で
     // 測って直す予定)
@@ -2405,7 +2417,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         v: VMerge,
         /// 行の字と、セルの中でのバイト位置と、行の高さ(mm)と、横の揃えと、
         /// 字の大きさ(pt)と、1行目の字下げ(mm)と、字を箱の底に置くか
-        lines: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (bool, f32, f32, f32), usize)>,
+        lines: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (Option<bool>, f32, f32, f32), usize)>,
         x: f32,
         w: f32,
         /// セルの背景色。**セルの中の最初の段落の物**を使います
@@ -2457,7 +2469,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let span = cell.span().min(ncols.saturating_sub(gc)).max(1);
             let x = xs[gc.min(ncols)];
             let w = xs[(gc + span).min(ncols)] - x;
-            let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (bool, f32, f32, f32), usize)> = Vec::new();
+            let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (Option<bool>, f32, f32, f32), usize)> = Vec::new();
             let mut hyou_no: Vec<(usize, Sheet, f32)> = Vec::new();
             // Images of the cell: (line they belong to, image, w, h, at the head)
             let mut gazou: Vec<(usize, InlineImage, f32, f32, bool)> = Vec::new();
@@ -2572,10 +2584,12 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         // 行の高さを段落が言っている(`atLeast` / `exact`)なら、
                         // 字は箱の底に置きます(下の第2走を見てください)。
                         // 行グリッドの倍率の段落は、切り上げた分の半分だけ下げます
-                        let soko = para.line_pt.is_some();
+                        // Some(true) = `w:lineRule="exact"`, Some(false) =
+                        // `atLeast`, None = the line height is the font's
+                        let soko = para.line_pt.map(|(_, kikkari)| kikkari);
                         let sizen = syotai_lh_mm(para, pbase, pfont.as_deref())
                             .unwrap_or(frame.line_height_mm * para_scale(para));
-                        let sage = if pitch > 0.0 && !para.no_grid && !soko {
+                        let sage = if pitch > 0.0 && !para.no_grid && soko.is_none() {
                             (grid_up(sizen, pitch) - sizen) / 2.0
                         } else {
                             0.0
@@ -2608,12 +2622,12 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                                     .unwrap_or(l.2 * 0.8);
                                 let ue = (ih - moji_agari).max(0.0);
                                 l.2 += ue;
-                                l.6 = (false, l.6.1 + ue, l.6.2, l.6.3);
+                                l.6 = (None, l.6.1 + ue, l.6.2, l.6.3);
                             }
                             gazou.push((saisho, im.clone(), iw, ih, true));
                         } else {
                             gazou.push((ls.len(), im.clone(), iw, ih, false));
-                            ls.push((Vec::new(), para0, ih, para.align, pbase, hidari, (false, 0.0, 0.0, 0.0), 0));
+                            ls.push((Vec::new(), para0, ih, para.align, pbase, hidari, (None, 0.0, 0.0, 0.0), 0));
                         }
                     }
                     for a in &para.anchors {
@@ -2855,8 +2869,20 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 // below it; the baseline is measured from the text's own
                 // box. Until 2026-09-19 the space before was left below the
                 // text, so a title with 24pt before sat 24pt too high
-                let agari = if soko {
-                    (plh - ato - pt * 0.28 * PT_TO_MM).max(0.0)
+                // **`w:lineRule="exact"` の行は、箱の 4/5 の所に腰が来ます**
+                // (本文の [`dip_of`] と同じ。2026-09-20 に Word の PDF で
+                // 測りました)。`atLeast` は今までどおり箱の底からです。
+                //
+                // **箱は動かしません。** 行の高さは固定なので、頁を割る所が
+                // 見る `y_mm` はそのままにして、字の下がり(`dip_mm`)だけで
+                // 動かします。本文の段落も同じ形です
+                let mut dip = 0.0f32;
+                let agari = if soko.is_some() {
+                    let sita = (plh - ato - pt * 0.28 * PT_TO_MM).max(0.0);
+                    if soko == Some(true) {
+                        dip = ((plh - ato) * 0.8).max(0.0) - sita;
+                    }
+                    sita
                 } else {
                     crate::font::agari_em(ji.as_deref())
                         .map(|e| pt * e * PT_TO_MM)
@@ -2899,7 +2925,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 let mut cells = cells;
                 tsumeru(&mut cells, uti, tsume);
                 narabe(&mut cells, x0 + zure + sagari, aki);
-                sheet.lines.push(Line { cells, y_mm: yy, from_body: false, byte0: b0, cell: id, dip_mm: 0.0,
+                sheet.lines.push(Line { cells, y_mm: yy, from_body: false, byte0: b0, cell: id, dip_mm: dip,
                                         head });
                 yy += plh - agari;
             }

@@ -860,10 +860,10 @@ mod table_layout_tests {
                &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0})
     }
 
-    /// **段落が行の高さを言っているセルは、字を箱の底に置く**(2026-09-09)。
-    /// 本文と同じ OOXML の決め(ECMA-376 §17.3.1.33)です。議事録の表(行
-    /// 18.15pt の `atLeast`、11pt の字)で、Word のベースラインはうちより
-    /// 5.5pt 下にありました。言っていないセルは今までどおり書体の上がりです
+    /// **`atLeast` のセルは字を箱の底に置く**(2026-09-09)。本文と同じ
+    /// OOXML の決め(ECMA-376 §17.3.1.33)です。議事録の表(行 18.15pt の
+    /// `atLeast`、11pt の字)で、Word のベースラインはうちより 5.5pt 下に
+    /// ありました。言っていないセルは今までどおり書体の上がりです
     #[test]
     fn cell_text_sits_at_the_bottom_of_a_declared_line_box() {
         let data = test_font();
@@ -877,7 +877,7 @@ mod table_layout_tests {
         let hikui = base(&d);
         let mut at = |pt: f32| -> f32 {
             if let Block::Table(t) = &mut d.blocks[1] {
-                t.rows[0][0].paragraphs[0].line_pt = Some((pt, true));
+                t.rows[0][0].paragraphs[0].line_pt = Some((pt, false));
             }
             base(&d)
         };
@@ -887,6 +887,37 @@ mod table_layout_tests {
         assert!(((b - a) - 10.0 * 25.4 / 72.0).abs() < 0.05, "字が箱の底に寄っていない: {a} → {b}");
         // 30pt の箱では、書体の上がりに置くよりはっきり下にある
         assert!(b - hikui > 3.0, "箱の底に寄っていない: {hikui} → {b}");
+    }
+
+    /// **`exact` のセルは、腰が箱の 4/5 の所に来る**(2026-09-20、Word の
+    /// PDF で測りました)。ECMA-376 §17.3.1.33 は高さを固定するとだけ書いて
+    /// いて、その中のどこに字を置くかは書いていません。Word の入場券の型紙の
+    /// `Title`(25pt の箱に 28pt の字)は 20.04pt、`Subtitle`(20pt の箱に
+    /// 23pt の字)は 16.04pt でした。行の箱は動きません(高さは固定なので、
+    /// 頁を割る所が見る `y_mm` はそのままで、字の下がり `dip_mm` だけが動く)
+    #[test]
+    fn cell_text_in_an_exact_line_sits_four_fifths_down() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0};
+        let base = |d: &Document| -> f32 {
+            let s = layout(d, &m, &frame);
+            let l = s.lines.iter().find(|l| l.text().contains("品名")).expect("セルが無い");
+            l.y_mm + l.dip_mm
+        };
+        let mut d = doc_with_table();
+        let mut at = |pt: f32| -> f32 {
+            if let Block::Table(t) = &mut d.blocks[1] {
+                t.rows[0][0].paragraphs[0].line_pt = Some((pt, true));
+            }
+            base(&d)
+        };
+        // 箱を 20pt から 30pt にすると、腰は 10pt の 4/5 = 8pt 下がる
+        let (a, b) = (at(20.0), at(30.0));
+        assert!(
+            ((b - a) - 8.0 * 25.4 / 72.0).abs() < 0.05,
+            "腰が箱の 4/5 に無い: {a} → {b}"
+        );
     }
 
     /// **docx の番号は表のセルをまたいで続く**(2026-09-09)。同じ numId は続き、
