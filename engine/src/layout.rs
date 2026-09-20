@@ -2451,8 +2451,13 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         lines: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (Option<bool>, f32, f32, f32), usize)>,
         x: f32,
         w: f32,
-        /// セルの背景色。**セルの中の最初の段落の物**を使います
+        /// **The cell's own fill** (docx `w:tcPr/w:shd`, or a band of the
+        /// table style). A paragraph's own `w:shd` is not this: it paints
+        /// only the paragraph, and rides in `line_shade`
         shade: Option<String>,
+        /// The band each line of `lines` sits on (docx `w:pPr/w:shd`,
+        /// ECMA-376 17.3.1.31), one entry per line
+        line_shade: Vec<Option<String>>,
         /// セルの中の縦の揃え(docx の `w:tcPr/w:vAlign`)
         valign: book::VAlign,
         /// **このセルの余白**([上, 右, 下, 左] mm)。セル自身の `w:tcMar`、
@@ -2501,6 +2506,8 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let x = xs[gc.min(ncols)];
             let w = xs[(gc + span).min(ncols)] - x;
             let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (Option<bool>, f32, f32, f32), usize)> = Vec::new();
+            // The band of each line above (docx `w:pPr/w:shd`), same order
+            let mut line_shade: Vec<Option<String>> = Vec::new();
             let mut hyou_no: Vec<(usize, Sheet, f32)> = Vec::new();
             // Images of the cell: (line they belong to, image, w, h, at the head)
             let mut gazou: Vec<(usize, InlineImage, f32, f32, bool)> = Vec::new();
@@ -2625,6 +2632,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         } else {
                             0.0
                         };
+                        line_shade.push(para.shade.clone());
                         ls.push((cs, b0, h, yose, pt, hidari + if k == 0 { sagari } else { 0.0 },
                                  (soko, sage, if k == 0 { mae } else { 0.0 }, if k == saigo { ato } else { 0.0 }),
                                  if k == 0 { mk_len } else { 0 }));
@@ -2658,6 +2666,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                             gazou.push((saisho, im.clone(), iw, ih, true));
                         } else {
                             gazou.push((ls.len(), im.clone(), iw, ih, false));
+                            line_shade.push(para.shade.clone());
                             ls.push((Vec::new(), para0, ih, para.align, pbase, hidari, (None, 0.0, 0.0, 0.0), 0));
                         }
                     }
@@ -2680,13 +2689,15 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     naka_max = naka_max.max(naka);
                 }
             }
-            // **セル自身の塗りが先。** 表スタイルの帯の色はここに入ります。
-            // 無ければ最初の段落の塗り(前からの道)(2026-09-03)
-            let shade = cell
-                .shade
-                .clone()
-                .or_else(|| cell.paragraphs.first().and_then(|p| p.shade.clone()));
-            laid.push(Laid { ci, gc, span, v: cell.v_merge, lines: ls, x, w, shade,
+            // **The cell's own fill only.** A band the table style paints
+            // lands in `cell.shade`. A paragraph's `w:shd` used to be taken
+            // from the first paragraph and painted over the whole cell, which
+            // Word does not do: it paints the paragraph's own line box
+            // (ECMA-376 17.3.1.31). The booklet template's `Heading 1` inside
+            // a merged cell showed it, 167pt of green where Word paints 20pt
+            // (2026-09-21)
+            let shade = cell.shade.clone();
+            laid.push(Laid { ci, gc, span, v: cell.v_merge, lines: ls, line_shade, x, w, shade,
                              valign: cell.valign, pad,
                              diag: (cell.borders.diag_down, cell.borders.diag_up),
                              naka_hyou: hyou_no, images: gazou, anchors: ikari });
@@ -2865,6 +2876,15 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 book::VAlign::Bottom => aki,
                 _ => 0.0,
             };
+            // **セルの塗り**(2026-08-27)。段落の背景色は模型に在り、画面は
+            // 塗っていたのに、**組む所で落としていた**ので紙と PDF に出て
+            // いませんでした。註記の帯も見出しの背景も印刷で消えます。
+            // 罫線より先に敷くよう、`fills` は `rules` と別に持ちます。
+            // The cell goes down before the paragraph bands inside it, so a
+            // band stays on top of it
+            if let Some(c) = l.shade.as_deref() {
+                sheet.fills.push(([l.x, row_top, l.w, h], c.to_string()));
+            }
             let mut yy = row_top + l.pad[0] + ue;
             let id = Some((table_no, ri, l.ci));
             let uti = (l.w - l.pad[1] - l.pad[3]).max(0.0);
@@ -2873,11 +2893,32 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let gazou = l.images;
             let ikari = l.anchors;
             let n_gyou = l.lines.len();
+            // **The band of a paragraph inside a cell** (docx `w:pPr/w:shd`,
+            // ECMA-376 17.3.1.31). It covers that paragraph's line boxes, not
+            // the cell, so the lines that share a colour are collected and
+            // laid down as one rectangle
+            let line_shade = l.line_shade;
+            let mut obi: Option<(String, f32, f32)> = None;
             for (j, (cells, b0, plh, yose, pt, sagari, (soko, sage, mae, ato), head)) in l.lines.into_iter().enumerate() {
                 while hyou_no.peek().is_some_and(|(at, _, _)| *at <= j) {
                     let (_, tmp, th) = hyou_no.next().unwrap();
                     utsusu(tmp, x0, yy, sheet);
                     yy += th;
+                }
+                // The band covers the line boxes and not the space before or
+                // after the paragraph: Word paints 19.68pt behind the 16pt
+                // `Heading 1` of its booklet template, whose style asks for
+                // 12pt on each side (2026-09-21)
+                let kono = line_shade.get(j).cloned().flatten();
+                let (obi_ue, obi_sita) = (yy + mae, yy + plh - ato);
+                match (&mut obi, &kono) {
+                    (Some((c, _, sita)), Some(k)) if c == k => *sita = obi_sita,
+                    _ => {
+                        if let Some((c, ue, sita)) = obi.take() {
+                            sheet.fills.push(([x0, ue, uti, sita - ue], c));
+                        }
+                        obi = kono.clone().map(|c| (c, obi_ue, obi_sita));
+                    }
                 }
                 // **ベースラインは書体の上がりの所**です。LibreOffice と
                 // 同じで、行の箱が字より高いぶんは全部ベースラインより上に
@@ -2960,18 +3001,14 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                                         head });
                 yy += plh - agari;
             }
+            if let Some((c, ue, sita)) = obi.take() {
+                sheet.fills.push(([x0, ue, uti, sita - ue], c));
+            }
             // 最後の段落より後に置く表
             while hyou_no.peek().is_some_and(|(at, _, _)| *at >= n_gyou) {
                 let (_, tmp, th) = hyou_no.next().unwrap();
                 utsusu(tmp, x0, yy, sheet);
                 yy += th;
-            }
-            // **セルの塗り**(2026-08-27)。段落の背景色は模型に在り、画面は
-            // 塗っていたのに、**組む所で落としていた**ので紙と PDF に出て
-            // いませんでした。註記の帯も見出しの背景も印刷で消えます。
-            // 罫線より先に敷くよう、`fills` は `rules` と別に持ちます
-            if let Some(c) = l.shade.as_deref() {
-                sheet.fills.push(([l.x, row_top, l.w, h], c.to_string()));
             }
             // **セルの斜線**(docx の `w:tcBorders/w:tl2br` と `w:tr2bl`)。
             //
