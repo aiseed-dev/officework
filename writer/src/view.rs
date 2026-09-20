@@ -909,18 +909,21 @@ impl Render for Writer {
         }
 
         // The document's own drawings without text (page-wide bands, rules
-        // under headings), placed by the paper side. They go under the body
-        // text and under the pictures, which is where the print puts them
-        // (the PDF writes them as fills, and fills are painted first)
-        for (src, at) in self.yosomono_imgs(pxmm, false) {
-            paper = paper.child(
-                gpui::img(src).absolute().left(px(at[0])).top(px(at[1])).w(px(at[2])).h(px(at[3])),
-            );
-        }
-
-        // 画像。組版が置いた位置に、そのまま出す
-        for (i, (bytes, [x, top, w_mm, h_mm])) in
-            self.page.images.iter().chain(self.page.float_images.iter()).enumerate()
+        // under headings) and the pictures, in one order.
+        //
+        // A group draws its children in the order the file lists them, and
+        // that order is the z order (ECMA-376 20.1.2.2.x). The print sorts
+        // the same way: by z first, and within one z the shapes' fills
+        // before the pictures. Everything the body makes carries 0, so a
+        // band still goes under the body pictures (2026-09-20)
+        let bands = self.yosomono_imgs(pxmm, false);
+        let mut ehon: Vec<(std::sync::Arc<gpui::Image>, [f32; 4], i32)> = Vec::new();
+        for (bytes, [x, top, w_mm, h_mm], z) in self
+            .page
+            .images
+            .iter()
+            .map(|(b, a)| (b, a, 0i32))
+            .chain(self.page.float_images.iter().map(|(b, a, z)| (b, a, *z)))
         {
             let src = self.image_cache.entry(std::sync::Arc::as_ptr(bytes) as usize)
                 .or_insert_with(|| {
@@ -932,14 +935,26 @@ impl Render for Writer {
                     std::sync::Arc::new(gpui::Image::from_bytes(format, bytes.to_vec()))
                 })
                 .clone();
-            let _ = i;
+            let at = [
+                (self.pg.left_mm + x) * pxmm,
+                top * pxmm,
+                w_mm * pxmm,
+                h_mm * pxmm,
+            ];
+            ehon.push((src, at, z));
+        }
+        let mut junban: Vec<(i32, u8, usize)> =
+            bands.iter().enumerate().map(|(k, (_, _, z))| (*z, 0u8, k)).collect();
+        junban.extend(ehon.iter().enumerate().map(|(k, (_, _, z))| (*z, 2u8, k)));
+        junban.sort_unstable();
+        for (_, kind, k) in junban {
+            let (src, at) = if kind == 0 {
+                (bands[k].0.clone(), bands[k].1)
+            } else {
+                (ehon[k].0.clone(), ehon[k].1)
+            };
             paper = paper.child(
-                gpui::img(src)
-                    .absolute()
-                    .left(px((self.pg.left_mm + x) * pxmm))
-                    .top(px(top * pxmm))
-                    .w(px(w_mm * pxmm))
-                    .h(px(h_mm * pxmm)),
+                gpui::img(src).absolute().left(px(at[0])).top(px(at[1])).w(px(at[2])).h(px(at[3])),
             );
         }
 
@@ -1441,7 +1456,7 @@ impl Render for Writer {
         // 選んでいる図形には枠を出します
         // The document's own text boxes, over the body text as the print
         // puts them. The plain bands went under the text, further up
-        for (src, at) in self.yosomono_imgs(pxmm, true) {
+        for (src, at, _) in self.yosomono_imgs(pxmm, true) {
             paper = paper.child(
                 gpui::img(src).absolute().left(px(at[0])).top(px(at[1])).w(px(at[2])).h(px(at[3])),
             );
@@ -1834,7 +1849,11 @@ impl Writer {
     /// screen draws a whole shape as one picture, so it calls this twice —
     /// once for the plain bands before the text, once for the text boxes
     /// after it (2026-09-20)
-    fn yosomono_imgs(&self, pxmm: f32, with_text: bool) -> Vec<(std::sync::Arc<gpui::Image>, [f32; 4])> {
+    fn yosomono_imgs(
+        &self,
+        pxmm: f32,
+        with_text: bool,
+    ) -> Vec<(std::sync::Arc<gpui::Image>, [f32; 4], i32)> {
         let mut out = Vec::new();
         for sp in &self.yosomono {
             let has_text = sp.look.text.as_deref().is_some_and(|t| !t.trim().is_empty());
@@ -1871,7 +1890,7 @@ impl Writer {
             let (x, y) = (sp.x_mm * pxmm, (sp.y_mm + oy) * pxmm);
             let (w, h) = (sp.w_mm * pxmm, sp.h_mm * pxmm);
             let pd = pad / PX_PER_MM * pxmm;
-            out.push((src, [x - pd, y - pd, w + pd * 2.0, h + pd * 2.0]));
+            out.push((src, [x - pd, y - pd, w + pd * 2.0, h + pd * 2.0], sp.z));
         }
         out
     }

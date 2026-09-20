@@ -868,7 +868,7 @@ fn drop_break_over_empty(sheet: &mut Sheet, y: f32) {
     let ari = |ys: f32, h: f32| ys + h > last - 0.01 && ys < y - 0.01;
     if sheet.images.iter().any(|(_, b)| ari(b[1], b[3]))
         || sheet.inline_shapes.iter().any(|(_, b)| ari(b[1], b[3]))
-        || sheet.float_images.iter().any(|(_, b)| ari(b[1], b[3]))
+        || sheet.float_images.iter().any(|(_, b, _)| ari(b[1], b[3]))
         || sheet.rules.iter().any(|r| ari(r[1].min(r[3]), (r[3] - r[1]).abs()))
     {
         return;

@@ -1577,6 +1577,14 @@ pub struct DocShape {
     pub h_mm: f32,
     /// 形・塗り・線・中の文字
     pub look: book::SheetShape,
+    /// **Where this drawing sits in the shape tree of its group.**
+    ///
+    /// A group draws its children in the order the file lists them, and
+    /// that order is the z order (ECMA-376 20.1.2.2.x). 0 means "not a
+    /// group's child": those keep the old layer, under the pictures. A
+    /// group's children count from 1, in file order, and are drawn against
+    /// the floating pictures of the same group by this number.
+    pub z: i32,
 }
 
 /// 手描きの1筆。座標は**そのページの中**の mm(紙の左上が原点)。
@@ -2748,8 +2756,12 @@ pub struct Sheet {
     /// Inline shapes placed like images: (raw drawing XML, [x, top, w, h] mm)
     pub inline_shapes: Vec<(String, [f32; 4])>,
     /// Floating pictures (`wp:anchor` + `wp:wrapNone`), placed by the paper
-    /// side after pagination; drawn like `images`, never part of a line
-    pub float_images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4])>,
+    /// side after pagination; drawn like `images`, never part of a line.
+    ///
+    /// The third number is the picture's place in the shape tree of its
+    /// group, the same number [`DocShape::z`] carries, so a group's
+    /// pictures and shapes are drawn in file order.
+    pub float_images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], i32)>,
     /// Where each paragraph that carries anchored drawings starts:
     /// (anchor XML, x of the text in mm, y of the first line's box top plus
     /// BASE_UP_MM). Body paragraphs and table cells alike; the paper side

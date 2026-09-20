@@ -491,6 +491,9 @@ const HEAD_GREY: (f32, f32, f32) = (0.4, 0.44, 0.48);
 /// (2026-08-27 発注者「行番号と列番号もセルと同じ」)。
 struct Ink<'a> {
     leaf: &'a mut pdfw::Leaf,
+    /// Where what this pen draws sits in the draw order. 0 is the body;
+    /// a group's children count from 1 in file order (see [`pdfw::Leaf`])
+    z: i32,
 }
 
 impl Ink<'_> {
@@ -565,7 +568,7 @@ impl Ink<'_> {
     /// 透明度つきの塗り
     fn poly_a(&mut self, points: Vec<(f32, f32)>, rgb: (f32, f32, f32), a: f32) {
         if points.len() >= 3 {
-            self.leaf.polys.push(pdfw::Poly { points, rgb, a });
+            self.leaf.polys.push(pdfw::Poly { points, rgb, a, z: self.z });
         }
     }
 }
@@ -788,7 +791,7 @@ impl Board {
 
     /// `i` 枚目に描く筆を借ります
     fn ink(&mut self, i: usize) -> Ink<'_> {
-        Ink { leaf: &mut self.leaves[i] }
+        Ink { leaf: &mut self.leaves[i], z: 0 }
     }
 
     fn save<W: Write>(self, paper: Paper, font_data: &[u8], out: W) -> Result<(), String> {
@@ -815,8 +818,9 @@ impl Board {
 /// `y_mm` は紙の**上から**の mm(文書の図形はそう持ちます)。紙面は下からの
 /// mm なので、ここで裏返します。
 pub(crate) fn doc_shapes(leaf: &mut pdfw::Leaf, shapes: &[kumihan::DocShape], h_mm: f32) {
-    let mut l1 = Ink { leaf };
+    let mut l1 = Ink { leaf, z: 0 };
     for sp in shapes {
+        l1.z = sp.z;
         // `zukei` は図形自身のずらしを足すので、写しで 0 にしてから渡します
         let mut look = sp.look.clone();
         look.dx_px = 0.0;
@@ -2021,6 +2025,7 @@ fn draw_sheet(
                 w_mm: w,
                 h_mm: h,
                 data: std::sync::Arc::new(im.data.clone()),
+                z: 0,
             });
         }
     }

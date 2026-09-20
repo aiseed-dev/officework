@@ -3921,6 +3921,7 @@ mod doc_shape_tests {
                 alpha: 1.0,
                 ..Default::default()
             },
+            z: 0,
         }
     }
 
@@ -4350,6 +4351,7 @@ mod tebiki_ni_awaseta_tests {
         let hako = |x: f32| kumihan::DocShape {
             page: 0, x_mm: x, y_mm: 60.0, w_mm: 40.0, h_mm: 25.0,
             look: book::SheetShape { kind: "rect".into(), ..Default::default() },
+            z: 0,
         };
         w.update(cx, |this, cx| {
             this.doc.shapes = vec![hako(25.0), hako(45.0)];
@@ -4527,6 +4529,7 @@ mod shape_pick_tests {
                 alpha: 1.0,
                 ..Default::default()
             },
+            z: 0,
         }
     }
 

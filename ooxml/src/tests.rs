@@ -832,6 +832,7 @@ mod para_tests {
         let sp = kumihan::DocShape {
             page: 1, x_mm: 20.0, y_mm: 30.0, w_mm: 40.0, h_mm: 25.0,
             look: book::SheetShape { kind: "rect".into(), ..Default::default() },
+            z: 0,
         };
         let a = crate::shape_anchor_run(&sp, 9000);
         assert!(crate::foreign_shape(&a).is_none(), "うちの図形を他所の物と読んだ");
@@ -3450,6 +3451,7 @@ fn shapes_survive_a_round_trip() {
             text: Some("往復".into()),
             ..Default::default()
         },
+        z: 0,
     }];
     // 保存の前に、そのページの段落へ結び付けます(paper がやる仕事です)。
     // ここでは1ページ目なので、1つ目の段落へ手で入れます

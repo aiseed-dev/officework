@@ -400,43 +400,66 @@ pub fn write_pages_fonts<W: std::io::Write>(
             c.rect(pt(f.x_mm), pt(f.y_mm), pt(f.w_mm), pt(f.h_mm));
             c.fill_nonzero();
         }
-        // 好きな形の塗り。四角の塗りと同じ層です
-        for g in &page.polys {
-            let Some(((x0, y0), rest)) = g.points.split_first() else { continue };
-            if rest.is_empty() {
-                continue;
+        // **Free shapes, paths and pictures, in one order.**
+        //
+        // A group draws its children in the order the file lists them, and
+        // that order is the z order (ECMA-376 20.1.2.2.x). Sorting by
+        // `(z, kind, index)` leaves everything the body makes (`z` 0) in
+        // the order it had — free fills, then paths, then pictures — and
+        // puts a group's children between the pictures of the same group.
+        // Word's ticket template draws three stars after the scroll
+        // picture, and drawing every picture last hid them (2026-09-20)
+        let mut order: Vec<(i32, u8, usize)> = Vec::new();
+        order.extend(page.polys.iter().enumerate().map(|(k, g)| (g.z, 0u8, k)));
+        order.extend(page.paths.iter().enumerate().map(|(k, m)| (m.z, 1u8, k)));
+        order.extend(img_ids[i].iter().enumerate().map(|(k, (_, im))| (im.z, 2u8, k)));
+        order.sort_unstable();
+        let mut michi_kaita = false;
+        for (_, kind, k) in order {
+            match kind {
+                // 好きな形の塗り。四角の塗りと同じ層です
+                0 => {
+                    let g = &page.polys[k];
+                    let Some(((x0, y0), rest)) = g.points.split_first() else { continue };
+                    if rest.is_empty() {
+                        continue;
+                    }
+                    usu(&mut c, &mut usu_now, g.a);
+                    if fill_now != Some(g.rgb) {
+                        c.set_fill_rgb(g.rgb.0, g.rgb.1, g.rgb.2);
+                        fill_now = Some(g.rgb);
+                    }
+                    c.move_to(pt(*x0), pt(*y0));
+                    for (x, y) in rest {
+                        c.line_to(pt(*x), pt(*y));
+                    }
+                    c.close_path();
+                    c.fill_nonzero();
+                }
+                // **曲がる線と切り抜きのある形**([`Michi`])。塗りと同じ層です。
+                // 色も太さも道ごとに書き直すので、上の `fill_now`/`pen` の控えは
+                // 当てにならなくなります — 書いた後で消しておきます
+                1 => {
+                    usu(&mut c, &mut usu_now, page.paths[k].a);
+                    michi_kaku(&mut c, &page.paths[k], pt);
+                    michi_kaita = true;
+                    fill_now = None;
+                }
+                // 置いた絵
+                _ => {
+                    let im = img_ids[i][k].1;
+                    c.save_state();
+                    // 置き方の行列。大きさをそのまま使います
+                    c.transform([pt(im.w_mm), 0.0, 0.0, pt(im.h_mm), pt(im.x_mm), pt(im.y_mm)]);
+                    c.x_object(Name(format!("I{k}").as_bytes()));
+                    c.restore_state();
+                }
             }
-            usu(&mut c, &mut usu_now, g.a);
-            if fill_now != Some(g.rgb) {
-                c.set_fill_rgb(g.rgb.0, g.rgb.1, g.rgb.2);
-                fill_now = Some(g.rgb);
-            }
-            c.move_to(pt(*x0), pt(*y0));
-            for (x, y) in rest {
-                c.line_to(pt(*x), pt(*y));
-            }
-            c.close_path();
-            c.fill_nonzero();
         }
-        // **曲がる線と切り抜きのある形**([`Michi`])。塗りと同じ層です。
-        // 色も太さも道ごとに書き直すので、上の `fill_now`/`pen` の控えは
-        // 当てにならなくなります — 書いた後で消しておきます
-        if !page.paths.is_empty() {
-            for m in &page.paths {
-                usu(&mut c, &mut usu_now, m.a);
-                michi_kaku(&mut c, m, pt);
-            }
+        if michi_kaita {
             // 道は `q`/`Q` で挟むので、中で決めた色も濃さも戻ります。
             // 上の控えは当てにならないので消しておきます
             usu_now = None;
-        }
-        // **絵はいちばん下**。字と罫線が上に載ります
-        for (k, (_, im)) in img_ids[i].iter().enumerate() {
-            c.save_state();
-            // 置き方の行列。大きさをそのまま使います
-            c.transform([pt(im.w_mm), 0.0, 0.0, pt(im.h_mm), pt(im.x_mm), pt(im.y_mm)]);
-            c.x_object(Name(format!("I{k}").as_bytes()));
-            c.restore_state();
         }
         // **罫線を先に引きます**(字の下)
         let mut pen: Option<((f32, f32, f32), f32)> = None;
@@ -943,6 +966,7 @@ mod tests {
             images: vec![Image {
                 x_mm: 20.0, y_mm: 200.0, w_mm: 40.0, h_mm: 30.0,
                 data: std::sync::Arc::new(png.into_inner()),
+                z: 0,
             }],
             ..Default::default()
         };
@@ -1354,6 +1378,14 @@ impl Default for Rule {
 pub struct Leaf {
     pub pieces: Vec<Piece>,
     pub rules: Vec<Rule>,
+    /// **置いた絵。**
+    ///
+    /// The fills, the paths and the pictures of one page are drawn in the
+    /// order of their `z`, and within one `z` the fills come first, then
+    /// the paths, then the pictures. Everything the body makes carries 0,
+    /// so the body keeps the order it always had. A group's children count
+    /// from 1 in file order, which is the z order the file asks for
+    /// (ECMA-376 20.1.2.2.x)
     pub images: Vec<Image>,
     /// 紙の色(0〜1 の RGB)
     pub bg: Option<(f32, f32, f32)>,
@@ -1485,6 +1517,8 @@ pub struct Michi {
     pub a: f32,
     /// **切り抜く形。** 空ならこの道は切り抜きません
     pub clip: Vec<Suji>,
+    /// Where this path sits in the draw order. See [`Leaf::images`]
+    pub z: i32,
 }
 
 impl Default for Michi {
@@ -1498,6 +1532,7 @@ impl Default for Michi {
             dash: Vec::new(),
             a: 1.0,
             clip: Vec::new(),
+            z: 0,
         }
     }
 }
@@ -1533,11 +1568,13 @@ pub struct Poly {
     pub rgb: (f32, f32, f32),
     /// 不透明度(0〜1、1 = 不透明)
     pub a: f32,
+    /// Where this piece sits in the draw order. See [`Leaf::images`]
+    pub z: i32,
 }
 
 impl Default for Poly {
     fn default() -> Self {
-        Poly { points: Vec::new(), rgb: (0.0, 0.0, 0.0), a: 1.0 }
+        Poly { points: Vec::new(), rgb: (0.0, 0.0, 0.0), a: 1.0, z: 0 }
     }
 }
 
@@ -1549,6 +1586,8 @@ pub struct Image {
     pub h_mm: f32,
     /// PNG か JPEG の実体
     pub data: std::sync::Arc<Vec<u8>>,
+    /// Where this picture sits in the draw order. See [`Leaf::images`]
+    pub z: i32,
 }
 
 /// **組み上がった紙面を PDF にする。**
@@ -1937,7 +1976,12 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
     // 画像。どの頁に載るかは上端の y で決めます
     let mut bad = 0;
     let mut wmf_moji = 0usize;
-    for (data, at) in sheet.images.iter().chain(sheet.float_images.iter()) {
+    let hairetsu = sheet
+        .images
+        .iter()
+        .map(|(d, a)| (d, a, 0i32))
+        .chain(sheet.float_images.iter().map(|(d, a, z)| (d, a, *z)));
+    for (data, at, z) in hairetsu {
         let k = page_of(offsets, at[1], paper.height_mm);
         let off = offsets.get(k).copied().unwrap_or(0.0);
         let pp = paper_of(k);
@@ -1968,6 +2012,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                 w_mm: at[2],
                 h_mm: at[3],
                 data: data.clone(),
+                z,
             });
         }
     }

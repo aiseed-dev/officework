@@ -14,6 +14,7 @@ fn main() {
             text: text.map(|s| s.to_string()),
             ..Default::default()
         },
+        z: 0,
     };
     doc.shapes = vec![
         hako("rect", "DDE7F0", "2E5A87", 25.0, 80.0, 0.0, Some("四角"), false),

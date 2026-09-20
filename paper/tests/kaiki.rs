@@ -278,6 +278,7 @@ NOTE: 単価は税抜きです。
                 w_mm: 60.0,
                 h_mm: 40.0,
                 data: std::sync::Arc::new(obi_png()),
+                z: 0,
             }],
             rules: vec![paper::pdfw::Rule {
                 x1_mm: 30.0,

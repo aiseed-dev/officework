@@ -4246,7 +4246,7 @@ pub(super) fn extract_shapes(doc: &mut Document) {
                 i += 1;
                 continue;
             };
-            deta.push(kumihan::DocShape { page, x_mm, y_mm, w_mm: w, h_mm: h, look: sp });
+            deta.push(kumihan::DocShape { page, x_mm, y_mm, w_mm: w, h_mm: h, look: sp, z: 0 });
             p.anchors.remove(i);
         }
     }

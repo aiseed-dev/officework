@@ -782,7 +782,7 @@ mod tests {
         let page = kumihan::PageSetup::default();
         assert_eq!(doc_leaves(&s, page).len(), 1);
         let mut dress = PageDress::default();
-        dress.shapes.push(kumihan::DocShape { page: 2, x_mm: 20.0, y_mm: 20.0, w_mm: 50.0, h_mm: 20.0, look: Default::default() });
+        dress.shapes.push(kumihan::DocShape { page: 2, x_mm: 20.0, y_mm: 20.0, w_mm: 50.0, h_mm: 20.0, look: Default::default(), z: 0 });
         let leaves = doc_leaves_with(&s, page, &dress);
         assert_eq!(leaves.len(), 3, "箱の頁まで紙が足されていない: {}", leaves.len());
     }
@@ -2243,10 +2243,29 @@ fn open_group(anchor: &str) -> Option<Vec<String>> {
 /// 控えの原文を `<wp:anchor>` / `<wp:inline>` ごとに切る。1 つも無ければ原文のまま
 /// (VML の `w:pict` などは読み手がそのまま見る)。グループは子ごとに開く
 pub(crate) fn split_anchors(a: &str) -> Vec<String> {
-    split_anchors_1(a)
-        .into_iter()
-        .flat_map(|x| open_group(&x).unwrap_or_else(|| vec![x]))
-        .collect()
+    split_anchors_z(a).into_iter().map(|(x, _)| x).collect()
+}
+
+/// The same, with each piece's place in the draw order.
+///
+/// A group draws its children in the order the file lists them, and that
+/// order is the z order (ECMA-376 20.1.2.2.x). A group's children count
+/// from 1 here; a drawing that is not a group's child gets 0 and keeps the
+/// layer it had. Word's ticket template puts three stars after the scroll
+/// picture of the same group, and the picture hid them (2026-09-20).
+pub(crate) fn split_anchors_z(a: &str) -> Vec<(String, i32)> {
+    let mut out = Vec::new();
+    for x in split_anchors_1(a) {
+        match open_group(&x) {
+            Some(kora) => {
+                for (i, ko) in kora.into_iter().enumerate() {
+                    out.push((ko, i as i32 + 1));
+                }
+            }
+            None => out.push((x, 0)),
+        }
+    }
+    out
 }
 
 fn split_anchors_1(a: &str) -> Vec<String> {
@@ -2438,7 +2457,7 @@ pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, pa
         let (kami0, soko) = kami_no(*y_sheet);
         let y_para = y_sheet - soko - kumihan::BASE_UP_MM;
         let x_moto = page.left_mm + x_para;
-        for part in split_anchors(a) {
+        for (part, z) in split_anchors_z(a) {
             if !part.contains("<wp:anchor") || !part.contains("<pic:pic") {
                 continue;
             }
@@ -2457,7 +2476,7 @@ pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, pa
             let x = anchor_place_at(&f.h_from, f.x_mm, f.h_align.as_deref(), w_mm, &page, false, y_para, migi, x_moto);
             let y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(), h_mm, &page, true, y_para, migi);
             // sheet coordinates: x from the left margin, y continuous over pages
-            out.push((im.bytes.clone(), [x - page.left_mm, y + soko, w_mm, h_mm]));
+            out.push((im.bytes.clone(), [x - page.left_mm, y + soko, w_mm, h_mm], z));
         }
     }
     sheet.float_images.extend(out);
@@ -2496,6 +2515,7 @@ pub fn foreign_shapes(
                     w_mm,
                     h_mm,
                     look: f.look.clone(),
+                    z: 0,
                 });
             }
         }
@@ -2510,7 +2530,7 @@ pub fn foreign_shapes(
         // box; the recorded y is BASE_UP_MM below that (the line's y_mm)
         let y_para = y_sheet - soko - kumihan::BASE_UP_MM;
         let x_moto = page.left_mm + x_para;
-        for part in split_anchors(a) {
+        for (part, z) in split_anchors_z(a) {
             // an inline drawing is placed by the layout itself (a lone one
             // comes back whole from split_anchors, wrapped in its run)
             if (part.contains("<wp:inline") && !part.contains("<wp:anchor")) || part.contains("<pic:pic") {
@@ -2570,6 +2590,7 @@ pub fn foreign_shapes(
                     w_mm,
                     h_mm,
                     look: f.look,
+                    z,
                 });
             }
         }
@@ -2587,6 +2608,7 @@ pub fn foreign_shapes(
             w_mm: *w,
             h_mm: *h,
             look: f.look,
+            z: 0,
         });
     }
     out

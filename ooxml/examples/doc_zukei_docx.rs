@@ -11,6 +11,7 @@ fn main() {
                 line_w: 1.5, alpha: 1.0, shadow,
                 text: text.map(|s| s.to_string()), ..Default::default()
             },
+            z: 0,
         }
     };
     doc.shapes = vec![

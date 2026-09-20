@@ -407,6 +407,7 @@ mod tests {
                 w_mm: 40.0,
                 h_mm: 20.0,
                 data: std::sync::Arc::new(futairo_png(20, 10)),
+                z: 0,
             }],
             ..Default::default()
         };
@@ -436,6 +437,7 @@ mod tests {
             w_mm: 20.0,
             h_mm: 10.0,
             data: std::sync::Arc::new("これは PNG ではありません".as_bytes().to_vec()),
+            z: 0,
         }];
         let e = egaku(&leaf, 80.0, 40.0, 4.0);
         assert_eq!((e.w, e.h), (320, 160));

@@ -1319,6 +1319,7 @@ impl PyDoc {
                 shadow,
                 ..Default::default()
             },
+            z: 0,
         });
         Ok(())
     }

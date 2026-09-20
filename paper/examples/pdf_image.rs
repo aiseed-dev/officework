@@ -22,7 +22,7 @@ fn main() {
         }],
         rules: vec![],
         images: vec![paper::pdfw::Image {
-            x_mm: 20.0, y_mm: 200.0, w_mm: 64.0, h_mm: 48.0, data,
+            x_mm: 20.0, y_mm: 200.0, w_mm: 64.0, h_mm: 48.0, data, z: 0,
         }],
         ..Default::default()
     };
