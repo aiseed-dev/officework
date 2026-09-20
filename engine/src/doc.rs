@@ -990,6 +990,16 @@ pub struct Table {
     /// あれば比を保ったまま本文の幅へ伸ばします。無ければ `w:gridCol` の
     /// 合計をそのまま使います
     pub width_pct: Option<f32>,
+    /// **The width the table asks for** (`w:tblW w:type="dxa"`, ECMA-376
+    /// 17.4.64, in mm here).
+    ///
+    /// A grid on its own is only a ratio, so a grid wider than the text
+    /// area is scaled down to fit. A `w:tblW` in twips is the author's
+    /// stated width, and Word keeps it even past the margins: the first
+    /// table of Word's business plan template is 12600 twips (630pt) on a
+    /// 504pt text area, centred, and Word draws it from x=-9 to x=621
+    /// (2026-09-21).
+    pub width_mm: Option<f32>,
     /// **表の左のインデント**(mm)。docx の `w:tblInd` から出します。
     ///
     /// docx の `w:tblInd` は Word 2013 より前の書き方では**セルの中の字の

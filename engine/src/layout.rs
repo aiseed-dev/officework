@@ -2366,7 +2366,13 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         // (2026-09-09、Word の PDF で測った)。Word はその幅のまま右の余白へ
         // はみ出させる。縮めると狭い列で字が折れ、行が増える(横浜市の道路
         // 廃止通知は「※１」の列が 1 字ずつ折れて 1 頁が 3 頁になっていた)
-        if total > haba && !table.fixed_layout {
+        // **A table that states its own width is not shrunk either**
+        // (`w:tblW w:type="dxa"`, ECMA-376 17.4.64). The grid alone is a
+        // ratio, but a stated width is what the author asked for, and
+        // Word draws it past the margins. The first table of Word's
+        // business plan template is 630pt wide on a 504pt text area, and
+        // shrinking it broke the title into three lines (2026-09-21)
+        if total > haba && !table.fixed_layout && table.width_mm.is_none() {
             let k = haba / total;
             table.col_mm.iter().map(|w| w * k).collect()
         } else {
@@ -2395,7 +2401,11 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     // width is placed at the centre or the right edge. Word's nursing
     // resume template is a 91.76% table centred on the page; its text
     // started 24pt too far left until this was read (2026-09-19)
-    let amari = (haba - widths.iter().sum::<f32>()).max(0.0);
+    //
+    // The remainder may be negative, for a table wider than the text
+    // area. Word centres that one too, so it hangs over both margins by
+    // the same amount (2026-09-21, the business plan template)
+    let amari = haba - widths.iter().sum::<f32>();
     let ind = ind + match table.align {
         Some(Align::Center) => amari / 2.0,
         Some(Align::Right) => amari,

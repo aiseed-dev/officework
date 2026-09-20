@@ -663,6 +663,8 @@ pub(super) struct TblBuild {
     borders: Option<kumihan::TableBorders>,
     /// 表の幅を本文の幅の割合で言うとき(`w:tblW w:type="pct"`)の%
     width_pct: Option<f32>,
+    /// The width `w:tblW w:type="dxa"` asks for (mm)
+    width_mm: Option<f32>,
     /// 表の左のインデント(`w:tblInd`)の twip。**原文のまま**持ちます。
     /// セルの余白を引く補正は、設定(compatibilityMode)を読める所でします
     ind_twips: Option<f32>,
@@ -2826,15 +2828,28 @@ pub(super) fn parse_document_rels_num(
                                 .map(|x| kumihan::FloatX::At(twip_mm(x).max(0.0))),
                         };
                     },
-                    // **表の幅**(`w:tblW`)。割合(`pct`)のときだけ覚えます。
-                    // docx は 1/50 % で書くので 5000 が 100% です。`dxa` は
-                    // `w:gridCol` の合計と同じ値なので、読まなくても同じです
+                    // **The table's preferred width** (`w:tblW`, ECMA-376
+                    // 17.4.64). `pct` is in fiftieths of a percent, so
+                    // 5000 is 100%. `dxa` is twips, and it is the width
+                    // the author asked for even when it is wider than the
+                    // text area: Word's business plan template starts with
+                    // a 12600 twip table on a 504pt text area and lets it
+                    // run past both margins (2026-09-21)
                     b"tblW" if in_tblpr => if let Some(b) = stack.last_mut() {
-                        if attr(&e, "type").as_deref() == Some("pct") {
-                            b.width_pct = attr(&e, "w")
-                                .and_then(|v| v.parse::<f32>().ok())
-                                .map(|v| v / 50.0)
-                                .filter(|v| *v > 0.0);
+                        match attr(&e, "type").as_deref() {
+                            Some("pct") => {
+                                b.width_pct = attr(&e, "w")
+                                    .and_then(|v| v.parse::<f32>().ok())
+                                    .map(|v| v / 50.0)
+                                    .filter(|v| *v > 0.0);
+                            }
+                            Some("dxa") => {
+                                b.width_mm = attr(&e, "w")
+                                    .and_then(|v| v.parse::<f32>().ok())
+                                    .filter(|v| *v > 0.0)
+                                    .map(twip_mm);
+                            }
+                            _ => {}
                         }
                     },
                     // **表の左のインデント**(`w:tblInd`)。原文のまま持ちます
@@ -3586,15 +3601,28 @@ pub(super) fn parse_document_rels_num(
                                 .map(|x| kumihan::FloatX::At(twip_mm(x).max(0.0))),
                         };
                     },
-                    // **表の幅**(`w:tblW`)。割合(`pct`)のときだけ覚えます。
-                    // docx は 1/50 % で書くので 5000 が 100% です。`dxa` は
-                    // `w:gridCol` の合計と同じ値なので、読まなくても同じです
+                    // **The table's preferred width** (`w:tblW`, ECMA-376
+                    // 17.4.64). `pct` is in fiftieths of a percent, so
+                    // 5000 is 100%. `dxa` is twips, and it is the width
+                    // the author asked for even when it is wider than the
+                    // text area: Word's business plan template starts with
+                    // a 12600 twip table on a 504pt text area and lets it
+                    // run past both margins (2026-09-21)
                     b"tblW" if in_tblpr => if let Some(b) = stack.last_mut() {
-                        if attr(&e, "type").as_deref() == Some("pct") {
-                            b.width_pct = attr(&e, "w")
-                                .and_then(|v| v.parse::<f32>().ok())
-                                .map(|v| v / 50.0)
-                                .filter(|v| *v > 0.0);
+                        match attr(&e, "type").as_deref() {
+                            Some("pct") => {
+                                b.width_pct = attr(&e, "w")
+                                    .and_then(|v| v.parse::<f32>().ok())
+                                    .map(|v| v / 50.0)
+                                    .filter(|v| *v > 0.0);
+                            }
+                            Some("dxa") => {
+                                b.width_mm = attr(&e, "w")
+                                    .and_then(|v| v.parse::<f32>().ok())
+                                    .filter(|v| *v > 0.0)
+                                    .map(twip_mm);
+                            }
+                            _ => {}
                         }
                     },
                     // **表の左のインデント**(`w:tblInd`)。原文のまま持ちます
@@ -4019,6 +4047,7 @@ pub(super) fn parse_document_rels_num(
                                 borders: b.borders.unwrap_or_else(kumihan::TableBorders::nashi),
                                 style_borders_unset: b.borders.is_none(),
                                 col_mm: b.col_mm,
+                                width_mm: b.width_mm,
                                 // どの行にも指定が無ければ、持たないのと同じ
                                 row_mm: if b.row_mm.iter().all(|h| *h <= 0.0) {
                                     Vec::new()
