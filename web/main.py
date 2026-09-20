@@ -132,8 +132,7 @@ def main(page: ft.Page):
     why = section(
         "なぜ作ったか",
         p("AI が必要でない場所で使うための Office です。AI が作った文書を、AI が無くても使えるようにします。", 20),
-        p("AI は、docx と xlsx をもう作れます。でも、AI とのやり取りは文字(AsciiDoc)の方がよい。"
-          "aiseed office は adoc を読んで、刷って、要るときは docx に書き出します。"),
+        p("AI は、すでに docx と xlsx を作れます。でも、adoc で交換した方がいい。"),
         p("毎日の仕事の大半に、AI は要りません。受け取った docx と xlsx を、Word と Excel と同じに開いて、"
           "処理して、様式で返して、刷る。これは決まった手順で、コードだけで回ります。"
           "機密の様式は手元から出ません。AI が要るときだけ、自分で選んだ AI を繋ぎます。"),
@@ -170,18 +169,27 @@ def main(page: ft.Page):
 
     compare = section(
         "同じファイルを両方で開けば、誰でも確かめられます",
-        p("名古屋市立大学が公開している「物品借用願」(docx)を、Word と aiseed office で開いた物です。"
-          "表の列幅、全角スペースの送り、行の折れ方まで同じになるように作っています。"),
+        p("Microsoft Word のテンプレート『Elegant dinner menu』を、Microsoft Word と aiseed office で開いた物です。"
+          "Word の「新規」にあるテンプレートが、そのまま使えます。Used with permission from Microsoft"),
         ft.ResponsiveRow(
-            [shot("word.png", "Word で開いた", page),
-             shot("office.png", "aiseed office で開いた", page)],
+            [shot("menu-word.png", "Microsoft Word で開いた", page),
+             shot("menu-office.png", "aiseed office で開いた", page)],
+            spacing=16,
+            run_spacing=16,
+        ),
+        ft.Container(height=24),
+        p("株式会社みほん商事の『事業のご報告』(docx、中身は架空)を、Word と aiseed office で開いた物です。"
+          "グラフと表と見出しが同じに出ます。"),
+        ft.ResponsiveRow(
+            [shot("hokoku-word.png", "Word で開いた", page),
+             shot("hokoku-office.png", "aiseed office で開いた", page)],
             spacing=16,
             run_spacing=16,
         ),
         ft.Row(
             [
-                ft.FilledButton(content="この様式(docx)をダウンロード", url="buppin202411.docx"),
-                p("名古屋市立大学の物品借用願です。お手元の Word と aiseed office で開いて、並べてみてください。", 14),
+                ft.FilledButton(content="この文書(docx)をダウンロード", url="事業のご報告.docx"),
+                p("お手元の Word と aiseed office で開いて、並べてみてください。", 14),
             ],
             wrap=True,
             spacing=12,
