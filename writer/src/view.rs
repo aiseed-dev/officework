@@ -1887,10 +1887,17 @@ impl Writer {
                     ))
                 })
                 .clone();
+            // **The picture goes on the paper at the size it was drawn
+            // for.** `to_svg` floors a side and adds the padding, so a
+            // shape with no area still has a canvas; measuring the box
+            // from `sp` alone gave a `prstGeom prst="line"` a picture zero
+            // pixels high and the tear line of Word's ticket template
+            // never appeared (2026-09-21)
+            let (cw, ch) = look.canvas_px();
+            let k = pxmm / PX_PER_MM;
             let (x, y) = (sp.x_mm * pxmm, (sp.y_mm + oy) * pxmm);
-            let (w, h) = (sp.w_mm * pxmm, sp.h_mm * pxmm);
-            let pd = pad / PX_PER_MM * pxmm;
-            out.push((src, [x - pd, y - pd, w + pd * 2.0, h + pd * 2.0], sp.z));
+            let pd = pad * k;
+            out.push((src, [x - pd, y - pd, cw * k, ch * k], sp.z));
         }
         out
     }

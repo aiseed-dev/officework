@@ -1325,6 +1325,21 @@ impl SheetShape {
         p.ceil()
     }
 
+    /// **The canvas [`Self::to_svg`] builds, in px.**
+    ///
+    /// It is not the shape's box: a side is floored the same way `to_svg`
+    /// floors it, and the shadow and rotation padding of [`Self::pad`] sit
+    /// outside. A caller that places the picture has to use this, because a
+    /// shape with no area draws nothing at its own size. `a:prstGeom
+    /// prst="line"` (ECMA-376 20.1.9.18) is such a shape: the tear line of
+    /// Word's ticket template is `cy="0"`, and the screen gave its picture
+    /// a box zero pixels high (2026-09-21).
+    pub fn canvas_px(&self) -> (f32, f32) {
+        let (w, h) = (self.width_px.max(4.0), self.height_px.max(4.0));
+        let p = self.pad();
+        (w + p * 2.0, h + p * 2.0)
+    }
+
     /// 画面用の SVG。**大きさを width/height に織り込む**ので、
     /// 描画側がその都度ラスタ化すれば、どの大きさでも輪郭が鮮明に出る。
     pub fn to_svg(&self) -> String {
