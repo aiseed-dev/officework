@@ -89,6 +89,94 @@ pub enum Script {
     Latin,
 }
 
+/// True when Word draws this character with the `w:eastAsia` face rather
+/// than the `w:ascii` / `w:hAnsi` one (ECMA-376 17.3.2.26, the ranges Word
+/// uses as MS-OI29500 Part 1 17.3.2.26 writes them out).
+///
+/// `hint` is `w:rFonts w:hint="eastAsia"`. Without it only the blocks that
+/// are East Asian by themselves take that face; with it the ambiguous
+/// blocks (punctuation, arrows, symbols) take it too.
+///
+/// "Not ASCII" was the test before 2026-09-21. That sent EN DASH (U+2013)
+/// to the East Asian face, and Word's ATS resume templates, whose Normal
+/// style names `w:eastAsia="Arial"`, drew the date range in Calibri while
+/// we drew it in Arial. General Punctuation is a High ANSI block unless
+/// the hint says otherwise.
+///
+/// The exceptions the table ties to the run's language (Chinese Traditional
+/// or Simplified) are left out, because the run's language does not reach
+/// here.
+pub fn east_asian_slot(c: char, hint: bool) -> bool {
+    let u = c as u32;
+    // Blocks that take the East Asian face whatever the hint says
+    let always = matches!(u,
+        0x1100..=0x11ff      // Hangul Jamo
+        | 0x2f00..=0x2fdf    // Kangxi Radicals
+        | 0x2ff0..=0x2fff    // Ideographic Description Characters
+        | 0x3000..=0x303f    // CJK Symbols and Punctuation
+        | 0x3040..=0x309f    // Hiragana
+        | 0x30a0..=0x30ff    // Katakana
+        | 0x3100..=0x312f    // Bopomofo
+        | 0x3130..=0x318f    // Hangul Compatibility Jamo
+        | 0x3190..=0x319f    // Kanbun
+        | 0x3200..=0x32ff    // Enclosed CJK Letters and Months
+        | 0x3300..=0x33ff    // CJK Compatibility
+        | 0x3400..=0x4dbf    // CJK Unified Ideographs Extension A
+        | 0x4e00..=0x9faf    // CJK Unified Ideographs
+        | 0xa000..=0xa48f    // Yi Syllables
+        | 0xa490..=0xa4cf    // Yi Radicals
+        | 0xac00..=0xd7af    // Hangul Syllables
+        | 0xf900..=0xfaff    // CJK Compatibility Ideographs
+        | 0xfe30..=0xfe4f    // CJK Compatibility Forms
+        | 0xfe50..=0xfe6f    // Small Form Variants
+        | 0xff00..=0xffef    // Halfwidth and Fullwidth Forms
+    );
+    if always {
+        return true;
+    }
+    if !hint {
+        return false;
+    }
+    // Blocks that take the East Asian face only under `w:hint="eastAsia"`
+    matches!(u,
+        0x02b0..=0x02ff      // Spacing Modifier Letters
+        | 0x0300..=0x036f    // Combining Diacritical Marks
+        | 0x0370..=0x03cf    // Greek
+        | 0x0400..=0x04ff    // Cyrillic
+        | 0x2000..=0x206f    // General Punctuation
+        | 0x2070..=0x209f    // Superscripts and Subscripts
+        | 0x20a0..=0x20cf    // Currency Symbols
+        | 0x20d0..=0x20ff    // Combining Diacritical Marks for Symbols
+        | 0x2100..=0x214f    // Letter-like Symbols
+        | 0x2150..=0x218f    // Number Forms
+        | 0x2190..=0x21ff    // Arrows
+        | 0x2200..=0x22ff    // Mathematical Operators
+        | 0x2300..=0x23ff    // Miscellaneous Technical
+        | 0x2400..=0x243f    // Control Pictures
+        | 0x2440..=0x245f    // Optical Character Recognition
+        | 0x2460..=0x24ff    // Enclosed Alphanumerics
+        | 0x2500..=0x257f    // Box Drawing
+        | 0x2580..=0x259f    // Block Elements
+        | 0x25a0..=0x25ff    // Geometric Shapes
+        | 0x2600..=0x26ff    // Miscellaneous Symbols
+        | 0x2700..=0x27bf    // Dingbats
+        | 0x2e80..=0x2eff    // CJK Radicals Supplement
+        | 0xe000..=0xf8ff    // Private Use Area
+        | 0xfb00..=0xfb1c    // Alphabetic Presentation Forms, first part
+    ) || matches!(u,
+        // Latin-1 Supplement, the characters the table names one by one
+        0xa1 | 0xa4 | 0xa7 | 0xa8 | 0xaa | 0xad | 0xaf
+        | 0xb0..=0xb4 | 0xb6..=0xba | 0xbc..=0xbf | 0xd7 | 0xf7
+    )
+}
+
+/// True when any character of the text takes the `w:eastAsia` face.
+/// A run carries one face in this model, so the East Asian one wins as
+/// soon as one character asks for it.
+pub fn east_asian_text(text: &str, hint: bool) -> bool {
+    text.chars().any(|c| east_asian_slot(c, hint))
+}
+
 /// 画面の言語の札から、書体を選ぶときのまとまりを決めます。
 /// 知らない札はラテン文字として扱います。
 pub fn script_of(lang: &str) -> Script {
@@ -1473,6 +1561,25 @@ pub fn monospace() -> Option<&'static Family> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn general_punctuation_is_a_high_ansi_block() {
+        // ECMA-376 17.3.2.26: General Punctuation (2000-206F) takes the
+        // East Asian face only under `w:hint="eastAsia"`
+        assert!(!east_asian_slot('\u{2013}', false));
+        assert!(east_asian_slot('\u{2013}', true));
+        // Blocks that are East Asian whatever the hint says
+        assert!(east_asian_slot('あ', false));
+        assert!(east_asian_slot('漢', false));
+        assert!(east_asian_slot('、', false));
+        assert!(east_asian_slot('Ａ', false));
+        // ASCII and the accented Latin letters are not
+        assert!(!east_asian_slot('A', true));
+        assert!(!east_asian_slot('é', false));
+        // A run takes the East Asian face as soon as one character asks
+        assert!(!east_asian_text(" – December 20", false));
+        assert!(east_asian_text("March 三月", false));
+    }
 
     #[test]
     fn can_count_the_fonts_on_this_machine() {

@@ -704,7 +704,7 @@ pub(super) struct SavedCell {
 /// `None` = 文書の既定の和文の書体)、半角だけの run は欧文の書体にします。
 /// `w:hint="eastAsia"` の run は半角も和文の書体です
 pub(super) fn erabu_font(text: &str, ea: &Option<String>, latin: &Option<String>, hint_ea: bool) -> Option<String> {
-    let wabun = hint_ea || !text.is_ascii();
+    let wabun = hint_ea || kumihan::font::east_asian_text(text, hint_ea);
     if wabun {
         ea.clone()
     } else {
@@ -716,13 +716,18 @@ pub(super) fn erabu_font(text: &str, ea: &Option<String>, latin: &Option<String>
 /// `w:hint="eastAsia"`、全部同じ種類、のときは 1 つのまま。空白は前の塊に付ける
 /// (Word も空白は前後の字の書体に従う)
 pub(super) fn kiru_moji(text: &str, ea: &Option<String>, latin: &Option<String>, hint_ea: bool) -> Vec<(String, bool)> {
+    // Which face a character takes follows the block it is in, not whether
+    // it is ASCII (ECMA-376 17.3.2.26). EN DASH is a High ANSI character,
+    // so ` – December` stays in one Latin piece (2026-09-21)
+    let wa_of = |c: char| kumihan::font::east_asian_slot(c, hint_ea);
     let wabun_all = hint_ea || latin.is_none() || latin == ea;
-    if wabun_all || text.is_ascii() || text.chars().all(|c| !c.is_ascii()) {
-        return vec![(text.to_string(), hint_ea || !text.is_ascii())];
+    let hitotsu = text.chars().all(wa_of) || !text.chars().any(wa_of);
+    if wabun_all || hitotsu {
+        return vec![(text.to_string(), hint_ea || text.chars().any(wa_of))];
     }
     let mut out: Vec<(String, bool)> = Vec::new();
     for c in text.chars() {
-        let wa = !c.is_ascii();
+        let wa = wa_of(c);
         match out.last_mut() {
             Some((s, w)) if *w == wa || c == ' ' => s.push(c),
             _ => out.push((c.to_string(), wa)),

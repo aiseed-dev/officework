@@ -1822,20 +1822,26 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
         if let Some((ea, latin)) = hyou.get(&p.style_id) {
             for r in p.runs.iter_mut() {
                 if r.font.is_none() {
-                    // ASCII takes the style's `w:ascii` face only (ECMA-376
-                    // 17.3.2.26); with none, the document default applies
-                    let na = if r.text.is_ascii() { latin.as_ref() } else { ea.as_ref() };
+                    // Only the East Asian blocks take the style's
+                    // `w:eastAsia` face; the rest take its `w:ascii` /
+                    // `w:hAnsi` one (ECMA-376 17.3.2.26). With none, the
+                    // document default applies
+                    let wabun = kumihan::font::east_asian_text(&r.text, false);
+                    let na = if wabun { ea.as_ref() } else { latin.as_ref() };
                     if let Some(na) = na {
                         r.font = Some(na.clone());
                     }
                 }
             }
         }
-        // ASCII runs still without a face take the document's own Latin
-        // default (`docDefaults` `w:ascii` or its theme face), not the East
-        // Asian default that `doc.font` holds
+        // Runs outside the East Asian blocks and still without a face take
+        // the document's own Latin default (`docDefaults` `w:ascii` or its
+        // theme face), not the East Asian default that `doc.font` holds
         for r in p.runs.iter_mut() {
-            if r.font.is_none() && r.text.is_ascii() && !r.text.is_empty() {
+            if r.font.is_none()
+                && !r.text.is_empty()
+                && !kumihan::font::east_asian_text(&r.text, false)
+            {
                 r.font = kitei_latin.clone();
             }
         }
@@ -2628,10 +2634,13 @@ fn shape_text_style(doc: &kumihan::Document, xml: &str, look: &mut book::SheetSh
             tf.size_pt = lk.size_pt;
         }
         if tf.font.is_none() {
-            // ASCII text takes the style's `w:ascii` face, the rest the
-            // East Asian one (ECMA-376 17.3.2.26)
-            let ascii = look.text.as_deref().is_some_and(|t| t.is_ascii());
-            tf.font = if ascii { lk.font_latin.clone().or_else(|| lk.font.clone()) } else { lk.font.clone() };
+            // The East Asian blocks take the style's `w:eastAsia` face,
+            // the rest its `w:ascii` one (ECMA-376 17.3.2.26)
+            let wabun = look
+                .text
+                .as_deref()
+                .is_some_and(|t| kumihan::font::east_asian_text(t, false));
+            tf.font = if wabun { lk.font.clone() } else { lk.font_latin.clone().or_else(|| lk.font.clone()) };
         }
         tf.bold |= lk.bold.unwrap_or(false);
         if tf.color.is_none() {
