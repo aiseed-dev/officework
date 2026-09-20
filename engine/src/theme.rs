@@ -1921,8 +1921,8 @@ fn jibun_wo_ateru(
     for r in &mut para.runs {
         // **The character style the run names** (`w:rStyle`, ECMA-376
         // 17.3.2.29). It sits between the paragraph style and the run's
-        // own `w:rPr` (ECMA-376 17.7.2), so what it says wins over the
-        // paragraph style here.
+        // own `w:rPr` (ECMA-376 17.7.2), so its colour and letter
+        // spacing win over the paragraph style's.
         let ck = r
             .fmt
             .style_id
@@ -1930,8 +1930,18 @@ fn jibun_wo_ateru(
             .and_then(|id| jibun.iter().find(|(k, _, _)| k == id))
             .map(|(_, l, _)| l);
         let moji = |f: fn(&crate::doc::StyleLook) -> Option<bool>| ck.and_then(f);
+        // **The size and the face stay with the paragraph style.**
+        //
+        // ECMA-376 17.7.2 puts the character style above it, but Word's
+        // PDF of the business plan template says otherwise: the table of
+        // contents runs carry only `w:rStyle w:val="Hyperlink"`, that
+        // style says `w:sz w:val="26"` (13pt), and Word draws the TOC 1
+        // lines at 12pt and the TOC 2 lines at 10pt, which are the two
+        // paragraph styles' own `w:sz`. Bold from the same character
+        // style does reach those lines. Why the size does not is not
+        // explained yet, so it is left alone (2026-09-21).
         if r.size_pt.is_none() {
-            r.size_pt = ck.and_then(|c| c.size_pt).or(lk.size_pt);
+            r.size_pt = lk.size_pt;
         }
         if r.font.is_none() {
             // The East Asian blocks take the style's `w:eastAsia` font,
@@ -1941,14 +1951,7 @@ fn jibun_wo_ateru(
             // the document's `w:ascii` default (Word's resume: Heading 1
             // is Source Sans Pro in Word, not the heading theme font)
             let wabun = crate::font::east_asian_text(&r.text, false);
-            let (ea, latin) = match ck {
-                Some(c) if c.font.is_some() || c.font_latin.is_some() => {
-                    (c.font.clone().or_else(|| lk.font.clone()),
-                     c.font_latin.clone().or_else(|| lk.font_latin.clone()))
-                }
-                _ => (lk.font.clone(), lk.font_latin.clone()),
-            };
-            r.font = if wabun { ea } else { latin };
+            r.font = if wabun { lk.font.clone() } else { lk.font_latin.clone() };
         }
         // **`w:b`, `w:i`, `w:caps` are toggle properties** (ECMA-376
         // 17.7.3): the paragraph style's value and the character style's
