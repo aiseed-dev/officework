@@ -1057,13 +1057,25 @@ pub fn plain_name(name: &str) -> &str {
 }
 
 /// **その太さ・傾きの顔**。無ければ `None`(呼ぶ側は素の顔のままにします)
+///
+/// The face has to belong to the family the run named (name id 1), not
+/// only to the same typographic family (name id 16). "Calibri Light" and
+/// "Calibri" share name id 16, so a bold run in Calibri Light used to pick
+/// up Calibri Bold. Word's tech booklet writes its Heading 1 with
+/// `w:rFonts w:asciiTheme="majorHAnsi"` and `w:b`, the theme's major face
+/// is Calibri Light, and Word's PDF draws "WHO WE ARE" in Calibri-Light
+/// (2026-09-21).
 pub fn face_for_weight(name: &str, bold: bool, italic: bool) -> Option<&'static Family> {
     if !bold && !italic {
         return None;
     }
-    faces(plain_name(name))
-        .into_iter()
-        .find(|f| f.bold == bold && f.italic == italic && !(f.regular && (bold || italic)))
+    let head = resolve(plain_name(name))?;
+    faces(plain_name(name)).into_iter().find(|f| {
+        f.bold == bold
+            && f.italic == italic
+            && !(f.regular && (bold || italic))
+            && (f.name == head.name || f.ascii == head.ascii)
+    })
 }
 
 pub fn substitute(name: &str) -> Option<&'static Family> {
