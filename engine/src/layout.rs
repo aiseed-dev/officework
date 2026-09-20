@@ -970,7 +970,7 @@ fn syotai_lh_mm(para: &Paragraph, base: f32, font: Option<&str>) -> Option<f32> 
 /// ブロック `bi` が属する節のヘッダー・フッター。節を終える段落(`sect` を持つ物)
 /// を `bi` から先に探し、その番号で [`Document::sect_hf`] を引く。無ければ
 /// `None`(最後の節 = 文書の `header` / `footer`)
-pub(super) fn section_hf_at(doc: &Document, bi: usize) -> Option<crate::doc::SectionHf> {
+pub fn section_hf_at(doc: &Document, bi: usize) -> Option<crate::doc::SectionHf> {
     for (j, b) in doc.blocks.iter().enumerate().skip(bi) {
         if let Block::Para(p) = b {
             if p.sect.is_some() {

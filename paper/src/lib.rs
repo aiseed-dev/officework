@@ -517,7 +517,6 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             .unwrap_or(std::cmp::Ordering::Equal)
             .then(a.cmp(&b))
     });
-    let mut offsets = vec![0.0f32];
     let mut header_h = vec![0.0f32];
     // The first page of a section under `w:titlePg` has its own header and
     // footer heights: Word's memo template has none there, and its body runs
@@ -528,7 +527,24 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
         Paper { top_mm: p.first_top_mm.unwrap_or(p.top_mm), bottom_mm: p.first_bottom_mm.unwrap_or(p.bottom_mm), ..p }
     };
     let mut sect_now = sect_no(0.0);
-    let mut papers = vec![first_of(paper_at(0.0))];
+    let kami1 = first_of(paper_at(0.0));
+    let mut papers = vec![kami1];
+    // **The first page uses the first page's top margin.**
+    //
+    // The layout puts the body at the section's plain top margin, so a
+    // first page whose own header pushes further down starts too high.
+    // A page's origin is `offsets[k]`, and the body of that page sits
+    // `top_mm` below it, so moving the origin up by the difference moves
+    // the body down by the same amount. The page break below then sees
+    // the shorter page.
+    //
+    // Word's ticket template has `w:titlePg` and only a `first` header
+    // (`w:headerReference w:type="first"`, header33.xml in the Header
+    // style, `w:sz w:val="22"`), with `w:pgMar w:header="144"`. Word
+    // starts the body 20.1pt down; we started at the plain 7.2pt margin
+    // and the whole of page 1 sat 2.1pt high (2026-09-20, ECMA-376
+    // 17.6.11)
+    let mut offsets = vec![paper_at(0.0).top_mm - kami1.top_mm];
     // 頁ごとの脚注と、その高さ。**脚注が増えるとその頁の本文の底が上がる**
     let mut notes: Vec<Vec<usize>> = vec![Vec::new()];
     let mut note_h = 0.0f32;
@@ -1889,12 +1905,32 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
     // the size a header or footer paragraph's style gives
     let sty = |id: Option<&str>| d.style_pt(id);
     let raw = page;
-    page.top_mm = kumihan::hf_push_mm(&d.header, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false, &sty);
-    page.bottom_mm = kumihan::hf_push_mm(&d.footer, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true, &sty);
+    // **Page 1 is pushed by the first section's header, not the last one's.**
+    //
+    // `Document::header` comes from the sectPr at the end of the body, which
+    // belongs to the last section. The page geometry above already takes the
+    // first section's; the header and footer have to follow it, or page 1 is
+    // laid out against a part it does not show (ECMA-376 17.10.5). Word's
+    // ticket template gives its first section a `default` header
+    // (header21.xml) and, under `w:titlePg`, a `first` one (header33.xml,
+    // the `Header` style at `w:sz w:val="22"`), while the last section names
+    // neither. We started page 1 at the plain 18pt margin instead of Word's
+    // 20.1pt, and the whole page sat 2.1pt high (2026-09-20)
     let kara = kumihan::HeadFoot::default();
-    if d.title_pg {
-        page.first_top_mm = Some(kumihan::hf_push_mm(d.first_header.as_ref().unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false, &sty));
-        page.first_bottom_mm = Some(kumihan::hf_push_mm(d.first_footer.as_ref().unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true, &sty));
+    let sect0 = if opts.page.is_none() { kumihan::section_hf_at(d, 0) } else { None };
+    let (hd, ft) = match &sect0 {
+        Some(s) => (&s.header, &s.footer),
+        None => (&d.header, &d.footer),
+    };
+    page.top_mm = kumihan::hf_push_mm(hd, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false, &sty);
+    page.bottom_mm = kumihan::hf_push_mm(ft, &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true, &sty);
+    let (title_pg, fh, ff) = match &sect0 {
+        Some(s) => (s.title_pg, s.first_header.as_ref(), s.first_footer.as_ref()),
+        None => (d.title_pg, d.first_header.as_ref(), d.first_footer.as_ref()),
+    };
+    if title_pg {
+        page.first_top_mm = Some(kumihan::hf_push_mm(fh.unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, false, &sty));
+        page.first_bottom_mm = Some(kumihan::hf_push_mm(ff.unwrap_or(&kara), &raw, d.font.as_deref(), d.font_latin.as_deref(), base_pt, true, &sty));
     }
     // **行送りはエンジンの1つを見ます**(画面と紙と PDF で同じ)
     let line_mm = kumihan::LINE_MM;
