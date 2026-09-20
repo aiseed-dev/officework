@@ -2019,9 +2019,26 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
         .filter(|s| s.kind == "table" && !s.table.is_empty())
         .map(|s| (s.id.clone(), s.table.clone()))
         .collect();
+    // **A table that names no style still follows the default table style.**
+    //
+    // `w:style w:type="table" w:default="1"` (Word calls it "Normal Table")
+    // carries the `w:tblCellMar` a table starts from: 108 twips left and
+    // right, 0 top and bottom (ECMA-376 17.7.6, 17.4.41). We fell back to a
+    // fixed 1.4mm, so cell text sat 0.5mm left of Word's (2026-09-21).
+    let kitei_hyou: Option<crate::doc::TableStyleLook> = out
+        .styles
+        .iter()
+        .chain(out.styles_new.iter())
+        .find(|s| s.kind == "table" && s.default)
+        .map(|s| s.table.clone());
     for block in out.blocks.iter_mut() {
         let crate::doc::Block::Table(t) = block else { continue };
-        let ts = t.style.as_deref().and_then(|id| hyou_style.get(id)).cloned();
+        let ts = t
+            .style
+            .as_deref()
+            .and_then(|id| hyou_style.get(id))
+            .cloned()
+            .or_else(|| kitei_hyou.clone());
         hyou_style_wo_ateru(
             t,
             ts.as_ref(),
