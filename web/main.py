@@ -134,11 +134,11 @@ def main(page: ft.Page):
         # one Markdown block, so the whole section can be selected and copied
         # across paragraphs (the owner, 2026-09-20)
         md("\n\n".join([
-            "AI が必要でない場所で使うための Office です。AI が作った文書を、AI が無くても使えるようにします。",
-            "毎日の仕事の大半に、AI は要りません。受け取った docx と xlsx を、Word と Excel と同じに開いて、"
-            "処理して、様式で返して、刷る。これは決まった手順で、コードだけで回ります。"
-            "機密の様式は手元から出ません。AI が要るときだけ、自分で選んだ AI を繋ぎます。",
-            "AI は、すでに docx と xlsx を作れます。でも、adoc で交換した方がいい。",
+            "AI が要らない仕事のための Office です。",
+            "会社の書類の仕事は、受け取った Word や Excel のファイルを開いて、書き込んで、返して、印刷することです。"
+            "ここに AI は要りません。この Office は、それを Word や Excel と同じにできます。",
+            "AI が作った書類も、この Office で開けます。AI が無くても使えます。",
+            "会社の中の書類は外に出ません。AI を使いたいときだけ、自分で選んだ AI を繋ぎます。",
             "こういう Office は、いまは誰でも作れます。作り方は下に書きました。",
         ])),
     )
