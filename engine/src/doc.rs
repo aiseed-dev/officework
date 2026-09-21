@@ -555,6 +555,11 @@ pub struct Paragraph {
     /// levels of the corpus and the templates that say `space` or `nothing`
     /// keep the text right behind the mark (2026-09-21).
     pub list_no_tab: bool,
+    /// **The colour of the list mark** (docx `w:lvl/w:rPr/w:color`,
+    /// ECMA-376 17.3.2.6), when the level paints it differently from the
+    /// text. Word's booklet template 22568a97 puts its bullets in `63A537`
+    /// and leaves the text black (2026-09-21).
+    pub list_color: Option<String>,
     /// 左のインデント段数。1段 = 全角2文字ぶん(日本の書類の慣習)。
     ///
     /// **段数なので、1文字や3文字は表せません。** 箇条書きの深さでもあり
@@ -1522,6 +1527,9 @@ pub struct StyleParaLook {
     /// **No tab between the mark and the text**, when the style names the
     /// list (docx `w:lvl/w:suff`, ECMA-376 17.9.28)
     pub list_no_tab: Option<bool>,
+    /// **The colour of the list mark**, when the style names the list
+    /// (docx `w:lvl/w:rPr/w:color`)
+    pub list_color: Option<String>,
     /// その印の字(`w:lvlText`。`●` や `1.`)。無ければ種類なりの既定
     pub list_text: Option<String>,
     /// **同じスタイルの段落が続く間は、前後の空きを入れない**
@@ -2646,6 +2654,7 @@ impl Document {
             }
             pl.list = pl.list.or(s.para.list);
             pl.list_no_tab = pl.list_no_tab.or(s.para.list_no_tab);
+            pl.list_color = pl.list_color.clone().or_else(|| s.para.list_color.clone());
             pl.list_text = pl.list_text.clone().or_else(|| s.para.list_text.clone());
             pl.contextual_spacing = pl.contextual_spacing.or(s.para.contextual_spacing);
             pl.no_grid = pl.no_grid.or(s.para.no_grid);

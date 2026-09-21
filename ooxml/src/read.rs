@@ -1685,7 +1685,7 @@ pub(super) fn parse_styles(xml: &str) -> Vec<kumihan::StyleInfo> {
 /// 書かないので、これを読まないと箇条書きがただの段落になります(2026-09-03)
 pub(super) fn parse_styles_num(
     xml: &str,
-    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
+    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool, Option<String>)>,
     // The indent of every numbering level ([`num_indents`]), for a style that
     // names a `w:numPr` and no `w:ind` of its own
     sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32, bool)>,
@@ -1694,7 +1694,7 @@ pub(super) fn parse_styles_num(
 /// スタイルの段落の見た目(`w:pPr` の中)。読めない物は「言わない」のまま
 fn style_para(
     body: &str,
-    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
+    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool, Option<String>)>,
     sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32, bool)>,
 ) -> kumihan::StyleParaLook {
     let val = |tag: &str| -> Option<String> {
@@ -1782,12 +1782,14 @@ fn style_para(
         // **箇条書き。** `w:numPr` の `w:numId` を印の表で引きます
         list: num_of(body).map(|n| {
             match shirushi.get(&(n, 0)) {
-                Some((_, kazu)) => if *kazu { kumihan::ListKind::Number } else { kumihan::ListKind::Bullet },
+                Some((_, kazu, _)) => if *kazu { kumihan::ListKind::Number } else { kumihan::ListKind::Bullet },
                 // 表が無い docx は numId の決め打ち(本文の側と同じ約束)
                 None => if n == 2 { kumihan::ListKind::Number } else { kumihan::ListKind::Bullet },
             }
         }),
-        list_text: num_of(body).and_then(|n| shirushi.get(&(n, 0)).map(|(t, _)| t.clone())),
+        list_text: num_of(body).and_then(|n| shirushi.get(&(n, 0)).map(|(t, _, _)| t.clone())),
+        // The colour of the mark alone (`w:lvl/w:rPr/w:color`)
+        list_color: num_of(body).and_then(|n| shirushi.get(&(n, 0)).and_then(|(_, _, c)| c.clone())),
         // What the level puts between the mark and the text (`w:suff`,
         // ECMA-376 17.9.28)
         list_no_tab: dan_no_tab,
@@ -2367,7 +2369,7 @@ pub(super) fn parse_document_num(
     xml: &str,
     media: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
     cmts: &std::collections::BTreeMap<String, Comment>,
-    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
+    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool, Option<String>)>,
 ) -> (Document, Report) {
     parse_document_rels_num(xml, media, cmts, &Default::default(), shirushi, &Default::default())
 }
@@ -2378,7 +2380,7 @@ pub(super) fn parse_document_rels_num(
     media: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
     cmts: &std::collections::BTreeMap<String, Comment>,
     targets: &std::collections::BTreeMap<String, String>,
-    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
+    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool, Option<String>)>,
     sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32, bool)>,
 ) -> (Document, Report) {
     // **BOM をここで外します。** quick-xml は位置を BOM の後ろから数えるのに、
@@ -2455,6 +2457,7 @@ pub(super) fn parse_document_rels_num(
     let mut right_twips = 0i32; // w:ind の right
     let mut list_id: Option<u32> = None; // w:numPr の numId(番号の続き具合を決める)
     let mut list_no_tab = false; // w:lvl の w:suff が space か nothing
+    let mut list_color: Option<String> = None; // w:lvl の w:rPr の w:color(印だけの色)
     let mut line_spacing = 0.0f32;
     let mut line_pt: Option<(f32, bool)> = None;
     let mut no_grid = false; // w:pPr の w:snapToGrid w:val="0"
@@ -2650,6 +2653,7 @@ pub(super) fn parse_document_rels_num(
                               right_twips = 0;
                               list_id = None;
                               list_no_tab = false;
+                              list_color = None;
                               line_spacing = 0.0;
                               line_pt = None;
                               no_grid = false;
@@ -2757,8 +2761,9 @@ pub(super) fn parse_document_rels_num(
                         // **文書が決めた印を先に引きます**(2026-08-31)。
                         // 無い docx は今までどおり numId の決め打ちです
                         list_text = n.and_then(|n| shirushi.get(&(n, ilvl)).cloned()).map(
-                            |(t, kazu)| {
+                            |(t, kazu, iro)| {
                                 list = if kazu { ListKind::Number } else { ListKind::Bullet };
+                                list_color = iro;
                                 t
                             },
                         );
@@ -3532,8 +3537,9 @@ pub(super) fn parse_document_rels_num(
                         // **文書が決めた印を先に引きます**(2026-08-31)。
                         // 無い docx は今までどおり numId の決め打ちです
                         list_text = n.and_then(|n| shirushi.get(&(n, ilvl)).cloned()).map(
-                            |(t, kazu)| {
+                            |(t, kazu, iro)| {
                                 list = if kazu { ListKind::Number } else { ListKind::Bullet };
+                                list_color = iro;
                                 t
                             },
                         );
@@ -4008,6 +4014,7 @@ pub(super) fn parse_document_rels_num(
                                 right_twips,
                                 list_id: if list == ListKind::None { None } else { list_id },
                                 list_no_tab,
+                                list_color: list_color.take(),
                                 first_line_twips: first_line,
                                 first_line_chars,
                                 align_itta,
@@ -4678,7 +4685,7 @@ pub(crate) fn num_indents(xml: &str) -> std::collections::BTreeMap<(u32, u8), (i
     out
 }
 
-pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (String, bool)> {
+pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (String, bool, Option<String>)> {
     let mut out = std::collections::BTreeMap::new();
     if xml.is_empty() {
         return out;
@@ -4688,8 +4695,8 @@ pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (S
         let i = seg.find(&pat)? + pat.len();
         seg[i..].find('"').map(|e| seg[i..i + e].to_string())
     };
-    // 本体: abstractNumId → 段ごとの (印, 番号か)
-    let mut honnin: std::collections::BTreeMap<u32, Vec<(u8, String, bool)>> = Default::default();
+    // 本体: abstractNumId → 段ごとの (印, 番号か, 印の色)
+    let mut honnin: std::collections::BTreeMap<u32, Vec<(u8, String, bool, Option<String>)>> = Default::default();
     let mut rest = xml;
     while let Some(i) = rest.find("<w:abstractNum ") {
         let owari = rest[i..].find("</w:abstractNum>").map(|e| i + e).unwrap_or(rest.len());
@@ -4722,8 +4729,17 @@ pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (S
                     .map(|seg| attr1(seg, "w:ascii").unwrap_or_default())
                     .unwrap_or_default();
                 let txt = kigou_wo_naosu(&txt, &shotai);
+                // **The colour of the mark** (`w:lvl/w:rPr/w:color`,
+                // ECMA-376 17.3.2.6). It belongs to the mark alone, not to
+                // the text behind it. Word's booklet template paints its
+                // bullets `63A537` and the text black (2026-09-21)
+                let iro = one
+                    .find("<w:color ")
+                    .and_then(|k| one[k..].find('>').map(|e| &one[k..k + e]))
+                    .and_then(|seg| attr1(seg, "w:val"))
+                    .filter(|v| !v.is_empty() && v != "auto");
                 if !txt.is_empty() && fmt != "none" {
-                    honnin.entry(id).or_default().push((ilvl, txt, fmt != "bullet"));
+                    honnin.entry(id).or_default().push((ilvl, txt, fmt != "bullet", iro));
                 }
                 lv = &lv[le.max(j + 7)..];
             }
@@ -4741,8 +4757,8 @@ pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (S
             .and_then(|k| attr1(&blk[k..], "w:val"))
             .and_then(|v| v.parse().ok());
         if let (Some(n), Some(a)) = (num, abs) {
-            for (ilvl, txt, kazu) in honnin.get(&a).into_iter().flatten() {
-                out.insert((n, *ilvl), (txt.clone(), *kazu));
+            for (ilvl, txt, kazu, iro) in honnin.get(&a).into_iter().flatten() {
+                out.insert((n, *ilvl), (txt.clone(), *kazu, iro.clone()));
             }
         }
         rest = &rest[owari.max(i + 7)..];

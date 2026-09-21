@@ -494,7 +494,14 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
     // 編集中の文字位置とずれない(印は組版のときだけ現れる)
     if let Some(mk) = marker {
         let size = para.runs.first().and_then(|r| r.size_pt).unwrap_or(base);
-        let fmt = para.runs.first().map(|r| r.fmt.clone()).unwrap_or_default();
+        let mut fmt = para.runs.first().map(|r| r.fmt.clone()).unwrap_or_default();
+        // **The mark takes the colour the level gives it** (`w:lvl/w:rPr`,
+        // ECMA-376 17.9.6 and 17.3.2.6), which is not the colour of the text
+        // behind it. Word's booklet template paints its bullets `63A537` and
+        // the text black (2026-09-21)
+        if let Some(c) = &para.list_color {
+            fmt.color = Some(c.clone());
+        }
         let font = para.runs.first().and_then(|r| r.font.clone());
         for ch in mk.chars() {
             let w = m.advance_for(font.as_deref(), ch, size);
