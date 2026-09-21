@@ -1396,6 +1396,11 @@ pub struct SectionHf {
     pub first_header: Option<HeadFoot>,
     pub first_footer: Option<HeadFoot>,
     pub title_pg: bool,
+    /// **The number this section's first page carries** (docx
+    /// `w:pgNumType w:start`, ECMA-376 17.6.12). `None` means the numbering
+    /// runs on from the section before. The business plan e22e6b47 starts
+    /// its contents section at 0, so the third sheet prints 1
+    pub page_start: Option<i32>,
 }
 
 /// 段の間(mm)。Word の既定(425twip ≒ 7.5mm)に合わせる
@@ -1542,6 +1547,9 @@ pub struct Document {
     /// **先頭頁だけ別のヘッダー・フッター**(docx の `w:titlePg`)。最後の節の分。
     /// 真で `first_header` が無ければ、先頭頁のヘッダーは空
     pub title_pg: bool,
+    /// **最初の頁に振る番号**(docx の `w:pgNumType w:start`、
+    /// ECMA-376 17.6.12)。節を1つしか持たない文書の分です
+    pub page_start: Option<i32>,
     pub first_header: Option<HeadFoot>,
     pub first_footer: Option<HeadFoot>,
     /// 文書の保護(docx の settings の documentProtection の w:edit)。

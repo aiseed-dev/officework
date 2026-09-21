@@ -416,6 +416,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
             Some(hf)
         };
         doc.title_pg = sect.contains("<w:titlePg");
+        doc.page_start = page_start_of(&sect);
         if doc.title_pg {
             doc.first_header = hf_ref_of(&sect, "headerReference", "first").and_then(|r| yomu(&r, &mut rep));
             doc.first_footer = hf_ref_of(&sect, "footerReference", "first").and_then(|r| yomu(&r, &mut rep));
@@ -430,7 +431,11 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
             })
             .collect();
         for (j, raw) in owari {
-            let mut hf = kumihan::SectionHf { title_pg: raw.contains("<w:titlePg"), ..Default::default() };
+            let mut hf = kumihan::SectionHf {
+                title_pg: raw.contains("<w:titlePg"),
+                page_start: page_start_of(&raw),
+                ..Default::default()
+            };
             if let Some(h) = hf_ref(&raw, "headerReference").and_then(|r| yomu(&r, &mut rep)) {
                 hf.header = h;
             }
@@ -1356,6 +1361,19 @@ pub(super) fn sect_type(raw: &str) -> String {
 /// `<w:headerReference w:type="default" r:id="rId8"/>`。type 無しは default 扱い。
 pub(super) fn hf_ref(sect: &str, tag: &str) -> Option<String> {
     hf_ref_of(sect, tag, "default")
+}
+
+/// **The number the section's first page carries** (`w:pgNumType w:start`,
+/// ECMA-376 17.6.12). Without the attribute the numbering runs on from the
+/// section before, so this returns None
+pub(super) fn page_start_of(sect: &str) -> Option<i32> {
+    let i = sect.find("<w:pgNumType")?;
+    let e = sect[i..].find('>').map(|e| i + e)?;
+    let tag = &sect[i..e];
+    let k = tag.find("w:start=\"")? + 9;
+    let v = &tag[k..];
+    let e2 = v.find('"')?;
+    v[..e2].parse().ok()
 }
 
 /// 種類(`default` / `first` / `even`)を指定して参照を引く

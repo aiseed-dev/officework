@@ -1689,9 +1689,36 @@ pub fn doc_hf_pairs<'a>(
     // 0. Until 2026-09-19 they took `k` as 0-based, so the first page was
     // never the "first page" of `w:titlePg` and got the default footer,
     // and every section boundary was seen one page late
+    // **The number each sheet prints** (`w:pgNumType w:start`, ECMA-376
+    // 17.6.12). A section that names a start begins its numbering there;
+    // one that does not carries on from the section before. The business
+    // plan e22e6b47 starts its contents section at 0, and Word prints 1 on
+    // the third sheet where the count says 3 (2026-09-22)
+    let printed: Vec<usize> = {
+        let mut out = Vec::with_capacity(total);
+        let mut n: i32 = 1;
+        for idx in 0..total {
+            let si = sect_of(idx);
+            let atama = idx == 0 || sect_of(idx.saturating_sub(1)) != si;
+            let start = si
+                .and_then(|i| sect_hfs.get(i))
+                .and_then(|h| h.as_ref())
+                .and_then(|h| h.page_start)
+                .or(if si.is_none() { doc.page_start } else { None });
+            n = match (atama, start) {
+                (true, Some(v)) => v,
+                (true, None) if idx == 0 => doc.page_start.unwrap_or(1),
+                (true, None) => n + 1,
+                (false, _) => n + 1,
+            };
+            out.push(n.max(0) as usize);
+        }
+        out
+    };
     Ok(move |k: usize| {
         let idx = k.saturating_sub(1);
         let si = sect_of(idx);
+        let k = printed.get(idx).copied().unwrap_or(k);
         let atama = idx == 0 || sect_of(idx.saturating_sub(1)) != si;
         let pg = si.and_then(|i| sect_pages.get(i)).map(|(_, p)| *p).unwrap_or(page);
         let kara = kumihan::HeadFoot::default();
