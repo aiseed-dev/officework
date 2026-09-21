@@ -18,6 +18,7 @@ content and the owner decides whether they may be published.
 import argparse
 import datetime
 import html
+import glob
 import os
 import sys
 
@@ -89,6 +90,25 @@ def shot(guid, loc, kind, tag, label, have):
             f'<img loading="lazy" src="{name}" alt="{label}"></div>')
 
 
+
+def base_of(root, locale, guid, kind=None):
+    """The path stem of one template, without a suffix.
+
+    The en-us files are filed by kind (`en-us/<kind>/<guid>.docx`,
+    2026-09-21); the other locales sit directly under the locale folder.
+    A `kind` is used when it is known, and the folders are searched when it
+    is not.
+    """
+    if kind:
+        p = os.path.join(root, locale, kind, guid)
+        if os.path.exists(p + ".docx"):
+            return p
+    hit = glob.glob(os.path.join(root, locale, "*", guid + ".docx"))
+    if hit:
+        return hit[0][: -len(".docx")]
+    return os.path.join(root, locale, guid)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description="突き合わせの結果からギャラリーの頁を作ります")
     p.add_argument("--root", default=ROOT, help="置き場")
@@ -116,7 +136,7 @@ def main(argv=None):
     pics = {}
     for (guid, loc), c in res.items():
         for tag, suffix in (("word", ".ms.pdf"), ("ours", ".ours.pdf")):
-            src = os.path.join(root, loc, guid + suffix)
+            src = base_of(root, loc, guid, c[2]) + suffix
             png = os.path.join(out, f"{guid}-{loc}-{tag}.png")
             if a.no_images:
                 pics[(guid, loc, tag)] = os.path.exists(png)

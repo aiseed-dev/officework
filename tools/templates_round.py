@@ -32,6 +32,7 @@ neither printed nor read again. `--redo` compares every pair again, which is
 what to use after the converter has changed.
 """
 import argparse
+import glob
 import os
 import subprocess
 import sys
@@ -137,7 +138,7 @@ def reusable(row, guid, lang):
     """
     if not row or not row[4].strip() or not row[5].strip():
         return False
-    base = os.path.join(ROOT, LOCALE[lang], guid)
+    base = base_of(ROOT, LOCALE[lang], guid)
     docx = base + ".docx"
     if not os.path.exists(docx):
         return False
@@ -148,13 +149,31 @@ def reusable(row, guid, lang):
     return True
 
 
+def base_of(root, locale, guid, kind=None):
+    """The path stem of one template, without a suffix.
+
+    The en-us files are filed by kind (`en-us/<kind>/<guid>.docx`,
+    2026-09-21); the other locales sit directly under the locale folder.
+    A `kind` is used when it is known, and the folders are searched when it
+    is not.
+    """
+    if kind:
+        p = os.path.join(root, locale, kind, guid)
+        if os.path.exists(p + ".docx"):
+            return p
+    hit = glob.glob(os.path.join(root, locale, "*", guid + ".docx"))
+    if hit:
+        return hit[0][: -len(".docx")]
+    return os.path.join(root, locale, guid)
+
+
 SKIP_FILE = [os.path.join(ROOT, "飛ばす.txt")]
 
 
 def one(guid, kind, title, lang, skip_word):
     skip_file = SKIP_FILE[0]
     """One locale of one template. Returns the row for 結果.tsv."""
-    base = os.path.join(ROOT, LOCALE[lang], guid)
+    base = base_of(ROOT, LOCALE[lang], guid, kind)
     docx, ms, our = base + ".docx", base + ".ms.pdf", base + ".ours.pdf"
     row = [guid, LOCALE[lang], kind, title, "", "", "", "", ""]
     if not os.path.exists(docx):

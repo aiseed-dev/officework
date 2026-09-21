@@ -174,7 +174,13 @@ def main(argv=None):
             title_ja, url_ja = ja_map[guid]
             ok = True
             for lang, url in (("en", url_en), ("ja", url_ja)):
-                dst = os.path.join(a.out, LOCALE[lang], guid + ".docx")
+                # en-us is filed by kind (2026-09-21); the other locales
+                # sit directly under the locale folder
+                dst = (
+                    os.path.join(a.out, LOCALE[lang], kind, guid + ".docx")
+                    if lang == "en"
+                    else os.path.join(a.out, LOCALE[lang], guid + ".docx")
+                )
                 try:
                     r = download(url, dst, a.force)
                 except Exception as e:  # noqa: BLE001 - keep going on one failure
