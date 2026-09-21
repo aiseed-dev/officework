@@ -1512,9 +1512,9 @@ Bold 700)は name id 1 が別なので Word も置き替えず、輪郭を太ら
 (ECMA-376 17.15.1.44)です。これがある文書は昔の Word のまま足し、
 無い文書は HTML の余白と同じで大きい方だけになります。
 
-Word の PDF で測った値です。測るのは `tools/para_spacing.py` で、行の箱が
-同じ大きさになる隣り合わせの段落だけを見ます(行の高さは、同じスタイルで
-2 行以上ある段落から取ります)。Word は 1/300 インチ(0.24pt)の升で
+Word の PDF で測った値です。測るのは `tools/para_spacing.py` で、行の高さが
+同じになる隣り合わせの段落だけを見ます(行の高さは、同じスタイルで 2 行以上
+ある段落から取ります)。Word は 1/300 インチ(0.24pt)の升で
 組むので、0.24pt までの違いは同じと見てください。
 
 [cols="2,1,1,1,1,1",options="header"]
@@ -1529,11 +1529,11 @@ Word の PDF で測った値です。測るのは `tools/para_spacing.py` で、
 | `e22e6b47` 目次(TOC2 → TOC1) | 5pt | 16pt | 約 16pt | 21pt | 16pt
 |===
 
-前の 5 組は同じ大きさの箱が並ぶので、測った値がそのまま空きです。どれも
+前の 5 組は行の高さが同じなので、測った値がそのまま空きです。どれも
 大きい方と 0.24pt 以内で合い、足した値とは 2pt から 18pt 離れます。
 
-箱の大きさが違う組(本文 → 見出しなど)は、行の高さをどちらか一方から
-取るぶん 1〜3pt 大きく出ます。`1b4c752f` の 8pt / 21pt は 26.6pt、
+行の高さが違う組(本文 → 見出しなど)は、高さをどちらか一方から取るぶん
+1〜3pt 大きく出ます。`1b4c752f` の 8pt / 21pt は 26.6pt、
 `57cae682` の 12pt / 16pt は 18.7pt でした。それでも足した値(29pt、28pt)
 には届きません。
 
@@ -1541,7 +1541,7 @@ Word の PDF で測った値です。測るのは `tools/para_spacing.py` で、
 `w:doNotUseHTMLParagraphAutoSpacing` を持ちます。この型紙は Dialogue と
 Character Name が交互に並び、Dialogue の後は 8pt、Character Name の前は
 6pt です。Word の PDF で測ると Dialogue → Character Name は 28.1pt、
-Character Name → Dialogue は 22.3pt で、差は 6.0pt でした。行の箱は
+Character Name → Dialogue は 22.3pt で、差は 6.0pt でした。行の高さは
 どちらも 12pt の Courier New で同じなので、この差は Character Name の
 「前の空き」がそのまま出たことを表します。大きい方だけなら差は 0 です。
 

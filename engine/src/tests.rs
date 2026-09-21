@@ -3768,12 +3768,13 @@ mod block_kind_tests {
     }
 }
 
-/// **段落と段落の間の空き**(ECMA-376 17.3.1.33 `w:spacing`、
-/// 17.15.1.44 `w:doNotUseHTMLParagraphAutoSpacing`)。
+/// The space between two paragraphs (ECMA-376 17.3.1.33 `w:spacing`,
+/// 17.15.1.44 `w:doNotUseHTMLParagraphAutoSpacing`).
 mod space_between_tests {
     use super::*;
 
-    /// 2 つの段落(後 18pt / 前 6pt)を組んで、腰と腰の間を返します
+    /// Lay out two paragraphs (18pt after, 6pt before) and return the
+    /// distance between their baselines
     fn aida(no_html: bool) -> f32 {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
@@ -3797,9 +3798,9 @@ mod space_between_tests {
 
     #[test]
     fn the_larger_of_the_two_spaces_is_the_space_between() {
-        // HTML と同じ組み方(設定が無い文書)。18pt と 6pt は重なって 18pt
+        // HTML spacing (no such setting): 18pt and 6pt overlap into 18pt
         let html = aida(false);
-        // 昔の Word の組み方(`w:doNotUseHTMLParagraphAutoSpacing` がある)。24pt
+        // The old Word spacing (`w:doNotUseHTMLParagraphAutoSpacing`): 24pt
         let mukashi = aida(true);
         let sa = mukashi - html;
         assert!((sa - 6.0 * 25.4 / 72.0).abs() < 0.01,

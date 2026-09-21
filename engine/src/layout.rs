@@ -302,24 +302,27 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
     out
 }
 
-/// **段落と段落の間の空き**(mm)。前の段落の「後の空き」はもう置いてあるので、
-/// ここが返すのは次の段落の「前の空き」の足し前です。
+/// **The space between two paragraphs** (mm). The space after the paragraph
+/// above is already laid down, so this returns what is left to add of the
+/// next paragraph's space before.
 ///
-/// **HTML と同じ組み方の文書では、2 つを足さずに大きい方だけを置きます。**
-/// 設定(`w:settings`)に `w:doNotUseHTMLParagraphAutoSpacing`
-/// (ECMA-376 17.15.1.44)があれば昔の Word のまま足し、無ければ HTML の
-/// 余白と同じで重なります。`aida` が真のときが重なる方です。
+/// Word adds the two only when the settings hold
+/// `w:doNotUseHTMLParagraphAutoSpacing` (ECMA-376 17.15.1.44). Without it
+/// Word spaces paragraphs the way HTML does: the two overlap and the larger
+/// one wins. `kasanaru` is true for the overlapping case.
 ///
-/// 型紙の Word の PDF で測りました
-/// (docs/sekkei/word-templates.ja.adoc の「段落と段落の間の空き」)。
-/// 設定の無い `65dc06b1` は後 18pt・前 2pt で 18.0pt、後 18pt・前 24pt で
-/// 24.2pt、`b30688e1` は後 18pt・前 18pt で 18.0pt です。足した 20pt・42pt・
-/// 36pt とは合いません。設定のある `16da075b` は逆で、後 8pt・前 6pt の所が
-/// 14pt でした。同じ 2 つのスタイルが入れ替わって並ぶ所を両方向で測ると、
-/// 差がちょうど 6pt(次の段落の前の空き)で、大きい方なら差は 0 になります。
-/// Word は 1/300 インチ(0.24pt)の升で組むので、そこまでの違いは同じと見ます
-pub(super) fn space_between_mm(zen_ato: f32, mae: f32, aida: bool) -> f32 {
-    if aida { (mae - zen_ato).max(0.0) } else { mae }
+/// Measured in Word's PDFs (docs/sekkei/word-templates.ja.adoc, the section
+/// on the space between paragraphs). The letter `65dc06b1`, which has no
+/// such setting, asks 18pt after and 2pt before and Word leaves 18.0pt;
+/// 18pt and 24pt leave 24.2pt; 48pt and 2pt leave 48.0pt; `b30688e1` asks
+/// 18pt and 18pt and leaves 18.0pt. Adding would give 20, 42, 50 and 36pt.
+/// The screenplay `16da075b` does hold the setting and there 8pt after and
+/// 6pt before leave 14pt: its two styles alternate, and measuring both
+/// directions the gaps differ by exactly the 6pt space before, which would
+/// be 0 if the larger one won. Word lays the page out at 1/300 inch, so a
+/// difference up to 0.24pt reads as a match
+pub(super) fn space_between_mm(zen_ato: f32, mae: f32, kasanaru: bool) -> f32 {
+    if kasanaru { (mae - zen_ato).max(0.0) } else { mae }
 }
 
 /// **1行の高さ(mm)。** 本文 10.5pt に対する行送りです。
@@ -1193,8 +1196,9 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
     let mut table_no = 0usize;
     // 直前に浮かぶ表を組んだか(直後の空の段落は表の横に置かれるので場所を取らない)
     let mut ukabu = false;
-    // 直前の段落の「後の空き」(mm)。次の段落の「前の空き」と足さずに、
-    // 大きい方を置くために覚えます([`space_between_mm`])
+    // The space after the paragraph above (mm), kept so that the next
+    // paragraph's space before overlaps it instead of adding to it
+    // ([`space_between_mm`])
     let mut zen_ato = 0.0f32;
     // **横に字を流す浮かぶ表**の占める所(下端 y, 左 x, 右 x。mm)。この下端より上の
     // 段落は、表の横の幅で組む(Word の「文字列の折り返し」)
@@ -1789,7 +1793,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 }
             }
             Block::Table(table) => {
-                // 表の前後では空きを繋ぎません(measured only for paragraphs)
+                // The overlap is measured between paragraphs, so a table
+                // ends the run and the next paragraph keeps its own space
                 zen_ato = 0.0;
                 // 横に字を流していた浮かぶ表の下に出る
                 if let Some((soko, _, _)) = yoke.take() {
@@ -2736,8 +2741,9 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 // `None` を渡していたので、内閣府の調査票の `○` が8か所
                 // 消えていました。番号はセルごとに数え直します
                 let mut kazu = 0usize;
-                // 直前の段落の「後の空き」(mm)。セルの中でも本文と同じに、
-                // 前後の空きは足さずに大きい方を置きます([`space_between_mm`])
+                // The space after the paragraph above (mm). Inside a cell
+                // the two spaces overlap just as they do in the body
+                // ([`space_between_mm`])
                 let mut zen_ato = 0.0f32;
                 for para in &cell.paragraphs {
                     // **セルの中の表**(2026-09-09)。セルの内側の幅で組み、高さを
