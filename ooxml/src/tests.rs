@@ -1024,6 +1024,56 @@ mod gridcol_round {
 }
 
 #[cfg(test)]
+mod row_height_tests {
+    use std::io::{Cursor, Write};
+
+    /// 行の高さの指定を持つ docx を作る(1 行目は固定、2 行目は下限)
+    fn docx_with_rows() -> Vec<u8> {
+        let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        let o: zip::write::FileOptions<'_, ()> = Default::default();
+        let mut put = |n: &str, d: &[u8]| {
+            zip.start_file(n, o).unwrap();
+            zip.write_all(d).unwrap();
+        };
+        put("[Content_Types].xml", br#"<Types xmlns="ct"><Default Extension="xml" ContentType="application/xml"/></Types>"#);
+        put("_rels/.rels", br#"<Relationships xmlns="r"/>"#);
+        put(
+            "word/document.xml",
+            br#"<w:document xmlns:w="x"><w:body><w:tbl>
+<w:tr><w:trPr><w:trHeight w:hRule="exact" w:val="86"/></w:trPr><w:tc><w:p><w:r><w:t>a</w:t></w:r></w:p></w:tc></w:tr>
+<w:tr><w:trPr><w:trHeight w:val="720"/></w:trPr><w:tc><w:p><w:r><w:t>b</w:t></w:r></w:p></w:tc></w:tr>
+</w:tbl></w:body></w:document>"#,
+        );
+        put("word/styles.xml", br#"<w:styles xmlns:w="x"/>"#);
+        zip.finish().unwrap().into_inner()
+    }
+
+    /// **固定の行は開いて保存しても固定のまま**(`w:trHeight w:hRule`、
+    /// ECMA-376 17.4.80)。
+    ///
+    /// 書き手はいつも `atLeast` と書いていました。Word の請求書の型紙
+    /// 0644da1f を開いて保存しただけで、4.3pt 固定の行が中身なりの
+    /// 25.1pt に伸び、本文が 21pt 下がって 1 頁が 2 頁になりました
+    /// (2026-09-21 発注者)。
+    #[test]
+    fn an_exact_row_height_survives_saving() {
+        let src = docx_with_rows();
+        let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
+        let t = doc.tables().next().expect("表が読めない");
+        assert_eq!(t.row_exact, vec![true, false], "hRule が読めていない");
+        let mut out = Vec::new();
+        crate::write(&doc, Cursor::new(&mut out)).unwrap();
+        let (back, _) = crate::read(Cursor::new(&out)).unwrap();
+        let t2 = back.tables().next().expect("表が消えた");
+        assert_eq!(t2.row_exact, vec![true, false], "固定の行が下限に化けた");
+        assert_eq!(
+            t2.row_mm.iter().map(|m| (m * 1440.0 / 25.4).round() as i32).collect::<Vec<_>>(),
+            vec![86, 720],
+            "行の高さが変わった"
+        );
+    }
+}
+
 mod preserve_tests {
     use kumihan::Document;
     use std::io::{Cursor, Read, Write};

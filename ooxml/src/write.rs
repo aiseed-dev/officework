@@ -551,9 +551,14 @@ pub(super) fn write_table(w: &mut Writer<Cursor<Vec<u8>>>, t: &kumihan::Table,
                 let tw = (h * 1440.0 / 25.4).round().max(1.0) as u32;
                 let tw = tw.to_string();
                 e.push_attribute(("w:val", tw.as_str()));
-                // **少なくともこの高さ**(atLeast)。中身が入り切らない
-                // ときに字を切らないための決めで、Word の既定と同じです
-                e.push_attribute(("w:hRule", "atLeast"));
+                // **固定の行は固定のまま返します**(`w:hRule`、ECMA-376
+                // 17.4.80)。`exact` は中身が多くても伸びない高さ、
+                // `atLeast` は下限です。いつも `atLeast` と書いていたので、
+                // Word の請求書の型紙 0644da1f を開いて保存しただけで
+                // 4.3pt 固定の行が中身なりの 25.1pt に伸び、本文が 21pt
+                // 下がって 1 頁が 2 頁になっていました(2026-09-21 発注者)
+                let kotei = t.row_exact.get(ri).copied().unwrap_or(false);
+                e.push_attribute(("w:hRule", if kotei { "exact" } else { "atLeast" }));
                 w.write_event(Event::Empty(e)).unwrap();
             }
             // 並びは CT_TrPr のとおり trHeight の後です
