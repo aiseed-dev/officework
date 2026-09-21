@@ -1298,25 +1298,39 @@ impl Writer {
         self.page.lines.last().map(|l| l.y_mm + 30.0).unwrap_or(0.0).max(self.pg.h_mm)
     }
 
-    /// 縦にスクロールする(画素)。紙の頭より上・末尾より下へは行かない。
+    /// 縦にスクロールする(画素)。いま見せているセクションの外へは行かない。
     pub(crate) fn scroll_px(&mut self, dy_px: f32) {
         let pxmm = PX_PER_MM * self.zoom;
         let view_mm = (self.view_h_px / pxmm).max(20.0);
-        let max = (self.content_mm() + 20.0 - view_mm).max(0.0);
-        self.scroll_mm = (self.scroll_mm + dy_px / pxmm).clamp(0.0, max);
+        let (ue, sita) = self.sect_span_mm();
+        let max = (sita + 20.0 - view_mm).max(ue);
+        self.scroll_mm = (self.scroll_mm + dy_px / pxmm).clamp(ue, max);
     }
 
     /// キャレットが窓から出ていたら、見える所まで紙を送る。
+    ///
+    /// **キャレットが別のセクションへ移ったら、画面もそちらへ移ります。**
+    /// 打った字で行があふれて次のセクションの紙へ渡ったとき、画面だけ前の
+    /// セクションに残るとキャレットが消えます
     pub(crate) fn follow_caret(&mut self) {
         let pxmm = PX_PER_MM * self.zoom;
         let (_, cy, _) = self.caret_xy();
         let view_mm = (self.view_h_px / pxmm).max(20.0);
+        let (mut ue, mut sita) = self.sect_span_mm();
+        if cy < ue - 0.01 || cy > sita {
+            let (page, _) = self.page_of_roll(cy);
+            self.sect_view = self.sect_of_page(page);
+            let span = self.sect_span_mm();
+            ue = span.0;
+            sita = span.1;
+        }
         if cy > self.scroll_mm + view_mm - 15.0 {
             self.scroll_mm = cy - (view_mm - 15.0);
         }
         if cy < self.scroll_mm + 5.0 {
-            self.scroll_mm = (cy - 5.0).max(0.0);
+            self.scroll_mm = cy - 5.0;
         }
+        self.scroll_mm = self.scroll_mm.clamp(ue, (sita + 20.0 - view_mm).max(ue));
     }
 }
 

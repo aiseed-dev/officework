@@ -89,6 +89,7 @@ impl Writer {
             tab: 1, // ファイルは全面ページなので、開きはホーム(calc と同じ)
             zoom: 1.0,
             scroll_mm: 0.0,
+            sect_view: 0,
             caret_on: true,
             view_h_px: 800.0,
             target: Target::Body,
@@ -790,26 +791,72 @@ impl Writer {
         self.page_offsets.len().max(1)
     }
 
-    /// **用紙の変わり目で区切った、紙の束。** 返すのは束ごとの
+    /// **セクションごとの頁の範囲。** 返すのはセクションごとの
     /// (最初の頁, 最後の頁)で、どちらも 0 から数えます。
     ///
-    /// Word の文書は節ごとに用紙を変えられます。向きが変わる所は必ず
-    /// 改頁です — `w:type="continuous"` は同じ紙の上で続ける区切りなので
-    /// 用紙を変えられず、手元の docx 629 件でも向きが変わる節の区切りは
-    /// すべて `nextPage` でした(2026-09-21)。だから用紙が変わる頁は
-    /// いつも束の先頭になり、文章が束をまたいで同じ頁に続くことはありません。
-    pub(crate) fn paper_groups(&self) -> Vec<(usize, usize)> {
-        let onaji = |a: &paper::Paper, b: &paper::Paper| {
-            a.width_mm == b.width_mm && a.height_mm == b.height_mm && a.margin_mm == b.margin_mm
-        };
-        let mut out: Vec<(usize, usize)> = Vec::new();
-        for (k, q) in self.page_papers.iter().enumerate() {
-            match out.last_mut() {
-                Some(g) if onaji(&self.page_papers[g.0], q) => g.1 = k,
-                _ => out.push((k, k)),
+    /// 区切りは docx の節(`w:sectPr`、ECMA-376 17.6.17)です。節は用紙の
+    /// 向きだけでなく、ヘッダー・フッターと頁番号の付け方も変えます
+    /// (`w:pgNumType`、17.6.12)。事業計画書の型紙 `e22e6b47` は表紙と
+    /// 目次に頁番号を付けないので、そこが別の節になっています。だから
+    /// 用紙ではなく節で区切ります。
+    ///
+    /// 節の区切りは紙を改めます。同じ紙の上で続ける `w:type="continuous"`
+    /// は、用紙が同じなら頁を割らないので、ここにも出てきません。
+    pub(crate) fn sections(&self) -> Vec<(usize, usize)> {
+        let pages = self.total_pages();
+        let mut atama = vec![0usize];
+        if self.sheets() {
+            for (at, _) in &self.page.sect_pages {
+                if *at <= 0.01 {
+                    continue;
+                }
+                // その節の最初の行を持つ頁。頁割りは節の区切りで紙を改めるので、
+                // 節の頭はいつもどれかの頁の頭です
+                if let Some(k) = self.page_starts.iter().position(|y| *y >= *at - 0.01) {
+                    if k > 0 && !atama.contains(&k) {
+                        atama.push(k);
+                    }
+                }
             }
         }
-        out
+        atama.sort_unstable();
+        atama.retain(|k| *k < pages);
+        (0..atama.len())
+            .map(|i| (atama[i], atama.get(i + 1).map(|n| n - 1).unwrap_or(pages - 1)))
+            .collect()
+    }
+
+    /// **画面に出しているセクションの上端と下端**(紙の座標 mm)。
+    ///
+    /// 画面はセクションを 1 つずつ見せます(Excel のシートと同じ)。
+    /// セクションが 1 つだけの文書と、紙を 1 枚ずつ積まない見せ方
+    /// (Web の形・縦書き・見開き)では、文書全体がそのまま範囲です
+    pub(crate) fn sect_span_mm(&self) -> (f32, f32) {
+        let groups = self.sections();
+        if !self.sheets() || groups.len() < 2 {
+            return (0.0, self.content_mm());
+        }
+        let (first, last) = groups[self.sect_view.min(groups.len() - 1)];
+        let ue = self.page_tops.get(first).copied().unwrap_or(0.0);
+        let h = self.page_papers.get(last).map(|q| q.height_mm).unwrap_or(self.pg.h_mm);
+        let sita = self.page_tops.get(last).copied().unwrap_or(0.0) + h;
+        (ue, sita)
+    }
+
+    /// その頁を持つセクションの番号
+    pub(crate) fn sect_of_page(&self, k: usize) -> usize {
+        self.sections()
+            .iter()
+            .position(|(a, b)| k >= *a && k <= *b)
+            .unwrap_or(0)
+    }
+
+    /// セクションを選んで、その先頭を出す(下のタブを押したとき)
+    pub(crate) fn show_section(&mut self, gi: usize) {
+        self.sect_view = gi;
+        if let Some((first, _)) = self.sections().get(gi).copied() {
+            self.scroll_to_page(first);
+        }
     }
 
     /// その頁の上端まで送る(紙の束のタブを押したとき)
@@ -1139,6 +1186,23 @@ impl Writer {
         }
         self.header_lines = hf.iter().map(|(h, _)| h.clone()).collect();
         self.footer_lines = hf.into_iter().map(|(_, f)| f).collect();
+        self.fix_view();
+    }
+
+    /// **見せているセクションを、組み直した後の頁に合わせる。**
+    ///
+    /// 字を打つと頁が増え減りするので、番号がセクションの数を超えることが
+    /// あります。送り(`scroll_mm`)もそのセクションの紙の中へ戻します —
+    /// 外に出たままだと、紙の無い所を見て画面が白くなります
+    pub(crate) fn fix_view(&mut self) {
+        let n = self.sections().len();
+        if self.sect_view >= n {
+            self.sect_view = n.saturating_sub(1);
+        }
+        let (ue, sita) = self.sect_span_mm();
+        let pxmm = crate::PX_PER_MM * self.zoom;
+        let view_mm = (self.view_h_px / pxmm).max(20.0);
+        self.scroll_mm = self.scroll_mm.clamp(ue, (sita + 20.0 - view_mm).max(ue));
     }
 
     /// ヘッダー・フッターの編集のパネルを開く(もう一度で閉じる)。

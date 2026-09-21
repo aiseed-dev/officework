@@ -750,25 +750,20 @@ impl Render for Writer {
             bar
         });
 
-        // ---- 紙の束のタブ(用紙が変わる所で区切る) ----
+        // ---- セクションのタブ(用紙が変わる所で区切る) ----
         //
         // Word の文書は節ごとに用紙を変えられます。向きが変わる所は必ず
-        // 改頁なので、束の先頭はいつも頁の先頭です。文書は 1 つのまま
-        // (`doc.blocks` は分けません)で、このタブは**どこへ行くか**の
-        // 指定です。1 束しか無い文書では出しません
-        let groups = self.paper_groups();
-        let ima_page = self
-            .page_tops
-            .iter()
-            .rposition(|t| self.scroll_mm >= *t - 0.01)
-            .or_else(|| self.page_offsets.iter().rposition(|o| self.scroll_mm >= *o - 0.01))
-            .unwrap_or(0);
+        // 改頁なので、セクションの先頭はいつも頁の先頭です。文書は 1 つの
+        // まま(`doc.blocks` は分けません)で、画面はそのうち 1 つの
+        // セクションだけを見せます。1 つしか無い文書ではタブを出しません
+        let groups = self.sections();
+        let ima = self.sect_view.min(groups.len().saturating_sub(1));
         let papers_bar = (groups.len() > 1).then(|| {
             let mut bar = div().flex().flex_row().items_center().gap_1()
                 .px_3().py_1().bg(rgb(0xF1F3F5))
                 .border_t_1().border_color(rgb(0xD5DBE0));
-            for (gi, (first, last)) in groups.iter().copied().enumerate() {
-                let on = ima_page >= first && ima_page <= last;
+            for (gi, (first, _last)) in groups.iter().copied().enumerate() {
+                let on = gi == ima;
                 let yoko = self
                     .page_papers
                     .get(first)
@@ -786,7 +781,7 @@ impl Render for Writer {
                     .text_size(px(us * 11.5))
                     .text_color(if on { rgb(0x1B6E3C) } else { rgb(0x4A5560) })
                     .child(SharedString::from(na))
-                    .on_click(cx.listener(move |t, _, _, cx| { t.scroll_to_page(first); cx.notify() })));
+                    .on_click(cx.listener(move |t, _, _, cx| { t.show_section(gi); cx.notify() })));
             }
             bar
         });
@@ -908,8 +903,12 @@ impl Render for Writer {
         let mut paper = div().absolute()
             .left(px(28.0)).top(px(14.0 - self.scroll_mm * pxmm))
             .w(px(self.paper_w_mm() * pxmm)).h(px(self.content_mm() * pxmm));
+        // **画面はセクションを 1 つずつ見せます。** その範囲の外にある紙も
+        // 字も描きません(Excel のシートと同じ見せ方)
+        let (mi_ue, mi_sita) = self.sect_span_mm();
         if self.sheets() {
             for (k, top) in self.page_tops.clone().iter().enumerate() {
+                if *top < mi_ue - 0.01 || *top >= mi_sita { continue; }
                 let q = self.page_papers.get(k).copied().unwrap_or(paper::Paper::from_page(&self.pg));
                 paper = paper.child(div().absolute()
                     .left(px(0.0)).top(px(top * pxmm))
@@ -994,6 +993,7 @@ impl Render for Writer {
             } else {
                 (ehon[k].0.clone(), ehon[k].1)
             };
+            if at[1] / pxmm < mi_ue - 0.01 || at[1] / pxmm > mi_sita { continue; }
             paper = paper.child(
                 gpui::img(src).absolute().left(px(at[0])).top(px(at[1])).w(px(at[2])).h(px(at[3])),
             );
@@ -1192,6 +1192,9 @@ impl Render for Writer {
         // 未確定(変換中)の下線は、行が持つバイト位置(byte0)で結ぶ
         for (li, line) in self.page.lines.iter().enumerate() {
             if line.cells.is_empty() {
+                continue;
+            }
+            if line.y_mm < mi_ue - 0.01 || line.y_mm > mi_sita {
                 continue;
             }
             if self.page.vertical {

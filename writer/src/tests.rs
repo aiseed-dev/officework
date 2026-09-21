@@ -1180,7 +1180,7 @@ mod page_setup_tests {
     /// 文書は 1 つのままです(`doc.blocks` は分けません)。束は
     /// 「どこを見るか」の指定で、押すとその束の先頭の頁へ送ります。
     #[gpui::test]
-    fn the_paper_groups_split_where_the_paper_changes(cx: &mut gpui::TestAppContext) {
+    fn the_sections_split_where_the_document_breaks(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, _cx| {
             let tate = kumihan::PageSetup::default();
@@ -1194,29 +1194,60 @@ mod page_setup_tests {
             this.doc = d;
             this.pg = yoko;
             this.relayout();
-            let g = this.paper_groups();
-            assert_eq!(g.len(), 2, "用紙が変わるのに 1 束のまま: {g:?}");
-            assert_eq!(g[0].0, 0, "1 束目が 1 頁目から始まっていない: {g:?}");
-            assert_eq!(g[1].0, 1, "2 束目が 2 頁目から始まっていない: {g:?}");
+            let g = this.sections();
+            assert_eq!(g.len(), 2, "節が変わるのにセクションが 1 つのまま: {g:?}");
+            assert_eq!(g[0].0, 0, "1 つめが 1 頁目から始まっていない: {g:?}");
+            assert_eq!(g[1].0, 1, "2 つめが 2 頁目から始まっていない: {g:?}");
             // タブを押したときと同じ送り
             this.scroll_to_page(g[1].0);
             assert!(
                 (this.scroll_mm - this.page_tops[1]).abs() < 0.01,
-                "2 束目の先頭へ送れていない: {} / {}",
+                "2 つめの先頭へ送れていない: {} / {}",
                 this.scroll_mm,
                 this.page_tops[1]
             );
         });
     }
 
-    /// 用紙が変わらない文書は束が 1 つ(タブを出さない)
+    /// **用紙が同じでも、節が変われば別のセクション。** 事業計画書の型紙
+    /// `e22e6b47` は表紙と目次に頁番号を付けないので、そこで節が変わります
+    /// (`w:pgNumType`、ECMA-376 17.6.12)。用紙で区切っていた頃は、表紙と
+    /// 目次と本文が 1 つのタブに入っていました
     #[gpui::test]
-    fn one_paper_makes_one_group(cx: &mut gpui::TestAppContext) {
+    fn a_section_break_on_the_same_paper_makes_its_own_tab(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let tate = kumihan::PageSetup::default();
+            let mut d = kumihan::Document::plain("表紙\n目次\n本文");
+            for i in [0usize, 1] {
+                if let Some(kumihan::Block::Para(p)) = d.blocks.get_mut(i) {
+                    p.sect = Some(kumihan::SectionBreak {
+                        raw: String::new(), page: tate, continuous: false });
+                }
+            }
+            d.page = Some(tate);
+            this.doc = d;
+            this.pg = tate;
+            this.lay();
+            let g = this.sections();
+            assert_eq!(g.len(), 3, "同じ用紙の節がまとまってしまう: {g:?}");
+            assert_eq!(g[1].0, 1, "2 つめが 2 頁目から始まっていない: {g:?}");
+            // 画面はそのセクションの紙だけを見せる
+            this.show_section(1);
+            let (ue, sita) = this.sect_span_mm();
+            assert!(ue > 0.0 && sita > ue, "2 つめの範囲が取れない: {ue} {sita}");
+            assert!((this.scroll_mm - ue).abs() < 0.01, "先頭へ送れていない");
+        });
+    }
+
+    /// 節が 1 つの文書はセクションも 1 つ(タブを出さない)
+    #[gpui::test]
+    fn one_section_makes_one_tab(cx: &mut gpui::TestAppContext) {
         let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
         w.update(cx, |this, cx| {
             this.run_cmd("instable-go", cx);
             this.relayout();
-            assert_eq!(this.paper_groups().len(), 1, "束が 1 つでない");
+            assert_eq!(this.sections().len(), 1, "セクションが 1 つでない");
         });
     }
 
