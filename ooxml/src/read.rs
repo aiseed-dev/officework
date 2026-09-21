@@ -1885,6 +1885,11 @@ fn style_para(
             .filter(|v| !v.is_empty() && v != "auto"),
         // 同じスタイルが続く間は空きを入れない
         contextual_spacing: body.contains("<w:contextualSpacing").then_some(true),
+        // `w:keepNext` と `w:widowControl`。どちらも頁の割り方を変えます
+        keep_next: body.contains("<w:keepNext").then(|| val("w:keepNext")
+            .is_none_or(|v| !matches!(v.as_str(), "0" | "false"))),
+        widow_control: body.contains("<w:widowControl").then(|| val("w:widowControl")
+            .is_none_or(|v| !matches!(v.as_str(), "0" | "false"))),
         // 行グリッドに合わせない(`w:val="0"` のときだけ)
         no_grid: val("w:snapToGrid").map(|v| v == "0" || v == "false" || v == "off"),
     }
@@ -2597,6 +2602,8 @@ pub(super) fn parse_document_rels_num(
     let mut before_itta = false;
     let mut after_itta = false;
     let mut page_break_before = false;
+    let mut keep_next = false;
+    let mut widow_control: Option<bool> = None;
     // 次の段落を新しい紙から始めるか(run の中の `<w:br w:type="page"/>`)
     let mut tsugi_kaipeji = false;
     // この段落の頭の `w:br` で改ページを立てたか(段落が空のままなら次へ回す)
@@ -2927,6 +2934,11 @@ pub(super) fn parse_document_rels_num(
                         dropcap = matches!(attr(&e, "dropCap").as_deref(),
                             Some("drop") | Some("margin"));
                     }
+                    // **次の段落と同じ頁に置く**(`w:keepNext`)と
+                    // **1 行だけを境に残さない**(`w:widowControl`)。
+                    // どちらも頁の割り方を変えます
+                    b"keepNext" if in_ppr => { keep_next = on(&e); }
+                    b"widowControl" if in_ppr => { widow_control = Some(on(&e)); }
                     b"pageBreakBefore" if in_ppr => {
                         page_break_before = on(&e);
                     }
@@ -3737,6 +3749,11 @@ pub(super) fn parse_document_rels_num(
                         dropcap = matches!(attr(&e, "dropCap").as_deref(),
                             Some("drop") | Some("margin"));
                     }
+                    // **次の段落と同じ頁に置く**(`w:keepNext`)と
+                    // **1 行だけを境に残さない**(`w:widowControl`)。
+                    // どちらも頁の割り方を変えます
+                    b"keepNext" if in_ppr => { keep_next = on(&e); }
+                    b"widowControl" if in_ppr => { widow_control = Some(on(&e)); }
                     b"pageBreakBefore" if in_ppr => {
                         page_break_before = on(&e);
                     }
@@ -4170,6 +4187,8 @@ pub(super) fn parse_document_rels_num(
                             // その段落から(厚労省の「別紙５」)
                             if br_kara && runs.iter().all(|r| r.text.trim().is_empty()) {
                                 page_break_before = false;
+                                keep_next = false;
+                                widow_control = None;
                                 tsugi_kaipeji = true;
                             }
                             br_kara = false;
@@ -4179,7 +4198,7 @@ pub(super) fn parse_document_rels_num(
                                 images: std::mem::take(&mut images),
                                 comments: std::mem::take(&mut para_comments),
                                 bookmarks: std::mem::take(&mut para_bookmarks),
-                                page_break_before, list,
+                                page_break_before, keep_next, widow_control, list,
                                 // 深さ: w:ind(直接指定)が無ければ w:ilvl から
                                 indent: indent.max(ilvl),
                                 left_twips,

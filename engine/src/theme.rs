@@ -1924,6 +1924,12 @@ fn jibun_wo_ateru(
         para.space_after_pt = pl.space_after_pt.unwrap_or(0.0);
         para.after_itta |= pl.space_after_pt.is_some();
     }
+    // **頁の割り方の指定もスタイルから受け継ぎます。** 見出しのスタイルは
+    // `w:keepNext` をよく持ちます(ECMA-376 17.3.1.15)
+    para.keep_next |= pl.keep_next == Some(true);
+    if para.widow_control.is_none() {
+        para.widow_control = pl.widow_control;
+    }
     // 「自動」の旗は属性ごとに受け継ぐ。段落が `w:before` の値だけ書いて
     // 旗を書かなくても、スタイルが自動ならその段落も自動です
     if para.auto_before.is_none() {

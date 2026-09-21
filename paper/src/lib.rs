@@ -563,7 +563,7 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
         .map(|(_, r)| (r[1] + r[3], r[1]))
         .chain(sheet.inline_shapes.iter().map(|(_, r)| (r[1] + r[3], r[1])))
         .collect();
-    for &li in &order {
+    for (oi, &li) in order.iter().enumerate() {
         let line = &sheet.lines[li];
         // **改ページを背負った空行は、新しい頁の1行目になる**(Word と同じ。
         // 2026-09-09、Word の PDF と並べて見つけた)。前は空行を全部いまの頁に
@@ -668,7 +668,67 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             // 箱の上端を紙の頭に置く(行の y はベースラインなので、その分を足す)
             // A line carrying a picture starts at the picture's top, so the
             // picture lands at the new page's top margin (2026-09-20)
+            // **1 行だけを頁の境に残さない**(`w:widowControl`、ECMA-376
+            // 17.3.1.44。Word の既定は入)と、**次の段落と同じ頁に置く**
+            // (`w:keepNext`、17.3.1.15)。この頁の終わりに残る行を、境の
+            // 手前から引き下ろします。明示の改ページは動かしません。
+            //
+            // Word の事業計画の型紙 8989d4b5 は、EXECUTIVE SUMMARY の
+            // 見出し(`Heading1` が `w:keepNext`)と、その次の段落の 1 行目を
+            // 3 頁目の終わりに置かず、まとめて 4 頁目へ送ります
+            // (2026-09-21 発注者)
+            let ima_page = offsets.len();
+            let mut hiku: Vec<usize> = Vec::new();
+            if !forced && line.from_body && line.para0 != usize::MAX {
+                // この頁に載っている本文の行(後ろから)
+                let mae: Vec<usize> = order[..oi]
+                    .iter()
+                    .rev()
+                    .copied()
+                    .take_while(|&j| pages[j] == ima_page && sheet.lines[j].from_body)
+                    .collect();
+                let onaji = |j: usize| sheet.lines[j].para0 == line.para0;
+                // 孤児 — この段落の 1 行目だけが頁の終わりに残る
+                if line.widow && mae.first().copied().is_some_and(onaji) {
+                    let kazu = mae.iter().take_while(|&&j| onaji(j)).count();
+                    if kazu == 1 {
+                        hiku.push(mae[0]);
+                    }
+                }
+                // 寡婦 — この段落の最後の 1 行だけが次の頁に来る
+                let ato = order[oi + 1..]
+                    .iter()
+                    .take_while(|&&j| sheet.lines[j].para0 == line.para0)
+                    .count();
+                if line.widow && ato == 0 && hiku.is_empty() {
+                    let kazu = mae.iter().take_while(|&&j| onaji(j)).count();
+                    if kazu >= 2 {
+                        hiku.push(mae[0]);
+                    }
+                }
+                // `w:keepNext` — 境の手前の段落が次と離れない
+                for _ in 0..8 {
+                    let nokori: Vec<usize> =
+                        mae.iter().copied().filter(|j| !hiku.contains(j)).collect();
+                    let Some(&sue) = nokori.first() else { break };
+                    if !sheet.lines[sue].keep_next {
+                        break;
+                    }
+                    let p0 = sheet.lines[sue].para0;
+                    let kumi: Vec<usize> =
+                        nokori.iter().copied().take_while(|&j| sheet.lines[j].para0 == p0).collect();
+                    // 頁が空になるまでは引かない
+                    if kumi.len() >= nokori.len() {
+                        break;
+                    }
+                    hiku.extend(kumi);
+                }
+            }
             let atama = hako.map(|(a, _)| a + kumihan::BASE_UP_MM).unwrap_or(line.y_mm);
+            let atama = hiku
+                .iter()
+                .map(|&j| sheet.lines[j].y_mm)
+                .fold(atama, f32::min);
             // **改ページが続いた分は、白い紙を挟みます。** まとめて1回に
             // すると2枚ぶんが1枚に潰れます
             let tsukaeru = (next.height_mm - next.top_mm - next.bottom_mm).max(1.0);
@@ -687,6 +747,10 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             // 行が次の頁へ動けば、**その行に付いた脚注も一緒に動く**
             notes.push(mine.clone());
             note_h = add;
+            // 引き下ろした行を新しい頁へ移す
+            for j in hiku {
+                pages[j] = offsets.len();
+            }
         } else {
             notes.last_mut().unwrap().extend(mine.iter().copied());
             note_h += add;

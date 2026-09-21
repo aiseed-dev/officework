@@ -579,6 +579,14 @@ pub struct Paragraph {
     pub align: Align,
     /// この段落の前で改ページする(docx の w:pageBreakBefore)
     pub page_break_before: bool,
+    /// **次の段落と同じ頁に置く**(docx の `w:keepNext`、ECMA-376
+    /// 17.3.1.15)。見出しのスタイルがよく持ちます。次の段落が頁を
+    /// またぐときは、この段落も次の頁へ送ります
+    pub keep_next: bool,
+    /// **1 行だけを頁の境に残さない**(docx の `w:widowControl`、
+    /// ECMA-376 17.3.1.44)。Word の既定は入で、`<w:widowControl w:val="0"/>`
+    /// と書いたときだけ切れます。`None` は「言っていない」で、入と同じです
+    pub widow_control: Option<bool>,
     /// **段落自身が `w:ind` を言った印**(2026-09-09)。「言っていない」と「0 と言った」を
     /// 分ける。言っていればスタイルの字下げを当てない(`w:ind w:leftChars="0"` の
     /// 箇条書きが、List Paragraph の 4 字下げを受けて 48pt 右にずれていた)
@@ -1635,6 +1643,8 @@ impl StyleParaLook {
         self.list_color = self.list_color.take().or_else(|| oya.list_color.clone());
         self.list_text = self.list_text.take().or_else(|| oya.list_text.clone());
         self.contextual_spacing = self.contextual_spacing.or(oya.contextual_spacing);
+        self.keep_next = self.keep_next.or(oya.keep_next);
+        self.widow_control = self.widow_control.or(oya.widow_control);
         self.no_grid = self.no_grid.or(oya.no_grid);
         self.border = self.border.or(oya.border);
         self.shade = self.shade.take().or_else(|| oya.shade.clone());
@@ -1708,6 +1718,11 @@ pub struct StyleParaLook {
     /// 文書の既定の「段落後 10pt」が項目ごとに入って間延びします
     /// (2026-09-03)
     pub contextual_spacing: Option<bool>,
+    /// **次の段落と同じ頁に置く**(`w:keepNext`、ECMA-376 17.3.1.15)。
+    /// 見出しのスタイルがよく持ちます
+    pub keep_next: Option<bool>,
+    /// **1 行だけを頁の境に残さない**(`w:widowControl`、17.3.1.44)
+    pub widow_control: Option<bool>,
     /// **行グリッドに合わせない**(docx の `w:pPr/w:snapToGrid w:val="0"`)。
     /// 日本語の Word のヘッダー・フッター・表の文字などのスタイルが持ちます
     /// (官公庁の様式 45 枚で 80 か所。2026-09-09)
@@ -2826,6 +2841,8 @@ impl Document {
             pl.list_color = pl.list_color.clone().or_else(|| s.para.list_color.clone());
             pl.list_text = pl.list_text.clone().or_else(|| s.para.list_text.clone());
             pl.contextual_spacing = pl.contextual_spacing.or(s.para.contextual_spacing);
+            pl.keep_next = pl.keep_next.or(s.para.keep_next);
+            pl.widow_control = pl.widow_control.or(s.para.widow_control);
             pl.no_grid = pl.no_grid.or(s.para.no_grid);
             pl.border = pl.border.or(s.para.border);
             pl.shade = pl.shade.clone().or_else(|| s.para.shade.clone());
@@ -2897,6 +2914,16 @@ pub struct Line {
     pub byte0: usize,
     /// 表のセル由来なら (表の番号, 行, 列)
     pub cell: Option<(usize, usize, usize)>,
+    /// **どの段落の行か。** 本文の段落の頭のバイト位置で、同じ値の行は
+    /// 1 つの段落です。頁の境で 1 行だけを残さない決め(`w:widowControl`、
+    /// ECMA-376 17.3.1.44)と、次の段落と同じ頁に置く決め(`w:keepNext`、
+    /// 17.3.1.15)に要ります。本文以外の行は `usize::MAX` です
+    pub para0: usize,
+    /// その段落が `w:keepNext` か
+    pub keep_next: bool,
+    /// その段落で「1 行だけを境に残さない」が効くか(`w:widowControl`。
+    /// Word の既定は入で、`w:val="0"` と書いたときだけ切れます)
+    pub widow: bool,
     /// Where this line's text starts (mm from the text area's left).
     /// A line with no characters has no `Cell` to ask, so without this
     /// the caret in an empty table cell fell back to the text area's

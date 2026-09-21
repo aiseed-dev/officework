@@ -1216,6 +1216,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 {
                     sheet.lines.push(Line {
                         cells: Vec::new(), y_mm: y, from_body: true, x0_mm: 0.0,
+                        para0: para_byte0, keep_next: para.keep_next, widow: para.widow_control != Some(false),
                         byte0: para_byte0, cell: None, dip_mm: 0.0, head: 0 });
                     para_byte0 += para.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
                     continue;
@@ -1397,6 +1398,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                             y_mm: y + lh_of(para, frame, base, pfont.as_deref(), pitch),
                             from_body: true,
                             x0_mm: indent_mm,
+                            para0: para_byte0,
+                            keep_next: para.keep_next, widow: para.widow_control != Some(false),
                             byte0: para_byte0,
                             cell: None,
                             dip_mm: 0.0,
@@ -1484,6 +1487,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                         let aki0 = (measure - indent_of).max(0.0);
                         sheet.lines.push(Line {
                             cells: Vec::new(), y_mm: y, from_body: true,
+                            para0: para_byte0,
+                            keep_next: para.keep_next, widow: para.widow_control != Some(false),
                             x0_mm: indent_mm + cap_shift + indent_of + match para.align {
                                 Align::Center => aki0 / 2.0,
                                 Align::Right => aki0,
@@ -1612,6 +1617,9 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                                 y_mm: y - frame.line_height_mm * 0.45,
                                 from_body: false,
                                 x0_mm: x,
+                                para0: usize::MAX,
+                                keep_next: false,
+                                widow: false,
                                 byte0: para_byte0 + cells[i].off,
                                 cell: None,
                                 dip_mm: 0.0,
@@ -1628,7 +1636,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     let size_pt = cells.iter().map(|c| c.size_pt).fold(0.0f32, f32::max);
                     let size_pt = if size_pt > 0.0 { size_pt } else { base * para_scale(para) };
                     let dip_mm = dip_of(para, frame, base, pfont.as_deref(), size_pt, pitch);
-                    sheet.lines.push(Line { cells, y_mm: y, from_body: true, x0_mm: x, byte0,
+                    sheet.lines.push(Line { cells, y_mm: y, from_body: true, x0_mm: x,
+                                            para0: para_byte0, keep_next: para.keep_next, widow: para.widow_control != Some(false), byte0,
                                             cell: None, dip_mm,
                                             head: if line_no == 0 { marker_len } else { 0 } });
                     y += lh_of(para, frame, base, pfont.as_deref(), pitch);
@@ -1862,7 +1871,7 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
                     .collect();
                 y += note_lh;
                 lines.push(Line { cells, y_mm: y, from_body: false, x0_mm: 0.0, byte0: 0, cell: None,
-                                  dip_mm: 0.0, head: 0 });
+                                  para0: usize::MAX, keep_next: false, widow: false, dip_mm: 0.0, head: 0 });
             }
         }
         if lines.is_empty() {
@@ -1993,7 +2002,7 @@ pub fn layout_hf_with(
                 })
                 .collect();
             out.push(Line { cells, y_mm: y, from_body: false, x0_mm: hajime, byte0: 0, cell: None,
-                            dip_mm: 0.0, head: 0 });
+                            para0: usize::MAX, keep_next: false, widow: false, dip_mm: 0.0, head: 0 });
             y += line_height_mm;
         }
     }
@@ -3175,6 +3184,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 narabe(&mut cells, x0 + zure + sagari, aki);
                 sheet.lines.push(Line { cells, y_mm: yy, from_body: false,
                                         x0_mm: x0 + zure + sagari, byte0: b0, cell: id,
+                                        para0: usize::MAX, keep_next: false, widow: false,
                                         dip_mm: dip, head });
                 yy += plh - agari;
             }
