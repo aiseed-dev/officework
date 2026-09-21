@@ -948,6 +948,21 @@ pub(super) fn dip_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&s
     // 書体にもよりません(2026-09-20)
     let mut oki = match para.line_pt {
         Some((_, true)) => hako * 0.8,
+        // **A multiple (`w:lineRule="auto"`) scales the em box.** The line is
+        // the font's own height times the factor, and the baseline sits at
+        // the font's ascent times the same factor, so the extra of a factor
+        // over 1 is shared above and below the text in the font's own
+        // proportion. Measured in Word's PDFs: the contents of the business
+        // plan e22e6b47 (TOC2, `w:line="216"` = 0.9, 10.08pt Univers) puts
+        // the baseline 8.97pt below the line top, its `Title`
+        // (`w:line="192"` = 0.8, 65pt) 51.4pt, and the cover letter
+        // e93a3c0c (1.0, 24pt Aptos) 22.5pt, which is that font's ascent
+        // (2026-09-22). The old rule took the box height less 0.28 of the
+        // size, which is close for a factor of 1 and 2.3pt out at 1.1
+        None => match crate::font::agari_em(font) {
+            Some(em) => size_pt * em * para.spacing() * PT_TO_MM,
+            None => hako - size_pt * 0.28 * PT_TO_MM,
+        },
         _ => hako - size_pt * 0.28 * PT_TO_MM,
     };
     // **行グリッド**(2026-09-09)。倍率の段落は、グリッドに切り上げた1行の中に
