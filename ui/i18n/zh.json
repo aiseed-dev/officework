@@ -2343,6 +2343,7 @@
  "drawing_smartart_python": "正在用 Python(matplotlib)根据项目符号条目绘制{}({} 项)…",
  "smartart_sample_three": "未选择项目符号条目,因此用 3 个示例条目绘制{}",
  "item_n": "项目 {}",
+ "section_n": "第 {} 节",
  "smartart_pick_category_image": "SmartArt:先选分类,再选布局(由 Python 绘制为图片)",
  "smartart_pick_layout_image": "SmartArt > {}:选一个布局,Python 会根据项目符号条目绘制为图片",
  "break_page": "页",

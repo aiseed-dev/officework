@@ -2343,6 +2343,7 @@
  "drawing_smartart_python": "A desenhar {} a partir de {} itens da lista com Python (matplotlib)…",
  "smartart_sample_three": "Nenhum item da lista está selecionado, por isso {} é desenhado com três itens de exemplo",
  "item_n": "Item {}",
+ "section_n": "Secção {}",
  "smartart_pick_category_image": "SmartArt: escolha uma categoria e depois um esquema (o Python desenha-o como imagem)",
  "smartart_pick_layout_image": "SmartArt > {}: escolha um esquema e o Python desenha-o a partir dos itens da lista como imagem",
  "break_page": "Página",

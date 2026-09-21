@@ -2195,6 +2195,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("drawing_smartart_python", "Disegno di {} da {} voci dell'elenco con Python (matplotlib)…"),
     ("smartart_sample_three", "Nessuna voce dell'elenco è selezionata, quindi {} viene disegnato con tre voci di esempio"),
     ("item_n", "Voce {}"),
+    ("section_n", "Sezione {}"),
     ("smartart_pick_category_image", "SmartArt: scegli una categoria, poi un layout (Python lo disegna come immagine)"),
     ("smartart_pick_layout_image", "SmartArt > {}: scegli un layout e Python lo disegna dalle voci dell'elenco come immagine"),
     ("break_page", "Pagina"),

@@ -2343,6 +2343,7 @@
  "drawing_smartart_python": "Đang vẽ {} từ {} mục của danh sách bằng Python (matplotlib)…",
  "smartart_sample_three": "Chưa chọn mục danh sách nào nên {} được vẽ với ba mục mẫu",
  "item_n": "Mục {}",
+ "section_n": "Phần {}",
  "smartart_pick_category_image": "SmartArt: chọn phân loại, rồi chọn bố cục (Python vẽ thành hình ảnh)",
  "smartart_pick_layout_image": "SmartArt > {}: chọn bố cục, Python sẽ vẽ từ các mục của danh sách thành hình ảnh",
  "break_page": "Trang",

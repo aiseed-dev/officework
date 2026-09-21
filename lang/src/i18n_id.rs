@@ -2195,6 +2195,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("drawing_smartart_python", "Menggambar {} dari {} butir daftar dengan Python (matplotlib)…"),
     ("smartart_sample_three", "Tidak ada butir daftar yang dipilih, jadi {} digambar dengan tiga butir contoh"),
     ("item_n", "Butir {}"),
+    ("section_n", "Bagian {}"),
     ("smartart_pick_category_image", "SmartArt: pilih kategori, lalu tata letak (Python menggambarnya sebagai gambar)"),
     ("smartart_pick_layout_image", "SmartArt > {}: pilih tata letak dan Python menggambarnya dari butir daftar sebagai gambar"),
     ("break_page", "Halaman"),

@@ -2195,6 +2195,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("drawing_smartart_python", "{}을(를) 글머리 기호 {}개 항목으로 Python(matplotlib)으로 그리는 중…"),
     ("smartart_sample_three", "글머리 기호 항목을 선택하지 않았으므로 {}을(를) 견본 3개 항목으로 그립니다"),
     ("item_n", "항목 {}"),
+    ("section_n", "구역 {}"),
     ("smartart_pick_category_image", "SmartArt: 분류 → 형태의 순서로 고릅니다(Python이 그려 이미지로 넣습니다)"),
     ("smartart_pick_layout_image", "SmartArt > {}: 형태를 고르면 글머리 기호 항목으로 Python이 그려 이미지로 넣습니다"),
     ("break_page", "페이지"),

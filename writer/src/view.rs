@@ -774,11 +774,10 @@ impl Render for Writer {
                     .get(first)
                     .is_some_and(|q| q.width_mm > q.height_mm);
                 let muki = if yoko { ui::t!("orient_landscape") } else { ui::t!("orient_portrait") };
-                let na = if first == last {
-                    format!("{} {muki}", first + 1)
-                } else {
-                    format!("{}-{} {muki}", first + 1, last + 1)
-                };
+                // Count the tabs, do not print the pages they hold. A page
+                // number moves as soon as the text above it changes, so a tab
+                // named after one renames itself while you edit (2026-09-22).
+                let na = format!("{} {muki}", ui::tf!("section_n", gi + 1));
                 bar = bar.child(div()
                     .id(SharedString::from(format!("paper{gi}")))
                     .px_3().py_1().rounded_sm().cursor_pointer()

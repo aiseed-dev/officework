@@ -2195,6 +2195,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("drawing_smartart_python", "{} {} madde işaretli öğeden Python (matplotlib) ile çiziliyor…"),
     ("smartart_sample_three", "Madde işaretli öğe seçili değil, bu yüzden {} üç örnek öğeyle çiziliyor"),
     ("item_n", "Öğe {}"),
+    ("section_n", "Bölüm {}"),
     ("smartart_pick_category_image", "SmartArt: önce bir kategori, sonra bir düzen seçin (Python bunu resim olarak çizer)"),
     ("smartart_pick_layout_image", "SmartArt > {}: bir düzen seçin; Python bunu madde işaretli öğelerden resim olarak çizer"),
     ("break_page", "Sayfa"),

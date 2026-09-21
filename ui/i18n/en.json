@@ -2343,6 +2343,7 @@
  "drawing_smartart_python": "Drawing {} from {} bullet items with Python (matplotlib)…",
  "smartart_sample_three": "No bullet items are selected, so {} is drawn with three sample items",
  "item_n": "Item {}",
+ "section_n": "Section {}",
  "smartart_pick_category_image": "SmartArt: pick a category, then a layout (Python draws it as an image)",
  "smartart_pick_layout_image": "SmartArt > {}: pick a layout and Python draws it from the bullet items as an image",
  "break_page": "Page",

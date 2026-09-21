@@ -9348,6 +9348,10 @@
     "kind": "msg"
   },
   {
+    "key": "section_n",
+    "kind": "msg"
+  },
+  {
     "key": "smartart_pick_category_image",
     "kind": "msg"
   },

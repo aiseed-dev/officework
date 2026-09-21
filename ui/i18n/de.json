@@ -2343,6 +2343,7 @@
  "drawing_smartart_python": "{} wird aus {} Listenpunkten mit Python (matplotlib) gezeichnet …",
  "smartart_sample_three": "Keine Listenpunkte ausgewählt, daher wird {} mit drei Beispielpunkten gezeichnet",
  "item_n": "Punkt {}",
+ "section_n": "Abschnitt {}",
  "smartart_pick_category_image": "SmartArt: erst eine Kategorie, dann ein Layout wählen (Python zeichnet es als Bild)",
  "smartart_pick_layout_image": "SmartArt > {}: ein Layout wählen; Python zeichnet es aus den Listenpunkten als Bild",
  "break_page": "Seite",

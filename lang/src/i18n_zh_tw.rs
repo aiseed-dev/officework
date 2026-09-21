@@ -2195,6 +2195,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("drawing_smartart_python", "正在用 Python(matplotlib)根據項目符號條目繪製{}({} 項)…"),
     ("smartart_sample_three", "未選取項目符號條目,因此用 3 個範例條目繪製{}"),
     ("item_n", "項目 {}"),
+    ("section_n", "第 {} 節"),
     ("smartart_pick_category_image", "SmartArt:先選分類,再選版面配置(由 Python 繪製為圖片)"),
     ("smartart_pick_layout_image", "SmartArt > {}:選一個版面配置,Python 會根據項目符號條目繪製為圖片"),
     ("break_page", "頁"),
