@@ -1175,6 +1175,51 @@ mod page_setup_tests {
         });
     }
 
+    /// **用紙が変わる所で紙の束に分かれ、タブで飛べる。**
+    ///
+    /// 文書は 1 つのままです(`doc.blocks` は分けません)。束は
+    /// 「どこを見るか」の指定で、押すとその束の先頭の頁へ送ります。
+    #[gpui::test]
+    fn the_paper_groups_split_where_the_paper_changes(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let tate = kumihan::PageSetup::default();
+            let mut yoko = tate;
+            std::mem::swap(&mut yoko.w_mm, &mut yoko.h_mm);
+            let mut d = kumihan::Document::plain("一枚目\n二枚目");
+            if let Some(kumihan::Block::Para(p)) = d.blocks.first_mut() {
+                p.sect = Some(kumihan::SectionBreak { raw: String::new(), page: tate, continuous: false });
+            }
+            d.page = Some(yoko);
+            this.doc = d;
+            this.pg = yoko;
+            this.relayout();
+            let g = this.paper_groups();
+            assert_eq!(g.len(), 2, "用紙が変わるのに 1 束のまま: {g:?}");
+            assert_eq!(g[0].0, 0, "1 束目が 1 頁目から始まっていない: {g:?}");
+            assert_eq!(g[1].0, 1, "2 束目が 2 頁目から始まっていない: {g:?}");
+            // タブを押したときと同じ送り
+            this.scroll_to_page(g[1].0);
+            assert!(
+                (this.scroll_mm - this.page_tops[1]).abs() < 0.01,
+                "2 束目の先頭へ送れていない: {} / {}",
+                this.scroll_mm,
+                this.page_tops[1]
+            );
+        });
+    }
+
+    /// 用紙が変わらない文書は束が 1 つ(タブを出さない)
+    #[gpui::test]
+    fn one_paper_makes_one_group(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.run_cmd("instable-go", cx);
+            this.relayout();
+            assert_eq!(this.paper_groups().len(), 1, "束が 1 つでない");
+        });
+    }
+
     #[test]
     fn header_fields_survive_a_paper_change() {
         // set_page は pgSz/pgMar だけ作り替え、他は原文から引き継ぐ

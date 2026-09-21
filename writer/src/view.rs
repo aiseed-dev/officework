@@ -750,6 +750,48 @@ impl Render for Writer {
             bar
         });
 
+        // ---- 紙の束のタブ(用紙が変わる所で区切る) ----
+        //
+        // Word の文書は節ごとに用紙を変えられます。向きが変わる所は必ず
+        // 改頁なので、束の先頭はいつも頁の先頭です。文書は 1 つのまま
+        // (`doc.blocks` は分けません)で、このタブは**どこへ行くか**の
+        // 指定です。1 束しか無い文書では出しません
+        let groups = self.paper_groups();
+        let ima_page = self
+            .page_tops
+            .iter()
+            .rposition(|t| self.scroll_mm >= *t - 0.01)
+            .or_else(|| self.page_offsets.iter().rposition(|o| self.scroll_mm >= *o - 0.01))
+            .unwrap_or(0);
+        let papers_bar = (groups.len() > 1).then(|| {
+            let mut bar = div().flex().flex_row().items_center().gap_1()
+                .px_3().py_1().bg(rgb(0xF1F3F5))
+                .border_t_1().border_color(rgb(0xD5DBE0));
+            for (gi, (first, last)) in groups.iter().copied().enumerate() {
+                let on = ima_page >= first && ima_page <= last;
+                let yoko = self
+                    .page_papers
+                    .get(first)
+                    .is_some_and(|q| q.width_mm > q.height_mm);
+                let muki = if yoko { ui::t!("orient_landscape") } else { ui::t!("orient_portrait") };
+                let na = if first == last {
+                    format!("{} {muki}", first + 1)
+                } else {
+                    format!("{}-{} {muki}", first + 1, last + 1)
+                };
+                bar = bar.child(div()
+                    .id(SharedString::from(format!("paper{gi}")))
+                    .px_3().py_1().rounded_sm().cursor_pointer()
+                    .bg(if on { rgb(0xFFFFFF) } else { rgb(0xEFF2F4) })
+                    .border_1().border_color(if on { rgb(0x1B6E3C) } else { rgb(0xD5DBE0) })
+                    .text_size(px(us * 11.5))
+                    .text_color(if on { rgb(0x1B6E3C) } else { rgb(0x4A5560) })
+                    .child(SharedString::from(na))
+                    .on_click(cx.listener(move |t, _, _, cx| { t.scroll_to_page(first); cx.notify() })));
+            }
+            bar
+        });
+
         // ---- 下のステータスバー(デスクトップ版: ページ・文字数・ズーム) ----
         let total_pages = self.page_offsets.len().max(1);
         let cur_page = self
@@ -1829,7 +1871,9 @@ impl Render for Writer {
                 div().flex_none().h(px(us * 240.0)).border_t_1().border_color(th_cmd_border)
                     .children(self.terminal.clone())
             }))
-            // **文書のタブはステータスバーの上**(calc のシートのタブと同じ位置)
+            // **紙の束と文書のタブはステータスバーの上**(calc のシートの
+            // タブと同じ位置)。用紙が変わる文書は束のタブが先に来ます
+            .children(papers_bar)
             .children(docs_bar)
             .children(self.show_statusbar.then_some(statusbar))
             // 窓の縁のつかみ(最後に描く = 最初にマウスを受ける)。

@@ -768,6 +768,39 @@ impl Writer {
         self.page_offsets.len().max(1)
     }
 
+    /// **用紙の変わり目で区切った、紙の束。** 返すのは束ごとの
+    /// (最初の頁, 最後の頁)で、どちらも 0 から数えます。
+    ///
+    /// Word の文書は節ごとに用紙を変えられます。向きが変わる所は必ず
+    /// 改頁です — `w:type="continuous"` は同じ紙の上で続ける区切りなので
+    /// 用紙を変えられず、手元の docx 629 件でも向きが変わる節の区切りは
+    /// すべて `nextPage` でした(2026-09-21)。だから用紙が変わる頁は
+    /// いつも束の先頭になり、文章が束をまたいで同じ頁に続くことはありません。
+    pub(crate) fn paper_groups(&self) -> Vec<(usize, usize)> {
+        let onaji = |a: &paper::Paper, b: &paper::Paper| {
+            a.width_mm == b.width_mm && a.height_mm == b.height_mm && a.margin_mm == b.margin_mm
+        };
+        let mut out: Vec<(usize, usize)> = Vec::new();
+        for (k, q) in self.page_papers.iter().enumerate() {
+            match out.last_mut() {
+                Some(g) if onaji(&self.page_papers[g.0], q) => g.1 = k,
+                _ => out.push((k, k)),
+            }
+        }
+        out
+    }
+
+    /// その頁の上端まで送る(紙の束のタブを押したとき)
+    pub(crate) fn scroll_to_page(&mut self, k: usize) {
+        let y = self
+            .page_tops
+            .get(k)
+            .or_else(|| self.page_offsets.get(k))
+            .copied()
+            .unwrap_or(0.0);
+        self.scroll_mm = y.max(0.0);
+    }
+
     /// 巻物の y → (ページ, ページの中の y)。筆はページに固定する。
     ///
     /// **枚は `page_starts`(その枚の最初の行)で決め、枚の中の位置は
