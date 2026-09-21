@@ -52,6 +52,17 @@ pub struct Family {
     /// has none. Faces of one family share it even when their own names
     /// differ ("High Tower Text" and "High Tower Text Bold")
     pub group: String,
+    /// **How heavy the face is** (OS/2 `usWeightClass`: 300 light, 400
+    /// regular, 600 semibold, 700 bold).
+    ///
+    /// The screen asks the window system for a family and a weight, not for
+    /// a face. Word's cloud fonts give every face of a family the same
+    /// typographic family name, so "Avenir Next LT Pro Light" and
+    /// "Avenir Next LT Pro Demi" are both drawn from the family "Avenir
+    /// Next LT Pro" and only the weight tells them apart. Asking by the
+    /// face's own name found no family at all and the screen fell back,
+    /// drawing a 48pt Light title in a heavy face (2026-09-21).
+    pub weight: u16,
 }
 
 impl Family {
@@ -482,6 +493,7 @@ fn read_family(data: &[u8], index: u32, path: &Path) -> Option<Family> {
     let bold = face.is_bold();
     let italic = face.is_italic();
     let group = group.unwrap_or_else(|| ascii_name.clone());
+    let weight = face.weight().to_number();
     Some(Family {
         name,
         ascii: ascii_name,
@@ -497,6 +509,7 @@ fn read_family(data: &[u8], index: u32, path: &Path) -> Option<Family> {
         bold,
         italic,
         group,
+        weight,
     })
 }
 
@@ -1076,6 +1089,19 @@ pub fn face_for_weight(name: &str, bold: bool, italic: bool) -> Option<&'static 
             && !(f.regular && (bold || italic))
             && (f.name == head.name || f.ascii == head.ascii)
     })
+}
+
+/// **The family and the weight the screen has to ask for**, for a run font
+/// the print already resolved.
+///
+/// The print picks the face file itself; the screen names a family and a
+/// weight and lets the window system pick. Faces of one family share the
+/// typographic family name ([`Family::group`]), so that is the name to ask
+/// for, and [`Family::weight`] is what tells the faces apart.
+pub fn screen_face(name: &str, bold: bool, italic: bool) -> Option<(&'static str, u16)> {
+    let moto = resolve(plain_name(name))?;
+    let kao = face_for_weight(&moto.name, bold, italic).unwrap_or(moto);
+    Some((kao.group.as_str(), kao.weight))
 }
 
 pub fn substitute(name: &str) -> Option<&'static Family> {

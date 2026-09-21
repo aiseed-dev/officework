@@ -1227,17 +1227,15 @@ impl Render for Writer {
                 }
                 for c in &line.cells {
                     let spt = c.size_pt * 96.0 / 72.0 * self.zoom;
+                    let (kazoku, omosa) = self.screen_face(c.font.as_deref(), c.fmt.bold, false);
                     let mut d = div().absolute()
                         .left(px(colx * pxmm))
                         .top(px((line.y_mm + c.x_mm) * pxmm))
                         .text_size(px(spt))
-                        .font_family(c.font.as_deref().map(|n| SharedString::from(kumihan::font::plain_name(n).to_string()))
-                            .unwrap_or_else(|| self.font_name.clone()))
+                        .font_family(kazoku)
+                        .font_weight(omosa)
                         .whitespace_nowrap()
                         .child(SharedString::from(c.ch.to_string()));
-                    if c.fmt.bold {
-                        d = d.font_weight(gpui::FontWeight::BOLD);
-                    }
                     d = match &c.fmt.color {
                         Some(cl) => d.text_color(gpui::Rgba {
                             r: hex(cl, 0), g: hex(cl, 1), b: hex(cl, 2), a: 1.0,
@@ -1363,16 +1361,14 @@ impl Render for Writer {
                         .w(px(w_mm * pxmm)).h(px(spt * 1.15))
                         .bg(bg));
                 }
+                let (kazoku, omosa) = self.screen_face(c0.font.as_deref(), f.bold, f.italic);
                 let mut d = div().absolute()
                     .left(px(sx * pxmm)).top(px(stop))
                     .text_size(px(spt))
-                    .font_family(c0.font.as_deref().map(|n| SharedString::from(kumihan::font::plain_name(n).to_string()))
-                        .unwrap_or_else(|| self.font_name.clone()))
+                    .font_family(kazoku)
+                    .font_weight(omosa)
                     .whitespace_nowrap()
                     .child(SharedString::from(text));
-                if f.bold {
-                    d = d.font_weight(gpui::FontWeight::BOLD);
-                }
                 if f.italic {
                     d = d.italic();
                 }
@@ -1896,6 +1892,36 @@ impl Render for Writer {
 }
 
 impl Writer {
+    /// **The family and the weight to draw a run with on the screen.**
+    ///
+    /// The print picks a face file; the screen names a family and a weight
+    /// and lets the window system pick. Faces of one family share the
+    /// typographic family name, which is the name the window system groups
+    /// them by, so asking by the face's own name can find no family at all.
+    /// Word's business plan template names its body face "Avenir Next LT
+    /// Pro Light" and its heading face "Avenir Next LT Pro Demi", and both
+    /// files say "Avenir Next LT Pro" is the family; the 48pt Light title
+    /// was drawn in a heavy fallback face (2026-09-21).
+    fn screen_face(&self, name: Option<&str>, bold: bool, italic: bool) -> (SharedString, gpui::FontWeight) {
+        let futosa = |w: u16| gpui::FontWeight(w as f32);
+        match name.and_then(|n| kumihan::font::screen_face(n, bold, italic)) {
+            // A family with no bold face of its own still has to look bold:
+            // the window system thickens the outline, as it did before the
+            // weight was asked for
+            Some((kazoku, omosa)) => {
+                let omosa = if bold { omosa.max(700) } else { omosa };
+                (SharedString::from(kazoku.to_string()), futosa(omosa))
+            }
+            None => {
+                let kazoku = name
+                    .map(|n| SharedString::from(kumihan::font::plain_name(n).to_string()))
+                    .unwrap_or_else(|| self.font_name.clone());
+                let omosa = if bold { gpui::FontWeight::BOLD } else { gpui::FontWeight::NORMAL };
+                (kazoku, omosa)
+            }
+        }
+    }
+
     /// The document's own drawings, ready to place on the paper: the image
     /// of each shape and its box in px, `[left, top, width, height]`.
     ///
