@@ -2698,7 +2698,39 @@ pub fn foreign_shapes(
         let k = pg.offsets.iter().rposition(|o| *o <= y).unwrap_or(0);
         (k, pg.offsets.get(k).copied().unwrap_or(0.0))
     };
-    for a in doc.header.anchors.iter().chain(doc.footer.anchors.iter()).flat_map(|a| split_anchors(a)) {
+    // **A section's own header and footer carry shapes too** (`w:sectPr`
+    // `w:headerReference` / `w:footerReference`, ECMA-376 17.10.5). A file
+    // whose only section names them leaves `doc.header` empty and fills
+    // `doc.sect_hf`, and the shapes there were never drawn: the yellow bars
+    // of Word's business report template 15d030a7 are a `wps:wsp` in
+    // `word/header2.xml` and one in `word/footer1.xml` (2026-09-21)
+    //
+    // **`relativeFrom="paragraph"` counts from that part's own paragraph.**
+    // A header's first paragraph starts `w:pgMar w:header` below the top of
+    // the page and a footer's `w:pgMar w:footer` above the bottom
+    // (ECMA-376 17.6.11), not at the body's top margin. The top bar of
+    // 15d030a7 says -20.9pt and Word draws it at 0.70pt, which is
+    // 21.6 - 20.9; measuring from the body margin put it at 195.10pt
+    let mut hf_anchors: Vec<(&String, f32)> = Vec::new();
+    let head_y = page.header_mm;
+    let foot_y = page.h_mm - page.footer_mm;
+    for (hf, y0) in [(&doc.header, head_y), (&doc.footer, foot_y)] {
+        hf_anchors.extend(hf.anchors.iter().map(|a| (a, y0)));
+    }
+    for h in doc.sect_hf.values() {
+        for (hf, y0) in [(&h.header, head_y), (&h.footer, foot_y)] {
+            hf_anchors.extend(hf.anchors.iter().map(|a| (a, y0)));
+        }
+        for (hf, y0) in [(&h.first_header, head_y), (&h.first_footer, foot_y)] {
+            if let Some(hf) = hf {
+                hf_anchors.extend(hf.anchors.iter().map(|a| (a, y0)));
+            }
+        }
+    }
+    for (a, y_para) in hf_anchors
+        .into_iter()
+        .flat_map(|(a, y0)| split_anchors(a).into_iter().map(move |s| (s, y0)))
+    {
         for mut f in ooxml::foreign_shapes_in(&a, &doc.theme_colors) {
             shape_text_style(doc, &a, &mut f.look);
             let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
@@ -2706,9 +2738,9 @@ pub fn foreign_shapes(
             for k in 0..kami_kazu {
                 let migi = k % 2 == 1;
                 let x = anchor_place(&f.h_from, f.x_mm, f.h_align.as_deref(),
-                                     w_mm, &page, false, page.top_mm, migi);
+                                     w_mm, &page, false, y_para, migi);
                 let y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(),
-                                     h_mm, &page, true, page.top_mm, migi);
+                                     h_mm, &page, true, y_para, migi);
                 out.push(kumihan::DocShape {
                     page: k,
                     x_mm: x + f.dx_mm,
