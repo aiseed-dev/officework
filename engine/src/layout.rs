@@ -1827,8 +1827,30 @@ pub fn layout_hf(
     footer: bool,
     base_pt: f32,
 ) -> Vec<Line> {
+    layout_hf_with(hf, m, pg, line_height_mm, page_no, total, footer, base_pt, None)
+}
+
+/// **The same, with the document's styles.**
+///
+/// A header or footer part that holds a table is laid out as a little
+/// document of its own, and that document had no styles at all. The
+/// `Organization` style of Word's invoice template 0644da1f says
+/// `w:sz w:val="36"`, and `[Company]` in its footer came out at the
+/// document's 10pt where Word draws 18pt (2026-09-21).
+#[allow(clippy::too_many_arguments)]
+pub fn layout_hf_with(
+    hf: &HeadFoot,
+    m: &Metrics,
+    pg: &PageSetup,
+    line_height_mm: f32,
+    page_no: usize,
+    total: usize,
+    footer: bool,
+    base_pt: f32,
+    moto: Option<&Document>,
+) -> Vec<Line> {
     if !hf.blocks.is_empty() {
-        return layout_hf_blocks(hf, m, pg, page_no, total, footer, base_pt);
+        return layout_hf_blocks(hf, m, pg, page_no, total, footer, base_pt, moto);
     }
     if hf.paragraphs.is_empty() {
         return Vec::new();
@@ -1904,6 +1926,7 @@ pub fn layout_hf(
 /// よく使います。段落を平らに並べる道では欄の位置を持てないので、本文と
 /// 同じ [`layout`] に通します。返る行は段落の道と同じ約束で、`y_mm` は
 /// 用紙の上端からの mm、`Cell::x_mm` は本文の左端からの mm です。
+#[allow(clippy::too_many_arguments)]
 fn layout_hf_blocks(
     hf: &HeadFoot,
     m: &Metrics,
@@ -1912,10 +1935,32 @@ fn layout_hf_blocks(
     total: usize,
     footer: bool,
     base_pt: f32,
+    moto: Option<&Document>,
 ) -> Vec<Line> {
     let num = page_no.to_string();
     let tot = total.to_string();
-    let mut doc = Document { size_pt: Some(base_pt), ..Default::default() };
+    // The part's paragraphs name the document's styles, so the little
+    // document they are laid out in carries them and the document's own
+    // defaults (ECMA-376 17.7.2). It had none at all until 2026-09-21, and
+    // the footer of Word's invoice template 0644da1f came out 31pt high:
+    // `[Company]` at the document's 10pt instead of the `Organization`
+    // style's 18pt, and every line 18pt tall instead of the single spacing
+    // the `Footer` style asks for
+    let mut doc = match moto {
+        Some(d) => Document {
+            size_pt: d.size_pt.or(Some(base_pt)),
+            styles: d.styles.clone(),
+            styles_new: d.styles_new.clone(),
+            font: d.font.clone(),
+            font_latin: d.font_latin.clone(),
+            color: d.color.clone(),
+            space_after_pt: d.space_after_pt,
+            line_spacing: d.line_spacing,
+            theme_colors: d.theme_colors.clone(),
+            ..Default::default()
+        },
+        None => Document { size_pt: Some(base_pt), ..Default::default() },
+    };
     doc.blocks = hf.blocks.clone();
     let mut ireru = |p: &mut Paragraph| {
         for r in p.runs.iter_mut() {
@@ -1935,6 +1980,9 @@ fn layout_hf_blocks(
     }
     let size_mm = base_pt * PT_TO_MM;
     let frame = Frame { measure_mm: pg.measure_mm(), line_height_mm: LINE_MM, y0_mm: 0.0 };
+    // The styles have to be worn before the part is laid out; `layout`
+    // reads a style's size and face but not its spacing
+    let doc = crate::theme::compose(&doc, &crate::theme::default_theme());
     let sheet = layout(&doc, m, &frame);
     let mut out: Vec<Line> = sheet
         .lines

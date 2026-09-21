@@ -1637,8 +1637,8 @@ pub fn doc_hf_lines<'a>(
                 }
                 None => (&doc.header, &doc.footer),
             };
-        let mut v = kumihan::layout_hf(head, &m, &pg, kumihan::LINE_MM, k, total, false, base_pt);
-        v.extend(kumihan::layout_hf(foot, &m, &pg, kumihan::LINE_MM, k, total, true, base_pt));
+        let mut v = kumihan::layout_hf_with(head, &m, &pg, kumihan::LINE_MM, k, total, false, base_pt, Some(doc));
+        v.extend(kumihan::layout_hf_with(foot, &m, &pg, kumihan::LINE_MM, k, total, true, base_pt, Some(doc)));
         v
     })
 }
