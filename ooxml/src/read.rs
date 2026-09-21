@@ -226,6 +226,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     if let Ok(mut f) = zip.by_name(&bui("settings", "word/settings.xml")) {
         let _ = f.read_to_string(&mut sxml);
     }
+    // Which `<a:font script="…">` of the theme an East Asian reference takes
+    let script = theme_script(&sxml);
 
     // 脚注・文末脚注の中身。**紙面に出すためだけに読む** —
     // 保存は部品を原本のまま持ち越すので、ここを書き戻しには使わない
@@ -487,11 +489,11 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         for s in doc.styles.iter_mut() {
             let major = |t: &Option<String>| t.as_deref().is_some_and(|t| t.starts_with("major"));
             if s.look.font_latin.is_none() && s.look.font_theme.is_some() {
-                s.look.font_latin = theme_face(&th, major(&s.look.font_theme), false);
+                s.look.font_latin = theme_face(&th, major(&s.look.font_theme), None, false);
             }
             if s.look.font.is_none() {
                 if let Some(t) = s.look.font_theme_ea.clone() {
-                    s.look.font = theme_ref_face(&th, &t);
+                    s.look.font = theme_ref_face(&th, &t, script);
                 } else if s.look.font_theme.is_some() {
                     s.look.font = s.look.font_latin.clone();
                 }
@@ -594,7 +596,9 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                 // `w:eastAsiaTheme`, which may name the Latin face
                 // (see [`theme_ref_face`]). Without that attribute the
                 // East Asian face of the same set is taken: `<a:ea>`
-                // first, else the `script="Jpan"` entry, else `<a:latin>`
+                // first, else the `<a:font script="…">` entry that
+                // `w:themeFontLang w:eastAsia` names (see [`theme_script`]),
+                // else `<a:latin>`
                 let ea_ref = {
                     let k = "w:eastAsiaTheme=\"";
                     tag.find(k).map(|j| j + k.len()).and_then(|s| {
@@ -602,8 +606,8 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                     })
                 };
                 doc.font = match ea_ref.as_deref().filter(|t| !t.is_empty()) {
-                    Some(t) => theme_ref_face(&theme, t),
-                    None => theme_face(&theme, tag.contains("Theme=\"major"), true),
+                    Some(t) => theme_ref_face(&theme, t, script),
+                    None => theme_face(&theme, tag.contains("Theme=\"major"), script, true),
                 };
                 // The Latin face of the same theme set, for ASCII runs that
                 // name no font. With only `doc.font` (the East Asian face,
@@ -612,7 +616,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                 // Garamond is 1.125 em, ＭＳ Ｐゴシック 1.292 (2026-09-19)
                 if doc.font_latin.is_none() && tag.contains("asciiTheme=\"") {
                     let major = tag.contains("asciiTheme=\"major");
-                    doc.font_latin = theme_face(&theme, major, false);
+                    doc.font_latin = theme_face(&theme, major, None, false);
                 }
             }
         }
@@ -1598,11 +1602,49 @@ pub(super) fn extract_ink(doc: &mut Document) {
 /// so `w:eastAsiaTheme="minorHAnsi"` in Word's ATS resume template gave
 /// 游明朝 where Word draws Aptos (2026-09-21). A `Bidi` value falls to the
 /// Latin face, which is what we drew before.
-pub(super) fn theme_ref_face(theme: &str, name: &str) -> Option<String> {
-    theme_face(theme, name.starts_with("major"), name.ends_with("EastAsia"))
+pub(super) fn theme_ref_face(theme: &str, name: &str, script: Option<&str>) -> Option<String> {
+    let ea = name.ends_with("EastAsia");
+    theme_face(theme, name.starts_with("major"), script, ea)
 }
 
-pub(super) fn theme_face(theme: &str, major: bool, japanese: bool) -> Option<String> {
+/// **The script of the East Asian theme font** (`w:themeFontLang w:eastAsia`
+/// of settings.xml, ECMA-376 17.15.1.87), as the ISO 15924 code the theme's
+/// `<a:font script="…">` entries are keyed by.
+///
+/// The `<a:ea>` of an English theme is empty, and the scheme carries one
+/// `a:font` per script beside it. Which of them a theme reference resolves to
+/// is this document setting, not the text: Word's booklet template
+/// `22568a97` writes `<w:themeFontLang w:val="en-US" w:bidi="ar-SA"/>` with no
+/// `w:eastAsia` at all, and Word draws it in Calibri throughout, while the
+/// 288 document corpus writes `w:eastAsia="ja-JP"` and takes the
+/// `script="Jpan"` entry (2026-09-21).
+pub(super) fn theme_script(settings: &str) -> Option<&'static str> {
+    let i = settings.find("<w:themeFontLang")?;
+    let e = settings[i..].find('>').map(|e| i + e).unwrap_or(settings.len());
+    let tag = &settings[i..e];
+    let k = "w:eastAsia=\"";
+    let lang = tag
+        .find(k)
+        .map(|j| j + k.len())
+        .and_then(|b| tag[b..].find('"').map(|n| tag[b..b + n].to_ascii_lowercase()))
+        .unwrap_or_default();
+    // ISO 15924 codes, as the `a:font` entries of Word's own themes spell them
+    if lang.starts_with("ja") {
+        Some("Jpan")
+    } else if lang.starts_with("ko") {
+        Some("Hang")
+    } else if lang.starts_with("zh") {
+        let hant = ["zh-tw", "zh-hk", "zh-mo"].contains(&lang.as_str()) || lang.contains("hant");
+        Some(if hant { "Hant" } else { "Hans" })
+    } else {
+        None
+    }
+}
+
+/// `script` is the ISO 15924 code of [`theme_script`], for an East Asian
+/// reference whose `<a:ea>` is empty. `east_asian` says the reference asked
+/// for the East Asian face at all
+pub(super) fn theme_face(theme: &str, major: bool, script: Option<&str>, east_asian: bool) -> Option<String> {
     let (open, close) = if major {
         ("<a:majorFont>", "</a:majorFont>")
     } else {
@@ -1610,11 +1652,15 @@ pub(super) fn theme_face(theme: &str, major: bool, japanese: bool) -> Option<Str
     };
     let g = theme.find(open)?;
     let sect = &theme[g..theme[g..].find(close).map(|e| g + e).unwrap_or(theme.len())];
-    let keys: &[&str] = if japanese {
-        &["<a:ea typeface=\"", "<a:font script=\"Jpan\" typeface=\"", "<a:latin typeface=\""]
-    } else {
-        &["<a:latin typeface=\""]
-    };
+    let per_script = script.map(|sc| format!("<a:font script=\"{sc}\" typeface=\""));
+    let mut keys: Vec<&str> = Vec::new();
+    if east_asian {
+        keys.push("<a:ea typeface=\"");
+        if let Some(k) = per_script.as_deref() {
+            keys.push(k);
+        }
+    }
+    keys.push("<a:latin typeface=\"");
     for key in keys {
         if let Some(j) = sect.find(key) {
             let s = j + key.len();

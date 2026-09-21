@@ -3283,6 +3283,11 @@ mod default_font_tests {
 
     /// docDefaults を持つ最小の docx。styles と theme を差し替えられる
     fn docx(styles: &str, theme: Option<&str>) -> Vec<u8> {
+        docx_set(styles, theme, None)
+    }
+
+    /// The same, with a settings.xml. `w:themeFontLang` lives there
+    fn docx_set(styles: &str, theme: Option<&str>, settings: Option<&str>) -> Vec<u8> {
         let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
         let o: zip::write::FileOptions<'_, ()> = Default::default();
         let mut put = |n: &str, d: &[u8]| {
@@ -3295,6 +3300,9 @@ mod default_font_tests {
         put("word/styles.xml", styles.as_bytes());
         if let Some(t) = theme {
             put("word/theme/theme1.xml", t.as_bytes());
+        }
+        if let Some(t) = settings {
+            put("word/settings.xml", t.as_bytes());
         }
         zip.finish().unwrap().into_inner()
     }
@@ -3325,17 +3333,32 @@ mod default_font_tests {
         assert_eq!(doc.font.as_deref(), Some("游明朝"), "テーマの日本語書体を引けない");
     }
 
-    #[test]
-    fn the_japanese_font_also_resolves_via_the_script_table() {
-        // Office の既定のテーマは <a:ea typeface=""/> が空で、
-        // 日本語は script="Jpan" の表で持つ(python-docx の既定がこの形)
-        let theme = r#"<a:theme xmlns:a="x"><a:fontScheme name="Office">
+    /// Office の既定のテーマは `<a:ea typeface=""/>` が空で、書体を
+    /// `script="Jpan"` の表で持ちます
+    const JPAN_THEME: &str = r#"<a:theme xmlns:a="x"><a:fontScheme name="Office">
             <a:minorFont><a:latin typeface="Cambria"/><a:ea typeface=""/><a:cs typeface=""/>
             <a:font script="Jpan" typeface="ＭＳ 明朝"/>
             </a:minorFont></a:fontScheme></a:theme>"#;
-        let src = docx(PYDOCX_STYLES, Some(theme));
+
+    #[test]
+    fn the_japanese_font_also_resolves_via_the_script_table() {
+        // どの `a:font` を取るかは `w:themeFontLang w:eastAsia` が言います
+        // (ECMA-376 17.15.1.87)
+        let set = r#"<w:settings xmlns:w="x"><w:themeFontLang w:val="en-US" w:eastAsia="ja-JP"/></w:settings>"#;
+        let src = docx_set(PYDOCX_STYLES, Some(JPAN_THEME), Some(set));
         let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
         assert_eq!(doc.font.as_deref(), Some("ＭＳ 明朝"), "Jpan の表を見ていない");
+    }
+
+    /// `w:themeFontLang` が東アジアの言語を言わない文書では、空の `<a:ea>` は
+    /// `script="Jpan"` へ落ちません。Word の小冊子の型紙(`22568a97`)が
+    /// この形で、Word は本文をぜんぶ欧文の書体で描きます(2026-09-21)
+    #[test]
+    fn without_an_east_asian_theme_language_the_script_table_is_not_used() {
+        let set = r#"<w:settings xmlns:w="x"><w:themeFontLang w:val="en-US" w:bidi="ar-SA"/></w:settings>"#;
+        let src = docx_set(PYDOCX_STYLES, Some(JPAN_THEME), Some(set));
+        let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
+        assert_eq!(doc.font.as_deref(), Some("Cambria"), "東アジアの言語が無いのに Jpan を取った");
     }
 
     #[test]
