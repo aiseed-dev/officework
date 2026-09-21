@@ -248,6 +248,7 @@ impl Writer {
             para_deco: Vec::new(),
             page_papers: Vec::new(),
             dress_hf: Default::default(),
+            hf_moto: Default::default(),
             dress_page: (None, None),
             header_lines: Vec::new(),
             footer_lines: Vec::new(),
@@ -626,6 +627,27 @@ impl Writer {
             v
         };
         self.dress_hf = (deco.header.clone(), deco.footer.clone());
+        // The styles the header and the footer are laid out against, the
+        // same ones the paper side passes (see `hf_moto`)
+        self.hf_moto = kumihan::Document {
+            size_pt: deco.size_pt,
+            styles: deco.styles.clone(),
+            styles_new: deco.styles_new.clone(),
+            font: deco.font.clone(),
+            font_latin: deco.font_latin.clone(),
+            color: deco.color.clone(),
+            space_after_pt: deco.space_after_pt,
+            line_spacing: deco.line_spacing,
+            theme_colors: deco.theme_colors.clone(),
+            // The parts themselves, and which section names which
+            header: deco.header.clone(),
+            footer: deco.footer.clone(),
+            first_header: deco.first_header.clone(),
+            first_footer: deco.first_footer.clone(),
+            title_pg: deco.title_pg,
+            sect_hf: deco.sect_hf.clone(),
+            ..Default::default()
+        };
         self.dress_page = (deco.watermark.clone(), deco.page_color.clone());
         let vertical = deco.vertical;
         let snapshot = Look { pg: self.pg, vertical, group, view_w_px: self.view_w_px };
@@ -1052,10 +1074,12 @@ impl Writer {
         doc
     }
 
-    /// 紙面に出すヘッダー・フッターの行を組み直す(番号は1ページ目のもの。
-    /// 各ページの本当の番号は PDF で入る)。
+    /// **紙面に出すヘッダー・フッターの行を、頁ごとに組み直す。**
+    ///
+    /// どの部品を使うかは頁で変わり(`w:titlePg` の先頭頁、節ごとの
+    /// `w:headerReference`)、頁番号もその頁の番号が入ります。紙と同じ
+    /// [`paper::doc_hf_pairs`] から受け取るので、画面と印刷が食い違いません。
     pub(crate) fn refresh_hf(&mut self) {
-        let m = Metrics::new(&self.font_bytes).expect("フォント");
         // **区切りなし(Web の組み方)は頁に数えない。** 組み手が折らないのに
         // 数え手だけ折ると、1本のはずの流れが「3ページ」と言われる
         // (2026-08-17 に踏んだ)
@@ -1070,6 +1094,15 @@ impl Writer {
         // **紙と同じ折り方を、同じ関数から受け取る。** 脚注はその頁の
         // 本文の底を上げるので、別に数えると画面と PDF がずれる
         let pn = paper::paginate_full(&self.page, paper::Paper::from_page(&self.pg));
+        // **頁ごとのヘッダー・フッターは、紙と同じ関数から受け取ります。**
+        // 折る前の紙面で引きます(折った後は頁の数え方が変わるため)
+        let hf: Vec<(Vec<kumihan::Line>, Vec<kumihan::Line>)> = {
+            let kazu = pn.offsets.len().max(1);
+            match paper::doc_hf_pairs(&self.hf_moto, &self.font_bytes, &self.page, self.pg) {
+                Ok(f) => (1..=kazu).map(f).collect(),
+                Err(_) => Vec::new(),
+            }
+        };
         self.page_offsets = pn.offsets;
         self.page_starts = pn.starts;
         self.page_notes = pn.notes;
@@ -1104,14 +1137,8 @@ impl Writer {
             let sts = self.page_starts.clone();
             kumihan::fold_pages(&mut self.page, &self.pg, &offs, &sts, 2, PAGE_GAP_MM);
         }
-        let total = self.total_pages();
-        // 飾りは合成の写しから(テンプレートのヘッダーもここに入っている)
-        self.header_lines =
-            kumihan::layout_hf(&self.dress_hf.0, &m, &self.pg, LINE_MM, 1, total, false,
-                               self.doc.base_pt());
-        self.footer_lines =
-            kumihan::layout_hf(&self.dress_hf.1, &m, &self.pg, LINE_MM, 1, total, true,
-                               self.doc.base_pt());
+        self.header_lines = hf.iter().map(|(h, _)| h.clone()).collect();
+        self.footer_lines = hf.into_iter().map(|(_, f)| f).collect();
     }
 
     /// ヘッダー・フッターの編集のパネルを開く(もう一度で閉じる)。

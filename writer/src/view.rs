@@ -1415,26 +1415,65 @@ impl Render for Writer {
         // ヘッダー・フッター。画面の紙は巻物なので、ヘッダーは紙の頭、
         // フッターは紙の末尾の頁の位置に出す(番号は1ページ目のもの。
         // 各ページの本当の番号は PDF で入る)。編集中は青、普段は灰色
-        let foot_shift = (self.content_mm() - self.pg.h_mm).max(0.0);
-        for (lines, dy, active) in [
-            (&self.header_lines, 0.0, self.hf_edit == Some(false)),
-            (&self.footer_lines, foot_shift, self.hf_edit == Some(true)),
+        //
+        // **頁ごとに、その頁の部品を出します**(2026-09-21 発注者)。行の
+        // `y_mm` はその紙の中の位置なので、紙の上端(`page_tops`)を足します
+        for (pages, active) in [
+            (&self.header_lines, self.hf_edit == Some(false)),
+            (&self.footer_lines, self.hf_edit == Some(true)),
         ] {
-            for line in lines.iter() {
-                if line.cells.is_empty() {
-                    continue;
+            for (k, lines) in pages.iter().enumerate() {
+                let dy = self
+                    .page_tops
+                    .get(k)
+                    .or_else(|| self.page_offsets.get(k))
+                    .copied()
+                    .unwrap_or(0.0);
+                for line in lines.iter() {
+                    // **A line is drawn in pieces, as the body is.** One
+                    // string from the first cell's x lost everything a tab
+                    // does: the page number of Word's business plan
+                    // template sits at a right stop and came out right
+                    // after the company name (2026-09-21). A piece ends at
+                    // a tab and where the face or the size changes
+                    let mut i = 0usize;
+                    while i < line.cells.len() {
+                        let c0 = &line.cells[i];
+                        if c0.ch == '\t' || c0.ch == '\n' {
+                            i += 1;
+                            continue;
+                        }
+                        let mut j = i + 1;
+                        while j < line.cells.len() {
+                            let c = &line.cells[j];
+                            if c.ch == '\t'
+                                || c.ch == '\n'
+                                || c.font != c0.font
+                                || c.fmt.bold != c0.fmt.bold
+                                || c.fmt.italic != c0.fmt.italic
+                                || (c.size_pt - c0.size_pt).abs() > 0.01
+                            {
+                                break;
+                            }
+                            j += 1;
+                        }
+                        let sz = c0.size_pt * 96.0 / 72.0 * self.zoom;
+                        let x0 = self.pg.left_mm + c0.x_mm;
+                        let top = (line.y_mm + line.dip_mm + dy) * pxmm - sz * 0.88;
+                        let (kazoku, omosa) =
+                            self.screen_face(c0.font.as_deref(), c0.fmt.bold, c0.fmt.italic);
+                        let text: String = line.cells[i..j].iter().map(|c| c.ch).collect();
+                        paper = paper.child(div().absolute()
+                            .left(px(x0 * pxmm)).top(px(top))
+                            .text_size(px(sz))
+                            .font_family(kazoku)
+                            .font_weight(omosa)
+                            .whitespace_nowrap()
+                            .text_color(if active { rgb(0x165E83) } else { rgb(0x8899A6) })
+                            .child(SharedString::from(text)));
+                        i = j;
+                    }
                 }
-                let pt = line.cells[0].size_pt;
-                let sz = pt * 96.0 / 72.0 * self.zoom;
-                let x0 = self.pg.left_mm + line.cells[0].x_mm;
-                let top = (line.y_mm + line.dip_mm + dy) * pxmm - sz * 0.88;
-                paper = paper.child(div().absolute()
-                    .left(px(x0 * pxmm)).top(px(top))
-                    .text_size(px(sz))
-                    .font_family(self.font_name.clone())
-                    .whitespace_nowrap()
-                    .text_color(if active { rgb(0x165E83) } else { rgb(0x8899A6) })
-                    .child(SharedString::from(line.text())));
             }
         }
         // 脚注。**紙(PDF)と同じ割り当て**で、そのページの下に仕切り線とともに出す。

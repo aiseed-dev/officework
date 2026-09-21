@@ -535,6 +535,16 @@ pub struct Writer {
     /// テンプレートが持つ物と、文書が持つ物(docx 由来)の合成の結果。
     /// `doc` は意味だけのままなので、飾りはここを見る(2026-08-18)
     dress_hf: (kumihan::HeadFoot, kumihan::HeadFoot),
+    /// **The styles a header or footer is laid out against.**
+    ///
+    /// A header's paragraphs name the document's styles, and the style
+    /// decides the size, the face and `w:caps` (ECMA-376 17.7.2). The paper
+    /// side passes the composed document for this; the screen passed
+    /// nothing, so the header of Word's business plan template 8989d4b5
+    /// came out in lower case where Word prints capitals (2026-09-21).
+    /// Only what the layout reads is kept, not the whole copy: the styles,
+    /// and the parts themselves with the sections that name them
+    hf_moto: kumihan::Document,
     /// 同じく(透かし, ページの色)
     dress_page: (Option<String>, Option<String>),
     /// 記入欄の選択肢を聞くパネル(コンボ・ドロップダウンを挿すとき)
@@ -648,9 +658,15 @@ pub struct Writer {
     my_lock: Option<PathBuf>,
     /// 先客の名乗り(user@host)。居る間は上書き保存をしない
     locked_by: Option<String>,
-    /// 紙面に出すヘッダー・フッターの行(1ページ目の番号で組んだもの)
-    header_lines: Vec<kumihan::Line>,
-    footer_lines: Vec<kumihan::Line>,
+    /// **紙面に出すヘッダー・フッターの行を、頁ごとに。**
+    ///
+    /// 頁によってどの部品を使うかが変わります(`w:titlePg` の先頭頁、節ごとの
+    /// `w:headerReference`)。前は文書に 1 組だけを組んで、1 頁目の頭と最終頁の
+    /// 足に 1 回ずつ描いていたので、2 頁目から先は頭も足も出ず、1 頁目には
+    /// 先頭頁用ではなく既定の部品が出ていました(2026-09-21 発注者)。
+    /// 紙と同じ [`paper::doc_hf_pairs`] から受け取ります
+    header_lines: Vec<Vec<kumihan::Line>>,
+    footer_lines: Vec<Vec<kumihan::Line>>,
     /// 校正の指摘(レビュー > 校正)。英語は辞書、日本語はモデル
     proof: Vec<ui::check::Finding>,
     proof_msg: SharedString,

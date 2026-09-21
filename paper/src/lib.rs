@@ -1588,12 +1588,12 @@ pub fn doc_to_pdf<W: Write>(
 /// 総頁は紙と同じ折り方([`paginate_full`])で数えます。画面の
 /// `refresh_hf` と同じ関数([`kumihan::layout_hf`])を同じ物差しで呼ぶので、
 /// 頭と足の位置は画面と紙で同じになります(2026-09-08)。
-pub fn doc_hf_lines<'a>(
+pub fn doc_hf_pairs<'a>(
     doc: &'a kumihan::Document,
     font: &'a [u8],
     sheet: &kumihan::Sheet,
     page: kumihan::PageSetup,
-) -> Result<impl Fn(usize) -> Vec<kumihan::Line> + 'a, String> {
+) -> Result<impl Fn(usize) -> (Vec<kumihan::Line>, Vec<kumihan::Line>) + 'a, String> {
     let m = kumihan::Metrics::new(font)?;
     let pn = paginate_full(sheet, Paper::from_page(&page));
     let total = pn.offsets.len().max(1);
@@ -1637,9 +1637,26 @@ pub fn doc_hf_lines<'a>(
                 }
                 None => (&doc.header, &doc.footer),
             };
-        let mut v = kumihan::layout_hf_with(head, &m, &pg, kumihan::LINE_MM, k, total, false, base_pt, Some(doc));
-        v.extend(kumihan::layout_hf_with(foot, &m, &pg, kumihan::LINE_MM, k, total, true, base_pt, Some(doc)));
-        v
+        (
+            kumihan::layout_hf_with(head, &m, &pg, kumihan::LINE_MM, k, total, false, base_pt, Some(doc)),
+            kumihan::layout_hf_with(foot, &m, &pg, kumihan::LINE_MM, k, total, true, base_pt, Some(doc)),
+        )
+    })
+}
+
+/// [`doc_hf_pairs`] の、頭と足を 1 本に繋いだ形。PDF の `page_decor` が
+/// この形を取ります
+pub fn doc_hf_lines<'a>(
+    doc: &'a kumihan::Document,
+    font: &'a [u8],
+    sheet: &kumihan::Sheet,
+    page: kumihan::PageSetup,
+) -> Result<impl Fn(usize) -> Vec<kumihan::Line> + 'a, String> {
+    let futatsu = doc_hf_pairs(doc, font, sheet, page)?;
+    Ok(move |k: usize| {
+        let (mut head, foot) = futatsu(k);
+        head.extend(foot);
+        head
     })
 }
 

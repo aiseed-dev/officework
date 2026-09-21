@@ -3342,7 +3342,7 @@ mod marker_tests {
         w.update(cx, |this, _cx| {
             this.open(doc.clone());
             // 飾りは画面に出る
-            let h: String = this.header_lines.iter()
+            let h: String = this.header_lines.iter().flatten()
                 .flat_map(|l| l.cells.iter()).map(|c| c.ch).collect();
             assert!(h.contains("社内資料"), "ヘッダーが出ていない: {h:?}");
             assert_eq!(this.dress_page.0.as_deref(), Some("社外秘"), "透かしが効いていない");
