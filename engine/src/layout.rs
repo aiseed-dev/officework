@@ -542,7 +542,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
     // right (2026-09-21)
     let hidari_tw = left_mm(para, base * 25.4 / 72.0) * 72.0 * 20.0 / 25.4;
     // The next stop after `ima_mm`, and what it does to the text after it
-    let tab_saki = |ima_mm: f32| -> (f32, crate::TabKind) {
+    let tab_saki = |ima_mm: f32| -> (f32, crate::TabKind, Option<char>) {
         let ima_tw = ima_mm * 72.0 * 20.0 / 25.4 + hidari_tw;
         let tugi = para
             .tab_stops
@@ -550,12 +550,12 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
             .copied()
             .filter(|t| t.twips as f32 > ima_tw + 0.5)
             .min_by(|a, b| a.twips.cmp(&b.twips))
-            .map(|t| (t.twips as f32, t.kind))
+            .map(|t| (t.twips as f32, t.kind, t.leader))
             .unwrap_or_else(|| {
                 let k = crate::TAB_TWIPS as f32;
-                (((ima_tw / k).floor() + 1.0) * k, crate::TabKind::Left)
+                (((ima_tw / k).floor() + 1.0) * k, crate::TabKind::Left, None)
             });
-        (((tugi.0 - hidari_tw) / 20.0) * 25.4 / 72.0, tugi.1)
+        (((tugi.0 - hidari_tw) / 20.0) * 25.4 / 72.0, tugi.1, tugi.2)
     };
     let toks = tokenize(para, m, notes, base, moji);
     // **The width of the text a tab carries to its stop.** A centre or a
@@ -582,7 +582,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
         let tok: &Tok = match &toks[ti] {
             Tok::One('\t', _, s, f, ft, o) => {
                 let ima = w_cur + if done.is_empty() { first_mm } else { 0.0 };
-                let (saki, kind) = tab_saki(ima);
+                let (saki, kind, hiku) = tab_saki(ima);
                 // **A stop past the end of the line stands at the end of
                 // the line.** The `TOC1` style of Word's business plan
                 // template 8989d4b5 puts its last stop at 10790 twips on a
@@ -595,7 +595,24 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
                     _ => 0.0,
                 };
                 let haba = (saki - ato - ima).max(0.0);
-                okikae = Tok::Space('\t', haba, *s, f.clone(), ft.clone(), *o);
+                // **The leader fills the gap** (`w:leader`, ECMA-376
+                // 17.3.1.37): a table of contents draws its dotted line
+                // this way. The dots are not body text, so they carry the
+                // tab's own byte position, like a list mark
+                match hiku.filter(|_| haba > 0.0) {
+                    Some(ch) => {
+                        let hen = m.advance_for(ft.as_deref(), ch, *s).max(0.01);
+                        let kazu = (haba / hen).floor().max(0.0) as usize;
+                        let amari = haba - hen * kazu as f32;
+                        let mut cs: Vec<(char, f32, usize)> = Vec::with_capacity(kazu + 1);
+                        if amari > 0.01 {
+                            cs.push(('\t', amari, *o));
+                        }
+                        cs.extend((0..kazu).map(|_| (ch, hen, *o)));
+                        okikae = Tok::Word(cs, *s, f.clone(), ft.clone());
+                    }
+                    None => okikae = Tok::Space('\t', haba, *s, f.clone(), ft.clone(), *o),
+                }
                 &okikae
             }
             t => t,

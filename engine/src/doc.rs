@@ -141,11 +141,16 @@ pub enum TabKind {
 pub struct TabStop {
     pub twips: i32,
     pub kind: TabKind,
+    /// **The character that fills the gap in front of the stop**
+    /// (`w:leader`, ECMA-376 17.3.1.37). A table of contents draws the
+    /// dotted line between the heading and the page number this way.
+    /// `None` means the gap is left empty.
+    pub leader: Option<char>,
 }
 
 impl TabStop {
     pub fn new(twips: i32) -> Self {
-        Self { twips, kind: TabKind::Left }
+        Self { twips, kind: TabKind::Left, leader: None }
     }
     /// `w:val` の名前から。知らない名前は左です
     pub fn kind_of(val: &str) -> TabKind {
@@ -154,6 +159,16 @@ impl TabStop {
             "right" | "end" => TabKind::Right,
             "decimal" => TabKind::Decimal,
             _ => TabKind::Left,
+        }
+    }
+    /// `w:leader` の名前から。`none` と知らない名前は `None` です
+    pub fn leader_of(val: &str) -> Option<char> {
+        match val {
+            "dot" => Some('.'),
+            "middleDot" => Some('\u{00B7}'),
+            "hyphen" => Some('-'),
+            "underscore" | "heavy" => Some('_'),
+            _ => None,
         }
     }
 }

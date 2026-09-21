@@ -2104,7 +2104,11 @@ fn tabs_of(body: &str) -> Vec<kumihan::TabStop> {
         if val != "clear" {
             if let Ok(v) = attr_of(&naka[s..e], "w:pos").parse::<i32>() {
                 if v > 0 && !out.iter().any(|t| t.twips == v) {
-                    out.push(kumihan::TabStop { twips: v, kind: kumihan::TabStop::kind_of(&val) });
+                    out.push(kumihan::TabStop {
+                        twips: v,
+                        kind: kumihan::TabStop::kind_of(&val),
+                        leader: kumihan::TabStop::leader_of(&attr_of(&naka[s..e], "w:leader")),
+                    });
                 }
             }
         }
@@ -3597,6 +3601,9 @@ pub(super) fn parse_document_rels_num(
                                     tab_stops.push(kumihan::TabStop {
                                         twips: v,
                                         kind: kumihan::TabStop::kind_of(&val),
+                                        leader: kumihan::TabStop::leader_of(
+                                            &attr(&e, "leader").unwrap_or_default(),
+                                        ),
                                     });
                                 }
                             }
