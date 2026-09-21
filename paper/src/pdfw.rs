@@ -2044,6 +2044,16 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
         let pp = full.papers.get(k).copied().unwrap_or(paper);
         for line in page_decor(k + 1) {
             for c in &line.cells {
+                // **A tab is not a letter.** It carries a width and no
+                // shape; a face has no glyph for it, so drawing it leaves a
+                // tofu box. The body loop has skipped it since 2026-09-01,
+                // and this one did not: the footer of Word's business plan
+                // template 8989d4b5 puts a `w:tab` between the company name
+                // and the page number, and we drew it (2026-09-21). The
+                // line break of a `w:br` has no shape either
+                if c.ch == '\t' || c.ch == '\n' {
+                    continue;
+                }
                 p.pieces.push(Piece {
                     x_mm: pp.margin_mm + c.x_mm,
                     y_mm: pp.height_mm - line.y_mm,
@@ -2055,7 +2065,10 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                     strike: c.fmt.strike,
                     bold: c.fmt.bold,
                     highlight: c.fmt.highlight.clone(),
-                    font: 0,
+                    // The face a run of the header or footer names, the same
+                    // as the body. Everything here was drawn in the
+                    // document's face
+                    font: font_of(c.font.as_deref()),
                     rotation: 0.0,
                     italic: c.fmt.italic,
                     tc_pt: c.fmt.spacing_pt,

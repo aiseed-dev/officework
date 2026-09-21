@@ -449,9 +449,17 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
         // last section none, and page 2 came out with no footer at all
         // (2026-09-21). The document's own `header`/`footer` belong to the
         // last section, so they come at the end of the chain.
+        //
+        // The first page's own parts follow the same chain. Word's business
+        // plan template 8989d4b5 gives its first section a
+        // `w:type="first"` header and its next two sections `w:titlePg`
+        // with no reference of their own, and pages 2 and 3 came out with
+        // no header at all (2026-09-21).
         {
             let mut mae_h: Option<kumihan::HeadFoot> = None;
             let mut mae_f: Option<kumihan::HeadFoot> = None;
+            let mut mae_fh: Option<kumihan::HeadFoot> = None;
+            let mut mae_ff: Option<kumihan::HeadFoot> = None;
             for hf in doc.sect_hf.values_mut() {
                 match (hf.header.part.is_none(), mae_h.clone()) {
                     (true, Some(h)) => hf.header = h,
@@ -460,6 +468,16 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                 match (hf.footer.part.is_none(), mae_f.clone()) {
                     (true, Some(f)) => hf.footer = f,
                     _ => mae_f = Some(hf.footer.clone()),
+                }
+                match (&hf.first_header, mae_fh.clone()) {
+                    (None, Some(h)) if hf.title_pg => hf.first_header = Some(h),
+                    (Some(h), _) => mae_fh = Some(h.clone()),
+                    _ => {}
+                }
+                match (&hf.first_footer, mae_ff.clone()) {
+                    (None, Some(f)) if hf.title_pg => hf.first_footer = Some(f),
+                    (Some(f), _) => mae_ff = Some(f.clone()),
+                    _ => {}
                 }
             }
             if doc.header.part.is_none() {
@@ -470,6 +488,14 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
             if doc.footer.part.is_none() {
                 if let Some(f) = mae_f {
                     doc.footer = f;
+                }
+            }
+            if doc.title_pg {
+                if doc.first_header.is_none() {
+                    doc.first_header = mae_fh;
+                }
+                if doc.first_footer.is_none() {
+                    doc.first_footer = mae_ff;
                 }
             }
         }
