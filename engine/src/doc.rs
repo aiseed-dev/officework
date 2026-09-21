@@ -1346,6 +1346,15 @@ pub struct Document {
     /// 図形の色はこの名前(`<a:schemeClr val="accent1"/>`)で書いてあること
     /// が多く、読まないと Office の既定の色で出ます(2026-09-03)
     pub theme_colors: Vec<String>,
+    /// **The widths of the theme's line styles** (`theme1.xml`'s
+    /// `a:fmtScheme/a:lnStyleLst`, in pt, in the order they are written).
+    ///
+    /// A shape that states no `a:ln` of its own takes the entry its
+    /// `wps:style/a:lnRef idx` names, counting from 1 (ECMA-376
+    /// 20.1.4.1.20). Word's business report 4e493df5 says `idx="2"`, whose
+    /// entry is `w="12700"` (1pt), and we drew the model's 1.5pt default
+    /// (2026-09-21)
+    pub theme_line_pt: Vec<f32>,
     /// 用紙の設定。無ければ既定(A4)
     pub page: Option<PageSetup>,
     /// 節の設定の原文(w:sectPr)。ヘッダーの参照などが入っているので、

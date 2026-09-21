@@ -520,6 +520,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
             let _ = f.read_to_string(&mut th);
         }
         doc.theme_colors = crate::theme::clr_scheme(&th);
+        doc.theme_line_pt = crate::theme::ln_style_lst(&th);
         // Styles that name their fonts through the theme
         for s in doc.styles.iter_mut() {
             let major = |t: &Option<String>| t.as_deref().is_some_and(|t| t.starts_with("major"));
@@ -4639,7 +4640,7 @@ pub(super) fn extract_shapes(doc: &mut Document) {
                     s2[..e].parse::<usize>().ok()
                 })
                 .unwrap_or(0);
-            let (Some(sp), Some((w, h))) = (shape_look(a, &[]), shape_size(a)) else {
+            let (Some(sp), Some((w, h))) = (shape_look(a, &[], &[]), shape_size(a)) else {
                 i += 1;
                 continue;
             };
@@ -4884,17 +4885,17 @@ pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (S
 }
 
 pub fn foreign_shape(a: &str) -> Option<ForeignShape> {
-    foreign_shape_with(a, &[])
+    foreign_shape_with(a, &[], &[])
 }
 
 /// **文書のテーマの配色つき。** 図形の色はテーマの名前で書いてあることが
 /// 多いので、これを渡さないと既定の配色で出ます([`crate::theme::dml_iro`])
-pub fn foreign_shape_with(a: &str, palette: &[String]) -> Option<ForeignShape> {
+pub fn foreign_shape_with(a: &str, palette: &[String], lines: &[f32]) -> Option<ForeignShape> {
     if a.contains("name=\"joshape") || a.contains("name=\"joink") {
         return None; // うちが書いた物は extract_shapes が読みます
     }
     let (w_mm, h_mm) = shape_size(a)?;
-    let look = shape_look(a, palette)?;
+    let look = shape_look(a, palette, lines)?;
     // 基準の名前と、そこからのずれ
     //
     // **`<wp:posOffset>` と `<wp:align>` は二択です。** 前者は基準からの
@@ -4963,8 +4964,8 @@ pub fn foreign_shape_with(a: &str, palette: &[String]) -> Option<ForeignShape> {
 /// `a:ext` against the group's `a:chOff`/`a:chExt` (ECMA-376 20.1.7.6;
 /// Word's resume template has a page-high band drawn as a group of two
 /// rectangles, 2026-09-19). Anything else yields the anchor's own shape
-pub fn foreign_shapes_in(a: &str, palette: &[String]) -> Vec<ForeignShape> {
-    let Some(base) = foreign_shape_with(a, palette) else { return Vec::new() };
+pub fn foreign_shapes_in(a: &str, palette: &[String], lines: &[f32]) -> Vec<ForeignShape> {
+    let Some(base) = foreign_shape_with(a, palette, lines) else { return Vec::new() };
     let Some(g) = a.find("<wpg:wgp>") else { return vec![base] };
     let emu = |seg: &str, key: &str| -> Option<f32> {
         let pat = format!("{key}=\"");
@@ -4999,7 +5000,7 @@ pub fn foreign_shapes_in(a: &str, palette: &[String]) -> Vec<ForeignShape> {
         let e = s + e + "</wps:wsp>".len();
         let child = &a[s..e];
         at = e;
-        let Some(look) = shape_look(child, palette) else { continue };
+        let Some(look) = shape_look(child, palette, lines) else { continue };
         let xfrm = child.find("<a:xfrm").map(|i| &child[i..]).unwrap_or("");
         let off = tag(xfrm, "<a:off ");
         let ext = tag(xfrm, "<a:ext ");
@@ -5065,7 +5066,7 @@ pub fn shape_has_picture_fill(a: &str) -> bool {
 }
 
 /// 図形の見た目(形・塗り・線・回転・不透明度・影・中の文字)
-fn shape_look(a: &str, palette: &[String]) -> Option<book::SheetShape> {
+fn shape_look(a: &str, palette: &[String], lines: &[f32]) -> Option<book::SheetShape> {
     let mut sp = book::SheetShape { alpha: 1.0, line_w: 1.5, ..Default::default() };
     // 形。prstGeom の名前、無ければ点で作る形
     sp.kind = match a.find("<a:prstGeom prst=\"") {
@@ -5187,6 +5188,24 @@ fn shape_look(a: &str, palette: &[String]) -> Option<book::SheetShape> {
         sp.line = None;
     } else if sp.line.is_none() {
         sp.line = sanshou("<a:lnRef ");
+        // **The width comes from the theme entry the reference names**
+        // (`a:lnRef idx` into `a:lnStyleLst`, counting from 1; ECMA-376
+        // 20.1.4.1.20). Word's business report 4e493df5 names `idx="2"`,
+        // whose entry says `w="12700"`, and Word strokes its full-page
+        // rectangle with 1pt where we drew the model's 1.5pt default
+        // (2026-09-21)
+        if sp.line.is_some() && !a.contains("<a:ln w=\"") {
+            let idx = a
+                .find("<a:lnRef ")
+                .and_then(|i| a[i..].find('>').map(|e| (i, i + e)))
+                .and_then(|(i, e)| a[i..e].find("idx=\"").map(|j| (i + j + 5, e)))
+                .and_then(|(v, e)| a[v..e].find('"').and_then(|x| a[v..v + x].parse::<usize>().ok()));
+            if let Some(w) = idx.filter(|n| *n >= 1).and_then(|n| lines.get(n - 1)) {
+                if *w > 0.0 {
+                    sp.line_w = *w;
+                }
+            }
+        }
     }
     // **線の種類**(`<a:prstDash val="dash"/>`)。無ければ実線
     if let Some(i) = a.find("<a:prstDash val=\"") {

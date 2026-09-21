@@ -240,6 +240,29 @@ fn senkei(rgb: u32, f: impl Fn(f64) -> f64) -> u32 {
 /// 並びは docx の書き順で `dk1 lt1 dk2 lt2 accent1..6 hlink folHlink` の12色。
 /// `sysClr` は `lastClr` を使います。読めなければ空を返し、
 /// [`dml_iro`] が Office の既定に落とします。
+/// **The widths of the theme's line styles**, in pt, in the order the
+/// theme writes them (`a:fmtScheme/a:lnStyleLst`, ECMA-376 20.1.4.1.9).
+///
+/// `a:lnRef idx` counts from 1 into this list.
+pub fn ln_style_lst(xml: &str) -> Vec<f32> {
+    let Some(i) = xml.find("<a:lnStyleLst>") else { return Vec::new() };
+    let e = xml[i..].find("</a:lnStyleLst>").map(|e| i + e).unwrap_or(xml.len());
+    let naka = &xml[i..e];
+    let mut out = Vec::new();
+    let mut at = 0usize;
+    while let Some(j) = naka[at..].find("<a:ln ") {
+        let s0 = at + j;
+        let owari = naka[s0..].find('>').map(|e| s0 + e).unwrap_or(naka.len());
+        let w = naka[s0..owari].find("w=\"").and_then(|k| {
+            let v = s0 + k + 3;
+            naka[v..owari].find('"').and_then(|e| naka[v..v + e].parse::<f32>().ok())
+        });
+        out.push(w.unwrap_or(0.0) / 12_700.0);
+        at = owari;
+    }
+    out
+}
+
 pub fn clr_scheme(xml: &str) -> Vec<String> {
     let Some(i) = xml.find("<a:clrScheme") else { return Vec::new() };
     let e = xml[i..].find("</a:clrScheme>").map(|e| i + e).unwrap_or(xml.len());

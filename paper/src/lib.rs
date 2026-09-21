@@ -2533,7 +2533,7 @@ pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, pa
             else {
                 continue;
             };
-            let Some(f) = ooxml::foreign_shape_with(&part, &doc.theme_colors) else { continue };
+            let Some(f) = ooxml::foreign_shape_with(&part, &doc.theme_colors, &doc.theme_line_pt) else { continue };
             let migi = kami0 % 2 == 1;
             let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
             let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
@@ -2618,7 +2618,7 @@ fn hf_pictures(
                 else {
                     continue;
                 };
-                let Some(f) = ooxml::foreign_shape_with(&part, &doc.theme_colors) else { continue };
+                let Some(f) = ooxml::foreign_shape_with(&part, &doc.theme_colors, &doc.theme_line_pt) else { continue };
                 let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
                 let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
                 for k in 0..kami_kazu {
@@ -2772,7 +2772,7 @@ pub fn foreign_shapes(
         .into_iter()
         .flat_map(|(a, y0, f, t)| split_anchors(a).into_iter().map(move |s| (s, y0, f, t)))
     {
-        for mut f in ooxml::foreign_shapes_in(&a, &doc.theme_colors) {
+        for mut f in ooxml::foreign_shapes_in(&a, &doc.theme_colors, &doc.theme_line_pt) {
             shape_text_style(doc, &a, &mut f.look);
             let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
             let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
@@ -2813,7 +2813,7 @@ pub fn foreign_shapes(
             if (part.contains("<wp:inline") && !part.contains("<wp:anchor")) || part.contains("<pic:pic") {
                 continue; // a floating picture is placed by `anchored_pictures`
             }
-            for mut f in ooxml::foreign_shapes_in(&part, &doc.theme_colors) {
+            for mut f in ooxml::foreign_shapes_in(&part, &doc.theme_colors, &doc.theme_line_pt) {
                 shape_text_style(doc, &part, &mut f.look);
                 if f.look.text_fmt.font.is_none() {
                     f.look.text_fmt.font = doc.font.clone();
@@ -2876,7 +2876,7 @@ pub fn foreign_shapes(
     // Drawn shapes in the line (rules under headings), placed by the layout
     for (xml, [x, top, w, h]) in &sheet.inline_shapes {
         let (kami, soko) = kami_no(*top);
-        let Some(f) = ooxml::foreign_shapes_in(xml, &doc.theme_colors).into_iter().next() else {
+        let Some(f) = ooxml::foreign_shapes_in(xml, &doc.theme_colors, &doc.theme_line_pt).into_iter().next() else {
             continue;
         };
         out.push(kumihan::DocShape {

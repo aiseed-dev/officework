@@ -101,7 +101,7 @@ fn main() -> Result<(), String> {
             };
             for p in paras {
                 for a in &p.anchors {
-                    let fs = ooxml::foreign_shapes_in(a, &doc.theme_colors);
+                    let fs = ooxml::foreign_shapes_in(a, &doc.theme_colors, &doc.theme_line_pt);
                     println!("block {ti} anchor len={} inline={} anchor={} wgp={} -> {} shapes", a.len(),
                         a.contains("<wp:inline"), a.contains("<wp:anchor"), a.contains("<wpg:wgp>"), fs.len());
                     for f in fs {

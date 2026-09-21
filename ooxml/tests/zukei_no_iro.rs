@@ -24,7 +24,7 @@ fn zukei(sppr: &str, style: &str) -> book::SheetShape {
 <wp:extent cx="1828800" cy="914400"/>
 <wps:wsp><wps:spPr>{sppr}</wps:spPr>{style}</wps:wsp></wp:anchor>"#
     );
-    ooxml::foreign_shape_with(&a, &irodana()).expect("図形が読めない").look
+    ooxml::foreign_shape_with(&a, &irodana(), &[]).expect("図形が読めない").look
 }
 
 const KATACHI: &str = r#"<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>"#;
