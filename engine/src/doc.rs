@@ -843,6 +843,16 @@ impl TableCond {
     pub fn nanika(&self) -> bool {
         *self != Self::default()
     }
+
+    /// Fill what this band does not state from the style it is based on.
+    pub fn tsugu(&mut self, oya: &TableCond) {
+        self.para.tsugu(&oya.para);
+        self.shade = self.shade.take().or_else(|| oya.shade.clone());
+        self.bold = self.bold.or(oya.bold);
+        self.color = self.color.take().or_else(|| oya.color.clone());
+        self.size_pt = self.size_pt.or(oya.size_pt);
+        self.cell_borders = self.cell_borders.or(oya.cell_borders);
+    }
 }
 
 /// **表のスタイルが持つ書式**(docx の `w:style w:type="table"`)。
@@ -876,6 +886,34 @@ impl TableStyleLook {
     /// 何も言っていないか
     pub fn is_empty(&self) -> bool {
         *self == Self::default()
+    }
+
+    /// **Fill what this style does not state from `w:basedOn`**
+    /// (ECMA-376 17.7.6).
+    ///
+    /// Word's invoice template 449fdde7 gives its table the `TableGrid`
+    /// style, which states only borders and is based on the default
+    /// `TableNormal`, where the `w:tblCellMar` of 108 twips lives. We read
+    /// the named style alone, so the cells took the fallback margin and
+    /// their text stood 1.3pt left of Word's (2026-09-21).
+    pub fn tsugu(&mut self, oya: &TableStyleLook) {
+        self.base.tsugu(&oya.base);
+        self.first_row.tsugu(&oya.first_row);
+        self.last_row.tsugu(&oya.last_row);
+        self.first_col.tsugu(&oya.first_col);
+        self.last_col.tsugu(&oya.last_col);
+        self.band1_h.tsugu(&oya.band1_h);
+        self.band2_h.tsugu(&oya.band2_h);
+        self.band1_v.tsugu(&oya.band1_v);
+        self.band2_v.tsugu(&oya.band2_v);
+        if self.row_band == 0 {
+            self.row_band = oya.row_band;
+        }
+        if self.col_band == 0 {
+            self.col_band = oya.col_band;
+        }
+        self.cell_mar_mm = self.cell_mar_mm.or(oya.cell_mar_mm);
+        self.borders = self.borders.or(oya.borders);
     }
 }
 
@@ -1513,6 +1551,34 @@ pub fn latent_style(name: &str) -> Option<(&'static str, &'static str)> {
 /// 三択(入・切・言わない)です。「言わない」は、元になるスタイル
 /// (`basedOn`)から受け継ぐという意味で、`false` を書くと**わざわざ切る**
 /// ことになり、意味が違います。
+impl StyleParaLook {
+    /// Fill what this style does not state from the style it is based on.
+    pub fn tsugu(&mut self, oya: &StyleParaLook) {
+        self.align = self.align.or(oya.align);
+        self.space_before_pt = self.space_before_pt.or(oya.space_before_pt);
+        self.space_after_pt = self.space_after_pt.or(oya.space_after_pt);
+        self.auto_before = self.auto_before.or(oya.auto_before);
+        self.auto_after = self.auto_after.or(oya.auto_after);
+        self.line_spacing = self.line_spacing.or(oya.line_spacing);
+        self.line_pt = self.line_pt.or(oya.line_pt);
+        self.indent = self.indent.or(oya.indent);
+        self.left_twips = self.left_twips.or(oya.left_twips);
+        self.right_twips = self.right_twips.or(oya.right_twips);
+        self.first_line_twips = self.first_line_twips.or(oya.first_line_twips);
+        if self.tab_stops.is_empty() {
+            self.tab_stops = oya.tab_stops.clone();
+        }
+        self.list = self.list.or(oya.list);
+        self.list_no_tab = self.list_no_tab.or(oya.list_no_tab);
+        self.list_color = self.list_color.take().or_else(|| oya.list_color.clone());
+        self.list_text = self.list_text.take().or_else(|| oya.list_text.clone());
+        self.contextual_spacing = self.contextual_spacing.or(oya.contextual_spacing);
+        self.no_grid = self.no_grid.or(oya.no_grid);
+        self.border = self.border.or(oya.border);
+        self.shade = self.shade.take().or_else(|| oya.shade.clone());
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct StyleParaLook {
     /// 横の揃え。`None` は「言わない」(元になるスタイルから受け継ぐ)

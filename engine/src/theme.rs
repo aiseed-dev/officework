@@ -2147,12 +2147,29 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
     //
     // **表示用の写しにだけ当てます。** 元の模型に焼き付けると、開いて保存
     // しただけで、元は書いていなかった `w:shd` が全部のセルに付きます
-    let hyou_style: std::collections::BTreeMap<String, crate::doc::TableStyleLook> = out
-        .styles
+    //
+    // **A table style is based on another one** (`w:basedOn`, ECMA-376
+    // 17.7.6), so what it does not state comes from the style it names,
+    // and in the end from the default table style.
+    let hyou_moto: Vec<&crate::doc::StyleInfo> =
+        out.styles.iter().chain(out.styles_new.iter()).filter(|s| s.kind == "table").collect();
+    let tsunageru = |id: &str| -> crate::doc::TableStyleLook {
+        let mut ima = id;
+        let mut out = crate::doc::TableStyleLook::default();
+        for _ in 0..16 {
+            let Some(s) = hyou_moto.iter().find(|s| s.id == ima) else { break };
+            out.tsugu(&s.table);
+            match s.based_on.as_deref() {
+                Some(o) => ima = o,
+                None => break,
+            }
+        }
+        out
+    };
+    let hyou_style: std::collections::BTreeMap<String, crate::doc::TableStyleLook> = hyou_moto
         .iter()
-        .chain(out.styles_new.iter())
-        .filter(|s| s.kind == "table" && !s.table.is_empty())
-        .map(|s| (s.id.clone(), s.table.clone()))
+        .filter(|s| !s.table.is_empty())
+        .map(|s| (s.id.clone(), tsunageru(&s.id)))
         .collect();
     // **A table that names no style still follows the default table style.**
     //

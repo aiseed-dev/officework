@@ -594,7 +594,15 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
             // 名前が直に無く、テーマ名(minorEastAsia など)で書いてある docx は
             // theme1.xml の fontScheme を引いて名前にする。python-docx の既定が
             // この形(w:asciiTheme="minorHAnsi")
-            if doc.font.is_none() && tag.contains("Theme=\"") {
+            // `w:ascii`/`w:asciiTheme` and `w:eastAsia`/`w:eastAsiaTheme`
+            // name two faces, not one (ECMA-376 17.3.2.26), so the Latin
+            // face is looked up even when the East Asian one is already
+            // known. The invoice template 449fdde7 writes
+            // `w:eastAsia="Times New Roman" w:asciiTheme="minorHAnsi"`,
+            // and taking only the first meant 401 of its 545 characters
+            // were drawn in Times New Roman where Word draws Century
+            // Gothic (2026-09-21)
+            if (doc.font.is_none() || doc.font_latin.is_none()) && tag.contains("Theme=\"") {
                 let mut theme = String::new();
                 if let Ok(mut f) = zip.by_name(&bui("theme", "word/theme/theme1.xml")) {
                     let _ = f.read_to_string(&mut theme);
@@ -612,10 +620,12 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                         tag[s..].find('"').map(|e| tag[s..s + e].to_string())
                     })
                 };
-                doc.font = match ea_ref.as_deref().filter(|t| !t.is_empty()) {
-                    Some(t) => theme_ref_face(&theme, t, script),
-                    None => theme_face(&theme, tag.contains("Theme=\"major"), script, true),
-                };
+                if doc.font.is_none() {
+                    doc.font = match ea_ref.as_deref().filter(|t| !t.is_empty()) {
+                        Some(t) => theme_ref_face(&theme, t, script),
+                        None => theme_face(&theme, tag.contains("Theme=\"major"), script, true),
+                    };
+                }
                 // The Latin face of the same theme set, for ASCII runs that
                 // name no font. With only `doc.font` (the East Asian face,
                 // ＭＳ Ｐゴシック from the Jpan entry of an English theme)
