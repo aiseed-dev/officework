@@ -2381,7 +2381,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         // はみ出させる。縮めると狭い列で字が折れ、行が増える(横浜市の道路
         // 廃止通知は「※１」の列が 1 字ずつ折れて 1 頁が 3 頁になっていた)
         // **A table that states its own width is not shrunk either**
-        // (`w:tblW w:type="dxa"`, ECMA-376 17.4.64). The grid alone is a
+        // (`w:tblW w:type="dxa"`, ECMA-376 17.4.63). The grid alone is a
         // ratio, but a stated width is what the author asked for, and
         // Word draws it past the margins. The first table of Word's
         // business plan template is 630pt wide on a 504pt text area, and
@@ -2722,7 +2722,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         // `w:trHeight` by its top border, 19pt over 31 rows)
         // The edge belongs to two rows: this row's `w:top` and the row
         // above's `w:bottom` both describe it. When they differ, Word draws
-        // the heavier one (ECMA-376 17.4.39: the border with the larger
+        // the heavier one (ECMA-376 17.4.38: the border with the larger
         // width, then the more visible style, wins), so the wider counts
         let cells = &table.rows[ri_now];
         let haba = |side: Option<bool>, pt: f32| -> f32 {

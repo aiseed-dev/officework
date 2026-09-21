@@ -1608,7 +1608,7 @@ pub(super) fn theme_ref_face(theme: &str, name: &str, script: Option<&str>) -> O
 }
 
 /// **The script of the East Asian theme font** (`w:themeFontLang w:eastAsia`
-/// of settings.xml, ECMA-376 17.15.1.87), as the ISO 15924 code the theme's
+/// of settings.xml, ECMA-376 17.15.1.88), as the ISO 15924 code the theme's
 /// `<a:font script="…">` entries are keyed by.
 ///
 /// The `<a:ea>` of an English theme is empty, and the scheme carries one
@@ -2934,7 +2934,7 @@ pub(super) fn parse_document_rels_num(
                         };
                     },
                     // **The table's preferred width** (`w:tblW`, ECMA-376
-                    // 17.4.64). `pct` is in fiftieths of a percent, so
+                    // 17.4.63). `pct` is in fiftieths of a percent, so
                     // 5000 is 100%. `dxa` is twips, and it is the width
                     // the author asked for even when it is wider than the
                     // text area: Word's business plan template starts with
@@ -3707,7 +3707,7 @@ pub(super) fn parse_document_rels_num(
                         };
                     },
                     // **The table's preferred width** (`w:tblW`, ECMA-376
-                    // 17.4.64). `pct` is in fiftieths of a percent, so
+                    // 17.4.63). `pct` is in fiftieths of a percent, so
                     // 5000 is 100%. `dxa` is twips, and it is the width
                     // the author asked for even when it is wider than the
                     // text area: Word's business plan template starts with

@@ -3343,7 +3343,7 @@ mod default_font_tests {
     #[test]
     fn the_japanese_font_also_resolves_via_the_script_table() {
         // どの `a:font` を取るかは `w:themeFontLang w:eastAsia` が言います
-        // (ECMA-376 17.15.1.87)
+        // (ECMA-376 17.15.1.88)
         let set = r#"<w:settings xmlns:w="x"><w:themeFontLang w:val="en-US" w:eastAsia="ja-JP"/></w:settings>"#;
         let src = docx_set(PYDOCX_STYLES, Some(JPAN_THEME), Some(set));
         let (doc, _) = crate::read(Cursor::new(&src)).unwrap();

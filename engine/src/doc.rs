@@ -991,7 +991,7 @@ pub struct Table {
     /// 合計をそのまま使います
     pub width_pct: Option<f32>,
     /// **The width the table asks for** (`w:tblW w:type="dxa"`, ECMA-376
-    /// 17.4.64, in mm here).
+    /// 17.4.63, in mm here).
     ///
     /// A grid on its own is only a ratio, so a grid wider than the text
     /// area is scaled down to fit. A `w:tblW` in twips is the author's

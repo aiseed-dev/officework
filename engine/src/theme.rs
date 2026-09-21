@@ -2086,7 +2086,7 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
     //
     // `w:style w:type="table" w:default="1"` (Word calls it "Normal Table")
     // carries the `w:tblCellMar` a table starts from: 108 twips left and
-    // right, 0 top and bottom (ECMA-376 17.7.6, 17.4.41). We fell back to a
+    // right, 0 top and bottom (ECMA-376 17.7.6, 17.4.42). We fell back to a
     // fixed 1.4mm, so cell text sat 0.5mm left of Word's (2026-09-21).
     let kitei_hyou: Option<crate::doc::TableStyleLook> = out
         .styles

@@ -91,7 +91,7 @@ pub enum Script {
 
 /// True when Word draws this character with the `w:eastAsia` face rather
 /// than the `w:ascii` / `w:hAnsi` one (ECMA-376 17.3.2.26, the ranges Word
-/// uses as MS-OI29500 Part 1 17.3.2.26 writes them out).
+/// uses, as MS-OI29500 Part 1 17.3.2.26 sets them out).
 ///
 /// `hint` is `w:rFonts w:hint="eastAsia"`. Without it only the blocks that
 /// are East Asian by themselves take that face; with it the ambiguous

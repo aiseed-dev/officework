@@ -1087,7 +1087,7 @@ major か minor、後半がどの顔かを言います(ECMA-376 17.3.2.26、17.1
 既定の表スタイルのセルの余白です。`w:tblStyle` を名乗らない表は
 `w:default="1"` の表スタイルに従います(ECMA-376 17.7.6)。Word の書く
 「Normal Table」は `w:tblCellMar` の左右を 108 twip、上下を 0 と言います
-(ECMA-376 17.4.41)。うちは 1.4mm の決め打ちだったので、欄の字が 1.43pt
+(ECMA-376 17.4.42)。うちは 1.4mm の決め打ちだったので、欄の字が 1.43pt
 左にありました。直した後は本文の欄が 86.40pt、右の欄が 397.80pt で、行の
 折り返しも Word と同じ語になりました。
 
@@ -1183,7 +1183,7 @@ Education・Skills・題の行も同じ 2.13pt です。ほかの行は Word と
 Word の頁数は 20 で、うちは 23 から 21 になりました。直した所は 3 つです。
 
 1 つめは表の幅です。`w:tblW w:type="dxa"` は作った人が言う幅です
-(ECMA-376 17.4.64)。うちは割合(`pct`)の形しか読んでいなかったので、
+(ECMA-376 17.4.63)。うちは割合(`pct`)の形しか読んでいなかったので、
 `w:tblGrid` の合計が本文の幅より広い表を、収まるまで比例で縮めていました。
 この型紙の 1 枚目は 12600 twip(630pt)の表で、本文の幅は 504pt です。
 表には `w:jc w:val="center"` が付いていて、Word は x=-9 から x=621 まで、
@@ -1332,7 +1332,7 @@ Word の頁数は 4 で、うちも 4 です。直した所は 4 つです。
 `<a:ea typeface=""/>` が空で、書体を `<a:font script="Jpan"
 typeface="游明朝"/>` の表で持ちます。うちは `<a:ea>` が空なら必ずこの表を
 取っていました。どの表を取るかは settings.xml の `w:themeFontLang` が言い
-(ECMA-376 17.15.1.87)、この型紙は `<w:themeFontLang w:val="en-US"
+(ECMA-376 17.15.1.88)、この型紙は `<w:themeFontLang w:val="en-US"
 w:bidi="ar-SA"/>` で `w:eastAsia` を書いていません。Word が刷った PDF に
 埋め込まれている書体も Calibri・Calibri Light・Calibri Bold・Arial・
 Symbol の 5 つだけで、游明朝はありません。うちは游明朝(1.5em)で測って
