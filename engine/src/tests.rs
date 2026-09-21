@@ -3767,3 +3767,42 @@ mod block_kind_tests {
         assert!(th.style("コードの塊").unwrap().shade.is_some(), "コードの塊に背景が無い");
     }
 }
+
+/// **段落と段落の間の空き**(ECMA-376 17.3.1.33 `w:spacing`、
+/// 17.15.1.44 `w:doNotUseHTMLParagraphAutoSpacing`)。
+mod space_between_tests {
+    use super::*;
+
+    /// 2 つの段落(後 18pt / 前 6pt)を組んで、腰と腰の間を返します
+    fn aida(no_html: bool) -> f32 {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let hako = |text: &str| Paragraph {
+            runs: vec![Run { text: text.into(), size_pt: Some(10.0), font: None, fmt: Default::default() }],
+            ..Default::default()
+        };
+        let mut ue = hako("うえ");
+        ue.space_after_pt = 18.0;
+        let mut sita = hako("した");
+        sita.space_before_pt = 6.0;
+        let d = Document {
+            no_html_auto_space: no_html,
+            blocks: vec![Block::Para(ue), Block::Para(sita)],
+            ..Default::default()
+        };
+        let s = layout(&d, &m, &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 });
+        assert_eq!(s.lines.len(), 2, "2 行にならない");
+        s.lines[1].y_mm - s.lines[0].y_mm
+    }
+
+    #[test]
+    fn the_larger_of_the_two_spaces_is_the_space_between() {
+        // HTML と同じ組み方(設定が無い文書)。18pt と 6pt は重なって 18pt
+        let html = aida(false);
+        // 昔の Word の組み方(`w:doNotUseHTMLParagraphAutoSpacing` がある)。24pt
+        let mukashi = aida(true);
+        let sa = mukashi - html;
+        assert!((sa - 6.0 * 25.4 / 72.0).abs() < 0.01,
+            "重ねる側と足す側の差が「前の空き」6pt にならない: {sa}mm");
+    }
+}

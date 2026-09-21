@@ -302,6 +302,26 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
     out
 }
 
+/// **段落と段落の間の空き**(mm)。前の段落の「後の空き」はもう置いてあるので、
+/// ここが返すのは次の段落の「前の空き」の足し前です。
+///
+/// **HTML と同じ組み方の文書では、2 つを足さずに大きい方だけを置きます。**
+/// 設定(`w:settings`)に `w:doNotUseHTMLParagraphAutoSpacing`
+/// (ECMA-376 17.15.1.44)があれば昔の Word のまま足し、無ければ HTML の
+/// 余白と同じで重なります。`aida` が真のときが重なる方です。
+///
+/// 型紙の Word の PDF で測りました
+/// (docs/sekkei/word-templates.ja.adoc の「段落と段落の間の空き」)。
+/// 設定の無い `65dc06b1` は後 18pt・前 2pt で 18.0pt、後 18pt・前 24pt で
+/// 24.2pt、`b30688e1` は後 18pt・前 18pt で 18.0pt です。足した 20pt・42pt・
+/// 36pt とは合いません。設定のある `16da075b` は逆で、後 8pt・前 6pt の所が
+/// 14pt でした。同じ 2 つのスタイルが入れ替わって並ぶ所を両方向で測ると、
+/// 差がちょうど 6pt(次の段落の前の空き)で、大きい方なら差は 0 になります。
+/// Word は 1/300 インチ(0.24pt)の升で組むので、そこまでの違いは同じと見ます
+pub(super) fn space_between_mm(zen_ato: f32, mae: f32, aida: bool) -> f32 {
+    if aida { (mae - zen_ato).max(0.0) } else { mae }
+}
+
 /// **1行の高さ(mm)。** 本文 10.5pt に対する行送りです。
 ///
 /// 画面も紙も PDF も**この1つを見ます**。アプリの側に置いていたので、
@@ -1173,6 +1193,9 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
     let mut table_no = 0usize;
     // 直前に浮かぶ表を組んだか(直後の空の段落は表の横に置かれるので場所を取らない)
     let mut ukabu = false;
+    // 直前の段落の「後の空き」(mm)。次の段落の「前の空き」と足さずに、
+    // 大きい方を置くために覚えます([`space_between_mm`])
+    let mut zen_ato = 0.0f32;
     // **横に字を流す浮かぶ表**の占める所(下端 y, 左 x, 右 x。mm)。この下端より上の
     // 段落は、表の横の幅で組む(Word の「文字列の折り返し」)
     let mut yoke: Option<(f32, f32, f32)> = None;
@@ -1240,7 +1263,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // (操作手順書と議事録の見出しが Word より 9.9pt 上にあった)。
                 // 頁が自然に変わった所では、紙に割る側(paper)が行の箱の上端を
                 // 頁の頭に合わせるので、空きは落ちます。これも Word と同じです
-                y += space_before_mm(para, base);
+                y += space_between_mm(std::mem::take(&mut zen_ato), space_before_mm(para, base), !doc.no_html_auto_space);
                 // **段落の背景色の始まり**を覚えます。終わりは行を積んだ
                 // 後に分かるので、そこで四角にします
                 let shade_top = y;
@@ -1728,7 +1751,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     ));
                 }
                 // **段落の後の空き**(前の空きと同じ決め方)
-                y += space_after_mm(para, base);
+                zen_ato = space_after_mm(para, base);
+                y += zen_ato;
                 // 画像は段落の下に置く。幅が行長を超えるなら比例で縮める
                 for im in para.images.iter().chain(para.images_new.iter()) {
                     // 頭の画像はもう1行目の中に置いてあります(floating ones,
@@ -1765,6 +1789,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 }
             }
             Block::Table(table) => {
+                // 表の前後では空きを繋ぎません(measured only for paragraphs)
+                zen_ato = 0.0;
                 // 横に字を流していた浮かぶ表の下に出る
                 if let Some((soko, _, _)) = yoke.take() {
                     y = y.max(soko);
@@ -2710,6 +2736,9 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 // `None` を渡していたので、内閣府の調査票の `○` が8か所
                 // 消えていました。番号はセルごとに数え直します
                 let mut kazu = 0usize;
+                // 直前の段落の「後の空き」(mm)。セルの中でも本文と同じに、
+                // 前後の空きは足さずに大きい方を置きます([`space_between_mm`])
+                let mut zen_ato = 0.0f32;
                 for para in &cell.paragraphs {
                     // **セルの中の表**(2026-09-09)。セルの内側の幅で組み、高さを
                     // セルの高さに足す。位置は第2走で決まるので、ここでは
@@ -2770,8 +2799,9 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     // 内閣府の面談の記録は記入欄が表で、既定のスタイルの
                     // 「段落前 4pt」が行の高さに入らず、元より低い行に
                     // なっていました。空きは最初の行と最後の行に足します
-                    let mae = space_before_mm(para, pbase);
+                    let mae = space_between_mm(std::mem::take(&mut zen_ato), space_before_mm(para, pbase), !doc.no_html_auto_space);
                     let ato = space_after_mm(para, pbase);
+                    zen_ato = ato;
                     // **段落のインデント**(`w:ind`)。セルの中でも本文と同じに
                     // 扱います(2026-09-03)。左のインデントは全部の行に、
                     // 1行目の字下げは1行目だけに効きます。

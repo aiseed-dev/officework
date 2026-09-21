@@ -1503,6 +1503,55 @@ Bold 700)は name id 1 が別なので Word も置き替えず、輪郭を太ら
 9.3pt 下です。どちらも `w:spacing w:line="192" w:lineRule="auto"`(0.8 倍)で、
 行の箱が字より低い段落です。箱の中のどこに腰を置くかが分かっていません。
 
+=== 段落と段落の間の空き(2026-09-22)
+
+**設定によって、前の段落の「後の空き」と次の段落の「前の空き」は足さずに
+重なります。** うちはいつも足していました。
+
+分かれ目は `w:settings` の `w:doNotUseHTMLParagraphAutoSpacing`
+(ECMA-376 17.15.1.44)です。これがある文書は昔の Word のまま足し、
+無い文書は HTML の余白と同じで大きい方だけになります。
+
+Word の PDF で測った値です。測るのは `tools/para_spacing.py` で、行の箱が
+同じ大きさになる隣り合わせの段落だけを見ます(行の高さは、同じスタイルで
+2 行以上ある段落から取ります)。Word は 1/300 インチ(0.24pt)の升で
+組むので、0.24pt までの違いは同じと見てください。
+
+[cols="2,1,1,1,1,1",options="header"]
+|===
+| 型紙 | 前の後 | 次の前 | 測った空き | 足した値 | 大きい方
+| `65dc06b1` Salutation | 18pt | 2pt | 18.24pt | 20pt | 18pt
+| `65dc06b1` 本文 | 18pt | 2pt | 18.00pt / 18.24pt | 20pt | 18pt
+| `65dc06b1` 本文 → Closing | 18pt | 24pt | 24.24pt | 42pt | 24pt
+| `65dc06b1` Closing | 48pt | 2pt | 48.00pt | 50pt | 48pt
+| `b30688e1` 本文 | 18pt | 18pt | 18.00pt | 36pt | 18pt
+| `e22e6b47` 表の中(Subtitle 2 → Contact Info) | 6pt | 8pt | 約 8pt | 14pt | 8pt
+| `e22e6b47` 目次(TOC2 → TOC1) | 5pt | 16pt | 約 16pt | 21pt | 16pt
+|===
+
+前の 5 組は同じ大きさの箱が並ぶので、測った値がそのまま空きです。どれも
+大きい方と 0.24pt 以内で合い、足した値とは 2pt から 18pt 離れます。
+
+箱の大きさが違う組(本文 → 見出しなど)は、行の高さをどちらか一方から
+取るぶん 1〜3pt 大きく出ます。`1b4c752f` の 8pt / 21pt は 26.6pt、
+`57cae682` の 12pt / 16pt は 18.7pt でした。それでも足した値(29pt、28pt)
+には届きません。
+
+**足す側の裏取り。** `16da075b`(screenplay)は
+`w:doNotUseHTMLParagraphAutoSpacing` を持ちます。この型紙は Dialogue と
+Character Name が交互に並び、Dialogue の後は 8pt、Character Name の前は
+6pt です。Word の PDF で測ると Dialogue → Character Name は 28.1pt、
+Character Name → Dialogue は 22.3pt で、差は 6.0pt でした。行の箱は
+どちらも 12pt の Courier New で同じなので、この差は Character Name の
+「前の空き」がそのまま出たことを表します。大きい方だけなら差は 0 です。
+
+設定を数えると、Word の PDF がある型紙 131 件のうちこの指定を持つのは
+`16da075b` の 1 件だけで、役所の docx 288 件では 71 件が持ちます。
+
+`w:contextualSpacing`(ECMA-376 17.3.1.9)が付く段落は、同じスタイルが
+続く間は空きを置きません。`b30688e1` の Contact Info がこれで、18pt / 18pt
+を言いながら行送りのまま続きます。この決めは前から入っています。
+
 === 作り替えが要る物
 
 一度にまとめてやる物です。

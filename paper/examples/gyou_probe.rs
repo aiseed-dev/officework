@@ -133,7 +133,7 @@ fn main() -> Result<(), String> {
             format!("({t},{r},{c})")
         });
         let pg = pn.pages.get(i).copied().unwrap_or(0);
-        println!("{i:5} p{pg:<3} y={:8.2} x={:6.1} {:>12} {:?} pt={:.1} font={:?}", l.y_mm, x, cell.unwrap_or_default(), t, l.cells.first().map_or(0.0, |c| c.size_pt), l.cells.first().and_then(|c| c.font.as_deref()).unwrap_or(""));
+        println!("{i:5} p{pg:<3} y={:8.2} dip={:6.2} x={:6.1} {:>12} {:?} pt={:.1} font={:?}", l.y_mm, l.dip_mm, x, cell.unwrap_or_default(), t, l.cells.first().map_or(0.0, |c| c.size_pt), l.cells.first().and_then(|c| c.font.as_deref()).unwrap_or(""));
         // 探す字の行だけ、字ごとの送り(mm)と大きさ(pt)も出す
         if i == at && std::env::var("HABA").is_ok() {
             let v: Vec<String> = l.cells.iter().take(12).map(|c| format!("{}:{:.2}/{:.1}", c.ch, c.w_mm, c.size_pt)).collect();
