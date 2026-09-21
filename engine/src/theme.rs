@@ -1740,10 +1740,12 @@ fn hyou_style_wo_ateru(
                 if b.top.is_none() {
                     b.top = k.top;
                     b.top_pt = k.top_pt;
+                    b.top_lines = k.top_lines;
                 }
                 if b.bottom.is_none() {
                     b.bottom = k.bottom;
                     b.bottom_pt = k.bottom_pt;
+                    b.bottom_lines = k.bottom_lines;
                 }
                 if b.left.is_none() {
                     b.left = k.left;

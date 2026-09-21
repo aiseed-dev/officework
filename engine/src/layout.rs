@@ -3108,16 +3108,16 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         // 0.5pt an ordinary edge is drawn with. Word's invoice template
         // 0644da1f gives the bottom of its last row `w:sz="18"` (2.25pt)
         // through the `lastRow` band of its table style (2026-09-21)
-        let futosa = |g: usize| -> f32 {
+        let futosa = |g: usize| -> (f32, u8) {
             let ue = b
                 .checked_sub(1)
                 .and_then(|r| cell_at(r, g))
                 .filter(|c| c.borders.bottom.is_some())
-                .map(|c| c.borders.bottom_pt);
+                .map(|c| (c.borders.bottom_pt, c.borders.bottom_lines));
             let shita = cell_at(b, g)
                 .filter(|c| c.borders.top.is_some())
-                .map(|c| c.borders.top_pt);
-            ue.or(shita).unwrap_or(0.0)
+                .map(|c| (c.borders.top_pt, c.borders.top_lines));
+            ue.or(shita).unwrap_or((0.0, 1))
         };
         let mut g = 0usize;
         while g < ncols {
@@ -3126,11 +3126,15 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 continue;
             }
             let start = g;
-            let pt = futosa(g);
-            while g < ncols && hiku_at(g) && (futosa(g) - pt).abs() < 0.001 {
+            let (pt, hon) = futosa(g);
+            while g < ncols && hiku_at(g) && (futosa(g).0 - pt).abs() < 0.001 {
                 g += 1;
             }
-            sheet.rules.push(Rule { at: [xs[start], y, xs[g], y], pt });
+            // **`double` と `triple` は細い線の並びです**(ECMA-376
+            // 17.18.2)。`pt` はその全部が占める幅で、1 本ずつに開きます
+            sheet
+                .rules
+                .extend(Rule { at: [xs[start], y, xs[g], y], pt }.hiraku(hon));
         }
     }
     // 罫線・縦: 行ごとに、結合後のセルの縁に引く(結合の中には引かない)。

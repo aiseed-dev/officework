@@ -1917,16 +1917,17 @@ fn table_cond(blk: &str) -> kumihan::TableCond {
             let val = attr_of(seg, "w:val");
             let hiku = !matches!(val.as_str(), "nil" | "none");
             let sz = attr_of(seg, "w:sz").parse::<f32>().unwrap_or(0.0);
-            let pt = match val.as_str() {
-                "double" => sz * 3.0 / 8.0,
-                "triple" => sz * 5.0 / 8.0,
-                _ => sz / 8.0,
+            let hon: u8 = match val.as_str() {
+                "double" => 2,
+                "triple" => 3,
+                _ => 1,
             };
+            let pt = sz / 8.0 * (2 * hon - 1) as f32;
             atta = true;
             match set {
-                0 => { b.top = Some(hiku); b.top_pt = if hiku { pt } else { 0.0 }; }
+                0 => { b.top = Some(hiku); b.top_pt = if hiku { pt } else { 0.0 }; b.top_lines = hon; }
                 1 => b.left = Some(hiku),
-                2 => { b.bottom = Some(hiku); b.bottom_pt = if hiku { pt } else { 0.0 }; }
+                2 => { b.bottom = Some(hiku); b.bottom_pt = if hiku { pt } else { 0.0 }; b.bottom_lines = hon; }
                 _ => b.right = Some(hiku),
             }
         }
@@ -3407,15 +3408,24 @@ pub(super) fn parse_document_rels_num(
                             // (2026-09-19, measured on the Nagoya loan form: a
                             // `double` sz=4 edge took 1.5pt, its lines 1pt apart)
                             let sz = attr(&e, "sz").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
-                            let pt = match attr(&e, "val").as_deref() {
-                                Some("double") => sz * 3.0 / 8.0,
-                                Some("triple") => sz * 5.0 / 8.0,
-                                _ => sz / 8.0,
+                            let hon: u8 = match attr(&e, "val").as_deref() {
+                                Some("double") => 2,
+                                Some("triple") => 3,
+                                _ => 1,
                             };
+                            let pt = sz / 8.0 * (2 * hon - 1) as f32;
                             match n.as_slice() {
-                                b"top" => { cell_borders.top = Some(hiku); cell_borders.top_pt = if hiku { pt } else { 0.0 }; }
+                                b"top" => {
+                                    cell_borders.top = Some(hiku);
+                                    cell_borders.top_pt = if hiku { pt } else { 0.0 };
+                                    cell_borders.top_lines = hon;
+                                }
                                 b"left" => cell_borders.left = Some(hiku),
-                                b"bottom" => { cell_borders.bottom = Some(hiku); cell_borders.bottom_pt = if hiku { pt } else { 0.0 }; }
+                                b"bottom" => {
+                                    cell_borders.bottom = Some(hiku);
+                                    cell_borders.bottom_pt = if hiku { pt } else { 0.0 };
+                                    cell_borders.bottom_lines = hon;
+                                }
                                 b"right" => cell_borders.right = Some(hiku),
                                 _ => {}
                             }

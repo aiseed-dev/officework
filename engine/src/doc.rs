@@ -933,8 +933,17 @@ pub struct CellBorders {
     /// measured on the Nagoya loan form: every row was taller than its
     /// `w:trHeight` by exactly its top border, 19pt over 31 rows)
     pub top_pt: f32,
+    /// **How many lines that top border is drawn with** (`w:val` of
+    /// ECMA-376 17.18.2 ST_Border): 1 for `single`, 2 for `double`, 3 for
+    /// `triple`. 0 is read as 1. [`top_pt`](Self::top_pt) is the space all
+    /// of them take together, so each line and each gap is
+    /// `top_pt / (2 * lines - 1)`.
+    pub top_lines: u8,
     /// Width of the bottom border in pt; see [`Self::top_pt`]
     pub bottom_pt: f32,
+    /// **How many lines that bottom border is drawn with**, as
+    /// [`top_lines`](Self::top_lines)
+    pub bottom_lines: u8,
 }
 
 /// **既定の縦位置は上揃え。**
@@ -2819,6 +2828,28 @@ pub struct Rule {
     pub at: [f32; 4],
     /// 太さ(pt)。0 は引く側の既定
     pub pt: f32,
+}
+
+impl Rule {
+    /// **`double` と `triple` を、細い線の並びに開く。**
+    ///
+    /// ECMA-376 17.18.2 の `double` は 2 本、`triple` は 3 本で、線と線の
+    /// 間は線と同じ太さです。`pt` はその全部が占める幅なので、1 本の太さは
+    /// `pt / (2n - 1)` になります。横の罫線にだけ使います。
+    pub fn hiraku(self, n: u8) -> Vec<Rule> {
+        let n = n.max(1) as usize;
+        if n == 1 || self.pt <= 0.0 {
+            return vec![self];
+        }
+        let hoso = self.pt / (2 * n - 1) as f32;
+        let mm = hoso * 25.4 / 72.0;
+        (0..n)
+            .map(|i| {
+                let d = mm * 2.0 * i as f32;
+                Rule { at: [self.at[0], self.at[1] + d, self.at[2], self.at[3] + d], pt: hoso }
+            })
+            .collect()
+    }
 }
 
 impl Rule {
