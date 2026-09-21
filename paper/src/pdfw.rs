@@ -2056,7 +2056,11 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                 }
                 p.pieces.push(Piece {
                     x_mm: pp.margin_mm + c.x_mm,
-                    y_mm: pp.height_mm - line.y_mm,
+                    // **The text is drawn `dip_mm` below `y_mm`**, as the
+                    // body is. The header and footer loop ignored it, so
+                    // the screen and the print put the same line in two
+                    // places (2026-09-21)
+                    y_mm: pp.height_mm - (line.y_mm + line.dip_mm),
                     size_pt: c.size_pt,
                     text: c.ch.to_string(),
                     color: c.fmt.color.clone(),

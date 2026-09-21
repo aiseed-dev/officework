@@ -179,6 +179,20 @@ pub(super) fn is_word_char(c: char) -> bool {
     c.is_ascii_alphanumeric()
 }
 
+/// **The ASCII punctuation that stays with the word before it.**
+///
+/// A full stop after a letter is no place to break a line (Unicode UAX #14
+/// gives no break opportunity there), and Word carries the whole of
+/// "quickly." to the next line. We cut the word before the stop and let the
+/// stop hang past the margin with the Japanese 追い込み rule, which is for
+/// 、。」 and the like (JIS X 4051), not for a Latin sentence: the third
+/// page of Word's business plan template 8989d4b5 ended 2.6pt into the
+/// right margin and carried one word more than Word on that line
+/// (2026-09-21).
+fn word_ni_tsuku(c: char) -> bool {
+    matches!(c, ',' | '.' | ':' | ';' | '?' | '!' | ')' | ']' | '}' | '>' | '%')
+}
+
 /// 注の通し番号。**脚注と文末脚注は別々に数える** — docx が
 /// `footnotes.xml` と `endnotes.xml` を別に番号付けするのと同じで、
 /// 1本の連番にすると脚注が「1・3」文末脚注が「2・4」と飛んで見える
@@ -261,7 +275,7 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
             // character (one lower-case letter can become two capitals)
             let ue: Vec<char> = if run.fmt.caps { moto.to_uppercase().collect() } else { vec![moto] };
             let ch = ue[0];
-            if is_word_char(ch) {
+            if is_word_char(ch) || (!word.is_empty() && word_ni_tsuku(ch)) {
                 for c in ue {
                     word.push((c, okuri(c), off));
                 }
@@ -919,7 +933,14 @@ pub(super) fn dip_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&s
     if pitch > 0.0 && !para.no_grid && para.line_pt.is_none() {
         oki += (grid_up(sizen, pitch) - sizen) / 2.0;
     }
-    (oki - BASE_UP_MM).max(0.0)
+    // **The mark is where the baseline is, not a floor for it.** `y_mm` is
+    // the box top plus [`BASE_UP_MM`], a fixed 4mm, and the writers draw at
+    // `y_mm + dip_mm`; clamping at 0 pinned every line whose baseline sits
+    // less than 4mm below its box top — that is, anything under about 12pt
+    // — to 11.34pt. The header of Word's business plan template 8989d4b5
+    // is 7.92pt and Word draws it 7.5pt below the header distance, where we
+    // drew it 11.3pt below (2026-09-21)
+    oki - BASE_UP_MM
 }
 
 /// **行グリッドに合わせた高さ**(mm)。Word は行の高さをグリッドの行送り
@@ -1977,7 +1998,9 @@ pub fn layout_hf_with(
         }
     }
     if footer {
-        let last = out.last().map(|l| l.y_mm).unwrap_or(0.0);
+        // Measured against the drawn baseline (`y_mm + dip_mm`), the same
+        // as the block path
+        let last = out.last().map(|l| l.y_mm + l.dip_mm).unwrap_or(0.0);
         let soko = pg.h_mm - pg.footer_mm - size_mm * 0.28;
         for l in &mut out {
             l.y_mm += soko - last;
@@ -2064,8 +2087,16 @@ fn layout_hf_blocks(
     // そこへ送ります。裁判所の特例執行文の申立書(ヘッダーが 3 欄の表)で、
     // Word のベースラインは 54.72pt、こちらは 53.89pt です(0.83pt 差)。
     // フッターは段落の道と同じで、一番下の行の底を距離の所に置きます
+    //
+    // **The writers draw at `y_mm + dip_mm`**, so the footer keeps the
+    // place it had before the print started reading `dip_mm` for these
+    // lines: the shift is measured against the drawn baseline, not against
+    // `y_mm`. The header's own rule is the box, so it stays on `y_mm`.
     let zure = if footer {
-        let sita = out.iter().map(|l| l.y_mm).fold(f32::NEG_INFINITY, f32::max);
+        let sita = out
+            .iter()
+            .map(|l| l.y_mm + l.dip_mm)
+            .fold(f32::NEG_INFINITY, f32::max);
         pg.h_mm - pg.footer_mm - size_mm * 0.28 - sita
     } else {
         let atama = out.iter().map(|l| l.y_mm).fold(f32::INFINITY, f32::min);

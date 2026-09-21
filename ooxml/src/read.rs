@@ -3161,14 +3161,23 @@ pub(super) fn parse_document_rels_num(
                         }
                     }
                     b"r" => {
-                        // 大きさは run ごとに立ち返る。前の run の指定を
-                        // 引きずると、無指定の run が「指定あり」に化ける
-                        // (書体 font には同じ形の持ち回りがまだ残っている —
-                        // 直すなら別の回で、試験と一緒に)
+                        // **A run's direct formatting is its own `w:rPr`**
+                        // (ECMA-376 17.3.2). Only the size was put back at
+                        // each run, so a run with no `w:rPr` kept the one
+                        // before it: the paragraph under EXECUTIVE SUMMARY
+                        // in Word's business plan template 8989d4b5 gives
+                        // `<w:rStyle w:val="Bold"/>` to its first run
+                        // alone, and we drew the whole paragraph bold
+                        // (2026-09-21 発注者)
                         size_pt = None;
-                        fmt.sdt = sdt_cur.clone();
+                        font = None;
+                        font_ea = None;
+                        font_latin = None;
+                        fmt = CharFormat::default();
                         // **rPr の無い run にもリンクは掛かる** — 掛かりを
-                        // 決めるのは囲み(w:hyperlink)で、run の書式ではない
+                        // 決めるのは囲み(w:hyperlink)で、run の書式ではない。
+                        // `w:sdt` も同じで、囲みが決めます
+                        fmt.sdt = sdt_cur.clone();
                         fmt.link = cur_link.clone();
                     }
                     b"t" => { in_text = true; cur.clear(); }
