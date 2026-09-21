@@ -1986,24 +1986,35 @@ fn jibun_wo_ateru(
     }
     // **スタイルの箇条書き。** `add_paragraph(style="List Bullet")` は
     // 本文に `w:numPr` を書きません。行頭文字も番号もスタイルの側です
-    if para.list == crate::doc::ListKind::None {
-        if let Some(k) = pl.list {
+    if let Some(k) = pl.list {
+        if para.list == crate::doc::ListKind::None {
             para.list = k;
-            if para.list_text.is_none() {
-                para.list_text = pl.list_text.clone();
-            }
-            // What the level puts between the mark and the text
-            // (`w:suff`, ECMA-376 17.9.28)
-            if let Some(v) = pl.list_no_tab {
-                para.list_no_tab = v;
-            }
-            if para.list_color.is_none() {
-                para.list_color = pl.list_color.clone();
-            }
-            // 番号の形(`w:numFmt`)もスタイルが名乗る箇条書きから
-            if para.list_fmt.is_none() {
-                para.list_fmt = pl.list_fmt;
-            }
+        }
+        // **印の細かい所は、段落が言っていなければスタイルから取ります。**
+        // 前は「段落がまだ種類を持っていないとき」だけ中へ入っていたので、
+        // 種類が先に決まっている段落(目次の行など)が何も受け取れません
+        // でした(2026-09-22)
+        if para.list_text.is_none() {
+            para.list_text = pl.list_text.clone();
+        }
+        // What the level puts between the mark and the text
+        // (`w:suff`, ECMA-376 17.9.28)
+        if let Some(v) = pl.list_no_tab {
+            para.list_no_tab = v;
+        }
+        if para.list_color.is_none() {
+            para.list_color = pl.list_color.clone();
+        }
+        // 番号の形(`w:numFmt`)
+        if para.list_fmt.is_none() {
+            para.list_fmt = pl.list_fmt;
+        }
+        // **どの番号付けか**(`w:numId`)。これが無いと、間にほかの段落を
+        // 挟むたびに数が 1 に戻ります。Word の事業計画の型紙 e22e6b47 の
+        // 目次は `TOC1` が `w:numId="4"` を名乗り、間の `TOC2` を挟んで
+        // I. II. III. と続きます
+        if para.list_id.is_none() {
+            para.list_id = pl.list_id;
         }
     }
     for r in &mut para.runs {

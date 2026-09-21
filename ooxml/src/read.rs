@@ -1869,8 +1869,9 @@ fn style_para(
         list_text: num_of(body).and_then(|n| shirushi.get(&(n, 0)).map(|(t, _, _, _)| t.clone())),
         // The colour of the mark alone (`w:lvl/w:rPr/w:color`)
         list_color: num_of(body).and_then(|n| shirushi.get(&(n, 0)).and_then(|(_, _, c, _)| c.clone())),
-        // 番号の形(`w:numFmt`)
+        // 番号の形(`w:numFmt`)と、どの番号付けか(`w:numId`)
         list_fmt: num_of(body).and_then(|n| shirushi.get(&(n, 0)).map(|(_, _, _, f)| *f)),
+        list_id: num_of(body).filter(|n| *n > 0),
         // What the level puts between the mark and the text (`w:suff`,
         // ECMA-376 17.9.28)
         list_no_tab: dan_no_tab,

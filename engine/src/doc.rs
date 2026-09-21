@@ -1697,6 +1697,7 @@ impl StyleParaLook {
         self.list_no_tab = self.list_no_tab.or(oya.list_no_tab);
         self.list_color = self.list_color.take().or_else(|| oya.list_color.clone());
         self.list_fmt = self.list_fmt.or(oya.list_fmt);
+        self.list_id = self.list_id.or(oya.list_id);
         self.list_text = self.list_text.take().or_else(|| oya.list_text.clone());
         self.contextual_spacing = self.contextual_spacing.or(oya.contextual_spacing);
         self.keep_next = self.keep_next.or(oya.keep_next);
@@ -1767,6 +1768,9 @@ pub struct StyleParaLook {
     pub list_color: Option<String>,
     /// **番号の形**(`w:numFmt`、ECMA-376 17.18.59)
     pub list_fmt: Option<ListNumFmt>,
+    /// **どの番号付け(`w:numPr/w:numId`)か。** 同じ番号の段落は、間に
+    /// ほかの段落を挟んでも数が続きます
+    pub list_id: Option<u32>,
     /// その印の字(`w:lvlText`。`●` や `1.`)。無ければ種類なりの既定
     pub list_text: Option<String>,
     /// **同じスタイルの段落が続く間は、前後の空きを入れない**
@@ -2898,6 +2902,7 @@ impl Document {
             pl.list_no_tab = pl.list_no_tab.or(s.para.list_no_tab);
             pl.list_color = pl.list_color.clone().or_else(|| s.para.list_color.clone());
             pl.list_fmt = pl.list_fmt.or(s.para.list_fmt);
+            pl.list_id = pl.list_id.or(s.para.list_id);
             pl.list_text = pl.list_text.clone().or_else(|| s.para.list_text.clone());
             pl.contextual_spacing = pl.contextual_spacing.or(s.para.contextual_spacing);
             pl.keep_next = pl.keep_next.or(s.para.keep_next);
