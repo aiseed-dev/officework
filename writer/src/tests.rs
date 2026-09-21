@@ -1135,6 +1135,46 @@ mod page_setup_tests {
         assert!(bp.w_mm > bp.h_mm, "横向きが消えた: {}×{}", bp.w_mm, bp.h_mm);
     }
 
+    /// **A section printed the other way round is stacked that way on the
+    /// screen too** (`w:sectPr/w:pgSz w:orient`, ECMA-376 17.6.13).
+    ///
+    /// Word's business plan template 8989d4b5 turns 6 of its 21 pages
+    /// sideways. The paper path stacks each page on the paper its section
+    /// names, and the screen goes through the same `paginate_full` and
+    /// `fold_print`, so the two cannot drift apart (2026-09-21).
+    #[gpui::test]
+    fn a_landscape_section_is_stacked_sideways_on_the_screen(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let tate = kumihan::PageSetup::default();
+            let mut yoko = tate;
+            std::mem::swap(&mut yoko.w_mm, &mut yoko.h_mm);
+            // 1 つ目の節(縦)は最初の段落で終わり、残りが 2 つ目の節(横)
+            let mut d = kumihan::Document::plain("一枚目\n二枚目");
+            if let Some(kumihan::Block::Para(p)) = d.blocks.first_mut() {
+                p.sect = Some(kumihan::SectionBreak {
+                    raw: String::new(),
+                    page: tate,
+                    continuous: false,
+                });
+            }
+            d.page = Some(yoko);
+            this.doc = d;
+            this.pg = yoko;
+            this.relayout();
+            assert!(this.page_papers.len() >= 2, "紙が 1 枚しか無い: {:?}", this.page_papers);
+            let muki: Vec<bool> = this.page_papers.iter().map(|q| q.width_mm > q.height_mm).collect();
+            assert_eq!(muki[0], false, "1 枚目が横になっている: {:?}", this.page_papers[0]);
+            assert!(muki[1..].iter().any(|b| *b), "横の節が縦のまま: {:?}", this.page_papers);
+            // 2 枚目の上端は、1 枚目の紙の高さ(と隙間)だけ下
+            let aida = this.page_tops[1] - this.page_tops[0];
+            assert!(
+                (aida - (this.page_papers[0].height_mm + crate::PAGE_GAP_MM)).abs() < 0.5,
+                "2 枚目の上端が 1 枚目の紙の高さで積まれていない: {aida}"
+            );
+        });
+    }
+
     #[test]
     fn header_fields_survive_a_paper_change() {
         // set_page は pgSz/pgMar だけ作り替え、他は原文から引き継ぐ
