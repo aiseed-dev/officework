@@ -679,15 +679,20 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             // (2026-09-21 発注者)
             let ima_page = offsets.len();
             let mut hiku: Vec<usize> = Vec::new();
-            if !forced && line.from_body && line.para0 != usize::MAX {
-                // この頁に載っている本文の行(後ろから)
+            if !forced && line.para0 != usize::MAX {
+                // この頁に載っている行(後ろから)。表のセルの行も見ます —
+                // Word の事業計画の型紙 e22e6b47 は本文をほとんど表に入れて
+                // いて、見出しと次の段落も同じセルの中です(2026-09-21)
                 let mae: Vec<usize> = order[..oi]
                     .iter()
                     .rev()
                     .copied()
-                    .take_while(|&j| pages[j] == ima_page && sheet.lines[j].from_body)
+                    .take_while(|&j| pages[j] == ima_page && sheet.lines[j].para0 != usize::MAX)
                     .collect();
-                let onaji = |j: usize| sheet.lines[j].para0 == line.para0;
+                // **同じ番号でもセルが違えば別の段落**です
+                let onaji = |j: usize| {
+                    sheet.lines[j].para0 == line.para0 && sheet.lines[j].cell == line.cell
+                };
                 // 孤児 — この段落の 1 行目だけが頁の終わりに残る
                 if line.widow && mae.first().copied().is_some_and(onaji) {
                     let kazu = mae.iter().take_while(|&&j| onaji(j)).count();
@@ -696,10 +701,7 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
                     }
                 }
                 // 寡婦 — この段落の最後の 1 行だけが次の頁に来る
-                let ato = order[oi + 1..]
-                    .iter()
-                    .take_while(|&&j| sheet.lines[j].para0 == line.para0)
-                    .count();
+                let ato = order[oi + 1..].iter().take_while(|&&j| onaji(j)).count();
                 if line.widow && ato == 0 && hiku.is_empty() {
                     let kazu = mae.iter().take_while(|&&j| onaji(j)).count();
                     if kazu >= 2 {
@@ -714,9 +716,12 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
                     if !sheet.lines[sue].keep_next {
                         break;
                     }
-                    let p0 = sheet.lines[sue].para0;
-                    let kumi: Vec<usize> =
-                        nokori.iter().copied().take_while(|&j| sheet.lines[j].para0 == p0).collect();
+                    let (p0, ce) = (sheet.lines[sue].para0, sheet.lines[sue].cell);
+                    let kumi: Vec<usize> = nokori
+                        .iter()
+                        .copied()
+                        .take_while(|&j| sheet.lines[j].para0 == p0 && sheet.lines[j].cell == ce)
+                        .collect();
                     // 頁が空になるまでは引かない
                     if kumi.len() >= nokori.len() {
                         break;

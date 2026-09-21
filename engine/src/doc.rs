@@ -497,6 +497,55 @@ impl Align {
     }
 }
 
+/// **段落番号の形**(docx の `w:numFmt`、ECMA-376 17.18.59
+/// ST_NumberFormat)。知らない名前は算用数字です。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ListNumFmt {
+    /// 1, 2, 3
+    #[default]
+    Decimal,
+    /// 01, 02, 03
+    DecimalZero,
+    /// I, II, III
+    UpperRoman,
+    /// i, ii, iii
+    LowerRoman,
+    /// A, B, C
+    UpperLetter,
+    /// a, b, c
+    LowerLetter,
+}
+
+impl ListNumFmt {
+    /// `w:numFmt w:val` の名前から
+    pub fn of(val: &str) -> Self {
+        match val {
+            "decimalZero" => Self::DecimalZero,
+            "upperRoman" => Self::UpperRoman,
+            "lowerRoman" => Self::LowerRoman,
+            "upperLetter" => Self::UpperLetter,
+            "lowerLetter" => Self::LowerLetter,
+            _ => Self::Decimal,
+        }
+    }
+
+    /// **n 番目(1 から)の字**。
+    ///
+    /// ローマ数字は 1〜3999 を普通の書き方で出します。英字は Word と同じで、
+    /// 26 を超えたら字を重ねます(27 は AA)。
+    pub fn moji(self, n: usize) -> String {
+        match self {
+            Self::Decimal => n.to_string(),
+            Self::DecimalZero => format!("{n:02}"),
+            // 脚注の番号と同じ道具を使います
+            Self::UpperRoman => roman(n),
+            Self::LowerRoman => roman(n).to_lowercase(),
+            Self::UpperLetter => letter(n),
+            Self::LowerLetter => letter(n).to_lowercase(),
+        }
+    }
+}
+
 /// 箇条書きの種類。docx の `w:numPr` に対応する。
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ListKind {
@@ -602,6 +651,9 @@ pub struct Paragraph {
     /// `None` なら段の深さから作ります([`Paragraph::marker`])。前は常に
     /// そちらで、内閣府の調査票が9か所で使っている `○` が行頭文字で出て
     /// いました(2026-08-31)。
+    /// **段落番号の形**(docx の `w:numFmt`、ECMA-376 17.18.59)。
+    /// `None` は算用数字です
+    pub list_fmt: Option<ListNumFmt>,
     pub list_text: Option<String>,
     /// **どの箇条書きの一員か**(docx の `w:numId`)。同じ番号の段落は、
     /// 間に普通の段落を挟んでも番号が続きます(Word の約束。「1. 2. 3.」の
@@ -764,7 +816,10 @@ impl Paragraph {
                 match (c, ji.peek()) {
                     ('%', Some(d)) if d.is_ascii_digit() => {
                         ji.next();
-                        out.push_str(&(nth + 1).to_string());
+                        // **番号の形は `w:numFmt` が決めます**(ECMA-376
+                        // 17.18.59)。Word の事業計画の型紙 e22e6b47 は目次を
+                        // `upperRoman` で数え、I. II. III. と出します
+                        out.push_str(&self.list_fmt.unwrap_or_default().moji(nth + 1));
                     }
                     _ => out.push(c),
                 }
@@ -1641,6 +1696,7 @@ impl StyleParaLook {
         self.list = self.list.or(oya.list);
         self.list_no_tab = self.list_no_tab.or(oya.list_no_tab);
         self.list_color = self.list_color.take().or_else(|| oya.list_color.clone());
+        self.list_fmt = self.list_fmt.or(oya.list_fmt);
         self.list_text = self.list_text.take().or_else(|| oya.list_text.clone());
         self.contextual_spacing = self.contextual_spacing.or(oya.contextual_spacing);
         self.keep_next = self.keep_next.or(oya.keep_next);
@@ -1709,6 +1765,8 @@ pub struct StyleParaLook {
     /// **The colour of the list mark**, when the style names the list
     /// (docx `w:lvl/w:rPr/w:color`)
     pub list_color: Option<String>,
+    /// **番号の形**(`w:numFmt`、ECMA-376 17.18.59)
+    pub list_fmt: Option<ListNumFmt>,
     /// その印の字(`w:lvlText`。`●` や `1.`)。無ければ種類なりの既定
     pub list_text: Option<String>,
     /// **同じスタイルの段落が続く間は、前後の空きを入れない**
@@ -2839,6 +2897,7 @@ impl Document {
             pl.list = pl.list.or(s.para.list);
             pl.list_no_tab = pl.list_no_tab.or(s.para.list_no_tab);
             pl.list_color = pl.list_color.clone().or_else(|| s.para.list_color.clone());
+            pl.list_fmt = pl.list_fmt.or(s.para.list_fmt);
             pl.list_text = pl.list_text.clone().or_else(|| s.para.list_text.clone());
             pl.contextual_spacing = pl.contextual_spacing.or(s.para.contextual_spacing);
             pl.keep_next = pl.keep_next.or(s.para.keep_next);

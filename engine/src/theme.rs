@@ -2000,6 +2000,10 @@ fn jibun_wo_ateru(
             if para.list_color.is_none() {
                 para.list_color = pl.list_color.clone();
             }
+            // 番号の形(`w:numFmt`)もスタイルが名乗る箇条書きから
+            if para.list_fmt.is_none() {
+                para.list_fmt = pl.list_fmt;
+            }
         }
     }
     for r in &mut para.runs {

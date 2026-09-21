@@ -2625,7 +2625,9 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         v: VMerge,
         /// 行の字と、セルの中でのバイト位置と、行の高さ(mm)と、横の揃えと、
         /// 字の大きさ(pt)と、1行目の字下げ(mm)と、字を箱の底に置くか
-        lines: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (Option<bool>, f32, f32, f32), usize)>,
+        /// 最後の 2 つは「セルの中で何段落目か」と `w:keepNext` です。
+        /// 頁の割り方(1 行だけ残さない・次と離さない)に要ります
+        lines: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (Option<bool>, f32, f32, f32), usize, usize, bool)>,
         x: f32,
         w: f32,
         /// **The cell's own fill** (docx `w:tcPr/w:shd`, or a band of the
@@ -2682,7 +2684,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let span = cell.span().min(ncols.saturating_sub(gc)).max(1);
             let x = xs[gc.min(ncols)];
             let w = xs[(gc + span).min(ncols)] - x;
-            let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (Option<bool>, f32, f32, f32), usize)> = Vec::new();
+            let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (Option<bool>, f32, f32, f32), usize, usize, bool)> = Vec::new();
             // The band of each line above (docx `w:pPr/w:shd`), same order
             let mut line_shade: Vec<Option<String>> = Vec::new();
             let mut hyou_no: Vec<(usize, Sheet, f32)> = Vec::new();
@@ -2812,7 +2814,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         line_shade.push(para.shade.clone());
                         ls.push((cs, b0, h, yose, pt, hidari + if k == 0 { sagari } else { 0.0 },
                                  (soko, sage, if k == 0 { mae } else { 0.0 }, if k == saigo { ato } else { 0.0 }),
-                                 if k == 0 { mk_len } else { 0 }));
+                                 if k == 0 { mk_len } else { 0 }, para0, para.keep_next));
                     }
                     // Images of the paragraph, as in the body: one at the
                     // head sits in the first line with its bottom on the
@@ -2844,7 +2846,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         } else {
                             gazou.push((ls.len(), im.clone(), iw, ih, false));
                             line_shade.push(para.shade.clone());
-                            ls.push((Vec::new(), para0, ih, para.align, pbase, hidari, (None, 0.0, 0.0, 0.0), 0));
+                            ls.push((Vec::new(), para0, ih, para.align, pbase, hidari, (None, 0.0, 0.0, 0.0), 0, para0, para.keep_next));
                         }
                     }
                     for a in &para.anchors {
@@ -2855,7 +2857,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 }
                 // **上下の余白もそのセルの高さ**です。セルごとに `w:tcMar` が
                 // 違えば、行の高さはいちばん高いセルで決まります
-                let naka: f32 = ls.iter().map(|(_, _, h, _, _, _, _, _)| *h).sum::<f32>()
+                let naka: f32 = ls.iter().map(|(_, _, h, _, _, _, _, _, _, _)| *h).sum::<f32>()
                     + hyou_no.iter().map(|(_, _, h)| *h).sum::<f32>();
                 // **縦に結合したセルの中身は、結合した行の全体に配ります**(2026-09-09、
                 // Opus Mac が厚労省の研究費様式で切り分けた)。前は先頭の行に全部
@@ -2956,7 +2958,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     }
                     k += 1;
                 }
-                let need: f32 = l.lines.iter().map(|(_, _, h, _, _, _, _, _)| *h).sum::<f32>()
+                let need: f32 = l.lines.iter().map(|(_, _, h, _, _, _, _, _, _, _)| *h).sum::<f32>()
                     + l.naka_hyou.iter().map(|(_, _, h)| *h).sum::<f32>()
                     + l.pad[0]
                     + l.pad[2];
@@ -3053,7 +3055,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             // 前はどのセルも上に置いていたので、「□認められる」の行が
             // セルの頭に張り付いていました(2026-09-01 発注者)
             let pfont2 = doc.font.clone();
-            let naka: f32 = l.lines.iter().map(|(_, _, h, _, _, _, _, _)| *h).sum::<f32>()
+            let naka: f32 = l.lines.iter().map(|(_, _, h, _, _, _, _, _, _, _)| *h).sum::<f32>()
                 + l.naka_hyou.iter().map(|(_, _, h)| *h).sum::<f32>();
             let aki = (h - l.pad[0] - l.pad[2] - naka).max(0.0);
             let ue = match l.valign {
@@ -3084,7 +3086,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             // laid down as one rectangle
             let line_shade = l.line_shade;
             let mut obi: Option<(String, f32, f32)> = None;
-            for (j, (cells, b0, plh, yose, pt, sagari, (soko, sage, mae, ato), head)) in l.lines.into_iter().enumerate() {
+            for (j, (cells, b0, plh, yose, pt, sagari, (soko, sage, mae, ato), head, dan, tsugi)) in l.lines.into_iter().enumerate() {
                 while hyou_no.peek().is_some_and(|(at, _, _)| *at <= j) {
                     let (_, tmp, th) = hyou_no.next().unwrap();
                     utsusu(tmp, x0, yy, sheet);
@@ -3184,7 +3186,11 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 narabe(&mut cells, x0 + zure + sagari, aki);
                 sheet.lines.push(Line { cells, y_mm: yy, from_body: false,
                                         x0_mm: x0 + zure + sagari, byte0: b0, cell: id,
-                                        para0: usize::MAX, keep_next: false, widow: false,
+                                        // **セルの中の段落も、頁の割り方の決めに乗ります**
+                                        // (`w:keepNext`、`w:widowControl`)。同じ番号でも
+                                        // セルが違えば別の段落なので、見る側は `cell` も
+                                        // 突き合わせます
+                                        para0: dan, keep_next: tsugi, widow: true,
                                         dip_mm: dip, head });
                 yy += plh - agari;
             }
