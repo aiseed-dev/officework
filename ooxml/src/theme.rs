@@ -216,14 +216,21 @@ fn lum(rgb: u32, v: f64, kakeru: bool) -> u32 {
     (f(r2) << 16) | (f(g2) << 8) | f(b2)
 }
 
-/// ガンマを外した RGB で計算します(`shade` / `tint`)。LibreOffice の
-/// `toCrgb` と同じく、ガンマは 2.3 です
+/// **`a:shade` と `a:tint` は、線形にした RGB で計算します**
+/// (ECMA-376 20.1.2.3.31 と 20.1.2.3.34)。線形に直す式は sRGB の物です。
+///
+/// 前は 2.3 乗の近似でした。Word のグラフィックの報告書の型紙
+/// (`4e493df5`)は全面の図形の輪郭を `accent1`(`4E67C8`)の
+/// `<a:shade val="15000"/>` で引きます。Word はこれを `1C2753` で描き、
+/// 2.3 乗では `222D58` になっていました(2026-09-21)。
 fn senkei(rgb: u32, f: impl Fn(f64) -> f64) -> u32 {
-    const G: f64 = 2.3;
+    // sRGB → 線形
+    let hodoku = |c: f64| if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) };
+    // 線形 → sRGB
+    let modosu = |c: f64| if c <= 0.003_130_8 { c * 12.92 } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 };
     let one = |v: u32| {
-        let c = (v as f64 / 255.0).powf(G);
-        let c2 = f(c).clamp(0.0, 1.0);
-        (c2.powf(1.0 / G) * 255.0).round() as u32
+        let c2 = f(hodoku(v as f64 / 255.0)).clamp(0.0, 1.0);
+        (modosu(c2) * 255.0).round().clamp(0.0, 255.0) as u32
     };
     (one((rgb >> 16) & 255) << 16) | (one((rgb >> 8) & 255) << 8) | one(rgb & 255)
 }
