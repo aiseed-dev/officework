@@ -2342,7 +2342,7 @@ mod fold_print_tests {
     fn line(y: f32) -> Line {
         Line { cells: vec![Cell { ch: 'あ', x_mm: 0.0, w_mm: 4.0, size_pt: 10.5,
                                   off: 0, fmt: Default::default(), font: None }],
-               y_mm: y, from_body: true, x0_mm: 0.0, para0: 0, keep_next: false, widow: false, byte0: 0, cell: None, dip_mm: 0.0, head: 0 }
+               y_mm: y, from_body: true, x0_mm: 0.0, para0: 0, keep_next: false, widow: false, byte0: 0, cell: None, dip_mm: 0.0, before_mm: 0.0, head: 0 }
     }
 
     #[test]

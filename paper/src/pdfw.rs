@@ -1033,6 +1033,7 @@ mod tests {
                 cell: None,
                 dip_mm: 0.0,
                 head: 0,
+                            before_mm: 0.0,
             }]
         };
         let mut out = Vec::new();

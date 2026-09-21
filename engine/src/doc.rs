@@ -3008,6 +3008,13 @@ pub struct Line {
     /// 字が下がる(2026-09-08、Word の PDF と並べて測った。16pt の見出しで
     /// 11pt、本文で 4pt)。行間 1.5 の余りは Word も下に置くので、そこは下げない
     pub dip_mm: f32,
+    /// **The space this line's paragraph asked for above it** (mm).
+    ///
+    /// Only a paragraph's first line carries it; every other line is 0.
+    /// A page that starts at an explicit break keeps this space, so the
+    /// paginator has to know how much of the height above the line is it
+    /// (`w:spacing w:before`, ECMA-376 17.3.1.33)
+    pub before_mm: f32,
     /// **行の頭にある印のセルの数**(箇条書きの「・」や番号、脚注の番号。
     /// 2026-09-11)。印は本文の字ではなく、`off` は 0 のまま入っている。
     /// キャレットや選択の位置を出すときは、この数だけ飛ばして本文の字を見る。

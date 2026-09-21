@@ -729,6 +729,14 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
                     hiku.extend(kumi);
                 }
             }
+            // **A page that starts at an explicit break keeps the space the
+            // paragraph asks for above it** (`w:spacing w:before`, ECMA-376
+            // 17.3.1.33). Where the page fills up by itself the space falls
+            // away, which is what the line below does by putting the line's
+            // own box at the top margin. Word's business plan e22e6b47
+            // starts its body section with a `Heading 1` whose 8pt before is
+            // there on the page Word prints (2026-09-22)
+            let mae = if forced { line.before_mm } else { 0.0 };
             let atama = hako.map(|(a, _)| a + kumihan::BASE_UP_MM).unwrap_or(line.y_mm);
             let atama = hiku
                 .iter()
@@ -745,7 +753,7 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
                 starts.push(atama - zure);
                 notes.push(Vec::new());
             }
-            offsets.push(atama - next.top_mm - kumihan::BASE_UP_MM - repeat);
+            offsets.push(atama - next.top_mm - kumihan::BASE_UP_MM - repeat - mae);
             header_h.push(repeat);
             papers.push(next);
             starts.push(line.y_mm);

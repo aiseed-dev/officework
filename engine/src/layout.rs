@@ -1259,7 +1259,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     sheet.lines.push(Line {
                         cells: Vec::new(), y_mm: y, from_body: true, x0_mm: 0.0,
                         para0: para_byte0, keep_next: para.keep_next, widow: para.widow_control != Some(false),
-                        byte0: para_byte0, cell: None, dip_mm: 0.0, head: 0 });
+                        byte0: para_byte0, cell: None, dip_mm: 0.0, before_mm: 0.0, head: 0 });
                     para_byte0 += para.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
                     continue;
                 }
@@ -1282,7 +1282,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // (操作手順書と議事録の見出しが Word より 9.9pt 上にあった)。
                 // 頁が自然に変わった所では、紙に割る側(paper)が行の箱の上端を
                 // 頁の頭に合わせるので、空きは落ちます。これも Word と同じです
-                y += space_between_mm(std::mem::take(&mut zen_ato), space_before_mm(para, base), !doc.no_html_auto_space);
+                let mae_mm = space_between_mm(std::mem::take(&mut zen_ato), space_before_mm(para, base), !doc.no_html_auto_space);
+                y += mae_mm;
                 // **段落の背景色の始まり**を覚えます。終わりは行を積んだ
                 // 後に分かるので、そこで四角にします
                 let shade_top = y;
@@ -1445,6 +1446,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                             byte0: para_byte0,
                             cell: None,
                             dip_mm: 0.0,
+                            before_mm: 0.0,
                             head: 0,
                         });
                         let mut rest = para.clone();
@@ -1536,7 +1538,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                                 Align::Right => aki0,
                                 _ => 0.0,
                             },
-                            byte0: para_byte0 + cap_len, cell: None, dip_mm: 0.0, head: 0 });
+                            byte0: para_byte0 + cap_len, cell: None, dip_mm: 0.0, before_mm: 0.0, head: 0 });
                         // 字が無くても絵は置きます(絵だけの段落)
                         if line_no == 0 && e_h > 0.0 {
                             let hiroi: f32 = atama_no_gazou_mm(para_eff);
@@ -1665,6 +1667,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                                 byte0: para_byte0 + cells[i].off,
                                 cell: None,
                                 dip_mm: 0.0,
+                                before_mm: 0.0,
                                 head: 0,
                             });
                             i = j;
@@ -1681,6 +1684,12 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     sheet.lines.push(Line { cells, y_mm: y, from_body: true, x0_mm: x,
                                             para0: para_byte0, keep_next: para.keep_next, widow: para.widow_control != Some(false), byte0,
                                             cell: None, dip_mm,
+                                            // **What this paragraph asks for above itself**, not
+                                            // what was left after the paragraph above laid its own
+                                            // space. At a page boundary the space above belongs to
+                                            // the page before, and Word puts this paragraph's own
+                                            // space on the new page
+                                            before_mm: if line_no == 0 { space_before_mm(para, base) } else { 0.0 },
                                             head: if line_no == 0 { marker_len } else { 0 } });
                     y += lh_of(para, frame, base, pfont.as_deref(), pitch);
                 }
@@ -1930,7 +1939,7 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
                     .collect();
                 y += note_lh;
                 lines.push(Line { cells, y_mm: y, from_body: false, x0_mm: 0.0, byte0: 0, cell: None,
-                                  para0: usize::MAX, keep_next: false, widow: false, dip_mm: 0.0, head: 0 });
+                                  para0: usize::MAX, keep_next: false, widow: false, dip_mm: 0.0, before_mm: 0.0, head: 0 });
             }
         }
         if lines.is_empty() {
@@ -2061,7 +2070,7 @@ pub fn layout_hf_with(
                 })
                 .collect();
             out.push(Line { cells, y_mm: y, from_body: false, x0_mm: hajime, byte0: 0, cell: None,
-                            para0: usize::MAX, keep_next: false, widow: false, dip_mm: 0.0, head: 0 });
+                            para0: usize::MAX, keep_next: false, widow: false, dip_mm: 0.0, before_mm: 0.0, head: 0 });
             y += line_height_mm;
         }
     }
@@ -3255,7 +3264,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                                         // セルが違えば別の段落なので、見る側は `cell` も
                                         // 突き合わせます
                                         para0: dan, keep_next: tsugi, widow: true,
-                                        dip_mm: dip, head });
+                                        dip_mm: dip, before_mm: 0.0, head });
                 yy += plh - agari;
             }
             if let Some((c, ue, sita)) = obi.take() {
