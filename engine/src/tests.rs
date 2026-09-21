@@ -1888,6 +1888,44 @@ mod section_layout_tests {
         layout(d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 20.0})
     }
 
+    /// **表は自分の節の行長で組む**(`w:pgMar`、ECMA-376 17.6.11)。
+    ///
+    /// 事業計画書の型紙 `e22e6b47` は、表紙の節の左右の余白が 54pt、本文の
+    /// 節が 72pt です。表は文書の行長で組んでいたので、本文の表が 7% 広く、
+    /// 中の字も Word より右から始まっていました(2026-09-22)
+    #[test]
+    fn a_table_is_as_wide_as_its_own_section() {
+        let hiroi = paper(210.0, 297.0);                       // 余白 20mm
+        let mut semai = hiroi;
+        semai.left_mm = 40.0;
+        semai.right_mm = 40.0;
+        let hyou = Block::Table(Table {
+            col_mm: vec![80.0, 80.0],
+            rows: vec![vec![
+                Cellbox { paragraphs: vec![Paragraph {
+                    runs: vec![Run { text: "左".into(), size_pt: Some(10.5), font: None,
+                                     fmt: Default::default() }],
+                    line_spacing: 1.0, ..Default::default() }], ..Default::default() },
+                Cellbox { paragraphs: vec![Paragraph {
+                    runs: vec![Run { text: "右".into(), size_pt: Some(10.5), font: None,
+                                     fmt: Default::default() }],
+                    line_spacing: 1.0, ..Default::default() }], ..Default::default() },
+            ]],
+            ..Default::default()
+        });
+        let d = Document {
+            page: Some(semai),
+            blocks: vec![tab("広い節", Some(hiroi)), hyou],
+            ..Default::default()
+        };
+        let s = layout_for_test(&d);
+        let migi = s.cell_boxes.iter().find(|b| b.col == 1).expect("2 列目が無い");
+        let haba = migi.x_mm + migi.w_mm;
+        // 狭い節の行長は 210 - 40 - 40 = 130mm。160mm の表はそこまで縮む
+        assert!((haba - 130.0).abs() < 1.0,
+            "表が自分の節の行長に収まっていない: {haba}mm");
+    }
+
     #[test]
     fn a_single_section_still_carries_nothing() {
         let d = Document {

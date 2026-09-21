@@ -1823,7 +1823,20 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     utsusu(tmp, dx, 0.0, &mut sheet);
                     yoke = Some((owari - BASE_UP_MM, dx, dx + haba));
                 } else {
-                    y = layout_table(table, m, frame, y_in, &mut sheet, table_no, doc.hyphenate,
+                    // **The table is as wide as its own section's text area.**
+                    // A section can set its own margins (`w:pgMar`, ECMA-376
+                    // 17.6.11), and a table given a width in percent
+                    // (`w:tblW w:type="pct"`, 17.4.64) is measured against
+                    // them. Passing the document's frame here made the body
+                    // tables of the business plan e22e6b47 7% too wide,
+                    // because its first section has 54pt margins and the
+                    // body sections 72pt (2026-09-22)
+                    let fr = Frame {
+                        measure_mm: block_measure,
+                        line_height_mm: frame.line_height_mm,
+                        y0_mm: frame.y0_mm,
+                    };
+                    y = layout_table(table, m, &fr, y_in, &mut sheet, table_no, doc.hyphenate,
                                      &mut note_no, base, doc, pitch, doc.compress_punct, moji,
                                      &mut list_counts);
                 }
