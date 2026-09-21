@@ -2082,7 +2082,7 @@ impl PyParagraph {
         p.style = style;
         // **箇条書きのスタイルは、箇条書きにします**(2026-09-01 発注者
         // 「箇条書きも番号リストもできていない」)。前は名前を付けるだけで、
-        // 模型の `list` が None のままでした。中黒も番号も出ません
+        // 模型の `list` が None のままでした。行頭文字も番号も出ません
         if let Some(id) = style_id.as_deref() {
             let v = id.to_ascii_lowercase();
             if v.starts_with("listbullet") {

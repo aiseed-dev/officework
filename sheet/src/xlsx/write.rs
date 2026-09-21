@@ -2541,7 +2541,7 @@ fn shape_xml(sp: &book::SheetShape, id: u32, naka_off: Option<(i64, i64)>) -> St
                 book::HAlign::Justify => r#" algn="just""#,
                 _ => "",
             };
-            // 箇条書き。中黒は buChar、番号は buAutoNum(算用数字+ピリオド)
+            // 箇条書き。行頭文字は buChar、番号は buAutoNum(算用数字+ピリオド)
             let bullet = match tf.bullet {
                 Some(true) => r#"<a:buFont typeface="+mj-lt"/><a:buAutoNum type="arabicPeriod"/>"#,
                 Some(false) => r#"<a:buFont typeface="Arial"/><a:buChar char="・"/>"#,

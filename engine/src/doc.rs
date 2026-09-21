@@ -449,7 +449,7 @@ impl Align {
 pub enum ListKind {
     #[default]
     None,
-    /// 中黒の箇条書き
+    /// 行頭文字の箇条書き
     Bullet,
     /// 段落番号
     Number,
@@ -539,7 +539,7 @@ pub struct Paragraph {
     /// 置き替わります。
     ///
     /// `None` なら段の深さから作ります([`Paragraph::marker`])。前は常に
-    /// そちらで、内閣府の調査票が9か所で使っている `○` が中黒で出て
+    /// そちらで、内閣府の調査票が9か所で使っている `○` が行頭文字で出て
     /// いました(2026-08-31)。
     pub list_text: Option<String>,
     /// **どの箇条書きの一員か**(docx の `w:numId`)。同じ番号の段落は、
@@ -1508,7 +1508,7 @@ pub struct StyleParaLook {
     /// `numbering.xml` で引いた結果)。
     ///
     /// python-docx の `add_paragraph(style="List Bullet")` は本文に
-    /// `w:numPr` を書きません。中黒も番号もスタイルの側にあります。
+    /// `w:numPr` を書きません。行頭文字も番号もスタイルの側にあります。
     /// 読まないと、箇条書きが**ただの段落**になります(2026-09-03)
     pub list: Option<ListKind>,
     /// その印の字(`w:lvlText`。`●` や `1.`)。無ければ種類なりの既定

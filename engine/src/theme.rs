@@ -1915,7 +1915,7 @@ fn jibun_wo_ateru(
         para.shade = pl.shade.clone();
     }
     // **スタイルの箇条書き。** `add_paragraph(style="List Bullet")` は
-    // 本文に `w:numPr` を書きません。中黒も番号もスタイルの側です
+    // 本文に `w:numPr` を書きません。行頭文字も番号もスタイルの側です
     if para.list == crate::doc::ListKind::None {
         if let Some(k) = pl.list {
             para.list = k;

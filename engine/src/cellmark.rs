@@ -172,7 +172,7 @@ pub fn wanted_height_pt(
     lines.iter().map(|l| base_pt * line_scale(l, named)).sum()
 }
 
-/// 印を外した後の見た目の文字(幅の見積りに使う。箇条書きの中黒も数える)。
+/// 印を外した後の見た目の文字(幅の見積りに使う。箇条書きの行頭文字も数える)。
 pub fn plain(lines: &[Line]) -> String {
     let mut out = String::new();
     for (i, l) in lines.iter().enumerate() {

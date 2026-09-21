@@ -1108,7 +1108,7 @@ pub struct TextFmt {
     pub anchor: TextAnchor,
     /// 縦書き(`a:bodyPr@vert="eaVert"`)。日本語の縦組み
     pub vertical: bool,
-    /// 箇条書き。`None`=無し / `Some(false)`=中黒 / `Some(true)`=番号
+    /// 箇条書き。`None`=無し / `Some(false)`=行頭文字 / `Some(true)`=番号
     pub bullet: Option<bool>,
     /// 取り消し線(`a:rPr@strike="sngStrike"`)
     pub strike: bool,

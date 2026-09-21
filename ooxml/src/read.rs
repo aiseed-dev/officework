@@ -213,7 +213,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
     }
 
     // **箇条書きの印**(numbering.xml)。`numId` と段から `w:lvlText` を引きます。
-    // 前は「numId 1 は中黒、2 は番号」の決め打ちで、文書が決めた印を
+    // 前は「numId 1 は行頭文字、2 は番号」の決め打ちで、文書が決めた印を
     // 見ていませんでした(2026-08-31。内閣府の調査票の `○` が9か所)
     let mut numxml = String::new();
     if let Ok(mut f) = zip.by_name(&bui("numbering", "word/numbering.xml")) {
@@ -1679,7 +1679,7 @@ pub(super) fn parse_styles(xml: &str) -> Vec<kumihan::StyleInfo> {
 }
 
 /// **箇条書きの印の表つき。** スタイルの `w:numPr/w:numId` を
-/// `numbering.xml` で引いて、中黒か番号かと印の字にします。
+/// `numbering.xml` で引いて、行頭文字か番号かと印の字にします。
 ///
 /// python-docx の `add_paragraph(style="List Bullet")` は本文に `w:numPr` を
 /// 書かないので、これを読まないと箇条書きがただの段落になります(2026-09-03)
@@ -2734,7 +2734,7 @@ pub(super) fn parse_document_rels_num(
                         fmt.highlight = attr(&e, "val").filter(|v| v != "none");
                     }
 
-                    // 箇条書きは numId で決まる。1 を中黒、2 を段落番号として扱う
+                    // 箇条書きは numId で決まる。1 を行頭文字、2 を段落番号として扱う
                     // (numbering.xml を持たないので、往復できる最小の約束にしてある)
                     b"ilvl" if in_ppr => {
                         ilvl = attr(&e, "val").and_then(|v| v.parse().ok()).unwrap_or(0).min(8);
@@ -3508,7 +3508,7 @@ pub(super) fn parse_document_rels_num(
                         fmt.highlight = attr(&e, "val").filter(|v| v != "none");
                     }
 
-                    // 箇条書きは numId で決まる。1 を中黒、2 を段落番号として扱う
+                    // 箇条書きは numId で決まる。1 を行頭文字、2 を段落番号として扱う
                     // (numbering.xml を持たないので、往復できる最小の約束にしてある)
                     b"ilvl" if in_ppr => {
                         ilvl = attr(&e, "val").and_then(|v| v.parse().ok()).unwrap_or(0).min(8);
@@ -4568,11 +4568,11 @@ pub struct ForeignShape {
 /// **記号の書体の私用領域を、見えている字に直す。**
 ///
 /// Word の既定の箇条書きは、印を書体と組で書きます。Symbol の U+F0B7 は
-/// 中黒(•)、Wingdings の U+F0A7 は小さい四角(▪)、Courier New の `o` は
+/// 行頭文字(•)、Wingdings の U+F0A7 は小さい四角(▪)、Courier New の `o` は
 /// そのままです。書体を持たない所で出すには、字の側を直すしかありません。
 ///
 /// 表に無い組は、私用領域の下位バイトが普通の字ならそれを使い、
-/// そうでなければ中黒にします(何も出ないよりは印がある方がよい)。
+/// そうでなければ行頭文字にします(何も出ないよりは印がある方がよい)。
 fn kigou_wo_naosu(txt: &str, shotai: &str) -> String {
     let watashi = |c: char| ('\u{f000}'..='\u{f0ff}').contains(&c);
     if !txt.chars().any(watashi) {

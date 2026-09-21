@@ -138,7 +138,7 @@ mod round {
     ///
     /// 前は `numId` を 1 と 2 だけ決め打ちし、`numbering.xml` を見て
     /// いませんでした。内閣府の調査票は `○` を numId 3〜11 に散らして
-    /// いて、9か所とも中黒で出ていました(2026-08-31)。
+    /// いて、9か所とも行頭文字で出ていました(2026-08-31)。
     #[test]
     fn the_bullet_comes_from_the_numbering_part() {
         let num = r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -148,7 +148,7 @@ mod round {
 <w:num w:numId="9"><w:abstractNumId w:val="5"/></w:num>
 </w:numbering>"#;
         let hyou = crate::read::num_markers(num);
-        assert_eq!(hyou.get(&(7, 0)), Some(&("○".to_string(), false)), "中黒の印が引けない");
+        assert_eq!(hyou.get(&(7, 0)), Some(&("○".to_string(), false)), "行頭文字が引けない");
         assert_eq!(hyou.get(&(9, 0)), Some(&("(%1)".to_string(), true)), "番号の印が引けない");
         assert!(!hyou.contains_key(&(8, 0)), "無い numId に印が出た");
         // 印の `%1` は、その段の番号に置き替わります
