@@ -2049,11 +2049,23 @@ fn jibun_wo_ateru(
         // bold Heading 1 with an Italics character style that says both
         // `w:b` and `w:i`, and Word draws the company name in Calibri
         // Italic, not in Calibri Bold Italic (2026-09-21).
-        r.fmt.bold |= lk.bold.unwrap_or(false) ^ moji(|c| c.bold).unwrap_or(false);
-        r.fmt.italic |= lk.italic.unwrap_or(false) ^ moji(|c| c.italic).unwrap_or(false);
+        //
+        // **A value the run states itself is used as it stands** (ECMA-376
+        // 17.7.3), so it is not folded into the toggle. Word's business
+        // report 7e53ee0d writes `<w:rStyle w:val="SubtitleChar"/><w:b
+        // w:val="0"/>` on its `[Date]` and draws it in Calibri, not in
+        // Calibri Bold (2026-09-21)
+        if !r.fmt.itta.bold {
+            r.fmt.bold |= lk.bold.unwrap_or(false) ^ moji(|c| c.bold).unwrap_or(false);
+        }
+        if !r.fmt.itta.italic {
+            r.fmt.italic |= lk.italic.unwrap_or(false) ^ moji(|c| c.italic).unwrap_or(false);
+        }
         r.fmt.caps |= lk.caps.unwrap_or(false) ^ moji(|c| c.caps).unwrap_or(false);
         // `w:u` is not a toggle: the nearer value wins
-        r.fmt.underline |= moji(|c| c.underline).or(lk.underline).unwrap_or(false);
+        if !r.fmt.itta.underline {
+            r.fmt.underline |= moji(|c| c.underline).or(lk.underline).unwrap_or(false);
+        }
         if r.fmt.spacing_pt == 0.0 {
             r.fmt.spacing_pt = ck.and_then(|c| c.spacing_pt).or(lk.spacing_pt).unwrap_or(0.0);
         }

@@ -392,16 +392,21 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                 .flat_map(|p| p.anchors.iter().cloned())
                 .filter(|a| a.contains("<w:drawing") || a.contains("<w:pict"))
                 .collect();
-            if hdoc.tables().next().is_none() {
-                hf.paragraphs = hdoc.paragraphs().cloned().collect();
-                if hf.paragraphs.is_empty() {
-                    hf.paragraphs.push(Paragraph::default());
-                }
-            } else {
-                // A header or footer built out of a table keeps its blocks, so
-                // the cells' text is laid out where Word puts it (2026-09-20).
-                // The size the part was written for comes from the document
-                hf.blocks = hdoc.blocks.clone();
+            hf.paragraphs = hdoc.paragraphs().cloned().collect();
+            if hf.paragraphs.is_empty() {
+                hf.paragraphs.push(Paragraph::default());
+            }
+            // **A header or footer keeps its blocks** so it is laid out the
+            // way the body is: the cells of a table land where Word puts
+            // them, and every paragraph gets the line height its style
+            // asks for (ECMA-376 17.7.2). Until 2026-09-21 only a part
+            // holding a table kept them, and the rest were laid out with
+            // one fixed line height at the document's size, so the footer
+            // of Word's business report 7e53ee0d was 2.6pt short of Word's
+            // 19.65pt line (`w:spacing w:line="276"` from `w:docDefaults`)
+            hf.blocks = hdoc.blocks.clone();
+            if hf.blocks.is_empty() {
+                hf.blocks.push(kumihan::Block::Para(Paragraph::default()));
             }
             for (n, k) in hrep.unsupported {
                 for _ in 0..k {
@@ -437,6 +442,36 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                 hf.first_footer = hf_ref_of(&raw, "footerReference", "first").and_then(|r| yomu(&r, &mut rep));
             }
             doc.sect_hf.insert(j, hf);
+        }
+        // **A section that names no header or footer uses the one before
+        // it** (ECMA-376 17.10.5; Word calls it "Link to Previous"). Word's
+        // business report 15d030a7 gives its first section a footer and its
+        // last section none, and page 2 came out with no footer at all
+        // (2026-09-21). The document's own `header`/`footer` belong to the
+        // last section, so they come at the end of the chain.
+        {
+            let mut mae_h: Option<kumihan::HeadFoot> = None;
+            let mut mae_f: Option<kumihan::HeadFoot> = None;
+            for hf in doc.sect_hf.values_mut() {
+                match (hf.header.part.is_none(), mae_h.clone()) {
+                    (true, Some(h)) => hf.header = h,
+                    _ => mae_h = Some(hf.header.clone()),
+                }
+                match (hf.footer.part.is_none(), mae_f.clone()) {
+                    (true, Some(f)) => hf.footer = f,
+                    _ => mae_f = Some(hf.footer.clone()),
+                }
+            }
+            if doc.header.part.is_none() {
+                if let Some(h) = mae_h {
+                    doc.header = h;
+                }
+            }
+            if doc.footer.part.is_none() {
+                if let Some(f) = mae_f {
+                    doc.footer = f;
+                }
+            }
         }
         // 透かし(ヘッダーの中の VML)。原文控えからモデルへ引き上げる
         // (保存はモデルから作り直すので、控えは外す — 二重になるため)

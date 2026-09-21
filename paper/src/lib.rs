@@ -2566,7 +2566,29 @@ fn hf_pictures(
     out: &mut Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], i32)>,
 ) {
     let kami_kazu = pg.offsets.len().max(1);
-    for (hf, footer) in [(&doc.header, false), (&doc.footer, true)] {
+    // **The first page's own header and footer** (`w:headerReference
+    // w:type="first"`, `w:titlePg`) hold pictures too, and with one section
+    // they live on the document, not in `doc.sect_hf`. The full-page photo
+    // of Word's business report 7e53ee0d is a `pic:pic` in that header, and
+    // we drew nothing (2026-09-21). The tuple is (part, is a footer, the
+    // first page only, every page but the first).
+    let mut parts: Vec<(&kumihan::HeadFoot, bool, bool, bool)> =
+        vec![(&doc.header, false, false, doc.title_pg), (&doc.footer, true, false, doc.title_pg)];
+    for (hf, footer) in [(&doc.first_header, false), (&doc.first_footer, true)] {
+        if let Some(hf) = hf {
+            parts.push((hf, footer, true, false));
+        }
+    }
+    for h in doc.sect_hf.values() {
+        parts.push((&h.header, false, false, h.title_pg));
+        parts.push((&h.footer, true, false, h.title_pg));
+        for (hf, footer) in [(&h.first_header, false), (&h.first_footer, true)] {
+            if let Some(hf) = hf {
+                parts.push((hf, footer, true, false));
+            }
+        }
+    }
+    for (hf, footer, atama_dake, atama_nuki) in parts {
         if hf.anchors.is_empty() {
             continue;
         }
@@ -2600,6 +2622,9 @@ fn hf_pictures(
                 let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
                 let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
                 for k in 0..kami_kazu {
+                    if (atama_dake && k != 0) || (atama_nuki && k == 0) {
+                        continue;
+                    }
                     let migi = k % 2 == 1;
                     let x = anchor_place(&f.h_from, f.x_mm, f.h_align.as_deref(), w_mm, &page, false, kono, migi);
                     let y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(), h_mm, &page, true, kono, migi);
@@ -2711,31 +2736,50 @@ pub fn foreign_shapes(
     // (ECMA-376 17.6.11), not at the body's top margin. The top bar of
     // 15d030a7 says -20.9pt and Word draws it at 0.70pt, which is
     // 21.6 - 20.9; measuring from the body margin put it at 195.10pt
-    let mut hf_anchors: Vec<(&String, f32)> = Vec::new();
+    //
+    // **The first page's own header and footer** (`w:headerReference
+    // w:type="first"`, `w:titlePg`) belong to the document itself when the
+    // file has one section, and `doc.sect_hf` is then empty. Word's
+    // business report 7e53ee0d keeps its full-page photo in that header
+    // and its teal band in that footer, and we drew neither (2026-09-21).
+    // A first-page part is drawn on the first page alone, and the default
+    // parts leave the first page to it.
+    //
+    // The tuple is (anchor, the paragraph origin, the first page only,
+    // every page but the first).
+    let mut hf_anchors: Vec<(&String, f32, bool, bool)> = Vec::new();
     let head_y = page.header_mm;
     let foot_y = page.h_mm - page.footer_mm;
     for (hf, y0) in [(&doc.header, head_y), (&doc.footer, foot_y)] {
-        hf_anchors.extend(hf.anchors.iter().map(|a| (a, y0)));
+        hf_anchors.extend(hf.anchors.iter().map(|a| (a, y0, false, doc.title_pg)));
+    }
+    for (hf, y0) in [(&doc.first_header, head_y), (&doc.first_footer, foot_y)] {
+        if let Some(hf) = hf {
+            hf_anchors.extend(hf.anchors.iter().map(|a| (a, y0, true, false)));
+        }
     }
     for h in doc.sect_hf.values() {
         for (hf, y0) in [(&h.header, head_y), (&h.footer, foot_y)] {
-            hf_anchors.extend(hf.anchors.iter().map(|a| (a, y0)));
+            hf_anchors.extend(hf.anchors.iter().map(|a| (a, y0, false, h.title_pg)));
         }
         for (hf, y0) in [(&h.first_header, head_y), (&h.first_footer, foot_y)] {
             if let Some(hf) = hf {
-                hf_anchors.extend(hf.anchors.iter().map(|a| (a, y0)));
+                hf_anchors.extend(hf.anchors.iter().map(|a| (a, y0, true, false)));
             }
         }
     }
-    for (a, y_para) in hf_anchors
+    for (a, y_para, atama_dake, atama_nuki) in hf_anchors
         .into_iter()
-        .flat_map(|(a, y0)| split_anchors(a).into_iter().map(move |s| (s, y0)))
+        .flat_map(|(a, y0, f, t)| split_anchors(a).into_iter().map(move |s| (s, y0, f, t)))
     {
         for mut f in ooxml::foreign_shapes_in(&a, &doc.theme_colors) {
             shape_text_style(doc, &a, &mut f.look);
             let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
             let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
             for k in 0..kami_kazu {
+                if (atama_dake && k != 0) || (atama_nuki && k == 0) {
+                    continue;
+                }
                 let migi = k % 2 == 1;
                 let x = anchor_place(&f.h_from, f.x_mm, f.h_align.as_deref(),
                                      w_mm, &page, false, y_para, migi);
