@@ -120,6 +120,44 @@ pub struct FootnoteRef {
 /// (= 0.5インチ)です。`w:pPr/w:tabs` がどれも越えていないときに使います。
 pub const TAB_TWIPS: i32 = 720;
 
+/// **What a tab stop does to the text that follows it**
+/// (`w:tab w:val`, ECMA-376 17.3.1.37).
+///
+/// `Left` starts the text at the stop. `Center` puts the middle of the
+/// text there and `Right` its end. `Decimal` is read but laid out as
+/// `Left` for now.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TabKind {
+    #[default]
+    Left,
+    Center,
+    Right,
+    Decimal,
+}
+
+/// **タブの止まる位置1つ**(`w:pPr/w:tabs/w:tab`)。`twips` は段落の左端
+/// ではなく**本文の左端**からの距離です(ECMA-376 17.3.1.38)。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct TabStop {
+    pub twips: i32,
+    pub kind: TabKind,
+}
+
+impl TabStop {
+    pub fn new(twips: i32) -> Self {
+        Self { twips, kind: TabKind::Left }
+    }
+    /// `w:val` の名前から。知らない名前は左です
+    pub fn kind_of(val: &str) -> TabKind {
+        match val {
+            "center" => TabKind::Center,
+            "right" | "end" => TabKind::Right,
+            "decimal" => TabKind::Decimal,
+            _ => TabKind::Left,
+        }
+    }
+}
+
 /// **書式を「言った」かどうか。** [`CharFormat::itta`] が持ちます。
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct Itta {
@@ -585,7 +623,7 @@ pub struct Paragraph {
     ///
     /// 読まないとタブが1文字ぶんにしかならず、内閣府の調査票では
     /// 氏名欄の下線が 78.6pt ぶん縮んでいました(2026-09-01)。
-    pub tab_stops: Vec<i32>,
+    pub tab_stops: Vec<TabStop>,
     /// **寄せを言ったかどうか。** docx は `w:jc` が無ければ「言わない」で、
     /// スタイルから受け継ぎます。`align` の既定は左なので、言わない場合と
     /// 「左と言った」場合が見分けられません。ここで見分けます(2026-09-01)。
@@ -1632,7 +1670,7 @@ pub struct StyleParaLook {
     /// style with `w:pos="3874"` and `w:pos="7027"` and writes only
     /// `<w:tab/>` in the body, so without this the three ran together
     /// (2026-09-21).
-    pub tab_stops: Vec<i32>,
+    pub tab_stops: Vec<TabStop>,
     /// **箇条書きの種類**(docx の `w:pPr/w:numPr/w:numId` を
     /// `numbering.xml` で引いた結果)。
     ///

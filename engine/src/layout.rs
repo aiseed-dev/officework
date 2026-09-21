@@ -541,30 +541,64 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
     // paragraph indented `w:left="994"`, and we placed them 49.7pt too far
     // right (2026-09-21)
     let hidari_tw = left_mm(para, base * 25.4 / 72.0) * 72.0 * 20.0 / 25.4;
-    let tab_saki = |ima_mm: f32| -> f32 {
+    // The next stop after `ima_mm`, and what it does to the text after it
+    let tab_saki = |ima_mm: f32| -> (f32, crate::TabKind) {
         let ima_tw = ima_mm * 72.0 * 20.0 / 25.4 + hidari_tw;
         let tugi = para
             .tab_stops
             .iter()
             .copied()
-            .filter(|t| *t as f32 > ima_tw + 0.5)
-            .min()
-            .map(|t| t as f32)
+            .filter(|t| t.twips as f32 > ima_tw + 0.5)
+            .min_by(|a, b| a.twips.cmp(&b.twips))
+            .map(|t| (t.twips as f32, t.kind))
             .unwrap_or_else(|| {
                 let k = crate::TAB_TWIPS as f32;
-                ((ima_tw / k).floor() + 1.0) * k
+                (((ima_tw / k).floor() + 1.0) * k, crate::TabKind::Left)
             });
-        ((tugi - hidari_tw) / 20.0) * 25.4 / 72.0
+        (((tugi.0 - hidari_tw) / 20.0) * 25.4 / 72.0, tugi.1)
     };
-    for tok in tokenize(para, m, notes, base, moji) {
-        // タブの幅は、いまの位置から次の止まる所までです
-        let tok = match &tok {
-            Tok::One('\t', _, s, f, ft, o) => {
-                let saki = tab_saki(w_cur + if done.is_empty() { first_mm } else { 0.0 });
-                let haba = (saki - w_cur - if done.is_empty() { first_mm } else { 0.0 }).max(0.0);
-                Tok::Space('\t', haba, *s, f.clone(), ft.clone(), *o)
+    let toks = tokenize(para, m, notes, base, moji);
+    // **The width of the text a tab carries to its stop.** A centre or a
+    // right stop needs to know how wide the run after the tab is, up to the
+    // next tab or the end of the line (ECMA-376 17.3.1.37), so the tokens
+    // are measured ahead. Word's business plan template 8989d4b5 sends its
+    // page number to a right stop at 9360 twips, and we left it right after
+    // the company name (2026-09-21)
+    let saki_haba = |from: usize| -> f32 {
+        let mut w = 0.0f32;
+        for t in toks[from..].iter() {
+            match t {
+                Tok::One('\t', ..) | Tok::Space('\t', ..) => break,
+                Tok::One('\n', ..) | Tok::Space('\n', ..) => break,
+                Tok::One(_, x, ..) | Tok::Space(_, x, ..) => w += *x,
+                Tok::Word(cs, ..) => w += cs.iter().map(|(_, x, _)| *x).sum::<f32>(),
             }
-            _ => tok,
+        }
+        w
+    };
+    for ti in 0..toks.len() {
+        // タブの幅は、いまの位置から次の止まる所までです
+        let okikae;
+        let tok: &Tok = match &toks[ti] {
+            Tok::One('\t', _, s, f, ft, o) => {
+                let ima = w_cur + if done.is_empty() { first_mm } else { 0.0 };
+                let (saki, kind) = tab_saki(ima);
+                // **A stop past the end of the line stands at the end of
+                // the line.** The `TOC1` style of Word's business plan
+                // template 8989d4b5 puts its last stop at 10790 twips on a
+                // 9360 twip line, and Word ends those entries at the right
+                // margin (2026-09-21)
+                let saki = saki.min(measure);
+                let ato = match kind {
+                    crate::TabKind::Center => saki_haba(ti + 1) / 2.0,
+                    crate::TabKind::Right => saki_haba(ti + 1),
+                    _ => 0.0,
+                };
+                let haba = (saki - ato - ima).max(0.0);
+                okikae = Tok::Space('\t', haba, *s, f.clone(), ft.clone(), *o);
+                &okikae
+            }
+            t => t,
         };
         let (cells, w): (Vec<Cell>, f32) = match &tok {
             Tok::One(ch, w, s, f, ft, o) =>

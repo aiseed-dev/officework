@@ -2086,25 +2086,31 @@ fn num_of(body: &str) -> Option<u32> {
 /// layout does not do yet. Reading them as left stops pushed the page
 /// numbers of a table of contents to the right and added a page to seven
 /// JST documents (2026-09-21). `clear` removes a stop and is skipped too.
-fn tabs_of(body: &str) -> Vec<i32> {
+fn tabs_of(body: &str) -> Vec<kumihan::TabStop> {
     let Some(n) = body.find("<w:tabs") else { return Vec::new() };
     let owari = body[n..].find("</w:tabs>").map(|e| n + e).unwrap_or(body.len());
     let naka = &body[n..owari];
-    let mut out: Vec<i32> = Vec::new();
+    let mut out: Vec<kumihan::TabStop> = Vec::new();
     let mut i = 0;
     while let Some(k) = naka[i..].find("<w:tab ") {
         let s = i + k;
         let e = naka[s..].find('>').map(|e| s + e).unwrap_or(naka.len());
-        let kind = attr_of(&naka[s..e], "w:val");
-        let hidari = kind.is_empty() || kind == "left" || kind == "start";
-        if let Ok(v) = attr_of(&naka[s..e], "w:pos").parse::<i32>() {
-            if hidari && v > 0 && !out.contains(&v) {
-                out.push(v);
+        let val = attr_of(&naka[s..e], "w:val");
+        // **A stop that is not a left one is kept as well** (ECMA-376
+        // 17.3.1.37). They were dropped, so the page number of Word's
+        // business plan template 8989d4b5, which the `Footer` style sends
+        // to a right stop at 9360 twips, sat right after the company name
+        // (2026-09-21). `w:val="clear"` removes a stop and is not one
+        if val != "clear" {
+            if let Ok(v) = attr_of(&naka[s..e], "w:pos").parse::<i32>() {
+                if v > 0 && !out.iter().any(|t| t.twips == v) {
+                    out.push(kumihan::TabStop { twips: v, kind: kumihan::TabStop::kind_of(&val) });
+                }
             }
         }
         i = e;
     }
-    out.sort_unstable();
+    out.sort_unstable_by_key(|t| t.twips);
     out
 }
 
@@ -2563,7 +2569,7 @@ pub(super) fn parse_document_rels_num(
     let mut fmt = CharFormat::default();
     let mut align = Align::default();
     let mut align_itta = false;
-    let mut tab_stops: Vec<i32> = Vec::new();
+    let mut tab_stops: Vec<kumihan::TabStop> = Vec::new();
     // 箇条書き・インデント・行間(w:numPr / w:ind / w:spacing)
     let mut list = ListKind::default();
     // 文書が決めた箇条書きの印(numbering.xml の w:lvlText)
@@ -3584,9 +3590,15 @@ pub(super) fn parse_document_rels_num(
                     // しただけで行頭にタブが増えていました(2026-09-01)。
                     // タブの止まる位置(`w:pPr/w:tabs` の中の `w:tab w:pos`)
                     b"tab" if in_ppr => {
-                        if let Some(v) = attr(&e, "pos").and_then(|v| v.parse::<i32>().ok()) {
-                            if v > 0 && !tab_stops.contains(&v) {
-                                tab_stops.push(v);
+                        let val = attr(&e, "val").unwrap_or_default();
+                        if val != "clear" {
+                            if let Some(v) = attr(&e, "pos").and_then(|v| v.parse::<i32>().ok()) {
+                                if v > 0 && !tab_stops.iter().any(|t| t.twips == v) {
+                                    tab_stops.push(kumihan::TabStop {
+                                        twips: v,
+                                        kind: kumihan::TabStop::kind_of(&val),
+                                    });
+                                }
                             }
                         }
                     }
