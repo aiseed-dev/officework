@@ -2304,7 +2304,7 @@ mod fold_print_tests {
     fn line(y: f32) -> Line {
         Line { cells: vec![Cell { ch: 'あ', x_mm: 0.0, w_mm: 4.0, size_pt: 10.5,
                                   off: 0, fmt: Default::default(), font: None }],
-               y_mm: y, from_body: true, byte0: 0, cell: None, dip_mm: 0.0, head: 0 }
+               y_mm: y, from_body: true, x0_mm: 0.0, byte0: 0, cell: None, dip_mm: 0.0, head: 0 }
     }
 
     #[test]
@@ -3524,8 +3524,6 @@ fn nested_task_lists_also_render_as_boxes() {
 /// ので、紙と PDF に出ていません。註記の帯も見出しの背景も印刷で消えます。
 #[cfg(test)]
 mod document_colour_tests {
-    use super::*;
-
     /// **文書の既定の字の色は、どのスタイルも色を言わない run に届きます**
     /// (docx の `w:docDefaults`。ECMA-376 17.3.2.6)。表のセルの中も同じです
     #[test]

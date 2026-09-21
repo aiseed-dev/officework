@@ -1025,6 +1025,7 @@ mod tests {
                     })
                     .collect(),
                 from_body: false,
+                x0_mm: 20.0,
                 byte0: 0,
                 cell: None,
                 dip_mm: 0.0,

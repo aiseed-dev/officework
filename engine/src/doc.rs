@@ -2769,6 +2769,11 @@ pub struct Line {
     pub byte0: usize,
     /// 表のセル由来なら (表の番号, 行, 列)
     pub cell: Option<(usize, usize, usize)>,
+    /// Where this line's text starts (mm from the text area's left).
+    /// A line with no characters has no `Cell` to ask, so without this
+    /// the caret in an empty table cell fell back to the text area's
+    /// left and stood outside the table (2026-09-21).
+    pub x0_mm: f32,
     /// **描くときに字を下げる量(mm)。** `y_mm` は行の箱の上から
     /// [`BASE_UP_MM`](crate::BASE_UP_MM) の所(頁割りやカーソルの物差し)で、
     /// 字はそこからこれだけ下に描く。Word は行の箱の余り(`atLeast` の指定と
@@ -2816,7 +2821,7 @@ impl Line {
         self.cell_at(upto)
             .map(|c| c.x_mm)
             .or_else(|| self.cells.last().map(|c| c.x_mm + c.w_mm))
-            .unwrap_or(0.0)
+            .unwrap_or(self.x0_mm)
     }
 }
 

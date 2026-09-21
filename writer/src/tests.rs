@@ -2186,6 +2186,41 @@ mod marker_tests {
         });
     }
 
+    /// **表のセルの中でもカーソルが立つ**(2026-09-21 発注者「カーソルが
+    /// 表の中では消えてしまう」)。セルの行が引けないと、カーソルは本文の
+    /// 左端へ逃げます。セルの箱の中に立つことを見ます
+    #[gpui::test]
+    fn the_caret_stands_inside_a_table_cell(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.run_cmd("instable-go", cx);
+            for (row, col) in [(0usize, 0usize), (1, 1), (2, 2)] {
+                this.switch_target(Target::Cell { table: 0, row, col });
+                this.relayout();
+                let (cx_mm, cy_mm, pt) = this.caret_xy();
+                let hako = this
+                    .page
+                    .cell_boxes
+                    .iter()
+                    .find(|b| (b.table, b.row, b.col) == (0, row, col))
+                    .unwrap_or_else(|| panic!("セル {row},{col} の箱がありません"));
+                assert!(pt > 0.0, "カーソルの大きさが 0: 行{row} 列{col}");
+                assert!(
+                    cx_mm >= hako.x_mm - 0.5 && cx_mm <= hako.x_mm + hako.w_mm + 0.5,
+                    "カーソルの x がセルの外: {cx_mm} はセル {row},{col} の {}..{} の外",
+                    hako.x_mm,
+                    hako.x_mm + hako.w_mm
+                );
+                assert!(
+                    cy_mm >= hako.top_mm - 0.5 && cy_mm <= hako.top_mm + hako.h_mm + 0.5,
+                    "カーソルの y がセルの外: {cy_mm} はセル {row},{col} の {}..{} の外",
+                    hako.top_mm,
+                    hako.top_mm + hako.h_mm
+                );
+            }
+        });
+    }
+
     /// **最後の1行・1列は消せない**(消せると表が消えたように見える)
     #[gpui::test]
     fn the_last_row_and_column_of_a_table_are_kept(cx: &mut gpui::TestAppContext) {

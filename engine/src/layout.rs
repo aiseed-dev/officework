@@ -1143,7 +1143,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     && para.sect.is_none()
                 {
                     sheet.lines.push(Line {
-                        cells: Vec::new(), y_mm: y, from_body: true,
+                        cells: Vec::new(), y_mm: y, from_body: true, x0_mm: 0.0,
                         byte0: para_byte0, cell: None, dip_mm: 0.0, head: 0 });
                     para_byte0 += para.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
                     continue;
@@ -1324,6 +1324,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                             }],
                             y_mm: y + lh_of(para, frame, base, pfont.as_deref(), pitch),
                             from_body: true,
+                            x0_mm: indent_mm,
                             byte0: para_byte0,
                             cell: None,
                             dip_mm: 0.0,
@@ -1405,8 +1406,17 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     if cells.is_empty() {
                         // 空の段落も**行として持つ**。持たないと、後ろの行の
                         // バイト勘定が1つずつずれて、カーソルが本文とずれる
+                        // The caret stands where this line's text would
+                        // start, so an empty centred paragraph keeps it in
+                        // the middle and an indented one at the indent
+                        let aki0 = (measure - indent_of).max(0.0);
                         sheet.lines.push(Line {
                             cells: Vec::new(), y_mm: y, from_body: true,
+                            x0_mm: indent_mm + cap_shift + indent_of + match para.align {
+                                Align::Center => aki0 / 2.0,
+                                Align::Right => aki0,
+                                _ => 0.0,
+                            },
                             byte0: para_byte0 + cap_len, cell: None, dip_mm: 0.0, head: 0 });
                         // 字が無くても絵は置きます(絵だけの段落)
                         if line_no == 0 && e_h > 0.0 {
@@ -1529,6 +1539,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                                 // 行送りの空き(黄金比の余白)の中、基底の頭の上
                                 y_mm: y - frame.line_height_mm * 0.45,
                                 from_body: false,
+                                x0_mm: x,
                                 byte0: para_byte0 + cells[i].off,
                                 cell: None,
                                 dip_mm: 0.0,
@@ -1545,7 +1556,8 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     let size_pt = cells.iter().map(|c| c.size_pt).fold(0.0f32, f32::max);
                     let size_pt = if size_pt > 0.0 { size_pt } else { base * para_scale(para) };
                     let dip_mm = dip_of(para, frame, base, pfont.as_deref(), size_pt, pitch);
-                    sheet.lines.push(Line { cells, y_mm: y, from_body: true, byte0, cell: None, dip_mm,
+                    sheet.lines.push(Line { cells, y_mm: y, from_body: true, x0_mm: x, byte0,
+                                            cell: None, dip_mm,
                                             head: if line_no == 0 { marker_len } else { 0 } });
                     y += lh_of(para, frame, base, pfont.as_deref(), pitch);
                 }
@@ -1777,7 +1789,8 @@ pub(super) fn layout_notes(doc: &Document, m: &Metrics, frame: &Frame, sheet: &m
                     .map(|mut c| { c.x_mm = x; x += c.w_mm; c })
                     .collect();
                 y += note_lh;
-                lines.push(Line { cells, y_mm: y, from_body: false, byte0: 0, cell: None, dip_mm: 0.0, head: 0 });
+                lines.push(Line { cells, y_mm: y, from_body: false, x0_mm: 0.0, byte0: 0, cell: None,
+                                  dip_mm: 0.0, head: 0 });
             }
         }
         if lines.is_empty() {
@@ -1888,11 +1901,12 @@ pub fn layout_hf_with(
                                 base_pt, false, 0.0, false) {
             let w: f32 = cells.iter().map(|c| c.w_mm).sum();
             let slack = (measure - w).max(0.0);
-            let mut x = match para.align {
+            let hajime = match para.align {
                 Align::Left | Align::Justify | Align::Distribute => 0.0,
                 Align::Center => slack / 2.0,
                 Align::Right => slack,
             };
+            let mut x = hajime;
             let gap = if para.align == Align::Distribute && cells.len() >= 2 {
                 slack / (cells.len() - 1) as f32
             } else {
@@ -1906,7 +1920,8 @@ pub fn layout_hf_with(
                     c
                 })
                 .collect();
-            out.push(Line { cells, y_mm: y, from_body: false, byte0: 0, cell: None, dip_mm: 0.0, head: 0 });
+            out.push(Line { cells, y_mm: y, from_body: false, x0_mm: hajime, byte0: 0, cell: None,
+                            dip_mm: 0.0, head: 0 });
             y += line_height_mm;
         }
     }
@@ -2396,6 +2411,7 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
 fn utsusu(tmp: Sheet, dx: f32, dy: f32, sheet: &mut Sheet) {
     for mut ln in tmp.lines {
         ln.y_mm += dy;
+        ln.x0_mm += dx;
         for c in &mut ln.cells {
             c.x_mm += dx;
         }
@@ -3083,8 +3099,9 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 let mut cells = cells;
                 tsumeru(&mut cells, uti, tsume);
                 narabe(&mut cells, x0 + zure + sagari, aki);
-                sheet.lines.push(Line { cells, y_mm: yy, from_body: false, byte0: b0, cell: id, dip_mm: dip,
-                                        head });
+                sheet.lines.push(Line { cells, y_mm: yy, from_body: false,
+                                        x0_mm: x0 + zure + sagari, byte0: b0, cell: id,
+                                        dip_mm: dip, head });
                 yy += plh - agari;
             }
             if let Some((c, ue, sita)) = obi.take() {
