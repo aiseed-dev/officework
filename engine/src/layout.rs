@@ -2056,44 +2056,36 @@ pub fn hf_push_mm(
     {
         return yohaku;
     }
-    // A part made of a table is measured from its rows' heights
-    if !hf.blocks.is_empty() {
-        let kyori = if footer { pg.footer_mm } else { pg.header_mm };
-        let takasa: f32 = hf
-            .blocks
-            .iter()
-            .map(|b| match b {
-                Block::Table(t) => t.row_mm.iter().sum::<f32>(),
-                Block::Para(p) => {
-                    let pt = p.runs.iter().filter_map(|r| r.size_pt).fold(0.0f32, f32::max);
-                    let pt = if pt > 0.0 {
-                        pt
-                    } else {
-                        style_pt(p.style_id.as_deref()).unwrap_or(base_pt)
-                    };
-                    pt * crate::font::okuri_em(font).unwrap_or(1.292) * PT_TO_MM
-                }
-            })
-            .sum();
-        return yohaku.max(kyori + takasa);
-    }
     let em = crate::font::okuri_em(font).unwrap_or(1.292);
     // **半角だけ(か空)の段落は欧文の書体の行送り**(2026-09-09、Word の PDF で
     // 測った)。裁判所の訴状のフッターは「1」と空の段落で、Word は Century の
     // 14.6pt で 2 行送る(ＭＳ 明朝なら 15.5pt)。1.8pt の差で本文の最後の行が
     // 次の頁へ押されていた
     let em_latin = crate::font::okuri_em(latin).unwrap_or(1.22);
-    let takasa: f32 = hf
-        .paragraphs
-        .iter()
-        .map(|p| {
-            let pt = p.runs.iter().filter_map(|r| r.size_pt).fold(0.0f32, f32::max);
-            let pt = if pt > 0.0 { pt } else { style_pt(p.style_id.as_deref()).unwrap_or(base_pt) };
-            let hankaku = p.runs.iter().all(|r| r.text.is_ascii());
-            pt * if hankaku && latin.is_some() { em_latin } else { em } * PT_TO_MM
-        })
-        .sum();
+    let dan = |p: &Paragraph| -> f32 {
+        let pt = p.runs.iter().filter_map(|r| r.size_pt).fold(0.0f32, f32::max);
+        let pt = if pt > 0.0 { pt } else { style_pt(p.style_id.as_deref()).unwrap_or(base_pt) };
+        let hankaku = p.runs.iter().all(|r| r.text.is_ascii());
+        pt * if hankaku && latin.is_some() { em_latin } else { em } * PT_TO_MM
+    };
     let kyori = if footer { pg.footer_mm } else { pg.header_mm };
+    // A part made of a table is measured from its rows' heights. Its
+    // paragraphs are measured the same way as a part without a table:
+    // measuring them with the East Asian face alone made the header of
+    // Word's business plan template taller and cost the file a page
+    // (2026-09-21)
+    if !hf.blocks.is_empty() {
+        let takasa: f32 = hf
+            .blocks
+            .iter()
+            .map(|b| match b {
+                Block::Table(t) => t.row_mm.iter().sum::<f32>(),
+                Block::Para(p) => dan(p),
+            })
+            .sum();
+        return yohaku.max(kyori + takasa);
+    }
+    let takasa: f32 = hf.paragraphs.iter().map(dan).sum();
     yohaku.max(kyori + takasa)
 }
 
