@@ -1688,14 +1688,14 @@ pub(super) fn parse_styles_num(
     shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
     // The indent of every numbering level ([`num_indents`]), for a style that
     // names a `w:numPr` and no `w:ind` of its own
-    sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32)>,
+    sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32, bool)>,
 ) -> Vec<kumihan::StyleInfo> {
     /// スタイルの `w:rPr` と `w:pPr` から見た目を読む。**読むだけ**です。
 /// スタイルの段落の見た目(`w:pPr` の中)。読めない物は「言わない」のまま
 fn style_para(
     body: &str,
     shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
-    sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32)>,
+    sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32, bool)>,
 ) -> kumihan::StyleParaLook {
     let val = |tag: &str| -> Option<String> {
         let t = format!("<{tag}");
@@ -1740,9 +1740,9 @@ fn style_para(
     // style and `w:ind w:left="432" w:hanging="288"` in the level. The body
     // paragraphs carry neither, so Word draws the bullet 7.2pt in and the text
     // 21.6pt in, and we drew both at the cell's left edge (2026-09-21)
-    let (dan_left, dan_hang) = match num_of(body).and_then(|n| sagari.get(&(n, 0))) {
-        Some((left, hang)) => (Some(*left as f32), Some(-*hang as f32)),
-        None => (None, None),
+    let (dan_left, dan_hang, dan_no_tab) = match num_of(body).and_then(|n| sagari.get(&(n, 0))) {
+        Some((left, hang, no_tab)) => (Some(*left as f32), Some(-*hang as f32), Some(*no_tab)),
+        None => (None, None, None),
     };
     // The `w:pPr` block on its own. `w:shd` is a run property as well
     // (ECMA-376 17.3.2.32), and that one paints behind the characters, not
@@ -1788,6 +1788,9 @@ fn style_para(
             }
         }),
         list_text: num_of(body).and_then(|n| shirushi.get(&(n, 0)).map(|(t, _)| t.clone())),
+        // What the level puts between the mark and the text (`w:suff`,
+        // ECMA-376 17.9.28)
+        list_no_tab: dan_no_tab,
         // **段落の罫線。** 本文の `w:pBdr` と同じ辺を読みます
         border: pbdr_of(body),
         // **The paragraph's band** (`w:pPr/w:shd w:fill`, ECMA-376 17.3.1.31).
@@ -2376,7 +2379,7 @@ pub(super) fn parse_document_rels_num(
     cmts: &std::collections::BTreeMap<String, Comment>,
     targets: &std::collections::BTreeMap<String, String>,
     shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool)>,
-    sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32)>,
+    sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32, bool)>,
 ) -> (Document, Report) {
     // **BOM をここで外します。** quick-xml は位置を BOM の後ろから数えるのに、
     // こちらの文字列には残っているので、原文を切り出すと3バイトずれます。
@@ -2451,6 +2454,7 @@ pub(super) fn parse_document_rels_num(
     let mut left_twips = 0i32; // w:ind の left。段数と違って丸めない(2026-08-30)
     let mut right_twips = 0i32; // w:ind の right
     let mut list_id: Option<u32> = None; // w:numPr の numId(番号の続き具合を決める)
+    let mut list_no_tab = false; // w:lvl の w:suff が space か nothing
     let mut line_spacing = 0.0f32;
     let mut line_pt: Option<(f32, bool)> = None;
     let mut no_grid = false; // w:pPr の w:snapToGrid w:val="0"
@@ -2645,6 +2649,7 @@ pub(super) fn parse_document_rels_num(
                               left_twips = 0;
                               right_twips = 0;
                               list_id = None;
+                              list_no_tab = false;
                               line_spacing = 0.0;
                               line_pt = None;
                               no_grid = false;
@@ -2744,9 +2749,10 @@ pub(super) fn parse_document_rels_num(
                         list_id = n.filter(|n| *n > 0);
                         // 段の字下げ(numbering.xml の `w:ind`)を既定として当てる。
                         // 段落自身の `w:ind` は後に来るので、あれば上書きされる
-                        if let Some((left, hang)) = n.and_then(|n| sagari.get(&(n, ilvl)).copied()) {
+                        if let Some((left, hang, no_tab)) = n.and_then(|n| sagari.get(&(n, ilvl)).copied()) {
                             left_twips = left;
                             first_line = -hang;
+                            list_no_tab = no_tab;
                         }
                         // **文書が決めた印を先に引きます**(2026-08-31)。
                         // 無い docx は今までどおり numId の決め打ちです
@@ -3518,9 +3524,10 @@ pub(super) fn parse_document_rels_num(
                         list_id = n.filter(|n| *n > 0);
                         // 段の字下げ(numbering.xml の `w:ind`)を既定として当てる。
                         // 段落自身の `w:ind` は後に来るので、あれば上書きされる
-                        if let Some((left, hang)) = n.and_then(|n| sagari.get(&(n, ilvl)).copied()) {
+                        if let Some((left, hang, no_tab)) = n.and_then(|n| sagari.get(&(n, ilvl)).copied()) {
                             left_twips = left;
                             first_line = -hang;
+                            list_no_tab = no_tab;
                         }
                         // **文書が決めた印を先に引きます**(2026-08-31)。
                         // 無い docx は今までどおり numId の決め打ちです
@@ -4000,6 +4007,7 @@ pub(super) fn parse_document_rels_num(
                                 left_twips,
                                 right_twips,
                                 list_id: if list == ListKind::None { None } else { list_id },
+                                list_no_tab,
                                 first_line_twips: first_line,
                                 first_line_chars,
                                 align_itta,
@@ -4612,13 +4620,13 @@ fn kigou_wo_naosu(txt: &str, shotai: &str) -> String {
 /// (numId, ilvl) → (left, hanging) twip。Word は `w:numPr` の段落に、段の
 /// 字下げを段落自身の `w:ind` が無いときの既定として当てます。読まないと
 /// 番号付きの段落が余白に貼り付く(横浜市の建築の書式で 11pt 左。2026-09-09)
-pub(crate) fn num_indents(xml: &str) -> std::collections::BTreeMap<(u32, u8), (i32, i32)> {
+pub(crate) fn num_indents(xml: &str) -> std::collections::BTreeMap<(u32, u8), (i32, i32, bool)> {
     let attr1 = |seg: &str, k: &str| -> Option<String> {
         let pat = format!("{k}=\"");
         let i = seg.find(&pat)? + pat.len();
         seg[i..].find('"').map(|e| seg[i..i + e].to_string())
     };
-    let mut honnin: std::collections::BTreeMap<u32, Vec<(u8, i32, i32)>> = Default::default();
+    let mut honnin: std::collections::BTreeMap<u32, Vec<(u8, i32, i32, bool)>> = Default::default();
     let mut rest = xml;
     while let Some(i) = rest.find("<w:abstractNum ") {
         let owari = rest[i..].find("</w:abstractNum>").map(|e| i + e).unwrap_or(rest.len());
@@ -4629,11 +4637,21 @@ pub(crate) fn num_indents(xml: &str) -> std::collections::BTreeMap<(u32, u8), (i
                 let le = lv[j..].find("</w:lvl>").map(|e| j + e).unwrap_or(lv.len());
                 let one = &lv[j..le];
                 let ilvl = attr1(one, "w:ilvl").and_then(|v| v.parse::<u8>().ok()).unwrap_or(0);
+                // **What goes between the mark and the text** (`w:suff`,
+                // ECMA-376 17.9.28). Leaving it out means `tab`, and Word
+                // then sends the text on to the level's own tab stop, which
+                // is where `w:ind w:left` puts it. `space` and `nothing` do
+                // not move the text
+                let suff = one
+                    .find("<w:suff ")
+                    .map(|k| attr1(&one[k..], "w:val").unwrap_or_default())
+                    .unwrap_or_default();
+                let no_tab = matches!(suff.as_str(), "space" | "nothing");
                 if let Some(k) = one.find("<w:ind ") {
                     let seg = &one[k..one[k..].find('>').map(|e| k + e).unwrap_or(one.len())];
                     let left = attr1(seg, "w:left").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0) as i32;
                     let hang = attr1(seg, "w:hanging").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0) as i32;
-                    honnin.entry(id).or_default().push((ilvl, left, hang));
+                    honnin.entry(id).or_default().push((ilvl, left, hang, no_tab));
                 }
                 lv = &lv[le.max(j + 7)..];
             }
@@ -4651,8 +4669,8 @@ pub(crate) fn num_indents(xml: &str) -> std::collections::BTreeMap<(u32, u8), (i
             .and_then(|k| attr1(&blk[k..], "w:val"))
             .and_then(|v| v.parse().ok());
         if let (Some(n), Some(a)) = (num, abs) {
-            for (ilvl, left, hang) in honnin.get(&a).into_iter().flatten() {
-                out.insert((n, *ilvl), (*left, *hang));
+            for (ilvl, left, hang, no_tab) in honnin.get(&a).into_iter().flatten() {
+                out.insert((n, *ilvl), (*left, *hang, *no_tab));
             }
         }
         rest = &rest[owari.max(i + 7)..];

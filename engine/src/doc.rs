@@ -547,6 +547,14 @@ pub struct Paragraph {
     /// 間に説明の段落を置く手順書の形)。`None` は AsciiDoc から来た段落で、
     /// 今までどおり、普通の段落を挟むと数え直します(2026-09-08)。
     pub list_id: Option<u32>,
+    /// **No tab between the mark and the text** (docx `w:lvl/w:suff` set to
+    /// `space` or `nothing`, ECMA-376 17.9.28).
+    ///
+    /// Leaving `w:suff` out means `tab`, and Word then sends the text on to
+    /// the level's tab stop, which sits where `w:ind w:left` does. The 337
+    /// levels of the corpus and the templates that say `space` or `nothing`
+    /// keep the text right behind the mark (2026-09-21).
+    pub list_no_tab: bool,
     /// 左のインデント段数。1段 = 全角2文字ぶん(日本の書類の慣習)。
     ///
     /// **段数なので、1文字や3文字は表せません。** 箇条書きの深さでもあり
@@ -1511,6 +1519,9 @@ pub struct StyleParaLook {
     /// `w:numPr` を書きません。行頭文字も番号もスタイルの側にあります。
     /// 読まないと、箇条書きが**ただの段落**になります(2026-09-03)
     pub list: Option<ListKind>,
+    /// **No tab between the mark and the text**, when the style names the
+    /// list (docx `w:lvl/w:suff`, ECMA-376 17.9.28)
+    pub list_no_tab: Option<bool>,
     /// その印の字(`w:lvlText`。`●` や `1.`)。無ければ種類なりの既定
     pub list_text: Option<String>,
     /// **同じスタイルの段落が続く間は、前後の空きを入れない**
@@ -2634,6 +2645,7 @@ impl Document {
                 pl.tab_stops = s.para.tab_stops.clone();
             }
             pl.list = pl.list.or(s.para.list);
+            pl.list_no_tab = pl.list_no_tab.or(s.para.list_no_tab);
             pl.list_text = pl.list_text.clone().or_else(|| s.para.list_text.clone());
             pl.contextual_spacing = pl.contextual_spacing.or(s.para.contextual_spacing);
             pl.no_grid = pl.no_grid.or(s.para.no_grid);

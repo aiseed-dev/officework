@@ -429,6 +429,21 @@ pub(super) fn list_hang_mm(para: &Paragraph, em: f32) -> f32 {
     if para.list != ListKind::None && !jibun { em * 2.0 } else { 0.0 }
 }
 
+/// **The cells a list mark puts in front of the text.**
+///
+/// The mark itself, and the tab that carries the text on to the left indent
+/// when the level leaves `w:suff` out (ECMA-376 17.9.28). The caret steps
+/// over all of them, so the count has to match what [`break_para`] builds.
+pub(super) fn marker_cells(para: &Paragraph, m: &Metrics, marker: Option<&str>, base: f32) -> usize {
+    let Some(mk) = marker else { return 0 };
+    let base = base * para_scale(para);
+    let size = para.runs.first().and_then(|r| r.size_pt).unwrap_or(base);
+    let font = para.runs.first().and_then(|r| r.font.clone());
+    let w: f32 = mk.chars().map(|ch| m.advance_for(font.as_deref(), ch, size)).sum();
+    let hang = -first_line_mm(para, base);
+    mk.chars().count() + usize::from(hang > 0.0 && w < hang && !para.list_no_tab)
+}
+
 pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Option<&str>,
               hyphenate: bool, notes: &mut NoteCount, base: f32, tsume: bool, moji: f32,
               wrap_trail: bool) -> Vec<Vec<Cell>> {
@@ -489,13 +504,21 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
             w_cur += w;
         }
         // **印の後の本文は、左のインデントの位置から始めます**(2026-09-11)。
-        // Word は番号の後にタブを置き、ぶら下げの幅まで送ります。印がそれより
-        // 短ければ、最後の印のセルを広げて本文をそこまで送ります
+        // Word は番号の後にタブを置き、ぶら下げの幅まで送ります。
+        //
+        // **The gap is a tab, and it goes in as one.** `w:suff` is left out
+        // of most levels, and its default is `tab` (ECMA-376 17.9.28), so the
+        // text carries on at the level's tab stop, which sits where
+        // `w:ind w:left` does. Widening the last mark cell instead put the
+        // width in the model and nowhere else: the writers join cells that
+        // touch into one string and let the face advance it, so the extra
+        // width was dropped and Word's booklet template drew its bullet text
+        // 9.43pt to the left of Word's (2026-09-21). A tab cell breaks that
+        // run, and both writers already give it width without a glyph.
         let hang = -first_mm;
-        if hang > 0.0 && w_cur < hang {
-            if let Some(last) = cur.last_mut() {
-                last.w_mm += hang - w_cur;
-            }
+        if hang > 0.0 && w_cur < hang && !para.list_no_tab {
+            cur.push(Cell { ch: '\t', x_mm: 0.0, w_mm: hang - w_cur, size_pt: size,
+                            fmt: fmt.clone(), font: font.clone(), off: 0 });
             w_cur = hang;
         }
     }
@@ -1309,7 +1332,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 let para_eff: &Paragraph = owned_rest.as_ref().unwrap_or(para);
                 let measure = (measure - cap_shift).max(em);
                 let first_mm = first_line_mm(para_eff, base);
-                let marker_len = marker.as_deref().map(|s| s.chars().count()).unwrap_or(0);
+                let marker_len = marker_cells(para, m, marker.as_deref(), base);
                 let gyou = break_para(para_eff, m, measure, marker.as_deref(),
                                       doc.hyphenate, &mut note_no, base, doc.compress_punct, moji,
                                       doc.wrap_trail_spaces);
@@ -2605,7 +2628,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     let migi = (para.right_twips as f32) * 25.4 / 1440.0;
                     // 縦書きのセルは 1 字ずつ折る(行長を 1 字にする)
                     let inner = if para.tate { (pbase * PT_TO_MM).max(2.0) } else { (inner - hidari - migi).max(2.0) };
-                    let mk_len = mk.as_deref().map(|s| s.chars().count()).unwrap_or(0);
+                    let mk_len = marker_cells(para, m, mk.as_deref(), pbase);
                     let saisho = ls.len();
                     let mut kore = break_para(para, m, inner, mk.as_deref(), hyphenate, notes, pbase, tsume, moji,
                                               doc.wrap_trail_spaces);

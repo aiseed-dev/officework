@@ -1922,6 +1922,11 @@ fn jibun_wo_ateru(
             if para.list_text.is_none() {
                 para.list_text = pl.list_text.clone();
             }
+            // What the level puts between the mark and the text
+            // (`w:suff`, ECMA-376 17.9.28)
+            if let Some(v) = pl.list_no_tab {
+                para.list_no_tab = v;
+            }
         }
     }
     for r in &mut para.runs {

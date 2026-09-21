@@ -400,7 +400,9 @@ mod list_tests {
         let l3 = s.lines.iter().find(|l| l.text().starts_with("普通")).unwrap();
         assert!(l3.cells[0].x_mm.abs() < 0.01, "普通の段落は余白から: {}", l3.cells[0].x_mm);
         // 行は印のセルの数を知っている。キャレットは印を飛ばして本文に立つ
-        assert_eq!(l0.head, 3, "「1. 」の 3 セル: {:?}", l0.text());
+        // 「1. 」の 3 セルと、本文を 2 字の所まで送るタブの 1 セル
+        // (`w:suff` の既定。ECMA-376 17.9.28)
+        assert_eq!(l0.head, 4, "「1. 」の 3 セルとタブ: {:?}", l0.text());
         assert!((l0.x_at(0) - em2).abs() < 0.05, "項目の頭のキャレットは本文の位置: {}", l0.x_at(0));
         assert_eq!(l2.head, 0, "折り返しの行に印は無い");
         // 空の項目: 印だけの行。本文は無いので byte_end は行頭、キャレットは印の右
