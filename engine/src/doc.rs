@@ -829,6 +829,13 @@ pub struct TableCond {
     /// `w:sz w:val="22"` on the `firstRow` band and nothing in the cells,
     /// and the header row came out at the document's 10pt (2026-09-21).
     pub size_pt: Option<f32>,
+    /// **The rules the band draws round its cells** (`w:tcPr/w:tcBorders`,
+    /// ECMA-376 17.4.67). A side the cell states itself wins.
+    ///
+    /// Word's invoice template 0644da1f gives its `lastRow` band a `double`
+    /// top and a 2.25pt bottom (`w:sz w:val="18"`) where every other rule of
+    /// that table is 0.5pt, and we drew them all the same (2026-09-21).
+    pub cell_borders: Option<CellBorders>,
 }
 
 impl TableCond {
@@ -2800,6 +2807,27 @@ impl Line {
     }
 }
 
+/// **一本の罫線**(表の罫線と、段落の囲み)。
+///
+/// **太さを持ちます**(2026-09-21)。前は座標だけだったので、どの線も
+/// 同じ太さで引いていました。Word の請求書の型紙(`0644da1f`)は表スタイルの
+/// `w:tblStylePr w:type="lastRow"` に `w:bottom w:sz="18"`(2.25pt)を書き、
+/// ほかの罫線は 0.5pt です(ECMA-376 17.4.67)。
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Rule {
+    /// [x1, y1, x2, y2] mm
+    pub at: [f32; 4],
+    /// 太さ(pt)。0 は引く側の既定
+    pub pt: f32,
+}
+
+impl Rule {
+    /// 太さを言わない線(引く側の既定で引く)
+    pub fn new(at: [f32; 4]) -> Self {
+        Self { at, pt: 0.0 }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Sheet {
     pub lines: Vec<Line>,
@@ -2810,9 +2838,8 @@ pub struct Sheet {
     /// ここで新しいページを始める、という y(巻物の座標)。
     /// 紙に写す側([`paper`]相当)がこれを見て強制的に頁を割る
     pub breaks: Vec<f32>,
-    /// 引く線(表の罫線)。[x1, y1, x2, y2] mm。
-    /// 画面も紙も、これをそのまま引く
-    pub rules: Vec<[f32; 4]>,
+    /// 引く線(表の罫線)。画面も紙も、これをそのまま引く
+    pub rules: Vec<Rule>,
     /// **塗る四角**(セルの背景・表の帯)。([x, y, 幅, 高さ] mm, RRGGBB)。
     ///
     /// **罫線より先に敷きます** — 後にすると線を塗り潰します。

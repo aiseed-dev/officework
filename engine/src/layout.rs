@@ -918,7 +918,7 @@ fn drop_break_over_empty(sheet: &mut Sheet, y: f32) {
     if sheet.images.iter().any(|(_, b)| ari(b[1], b[3]))
         || sheet.inline_shapes.iter().any(|(_, b)| ari(b[1], b[3]))
         || sheet.float_images.iter().any(|(_, b, _)| ari(b[1], b[3]))
-        || sheet.rules.iter().any(|r| ari(r[1].min(r[3]), (r[3] - r[1]).abs()))
+        || sheet.rules.iter().any(|r| ari(r.at[1].min(r.at[3]), (r.at[3] - r.at[1]).abs()))
     {
         return;
     }
@@ -1612,16 +1612,16 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     let mae = onaji(doc.blocks.get(bi.wrapping_sub(1)));
                     let tsugi = onaji(doc.blocks.get(bi + 1));
                     if para.border.top || mae {
-                        sheet.rules.push([x0, ue, x1, ue]);
+                        sheet.rules.push(Rule::new([x0, ue, x1, ue]));
                     }
                     if para.border.bottom && !tsugi {
-                        sheet.rules.push([x0, sita, x1, sita]);
+                        sheet.rules.push(Rule::new([x0, sita, x1, sita]));
                     }
                     if para.border.left {
-                        sheet.rules.push([x0, ue, x0, sita]);
+                        sheet.rules.push(Rule::new([x0, ue, x0, sita]));
                     }
                     if para.border.right {
-                        sheet.rules.push([x1, ue, x1, sita]);
+                        sheet.rules.push(Rule::new([x1, ue, x1, sita]));
                     }
                 }
                 // **段落の背景色**(2026-08-27)。模型に在り、画面は塗って
@@ -2142,9 +2142,9 @@ pub fn fold_print(
         line.y_mm = shift(line.y_mm);
     }
     for r in &mut sheet.rules {
-        let h = r[3] - r[1];
-        r[1] = shift(r[1]);
-        r[3] = r[1] + h;
+        let h = r.at[3] - r.at[1];
+        r.at[1] = shift(r.at[1]);
+        r.at[3] = r.at[1] + h;
     }
     for b in &mut sheet.cell_boxes {
         let h = b.h_mm;
@@ -2207,12 +2207,12 @@ pub fn fold_pages(
         }
     }
     for r in &mut sheet.rules {
-        let (dx, ny) = shift(r[1]);
-        let h = r[3] - r[1];
-        r[0] += dx;
-        r[2] += dx;
-        r[1] = ny;
-        r[3] = ny + h;
+        let (dx, ny) = shift(r.at[1]);
+        let h = r.at[3] - r.at[1];
+        r.at[0] += dx;
+        r.at[2] += dx;
+        r.at[1] = ny;
+        r.at[3] = ny + h;
     }
     for (_, b) in &mut sheet.images {
         let (dx, ny) = shift(b[1]);
@@ -2300,12 +2300,12 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
         }
     }
     for r in &mut sheet.rules {
-        let k = strip_of(r[1].min(r[3]));
-        let (y1, y2) = (place(r[1], k), place(r[3], k));
-        r[0] += dx(k);
-        r[2] += dx(k);
-        r[1] = y1;
-        r[3] = y2;
+        let k = strip_of(r.at[1].min(r.at[3]));
+        let (y1, y2) = (place(r.at[1], k), place(r.at[3], k));
+        r.at[0] += dx(k);
+        r.at[2] += dx(k);
+        r.at[1] = y1;
+        r.at[3] = y2;
     }
     for (_, rect) in &mut sheet.images {
         let k = strip_of(rect[1]);
@@ -2354,7 +2354,7 @@ fn utsusu(tmp: Sheet, dx: f32, dy: f32, sheet: &mut Sheet) {
         sheet.lines.push(ln);
     }
     for r in tmp.rules {
-        sheet.rules.push([r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy]);
+        sheet.rules.push(Rule { at: [r.at[0] + dx, r.at[1] + dy, r.at[2] + dx, r.at[3] + dy], pt: r.pt });
     }
     for (b, c) in tmp.fills {
         sheet.fills.push(([b[0] + dx, b[1] + dy, b[2], b[3]], c));
@@ -3054,10 +3054,10 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             // セルでは結合ぜんぶを1つのセルとして引きます(表計算側の
             // `paper::grid` と同じ引き方)。2026-09-03
             if l.diag.0 {
-                sheet.rules.push([l.x, row_top, l.x + l.w, row_top + h]);
+                sheet.rules.push(Rule::new([l.x, row_top, l.x + l.w, row_top + h]));
             }
             if l.diag.1 {
-                sheet.rules.push([l.x, row_top + h, l.x + l.w, row_top]);
+                sheet.rules.push(Rule::new([l.x, row_top + h, l.x + l.w, row_top]));
             }
             // クリックの当たり判定(結合したセルは結合後の大きさで当てる)
             sheet.cell_boxes.push(CellBox {
@@ -3103,6 +3103,22 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let shita = cell_at(b, g).and_then(|c| c.borders.top);
             ue.or(shita).unwrap_or(hiku_yoko)
         };
+        // **How wide that edge is drawn** (`w:sz`, ECMA-376 17.3.4, in pt).
+        // The cell that names the edge names the width too; 0 leaves the
+        // 0.5pt an ordinary edge is drawn with. Word's invoice template
+        // 0644da1f gives the bottom of its last row `w:sz="18"` (2.25pt)
+        // through the `lastRow` band of its table style (2026-09-21)
+        let futosa = |g: usize| -> f32 {
+            let ue = b
+                .checked_sub(1)
+                .and_then(|r| cell_at(r, g))
+                .filter(|c| c.borders.bottom.is_some())
+                .map(|c| c.borders.bottom_pt);
+            let shita = cell_at(b, g)
+                .filter(|c| c.borders.top.is_some())
+                .map(|c| c.borders.top_pt);
+            ue.or(shita).unwrap_or(0.0)
+        };
         let mut g = 0usize;
         while g < ncols {
             if !hiku_at(g) {
@@ -3110,10 +3126,11 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 continue;
             }
             let start = g;
-            while g < ncols && hiku_at(g) {
+            let pt = futosa(g);
+            while g < ncols && hiku_at(g) && (futosa(g) - pt).abs() < 0.001 {
                 g += 1;
             }
-            sheet.rules.push([xs[start], y, xs[g], y]);
+            sheet.rules.push(Rule { at: [xs[start], y, xs[g], y], pt });
         }
     }
     // 罫線・縦: 行ごとに、結合後のセルの縁に引く(結合の中には引かない)。
@@ -3161,7 +3178,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 table.borders.inside_v
             };
             if say.unwrap_or(hiku_hyou) {
-                sheet.rules.push([x, top, x, bottom]);
+                sheet.rules.push(Rule::new([x, top, x, bottom]));
             }
         }
     }

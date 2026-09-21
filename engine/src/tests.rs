@@ -993,8 +993,8 @@ mod table_layout_tests {
         assert!((y("二") - y("一") - (6.0 + 0.5 * 25.4 / 72.0)).abs() < 0.05, "固定の行が伸びた: {}", y("二") - y("一"));
         assert!((y("三") - y("二") - (6.0 + 0.5 * 25.4 / 72.0)).abs() < 0.05, "2 行目も固定のはず");
         // 結合したセルの中身(3 行以上)は 3 行の合計に入らない分だけ最後の行を伸ばす
-        let bottom = s.rules.iter().map(|r| r[3].max(r[1])).fold(0.0f32, f32::max);
-        let top = s.rules.iter().map(|r| r[1].min(r[3])).fold(f32::MAX, f32::min);
+        let bottom = s.rules.iter().map(|r| r.at[3].max(r.at[1])).fold(0.0f32, f32::max);
+        let top = s.rules.iter().map(|r| r.at[1].min(r.at[3])).fold(f32::MAX, f32::min);
         let lines_in = s.lines.iter().filter(|l| l.cell.is_some() && l.cells.first().is_some_and(|c| nagai.contains(c.ch))).count();
         assert!(lines_in >= 3, "結合したセルの中身が折れていない: {lines_in}");
         assert!(bottom - top > 18.0 + 1.0, "最後の行が中身のぶん伸びていない: {}", bottom - top);
@@ -1048,9 +1048,9 @@ mod table_layout_tests {
         // 2行の表: 横線3本 + 縦線(3本×2行) = 9本
         assert_eq!(s.rules.len(), 9, "罫線の数が違う: {}", s.rules.len());
         // 横線は行長いっぱい
-        let h: Vec<_> = s.rules.iter().filter(|r| r[1] == r[3]).collect();
+        let h: Vec<_> = s.rules.iter().filter(|r| r.at[1] == r.at[3]).collect();
         assert_eq!(h.len(), 3);
-        assert!(h.iter().all(|r| (r[2] - r[0] - 100.0).abs() < 0.01));
+        assert!(h.iter().all(|r| (r.at[2] - r.at[0] - 100.0).abs() < 0.01));
     }
 
     #[test]
@@ -1125,8 +1125,8 @@ mod merge_layout_tests {
         assert!((b0.w_mm - 100.0).abs() < 0.01, "結合したのに幅が広がらない: {}", b0.w_mm);
         // 結合の中(x=50)を縦線が横切らない(1行目の帯だけを見る)
         let mid_crosses = s.rules.iter().any(|r| {
-            r[0] == r[2] && (r[0] - 50.0).abs() < 0.01 && r[1] < b0.top_mm + b0.h_mm - 0.1
-                && r[3] > b0.top_mm + 0.1
+            r.at[0] == r.at[2] && (r.at[0] - 50.0).abs() < 0.01 && r.at[1] < b0.top_mm + b0.h_mm - 0.1
+                && r.at[3] > b0.top_mm + 0.1
         });
         assert!(!mid_crosses, "結合の中を縦線が横切った");
         // 2行目には x=50 の縦線がある
@@ -1155,9 +1155,9 @@ mod merge_layout_tests {
             "結合が2行目の下端まで延びていない: {merged_bottom} vs {row1_bottom}");
         // 行の境の横線が、結合の中(左半分)を横切らない
         let boundary = b1.top_mm;
-        for r in s.rules.iter().filter(|r| r[1] == r[3] && (r[1] - boundary).abs() < 0.01) {
-            assert!(r[0] >= 50.0 - 0.01,
-                "結合の中を横線が横切った: x {}..{}", r[0], r[2]);
+        for r in s.rules.iter().filter(|r| r.at[1] == r.at[3] && (r.at[1] - boundary).abs() < 0.01) {
+            assert!(r.at[0] >= 50.0 - 0.01,
+                "結合の中を横線が横切った: x {}..{}", r.at[0], r.at[2]);
         }
     }
 }
@@ -1177,7 +1177,7 @@ mod gridcol_tests {
         }
     }
 
-    fn rules_of(col_mm: Vec<f32>) -> Vec<[f32; 4]> {
+    fn rules_of(col_mm: Vec<f32>) -> Vec<crate::doc::Rule> {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let d = Document { align: None, no_html_auto_space: false, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
@@ -1197,7 +1197,7 @@ mod gridcol_tests {
     fn column_width_specs_take_effect() {
         // 30mm + 70mm の2列。縦線が 0, 30, 100 に立つ
         let rules = rules_of(vec![30.0, 70.0]);
-        let mut vx: Vec<f32> = rules.iter().filter(|r| r[0] == r[2]).map(|r| r[0]).collect();
+        let mut vx: Vec<f32> = rules.iter().filter(|r| r.at[0] == r.at[2]).map(|r| r.at[0]).collect();
         vx.sort_by(f32::total_cmp);
         vx.dedup_by(|a, b| (*a - *b).abs() < 0.01);
         assert_eq!(vx.len(), 3, "{vx:?}");
@@ -1208,7 +1208,7 @@ mod gridcol_tests {
     fn specs_over_the_line_length_shrink_proportionally() {
         // 120+80=200mm を 100mm に。比率 3:2 のまま 60/40 になる
         let rules = rules_of(vec![120.0, 80.0]);
-        let mut vx: Vec<f32> = rules.iter().filter(|r| r[0] == r[2]).map(|r| r[0]).collect();
+        let mut vx: Vec<f32> = rules.iter().filter(|r| r.at[0] == r.at[2]).map(|r| r.at[0]).collect();
         vx.sort_by(f32::total_cmp);
         vx.dedup_by(|a, b| (*a - *b).abs() < 0.01);
         assert!((vx[1] - 60.0).abs() < 0.1, "比率が守られていない: {vx:?}");

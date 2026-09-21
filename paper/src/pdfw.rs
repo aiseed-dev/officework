@@ -1852,16 +1852,18 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
         k
     };
     for r in &sheet.rules {
-        let k = kubun(r[1].min(r[3])).min(pages.len().saturating_sub(1));
+        let k = kubun(r.at[1].min(r.at[3])).min(pages.len().saturating_sub(1));
         let off = offsets.get(k).copied().unwrap_or(0.0);
         let pp = paper_of(k);
         if let Some(p) = pages.get_mut(k) {
             p.rules.push(Rule {
-                x1_mm: pp.margin_mm + r[0],
-                y1_mm: pp.height_mm - (r[1] - off),
-                x2_mm: pp.margin_mm + r[2],
-                y2_mm: pp.height_mm - (r[3] - off),
-                w_mm: 0.2,
+                x1_mm: pp.margin_mm + r.at[0],
+                y1_mm: pp.height_mm - (r.at[1] - off),
+                x2_mm: pp.margin_mm + r.at[2],
+                y2_mm: pp.height_mm - (r.at[3] - off),
+                // The width the rule carries, else the 0.5pt Word draws a
+                // `w:sz="4"` edge with (ECMA-376 17.3.4)
+                w_mm: if r.pt > 0.0 { r.pt * 25.4 / 72.0 } else { 0.2 },
                 rgb: (0.0, 0.0, 0.0),
                 ..Default::default()
             });

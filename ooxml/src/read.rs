@@ -1900,6 +1900,40 @@ fn table_cond(blk: &str) -> kumihan::TableCond {
         c.color = look.color;
         c.size_pt = look.size_pt;
     }
+    // **The rules the band draws** (`w:tcPr/w:tcBorders`, ECMA-376 17.4.67).
+    // `w:sz` counts eighths of a point for the line itself, and a `double`
+    // takes three of those and a `triple` five, the same as the body side
+    // reads them (ECMA-376 17.3.4)
+    if let Some(k) = blk.find("<w:tcBorders>") {
+        let e = blk[k..].find("</w:tcBorders>").map(|e| k + e).unwrap_or(blk.len());
+        let naka = &blk[k..e];
+        let mut b = kumihan::CellBorders::default();
+        let mut atta = false;
+        for (na, set) in [("top", 0usize), ("left", 1), ("bottom", 2), ("right", 3)] {
+            let pat = format!("<w:{na} ");
+            let Some(i) = naka.find(&pat) else { continue };
+            let j = naka[i..].find('>').map(|q| i + q).unwrap_or(naka.len());
+            let seg = &naka[i..j];
+            let val = attr_of(seg, "w:val");
+            let hiku = !matches!(val.as_str(), "nil" | "none");
+            let sz = attr_of(seg, "w:sz").parse::<f32>().unwrap_or(0.0);
+            let pt = match val.as_str() {
+                "double" => sz * 3.0 / 8.0,
+                "triple" => sz * 5.0 / 8.0,
+                _ => sz / 8.0,
+            };
+            atta = true;
+            match set {
+                0 => { b.top = Some(hiku); b.top_pt = if hiku { pt } else { 0.0 }; }
+                1 => b.left = Some(hiku),
+                2 => { b.bottom = Some(hiku); b.bottom_pt = if hiku { pt } else { 0.0 }; }
+                _ => b.right = Some(hiku),
+            }
+        }
+        if atta {
+            c.cell_borders = Some(b);
+        }
+    }
     c
 }
 

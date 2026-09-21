@@ -972,12 +972,14 @@ impl Render for Writer {
 
         // 表の罫線。紙面の座標をそのまま引く
         for r in &self.page.rules {
-            let [x1, y1, x2, y2] = *r;
+            let [x1, y1, x2, y2] = r.at;
             let (x1, y1) = ((self.pg.left_mm + x1) * pxmm, y1 * pxmm);
             let (x2, y2) = ((self.pg.left_mm + x2) * pxmm, y2 * pxmm);
+            // The width the rule carries, else the 0.5pt of an ordinary edge
+            let w = if r.pt > 0.0 { (r.pt * 25.4 / 72.0) * pxmm } else { 1.0 };
             paper = paper.child(div().absolute()
                 .left(px(x1.min(x2))).top(px(y1.min(y2)))
-                .w(px((x2 - x1).abs().max(1.0))).h(px((y2 - y1).abs().max(1.0)))
+                .w(px((x2 - x1).abs().max(w))).h(px((y2 - y1).abs().max(w)))
                 .bg(rgb(0x444B52)));
         }
 

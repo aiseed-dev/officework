@@ -1659,6 +1659,7 @@ fn hyou_style_wo_ateru(
             let mut bold: Option<bool> = None;
             let mut iro: Option<String> = None;
             let mut ookisa: Option<f32> = None;
+            let mut kei: Option<crate::doc::CellBorders> = None;
             let mut pl = crate::doc::StyleParaLook::default();
             if let Some(ts) = ts {
                 let mut tsumi: Vec<&crate::doc::TableCond> = vec![&ts.base];
@@ -1698,6 +1699,9 @@ fn hyou_style_wo_ateru(
                     if c.size_pt.is_some() {
                         ookisa = c.size_pt;
                     }
+                    if c.cell_borders.is_some() {
+                        kei = c.cell_borders;
+                    }
                     if c.para.space_after_pt.is_some() {
                         pl.space_after_pt = c.para.space_after_pt;
                     }
@@ -1725,6 +1729,28 @@ fn hyou_style_wo_ateru(
             }
             if cell.shade.is_none() {
                 cell.shade = shade;
+            }
+            // **The rules the band draws round its cells** (`w:tblStylePr` /
+            // `w:tcPr/w:tcBorders`, ECMA-376 17.4.67 and 17.7.6). A side the
+            // cell states itself wins. Word's invoice template 0644da1f puts
+            // a `double` top and a 2.25pt bottom on its `lastRow` band, where
+            // every other rule of that table is 0.5pt (2026-09-21)
+            if let Some(k) = kei {
+                let b = &mut cell.borders;
+                if b.top.is_none() {
+                    b.top = k.top;
+                    b.top_pt = k.top_pt;
+                }
+                if b.bottom.is_none() {
+                    b.bottom = k.bottom;
+                    b.bottom_pt = k.bottom_pt;
+                }
+                if b.left.is_none() {
+                    b.left = k.left;
+                }
+                if b.right.is_none() {
+                    b.right = k.right;
+                }
             }
             let n = cell.paragraphs.len();
             let ids: Vec<Option<String>> =

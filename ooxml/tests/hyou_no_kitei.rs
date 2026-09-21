@@ -169,7 +169,7 @@ fn the_diagonal_reaches_the_page() {
     let naname = sheet
         .rules
         .iter()
-        .filter(|r| (r[0] - r[2]).abs() > 1.0 && (r[1] - r[3]).abs() > 1.0)
+        .filter(|r| (r.at[0] - r.at[2]).abs() > 1.0 && (r.at[1] - r.at[3]).abs() > 1.0)
         .count();
     assert_eq!(naname, 1, "斜めの線が {naname} 本(1本のはず)");
 }
