@@ -527,6 +527,13 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                         doc.size_pt = Some(h / 2.0);
                     }
                 }
+                // **The document's own text colour** (`w:color`, ECMA-376
+                // 17.3.2.6). It reaches a run that no style gives a colour.
+                // Word's executive summary template says `595959` here, and
+                // its body text came out black (2026-09-21)
+                if let Some(t) = tag(rp, "<w:color ") {
+                    doc.color = zoku(&t, "w:val").filter(|v| !v.is_empty() && v != "auto");
+                }
             }
             // 段落の空きと行間は `w:pPrDefault` の中の `w:spacing`
             if let Some(pp) = naka.find("<w:pPrDefault").and_then(|n| {
@@ -3773,6 +3780,16 @@ pub(super) fn parse_document_rels_num(
                         } else {
                             cell_borders.diag_up = hiku;
                         }
+                    }
+                    // **The cell's fill** (`w:tcPr/w:shd`, ECMA-376 17.4.32).
+                    // Word writes it as an empty element, and only the branch
+                    // for a start element read it, so no cell of a Word file
+                    // was ever filled. The title of Word's executive summary
+                    // template is white on a 595959 cell, and it came out
+                    // white on white paper (2026-09-21)
+                    b"shd" if in_tcpr => {
+                        cell_shade = attr(&e, "fill")
+                            .filter(|v| !v.is_empty() && v != "auto");
                     }
                     // 段落の背景色。fill が色(auto 以外)のときだけ
                     b"shd" if in_ppr => {

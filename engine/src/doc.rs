@@ -1247,6 +1247,13 @@ pub struct Document {
     /// 文書の既定の字の大きさ(docx の `w:docDefaults` の `w:sz`)。
     /// run が `None` のときに効く。これも `None` なら [`DEFAULT_PT`]
     pub size_pt: Option<f32>,
+    /// **The document's own text colour** (docx
+    /// `w:docDefaults/w:rPrDefault/w:rPr/w:color`, ECMA-376 17.3.2.6).
+    ///
+    /// It reaches a run that no style gives a colour. Word's executive
+    /// summary template says `595959` there, and its body text came out
+    /// black (2026-09-21).
+    pub color: Option<String>,
     /// **文書の既定の段落後の空き**(docx の `w:docDefaults/w:pPrDefault` の
     /// `w:spacing w:after`。pt)。段落が自分で言っていなければこれを使います。
     ///

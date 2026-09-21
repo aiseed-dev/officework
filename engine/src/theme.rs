@@ -2246,6 +2246,45 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             }
         }
     }
+    // **The document's own text colour** (`w:docDefaults`, ECMA-376 17.3.2.6)
+    // reaches a run that neither the run nor any style gives a colour. It goes
+    // on last, under everything the styles said. Word's executive summary
+    // template says `595959`, and its body text came out black (2026-09-21)
+    if let Some(iro) = doc.color.clone() {
+        fn nuru(blocks: &mut [Block], iro: &str) {
+            for b in blocks.iter_mut() {
+                match b {
+                    Block::Para(p) => hitotsu(p, iro),
+                    Block::Table(t) => {
+                        for row in t.rows.iter_mut() {
+                            for cell in row.iter_mut() {
+                                for p in cell.paragraphs.iter_mut() {
+                                    hitotsu(p, iro);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        fn hitotsu(p: &mut crate::doc::Paragraph, iro: &str) {
+            for r in p.runs.iter_mut() {
+                if r.fmt.color.is_none() {
+                    r.fmt.color = Some(iro.to_string());
+                }
+            }
+            if let Some(naka) = p.nested.as_deref_mut() {
+                for row in naka.rows.iter_mut() {
+                    for cell in row.iter_mut() {
+                        for q in cell.paragraphs.iter_mut() {
+                            hitotsu(q, iro);
+                        }
+                    }
+                }
+            }
+        }
+        nuru(&mut out.blocks, &iro);
+    }
     out
 }
 

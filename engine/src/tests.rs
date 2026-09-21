@@ -1063,7 +1063,7 @@ mod table_layout_tests {
             }],
             ..Default::default()
         };
-        let mut d = Document { align: None, no_html_auto_space: false, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
+        let mut d = Document { align: None, no_html_auto_space: false, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
         d.blocks.push(Block::Table(Table {
             col_mm: vec![],
             rows: vec![vec![cell(&"あ".repeat(30)), cell("短い")]],
@@ -1103,7 +1103,7 @@ mod merge_layout_tests {
     fn sheet_of(rows: Vec<Vec<Cellbox>>) -> Sheet {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let d = Document { align: None, no_html_auto_space: false, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
+        let d = Document { align: None, no_html_auto_space: false, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
             font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Table(Table { col_mm: vec![], rows,
         ..Default::default()
@@ -1180,7 +1180,7 @@ mod gridcol_tests {
     fn rules_of(col_mm: Vec<f32>) -> Vec<[f32; 4]> {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let d = Document { align: None, no_html_auto_space: false, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
+        let d = Document { align: None, no_html_auto_space: false, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
             font: None,
             page: None,
             sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
@@ -3523,6 +3523,43 @@ fn nested_task_lists_also_render_as_boxes() {
 /// 模型は前から持っていて、画面も塗っていました。**組む所で落としていた**
 /// ので、紙と PDF に出ていません。註記の帯も見出しの背景も印刷で消えます。
 #[cfg(test)]
+mod document_colour_tests {
+    use super::*;
+
+    /// **文書の既定の字の色は、どのスタイルも色を言わない run に届きます**
+    /// (docx の `w:docDefaults`。ECMA-376 17.3.2.6)。表のセルの中も同じです
+    #[test]
+    fn the_document_default_colour_reaches_runs_without_one() {
+        let mut d = crate::Document::plain("本文");
+        d.color = Some("595959".into());
+        let mut cell = crate::Cellbox::default();
+        cell.paragraphs = crate::Document::plain("セル").paragraphs().cloned().collect();
+        d.blocks.push(crate::Block::Table(crate::Table {
+            rows: vec![vec![cell]],
+            ..Default::default()
+        }));
+        let c = crate::theme::compose(&d, &crate::theme::default_theme());
+        let p0 = c.paragraphs().next().expect("段落");
+        assert_eq!(p0.runs[0].fmt.color.as_deref(), Some("595959"), "本文に既定の色が届かない");
+        let t = c.tables().next().expect("表");
+        assert_eq!(t.rows[0][0].paragraphs[0].runs[0].fmt.color.as_deref(), Some("595959"),
+                   "セルの中に既定の色が届かない");
+    }
+
+    /// run が自分で色を言っていれば、そちらが勝ちます
+    #[test]
+    fn a_run_that_names_its_colour_keeps_it() {
+        let mut d = crate::Document::plain("本文");
+        d.color = Some("595959".into());
+        if let Some(crate::Block::Para(p)) = d.blocks.first_mut() {
+            p.runs[0].fmt.color = Some("C7433F".into());
+        }
+        let c = crate::theme::compose(&d, &crate::theme::default_theme());
+        let p0 = c.paragraphs().next().expect("段落");
+        assert_eq!(p0.runs[0].fmt.color.as_deref(), Some("C7433F"), "run の色が既定に負けた");
+    }
+}
+
 mod shade_tests {
     #[test]
     fn a_paragraph_shade_reaches_the_page() {
