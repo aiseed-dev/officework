@@ -1307,9 +1307,19 @@ impl Render for Writer {
             // 書体・色が行の中で混ざっても、その通りに出る)
             let mut i = 0usize;
             while i < line.cells.len() {
+                // **タブと改行は描きません。** 字の並びは gpui が書体の幅で
+                // 置くので、タブを混ぜるとその幅で後ろが全部ずれます。目次の
+                // 行は「見出し + タブ + 点線 + 頁番号」で、点線が頁番号を
+                // 追い越して紙の外まで伸びていました(2026-09-22)。
+                // 紙の側は 1 字ずつ置くので、ここだけの違いでした
+                if matches!(line.cells[i].ch, '\t' | '\n') {
+                    i += 1;
+                    continue;
+                }
                 let c0 = &line.cells[i];
                 let mut j = i + 1;
                 while j < line.cells.len()
+                    && !matches!(line.cells[j].ch, '\t' | '\n')
                     && line.cells[j].fmt == c0.fmt
                     && line.cells[j].size_pt == c0.size_pt
                     && line.cells[j].font == c0.font
