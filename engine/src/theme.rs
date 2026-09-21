@@ -1658,6 +1658,7 @@ fn hyou_style_wo_ateru(
             let mut shade: Option<String> = None;
             let mut bold: Option<bool> = None;
             let mut iro: Option<String> = None;
+            let mut ookisa: Option<f32> = None;
             let mut pl = crate::doc::StyleParaLook::default();
             if let Some(ts) = ts {
                 let mut tsumi: Vec<&crate::doc::TableCond> = vec![&ts.base];
@@ -1693,6 +1694,9 @@ fn hyou_style_wo_ateru(
                     }
                     if c.color.is_some() {
                         iro = c.color.clone();
+                    }
+                    if c.size_pt.is_some() {
+                        ookisa = c.size_pt;
                     }
                     if c.para.space_after_pt.is_some() {
                         pl.space_after_pt = c.para.space_after_pt;
@@ -1748,6 +1752,29 @@ fn hyou_style_wo_ateru(
                     yose_itta |= spl.align.is_some();
                 }
                 kitei_no_yose(para, yose_itta, doc_yose);
+                // **The table style's own alignment and indent** (its `w:pPr`
+                // and the `w:pPr` of the `w:tblStylePr` band that applies,
+                // ECMA-376 17.7.6). They sit under the paragraph style
+                // (17.7.2), so they reach a paragraph that names none and
+                // whose style names none. The cells were read and thrown
+                // away until 2026-09-21.
+                //
+                // Word's invoice template 0644da1f centres its header row
+                // only through `w:tblStylePr w:type="firstRow"`, and holds
+                // its cell text off the rules with `w:ind w:left="115"
+                // w:right="115"` on the style itself; `w:tblCellMar` is 0 on
+                // all four sides there.
+                if para.align == crate::doc::Align::Left && !para.align_itta {
+                    if let Some(a) = pl.align {
+                        para.align = a;
+                    }
+                }
+                if para.left_twips == 0 && !para.ind_itta {
+                    para.left_twips = pl.left_twips.unwrap_or(0);
+                }
+                if para.right_twips == 0 && !para.ind_itta {
+                    para.right_twips = pl.right_twips.unwrap_or(0);
+                }
                 // 2. 表スタイルの段落の書式、3. 文書の既定。
                 //
                 // **表スタイルが「0」と言うのも指定です。** `.or()` で繋ぐと、
@@ -1784,6 +1811,11 @@ fn hyou_style_wo_ateru(
                     }
                     if r.fmt.color.is_none() {
                         r.fmt.color.clone_from(&iro);
+                    }
+                    // The band's own size reaches a run that names none
+                    // (`w:tblStylePr` / `w:rPr/w:sz`, ECMA-376 17.7.6)
+                    if r.size_pt.is_none() {
+                        r.size_pt = ookisa;
                     }
                 }
             }

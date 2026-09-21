@@ -1898,6 +1898,7 @@ fn table_cond(blk: &str) -> kumihan::TableCond {
         let look = style_look(rpr);
         c.bold = look.bold;
         c.color = look.color;
+        c.size_pt = look.size_pt;
     }
     c
 }

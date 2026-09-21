@@ -824,6 +824,11 @@ pub struct TableCond {
     pub bold: Option<bool>,
     /// 字の色(`w:rPr/w:color`)
     pub color: Option<String>,
+    /// **The size the band gives its text** (`w:rPr/w:sz`, ECMA-376
+    /// 17.3.2.38, in pt here). Word's invoice template 0644da1f writes
+    /// `w:sz w:val="22"` on the `firstRow` band and nothing in the cells,
+    /// and the header row came out at the document's 10pt (2026-09-21).
+    pub size_pt: Option<f32>,
 }
 
 impl TableCond {
