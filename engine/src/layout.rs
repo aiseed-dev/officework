@@ -2774,6 +2774,14 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         };
         // **`hRule="exact"` の行は固定**です(中身が多くても伸びない。Word は切る)
         let kotei = table.row_exact.get(ri_now).copied().unwrap_or(false) && iu > 0.0;
+        // **`w:trHeight` belongs to the row, not to a cell** (ECMA-376
+        // 17.4.80). The loop above reads it through the cells, and a cell
+        // that starts or continues a vertical merge is skipped there, so a
+        // row whose cells all belong to one collapsed to nothing. Rows 1 and
+        // 2 of the first table of Word's booklet template 22568a97 are like
+        // that, `w:trHeight` 754 and 3780 twips, and everything below them
+        // sat 155pt too high (2026-09-21)
+        let takasa = takasa.max(iu);
         row_hs.push(if kotei { iu } else { takasa } + keisen);
         // **高さの指定で決まる行は、頁の境で割らない**(2026-09-09、Word の PDF で
         // 見た)。省力化の事業計画書の「２.」の行(`w:trHeight` 8637 twip、中身は
