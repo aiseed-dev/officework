@@ -1864,7 +1864,12 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                 // The width the rule carries, else the 0.5pt Word draws a
                 // `w:sz="4"` edge with (ECMA-376 17.3.4)
                 w_mm: if r.pt > 0.0 { r.pt * 25.4 / 72.0 } else { 0.2 },
-                rgb: (0.0, 0.0, 0.0),
+                // The colour the border names (`w:color`, ECMA-376 17.4.67);
+                // `auto` is black
+                rgb: match r.rgb {
+                    Some(c) => (c[0] as f32 / 255.0, c[1] as f32 / 255.0, c[2] as f32 / 255.0),
+                    None => (0.0, 0.0, 0.0),
+                },
                 ..Default::default()
             });
         }

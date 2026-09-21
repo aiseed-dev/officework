@@ -977,10 +977,20 @@ impl Render for Writer {
             let (x2, y2) = ((self.pg.left_mm + x2) * pxmm, y2 * pxmm);
             // The width the rule carries, else the 0.5pt of an ordinary edge
             let w = if r.pt > 0.0 { (r.pt * 25.4 / 72.0) * pxmm } else { 1.0 };
+            // The colour the border names; `auto` keeps the screen's grey
+            let iro = match r.rgb {
+                Some(c) => gpui::Rgba {
+                    r: c[0] as f32 / 255.0,
+                    g: c[1] as f32 / 255.0,
+                    b: c[2] as f32 / 255.0,
+                    a: 1.0,
+                },
+                None => gpui::Rgba { r: 0.266, g: 0.294, b: 0.322, a: 1.0 },
+            };
             paper = paper.child(div().absolute()
                 .left(px(x1.min(x2))).top(px(y1.min(y2)))
                 .w(px((x2 - x1).abs().max(w))).h(px((y2 - y1).abs().max(w)))
-                .bg(rgb(0x444B52)));
+                .bg(iro));
         }
 
         // 段落の背景色と囲み枠。行の下地として敷く(文字より下に来るよう先に描く)。

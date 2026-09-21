@@ -1923,12 +1923,15 @@ fn table_cond(blk: &str) -> kumihan::TableCond {
                 _ => 1,
             };
             let pt = sz / 8.0 * (2 * hon - 1) as f32;
+            let iro = Some(attr_of(seg, "w:color"))
+                .filter(|v| v != "auto")
+                .and_then(|v| kumihan::hex3(&v));
             atta = true;
             match set {
-                0 => { b.top = Some(hiku); b.top_pt = if hiku { pt } else { 0.0 }; b.top_lines = hon; }
-                1 => b.left = Some(hiku),
-                2 => { b.bottom = Some(hiku); b.bottom_pt = if hiku { pt } else { 0.0 }; b.bottom_lines = hon; }
-                _ => b.right = Some(hiku),
+                0 => { b.top = Some(hiku); b.top_pt = if hiku { pt } else { 0.0 }; b.top_lines = hon; b.top_rgb = iro; }
+                1 => { b.left = Some(hiku); b.left_rgb = iro; }
+                2 => { b.bottom = Some(hiku); b.bottom_pt = if hiku { pt } else { 0.0 }; b.bottom_lines = hon; b.bottom_rgb = iro; }
+                _ => { b.right = Some(hiku); b.right_rgb = iro; }
             }
         }
         if atta {
@@ -3414,19 +3417,26 @@ pub(super) fn parse_document_rels_num(
                                 _ => 1,
                             };
                             let pt = sz / 8.0 * (2 * hon - 1) as f32;
+                            // The edge's colour (`w:color`, ECMA-376 17.4.67);
+                            // `auto` is black
+                            let iro = attr(&e, "color")
+                                .filter(|v| v != "auto")
+                                .and_then(|v| kumihan::hex3(&v));
                             match n.as_slice() {
                                 b"top" => {
                                     cell_borders.top = Some(hiku);
                                     cell_borders.top_pt = if hiku { pt } else { 0.0 };
                                     cell_borders.top_lines = hon;
+                                    cell_borders.top_rgb = iro;
                                 }
-                                b"left" => cell_borders.left = Some(hiku),
+                                b"left" => { cell_borders.left = Some(hiku); cell_borders.left_rgb = iro; }
                                 b"bottom" => {
                                     cell_borders.bottom = Some(hiku);
                                     cell_borders.bottom_pt = if hiku { pt } else { 0.0 };
                                     cell_borders.bottom_lines = hon;
+                                    cell_borders.bottom_rgb = iro;
                                 }
-                                b"right" => cell_borders.right = Some(hiku),
+                                b"right" => { cell_borders.right = Some(hiku); cell_borders.right_rgb = iro; }
                                 _ => {}
                             }
                         }

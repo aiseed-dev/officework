@@ -944,6 +944,19 @@ pub struct CellBorders {
     /// **How many lines that bottom border is drawn with**, as
     /// [`top_lines`](Self::top_lines)
     pub bottom_lines: u8,
+    /// **The colour of each edge** (`w:color` of `w:tcBorders`, ECMA-376
+    /// 17.4.67). `None` is `auto`, which is drawn black.
+    ///
+    /// Word's service invoice template 449fdde7 draws all 228 of its rules
+    /// in `83B29B`, one `w:tcBorders` at a time, and we drew them black
+    /// (2026-09-21).
+    pub top_rgb: Option<[u8; 3]>,
+    /// The colour of the left edge; see [`top_rgb`](Self::top_rgb)
+    pub left_rgb: Option<[u8; 3]>,
+    /// The colour of the bottom edge; see [`top_rgb`](Self::top_rgb)
+    pub bottom_rgb: Option<[u8; 3]>,
+    /// The colour of the right edge; see [`top_rgb`](Self::top_rgb)
+    pub right_rgb: Option<[u8; 3]>,
 }
 
 /// **既定の縦位置は上揃え。**
@@ -2828,6 +2841,18 @@ pub struct Rule {
     pub at: [f32; 4],
     /// 太さ(pt)。0 は引く側の既定
     pub pt: f32,
+    /// 色。`None` は黒(docx の `w:color="auto"`)
+    pub rgb: Option<[u8; 3]>,
+}
+
+/// **`RRGGBB` を 3 つの数にする。** `auto` と空は `None` です
+pub fn hex3(v: &str) -> Option<[u8; 3]> {
+    let v = v.trim();
+    if v.len() != 6 {
+        return None;
+    }
+    let n = u32::from_str_radix(v, 16).ok()?;
+    Some([(n >> 16) as u8, (n >> 8) as u8, n as u8])
 }
 
 impl Rule {
@@ -2846,7 +2871,7 @@ impl Rule {
         (0..n)
             .map(|i| {
                 let d = mm * 2.0 * i as f32;
-                Rule { at: [self.at[0], self.at[1] + d, self.at[2], self.at[3] + d], pt: hoso }
+                Rule { at: [self.at[0], self.at[1] + d, self.at[2], self.at[3] + d], pt: hoso, rgb: self.rgb }
             })
             .collect()
     }
@@ -2855,7 +2880,7 @@ impl Rule {
 impl Rule {
     /// 太さを言わない線(引く側の既定で引く)
     pub fn new(at: [f32; 4]) -> Self {
-        Self { at, pt: 0.0 }
+        Self { at, pt: 0.0, rgb: None }
     }
 }
 

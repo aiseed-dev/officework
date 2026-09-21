@@ -1741,17 +1741,21 @@ fn hyou_style_wo_ateru(
                     b.top = k.top;
                     b.top_pt = k.top_pt;
                     b.top_lines = k.top_lines;
+                    b.top_rgb = k.top_rgb;
                 }
                 if b.bottom.is_none() {
                     b.bottom = k.bottom;
                     b.bottom_pt = k.bottom_pt;
                     b.bottom_lines = k.bottom_lines;
+                    b.bottom_rgb = k.bottom_rgb;
                 }
                 if b.left.is_none() {
                     b.left = k.left;
+                    b.left_rgb = k.left_rgb;
                 }
                 if b.right.is_none() {
                     b.right = k.right;
+                    b.right_rgb = k.right_rgb;
                 }
             }
             let n = cell.paragraphs.len();

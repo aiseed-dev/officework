@@ -2402,7 +2402,7 @@ fn utsusu(tmp: Sheet, dx: f32, dy: f32, sheet: &mut Sheet) {
         sheet.lines.push(ln);
     }
     for r in tmp.rules {
-        sheet.rules.push(Rule { at: [r.at[0] + dx, r.at[1] + dy, r.at[2] + dx, r.at[3] + dy], pt: r.pt });
+        sheet.rules.push(Rule { at: [r.at[0] + dx, r.at[1] + dy, r.at[2] + dx, r.at[3] + dy], pt: r.pt, rgb: r.rgb });
     }
     for (b, c) in tmp.fills {
         sheet.fills.push(([b[0] + dx, b[1] + dy, b[2], b[3]], c));
@@ -3156,16 +3156,16 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         // 0.5pt an ordinary edge is drawn with. Word's invoice template
         // 0644da1f gives the bottom of its last row `w:sz="18"` (2.25pt)
         // through the `lastRow` band of its table style (2026-09-21)
-        let futosa = |g: usize| -> (f32, u8) {
+        let futosa = |g: usize| -> (f32, u8, Option<[u8; 3]>) {
             let ue = b
                 .checked_sub(1)
                 .and_then(|r| cell_at(r, g))
                 .filter(|c| c.borders.bottom.is_some())
-                .map(|c| (c.borders.bottom_pt, c.borders.bottom_lines));
+                .map(|c| (c.borders.bottom_pt, c.borders.bottom_lines, c.borders.bottom_rgb));
             let shita = cell_at(b, g)
                 .filter(|c| c.borders.top.is_some())
-                .map(|c| (c.borders.top_pt, c.borders.top_lines));
-            ue.or(shita).unwrap_or((0.0, 1))
+                .map(|c| (c.borders.top_pt, c.borders.top_lines, c.borders.top_rgb));
+            ue.or(shita).unwrap_or((0.0, 1, None))
         };
         let mut g = 0usize;
         while g < ncols {
@@ -3174,15 +3174,19 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 continue;
             }
             let start = g;
-            let (pt, hon) = futosa(g);
-            while g < ncols && hiku_at(g) && (futosa(g).0 - pt).abs() < 0.001 {
+            let (pt, hon, rgb) = futosa(g);
+            while g < ncols
+                && hiku_at(g)
+                && (futosa(g).0 - pt).abs() < 0.001
+                && futosa(g).2 == rgb
+            {
                 g += 1;
             }
             // **`double` と `triple` は細い線の並びです**(ECMA-376
             // 17.18.2)。`pt` はその全部が占める幅で、1 本ずつに開きます
             sheet
                 .rules
-                .extend(Rule { at: [xs[start], y, xs[g], y], pt }.hiraku(hon));
+                .extend(Rule { at: [xs[start], y, xs[g], y], pt, rgb }.hiraku(hon));
         }
     }
     // 罫線・縦: 行ごとに、結合後のセルの縁に引く(結合の中には引かない)。
@@ -3194,33 +3198,38 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     for (ri, row) in grid.iter().enumerate() {
         let (top, bottom) = (tops[ri], tops[ri + 1]);
         // (x, what the cells on either side say about this edge)
-        let mut edges: Vec<(f32, Option<bool>)> = Vec::new();
+        let mut edges: Vec<(f32, Option<bool>, Option<[u8; 3]>)> = Vec::new();
         for (gc, span, _) in row {
             let c = cell_at(ri, *gc);
-            edges.push((xs[*gc], c.and_then(|c| c.borders.left)));
-            edges.push((xs[(gc + span).min(ncols)], c.and_then(|c| c.borders.right)));
+            edges.push((xs[*gc], c.and_then(|c| c.borders.left), c.and_then(|c| c.borders.left_rgb)));
+            edges.push((
+                xs[(gc + span).min(ncols)],
+                c.and_then(|c| c.borders.right),
+                c.and_then(|c| c.borders.right_rgb),
+            ));
         }
         if row.is_empty() {
-            edges.push((xs[0], None));
-            edges.push((xs[ncols], None));
+            edges.push((xs[0], None, None));
+            edges.push((xs[ncols], None, None));
         }
         edges.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         // Two cells share an edge: a line is drawn when either of them asks
         // for one (Word draws the more visible of two conflicting borders)
-        let mut merged: Vec<(f32, Option<bool>)> = Vec::new();
-        for (x, say) in edges {
+        let mut merged: Vec<(f32, Option<bool>, Option<[u8; 3]>)> = Vec::new();
+        for (x, say, rgb) in edges {
             match merged.last_mut() {
-                Some((lx, lsay)) if (*lx - x).abs() < 0.01 => {
+                Some((lx, lsay, lrgb)) if (*lx - x).abs() < 0.01 => {
                     *lsay = match (*lsay, say) {
                         (Some(true), _) | (_, Some(true)) => Some(true),
                         (Some(false), _) | (_, Some(false)) => Some(false),
                         _ => None,
                     };
+                    *lrgb = lrgb.or(rgb);
                 }
-                _ => merged.push((x, say)),
+                _ => merged.push((x, say, rgb)),
             }
         }
-        for (x, say) in merged {
+        for (x, say, rgb) in merged {
             // 左端・右端・その間で、引く決まりが違います
             let hiku_hyou = if (x - xs[0]).abs() < 0.01 {
                 table.borders.left
@@ -3230,7 +3239,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 table.borders.inside_v
             };
             if say.unwrap_or(hiku_hyou) {
-                sheet.rules.push(Rule::new([x, top, x, bottom]));
+                sheet.rules.push(Rule { at: [x, top, x, bottom], pt: 0.0, rgb });
             }
         }
     }
