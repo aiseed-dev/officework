@@ -447,14 +447,20 @@ impl ParaBorder {
         ParaBorder { top: true, bottom: true, left: true, right: true, ..Default::default() }
     }
 
-    /// **線が段落に足す高さ(pt)。** 線の上と下の空きと、線の太さです。
-    /// 線を引かない段落は 0 です
+    /// **How much the rules add to the paragraph's height** (pt).
+    ///
+    /// A rule takes its own width plus the space it asks to keep from the
+    /// text (`w:space` of `w:top` / `w:bottom`, ECMA-376 17.3.1.7), and only
+    /// on the side it is drawn. Counting both sides for a paragraph that
+    /// only underlines itself made Word's business plan e22e6b47 put the
+    /// table under its `Heading 1` 8pt too high: the style draws a bottom
+    /// rule with `w:space="8"`, Word leaves 8.5pt under the heading and we
+    /// left 16.5pt (2026-09-22)
     pub fn takasa_pt(&self) -> f32 {
-        if self.bottom || self.between || self.top {
-            self.space_pt * 2.0 + self.w_pt
-        } else {
-            0.0
-        }
+        let hitotsu = self.space_pt + self.w_pt;
+        let ue = if self.top { hitotsu } else { 0.0 };
+        let sita = if self.bottom || self.between { hitotsu } else { 0.0 };
+        ue + sita
     }
 }
 
