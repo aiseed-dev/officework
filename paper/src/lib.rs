@@ -1676,6 +1676,96 @@ pub fn doc_to_pdf<W: Write>(
 /// 総頁は紙と同じ折り方([`paginate_full`])で数えます。画面の
 /// `refresh_hf` と同じ関数([`kumihan::layout_hf`])を同じ物差しで呼ぶので、
 /// 頭と足の位置は画面と紙で同じになります(2026-09-08)。
+/// **Fill in the page a cross reference points at** (`PAGEREF`, ECMA-376
+/// 17.16.5.45).
+///
+/// Word works the field out again every time it prints, which is why the
+/// number stored in the file can differ from the one on Word's page: the
+/// contents of the business plan e22e6b47 holds 1 where Word prints 2
+/// (2026-09-22). The run keeps the bookmark it points at, so the page it
+/// landed on is looked up and written into the run's text.
+///
+/// Returns true when a number changed, so the caller lays the document out
+/// again with the new text.
+fn fill_page_refs(
+    d: &mut kumihan::Document,
+    sheet: &kumihan::Sheet,
+    pn: &Pagination,
+    printed: &[usize],
+) -> bool {
+    // しおりの名前 → その段落の頭のバイト位置(`Line::para0` と同じ数え方)
+    let mut shiori: std::collections::BTreeMap<String, usize> = Default::default();
+    let mut at = 0usize;
+    for b in &d.blocks {
+        let kumihan::Block::Para(p) = b else { continue };
+        for na in &p.bookmarks {
+            shiori.entry(na.clone()).or_insert(at);
+        }
+        at += p.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1;
+    }
+    // 段落の頭のバイト位置 → その段落の最初の行が載る頁(1 から数える)
+    let mut kami: std::collections::BTreeMap<usize, usize> = Default::default();
+    for (i, l) in sheet.lines.iter().enumerate() {
+        if l.para0 == usize::MAX || !l.from_body {
+            continue;
+        }
+        let k = pn.pages.get(i).copied().unwrap_or(1);
+        kami.entry(l.para0).and_modify(|v| *v = (*v).min(k)).or_insert(k);
+    }
+    let mut kawatta = false;
+    for b in d.blocks.iter_mut() {
+        let kumihan::Block::Para(p) = b else { continue };
+        for r in p.runs.iter_mut() {
+            let Some(f) = r.fmt.field.as_ref().filter(|f| f.page) else { continue };
+            let Some(byte0) = shiori.get(&f.name) else { continue };
+            let Some(k) = kami.get(byte0) else { continue };
+            let ban = printed.get(k.saturating_sub(1)).copied().unwrap_or(*k);
+            let moji = ban.to_string();
+            if r.text != moji {
+                r.text = moji;
+                kawatta = true;
+            }
+        }
+    }
+    kawatta
+}
+
+/// **The number each sheet prints** (`w:pgNumType w:start`, ECMA-376
+/// 17.6.12).
+///
+/// A section that names a start begins its numbering there; one that does
+/// not carries on from the section before. The business plan e22e6b47
+/// starts its contents section at 0, and Word prints 1 on the third sheet
+/// where the count says 3 (2026-09-22).
+///
+/// `sect_of` answers which section a page belongs to, counting pages from 0.
+pub fn printed_pages(
+    doc: &kumihan::Document,
+    sect_hfs: &[Option<kumihan::SectionHf>],
+    sect_of: &dyn Fn(usize) -> Option<usize>,
+    total: usize,
+) -> Vec<usize> {
+    let mut out = Vec::with_capacity(total);
+    let mut n: i32 = 1;
+    for idx in 0..total {
+        let si = sect_of(idx);
+        let atama = idx == 0 || sect_of(idx.saturating_sub(1)) != si;
+        let start = si
+            .and_then(|i| sect_hfs.get(i))
+            .and_then(|h| h.as_ref())
+            .and_then(|h| h.page_start)
+            .or(if si.is_none() { doc.page_start } else { None });
+        n = match (atama, start) {
+            (true, Some(v)) => v,
+            (true, None) if idx == 0 => doc.page_start.unwrap_or(1),
+            (true, None) => n + 1,
+            (false, _) => n + 1,
+        };
+        out.push(n.max(0) as usize);
+    }
+    out
+}
+
 pub fn doc_hf_pairs<'a>(
     doc: &'a kumihan::Document,
     font: &'a [u8],
@@ -1708,32 +1798,7 @@ pub fn doc_hf_pairs<'a>(
     // 0. Until 2026-09-19 they took `k` as 0-based, so the first page was
     // never the "first page" of `w:titlePg` and got the default footer,
     // and every section boundary was seen one page late
-    // **The number each sheet prints** (`w:pgNumType w:start`, ECMA-376
-    // 17.6.12). A section that names a start begins its numbering there;
-    // one that does not carries on from the section before. The business
-    // plan e22e6b47 starts its contents section at 0, and Word prints 1 on
-    // the third sheet where the count says 3 (2026-09-22)
-    let printed: Vec<usize> = {
-        let mut out = Vec::with_capacity(total);
-        let mut n: i32 = 1;
-        for idx in 0..total {
-            let si = sect_of(idx);
-            let atama = idx == 0 || sect_of(idx.saturating_sub(1)) != si;
-            let start = si
-                .and_then(|i| sect_hfs.get(i))
-                .and_then(|h| h.as_ref())
-                .and_then(|h| h.page_start)
-                .or(if si.is_none() { doc.page_start } else { None });
-            n = match (atama, start) {
-                (true, Some(v)) => v,
-                (true, None) if idx == 0 => doc.page_start.unwrap_or(1),
-                (true, None) => n + 1,
-                (false, _) => n + 1,
-            };
-            out.push(n.max(0) as usize);
-        }
-        out
-    };
+    let printed: Vec<usize> = printed_pages(doc, &sect_hfs, &sect_of, total);
     Ok(move |k: usize| {
         let idx = k.saturating_sub(1);
         let si = sect_of(idx);
@@ -2088,19 +2153,52 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
     // **行送りはエンジンの1つを見ます**(画面と紙と PDF で同じ)
     let line_mm = kumihan::LINE_MM;
     let y0 = page.top_mm + kumihan::BASE_UP_MM;
-    let mut sheet;
-    if d.vertical {
-        // 縦書き: 行長 = 紙の縦の使い幅で組み、右からの列へ写す
-        let measure = (page.h_mm - page.top_mm - page.bottom_mm - 8.0).max(20.0);
-        sheet = kumihan::layout(d, &m, &kumihan::Frame { measure_mm: measure, line_height_mm: line_mm, y0_mm: y0});
-        if !opts.endless {
-            kumihan::fold_vertical(&mut sheet, &page, y0, line_mm);
+    let kumu = |doc: &kumihan::Document| -> kumihan::Sheet {
+        let mut sheet;
+        if doc.vertical {
+            // 縦書き: 行長 = 紙の縦の使い幅で組み、右からの列へ写す
+            let measure = (page.h_mm - page.top_mm - page.bottom_mm - 8.0).max(20.0);
+            sheet = kumihan::layout(doc, &m, &kumihan::Frame { measure_mm: measure, line_height_mm: line_mm, y0_mm: y0});
+            if !opts.endless {
+                kumihan::fold_vertical(&mut sheet, &page, y0, line_mm);
+            }
+        } else {
+            let measure = opts.measure_mm.unwrap_or_else(|| page.column_measure_mm());
+            sheet = kumihan::layout(doc, &m, &kumihan::Frame { measure_mm: measure, line_height_mm: line_mm, y0_mm: y0});
+            if !opts.endless {
+                kumihan::fold_columns(&mut sheet, &page, y0);
+            }
         }
-    } else {
-        let measure = opts.measure_mm.unwrap_or_else(|| page.column_measure_mm());
-        sheet = kumihan::layout(d, &m, &kumihan::Frame { measure_mm: measure, line_height_mm: line_mm, y0_mm: y0});
-        if !opts.endless {
-            kumihan::fold_columns(&mut sheet, &page, y0);
+        sheet
+    };
+    let mut sheet = kumu(d);
+    // **A cross reference to a page is worked out again here** (`PAGEREF`,
+    // ECMA-376 17.16.5.45), the way Word does when it prints. The contents
+    // of a document is a list of them, and the numbers the file holds are
+    // the ones from whenever it was last printed. Laying the document out
+    // once gives the pages, and the second pass carries the new numbers
+    let page_ref = d.blocks.iter().any(|b| match b {
+        kumihan::Block::Para(p) => p.runs.iter().any(|r| r.fmt.field.as_ref().is_some_and(|f| f.page)),
+        _ => false,
+    });
+    if page_ref && !opts.endless {
+        let pn = paginate_full(&sheet, Paper::from_page(&page));
+        let starts = pn.starts.clone();
+        let sect_ys: Vec<f32> = sheet.sect_pages.iter().map(|(at, _)| *at).collect();
+        let sect_of = move |k: usize| -> Option<usize> {
+            let y = starts.get(k).copied().unwrap_or(f32::NEG_INFINITY);
+            let mut hit = None;
+            for (i, at) in sect_ys.iter().enumerate() {
+                if *at <= y.max(0.0) {
+                    hit = Some(i);
+                }
+            }
+            hit
+        };
+        let printed = printed_pages(d, &sheet.sect_hfs.clone(), &sect_of, pn.offsets.len().max(1));
+        let mut d2 = d.clone();
+        if fill_page_refs(&mut d2, &sheet, &pn, &printed) {
+            sheet = kumu(&d2);
         }
     }
     // **節ごとの用紙にも、その節のヘッダー・フッターの押し下げを掛ける。**

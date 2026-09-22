@@ -615,6 +615,15 @@ pub struct Paragraph {
     pub style_id: Option<String>,
     /// この段落に付いたコメント
     pub comments: Vec<Comment>,
+    /// **This paragraph is the result of a table of contents field**
+    /// (`TOC`, ECMA-376 17.16.5.68). Word works the field out again every
+    /// time it prints and draws the runs it has just built, so the
+    /// character style the stored runs name does not reach the page: the
+    /// entries of the business plan e22e6b47 name `w:rStyle w:val="Hyperlink"`
+    /// (13pt) and Word draws them at the `TOC1` and `TOC2` sizes
+    /// (2026-09-22). The flag is not written back; the runs keep their own
+    /// `w:rStyle`
+    pub toc: bool,
     /// この段落に付いたしおり(docx の bookmarkStart の名前)。
     /// 段落単位で持つ(範囲は段落まるごと — コメントと同じ粒度)
     pub bookmarks: Vec<String>,

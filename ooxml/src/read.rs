@@ -2671,6 +2671,13 @@ pub(super) fn parse_document_rels_num(
     // フィールド(w:fldChar / w:instrText)。PAGE は印、REF は参照の run になる
     let mut in_instr = false;
     let mut in_field = false;
+    // **Inside a `TOC` field's result** (ECMA-376 17.16.5.68). Word works
+    // the field out again when it prints, so the paragraphs in here are
+    // marked and the character style their runs name is left out of the
+    // layout ([`kumihan::Paragraph::toc`]). The entries hold `PAGEREF`
+    // fields of their own, so the nesting depth says which `end` closes it
+    let mut field_depth = 0usize;
+    let mut toc_depth: Option<usize> = None;
     let mut field_hide = false;
     let mut field_instr = String::new();
     let mut field_buf = String::new();
@@ -4108,9 +4115,27 @@ pub(super) fn parse_document_rels_num(
                         }
                     }
                     // fldChar は空要素で来るのが普通の形
-                    b"fldChar" => fldchar(attr(&e, "fldCharType").as_deref(),
-                        &mut in_field, &mut field_hide, &mut field_instr, &mut field_buf,
-                        &mut para, &mut rep, size_pt, &font, &fmt),
+                    b"fldChar" => {
+                        // **A table of contents holds a field per entry**
+                        // (`PAGEREF`), so the depth decides where the `TOC`
+                        // field ends, not the first `end` that comes along
+                        match attr(&e, "fldCharType").as_deref() {
+                            Some("begin") => field_depth += 1,
+                            Some("separate") if field_instr.trim_start().starts_with("TOC") => {
+                                toc_depth = Some(field_depth);
+                            }
+                            Some("end") => {
+                                if toc_depth == Some(field_depth) {
+                                    toc_depth = None;
+                                }
+                                field_depth = field_depth.saturating_sub(1);
+                            }
+                            _ => {}
+                        }
+                        fldchar(attr(&e, "fldCharType").as_deref(),
+                            &mut in_field, &mut field_hide, &mut field_instr, &mut field_buf,
+                            &mut para, &mut rep, size_pt, &font, &fmt);
+                    }
                     b"fldSimple" => {
                         // 空の fldSimple(中身なし)。持てる命令なら印だけ置く
                         let instr = attr(&e, "instr").unwrap_or_default();
@@ -4217,7 +4242,7 @@ pub(super) fn parse_document_rels_num(
                                 tsugi_kaipeji = true;
                             }
                             br_kara = false;
-                            let mut p = Paragraph { align, raw_adoc: None, list_text: list_text.take(), list_fmt: list_fmt.take(),
+                            let mut p = Paragraph { toc: toc_depth.is_some(), align, raw_adoc: None, list_text: list_text.take(), list_fmt: list_fmt.take(),
                                             anchors: std::mem::take(&mut anchors),
                                 sect: para_sect.take(),
                                 images: std::mem::take(&mut images),

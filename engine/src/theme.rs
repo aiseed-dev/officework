@@ -2044,10 +2044,15 @@ fn jibun_wo_ateru(
         // than the `w:t` stored in the field result, so Word updated the
         // `TOC` field before printing and drew runs it had just built,
         // not the runs in document.xml (2026-09-21).
+        // A paragraph that is a table of contents keeps its runs' `w:rStyle`
+        // in the model, but the layout leaves it out: Word rebuilds the
+        // field before it prints and draws runs of its own
+        // ([`crate::doc::Paragraph::toc`])
         let ck = r
             .fmt
             .style_id
             .as_deref()
+            .filter(|_| !para.toc)
             .and_then(|id| jibun.iter().find(|(k, _, _)| k == id))
             .map(|(_, l, _)| l);
         let moji = |f: fn(&crate::doc::StyleLook) -> Option<bool>| ck.and_then(f);
