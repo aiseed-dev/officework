@@ -536,6 +536,44 @@ mod list_tests {
         assert_eq!(ps[1].indent, 2, "言っていない段落はスタイルの字下げ");
     }
 
+    /// **`w:numId w:val="0"` takes the style's numbering away** (ECMA-376
+    /// 17.9.19), and with it the indent the numbering level brings. The
+    /// style's own `w:ind` still counts (numbering sits below the paragraph
+    /// styles, 17.7.2). The balance sheet of the business plan e22e6b47 has
+    /// "Cash" in a `TipTextBullet` paragraph that writes numId 0, and Word
+    /// draws it without the bullet and without the hanging indent
+    /// (2026-09-23).
+    #[test]
+    fn a_paragraph_that_removes_numbering_takes_neither_mark_nor_its_indent() {
+        let mut d = Document::plain("bullet\nno bullet");
+        d.styles.push(StyleInfo {
+            id: "TipTextBullet".into(), name: "Tip Text Bullet".into(), kind: "paragraph".into(),
+            para: StyleParaLook {
+                list: Some(ListKind::Bullet),
+                list_text: Some("\u{2022}".into()),
+                list_left_twips: Some(360),
+                list_first_twips: Some(-360),
+                list_indent: Some(1),
+                right_twips: Some(576),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        for (i, b) in d.blocks.iter_mut().enumerate() {
+            if let Block::Para(p) = b {
+                p.style_id = Some("TipTextBullet".into());
+                p.list_off = i == 1;
+            }
+        }
+        let c = crate::theme::compose(&d, &crate::theme::default_theme());
+        let ps: Vec<&Paragraph> = c.paragraphs().collect();
+        assert_eq!(ps[0].list, ListKind::Bullet, "スタイルの行頭文字が付かない");
+        assert_eq!((ps[0].left_twips, ps[0].first_line_twips), (360, -360), "番号の段の字下げが付かない");
+        assert_eq!(ps[1].list, ListKind::None, "numId 0 の段落に行頭文字が付いた");
+        assert_eq!((ps[1].left_twips, ps[1].first_line_twips), (0, 0), "numId 0 の段落に番号の段の字下げが付いた");
+        assert_eq!(ps[1].right_twips, 576, "スタイル自身の w:ind まで消えた");
+    }
+
     /// **文字グリッド**(`w:docGrid w:type="linesAndChars"`。2026-09-09)。全角の字は
     /// 自然の幅に charSpace の空きを足して送り(字の大きさに関わらず一定。Word の
     /// PDF で測った。10 回目)、半角はそのまま。負の上余白は絶対値で持ち、

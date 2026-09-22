@@ -1860,18 +1860,19 @@ fn style_para(
         // 行間は 240 が1行(docx の決め)。`exact` / `atLeast` は pt で持つ
         line_spacing: gyou.0,
         line_pt: gyou.1,
-        indent: ind(body, "w:left")
-            .or(dan_left)
-            .map(|t| (t / 480.0).round().clamp(0.0, 9.0) as u8),
+        indent: ind(body, "w:left").map(|t| (t / 480.0).round().clamp(0.0, 9.0) as u8),
         // `w:left` is twips (ECMA-376 17.3.1.12); the step count above
         // cannot hold it exactly
-        left_twips: ind(body, "w:left").or(dan_left).map(|t| t as i32),
+        left_twips: ind(body, "w:left").map(|t| t as i32),
         // `w:right` shortens the line (ECMA-376 17.3.1.12)
         right_twips: ind(body, "w:right").map(|t| t as i32),
         first_line_twips: ind(body, "w:firstLine")
             .or_else(|| ind(body, "w:hanging").map(|v| -v))
-            .or(dan_hang)
             .map(|v| v as i32),
+        // The numbering level's indent, apart from the style's own
+        list_left_twips: dan_left.map(|t| t as i32),
+        list_first_twips: dan_hang.map(|v| v as i32),
+        list_indent: dan_left.map(|t| (t / 480.0).round().clamp(0.0, 9.0) as u8),
         // Tab stops (`w:pPr/w:tabs/w:tab w:pos`, ECMA-376 17.3.1.38).
         // Only the stops inside `w:tabs` count; a `w:tab` elsewhere is
         // the tab character itself
@@ -2611,6 +2612,8 @@ pub(super) fn parse_document_rels_num(
     let mut left_twips = 0i32; // w:ind の left。段数と違って丸めない(2026-08-30)
     let mut right_twips = 0i32; // w:ind の right
     let mut list_id: Option<u32> = None; // w:numPr の numId(番号の続き具合を決める)
+    // `w:numId w:val="0"`: the paragraph removes its style's numbering
+    let mut list_off = false;
     let mut list_no_tab = false; // w:lvl の w:suff が space か nothing
     let mut list_color: Option<String> = None; // w:lvl の w:rPr の w:color(印だけの色)
     let mut list_fmt: Option<kumihan::ListNumFmt> = None; // w:numFmt(番号の形)
@@ -2817,6 +2820,7 @@ pub(super) fn parse_document_rels_num(
                               left_twips = 0;
                               right_twips = 0;
                               list_id = None;
+                              list_off = false;
                               list_no_tab = false;
                               list_color = None;
                               line_spacing = 0.0;
@@ -2916,6 +2920,7 @@ pub(super) fn parse_document_rels_num(
                     b"numId" if in_ppr => {
                         let n: Option<u32> = attr(&e, "val").and_then(|v| v.parse().ok());
                         list_id = n.filter(|n| *n > 0);
+                        list_off = n == Some(0);
                         // 段の字下げ(numbering.xml の `w:ind`)を既定として当てる。
                         // 段落自身の `w:ind` は後に来るので、あれば上書きされる
                         if let Some((left, hang, no_tab)) = n.and_then(|n| sagari.get(&(n, ilvl)).copied()) {
@@ -3732,6 +3737,7 @@ pub(super) fn parse_document_rels_num(
                     b"numId" if in_ppr => {
                         let n: Option<u32> = attr(&e, "val").and_then(|v| v.parse().ok());
                         list_id = n.filter(|n| *n > 0);
+                        list_off = n == Some(0);
                         // 段の字下げ(numbering.xml の `w:ind`)を既定として当てる。
                         // 段落自身の `w:ind` は後に来るので、あれば上書きされる
                         if let Some((left, hang, no_tab)) = n.and_then(|n| sagari.get(&(n, ilvl)).copied()) {
@@ -4254,6 +4260,7 @@ pub(super) fn parse_document_rels_num(
                                 left_twips,
                                 right_twips,
                                 list_id: if list == ListKind::None { None } else { list_id },
+                                list_off,
                                 list_no_tab,
                                 list_color: list_color.take(),
                                 first_line_twips: first_line,

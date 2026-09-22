@@ -624,6 +624,14 @@ pub struct Paragraph {
     /// (2026-09-22). The flag is not written back; the runs keep their own
     /// `w:rStyle`
     pub toc: bool,
+    /// **The paragraph takes its style's numbering away** (`w:numPr/w:numId
+    /// w:val="0"`, ECMA-376 17.9.19). 0 names no numbering definition; it
+    /// removes the numbering the style would give, and with it the indent
+    /// that numbering brings. The balance sheet of the business plan
+    /// e22e6b47 writes it on "Cash" inside `TipTextBullet` paragraphs, and
+    /// Word draws that one line without the bullet and without the hanging
+    /// indent (2026-09-23)
+    pub list_off: bool,
     /// この段落に付いたしおり(docx の bookmarkStart の名前)。
     /// 段落単位で持つ(範囲は段落まるごと — コメントと同じ粒度)
     pub bookmarks: Vec<String>,
@@ -1719,6 +1727,9 @@ impl StyleParaLook {
         self.left_twips = self.left_twips.or(oya.left_twips);
         self.right_twips = self.right_twips.or(oya.right_twips);
         self.first_line_twips = self.first_line_twips.or(oya.first_line_twips);
+        self.list_left_twips = self.list_left_twips.or(oya.list_left_twips);
+        self.list_first_twips = self.list_first_twips.or(oya.list_first_twips);
+        self.list_indent = self.list_indent.or(oya.list_indent);
         if self.tab_stops.is_empty() {
             self.tab_stops = oya.tab_stops.clone();
         }
@@ -1765,6 +1776,15 @@ pub struct StyleParaLook {
     /// 44pt under an 11pt face and 48pt under a 12pt one, where Word puts
     /// both at 36pt (2026-09-21, Word's ATS resume template). The exact
     /// value is kept here and wins.
+    /// **The indent the style's numbering level brings** (`w:numPr/w:numId`
+    /// into `w:lvl/w:pPr/w:ind`, ECMA-376 17.9.6), kept apart from the
+    /// style's own `w:ind`. Numbering sits below the paragraph styles in the
+    /// order of ECMA-376 17.7.2, and a paragraph that removes the numbering
+    /// (`w:numId w:val="0"`) does not take it
+    pub list_left_twips: Option<i32>,
+    pub list_first_twips: Option<i32>,
+    /// The same indent as a step count, for [`Self::indent`]
+    pub list_indent: Option<u8>,
     pub left_twips: Option<i32>,
     /// **The style's right indent in twips** (`w:pPr/w:ind w:right`,
     /// ECMA-376 17.3.1.12). It shortens the line the same way the body's
@@ -2924,6 +2944,9 @@ impl Document {
             pl.left_twips = pl.left_twips.or(s.para.left_twips);
             pl.right_twips = pl.right_twips.or(s.para.right_twips);
             pl.first_line_twips = pl.first_line_twips.or(s.para.first_line_twips);
+            pl.list_left_twips = pl.list_left_twips.or(s.para.list_left_twips);
+            pl.list_first_twips = pl.list_first_twips.or(s.para.list_first_twips);
+            pl.list_indent = pl.list_indent.or(s.para.list_indent);
             if pl.tab_stops.is_empty() {
                 pl.tab_stops = s.para.tab_stops.clone();
             }

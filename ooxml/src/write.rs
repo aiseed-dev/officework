@@ -844,6 +844,15 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 id.push_attribute(("w:val", if p.list == ListKind::Number { "2" } else { "1" }));
                 w.write_event(Event::Empty(id)).unwrap();
                 w.write_event(Event::End(BytesEnd::new("w:numPr"))).unwrap();
+            } else if p.list_off {
+                // Keep the removal of the style's numbering (`w:numId
+                // w:val="0"`, ECMA-376 17.9.19); without it the style's
+                // bullet comes back when the file is opened again
+                w.write_event(Event::Start(BS::new("w:numPr"))).unwrap();
+                let mut id = BS::new("w:numId");
+                id.push_attribute(("w:val", "0"));
+                w.write_event(Event::Empty(id)).unwrap();
+                w.write_event(Event::End(BytesEnd::new("w:numPr"))).unwrap();
             }
             if p.indent > 0 || p.left_twips > 0 || p.first_line_twips != 0 {
                 let mut ind = BS::new("w:ind");

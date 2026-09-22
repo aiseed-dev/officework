@@ -1958,20 +1958,24 @@ fn jibun_wo_ateru(
         para.no_grid = true;
     }
     // 段落自身が `w:ind` を言っていれば、スタイルの字下げは当てない(0 も指定)
+    // The numbering level's indent counts only below the style's own
+    // `w:ind` (ECMA-376 17.7.2), and not at all when the paragraph removes
+    // the numbering (`w:numId w:val="0"`, 17.9.19)
+    let dan = !para.list_off;
     if para.indent == 0 && !para.ind_itta {
-        para.indent = pl.indent.unwrap_or(0);
+        para.indent = pl.indent.or(pl.list_indent.filter(|_| dan)).unwrap_or(0);
     }
     // The style's own `w:ind w:left` in twips, which is exact where the
     // step count is not (ECMA-376 17.3.1.12)
     if para.left_twips == 0 && !para.ind_itta {
-        para.left_twips = pl.left_twips.unwrap_or(0);
+        para.left_twips = pl.left_twips.or(pl.list_left_twips.filter(|_| dan)).unwrap_or(0);
     }
     // The style's own `w:ind w:right`, which shortens the line
     if para.right_twips == 0 && !para.ind_itta {
         para.right_twips = pl.right_twips.unwrap_or(0);
     }
     if para.first_line_twips == 0 && !para.ind_itta {
-        para.first_line_twips = pl.first_line_twips.unwrap_or(0);
+        para.first_line_twips = pl.first_line_twips.or(pl.list_first_twips.filter(|_| dan)).unwrap_or(0);
     }
     // The style's tab stops, when the paragraph lists none of its own
     // (ECMA-376 17.3.1.38)
@@ -1993,7 +1997,9 @@ fn jibun_wo_ateru(
     }
     // **スタイルの箇条書き。** `add_paragraph(style="List Bullet")` は
     // 本文に `w:numPr` を書きません。行頭文字も番号もスタイルの側です
-    if let Some(k) = pl.list {
+    // A paragraph that removes the numbering (`w:numId w:val="0"`) takes
+    // none of the style's
+    if let Some(k) = pl.list.filter(|_| !para.list_off) {
         if para.list == crate::doc::ListKind::None {
             para.list = k;
         }
