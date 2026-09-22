@@ -591,6 +591,7 @@ pub(super) fn write_table(w: &mut Writer<Cursor<Vec<u8>>>, t: &kumihan::Table,
             if cell.col_span > 1
                 || cell.v_merge != VMerge::None
                 || cell.valign != book::VAlign::Top
+                || cell.valign_itta
                 || cw > 0.0
                 || naname
                 || kei
@@ -680,9 +681,13 @@ pub(super) fn write_table(w: &mut Writer<Cursor<Vec<u8>>>, t: &kumihan::Table,
                 }
                 // 縦位置。**docx の既定は上揃え**なので、上のときは
                 // 何も書きません(書くと原本と差分が出ます)
+                // A "top" the file stated is written back as well: a table
+                // style's band gives its own vAlign only to a cell that says
+                // none (ECMA-376 17.7.6)
                 if let Some(v) = match cell.valign {
                     book::VAlign::Middle => Some("center"),
                     book::VAlign::Bottom => Some("bottom"),
+                    _ if cell.valign_itta => Some("top"),
                     _ => None,
                 } {
                     let mut e = BS::new("w:vAlign");

@@ -574,6 +574,42 @@ mod list_tests {
         assert_eq!(ps[1].right_twips, 576, "スタイル自身の w:ind まで消えた");
     }
 
+    /// **A table style's band centres the cells that state no `w:vAlign`**
+    /// (ECMA-376 17.7.6, 17.4.84). The `FinancialTable` style of the business
+    /// plan e22e6b47 does this for its header row; a cell that states its
+    /// own alignment keeps it (2026-09-23).
+    #[test]
+    fn a_table_style_band_gives_its_vertical_alignment_to_cells_that_state_none() {
+        let cell = |itta: bool| Cellbox {
+            paragraphs: vec![Paragraph {
+                runs: vec![Run { text: "a".into(), size_pt: None, font: None, fmt: Default::default() }],
+                ..Default::default()
+            }],
+            valign_itta: itta,
+            ..Default::default()
+        };
+        let mut d = Document::plain("");
+        d.blocks = vec![Block::Table(Table {
+            rows: vec![vec![cell(false), cell(true)], vec![cell(false), cell(false)]],
+            style: Some("Fin".into()),
+            look: TblLook { first_row: true, ..Default::default() },
+            ..Default::default()
+        })];
+        d.styles.push(StyleInfo {
+            id: "Fin".into(), name: "Financial Table".into(), kind: "table".into(),
+            table: TableStyleLook {
+                first_row: TableCond { v_align: Some(book::VAlign::Middle), ..Default::default() },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let c = crate::theme::compose(&d, &crate::theme::default_theme());
+        let t = c.tables().next().expect("表が無い");
+        assert_eq!(t.rows[0][0].valign, book::VAlign::Middle, "見出しの行が中央に揃わない");
+        assert_eq!(t.rows[0][1].valign, book::VAlign::Top, "自分で上と言ったセルまで中央にした");
+        assert_eq!(t.rows[1][0].valign, book::VAlign::Top, "見出しでない行まで中央にした");
+    }
+
     /// **文字グリッド**(`w:docGrid w:type="linesAndChars"`。2026-09-09)。全角の字は
     /// 自然の幅に charSpace の空きを足して送り(字の大きさに関わらず一定。Word の
     /// PDF で測った。10 回目)、半角はそのまま。負の上余白は絶対値で持ち、

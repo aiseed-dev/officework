@@ -918,6 +918,10 @@ pub struct Cellbox {
     /// 表計算の既定は下揃えなので、**docx の既定は `Top`** です
     /// (読み書きの所で `None` に畳みます)。
     pub valign: book::VAlign,
+    /// **The cell states its own `w:vAlign`.** A table style's band gives
+    /// its `w:tcPr/w:vAlign` (ECMA-376 17.7.6) only to a cell that does not.
+    /// `valign` alone cannot tell "top" from "not stated"
+    pub valign_itta: bool,
     /// **セルの塗り**(docx の `w:tcPr/w:shd w:fill`、または表スタイルの帯)。
     ///
     /// 前は最初の段落の `shade` を借りていました。表スタイルの帯の色は
@@ -980,6 +984,12 @@ pub struct TableCond {
     /// top and a 2.25pt bottom (`w:sz w:val="18"`) where every other rule of
     /// that table is 0.5pt, and we drew them all the same (2026-09-21).
     pub cell_borders: Option<CellBorders>,
+    /// **Where the band puts the text inside its cells** (`w:tcPr/w:vAlign`,
+    /// ECMA-376 17.4.84). The `FinancialTable` style of the business plan
+    /// e22e6b47 centres its header row this way, and the cells state
+    /// nothing; Word prints the one-line headings in the middle of the
+    /// three-line one beside them (2026-09-23)
+    pub v_align: Option<book::VAlign>,
 }
 
 impl TableCond {
@@ -997,6 +1007,7 @@ impl TableCond {
         self.color = self.color.take().or_else(|| oya.color.clone());
         self.size_pt = self.size_pt.or(oya.size_pt);
         self.cell_borders = self.cell_borders.or(oya.cell_borders);
+        self.v_align = self.v_align.or(oya.v_align);
     }
 }
 
@@ -1156,6 +1167,7 @@ impl Default for Cellbox {
             col_span: 0,
             v_merge: VMerge::None,
             valign: book::VAlign::Top,
+            valign_itta: false,
             shade: None,
             mar_mm: None,
             fit_text: false,

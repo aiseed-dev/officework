@@ -774,7 +774,7 @@ pub(super) struct TblBuild {
 pub(super) struct SavedCell {
     span: u8,
     vmerge: VMerge,
-    valign: book::VAlign,
+    valign: Option<book::VAlign>,
     shade: Option<String>,
     borders: kumihan::CellBorders,
     mar: Option<[f32; 4]>,
@@ -2000,6 +2000,17 @@ fn table_cond(blk: &str) -> kumihan::TableCond {
         c.color = look.color;
         c.size_pt = look.size_pt;
     }
+    // **Where the band puts the text in its cells** (`w:tcPr/w:vAlign`,
+    // ECMA-376 17.4.84)
+    if let Some(k) = blk.find("<w:vAlign ") {
+        let e = blk[k..].find('>').map(|e| k + e).unwrap_or(blk.len());
+        c.v_align = match attr_of(&blk[k..e], "w:val").as_str() {
+            "center" => Some(book::VAlign::Middle),
+            "bottom" => Some(book::VAlign::Bottom),
+            "top" => Some(book::VAlign::Top),
+            _ => None,
+        };
+    }
     // **The rules the band draws** (`w:tcPr/w:tcBorders`, ECMA-376 17.4.67).
     // `w:sz` counts eighths of a point for the line itself, and a `double`
     // takes three of those and a `triple` five, the same as the body side
@@ -2559,7 +2570,9 @@ pub(super) fn parse_document_rels_num(
     let mut cell_span = 0u8;
     let mut cell_vmerge = VMerge::None;
     // セルの縦位置。**docx の既定は上揃え**(表計算の既定の下揃えとは違う)
-    let mut cell_valign = book::VAlign::Top;
+    // `None` until the cell states `w:vAlign`, so a table style's band can
+    // give it one (ECMA-376 17.7.6)
+    let mut cell_valign: Option<book::VAlign> = None;
     // **セルの塗り**(`w:tcPr` の中の `w:shd w:fill`)。段落の塗りとは別です
     let mut cell_shade: Option<String> = None;
     let mut in_tcpr = false;
@@ -2754,7 +2767,7 @@ pub(super) fn parse_document_rels_num(
                             row_grid_after = 0;
                             cell_span = 0;
                             cell_vmerge = VMerge::None;
-                            cell_valign = book::VAlign::Top;
+                            cell_valign = None;
                             cell_shade = None;
                             cell_borders = kumihan::CellBorders::default();
                             cell_mar = None;
@@ -3256,11 +3269,11 @@ pub(super) fn parse_document_rels_num(
                         };
                     },
                     b"vAlign" => if stack.last().is_some() {
-                        cell_valign = match attr(&e, "val").as_deref() {
+                        cell_valign = Some(match attr(&e, "val").as_deref() {
                             Some("center") => book::VAlign::Middle,
                             Some("bottom") => book::VAlign::Bottom,
                             _ => book::VAlign::Top,
-                        };
+                        });
                     },
                     b"trHeight" => if stack.last().is_some() {
                         row_twips = attr(&e, "val").and_then(|v| v.parse().ok());
@@ -4055,11 +4068,11 @@ pub(super) fn parse_document_rels_num(
                         };
                     },
                     b"vAlign" => if stack.last().is_some() {
-                        cell_valign = match attr(&e, "val").as_deref() {
+                        cell_valign = Some(match attr(&e, "val").as_deref() {
                             Some("center") => book::VAlign::Middle,
                             Some("bottom") => book::VAlign::Bottom,
                             _ => book::VAlign::Top,
-                        };
+                        });
                     },
                     b"trHeight" => if stack.last().is_some() {
                         row_twips = attr(&e, "val").and_then(|v| v.parse().ok());
@@ -4349,14 +4362,15 @@ pub(super) fn parse_document_rels_num(
                             borders: cell_borders,
                             col_span: cell_span,
                             v_merge: cell_vmerge,
-                            valign: cell_valign,
+                            valign: cell_valign.unwrap_or(book::VAlign::Top),
+                            valign_itta: cell_valign.is_some(),
                             shade: cell_shade.take(),
                             mar_mm: cell_mar.take(),
                             fit_text: cell_fit,
                         });
                         cell_span = 0;
                         cell_vmerge = VMerge::None;
-                        cell_valign = book::VAlign::Top;
+                        cell_valign = None;
                         cell_borders = kumihan::CellBorders::default();
                         cell_fit = false;
                         cell_tate = false;

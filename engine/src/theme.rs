@@ -1661,6 +1661,7 @@ fn hyou_style_wo_ateru(
             let mut iro: Option<String> = None;
             let mut ookisa: Option<f32> = None;
             let mut kei: Option<crate::doc::CellBorders> = None;
+            let mut tate: Option<book::VAlign> = None;
             let mut pl = crate::doc::StyleParaLook::default();
             if let Some(ts) = ts {
                 let mut tsumi: Vec<&crate::doc::TableCond> = vec![&ts.base];
@@ -1706,6 +1707,9 @@ fn hyou_style_wo_ateru(
                     if c.cell_borders.is_some() {
                         kei = c.cell_borders;
                     }
+                    if c.v_align.is_some() {
+                        tate = c.v_align;
+                    }
                     if c.para.space_after_pt.is_some() {
                         pl.space_after_pt = c.para.space_after_pt;
                     }
@@ -1730,6 +1734,10 @@ fn hyou_style_wo_ateru(
                     let ts2 = naka.style.as_deref().and_then(|id| hyou_style.get(id)).cloned();
                     hyou_style_wo_ateru(naka, ts2.as_ref(), jibun, kitei, doc_after, doc_line, doc_yose, auto_pt, hyou_style);
                 }
+            }
+            // The band's vertical alignment, for a cell that states none
+            if let Some(v) = tate.filter(|_| !cell.valign_itta) {
+                cell.valign = v;
             }
             if cell.shade.is_none() {
                 cell.shade = shade;

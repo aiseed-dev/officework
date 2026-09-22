@@ -78,6 +78,24 @@ mod round {
         assert!(!ps2[1].list_off);
     }
 
+    /// **A cell's own `w:vAlign` is told apart from none**, so a table
+    /// style's band can give its alignment only where the cell is silent,
+    /// and a stated "top" is written back (ECMA-376 17.7.6, 2026-09-23)
+    #[test]
+    fn a_cell_that_states_its_vertical_alignment_keeps_it_through_a_save() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:tbl><w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr><w:p><w:r><w:t>top</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>none</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>"#;
+        let (d, _) = crate::read::parse_document_xml(xml);
+        let t = d.tables().next().expect("表がありません");
+        assert!(t.rows[0][0].valign_itta, "w:vAlign top を読んでいない");
+        assert!(!t.rows[0][1].valign_itta, "w:vAlign の無いセルを言ったことにした");
+        let mut out = Vec::new();
+        crate::write(&d, std::io::Cursor::new(&mut out)).expect("書けない");
+        let (d2, _) = crate::read(std::io::Cursor::new(out)).expect("読み直せない");
+        let t2 = d2.tables().next().expect("表がありません");
+        assert!(t2.rows[0][0].valign_itta, "保存で w:vAlign top が消えた");
+        assert!(!t2.rows[0][1].valign_itta);
+    }
+
     /// **セルの塗りは空要素で書かれる**(`w:tcPr/w:shd`。ECMA-376 17.4.32)。
     /// `w:shd` は属性だけの要素なので、書く側は必ず `<w:shd …/>` の形にします。
     /// 拾う枝が開始要素の走査にしか無く、Word が作ったどの docx でもセルの
