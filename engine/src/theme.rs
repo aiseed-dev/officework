@@ -1657,6 +1657,7 @@ fn hyou_style_wo_ateru(
         for ci in 0..retsu {
             let mut shade: Option<String> = None;
             let mut bold: Option<bool> = None;
+            let mut caps: Option<bool> = None;
             let mut iro: Option<String> = None;
             let mut ookisa: Option<f32> = None;
             let mut kei: Option<crate::doc::CellBorders> = None;
@@ -1692,6 +1693,9 @@ fn hyou_style_wo_ateru(
                     }
                     if c.bold.is_some() {
                         bold = c.bold;
+                    }
+                    if c.caps.is_some() {
+                        caps = c.caps;
                     }
                     if c.color.is_some() {
                         iro = c.color.clone();
@@ -1840,6 +1844,9 @@ fn hyou_style_wo_ateru(
                 for r in &mut para.runs {
                     if bold == Some(true) {
                         r.fmt.bold = true;
+                    }
+                    if caps == Some(true) {
+                        r.fmt.caps = true;
                     }
                     if r.fmt.color.is_none() {
                         r.fmt.color.clone_from(&iro);

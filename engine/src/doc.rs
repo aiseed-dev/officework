@@ -944,6 +944,11 @@ pub struct TableCond {
     pub shade: Option<String>,
     /// 字を太く(`w:rPr/w:b`)
     pub bold: Option<bool>,
+    /// **All capitals** (`w:rPr/w:caps`, ECMA-376 17.3.2.5). Word's business
+    /// plan e22e6b47 gives the `firstRow` band of its `FinancialTable` a
+    /// `w:caps`, and prints the month names of the start-up capital table in
+    /// capitals while the cells hold "Jan." (2026-09-22)
+    pub caps: Option<bool>,
     /// 字の色(`w:rPr/w:color`)
     pub color: Option<String>,
     /// **The size the band gives its text** (`w:rPr/w:sz`, ECMA-376
@@ -971,6 +976,7 @@ impl TableCond {
         self.para.tsugu(&oya.para);
         self.shade = self.shade.take().or_else(|| oya.shade.clone());
         self.bold = self.bold.or(oya.bold);
+        self.caps = self.caps.or(oya.caps);
         self.color = self.color.take().or_else(|| oya.color.clone());
         self.size_pt = self.size_pt.or(oya.size_pt);
         self.cell_borders = self.cell_borders.or(oya.cell_borders);

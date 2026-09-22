@@ -1995,6 +1995,7 @@ fn table_cond(blk: &str) -> kumihan::TableCond {
         let rpr = &blk[k..e];
         let look = style_look(rpr);
         c.bold = look.bold;
+        c.caps = look.caps;
         c.color = look.color;
         c.size_pt = look.size_pt;
     }
