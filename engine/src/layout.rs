@@ -3216,11 +3216,27 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     }
                     sita
                 } else {
-                    crate::font::agari_em(ji.as_deref())
-                        .map(|e| pt * e * PT_TO_MM)
-                        .filter(|v| *v > 0.0 && *v <= plh - mae)
-                        .unwrap_or((plh - mae) * 0.8)
-                        + sage + mae
+                    // **The baseline sits at the font's ascent scaled with
+                    // the line**, the same rule the body follows (see
+                    // [`dip_of`]). A multiple (`w:lineRule="auto"`) scales
+                    // the whole em box, so the ascent keeps its share of the
+                    // line's height. The share is the font's own, and the
+                    // line box here is the paragraph's height less the space
+                    // it keeps above and below. Until 2026-09-22 the cell
+                    // took the plain ascent, so a 1.1 line of Word's
+                    // business plan e22e6b47 sat 0.9pt high
+                    let hako = (plh - mae - ato).max(0.0);
+                    let wari = match (crate::font::agari_em(ji.as_deref()),
+                                      crate::font::okuri_em(ji.as_deref())) {
+                        (Some(a), Some(z)) if z > 0.0 => Some(a / z),
+                        _ => None,
+                    };
+                    let ue = match wari {
+                        Some(w) if hako > 0.0 => hako * w,
+                        // 書体が引けない行は今までどおり箱の 8 割
+                        _ => (plh - mae) * 0.8,
+                    };
+                    ue + sage + mae
                 };
                 let hako_ue = yy;
                 yy += agari;
