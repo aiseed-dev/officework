@@ -205,7 +205,13 @@ impl Writer {
                 let col = self.page.vert_x.get(li).copied().unwrap_or(0.0);
                 Some((col, line.y_mm + x, pt))
             } else {
-                Some((self.pg.left_mm + x, line.y_mm, pt))
+                // The caret stands on the baseline the letters are drawn on,
+                // `y_mm + dip_mm`, the same as the text in `view.rs`. A line
+                // taller than its letters (a heading at 1.25 lines) drops its
+                // letters by `dip_mm`, and the caret stood that much higher
+                // than the word it was in (2.28mm on the e22e6b47 heading,
+                // 2026-09-23)
+                Some((self.pg.left_mm + x, line.y_mm + line.dip_mm, pt))
             };
         }
         hit.unwrap_or((

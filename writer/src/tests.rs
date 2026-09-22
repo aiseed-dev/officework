@@ -2302,6 +2302,41 @@ mod marker_tests {
         });
     }
 
+    /// **カーソルは字を描いた高さに立つ。**
+    ///
+    /// 字より高い行(見出しの 1.25 行や、固定の行の高さ)は、字を
+    /// `dip_mm` だけ下げて描きます。カーソルは下げる前の `y_mm` に立って
+    /// いたので、字より上にずれていました(型紙 e22e6b47 の見出しで
+    /// 2.28mm。2026-09-23 発注者)。
+    #[gpui::test]
+    fn the_caret_stands_on_the_baseline_the_letters_are_drawn_on(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let mut d = kumihan::Document::plain("Heading");
+            if let Some(kumihan::Block::Para(p)) = d.blocks.first_mut() {
+                // 40pt の固定の行。字(10.5pt)は箱の上から 0.8 の所まで下がる
+                p.line_pt = Some((40.0, true));
+            }
+            this.doc = d;
+            this.relayout();
+            this.ed.move_to(3, false);
+            let line = this
+                .page
+                .lines
+                .iter()
+                .find(|l| l.from_body && !l.cells.is_empty())
+                .expect("本文の行が無い")
+                .clone();
+            assert!(line.dip_mm > 0.5, "字が下がっていない(試験の前提が崩れた): {}", line.dip_mm);
+            let (_, cy_mm, _) = this.caret_xy();
+            assert!(
+                (cy_mm - (line.y_mm + line.dip_mm)).abs() < 0.01,
+                "カーソルが {cy_mm} に立ち、字は {} に描かれている",
+                line.y_mm + line.dip_mm
+            );
+        });
+    }
+
     /// **表のセルの中でもカーソルが立つ**(2026-09-21 発注者「カーソルが
     /// 表の中では消えてしまう」)。セルの行が引けないと、カーソルは本文の
     /// 左端へ逃げます。セルの箱の中に立つことを見ます
