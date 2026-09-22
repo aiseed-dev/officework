@@ -1,13 +1,19 @@
-= officework 0.6.0 and aiseed office 0.1.0-alpha.4
+= officework 0.7.0 and aiseed office 0.1.0-alpha.5
 
 日本語: link:RELEASE.ja.adoc[RELEASE.ja.adoc]
 
 To try it: the engine installs with `pip install officework`. The app (aiseed
 office) is on https://github.com/aiseed-dev/officework/releases[GitHub Releases].
 
-This is the engine release after 0.5.0 and the app release after
-0.1.0-alpha.3. It was all one job: **open the docx and xlsx you were sent the
-way Word and Excel open them, and print them onto the same pages.**
+This is the engine release after 0.6.0 and the app release after
+0.1.0-alpha.4. The job is the same one: **open the docx and xlsx you were sent
+the way Word and Excel open them, and print them onto the same pages.**
+
+This time we worked through Word's own templates one document at a time. Open
+one in Word, open it here, put the two printed pages side by side, find the
+first line that differs, look up what the OOXML says about it, and fix the
+rule. Every item below came out of that, and the measurement that found it is
+written next to the code.
 
 The check is one thing too. Open the same file in Word and in officework and
 put the printed pages side by side. We run that every day against 288 public
@@ -19,10 +25,34 @@ https://github.com/aiseed-dev/officework/issues[the GitHub issues].
 
 == A Word document lands on Word's pages
 
-**270 of the 288 public forms now match Word's page count.** The previous
-release matched 243.
+**272 of the 288 public forms match Word's page count.** The previous release
+matched 270.
 
-The fixes you can see:
+What this release found, each of it measured against Word's own PDFs:
+
+* the space after one paragraph and the space before the next do not add up.
+  The larger of the two is the space between them, unless the document holds
+  `w:doNotUseHTMLParagraphAutoSpacing`, and then they do add
+* a line's baseline sits at the font's ascent. A line spacing under 1 scales
+  that ascent down, and what a spacing over 1 adds falls below the text
+* a table is laid out on the width its own section leaves, not the document's
+* a page carries the number its section gives it (`w:pgNumType w:start`), so a
+  contents section that starts at 0 prints 1 on the sheet after it
+* a table row that fits on a page moves to the next page whole. Only a row
+  that cannot fit on a page of its own is broken
+* a paragraph keeps the space it asks for above it when it lands at the top of
+  a page
+* a rule under a paragraph takes its `w:space` on the side it is drawn, not on
+  both
+* a table style can put its text in capitals (`w:caps` in `w:tblStylePr`)
+* a picture standing in the text prints on the page its line went to
+* a row height written as exact stays exact when the file is saved again
+* a heading stays with what follows it, and no single line of a paragraph is
+  left at a page boundary, inside table cells as well
+* a numbered list takes its shape from `w:numFmt`, and carries on across the
+  paragraphs between its items
+
+The older fixes, from 0.6.0:
 
 * a table row grows by the width of the rule above it. The width comes from
   `w:sz`, with a double rule counted three times and a triple rule five times
@@ -76,11 +106,24 @@ The sample report (`sample/事業のご報告.docx`) breaks onto the same two pa
 as Word. Every line is within 0.7pt of Word's, and the two charts sit where
 Word puts them.
 
+== The table of contents is worked out again
+
+Word rebuilds a `TOC` field every time it prints, so the page numbers and the
+look stored in the file are whatever the last print left there. We now do the
+same: the document is laid out once, every `PAGEREF` is answered with the page
+its bookmark landed on, and the document is laid out again. The entries are
+drawn with the `TOC 1` and `TOC 2` styles, because the character style the
+stored runs name is not what Word draws either.
+
+In Word's business plan template the contents used to read 1 where Word prints
+2, in 13pt where Word uses 10pt.
+
 == Word's own templates print too
 
 We collected the templates Word offers under "New" and ran the same
-comparison. **99 of the 113 English templates that have a Word PDF match
-Word's page count.**
+comparison. The business plan `e22e6b47`, which has 20 pages in Word, came out
+at 23 and now comes out at 20, with every page starting on the line Word
+starts it with.
 
 On the nursing resume, all 38 lines of page 1 are within 0.2pt of Word.
 
@@ -136,7 +179,18 @@ nothing, and elapsed-time formats returning `timedelta`.
 0.13 seconds.** Writing the PDF went from 3.68 seconds to 0.18. Font files and
 font metrics are read once and kept.
 
-== The app (aiseed office 0.1.0-alpha.4)
+== The app (aiseed office 0.1.0-alpha.5)
+
+**The screen shows one section at a time.** A Word document is written in
+sections, and a section is where the paper, the header and footer and the page
+numbering change. Tabs along the bottom of the window pick one, the way a
+spreadsheet picks a sheet, and the screen shows that section's pages only.
+Scrolling stays inside it, and the caret takes the screen with it when it
+moves into another section.
+
+A header and a footer are drawn on every page of the screen now, with the part
+that page uses and its own page number. Tabs inside a line are no longer drawn
+as gpui's own tab, so a dot leader stops where the print stops it.
 
 **The editor screen draws what the page draws.** Pictures and shapes are
 placed where the page places them, and the fonts the layout chose are used on
@@ -155,6 +209,11 @@ The ribbon keeps Euro-Office's order and names. Matching Word and Excel on
 reading, writing and printing comes first.
 
 == What is still broken
+
+The room Word keeps for a header that holds nothing is the one we could not
+pin down. Three templates want two empty paragraphs' worth of it and six want
+none, and nothing in the files separates them, so we keep none. The numbers
+are in `engine/src/tests.rs` and in the design note.
 
 Known gaps in the engine:
 
