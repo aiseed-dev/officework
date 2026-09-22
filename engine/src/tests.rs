@@ -488,6 +488,31 @@ mod list_tests {
         assert_eq!(hf_push_mm(&hf, &pg, None, None, 10.5, false, &|_| None), 35.0);
     }
 
+    /// **何も持たないヘッダーは場所を取りません**(2026-09-22 に測って決めた)。
+    ///
+    /// 押すかどうかは Word の PDF で型紙 12 件を測って決めました。取る方に
+    /// したくなる型紙が 3 件あります。本文の頭からヘッダーの距離を引くと、
+    /// `1907b7c8` は 24.0pt、`e93a3c0c` は 45.3pt、`e22e6b47` は 47.4pt
+    /// 空いていて、どれも既定のスタイルの空の段落 2 つぶんです。
+    ///
+    /// **それでも取らないのが正しい**と決めました。空の段落 2 つを取る形を
+    /// 入れて測ると、上の 3 件は 1.1pt 以内に入る代わりに、`0644da1f` が
+    /// 22.8pt、`c7ca83d5` が 26.1pt、`449fdde7` が 36.5pt、`65dc06b1` が
+    /// 64.7pt 下がり、`0644da1f` と `449fdde7` は 1 頁が 2 頁になりました。
+    /// 合う 3 件と合わない 5 件の分かれ目が出ていません
+    /// (docs/sekkei/word-templates.ja.adoc に測った値があります)。
+    ///
+    /// **ここを変えるときは、この試験の数字も測り直してください。**
+    #[test]
+    fn an_empty_header_takes_no_room() {
+        let pg = PageSetup { top_mm: 12.0, header_mm: 18.0, ..Default::default() };
+        let kara = HeadFoot::default();
+        assert_eq!(hf_push_mm(&kara, &pg, None, None, 10.5, false, &|_| None), 12.0,
+            "何も持たないヘッダーが本文を押した");
+        assert_eq!(hf_push_mm(&kara, &pg, None, None, 10.5, true, &|_| None), pg.bottom_mm,
+            "何も持たないフッターが本文を押した");
+    }
+
     /// **段落自身の `w:ind` はスタイルの字下げに負けない**(2026-09-09)。
     /// `w:ind w:leftChars="0"` の箇条書きが List Paragraph の 4 字下げを受けていた
     #[test]
