@@ -493,18 +493,24 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
     // 順で振ると、同じ表の行でも先のセルが前の紙・後のセルが次の紙になり、
     // 罫線は表の行の位置で引くので字だけが次の紙へ動く(2026-09-01 発注者
     // 「罫線が前ページ、内容がこちらのページと別れてしまっている」)
-    // **割らない行**(`w:cantSplit`)の上端と下端。行の頭でこの下端が入るかを見て、
-    // 入らなければ行ごと次の紙へ送る(紙 1 枚に入らない行は今までどおり割る)
+    // **A row that fits on a page goes to the next page whole.** Word only
+    // breaks a row across pages when the row cannot fit on a page of its
+    // own; one that fits and does not reach the bottom margin moves. The
+    // business plan e22e6b47 has a 160pt row under its "Interior" heading
+    // and 156pt left on the page, and Word carries both to the next page
+    // (2026-09-22). A row taller than the page is broken as before, which
+    // is what the large fill-in boxes of the Japanese forms need
+    // (2026-09-09; `w:cantSplit`, ECMA-376 17.4.6, says so outright and is
+    // already in `keep_rows`).
+    //
     // 行の上端と下端は**セルの箱**(`cell_boxes`)で見る。字の行で見ると、指定の
     // 高さで中身より高い行(下に空きのある記入欄)の下端が分からない
     let waku: std::collections::HashMap<(usize, usize), (f32, f32)> = {
         let mut m: std::collections::HashMap<(usize, usize), (f32, f32)> = Default::default();
         for cb in &sheet.cell_boxes {
-            if sheet.keep_rows.contains(&(cb.table, cb.row)) {
-                let e = m.entry((cb.table, cb.row)).or_insert((cb.top_mm, cb.top_mm + cb.h_mm));
-                e.0 = e.0.min(cb.top_mm);
-                e.1 = e.1.max(cb.top_mm + cb.h_mm);
-            }
+            let e = m.entry((cb.table, cb.row)).or_insert((cb.top_mm, cb.top_mm + cb.h_mm));
+            e.0 = e.0.min(cb.top_mm);
+            e.1 = e.1.max(cb.top_mm + cb.h_mm);
         }
         m
     };
