@@ -88,7 +88,13 @@ impl Writer {
                 let body = line.body_cells();
                 let base = body.iter().map(|c| c.off).min().unwrap_or(0);
                 for c in body {
-                    if x_mm < c.x_mm - self.pg.left_mm + c.w_mm / 2.0 {
+                    // **A cell's x is measured from the text area**, the same
+                    // as a body line's: the screen draws it at
+                    // `pg.left_mm + c.x_mm` (`caret_xy`, `text.rs`). Taking
+                    // the margin off it here moved the caret 19mm (54pt on
+                    // this template) to the right of the click, so the text
+                    // inside a table could not be picked (2026-09-23)
+                    if x_mm < c.x_mm + c.w_mm / 2.0 {
                         break;
                     }
                     hit = line.byte0 + (c.off + c.ch.len_utf8()) - base;

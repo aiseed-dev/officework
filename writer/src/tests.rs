@@ -4764,6 +4764,64 @@ mod shape_pick_tests {
         });
     }
 
+    /// **表のセルの字は、押した所に立つ。**
+    ///
+    /// セルの行の `x_mm` は本文の行と同じく、本文の幅の左端からの距離です
+    /// (画面は `pg.left_mm + c.x_mm` に描きます)。当たり判定だけが左余白を
+    /// 引いていたので、カーソルは押した所より 19mm 右に立ちました。
+    /// 型紙 e22e6b47 は本文のほとんどが 2 列の表の中にあり、字を選べません
+    /// (2026-09-23 発注者)。
+    #[gpui::test]
+    fn a_click_inside_a_table_cell_lands_on_the_letter_under_it(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let mut d = kumihan::Document::plain("");
+            let cell = kumihan::Cellbox {
+                paragraphs: vec![kumihan::Paragraph {
+                    runs: vec![kumihan::Run {
+                        text: "abcdefghij".into(),
+                        size_pt: None,
+                        font: None,
+                        fmt: Default::default(),
+                    }],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            };
+            d.blocks = vec![kumihan::Block::Table(kumihan::Table {
+                col_mm: vec![],
+                rows: vec![vec![cell]],
+                ..Default::default()
+            })];
+            this.doc = d;
+            this.relayout();
+            let line = this
+                .page
+                .lines
+                .iter()
+                .find(|l| l.cell.is_some() && !l.cells.is_empty())
+                .expect("セルの行が無い")
+                .clone();
+            let pxmm = crate::PX_PER_MM * this.zoom;
+            // 6 文字目の右寄りを押す(画面が描くのと同じ式で px に直す)
+            let c = line.cells[5].clone();
+            let x = 28.0 + (this.pg.left_mm + c.x_mm + c.w_mm * 0.75) * pxmm;
+            let y = 14.0 + (line.y_mm - this.scroll_mm) * pxmm;
+            this.click_at(x, y, false);
+            assert!(
+                matches!(this.target, Target::Cell { .. }),
+                "セルの編集に移っていない: {:?}",
+                this.target
+            );
+            assert_eq!(
+                this.ed.cursor(),
+                6,
+                "押した字ではなく {} バイト目に立った",
+                this.ed.cursor()
+            );
+        });
+    }
+
     /// **図形の一覧は分類7つ → 形の2段。** 表の画面と同じ並びで、
     /// どの形も Python のスクリプトが名前を知っています。
     #[gpui::test]
