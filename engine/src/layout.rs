@@ -948,19 +948,21 @@ pub(super) fn dip_of(para: &Paragraph, frame: &Frame, base: f32, font: Option<&s
     // 書体にもよりません(2026-09-20)
     let mut oki = match para.line_pt {
         Some((_, true)) => hako * 0.8,
-        // **A multiple (`w:lineRule="auto"`) scales the em box.** The line is
-        // the font's own height times the factor, and the baseline sits at
-        // the font's ascent times the same factor, so the extra of a factor
-        // over 1 is shared above and below the text in the font's own
-        // proportion. Measured in Word's PDFs: the contents of the business
-        // plan e22e6b47 (TOC2, `w:line="216"` = 0.9, 10.08pt Univers) puts
-        // the baseline 8.97pt below the line top, its `Title`
-        // (`w:line="192"` = 0.8, 65pt) 51.4pt, and the cover letter
-        // e93a3c0c (1.0, 24pt Aptos) 22.5pt, which is that font's ascent
-        // (2026-09-22). The old rule took the box height less 0.28 of the
-        // size, which is close for a factor of 1 and 2.3pt out at 1.1
+        // **A multiple (`w:lineRule="auto"`) leaves its extra below the
+        // text, and squeezes the text when it is under 1.** The line is the
+        // font's own height times the factor. The baseline sits at the
+        // font's ascent, and only a factor under 1 scales that ascent down,
+        // so a line taller than the text keeps the text at the top.
+        //
+        // Measured in Word's PDFs of the business plan e22e6b47
+        // (2026-09-22). Its `TOC Heading` is 36pt Univers at 1.1: the line
+        // is 49.07pt and the text's baseline sits 13.41pt above the line's
+        // bottom, which is the font's own descent (9pt) plus the 4.46pt the
+        // factor added. Its `TOC2` is 10.08pt at 0.9 and its cover `Title`
+        // 65pt at 0.8; both put the baseline at the ascent times the factor.
+        // The cover letter e93a3c0c at 1.0 puts it at the plain ascent
         None => match crate::font::agari_em(font) {
-            Some(em) => size_pt * em * para.spacing() * PT_TO_MM,
+            Some(em) => size_pt * em * para.spacing().min(1.0) * PT_TO_MM,
             None => hako - size_pt * 0.28 * PT_TO_MM,
         },
         _ => hako - size_pt * 0.28 * PT_TO_MM,
@@ -3226,9 +3228,15 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                     // took the plain ascent, so a 1.1 line of Word's
                     // business plan e22e6b47 sat 0.9pt high
                     let hako = (plh - mae - ato).max(0.0);
+                    // The share of the line the ascent takes. A line taller
+                    // than the text keeps the text at the top, so the share
+                    // never grows past the font's own (see [`dip_of`])
                     let wari = match (crate::font::agari_em(ji.as_deref()),
                                       crate::font::okuri_em(ji.as_deref())) {
-                        (Some(a), Some(z)) if z > 0.0 => Some(a / z),
+                        (Some(a), Some(z)) if z > 0.0 => {
+                            let sizen = pt * z * PT_TO_MM;
+                            Some(if hako > sizen && sizen > 0.0 { a * pt * PT_TO_MM / hako } else { a / z })
+                        }
                         _ => None,
                     };
                     let ue = match wari {
