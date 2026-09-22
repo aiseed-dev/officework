@@ -1682,6 +1682,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
     // 突き合わせて見つけた — 字が取れるかを見るだけでは分かりません)
     let full = crate::paginate_full(sheet, paper);
     let (pages_of, offsets) = (&full.pages, &full.offsets);
+    let starts = full.starts.clone();
     // **図形が本文より後ろの頁に置かれていれば、その頁まで紙を足します**
     // (2026-09-09)。Word は段落から 600pt 下に置いた箱を次の頁に送り、その頁には
     // 箱しか無い。前は本文の頁数で切っていたので、箱ごと消えていた(岐阜の掲示)
@@ -1996,10 +1997,24 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
     let hairetsu = sheet
         .images
         .iter()
-        .map(|(d, a)| (d, a, 0i32))
-        .chain(sheet.float_images.iter().map(|(d, a, z)| (d, a, *z)));
-    for (data, at, z) in hairetsu {
-        let k = page_of(offsets, at[1], paper.height_mm);
+        .map(|(d, a)| (d, a, 0i32, true))
+        .chain(sheet.float_images.iter().map(|(d, a, z)| (d, a, *z, false)));
+    for (data, at, z, nagare) in hairetsu {
+        // **A picture in the text goes on the page its line went to.**
+        // Pages overlap in the scroll's own measure once a page pulls its
+        // last paragraph down, so picking by the page's origin can put a
+        // picture one page late: the icon beside the last row of page 2 of
+        // Word's business plan e22e6b47 came out at the top of page 3,
+        // above the margin (2026-09-22). A line belongs to the page whose
+        // first line (`starts`) is the last one at or above it, and the
+        // bottom of an inline picture sits on its line's baseline, so the
+        // same lookup puts the two together. A floating picture is placed
+        // by its own anchor and keeps the geometric lookup
+        let k = if nagare {
+            starts.iter().rposition(|s| at[1] + at[3] >= *s - 0.01).unwrap_or(0)
+        } else {
+            page_of(offsets, at[1], paper.height_mm)
+        };
         let off = offsets.get(k).copied().unwrap_or(0.0);
         let pp = paper_of(k);
         // 紙面は上端の y。PDF は左下からなので、高さのぶん下げます
