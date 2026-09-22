@@ -767,7 +767,23 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             offsets.push(atama - next.top_mm - kumihan::BASE_UP_MM - repeat - mae);
             header_h.push(repeat);
             papers.push(next);
-            starts.push(line.y_mm);
+            // **The page starts at the highest thing that moved to it**, not
+            // at the line that ran over. A heading pulled down by
+            // `w:keepNext` (ECMA-376 17.3.1.15) and the top of a table row
+            // that moves whole both sit above that line, and everything that
+            // finds its page by `starts` (the screen's pages, the pictures,
+            // the rules) put them on the page before. The business plan
+            // e22e6b47 drew "Company ownership/legal entity" and the arrow of
+            // the row under it below the footer of the page before
+            // (2026-09-23)
+            let mut kiri = line.y_mm;
+            if let Some((a, _)) = hako {
+                kiri = kiri.min(a);
+            }
+            for &j in &hiku {
+                kiri = kiri.min(sheet.lines[j].y_mm);
+            }
+            starts.push(kiri);
             // 行が次の頁へ動けば、**その行に付いた脚注も一緒に動く**
             notes.push(mine.clone());
             note_h = add;
@@ -1025,6 +1041,58 @@ mod tests {
         assert!(papers.iter().all(|p| p.width_mm == 210.0), "紙が勝手に変わった");
     }
 
+
+    /// **見出しを `w:keepNext` で次の頁へ送ったら、その頁は見出しから
+    /// 始まる。**
+    ///
+    /// 見出しの次が表の行で、行ごと次の頁へ移るとき、見出しも一緒に移ります
+    /// (ECMA-376 17.3.1.15)。頁の切れ目(`starts`)があふれた行のまま
+    /// だと、切れ目で頁を引く画面・絵・罫線は、見出しと行の上の方を前の頁に
+    /// 置きます。型紙 e22e6b47 は「Company ownership/legal entity」と
+    /// ▶ を前の頁のフッターの下に描いていました(2026-09-23)。
+    #[test]
+    fn a_heading_kept_with_the_next_row_starts_the_new_page() {
+        let run = |t: &str| kumihan::Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() };
+        let mut hit = 0;
+        for n in 20..70 {
+            let mut d = kumihan::Document::plain(&vec!["line"; n].join("\n"));
+            d.blocks.push(kumihan::Block::Para(kumihan::Paragraph {
+                runs: vec![run("Heading")],
+                keep_next: true,
+                ..Default::default()
+            }));
+            let cell = kumihan::Cellbox {
+                paragraphs: vec![kumihan::Paragraph { runs: vec![run("row one")], ..Default::default() },
+                                 kumihan::Paragraph { runs: vec![run("row two")], ..Default::default() },
+                                 kumihan::Paragraph { runs: vec![run("row three")], ..Default::default() }],
+                ..Default::default()
+            };
+            d.blocks.push(kumihan::Block::Table(kumihan::Table {
+                col_mm: vec![],
+                rows: vec![vec![cell]],
+                ..Default::default()
+            }));
+            let laid = layout_doc(&d, &DocOpts::default(), &[]).expect("組めない");
+            let pn = paginate_full(&laid.sheet, Paper::from_page(&laid.page));
+            let s = &laid.sheet;
+            let mi = s.lines.iter().position(|l| l.cells.iter().map(|c| c.ch).collect::<String>() == "Heading").unwrap();
+            let ri = s.lines.iter().position(|l| l.cells.iter().map(|c| c.ch).collect::<String>() == "row one").unwrap();
+            // 見出しが行と一緒に次の頁へ送られた回だけを見る
+            if pn.pages[mi] < 2 || pn.pages[mi] != pn.pages[ri] || pn.pages[mi - 1] == pn.pages[mi] {
+                continue;
+            }
+            hit += 1;
+            let k = pn.pages[mi] - 1;
+            assert_eq!(
+                pn.page_at(s.lines[mi].y_mm), k,
+                "{n} 行: 見出しは {} 頁目に割り当てたのに、切れ目 {:?} では前の頁になる",
+                pn.pages[mi], pn.starts
+            );
+            let top = s.cell_boxes.iter().map(|b| b.top_mm).fold(f32::INFINITY, f32::min);
+            assert_eq!(pn.page_at(top), k, "{n} 行: 行の上端が前の頁に残る");
+        }
+        assert!(hit > 0, "見出しが行と一緒に送られる場合を 1 つも作れなかった(試験の前提が崩れた)");
+    }
 
     /// **紙の外へ字が出ないか。** 節で紙が変わるとき、文書の紙(最後の節)で
     /// 裏返すと、向きの違うページで字が紙からはみ出す(縦297と横210で87mmずれる)。
