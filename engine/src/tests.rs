@@ -488,21 +488,19 @@ mod list_tests {
         assert_eq!(hf_push_mm(&hf, &pg, None, None, 10.5, false, &|_| None), 35.0);
     }
 
-    /// **何も持たないヘッダーは場所を取りません**(2026-09-22 に測って決めた)。
+    /// **A header that holds nothing takes no room, and neither does a
+    /// header that is not there.** This is this engine's rule, and it
+    /// differs from Word on purpose (decided 2026-09-23).
     ///
-    /// 押すかどうかは Word の PDF で型紙 12 件を測って決めました。取る方に
-    /// したくなる型紙が 3 件あります。本文の頭からヘッダーの距離を引くと、
-    /// `1907b7c8` は 24.0pt、`e93a3c0c` は 45.3pt、`e22e6b47` は 47.4pt
-    /// 空いていて、どれも既定のスタイルの空の段落 2 つぶんです。
-    ///
-    /// **それでも取らないのが正しい**と決めました。空の段落 2 つを取る形を
-    /// 入れて測ると、上の 3 件は 1.1pt 以内に入る代わりに、`0644da1f` が
-    /// 22.8pt、`c7ca83d5` が 26.1pt、`449fdde7` が 36.5pt、`65dc06b1` が
-    /// 64.7pt 下がり、`0644da1f` と `449fdde7` は 1 頁が 2 頁になりました。
-    /// 合う 3 件と合わない 5 件の分かれ目が出ていません
-    /// (docs/sekkei/word-templates.ja.adoc に測った値があります)。
-    ///
-    /// **ここを変えるときは、この試験の数字も測り直してください。**
+    /// Word starts the body lower than the top margin in some documents
+    /// that have no header part at all: the business plan e22e6b47 by
+    /// 47.4pt below the header distance, the cover letters e93a3c0c and
+    /// 1907b7c8 by 45.3pt and 24.0pt. It does not do so in others
+    /// (c7ca83d5, 65dc06b1, and every one of 16 templates whose top margin
+    /// is not larger than the header distance), and no setting in the files
+    /// tells the two groups apart. The engine starts the body at the top
+    /// margin whenever there is no header to make room for; the measurements
+    /// are in docs/sekkei/word-templates.ja.adoc.
     #[test]
     fn an_empty_header_takes_no_room() {
         let pg = PageSetup { top_mm: 12.0, header_mm: 18.0, ..Default::default() };
@@ -608,6 +606,32 @@ mod list_tests {
         assert_eq!(t.rows[0][0].valign, book::VAlign::Middle, "見出しの行が中央に揃わない");
         assert_eq!(t.rows[0][1].valign, book::VAlign::Top, "自分で上と言ったセルまで中央にした");
         assert_eq!(t.rows[1][0].valign, book::VAlign::Top, "見出しでない行まで中央にした");
+    }
+
+    /// **A slash breaks the way Unicode says, not the way Word does**
+    /// (UAX #14; decided 2026-09-23). A line may break after "/", never
+    /// before it (LB13), and not between digits (LB25). Word keeps the
+    /// business plan's "licenses/permits" whole; this engine breaks it after
+    /// the slash when the line is full.
+    #[test]
+    fn a_slash_lets_the_line_break_after_it_as_unicode_says() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let words = |t: &str| -> Vec<String> {
+            let mut p = Paragraph::default();
+            p.runs.push(Run { text: t.into(), size_pt: Some(10.0), font: None, fmt: Default::default() });
+            tokenize(&p, &m, &mut NoteCount::default(), 10.0, 0.0)
+                .iter()
+                .map(|t| match t {
+                    Tok::Word(cs, ..) => cs.iter().map(|(c, ..)| *c).collect(),
+                    Tok::One(c, ..) | Tok::Space(c, ..) => c.to_string(),
+                })
+                .collect()
+        };
+        assert_eq!(words("licenses/permits"), vec!["licenses/", "permits"], "斜線の後で切れる所が無い");
+        assert_eq!(words("1/2"), vec!["1/2"], "数の間の斜線で切れる");
+        assert_eq!(words("2026/09/23"), vec!["2026/09/23"], "日付の斜線で切れる");
+        assert_eq!(words("http://a"), vec!["http://", "a"], "続いた斜線の間で切れる");
     }
 
     /// **文字グリッド**(`w:docGrid w:type="linesAndChars"`。2026-09-09)。全角の字は

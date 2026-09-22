@@ -269,12 +269,36 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
             }
         };
         let mut word: Vec<(char, f32, usize)> = Vec::new();
-        for moto in run.text.chars() {
+        let mut moji_it = run.text.chars().peekable();
+        while let Some(moto) = moji_it.next() {
             // `w:caps` draws the text in capitals; the model keeps the
             // original case and the byte offsets stay those of the original
             // character (one lower-case letter can become two capitals)
             let ue: Vec<char> = if run.fmt.caps { moto.to_uppercase().collect() } else { vec![moto] };
             let ch = ue[0];
+            // **A slash follows the Unicode line breaking rules** (UAX #14),
+            // not Word. It stays with the word before it, since LB13 allows
+            // no break before it, and a line may break after it:
+            // "licenses/" | "permits". Word keeps "licenses/permits" whole,
+            // and this engine does not copy that (decided 2026-09-23).
+            // Between digits ("1/2", "2026/09/23") there is no break after
+            // it either (LB25), and "//" stays together (LB13 again)
+            if ch == '/' && !word.is_empty() {
+                for c in ue {
+                    word.push((c, okuri(c), off));
+                }
+                off += moto.len_utf8();
+                let kazu = word.iter().all(|(c, ..)| c.is_ascii_digit() || matches!(c, '/' | '.' | ','));
+                let tsuzuku = match moji_it.peek() {
+                    Some('/') => true,
+                    Some(n) => kazu && n.is_ascii_digit(),
+                    None => false,
+                };
+                if !tsuzuku {
+                    out.push(Tok::Word(std::mem::take(&mut word), rpt, run.fmt.clone(), run.font.clone()));
+                }
+                continue;
+            }
             if is_word_char(ch) || (!word.is_empty() && word_ni_tsuku(ch)) {
                 for c in ue {
                     word.push((c, okuri(c), off));
@@ -2211,7 +2235,12 @@ pub fn hf_push_mm(
     style_pt: &dyn Fn(Option<&str>) -> Option<f32>,
 ) -> f32 {
     let yohaku = if footer { pg.bottom_mm } else { pg.top_mm };
-    // 負の余白(固定)は、ヘッダーがあっても押さない
+    // **No header, or an empty one, takes no room.** Word sometimes makes
+    // room for a header a document does not have (47.4pt in the business
+    // plan e22e6b47) and sometimes not, with nothing in the file to tell
+    // which. This engine starts the body at the margin; it is our rule, not
+    // Word's (decided 2026-09-23, see `an_empty_header_takes_no_room`).
+    // A negative (fixed) margin is not pushed by a header either
     if (hf.paragraphs.is_empty() && hf.blocks.is_empty())
         || (if footer { pg.bottom_fixed } else { pg.top_fixed })
     {
