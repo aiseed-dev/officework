@@ -104,3 +104,8 @@ Word のヘルプが使う言葉を選ぶ。
 - エンジンの共有の型(`kumihan::Paragraph` など)を触ったら、
   `cargo check --workspace --all-targets` を1回(20秒)。
   「全部のテストは回さない」とは別の話です
+- ビルド先は `target/` だけを使います。`CARGO_TARGET_DIR` を別の場所に
+  作りません(2026-09-22、target と別の場所の分を合わせて約 490GB になっていた)
+- `flatpak-builder` は `--delete-build-dirs` を付けて実行します。終わったら
+  `packaging/flatpak/.flatpak-builder` と `build-dir` を消します
+  (2026-09-22、約 160GB になっていた)
