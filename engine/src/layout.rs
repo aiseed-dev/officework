@@ -2367,6 +2367,17 @@ pub fn fold_print(
         b.top_mm = shift(b.top_mm);
         b.h_mm = h;
     }
+    // **The fills move with the rest** (cell shading, a table style's
+    // bands, a paragraph's shading). They were left where the unbroken
+    // flow had them, and the pages here are stacked with the paper's full
+    // height and a gap, so every page lower down pulled its fills further
+    // up. The business plan e22e6b47 showed the black and grey rows of its
+    // financial tables behind the text of "Market analysis", pages before
+    // the tables themselves (2026-09-23). The print places them by the
+    // same page lookup as the rules (`pdfw.rs`), and was right
+    for (at, _) in &mut sheet.fills {
+        at[1] = shift(at[1]);
+    }
     for (_, im) in &mut sheet.images {
         let h = im[3];
         im[1] = shift(im[1]);
@@ -2449,6 +2460,12 @@ pub fn fold_pages(
         let (dx, ny) = shift(cb.top_mm);
         cb.x_mm += dx;
         cb.top_mm = ny;
+    }
+    // The fills go with the cell boxes (see `fold_print`)
+    for (at, _) in &mut sheet.fills {
+        let (dx, ny) = shift(at[1]);
+        at[0] += dx;
+        at[1] = ny;
     }
     sheet.breaks.clear();
 }
@@ -2542,6 +2559,12 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
         let k = strip_of(b.top_mm);
         b.top_mm = place(b.top_mm, k);
         b.x_mm += dx(k);
+    }
+    // The fills go with the cell boxes (see `fold_print`)
+    for (at, _) in &mut sheet.fills {
+        let k = strip_of(at[1]);
+        at[1] = place(at[1], k);
+        at[0] += dx(k);
     }
     // 紙に写す側のために、2ページ目からの頭に改ページを置く
     let pages = line_strip.iter().map(|k| k / n + 1).max().unwrap_or(1);

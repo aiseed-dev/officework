@@ -3870,3 +3870,76 @@ mod space_between_tests {
             "重ねる側と足す側の差が「前の空き」6pt にならない: {sa}mm");
     }
 }
+
+/// **A fill goes where its cell goes when the sheet is folded into pages.**
+///
+/// The screen stacks the pages with the paper's full height and a gap
+/// (`fold_print`), shows two side by side (`fold_pages`), and a document in
+/// columns is folded into them (`fold_columns`). Each moved the lines, the
+/// rules and the cell boxes, and none moved `sheet.fills`. The business plan
+/// e22e6b47 showed the black and grey rows of its financial tables behind
+/// the text of "Market analysis", pages before the tables (2026-09-23).
+#[cfg(test)]
+mod fold_fill_tests {
+    use crate::*;
+
+    fn sheet_with_a_shaded_cell(top: f32) -> Sheet {
+        let mut s = Sheet::default();
+        s.cell_boxes.push(CellBox { table: 0, row: 0, col: 0, x_mm: 10.0, top_mm: top, w_mm: 50.0, h_mm: 8.0 });
+        s.fills.push(([10.0, top, 50.0, 8.0], "D1D1D1".into()));
+        s
+    }
+
+    fn follows(s: &Sheet) {
+        let (b, (at, _)) = (&s.cell_boxes[0], &s.fills[0]);
+        assert!(
+            (at[1] - b.top_mm).abs() < 0.01 && (at[0] - b.x_mm).abs() < 0.01,
+            "塗り ({}, {}) がセル ({}, {}) から離れた",
+            at[0], at[1], b.x_mm, b.top_mm
+        );
+    }
+
+    fn two_pages() -> (Vec<f32>, Vec<f32>) {
+        // 2 pages in the flow: the second one starts at 250mm, and the
+        // shaded cell sits on it
+        (vec![0.0, 230.0], vec![f32::NEG_INFINITY, 250.0])
+    }
+
+    #[test]
+    fn a_fill_follows_its_cell_when_the_pages_are_stacked() {
+        let pg = PageSetup::default();
+        let (offsets, starts) = two_pages();
+        let mut s = sheet_with_a_shaded_cell(260.0);
+        fold_print(&mut s, &[pg, pg], &offsets, &starts, 8.0);
+        follows(&s);
+    }
+
+    #[test]
+    fn a_fill_follows_its_cell_when_two_pages_stand_side_by_side() {
+        let pg = PageSetup::default();
+        let (offsets, starts) = two_pages();
+        let mut s = sheet_with_a_shaded_cell(260.0);
+        fold_pages(&mut s, &pg, &offsets, &starts, 2, 8.0);
+        follows(&s);
+    }
+
+    #[test]
+    fn a_fill_follows_its_cell_into_the_second_column() {
+        let mut pg = PageSetup::default();
+        pg.columns = 2;
+        // Enough lines to run past the first column, so the cell lands in
+        // the second one and moves to the right
+        let mut s = sheet_with_a_shaded_cell(330.0);
+        for k in 0..80 {
+            let y = 24.0 + k as f32 * 5.0;
+            s.lines.push(Line {
+                cells: vec![Cell { ch: 'a', x_mm: 0.0, w_mm: 2.0, size_pt: 10.5, off: 0, fmt: Default::default(), font: None }],
+                y_mm: y, from_body: true, x0_mm: 0.0, para0: 0, keep_next: false, widow: false, byte0: 0,
+                cell: None, dip_mm: 0.0, before_mm: 0.0, head: 0,
+            });
+        }
+        fold_columns(&mut s, &pg, 24.0);
+        assert!(s.cell_boxes[0].x_mm > 20.0, "セルが 2 段目へ移っていない(試験の前提が崩れた): {:?}", s.cell_boxes[0]);
+        follows(&s);
+    }
+}
