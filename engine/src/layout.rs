@@ -2675,7 +2675,11 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     if let Some(pct) = table.width_pct {
         let total: f32 = widths.iter().sum();
         if total > 0.5 {
-            let k = (haba * pct / 100.0).min(haba) / total;
+            // No upper limit: `pct` may pass 100% (ECMA-376 17.18.107), as a
+            // `dxa` width may pass the text area. The business plan e22e6b47
+            // states 100.28%, and its grid adds up to the same width
+            // (2026-09-23)
+            let k = (haba * pct / 100.0) / total;
             for w in &mut widths {
                 *w *= k;
             }

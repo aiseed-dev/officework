@@ -1951,6 +1951,39 @@ mod section_layout_tests {
             "表が自分の節の行長に収まっていない: {haba}mm");
     }
 
+    /// **A table as wide as `w:tblW w:type="pct"` says, over 100% too.**
+    ///
+    /// `pct` is in fiftieths of a percent (ECMA-376 17.18.107), and nothing
+    /// limits it to 100%. The business plan e22e6b47 puts its tip text in
+    /// tables of `w:w="5014"` (100.28%) whose grid adds up to the same
+    /// 469.3pt. Held to 100%, the text cell was 1.24pt narrower than Word's,
+    /// and lines broke one word early (2026-09-23).
+    #[test]
+    fn a_table_takes_the_percentage_it_states_even_past_100() {
+        let hyou = |pct: f32| Block::Table(Table {
+            col_mm: vec![10.0, 160.0],
+            width_pct: Some(pct),
+            rows: vec![vec![
+                Cellbox { paragraphs: vec![Paragraph {
+                    runs: vec![Run { text: "a".into(), size_pt: Some(10.5), font: None, fmt: Default::default() }],
+                    line_spacing: 1.0, ..Default::default() }], ..Default::default() },
+                Cellbox { paragraphs: vec![Paragraph {
+                    runs: vec![Run { text: "b".into(), size_pt: Some(10.5), font: None, fmt: Default::default() }],
+                    line_spacing: 1.0, ..Default::default() }], ..Default::default() },
+            ]],
+            ..Default::default()
+        });
+        // 210mm paper with 20mm margins: the text is 170mm wide
+        for (pct, want) in [(100.28f32, 170.0 * 1.0028), (50.0, 85.0)] {
+            let d = Document { page: Some(paper(210.0, 297.0)), blocks: vec![hyou(pct)], ..Default::default() };
+            let s = layout_for_test(&d);
+            let migi = s.cell_boxes.iter().find(|b| b.col == 1).expect("2 列目が無い");
+            let hidari = s.cell_boxes.iter().find(|b| b.col == 0).expect("1 列目が無い");
+            let haba = migi.x_mm + migi.w_mm - hidari.x_mm;
+            assert!((haba - want).abs() < 0.05, "{pct}% の表が {haba}mm になった({want}mm のはず)");
+        }
+    }
+
     #[test]
     fn a_single_section_still_carries_nothing() {
         let d = Document {
