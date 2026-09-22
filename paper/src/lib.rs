@@ -735,19 +735,24 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
                     hiku.extend(kumi);
                 }
             }
-            // **A page that starts at an explicit break keeps the space the
-            // paragraph asks for above it** (`w:spacing w:before`, ECMA-376
-            // 17.3.1.33). Where the page fills up by itself the space falls
-            // away, which is what the line below does by putting the line's
-            // own box at the top margin. Word's business plan e22e6b47
-            // starts its body section with a `Heading 1` whose 8pt before is
-            // there on the page Word prints (2026-09-22)
-            let mae = if forced { line.before_mm } else { 0.0 };
-            let atama = hako.map(|(a, _)| a + kumihan::BASE_UP_MM).unwrap_or(line.y_mm);
-            let atama = hiku
-                .iter()
-                .map(|&j| sheet.lines[j].y_mm)
-                .fold(atama, f32::min);
+            // **A page keeps the space the paragraph at its top asks for**
+            // (`w:spacing w:before`, ECMA-376 17.3.1.33), whether the page
+            // was broken by hand or filled up by itself. Word's business
+            // plan e22e6b47 prints the 8pt above the `Heading 1` that opens
+            // its body section and the 6pt above every `Heading 2` that
+            // opens a page of its own; without them our text sat 8pt and
+            // 6pt high (2026-09-22)
+            let mut atama = hako.map(|(a, _)| a + kumihan::BASE_UP_MM).unwrap_or(line.y_mm);
+            // **The space belongs to the paragraph that starts the page**,
+            // which is the line pulled down to keep a paragraph whole when
+            // there is one, not the line whose overflow broke the page
+            let mut mae = line.before_mm;
+            for &j in &hiku {
+                if sheet.lines[j].y_mm < atama {
+                    atama = sheet.lines[j].y_mm;
+                    mae = sheet.lines[j].before_mm;
+                }
+            }
             // **改ページが続いた分は、白い紙を挟みます。** まとめて1回に
             // すると2枚ぶんが1枚に潰れます
             let tsukaeru = (next.height_mm - next.top_mm - next.bottom_mm).max(1.0);
