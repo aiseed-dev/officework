@@ -657,6 +657,37 @@ pub fn key_hints(n: usize) -> Vec<String> {
 }
 
 
+/// **Add the Command form of every Control shortcut** (macOS).
+///
+/// The key table is written with `ctrl-`, the way Windows and Linux name it,
+/// and gpui reads `ctrl-` as the Control key on a Mac as well. Word and Excel
+/// on a Mac put the same shortcut on Command, so Command+C has to copy. The
+/// Control binding is kept, and the Command one is added beside it; a Command
+/// key the table already names for something else is left alone.
+pub fn add_command_keys(rows: &mut Vec<(String, String)>) {
+    let cmd_of = |k: &str| -> Option<String> {
+        k.contains("ctrl-").then(|| {
+            k.split_whitespace()
+                .map(|part| match part.strip_prefix("ctrl-") {
+                    Some(rest) => format!("cmd-{rest}"),
+                    None => part.to_string(),
+                })
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+    };
+    let taken: std::collections::BTreeSet<String> = rows.iter().map(|(k, _)| k.clone()).collect();
+    let mut soeru: Vec<(String, String)> = Vec::new();
+    for (k, n) in rows.iter() {
+        if let Some(c) = cmd_of(k) {
+            if !taken.contains(&c) && !soeru.iter().any(|(x, _)| *x == c) {
+                soeru.push((c, n.clone()));
+            }
+        }
+    }
+    rows.extend(soeru);
+}
+
 /// 操作名 → 束縛を1本作る。知らない名前は None(呼ぶ側が言う)
 fn make_binding(key: &str, name: &str, context: &'static str) -> Option<KeyBinding> {
     macro_rules! table {
@@ -715,6 +746,14 @@ pub fn bindings_for(app: &str, context: &'static str) -> Vec<KeyBinding> {
         // Swift のアプリはそれぞれの読み手を渡す
         &|part| gpui::Keystroke::parse(part).is_ok(),
     );
+    // **On a Mac the same shortcut sits on Command.** The table is written
+    // with `ctrl-`, which is what Windows and Linux use, and gpui reads
+    // `ctrl-` as the Control key on every platform, so Command+C did
+    // nothing in the app (2026-09-23)
+    let mut rows = rows;
+    if cfg!(target_os = "macos") {
+        add_command_keys(&mut rows);
+    }
     let out = rows
         .iter()
         .filter_map(|(k, n)| make_binding(k, n, context))
@@ -895,6 +934,32 @@ mod svg_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **Command+C copies on a Mac.** The key table names `ctrl-c`, which
+    /// gpui reads as the Control key everywhere, so the app answered no
+    /// Command shortcut at all (2026-09-23). The Control binding stays.
+    #[test]
+    fn a_control_shortcut_gets_a_command_one_beside_it() {
+        let mut rows: Vec<(String, String)> = [
+            ("ctrl-c", "Copy"),
+            ("ctrl-shift-s", "SaveAs"),
+            ("cmd-q", "Quit"),
+            ("ctrl-q", "Cancel"),
+            ("f5", "Recalc"),
+        ]
+        .iter()
+        .map(|(k, n)| (k.to_string(), n.to_string()))
+        .collect();
+        add_command_keys(&mut rows);
+        let has = |k: &str, n: &str| rows.iter().any(|(a, b)| a == k && b == n);
+        assert!(has("ctrl-c", "Copy"), "Control の割り当てが消えた");
+        assert!(has("cmd-c", "Copy"), "Command+C が無い");
+        assert!(has("cmd-shift-s", "SaveAs"), "修飾が2つでも足りていない");
+        // 表が先に名乗った Command の鍵は、そのまま
+        assert!(has("cmd-q", "Quit"), "表の cmd-q が書き換わった");
+        assert!(!has("cmd-q", "Cancel"), "取られている鍵に重ねた");
+        assert_eq!(rows.iter().filter(|(k, _)| k == "f5").count(), 1, "修飾の無い鍵まで増えた");
+    }
 
     /// **3つの OS すべてで関連付けの道具を持つ**(2026-08-24 発注者
     /// 「当然、すべての OS でやる」)。前は xdg-open の決め打ちで、
