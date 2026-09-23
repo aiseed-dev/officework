@@ -597,6 +597,8 @@ pub(super) fn write_table(w: &mut Writer<Cursor<Vec<u8>>>, t: &kumihan::Table,
                 || kei
                 || cell.mar_mm.is_some()
                 || cell.fit_text
+                || cell.shade.is_some()
+                || cell.shade_itta
             {
                 w.write_event(Event::Start(BS::new("w:tcPr"))).unwrap();
                 if cw > 0.0 {
@@ -656,6 +658,19 @@ pub(super) fn write_table(w: &mut Writer<Cursor<Vec<u8>>>, t: &kumihan::Table,
                         }
                     }
                     w.write_event(Event::End(BytesEnd::new("w:tcBorders"))).unwrap();
+                }
+                // **The cell's fill** (`w:shd`, ECMA-376 17.4.33), after
+                // `w:tcBorders` and before `w:tcMar` in the order of 17.4.66.
+                // It was never written, so opening a document and saving it
+                // took the colour out of every table. A cell that states no
+                // fill writes `auto`, which keeps a table style's band off it
+                // (2026-09-23)
+                if cell.shade.is_some() || cell.shade_itta {
+                    let mut e = BS::new("w:shd");
+                    e.push_attribute(("w:val", "clear"));
+                    e.push_attribute(("w:color", "auto"));
+                    e.push_attribute(("w:fill", cell.shade.as_deref().unwrap_or("auto")));
+                    w.write_event(Event::Empty(e)).unwrap();
                 }
                 // **このセルだけの余白**(`w:tcMar`)
                 if let Some(m) = cell.mar_mm {

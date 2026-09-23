@@ -121,6 +121,22 @@ mod round {
         assert!(!t.rows[0][1].shade_itta, "w:shd の無いセルを言ったことにした");
     }
 
+    /// **A cell's fill survives a save**, "no fill" included (`w:tcPr/w:shd`,
+    /// ECMA-376 17.4.33). The writer never wrote it, and opening a document
+    /// and saving it took the colour out of every table (2026-09-23)
+    #[test]
+    fn a_cell_fill_survives_a_save() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:tbl><w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="D1D1D1"/></w:tcPr><w:p><w:r><w:t>a</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="auto"/></w:tcPr><w:p/></w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr><w:p/></w:tc></w:tr></w:tbl></w:body></w:document>"#;
+        let (d, _) = crate::read::parse_document_xml(xml);
+        let mut out = Vec::new();
+        crate::write(&d, std::io::Cursor::new(&mut out)).expect("書けない");
+        let (d2, _) = crate::read(std::io::Cursor::new(out)).expect("読み直せない");
+        let t = d2.tables().next().expect("表がありません");
+        assert_eq!(t.rows[0][0].shade.as_deref(), Some("D1D1D1"), "保存でセルの塗りが消えた");
+        assert!(t.rows[0][1].shade.is_none() && t.rows[0][1].shade_itta, "保存で「塗らない」が消えた");
+        assert!(t.rows[0][2].shade.is_none() && !t.rows[0][2].shade_itta, "言っていないセルに塗りを書いた");
+    }
+
     /// 同じ `w:shd` を閉じ札つきで書いた物も読めます(そう書く道具もあります)
     #[test]
     fn a_cell_takes_the_fill_of_a_shd_with_a_closing_tag() {
