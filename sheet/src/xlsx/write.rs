@@ -1845,6 +1845,11 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 let (ty, text) = match &c.value {
                     Value::Text(t) => ("s", idx[t].to_string()),
                     Value::Number(n) => ("", n.to_string()),
+                    // A moment with a zone keeps its formula (ZONED, TO_ZONE),
+                    // which is what brings the zone back. The value written is
+                    // the clock time in that zone, the local time that
+                    // ECMA-376 18.17.4.1 says serial date-times are
+                    v @ Value::Zoned { .. } => ("", v.local_serial().to_string()),
                     Value::Bool(b) => ("b", (*b as u8).to_string()),
                     // **Excel に無いエラーの字は書かない。** エンジンの `#ERROR!`
                     // (式が読めない)を `<v>` に書くと、Excel は壊れたファイルと

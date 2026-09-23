@@ -95,6 +95,8 @@ enum Out {
     Int(i64),
     Text(String),
     Bool(bool),
+    /// A moment with a zone, as an aware `datetime` in that zone
+    Obj(Py<PyAny>),
 }
 
 fn to_out(v: &Value) -> Option<Out> {
@@ -110,6 +112,16 @@ fn to_out(v: &Value) -> Option<Out> {
         Value::Text(s) => Some(Out::Text(s.clone())),
         Value::Bool(b) => Some(Out::Bool(*b)),
         Value::Error(e) => Some(Out::Text(e.clone())),
+        // A moment with a zone becomes an aware datetime (zoneinfo), so that
+        // Python and Polars see the same moment and zone
+        Value::Zoned { unix, zone, .. } => Python::attach(|py| -> PyResult<Py<PyAny>> {
+            let zi = py.import("zoneinfo")?.getattr("ZoneInfo")?.call1((zone.as_str(),))?;
+            let dt = py.import("datetime")?.getattr("datetime")?.getattr("fromtimestamp")?.call1((*unix, zi))?;
+            Ok(dt.unbind())
+        })
+        .ok()
+        .map(Out::Obj)
+        .or_else(|| Some(Out::Text(v.display()))),
     }
 }
 

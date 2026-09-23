@@ -382,6 +382,7 @@ pub(super) fn matches_cond(v: &Value, cond: &Value) -> bool {
     let cell_num = |v: &Value| -> Option<f64> {
         match v {
             Value::Number(n) => Some(*n),
+            Value::Zoned { serial, .. } => Some(*serial),
             Value::Text(t) => t.trim().parse::<f64>().ok(),
             _ => None,
         }
@@ -389,6 +390,9 @@ pub(super) fn matches_cond(v: &Value, cond: &Value) -> bool {
     match cond {
         Value::Number(n) => {
             cell_num(v).is_some_and(|x| cmp_num(x, *n) == std::cmp::Ordering::Equal)
+        }
+        Value::Zoned { serial, .. } => {
+            cell_num(v).is_some_and(|x| cmp_num(x, *serial) == std::cmp::Ordering::Equal)
         }
         Value::Bool(b) => matches!(v, Value::Bool(x) if x == b),
         Value::Empty => v.display().is_empty(),
@@ -2253,7 +2257,20 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
         }
         _ => {}
     }
-    let a: Vec<Value> = args.iter().flat_map(|g| g.values().iter().cloned()).collect();
+    let mut a: Vec<Value> = args.iter().flat_map(|g| g.values().iter().cloned()).collect();
+    // Functions that read the clock read a moment with a zone in that zone's
+    // clock time (docs/sekkei/time-zone.ja.adoc)
+    if matches!(
+        name,
+        "YEAR" | "MONTH" | "DAY" | "WEEKDAY" | "WEEKNUM" | "ISOWEEKNUM" | "HOUR" | "MINUTE"
+            | "SECOND" | "TEXT" | "INT" | "TRUNC"
+    ) {
+        for v in a.iter_mut() {
+            if matches!(v, Value::Zoned { .. }) {
+                *v = Value::Number(v.local_serial());
+            }
+        }
+    }
     // 引数にエラーがあればそれを返す(黙って0として数えない)。
     // ただしエラーを受けて働く関数(IFERROR・ISERROR・ISBLANK・IF)と、
     // 選ばなかった枝のエラーを踏んではいけない関数(IFS・SWITCH・CHOOSE)は素通しする
@@ -4720,7 +4737,12 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             }
         }
         "PY" => Value::Error("#PY単独".into()), // =PY(…) はセル単独でだけ使える
-        _ => Value::Error("#NAME?".into()),
+        // Not a built-in function: a custom function written in Rust, if one
+        // has that name (built-ins come first and cannot be replaced)
+        _ => match super::custom::find(name) {
+            Some(f) => f(&a, &super::custom::Ctx { date1904 }),
+            None => Value::Error("#NAME?".into()),
+        },
     })
 }
 

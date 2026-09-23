@@ -1337,7 +1337,9 @@ impl Render for Calc {
                 } else {
                     shown
                 };
-                let is_num = matches!(v, Value::Number(_));
+                // A moment with a zone is a date and time: right-aligned like a
+                // number, and never read as markdown (Los_Angeles has a `_`)
+                let is_num = matches!(v, Value::Number(_) | Value::Zoned { .. });
                 let is_err = matches!(v, Value::Error(_));
                 let sel = p == self.cursor;
                 let (ra, rb) = self.sel_rect();
@@ -2983,7 +2985,9 @@ impl Render for Calc {
                     book::VAlign::Bottom => d = d.items_end(),
                     book::VAlign::Distribute => d = d.items_start(),
                 }
-                let is_num = matches!(v, Value::Number(_));
+                // A moment with a zone is a date and time: right-aligned like a
+                // number, and never read as markdown (Los_Angeles has a `_`)
+                let is_num = matches!(v, Value::Number(_) | Value::Zoned { .. });
                 d = match f.align {
                     HAlign::Left => d.justify_start(),
                     HAlign::Center => d.justify_center(),

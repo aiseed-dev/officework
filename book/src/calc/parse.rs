@@ -411,6 +411,9 @@ pub(super) fn arith(v: &Value) -> Result<f64, Value> {
         Value::Empty => Ok(0.0),
         Value::Text(t) => t.trim().parse().map_err(|_| Value::Error("#VALUE!".into())),
         Value::Error(e) => Err(Value::Error(e.clone())),
+        // Arithmetic sees the moment in UTC, so the difference of two moments
+        // is the real time between them
+        Value::Zoned { serial, .. } => Ok(*serial),
     }
 }
 

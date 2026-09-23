@@ -4466,7 +4466,7 @@ mod udf_tests {
         let mut py = Cell::input("=PY(\"f\",A1)");
         py.value = book::Value::Error("#PY?".into());
         sh.set(Pos::parse("B2").unwrap(), py);
-        let (spills, n, c) = apply_py_results(&mut sh, &results, &Default::default());
+        let (spills, n, c) = apply_py_results(&mut sh, &results, &Default::default(), false);
         assert_eq!((n, c), (2, 0));
         // アンカーは式を保ったまま値が入る
         let b2 = sh.get(Pos::parse("B2").unwrap()).unwrap();
@@ -4485,7 +4485,7 @@ mod udf_tests {
         sh.set(Pos::parse("C3").unwrap(), Cell::input("大事なメモ"));
         let raw = "B2\u{1e}1\u{1f}2\u{1e}3\u{1f}4";
         let (spills, n, c) =
-            apply_py_results(&mut sh, &parse_udf_output(raw), &Default::default());
+            apply_py_results(&mut sh, &parse_udf_output(raw), &Default::default(), false);
         assert_eq!((n, c), (0, 1));
         assert_eq!(
             sh.value(Pos::parse("B2").unwrap()),
@@ -4510,7 +4510,7 @@ mod udf_tests {
         prev.insert(Pos::parse("A1").unwrap(), (1u32, 3u32));
         // 今回はスカラー
         let raw = "A1\u{1e}9";
-        let (_, n, c) = apply_py_results(&mut sh, &parse_udf_output(raw), &prev);
+        let (_, n, c) = apply_py_results(&mut sh, &parse_udf_output(raw), &prev, false);
         assert_eq!((n, c), (1, 0));
         assert_eq!(sh.value(Pos::parse("A1").unwrap()), book::Value::Number(9.0));
         assert!(sh.value(Pos::parse("C1").unwrap()).is_empty(), "残骸が残った");
@@ -4565,6 +4565,58 @@ mod udf_tests {
         assert_eq!(results.len(), 2);
         assert_eq!(results[0].1[0][0], "42", "倍(21) が違う: {raw:?}");
         assert_eq!(results[1].1[1][1], "40", "表の2x2が違う");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // A Python function takes a moment with a zone as an aware datetime and
+    // returns one; the cell gets a moment with a zone (2026-09-24)
+    #[test]
+    fn a_python_function_takes_and_returns_moments_with_a_zone() {
+        let py = ["../.venv/bin/python", ".venv/bin/python"]
+            .iter()
+            .map(std::path::PathBuf::from)
+            .find(|p| p.exists());
+        let Some(py) = py else { return };
+        let dir = std::env::temp_dir().join(format!("jo-udf-zone-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let out = dir.join("out.txt");
+        let mods = vec![(
+            "旅".to_string(),
+            "from zoneinfo import ZoneInfo\n\
+             def 現地(t, z):\n    return t.astimezone(ZoneInfo(z))\n\
+             def 時差(t):\n    return t.utcoffset().total_seconds() / 3600\n"
+                .to_string(),
+        )];
+        // 2026-10-01 01:00 UTC = 10:00 in Tokyo
+        let unix = 1_790_816_400.0;
+        let tokyo = book::Value::Zoned { unix, serial: unix / 86400.0 + 25569.0, zone: "Asia/Tokyo".into() };
+        let calls = vec![
+            (
+                "B1".to_string(),
+                "旅".to_string(),
+                "現地".to_string(),
+                vec![
+                    book::calc::PyArg::One(tokyo.clone()),
+                    book::calc::PyArg::One(book::Value::Text("Europe/Paris".into())),
+                ],
+            ),
+            ("B2".to_string(), "旅".to_string(), "時差".to_string(), vec![book::calc::PyArg::One(tokyo)]),
+        ];
+        let script = build_udf_script(&mods, &calls, &out);
+        let py_path = dir.join("t.py");
+        std::fs::write(&py_path, script).unwrap();
+        let o = std::process::Command::new(&py).arg(&py_path).output().unwrap();
+        assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
+        let results = parse_udf_output(&std::fs::read_to_string(&out).unwrap());
+        let mut sh = book::Sheet { name: "旅程".into(), ..Default::default() };
+        for a1 in ["B1", "B2"] {
+            sh.set(Pos::parse(a1).unwrap(), Cell::input("=現地(A1)"));
+        }
+        apply_py_results(&mut sh, &results, &Default::default(), false);
+        let b1 = sh.value(Pos::parse("B1").unwrap());
+        assert_eq!(b1.display(), "2026-10-01 03:00 Europe/Paris", "{results:?}");
+        assert!(matches!(b1, book::Value::Zoned { unix: u, .. } if u == unix), "the moment moved");
+        assert_eq!(sh.value(Pos::parse("B2").unwrap()), book::Value::Number(9.0));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

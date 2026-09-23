@@ -40,6 +40,32 @@ pub fn offset_secs(zone: &str, unix_secs: i64) -> i64 {
     }
 }
 
+/// A moment shown as the clock time in `zone` and the zone's name:
+/// `2026-10-01 10:00 Asia/Tokyo` (seconds are added when there are any).
+pub fn show(unix: f64, zone: &str) -> String {
+    let secs = unix.round() as i64;
+    let Some(utc) = chrono::DateTime::from_timestamp(secs, 0) else { return String::new() };
+    let local = utc.naive_utc() + chrono::Duration::seconds(offset_secs(zone, secs));
+    let fmt = if secs % 60 == 0 { "%Y-%m-%d %H:%M" } else { "%Y-%m-%d %H:%M:%S" };
+    format!("{} {}", local.format(fmt), resolve(zone))
+}
+
+/// **The moment of a clock time in `zone`**, in UTC seconds.
+///
+/// Around daylight saving time a clock time can happen twice (the clock
+/// goes back) or not at all (the clock goes forward). Twice: the earlier
+/// one is taken. Not at all: None. These are Polars'
+/// `replace_time_zone(ambiguous="earliest", non_existent="null")`.
+pub fn moment_of(local: chrono::NaiveDateTime, zone: &str) -> Option<f64> {
+    let tz = resolve(zone).parse::<chrono_tz::Tz>().ok()?;
+    match tz.from_local_datetime(&local) {
+        chrono::LocalResult::Single(t) => Some(t.timestamp() as f64),
+        chrono::LocalResult::Ambiguous(early, _) => Some(early.timestamp() as f64),
+        chrono::LocalResult::None => None,
+    }
+    .map(|s| s + local.and_utc().timestamp_subsec_millis() as f64 / 1000.0)
+}
+
 thread_local! {
     // The zone of the workbook being calculated, set around a recalculation
     // so that NOW() and TODAY() can see it without an extra argument on

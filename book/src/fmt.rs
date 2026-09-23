@@ -76,6 +76,16 @@ pub(super) fn take_brackets(code: &str) -> (String, String, Option<char>, Option
 pub fn format_value(v: &Value, code: Option<&str>, date1904: bool) -> String {
     // 起点(1899-12-30 か、1904 ブックの 1904-01-01)。日付の描きはこれを通す
     let ep = crate::calc::excel_epoch(date1904);
+    // A moment with a zone: a number format is applied to the clock time in
+    // its zone; with General it shows that time and the zone's name
+    if let Value::Zoned { .. } = v {
+        return match code {
+            Some(c) if !c.trim().is_empty() && !c.trim().eq_ignore_ascii_case("general") => {
+                format_value(&Value::Number(v.local_serial()), Some(c), date1904)
+            }
+            _ => v.display(),
+        };
+    }
     let Value::Number(n) = v else { return v.display() };
     let Some(code) = code else { return v.display() };
     // 角かっこを先に読み分ける。**残すと画面にそのまま出る**

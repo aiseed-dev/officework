@@ -20,6 +20,8 @@
 //!
 //! 外から見える名前はここに集めてある。呼ぶ側は `kumihan::calc::…` のまま。
 
+/// Custom functions written in Rust (what VBA's Function is to Excel)
+pub mod custom;
 mod df;
 pub mod funcs;
 mod parse;

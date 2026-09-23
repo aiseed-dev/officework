@@ -1357,7 +1357,7 @@ fn draw_sheet(
                 | HAlign::Justify
                 | HAlign::CenterContinuous
                 | HAlign::Distribute => false,
-                HAlign::General => matches!(cell.value, Value::Number(_)),
+                HAlign::General => matches!(cell.value, Value::Number(_) | Value::Zoned { .. }),
             };
             // **セルが言う大きさで描きます**(2026-08-31 発注者)。前は
             // 9.5pt の決め打ちで、6pt に設定した英文が大きく出ていました

@@ -67,6 +67,16 @@ pub enum Value {
     Bool(bool),
     /// #DIV/0! のようなエラー。文字列で持つ(表計算の作法)
     Error(String),
+    /// **A moment with the time zone it is shown in** (2026-09-24,
+    /// docs/sekkei/time-zone.ja.adoc). Only formulas make it (`ZONED`,
+    /// `TO_ZONE`), so it is kept by keeping the formula, in xlsx and adoc.
+    ///
+    /// `unix` is the moment in UTC seconds. `serial` is the same moment as a
+    /// serial date-time counted in UTC in the workbook's date system: it is
+    /// what arithmetic sees, so that subtracting two moments gives the real
+    /// time between them. `zone` is an IANA name; the value is shown, and
+    /// `HOUR()` and the like answer, in that zone's clock time.
+    Zoned { unix: f64, serial: f64, zone: String },
 }
 
 impl Value {
@@ -76,7 +86,18 @@ impl Value {
             Value::Bool(b) => *b as i32 as f64,
             // 表計算の慣習: 文字列は数値として0。ただし数字だけの文字列は読む
             Value::Text(s) => s.trim().parse().unwrap_or(0.0),
+            Value::Zoned { serial, .. } => *serial,
             _ => 0.0,
+        }
+    }
+    /// The serial date-time of the clock time this value shows: for a moment
+    /// with a zone, the time in that zone; for anything else, the number.
+    pub fn local_serial(&self) -> f64 {
+        match self {
+            Value::Zoned { unix, serial, zone } => {
+                serial + crate::tz::offset_secs(zone, unix.floor() as i64) as f64 / 86400.0
+            }
+            v => v.as_number(),
         }
     }
     pub fn display(&self) -> String {
@@ -90,6 +111,9 @@ impl Value {
             Value::Text(s) => s.clone(),
             Value::Bool(b) => if *b { "TRUE" } else { "FALSE" }.into(),
             Value::Error(e) => e.clone(),
+            // The clock time in its zone and the zone's name, to the minute
+            // (seconds when there are any)
+            Value::Zoned { unix, zone, .. } => crate::tz::show(*unix, zone),
         }
     }
     pub fn is_empty(&self) -> bool {

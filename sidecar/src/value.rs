@@ -193,6 +193,9 @@ pub(crate) fn cell_value(sh: &Sheet, p: Pos) -> Value {
         book::Value::Bool(b) => json!(b),
         // **誤りは文字として返す。** 向こうの CellValue に誤りの型が無い
         book::Value::Error(e) => json!(e),
+        // The other side has no moment-with-zone type: it gets the clock time
+        // in the value's zone as a serial date-time, as xlsx does
+        v @ book::Value::Zoned { .. } => json!(v.local_serial()),
     }
 }
 

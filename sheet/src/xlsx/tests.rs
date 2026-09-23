@@ -295,6 +295,30 @@ mod colwidth_round {
     }
 
     #[test]
+    fn a_moment_with_a_zone_is_saved_as_its_formula_and_clock_time() {
+        let mut s = Sheet { name: "旅程".into(), ..Default::default() };
+        s.set(book::Pos::parse("A1").unwrap(),
+              book::Cell::input(r#"=ZONED("2026-10-01 04:30", "America/Los_Angeles")"#));
+        let mut b = Book { sheets: vec![s], ..Default::default() };
+        book::calc::recalc_all(&mut b);
+        let mut buf = Vec::new();
+        crate::xlsx::write(&b, std::io::Cursor::new(&mut buf)).unwrap();
+        // the cell's <v> is the clock time in LA (what Excel shows)
+        let mut z = zip::ZipArchive::new(std::io::Cursor::new(&buf)).unwrap();
+        let mut xml = String::new();
+        std::io::Read::read_to_string(&mut z.by_name("xl/worksheets/sheet1.xml").unwrap(), &mut xml).unwrap();
+        let v: f64 = xml.split("<v>").nth(1).and_then(|t| t.split("</v>").next()).unwrap().parse().unwrap();
+        assert!((v - (46296.0 + 4.5 / 24.0)).abs() < 1e-9, "<v> is {v}:\n{xml}");
+        // reading it back brings the zone back from the formula
+        // (the reader returns the saved values; whoever opens the file
+        // recalculates, as calc and Python do)
+        let (mut back, _) = crate::xlsx::read(std::io::Cursor::new(&buf)).unwrap();
+        book::calc::recalc_all(&mut back);
+        assert_eq!(back.sheets[0].value(book::Pos::parse("A1").unwrap()).display(),
+                   "2026-10-01 04:30 America/Los_Angeles");
+    }
+
+    #[test]
     fn the_time_zone_option_sets_the_workbook_zone() {
         let mut buf = Vec::new();
         crate::xlsx::write(&Book::new(), std::io::Cursor::new(&mut buf)).unwrap();

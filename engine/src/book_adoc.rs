@@ -698,6 +698,19 @@ Type", "改行が戻らない");
     /// **式の中の縦棒も往復する。** 式は字のまま書く決めですが、`|` だけは
     /// 逃がします(セルの切れ目なので)。読む側で戻さないと、逆斜線が式に残ります
     #[test]
+    fn a_moment_with_a_zone_round_trips() {
+        let mut s = Sheet::new("旅程");
+        s.set(Pos::parse("A1").unwrap(), Cell::input(r#"=ZONED("2026-10-01 10:00", "Asia/Tokyo")"#));
+        s.set(Pos::parse("A2").unwrap(), Cell::input(r#"=TO_ZONE(A1, "Europe/Paris")"#));
+        let mut from = Book::new();
+        from.sheets = vec![s];
+        recalc_all(&mut from);
+        let (back, _) = parse(&write(&from)).expect("cannot read");
+        assert_eq!(value(&back, 0, "A1"), "2026-10-01 10:00 Asia/Tokyo");
+        assert_eq!(value(&back, 0, "A2"), "2026-10-01 03:00 Europe/Paris");
+    }
+
+    #[test]
     fn a_bar_inside_a_formula_round_trips() {
         let mut b = Book::new();
         b.sheets.clear();

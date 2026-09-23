@@ -17,6 +17,8 @@ pub(crate) fn py_literal(v: &book::Value) -> String {
         book::Value::Number(n) => format!("{n}"),
         book::Value::Bool(b) => (if *b { "True" } else { "False" }).into(),
         book::Value::Empty => "none".into(),
+        // A moment with a zone arrives as an aware datetime in that zone
+        book::Value::Zoned { unix, zone, .. } => format!("_jo_dt({unix}, {zone:?})"),
         v => format!("{:?}", v.display()), // Rust の {:?} は Python でも読める逃がし
     }
 }
@@ -79,6 +81,17 @@ pub(crate) fn build_udf_script(
             "    if f is None:\n",
             "        raise NameError(module + '.py に ' + fname + ' がありません')\n",
             "    return f\n",
+            "import datetime as _jo_datetime\n",
+            "def _jo_dt(unix, zone):\n",
+            "    from zoneinfo import ZoneInfo\n",
+            "    return _jo_datetime.datetime.fromtimestamp(unix, ZoneInfo(zone))\n",
+            "def _jo_cell(v):\n",
+            "    # An aware datetime goes back as its moment and zone (RFC 9557),\n",
+            "    # after a mark, so that the cell gets a moment with a zone\n",
+            "    if isinstance(v, _jo_datetime.datetime) and v.tzinfo is not None:\n",
+            "        key = getattr(v.tzinfo, 'key', None) or 'UTC'\n",
+            "        return '\\x1d' + repr(v.timestamp()) + '[' + key + ']'\n",
+            "    return '' if v is None else str(v)\n",
             "{defs}\n",
             "_jo_out = []\n",
             "def _jo_emit(cell, r):\n",
@@ -86,7 +99,7 @@ pub(crate) fn build_udf_script(
             "        r = [[r]]\n",
             "    elif r and not isinstance(r[0], (list, tuple)):\n",
             "        r = [[v] for v in r]  # 1次元は縦に広げる\n",
-            "    rows = ['\\x1f'.join('' if v is None else str(v) for v in row) for row in r]\n",
+            "    rows = ['\\x1f'.join(_jo_cell(v) for v in row) for row in r]\n",
             "    _jo_out.append(cell + '\\x1e' + '\\x1e'.join(rows))\n",
             "{body}\n",
             "open({out:?}, 'w', encoding='utf-8').write('\\x1c'.join(_jo_out))\n"
@@ -95,6 +108,18 @@ pub(crate) fn build_udf_script(
         body = body,
         out = out_path.to_string_lossy()
     )
+}
+
+/// An aware datetime a Python function returned (`\x1d<unix>[<zone>]`, see
+/// `_jo_cell` in the script) as a moment with a zone. A zone Python knows
+/// but chrono-tz does not is shown in UTC.
+pub(crate) fn zoned_from_python(text: &str, date1904: bool) -> Option<book::Value> {
+    let rest = text.strip_prefix('\u{1d}')?;
+    let (unix, zone) = rest.strip_suffix(']')?.split_once('[')?;
+    let unix: f64 = unix.parse().ok()?;
+    let zone = if book::tz::is_zone(zone) { zone.to_string() } else { "UTC".to_string() };
+    let ep = book::calc::excel_epoch(date1904) as f64;
+    Some(book::Value::Zoned { unix, serial: unix / 86400.0 + ep, zone })
 }
 
 /// 台本の出力を (セル, 行×欄の文字) に戻す。
@@ -118,6 +143,7 @@ pub(crate) fn apply_py_results(
     sh: &mut book::Sheet,
     results: &[(Pos, Vec<Vec<String>>)],
     prev: &std::collections::HashMap<Pos, (u32, u32)>,
+    date1904: bool,
 ) -> (std::collections::HashMap<Pos, (u32, u32)>, usize, usize) {
     // 前回のスピル面(アンカー以外)をまず消す(小さくなったとき古い値を残さない)
     for (anchor, (rows, cols)) in prev {
@@ -162,6 +188,8 @@ pub(crate) fn apply_py_results(
             let formula = sh.get(p).and_then(|c| c.formula.clone());
             let value = if text.is_empty() {
                 book::Value::Empty
+            } else if let Some(v) = zoned_from_python(text, date1904) {
+                v
             } else if let Ok(n) = text.parse::<f64>() {
                 book::Value::Number(n)
             } else {
@@ -1439,7 +1467,7 @@ impl Calc {
                                 .map(|((_, p), d)| (*p, *d))
                                 .collect();
                             let (spills, n, c) =
-                                apply_py_results(&mut this.book.sheets[i], &results, &prev);
+                                apply_py_results(&mut this.book.sheets[i], &results, &prev, this.book.date1904);
                             this.py_spills.retain(|(si, _), _| *si != i);
                             for (p, d) in spills {
                                 this.py_spills.insert((i, p), d);

@@ -515,7 +515,7 @@ pub(super) fn cmp_value(a: &Option<Value>, b: &Option<Value>) -> std::cmp::Order
     let rank = |v: &Option<Value>| match v {
         None => 3,
         Some(Value::Empty) => 3,
-        Some(Value::Number(_)) => 0,
+        Some(Value::Number(_)) | Some(Value::Zoned { .. }) => 0,
         Some(Value::Bool(_)) => 1,
         Some(Value::Text(_)) => 2,
         Some(Value::Error(_)) => 4,

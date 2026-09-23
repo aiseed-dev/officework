@@ -27,6 +27,9 @@ fn py_cell(c: Option<&book::Cell>) -> String {
         // 誤りの値は**字として**入れる(=DIV/0! を書き戻すと式になってしまう)
         book::Value::Error(e) => format!("{e:?}"),
         book::Value::Text(s) => format!("{s:?}"),
+        // Only formulas make moments with a zone, so this is not reached; the
+        // shown text is the safe fallback
+        v @ book::Value::Zoned { .. } => format!("{:?}", v.display()),
     }
 }
 
