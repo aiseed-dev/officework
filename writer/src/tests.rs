@@ -4934,6 +4934,24 @@ mod shape_pick_tests {
         });
     }
 
+    /// **Letters set closer or wider by the file are drawn one by one** at
+    /// the x the layout gave them (`w:spacing`, `w:w`). `Heading 1` of the
+    /// business plan e22e6b47 sets its letters 1pt closer, and the screen
+    /// drew them as one string at the face's own widths, 17pt wider than
+    /// the layout and than the selection (2026-09-23).
+    #[test]
+    fn letters_with_their_own_spacing_are_drawn_one_by_one() {
+        let moji = |ch: char, x: f32, spacing: f32| kumihan::Cell {
+            ch, x_mm: x, w_mm: 3.0, size_pt: 18.0, off: 0,
+            fmt: kumihan::CharFormat { spacing_pt: spacing, ..Default::default() },
+            font: None,
+        };
+        let futsuu: Vec<kumihan::Cell> = (0..4).map(|k| moji('a', k as f32 * 3.0, 0.0)).collect();
+        assert_eq!(crate::view::tsuranari_no_owari(&futsuu, 0), 4, "ふつうの字を 1 本にまとめていない");
+        let tsumeta: Vec<kumihan::Cell> = (0..4).map(|k| moji('a', k as f32 * 3.0, -1.0)).collect();
+        assert_eq!(crate::view::tsuranari_no_owari(&tsumeta, 0), 1, "字間を詰めた字を 1 本にまとめた");
+    }
+
     /// **図形の一覧は分類7つ → 形の2段。** 表の画面と同じ並びで、
     /// どの形も Python のスクリプトが名前を知っています。
     #[gpui::test]

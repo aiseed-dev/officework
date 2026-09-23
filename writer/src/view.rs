@@ -1317,22 +1317,7 @@ impl Render for Writer {
                     continue;
                 }
                 let c0 = &line.cells[i];
-                let mut j = i + 1;
-                while j < line.cells.len()
-                    && !matches!(line.cells[j].ch, '\t' | '\n')
-                    && line.cells[j].fmt == c0.fmt
-                    && line.cells[j].size_pt == c0.size_pt
-                    && line.cells[j].font == c0.font
-                    // 字間が広げられた行(均等割付)は1本で描けない —
-                    // x が飛んだら連なりを切る
-                    && (line.cells[j].x_mm
-                        - line.cells[j - 1].x_mm
-                        - line.cells[j - 1].w_mm)
-                        .abs()
-                        < 0.05
-                {
-                    j += 1;
-                }
+                let j = tsuranari_no_owari(&line.cells, i);
                 let seg = &line.cells[i..j];
                 let text: String = seg.iter().map(|c| c.ch).collect();
                 let w_mm: f32 = seg.iter().map(|c| c.w_mm).sum();
@@ -2232,4 +2217,39 @@ impl gpui::Element for InputSink {
             });
         });
     }
+}
+
+/// **Where the run of letters drawn as one piece ends** (exclusive), for a
+/// line's `cells` starting at `i`.
+///
+/// The screen hands a run to the window system as one string, and the
+/// window system places the letters by the face's own widths. That is only
+/// right while the layout placed them the same way, so a run ends where the
+/// format, size or face changes, at a tab or line break, where the letters'
+/// x jumps (a justified line), and around a letter whose advance the file
+/// changes: `w:spacing` (ECMA-376 17.3.2.35) or `w:w` (17.3.2.43). Such a
+/// letter is drawn on its own at the x the layout gave it. `Heading 1` of
+/// the business plan e22e6b47 sets its letters 1pt closer (`w:spacing
+/// w:val="-20"`), and the screen drew "Executive summary" 17pt wider than
+/// the layout, so a selection covering the whole word stopped at "summa"
+/// (2026-09-23)
+pub(crate) fn tsuranari_no_owari(cells: &[kumihan::Cell], i: usize) -> usize {
+    let c0 = &cells[i];
+    let jibun = |c: &kumihan::Cell| c.fmt.spacing_pt != 0.0 || (c.fmt.w_pct != 0.0 && c.fmt.w_pct != 100.0);
+    if jibun(c0) {
+        return i + 1;
+    }
+    let mut j = i + 1;
+    while j < cells.len()
+        && !matches!(cells[j].ch, '\t' | '\n')
+        && cells[j].fmt == c0.fmt
+        && cells[j].size_pt == c0.size_pt
+        && cells[j].font == c0.font
+        // 字間が広げられた行(均等割付)は1本で描けない —
+        // x が飛んだら連なりを切る
+        && (cells[j].x_mm - cells[j - 1].x_mm - cells[j - 1].w_mm).abs() < 0.05
+    {
+        j += 1;
+    }
+    j
 }
