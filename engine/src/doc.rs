@@ -927,6 +927,13 @@ pub struct Cellbox {
     /// 前は最初の段落の `shade` を借りていました。表スタイルの帯の色は
     /// 段落ではなくセルに付くので、セル自身が持ちます(2026-09-03)
     pub shade: Option<String>,
+    /// **The cell states its own fill**, "no fill" included
+    /// (`w:tcPr/w:shd w:fill="auto"`, ECMA-376 17.4.33). A table style's band
+    /// paints only a cell that states none (17.7.2). The balance sheet of the
+    /// business plan e22e6b47 keeps the gap column between ASSETS and
+    /// LIABILITIES white this way, and we painted it with the bands
+    /// (2026-09-23)
+    pub shade_itta: bool,
     /// **このセルだけの余白**(docx の `w:tcPr/w:tcMar`)。[上, 右, 下, 左] mm。
     ///
     /// 言っていなければ表の [`Table::cell_mar_mm`]、それも無ければ既定です
@@ -1169,6 +1176,7 @@ impl Default for Cellbox {
             valign: book::VAlign::Top,
             valign_itta: false,
             shade: None,
+            shade_itta: false,
             mar_mm: None,
             fit_text: false,
         }

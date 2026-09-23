@@ -1739,7 +1739,8 @@ fn hyou_style_wo_ateru(
             if let Some(v) = tate.filter(|_| !cell.valign_itta) {
                 cell.valign = v;
             }
-            if cell.shade.is_none() {
+            // A cell that states its own fill, even "no fill", keeps it
+            if cell.shade.is_none() && !cell.shade_itta {
                 cell.shade = shade;
             }
             // **The rules the band draws round its cells** (`w:tblStylePr` /

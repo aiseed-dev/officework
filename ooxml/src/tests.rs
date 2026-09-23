@@ -108,6 +108,19 @@ mod round {
         assert_eq!(t.rows[0][0].shade.as_deref(), Some("595959"), "セルの塗りが読めていない");
     }
 
+    /// **`w:fill="auto"` is a fill the cell states: none** (ECMA-376
+    /// 17.4.33). It must be told apart from a cell that says nothing, or a
+    /// table style's band paints it (2026-09-23)
+    #[test]
+    fn a_cell_with_an_auto_fill_states_no_fill() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:tbl><w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="auto"/></w:tcPr><w:p/></w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr><w:p/></w:tc></w:tr></w:tbl></w:body></w:document>"#;
+        let (d, _) = crate::read::parse_document_xml(xml);
+        let t = d.tables().next().expect("表がありません");
+        assert_eq!(t.rows[0][0].shade, None);
+        assert!(t.rows[0][0].shade_itta, "fill=auto を「言っていない」と読んだ");
+        assert!(!t.rows[0][1].shade_itta, "w:shd の無いセルを言ったことにした");
+    }
+
     /// 同じ `w:shd` を閉じ札つきで書いた物も読めます(そう書く道具もあります)
     #[test]
     fn a_cell_takes_the_fill_of_a_shd_with_a_closing_tag() {

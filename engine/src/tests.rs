@@ -634,6 +634,41 @@ mod list_tests {
         assert_eq!(words("http://a"), vec!["http://", "a"], "続いた斜線の間で切れる");
     }
 
+    /// **A cell that states "no fill" is not painted by the table style's
+    /// bands** (`w:shd w:fill="auto"`, ECMA-376 17.4.33 and 17.7.2). The
+    /// balance sheet of the business plan e22e6b47 keeps its gap column
+    /// white this way (2026-09-23).
+    #[test]
+    fn a_cell_that_states_no_fill_stays_unpainted_by_the_bands() {
+        let cell = |itta: bool| Cellbox {
+            paragraphs: vec![Paragraph::default()],
+            shade_itta: itta,
+            ..Default::default()
+        };
+        let mut d = Document::plain("");
+        d.blocks = vec![Block::Table(Table {
+            rows: vec![vec![cell(false), cell(true)], vec![cell(false), cell(true)]],
+            style: Some("Fin".into()),
+            look: TblLook { first_row: true, ..Default::default() },
+            ..Default::default()
+        })];
+        d.styles.push(StyleInfo {
+            id: "Fin".into(), name: "Financial Table".into(), kind: "table".into(),
+            table: TableStyleLook {
+                first_row: TableCond { shade: Some("000000".into()), ..Default::default() },
+                band1_h: TableCond { shade: Some("D1D1D1".into()), ..Default::default() },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let c = crate::theme::compose(&d, &crate::theme::default_theme());
+        let t = c.tables().next().expect("表が無い");
+        assert_eq!(t.rows[0][0].shade.as_deref(), Some("000000"), "見出しの行が塗られない");
+        assert_eq!(t.rows[1][0].shade.as_deref(), Some("D1D1D1"), "帯が塗られない");
+        assert_eq!(t.rows[0][1].shade, None, "塗らないと言ったセルを見出しの色で塗った");
+        assert_eq!(t.rows[1][1].shade, None, "塗らないと言ったセルを帯の色で塗った");
+    }
+
     /// **文字グリッド**(`w:docGrid w:type="linesAndChars"`。2026-09-09)。全角の字は
     /// 自然の幅に charSpace の空きを足して送り(字の大きさに関わらず一定。Word の
     /// PDF で測った。10 回目)、半角はそのまま。負の上余白は絶対値で持ち、

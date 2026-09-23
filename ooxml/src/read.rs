@@ -775,7 +775,7 @@ pub(super) struct SavedCell {
     span: u8,
     vmerge: VMerge,
     valign: Option<book::VAlign>,
-    shade: Option<String>,
+    shade: Option<Option<String>>,
     borders: kumihan::CellBorders,
     mar: Option<[f32; 4]>,
     fit: bool,
@@ -2574,7 +2574,10 @@ pub(super) fn parse_document_rels_num(
     // give it one (ECMA-376 17.7.6)
     let mut cell_valign: Option<book::VAlign> = None;
     // **セルの塗り**(`w:tcPr` の中の `w:shd w:fill`)。段落の塗りとは別です
-    let mut cell_shade: Option<String> = None;
+    // The cell's own `w:tcPr/w:shd`: `None` when it states none, `Some(None)`
+    // when it states no fill (`w:fill="auto"`), which a table style's band
+    // must not paint over (ECMA-376 17.4.33, 17.7.2)
+    let mut cell_shade: Option<Option<String>> = None;
     let mut in_tcpr = false;
     // **罫線の辺の名前は余白にも出ます**(w:tcMar の w:top など)。
     // どの囲みの中に居るかを覚えてから読みます(2026-08-30)
@@ -2792,8 +2795,8 @@ pub(super) fn parse_document_rels_num(
                     // **セルの塗り。** 段落の `w:shd` と名前が同じなので、
                     // `w:tcPr` の中に居るかどうかで見分けます(2026-09-03)
                     b"shd" if in_tcpr => {
-                        cell_shade = attr(&e, "fill")
-                            .filter(|v| !v.is_empty() && v != "auto");
+                        cell_shade = Some(attr(&e, "fill")
+                            .filter(|v| !v.is_empty() && v != "auto"));
                     }
                     b"gridCol" => if let Some(b) = stack.last_mut() {
                         if let Some(w) = attr(&e, "w").and_then(|v| v.parse::<f32>().ok()) {
@@ -4011,8 +4014,8 @@ pub(super) fn parse_document_rels_num(
                     // template is white on a 595959 cell, and it came out
                     // white on white paper (2026-09-21)
                     b"shd" if in_tcpr => {
-                        cell_shade = attr(&e, "fill")
-                            .filter(|v| !v.is_empty() && v != "auto");
+                        cell_shade = Some(attr(&e, "fill")
+                            .filter(|v| !v.is_empty() && v != "auto"));
                     }
                     // 段落の背景色。fill が色(auto 以外)のときだけ
                     b"shd" if in_ppr => {
@@ -4364,7 +4367,8 @@ pub(super) fn parse_document_rels_num(
                             v_merge: cell_vmerge,
                             valign: cell_valign.unwrap_or(book::VAlign::Top),
                             valign_itta: cell_valign.is_some(),
-                            shade: cell_shade.take(),
+                            shade_itta: cell_shade.is_some(),
+                            shade: cell_shade.take().flatten(),
                             mar_mm: cell_mar.take(),
                             fit_text: cell_fit,
                         });
