@@ -9478,5 +9478,37 @@
   {
     "key": "terminal",
     "kind": "ribbon"
+  },
+  {
+    "key": "xlsx_open_made_by",
+    "kind": "msg"
+  },
+  {
+    "key": "xlsx_open_dates",
+    "kind": "msg"
+  },
+  {
+    "key": "as_in_file",
+    "kind": "msg"
+  },
+  {
+    "key": "time_zone_when_opening",
+    "kind": "msg"
+  },
+  {
+    "key": "this_computer_zone",
+    "kind": "msg"
+  },
+  {
+    "key": "used_next_xlsx_open",
+    "kind": "msg"
+  },
+  {
+    "key": "time_zone_prompt",
+    "kind": "msg"
+  },
+  {
+    "key": "unknown_time_zone",
+    "kind": "msg"
   }
 ]

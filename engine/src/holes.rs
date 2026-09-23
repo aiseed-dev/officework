@@ -159,6 +159,7 @@ pub const WATCHED_BOOK: &[(&str, Watch)] = &[
     ("date1904", Watch::Body),
     ("platform", Watch::Skip("読み込みの設定(Windows か Mac か)。ファイルの中身ではない")),
     ("col_basis", Watch::Skip("列の幅を mm に直す換算。読み込みの設定と既定の書体から作り直る")),
+    ("time_zone", Watch::Skip("読み込みの設定(タイムゾーン)。まだ xlsx には書かない")),
     ("changes", Watch::Body),
     ("path", Watch::Skip("開いた場所。ファイルの中身ではない")),
 ];

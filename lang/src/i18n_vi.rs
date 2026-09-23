@@ -2227,4 +2227,12 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_exited", "Claude Code đã thoát (mã {})"),
     ("sandbox_blocked_by_userns", "Hộp cát chạy macro bị chặn bởi cài đặt của máy này (hạn chế user namespace từ Ubuntu 24.04). Cài bằng .deb sẽ khắc phục: nó đặt /etc/apparmor.d/officework"),
     ("terminal_cannot_start", "Không thể khởi động terminal (không chạy được shell)"),
+    ("xlsx_open_made_by", "Excel đã tạo tệp xlsx (khi mở)"),
+    ("xlsx_open_dates", "Hệ thống ngày (khi mở xlsx)"),
+    ("as_in_file", "Theo tệp"),
+    ("time_zone_when_opening", "Múi giờ (khi mở xlsx)"),
+    ("this_computer_zone", "Theo máy tính này ({})"),
+    ("used_next_xlsx_open", "Dùng từ tệp xlsx mở tiếp theo: {}"),
+    ("time_zone_prompt", "Tên múi giờ IANA (ví dụ Asia/Ho_Chi_Minh). Để trống để dùng múi giờ của máy tính này"),
+    ("unknown_time_zone", "Không rõ tên múi giờ: {}"),
 ];

@@ -2051,15 +2051,17 @@ class Book(NoStrayAttributes):
         self._path = None
 
     @staticmethod
-    def open(path, lang=None, platform=None):
+    def open(path, lang=None, platform=None, time_zone=None):
         # **pathlib.Path is accepted too** (the same as openpyxl, 2026-08-15).
         # The core takes only a string, so turn it into a path string here before
         # passing it on.
         # platform: "windows" (default) or "mac", the Excel that made the file.
         # It decides how column widths turn into lengths.
+        # time_zone: an IANA name such as "Asia/Tokyo" for the workbook's
+        # clock times. None means the zone this computer is set to.
         path = _os.fspath(path)
         b = Book.__new__(Book)
-        b._b = _engine.Book.open(path, lang, platform)
+        b._b = _engine.Book.open(path, lang, platform, time_zone)
         b._path = path
         return b
 
@@ -2321,6 +2323,17 @@ class Book(NoStrayAttributes):
             self._b.date1904 = False
         else:
             raise ValueError("起点は 1899-12-30 か 1904-01-01: {!r}".format(value))
+
+    @property
+    def time_zone(self):
+        """ブックのタイムゾーン(IANA の名前。例 "Asia/Tokyo")。空のときは
+        このパソコンのタイムゾーンです。NOW() と TODAY() はこのタイムゾーンの
+        時刻を返します。"""
+        return self._b.time_zone
+
+    @time_zone.setter
+    def time_zone(self, value):
+        self._b.time_zone = "" if value is None else str(value)
 
     @property
     def excel_base_date(self):

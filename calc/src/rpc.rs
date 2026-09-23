@@ -43,7 +43,7 @@ pub(crate) fn start(view: gpui::Entity<Calc>, cx: &mut gpui::App) {
                     // 「押す」(press)は受け口では受けるだけで、ここで実行する
                     // (run_cmd は画面の文脈 cx が要る)
                     if let Some(id) = calc.press.take() {
-                        if id == "escape" { calc.cancel_now(cx) } else { calc.run_cmd(&id, cx) }
+                        calc.run_pressed(&id, cx);
                     }
                     let _ = req.reply.send(resp);
                 }
@@ -314,6 +314,14 @@ impl Host for Calc {
                     return Some(ops::err(&format!("no such ready button on the sheet: {id}")));
                 }
                 self.press = Some(id);
+                Some("{\"ok\":true}".into())
+            }
+            // **Press a row of the advanced settings by its id** (2026-09-24),
+            // for the same reason as `press`: clicks cannot be sent from
+            // outside on the Mac. An empty id only shows the page
+            "option" => {
+                let id = _o.str("id").unwrap_or_default();
+                self.press = Some(format!("opt:{id}"));
                 Some("{\"ok\":true}".into())
             }
             // いまのリボンの段と、押せるボタンの窓の中での場所。

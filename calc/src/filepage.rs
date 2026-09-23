@@ -462,6 +462,23 @@ impl Calc {
             // **参照形式は表だけ**(A1 / R1C1)
             OptRow::one(ui::t!("reference_style"), "set-refstyle",
                         if self.book.r1c1 { "R1C1" } else { "A1" }),
+            // How xlsx files are read (decided 2026-09-23/24): the Excel that
+            // made them (column widths), the date system, and the time zone.
+            // They take effect from the next xlsx that is opened
+            OptRow::one(ui::t!("xlsx_open_made_by"), "set-xlsx-platform",
+                        match crate::io::xlsx_read_options().platform {
+                            book::Platform::Mac => "Mac",
+                            book::Platform::Windows => "Windows",
+                        }),
+            OptRow::one(ui::t!("xlsx_open_dates"), "set-xlsx-dates",
+                        match crate::io::xlsx_read_options().date1904 {
+                            None => ui::t!("as_in_file").to_string(),
+                            Some(false) => "1900".to_string(),
+                            Some(true) => "1904".to_string(),
+                        }),
+            OptRow::one(ui::t!("time_zone_when_opening"), "set-time-zone",
+                        crate::io::xlsx_read_options().time_zone
+                            .unwrap_or_else(|| ui::tf!("this_computer_zone", book::tz::machine_zone()).to_string())),
             OptRow::one(ui::t!("math_autocorrect"), "set-autocorrect",
                         if self.autocorrect { ui::t!("type_alpha_get") } else { ui::t!("off_switch") }),
             // **使う Python は人が選べます**(2026-09-04 発注者「自由に環境が
@@ -546,6 +563,30 @@ impl Calc {
         rows
     }
 
+    /// Runs what the API pressed (`press` and `option`): a ribbon button, Esc,
+    /// or a row of the advanced settings (`opt:<id>`). The standalone calc
+    /// and the combined app both call this
+    pub fn run_pressed(&mut self, id: &str, cx: &mut Context<Self>) {
+        if let Some(opt) = id.strip_prefix("opt:") {
+            self.press_option(opt, cx);
+        } else if id == "escape" {
+            self.cancel_now(cx)
+        } else {
+            self.run_cmd(id, cx)
+        }
+    }
+
+    /// Shows the advanced settings and presses the row `id` there (the API's
+    /// `option` command). An empty id only shows the page
+    pub(crate) fn press_option(&mut self, id: &str, cx: &mut Context<Self>) {
+        self.prev_tab = self.tab.max(1);
+        self.tab = 0;
+        self.file_view = 2;
+        if !id.is_empty() {
+            self.option_click(id, cx);
+        }
+    }
+
     /// 詳細設定の行が押されたとき。
     fn option_click(&mut self, id: &str, cx: &mut Context<Self>) {
         match id {
@@ -558,6 +599,34 @@ impl Calc {
                 self.prompt = Some(("user-name", Editor::new(&cur)));
             }
             "set-iter" => self.run_cmd("calc-iter", cx),
+            // Each press moves to the next choice; the value is kept in
+            // settings.toml and used from the next xlsx that is opened
+            "set-xlsx-platform" => {
+                let next = match crate::io::xlsx_read_options().platform {
+                    book::Platform::Windows => "mac",
+                    book::Platform::Mac => "windows",
+                };
+                ui::settings::set("xlsx_platform", next);
+                self.status = ui::tf!("used_next_xlsx_open",
+                                      if next == "mac" { "Mac" } else { "Windows" }).into();
+            }
+            "set-xlsx-dates" => {
+                let (next, shown) = match crate::io::xlsx_read_options().date1904 {
+                    None => ("1900", "1900".to_string()),
+                    Some(false) => ("1904", "1904".to_string()),
+                    Some(true) => ("file", ui::t!("as_in_file").to_string()),
+                };
+                ui::settings::set("xlsx_dates", next);
+                self.status = ui::tf!("used_next_xlsx_open", shown).into();
+            }
+            "set-time-zone" => {
+                // Go back to the sheet first: in the combined app the file page
+                // is drawn by officework and hides the calc view, where the
+                // input panel is drawn
+                self.tab = self.prev_tab.max(1);
+                let cur = ui::settings::get("time_zone").unwrap_or_default();
+                self.prompt = Some(("time-zone", Editor::new(&cur)));
+            }
             "set-refstyle" => self.run_cmd("ref-style", cx),
             "set-autocorrect" => {
                 let (on, msg) = ui::toggle_math_autocorrect(self.autocorrect, !cfg!(test));

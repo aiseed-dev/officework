@@ -6,6 +6,11 @@ license.workspace = true
 description = "表計算のブックの模型(ブック・シート・セル・値)と式の計算。交換の形式には縛られない"
 
 [dependencies]
+# Time zones for dates and times: the same crates and IANA database that
+# Polars uses, so that the engine and Polars convert alike (2026-09-24)
+chrono = "0.4"
+chrono-tz = "0.10"
+iana-time-zone = "0.1"
 
 [dev-dependencies]
 quick-xml = "0.36"  # 図形の SVG が本当に読める形かを試験で確かめる

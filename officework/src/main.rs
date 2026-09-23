@@ -647,7 +647,7 @@ impl Office {
             Pane::Sheet(v) => v.update(cx, |c, cx| {
                 let r = ops::handle(c, line);
                 if let Some(id) = c.press.take() {
-                    if id == "escape" { c.cancel_now(cx) } else { c.run_cmd(&id, cx) }
+                    c.run_pressed(&id, cx);
                 }
                 r
             }),

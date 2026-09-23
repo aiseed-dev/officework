@@ -876,19 +876,21 @@ pub(super) fn rand01() -> f64 {
     (x >> 11) as f64 / (1u64 << 53) as f64
 }
 
-/// いまの機械の暦での「今日」の通し番号と、時刻(日の割合)。
-/// 時計は系の TZ 環境(日本なら JST)に従う — libc の localtime を使う
-/// chrono に頼らず、TZ のずれは環境変数 JO_TZ_OFF_HOURS で補える(既定 +9)。
+/// The serial number of today and the time of day (as a fraction of a day)
+/// in the calculation's time zone ([`crate::tz::calc_zone`]: the
+/// workbook's zone, or the computer's). `JO_TZ_OFF_HOURS` still overrides
+/// the offset when it is set, for tests.
 pub(super) fn today_serial(ep: i64) -> (f64, f64) {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
         .unwrap_or(0);
-    let off_h: i64 = std::env::var("JO_TZ_OFF_HOURS")
+    let off = std::env::var("JO_TZ_OFF_HOURS")
         .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(9);
-    let local = secs + off_h * 3600;
+        .and_then(|v| v.parse::<i64>().ok())
+        .map(|h| h * 3600)
+        .unwrap_or_else(|| crate::tz::offset_secs(&crate::tz::calc_zone(), secs));
+    let local = secs + off;
     let days = local.div_euclid(86400);
     let frac = local.rem_euclid(86400) as f64 / 86400.0;
     ((days + ep) as f64, frac)

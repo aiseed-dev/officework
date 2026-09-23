@@ -2375,5 +2375,13 @@
  "claude_code_exited": "Claude Code wurde beendet (Code {})",
  "sandbox_blocked_by_userns": "Die Sandbox für Makros wird von den Einstellungen dieses Rechners blockiert (Einschränkung unprivilegierter User-Namespaces ab Ubuntu 24.04). Die Installation des .deb behebt es: es legt /etc/apparmor.d/officework an",
  "terminal_cannot_start": "Das Terminal kann nicht gestartet werden (keine Shell gestartet)",
- "terminal": "Terminal"
+ "terminal": "Terminal",
+ "xlsx_open_made_by": "Excel, das die xlsx erstellt hat (beim Öffnen)",
+ "xlsx_open_dates": "Datumssystem (beim Öffnen von xlsx)",
+ "as_in_file": "Wie in der Datei",
+ "time_zone_when_opening": "Zeitzone (beim Öffnen von xlsx)",
+ "this_computer_zone": "Wie dieser Computer ({})",
+ "used_next_xlsx_open": "Gilt ab der nächsten geöffneten xlsx: {}",
+ "time_zone_prompt": "IANA-Name der Zeitzone (z. B. Europe/Berlin). Leer lassen für die Zeitzone dieses Computers",
+ "unknown_time_zone": "Unbekannter Zeitzonenname: {}"
 }

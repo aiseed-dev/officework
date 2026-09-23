@@ -178,9 +178,23 @@ impl PyBook {
     /// `lang` は [`PyBook::new`] と同じです。
     // `platform` is "windows" (the default) or "mac": the Excel that made the
     // file, which decides how column widths turn into lengths.
+    // `time_zone` is an IANA name such as "Asia/Tokyo" for the workbook's
+    // clock times; None = the zone this computer is set to.
     #[staticmethod]
-    #[pyo3(signature = (path, lang = None, platform = None))]
-    fn open(path: &str, lang: Option<&str>, platform: Option<&str>) -> PyResult<PyBook> {
+    #[pyo3(signature = (path, lang = None, platform = None, time_zone = None))]
+    fn open(
+        path: &str,
+        lang: Option<&str>,
+        platform: Option<&str>,
+        time_zone: Option<&str>,
+    ) -> PyResult<PyBook> {
+        if let Some(z) = time_zone {
+            if !book::tz::is_zone(z.trim()) {
+                return Err(PyValueError::new_err(format!(
+                    "time_zone は IANA の名前です(例 \"Asia/Tokyo\"): {z:?}"
+                )));
+            }
+        }
         kotoba(lang);
         let platform = match platform.map(|p| p.to_ascii_lowercase()) {
             None => book::Platform::Windows,
@@ -194,7 +208,7 @@ impl PyBook {
         };
         let bytes = std::fs::read(path)
             .map_err(|e| PyIOError::new_err(format!("{path}: 読めない: {e}")))?;
-        let opts = xlsx::ReadOptions { platform, date1904: None };
+        let opts = xlsx::ReadOptions { platform, date1904: None, time_zone: time_zone.map(str::to_string) };
         let (mut book, rep) = xlsx::read_with(std::io::Cursor::new(&bytes), &opts)
             .map_err(|e| PyIOError::new_err(format!("{path}: xlsx として読めない: {e}")))?;
         recalc_all(&mut book);
@@ -380,6 +394,27 @@ impl PyBook {
     fn set_date1904(&self, value: bool) -> PyResult<()> {
         let mut g = lock(&self.inner)?;
         g.book.date1904 = value;
+        recalc_all(&mut g.book);
+        Ok(())
+    }
+
+    // The workbook's time zone (an IANA name). Empty = the zone this computer
+    // is set to. NOW() and TODAY() give the clock time in this zone.
+    #[getter]
+    fn time_zone(&self) -> PyResult<String> {
+        Ok(lock(&self.inner)?.book.time_zone.clone())
+    }
+
+    #[setter]
+    fn set_time_zone(&self, value: &str) -> PyResult<()> {
+        let v = value.trim();
+        if !v.is_empty() && !book::tz::is_zone(v) {
+            return Err(PyValueError::new_err(format!(
+                "time_zone は IANA の名前です(例 \"Asia/Tokyo\"): {value:?}"
+            )));
+        }
+        let mut g = lock(&self.inner)?;
+        g.book.time_zone = v.to_string();
         recalc_all(&mut g.book);
         Ok(())
     }

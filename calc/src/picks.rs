@@ -3856,6 +3856,23 @@ impl Calc {
                 }
             }
             // コメントに書き残す名乗り。器は settings.toml(言語と同じ所)
+            // The time zone for the next xlsx that is opened. Empty = the
+            // computer's zone. A name that is not in the IANA database is
+            // refused rather than kept
+            "time-zone" => {
+                let t = text.trim();
+                if t.is_empty() || book::tz::is_zone(t) {
+                    ui::settings::set("time_zone", t);
+                    let shown = if t.is_empty() {
+                        ui::tf!("this_computer_zone", book::tz::machine_zone()).to_string()
+                    } else {
+                        t.to_string()
+                    };
+                    self.status = ui::tf!("used_next_xlsx_open", shown).into();
+                } else {
+                    self.status = ui::tf!("unknown_time_zone", t).into();
+                }
+            }
             "user-name" => {
                 let t = text.trim();
                 ui::settings::set("user_name", t);

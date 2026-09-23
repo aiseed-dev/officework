@@ -267,6 +267,8 @@ pub fn recalc_book(book: &mut crate::Book, target: usize) {
     // シートを借り分ける前に写しておく(借用が重なるため)
     let path = book.path.clone();
     let d1904 = book.date1904;
+    // NOW() and TODAY() read the workbook's time zone while it is calculated
+    let _zone = crate::tz::CalcZone::set(&book.time_zone);
     let (left, rest) = book.sheets.split_at_mut(target);
     let (tgt, right) = rest.split_first_mut().expect("上で確かめた");
     // `&Sheet` から `&dyn Grid` へ — 式の計算が見る面だけに絞る

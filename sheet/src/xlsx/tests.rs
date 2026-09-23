@@ -281,7 +281,7 @@ mod colwidth_round {
         let mut buf = Vec::new();
         crate::xlsx::write(&Book { sheets: vec![s], ..Default::default() }, std::io::Cursor::new(&mut buf)).unwrap();
         let (win, _) = crate::xlsx::read(std::io::Cursor::new(&buf)).unwrap();
-        let opts = crate::xlsx::ReadOptions { platform: book::Platform::Mac, date1904: None };
+        let opts = crate::xlsx::ReadOptions { platform: book::Platform::Mac, ..Default::default() };
         let (mac, _) = crate::xlsx::read_with(std::io::Cursor::new(&buf), &opts).unwrap();
         assert_eq!(win.platform, book::Platform::Windows, "既定が Windows でない");
         assert_eq!(mac.platform, book::Platform::Mac);
@@ -292,6 +292,24 @@ mod colwidth_round {
         assert!((w - m).abs() > 0.1, "同じ幅になった: {w}mm / {m}mm");
         // either way the number written back is the one read
         assert_eq!(mac.sheets[0].col_xlsx_to_write(0, &mac.col_basis), Some(21.375));
+    }
+
+    #[test]
+    fn the_time_zone_option_sets_the_workbook_zone() {
+        let mut buf = Vec::new();
+        crate::xlsx::write(&Book::new(), std::io::Cursor::new(&mut buf)).unwrap();
+        let (plain, _) = crate::xlsx::read(std::io::Cursor::new(&buf)).unwrap();
+        assert_eq!(plain.time_zone, "", "the default is not the computer's zone");
+        let la = crate::xlsx::ReadOptions {
+            time_zone: Some("America/Los_Angeles".into()),
+            ..Default::default()
+        };
+        let (b, _) = crate::xlsx::read_with(std::io::Cursor::new(&buf), &la).unwrap();
+        assert_eq!(b.time_zone, "America/Los_Angeles");
+        // a name that is not in the IANA database is not kept
+        let bad = crate::xlsx::ReadOptions { time_zone: Some("Mars/Olympus".into()), ..Default::default() };
+        let (b, _) = crate::xlsx::read_with(std::io::Cursor::new(&buf), &bad).unwrap();
+        assert_eq!(b.time_zone, "");
     }
 
     #[test]

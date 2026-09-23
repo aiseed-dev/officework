@@ -2375,5 +2375,13 @@
  "claude_code_exited": "Claude Code sonlandı (kod {})",
  "sandbox_blocked_by_userns": "Makroları çalıştıran kum havuzu bu makinenin ayarlarınca engelleniyor (Ubuntu 24.04 ve sonrasındaki kullanıcı ad alanı kısıtlaması). .deb ile kurmak sorunu çözer: /etc/apparmor.d/officework dosyasını koyar",
  "terminal_cannot_start": "Terminal başlatılamıyor (kabuk başlatılamadı)",
- "terminal": "Terminal"
+ "terminal": "Terminal",
+ "xlsx_open_made_by": "xlsx dosyasını oluşturan Excel (açarken)",
+ "xlsx_open_dates": "Tarih sistemi (xlsx açarken)",
+ "as_in_file": "Dosyadaki gibi",
+ "time_zone_when_opening": "Saat dilimi (xlsx açarken)",
+ "this_computer_zone": "Bu bilgisayarınki ({})",
+ "used_next_xlsx_open": "Açacağınız bir sonraki xlsx dosyasından itibaren kullanılır: {}",
+ "time_zone_prompt": "IANA saat dilimi adı (örn. Europe/Istanbul). Bu bilgisayarınkini kullanmak için boş bırakın",
+ "unknown_time_zone": "Bilinmeyen saat dilimi adı: {}"
 }

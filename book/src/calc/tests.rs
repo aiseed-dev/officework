@@ -2824,3 +2824,37 @@ mod df_tests {
         assert_eq!(v(&s, "D2"), Value::Number(12600.0));
     }
 }
+
+#[cfg(test)]
+mod time_zone_tests {
+    use super::super::funcs::today_serial;
+
+    // NOW() in Tokyo and in Los Angeles at the same moment differ by the two
+    // offsets (16 or 17 hours, depending on daylight saving time in LA)
+    #[test]
+    fn now_follows_the_calculation_zone() {
+        if std::env::var_os("JO_TZ_OFF_HOURS").is_some() {
+            return; // the override would hide the zone
+        }
+        let now = || {
+            let (d, f) = today_serial(25569);
+            d + f
+        };
+        let tokyo = {
+            let _z = crate::tz::CalcZone::set("Asia/Tokyo");
+            now()
+        };
+        let la = {
+            let _z = crate::tz::CalcZone::set("America/Los_Angeles");
+            now()
+        };
+        let secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        let want = (crate::tz::offset_secs("Asia/Tokyo", secs)
+            - crate::tz::offset_secs("America/Los_Angeles", secs)) as f64
+            / 86400.0;
+        assert!(((tokyo - la) - want).abs() < 2.0 / 86400.0, "Tokyo {tokyo} / LA {la}");
+    }
+}

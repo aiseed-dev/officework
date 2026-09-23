@@ -2227,4 +2227,12 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_exited", "Claude Code berhenti (kode {})"),
     ("sandbox_blocked_by_userns", "Sandbox untuk menjalankan makro diblokir oleh setelan mesin ini (pembatasan user namespace sejak Ubuntu 24.04). Memasang .deb memperbaikinya: berkas /etc/apparmor.d/officework dipasang"),
     ("terminal_cannot_start", "Terminal tidak dapat dimulai (shell tidak dapat dijalankan)"),
+    ("xlsx_open_made_by", "Excel yang membuat xlsx (saat membuka)"),
+    ("xlsx_open_dates", "Sistem tanggal (saat membuka xlsx)"),
+    ("as_in_file", "Sesuai berkas"),
+    ("time_zone_when_opening", "Zona waktu (saat membuka xlsx)"),
+    ("this_computer_zone", "Milik komputer ini ({})"),
+    ("used_next_xlsx_open", "Dipakai mulai xlsx berikutnya yang dibuka: {}"),
+    ("time_zone_prompt", "Nama zona waktu IANA (mis. Asia/Jakarta). Kosongkan untuk memakai milik komputer ini"),
+    ("unknown_time_zone", "Nama zona waktu tidak dikenal: {}"),
 ];

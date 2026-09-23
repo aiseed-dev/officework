@@ -9020,3 +9020,25 @@ mod agent_one_step_tests {
         });
     }
 }
+
+mod time_zone_option_tests {
+    use crate::*;
+
+    // The time zone row goes back to the sheet and opens the input panel
+    // there. A name that is not in the IANA database is refused and nothing
+    // is written to settings.toml (only the refusing side is tested, so that
+    // the test does not touch the real settings file)
+    #[gpui::test]
+    fn an_unknown_time_zone_is_refused(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, cx| {
+            this.press_option("set-time-zone", cx);
+            assert_ne!(this.tab, 0, "the file page is still in front");
+            let (kind, _) = this.prompt.as_ref().expect("the input panel did not open");
+            assert_eq!(*kind, "time-zone");
+            this.prompt = Some(("time-zone", Editor::new("Mars/Olympus")));
+            this.finish_prompt(cx);
+            assert!(this.status.contains("Mars/Olympus"), "{}", this.status);
+        });
+    }
+}

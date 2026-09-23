@@ -2227,4 +2227,12 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_exited", "Claude Code s'est terminé (code {})"),
     ("sandbox_blocked_by_userns", "Le bac à sable qui exécute les macros est bloqué par la configuration de cette machine (restriction des espaces de noms utilisateur depuis Ubuntu 24.04). Installer le .deb corrige cela : il place /etc/apparmor.d/officework"),
     ("terminal_cannot_start", "Impossible de lancer le terminal (aucun shell n’a pu démarrer)"),
+    ("xlsx_open_made_by", "Excel qui a créé le xlsx (à l’ouverture)"),
+    ("xlsx_open_dates", "Système de dates (à l’ouverture d’un xlsx)"),
+    ("as_in_file", "Comme dans le fichier"),
+    ("time_zone_when_opening", "Fuseau horaire (à l’ouverture d’un xlsx)"),
+    ("this_computer_zone", "Celui de cet ordinateur ({})"),
+    ("used_next_xlsx_open", "Utilisé à partir du prochain xlsx ouvert : {}"),
+    ("time_zone_prompt", "Nom IANA du fuseau horaire (p. ex. Europe/Paris). Laissez vide pour utiliser celui de cet ordinateur"),
+    ("unknown_time_zone", "Nom de fuseau horaire inconnu : {}"),
 ];

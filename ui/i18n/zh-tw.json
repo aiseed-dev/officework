@@ -2375,5 +2375,13 @@
  "claude_code_exited": "Claude Code 已結束(代碼 {})",
  "sandbox_blocked_by_userns": "執行巨集的沙箱被這台機器的設定擋住了(Ubuntu 24.04 起的使用者命名空間限制)。用 .deb 安裝即可解決 — 它會放置 /etc/apparmor.d/officework",
  "terminal_cannot_start": "無法啟動終端機(未能啟動 shell)",
- "terminal": "終端機"
+ "terminal": "終端機",
+ "xlsx_open_made_by": "建立 xlsx 的 Excel(開啟時)",
+ "xlsx_open_dates": "日期系統(開啟 xlsx 時)",
+ "as_in_file": "依照檔案",
+ "time_zone_when_opening": "時區(開啟 xlsx 時)",
+ "this_computer_zone": "這部電腦的設定({})",
+ "used_next_xlsx_open": "從下次開啟的 xlsx 起使用:{}",
+ "time_zone_prompt": "IANA 時區名稱(例如 Asia/Taipei)。留空則使用這部電腦的設定",
+ "unknown_time_zone": "找不到時區名稱:{}"
 }

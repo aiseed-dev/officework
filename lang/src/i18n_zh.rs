@@ -2227,4 +2227,12 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_exited", "Claude Code 已退出(代码 {})"),
     ("sandbox_blocked_by_userns", "运行宏的沙箱被这台机器的设置挡住了(Ubuntu 24.04 起的用户命名空间限制)。用 .deb 安装即可解决 — 它会放置 /etc/apparmor.d/officework"),
     ("terminal_cannot_start", "无法启动终端(未能启动 shell)"),
+    ("xlsx_open_made_by", "创建 xlsx 的 Excel(打开时)"),
+    ("xlsx_open_dates", "日期系统(打开 xlsx 时)"),
+    ("as_in_file", "按文件"),
+    ("time_zone_when_opening", "时区(打开 xlsx 时)"),
+    ("this_computer_zone", "这台电脑的设置({})"),
+    ("used_next_xlsx_open", "从下次打开的 xlsx 起使用:{}"),
+    ("time_zone_prompt", "IANA 时区名称(例如 Asia/Shanghai)。留空则使用这台电脑的设置"),
+    ("unknown_time_zone", "找不到时区名称:{}"),
 ];

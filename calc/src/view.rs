@@ -3287,6 +3287,7 @@ impl Render for Calc {
                 "fill-bg-rgb" => ui::t!("pattern_background_colour_six").to_string(),
                 "comment-reply" => ui::t!("add_reply_goes_end").to_string(),
                 "user-name" => ui::t!("comment_signature_name_leave").to_string(),
+                "time-zone" => ui::t!("time_zone_prompt").to_string(),
                 "text-angle" => ui::t!("text_angle_number_90").to_string(),
                 "hf-edit" => ui::t!("header_footer_text_section").to_string(),
                 "name-range" => ui::t!("name_content_location_b12").to_string(),

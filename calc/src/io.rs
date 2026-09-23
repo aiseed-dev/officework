@@ -19,6 +19,31 @@ pub(crate) fn foreign_lock(p: &std::path::Path) -> Option<String> {
 /// そちらへ移しました)。ここに残るのは訳の要る文言だけで、置き場を
 /// アプリ側にするのは、訳の走査が `calc/src` `writer/src` `ui/src` しか
 /// 見ないからです。
+/// **How to read an xlsx**, from settings.toml (decided 2026-09-23/24).
+///
+/// - `xlsx_platform`: `windows` (default) or `mac`, the Excel that made the
+///   file. It decides how column widths turn into lengths.
+/// - `xlsx_dates`: `file` (default), `1900` or `1904`. Anything but `file`
+///   takes over the file's `workbookPr@date1904`.
+/// - `time_zone`: an IANA name. Empty or unknown = this computer's zone.
+pub(crate) fn xlsx_read_options() -> sheet::xlsx::ReadOptions {
+    let get = |k: &str| ui::settings::get(k).map(|v| v.trim().to_ascii_lowercase());
+    sheet::xlsx::ReadOptions {
+        platform: match get("xlsx_platform").as_deref() {
+            Some("mac") => book::Platform::Mac,
+            _ => book::Platform::Windows,
+        },
+        date1904: match get("xlsx_dates").as_deref() {
+            Some("1900") => Some(false),
+            Some("1904") => Some(true),
+            _ => None,
+        },
+        time_zone: ui::settings::get("time_zone")
+            .map(|v| v.trim().to_string())
+            .filter(|v| book::tz::is_zone(v)),
+    }
+}
+
 pub(crate) fn key_err_msg(e: ops::KeyErr) -> String {
     match e {
         ops::KeyErr::Corrupt => ui::t!("key_file_damaged_config").to_string(),
@@ -275,7 +300,7 @@ impl Calc {
         self.encrypt_pw = None;
         // 読めなかったときに拾い直すので、中身は控えておきます
         let bytes2 = bytes.clone();
-        match sheet::xlsx::read(std::io::Cursor::new(bytes)) {
+        match sheet::xlsx::read_with(std::io::Cursor::new(bytes), &xlsx_read_options()) {
             Ok((mut book, rep)) => {
                 book::calc::recalc_all(&mut book);
                 let notes = rep
@@ -573,7 +598,7 @@ impl Calc {
         } else {
             raw
         };
-        match sheet::xlsx::read(std::io::Cursor::new(raw)) {
+        match sheet::xlsx::read_with(std::io::Cursor::new(raw), &xlsx_read_options()) {
             Ok((mut book, _rep)) => {
                 book::calc::recalc_all(&mut book);
                 self.release_lock();

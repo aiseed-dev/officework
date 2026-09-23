@@ -3100,6 +3100,11 @@ pub struct Book {
     /// The conversion between xlsx column widths and millimetres for this
     /// workbook: the platform's pixels and the default font's digit
     pub col_basis: ColBasis,
+    /// **The workbook's time zone**, an IANA name such as `Asia/Tokyo`.
+    /// Empty means the zone this computer is set to ([`crate::tz`]).
+    /// `NOW()` and `TODAY()` give the clock time in this zone. It comes from
+    /// the reading option and is not written into the xlsx yet
+    pub time_zone: String,
     /// 変更履歴(校閲の記録)。**記録中の差分を刻んだもの**で、
     /// xl/joChanges.xml で往復する独自部品 — Excel は読まない(正直な劣化)
     pub changes: Vec<ChangeRec>,

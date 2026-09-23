@@ -1967,10 +1967,13 @@ pub(super) fn parse_custom_props(xml: &str) -> Vec<book::CustomProp> {
 /// **How to read an xlsx**: whose way of counting column widths the
 /// workbook follows, and, if given, which date system to take over what the
 /// file says (`workbookPr@date1904`)
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ReadOptions {
     pub platform: book::Platform,
     pub date1904: Option<bool>,
+    /// The time zone the workbook's clock times are in (an IANA name).
+    /// None or an unknown name = the zone this computer is set to
+    pub time_zone: Option<String>,
 }
 
 pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
@@ -1982,6 +1985,9 @@ pub fn read_with<R: Read + Seek>(src: R, opts: &ReadOptions) -> Result<(Book, Re
     let (mut book, rep) = read_inner(src)?;
     if let Some(d) = opts.date1904 {
         book.date1904 = d;
+    }
+    if let Some(z) = opts.time_zone.as_deref().filter(|z| book::tz::is_zone(z.trim())) {
+        book.time_zone = z.trim().to_string();
     }
     // **Column widths become millimetres here** (decided 2026-09-23): the
     // default font's digit, counted in the platform's pixels

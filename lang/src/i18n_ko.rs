@@ -2227,4 +2227,12 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_exited", "Claude Code가 종료되었습니다(코드 {})"),
     ("sandbox_blocked_by_userns", "매크로를 실행하는 샌드박스가 이 기기의 설정으로 막혀 있습니다(Ubuntu 24.04 이후의 사용자 네임스페이스 제한). .deb로 설치하면 해결됩니다 — /etc/apparmor.d/officework 가 필요합니다"),
     ("terminal_cannot_start", "터미널을 시작할 수 없습니다(셸을 시작하지 못했습니다)"),
+    ("xlsx_open_made_by", "xlsx를 만든 Excel(열 때)"),
+    ("xlsx_open_dates", "날짜 체계(xlsx를 열 때)"),
+    ("as_in_file", "파일대로"),
+    ("time_zone_when_opening", "표준 시간대(xlsx를 열 때)"),
+    ("this_computer_zone", "이 컴퓨터 설정({})"),
+    ("used_next_xlsx_open", "다음에 여는 xlsx부터 사용합니다: {}"),
+    ("time_zone_prompt", "IANA 표준 시간대 이름(예: Asia/Seoul). 비워 두면 이 컴퓨터 설정을 사용합니다"),
+    ("unknown_time_zone", "알 수 없는 표준 시간대 이름: {}"),
 ];

@@ -2375,5 +2375,13 @@
  "claude_code_exited": "Claude Code が終わりました(終了コード {})",
  "sandbox_blocked_by_userns": "マクロを走らせるサンドボックスが、この機械の設定で止められています(Ubuntu 24.04 以降の利用者名前空間の制限)。.deb で入れ直すと直ります — /etc/apparmor.d/officework が要ります",
  "terminal_cannot_start": "ターミナルを起こせません(シェルが始まりません)",
- "terminal": "ターミナル"
+ "terminal": "ターミナル",
+ "xlsx_open_made_by": "xlsx を作った Excel(開くとき)",
+ "xlsx_open_dates": "日付の起点(xlsx を開くとき)",
+ "as_in_file": "ファイルのとおり",
+ "time_zone_when_opening": "タイムゾーン(xlsx を開くとき)",
+ "this_computer_zone": "このパソコンの設定({})",
+ "used_next_xlsx_open": "次に xlsx を開くときから使います: {}",
+ "time_zone_prompt": "タイムゾーンの IANA の名前(例 Asia/Tokyo)。空欄にすると、このパソコンの設定を使います",
+ "unknown_time_zone": "タイムゾーンの名前が見つかりません: {}"
 }

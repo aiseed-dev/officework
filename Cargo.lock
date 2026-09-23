@@ -920,6 +920,9 @@ dependencies = [
 name = "book"
 version = "0.0.1"
 dependencies = [
+ "chrono",
+ "chrono-tz",
+ "iana-time-zone",
  "quick-xml 0.36.2",
 ]
 

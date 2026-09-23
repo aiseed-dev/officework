@@ -2227,4 +2227,12 @@ pub const TABLE: &[(&str, &str)] = &[
     ("claude_code_exited", "Claude Code foi encerrado (código {})"),
     ("sandbox_blocked_by_userns", "O sandbox que executa as macros está bloqueado pelas configurações desta máquina (restrição de namespaces de usuário a partir do Ubuntu 24.04). Instalar o .deb resolve: ele coloca /etc/apparmor.d/officework"),
     ("terminal_cannot_start", "Não é possível iniciar o terminal (nenhum shell foi iniciado)"),
+    ("xlsx_open_made_by", "Excel que criou o xlsx (ao abrir)"),
+    ("xlsx_open_dates", "Sistema de datas (ao abrir xlsx)"),
+    ("as_in_file", "Como no arquivo"),
+    ("time_zone_when_opening", "Fuso horário (ao abrir xlsx)"),
+    ("this_computer_zone", "O deste computador ({})"),
+    ("used_next_xlsx_open", "Usado a partir do próximo xlsx aberto: {}"),
+    ("time_zone_prompt", "Nome IANA do fuso horário (ex.: America/Sao_Paulo). Deixe vazio para usar o deste computador"),
+    ("unknown_time_zone", "Nome de fuso horário desconhecido: {}"),
 ];
