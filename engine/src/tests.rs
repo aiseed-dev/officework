@@ -721,6 +721,25 @@ mod list_tests {
         assert_eq!(crate::font::kao_wo_erabu(vec![&futsuu, &futoi], &futsuu, false, true), None, "斜体だけの run が太字の顔を選んだ");
     }
 
+    /// **Paragraphs added to a cell's text take the last paragraph's look**
+    /// (2026-09-23), as Enter does in Word.
+    #[test]
+    fn paragraphs_added_to_a_cell_take_the_look_of_the_last_one() {
+        let mut paras = vec![Paragraph {
+            runs: vec![Run { text: "a".into(), size_pt: Some(14.0), font: Some("ＭＳ 明朝".into()), fmt: Default::default() }],
+            left_twips: 100,
+            ..Default::default()
+        }];
+        set_paras_text(&mut paras, "one\ntwo\nthree");
+        assert_eq!(paras.len(), 3);
+        for p in &paras {
+            assert_eq!(p.left_twips, 100, "増えた段落が字下げを失った");
+            assert_eq!(p.runs[0].size_pt, Some(14.0), "増えた段落が字の大きさを失った");
+            assert_eq!(p.runs[0].font.as_deref(), Some("ＭＳ 明朝"), "増えた段落が書体を失った");
+        }
+        assert_eq!(paras[2].runs[0].text, "three");
+    }
+
     /// **文字グリッド**(`w:docGrid w:type="linesAndChars"`。2026-09-09)。全角の字は
     /// 自然の幅に charSpace の空きを足して送り(字の大きさに関わらず一定。Word の
     /// PDF で測った。10 回目)、半角はそのまま。負の上余白は絶対値で持ち、

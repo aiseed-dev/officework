@@ -2091,7 +2091,28 @@ pub fn set_paras_text(paras: &mut Vec<Paragraph>, text: &str) {
         .split('\n')
         .enumerate()
         .map(|(i, s)| {
-            let mut p = old.get(i).cloned().unwrap_or_default();
+            // **A paragraph the text adds takes the look of the last one**,
+            // as a paragraph made with Enter does in Word, and not the plain
+            // defaults. Typing three paragraphs into the motivation cell of
+            // the Tokyo Hello Work resume left the second and third at the
+            // document's default size, without the cell's indent
+            // (2026-09-23). What belongs to one place only (pictures, marks,
+            // comments, bookmarks, a section break, a nested table) stays
+            // with the paragraph it was in, as `splice_text` does
+            let mut p = match old.get(i) {
+                Some(q) => q.clone(),
+                None => {
+                    let mut q = old.last().cloned().unwrap_or_default();
+                    q.anchors = Vec::new();
+                    q.images = Vec::new();
+                    q.images_new = Vec::new();
+                    q.comments = Vec::new();
+                    q.bookmarks = Vec::new();
+                    q.sect = None;
+                    q.nested = None;
+                    q
+                }
+            };
             let (pt, font, fmt) = p
                 .runs
                 .first()
