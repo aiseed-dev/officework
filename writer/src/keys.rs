@@ -518,6 +518,12 @@ impl Writer {
     }
 
     pub(crate) fn backspace(&mut self, _: &ui::Backspace, _: &mut Window, cx: &mut Context<Self>) {
+        // A selection across the body and a table goes as a whole (Word's way)
+        if self.hirosa.is_some() {
+            self.hirosa_kesu();
+            cx.notify();
+            return;
+        }
         // 項目の頭では、まず印、次に字下げを外す(Word と同じ)
         if self.backspace_at_para_head() {
             cx.notify();
@@ -529,6 +535,12 @@ impl Writer {
         cx.notify();
     }
     pub(crate) fn delete(&mut self, _: &ui::Delete, _: &mut Window, cx: &mut Context<Self>) {
+        // A selection across the body and a table goes as a whole (Word's way)
+        if self.hirosa.is_some() {
+            self.hirosa_kesu();
+            cx.notify();
+            return;
+        }
         self.checkpoint(true);
         self.editor().delete();
         self.on_edited();
@@ -1092,6 +1104,15 @@ impl Writer {
         cx.notify();
     }
     pub(crate) fn cut(&mut self, _: &ui::Cut, _: &mut Window, cx: &mut Context<Self>) {
+        // A selection across texts: its text to the clipboard, then away
+        if self.hirosa.is_some() {
+            let s = self.hirosa_text();
+            cx.write_to_clipboard(gpui::ClipboardItem::new_string(s));
+            self.hirosa_kesu();
+            self.status = ui::t!("cut_selection").into();
+            cx.notify();
+            return;
+        }
         let sel = self.editor_ref().selection();
         if sel.is_empty() {
             self.status = ui::t!("nothing_selected_cut").into();
@@ -2022,44 +2043,87 @@ impl Writer {
             .find(|&i| t.byte >= lines[i].byte0 && t.byte <= lines[i].byte_end())
     }
 
-    /// **The lines a selection across texts covers**, in reading order on
-    /// the screen (top to bottom, then left to right), with the byte range it
-    /// covers in each: `(line index, from, to)`, the bytes counted in the
-    /// line's own text
-    pub(crate) fn hirosa_gyou(&self) -> Vec<(usize, usize, usize)> {
-        let Some((a, b)) = self.hirosa else { return Vec::new() };
-        let (Some(la), Some(lb)) = (self.ten_no_gyou(&a), self.ten_no_gyou(&b)) else {
-            return Vec::new();
-        };
-        let lines = &self.page.lines;
-        let mut junban: Vec<usize> = (0..lines.len())
-            .filter(|&i| (lines[i].from_body || lines[i].cell.is_some()) && !lines[i].body_cells().is_empty())
-            .collect();
-        junban.sort_by(|&i, &j| {
-            lines[i].y_mm.total_cmp(&lines[j].y_mm).then(lines[i].x0_mm.total_cmp(&lines[j].x0_mm))
-        });
-        let (Some(pa), Some(pb)) = (junban.iter().position(|&i| i == la), junban.iter().position(|&i| i == lb)) else {
-            return Vec::new();
-        };
-        let ((s, bs), (e, be)) = if (pa, a.byte) <= (pb, b.byte) { ((pa, a.byte), (pb, b.byte)) } else { ((pb, b.byte), (pa, a.byte)) };
-        (s..=e)
-            .map(|k| {
-                let l = &lines[junban[k]];
-                let from = if k == s { bs } else { l.byte0 };
-                let to = if k == e { be } else { l.byte_end() };
-                (junban[k], from, to)
-            })
-            .collect()
+    /// Where each table sits in the body text: the byte where the paragraph
+    /// after it starts (one past the end when nothing follows). The body text
+    /// is the paragraphs joined by line breaks, and holds no table
+    fn hyou_ichi(&self) -> Vec<usize> {
+        let mut at = 0usize;
+        let mut out = Vec::new();
+        for b in &self.doc.blocks {
+            match b {
+                kumihan::Block::Para(p) => at += p.runs.iter().map(|r| r.text.len()).sum::<usize>() + 1,
+                kumihan::Block::Table(_) => out.push(at),
+            }
+        }
+        out
     }
 
-    /// Whether the lines between the two ends of [`Self::hirosa`] belong to
-    /// more than one text. A drag from one heading to the next with a table
-    /// between them stays in the body at both ends, and still has to take
-    /// the table in (2026-09-23)
+    /// **What a selection across texts takes, the way Word takes it.**
+    ///
+    /// Across the body and a table, the table part is whole rows: the rows
+    /// from the one the selection enters to the end of the table, every row
+    /// of a table it passes over, and the rows up to the one it stops in.
+    /// Word does not let a selection hold part of a table together with text
+    /// outside it (decided 2026-09-23). With both ends in one table, it is the
+    /// block of cells between them
+    pub(crate) fn hani(&self) -> Option<Hani> {
+        let (a, b) = self.hirosa?;
+        let kagi = |t: &Ten| -> Option<(f32, f32, usize)> {
+            let l = &self.page.lines[self.ten_no_gyou(t)?];
+            Some((l.y_mm, l.x0_mm, t.byte))
+        };
+        let (ka, kb) = (kagi(&a)?, kagi(&b)?);
+        let mae = ka.0.total_cmp(&kb.0).then(ka.1.total_cmp(&kb.1)).then(ka.2.cmp(&kb.2)).is_le();
+        let (s, e) = if mae { (a, b) } else { (b, a) };
+        if let (Some((ts, rs, cs)), Some((te, re, ce))) = (s.cell, e.cell) {
+            if ts == te {
+                return Some(Hani {
+                    body: 0..0,
+                    rows: Vec::new(),
+                    cells: Some((ts, rs.min(re), rs.max(re), cs.min(ce), cs.max(ce))),
+                });
+            }
+        }
+        let zenbu = self.doc.body_text().len();
+        let ichi = self.hyou_ichi();
+        let p = |t: usize| ichi.get(t).copied().unwrap_or(zenbu + 1);
+        let gyousuu = |t: usize| self.doc.tables().nth(t).map(|tb| tb.rows.len()).unwrap_or(0);
+        // A selection that starts in a table goes on from the paragraph after
+        // it; one that stops in a table ends with the paragraph before it
+        let bs = match s.cell {
+            None => s.byte,
+            Some((t, ..)) => p(t).min(zenbu),
+        };
+        let be = match e.cell {
+            None => e.byte,
+            Some((t, ..)) => p(t).saturating_sub(1).min(zenbu),
+        }
+        .max(bs);
+        let mut rows = Vec::new();
+        if let Some((t, r, _)) = s.cell {
+            rows.push((t, r, gyousuu(t).saturating_sub(1)));
+        }
+        for (t, &pt) in ichi.iter().enumerate() {
+            let hashi = s.cell.map(|c| c.0) == Some(t) || e.cell.map(|c| c.0) == Some(t);
+            if !hashi && bs < pt && pt <= be && gyousuu(t) > 0 {
+                rows.push((t, 0, gyousuu(t) - 1));
+            }
+        }
+        if let Some((t, r, _)) = e.cell {
+            rows.push((t, 0, r));
+        }
+        rows.sort();
+        Some(Hani { body: bs..be, rows, cells: None })
+    }
+
+    /// Whether [`Self::hirosa`] takes more than one text: some table rows, or
+    /// more than one cell. A drag that stays in one text with nothing between
+    /// its ends is the plain selection
     pub(crate) fn hirosa_mazaru(&self) -> bool {
-        let lines = &self.page.lines;
-        let gyou = self.hirosa_gyou();
-        gyou.first().is_some_and(|(i0, ..)| gyou.iter().any(|(i, ..)| lines[*i].cell != lines[*i0].cell))
+        match self.hani() {
+            Some(h) => !h.rows.is_empty() || h.cells.is_some_and(|(_, r0, r1, c0, c1)| r0 != r1 || c0 != c1),
+            None => false,
+        }
     }
 
     /// The whole text of the body or of one cell, as it stands now
@@ -2084,34 +2148,152 @@ impl Writer {
         }
     }
 
-    /// **The text of a selection across texts**, for copying: the part of
-    /// each text it covers, in reading order, one text after another on
-    /// lines of their own
+    /// **The text of a selection across texts**, for copying: the body text
+    /// it covers and the cells of its rows, in the order of the document. A
+    /// row is one line with its cells between tabs, the way Word puts a
+    /// table on the clipboard as plain text
     pub(crate) fn hirosa_text(&self) -> String {
-        let gyou = self.hirosa_gyou();
-        let lines = &self.page.lines;
+        let Some(h) = self.hani() else { return String::new() };
+        let honbun = self.ten_no_text(None);
         let mut out: Vec<String> = Vec::new();
-        let mut k = 0;
-        while k < gyou.len() {
-            let cell = lines[gyou[k].0].cell;
-            let from = gyou[k].1;
-            let mut to = gyou[k].2;
-            let mut m = k + 1;
-            while m < gyou.len() && lines[gyou[m].0].cell == cell && gyou[m].1 >= to {
-                to = gyou[m].2;
-                m += 1;
+        let mut at = 0usize;
+        let mut ti = 0usize;
+        for b in &self.doc.blocks {
+            match b {
+                kumihan::Block::Para(p) => {
+                    let len: usize = p.runs.iter().map(|r| r.text.len()).sum();
+                    let (a, z) = (at.max(h.body.start), (at + len).min(h.body.end));
+                    let naka = at >= h.body.start && at + len <= h.body.end && h.body.start < h.body.end;
+                    if a < z || naka {
+                        let (mut a, mut z) = (a.min(honbun.len()), z.max(a).min(honbun.len()));
+                        while a > 0 && !honbun.is_char_boundary(a) {
+                            a -= 1;
+                        }
+                        while z < honbun.len() && !honbun.is_char_boundary(z) {
+                            z += 1;
+                        }
+                        out.push(honbun[a..z].to_string());
+                    }
+                    at += len + 1;
+                }
+                kumihan::Block::Table(tb) => {
+                    for (r, row) in tb.rows.iter().enumerate() {
+                        let cells: Vec<String> = row
+                            .iter()
+                            .enumerate()
+                            .filter(|(c, _)| h.fukumu(ti, r, *c))
+                            .map(|(c, _)| self.ten_no_text(Some((ti, r, c))))
+                            .collect();
+                        if !cells.is_empty() {
+                            out.push(cells.join("\t"));
+                        }
+                    }
+                    ti += 1;
+                }
             }
-            let text = self.ten_no_text(cell);
-            let (mut a, mut b) = (from.min(text.len()), to.min(text.len()));
-            while a > 0 && !text.is_char_boundary(a) {
-                a -= 1;
-            }
-            while b < text.len() && !text.is_char_boundary(b) {
-                b += 1;
-            }
-            out.push(text[a..b].to_string());
-            k = m;
         }
         out.join("\n")
+    }
+
+    /// **Delete what a selection across texts takes**, the way Word does:
+    /// the rows go from their tables (the whole table when every row goes),
+    /// a block of cells inside one table is emptied, and the body text in it
+    /// is taken out. The caret stands where the selection began in the body.
+    /// One step of Undo brings it all back
+    pub(crate) fn hirosa_kesu(&mut self) {
+        let Some(h) = self.hani() else { return };
+        self.checkpoint(false);
+        self.flush_target();
+        // a block of cells: empty them
+        if let Some((t, r0, r1, c0, c1)) = h.cells {
+            if let Some(tb) = self.table_mut(t) {
+                for r in r0..=r1 {
+                    for c in c0..=c1 {
+                        if let Some(cell) = tb.rows.get_mut(r).and_then(|row| row.get_mut(c)) {
+                            set_cell_text(cell, "");
+                        }
+                    }
+                }
+            }
+        }
+        // rows, from the last table back, so the table numbers stay right
+        let mut kesu_hyou: Vec<usize> = Vec::new();
+        for &(t, r0, r1) in h.rows.iter().rev() {
+            let zenbu = self.doc.tables().nth(t).map(|tb| tb.rows.len()).unwrap_or(0);
+            if r0 == 0 && r1 + 1 >= zenbu {
+                kesu_hyou.push(t);
+            } else if let Some(tb) = self.table_mut(t) {
+                // A vertical merge that began in a row going away goes on in
+                // the rows that stay (`w:vMerge`, ECMA-376 17.4.85): the first
+                // of them that continues it starts it instead, or it would
+                // join the cell above the deleted rows
+                if let Some(nokoru) = tb.rows.get(r1 + 1).cloned() {
+                    for (c, cell) in nokoru.iter().enumerate() {
+                        let ue = if r0 > 0 { tb.rows[r0 - 1].get(c).map(|x| x.v_merge) } else { None };
+                        let hajime_ga_kieru = !matches!(ue, Some(kumihan::VMerge::Start | kumihan::VMerge::Continue));
+                        if cell.v_merge == kumihan::VMerge::Continue && hajime_ga_kieru {
+                            tb.rows[r1 + 1][c].v_merge = kumihan::VMerge::Start;
+                        }
+                    }
+                }
+                for r in (r0..=r1.min(tb.rows.len().saturating_sub(1))).rev() {
+                    tb.rows.remove(r);
+                    for v in [&mut tb.row_mm] {
+                        if r < v.len() {
+                            v.remove(r);
+                        }
+                    }
+                    if r < tb.row_exact.len() {
+                        tb.row_exact.remove(r);
+                    }
+                    if r < tb.row_keep.len() {
+                        tb.row_keep.remove(r);
+                    }
+                }
+            }
+        }
+        for t in kesu_hyou {
+            if let Some(bi) = self
+                .doc
+                .blocks
+                .iter()
+                .enumerate()
+                .filter(|(_, b)| matches!(b, kumihan::Block::Table(_)))
+                .nth(t)
+                .map(|(i, _)| i)
+            {
+                self.doc.blocks.remove(bi);
+            }
+        }
+        // the body text; a table left between its ends stays (`splice_text`)
+        if h.body.start < h.body.end {
+            self.doc.splice_text(h.body.start, h.body.end, "");
+        }
+        self.hirosa = None;
+        self.oshita = None;
+        self.retarget_fresh(Target::Body);
+        let at = h.body.start.min(self.ed.text().len());
+        self.ed.move_to(at, false);
+        self.dirty = true;
+        self.relayout_keep();
+    }
+}
+
+/// What a selection across texts takes ([`Writer::hani`]): a range of the
+/// body text, whole table rows `(table, first row, last row)`, or a block of
+/// cells in one table `(table, first row, last row, first column, last
+/// column)`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Hani {
+    pub body: std::ops::Range<usize>,
+    pub rows: Vec<(usize, usize, usize)>,
+    pub cells: Option<(usize, usize, usize, usize, usize)>,
+}
+
+impl Hani {
+    /// Whether a cell is in the selection
+    pub(crate) fn fukumu(&self, t: usize, r: usize, c: usize) -> bool {
+        self.rows.iter().any(|&(ht, r0, r1)| ht == t && r >= r0 && r <= r1)
+            || self.cells.is_some_and(|(ht, r0, r1, c0, c1)| ht == t && r >= r0 && r <= r1 && c >= c0 && c <= c1)
     }
 }

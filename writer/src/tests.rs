@@ -4994,13 +4994,14 @@ mod shape_pick_tests {
             let b = this.ten_at(x, y).expect("セルの中の点が引けない");
             assert_eq!(b.cell, Some((0, 0, 0)), "セルの中を指していない");
             this.hirosa = Some((a, b));
-            let gyou = this.hirosa_gyou();
-            let naiyou: Vec<String> = this.page.lines.iter().map(|l| format!("{:?} {} {}", l.cell, l.from_body, l.cells.iter().map(|c| c.ch).collect::<String>())).collect();
-            assert_eq!(gyou.len(), 2, "見出しとセルの 2 行にまたがっていない: {gyou:?} {naiyou:?}");
-            assert_eq!(this.hirosa_text(), "Heading\nTip text ", "コピーする文字が違う");
+            // Word's way: the table part is the whole row
+            let h = this.hani().expect("範囲が出ない");
+            assert_eq!(h.rows, vec![(0, 0, 0)], "表の行ごとの選択になっていない: {h:?}");
+            assert_eq!(h.body, 0..7, "本文の範囲が違う: {h:?}");
+            assert_eq!(this.hirosa_text(), "Heading\nTip text here", "コピーする文字が違う");
             // dragged the other way, the same selection
             this.hirosa = Some((b, a));
-            assert_eq!(this.hirosa_text(), "Heading\nTip text ");
+            assert_eq!(this.hirosa_text(), "Heading\nTip text here");
         });
     }
 
@@ -5036,6 +5037,106 @@ mod shape_pick_tests {
             // within one text with nothing between, the plain selection is kept
             this.hirosa = Some((a, Ten { cell: None, byte: 3 }));
             assert!(!this.hirosa_mazaru(), "1 つの文の中の選択をまたがる選択にした");
+        });
+    }
+
+    fn hyou_no_bunsho(rows: &[&[&str]]) -> kumihan::Table {
+        let para = |t: &str| kumihan::Paragraph {
+            runs: vec![kumihan::Run { text: t.into(), size_pt: Some(10.0), font: None, fmt: Default::default() }],
+            ..Default::default()
+        };
+        kumihan::Table {
+            col_mm: vec![],
+            rows: rows
+                .iter()
+                .map(|r| r.iter().map(|t| kumihan::Cellbox { paragraphs: vec![para(t)], ..Default::default() }).collect())
+                .collect(),
+            ..Default::default()
+        }
+    }
+
+    fn bunsho(this: &mut Writer, blocks: Vec<kumihan::Block>) {
+        let honbun: Vec<String> = blocks
+            .iter()
+            .filter_map(|b| match b {
+                kumihan::Block::Para(p) => Some(p.runs.iter().map(|r| r.text.as_str()).collect::<String>()),
+                _ => None,
+            })
+            .collect();
+        let mut d = kumihan::Document::plain("");
+        d.blocks = blocks;
+        this.doc = d;
+        this.ed = Editor::new(&honbun.join("\n"));
+        this.relayout();
+    }
+
+    fn dan(t: &str) -> kumihan::Block {
+        kumihan::Block::Para(kumihan::Paragraph {
+            runs: vec![kumihan::Run { text: t.into(), size_pt: Some(10.0), font: None, fmt: Default::default() }],
+            ..Default::default()
+        })
+    }
+
+    /// **Deleting a selection across the body and a table, the way Word
+    /// does** (2026-09-23): a table it passes over goes whole, and the body
+    /// text between its ends goes; one step of Undo brings it back.
+    #[gpui::test]
+    fn deleting_across_a_table_takes_the_table_and_the_text(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            bunsho(this, vec![dan("First"), kumihan::Block::Table(hyou_no_bunsho(&[&["Inside"]])), dan("Second")]);
+            this.hirosa = Some((Ten { cell: None, byte: 2 }, Ten { cell: None, byte: "First\nSec".len() }));
+            this.hirosa_kesu();
+            assert_eq!(this.doc.tables().count(), 0, "間の表が残った");
+            assert_eq!(this.doc.body_text(), "Fiond", "本文の範囲が消えていない");
+            assert_eq!(this.ed.cursor(), 2, "カーソルが選択の頭に立っていない");
+            this.undo_step();
+            assert_eq!(this.doc.tables().count(), 1, "取り消しで表が戻らない");
+            assert_eq!(this.doc.body_text(), "First\nSecond", "取り消しで本文が戻らない");
+        });
+    }
+
+    /// Stopping inside a table takes its rows up to that one, and a merged
+    /// cell that began in a row going away starts in the first row that stays
+    /// (`w:vMerge`, ECMA-376 17.4.85).
+    #[gpui::test]
+    fn deleting_into_a_table_takes_the_rows_up_to_the_one_it_stops_in(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let mut t = hyou_no_bunsho(&[&["a1", "b1"], &["a2", "b2"], &["a3", "b3"]]);
+            t.rows[0][0].v_merge = kumihan::VMerge::Start;
+            t.rows[1][0].v_merge = kumihan::VMerge::Continue;
+            t.rows[2][0].v_merge = kumihan::VMerge::Continue;
+            bunsho(this, vec![dan("Head"), kumihan::Block::Table(t), dan("Tail")]);
+            this.hirosa = Some((Ten { cell: None, byte: 2 }, Ten { cell: Some((0, 0, 1)), byte: 1 }));
+            let h = this.hani().expect("範囲が出ない");
+            assert_eq!((h.body.clone(), h.rows.clone()), (2..4, vec![(0, 0, 0)]), "範囲が違う: {h:?}");
+            this.hirosa_kesu();
+            let t = this.doc.tables().next().expect("表ごと消えた");
+            assert_eq!(t.rows.len(), 2, "止まった行までが消えていない");
+            assert_eq!(t.rows[0][0].v_merge, kumihan::VMerge::Start, "結合の始まりが消えたままになった");
+            assert_eq!(t.rows[1][0].v_merge, kumihan::VMerge::Continue);
+            assert_eq!(this.doc.body_text(), "He\nTail", "本文の範囲が違う");
+        });
+    }
+
+    /// Both ends in one table: the block of cells between them, emptied by
+    /// Delete (the rows stay, and each cell keeps its one paragraph, which
+    /// `w:tc` needs, ECMA-376 17.4.66 / CT_Tc)
+    #[gpui::test]
+    fn a_selection_inside_one_table_is_a_block_of_cells(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            bunsho(this, vec![dan("Head"), kumihan::Block::Table(hyou_no_bunsho(&[&["a1", "b1", "c1"], &["a2", "b2", "c2"]])), dan("Tail")]);
+            this.hirosa = Some((Ten { cell: Some((0, 0, 1)), byte: 1 }, Ten { cell: Some((0, 1, 2)), byte: 0 }));
+            assert!(this.hirosa_mazaru(), "セルをまたぐ選択にならない");
+            assert_eq!(this.hirosa_text(), "b1\tc1\nb2\tc2", "コピーする文字が違う");
+            this.hirosa_kesu();
+            let t = this.doc.tables().next().unwrap();
+            let moji: Vec<Vec<String>> = t.rows.iter().map(|r| r.iter().map(crate::util::cell_text).collect()).collect();
+            assert_eq!(moji, vec![vec!["a1", "", ""], vec!["a2", "", ""]], "選んだセルだけが空になっていない");
+            assert!(t.rows.iter().flatten().all(|c| c.paragraphs.len() == 1), "空にしたセルに段落が 1 つ残っていない");
+            assert_eq!(this.doc.body_text(), "Head\nTail", "本文まで消えた");
         });
     }
 

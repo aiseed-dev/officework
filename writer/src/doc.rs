@@ -509,7 +509,7 @@ impl Writer {
     /// `target` を Body に置いてから switch_target を呼んだら、手元に
     /// 残っていたセルの字が**本文の1段落目を潰した**(「表のある文書」が
     /// 「2-2」になった)。消したあとは書き戻す先が無い — 読み直すだけ
-    fn retarget_fresh(&mut self, next: Target) {
+    pub(crate) fn retarget_fresh(&mut self, next: Target) {
         self.target = next;
         let text = match next {
             Target::Body => self.doc.body_text(),
@@ -526,7 +526,7 @@ impl Writer {
     }
 
     /// 表を番号で引く(本文の流れの中の何番目の表か)
-    fn table_mut(&mut self, i: usize) -> Option<&mut kumihan::Table> {
+    pub(crate) fn table_mut(&mut self, i: usize) -> Option<&mut kumihan::Table> {
         self.doc
             .blocks
             .iter_mut()

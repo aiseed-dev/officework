@@ -1190,9 +1190,19 @@ impl Render for Writer {
         }
 
         // 未確定(変換中)の下線は、行が持つバイト位置(byte0)で結ぶ
-        // The lines a selection across texts covers, and the bytes in each
-        let hirosa: std::collections::HashMap<usize, (usize, usize)> =
-            self.hirosa_gyou().into_iter().map(|(i, a, b)| (i, (a, b))).collect();
+        // What a selection across texts takes: the body range, drawn on the
+        // body lines, and whole cells, drawn as boxes (Word's way)
+        let hani = self.hani();
+        if let Some(h) = &hani {
+            for b in &self.page.cell_boxes {
+                if crate::keys::Hani::fukumu(h, b.table, b.row, b.col) {
+                    paper = paper.child(div().absolute()
+                        .left(px((self.pg.left_mm + b.x_mm) * pxmm)).top(px(b.top_mm * pxmm))
+                        .w(px(b.w_mm * pxmm)).h(px(b.h_mm * pxmm))
+                        .bg(gpui::Rgba { r: 0.40, g: 0.60, b: 0.85, a: 0.35 }));
+                }
+            }
+        }
         for (li, line) in self.page.lines.iter().enumerate() {
             if line.cells.is_empty() {
                 continue;
@@ -1287,9 +1297,9 @@ impl Render for Writer {
             // 選択の色。**選択が見えないと、コピーも切り取りも信用できない**
             // (ドラッグで選べるようにしても、色が出なければ「できない」に見える)
             // A selection across texts is drawn instead of the plain one
-            let (selr, kakeru) = match hirosa.get(&li) {
-                Some(&(a, b)) => (a..b, true),
-                None if !hirosa.is_empty() => (0..0, false),
+            let (selr, kakeru) = match &hani {
+                Some(h) if line.from_body => (h.body.clone(), true),
+                Some(_) => (0..0, false),
                 None => (self.ed.selection(), false),
             };
             if !selr.is_empty() {
@@ -1760,20 +1770,30 @@ impl Render for Writer {
             .relative()
             .key_context("jo_doc")
             .track_focus(&self.focus)
-            // Any key but a copy or a lone modifier ends a selection across
-            // texts: it is drawn and copied, and the keys act on the text
-            // being edited, which would leave the highlight behind
+            // Keys on a selection across texts, the way Word takes them.
+            // Delete, Backspace, Cut and Copy have their own actions. A letter
+            // or Enter replaces the selection: it goes, and the key then puts
+            // its text where it began. Any other key (the arrows and the
+            // like) ends the selection
             .capture_key_down(cx.listener(|this: &mut Writer, e: &gpui::KeyDownEvent, _, cx| {
                 if this.hirosa.is_none() {
                     return;
                 }
                 let k = &e.keystroke;
-                let copy = k.key == "c" && (k.modifiers.platform || k.modifiers.control);
+                let mods = k.modifiers.platform || k.modifiers.control;
+                let own_action = matches!(k.key.as_str(), "backspace" | "delete")
+                    || (mods && matches!(k.key.as_str(), "c" | "x"));
                 let shushoku = matches!(k.key.as_str(), "shift" | "control" | "alt" | "platform" | "function" | "cmd" | "ctrl");
-                if !copy && !shushoku {
-                    this.hirosa = None;
-                    cx.notify();
+                if own_action || shushoku {
+                    return;
                 }
+                let utsu = !mods && (k.key_char.as_deref().is_some_and(|c| !c.is_empty()) || k.key == "enter");
+                if utsu {
+                    this.hirosa_kesu();
+                } else {
+                    this.hirosa = None;
+                }
+                cx.notify();
             }))
             .on_action(cx.listener(Writer::backspace))
             .on_action(cx.listener(Writer::delete))
