@@ -21,7 +21,13 @@ impl Writer {
         // **図形を先に見ます**(2026-08-30)。図形は本文の上に乗るので、
         // 本文の当たり判定より先に見ないと、図形を押しても本文が動きます。
         // 後に描いた図形が上なので、後ろから探します
-        let ate = self.doc.shapes.iter().enumerate().rev().find(|(_, sp)| {
+        // **While the selection is being extended** (a drag, or a click with
+        // Shift), the pointer stays with what is being edited: it neither
+        // picks a shape nor moves to another cell. Passing over the arrow
+        // column beside the tip text of the business plan e22e6b47 switched
+        // the editing to that cell and dropped the selection, and passing
+        // over a shape picked the shape up (2026-09-23)
+        let ate = if extend { None } else { self.doc.shapes.iter().enumerate().rev().find(|(_, sp)| {
             let oy = self
                 .page_offsets
                 .get(sp.page)
@@ -29,7 +35,7 @@ impl Writer {
                 .unwrap_or(sp.page as f32 * self.pg.h_mm);
             let (sx, sy) = (sp.x_mm - self.pg.left_mm, sp.y_mm + oy);
             x_mm >= sx && x_mm <= sx + sp.w_mm && y_mm >= sy && y_mm <= sy + sp.h_mm
-        });
+        }) };
         match ate {
             Some((i, sp)) => {
                 let oy = self
@@ -58,6 +64,7 @@ impl Writer {
                 };
                 return;
             }
+            None if extend => {}
             None => {
                 // 図形の外を押したら選びを外します
                 self.shape_sel = None;
@@ -67,10 +74,24 @@ impl Writer {
         }
 
         // 表のセルの中なら、そのセルの編集に切り替える
-        let hit_box = self.page.cell_boxes.iter().find(|b| {
-            x_mm >= b.x_mm && x_mm <= b.x_mm + b.w_mm
-                && y_mm >= b.top_mm && y_mm <= b.top_mm + b.h_mm
-        }).copied();
+        let hit_box = if extend {
+            // Extending: the cell being edited, wherever the pointer is; in
+            // the body, no cell at all
+            match self.target {
+                Target::Cell { table, row, col } => self
+                    .page
+                    .cell_boxes
+                    .iter()
+                    .find(|b| (b.table, b.row, b.col) == (table, row, col))
+                    .copied(),
+                Target::Body => None,
+            }
+        } else {
+            self.page.cell_boxes.iter().find(|b| {
+                x_mm >= b.x_mm && x_mm <= b.x_mm + b.w_mm
+                    && y_mm >= b.top_mm && y_mm <= b.top_mm + b.h_mm
+            }).copied()
+        };
         if let Some(b) = hit_box {
             let id = Target::Cell { table: b.table, row: b.row, col: b.col };
             self.switch_target(id);

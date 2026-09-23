@@ -4898,6 +4898,42 @@ mod shape_pick_tests {
         });
     }
 
+    /// **A drag stays in the cell it started in.** Passing over the cell
+    /// beside it (the arrow column of the business plan e22e6b47) switched
+    /// the editing to that cell and threw the selection away (2026-09-23).
+    #[gpui::test]
+    fn a_drag_that_passes_over_another_cell_keeps_its_selection(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let para = |t: &str| kumihan::Paragraph {
+                runs: vec![kumihan::Run { text: t.into(), size_pt: Some(9.0), font: None, fmt: Default::default() }],
+                ..Default::default()
+            };
+            let cell = |t: &str| kumihan::Cellbox { paragraphs: vec![para(t)], ..Default::default() };
+            let mut d = kumihan::Document::plain("");
+            d.blocks = vec![kumihan::Block::Table(kumihan::Table {
+                col_mm: vec![12.0, 80.0],
+                rows: vec![vec![cell("x"), cell("abcdefghij")]],
+                ..Default::default()
+            })];
+            this.doc = d;
+            this.relayout();
+            let pxmm = crate::PX_PER_MM * this.zoom;
+            let line = this.page.lines.iter().find(|l| l.cell == Some((0, 0, 1)) && !l.cells.is_empty()).expect("2 列目の行が無い").clone();
+            let y = 14.0 + (line.y_mm + line.dip_mm - 1.0 - this.scroll_mm) * pxmm;
+            // press after "abcdef" in the second cell
+            let c = &line.cells[5];
+            this.click_at(28.0 + (this.pg.left_mm + c.x_mm + c.w_mm * 0.75) * pxmm, y, false);
+            assert!(matches!(this.target, Target::Cell { table: 0, row: 0, col: 1 }), "2 列目の編集に移っていない");
+            // drag left, past the start of the text into the first cell
+            let hidari = this.page.cell_boxes.iter().find(|b| b.col == 0).expect("1 列目の箱が無い");
+            let x = 28.0 + (this.pg.left_mm + hidari.x_mm + hidari.w_mm * 0.5) * pxmm;
+            this.click_at(x, y, true);
+            assert!(matches!(this.target, Target::Cell { table: 0, row: 0, col: 1 }), "ドラッグの途中で別のセルの編集に移った: {:?}", this.target);
+            assert_eq!(this.ed.selection(), 0..6, "選択が行の頭まで伸びていない");
+        });
+    }
+
     /// **図形の一覧は分類7つ → 形の2段。** 表の画面と同じ並びで、
     /// どの形も Python のスクリプトが名前を知っています。
     #[gpui::test]
