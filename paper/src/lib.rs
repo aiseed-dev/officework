@@ -712,6 +712,18 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
                     let kazu = mae.iter().take_while(|&&j| onaji(j)).count();
                     if kazu >= 2 {
                         hiku.push(mae[0]);
+                        // **Taking one line down must not leave the first line
+                        // alone** at the foot of the page, which is the other
+                        // half of the same rule (ECMA-376 17.3.1.44). With two
+                        // lines of the paragraph here, both go. The business
+                        // plan e22e6b47 had "Long-term Liabilities—Notes,
+                        // contract" alone at the foot of a page and its other
+                        // two lines on the next, where Word sends the whole
+                        // paragraph (2026-09-23). A page holding nothing else
+                        // keeps them, or it would be left empty
+                        if kazu == 2 && mae.len() > 2 {
+                            hiku.push(mae[1]);
+                        }
                     }
                 }
                 // `w:keepNext` — 境の手前の段落が次と離れない
@@ -1041,6 +1053,39 @@ mod tests {
         assert!(papers.iter().all(|p| p.width_mm == 210.0), "紙が勝手に変わった");
     }
 
+
+    /// **A three-line paragraph is never split one and two, or two and one**
+    /// (`w:widowControl`, ECMA-376 17.3.1.44, on unless the file turns it off).
+    /// Moving the last line down to keep it company must not leave the first
+    /// line alone; the business plan e22e6b47 did that at the foot of a page
+    /// (2026-09-23).
+    #[test]
+    fn a_three_line_paragraph_moves_whole_rather_than_leave_one_line() {
+        let run = |t: &str| kumihan::Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() };
+        let nagai = "word ".repeat(45);
+        let mut moved = 0;
+        for n in 20..80 {
+            let mut d = kumihan::Document::plain(&vec!["line"; n].join("\n"));
+            d.blocks.push(kumihan::Block::Para(kumihan::Paragraph { runs: vec![run(&nagai)], ..Default::default() }));
+            let laid = layout_doc(&d, &DocOpts::default(), &[]).expect("組めない");
+            let pn = paginate_full(&laid.sheet, Paper::from_page(&laid.page));
+            let s = &laid.sheet;
+            let ps: Vec<usize> = s
+                .lines
+                .iter()
+                .enumerate()
+                .filter(|(_, l)| l.cells.iter().map(|c| c.ch).collect::<String>().starts_with("word"))
+                .map(|(i, _)| pn.pages[i])
+                .collect();
+            assert_eq!(ps.len(), 3, "{n} 行: 段落が 3 行になっていない(試験の前提が崩れた): {ps:?}");
+            assert!(ps.iter().all(|p| *p == ps[0]), "{n} 行: 3 行の段落が頁で分かれた: {ps:?}");
+            let mae = s.lines.iter().enumerate().filter(|(_, l)| l.cells.iter().map(|c| c.ch).collect::<String>() == "line").map(|(i, _)| pn.pages[i]).max().unwrap();
+            if ps[0] > mae {
+                moved += 1;
+            }
+        }
+        assert!(moved > 0, "段落が頁の境に来る場合を作れなかった(試験の前提が崩れた)");
+    }
 
     /// **見出しを `w:keepNext` で次の頁へ送ったら、その頁は見出しから
     /// 始まる。**
