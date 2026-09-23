@@ -528,7 +528,10 @@ pub fn write_pages_fonts<W: std::io::Write>(
             // PDF には「斜体」という指示が無く、読む側は傾けてくれません。
             // 画面は OS の文字描画に任せられるので、この計算は要りません
             let (sin, cos) = p.rotation.to_radians().sin_cos();
-            let sh = if p.italic {
+            // A face that is italic already draws its letters slanted, and
+            // is not sheared again; the print picks italic faces since
+            // 2026-09-21, and a bold italic run can now land on one
+            let sh = if p.italic && !faces[fi].is_italic() {
                 -faces[fi].italic_angle().to_radians().tan()
             } else {
                 0.0

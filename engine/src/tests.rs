@@ -697,6 +697,30 @@ mod list_tests {
         assert_eq!(t.rows[1][1].shade, None, "塗らないと言ったセルを帯の色で塗った");
     }
 
+    /// **A bold italic run: the bold italic face, then the italic face,
+    /// then the bold face** (decided 2026-09-23). A face that is not italic
+    /// is never slanted, so the italic face comes before the bold one; bold
+    /// can be made by thickening the outline.
+    #[test]
+    fn a_bold_italic_run_looks_for_the_italic_face_before_the_bold_one() {
+        let kao = |bold: bool, italic: bool| crate::font::Family {
+            name: "Fam".into(), ascii: "Fam".into(), path: Default::default(), index: 0,
+            japanese: false, han: false, hangul: false, cyrillic: false, latin: true, vietnamese: false,
+            regular: !bold && !italic, bold, italic, group: "Fam".into(),
+            weight: if bold { 700 } else { 400 },
+        };
+        let (futsuu, futoi, naname, futonaname) = (kao(false, false), kao(true, false), kao(false, true), kao(true, true));
+        let erabu = |all: Vec<&crate::font::Family>| {
+            crate::font::kao_wo_erabu(all, &futsuu, true, true).map(|f| (f.bold, f.italic))
+        };
+        assert_eq!(erabu(vec![&futsuu, &futoi, &naname, &futonaname]), Some((true, true)), "太字の斜体の顔を選ばない");
+        assert_eq!(erabu(vec![&futsuu, &futoi, &naname]), Some((false, true)), "斜体の顔より太字の顔を先に選んだ");
+        assert_eq!(erabu(vec![&futsuu, &futoi]), Some((true, false)), "斜体が無いとき太字の顔を選ばない(Univers)");
+        assert_eq!(erabu(vec![&futsuu]), None, "無い顔を選んだ");
+        // One of the two alone is looked for as before
+        assert_eq!(crate::font::kao_wo_erabu(vec![&futsuu, &futoi], &futsuu, false, true), None, "斜体だけの run が太字の顔を選んだ");
+    }
+
     /// **文字グリッド**(`w:docGrid w:type="linesAndChars"`。2026-09-09)。全角の字は
     /// 自然の幅に charSpace の空きを足して送り(字の大きさに関わらず一定。Word の
     /// PDF で測った。10 回目)、半角はそのまま。負の上余白は絶対値で持ち、

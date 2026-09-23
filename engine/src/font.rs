@@ -1083,11 +1083,44 @@ pub fn face_for_weight(name: &str, bold: bool, italic: bool) -> Option<&'static 
         return None;
     }
     let head = resolve(plain_name(name))?;
-    faces(plain_name(name)).into_iter().find(|f| {
-        f.bold == bold
-            && f.italic == italic
-            && !(f.regular && (bold || italic))
-            && (f.name == head.name || f.ascii == head.ascii)
+    kao_wo_erabu(faces(plain_name(name)), head, bold, italic)
+}
+
+/// **Pick the face among one family's faces** (the body of
+/// [`face_for_weight`], apart so that it can be tested without the
+/// machine's fonts).
+///
+/// A bold italic run takes the bold italic face. When the family has none,
+/// the italic face comes first and the bold face after it (decided
+/// 2026-09-23): a face that is not italic is never slanted (decided
+/// 2026-08-31), while bold can be made by thickening the outline, so the
+/// italic face keeps more of what the run asks for. Univers has neither a
+/// bold italic nor an italic face, and the bracketed words of a heading in
+/// the business plan e22e6b47 (`w:b` from `Heading2` and `w:i` on the run)
+/// take Univers Bold, the face the rest of the heading is drawn in; they
+/// used to fall back to the regular face and be thickened
+pub fn kao_wo_erabu<'a>(
+    kouho: impl IntoIterator<Item = &'a Family>,
+    head: &Family,
+    bold: bool,
+    italic: bool,
+) -> Option<&'a Family> {
+    let kouho: Vec<&'a Family> = kouho
+        .into_iter()
+        .filter(|f| f.name == head.name || f.ascii == head.ascii)
+        .collect();
+    let aru = |b: bool, i: bool| {
+        kouho
+            .iter()
+            .copied()
+            .find(|f| f.bold == b && f.italic == i && !(f.regular && (b || i)))
+    };
+    aru(bold, italic).or_else(|| {
+        if bold && italic {
+            aru(false, true).or_else(|| aru(true, false))
+        } else {
+            None
+        }
     })
 }
 
