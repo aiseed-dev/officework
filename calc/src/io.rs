@@ -1228,11 +1228,6 @@ impl Calc {
         self.book.default_font.as_ref().map(|(_, pt)| *pt).filter(|p| *p > 0.0).unwrap_or(book::DEFAULT_CELL_PT)
     }
 
-    pub(crate) fn suuji_haba(&self) -> f32 {
-        // 紙と同じ物差し(`ops::suuji_haba_of`)。名前の無い標準の書体でも測る
-        ops::suuji_haba_of(&self.book)
-    }
-
     /// 画面に見せる**紙の切れ目**(行, 列)。刷る側と同じ規則で数える
     pub(crate) fn page_breaks_now(&self) -> (Vec<u32>, Vec<u32>) {
         let (paper, _) = self.paper_of_sheet();
@@ -1241,7 +1236,7 @@ impl Calc {
             areas: sh.print_areas.clone(),
             margins_mm: sh.margins_mm,
             date1904: self.book.date1904,
-            mdw_pt: self.suuji_haba(),
+            col_basis: self.book.col_basis,
             default_pt: self.default_pt(),
         };
         paper::grid::page_starts(sh, paper, &setup)
@@ -1279,7 +1274,7 @@ impl Calc {
                     areas: sh.print_areas.clone(),
                     margins_mm: sh.margins_mm,
                     date1904: self.book.date1904,
-            mdw_pt: self.suuji_haba(),
+            col_basis: self.book.col_basis,
             default_pt: self.default_pt(),
                 },
             ));
@@ -1345,7 +1340,7 @@ impl Calc {
             areas: areas.clone(),
             margins_mm: sh.margins_mm,
             date1904: self.book.date1904,
-            mdw_pt: self.suuji_haba(),
+            col_basis: self.book.col_basis,
             default_pt: self.default_pt(),
         };
         match areas.len() {

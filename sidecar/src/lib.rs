@@ -248,6 +248,7 @@ fn dispatch(
                                         part,
                                         &format!("sheet-{}", i + 1),
                                         sh,
+                                        &book.col_basis,
                                         &mut skipped,
                                     )
                                 })

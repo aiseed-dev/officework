@@ -192,7 +192,14 @@ pub fn from_book(b: &Book) -> BookTheme {
     for s in &b.sheets {
         let look = SheetLook {
             name: s.name.clone(),
-            col_width: s.col_width.iter().map(|(k, v)| (*k, *v)).collect(),
+            // The look keeps widths as Excel writes them (digits of the
+            // default font), turned from the sheet's millimetres with the
+            // workbook's conversion
+            col_width: s
+                .col_mm
+                .keys()
+                .filter_map(|k| s.col_xlsx_to_write(*k, &b.col_basis).map(|w| (*k, w)))
+                .collect(),
             row_height: s.row_height.iter().map(|(k, v)| (*k, *v)).collect(),
             paper_size: s.paper_size,
             landscape: s.landscape.then_some(true),
@@ -230,7 +237,7 @@ pub fn from_book(b: &Book) -> BookTheme {
             // 無いことがあるので、両方を合わせて拾います(2026-08-26)
             row_outline: outline_rows(&s.row_outline, &s.row_collapsed),
             col_outline: outline_rows(&s.col_outline, &s.col_collapsed),
-            default_col_width: s.default_col_width,
+            default_col_width: s.default_col_xlsx_to_write(&b.col_basis),
             default_row_height: s.default_row_height,
         };
         t.sheets.push(look);
@@ -323,10 +330,13 @@ fn collect_styles(b: &Book, t: &mut BookTheme) {
 /// 見た目をブックに当てる。**そのシートが無ければ黙って飛ばします**
 /// (テンプレートは別のブックにも使えるので、名前が合わないのは普通のこと)。
 pub fn apply(t: &BookTheme, b: &mut Book) {
+    let basis = b.col_basis;
     for look in &t.sheets {
         let Some(s) = b.sheets.iter_mut().find(|s| s.name == look.name) else { continue };
+        // Widths in the look are Excel's digits: kept as written and turned
+        // into millimetres with the workbook's conversion
         for (c, w) in &look.col_width {
-            s.col_width.insert(*c, *w);
+            s.set_col_xlsx(*c, *w, &basis);
         }
         for (r, h) in &look.row_height {
             s.row_height.insert(*r, *h);
@@ -440,7 +450,7 @@ pub fn apply(t: &BookTheme, b: &mut Book) {
             }
         }
         if let Some(v) = look.default_col_width {
-            s.default_col_width = Some(v);
+            s.set_default_col_xlsx(v, &basis);
         }
         if let Some(v) = look.default_row_height {
             s.default_row_height = Some(v);
@@ -1408,7 +1418,8 @@ pub fn default_path(book: &std::path::Path) -> std::path::PathBuf {
 /// 見た目を落とさずに済むよう、`Sheet` から見た目だけを消す。
 /// `.adoc` に書くときに使います(意味だけを書くため)。
 pub fn strip(s: &mut Sheet) {
-    s.col_width.clear();
+    s.col_mm.clear();
+    s.col_xlsx.clear();
     s.row_height.clear();
 }
 
@@ -1422,8 +1433,9 @@ mod tests {
         let mut b = Book::new();
         b.sheets[0].name = "売上台帳".into();
         b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("月"));
-        b.sheets[0].col_width.insert(0, 20.0);
-        b.sheets[0].col_width.insert(3, 12.5);
+        let bs = b.col_basis;
+        b.sheets[0].set_col_xlsx(0, 20.0, &bs);
+        b.sheets[0].set_col_xlsx(3, 12.5, &bs);
         b.sheets[0].row_height.insert(0, 24.0);
         b.sheets[0].paper_size = Some(9);
         b.sheets[0].landscape = true;
@@ -1469,8 +1481,10 @@ mod tests {
         let mut b = Book::new();
         b.sheets[0].name = "売上台帳".into();
         apply(&t, &mut b);
-        assert_eq!(b.sheets[0].col_width.get(&0), Some(&20.0));
-        assert_eq!(b.sheets[0].col_width.get(&3), Some(&12.5));
+        let bs = b.col_basis;
+        assert_eq!(b.sheets[0].col_xlsx_to_write(0, &bs), Some(20.0));
+        assert_eq!(b.sheets[0].col_xlsx_to_write(3, &bs), Some(12.5));
+        assert_eq!(b.sheets[0].col_mm.get(&3).copied(), Some(bs.chars_to_mm(12.5)));
         assert_eq!(b.sheets[0].row_height.get(&0), Some(&24.0));
         assert_eq!(b.sheets[0].paper_size, Some(9));
         assert!(b.sheets[0].landscape);
@@ -1489,7 +1503,7 @@ mod tests {
         let mut b = Book::new();
         b.sheets[0].name = "別の名前".into();
         apply(&t, &mut b);
-        assert!(b.sheets[0].col_width.is_empty(), "知らないシートに当ててしまった");
+        assert!(b.sheets[0].col_mm.is_empty(), "知らないシートに当ててしまった");
     }
 
     /// 知らない表は飛ばす(writer 向けの節が混じっていても落ちない)

@@ -144,13 +144,10 @@ pub(crate) fn anchor_value(a: &Corner, b: &Corner) -> Value {
 ///
 /// 列の幅・行の高さを EMU に直して、`cx`/`cy` を覆うまで歩く。
 /// **原本に無い数字を作っている** — 原本が `to` を書いていればそちらを使う。
-pub(crate) fn span_to(from: &Corner, ext: (i64, i64), sh: &Sheet) -> Corner {
+pub(crate) fn span_to(from: &Corner, ext: (i64, i64), sh: &Sheet, basis: &book::ColBasis) -> Corner {
     const EMU_PER_PT: f64 = 12700.0;
-    // Excel の列幅は「標準の字の数」。px ≒ 幅×7+5、1px = 9525 EMU
-    let col_emu = |c: u32| -> i64 {
-        let w = sh.col_width.get(&c).copied().or(sh.default_col_width).unwrap_or(8.43);
-        ((w as f64 * 7.0 + 5.0) * 9525.0) as i64
-    };
+    // Column widths are kept in millimetres; 1 mm = 36000 EMU.
+    let col_emu = |c: u32| -> i64 { (sh.col_haba_mm(c, basis) as f64 * 36_000.0) as i64 };
     let row_emu = |r: u32| -> i64 {
         let h = sh.row_height.get(&r).copied().or(sh.default_row_height).unwrap_or(15.0);
         (h as f64 * EMU_PER_PT) as i64
@@ -178,6 +175,7 @@ pub(crate) fn visuals_of(
     sheet_part: &str,
     sheet_id: &str,
     sh: &Sheet,
+    basis: &book::ColBasis,
     skipped: &mut Vec<String>,
 ) -> Vec<Value> {
     if sheet_part.is_empty() {
@@ -283,7 +281,7 @@ pub(crate) fn visuals_of(
                         // 「飛ばしたアンカーも数える」と決まっている
                         let this = index;
                         index += 1;
-                        let corner_to = to.unwrap_or_else(|| span_to(&from, ext, sh));
+                        let corner_to = to.unwrap_or_else(|| span_to(&from, ext, sh, basis));
                         let mut o = Map::new();
                         o.insert("id".into(), json!(format!("{target}#{this}")));
                         o.insert("sheetId".into(), json!(sheet_id));

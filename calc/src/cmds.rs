@@ -4512,10 +4512,12 @@ impl Calc {
                     if need <= 0.0 {
                         continue;
                     }
-                    // px → xlsx の字数。**上限を置く**(1セルの長文で
-                    // 画面いっぱいの列にならないように。本家も 255 字)
-                    let chars = (need / PX_PER_CHW).clamp(1.0, 255.0);
-                    self.sheet_mut().col_width.insert(c, chars);
+                    // Pixels to millimetres, **with a ceiling** of 255
+                    // digits, as Excel has, so one long cell does not make a
+                    // column as wide as the screen
+                    let basis = self.book.col_basis;
+                    let mm = (need / PX_PER_MM).clamp(basis.chars_to_mm(1.0), basis.chars_to_mm(255.0));
+                    self.sheet_mut().col_mm.insert(c, mm);
                     n += 1;
                 }
             } else {

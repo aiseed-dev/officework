@@ -42,7 +42,7 @@ fn head(s: &mut book::Sheet, cols: &[(&str, f32)]) {
         c.fmt.borders = Borders::ALL;
         c.fmt.align = HAlign::Center;
         s.set(Pos::new(0, i as u32), c);
-        s.col_width.insert(i as u32, *w);
+        s.set_col_xlsx(i as u32, *w, &book::ColBasis::default());
     }
 }
 
@@ -58,7 +58,7 @@ fn mitsumori() -> Book {
     let s = &mut b.sheets[0];
     s.name = "見積書".into();
     for (i, w) in [(0, 6.0), (1, 34.0), (2, 10.0), (3, 8.0), (4, 12.0), (5, 14.0)] {
-        s.col_width.insert(i, w);
+        s.set_col_xlsx(i, w, &book::ColBasis::default());
     }
 
     // 表題(A1:F1 結合・中央)
@@ -167,7 +167,7 @@ fn seikyu() -> Book {
     let s = &mut b.sheets[0];
     s.name = "請求書".into();
     for (i, w) in [(0, 6.0), (1, 34.0), (2, 10.0), (3, 8.0), (4, 12.0), (5, 14.0)] {
-        s.col_width.insert(i, w);
+        s.set_col_xlsx(i, w, &book::ColBasis::default());
     }
 
     // 表題(A1:F1 結合・中央)
@@ -401,7 +401,7 @@ fn chumon() -> Book {
     s.name = "注文書".into();
     for (i, w) in [(0, 9.0), (1, 24.0), (2, 12.0), (3, 8.0), (4, 13.0),
                    (5, 3.0), (6, 3.0), (7, 9.0), (8, 22.0), (9, 9.0)] {
-        s.col_width.insert(i, w);
+        s.set_col_xlsx(i, w, &book::ColBasis::default());
     }
 
     let mut t = Cell::input("注 文 書");
@@ -619,7 +619,7 @@ fn juchu() -> Book {
     l.fmt.bold = true;
     s.set(Pos::new(0, 10), l);
     s.set(Pos::new(1, 10), Cell::input("0"));
-    s.col_width.insert(9, 12.0);
+    s.set_col_xlsx(9, 12.0, &book::ColBasis::default());
     // 台帳は記録なので**空で出荷**する(見本の行を持つと、店の実際の
     // 受付番号と衝突して取りこぼす — 実測で踏んだ)。行は @取り込み が刻む
     s.print_title_rows = Some((0, 0));

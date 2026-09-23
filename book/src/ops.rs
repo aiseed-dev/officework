@@ -62,12 +62,10 @@ impl Sheet {
         self.shift(|p| p.col >= at, 0, 1);
         self.fix_formulas(at, 1, false);
         self.shift_merges(at, 1, false);
-        // 列幅も一緒に動かす
-        self.col_width = self
-            .col_width
-            .iter()
-            .map(|(c, w)| (if *c >= at { c + 1 } else { *c }, *w))
-            .collect();
+        // The widths move with their columns, in both measures
+        for m in [&mut self.col_mm, &mut self.col_xlsx] {
+            *m = m.iter().map(|(c, w)| (if *c >= at { c + 1 } else { *c }, *w)).collect();
+        }
         self.col_outline = self
             .col_outline
             .iter()
@@ -85,12 +83,13 @@ impl Sheet {
         self.shift(|p| p.col > at, 0, -1);
         self.fix_formulas(at, -1, false);
         self.shift_merges(at, -1, false);
-        self.col_width = self
-            .col_width
-            .iter()
-            .filter(|(c, _)| **c != at)
-            .map(|(c, w)| (if *c > at { c - 1 } else { *c }, *w))
-            .collect();
+        for m in [&mut self.col_mm, &mut self.col_xlsx] {
+            *m = m
+                .iter()
+                .filter(|(c, _)| **c != at)
+                .map(|(c, w)| (if *c > at { c - 1 } else { *c }, *w))
+                .collect();
+        }
         self.col_outline = self
             .col_outline
             .iter()

@@ -428,13 +428,15 @@ pub(super) fn col_width(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
     let g = |k: &str| attr(e, k).and_then(|v| v.parse::<f32>().ok());
     let (Some(min), Some(max)) = (g("min"), g("max")) else { return };
     if let Some(w) = g("width") {
+        // The width as written (digits of the default font); it becomes
+        // millimetres once the whole workbook and its default font are read
         if max - min > 1000.0 {
-            sh.default_col_width = Some(w);
+            sh.default_col_xlsx = Some(w);
             return;
         }
         for c in (min as u32)..=(max as u32) {
             if c >= 1 {
-                sh.col_width.insert(c - 1, w);
+                sh.col_xlsx.insert(c - 1, w);
             }
         }
     }
@@ -1617,10 +1619,11 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
                     sh.default_row_height =
                         attr(&e, "defaultRowHeight").and_then(|v| v.parse::<f32>().ok());
                     // **全列の既定幅もここにある。** `<col>` の無い列はこの幅
-                    if sh.default_col_width.is_none() {
-                        sh.default_col_width =
+                    if sh.default_col_xlsx.is_none() {
+                        sh.default_col_xlsx =
                             attr(&e, "defaultColWidth").and_then(|v| v.parse::<f32>().ok());
                     }
+                    sh.base_col_xlsx = attr(&e, "baseColWidth").and_then(|v| v.parse::<f32>().ok());
                 }
                 b"col" => col_width(&e, &mut sh),
                 // 画面の見え方と固定枠。**Excel の sheetView は子を抱えるので
@@ -1643,10 +1646,11 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
                 b"sheetFormatPr" => {
                     sh.default_row_height =
                         attr(&e, "defaultRowHeight").and_then(|v| v.parse::<f32>().ok());
-                    if sh.default_col_width.is_none() {
-                        sh.default_col_width =
+                    if sh.default_col_xlsx.is_none() {
+                        sh.default_col_xlsx =
                             attr(&e, "defaultColWidth").and_then(|v| v.parse::<f32>().ok());
                     }
+                    sh.base_col_xlsx = attr(&e, "baseColWidth").and_then(|v| v.parse::<f32>().ok());
                 }
                 // **書き手が申告した大きさ** `<dimension ref="A1:CN46"/>`。
                 // 単独では信じない — `Sheet::size` が実際と大きいほうを採る
@@ -1960,7 +1964,40 @@ pub(super) fn parse_custom_props(xml: &str) -> Vec<book::CustomProp> {
     out
 }
 
+/// **How to read an xlsx**: whose way of counting column widths the
+/// workbook follows, and, if given, which date system to take over what the
+/// file says (`workbookPr@date1904`)
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ReadOptions {
+    pub platform: book::Platform,
+    pub date1904: Option<bool>,
+}
+
 pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
+    read_with(src, &ReadOptions::default())
+}
+
+/// [`read`] with [`ReadOptions`]
+pub fn read_with<R: Read + Seek>(src: R, opts: &ReadOptions) -> Result<(Book, Report), String> {
+    let (mut book, rep) = read_inner(src)?;
+    if let Some(d) = opts.date1904 {
+        book.date1904 = d;
+    }
+    // **Column widths become millimetres here** (decided 2026-09-23): the
+    // default font's digit, counted in the platform's pixels
+    let digit_pt = book
+        .default_font
+        .as_ref()
+        .and_then(|(name, pt)| {
+            let pt = if *pt > 0.0 { *pt } else { book::DEFAULT_CELL_PT };
+            kumihan::font::digit_em_named(name).map(|em| em * pt)
+        })
+        .unwrap_or(book::DEFAULT_CELL_PT * 0.5);
+    book.set_col_basis(opts.platform, digit_pt);
+    Ok((book, rep))
+}
+
+fn read_inner<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     let mut zip = zip::ZipArchive::new(src).map_err(|e| format!("zipを開けません: {e}"))?;
     let mut rep = Report::default();
 

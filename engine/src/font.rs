@@ -918,6 +918,85 @@ pub fn digit_px(name: &str, pt: f32) -> Option<f32> {
     memo_em("digit", Some(name), || digit_em_yomu(name)).map(|hiro| (hiro * pt * 96.0 / 72.0).round())
 }
 
+/// **The width of a digit of a named face, in em** (the widest of 0 to 9),
+/// for turning spreadsheet column widths into lengths (ECMA-376 18.3.1.13).
+///
+/// The width comes from the face the file names, whether this machine has
+/// it or not. Excel prints the same column widths with its own copy of the
+/// face or a substitute of the same widths, while this machine may draw the
+/// text in another face: Hiragino's digits are 30% wider than MS P Gothic's,
+/// and measuring them spread whole tables by 30% (2026-09-09). The table
+/// holds the faces Office ships, measured from the fonts in Excel's own
+/// `DFonts` folder; a face not in it is measured from what this machine can
+/// load.
+pub fn digit_em_named(name: &str) -> Option<f32> {
+    let key = digit_key(name);
+    if let Some((_, em)) = DIGIT_EM.iter().find(|(k, _)| *k == key) {
+        return Some(*em);
+    }
+    memo_em("digit", Some(name), || digit_em_yomu(name))
+}
+
+/// The digit widths (em) of the faces Office ships, keyed by
+/// [`digit_key`]. MS Gothic and MS Mincho and their kin have half-width
+/// digits (0.5 em)
+const DIGIT_EM: &[(&str, f32)] = &[
+    ("msゴシック", 0.5),
+    ("mspゴシック", 0.5),
+    ("msuiゴシック", 0.5),
+    ("ms明朝", 0.5),
+    ("msp明朝", 0.5),
+    ("msgothic", 0.5),
+    ("mspgothic", 0.5),
+    ("msuigothic", 0.5),
+    ("msmincho", 0.5),
+    ("mspmincho", 0.5),
+    ("timesnewroman", 0.5),
+    ("游ゴシック", 0.5562),
+    ("游ゴシックlight", 0.5562),
+    ("游ゴシックmedium", 0.5562),
+    ("yugothic", 0.5562),
+    ("yugothicui", 0.5762),
+    ("游明朝", 0.542),
+    ("yumincho", 0.542),
+    ("メイリオ", 0.6211),
+    ("meiryo", 0.6211),
+    ("meiryoui", 0.6211),
+    ("calibri", 0.5068),
+    ("arial", 0.5562),
+    ("aptos", 0.5342),
+    ("aptosnarrow", 0.5342),
+    ("century", 0.5562),
+    ("centurygothic", 0.5601),
+    ("tahoma", 0.5459),
+    ("verdana", 0.7109),
+    ("hggothice", 0.5),
+    ("hgpgothice", 0.543),
+    ("hgsgothice", 0.543),
+    ("hgminchoe", 0.5),
+    ("hgpminchoe", 0.5195),
+    ("hgsminchoe", 0.5195),
+    ("hg創英角ｺﾞｼｯｸub", 0.5),
+    ("hgp創英角ｺﾞｼｯｸub", 0.6289),
+    ("hgs創英角ｺﾞｼｯｸub", 0.6289),
+    ("hg丸ｺﾞｼｯｸm-pro", 0.7422),
+];
+
+/// A face name in the form of [`DIGIT_EM`]'s keys: full-width Latin letters
+/// and digits made half-width, capitals made small, spaces dropped
+/// (`ＭＳ Ｐゴシック` becomes `mspゴシック`)
+fn digit_key(na: &str) -> String {
+    na.chars()
+        .filter(|c| !c.is_whitespace() && *c != '\u{3000}')
+        .map(|c| match c {
+            'Ａ'..='Ｚ' => char::from_u32(c as u32 - 'Ａ' as u32 + 'a' as u32).unwrap_or(c),
+            'ａ'..='ｚ' => char::from_u32(c as u32 - 'ａ' as u32 + 'a' as u32).unwrap_or(c),
+            '０'..='９' => char::from_u32(c as u32 - '０' as u32 + '0' as u32).unwrap_or(c),
+            _ => c.to_ascii_lowercase(),
+        })
+        .collect()
+}
+
 fn digit_em_yomu(name: &str) -> Option<f32> {
     let (fam, _) = for_document(Some(name)).ok()?;
     let d = load(fam).ok()?;

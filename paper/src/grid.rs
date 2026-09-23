@@ -121,66 +121,6 @@ fn wakeru(t: &str, fno: impl Fn(char) -> u8) -> Vec<(u8, String)> {
     out
 }
 
-/// **列の幅(mm)。Excel と同じ式で出します**(2026-08-31 に直した)。
-///
-/// xlsx が持つ列幅は「標準の書体の `0` が何文字ぶん入るか」です。画素へ
-/// 直す式は OOXML の仕様書に書いてあります:
-///
-/// ```text
-/// px = trunc(((256 × 幅 + trunc(128 / MDW)) / 256) × MDW)
-/// ```
-///
-/// `MDW` は標準の書体の `0` の幅を、**紙の物差し(pt)で整数に丸めた値**
-/// です(2026-09-09 に画素から点へ替えました。下の「単位」)。
-///
-/// **セルの内側の余白 5 画素は、保存されている幅にもう入っています。**
-/// よく言われる「既定は 8.43 文字 = 64 画素」の 8.43 は画面に出る文字数
-/// で、そのとき保存される値は 9.140625 です。前の版は文字数から画素を
-/// 出す式(`trunc(幅 × MDW) + 5`)を保存された幅に当てていたので、
-/// 1列あたり 5 画素(1.3mm)ずつ広がっていました。国税庁の酒税の総括表を
-/// Excel が出した PDF と突き合わせて分かりました — 罫線の間隔が
-/// 64.3・50.0・58.8 画素で、`幅 × 7` に一致し、`+5` した値には
-/// 一致しません。
-///
-/// # 単位は「機械の点」で、Windows と Mac で違う
-///
-/// 式の `MDW` は**その機械が描く一点の大きさ**で数えた整数です。Windows の
-/// Excel は 96dpi の画素で数えるので、ＭＳ Ｐゴシック 11pt(数字は 0.5em =
-/// 5.5pt)は `round(5.5 × 96 / 72)` = 7 になります。macOS の Excel は
-/// 72dpi、つまり pt そのもので数えるので `round(5.5)` = 6 です。同じ幅
-/// 3.125 の列が、Windows では 22 画素(16.5pt)、Mac では 19pt になります。
-/// **同じファイルでも列幅が機械で変わります。**
-///
-/// officework は PDF を pt で書くので、Mac の Excel と同じ 72dpi で数えます
-/// (2026-09-09、集めた xlsx の Excel の PDF から罫線を測って確かめました。
-/// 幅 2.125・3.125・5.75・7・12.5 の5通りが 13・19・34・42・75pt で一致)。
-fn retsu_mm_mdw(haba: f32, mdw: f32) -> f32 {
-    // 0 は「分からない」の印。11pt の日本語の書体(数字 5.5pt)と同じ 6 で
-    let mdw = if mdw > 0.0 { mdw } else { 6.0 };
-    let pt = (((256.0 * haba + (128.0 / mdw).trunc()) / 256.0) * mdw).trunc();
-    pt * 25.4 / 72.0
-}
-
-/// **`<col>` にも `defaultColWidth` にも幅の無い列の幅(mm)。**
-///
-/// ECMA-376 は `sheetFormatPr@defaultColWidth` の所で、書いていないときの
-/// 既定をこう決めています。
-///
-/// ```text
-/// 幅 = trunc((基準の文字数 × MDW + 余白 5) / MDW × 256) / 256
-/// ```
-///
-/// 基準の文字数(`baseColWidth`)の既定は 8、余白は 5 点です。ＭＳ Ｐゴシック
-/// 11pt(数字 6 点)なら 8 × 6 + 5 = 53 点になります。
-///
-/// 前は 26mm(73.7 点)の決め打ちでした。日野市の労務台帳
-/// (r6daicho_itaku.xlsx)は A 列に `<col>` が無く、Excel の PDF では
-/// 53 点なので、1列で 21 点広がっていました(2026-09-09)。
-fn kitei_retsu_mm(mdw: f32) -> f32 {
-    let mdw = if mdw > 0.0 { mdw } else { 6.0 };
-    retsu_mm_mdw(((8.0 * mdw + 5.0) / mdw * 256.0).trunc() / 256.0, mdw)
-}
-
 /// `RRGGBB` を 0..1 の RGB にする。読めなければ None(黙って黒にしない)。
 /// 紙の1枚の置き場(頁と層)。printpdf の組で持ち回ります。
 /// 余白(左・右・上・下。mm)。
@@ -235,18 +175,12 @@ pub struct PrintSetup {
     pub margins_mm: Option<(f32, f32, f32, f32)>,
     /// 1904 起点のブックか(日付の描きが起点を替える)
     pub date1904: bool,
-    /// **数字1文字の幅(pt。整数)。** そのブックの標準の書体で 0〜9 のうち
-    /// いちばん広い字を測り、点に丸めた値です([`crate::grid::retsu_mm_mdw`]
-    /// の「単位」。2026-09-09 に画素から点へ替えました)。
-    ///
-    /// xlsx の列幅は「標準の書体の数字が何文字ぶん入るか」で書いてあるので、
-    /// ミリに直すのにこれが要ります。ＭＳ Ｐゴシック 11pt なら 6、
-    /// ＭＳ 明朝 10.5pt なら 5 です。**0 のときは 6 として扱います。**
-    ///
-    /// LibreOffice も同じ所を見ています
-    /// (`sc/source/filter/oox/unitconverter.cxx`。標準の書体を取って
-    /// 「get maximum width of all digits」)
-    pub mdw_pt: f32,
+    /// **The workbook's conversion between xlsx column widths and
+    /// millimetres** (`Book::col_basis`). The sheet keeps its widths in
+    /// millimetres; this gives the width of a column that states none, and
+    /// it is what the widths were made with (Windows's 96 dpi pixels unless
+    /// the workbook was read the Mac's way, decided 2026-09-23)
+    pub col_basis: book::ColBasis,
     /// **大きさを言っていないセルの字の大きさ(pt)。** ブックの標準の書体の
     /// 大きさです(styles.xml の1本目の書体)。Excel はこれで描くので、
     /// 決め打ちだと Excel の紙と行の高さや折り返しが合わない(2026-09-08)。
@@ -286,8 +220,7 @@ fn fit_scale(
     let total_w: f32 = (c0..c1)
         .filter(|c| !grid.col_hidden.contains(c))
         .map(|c| {
-            grid.col_width.get(&c).copied().or(grid.default_col_width)
-                .map(|w| retsu_mm_mdw(w, setup.mdw_pt)).unwrap_or_else(|| kitei_retsu_mm(setup.mdw_pt))
+            grid.col_haba_mm(c, &setup.col_basis)
         })
         .sum();
     let total_h: f32 = (r0..r1)
@@ -346,8 +279,7 @@ pub fn page_starts(grid: &Grid, paper: Paper, setup: &PrintSetup) -> (Vec<u32>, 
         if grid.col_hidden.contains(&c) {
             continue;
         }
-        let cw = grid.col_width.get(&c).copied().or(grid.default_col_width)
-            .map(|w| retsu_mm_mdw(w, setup.mdw_pt)).unwrap_or_else(|| kitei_retsu_mm(setup.mdw_pt)) * scale;
+        let cw = grid.col_haba_mm(c, &setup.col_basis) * scale;
         if w > 0.0 && (grid.col_breaks.contains(&c) || w + cw > usable_w + 0.1) {
             cols.push(c);
             w = 0.0;
@@ -1145,8 +1077,7 @@ fn draw_sheet(
             if grid.col_hidden.contains(&c) {
                 return 0.0;
             }
-            grid.col_width.get(&c).copied().or(grid.default_col_width)
-                .map(|w| retsu_mm_mdw(w, setup.mdw_pt)).unwrap_or_else(|| kitei_retsu_mm(setup.mdw_pt)) * scale
+            grid.col_haba_mm(c, &setup.col_basis) * scale
         })
         .collect();
     let mut col_x = vec![0.0f32];
@@ -1236,7 +1167,7 @@ fn draw_sheet(
         // 書体ごとの字の幅。**描く書体で測ります**(2026-08-31)
         haba: &Habakei,
         // 数字1文字の幅(画素)。列幅をミリに直すのに要ります
-        mdw_pt: f32,
+        col_basis: book::ColBasis,
         // 大きさを言っていないセルの字の大きさ(pt)
         default_pt: f32,
     ) {
@@ -1328,8 +1259,7 @@ fn draw_sheet(
                         let w: f32 = (a.col..=z.col)
                             .filter(|c| !grid.col_hidden.contains(c))
                             .map(|c| {
-                                grid.col_width.get(&c).copied().or(grid.default_col_width)
-                                    .map(|v| retsu_mm_mdw(v, mdw_pt)).unwrap_or_else(|| kitei_retsu_mm(mdw_pt)) * scale
+                                grid.col_haba_mm(c, &col_basis) * scale
                             })
                             .sum();
                         let h: f32 = (a.row..=z.row)
@@ -1455,8 +1385,7 @@ fn draw_sheet(
                 ma_w = (tl.col..=br.col)
                     .filter(|c| !grid.col_hidden.contains(c))
                     .map(|c| {
-                        grid.col_width.get(&c).copied().or(grid.default_col_width)
-                            .map(|w| retsu_mm_mdw(w, mdw_pt)).unwrap_or_else(|| kitei_retsu_mm(mdw_pt)) * scale
+                        grid.col_haba_mm(c, &col_basis) * scale
                     })
                     .sum();
                 ma_h = (tl.row..=br.row)
@@ -1909,7 +1838,7 @@ fn draw_sheet(
                 for tr in &title_rows {
                     let th = row_mm(*tr);
                     let y_top = paper.height_mm - mt - sageru(pi) - y_used;
-                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.mdw_pt, setup.default_pt);
+                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt);
                     y_used += th;
                 }
             }
@@ -1921,7 +1850,7 @@ fn draw_sheet(
             row_place.entry(r).or_insert((cur, y_top));
         }
         y_used += rh;
-        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.mdw_pt, setup.default_pt);
+        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt);
     }
     }
     // 図形(挿した分も読んだ分も)。塗りと輪郭を紙に出します
@@ -1947,7 +1876,7 @@ fn draw_sheet(
                     col_mm
                         .get((c - c0) as usize)
                         .copied()
-                        .unwrap_or(kitei_retsu_mm(setup.mdw_pt) * scale)
+                        .unwrap_or(setup.col_basis.default_mm(8.0) * scale)
                 })
                 .sum();
             // 控えに無い行(隠した行など)は、手前のいちばん近い行から数えます
@@ -1985,7 +1914,7 @@ fn draw_sheet(
                         .map(|c| {
                             c.checked_sub(c0)
                                 .and_then(|i| col_mm.get(i as usize).copied())
-                                .unwrap_or(kitei_retsu_mm(setup.mdw_pt) * scale)
+                                .unwrap_or(setup.col_basis.default_mm(8.0) * scale)
                         })
                         .sum();
                     let h_mm: f32 = (sp.at.row..to.row).map(row_mm).sum();
@@ -2489,7 +2418,7 @@ mod tests {
     fn a_distributed_cell_spreads_its_characters() {
         let hiku = |align| -> Vec<f32> {
             let mut g = Grid { name: "見本".into(), ..Default::default() };
-            g.col_width.insert(0, 20.0);
+            g.set_col_xlsx(0, 20.0, &book::ColBasis::default());
             g.set(Pos::new(0, 0), Cell {
                 formula: None,
                 value: Value::Text("清酒".into()),
@@ -2517,7 +2446,7 @@ mod tests {
     fn a_run_inside_a_cell_keeps_its_own_size() {
         use book::{Pos, RichRun};
         let mut g = Grid { name: "見本".into(), ..Default::default() };
-        g.col_width.insert(0, 12.0);
+        g.set_col_xlsx(0, 12.0, &book::ColBasis::default());
         let p = Pos::new(0, 0);
         g.set(p, Cell {
             formula: None,
@@ -2564,24 +2493,19 @@ mod tests {
     /// * 幅 7 → 42pt、幅 12.5 → 75pt(日野市 r6daicho_itaku.xlsx)
     #[test]
     fn a_column_is_as_wide_as_excel_makes_it() {
-        // 元の PDF の罫線から測った、(幅, 数字1文字の pt, 列の幅 pt) の組
-        for (haba, mdw, pt) in [
-            (2.125, 6.0, 13.0),
-            (3.125, 6.0, 19.0),
-            (5.75, 6.0, 34.0),
-            (7.0, 6.0, 42.0),
-            (12.5, 6.0, 75.0),
-        ] {
-            let deta = super::retsu_mm_mdw(haba, mdw);
+        // Measured from the rules of PDFs Excel for Mac printed of public
+        // xlsx files, every one in MS P Gothic 11pt (a 6pt digit on a Mac),
+        // on sheets with no scaling (2026-09-09). They hold for a workbook
+        // read the Mac's way; Windows counts 96 dpi pixels instead
+        let mac = book::ColBasis::new(book::Platform::Mac, 5.5);
+        for (haba, pt) in [(2.125, 13.0), (3.125, 19.0), (5.75, 34.0), (7.0, 42.0), (12.5, 75.0)] {
+            let deta = mac.chars_to_mm(haba);
             let mm = pt * 25.4 / 72.0;
-            assert!((deta - mm).abs() < 0.05, "幅 {haba}(数字 {mdw}pt)は {pt}pt のはずが {deta}mm");
+            assert!((deta - mm).abs() < 0.05, "幅 {haba} は Mac で {pt}pt のはずが {deta}mm");
         }
-        // 0 は「分からない」の印。11pt の日本語の書体と同じ 6 で計算します
-        assert_eq!(super::retsu_mm_mdw(9.109_375, 0.0), super::retsu_mm_mdw(9.109_375, 6.0));
-        // **幅を書いていない列は 26mm ではなく、基準の 8 文字ぶん。**
-        // ＭＳ Ｐゴシック 11pt なら 8 × 6 + 5 = 53pt(日野市の労務台帳の
-        // A 列。Excel の PDF の罫線と一致)
-        let kitei = super::kitei_retsu_mm(6.0);
+        // A column with no width is 8 digits and 5 points on a Mac: 53pt
+        // (column A of Hino City's labour ledger, matching Excel's PDF)
+        let kitei = mac.default_mm(8.0);
         assert!((kitei - 53.0 * 25.4 / 72.0).abs() < 0.05, "既定の列幅が 53pt でない: {kitei}mm");
     }
 
@@ -2710,7 +2634,7 @@ mod tests {
         for c in 0..10 {
             s.set(Pos::new(0, c), Cell {
                 formula: None, value: Value::Number(c as f64), fmt: Default::default() });
-            s.col_width.insert(c, 20.0); // 20字 ≒ 40mm
+            s.set_col_xlsx(c, 20.0, &book::ColBasis::default()); // 20字 ≒ 40mm
         }
         let mut buf = Vec::new();
         let clipped = sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut buf).unwrap();
@@ -2737,7 +2661,7 @@ mod tests {
                     formula: None, value: Value::Number((r * 10 + c) as f64),
                     fmt: Default::default() });
             }
-            s.col_width.insert(r.min(7), 18.0);
+            s.set_col_xlsx(r.min(7), 18.0, &book::ColBasis::default());
         }
         s.row_breaks = vec![50];
         s.col_breaks = vec![4];
@@ -2805,7 +2729,7 @@ mod tests {
         let one = pages(&PrintSetup {
             areas: vec![(Pos::new(0, 0), Pos::new(2, 0))],
             margins_mm: None,
-            date1904: false, mdw_pt: 0.0, default_pt: 11.0,
+            date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0,
         });
         // 同じ大きさの域を2つ = 紙も2枚(**繋げて1枚に詰めない**)
         let two = pages(&PrintSetup {
@@ -2814,7 +2738,7 @@ mod tests {
                 (Pos::new(5, 0), Pos::new(7, 0)),
             ],
             margins_mm: None,
-            date1904: false, mdw_pt: 0.0, default_pt: 11.0,
+            date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0,
         });
         assert_eq!(one, 1, "1域なのに {one} 枚になった");
         assert_eq!(two, 2, "2域が {two} 枚 — 域ごとに紙を変えていない");
@@ -2829,7 +2753,7 @@ mod tests {
         for c in 0..3 {
             s.set(Pos::new(0, c), Cell {
                 formula: None, value: Value::Number(c as f64), fmt: Default::default() });
-            s.col_width.insert(c, 100.0);
+            s.set_col_xlsx(c, 100.0, &book::ColBasis::default());
         }
         let mut buf = Vec::new();
         let before =
@@ -2872,7 +2796,7 @@ mod tests {
         for c in 0..3 {
             s.set(Pos::new(0, c), Cell {
                 formula: None, value: Value::Number(c as f64), fmt: Default::default() });
-            s.col_width.insert(c, 10.0);
+            s.set_col_xlsx(c, 10.0, &book::ColBasis::default());
         }
         let pages = |s: &Grid| {
             let mut buf = Vec::new();
@@ -2896,7 +2820,7 @@ mod tests {
         // 1列で 200mm — A4 縦の使える幅(170mm)より広く、割りようが無い
         s.set(Pos::new(0, 0), Cell {
             formula: None, value: Value::Number(1.0), fmt: Default::default() });
-        s.col_width.insert(0, 100.0);
+        s.set_col_xlsx(0, 100.0, &book::ColBasis::default());
         let mut buf = Vec::new();
         let clipped = sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut buf).unwrap();
         assert_eq!(clipped, 1, "割れない列を黙って切っている");
@@ -2950,7 +2874,7 @@ mod print_setup_tests {
         let setup = PrintSetup {
             areas: vec![(Pos::new(0, 0), Pos::new(4, 0))],
             margins_mm: None,
-            date1904: false, mdw_pt: 0.0, default_pt: 11.0,
+            date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0,
         };
         let mut part = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(), &setup, &mut part).unwrap();
@@ -2964,11 +2888,11 @@ mod print_setup_tests {
         let s = long_sheet();
         let mut narrow = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(),
-            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 10.0, 10.0)) , date1904: false, mdw_pt: 0.0, default_pt: 11.0 },
+            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 10.0, 10.0)) , date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0 },
             &mut narrow).unwrap();
         let mut wide = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(),
-            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 100.0, 100.0)) , date1904: false, mdw_pt: 0.0, default_pt: 11.0 },
+            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 100.0, 100.0)) , date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0 },
             &mut wide).unwrap();
         assert!(pages(&wide) > pages(&narrow), "余白が紙の枚数に効いていない");
     }
@@ -3158,7 +3082,7 @@ mod print_extras_tests {
         for c in 0..12u32 {
             s.set(Pos::new(0, c), Cell {
                 formula: None, value: Value::Number(c as f64), fmt: Default::default() });
-            s.col_width.insert(c, 20.0); // 20字 ≒ 40mm
+            s.set_col_xlsx(c, 20.0, &book::ColBasis::default()); // 20字 ≒ 40mm
         }
         let mut plain = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(), &PrintSetup::default(), &mut plain).unwrap();
@@ -3290,7 +3214,7 @@ mod zukei_tests {
                 g.set(book::Pos::new(0, c), book::Cell {
                     formula: None, value: book::Value::Text("あ".into()), fmt: f });
             }
-            let setup = PrintSetup { date1904: false, mdw_pt: 0.0, ..Default::default() };
+            let setup = PrintSetup { date1904: false, col_basis: book::ColBasis::default(), ..Default::default() };
             let leaf = &sheet_leaves(&g, Paper::default(), &setup).expect("組めない")[0];
             let mut y: Vec<f32> = leaf.pieces.iter().filter(|p| p.text == "あ")
                 .map(|p| p.y_mm).collect();
@@ -3338,7 +3262,7 @@ mod zukei_tests {
                 formula: None, value: book::Value::Text("あ".into()), fmt: f.clone() });
         }
         g.merges.push((book::Pos::new(0, 0), book::Pos::new(2, 0)));
-        let setup = PrintSetup { date1904: false, mdw_pt: 0.0, ..Default::default() };
+        let setup = PrintSetup { date1904: false, col_basis: book::ColBasis::default(), ..Default::default() };
         let leaf = &sheet_leaves(&g, Paper::default(), &setup).expect("組めない")[0];
         // 横線は上端と下端の2本だけ(内側の2本は出さない)
         let mut yoko: Vec<f32> = leaf
@@ -3399,7 +3323,7 @@ mod zukei_tests {
         g.set(book::Pos::new(0, 0), book::Cell {
             formula: None, value: book::Value::Text("区分".into()), fmt: f });
         g.merges.push((book::Pos::new(0, 0), book::Pos::new(1, 1)));
-        let setup = PrintSetup { date1904: false, mdw_pt: 0.0, ..Default::default() };
+        let setup = PrintSetup { date1904: false, col_basis: book::ColBasis::default(), ..Default::default() };
         let leaf = &sheet_leaves(&g, Paper::default(), &setup).expect("組めない")[0];
         let naname: Vec<&pdfw::Rule> = leaf
             .rules
@@ -3411,7 +3335,7 @@ mod zukei_tests {
         let r = naname[0];
         assert!((r.x2_mm - r.x1_mm) * (r.y2_mm - r.y1_mm) < 0.0, "向きが逆");
         // 結合の2列2行ぶんを渡っていること
-        let cw = retsu_mm_mdw(g.default_col_width.unwrap_or(8.43), 7.0);
+        let cw = g.col_haba_mm(0, &setup.col_basis);
         assert!((r.x2_mm - r.x1_mm).abs() > cw * 1.5,
                 "1列ぶんしか引いていない: {:.1}mm", (r.x2_mm - r.x1_mm).abs());
     }
@@ -3426,7 +3350,7 @@ mod zukei_tests {
     fn a_trailing_space_does_not_start_a_line() {
         let mut g = Grid::default();
         g.row_height.insert(0, 90.0);
-        g.col_width.insert(0, 8.0);
+        g.set_col_xlsx(0, 8.0, &book::ColBasis::default());
         let mut f = book::CellFormat { wrap: true, ..Default::default() };
         f.size_c = Some(700);
         // **セルの幅をちょうど超えた所に空白がある**形です。8字ごとに空白を
@@ -3434,7 +3358,7 @@ mod zukei_tests {
         let t: String = (0..20).map(|i| if i % 8 == 7 { ' ' } else { 'n' }).collect();
         g.set(book::Pos::new(0, 0), book::Cell {
             formula: None, value: book::Value::Text(format!("{t} ")), fmt: f });
-        let setup = PrintSetup { date1904: false, mdw_pt: 0.0, ..Default::default() };
+        let setup = PrintSetup { date1904: false, col_basis: book::ColBasis::default(), ..Default::default() };
         let leaf = &sheet_leaves(&g, Paper::default(), &setup).expect("組めない")[0];
         for p in &leaf.pieces {
             assert!(p.text.is_empty() || !p.text.trim().is_empty(),
@@ -3495,7 +3419,7 @@ mod zukei_tests {
         }
         g.fit_to_h = Some(1);
         let paper = Paper::hitoshii(210.0, 140.0, 20.0);
-        let setup = PrintSetup { date1904: false, mdw_pt: 0.0, ..Default::default() };
+        let setup = PrintSetup { date1904: false, col_basis: book::ColBasis::default(), ..Default::default() };
         let leaves = sheet_leaves(&g, paper, &setup).expect("組めない");
         assert_eq!(leaves.len(), 1, "1枚に収まっていない: {} 枚", leaves.len());
     }
@@ -3549,7 +3473,7 @@ mod zukei_tests {
             g.set(book::Pos::new(r, 0), book::Cell::input("あ"));
         }
         g.fit_to_h = Some(1);
-        let setup = PrintSetup { date1904: false, mdw_pt: 0.0, ..Default::default() };
+        let setup = PrintSetup { date1904: false, col_basis: book::ColBasis::default(), ..Default::default() };
         let paper = Paper::hitoshii(210.0, 213.5, 20.0);
         let k = fit_scale(&g, paper, &setup, (0, 20, 0, 1), (20.0, 20.0, 20.0, 20.0))
             .expect("収める指定なのに倍率が出ない");
@@ -3588,7 +3512,7 @@ mod zukei_tests {
     fn a_narrow_column_drops_digits_before_it_gives_up() {
         let hiku = |n: f64, haba: f32| -> String {
             let mut g = Grid { name: "見本".into(), ..Default::default() };
-            g.col_width.insert(0, haba);
+            g.set_col_xlsx(0, haba, &book::ColBasis::default());
             g.set(book::Pos::new(0, 0), book::Cell {
                 formula: None, value: Value::Number(n), fmt: Default::default() });
             // この試験の幅と桁の対応は 9.5pt の字で決めてある(標準は 11pt に変えた。

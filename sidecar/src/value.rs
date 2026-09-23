@@ -59,8 +59,9 @@ pub(crate) fn open_result(
         // (2026-08-10、向こうの試験で判明)。持たない物は**省く**のであって
         // `null` を置くのではない
         let mut col_props: BTreeMap<u32, (Option<f32>, bool, u8, bool)> = BTreeMap::new();
-        for (c, w) in &sh.col_width {
-            col_props.entry(*c).or_insert((None, false, 0, false)).0 = Some(*w);
+        for c in sh.col_mm.keys() {
+            let w = sh.col_xlsx_to_write(*c, &book.col_basis);
+            col_props.entry(*c).or_insert((None, false, 0, false)).0 = w;
         }
         for c in &sh.col_hidden {
             col_props.entry(*c).or_insert((None, false, 0, false)).1 = true;
@@ -144,7 +145,7 @@ pub(crate) fn open_result(
             "columnCount": cols,
             "columnWidths": widths,
             "defaultRowHeight": sh.default_row_height,
-            "defaultColumnWidth": sh.default_col_width,
+            "defaultColumnWidth": sh.default_col_xlsx_to_write(&book.col_basis),
             "freeze": sh.freeze.as_ref().map(|f| json!({
                 "frozenRows": f.frozen_rows, "frozenColumns": f.frozen_columns})),
             "hidden": sh.hidden,

@@ -4180,3 +4180,31 @@ mod fold_fill_tests {
         follows(&s);
     }
 }
+
+/// **The unit of a column width follows the face the file names**, counted
+/// in the platform's pixels ([`book::ColBasis`]). MS P Gothic is not on this
+/// machine (only inside Office), and Hiragino's digits would make every table
+/// 10% wider (2026-09-09); the table in `font.rs` holds the faces Office
+/// ships. The Mac counts points, Windows 96 dpi pixels.
+#[cfg(test)]
+mod digit_width_tests {
+    #[test]
+    fn the_column_unit_follows_the_font_the_file_names() {
+        for (na, pt, mac, win) in [
+            ("ＭＳ Ｐゴシック", 11.0, 6.0, 7.0),
+            ("ＭＳ ゴシック", 11.0, 6.0, 7.0),
+            ("ＭＳ 明朝", 11.0, 6.0, 7.0),
+            ("MS PGothic", 11.0, 6.0, 7.0),
+            ("ＭＳ 明朝", 10.5, 5.0, 7.0),
+            ("游ゴシック", 11.0, 6.0, 8.0),
+            ("Yu Gothic", 11.0, 6.0, 8.0),
+            ("メイリオ", 11.0, 7.0, 9.0),
+            ("Calibri", 11.0, 6.0, 7.0),
+        ] {
+            let em = crate::font::digit_em_named(na).expect("引けない");
+            let m = book::ColBasis::new(book::Platform::Mac, em * pt).mdw;
+            let w = book::ColBasis::new(book::Platform::Windows, em * pt).mdw;
+            assert_eq!((m, w), (mac, win), "{na} {pt}pt は Mac {mac}pt・Windows {win}px のはず");
+        }
+    }
+}

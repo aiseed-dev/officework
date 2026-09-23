@@ -21,7 +21,7 @@ pub mod styles;
 pub mod theme;
 mod write;
 
-pub use read::{read, Report};
+pub use read::{read, read_with, ReadOptions, Report};
 pub use repair::{salvage, Salvage};
 pub use write::{to_template, write, write_with};
 

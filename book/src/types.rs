@@ -682,6 +682,85 @@ pub struct FreezePane {
     pub frozen_columns: u32,
 }
 
+/// **Whose way of counting column widths a workbook follows.**
+///
+/// An xlsx column width is a count of the default font's digit, and Excel
+/// turns it into a length through whole pixels (ECMA-376 18.3.1.13). The
+/// standard counts those pixels at 96 dpi ("7 pixels (at 96 dpi)" for
+/// Calibri 11pt), and so does Excel on Windows; Excel on a Mac counts them at
+/// 72 dpi, and the same file gets other widths. Nothing in the file says
+/// which (2026-09-23): the resume form of the Ministry of Health, Labour and
+/// Welfare fits columns A to K on one page on Windows and needs 572pt of a
+/// 524pt page on a Mac. Japanese forms are nearly all made on Windows, so
+/// Windows is the default, and a reading option picks the Mac.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Platform {
+    #[default]
+    Windows,
+    Mac,
+}
+
+/// **Turns xlsx column widths into millimetres and back**, the way Excel
+/// does on one [`Platform`] (ECMA-376 18.3.1.13):
+///
+/// ```text
+/// px = trunc(((256 × width + trunc(128 / mdw)) / 256) × mdw)
+/// ```
+///
+/// `mdw` is the widest digit of the default font in whole pixels of the
+/// platform (96 dpi on Windows, 72 on a Mac), and the 5 pixels of cell
+/// padding are already inside the stored width.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ColBasis {
+    pub dpi: f32,
+    pub mdw: f32,
+}
+
+impl ColBasis {
+    /// The conversion for a platform and a digit width in points
+    pub fn new(platform: Platform, digit_pt: f32) -> ColBasis {
+        let dpi = match platform {
+            Platform::Windows => 96.0,
+            Platform::Mac => 72.0,
+        };
+        let digit_pt = if digit_pt > 0.0 { digit_pt } else { DEFAULT_CELL_PT * 0.5 };
+        ColBasis { dpi, mdw: (digit_pt * dpi / 72.0).round().max(1.0) }
+    }
+
+    /// An xlsx width (digits) as millimetres
+    pub fn chars_to_mm(&self, width: f32) -> f32 {
+        let px = (((256.0 * width + (128.0 / self.mdw).trunc()) / 256.0) * self.mdw).trunc();
+        px * 25.4 / self.dpi
+    }
+
+    /// Millimetres as the xlsx width Excel would store: whole pixels, then
+    /// `trunc(px / mdw × 256) / 256`, which [`Self::chars_to_mm`] turns back
+    /// into the same pixels
+    pub fn mm_to_chars(&self, mm: f32) -> f32 {
+        let px = (mm * self.dpi / 25.4).round();
+        (px / self.mdw * 256.0).trunc() / 256.0
+    }
+
+    /// The width of a column no `<col>` and no `defaultColWidth` speak of:
+    /// `trunc((base × mdw + 5) / mdw × 256) / 256`, the base 8 digits unless
+    /// `baseColWidth` says otherwise (ECMA-376, `sheetFormatPr`)
+    pub fn default_chars(&self, base: f32) -> f32 {
+        ((base * self.mdw + 5.0) / self.mdw * 256.0).trunc() / 256.0
+    }
+
+    /// [`Self::default_chars`] in millimetres
+    pub fn default_mm(&self, base: f32) -> f32 {
+        self.chars_to_mm(self.default_chars(base))
+    }
+}
+
+impl Default for ColBasis {
+    /// Windows, with an 11pt face of half-width digits (MS P Gothic)
+    fn default() -> Self {
+        ColBasis::new(Platform::Windows, DEFAULT_CELL_PT * 0.5)
+    }
+}
+
 /// 1枚のシート。疎な表なので BTreeMap で持つ(空セルは持たない)。
 #[derive(Debug, Clone, Default)]
 pub struct Sheet {
@@ -690,12 +769,27 @@ pub struct Sheet {
     /// セル結合(左上, 右下)。**日本の帳票は結合で見出しを作る**ので、
     /// 読み飛ばして保存すると枠組みが壊れる
     pub merges: Vec<(Pos, Pos)>,
-    /// 列幅(xlsx の単位 = 標準フォントの「0」何個ぶん)。無い列は既定幅。
-    /// これも読み飛ばして保存すると帳票の形が変わる
-    pub col_width: BTreeMap<u32, f32>,
-    /// 全列の既定幅。`<col min="1" max="16384">` を1列ずつ展開しない
-    /// (展開すると保存が 16,384 個の col で肥大する)
-    pub default_col_width: Option<f32>,
+    /// **Column widths in millimetres**, the length on paper, the same
+    /// measure a docx table keeps (decided 2026-09-23). A column not in it
+    /// takes [`Self::default_col_mm`], and then the default width
+    /// ([`Sheet::col_haba_mm`]). The screen, the print and every command
+    /// work in this; the xlsx unit (digits of the default font) is turned
+    /// into it when a file is read ([`ColBasis`]), and back when it is saved
+    pub col_mm: BTreeMap<u32, f32>,
+    /// The width of every column that states none (`<col>` over the whole
+    /// sheet, or `sheetFormatPr@defaultColWidth`), in millimetres. A `<col>`
+    /// over the whole sheet is not spread into 16,384 columns
+    pub default_col_mm: Option<f32>,
+    /// **The widths as the xlsx wrote them** (digits of the default font),
+    /// kept so that a column nobody changed is written back with the very
+    /// same number: Excel's conversion rounds to whole pixels, and going
+    /// through millimetres and back would move `1.875` to `1.8554688`
+    pub col_xlsx: BTreeMap<u32, f32>,
+    /// The same for [`Self::default_col_mm`]
+    pub default_col_xlsx: Option<f32>,
+    /// `sheetFormatPr@baseColWidth`: how many digits wide the default width
+    /// is before its 5 pixels of padding (8 when the file says nothing)
+    pub base_col_xlsx: Option<f32>,
     /// 全行の既定の高さ(pt)。`<sheetFormatPr defaultRowHeight="15"/>`。
     /// **書いてはいたが読んでいなかった**(2026-08-10、向こうの試験で判明)。
     /// 無い行はこの高さで描くので、落とすと行間が変わる
@@ -901,6 +995,55 @@ pub struct Sheet {
 }
 
 impl Sheet {
+    /// **The width of a column in millimetres**: its own, the sheet's
+    /// default, or the default width of the workbook's conversion
+    pub fn col_haba_mm(&self, c: u32, basis: &ColBasis) -> f32 {
+        self.col_mm
+            .get(&c)
+            .copied()
+            .or(self.default_col_mm)
+            .unwrap_or_else(|| basis.default_mm(self.base_col_xlsx.unwrap_or(8.0)))
+    }
+
+    /// **Set a column's width the way Excel writes it** (digits of the
+    /// default font), keeping the number and its millimetres together
+    pub fn set_col_xlsx(&mut self, c: u32, width: f32, basis: &ColBasis) {
+        self.col_xlsx.insert(c, width);
+        self.col_mm.insert(c, basis.chars_to_mm(width));
+    }
+
+    /// The same for the sheet's default width
+    pub fn set_default_col_xlsx(&mut self, width: f32, basis: &ColBasis) {
+        self.default_col_xlsx = Some(width);
+        self.default_col_mm = Some(basis.chars_to_mm(width));
+    }
+
+    /// Turn the widths the xlsx gave ([`Self::col_xlsx`]) into millimetres
+    /// with a conversion, replacing what the sheet held
+    pub fn col_mm_from_xlsx(&mut self, basis: &ColBasis) {
+        self.col_mm = self.col_xlsx.iter().map(|(c, w)| (*c, basis.chars_to_mm(*w))).collect();
+        self.default_col_mm = self.default_col_xlsx.map(|w| basis.chars_to_mm(w));
+    }
+
+    /// The xlsx width to write for a column: the one read, when the column
+    /// kept the width it had; otherwise the millimetres turned back
+    pub fn col_xlsx_to_write(&self, c: u32, basis: &ColBasis) -> Option<f32> {
+        let mm = *self.col_mm.get(&c)?;
+        match self.col_xlsx.get(&c) {
+            Some(w) if (basis.chars_to_mm(*w) - mm).abs() < 0.005 => Some(*w),
+            _ => Some(basis.mm_to_chars(mm)),
+        }
+    }
+
+    /// The same for the sheet's default width
+    pub fn default_col_xlsx_to_write(&self, basis: &ColBasis) -> Option<f32> {
+        let mm = self.default_col_mm?;
+        match self.default_col_xlsx {
+            Some(w) if (basis.chars_to_mm(w) - mm).abs() < 0.005 => Some(w),
+            _ => Some(basis.mm_to_chars(mm)),
+        }
+    }
+
     /// この席が昔ながらの配列数式の中なら、その起点を返す。
     /// **配列の一部だけを書き換えさせない**ための見張りに使う
     pub fn cse_anchor(&self, p: Pos) -> Option<Pos> {
@@ -2724,7 +2867,7 @@ impl Sheet {
             r = r.max(k + 1);
         }
         let cols = self
-            .col_width
+            .col_mm
             .keys()
             .chain(self.col_hidden.iter())
             .chain(self.col_outline.keys());
@@ -2950,6 +3093,13 @@ pub struct Book {
     /// (2026-08-13、起点の解釈をエンジンに)。保存は原本の workbook.xml が
     /// 属性ごと持ち越すので、旗はここでは書かない
     pub date1904: bool,
+    /// **Whose way of counting column widths the workbook follows**
+    /// (Windows or Mac), chosen when it is read; Windows unless told
+    /// otherwise ([`Platform`])
+    pub platform: Platform,
+    /// The conversion between xlsx column widths and millimetres for this
+    /// workbook: the platform's pixels and the default font's digit
+    pub col_basis: ColBasis,
     /// 変更履歴(校閲の記録)。**記録中の差分を刻んだもの**で、
     /// xl/joChanges.xml で往復する独自部品 — Excel は読まない(正直な劣化)
     pub changes: Vec<ChangeRec>,
@@ -2985,4 +3135,62 @@ impl Book {
         Book { sheets: vec![Sheet::new("Sheet1")], ..Default::default() }
     }
 
+    /// **Read the column widths again the other platform's way**: a new
+    /// conversion from the platform and the default font's digit width
+    /// (points), and every sheet's widths turned from what the xlsx wrote
+    pub fn set_col_basis(&mut self, platform: Platform, digit_pt: f32) {
+        self.platform = platform;
+        self.col_basis = ColBasis::new(platform, digit_pt);
+        let b = self.col_basis;
+        for s in &mut self.sheets {
+            s.col_mm_from_xlsx(&b);
+        }
+    }
+
+}
+
+#[cfg(test)]
+mod col_basis_tests {
+    use super::*;
+
+    /// The standard's own example: Calibri 11pt has a digit 7 pixels wide at
+    /// 96 dpi (ECMA-376 18.3.1.13). MS P Gothic 11pt (5.5pt digits) is 7 on
+    /// Windows and 6 on a Mac, which counts in points
+    #[test]
+    fn the_digit_is_counted_in_the_platforms_pixels() {
+        assert_eq!(ColBasis::new(Platform::Windows, 0.5068 * 11.0).mdw, 7.0);
+        assert_eq!(ColBasis::new(Platform::Windows, 5.5).mdw, 7.0);
+        assert_eq!(ColBasis::new(Platform::Mac, 5.5).mdw, 6.0);
+        assert_eq!(ColBasis::default(), ColBasis::new(Platform::Windows, 5.5));
+    }
+
+    /// The resume form of the Ministry of Health, Labour and Welfare (the
+    /// widths of its `.xls`): columns A to K are 666 pixels (499.5pt) on
+    /// Windows and 572pt on a Mac
+    #[test]
+    fn the_same_widths_are_narrower_on_windows_than_on_a_mac() {
+        let haba = [1.875f32, 10.0, 4.75, 21.375, 5.625, 7.875, 9.625, 7.625, 4.0, 18.125, 4.5];
+        let win = ColBasis::new(Platform::Windows, 5.5);
+        let mac = ColBasis::new(Platform::Mac, 5.5);
+        let pt = |b: &ColBasis| haba.iter().map(|w| b.chars_to_mm(*w)).sum::<f32>() * 72.0 / 25.4;
+        assert!((pt(&win) - 499.5).abs() < 0.1, "Windows で {}pt", pt(&win));
+        assert!((pt(&mac) - 572.0).abs() < 0.1, "Mac で {}pt", pt(&mac));
+    }
+
+    /// Millimetres turned back give a width that turns into the same pixels,
+    /// and a column that kept its width writes back the number it was read with
+    #[test]
+    fn a_width_goes_to_millimetres_and_back() {
+        let b = ColBasis::default();
+        for w in [1.875f32, 8.43, 10.0, 21.375, 47.5] {
+            let mm = b.chars_to_mm(w);
+            assert!((b.chars_to_mm(b.mm_to_chars(mm)) - mm).abs() < 0.001, "{w} が往復で変わった");
+        }
+        let mut s = Sheet::new("S");
+        s.col_xlsx.insert(0, 1.875);
+        s.col_mm_from_xlsx(&b);
+        assert_eq!(s.col_xlsx_to_write(0, &b), Some(1.875), "変えていない列の値が変わった");
+        s.col_mm.insert(0, 10.0);
+        assert_eq!(s.col_xlsx_to_write(0, &b), Some(b.mm_to_chars(10.0)), "変えた列が mm から戻っていない");
+    }
 }

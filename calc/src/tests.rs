@@ -190,11 +190,12 @@ mod size_grip_tests {
 
     #[test]
     fn the_width_conversion_round_trips() {
-        // 画面px → xlsxの字数 → 画面px が(丸め2桁でも)崩れない
+        // Screen pixels to millimetres and back (rounded to 2 places) stay
+        // put; a millimetre is 96/25.4 pixels, the scale of the text
         let px0 = 108.0f32;
-        let w = ((px0 / PX_PER_CHW) * 100.0).round() / 100.0;
-        assert!((w - 8.43).abs() < 0.01, "既定幅が 8.43 にならない: {w}");
-        assert!((w * PX_PER_CHW - px0).abs() < 0.5, "幅の往復がずれる");
+        let mm = ((px0 / PX_PER_MM) * 100.0).round() / 100.0;
+        assert!((mm * PX_PER_MM - px0).abs() < 0.5, "幅の往復がずれる");
+        assert!((PX_PER_MM - 96.0 / 25.4).abs() < 1e-6, "画面の 1mm が 96dpi でない");
         // 行: 画面px → pt → 画面px。既定 24px = 15pt
         let pt = (24.0f32 * 15.0 / 24.0 * 100.0).round() / 100.0;
         assert_eq!(pt, 15.0);
@@ -2750,8 +2751,11 @@ mod recalc_tests {
             this.sync_input();
             this.prompt = Some(("col-width", Editor::new("12.5")));
             this.finish_prompt(cx);
-            assert_eq!(this.sheet().col_width.get(&1), Some(&12.5));
-            assert_eq!(this.sheet().col_width.get(&2), Some(&12.5));
+            // typed in Excel's digits, kept as typed and in millimetres
+            let bs = this.book.col_basis;
+            assert_eq!(this.sheet().col_xlsx_to_write(1, &bs), Some(12.5));
+            assert_eq!(this.sheet().col_xlsx_to_write(2, &bs), Some(12.5));
+            assert_eq!(this.sheet().col_mm.get(&1).copied(), Some(bs.chars_to_mm(12.5)));
             // 範囲外は言い返す
             this.prompt = Some(("col-width", Editor::new("999")));
             this.finish_prompt(cx);
@@ -2770,7 +2774,7 @@ mod recalc_tests {
             this.sync_input();
             this.prompt = Some(("col-width", Editor::new("")));
             this.finish_prompt(cx);
-            assert!(!this.sheet().col_width.contains_key(&1), "既定に戻らない");
+            assert!(!this.sheet().col_mm.contains_key(&1), "既定に戻らない");
         });
     }
 
@@ -5468,7 +5472,8 @@ mod autofit_tests {
             let mut cell = book::Cell::input("あいうえおかきくけこさしすせそたちつてと");
             cell.fmt.wrap = true;
             this.book.sheets[0].set(p, cell);
-            this.book.sheets[0].col_width.insert(0, 6.0); // わざと狭く
+            let bs = this.book.col_basis;
+            this.book.sheets[0].set_col_xlsx(0, 6.0, &bs); // わざと狭く
             this.cursor = p;
             this.anchor = None;
             this.sync_input();
@@ -8081,7 +8086,8 @@ mod adoc_open_and_save {
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
             this.book.sheets[0].set(Pos::parse("A1").unwrap(), book::Cell::input("あ"));
-            this.book.sheets[0].col_width.insert(0, 30.0);
+            let bs = this.book.col_basis;
+            this.book.sheets[0].set_col_xlsx(0, 30.0, &bs);
             this.save_to(p.clone());
             assert!(
                 this.notes.iter().any(|n| n.contains("列の幅")),

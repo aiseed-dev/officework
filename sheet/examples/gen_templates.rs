@@ -18,7 +18,7 @@ fn header(s: &mut book::Sheet, cols: &[(&str, f32)]) {
         c.fmt.fill = Some("D5E8DC".into());
         c.fmt.borders = Borders::ALL;
         s.set(Pos::new(0, i as u32), c);
-        s.col_width.insert(i as u32, *w);
+        s.set_col_xlsx(i as u32, *w, &book::ColBasis::default());
     }
 }
 

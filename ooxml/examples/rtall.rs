@@ -23,7 +23,7 @@ fn main() {
         let n = |b: &book::Book| -> (usize, usize, usize) {
             (b.sheets.iter().map(|s| s.cells.len()).sum(),
              b.sheets.iter().map(|s| s.merges.len()).sum(),
-             b.sheets.iter().map(|s| s.col_width.len()).sum())
+             b.sheets.iter().map(|s| s.col_mm.len()).sum())
         };
         let (c1, m1, w1) = n(&book);
         let (c2, m2, w2) = n(&back);

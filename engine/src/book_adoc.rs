@@ -536,7 +536,8 @@ mod tests {
         // **列の幅はもう落ちません**(2026-08-26)。テンプレートが持ちます。
         // 落ちるのは、実体が binary で adoc に入らない画像だけです
         let mut b = book_of();
-        b.sheets[0].col_width.insert(0, 20.0);
+        let bs = b.col_basis;
+        b.sheets[0].set_col_xlsx(0, 20.0, &bs);
         assert!(write_report(&b).is_empty(), "落ちない物を落ちると言っている");
 
         b.sheets[0].images.push(book::SheetImage {

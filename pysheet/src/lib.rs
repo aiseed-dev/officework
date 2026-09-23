@@ -176,13 +176,26 @@ impl PyBook {
     /// xlsx を開く。式は開いた時点で再計算される。
     ///
     /// `lang` は [`PyBook::new`] と同じです。
+    // `platform` is "windows" (the default) or "mac": the Excel that made the
+    // file, which decides how column widths turn into lengths.
     #[staticmethod]
-    #[pyo3(signature = (path, lang = None))]
-    fn open(path: &str, lang: Option<&str>) -> PyResult<PyBook> {
+    #[pyo3(signature = (path, lang = None, platform = None))]
+    fn open(path: &str, lang: Option<&str>, platform: Option<&str>) -> PyResult<PyBook> {
         kotoba(lang);
+        let platform = match platform.map(|p| p.to_ascii_lowercase()) {
+            None => book::Platform::Windows,
+            Some(p) if p == "windows" => book::Platform::Windows,
+            Some(p) if p == "mac" => book::Platform::Mac,
+            Some(p) => {
+                return Err(PyValueError::new_err(format!(
+                    "platform は \"windows\" か \"mac\" です: {p:?}"
+                )))
+            }
+        };
         let bytes = std::fs::read(path)
             .map_err(|e| PyIOError::new_err(format!("{path}: 読めない: {e}")))?;
-        let (mut book, rep) = xlsx::read(std::io::Cursor::new(&bytes))
+        let opts = xlsx::ReadOptions { platform, date1904: None };
+        let (mut book, rep) = xlsx::read_with(std::io::Cursor::new(&bytes), &opts)
             .map_err(|e| PyIOError::new_err(format!("{path}: xlsx として読めない: {e}")))?;
         recalc_all(&mut book);
         Ok(PyBook {
@@ -1420,7 +1433,12 @@ impl PySheet {
     /// **列の字("A")で引く** — 行と間違えないため
     fn col_width(&self, col: &str) -> PyResult<Option<f32>> {
         let c = col0(col)?;
-        self.with(|s| Ok(s.col_width.get(&c).copied()))
+        let mut g = lock(&self.inner)?;
+        let basis = g.book.col_basis;
+        let s = g
+            .idx_sheet(self.idx)
+            .ok_or_else(|| PyKeyError::new_err("このシートはもうブックに無い"))?;
+        Ok(s.col_xlsx_to_write(c, &basis))
     }
 
     /// 列の幅を置く。None で「指定なし」に戻す(既定幅で描く)
@@ -1431,13 +1449,19 @@ impl PySheet {
             Some(w) if w < 0.0 => return Err(PyValueError::new_err("列幅に負の数は置けない")),
             _ => {}
         }
-        self.with(|s| {
-            match width {
-                Some(w) => s.col_width.insert(c, w),
-                None => s.col_width.remove(&c),
-            };
-            Ok(())
-        })
+        let mut g = lock(&self.inner)?;
+        let basis = g.book.col_basis;
+        let s = g
+            .idx_sheet(self.idx)
+            .ok_or_else(|| PyKeyError::new_err("このシートはもうブックに無い"))?;
+        match width {
+            Some(w) => s.set_col_xlsx(c, w, &basis),
+            None => {
+                s.col_xlsx.remove(&c);
+                s.col_mm.remove(&c);
+            }
+        }
+        Ok(())
     }
 
     /// 行の高さ(ポイント)。指定の無い行は None = 既定の高さ。行番号は1起点

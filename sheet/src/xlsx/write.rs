@@ -1732,6 +1732,11 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         {
             let mut fp = BytesStart::new("sheetFormatPr");
             let dh = sh.default_row_height.unwrap_or(book::DEFAULT_ROW_PT);
+            // The base of the default column width, as it was read; without
+            // it a column that states no width comes back at 8 digits
+            if let Some(bw) = sh.base_col_xlsx {
+                fp.push_attribute(("baseColWidth", bw.to_string().as_str()));
+            }
             fp.push_attribute(("defaultRowHeight", dh.to_string().as_str()));
             fp.push_attribute(("customHeight", "1"));
             if let Some(m) = sh.row_outline.values().max() {
@@ -1744,13 +1749,18 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         }
         // 列幅・列のグループ化。読んだものを返す(捨てると帳票の形が変わる)。
         // 同じ指定が並ぶ区間は1つの col にまとめる
-        if !sh.col_width.is_empty()
-            || sh.default_col_width.is_some()
+        //
+        // The widths are millimetres inside, turned back into Excel's digits
+        // with the workbook's conversion; a column that kept its width writes
+        // the number it was read with (`col_xlsx_to_write`)
+        let basis = book.col_basis;
+        if !sh.col_mm.is_empty()
+            || sh.default_col_mm.is_some()
             || !sh.col_outline.is_empty()
             || !sh.col_hidden.is_empty()
         {
             w.write_event(Event::Start(BytesStart::new("cols"))).unwrap();
-            if let Some(dw) = sh.default_col_width {
+            if let Some(dw) = sh.default_col_xlsx_to_write(&basis) {
                 let mut e = BytesStart::new("col");
                 e.push_attribute(("min", "1"));
                 e.push_attribute(("max", "16384"));
@@ -1759,12 +1769,12 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             }
             // 列ごとの指定(幅・深さ・畳み)をひとつの走査にまとめる
             let mut marks: std::collections::BTreeSet<u32> =
-                sh.col_width.keys().copied().collect();
+                sh.col_mm.keys().copied().collect();
             marks.extend(sh.col_outline.keys().copied());
             marks.extend(sh.col_hidden.iter().copied());
             let spec = |c: u32| {
                 (
-                    sh.col_width.get(&c).copied(),
+                    sh.col_xlsx_to_write(c, &basis),
                     sh.col_outline.get(&c).copied(),
                     sh.col_hidden.contains(&c),
                 )

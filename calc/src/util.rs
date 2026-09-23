@@ -78,8 +78,12 @@ where
         })
         .collect()
 }
-/// xlsx の列幅1(=「0」1個ぶん)を何画素にするか。既定幅 8.43 ≒ 108px の比
-pub(crate) const PX_PER_CHW: f32 = 108.0 / 8.43;
+/// **Screen pixels in a millimetre**: 96 dpi, the scale the screen draws
+/// the text at (a point is 96/72 pixels). Column widths are millimetres in
+/// the sheet (decided 2026-09-23), so the screen shows a column exactly as
+/// wide as the print; before, a digit of width was 108/8.43 pixels, a scale
+/// of its own that made every column wider on screen than on paper
+pub(crate) const PX_PER_MM: f32 = 96.0 / 25.4;
 /// **文字が要る幅(px)。** 半角=1・全角=2 で数えた概算。
 ///
 /// 画面のはみ出し描き(隣の空きセルへ流す判定)と、列幅の自動調整で

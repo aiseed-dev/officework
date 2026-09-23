@@ -2051,13 +2051,15 @@ class Book(NoStrayAttributes):
         self._path = None
 
     @staticmethod
-    def open(path, lang=None):
+    def open(path, lang=None, platform=None):
         # **pathlib.Path is accepted too** (the same as openpyxl, 2026-08-15).
         # The core takes only a string, so turn it into a path string here before
         # passing it on.
+        # platform: "windows" (default) or "mac", the Excel that made the file.
+        # It decides how column widths turn into lengths.
         path = _os.fspath(path)
         b = Book.__new__(Book)
-        b._b = _engine.Book.open(path, lang)
+        b._b = _engine.Book.open(path, lang, platform)
         b._path = path
         return b
 

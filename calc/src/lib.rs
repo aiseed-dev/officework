@@ -914,7 +914,8 @@ pub fn run() {
                                 .await;
                             v.update(cx, |c, cx| {
                                 let w = if i % 2 == 0 { 20.0 } else { 5.0 };
-                                c.book.sheets[0].col_width.insert(1, w);
+                                let bs = c.book.col_basis;
+                                c.book.sheets[0].set_col_xlsx(1, w, &bs);
                                 eprintln!("tick {}", i + 1);
                                 c.status = ui::tf!("self_test_15_column", i + 1, w)
                                 .into();

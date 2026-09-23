@@ -13,16 +13,10 @@ impl Calc {
         if self.show_headers { ROW_H } else { 0.0 }
     }
 
-    /// 列の画面幅。文書の指定(xlsx の width)に従う
+    /// The width of a column on screen: its millimetres at 96 dpi, the same
+    /// width the print gives it
     pub(crate) fn col_px(&self, c: u32) -> f32 {
-        self.sheet()
-            .col_width
-            .get(&c)
-            .copied()
-            .or(self.sheet().default_col_width)
-            .map(|w| w * PX_PER_CHW)
-            .unwrap_or(COL_W)
-            * self.zoom
+        self.sheet().col_haba_mm(c, &self.book.col_basis) * PX_PER_MM * self.zoom
     }
 
     /// 列の左端(見出しの右から)

@@ -34,8 +34,11 @@ pub const WATCHED: &[(&str, Watch)] = &[
     ("name", Watch::Body),
     ("cells", Watch::Body),
     ("merges", Watch::Body),
-    ("col_width", Watch::Look),
-    ("default_col_width", Watch::Look),
+    ("col_mm", Watch::Look),
+    ("default_col_mm", Watch::Look),
+    ("col_xlsx", Watch::Look),
+    ("default_col_xlsx", Watch::Look),
+    ("base_col_xlsx", Watch::Skip("xlsx の sheetFormatPr の baseColWidth。列の既定の幅を出すときにだけ使い、adoc には書かない")),
     ("default_row_height", Watch::Look),
     ("row_collapsed", Watch::Look),
     ("col_collapsed", Watch::Look),
@@ -154,6 +157,8 @@ pub const WATCHED_BOOK: &[(&str, Watch)] = &[
     // ブックの構造の保護(2026-08-30)
     ("lock_structure", Watch::Body),
     ("date1904", Watch::Body),
+    ("platform", Watch::Skip("読み込みの設定(Windows か Mac か)。ファイルの中身ではない")),
+    ("col_basis", Watch::Skip("列の幅を mm に直す換算。読み込みの設定と既定の書体から作り直る")),
     ("changes", Watch::Body),
     ("path", Watch::Skip("開いた場所。ファイルの中身ではない")),
 ];
@@ -198,8 +203,9 @@ pub fn filled_sheet(name: &str) -> Sheet {
     });
 
     s.merges = vec![(at("D1"), at("E1"))];
-    s.col_width.insert(0, 18.5);
-    s.default_col_width = Some(8.43);
+    let bs = book::ColBasis::default();
+    s.set_col_xlsx(0, 18.5, &bs);
+    s.set_default_col_xlsx(8.43, &bs);
     s.default_row_height = Some(13.5);
     s.row_collapsed.insert(4);
     s.col_collapsed.insert(4);
@@ -399,8 +405,10 @@ fn same_sheet_field(name: &str, a: &Sheet, b: &Sheet) -> bool {
                 })
         }
         "merges" => a.merges == b.merges,
-        "col_width" => a.col_width == b.col_width,
-        "default_col_width" => a.default_col_width == b.default_col_width,
+        "col_mm" => a.col_mm == b.col_mm,
+        "default_col_mm" => a.default_col_mm == b.default_col_mm,
+        "col_xlsx" => a.col_xlsx == b.col_xlsx,
+        "default_col_xlsx" => a.default_col_xlsx == b.default_col_xlsx,
         "default_row_height" => a.default_row_height == b.default_row_height,
         "row_collapsed" => a.row_collapsed == b.row_collapsed,
         "col_collapsed" => a.col_collapsed == b.col_collapsed,

@@ -1515,10 +1515,13 @@ impl Calc {
             }
         }
         if col {
-            let w = (base + x - grab).max(9.0) / PX_PER_CHW;
-            let w = (w * 100.0).round() / 100.0;
-            self.sheet_mut().col_width.insert(idx, w);
-            self.status = ui::tf!("column_width_px", col_name(idx), w, w * PX_PER_CHW)
+            // Dragged in pixels, kept in millimetres; the status shows the
+            // width the way Excel does, in digits and pixels
+            let mm = (base + x - grab).max(9.0) / PX_PER_MM;
+            let mm = (mm * 100.0).round() / 100.0;
+            self.sheet_mut().col_mm.insert(idx, mm);
+            let chars = self.book.col_basis.mm_to_chars(mm);
+            self.status = ui::tf!("column_width_px", col_name(idx), (chars * 100.0).round() / 100.0, (mm * PX_PER_MM).round())
             .into();
         } else {
             let pt = ((base + y - grab) / self.zoom).max(6.0) * 15.0 / 24.0;

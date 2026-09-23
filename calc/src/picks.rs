@@ -2064,10 +2064,11 @@ impl Calc {
             "hide-rows" | "hide-cols" | "unhide-rows" | "unhide-cols" => self.hide_lines(id),
             // 見出しの右クリック: 幅・高さの数値指定(選んだ列・行ぶん)
             "colw" => {
+                // The dialog speaks Excel's digits, as Excel's does
+                let basis = self.book.col_basis;
                 let cur = self
                     .sheet()
-                    .col_width
-                    .get(&self.cursor.col)
+                    .col_xlsx_to_write(self.cursor.col, &basis)
                     .map(|w| format!("{w:.2}"))
                     .unwrap_or_default();
                 self.prompt = Some(("col-width", Editor::new(&cur)));
@@ -3715,7 +3716,8 @@ impl Calc {
                     self.checkpoint();
                     if is_col {
                         for c in a.col..=b.col {
-                            self.sheet_mut().col_width.remove(&c);
+                            self.sheet_mut().col_mm.remove(&c);
+                            self.sheet_mut().col_xlsx.remove(&c);
                         }
                     } else {
                         for r in a.row..=b.row {
@@ -3743,8 +3745,9 @@ impl Calc {
                 }
                 self.checkpoint();
                 if is_col {
+                    let basis = self.book.col_basis;
                     for c in a.col..=b.col {
-                        self.sheet_mut().col_width.insert(c, v);
+                        self.sheet_mut().set_col_xlsx(c, v, &basis);
                     }
                     self.status = ui::tf!("column_width_set_columns", v, b.col - a.col + 1).into();
                 } else {

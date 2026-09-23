@@ -250,28 +250,61 @@ mod colwidth_round {
     #[test]
     fn column_widths_round_trip() {
         // 読み飛ばして保存すると帳票の形が変わる
+        let bs = book::ColBasis::default();
         let mut s = Sheet { name: "帳票".into(), ..Default::default() };
         s.set(Pos::parse("A1").unwrap(), Cell {
             formula: None, value: Value::Text("品".into()), fmt: Default::default() });
-        s.col_width.insert(0, 3.5);
-        s.col_width.insert(2, 24.0);
+        s.set_col_xlsx(0, 3.5, &bs);
+        s.set_col_xlsx(2, 24.0, &bs);
+        // a width that does not sit on the pixel grid, as the Ministry's form has
+        s.set_col_xlsx(4, 1.875, &bs);
         let mut buf = Vec::new();
         crate::xlsx::write(&Book { sheets: vec![s], ..Default::default() }, std::io::Cursor::new(&mut buf)).unwrap();
         let back = crate::xlsx::read(std::io::Cursor::new(&buf)).unwrap().0;
-        let cw = &back.sheets[0].col_width;
-        assert_eq!(cw.get(&0), Some(&3.5), "列幅が消えた: {cw:?}");
-        assert_eq!(cw.get(&2), Some(&24.0));
-        assert_eq!(cw.get(&1), None, "指定していない列に幅が付いた");
+        let s = &back.sheets[0];
+        assert_eq!(s.col_xlsx.get(&0), Some(&3.5), "列幅が消えた: {:?}", s.col_xlsx);
+        assert_eq!(s.col_xlsx.get(&2), Some(&24.0));
+        assert_eq!(s.col_xlsx.get(&4), Some(&1.875), "変えていない列の値が変わった");
+        assert_eq!(s.col_xlsx.get(&1), None, "指定していない列に幅が付いた");
+        let b = back.col_basis;
+        assert_eq!(s.col_mm.get(&2).copied(), Some(b.chars_to_mm(24.0)), "mm がブックの換算どおりでない");
+    }
+
+    /// **The same file has other widths on a Mac** (decided 2026-09-23): a
+    /// reading option picks Excel for Mac's way (72 dpi) over the default,
+    /// Windows's (96 dpi, the standard's example)
+    #[test]
+    fn the_mac_option_reads_the_widths_the_mac_way() {
+        let bs = book::ColBasis::default();
+        let mut s = Sheet { name: "帳票".into(), ..Default::default() };
+        s.set_col_xlsx(0, 21.375, &bs);
+        let mut buf = Vec::new();
+        crate::xlsx::write(&Book { sheets: vec![s], ..Default::default() }, std::io::Cursor::new(&mut buf)).unwrap();
+        let (win, _) = crate::xlsx::read(std::io::Cursor::new(&buf)).unwrap();
+        let opts = crate::xlsx::ReadOptions { platform: book::Platform::Mac, date1904: None };
+        let (mac, _) = crate::xlsx::read_with(std::io::Cursor::new(&buf), &opts).unwrap();
+        assert_eq!(win.platform, book::Platform::Windows, "既定が Windows でない");
+        assert_eq!(mac.platform, book::Platform::Mac);
+        assert_eq!((win.col_basis.dpi, mac.col_basis.dpi), (96.0, 72.0), "画素の数え方が違う");
+        let (w, m) = (win.sheets[0].col_mm[&0], mac.sheets[0].col_mm[&0]);
+        assert_eq!(w, win.col_basis.chars_to_mm(21.375), "Windows の換算どおりでない");
+        assert_eq!(m, mac.col_basis.chars_to_mm(21.375), "Mac の換算どおりでない");
+        assert!((w - m).abs() > 0.1, "同じ幅になった: {w}mm / {m}mm");
+        // either way the number written back is the one read
+        assert_eq!(mac.sheets[0].col_xlsx_to_write(0, &mac.col_basis), Some(21.375));
     }
 
     #[test]
     fn inserting_and_deleting_columns_moves_the_widths() {
+        let bs = book::ColBasis::default();
         let mut s = Sheet { name: "帳票".into(), ..Default::default() };
-        s.col_width.insert(1, 20.0);
+        s.set_col_xlsx(1, 20.0, &bs);
         s.insert_col(0);
-        assert_eq!(s.col_width.get(&2), Some(&20.0), "幅が置き去り: {:?}", s.col_width);
+        assert_eq!(s.col_xlsx.get(&2), Some(&20.0), "幅が置き去り: {:?}", s.col_xlsx);
+        assert!(s.col_mm.contains_key(&2) && !s.col_mm.contains_key(&1), "mm の幅が置き去り: {:?}", s.col_mm);
         s.remove_col(0);
-        assert_eq!(s.col_width.get(&1), Some(&20.0));
+        assert_eq!(s.col_xlsx.get(&1), Some(&20.0));
+        assert!(s.col_mm.contains_key(&1));
     }
 
     #[test]
@@ -279,7 +312,7 @@ mod colwidth_round {
         let p = "/mnt/sdb/home/dev/ドキュメント/機構/yoryou-yoshiki/実施要領様式7_提案見積書.xlsx";
         let Ok(f) = std::fs::File::open(p) else { return }; // 無い機械では飛ばす
         let (book, _) = crate::xlsx::read(f).unwrap();
-        let n: usize = book.sheets.iter().map(|s| s.col_width.len()).sum();
+        let n: usize = book.sheets.iter().map(|s| s.col_mm.len()).sum();
         assert!(n > 0, "実物の列幅を1つも読めていない");
     }
 }
@@ -3150,7 +3183,8 @@ mod script_roundtrip_tests {
         s.col_outline.insert(2, 1);
         s.col_outline.insert(3, 1);
         s.col_hidden.insert(3);
-        s.col_width.insert(2, 20.0);
+        let bs = b.col_basis;
+        s.set_col_xlsx(2, 20.0, &bs);
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
         buf.set_position(0);
@@ -3162,7 +3196,7 @@ mod script_roundtrip_tests {
         assert!(s.row_hidden.contains(&2), "畳んだ行が開いてしまう");
         assert_eq!(s.col_outline.get(&2), Some(&1));
         assert!(s.col_hidden.contains(&3));
-        assert_eq!(s.col_width.get(&2), Some(&20.0), "幅と深さの同居で幅が消えた");
+        assert_eq!(s.col_xlsx.get(&2), Some(&20.0), "幅と深さの同居で幅が消えた");
     }
 
     #[test]
