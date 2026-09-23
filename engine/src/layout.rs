@@ -2220,6 +2220,22 @@ fn layout_hf_blocks(
 /// 上の余白 680 twip = 34pt だが、空のヘッダーの段落 1 つ(10.5pt、13.6pt)が
 /// 851 twip = 42.5pt の位置にあるので、本文は 56pt から始まる)。
 /// 返りは本文の頭(下端)を置く、用紙の端からの距離。ヘッダーが無ければ余白そのまま
+/// **What a paragraph style gives a header or footer paragraph**, for
+/// [`hf_push_mm`]. The header and footer parts are not composed the way the
+/// body is, so the caller looks the style up (following `w:basedOn`, with
+/// the document defaults under it) and hands the result over.
+#[derive(Debug, Clone, Default)]
+pub struct HfStyle {
+    /// The size the style names, for a paragraph whose runs name none.
+    /// Word's ticket template has an empty footer in the `Footer` style,
+    /// which is 2pt there; taking the document's 18pt instead left 20pt of
+    /// the paper unused and split a table that fits (2026-09-20)
+    pub size_pt: Option<f32>,
+    /// The style's spacing before and after and its line spacing
+    /// (`w:pPr/w:spacing`, ECMA-376 17.3.1.33)
+    pub para: StyleParaLook,
+}
+
 pub fn hf_push_mm(
     hf: &HeadFoot,
     pg: &PageSetup,
@@ -2227,12 +2243,7 @@ pub fn hf_push_mm(
     latin: Option<&str>,
     base_pt: f32,
     footer: bool,
-    // `style_pt` gives the size a paragraph style names, for a paragraph
-    // whose runs name none. Word's ticket template has an empty footer in
-    // the `Footer` style, which is 2pt there; taking the document's 18pt
-    // instead left 20pt of the paper unused and split a table that fits
-    // (2026-09-20)
-    style_pt: &dyn Fn(Option<&str>) -> Option<f32>,
+    style: &dyn Fn(Option<&str>) -> HfStyle,
 ) -> f32 {
     let yohaku = if footer { pg.bottom_mm } else { pg.top_mm };
     // **No header, or an empty one, takes no room.** Word sometimes makes
@@ -2252,11 +2263,39 @@ pub fn hf_push_mm(
     // 14.6pt で 2 行送る(ＭＳ 明朝なら 15.5pt)。1.8pt の差で本文の最後の行が
     // 次の頁へ押されていた
     let em_latin = crate::font::okuri_em(latin).unwrap_or(1.22);
+    // **A paragraph is as tall as its spacing before, its line and its
+    // spacing after** (`w:spacing`, ECMA-376 17.3.1.33), read from the
+    // paragraph and then its style. We counted the line alone. The footer
+    // of the business plan e22e6b47 is one `Footer` paragraph that takes
+    // 8pt before from `Normal`: 19.15pt tall, not 11.15pt, so its top is
+    // 751.25pt down the page and the body has to end above it. We let the
+    // text run to 755.1pt, 3.8pt into the footer, where Word sends the
+    // paragraph to the next page (2026-09-23)
     let dan = |p: &Paragraph| -> f32 {
+        let st = style(p.style_id.as_deref());
         let pt = p.runs.iter().filter_map(|r| r.size_pt).fold(0.0f32, f32::max);
-        let pt = if pt > 0.0 { pt } else { style_pt(p.style_id.as_deref()).unwrap_or(base_pt) };
+        let pt = if pt > 0.0 { pt } else { st.size_pt.unwrap_or(base_pt) };
         let hankaku = p.runs.iter().all(|r| r.text.is_ascii());
-        pt * if hankaku && latin.is_some() { em_latin } else { em } * PT_TO_MM
+        let sizen = pt * if hankaku && latin.is_some() { em_latin } else { em };
+        let gyou = match p.line_pt.or(if p.line_spacing > 0.0 { None } else { st.para.line_pt }) {
+            Some((v, true)) => v,
+            Some((v, false)) => v.max(sizen),
+            None => {
+                let bai = if p.line_spacing > 0.0 { p.line_spacing } else { st.para.line_spacing.unwrap_or(1.0) };
+                sizen * bai
+            }
+        };
+        let mae = if p.before_itta || p.space_before_pt > 0.0 {
+            p.space_before_pt
+        } else {
+            st.para.space_before_pt.unwrap_or(0.0)
+        };
+        let ato = if p.after_itta || p.space_after_pt > 0.0 {
+            p.space_after_pt
+        } else {
+            st.para.space_after_pt.unwrap_or(0.0)
+        };
+        (mae + gyou + ato) * PT_TO_MM
     };
     let kyori = if footer { pg.footer_mm } else { pg.header_mm };
     // A part made of a table is measured from its rows' heights. Its

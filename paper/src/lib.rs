@@ -2189,7 +2189,28 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
     // 様式は docDefaults 10pt・標準 12pt で、ヘッダーは 12pt で組まれる
     let base_pt = d.style_pt(None).unwrap_or(d.base_pt());
     // the size a header or footer paragraph's style gives
-    let sty = |id: Option<&str>| d.style_pt(id);
+    // What the paragraph style gives a header or footer paragraph: its size,
+    // and its spacing and line spacing with `w:basedOn` followed and the
+    // document defaults (`w:docDefaults/w:pPrDefault`) under them. A
+    // paragraph that names no style takes the default paragraph style
+    let kitei_id = d
+        .styles
+        .iter()
+        .chain(d.styles_new.iter())
+        .find(|s| s.default && s.kind == "paragraph")
+        .map(|s| s.id.clone());
+    let sty = |id: Option<&str>| {
+        let mut para = id
+            .or(kitei_id.as_deref())
+            .and_then(|i| d.style_matome(i))
+            .map(|(_, pl)| pl)
+            .unwrap_or_default();
+        para.space_after_pt = para.space_after_pt.or(d.space_after_pt);
+        if para.line_spacing.is_none() && para.line_pt.is_none() {
+            para.line_spacing = d.line_spacing;
+        }
+        kumihan::HfStyle { size_pt: d.style_pt(id), para }
+    };
     let raw = page;
     // **Page 1 is pushed by the first section's header, not the last one's.**
     //

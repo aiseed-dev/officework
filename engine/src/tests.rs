@@ -478,14 +478,42 @@ mod list_tests {
     fn a_header_pushes_the_body_down_when_the_margin_is_short() {
         let mut pg = PageSetup { top_mm: 12.0, header_mm: 15.0, ..Default::default() };
         let mut hf = HeadFoot::default();
-        assert_eq!(hf_push_mm(&hf, &pg, None, None, 10.5, false, &|_| None), 12.0, "ヘッダーが無いのに押した");
+        assert_eq!(hf_push_mm(&hf, &pg, None, None, 10.5, false, &|_| HfStyle::default()), 12.0, "ヘッダーが無いのに押した");
         hf.paragraphs.push(Paragraph::default());
-        let oshita = hf_push_mm(&hf, &pg, None, None, 10.5, false, &|_| None);
+        let oshita = hf_push_mm(&hf, &pg, None, None, 10.5, false, &|_| HfStyle::default());
         let takasa = 10.5 * 1.292 * 25.4 / 72.0;
         assert!((oshita - (15.0 + takasa)).abs() < 0.05, "距離 + 高さになっていない: {oshita}");
         // 余白のほうが広ければ余白のまま
         pg.top_mm = 35.0;
-        assert_eq!(hf_push_mm(&hf, &pg, None, None, 10.5, false, &|_| None), 35.0);
+        assert_eq!(hf_push_mm(&hf, &pg, None, None, 10.5, false, &|_| HfStyle::default()), 35.0);
+    }
+
+    /// **A footer paragraph is as tall as its spacing and its line**
+    /// (`w:spacing`, ECMA-376 17.3.1.33), with what its style says. The
+    /// footer of the business plan e22e6b47 is one `Footer` paragraph at
+    /// 9pt that takes 8pt before from `Normal`; counting the line alone let
+    /// the body run 3.8pt into it (2026-09-23).
+    #[test]
+    fn a_footer_paragraph_counts_its_spacing_and_line_spacing() {
+        let pg = PageSetup { bottom_mm: 36.0 * PT_TO_MM, footer_mm: 21.6 * PT_TO_MM, ..Default::default() };
+        let mut hf = HeadFoot::default();
+        hf.paragraphs.push(Paragraph {
+            runs: vec![Run { text: "BUSINESS PLAN".into(), size_pt: None, font: None, fmt: Default::default() }],
+            style_id: Some("Footer".into()),
+            ..Default::default()
+        });
+        let sty = |_: Option<&str>| HfStyle {
+            size_pt: Some(9.0),
+            para: StyleParaLook { space_before_pt: Some(8.0), space_after_pt: Some(0.0), line_spacing: Some(1.0), ..Default::default() },
+        };
+        let soko = hf_push_mm(&hf, &pg, Some("x"), Some("x"), 10.0, true, &sty) / PT_TO_MM;
+        // 21.6 + 8 + 9 × the face's line height; the face here is the
+        // engine's fallback, so compare with the same number
+        let gyou = 9.0 * crate::font::okuri_em(Some("x")).unwrap_or(1.22);
+        assert!((soko - (21.6 + 8.0 + gyou)).abs() < 0.05, "前の空きを数えていない: {soko}pt");
+        // Without the style the paragraph is the line alone, and the margin wins
+        let hadaka = hf_push_mm(&hf, &pg, Some("x"), Some("x"), 10.0, true, &|_| HfStyle { size_pt: Some(9.0), ..Default::default() }) / PT_TO_MM;
+        assert!((hadaka - 36.0).abs() < 0.05, "スタイルが無いのに押した: {hadaka}pt");
     }
 
     /// **A header that holds nothing takes no room, and neither does a
@@ -505,9 +533,9 @@ mod list_tests {
     fn an_empty_header_takes_no_room() {
         let pg = PageSetup { top_mm: 12.0, header_mm: 18.0, ..Default::default() };
         let kara = HeadFoot::default();
-        assert_eq!(hf_push_mm(&kara, &pg, None, None, 10.5, false, &|_| None), 12.0,
+        assert_eq!(hf_push_mm(&kara, &pg, None, None, 10.5, false, &|_| HfStyle::default()), 12.0,
             "何も持たないヘッダーが本文を押した");
-        assert_eq!(hf_push_mm(&kara, &pg, None, None, 10.5, true, &|_| None), pg.bottom_mm,
+        assert_eq!(hf_push_mm(&kara, &pg, None, None, 10.5, true, &|_| HfStyle::default()), pg.bottom_mm,
             "何も持たないフッターが本文を押した");
     }
 
@@ -713,7 +741,7 @@ mod list_tests {
         let pg = PageSetup { top_mm: 20.0, top_fixed: true, header_mm: 15.0, ..Default::default() };
         let mut hf = HeadFoot::default();
         hf.paragraphs.push(Paragraph::default());
-        assert_eq!(hf_push_mm(&hf, &pg, None, None, 10.5, false, &|_| None), 20.0, "固定の余白を押した");
+        assert_eq!(hf_push_mm(&hf, &pg, None, None, 10.5, false, &|_| HfStyle::default()), 20.0, "固定の余白を押した");
     }
 
     /// **句読点の詰め**(Word の compressPunctuation。2026-09-09)。行長を少し
