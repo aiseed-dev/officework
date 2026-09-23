@@ -185,6 +185,14 @@ const SIZE_PT: f32 = 10.5;
 use kumihan::LINE_MM;
 
 /// いま編集しているもの。本文か、表のセルか。
+/// **A point in the document on the screen**: which text (the body, or one
+/// table cell by table, row and column) and the byte in it
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Ten {
+    pub cell: Option<(usize, usize, usize)>,
+    pub byte: usize,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Target {
     Body,
@@ -275,6 +283,15 @@ pub struct Writer {
     dirty: bool,
     /// マウスでドラッグ選択の途中か(押した位置から離すまで選択を伸ばす)
     drag_select: bool,
+    /// Where the press that started a drag landed, in any target
+    /// ([`Ten`]). A drag that leaves that target becomes a [`Self::hirosa`]
+    oshita: Option<Ten>,
+    /// **A selection that runs across the body and table cells** (anchor,
+    /// focus), in reading order on the screen. The body and every cell are
+    /// edited as separate texts, so a drag from a heading into the tip text
+    /// of the business plan e22e6b47 could select only the heading
+    /// (2026-09-23). It is drawn and copied; typing or a click clears it
+    hirosa: Option<(Ten, Ten)>,
     /// 右クリックのメニュー(出ている場所。編集領域の px)
     menu_at: Option<(f32, f32)>,
     /// 選んでいるリボンのタブ
@@ -1127,6 +1144,7 @@ impl HasEditor for Writer {
         }
     }
     fn on_edited(&mut self) {
+        self.hirosa = None;
         if self.pw_open || self.find_open {
             // パスワード・検索欄への打鍵は文書を変えない
             return;

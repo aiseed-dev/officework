@@ -1190,6 +1190,9 @@ impl Render for Writer {
         }
 
         // 未確定(変換中)の下線は、行が持つバイト位置(byte0)で結ぶ
+        // The lines a selection across texts covers, and the bytes in each
+        let hirosa: std::collections::HashMap<usize, (usize, usize)> =
+            self.hirosa_gyou().into_iter().map(|(i, a, b)| (i, (a, b))).collect();
         for (li, line) in self.page.lines.iter().enumerate() {
             if line.cells.is_empty() {
                 continue;
@@ -1283,9 +1286,14 @@ impl Render for Writer {
             }
             // 選択の色。**選択が見えないと、コピーも切り取りも信用できない**
             // (ドラッグで選べるようにしても、色が出なければ「できない」に見える)
-            let selr = self.ed.selection();
+            // A selection across texts is drawn instead of the plain one
+            let (selr, kakeru) = match hirosa.get(&li) {
+                Some(&(a, b)) => (a..b, true),
+                None if !hirosa.is_empty() => (0..0, false),
+                None => (self.ed.selection(), false),
+            };
             if !selr.is_empty() {
-                let mine = match self.target {
+                let mine = kakeru || match self.target {
                     Target::Body => line.from_body,
                     Target::Cell { table, row, col } => line.cell == Some((table, row, col)),
                 };
@@ -1752,6 +1760,21 @@ impl Render for Writer {
             .relative()
             .key_context("jo_doc")
             .track_focus(&self.focus)
+            // Any key but a copy or a lone modifier ends a selection across
+            // texts: it is drawn and copied, and the keys act on the text
+            // being edited, which would leave the highlight behind
+            .capture_key_down(cx.listener(|this: &mut Writer, e: &gpui::KeyDownEvent, _, cx| {
+                if this.hirosa.is_none() {
+                    return;
+                }
+                let k = &e.keystroke;
+                let copy = k.key == "c" && (k.modifiers.platform || k.modifiers.control);
+                let shushoku = matches!(k.key.as_str(), "shift" | "control" | "alt" | "platform" | "function" | "cmd" | "ctrl");
+                if !copy && !shushoku {
+                    this.hirosa = None;
+                    cx.notify();
+                }
+            }))
             .on_action(cx.listener(Writer::backspace))
             .on_action(cx.listener(Writer::delete))
             .on_action(cx.listener(Writer::left))
@@ -2128,6 +2151,9 @@ impl gpui::Element for InputSink {
                     cx.notify();
                     return;
                 }
+                // A new press ends a selection across texts
+                w.hirosa = None;
+                w.oshita = None;
                 match clicks {
                     // 二度押しは語、三度押しは行を選ぶ
                     2 => {
@@ -2145,6 +2171,11 @@ impl gpui::Element for InputSink {
                         // Ctrl+クリックの後は引いても選択を伸ばしません。伸ばすと
                         // 図形の上で動いた拍子に、足した選択が1つに戻ります
                         w.drag_select = !ctrl;
+                        // Where the drag starts: the caret the press just set,
+                        // in the text it set it in
+                        if !ctrl && !shift && w.shape_drag.is_none() {
+                            w.oshita = Some(w.ten_ima());
+                        }
                     }
                 }
                 cx.notify();
@@ -2179,7 +2210,19 @@ impl gpui::Element for InputSink {
                     return;
                 }
                 if w.drag_select {
-                    w.click_at(f32::from(rel.x), f32::from(rel.y), true);
+                    // A drag that leaves the text it started in selects across
+                    // texts; back in that text it extends the plain selection
+                    // (also when both ends are in one text and another lies
+                    // between them, such as a table between two headings)
+                    let koko = w.ten_at(f32::from(rel.x), f32::from(rel.y));
+                    w.hirosa = match (w.oshita, koko) {
+                        (Some(a), Some(b)) => Some((a, b)),
+                        _ => None,
+                    };
+                    if !w.hirosa_mazaru() {
+                        w.hirosa = None;
+                        w.click_at(f32::from(rel.x), f32::from(rel.y), true);
+                    }
                     cx.notify();
                 }
             });

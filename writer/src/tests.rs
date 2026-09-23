@@ -4952,6 +4952,93 @@ mod shape_pick_tests {
         assert_eq!(crate::view::tsuranari_no_owari(&tsumeta, 0), 1, "字間を詰めた字を 1 本にまとめた");
     }
 
+    /// **A drag from a heading into the table below selects across them**,
+    /// in reading order, and copies both texts. The body and each cell are
+    /// edited as separate texts, so such a drag selected the heading alone
+    /// in the business plan e22e6b47 (2026-09-23).
+    #[gpui::test]
+    fn a_drag_from_the_body_into_a_cell_selects_across_them(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let para = |t: &str| kumihan::Paragraph {
+                runs: vec![kumihan::Run { text: t.into(), size_pt: Some(10.0), font: None, fmt: Default::default() }],
+                ..Default::default()
+            };
+            let mut d = kumihan::Document::plain("Heading");
+            d.blocks.push(kumihan::Block::Table(kumihan::Table {
+                col_mm: vec![],
+                rows: vec![vec![kumihan::Cellbox { paragraphs: vec![para("Tip text here")], ..Default::default() }]],
+                ..Default::default()
+            }));
+            this.doc = d;
+            // the editor holds the body text, and a relayout writes it back
+            this.ed = Editor::new("Heading");
+            this.relayout();
+            let pxmm = crate::PX_PER_MM * this.zoom;
+            let px_of = |l: &kumihan::Line, k: usize, this: &Writer| {
+                let c = &l.cells[k];
+                (
+                    28.0 + (this.pg.left_mm + c.x_mm + c.w_mm * 0.25) * pxmm,
+                    14.0 + (l.y_mm + l.dip_mm - 1.0 - this.scroll_mm) * pxmm,
+                )
+            };
+            let midashi = this.page.lines.iter().find(|l| l.from_body && !l.cells.is_empty()).unwrap().clone();
+            let tip = this.page.lines.iter().find(|l| l.cell.is_some() && !l.cells.is_empty()).unwrap().clone();
+            // press before "Heading", as the mouse handler does
+            let (x, y) = px_of(&midashi, 0, this);
+            this.click_at(x, y, false);
+            let a = this.ten_ima();
+            assert_eq!(a, Ten { cell: None, byte: 0 }, "見出しの頭に立っていない");
+            // drag into the cell, before "here"
+            let (x, y) = px_of(&tip, 9, this);
+            let b = this.ten_at(x, y).expect("セルの中の点が引けない");
+            assert_eq!(b.cell, Some((0, 0, 0)), "セルの中を指していない");
+            this.hirosa = Some((a, b));
+            let gyou = this.hirosa_gyou();
+            let naiyou: Vec<String> = this.page.lines.iter().map(|l| format!("{:?} {} {}", l.cell, l.from_body, l.cells.iter().map(|c| c.ch).collect::<String>())).collect();
+            assert_eq!(gyou.len(), 2, "見出しとセルの 2 行にまたがっていない: {gyou:?} {naiyou:?}");
+            assert_eq!(this.hirosa_text(), "Heading\nTip text ", "コピーする文字が違う");
+            // dragged the other way, the same selection
+            this.hirosa = Some((b, a));
+            assert_eq!(this.hirosa_text(), "Heading\nTip text ");
+        });
+    }
+
+    /// **A drag from one heading to the next takes the table between them**
+    /// (2026-09-23). Both ends are in the body, and the plain body selection
+    /// passed over the table.
+    #[gpui::test]
+    fn a_drag_between_two_body_lines_takes_the_table_between(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let para = |t: &str| kumihan::Paragraph {
+                runs: vec![kumihan::Run { text: t.into(), size_pt: Some(10.0), font: None, fmt: Default::default() }],
+                ..Default::default()
+            };
+            let mut d = kumihan::Document::plain("");
+            d.blocks = vec![
+                kumihan::Block::Para(para("First")),
+                kumihan::Block::Table(kumihan::Table {
+                    col_mm: vec![],
+                    rows: vec![vec![kumihan::Cellbox { paragraphs: vec![para("Inside")], ..Default::default() }]],
+                    ..Default::default()
+                }),
+                kumihan::Block::Para(para("Second")),
+            ];
+            this.doc = d;
+            this.ed = Editor::new("First\nSecond");
+            this.relayout();
+            let a = Ten { cell: None, byte: 0 };
+            let b = Ten { cell: None, byte: "First\nSecond".len() };
+            this.hirosa = Some((a, b));
+            assert!(this.hirosa_mazaru(), "間の表を見ていない");
+            assert_eq!(this.hirosa_text(), "First\nInside\nSecond", "間の表の字がコピーに入らない");
+            // within one text with nothing between, the plain selection is kept
+            this.hirosa = Some((a, Ten { cell: None, byte: 3 }));
+            assert!(!this.hirosa_mazaru(), "1 つの文の中の選択をまたがる選択にした");
+        });
+    }
+
     /// **図形の一覧は分類7つ → 形の2段。** 表の画面と同じ並びで、
     /// どの形も Python のスクリプトが名前を知っています。
     #[gpui::test]

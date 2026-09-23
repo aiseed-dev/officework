@@ -1072,6 +1072,14 @@ impl Writer {
         cx.notify();
     }
     pub(crate) fn copy(&mut self, _: &ui::Copy, _: &mut Window, cx: &mut Context<Self>) {
+        // A selection across the body and table cells copies its own text
+        if self.hirosa.is_some() {
+            let s = self.hirosa_text();
+            cx.write_to_clipboard(gpui::ClipboardItem::new_string(s));
+            self.status = ui::t!("copied_2").into();
+            cx.notify();
+            return;
+        }
         // パネル(ヘッダー等)を編集中なら、そのパネルの選択が対象
         let e = self.editor_ref();
         let sel = e.selection();
@@ -1933,4 +1941,177 @@ pub(crate) fn line_naka_mm(line: &kumihan::Line) -> f32 {
     let pt = line.cells.iter().map(|c| c.size_pt).fold(0.0f32, f32::max);
     let pt = if pt > 0.0 { pt } else { crate::SIZE_PT };
     line.y_mm + line.dip_mm - pt * 0.35 * 25.4 / 72.0
+}
+
+/// How far a line is from a point on the screen (mm), for [`Writer::ten_at`]:
+/// the distance from the middle of its letters, plus a quarter of how far the
+/// point lies left or right of the letters. Cells side by side in a row stand
+/// at the same height, and the second part picks the one under the pointer
+fn ten_kyori(l: &kumihan::Line, x_mm: f32, y_mm: f32) -> f32 {
+    let body = l.body_cells();
+    let (hidari, migi) = match (body.first(), body.last()) {
+        (Some(a), Some(b)) => (a.x_mm, b.x_mm + b.w_mm),
+        _ => (l.x0_mm, l.x0_mm),
+    };
+    let dx = if x_mm < hidari { hidari - x_mm } else if x_mm > migi { x_mm - migi } else { 0.0 };
+    (line_naka_mm(l) - y_mm).abs() + dx * 0.25
+}
+
+/// The byte of a line's text nearest `x_mm` (from the text area's left),
+/// counted in the whole text the line belongs to, the way a click counts it
+fn byte_in_line(line: &kumihan::Line, x_mm: f32) -> usize {
+    let body = line.body_cells();
+    let base = body.iter().map(|c| c.off).min().unwrap_or(0);
+    let mut byte = line.byte0;
+    for c in body {
+        if x_mm < c.x_mm + c.w_mm / 2.0 {
+            break;
+        }
+        byte = line.byte0 + (c.off + c.ch.len_utf8()) - base;
+    }
+    byte
+}
+
+impl Writer {
+    /// **The point under the pointer**, in whichever text is there, without
+    /// switching the editing to it (the pointer in px of the editing area).
+    /// Inside a cell's box it is that cell; elsewhere the nearest line of the
+    /// body or of any cell
+    pub(crate) fn ten_at(&self, rel_x: f32, rel_y: f32) -> Option<Ten> {
+        if self.page.vertical {
+            return None;
+        }
+        let pxmm = PX_PER_MM * self.zoom;
+        let x_mm = (rel_x - 28.0) / pxmm - self.pg.left_mm;
+        let y_mm = (rel_y - 14.0) / pxmm + self.scroll_mm;
+        let hako = self
+            .page
+            .cell_boxes
+            .iter()
+            .find(|b| x_mm >= b.x_mm && x_mm <= b.x_mm + b.w_mm && y_mm >= b.top_mm && y_mm <= b.top_mm + b.h_mm)
+            .map(|b| (b.table, b.row, b.col));
+        let line = self
+            .page
+            .lines
+            .iter()
+            .filter(|l| (l.from_body || l.cell.is_some()) && !l.body_cells().is_empty())
+            .filter(|l| hako.is_none() || l.cell == hako)
+            .min_by(|p, q| ten_kyori(p, x_mm, y_mm).total_cmp(&ten_kyori(q, x_mm, y_mm)))?;
+        Some(Ten { cell: line.cell, byte: byte_in_line(line, x_mm) })
+    }
+
+    /// The point where the editing stands now (the caret of the body or of
+    /// the cell being edited)
+    pub(crate) fn ten_ima(&self) -> Ten {
+        let cell = match self.target {
+            Target::Body => None,
+            Target::Cell { table, row, col } => Some((table, row, col)),
+        };
+        Ten { cell, byte: self.ed.cursor() }
+    }
+
+    /// The line a point stands in (index into `page.lines`)
+    fn ten_no_gyou(&self, t: &Ten) -> Option<usize> {
+        let lines = &self.page.lines;
+        let onaji = |l: &kumihan::Line| match t.cell {
+            None => l.from_body,
+            Some(id) => l.cell == Some(id),
+        };
+        (0..lines.len())
+            .filter(|&i| onaji(&lines[i]) && !lines[i].body_cells().is_empty())
+            .find(|&i| t.byte >= lines[i].byte0 && t.byte <= lines[i].byte_end())
+    }
+
+    /// **The lines a selection across texts covers**, in reading order on
+    /// the screen (top to bottom, then left to right), with the byte range it
+    /// covers in each: `(line index, from, to)`, the bytes counted in the
+    /// line's own text
+    pub(crate) fn hirosa_gyou(&self) -> Vec<(usize, usize, usize)> {
+        let Some((a, b)) = self.hirosa else { return Vec::new() };
+        let (Some(la), Some(lb)) = (self.ten_no_gyou(&a), self.ten_no_gyou(&b)) else {
+            return Vec::new();
+        };
+        let lines = &self.page.lines;
+        let mut junban: Vec<usize> = (0..lines.len())
+            .filter(|&i| (lines[i].from_body || lines[i].cell.is_some()) && !lines[i].body_cells().is_empty())
+            .collect();
+        junban.sort_by(|&i, &j| {
+            lines[i].y_mm.total_cmp(&lines[j].y_mm).then(lines[i].x0_mm.total_cmp(&lines[j].x0_mm))
+        });
+        let (Some(pa), Some(pb)) = (junban.iter().position(|&i| i == la), junban.iter().position(|&i| i == lb)) else {
+            return Vec::new();
+        };
+        let ((s, bs), (e, be)) = if (pa, a.byte) <= (pb, b.byte) { ((pa, a.byte), (pb, b.byte)) } else { ((pb, b.byte), (pa, a.byte)) };
+        (s..=e)
+            .map(|k| {
+                let l = &lines[junban[k]];
+                let from = if k == s { bs } else { l.byte0 };
+                let to = if k == e { be } else { l.byte_end() };
+                (junban[k], from, to)
+            })
+            .collect()
+    }
+
+    /// Whether the lines between the two ends of [`Self::hirosa`] belong to
+    /// more than one text. A drag from one heading to the next with a table
+    /// between them stays in the body at both ends, and still has to take
+    /// the table in (2026-09-23)
+    pub(crate) fn hirosa_mazaru(&self) -> bool {
+        let lines = &self.page.lines;
+        let gyou = self.hirosa_gyou();
+        gyou.first().is_some_and(|(i0, ..)| gyou.iter().any(|(i, ..)| lines[*i].cell != lines[*i0].cell))
+    }
+
+    /// The whole text of the body or of one cell, as it stands now
+    fn ten_no_text(&self, cell: Option<(usize, usize, usize)>) -> String {
+        let ima = match self.target {
+            Target::Body => None,
+            Target::Cell { table, row, col } => Some((table, row, col)),
+        };
+        if cell == ima {
+            return self.ed.text().to_string();
+        }
+        match cell {
+            None => self.doc.body_text(),
+            Some((t, r, c)) => self
+                .doc
+                .tables()
+                .nth(t)
+                .and_then(|tb| tb.rows.get(r))
+                .and_then(|row| row.get(c))
+                .map(cell_text)
+                .unwrap_or_default(),
+        }
+    }
+
+    /// **The text of a selection across texts**, for copying: the part of
+    /// each text it covers, in reading order, one text after another on
+    /// lines of their own
+    pub(crate) fn hirosa_text(&self) -> String {
+        let gyou = self.hirosa_gyou();
+        let lines = &self.page.lines;
+        let mut out: Vec<String> = Vec::new();
+        let mut k = 0;
+        while k < gyou.len() {
+            let cell = lines[gyou[k].0].cell;
+            let from = gyou[k].1;
+            let mut to = gyou[k].2;
+            let mut m = k + 1;
+            while m < gyou.len() && lines[gyou[m].0].cell == cell && gyou[m].1 >= to {
+                to = gyou[m].2;
+                m += 1;
+            }
+            let text = self.ten_no_text(cell);
+            let (mut a, mut b) = (from.min(text.len()), to.min(text.len()));
+            while a > 0 && !text.is_char_boundary(a) {
+                a -= 1;
+            }
+            while b < text.len() && !text.is_char_boundary(b) {
+                b += 1;
+            }
+            out.push(text[a..b].to_string());
+            k = m;
+        }
+        out.join("\n")
+    }
 }
