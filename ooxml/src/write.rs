@@ -789,6 +789,7 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             // 入りません(2026-08-29 に 200 段落の文書で、見出し1つにしか
             // 入っていないのを見て気づきました)
             || SARA.with(|c| c.get())
+            || !p.tab_stops.is_empty()
             || p.style_id.is_some();
         if has_ppr {
             w.write_event(Event::Start(BS::new("w:pPr"))).unwrap();
@@ -873,6 +874,37 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 id.push_attribute(("w:val", "0"));
                 w.write_event(Event::Empty(id)).unwrap();
                 w.write_event(Event::End(BytesEnd::new("w:numPr"))).unwrap();
+            }
+            // **The paragraph's own tab stops** (`w:tabs`, ECMA-376 17.3.1.38),
+            // after `w:shd` and before `w:spacing` and `w:ind` in the order of
+            // `CT_PPrBase`. They were never written, so saving moved every
+            // tab to the default stops: the date of the Tokyo Hello Work
+            // resume, sent to a right stop at 7655 twips, sat right after
+            // the title (2026-09-23)
+            if !p.tab_stops.is_empty() {
+                w.write_event(Event::Start(BS::new("w:tabs"))).unwrap();
+                for t in &p.tab_stops {
+                    let mut e = BS::new("w:tab");
+                    let val = match t.kind {
+                        kumihan::TabKind::Left => "left",
+                        kumihan::TabKind::Center => "center",
+                        kumihan::TabKind::Right => "right",
+                        kumihan::TabKind::Decimal => "decimal",
+                    };
+                    e.push_attribute(("w:val", val));
+                    if let Some(l) = t.leader {
+                        let na = match l {
+                            '.' => "dot",
+                            '\u{00B7}' => "middleDot",
+                            '-' => "hyphen",
+                            _ => "underscore",
+                        };
+                        e.push_attribute(("w:leader", na));
+                    }
+                    e.push_attribute(("w:pos", t.twips.to_string().as_str()));
+                    w.write_event(Event::Empty(e)).unwrap();
+                }
+                w.write_event(Event::End(BytesEnd::new("w:tabs"))).unwrap();
             }
             if p.indent > 0 || p.left_twips > 0 || p.first_line_twips != 0 {
                 let mut ind = BS::new("w:ind");

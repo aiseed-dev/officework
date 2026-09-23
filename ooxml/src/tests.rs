@@ -96,6 +96,22 @@ mod round {
         assert!(!t2.rows[0][1].valign_itta);
     }
 
+    /// **A paragraph's tab stops survive a save** (`w:tabs`, ECMA-376
+    /// 17.3.1.38). They were never written, and the date of the Tokyo Hello
+    /// Work resume, on a right stop at 7655 twips, moved next to the title
+    /// after opening and saving (2026-09-23)
+    #[test]
+    fn tab_stops_survive_a_save() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:tabs><w:tab w:val="right" w:pos="7655"/><w:tab w:val="left" w:leader="dot" w:pos="2000"/></w:tabs></w:pPr><w:r><w:t>a</w:t></w:r><w:r><w:tab/><w:t>b</w:t></w:r></w:p></w:body></w:document>"#;
+        let (d, _) = crate::read::parse_document_xml(xml);
+        let mae = d.paragraphs().next().unwrap().tab_stops.clone();
+        assert_eq!(mae.len(), 2, "タブ位置を読めていない");
+        let mut out = Vec::new();
+        crate::write(&d, std::io::Cursor::new(&mut out)).expect("書けない");
+        let (d2, _) = crate::read(std::io::Cursor::new(out)).expect("読み直せない");
+        assert_eq!(d2.paragraphs().next().unwrap().tab_stops, mae, "保存でタブ位置が変わった");
+    }
+
     /// **セルの塗りは空要素で書かれる**(`w:tcPr/w:shd`。ECMA-376 17.4.32)。
     /// `w:shd` は属性だけの要素なので、書く側は必ず `<w:shd …/>` の形にします。
     /// 拾う枝が開始要素の走査にしか無く、Word が作ったどの docx でもセルの
