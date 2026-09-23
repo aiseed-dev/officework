@@ -74,13 +74,23 @@ impl Writer {
         if let Some(b) = hit_box {
             let id = Target::Cell { table: b.table, row: b.row, col: b.col };
             self.switch_target(id);
-            // セルの中の行で位置を決める
+            // **The line whose letters are nearest the click** ([`line_naka_mm`]).
+            // We took the last line whose baseline was less than 0.8 × 6.4mm
+            // under the click, and 9pt lines 12.3pt apart are only 4.3mm
+            // apart, so a click on the foot of the letters picked the line
+            // below (2026-09-23)
+            let naka = self
+                .page
+                .lines
+                .iter()
+                .filter(|l| l.cell == Some((b.table, b.row, b.col)))
+                .min_by(|p, q| {
+                    (line_naka_mm(p) - y_mm).abs().total_cmp(&(line_naka_mm(q) - y_mm).abs())
+                })
+                .map(|l| l.byte0);
             let mut hit = 0usize;
             for line in &self.page.lines {
-                if line.cell != Some((b.table, b.row, b.col)) {
-                    continue;
-                }
-                if line.y_mm - LINE_MM * 0.8 > y_mm {
+                if line.cell != Some((b.table, b.row, b.col)) || Some(line.byte0) != naka {
                     continue;
                 }
                 hit = line.byte0;
@@ -148,15 +158,15 @@ impl Writer {
             return;
         }
 
-        // 一番近いベースラインの本文行を選ぶ(クリックは字の少し上に落ちる)
-        let target = y_mm + LINE_MM * 0.3;
+        // The body line whose letters are nearest the click, measured the
+        // same way as inside a table cell ([`line_naka_mm`])
         let mut best: Option<(f32, usize)> = None; // (距離, 本文行の通し番号)
         let mut nth = 0usize;
         for line in &self.page.lines {
             if !line.from_body {
                 continue;
             }
-            let d = (line.y_mm - target).abs();
+            let d = (line_naka_mm(line) - y_mm).abs();
             if best.is_none_or(|(bd, _)| d < bd) {
                 best = Some((d, nth));
             }
@@ -1889,4 +1899,17 @@ pub(crate) fn smartart_spec(layout: &str, items: &[String], font: &str, out: &st
         json_str(font),
         json_str(out)
     )
+}
+
+/// **The height of the middle of a line's letters** (mm, the same scale as
+/// `y_mm`), for picking the line under the mouse. The letters are drawn
+/// `dip_mm` below the line's `y_mm` (`view.rs`), and their middle stands
+/// about a third of their size above that baseline. A click is compared with
+/// this, not with a fixed distance from `y_mm`, so a heading drawn low in a
+/// tall line and 9pt lines set close together are both hit where they are
+/// drawn (2026-09-23)
+pub(crate) fn line_naka_mm(line: &kumihan::Line) -> f32 {
+    let pt = line.cells.iter().map(|c| c.size_pt).fold(0.0f32, f32::max);
+    let pt = if pt > 0.0 { pt } else { crate::SIZE_PT };
+    line.y_mm + line.dip_mm - pt * 0.35 * 25.4 / 72.0
 }

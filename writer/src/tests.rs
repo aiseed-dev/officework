@@ -4857,6 +4857,47 @@ mod shape_pick_tests {
         });
     }
 
+    /// **A click on the lower half of a line in a table cell picks that line**,
+    /// not the one below. The hit test took the last line whose baseline was
+    /// less than 5.12mm under the click, and 9pt lines are 4.33mm apart, so
+    /// a click near the foot of the letters landed a line lower; the
+    /// business plan e22e6b47 keeps nearly all its text in such cells
+    /// (2026-09-23).
+    #[gpui::test]
+    fn a_click_on_a_line_in_a_cell_picks_that_line_not_the_next(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            // 9pt text 12.3pt apart, the tip text's pitch in e22e6b47
+            let para = |t: &str| kumihan::Paragraph {
+                runs: vec![kumihan::Run { text: t.into(), size_pt: Some(9.0), font: None, fmt: Default::default() }],
+                line_pt: Some((12.3, true)),
+                ..Default::default()
+            };
+            // one paragraph that wraps into three lines, as the tip text does
+            let cell = kumihan::Cellbox {
+                paragraphs: vec![para("aaaa aaaa aaaa bbbb bbbb bbbb cccc cccc cccc")],
+                ..Default::default()
+            };
+            let mut d = kumihan::Document::plain("");
+            d.blocks = vec![kumihan::Block::Table(kumihan::Table { col_mm: vec![22.0], rows: vec![vec![cell]], ..Default::default() })];
+            this.doc = d;
+            this.relayout();
+            let lines: Vec<kumihan::Line> = this.page.lines.iter().filter(|l| l.cell.is_some() && !l.cells.is_empty()).cloned().collect();
+            assert!(lines.len() >= 3, "セルの行が 3 行に折り返していない(試験の前提が崩れた): {}", lines.len());
+            assert!(lines[1].y_mm - lines[0].y_mm < kumihan::LINE_MM * 0.8, "行の間隔が広すぎて試験にならない: {:?}", lines.iter().map(|l| l.y_mm).collect::<Vec<_>>());
+            let pxmm = crate::PX_PER_MM * this.zoom;
+            for (k, l) in lines.iter().enumerate() {
+                let c = &l.cells[1];
+                let x = 28.0 + (this.pg.left_mm + c.x_mm + c.w_mm * 0.75) * pxmm;
+                // just above where the letters stand
+                let y = 14.0 + (l.y_mm + l.dip_mm - 0.3 - this.scroll_mm) * pxmm;
+                this.click_at(x, y, false);
+                let want = l.byte0 + 2;
+                assert_eq!(this.ed.cursor(), want, "{} 行目の字の下を押したのに、別の行に立った", k + 1);
+            }
+        });
+    }
+
     /// **図形の一覧は分類7つ → 形の2段。** 表の画面と同じ並びで、
     /// どの形も Python のスクリプトが名前を知っています。
     #[gpui::test]
