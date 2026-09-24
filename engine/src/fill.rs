@@ -391,6 +391,45 @@ fn join_marks(runs: &mut Vec<Run>) {
     });
 }
 
+/// The width of a text in half-width units: a full-width char is 2
+fn width(t: &str) -> usize {
+    t.chars().map(|c| if c.is_ascii() || ('\u{FF61}'..='\u{FF9F}').contains(&c) { 1 } else { 2 }).sum()
+}
+
+/// **Takes `need` half-width units of spaces** from the blank after byte
+/// `at` of run `ri`: the spaces there, going on into the runs after while
+/// they are underlined too. A space taken is overwritten with NUL bytes
+/// of its own length, so byte places stay put until they are counted again.
+fn take_spaces(runs: &mut [Run], ri: usize, at: usize, need: usize) {
+    let mut left = need;
+    let mut ri = ri;
+    let mut at = at;
+    while left > 0 && ri < runs.len() {
+        let t = &mut runs[ri].text;
+        let mut pos = at;
+        while left > 0 && pos < t.len() {
+            let c = t[pos..].chars().next().expect("a char");
+            if c == '\0' {
+                pos += 1;
+                continue;
+            }
+            if c != ' ' && c != '\u{3000}' {
+                return;
+            }
+            let n = c.len_utf8();
+            t.replace_range(pos..pos + n, &"\0".repeat(n));
+            left = left.saturating_sub(if c == ' ' { 1 } else { 2 });
+            pos += n;
+        }
+        // on into the next run only if it goes on with the underline
+        ri += 1;
+        at = 0;
+        if ri < runs.len() && !runs[ri].fmt.underline {
+            return;
+        }
+    }
+}
+
 /// **A document form filled from a data book**, with the marks of a sheet
 /// form ([`book::form`]): `{氏名}`, `{日付.和暦年}`, `{送達場所=住所}`,
 /// `{性別:男・女}` and the rest. Unlike [`fill`], an unanswered mark
@@ -405,18 +444,48 @@ pub fn fill_form(doc: &Document, data: &book::Book) -> FormFill {
     let mut chosen: Vec<DocAt> = Vec::new();
     let mut para = |p: &mut Paragraph, block: usize, cell: Option<(usize, usize, usize)>| {
         join_marks(&mut p.runs);
-        let mut start = 0usize;
-        for r in p.runs.iter_mut() {
+        // 1. Answer the marks, keeping where each answer went in its run
+        let mut found_marks: Vec<(String, usize, usize, usize)> = Vec::new();
+        let mut found_chosen: Vec<(usize, usize, usize)> = Vec::new();
+        for (ri, r) in p.runs.iter_mut().enumerate() {
             let found = book::form::marks(&r.text);
-            if !found.is_empty() {
-                names.extend(found);
-                let f = book::form::fill_text_ranges(&r.text, &answers);
-                let at = |a: usize, b: usize| DocAt { block, cell, from: start + a, to: start + b };
-                marks.extend(f.marks.iter().map(|(m, a, b)| (m.clone(), at(*a, *b))));
-                chosen.extend(f.chosen.iter().map(|(a, b)| at(*a, *b)));
-                r.text = f.text;
+            if found.is_empty() {
+                continue;
             }
-            start += r.text.len();
+            names.extend(found);
+            let f = book::form::fill_text_ranges(&r.text, &answers);
+            found_marks.extend(f.marks.iter().map(|(m, a, b)| (m.clone(), ri, *a, *b)));
+            found_chosen.extend(f.chosen.iter().map(|(a, b)| (ri, *a, *b)));
+            r.text = f.text;
+        }
+        // 2. A blank of underlined spaces keeps its length
+        for (_, ri, a, b) in found_marks.iter().rev() {
+            if p.runs[*ri].fmt.underline {
+                let need = width(&p.runs[*ri].text[*a..*b]);
+                take_spaces(&mut p.runs, *ri, *b, need);
+            }
+        }
+        // 3. Count the places again without the spaces taken
+        let gone = |t: &str, upto: usize| t[..upto].bytes().filter(|b| *b == 0).count();
+        let starts: Vec<usize> = p
+            .runs
+            .iter()
+            .scan(0usize, |acc, r| {
+                let s = *acc;
+                *acc += r.text.len() - gone(&r.text, r.text.len());
+                Some(s)
+            })
+            .collect();
+        let at = |ri: usize, a: usize, b: usize| {
+            let t = &p.runs[ri].text;
+            DocAt { block, cell, from: starts[ri] + a - gone(t, a), to: starts[ri] + b - gone(t, b) }
+        };
+        marks.extend(found_marks.iter().map(|(m, ri, a, b)| (m.clone(), at(*ri, *a, *b))));
+        chosen.extend(found_chosen.iter().map(|(ri, a, b)| at(*ri, *a, *b)));
+        for r in &mut p.runs {
+            if r.text.contains('\0') {
+                r.text.retain(|c| c != '\0');
+            }
         }
     };
     for (bi, b) in out.blocks.iter_mut().enumerate() {
@@ -453,6 +522,37 @@ mod form_tests {
 
     fn run(t: &str) -> Run {
         Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }
+    }
+
+    #[test]
+    fn an_underlined_blank_keeps_its_length() {
+        let (data, _) = crate::book_adoc::parse("= データ\n\n.基本\n|===\n|氏名 |山田 太郎\n|===\n").unwrap();
+        let mut under = run("");
+        under.fmt.underline = true;
+        let blank = |t: &str| Run { text: t.into(), ..under.clone() };
+        let mut doc = Document::default();
+        let mut p = Paragraph::default();
+        // 氏名 then an underlined blank of 8 full-width spaces cut in two runs
+        p.runs = vec![run("氏名"), blank("{氏名}　　　　"), blank("　　　　"), run("印")];
+        doc.blocks.push(Block::Para(p));
+        let f = fill_form(&doc, &data);
+        let Block::Para(p) = &f.doc.blocks[0] else { panic!() };
+        let blanks: String = p.runs.iter().filter(|r| r.fmt.underline).map(|r| r.text.as_str()).collect();
+        // 山田 太郎 is 9 half-width units: 5 full-width spaces (10) go
+        assert_eq!(blanks, "山田 太郎　　　");
+        assert_eq!(super::width(&blanks), 15, "about the blank's 16 units");
+        let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+        let (_, at) = &f.marks[0];
+        assert_eq!(&text[at.from..at.to], "山田 太郎");
+        assert!(text.ends_with("印"));
+        // not underlined: the spaces stay
+        let mut doc = Document::default();
+        let mut p = Paragraph::default();
+        p.runs = vec![run("{氏名}　　様")];
+        doc.blocks.push(Block::Para(p));
+        let f = fill_form(&doc, &data);
+        let Block::Para(p) = &f.doc.blocks[0] else { panic!() };
+        assert_eq!(p.runs[0].text, "山田 太郎　　様");
     }
 
     #[test]
