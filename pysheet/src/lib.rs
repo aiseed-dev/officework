@@ -322,10 +322,34 @@ impl PyBook {
     ///
     /// 拡張子が `.pdf` なら紙に、`.png` なら絵になります。`dpi` は絵の
     /// 細かさで、既定は 150 です(`.png` のときだけ効きます)。
-    #[pyo3(signature = (path, dpi = None))]
-    fn save(&self, path: &str, dpi: Option<f32>) -> PyResult<()> {
+    #[pyo3(signature = (path, dpi = None, attributes = None))]
+    fn save(&self, path: &str, dpi: Option<f32>, attributes: Option<Vec<(String, String)>>) -> PyResult<()> {
         let mut g = lock(&self.inner)?;
         recalc_all(&mut g.book);
+        // `.adoc` is the book as text (kumihan::book_adoc): cells, formulas,
+        // merges and marks; the look goes to a template (save_look).
+        // `attributes` are written under the title as `:name: value`
+        if std::path::Path::new(path).extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc")) {
+            let mut src = kumihan::book_adoc::write(&g.book);
+            let head: String = attributes.unwrap_or_default().iter().map(|(k, v)| format!(":{k}: {v}\n")).collect();
+            if !head.is_empty() {
+                match src.find('\n') {
+                    Some(i) if src.starts_with("= ") => src.insert_str(i + 1, &head),
+                    // with no title the attributes are the header, ended by a blank line
+                    _ => src.insert_str(0, &format!("{head}\n")),
+                }
+            }
+            // Pictures go to files next to it (images/…), as the app saves them
+            let dir = std::path::Path::new(path).parent().unwrap_or(std::path::Path::new("."));
+            for (file, data) in kumihan::book_meta::image_files(&g.book) {
+                let to = dir.join(&file);
+                if let Some(p) = to.parent() {
+                    std::fs::create_dir_all(p).map_err(|e| PyIOError::new_err(format!("{}: 作れない: {e}", p.display())))?;
+                }
+                std::fs::write(&to, data).map_err(|e| PyIOError::new_err(format!("{}: 書けない: {e}", to.display())))?;
+            }
+            return std::fs::write(path, src).map_err(|e| PyIOError::new_err(format!("{path}: 書けない: {e}")));
+        }
         // **`.png` なら絵にします**(2026-08-29)。頁ごとに1枚で、
         // 2枚目からは名前に `-2`・`-3` が付きます
         if std::path::Path::new(path)
@@ -375,6 +399,71 @@ impl PyBook {
     #[getter]
     fn default_font(&self) -> PyResult<Option<(String, f32)>> {
         Ok(lock(&self.inner)?.book.default_font.clone())
+    }
+
+    // The book's default font (the first of styles.xml's fonts)
+    fn set_default_font(&self, name: &str, pt: f32) -> PyResult<()> {
+        lock(&self.inner)?.book.default_font = Some((name.to_string(), pt));
+        Ok(())
+    }
+
+    // The look of the book (column widths, row heights, formats, page
+    // setup) as a template file, `name.tmpl.adoc`
+    fn save_look(&self, path: &str) -> PyResult<()> {
+        let g = lock(&self.inner)?;
+        let src = kumihan::booktmpl::write(&kumihan::booktmpl::from_book(&g.book));
+        std::fs::write(path, src).map_err(|e| PyIOError::new_err(format!("{path}: 書けない: {e}")))
+    }
+
+    // Every font name the book uses: cells, runs in cells, shapes' text,
+    // named styles and the default font, each once, in that order
+    fn fonts_used(&self) -> PyResult<Vec<String>> {
+        let g = lock(&self.inner)?;
+        let b = &g.book;
+        let mut out: Vec<String> = Vec::new();
+        let mut put = |n: &Option<String>| {
+            if let Some(n) = n {
+                if !out.contains(n) {
+                    out.push(n.clone());
+                }
+            }
+        };
+        for s in &b.sheets {
+            s.cells.values().for_each(|c| put(&c.fmt.font));
+            s.rich_runs.values().flatten().for_each(|r| put(&r.font));
+            s.shapes.iter().chain(s.shapes_new.iter()).for_each(|sp| put(&sp.text_fmt.font));
+        }
+        b.named_styles.iter().for_each(|(_, _, f)| put(&f.font));
+        b.named_styles_new.iter().for_each(|(_, f)| put(&f.font));
+        put(&b.default_font.as_ref().map(|(n, _)| n.clone()));
+        Ok(out)
+    }
+
+    // Replaces font names everywhere fonts_used looks, by the mapping
+    // {old: new}. Returns how many places changed
+    fn replace_fonts(&self, mapping: std::collections::HashMap<String, String>) -> PyResult<usize> {
+        let mut g = lock(&self.inner)?;
+        let b = &mut g.book;
+        let mut n = 0usize;
+        let mut swap = |f: &mut Option<String>| {
+            if let Some(new) = f.as_ref().and_then(|old| mapping.get(old)) {
+                *f = Some(new.clone());
+                n += 1;
+            }
+        };
+        for s in &mut b.sheets {
+            s.cells.values_mut().for_each(|c| swap(&mut c.fmt.font));
+            s.rich_runs.values_mut().flatten().for_each(|r| swap(&mut r.font));
+            s.shapes.iter_mut().chain(s.shapes_new.iter_mut()).for_each(|sp| swap(&mut sp.text_fmt.font));
+        }
+        b.named_styles.iter_mut().for_each(|(_, _, f)| swap(&mut f.font));
+        b.named_styles_new.iter_mut().for_each(|(_, f)| swap(&mut f.font));
+        if let Some((name, pt)) = b.default_font.clone() {
+            let mut f = Some(name);
+            swap(&mut f);
+            b.default_font = f.map(|x| (x, pt));
+        }
+        Ok(n)
     }
 
     /// 読めなかったものの帳簿 [(名前, 件数)]。空なら取りこぼしなし。
@@ -1051,10 +1140,69 @@ impl PySheet {
                     )?;
                     d.set_item("rot", sp.rot)?;
                     d.set_item("alpha", sp.alpha)?;
+                    d.set_item("font", sp.text_fmt.font.clone())?;
+                    d.set_item("size", sp.text_fmt.size_pt)?;
+                    d.set_item("field", sp.field.clone())?;
                     Ok(d)
                 })
                 .collect()
         })
+    }
+
+    // Changes a shape (its number in shapes()): the form field it is, its
+    // text, the font of its text
+    #[pyo3(signature = (index, *, field = None, text = None, font = None))]
+    fn set_shape(&self, index: usize, field: Option<String>, text: Option<String>, font: Option<String>) -> PyResult<()> {
+        self.with(|s| {
+            let n = s.shapes.len();
+            let sp = if index < n { s.shapes.get_mut(index) } else { s.shapes_new.get_mut(index - n) };
+            let sp = sp.ok_or_else(|| PyIndexError::new_err(format!("図形は {} 個です: {index}", n + 0)))?;
+            if let Some(v) = field {
+                sp.field = (!v.is_empty()).then_some(v);
+            }
+            if let Some(v) = text {
+                sp.text = Some(v);
+            }
+            if let Some(v) = font {
+                sp.text_fmt.font = Some(v);
+            }
+            Ok(())
+        })
+    }
+
+    // The page margins in mm: (left, right, top, bottom), or None when the
+    // sheet names none
+    #[getter]
+    fn margins_mm(&self) -> PyResult<Option<(f32, f32, f32, f32)>> {
+        self.with(|s| Ok(s.margins_mm))
+    }
+
+    #[setter]
+    fn set_margins_mm(&self, v: Option<(f32, f32, f32, f32)>) -> PyResult<()> {
+        self.with(|s| {
+            s.margins_mm = v;
+            Ok(())
+        })
+    }
+
+    // The print scale in percent (pageSetup scale), or None for 100
+    #[getter]
+    fn print_scale(&self) -> PyResult<Option<u32>> {
+        self.with(|s| Ok(s.print_scale))
+    }
+
+    #[setter]
+    fn set_print_scale(&self, v: Option<u32>) -> PyResult<()> {
+        self.with(|s| {
+            s.print_scale = v;
+            Ok(())
+        })
+    }
+
+    // The height (pt) of rows that state none
+    #[getter]
+    fn default_row_height(&self) -> PyResult<Option<f32>> {
+        self.with(|s| Ok(s.default_row_height))
     }
 
     /// 置いた図形を全部取り除きます(図を描き直すとき)

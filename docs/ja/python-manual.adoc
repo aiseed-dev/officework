@@ -128,6 +128,25 @@ b.to_pdf("out.pdf")                     # PDF に。省くと開いた名前の 
 b.unsupported                           # 読めなかった部品の一覧(空 = 全部読めた)
 ----
 
+ブックを字(adoc)で書き、見た目をテンプレートに分けて書けます。様式を作るときに使います。
+
+[source,python]
+----
+b.save("見積書.form.adoc", attributes=[("template", "見積書")])  # セル・数式・結合・印。題の下に :template: 見積書
+b.save_look("見積書.tmpl.adoc")         # 列の幅・行の高さ・書式・印刷の設定
+b.fonts_used()                          # 使っている書体: ['ＭＳ 明朝', …](セル・図形・スタイル・標準の書体)
+b.replace_fonts({"ＭＳ 明朝": "BIZ UD明朝"})   # 全部の場所で置き換え、置き換えた数を返す
+b.set_default_font("BIZ UD明朝", 11.0)  # 標準の書体(列の幅の単位にもなります)
+s = b[0]
+s._s.margins_mm                         # 余白 mm (左, 右, 上, 下)。代入もできます
+s._s.print_scale                        # 印刷の倍率(%)。代入もできます
+s._s.default_row_height                 # 高さを指定していない行の高さ(pt)
+s._s.shapes                             # 図形の一覧(種類・場所・大きさ・文字・書体・欄)
+s._s.set_shape(0, field="写真", text="…", font="BIZ UD明朝")   # 図形を直す
+----
+
+画像を持つブックを adoc に保存すると、画像は adoc の横の `images/` にファイルとして書きます。
+
 === セルの読み書き
 
 `s["A1"]` はセルを返します(openpyxl と同じです)。値は `.value` で読みます。触ったことのない番地でもセルが返り、その `.value` は None です。

@@ -2126,15 +2126,24 @@ class Book(NoStrayAttributes):
 
     # ── うちの口(エンジンそのまま)──────────────────────────────
 
-    def save(self, path, dpi=None):
+    def save(self, path, dpi=None, attributes=None):
         """保存する。拡張子で行き先が決まります。
 
-        ``.xlsx`` はブック、``.pdf`` は紙、``.png`` は絵です。
+        ``.xlsx`` はブック、``.pdf`` は紙、``.png`` は絵、``.adoc`` は字の
+        ブック(セル・数式・結合・印。見た目は ``save_look`` で別に書きます)です。
         ``dpi`` は絵の細かさで、既定は 150 です(``.png`` のときだけ効きます)。
         頁が複数あるときは、2枚目から名前に ``-2``・``-3`` が付きます。
+        ``attributes`` は ``.adoc`` の題の下に書く属性で、``[("template", "名前")]``
+        のような (名前, 値) の並びです。
         """
         # pathlib.Path も受ける(上の open と同じ理由)
-        self._b.save(_os.fspath(path), dpi)
+        self._b.save(_os.fspath(path), dpi,
+                     [(str(k), str(v)) for k, v in attributes] if attributes else None)
+
+    def save_look(self, path):
+        """ブックの見た目(列の幅・行の高さ・書式・印刷の設定)を、テンプレート
+        (``名前.tmpl.adoc``)に書きます。"""
+        self._b.save_look(_os.fspath(path))
 
     def to_pdf(self, path=None, include=None, exclude=None):
         """ブック全体を1つの PDF にします。返り値は保存先です。

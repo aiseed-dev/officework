@@ -297,4 +297,31 @@ with tempfile.TemporaryDirectory() as d:
     lines = lambda x: sum(1 for it in x["pages"][0]["items"] if it["type"] == "line")
     check(lines(dl) > lines(plain), "選んだ字を囲む丸が無い")
 
+# A book written as adoc with its look apart, fonts replaced, a shape made a field
+with tempfile.TemporaryDirectory() as d:
+    b = office_sheet.Book()
+    s = b[0]
+    s["A1"] = "{氏名}"
+    s._s.set_fmt("A1", font="ＭＳ 明朝", size=12)
+    s._s.set_row_height(1, 20.0)
+    s._s.margins_mm = (15.0, 10.0, 19.0, 10.0)
+    s._s.print_scale = 90
+    s._s.add_shape("rect", "C3", 120, 160, line="000000", text="写真をはる位置")
+    check(b.fonts_used()[0] == "ＭＳ 明朝", f"使っている書体: {b.fonts_used()}")
+    check(b.replace_fonts({"ＭＳ 明朝": "BIZ UD明朝"}) == 1, "書体を置き換えない")
+    check(s._s.fmt("A1")["font"] == "BIZ UD明朝", f"置き換えた書体: {s._s.fmt('A1')}")
+    s._s.set_shape(0, field="写真")
+    check(s._s.shapes[0]["field"] == "写真", f"図形の欄: {s._s.shapes[0]}")
+    check((s._s.margins_mm, s._s.print_scale) == ((15.0, 10.0, 19.0, 10.0), 90), "余白と倍率")
+    b.set_default_font("BIZ UD明朝", 11.0)
+    form = os.path.join(d, "x.form.adoc")
+    b.save(form, attributes=[("template", "x"), ("出典", "見本")])
+    b.save_look(os.path.join(d, "x.tmpl.adoc"))
+    text = open(form, encoding="utf-8").read()
+    check(":template: x\n:出典: 見本\n" in text, f"属性が書かれない: {text[:80]!r}")
+    back = office_sheet.Book.open(form)
+    check(back[0]["A1"].value == "{氏名}", "adoc から読み戻せない")
+    check(back[0]._s.fmt("A1").get("size") == 12.0, f"見た目がテンプレートから戻らない: {back[0]._s.fmt('A1')}")
+    check(back[0]._s.shapes[0]["field"] == "写真", "図形の欄が戻らない")
+
 print("OK")

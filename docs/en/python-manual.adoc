@@ -58,6 +58,25 @@ b.to_pdf("out.pdf")                     # to PDF; omit the name to reuse the fil
 b.unsupported                           # list of parts we couldn't read (empty = everything read)
 ----
 
+A book can be written as text (adoc) with its look in a template apart, as forms are made.
+
+[source,python]
+----
+b.save("quote.form.adoc", attributes=[("template", "quote")])  # cells, formulas, merges, marks; :template: quote under the title
+b.save_look("quote.tmpl.adoc")          # column widths, row heights, formats, page setup
+b.fonts_used()                          # font names used: cells, shapes, styles, the default font
+b.replace_fonts({"ＭＳ 明朝": "BIZ UD明朝"})   # replaced everywhere; returns how many
+b.set_default_font("BIZ UD明朝", 11.0)  # the default font (also the unit of column widths)
+s = b[0]
+s._s.margins_mm                         # margins in mm (left, right, top, bottom); assignable
+s._s.print_scale                        # print scale in percent; assignable
+s._s.default_row_height                 # the height (pt) of rows that state none
+s._s.shapes                             # the shapes (kind, place, size, text, font, field)
+s._s.set_shape(0, field="写真", text="…", font="BIZ UD明朝")   # change a shape
+----
+
+Saving a book with pictures as adoc writes the pictures as files in `images/` next to it.
+
 === Reading and writing cells
 
 `s["A1"]` returns a cell, as in openpyxl. Read the value through `.value`. A never-touched address still returns a cell, whose `.value` is None.

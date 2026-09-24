@@ -97,7 +97,8 @@ pub fn tables_of(s: &Sheet) -> Vec<Table> {
     // **図形は縦長の (名前, 項目, 値)。** 持ち物が 19 あるので横には並べません。
     // 名前は場所(`D5`)です — 図形そのものに名前が無いので、置き場で呼びます
     let mut shapes: Vec<Vec<String>> = Vec::new();
-    for sp in &s.shapes {
+    // Both the shapes read and the ones added here; they read back as read
+    for sp in s.shapes.iter().chain(s.shapes_new.iter()) {
         let at = sp.at.a1();
         for (item, v) in shape::to_rows(sp) {
             shapes.push(vec![at.clone(), item.to_string(), v]);
@@ -109,7 +110,7 @@ pub fn tables_of(s: &Sheet) -> Vec<Table> {
     // fit in adoc. The name is derived from the sheet name and a number, so the
     // model does not need a field for the path.
     push(&mut out, "images", &["file", "at", "dx", "dy", "width", "height"],
-        s.images.iter().enumerate().map(|(i, im)| vec![
+        s.images.iter().chain(s.images_new.iter()).enumerate().map(|(i, im)| vec![
             image_file(&s.name, i, &im.data), im.at.a1(),
             n2(im.dx_px), n2(im.dy_px), n2(im.width_px), n2(im.height_px),
         ]).collect());
@@ -155,7 +156,7 @@ fn n2(v: f32) -> String {
 pub fn image_files(book: &book::Book) -> Vec<(String, Vec<u8>)> {
     let mut out = Vec::new();
     for s in &book.sheets {
-        for (i, im) in s.images.iter().enumerate() {
+        for (i, im) in s.images.iter().chain(s.images_new.iter()).enumerate() {
             if !im.data.is_empty() {
                 out.push((image_file(&s.name, i, &im.data), im.data.clone()));
             }
