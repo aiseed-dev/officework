@@ -35,6 +35,7 @@ MIRU = [
     "docs/ja/writer-manual.adoc",
     "docs/ja/calc-manual.adoc",
     "docs/ja/python-manual.adoc",
+    "docs/ja/forms-manual.adoc",
     "docs/ja/macro-manual.adoc",
     "docs/ja/writer-macro-manual.adoc",
     "docs/engine.ja.adoc",

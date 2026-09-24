@@ -29,6 +29,9 @@ _元は英語版(link:../en/README.adoc[README.adoc])です。こちらは日本
 |link:python-manual.adoc[Python の手引き](link:../en/python-manual.adoc[English])
 |プログラムから読み書きする |✅
 
+|link:forms-manual.adoc[様式の手引き](link:../en/forms-manual.adoc[English])
+|履歴書・申請書・届出書の様式を作り、データから埋める。別紙や選択肢の丸もここ |✅
+
 |link:macro-manual.adoc[マクロの手引き](link:../en/macro-manual.adoc[English])
 |自分のボタンや処理を足す。AI に書かせる方法もここ |
 

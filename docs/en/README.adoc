@@ -26,6 +26,9 @@ Pick a booklet by what you want to do.
 |link:python-manual.adoc[Python manual]
 |Read and write from a program |✅
 
+|link:forms-manual.adoc[Forms]
+|Make a resume, application or notification form and fill it from data, with 別紙 and circled choices |✅
+
 |link:macro-manual.adoc[Macro manual]
 |Add your own buttons and procedures, including having an AI write one |
 

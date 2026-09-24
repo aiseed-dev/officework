@@ -1,0 +1,219 @@
+= Forms: filling a form from data
+:toc:
+
+_日本語版(secondary): link:../ja/forms-manual.adoc[forms-manual.adoc]_
+
+This book is for people who make forms — a resume, an application, a notification — and fill them from data with officework.
+A form is a sheet or a document with marks where the values go; the data is a table book.
+Everything written here is what `officework` does today; the examples were run as shown.
+
+== The two files
+
+[cols="1,2,2"]
+|===
+|File |What it is |Written as
+
+|The form
+|The page to fill: its cells or paragraphs hold marks such as `{屋号}` where the values go
+|A sheet form: `name.form.adoc` (with its look in `name.tmpl.adoc`) or an `.xlsx` with marks typed in its cells. A document form: a `.docx` with marks typed in its text
+
+|The data
+|The values: two-column tables (name, value) and tables with a header row
+|A table book, `name.sheet.adoc`
+|===
+
+The form and the data are kept apart so that one set of data fills many forms: a business's name, address and representative are written once and fill every application that asks for them.
+
+== Marks
+
+A mark is a name in braces, written where the value goes.
+A cell or a paragraph may hold several marks; the text around them stays as it is.
+
+[cols="2,3",options="header"]
+|===
+|Mark |What goes there
+
+|`{屋号}`
+|The value next to 屋号 in any two-column table of the data
+
+|`{開業日.年}` `{開業日.月}` `{開業日.日}`
+|The year, month or day of a date written `2026-10-01` (or `2026/10/1`)
+
+|`{届出日.元号}` `{届出日.和暦年}`
+|The Japanese era of a date (令和) and the year in it (8). The first year of an era is written 元
+
+|`{通勤時間.時間}` `{通勤時間.分}`
+|The number before 時間, or before 分, in a value written `1時間10分`
+
+|`{年齢}`
+|The age on 日付 of someone born on 生年月日 (both from the data)
+
+|`{事業所.2.所在地}`
+|Row 2 of the table 事業所 (counted after the header row), column 所在地
+
+|`{本人希望.2}`
+|Line 2 of a value written on several lines
+
+|`{青色申告:する・しない}`
+|A choice. The options are written as the mark gives them, spaces included (`する ・ しない` keeps its spaces), and the one the data names is circled
+
+|`{区分=開業}`
+|A box to tick: ■ when the data's 区分 is 開業, □ otherwise. The boxes of one name make one choice
+|===
+
+A name may use any characters but `{`, `}`, `.`, `:` and `=`.
+
+== The data
+
+The data is a table book. Its tables are of two kinds.
+
+* A two-column table (name, value) answers marks by name: `{屋号}` takes the value on the 屋号 row.
+  Any number of such tables may be used; the first that has the name answers
+* A table with a header row answers row marks: `{事業所.2.所在地}` takes row 2 of 事業所 in the column 所在地.
+  The table's name is its title (`.事業所`)
+
+Write dates as `2026-10-01`. Write a value on several lines with ` +` at the end of each line but the last.
+
+[source,asciidoc]
+----
+= 開業のデータ
+
+.基本
+|===
+|届出日 |2026-10-01
+|屋号 |みほん商店
+|事業の概要 |文房具の小売
+|開業日 |2026-10-01
+|青色申告 |する
+|区分 |開業
+|===
+
+.事業所
+|===
+|所在地
+
+|札幌市中央区北1条西1丁目
+|札幌市北区北7条西5丁目
+|札幌市東区北10条東1丁目
+|===
+----
+
+== What filling does
+
+* A mark the data answers is replaced by the answer
+* *A mark the data does not answer becomes empty*, so rows a form prepares beyond the data stay blank
+* A name the data does not hold at all — no row and no table — is taken for a slip (電話番号 written for 電話).
+  It is filled with nothing like the rest, and it is reported: `fill` warns and lists it in `missing`.
+  A name that is there with an empty value (`|性別 |`) is not reported; neither is a row beyond the end of a table
+* The chosen option of a choice gets an ellipse around it.
+  Its place is measured from the laid-out page, and the ellipse is a shape of the book or document, so the PDF, the xlsx and the docx all show it
+* *Rows of a table beyond the form's rows go on to a 別紙* (an attached sheet), in the same columns.
+  On a sheet form a sheet named 別紙 is added; each column takes the width, the format and the row height of the form's own cell for it.
+  On a document form a page break and a 別紙 table are added; each column takes the width of the form's table column.
+  The 別紙 reads 別紙, then the table's name with （続き）, a header of the columns, and the rows.
+  `bessi` lists the tables carried, as (table, first row, last row)
+* A shape of a sheet form can be a picture field: give it the field name with the shapes table's `field` item (`|I3 |field |写真`).
+  The picture the data names under that name (looked for in the data file's folder) is put inside the shape, keeping its proportions, and the shape's text is cleared; the frame stays
+
+=== On a document form
+
+* A mark that Word split into several formatting runs is read as one mark
+* A blank made of underlined spaces (氏名＿＿＿＿) keeps its length: type the mark at the head of the blank and keep the spaces (`{氏名}＿＿＿＿`).
+  Filling takes away as many spaces as the answer is wide — a full-width character counts 2, a half-width one 1 — going on through the following runs while they are underlined.
+  If the spaces are not enough, the underline grows by the rest.
+  In a run without an underline no spaces are taken (`{宛名}　様` keeps its space)
+* Marks are filled in paragraphs, table cells and text boxes. Headers and footers are not filled
+
+== From Python
+
+[source,python]
+----
+from officework import sheet, doc
+
+# A sheet form
+form = sheet.Book.open("開業届.form.adoc")
+data = sheet.Book.open("開業データ.sheet.adoc")
+b = sheet.Book.fill(form, data)
+b.save("開業届.pdf")          # .xlsx and .png work too
+b.missing                     # names the data lacks altogether: []
+b.bessi                       # tables carried to a 別紙: [('事業所', 3, 3)]
+
+# A document form
+d = doc.Doc.fill_form(doc.Doc.open("送達場所等の届出.docx"), data)
+d.save("届出.pdf")           # .docx works too
+d.missing
+d.bessi
+
+# Editing a field and filling again
+data.set_field("屋号", "みほん文具店")
+b = sheet.Book.fill(form, data)
+----
+
+[cols="2,3",options="header"]
+|===
+|Call |What it does
+
+|`sheet.Book.fill(form, data)`
+|Returns a new book: the form with the data put in. Pictures are looked for in the folder of the data's file. Warns about names in `missing`
+
+|`doc.Doc.fill_form(form, data)`
+|The same for a document form. `data` is a `sheet.Book`
+
+|`b.missing`, `d.missing`
+|The names the data lacks altogether
+
+|`b.bessi`, `d.bessi`
+|The tables carried to a 別紙: (table, first row, last row), rows counted after the header
+
+|`data.set_field(name, value)`
+|Writes a value into the data. A row mark's name (`事業所.3.所在地`) sets that row and column, adding rows as needed; any other name sets the value next to it in a two-column table, or adds a row to the first such table. A column the table lacks is refused with an error
+
+|`form.fields()`
+|The cells of a sheet form that hold marks: (sheet, cell, mark names)
+
+|`b.draw_list()`, `d.draw_list()`
+|The pages as data (below)
+|===
+
+== The draw list
+
+`draw_list()` returns the pages as a dictionary, to draw them elsewhere — a Flet canvas, for one — and to know where the fields are.
+Its `version` is `0.1`; the shape may change while it is 0.x.
+
+[source,json]
+----
+{
+  "version": "0.1",
+  "fonts": [{"id": 0, "name": "BIZ UD明朝", "file": "…/BIZUDMincho-Regular.ttf",
+             "index": 0, "ascent": 0.88, "descent": 0.12}],
+  "missing": [],
+  "pages": [{
+    "size": [595.28, 841.89],
+    "items": [
+      {"type": "fill", "rect": [x, y, w, h], "color": "#FFFFFF", "alpha": 1},
+      {"type": "line", "from": [x, y], "to": [x, y], "width": 0.75, "color": "#000000", "alpha": 1, "dash": []},
+      {"type": "path", "d": [["M", x, y], ["L", x, y], ["C", x1, y1, x2, y2, x, y], ["Z"]],
+       "fill": null, "even_odd": false, "stroke": "#000000", "width": 0.75, "dash": [], "alpha": 1, "clip": []},
+      {"type": "text", "x": 120.5, "baseline": 210.0, "top": 192.4, "text": "みほん商店",
+       "font": 0, "size": 11, "width": 55.0, "color": "#000000", "bold": false},
+      {"type": "image", "rect": [x, y, w, h], "mime": "image/jpeg", "base64": "…"}
+    ],
+    "fields": [
+      {"name": "屋号", "kind": "text", "rect": [x, y, w, h], "value": "みほん商店"},
+      {"name": "青色申告", "kind": "choice", "options": ["する", "しない"], "rect": [x, y, w, h], "value": "する"}
+    ]
+  }]
+}
+----
+
+* Lengths are points, from the top left of the page, y going down
+* `items` are in the order to draw them: page colour, fills, shapes and pictures in their stacking order, lines, text, lines over the text, the watermark
+* A text has its baseline and its top (`top`, for drawers that place text by its top); `width` is the width the layout gave it; `font` is an `id` of `fonts`.
+  Optional keys: `italic`, `rotation` (degrees, turning left about x and the baseline), `letter_spacing` (points), `scale_x`
+* Colours are `#RRGGBB`; `alpha` is 0 to 1; dashes are lengths in points
+* A picture is its file's bytes in base64 (PNG or JPEG)
+* `fields` are the fields on that page, one per data item: `{届出日.年}` `{届出日.月}` `{届出日.日}` make one field 届出日 of kind `date`; `{本人希望.1}` … `{本人希望.4}` one field 本人希望 of kind `multiline`.
+  Kinds: `text`, `multiline` (also a cell that wraps its text), `date`, `choice` (with `options`), `image`.
+  `rect` holds all the field's cells (a merged cell whole) or, on a document, the characters of its answers; an empty answer on a document gives the box of the character after it.
+  `value` is the value as the data holds it (a date as `2026-10-01`). `{年齢}` is worked out and is not a field
+* `missing` is at the top of a form's draw list
