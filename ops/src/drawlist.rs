@@ -110,5 +110,7 @@ pub fn form(form: &book::Book, data: &book::Book, filled: &book::Book) -> Result
         o.remove("spots");
         o.insert("fields".into(), Value::Array(fields));
     }
+    // The names the data lacks altogether, for the drawer to point out
+    v["missing"] = json!(book::form::missing(form, data));
     Ok(v)
 }

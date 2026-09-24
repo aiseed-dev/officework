@@ -102,6 +102,23 @@ impl<'a> Data<'a> {
         (!v.is_empty()).then_some(v)
     }
 
+    /// Whether some two-column table has a row named `key` (its value may
+    /// be empty)
+    fn has_pair(&self, key: &str) -> bool {
+        self.book.sheets.iter().any(|s| {
+            let (rows, _) = s.extent();
+            (0..rows).any(|r| s.value(Pos::new(r, 0)).display().trim() == key)
+        })
+    }
+
+    /// Whether table `t` exists with a column named `col` in its header
+    fn has_column(&self, t: &str, col: &str) -> bool {
+        self.sheet(t).is_some_and(|s| {
+            let (_, cols) = s.extent();
+            (0..cols).any(|c| s.value(Pos::new(0, c)).display().trim() == col)
+        })
+    }
+
     /// The value the data holds for a field name, as written there
     /// (`2026-09-24` for a date, every line of a multi-line value).
     pub fn raw(&self, name: &str) -> Option<String> {
@@ -264,6 +281,54 @@ fn box_px(z: &Sizes, basis: crate::ColBasis, sp: &crate::SheetShape) -> (f32, f3
         (w_mm * px_per_mm - sp.dx_px + tdx).max(1.0),
         (h_pt * 96.0 / 72.0 - sp.dy_px + tdy).max(1.0),
     )
+}
+
+/// **The names the form asks for that the data does not hold at all**, in
+/// the order the form first asks. They are filled with nothing like any
+/// other unanswered mark, but a name missing altogether is usually a
+/// mistake (電話番号 written for 電話), so the caller reports it. Not
+/// listed: rows beyond the end of a table (the form prepares more rows than
+/// the data fills) and names that are there with an empty value (an
+/// optional field left blank). A missing table or column is named as
+/// `表` or `表.列`.
+pub fn missing(form: &Book, data_book: &Book) -> Vec<String> {
+    let data = Data::new(data_book);
+    let mut out: Vec<String> = Vec::new();
+    let mut push = |n: String| {
+        if !out.contains(&n) {
+            out.push(n);
+        }
+    };
+    let mut names: Vec<String> = fields(form).into_iter().flat_map(|f| f.names).collect();
+    for s in &form.sheets {
+        names.extend(s.shapes.iter().chain(s.shapes_new.iter()).filter_map(|sp| sp.field.clone()));
+    }
+    for m in names {
+        let parts: Vec<&str> = m.split('.').collect();
+        match parts.as_slice() {
+            ["年齢"] => {
+                for key in ["生年月日", "日付"] {
+                    if !data.has_pair(key) {
+                        push(key.to_string());
+                    }
+                }
+            }
+            [t, n, col] if n.parse::<u32>().is_ok() => {
+                if data.sheet(t).is_none() {
+                    push(t.to_string());
+                } else if !data.has_column(t, col) {
+                    push(format!("{t}.{col}"));
+                }
+            }
+            [key, ..] => {
+                if !data.has_pair(key) {
+                    push(key.to_string());
+                }
+            }
+            [] => {}
+        }
+    }
+    out
 }
 
 /// The width and height of a PNG or JPEG picture.
@@ -493,6 +558,23 @@ mod tests {
         assert_eq!(g[2].value, "1 行目\n2 行目");
         assert_eq!(g[3].value, "千代田大学 入学");
         assert_eq!(g[4].kind, Kind::Image);
+    }
+
+    #[test]
+    fn names_the_data_lacks_altogether_are_listed() {
+        let mut form = Book::new();
+        let s = &mut form.sheets[0];
+        let t = |v: &str| Cell { value: Value::Text(v.into()), ..Default::default() };
+        s.set(Pos::new(0, 0), t("{氏名} {電話} {性別}"));
+        s.set(Pos::new(1, 0), t("{学歴・職歴.9.年}"));
+        s.set(Pos::new(2, 0), t("{学歴・職歴.1.場所} {免許・資格.1.年}"));
+        s.set(Pos::new(3, 0), t("(満{年齢}歳) {本人希望.3}"));
+        s.shapes.push(crate::SheetShape { field: Some("写真".into()), ..Default::default() });
+        let mut d = data();
+        set(&mut d, "性別", "").unwrap();
+        // 性別 is there but empty, row 9 of the history is past its end,
+        // and 本人希望 has fewer lines: none of those is missing
+        assert_eq!(missing(&form, &d), ["電話", "学歴・職歴.場所", "免許・資格", "写真"]);
     }
 
     #[test]

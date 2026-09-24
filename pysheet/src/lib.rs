@@ -268,6 +268,14 @@ impl PyBook {
         })
     }
 
+    // The names the form asks for that the data does not hold at all
+    #[staticmethod]
+    fn missing(form: &PyBook, data: &PyBook) -> PyResult<Vec<String>> {
+        let f = lock(&form.inner)?.book.clone();
+        let d = lock(&data.inner)?.book.clone();
+        Ok(book::form::missing(&f, &d))
+    }
+
     // The draw list as JSON text (docs/sekkei/drawlist.ja.adoc); a book made
     // by `fill` also lists its fields
     fn draw_list(&self) -> PyResult<String> {

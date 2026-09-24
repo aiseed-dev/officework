@@ -2040,7 +2040,7 @@ class Book(NoStrayAttributes):
     """1冊のブック。エンジンの Book を包み、openpyxl の Workbook の口を足す。"""
 
     # 自分で持つ属性。ここに無い名前への代入は断ります
-    _own = ("_b", "_path")
+    _own = ("_b", "_path", "_missing")
     _engine_attr = "_b"
 
     def __init__(self, lang=None):
@@ -2071,13 +2071,29 @@ class Book(NoStrayAttributes):
         新しいブックを返します。データに無い印は空になります。
 
         写真の欄には、データの「写真」に書いたファイルを置きます。ファイルは
-        データのファイルと同じフォルダーから探します。"""
+        データのファイルと同じフォルダーから探します。
+
+        データに 1 つも無い名前(書き忘れや打ち間違い)は、空にしたうえで
+        警告を出し、``missing`` に並べます。表の行が足りない欄と、値が空の
+        欄は、黙って空にします。"""
         path = getattr(data, "_path", None)
         folder = _os.path.dirname(_os.fspath(path)) if path else None
         b = Book.__new__(Book)
         b._b = _engine.Book.fill(form._b, data._b, folder)
         b._path = None
+        # A name missing from the data altogether is usually a slip
+        # (電話番号 for 電話): it is filled with nothing like the rest, but said
+        b._missing = _engine.Book.missing(form._b, data._b)
+        if b._missing:
+            import warnings as _warnings
+            _warnings.warn("データに無い名前があります(空にしました): " + "、".join(b._missing),
+                           stacklevel=2)
         return b
+
+    @property
+    def missing(self):
+        """``fill`` で作ったブックで、データに 1 つも無かった名前の並びです。"""
+        return list(getattr(self, "_missing", None) or [])
 
     def draw_list(self):
         """描画一覧を辞書で返します(docs/sekkei/drawlist.ja.adoc)。

@@ -261,5 +261,16 @@ with tempfile.TemporaryDirectory() as d:
     data.set_field("氏名", "山田 花子")
     texts = [it["text"] for it in office_sheet.Book.fill(form, data).draw_list()["pages"][0]["items"] if it["type"] == "text"]
     check("山田 花子" in texts, f"直した値で描き直されない: {texts}")
+    check(office_sheet.Book.fill(form, data).missing == [], "全部ある名前を無いと言った")
+    # A name the data lacks altogether is filled with nothing and said
+    with open(os.path.join(d, "g.form.adoc"), "w", encoding="utf-8") as f:
+        f.write("= 様式\n\n.様式\n|===\n|{氏名} |{電話}\n|===\n")
+    import warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        g = office_sheet.Book.fill(office_sheet.Book.open(os.path.join(d, "g.form.adoc")), data)
+    check(g.missing == ["電話"], f"データに無い名前: {g.missing}")
+    check(any("電話" in str(x.message) for x in w), f"警告が出ない: {[str(x.message) for x in w]}")
+    check(g.draw_list()["missing"] == ["電話"], "描画一覧に missing が無い")
 
 print("OK")
