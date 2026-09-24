@@ -272,6 +272,17 @@ with tempfile.TemporaryDirectory() as d:
     check(g.missing == ["電話"], f"データに無い名前: {g.missing}")
     check(any("電話" in str(x.message) for x in w), f"警告が出ない: {[str(x.message) for x in w]}")
     check(g.draw_list()["missing"] == ["電話"], "描画一覧に missing が無い")
+    # Rows that do not fit the form go on to a 別紙
+    with open(os.path.join(d, "t.form.adoc"), "w", encoding="utf-8") as f:
+        f.write("= 様式\n\n.様式\n|===\n|{経歴.1.年} |{経歴.1.内容}\n|===\n")
+    with open(os.path.join(d, "t.sheet.adoc"), "w", encoding="utf-8") as f:
+        f.write("= データ\n\n.経歴\n|===\n|年 |内容\n\n|2009 |入学\n|2013 |卒業\n|2013 |入社\n|===\n")
+    tb = office_sheet.Book.fill(office_sheet.Book.open(os.path.join(d, "t.form.adoc")),
+                                office_sheet.Book.open(os.path.join(d, "t.sheet.adoc")))
+    check(tb.bessi == [("経歴", 2, 3)], f"別紙に回った表: {tb.bessi}")
+    check(tb.sheet_names[-1] == "別紙", f"別紙のシートが無い: {tb.sheet_names}")
+    vals = [c.value for row in tb["別紙"].iter_rows() for c in row if c.value]
+    check("卒業" in vals and "入社" in vals and "入学" not in vals, f"別紙の中身: {vals}")
     # A choice: the options are shown, and the chosen one is circled
     with open(os.path.join(d, "c.form.adoc"), "w", encoding="utf-8") as f:
         f.write("= 様式\n\n.様式\n|===\n|{氏名} |※ {性別:男 ・ 女}\n|===\n")

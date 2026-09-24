@@ -27,6 +27,10 @@
 //! - `{送達場所=住所}`: a box to tick. It is ■ when the data's 送達場所
 //!   is 住所 and □ otherwise; the boxes of one name are one choice field
 //!
+//! When a table has more rows in the data than the form has rows for, the
+//! rows that do not fit go on to a 別紙 (an attached sheet) in the same
+//! columns ([`overflow`], [`with_bessi`]).
+//!
 //! A shape whose `field` is set (the photo box, `写真`) takes the picture
 //! file the data names.
 //!
@@ -232,6 +236,150 @@ pub fn fill_in(form: &Book, data_book: &Book, dir: Option<&std::path::Path>) -> 
     fill_choices(form, data_book, dir).0
 }
 
+/// **A table whose data does not fit the form's rows**: its name, the
+/// columns the form's marks use (in the order they first appear), and the
+/// rows (1 = the first after the header) to carry on a 別紙.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Overflow {
+    pub table: String,
+    pub columns: Vec<String>,
+    pub rows: std::ops::RangeInclusive<u32>,
+}
+
+/// **The tables that need a 別紙**, from the marks a form holds
+/// (`{学歴・職歴.3.内容}`): for each table, the highest row the form has a
+/// mark for, against the last row of the data with anything in those
+/// columns.
+pub fn overflow<'a>(marks: impl IntoIterator<Item = &'a str>, data_book: &Book) -> Vec<Overflow> {
+    let data = Data::new(data_book);
+    let mut tables: Vec<(String, Vec<String>, u32)> = Vec::new();
+    for m in marks {
+        let [t, n, col] = m.split('.').collect::<Vec<_>>()[..] else { continue };
+        let Ok(n) = n.parse::<u32>() else { continue };
+        match tables.iter_mut().find(|(x, _, _)| x == t) {
+            Some((_, cols, top)) => {
+                if !cols.iter().any(|c| c == col) {
+                    cols.push(col.to_string());
+                }
+                *top = (*top).max(n);
+            }
+            None => tables.push((t.to_string(), vec![col.to_string()], n)),
+        }
+    }
+    let mut out = Vec::new();
+    for (t, cols, top) in tables {
+        let Some(s) = data.sheet(&t) else { continue };
+        let (rows, _) = s.extent();
+        let last = (1..rows).rev().find(|r| cols.iter().any(|c| data.row(&t, *r, c).is_some()));
+        if let Some(last) = last.filter(|l| *l > top) {
+            out.push(Overflow { table: t, columns: cols, rows: top + 1..=last });
+        }
+    }
+    out
+}
+
+/// **The form with a 別紙 sheet for the rows that do not fit**, or the form
+/// as it is when every table fits. The 別紙 holds, for each table that
+/// overflows, its name with （続き）, a header of the columns, and one row
+/// of marks per row to carry (`{学歴・職歴.23.年}` …), so it fills and
+/// reports like the rest of the form. Each column takes the width, the
+/// format and the row height of the form's cell for it (a merged cell's
+/// whole width), with thin lines all round; the page is A4 portrait with
+/// the form's margins.
+pub fn with_bessi(form: &Book, data: &Book) -> Book {
+    let all: Vec<Field> = fields(form);
+    let names: Vec<String> = all.iter().flat_map(|f| f.names.iter().cloned()).collect();
+    let over = overflow(names.iter().map(String::as_str), data);
+    if over.is_empty() {
+        return form.clone();
+    }
+    let mut out = form.clone();
+    let first = &form.sheets[0];
+    let basis = form.col_basis;
+    let mut s = Sheet::new("別紙");
+    s.paper_size = Some(9);
+    s.margins_mm = first.margins_mm;
+    let edge = crate::Edge::THIN;
+    let text = |v: &str, fmt: &crate::CellFormat| Cell { formula: None, value: Value::Text(v.into()), fmt: fmt.clone() };
+    // The form's cell for a column of a table: its format, its width
+    // (a merged cell's whole width) and its row's height
+    let cell_of = |t: &str, col: &str| -> (crate::CellFormat, f32, Option<f32>) {
+        let found = all.iter().find(|f| {
+            f.names.iter().any(|n| {
+                let p: Vec<&str> = n.split('.').collect();
+                p.len() == 3 && p[0] == t && p[2] == col
+            })
+        });
+        let Some(f) = found else { return (crate::CellFormat::default(), 30.0, None) };
+        let sh = &form.sheets[f.sheet];
+        let (a, z) = sh
+            .merges
+            .iter()
+            .find(|(a, z)| (a.row..=z.row).contains(&f.at.row) && (a.col..=z.col).contains(&f.at.col))
+            .copied()
+            .unwrap_or((f.at, f.at));
+        let w: f32 = (a.col..=z.col).map(|c| sh.col_haba_mm(c, &basis)).sum();
+        let h: f32 = (a.row..=z.row).map(|r| sh.row_height.get(&r).copied().unwrap_or(sh.default_row_height.unwrap_or(crate::DEFAULT_ROW_PT))).sum();
+        let fmt = sh.cells.get(&f.at).map(|c| c.fmt.clone()).unwrap_or_default();
+        (fmt, w, Some(h))
+    };
+    let face = first.cells.values().find_map(|c| c.fmt.font.clone());
+    let title = crate::CellFormat { size_c: Some(1400), font: face.clone(), ..Default::default() };
+    let plain = crate::CellFormat { size_c: Some(1100), font: face, ..Default::default() };
+    let mut r = 0u32;
+    s.set(Pos::new(r, 0), text("別紙", &title));
+    s.row_height.insert(r, 24.0);
+    r += 2;
+    let mut widths: Vec<f32> = Vec::new();
+    for o in &over {
+        let cols: Vec<(crate::CellFormat, f32, Option<f32>)> = o.columns.iter().map(|c| cell_of(&o.table, c)).collect();
+        let row_h = cols.iter().filter_map(|c| c.2).fold(0.0f32, f32::max);
+        s.set(Pos::new(r, 0), text(&format!("{}（続き）", o.table), &plain));
+        s.row_height.insert(r, 20.0);
+        r += 1;
+        let lined = |f: &crate::CellFormat| {
+            let mut f = f.clone();
+            f.borders = Default::default();
+            f.borders.top = edge;
+            f.borders.bottom = edge;
+            f.borders.left = edge;
+            f.borders.right = edge;
+            f.fill = None;
+            f
+        };
+        for (c, (col, (fmt, _, _))) in o.columns.iter().zip(&cols).enumerate() {
+            let mut head = lined(fmt);
+            head.align = crate::HAlign::Center;
+            head.valign = crate::VAlign::Middle;
+            head.wrap = false;
+            s.set(Pos::new(r, c as u32), text(col, &head));
+        }
+        s.row_height.insert(r, 20.0);
+        r += 1;
+        for n in o.rows.clone() {
+            for (c, (col, (fmt, _, _))) in o.columns.iter().zip(&cols).enumerate() {
+                s.set(Pos::new(r, c as u32), text(&format!("{{{}.{n}.{col}}}", o.table), &lined(fmt)));
+            }
+            if row_h > 0.0 {
+                s.row_height.insert(r, row_h);
+            }
+            r += 1;
+        }
+        r += 1;
+        for (c, (_, w, _)) in cols.iter().enumerate() {
+            if widths.len() <= c {
+                widths.push(0.0);
+            }
+            widths[c] = widths[c].max(*w);
+        }
+    }
+    for (c, w) in widths.iter().enumerate() {
+        s.set_col_xlsx(c as u32, basis.mm_to_chars(*w), &basis);
+    }
+    out.sheets.push(s);
+    out
+}
+
 /// An option to circle: the chars `start..start + len` of the filled cell's
 /// text, counted without line breaks.
 #[derive(Debug, Clone, PartialEq)]
@@ -336,7 +484,8 @@ pub fn fill_choices(
 ) -> (Book, Vec<Choice>) {
     let data = Data::new(data_book);
     let mut choices = Vec::new();
-    let mut out = form.clone();
+    // Rows that do not fit go on to a 別紙
+    let mut out = with_bessi(form, data_book);
     let basis = form.col_basis;
     for s in &mut out.sheets {
         let sheet_sizes = s.clone_sizes(&basis);
@@ -575,6 +724,8 @@ pub fn item_of(mark: &str) -> Option<(String, Kind)> {
 /// **The fields of a form, one per data item**, in the order they first
 /// appear (by sheet, row and column), with the values the data holds.
 pub fn groups(form: &Book, data_book: &Book) -> Vec<Group> {
+    let bessi = with_bessi(form, data_book);
+    let form = &bessi;
     let data = Data::new(data_book);
     let mut out: Vec<Group> = Vec::new();
     for f in fields(form) {
@@ -787,6 +938,36 @@ mod tests {
         assert_eq!((g[0].name.as_str(), g[0].kind, g[0].value.as_str()), ("性別", Kind::Choice, "女"));
         assert_eq!(g[0].options, ["男", "女"]);
         assert_eq!(missing(&form, &d), ["配偶者"]);
+    }
+
+    #[test]
+    fn rows_that_do_not_fit_go_on_to_a_bessi() {
+        let mut form = Book::new();
+        let t = |v: &str| Cell { value: Value::Text(v.into()), ..Default::default() };
+        // the form has room for one row of the history
+        form.sheets[0].set(Pos::new(0, 0), t("{学歴・職歴.1.年}"));
+        form.sheets[0].set(Pos::new(0, 1), t("{学歴・職歴.1.内容}"));
+        let mut d = data();
+        set(&mut d, "学歴・職歴.2.年", "2013").unwrap();
+        set(&mut d, "学歴・職歴.2.内容", "千代田大学 卒業").unwrap();
+        set(&mut d, "学歴・職歴.3.内容", "株式会社千代田商事 入社").unwrap();
+        let over = overflow(["学歴・職歴.1.年", "学歴・職歴.1.内容"], &d);
+        assert_eq!(over, [Overflow { table: "学歴・職歴".into(), columns: vec!["年".into(), "内容".into()], rows: 2..=3 }]);
+        let out = fill(&form, &d);
+        assert_eq!(out.sheets.len(), 2);
+        let b = &out.sheets[1];
+        assert_eq!(b.name, "別紙");
+        let texts: Vec<String> = b.cells.values().map(|c| c.value.display()).filter(|v| !v.is_empty()).collect();
+        for want in ["別紙", "学歴・職歴（続き）", "年", "内容", "2013", "千代田大学 卒業", "株式会社千代田商事 入社"] {
+            assert!(texts.iter().any(|t| t == want), "{want} is not on the 別紙: {texts:?}");
+        }
+        // the form's own row keeps the first
+        assert_eq!(out.sheets[0].value(Pos::new(0, 1)).display(), "千代田大学 入学");
+        // a table that fits needs none
+        assert_eq!(fill(&form, &data()).sheets.len(), 1);
+        // the 別紙's rows are fields too
+        let g = groups(&form, &d);
+        assert!(g.iter().any(|g| g.name == "学歴・職歴.3.内容"));
     }
 
     #[test]

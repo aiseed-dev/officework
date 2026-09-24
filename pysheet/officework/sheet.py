@@ -2040,7 +2040,7 @@ class Book(NoStrayAttributes):
     """1冊のブック。エンジンの Book を包み、openpyxl の Workbook の口を足す。"""
 
     # 自分で持つ属性。ここに無い名前への代入は断ります
-    _own = ("_b", "_path", "_missing")
+    _own = ("_b", "_path", "_missing", "_bessi")
     _engine_attr = "_b"
 
     def __init__(self, lang=None):
@@ -2073,6 +2073,9 @@ class Book(NoStrayAttributes):
         写真の欄には、データの「写真」に書いたファイルを置きます。ファイルは
         データのファイルと同じフォルダーから探します。
 
+        表の行が様式の行に入りきらないときは、残りの行を「別紙」のシートに
+        同じ列で続けて書きます。どの表が別紙に回ったかは ``bessi`` で分かります。
+
         データに 1 つも無い名前(書き忘れや打ち間違い)は、空にしたうえで
         警告を出し、``missing`` に並べます。表の行が足りない欄と、値が空の
         欄は、黙って空にします。"""
@@ -2084,6 +2087,7 @@ class Book(NoStrayAttributes):
         # A name missing from the data altogether is usually a slip
         # (電話番号 for 電話): it is filled with nothing like the rest, but said
         b._missing = _engine.Book.missing(form._b, data._b)
+        b._bessi = _engine.Book.overflow(form._b, data._b)
         if b._missing:
             import warnings as _warnings
             _warnings.warn("データに無い名前があります(空にしました): " + "、".join(b._missing),
@@ -2094,6 +2098,13 @@ class Book(NoStrayAttributes):
     def missing(self):
         """``fill`` で作ったブックで、データに 1 つも無かった名前の並びです。"""
         return list(getattr(self, "_missing", None) or [])
+
+    @property
+    def bessi(self):
+        """``fill`` で、様式の行に入らず別紙に回った表です。
+        (表の名前, 別紙の最初の行, 最後の行) の並びです。行はデータの表の
+        何行目か(見出しの次を 1 と数えます)です。"""
+        return list(getattr(self, "_bessi", None) or [])
 
     def draw_list(self):
         """描画一覧を辞書で返します(docs/sekkei/drawlist.ja.adoc)。

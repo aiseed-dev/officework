@@ -269,6 +269,18 @@ impl PyBook {
         })
     }
 
+    // The tables whose rows go on to a 別紙: (table, first row, last row)
+    #[staticmethod]
+    fn overflow(form: &PyBook, data: &PyBook) -> PyResult<Vec<(String, u32, u32)>> {
+        let f = lock(&form.inner)?.book.clone();
+        let d = lock(&data.inner)?.book.clone();
+        let names: Vec<String> = book::form::fields(&f).into_iter().flat_map(|x| x.names).collect();
+        Ok(book::form::overflow(names.iter().map(String::as_str), &d)
+            .into_iter()
+            .map(|o| (o.table, *o.rows.start(), *o.rows.end()))
+            .collect())
+    }
+
     // The names the form asks for that the data does not hold at all
     #[staticmethod]
     fn missing(form: &PyBook, data: &PyBook) -> PyResult<Vec<String>> {
