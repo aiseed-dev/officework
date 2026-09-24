@@ -71,6 +71,9 @@ pub fn parse(src: &str) -> Result<(Book, Vec<String>), String> {
             // 役割の印の付いた表はシートではありません。後で入れます
             Block::Table(t) if t.role.is_some() => {}
             Block::Table(t) => book.sheets.push(to_sheet(t, book.sheets.len())),
+            // The document title becomes the book's title (take_book_settings),
+            // so it is not a paragraph that is dropped
+            Block::Para(p) if p.style == crate::ParaStyle::Title => {}
             // 見出しや本文は表計算のブックに居場所が無い
             Block::Para(p) => {
                 if !p.runs.iter().all(|r| r.text.trim().is_empty()) {
@@ -520,7 +523,11 @@ mod tests {
         let (b, report) = parse("= 見出し\n\nこれは本文です。\n\n.表\n|===\n|あ |い\n|===\n").expect("読めない");
         assert_eq!(b.sheets.len(), 1);
         assert_eq!(b.sheets[0].name, "表");
-        assert!(report.iter().any(|r| r.contains("表の外の段落")), "黙って落とした: {report:?}");
+        // the body paragraph is dropped; the title is the book's title
+        assert!(report.iter().any(|r| r.contains("表の外の段落 1 件")), "黙って落とした: {report:?}");
+        assert_eq!(b.props.title, "見出し");
+        let (_, report) = parse("= 履歴書\n\n.基本\n|===\n|氏名 |山田 太郎\n|===\n").expect("読めない");
+        assert!(report.is_empty(), "the title was counted as dropped: {report:?}");
     }
 
     /// 表が1つも無くても、ブックは1枚から始まる
