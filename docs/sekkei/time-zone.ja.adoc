@@ -133,7 +133,14 @@ Excel では、VBA でカスタム関数を作れます。officework ではフ�
   載せました。説明は calc/gen_funcs.py の HAND_JA と calc/funcs_hand.json
   にあり、15 言語あります。
 
-== まだ決めていないこと
+=== Polars の列(2026-09-24 発注者)
 
-* Polars の列に渡すときの型(`Datetime` の列はタイムゾーンを 1 つしか
-  持てないので、タイムゾーンの混ざった列をどうするか)。
+Polars の `Datetime` の列は、タイムゾーンを 1 つしか持てません。
+
+* 列の日時が全部同じタイムゾーンなら、そのタイムゾーンの列にします。
+* タイムゾーンが混ざった列は、UTC の列にします。時点は正しく残り、
+  どの場所の時刻だったかは落ちます。
+* 表の SQL(`table_query`)では、Rust の Polars がこの決め方で列を作ります
+  (`pivot::to_frame`)。答えの日時は、セルと同じ書き方の文字で返します。
+* `officework.calc` で DataFrame にするときも、同じ決め方にします
+  (`_moment_series`)。

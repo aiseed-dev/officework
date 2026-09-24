@@ -84,8 +84,20 @@ fn cell_text(v: &AnyValue) -> String {
         AnyValue::StringOwned(s) => s.to_string(),
         AnyValue::Float64(f) => trim_num(*f),
         AnyValue::Float32(f) => trim_num(*f as f64),
+        // A moment with a zone is written the way the cell shows it
+        AnyValue::Datetime(v, tu, Some(tz)) => moment_text(*v, *tu, tz.as_str()),
+        AnyValue::DatetimeOwned(v, tu, Some(tz)) => moment_text(*v, *tu, tz.as_str()),
         other => other.to_string(),
     }
+}
+
+fn moment_text(v: i64, tu: TimeUnit, zone: &str) -> String {
+    let secs = match tu {
+        TimeUnit::Nanoseconds => v as f64 / 1e9,
+        TimeUnit::Microseconds => v as f64 / 1e6,
+        TimeUnit::Milliseconds => v as f64 / 1e3,
+    };
+    book::tz::show(secs, zone)
 }
 
 fn trim_num(f: f64) -> String {
@@ -113,6 +125,31 @@ mod tests {
             s(&["消しゴム", "西", ""]),
         ];
         (head, body)
+    }
+
+    // moments with a zone, as ops passes them (2026-09-24)
+    fn m(unix: i64, zone: &str) -> String {
+        format!("\u{1d}{unix}[{zone}]")
+    }
+
+    #[test]
+    fn a_column_of_one_zone_keeps_it_and_mixed_zones_become_utc() {
+        // 2026-10-01 01:00 UTC (10:00 Tokyo) and 11:30 UTC (04:30 LA)
+        let head = s(&["便", "出発", "到着"]);
+        let body = vec![
+            vec!["NH6".into(), m(1_790_816_400, "Asia/Tokyo"), m(1_790_854_200, "America/Los_Angeles")],
+            vec!["NH5".into(), m(1_790_902_800, "Asia/Tokyo"), m(1_790_816_400, "Asia/Tokyo")],
+        ];
+        let df = crate::to_frame(&head, &body).unwrap();
+        let dt = |c: &str| df.column(c).unwrap().dtype().clone();
+        assert_eq!(dt("出発").to_string(), "datetime[μs, Asia/Tokyo]");
+        assert_eq!(dt("到着").to_string(), "datetime[μs, UTC]", "mixed zones are UTC");
+        // SQL sorts by the moment, and the answer is written as the cell shows it
+        let a = query("旅程", &head, &body, "SELECT 便, 到着 FROM 旅程 ORDER BY 到着", 10).unwrap();
+        assert_eq!(a.rows[0], s(&["NH5", "2026-10-01 01:00 UTC"]));
+        assert_eq!(a.rows[1], s(&["NH6", "2026-10-01 11:30 UTC"]));
+        let a = query("旅程", &head, &body, "SELECT 出発 FROM 旅程 WHERE 便 = 'NH6'", 10).unwrap();
+        assert_eq!(a.rows[0], s(&["2026-10-01 10:00 Asia/Tokyo"]));
     }
 
     #[test]

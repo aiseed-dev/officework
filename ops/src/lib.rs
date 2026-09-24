@@ -2095,6 +2095,9 @@ fn table_strings(h: &impl Host, name: &str) -> Result<(Vec<String>, Vec<Vec<Stri
     let cell = |r: u32, c: u32| match sh.value(book::Pos::new(r, c)) {
         book::Value::Number(n) => n.to_string(),
         book::Value::Empty => String::new(),
+        // A moment with a zone goes marked, so that polars makes a Datetime
+        // column of it (pivot::to_frame)
+        book::Value::Zoned { unix, zone, .. } => format!("\u{1d}{unix}[{zone}]"),
         v => v.display(),
     };
     let mut rows: Vec<Vec<String>> = (t.a.row..=t.b.row)

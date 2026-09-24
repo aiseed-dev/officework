@@ -649,6 +649,10 @@ pub(crate) fn to_frame(head: &[String], body: &[Vec<String>]) -> Result<DataFram
     for (i, name) in head.iter().enumerate() {
         let moji: Vec<&str> =
             body.iter().map(|r| r.get(i).map(|s| s.as_str()).unwrap_or("")).collect();
+        if let Some(c) = moment_column(name, &moji) {
+            cols.push(c);
+            continue;
+        }
         let kazu: Option<Vec<Option<f64>>> = moji
             .iter()
             .map(|s| {
@@ -668,6 +672,35 @@ pub(crate) fn to_frame(head: &[String], body: &[Vec<String>]) -> Result<DataFram
         });
     }
     DataFrame::new(body.len(), cols).map_err(|e| format!("表として読めません: {e}"))
+}
+
+/// A moment with a time zone as the caller passes it: `\x1d<unix
+/// seconds>[<IANA zone>]` (the same mark the API uses).
+fn moment_of(s: &str) -> Option<(f64, &str)> {
+    let rest = s.strip_prefix('\u{1d}')?.strip_suffix(']')?;
+    let (unix, zone) = rest.split_once('[')?;
+    Some((unix.parse().ok()?, zone))
+}
+
+/// **A column of moments with a time zone becomes a Datetime column**
+/// (decided 2026-09-24, docs/sekkei/time-zone.ja.adoc). A Polars Datetime
+/// column has one time zone: when every moment has the same zone the
+/// column has that zone, and when the zones are mixed the column is UTC
+/// (the moments stay right; which place each was in is lost). None when a
+/// non-empty cell is not a moment.
+fn moment_column(name: &str, moji: &[&str]) -> Option<Column> {
+    let ms: Vec<Option<(f64, &str)>> = moji
+        .iter()
+        .map(|s| if s.trim().is_empty() { Some(None) } else { moment_of(s).map(Some) })
+        .collect::<Option<_>>()?;
+    let first = ms.iter().flatten().next()?.1;
+    let zone = if ms.iter().flatten().all(|(_, z)| *z == first) { first } else { "UTC" };
+    let tz = TimeZone::opt_try_new(Some(zone)).ok()??;
+    let us: Int64Chunked = ms
+        .iter()
+        .map(|m| m.map(|(unix, _)| (unix * 1_000_000.0).round() as i64))
+        .collect();
+    Some(us.with_name(name.into()).into_datetime(TimeUnit::Microseconds, Some(tz)).into_column())
 }
 
 fn agg_expr(agg: &str, value: &str) -> Result<Expr, String> {
