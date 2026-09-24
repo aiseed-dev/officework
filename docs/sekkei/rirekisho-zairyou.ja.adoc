@@ -47,7 +47,7 @@
 
 === 履歴書.sheet.adoc
 
-形は決まっている(docs/sekkei/drawlist.ja.adoc「履歴書のデータの形」)。変えない。
+形は決まっている。印とデータの書き方は、officework の docs/ja/forms-manual.adoc(元は docs/en/forms-manual.adoc)に合わせる。見本は aiai の `rirekisho/履歴書.sheet.adoc`。
 
 * 「基本」:氏名、住所などは会話から集めない。人が入れる(材料に出てきても写さない)
 * 「学歴・職歴」:`=== 経歴 ===` の学歴と職歴を、年と月と内容に分けて入れる。
@@ -76,14 +76,14 @@
 
 == スキルの置き場と形
 
-置き場は新しいリポジトリ aiai に変わった(2026-09-25 発注者の決め。Opus Mac からの知らせ)。様式・スキルなど書類ごとの物は officework から分けて aiai に置く。aiai のライセンスは CC BY で、officework は PyPI から使う。下の `sample/rirekisho/…` の道は、aiai の中の道に読み替える。
+置き場は新しいリポジトリ aiai に変わった(2026-09-25 発注者の決め。Opus Mac からの知らせ)。様式・スキルなど書類ごとの物は officework から分けて aiai に置く。aiai のライセンスは CC BY で、officework は PyPI から使う。置き場は `~/dev/aiai` の `rirekisho/`(様式、テンプレート、見本のデータ、make_forms.py がある)。officework の sample/rirekisho は消した(706852e1)。
 
-* スキルは `sample/rirekisho/skill/rirekisho-zairyou/SKILL.md`。Claude Code のプラグインとして
+* スキルは aiai の `rirekisho/skill/rirekisho-zairyou/SKILL.md`。Claude Code のプラグインとして
   配れる形(`.claude-plugin/plugin.json`)にする。形は Claude Code の今の文書で確かめてから作る
 * claude.ai のスキルとしても入れられるように、同じ SKILL.md を zip で渡せる形にする
-* 貼る手順は `sample/rirekisho/zairyou-no-atsumekata.ja.adoc`(利用者が読む文書。
+* 貼る手順は aiai の `rirekisho/zairyou-no-atsumekata.ja.adoc`(利用者が読む文書。
   内輪の日付を入れない)
-* 変換のスクリプトは `sample/rirekisho/zairyou_to_sheet.py`。officework のエンジンだけを使う
+* 変換のスクリプトは aiai の `rirekisho/zairyou_to_sheet.py`。officework のエンジン(PyPI の版)だけを使う
 
 == 変換のスクリプトの動き
 
