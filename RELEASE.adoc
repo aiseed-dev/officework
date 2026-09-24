@@ -132,8 +132,18 @@ On the nursing resume, all 38 lines of page 1 are within 0.2pt of Word.
 **The default font size is 11pt and the default row height 18.75pt**, and the
 screen, the page and the file all use those values.
 
-* column widths are measured with the digit width of the font the file names,
-  in whole points
+* column widths are counted in 96 dpi pixels with the digit width of the font
+  the file names, as Windows Excel counts them. A workbook made on a Mac can be
+  opened the Mac way instead (72 dpi), from the app's settings or with
+  `Book.open(path, platform="mac")`
+* a row height is read whether or not the row says it was set by hand
+  (`customHeight`), as ECMA-376 gives it, and saving keeps an automatic height
+  automatic. Only a workbook opened the Mac way cuts heights and margins to
+  whole points
+* borders print as wide as Excel prints them: thin 1pt, medium 2pt and thick
+  3pt at 100%, scaled with the page, and a hairline 0.12pt
+* a text box reads theme colours with their shade and tint, dashed lines, one
+  line per paragraph, and its font
 * vertical centring, the default column width and the JIS B4 and B5 paper
   sizes are followed
 * the scale that fits a sheet to N pages is a whole percent, as Excel's own
@@ -147,6 +157,28 @@ whole-row references (`A:B`, `1:3`) evaluate.
 
 We compare against 55 public-sector workbooks with Excel's PDFs. Exact matches
 went from 1 to 5.
+
+== Dates and times with a time zone
+
+**A cell can hold a moment with its time zone.** The cell shows the clock time
+in that zone, and subtracting two moments gives the real time between them.
+
+----
+=ZONED("2026-10-01 10:00", "Asia/Tokyo")           departure, Tokyo time
+=ZONED("2026-10-01 04:30", "America/Los_Angeles")  arrival, Los Angeles time
+=(B3-B2)*24                                        10.5 hours in the air
+=TO_ZONE(B3, "Asia/Tokyo")                         the arrival in Tokyo time
+----
+
+The formula is what is saved, so the time zone comes back in xlsx and in
+AsciiDoc. In xlsx the cell's value is the clock time in its zone, so Excel
+shows the right time until it recalculates.
+
+`ZONED` and `TO_ZONE` are custom functions written in Rust. Custom functions
+can also be written in Python, as before, and a Python function takes and
+returns `datetime` values with a time zone. `NOW()` and `TODAY()` use the
+workbook's time zone, which is the computer's unless the file is opened with
+another one.
 
 == The Python API
 
@@ -168,6 +200,17 @@ The query language is SQL. `t.frame()` needs polars installed.
 returns what is open and the text in the status bar.
 
 `Doc.open` reads `.adoc` as well, and `save("report.adoc")` writes it.
+
+`Book.open` takes `platform="windows"` or `"mac"` for the Excel that made the
+file, and `time_zone` for the zone of its clock times. `Book.time_zone` reads
+and sets the workbook's zone.
+
+A cell with a time zone comes back as a `datetime` with a `zoneinfo` zone, from
+`officework.sheet` and from `officework.calc`. In a polars DataFrame, a column
+of one time zone keeps it, and a column of mixed zones becomes UTC.
+
+`officework.calc` now reaches the running app on the Mac. It was looking for
+the app in the wrong folder.
 
 Smaller things now follow openpyxl: `sheet_state` and `paper_size`, adding
 ranges to a data validation after it has been added, a single-cell merge doing
@@ -192,18 +235,15 @@ A header and a footer are drawn on every page of the screen now, with the part
 that page uses and its own page number. Tabs inside a line are no longer drawn
 as gpui's own tab, so a dot leader stops where the print stops it.
 
-**The editor screen draws what the page draws.** Pictures and shapes are
-placed where the page places them, and the fonts the layout chose are used on
-screen too. Word's template fonts live inside Word rather than in the system,
-so without registering them the screen drew something else.
+The spreadsheet screen now registers the fonts the workbook names, as the
+document screen does, so MS Mincho and the other Office fonts are drawn in
+their own faces. Text boxes use their own font size and font on screen.
 
-Bold and italic runs are drawn with the bold and italic faces. The screen used
-to register one face per family, the regular one, so a bold run drew regular.
+The advanced settings of the spreadsheet choose how an xlsx is opened: the
+Excel that made it (Windows or Mac), the date system, and the time zone.
 
 Everything above about Word and Excel applies to the app's display and
 printing as well.
-
-The screen wording follows Office: status bar, path and template.
 
 The ribbon keeps Euro-Office's order and names. Matching Word and Excel on
 reading, writing and printing comes first.
