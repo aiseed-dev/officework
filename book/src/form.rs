@@ -11,6 +11,8 @@
 //!   such as 基本 or 自由記入
 //! - `{日付.年}` `{日付.月}` `{日付.日}`: the year, month or day of a date
 //!   written `2026-09-24`
+//! - `{日付.元号}` `{日付.和暦年}`: the era and the year in it (令和, 8),
+//!   the first year of an era written 元 as official forms do
 //! - `{通勤時間.時間}` `{通勤時間.分}`: the hours or minutes of a time
 //!   written `1時間10分` (JIS prints 約　時間　分 round them)
 //! - `{年齢}`: the age on 日付 of someone born on 生年月日
@@ -151,6 +153,14 @@ impl<'a> Data<'a> {
                 })
             }
             [key, part @ ("時間" | "分")] => duration_part(&self.pair(key)?, part),
+            [key, part @ ("元号" | "和暦年")] => {
+                let (era, y) = wareki(date_parts(&self.pair(key)?)?)?;
+                Some(match *part {
+                    "元号" => era.to_string(),
+                    _ if y == 1 => "元".to_string(),
+                    _ => y.to_string(),
+                })
+            }
             [key, n] if n.parse::<usize>().is_ok() => {
                 let n: usize = n.parse().ok()?;
                 self.pair(key)?.lines().nth(n.checked_sub(1)?).map(str::to_string)
@@ -170,6 +180,20 @@ impl<'a> Data<'a> {
         }
         (age >= 0).then(|| age.to_string())
     }
+}
+
+/// The Japanese era of a date and the year in it, from the day each era
+/// began (明治 is counted from 1868-10-23, its year of the Gregorian
+/// calendar; earlier dates have none).
+fn wareki((y, m, d): (i32, u32, u32)) -> Option<(&'static str, i32)> {
+    const ERAS: [(&str, (i32, u32, u32)); 5] = [
+        ("令和", (2019, 5, 1)),
+        ("平成", (1989, 1, 8)),
+        ("昭和", (1926, 12, 25)),
+        ("大正", (1912, 7, 30)),
+        ("明治", (1868, 10, 23)),
+    ];
+    ERAS.iter().find(|(_, start)| (y, m, d) >= *start).map(|(era, start)| (*era, y - start.0 + 1))
 }
 
 /// The number before 時間 or 分 in a time written `1時間10分`, or None.
@@ -473,7 +497,7 @@ fn item_of(mark: &str) -> Option<(String, Kind)> {
         return Some((name.to_string(), Kind::Choice));
     }
     Some(match mark.split('.').collect::<Vec<_>>().as_slice() {
-        [key, "年" | "月" | "日"] => (key.to_string(), Kind::Date),
+        [key, "年" | "月" | "日" | "元号" | "和暦年"] => (key.to_string(), Kind::Date),
         [key, "時間" | "分"] => (key.to_string(), Kind::Text),
         [key, n] if n.parse::<u32>().is_ok() => (key.to_string(), Kind::Multiline),
         _ => (mark.to_string(), Kind::Text),
@@ -613,6 +637,21 @@ mod tests {
         assert_eq!(v(5, 0), "2 行目");
         assert_eq!(v(6, 0), "", "a field the data leaves out is empty");
         assert_eq!(v(7, 0), "見出し");
+    }
+
+    #[test]
+    fn a_date_is_given_in_the_japanese_era() {
+        let era = |v: &str| {
+            let mut d = data();
+            set(&mut d, "日付", v).unwrap();
+            let dd = Data::new(&d);
+            (dd.answer("日付.元号").unwrap_or_default(), dd.answer("日付.和暦年").unwrap_or_default())
+        };
+        assert_eq!(era("2026-09-25"), ("令和".into(), "8".into()));
+        assert_eq!(era("2019-05-01"), ("令和".into(), "元".into()));
+        assert_eq!(era("2019-04-30"), ("平成".into(), "31".into()));
+        assert_eq!(era("1989-01-07"), ("昭和".into(), "64".into()));
+        assert_eq!(era("1990-05-01"), ("平成".into(), "2".into()));
     }
 
     #[test]
