@@ -121,7 +121,7 @@ Aggregation, joins, and filtering belong on the polars side — that's the divis
 
 === Filling a form book (a resume, say)
 
-A fixed form such as a resume is written as two books: the form, whose cells hold marks such as `{氏名}` where values go, and the data, with two-column (name, value) tables and tables with a header row. `sample/rirekisho` has an example.
+A fixed form such as a resume is written as two books: the form, whose cells hold marks such as `{氏名}` where values go, and the data, with two-column (name, value) tables and tables with a header row. `sample/rirekisho` has an example, with two forms: the Ministry's (`履歴書-厚労省.form.adoc`) and the JIS layout (`履歴書-JIS.form.adoc`).
 
 [source,python]
 ----
@@ -142,6 +142,7 @@ b.save("resume.pdf")        # .xlsx and .png work too
 |`{年齢}` |the age worked out from 生年月日 and 日付
 |`{学歴・職歴.3.内容}` |row 3 (counted after the header) of the table 学歴・職歴, column 内容
 |`{本人希望.2}` |line 2 of a value written on several lines
+|`{性別:男 ・ 女}` |a choice: the options are written as given, and the one the data names is circled
 |===
 
 A cell may hold several marks; text around them stays. *A mark the data does not answer becomes empty*, so rows prepared beyond the data (the rest of the history, for one) stay blank.
