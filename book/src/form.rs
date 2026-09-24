@@ -11,6 +11,8 @@
 //!   such as 基本 or 自由記入
 //! - `{日付.年}` `{日付.月}` `{日付.日}`: the year, month or day of a date
 //!   written `2026-09-24`
+//! - `{通勤時間.時間}` `{通勤時間.分}`: the hours or minutes of a time
+//!   written `1時間10分` (JIS prints 約　時間　分 round them)
 //! - `{年齢}`: the age on 日付 of someone born on 生年月日
 //! - `{学歴・職歴.3.内容}`: row 3 (after the header) of the table 学歴・職歴,
 //!   column 内容
@@ -148,6 +150,7 @@ impl<'a> Data<'a> {
                     _ => d.2.to_string(),
                 })
             }
+            [key, part @ ("時間" | "分")] => duration_part(&self.pair(key)?, part),
             [key, n] if n.parse::<usize>().is_ok() => {
                 let n: usize = n.parse().ok()?;
                 self.pair(key)?.lines().nth(n.checked_sub(1)?).map(str::to_string)
@@ -167,6 +170,14 @@ impl<'a> Data<'a> {
         }
         (age >= 0).then(|| age.to_string())
     }
+}
+
+/// The number before 時間 or 分 in a time written `1時間10分`, or None.
+fn duration_part(v: &str, unit: &str) -> Option<String> {
+    let at = v.find(unit)?;
+    // 分 in 時間 does not count: look for the unit that ends a number
+    let digits: String = v[..at].chars().rev().take_while(|c| c.is_ascii_digit()).collect();
+    (!digits.is_empty()).then(|| digits.chars().rev().collect())
 }
 
 /// `2026-09-24` (or `2026/9/24`) as its year, month and day.
@@ -463,6 +474,7 @@ fn item_of(mark: &str) -> Option<(String, Kind)> {
     }
     Some(match mark.split('.').collect::<Vec<_>>().as_slice() {
         [key, "年" | "月" | "日"] => (key.to_string(), Kind::Date),
+        [key, "時間" | "分"] => (key.to_string(), Kind::Text),
         [key, n] if n.parse::<u32>().is_ok() => (key.to_string(), Kind::Multiline),
         _ => (mark.to_string(), Kind::Text),
     })
@@ -601,6 +613,20 @@ mod tests {
         assert_eq!(v(5, 0), "2 行目");
         assert_eq!(v(6, 0), "", "a field the data leaves out is empty");
         assert_eq!(v(7, 0), "見出し");
+    }
+
+    #[test]
+    fn hours_and_minutes_are_taken_from_a_time() {
+        let mut d = data();
+        set(&mut d, "通勤時間", "1時間10分").unwrap();
+        let dd = Data::new(&d);
+        assert_eq!(dd.answer("通勤時間.時間").as_deref(), Some("1"));
+        assert_eq!(dd.answer("通勤時間.分").as_deref(), Some("10"));
+        let mut d = data();
+        set(&mut d, "通勤時間", "45分").unwrap();
+        let dd = Data::new(&d);
+        assert_eq!(dd.answer("通勤時間.時間"), None);
+        assert_eq!(dd.answer("通勤時間.分").as_deref(), Some("45"));
     }
 
     #[test]

@@ -139,6 +139,7 @@ b.save("resume.pdf")        # .xlsx and .png work too
 
 |`{氏名}` |the value on the 氏名 row of a (name, value) table
 |`{日付.年}` `{日付.月}` `{日付.日}` |year, month, day of a date written `2026-09-24`
+|`{通勤時間.時間}` `{通勤時間.分}` |the hours and the minutes of a time written `1時間10分`
 |`{年齢}` |the age worked out from 生年月日 and 日付
 |`{学歴・職歴.3.内容}` |row 3 (counted after the header) of the table 学歴・職歴, column 内容
 |`{本人希望.2}` |line 2 of a value written on several lines
