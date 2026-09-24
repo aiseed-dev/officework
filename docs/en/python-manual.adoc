@@ -119,6 +119,37 @@ for i, row in enumerate(df.rows()):
 
 Aggregation, joins, and filtering belong on the polars side — that's the division of labor (the sheet is the form; computation is Python's job).
 
+=== Filling a form book (a resume, say)
+
+A fixed form such as a resume is written as two books: the form, whose cells hold marks such as `{氏名}` where values go, and the data, with two-column (name, value) tables and tables with a header row. `sample/rirekisho` has an example.
+
+[source,python]
+----
+from officework import sheet
+
+form = sheet.Book.open("履歴書-厚労省.form.adoc")
+data = sheet.Book.open("履歴書.sheet.adoc")
+b = sheet.Book.fill(form, data)
+b.save("resume.pdf")        # .xlsx and .png work too
+----
+
+[cols="1,2"]
+|===
+|Mark |Value
+
+|`{氏名}` |the value on the 氏名 row of a (name, value) table
+|`{日付.年}` `{日付.月}` `{日付.日}` |year, month, day of a date written `2026-09-24`
+|`{年齢}` |the age worked out from 生年月日 and 日付
+|`{学歴・職歴.3.内容}` |row 3 (counted after the header) of the table 学歴・職歴, column 内容
+|`{本人希望.2}` |line 2 of a value written on several lines
+|===
+
+A cell may hold several marks; text around them stays. *A mark the data does not answer becomes empty*, so rows prepared beyond the data (the rest of the history, for one) stay blank.
+
+A shape given a field name with the `field` item (`写真`) takes the picture file the data names under that name, looked for in the data file's folder.
+
+To show the form and edit it, take the draw list with `draw_list()`. Each page's `fields` gives each field's name, kind, rectangle (points from the page's top left) and value. Put an edit into the data with `data.set_field(name, value)` and fill again.
+
 == The `officework.doc` API
 
 Same wheel, same promise, for docx: the `doc` submodule. `Doc.open` keeps the original bytes and `save` writes back only what changed, so styles, headers, footers, shapes and tracked changes come through untouched — the thing `python-docx` cannot promise.
