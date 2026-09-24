@@ -417,10 +417,12 @@ impl PyDoc {
     /// marks of sheet forms. Returns the filled document and the names the
     /// data lacks altogether
     #[staticmethod]
-    fn fill_form(form: &PyDoc, data: &crate::PyBook) -> PyResult<(PyDoc, Vec<String>)> {
+    fn fill_form(form: &PyDoc, data: &crate::PyBook) -> PyResult<(PyDoc, Vec<String>, Vec<(String, u32, u32)>)> {
         let book = crate::lock(&data.inner)?.book.clone();
         let g = lock(&form.inner)?;
         let f = ops::drawlist::fill_doc_form(&g.doc, &book).map_err(PyValueError::new_err)?;
+        let bessi: Vec<(String, u32, u32)> =
+            f.bessi.iter().map(|o| (o.table.clone(), *o.rows.start(), *o.rows.end())).collect();
         let (doc, missing) = (f.doc, f.missing);
         Ok((
             PyDoc {
@@ -432,6 +434,7 @@ impl PyDoc {
                 })),
             },
             missing,
+            bessi,
         ))
     }
 

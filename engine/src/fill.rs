@@ -348,6 +348,8 @@ pub struct FormFill {
     pub marks: Vec<(String, DocAt)>,
     /// Where the chosen options of choice marks went, to be circled
     pub chosen: Vec<DocAt>,
+    /// The tables whose rows went on to a 別紙
+    pub bessi: Vec<book::form::Overflow>,
 }
 
 /// A mark cut by the run boundaries (Word splits typed text into runs) is
@@ -430,6 +432,106 @@ fn take_spaces(runs: &mut [Run], ri: usize, at: usize, need: usize) {
     }
 }
 
+/// **The document form with a 別紙 for the rows that do not fit**
+/// ([`book::form::overflow`]): after a page break, 別紙, then for each
+/// table that overflows its name with （続き） and a table of the columns
+/// with one row of marks per row to carry. A column takes the width of the
+/// form's table column its mark is in, and the paragraph format of that
+/// cell; marks outside a table share the width equally.
+pub fn with_bessi(doc: &Document, data: &book::Book) -> (Document, Vec<book::form::Overflow>) {
+    use crate::doc::{Align, Cellbox};
+    let mut joined = doc.clone();
+    // Where each mark is: the table cell (block, row, col) if in one, and
+    // the paragraph holding it
+    let mut found: Vec<(String, Option<(usize, usize, usize)>, Paragraph)> = Vec::new();
+    for (bi, b) in joined.blocks.iter_mut().enumerate() {
+        match b {
+            Block::Para(p) => {
+                join_marks(&mut p.runs);
+                for r in &p.runs {
+                    found.extend(book::form::marks(&r.text).into_iter().map(|m| (m, None, p.clone())));
+                }
+            }
+            Block::Table(t) => {
+                for (ri, row) in t.rows.iter_mut().enumerate() {
+                    for (ci, c) in row.iter_mut().enumerate() {
+                        for p in &mut c.paragraphs {
+                            join_marks(&mut p.runs);
+                            for r in &p.runs {
+                                found.extend(book::form::marks(&r.text).into_iter().map(|m| (m, Some((bi, ri, ci)), p.clone())));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let over = book::form::overflow(found.iter().map(|(m, _, _)| m.as_str()), data);
+    if over.is_empty() {
+        return (doc.clone(), over);
+    }
+    let mut out = doc.clone();
+    // One run of text in a paragraph shaped like `like`
+    let para_like = |like: Option<&Paragraph>, text: &str, align: Align| -> Paragraph {
+        let mut p = like.cloned().unwrap_or_default();
+        let first = p.runs.first().cloned().unwrap_or(Run { text: String::new(), size_pt: None, font: None, fmt: Default::default() });
+        p.runs = vec![Run { text: text.to_string(), fmt: crate::doc::CharFormat { underline: false, ..first.fmt }, ..first }];
+        p.page_break_before = false;
+        p.align = align;
+        p
+    };
+    let mut title = para_like(None, "別紙", Align::Left);
+    title.runs[0].size_pt = Some(14.0);
+    title.page_break_before = true;
+    out.blocks.push(Block::Para(title));
+    for o in &over {
+        out.blocks.push(Block::Para(para_like(None, &format!("{}（続き）", o.table), Align::Left)));
+        // For each column: the form's cell width and its paragraph
+        let cols: Vec<(Option<f32>, Option<Paragraph>)> = o
+            .columns
+            .iter()
+            .map(|col| {
+                let hit = found.iter().find(|(m, _, _)| {
+                    let p: Vec<&str> = m.split('.').collect();
+                    p.len() == 3 && p[0] == o.table && p[2] == col
+                });
+                let Some((_, at, para)) = hit else { return (None, None) };
+                let w = at.and_then(|(bi, ri, ci)| match &doc.blocks[bi] {
+                    Block::Table(t) => {
+                        let row = t.rows.get(ri)?;
+                        let start: usize = row[..ci].iter().map(|c| c.span()).sum();
+                        let span = row.get(ci)?.span();
+                        (t.col_mm.len() >= start + span).then(|| t.col_mm[start..start + span].iter().sum())
+                    }
+                    _ => None,
+                });
+                (w, Some(para.clone()))
+            })
+            .collect();
+        let mut t = Table::default();
+        if cols.iter().all(|(w, _)| w.is_some()) {
+            t.col_mm = cols.iter().map(|(w, _)| w.unwrap_or(0.0)).collect();
+        }
+        t.header_row = true;
+        let cell = |p: Paragraph| Cellbox { paragraphs: vec![p], ..Default::default() };
+        t.rows.push(o.columns.iter().zip(&cols).map(|(c, (_, p))| cell(para_like(p.as_ref(), c, Align::Center))).collect());
+        for n in o.rows.clone() {
+            t.rows.push(
+                o.columns
+                    .iter()
+                    .zip(&cols)
+                    .map(|(c, (_, p))| {
+                        let align = p.as_ref().map(|p| p.align).unwrap_or_default();
+                        cell(para_like(p.as_ref(), &format!("{{{}.{n}.{c}}}", o.table), align))
+                    })
+                    .collect(),
+            );
+        }
+        out.blocks.push(Block::Table(t));
+    }
+    (out, over)
+}
+
 /// **A document form filled from a data book**, with the marks of a sheet
 /// form ([`book::form`]): `{氏名}`, `{日付.和暦年}`, `{送達場所=住所}`,
 /// `{性別:男・女}` and the rest. Unlike [`fill`], an unanswered mark
@@ -438,7 +540,8 @@ fn take_spaces(runs: &mut [Run], ri: usize, at: usize, need: usize) {
 /// chosen options of choice marks stand.
 pub fn fill_form(doc: &Document, data: &book::Book) -> FormFill {
     let answers = book::form::Data::new(data);
-    let mut out = doc.clone();
+    // Rows that do not fit go on to a 別紙
+    let (mut out, bessi) = with_bessi(doc, data);
     let mut names: Vec<String> = Vec::new();
     let mut marks: Vec<(String, DocAt)> = Vec::new();
     let mut chosen: Vec<DocAt> = Vec::new();
@@ -513,7 +616,7 @@ pub fn fill_form(doc: &Document, data: &book::Book) -> FormFill {
         }
     }
     let missing = book::form::missing_of(names, data);
-    FormFill { doc: out, missing, marks, chosen }
+    FormFill { doc: out, missing, marks, chosen, bessi }
 }
 
 #[cfg(test)]
@@ -553,6 +656,37 @@ mod form_tests {
         let f = fill_form(&doc, &data);
         let Block::Para(p) = &f.doc.blocks[0] else { panic!() };
         assert_eq!(p.runs[0].text, "山田 太郎　　様");
+    }
+
+    #[test]
+    fn a_document_form_carries_extra_rows_on_to_a_bessi() {
+        let (data, _) = crate::book_adoc::parse(
+            "= データ\n\n.経歴\n|===\n|年 |内容\n\n|2009 |入学\n|2013 |卒業\n|2013 |入社\n|===\n",
+        )
+        .unwrap();
+        let mut t = Table::default();
+        t.col_mm = vec![20.0, 100.0];
+        let cellp = |s: &str| {
+            let mut p = Paragraph::default();
+            p.runs = vec![run(s)];
+            crate::doc::Cellbox { paragraphs: vec![p], ..Default::default() }
+        };
+        t.rows.push(vec![cellp("{経歴.1.年}"), cellp("{経歴.1.内容}")]);
+        let mut doc = Document::default();
+        doc.blocks.push(Block::Table(t));
+        let f = fill_form(&doc, &data);
+        // the form's row, then 別紙, its heading and a table of rows 2 and 3
+        assert_eq!(f.doc.blocks.len(), 4);
+        let Block::Table(b) = &f.doc.blocks[3] else { panic!("no table on the 別紙") };
+        assert_eq!(b.col_mm, [20.0, 100.0], "the form's widths");
+        let text = |r: usize, c: usize| b.rows[r][c].paragraphs[0].runs.iter().map(|x| x.text.as_str()).collect::<String>();
+        assert_eq!((text(0, 0), text(0, 1)), ("年".into(), "内容".into()));
+        assert_eq!((text(1, 1), text(2, 1)), ("卒業".into(), "入社".into()));
+        let Block::Para(title) = &f.doc.blocks[1] else { panic!() };
+        assert!(title.page_break_before);
+        // a form whose rows suffice gets none
+        let (few, _) = crate::book_adoc::parse("= データ\n\n.経歴\n|===\n|年 |内容\n\n|2009 |入学\n|===\n").unwrap();
+        assert_eq!(fill_form(&doc, &few).doc.blocks.len(), 1);
     }
 
     #[test]

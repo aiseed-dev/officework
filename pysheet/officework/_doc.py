@@ -1805,7 +1805,7 @@ class Doc(NoStrayAttributes):
     """docx の文書。エンジンの Doc を包み、python-docx の口を足す。"""
 
     # 自分で持つ属性。ここに無い名前への代入は断ります(打ち間違い避け)
-    _own = ("_d", "_path", "_missing")
+    _own = ("_d", "_path", "_missing", "_bessi")
     _engine_attr = "_d"
 
     def __init__(self, path=None, lang=None):
@@ -1953,9 +1953,13 @@ class Doc(NoStrayAttributes):
         ``{送達場所=住所}``、``{性別:男・女}`` など)。
 
         ``render`` と違い、データに答えの無い印は空になります。名前がデータに
-        1 つも無いときは、空にしたうえで警告を出し、``missing`` に並べます。"""
+        1 つも無いときは、空にしたうえで警告を出し、``missing`` に並べます。
+
+        表の行が様式の行に入りきらないときは、改ページして「別紙」を足し、
+        残りの行を同じ列で続けて書きます。どの表が別紙に回ったかは
+        ``bessi`` で分かります。"""
         d = Doc.__new__(Doc)
-        d._d, d._missing = _doc.Doc.fill_form(form._d, data._b)
+        d._d, d._missing, d._bessi = _doc.Doc.fill_form(form._d, data._b)
         d._path = None
         if d._missing:
             import warnings as _warnings
@@ -1975,6 +1979,12 @@ class Doc(NoStrayAttributes):
     def missing(self):
         """``fill_form`` で作った文書で、データに 1 つも無かった名前の並びです。"""
         return list(getattr(self, "_missing", None) or [])
+
+    @property
+    def bessi(self):
+        """``fill_form`` で、様式の行に入らず別紙に回った表です。
+        (表の名前, 別紙の最初の行, 最後の行) の並びです。"""
+        return list(getattr(self, "_bessi", None) or [])
 
     def page_count(self):
         """ページ数を数えます。PDF と同じ組み方で紙面を組みます(PDF は書きません)。"""

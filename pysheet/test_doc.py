@@ -296,4 +296,18 @@ with tempfile.TemporaryDirectory() as t:
     plain2 = doc.Doc.fill_form(form2, sheet.Book.open(data_path)).draw_list()
     count = lambda x: sum(1 for it in x["pages"][0]["items"] if it["type"] in ("line", "path"))
     check(count(c2) > count(plain2), "文の中の選択肢に丸が無い")
+    # Rows a document form has no room for go on to a 別紙
+    form3 = doc.Doc()
+    t3 = form3.add_table(rows=1, cols=2)
+    t3.cell(0, 0).text = "{経歴.1.年}"
+    t3.cell(0, 1).text = "{経歴.1.内容}"
+    data3 = os.path.join(t, "d3.sheet.adoc")
+    with open(data3, "w", encoding="utf-8") as f:
+        f.write("= データ\n\n.経歴\n|===\n|年 |内容\n\n|2009 |入学\n|2013 |卒業\n|2013 |入社\n|===\n")
+    b3 = doc.Doc.fill_form(form3, sheet.Book.open(data3))
+    check(b3.bessi == [("経歴", 2, 3)], f"別紙に回った表: {b3.bessi}")
+    texts3 = " ".join(p.text for p in b3.paragraphs)
+    check("別紙" in texts3 and "経歴（続き）" in texts3, f"別紙の見出しが無い: {texts3}")
+    f3 = [f["name"] for pg in b3.draw_list()["pages"] for f in pg["fields"]]
+    check("経歴.3.内容" in f3, f"別紙の欄が無い: {f3}")
 print("fill_form: ok")

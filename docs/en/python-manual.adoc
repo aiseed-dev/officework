@@ -148,7 +148,7 @@ b.save("resume.pdf")        # .xlsx and .png work too
 |`{送達場所=住所}` |a box to tick: ■ when the data's 送達場所 is 住所, □ otherwise
 |===
 
-A cell may hold several marks; text around them stays. *A mark the data does not answer becomes empty*, so rows prepared beyond the data (the rest of the history, for one) stay blank.
+A cell may hold several marks; text around them stays. *A mark the data does not answer becomes empty*, so rows prepared beyond the data (the rest of the history, for one) stay blank. The other way round, rows of the data beyond the form's go on to a 別紙 sheet in the same columns, with the widths and formats of the form's cells; `b.bessi` names the tables carried. A document form (`doc.Doc.fill_form`) gets its 別紙 after a page break.
 
 A name the data does not hold at all is also filled with nothing, but `fill` warns about it and lists it in `b.missing`, so a slip such as 電話番号 written for 電話 is noticed. Rows past the end of a table and names given an empty value (`|性別 |`) are left blank without a word.
 
