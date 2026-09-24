@@ -65,7 +65,7 @@ Office が規約からどう外れているかは、Microsoft の MS-OI29500
 ```bash
 # こちらの PDF
 cargo run --release -p paper --example docx_pdf -- 元.docx officework.pdf
-DYLD_FALLBACK_LIBRARY_PATH=$HOME/miniforge3/lib .venv/bin/python -c \
+DYLD_FALLBACK_LIBRARY_PATH=$PWD/.venv/lib .venv/bin/python -c \
   "from officework import sheet; sheet.Book.open('表.xlsx').to_pdf('officework.pdf')"
 
 # Word・Excel の PDF(開くのは発注者の許可を得てから。開いた文書は閉じる)
@@ -75,9 +75,9 @@ python3 tools/ms_pdf.py 元.docx office.pdf
 .venv/bin/python tools/ms_compare.py officework.pdf office.pdf
 ```
 
-- `.venv` の `officework` は `pysheet/officework/_sheet.abi3.so` を使います。
-  エンジンを直した後は、`pysheet` の下で `../.venv/bin/maturin develop --release`
-  を回して作り直します。作り直さないと、古いエンジンで PDF になります。
+- `.venv` の `officework` は手元のコードから入れた物です。エンジンを直した後は、
+  AGENTS.md「組み立てと検査」の `maturin develop --release` で入れ直します。
+  入れ直さないと、古いエンジンで PDF になります。
 - 公式の PDF(厚労省の様式など)があれば、それも比べる相手にします。
   PDF のメタデータ(Creator)で、どの Office で作ったかを確かめます。
 - xlsx は、作った Excel が Windows か Mac かで列の幅が変わります。読み込みの

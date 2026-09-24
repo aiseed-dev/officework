@@ -132,8 +132,8 @@ Word のヘルプが使う言葉を選びます。
 
 ## 組み立てと検査(この Mac)
 
-Python は miniforge の 3.13 で作った `.venv` を使います。システムの python3 は 3.9 で、
-使えない場面があります。
+Python は `.venv` を使います。2026-09-24 からは conda で作った Python 3.14 の環境で、
+libpython は `.venv/lib` にあります。システムの python3 は 3.9 で、使えない場面があります。
 
 ```bash
 # workspace 全体のコンパイル(エンジンの共有の型を触ったら毎回)
@@ -143,13 +143,25 @@ PYO3_PYTHON=$PWD/.venv/bin/python cargo check -q --workspace --all-targets
 PYO3_PYTHON=$PWD/.venv/bin/python cargo test -q -p book -p sheet
 
 # pysheet(Python のテストも走る)
-PATH=$PWD/.venv/bin:$PATH DYLD_FALLBACK_LIBRARY_PATH=$HOME/miniforge3/lib \
+PATH=$PWD/.venv/bin:$PATH DYLD_FALLBACK_LIBRARY_PATH=$PWD/.venv/lib \
   PYO3_PYTHON=$PWD/.venv/bin/python cargo test -q -p pysheet
 
 # アプリ(target/release/officework)。LTO のため 10〜25 分かかります
 PYO3_PYTHON=$PWD/.venv/bin/python cargo build -q --release --bin officework
 ```
 
+- `.venv` の `officework` は、手元のコードから入れます(PyPI の版ではありません)。
+  エンジンを直した後も、同じコマンドで入れ直します。
+  ```bash
+  cd pysheet && CONDA_PREFIX=$PWD/../.venv PYO3_PYTHON=$PWD/../.venv/bin/python \
+    ../.venv/bin/maturin develop --release
+  ```
+- `.venv` を作り直して Python の版が変わったときは、PyO3 の組み立て済みの物を
+  消してから組みます。消さないと、前の Python の libpython につながったままになり、
+  テストが `Library not loaded: @rpath/libpython3.13.dylib` で落ちます。
+  ```bash
+  cargo clean -p pyo3-build-config -p pyo3-ffi -p pyo3 -p pyo3-macros-backend -p pysheet
+  ```
 - 全部のテストは回しません。触った crate のテストと、workspace の check を回します。
 - calc のテストのうち 5 件は、`.venv` に matplotlib と scipy が無いと失敗します
   (`equation_tests`・`solver_tests`・`recalc_tests` の一部)。環境の問題なので、
