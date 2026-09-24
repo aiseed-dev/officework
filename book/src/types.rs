@@ -1437,6 +1437,38 @@ pub struct SheetShape {
     pub adj: Vec<(String, f32)>,
 }
 
+/// **The repeating pattern of a DrawingML preset dash** (ECMA-376
+/// 20.1.10.49 ST_PresetLineDashVal), as lengths in line widths: line, gap,
+/// line, gap, … The spec gives each value as bits, one bit per line width
+/// (`sysDash` is `1110`: 3 on, 1 off). None for `solid`. An unknown name is
+/// drawn as `dash`.
+pub fn dash_units(name: &str) -> Option<Vec<f32>> {
+    let bits = match name {
+        "solid" => return None,
+        "dashDot" => "11110001000",
+        "dot" => "1000",
+        "lgDash" => "11111111000",
+        "lgDashDot" => "111111110001000",
+        "lgDashDotDot" => "1111111100010001000",
+        "sysDash" => "1110",
+        "sysDashDot" => "111010",
+        "sysDashDotDot" => "11101010",
+        "sysDot" => "10",
+        _ => "1111000",
+    };
+    let mut out: Vec<f32> = Vec::new();
+    let mut prev = None;
+    for c in bits.chars() {
+        if Some(c) == prev {
+            *out.last_mut().expect("a run has started") += 1.0;
+        } else {
+            out.push(1.0);
+            prev = Some(c);
+        }
+    }
+    Some(out)
+}
+
 impl Default for SheetShape {
     fn default() -> Self {
         SheetShape {
@@ -1577,7 +1609,15 @@ impl SheetShape {
         } else {
             String::new()
         };
-        let style = format!(r#"fill="{fill}" stroke="{line}" stroke-width="{sw:.2}"{op_attr}"#);
+        // The dash pattern is in line widths (ECMA-376 20.1.10.49)
+        let dash_attr = match self.dash.as_deref().and_then(dash_units) {
+            Some(u) => format!(
+                r#" stroke-dasharray="{}""#,
+                u.iter().map(|x| format!("{:.2}", x * sw)).collect::<Vec<_>>().join(" ")
+            ),
+            None => String::new(),
+        };
+        let style = format!(r#"fill="{fill}" stroke="{line}" stroke-width="{sw:.2}"{op_attr}{dash_attr}"#);
         // 線の太さの半分だけ内側に(縁が切れないように)
         let inset = (sw / 2.0).max(1.0);
         let (x0, y0, x1, y1) = (inset, inset, w - inset, h - inset);
@@ -1736,7 +1776,7 @@ impl SheetShape {
                         let l_ = if p.stroke { line } else { "none" };
                         let el = if p.closed { "polygon" } else { "polyline" };
                         s.push_str(&format!(
-                            r#"<{el} points="{d}" fill="{f_}" stroke="{l_}" stroke-width="{sw:.2}" stroke-linejoin="round"{op_attr}/>"#
+                            r#"<{el} points="{d}" fill="{f_}" stroke="{l_}" stroke-width="{sw:.2}" stroke-linejoin="round"{op_attr}{dash_attr}/>"#
                         ));
                     }
                     s

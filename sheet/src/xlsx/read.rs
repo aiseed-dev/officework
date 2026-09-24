@@ -692,7 +692,39 @@ pub(super) fn text_fmt_attr(e: &BytesStart, tf: &mut book::TextFmt) {
     }
 }
 
+/// The text of a text box: its paragraphs joined with line breaks, without
+/// the break after the last one. None when there is nothing but breaks.
+fn box_text(t: &str) -> Option<String> {
+    let t = t.strip_suffix('\n').unwrap_or(t);
+    (!t.trim().is_empty()).then(|| t.to_string())
+}
+
+/// The RRGGBB a DrawingML colour element starts from: `srgbClr@val`,
+/// `sysClr@lastClr`, or the theme colour a `schemeClr@val` names.
+fn dml_base(e: &quick_xml::events::BytesStart, theme: &[String]) -> Option<String> {
+    match local(e.name().as_ref()) {
+        b"srgbClr" => attr(e, "val"),
+        b"sysClr" => attr(e, "lastClr"),
+        b"schemeClr" => {
+            let i = book::theme::scheme_index(&attr(e, "val")?)? as usize;
+            theme.get(i).cloned()
+        }
+        _ => None,
+    }
+}
+
+#[cfg(test)]
 pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, DrawKind)> {
+    let office: Vec<String> = book::theme::OFFICE.iter().map(|s| s.to_string()).collect();
+    parse_drawing_anchors_with(xml, &office)
+}
+
+/// [`parse_drawing_anchors`] with the workbook's theme colours, which a
+/// shape's `a:schemeClr` refers to (in the order of `book::theme::resolve`)
+pub(super) fn parse_drawing_anchors_with(
+    xml: &str,
+    theme: &[String],
+) -> Vec<(Pos, i64, i64, i64, i64, DrawKind)> {
     let mut r = Reader::from_str(xml);
     let mut buf = Vec::new();
     let mut out = Vec::new();
@@ -714,6 +746,14 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
     let mut adj_list: Vec<(String, f32)> = Vec::new();
     // 図形の色: solidFill の1つ目が塗り、a:ln の中のものが線
     let (mut fill, mut line) = (None::<String>, None::<String>);
+    // A colour element being read: its base RRGGBB, whether it is the line's,
+    // and the transforms (shade, tint, lumMod, lumOff) inside it so far
+    let mut clr: Option<(String, bool, Vec<(String, f32)>)> = None;
+    // The line's preset dash (a:prstDash), None for solid
+    let mut dash: Option<String> = None;
+    // Whether the box's font came from an a:ea (East Asian) typeface; an ea
+    // wins over a latin one, since the forms are Japanese
+    let mut font_from_ea = false;
     // 図形の中の文字(a:t)と、custGeom の折れ線
     let mut text = String::new();
     let mut in_t = false;
@@ -824,6 +864,9 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     in_body = false;
                     fill_kimatta = false;
                     line_kimatta = false;
+                    dash = None;
+                    clr = None;
+                    font_from_ea = false;
                 }
                 b"from" => in_from = true,
                 b"to" => in_to = true,
@@ -900,15 +943,12 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     }
                 }
                 b"custGeom" => has_custom = true,
-                // alpha を子に持つ色は Start で来る(<a:srgbClr><a:alpha/></a:srgbClr>)
-                b"srgbClr" if in_sp && !in_effect && !in_body => {
-                    let v = attr(&e, "val");
-                    if in_ln {
-                        if line.is_none() && !line_kimatta {
-                            line = v;
-                        }
-                    } else if fill.is_none() && !fill_kimatta {
-                        fill = v;
+                // A colour with children (alpha, shade, tint, …) comes as Start:
+                // keep its base and gather the transforms until its End
+                b"srgbClr" | b"sysClr" | b"schemeClr" if in_sp && !in_effect && !in_body => {
+                    let free = if in_ln { line.is_none() && !line_kimatta } else { fill.is_none() && !fill_kimatta };
+                    if free {
+                        clr = dml_base(&e, theme).map(|b| (b, in_ln, Vec::new()));
                     }
                 }
                 b"path" if has_custom => {
@@ -1006,14 +1046,44 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         pts.push(book::PathPoint::at(at.0, at.1));
                     }
                 }
-                b"srgbClr" if in_sp && !in_effect && !in_body => {
-                    let v = attr(&e, "val");
+                // A colour with no children: its base is the colour
+                // (a:schemeClr refers to the theme, ECMA-376 20.1.2.3.29)
+                b"srgbClr" | b"sysClr" | b"schemeClr" if in_sp && !in_effect && !in_body => {
+                    let v = dml_base(&e, theme);
                     if in_ln {
                         if line.is_none() && !line_kimatta {
                             line = v;
                         }
                     } else if fill.is_none() && !fill_kimatta {
                         fill = v;
+                    }
+                }
+                // Colour transforms inside the colour being read
+                // (ECMA-376 20.1.2.3: shade, tint, lumMod, lumOff)
+                t @ (b"shade" | b"tint" | b"lumMod" | b"lumOff") if clr.is_some() => {
+                    if let (Some(v), Some((_, _, mods))) =
+                        (attr(&e, "val").and_then(|v| v.parse::<f32>().ok()), clr.as_mut())
+                    {
+                        mods.push((String::from_utf8_lossy(t).into_owned(), v / 100_000.0));
+                    }
+                }
+                // The line's preset dash (ECMA-376 20.1.8.48)
+                b"prstDash" if in_sp && in_ln => {
+                    dash = attr(&e, "val").filter(|v| v != "solid");
+                }
+                // A line break inside a paragraph (ECMA-376 21.1.2.2.1)
+                b"br" if in_body => text.push('\n'),
+                // The run's font (ECMA-376 21.1.2.3.3 ea, 21.1.2.3.7 latin).
+                // The model has one font per box: the first ea, or else the
+                // first latin. `+mn-ea` and the like point at the theme's
+                // fonts and are left out
+                t @ (b"ea" | b"latin") if in_body => {
+                    if let Some(face) = attr(&e, "typeface").filter(|f| !f.is_empty() && !f.starts_with('+')) {
+                        let ea = t == b"ea";
+                        if tfmt.font.is_none() || (ea && !font_from_ea) {
+                            tfmt.font = Some(face);
+                            font_from_ea = ea;
+                        }
                     }
                 }
                 b"alpha" if in_sp && !in_effect && alpha.is_none() => {
@@ -1080,7 +1150,17 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                 }
                 b"col" | b"row" | b"colOff" | b"rowOff" => cur.clear(),
                 b"ln" => in_ln = false,
+                b"srgbClr" | b"sysClr" | b"schemeClr" if clr.is_some() => {
+                    if let Some((base, for_line, mods)) = clr.take() {
+                        let m: Vec<(&str, f32)> = mods.iter().map(|(n, v)| (n.as_str(), *v)).collect();
+                        let c = Some(book::theme::dml_color(&base, &m));
+                        if for_line { line = c } else { fill = c }
+                    }
+                }
                 b"txBody" => in_body = false,
+                // Each paragraph starts a new line (ECMA-376 21.1.2.2.6); an
+                // empty paragraph keeps its line
+                b"p" if in_body => text.push('\n'),
                 b"effectLst" => in_effect = false,
                 b"t" => in_t = false,
                 // **束の子は、その場で1つ押し出します。** 入れ物の終わりまで
@@ -1091,12 +1171,13 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     let tpl = book::SheetShape {
                         fill: fill.take(),
                         line: line.take(),
-                        text: (!text.is_empty()).then(|| text.clone()),
+                        text: box_text(&text),
                         text_fmt: tfmt.clone(),
                         rot,
                         flip_h,
                         flip_v,
                         line_w,
+                        dash: dash.clone(),
                         alpha: alpha.unwrap_or(1.0),
                         shadow,
                         group: g,
@@ -1114,6 +1195,8 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                         ));
                     }
                     // 次の子のために、1つぶんだけ畳みます
+                    dash = None;
+                    font_from_ea = false;
                     text.clear();
                     tfmt = book::TextFmt::default();
                     ko_off = (0, 0);
@@ -1134,12 +1217,13 @@ pub(super) fn parse_drawing_anchors(xml: &str) -> Vec<(Pos, i64, i64, i64, i64, 
                     let tpl = book::SheetShape {
                         fill: fill.take(),
                         line: line.take(),
-                        text: (!text.is_empty()).then(|| text.clone()),
+                        text: box_text(&text),
                         text_fmt: tfmt.clone(),
                         rot,
                         flip_h,
                         flip_v,
                         line_w,
+                        dash: dash.clone(),
                         alpha: alpha.unwrap_or(1.0),
                         shadow,
                         adj: std::mem::take(&mut adj_list),
@@ -2747,7 +2831,7 @@ fn read_inner<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 let _ = f.read_to_string(&mut rx);
             }
             let dmap = parse_rels(&rx);
-            for (at, ox_emu, oy_emu, cx_emu, cy_emu, kind) in parse_drawing_anchors(&dx) {
+            for (at, ox_emu, oy_emu, cx_emu, cy_emu, kind) in parse_drawing_anchors_with(&dx, &theme_colors) {
                 let (width_px, height_px) =
                     (cx_emu as f32 / 9525.0, cy_emu as f32 / 9525.0);
                 match kind {

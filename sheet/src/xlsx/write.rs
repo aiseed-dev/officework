@@ -2426,9 +2426,14 @@ fn shape_xml(sp: &book::SheetShape, id: u32, naka_off: Option<(i64, i64)>) -> St
         Some(c) => format!("<a:solidFill><a:srgbClr val=\"{c}\">{alpha}</a:srgbClr></a:solidFill>"),
         None => "<a:noFill/>".to_string(),
     };
+    // The preset dash follows the fill inside a:ln (CT_LineProperties order)
+    let dash = match sp.dash.as_deref() {
+        Some(d) => format!("<a:prstDash val=\"{d}\"/>"),
+        None => String::new(),
+    };
     let line = match &sp.line {
         Some(c) => format!(
-            "<a:ln w=\"{w}\"><a:solidFill><a:srgbClr val=\"{c}\">{alpha}</a:srgbClr></a:solidFill></a:ln>",
+            "<a:ln w=\"{w}\"><a:solidFill><a:srgbClr val=\"{c}\">{alpha}</a:srgbClr></a:solidFill>{dash}</a:ln>",
             w = (sp.line_w.max(0.1) * 12700.0) as i64
         ),
         None => String::new(),
@@ -2581,20 +2586,33 @@ fn shape_xml(sp: &book::SheetShape, id: u32, naka_off: Option<(i64, i64)>) -> St
             } else {
                 ""
             };
+            // The box's font goes on every run (a:latin and a:ea, ECMA-376
+            // 21.1.2.3.7 / 21.1.2.3.3)
+            let face = match tf.font.as_deref() {
+                Some(f) => format!(r#"<a:latin typeface="{f}"/><a:ea typeface="{f}"/>"#, f = esc(f)),
+                None => String::new(),
+            };
+            let rpr = |tag: &str| {
+                if face.is_empty() {
+                    format!("<a:{tag} lang=\"ja-JP\"{sz}{strike}{base}/>")
+                } else {
+                    format!("<a:{tag} lang=\"ja-JP\"{sz}{strike}{base}>{face}</a:{tag}>")
+                }
+            };
+            // One a:p per line (ECMA-376 21.1.2.2.6); an empty line is a
+            // paragraph with only its end properties, as the reader expects
+            let paras: String = t
+                .split('\n')
+                .map(|line| {
+                    if line.is_empty() {
+                        format!("<a:p>{ppr}{}</a:p>", rpr("endParaRPr"))
+                    } else {
+                        format!("<a:p>{ppr}<a:r>{}<a:t>{}</a:t></a:r></a:p>", rpr("rPr"), esc(line))
+                    }
+                })
+                .collect();
             format!(
-                concat!(
-                    "<xdr:txBody><a:bodyPr wrap=\"square\"{anchor}{vert}/><a:lstStyle/>",
-                    "<a:p>{ppr}<a:r><a:rPr lang=\"ja-JP\"{sz}{strike}{base}/>",
-                    "<a:t>{t}</a:t></a:r></a:p>",
-                    "</xdr:txBody>"
-                ),
-                anchor = anchor,
-                vert = vert,
-                ppr = ppr,
-                sz = sz,
-                strike = strike,
-                base = base,
-                t = esc(t)
+                "<xdr:txBody><a:bodyPr wrap=\"square\"{anchor}{vert}/><a:lstStyle/>{paras}</xdr:txBody>"
             )
         }
         None => String::new(),

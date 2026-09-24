@@ -955,6 +955,24 @@ mod shape_tests {
     use super::*;
 
     #[test]
+    fn a_dashed_line_is_dashed_in_the_svg() {
+        // sysDash is 3 widths on, 1 off (ECMA-376 20.1.10.49); 0.75pt = 1px
+        let sh = SheetShape {
+            width_px: 200.0,
+            height_px: 100.0,
+            kind: "rect".into(),
+            line: Some("BCBCBC".into()),
+            line_w: 0.75,
+            dash: Some("sysDash".into()),
+            ..Default::default()
+        };
+        let svg = sh.to_svg();
+        assert!(svg.contains(r#"stroke-dasharray="3.00 1.00""#), "{svg}");
+        assert_eq!(dash_units("dashDot"), Some(vec![4.0, 3.0, 1.0, 3.0]));
+        assert_eq!(dash_units("solid"), None);
+    }
+
+    #[test]
     fn shape_svg_carries_size_and_colour() {
         let sh = SheetShape {
             at: Pos::new(0, 0),

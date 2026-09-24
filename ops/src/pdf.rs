@@ -53,9 +53,10 @@ pub fn book(b: &book::Book, to: &Path) -> Result<u32, String> {
     let mut fonts: Vec<(String, Vec<u8>)> = vec![("".into(), font.to_vec())];
     let mut mita: std::collections::BTreeSet<String> = Default::default();
     for s in &b.sheets {
-        let namae = s.cells.values().filter_map(|c| c.fmt.font.clone()).chain(
-            s.rich_runs.values().flatten().filter_map(|r| r.font.clone()),
-        );
+        // Cells, rich text runs, and the text in shapes (text boxes)
+        let namae = s.cells.values().filter_map(|c| c.fmt.font.clone())
+            .chain(s.rich_runs.values().flatten().filter_map(|r| r.font.clone()))
+            .chain(s.shapes.iter().chain(s.shapes_new.iter()).filter_map(|sp| sp.text_fmt.font.clone()));
         for na in namae {
             if !mita.insert(na.clone()) {
                 continue;

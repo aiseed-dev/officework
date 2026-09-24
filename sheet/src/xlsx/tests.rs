@@ -18,6 +18,28 @@ mod fmt_round {
     /// `<a:srgbClr val="000000"/>` を持つと、それを図形の塗りとして拾って
     /// いました。国税庁の消費税の表の縦書きの箱が真っ黒に潰れていました
     /// (2026-08-31 発注者)。
+    // The photo box of the MHLW resume form (2026-09-24): the line is the
+    // theme's lt1 with a 50% shade (ECMA-376 20.1.2.3.31) and a sysDash
+    #[test]
+    fn a_theme_colour_with_a_shade_and_a_dash_is_read() {
+        let dr = r#"<xdr:wsDr xmlns:xdr="x" xmlns:a="a"><xdr:twoCellAnchor><xdr:from><xdr:col>8</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>2</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>9</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>8</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:sp><xdr:nvSpPr><xdr:cNvPr id="2" name="t"/><xdr:cNvSpPr txBox="1"/></xdr:nvSpPr><xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:solidFill><a:schemeClr val="lt1"/></a:solidFill><a:ln w="9525" cmpd="sng"><a:solidFill><a:schemeClr val="lt1"><a:shade val="50000"/></a:schemeClr></a:solidFill><a:prstDash val="sysDash"/></a:ln></xdr:spPr><xdr:txBody><a:bodyPr/><a:p><a:endParaRPr sz="800"><a:latin typeface="ＭＳ Ｐ明朝"/><a:ea typeface="ＭＳ Ｐ明朝"/></a:endParaRPr></a:p><a:p><a:r><a:rPr sz="800"><a:solidFill><a:schemeClr val="dk1"/></a:solidFill><a:latin typeface="ＭＳ Ｐ明朝"/><a:ea typeface="ＭＳ Ｐ明朝"/></a:rPr><a:t>　　写真をはる位置</a:t></a:r></a:p><a:p><a:endParaRPr sz="800"/></a:p><a:p><a:r><a:rPr sz="800"><a:latin typeface="ＭＳ 明朝"/><a:ea typeface="ＭＳ 明朝"/></a:rPr><a:t>1. 縦</a:t></a:r></a:p></xdr:txBody></xdr:sp><xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>"#;
+        let theme: Vec<String> = book::theme::OFFICE.iter().map(|s| s.to_string()).collect();
+        let v = crate::xlsx::read::parse_drawing_anchors_with(dr, &theme);
+        let sp = v.iter().find_map(|t| match &t.5 {
+            crate::xlsx::read::DrawKind::Shape(s) => Some(s.as_ref()),
+            _ => None,
+        }).expect("no shape");
+        assert_eq!(sp.fill.as_deref(), Some("FFFFFF"), "lt1 is the fill");
+        assert_eq!(sp.line.as_deref(), Some("BCBCBC"), "lt1 with a 50% shade");
+        assert_eq!(sp.dash.as_deref(), Some("sysDash"));
+        assert!((sp.line_w - 0.75).abs() < 1e-6);
+        // each paragraph is a line, and an empty paragraph keeps its line
+        // (ECMA-376 21.1.2.2.6); the box's font is the first ea typeface
+        assert_eq!(sp.text.as_deref(), Some("\n　　写真をはる位置\n\n1. 縦"));
+        assert_eq!(sp.text_fmt.font.as_deref(), Some("ＭＳ Ｐ明朝"));
+        assert_eq!(sp.text_fmt.size_pt, Some(8.0));
+    }
+
     #[test]
     fn a_shapes_fill_is_not_its_text_colour() {
         // **実物の形そのままです**(国税庁の消費税の表の drawing1.xml)。
@@ -316,6 +338,28 @@ mod colwidth_round {
         book::calc::recalc_all(&mut back);
         assert_eq!(back.sheets[0].value(book::Pos::parse("A1").unwrap()).display(),
                    "2026-10-01 04:30 America/Los_Angeles");
+    }
+
+    #[test]
+    fn a_text_box_keeps_its_paragraphs_and_font() {
+        let mut s = Sheet { name: "様式".into(), ..Default::default() };
+        s.shapes_new.push(book::SheetShape {
+            kind: "rect".into(),
+            width_px: 120.0,
+            height_px: 150.0,
+            line: Some("BCBCBC".into()),
+            dash: Some("sysDash".into()),
+            text: Some("\n写真をはる位置\n\n1. 縦".into()),
+            text_fmt: book::TextFmt { font: Some("ＭＳ Ｐ明朝".into()), size_pt: Some(8.0), ..Default::default() },
+            ..Default::default()
+        });
+        let mut buf = Vec::new();
+        crate::xlsx::write(&Book { sheets: vec![s], ..Default::default() }, std::io::Cursor::new(&mut buf)).unwrap();
+        let (back, _) = crate::xlsx::read(std::io::Cursor::new(&buf)).unwrap();
+        let sp = back.sheets[0].shapes.first().expect("the box is gone");
+        assert_eq!(sp.text.as_deref(), Some("\n写真をはる位置\n\n1. 縦"));
+        assert_eq!(sp.text_fmt.font.as_deref(), Some("ＭＳ Ｐ明朝"));
+        assert_eq!(sp.dash.as_deref(), Some("sysDash"));
     }
 
     #[test]

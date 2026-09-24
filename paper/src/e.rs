@@ -145,13 +145,19 @@ pub fn egaku_fonts(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, fonts: &[&[u8]])
         let mut path = BezPath::new();
         path.move_to(Point::new(r.x1_mm as f64 * mm, (h_mm - r.y1_mm) as f64 * mm));
         path.line_to(Point::new(r.x2_mm as f64 * mm, (h_mm - r.y2_mm) as f64 * mm));
-        cx.set_stroke(Stroke {
+        let mut stroke = Stroke {
             width: (r.w_mm.max(0.05) as f64 * mm).max(0.5),
             join: Join::Miter,
             start_cap: Cap::Butt,
             end_cap: Cap::Butt,
             ..Default::default()
-        });
+        };
+        // The dash pattern (mm), as the PDF draws it; the screen's shapes are
+        // drawn through here, so a dashed frame was solid on screen
+        if let Some(d) = &r.dash {
+            stroke = stroke.with_dashes(0.0, d.iter().map(|v| *v as f64 * mm));
+        }
+        cx.set_stroke(stroke);
         cx.set_paint(iro(r.rgb, r.a));
         cx.stroke_path(&path);
     }
@@ -374,6 +380,31 @@ mod tests {
             }],
             ..Default::default()
         }
+    }
+
+    // A dashed rule is dashed in the picture too, as in the PDF (2026-09-24:
+    // the screen drew the dashed frame of a text box as a solid line)
+    #[test]
+    fn a_dashed_rule_has_gaps() {
+        let leaf = Leaf {
+            bg: Some((1.0, 1.0, 1.0)),
+            rules: vec![Rule {
+                x1_mm: 0.0, y1_mm: 5.0, x2_mm: 40.0, y2_mm: 5.0,
+                w_mm: 1.0, rgb: (0.0, 0.0, 0.0),
+                // sysDash: 3 widths on, 1 off
+                dash: Some(vec![3.0, 1.0]),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let e = egaku(&leaf, 40.0, 10.0, 4.0);
+        let y = e.h / 2;
+        let dark: Vec<bool> = (0..e.w)
+            .map(|x| e.rgba[((y * e.w + x) * 4) as usize] < 128)
+            .collect();
+        let runs = dark.windows(2).filter(|w| w[0] && !w[1]).count();
+        // 40mm of a 4mm pattern: about 10 dashes
+        assert!((9..=11).contains(&runs), "{runs} dashes");
     }
 
     /// 見本の絵。左半分が赤、右半分が青の PNG

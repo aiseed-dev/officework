@@ -5498,15 +5498,29 @@ impl Render for Calc {
                                // 組み方(揃え・縦書き・箇条書き・文字効果)。
                                // **選べる物は描く** — 効かない設定を置かない
                                let tf = &sp.text_fmt;
+                               // The same box as on paper: the body insets
+                               // (a:bodyPr lIns/rIns/tIns/bIns), the box's
+                               // font size in points, and its font (a
+                               // missing font is replaced within its family,
+                               // as for cells)
+                               let mm_px = 96.0 / 25.4;
+                               let (il, ir, it, ib) = tf.ins_mm;
+                               let (il, ir, it, ib) = (il * mm_px, ir * mm_px, it * mm_px, ib * mm_px);
+                               let family = tf
+                                   .font
+                                   .as_deref()
+                                   .and_then(|n| kumihan::font::for_document(Some(n)).ok())
+                                   .map(|(fam, _)| SharedString::from(fam.name.clone()))
+                                   .unwrap_or_else(|| self.font_name.clone());
                                let mut td = div()
                                    .absolute()
-                                   .left(px(x + 6.0))
-                                   .top(px(y + 4.0))
-                                   .w(px((sp.width_px - 12.0).max(8.0)))
-                                   .h(px((sp.height_px - 8.0).max(8.0)))
+                                   .left(px(x + il))
+                                   .top(px(y + it))
+                                   .w(px((sp.width_px - il - ir).max(8.0)))
+                                   .h(px((sp.height_px - it - ib).max(8.0)))
                                    .overflow_hidden()
-                                   .text_size(px(us * 12.5))
-                                   .font_family(self.font_name.clone())
+                                   .text_size(px(tf.size_pt.unwrap_or(11.0) * 96.0 / 72.0))
+                                   .font_family(family)
                                    .text_color(rgb(0x1B1B1B))
                                    .whitespace_normal()
                                    // 縦の揃えは flex の縦並びで取る

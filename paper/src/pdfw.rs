@@ -464,7 +464,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
         // **罫線を先に引きます**(字の下)
         let mut pen: Option<((f32, f32, f32), f32)> = None;
         // 破線の刻み。前の線の分が残らないよう、実線のときは戻します
-        let mut kizami: Option<(f32, f32)> = None;
+        let mut kizami: Option<Vec<f32>> = None;
         for r in &page.rules {
             usu(&mut c, &mut usu_now, r.a);
             if pen != Some((r.rgb, r.w_mm)) {
@@ -473,11 +473,11 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 pen = Some((r.rgb, r.w_mm));
             }
             if kizami != r.dash {
-                match r.dash {
-                    Some((on, off)) => { c.set_dash_pattern([pt(on), pt(off)], 0.0); }
+                match &r.dash {
+                    Some(d) => { c.set_dash_pattern(d.iter().map(|v| pt(*v)), 0.0); }
                     None => { c.set_dash_pattern([], 0.0); }
                 }
-                kizami = r.dash;
+                kizami = r.dash.clone();
             }
             c.move_to(pt(r.x1_mm), pt(r.y1_mm));
             c.line_to(pt(r.x2_mm), pt(r.y2_mm));
@@ -1371,11 +1371,11 @@ pub struct Rule {
     pub rgb: (f32, f32, f32),
     /// 不透明度(0〜1、1 = 不透明)。図形の影と `SheetShape::alpha` が使います
     pub a: f32,
-    /// **破線の刻み(mm)。** (線, 間)です。`None` は実線。
+    /// **The dash pattern (mm)**: line, gap, line, gap, … `None` is solid.
     ///
     /// テキストボックスの点線の囲みがこれです(2026-09-01 発注者
     /// 「テキストボックスはよく使うので、囲みは印刷できるように」)。
-    pub dash: Option<(f32, f32)>,
+    pub dash: Option<Vec<f32>>,
 }
 
 impl Default for Rule {

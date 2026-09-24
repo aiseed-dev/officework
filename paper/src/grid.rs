@@ -469,7 +469,7 @@ impl Ink<'_> {
     /// 破線。刻みは (線, 間) mm。図形の輪郭が使います
     fn line_dash(
         &mut self, x1: f32, y1: f32, x2: f32, y2: f32, w: f32, rgb: (f32, f32, f32),
-        a: f32, dash: Option<(f32, f32)>,
+        a: f32, dash: Option<Vec<f32>>,
     ) {
         self.leaf.rules.push(pdfw::Rule {
             x1_mm: x1, y1_mm: y1, x2_mm: x2, y2_mm: y2, w_mm: w, rgb, a, dash,
@@ -753,7 +753,7 @@ pub(crate) fn doc_shapes(leaf: &mut pdfw::Leaf, shapes: &[kumihan::DocShape], h_
         look.dy_px = 0.0;
         look.width_px = sp.w_mm * 96.0 / 25.4;
         look.height_px = sp.h_mm * 96.0 / 25.4;
-        zukei(&mut l1, &look, sp.x_mm, h_mm - sp.y_mm, 1.0);
+        zukei(&mut l1, &look, sp.x_mm, h_mm - sp.y_mm, 1.0, &[]);
     }
 }
 
@@ -762,7 +762,7 @@ pub fn shapes_leaf(shapes: &[(book::SheetShape, f32, f32)], paper: Paper) -> pdf
     {
         let mut l1 = board.ink(0);
         for (sp, x_mm, y_mm) in shapes {
-            zukei(&mut l1, sp, *x_mm, *y_mm, 1.0);
+            zukei(&mut l1, sp, *x_mm, *y_mm, 1.0, &[]);
         }
     }
     board.leaves.remove(0)
@@ -1920,7 +1920,7 @@ fn draw_sheet(
                 }
                 _ => sp,
             };
-            zukei(l1, sp, x, y_top, scale);
+            zukei(l1, sp, x, y_top, scale, &fonts);
         }
 
         // **画像も紙に出します**(2026-09-03)。模型には在るのに紙に
@@ -1974,7 +1974,7 @@ fn draw_sheet(
 /// (2026-08-29 発注者「gpui を使うか vello を使うかはテストをして
 /// 決めていけばいい」)。形を作る所を1本にしておかないと、紙と画面で
 /// 図形の形が食い違います — 角丸が紙だけ四角だったのがその例です。
-fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
+fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32, fonts: &[String]) {
         let mm = 25.4 / 96.0; // px → mm
         // アンカーのセルからの px のずらしも紙に写す
         let (x, y_top) =
@@ -1991,16 +1991,9 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
         // 入場券の型紙の切り取り線(`<a:ln w="6350">` = 0.5pt、
         // `<a:prstDash val="dash"/>`)が 2.27pt / 1.70pt になり、
         // Word の 2.0pt / 1.5pt と合いませんでした(2026-09-20)
-        let kizami = sp.dash.as_deref().map(|d| {
+        let kizami: Option<Vec<f32>> = sp.dash.as_deref().and_then(book::dash_units).map(|u| {
             let w = pen_w.max(0.01);
-            match d {
-                "dot" | "sysDot" => (w, w * 2.0),
-                "dashDot" | "sysDashDot" => (w * 3.0, w * 2.0),
-                "lgDash" => (w * 8.0, w * 3.0),
-                "sysDash" => (w * 3.0, w * 1.0),
-                // "dash" と、知らない名前
-                _ => (w * 4.0, w * 3.0),
-            }
+            u.iter().map(|x| x * w).collect()
         });
         let pts: Vec<(f32, f32)> = match sp.kind.as_str() {
             // **角丸。** 画面(`SheetShape::to_svg`)と Excel は丸めるのに、
@@ -2265,7 +2258,7 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
                 for i in 0..ends {
                     let (x1, y1) = p.pts[i];
                     let (x2, y2) = p.pts[(i + 1) % p.pts.len()];
-                    l1.line_dash(x1, y1, x2, y2, pen_w, pen, usu, kizami);
+                    l1.line_dash(x1, y1, x2, y2, pen_w, pen, usu, kizami.clone());
                 }
             }
         }
@@ -2353,6 +2346,12 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
             // **字の色は箱が言います**(`w:color`、または名乗った段落
             // スタイルの色)。言っていなければ黒です
             let iro = sp.text_fmt.color.as_deref().and_then(hex_rgb).unwrap_or((0.0, 0.0, 0.0));
+            // The box's font (a:ea / a:latin), as a number in the PDF's font
+            // list; 0 (the document's default) when it is not in the list
+            let fno = sp.text_fmt.font.as_deref()
+                .and_then(|n| fonts.iter().position(|x| x == n))
+                .map(|k| k as u8)
+                .unwrap_or(0);
             let mut ty = y_top - it - ue - pt * 25.4 / 72.0 * agari;
             for g in &gyou {
                 let haba: f32 = g.chars().map(hitotsu).sum();
@@ -2361,7 +2360,7 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32) {
                     book::HAlign::Right => x + w - ir - haba,
                     _ => x + il,
                 };
-                l1.text(g, pt, tx, ty, iro, sp.text_fmt.bold);
+                l1.text_font(g, pt, tx, ty, iro, sp.text_fmt.bold, fno);
                 ty -= takasa;
             }
         }
