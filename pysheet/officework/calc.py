@@ -661,6 +661,47 @@ def _default_frame():
         return pd.DataFrame
 
 
+def _moment_columns(rows):
+    """The columns whose values are all moments with a time zone (aware
+    datetimes, None allowed): {column index: values}."""
+    import datetime
+
+    out = {}
+    width = max((len(r) for r in rows), default=0)
+    for i in range(width):
+        vals = [r[i] if i < len(r) else None for r in rows]
+        seen = [v for v in vals if v is not None]
+        if seen and all(isinstance(v, datetime.datetime) and v.tzinfo is not None for v in seen):
+            out[i] = vals
+    return out
+
+
+def _moment_text(v):
+    """A moment with a time zone as the cell shows it
+    (`2026-10-01 10:00 Asia/Tokyo`); anything else unchanged."""
+    import datetime
+
+    if isinstance(v, datetime.datetime) and v.tzinfo is not None:
+        fmt = "%Y-%m-%d %H:%M" if v.second == 0 else "%Y-%m-%d %H:%M:%S"
+        return v.strftime(fmt) + " " + (getattr(v.tzinfo, "key", None) or str(v.tzinfo))
+    return v
+
+
+def _moment_series(pl, name, vals):
+    """A polars Datetime column of moments with a time zone (decided
+    2026-09-24): one zone in the column keeps it, mixed zones become UTC
+    (the moments stay right; which place each was in is lost)."""
+    import datetime
+
+    zones = {getattr(v.tzinfo, "key", None) or str(v.tzinfo) for v in vals if v is not None}
+    zone = zones.pop() if len(zones) == 1 else "UTC"
+    utc = [None if v is None else v.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+           for v in vals]
+    return (pl.Series(name, utc, dtype=pl.Datetime("us"))
+            .dt.replace_time_zone("UTC")
+            .dt.convert_time_zone(zone))
+
+
 def _grid_to_frame(grid, convert, index=True, header=True):
     """セルの2次元(values)を DataFrame へ。**polars を第一に**、pandas は従来どおり。
 
@@ -672,10 +713,22 @@ def _grid_to_frame(grid, convert, index=True, header=True):
 
         if not grid:
             return pl.DataFrame()
+        body = grid[1:] if header else grid
+        moments = _moment_columns(body)
+        # The moment columns are made below; leave them empty here. A moment in
+        # a column that also has other values goes as the text the cell shows:
+        # polars makes a mixed column text, and would otherwise turn the
+        # moment into a number of microseconds
+        body = [[None if i in moments else _moment_text(v) for i, v in enumerate(row)]
+                for row in body]
         if header:
             names = ["" if c is None else str(c) for c in grid[0]]
-            return pl.DataFrame(grid[1:], schema=names, orient="row")
-        return pl.DataFrame(grid, orient="row")
+            df = pl.DataFrame(body, schema=names, orient="row")
+        else:
+            df = pl.DataFrame(body, orient="row")
+        return df.with_columns(
+            [_moment_series(pl, df.columns[i], vals) for i, vals in moments.items()]
+        )
     import pandas as pd
 
     if not grid:
