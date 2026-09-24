@@ -2536,9 +2536,10 @@ fn cols_of(line: &str) -> Option<Vec<f32>> {
     let inner = line.trim().strip_prefix('[')?.strip_suffix(']')?;
     let v = inner.trim().strip_prefix("cols=")?.trim();
     let v = v.strip_prefix('"').and_then(|s| s.strip_suffix('"')).unwrap_or(v);
-    // `3*` は「同じ幅を3つ」
+    // `3*` は「同じ幅を3つ」. AsciiDoc sets no limit; a sheet can have as
+    // many columns as Excel (16384), and the writer says them all
     if let Some(n) = v.strip_suffix('*').and_then(|s| s.trim().parse::<usize>().ok()) {
-        return (1..=8).contains(&n).then(|| vec![1.0; n]);
+        return (1..=MAX_COLS).contains(&n).then(|| vec![1.0; n]);
     }
     let mut out = Vec::new();
     for part in v.split(',') {
@@ -2548,8 +2549,11 @@ fn cols_of(line: &str) -> Option<Vec<f32>> {
         }
         out.push(p.parse::<f32>().ok().filter(|x| *x > 0.0)?);
     }
-    (!out.is_empty() && out.len() <= 16).then_some(out)
+    (!out.is_empty() && out.len() <= MAX_COLS).then_some(out)
 }
+
+/// The most columns a `[cols=]` line is read with: Excel's (XFD)
+const MAX_COLS: usize = 16384;
 
 /// `path[attrs]` を (path, attrs) に割る
 fn split_macro_target(s: &str) -> Option<(&str, &str)> {
@@ -3252,6 +3256,21 @@ mod tests {
         let texts: Vec<String> = t.rows[0][0].paragraphs.iter()
             .map(|p| p.runs.iter().map(|r| r.text.as_str()).collect()).collect();
         assert_eq!(texts, vec!["あ", "  い"]);
+    }
+
+    /// A sheet wider than 16 columns keeps its title and column line
+    /// (the resume form has 17)
+    #[test]
+    fn a_cols_line_of_many_columns_is_read() {
+        let cols = vec!["1"; 17].join(",");
+        let cells = vec!["|x"; 17].join(" ");
+        let doc = parse(&format!(".題\n[cols=\"{cols}\"]\n|===\n{cells}\n|===\n")).unwrap();
+        let t = doc.tables().next().unwrap();
+        assert_eq!(t.title.as_deref(), Some("題"));
+        assert_eq!(t.col_ratio.len(), 17);
+        assert_eq!(doc.blocks.len(), 1);
+        let doc = parse(".題\n[cols=\"20*\"]\n|===\n|x\n|===\n").unwrap();
+        assert_eq!(doc.tables().next().unwrap().col_ratio.len(), 20);
     }
 
     #[test]
