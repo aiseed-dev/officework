@@ -163,6 +163,9 @@ class FormView:
         x, y, w, h = f["rect"]
         multi = f["kind"] == "multiline"
         hint = {"date": "2026-09-24", "image": "写真のファイル名"}.get(f["kind"])
+        if f["kind"] == "choice":
+            # One of the options, as the form writes them
+            hint = "・".join(f.get("options", []))
         box = ft.TextField(value=f["value"], left=x * z, top=y * z, width=w * z,
                            height=None if multi else max(h * z, 32),
                            multiline=multi, min_lines=max(1, round(h / 16)) if multi else None,
