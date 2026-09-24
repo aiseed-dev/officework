@@ -140,7 +140,7 @@ Aggregation, joins, and filtering belong on the polars side — that's the divis
 
 === Filling a form book (a resume, say)
 
-A fixed form such as a resume is written as two books: the form, whose cells hold marks such as `{氏名}` where values go, and the data, with two-column (name, value) tables and tables with a header row. `sample/rirekisho` has an example, with two forms: the Ministry's (`履歴書-厚労省.form.adoc`) and the JIS layout (`履歴書-JIS.form.adoc`).
+A fixed form such as a resume is written as two books: the form, whose cells hold marks such as `{氏名}` where values go, and the data, with two-column (name, value) tables and tables with a header row. The aiai repository's `rirekisho` folder has an example, with two forms: the Ministry's (`履歴書-厚労省.form.adoc`) and the JIS layout (`履歴書-JIS.form.adoc`). The link:forms-manual.adoc[forms manual] has every mark and the data's shape.
 
 [source,python]
 ----

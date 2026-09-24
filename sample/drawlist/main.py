@@ -1,6 +1,9 @@
-"""The MHLW resume in the Flet component (draft).
+"""A form filled from data, shown in the Flet component.
 
-    flet run main.py
+    python main.py 履歴書-厚労省.form.adoc 履歴書.sheet.adoc
+
+The resume forms and their sample data are in the aiai repository's
+rirekisho folder.
 
 Click a field to edit it; Enter or clicking elsewhere puts the value in the
 data and draws the page again. "PDF に書き出す" saves the same pages as a
@@ -8,6 +11,7 @@ PDF next to this file.
 """
 import asyncio
 import pathlib
+import sys
 
 import flet as ft
 from officework import sheet
@@ -15,8 +19,8 @@ from officework import sheet
 from flet_form import FormView
 
 HERE = pathlib.Path(__file__).resolve().parent
-SAMPLE = HERE.parent / "rirekisho"
 ASSETS = HERE / "assets"
+FORM, DATA = (sys.argv[1:3] + [None, None])[:2]
 
 
 def main(page: ft.Page):
@@ -24,14 +28,14 @@ def main(page: ft.Page):
     page.scroll = ft.ScrollMode.AUTO
     page.window.width = 820
     page.window.height = 1000
-    form = sheet.Book.open(str(SAMPLE / "履歴書-厚労省.form.adoc"))
-    data = sheet.Book.open(str(SAMPLE / "履歴書.sheet.adoc"))
+    form = sheet.Book.open(FORM)
+    data = sheet.Book.open(DATA)
     status = ft.Text("")
     view = FormView(page, form, data, assets_dir=str(ASSETS), zoom=1.2,
                     on_change=lambda name, value: setattr(status, "value", f"{name} を直しました"))
 
     def to_pdf(e):
-        out = HERE / "履歴書.pdf"
+        out = HERE / (pathlib.Path(FORM).name.split(".")[0] + ".pdf")
         sheet.Book.fill(form, data).save(str(out))
         status.value = f"{out.name} に書き出しました"
         page.update()
@@ -46,6 +50,8 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
+    if not DATA:
+        sys.exit("様式とデータのファイルを渡してください: python main.py 様式.form.adoc データ.sheet.adoc")
     # The fonts are copied in here when the form is drawn; Flet serves only
     # an assets folder that is there when it starts
     (ASSETS / "fonts").mkdir(parents=True, exist_ok=True)

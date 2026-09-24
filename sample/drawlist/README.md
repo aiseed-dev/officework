@@ -7,7 +7,7 @@ officework のエンジンが組んだページを、描画一覧(`Book.draw_lis
 |---|---|
 | `pil_draw.py` | 描画一覧を Pillow で PNG に描きます。位置や大きさを計算せず、一覧のとおりに描きます |
 | `flet_form.py` | 描画一覧を Flet の Canvas に描き、欄をクリックして直せる部品です(下書き) |
-| `main.py` | 厚労省の履歴書を `flet_form.py` で表示する見本のアプリです |
+| `main.py` | 様式とデータを `flet_form.py` で表示する見本のアプリです |
 
 ## Pillow で描く
 
@@ -22,8 +22,10 @@ python pil_draw.py drawlist.json out.png 96
 ## Flet の部品
 
 ```
-flet run main.py
+python main.py 履歴書-厚労省.form.adoc 履歴書.sheet.adoc
 ```
+
+履歴書の様式と見本のデータは、aiai リポジトリの `rirekisho` フォルダーにあります。
 
 欄をクリックすると入力欄が出ます。Enter を押すか、ほかの所をクリックすると、
 値がデータに入り、ページを描き直します。「PDF に書き出す」は同じページを PDF に

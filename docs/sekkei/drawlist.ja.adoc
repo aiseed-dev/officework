@@ -80,7 +80,8 @@ xlsx の書き出し(`sheet::xlsx::write`)も同じブックの模型から書�
 == 履歴書のデータの形(2026-09-24 発注者)
 
 データは表のブック(`名前.sheet.adoc`)で書きます。見本は
-`sample/rirekisho/履歴書.sheet.adoc` です(架空の人です)。
+aiai リポジトリの `rirekisho/履歴書.sheet.adoc` です(架空の人です。2026-09-25 に
+officework の `sample/rirekisho` から aiai へ移しました)。
 
 * 題は `= 履歴書`。題はブックの題になります
 * `:様式:` に `厚労省` か `JIS` を書き、使う様式を選びます
@@ -132,8 +133,9 @@ xlsx の書き出し(`sheet::xlsx::write`)も同じブックの模型から書�
 * Python では `Book.fill(様式, データ)` で埋めたブックができ、`save` で xlsx、PDF、
   PNG に書き出せます。`fields()` は欄の一覧(シート、セル、印の名前)を返します
 
-厚労省の様式は `sample/rirekisho/履歴書-厚労省.form.adoc` と `.tmpl.adoc` です。
-`cargo run -p sheet --example rireki_form -- 元の.xlsx sample/rirekisho` で、
+厚労省の様式は aiai の `rirekisho/履歴書-厚労省.form.adoc` と `.tmpl.adoc` です。
+aiai の `python rirekisho/make_forms.py 元の.xlsx` で(2026-09-25 に Rust の例から
+Python に書き直して移しました。出る様式は 1 字も変わりません)、
 厚労省の xlsx から作り直せます。このスクリプトは次のことをします。
 
 * 書体を BIZ UD 明朝・ゴシックに置き換えます
