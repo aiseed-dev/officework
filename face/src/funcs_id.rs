@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 404 関数
+pub static TEXT: &[FnText] = &[  // 406 関数
     FnText { name: "ABS", args: "(angka)", desc: "Menampilkan nilai absolut dari angka, angka tanpa tanda tersebut", arg_desc: &["adalah angka riil yang nilai absolutnya Anda inginkan"] },
     FnText { name: "ACOS", args: "(angka)", desc: "Menampilkan kurva kosinus dari angka, dalam radian pada rentang 0 sampai Pi. Kurva kosinus adalah sudut yang kosinusnya berupa Angka", arg_desc: &["adalah kosinus dari sudut yang Anda inginkan dan harus dari -1 sampai 1"] },
     FnText { name: "ACOSH", args: "(angka)", desc: "Menampilkan kosinus hiperbolik invers dari angka", arg_desc: &["adalah angka riil yang sama dengan atau lebih besar dari 1"] },
@@ -376,6 +376,7 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "TOCOL", args: "(array, [abaikan], [pindai_menurut_kolom])", desc: "Mengembalikan array sebagai satu kolom.", arg_desc: &["Array atau referensi yang akan dikembalikan sebagai kolom.", "Apakah akan mengabaikan tipe nilai tertentu. Secara default, tidak ada nilai yang diabaikan.", "Memindai array menurut kolom. Secara default, array dipindai berdasarkan baris."] },
     FnText { name: "TODAY", args: "()", desc: "Menampilkan format tanggal sekarang sebagai tanggal.", arg_desc: &[] },
     FnText { name: "TOROW", args: "(array, [abaikan], [pindai_menurut_kolom])", desc: "Menghasilkan array sebagai satu baris.", arg_desc: &["Array atau referensi yang akan dihasilkan sebagai baris.", "Apakah akan mengabaikan tipe nilai tertentu. Secara default, tidak ada nilai yang diabaikan.", "Memindai array menurut kolom. Secara default, array dipindai berdasarkan baris."] },
+    FnText { name: "TO_ZONE", args: "(tanggal_waktu, zona_waktu)", desc: "Mengembalikan saat yang sama yang ditampilkan di zona waktu lain", arg_desc: &["adalah tanggal dan waktu yang dibuat dengan ZONED, atau nomor seri di zona waktu buku kerja", "adalah nama zona waktu IANA untuk menampilkan saat tersebut"] },
     FnText { name: "TRANSPOSE", args: "(array)", desc: "Mengonversi rentang sel vertikal ke rentang horizontal, atau sebaliknya", arg_desc: &["adalah rentang sel pada lembar kerja atau array nilai yang ingin Anda ubah urutannya"] },
     FnText { name: "TRIM", args: "(teks)", desc: "Menghapus semua spasi dari string teks kecuali untuk spasi tunggal di antara kata", arg_desc: &["adalah teks yang ingin Anda hapus spasinya"] },
     FnText { name: "TRIMMEAN", args: "(array, persen)", desc: "Menampilkan nilai rata-rata bagian interior dari perangkat nilai data", arg_desc: &["adalah rentang atau array nilai untuk dipotong dan dirata-rata", "adalah sejumlah kecil poin data untuk dikeluarkan dari bagian atas dan bawah perangkat data"] },
@@ -411,4 +412,5 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "YEAR", args: "(nomor_seri)", desc: "Mengembalikan tahun dari tanggal, bilangan bulat dalam rentang 1900 - 9999.", arg_desc: &["adalah angka dalam kode tanggal-waktu yang digunakan oleh Spreadsheet Editor"] },
     FnText { name: "YEARFRAC", args: "(tanggal_mulai, tanggal_selesai, [basis])", desc: "Menampilkan pecahan tahun yang mewakili angka seluruh hari antara tanggal_mulai dan tanggal_akhir", arg_desc: &["adalah angka tanggal seri yang mewakili tanggal mulai", "adalah angka tanggal seri yang mewakili tanggal akhir", "adalah tipe basis hitungan hari untuk digunakan"] },
     FnText { name: "YEN", args: "(angka, [desimal])", desc: "Mengonversi angka ke teks dengan simbol yen (¥) dan pemisah ribuan", arg_desc: &["adalah angka yang ingin Anda format", "adalah jumlah digit di sebelah kanan titik desimal. Jika dihilangkan, Desimal = 2"] },
+    FnText { name: "ZONED", args: "(tanggal_waktu, [zona_waktu])", desc: "Mengembalikan saat ketika jam di zona waktu yang ditentukan menunjukkan tanggal dan waktu tersebut. Sel menampilkan waktu setempat itu, dan pengurangan memakai selisih waktu yang sebenarnya", arg_desc: &["adalah waktu setempat, berupa teks seperti \"2026-10-01 10:00\" atau nomor seri", "adalah nama zona waktu IANA seperti \"Asia/Jakarta\". Jika dihilangkan, zona waktu buku kerja dipakai"] },
 ];

@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 404 関数
+pub static TEXT: &[FnText] = &[  // 406 関数
     FnText { name: "ABS", args: "(num)", desc: "Restituisce il valore assoluto di un numero, il numero privo di segno.", arg_desc: &["è il numero reale di cui si calcola il valore assoluto"] },
     FnText { name: "ACOS", args: "(num)", desc: "Restituisce l'arcocoseno di un numero, espresso in radianti da 0 a pi greco. L'arcocoseno è l'angolo il cui coseno è pari al numero.", arg_desc: &["è il coseno dell'angolo desiderato, un valore compreso tra -1 e 1"] },
     FnText { name: "ACOSH", args: "(num)", desc: "Restituisce l'inversa del coseno iperbolico di un numero.", arg_desc: &["è un numero reale maggiore o uguale ad 1"] },
@@ -376,6 +376,7 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "TOCOL", args: "(matrice, [ignora], [scan_by_column])", desc: "Restituisce la matrice come una colonna. ", arg_desc: &["Matrice o riferimento da restituire come colonna.", "Indica se ignorare determinati tipi di valori. Per impostazione predefinita, nessun valore viene ignorato.", "Analizzare la matrice in base alla colonna. Per impostazione predefinita, la matrice viene analizzata per riga."] },
     FnText { name: "TODAY", args: "()", desc: "Restituisce la data corrente nel formato data.", arg_desc: &[] },
     FnText { name: "TOROW", args: "(matrice, [ignora], [scan_by_column])", desc: "Restituisce la matrice come una riga.", arg_desc: &["La matrice o riferimento da restituire come riga.", "Indica se ignorare determinati tipi di valori. Per impostazione predefinita, nessun valore viene ignorato.", "Analizzare la matrice in base alla colonna. Per impostazione predefinita, la matrice viene analizzata per riga."] },
+    FnText { name: "TO_ZONE", args: "(data_ora, fuso_orario)", desc: "Restituisce lo stesso istante mostrato in un altro fuso orario", arg_desc: &["è una data e ora creata con ZONED, o un numero seriale nel fuso orario della cartella di lavoro", "è il nome del fuso orario IANA in cui mostrare l’istante"] },
     FnText { name: "TRANSPOSE", args: "(matrice)", desc: "Converte un intervallo verticale in un un intervallo orizzontale o viceversa.", arg_desc: &["è un intervallo di celle in un foglio di lavoro o una matrice di valori da trasporre"] },
     FnText { name: "TRIM", args: "(testo)", desc: "Rimuove gli spazi da una stringa di testo eccetto gli spazi singoli tra le parole.", arg_desc: &["è il testo da cui si desidera rimuovere gli spazi"] },
     FnText { name: "TRIMMEAN", args: "(matrice, percento)", desc: "Restituisce la media della parte interna di un set di valori di dati.", arg_desc: &["è la matrice o intervallo di valori da troncare e di cui si calcola la media", "è il numero di dati frazionario da escludere dall'inizio e dalla fine del set di dati"] },
@@ -411,4 +412,5 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "YEAR", args: "(num_seriale)", desc: "Restituisce l'anno di una data, un intero nell'intervallo compreso tra 1900 e 9999.", arg_desc: &["è un numero nel codice data-ora utilizzato da Spreadsheet Editor"] },
     FnText { name: "YEARFRAC", args: "(data_iniziale, data_finale, [base])", desc: "Restituisce la frazione dell'anno corrispondente al numero dei giorni complessivi compresi tra 'data_iniziale' e 'data_finale'.", arg_desc: &["è la data iniziale espressa in numero seriale", "è la data finale espressa in numero seriale", "è il tipo di base da utilizzare per il conteggio dei giorni"] },
     FnText { name: "YEN", args: "(num, [decimali])", desc: "Converte un numero in testo con il simbolo dello yen (¥) e i separatori delle migliaia.", arg_desc: &["è il numero da formattare", "è il numero di cifre a destra della virgola decimale. Se viene omesso, Decimali = 2"] },
+    FnText { name: "ZONED", args: "(data_ora, [fuso_orario])", desc: "Restituisce l’istante in cui l’orologio del fuso orario indicato mostra la data e l’ora indicate. La cella mostra quell’ora locale e la sottrazione usa il tempo reale tra gli istanti", arg_desc: &["è l’ora locale, come testo \"2026-10-01 10:00\" o come numero seriale", "è un nome di fuso orario IANA come \"Europe/Rome\". Se omesso, si usa il fuso orario della cartella di lavoro"] },
 ];

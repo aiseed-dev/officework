@@ -4179,7 +4179,8 @@ impl Calc {
                     "fn-datetime" => "TODAY NOW DATE DATEVALUE YEAR MONTH DAY WEEKDAY \
                                       TIME HOUR MINUTE SECOND EDATE EOMONTH DATEDIF \
                                       WORKDAY NETWORKDAYS DAYS DAYS360 YEARFRAC \
-                                      WEEKNUM ISOWEEKNUM(値は通し番号)",
+                                      WEEKNUM ISOWEEKNUM(値は通し番号) \
+                                      ZONED TO_ZONE(タイムゾーン付きの日時)",
                     "fn-lookup" => "VLOOKUP HLOOKUP XLOOKUP LOOKUP INDEX MATCH CHOOSE \
                                     ROW COLUMN ROWS COLUMNS OFFSET INDIRECT ADDRESS HYPERLINK \
                                     FILTER SORT UNIQUE TRANSPOSE(照合は完全一致。\

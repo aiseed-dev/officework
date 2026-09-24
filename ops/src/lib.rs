@@ -516,6 +516,10 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                         book::Value::Number(n) => J::N(n),
                         book::Value::Bool(x) => J::B(x),
                         book::Value::Empty => J::Null,
+                        // A moment with a zone goes as a marked string, the same
+                        // one Python cell functions return (`\x1d<unix>[<zone>]`);
+                        // officework.calc turns it into an aware datetime
+                        book::Value::Zoned { unix, zone, .. } => J::S(format!("\u{1d}{unix}[{zone}]")),
                         v => J::S(v.display()),
                     });
                 }

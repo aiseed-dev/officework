@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 404 関数
+pub static TEXT: &[FnText] = &[  // 406 関数
     FnText { name: "ABS", args: "(número)", desc: "Devuelve el valor absoluto de un número, es decir, un número sin signo", arg_desc: &["es el número real del que se desea obtener el valor absoluto"] },
     FnText { name: "ACOS", args: "(número)", desc: "Devuelve el arcoseno de un número, en radianes, dentro del rango de 0 a Pi. El arcoseno es el ángulo cuyo coseno es Número", arg_desc: &["es el coseno del ángulo deseado y debe estar entre -1 y 1"] },
     FnText { name: "ACOSH", args: "(número)", desc: "Devuelve el coseno hiperbólico inverso de un número", arg_desc: &["es un número real y debe ser mayor o igual que 1"] },
@@ -376,6 +376,7 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "TOCOL", args: "(matriz, [ignorar], [scan_by_column])", desc: "Devuelve la matriz como una columna.", arg_desc: &["Matriz o referencia que se devolverá como columna.", "Indica si se deben omitir determinados tipos de valores. De forma predeterminada, no se omite ningún valor.", "Examina la matriz por columna. De forma predeterminada, la matriz se examina por fila."] },
     FnText { name: "TODAY", args: "()", desc: "Devuelve la fecha actual con formato de fecha.", arg_desc: &[] },
     FnText { name: "TOROW", args: "(matriz, [ignorar], [scan_by_column])", desc: "Devuelve la matriz como una fila.", arg_desc: &["Matriz o referencia que se devolverá como fila.", "Indica si se deben omitir determinados tipos de valores. De forma predeterminada, no se omite ningún valor.", "Examina la matriz por columna. De forma predeterminada, la matriz se examina por fila."] },
+    FnText { name: "TO_ZONE", args: "(fecha_hora, zona_horaria)", desc: "Devuelve el mismo momento mostrado en otra zona horaria", arg_desc: &["es una fecha y hora creada con ZONED, o un número de serie en la zona horaria del libro", "es el nombre de zona horaria IANA en la que se muestra el momento"] },
     FnText { name: "TRANSPOSE", args: "(matriz)", desc: "Devuelve un rango vertical de celdas como un rango horizontal, o viceversa", arg_desc: &["es un rango de celdas en una hoja de cálculo o una matriz de valores que se desea transponer"] },
     FnText { name: "TRIM", args: "(texto)", desc: "Quita todos los espacios del texto excepto los espacios individuales entre palabras", arg_desc: &["es el texto del cual se desea quitar espacios"] },
     FnText { name: "TRIMMEAN", args: "(matriz, porcentaje)", desc: "Devuelve la media de la porción interior de un conjunto de valores de datos", arg_desc: &["es la matriz o rango de valores que desea acotar y calcular su media", "es el número fraccionario de puntos de datos que se excluyen del extremo superior e inferior del conjunto de datos"] },
@@ -411,4 +412,5 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "YEAR", args: "(núm_de_serie)", desc: "Devuelve el año, un número entero en el rango 1900-9999.", arg_desc: &["es un número en el código de fecha y hora usado por Spreadsheet Editor"] },
     FnText { name: "YEARFRAC", args: "(fecha_inicial, fecha_final, [base])", desc: "Devuelve la fracción del año que representa el número de días completos entre la fecha_inicial y la fecha_final", arg_desc: &["es el número de fecha de serie que representa la fecha inicial", "es el número de fecha de serie que representa la fecha final", "determina en qué tipo de base deben ser contados los días"] },
     FnText { name: "YEN", args: "(número, [núm_de_decimales])", desc: "Convierte un número en texto con el símbolo del yen (¥) y separadores de millares", arg_desc: &["es el número al que se desea dar formato", "es el número de dígitos a la derecha del separador decimal. Si se omite se establecerá: Decimales = 2"] },
+    FnText { name: "ZONED", args: "(fecha_hora, [zona_horaria])", desc: "Devuelve el momento en que el reloj de la zona horaria indicada muestra la fecha y hora indicadas. La celda muestra esa hora local, y la resta usa el tiempo real entre momentos", arg_desc: &["es la hora local, como texto \"2026-10-01 10:00\" o como número de serie", "es un nombre de zona horaria IANA como \"Europe/Madrid\". Si se omite, se usa la zona horaria del libro"] },
 ];

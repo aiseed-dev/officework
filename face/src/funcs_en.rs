@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 404 関数
+pub static TEXT: &[FnText] = &[  // 406 関数
     FnText { name: "ABS", args: "(number)", desc: "Returns the absolute value of a number, a number without its sign", arg_desc: &["is the real number for which you want the absolute value"] },
     FnText { name: "ACOS", args: "(number)", desc: "Returns the arccosine of a number, in radians in the range 0 to Pi. The arccosine is the angle whose cosine is Number", arg_desc: &["is the cosine of the angle you want and must be from -1 to 1"] },
     FnText { name: "ACOSH", args: "(number)", desc: "Returns the inverse hyperbolic cosine of a number", arg_desc: &["is any real number equal to or greater than 1"] },
@@ -376,6 +376,7 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "TOCOL", args: "(array, [ignore], [scan_by_column])", desc: "Returns the array as one column.", arg_desc: &["The array or reference to return as a column.", "Whether to ignore certain types of values. By default, no values are ignored.", "Scan the array by column. By default, the array is scanned by row."] },
     FnText { name: "TODAY", args: "()", desc: "Returns the current date formatted as a date.", arg_desc: &[] },
     FnText { name: "TOROW", args: "(array, [ignore], [scan_by_column])", desc: "Returns the array as one row.", arg_desc: &["The array or reference to return as a row.", "Whether to ignore certain types of values. By default, no values are ignored.", "Scan the array by column. By default, the array is scanned by row."] },
+    FnText { name: "TO_ZONE", args: "(date_time, time_zone)", desc: "Returns the same moment shown in another time zone", arg_desc: &["is a date and time made with ZONED, or a serial number in the workbook's time zone", "is the IANA time zone name to show the moment in"] },
     FnText { name: "TRANSPOSE", args: "(array)", desc: "Converts a vertical range of cells to a horizontal range, or vice versa", arg_desc: &["is a range of cells on a worksheet or an array of values that you want to transpose"] },
     FnText { name: "TRIM", args: "(text)", desc: "Removes all spaces from a text string except for single spaces between words", arg_desc: &["is the text from which you want spaces removed"] },
     FnText { name: "TRIMMEAN", args: "(array, percent)", desc: "Returns the mean of the interior portion of a set of data values", arg_desc: &["is the range or array of values to trim and average", "is the fractional number of data points to exclude from the top and bottom of the data set"] },
@@ -411,4 +412,5 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "YEAR", args: "(serial_number)", desc: "Returns the year of a date, an integer in the range 1900-9999.", arg_desc: &["is a number in the date-time code used by Spreadsheet Editor"] },
     FnText { name: "YEARFRAC", args: "(start_date, end_date, [basis])", desc: "Returns the year fraction representing the number of whole days between start_date and end_date", arg_desc: &["is a serial date number that represents the start date", "is a serial date number that represents the end date", "is the type of day count basis to use"] },
     FnText { name: "YEN", args: "(number, [decimals])", desc: "Formats a number as text with the yen sign (¥) and thousands separators", arg_desc: &["is the number you want to format", "is the number of digits to the right of the decimal point; the default is 2"] },
+    FnText { name: "ZONED", args: "(date_time, [time_zone])", desc: "Returns the moment at which the clock in the given time zone shows the given date and time. The cell shows that clock time, and subtraction uses the real time between moments", arg_desc: &["is the clock time, as text such as \"2026-10-01 10:00\" or as a serial number", "is an IANA time zone name such as \"Asia/Tokyo\". If omitted, the workbook's time zone is used"] },
 ];

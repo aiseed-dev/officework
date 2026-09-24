@@ -59,6 +59,16 @@
       "a": "(definition1; [definition2]; ...)",
       "d": "Attaches a formula to a table column. Every row of the column is filled by the formula, and the column is added to the table if it does not exist. \"name = formula\" defines a constant for this df",
       "ad": "is a definition. \"Table[Column] = formula\" defines a column; \"name = formula\" defines a constant for this df!are further definitions. Their order comes from the dependencies"
+    },
+    "ZONED": {
+      "a": "(date_time; [time_zone])",
+      "d": "Returns the moment at which the clock in the given time zone shows the given date and time. The cell shows that clock time, and subtraction uses the real time between moments",
+      "ad": "is the clock time, as text such as \"2026-10-01 10:00\" or as a serial number!is an IANA time zone name such as \"Asia/Tokyo\". If omitted, the workbook's time zone is used"
+    },
+    "TO_ZONE": {
+      "a": "(date_time; time_zone)",
+      "d": "Returns the same moment shown in another time zone",
+      "ad": "is a date and time made with ZONED, or a serial number in the workbook's time zone!is the IANA time zone name to show the moment in"
     }
   },
   "de": {
@@ -116,6 +126,16 @@
       "a": "(Definition1; [Definition2]; ...)",
       "d": "Weist einer Tabellenspalte eine Formel zu. Jede Zeile der Spalte wird mit der Formel gefüllt; fehlt die Spalte, wird sie der Tabelle hinzugefügt. „Name = Formel“ definiert eine Konstante für dieses df",
       "ad": "ist eine Definition. „Tabelle[Spalte] = Formel“ definiert eine Spalte, „Name = Formel“ eine Konstante für dieses df!sind weitere Definitionen. Ihre Reihenfolge ergibt sich aus den Abhängigkeiten"
+    },
+    "ZONED": {
+      "a": "(Datum_Uhrzeit; [Zeitzone])",
+      "d": "Gibt den Zeitpunkt zurück, zu dem die Uhr in der angegebenen Zeitzone das angegebene Datum und die Uhrzeit zeigt. Die Zelle zeigt diese Uhrzeit; beim Subtrahieren wird die tatsächliche Zeit zwischen den Zeitpunkten verwendet",
+      "ad": "ist die Uhrzeit als Text wie \"2026-10-01 10:00\" oder als fortlaufende Zahl!ist ein IANA-Zeitzonenname wie \"Europe/Berlin\". Ohne Angabe gilt die Zeitzone der Arbeitsmappe"
+    },
+    "TO_ZONE": {
+      "a": "(Datum_Uhrzeit; Zeitzone)",
+      "d": "Gibt denselben Zeitpunkt in einer anderen Zeitzone zurück",
+      "ad": "ist ein mit ZONED erzeugtes Datum mit Uhrzeit oder eine fortlaufende Zahl in der Zeitzone der Arbeitsmappe!ist der IANA-Zeitzonenname, in dem der Zeitpunkt gezeigt wird"
     }
   },
   "es": {
@@ -173,6 +193,16 @@
       "a": "(definición1; [definición2]; ...)",
       "d": "Asigna una fórmula a una columna de tabla. Cada fila de la columna se rellena con la fórmula y, si la columna no existe, se añade a la tabla. «nombre = fórmula» define una constante para este df",
       "ad": "es una definición. «Tabla[Columna] = fórmula» define una columna; «nombre = fórmula» define una constante para este df!son más definiciones. Su orden se deduce de las dependencias"
+    },
+    "ZONED": {
+      "a": "(fecha_hora; [zona_horaria])",
+      "d": "Devuelve el momento en que el reloj de la zona horaria indicada muestra la fecha y hora indicadas. La celda muestra esa hora local, y la resta usa el tiempo real entre momentos",
+      "ad": "es la hora local, como texto \"2026-10-01 10:00\" o como número de serie!es un nombre de zona horaria IANA como \"Europe/Madrid\". Si se omite, se usa la zona horaria del libro"
+    },
+    "TO_ZONE": {
+      "a": "(fecha_hora; zona_horaria)",
+      "d": "Devuelve el mismo momento mostrado en otra zona horaria",
+      "ad": "es una fecha y hora creada con ZONED, o un número de serie en la zona horaria del libro!es el nombre de zona horaria IANA en la que se muestra el momento"
     }
   },
   "fr": {
@@ -230,6 +260,16 @@
       "a": "(définition1; [définition2]; ...)",
       "d": "Attribue une formule à une colonne de tableau. Chaque ligne de la colonne est remplie par la formule ; si la colonne n'existe pas, elle est ajoutée au tableau. « nom = formule » définit une constante pour ce df",
       "ad": "est une définition. « Tableau[Colonne] = formule » définit une colonne ; « nom = formule » définit une constante pour ce df!sont d'autres définitions. Leur ordre découle des dépendances"
+    },
+    "ZONED": {
+      "a": "(date_heure; [fuseau_horaire])",
+      "d": "Renvoie l’instant où l’horloge du fuseau horaire indiqué affiche la date et l’heure indiquées. La cellule affiche cette heure locale, et la soustraction utilise le temps réel entre les instants",
+      "ad": "est l’heure locale, sous forme de texte comme \"2026-10-01 10:00\" ou de numéro de série!est un nom de fuseau horaire IANA comme \"Europe/Paris\". S’il est omis, le fuseau horaire du classeur est utilisé"
+    },
+    "TO_ZONE": {
+      "a": "(date_heure; fuseau_horaire)",
+      "d": "Renvoie le même instant affiché dans un autre fuseau horaire",
+      "ad": "est une date et heure créée avec ZONED, ou un numéro de série dans le fuseau horaire du classeur!est le nom de fuseau horaire IANA dans lequel afficher l’instant"
     }
   },
   "id": {
@@ -287,6 +327,16 @@
       "a": "(definisi1; [definisi2]; ...)",
       "d": "Mengaitkan rumus ke kolom tabel. Setiap baris kolom diisi dengan rumus itu, dan kolom ditambahkan ke tabel jika belum ada. \"nama = rumus\" mendefinisikan konstanta untuk df ini.",
       "ad": "Definisi. \"Tabel[Kolom] = rumus\" mendefinisikan kolom; \"nama = rumus\" mendefinisikan konstanta untuk df ini.!Definisi berikutnya. Urutannya ditentukan oleh ketergantungan."
+    },
+    "ZONED": {
+      "a": "(tanggal_waktu; [zona_waktu])",
+      "d": "Mengembalikan saat ketika jam di zona waktu yang ditentukan menunjukkan tanggal dan waktu tersebut. Sel menampilkan waktu setempat itu, dan pengurangan memakai selisih waktu yang sebenarnya",
+      "ad": "adalah waktu setempat, berupa teks seperti \"2026-10-01 10:00\" atau nomor seri!adalah nama zona waktu IANA seperti \"Asia/Jakarta\". Jika dihilangkan, zona waktu buku kerja dipakai"
+    },
+    "TO_ZONE": {
+      "a": "(tanggal_waktu; zona_waktu)",
+      "d": "Mengembalikan saat yang sama yang ditampilkan di zona waktu lain",
+      "ad": "adalah tanggal dan waktu yang dibuat dengan ZONED, atau nomor seri di zona waktu buku kerja!adalah nama zona waktu IANA untuk menampilkan saat tersebut"
     }
   },
   "it": {
@@ -374,6 +424,16 @@
       "a": "(definizione1; [definizione2]; ...)",
       "d": "Assegna una formula a una colonna di tabella. Ogni riga della colonna viene riempita con la formula e, se la colonna non esiste, viene aggiunta alla tabella. \"nome = formula\" definisce una costante per questo df",
       "ad": "è una definizione. \"Tabella[Colonna] = formula\" definisce una colonna; \"nome = formula\" definisce una costante per questo df!sono altre definizioni. Il loro ordine deriva dalle dipendenze"
+    },
+    "ZONED": {
+      "a": "(data_ora; [fuso_orario])",
+      "d": "Restituisce l’istante in cui l’orologio del fuso orario indicato mostra la data e l’ora indicate. La cella mostra quell’ora locale e la sottrazione usa il tempo reale tra gli istanti",
+      "ad": "è l’ora locale, come testo \"2026-10-01 10:00\" o come numero seriale!è un nome di fuso orario IANA come \"Europe/Rome\". Se omesso, si usa il fuso orario della cartella di lavoro"
+    },
+    "TO_ZONE": {
+      "a": "(data_ora; fuso_orario)",
+      "d": "Restituisce lo stesso istante mostrato in un altro fuso orario",
+      "ad": "è una data e ora creata con ZONED, o un numero seriale nel fuso orario della cartella di lavoro!è il nome del fuso orario IANA in cui mostrare l’istante"
     }
   },
   "ko": {
@@ -431,6 +491,16 @@
       "a": "(정의1; [정의2]; ...)",
       "d": "수식을 표의 열에 연결합니다. 열의 각 행을 그 수식으로 채우고, 열이 없으면 표에 추가합니다. \"이름 = 수식\"은 이 df 안에서 쓰는 상수를 정의합니다.",
       "ad": "정의입니다. \"표[열] = 수식\"은 열을, \"이름 = 수식\"은 이 df 안의 상수를 정의합니다.!이후의 정의입니다. 순서는 종속 관계로 정해집니다."
+    },
+    "ZONED": {
+      "a": "(날짜_시간, [표준_시간대])",
+      "d": "지정한 표준 시간대의 시계가 지정한 날짜와 시간을 가리키는 시점을 반환합니다. 셀에는 그 현지 시각이 표시되고, 뺄셈은 시점 사이의 실제 시간으로 계산합니다",
+      "ad": "은(는) 현지 시각으로, \"2026-10-01 10:00\" 같은 텍스트나 일련 번호입니다!은(는) \"Asia/Seoul\" 같은 IANA 표준 시간대 이름입니다. 생략하면 통합 문서의 표준 시간대를 사용합니다"
+    },
+    "TO_ZONE": {
+      "a": "(날짜_시간, 표준_시간대)",
+      "d": "같은 시점을 다른 표준 시간대로 표시하여 반환합니다",
+      "ad": "은(는) ZONED로 만든 날짜와 시간 또는 통합 문서 표준 시간대의 일련 번호입니다!은(는) 시점을 표시할 IANA 표준 시간대 이름입니다"
     }
   },
   "pt": {
@@ -488,6 +558,16 @@
       "a": "(definição1; [definição2]; ...)",
       "d": "Atribui uma fórmula a uma coluna de tabela. Cada linha da coluna é preenchida pela fórmula e, se a coluna não existir, é acrescentada à tabela. «nome = fórmula» define uma constante para este df",
       "ad": "é uma definição. «Tabela[Coluna] = fórmula» define uma coluna; «nome = fórmula» define uma constante para este df!são outras definições. A sua ordem resulta das dependências"
+    },
+    "ZONED": {
+      "a": "(data_hora; [fuso_horário])",
+      "d": "Devolve o momento em que o relógio do fuso horário indicado mostra a data e hora indicadas. A célula mostra essa hora local e a subtração usa o tempo real entre os momentos",
+      "ad": "é a hora local, como texto \"2026-10-01 10:00\" ou como número de série!é um nome de fuso horário IANA como \"Europe/Lisbon\". Se for omitido, é usado o fuso horário do livro"
+    },
+    "TO_ZONE": {
+      "a": "(data_hora; fuso_horário)",
+      "d": "Devolve o mesmo momento mostrado noutro fuso horário",
+      "ad": "é uma data e hora criada com ZONED, ou um número de série no fuso horário do livro!é o nome do fuso horário IANA em que o momento é mostrado"
     }
   },
   "pt-br": {
@@ -545,6 +625,16 @@
       "a": "(definição1; [definição2]; ...)",
       "d": "Atribui uma fórmula a uma coluna de tabela. Cada linha da coluna é preenchida pela fórmula e, se a coluna não existir, ela é adicionada à tabela. \"nome = fórmula\" define uma constante para este df",
       "ad": "é uma definição. \"Tabela[Coluna] = fórmula\" define uma coluna; \"nome = fórmula\" define uma constante para este df!são outras definições. A ordem delas vem das dependências"
+    },
+    "ZONED": {
+      "a": "(data_hora; [fuso_horário])",
+      "d": "Retorna o momento em que o relógio do fuso horário indicado mostra a data e hora indicadas. A célula mostra essa hora local e a subtração usa o tempo real entre os momentos",
+      "ad": "é a hora local, como texto \"2026-10-01 10:00\" ou como número de série!é um nome de fuso horário IANA como \"America/Sao_Paulo\". Se omitido, é usado o fuso horário da pasta de trabalho"
+    },
+    "TO_ZONE": {
+      "a": "(data_hora; fuso_horário)",
+      "d": "Retorna o mesmo momento mostrado em outro fuso horário",
+      "ad": "é uma data e hora criada com ZONED, ou um número de série no fuso horário da pasta de trabalho!é o nome do fuso horário IANA em que o momento é mostrado"
     }
   },
   "ru": {
@@ -602,6 +692,16 @@
       "a": "(определение1; [определение2]; ...)",
       "d": "Привязывает формулу к столбцу таблицы. Каждая строка столбца заполняется по формуле; если столбца нет, он добавляется в таблицу. «имя = формула» задаёт константу для этого df",
       "ad": "определение. «Таблица[Столбец] = формула» задаёт столбец, «имя = формула» — константу для этого df!следующие определения. Их порядок выводится из зависимостей"
+    },
+    "ZONED": {
+      "a": "(дата_время; [часовой_пояс])",
+      "d": "Возвращает момент, когда часы в указанном часовом поясе показывают указанные дату и время. Ячейка показывает это местное время, а вычитание использует реальное время между моментами",
+      "ad": "— местное время в виде текста, например \"2026-10-01 10:00\", или порядкового номера!— название часового пояса IANA, например \"Europe/Moscow\". Если не указано, используется часовой пояс книги"
+    },
+    "TO_ZONE": {
+      "a": "(дата_время; часовой_пояс)",
+      "d": "Возвращает тот же момент, показанный в другом часовом поясе",
+      "ad": "— дата и время, созданные с помощью ZONED, или порядковый номер в часовом поясе книги!— название часового пояса IANA, в котором показывается момент"
     }
   },
   "tr": {
@@ -659,6 +759,16 @@
       "a": "(tanım1; [tanım2]; ...)",
       "d": "Bir formülü tablo sütununa bağlar. Sütunun her satırı formülle doldurulur; sütun yoksa tabloya eklenir. \"ad = formül\" bu df içinde kullanılan bir sabit tanımlar.",
       "ad": "Bir tanımdır. \"Tablo[Sütun] = formül\" bir sütun, \"ad = formül\" bu df için bir sabit tanımlar.!Sonraki tanımlardır. Sıraları bağımlılıklardan belirlenir."
+    },
+    "ZONED": {
+      "a": "(tarih_saat; [saat_dilimi])",
+      "d": "Belirtilen saat dilimindeki saatin belirtilen tarih ve saati gösterdiği anı döndürür. Hücre bu yerel saati gösterir; çıkarma işlemi anlar arasındaki gerçek süreyi kullanır",
+      "ad": "yerel saattir; \"2026-10-01 10:00\" gibi bir metin ya da seri numarasıdır!\"Europe/Istanbul\" gibi bir IANA saat dilimi adıdır. Atlanırsa çalışma kitabının saat dilimi kullanılır"
+    },
+    "TO_ZONE": {
+      "a": "(tarih_saat; saat_dilimi)",
+      "d": "Aynı anı başka bir saat diliminde gösterilmiş olarak döndürür",
+      "ad": "ZONED ile oluşturulmuş bir tarih ve saat ya da çalışma kitabının saat dilimindeki bir seri numarasıdır!anın gösterileceği IANA saat dilimi adıdır"
     }
   },
   "vi": {
@@ -716,6 +826,16 @@
       "a": "(định_nghĩa1; [định_nghĩa2]; ...)",
       "d": "Gắn công thức vào một cột của bảng. Mỗi hàng của cột được điền bằng công thức đó; nếu cột chưa có thì được thêm vào bảng. \"tên = công thức\" định nghĩa một hằng số dùng trong df này.",
       "ad": "Một định nghĩa. \"Bảng[Cột] = công thức\" định nghĩa một cột; \"tên = công thức\" định nghĩa một hằng số cho df này.!Các định nghĩa tiếp theo. Thứ tự được xác định theo phụ thuộc."
+    },
+    "ZONED": {
+      "a": "(ngày_giờ; [múi_giờ])",
+      "d": "Trả về thời điểm mà đồng hồ ở múi giờ đã cho hiển thị ngày và giờ đã cho. Ô hiển thị giờ địa phương đó, và phép trừ dùng thời gian thực giữa các thời điểm",
+      "ad": "là giờ địa phương, dạng văn bản như \"2026-10-01 10:00\" hoặc số sê-ri!là tên múi giờ IANA như \"Asia/Ho_Chi_Minh\". Nếu bỏ qua, dùng múi giờ của sổ làm việc"
+    },
+    "TO_ZONE": {
+      "a": "(ngày_giờ; múi_giờ)",
+      "d": "Trả về cùng thời điểm được hiển thị ở một múi giờ khác",
+      "ad": "là ngày giờ tạo bằng ZONED, hoặc số sê-ri theo múi giờ của sổ làm việc!là tên múi giờ IANA dùng để hiển thị thời điểm"
     }
   },
   "zh": {
@@ -788,6 +908,16 @@
       "a": "(定义1; [定义2]; ...)",
       "d": "把公式附加到表的列上。列的每一行都用该公式填充；列不存在时添加到表中。“名称 = 公式”定义此 df 内使用的常量。",
       "ad": "定义。“表[列] = 公式”定义列，“名称 = 公式”定义此 df 内的常量。!后续的定义。顺序由依赖关系决定。"
+    },
+    "ZONED": {
+      "a": "(日期时间; [时区])",
+      "d": "返回指定时区的时钟显示指定日期和时间的那一时刻。单元格显示该当地时间,相减时使用两个时刻之间的实际时间",
+      "ad": "为当地时间,可以是 \"2026-10-01 10:00\" 这样的文本或序列号!为 IANA 时区名称,例如 \"Asia/Shanghai\"。省略时使用工作簿的时区"
+    },
+    "TO_ZONE": {
+      "a": "(日期时间; 时区)",
+      "d": "返回同一时刻在另一个时区的显示",
+      "ad": "为用 ZONED 创建的日期时间,或工作簿时区中的序列号!为显示该时刻所用的 IANA 时区名称"
     }
   },
   "zh-tw": {
@@ -845,6 +975,16 @@
       "a": "(定義1; [定義2]; ...)",
       "d": "把公式附加到表格的欄上。欄的每一列都以該公式填入；欄不存在時新增到表格。「名稱 = 公式」定義此 df 內使用的常數。",
       "ad": "定義。「表格[欄] = 公式」定義欄，「名稱 = 公式」定義此 df 內的常數。!後續的定義。順序由相依關係決定。"
+    },
+    "ZONED": {
+      "a": "(日期時間; [時區])",
+      "d": "傳回指定時區的時鐘顯示指定日期與時間的那一時刻。儲存格顯示該當地時間,相減時使用兩個時刻之間的實際時間",
+      "ad": "為當地時間,可以是 \"2026-10-01 10:00\" 這樣的文字或序列值!為 IANA 時區名稱,例如 \"Asia/Taipei\"。省略時使用活頁簿的時區"
+    },
+    "TO_ZONE": {
+      "a": "(日期時間; 時區)",
+      "d": "傳回同一時刻在另一個時區的顯示",
+      "ad": "為用 ZONED 建立的日期時間,或活頁簿時區中的序列值!為顯示該時刻所用的 IANA 時區名稱"
     }
   }
 }

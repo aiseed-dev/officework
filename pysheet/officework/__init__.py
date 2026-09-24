@@ -14,7 +14,8 @@ dropped silently). A pptx engine is planned in the same namespace
 (officework.slide).
 
 The **connection** is pure Python. It sends JSON one line at a time to a socket
-($XDG_RUNTIME_DIR/officework/officework.sock, or /tmp/officework-UID/ when the
+($XDG_RUNTIME_DIR/officework/officework.sock, or officework-UID/ in the system's
+temporary folder when the
 path would go over the 108-character limit of AF_UNIX). It stays **inside this
 machine** and never goes out to the network.
 
@@ -87,8 +88,15 @@ def sock_path(app):
         p = os.path.join(base, "officework", app + ".sock")
         if len(p.encode()) <= 90:
             return p
+    # The same rule as ops::sock_path in Rust: the system's temporary folder
+    # (TMPDIR, which is not /tmp on the Mac), and the uid from /proc/self,
+    # which is 0 where there is no /proc (the Mac). Using /tmp and the real
+    # uid missed the app on the Mac
+    import tempfile
+
+    uid = os.stat("/proc/self").st_uid if os.path.exists("/proc/self") else 0
     return os.path.join(
-        "/tmp", "officework-{}".format(os.getuid()), app + ".sock"
+        tempfile.gettempdir(), "officework-{}".format(uid), app + ".sock"
     )
 
 

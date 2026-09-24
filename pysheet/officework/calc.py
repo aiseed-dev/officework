@@ -117,7 +117,7 @@ class Range:
         return Options(self, convert=convert, **kw)
 
     def _get(self):
-        return _call("get", **self._kw())["values"]
+        return [[_moment(v) for v in row] for row in _call("get", **self._kw())["values"]]
 
     def _plain(self, grid):
         # 1×1 はそのまま、1行/1列は1次元、他は2次元(xlwings と同じ)
@@ -635,6 +635,18 @@ class Range:
 
     def __repr__(self):
         return "<officework.calc Range {}>".format(self._a1())
+
+
+def _moment(v):
+    # A moment with a time zone comes as "\x1d<unix seconds>[<IANA zone>]" and
+    # becomes an aware datetime, as officework.sheet returns it
+    if isinstance(v, str) and v.startswith("\x1d") and v.endswith("]") and "[" in v:
+        import datetime
+        from zoneinfo import ZoneInfo
+
+        unix, zone = v[1:-1].split("[", 1)
+        return datetime.datetime.fromtimestamp(float(unix), ZoneInfo(zone))
+    return v
 
 
 def _default_frame():

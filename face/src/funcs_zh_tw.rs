@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 404 関数
+pub static TEXT: &[FnText] = &[  // 406 関数
     FnText { name: "ABS", args: "(實數)", desc: "傳回一數字的絕對值，亦即無正負號的數字", arg_desc: &["要取絕對值的實數"] },
     FnText { name: "ACOS", args: "(餘弦值)", desc: "傳回一數值的反餘弦值，傳回值以弧度表示，介於 0 和 Pi 之間。反餘弦值是其餘弦值為 Number 的角度。", arg_desc: &["餘弦值，必須介於 -1 和 1 之間"] },
     FnText { name: "ACOSH", args: "(數值)", desc: "傳回一數值的反雙曲線餘弦值", arg_desc: &["大於或等於 1 的任意實數"] },
@@ -376,6 +376,7 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "TOCOL", args: "(陣列, [忽略], [依欄掃描])", desc: " 以單欄位傳回陣列。", arg_desc: &["要以一欄傳回的陣列或參照。", "是否忽略某些類型的值。預設不忽略任何值。", "依欄掃描陣列。預設依列掃描。"] },
     FnText { name: "TODAY", args: "()", desc: "傳回格式為日期的目前日期。", arg_desc: &[] },
     FnText { name: "TOROW", args: "(陣列, [忽略], [依欄掃描])", desc: "以單列傳回陣列。", arg_desc: &["要以一列傳回的陣列或參照。", "是否忽略某些類型的值。預設不忽略任何值。", "依欄掃描陣列。預設依列掃描。"] },
+    FnText { name: "TO_ZONE", args: "(日期時間, 時區)", desc: "傳回同一時刻在另一個時區的顯示", arg_desc: &["為用 ZONED 建立的日期時間,或活頁簿時區中的序列值", "為顯示該時刻所用的 IANA 時區名稱"] },
     FnText { name: "TRANSPOSE", args: "(陣列)", desc: "將垂直的儲存格範圍轉為水平範圍或反向操作。", arg_desc: &["工作表中的儲存格範圍，或是要轉置的值陣列"] },
     FnText { name: "TRIM", args: "(文字)", desc: "刪除文字字串中多餘的空格 (字與字之間所保留的單一空白將不會被刪除)。", arg_desc: &["要刪除多餘空格的字串"] },
     FnText { name: "TRIMMEAN", args: "(陣列, 百分比)", desc: "傳回截去某一百分比之外的極端值後，所求得的平均數", arg_desc: &["要修剪後求平均的值範圍或陣列", "要從資料集頂端和底端排除的資料點比例"] },
@@ -411,4 +412,5 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "YEAR", args: "(序列值)", desc: "傳回日期的年份部分，為介於 1900 到 9999 之間的整數。", arg_desc: &["試算表編輯器用來計算日期與時間的日期時間代碼"] },
     FnText { name: "YEARFRAC", args: "(起始日期, 結束日期, [日計基準])", desc: "傳回代表在 start_date 和 end_date 之間所有日期數字的年份分數", arg_desc: &["代表起始日期的日期", "代表結束日期的日期", "是所採用的日計基準類型"] },
     FnText { name: "YEN", args: "(數值, [小數位數])", desc: "依照日圓符號 (¥) 和千分位分隔符號，將數字轉換為文字", arg_desc: &["要設定格式的數值", "指定小數點右邊的位數。若省略，小數位數 = 2"] },
+    FnText { name: "ZONED", args: "(日期時間, [時區])", desc: "傳回指定時區的時鐘顯示指定日期與時間的那一時刻。儲存格顯示該當地時間,相減時使用兩個時刻之間的實際時間", arg_desc: &["為當地時間,可以是 \"2026-10-01 10:00\" 這樣的文字或序列值", "為 IANA 時區名稱,例如 \"Asia/Taipei\"。省略時使用活頁簿的時區"] },
 ];

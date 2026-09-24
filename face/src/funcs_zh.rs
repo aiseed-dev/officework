@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 404 関数
+pub static TEXT: &[FnText] = &[  // 406 関数
     FnText { name: "ABS", args: "(实数)", desc: "返回给定数值的绝对值，即不带符号的数值", arg_desc: &["要对其求绝对值的实数"] },
     FnText { name: "ACOS", args: "(余弦值)", desc: "返回一个弧度的反余弦。弧度值在 0 到 Pi 之间。反余弦值是指余弦值为 数字 的角度", arg_desc: &["余弦值，必须在 -1 和 1 之间"] },
     FnText { name: "ACOSH", args: "(实数)", desc: "返回反双曲余弦值", arg_desc: &["大于或等于 1 的任何实数"] },
@@ -376,6 +376,7 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "TOCOL", args: "(数组, [忽略], [按行扫描])", desc: "以一列形式返回数组。", arg_desc: &["作为列返回的数组或引用。", "是否忽略某些类型的值。默认情况下，不会忽略任何值。", "按列扫描数组。默认情况下，按行扫描数组。"] },
     FnText { name: "TODAY", args: "()", desc: "返回日期格式的的当前日期。", arg_desc: &[] },
     FnText { name: "TOROW", args: "(数组, [忽略], [按列扫描])", desc: "以一行形式返回数组。", arg_desc: &["作为行返回的数组或引用。", "是否忽略某些类型的值。默认情况下，不会忽略任何值。", "按列扫描数组。默认情况下，按行扫描数组。"] },
+    FnText { name: "TO_ZONE", args: "(日期时间, 时区)", desc: "返回同一时刻在另一个时区的显示", arg_desc: &["为用 ZONED 创建的日期时间,或工作簿时区中的序列号", "为显示该时刻所用的 IANA 时区名称"] },
     FnText { name: "TRANSPOSE", args: "(数组)", desc: "转置单元格区域", arg_desc: &["工作表中的单元格区域或数组"] },
     FnText { name: "TRIM", args: "(文本)", desc: "删除字符串中多余的空格，但会在英文字符串中保留一个作为词与词之间分隔的空格", arg_desc: &["要删除空格的字符串"] },
     FnText { name: "TRIMMEAN", args: "(数组, 百分比)", desc: "返回一组数据的修剪平均值", arg_desc: &["用于截去极值后求取均值的数值数组或数值区域", "为一分数，用于指定数据点集中所要消除的极值比例"] },
@@ -411,4 +412,5 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "YEAR", args: "(序列号)", desc: "返回日期的年份值，一个 1900-9999 之间的数字。", arg_desc: &["电子表格编辑器进行日期及时间计算的日期-时间代码"] },
     FnText { name: "YEARFRAC", args: "(起始日期, 结束日期, [日算类型])", desc: "返回一个年分数，表示起始日期和结束日期之间的整天天数", arg_desc: &["是一串代表起始日期的日期", "是一串代表结束日期的日期", "是所采用的日算类型"] },
     FnText { name: "YEN", args: "(数字, [小数位数])", desc: "用日元符号(¥)和千位分隔符将数值转换成文本", arg_desc: &["要设置格式的数值", "指定小数点右边的位数。如果忽略，小数位数 = 2"] },
+    FnText { name: "ZONED", args: "(日期时间, [时区])", desc: "返回指定时区的时钟显示指定日期和时间的那一时刻。单元格显示该当地时间,相减时使用两个时刻之间的实际时间", arg_desc: &["为当地时间,可以是 \"2026-10-01 10:00\" 这样的文本或序列号", "为 IANA 时区名称,例如 \"Asia/Shanghai\"。省略时使用工作簿的时区"] },
 ];

@@ -126,10 +126,14 @@ Excel では、VBA でカスタム関数を作れます。officework ではフ�
 * Python の関数との受け渡しでは、タイムゾーン付きの `datetime`
   (`zoneinfo.ZoneInfo`)になります。Python の関数がタイムゾーン付きの
   `datetime` を返すと、セルにはタイムゾーン付きの日時が入ります。
-  `officework.sheet` でセルを読んだときも同じです。
+  `officework.sheet` でセルを読んだときも、`officework.calc` で動いている
+  アプリから読んだときも同じです(API の JSON では `\x1d<UNIX 秒>[<名前>]`
+  の印付きの文字で渡します)。
+* 「関数の挿入」の一覧と説明には、ZONED と TO_ZONE を「日付/時刻」の分類で
+  載せました。説明は calc/gen_funcs.py の HAND_JA と calc/funcs_hand.json
+  にあり、15 言語あります。
 
 == まだ決めていないこと
 
 * Polars の列に渡すときの型(`Datetime` の列はタイムゾーンを 1 つしか
   持てないので、タイムゾーンの混ざった列をどうするか)。
-* 関数の説明の一覧(数式の画面の説明)に、カスタム関数を載せること。

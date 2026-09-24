@@ -47,7 +47,7 @@ impl FnInfo {
     }
 }
 
-pub static FUNCS: &[FnInfo] = &[  // 404 関数
+pub static FUNCS: &[FnInfo] = &[  // 406 関数
     FnInfo { name: "ABS", group: "math_trig", args_ja: "(数値)", desc_ja: "数値から符号 (+、-) を除いた絶対値を返します。", arg_desc_ja: &["には絶対値を求める実数を指定します。"] },
     FnInfo { name: "ACOS", group: "math_trig", args_ja: "(数値)", desc_ja: "数値のアークコサインを返します。戻り値の角度は、0 (ゼロ)  ～ PI の範囲のラジアンとなります。アークコサインとは、そのコサインが数値であるような角度のことです。", arg_desc_ja: &["には求める角度のコサインの値を -1 ～ 1 の範囲で指定します。"] },
     FnInfo { name: "ACOSH", group: "math_trig", args_ja: "(数値)", desc_ja: "数値の双曲線逆余弦を返します。", arg_desc_ja: &["には 1 以上の実数を指定します。"] },
@@ -417,6 +417,7 @@ pub static FUNCS: &[FnInfo] = &[  // 404 関数
     FnInfo { name: "TOCOL", group: "lookup_reference", args_ja: "(array, [ignore], [scan_by_column])", desc_ja: "配列を 1 つの列として返します。", arg_desc_ja: &["列として返す配列または参照。", "特定の種類の値を無視するかどうか。既定では、無視される値はありません。", "列で配列をスキャンします。既定では、配列は行ごとにスキャンされます。"] },
     FnInfo { name: "TODAY", group: "date_time", args_ja: "()", desc_ja: "現在の日付を表すシリアル値 (日付や時刻の計算で使用されるコード) を返します。", arg_desc_ja: &[] },
     FnInfo { name: "TOROW", group: "lookup_reference", args_ja: "(array, [ignore], [scan_by_column])", desc_ja: "配列を 1 行として返します。", arg_desc_ja: &["行として返す配列または参照。", "特定の種類の値を無視するかどうか。既定では、無視される値はありません。", "列で配列をスキャンします。既定では、配列は行ごとにスキャンされます。"] },
+    FnInfo { name: "TO_ZONE", group: "date_time", args_ja: "(日時, タイムゾーン)", desc_ja: "同じ時点を、別のタイムゾーンの時刻で表示して返します。", arg_desc_ja: &["ZONED で作った日時か、ブックのタイムゾーンのシリアル値を指定します", "表示に使う IANA のタイムゾーンの名前"] },
     FnInfo { name: "TRANSPOSE", group: "lookup_reference", args_ja: "(配列)", desc_ja: "配列の縦方向と横方向のセル範囲の変換を行います。", arg_desc_ja: &["には行列変換を行うワークシートのセル範囲または値の配列を指定します。"] },
     FnInfo { name: "TRIM", group: "text_functions", args_ja: "(文字列)", desc_ja: "単語間のスペースを 1 つずつ残して、不要なスペースをすべて削除します。", arg_desc_ja: &["には余分なスペースを削除する文字列を指定します。"] },
     FnInfo { name: "TRIMMEAN", group: "statistics", args_ja: "(配列, 割合)", desc_ja: "データ全体の上限と下限から一定の割合のデータを切り落とし、残りの項の平均値を返します。", arg_desc_ja: &["には関数の対象となる数値を含む配列、または範囲を指定します。", "には平均値の計算から排除するデータの割合を小数で指定します。"] },
@@ -452,4 +453,5 @@ pub static FUNCS: &[FnInfo] = &[  // 404 関数
     FnInfo { name: "YEAR", group: "date_time", args_ja: "(シリアル値)", desc_ja: "年を 1900 ～ 9999 の範囲の整数で返します。", arg_desc_ja: &["には Spreadsheet Editor で使用される日付/時刻コードを指定します。"] },
     FnInfo { name: "YEARFRAC", group: "date_time", args_ja: "(開始日, 終了日, [基準])", desc_ja: "開始日から終了日までの間の日数を、年を単位とする数値で表します。", arg_desc_ja: &["には、対象となる期間の初日となる日付のシリアル値を指定します。", "には、対象となる期間の最終日となる日付のシリアル値を指定します。", "には、日数の計算方法を数値で指定します。"] },
     FnInfo { name: "YEN", group: "text_functions", args_ja: "(数値, [桁数])", desc_ja: "数値を円記号(¥)と桁区切りを付けた文字列にします。", arg_desc_ja: &[] },
+    FnInfo { name: "ZONED", group: "date_time", args_ja: "(日時, [タイムゾーン])", desc_ja: "指定したタイムゾーンの時計が、指定した日時を指す時点を返します。セルにはその場所の時刻が表示され、引き算では時点の間の実際の時間を計算します。", arg_desc_ja: &["その場所の時刻。\"2026-10-01 10:00\" のような文字列か、シリアル値を指定します", "IANA のタイムゾーンの名前(例 \"Asia/Tokyo\")。省略すると、ブックのタイムゾーンを使います"] },
 ];

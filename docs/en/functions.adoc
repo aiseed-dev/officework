@@ -329,12 +329,14 @@ Arguments in `[ ]` can be omitted.
 |`TIME(hour, minute, second)` |Converts hours, minutes and seconds given as numbers to a serial number, formatted with a time format.
 |`TIMEVALUE(time_text)` |Converts a text time to a serial number for a time, a number from 0 (12:00:00 AM) to 0.999988426 (11:59:59 PM). Format the number with a time format after entering the formula.
 |`TODAY()` |Returns the current date formatted as a date.
+|`TO_ZONE(date_time, time_zone)` |Returns the same moment shown in another time zone.
 |`WEEKDAY(serial_number, [return_type])` |Returns a number from 1 to 7 identifying the day of the week of a date.
 |`WEEKNUM(serial_number, [return_type])` |Returns the week number in the year.
 |`WORKDAY(start_date, days, [holidays])` |Returns the serial number of the date before or after a specified number of workdays.
 |`WORKDAY.INTL(start_date, days, [weekend], [holidays])` |Returns the serial number of the date before or after a specified number of workdays with custom weekend parameters.
 |`YEAR(serial_number)` |Returns the year of a date, an integer in the range 1900-9999.
 |`YEARFRAC(start_date, end_date, [basis])` |Returns the year fraction representing the number of whole days between start_date and end_date.
+|`ZONED(date_time, [time_zone])` |Returns the moment at which the clock in the given time zone shows the given date and time. The cell shows that clock time, and subtraction uses the real time between moments.
 |===
 
 == Lookup and reference

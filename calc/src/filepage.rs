@@ -595,6 +595,9 @@ impl Calc {
             "set-ui-minus" => self.run_cmd("ui-smaller", cx),
             "set-ui-plus" => self.run_cmd("ui-bigger", cx),
             "set-username" => {
+                // Back to the sheet first, as for the time zone below: the
+                // combined app hides the calc view while it shows the file page
+                self.tab = self.prev_tab.max(1);
                 let cur = ui::settings::get("user_name").unwrap_or_default();
                 self.prompt = Some(("user-name", Editor::new(&cur)));
             }

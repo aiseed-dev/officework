@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 404 関数
+pub static TEXT: &[FnText] = &[  // 406 関数
     FnText { name: "ABS", args: "(núm)", desc: "Devolve o valor absoluto de um número, um número sem o respetivo sinal", arg_desc: &["é o número real para o qual deseja obter o valor absoluto"] },
     FnText { name: "ACOS", args: "(núm)", desc: "Devolve o arco de cosseno de um número, em radianos, no intervalo de 0 a Pi. O arco de cosseno é o ângulo cujo cosseno é Núm", arg_desc: &["é o cosseno do ângulo desejado e deve estar entre -1 e 1"] },
     FnText { name: "ACOSH", args: "(núm)", desc: "Devolve o cosseno hiperbólico inverso de um número", arg_desc: &["é qualquer número real igual ou maior que 1"] },
@@ -376,6 +376,7 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "TOCOL", args: "(matriz, [ignorar], [analisar_por_coluna])", desc: "Devolve a matriz como uma coluna.", arg_desc: &["A matriz ou referência a devolver como coluna.", "Indica se certos tipos de valores devem ser ignorados. Por predefinição, não são ignorados valores.", "Analisar a matriz por coluna. Por predefinição, a matriz é analisada por linha."] },
     FnText { name: "TODAY", args: "()", desc: "Devolve a data atual formatada como uma data.", arg_desc: &[] },
     FnText { name: "TOROW", args: "(array, [ignore], [scan_by_column])", desc: "Devolve a matriz como uma linha.", arg_desc: &["A matriz ou referência a devolver como linha.", "Indica se certos tipos de valores devem ser ignorados. Por predefinição, não são ignorados valores.", "Analisar a matriz por coluna. Por predefinição, a matriz é analisada por linha."] },
+    FnText { name: "TO_ZONE", args: "(data_hora, fuso_horário)", desc: "Devolve o mesmo momento mostrado noutro fuso horário", arg_desc: &["é uma data e hora criada com ZONED, ou um número de série no fuso horário do livro", "é o nome do fuso horário IANA em que o momento é mostrado"] },
     FnText { name: "TRANSPOSE", args: "(matriz)", desc: "Converte um intervalo vertical de células para um intervalo horizontal, ou vice-versa", arg_desc: &["é um intervalo de células na folha de cálculo ou uma matriz de valores que deseja transpor"] },
     FnText { name: "TRIM", args: "(texto)", desc: "Remove todos os espaços de uma cadeia de texto, à exceção de espaços simples entre palavras", arg_desc: &["é o texto cujos espaços deseja que sejam removidos"] },
     FnText { name: "TRIMMEAN", args: "(matriz, percentagem)", desc: "Devolve a média da porção interior de um conjunto de valores de dados", arg_desc: &["é a matriz ou intervalo de valores que deseja compactar e calcular a média", "é o número fracionário de ponto de dados a ser excluído do topo e da base do conjunto de dados"] },
@@ -411,4 +412,5 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "YEAR", args: "(núm_série)", desc: "Devolve o ano de uma data, um número inteiro do intervalo 1900-9999.", arg_desc: &["é um número no código de data e hora utilizado pelo Spreadsheet Editor"] },
     FnText { name: "YEARFRAC", args: "(data_inicial, data_final, [base])", desc: "Devolve a fração do ano que representa o número de dias entre data_inicial e data_final", arg_desc: &["é o número de série de data que representa a data inicial", "é o número de série de data que representa a data final", "é o tipo de base de contagem diária a utilizar"] },
     FnText { name: "YEN", args: "(núm, [decimais])", desc: "Converte um número em texto, com o símbolo do iene (¥) e separadores de milhares", arg_desc: &["é o número que deseja formatar", "é o número de algarismos à direita da vírgula decimal. Se omisso, Decimais = 2"] },
+    FnText { name: "ZONED", args: "(data_hora, [fuso_horário])", desc: "Devolve o momento em que o relógio do fuso horário indicado mostra a data e hora indicadas. A célula mostra essa hora local e a subtração usa o tempo real entre os momentos", arg_desc: &["é a hora local, como texto \"2026-10-01 10:00\" ou como número de série", "é um nome de fuso horário IANA como \"Europe/Lisbon\". Se for omitido, é usado o fuso horário do livro"] },
 ];

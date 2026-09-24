@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 404 関数
+pub static TEXT: &[FnText] = &[  // 406 関数
     FnText { name: "ABS", args: "(núm)", desc: "Retorna o valor absoluto de um número, um número sem sinal", arg_desc: &["é o número real cujo valor absoluto se deseja obter"] },
     FnText { name: "ACOS", args: "(núm)", desc: "Retorna o arco cosseno de um número, em radianos no intervalo de 0 a Pi. O arco cosseno é o ângulo cujo cosseno é número", arg_desc: &["é o cosseno do ângulo desejado e deve estar entre -1 e 1"] },
     FnText { name: "ACOSH", args: "(núm)", desc: "Retorna o cosseno hiperbólico inverso de um número", arg_desc: &["é qualquer número real igual ou maior do que 1"] },
@@ -376,6 +376,7 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "TOCOL", args: "(matriz, [ignorar], [scan_by_column])", desc: "Retorna a matriz como uma coluna.", arg_desc: &["A matriz ou referência a ser retornada como uma coluna.", "Se deseja ignorar determinados tipos de valores. Por padrão, nenhum valor é ignorado.", "Examinar a matriz por coluna. Por padrão, a matriz é verificada por linha."] },
     FnText { name: "TODAY", args: "()", desc: "Retorna a data de hoje formatada como uma data.", arg_desc: &[] },
     FnText { name: "TOROW", args: "(matriz, [ignorar], [verificar_por_coluna])", desc: "Retorna a matriz como uma linha.", arg_desc: &["A matriz ou referência a ser retornada como uma linha.", "Se deve ignorar certos tipos de valores. Por padrão, nenhum valor é ignorado.", "Verifique a matriz por coluna. Por padrão, a matriz é verificada por linha."] },
+    FnText { name: "TO_ZONE", args: "(data_hora, fuso_horário)", desc: "Retorna o mesmo momento mostrado em outro fuso horário", arg_desc: &["é uma data e hora criada com ZONED, ou um número de série no fuso horário da pasta de trabalho", "é o nome do fuso horário IANA em que o momento é mostrado"] },
     FnText { name: "TRANSPOSE", args: "(matriz)", desc: "Converte um intervalo de células vertical em um intervalo horizontal e vice-versa", arg_desc: &["é um intervalo de células em uma planilha ou matriz de valores que se deseja transpor"] },
     FnText { name: "TRIM", args: "(texto)", desc: "Remove os espaços de uma cadeia de texto, com exceção dos espaços simples entre palavras", arg_desc: &["é o texto de onde você deseja que os espaços sejam removidos"] },
     FnText { name: "TRIMMEAN", args: "(matriz, porcentagem)", desc: "Retorna a média da parte interior de um conjunto de valores de dados", arg_desc: &["é o intervalo ou matriz de valores a se calcular a média desprezando os desvios", "é o número fracionário de ponto de dados a ser excluído do início e fim do conjunto de dados"] },
@@ -411,4 +412,5 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "YEAR", args: "(núm_série)", desc: "Retorna o ano de uma data, um número inteiro no intervalo de 1900 a 9999.", arg_desc: &["é um número no código data-hora usado pelo Spreadsheet Editor"] },
     FnText { name: "YEARFRAC", args: "(data_inicial, data_final, [base])", desc: "Retorna a fração do ano que representa o número de dias inteiros entre data_inicial e data_final", arg_desc: &["é o número serial de data que representa a data inicial", "é o número serial de data que representa a data final", "é o tipo de base de contagem diária a ser utilizada"] },
     FnText { name: "YEN", args: "(núm, [decimais])", desc: "Converte um número em texto, com o símbolo do iene (¥) e separadores de milhares", arg_desc: &["é o número que se deseja formatar", "é o número de dígitos à direita da vírgula decimal. Quando não especificado, Decimais = 2"] },
+    FnText { name: "ZONED", args: "(data_hora, [fuso_horário])", desc: "Retorna o momento em que o relógio do fuso horário indicado mostra a data e hora indicadas. A célula mostra essa hora local e a subtração usa o tempo real entre os momentos", arg_desc: &["é a hora local, como texto \"2026-10-01 10:00\" ou como número de série", "é um nome de fuso horário IANA como \"America/Sao_Paulo\". Se omitido, é usado o fuso horário da pasta de trabalho"] },
 ];

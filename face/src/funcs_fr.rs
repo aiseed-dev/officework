@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 404 関数
+pub static TEXT: &[FnText] = &[  // 406 関数
     FnText { name: "ABS", args: "(nombre)", desc: "Renvoie la valeur absolue d'un nombre, un nombre sans son signe.", arg_desc: &["est le nombre réel dont vous voulez obtenir la valeur absolue"] },
     FnText { name: "ACOS", args: "(nombre)", desc: "Renvoie l'arccosinus d'un nombre exprimé en radians, de 0 à pi. L'arccosinus est l'angle dont le cosinus est ce nombre", arg_desc: &["est le cosinus de l'angle que vous voulez obtenir et doit être compris entre -1 et 1"] },
     FnText { name: "ACOSH", args: "(nombre)", desc: "Renvoie le cosinus hyperbolique inverse d'un nombre", arg_desc: &["est un nombre réel supérieur ou égal à 1"] },
@@ -376,6 +376,7 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "TOCOL", args: "(matrice, [ignorer], [analyser_par_colonne])", desc: "Renvoie le tableau sous la forme d’une colonne.", arg_desc: &["Le tableau ou référence à renvoyer sous forme de colonne.", "Indique s’il faut ignorer certains types de valeurs. Par défaut, aucune valeur n’est ignorée.", "Analyse le tableau par colonne. Par défaut, le tableau est analysé par ligne."] },
     FnText { name: "TODAY", args: "()", desc: "Renvoie la date du jour au format de date.", arg_desc: &[] },
     FnText { name: "TOROW", args: "(matrice, [ignorer], [analyser_par_colonne])", desc: "Retourne le tableau sous la forme d’une ligne.", arg_desc: &["Tableau ou référence à retourner en tant que ligne.", "Indique s’il faut ignorer certains types de valeurs. Par défaut, aucune valeur n’est ignorée.", "Analyse le tableau par colonne. Par défaut, le tableau est analysé par ligne."] },
+    FnText { name: "TO_ZONE", args: "(date_heure, fuseau_horaire)", desc: "Renvoie le même instant affiché dans un autre fuseau horaire", arg_desc: &["est une date et heure créée avec ZONED, ou un numéro de série dans le fuseau horaire du classeur", "est le nom de fuseau horaire IANA dans lequel afficher l’instant"] },
     FnText { name: "TRANSPOSE", args: "(tableau)", desc: "Change une plage de cellules verticale en plage horizontale, et vice-versa", arg_desc: &["est un tableau dans une feuille de calcul ou une feuille macro que vous voulez transposer"] },
     FnText { name: "TRIM", args: "(texte)", desc: "Supprime tous les espaces d'une chaîne de caractères, sauf les espaces simples entre les mots", arg_desc: &["est le texte dont vous voulez supprimer les espaces inutiles"] },
     FnText { name: "TRIMMEAN", args: "(matrice, pourcentage)", desc: "Renvoie la moyenne de la partie intérieure d'une série de valeurs données", arg_desc: &["représente la matrice ou la plage de valeurs à réduire et sur laquelle calculer la moyenne", "représente le nombre fractionnaire d'observations à exclure de la série de données"] },
@@ -411,4 +412,5 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "YEAR", args: "(numéro_de_série)", desc: "Renvoie l’année, un entier entre 1900 et 9999.", arg_desc: &["est un nombre dans le code date-heure utilisé par Spreadsheet Editor"] },
     FnText { name: "YEARFRAC", args: "(date_début, date_fin, [base])", desc: "Renvoie une fraction correspondant au nombre de jours séparant date_début de date_fin par rapport à une année complète", arg_desc: &["est la date de départ, exprimée sous forme de numéro de série", "est la date de fin, exprimée sous forme de numéro de série", "est la base annuelle utilisée pour le calcul"] },
     FnText { name: "YEN", args: "(nombre, [décimales])", desc: "Convertit un nombre en texte avec le symbole du yen (¥) et des séparateurs de milliers", arg_desc: &["est le nombre que vous voulez mettre en forme", "est le nombre de chiffres à droite de la virgule. Si omis, 2 décimales"] },
+    FnText { name: "ZONED", args: "(date_heure, [fuseau_horaire])", desc: "Renvoie l’instant où l’horloge du fuseau horaire indiqué affiche la date et l’heure indiquées. La cellule affiche cette heure locale, et la soustraction utilise le temps réel entre les instants", arg_desc: &["est l’heure locale, sous forme de texte comme \"2026-10-01 10:00\" ou de numéro de série", "est un nom de fuseau horaire IANA comme \"Europe/Paris\". S’il est omis, le fuseau horaire du classeur est utilisé"] },
 ];

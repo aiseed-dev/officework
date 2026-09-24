@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 404 関数
+pub static TEXT: &[FnText] = &[  // 406 関数
     FnText { name: "ABS", args: "(sayı)", desc: "Bir sayının mutlak değerini verir, işareti olmayan sayı", arg_desc: &["mutlak değerini istediğiniz gerçek sayı"] },
     FnText { name: "ACOS", args: "(sayı)", desc: "Bir sayının arkkosinüsünü verir, radyan cinsinde ve 0 - Pi aralığındadır. Arkkosinüs, kosinüsü Sayı olan açıdır", arg_desc: &["istediğiniz açının kosinüs değeri, -1 ile 1 arasında olmalıdır"] },
     FnText { name: "ACOSH", args: "(sayı)", desc: "Bir sayının ters hiperbolik kosinüsünü verir", arg_desc: &["1 'e eşit veya 1'den büyük herhangi bir gerçek sayı"] },
@@ -376,6 +376,7 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "TOCOL", args: "(dizi, [yoksay], [scan_by_column])", desc: "Diziyi bir sütun olarak döndürür.", arg_desc: &["Sütun olarak döndürülecek dizi veya başvuru.", "Belirli değer türlerinin yok sayılma veya yok sayılmama durumu. Varsayılan olarak, hiçbir değer göz ardı edilmez.", "Diziyi sütuna göre tarayın. Varsayılan olarak, dizi satıra göre taranır."] },
     FnText { name: "TODAY", args: "()", desc: "Bugünkü tarihi, tarih biçiminde verir.", arg_desc: &[] },
     FnText { name: "TOROW", args: "(dizi, [yoksay], [scan_by_column])", desc: "Diziyi bir satır olarak döndürür.", arg_desc: &["Satır olarak döndürülecek dizi veya başvuru.", "Belirli değer türlerinin yok sayılma veya yok sayılmama durumu. Varsayılan olarak, hiçbir değer göz ardı edilmez.", "Diziyi sütuna göre tarayın. Varsayılan olarak, dizi satıra göre taranır."] },
+    FnText { name: "TO_ZONE", args: "(tarih_saat, saat_dilimi)", desc: "Aynı anı başka bir saat diliminde gösterilmiş olarak döndürür", arg_desc: &["ZONED ile oluşturulmuş bir tarih ve saat ya da çalışma kitabının saat dilimindeki bir seri numarasıdır", "anın gösterileceği IANA saat dilimi adıdır"] },
     FnText { name: "TRANSPOSE", args: "(dizi)", desc: "Düşey bir hücreler aralığını yatay bir aralık olarak verir, ya da tam tersi", arg_desc: &["devriğini almak istediğiniz çalışma sayfasında bulunan bir hücreler aralığı ya da değerler dizisi"] },
     FnText { name: "TRIM", args: "(metin)", desc: "Bir metin dizesinden sözcükler arasındaki tek boşluklar dışındaki tüm boşlukları kaldırır", arg_desc: &["boşluklarını kaldırmak istediğiniz metin"] },
     FnText { name: "TRIMMEAN", args: "(dizi, yüzde)", desc: "Bir veri kümesinin iç kısmının ortalamasını verir", arg_desc: &["kırpılıp ortalaması alınacak değerler dizisi veya aralığı", "veri kümesinin alt ve üst ucunda bulunan ve hesaplama dışı tutulacak olan veri noktalarının kesirli sayısı"] },
@@ -411,4 +412,5 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "YEAR", args: "(seri_no)", desc: "1900 - 9999 aralığındaki bir tamsayı ile ifade edilen tarihin yılını döndürür.", arg_desc: &["Spreadsheet Editor tarafından kullanılan tarih-saat kodundaki sayı"] },
     FnText { name: "YEARFRAC", args: "(başlangıç_tarihi, bitiş_tarihi, [temel])", desc: "Başlangıç ve bitiş tarihleri arasındaki tam gün sayısını gösteren yıl oranını döndürür", arg_desc: &["başlangıç tarihini gösteren tarih seri numarası", "bitiş tarihini gösteren tarih seri numarası", "kullanılacak gün sayısı türü"] },
     FnText { name: "YEN", args: "(sayı, [onluklar])", desc: "Bir sayıyı yen simgesi (¥) ve binlik ayırıcılar kullanarak metne dönüştürür", arg_desc: &["biçimlendirmek istediğiniz sayı", "ondalık virgülün sağında kullanılan rakam sayısı. Atlanırsa, Ondalıklar = 2"] },
+    FnText { name: "ZONED", args: "(tarih_saat, [saat_dilimi])", desc: "Belirtilen saat dilimindeki saatin belirtilen tarih ve saati gösterdiği anı döndürür. Hücre bu yerel saati gösterir; çıkarma işlemi anlar arasındaki gerçek süreyi kullanır", arg_desc: &["yerel saattir; \"2026-10-01 10:00\" gibi bir metin ya da seri numarasıdır", "\"Europe/Istanbul\" gibi bir IANA saat dilimi adıdır. Atlanırsa çalışma kitabının saat dilimi kullanılır"] },
 ];

@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 404 関数
+pub static TEXT: &[FnText] = &[  // 406 関数
     FnText { name: "ABS", args: "(số)", desc: "Trả về giá trị tuyệt đối một số, giá trị số không dấu", arg_desc: &["là phần số thực cần lấy giá trị tuyệt đối"] },
     FnText { name: "ACOS", args: "(số)", desc: "Trả về ArcCosin của một số, theo radian trong khoảng từ 0 đến Pi. ArcCosin là góc có Cosin bằng Số", arg_desc: &["là Cosin của góc mong muốn và phải từ -1 đến 1"] },
     FnText { name: "ACOSH", args: "(số)", desc: "Trả về Cosin hi-péc-bôn đảo của một số", arg_desc: &["là số thực bất kỳ lớn hơn hoặc bằng 1"] },
@@ -376,6 +376,7 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "TOCOL", args: "(mảng, [bỏ_qua], [quét_theo_cột])", desc: "Trả về mảng dưới dạng một cột.", arg_desc: &["Mảng hoặc tham chiếu cần trả về dưới dạng cột.", "Có bỏ qua các loại giá trị nhất định hay không. Theo mặc định, không giá trị nào bị bỏ qua.", "Quét mảng theo cột. Theo mặc định, mảng được quét theo hàng."] },
     FnText { name: "TODAY", args: "()", desc: "Trả về ngày hiện thời theo dạng thức ngày tháng.", arg_desc: &[] },
     FnText { name: "TOROW", args: "(mảng, [bỏ_qua], [quét_theo_cột])", desc: "Trả về mảng dưới dạng một hàng.", arg_desc: &["Mảng hoặc tham chiếu để trả về dưới dạng một hàng.", "Có bỏ qua các loại giá trị nhất định hay không. Theo mặc định, không giá trị nào bị bỏ qua.", "Quét mảng theo cột. Theo mặc định, mảng được quét theo hàng."] },
+    FnText { name: "TO_ZONE", args: "(ngày_giờ, múi_giờ)", desc: "Trả về cùng thời điểm được hiển thị ở một múi giờ khác", arg_desc: &["là ngày giờ tạo bằng ZONED, hoặc số sê-ri theo múi giờ của sổ làm việc", "là tên múi giờ IANA dùng để hiển thị thời điểm"] },
     FnText { name: "TRANSPOSE", args: "(mảng)", desc: "Chuyển một dãy dọc các ô sang dãy ngang, hoặc ngược lại,", arg_desc: &["là một dãy ô trên một trang tính hoặc một mảng giá trị mà bạn muốn hoán đổi"] },
     FnText { name: "TRIM", args: "(văn_bản)", desc: "Loại bỏ mọi dấu cách trong xâu văn bản ngoại trừ dấu cách đơn giữa các từ", arg_desc: &["là văn bản cần loại bỏ dấu cách"] },
     FnText { name: "TRIMMEAN", args: "(mảng, phần_trăm)", desc: "Trả về trung bình phần bên trong của tập giá trị dữ liệu", arg_desc: &["là khoảng hoặc mảng các giá trị cần thu gọn và tính trung bình", "là phân đoạn các điểm dữ liệu cần loại trừ khỏi phần trên và dưới của tập dữ liệu"] },
@@ -411,4 +412,5 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "YEAR", args: "(số_tuần_tự)", desc: "Trả về năm của ngày tháng, một số nguyên trong khoảng 1900 - 9999.", arg_desc: &["là một số trong mã ngày-giờ được sử dụng bởi Spreadsheet Editor"] },
     FnText { name: "YEARFRAC", args: "(ngày_bắt_đầu, ngày_kết_thúc, [cơ_sở])", desc: "Trả lại phân số năm thể hiện số ngày nguyên giữa start_date và end_date", arg_desc: &["là số tuần tự ngày tháng thể hiện ngày bắt đầu", "là số tuần tự ngày tháng thể hiện ngày kết thúc", "là loại cơ sở tính ngày được dùng"] },
     FnText { name: "YEN", args: "(số, [phần_thập_phân])", desc: "Chuyển đổi số sang văn bản với ký hiệu yên (¥) và dấu phân cách hàng nghìn", arg_desc: &["là số cần định dạng", "là số chữ số bên phải dấu thập phân. Nếu không có, phần thập phân = 2"] },
+    FnText { name: "ZONED", args: "(ngày_giờ, [múi_giờ])", desc: "Trả về thời điểm mà đồng hồ ở múi giờ đã cho hiển thị ngày và giờ đã cho. Ô hiển thị giờ địa phương đó, và phép trừ dùng thời gian thực giữa các thời điểm", arg_desc: &["là giờ địa phương, dạng văn bản như \"2026-10-01 10:00\" hoặc số sê-ri", "là tên múi giờ IANA như \"Asia/Ho_Chi_Minh\". Nếu bỏ qua, dùng múi giờ của sổ làm việc"] },
 ];

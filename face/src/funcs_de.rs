@@ -6,7 +6,7 @@
 
 use super::funcs::FnText;
 
-pub static TEXT: &[FnText] = &[  // 404 関数
+pub static TEXT: &[FnText] = &[  // 406 関数
     FnText { name: "ABS", args: "(Zahl)", desc: "Gibt den Absolutwert einer Zahl zurück", arg_desc: &["ist die reelle Zahl, deren Absolutwert Sie ermitteln möchten"] },
     FnText { name: "ACOS", args: "(Zahl)", desc: "Gibt den Arkuskosinus einer Zahl im Bereich von 0 bis Pi zurück", arg_desc: &["ist der Kosinus des Winkels, den Sie berechnen wollen, und liegt zwischen -1 und 1"] },
     FnText { name: "ACOSH", args: "(Zahl)", desc: "Gibt den umgekehrten hyperbolischen Kosinus einer Zahl zurück.", arg_desc: &["ist eine reelle Zahl größer oder gleich 1 zurück"] },
@@ -376,6 +376,7 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "TOCOL", args: "(Matrix, [Ignorieren], [Spaltenweise_scannen])", desc: "Gibt die Matrix als eine Spalte zurück.", arg_desc: &["Das Array oder der Verweis, das bzw. der als eine Spalte zurückgegeben werden soll.", "Gibt an, ob bestimmte Typen von Werten ignoriert werden sollen. Standardmäßig werden keine Werte ignoriert.", "Scannt das Array nach Spalte. Standardmäßig wird das Array zeilenweise gescannt."] },
     FnText { name: "TODAY", args: "()", desc: "Gibt die fortlaufende Zahl des heutigen Datums zurück.", arg_desc: &[] },
     FnText { name: "TOROW", args: "(Matrix, [Ignorieren], [Spaltenweise_scannen])", desc: "Gibt das Array als eine Zeile zurück.", arg_desc: &["Das Array oder der Verweis, das bzw. der als Zeile zurückgegeben werden soll.", "Gibt an, ob bestimmte Typen von Werten ignoriert werden sollen. Standardmäßig werden keine Werte ignoriert.", "Scannt das Array nach Spalte. Standardmäßig wird das Array zeilenweise gescannt."] },
+    FnText { name: "TO_ZONE", args: "(Datum_Uhrzeit, Zeitzone)", desc: "Gibt denselben Zeitpunkt in einer anderen Zeitzone zurück", arg_desc: &["ist ein mit ZONED erzeugtes Datum mit Uhrzeit oder eine fortlaufende Zahl in der Zeitzone der Arbeitsmappe", "ist der IANA-Zeitzonenname, in dem der Zeitpunkt gezeigt wird"] },
     FnText { name: "TRANSPOSE", args: "(Matrix)", desc: "Gibt die transponierte Matrix der angegebenen Matrix zurück", arg_desc: &["ist eine Matrix in einem Arbeitsblatt oder einer Makrovorlage, die Sie transponieren möchten"] },
     FnText { name: "TRIM", args: "(Text)", desc: "Löscht Leerzeichen in einem Text", arg_desc: &["ist der Text, aus dem Sie Leerzeichen entfernen wollen"] },
     FnText { name: "TRIMMEAN", args: "(Matrix, Prozent)", desc: "Gibt den Mittelwert einer Datengruppe, ohne seine Werte an den Rändern zurück", arg_desc: &["ist eine Matrix oder Gruppe von Werten, die ohne ihre Ausreißer gemittelt wird", "ist der Prozentsatz der Datenpunkte, die nicht in die Bewertung eingehen sollen"] },
@@ -411,4 +412,5 @@ pub static TEXT: &[FnText] = &[  // 404 関数
     FnText { name: "YEAR", args: "(Zahl)", desc: "Wandelt eine fortlaufende Zahl im Bereich von 1900 - 9999 in eine Jahreszahl um.", arg_desc: &["ist der Code für Datum und Zeit, den Spreadsheet Editor für Datums- und Zeitberechnungen verwendet"] },
     FnText { name: "YEARFRAC", args: "(Ausgangsdatum, Enddatum, [Basis])", desc: "Wandelt die Anzahl der ganzen Tage zwischen Ausgangsdatum und Enddatum in Bruchteile von Jahren um", arg_desc: &["ist die fortlaufende Zahl, die das Ausgangsdatum angibt", "ist die fortlaufende Zahl, die das Enddatum angibt", "gibt an, auf welcher Basis die Zinstage gezählt werden"] },
     FnText { name: "YEN", args: "(Zahl, [Dezimalstellen])", desc: "Formatiert eine Zahl als Text mit dem Yen-Zeichen (¥) und Tausendertrennzeichen", arg_desc: &["ist die Zahl, die Sie formatieren möchten", "ist die Anzahl der Ziffern rechts vom Dezimalkomma. Wenn der Parameter fehlt, werden 2 Dezimalstellen zurückgegeben"] },
+    FnText { name: "ZONED", args: "(Datum_Uhrzeit, [Zeitzone])", desc: "Gibt den Zeitpunkt zurück, zu dem die Uhr in der angegebenen Zeitzone das angegebene Datum und die Uhrzeit zeigt. Die Zelle zeigt diese Uhrzeit; beim Subtrahieren wird die tatsächliche Zeit zwischen den Zeitpunkten verwendet", arg_desc: &["ist die Uhrzeit als Text wie \"2026-10-01 10:00\" oder als fortlaufende Zahl", "ist ein IANA-Zeitzonenname wie \"Europe/Berlin\". Ohne Angabe gilt die Zeitzone der Arbeitsmappe"] },
 ];

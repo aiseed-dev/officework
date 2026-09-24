@@ -9091,6 +9091,30 @@ mod time_zone_option_tests {
             this.prompt = Some(("time-zone", Editor::new("Mars/Olympus")));
             this.finish_prompt(cx);
             assert!(this.status.contains("Mars/Olympus"), "{}", this.status);
+            // the comment name row opens its input on the sheet the same way
+            this.prompt = None;
+            this.press_option("set-username", cx);
+            assert_ne!(this.tab, 0, "the file page is still in front");
+            assert_eq!(this.prompt.as_ref().map(|p| p.0), Some("user-name"));
+            this.prompt = None;
         });
+    }
+}
+
+mod custom_function_list_tests {
+    // The Insert Function dialog lists the Rust custom functions that come
+    // with officework, with their descriptions (2026-09-24)
+    #[test]
+    fn zoned_and_to_zone_are_in_the_insert_function_list() {
+        let names: Vec<&str> = crate::util::fn_filtered("ZONE", 0).iter().map(|f| f.name).collect();
+        assert_eq!(names, ["TO_ZONE", "ZONED"]);
+        for f in crate::util::fn_filtered("ZONE", 0) {
+            assert_eq!(f.group, "date_time");
+            assert!(!f.desc().is_empty() && !f.arg_desc().is_empty(), "{} has no description", f.name);
+        }
+        // every Rust custom function that comes with officework is listed
+        for (name, _) in book::calc::custom::BUILT_IN {
+            assert!(crate::funcs::FUNCS.iter().any(|f| f.name == *name), "{name} is not listed");
+        }
     }
 }

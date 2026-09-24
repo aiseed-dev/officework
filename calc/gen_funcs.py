@@ -81,7 +81,9 @@ GROUPS = {
     "日付/時刻": "TODAY NOW DATE DATEVALUE YEAR MONTH DAY WEEKDAY "
             "TIME HOUR MINUTE SECOND EDATE EOMONTH DATEDIF "
             "WORKDAY NETWORKDAYS DAYS DAYS360 YEARFRAC WEEKNUM ISOWEEKNUM "
-            "TIMEVALUE NETWORKDAYS.INTL WORKDAY.INTL",
+            "TIMEVALUE NETWORKDAYS.INTL WORKDAY.INTL "
+            # Rust custom functions that come with officework (book::calc::custom)
+            "ZONED TO_ZONE",
     "検索/行列": "VLOOKUP HLOOKUP XLOOKUP LOOKUP INDEX MATCH CHOOSE "
             "ROW COLUMN ROWS COLUMNS OFFSET INDIRECT ADDRESS HYPERLINK "
             "FILTER SORT UNIQUE TRANSPOSE XMATCH SORTBY "
@@ -128,6 +130,13 @@ HAND_JA = {
     "DF": {"a": "(定義1, [定義2], ...)",
         "d": "数式を表の列に属させます。列の各行をその数式で埋め、列が無ければ表に足します。「名前 = 数式」は、この df の中で使える定数です。",
         "ad": "定義。「表[列] = 数式」で列を定義し、「名前 = 数式」でこの df の中の定数を定義します!2つ目からの定義。順番は依存で決まります"},
+    # Rust のカスタム関数(book::calc::custom の BUILT_IN。2026-09-24)
+    "ZONED": {"a": "(日時, [タイムゾーン])",
+        "d": "指定したタイムゾーンの時計が、指定した日時を指す時点を返します。セルにはその場所の時刻が表示され、引き算では時点の間の実際の時間を計算します。",
+        "ad": "その場所の時刻。\"2026-10-01 10:00\" のような文字列か、シリアル値を指定します!IANA のタイムゾーンの名前(例 \"Asia/Tokyo\")。省略すると、ブックのタイムゾーンを使います"},
+    "TO_ZONE": {"a": "(日時, タイムゾーン)",
+        "d": "同じ時点を、別のタイムゾーンの時刻で表示して返します。",
+        "ad": "ZONED で作った日時か、ブックのタイムゾーンのシリアル値を指定します!表示に使う IANA のタイムゾーンの名前"},
     "CELL": {"a": "(検査の種類, [参照])",
         "d": "セルの情報を返します。検査の種類は \"filename\" だけを受けます(パス、[ ] で囲んだファイル名、シート名を返します)。",
         "ad": "情報の種類。\"filename\" だけを受けます!セル。同じブックならどのセルでも答えが同じなので、受け取って使いません"},
