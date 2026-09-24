@@ -806,6 +806,17 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     original: Option<R>,
     dst: W,
 ) -> Result<(), String> {
+    // Without the original file nothing carries the shapes that were read
+    // (from an adoc book, or an xlsx saved on its own), so they are written
+    // like the ones made in the app
+    if original.is_none() && book.sheets.iter().any(|s| !s.shapes.is_empty()) {
+        let mut own = book.clone();
+        for s in &mut own.sheets {
+            let read = std::mem::take(&mut s.shapes);
+            s.shapes_new.splice(0..0, read);
+        }
+        return write_with(&own, original, dst);
+    }
     // 原本の部品と、各シートの引き継ぎ要素(印刷まわり・図形)を先に読む
     let mut carried: Vec<(String, Vec<u8>)> = Vec::new();
     let mut sheet_extras: Vec<String> = Vec::new();
@@ -1821,8 +1832,9 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
 
         let mut rows: std::collections::BTreeMap<u32, Vec<(&Pos, &Cell)>> = Default::default();
         for (p, c) in &sh.cells { rows.entry(p.row).or_default().push((p, c)); }
-        // 中身が無くてもグループ化・畳みのある行は <row> を出す(捨てない)
-        for r in sh.row_outline.keys().chain(sh.row_hidden.iter()) {
+        // Rows with no cells still get a <row> when they are grouped, hidden
+        // or have their own height (a form's empty spacer rows)
+        for r in sh.row_outline.keys().chain(sh.row_hidden.iter()).chain(sh.row_height.keys()) {
             rows.entry(*r).or_default();
         }
         for (r, cells) in rows {

@@ -2084,6 +2084,12 @@ pub fn read_with<R: Read + Seek>(src: R, opts: &ReadOptions) -> Result<(Book, Re
         .as_ref()
         .and_then(|(name, pt)| {
             let pt = if *pt > 0.0 { *pt } else { book::DEFAULT_CELL_PT };
+            // A default font with no name is what we write when the book
+            // named none; its widths were counted with half-width digits
+            // (`ColBasis::default`), so they are read back the same way
+            if name.is_empty() {
+                return Some(pt * 0.5);
+            }
             kumihan::font::digit_em_named(name).map(|em| em * pt)
         })
         .unwrap_or(book::DEFAULT_CELL_PT * 0.5);

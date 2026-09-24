@@ -839,14 +839,16 @@ fn write_table(out: &mut String, t: &Table, doc: &Document) {
             if let Some(spec) = raw_spec {
                 out.push_str(&spec);
             } else {
-                if let VMerge::Start = cell.v_merge {
-                    let n = vspan_of(t, ri, grid_col(row, k));
-                    if n > 1 {
-                        out.push_str(&format!(".{n}+"));
-                    }
-                }
-                if cell.span() > 1 {
-                    out.push_str(&format!("{}+", cell.span()));
+                // AsciiDoc writes both spans as <colspan>.<rowspan>+ (e.g. `3.2+`)
+                let n = match cell.v_merge {
+                    VMerge::Start => vspan_of(t, ri, grid_col(row, k)),
+                    _ => 0,
+                };
+                match (cell.span(), n) {
+                    (1, n) if n > 1 => out.push_str(&format!(".{n}+")),
+                    (c, n) if n > 1 => out.push_str(&format!("{c}.{n}+")),
+                    (c, _) if c > 1 => out.push_str(&format!("{c}+")),
+                    _ => {}
                 }
                 // **段落が2つ以上のセルは `a|`** にします(本家の作法)。
                 // 素のセルは中身を1段落として組むので、詰めて書くと段落の
@@ -1986,7 +1988,8 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 // しては付ける先が無い。2026-09-03)
                 // ただし塊の題(`.題`)の前の役割と錨は、題の後ろの表や塊の物なので
                 // 消費しない(`[.tables]` `.売上台帳` `|===` の並び)
-                if role != "塊の題" {
+                // `[cols=...]` also belongs to the table below (`[.shapes]` `.name` `[cols]` `|===`)
+                if role != "塊の題" && !(role == "指定の行" && cols_of(l).is_some()) {
                     push_pending_style(&mut doc, &mut pending_style, &mut style_blank);
                 }
                 let keeps_blanks = matches!(role, "覚え書き" | "コールアウト" | "指定の行" | "条件" | "取り込み" | "引用の作者");
@@ -2737,16 +2740,27 @@ fn parse_table_lines(
         let mut restv_orig: &str = joined_orig.get(li).map(|s| s.as_str()).unwrap_or("");
         let mut this_row_cols = 0usize;
         while !restv.is_empty() {
-            let (vspan, after_v) = if let Some(r) = restv.strip_prefix('.') {
-                let (n, r2) = take_num(r)?;
-                let r3 = r2.strip_prefix('+').ok_or("縦結合は .N+ の形")?;
-                (n, r3)
-            } else {
-                (0u8, restv)
-            };
-            let (hspan, after_h) = match take_num(after_v) {
-                Ok((n, r2)) if r2.starts_with('+') => (n, &r2[1..]),
-                _ => (0u8, after_v),
+            // `M.N+` spans M columns and N rows; `.N+` and `M+` span one way.
+            // `.N+M+` is what older files of ours wrote, so it is still read.
+            let (vspan, hspan, after_h) = match take_num(restv) {
+                Ok((m, r2)) if r2.starts_with(".") && take_num(&r2[1..]).is_ok_and(|(_, r3)| r3.starts_with('+')) => {
+                    let (n, r3) = take_num(&r2[1..])?;
+                    (n, m, &r3[1..])
+                }
+                _ => {
+                    let (vspan, after_v) = if let Some(r) = restv.strip_prefix('.') {
+                        let (n, r2) = take_num(r)?;
+                        let r3 = r2.strip_prefix('+').ok_or("縦結合は .N+ の形")?;
+                        (n, r3)
+                    } else {
+                        (0u8, restv)
+                    };
+                    let (hspan, after_h) = match take_num(after_v) {
+                        Ok((n, r2)) if r2.starts_with('+') => (n, &r2[1..]),
+                        _ => (0u8, after_v),
+                    };
+                    (vspan, hspan, after_h)
+                }
             };
             // **本家のセルの指定を読み飛ばします**(`h|` 見出し・`^|` 中央・
             // `a|` AsciiDoc として組む など)。うちが効かせるのは結合だけで、
@@ -2823,7 +2837,14 @@ fn parse_table_lines(
             };
             let raw = cell_text.trim_matches(|c: char| c == ' ' || c == '\t' || c == '\r');
             let para_text: Vec<&str> = if asciidoc_cell && raw.contains("\n\n") {
-                raw.split("\n\n").map(trim_edges).collect()
+                // Inside an `a|` cell each paragraph may start with `{empty}`
+                // to keep its leading spaces, as the writer puts it there
+                raw.split("\n\n")
+                    .map(|q| match q.trim_start_matches(['\n', '\r']).strip_prefix(EMPTY_PARA) {
+                        Some(n) if !n.is_empty() => n.trim_end_matches([' ', '\t', '\r', '\n']),
+                        _ => trim_edges(q),
+                    })
+                    .collect()
             } else if atama_wo_nokosu || oshiri_wo_nokosu {
                 // 印を外した側の空白は**字として残します**
                 let mut t = cell_text;
@@ -2892,29 +2913,35 @@ fn parse_table_lines(
     let ncols = col_spec.filter(|n| *n > 0).unwrap_or(first_row_cols).max(1);
 
     // 桁の数で行に切る。縦結合が下の行の桁を占めるぶんも数える
-    let mut vstarts: Vec<(usize, u8)> = Vec::new(); // (桁, 残り行数)
+    let mut vstarts: Vec<(usize, u8, usize)> = Vec::new(); // (column, rows left, column span)
     let mut it = cells.into_iter().peekable();
     while it.peek().is_some() || !vstarts.is_empty() {
         let mut row: Vec<Cellbox> = Vec::new();
         let mut cols = 0usize;
         vstarts.sort_by_key(|x| x.0);
         let pending = vstarts.clone();
-        let mut next_vstarts: Vec<(usize, u8)> = Vec::new();
-        for (col, rest) in pending {
+        let mut next_vstarts: Vec<(usize, u8, usize)> = Vec::new();
+        for (col, rest, span) in pending {
             // 上から伸びてきた分を、その桁に置く
             while cols < col {
                 match it.next() {
                     Some(c) => {
+                        // A row span left of a continued column also reaches down
+                        let vertical = c.paragraphs.first().map(|p| p.indent).unwrap_or(0);
+                        if vertical > 0 {
+                            next_vstarts.push((cols, vertical, c.span()));
+                        }
                         cols += c.span();
                         row.push(c);
                     }
                     None => break,
                 }
             }
-            row.push(Cellbox { v_merge: VMerge::Continue, ..Default::default() });
-            cols += 1;
+            // The continued cell covers as many columns as the cell it continues
+            row.push(Cellbox { v_merge: VMerge::Continue, col_span: if span > 1 { span as u8 } else { 0 }, ..Default::default() });
+            cols += span;
             if rest > 1 {
-                next_vstarts.push((col, rest - 1));
+                next_vstarts.push((col, rest - 1, span));
             }
         }
         while cols < ncols {
@@ -2931,7 +2958,7 @@ fn parse_table_lines(
             let s = c.span();
             let vertical = c.paragraphs.first().map(|p| p.indent).unwrap_or(0);
             if vertical > 0 {
-                next_vstarts.push((cols, vertical));
+                next_vstarts.push((cols, vertical, s));
             }
             cols += s;
             row.push(c);
@@ -3199,6 +3226,41 @@ mod tests {
         assert_eq!(t.col_ratio, vec![1.0, 3.0]);
         // 比のまま持つ。mm になるのはテンプレートを合成するとき
         assert!(t.col_mm.is_empty(), "読んだ時点で mm を決めてしまった");
+    }
+
+    /// A cell spanning both ways is `<colspan>.<rowspan>+`, and the rows
+    /// below keep the whole width free, also left of another row span.
+    #[test]
+    fn a_cell_spanning_rows_and_columns_keeps_its_width() {
+        let src = "|===\n|a 2.3+|b .2+|c\n|d\n|e |f\n|===\n";
+        let doc = parse(src).unwrap();
+        let t = doc.tables().next().unwrap();
+        let widths: Vec<usize> = t.rows.iter().map(|r| r.iter().map(|c| c.span()).sum()).collect();
+        assert_eq!(widths, vec![4, 4, 4]);
+        assert_eq!(t.rows[2][0].paragraphs[0].runs[0].text, "e");
+        assert_eq!(t.rows[2][2].paragraphs[0].runs[0].text, "f");
+        assert!(write(&doc).contains("2.3+|b"));
+        // the order older files of ours wrote is still read
+        let old = parse("|===\n|a .3+2+|b .2+|c\n|d\n|e |f\n|===\n").unwrap();
+        assert_eq!(old.tables().next().unwrap().rows[0][1].span(), 2);
+    }
+
+    #[test]
+    fn leading_spaces_after_empty_survive_in_an_asciidoc_cell() {
+        let doc = parse("[cols=\"1\"]\n|===\na|あ\n\n{empty}  い\n|===\n").unwrap();
+        let t = doc.tables().next().unwrap();
+        let texts: Vec<String> = t.rows[0][0].paragraphs.iter()
+            .map(|p| p.runs.iter().map(|r| r.text.as_str()).collect()).collect();
+        assert_eq!(texts, vec!["あ", "  い"]);
+    }
+
+    #[test]
+    fn a_role_stays_with_its_table_across_a_cols_line() {
+        let doc = parse("[.shapes]\n.図形\n[cols=\"1,1\"]\n|===\n|a |b\n|===\n").unwrap();
+        let t = doc.tables().next().unwrap();
+        assert_eq!(t.role.as_deref(), Some("shapes"));
+        assert_eq!(t.title.as_deref(), Some("図形"));
+        assert_eq!(doc.blocks.len(), 1);
     }
 
     #[test]

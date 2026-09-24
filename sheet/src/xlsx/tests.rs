@@ -290,6 +290,9 @@ mod colwidth_round {
         assert_eq!(s.col_xlsx.get(&1), None, "指定していない列に幅が付いた");
         let b = back.col_basis;
         assert_eq!(s.col_mm.get(&2).copied(), Some(b.chars_to_mm(24.0)), "mm がブックの換算どおりでない");
+        // The book named no default font, so the file has a nameless one;
+        // its widths come back as wide as they were written
+        assert_eq!(b, bs, "the nameless default font was read with another digit width");
     }
 
     /// **The same file has other widths on a Mac** (decided 2026-09-23): a
@@ -2493,6 +2496,42 @@ mod shape_roundtrip_tests {
         assert_eq!(sp[0].line.as_deref(), Some("1B6E3C"), "線の色が塗りと混ざった");
         assert!((sp[0].width_px - 160.0).abs() < 1.0);
         assert!(back.sheets[0].shapes_new.is_empty());
+    }
+
+    /// An empty row keeps its own height
+    #[test]
+    fn an_empty_row_keeps_its_height() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A3").unwrap(), Cell::input("x"));
+        b.sheets[0].row_height.insert(0, 12.0);
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        buf.set_position(0);
+        let (back, _) = read(buf).expect("読めない");
+        assert_eq!(back.sheets[0].row_height.get(&0), Some(&12.0), "the empty row lost its height");
+    }
+
+    /// A shape that was read (from an adoc book, say) is written when no
+    /// original file is there to carry it
+    #[test]
+    fn read_shapes_are_written_without_an_original() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
+        b.sheets[0].shapes.push(SheetShape {
+            at: Pos::new(1, 1),
+            width_px: 120.0,
+            height_px: 80.0,
+            kind: "rect".into(),
+            text: Some("写真".into()),
+            ..Default::default()
+        });
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        buf.set_position(0);
+        let (back, _) = read(buf).expect("読めない");
+        let sp = &back.sheets[0].shapes;
+        assert_eq!(sp.len(), 1, "the read shape was not written");
+        assert_eq!(sp[0].text.as_deref(), Some("写真"));
     }
 
     #[test]

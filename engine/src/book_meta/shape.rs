@@ -174,7 +174,8 @@ const ALIGNS: &[(HAlign, &str)] = &[
     (HAlign::CenterContinuous, "center-across"), (HAlign::Distribute, "distributed"),
 ];
 
-/// 文字の組み方。`align=center anchor=middle vertical=true` の形
+/// How the text is set, as `align=center anchor=middle size=9 font="MS PMincho"`.
+/// A value with spaces is quoted.
 fn text_fmt(f: &book::TextFmt) -> String {
     let d = book::TextFmt::default();
     let mut out: Vec<String> = Vec::new();
@@ -197,15 +198,53 @@ fn text_fmt(f: &book::TextFmt) -> String {
     if let Some(b) = f.bullet {
         out.push(format!("bullet={b}"));
     }
+    if f.bold != d.bold {
+        out.push(format!("bold={}", f.bold));
+    }
+    if let Some(v) = f.size_pt {
+        out.push(format!("size={}", num(v)));
+    }
+    if let Some(v) = f.line_pt {
+        out.push(format!("line={}", num(v)));
+    }
+    if let Some(v) = &f.font {
+        out.push(if v.contains(' ') { format!("font=\"{v}\"") } else { format!("font={v}") });
+    }
+    if let Some(v) = &f.color {
+        out.push(format!("color={v}"));
+    }
+    if f.ins_mm != d.ins_mm {
+        let (l, r, t, b) = f.ins_mm;
+        out.push(format!("insets={},{},{},{}", num(l), num(r), num(t), num(b)));
+    }
     out.join(" ")
+}
+
+/// Splits `k=v k="v w"` into pairs, keeping spaces inside quotes.
+fn fmt_pairs(s: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    let mut rest = s.trim_start();
+    while !rest.is_empty() {
+        let Some((k, after)) = rest.split_once('=') else { break };
+        let (v, next) = match after.strip_prefix('"') {
+            Some(q) => match q.split_once('"') {
+                Some((v, n)) => (v, n),
+                None => (q, ""),
+            },
+            None => after.split_once(' ').unwrap_or((after, "")),
+        };
+        out.push((k.trim().to_string(), v.to_string()));
+        rest = next.trim_start();
+    }
+    out
 }
 
 fn read_text_fmt(s: &str) -> book::TextFmt {
     let mut f = book::TextFmt::default();
-    for part in s.split_whitespace() {
-        let Some((k, v)) = part.split_once('=') else { continue };
+    for (k, v) in fmt_pairs(s) {
+        let v = v.as_str();
         let yes = v.eq_ignore_ascii_case("true");
-        match k {
+        match k.as_str() {
             "align" => f.align = find(ALIGNS, v, HAlign::General),
             "anchor" => f.anchor = find(ANCHORS, v, TextAnchor::Top),
             "vertical" => f.vertical = yes,
@@ -213,6 +252,17 @@ fn read_text_fmt(s: &str) -> book::TextFmt {
             "sup" => f.sup = yes,
             "sub" => f.sub = yes,
             "bullet" => f.bullet = Some(yes),
+            "bold" => f.bold = yes,
+            "size" => f.size_pt = v.parse().ok(),
+            "line" => f.line_pt = v.parse().ok(),
+            "font" => f.font = Some(v.to_string()),
+            "color" => f.color = Some(v.to_string()),
+            "insets" => {
+                let n: Vec<f32> = v.split(',').filter_map(|x| x.trim().parse().ok()).collect();
+                if let [l, r, t, b] = n[..] {
+                    f.ins_mm = (l, r, t, b);
+                }
+            }
             _ => {}
         }
     }
@@ -320,6 +370,20 @@ mod tests {
     use super::*;
 
     /// **図形の欄が全部運べるか。** `types.rs` と突き合わせます。
+    #[test]
+    fn text_format_carries_size_font_and_insets() {
+        let f = book::TextFmt {
+            size_pt: Some(8.0),
+            font: Some("MS PMincho".into()),
+            bold: true,
+            ins_mm: (1.0, 2.0, 0.5, 0.5),
+            ..Default::default()
+        };
+        let s = text_fmt(&f);
+        assert!(s.contains("font=\"MS PMincho\""), "{s}");
+        assert_eq!(read_text_fmt(&s), f);
+    }
+
     #[test]
     fn every_shape_field_is_carried() {
         let src = include_str!("../../../book/src/types.rs");
