@@ -1858,6 +1858,11 @@ fn draw_sheet(
     // 行 → (紙の番号, 上端の mm)。図形をその紙へ置くために使います
     let mut row_place: std::collections::BTreeMap<u32, (usize, f32)> =
         std::collections::BTreeMap::new();
+    // Each band of columns: its columns, their left edges, its left margin
+    // and where its rows went, so a shape held by a cell in a later band
+    // goes on that band's page
+    let mut band_place: Vec<(Vec<u32>, Vec<f32>, f32, std::collections::BTreeMap<u32, (usize, f32)>)> =
+        Vec::new();
     let mut y_used = 0.0f32; // このページで使った高さ
     // 束(横のページ)ごとに全行を出す。束が変わるたび新しい紙へ
     for (bi, &(r0, r1, bc0, bn)) in bands.iter().enumerate() {
@@ -1941,6 +1946,10 @@ fn draw_sheet(
         if bi == 0 {
             row_place.entry(r).or_insert((cur, y_top));
         }
+        if band_place.len() <= bi {
+            band_place.push((cols.clone(), col_x.clone(), ml, Default::default()));
+        }
+        band_place[bi].3.entry(r).or_insert((cur, y_top));
         y_used += rh;
         // Where the wanted cells of this row landed
         if !board.want_cells.is_empty() && rh > 0.0 {
@@ -1977,6 +1986,17 @@ fn draw_sheet(
         // セル → (紙の番号, 左からの mm, 上端の mm)。
         // **行の控えから引く**ので、改ページの後ろに置いた図もその紙に出ます
         let cell_at = |at: book::Pos| -> (usize, f32, f32) {
+            // A cell in a later band of columns is on that band's page
+            if let Some((cols, cx, bml, rows)) = band_place
+                .iter()
+                .skip(1)
+                .find(|(cols, _, _, _)| cols.contains(&at.col) && !title_cols.contains(&at.col))
+            {
+                let i = cols.iter().position(|c| *c == at.col).expect("in the band");
+                if let Some((r, (p, y))) = rows.range(..=at.row).next_back() {
+                    return (*p, bml + cx[i], *y - (*r..at.row).map(row_mm).sum::<f32>());
+                }
+            }
             let x: f32 = (c0..at.col)
                 .map(|c| {
                     col_mm
@@ -3376,6 +3396,28 @@ mod zukei_tests {
     /// 4本が横切っていました。同じ表の「高 松」は内側に罫線が無く、線も
     /// 出ていなかったので、**同じ形の見出しで見え方が食い違って**いました
     /// (2026-08-31 発注者)。
+    /// A shape held by a cell of the second band of columns (a column break)
+    /// is drawn on that band's page, not off the edge of the first
+    #[test]
+    fn a_shape_in_a_later_band_of_columns_is_on_its_page() {
+        let mut g = Grid::default();
+        g.set(book::Pos::new(0, 0), book::Cell::input("左"));
+        g.set(book::Pos::new(0, 2), book::Cell::input("右"));
+        g.col_breaks.push(2);
+        g.shapes_new.push(book::SheetShape {
+            at: book::Pos::new(1, 2), width_px: 60.0, height_px: 30.0, kind: "rect".into(),
+            line: Some("000000".into()), ..Default::default()
+        });
+        let setup = PrintSetup { date1904: false, col_basis: book::ColBasis::default(), ..Default::default() };
+        let leaves = sheet_leaves(&g, Paper::default(), &setup).expect("組めない");
+        assert_eq!(leaves.len(), 2);
+        let lines = |l: &pdfw::Leaf| l.rules.len() + l.paths.len() + l.polys.len();
+        assert_eq!(lines(&leaves[0]), 0, "the shape went on the first page");
+        assert!(lines(&leaves[1]) > 0, "the shape is not on the second page");
+        let x = leaves[1].rules.iter().map(|r| r.x1_mm).fold(f32::MAX, f32::min);
+        assert!(x < 60.0, "the shape is not at the left of the second page: {x}");
+    }
+
     /// The box a stretch of a cell's text is set in is reported where the
     /// chars went, next to the cell's own box
     #[test]

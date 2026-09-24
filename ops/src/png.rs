@@ -109,21 +109,24 @@ pub fn doc(
 /// 見えないシート(hidden)は刷りません — [`crate::pdf::book`] と同じです。
 /// 紙の大きさはシートごとに効くので、1冊に縦と横が混ざっていて構いません。
 pub fn book(b: &book::Book, to: &Path, dpi: f32) -> Result<usize, String> {
-    // ブックの字が全部組める書体(PDF と同じ。`crate::font_for_book`)
-    let font_v = crate::font_for_book(b)?;
-    let font: &[u8] = &font_v;
-    let mut leaves = Vec::new();
-    for s in b.sheets.iter().filter(|s| !s.hidden) {
-        let p = crate::pdf::paper_of(s);
-        let setup = crate::pdf::setup_of(s, b);
-        for leaf in paper::grid::sheet_leaves(s, p, &setup)? {
-            leaves.push((leaf, (p.width_mm, p.height_mm)));
-        }
-    }
-    if leaves.is_empty() {
-        return Err("刷るシートがありません(全部隠れています)".into());
-    }
-    kaku(&leaves, &[font], to, dpi)
+    // The same layout and the same fonts as the PDF (crate::pdf::book): the
+    // faces the cells name, and the book laid out as one, page numbers and
+    // all. With only the face every character can be set in, a cell in BIZ
+    // UD Mincho came out in another face, and its text at other places
+    let sheets = crate::pdf::printed_sheets(b)?;
+    let fonts: Vec<(String, Vec<u8>)> = crate::pdf::book_fonts(b)?
+        .into_iter()
+        .filter_map(|(na, fam)| kumihan::font::load(fam).ok().map(|d| (na, d)))
+        .collect();
+    let leaves: Vec<(paper::pdfw::Leaf, (f32, f32))> = paper::grid::book_leaves_fonts(&sheets, &fonts, &[])?
+        .into_iter()
+        .map(|l| {
+            let size = l.size_mm.unwrap_or((sheets[0].1.width_mm, sheets[0].1.height_mm));
+            (l, size)
+        })
+        .collect();
+    let data: Vec<&[u8]> = fonts.iter().map(|(_, d)| d.as_slice()).collect();
+    kaku(&leaves, &data, to, dpi)
 }
 
 #[cfg(test)]
