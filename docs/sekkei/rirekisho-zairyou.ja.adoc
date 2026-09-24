@@ -76,6 +76,8 @@
 
 == スキルの置き場と形
 
+置き場は新しいリポジトリ aiai に変わった(2026-09-25 発注者の決め。Opus Mac からの知らせ)。様式・スキルなど書類ごとの物は officework から分けて aiai に置く。aiai のライセンスは CC BY で、officework は PyPI から使う。下の `sample/rirekisho/…` の道は、aiai の中の道に読み替える。
+
 * スキルは `sample/rirekisho/skill/rirekisho-zairyou/SKILL.md`。Claude Code のプラグインとして
   配れる形(`.claude-plugin/plugin.json`)にする。形は Claude Code の今の文書で確かめてから作る
 * claude.ai のスキルとしても入れられるように、同じ SKILL.md を zip で渡せる形にする
