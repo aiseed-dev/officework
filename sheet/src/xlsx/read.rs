@@ -2861,10 +2861,13 @@ fn read_inner<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                             rep.note("画像(実体が見つからない)");
                             continue;
                         }
+                        // The offset inside the from cell (xdr:from colOff and
+                        // rowOff), as for shapes; a photo placed in the middle
+                        // of its box came back at the box's corner
                         sh.images.push(book::SheetImage {
                             at,
-                            dx_px: 0.0,
-                            dy_px: 0.0,
+                            dx_px: ox_emu as f32 / 9525.0,
+                            dy_px: oy_emu as f32 / 9525.0,
                             width_px,
                             height_px,
                             data,

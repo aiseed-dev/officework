@@ -1773,6 +1773,28 @@ mod validation_roundtrip_tests {
         let im = &back.sheets[0].images[0];
         assert_eq!(im.at, Pos::parse("B2").unwrap());
         assert_eq!(im.width_px.round(), 100.0);
+        assert_eq!((im.dx_px.round(), im.dy_px.round()), (30.0, 12.0), "the offset inside the cell was lost");
+    }
+
+    /// A shape held by two cells is saved held by them (twoCellAnchor)
+    #[test]
+    fn a_two_cell_shape_keeps_both_cells() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
+        b.sheets[0].shapes_new.push(book::SheetShape {
+            at: Pos::parse("B2").unwrap(), dx_px: 4.0, dy_px: 2.0, width_px: 120.0, height_px: 80.0,
+            kind: "rect".into(), to: Some((Pos::parse("D6").unwrap(), 10.0, 5.0)),
+            ..Default::default()
+        });
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        buf.set_position(0);
+        let (back, _) = read(buf).expect("読めない");
+        let sp = &back.sheets[0].shapes[0];
+        let (to, tdx, tdy) = sp.to.expect("the second cell was lost");
+        assert_eq!(to, Pos::parse("D6").unwrap());
+        assert_eq!((tdx.round(), tdy.round()), (10.0, 5.0));
+        assert_eq!((sp.dx_px.round(), sp.dy_px.round()), (4.0, 2.0));
     }
 
     #[test]

@@ -2670,6 +2670,32 @@ fn shape_xml(sp: &book::SheetShape, id: u32, naka_off: Option<(i64, i64)>) -> St
     if naka_off.is_some() {
         return sp_xml;
     }
+    // A shape held by two cells stretches with them: xdr:twoCellAnchor,
+    // from, to, the shape, clientData (ECMA-376 CT_TwoCellAnchor). Written
+    // as one cell and a size, it kept the size it had before the rows
+    // around it changed
+    if let Some((to, tdx, tdy)) = sp.to {
+        return format!(
+            concat!(
+                "<xdr:twoCellAnchor>",
+                "<xdr:from><xdr:col>{col}</xdr:col><xdr:colOff>{dx}</xdr:colOff>",
+                "<xdr:row>{row}</xdr:row><xdr:rowOff>{dy}</xdr:rowOff></xdr:from>",
+                "<xdr:to><xdr:col>{tcol}</xdr:col><xdr:colOff>{tdx}</xdr:colOff>",
+                "<xdr:row>{trow}</xdr:row><xdr:rowOff>{tdy}</xdr:rowOff></xdr:to>",
+                "{sp_xml}",
+                "<xdr:clientData/></xdr:twoCellAnchor>"
+            ),
+            sp_xml = sp_xml,
+            col = sp.at.col,
+            row = sp.at.row,
+            dx = (sp.dx_px * 9525.0) as i64,
+            dy = (sp.dy_px * 9525.0) as i64,
+            tcol = to.col,
+            trow = to.row,
+            tdx = (tdx * 9525.0) as i64,
+            tdy = (tdy * 9525.0) as i64,
+        );
+    }
     format!(
         concat!(
             "<xdr:oneCellAnchor>",
