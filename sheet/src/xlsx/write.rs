@@ -1830,7 +1830,11 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             row.push_attribute(("r", (r + 1).to_string().as_str()));
             if let Some(h) = sh.row_height.get(&r) {
                 row.push_attribute(("ht", h.to_string().as_str()));
-                row.push_attribute(("customHeight", "1"));
+                // An automatic height read from the file stays automatic
+                // while it is unchanged (Sheet::row_height_auto)
+                if sh.row_height_auto.get(&r) != Some(h) {
+                    row.push_attribute(("customHeight", "1"));
+                }
             }
             if let Some(l) = sh.row_outline.get(&r) {
                 row.push_attribute(("outlineLevel", l.to_string().as_str()));

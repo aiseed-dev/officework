@@ -18,6 +18,11 @@ impl Sheet {
             .iter()
             .map(|(r, h)| (if *r >= at { r + 1 } else { *r }, *h))
             .collect();
+        self.row_height_auto = self
+            .row_height_auto
+            .iter()
+            .map(|(r, h)| (if *r >= at { r + 1 } else { *r }, *h))
+            .collect();
         // グループ化の深さと畳みも一緒に動かす(置き去りにすると
         // 別の行が畳まれて見える)
         self.row_outline = self
@@ -40,6 +45,12 @@ impl Sheet {
         self.shift_merges(at, -1, true);
         self.row_height = self
             .row_height
+            .iter()
+            .filter(|(r, _)| **r != at)
+            .map(|(r, h)| (if *r > at { r - 1 } else { *r }, *h))
+            .collect();
+        self.row_height_auto = self
+            .row_height_auto
             .iter()
             .filter(|(r, _)| **r != at)
             .map(|(r, h)| (if *r > at { r - 1 } else { *r }, *h))

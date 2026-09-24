@@ -850,6 +850,13 @@ pub struct Sheet {
     pub col_collapsed: std::collections::BTreeSet<u32>,
     /// 行の高さ(pt)。無い行は既定。列幅と同じ構図
     pub row_height: BTreeMap<u32, f32>,
+    /// **Rows whose height the file gave without `customHeight`**, with the
+    /// height as read (2026-09-24). ECMA-376 18.3.1.73 makes `ht` the row
+    /// height whether or not `customHeight` is set; `customHeight` only says
+    /// the height was set by hand. While the height is unchanged it is
+    /// written back without `customHeight`, so saving does not turn an
+    /// automatic height into a manual one
+    pub row_height_auto: BTreeMap<u32, f32>,
     /// 行のグループ化(アウトライン)の深さ 1〜7(xlsx の outlineLevel)。
     /// 載っていない行は 0。列も同じ構図
     pub row_outline: BTreeMap<u32, u8>,

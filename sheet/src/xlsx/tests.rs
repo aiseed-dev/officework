@@ -362,6 +362,34 @@ mod colwidth_round {
         assert_eq!(sp.dash.as_deref(), Some("sysDash"));
     }
 
+    // ECMA-376 18.3.1.73: ht is the row height whether or not customHeight is
+    // set; an automatic height stays automatic when saved unchanged
+    #[test]
+    fn a_row_height_without_custom_height_is_read_and_kept_automatic() {
+        let mut s = Sheet { name: "様式".into(), ..Default::default() };
+        s.set(book::Pos::new(2, 0), book::Cell::input("年"));
+        s.set(book::Pos::new(3, 0), book::Cell::input("月"));
+        s.set(book::Pos::new(4, 0), book::Cell::input("日"));
+        s.row_height.insert(2, 24.0);
+        s.row_height_auto.insert(2, 24.0);
+        s.row_height.insert(3, 30.0);
+        s.row_height.insert(4, 18.0);
+        s.row_height_auto.insert(4, 15.0); // changed after reading
+        let mut buf = Vec::new();
+        crate::xlsx::write(&Book { sheets: vec![s], ..Default::default() }, std::io::Cursor::new(&mut buf)).unwrap();
+        let mut z = zip::ZipArchive::new(std::io::Cursor::new(&buf)).unwrap();
+        let mut xml = String::new();
+        std::io::Read::read_to_string(&mut z.by_name("xl/worksheets/sheet1.xml").unwrap(), &mut xml).unwrap();
+        let row = |r: u32| xml.split(&format!("<row r=\"{r}\"")).nth(1).and_then(|t| t.split('>').next()).unwrap_or("").to_string();
+        assert!(row(3).contains(r#"ht="24""#) && !row(3).contains("customHeight"), "{}", row(3));
+        assert!(row(4).contains(r#"customHeight="1""#), "{}", row(4));
+        assert!(row(5).contains(r#"customHeight="1""#), "a changed height is manual: {}", row(5));
+        let (back, _) = crate::xlsx::read(std::io::Cursor::new(&buf)).unwrap();
+        assert_eq!(back.sheets[0].row_height.get(&2), Some(&24.0), "ht without customHeight is the height");
+        assert_eq!(back.sheets[0].row_height_auto.get(&2), Some(&24.0));
+        assert_eq!(back.sheets[0].row_height_auto.get(&3), None);
+    }
+
     #[test]
     fn the_time_zone_option_sets_the_workbook_zone() {
         let mut buf = Vec::new();

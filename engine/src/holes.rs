@@ -43,6 +43,7 @@ pub const WATCHED: &[(&str, Watch)] = &[
     ("row_collapsed", Watch::Look),
     ("col_collapsed", Watch::Look),
     ("row_height", Watch::Look),
+    ("row_height_auto", Watch::Skip("xlsx の customHeight の無い行の印。保存で customHeight を付けないためだけに使い、adoc には書かない")),
     ("row_outline", Watch::Look),
     ("col_outline", Watch::Look),
     ("row_hidden", Watch::Body),

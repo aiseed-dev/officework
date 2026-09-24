@@ -400,9 +400,13 @@ pub(super) fn row_height(e: &quick_xml::events::BytesStart, sh: &mut Sheet) {
         return;
     }
     let r0 = r - 1;
-    if attr(e, "customHeight").as_deref() == Some("1") {
-        if let Some(h) = attr(e, "ht").and_then(|v| v.parse::<f32>().ok()) {
-            sh.row_height.insert(r0, h);
+    // `ht` is the row height whether or not `customHeight` is set (ECMA-376
+    // 18.3.1.73; decided 2026-09-24). A height without `customHeight` is
+    // also noted, so that saving keeps it automatic
+    if let Some(h) = attr(e, "ht").and_then(|v| v.parse::<f32>().ok()) {
+        sh.row_height.insert(r0, h);
+        if !matches!(attr(e, "customHeight").as_deref(), Some("1") | Some("true")) {
+            sh.row_height_auto.insert(r0, h);
         }
     }
     if let Some(l) = attr(e, "outlineLevel").and_then(|v| v.parse::<u8>().ok()) {
