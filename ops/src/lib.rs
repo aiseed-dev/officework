@@ -26,6 +26,7 @@ pub mod history;
 pub mod table;
 
 /// PDF を作る(アプリが動いていなくても)。**どの機種でも使えます**
+pub mod drawlist;
 pub mod pdf;
 
 /// 紙面を PNG にする。pdf と同じ紙面から、片方は紙、片方は絵になります

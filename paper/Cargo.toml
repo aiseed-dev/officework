@@ -40,6 +40,8 @@ png = { version = "0.18", optional = true }
 # `pdfw::Michi` へ直に出します。**svg の機能は切ります** — こちらは
 # SVG を作らないので、その分の依存が要りません
 wmf-core = { version = "0.1.1", default-features = false }
+# The draw list handed to other drawers (Flet) as JSON (drawlist.rs)
+serde_json = "1"
 
 [features]
 default = []

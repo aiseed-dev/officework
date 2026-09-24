@@ -508,6 +508,11 @@ struct Board {
     fonts: Vec<String>,
     /// 書体ごとの字の幅([`Habakei`])。`fonts` と同じ番号で並びます
     haba: Habakei,
+    /// Cells of the sheet being drawn whose place the caller wants, with
+    /// the key to file it under ([`pdfw::Spot`])
+    want_cells: std::collections::HashMap<book::Pos, String>,
+    /// Shapes (index in `shapes` then `shapes_new`) whose place is wanted
+    want_shapes: std::collections::HashMap<usize, String>,
 }
 
 /// **ＭＳ の書体で、縦の寸法が同じ仲間の名前。**
@@ -672,7 +677,13 @@ impl Habakei {
 impl Board {
     /// 1枚目の紙を敷いた紙束を作ります
     fn new(paper: Paper) -> Self {
-        Board { leaves: vec![leaf(paper)], fonts: Vec::new(), haba: Habakei::default() }
+        Board {
+            leaves: vec![leaf(paper)],
+            fonts: Vec::new(),
+            haba: Habakei::default(),
+            want_cells: Default::default(),
+            want_shapes: Default::default(),
+        }
     }
 
 
@@ -961,6 +972,38 @@ pub fn book_to_pdf_fonts<W: Write>(
     fonts: &[(String, Vec<u8>)],
     out: W,
 ) -> Result<u32, String> {
+    let (board, clipped) = book_board(sheets, fonts, &[])?;
+    let paper1 = sheets[0].1;
+    let data: Vec<&[u8]> = fonts.iter().map(|(_, d)| d.as_slice()).collect();
+    board.save_fonts(paper1, &data, out)?;
+    Ok(clipped)
+}
+
+/// The cells and shapes of one sheet whose places on the pages are wanted,
+/// each with the key its [`pdfw::Spot`]s are filed under.
+#[derive(Debug, Clone, Default)]
+pub struct Wanted {
+    pub cells: std::collections::HashMap<book::Pos, String>,
+    /// Index in `shapes` then `shapes_new`
+    pub shapes: std::collections::HashMap<usize, String>,
+}
+
+/// **The pages of a book without writing a PDF**: the same layout as
+/// [`book_to_pdf_fonts`], returned as the draw list. `wanted` (one per
+/// sheet, or empty) asks where cells and shapes land.
+pub fn book_leaves_fonts(
+    sheets: &[(&Grid, Paper, PrintSetup)],
+    fonts: &[(String, Vec<u8>)],
+    wanted: &[Wanted],
+) -> Result<Vec<pdfw::Leaf>, String> {
+    Ok(book_board(sheets, fonts, wanted)?.0.leaves)
+}
+
+fn book_board(
+    sheets: &[(&Grid, Paper, PrintSetup)],
+    fonts: &[(String, Vec<u8>)],
+    wanted: &[Wanted],
+) -> Result<(Board, u32), String> {
     let first = sheets.first().ok_or("シートがありません")?;
     let paper1 = first.1;
     let mut clipped = 0u32;
@@ -979,7 +1022,13 @@ pub fn book_to_pdf_fonts<W: Write>(
     let mut laid: Vec<(usize, std::ops::Range<usize>, Margins)> = Vec::new();
     let mut carry = true;
     for (i, (grid, paper, setup)) in sheets.iter().enumerate() {
+        if let Some(w) = wanted.get(i) {
+            board.want_cells = w.cells.clone();
+            board.want_shapes = w.shapes.clone();
+        }
         let (pages, cl, margins) = draw_sheet(&mut board, grid, *paper, setup, carry);
+        board.want_cells.clear();
+        board.want_shapes.clear();
         carry = false;
         clipped += cl;
         laid.push((i, pages, margins));
@@ -992,9 +1041,7 @@ pub fn book_to_pdf_fonts<W: Write>(
         draw_header_footer(&mut board, grid, *paper, pages, margins, offset, total);
         offset += n;
     }
-    let data: Vec<&[u8]> = fonts.iter().map(|(_, d)| d.as_slice()).collect();
-    board.save_fonts(paper1, &data, out)?;
-    Ok(clipped)
+    Ok((board, clipped))
 }
 
 /// 1枚のシートを、**渡された文書へ**描く(頁を足していく)。
@@ -1845,6 +1892,20 @@ fn draw_sheet(
             row_place.entry(r).or_insert((cur, y_top));
         }
         y_used += rh;
+        // Where the wanted cells of this row landed
+        if !board.want_cells.is_empty() && rh > 0.0 {
+            for (i, &c) in cols.iter().enumerate() {
+                if let Some(key) = board.want_cells.get(&book::Pos::new(r, c)) {
+                    if col_mm[i] > 0.0 {
+                        let spot = pdfw::Spot {
+                            key: key.clone(), x_mm: ml + col_x[i], y_mm: y_top - rh,
+                            w_mm: col_mm[i], h_mm: rh,
+                        };
+                        board.leaves[cur].spots.push(spot);
+                    }
+                }
+            }
+        }
         draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt);
     }
     }
@@ -1882,16 +1943,19 @@ fn draw_sheet(
             (page, ml + x, y_top)
         };
         // 同じ紙の図をまとめて描きます(筆を借り直す回数を減らします)
-        let mut kumi: Vec<(usize, &book::SheetShape)> = grid
+        let mut kumi: Vec<(usize, usize, &book::SheetShape)> = grid
             .shapes
             .iter()
             .chain(grid.shapes_new.iter())
-            .map(|sp| (cell_at(sp.at).0, sp))
+            .enumerate()
+            .map(|(k, sp)| (cell_at(sp.at).0, k, sp))
             .collect();
-        kumi.sort_by_key(|(p, _)| *p);
+        kumi.sort_by_key(|(p, _, _)| *p);
+        let want_shapes = std::mem::take(&mut board.want_shapes);
+        let mut spots: Vec<(usize, pdfw::Spot)> = Vec::new();
         let mut ima = usize::MAX;
         let mut ink_box: Option<Ink<'_>> = None;
-        for (page, sp) in kumi {
+        for (page, k, sp) in kumi {
             if page != ima {
                 ima = page;
                 ink_box = Some(board.ink(page));
@@ -1921,7 +1985,22 @@ fn draw_sheet(
                 }
                 _ => sp,
             };
+            if let Some(key) = want_shapes.get(&k) {
+                let mm = 25.4 / 96.0;
+                let (w, h) = (sp.width_px * mm * scale, sp.height_px * mm * scale);
+                spots.push((page, pdfw::Spot {
+                    key: key.clone(),
+                    x_mm: x + sp.dx_px * mm * scale,
+                    y_mm: y_top - sp.dy_px * mm * scale - h,
+                    w_mm: w,
+                    h_mm: h,
+                }));
+            }
             zukei(l1, sp, x, y_top, scale, &fonts);
+        }
+        drop(ink_box);
+        for (page, spot) in spots {
+            board.leaves[page].spots.push(spot);
         }
 
         // **画像も紙に出します**(2026-09-03)。模型には在るのに紙に

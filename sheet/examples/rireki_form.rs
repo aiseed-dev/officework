@@ -44,6 +44,10 @@ fn main() {
     }
     for sp in s.shapes.iter_mut() {
         sp.text_fmt.font = Some(biz(sp.text_fmt.font.as_deref().unwrap_or("ＭＳ Ｐ明朝")));
+        // The photo box is the field the data's picture goes into
+        if sp.text.as_deref().is_some_and(|t| t.contains("写真をはる位置")) {
+            sp.field = Some("写真".into());
+        }
     }
     // The named styles (標準 and the like) name their faces too
     for (_, _, f) in book.named_styles.iter_mut() {

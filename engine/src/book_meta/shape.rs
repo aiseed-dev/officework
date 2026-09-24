@@ -1,6 +1,6 @@
 //! **図形を表で持つ。**
 //!
-//! 図形の持ち物は 23 あります(`kind` `points` `text_fmt` `spark_marks` …)。
+//! 図形の持ち物は 24 あります(`kind` `points` `text_fmt` `spark_marks` …)。
 //! 横に 19 列並べると読めないので、書式と同じ**縦長の (名前, 項目, 値)**
 //! にします。設定した項目だけが1行ずつ出ます。
 //!
@@ -45,6 +45,8 @@ pub const FIELDS: &[(&str, &str)] = &[
     ("to", "to"),
     // prstGeom の調整値。`adj1=0.35 adj2=1` の形
     ("adj", "adjust"),
+    // The form field the shape is (a photo box), `写真`
+    ("field", "field"),
 ];
 
 /// 1つの図形を (項目, 値) の並びにする。**既定のままの欄は出しません。**
@@ -84,7 +86,7 @@ pub fn to_rows(s: &SheetShape) -> Vec<(&'static str, String)> {
         }
     }
     for (k, v) in [("fill", &s.fill), ("line", &s.line), ("dash", &s.dash),
-                   ("text", &s.text)] {
+                   ("text", &s.text), ("field", &s.field)] {
         if let Some(x) = v {
             put(k, x.clone());
         }
@@ -140,6 +142,7 @@ pub fn from_rows(rows: &[(String, String)]) -> SheetShape {
             "line" => s.line = Some(v.clone()),
             "dash" => s.dash = Some(v.clone()),
             "text" => s.text = Some(v.clone()),
+            "field" => s.field = Some(v.clone()),
             "text_fmt" => s.text_fmt = read_text_fmt(v),
             "spark_marks" => s.spark_marks = read_spark(v),
             "points" => s.points = read_points(v),

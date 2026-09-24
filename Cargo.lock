@@ -5487,6 +5487,7 @@ dependencies = [
  "pdf-writer",
  "png 0.18.1",
  "printpdf",
+ "serde_json",
  "sheet",
  "subsetter",
  "ttf-parser 0.25.1",

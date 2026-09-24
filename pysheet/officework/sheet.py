@@ -2068,11 +2068,29 @@ class Book(NoStrayAttributes):
     @staticmethod
     def fill(form, data):
         """様式(`{氏名}` などの印を持つブック)を、データのブックで埋めた
-        新しいブックを返します。データに無い印は空になります。"""
+        新しいブックを返します。データに無い印は空になります。
+
+        写真の欄には、データの「写真」に書いたファイルを置きます。ファイルは
+        データのファイルと同じフォルダーから探します。"""
+        path = getattr(data, "_path", None)
+        folder = _os.path.dirname(_os.fspath(path)) if path else None
         b = Book.__new__(Book)
-        b._b = _engine.Book.fill(form._b, data._b)
+        b._b = _engine.Book.fill(form._b, data._b, folder)
         b._path = None
         return b
+
+    def draw_list(self):
+        """描画一覧を辞書で返します(docs/sekkei/drawlist.ja.adoc)。
+
+        単位は pt で、原点はページの左上です。``fill`` で作ったブックでは、
+        ページごとの ``fields`` に欄の名前・種類・四角・値が入ります。"""
+        import json as _json
+        return _json.loads(self._b.draw_list())
+
+    def set_field(self, name, value):
+        """データのブックの欄に値を入れます。``学歴・職歴.3.内容`` のような
+        表の欄はその表の行と列に、それ以外は「名前・値」の表に入ります。"""
+        self._b.set_field(name, str(value))
 
     def fields(self):
         """様式の欄の一覧です。(シート名, セル, 印の名前の並び) を、上の行から

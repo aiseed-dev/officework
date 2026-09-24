@@ -236,4 +236,30 @@ check(any(r == "D12" for r, *_ in s._s.validation_messages), "後から足した
 # 1マスだけの結合は何もしない(openpyxl は "D12:D12" を受ける)
 s.merge_cells("D12:D12")
 
+# The draw list of a filled form: fields by data item, placed on the page,
+# and a new value written back into the data (docs/sekkei/drawlist.ja.adoc)
+with tempfile.TemporaryDirectory() as d:
+    with open(os.path.join(d, "f.form.adoc"), "w", encoding="utf-8") as f:
+        f.write("= 様式\n\n.様式\n|===\n|{氏名} |{日付.年}年{日付.月}月\n|{本人希望.1} |\n|{本人希望.2} |\n|===\n")
+    with open(os.path.join(d, "d.sheet.adoc"), "w", encoding="utf-8") as f:
+        f.write("= データ\n\n.基本\n|===\n|氏名 |山田 太郎\n|日付 |2026-09-24\n|本人希望 |一 +\n二\n|===\n")
+    form = office_sheet.Book.open(os.path.join(d, "f.form.adoc"))
+    data = office_sheet.Book.open(os.path.join(d, "d.sheet.adoc"))
+    dl = office_sheet.Book.fill(form, data).draw_list()
+    check(dl["version"] == "0.1", f"描画一覧の版が違う: {dl['version']}")
+    page = dl["pages"][0]
+    fields = {f["name"]: f for f in page["fields"]}
+    check(sorted(fields) == ["日付", "本人希望", "氏名"], f"欄の名前が違う: {sorted(fields)}")
+    check(fields["日付"]["kind"] == "date" and fields["日付"]["value"] == "2026-09-24", f"日付の欄: {fields['日付']}")
+    check(fields["本人希望"]["kind"] == "multiline", f"本人希望の欄: {fields['本人希望']}")
+    x, y, w, h = fields["本人希望"]["rect"]
+    _, y1, _, h1 = fields["氏名"]["rect"]
+    check(abs(y - (y1 + h1)) < 0.05 and h > h1 * 1.5, f"本人希望の四角が 2 行を含まない: {fields['本人希望']['rect']}")
+    texts = [it["text"] for it in page["items"] if it["type"] == "text"]
+    check("山田 太郎" in texts, f"字が描画一覧に無い: {texts}")
+    check(all(it["baseline"] > it["top"] for it in page["items"] if it["type"] == "text"), "上端がベースラインより下にある")
+    data.set_field("氏名", "山田 花子")
+    texts = [it["text"] for it in office_sheet.Book.fill(form, data).draw_list()["pages"][0]["items"] if it["type"] == "text"]
+    check("山田 花子" in texts, f"直した値で描き直されない: {texts}")
+
 print("OK")

@@ -40,6 +40,9 @@ struct Inner {
     original: Option<Vec<u8>>,
     /// 読めなかったものの帳簿。黙って落とさない(ooxml と同じ作法)
     unsupported: Vec<(String, usize)>,
+    /// For a book made by `fill`: the form and the data it was filled from,
+    /// so the draw list can name the fields
+    made_from: Option<(book::Book, book::Book)>,
 }
 
 fn lock(inner: &Arc<Mutex<Inner>>) -> PyResult<MutexGuard<'_, Inner>> {
@@ -181,6 +184,7 @@ impl PyBook {
                 book: book::Book::new(),
                 original: None,
                 unsupported: Vec::new(),
+                made_from: None,
             })),
         }
     }
@@ -225,7 +229,7 @@ impl PyBook {
                 .map_err(|e| PyIOError::new_err(format!("{path}: adoc として読めない: {e}")))?;
             recalc_all(&mut book);
             return Ok(PyBook {
-                inner: Arc::new(Mutex::new(Inner { book, original: None, unsupported: report.into_iter().map(|r| (r, 1)).collect() })),
+                inner: Arc::new(Mutex::new(Inner { book, original: None, unsupported: report.into_iter().map(|r| (r, 1)).collect(), made_from: None })),
             });
         }
         let bytes = std::fs::read(path)
@@ -239,6 +243,7 @@ impl PyBook {
                 book,
                 original: Some(bytes),
                 unsupported: rep.unsupported,
+                made_from: None,
             })),
         })
     }
@@ -246,14 +251,40 @@ impl PyBook {
     // **A form filled from data** (book::form): every {mark} in the form's
     // cells is replaced by what the data says, or by nothing
     #[staticmethod]
-    fn fill(form: &PyBook, data: &PyBook) -> PyResult<PyBook> {
+    // `dir` is where the picture files the data names are
+    #[pyo3(signature = (form, data, dir = None))]
+    fn fill(form: &PyBook, data: &PyBook, dir: Option<&str>) -> PyResult<PyBook> {
         let f = lock(&form.inner)?.book.clone();
         let d = lock(&data.inner)?.book.clone();
-        let mut book = book::form::fill(&f, &d);
+        let mut book = book::form::fill_in(&f, &d, dir.map(std::path::Path::new));
         recalc_all(&mut book);
         Ok(PyBook {
-            inner: Arc::new(Mutex::new(Inner { book, original: None, unsupported: Vec::new() })),
+            inner: Arc::new(Mutex::new(Inner {
+                book,
+                original: None,
+                unsupported: Vec::new(),
+                made_from: Some((f, d)),
+            })),
         })
+    }
+
+    // The draw list as JSON text (docs/sekkei/drawlist.ja.adoc); a book made
+    // by `fill` also lists its fields
+    fn draw_list(&self) -> PyResult<String> {
+        let mut g = lock(&self.inner)?;
+        recalc_all(&mut g.book);
+        let v = match &g.made_from {
+            Some((form, data)) => ops::drawlist::form(form, data, &g.book),
+            None => ops::drawlist::book(&g.book),
+        }
+        .map_err(PyValueError::new_err)?;
+        Ok(v.to_string())
+    }
+
+    // Writes a field's new value into this data book
+    fn set_field(&self, name: &str, value: &str) -> PyResult<()> {
+        let mut g = lock(&self.inner)?;
+        book::form::set(&mut g.book, name, value).map_err(PyValueError::new_err)
     }
 
     // The form's fields: (sheet name, cell A1, mark names), in reading order

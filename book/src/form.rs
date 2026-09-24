@@ -15,8 +15,16 @@
 //! - `{学歴・職歴.3.内容}`: row 3 (after the header) of the table 学歴・職歴,
 //!   column 内容
 //! - `{本人希望.2}`: line 2 of a value written on several lines
+//!
+//! A shape whose `field` is set (the photo box, `写真`) takes the picture
+//! file the data names.
+//!
+//! For editing, the marks are gathered by the data item they stand for
+//! ([`groups`]): `{日付.年}` `{日付.月}` `{日付.日}` are one date field
+//! `日付`, and `{本人希望.1}`…`{本人希望.4}` one field `本人希望`.
+//! [`set`] writes a field's new value back into the data.
 
-use crate::{Book, Cell, Pos, Sheet, Value};
+use crate::{Book, Cell, Pos, Sheet, SheetImage, Value};
 
 /// One field of a form: the cell that holds marks, and the names they use.
 #[derive(Debug, Clone, PartialEq)]
@@ -94,6 +102,15 @@ impl<'a> Data<'a> {
         (!v.is_empty()).then_some(v)
     }
 
+    /// The value the data holds for a field name, as written there
+    /// (`2026-09-24` for a date, every line of a multi-line value).
+    pub fn raw(&self, name: &str) -> Option<String> {
+        match name.split('.').collect::<Vec<_>>().as_slice() {
+            [t, n, col] if n.parse::<u32>().is_ok() => self.row(t, n.parse().ok()?, col),
+            _ => self.pair(name),
+        }
+    }
+
     /// What one mark stands for; None when the data does not say.
     pub fn answer(&self, mark: &str) -> Option<String> {
         if mark == "年齢" {
@@ -143,8 +160,46 @@ fn date_parts(s: &str) -> Option<(i32, u32, u32)> {
 /// **The form with the data put in.** Each mark is replaced by its answer,
 /// or by nothing when the data does not answer it.
 pub fn fill(form: &Book, data: &Book) -> Book {
-    let data = Data::new(data);
+    fill_in(form, data, None)
+}
+
+/// [`fill`], also putting pictures in the shapes that are fields. A picture
+/// file named in the data is looked for in `dir` (the data file's folder).
+pub fn fill_in(form: &Book, data_book: &Book, dir: Option<&std::path::Path>) -> Book {
+    let data = Data::new(data_book);
     let mut out = form.clone();
+    let basis = form.col_basis;
+    for s in &mut out.sheets {
+        let sheet_sizes = s.clone_sizes(&basis);
+        let mut images = Vec::new();
+        for list in [&mut s.shapes, &mut s.shapes_new] {
+            for sp in list.iter_mut() {
+                let Some(name) = sp.field.clone() else { continue };
+                let Some(file) = data.pair(&name).filter(|f| !f.trim().is_empty()) else { continue };
+                let path = match dir {
+                    Some(d) => d.join(file.trim()),
+                    None => std::path::PathBuf::from(file.trim()),
+                };
+                let Ok(bytes) = std::fs::read(&path) else { continue };
+                let Some((iw, ih)) = image_size(&bytes) else { continue };
+                let (bw, bh) = box_px(&sheet_sizes, basis, sp);
+                // Inside the shape, keeping the picture's proportions, centred
+                let k = (bw / iw as f32).min(bh / ih as f32);
+                let (w, h) = (iw as f32 * k, ih as f32 * k);
+                images.push(SheetImage {
+                    at: sp.at,
+                    dx_px: sp.dx_px + (bw - w) / 2.0,
+                    dy_px: sp.dy_px + (bh - h) / 2.0,
+                    width_px: w,
+                    height_px: h,
+                    data: bytes,
+                });
+                // The instructions in the box give way to the photo; the frame stays
+                sp.text = None;
+            }
+        }
+        s.images_new.extend(images);
+    }
     for s in &mut out.sheets {
         let keys: Vec<Pos> = s.cells.keys().copied().collect();
         for p in keys {
@@ -167,6 +222,199 @@ pub fn fill(form: &Book, data: &Book) -> Book {
         }
     }
     out
+}
+
+/// The column widths and row heights a shape's box is measured with.
+struct Sizes {
+    col_mm: Vec<f32>,
+    row_pt: std::collections::BTreeMap<u32, f32>,
+    default_row_pt: f32,
+}
+
+impl Sheet {
+    /// The widths of the columns shapes reach, and the row heights
+    fn clone_sizes(&self, basis: &crate::ColBasis) -> Sizes {
+        let last = self.shapes.iter().chain(self.shapes_new.iter())
+            .filter_map(|sp| sp.to.map(|(p, _, _)| p.col))
+            .max()
+            .unwrap_or(0);
+        Sizes {
+            col_mm: (0..=last).map(|c| self.col_haba_mm(c, basis)).collect(),
+            row_pt: self.row_height.clone(),
+            default_row_pt: self.default_row_height.unwrap_or(crate::DEFAULT_ROW_PT),
+        }
+    }
+}
+
+/// **The size (px) a shape is drawn at.** A shape held by two cells
+/// (`to`, xlsx twoCellAnchor) stretches with them, so its box comes from
+/// the columns and rows it spans, as the page draws it; otherwise it is the
+/// size the shape states.
+fn box_px(z: &Sizes, basis: crate::ColBasis, sp: &crate::SheetShape) -> (f32, f32) {
+    let Some((to, tdx, tdy)) = sp.to else { return (sp.width_px, sp.height_px) };
+    if to.col < sp.at.col || to.row < sp.at.row {
+        return (sp.width_px, sp.height_px);
+    }
+    let px_per_mm = 96.0 / 25.4;
+    let w_mm: f32 = (sp.at.col..to.col)
+        .map(|c| z.col_mm.get(c as usize).copied().unwrap_or_else(|| basis.default_mm(8.0)))
+        .sum();
+    let h_pt: f32 = (sp.at.row..to.row).map(|r| z.row_pt.get(&r).copied().unwrap_or(z.default_row_pt)).sum();
+    (
+        (w_mm * px_per_mm - sp.dx_px + tdx).max(1.0),
+        (h_pt * 96.0 / 72.0 - sp.dy_px + tdy).max(1.0),
+    )
+}
+
+/// The width and height of a PNG or JPEG picture.
+fn image_size(b: &[u8]) -> Option<(u32, u32)> {
+    if b.starts_with(b"\x89PNG") && b.len() >= 24 {
+        let w = u32::from_be_bytes(b[16..20].try_into().ok()?);
+        let h = u32::from_be_bytes(b[20..24].try_into().ok()?);
+        return Some((w, h));
+    }
+    if b.starts_with(&[0xFF, 0xD8]) {
+        // Walk the segments to a start-of-frame marker (C0–CF but C4, C8, CC)
+        let mut i = 2;
+        while i + 9 < b.len() {
+            if b[i] != 0xFF {
+                i += 1;
+                continue;
+            }
+            let m = b[i + 1];
+            let len = u16::from_be_bytes([b[i + 2], b[i + 3]]) as usize;
+            if (0xC0..=0xCF).contains(&m) && ![0xC4, 0xC8, 0xCC].contains(&m) {
+                let h = u16::from_be_bytes([b[i + 5], b[i + 6]]) as u32;
+                let w = u16::from_be_bytes([b[i + 7], b[i + 8]]) as u32;
+                return (w > 0 && h > 0).then_some((w, h));
+            }
+            i += 2 + len;
+        }
+    }
+    None
+}
+
+/// What kind of input a field takes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    Text,
+    Multiline,
+    Date,
+    Image,
+}
+
+impl Kind {
+    pub fn name(self) -> &'static str {
+        match self {
+            Kind::Text => "text",
+            Kind::Multiline => "multiline",
+            Kind::Date => "date",
+            Kind::Image => "image",
+        }
+    }
+}
+
+/// One field to edit: a data item and the places of the form showing it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Group {
+    pub name: String,
+    pub kind: Kind,
+    /// The value the data holds (empty when it holds none)
+    pub value: String,
+    /// The cells (sheet, position) whose marks stand for this item
+    pub cells: Vec<(usize, Pos)>,
+    /// The shape (sheet, index in `shapes` then `shapes_new`) for a picture
+    pub shape: Option<(usize, usize)>,
+}
+
+/// The data item a mark stands for, and its kind. `年齢` is worked out, so
+/// it is not an item.
+fn item_of(mark: &str) -> Option<(String, Kind)> {
+    if mark == "年齢" {
+        return None;
+    }
+    Some(match mark.split('.').collect::<Vec<_>>().as_slice() {
+        [key, "年" | "月" | "日"] => (key.to_string(), Kind::Date),
+        [key, n] if n.parse::<u32>().is_ok() => (key.to_string(), Kind::Multiline),
+        _ => (mark.to_string(), Kind::Text),
+    })
+}
+
+/// **The fields of a form, one per data item**, in the order they first
+/// appear (by sheet, row and column), with the values the data holds.
+pub fn groups(form: &Book, data_book: &Book) -> Vec<Group> {
+    let data = Data::new(data_book);
+    let mut out: Vec<Group> = Vec::new();
+    for f in fields(form) {
+        let wraps = form.sheets[f.sheet].cells.get(&f.at).is_some_and(|c| c.fmt.wrap);
+        for m in &f.names {
+            let Some((name, kind)) = item_of(m) else { continue };
+            let g = match out.iter_mut().position(|g| g.name == name) {
+                Some(i) => &mut out[i],
+                None => {
+                    out.push(Group { name: name.clone(), kind, value: String::new(),
+                                     cells: Vec::new(), shape: None });
+                    out.last_mut().expect("just pushed")
+                }
+            };
+            if wraps && g.kind == Kind::Text {
+                g.kind = Kind::Multiline;
+            }
+            if !g.cells.contains(&(f.sheet, f.at)) {
+                g.cells.push((f.sheet, f.at));
+            }
+        }
+    }
+    for (si, s) in form.sheets.iter().enumerate() {
+        for (k, sp) in s.shapes.iter().chain(s.shapes_new.iter()).enumerate() {
+            if let Some(name) = &sp.field {
+                out.push(Group { name: name.clone(), kind: Kind::Image, value: String::new(),
+                                 cells: Vec::new(), shape: Some((si, k)) });
+            }
+        }
+    }
+    for g in &mut out {
+        g.value = data.raw(&g.name).unwrap_or_default();
+        if g.kind == Kind::Text && g.value.contains('\n') {
+            g.kind = Kind::Multiline;
+        }
+    }
+    out
+}
+
+/// **Writes a field's new value into the data.** A table field
+/// (`学歴・職歴.3.年`) sets that row and column of the table, adding rows
+/// as needed; any other name sets the value next to it in a two-column
+/// table, or adds a row to the first such table when the name is new.
+pub fn set(data: &mut Book, name: &str, value: &str) -> Result<(), String> {
+    let text = |v: &str| Cell { value: Value::Text(v.to_string()), ..Default::default() };
+    if let [t, n, col] = name.split('.').collect::<Vec<_>>().as_slice() {
+        if let (Ok(n), Some(s)) = (n.parse::<u32>(), data.sheets.iter_mut().find(|s| s.name == *t)) {
+            let (_, cols) = s.extent();
+            let c = (0..cols)
+                .find(|c| s.value(Pos::new(0, *c)).display().trim() == *col)
+                .ok_or_else(|| format!("{t} に列「{col}」がありません"))?;
+            s.set(Pos::new(n, c), text(value));
+            return Ok(());
+        }
+    }
+    let two_cols = |s: &Sheet| s.extent().1 == 2;
+    for s in data.sheets.iter_mut().filter(|s| two_cols(s)) {
+        let (rows, _) = s.extent();
+        if let Some(r) = (0..rows).find(|r| s.value(Pos::new(*r, 0)).display().trim() == name) {
+            s.set(Pos::new(r, 1), text(value));
+            return Ok(());
+        }
+    }
+    let s = data
+        .sheets
+        .iter_mut()
+        .find(|s| two_cols(s))
+        .ok_or("データに「名前・値」の 2 列の表がありません")?;
+    let (rows, _) = s.extent();
+    s.set(Pos::new(rows, 0), text(name));
+    s.set(Pos::new(rows, 1), text(value));
+    Ok(())
 }
 
 #[cfg(test)]
@@ -222,5 +470,79 @@ mod tests {
         assert_eq!(v(5, 0), "2 行目");
         assert_eq!(v(6, 0), "", "a field the data leaves out is empty");
         assert_eq!(v(7, 0), "見出し");
+    }
+
+    #[test]
+    fn marks_are_gathered_by_data_item() {
+        let mut form = Book::new();
+        let s = &mut form.sheets[0];
+        let t = |v: &str| Cell { value: Value::Text(v.into()), ..Default::default() };
+        s.set(Pos::new(0, 0), t("{日付.年}年{日付.月}月{日付.日}日現在"));
+        s.set(Pos::new(1, 0), t("{生年月日.年}年 (満{年齢}歳)"));
+        s.set(Pos::new(2, 0), t("{本人希望.1}"));
+        s.set(Pos::new(3, 0), t("{本人希望.2}"));
+        s.set(Pos::new(4, 0), t("{学歴・職歴.1.内容}"));
+        s.shapes.push(crate::SheetShape { field: Some("写真".into()), ..Default::default() });
+        let g = groups(&form, &data());
+        let names: Vec<&str> = g.iter().map(|g| g.name.as_str()).collect();
+        assert_eq!(names, ["日付", "生年月日", "本人希望", "学歴・職歴.1.内容", "写真"]);
+        assert_eq!(g[0].kind, Kind::Date);
+        assert_eq!(g[0].value, "2026-09-24");
+        assert_eq!(g[2].kind, Kind::Multiline);
+        assert_eq!(g[2].cells.len(), 2);
+        assert_eq!(g[2].value, "1 行目\n2 行目");
+        assert_eq!(g[3].value, "千代田大学 入学");
+        assert_eq!(g[4].kind, Kind::Image);
+    }
+
+    #[test]
+    fn a_new_value_is_written_back_into_the_data() {
+        let mut d = data();
+        set(&mut d, "氏名", "山田 花子").unwrap();
+        set(&mut d, "学歴・職歴.2.内容", "千代田大学 卒業").unwrap();
+        set(&mut d, "通勤時間", "約 30 分").unwrap();
+        let dd = Data::new(&d);
+        assert_eq!(dd.raw("氏名").as_deref(), Some("山田 花子"));
+        assert_eq!(dd.raw("学歴・職歴.2.内容").as_deref(), Some("千代田大学 卒業"));
+        assert_eq!(dd.raw("通勤時間").as_deref(), Some("約 30 分"));
+        assert!(set(&mut d, "学歴・職歴.1.場所", "x").is_err());
+    }
+
+    #[test]
+    fn a_photo_goes_inside_its_box() {
+        let dir = std::env::temp_dir().join(format!("form-photo-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        // A PNG header is enough: 300 × 400
+        let mut png = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR".to_vec();
+        png.extend_from_slice(&300u32.to_be_bytes());
+        png.extend_from_slice(&400u32.to_be_bytes());
+        std::fs::write(dir.join("p.png"), &png).unwrap();
+        let mut d = data();
+        set(&mut d, "写真", "p.png").unwrap();
+        let mut form = Book::new();
+        form.sheets[0].shapes.push(crate::SheetShape {
+            field: Some("写真".into()), width_px: 120.0, height_px: 200.0,
+            text: Some("写真をはる位置".into()), ..Default::default()
+        });
+        let out = fill_in(&form, &d, Some(&dir));
+        let im = &out.sheets[0].images_new[0];
+        assert_eq!((im.width_px, im.height_px), (120.0, 160.0));
+        assert_eq!((im.dx_px, im.dy_px), (0.0, 20.0));
+        assert_eq!(out.sheets[0].shapes[0].text, None);
+
+        // A box held by two cells takes its size from the rows it spans:
+        // two rows of 30pt are 80px high, so the picture is 60 × 80
+        let mut form = Book::new();
+        form.sheets[0].row_height.insert(0, 30.0);
+        form.sheets[0].row_height.insert(1, 30.0);
+        form.sheets[0].shapes.push(crate::SheetShape {
+            field: Some("写真".into()), width_px: 120.0, height_px: 200.0,
+            to: Some((Pos::new(2, 5), 0.0, 0.0)), ..Default::default()
+        });
+        let out = fill_in(&form, &d, Some(&dir));
+        let im = &out.sheets[0].images_new[0];
+        assert!((im.height_px - 80.0).abs() < 0.01, "{}", im.height_px);
+        assert!((im.width_px - 60.0).abs() < 0.01, "{}", im.width_px);
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

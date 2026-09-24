@@ -1458,6 +1458,10 @@ pub struct SheetShape {
     /// 太さなど、形ごとのつまみ。名前(adj1 など)と値の組で、
     /// 無い分は定義データの既定が使われる
     pub adj: Vec<(String, f32)>,
+    /// The form field this shape is (`写真` for a photo box). Written only in
+    /// an adoc form; filling puts the data's picture inside the shape
+    /// (docs/sekkei/drawlist.ja.adoc)
+    pub field: Option<String>,
 }
 
 /// **The repeating pattern of a DrawingML preset dash** (ECMA-376
@@ -1518,6 +1522,7 @@ impl Default for SheetShape {
             group: 0,
             to: None,
             adj: Vec::new(),
+            field: None,
         }
     }
 }

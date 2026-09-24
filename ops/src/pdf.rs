@@ -37,7 +37,24 @@ pub fn doc(
 /// 見えないシート(hidden)は刷りません — 画面と同じです。
 /// 返りは切れた列の数の合計で、0 でなければ紙からはみ出しています。
 pub fn book(b: &book::Book, to: &Path) -> Result<u32, String> {
-    let font = crate::font_for_book(b)?;
+    let sheets = printed_sheets(b)?;
+    let fonts: Vec<(String, Vec<u8>)> = book_fonts(b)?
+        .into_iter()
+        .filter_map(|(na, fam)| kumihan::font::load(fam).ok().map(|d| (na, d)))
+        .collect();
+    let mut cut = 0;
+    kumihan::atomic::save(to, |f| {
+        cut = paper::grid::book_to_pdf_fonts(&sheets, &fonts, f)?;
+        Ok(())
+    })?;
+    Ok(cut)
+}
+
+/// The sheets a book prints (the hidden ones are left out), each with its
+/// paper and print setup.
+pub(crate) fn printed_sheets(
+    b: &book::Book,
+) -> Result<Vec<(&book::Sheet, paper::Paper, paper::grid::PrintSetup)>, String> {
     let sheets: Vec<(&book::Sheet, paper::Paper, paper::grid::PrintSetup)> = b
         .sheets
         .iter()
@@ -47,10 +64,21 @@ pub fn book(b: &book::Book, to: &Path) -> Result<u32, String> {
     if sheets.is_empty() {
         return Err("刷るシートがありません(全部隠れています)".into());
     }
+    Ok(sheets)
+}
+
+/// **The fonts a book is set in**, as (the name cells use, the face on this
+/// machine). The first has no name: it is the face every character of the
+/// book can be set in, for cells that name none and characters a named
+/// face lacks.
+pub(crate) fn book_fonts(
+    b: &book::Book,
+) -> Result<Vec<(String, &'static kumihan::font::Family)>, String> {
     // **セルが名指しした書体を集めて渡します**(2026-08-31。Fable の指摘2)。
     // 前は1本しか埋められず、明朝のセルもゴシックのセルも同じ書体で出ていました。
     // 機械に無い書体は置き替えます(`for_document` が系統を保ちます)
-    let mut fonts: Vec<(String, Vec<u8>)> = vec![("".into(), font.to_vec())];
+    let mut fonts: Vec<(String, &'static kumihan::font::Family)> =
+        vec![("".into(), crate::book_family(b)?)];
     let mut mita: std::collections::BTreeSet<String> = Default::default();
     for s in &b.sheets {
         // Cells, rich text runs, and the text in shapes (text boxes)
@@ -62,26 +90,17 @@ pub fn book(b: &book::Book, to: &Path) -> Result<u32, String> {
                 continue;
             }
             if let Ok((fam, _)) = kumihan::font::for_document(Some(&na)) {
-                if let Ok(d) = kumihan::font::load(fam) {
-                    fonts.push((na.clone(), d));
-                }
+                fonts.push((na.clone(), fam));
             }
             // **半角だけ別の書体で組む書体**(ＭＳ Ｐ明朝など)は、もう1本
             // 足します(2026-08-31 発注者)。名前の後ろに印を付けて分けます —
             // 紙の側がその印で引きます
             if let Some(fam) = kumihan::font::hankaku_no_kae(&na) {
-                if let Ok(d) = kumihan::font::load(fam) {
-                    fonts.push((format!("{na}{}", paper::grid::HANKAKU_SIRUSI), d));
-                }
+                fonts.push((format!("{na}{}", paper::grid::HANKAKU_SIRUSI), fam));
             }
         }
     }
-    let mut cut = 0;
-    kumihan::atomic::save(to, |f| {
-        cut = paper::grid::book_to_pdf_fonts(&sheets, &fonts, f)?;
-        Ok(())
-    })?;
-    Ok(cut)
+    Ok(fonts)
 }
 
 /// シートの紙の設定。**シートごとに効きます**(1冊に縦と横が混ざってよい)

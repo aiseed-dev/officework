@@ -210,7 +210,7 @@ pub fn write_pages<W: std::io::Write>(
 /// 判じて1本目に落としたので、落ちた塊の字が1本目の部分集合に無く、
 /// 字形 0(空白)で出ていました(2026-09-08、Word と並べて見つけた。
 /// Courier New の run の「選ん」が消えていた)
-fn face_for(text: &str, want: u8, faces: &[ttf_parser::Face]) -> usize {
+pub(crate) fn face_for(text: &str, want: u8, faces: &[ttf_parser::Face]) -> usize {
     let k = (want as usize).min(faces.len() - 1);
     if text.chars().all(|c| faces[k].glyph_index(c).is_some()) { k } else { 0 }
 }
@@ -1466,6 +1466,21 @@ pub struct Leaf {
     /// **この紙の大きさ(mm)。** 節で紙が変わる文書は頁ごとに違います。
     /// `None` なら呼ぶ側に渡した既定の大きさ
     pub size_mm: Option<(f32, f32)>,
+    /// Places the caller asked to know on this page (form fields), in mm
+    /// from the bottom left like everything else. Nothing is drawn for them
+    pub spots: Vec<Spot>,
+}
+
+/// A place on the page found for a key the caller gave (a field's cell or
+/// shape). A merged cell gives one spot per cell under one key.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Spot {
+    pub key: String,
+    pub x_mm: f32,
+    /// The bottom edge, from the bottom of the page
+    pub y_mm: f32,
+    pub w_mm: f32,
+    pub h_mm: f32,
 }
 
 /// **道を1つ描きます。**
