@@ -24,6 +24,9 @@
 //!   returns where it is in the cell's text ([`Choice`]) for the layout to
 //!   measure and circle
 //!
+//! - `{送達場所=住所}`: a box to tick. It is ■ when the data's 送達場所
+//!   is 住所 and □ otherwise; the boxes of one name are one choice field
+//!
 //! A shape whose `field` is set (the photo box, `写真`) takes the picture
 //! file the data names.
 //!
@@ -138,6 +141,10 @@ impl<'a> Data<'a> {
 
     /// What one mark stands for; None when the data does not say.
     pub fn answer(&self, mark: &str) -> Option<String> {
+        if let Some((name, option)) = box_of(mark) {
+            let chosen = self.pair(name).is_some_and(|v| v.trim() == option);
+            return Some(if chosen { "■" } else { "□" }.to_string());
+        }
         if mark == "年齢" {
             return self.age();
         }
@@ -233,6 +240,13 @@ pub struct Choice {
     pub at: Pos,
     pub start: usize,
     pub len: usize,
+}
+
+/// The name and the option of a box to tick (`送達場所=住所`).
+fn box_of(mark: &str) -> Option<(&str, &str)> {
+    let (name, option) = mark.split_once('=')?;
+    let (name, option) = (name.trim(), option.trim());
+    (!name.is_empty() && !option.is_empty()).then_some((name, option))
 }
 
 /// The name and the options of a choice mark (`性別:男・女`).
@@ -393,7 +407,10 @@ pub fn missing(form: &Book, data_book: &Book) -> Vec<String> {
         names.extend(s.shapes.iter().chain(s.shapes_new.iter()).filter_map(|sp| sp.field.clone()));
     }
     for m in names {
-        let m = choice_of(&m).map(|(n, _)| n.to_string()).unwrap_or(m);
+        let m = choice_of(&m)
+            .map(|(n, _)| n.to_string())
+            .or_else(|| box_of(&m).map(|(n, _)| n.to_string()))
+            .unwrap_or(m);
         let parts: Vec<&str> = m.split('.').collect();
         match parts.as_slice() {
             ["年齢"] => {
@@ -496,6 +513,9 @@ fn item_of(mark: &str) -> Option<(String, Kind)> {
     if let Some((name, _)) = choice_of(mark) {
         return Some((name.to_string(), Kind::Choice));
     }
+    if let Some((name, _)) = box_of(mark) {
+        return Some((name.to_string(), Kind::Choice));
+    }
     Some(match mark.split('.').collect::<Vec<_>>().as_slice() {
         [key, "年" | "月" | "日" | "元号" | "和暦年"] => (key.to_string(), Kind::Date),
         [key, "時間" | "分"] => (key.to_string(), Kind::Text),
@@ -526,6 +546,12 @@ pub fn groups(form: &Book, data_book: &Book) -> Vec<Group> {
             };
             if wraps && g.kind == Kind::Text {
                 g.kind = Kind::Multiline;
+            }
+            // Each box of a name adds its option
+            if let Some((_, option)) = box_of(m) {
+                if !g.options.iter().any(|o| o == option) {
+                    g.options.push(option.to_string());
+                }
             }
             if !g.cells.contains(&(f.sheet, f.at)) {
                 g.cells.push((f.sheet, f.at));
@@ -713,6 +739,25 @@ mod tests {
         assert_eq!((g[0].name.as_str(), g[0].kind, g[0].value.as_str()), ("性別", Kind::Choice, "女"));
         assert_eq!(g[0].options, ["男", "女"]);
         assert_eq!(missing(&form, &d), ["配偶者"]);
+    }
+
+    #[test]
+    fn a_box_is_ticked_for_the_chosen_option() {
+        let mut form = Book::new();
+        let t = |v: &str| Cell { value: Value::Text(v.into()), ..Default::default() };
+        form.sheets[0].set(Pos::new(0, 0), t("{送達場所=住所}住所"));
+        form.sheets[0].set(Pos::new(1, 0), t("{送達場所=勤務先}勤務先"));
+        form.sheets[0].set(Pos::new(2, 0), t("{受取人=親族}親族"));
+        let mut d = data();
+        set(&mut d, "送達場所", "勤務先").unwrap();
+        let out = fill(&form, &d);
+        let v = |r| out.sheets[0].value(Pos::new(r, 0)).display();
+        assert_eq!((v(0), v(1), v(2)), ("□住所".into(), "■勤務先".into(), "□親族".into()));
+        let g = groups(&form, &d);
+        assert_eq!((g[0].name.as_str(), g[0].kind), ("送達場所", Kind::Choice));
+        assert_eq!(g[0].options, ["住所", "勤務先"]);
+        assert_eq!(g[0].value, "勤務先");
+        assert_eq!(missing(&form, &d), ["受取人"]);
     }
 
     #[test]
