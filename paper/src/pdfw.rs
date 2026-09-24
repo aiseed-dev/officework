@@ -262,11 +262,32 @@ pub fn write_pages_fonts<W: std::io::Write>(
         // 字が1つも無い紙でも PDF は出します(白紙)
         used_all[0].insert(' ', face.glyph_index(' ').map(|g| g.0).unwrap_or(0));
     }
+    // Only the faces some text is set in are embedded and listed. The first
+    // face is there for characters the named face lacks, and a page whose
+    // text all has its face never uses it (a resume carried a whole unused
+    // Hiragino beside BIZ UD)
+    let mut in_use = vec![false; faces.len()];
+    for page in pages {
+        for p in &page.pieces {
+            in_use[face_for(&p.text, p.font, &faces)] = true;
+        }
+        if page.watermark.is_some() {
+            in_use[0] = true;
+        }
+    }
+    if !in_use.contains(&true) {
+        in_use[0] = true;
+    }
 
     // ② 番号を詰め直して、使った字形だけの書体にする(書体ごとに)
     let mut new_gid_all: Vec<BTreeMap<char, u16>> = Vec::with_capacity(faces.len());
     let mut subsets: Vec<Vec<u8>> = Vec::with_capacity(faces.len());
     for (fi, used) in used_all.iter().enumerate() {
+        if !in_use[fi] {
+            subsets.push(Vec::new());
+            new_gid_all.push(BTreeMap::new());
+            continue;
+        }
         let mut remap = subsetter::GlyphRemapper::new();
         remap.remap(0); // .notdef は必ず 0 番
         let mut new_gid: BTreeMap<char, u16> = BTreeMap::new();
@@ -354,7 +375,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
             let mut res = pg.resources();
             {
                 let mut fs = res.fonts();
-                for (k, nm) in f_names.iter().enumerate() {
+                for (k, nm) in f_names.iter().enumerate().filter(|(k, _)| in_use[*k]) {
                     fs.pair(Name(nm.as_bytes()), font_ids[k].0);
                 }
             }
@@ -665,6 +686,9 @@ pub fn write_pages_fonts<W: std::io::Write>(
     // **書体ごとに部品を書きます**(2026-08-31)。前は1本しか埋められず、
     // 明朝のセルもゴシックのセルも同じ書体で出ていました
     for (fi, kono) in faces.iter().enumerate() {
+        if !in_use[fi] {
+            continue;
+        }
         let (font, cid, desc, file, to_uni) = font_ids[fi];
         let face = kono;
         let new_gid = &new_gid_all[fi];
@@ -784,7 +808,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
 
     // ⑤ 字形の番号 → 元の字。**選んで写せる PDF** にするために要ります。
     // 書体ごとに番号の付け方が違うので、書体ごとに書きます
-    for (fi, ids) in font_ids.iter().enumerate() {
+    for (fi, ids) in font_ids.iter().enumerate().filter(|(fi, _)| in_use[*fi]) {
         let cmap = deflate(&to_unicode_cmap(&new_gid_all[fi]));
         pdf.cmap(ids.4, &cmap).filter(Filter::FlateDecode);
     }
@@ -882,6 +906,27 @@ mod tests {
         );
         // 200KB を超えたら、何かを丸ごと埋めています
         assert!(out.len() < 200_000, "{} バイトある", out.len());
+    }
+
+    /// A face no text is set in is not embedded. The page here is all in the
+    /// second face, so the first (the fallback) must not appear.
+    #[test]
+    fn a_face_no_text_uses_is_left_out() {
+        let ja = font();
+        let math = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/../engine/suushiki/NewCMMath-Book.otf"))
+            .expect("数式の書体が無い");
+        let pages = vec![Leaf {
+            pieces: vec![Piece { text: "ab".into(), font: 1, size_pt: 10.5, ..Default::default() }],
+            ..Default::default()
+        }];
+        let mut out = Vec::new();
+        write_pages_fonts(&pages, 210.0, 297.0, &[&ja, &math], &mut out).expect("書けない");
+        let base = |f: &ttf_parser::Face| base_font_name(f).rsplit('+').next().unwrap_or_default().to_string();
+        let ja_name = base(&ttf_parser::Face::parse(&ja, 0).unwrap());
+        let math_name = base(&ttf_parser::Face::parse(&math, 0).unwrap());
+        let has = |n: &str| out.windows(n.len()).any(|w| w == n.as_bytes());
+        assert!(has(&math_name), "the face in use is missing");
+        assert!(!has(&ja_name), "the unused first face was embedded");
     }
 
     /// **名指しの書体に無い字は、1本目の書体の側に集まる。** 集めないと、

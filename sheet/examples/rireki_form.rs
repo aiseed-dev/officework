@@ -45,6 +45,12 @@ fn main() {
     for sp in s.shapes.iter_mut() {
         sp.text_fmt.font = Some(biz(sp.text_fmt.font.as_deref().unwrap_or("ＭＳ Ｐ明朝")));
     }
+    // The named styles (標準 and the like) name their faces too
+    for (_, _, f) in book.named_styles.iter_mut() {
+        if let Some(n) = f.font.as_deref() {
+            f.font = Some(biz(n));
+        }
+    }
     book.default_font = Some(("BIZ UDP明朝".into(), 11.0));
 
     // Row heights: rows 1..=52 fit the printable height of A4 at 100%
