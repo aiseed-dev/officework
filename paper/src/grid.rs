@@ -1273,7 +1273,7 @@ fn draw_sheet(
                         ),
                         None => (0.0, 0.0, 0.0),
                     };
-                    let futo = b.diag.style.px() * 0.75 * 25.4 / 72.0;
+                    let futo = b.diag.style.print_pt(scale) * 25.4 / 72.0;
                     if b.diag_down {
                         ink.line(x, y_top, x + dx, y_top - dy, futo, c);
                     }
@@ -1299,9 +1299,10 @@ fn draw_sheet(
                         ),
                         None => (0.0, 0.0, 0.0),
                     };
-                    // px → pt → mm。二重線は2本に開くほどの幅が無いので
-                    // 太めの1本で
-                    ink.line(x1, y1, x2, y2, e.style.px() * 0.75 * 25.4 / 72.0, c);
+                    // The printed width (BStyle::print_pt) in mm. A double line
+                    // has no room to open into two lines, so it is one
+                    // thicker line
+                    ink.line(x1, y1, x2, y2, e.style.print_pt(scale) * 25.4 / 72.0, c);
                 }
             }
 

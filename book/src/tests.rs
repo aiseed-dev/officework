@@ -955,7 +955,18 @@ mod shape_tests {
     use super::*;
 
     #[test]
-    fn a_dashed_line_is_dashed_in_the_svg() {
+    fn borders_print_as_wide_as_excel_prints_them() {
+        // measured on Excel's PDFs (2026-09-24): thin 1pt, medium 2pt and
+        // thick 3pt at 100%, scaled with the page; a hairline stays 0.12pt
+        assert_eq!(BStyle::Thin.print_pt(1.0), 1.0);
+        assert!((BStyle::Thin.print_pt(0.98) - 0.98).abs() < 1e-6);
+        assert!((BStyle::Medium.print_pt(0.62) - 1.24).abs() < 1e-6);
+        assert!((BStyle::Thick.print_pt(0.62) - 1.86).abs() < 1e-6);
+        assert_eq!(BStyle::Hair.print_pt(0.5), 0.12);
+    }
+
+    #[test]
+        fn a_dashed_line_is_dashed_in_the_svg() {
         // sysDash is 3 widths on, 1 off (ECMA-376 20.1.10.49); 0.75pt = 1px
         let sh = SheetShape {
             width_px: 200.0,

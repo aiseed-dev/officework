@@ -215,6 +215,22 @@ impl BStyle {
             _ => 1.0,
         }
     }
+    /// **The printed width of the line, in points**, at the print scale
+    /// `scale` (1.0 = 100%). Decided 2026-09-24 from Excel's PDFs, since
+    /// ECMA-376 18.18.3 ST_BorderStyle names the styles but gives no widths:
+    /// at 100% Excel draws thin 1pt, medium 2pt and thick 3pt, and scales
+    /// them with the page (0.62 / 1.24 / 1.86pt at 62%). A hairline is one
+    /// device dot, 0.12pt in Windows Excel's PDF, and is not scaled. The
+    /// other styles keep the screen width until they are measured.
+    pub fn print_pt(self, scale: f32) -> f32 {
+        match self {
+            BStyle::Hair => 0.12,
+            BStyle::Thin => 1.0 * scale,
+            BStyle::Medium => 2.0 * scale,
+            BStyle::Thick => 3.0 * scale,
+            other => other.px() * 0.75,
+        }
+    }
     /// 破線系か(画面では dashed 近似で描く。点線の刻みまでは分けない)
     pub fn dashed(self) -> bool {
         matches!(
