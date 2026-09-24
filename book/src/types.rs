@@ -741,6 +741,16 @@ pub struct ColBasis {
 }
 
 impl ColBasis {
+    /// **A row height or margin (points) as that platform's Excel lays it on
+    /// paper** (decided 2026-09-24). Mac Excel counts at 72 dpi, so it cuts
+    /// a length down to whole points (a 16.5pt row takes 16pt; measured on
+    /// Mac Excel PDFs on 2026-09-09). On Windows the value is used as it is:
+    /// ECMA-376 gives row heights in points with no rounding, and Windows
+    /// Excel already saves them in whole 96 dpi pixels (0.75pt steps).
+    pub fn device_pt(&self, pt: f32) -> f32 {
+        if self.dpi == 72.0 { pt.trunc() } else { pt }
+    }
+
     /// The conversion for a platform and a digit width in points
     pub fn new(platform: Platform, digit_pt: f32) -> ColBasis {
         let dpi = match platform {

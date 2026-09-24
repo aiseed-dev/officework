@@ -17,18 +17,11 @@ use crate::Paper;
 
 const ROW_MM: f32 = 7.0;
 
-/// **紙の上の長さは、点(pt)に切り捨てます。**
-///
-/// Excel は行の高さも余白も、その機械が描く一点に切り捨ててから紙に置きます
-/// (macOS では 1 点 = 1pt)。18.75pt の行は 18pt、0.787 インチ(56.66pt)の
-/// 余白は 56pt です。切り捨てないと、行が 20 行あるだけで 15pt ずれます。
-///
-/// 2026-09-09 に、集めた xlsx を Excel が出した PDF の罫線から見つけました。
-/// 行 18.75 → 18、22.5 → 22、37.5 → 37、16.5 → 16。余白は日野市の
-/// 労務台帳(左 0.7 インチ = 50.4pt)で、Excel の1本目の縦罫線が
-/// ちょうど 50 + 53(A 列)= 103pt でした。
-fn kirisute_mm(pt: f32) -> f32 {
-    pt.trunc() * 25.4 / 72.0
+/// A length in points as the platform's Excel lays it on paper, in mm
+/// ([`book::ColBasis::device_pt`]): whole points on the Mac, the value
+/// itself on Windows.
+fn kirisute_mm(pt: f32, basis: &book::ColBasis) -> f32 {
+    basis.device_pt(pt) * 25.4 / 72.0
 }
 
 /// 行の高さ(mm)。**シートの既定を使います**(2026-08-30)。
@@ -37,13 +30,14 @@ fn kirisute_mm(pt: f32) -> f32 {
 /// 前は 7.0mm の決め打ちに落ちていて、国税庁の酒税の表(13.2pt = 4.7mm)
 /// では**5割高く**なり、1枚に入る行が減って紙が倍に増えていました。
 ///
-/// 高さは点に切り捨てます([`kirisute_mm`])。
-fn gyou_mm(grid: &Grid, r: u32) -> f32 {
+/// The height goes through [`kirisute_mm`]: whole points when the workbook
+/// was read the Mac way, the value itself when read the Windows way.
+fn gyou_mm(grid: &Grid, r: u32, basis: &book::ColBasis) -> f32 {
     grid.row_height
         .get(&r)
         .copied()
         .or(grid.default_row_height)
-        .map(kirisute_mm)
+        .map(|pt| kirisute_mm(pt, basis))
         .unwrap_or(ROW_MM)
 }
 /// **書体が読めないときの行送り**(1em あたり)。
@@ -225,7 +219,7 @@ fn fit_scale(
         .sum();
     let total_h: f32 = (r0..r1)
         .filter(|r| !grid.row_hidden.contains(r))
-        .map(|r| gyou_mm(grid, r))
+        .map(|r| gyou_mm(grid, r, &setup.col_basis))
         .sum();
     let usable_w = (paper.width_mm - ml - mr).max(1.0);
     let usable_h = (paper.height_mm - mt - mb).max(1.0);
@@ -262,11 +256,11 @@ pub fn page_starts(grid: &Grid, paper: Paper, setup: &PrintSetup) -> (Vec<u32>, 
         Some(_) => return (Vec::new(), Vec::new()),
         None => (0, ext_rows, 0, ext_cols),
     };
-    // **余白も点に切り捨てます**([`kirisute_mm`])。Excel と同じです
+    // Margins go through the same rounding as rows (whole points on the Mac)
     let (ml, mr, mt, mb) = {
         let (l, r, t, b) = setup.margins_mm.unwrap_or((
             paper.margin_mm, paper.margin_mm, paper.margin_mm, paper.margin_mm));
-        let pt = |mm: f32| kirisute_mm(mm * 72.0 / 25.4);
+        let pt = |mm: f32| kirisute_mm(mm * 72.0 / 25.4, &setup.col_basis);
         (pt(l), pt(r), pt(t), pt(b))
     };
     let scale = fit_scale(grid, paper, setup, (r0, r1, c0, c1), (ml, mr, mt, mb))
@@ -294,7 +288,7 @@ pub fn page_starts(grid: &Grid, paper: Paper, setup: &PrintSetup) -> (Vec<u32>, 
         if grid.row_hidden.contains(&r) {
             continue;
         }
-        let rh = gyou_mm(grid, r) * scale;
+        let rh = gyou_mm(grid, r, &setup.col_basis) * scale;
         if h > 0.0 && (grid.row_breaks.contains(&r) || h + rh > usable_h) {
             rows.push(r);
             h = 0.0;
@@ -1049,11 +1043,11 @@ fn draw_sheet(
         areas.iter().map(|a| a.2).min().unwrap_or(0),
         areas.iter().map(|a| a.3).max().unwrap_or(ext_cols),
     );
-    // **余白も点に切り捨てます**([`kirisute_mm`])。Excel と同じです
+    // Margins go through the same rounding as rows (whole points on the Mac)
     let (ml, mr, mt, mb) = {
         let (l, r, t, b) = setup.margins_mm.unwrap_or((
             paper.margin_mm, paper.margin_mm, paper.margin_mm, paper.margin_mm));
-        let pt = |mm: f32| kirisute_mm(mm * 72.0 / 25.4);
+        let pt = |mm: f32| kirisute_mm(mm * 72.0 / 25.4, &setup.col_basis);
         (pt(l), pt(r), pt(t), pt(b))
     };
     // 拡大縮小印刷(pageSetup scale)。列幅・行高・文字を同じ倍で。
@@ -1130,7 +1124,7 @@ fn draw_sheet(
         if grid.row_hidden.contains(&r) {
             return 0.0;
         }
-        gyou_mm(grid, r) * scale
+        gyou_mm(grid, r, &setup.col_basis) * scale
     };
     let usable = paper.height_mm - mt - mb;
 
@@ -1264,7 +1258,7 @@ fn draw_sheet(
                             .sum();
                         let h: f32 = (a.row..=z.row)
                             .filter(|r| !grid.row_hidden.contains(r))
-                            .map(|r| gyou_mm(grid, r) * scale)
+                            .map(|r| gyou_mm(grid, r, &col_basis) * scale)
                             .sum();
                         (w, h)
                     })
@@ -1390,7 +1384,7 @@ fn draw_sheet(
                     .sum();
                 ma_h = (tl.row..=br.row)
                     .filter(|r| !grid.row_hidden.contains(r))
-                    .map(|r| gyou_mm(grid, r) * scale)
+                    .map(|r| gyou_mm(grid, r, &col_basis) * scale)
                     .sum();
             }
             // **セルが名指しした書体で描きます**(2026-08-31。Fable の指摘2)。
@@ -2509,21 +2503,26 @@ mod tests {
         assert!((kitei - 53.0 * 25.4 / 72.0).abs() < 0.05, "既定の列幅が 53pt でない: {kitei}mm");
     }
 
-    /// **行の高さは点に切り捨てる。**
+    /// **Read the Mac way, a row is cut down to whole points.**
     ///
-    /// Excel が出した PDF の横罫線から測りました(2026-09-09)。18.75pt の
-    /// 行の送りは 18pt、22.5 は 22、37.5 は 37、16.5 は 16 です。切り捨てないと
-    /// 20 行で 15pt ずれます(岐阜労働局 002668148.xlsx、日野市 r6daicho_itaku.xlsx)。
+    /// Measured on the horizontal rules of Mac Excel's PDFs (2026-09-09): an
+    /// 18.75pt row advances 18pt, 22.5 → 22, 37.5 → 37, 16.5 → 16. Without
+    /// it 20 rows drift by 15pt (Gifu Labour Bureau 002668148.xlsx, Hino City
+    /// r6daicho_itaku.xlsx). Read the Windows way (the default), the height
+    /// is the value in the file, as ECMA-376 18.3.1.73 gives it (2026-09-24).
     #[test]
-    fn a_row_is_as_tall_as_excel_makes_it() {
+    fn a_row_is_as_tall_as_the_platforms_excel_makes_it() {
+        let mac = book::ColBasis::new(book::Platform::Mac, 5.5);
+        let win = book::ColBasis::new(book::Platform::Windows, 5.5);
         for (pt, machi) in [(18.75, 18.0), (22.5, 22.0), (37.5, 37.0), (16.5, 16.0), (13.5, 13.0)] {
-            let deta = super::kirisute_mm(pt);
-            let mm = machi * 25.4 / 72.0;
-            assert!((deta - mm).abs() < 0.02, "{pt}pt の行は {machi}pt のはずが {deta}mm");
+            let mm = |p: f32| p * 25.4 / 72.0;
+            assert!((super::kirisute_mm(pt, &mac) - mm(machi)).abs() < 0.02, "Mac: {pt}pt should be {machi}pt");
+            assert!((super::kirisute_mm(pt, &win) - mm(pt)).abs() < 0.02, "Windows: {pt}pt should stay");
         }
         let mut g = Grid { name: "行".into(), ..Default::default() };
         g.default_row_height = Some(18.75);
-        assert!((super::gyou_mm(&g, 0) - 18.0 * 25.4 / 72.0).abs() < 0.02);
+        assert!((super::gyou_mm(&g, 0, &mac) - 18.0 * 25.4 / 72.0).abs() < 0.02);
+        assert!((super::gyou_mm(&g, 0, &win) - 18.75 * 25.4 / 72.0).abs() < 0.02);
     }
 
     use book::{Borders, Cell, CellFormat, Pos, Value};
