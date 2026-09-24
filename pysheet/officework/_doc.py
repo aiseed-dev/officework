@@ -1963,6 +1963,14 @@ class Doc(NoStrayAttributes):
                            stacklevel=2)
         return d
 
+    def draw_list(self):
+        """描画一覧を辞書で返します(docs/sekkei/drawlist.ja.adoc)。
+
+        単位は pt で、原点はページの左上です。``fill_form`` で作った文書では、
+        ページごとの ``fields`` に欄の名前・種類・四角・値が入ります。"""
+        import json as _json
+        return _json.loads(self._d.draw_list())
+
     @property
     def missing(self):
         """``fill_form`` で作った文書で、データに 1 つも無かった名前の並びです。"""

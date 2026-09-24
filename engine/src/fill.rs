@@ -326,17 +326,28 @@ pub fn fill(doc: &Document, d: &Data) -> (Document, Report) {
     (out, rep)
 }
 
-/// Where a chosen option of a document form stands: the paragraph (its
-/// place in the blocks, and for a table the row, cell and paragraph), the
-/// run, and the chars in the run's filled text.
+/// Where a stretch of a filled document form stands: the paragraph (its
+/// place in the blocks, and for a table the row, cell and paragraph in the
+/// cell) and the bytes in the paragraph's text.
 #[derive(Debug, Clone, PartialEq)]
-pub struct DocChoice {
+pub struct DocAt {
     pub block: usize,
     /// (row, cell, paragraph) inside a table block
     pub cell: Option<(usize, usize, usize)>,
-    pub run: usize,
-    pub start: usize,
-    pub len: usize,
+    pub from: usize,
+    pub to: usize,
+}
+
+/// A document form filled from a data book ([`fill_form`]).
+#[derive(Debug, Clone)]
+pub struct FormFill {
+    pub doc: Document,
+    /// The names the data lacks altogether
+    pub missing: Vec<String>,
+    /// Each mark and where its answer went
+    pub marks: Vec<(String, DocAt)>,
+    /// Where the chosen options of choice marks went, to be circled
+    pub chosen: Vec<DocAt>,
 }
 
 /// A mark cut by the run boundaries (Word splits typed text into runs) is
@@ -386,22 +397,26 @@ fn join_marks(runs: &mut Vec<Run>) {
 /// becomes empty (a form's blanks stay blank); the names the data lacks
 /// altogether are returned for the caller to report, with where the
 /// chosen options of choice marks stand.
-pub fn fill_form(doc: &Document, data: &book::Book) -> (Document, Vec<String>, Vec<DocChoice>) {
+pub fn fill_form(doc: &Document, data: &book::Book) -> FormFill {
     let answers = book::form::Data::new(data);
     let mut out = doc.clone();
     let mut names: Vec<String> = Vec::new();
-    let mut choices: Vec<DocChoice> = Vec::new();
+    let mut marks: Vec<(String, DocAt)> = Vec::new();
+    let mut chosen: Vec<DocAt> = Vec::new();
     let mut para = |p: &mut Paragraph, block: usize, cell: Option<(usize, usize, usize)>| {
         join_marks(&mut p.runs);
-        for (ri, r) in p.runs.iter_mut().enumerate() {
+        let mut start = 0usize;
+        for r in p.runs.iter_mut() {
             let found = book::form::marks(&r.text);
-            if found.is_empty() {
-                continue;
+            if !found.is_empty() {
+                names.extend(found);
+                let f = book::form::fill_text_ranges(&r.text, &answers);
+                let at = |a: usize, b: usize| DocAt { block, cell, from: start + a, to: start + b };
+                marks.extend(f.marks.iter().map(|(m, a, b)| (m.clone(), at(*a, *b))));
+                chosen.extend(f.chosen.iter().map(|(a, b)| at(*a, *b)));
+                r.text = f.text;
             }
-            names.extend(found);
-            let mut picked = Vec::new();
-            r.text = book::form::fill_text(&r.text, &answers, &mut picked);
-            choices.extend(picked.into_iter().map(|(start, len)| DocChoice { block, cell, run: ri, start, len }));
+            start += r.text.len();
         }
     };
     for (bi, b) in out.blocks.iter_mut().enumerate() {
@@ -429,7 +444,7 @@ pub fn fill_form(doc: &Document, data: &book::Book) -> (Document, Vec<String>, V
         }
     }
     let missing = book::form::missing_of(names, data);
-    (out, missing, choices)
+    FormFill { doc: out, missing, marks, chosen }
 }
 
 #[cfg(test)]
@@ -454,7 +469,8 @@ mod form_tests {
         let mut p = Paragraph::default();
         p.runs = vec![run("{送達場所=住所}住所 {送達場所=勤務先}勤務先 {電話}")];
         doc.blocks.push(Block::Para(p));
-        let (out, missing, _) = fill_form(&doc, &data);
+        let f = fill_form(&doc, &data);
+        let (out, missing) = (&f.doc, f.missing.clone());
         let text = |i: usize| match &out.blocks[i] {
             Block::Para(p) => p.runs.iter().map(|r| r.text.as_str()).collect::<String>(),
             _ => String::new(),
@@ -462,5 +478,10 @@ mod form_tests {
         assert_eq!(text(0), "令和8年9月　氏名 山田 太郎");
         assert_eq!(text(1), "■住所 □勤務先 ");
         assert_eq!(missing, ["電話"]);
+        // 山田 太郎 went to bytes 37.. of the first paragraph
+        let (m, at) = &f.marks[2];
+        assert_eq!(m, "氏名");
+        assert_eq!(&text(0)[at.from..at.to], "山田 太郎");
+        assert_eq!(f.chosen.len(), 0);
     }
 }

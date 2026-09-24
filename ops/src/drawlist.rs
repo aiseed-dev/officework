@@ -178,3 +178,155 @@ pub fn form(form: &book::Book, data: &book::Book, filled: &book::Book) -> Result
     v["missing"] = json!(book::form::missing(form, data));
     Ok(v)
 }
+
+/// Where a stretch of a filled document stands, in the counting the layout
+/// uses: a body paragraph by its place in the body text, a table cell by
+/// its table number and the bytes of the cell's text.
+fn text_at(doc: &kumihan::Document, at: &kumihan::fill::DocAt) -> Option<paper::pdfw::TextAt> {
+    use kumihan::Block;
+    let para_len = |p: &kumihan::Paragraph| p.runs.iter().map(|r| r.text.len()).sum::<usize>();
+    match at.cell {
+        None => {
+            let para0: usize = doc.blocks[..at.block]
+                .iter()
+                .filter_map(|b| match b {
+                    Block::Para(p) => Some(para_len(p) + 1),
+                    _ => None,
+                })
+                .sum();
+            Some(paper::pdfw::TextAt::Body { para0, from: at.from, to: at.to })
+        }
+        Some((row, col, pi)) => {
+            let table = doc.blocks[..at.block].iter().filter(|b| matches!(b, Block::Table(_))).count();
+            let Block::Table(t) = &doc.blocks[at.block] else { return None };
+            let cell = t.rows.get(row)?.get(col)?;
+            let before: usize = cell.paragraphs[..pi].iter().map(|p| para_len(p) + 1).sum();
+            Some(paper::pdfw::TextAt::Cell { table, row, col, from: before + at.from, to: before + at.to })
+        }
+    }
+}
+
+/// **A document form filled from data, with the chosen options circled**
+/// (the document side of [`fill_form`]). The circles are shapes that stick
+/// to their page, placed where the layout set the chosen chars.
+pub fn fill_doc_form(form: &kumihan::Document, data: &book::Book) -> Result<kumihan::fill::FormFill, String> {
+    let mut f = kumihan::fill::fill_form(form, data);
+    if f.chosen.is_empty() {
+        return Ok(f);
+    }
+    let pages = paper::doc_pages(&f.doc, None)?;
+    let wants: Vec<(String, paper::pdfw::TextAt)> = f
+        .chosen
+        .iter()
+        .enumerate()
+        .filter_map(|(i, at)| text_at(&f.doc, at).map(|t| (i.to_string(), t)))
+        .collect();
+    for (page, s) in paper::pdfw::text_spots(&pages.sheet, pages.paper, &wants) {
+        let h = pages.leaves.get(page).and_then(|l| l.size_mm).map(|(_, h)| h).unwrap_or(pages.paper.height_mm);
+        let (pad_x, pad_y) = (s.h_mm * 0.3, s.h_mm * 0.15);
+        f.doc.shapes.push(kumihan::DocShape {
+            page,
+            x_mm: s.x_mm - pad_x,
+            y_mm: h - (s.y_mm + s.h_mm) - pad_y,
+            w_mm: s.w_mm + 2.0 * pad_x,
+            h_mm: s.h_mm + 2.0 * pad_y,
+            look: book::SheetShape {
+                kind: "ellipse".into(),
+                line: Some("000000".into()),
+                line_w: 0.75,
+                ..Default::default()
+            },
+            z: 0,
+        });
+    }
+    Ok(f)
+}
+
+/// The fonts of a laid-out document for the draw list: each name the text
+/// uses, found on this machine for its file.
+fn doc_font_files(fonts: &[(String, Vec<u8>)]) -> Vec<paper::drawlist::FontFile> {
+    fonts
+        .iter()
+        .map(|(na, data)| {
+            let fam = kumihan::font::for_document(Some(na)).ok().map(|(f, _)| f);
+            paper::drawlist::FontFile {
+                name: fam.map(|f| f.name.clone()).unwrap_or_else(|| na.clone()),
+                file: fam.map(|f| f.path.display().to_string()).unwrap_or_default(),
+                index: fam.map(|f| f.index).unwrap_or(0),
+                data: data.clone(),
+            }
+        })
+        .collect()
+}
+
+/// **A document's pages as a draw list**, with no fields.
+pub fn doc(d: &kumihan::Document) -> Result<Value, String> {
+    let p = paper::doc_pages(d, None)?;
+    let mut v = paper::drawlist::pages(&p.leaves, (p.paper.width_mm, p.paper.height_mm), &doc_font_files(&p.fonts));
+    for page in v["pages"].as_array_mut().into_iter().flatten() {
+        let o = page.as_object_mut().expect("a page");
+        o.remove("spots");
+        o.insert("fields".into(), json!([]));
+    }
+    Ok(v)
+}
+
+/// **A filled document form as a draw list with its fields**: one field per
+/// data item, its rectangle the box of the answers' chars on each page (an
+/// empty answer, the char after it). `filled` is what [`fill_doc_form`]
+/// made from `form` and `data`.
+pub fn doc_form(form: &kumihan::Document, data: &book::Book, filled: &kumihan::Document) -> Result<Value, String> {
+    let f = kumihan::fill::fill_form(form, data);
+    let answers = book::form::Data::new(data);
+    // The data items, in the order the form first names them
+    let mut items: Vec<(String, book::form::Kind, Vec<String>)> = Vec::new();
+    let mut wants: Vec<(String, paper::pdfw::TextAt)> = Vec::new();
+    for (mark, at) in &f.marks {
+        let Some((name, kind)) = book::form::item_of(mark) else { continue };
+        let i = match items.iter().position(|(n, _, _)| *n == name) {
+            Some(i) => i,
+            None => {
+                items.push((name, kind, Vec::new()));
+                items.len() - 1
+            }
+        };
+        for o in book::form::options_of(mark) {
+            if !items[i].2.contains(&o) {
+                items[i].2.push(o);
+            }
+        }
+        if let Some(t) = text_at(filled, at) {
+            wants.push((i.to_string(), t));
+        }
+    }
+    let p = paper::doc_pages(filled, None)?;
+    let spots = paper::pdfw::text_spots(&p.sheet, p.paper, &wants);
+    let mut v = paper::drawlist::pages(&p.leaves, (p.paper.width_mm, p.paper.height_mm), &doc_font_files(&p.fonts));
+    let pt = |mm: f32| ((mm * 72.0 / 25.4) as f64 * 100.0).round() / 100.0;
+    for (k, page) in v["pages"].as_array_mut().into_iter().flatten().enumerate() {
+        let h = p.leaves.get(k).and_then(|l| l.size_mm).map(|(_, h)| h).unwrap_or(p.paper.height_mm);
+        let mut fields: Vec<(usize, Value)> = spots
+            .iter()
+            .filter(|(pk, _)| *pk == k)
+            .filter_map(|(_, s)| {
+                let i: usize = s.key.parse().ok()?;
+                let (name, kind, options) = &items[i];
+                let mut fv = json!({
+                    "name": name, "kind": kind.name(),
+                    "rect": [pt(s.x_mm), pt(h - s.y_mm - s.h_mm), pt(s.w_mm), pt(s.h_mm)],
+                    "value": answers.raw(name).unwrap_or_default(),
+                });
+                if !options.is_empty() {
+                    fv["options"] = json!(options);
+                }
+                Some((i, fv))
+            })
+            .collect();
+        fields.sort_by_key(|(i, _)| *i);
+        let o = page.as_object_mut().expect("a page");
+        o.remove("spots");
+        o.insert("fields".into(), Value::Array(fields.into_iter().map(|(_, f)| f).collect()));
+    }
+    v["missing"] = json!(f.missing);
+    Ok(v)
+}

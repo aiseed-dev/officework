@@ -34,6 +34,9 @@ struct Inner {
     original: Option<Vec<u8>>,
     /// 読めなかった物の帳簿。黙って落とさない(ooxml の Report と同じ)
     unsupported: Vec<(String, usize)>,
+    /// For a document made by `fill_form`: the form and the data it was
+    /// filled from, so the draw list can name the fields
+    made_from: Option<(Document, book::Book)>,
 }
 
 fn lock(inner: &Arc<Mutex<Inner>>) -> PyResult<MutexGuard<'_, Inner>> {
@@ -347,6 +350,7 @@ impl PyDoc {
                 doc,
                 original: None,
                 unsupported: Vec::new(),
+                made_from: None,
             })),
         }
     }
@@ -372,6 +376,7 @@ impl PyDoc {
                     doc,
                     original: None,
                     unsupported: notes.into_iter().map(|n| (n, 1)).collect(),
+                    made_from: None,
                 })),
             });
         }
@@ -382,6 +387,7 @@ impl PyDoc {
                 doc,
                 original: Some(bytes),
                 unsupported: rep.unsupported,
+                made_from: None,
             })),
         })
     }
@@ -414,17 +420,31 @@ impl PyDoc {
     fn fill_form(form: &PyDoc, data: &crate::PyBook) -> PyResult<(PyDoc, Vec<String>)> {
         let book = crate::lock(&data.inner)?.book.clone();
         let g = lock(&form.inner)?;
-        let (doc, missing, _) = kumihan::fill::fill_form(&g.doc, &book);
+        let f = ops::drawlist::fill_doc_form(&g.doc, &book).map_err(PyValueError::new_err)?;
+        let (doc, missing) = (f.doc, f.missing);
         Ok((
             PyDoc {
                 inner: Arc::new(Mutex::new(Inner {
                     doc,
                     original: g.original.clone(),
                     unsupported: g.unsupported.clone(),
+                    made_from: Some((g.doc.clone(), book)),
                 })),
             },
             missing,
         ))
+    }
+
+    // The draw list as JSON text (docs/sekkei/drawlist.ja.adoc); a document
+    // made by `fill_form` also lists its fields
+    fn draw_list(&self) -> PyResult<String> {
+        let g = lock(&self.inner)?;
+        let v = match &g.made_from {
+            Some((form, data)) => ops::drawlist::doc_form(form, data, &g.doc),
+            None => ops::drawlist::doc(&g.doc),
+        }
+        .map_err(PyValueError::new_err)?;
+        Ok(v.to_string())
     }
 
     #[pyo3(signature = (values, rows = None))]

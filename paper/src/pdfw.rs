@@ -908,6 +908,27 @@ mod tests {
         assert!(out.len() < 200_000, "{} バイトある", out.len());
     }
 
+    /// A stretch of a body paragraph is found where the layout set it, and
+    /// a later stretch of the same line stands to the right of an earlier one
+    #[test]
+    fn a_stretch_of_document_text_is_found_on_its_page() {
+        let d = kumihan::adoc::parse("一行目の文です。\n\n氏名　山田 太郎　電話\n").expect("読めない");
+        let p = crate::doc_pages(&d, None).expect("組めない");
+        let second = "一行目の文です。".len() + 1;
+        let name = "氏名　".len();
+        let wants = vec![
+            ("name".to_string(), TextAt::Body { para0: second, from: name, to: name + "山田 太郎".len() }),
+            ("head".to_string(), TextAt::Body { para0: second, from: 0, to: "氏名".len() }),
+        ];
+        let found = text_spots(&p.sheet, p.paper, &wants);
+        let get = |k: &str| found.iter().find(|(_, s)| s.key == k).map(|(pg, s)| (*pg, s.clone())).expect(k);
+        let ((pg, n), (_, h)) = (get("name"), get("head"));
+        assert_eq!(pg, 0);
+        assert!(n.x_mm > h.x_mm + h.w_mm, "{n:?} {h:?}");
+        assert!((n.y_mm - h.y_mm).abs() < 0.01, "not on one line");
+        assert!(n.w_mm > h.w_mm, "山田 太郎 is wider than 氏名");
+    }
+
     /// A face no text is set in is not embedded. The page here is all in the
     /// second face, so the first (the fallback) must not appear.
     #[test]
@@ -1716,6 +1737,76 @@ pub fn sheet_to_pdf_fonts<W: std::io::Write, F: Fn(usize) -> Vec<kumihan::Line>>
     let datas: Vec<&[u8]> = fonts.iter().map(|(_, d)| d.as_slice()).collect();
     write_pages_fonts(&pages, paper.width_mm, paper.height_mm, &datas, out)?;
     Ok(lost)
+}
+
+/// A stretch of a laid-out document's text: in a body paragraph (its
+/// place in the body text, [`kumihan::Line::para0`]) or in a table cell
+/// (table, row, column; the byte place in the cell's text, its paragraphs
+/// joined by line breaks), from byte `from` to byte `to`.
+#[derive(Debug, Clone, PartialEq)]
+pub enum TextAt {
+    Body { para0: usize, from: usize, to: usize },
+    Cell { table: usize, row: usize, col: usize, from: usize, to: usize },
+}
+
+/// **Where stretches of a document's text were set**, page by page: the box
+/// of their chars (an em box, as the grid's [`Spot`]s), with the same page
+/// arithmetic as [`sheet_leaves_fonts`]. A stretch with no chars (an empty
+/// answer) gets a box one em wide where it would start. Returns (page,
+/// spot) for each wanted stretch found; a stretch over two pages gives one
+/// per page.
+pub fn text_spots(sheet: &kumihan::Sheet, paper: crate::Paper, wants: &[(String, TextAt)]) -> Vec<(usize, Spot)> {
+    let full = crate::paginate_full(sheet, paper);
+    let paper_of = |k: usize| full.papers.get(k).copied().unwrap_or(paper);
+    let mut out: Vec<(usize, Spot)> = Vec::new();
+    if sheet.vertical {
+        return out;
+    }
+    for (i, line) in sheet.lines.iter().enumerate() {
+        let k = full.pages.get(i).copied().unwrap_or(1).max(1) - 1;
+        let off = full.offsets.get(k).copied().unwrap_or(0.0);
+        let pp = paper_of(k);
+        let base = pp.height_mm - (line.y_mm + line.dip_mm - off);
+        let body = line.body_cells();
+        let min_off = body.iter().map(|c| c.off).min().unwrap_or(0);
+        for (key, at) in wants {
+            // the byte place of each char in the stretch's own counting
+            let hit = |c: &kumihan::Cell| -> bool {
+                match *at {
+                    TextAt::Body { para0, from, to } => {
+                        line.from_body && line.para0 == para0 && c.off >= from && c.off < to.max(from + 1)
+                    }
+                    TextAt::Cell { table, row, col, from, to } => {
+                        line.cell == Some((table, row, col)) && {
+                            let b = line.byte0 - min_off + c.off;
+                            b >= from && b < to.max(from + 1)
+                        }
+                    }
+                }
+            };
+            let mut bx: Option<(f32, f32, f32, f32)> = None;
+            for c in body.iter().filter(|c| c.ch != '\n' && hit(c)) {
+                let h = c.size_pt * 25.4 / 72.0;
+                let (x0, y0, x1, y1) = (pp.margin_mm + c.x_mm, base - h * 0.12, pp.margin_mm + c.x_mm + c.w_mm, base + h * 0.88);
+                bx = Some(match bx {
+                    Some((a0, b0, a1, b1)) => (a0.min(x0), b0.min(y0), a1.max(x1), b1.max(y1)),
+                    None => (x0, y0, x1, y1),
+                });
+            }
+            let Some((x0, y0, x1, y1)) = bx else { continue };
+            match out.iter_mut().find(|(pk, s)| *pk == k && s.key == *key) {
+                Some((_, s)) => {
+                    let (ax, ay) = (s.x_mm.min(x0), s.y_mm.min(y0));
+                    s.w_mm = (s.x_mm + s.w_mm).max(x1) - ax;
+                    s.h_mm = (s.y_mm + s.h_mm).max(y1) - ay;
+                    s.x_mm = ax;
+                    s.y_mm = ay;
+                }
+                None => out.push((k, Spot { key: key.clone(), x_mm: x0, y_mm: y0, w_mm: x1 - x0, h_mm: y1 - y0 })),
+            }
+        }
+    }
+    out
 }
 
 /// **紙面だけを組む。** PDF は書きません。

@@ -170,7 +170,7 @@ d = doc.Doc.fill_form(form, data)
 d.save("notification.pdf")   # .docx works too
 ----
 
-The marks are those of sheet forms (`{届出日.和暦年}`, `{送達場所=住所}`, `{性別:男・女}` and the rest), and a mark Word split across formatting runs is still read. Unlike `render`, an unanswered mark becomes empty; a name the data lacks altogether is warned about and listed in `d.missing`.
+The marks are those of sheet forms (`{届出日.和暦年}`, `{送達場所=住所}`, `{性別:男・女}` and the rest), and a mark Word split across formatting runs is still read. Unlike `render`, an unanswered mark becomes empty; a name the data lacks altogether is warned about and listed in `d.missing`. Chosen options are circled as on sheet forms, and `d.draw_list()` gives the draw list with each page's `fields` (name, kind, rectangle, value).
 
 == The `officework.doc` API
 

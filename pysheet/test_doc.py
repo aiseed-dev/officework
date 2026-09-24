@@ -279,4 +279,21 @@ with tempfile.TemporaryDirectory() as t:
     check(texts[1] == "□住所　■勤務先", f"チェックボックス: {texts[1]!r}")
     check(texts[2] == "電話　", f"答えの無い印が残った: {texts[2]!r}")
     check(filled.missing == ["電話"] and any("電話" in str(x.message) for x in w), f"missing: {filled.missing}")
+    # The draw list names the fields where their answers were set
+    dl = filled.draw_list()
+    fs = {f["name"]: f for f in dl["pages"][0]["fields"]}
+    check(set(fs) >= {"届出日", "氏名", "送達場所", "電話"}, f"文書の欄: {sorted(fs)}")
+    check(fs["送達場所"]["kind"] == "choice" and fs["送達場所"]["options"] == ["住所", "勤務先"], f"チェックボックスの欄: {fs['送達場所']}")
+    check(fs["氏名"]["rect"][0] > fs["届出日"]["rect"][0], "氏名の四角が日付より左にある")
+    check(dl["missing"] == ["電話"], "描画一覧に missing が無い")
+    # A choice in running text is circled by a shape on its page
+    form2 = doc.Doc()
+    form2.add_paragraph("地方・簡易の別　{地方・簡易:地方・簡易}")
+    data2 = os.path.join(t, "d2.sheet.adoc")
+    with open(data2, "w", encoding="utf-8") as f:
+        f.write("= データ\n\n.基本\n|===\n|地方・簡易 |簡易\n|===\n")
+    c2 = doc.Doc.fill_form(form2, sheet.Book.open(data2)).draw_list()
+    plain2 = doc.Doc.fill_form(form2, sheet.Book.open(data_path)).draw_list()
+    count = lambda x: sum(1 for it in x["pages"][0]["items"] if it["type"] in ("line", "path"))
+    check(count(c2) > count(plain2), "文の中の選択肢に丸が無い")
 print("fill_form: ok")

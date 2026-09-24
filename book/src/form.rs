@@ -247,37 +247,71 @@ pub struct Choice {
 /// of choice marks are pushed to `picked` as (first char, count), counted
 /// without line breaks as the page counts them.
 pub fn fill_text(t: &str, data: &Data, picked: &mut Vec<(usize, usize)>) -> String {
-    let mut text = String::new();
-    let mut rest = t;
+    let filled = fill_text_ranges(t, data);
     let count = |t: &str| t.chars().filter(|c| *c != '\n').count();
+    for (a, b) in &filled.chosen {
+        picked.push((count(&filled.text[..*a]), count(&filled.text[*a..*b])));
+    }
+    filled.text
+}
+
+/// A text with its marks answered, and where the answers went.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Filled {
+    pub text: String,
+    /// Each mark and the bytes of `text` its answer took
+    pub marks: Vec<(String, usize, usize)>,
+    /// The bytes of the chosen options of choice marks
+    pub chosen: Vec<(usize, usize)>,
+}
+
+/// [`fill_text`], saying in bytes of the filled text where each answer and
+/// each chosen option went (a document form asks the layout for them).
+pub fn fill_text_ranges(t: &str, data: &Data) -> Filled {
+    let mut text = String::new();
+    let mut marks = Vec::new();
+    let mut chosen = Vec::new();
+    let mut rest = t;
     while let Some(a) = rest.find('{') {
         let Some(b) = rest[a..].find('}') else { break };
         text.push_str(&rest[..a]);
         let mark = &rest[a + 1..a + b];
+        let from = text.len();
         match choice_of(mark) {
             Some((name, _)) => {
                 // The options as the mark writes them, spaces and all
                 // (`男 ・ 女`), the chosen one found where it stands
-                let chosen = data.pair(name).map(|v| v.trim().to_string());
+                let pick = data.pair(name).map(|v| v.trim().to_string());
                 let raw = mark.split_once(':').map(|(_, o)| o).unwrap_or("");
                 for (i, piece) in raw.split('・').enumerate() {
                     if i > 0 {
                         text.push('・');
                     }
                     let o = piece.trim();
-                    if !o.is_empty() && chosen.as_deref() == Some(o) {
+                    if !o.is_empty() && pick.as_deref() == Some(o) {
                         let lead = piece.len() - piece.trim_start().len();
-                        picked.push((count(&text) + count(&piece[..lead]), o.chars().count()));
+                        let at = text.len() + lead;
+                        chosen.push((at, at + o.len()));
                     }
                     text.push_str(piece);
                 }
             }
             None => text.push_str(&data.answer(mark).unwrap_or_default()),
         }
+        marks.push((mark.to_string(), from, text.len()));
         rest = &rest[a + b + 1..];
     }
     text.push_str(rest);
-    text
+    Filled { text, marks, chosen }
+}
+
+/// The options a mark offers: those of a choice (`性別:男・女`), or the one
+/// of a box to tick (`送達場所=住所`); none for other marks.
+pub fn options_of(mark: &str) -> Vec<String> {
+    if let Some((_, o)) = choice_of(mark) {
+        return o.iter().map(|x| x.to_string()).collect();
+    }
+    box_of(mark).map(|(_, o)| vec![o.to_string()]).unwrap_or_default()
 }
 
 /// The name and the option of a box to tick (`送達場所=住所`).
@@ -520,7 +554,7 @@ pub struct Group {
 
 /// The data item a mark stands for, and its kind. `年齢` is worked out, so
 /// it is not an item.
-fn item_of(mark: &str) -> Option<(String, Kind)> {
+pub fn item_of(mark: &str) -> Option<(String, Kind)> {
     if mark == "年齢" {
         return None;
     }

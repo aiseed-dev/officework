@@ -1749,41 +1749,43 @@ pub fn doc_to_pdf<W: Write>(
     theme: Option<&kumihan::theme::Theme>,
     out: W,
 ) -> Result<(), String> {
+    // The same pages as the draw list ([`doc_pages`]): pictures, shapes that
+    // stick to a page, other programs' text boxes, headers and footers. The
+    // low-level writer embeds only the characters used (2026-08-27)
+    let p = doc_pages(doc, theme)?;
+    let datas: Vec<&[u8]> = p.fonts.iter().map(|(_, d)| d.as_slice()).collect();
+    pdfw::write_pages_fonts(&p.leaves, p.paper.width_mm, p.paper.height_mm, &datas, out)
+}
+
+/// A document laid out as the PDF lays it out, kept as pages.
+pub struct DocPages {
+    /// The pages as the draw list takes them
+    pub leaves: Vec<pdfw::Leaf>,
+    /// The fonts the pages' text names by number
+    pub fonts: Vec<(String, Vec<u8>)>,
+    /// The laid-out lines, to ask where text went ([`pdfw::text_spots`])
+    pub sheet: kumihan::Sheet,
+    pub paper: Paper,
+}
+
+/// **A document's pages without writing a PDF**: pictures, shapes that stick
+/// to a page, other programs' text boxes (kept as their original text, so
+/// placed here), headers and footers laid out as on screen (2026-09-08).
+/// [`doc_to_pdf`] writes these same pages.
+pub fn doc_pages(doc: &kumihan::Document, theme: Option<&kumihan::theme::Theme>) -> Result<DocPages, String> {
     let (d, laid, fonts) = doc_laid(doc, theme)?;
     let (mut sheet, page) = (laid.sheet, laid.page);
-    let doc = &d;
-    anchored_pictures(doc, &mut sheet, page);
-    // **低い層の書き手を通します**(2026-08-27)。使った字だけ埋めるので、
-    // 1枚物が 20MB から 10KB になります。ここが最初の差し替えです —
-    // 画面(writer)の書き出しはまだ printpdf のままです
-    // **ページに貼り付く図形と紙の飾りを渡します**(2026-08-29)。
-    // 渡さないと、模型に在っても紙に出ません
-    // **他所のテキストボックスも紙に出します**(2026-08-30)。模型には
-    // 入っていない(原文の控えのまま持ち越している)ので、ここで置き直します
-    let mut shapes = doc.shapes.clone();
-    shapes.extend(foreign_shapes(doc, &sheet, page));
-    let dress = PageDress {
-        watermark: doc.watermark.clone(),
-        shapes,
-        ..Default::default()
+    anchored_pictures(&d, &mut sheet, page);
+    let mut shapes = d.shapes.clone();
+    shapes.extend(foreign_shapes(&d, &sheet, page));
+    let dress = PageDress { watermark: d.watermark.clone(), shapes, ..Default::default() };
+    let hf = doc_hf_lines(&d, &laid.font, &sheet, page)?;
+    let paper = Paper::from_page(&page);
+    let (leaves, _lost) = {
+        let font_of = font_index_of(&fonts);
+        pdfw::sheet_leaves_fonts(&sheet, paper, &dress, hf, &font_of)
     };
-    // **ヘッダーとフッターも紙に出します**(2026-09-08、Word と並べて
-    // 見つけた。`d.header.text` を持つ文書の PDF に、画面にはある頭と足の
-    // 行が無かった)。画面(writer の `refresh_hf`)と同じ関数・同じ物差し
-    // (`LINE_MM`、文書の基準の大きさ)で、頁ごとに組みます
-    let hf = doc_hf_lines(doc, &laid.font, &sheet, page)?;
-    let lost = pdfw::sheet_to_pdf_fonts(
-        &sheet,
-        &fonts,
-        Paper::from_page(&page),
-        &dress,
-        hf,
-        out,
-    )?;
-    // 載らなかった物は呼ぶ側へ言えないので、ここでは黙るしかありません。
-    // **数える口が要るなら [`pdfw::sheet_to_pdf`] を直に呼びます**
-    let _ = lost;
-    Ok(())
+    Ok(DocPages { leaves, fonts, sheet, paper })
 }
 
 /// **頁ごとのヘッダーとフッターの行を組む閉包。** `k` は 1 始まりの頁。
