@@ -1805,7 +1805,7 @@ class Doc(NoStrayAttributes):
     """docx の文書。エンジンの Doc を包み、python-docx の口を足す。"""
 
     # 自分で持つ属性。ここに無い名前への代入は断ります(打ち間違い避け)
-    _own = ("_d", "_path")
+    _own = ("_d", "_path", "_missing")
     _engine_attr = "_d"
 
     def __init__(self, path=None, lang=None):
@@ -1944,6 +1944,29 @@ class Doc(NoStrayAttributes):
             gun = {str(g): [{str(k): moji(v) for k, v in dict(row).items()} for row in r]
                    for g, r in dict(rows).items()}
         return self._d.render(vals, gun)
+
+    @staticmethod
+    def fill_form(form, data):
+        """文書の様式(``{氏名}`` などの印を持つ文書)を、データのブック
+        (``sheet.Book``。``履歴書.sheet.adoc`` などの表)で埋めた新しい文書を
+        返します。印の書き方は表の様式と同じです(``{日付.和暦年}``、
+        ``{送達場所=住所}``、``{性別:男・女}`` など)。
+
+        ``render`` と違い、データに答えの無い印は空になります。名前がデータに
+        1 つも無いときは、空にしたうえで警告を出し、``missing`` に並べます。"""
+        d = Doc.__new__(Doc)
+        d._d, d._missing = _doc.Doc.fill_form(form._d, data._b)
+        d._path = None
+        if d._missing:
+            import warnings as _warnings
+            _warnings.warn("データに無い名前があります(空にしました): " + "、".join(d._missing),
+                           stacklevel=2)
+        return d
+
+    @property
+    def missing(self):
+        """``fill_form`` で作った文書で、データに 1 つも無かった名前の並びです。"""
+        return list(getattr(self, "_missing", None) or [])
 
     def page_count(self):
         """ページ数を数えます。PDF と同じ組み方で紙面を組みます(PDF は書きません)。"""

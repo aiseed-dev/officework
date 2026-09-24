@@ -259,3 +259,24 @@ with tempfile.TemporaryDirectory() as td:
     dd = doc.Doc(SAMPLE)
     check(dd.block_count > 0 and len(dd.blocks(0)[0][2]) > 0, "docx の文書をブロックで読めない")
 print("block API: ok")
+
+# A document form filled from a data book, with the marks of sheet forms
+with tempfile.TemporaryDirectory() as t:
+    from officework import sheet
+    import warnings
+    data_path = os.path.join(t, "d.sheet.adoc")
+    with open(data_path, "w", encoding="utf-8") as f:
+        f.write("= データ\n\n.基本\n|===\n|届出日 |2019-05-01\n|氏名 |山田 太郎\n|送達場所 |勤務先\n|===\n")
+    form = doc.Doc()
+    form.add_paragraph("令和{届出日.和暦年}年{届出日.月}月　氏名　{氏名}")
+    form.add_paragraph("{送達場所=住所}住所　{送達場所=勤務先}勤務先")
+    form.add_paragraph("電話　{電話}")
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        filled = doc.Doc.fill_form(form, sheet.Book.open(data_path))
+    texts = [p.text for p in filled.paragraphs]
+    check(texts[0] == "令和元年5月　氏名　山田 太郎", f"様式の差し込み: {texts[0]!r}")
+    check(texts[1] == "□住所　■勤務先", f"チェックボックス: {texts[1]!r}")
+    check(texts[2] == "電話　", f"答えの無い印が残った: {texts[2]!r}")
+    check(filled.missing == ["電話"] and any("電話" in str(x.message) for x in w), f"missing: {filled.missing}")
+print("fill_form: ok")

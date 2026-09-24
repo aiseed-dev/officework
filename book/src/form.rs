@@ -47,7 +47,7 @@ pub struct Field {
 }
 
 /// The marks in a piece of text, in order.
-fn marks(text: &str) -> Vec<String> {
+pub fn marks(text: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut rest = text;
     while let Some(a) = rest.find('{') {
@@ -242,6 +242,44 @@ pub struct Choice {
     pub len: usize,
 }
 
+/// **One text with its marks answered from the data**: the cell's text
+/// of a sheet form, or a run's text of a document form. The chosen options
+/// of choice marks are pushed to `picked` as (first char, count), counted
+/// without line breaks as the page counts them.
+pub fn fill_text(t: &str, data: &Data, picked: &mut Vec<(usize, usize)>) -> String {
+    let mut text = String::new();
+    let mut rest = t;
+    let count = |t: &str| t.chars().filter(|c| *c != '\n').count();
+    while let Some(a) = rest.find('{') {
+        let Some(b) = rest[a..].find('}') else { break };
+        text.push_str(&rest[..a]);
+        let mark = &rest[a + 1..a + b];
+        match choice_of(mark) {
+            Some((name, _)) => {
+                // The options as the mark writes them, spaces and all
+                // (`男 ・ 女`), the chosen one found where it stands
+                let chosen = data.pair(name).map(|v| v.trim().to_string());
+                let raw = mark.split_once(':').map(|(_, o)| o).unwrap_or("");
+                for (i, piece) in raw.split('・').enumerate() {
+                    if i > 0 {
+                        text.push('・');
+                    }
+                    let o = piece.trim();
+                    if !o.is_empty() && chosen.as_deref() == Some(o) {
+                        let lead = piece.len() - piece.trim_start().len();
+                        picked.push((count(&text) + count(&piece[..lead]), o.chars().count()));
+                    }
+                    text.push_str(piece);
+                }
+            }
+            None => text.push_str(&data.answer(mark).unwrap_or_default()),
+        }
+        rest = &rest[a + b + 1..];
+    }
+    text.push_str(rest);
+    text
+}
+
 /// The name and the option of a box to tick (`送達場所=住所`).
 fn box_of(mark: &str) -> Option<(&str, &str)> {
     let (name, option) = mark.split_once('=')?;
@@ -305,38 +343,9 @@ pub fn fill_choices(
             if marks(t).is_empty() {
                 continue;
             }
-            let mut text = String::new();
-            let mut rest = t.as_str();
-            // chars so far, without line breaks (as the page counts them)
-            let count = |t: &str| t.chars().filter(|c| *c != '\n').count();
-            while let Some(a) = rest.find('{') {
-                let Some(b) = rest[a..].find('}') else { break };
-                text.push_str(&rest[..a]);
-                let mark = &rest[a + 1..a + b];
-                match choice_of(mark) {
-                    Some((name, _)) => {
-                        // The options as the mark writes them, spaces and all
-                        // (`男 ・ 女`), the chosen one found where it stands
-                        let chosen = data.pair(name).map(|v| v.trim().to_string());
-                        let raw = mark.split_once(':').map(|(_, o)| o).unwrap_or("");
-                        for (i, piece) in raw.split('・').enumerate() {
-                            if i > 0 {
-                                text.push('・');
-                            }
-                            let o = piece.trim();
-                            if !o.is_empty() && chosen.as_deref() == Some(o) {
-                                let lead = piece.len() - piece.trim_start().len();
-                                let start = count(&text) + count(&piece[..lead]);
-                                choices.push(Choice { sheet: si, at: p, start, len: o.chars().count() });
-                            }
-                            text.push_str(piece);
-                        }
-                    }
-                    None => text.push_str(&data.answer(mark).unwrap_or_default()),
-                }
-                rest = &rest[a + b + 1..];
-            }
-            text.push_str(rest);
+            let mut picked = Vec::new();
+            let text = fill_text(t, &data, &mut picked);
+            choices.extend(picked.into_iter().map(|(start, len)| Choice { sheet: si, at: p, start, len }));
             let fmt = c.fmt.clone();
             s.set(p, Cell { formula: None, value: Value::Text(text), fmt });
         }
@@ -395,6 +404,15 @@ fn box_px(z: &Sizes, basis: crate::ColBasis, sp: &crate::SheetShape) -> (f32, f3
 /// optional field left blank). A missing table or column is named as
 /// `表` or `表.列`.
 pub fn missing(form: &Book, data_book: &Book) -> Vec<String> {
+    let mut names: Vec<String> = fields(form).into_iter().flat_map(|f| f.names).collect();
+    for s in &form.sheets {
+        names.extend(s.shapes.iter().chain(s.shapes_new.iter()).filter_map(|sp| sp.field.clone()));
+    }
+    missing_of(names, data_book)
+}
+
+/// [`missing`] for marks found elsewhere (a document form's runs).
+pub fn missing_of(names: Vec<String>, data_book: &Book) -> Vec<String> {
     let data = Data::new(data_book);
     let mut out: Vec<String> = Vec::new();
     let mut push = |n: String| {
@@ -402,10 +420,6 @@ pub fn missing(form: &Book, data_book: &Book) -> Vec<String> {
             out.push(n);
         }
     };
-    let mut names: Vec<String> = fields(form).into_iter().flat_map(|f| f.names).collect();
-    for s in &form.sheets {
-        names.extend(s.shapes.iter().chain(s.shapes_new.iter()).filter_map(|sp| sp.field.clone()));
-    }
     for m in names {
         let m = choice_of(&m)
             .map(|(n, _)| n.to_string())

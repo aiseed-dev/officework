@@ -325,3 +325,142 @@ pub fn fill(doc: &Document, d: &Data) -> (Document, Report) {
     }
     (out, rep)
 }
+
+/// Where a chosen option of a document form stands: the paragraph (its
+/// place in the blocks, and for a table the row, cell and paragraph), the
+/// run, and the chars in the run's filled text.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DocChoice {
+    pub block: usize,
+    /// (row, cell, paragraph) inside a table block
+    pub cell: Option<(usize, usize, usize)>,
+    pub run: usize,
+    pub start: usize,
+    pub len: usize,
+}
+
+/// A mark cut by the run boundaries (Word splits typed text into runs) is
+/// joined into the run it starts in, so each run holds whole marks.
+fn join_marks(runs: &mut Vec<Run>) {
+    let unclosed = |t: &str| t.rfind('{').is_some_and(|a| !t[a..].contains('}'));
+    let mut emptied = vec![false; runs.len()];
+    let mut i = 0;
+    while i < runs.len() {
+        if unclosed(&runs[i].text) {
+            let mut j = i + 1;
+            while j < runs.len() {
+                let t = std::mem::take(&mut runs[j].text);
+                match t.find('}') {
+                    Some(k) => {
+                        runs[i].text.push_str(&t[..=k]);
+                        runs[j].text = t[k + 1..].to_string();
+                        emptied[j] = runs[j].text.is_empty();
+                        break;
+                    }
+                    None => {
+                        runs[i].text.push_str(&t);
+                        emptied[j] = true;
+                        j += 1;
+                    }
+                }
+            }
+            if unclosed(&runs[i].text) && j >= runs.len() {
+                break;
+            }
+            // the joined run may end in another mark
+            continue;
+        }
+        i += 1;
+    }
+    let mut k = 0;
+    runs.retain(|_| {
+        let keep = !emptied[k];
+        k += 1;
+        keep
+    });
+}
+
+/// **A document form filled from a data book**, with the marks of a sheet
+/// form ([`book::form`]): `{氏名}`, `{日付.和暦年}`, `{送達場所=住所}`,
+/// `{性別:男・女}` and the rest. Unlike [`fill`], an unanswered mark
+/// becomes empty (a form's blanks stay blank); the names the data lacks
+/// altogether are returned for the caller to report, with where the
+/// chosen options of choice marks stand.
+pub fn fill_form(doc: &Document, data: &book::Book) -> (Document, Vec<String>, Vec<DocChoice>) {
+    let answers = book::form::Data::new(data);
+    let mut out = doc.clone();
+    let mut names: Vec<String> = Vec::new();
+    let mut choices: Vec<DocChoice> = Vec::new();
+    let mut para = |p: &mut Paragraph, block: usize, cell: Option<(usize, usize, usize)>| {
+        join_marks(&mut p.runs);
+        for (ri, r) in p.runs.iter_mut().enumerate() {
+            let found = book::form::marks(&r.text);
+            if found.is_empty() {
+                continue;
+            }
+            names.extend(found);
+            let mut picked = Vec::new();
+            r.text = book::form::fill_text(&r.text, &answers, &mut picked);
+            choices.extend(picked.into_iter().map(|(start, len)| DocChoice { block, cell, run: ri, start, len }));
+        }
+    };
+    for (bi, b) in out.blocks.iter_mut().enumerate() {
+        match b {
+            Block::Para(p) => para(p, bi, None),
+            Block::Table(t) => {
+                for (ri, row) in t.rows.iter_mut().enumerate() {
+                    for (ci, c) in row.iter_mut().enumerate() {
+                        for (pi, p) in c.paragraphs.iter_mut().enumerate() {
+                            para(p, bi, Some((ri, ci, pi)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Text boxes carry their text as one string
+    for sh in &mut out.shapes {
+        if let Some(t) = &sh.look.text {
+            let found = book::form::marks(t);
+            if !found.is_empty() {
+                names.extend(found);
+                sh.look.text = Some(book::form::fill_text(t, &answers, &mut Vec::new()));
+            }
+        }
+    }
+    let missing = book::form::missing_of(names, data);
+    (out, missing, choices)
+}
+
+#[cfg(test)]
+mod form_tests {
+    use super::*;
+
+    fn run(t: &str) -> Run {
+        Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }
+    }
+
+    #[test]
+    fn a_document_form_is_filled_from_a_data_book() {
+        let (data, _) = crate::book_adoc::parse(
+            "= データ\n\n.基本\n|===\n|届出日 |2026-09-25\n|氏名 |山田 太郎\n|送達場所 |住所\n|===\n",
+        )
+        .unwrap();
+        let mut doc = Document::default();
+        let mut p = Paragraph::default();
+        // the date's mark is cut across runs, as Word splits typed text
+        p.runs = vec![run("令和{届出日.和"), run("暦年}年{届出日.月}月　氏名 {氏名}")];
+        doc.blocks.push(Block::Para(p));
+        let mut p = Paragraph::default();
+        p.runs = vec![run("{送達場所=住所}住所 {送達場所=勤務先}勤務先 {電話}")];
+        doc.blocks.push(Block::Para(p));
+        let (out, missing, _) = fill_form(&doc, &data);
+        let text = |i: usize| match &out.blocks[i] {
+            Block::Para(p) => p.runs.iter().map(|r| r.text.as_str()).collect::<String>(),
+            _ => String::new(),
+        };
+        assert_eq!(text(0), "令和8年9月　氏名 山田 太郎");
+        assert_eq!(text(1), "■住所 □勤務先 ");
+        assert_eq!(missing, ["電話"]);
+    }
+}

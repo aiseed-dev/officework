@@ -407,6 +407,26 @@ impl PyDoc {
     ///                    {"品名": "消しゴム", "数量": "5"}]})
     /// d.save("out.docx")
     /// ```
+    /// A document form filled from a data book (a sheet `Book`), with the
+    /// marks of sheet forms. Returns the filled document and the names the
+    /// data lacks altogether
+    #[staticmethod]
+    fn fill_form(form: &PyDoc, data: &crate::PyBook) -> PyResult<(PyDoc, Vec<String>)> {
+        let book = crate::lock(&data.inner)?.book.clone();
+        let g = lock(&form.inner)?;
+        let (doc, missing, _) = kumihan::fill::fill_form(&g.doc, &book);
+        Ok((
+            PyDoc {
+                inner: Arc::new(Mutex::new(Inner {
+                    doc,
+                    original: g.original.clone(),
+                    unsupported: g.unsupported.clone(),
+                })),
+            },
+            missing,
+        ))
+    }
+
     #[pyo3(signature = (values, rows = None))]
     fn render(
         &self,

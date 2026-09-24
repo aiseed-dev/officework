@@ -156,6 +156,22 @@ A shape given a field name with the `field` item (`写真`) takes the picture fi
 
 To show the form and edit it, take the draw list with `draw_list()`. Each page's `fields` gives each field's name, kind, rectangle (points from the page's top left) and value. Put an edit into the data with `data.set_field(name, value)` and fill again.
 
+=== Filling a document form (a notification, say)
+
+Word applications and notifications are filled with the same marks: the form is a document with marks where the values go, and the data is a table book (`name.sheet.adoc`).
+
+[source,python]
+----
+from officework import doc, sheet
+
+form = doc.Doc.open("送達場所等の届出.docx")
+data = sheet.Book.open("届出データ.sheet.adoc")
+d = doc.Doc.fill_form(form, data)
+d.save("notification.pdf")   # .docx works too
+----
+
+The marks are those of sheet forms (`{届出日.和暦年}`, `{送達場所=住所}`, `{性別:男・女}` and the rest), and a mark Word split across formatting runs is still read. Unlike `render`, an unanswered mark becomes empty; a name the data lacks altogether is warned about and listed in `d.missing`.
+
 == The `officework.doc` API
 
 Same wheel, same promise, for docx: the `doc` submodule. `Doc.open` keeps the original bytes and `save` writes back only what changed, so styles, headers, footers, shapes and tracked changes come through untouched — the thing `python-docx` cannot promise.
