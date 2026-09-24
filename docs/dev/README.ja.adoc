@@ -53,7 +53,7 @@ face / ui / ops → エンジン(engine / sheet / ooxml / lang)。
 * **プログラム内はすべて英語。** 識別子(関数・変数・型)と、コードに
   直に書く文言は英語にする。**日本語を含む他国語の文言は、リソース
   ファイル(lang の表・ui/i18n の JSON)に置き、コードには鍵だけを書く。**
-  註とコミットの文はこれまでどおり日本語でよい。
+  コードの中のコメントとコミットの文も英語で書く(AGENTS.md「書き方」)。
   ※既存のコードには日本語の識別子と、日本語を鍵にした文言が残っている。
   新しいコードはこの規約で書き、既存は移行の作業として別に進める
 * **既にある鍵の意味を変えない。** 文言を足すときは、その鍵が既にあるかを
@@ -121,5 +121,6 @@ DISPLAY=:7 VK_DRIVER_FILES=/usr/share/vulkan/icd.d/lvp_icd.json \
 |`packaging/` |配布(deb / dmg / setup.exe / Flatpak / アイコン)
 |`templates/` `sample/` |同梱のテンプレートと実例
 |`vendor/` |突き合わせの教師(手を入れない)
-|`.claude/skills/` |書き方と管理の決まり(セッションが自動で読む)
+|`AGENTS.md` `CLAUDE.md` |AI が作業するときの決まり(CLAUDE.md は AGENTS.md を読み込む)
+|`.claude/skills/` |手順の決まり(manual:マニュアル、ooxml-check:OOXML での確かめ方、app-check:アプリの確かめ方)
 |===
