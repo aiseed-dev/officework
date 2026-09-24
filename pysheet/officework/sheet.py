@@ -2065,6 +2065,20 @@ class Book(NoStrayAttributes):
         b._path = path
         return b
 
+    @staticmethod
+    def fill(form, data):
+        """様式(`{氏名}` などの印を持つブック)を、データのブックで埋めた
+        新しいブックを返します。データに無い印は空になります。"""
+        b = Book.__new__(Book)
+        b._b = _engine.Book.fill(form._b, data._b)
+        b._path = None
+        return b
+
+    def fields(self):
+        """様式の欄の一覧です。(シート名, セル, 印の名前の並び) を、上の行から
+        順に返します。"""
+        return self._b.fields()
+
     # ── うちの口(エンジンそのまま)──────────────────────────────
 
     def save(self, path, dpi=None):

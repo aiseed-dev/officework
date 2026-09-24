@@ -23,6 +23,8 @@
 pub mod calc;
 /// 暦の名前(月・曜日)を言語ごとに引く
 pub mod datetime_names;
+/// Filling a form (a workbook with {marks}) from data
+pub mod form;
 /// Time zones: the workbook's zone and the offset from UTC at a moment
 pub mod tz;
 /// 値を引ける表 — 式の計算が表に求める面はこれだけ

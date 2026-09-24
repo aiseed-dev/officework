@@ -218,6 +218,16 @@ impl PyBook {
                 )))
             }
         };
+        // A workbook written as AsciiDoc (.sheet.adoc / .form.adoc) opens with
+        // its look (the template it names, or the only one in its folder)
+        if path.to_ascii_lowercase().ends_with(".adoc") {
+            let (mut book, report) = kumihan::book_adoc::open(std::path::Path::new(path))
+                .map_err(|e| PyIOError::new_err(format!("{path}: adoc として読めない: {e}")))?;
+            recalc_all(&mut book);
+            return Ok(PyBook {
+                inner: Arc::new(Mutex::new(Inner { book, original: None, unsupported: report.into_iter().map(|r| (r, 1)).collect() })),
+            });
+        }
         let bytes = std::fs::read(path)
             .map_err(|e| PyIOError::new_err(format!("{path}: 読めない: {e}")))?;
         let opts = xlsx::ReadOptions { platform, date1904: None, time_zone: time_zone.map(str::to_string) };
@@ -231,6 +241,28 @@ impl PyBook {
                 unsupported: rep.unsupported,
             })),
         })
+    }
+
+    // **A form filled from data** (book::form): every {mark} in the form's
+    // cells is replaced by what the data says, or by nothing
+    #[staticmethod]
+    fn fill(form: &PyBook, data: &PyBook) -> PyResult<PyBook> {
+        let f = lock(&form.inner)?.book.clone();
+        let d = lock(&data.inner)?.book.clone();
+        let mut book = book::form::fill(&f, &d);
+        recalc_all(&mut book);
+        Ok(PyBook {
+            inner: Arc::new(Mutex::new(Inner { book, original: None, unsupported: Vec::new() })),
+        })
+    }
+
+    // The form's fields: (sheet name, cell A1, mark names), in reading order
+    fn fields(&self) -> PyResult<Vec<(String, String, Vec<String>)>> {
+        let g = lock(&self.inner)?;
+        Ok(book::form::fields(&g.book)
+            .into_iter()
+            .map(|f| (g.book.sheets[f.sheet].name.clone(), f.at.a1(), f.names))
+            .collect())
     }
 
     /// 保存する。開いた元のファイルがあれば、こちらが作り直さない部品

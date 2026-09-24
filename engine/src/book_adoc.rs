@@ -56,6 +56,37 @@ pub fn write_report(book: &Book) -> Vec<String> {
     out
 }
 
+/// **Opens a `.sheet.adoc` or `.form.adoc` with its look** (2026-09-24).
+///
+/// The look comes from the template the file names with `:template: 名前`
+/// (`名前.tmpl.adoc` in the same folder), or else from the only
+/// `.tmpl.adoc` in the folder, as the spreadsheet app does
+/// ([`crate::booktmpl::find_for`]). What could not be read is reported.
+pub fn open(path: &std::path::Path) -> Result<(Book, Vec<String>), String> {
+    let src = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let (mut book, mut report) = parse(&src)?;
+    let dir = path.parent().unwrap_or(std::path::Path::new("."));
+    let named = attr_of(&src, "template");
+    let tp = match &named {
+        Some(n) => Some(dir.join(format!("{n}.tmpl.adoc"))),
+        None => crate::booktmpl::find_for(path),
+    };
+    if let Some(tp) = tp {
+        match std::fs::read_to_string(&tp).map_err(|e| e.to_string()).and_then(|t| crate::booktmpl::parse(&t)) {
+            Ok(theme) => crate::booktmpl::apply(&theme, &mut book),
+            Err(e) => report.push(format!("{}: {e}", tp.display())),
+        }
+    }
+    recalc_all(&mut book);
+    Ok((book, report))
+}
+
+/// The value of a document attribute (`:名前: 値`) of an adoc text.
+pub fn attr_of(src: &str, key: &str) -> Option<String> {
+    let doc = crate::adoc::parse(src).ok()?;
+    doc.attrs.iter().find(|(k, _)| k == key).map(|(_, v)| v.clone())
+}
+
 /// adoc の字をブックにする。**読めなかった物は数えて返す。**
 ///
 /// 表でない段落(見出し・本文)は、ブックに居場所が無いので落とし、
@@ -314,7 +345,7 @@ fn to_sheet(t: &Table, nth: usize) -> Sheet {
     // 題と見出しがあれば、そのまま表の定義にする —
     // これで `=SUM(売上台帳[金額])` が宣言なしで書ける
     let cols = text.iter().map(|r| r.len()).max().unwrap_or(0);
-    if t.title.is_some() && cols > 0 && !text.is_empty() {
+    if t.title.is_some() && t.header_row && cols > 0 && !text.is_empty() {
         s.tables.push(TableDef {
             name: name.clone(),
             a: Pos::new(0, 0),
