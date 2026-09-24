@@ -880,7 +880,7 @@ fn mac_menus(cx: &mut App) {
     let file_tab = tabs.first().map(|t| t.name).unwrap_or("File");
     cx.set_menus([
         Menu {
-            name: "officework".into(),
+            name: face::profile::app_name().into(),
             disabled: false,
             items: vec![MenuItem::action(ui::t!("quit"), ui::Quit)],
         },
@@ -908,6 +908,8 @@ fn mac_menus(cx: &mut App) {
 }
 
 fn main() {
+    // The ribbon settings file must be read before the ribbon is first built
+    face::profile::load();
     let arg = std::env::args().nth(1).map(std::path::PathBuf::from);
     // **2つ目は窓を増やさず、動いている方のタブにします**(段11)
     if hand_to_running(arg.as_deref()) {
@@ -950,7 +952,14 @@ fn main() {
         };
         let start2 = start.clone();
         cx.open_window(
-            WindowOptions { window_bounds: Some(wb), ..Default::default() },
+            WindowOptions {
+                window_bounds: Some(wb),
+                titlebar: Some(gpui::TitlebarOptions {
+                    title: Some(face::profile::app_name().into()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
             move |window, cx| {
                 // **使う Python は人が選べます**(2026-09-04 発注者「自由に
                 // 環境が選択できるのがいい」)。同梱はやめたので、設定に

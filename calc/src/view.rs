@@ -492,13 +492,17 @@ impl Render for Calc {
         // 使う(別々に書くと、隠れた段に札が配られてずれる)
         // 押せるボタンが1つも無い段(文章だけの段)も、文脈タブと同じく隠す
         // (リボンは1つ。2026-09-04)
-        let ctx_hidden = |tb: &ribbon::Tab| {
+        // A tab that holds only the user's Python buttons (a tab made by the
+        // ribbon settings file) stays shown
+        let ctx_hidden = |i: usize| {
+            let tb = &ribbon::calc_tabs()[i];
             Calc::ctx_tab_hidden_with(tb, on_pivot, in_table)
-                || !tb.cmds.iter().any(|c| c.ready && Calc::HANDLED.contains(&c.id))
+                || (!tb.cmds.iter().any(|c| c.ready && Calc::HANDLED.contains(&c.id))
+                    && ribbon::user_cmds_for(ribbon::App::Calc, i).is_empty())
         };
         // 開いていたタブの文脈が消えたら、前のタブへ戻る(本家と同じ挙動)
-        if ctx_hidden(&ribbon::calc_tabs()[self.tab]) {
-            self.tab = if ctx_hidden(&ribbon::calc_tabs()[self.prev_tab]) {
+        if ctx_hidden(self.tab) {
+            self.tab = if ctx_hidden(self.prev_tab) {
                 1 // ホーム
             } else {
                 self.prev_tab
@@ -549,7 +553,7 @@ impl Render for Calc {
                 ctx_bg: rgb(0xF3EDFB),
             },
             self.btn_box.clone(),
-            |i| ctx_hidden(&ribbon::calc_tabs()[i]),
+            |i| ctx_hidden(i),
             |i| {
                 // 文脈タブ(ピボット・表のデザイン)は色を付けて目に留める —
                 // 出たり消えたりする物は、出た瞬間に分からないと意味がない

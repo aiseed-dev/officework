@@ -57,6 +57,7 @@ pub mod funcs_tables;
 pub mod icons;
 pub mod keys;
 pub mod ribbon;
+pub mod profile;
 /// 文章と表のリボンの段を突き合わせる(生成物ではない手書きの場所)
 pub mod tabs;
 pub mod search;

@@ -827,7 +827,10 @@ impl Writer {
         if Self::ctx_tab_hidden(i) {
             return true;
         }
+        // A tab that holds only the user's Python buttons (a tab made by the
+        // ribbon settings file) stays shown
         ribbon::tabs().get(i).is_some_and(|tb| !tb.cmds.iter().any(|c| self.usable_here(c)))
+            && ribbon::user_cmds_for(ribbon::App::Writer, i).is_empty()
     }
 
     /// リボンの段を選ぶ。**この画面に無い段は動かしません**。

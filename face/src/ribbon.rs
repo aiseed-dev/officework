@@ -200,7 +200,7 @@ pub fn target_of(id: &str) -> Target {
 
 /// その id が居る段(骨組みの英語の名前)
 pub fn tab_of(id: &str) -> Option<&'static str> {
-    skeleton().iter().find(|t| t.cmds.iter().any(|c| c.id == id)).map(|t| t.name)
+    base().iter().find(|t| t.cmds.iter().any(|c| c.id == id)).map(|t| t.name)
 }
 
 /// 段の並び(15。SEKKEI の決め)。文章の並びを軸に、表だけの段を
@@ -271,14 +271,16 @@ fn merge(
     Box::leak(out.into_boxed_slice())
 }
 
-/// **骨組み**(ja の表を1つに合わせた物)。段名は英語で、内部の照合はこれで書く
-pub fn skeleton() -> &'static [Tab] {
+/// The full ribbon with English names, without the ribbon settings file.
+/// What a button does is looked up here, so moving it to another tab
+/// with the settings file does not change it
+pub fn base() -> &'static [Tab] {
     static ONE: std::sync::OnceLock<&'static [Tab]> = std::sync::OnceLock::new();
     ONE.get_or_init(|| merge(WRITER, CALC, None))
 }
 
-/// その言語のリボン(1つ)。語だけが違い、id・並び・ready・icon・apps は骨組みと同じ
-pub fn tabs_for(lang: &str) -> &'static [Tab] {
+/// The full ribbon in one language, without the ribbon settings file
+fn full_for(lang: &str) -> &'static [Tab] {
     use std::collections::HashMap;
     use std::sync::{Mutex, OnceLock};
     static CACHE: OnceLock<Mutex<HashMap<String, &'static [Tab]>>> = OnceLock::new();
@@ -288,8 +290,85 @@ pub fn tabs_for(lang: &str) -> &'static [Tab] {
     }
     let built = match crate::ribbon_tables::tabs(lang) {
         Some(pair) => merge(WRITER, CALC, Some(pair)),
-        None => skeleton(),
+        None => base(),
     };
+    cache.lock().unwrap().insert(lang.to_string(), built);
+    built
+}
+
+/// Apply the ribbon settings file ([`crate::profile`]) to one language's
+/// ribbon. The result keeps File first; the same file gives the same tab
+/// order in every language, so [`skeleton`] and [`tabs_for`] stay aligned
+fn with_profile(tabs: &'static [Tab]) -> &'static [Tab] {
+    match crate::profile::get() {
+        Some(p) => apply_profile(p, tabs),
+        None => tabs,
+    }
+}
+
+/// [`with_profile`] for a given profile (the tests use this)
+pub fn apply_profile(p: &crate::profile::Profile, tabs: &'static [Tab]) -> &'static [Tab] {
+    if p.tabs.is_none() && p.buttons.is_empty() {
+        return tabs;
+    }
+    let find = |name: &str| -> Option<usize> {
+        [base(), full_for("ja"), full_for(crate::settings::language())]
+            .iter()
+            .find_map(|list| list.iter().position(|t| t.name == name))
+    };
+    let pick = |ids: &[String]| -> &'static [Cmd] {
+        let v: Vec<Cmd> = ids
+            .iter()
+            .filter_map(|id| tabs.iter().flat_map(|t| t.cmds.iter()).find(|c| c.id == id).copied())
+            .collect();
+        Box::leak(v.into_boxed_slice())
+    };
+    let buttons_of = |name: &str, at: Option<usize>| {
+        p.buttons
+            .iter()
+            .find(|(n, _)| n == name || (at.is_some() && find(n) == at))
+            .map(|(_, ids)| pick(ids))
+    };
+    let wanted: Vec<(String, Option<usize>)> = match &p.tabs {
+        Some(names) => names.iter().map(|n| (n.clone(), find(n))).collect(),
+        None => (1..tabs.len()).map(|i| (base()[i].name.to_string(), Some(i))).collect(),
+    };
+    let mut out: Vec<Tab> = tabs.first().map(|t| Tab { name: t.name, cmds: t.cmds }).into_iter().collect();
+    for (name, at) in wanted {
+        match at {
+            // File is always first and only once
+            Some(0) => {}
+            Some(i) => {
+                let cmds = buttons_of(&name, at).unwrap_or(tabs[i].cmds);
+                out.push(Tab { name: tabs[i].name, cmds });
+            }
+            None => {
+                let cmds = buttons_of(&name, None).unwrap_or(&[]);
+                out.push(Tab { name: Box::leak(name.into_boxed_str()), cmds });
+            }
+        }
+    }
+    Box::leak(out.into_boxed_slice())
+}
+
+/// **骨組み**(ja の表を1つに合わせた物)。段名は英語で、内部の照合はこれで書く。
+/// The ribbon settings file applies here too
+pub fn skeleton() -> &'static [Tab] {
+    static ONE: std::sync::OnceLock<&'static [Tab]> = std::sync::OnceLock::new();
+    ONE.get_or_init(|| with_profile(base()))
+}
+
+/// その言語のリボン(1つ)。語だけが違い、id・並び・ready・icon・apps は骨組みと同じ。
+/// The ribbon settings file applies here too
+pub fn tabs_for(lang: &str) -> &'static [Tab] {
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+    static CACHE: OnceLock<Mutex<HashMap<String, &'static [Tab]>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some(hit) = cache.lock().unwrap().get(lang) {
+        return hit;
+    }
+    let built = with_profile(full_for(lang));
     cache.lock().unwrap().insert(lang.to_string(), built);
     built
 }
@@ -310,7 +389,7 @@ pub fn calc_tabs() -> &'static [Tab] {
 
 /// その画面で効くボタンの (押せる数, 全部)。灰色の目安に使う
 pub fn progress_for(app: App) -> (usize, usize) {
-    let mine: Vec<&Cmd> = skeleton().iter().flat_map(|t| t.cmds.iter()).filter(|c| c.apps.has(app)).collect();
+    let mine: Vec<&Cmd> = base().iter().flat_map(|t| t.cmds.iter()).filter(|c| c.apps.has(app)).collect();
     (mine.iter().filter(|c| c.ready).count(), mine.len())
 }
 

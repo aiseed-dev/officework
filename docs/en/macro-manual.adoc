@@ -32,6 +32,29 @@ The button appears after the built-in buttons on the declared tab (the order nev
 The tab can be named in English (`"Macros"`) or in the language shown on screen (`"マクロ"`).
 Files written with the previous key names still load.
 
+== Choosing the tabs and buttons: the ribbon settings file
+
+`~/.config/officework/ribbon.toml` makes the app into an edition for one kind of work, for example writing resumes and application forms.
+It sets the app name, which tabs are shown and in what order, and which buttons a tab holds.
+Without the file the ribbon is the full one.
+
+[source,toml]
+----
+name = "Forms edition"          # the window title and the app menu
+tabs = "Documents, Home, Check" # the tabs after File, in this order
+buttons.Documents = "save, pdf" # the buttons on a tab, in this order
+----
+
+* The File tab is always first, with its usual page. `tabs` lists the tabs that come after it. Tabs not listed are not shown
+* A tab name can be the English name (`Home`) or the name on screen (`ホーム`). Any other name makes a new tab
+* A new tab holds the buttons listed for it in `buttons.<tab>` and the Python buttons whose `"タブ"` declares that name (above). A Python button comes after the built-in ones
+* A button is named by its id (the names in the list of all operations). A button can be taken from any tab. An unknown id is skipped
+* A tab without a `buttons.` line keeps its buttons. Without a `tabs` line every tab is shown
+* The file is read when the app starts. Restart the app after changing it
+* The lines have the same plain form as `settings.toml`: `key = "value"`, and a line starting with `#` is a comment
+
+`xw.press` presses only the buttons on shown tabs and the title-bar buttons. It refuses a button that is on no shown tab.
+
 == Spreadsheet macros — routine work on the selection
 
 Spreadsheet macros talk to the running app over the bridge (`officework.calc`, in the style of xlwings).
