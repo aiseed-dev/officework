@@ -272,5 +272,18 @@ with tempfile.TemporaryDirectory() as d:
     check(g.missing == ["電話"], f"データに無い名前: {g.missing}")
     check(any("電話" in str(x.message) for x in w), f"警告が出ない: {[str(x.message) for x in w]}")
     check(g.draw_list()["missing"] == ["電話"], "描画一覧に missing が無い")
+    # A choice: the options are shown, and the chosen one is circled
+    with open(os.path.join(d, "c.form.adoc"), "w", encoding="utf-8") as f:
+        f.write("= 様式\n\n.様式\n|===\n|{氏名} |※ {性別:男 ・ 女}\n|===\n")
+    data.set_field("性別", "女")
+    c = office_sheet.Book.fill(office_sheet.Book.open(os.path.join(d, "c.form.adoc")), data)
+    check(c[0]["B1"].value == "※ 男 ・ 女", f"選択肢の字: {c[0]['B1'].value!r}")
+    dl = c.draw_list()
+    fc = [f for f in dl["pages"][0]["fields"] if f["name"] == "性別"]
+    check(fc and fc[0]["kind"] == "choice" and fc[0]["options"] == ["男", "女"] and fc[0]["value"] == "女",
+          f"選択肢の欄: {fc}")
+    plain = office_sheet.Book.fill(office_sheet.Book.open(os.path.join(d, "g.form.adoc")), data).draw_list()
+    lines = lambda x: sum(1 for it in x["pages"][0]["items"] if it["type"] == "line")
+    check(lines(dl) > lines(plain), "選んだ字を囲む丸が無い")
 
 print("OK")

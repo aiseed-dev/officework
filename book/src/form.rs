@@ -15,6 +15,10 @@
 //! - `{学歴・職歴.3.内容}`: row 3 (after the header) of the table 学歴・職歴,
 //!   column 内容
 //! - `{本人希望.2}`: line 2 of a value written on several lines
+//! - `{性別:男・女}`: a choice. The options are written as they stand
+//!   (`男・女`, or `男 ・ 女` with the spaces), and the one the data names is to be circled; filling
+//!   returns where it is in the cell's text ([`Choice`]) for the layout to
+//!   measure and circle
 //!
 //! A shape whose `field` is set (the photo box, `写真`) takes the picture
 //! file the data names.
@@ -183,7 +187,34 @@ pub fn fill(form: &Book, data: &Book) -> Book {
 /// [`fill`], also putting pictures in the shapes that are fields. A picture
 /// file named in the data is looked for in `dir` (the data file's folder).
 pub fn fill_in(form: &Book, data_book: &Book, dir: Option<&std::path::Path>) -> Book {
+    fill_choices(form, data_book, dir).0
+}
+
+/// An option to circle: the chars `start..start + len` of the filled cell's
+/// text, counted without line breaks.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Choice {
+    pub sheet: usize,
+    pub at: Pos,
+    pub start: usize,
+    pub len: usize,
+}
+
+/// The name and the options of a choice mark (`性別:男・女`).
+fn choice_of(mark: &str) -> Option<(&str, Vec<&str>)> {
+    let (name, opts) = mark.split_once(':')?;
+    let opts: Vec<&str> = opts.split('・').map(str::trim).filter(|o| !o.is_empty()).collect();
+    (!opts.is_empty()).then_some((name.trim(), opts))
+}
+
+/// [`fill_in`], also saying which options of the choice marks are chosen.
+pub fn fill_choices(
+    form: &Book,
+    data_book: &Book,
+    dir: Option<&std::path::Path>,
+) -> (Book, Vec<Choice>) {
     let data = Data::new(data_book);
+    let mut choices = Vec::new();
     let mut out = form.clone();
     let basis = form.col_basis;
     for s in &mut out.sheets {
@@ -217,7 +248,7 @@ pub fn fill_in(form: &Book, data_book: &Book, dir: Option<&std::path::Path>) -> 
         }
         s.images_new.extend(images);
     }
-    for s in &mut out.sheets {
+    for (si, s) in out.sheets.iter_mut().enumerate() {
         let keys: Vec<Pos> = s.cells.keys().copied().collect();
         for p in keys {
             let Some(c) = s.cells.get(&p) else { continue };
@@ -227,10 +258,33 @@ pub fn fill_in(form: &Book, data_book: &Book, dir: Option<&std::path::Path>) -> 
             }
             let mut text = String::new();
             let mut rest = t.as_str();
+            // chars so far, without line breaks (as the page counts them)
+            let count = |t: &str| t.chars().filter(|c| *c != '\n').count();
             while let Some(a) = rest.find('{') {
                 let Some(b) = rest[a..].find('}') else { break };
                 text.push_str(&rest[..a]);
-                text.push_str(&data.answer(&rest[a + 1..a + b]).unwrap_or_default());
+                let mark = &rest[a + 1..a + b];
+                match choice_of(mark) {
+                    Some((name, _)) => {
+                        // The options as the mark writes them, spaces and all
+                        // (`男 ・ 女`), the chosen one found where it stands
+                        let chosen = data.pair(name).map(|v| v.trim().to_string());
+                        let raw = mark.split_once(':').map(|(_, o)| o).unwrap_or("");
+                        for (i, piece) in raw.split('・').enumerate() {
+                            if i > 0 {
+                                text.push('・');
+                            }
+                            let o = piece.trim();
+                            if !o.is_empty() && chosen.as_deref() == Some(o) {
+                                let lead = piece.len() - piece.trim_start().len();
+                                let start = count(&text) + count(&piece[..lead]);
+                                choices.push(Choice { sheet: si, at: p, start, len: o.chars().count() });
+                            }
+                            text.push_str(piece);
+                        }
+                    }
+                    None => text.push_str(&data.answer(mark).unwrap_or_default()),
+                }
                 rest = &rest[a + b + 1..];
             }
             text.push_str(rest);
@@ -238,7 +292,7 @@ pub fn fill_in(form: &Book, data_book: &Book, dir: Option<&std::path::Path>) -> 
             s.set(p, Cell { formula: None, value: Value::Text(text), fmt });
         }
     }
-    out
+    (out, choices)
 }
 
 /// The column widths and row heights a shape's box is measured with.
@@ -304,6 +358,7 @@ pub fn missing(form: &Book, data_book: &Book) -> Vec<String> {
         names.extend(s.shapes.iter().chain(s.shapes_new.iter()).filter_map(|sp| sp.field.clone()));
     }
     for m in names {
+        let m = choice_of(&m).map(|(n, _)| n.to_string()).unwrap_or(m);
         let parts: Vec<&str> = m.split('.').collect();
         match parts.as_slice() {
             ["年齢"] => {
@@ -366,6 +421,8 @@ pub enum Kind {
     Multiline,
     Date,
     Image,
+    /// One of the options written in the mark (`性別:男・女`)
+    Choice,
 }
 
 impl Kind {
@@ -375,6 +432,7 @@ impl Kind {
             Kind::Multiline => "multiline",
             Kind::Date => "date",
             Kind::Image => "image",
+            Kind::Choice => "choice",
         }
     }
 }
@@ -390,6 +448,8 @@ pub struct Group {
     pub cells: Vec<(usize, Pos)>,
     /// The shape (sheet, index in `shapes` then `shapes_new`) for a picture
     pub shape: Option<(usize, usize)>,
+    /// The options of a choice
+    pub options: Vec<String>,
 }
 
 /// The data item a mark stands for, and its kind. `年齢` is worked out, so
@@ -397,6 +457,9 @@ pub struct Group {
 fn item_of(mark: &str) -> Option<(String, Kind)> {
     if mark == "年齢" {
         return None;
+    }
+    if let Some((name, _)) = choice_of(mark) {
+        return Some((name.to_string(), Kind::Choice));
     }
     Some(match mark.split('.').collect::<Vec<_>>().as_slice() {
         [key, "年" | "月" | "日"] => (key.to_string(), Kind::Date),
@@ -417,8 +480,11 @@ pub fn groups(form: &Book, data_book: &Book) -> Vec<Group> {
             let g = match out.iter_mut().position(|g| g.name == name) {
                 Some(i) => &mut out[i],
                 None => {
+                    let options = choice_of(m)
+                        .map(|(_, o)| o.iter().map(|x| x.to_string()).collect())
+                        .unwrap_or_default();
                     out.push(Group { name: name.clone(), kind, value: String::new(),
-                                     cells: Vec::new(), shape: None });
+                                     cells: Vec::new(), shape: None, options });
                     out.last_mut().expect("just pushed")
                 }
             };
@@ -434,7 +500,7 @@ pub fn groups(form: &Book, data_book: &Book) -> Vec<Group> {
         for (k, sp) in s.shapes.iter().chain(s.shapes_new.iter()).enumerate() {
             if let Some(name) = &sp.field {
                 out.push(Group { name: name.clone(), kind: Kind::Image, value: String::new(),
-                                 cells: Vec::new(), shape: Some((si, k)) });
+                                 cells: Vec::new(), shape: Some((si, k)), options: Vec::new() });
             }
         }
     }
@@ -558,6 +624,30 @@ mod tests {
         assert_eq!(g[2].value, "1 行目\n2 行目");
         assert_eq!(g[3].value, "千代田大学 入学");
         assert_eq!(g[4].kind, Kind::Image);
+    }
+
+    #[test]
+    fn a_choice_shows_its_options_and_says_which_is_chosen() {
+        let mut form = Book::new();
+        let t = |v: &str| Cell { value: Value::Text(v.into()), ..Default::default() };
+        form.sheets[0].set(Pos::new(0, 0), t("※ {性別:男・女}"));
+        form.sheets[0].set(Pos::new(1, 0), t("{配偶者:有・無}"));
+        let mut d = data();
+        set(&mut d, "性別", "女").unwrap();
+        let (out, ch) = fill_choices(&form, &d, None);
+        assert_eq!(out.sheets[0].value(Pos::new(0, 0)).display(), "※ 男・女");
+        // 女 is the 5th char of "※ 男・女"; 配偶者 is not in the data, so none is circled
+        assert_eq!(ch, [Choice { sheet: 0, at: Pos::new(0, 0), start: 4, len: 1 }]);
+        assert_eq!(out.sheets[0].value(Pos::new(1, 0)).display(), "有・無");
+        // Spaces round the options stay, and the chosen one is found past them
+        form.sheets[0].set(Pos::new(0, 0), t("{性別:男 ・ 女}"));
+        let (out, ch) = fill_choices(&form, &d, None);
+        assert_eq!(out.sheets[0].value(Pos::new(0, 0)).display(), "男 ・ 女");
+        assert_eq!((ch[0].start, ch[0].len), (4, 1));
+        let g = groups(&form, &d);
+        assert_eq!((g[0].name.as_str(), g[0].kind, g[0].value.as_str()), ("性別", Kind::Choice, "女"));
+        assert_eq!(g[0].options, ["男", "女"]);
+        assert_eq!(missing(&form, &d), ["配偶者"]);
     }
 
     #[test]

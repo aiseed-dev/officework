@@ -513,7 +513,13 @@ struct Board {
     want_cells: std::collections::HashMap<book::Pos, String>,
     /// Shapes (index in `shapes` then `shapes_new`) whose place is wanted
     want_shapes: std::collections::HashMap<usize, String>,
+    /// Stretches of a cell's text whose place is wanted (a chosen option to
+    /// circle): key, first char and count, without line breaks
+    want_text: WantText,
 }
+
+/// Cell → the stretches of its text whose place is wanted
+pub type WantText = std::collections::HashMap<book::Pos, Vec<(String, usize, usize)>>;
 
 /// **ＭＳ の書体で、縦の寸法が同じ仲間の名前。**
 ///
@@ -683,6 +689,7 @@ impl Board {
             haba: Habakei::default(),
             want_cells: Default::default(),
             want_shapes: Default::default(),
+            want_text: Default::default(),
         }
     }
 
@@ -986,6 +993,9 @@ pub struct Wanted {
     pub cells: std::collections::HashMap<book::Pos, String>,
     /// Index in `shapes` then `shapes_new`
     pub shapes: std::collections::HashMap<usize, String>,
+    /// Stretches of a cell's text (first char and count, line breaks not
+    /// counted): the spot is the box the text of those chars is set in
+    pub text: WantText,
 }
 
 /// **The pages of a book without writing a PDF**: the same layout as
@@ -1025,10 +1035,12 @@ fn book_board(
         if let Some(w) = wanted.get(i) {
             board.want_cells = w.cells.clone();
             board.want_shapes = w.shapes.clone();
+            board.want_text = w.text.clone();
         }
         let (pages, cl, margins) = draw_sheet(&mut board, grid, *paper, setup, carry);
         board.want_cells.clear();
         board.want_shapes.clear();
+        board.want_text.clear();
         carry = false;
         clipped += cl;
         laid.push((i, pages, margins));
@@ -1066,6 +1078,7 @@ fn draw_sheet(
     // 埋める書体の名前の並び。セルの名指しをこれで番号に直します
     let fonts = board.fonts.clone();
     let board_haba = board.haba.clone();
+    let want_text = board.want_text.clone();
     let (mut ext_rows, mut ext_cols) = grid.print_extent();
     // **図形の置き場まで紙を伸ばします。** 中身のあるセルより下に置いた図は、
     // 伸ばさないと最後の行の所へ寄ってしまい、図が全部重なります
@@ -1211,6 +1224,8 @@ fn draw_sheet(
         col_basis: book::ColBasis,
         // 大きさを言っていないセルの字の大きさ(pt)
         default_pt: f32,
+        // Stretches of text whose place is wanted ([`WantText`])
+        want_text: &WantText,
     ) {
         let ncols = cols.len();
         // 印刷の枠線(printOptions gridLines)。薄い灰で先に敷く
@@ -1742,6 +1757,26 @@ fn draw_sheet(
                 .unwrap_or(0.0);
             // 下付きはここで下げます(行送りは変えません)
             let mut ty = soko + ue + sagari + takasa - okuri_of(&gyou[gyou.len() - 1]) - sagaru;
+            // Wanted stretches of this cell's text: (key, first, count, box so far)
+            let mut nobi: Vec<(String, usize, usize, Option<(f32, f32, f32, f32)>)> = want_text
+                .get(&p)
+                .map(|v| v.iter().map(|(k, a, n)| (k.clone(), *a, *n, None)).collect())
+                .unwrap_or_default();
+            // chars set so far, and the box of one char (x, width, baseline, size)
+            let mut ci = 0usize;
+            let mut hakaru = |x: f32, w: f32, base: f32, rp: f32, ci: usize| {
+                let h = rp * 25.4 / 72.0;
+                for (_, a, n, bx) in nobi.iter_mut() {
+                    if (*a..*a + *n).contains(&ci) {
+                        // The em box: from 0.12em under the baseline to 0.88em over it
+                        let (x0, y0, x1, y1) = (x, base - h * 0.12, x + w, base + h * 0.88);
+                        *bx = Some(match *bx {
+                            Some((a0, b0, a1, b1)) => (a0.min(x0), b0.min(y0), a1.max(x1), b1.max(y1)),
+                            None => (x0, y0, x1, y1),
+                        });
+                    }
+                }
+            };
             for g in &gyou {
                 let w = gyou_haba(g);
                 let mut gx = match cell.fmt.align {
@@ -1767,6 +1802,8 @@ fn draw_sheet(
                         for ch in t.chars() {
                             let one = ch.to_string();
                             let w1 = haba.ji_mm(fno as usize, ch, *rp);
+                            hakaru(wx, w1, ty, *rp, ci);
+                            ci += 1;
                             ink.text_kazari(&one, *rp, wx, ty, c, bold, fno, w1,
                                             cell.fmt.underline, cell.fmt.strike, katamuki,
                                             cell.fmt.italic);
@@ -1780,6 +1817,13 @@ fn draw_sheet(
                         // (2026-08-31 発注者。ＭＳ Ｐ明朝など)
                         for (f1, kata) in wakeru(t, |ch| ji_fno(fno, ch)) {
                             let w1 = haba.mm(f1 as usize, &kata, *rp);
+                            let mut cx = gx;
+                            for ch in kata.chars() {
+                                let wc = haba.ji_mm(f1 as usize, ch, *rp);
+                                hakaru(cx, wc, ty, *rp, ci);
+                                cx += wc;
+                                ci += 1;
+                            }
                             ink.text_kazari(&kata, *rp, gx, ty, c, bold, f1, w1,
                                             cell.fmt.underline, cell.fmt.strike, katamuki,
                                             cell.fmt.italic);
@@ -1788,6 +1832,12 @@ fn draw_sheet(
                     }
                 }
                 ty -= hiraki_of(g);
+            }
+            drop(hakaru);
+            for (key, _, _, bx) in nobi {
+                if let Some((x0, y0, x1, y1)) = bx {
+                    ink.leaf.spots.push(pdfw::Spot { key, x_mm: x0, y_mm: y0, w_mm: x1 - x0, h_mm: y1 - y0 });
+                }
             }
         }
     }
@@ -1880,7 +1930,7 @@ fn draw_sheet(
                 for tr in &title_rows {
                     let th = row_mm(*tr);
                     let y_top = paper.height_mm - mt - sageru(pi) - y_used;
-                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt);
+                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt, &want_text);
                     y_used += th;
                 }
             }
@@ -1906,7 +1956,7 @@ fn draw_sheet(
                 }
             }
         }
-        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt);
+        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt, &want_text);
     }
     }
     // 図形(挿した分も読んだ分も)。塗りと輪郭を紙に出します
@@ -3326,6 +3376,25 @@ mod zukei_tests {
     /// 4本が横切っていました。同じ表の「高 松」は内側に罫線が無く、線も
     /// 出ていなかったので、**同じ形の見出しで見え方が食い違って**いました
     /// (2026-08-31 発注者)。
+    /// The box a stretch of a cell's text is set in is reported where the
+    /// chars went, next to the cell's own box
+    #[test]
+    fn a_wanted_stretch_of_text_is_found_where_it_is_set() {
+        let mut g = Grid::default();
+        g.set(book::Pos::new(0, 0), book::Cell::input("男・女"));
+        let setup = PrintSetup { date1904: false, col_basis: book::ColBasis::default(), ..Default::default() };
+        let mut w = Wanted::default();
+        w.cells.insert(book::Pos::new(0, 0), "cell".into());
+        w.text.insert(book::Pos::new(0, 0), vec![("女".into(), 2, 1)]);
+        let leaves = book_leaves_fonts(&[(&g, Paper::default(), setup)], &[], &[w]).expect("組めない");
+        let find = |k: &str| leaves[0].spots.iter().find(|s| s.key == k).cloned().expect(k);
+        let (cell, t) = (find("cell"), find("女"));
+        // two chars in: past the cell's left edge, inside its height
+        assert!(t.x_mm > cell.x_mm + 2.0 * t.h_mm * 0.5, "{t:?} {cell:?}");
+        assert!(t.y_mm >= cell.y_mm && t.y_mm + t.h_mm <= cell.y_mm + cell.h_mm + 0.01, "{t:?} {cell:?}");
+        assert!(t.w_mm > 0.0);
+    }
+
     #[test]
     fn a_merge_draws_only_its_outline() {
         let mut g = Grid::default();

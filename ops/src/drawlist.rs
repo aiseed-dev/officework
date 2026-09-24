@@ -34,6 +34,66 @@ fn lay_out(b: &book::Book, wanted: &[Wanted]) -> Result<Value, String> {
     Ok(paper::drawlist::pages(&leaves, (first.width_mm, first.height_mm), &ff))
 }
 
+/// **A form filled from data, with the chosen options circled.**
+///
+/// The options of a choice mark (`{性別:男・女}`) are written out, and the
+/// one the data names gets an ellipse around it. Where it is comes from the
+/// page itself: the pages are laid out once, the layout reports the box its
+/// chars were set in, and the ellipse is anchored to the cell at that
+/// offset, so it shows in the PDF, the draw list and the xlsx alike.
+pub fn fill_form(
+    form: &book::Book,
+    data: &book::Book,
+    dir: Option<&std::path::Path>,
+) -> Result<book::Book, String> {
+    let (mut filled, choices) = book::form::fill_choices(form, data, dir);
+    if choices.is_empty() {
+        return Ok(filled);
+    }
+    let printed: Vec<usize> = (0..filled.sheets.len()).filter(|i| !filled.sheets[*i].hidden).collect();
+    let mut wanted: Vec<Wanted> = vec![Wanted::default(); printed.len()];
+    for (i, c) in choices.iter().enumerate() {
+        let Some(w) = printed.iter().position(|p| *p == c.sheet) else { continue };
+        wanted[w].text.entry(c.at).or_default().push((format!("t{i}"), c.start, c.len));
+        wanted[w].cells.insert(c.at, format!("c{i}"));
+    }
+    let sheets = crate::pdf::printed_sheets(&filled)?;
+    let fonts: Vec<(String, Vec<u8>)> = font_files(&filled)?
+        .into_iter()
+        .map(|(na, f)| (na, f.data))
+        .collect();
+    let leaves = paper::grid::book_leaves_fonts(&sheets, &fonts, &wanted)?;
+    drop(sheets);
+    let px = |mm: f32| mm * 96.0 / 25.4;
+    for (i, c) in choices.iter().enumerate() {
+        let find = |key: &str| {
+            leaves.iter().find_map(|l| l.spots.iter().find(|s| s.key == key).cloned())
+        };
+        let (Some(t), Some(cell)) = (find(&format!("t{i}")), find(&format!("c{i}"))) else { continue };
+        let s = &filled.sheets[c.sheet];
+        // The print scale: the cell as laid out against its width in the book
+        let own = s.col_haba_mm(c.at.col, &filled.col_basis);
+        let scale = if own > 0.0 { cell.w_mm / own } else { 1.0 };
+        // A little room round the chars (the em box)
+        let (pad_x, pad_y) = (t.h_mm * 0.3, t.h_mm * 0.15);
+        let left = t.x_mm - pad_x - cell.x_mm;
+        let top = (cell.y_mm + cell.h_mm) - (t.y_mm + t.h_mm) - pad_y;
+        let sp = book::SheetShape {
+            at: c.at,
+            dx_px: px(left / scale).max(0.0),
+            dy_px: px(top / scale).max(0.0),
+            width_px: px((t.w_mm + 2.0 * pad_x) / scale),
+            height_px: px((t.h_mm + 2.0 * pad_y) / scale),
+            kind: "ellipse".into(),
+            line: Some("000000".into()),
+            line_w: 0.75,
+            ..Default::default()
+        };
+        filled.sheets[c.sheet].shapes_new.push(sp);
+    }
+    Ok(filled)
+}
+
 /// **A book's pages as a draw list**, with no fields.
 pub fn book(b: &book::Book) -> Result<Value, String> {
     let mut v = lay_out(b, &[])?;
@@ -102,8 +162,12 @@ pub fn form(form: &book::Book, data: &book::Book, filled: &book::Book) -> Result
             .map(|(gi, b)| {
                 let g = &groups[*gi];
                 let r = |v: f64| (v * 100.0).round() / 100.0;
-                json!({"name": g.name, "kind": g.kind.name(),
-                       "rect": [r(b[0]), r(b[1]), r(b[2]), r(b[3])], "value": g.value})
+                let mut f = json!({"name": g.name, "kind": g.kind.name(),
+                       "rect": [r(b[0]), r(b[1]), r(b[2]), r(b[3])], "value": g.value});
+                if !g.options.is_empty() {
+                    f["options"] = json!(g.options);
+                }
+                f
             })
             .collect();
         let o = p.as_object_mut().expect("a page");

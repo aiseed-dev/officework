@@ -256,7 +256,8 @@ impl PyBook {
     fn fill(form: &PyBook, data: &PyBook, dir: Option<&str>) -> PyResult<PyBook> {
         let f = lock(&form.inner)?.book.clone();
         let d = lock(&data.inner)?.book.clone();
-        let mut book = book::form::fill_in(&f, &d, dir.map(std::path::Path::new));
+        let mut book = ops::drawlist::fill_form(&f, &d, dir.map(std::path::Path::new))
+            .map_err(PyValueError::new_err)?;
         recalc_all(&mut book);
         Ok(PyBook {
             inner: Arc::new(Mutex::new(Inner {
