@@ -349,6 +349,9 @@ impl Calc {
             btn_box: Rc::new(std::cell::RefCell::new(HashMap::new())),
             pop_btn_w: std::cell::Cell::new(0.0),
             pop_top: std::cell::Cell::new(0.0),
+            fonts_want: Default::default(),
+            fonts_added: Default::default(),
+            fonts_key: None,
             font_name: kumihan::font::for_document(None)
                 .map(|(fam, _)| gpui::SharedString::from(fam.name.clone()))
                 .unwrap_or_else(|_| "Noto Sans JP".into()),

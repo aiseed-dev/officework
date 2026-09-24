@@ -300,8 +300,79 @@ impl gpui::Element for InputSink {
     }
 }
 
+impl Calc {
+    /// **The family the screen draws the font `name` in** (a missing font is
+    /// replaced within its family, as for the PDF), and a note that it has to
+    /// be registered with GPUI; see [`Calc::fonts_want`].
+    pub(crate) fn screen_family(&self, name: &str) -> Option<SharedString> {
+        let (fam, _) = kumihan::font::for_document(Some(name)).ok()?;
+        if !self.fonts_added.borrow().contains(&fam.name) {
+            let mut want = self.fonts_want.borrow_mut();
+            if !want.contains(&fam.name) {
+                want.push(fam.name.clone());
+            }
+        }
+        // The window system groups faces by the typographic family name, so
+        // that is the name to ask for (as the writer does); a face's own name
+        // such as "ＭＳ Ｐ明朝" can find no family
+        let kazoku = kumihan::font::screen_face(&fam.name, false, false)
+            .map(|(k, _)| k.to_string())
+            .unwrap_or_else(|| fam.name.clone());
+        Some(SharedString::from(kazoku))
+    }
+
+    /// Registers every face of the families met while drawing (regular, bold,
+    /// …, as the writer does), and says whether anything was added
+    fn register_fonts(&self, cx: &mut Context<Self>) -> bool {
+        let want: Vec<String> = self.fonts_want.borrow_mut().drain(..).collect();
+        let mut added = self.fonts_added.borrow_mut();
+        let mut bytes = Vec::new();
+        for name in want {
+            if !added.insert(name.clone()) {
+                continue;
+            }
+            for f in kumihan::font::faces(&name) {
+                let key = format!("{}#{}", f.path.display(), f.index);
+                if added.insert(key) {
+                    if let Ok(b) = kumihan::font::load(f) {
+                        bytes.push(std::borrow::Cow::Owned(b));
+                    }
+                }
+            }
+        }
+        !bytes.is_empty() && cx.text_system().add_fonts(bytes).is_ok()
+    }
+}
+
 impl Render for Calc {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // **Register the sheet's fonts before drawing with them.** GPUI keeps
+        // the answer to a family lookup, a failed one too, and adding fonts
+        // later does not clear it; a family asked for before it is added
+        // stays on the fallback font. So the fonts the cells and text boxes
+        // name are gathered and added first, again whenever the sheet changes
+        let key = {
+            let sh = self.sheet();
+            (self.active, self.edits, sh.cells.len(), sh.shapes.len() + sh.shapes_new.len(),
+             self.book.path.clone())
+        };
+        if self.fonts_key.as_ref() != Some(&key) {
+            self.fonts_key = Some(key);
+            let names: std::collections::BTreeSet<String> = {
+                let sh = self.sheet();
+                sh.cells.values().filter_map(|c| c.fmt.font.clone())
+                    .chain(sh.rich_runs.values().flatten().filter_map(|r| r.font.clone()))
+                    .chain(sh.shapes.iter().chain(sh.shapes_new.iter())
+                        .filter_map(|sp| sp.text_fmt.font.clone()))
+                    .collect()
+            };
+            for n in &names {
+                let _ = self.screen_family(n);
+            }
+        }
+        if !self.fonts_want.borrow().is_empty() {
+            self.register_fonts(cx);
+        }
         // **ボタンの場所の控えを毎回捨てる。** 貯めたままにすると段を移った
         // あとも前の段のボタンが残り、一覧をそこへ出したり、点検の道具が
         // 見当違いの所を押したりする(2026-08-08 一巡点検で踏んだ)
@@ -1166,8 +1237,8 @@ impl Render for Calc {
                         d.text_color(rgb(0x1B1B1B))
                     };
                     if let Some(name) = &f.font {
-                        if let Ok((fam, _)) = kumihan::font::for_document(Some(name)) {
-                            d = d.font_family(SharedString::from(fam.name.clone()));
+                        if let Some(fam) = self.screen_family(name) {
+                            d = d.font_family(fam);
                         }
                     }
                     spill_texts.push(match md {
@@ -1456,8 +1527,8 @@ impl Render for Calc {
                 }
                 // セルの書体。無い書体は系統を保って代替(明朝→明朝)
                 if let Some(name) = &f.font {
-                    if let Ok((fam, _)) = kumihan::font::for_document(Some(name)) {
-                        d = d.font_family(SharedString::from(fam.name.clone()));
+                    if let Some(fam) = self.screen_family(name) {
+                        d = d.font_family(fam);
                     }
                 }
                 // 引いてある辺だけ濃くする(引いていない辺は表の薄い線のまま)。
@@ -3006,8 +3077,8 @@ impl Render for Calc {
                 if f.strike { d = d.line_through(); }
                 d = d.text_color(f.color.as_deref().map(hex).unwrap_or(hex("1B1B1B")));
                 if let Some(name) = &f.font {
-                    if let Ok((fam, _)) = kumihan::font::for_document(Some(name)) {
-                        d = d.font_family(SharedString::from(fam.name.clone()));
+                    if let Some(fam) = self.screen_family(name) {
+                        d = d.font_family(fam);
                     }
                 }
                 // カーソルが結合の上なら選択の枠(セルと同じ緑)
@@ -5509,8 +5580,7 @@ impl Render for Calc {
                                let family = tf
                                    .font
                                    .as_deref()
-                                   .and_then(|n| kumihan::font::for_document(Some(n)).ok())
-                                   .map(|(fam, _)| SharedString::from(fam.name.clone()))
+                                   .and_then(|n| self.screen_family(n))
                                    .unwrap_or_else(|| self.font_name.clone());
                                let mut td = div()
                                    .absolute()

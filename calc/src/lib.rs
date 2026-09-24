@@ -154,6 +154,16 @@ pub struct Calc {
     /// 既定の書体(実在する家族に解決済み)。「Noto Sans JP」の名指しは
     /// 入っていない機械で**素通りして太字も効かなくなる**(発注者報告)
     pub(crate) font_name: gpui::SharedString,
+    /// Font families the screen met while drawing (cells and text boxes) and
+    /// has not registered with GPUI yet. Word's and Excel's bundled fonts are
+    /// not system fonts, so without registering them the screen falls back
+    /// to its default font while the PDF uses the right one (2026-09-24)
+    pub(crate) fonts_want: std::cell::RefCell<Vec<String>>,
+    /// The families and faces (file#index) already registered
+    pub(crate) fonts_added: std::cell::RefCell<std::collections::HashSet<String>>,
+    /// What the fonts were last gathered for (sheet, edits, cells, shapes,
+    /// book path); they are gathered again when this changes
+    pub(crate) fonts_key: Option<(usize, u64, usize, usize, String)>,
     /// 罫線のアイコンの格子パレット(開いている位置)。掛けても閉じない
     pub(crate) border_pal: Option<(f32, f32)>,
     /// **操作の記録**(発注者 2026-08-15)。始めると、手でやった操作が
