@@ -93,7 +93,13 @@ def shapes(page_list, fonts, z=1.0):
                                                   style=ft.PaintingStyle.STROKE, stroke_dash_pattern=dash)))
         elif t == "image":
             x, y, w, h = it["rect"]
-            out.append(cv.Image(src=base64.b64decode(it["base64"]), x=x * z, y=y * z, width=w * z, height=h * z))
+            data = base64.b64decode(it["base64"])
+            if it.get("clip"):
+                cut = _cut(data, (x, y, w, h), it["clip"])
+                if cut is None:
+                    continue
+                data, (x, y, w, h) = cut
+            out.append(cv.Image(src=data, x=x * z, y=y * z, width=w * z, height=h * z))
         elif t == "text":
             style = ft.TextStyle(size=it["size"] * z, font_family=_family(fonts[it["font"]]),
                                  color=it["color"],
@@ -105,6 +111,28 @@ def shapes(page_list, fonts, z=1.0):
             out.append(cv.Text(it["x"] * z, it["top"] * z, it["text"], style=style,
                                rotate=-math.radians(it.get("rotation", 0))))
     return out
+
+
+def _cut(data, rect, clip):
+    """The part of a stretched picture inside its shape's box, as PNG bytes and
+    the box it goes in (points). The canvas image cannot clip, so the picture
+    is cut with Pillow; without Pillow it is drawn whole."""
+    x, y, w, h = rect
+    cx, cy, cw, ch = clip
+    left, top, right, bottom = max(x, cx), max(y, cy), min(x + w, cx + cw), min(y + h, cy + ch)
+    if right <= left or bottom <= top:
+        return None
+    try:
+        import io
+        from PIL import Image
+    except ImportError:
+        return data, rect
+    pic = Image.open(io.BytesIO(data))
+    sx, sy = pic.width / w, pic.height / h
+    part = pic.crop((round((left - x) * sx), round((top - y) * sy), round((right - x) * sx), round((bottom - y) * sy)))
+    buf = io.BytesIO()
+    part.save(buf, "PNG")
+    return buf.getvalue(), (left, top, right - left, bottom - top)
 
 
 def field_at(page_list, x, y):

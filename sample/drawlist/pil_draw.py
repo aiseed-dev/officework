@@ -101,7 +101,16 @@ def draw_page(page, fonts, dpi):
         elif t == "image":
             x, y, rw, rh = [v * k for v in it["rect"]]
             pic = Image.open(io.BytesIO(base64.b64decode(it["base64"]))).convert("RGBA")
-            im.alpha_composite(pic.resize((max(1, round(rw)), max(1, round(rh)))), (round(x), round(y)))
+            pic = pic.resize((max(1, round(rw)), max(1, round(rh))))
+            if it.get("clip"):
+                # A picture stretched past its shape is cut to the shape's box
+                cx, cy, cw, ch = [v * k for v in it["clip"]]
+                l, t_, r, b = max(x, cx), max(y, cy), min(x + rw, cx + cw), min(y + rh, cy + ch)
+                if r <= l or b <= t_:
+                    continue
+                pic = pic.crop((round(l - x), round(t_ - y), round(r - x), round(b - y)))
+                x, y = l, t_
+            im.alpha_composite(pic, (round(x), round(y)))
         elif t == "text":
             f = face(it["font"], it["size"])
             d.text((it["x"] * k, it["baseline"] * k), it["text"], font=f, fill=color(it["color"]),
