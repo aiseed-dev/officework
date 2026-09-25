@@ -2677,19 +2677,37 @@ pub(crate) fn split_anchors(a: &str) -> Vec<String> {
 /// from 1 here; a drawing that is not a group's child gets 0 and keeps the
 /// layer it had. Word's ticket template puts three stars after the scroll
 /// picture of the same group, and the picture hid them (2026-09-20).
+/// Anchors behind the text count from [`BEHIND`] instead of 0.
 pub(crate) fn split_anchors_z(a: &str) -> Vec<(String, i32)> {
     let mut out = Vec::new();
     for x in split_anchors_1(a) {
+        // An anchor behind the text (`behindDoc="1"`) goes under everything
+        // the body draws, inline pictures included; every object not behind
+        // the text is above every one that is (ECMA-376 Part 1 20.4.2.3,
+        // behindDoc and relativeHeight). Word's restaurant brochure puts its
+        // dark panels behind the text, and they hid the inline ramen photo
+        let base = if behind_doc(&x) { BEHIND } else { 0 };
         match open_group(&x) {
             Some(kora) => {
                 for (i, ko) in kora.into_iter().enumerate() {
-                    out.push((ko, i as i32 + 1));
+                    out.push((ko, base + i as i32 + 1));
                 }
             }
-            None => out.push((x, 0)),
+            None => out.push((x, base)),
         }
     }
     out
+}
+
+/// The z an anchor behind the text starts from, far below the body's 0
+const BEHIND: i32 = -1_000_000;
+
+/// Is this anchor behind the text? (`wp:anchor behindDoc`, true or 1)
+fn behind_doc(x: &str) -> bool {
+    let Some(i) = x.find("<wp:anchor") else { return false };
+    let e = x[i..].find('>').map_or(x.len(), |e| i + e);
+    let tag = &x[i..e];
+    tag.contains("behindDoc=\"1\"") || tag.contains("behindDoc=\"true\"")
 }
 
 fn split_anchors_1(a: &str) -> Vec<String> {
