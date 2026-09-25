@@ -140,8 +140,13 @@ pub fn pages(pages: &[Leaf], size_mm: (f32, f32), fonts: &[FontFile]) -> Value {
                 }
                 _ => {
                     let im = &page.images[k];
-                    items.push(json!({"type": "image", "rect": rect(im.x_mm, im.y_mm, im.w_mm, im.h_mm),
-                                      "mime": mime(&im.data), "base64": base64(&im.data)}));
+                    let mut it = json!({"type": "image", "rect": rect(im.x_mm, im.y_mm, im.w_mm, im.h_mm),
+                                        "mime": mime(&im.data), "base64": base64(&im.data)});
+                    // The box to cut a stretched picture to (a:fillRect)
+                    if let Some([cx0, cy0, cw, ch]) = im.clip {
+                        it["clip"] = rect(cx0, cy0, cw, ch);
+                    }
+                    items.push(it);
                 }
             }
         }

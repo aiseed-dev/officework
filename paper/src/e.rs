@@ -346,7 +346,23 @@ fn e_hameru(cx: &mut RenderContext, im: &crate::pdfw::Image, h_mm: f32, mm: f64)
         image: ImageSource::Pixmap(Arc::new(pm)),
         sampler: ImageSampler { quality: ImageQuality::High, ..Default::default() },
     });
-    cx.fill_rect(&Rect::new(x0, y0, x0 + w, y0 + h));
+    // A picture stretched past its shape (a:fillRect) fills only the part
+    // inside the shape's box; the brush keeps the whole picture's placement
+    let mut r = Rect::new(x0, y0, x0 + w, y0 + h);
+    if let Some([cx0, cy0, cw, ch]) = im.clip {
+        let c = Rect::new(
+            cx0 as f64 * mm,
+            (h_mm - cy0 - ch) as f64 * mm,
+            (cx0 + cw) as f64 * mm,
+            (h_mm - cy0) as f64 * mm,
+        );
+        r = r.intersect(c);
+        if r.width() <= 0.0 || r.height() <= 0.0 {
+            cx.reset_paint_transform();
+            return;
+        }
+    }
+    cx.fill_rect(&r);
     cx.reset_paint_transform();
 }
 
@@ -439,6 +455,7 @@ mod tests {
                 h_mm: 20.0,
                 data: std::sync::Arc::new(futairo_png(20, 10)),
                 z: 0,
+                clip: None,
             }],
             ..Default::default()
         };
@@ -469,6 +486,7 @@ mod tests {
             h_mm: 10.0,
             data: std::sync::Arc::new("これは PNG ではありません".as_bytes().to_vec()),
             z: 0,
+            clip: None,
         }];
         let e = egaku(&leaf, 80.0, 40.0, 4.0);
         assert_eq!((e.w, e.h), (320, 160));

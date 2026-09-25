@@ -2115,6 +2115,7 @@ fn draw_sheet(
                 h_mm: h,
                 data: std::sync::Arc::new(im.data.clone()),
                 z,
+                clip: None,
             });
         }
     }

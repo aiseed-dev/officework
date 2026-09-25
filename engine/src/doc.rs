@@ -3246,7 +3246,11 @@ pub struct Sheet {
     /// The third number is the picture's place in the shape tree of its
     /// group, the same number [`DocShape::z`] carries, so a group's
     /// pictures and shapes are drawn in file order.
-    pub float_images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], i32)>,
+    ///
+    /// The fourth is the box to clip to, when the picture is stretched to a
+    /// fill rectangle bigger than the shape that holds it (`a:fillRect`,
+    /// ECMA-376 20.1.8.30); the part outside the shape's box is not drawn.
+    pub float_images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], i32, Option<[f32; 4]>)>,
     /// Where each paragraph that carries anchored drawings starts:
     /// (anchor XML, x of the text in mm, y of the first line's box top plus
     /// BASE_UP_MM). Body paragraphs and table cells alike; the paper side

@@ -2855,6 +2855,33 @@ fn anchor_size(
     (moto * wari).max(0.1)
 }
 
+/// **The fill rectangle of a stretched picture** (`a:stretch/a:fillRect`,
+/// ECMA-376 20.1.8.30): each edge is an offset from the matching edge of the
+/// shape's box, as a fraction of its width or height (ST_Percentage, 100000
+/// is the whole; positive inset, negative outset). Returns the rectangle to
+/// stretch the picture to and, when it differs from the box, the box to cut
+/// it to. Word's restaurant brochure stretches its photos past their boxes
+/// (`l="-31092" r="-20036"` on a 252.7 pt box gives 382.0 pt, as Word draws)
+fn fill_rect(part: &str, [x, y, w, h]: [f32; 4]) -> ([f32; 4], Option<[f32; 4]>) {
+    let Some(i) = part.find("<a:fillRect") else { return ([x, y, w, h], None) };
+    let e = part[i..].find('>').map_or(part.len(), |e| i + e);
+    let tag = &part[i..e];
+    let v = |name: &str| -> f32 {
+        let pat = format!(" {name}=\"");
+        tag.find(&pat)
+            .and_then(|k| {
+                let s = k + pat.len();
+                tag[s..].find('"').and_then(|q| tag[s..s + q].parse::<f32>().ok())
+            })
+            .map_or(0.0, |n| n / 100_000.0)
+    };
+    let (l, t, r, b) = (v("l"), v("t"), v("r"), v("b"));
+    if l == 0.0 && t == 0.0 && r == 0.0 && b == 0.0 {
+        return ([x, y, w, h], None);
+    }
+    ([x + w * l, y + h * t, w * (1.0 - l - r), h * (1.0 - t - b)], Some([x, y, w, h]))
+}
+
 /// Place the floating pictures (`wp:anchor` with `wp:wrapNone`, kept by
 /// the reader with `off == usize::MAX` and their anchor XML in `shape`) by
 /// their anchors, into `sheet.float_images` (2026-09-20)
@@ -2907,7 +2934,8 @@ pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, pa
             let x = anchor_place_at(&f.h_from, f.x_mm, f.h_align.as_deref(), w_mm, &page, false, y_para, migi, x_moto);
             let y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(), h_mm, &page, true, y_para, migi);
             // sheet coordinates: x from the left margin, y continuous over pages
-            out.push((im.bytes.clone(), [x - page.left_mm, y + soko, w_mm, h_mm], z));
+            let (at, clip) = fill_rect(&part, [x - page.left_mm, y + soko, w_mm, h_mm]);
+            out.push((im.bytes.clone(), at, z, clip));
         }
     }
     sheet.float_images.extend(out);
@@ -2930,7 +2958,7 @@ fn hf_pictures(
     doc: &kumihan::Document,
     pg: &Pagination,
     page: kumihan::PageSetup,
-    out: &mut Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], i32)>,
+    out: &mut Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], i32, Option<[f32; 4]>)>,
 ) {
     let kami_kazu = pg.offsets.len().max(1);
     // **The first page's own header and footer** (`w:headerReference
@@ -2996,7 +3024,8 @@ fn hf_pictures(
                     let x = anchor_place(&f.h_from, f.x_mm, f.h_align.as_deref(), w_mm, &page, false, kono, migi);
                     let y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(), h_mm, &page, true, kono, migi);
                     let soko = pg.offsets.get(k).copied().unwrap_or(0.0);
-                    out.push((im.bytes.clone(), [x - page.left_mm, y + soko, w_mm, h_mm], z));
+                    let (at, clip) = fill_rect(&part, [x - page.left_mm, y + soko, w_mm, h_mm]);
+                    out.push((im.bytes.clone(), at, z, clip));
                 }
             }
         }

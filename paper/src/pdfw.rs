@@ -470,6 +470,11 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 _ => {
                     let im = img_ids[i][k].1;
                     c.save_state();
+                    if let Some([cx0, cy0, cw, ch]) = im.clip {
+                        c.rect(pt(cx0), pt(cy0), pt(cw), pt(ch));
+                        c.clip_nonzero();
+                        c.end_path();
+                    }
                     // 置き方の行列。大きさをそのまま使います
                     c.transform([pt(im.w_mm), 0.0, 0.0, pt(im.h_mm), pt(im.x_mm), pt(im.y_mm)]);
                     c.x_object(Name(format!("I{k}").as_bytes()));
@@ -1041,6 +1046,7 @@ mod tests {
                 x_mm: 20.0, y_mm: 200.0, w_mm: 40.0, h_mm: 30.0,
                 data: std::sync::Arc::new(png.into_inner()),
                 z: 0,
+                clip: None,
             }],
             ..Default::default()
         };
@@ -1682,6 +1688,10 @@ pub struct Image {
     pub data: std::sync::Arc<Vec<u8>>,
     /// Where this picture sits in the draw order. See [`Leaf::images`]
     pub z: i32,
+    /// The box the picture is cut to (same measure as `x_mm` .. `h_mm`), when
+    /// it is stretched past the shape that holds it (`a:fillRect`, ECMA-376
+    /// 20.1.8.30)
+    pub clip: Option<[f32; 4]>,
 }
 
 /// **組み上がった紙面を PDF にする。**
@@ -2152,8 +2162,9 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
         .images
         .iter()
         .map(|(d, a)| (d, a, 0i32, true))
-        .chain(sheet.float_images.iter().map(|(d, a, z)| (d, a, *z, false)));
-    for (data, at, z, nagare) in hairetsu {
+        .map(|(d, a, z, n)| (d, a, z, n, None))
+        .chain(sheet.float_images.iter().map(|(d, a, z, c)| (d, a, *z, false, *c)));
+    for (data, at, z, nagare, clip) in hairetsu {
         // **A picture in the text goes on the page its line went to.**
         // Pages overlap in the scroll's own measure once a page pulls its
         // last paragraph down, so picking by the page's origin can put a
@@ -2199,6 +2210,8 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                 h_mm: at[3],
                 data: data.clone(),
                 z,
+                // the clip box in the same page measure as the picture
+                clip: clip.map(|c: [f32; 4]| [pp.margin_mm + c[0], pp.height_mm - (c[1] - off) - c[3], c[2], c[3]]),
             });
         }
     }

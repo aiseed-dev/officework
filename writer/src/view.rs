@@ -957,13 +957,14 @@ impl Render for Writer {
         // before the pictures. Everything the body makes carries 0, so a
         // band still goes under the body pictures (2026-09-20)
         let bands = self.yosomono_imgs(pxmm, false);
-        let mut ehon: Vec<(std::sync::Arc<gpui::Image>, [f32; 4], i32)> = Vec::new();
-        for (bytes, [x, top, w_mm, h_mm], z) in self
+        // (picture, box in px, z, the box to cut it to in px)
+        let mut ehon: Vec<(std::sync::Arc<gpui::Image>, [f32; 4], i32, Option<[f32; 4]>)> = Vec::new();
+        for (bytes, [x, top, w_mm, h_mm], z, clip) in self
             .page
             .images
             .iter()
-            .map(|(b, a)| (b, a, 0i32))
-            .chain(self.page.float_images.iter().map(|(b, a, z)| (b, a, *z)))
+            .map(|(b, a)| (b, a, 0i32, None))
+            .chain(self.page.float_images.iter().map(|(b, a, z, c)| (b, a, *z, *c)))
         {
             let src = self.image_cache.entry(std::sync::Arc::as_ptr(bytes) as usize)
                 .or_insert_with(|| {
@@ -981,22 +982,40 @@ impl Render for Writer {
                 w_mm * pxmm,
                 h_mm * pxmm,
             ];
-            ehon.push((src, at, z));
+            let clip = clip.map(|[cx0, ct, cw, ch]: [f32; 4]| {
+                [(self.pg.left_mm + cx0) * pxmm, ct * pxmm, cw * pxmm, ch * pxmm]
+            });
+            ehon.push((src, at, z, clip));
         }
         let mut junban: Vec<(i32, u8, usize)> =
             bands.iter().enumerate().map(|(k, (_, _, z))| (*z, 0u8, k)).collect();
-        junban.extend(ehon.iter().enumerate().map(|(k, (_, _, z))| (*z, 2u8, k)));
+        junban.extend(ehon.iter().enumerate().map(|(k, (_, _, z, _))| (*z, 2u8, k)));
         junban.sort_unstable();
         for (_, kind, k) in junban {
-            let (src, at) = if kind == 0 {
-                (bands[k].0.clone(), bands[k].1)
+            let (src, at, clip) = if kind == 0 {
+                (bands[k].0.clone(), bands[k].1, None)
             } else {
-                (ehon[k].0.clone(), ehon[k].1)
+                (ehon[k].0.clone(), ehon[k].1, ehon[k].3)
             };
-            if at[1] / pxmm < mi_ue - 0.01 || at[1] / pxmm > mi_sita { continue; }
-            paper = paper.child(
-                gpui::img(src).absolute().left(px(at[0])).top(px(at[1])).w(px(at[2])).h(px(at[3])),
-            );
+            let top = clip.map_or(at[1], |c| c[1]);
+            if top / pxmm < mi_ue - 0.01 || top / pxmm > mi_sita { continue; }
+            paper = match clip {
+                // A picture stretched past its shape (a:fillRect) is cut to
+                // the shape's box
+                Some(c) => paper.child(
+                    div().absolute().left(px(c[0])).top(px(c[1])).w(px(c[2])).h(px(c[3])).overflow_hidden().child(
+                        gpui::img(src)
+                            .absolute()
+                            .left(px(at[0] - c[0]))
+                            .top(px(at[1] - c[1]))
+                            .w(px(at[2]))
+                            .h(px(at[3])),
+                    ),
+                ),
+                None => paper.child(
+                    gpui::img(src).absolute().left(px(at[0])).top(px(at[1])).w(px(at[2])).h(px(at[3])),
+                ),
+            };
         }
 
         // **セルの塗り**(組んだ紙の fills)。前は PDF だけが描き、画面は
