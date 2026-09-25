@@ -45,6 +45,14 @@ tabs = "Documents, Home, Check" # the tabs after File, in this order
 buttons.Documents = "save, pdf" # the buttons on a tab, in this order
 ----
 
+For example, an edition for correcting plans and applications an AI wrote (adoc, docx and xlsx) keeps the editing tabs and hides the rest:
+
+[source,toml]
+----
+name = "Correcting documents"
+tabs = "Home, Insert, Layout, Collaboration, View"
+----
+
 * The File tab is always first, with its usual page. `tabs` lists the tabs that come after it. Tabs not listed are not shown
 * A tab name can be the English name (`Home`) or the name on screen (`ホーム`). Any other name makes a new tab
 * A new tab holds the buttons listed for it in `buttons.<tab>` and the Python buttons whose `"タブ"` declares that name (above). A Python button comes after the built-in ones
