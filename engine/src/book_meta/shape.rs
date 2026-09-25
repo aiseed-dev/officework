@@ -47,6 +47,8 @@ pub const FIELDS: &[(&str, &str)] = &[
     ("adj", "adjust"),
     // The form field the shape is (a photo box), `写真`
     ("field", "field"),
+    // The place in the drawing's stacking order read from an xlsx
+    ("z", "stack"),
 ];
 
 /// 1つの図形を (項目, 値) の並びにする。**既定のままの欄は出しません。**
@@ -91,6 +93,9 @@ pub fn to_rows(s: &SheetShape) -> Vec<(&'static str, String)> {
             put(k, x.clone());
         }
     }
+    if s.z != d.z {
+        put("z", s.z.to_string());
+    }
     if s.group != d.group {
         put("group", s.group.to_string());
     }
@@ -127,6 +132,7 @@ pub fn from_rows(rows: &[(String, String)]) -> SheetShape {
             }
             "kind" => s.kind = v.clone(),
             "group" => s.group = v.parse().unwrap_or(s.group),
+            "z" => s.z = v.parse().unwrap_or(s.z),
             "width_px" => s.width_px = v.parse().unwrap_or(s.width_px),
             "height_px" => s.height_px = v.parse().unwrap_or(s.height_px),
             "dx_px" => s.dx_px = v.parse().unwrap_or(s.dx_px),
