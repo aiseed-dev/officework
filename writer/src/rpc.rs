@@ -110,7 +110,9 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
                 // 文書の画面で押せるボタンだけ(灰色の物は画面と同じく断る)。
                 // タイトルバーの4つはリボンの表に無いので、別に見る
                 let aru = face::tabs::TITLEBAR.contains(&id.as_str())
-                    || face::ribbon::skeleton().iter()
+                    // Every button, also the ones the ribbon settings file
+                    // hides: hiding takes a button off the ribbon, not away
+                    || face::ribbon::base().iter()
                         .flat_map(|t| t.cmds.iter())
                         .any(|c| c.id == id && c.ready && c.apps.doc);
                 if !aru && id != "escape" {

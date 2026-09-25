@@ -53,7 +53,7 @@ buttons.Documents = "save, pdf" # the buttons on a tab, in this order
 * The file is read when the app starts. Restart the app after changing it
 * The lines have the same plain form as `settings.toml`: `key = "value"`, and a line starting with `#` is a comment
 
-`xw.press` presses only the buttons on shown tabs and the title-bar buttons. It refuses a button that is on no shown tab.
+Hiding a tab or a button only takes it off the ribbon. `xw.press` still presses every button, including the hidden ones.
 
 == Spreadsheet macros — routine work on the selection
 
