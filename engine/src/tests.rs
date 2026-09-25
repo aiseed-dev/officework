@@ -3370,6 +3370,7 @@ mod html_write_tests {
             tex: None,
             src: None,
             off: 0,
+            fill: None,
         });
         d.push_para(p);
         let page = html_write::page(&d, &theme::default_theme());
@@ -3988,12 +3989,13 @@ mod atama_no_gazou_tests {
             p.line_spacing = ls;
             p.images_new.push(crate::InlineImage { shape: None,
                 bytes: std::sync::Arc::new(vec![1]), w_mm: 20.0, h_mm: 10.0, tex: Some("x".into()), src: None, off: 0,
+                fill: None,
             });
             d.push_para(p);
             let frame = Frame { measure_mm: 150.0, line_height_mm: 6.4, y0_mm: 24.0};
             let s = layout(&d, &m, &frame);
             let mae = s.lines[0].y_mm;
-            let (_, r) = &s.images[0];
+            let (_, r, _) = &s.images[0];
             // **ベースラインより下、では足りません。** 前の行の字の足が
             // そこまで伸びています。書体の足の深さを空けます
             // (2026-09-02。`1 - agari_em` が 0 になっていて、絵の上端が

@@ -1063,7 +1063,7 @@ mod tests {
     #[test]
     fn a_broken_picture_is_counted_not_dropped() {
         let mut sheet = kumihan::Sheet::default();
-        sheet.images.push((std::sync::Arc::new(vec![0u8, 1, 2, 3]), [10.0, 10.0, 20.0, 20.0]));
+        sheet.images.push((std::sync::Arc::new(vec![0u8, 1, 2, 3]), [10.0, 10.0, 20.0, 20.0], None));
         let pp = crate::Paper::hitoshii(210.0, 297.0, 20.0);
         let mut out = Vec::new();
         let lost = sheet_to_pdf(&sheet, &font(), pp, std::io::Cursor::new(&mut out))
@@ -2161,10 +2161,14 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
     let hairetsu = sheet
         .images
         .iter()
-        .map(|(d, a)| (d, a, 0i32, true))
-        .map(|(d, a, z, n)| (d, a, z, n, None))
-        .chain(sheet.float_images.iter().map(|(d, a, z, c)| (d, a, *z, false, *c)));
-    for (data, at, z, nagare, clip) in hairetsu {
+        .map(|(d, a, f)| {
+            // An inline picture stretched to its fill rectangle is drawn
+            // there and cut to its box; the box decides its page
+            let (at, clip) = crate::stretch(*a, *f);
+            (d, at, 0i32, true, clip, *a)
+        })
+        .chain(sheet.float_images.iter().map(|(d, a, z, c)| (d, *a, *z, false, *c, c.unwrap_or(*a))));
+    for (data, at, z, nagare, clip, place) in hairetsu {
         // **A picture in the text goes on the page its line went to.**
         // Pages overlap in the scroll's own measure once a page pulls its
         // last paragraph down, so picking by the page's origin can put a
@@ -2176,9 +2180,9 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
         // same lookup puts the two together. A floating picture is placed
         // by its own anchor and keeps the geometric lookup
         let k = if nagare {
-            starts.iter().rposition(|s| at[1] + at[3] >= *s - 0.01).unwrap_or(0)
+            starts.iter().rposition(|s| place[1] + place[3] >= *s - 0.01).unwrap_or(0)
         } else {
-            page_of(offsets, at[1], paper.height_mm)
+            page_of(offsets, place[1], paper.height_mm)
         };
         let off = offsets.get(k).copied().unwrap_or(0.0);
         let pp = paper_of(k);

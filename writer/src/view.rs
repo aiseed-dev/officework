@@ -963,8 +963,21 @@ impl Render for Writer {
             .page
             .images
             .iter()
-            .map(|(b, a)| (b, a, 0i32, None))
-            .chain(self.page.float_images.iter().map(|(b, a, z, c)| (b, a, *z, *c)))
+            .map(|(b, a, f)| {
+                // An inline picture stretched to its fill rectangle
+                // (a:fillRect) is drawn there and cut to its box
+                let [x, y, w, h] = *a;
+                match f {
+                    Some([l, t, r, bo]) => (
+                        b,
+                        [x + w * l, y + h * t, w * (1.0 - l - r), h * (1.0 - t - bo)],
+                        0i32,
+                        Some(*a),
+                    ),
+                    None => (b, *a, 0i32, None),
+                }
+            })
+            .chain(self.page.float_images.iter().map(|(b, a, z, c)| (b, *a, *z, *c)))
         {
             let src = self.image_cache.entry(std::sync::Arc::as_ptr(bytes) as usize)
                 .or_insert_with(|| {

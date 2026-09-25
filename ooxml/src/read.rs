@@ -1030,6 +1030,7 @@ pub(super) fn group_pictures(
             src: None,
             off: usize::MAX,
             shape: Some(ko.to_string()),
+            fill: None,
         });
     }
     out
@@ -1083,6 +1084,7 @@ pub(super) fn image_of(
                 src: None,
                 off: usize::MAX,
                 shape: Some(raw.to_string()),
+                fill: None,
             });
         }
         return None;
@@ -1110,6 +1112,7 @@ pub(super) fn image_of(
                 src: None,
                 off: 0,
                 shape: Some(raw.to_string()),
+                fill: None,
             });
         }
     };
@@ -1138,7 +1141,27 @@ pub(super) fn image_of(
         .filter(|d| d.starts_with(TEX_SIRUSI))
         .map(|d| unesc(&d[TEX_SIRUSI.len()..]));
     Some(kumihan::InlineImage { bytes, w_mm: cx / 36000.0, h_mm: cy / 36000.0, tex, src: None,
-        off: 0, shape: None })
+        off: 0, shape: None, fill: fill_rect_of(raw) })
+}
+
+/// The fill rectangle of a stretched picture (`a:stretch/a:fillRect`, ECMA-376
+/// 20.1.8.30) as the offsets (l, t, r, b) of each edge from the box, fractions
+/// of its size (ST_Percentage, 100000 is the whole); `None` when all are 0
+pub fn fill_rect_of(raw: &str) -> Option<[f32; 4]> {
+    let i = raw.find("<a:fillRect")?;
+    let e = raw[i..].find('>').map_or(raw.len(), |e| i + e);
+    let tag = &raw[i..e];
+    let v = |name: &str| -> f32 {
+        let pat = format!(" {name}=\"");
+        tag.find(&pat)
+            .and_then(|k| {
+                let s = k + pat.len();
+                tag[s..].find('"').and_then(|q| tag[s..s + q].parse::<f32>().ok())
+            })
+            .map_or(0.0, |n| n / 100_000.0)
+    };
+    let f = [v("l"), v("t"), v("r"), v("b")];
+    (f != [0.0; 4]).then_some(f)
 }
 
 /// sectPr から用紙の寸法を読む(twip → mm)。
@@ -3352,6 +3375,7 @@ pub(super) fn parse_document_rels_num(
                                     src: None,
                                     off,
                                     shape: None,
+                                    fill: None,
                                 });
                             }
                             match carry_math(raw, &ns_decls) {

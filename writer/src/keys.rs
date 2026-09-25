@@ -426,6 +426,7 @@ impl Writer {
                     tex: None, // ファイルから挿した絵。数式ではない
                     src: None,
                     off: 0,
+                    fill: None,
                 };
                 // 選択があっても、挿すのはカーソルの段落だけ
                 let cur = self.ed.cursor();

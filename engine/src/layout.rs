@@ -450,7 +450,7 @@ pub(super) fn atama_no_gazou_takasa(para: &Paragraph) -> f32 {
 fn oku_gazou(sheet: &mut Sheet, im: &InlineImage, rect: [f32; 4]) {
     match &im.shape {
         Some(xml) => sheet.inline_shapes.push((xml.clone(), rect)),
-        None => sheet.images.push((im.bytes.clone(), rect)),
+        None => sheet.images.push((im.bytes.clone(), rect, im.fill)),
     }
 }
 
@@ -1051,7 +1051,7 @@ fn drop_break_over_empty(sheet: &mut Sheet, y: f32) {
         return;
     }
     let ari = |ys: f32, h: f32| ys + h > last - 0.01 && ys < y - 0.01;
-    if sheet.images.iter().any(|(_, b)| ari(b[1], b[3]))
+    if sheet.images.iter().any(|(_, b, _)| ari(b[1], b[3]))
         || sheet.inline_shapes.iter().any(|(_, b)| ari(b[1], b[3]))
         || sheet.float_images.iter().any(|(_, b, _, _)| ari(b[1], b[3]))
         || sheet.rules.iter().any(|r| ari(r.at[1].min(r.at[3]), (r.at[3] - r.at[1]).abs()))
@@ -2446,7 +2446,7 @@ pub fn fold_print(
     for (at, _) in &mut sheet.fills {
         at[1] = shift(at[1]);
     }
-    for (_, im) in &mut sheet.images {
+    for (_, im, _) in &mut sheet.images {
         let h = im[3];
         im[1] = shift(im[1]);
         im[3] = h;
@@ -2509,7 +2509,7 @@ pub fn fold_pages(
         r.at[1] = ny;
         r.at[3] = ny + h;
     }
-    for (_, b) in &mut sheet.images {
+    for (_, b, _) in &mut sheet.images {
         let (dx, ny) = shift(b[1]);
         b[0] += dx;
         b[1] = ny;
@@ -2608,7 +2608,7 @@ pub fn fold_columns(sheet: &mut Sheet, pg: &PageSetup, y0_mm: f32) {
         r.at[1] = y1;
         r.at[3] = y2;
     }
-    for (_, rect) in &mut sheet.images {
+    for (_, rect, _) in &mut sheet.images {
         let k = strip_of(rect[1]);
         rect[1] = place(rect[1], k);
         rect[0] += dx(k);
@@ -2672,8 +2672,8 @@ fn utsusu(tmp: Sheet, dx: f32, dy: f32, sheet: &mut Sheet) {
         cb.top_mm += dy;
         sheet.cell_boxes.push(cb);
     }
-    for (im, b) in tmp.images {
-        sheet.images.push((im, [b[0] + dx, b[1] + dy, b[2], b[3]]));
+    for (im, b, fill) in tmp.images {
+        sheet.images.push((im, [b[0] + dx, b[1] + dy, b[2], b[3]], fill));
     }
     for (xml, b) in tmp.inline_shapes {
         sheet.inline_shapes.push((xml, [b[0] + dx, b[1] + dy, b[2], b[3]]));

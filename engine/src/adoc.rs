@@ -2271,6 +2271,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 tex: None,
                 src: Some(path.to_string()),
                 off: 0,
+                fill: None,
             });
             // **`[…]` の中身(代替の字・幅・リンク)は原文のまま持ちます**(2026-09-03)。
             // 模型には代替の字の欄が無いので、行を丸ごと覚えて書き戻しで返します。
@@ -2294,6 +2295,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 tex: Some(tex.to_string()),
                 src: None,
                 off: 0,
+                fill: None,
             });
             doc.blocks.push(Block::Para(p));
             continue;

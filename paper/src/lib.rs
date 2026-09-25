@@ -274,7 +274,7 @@ pub fn to_pdf_with<W: Write, F: Fn(usize) -> Vec<kumihan::Line>>(
     let page_of = |y: f32| -> usize { pg.page_at(y) };
     // 画像。行と同じ頁割りで置く
     {
-        for (bytes, [x, top, w_mm, h_mm]) in &sheet.images {
+        for (bytes, [x, top, w_mm, h_mm], _) in &sheet.images {
             let k = page_of(*top);
             if k >= layers.len() {
                 continue;
@@ -567,7 +567,7 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
     let gazou_soko: Vec<(f32, f32)> = sheet
         .images
         .iter()
-        .map(|(_, r)| (r[1] + r[3], r[1]))
+        .map(|(_, r, _)| (r[1] + r[3], r[1]))
         .chain(sheet.inline_shapes.iter().map(|(_, r)| (r[1] + r[3], r[1])))
         .collect();
     for (oi, &li) in order.iter().enumerate() {
@@ -1554,6 +1554,7 @@ mod image_tests {
                 tex: None,
                 src: None,
                 off: 0,
+                fill: None,
             });
         }
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0});
@@ -1580,6 +1581,7 @@ mod image_tests {
                 tex: None,
                 src: None,
                 off: 0,
+                fill: None,
             });
         }
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0});
@@ -2880,24 +2882,20 @@ fn anchor_size(
 /// stretch the picture to and, when it differs from the box, the box to cut
 /// it to. Word's restaurant brochure stretches its photos past their boxes
 /// (`l="-31092" r="-20036"` on a 252.7 pt box gives 382.0 pt, as Word draws)
-fn fill_rect(part: &str, [x, y, w, h]: [f32; 4]) -> ([f32; 4], Option<[f32; 4]>) {
-    let Some(i) = part.find("<a:fillRect") else { return ([x, y, w, h], None) };
-    let e = part[i..].find('>').map_or(part.len(), |e| i + e);
-    let tag = &part[i..e];
-    let v = |name: &str| -> f32 {
-        let pat = format!(" {name}=\"");
-        tag.find(&pat)
-            .and_then(|k| {
-                let s = k + pat.len();
-                tag[s..].find('"').and_then(|q| tag[s..s + q].parse::<f32>().ok())
-            })
-            .map_or(0.0, |n| n / 100_000.0)
-    };
-    let (l, t, r, b) = (v("l"), v("t"), v("r"), v("b"));
-    if l == 0.0 && t == 0.0 && r == 0.0 && b == 0.0 {
-        return ([x, y, w, h], None);
+fn fill_rect(part: &str, bx: [f32; 4]) -> ([f32; 4], Option<[f32; 4]>) {
+    stretch(bx, ooxml::fill_rect_of(part))
+}
+
+/// The rectangle a picture is stretched to from its box `[x, y, w, h]` (y
+/// down) and the fill offsets (l, t, r, b), and the box to cut it to when
+/// the two differ
+pub(crate) fn stretch([x, y, w, h]: [f32; 4], fill: Option<[f32; 4]>) -> ([f32; 4], Option<[f32; 4]>) {
+    match fill {
+        Some([l, t, r, b]) => {
+            ([x + w * l, y + h * t, w * (1.0 - l - r), h * (1.0 - t - b)], Some([x, y, w, h]))
+        }
+        None => ([x, y, w, h], None),
     }
-    ([x + w * l, y + h * t, w * (1.0 - l - r), h * (1.0 - t - b)], Some([x, y, w, h]))
 }
 
 /// Place the floating pictures (`wp:anchor` with `wp:wrapNone`, kept by

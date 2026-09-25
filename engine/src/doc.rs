@@ -416,6 +416,11 @@ pub struct InlineImage {
     /// 見出しの絵が見出しの1行下に落ちていました(2026-09-01)。
     /// いまは段落の頭(0)にある物だけを行の中に置きます。
     pub off: usize,
+    /// The fill rectangle a picture that fills a shape is stretched to, as
+    /// the offsets (l, t, r, b) of each edge from the shape's box, fractions
+    /// of its width and height, negative outward (`a:stretch/a:fillRect`,
+    /// ECMA-376 20.1.8.30). `None` when the picture fills the box exactly
+    pub fill: Option<[f32; 4]>,
 }
 
 /// **段落の罫線の、引く辺**(docx の `w:pBdr` の子)。
@@ -3236,8 +3241,10 @@ pub struct Sheet {
     pub keep_rows: Vec<(usize, usize)>,
     /// 表のセルの当たり判定(クリックでセルを選ぶため)
     pub cell_boxes: Vec<CellBox>,
-    /// 置いた画像(実体, [x, 上端y, 幅, 高さ] mm)。画面も紙もこれを見る
-    pub images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4])>,
+    /// 置いた画像(実体, [x, 上端y, 幅, 高さ] mm)。画面も紙もこれを見る。
+    /// The third is the picture's fill rectangle ([`InlineImage::fill`]): the
+    /// picture is stretched to it and cut to the box
+    pub images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], Option<[f32; 4]>)>,
     /// Inline shapes placed like images: (raw drawing XML, [x, top, w, h] mm)
     pub inline_shapes: Vec<(String, [f32; 4])>,
     /// Floating pictures (`wp:anchor` + `wp:wrapNone`), placed by the paper

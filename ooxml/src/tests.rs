@@ -2739,6 +2739,7 @@ mod image_insert_tests {
             h_mm: 30.0,
             tex: None, off: 0,
                     src: None,
+                    fill: None,
         });
         let d = Document { align: None, no_html_auto_space: false, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, size_pt: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
                            blocks: vec![Block::Para(p)] };
@@ -2776,6 +2777,7 @@ mod image_insert_tests {
             h_mm: 8.0,
             tex: Some(shiki.to_string()),
                     src: None, off: 0,
+                    fill: None,
         });
         let d = Document { blocks: vec![Block::Para(p)], ..Default::default() };
         let mut buf = Cursor::new(Vec::new());

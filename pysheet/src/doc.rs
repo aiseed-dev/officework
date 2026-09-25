@@ -1256,7 +1256,8 @@ impl PyDoc {
             tex: None, // python-docx's add_picture. Formulas use a different API
             src: None, // relative path in a native document. Here we hold the bytes
             off: 0,
-            shape: None, // a picture, never a drawn shape
+            shape: None, // a picture, never a drawn shape,
+            fill: None,
         });
         g.doc.blocks.push(Block::Para(p));
         let b = g.doc.blocks.len() - 1;
@@ -2399,7 +2400,8 @@ impl PyRun {
             tex: None,
             src: None,
             off: 0,
-            shape: None, // a picture, never a drawn shape
+            shape: None, // a picture, never a drawn shape,
+            fill: None,
         });
         Ok(())
     }
