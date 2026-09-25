@@ -1462,6 +1462,11 @@ pub struct SheetShape {
     /// an adoc form; filling puts the data's picture inside the shape
     /// (docs/sekkei/drawlist.ja.adoc)
     pub field: Option<String>,
+    /// Place in the drawing's stacking order: the position of the anchor in
+    /// the drawing part, the first at the bottom (ECMA-376 Part 1 §20.5.2.35:
+    /// wsDr acts like spTree, §19.3.1.45: lexical order is z-order). Objects
+    /// made in the app keep 0 and are drawn after the ones read
+    pub z: u32,
 }
 
 /// **The repeating pattern of a DrawingML preset dash** (ECMA-376
@@ -1523,6 +1528,7 @@ impl Default for SheetShape {
             to: None,
             adj: Vec::new(),
             field: None,
+            z: 0,
         }
     }
 }
@@ -2348,6 +2354,11 @@ pub struct SheetImage {
     pub height_px: f32,
     /// 絵の実体(PNG / JPEG)
     pub data: Vec<u8>,
+    /// Place in the drawing's stacking order: the position of the anchor in
+    /// the drawing part, the first at the bottom (ECMA-376 Part 1 §20.5.2.35:
+    /// wsDr acts like spTree, §19.3.1.45: lexical order is z-order). Objects
+    /// made in the app keep 0 and are drawn after the ones read
+    pub z: u32,
 }
 
 /// シナリオ(入力セルの組に名前を付けて、切り替えて比べる)。

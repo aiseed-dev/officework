@@ -303,6 +303,7 @@ pub fn take(role: &str, sheet_name: &str, rows: &[Vec<String>], s: &mut Sheet) {
                     width_px: g(r, 4).parse().unwrap_or(0.0),
                     height_px: g(r, 5).parse().unwrap_or(0.0),
                     data: Vec::new(),
+                    z: 0,
                 });
             }
         }

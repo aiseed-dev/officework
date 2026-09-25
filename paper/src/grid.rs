@@ -2012,6 +2012,18 @@ fn draw_sheet(
             };
             (page, ml + x, y_top)
         };
+        // Stacking order of the floating objects, above the body (z 0): the
+        // ones read from the file by their place in it (the first at the
+        // bottom, ECMA-376 Part 1 §20.5.2.35, §19.3.1.45), then the ones made
+        // in the app, shapes under pictures, the order the xlsx writer uses
+        let n_read_shapes = grid.shapes.len();
+        let z_new = 1 + grid
+            .shapes
+            .iter()
+            .map(|s| s.z)
+            .chain(grid.images.iter().map(|im| im.z))
+            .max()
+            .map_or(0, |z| z as i32 + 1);
         // 同じ紙の図をまとめて描きます(筆を借り直す回数を減らします)
         let mut kumi: Vec<(usize, usize, &book::SheetShape)> = grid
             .shapes
@@ -2066,7 +2078,9 @@ fn draw_sheet(
                     h_mm: h,
                 }));
             }
+            l1.z = if k < n_read_shapes { 1 + sp.z as i32 } else { z_new };
             zukei(l1, sp, x, y_top, scale, &fonts);
+            l1.z = 0;
         }
         drop(ink_box);
         for (page, spot) in spots {
@@ -2078,14 +2092,16 @@ fn draw_sheet(
         // なので、読むときに組んで画像として置いてあります — ここを
         // 通らないと数式も出ません
         let mm = 25.4 / 96.0;
-        let mut e_kumi: Vec<(usize, &book::SheetImage)> = grid
+        let n_read_images = grid.images.len();
+        let mut e_kumi: Vec<(usize, i32, &book::SheetImage)> = grid
             .images
             .iter()
             .chain(grid.images_new.iter())
-            .map(|im| (cell_at(im.at).0, im))
+            .enumerate()
+            .map(|(k, im)| (cell_at(im.at).0, if k < n_read_images { 1 + im.z as i32 } else { z_new }, im))
             .collect();
-        e_kumi.sort_by_key(|(p, _)| *p);
-        for (page, im) in e_kumi {
+        e_kumi.sort_by_key(|(p, _, _)| *p);
+        for (page, z, im) in e_kumi {
             if page >= board.leaves.len() {
                 continue;
             }
@@ -2098,7 +2114,7 @@ fn draw_sheet(
                 w_mm: w,
                 h_mm: h,
                 data: std::sync::Arc::new(im.data.clone()),
-                z: 0,
+                z,
             });
         }
     }
@@ -3188,6 +3204,7 @@ mod print_extras_tests {
             width_px: 96.0,
             height_px: 48.0,
             data: png,
+            z: 0,
         });
         let leaves = sheet_leaves(&s, Paper::default(), &PrintSetup::default()).unwrap();
         let n: usize = leaves.iter().map(|l| l.images.len()).sum();

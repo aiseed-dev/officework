@@ -511,6 +511,7 @@ pub fn fill_choices(
                     width_px: w,
                     height_px: h,
                     data: bytes,
+                    z: 0,
                 });
                 // The instructions in the box give way to the photo; the frame stays
                 sp.text = None;

@@ -278,6 +278,7 @@ pub fn filled_sheet(name: &str) -> Sheet {
     s.images = vec![SheetImage {
         at: at("D5"), dx_px: 0.0, dy_px: 0.0, width_px: 96.0, height_px: 96.0,
         data: vec![0x89, b'P', b'N', b'G'],
+        z: 0,
     }];
     s.phonetics.insert(at("A2"), "ボールペン".into());
     s

@@ -1763,6 +1763,7 @@ mod validation_roundtrip_tests {
             width_px: 100.0,
             height_px: 50.0,
             data: vec![0x89, 0x50, 0x4E, 0x47],
+            z: 0,
         });
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
@@ -1774,6 +1775,37 @@ mod validation_roundtrip_tests {
         assert_eq!(im.at, Pos::parse("B2").unwrap());
         assert_eq!(im.width_px.round(), 100.0);
         assert_eq!((im.dx_px.round(), im.dy_px.round()), (30.0, 12.0), "the offset inside the cell was lost");
+    }
+
+    /// The drawing's stacking order comes back: a photo written after its
+    /// white frame is read above it (ECMA-376 Part 1 §20.5.2.35, §19.3.1.45).
+    /// The sheet screen drew every picture under every shape, so a filled
+    /// resume's photo was hidden by its frame
+    #[test]
+    fn a_photo_written_after_its_frame_is_read_above_it() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
+        b.sheets[0].shapes_new.push(book::SheetShape {
+            at: Pos::parse("B2").unwrap(), width_px: 120.0, height_px: 160.0,
+            kind: "rect".into(), fill: Some("FFFFFF".into()),
+            ..Default::default()
+        });
+        b.sheets[0].images_new.push(book::SheetImage {
+            at: Pos::parse("B2").unwrap(),
+            dx_px: 5.0,
+            dy_px: 5.0,
+            width_px: 100.0,
+            height_px: 140.0,
+            data: vec![0x89, 0x50, 0x4E, 0x47],
+            z: 0,
+        });
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        buf.set_position(0);
+        let (back, _) = read(buf).expect("読めない");
+        let sh = &back.sheets[0];
+        assert_eq!((sh.shapes.len(), sh.images.len()), (1, 1));
+        assert!(sh.images[0].z > sh.shapes[0].z, "the photo is not above its frame");
     }
 
     /// A shape held by two cells is saved held by them (twoCellAnchor)
@@ -2161,6 +2193,7 @@ mod image_roundtrip_tests {
             width_px: 300.0,
             height_px: 200.0,
             data: png(),
+            z: 0,
         });
         let mut buf = Cursor::new(Vec::new());
         write(&b, &mut buf).expect("書けない");
@@ -2186,6 +2219,7 @@ mod image_roundtrip_tests {
             width_px: 100.0,
             height_px: 50.0,
             data: png(),
+            z: 0,
         });
         let mut buf1 = Cursor::new(Vec::new());
         write(&b, &mut buf1).expect("書けない");
@@ -2199,6 +2233,7 @@ mod image_roundtrip_tests {
             width_px: 200.0,
             height_px: 100.0,
             data: png(),
+            z: 0,
         });
         let mut buf2 = Cursor::new(Vec::new());
         buf1.set_position(0);

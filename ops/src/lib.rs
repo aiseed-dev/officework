@@ -1246,6 +1246,7 @@ pub fn handle(h: &mut impl Host, line: &str) -> String {
                 width_px: width,
                 height_px: height,
                 data,
+                z: 0,
             });
             h.mark_dirty();
             format!("{{\"ok\":true,\"width_px\":{width},\"height_px\":{height}}}")

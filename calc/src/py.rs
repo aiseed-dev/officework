@@ -769,6 +769,7 @@ impl Calc {
                             width_px: w as f32,
                             height_px: h as f32,
                             data,
+                            z: 0,
                         });
                         this.dirty = true;
                         this.status = ui::tf!(
@@ -2180,6 +2181,7 @@ impl Calc {
                             width_px: w as f32 / 2.0,
                             height_px: h as f32 / 2.0,
                             data,
+                            z: 0,
                         });
                         this.dirty = true;
                         // **中の語も訳を通す。** ここだけ元の字だと、
@@ -2222,6 +2224,7 @@ impl Calc {
                             width_px: px(k.w_mm),
                             height_px: px(k.h_mm),
                             data: k.png,
+                            z: 0,
                         });
                         this.dirty = true;
                         this.status = ui::tf!("placed_image_goes_into_xlsx", ui::t!("equation"), at.a1()).into();

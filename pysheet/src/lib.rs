@@ -977,6 +977,7 @@ impl PySheet {
                 width_px: width_px.unwrap_or(w as f32),
                 height_px: height_px.unwrap_or(h as f32),
                 data,
+                z: 0,
             });
             Ok(())
         })

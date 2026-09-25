@@ -2506,6 +2506,7 @@ mod recalc_tests {
                 width_px: 120.0,
                 height_px: 60.0,
                 data: png,
+                z: 0,
             });
             // 当たり判定(B2 の原点 + 中ほど)
             let (ox, oy) = this.cell_origin_px(Pos::parse("B2").unwrap()).unwrap();

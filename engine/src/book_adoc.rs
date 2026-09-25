@@ -582,6 +582,7 @@ mod tests {
             at: Pos::parse("D5").expect("番地"),
             dx_px: 0.0, dy_px: 0.0, width_px: 96.0, height_px: 96.0,
             data: vec![0x89, b'P', b'N', b'G'],
+            z: 0,
         });
         let r = write_report(&b);
         assert!(r.iter().any(|x| x.contains("画像")), "画像を言っていない: {r:?}");

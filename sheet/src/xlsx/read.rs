@@ -2841,7 +2841,12 @@ fn read_inner<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 let _ = f.read_to_string(&mut rx);
             }
             let dmap = parse_rels(&rx);
-            for (at, ox_emu, oy_emu, cx_emu, cy_emu, kind) in parse_drawing_anchors_with(&dx, &theme_colors) {
+            // The anchors come in file order, which is the stacking order:
+            // the first at the bottom (ECMA-376 Part 1 §20.5.2.35, §19.3.1.45)
+            for (z, (at, ox_emu, oy_emu, cx_emu, cy_emu, kind)) in
+                parse_drawing_anchors_with(&dx, &theme_colors).into_iter().enumerate()
+            {
+                let z = z as u32;
                 let (width_px, height_px) =
                     (cx_emu as f32 / 9525.0, cy_emu as f32 / 9525.0);
                 match kind {
@@ -2871,6 +2876,7 @@ fn read_inner<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                             width_px,
                             height_px,
                             data,
+                            z,
                         });
                     }
                     DrawKind::Shape(mut sp) => {
@@ -2887,6 +2893,7 @@ fn read_inner<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                         // 図形の集まりが保存後も同じ場所に見える
                         sp.dx_px = ox_emu as f32 / 9525.0;
                         sp.dy_px = oy_emu as f32 / 9525.0;
+                        sp.z = z;
                         sh.shapes.push(*sp);
                     }
                     // **持たないが、黙らない。** グラフの模型は持たない
@@ -2911,6 +2918,7 @@ fn read_inner<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                                 width_px: k.w_mm * 96.0 / 25.4,
                                 height_px: k.h_mm * 96.0 / 25.4,
                                 data: k.png,
+                                z,
                             }),
                             Err(e) => rep.note(&format!("数式(組めません: {e})")),
                         }

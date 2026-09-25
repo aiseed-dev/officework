@@ -5481,8 +5481,15 @@ impl Render for Calc {
                    .children({
                        // 浮かぶ画像(グラフ)。アンカーのセルが見えている間だけ描く。
                        // マウスは受けない(セルの操作を遮らない)
-                       let mut layer: Vec<gpui::AnyElement> = Vec::new();
-                       for im in self.sheet().images.iter().chain(self.sheet().images_new.iter()) {
+                       // Pictures and shapes go in one stack. The ones read from
+                       // the file keep the file's order (the first at the bottom,
+                       // ECMA-376 Part 1 §20.5.2.35, §19.3.1.45); the ones made
+                       // here come after, shapes then pictures, the order the
+                       // xlsx writer uses. Key: (made here, z, picture), stable
+                       let mut keyed: Vec<((u8, u32, u8), gpui::AnyElement)> = Vec::new();
+                       let n_read_img = self.sheet().images.len();
+                       for (k, im) in self.sheet().images.iter().chain(self.sheet().images_new.iter()).enumerate() {
+                           let stack = if k < n_read_img { (0, im.z, 1) } else { (1, 0, 1) };
                            let Some((x, y)) = self.cell_origin_px(im.at) else { continue };
                            let (x, y) = (x + im.dx_px, y + im.dy_px);
                            let key = im.data.as_ptr() as usize;
@@ -5506,7 +5513,8 @@ impl Render for Calc {
                                    ))
                                })
                                .clone();
-                           layer.push(
+                           keyed.push((
+                               stack,
                                gpui::img(src)
                                    .absolute()
                                    .left(px(x))
@@ -5514,7 +5522,7 @@ impl Render for Calc {
                                    .w(px(im.width_px))
                                    .h(px(im.height_px))
                                    .into_any_element(),
-                           );
+                           ));
                        }
                        // 図形(SVG)。大きさを織り込んで作るので、伸ばしても鮮明
                        for (i, sp) in self
@@ -5526,6 +5534,7 @@ impl Render for Calc {
                        {
                            let Some((x, y)) = self.cell_origin_px(sp.at) else { continue };
                            let (x, y) = (x + sp.dx_px, y + sp.dy_px);
+                           let stack = if i < self.sheet().shapes.len() { (0, sp.z, 0) } else { (1, 0, 0) };
                            // 回転・影のはみ出しぶんキャンバスが四方に広い
                            let pad = sp.pad();
                            let svg = sp.to_svg();
@@ -5560,7 +5569,8 @@ impl Render for Calc {
                                    std::sync::Arc::new(gpui::Image::from_bytes(fmt, bytes))
                                })
                                .clone();
-                           layer.push(
+                           keyed.push((
+                               stack,
                                gpui::img(src)
                                    .absolute()
                                    .left(px(x - pad))
@@ -5568,7 +5578,7 @@ impl Render for Calc {
                                    .w(px(sp.width_px.max(4.0) + pad * 2.0))
                                    .h(px(sp.height_px.max(4.0) + pad * 2.0))
                                    .into_any_element(),
-                           );
+                           ));
                            if let Some(t) = &sp.text {
                                // 組み方(揃え・縦書き・箇条書き・文字効果)。
                                // **選べる物は描く** — 効かない設定を置かない
@@ -5646,7 +5656,7 @@ impl Render for Calc {
                                    };
                                    td = td.child(SharedString::from(body));
                                }
-                               layer.push(td.into_any_element());
+                               keyed.push((stack, td.into_any_element()));
                            }
                            let _ = i;
                        }
@@ -5654,7 +5664,8 @@ impl Render for Calc {
                        if self.img_cache.borrow().len() > 64 {
                            self.img_cache.borrow_mut().clear();
                        }
-                       layer
+                       keyed.sort_by_key(|(k, _)| *k);
+                       keyed.into_iter().map(|(_, el)| el).collect::<Vec<_>>()
                    })
                    .child(InputSink { view: me })
                    .children(shape_frame)

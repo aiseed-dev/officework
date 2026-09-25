@@ -1197,6 +1197,7 @@ impl Calc {
                                     width_px: w as f32,
                                     height_px: h as f32,
                                     data,
+                                    z: 0,
                                 });
                                 this.dirty = true;
                                 this.status = ui::tf!(
