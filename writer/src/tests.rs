@@ -5263,4 +5263,56 @@ mod shape_pick_tests {
             }
         });
     }
+
+    /// **Each stacked page keeps its own left margin** for the caret and
+    /// for clicks, as the page pictures (the print leaves) do.
+    ///
+    /// The JST plan's sections have different margins. The caret, the
+    /// selection and the click all counted from `pg.left_mm`, the last
+    /// section's, and stood 4.5mm apart from the text of the first page
+    /// (2026-09-27).
+    #[gpui::test]
+    fn the_caret_counts_from_its_own_pages_margin(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let mut first = kumihan::PageSetup::default();
+            first.left_mm = 30.0;
+            first.right_mm = 30.0;
+            let mut last = kumihan::PageSetup::default();
+            last.left_mm = 15.0;
+            last.right_mm = 15.0;
+            let mut d = kumihan::Document::plain("first page\nsecond page");
+            if let Some(kumihan::Block::Para(p)) = d.blocks.first_mut() {
+                p.sect = Some(kumihan::SectionBreak { raw: String::new(), page: first, continuous: false });
+            }
+            d.page = Some(last);
+            this.pg = last;
+            this.set_doc(d.clone());
+            this.native = false;
+            this.adopt_font();
+            this.relayout_keep();
+            let print = paper::doc_pages(&d, None).expect("print pages").leaves;
+            assert!(print.len() >= 2, "one page only");
+            for (k, byte) in [(0usize, 0usize), (1, "first page\n".len())] {
+                this.ed.move_to(byte, false);
+                let (x, _, _) = this.caret_xy();
+                let want = print[k].pieces.first().expect("text on the page").x_mm;
+                assert!((x - want).abs() < 0.2, "page {k}: the caret at {x}, the text at {want}");
+            }
+            // Click on the right half of the "c" of "second"
+            let line = this
+                .page
+                .lines
+                .iter()
+                .find(|l| l.from_body && l.byte0 == "first page\n".len())
+                .expect("the second page's line")
+                .clone();
+            let pxmm = crate::PX_PER_MM * this.zoom;
+            let c = line.cells[2].clone();
+            let x = 28.0 + (print[1].pieces[0].x_mm + c.x_mm - line.cells[0].x_mm + c.w_mm * 0.75) * pxmm;
+            let y = 14.0 + (line.y_mm - this.scroll_mm) * pxmm;
+            this.click_at(x, y, false);
+            assert_eq!(this.ed.cursor(), "first page\nsec".len(), "the click went to another letter");
+        });
+    }
 }

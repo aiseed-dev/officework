@@ -159,7 +159,7 @@ impl Writer {
         let base = body.iter().map(|c| c.off).min().unwrap_or(0);
         let mut byte = ln.byte_end();
         for c in body {
-            let cx = self.pg.left_mm + c.x_mm;
+            let cx = self.left_at(ln.y_mm) + c.x_mm;
             if x_now < cx + c.w_mm / 2.0 {
                 byte = ln.byte0 + (c.off - base);
                 break;
@@ -211,7 +211,7 @@ impl Writer {
                 // letters by `dip_mm`, and the caret stood that much higher
                 // than the word it was in (2.28mm on the e22e6b47 heading,
                 // 2026-09-23)
-                Some((self.pg.left_mm + x, line.y_mm + line.dip_mm, pt))
+                Some((self.left_at(line.y_mm) + x, line.y_mm + line.dip_mm, pt))
             };
         }
         hit.unwrap_or((

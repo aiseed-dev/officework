@@ -19,6 +19,7 @@
 //! {"cmd":"fill_field","name":"氏名","value":"山田"} → 名前の付いた記入欄に入れる
 //! {"cmd":"open","path":"…"} / {"cmd":"save","path":"…"}
 //! {"cmd":"to_pdf","path":"…"}
+//! {"cmd":"select","from":0,"to":4} → select the body text from one character to another (counted in characters) and show it
 //! ....
 //!
 //! **任意のコードを走らせる動詞は置きません**(calc の口と同じ決め)。
@@ -164,6 +165,24 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
         }
         // **本文を読む。** いま見ている文書の分だけ(何枚目かは status)
         "text" => ok(&format!("\"text\":{}", q(&w.doc.body_text()))),
+        // Put the caret and the selection in the body, as a click and a drag
+        // would. Counted in characters, as Python counts a str. A check of
+        // the screen needs it: the caret, the selection and the IME are
+        // drawn over the page pictures (2026-09-27)
+        "select" => {
+            let Some(from) = o.num("from").filter(|f| *f >= 0.0) else { return ops::err("from がありません") };
+            let to = o.num("to").filter(|t| *t >= 0.0).unwrap_or(from);
+            if w.target != Target::Body {
+                w.switch_target(Target::Body);
+            }
+            let text = w.ed.text();
+            let byte = |n: f64| text.char_indices().nth(n as usize).map(|(b, _)| b).unwrap_or(text.len());
+            let (a, b) = (byte(from), byte(to));
+            w.ed.move_to(a, false);
+            w.ed.move_to(b, true);
+            w.follow_caret();
+            ok("")
+        }
         "set_text" => {
             let Some(t) = o.str("text") else { return ops::err("text がありません") };
             w.checkpoint(false);
@@ -467,6 +486,23 @@ mod tests {
             assert!(r.contains("\"replaced\":1"), "{r}");
             this.undo_step();
             assert!(!this.doc.body_text().contains("受注は9件"), "印が残っていると1手で戻らない");
+        });
+    }
+
+    /// **`select` counts characters, not bytes**, and puts the selection in
+    /// the body
+    #[gpui::test]
+    fn the_rpc_selects_by_characters(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _| {
+            this.native = false;
+            this.set_doc(kumihan::Document::plain("（計画様式１）\n研究"));
+            let r = crate::rpc::handle(this, r#"{"cmd":"select","from":1,"to":5}"#);
+            assert_eq!(r, "{\"ok\":true}");
+            let sel = this.ed.selection();
+            assert_eq!(&this.ed.text()[sel], "計画様式");
+            crate::rpc::handle(this, r#"{"cmd":"select","from":99}"#);
+            assert_eq!(this.ed.cursor(), this.ed.text().len(), "past the end goes to the end");
         });
     }
 }

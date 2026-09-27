@@ -922,6 +922,20 @@ impl Writer {
         (p, y - self.page_offsets.get(p).copied().unwrap_or(0.0))
     }
 
+    /// The left margin of the page a stacked y falls on (mm).
+    ///
+    /// Stacked pages keep each section's own margin, as print does, so a
+    /// line's x counts from its page's margin, not from the first
+    /// section's `pg.left_mm`. The JST plan's first page stood 4.5mm apart
+    /// from the print picture before this (2026-09-27)
+    pub(crate) fn left_at(&self, y: f32) -> f32 {
+        if self.sheets() && self.page_tops.len() > 1 && self.page_tops.len() == self.page_papers.len() {
+            let p = self.page_tops.iter().rposition(|t| y >= *t - 0.01).unwrap_or(0);
+            return self.page_papers[p].margin_mm;
+        }
+        self.pg.left_mm
+    }
+
     // ---- 描画(ペン・蛍光ペン・消しゴム) ----
 
     pub(crate) fn ink_begin(&mut self, x: f32, y_roll: f32) {

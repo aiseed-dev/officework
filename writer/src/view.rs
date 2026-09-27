@@ -10,6 +10,15 @@ use crate::*;
 /// 置くぶんを含んでいます。文字の描画位置を変えたら、ここも測り直してください。
 const CARET_TOP: f32 = 0.53;
 const CARET_H: f32 = 1.00;
+/// The same for the page pictures. Their letters stand on the true baseline
+/// (the print's), about 0.4 of a letter above where gpui puts its text box,
+/// so the caret and the selection go up by as much (2026-09-27)
+const CARET_TOP_PIC: f32 = 0.95;
+const CARET_H_PIC: f32 = 1.15;
+/// Where the selection starts under the letter box's top (`y - 0.88 * size`),
+/// as a share of the size: gpui's text, and the page pictures
+const SEL_DROP: f32 = HALF_LEADING;
+const SEL_DROP_PIC: f32 = -0.10;
 
 
 impl Render for Writer {
@@ -1000,13 +1009,13 @@ impl Render for Writer {
                     })
                     .clone();
                 let at = [
-                    (self.pg.left_mm + x) * pxmm,
+                    (self.left_at(top) + x) * pxmm,
                     top * pxmm,
                     w_mm * pxmm,
                     h_mm * pxmm,
                 ];
                 let clip = clip.map(|[cx0, ct, cw, ch]: [f32; 4]| {
-                    [(self.pg.left_mm + cx0) * pxmm, ct * pxmm, cw * pxmm, ch * pxmm]
+                    [(self.left_at(top) + cx0) * pxmm, ct * pxmm, cw * pxmm, ch * pxmm]
                 });
                 ehon.push((src, at, z, clip));
             }
@@ -1048,7 +1057,7 @@ impl Render for Writer {
             for (at, c) in &self.page.fills {
                 let [x, y, w, h] = *at;
                 paper = paper.child(div().absolute()
-                    .left(px((self.pg.left_mm + x) * pxmm)).top(px(y * pxmm))
+                    .left(px((self.left_at(y) + x) * pxmm)).top(px(y * pxmm))
                     .w(px(w * pxmm)).h(px(h * pxmm))
                     .bg(gpui::Rgba { r: hex(c, 0), g: hex(c, 1), b: hex(c, 2), a: 1.0 }));
             }
@@ -1056,8 +1065,9 @@ impl Render for Writer {
             // 表の罫線。紙面の座標をそのまま引く
             for r in &self.page.rules {
                 let [x1, y1, x2, y2] = r.at;
-                let (x1, y1) = ((self.pg.left_mm + x1) * pxmm, y1 * pxmm);
-                let (x2, y2) = ((self.pg.left_mm + x2) * pxmm, y2 * pxmm);
+                let lm = self.left_at(y1);
+                let (x1, y1) = ((lm + x1) * pxmm, y1 * pxmm);
+                let (x2, y2) = ((lm + x2) * pxmm, y2 * pxmm);
                 // The width the rule carries, else the 0.5pt of an ordinary edge
                 let w = if r.pt > 0.0 { (r.pt * 25.4 / 72.0) * pxmm } else { 1.0 };
                 // The colour the border names; `auto` keeps the screen's grey
@@ -1184,7 +1194,7 @@ impl Render for Writer {
                         .unwrap_or(false);
                     if changed {
                         paper = paper.child(div().absolute()
-                            .left(px((self.pg.left_mm - 5.0).max(0.5) * pxmm))
+                            .left(px((self.left_at(line.y_mm) - 5.0).max(0.5) * pxmm))
                             .top(px((line.y_mm - LINE_MM * 0.7) * pxmm))
                             .w(px(2.0)).h(px(LINE_MM * pxmm))
                             .bg(rgb(0xE08A00)));
@@ -1224,7 +1234,7 @@ impl Render for Writer {
             for line in self.page.lines.iter().filter(|l| l.from_body) {
                 n += 1;
                 paper = paper.child(div().absolute()
-                    .left(px((self.pg.left_mm - 9.0).max(1.0) * pxmm))
+                    .left(px((self.left_at(line.y_mm) - 9.0).max(1.0) * pxmm))
                     .top(px(line.y_mm * pxmm - 8.5 * self.zoom))
                     .text_size(px(8.5 * self.zoom))
                     .text_color(rgb(0x9DB8C8))
@@ -1240,7 +1250,7 @@ impl Render for Writer {
             for b in &self.page.cell_boxes {
                 if crate::keys::Hani::fukumu(h, b.table, b.row, b.col) {
                     paper = paper.child(div().absolute()
-                        .left(px((self.pg.left_mm + b.x_mm) * pxmm)).top(px(b.top_mm * pxmm))
+                        .left(px((self.left_at(b.top_mm) + b.x_mm) * pxmm)).top(px(b.top_mm * pxmm))
                         .w(px(b.w_mm * pxmm)).h(px(b.h_mm * pxmm))
                         .bg(gpui::Rgba { r: 0.40, g: 0.60, b: 0.85, a: 0.35 }));
                 }
@@ -1310,7 +1320,7 @@ impl Render for Writer {
             }
             let pt = line.cells[0].size_pt;
             let sz = pt * 96.0 / 72.0 * self.zoom;
-            let x0 = self.pg.left_mm + line.cells[0].x_mm;
+            let x0 = self.left_at(line.y_mm) + line.cells[0].x_mm;
             // 字は行の箱の中の置き場(`dip_mm`)だけ下げて描く(紙と同じ。2026-09-08)
             let top = (line.y_mm + line.dip_mm) * pxmm - sz * 0.88;
 
@@ -1331,7 +1341,7 @@ impl Render for Writer {
                     let xr = |upto: usize| -> f32 { line.x_at(upto) - line.cells[0].x_mm };
                     paper = paper.child(div().absolute()
                         .left(px((x0 + xr(a)) * pxmm))
-                        .top(px(top + sz * (1.05 + HALF_LEADING)))
+                        .top(px(top + sz * (1.05 + if pics { 0.0 } else { HALF_LEADING })))
                         .w(px((xr(b) - xr(a)).max(1.0) * pxmm))
                         .h(px(2.0)).bg(rgb(0x165E83)));
                 }
@@ -1357,7 +1367,7 @@ impl Render for Writer {
                     let xr = |upto: usize| -> f32 { line.x_at(upto) - line.cells[0].x_mm };
                     paper = paper.child(div().absolute()
                         .left(px((x0 + xr(a)) * pxmm))
-                        .top(px(top + sz * HALF_LEADING))
+                        .top(px(top + sz * if pics { SEL_DROP_PIC } else { SEL_DROP }))
                         .w(px((xr(b) - xr(a)).max(1.5) * pxmm))
                         .h(px(sz * 1.2))
                         // 半透明の青。文字より下・蛍光ペンより上に敷く
@@ -1384,7 +1394,7 @@ impl Render for Writer {
                     let text: String = seg.iter().map(|c| c.ch).collect();
                     let w_mm: f32 = seg.iter().map(|c| c.w_mm).sum();
                     let f = &c0.fmt;
-                    let sx = self.pg.left_mm + c0.x_mm;
+                    let sx = self.left_at(line.y_mm) + c0.x_mm;
                     let spt = c0.size_pt * 96.0 / 72.0 * self.zoom;
                     let stop = (line.y_mm + line.dip_mm) * pxmm - spt * 0.88;
                     // 上付き・下付きは小さく描き、少し上下へずらす
@@ -1464,7 +1474,7 @@ impl Render for Writer {
                 for c in &line.cells {
                     if c.ch == ' ' || c.ch == '\u{3000}' {
                         paper = paper.child(div().absolute()
-                            .left(px((self.pg.left_mm + c.x_mm + c.w_mm * 0.3) * pxmm))
+                            .left(px((self.left_at(line.y_mm) + c.x_mm + c.w_mm * 0.3) * pxmm))
                             .top(px(top + sz * 0.35))
                             .text_size(px(sz * 0.6)).text_color(rgb(0x9DB8C8))
                             .child(SharedString::from(if c.ch == ' ' { "·" } else { "□" })));
@@ -1472,7 +1482,7 @@ impl Render for Writer {
                 }
                 let end_x = line.cells.last().map(|c| c.x_mm + c.w_mm).unwrap_or(0.0);
                 paper = paper.child(div().absolute()
-                    .left(px((self.pg.left_mm + end_x) * pxmm)).top(px(top))
+                    .left(px((self.left_at(line.y_mm) + end_x) * pxmm)).top(px(top))
                     .text_size(px(sz * 0.8)).text_color(rgb(0x9DB8C8))
                     .child("↵"));
             }
@@ -1524,7 +1534,7 @@ impl Render for Writer {
                                 j += 1;
                             }
                             let sz = c0.size_pt * 96.0 / 72.0 * self.zoom;
-                            let x0 = self.pg.left_mm + c0.x_mm;
+                            let x0 = self.left_at(dy) + c0.x_mm;
                             let top = (line.y_mm + line.dip_mm + dy) * pxmm - sz * 0.88;
                             let (kazoku, omosa) =
                                 self.screen_face(c0.font.as_deref(), c0.fmt.bold, c0.fmt.italic);
@@ -1602,8 +1612,8 @@ impl Render for Writer {
             let sz = caret_pt * 96.0 / 72.0 * self.zoom;
             paper = paper.child(div().absolute()
                 .left(px(cx_mm * pxmm))
-                .top(px(cy_mm * pxmm - sz * CARET_TOP))
-                .w(px(1.5)).h(px(sz * CARET_H))
+                .top(px(cy_mm * pxmm - sz * if pics { CARET_TOP_PIC } else { CARET_TOP }))
+                .w(px(1.5)).h(px(sz * if pics { CARET_H_PIC } else { CARET_H }))
                 .bg(rgb(0x165E83)));
         }
 
@@ -2276,8 +2286,8 @@ impl gpui::Element for InputSink {
                 // 本文の選択より先に見ないと、図形を掴んだまま字が選ばれます
                 if w.shape_drag.is_some() {
                     let pxmm = PX_PER_MM * w.zoom;
-                    let x = (f32::from(rel.x) - 28.0) / pxmm - w.pg.left_mm;
                     let y = (f32::from(rel.y) - 14.0) / pxmm + w.scroll_mm;
+                    let x = (f32::from(rel.x) - 28.0) / pxmm - w.left_at(y);
                     w.shape_move(x, y);
                     cx.notify();
                     return;

@@ -15,8 +15,9 @@ impl Writer {
         self.fl_focus = false;
         let pxmm = PX_PER_MM * self.zoom;
         // 紙は編集領域の (28,14)px に置いてあり、スクロールで上へずれている
-        let x_mm = (rel_x - 28.0) / pxmm - self.pg.left_mm;
+        // Each stacked page keeps its own left margin (`left_at`)
         let y_mm = (rel_y - 14.0) / pxmm + self.scroll_mm;
+        let x_mm = (rel_x - 28.0) / pxmm - self.left_at(y_mm);
 
         // **図形を先に見ます**(2026-08-30)。図形は本文の上に乗るので、
         // 本文の当たり判定より先に見ないと、図形を押しても本文が動きます。
@@ -33,7 +34,7 @@ impl Writer {
                 .get(sp.page)
                 .copied()
                 .unwrap_or(sp.page as f32 * self.pg.h_mm);
-            let (sx, sy) = (sp.x_mm - self.pg.left_mm, sp.y_mm + oy);
+            let (sx, sy) = (sp.x_mm - self.left_at(y_mm), sp.y_mm + oy);
             x_mm >= sx && x_mm <= sx + sp.w_mm && y_mm >= sy && y_mm <= sy + sp.h_mm
         }) };
         match ate {
@@ -121,7 +122,7 @@ impl Writer {
                 for c in body {
                     // **A cell's x is measured from the text area**, the same
                     // as a body line's: the screen draws it at
-                    // `pg.left_mm + c.x_mm` (`caret_xy`, `text.rs`). Taking
+                    // `left_at(y) + c.x_mm` (`caret_xy`, `text.rs`). Taking
                     // the margin off it here moved the caret 19mm (54pt on
                     // this template) to the right of the click, so the text
                     // inside a table could not be picked (2026-09-23)
@@ -2004,8 +2005,8 @@ impl Writer {
             return None;
         }
         let pxmm = PX_PER_MM * self.zoom;
-        let x_mm = (rel_x - 28.0) / pxmm - self.pg.left_mm;
         let y_mm = (rel_y - 14.0) / pxmm + self.scroll_mm;
+        let x_mm = (rel_x - 28.0) / pxmm - self.left_at(y_mm);
         let hako = self
             .page
             .cell_boxes
