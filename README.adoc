@@ -32,7 +32,7 @@ The engine also installs on its own (`pip install officework`): it reads and wri
 You watch the result, finish it by hand, and drive a live workbook from Python.
 
 The app is under development.
-It is in test release. Builds for Mac, Windows and Linux are on https://github.com/aiseed-dev/officework/releases[GitHub Releases] (0.1.0-alpha.3 today). Please report what is broken in https://github.com/aiseed-dev/officework/issues[Issues]. The engine installs with `pip install officework`. Building from source is described below.
+It is in test release. Builds for Mac, Windows and Linux are on https://github.com/aiseed-dev/officework/releases[GitHub Releases] (0.1.0-alpha.6 today). Please report what is broken in https://github.com/aiseed-dev/officework/issues[Issues]. The engine installs with `pip install officework`. Building from source is described below.
 
 There are two editors: *writer* for documents and *calc* for spreadsheets. You open a folder and edit both in tabs of the same window (link:docs/en/writer-manual.adoc[writer manual], link:docs/en/calc-manual.adoc[calc manual]).
 
@@ -345,7 +345,7 @@ The socket opens on Linux and macOS only; on Windows it is not created.
 [source,console]
 ----
 $ echo '{"cmd":"ping"}' | nc -q 1 -U $XDG_RUNTIME_DIR/officework/officework.sock
-{"ok":true,"app":"officework","showing":"doc","version":"0.1.0-alpha.3"}
+{"ok":true,"app":"officework","showing":"doc","version":"0.1.0-alpha.6"}
 ----
 
 The reference for programmers is the link:docs/en/python-manual.adoc[Python manual] — ranges vs. arrays (`values()` and per-cell writes), 2-D lists and spilling with `=PY`, the `d` variable in writer macros, and what the sandbox allows.
