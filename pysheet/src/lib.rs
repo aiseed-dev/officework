@@ -1156,8 +1156,9 @@ impl PySheet {
     fn set_shape(&self, index: usize, field: Option<String>, text: Option<String>, font: Option<String>) -> PyResult<()> {
         self.with(|s| {
             let n = s.shapes.len();
+            let total = n + s.shapes_new.len();
             let sp = if index < n { s.shapes.get_mut(index) } else { s.shapes_new.get_mut(index - n) };
-            let sp = sp.ok_or_else(|| PyIndexError::new_err(format!("図形は {} 個です: {index}", n + 0)))?;
+            let sp = sp.ok_or_else(|| PyIndexError::new_err(format!("図形は {total} 個です: {index}")))?;
             if let Some(v) = field {
                 sp.field = (!v.is_empty()).then_some(v);
             }

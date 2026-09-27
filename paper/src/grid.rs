@@ -1833,7 +1833,6 @@ fn draw_sheet(
                 }
                 ty -= hiraki_of(g);
             }
-            drop(hakaru);
             for (key, _, _, bx) in nobi {
                 if let Some((x0, y0, x1, y1)) = bx {
                     ink.leaf.spots.push(pdfw::Spot { key, x_mm: x0, y_mm: y0, w_mm: x1 - x0, h_mm: y1 - y0 });
@@ -2082,7 +2081,6 @@ fn draw_sheet(
             zukei(l1, sp, x, y_top, scale, &fonts);
             l1.z = 0;
         }
-        drop(ink_box);
         for (page, spot) in spots {
             board.leaves[page].spots.push(spot);
         }
