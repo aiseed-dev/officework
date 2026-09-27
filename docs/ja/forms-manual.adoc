@@ -196,7 +196,7 @@ b = sheet.Book.fill(form, data)
        "fill": null, "even_odd": false, "stroke": "#000000", "width": 0.75, "dash": [], "alpha": 1, "clip": []},
       {"type": "text", "x": 120.5, "baseline": 210.0, "top": 192.4, "text": "みほん商店",
        "font": 0, "size": 11, "width": 55.0, "color": "#000000", "bold": false},
-      {"type": "image", "rect": [x, y, w, h], "mime": "image/jpeg", "base64": "…"}
+      {"type": "image", "rect": [x, y, w, h], "mime": "image/jpeg", "base64": "…", "clip": [x, y, w, h]}
     ],
     "fields": [
       {"name": "屋号", "kind": "text", "rect": [x, y, w, h], "value": "みほん商店"},
@@ -211,7 +211,9 @@ b = sheet.Book.fill(form, data)
 * 文字は、ベースラインの位置と上端(`top`。上端で文字を置く仕組みのため)を持ちます。`width` は組版が決めた幅、`font` は `fonts` の `id` です。
   無いこともある項目:`italic`、`rotation`(度。x とベースラインの点を中心に左回り)、`letter_spacing`(pt)、`scale_x`
 * 色は `#RRGGBB`、`alpha` は 0〜1、破線の刻みは pt の長さの並びです
-* 画像は、ファイルのバイト列の base64 です(PNG か JPEG)
+* 画像は、ファイルのバイト列の base64 です(PNG か JPEG)。`rect` へ伸ばして描きます。
+  図形を塗る画像は、図形の四角より大きく伸ばすことがあります(docx や xlsx の `a:fillRect`)。そのときは `clip` に図形の四角が入り、その外は描きません。
+  `clip` が無ければ切りません
 * `fields` は、そのページにある欄です。欄はデータの項目ごとに 1 つです。`{届出日.年}` `{届出日.月}` `{届出日.日}` は、種類 `date` の欄「届出日」1 つになります。`{本人希望.1}`〜`{本人希望.4}` は、種類 `multiline` の欄「本人希望」1 つになります。
   種類は `text`、`multiline`(折り返して全体を表示するセルも)、`date`、`choice`(`options` つき)、`image` です。
   `rect` は、表の様式では欄のセル(結合したセルは結合の範囲)を全部含む四角、文書の様式では答えの字を含む四角です。文書で答えが空のときは、その後ろの 1 字の四角です。

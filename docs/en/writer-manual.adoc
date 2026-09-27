@@ -2,7 +2,7 @@
 
 _日本語版(secondary): link:../ja/writer-manual.adoc[writer-manual.ja.adoc]_
 
-*This manual describes the next version of writer.* Anything not yet in the released 0.1.0-alpha.3 is marked *(coming in the next version)*.
+*This manual describes the next version of writer.* Anything not yet in the released 0.1.0-alpha.6 is marked *(coming in the next version)*.
 Those parts describe what we are building, not what ships today.
 
 The manual for officework's document editor.
@@ -29,10 +29,9 @@ Edit those in a text editor.
 There are four destinations: screen, PDF, HTML and docx.
 The screen is one of them, so you can write on paper or in a plain flowing view.
 
-*docx is the delivery format.* You can open it, read it, print it and turn it into adoc, but *it is not edited and saved as docx* (coming in the next version).
-Edit in adoc, hand over in docx.
+*A docx can be edited too.* Open it, edit it on the screen and save it as docx, or turn it into adoc.
 
-From Python you can still edit a docx and write it back (`from officework import doc`); only the screen stops doing it.
+From Python you can edit a docx and write it back as well (`from officework import doc`).
 
 *Every button works — nothing is grayed out. The full list is under "All commands".* The button that wraps a docx in a password is gone.
 You can still *open* a password-protected docx.
