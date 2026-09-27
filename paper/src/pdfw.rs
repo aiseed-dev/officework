@@ -2271,34 +2271,9 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
             }
         }
     }
-    // **手描きの筆。** 蛍光ペンは太く・薄く・字の下、ペンは細く・濃く・字の上。
-    // 2026-08-29 まで「この書き手ではまだ載りません」と数えるだけでした —
-    // 紙面の色に透明度が無く、蛍光ペンが出せなかったためです
-    if !dress.ink.is_empty() {
-        for (k, leaf) in pages.iter_mut().enumerate() {
-            let h = leaf.size_mm.map(|(_, h)| h).unwrap_or(paper.height_mm);
-            for st in dress.ink.iter().filter(|s| s.page == k) {
-                let (w_mm, rgb, a) = if st.highlighter {
-                    (3.0, (1.0, 0.89, 0.36), 0.45)
-                } else {
-                    (0.45, (0.11, 0.23, 0.32), 1.0)
-                };
-                let saki = if st.highlighter { &mut leaf.rules } else { &mut leaf.rules_top };
-                for w in st.points.windows(2) {
-                    saki.push(Rule {
-                        x1_mm: w[0].0,
-                        y1_mm: h - w[0].1,
-                        x2_mm: w[1].0,
-                        y2_mm: h - w[1].1,
-                        w_mm,
-                        rgb,
-                        a,
-                        dash: None,
-                    });
-                }
-            }
-        }
-    }
+    // Handwritten strokes. Until 2026-08-29 this writer only counted them as
+    // missing, because the page had no transparency for the highlighter
+    put_ink(&mut pages, &dress.ink, paper.height_mm);
     // **ページに貼り付く図形。** 字と罫線の上に置きます(Word も同じで、
     // `behindDoc="0"` は本文の上です)
     if !dress.shapes.is_empty() {
@@ -2312,6 +2287,35 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
         }
     }
     (pages, lost)
+}
+
+/// **Handwritten strokes onto the pages** (`Stroke::page` counts from 0).
+/// The highlighter goes under the letters (`rules`), the pen over them
+/// (`rules_top`). `height_mm` is the paper for a page without its own size
+pub fn put_ink(pages: &mut [Leaf], ink: &[kumihan::Stroke], height_mm: f32) {
+    for (k, leaf) in pages.iter_mut().enumerate() {
+        let h = leaf.size_mm.map(|(_, h)| h).unwrap_or(height_mm);
+        for st in ink.iter().filter(|s| s.page == k) {
+            let (w_mm, rgb, a) = if st.highlighter {
+                (3.0, (1.0, 0.89, 0.36), 0.45)
+            } else {
+                (0.45, (0.11, 0.23, 0.32), 1.0)
+            };
+            let saki = if st.highlighter { &mut leaf.rules } else { &mut leaf.rules_top };
+            for w in st.points.windows(2) {
+                saki.push(Rule {
+                    x1_mm: w[0].0,
+                    y1_mm: h - w[0].1,
+                    x2_mm: w[1].0,
+                    y2_mm: h - w[1].1,
+                    w_mm,
+                    rgb,
+                    a,
+                    dash: None,
+                });
+            }
+        }
+    }
 }
 
 /// その y がどの頁か(頁の頭の並びから引く)

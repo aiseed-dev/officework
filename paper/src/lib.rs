@@ -1799,6 +1799,9 @@ pub struct PageSource {
     pub family: String,
     pub font: std::sync::Arc<Vec<u8>>,
     pub run_fonts: Vec<(String, Vec<u8>)>,
+    /// The page colour (0 to 1 RGB), which the laid-out document does not
+    /// carry: the writer takes it from the composed dress
+    pub bg: Option<(f32, f32, f32)>,
 }
 
 impl PageSource {
@@ -1817,7 +1820,13 @@ impl PageSource {
 /// The pages of a [`PageSource`], made the way [`doc_pages`] makes them
 pub fn page_leaves(src: &PageSource) -> Result<Vec<pdfw::Leaf>, String> {
     let mut sheet = src.sheet.clone();
-    leaves_of(&src.doc, &mut sheet, src.page, &src.font_names(), &src.font)
+    let mut leaves = leaves_of(&src.doc, &mut sheet, src.page, &src.font_names(), &src.font)?;
+    if src.bg.is_some() {
+        for leaf in &mut leaves {
+            leaf.bg = src.bg;
+        }
+    }
+    Ok(leaves)
 }
 
 /// The steps after layout that turn a laid-out document into pages: floating

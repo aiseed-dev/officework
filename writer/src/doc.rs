@@ -696,6 +696,7 @@ impl Writer {
             family: self.font_name.to_string(),
             font: self.font_bytes.clone(),
             run_fonts,
+            bg: self.dress_page.1.as_deref().map(|c| (hex(c, 0), hex(c, 1), hex(c, 2))),
         });
         self.layout_gen = self.layout_gen.wrapping_add(1);
     }

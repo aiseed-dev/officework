@@ -5315,4 +5315,32 @@ mod shape_pick_tests {
             assert_eq!(this.ed.cursor(), "first page\nsec".len(), "the click went to another letter");
         });
     }
+
+    /// **The PDF button writes the pages the screen shows** (step 4), which
+    /// for a docx are the print's pages: the file is the one
+    /// `paper::doc_to_pdf` writes
+    #[gpui::test]
+    fn the_pdf_button_writes_the_screens_pages(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sample/報告書.docx");
+            let bytes = std::fs::read(&path).expect("the sample report");
+            let (doc, _) = ooxml::read(std::io::Cursor::new(bytes)).expect("reads");
+            this.pg = doc.page.unwrap_or_default();
+            this.set_doc(doc.clone());
+            this.native = false;
+            this.adopt_font();
+            this.relayout_keep();
+            let dir = std::env::temp_dir().join(format!("ow-pdf-button-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let out = dir.join("a.pdf");
+            this.write_pdf(&out);
+            let got = std::fs::read(&out).expect("the PDF is written");
+            let mut want = Vec::new();
+            paper::doc_to_pdf(&doc, None, &mut want).expect("print");
+            let _ = std::fs::remove_dir_all(&dir);
+            assert_eq!(got.len(), want.len(), "the PDF differs from the print's");
+            assert!(got == want, "the PDF differs from the print's");
+        });
+    }
 }

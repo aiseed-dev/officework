@@ -20,6 +20,36 @@ impl Writer {
             && ui::settings::get("page_pictures").is_none_or(|v| v.trim() != "0")
     }
 
+    /// **The PDF of a docx is written from the same pages as the screen**
+    /// (step 4): `pdfw` writes the leaves the page pictures are drawn from,
+    /// with the handwritten strokes on top, so shapes, text boxes and
+    /// cropped pictures come out as they are shown, and only the letters
+    /// used are embedded. `None` when this path does not apply (a document
+    /// of this app, vertical text, or no layout yet), and the older writer
+    /// is used
+    pub(crate) fn write_pdf_pages(&self, p: &std::path::Path) -> Option<Result<(), String>> {
+        if self.native || self.page.vertical {
+            return None;
+        }
+        let src = self.page_src.as_ref()?;
+        let mut leaves = match paper::page_leaves(src) {
+            Ok(v) => v,
+            Err(e) => return Some(Err(e)),
+        };
+        let whole = paper::Paper::from_page(&src.page);
+        paper::pdfw::put_ink(&mut leaves, &self.doc.ink, whole.height_mm);
+        let fonts = src.font_bytes();
+        Some(kumihan::atomic::save(p, |f| {
+            paper::pdfw::write_pages_fonts(
+                &leaves,
+                whole.width_mm,
+                whole.height_mm,
+                &fonts,
+                std::io::BufWriter::new(f),
+            )
+        }))
+    }
+
     /// The pages of the last layout, made once per layout
     fn pages_now(&mut self) -> Option<Arc<Vec<paper::pdfw::Leaf>>> {
         if self.pic_gen != self.layout_gen || self.pic_leaves.is_none() {
