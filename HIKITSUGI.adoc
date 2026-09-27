@@ -30,6 +30,26 @@
   状態行・本家・往復・径路・雛形。CI からも外した(一覧は人が読む物)。発注者「プログラムよりも、
   使って修正して行く方がいい。少しずつやっていく」。1 回目(2026-09-18): 状態行 → ステータスバー、
   径路 → パス、雛形 → テンプレート(手引きと画面の文言 62 枚)。次は 道具・本家・往復
+* **2026-09-27: officework 0.8.0 と aiseed office 0.1.0-alpha.6 を出す用意ができている。**
+  中身は様式を埋める機能(`Book.fill`、`Doc.fill_form`、別紙、描画の一覧)、リボンの設定ファイル、
+  絵と図形の重なりと `a:fillRect` と `behindDoc` の直し。RELEASE.adoc(原本)と RELEASE.ja.adoc、
+  README の版名、pysheet・calc・writer・officework の `Cargo.toml`、`web/main.py` の `VERSION`、
+  `release.yml` の本文を上げた。公開の門の 6 つ、普段の検査の試験(1552 件と pysheet の lib)と
+  clippy、`paper --features e` は通った。wheel を新しい venv に入れて、`ci.yml` の見本 3 つと、
+  aiai の履歴書 2 つ・文書の様式を動かした。紹介の Web の比較の絵は、メニューの PDF が前と
+  1 画素も違わず、事業のご報告は今回の変更を使っていないので撮り直していない。
+  **push、`publish-pypi.yml` の dry run、タグ `v0.8.0` と `app-v0.1.0-alpha.6` は発注者。**
+  tests.yml の突き合わせで `unix_gate_check`・`tougou_ochi_check`・`dialog_value_check` の 3 つが
+  赤い。3 つとも 0.7.0 のときから同じで、今回の変更ではない。`unix_gate_check` は
+  `ops::Host::activate_sheet` を Windows に無いと言うが、trait は cfg(unix) の外にあり、alpha.5 の
+  Windows 版も組めていたので、検査の方が古い。次の版で直す。
+  この Mac では `bash tools/ci-test.sh` を通すと `DYLD_FALLBACK_LIBRARY_PATH` が消え(`/bin/bash` は
+  SIP で守られていて `DYLD_` を捨てる)、pysheet の lib の試験が libpython を見つけられずに落ちる。
+  その 1 つは `cargo test -p pysheet --lib` を直に回して確かめる
+  **文書の画面の PDF のボタン(`writer/src/text.rs` の `write_pdf`)は、まだ printpdf の古い書き手。**
+  図形・浮かぶ写真・本文の後ろの板が出ず、書体を丸ごと埋め込む(報告書.docx が 10MB、エンジンは
+  32KB)。0.7.0 から変わっていない。エンジンの `paper::doc_to_pdf` の道に替えるのが次の仕事。
+  リリースノートの「まだ直っていないこと」に書いた
 * **2026-09-18: 0.1.0-alpha.3 を出す用意ができている。** 発注者の決め「画面も最低限は保つ。
   Mac の直しを alpha.3 で出して、以後は PDF 化に専念する」。officework / calc / writer の
   Cargo.toml と README・writer の手引きの版名を alpha.3 に上げ、release.yml の本文に

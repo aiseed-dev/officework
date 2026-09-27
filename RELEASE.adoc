@@ -182,6 +182,12 @@ Known gaps in the engine:
 
 Known gaps in the app:
 
+* the PDF written from the document screen (the PDF button) still goes
+  through an older writer. It leaves out shapes, floating pictures and the
+  panels behind the text, sets the text in the screen's font, and embeds
+  whole fonts: a two-page report came to 10 MB, where the engine's PDF of the
+  same file is 32 KB. The engine's PDF (`Doc.save("x.pdf")`) has all of them
+
 * a font with no bold face of its own (MS Mincho, for one) stays regular on
   the editor screen
 * the editor screen does not follow `w:titlePg`, a header of its own on the
