@@ -5230,4 +5230,37 @@ mod shape_pick_tests {
             assert!(spec.contains("[\"a\\\"b\"]"), "引用符が逃げていない: {spec}");
         });
     }
+
+    /// **The screen's pages are the PDF's pages** (docs/sekkei/hyouji-e.ja.adoc,
+    /// step 1). A docx opened on the screen keeps what its pages are made
+    /// from, and the pages made from it carry the same text at the same
+    /// places, and the same pictures, as the pages the PDF is written from
+    #[gpui::test]
+    fn the_screens_pages_are_the_pdfs_pages(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sample/報告書.docx");
+            let bytes = std::fs::read(&path).expect("the sample report");
+            let (doc, _) = ooxml::read(std::io::Cursor::new(bytes)).expect("reads");
+            this.pg = doc.page.unwrap_or_default();
+            this.set_doc(doc.clone());
+            this.native = false;
+            this.adopt_font();
+            this.relayout_keep();
+            let src = this.page_src.as_ref().expect("the layout keeps its page source");
+            let screen = paper::page_leaves(src).expect("screen pages");
+            let print = paper::doc_pages(&doc, None).expect("print pages").leaves;
+            assert_eq!(screen.len(), print.len(), "page count");
+            for (k, (a, b)) in screen.iter().zip(&print).enumerate() {
+                let words = |l: &paper::pdfw::Leaf| -> Vec<(String, i32, i32)> {
+                    l.pieces
+                        .iter()
+                        .map(|p| (p.text.clone(), (p.x_mm * 10.0).round() as i32, (p.y_mm * 10.0).round() as i32))
+                        .collect()
+                };
+                assert_eq!(words(a), words(b), "page {k}: text or its place differs");
+                assert_eq!(a.images.len(), b.images.len(), "page {k}: pictures");
+            }
+        });
+    }
 }

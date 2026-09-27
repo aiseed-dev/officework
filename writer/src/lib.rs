@@ -358,6 +358,14 @@ pub struct Writer {
     /// drawings), placed by the paper side after the layout; drawn like
     /// `doc.shapes` but never picked or edited (2026-09-20)
     yosomono: Vec<kumihan::DocShape>,
+    /// The sheet as laid out, before `refresh_hf` stacks the pages for the
+    /// screen; the last layout's copy goes into `page_src`
+    page_flat: Option<kumihan::Sheet>,
+    /// What the screen's page pictures and the PDF are made from, kept by the
+    /// last layout (`paper::page_leaves`, docs/sekkei/hyouji-e.ja.adoc)
+    pub(crate) page_src: Option<paper::PageSource>,
+    /// The page the last layout used (the first section's, for a docx)
+    laid_page: kumihan::PageSetup,
     /// Font files the layout resolved for this document, waiting to be
     /// registered with the screen's text system (name, bytes); the names
     /// already registered. Word's own fonts live in its app bundle and are

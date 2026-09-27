@@ -1777,17 +1777,72 @@ pub struct DocPages {
 pub fn doc_pages(doc: &kumihan::Document, theme: Option<&kumihan::theme::Theme>) -> Result<DocPages, String> {
     let (d, laid, fonts) = doc_laid(doc, theme)?;
     let (mut sheet, page) = (laid.sheet, laid.page);
-    anchored_pictures(&d, &mut sheet, page);
+    let names: Vec<&str> = fonts.iter().map(|(n, _)| n.as_str()).collect();
+    let leaves = leaves_of(&d, &mut sheet, page, &names, &laid.font)?;
+    Ok(DocPages { leaves, fonts, sheet, paper: Paper::from_page(&page) })
+}
+
+/// **What a document's pages are made from**, after layout and before the
+/// pages are cut: the composed document, the laid-out sheet as the paper
+/// side counts it (not stacked for the screen), the page, the body face (its
+/// family name and bytes) and the run faces the layout resolved.
+///
+/// The document screen keeps one of these from its last layout and makes its
+/// pages from it with [`page_leaves`], so the screen shows the same pages the
+/// PDF prints (docs/sekkei/hyouji-e.ja.adoc). The faces are shared or moved,
+/// not copied: a layout runs on every keystroke
+#[derive(Clone, Default)]
+pub struct PageSource {
+    pub doc: kumihan::Document,
+    pub sheet: kumihan::Sheet,
+    pub page: kumihan::PageSetup,
+    pub family: String,
+    pub font: std::sync::Arc<Vec<u8>>,
+    pub run_fonts: Vec<(String, Vec<u8>)>,
+}
+
+impl PageSource {
+    /// The faces by name, the body face first: the numbers a page's text
+    /// pieces carry index this list
+    pub fn font_names(&self) -> Vec<&str> {
+        std::iter::once(self.family.as_str()).chain(self.run_fonts.iter().map(|(n, _)| n.as_str())).collect()
+    }
+
+    /// The faces' bytes in the same order, to draw the pages
+    pub fn font_bytes(&self) -> Vec<&[u8]> {
+        std::iter::once(self.font.as_slice()).chain(self.run_fonts.iter().map(|(_, b)| b.as_slice())).collect()
+    }
+}
+
+/// The pages of a [`PageSource`], made the way [`doc_pages`] makes them
+pub fn page_leaves(src: &PageSource) -> Result<Vec<pdfw::Leaf>, String> {
+    let mut sheet = src.sheet.clone();
+    leaves_of(&src.doc, &mut sheet, src.page, &src.font_names(), &src.font)
+}
+
+/// The steps after layout that turn a laid-out document into pages: floating
+/// pictures placed by their anchors, the document's and other programs'
+/// drawings, headers and footers, then the pages themselves. The one routine
+/// behind the PDF, the PNG and the screen's page pictures
+fn leaves_of(
+    d: &kumihan::Document,
+    sheet: &mut kumihan::Sheet,
+    page: kumihan::PageSetup,
+    names: &[&str],
+    font: &[u8],
+) -> Result<Vec<pdfw::Leaf>, String> {
+    anchored_pictures(d, sheet, page);
     let mut shapes = d.shapes.clone();
-    shapes.extend(foreign_shapes(&d, &sheet, page));
+    shapes.extend(foreign_shapes(d, sheet, page));
     let dress = PageDress { watermark: d.watermark.clone(), shapes, ..Default::default() };
-    let hf = doc_hf_lines(&d, &laid.font, &sheet, page)?;
+    let hf = doc_hf_lines(d, font, sheet, page)?;
     let paper = Paper::from_page(&page);
-    let (leaves, _lost) = {
-        let font_of = font_index_of(&fonts);
-        pdfw::sheet_leaves_fonts(&sheet, paper, &dress, hf, &font_of)
+    // The same numbering as font_index_of: the face's place in the list
+    let font_of = |name: Option<&str>| -> u8 {
+        name.and_then(|n| names.iter().position(|x| *x == n)).map(|i| i.min(255) as u8).unwrap_or(0)
     };
-    Ok(DocPages { leaves, fonts, sheet, paper })
+    let (leaves, _lost) = pdfw::sheet_leaves_fonts(sheet, paper, &dress, hf, &font_of);
+    Ok(leaves)
 }
 
 /// **頁ごとのヘッダーとフッターの行を組む閉包。** `k` は 1 始まりの頁。

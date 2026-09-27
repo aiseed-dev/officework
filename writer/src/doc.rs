@@ -31,6 +31,11 @@ pub(crate) struct Look {
     pub vertical: bool,
     pub group: kumihan::theme::Setting,
     pub view_w_px: f32,
+    /// Lay out by the document's own sections, as the PDF does: page 1 on
+    /// the first section's paper and pushed by its header, not `pg` (the
+    /// last section's). A docx is shown this way so the screen's pages are
+    /// the PDF's (docs/sekkei/hyouji-e.ja.adoc)
+    pub sections: bool,
 }
 
 impl Look {
@@ -53,7 +58,11 @@ impl Look {
         });
         paper::layout_doc(
             src,
-            &paper::DocOpts { measure_mm, page: Some(self.pg), endless: self.group.endless() },
+            &paper::DocOpts {
+                measure_mm,
+                page: (!self.sections).then_some(self.pg),
+                endless: self.group.endless(),
+            },
             run_fonts,
         )
     }
@@ -111,6 +120,9 @@ impl Writer {
             recover_at: std::time::Instant::now(),
             image_cache: Default::default(),
             yosomono: Vec::new(),
+            page_flat: None,
+            page_src: None,
+            laid_page: kumihan::PageSetup::default(),
             fonts_pending: Vec::new(),
             fonts_added: Default::default(),
             font_bytes: std::sync::Arc::new(font_data().to_vec()),
@@ -653,7 +665,8 @@ impl Writer {
         };
         self.dress_page = (deco.watermark.clone(), deco.page_color.clone());
         let vertical = deco.vertical;
-        let snapshot = Look { pg: self.pg, vertical, group, view_w_px: self.view_w_px };
+        let snapshot =
+            Look { pg: self.pg, vertical, group, view_w_px: self.view_w_px, sections: !self.native };
         self.take_laid(snapshot.lay_once(&composed, &run_fonts));
         self.refresh_hf();
         // **跨がない**(発表)。折った結果を見て、境をまたいだ段落があれば
@@ -670,6 +683,16 @@ impl Writer {
         paper::anchored_pictures(&composed, &mut self.page, self.pg);
         self.yosomono = paper::foreign_shapes(&composed, &self.page, self.pg);
         self.fonts_pending = self.faces_to_add(&run_fonts);
+        // What the page pictures and the PDF are made from: the same steps
+        // the paper side takes after its layout, on this layout
+        self.page_src = self.page_flat.take().map(|sheet| paper::PageSource {
+            doc: composed,
+            sheet,
+            page: self.laid_page,
+            family: self.font_name.to_string(),
+            font: self.font_bytes.clone(),
+            run_fonts,
+        });
     }
 
     /// The font faces the screen still has to register, for the families the
@@ -721,6 +744,9 @@ impl Writer {
                     self.font_bytes = std::sync::Arc::new(l.font);
                 }
                 self.font_name = SharedString::from(l.family);
+                // The pages are made from the sheet before it is stacked
+                self.page_flat = Some(l.sheet.clone());
+                self.laid_page = l.page;
                 self.page = l.sheet;
             }
             Err(e) => {
@@ -2842,6 +2868,7 @@ impl Writer {
             vertical: self.doc.vertical,
             group: th.setting,
             view_w_px: self.view_w_px,
+            sections: false,
         };
         // 画面と同じ共通ルーチン(合成 → 書体の解決 → 組み)
         let mut composed = paper::compose_doc(&self.doc, Some(&th));
