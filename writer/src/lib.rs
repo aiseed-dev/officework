@@ -366,6 +366,12 @@ pub struct Writer {
     pub(crate) page_src: Option<paper::PageSource>,
     /// The page the last layout used (the first section's, for a docx)
     laid_page: kumihan::PageSetup,
+    /// Counts layouts, so the page pictures know when to be made again
+    layout_gen: u64,
+    /// The pages and their pictures made for `pic_gen` (src/pages.rs)
+    pic_gen: u64,
+    pic_leaves: Option<std::sync::Arc<Vec<paper::pdfw::Leaf>>>,
+    pic_cache: std::collections::HashMap<(usize, u32), std::sync::Arc<gpui::RenderImage>>,
     /// Font files the layout resolved for this document, waiting to be
     /// registered with the screen's text system (name, bytes); the names
     /// already registered. Word's own fonts live in its app bundle and are
@@ -1521,6 +1527,7 @@ pub use keys::bind_ui_scale_keys_with;
 /// 受け口(JSON 1行)。`officework` からも捌き手を呼びます
 pub mod rpc;
 mod text;
+mod pages;
 
 #[cfg(test)]
 mod tests;

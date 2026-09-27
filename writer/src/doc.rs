@@ -123,6 +123,10 @@ impl Writer {
             page_flat: None,
             page_src: None,
             laid_page: kumihan::PageSetup::default(),
+            layout_gen: 0,
+            pic_gen: 0,
+            pic_leaves: None,
+            pic_cache: Default::default(),
             fonts_pending: Vec::new(),
             fonts_added: Default::default(),
             font_bytes: std::sync::Arc::new(font_data().to_vec()),
@@ -693,6 +697,7 @@ impl Writer {
             font: self.font_bytes.clone(),
             run_fonts,
         });
+        self.layout_gen = self.layout_gen.wrapping_add(1);
     }
 
     /// The font faces the screen still has to register, for the families the
