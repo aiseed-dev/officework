@@ -380,6 +380,20 @@ Sales *rose* against last month.footnote:[Tokyo and Osaka combined]
 
 The full list of markings is in the next section.
 
+=== The text and its pages side by side (in the next version)
+
+An `.adoc` opens with its text on the left and its pages on the right.
+The text is the document, so you edit the text itself.
+
+* *Left:* the characters of the file, in a fixed-width typeface, wrapped to the width of the pane. Type, delete, copy and undo work as in the rest of writer
+* *Right:* the pages the text makes, laid out as the PDF lays them out (template, forms, table formulas). They are made again about a third of a second after you stop typing
+* If the text cannot be made into pages, the reason is shown above the pages, and the last pages stay
+* *Saving writes the characters back as they are.* Nothing is tidied: comments, blank lines and line breaks stay where you put them. Only the lines you changed show in a diff
+* *Print (PDF)* writes the pages shown on the right. A file with several documents gives one PDF with all of them
+* The buttons that put a look on selected text (bold, size, typeface) do not change the file in this view. Write the marking in the text instead (`*bold*`)
+
+To open an `.adoc` the older way (edited on its pages), write `adoc_code = "0"` in `~/.config/officework/settings.toml`.
+
 === Several documents in one file
 
 One `.adoc` can hold several documents — for keeping together the invoice drafts you send out at the same time.
@@ -388,6 +402,8 @@ Open a file with two or more and a row of document tabs appears at the bottom of
 In find & replace, pick the scope "this file" and the search moves on to the next document when it finishes the current one.
 
 === Saving tidies up the line breaks
+
+This applies when an `.adoc` is edited on its pages (`adoc_code = "0"`). In the view with the text and its pages side by side, saving writes the text as it is.
 
 When writer saves, it puts *one sentence on one line*.
 Sentences end at `。`, `!` or `?`; in English it only breaks after a `.` followed by a space and a capital letter (never inside `Dr. Smith` or `example.com/a.b`).

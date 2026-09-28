@@ -589,6 +589,14 @@ impl Writer {
     pub(crate) fn write_pdf(&mut self, p: &std::path::Path) {
         // A print template (template-print.toml) lays the document out again
         // for the paper. Without one, the screen's pages are the paper
+        if self.code.is_some() {
+            let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+            self.status = match self.code_pdf(p) {
+                Ok(()) => ui::tf!("pdf_written", name).into(),
+                Err(e) => ui::tf!("cant_write_pdf", e).into(),
+            };
+            return;
+        }
         let for_print = self.print_layout();
         if for_print.is_none() {
             if let Some(r) = self.write_pdf_pages(p) {
@@ -1269,6 +1277,9 @@ impl Writer {
         // **横幅可変(原稿の姿)のときは、紙も窓に合わせます。**
         // 紙だけ A4 のままだと、窓のほうが広い機械で本文と表が紙からはみ出ます
         // (2026-08-18 実機で見つけました)
+        if self.code.is_some() {
+            return (self.code_text_w() / crate::PX_PER_MM).max(60.0);
+        }
         if self.native && self.tmpl.setting.fluid {
             return (self.view_w_px / crate::PX_PER_MM).max(60.0);
         }
@@ -1287,7 +1298,7 @@ impl Writer {
     /// **紙を1枚ずつ積んで見せるか。** 普通の文書は積みます。Web の形
     /// (テンプレートの `区切り = "なし"`)と縦書きと見開きは、1枚の長い紙です
     pub(crate) fn sheets(&self) -> bool {
-        let endless = self.native && self.tmpl.setting.endless();
+        let endless = self.setting().endless();
         !endless && !self.page.vertical && !self.multipage
     }
 

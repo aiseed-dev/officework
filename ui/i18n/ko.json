@@ -2383,5 +2383,8 @@
  "this_computer_zone": "이 컴퓨터 설정({})",
  "used_next_xlsx_open": "다음에 여는 xlsx부터 사용합니다: {}",
  "time_zone_prompt": "IANA 표준 시간대 이름(예: Asia/Seoul). 비워 두면 이 컴퓨터 설정을 사용합니다",
- "unknown_time_zone": "알 수 없는 표준 시간대 이름: {}"
+ "unknown_time_zone": "알 수 없는 표준 시간대 이름: {}",
+ "code_pages_making": "페이지를 만드는 중…",
+ "code_pages_cannot": "이 텍스트로는 페이지를 만들 수 없습니다: {}",
+ "code_opened": "{} — 왼쪽은 텍스트, 오른쪽은 그 페이지입니다. 텍스트는 그대로 저장됩니다"
 }

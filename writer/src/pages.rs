@@ -9,6 +9,23 @@
 use crate::*;
 use std::sync::Arc;
 
+/// A page drawn at `bai` pixels per mm, as gpui keeps pictures (BGRA)
+pub(crate) fn picture(
+    leaf: &paper::pdfw::Leaf,
+    w_mm: f32,
+    h_mm: f32,
+    bai: f32,
+    fonts: &[&[u8]],
+) -> Option<Arc<gpui::RenderImage>> {
+    let e = paper::e::egaku_fonts(leaf, w_mm, h_mm, bai, fonts);
+    let mut bgra = e.rgba;
+    for p in bgra.chunks_exact_mut(4) {
+        p.swap(0, 2);
+    }
+    let buf = image::RgbaImage::from_raw(e.w, e.h, bgra)?;
+    Some(Arc::new(gpui::RenderImage::new(vec![image::Frame::new(buf)])))
+}
+
 impl Writer {
     /// Whether the document is shown as page pictures: a docx on stacked
     /// pages (not the flowing view, the two-page spread or vertical text).
@@ -72,14 +89,7 @@ impl Writer {
         if let Some(p) = self.pic_cache.get(&key) {
             return Some((p.clone(), w, h));
         }
-        let e = paper::e::egaku_fonts(leaf, w, h, bai, &src.font_bytes());
-        // gpui keeps pictures as BGRA
-        let mut bgra = e.rgba;
-        for p in bgra.chunks_exact_mut(4) {
-            p.swap(0, 2);
-        }
-        let buf = image::RgbaImage::from_raw(e.w, e.h, bgra)?;
-        let pic = Arc::new(gpui::RenderImage::new(vec![image::Frame::new(buf)]));
+        let pic = picture(leaf, w, h, bai, &src.font_bytes())?;
         self.pic_cache.insert(key, pic.clone());
         Some((pic, w, h))
     }

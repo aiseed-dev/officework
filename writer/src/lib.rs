@@ -372,6 +372,12 @@ pub struct Writer {
     pic_gen: u64,
     pic_leaves: Option<std::sync::Arc<Vec<paper::pdfw::Leaf>>>,
     pic_cache: std::collections::HashMap<(usize, u32), std::sync::Arc<gpui::RenderImage>>,
+    /// An .adoc edited as its text beside its pages (src/code.rs)
+    pub(crate) code: Option<code::CodeView>,
+    /// Whether an .adoc opens as its text beside its pages. From
+    /// settings.toml (`adoc_code`); the tests start with it off, as most of
+    /// them edit an .adoc on its pages
+    pub(crate) code_open: bool,
     /// Font files the layout resolved for this document, waiting to be
     /// registered with the screen's text system (name, bytes); the names
     /// already registered. Word's own fonts live in its app bundle and are
@@ -1528,6 +1534,7 @@ pub use keys::bind_ui_scale_keys_with;
 pub mod rpc;
 mod text;
 mod pages;
+mod code;
 
 #[cfg(test)]
 mod tests;

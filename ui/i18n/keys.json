@@ -9510,5 +9510,17 @@
   {
     "key": "unknown_time_zone",
     "kind": "msg"
+  },
+  {
+    "key": "code_pages_making",
+    "kind": "msg"
+  },
+  {
+    "key": "code_pages_cannot",
+    "kind": "msg"
+  },
+  {
+    "key": "code_opened",
+    "kind": "msg"
   }
 ]

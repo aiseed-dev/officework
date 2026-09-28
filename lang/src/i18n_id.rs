@@ -2235,4 +2235,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("used_next_xlsx_open", "Dipakai mulai xlsx berikutnya yang dibuka: {}"),
     ("time_zone_prompt", "Nama zona waktu IANA (mis. Asia/Jakarta). Kosongkan untuk memakai milik komputer ini"),
     ("unknown_time_zone", "Nama zona waktu tidak dikenal: {}"),
+    ("code_pages_making", "Membuat halaman…"),
+    ("code_pages_cannot", "Tidak dapat membuat halaman dari teks: {}"),
+    ("code_opened", "{} — teks di kiri, halamannya di kanan. Teks disimpan apa adanya"),
 ];

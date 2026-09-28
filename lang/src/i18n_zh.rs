@@ -2235,4 +2235,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("used_next_xlsx_open", "从下次打开的 xlsx 起使用:{}"),
     ("time_zone_prompt", "IANA 时区名称(例如 Asia/Shanghai)。留空则使用这台电脑的设置"),
     ("unknown_time_zone", "找不到时区名称:{}"),
+    ("code_pages_making", "正在排版页面…"),
+    ("code_pages_cannot", "无法由此文本排版页面：{}"),
+    ("code_opened", "{} — 左边是文本，右边是其页面。文本按原样保存"),
 ];

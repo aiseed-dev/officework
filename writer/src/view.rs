@@ -37,6 +37,10 @@ impl Render for Writer {
         ));
         // **点検の道具へ、ボタンの場所を渡す。** 環境変数が無ければ何もしない
         self.dump_ui();
+        // An .adoc beside its pages: make the pages again when the text
+        // has changed, and draw them in the right pane (src/code.rs)
+        self.code_tick(cx);
+        let code_pane = self.code.is_some().then(|| self.code_pane(window.scale_factor(), cx));
         // Register the fonts the layout resolved, so the screen draws the
         // faces the print uses (Word's bundled fonts are not system fonts)
         if !self.fonts_pending.is_empty() {
@@ -832,7 +836,7 @@ impl Render for Writer {
                     .rounded_sm()
                     .bg(if self.native { rgb(0xE3F0F6) } else { th_cmd_bg })
                     .text_color(if self.native { rgb(0x165E83) } else { th_status })
-                    .child(if self.native { "adoc" } else { "docx" }),
+                    .child(if self.native || self.code.is_some() { "adoc" } else { "docx" }),
             )
             .child(div().flex_1().whitespace_nowrap().overflow_hidden()
                 .child(SharedString::from(match self.hover_hint {
@@ -2006,6 +2010,7 @@ impl Render for Writer {
                     }))
                     .child(InputSink { view: me })
                     .children(menu))
+                .children(code_pane)
                 .children(rp_panel)
             })
             // 端末のパネル(表示 > ターミナル)。本文の下、文書のタブの上

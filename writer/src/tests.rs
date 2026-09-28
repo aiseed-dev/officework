@@ -5343,4 +5343,97 @@ mod shape_pick_tests {
             assert!(got == want, "the PDF differs from the print's");
         });
     }
+
+    /// **An .adoc opens as its text beside its pages, and saving writes
+    /// the text back byte for byte** (src/code.rs). The text is what the
+    /// author wrote: a comment, spaces and the order of the lines stay,
+    /// which writing the document back from its meaning would change
+    #[gpui::test]
+    fn an_adoc_is_edited_as_its_text(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let dir = std::env::temp_dir().join(format!("ow-code-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let src = dir.join("a.adoc");
+            let text = "= 申請書\n:author: 山田\n\n// 下書き\n== 目的\n\n本文です。  二つの空白。\n\n|===\n|氏名 |山田\n|===\n";
+            std::fs::write(&src, text).unwrap();
+            this.code_open = true;
+            this.open(src.clone());
+            assert!(this.code.is_some(), "not the split view: {}", this.status);
+            assert!(!this.native);
+            assert!(!this.sheets(), "the text should flow, not sit on pages");
+            // A fix in the text, then save: only that line changes
+            let fixed = this.doc.body_text().replace("本文です。", "本文を直しました。");
+            this.ed = Editor::new(&fixed);
+            this.relayout();
+            let out = dir.join("b.adoc");
+            this.save_to(out.clone());
+            assert_eq!(std::fs::read_to_string(&out).unwrap(), text.replace("本文です。", "本文を直しました。"));
+            // The pages are those of the text as it is now
+            let pv = crate::code::make_pages(this.job_now().expect("parses")).expect("pages");
+            assert!(!pv.pages.is_empty());
+            let words: String = pv.pages[0].0.pieces.iter().map(|p| p.text.as_str()).collect();
+            assert!(words.contains("本文を直しました"), "the pages show the old text: {words}");
+            assert!(!words.contains("下書き"), "a comment came out on the page");
+            let pdf = dir.join("b.pdf");
+            this.write_pdf(&pdf);
+            let bytes = std::fs::read(&pdf).expect("the PDF is written");
+            assert!(bytes.starts_with(b"%PDF"), "{}", this.status);
+            // Opening a docx leaves the split view
+            this.open(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sample/報告書.docx"));
+            assert!(this.code.is_none());
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+
+    /// **Filling a field of a form and fixing a word, then saving the docx**
+    /// (docs/sekkei/hyouji-e.ja.adoc, step 6). The letters go in the way
+    /// typing puts them (`ui::handler::replace`). After saving and opening
+    /// again, the name is inside its content control, the fixed word is in
+    /// the body, and the other fields are still there
+    #[gpui::test]
+    fn a_form_is_filled_and_a_word_fixed_in_a_docx(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sample/writer/03_申込書.docx");
+            this.open(src);
+            assert!(!this.native && this.code.is_none());
+            let fields = this.sdt_names();
+            // The name field: the second cell of the first row
+            this.switch_target(Target::Cell { table: 0, row: 0, col: 1 });
+            let end = this.ed.text().len();
+            this.ed.move_to(end, false);
+            ui::handler::replace(this, None, "山田 花子");
+            // Fix a word in the body
+            this.switch_target(Target::Body);
+            let at = this.ed.text().find("薄い箱").expect("the word");
+            this.ed.move_to(at, false);
+            this.ed.move_to(at + "薄い箱".len(), true);
+            ui::handler::replace(this, None, "薄い枠");
+            let dir = std::env::temp_dir().join(format!("ow-form-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let out = dir.join("filled.docx");
+            this.save_to(out.clone());
+            let bytes = std::fs::read(&out).expect("saved");
+            let _ = std::fs::remove_dir_all(&dir);
+            let (doc, _) = ooxml::read(std::io::Cursor::new(bytes)).expect("reads again");
+            assert!(doc.body_text().contains("薄い枠"), "the fixed word is lost");
+            assert!(!doc.body_text().contains("薄い箱"));
+            let table = doc.tables().next().expect("the table");
+            let cell = &table.rows[0][1];
+            let runs: Vec<&kumihan::Run> = cell.paragraphs.iter().flat_map(|p| p.runs.iter()).collect();
+            let named = runs
+                .iter()
+                .find(|r| r.text.contains("山田"))
+                .expect("the name is not in the cell");
+            // The field is named by its alias (`w:alias`, ECMA-376 17.5.2.1)
+            assert_eq!(
+                named.fmt.sdt.as_deref().map(|s| s.alias.as_str()),
+                Some("氏名"),
+                "the name is not inside its field"
+            );
+            this.set_doc(doc);
+            assert_eq!(this.sdt_names(), fields, "fields went missing");
+        });
+    }
 }
