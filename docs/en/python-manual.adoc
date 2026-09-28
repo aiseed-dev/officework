@@ -77,6 +77,8 @@ s._s.set_shape(0, field="写真", text="…", font="BIZ UD明朝")   # change a 
 
 Saving a book with pictures as adoc writes the pictures as files in `images/` next to it.
 
+The template holds one format per cell, so parts of a cell's text in other sizes (an xlsx cell's runs) cannot keep their own sizes. `save_look` writes such a cell at the size of its part with the most characters.
+
 === Reading and writing cells
 
 `s["A1"]` returns a cell, as in openpyxl. Read the value through `.value`. A never-touched address still returns a cell, whose `.value` is None.

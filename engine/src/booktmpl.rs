@@ -286,10 +286,11 @@ fn collect_styles(b: &Book, t: &mut BookTheme) {
         // やっていません — 表の1行が同じ書式という形が事務では多いためです
         let mut run: Option<(Pos, Pos, String)> = None;
         for (p, c) in &sh.cells {
-            if c.fmt.is_plain() {
+            let f = sized_by_runs(&c.fmt, sh.rich_runs.get(p));
+            if f.is_plain() {
                 continue;
             }
-            let n = name_of(&c.fmt, &named, &mut auto);
+            let n = name_of(&f, &named, &mut auto);
             match &mut run {
                 Some((a, z, name))
                     if *name == n && z.row == p.row && z.col + 1 == p.col =>
@@ -325,6 +326,31 @@ fn collect_styles(b: &Book, t: &mut BookTheme) {
     t.styles.retain(|(n, _)| {
         !n.starts_with(w("format")) || t.style_at.iter().any(|(_, _, _, m)| m == n)
     });
+}
+
+/// **The size a cell is written with when its text has parts of other
+/// sizes** (the runs of an xlsx cell, `<r><rPr><sz>`, ECMA-376 18.4.4).
+///
+/// The template has one format per cell, so the parts cannot keep their own
+/// sizes (the decision of 2026-08-31: no runs in adoc, but convert so the
+/// cell still shows well). The part with the most characters sets the size.
+/// The heading of the Ministry's resume form is 「本人希望記入欄」 at 10pt
+/// then 36 characters at 9pt; written all at 10pt it ran out of its box
+/// (2026-09-28)
+fn sized_by_runs(fmt: &CellFormat, runs: Option<&Vec<book::RichRun>>) -> CellFormat {
+    let Some(runs) = runs else { return fmt.clone() };
+    let own = fmt.size_c;
+    let size_of = |r: &book::RichRun| r.size_pt.map(|pt| (pt * 100.0).round() as u32).or(own);
+    let sizes: Vec<Option<u32>> = runs.iter().map(size_of).collect();
+    if sizes.windows(2).all(|w| w[0] == w[1]) {
+        return fmt.clone();
+    }
+    let most = runs.iter().max_by_key(|r| r.text.chars().count()).and_then(size_of);
+    let mut f = fmt.clone();
+    if most.is_some() {
+        f.size_c = most;
+    }
+    f
 }
 
 /// 見た目をブックに当てる。**そのシートが無ければ黙って飛ばします**
@@ -1467,6 +1493,34 @@ mod tests {
         let from = from_book(&ledger());
         let back = parse(&write(&from)).expect("読めない");
         assert_eq!(back, from, "往復で見た目が変わった");
+    }
+
+    /// **A cell whose text has parts of other sizes is written at the
+    /// size of its longest part** (`sized_by_runs`), as the heading of the
+    /// Ministry's resume form: 7 characters at 10pt, 36 at 9pt
+    #[test]
+    fn a_cell_takes_the_size_of_its_longest_part() {
+        let mut b = Book::new();
+        let at = Pos::parse("A1").unwrap();
+        let head = "本人希望記入欄";
+        let rest = "（特に給料・職種・勤務時間・勤務地・その他についての希望などがあれば記入）";
+        let mut c = Cell::input(&format!("{head}{rest}"));
+        c.fmt.size_c = Some(1000);
+        b.sheets[0].set(at, c);
+        let run = |t: &str, pt: f32| book::RichRun { text: t.into(), size_pt: Some(pt), ..Default::default() };
+        b.sheets[0].rich_runs.insert(at, vec![run(head, 10.0), run(rest, 9.0)]);
+        // A second cell in one size keeps its own
+        let at2 = Pos::parse("B1").unwrap();
+        let mut c2 = Cell::input("氏名");
+        c2.fmt.size_c = Some(1000);
+        b.sheets[0].set(at2, c2);
+        let t = from_book(&b);
+        let size_at = |p: Pos| {
+            let (_, _, _, name) = t.style_at.iter().find(|(_, a, z, _)| *a <= p && p <= *z).expect("a style");
+            t.styles.iter().find(|(n, _)| n == name).and_then(|(_, f)| f.size_c)
+        };
+        assert_eq!(size_at(at), Some(900));
+        assert_eq!(size_at(at2), Some(1000));
     }
 
     /// **当てるとブックに戻る。** 意味だけの `.adoc` と組み合わせる形
