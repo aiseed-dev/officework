@@ -5436,4 +5436,44 @@ mod shape_pick_tests {
             assert_eq!(this.sdt_names(), fields, "fields went missing");
         });
     }
+
+    /// **A press on the pages puts the caret on its text, and the caret
+    /// brings the pages to its line** (src/code.rs)
+    #[gpui::test]
+    fn the_pages_and_the_text_point_at_each_other(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            let dir = std::env::temp_dir().join(format!("ow-code-click-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let src = dir.join("a.adoc");
+            let text = "= 申請書\n\n== 目的\n\n目的は*太字*です。\n\n== 方法\n\n方法は三つあります。\n";
+            std::fs::write(&src, text).unwrap();
+            this.code_open = true;
+            this.open(src);
+            let pv = crate::code::make_pages(this.job_now().expect("parses")).expect("pages");
+            this.code.as_mut().unwrap().pages = Some(std::sync::Arc::new(pv));
+            let _ = this.code_pane(1.0, cx);
+            let c = this.code.as_ref().unwrap();
+            let pv = c.pages.clone().unwrap();
+            let (li, l) = pv
+                .lines
+                .iter()
+                .enumerate()
+                .find(|(_, l)| l.chars.iter().any(|(ch, _)| *ch == '三'))
+                .expect("the line on the page");
+            let (_, cx_mm) = *l.chars.iter().find(|(ch, _)| *ch == '三').unwrap();
+            let x = 12.0 + (cx_mm + 0.3) * c.pxmm;
+            let y = c.tops[l.page] + (l.top_mm + l.h_mm / 2.0) * c.pxmm - c.scroll_px;
+            this.code_click(x, y);
+            assert_eq!(this.ed.cursor(), text.find('三').unwrap(), "the caret is not on the letter pressed");
+            // The caret on the heading's markings brings the pages to the heading
+            this.ed.move_to(text.find("== 目的").unwrap(), false);
+            this.code_sync();
+            let mark = this.code.as_ref().unwrap().mark.expect("a line is marked");
+            let words: String = pv.lines[mark].chars.iter().map(|(ch, _)| *ch).collect();
+            assert_eq!(words, "目的", "marked {words}");
+            assert_ne!(mark, li);
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
 }

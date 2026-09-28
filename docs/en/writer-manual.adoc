@@ -6,10 +6,27 @@ _日本語版(secondary): link:../ja/writer-manual.adoc[writer-manual.ja.adoc]_
 Those parts describe what we are building, not what ships today.
 
 The manual for officework's document editor.
-*A visual editor for AsciiDoc.* You edit your source (.adoc) as it looks.
-It is not a replacement for a processor such as Asciidoctor — it is a tool for writing the source.
+writer edits two kinds of file, in two different ways:
 
-Three different things:
+[cols="1,3,2"]
+|===
+| |How you edit |What is saved
+
+|*.adoc* |*You edit the text.* The left side shows the characters of the file, the right side the pages they make. Press a place on a page and the caret goes to its text (coming in the next version) |The characters as you left them
+|*.docx* |*You edit on the pages.* The pages are shown as they print, and you type on them |The docx, with the parts we do not touch carried over from the original
+|===
+
+*For an .adoc, the text is the document.* The look lives in the template, so the text holds only the content.
+A few markings are enough for forms and reports: `==` for a heading, `*` for a list, `|===` for a table, `**…**` for bold.
+Open `sample/writer/07_早見表.adoc` to see them beside the pages they make.
+What you edit is what is saved: nothing is hidden in it, and a diff shows only the lines you changed.
+The same text reads in any text editor and on GitHub, and an AI can read and write it.
+
+A docx carries much more than its content, so you edit it on its pages.
+
+writer is not a replacement for a processor such as Asciidoctor — it is a tool for writing the source.
+
+An .adoc can also be edited on its pages, as before (write `adoc_code = "0"` in settings.toml; see "The text and its pages side by side"). Edited that way, three things differ:
 
 [cols="1,1"]
 |===
@@ -24,7 +41,7 @@ Delimited blocks are shown with a look of their own and their lines can be edite
 Comments (`//` lines and `////` blocks) are not shown on screen, on paper or on the Web; they are kept on save.
 `include::`, `ifdef::`, `[…]` attribute lines and the delimiter lines themselves *are visible but not editable*.
 Put the caret in one and type, and the app says so instead.
-Edit those in a text editor.
+Edit those in the text (the side-by-side view).
 
 There are four destinations: screen, PDF, HTML and docx.
 The screen is one of them, so you can write on paper or in a plain flowing view.
@@ -387,7 +404,10 @@ The text is the document, so you edit the text itself.
 
 * *Left:* the characters of the file, in a fixed-width typeface, wrapped to the width of the pane. Type, delete, copy and undo work as in the rest of writer
 * *Right:* the pages the text makes, laid out as the PDF lays them out (template, forms, table formulas). They are made again about a third of a second after you stop typing
-* If the text cannot be made into pages, the reason is shown above the pages, and the last pages stay
+* *Press a place on a page* and the caret goes to the text it comes from
+* *The pages follow the caret.* The line of a page the caret's text is on has a yellow band, and the pages scroll to it when it is out of sight
+* If the text cannot be made into pages, the reason is shown above the pages with the line of the file, and the last pages stay
+* Markup the pages do not read is listed above the pages with the line it is on (for example `字下げの段落(literal)(7 行目)`; this list is in Japanese for now)
 * *Saving writes the characters back as they are.* Nothing is tidied: comments, blank lines and line breaks stay where you put them. Only the lines you changed show in a diff
 * *Print (PDF)* writes the pages shown on the right. A file with several documents gives one PDF with all of them
 * The buttons that put a look on selected text (bold, size, typeface) do not change the file in this view. Write the marking in the text instead (`*bold*`)
