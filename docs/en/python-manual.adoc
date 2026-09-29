@@ -173,6 +173,17 @@ A cell may hold several marks; text around them stays. *A mark the data does not
 
 A name the data does not hold at all is also filled with nothing, but `fill` warns about it and lists it in `b.missing`, so a slip such as 電話番号 written for 電話 is noticed. Rows past the end of a table and names given an empty value (`|性別 |`) are left blank without a word.
 
+=== Filling an Excel template in place (in the next version)
+
+A template made in Excel can be filled as it stands, with no marks: in the data's two-column table, name the cell with its address (`B5`, `履歴書!D9`) or with a name the template defines (Formulas > Name Manager). Marks such as `{氏名}` in the template's cells are filled as well.
+
+[source,python]
+----
+notes = sheet.Book.fill_template("履歴書.xlsx", data, "山田.xlsx")
+----
+
+Only the cells that change are written into the template's sheets; every other part of the file (formats, theme, shapes, document properties) is copied as it was. A text value goes into the cell as text and a number as a number, and the cell keeps its format. `notes` lists what cannot be put in this way (rows that would need a 別紙, a picture for a picture field). Names the data lacks are warned about, as with `fill`.
+
 A shape given a field name with the `field` item (`写真`) takes the picture file the data names under that name, looked for in the data file's folder.
 
 To show the form and edit it, take the draw list with `draw_list()`. Each page's `fields` gives each field's name, kind, rectangle (points from the page's top left) and value. Put an edit into the data with `data.set_field(name, value)` and fill again.

@@ -2066,6 +2066,26 @@ class Book(NoStrayAttributes):
         return b
 
     @staticmethod
+    def fill_template(template, data, out):
+        """Excel で作ったテンプレートの xlsx を、データのブックで埋めて ``out`` に
+        書きます。値が変わるセルだけをシートに書き、ほかの部品(書式、テーマ、
+        図形、文書の情報など)は元のまま写します。
+
+        データの 2 列の表の項目に、セルの番地(``B5``、``履歴書!D9``)か、
+        テンプレートの名前の定義の名前を書くと、そのセルに値が入ります。
+        ``{氏名}`` などの印も、``fill`` と同じように埋まります。
+
+        この形で入れられなかった物(別紙の要る行、写真の欄)を、文の並びで
+        返します。"""
+        path = _os.fspath(template)
+        missing = _engine.Book.missing(Book.open(path)._b, data._b)
+        if missing:
+            import warnings as _warnings
+            _warnings.warn("データに無い名前があります(空にしました): " + "、".join(missing),
+                           stacklevel=2)
+        return _engine.Book.fill_template(path, data._b, _os.fspath(out))
+
+    @staticmethod
     def fill(form, data):
         """様式(`{氏名}` などの印を持つブック)を、データのブックで埋めた
         新しいブックを返します。データに無い印は空になります。

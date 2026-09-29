@@ -269,6 +269,19 @@ impl PyBook {
         })
     }
 
+    // An Excel template filled in place: the cells that change are written
+    // into its sheets and every other part is copied as it was
+    // (sheet::xlsx::patch). Returns what could not be put in place
+    #[staticmethod]
+    fn fill_template(template: &str, data: &PyBook, out: &str) -> PyResult<Vec<String>> {
+        let bytes = std::fs::read(template)
+            .map_err(|e| PyIOError::new_err(format!("{template}: 読めない: {e}")))?;
+        let d = lock(&data.inner)?.book.clone();
+        let (filled, notes) = sheet::xlsx::patch::fill_template(&bytes, &d).map_err(PyValueError::new_err)?;
+        std::fs::write(out, filled).map_err(|e| PyIOError::new_err(format!("{out}: 書けない: {e}")))?;
+        Ok(notes)
+    }
+
     // The tables whose rows go on to a 別紙: (table, first row, last row)
     #[staticmethod]
     fn overflow(form: &PyBook, data: &PyBook) -> PyResult<Vec<(String, u32, u32)>> {

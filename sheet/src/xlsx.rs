@@ -20,6 +20,8 @@ pub mod styles;
 /// `theme1.xml` の読み書き
 pub mod theme;
 mod write;
+/// Filling an Excel template in place, the other parts as they were
+pub mod patch;
 
 pub use read::{read, read_with, ReadOptions, Report};
 pub use repair::{salvage, Salvage};
