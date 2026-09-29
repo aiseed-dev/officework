@@ -337,14 +337,15 @@ fn collect_styles(b: &Book, t: &mut BookTheme) {
 /// The heading of the Ministry's resume form is 「本人希望記入欄」 at 10pt
 /// then 36 characters at 9pt; written all at 10pt it ran out of its box
 /// (2026-09-28)
+///
+/// This holds also when all the parts share one size that differs from the
+/// cell's own, one part included (2026-09-30). The screen draws the parts'
+/// size, so a cell of 11pt whose text is all 9pt, in two parts that differ
+/// only in colour, was written at 11pt. A cell without parts keeps its size
 fn sized_by_runs(fmt: &CellFormat, runs: Option<&Vec<book::RichRun>>) -> CellFormat {
     let Some(runs) = runs else { return fmt.clone() };
     let own = fmt.size_c;
     let size_of = |r: &book::RichRun| r.size_pt.map(|pt| (pt * 100.0).round() as u32).or(own);
-    let sizes: Vec<Option<u32>> = runs.iter().map(size_of).collect();
-    if sizes.windows(2).all(|w| w[0] == w[1]) {
-        return fmt.clone();
-    }
     let most = runs.iter().max_by_key(|r| r.text.chars().count()).and_then(size_of);
     let mut f = fmt.clone();
     if most.is_some() {
@@ -1521,6 +1522,42 @@ mod tests {
         };
         assert_eq!(size_at(at), Some(900));
         assert_eq!(size_at(at2), Some(1000));
+    }
+
+    /// A cell whose parts all share one size other than the cell's own is
+    /// written at the parts' size, as the screen draws it. Two parts that
+    /// differ only in colour, and a single part, both count
+    #[test]
+    fn a_cell_takes_the_size_its_parts_share() {
+        let mut b = Book::new();
+        let run = |t: &str, pt: f32, color: &str| book::RichRun {
+            text: t.into(),
+            size_pt: Some(pt),
+            color: Some(color.into()),
+            ..Default::default()
+        };
+        let a1 = Pos::parse("A1").unwrap();
+        let mut c = Cell::input("注意事項あり");
+        c.fmt.size_c = Some(1100);
+        b.sheets[0].set(a1, c);
+        b.sheets[0].rich_runs.insert(a1, vec![run("注意", 9.0, "FF0000"), run("事項あり", 9.0, "000000")]);
+        let b1 = Pos::parse("B1").unwrap();
+        let mut c = Cell::input("一言");
+        c.fmt.size_c = Some(1100);
+        b.sheets[0].set(b1, c);
+        b.sheets[0].rich_runs.insert(b1, vec![run("一言", 14.0, "0000FF")]);
+        let c1 = Pos::parse("C1").unwrap();
+        let mut c = Cell::input("氏名");
+        c.fmt.size_c = Some(1100);
+        b.sheets[0].set(c1, c);
+        let t = from_book(&b);
+        let size_at = |p: Pos| {
+            let (_, _, _, name) = t.style_at.iter().find(|(_, a, z, _)| *a <= p && p <= *z).expect("a style");
+            t.styles.iter().find(|(n, _)| n == name).and_then(|(_, f)| f.size_c)
+        };
+        assert_eq!(size_at(a1), Some(900));
+        assert_eq!(size_at(b1), Some(1400));
+        assert_eq!(size_at(c1), Some(1100));
     }
 
     /// **当てるとブックに戻る。** 意味だけの `.adoc` と組み合わせる形
