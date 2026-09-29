@@ -839,7 +839,13 @@ impl Render for Writer {
                     .rounded_sm()
                     .bg(if self.native { rgb(0xE3F0F6) } else { th_cmd_bg })
                     .text_color(if self.native { rgb(0x165E83) } else { th_status })
-                    .child(if self.native || self.code.is_some() { "adoc" } else { "docx" }),
+                    .child(if self.code.as_ref().is_some_and(|c| c.pages_only) {
+                        "xlsx"
+                    } else if self.native || self.code.is_some() {
+                        "adoc"
+                    } else {
+                        "docx"
+                    }),
             )
             .child(div().flex_1().whitespace_nowrap().overflow_hidden()
                 .child(SharedString::from(match self.hover_hint {
