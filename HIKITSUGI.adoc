@@ -33,18 +33,25 @@
 * **2026-09-30: officework 0.9.0 と aiseed office 0.1.0-alpha.7 を出す用意ができている。**
   中身は、Word と Excel のテンプレートにそのまま値を入れる機能(`fill_template`)と、値を入れた
   ページを Word for Mac と Excel for Mac の PDF に合わせた直し(カーニング、表の罫線、ヒラギノの
-  行の高さ、下線など)です。アプリには hyouji-e を合わせました(ac63b78c)。.adoc はコードと
-  ページを並べて直し、文書の画面はページの画像で出します。重複した `paper/src/e.rs` と
-  `tools/screen_compare.py` は、main の直した方を残しました。
-  版は pysheet を 0.9.0、officework・calc・writer を alpha.7 にし、README、writer の手引き、
-  `web/main.py`、`release.yml` の本文も上げました。
-  確かめたこと: kumihan・ooxml・sheet・book・paper(`--features e`)・writer・calc・pysheet の lib の
-  試験、tests.yml と同じ範囲の clippy、公開の前の文書の検査。wheel を新しい venv に入れ、xlsx の
-  往復と 2 つの `fill_template` を動かした。release で組んだアプリで、`07_早見表.adoc`、転職の送り状
-  (ヒラギノ)、横浜市の様式(`w:titlePg`)を開いて画面を見た。
-  確かめていないこと: この Mac に asciidoctor が無く、adoc の描き出しの検査は回していない。
-  紹介の Web の比較の絵は撮り直していない(メニューのテンプレートのファイルがこの Mac に無い)。
-  calc と writer は clippy の対象外で、新しい clippy では赤い(0.8.0 から変わっていない所)。
+  行の高さ、下線、透かし文字、ページの色、太字の字送りなど)です。アプリには hyouji-e を
+  合わせ(ac63b78c)、発注者の「残っている課題を全部先に」で次をしました。
+  2026-09-29 の見直しで見つかったコードの画面のファイルを壊す道 5 つ(f74bec2c)、writer の PDF を
+  全部エンジンの道に(a4770f0d)、docx と xlsx を見るだけで開く(5bf2847b。`docx_edit` と
+  `xlsx_edit` で戻せる)、データの adoc の `:template:` が docx か xlsx を指すと右に値を入れた
+  テンプレートを出す(2c1bfb94)。エンジンは、書体のフォルダーが確認の画面で止まる件、adoc の
+  行番号、紙の側の透かしとページの色と書体の写しと ms_pdf のダイアログを直した(2 つの
+  エージェントに頼んだ分)。
+  確かめたこと: kumihan・ooxml・sheet・book・paper(`--features e`)・writer・calc・ops・pysheet の
+  lib の試験、tests.yml と同じ範囲の clippy に加えて calc・writer・officework の clippy、公開の
+  前の文書の検査。release で組んだアプリで、データの adoc(左にコード、右に値を入れた送付状)、
+  見るだけの docx、印刷するページの形の xlsx(厚労省の履歴書)を開いて画面を見た。
+  確かめていないこと: この Mac に asciidoctor が無く、adoc の描き出しの検査は回していない
+  (`vendor/asciidoctor` を clone するのは発注者の了解を取ってから)。`adoc_code = "0"` の画面は、
+  発注者の settings.toml を変えないと出せないので、画面では見ていない(試験だけ)。紹介の Web の
+  比較の絵は撮り直していない。メニューのテンプレートのファイルがこの Mac に無く、事業の
+  ご報告は画面の中身が前の絵と同じ(撮り直すと画面の色の変換で青がずれる)。
+  一度だけ、データの adoc を開いたアプリに docx を渡した後、アプリが消えた。落ちた記録は無く、
+  同じ手順で 2 回やり直しても起きなかった。
   **push、`publish-pypi.yml` の dry run、タグ `v0.9.0` と `app-v0.1.0-alpha.7` は発注者。**
 * **2026-09-27: officework 0.8.0 と aiseed office 0.1.0-alpha.6 を出す用意ができている。**
   中身は様式を埋める機能(`Book.fill`、`Doc.fill_form`、別紙、描画の一覧)、リボンの設定ファイル、

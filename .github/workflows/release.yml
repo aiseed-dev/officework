@@ -311,9 +311,15 @@ jobs:
             ページから作るので、画面と PDF がそろいます。PDF のボタンも同じページを
             書き出すので、図形や浮かぶ写真が出て、ファイルも小さくなりました。
 
-            **Word と Excel のテンプレートに、そのまま値を入れられます。** 変わるのは値だけで、
-            ほかの部分は元のまま写します。値を入れたページを Word と Excel の PDF と比べて、
+            **データの .adoc で、Word と Excel のテンプレートに値を入れます。** .adoc の頭に
+            `:template: 送付状.docx` と書くと、右に値を入れたテンプレートのページが出ます。
+            名前を付けて保存で、値を入れた docx や xlsx を書けます。変わるのは値だけで、
+            ほかの部分は元のままです。値を入れたページを Word と Excel の PDF と比べて、
             カーニング、表の罫線の太さと色、ヒラギノの行の高さ、下線などを直しました。
+
+            **Word と Excel のファイルは、見るだけで開きます。** docx は印刷と同じ姿で、xlsx は
+            印刷するページの形で出します。前のように直すときは、settings.toml に
+            `docx_edit = "1"` や `xlsx_edit = "1"` と書きます。
 
             変わった物の一覧は [RELEASE.ja.adoc](https://github.com/aiseed-dev/officework/blob/main/RELEASE.ja.adoc) にあります。
 

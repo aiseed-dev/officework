@@ -15,7 +15,8 @@ as `{氏名}` says where a value goes. Only the values change; every other part
 of the file is copied as it was.
 
 **In the app, an .adoc is edited as its text, beside the pages it makes**, and
-the document screen shows each page as a picture of the printed page.
+an .adoc of data shows the Word or Excel template it names, filled in. Word
+and Excel files are opened to be looked at, as the pages they print.
 
 The rest is the same job as before: draw the pages the way Word and Excel
 print them. This time we compared the pages of filled templates with the PDFs
@@ -113,7 +114,8 @@ What changed in Word documents:
   down, as Word draws it. The standard leaves the single line height to the
   application (17.3.1.33), so these values were measured in Word
 * a bold letter in a face with no bold face (Hiragino, MS Mincho, MS Gothic,
-  Century) advances 0.02 em further, as Word does. A half-width space does not
+  Century) advances 0.02 em further, as Word does. A space, half-width or
+  full-width, keeps its width
 * the underline takes its place and thickness from the face's own figures
   (the `post` table). Word draws Latin faces this way; a face without the
   figures keeps the old place
@@ -124,6 +126,13 @@ What changed in Word documents:
 * a group sized by the page (`wp14:sizeRelH`) grows with it, and every shape of
   a group placed in a line is drawn
 * a named highlight colour (`yellow`, `darkBlue`, …) has its colour, not black
+* **a text watermark** is drawn as Word draws it: in the box the file gives
+  it (a VML shape in the header, ECMA-376 Part 4 19.1.2), turned and coloured
+  as the file says, under the body text. The letters are stretched to the box
+  less its insets. On the three watermarks measured, the letters' extent is
+  within 0.2pt of Word's. It was drawn over the text at a fixed 60pt
+* the page colour (`w:background`) is on every page the engine draws: the PDF,
+  the PNG and the draw list
 * a see-through shape drawn with a path no longer leaves the rest of the page
   see-through
 * the page pictures (PNG) draw the letters as the PDF does: the same face
@@ -148,12 +157,39 @@ Where the standard and Word differ:
   (17.3.2.40). Word draws East Asian faces lower than their own figures, by
   no rule we could find. We use the face's figures
 
+== AsciiDoc and fonts
+
+* errors, and the list of markup the pages do not show, name the file's line
+  even after a heading underlined on the next line (a setext heading)
+* the list names each kind once per file, with how many times it came
+  (「字下げの段落(literal) × 3(3 行目ほか)」), and Python's `Doc.unsupported`
+  counts it the same
+* a font folder that waits on a macOS privacy prompt (the Office cloud fonts
+  in Group Containers) is left out after 2 seconds, instead of stopping the
+  font scan, and with it everything that sets text
+* `save_look` writes a rich-text cell at the size of its longest part, also
+  when all its parts share one size
+
 == The draw list
 
 A text item may have `clip` (`[x, y, w, h]`), the part of the page it is cut
 to. It is set on the text of a shape that runs over a page break.
 
 == The app (aiseed office 0.1.0-alpha.7)
+
+**Word and Excel files are opened to be looked at.** Their values come from
+data, so the app shows them and does not change them. A docx opens with its
+pages as they print: scrolling, zooming, finding, copying and its PDF work,
+and typing, the buttons that edit and saving are refused. An xlsx opens on the
+document screen as the pages it prints. `docx_edit = "1"` and `xlsx_edit = "1"`
+in `~/.config/officework/settings.toml` open them for editing as before.
+
+**An .adoc of data fills the Word or Excel template it names.** Write
+`:template: 送付状.docx` (or an .xlsx) in the header of an .adoc that holds the
+data as tables of names and values. The right side shows the template filled
+in, laid out as its PDF, and names the data lacks are shown above the pages.
+The PDF button writes those pages, and Save As a .docx or .xlsx writes the
+filled template with every other part as it was.
 
 **An .adoc is edited as its text, beside the pages it makes.** The left side
 holds the file's characters in a fixed-width face. The right side shows the
@@ -176,9 +212,22 @@ the pictures. `page_pictures = "0"` in the settings keeps the older drawing.
 
 **The PDF button writes the pages the screen shows.** A docx's PDF has its
 shapes, floating pictures and the panels behind the text, and embeds only the
-fonts it uses. The 32-page JST plan is 508 KB; it was about 10 MB. A print
-template, this app's own documents and vertical text still go through the
-older writer.
+fonts it uses. The 32-page JST plan is 508 KB; it was about 10 MB. An .adoc,
+a print template and vertical writing now go through the engine's writer too,
+and the older writer is no longer used.
+
+**The text of an .adoc is kept safe.** A review of the side-by-side screen
+found ways a save could write the text through the AsciiDoc writer, which puts
+a blank line after every line: going to another tab and back, a file that
+could not be opened, the crash backup, and Save As without an extension.
+These are fixed. Only what works on text runs there: a table, a picture or a
+look is refused with a message, from the buttons, their keys and the socket.
+Saving keeps the file's CR LF line ends and a missing final newline. A docx
+written from the text is made from the document the text makes.
+
+Page pictures that are no longer shown are given back to the GPU, and only
+the pages near the view are kept, so a long document no longer fills the
+memory as it is scrolled or edited.
 
 == What is still broken
 
@@ -194,6 +243,10 @@ These need Windows Word and Excel to settle, and we have not had them:
 
 Filling templates:
 
+* a table book written as AsciiDoc (`.sheet.adoc`) still opens on the
+  spreadsheet screen, not beside the template it fills
+* what an Excel template could not take is reported in Japanese on every
+  language's screen
 * a Word template takes text only. The circle of a choice mark, a picture and
   rows carried on to a 別紙 are not put in
 * an Excel template does not take rows that need a 別紙, or pictures other than
@@ -215,13 +268,17 @@ Known gaps in the engine:
 * Word puts a 14pt line of MS PGothic in two grid lines. We measure it with
   the line spacing of MS Mincho, so the two fonts are not told apart
 * an embedded Excel object reserves its space and stays blank
-* a vertical cell stacks its characters one by one without rotating them
+* a vertical cell stacks its characters one by one without rotating them.
+  In a document in vertical writing, brackets are not turned to their
+  vertical forms either
 * a font the machine does not have is laid out with the substitute's widths,
   so lines break differently
 * on the spreadsheet side, 24 of the 55 collected workbooks differ from Excel
   in page count. 19 of them come out shorter than Excel's
 * HTML written from an AsciiDoc document does not yet match Asciidoctor's HTML
   exactly
+* a watermark's letters are set in our first font, not in the font the
+  watermark names, so their shapes differ from Word's while their box matches
 * EMF pictures are not drawn (the logo of Word's restaurant brochure is one).
   WMF pictures are
 * a picture that fills a shape other than a rectangle is cut to the shape's
@@ -233,15 +290,6 @@ Known gaps in the engine:
 
 Known gaps in the app:
 
-* on the side-by-side screen of an .adoc, the buttons that format selected
-  text (bold, size, font) do not change the file. Write the markup in the text
-  (`*bold*`)
-* an .adoc edited on its pages (`adoc_code = "0"`) is not drawn as page
-  pictures
-* the list of markup the pages do not show is in Japanese on every language's
-  screen
-* the PDF button still uses the older writer for a print template, this app's
-  own documents and vertical text
 * the Windows `setup.exe` is not signed yet. Windows shows "Windows protected
   your PC"; open "More info" and run it from there
 * Python is not bundled. Macros and heavy aggregation run on the Python
@@ -252,15 +300,19 @@ Known gaps in the app:
 * the Python manual gained filling an Excel template and a Word template in
   place
 * the forms manual lists the draw list's text `clip`
-* the writer manual now opens with the two ways writer edits: the text of an
-  .adoc, the pages of a docx
+* the writer manual now opens with how writer handles each kind of file: the
+  text of an .adoc is edited, a docx and an xlsx are looked at. It gained
+  filling a Word or Excel template from an .adoc of data
+* the calc manual says where an xlsx opens now
 
 == Internals
 
 `tools/screen_compare.py` puts our pages beside Word's or Excel's PDF as
 pictures and counts where they differ. It reads a docx or an xlsx, and
 `--platform mac` reads an xlsx the Mac way. `tools/ms_pdf.py` waits for Word
-to open a document before saving it as PDF.
+to open a document before saving it as PDF, and stops with the dialog's name
+when Word or Excel shows a dialog (such as a request for folder access)
+instead of waiting until it times out.
 
 The design note `docs/sekkei/sashikomi.ja.adoc` records the values measured in
 Word, how Excel for Mac and Windows differ, and what was decided.
