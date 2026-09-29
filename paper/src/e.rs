@@ -176,10 +176,10 @@ pub fn egaku_fonts(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, fonts: &[&[u8]])
 
     // Highlighted text: the box the PDF fills, under the letters
     for p in &leaf.pieces {
-        if let Some(hl) = &p.highlight {
+        if let Some(c) = p.highlight.as_deref().and_then(crate::pdfw::highlight_rgb) {
             let hh = p.size_pt * 25.4 / 72.0;
             let y0 = p.y_mm - hh * 0.22;
-            cx.set_paint(iro(crate::pdfw::rgb(hl), 1.0));
+            cx.set_paint(iro(c, 1.0));
             cx.fill_rect(&Rect::new(
                 p.x_mm as f64 * mm,
                 (h_mm - y0 - hh) as f64 * mm,
@@ -598,6 +598,30 @@ mod tests {
         assert!(r < 60 && g < 60 && b < 60, "the box went under the picture: {r},{g},{b}");
         let (r, g, b) = iro(68.0, 12.0);
         assert!(g > 120 && r < 60 && b < 60, "the path is not drawn: {r},{g},{b}");
+    }
+
+    /// **A highlight named by Word's colour name is drawn in that colour**
+    /// (`w:highlight w:val="yellow"`, ECMA-376 17.18.40). The name was read
+    /// as hexadecimal and came out black, hiding the letters (2026-09-29)
+    #[test]
+    fn a_named_highlight_has_its_colour() {
+        let leaf = Leaf {
+            pieces: vec![crate::pdfw::Piece {
+                x_mm: 10.0,
+                y_mm: 20.0,
+                size_pt: 20.0,
+                w_mm: 30.0,
+                text: "a".into(),
+                highlight: Some("yellow".into()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let e = egaku(&leaf, 80.0, 40.0, 4.0);
+        let (px, py) = (20 * 4, ((40.0 - 22.0) * 4.0) as usize);
+        let i = (py * 320 + px) * 4;
+        let (r, g, b) = (e.rgba[i], e.rgba[i + 1], e.rgba[i + 2]);
+        assert!(r > 240 && g > 240 && b < 30, "not yellow: {r},{g},{b}");
     }
 
     /// **読めない絵は落とすが、他の物は描く。** 1枚のせいで紙面ごと消えない

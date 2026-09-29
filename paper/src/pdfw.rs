@@ -162,6 +162,39 @@ pub(crate) fn rgb(s: &str) -> (f32, f32, f32) {
     (v(0), v(2), v(4))
 }
 
+/// **The colour of a text highlight** (`w:highlight`): one of the names of
+/// `ST_HighlightColor`, with the RGB value ECMA-376 17.18.40 gives each,
+/// or `RRGGBB` (the adoc's marks and the tests write hexadecimal). `None`
+/// for "none" and for anything else, so no box is drawn
+pub(crate) fn highlight_rgb(s: &str) -> Option<(f32, f32, f32)> {
+    let hex = match s {
+        "black" => "000000",
+        "blue" => "0000FF",
+        "cyan" => "00FFFF",
+        "darkBlue" => "00008B",
+        "darkCyan" => "008B8B",
+        "darkGray" => "A9A9A9",
+        "darkGreen" => "006400",
+        "darkMagenta" => "800080",
+        "darkRed" => "8B0000",
+        "darkYellow" => "808000",
+        "green" => "00FF00",
+        "lightGray" => "D3D3D3",
+        "magenta" => "FF00FF",
+        "red" => "FF0000",
+        "white" => "FFFFFF",
+        "yellow" => "FFFF00",
+        other => {
+            let h = other.trim_start_matches('#');
+            if h.len() != 6 || !h.chars().all(|c| c.is_ascii_hexdigit()) {
+                return None;
+            }
+            h
+        }
+    };
+    Some(rgb(hex))
+}
+
 /// mm → PDF の単位(pt)
 fn pt(mm: f32) -> f32 {
     mm * 72.0 / 25.4
@@ -514,8 +547,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
         }
         // **蛍光ペンは字の下に敷きます**(字が隠れないように)
         for p in &page.pieces {
-            if let Some(h) = &p.highlight {
-                let (r, g, b) = rgb(h);
+            if let Some((r, g, b)) = p.highlight.as_deref().and_then(highlight_rgb) {
                 c.set_fill_rgb(r, g, b);
                 // 字の高さのぶん。下に少し出して本家の見え方に寄せます
                 let h_mm = p.size_pt * 25.4 / 72.0;
@@ -883,6 +915,19 @@ pub(crate) fn unpack(pdf: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
+
+    /// The colour names of `ST_HighlightColor` (ECMA-376 17.18.40) and
+    /// hexadecimal both give the colour; "none" gives none
+    #[test]
+    fn highlight_names_are_their_colours() {
+        let byte = |c: (f32, f32, f32)| ((c.0 * 255.0).round() as u8, (c.1 * 255.0).round() as u8, (c.2 * 255.0).round() as u8);
+        assert_eq!(highlight_rgb("yellow").map(byte), Some((0xFF, 0xFF, 0x00)));
+        assert_eq!(highlight_rgb("darkBlue").map(byte), Some((0x00, 0x00, 0x8B)));
+        assert_eq!(highlight_rgb("lightGray").map(byte), Some((0xD3, 0xD3, 0xD3)));
+        assert_eq!(highlight_rgb("00FF00").map(byte), Some((0x00, 0xFF, 0x00)));
+        assert_eq!(highlight_rgb("none"), None);
+        assert_eq!(highlight_rgb("pink"), None);
+    }
     use super::*;
 
     fn font() -> Vec<u8> {
