@@ -1091,6 +1091,48 @@ mod table_layout_tests {
                &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0})
     }
 
+    /// A picture alone in a centred cell paragraph sits in the middle of
+    /// the cell, and a right-aligned picture with text ends at the cell's
+    /// right edge (the picture and the text are aligned as one block)
+    #[test]
+    fn a_picture_in_a_cell_follows_the_paragraphs_alignment() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let pic = || crate::InlineImage { shape: None,
+            bytes: std::sync::Arc::new(vec![0x89, b'P', b'N', b'G']),
+            w_mm: 4.0, h_mm: 4.0, tex: None, src: None, off: 0, fill: None };
+        let cell = |align: Align, text: &str| Cellbox {
+            paragraphs: vec![Paragraph {
+                runs: vec![Run { text: text.into(), size_pt: Some(10.5), font: None, fmt: Default::default() }],
+                align,
+                images_new: vec![pic()],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let mut d = Document::plain("前の本文");
+        d.blocks.push(Block::Table(Table {
+            col_mm: vec![50.0, 50.0],
+            rows: vec![vec![cell(Align::Center, ""), cell(Align::Right, "字")]],
+            ..Default::default()
+        }));
+        let s = layout(&d, &m, &frame);
+        assert_eq!(s.images.len(), 2, "{:?}", s.images.iter().map(|i| i.1).collect::<Vec<_>>());
+        let mut xs: Vec<[f32; 4]> = s.images.iter().map(|i| i.1).collect();
+        xs.sort_by(|a, b| a[0].total_cmp(&b[0]));
+        // The first cell spans 0..50mm less its padding: the picture's
+        // middle is near 25mm
+        let mid = xs[0][0] + xs[0][2] / 2.0;
+        assert!((mid - 25.0).abs() < 1.5, "not centred: {:?}", xs[0]);
+        // The text of the second cell ends at the cell's right edge, not a
+        // picture's width past it
+        let line = s.lines.iter().find(|l| l.text().contains('字')).expect("no text line");
+        let end = line.cells.last().map(|c| c.x_mm + c.w_mm).unwrap();
+        assert!(end <= 100.0 + 0.01, "text runs past the cell: {end}");
+        assert!(xs[1][0] + 4.0 <= end + 0.01, "picture is not before the text");
+    }
+
     /// **`atLeast` のセルは字を箱の底に置く**(2026-09-09)。本文と同じ
     /// OOXML の決め(ECMA-376 §17.3.1.33)です。議事録の表(行 18.15pt の
     /// `atLeast`、11pt の字)で、Word のベースラインはうちより 5.5pt 下に

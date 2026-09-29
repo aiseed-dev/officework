@@ -3351,21 +3351,24 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 // (`first_line_mm` already counted the head images as the
                 // first line's indent, so they start that much to the left)
                 let atama_haba: f32 = gazou.iter().filter(|g| g.0 == j && g.4).map(|g| g.2).sum();
-                let mut ix = x0 + sagari - atama_haba;
-                for (_, im, iw, ih, atama) in gazou.iter().filter(|g| g.0 == j) {
-                    let top = if *atama { yy - ih } else { yy - agari };
-                    oku_gazou(sheet, im, [ix, top, *iw, *ih]);
-                    ix += iw;
-                }
-                // **横の揃え**は段落が言います。前はセルの中を全部左に
-                // 寄せていたので、「調査項目」「内容」の中央揃えが
-                // 効いていませんでした(2026-09-01 発注者)
-                let haba: f32 = cells.iter().map(|c| c.w_mm).sum();
+                // The paragraph's alignment places the line (Word's cells
+                // follow it too; before 2026-09-01 everything in a cell sat
+                // on the left). The head images and the text are aligned as
+                // one block, as in the body. The images were placed before
+                // the alignment, so the icon of Word's letterhead, alone in a
+                // centred cell, sat at the cell's left edge (2026-09-29)
+                let haba: f32 = cells.iter().map(|c| c.w_mm).sum::<f32>() + atama_haba;
                 let zure = match yose {
                     Align::Center => ((uti - haba) / 2.0).max(0.0),
                     Align::Right => (uti - haba).max(0.0),
                     _ => 0.0,
                 };
+                let mut ix = x0 + zure + sagari - atama_haba;
+                for (_, im, iw, ih, atama) in gazou.iter().filter(|g| g.0 == j) {
+                    let top = if *atama { yy - ih } else { yy - agari };
+                    oku_gazou(sheet, im, [ix, top, *iw, *ih]);
+                    ix += iw;
+                }
                 // **均等割り付け**(段落の `distribute` と `w:tcFitText`)。
                 // 余りを字と字の間に配ります。本文の段落と同じ配り方です
                 let aki = if yose == Align::Distribute && cells.len() >= 2 {
