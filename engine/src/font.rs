@@ -372,15 +372,20 @@ pub fn all() -> &'static [Family] {
     CACHE.get_or_init(|| {
         let mut out: Vec<Family> = Vec::new();
         for d in dirs() {
-            scan(&d, &mut out, 0);
+            if may_block(&d) {
+                out.extend(scan_guarded(&d, GUARDED_SCAN_LIMIT));
+            } else {
+                scan(&d, &mut out, 0);
+            }
         }
-        // **名前が `.` で始まる書体は外す。** macOS の内部の書体
-        // (`.Hiragino Kaku Gothic Interface` など)で、選ぶ側には見えない名前。
-        // これが選ばれると、xlsx の標準の書体にその名前が書かれ、Excel が
-        // 引けない(2026-09-08)
+        // Drop faces whose name starts with `.`. They are macOS's internal
+        // fonts (`.Hiragino Kaku Gothic Interface` and so on), hidden from
+        // font pickers. When one was chosen, its name went into the xlsx's
+        // default font and Excel could not find it (2026-09-08)
         out.retain(|f| !f.name.starts_with('.'));
-        // 同じ書体名の中では**素の字面を先に**。
-        // 並び順で先頭を採ると「BIZ UDPゴシック」を頼んで Bold が返る
+        // Within one family name, the regular face comes first. Taking the
+        // first one in plain name order returned the Bold face when
+        // "BIZ UDPゴシック" was asked for
         out.sort_by(|a, b| a.name.cmp(&b.name).then(b.regular.cmp(&a.regular)));
         out.dedup_by(|a, b| {
             a.name == b.name && a.path == b.path && a.index == b.index
@@ -414,6 +419,66 @@ pub fn faces(name: &str) -> Vec<&'static Family> {
         true
     });
     out
+}
+
+/// How long a folder that may block gets to answer (2026-09-30).
+const GUARDED_SCAN_LIMIT: std::time::Duration = std::time::Duration::from_secs(2);
+
+/// Folders whose reading can wait forever. On macOS, reading another app's
+/// Group Container can raise a privacy prompt ("... would like to access
+/// data from other apps"). Until someone answers it, `opendir` and `open`
+/// block, and the first font scan hung every test, the app and the Python
+/// engine (2026-09-30).
+fn may_block(dir: &Path) -> bool {
+    dir.components().any(|c| c.as_os_str() == "Group Containers")
+}
+
+/// Folders that did not answer in time. They are skipped for the rest of
+/// the process, so a later scan does not wait on them again.
+static SKIPPED_DIRS: std::sync::Mutex<Vec<PathBuf>> = std::sync::Mutex::new(Vec::new());
+
+/// Scans `dir` on a separate thread and gives up after `limit`. When the
+/// folder does not answer in time, it returns nothing and remembers the
+/// folder in [`SKIPPED_DIRS`]. The blocked thread is left behind; it ends
+/// on its own if the prompt is ever answered.
+fn scan_guarded(dir: &Path, limit: std::time::Duration) -> Vec<Family> {
+    if SKIPPED_DIRS.lock().is_ok_and(|s| s.iter().any(|p| p == dir)) {
+        return Vec::new();
+    }
+    let owned = dir.to_path_buf();
+    let found = run_with_timeout(limit, move || {
+        let mut out = Vec::new();
+        scan(&owned, &mut out, 0);
+        out
+    });
+    match found {
+        Some(v) => v,
+        None => {
+            if let Ok(mut s) = SKIPPED_DIRS.lock() {
+                s.push(dir.to_path_buf());
+            }
+            Vec::new()
+        }
+    }
+}
+
+/// Runs `f` on a separate thread and waits at most `limit` for its result.
+/// `None` when it did not finish in time (or panicked); the thread is then
+/// detached and keeps running.
+fn run_with_timeout<T: Send + 'static>(
+    limit: std::time::Duration,
+    f: impl FnOnce() -> T + Send + 'static,
+) -> Option<T> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let spawned = std::thread::Builder::new()
+        .name("font-scan".into())
+        .spawn(move || {
+            let _ = tx.send(f());
+        });
+    if spawned.is_err() {
+        return None;
+    }
+    rx.recv_timeout(limit).ok()
 }
 
 fn scan(dir: &Path, out: &mut Vec<Family>, depth: usize) {
@@ -1813,6 +1878,34 @@ pub fn monospace() -> Option<&'static Family> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A stand-in for a folder that waits on a privacy prompt: the call
+    /// blocks until the test lets it go. The helper returns after the
+    /// limit instead of waiting with it
+    #[test]
+    fn a_blocking_read_gives_up_after_the_limit() {
+        let (release, wait) = std::sync::mpsc::channel::<()>();
+        let start = std::time::Instant::now();
+        let got = run_with_timeout(std::time::Duration::from_millis(200), move || {
+            let _ = wait.recv();
+            1
+        });
+        assert_eq!(got, None);
+        assert!(start.elapsed() < std::time::Duration::from_secs(2));
+        let _ = release.send(());
+        // A call that answers in time keeps its result
+        assert_eq!(run_with_timeout(std::time::Duration::from_secs(2), || 7), Some(7));
+    }
+
+    /// Only Group Containers paths go through the guarded scan
+    #[test]
+    fn group_containers_are_guarded() {
+        assert!(may_block(Path::new(
+            "/Users/a/Library/Group Containers/UBF8T346G9.Office/FontCache/4/CloudFonts"
+        )));
+        assert!(!may_block(Path::new("/Users/a/Library/Fonts")));
+        assert!(!may_block(Path::new("/System/Library/Fonts")));
+    }
 
     /// A regular-script face takes a Mincho face's place
     #[test]
