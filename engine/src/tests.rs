@@ -1107,6 +1107,28 @@ mod table_layout_tests {
         assert!((less - 12.36 * 0.9).abs() < 0.01, "0.9 lines: {less}");
     }
 
+    /// A right-aligned line in a cell ends at the paragraph's right indent,
+    /// not at the cell's edge
+    #[test]
+    fn a_right_aligned_cell_line_ends_at_the_right_indent() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let end = |right_twips: i32| {
+            let mut d = doc_with_table();
+            if let Block::Table(t) = &mut d.blocks[1] {
+                let p = &mut t.rows[0][1].paragraphs[0];
+                p.align = Align::Right;
+                p.right_twips = right_twips;
+            }
+            let s = layout(&d, &m, &frame);
+            let l = s.lines.iter().find(|l| l.text().contains("金額")).unwrap();
+            l.cells.iter().map(|c| c.x_mm + c.w_mm).fold(0.0f32, f32::max)
+        };
+        let moved = end(0) - end(567);
+        assert!((moved - 10.0).abs() < 0.01, "moved {moved}mm for a 10mm right indent");
+    }
+
     /// A thick bottom border on the last row makes the table taller by its
     /// width and is drawn under the row's content, so the paragraph after
     /// the table starts under the rule

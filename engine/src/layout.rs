@@ -2792,7 +2792,10 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         /// 字の大きさ(pt)と、1行目の字下げ(mm)と、字を箱の底に置くか
         /// 最後の 2 つは「セルの中で何段落目か」と `w:keepNext` です。
         /// 頁の割り方(1 行だけ残さない・次と離さない)に要ります
-        lines: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (Option<bool>, f32, f32, f32), usize, usize, bool)>,
+        // (cells, byte, height, (alignment, right indent mm), size, left
+        // indent mm, (rule, drop, before, after), marker length, paragraph,
+        // keep with next)
+        lines: Vec<(Vec<Cell>, usize, f32, (Align, f32), f32, f32, (Option<bool>, f32, f32, f32), usize, usize, bool)>,
         x: f32,
         w: f32,
         /// **The cell's own fill** (docx `w:tcPr/w:shd`, or a band of the
@@ -2849,7 +2852,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let span = cell.span().min(ncols.saturating_sub(gc)).max(1);
             let x = xs[gc.min(ncols)];
             let w = xs[(gc + span).min(ncols)] - x;
-            let mut ls: Vec<(Vec<Cell>, usize, f32, Align, f32, f32, (Option<bool>, f32, f32, f32), usize, usize, bool)> = Vec::new();
+            let mut ls: Vec<(Vec<Cell>, usize, f32, (Align, f32), f32, f32, (Option<bool>, f32, f32, f32), usize, usize, bool)> = Vec::new();
             // The band of each line above (docx `w:pPr/w:shd`), same order
             let mut line_shade: Vec<Option<String>> = Vec::new();
             let mut hyou_no: Vec<(usize, Sheet, f32)> = Vec::new();
@@ -2982,7 +2985,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                             0.0
                         };
                         line_shade.push(para.shade.clone());
-                        ls.push((cs, b0, h, yose, pt, hidari + if k == 0 { sagari } else { 0.0 },
+                        ls.push((cs, b0, h, (yose, migi), pt, hidari + if k == 0 { sagari } else { 0.0 },
                                  (soko, sage, if k == 0 { mae } else { 0.0 }, if k == saigo { ato } else { 0.0 }),
                                  if k == 0 { mk_len } else { 0 }, para0, para.keep_next));
                     }
@@ -3016,7 +3019,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         } else {
                             gazou.push((ls.len(), im.clone(), iw, ih, false));
                             line_shade.push(para.shade.clone());
-                            ls.push((Vec::new(), para0, ih, para.align, pbase, hidari, (None, 0.0, 0.0, 0.0), 0, para0, para.keep_next));
+                            ls.push((Vec::new(), para0, ih, (para.align, migi), pbase, hidari, (None, 0.0, 0.0, 0.0), 0, para0, para.keep_next));
                         }
                     }
                     for a in &para.anchors {
@@ -3278,7 +3281,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             // laid down as one rectangle
             let line_shade = l.line_shade;
             let mut obi: Option<(String, f32, f32)> = None;
-            for (j, (cells, b0, plh, yose, pt, sagari, (soko, sage, mae, ato), head, dan, tsugi)) in l.lines.into_iter().enumerate() {
+            for (j, (cells, b0, plh, (yose, migi), pt, sagari, (soko, sage, mae, ato), head, dan, tsugi)) in l.lines.into_iter().enumerate() {
                 while hyou_no.peek().is_some_and(|(at, _, _)| *at <= j) {
                     let (_, tmp, th) = hyou_no.next().unwrap();
                     utsusu(tmp, x0, yy, sheet);
@@ -3380,9 +3383,16 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 // the alignment, so the icon of Word's letterhead, alone in a
                 // centred cell, sat at the cell's left edge (2026-09-29)
                 let haba: f32 = cells.iter().map(|c| c.w_mm).sum::<f32>() + atama_haba;
+                // The line is aligned between its indents: the left one
+                // (`sagari`, which holds the head images too) and the right
+                // one (`w:ind w:right`). The right indent was left out, so a
+                // right-aligned line in a cell ran up to the cell's edge;
+                // the contact lines of Word's letterhead say `w:right="96"`
+                // and sat 4.8pt right of Word's (2026-09-29)
+                let aki = uti - (sagari - atama_haba) - migi - haba;
                 let zure = match yose {
-                    Align::Center => ((uti - haba) / 2.0).max(0.0),
-                    Align::Right => (uti - haba).max(0.0),
+                    Align::Center => (aki / 2.0).max(0.0),
+                    Align::Right => aki.max(0.0),
                     _ => 0.0,
                 };
                 let mut ix = x0 + zure + sagari - atama_haba;
