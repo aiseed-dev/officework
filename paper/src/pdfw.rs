@@ -468,7 +468,6 @@ pub fn write_pages_fonts<W: std::io::Write>(
         order.extend(page.paths.iter().enumerate().map(|(k, m)| (m.z, 1u8, k)));
         order.extend(img_ids[i].iter().enumerate().map(|(k, (_, im))| (im.z, 2u8, k)));
         order.sort_unstable();
-        let mut michi_kaita = false;
         for (_, kind, k) in order {
             match kind {
                 // 好きな形の塗り。四角の塗りと同じ層です
@@ -496,7 +495,6 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 1 => {
                     usu(&mut c, &mut usu_now, page.paths[k].a);
                     michi_kaku(&mut c, &page.paths[k], pt);
-                    michi_kaita = true;
                     fill_now = None;
                 }
                 // 置いた絵
@@ -515,11 +513,11 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 }
             }
         }
-        if michi_kaita {
-            // 道は `q`/`Q` で挟むので、中で決めた色も濃さも戻ります。
-            // 上の控えは当てにならないので消しておきます
-            usu_now = None;
-        }
+        // A path is drawn inside `q`/`Q`, which puts back the colours it set.
+        // Its alpha is set outside (just before `michi_kaku`), so `Q` keeps
+        // it and the tracked alpha stays right: forgetting it here made the
+        // writer skip putting the page back to opaque, and every rule and
+        // letter after a see-through shape came out see-through (2026-09-29)
         // **罫線を先に引きます**(字の下)
         let mut pen: Option<((f32, f32, f32), f32)> = None;
         // 破線の刻み。前の線の分が残らないよう、実線のときは戻します
@@ -545,7 +543,8 @@ pub fn write_pages_fonts<W: std::io::Write>(
         if kizami.is_some() {
             c.set_dash_pattern([], 0.0);
         }
-        // **蛍光ペンは字の下に敷きます**(字が隠れないように)
+        // Text highlights go under the letters, opaque (Word draws them so)
+        usu(&mut c, &mut usu_now, 1.0);
         for p in &page.pieces {
             if let Some((r, g, b)) = p.highlight.as_deref().and_then(highlight_rgb) {
                 c.set_fill_rgb(r, g, b);
@@ -915,6 +914,38 @@ pub(crate) fn unpack(pdf: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
+
+    /// **A see-through shape after a path does not leave the rules and
+    /// letters see-through.** The alpha is set outside the path's `q`/`Q`,
+    /// so `Q` does not undo it, and forgetting the tracked alpha after a
+    /// path made the writer skip putting it back to opaque (2026-09-29)
+    #[test]
+    fn a_see_through_shape_after_a_path_is_undone() {
+        let leaf = Leaf {
+            paths: vec![Michi {
+                suji: vec![Suji::Ugoku(10.0, 10.0), Suji::Hiku(20.0, 10.0), Suji::Hiku(20.0, 20.0), Suji::Tojiru],
+                fill: Some((0.0, 0.0, 0.0)),
+                z: 0,
+                ..Default::default()
+            }],
+            polys: vec![Poly {
+                points: vec![(30.0, 10.0), (40.0, 10.0), (35.0, 20.0)],
+                rgb: (0.2, 0.4, 0.8),
+                a: 0.5,
+                z: 1,
+            }],
+            rules: vec![Rule {
+                x1_mm: 10.0, y1_mm: 50.0, x2_mm: 100.0, y2_mm: 50.0,
+                w_mm: 0.3, rgb: (0.0, 0.0, 0.0), a: 1.0, dash: None,
+            }],
+            ..Default::default()
+        };
+        let mut out = Vec::new();
+        write_pages(&[leaf], 210.0, 297.0, &font(), &mut out).expect("PDF が出ない");
+        let body = unpack(&out);
+        let thin = body.rfind("/A128 gs").expect("the see-through shape");
+        assert!(body[thin..].contains("/A255 gs"), "the rule is drawn see-through:\n{}", &body[thin..]);
+    }
 
     /// The colour names of `ST_HighlightColor` (ECMA-376 17.18.40) and
     /// hexadecimal both give the colour; "none" gives none
