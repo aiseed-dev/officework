@@ -1582,16 +1582,51 @@ pub fn parse_many(src: &str) -> Result<Vec<Document>, String> {
 pub fn parse_many_full(src: &str) -> Result<(Vec<Document>, Vec<String>), String> {
     let mut docs = Vec::new();
     let mut ledger = Vec::new();
+    // Where each document starts in the file, so the lines named in the
+    // errors and the ledger are the file's lines, not the document's
+    let mut from = 0usize;
     for s in split_docs(src) {
-        let (d, r) = parse_full(&s)?;
+        let head = s.trim_end_matches('\n');
+        let off = match src.get(from..).and_then(|rest| rest.find(head)) {
+            Some(i) if !head.is_empty() => {
+                let at = from + i;
+                from = at + head.len();
+                src[..at].matches('\n').count()
+            }
+            _ => 0,
+        };
+        let (d, r) = parse_full(&s).map_err(|e| shift_lines(&e, off))?;
         docs.push(d);
-        for x in r {
+        for x in r.into_iter().map(|x| shift_lines(&x, off)) {
             if !ledger.contains(&x) {
                 ledger.push(x);
             }
         }
     }
     Ok((docs, ledger))
+}
+
+/// Add `off` to every line number written as "N 行目" in a message
+fn shift_lines(msg: &str, off: usize) -> String {
+    if off == 0 {
+        return msg.to_string();
+    }
+    let mut out = String::with_capacity(msg.len());
+    let mut rest = msg;
+    while let Some(i) = rest.find(" 行目") {
+        let head = &rest[..i];
+        let digits = head.len() - head.trim_end_matches(|c: char| c.is_ascii_digit()).len();
+        let (before, num) = head.split_at(head.len() - digits);
+        out.push_str(before);
+        match num.parse::<usize>() {
+            Ok(n) => out.push_str(&(n + off).to_string()),
+            Err(_) => out.push_str(num),
+        }
+        out.push_str(" 行目");
+        rest = &rest[i + " 行目".len()..];
+    }
+    out.push_str(rest);
+    out
 }
 
 /// 何枚もの文書を1つのファイルの字にする。
@@ -1779,7 +1814,8 @@ pub fn parse(src: &str) -> Result<Document, String> {
 /// 落ちています**。黙って本文に化けさせると、書いた人は出来上がりを見るまで
 /// 気づけません(2026-08-18。それまで8つ試して8つとも黙って化けていました)。
 pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
-    let mut ledger: std::collections::BTreeMap<&'static str, usize> =
+    // Each kind of markup we do not read, and the lines it is on (from 1)
+    let mut ledger: std::collections::BTreeMap<&'static str, Vec<usize>> =
         std::collections::BTreeMap::new();
     let mut doc = Document::default();
     // 二行の見出し(下線)は先に `=` の形に直しておく(本家の古い書き方)
@@ -1906,7 +1942,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         // 字のまま組む物で、行も継ぎません(本家の作法)。原文のまま持ちます
         let indented = line.starts_with(' ') || line.starts_with('\t');
         if indented && !list_like && (!prev_is_body || in_literal) {
-            *ledger.entry("字下げの段落(literal)").or_default() += 1;
+            ledger.entry("字下げの段落(literal)").or_default().push(ln + 1);
             // 直前の `[.役割]` と錨は、この段落の前に原文のまま戻す(2026-09-03。
             // 前は次の普通の段落に付いて、字下げの段落の後ろに出ていた)
             push_pending_style(&mut doc, &mut pending_style, &mut style_blank);
@@ -1971,7 +2007,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             // まだ中身を読まないので載せたままです
             let wakaru = role == "塊の区切り" && !what.starts_with("開いた塊") && !what.starts_with("表(");
             if !wakaru {
-                *ledger.entry(what).or_default() += 1;
+                ledger.entry(what).or_default().push(ln + 1);
             }
             // **原文のまま持ち越し、役割の名前を付けます。**
             // 意味は分からなくても、字は壊さず返し、テンプレートで見た目を
@@ -2224,8 +2260,8 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                         // 同じ作法)。桁の割合は表に取り込んだので、
                         // 「読み飛ばした」と言うと嘘になります
                         if let Some(n) = ledger.get_mut("塊の指定([…])") {
-                            *n -= 1;
-                            if *n == 0 {
+                            n.pop();
+                            if n.is_empty() {
                                 ledger.remove("塊の指定([…])");
                             }
                         }
@@ -2245,8 +2281,8 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                         // **読めたので帳簿から下げます。** 表の題は取り込んだ
                         // ので、「読めなかった」と言うと嘘になります
                         if let Some(n) = ledger.get_mut("塊の題(.題)") {
-                            *n -= 1;
-                            if *n == 0 {
+                            n.pop();
+                            if n.is_empty() {
                                 ledger.remove("塊の題(.題)");
                             }
                         }
@@ -2429,9 +2465,15 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             }
         }
     }
+    // The first line it is on goes with each kind, so the writer can say
+    // where to look (2026-09-28)
     let ledger = ledger
         .into_iter()
-        .map(|(k, n)| if n > 1 { format!("{k} × {n}") } else { k.to_string() })
+        .map(|(k, v)| match v.as_slice() {
+            [l] => format!("{k}({l} 行目)"),
+            [l, ..] => format!("{k} × {}({l} 行目ほか)", v.len()),
+            [] => k.to_string(),
+        })
         .collect();
     Ok((doc, ledger))
 }
@@ -3638,5 +3680,17 @@ mod dash_bullet_tests {
             .filter(|b| matches!(b, crate::Block::Para(p) if p.list == crate::ListKind::Bullet))
             .count();
         assert_eq!(bullets, 0, "囲みを箇条書きとして読んでいる");
+    }
+
+    /// **The lines named in an error and in the ledger are the file's
+    /// lines**, also in the second document of a file with two
+    #[test]
+    fn lines_named_are_the_files_lines() {
+        let src = "= 一枚目\n\n本文。\n\n= 二枚目\n\n  字下げの段落\n\n|===\n|a |b\n";
+        let e = super::parse_many_full(src).expect_err("the table is open");
+        assert!(e.starts_with("9 行目"), "{e}");
+        let ok = "= 一枚目\n\n本文。\n\n= 二枚目\n\n  字下げの段落\n";
+        let (_, ledger) = super::parse_many_full(ok).expect("reads");
+        assert!(ledger.iter().any(|x| x.contains("(7 行目)")), "{ledger:?}");
     }
 }
