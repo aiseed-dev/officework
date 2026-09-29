@@ -26,6 +26,9 @@ pub const FIELDS: &[(&str, &str)] = &[
     ("dx_px", "dx"),
     ("dy_px", "dy"),
     ("fill", "fill"),
+    // A gradient fill, `angle=90 0%=FF0000 100%=4472C4` (`path=circle` for
+    // one that follows the shape)
+    ("fill_grad", "fill-gradient"),
     ("line", "line"),
     ("dash", "line-dash"),
     ("line_w", "line-width"),
@@ -49,6 +52,9 @@ pub const FIELDS: &[(&str, &str)] = &[
     ("field", "field"),
     // The place in the drawing's stacking order read from an xlsx
     ("z", "stack"),
+    // The shape's own name (`xdr:cNvPr name`), which a template names a
+    // picture's place by
+    ("name", "name"),
 ];
 
 /// 1つの図形を (項目, 値) の並びにする。**既定のままの欄は出しません。**
@@ -88,13 +94,16 @@ pub fn to_rows(s: &SheetShape) -> Vec<(&'static str, String)> {
         }
     }
     for (k, v) in [("fill", &s.fill), ("line", &s.line), ("dash", &s.dash),
-                   ("text", &s.text), ("field", &s.field)] {
+                   ("text", &s.text), ("field", &s.field), ("name", &s.name)] {
         if let Some(x) = v {
             put(k, x.clone());
         }
     }
     if s.z != d.z {
         put("z", s.z.to_string());
+    }
+    if let Some(g) = &s.fill_grad {
+        put("fill_grad", gradient(g));
     }
     if s.group != d.group {
         put("group", s.group.to_string());
@@ -149,6 +158,8 @@ pub fn from_rows(rows: &[(String, String)]) -> SheetShape {
             "dash" => s.dash = Some(v.clone()),
             "text" => s.text = Some(v.clone()),
             "field" => s.field = Some(v.clone()),
+            "name" => s.name = Some(v.clone()),
+            "fill_grad" => s.fill_grad = read_gradient(v),
             "text_fmt" => s.text_fmt = read_text_fmt(v),
             "spark_marks" => s.spark_marks = read_spark(v),
             "points" => s.points = read_points(v),
@@ -172,6 +183,32 @@ pub fn from_rows(rows: &[(String, String)]) -> SheetShape {
         }
     }
     s
+}
+
+/// A gradient as `angle=90 0%=FF0000 100%=4472C4`: the angle in degrees,
+/// then each stop's place in percent and its colour. `path=circle` stands
+/// for the angle in one that follows the shape
+fn gradient(g: &book::Gradient) -> String {
+    let mut out = vec![match &g.path {
+        Some(p) => format!("path={p}"),
+        None => format!("angle={}", num(g.degree_c as f32 / 100.0)),
+    }];
+    out.extend(g.stops.iter().map(|(p, c)| format!("{}%={c}", num(*p as f32 / 10.0))));
+    out.join(" ")
+}
+
+fn read_gradient(v: &str) -> Option<book::Gradient> {
+    let mut g = book::Gradient::default();
+    for w in v.split_whitespace() {
+        if let Some(a) = w.strip_prefix("angle=") {
+            g.degree_c = (a.parse::<f32>().ok()? * 100.0).round() as i32;
+        } else if let Some(p) = w.strip_prefix("path=") {
+            g.path = Some(p.to_string());
+        } else if let Some((p, c)) = w.split_once("%=") {
+            g.stops.push(((p.parse::<f32>().ok()? * 10.0).round() as u32, c.to_string()));
+        }
+    }
+    (!g.stops.is_empty()).then_some(g)
 }
 
 const ANCHORS: &[(TextAnchor, &str)] =
@@ -391,6 +428,24 @@ mod tests {
         let s = text_fmt(&f);
         assert!(s.contains("font=\"MS PMincho\""), "{s}");
         assert_eq!(read_text_fmt(&s), f);
+    }
+
+    #[test]
+    fn a_gradient_and_a_name_go_and_come_back() {
+        let sp = SheetShape {
+            kind: "rect".into(),
+            fill_grad: Some(book::Gradient {
+                degree_c: 9000,
+                stops: vec![(0, "FF0000".into()), (455, "00FF00".into()), (1000, "4472C4".into())],
+                path: None,
+            }),
+            name: Some("写真".into()),
+            ..Default::default()
+        };
+        let rows: Vec<(String, String)> =
+            to_rows(&sp).into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+        assert!(rows.iter().any(|(k, v)| k == "fill-gradient" && v == "angle=90 0%=FF0000 45.5%=00FF00 100%=4472C4"), "{rows:?}");
+        assert_eq!(from_rows(&rows), sp);
     }
 
     #[test]
