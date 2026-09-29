@@ -2160,6 +2160,8 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32, fo
             let w = pen_w.max(0.01);
             u.iter().map(|x| x * w).collect()
         });
+        // Where a new outline begins in `pts` (a `start` point of a path)
+        let mut breaks: Vec<usize> = Vec::new();
         let pts: Vec<(f32, f32)> = match sp.kind.as_str() {
             // **角丸。** 画面(`SheetShape::to_svg`)と Excel は丸めるのに、
             // 紙だけ四角のままでした(2026-08-29 に図形を絵にして
@@ -2279,6 +2281,12 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32, fo
                         out.push(ex(pp.at));
                         continue;
                     }
+                    // A new outline is not joined to the one before it
+                    if pp.start {
+                        breaks.push(out.len());
+                        out.push(ex(pp.at));
+                        continue;
+                    }
                     let prev = &sp.points[i - 1];
                     match (prev.c_out, pp.c_in) {
                         (None, None) => out.push(ex(pp.at)),
@@ -2350,7 +2358,13 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32, fo
                     }]
                 })
         } else {
-            vec![book::Poly { pts, closed, fill: true, stroke: true }]
+            let mut subs = Vec::new();
+            let mut from = 0;
+            for end in breaks.into_iter().chain(std::iter::once(pts.len())) {
+                subs.push(book::Poly { pts: pts[from..end].to_vec(), closed, fill: true, stroke: true });
+                from = end;
+            }
+            subs
         };
         // 回転と反転(折れ線もの以外)。紙は y が上向きなので、
         // いったん画面向きのずれに直してから時計回りに回す
@@ -3357,6 +3371,24 @@ mod zukei_tests {
         assert_eq!(leaf.size_mm, Some((210.0, 297.0)));
         assert!(!leaf.polys.is_empty(), "塗りが出ていない");
         assert!(!leaf.rules.is_empty(), "線が出ていない");
+    }
+
+    /// Two outlines of one free-form shape are filled as two pieces, not
+    /// joined by a line from the end of the first to the start of the second
+    #[test]
+    fn each_outline_of_a_path_is_its_own_piece() {
+        let mut sp = hako("path");
+        sp.points = vec![
+            book::PathPoint::at(0.0, 0.0),
+            book::PathPoint::at(0.4, 0.0),
+            book::PathPoint::at(0.0, 0.4),
+            book::PathPoint::start_at(0.6, 0.6),
+            book::PathPoint::at(1.0, 0.6),
+            book::PathPoint::at(0.6, 1.0),
+        ];
+        let leaf = shapes_leaf(&[(sp, 20.0, 200.0)], Paper::default());
+        assert_eq!(leaf.polys.len(), 2, "outlines joined: {:?}", leaf.polys.iter().map(|p| &p.points).collect::<Vec<_>>());
+        assert!(leaf.polys.iter().all(|p| p.points.len() == 3));
     }
 
     /// **下揃えの下駄は、下揃えのときだけ。**

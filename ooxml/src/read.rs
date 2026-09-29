@@ -5293,6 +5293,9 @@ fn shape_look(a: &str, palette: &[String], lines: &[f32]) -> Option<book::SheetS
         None if a.contains("<a:custGeom") => "path".into(),
         None => return None,
     };
+    if sp.kind == "path" {
+        sp.points = free_form_points(a);
+    }
     // 調整値(prstGeom の avLst)。大かっこの曲がりなど、形のつまみ。
     // custGeom の gdLst と混ざらないよう、avLst の中だけを見る
     if sp.kind != "path" {
@@ -5542,6 +5545,131 @@ fn shape_look(a: &str, palette: &[String], lines: &[f32]) -> Option<book::SheetS
         }
     }
     Some(sp)
+}
+
+/// The points of a free-form shape (`a:custGeom`, ECMA-376 20.1.9.8), as
+/// fractions of each path's own `w` x `h` (20.1.9.15).
+///
+/// Reads `moveTo`, `lnTo`, `cubicBezTo`, `quadBezTo` (turned into the same
+/// cubic curve) and `close` (a line back to the start of the outline). A
+/// path that uses `arcTo` or a guide name instead of a number gives no
+/// points, so the shape is not drawn rather than drawn in a wrong form.
+fn free_form_points(a: &str) -> Vec<book::PathPoint> {
+    #[derive(PartialEq)]
+    enum Step { Move, Line, Cubic, Quad }
+    let Some(from) = a.find("<a:pathLst") else { return Vec::new() };
+    let to = a[from..].find("</a:pathLst>").map(|e| from + e).unwrap_or(a.len());
+    // A path without w/h uses the shape's own size in EMU
+    let ext = a
+        .find("<a:ext cx=")
+        .or_else(|| a.find("<wp:extent cx="))
+        .map(|i| &a[i..])
+        .unwrap_or("");
+    let ext_w = attr_str(ext, "cx").parse::<f32>().unwrap_or(1.0);
+    let ext_h = attr_str(ext, "cy").parse::<f32>().unwrap_or(1.0);
+    let mut pts: Vec<book::PathPoint> = Vec::new();
+    let (mut w, mut h) = (ext_w, ext_h);
+    let mut step = Step::Move;
+    let mut new_outline = false;
+    let mut outline_at = 0usize;
+    let mut held: Vec<(f32, f32)> = Vec::new();
+    let mut at = from;
+    while let Some(i) = a[at..to].find('<') {
+        let s = at + i;
+        let e = a[s..to].find('>').map(|e| s + e + 1).unwrap_or(to);
+        let tag = &a[s..e];
+        at = e;
+        let name = tag[1..].split([' ', '/', '>']).next().unwrap_or("");
+        match name {
+            "a:path" => {
+                let pw = attr_str(tag, "w").parse::<f32>().unwrap_or(0.0);
+                let ph = attr_str(tag, "h").parse::<f32>().unwrap_or(0.0);
+                w = if pw > 0.0 { pw } else { ext_w };
+                h = if ph > 0.0 { ph } else { ext_h };
+                new_outline = true;
+            }
+            "a:moveTo" => {
+                step = Step::Move;
+                new_outline = true;
+            }
+            "a:lnTo" => step = Step::Line,
+            "a:cubicBezTo" => {
+                step = Step::Cubic;
+                held.clear();
+            }
+            "a:quadBezTo" => {
+                step = Step::Quad;
+                held.clear();
+            }
+            "a:arcTo" => return Vec::new(),
+            "a:close" => {
+                if let (Some(first), Some(last)) = (pts.get(outline_at), pts.last()) {
+                    if first.at != last.at {
+                        let back = first.at;
+                        pts.push(book::PathPoint::at(back.0, back.1));
+                    }
+                }
+            }
+            "a:pt" => {
+                let (Ok(x), Ok(y)) =
+                    (attr_str(tag, "x").parse::<f32>(), attr_str(tag, "y").parse::<f32>())
+                else {
+                    return Vec::new();
+                };
+                let p = (x / w.max(1.0), y / h.max(1.0));
+                match step {
+                    Step::Move | Step::Line => {
+                        if std::mem::take(&mut new_outline) {
+                            outline_at = pts.len();
+                            let mut q = book::PathPoint::at(p.0, p.1);
+                            q.start = !pts.is_empty();
+                            pts.push(q);
+                        } else {
+                            pts.push(book::PathPoint::at(p.0, p.1));
+                        }
+                    }
+                    Step::Cubic => {
+                        held.push(p);
+                        if held.len() == 3 {
+                            if let Some(prev) = pts.last_mut() {
+                                prev.c_out = Some(held[0]);
+                            }
+                            pts.push(book::PathPoint {
+                                at: held[2],
+                                start: false,
+                                c_in: Some(held[1]),
+                                c_out: None,
+                            });
+                            held.clear();
+                        }
+                    }
+                    Step::Quad => {
+                        held.push(p);
+                        if held.len() == 2 {
+                            let Some(prev) = pts.last_mut() else { return Vec::new() };
+                            let (s0, q, e0) = (prev.at, held[0], held[1]);
+                            prev.c_out = Some((
+                                s0.0 + (q.0 - s0.0) * 2.0 / 3.0,
+                                s0.1 + (q.1 - s0.1) * 2.0 / 3.0,
+                            ));
+                            pts.push(book::PathPoint {
+                                at: e0,
+                                start: false,
+                                c_in: Some((
+                                    e0.0 + (q.0 - e0.0) * 2.0 / 3.0,
+                                    e0.1 + (q.1 - e0.1) * 2.0 / 3.0,
+                                )),
+                                c_out: None,
+                            });
+                            held.clear();
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    pts
 }
 
 /// タグの属性を字で。無ければ空。
