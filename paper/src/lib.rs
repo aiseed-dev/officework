@@ -1894,6 +1894,18 @@ impl PageSource {
     }
 }
 
+#[cfg(feature = "e")]
+impl PageSource {
+    /// The faces made ready to draw this layout's pages
+    /// ([`e::egaku_faces`]), once per layout rather than once per page: the
+    /// body face is shared, the run faces are copied once
+    pub fn faces(&self) -> e::Faces {
+        let mut v = vec![self.font.clone()];
+        v.extend(self.run_fonts.iter().map(|(_, b)| std::sync::Arc::new(b.clone())));
+        e::Faces::shared(v)
+    }
+}
+
 /// The pages of a [`PageSource`], made the way [`doc_pages`] makes them
 pub fn page_leaves(src: &PageSource) -> Result<Vec<pdfw::Leaf>, String> {
     let mut sheet = src.sheet.clone();

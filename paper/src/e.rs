@@ -93,9 +93,68 @@ pub fn egaku_with(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, font: Option<&[u8
     egaku_fonts(leaf, w_mm, h_mm, bai, &fonts)
 }
 
-/// **書体を何本でも持つ形**(2026-09-08。PDF の `write_pages_fonts` と対)。
-/// `Piece::font` がどれで描くかを指します。1本目が既定
+/// **Any number of faces** (2026-09-08; the pair of the PDF's
+/// `write_pages_fonts`). `Piece::font` names the face a piece is drawn in;
+/// the first is the default.
+///
+/// Only the faces some text of this page is drawn in are made ready, and
+/// each of those is copied once for the call. To draw many pages with the
+/// same faces without copying them for each page, make [`Faces`] once and
+/// call [`egaku_faces`]
 pub fn egaku_fonts(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, fonts: &[&[u8]]) -> E {
+    let mut made: Vec<Option<FontData>> = vec![None; fonts.len()];
+    let mut fd = |i: usize| -> FontData {
+        made[i].get_or_insert_with(|| FontData::new(Blob::new(Arc::new(fonts[i].to_vec())), 0)).clone()
+    };
+    egaku_inner(leaf, w_mm, h_mm, bai, fonts, &mut fd)
+}
+
+/// **Faces made ready to draw once**, for drawing many pages with them
+/// ([`egaku_faces`]). A face of 10 to 30 MB (the CJK ones) was copied for
+/// each page picture before
+#[derive(Clone, Default)]
+pub struct Faces {
+    datas: Vec<FontData>,
+}
+
+impl Faces {
+    /// Copies each face once
+    pub fn new(fonts: &[&[u8]]) -> Faces {
+        Faces { datas: fonts.iter().map(|d| FontData::new(Blob::new(Arc::new(d.to_vec())), 0)).collect() }
+    }
+
+    /// Shares faces the caller already holds, without copying them
+    pub fn shared(fonts: Vec<Arc<Vec<u8>>>) -> Faces {
+        Faces { datas: fonts.into_iter().map(|d| FontData::new(Blob::new(d), 0)).collect() }
+    }
+
+    pub fn len(&self) -> usize {
+        self.datas.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.datas.is_empty()
+    }
+}
+
+/// [`egaku_fonts`] with faces made ready beforehand ([`Faces`]): nothing is
+/// copied
+pub fn egaku_faces(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, faces: &Faces) -> E {
+    let fonts: Vec<&[u8]> = faces.datas.iter().map(|d| d.data.data()).collect();
+    let mut fd = |i: usize| -> FontData { faces.datas[i].clone() };
+    egaku_inner(leaf, w_mm, h_mm, bai, &fonts, &mut fd)
+}
+
+/// The drawing itself. `fd(i)` hands over face `i` ready for vello; it is
+/// asked only for the faces some text is drawn in
+fn egaku_inner(
+    leaf: &Leaf,
+    w_mm: f32,
+    h_mm: f32,
+    bai: f32,
+    fonts: &[&[u8]],
+    fd: &mut dyn FnMut(usize) -> FontData,
+) -> E {
     // **四捨五入します。** 切り捨てると A4 の 150 dpi が 1754 でなく 1753
     // 画素になり、1画素足りません(297mm × 150 ÷ 25.4 = 1753.94)
     let (w, h) = ((w_mm * bai).round() as u16, (h_mm * bai).round() as u16);
@@ -202,10 +261,10 @@ pub fn egaku_fonts(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, fonts: &[&[u8]])
     let mut res = Resources::new();
     // **字はいちばん上。** 塗りと罫線の後に置きます
     if !fonts.is_empty() {
-        moji(&mut cx, &mut res, leaf, h_mm, mm, fonts);
+        moji(&mut cx, &mut res, leaf, h_mm, mm, fonts, fd);
         // **透かしも字です。** 敷いた後の紙に薄く斜めで重ねます
         if let Some(s) = &leaf.watermark {
-            sukashi(&mut cx, &mut res, s, w_mm, h_mm, mm, fonts[0]);
+            sukashi(&mut cx, &mut res, s, w_mm, h_mm, mm, fonts[0], fd(0));
         }
     }
     // **字の上に引く線**(手描きのペン)。字を書いた後に引きます
@@ -238,6 +297,7 @@ fn moji(
     h_mm: f32,
     mm: f64,
     fonts: &[&[u8]],
+    fd_of: &mut dyn FnMut(usize) -> FontData,
 ) {
     // The letters are drawn the way the PDF writer writes them
     // (`pdfw::write_pages_fonts`): the face that has every letter of the
@@ -249,7 +309,6 @@ fn moji(
     let faces: Vec<Option<ttf_parser::Face<'_>>> =
         fonts.iter().map(|data| ttf_parser::Face::parse(data, 0).ok()).collect();
     let all: Option<Vec<ttf_parser::Face<'_>>> = faces.iter().cloned().collect();
-    let mut datas: Vec<Option<FontData>> = vec![None; fonts.len()];
     let pt_px = 25.4 / 72.0 * mm;
     for p in &leaf.pieces {
         if p.text.is_empty() {
@@ -267,9 +326,7 @@ fn moji(
             let r = Rect::new(x0 as f64 * mm, top, (x0 + w) as f64 * mm, top + h as f64 * mm);
             cx.push_clip_layer(&vello_cpu::kurbo::Shape::to_path(&r, 0.1));
         }
-        let fd = datas[fi]
-            .get_or_insert_with(|| FontData::new(Blob::new(Arc::new(fonts[fi].to_vec())), 0))
-            .clone();
+        let fd = fd_of(fi);
         let em = face.units_per_em() as f64;
         let size = p.size_pt as f64 * pt_px;
         let th = if p.tz > 0.0 { p.tz as f64 / 100.0 } else { 1.0 };
@@ -345,9 +402,9 @@ fn sukashi(
     h_mm: f32,
     mm: f64,
     data: &[u8],
+    fd: FontData,
 ) {
     let Ok(face) = ttf_parser::Face::parse(data, 0) else { return };
-    let fd = FontData::new(Blob::new(Arc::new(data.to_vec())), 0);
     let em = face.units_per_em() as f64;
     // pdfw と同じ 60pt・紙の左から2割・下から3割
     let size = 60.0 * 25.4 / 72.0 * mm;
@@ -763,6 +820,40 @@ mod tests {
         let mut c = hako();
         c.fills[0].rgb = (0.2, 0.8, 0.3);
         assert_ne!(a.yubi(), egaku(&c, 80.0, 40.0, 4.0).yubi(), "色を変えても同じ指紋");
+    }
+
+    /// **Only the faces some text uses are made ready**, and faces made
+    /// once ([`Faces`]) draw the same picture as the bytes passed each time
+    #[test]
+    fn only_the_faces_in_use_are_made_ready() {
+        let (fam, _) = kumihan::font::for_text(None, "あ".chars()).expect("書体");
+        let data = kumihan::font::load(fam).expect("読めない");
+        let mut leaf = Leaf { bg: Some((1.0, 1.0, 1.0)), ..Default::default() };
+        leaf.pieces.push(crate::pdfw::Piece {
+            x_mm: 5.0,
+            y_mm: 10.0,
+            size_pt: 20.0,
+            text: "あ".into(),
+            font: 1,
+            ..Default::default()
+        });
+        let fonts: Vec<&[u8]> = vec![&data, &data, &data];
+        let mut asked = Vec::new();
+        let mut fd = |i: usize| {
+            asked.push(i);
+            FontData::new(Blob::new(Arc::new(data.to_vec())), 0)
+        };
+        let a = egaku_inner(&leaf, 40.0, 20.0, 4.0, &fonts, &mut fd);
+        asked.sort_unstable();
+        asked.dedup();
+        assert_eq!(asked, vec![1], "a face no text uses was made ready");
+        let b = egaku_faces(&leaf, 40.0, 20.0, 4.0, &Faces::new(&fonts));
+        let c = egaku_fonts(&leaf, 40.0, 20.0, 4.0, &fonts);
+        assert_eq!(a.yubi(), b.yubi());
+        assert_eq!(a.yubi(), c.yubi());
+        let one = Arc::new(data.clone());
+        let shared = Faces::shared(vec![one.clone(), one.clone(), one]);
+        assert_eq!(a.yubi(), egaku_faces(&leaf, 40.0, 20.0, 4.0, &shared).yubi());
     }
 
     /// **字が出る。** 書体を渡したときだけです
