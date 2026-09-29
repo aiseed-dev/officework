@@ -36,6 +36,12 @@ the source file.
   more than 10 seconds).
 * Write the output to an ordinary folder such as one under `~/Documents`. Excel
   could not write under `/private/tmp`.
+* Word's `open` also returns before the document is there. Waiting one second
+  was not enough for a Word template after its folder had just been granted
+  access (2026-09-29): `active document` was missing value. Wait until the
+  document's name appears, then bring it to the front and save it.
+* The first time Word or Excel opens a file in a folder, Office asks on screen
+  for access to it ("アクセス権を付与"). Until someone answers, opening waits.
 """
 import os
 import subprocess
@@ -88,12 +94,17 @@ def word_pdf(src, out):
     try:
         _osa(
             f'''
-with timeout of 120 seconds
+with timeout of 180 seconds
 tell application "Microsoft Word"
     open "{src}"
+    -- Word's open returns before the document is there: wait for it
+    repeat 90 times
+        if (name of every document) contains "{os.path.basename(src)}" then exit repeat
+        delay 1
+    end repeat
+    activate object document "{os.path.basename(src)}"
     delay 1
-    set d to active document
-    save as d file name "{out}" file format format PDF
+    save as active document file name "{out}" file format format PDF
 end tell
 end timeout
 '''
