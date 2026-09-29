@@ -182,7 +182,7 @@ A template made in Excel can be filled as it stands, with no marks: in the data'
 notes = sheet.Book.fill_template("履歴書.xlsx", data, "山田.xlsx")
 ----
 
-Only the cells that change are written into the template's sheets; every other part of the file (formats, theme, shapes, document properties) is copied as it was. A text value goes into the cell as text and a number as a number, and the cell keeps its format. `notes` lists what cannot be put in this way (rows that would need a 別紙, a picture for a picture field). Names the data lacks are warned about, as with `fill`.
+Only the cells that change are written into the template's sheets; every other part of the file (formats, theme, shapes, document properties) is copied as it was. A text value goes into the cell as text and a number as a number, and the cell keeps its format. A shape named in Excel's name box after a data item (`写真`) takes the picture file the data gives, looked for in the data file's folder: inside the shape, keeping its proportions, centred, and the shape's own text gives way. PNG and JPEG pictures can be put in. `notes` lists what cannot be put in this way (rows that would need a 別紙, a picture of another kind, a file not found). Names the data lacks are warned about, as with `fill`.
 
 A shape given a field name with the `field` item (`写真`) takes the picture file the data names under that name, looked for in the data file's folder.
 

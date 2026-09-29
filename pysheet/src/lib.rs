@@ -273,11 +273,13 @@ impl PyBook {
     // into its sheets and every other part is copied as it was
     // (sheet::xlsx::patch). Returns what could not be put in place
     #[staticmethod]
-    fn fill_template(template: &str, data: &PyBook, out: &str) -> PyResult<Vec<String>> {
+    #[pyo3(signature = (template, data, out, dir = None))]
+    fn fill_template(template: &str, data: &PyBook, out: &str, dir: Option<&str>) -> PyResult<Vec<String>> {
         let bytes = std::fs::read(template)
             .map_err(|e| PyIOError::new_err(format!("{template}: 読めない: {e}")))?;
         let d = lock(&data.inner)?.book.clone();
-        let (filled, notes) = sheet::xlsx::patch::fill_template(&bytes, &d).map_err(PyValueError::new_err)?;
+        let (filled, notes) = sheet::xlsx::patch::fill_template(&bytes, &d, dir.map(std::path::Path::new))
+            .map_err(PyValueError::new_err)?;
         std::fs::write(out, filled).map_err(|e| PyIOError::new_err(format!("{out}: 書けない: {e}")))?;
         Ok(notes)
     }

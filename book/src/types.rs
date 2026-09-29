@@ -1462,6 +1462,11 @@ pub struct SheetShape {
     /// an adoc form; filling puts the data's picture inside the shape
     /// (docs/sekkei/drawlist.ja.adoc)
     pub field: Option<String>,
+    /// The name the file gives the shape (xlsx `xdr:cNvPr/@name`, the name
+    /// Excel shows in its name box). A template made in Excel names its
+    /// photo box `写真`, and filling takes it as that field
+    /// (docs/sekkei/sashikomi.ja.adoc)
+    pub name: Option<String>,
     /// Place in the drawing's stacking order: the position of the anchor in
     /// the drawing part, the first at the bottom (ECMA-376 Part 1 §20.5.2.35:
     /// wsDr acts like spTree, §19.3.1.45: lexical order is z-order). Objects
@@ -1528,6 +1533,7 @@ impl Default for SheetShape {
             to: None,
             adj: Vec::new(),
             field: None,
+            name: None,
             z: 0,
         }
     }

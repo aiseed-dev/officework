@@ -2639,6 +2639,9 @@ fn shape_xml(sp: &book::SheetShape, id: u32, naka_off: Option<(i64, i64)>) -> St
         format!("jo:{}:{:.4}:{}", sp.kind, sp.base, sp.spark_marks.tag())
     } else if sp.kind == "spark" && sp.spark_marks != book::SparkMarks::default() {
         format!("jo:spark:0:{}", sp.spark_marks.tag())
+    } else if let Some(n) = sp.name.as_deref().filter(|n| !n.starts_with("jo:")) {
+        // The name the file gave it (a template's `写真`), kept on saving
+        esc(n)
     } else {
         format!("図形 {id}")
     };

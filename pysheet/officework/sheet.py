@@ -2075,15 +2075,22 @@ class Book(NoStrayAttributes):
         テンプレートの名前の定義の名前を書くと、そのセルに値が入ります。
         ``{氏名}`` などの印も、``fill`` と同じように埋まります。
 
-        この形で入れられなかった物(別紙の要る行、写真の欄)を、文の並びで
-        返します。"""
+        テンプレートの図形に、Excel の名前ボックスでデータの項目と同じ名前
+        (``写真`` など)を付けておくと、データに書いた画像のファイルがその図形の
+        中に入ります。ファイルはデータのファイルと同じフォルダーから探します。
+        いまは PNG と JPEG を入れられます。
+
+        この形で入れられなかった物(別紙の要る行、入れられない種類の画像)を、
+        文の並びで返します。"""
         path = _os.fspath(template)
         missing = _engine.Book.missing(Book.open(path)._b, data._b)
         if missing:
             import warnings as _warnings
             _warnings.warn("データに無い名前があります(空にしました): " + "、".join(missing),
                            stacklevel=2)
-        return _engine.Book.fill_template(path, data._b, _os.fspath(out))
+        dpath = getattr(data, "_path", None)
+        folder = _os.path.dirname(_os.fspath(dpath)) if dpath else None
+        return _engine.Book.fill_template(path, data._b, _os.fspath(out), folder)
 
     @staticmethod
     def fill(form, data):
