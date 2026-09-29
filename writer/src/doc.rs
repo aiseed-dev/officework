@@ -128,6 +128,7 @@ impl Writer {
             pic_leaves: None,
             pic_cache: Default::default(),
             pic_drop: Vec::new(),
+            pic_faces: None,
             code: None,
             opened: 0,
             view_only: false,

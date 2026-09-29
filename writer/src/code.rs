@@ -61,6 +61,9 @@ pub(crate) struct Preview {
     /// For each document, where each of its fonts (in the order its leaves
     /// name them) is in `fonts`
     pub font_at: Vec<Vec<usize>>,
+    /// For each document, its faces made ready to draw, sharing the bytes
+    /// of `fonts`
+    pub faces: Vec<paper::e::Faces>,
     /// The paper of a page that does not carry its own size
     pub paper: (f32, f32),
     /// The letters on the pages, line by line, to find the text a place
@@ -213,9 +216,14 @@ fn visible_from(text: &str, byte: usize) -> usize {
 }
 
 impl Preview {
-    /// The font bytes the leaves of document `d` name, in their order
-    pub fn fonts_of(&self, d: usize) -> Vec<&[u8]> {
-        self.font_at.get(d).map(|m| m.iter().map(|&i| self.fonts[i].1.as_slice()).collect()).unwrap_or_default()
+    /// Make each document's faces ready to draw, sharing the font bytes
+    fn with_faces(mut self) -> Preview {
+        self.faces = self
+            .font_at
+            .iter()
+            .map(|m| paper::e::Faces::shared(m.iter().map(|&i| self.fonts[i].1.clone()).collect()))
+            .collect();
+        self
     }
 }
 
@@ -398,11 +406,13 @@ fn preview_of(leaves: Vec<paper::pdfw::Leaf>, fonts: Vec<(String, Vec<u8>)>, pap
         pages,
         fonts: fonts.into_iter().map(|(na, b)| (na, Arc::new(b))).collect(),
         font_at: vec![(0..n).collect()],
+        faces: Vec::new(),
         paper,
         lines,
         notes: Vec::new(),
         fill_notes: Vec::new(),
     }
+    .with_faces()
 }
 
 
@@ -484,7 +494,8 @@ pub(crate) fn make_pages(job: Job) -> Result<Preview, String> {
         font_at.push(at);
     }
     let lines = lines_of(&pages, size);
-    Ok(Preview { pages, fonts, font_at, paper: size, lines, notes: job.notes, fill_notes: Vec::new() })
+    Ok(Preview { pages, fonts, font_at, faces: Vec::new(), paper: size, lines, notes: job.notes, fill_notes: Vec::new() }
+        .with_faces())
 }
 
 impl Writer {
@@ -934,8 +945,7 @@ impl Writer {
             let pic = match c.cache.get(&key) {
                 Some(p) => Some(p.clone()),
                 None => {
-                    let fonts = pv.fonts_of(*d);
-                    let p = crate::pages::picture(leaf, w, h, bai, &fonts);
+                    let p = pv.faces.get(*d).and_then(|f| crate::pages::picture(leaf, w, h, bai, f));
                     if let Some(p) = &p {
                         c.cache.insert(key, p.clone());
                     }

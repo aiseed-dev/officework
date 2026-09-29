@@ -72,8 +72,10 @@ fn kaku(
         ));
     }
     let b = bai(dpi);
+    // The faces are made ready once for all the pages, not once per page
+    let faces = paper::e::Faces::new(fonts);
     for (k, (leaf, (w, h))) in leaves.iter().enumerate() {
-        let e = paper::e::egaku_fonts(leaf, *w, *h, b, fonts);
+        let e = paper::e::egaku_faces(leaf, *w, *h, b, &faces);
         let png = e.png()?;
         // **書けてから置き替えます。** 途中で落ちても元の絵が残ります
         kumihan::atomic::save(&na(to, k), |mut f| {

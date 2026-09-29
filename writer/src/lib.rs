@@ -354,6 +354,8 @@ pub struct Writer {
     pic_cache: std::collections::HashMap<(usize, u32), std::sync::Arc<gpui::RenderImage>>,
     /// Page pictures to give back to the GPU at the next draw
     pub(crate) pic_drop: Vec<std::sync::Arc<gpui::RenderImage>>,
+    /// The faces of the last layout, made ready to draw its pages
+    pub(crate) pic_faces: Option<paper::e::Faces>,
     /// An .adoc edited as its text beside its pages (src/code.rs)
     pub(crate) code: Option<code::CodeView>,
     /// Counts the files put in place, so `open` can tell a file that could

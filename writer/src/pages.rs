@@ -9,15 +9,16 @@
 use crate::*;
 use std::sync::Arc;
 
-/// A page drawn at `bai` pixels per mm, as gpui keeps pictures (BGRA)
+/// A page drawn at `bai` pixels per mm, as gpui keeps pictures (BGRA),
+/// with faces made ready once for all the pages
 pub(crate) fn picture(
     leaf: &paper::pdfw::Leaf,
     w_mm: f32,
     h_mm: f32,
     bai: f32,
-    fonts: &[&[u8]],
+    faces: &paper::e::Faces,
 ) -> Option<Arc<gpui::RenderImage>> {
-    let e = paper::e::egaku_fonts(leaf, w_mm, h_mm, bai, fonts);
+    let e = paper::e::egaku_faces(leaf, w_mm, h_mm, bai, faces);
     let mut bgra = e.rgba;
     for p in bgra.as_chunks_mut::<4>().0 {
         p.swap(0, 2);
@@ -96,6 +97,8 @@ impl Writer {
             self.pic_drop.extend(self.pic_cache.drain().map(|(_, v)| v));
             self.pic_leaves =
                 self.page_src.as_ref().and_then(|s| paper::page_leaves(s).ok()).map(Arc::new);
+            // The faces once per layout, not once per page picture
+            self.pic_faces = self.page_src.as_ref().map(|s| s.faces());
         }
         self.pic_leaves.clone()
     }
@@ -111,7 +114,7 @@ impl Writer {
         if let Some(p) = self.pic_cache.get(&key) {
             return Some((p.clone(), w, h));
         }
-        let pic = picture(leaf, w, h, bai, &src.font_bytes())?;
+        let pic = picture(leaf, w, h, bai, self.pic_faces.as_ref()?)?;
         self.pic_cache.insert(key, pic.clone());
         Some((pic, w, h))
     }
