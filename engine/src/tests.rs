@@ -1107,6 +1107,42 @@ mod table_layout_tests {
         assert!((less - 12.36 * 0.9).abs() < 0.01, "0.9 lines: {less}");
     }
 
+    /// A thick bottom border on the last row makes the table taller by its
+    /// width and is drawn under the row's content, so the paragraph after
+    /// the table starts under the rule
+    #[test]
+    fn the_last_rows_bottom_border_takes_its_width_below_the_row() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let with = |pt: Option<f32>| {
+            let mut d = doc_with_table();
+            if let Block::Table(t) = &mut d.blocks[1] {
+                t.borders = TableBorders { top: false, left: false, bottom: false, right: false, inside_h: false, inside_v: false };
+                if let Some(pt) = pt {
+                    for c in t.rows.last_mut().unwrap() {
+                        c.borders.bottom = Some(true);
+                        c.borders.bottom_pt = pt;
+                    }
+                }
+            }
+            d.push_para(Paragraph {
+                runs: vec![Run { text: "後の本文".into(), size_pt: Some(10.5), font: None, fmt: Default::default() }],
+                ..Default::default()
+            });
+            layout(&d, &m, &frame)
+        };
+        let (plain, thick) = (with(None), with(Some(4.5)));
+        let y = |s: &Sheet| s.lines.iter().find(|l| l.text().contains("後の本文")).unwrap().y_mm;
+        let grew = y(&thick) - y(&plain);
+        assert!((grew - 4.5 * 25.4 / 72.0).abs() < 0.01, "the table grew {grew}mm");
+        // The rule's centre is half its width under the last row's content
+        let rule = thick.rules.iter().max_by(|a, b| a.at[1].total_cmp(&b.at[1])).unwrap();
+        let body_top = y(&thick) - crate::layout::BASE_UP_MM;
+        assert!(rule.at[1] < body_top, "the rule is not above the next paragraph");
+        assert!((body_top - rule.at[1] - 4.5 / 2.0 * 25.4 / 72.0).abs() < 0.5, "rule at {} for body at {body_top}", rule.at[1]);
+    }
+
     /// A picture alone in a centred cell paragraph sits in the middle of
     /// the cell, and a right-aligned picture with text ends at the cell's
     /// right edge (the picture and the text are aligned as one block)

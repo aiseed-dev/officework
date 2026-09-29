@@ -3172,7 +3172,29 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     for h in &row_hs {
         tops.push(tops.last().unwrap() + h);
     }
-    let table_bottom = *tops.last().unwrap();
+    // **The bottom edge of the table takes its own width too.** Each row
+    // above holds the edge over it; the edge under the last row belongs to
+    // no row, so the table grows by it and the rule is drawn in that space,
+    // right under the content. Word's letterhead ends its header table with
+    // a 4.5pt coloured bottom border (`w:tcBorders/w:bottom w:sz="36"`):
+    // Word draws it from the end of the row down and starts the next
+    // paragraph under it, where we drew it across the edge and started
+    // 4.3pt higher (2026-09-29)
+    let soko_w = {
+        let haba = |side: Option<bool>, pt: f32| -> f32 {
+            if side == Some(true) { if pt > 0.0 { pt } else { KEISEN_PT } } else { 0.0 }
+        };
+        let last = table.rows.last().map(|r| r.as_slice()).unwrap_or(&[]);
+        let jibun = last.iter().map(|c| haba(c.borders.bottom, c.borders.bottom_pt)).fold(0.0f32, f32::max);
+        if jibun > 0.0 {
+            jibun * PT_TO_MM
+        } else if table.borders.bottom && last.iter().any(|c| c.borders.bottom.is_none()) {
+            KEISEN_PT * PT_TO_MM
+        } else {
+            0.0
+        }
+    };
+    let table_bottom = *tops.last().unwrap() + soko_w;
 
     // 格子の地図(第2走が中身を消費した後も結合の形を見られるように)
     let grid: Vec<Vec<(usize, usize, VMerge)>> = rows_laid
@@ -3427,6 +3449,8 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     // `tops` は行より1つ多い(上端に加えて最後の下端を持つ)ので、
     // そのまま歩けば行の境を全部通る
     for (b, &y) in tops.iter().enumerate() {
+        // The bottom edge is drawn in the width the table gave it
+        let y = if b >= grid.len() { y + soko_w / 2.0 } else { y };
         // **その辺を引く決まりか**(2026-08-30)。docx の `w:tblBorders` に
         // 挙がっていない辺は引きません。前は必ず四方に引いていたので、
         // 下線だけの様式が枠だらけになっていました
