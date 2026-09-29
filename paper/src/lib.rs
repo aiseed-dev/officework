@@ -920,6 +920,52 @@ mod tests {
         assert_eq!(leaves.len(), 3, "箱の頁まで紙が足されていない: {}", leaves.len());
     }
 
+    /// Every child of a group in the line is drawn, fitted into the box the
+    /// layout gave the group
+    #[test]
+    fn every_child_of_an_inline_group_is_drawn() {
+        let xml = concat!(
+            r#"<wp:inline><wp:extent cx="360000" cy="360000"/><wp:docPr id="1" name="g"/>"#,
+            r#"<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"><wpg:wgp>"#,
+            r#"<wpg:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="360000" cy="360000"/><a:chOff x="0" y="0"/><a:chExt cx="100" cy="100"/></a:xfrm></wpg:grpSpPr>"#,
+            r#"<wps:wsp><wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="100" cy="50"/></a:xfrm><a:prstGeom prst="rect"/></wps:spPr></wps:wsp>"#,
+            r#"<wps:wsp><wps:spPr><a:xfrm><a:off x="0" y="50"/><a:ext cx="100" cy="50"/></a:xfrm><a:prstGeom prst="rect"/></wps:spPr></wps:wsp>"#,
+            r#"</wpg:wgp></a:graphicData></a:graphic></wp:inline>"#);
+        let d = kumihan::Document::plain("x");
+        let mut sheet = kumihan::Sheet::default();
+        sheet.inline_shapes.push((xml.to_string(), [10.0, 20.0, 10.0, 10.0]));
+        let page = kumihan::PageSetup::default();
+        let v = foreign_shapes(&d, &sheet, page);
+        assert_eq!(v.len(), 2, "children drawn: {}", v.len());
+        assert!((v[1].y_mm - v[0].y_mm - 5.0).abs() < 0.01, "{} {}", v[0].y_mm, v[1].y_mm);
+        assert!((v[1].h_mm - 5.0).abs() < 0.01);
+    }
+
+    /// A group sized as a share of the page grows its children and the gaps
+    /// between them with it, not only its own box
+    #[test]
+    fn a_group_sized_by_the_page_grows_its_children() {
+        let a = concat!(
+            r#"<w:drawing><wp:anchor><wp:positionH relativeFrom="page"><wp:posOffset>0</wp:posOffset></wp:positionH>"#,
+            r#"<wp:positionV relativeFrom="page"><wp:posOffset>0</wp:posOffset></wp:positionV>"#,
+            r#"<wp:extent cx="3600000" cy="3600000"/><wp:docPr id="1" name="g"/>"#,
+            r#"<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"><wpg:wgp>"#,
+            r#"<wpg:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="3600000" cy="3600000"/><a:chOff x="0" y="0"/><a:chExt cx="1000" cy="1000"/></a:xfrm></wpg:grpSpPr>"#,
+            r#"<wps:wsp><wps:spPr><a:xfrm><a:off x="500" y="500"/><a:ext cx="500" cy="500"/></a:xfrm><a:prstGeom prst="rect"/></wps:spPr></wps:wsp>"#,
+            r#"</wpg:wgp></a:graphicData></a:graphic>"#,
+            r#"<wp14:sizeRelH relativeFrom="page"><wp14:pctWidth>100000</wp14:pctWidth></wp14:sizeRelH>"#,
+            r#"</wp:anchor></w:drawing>"#);
+        let page = kumihan::PageSetup::default();
+        let parts = split_anchors(a, &page);
+        let f = ooxml::foreign_shape(&parts[0]).expect("child not read");
+        // 100mm wide on paper as wide as the page: the child is half the
+        // page wide and starts half way across. The height is not a share
+        assert!((f.x_mm - page.w_mm / 2.0).abs() < 0.1, "x {}", f.x_mm);
+        assert!((f.w_mm - page.w_mm / 2.0).abs() < 0.1, "w {}", f.w_mm);
+        assert!((f.y_mm - 50.0).abs() < 0.1, "y {}", f.y_mm);
+        assert!((f.h_mm - 50.0).abs() < 0.1, "h {}", f.h_mm);
+    }
+
     /// **グループの子を 1 つずつ描く**(2026-09-09)。子の位置はグループの座標に写す
     #[test]
     fn a_group_opens_into_its_children() {
@@ -932,7 +978,7 @@ mod tests {
             r#"<wps:wsp><wps:spPr><a:xfrm><a:off x="0" y="100"/><a:ext cx="3600000" cy="360000"/></a:xfrm><a:prstGeom prst="rect"/></wps:spPr><wps:txbx><w:txbxContent><w:p><w:r><w:t>甲</w:t></w:r></w:p></w:txbxContent></wps:txbx></wps:wsp>"#,
             r#"<wps:wsp><wps:spPr><a:xfrm><a:off x="3600000" y="720100"/><a:ext cx="3600000" cy="360000"/></a:xfrm><a:prstGeom prst="rect"/></wps:spPr><wps:txbx><w:txbxContent><w:p><w:r><w:t>乙</w:t></w:r></w:p></w:txbxContent></wps:txbx></wps:wsp>"#,
             r#"</wpg:wgp></a:graphicData></a:graphic></wp:anchor></w:drawing>"#);
-        let parts = split_anchors(a);
+        let parts = split_anchors(a, &kumihan::PageSetup::default());
         assert_eq!(parts.len(), 2, "子が 2 つに開いていない: {}", parts.len());
         let f: Vec<_> = parts.iter().map(|p| ooxml::foreign_shape(p).expect("子が読めない")).collect();
         assert_eq!(f[0].look.text.as_deref(), Some("甲"));
@@ -952,11 +998,11 @@ mod tests {
             r#"<wp:extent cx="720000" cy="360000"/><wp:docPr id="1" name="{}"/>"#,
             r#"<wps:wsp><wps:spPr><a:prstGeom prst="rect"/></wps:spPr><wps:txbx><w:txbxContent><w:p><w:r><w:t>{}</w:t></w:r></w:p></w:txbxContent></wps:txbx></wps:wsp></wp:anchor></w:drawing>"#), name, name);
         let raw = format!("<w:r>{}{}{}</w:r>", one("一"), one("二"), one("三"));
-        let parts = split_anchors(&raw);
+        let parts = split_anchors(&raw, &kumihan::PageSetup::default());
         assert_eq!(parts.len(), 3, "3 つに切れていない: {}", parts.len());
         let texts: Vec<Option<String>> = parts.iter().map(|p| ooxml::foreign_shape(p).and_then(|f| f.look.text)).collect();
         assert_eq!(texts, vec![Some("一".into()), Some("二".into()), Some("三".into())]);
-        assert_eq!(split_anchors("<w:pict>x</w:pict>").len(), 1, "wp: の無い控えはそのまま");
+        assert_eq!(split_anchors("<w:pict>x</w:pict>", &kumihan::PageSetup::default()).len(), 1, "wp: の無い控えはそのまま");
     }
 
     /// **節ごとにヘッダーが替わる**(2026-09-09)。JST の計画書は 13 の節が別々の
@@ -2650,17 +2696,23 @@ fn group_leaves<'a>(body: &'a str, xf: &GroupXf, out: &mut Vec<GroupKo<'a>>) {
     }
 }
 
-/// **グループ(`wpg:wgp`)の子を、1 つずつの図形に開く**(2026-09-09、Opus Mac の
-/// 切り分け。岐阜の掲示の「相談窓口」は 6 個の子を持つのに 1 つ目しか描いていなかった)。
-/// 子の位置は `a:chOff` / `a:chExt` の座標で書いてあるので、グループの `a:off` /
-/// `a:ext` の座標に写して、錨の距離(`wp:posOffset`)と大きさ(`wp:extent`)を
-/// 子ごとに書き替えた錨を作る。子の中身(`wps:wsp`・`pic:pic`)はそのまま。
+/// **Opens a group (`wpg:wgp`) into one anchor per child** (2026-09-09. The
+/// "consultation desk" of a Gifu notice has 6 children, and only the first
+/// was drawn). A child's place is given in the `a:chOff` / `a:chExt`
+/// coordinates, so it is mapped onto the group's `a:off` / `a:ext`, and each
+/// child gets an anchor with its own distance (`wp:posOffset`) and size
+/// (`wp:extent`). The child's content (`wps:wsp`, `pic:pic`) is kept as is.
+///
+/// A group sized as a share of the page or the margins (`wp14:sizeRelH` /
+/// `sizeRelV`) is that size, not its `wp:extent`, so the children grow with
+/// it. Word's letterhead is a Letter-sized group set to 100% of an A4 page,
+/// and the header band came out 3mm shorter than Word draws it (2026-09-29).
 ///
 /// A group inside a group composes: the inner group's `a:off` is in the
 /// outer group's child coordinates, and its `a:chOff` / `a:chExt` name its
 /// own. Reading only the outermost group put the two tickets of Word's
 /// "Scroll banner every day card" on top of each other (2026-09-20)
-fn open_group(anchor: &str) -> Option<Vec<String>> {
+fn open_group(anchor: &str, page: &kumihan::PageSetup) -> Option<Vec<String>> {
     let gi = anchor.find("<wpg:wgp")?;
     // 錨の距離
     let px = {
@@ -2687,7 +2739,17 @@ fn open_group(anchor: &str) -> Option<Vec<String>> {
     {
         return None;
     }
-    let ne = GroupXf { ax: 1.0, bx: px, ay: 1.0, by: py, rot: Vec::new() };
+    // The group's real size over its `wp:extent`
+    let (w_share, h_share) = ooxml::size_shares(anchor);
+    let grow = |share: Option<(String, f32)>, ext: Option<f32>, tate: bool| -> f32 {
+        match (share, ext.filter(|v| *v > 0.0)) {
+            (Some(sh), Some(ext)) => anchor_size(Some(&sh), ext / 36000.0, page, tate) * 36000.0 / ext,
+            _ => 1.0,
+        }
+    };
+    let ax = grow(w_share, xf_num(head, "<wp:extent", "cx"), false);
+    let ay = grow(h_share, xf_num(head, "<wp:extent", "cy"), true);
+    let ne = GroupXf { ax, bx: px, ay, by: py, rot: Vec::new() };
     let xf = group_xf(&anchor[gp_i..gp_e], &ne);
     let mut leaves = Vec::new();
     group_leaves(&anchor[gp_e..], &xf, &mut leaves);
@@ -2732,8 +2794,8 @@ fn open_group(anchor: &str) -> Option<Vec<String>> {
 
 /// 控えの原文を `<wp:anchor>` / `<wp:inline>` ごとに切る。1 つも無ければ原文のまま
 /// (VML の `w:pict` などは読み手がそのまま見る)。グループは子ごとに開く
-pub(crate) fn split_anchors(a: &str) -> Vec<String> {
-    split_anchors_z(a).into_iter().map(|(x, _)| x).collect()
+pub(crate) fn split_anchors(a: &str, page: &kumihan::PageSetup) -> Vec<String> {
+    split_anchors_z(a, page).into_iter().map(|(x, _)| x).collect()
 }
 
 /// The same, with each piece's place in the draw order.
@@ -2744,7 +2806,7 @@ pub(crate) fn split_anchors(a: &str) -> Vec<String> {
 /// layer it had. Word's ticket template puts three stars after the scroll
 /// picture of the same group, and the picture hid them (2026-09-20).
 /// Anchors behind the text count from [`BEHIND`] instead of 0.
-pub(crate) fn split_anchors_z(a: &str) -> Vec<(String, i32)> {
+pub(crate) fn split_anchors_z(a: &str, page: &kumihan::PageSetup) -> Vec<(String, i32)> {
     let mut out = Vec::new();
     for x in split_anchors_1(a) {
         // An anchor behind the text (`behindDoc="1"`) goes under everything
@@ -2753,7 +2815,7 @@ pub(crate) fn split_anchors_z(a: &str) -> Vec<(String, i32)> {
         // behindDoc and relativeHeight). Word's restaurant brochure puts its
         // dark panels behind the text, and they hid the inline ramen photo
         let base = if behind_doc(&x) { BEHIND } else { 0 };
-        match open_group(&x) {
+        match open_group(&x, page) {
             Some(kora) => {
                 for (i, ko) in kora.into_iter().enumerate() {
                     out.push((ko, base + i as i32 + 1));
@@ -2990,7 +3052,7 @@ pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, pa
         let (kami0, soko) = kami_no(*y_sheet);
         let y_para = y_sheet - soko - kumihan::BASE_UP_MM;
         let x_moto = page.left_mm + x_para;
-        for (part, z) in split_anchors_z(a) {
+        for (part, z) in split_anchors_z(a, &page) {
             // A shape filled with a picture (`a:blipFill` in `wps:spPr`,
             // ECMA-376 20.1.8.14) draws that picture over its own box, the
             // same as a `pic:pic` (Word's restaurant brochure, 2026-09-21)
@@ -3077,8 +3139,8 @@ fn hf_pictures(
             continue;
         }
         let kono = if footer { page.h_mm - page.footer_mm } else { page.header_mm };
-        for a in hf.anchors.iter().flat_map(|a| split_anchors(a)) {
-            for (part, z) in split_anchors_z(&a) {
+        for a in hf.anchors.iter().flat_map(|a| split_anchors(a, &page)) {
+            for (part, z) in split_anchors_z(&a, &page) {
                 // A shape filled with a picture (`a:blipFill` in `wps:spPr`,
                 // ECMA-376 20.1.8.14) draws that picture over its own box, the
                 // same as a `pic:pic` (Word's restaurant brochure, 2026-09-21)
@@ -3246,7 +3308,7 @@ pub fn foreign_shapes(
     }
     for (a, y_para, atama_dake, atama_nuki) in hf_anchors
         .into_iter()
-        .flat_map(|(a, y0, f, t)| split_anchors(a).into_iter().map(move |s| (s, y0, f, t)))
+        .flat_map(|(a, y0, f, t)| split_anchors(a, &page).into_iter().map(move |s| (s, y0, f, t)))
     {
         for mut f in ooxml::foreign_shapes_in(&a, &doc.theme_colors, &doc.theme_line_pt) {
             shape_text_style(doc, &a, &mut f.look);
@@ -3283,7 +3345,7 @@ pub fn foreign_shapes(
         // box; the recorded y is BASE_UP_MM below that (the line's y_mm)
         let y_para = y_sheet - soko - kumihan::BASE_UP_MM;
         let x_moto = page.left_mm + x_para;
-        for (part, z) in split_anchors_z(a) {
+        for (part, z) in split_anchors_z(a, &page) {
             // an inline drawing is placed by the layout itself (a lone one
             // comes back whole from split_anchors, wrapped in its run)
             if (part.contains("<wp:inline") && !part.contains("<wp:anchor")) || part.contains("<pic:pic") {
@@ -3349,21 +3411,32 @@ pub fn foreign_shapes(
             }
         }
     }
-    // Drawn shapes in the line (rules under headings), placed by the layout
+    // Drawn shapes in the line (rules under headings), placed by the layout.
+    // Every child of an inline group is drawn inside the box the layout gave
+    // the group. Only the first child was drawn before, and the envelope icon
+    // of Word's letterhead (a group of two shapes) showed only its flap
+    // (2026-09-29)
     for (xml, [x, top, w, h]) in &sheet.inline_shapes {
         let (kami, soko) = kami_no(*top);
-        let Some(f) = ooxml::foreign_shapes_in(xml, &doc.theme_colors, &doc.theme_line_pt).into_iter().next() else {
-            continue;
-        };
-        out.push(kumihan::DocShape {
-            page: kami,
-            x_mm: page.left_mm + x,
-            y_mm: top - soko,
-            w_mm: *w,
-            h_mm: *h,
-            look: f.look,
-            z: 0,
-        });
+        let kora = ooxml::foreign_shapes_in(xml, &doc.theme_colors, &doc.theme_line_pt);
+        // The group's own box as read, to fit the children into the layout's box
+        let (gw, gh) = ooxml::foreign_shape_with(xml, &doc.theme_colors, &doc.theme_line_pt)
+            .map(|g| (g.w_mm, g.h_mm))
+            .unwrap_or((*w, *h));
+        let (sx, sy) = (if gw > 0.0 { w / gw } else { 1.0 }, if gh > 0.0 { h / gh } else { 1.0 });
+        let one = kora.len() == 1;
+        for f in kora {
+            let (w_mm, h_mm) = if one { (*w, *h) } else { (f.w_mm * sx, f.h_mm * sy) };
+            out.push(kumihan::DocShape {
+                page: kami,
+                x_mm: page.left_mm + x + f.dx_mm * sx,
+                y_mm: top - soko + f.dy_mm * sy,
+                w_mm,
+                h_mm,
+                look: f.look,
+                z: 0,
+            });
+        }
     }
     out
 }

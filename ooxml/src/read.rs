@@ -5143,31 +5143,12 @@ pub fn foreign_shape_with(a: &str, palette: &[String], lines: &[f32]) -> Option<
     };
     let (h_from, x_mm, h_align) = kijun("<wp:positionH");
     let (v_from, y_mm, v_align) = kijun("<wp:positionV");
-    // **大きさが紙や余白に対する百分率のことがあります**(Word 2010 の
-    // `wp14:sizeRelH` / `wp14:sizeRelV`)。`wp:extent` はそのときの控えで、
-    // 実際の大きさはこちらです。内閣府の面談の記録の飾り枠は紙の
-    // 92% × 94% で、`wp:extent` の 197.9×261.4mm ではなく
-    // 193.2×279.2mm で出ます(2026-09-03)
-    let pct = |tag: &str, key: &str| -> Option<(String, f32)> {
-        let i = a.find(tag)?;
-        let owari = a[i..].find('>').map(|e| i + e).unwrap_or(a.len());
-        let from = a[i..owari]
-            .find("relativeFrom=\"")
-            .and_then(|j| {
-                let s2 = i + j + 14;
-                a[s2..].find('"').map(|e| a[s2..s2 + e].to_string())
-            })?;
-        let k = a[owari..].find(key)? + owari + key.len();
-        let e = a[k..].find('<')? + k;
-        // 1000 分の1パーセント
-        a[k..e].trim().parse::<f32>().ok().map(|v| (from, v / 100000.0))
-    };
-    // **0% は「百分率で決めていない」の印**です(2026-09-09)。Word は相対
-    // 指定を使わない図形にも `<wp14:pctWidth>0</wp14:pctWidth>` を書きます。
-    // 0 を大きさにすると幅 0 の箱になり、テキストボックスの題が1字ずつ
-    // 折れて縦に並びました(岐阜労働局の「公正採用選考人権啓発推進員選任・変更届」)
-    let w_pct = pct("<wp14:sizeRelH", "<wp14:pctWidth>").filter(|(_, v)| *v > 0.0);
-    let h_pct = pct("<wp14:sizeRelV", "<wp14:pctHeight>").filter(|(_, v)| *v > 0.0);
+    // The size may be a share of the page or the margins (Word 2010's
+    // `wp14:sizeRelH` / `wp14:sizeRelV`). `wp:extent` is then only a copy,
+    // and the share is the real size. The frame of the Cabinet Office's
+    // interview record is 92% x 94% of the page, and comes out 193.2 x
+    // 279.2mm, not the 197.9 x 261.4mm of `wp:extent` (2026-09-03)
+    let (w_pct, h_pct) = size_shares(a);
     Some(ForeignShape {
         x_mm, y_mm, w_mm, h_mm, h_from, v_from, h_align, v_align, w_pct, h_pct, look,
         dx_mm: 0.0, dy_mm: 0.0,
@@ -5244,6 +5225,35 @@ pub fn foreign_shapes_in(a: &str, palette: &[String], lines: &[f32]) -> Vec<Fore
         });
     }
     if out.is_empty() { vec![base] } else { out }
+}
+
+/// The width and the height of an anchor given as a share of the page or
+/// the margins (`wp14:sizeRelH` / `wp14:sizeRelV`): the frame it is a share
+/// of, and the share (1.0 = 100%). `None` when the size is `wp:extent`.
+pub fn size_shares(a: &str) -> (Option<(String, f32)>, Option<(String, f32)>) {
+    let pct = |tag: &str, key: &str| -> Option<(String, f32)> {
+        let i = a.find(tag)?;
+        let owari = a[i..].find('>').map(|e| i + e).unwrap_or(a.len());
+        let from = a[i..owari]
+            .find("relativeFrom=\"")
+            .and_then(|j| {
+                let s2 = i + j + 14;
+                a[s2..].find('"').map(|e| a[s2..s2 + e].to_string())
+            })?;
+        let k = a[owari..].find(key)? + owari + key.len();
+        let e = a[k..].find('<')? + k;
+        // In thousandths of a percent
+        a[k..e].trim().parse::<f32>().ok().map(|v| (from, v / 100000.0))
+    };
+    // 0% means the size is not a share (2026-09-09). Word writes
+    // `<wp14:pctWidth>0</wp14:pctWidth>` on shapes that do not use a share
+    // too. Taking 0 as the size made a box with no width, and the title of
+    // a text box broke after every letter (the Gifu Labour Bureau's form
+    // for appointing a fair-hiring promoter)
+    (
+        pct("<wp14:sizeRelH", "<wp14:pctWidth>").filter(|(_, v)| *v > 0.0),
+        pct("<wp14:sizeRelV", "<wp14:pctHeight>").filter(|(_, v)| *v > 0.0),
+    )
 }
 
 /// `<wp:extent cx="…" cy="…"/>` を mm で
