@@ -211,6 +211,11 @@ pub struct CharFormat {
     /// 相互参照。ここ(書式)に持つのは、run の分割・結合・描画の
     /// 既存の道具立てがそのまま使えるため(field が違えば繋がらない)
     pub field: Option<RefField>,
+    /// **A mail merge field** (`MERGEFIELD name`, ECMA-376 Part 1
+    /// 17.16.5.35): the name of the data item it takes. The run's text is
+    /// what the field shows now (`«氏名»`); filling puts the value there
+    /// and the field goes (`fill::fill_form`)
+    pub merge: Option<String>,
     /// ルビ(ふりがな)。この run の字の上に半分の大きさで振る。
     /// field と同じ理由でここに持つ — run の切り貼りが面倒を見てくれる
     pub ruby: Option<String>,

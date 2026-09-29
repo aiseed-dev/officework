@@ -1832,6 +1832,52 @@ mod ref_field_round_tests {
 }
 
 #[cfg(test)]
+mod merge_field_tests {
+    use super::*;
+
+    const WORD: &str = r#"<w:document xmlns:w="x"><w:body><w:p>
+        <w:r><w:t>氏名:</w:t></w:r>
+        <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+        <w:r><w:instrText xml:space="preserve"> MERGEFIELD 氏名 \* MERGEFORMAT </w:instrText></w:r>
+        <w:r><w:fldChar w:fldCharType="separate"/></w:r>
+        <w:r><w:t>«氏名»</w:t></w:r>
+        <w:r><w:fldChar w:fldCharType="end"/></w:r>
+        <w:r><w:t> 様 </w:t></w:r>
+        <w:fldSimple w:instr=" MERGEFIELD &quot;住 所&quot; "><w:r><w:t>«住 所»</w:t></w:r></w:fldSimple>
+    </w:p></w:body></w:document>"#;
+
+    fn merges(doc: &kumihan::Document) -> Vec<(String, String)> {
+        doc.paragraphs()
+            .flat_map(|p| p.runs.iter())
+            .filter_map(|r| r.fmt.merge.clone().map(|m| (m, r.text.clone())))
+            .collect()
+    }
+
+    /// **Word's mail merge fields are read as fields** (MERGEFIELD, ECMA-376
+    /// 17.16.5.35), in the complex form and the simple one, with the text
+    /// they show and the name, quotes and switches taken off
+    #[test]
+    fn reads_merge_fields() {
+        let (doc, rep) = parse_document_xml(WORD);
+        assert_eq!(doc.body_text(), "氏名:«氏名» 様 «住 所»");
+        assert_eq!(merges(&doc), vec![("氏名".into(), "«氏名»".into()), ("住 所".into(), "«住 所»".into())]);
+        assert!(!rep.unsupported.iter().any(|(n, _)| n.contains("MERGEFIELD")), "{:?}", rep.unsupported);
+    }
+
+    /// **A template opened and saved keeps its merge fields**
+    #[test]
+    fn merge_fields_round_trip() {
+        let (doc, _) = parse_document_xml(WORD);
+        let out = write_document_xml(&doc);
+        assert!(out.contains("MERGEFIELD 氏名"), "{out}");
+        // The quotes of a name with a space, escaped in the attribute
+        assert!(out.contains("MERGEFIELD &quot;住 所&quot;"), "{out}");
+        let (back, _) = parse_document_xml(&out);
+        assert_eq!(merges(&back), merges(&doc));
+    }
+}
+
+#[cfg(test)]
 mod partial_fmt_tests {
     use super::*;
     use kumihan::Document;

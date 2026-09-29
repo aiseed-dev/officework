@@ -1036,12 +1036,22 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
             }
             if run.text.is_empty() { continue }
             // 相互参照はフィールドとして書く(見えている値をキャッシュに持つ)
-            if let Some(rf) = &run.fmt.field {
-                let instr = if rf.page {
+            let merge_instr = run.fmt.merge.as_ref().map(|name| {
+                // A name with a space is quoted, as Word writes it
+                if name.contains(char::is_whitespace) {
+                    format!(" MERGEFIELD \"{name}\" ")
+                } else {
+                    format!(" MERGEFIELD {name} ")
+                }
+            });
+            let ref_instr = run.fmt.field.as_ref().map(|rf| {
+                if rf.page {
                     format!(" PAGEREF {} \\h ", rf.name)
                 } else {
                     format!(" REF {} \\h ", rf.name)
-                };
+                }
+            });
+            if let Some(instr) = ref_instr.or(merge_instr) {
                 let b = if run.fmt.bold { "<w:b/>" } else { "" };
                 let color = run.fmt.color.as_deref()
                     .map(|c| format!(r#"<w:color w:val="{c}"/>"#))

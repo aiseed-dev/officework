@@ -1431,6 +1431,21 @@ pub(super) fn field_mark(instr: &str) -> Option<char> {
     }
 }
 
+/// The data item a mail merge field takes (`MERGEFIELD 氏名 \* MERGEFORMAT`,
+/// ECMA-376 Part 1 17.16.5.35): the name, with its quotes taken off when
+/// it has spaces, and the switches left out
+pub(super) fn merge_instr(instr: &str) -> Option<String> {
+    // `w:fldSimple/@w:instr` comes with its entities as written
+    let instr = instr.replace("&quot;", "\"").replace("&amp;", "&");
+    let rest = instr.trim_start().strip_prefix("MERGEFIELD")?.trim_start();
+    let name = if let Some(q) = rest.strip_prefix('"') {
+        q.split('"').next()?.to_string()
+    } else {
+        rest.split_whitespace().next()?.to_string()
+    };
+    (!name.is_empty() && !name.starts_with('\\')).then_some(name)
+}
+
 /// 相互参照の命令(REF / PAGEREF しおり名)。
 pub(super) fn ref_instr(instr: &str) -> Option<RefField> {
     let mut it = instr.split_whitespace();
@@ -2444,7 +2459,9 @@ pub(super) fn fldchar(
                 // (TOC など)は Word が計算して置いた見た目をそのまま本文に流す。
                 // 前は全部隠していたので、目次の頁が丸ごと無かった(JST の計画書。
                 // 2026-09-09)
-                *field_hide = field_mark(field_instr).is_some() || ref_instr(field_instr).is_some();
+                *field_hide = field_mark(field_instr).is_some()
+                    || ref_instr(field_instr).is_some()
+                    || merge_instr(field_instr).is_some();
             }
         }
         Some("end")
@@ -2465,6 +2482,18 @@ pub(super) fn fldchar(
                     if let Some(p) = para.as_mut() {
                         let mut f2 = fmt.clone();
                         f2.field = Some(rf);
+                        p.push(Run {
+                            text: std::mem::take(field_buf),
+                            size_pt,
+                            font: font.clone(),
+                            fmt: f2,
+                        });
+                    }
+                } else if let Some(name) = merge_instr(field_instr) {
+                    // A mail merge field: the text it shows, marked with its name
+                    if let Some(p) = para.as_mut() {
+                        let mut f2 = fmt.clone();
+                        f2.merge = Some(name);
                         p.push(Run {
                             text: std::mem::take(field_buf),
                             size_pt,
@@ -3472,6 +3501,15 @@ pub(super) fn parse_document_rels_num(
                             if let Some(p) = para.as_mut() {
                                 let mut f2 = fmt.clone();
                                 f2.field = Some(rf);
+                                p.push(Run { text: inner_texts(raw), size_pt,
+                                             font: font.clone(), fmt: f2 });
+                            }
+                        } else if let Some(name) = merge_instr(&instr) {
+                            // A mail merge field, with the text it shows
+                            let raw = &xml[start_pos..last_pos];
+                            if let Some(p) = para.as_mut() {
+                                let mut f2 = fmt.clone();
+                                f2.merge = Some(name);
                                 p.push(Run { text: inner_texts(raw), size_pt,
                                              font: font.clone(), fmt: f2 });
                             }

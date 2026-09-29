@@ -313,8 +313,44 @@ fn fill_table(t: &Table, d: &Data, rep: &mut Report) -> Table {
 ///
 /// **The original is not touched.** A copy is returned, so the template can be used
 /// any number of times.
-pub fn fill(doc: &Document, d: &Data) -> (Document, Report) {
+/// **Word's mail merge fields as marks.** A run that is a `MERGEFIELD`
+/// (`CharFormat::merge`) becomes the mark `{name}` in plain text, so the
+/// marks' filling answers it: a filled field is plain text, as in the
+/// document Word's mail merge makes
+fn fields_as_marks(doc: &Document) -> std::borrow::Cow<'_, Document> {
+    fn runs(rs: &mut [Run]) {
+        for r in rs {
+            if let Some(name) = r.fmt.merge.take() {
+                r.text = format!("{{{name}}}");
+            }
+        }
+    }
+    let has = |p: &Paragraph| p.runs.iter().any(|r| r.fmt.merge.is_some());
+    let any = doc.blocks.iter().any(|b| match b {
+        Block::Para(p) => has(p),
+        Block::Table(t) => t.rows.iter().flatten().any(|c| c.paragraphs.iter().any(has)),
+    });
+    if !any {
+        return std::borrow::Cow::Borrowed(doc);
+    }
     let mut out = doc.clone();
+    for b in &mut out.blocks {
+        match b {
+            Block::Para(p) => runs(&mut p.runs),
+            Block::Table(t) => {
+                for c in t.rows.iter_mut().flatten() {
+                    for p in &mut c.paragraphs {
+                        runs(&mut p.runs);
+                    }
+                }
+            }
+        }
+    }
+    std::borrow::Cow::Owned(out)
+}
+
+pub fn fill(doc: &Document, d: &Data) -> (Document, Report) {
+    let mut out = fields_as_marks(doc).into_owned();
     let mut rep = Report::default();
     let look = |n: &str| d.values.get(n).cloned();
     for b in &mut out.blocks {
@@ -539,6 +575,7 @@ pub fn with_bessi(doc: &Document, data: &book::Book) -> (Document, Vec<book::for
 /// altogether are returned for the caller to report, with where the
 /// chosen options of choice marks stand.
 pub fn fill_form(doc: &Document, data: &book::Book) -> FormFill {
+    let doc = &*fields_as_marks(doc);
     let answers = book::form::Data::new(data);
     // Rows that do not fit go on to a 別紙
     let (mut out, bessi) = with_bessi(doc, data);
@@ -625,6 +662,36 @@ mod form_tests {
 
     fn run(t: &str) -> Run {
         Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }
+    }
+
+    /// **Word's mail merge fields take the data's values**, in a paragraph
+    /// and in a table cell; a filled field is plain text (as Word's merged
+    /// document), and a field the data does not answer is emptied like a mark
+    #[test]
+    fn merge_fields_take_the_values() {
+        let (data, _) = crate::book_adoc::parse("= データ\n\n.基本\n|===\n|氏名 |山田 太郎\n|===\n").unwrap();
+        let field = |name: &str| {
+            let mut r = run(&format!("«{name}»"));
+            r.fmt.merge = Some(name.into());
+            r
+        };
+        let mut doc = Document::default();
+        let mut p = Paragraph::default();
+        p.runs = vec![run("氏名:"), field("氏名"), run(" 様 "), field("住所")];
+        doc.blocks.push(Block::Para(p));
+        let f = fill_form(&doc, &data);
+        let Block::Para(p) = &f.doc.blocks[0] else { panic!() };
+        let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+        assert_eq!(text, "氏名:山田 太郎 様 ");
+        assert!(p.runs.iter().all(|r| r.fmt.merge.is_none()), "a field is left");
+        // The plain fill (`{{name}}`) does the same
+        let mut d = Data::new();
+        d.set("氏名", "山田 花子");
+        let (out, rep) = fill(&doc, &d);
+        let Block::Para(p) = &out.blocks[0] else { panic!() };
+        let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+        assert!(text.starts_with("氏名:山田 花子 様 "), "{text}");
+        assert_eq!(rep.unknown, vec!["住所".to_string()]);
     }
 
     #[test]
