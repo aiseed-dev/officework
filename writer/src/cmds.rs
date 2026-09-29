@@ -310,8 +310,17 @@ impl Writer {
         // **一手 = 控え1枚。** 中で打鍵や段落の変更を呼ぶ命令があるので、
         // ここで旗を落とし、最初の1枚だけを通す
         self.acted = false;
+        // The page pictures and the PDF are made from the last layout: a
+        // command that moves shapes or changes the page colour or the
+        // watermark without laying out again would leave them behind
+        let dress = (self.doc.shapes.clone(), self.doc.page_color.clone(), self.doc.watermark.clone());
         self.run_cmd_inner(id, cx);
         self.acted = false;
+        if self.page_src.is_some()
+            && (self.doc.shapes != dress.0 || self.doc.page_color != dress.1 || self.doc.watermark != dress.2)
+        {
+            self.lay();
+        }
     }
     fn run_cmd_inner(&mut self, id: &str, cx: &mut Context<Self>) {
         // 読み取り専用の保護。文書を変えるボタンはここで断る(見る・出す・

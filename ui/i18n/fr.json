@@ -1760,14 +1760,9 @@
  "thinking": "Réflexion…",
  "now": "Actuel : {}",
  "back_sheet_conversation_panel": "Retour à la feuille (le panneau de conversation reste ouvert)",
- "here_change": "Voici la modification.",
  "answered_left_panel": "Réponse donnée (panneau de gauche)",
  "nothing_ask": "Aucune demande saisie",
- "applied": "Appliqué.",
  "number_format_set": "Format de nombre défini sur {}",
- "revised_text_ready_read": "Le texte révisé est prêt (lisez-le dans le panneau de gauche, puis Appliquer)",
- "replaced_selection_ctrl_z": "Sélection remplacée (Ctrl+Z annule)",
- "inserted_after_cursor_ctrl": "Inséré après le curseur (Ctrl+Z annule)",
  "back_document_conversation_panel": "Retour au texte (le panneau de conversation reste ouvert)",
  "ai": "Panneau Agent",
  "indent_3": "Retrait",
@@ -2389,5 +2384,7 @@
  "code_opened": "{} — le texte à gauche, ses pages à droite. Le texte est enregistré tel quel",
  "code_view_not_here": "Cela ne fonctionne pas sur le texte d'un .adoc. Écrivez-le dans le texte",
  "code_not_utf8": "{} n'est pas en UTF-8. Les caractères illisibles s'affichent comme �, et l'enregistrement écrit de l'UTF-8",
- "code_too_many_fonts": "Trop de polices pour un seul PDF ({})"
+ "code_too_many_fonts": "Trop de polices pour un seul PDF ({})",
+ "code_note": "{} (ligne {})",
+ "code_note_many": "{} × {} (ligne {} et autres)"
 }

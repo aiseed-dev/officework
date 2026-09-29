@@ -1760,14 +1760,9 @@
  "thinking": "正在思考…",
  "now": "当前:{}",
  "back_sheet_conversation_panel": "回到表格(对话面板保持打开)",
- "here_change": "这样修改。",
  "answered_left_panel": "已回答(左面板)",
  "nothing_ask": "没有要问的内容",
- "applied": "已应用。",
  "number_format_set": "已把数字格式设为 {}",
- "revised_text_ready_read": "改好的文字已就绪(在左面板读过后再按「应用」)",
- "replaced_selection_ctrl_z": "已替换选中的部分(Ctrl+Z 可撤销)",
- "inserted_after_cursor_ctrl": "已插入到光标之后(Ctrl+Z 可撤销)",
  "back_document_conversation_panel": "回到正文(对话面板保持打开)",
  "ai": "智能体面板",
  "indent_3": "缩进",
@@ -2389,5 +2384,7 @@
  "code_opened": "{} — 左边是文本，右边是其页面。文本按原样保存",
  "code_view_not_here": "在 .adoc 的文本画面中无法使用。请直接写在文本中",
  "code_not_utf8": "{} 不是 UTF-8。无法读取的字符显示为 �,保存时会以 UTF-8 写入",
- "code_too_many_fonts": "字体太多,无法放入一个 PDF({} 个)"
+ "code_too_many_fonts": "字体太多,无法放入一个 PDF({} 个)",
+ "code_note": "{}(第 {} 行)",
+ "code_note_many": "{} × {}(第 {} 行等)"
 }

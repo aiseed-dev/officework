@@ -2329,7 +2329,12 @@ impl gpui::Element for InputSink {
                     cx.notify();
                 }
                 w.drag_select = false;
-                w.shape_drag = None;
+                // A shape let go where it was dragged: the page pictures
+                // and the PDF are made again from its new place
+                if w.shape_drag.take().is_some() {
+                    w.lay();
+                    cx.notify();
+                }
             });
         });
         // 右クリックでメニュー。選択があれば選択への操作、無ければ押した所へ

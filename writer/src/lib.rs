@@ -1247,6 +1247,8 @@ impl HasEditor for Writer {
             let text = self.wm_ed.text().to_string();
             self.doc.watermark = if text.is_empty() { None } else { Some(text) };
             self.dirty = true;
+            // The page pictures carry the watermark: lay out again
+            self.lay();
             return;
         }
         if self.cmt_edit {

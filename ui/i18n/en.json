@@ -1760,14 +1760,9 @@
  "thinking": "Thinking…",
  "now": "Now: {}",
  "back_sheet_conversation_panel": "Back to the sheet (the conversation panel stays open)",
- "here_change": "Here is the change.",
  "answered_left_panel": "Answered (left panel)",
  "nothing_ask": "Nothing to ask",
- "applied": "Applied.",
  "number_format_set": "Number format set to {}",
- "revised_text_ready_read": "The revised text is ready (read it in the left panel, then press Apply)",
- "replaced_selection_ctrl_z": "Replaced the selection (Ctrl+Z undoes it)",
- "inserted_after_cursor_ctrl": "Inserted after the cursor (Ctrl+Z undoes it)",
  "back_document_conversation_panel": "Back to the document (the conversation panel stays open)",
  "ai": "Agent panel",
  "indent_3": "Indent",
@@ -2389,5 +2384,7 @@
  "code_opened": "{} — the text on the left, its pages on the right. The text is saved as it is",
  "code_view_not_here": "This does not work on the text of an .adoc. Write it in the text instead",
  "code_not_utf8": "{} is not in UTF-8. Characters that could not be read show as �, and saving writes UTF-8",
- "code_too_many_fonts": "Too many fonts for one PDF ({})"
+ "code_too_many_fonts": "Too many fonts for one PDF ({})",
+ "code_note": "{} (line {})",
+ "code_note_many": "{} × {} (line {} and others)"
 }

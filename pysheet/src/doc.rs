@@ -375,7 +375,7 @@ impl PyDoc {
                 inner: Arc::new(Mutex::new(Inner {
                     doc,
                     original: None,
-                    unsupported: notes.into_iter().map(|n| (n, 1)).collect(),
+                    unsupported: notes.into_iter().map(|n| { let k = ledger_count(&n); (n, k) }).collect(),
                     made_from: None,
                 })),
             });
@@ -3402,5 +3402,24 @@ mod tests {
             vec![("宛先".to_string(), 1, 3), ("金額".to_string(), 4, 5)],
             "欄のまとまりが違う: {g:?}"
         );
+    }
+}
+
+/// How many times the kind of an adoc ledger entry came: "kind × 3(3 行目ほか)"
+/// gives 3, an entry without " × " gives 1
+fn ledger_count(entry: &str) -> usize {
+    entry
+        .split_once(" × ")
+        .and_then(|(_, rest)| rest.split(|c: char| !c.is_ascii_digit()).next())
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(1)
+}
+
+#[cfg(test)]
+mod ledger_tests {
+    #[test]
+    fn a_kind_seen_three_times_counts_three() {
+        assert_eq!(super::ledger_count("字下げの段落(literal) × 3(3 行目ほか)"), 3);
+        assert_eq!(super::ledger_count("字下げの段落(literal)(4 行目)"), 1);
     }
 }

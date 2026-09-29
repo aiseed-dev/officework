@@ -1760,14 +1760,9 @@
  "thinking": "Sto pensando…",
  "now": "Ora: {}",
  "back_sheet_conversation_panel": "Torno al foglio (il pannello della conversazione resta aperto)",
- "here_change": "Ecco la modifica.",
  "answered_left_panel": "Risposto (pannello sinistro)",
  "nothing_ask": "Nessuna richiesta",
- "applied": "Applicato.",
  "number_format_set": "Formato numero impostato su {}",
- "revised_text_ready_read": "Il testo rivisto è pronto (leggilo nel pannello sinistro, poi Applica)",
- "replaced_selection_ctrl_z": "Selezione sostituita (Ctrl+Z annulla)",
- "inserted_after_cursor_ctrl": "Inserito dopo il cursore (Ctrl+Z annulla)",
  "back_document_conversation_panel": "Torno al testo (il pannello della conversazione resta aperto)",
  "ai": "Pannello agente",
  "indent_3": "Rientro",
@@ -2389,5 +2384,7 @@
  "code_opened": "{} — il testo a sinistra, le sue pagine a destra. Il testo viene salvato così com'è",
  "code_view_not_here": "Non funziona sul testo di un .adoc. Scrivilo nel testo",
  "code_not_utf8": "{} non è in UTF-8. I caratteri illeggibili appaiono come �, e il salvataggio scrive UTF-8",
- "code_too_many_fonts": "Troppi caratteri per un solo PDF ({})"
+ "code_too_many_fonts": "Troppi caratteri per un solo PDF ({})",
+ "code_note": "{} (riga {})",
+ "code_note_many": "{} × {} (riga {} e altre)"
 }

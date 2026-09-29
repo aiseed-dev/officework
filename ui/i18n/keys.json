@@ -7104,10 +7104,6 @@
     "kind": "msg"
   },
   {
-    "key": "here_change",
-    "kind": "msg"
-  },
-  {
     "key": "answered_left_panel",
     "kind": "msg"
   },
@@ -7116,23 +7112,7 @@
     "kind": "msg"
   },
   {
-    "key": "applied",
-    "kind": "msg"
-  },
-  {
     "key": "number_format_set",
-    "kind": "msg"
-  },
-  {
-    "key": "revised_text_ready_read",
-    "kind": "msg"
-  },
-  {
-    "key": "replaced_selection_ctrl_z",
-    "kind": "msg"
-  },
-  {
-    "key": "inserted_after_cursor_ctrl",
     "kind": "msg"
   },
   {
@@ -9533,6 +9513,14 @@
   },
   {
     "key": "code_too_many_fonts",
+    "kind": "msg"
+  },
+  {
+    "key": "code_note",
+    "kind": "msg"
+  },
+  {
+    "key": "code_note_many",
     "kind": "msg"
   }
 ]

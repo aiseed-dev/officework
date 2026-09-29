@@ -197,6 +197,57 @@ impl Preview {
     }
 }
 
+/// An entry of the engine's ledger of markup the pages do not show, for
+/// the screen. The engine names each kind in Japanese ("取り込み(include::)(7
+/// 行目)"); on a screen in another language the kind is shown by its
+/// AsciiDoc markup, which reads the same in every language, and the line
+/// in the screen's words
+pub(crate) fn note_for_screen(entry: &str, ja: bool) -> String {
+    if ja {
+        return entry.to_string();
+    }
+    match note_parts(entry) {
+        Some((mark, Some(n), line)) => ui::tf!("code_note_many", mark, n, line).to_string(),
+        Some((mark, None, line)) => ui::tf!("code_note", mark, line).to_string(),
+        None => entry.to_string(),
+    }
+}
+
+/// A ledger entry, "kind(7 行目)" or "kind × 3(3 行目ほか)", as the kind's
+/// markup, how many times it came (when more than once) and its line
+fn note_parts(entry: &str) -> Option<(String, Option<usize>, String)> {
+    let open = entry.rfind('(')?;
+    let (head, tail) = (&entry[..open], &entry[open + '('.len_utf8()..]);
+    let line: String = tail.chars().take_while(|c| c.is_ascii_digit()).collect();
+    if line.is_empty() {
+        return None;
+    }
+    let (kind, many) = match head.split_once(" × ") {
+        Some((k, n)) => (k, n.parse::<usize>().ok()),
+        None => (head, None),
+    };
+    // The markup inside the kind's own brackets, else the kind's markup
+    let inner = kind.rfind('(').map(|i| kind[i + '('.len_utf8()..].trim_end_matches(')').to_string());
+    let mark = match inner.as_deref() {
+        Some(".題") => ".Title".to_string(),
+        Some(":名前: 値") => ":name: value".to_string(),
+        Some(m) if !m.is_empty() => m.to_string(),
+        _ => match kind {
+            "横の区切り線" => "'''".into(),
+            "チェックの箇条書き" => "* [x]".into(),
+            "コードの塊" => "----".into(),
+            "字のまま出す塊" => "....".into(),
+            "例の塊" => "====".into(),
+            "傍注の塊" => "****".into(),
+            "覚え書きの塊" => "////".into(),
+            "そのまま通す塊" => "++++".into(),
+            k if k.starts_with("開いた塊") || k == "塊の中" => "--".into(),
+            k => k.into(),
+        },
+    };
+    Some((mark, many, line))
+}
+
 /// The state of the split view
 #[derive(Default)]
 pub(crate) struct CodeView {
@@ -746,10 +797,12 @@ impl Writer {
             );
         }
         if !pv.notes.is_empty() {
+            let ja = ui::settings::language() == "ja";
+            let list: Vec<String> = pv.notes.iter().map(|n| note_for_screen(n, ja)).collect();
             notes = notes.child(
                 div().p_2().bg(rgb(0xEEF3F7)).text_color(rgb(0x2B4150))
                     .child(SharedString::from(
-                        ui::tf!("uses_markup_not_handle", name, pv.notes.join("・")).to_string(),
+                        ui::tf!("uses_markup_not_handle", name, list.join(if ja { "・" } else { ", " })).to_string(),
                     )),
             );
         }
@@ -779,6 +832,18 @@ mod tests {
         let third = nth(&page, &chars("目的"), 2).unwrap();
         let j = match_place(&page, third, &src).unwrap();
         assert_eq!(j, nth(&src, &chars("目的"), 2).unwrap());
+    }
+
+    /// The ledger names a kind by its markup on a screen in another
+    /// language, and stays as the engine wrote it on a Japanese screen
+    #[test]
+    fn a_ledger_entry_is_shown_by_its_markup() {
+        let one = "取り込み(include::)(7 行目)";
+        assert_eq!(note_for_screen(one, true), one);
+        assert_eq!(note_parts(one), Some(("include::".into(), None, "7".into())));
+        assert_eq!(note_parts("横の区切り線 × 3(2 行目ほか)"), Some(("'''".into(), Some(3), "2".into())));
+        assert_eq!(note_parts("塊の題(.題)(4 行目)").map(|p| p.0), Some(".Title".into()));
+        assert_eq!(note_parts("字下げの段落(literal)(9 行目)").map(|p| p.0), Some("literal".into()));
     }
 
     /// The caret on a heading's markings is on the heading's words

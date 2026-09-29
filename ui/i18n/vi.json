@@ -1760,14 +1760,9 @@
  "thinking": "Đang nghĩ…",
  "now": "Hiện tại: {}",
  "back_sheet_conversation_panel": "Đã trở lại bảng tính (bảng trò chuyện vẫn mở)",
- "here_change": "Sẽ sửa như sau.",
  "answered_left_panel": "Đã trả lời (bảng bên trái)",
  "nothing_ask": "Chưa có yêu cầu",
- "applied": "Đã áp dụng.",
  "number_format_set": "Đã đặt định dạng số là {}",
- "revised_text_ready_read": "Đã có câu chữ đã sửa (đọc ở bảng bên trái rồi bấm Áp dụng)",
- "replaced_selection_ctrl_z": "Đã thay phần đang chọn (Ctrl+Z để hoàn tác)",
- "inserted_after_cursor_ctrl": "Đã chèn sau con trỏ (Ctrl+Z để hoàn tác)",
  "back_document_conversation_panel": "Đã trở lại nội dung (bảng trò chuyện vẫn mở)",
  "ai": "Bảng tác nhân",
  "indent_3": "Thụt lề",
@@ -2389,5 +2384,7 @@
  "code_opened": "{} — văn bản ở bên trái, các trang ở bên phải. Văn bản được lưu nguyên dạng",
  "code_view_not_here": "Không dùng được trên văn bản của tệp .adoc. Hãy viết trong văn bản",
  "code_not_utf8": "{} không ở dạng UTF-8. Ký tự không đọc được hiện là �, và khi lưu sẽ ghi UTF-8",
- "code_too_many_fonts": "Quá nhiều phông chữ cho một PDF ({})"
+ "code_too_many_fonts": "Quá nhiều phông chữ cho một PDF ({})",
+ "code_note": "{} (dòng {})",
+ "code_note_many": "{} × {} (dòng {} và các dòng khác)"
 }

@@ -1760,14 +1760,9 @@
  "thinking": "A pensar…",
  "now": "Agora: {}",
  "back_sheet_conversation_panel": "De volta à folha (o painel de conversa fica aberto)",
- "here_change": "Eis a alteração.",
  "answered_left_panel": "Respondido (painel esquerdo)",
  "nothing_ask": "Não há pedido",
- "applied": "Aplicado.",
  "number_format_set": "Formato de número definido como {}",
- "revised_text_ready_read": "O texto revisto está pronto (leia no painel esquerdo e prima Aplicar)",
- "replaced_selection_ctrl_z": "Substituída a seleção (Ctrl+Z anula)",
- "inserted_after_cursor_ctrl": "Inserido depois do cursor (Ctrl+Z anula)",
  "back_document_conversation_panel": "De volta ao texto (o painel de conversa fica aberto)",
  "ai": "Painel do agente",
  "indent_3": "Avanço",
@@ -2389,5 +2384,7 @@
  "code_opened": "{} — o texto à esquerda, as suas páginas à direita. O texto é guardado tal como está",
  "code_view_not_here": "Isto não funciona no texto de um .adoc. Escreva-o no texto",
  "code_not_utf8": "{} não está em UTF-8. Os carateres ilegíveis aparecem como �, e guardar escreve UTF-8",
- "code_too_many_fonts": "Demasiados tipos de letra para um PDF ({})"
+ "code_too_many_fonts": "Demasiados tipos de letra para um PDF ({})",
+ "code_note": "{} (linha {})",
+ "code_note_many": "{} × {} (linha {} e outras)"
 }

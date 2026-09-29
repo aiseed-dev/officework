@@ -1760,14 +1760,9 @@
  "thinking": "Sedang berpikir…",
  "now": "Sekarang: {}",
  "back_sheet_conversation_panel": "Kembali ke lembar (panel percakapan tetap terbuka)",
- "here_change": "Beginilah perubahannya.",
  "answered_left_panel": "Sudah dijawab (panel kiri)",
  "nothing_ask": "Tidak ada yang ditanyakan",
- "applied": "Sudah diterapkan.",
  "number_format_set": "Format angka disetel ke {}",
- "revised_text_ready_read": "Teks perbaikan sudah siap (baca di panel kiri, lalu tekan Terapkan)",
- "replaced_selection_ctrl_z": "Bagian yang dipilih diganti (Ctrl+Z membatalkannya)",
- "inserted_after_cursor_ctrl": "Disisipkan setelah kursor (Ctrl+Z membatalkannya)",
  "back_document_conversation_panel": "Kembali ke naskah (panel percakapan tetap terbuka)",
  "ai": "Panel agen",
  "indent_3": "Indentasi",
@@ -2389,5 +2384,7 @@
  "code_opened": "{} — teks di kiri, halamannya di kanan. Teks disimpan apa adanya",
  "code_view_not_here": "Ini tidak berlaku pada teks .adoc. Tuliskan di dalam teks",
  "code_not_utf8": "{} bukan UTF-8. Karakter yang tidak terbaca tampil sebagai �, dan penyimpanan menulis UTF-8",
- "code_too_many_fonts": "Terlalu banyak font untuk satu PDF ({})"
+ "code_too_many_fonts": "Terlalu banyak font untuk satu PDF ({})",
+ "code_note": "{} (baris {})",
+ "code_note_many": "{} × {} (baris {} dan lainnya)"
 }

@@ -27,15 +27,15 @@ pub(crate) fn picture(
 }
 
 impl Writer {
-    /// Whether the document is shown as page pictures: a docx on stacked
-    /// pages (not the flowing view, the two-page spread or vertical text).
+    /// Whether the document is shown as page pictures: a docx, or an .adoc
+    /// edited on its pages, on stacked pages (not the flowing view, the
+    /// two-page spread or vertical text).
     /// `page_pictures = "0"` in settings.toml turns them off
     pub(crate) fn pictures_on(&self) -> bool {
         // Read once: the settings file is on disk, and this is asked at
         // every draw
         static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-        !self.native
-            && self.sheets()
+        self.sheets()
             && self.page_src.is_some()
             && *ON.get_or_init(|| ui::settings::get("page_pictures").is_none_or(|v| v.trim() != "0"))
     }

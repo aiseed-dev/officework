@@ -5488,6 +5488,21 @@ mod shape_pick_tests {
         });
     }
 
+    /// **A command that changes the page colour lays the pages out again**
+    /// (the 2026-09-29 review): the page pictures and the PDF are made from
+    /// the last layout, and kept the old colour until something else laid
+    /// the document out
+    #[gpui::test]
+    fn the_page_colour_reaches_the_page_pictures_at_once(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            this.open(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sample/報告書.docx"));
+            assert!(this.page_src.as_ref().is_some_and(|s| s.bg.is_none()));
+            this.run_cmd("pagecolor", cx);
+            assert!(this.page_src.as_ref().is_some_and(|s| s.bg.is_some()), "the pages kept no colour");
+        });
+    }
+
     /// **Filling a field of a form and fixing a word, then saving the docx**
     /// (docs/sekkei/hyouji-e.ja.adoc, step 6). The letters go in the way
     /// typing puts them (`ui::handler::replace`). After saving and opening
