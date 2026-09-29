@@ -173,7 +173,7 @@ A cell may hold several marks; text around them stays. *A mark the data does not
 
 A name the data does not hold at all is also filled with nothing, but `fill` warns about it and lists it in `b.missing`, so a slip such as 電話番号 written for 電話 is noticed. Rows past the end of a table and names given an empty value (`|性別 |`) are left blank without a word.
 
-=== Filling an Excel template in place (in the next version)
+=== Filling an Excel template in place
 
 A template made in Excel can be filled as it stands, with no marks: in the data's two-column table, name the cell with its address (`B5`, `履歴書!D9`) or with a name the template defines (Formulas > Name Manager). Marks such as `{氏名}` in the template's cells are filled as well.
 
@@ -184,7 +184,7 @@ notes = sheet.Book.fill_template("履歴書.xlsx", data, "山田.xlsx")
 
 Only the cells that change are written into the template's sheets; every other part of the file (formats, theme, shapes, document properties) is copied as it was. A text value goes into the cell as text and a number as a number, and the cell keeps its format. A shape named in Excel's name box after a data item (`写真`) takes the picture file the data gives, looked for in the data file's folder: inside the shape, keeping its proportions, centred, and the shape's own text gives way. PNG and JPEG pictures can be put in. `notes` lists what cannot be put in this way (rows that would need a 別紙, a picture of another kind, a file not found). Names the data lacks are warned about, as with `fill`.
 
-=== Filling a Word template in place (in the next version)
+=== Filling a Word template in place
 
 A template made in Word takes the same data. Where a value goes, write a mark such as `{氏名}` in the text, or insert a mail merge field (Mailings > Insert Merge Field) named after the data item.
 

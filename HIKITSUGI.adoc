@@ -30,6 +30,22 @@
   状態行・本家・往復・径路・雛形。CI からも外した(一覧は人が読む物)。発注者「プログラムよりも、
   使って修正して行く方がいい。少しずつやっていく」。1 回目(2026-09-18): 状態行 → ステータスバー、
   径路 → パス、雛形 → テンプレート(手引きと画面の文言 62 枚)。次は 道具・本家・往復
+* **2026-09-30: officework 0.9.0 と aiseed office 0.1.0-alpha.7 を出す用意ができている。**
+  中身は、Word と Excel のテンプレートにそのまま値を入れる機能(`fill_template`)と、値を入れた
+  ページを Word for Mac と Excel for Mac の PDF に合わせた直し(カーニング、表の罫線、ヒラギノの
+  行の高さ、下線など)です。アプリには hyouji-e を合わせました(ac63b78c)。.adoc はコードと
+  ページを並べて直し、文書の画面はページの画像で出します。重複した `paper/src/e.rs` と
+  `tools/screen_compare.py` は、main の直した方を残しました。
+  版は pysheet を 0.9.0、officework・calc・writer を alpha.7 にし、README、writer の手引き、
+  `web/main.py`、`release.yml` の本文も上げました。
+  確かめたこと: kumihan・ooxml・sheet・book・paper(`--features e`)・writer・calc・pysheet の lib の
+  試験、tests.yml と同じ範囲の clippy、公開の前の文書の検査。wheel を新しい venv に入れ、xlsx の
+  往復と 2 つの `fill_template` を動かした。release で組んだアプリで、`07_早見表.adoc`、転職の送り状
+  (ヒラギノ)、横浜市の様式(`w:titlePg`)を開いて画面を見た。
+  確かめていないこと: この Mac に asciidoctor が無く、adoc の描き出しの検査は回していない。
+  紹介の Web の比較の絵は撮り直していない(メニューのテンプレートのファイルがこの Mac に無い)。
+  calc と writer は clippy の対象外で、新しい clippy では赤い(0.8.0 から変わっていない所)。
+  **push、`publish-pypi.yml` の dry run、タグ `v0.9.0` と `app-v0.1.0-alpha.7` は発注者。**
 * **2026-09-27: officework 0.8.0 と aiseed office 0.1.0-alpha.6 を出す用意ができている。**
   中身は様式を埋める機能(`Book.fill`、`Doc.fill_form`、別紙、描画の一覧)、リボンの設定ファイル、
   絵と図形の重なりと `a:fillRect` と `behindDoc` の直し。RELEASE.adoc(原本)と RELEASE.ja.adoc、

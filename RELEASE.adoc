@@ -1,158 +1,209 @@
-= officework 0.8.0 and aiseed office 0.1.0-alpha.6
+= officework 0.9.0 and aiseed office 0.1.0-alpha.7
 
 日本語: link:RELEASE.ja.adoc[RELEASE.ja.adoc]
 
 To try it: the engine installs with `pip install officework`. The app (aiseed
 office) is on https://github.com/aiseed-dev/officework/releases[GitHub Releases].
 
-This is the engine release after 0.7.0 and the app release after
-0.1.0-alpha.5.
+This is the engine release after 0.8.0 and the app release after
+0.1.0-alpha.6.
 
-**This release fills forms.** A resume, an application or a notification is a
-form with marks where the values go, and the values are a small table book of
-their own. officework puts the values in and prints the form, to PDF, xlsx,
-docx or PNG, or hands the pages to another program to draw. The forms and the
-data are both plain text (AsciiDoc), so a person and a program can both read
-and write them.
+**This release fills templates made in Word and Excel as they are.** A
+template needs no marks of ours: in Excel, the data names a cell by its
+address or by a defined name, and in Word, a mail merge field or a mark such
+as `{氏名}` says where a value goes. Only the values change; every other part
+of the file is copied as it was.
 
-The rest is the same job as before: open the docx and xlsx you were sent the
-way Word and Excel open them. This time that meant pictures and shapes: which
-one is on top, and how a picture that fills a shape is stretched and cut.
+**In the app, an .adoc is edited as its text, beside the pages it makes**, and
+the document screen shows each page as a picture of the printed page.
+
+The rest is the same job as before: draw the pages the way Word and Excel
+print them. This time we compared the pages of filled templates with the PDFs
+of Word for Mac and Excel for Mac, and fixed what differed. Where the ECMA-376
+standard and Word disagree, we followed the standard.
 
 **Plenty is still broken.** There is a list of what we know about below.
 Please report what breaks at
 https://github.com/aiseed-dev/officework/issues[the GitHub issues].
 
-== Filling forms
+== Filling a template made in Word or Excel
 
-A form is a table book or a Word document whose cells and paragraphs hold
-marks such as `{氏名}` or `{学歴・職歴.3.内容}`. The data is a table book of
-names and values, and tables of rows. The whole contract, with every mark, is
-in link:docs/en/forms-manual.adoc[the forms manual].
+The data is the same table book as for forms (the
+link:docs/en/forms-manual.adoc[forms manual] describes it).
 
 [source,python]
 ----
 from officework import sheet, doc
 
-form = sheet.Book.open("履歴書-厚労省.form.adoc")
-data = sheet.Book.open("履歴書.sheet.adoc")
-b = sheet.Book.fill(form, data)
-b.save("履歴書.pdf")          # .xlsx and .png work too
-b.missing                     # names the form asks for that the data lacks
-b.bessi                       # tables carried on to a 別紙
-
-d = doc.Doc.fill_form(doc.Doc.open("届出.docx"), data)
-d.save("届出.pdf")            # .docx works too
+data = sheet.Book.open("山田.sheet.adoc")
+notes = sheet.Book.fill_template("履歴書.xlsx", data, "山田.xlsx")
+missing = doc.Doc.fill_template("letter.docx", data, "yamada.docx")
 ----
 
-What filling does:
+In an Excel template:
 
-* a mark the data does not answer becomes empty, so the rows a resume
-  prepares beyond the data stay blank. A name the data does not hold at all is
-  usually a slip, so `fill` warns about it and lists it in `missing`
-* `{年齢}` is worked out from the birth date and the date
-* `{日付.元号}` and `{日付.和暦年}` give the Japanese era and the year in it;
-  the first year of an era is 元, as official forms write it
-* `{通勤時間.時間}` and `{通勤時間.分}` take the numbers from a value such as
-  `1時間10分`
-* `{性別:男・女}` circles the option the data names. The circle is measured
-  from where the page sets the characters, and it is a shape of the book, so
-  the PDF, the xlsx and the draw list all have it
-* `{区分=開業}` gives ■ when the data names that option and □ otherwise
-* rows the form has no room for are carried on to a 別紙 sheet (or, in a
-  document, a 別紙 after a page break), in the form's own columns and widths
-* a shape can be a picture field: the photo the data names goes inside the
-  shape's box, keeping its proportions
-* in a Word form, a blank of underlined spaces (`{氏名}＿＿＿＿`) keeps its
-  length, and a mark Word split across formatting runs is still read
+* an item of the data's two-column table named with a cell address (`B5`,
+  `履歴書!D9`) or with a name the template defines (Formulas > Name Manager)
+  puts its value in that cell. Marks such as `{氏名}` in the cells are filled
+  as well
+* only the cells that change are written into the sheets. A text value goes
+  in as text and a number as a number, and the cell keeps its format. Every
+  other part (formats, theme, shapes, document properties) is copied as it
+  was. On the Ministry of Health, Labour and Welfare's resume, four values
+  change only `xl/worksheets/sheet1.xml`
+* a shape named in Excel's name box after a data item (`写真`) takes the
+  picture file the data gives, looked for in the data file's folder. The
+  picture goes inside the shape, keeping its proportions, and the shape's own
+  text gives way. PNG and JPEG pictures can be put in
+* `notes` lists what cannot be put in this way: rows that would need a 別紙,
+  a picture of another kind, a file not found
 
-The resume forms made with this (the Ministry of Health, Labour and Welfare's
-example and the JIS one) are published separately, in the aiai repository,
-with the scripts that make them.
+In a Word template:
+
+* a mark such as `{氏名}` in the body, a header or a footer is filled, even
+  when Word keeps parts of it in differently formatted runs. The value takes
+  the format of the place the mark starts
+* a mail merge field (Mailings > Insert Merge Field) named after a data item
+  becomes its value as plain text, as in the document Word's mail merge makes
+* only the text of the marks and the fields changes. Every other part of the
+  file, and everything else in those parts, is copied as it was
+* `missing` lists the names the data lacks altogether; they are filled with
+  nothing and warned about, as `fill` does
+
+Word's mail merge fields are also read when a docx is opened, filled by `fill`
+and `fill_form` like marks, and written back as fields, so a mail merge
+template survives being opened and saved.
+
+Saving a docx no longer rewrites the parts nobody changed. A header or footer
+that is unchanged is carried over as it was (a Word letter's header had lost
+2 KB), and the settings and document properties are no longer linked twice.
+
+== The pages, compared with Word and Excel
+
+The pages are compared with the PDFs Word for Mac and Excel for Mac print.
+Documents set in Meiryo UI are compared as copies set in Hiragino Sans or Yu
+Gothic.
+
+* Word's letterhead template, set in Hiragino Sans: every line's baseline is
+  within 0.5pt of Word's
+* Word's cover letter template (転職の送り状), set in Hiragino Sans: every
+  line breaks where Word breaks it, and is within 1pt of Word's
+* the Ministry's resume, read the Mac way (`platform="mac"`): the same 8 pages
+  as Excel for Mac, with the column breaks within 0.2pt
+
+What changed in Word documents:
+
+* **kerning** (`w:kern`, ECMA-376 Part 1 17.3.2.19) was not read, and no
+  letter was kerned. Recent Word templates ask for it in the document
+  defaults. The layout now takes the face's kerning pairs, so Hiragino Sans
+  W3 closes と and を by 0.03 em, as Word does. Text in capitals only, a
+  document with a character grid and faces set at a fixed half-width pitch
+  are not kerned
+* **the edges a table names itself** (`w:tblBorders`, 17.4.39) have their
+  width and colour. Every such edge was 0.5pt black. The bottom edge of a
+  table also has its own width under the last row, and the text after the
+  table starts below it
+* **a run's own automatic colour** (`w:color w:val="auto"`, 17.3.2.6) is kept
+  over the colour of its styles. The placeholders of Word's letterhead were
+  grey here and black in Word
+* **a style that names only a Latin theme font** leaves the East Asian font
+  to its base style (17.3.2.26). The letterhead's name was measured in Arial
+  and drawn in another face, so its underline stopped early
+* the line height of Hiragino Sans W3 is 1.30 em and its baseline 1.03 em
+  down, as Word draws it. The standard leaves the single line height to the
+  application (17.3.1.33), so these values were measured in Word
+* a bold letter in a face with no bold face (Hiragino, MS Mincho, MS Gothic,
+  Century) advances 0.02 em further, as Word does. A half-width space does not
+* the underline takes its place and thickness from the face's own figures
+  (the `post` table). Word draws Latin faces this way; a face without the
+  figures keeps the old place
+* a line in a table cell is aligned between the left and right indents, and a
+  picture in a cell is aligned with the text of its paragraph
+* free-form shapes (`a:custGeom`) are drawn, and an inner outline cuts a hole.
+  A linear gradient fill (`a:gradFill`) is drawn as a gradient
+* a group sized by the page (`wp14:sizeRelH`) grows with it, and every shape of
+  a group placed in a line is drawn
+* a named highlight colour (`yellow`, `darkBlue`, …) has its colour, not black
+* a see-through shape drawn with a path no longer leaves the rest of the page
+  see-through
+* the page pictures (PNG) draw the letters as the PDF does: the same face
+  choice, underline, strikethrough, spacing and bold
+
+What changed in Excel workbooks:
+
+* a shape that runs over a page break is drawn on each page it reaches, cut to
+  that page, as Excel prints it. It was drawn whole on its first page, out into
+  the margin
+* the full-width spaces (U+3000) at the end of a right-aligned cell do not
+  count in its width. Those at the start still do
+* a face named with 楷書 (regular script) falls back to a Mincho face, as
+  Excel for Mac draws it, not to a Gothic one
+
+Where the standard and Word differ:
+
+* `w:overflowPunct` (17.3.1.21) lets 、 hang past the end of a line when the
+  document says nothing. Word for Mac broke the line one letter earlier
+  instead. We follow the standard
+* the standard says only that an underline is "directly below" the letters
+  (17.3.2.40). Word draws East Asian faces lower than their own figures, by
+  no rule we could find. We use the face's figures
 
 == The draw list
 
-`Book.draw_list()` and `Doc.draw_list()` return the pages as data (version
-0.1): points from the top left, one list of items in the order the PDF draws
-them, the fonts by name and file, and pictures in base64. Text carries its
-baseline and its top, so a program that places text by its top, such as a
-Flet canvas, computes nothing. For a filled form the pages also list the
-fields, one per data item, with their rectangles, so a program can put an
-input over a field, write the edit back with `data.set_field(name, value)`,
-fill again and redraw.
+A text item may have `clip` (`[x, y, w, h]`), the part of the page it is cut
+to. It is set on the text of a shape that runs over a page break.
 
-`sample/drawlist/pil_draw.py` draws a draw list with Pillow alone, and
-`sample/drawlist/flet_form.py` shows and edits a form on a Flet canvas.
+== The app (aiseed office 0.1.0-alpha.7)
 
-== Writing forms from Python
+**An .adoc is edited as its text, beside the pages it makes.** The left side
+holds the file's characters in a fixed-width face. The right side shows the
+pages the text makes, laid out as the PDF is, and made again shortly after the
+typing stops. Pressing a place on the pages puts the caret on the text it comes
+from, and the pages follow the caret, with a yellow band on its line. Errors,
+and markup the pages do not show, are listed above the pages with the file's
+line numbers. Saving writes the characters back unchanged, so comments, blank
+lines and line breaks stay. `sample/writer/07_早見表.adoc` shows each kind of
+markup beside the pages it makes. To edit an .adoc on its pages as before, put
+`adoc_code = "0"` in `~/.config/officework/settings.toml`.
 
-What a program that makes forms needs:
+**The document screen draws each page as a picture of the printed page.** The
+pictures are made from the pages the PDF prints, so the changes above reach the
+screen. On the screen, the cover letter template set in Hiragino Sans breaks
+every line where Word does. A bold face made thicker, such as Hiragino Sans W3
+in bold, is bold on the screen too, and a section's own first-page header
+(`w:titlePg`) is followed. The caret and the selection sit on the letters of
+the pictures. `page_pictures = "0"` in the settings keeps the older drawing.
 
-* `Book.save("x.adoc", attributes=[…])` writes a book as AsciiDoc, with its
-  pictures as files in `images/` beside it, and `Book.save_look` writes its
-  look as a template
-* `Book.fonts_used`, `replace_fonts` and `set_default_font`
-* `Sheet.set_shape` changes a shape's field, text or font; `margins_mm` and
-  `print_scale` can be read and set, and `default_row_height` read
-* `Book.fields()` lists the cells of a form that hold marks
-
-== Pictures and shapes
-
-* **Pictures and shapes stack in the order the file gives**, the first at the
-  bottom (ECMA-376 Part 1 20.5.2.35 and 19.3.1.45). The spreadsheet screen
-  drew every picture under every shape, and the printed page drew them the
-  other way round, so a photo in a white frame could be hidden by its frame
-* **A picture that fills a shape is stretched to its fill rectangle** and cut
-  to the shape's box (`a:stretch/a:fillRect`, ECMA-376 20.1.8.30). In Word's
-  restaurant brochure the photo on the first page was drawn at the size of its
-  box; it is now 381.9 × 579.4 pt, and Word prints it at 382.1 × 579.4 pt
-* **A drawing behind the text goes under the text and its pictures**
-  (`behindDoc`, ECMA-376 Part 1 20.4.2.3). The brochure's dark panels hid a
-  photo and two icons
-* a picture keeps its offset inside its cell in xlsx, and a shape held by two
-  cells is written back held by them (`twoCellAnchor`), so it follows the rows
-  around it
-* on a sheet printed as more than one band of columns, a shape goes on the
-  page of the band its cell is in
-
-== PDF and PNG
-
-* a PDF embeds only the fonts its text is set in. The filled resume went from
-  89 KB to 73 KB
-* PNG is laid out as the PDF is, with the same fonts, so the two match
-* an AsciiDoc table line of more than 16 columns (`[cols=…]`) is read whole,
-  and a cell spanning both ways is written as AsciiDoc writes it (`3.2+|`)
-
-== The app (aiseed office 0.1.0-alpha.6)
-
-**A ribbon settings file makes the app an edition for one kind of work.**
-`~/.config/officework/ribbon.toml` names the app (the window title), picks the
-tabs after File and their order, and picks the buttons on a tab. Tabs and
-buttons that are not listed are only hidden: a macro's `xw.press` still
-presses them, and removing the file brings the full ribbon back. A tab name
-the ribbon does not know makes a new tab for your own Python buttons. The
-macro manual shows an edition for correcting documents an AI wrote:
-
-[source,toml]
-----
-name = "Correcting documents"
-tabs = "Home, Insert, Layout, Collaboration, View"
-----
-
-On the spreadsheet screen, pictures and shapes now stack as the file says, so
-a filled resume shows its photo inside its frame. On the document screen, a
-picture that fills a shape is stretched and cut as on paper, and drawings
-behind the text stay behind it.
+**The PDF button writes the pages the screen shows.** A docx's PDF has its
+shapes, floating pictures and the panels behind the text, and embeds only the
+fonts it uses. The 32-page JST plan is 508 KB; it was about 10 MB. A print
+template, this app's own documents and vertical text still go through the
+older writer.
 
 == What is still broken
 
-The room Word keeps for a header that holds nothing is the one we could not
-pin down. Three templates want two empty paragraphs' worth of it and six want
-none, and nothing in the files separates them, so we keep none. The numbers
-are in `engine/src/tests.rs` and in the design note.
+These need Windows Word and Excel to settle, and we have not had them:
+
+* the line height of Yu Gothic. Word for Mac draws 1.44 em; we use 1.5 em,
+  measured earlier on another document
+* where Word puts the underline of an East Asian face
+* whether Windows Excel also leaves out the full-width spaces at the end of a
+  right-aligned cell
+* which way to read an xlsx saved on a Mac when nothing says. We read it the
+  Windows way unless `platform="mac"` is given
+
+Filling templates:
+
+* a Word template takes text only. The circle of a choice mark, a picture and
+  rows carried on to a 別紙 are not put in
+* an Excel template does not take rows that need a 別紙, or pictures other than
+  PNG and JPEG
 
 Known gaps in the engine:
 
+* a free-form shape whose path has an arc (`arcTo`) or a guide name is not
+  drawn
+* a gradient that follows the shape (`a:path`) is drawn in one colour
 * a table set to automatic width is not widened to fit its content
 * a floating table anchored to the page or the margin is placed in the body
   flow
@@ -182,16 +233,15 @@ Known gaps in the engine:
 
 Known gaps in the app:
 
-* the PDF written from the document screen (the PDF button) still goes
-  through an older writer. It leaves out shapes, floating pictures and the
-  panels behind the text, sets the text in the screen's font, and embeds
-  whole fonts: a two-page report came to 10 MB, where the engine's PDF of the
-  same file is 32 KB. The engine's PDF (`Doc.save("x.pdf")`) has all of them
-
-* a font with no bold face of its own (MS Mincho, for one) stays regular on
-  the editor screen
-* the editor screen does not follow `w:titlePg`, a header of its own on the
-  first page of a section. It draws the same header on every page
+* on the side-by-side screen of an .adoc, the buttons that format selected
+  text (bold, size, font) do not change the file. Write the markup in the text
+  (`*bold*`)
+* an .adoc edited on its pages (`adoc_code = "0"`) is not drawn as page
+  pictures
+* the list of markup the pages do not show is in Japanese on every language's
+  screen
+* the PDF button still uses the older writer for a print template, this app's
+  own documents and vertical text
 * the Windows `setup.exe` is not signed yet. Windows shows "Windows protected
   your PC"; open "More info" and run it from there
 * Python is not bundled. Macros and heavy aggregation run on the Python
@@ -199,17 +249,18 @@ Known gaps in the app:
 
 == Manuals
 
-* link:docs/en/forms-manual.adoc[The forms manual] is new: the two files, every
-  mark, what filling does, the Python calls and the draw list, in English and
-  Japanese
-* the Python manual gained filling a form book and a document form
-* the macro manual gained the ribbon settings file
+* the Python manual gained filling an Excel template and a Word template in
+  place
+* the forms manual lists the draw list's text `clip`
+* the writer manual now opens with the two ways writer edits: the text of an
+  .adoc, the pages of a docx
 
 == Internals
 
-The engine lays a form out once, and the screen, the PDF and the draw list all
-come from that layout. Where the layout set a field's characters is kept, so
-a circle and a field's rectangle land on the printed characters.
+`tools/screen_compare.py` puts our pages beside Word's or Excel's PDF as
+pictures and counts where they differ. It reads a docx or an xlsx, and
+`--platform mac` reads an xlsx the Mac way. `tools/ms_pdf.py` waits for Word
+to open a document before saving it as PDF.
 
-The resume forms, their sample data and the script that makes them moved out
-of this repository into aiai. The Flet sample stays here, for in-house systems.
+The design note `docs/sekkei/sashikomi.ja.adoc` records the values measured in
+Word, how Excel for Mac and Windows differ, and what was decided.

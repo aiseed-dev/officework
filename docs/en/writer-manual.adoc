@@ -2,7 +2,7 @@
 
 _日本語版(secondary): link:../ja/writer-manual.adoc[writer-manual.ja.adoc]_
 
-*This manual describes the next version of writer.* Anything not yet in the released 0.1.0-alpha.6 is marked *(coming in the next version)*.
+*This manual describes the next version of writer.* Anything not yet in the released 0.1.0-alpha.7 is marked *(coming in the next version)*.
 Those parts describe what we are building, not what ships today.
 
 The manual for officework's document editor.
@@ -12,7 +12,7 @@ writer edits two kinds of file, in two different ways:
 |===
 | |How you edit |What is saved
 
-|*.adoc* |*You edit the text.* The left side shows the characters of the file, the right side the pages they make. Press a place on a page and the caret goes to its text (coming in the next version) |The characters as you left them
+|*.adoc* |*You edit the text.* The left side shows the characters of the file, the right side the pages they make. Press a place on a page and the caret goes to its text |The characters as you left them
 |*.docx* |*You edit on the pages.* The pages are shown as they print, and you type on them |The docx, with the parts we do not touch carried over from the original
 |===
 
@@ -397,7 +397,7 @@ Sales *rose* against last month.footnote:[Tokyo and Osaka combined]
 
 The full list of markings is in the next section.
 
-=== The text and its pages side by side (in the next version)
+=== The text and its pages side by side
 
 An `.adoc` opens with its text on the left and its pages on the right.
 The text is the document, so you edit the text itself.
