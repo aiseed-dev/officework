@@ -41,18 +41,130 @@ the source file.
   access (2026-09-29): `active document` was missing value. Wait until the
   document's name appears, then bring it to the front and save it.
 * The first time Word or Excel opens a file in a folder, Office asks on screen
-  for access to it ("アクセス権を付与"). Until someone answers, opening waits.
+  for access to it ("ファイル アクセスを許可"). Until someone answers, opening
+  waits, and the AppleScript only fails with a timeout (-1712) or with
+  `active document` not understanding `save as` (-1708).
+* So the script looks at Word's and Excel's windows while it waits (Quartz's
+  window list, read-only; keystrokes through System Events are not allowed
+  here) and stops with a message naming the app and the dialog's title
+  (DialogError; exit status 2 from the command line). Answer the dialog on
+  screen and run it again. A window is taken as a dialog when its title is a
+  known dialog's, or when it is smaller than a document window, its title is
+  not the document's name, and it stays up for 8 seconds.
 """
 import os
 import subprocess
 import sys
+import time
 
 
-def _osa(script):
-    r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
-    if r.returncode != 0:
-        raise RuntimeError(r.stderr.strip())
-    return r.stdout.strip()
+class DialogError(RuntimeError):
+    """Word or Excel is showing a dialog that someone has to answer on screen."""
+
+
+# Titles of dialogs seen on this Mac. A window with one of these titles is a
+# dialog at once; any other small window has to stay up for a while first.
+_DIALOG_TITLES = (
+    "ファイル アクセスを許可", "Grant File Access",
+)
+
+
+def _app_windows(app):
+    """The on-screen windows of `app` ("Microsoft Word" or "Microsoft Excel"),
+    read with Quartz (`CGWindowListCopyWindowInfo`).
+
+    This only reads the window list, so it needs no accessibility permission
+    (System Events keystrokes are not allowed from osascript on this Mac). The
+    titles are empty unless the terminal may record the screen. Returns None
+    when pyobjc is missing."""
+    try:
+        import Quartz
+    except ImportError:
+        return None
+    ws = Quartz.CGWindowListCopyWindowInfo(
+        Quartz.kCGWindowListOptionOnScreenOnly | Quartz.kCGWindowListExcludeDesktopElements,
+        Quartz.kCGNullWindowID)
+    out = []
+    for w in ws or []:
+        if w.get("kCGWindowOwnerName") != app or w.get("kCGWindowLayer", 0) != 0:
+            continue
+        b = w.get("kCGWindowBounds") or {}
+        out.append((int(w.get("kCGWindowNumber", 0)), str(w.get("kCGWindowName") or ""),
+                    float(b.get("Width", 0)), float(b.get("Height", 0))))
+    return out
+
+
+def _dialogs(app, doc_names=()):
+    """The windows of `app` that look like a dialog: a known dialog title, or a
+    window smaller than a document window whose title is not a document's name.
+
+    The window a document opens in is at least 800 by 500 points here; the
+    dialogs seen so far (the folder access request, 456 by 299) are smaller."""
+    ws = _app_windows(app)
+    if not ws:
+        return []
+    stems = [os.path.splitext(n)[0] for n in doc_names if n]
+    out = []
+    for num, name, w, h in ws:
+        if name and any(s and s in name for s in stems):
+            continue
+        if name in _DIALOG_TITLES or (w < 800 and h < 500 and w > 60 and h > 60):
+            out.append((num, name))
+    return out
+
+
+def _dialog_message(app, found):
+    titles = [t for _, t in found if t]
+    what = f"「{titles[0]}」" if titles else "(the title could not be read)"
+    return (f"{app} is showing a dialog {what}. Answer or close it on screen, "
+            f"then run this again. {app} waits for it and does not take further commands")
+
+
+def check_no_dialog(app, doc_names=()):
+    """Raise DialogError when `app` already shows a dialog, before we ask it
+    to open anything (otherwise the open waits until the AppleEvent times out)."""
+    found = _dialogs(app, doc_names)
+    if found:
+        raise DialogError(_dialog_message(app, found))
+
+
+def _osa(script, watch=None, doc_names=(), grace=8.0):
+    """Run an AppleScript. With `watch` (the app's name), the app's windows are
+    looked at every second while the script runs, and a dialog that stays up
+    for `grace` seconds (a known title: 2 seconds) stops the script with
+    DialogError. Without this, the script waits until its timeout and fails
+    with -1712 without saying why (2026-09-30: a folder access request for a
+    new folder)."""
+    if watch is None:
+        r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError(r.stderr.strip())
+        return r.stdout.strip()
+    pr = subprocess.Popen(["osascript", "-e", script], stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, text=True)
+    first_seen = {}
+    while True:
+        try:
+            out, err = pr.communicate(timeout=1.0)
+            break
+        except subprocess.TimeoutExpired:
+            pass
+        now = time.monotonic()
+        found = _dialogs(watch, doc_names)
+        seen = {n for n, _ in found}
+        for k in list(first_seen):
+            if k not in seen:
+                del first_seen[k]
+        for num, name in found:
+            t0 = first_seen.setdefault(num, now)
+            limit = 2.0 if name in _DIALOG_TITLES else grace
+            if now - t0 >= limit:
+                pr.kill()
+                pr.communicate()
+                raise DialogError(_dialog_message(watch, [(num, name)]))
+    if pr.returncode != 0:
+        raise RuntimeError(err.strip())
+    return out.strip()
 
 
 def _hfs(path):
@@ -85,12 +197,17 @@ end timeout
 
 def word_pdf(src, out):
     src, out = os.path.abspath(src), os.path.abspath(out)
-    # 前の回で閉じ損ねた文書が残っていれば先に閉じる(`save as` が失敗すると
-    # 閉じる前に止まり、Word に文書が溜まっていった。2026-09-09 に 70 枚溜まった)
+    name = os.path.basename(src)
+    # A dialog already up makes every command below wait: say so and stop
+    check_no_dialog("Microsoft Word", [name])
+    # Close documents of ours left over from an earlier run (when `save as`
+    # failed, the run stopped before closing, and 70 documents piled up in
+    # Word on 2026-09-09)
     try:
         word_close_ours()
     except RuntimeError:
         pass
+    dialog = None
     try:
         _osa(
             f'''
@@ -107,20 +224,31 @@ tell application "Microsoft Word"
     save as active document file name "{out}" file format format PDF
 end tell
 end timeout
-'''
+''',
+            watch="Microsoft Word", doc_names=[name],
         )
+    except DialogError as e:
+        dialog = e
+        raise
     finally:
-        # 成否にかかわらず閉じる
+        # Close whether it worked or not
         try:
             word_close_ours()
         except RuntimeError:
             pass
-        # **閉じられなかったら止まる。** 2026-09-09、Word が `close` を -1708 で断る
-        # 状態になったのに気づかず、100 枚の窓を開いたまま次々に進んでしまった。
-        # 残っている写しを数え、残っていれば呼ぶ側に止めてもらう。
+        # **Stop when a document does not close.** On 2026-09-09 Word began
+        # refusing `close` with -1708, nobody noticed, and 100 windows were
+        # left open one after another. Count the copies left and have the
+        # caller stop if there are any.
         # The count runs on the failure path as well: on 2026-09-19 `save as`
-        # raised first, this check was skipped, and 114 documents piled up
-        _nokori_check()
+        # raised first, this check was skipped, and 114 documents piled up.
+        # With a dialog up, its message is the one that says what to do, so
+        # the count does not replace it
+        try:
+            _nokori_check()
+        except RuntimeError:
+            if dialog is None:
+                raise
 
 
 def _nokori_check():
@@ -163,6 +291,8 @@ def _excel_ready():
 
     r = subprocess.run(["pgrep", "-f", "MacOS/Microsoft Excel"], capture_output=True, text=True)
     if r.stdout.strip():
+        # With a dialog up, `close every workbook` waits out its timeout
+        check_no_dialog("Microsoft Excel")
         subprocess.run(["osascript", "-e", 'tell application "Microsoft Excel" to close every workbook saving no'],
                        capture_output=True, text=True, timeout=120)
         subprocess.run(["killall", "Microsoft Excel"], capture_output=True, text=True)
@@ -202,6 +332,7 @@ def _excel_one(src, out, wait=180):
     [`excel_pdf_many`] を使ってください — Excel の起動と終了は1回で済みます。
     """
     name = os.path.basename(src)
+    check_no_dialog("Microsoft Excel", [name])
     hfs, out = _hfs(src), os.path.abspath(out)
     _osa(
         f'''
@@ -238,7 +369,8 @@ tell application "Microsoft Excel"
     set display alerts to true
 end tell
 end timeout
-'''
+''',
+        watch="Microsoft Excel", doc_names=[name],
     )
 
 
@@ -262,6 +394,9 @@ def excel_pdf_many(pairs, wait=120, on_done=None):
         try:
             _excel_one(src, dst, wait=wait)
             err = None if os.path.exists(dst) else "PDF ができていない"
+        except DialogError:
+            # Every file after this would wait for the same dialog
+            raise
         except Exception as e:  # noqa: BLE001 — 1枚の失敗で残りを止めない
             err = str(e).splitlines()[-1][:200] if str(e).strip() else type(e).__name__
         renzoku = renzoku + 1 if err else 0
@@ -302,4 +437,8 @@ def to_pdf(src, out=None):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         raise SystemExit(__doc__)
-    print(to_pdf(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None))
+    try:
+        print(to_pdf(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None))
+    except DialogError as e:
+        print(e, file=sys.stderr)
+        sys.exit(2)
