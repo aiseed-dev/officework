@@ -769,6 +769,15 @@ const OKURI_EM: &[(&str, f32)] = &[
     ("yugothic", 1.5),
     ("游ゴシックLight", 1.5),
     ("游ゴシックMedium", 1.5),
+    // Hiragino Sans W3 (2026-09-29). Word for Mac draws a single line of it
+    // 1.30 em high: 15.60pt at 12pt, 13.44pt and 13.68pt in turn at 10.5pt,
+    // 25.92pt and 26.16pt at 20pt, in documents with no grid and no
+    // w:spacing w:line. ECMA-376 17.3.1.33 leaves the height of a single line
+    // to the application. The face's hhea says 1.5 em and its OS/2 Windows
+    // pair 1.234 em, so neither is what Word uses. Word finds the face only
+    // by its English name; the other weights were not measured
+    ("Hiragino Sans W3", 1.3),
+    ("ヒラギノ角ゴシック W3", 1.3),
 ];
 
 /// **1行の高さ(em)。** 書体の名前から引きます。
@@ -1711,6 +1720,15 @@ pub fn monospace() -> Option<&'static Family> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Word's single line of Hiragino Sans W3 is 1.30 em, under either name
+    /// and the PostScript one
+    #[test]
+    fn hiragino_sans_w3_is_the_measured_height() {
+        for n in ["Hiragino Sans W3", "ヒラギノ角ゴシック W3", "HiraginoSans-W3"] {
+            assert_eq!(okuri_em(Some(n)), Some(1.3), "{n}");
+        }
+    }
 
     #[test]
     fn general_punctuation_is_a_high_ansi_block() {
