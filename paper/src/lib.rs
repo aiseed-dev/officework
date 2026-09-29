@@ -920,6 +920,36 @@ mod tests {
         assert_eq!(leaves.len(), 3, "箱の頁まで紙が足されていない: {}", leaves.len());
     }
 
+    /// A bold run in a face with no bold advances 0.02 em further per letter,
+    /// as Word draws it; a face with its own bold keeps that face's widths
+    #[test]
+    fn a_thickened_bold_letter_advances_further() {
+        let run = |font: &str| kumihan::Run {
+            text: "山田 花子".into(),
+            size_pt: Some(18.0),
+            font: Some(font.into()),
+            fmt: kumihan::CharFormat { bold: true, ..Default::default() },
+        };
+        let mut d = kumihan::Document::plain("");
+        d.push_para(kumihan::Paragraph { runs: vec![run("Hiragino Sans W3"), run("Arial")], ..Default::default() });
+        // Only where this machine has Hiragino itself
+        let hiragino = kumihan::font::for_document(Some("Hiragino Sans W3"))
+            .is_ok_and(|(f, _)| f.name.contains("Hiragino") || f.name.contains("ヒラギノ"));
+        resolve_run_fonts(&mut d);
+        let runs = &d.paragraphs().last().unwrap().runs;
+        if hiragino {
+            assert!((runs[0].fmt.spacing_pt - 0.36).abs() < 1e-4, "{}", runs[0].fmt.spacing_pt);
+            // A space keeps its width: the run is cut there
+            assert_eq!(runs[1].text, " ");
+            assert_eq!(runs[1].fmt.spacing_pt, 0.0);
+            assert_eq!(runs[2].text, "花子");
+            assert!((runs[2].fmt.spacing_pt - 0.36).abs() < 1e-4);
+        }
+        if kumihan::font::face_for_weight("Arial", true, false).is_some() {
+            assert_eq!(runs.last().unwrap().fmt.spacing_pt, 0.0);
+        }
+    }
+
     /// Every child of a group in the line is drawn, fitted into the box the
     /// layout gave the group
     #[test]
@@ -2186,11 +2216,13 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
     // Word's ticket template writes "ADMIT ONE" in the `Title` style, which
     // says `<w:b/>`, and Word's PDF draws it in BookmanOldStyle-Bold
     // (2026-09-20)
-    let mut cache: BTreeMap<(String, bool, bool), Option<(String, Vec<u8>)>> = BTreeMap::new();
+    let mut cache: BTreeMap<(String, bool, bool), Option<(String, Vec<u8>, bool)>> = BTreeMap::new();
     let mut out: Vec<(String, Vec<u8>)> = Vec::new();
     let balance = d.balance_sbcs;
-    let mut fix = |r: &mut kumihan::Run| {
-        let Some(name) = r.font.clone() else { return };
+    let base = d.base_pt();
+    // Returns the extra advance (pt) of a thickened bold letter, 0 otherwise
+    let mut fix = |r: &mut kumihan::Run| -> f32 {
+        let Some(name) = r.font.clone() else { return 0.0 };
         let (futoi, nanameta) = (r.fmt.bold, r.fmt.italic);
         let hit = cache.entry((name.clone(), futoi, nanameta)).or_insert_with(|| {
             let (fam, _) = kumihan::font::for_document(Some(&name)).ok()?;
@@ -2212,14 +2244,65 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
                 Some(em) => kumihan::font::hankaku_name(&resolved, em),
                 None => resolved,
             };
-            Some((resolved, bytes))
+            // Bold with no bold face: the outline is thickened
+            let thickened = futoi && !kao.is_some_and(|k| k.bold);
+            Some((resolved, bytes, thickened))
         });
-        if let Some((resolved, bytes)) = hit {
+        if let Some((resolved, bytes, thickened)) = hit {
             if !out.iter().any(|(n, _)| n == resolved) {
                 out.push((resolved.clone(), bytes.clone()));
             }
             r.font = Some(resolved.clone());
+            // **A thickened bold letter advances 0.02 em further.** ECMA-376
+            // leaves how bold is made to the application (17.3.2.1). Word
+            // for Mac, drawing bold in a face with no bold (Hiragino Sans
+            // W3, Hiragino Mincho ProN W3, MS Mincho, MS Gothic, Century),
+            // advances every letter by 0.02 em more: 36.72pt at 36pt, 18.36pt
+            // at 18pt, 10.71pt at 10.5pt; a half-width space keeps its width
+            // (the full-width one was not measured), and faces
+            // with a bold face keep that face's widths (2026-09-29)
+            if *thickened {
+                return 0.02 * r.size_pt.unwrap_or(base);
+            }
         }
+        0.0
+    };
+    // The extra advance is laid out as character spacing on this printing
+    // copy, so the saved document keeps what it said. A run is cut at its
+    // spaces so that they keep their own width
+    let mut widen = |p: &mut kumihan::Paragraph| {
+        let mut runs = Vec::with_capacity(p.runs.len());
+        for mut r in std::mem::take(&mut p.runs) {
+            let extra = fix(&mut r);
+            if extra == 0.0 || r.fmt.footnote.is_some() {
+                runs.push(r);
+                continue;
+            }
+            let space = |c: char| c == ' ';
+            let mut from = 0;
+            let text = r.text.clone();
+            let mut cut = |to: usize, is_space: bool, runs: &mut Vec<kumihan::Run>| {
+                if to > from {
+                    let mut piece = r.clone();
+                    piece.text = text[from..to].to_string();
+                    if !is_space {
+                        piece.fmt.spacing_pt += extra;
+                    }
+                    runs.push(piece);
+                    from = to;
+                }
+            };
+            let mut prev: Option<bool> = None;
+            for (i, c) in text.char_indices() {
+                let now = space(c);
+                if prev.is_some_and(|p| p != now) {
+                    cut(i, prev.unwrap(), &mut runs);
+                }
+                prev = Some(now);
+            }
+            cut(text.len(), prev.unwrap_or(false), &mut runs);
+        }
+        p.runs = runs;
     };
     // **書体の無い run は、段落のスタイル(無ければ Normal)の書体を持つ**(2026-09-09)。
     // 前は文書の既定(テーマの游明朝)で描き、測りは Normal の ＭＳ 明朝だったので、
@@ -2279,10 +2362,8 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
     }
     for b in d.blocks.iter_mut() {
         match b {
-            kumihan::Block::Para(p) => p.runs.iter_mut().for_each(&mut fix),
-            kumihan::Block::Table(t) => {
-                t.for_each_paragraph_mut(&mut |p| p.runs.iter_mut().for_each(&mut fix))
-            }
+            kumihan::Block::Para(p) => widen(p),
+            kumihan::Block::Table(t) => t.for_each_paragraph_mut(&mut |p| widen(p)),
         }
     }
     out
