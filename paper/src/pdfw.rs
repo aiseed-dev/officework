@@ -74,6 +74,10 @@ pub struct Piece {
     pub tc_pt: f32,
     /// **文字の横倍率**(%。docx の `w:w`。0 は 100)。PDF の `Tz` に渡す
     pub tz: f32,
+    /// The part of the page the text is cut to ([x, y, w, h] in mm from
+    /// the bottom left), for the text of a shape that runs over a page
+    /// break. `None` is not cut
+    pub clip: Option<[f32; 4]>,
 }
 
 /// 絵を PDF に載せる形にする。返りは(中身, 幅, 高さ, JPEG か)。
@@ -639,6 +643,14 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 bytes.extend_from_slice(&g.to_be_bytes());
             }
             let (r, g, b) = p.color.as_deref().map(rgb).unwrap_or((0.0, 0.0, 0.0));
+            // Text cut to a part of the page: its letters and lines are
+            // drawn inside `q`/`Q` with that part as the clip
+            if let Some([cx0, cy0, cw, ch]) = p.clip {
+                c.save_state();
+                c.rect(pt(cx0), pt(cy0), pt(cw), pt(ch));
+                c.clip_nonzero();
+                c.end_path();
+            }
             c.begin_text();
             c.set_fill_rgb(r, g, b);
             c.set_font(Name(f_names[fi].as_bytes()), p.size_pt);
@@ -730,6 +742,9 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 c.move_to(pt(p.x_mm), pt(y));
                 c.line_to(pt(p.x_mm + p.w_mm), pt(y));
                 c.stroke();
+            }
+            if p.clip.is_some() {
+                c.restore_state();
             }
         }
         // **字の上の線**(手描きのペン)。字を書いた後に引きます
@@ -1074,6 +1089,27 @@ mod tests {
         assert!(raw.contains("/ShadingType 2"), "no axial shading");
         assert!(raw.contains("/FunctionType 3"), "three stops need a stitching function");
         assert!(raw.contains("/Bounds [0.5]"), "the middle stop is not a bound");
+    }
+
+    /// Text with a clip is written inside `q`/`Q` with that part as the clip
+    #[test]
+    fn cut_text_is_clipped_to_its_part() {
+        let leaf = Leaf {
+            pieces: vec![Piece {
+                x_mm: 10.0, y_mm: 50.0, size_pt: 10.5, text: "字".into(), w_mm: 3.7,
+                clip: Some([5.0, 40.0, 20.0, 30.0]),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let mut out = Vec::new();
+        write_pages(&[leaf], 210.0, 297.0, &font(), &mut out).expect("PDF not written");
+        let body = unpack(&out);
+        let q = body.find("q\n").expect("no q");
+        let w = body[q..].find("W\nn").expect("no clip");
+        let bt = body[q..].find("BT").expect("no text");
+        assert!(w < bt, "the clip is not before the text:\n{body}");
+        assert!(body[q + bt..].contains("\nQ"), "the clip is not undone:\n{body}");
     }
 
     /// The underline takes the face's `post` figures: the top at
@@ -2159,6 +2195,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                     italic: c.fmt.italic,
                     tc_pt: c.fmt.spacing_pt,
                     tz: c.fmt.w_pct,
+                    clip: None,
                 });
             }
             continue;
@@ -2198,6 +2235,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                         italic: false,
                         tc_pt: 0.0,
                         tz: 0.0,
+                        clip: None,
                     });
                 }
                 continue;
@@ -2247,6 +2285,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                         italic: c.fmt.italic,
                         tc_pt: c.fmt.spacing_pt,
                     tz: c.fmt.w_pct,
+                    clip: None,
                     });
                 }
             }
@@ -2367,6 +2406,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                         italic: c.fmt.italic,
                         tc_pt: c.fmt.spacing_pt,
                     tz: c.fmt.w_pct,
+                    clip: None,
                     });
                 }
             }
@@ -2523,6 +2563,7 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                     italic: c.fmt.italic,
                     tc_pt: c.fmt.spacing_pt,
                     tz: c.fmt.w_pct,
+                    clip: None,
                 });
             }
         }

@@ -209,7 +209,8 @@ Its `version` is `0.1`; the shape may change while it is 0.x.
 * Lengths are points, from the top left of the page, y going down
 * `items` are in the order to draw them: page colour, fills, shapes and pictures in their stacking order, lines, text, lines over the text, the watermark
 * A text has its baseline and its top (`top`, for drawers that place text by its top); `width` is the width the layout gave it; `font` is an `id` of `fonts`.
-  Optional keys: `italic`, `rotation` (degrees, turning left about x and the baseline), `letter_spacing` (points), `scale_x`
+  Optional keys: `italic`, `rotation` (degrees, turning left about x and the baseline), `letter_spacing` (points), `scale_x`,
+  `clip` (`[x, y, w, h]`, the part of the page the text is cut to, for the text of a shape that runs over a page break; nothing outside it is drawn)
 * Colours are `#RRGGBB`; `alpha` is 0 to 1; dashes are lengths in points
 * A picture is its file's bytes in base64 (PNG or JPEG), stretched to `rect`.
   A picture that fills a shape can be stretched past the shape's box (`a:fillRect` in a docx or xlsx); then `clip` is that box, and nothing outside it is drawn.

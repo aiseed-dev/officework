@@ -415,6 +415,136 @@ const HEAD_GREY: (f32, f32, f32) = (0.4, 0.44, 0.48);
 /// 表計算は紙面(`kumihan::Sheet`)を通らず、その場で描いています。
 /// 描く所はそのままにして、置く先だけをここに集めました
 /// (2026-08-27 発注者「行番号と列番号もセルと同じ」)。
+/// How many of each drawn thing a page holds, so that what is drawn after
+/// can be cut to a part of the page ([`LeafCounts::cut_after`])
+struct LeafCounts {
+    fills: usize,
+    polys: usize,
+    paths: usize,
+    rules: usize,
+    pieces: usize,
+    images: usize,
+}
+
+impl LeafCounts {
+    fn of(l: &pdfw::Leaf) -> Self {
+        LeafCounts {
+            fills: l.fills.len(),
+            polys: l.polys.len(),
+            paths: l.paths.len(),
+            rules: l.rules.len(),
+            pieces: l.pieces.len(),
+            images: l.images.len(),
+        }
+    }
+
+    /// Cut what was drawn after these counts to `rect` ([x, y, w, h] from
+    /// the page's bottom left). Pieces and lines are cut to it; curves,
+    /// pictures and text that reaches past it clip to it, and text wholly
+    /// outside it is dropped
+    fn cut_after(&self, l: &mut pdfw::Leaf, rect: [f32; 4]) {
+        let [x0, y0, w, h] = rect;
+        let (x1, y1) = (x0 + w, y0 + h);
+        for f in l.fills.iter_mut().skip(self.fills) {
+            let (a, b) = (f.x_mm.max(x0), f.y_mm.max(y0));
+            let (c, d) = ((f.x_mm + f.w_mm).min(x1), (f.y_mm + f.h_mm).min(y1));
+            (f.x_mm, f.y_mm, f.w_mm, f.h_mm) = (a, b, (c - a).max(0.0), (d - b).max(0.0));
+        }
+        for p in l.polys.iter_mut().skip(self.polys) {
+            p.points = cut_polygon(&p.points, [x0, y0, x1, y1]);
+        }
+        let box_path = vec![
+            pdfw::Suji::Ugoku(x0, y0),
+            pdfw::Suji::Hiku(x1, y0),
+            pdfw::Suji::Hiku(x1, y1),
+            pdfw::Suji::Hiku(x0, y1),
+            pdfw::Suji::Tojiru,
+        ];
+        for m in l.paths.iter_mut().skip(self.paths) {
+            if m.clip.is_empty() {
+                m.clip = box_path.clone();
+            }
+        }
+        let keep: Vec<pdfw::Rule> = l.rules.drain(self.rules..).filter_map(|mut r| {
+            let (a, b) = cut_segment((r.x1_mm, r.y1_mm), (r.x2_mm, r.y2_mm), [x0, y0, x1, y1])?;
+            (r.x1_mm, r.y1_mm, r.x2_mm, r.y2_mm) = (a.0, a.1, b.0, b.1);
+            Some(r)
+        }).collect();
+        l.rules.extend(keep);
+        let keep: Vec<pdfw::Piece> = l
+            .pieces
+            .drain(self.pieces..)
+            .filter(|p| p.x_mm < x1 && p.x_mm + p.w_mm > x0 && p.y_mm >= y0 && p.y_mm <= y1)
+            .map(|mut p| {
+                if p.x_mm < x0 - 0.01 || p.x_mm + p.w_mm > x1 + 0.01 {
+                    p.clip = Some(rect);
+                }
+                p
+            })
+            .collect();
+        l.pieces.extend(keep);
+        for im in l.images.iter_mut().skip(self.images) {
+            im.clip = Some(match im.clip {
+                Some([a, b, c, d]) => {
+                    let (ax, ay) = (a.max(x0), b.max(y0));
+                    [ax, ay, ((a + c).min(x1) - ax).max(0.0), ((b + d).min(y1) - ay).max(0.0)]
+                }
+                None => rect,
+            });
+        }
+    }
+}
+
+/// A polygon cut to a box [x0, y0, x1, y1] (Sutherland–Hodgman)
+fn cut_polygon(pts: &[(f32, f32)], b: [f32; 4]) -> Vec<(f32, f32)> {
+    let mut out = pts.to_vec();
+    // (inside, where a segment crosses the edge)
+    let edges: [(Box<dyn Fn((f32, f32)) -> bool>, Box<dyn Fn((f32, f32), (f32, f32)) -> (f32, f32)>); 4] = [
+        (Box::new(move |p| p.0 >= b[0]), Box::new(move |p, q| (b[0], p.1 + (q.1 - p.1) * (b[0] - p.0) / (q.0 - p.0)))),
+        (Box::new(move |p| p.0 <= b[2]), Box::new(move |p, q| (b[2], p.1 + (q.1 - p.1) * (b[2] - p.0) / (q.0 - p.0)))),
+        (Box::new(move |p| p.1 >= b[1]), Box::new(move |p, q| (p.0 + (q.0 - p.0) * (b[1] - p.1) / (q.1 - p.1), b[1]))),
+        (Box::new(move |p| p.1 <= b[3]), Box::new(move |p, q| (p.0 + (q.0 - p.0) * (b[3] - p.1) / (q.1 - p.1), b[3]))),
+    ];
+    for (inside, cross) in &edges {
+        let src = std::mem::take(&mut out);
+        for (i, &q) in src.iter().enumerate() {
+            let p = src[(i + src.len() - 1) % src.len()];
+            match (inside(p), inside(q)) {
+                (true, true) => out.push(q),
+                (true, false) => out.push(cross(p, q)),
+                (false, true) => {
+                    out.push(cross(p, q));
+                    out.push(q);
+                }
+                (false, false) => {}
+            }
+        }
+    }
+    out
+}
+
+/// A line segment cut to a box [x0, y0, x1, y1] (Liang–Barsky); `None`
+/// when none of it is inside
+fn cut_segment(a: (f32, f32), b: (f32, f32), bx: [f32; 4]) -> Option<((f32, f32), (f32, f32))> {
+    let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+    let (mut t0, mut t1) = (0.0f32, 1.0f32);
+    for (p, q) in [(-dx, a.0 - bx[0]), (dx, bx[2] - a.0), (-dy, a.1 - bx[1]), (dy, bx[3] - a.1)] {
+        if p == 0.0 {
+            if q < 0.0 {
+                return None;
+            }
+        } else {
+            let t = q / p;
+            if p < 0.0 {
+                t0 = t0.max(t);
+            } else {
+                t1 = t1.min(t);
+            }
+        }
+    }
+    (t0 <= t1).then_some(((a.0 + t0 * dx, a.1 + t0 * dy), (a.0 + t1 * dx, a.1 + t1 * dy)))
+}
+
 struct Ink<'a> {
     leaf: &'a mut pdfw::Leaf,
     /// Where what this pen draws sits in the draw order. 0 is the body;
@@ -2059,63 +2189,123 @@ fn draw_sheet(
             .chain(grid.images.iter().map(|im| im.z))
             .max()
             .map_or(0, |z| z as i32 + 1);
-        // 同じ紙の図をまとめて描きます(筆を借り直す回数を減らします)
-        let mut kumi: Vec<(usize, usize, &book::SheetShape)> = grid
+        let mm_px = 25.4 / 96.0;
+        let colw = |c: u32| -> f32 {
+            c.checked_sub(c0)
+                .and_then(|i| col_mm.get(i as usize).copied())
+                .unwrap_or(setup.col_basis.default_mm(8.0) * scale)
+        };
+        // twoCellAnchor はセルと一緒に伸び縮みする — 幅と高さを
+        // 右下のセル(to)から出す。列幅の換算が原本の Excel と
+        // 少し違っても、図形は同じセルの縁に貼り付く
+        let sized: Vec<(usize, book::SheetShape)> = grid
             .shapes
             .iter()
             .chain(grid.shapes_new.iter())
             .enumerate()
-            .map(|(k, sp)| (cell_at(sp.at).0, k, sp))
+            .map(|(k, sp)| {
+                let mut s2 = sp.clone();
+                if let Some((to, tdx, tdy)) = sp.to {
+                    if to.col >= sp.at.col && to.row >= sp.at.row {
+                        let w_mm: f32 = (sp.at.col..to.col).map(colw).sum();
+                        let h_mm: f32 = (sp.at.row..to.row).map(row_mm).sum();
+                        s2.width_px = (w_mm / (mm_px * scale) - sp.dx_px + tdx).max(1.0);
+                        s2.height_px = (h_mm / (mm_px * scale) - sp.dy_px + tdy).max(1.0);
+                    }
+                }
+                (k, s2)
+            })
             .collect();
-        kumi.sort_by_key(|(p, _, _)| *p);
+        // **A shape that runs over a page break is drawn on each page it
+        // reaches, cut to that page's part of the sheet.** A printed page
+        // is a window on the sheet, and Excel prints the photo frame of
+        // MHLW's resume form, which runs over the manual column break, half
+        // on the first page and half on the page of the next band of
+        // columns. It was drawn whole on the first page, out into the
+        // margin (2026-09-29). Returns (page, left, top, the part to cut to
+        // as [x, y, w, h] from the page's bottom left); a shape on one page
+        // is not cut
+        let places = |sp: &book::SheetShape| -> Vec<(usize, f32, f32, Option<[f32; 4]>)> {
+            let (page, x, y_top) = cell_at(sp.at);
+            let right = (sp.dx_px + sp.width_px) * mm_px * scale;
+            let down = (sp.dy_px + sp.height_px) * mm_px * scale;
+            // The last column and row the box reaches
+            let (mut c_end, mut acc) = (sp.at.col, colw(sp.at.col));
+            while acc < right - 0.01 && ((c_end + 1).saturating_sub(c0) as usize) < col_mm.len() {
+                c_end += 1;
+                acc += colw(c_end);
+            }
+            let (mut r_end, mut acc) = (sp.at.row, row_mm(sp.at.row));
+            let mut n = 0;
+            while acc < down - 0.01 && n < 100_000 {
+                r_end += 1;
+                acc += row_mm(r_end);
+                n += 1;
+            }
+            // A cell of the box on each page, and the band of columns it is in
+            let mut firsts: std::collections::BTreeMap<usize, (u32, u32, usize)> = Default::default();
+            for (bi, (cols, _, _, rows)) in band_place.iter().enumerate() {
+                for &c in cols
+                    .iter()
+                    .filter(|c| (sp.at.col..=c_end).contains(*c) && !(bi > 0 && title_cols.contains(*c)))
+                {
+                    for (&r, &(p, _)) in rows.range(sp.at.row..=r_end) {
+                        firsts.entry(p).or_insert((c, r, bi));
+                    }
+                }
+            }
+            if firsts.len() <= 1 {
+                return vec![(page, x, y_top, None)];
+            }
+            firsts
+                .into_iter()
+                .map(|(p, (c, r, bi))| {
+                    let (cols, cx, bml, rows) = &band_place[bi];
+                    let i = cols.iter().position(|x| *x == c).expect("in the band");
+                    let x = bml + cx[i] - (sp.at.col..c).map(colw).sum::<f32>();
+                    let y = rows[&r].1 + (sp.at.row..r).map(row_mm).sum::<f32>();
+                    (p, x, y, Some([*bml, mb, cx[cx.len() - 1], paper.height_mm - mt - mb]))
+                })
+                .collect()
+        };
+        // 同じ紙の図をまとめて描きます(筆を借り直す回数を減らします)
+        let mut kumi: Vec<(usize, usize, &book::SheetShape, f32, f32, Option<[f32; 4]>, bool)> =
+            Vec::new();
+        for (k, sp) in &sized {
+            for (n, (page, x, y_top, clip)) in places(sp).into_iter().enumerate() {
+                kumi.push((page, *k, sp, x, y_top, clip, n == 0));
+            }
+        }
+        kumi.sort_by_key(|(p, ..)| *p);
         let want_shapes = std::mem::take(&mut board.want_shapes);
         let mut spots: Vec<(usize, pdfw::Spot)> = Vec::new();
         let mut ima = usize::MAX;
         let mut ink_box: Option<Ink<'_>> = None;
-        for (page, k, sp) in kumi {
+        for (page, k, sp, x, y_top, clip, first_place) in kumi {
             if page != ima {
                 ima = page;
                 ink_box = Some(board.ink(page));
             }
             let l1 = ink_box.as_mut().expect("筆");
-            let (_, x, y_top) = cell_at(sp.at);
-            // twoCellAnchor はセルと一緒に伸び縮みする — 幅と高さを
-            // 右下のセル(to)から出す。列幅の換算が原本の Excel と
-            // 少し違っても、図形は同じセルの縁に貼り付く
-            let futa;
-            let sp = match sp.to {
-                Some((to, tdx, tdy)) if to.col >= sp.at.col && to.row >= sp.at.row => {
-                    let mm = 25.4 / 96.0;
-                    let w_mm: f32 = (sp.at.col..to.col)
-                        .map(|c| {
-                            c.checked_sub(c0)
-                                .and_then(|i| col_mm.get(i as usize).copied())
-                                .unwrap_or(setup.col_basis.default_mm(8.0) * scale)
-                        })
-                        .sum();
-                    let h_mm: f32 = (sp.at.row..to.row).map(row_mm).sum();
-                    let mut s2 = sp.clone();
-                    s2.width_px = (w_mm / (mm * scale) - sp.dx_px + tdx).max(1.0);
-                    s2.height_px = (h_mm / (mm * scale) - sp.dy_px + tdy).max(1.0);
-                    futa = s2;
-                    &futa
+            if first_place {
+                if let Some(key) = want_shapes.get(&k) {
+                    let (w, h) = (sp.width_px * mm_px * scale, sp.height_px * mm_px * scale);
+                    spots.push((page, pdfw::Spot {
+                        key: key.clone(),
+                        x_mm: x + sp.dx_px * mm_px * scale,
+                        y_mm: y_top - sp.dy_px * mm_px * scale - h,
+                        w_mm: w,
+                        h_mm: h,
+                    }));
                 }
-                _ => sp,
-            };
-            if let Some(key) = want_shapes.get(&k) {
-                let mm = 25.4 / 96.0;
-                let (w, h) = (sp.width_px * mm * scale, sp.height_px * mm * scale);
-                spots.push((page, pdfw::Spot {
-                    key: key.clone(),
-                    x_mm: x + sp.dx_px * mm * scale,
-                    y_mm: y_top - sp.dy_px * mm * scale - h,
-                    w_mm: w,
-                    h_mm: h,
-                }));
             }
+            let before = LeafCounts::of(l1.leaf);
             l1.z = if k < n_read_shapes { 1 + sp.z as i32 } else { z_new };
             zukei(l1, sp, x, y_top, scale, &fonts);
             l1.z = 0;
+            if let Some(rect) = clip {
+                before.cut_after(l1.leaf, rect);
+            }
         }
         for (page, spot) in spots {
             board.leaves[page].spots.push(spot);
@@ -3587,6 +3777,65 @@ mod zukei_tests {
         assert!(lines(&leaves[1]) > 0, "the shape is not on the second page");
         let x = leaves[1].rules.iter().map(|r| r.x1_mm).fold(f32::MAX, f32::min);
         assert!(x < 60.0, "the shape is not at the left of the second page: {x}");
+    }
+
+    /// A shape that runs over a column break is drawn on both pages, each
+    /// part cut to its page's columns
+    #[test]
+    fn a_shape_over_a_column_break_is_cut_between_the_pages() {
+        let mut g = Grid::default();
+        g.set(book::Pos::new(0, 0), book::Cell::input("左"));
+        g.set(book::Pos::new(0, 2), book::Cell::input("右"));
+        g.col_breaks.push(2);
+        let colw = g.col_haba_mm(0, &book::ColBasis::default());
+        // From column B, three columns wide: over the break into C and D
+        g.shapes_new.push(book::SheetShape {
+            at: book::Pos::new(1, 1), width_px: 3.0 * colw / (25.4 / 96.0), height_px: 30.0,
+            kind: "rect".into(), line: Some("000000".into()), fill: Some("FF0000".into()),
+            ..Default::default()
+        });
+        let setup = PrintSetup { date1904: false, col_basis: book::ColBasis::default(), ..Default::default() };
+        let leaves = sheet_leaves(&g, Paper::default(), &setup).expect("not laid out");
+        assert_eq!(leaves.len(), 2);
+        let red = |l: &pdfw::Leaf| -> Vec<(f32, f32)> {
+            l.polys.iter().filter(|p| p.rgb == (1.0, 0.0, 0.0)).flat_map(|p| p.points.clone()).collect()
+        };
+        let (a, b) = (red(&leaves[0]), red(&leaves[1]));
+        assert!(!a.is_empty() && !b.is_empty(), "not on both pages: {} {}", a.len(), b.len());
+        // The first part ends where the first band of columns ends; the
+        // second starts at the second page's left margin and is one column
+        // wide, since the printed columns end at C (D is outside them)
+        let right_a = a.iter().map(|p| p.0).fold(f32::MIN, f32::max);
+        let (left_b, right_b) = (b.iter().map(|p| p.0).fold(f32::MAX, f32::min), b.iter().map(|p| p.0).fold(f32::MIN, f32::max));
+        let ml = left_b;
+        assert!((right_a - (ml + 2.0 * colw)).abs() < 0.1, "first part runs past its columns: {right_a}");
+        assert!((right_b - left_b - colw).abs() < 0.1, "second part is {}mm", right_b - left_b);
+        let rules_a = leaves[0].rules.iter().map(|r| r.x1_mm.max(r.x2_mm)).fold(f32::MIN, f32::max);
+        assert!(rules_a <= right_a + 0.01, "an outline runs past the first part: {rules_a}");
+    }
+
+    /// The text of a shape over a column break is drawn on both pages, cut
+    /// to each page's columns
+    #[test]
+    fn the_text_of_a_shape_over_a_column_break_is_cut_too() {
+        let mut g = Grid::default();
+        g.set(book::Pos::new(0, 0), book::Cell::input("左"));
+        g.set(book::Pos::new(0, 3), book::Cell::input("右"));
+        g.col_breaks.push(2);
+        let colw = g.col_haba_mm(0, &book::ColBasis::default());
+        g.shapes_new.push(book::SheetShape {
+            at: book::Pos::new(1, 1), width_px: 2.0 * colw / (25.4 / 96.0), height_px: 60.0,
+            kind: "rect".into(), text: Some("写真をはる位置写真をはる位置".into()),
+            ..Default::default()
+        });
+        let setup = PrintSetup { date1904: false, col_basis: book::ColBasis::default(), ..Default::default() };
+        let leaves = sheet_leaves(&g, Paper::default(), &setup).expect("not laid out");
+        let texts = |l: &pdfw::Leaf| -> Vec<pdfw::Piece> {
+            l.pieces.iter().filter(|p| p.text.contains("写")).cloned().collect()
+        };
+        let (a, b) = (texts(&leaves[0]), texts(&leaves[1]));
+        assert!(!a.is_empty() && !b.is_empty(), "the text is not on both pages: {} {}", a.len(), b.len());
+        assert!(a.iter().chain(b.iter()).all(|p| p.clip.is_some()), "text over the break is not cut");
     }
 
     /// The box a stretch of a cell's text is set in is reported where the

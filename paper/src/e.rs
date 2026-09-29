@@ -261,6 +261,12 @@ fn moji(
             None => want,
         };
         let Some(face) = faces.get(fi).and_then(|f| f.as_ref()) else { continue };
+        // Text cut to a part of the page, as the PDF clips it
+        if let Some([x0, y0, w, h]) = p.clip {
+            let top = (h_mm - (y0 + h)) as f64 * mm;
+            let r = Rect::new(x0 as f64 * mm, top, (x0 + w) as f64 * mm, top + h as f64 * mm);
+            cx.push_clip_layer(&vello_cpu::kurbo::Shape::to_path(&r, 0.1));
+        }
         let fd = datas[fi]
             .get_or_insert_with(|| FontData::new(Blob::new(Arc::new(fonts[fi].to_vec())), 0))
             .clone();
@@ -323,6 +329,9 @@ fn moji(
             cx.set_stroke(Stroke { width: w_mm * mm, join: Join::Miter, start_cap: Cap::Butt, end_cap: Cap::Butt, ..Default::default() });
             cx.set_paint(iro((r, g, b), 1.0));
             cx.stroke_path(&path);
+        }
+        if p.clip.is_some() {
+            cx.pop_layer();
         }
     }
 }

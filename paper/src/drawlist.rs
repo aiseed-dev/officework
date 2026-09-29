@@ -187,6 +187,10 @@ pub fn pages(pages: &[Leaf], size_mm: (f32, f32), fonts: &[FontFile]) -> Value {
             if p.tc_pt.abs() > 0.001 {
                 o.insert("letter_spacing".into(), json!(r2(p.tc_pt)));
             }
+            // The part of the page the text is cut to, [x, y, w, h] like a fill
+            if let Some([cx0, cy0, cw, ch]) = p.clip {
+                o.insert("clip".into(), rect(cx0, cy0, cw, ch));
+            }
             if p.tz > 0.0 && (p.tz - 100.0).abs() > 0.001 {
                 o.insert("scale_x".into(), json!(r2(p.tz / 100.0)));
             }
