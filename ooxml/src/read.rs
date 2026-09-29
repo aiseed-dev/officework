@@ -558,11 +558,16 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
             if s.look.font_latin.is_none() && s.look.font_theme.is_some() {
                 s.look.font_latin = theme_face(&th, major(&s.look.font_theme), None, false);
             }
+            // A style that names only a Latin theme font leaves the East
+            // Asian font to the style it is based on (ECMA-376 17.3.2.26:
+            // an attribute that is not present keeps the previous level's
+            // value). Taking the Latin face here set the name of Word's
+            // letterhead in Arial, measured at half an em a character, and
+            // its underline stopped under the first two characters
+            // (2026-09-29)
             if s.look.font.is_none() {
                 if let Some(t) = s.look.font_theme_ea.clone() {
                     s.look.font = theme_ref_face(&th, &t, script);
-                } else if s.look.font_theme.is_some() {
-                    s.look.font = s.look.font_latin.clone();
                 }
             }
         }
