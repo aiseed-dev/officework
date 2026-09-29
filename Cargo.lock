@@ -11216,6 +11216,7 @@ dependencies = [
  "face",
  "gpui",
  "gpui_platform",
+ "image 0.25.10",
  "kumihan",
  "lang",
  "ooxml",

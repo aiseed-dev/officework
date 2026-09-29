@@ -2235,4 +2235,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("used_next_xlsx_open", "Açacağınız bir sonraki xlsx dosyasından itibaren kullanılır: {}"),
     ("time_zone_prompt", "IANA saat dilimi adı (örn. Europe/Istanbul). Bu bilgisayarınkini kullanmak için boş bırakın"),
     ("unknown_time_zone", "Bilinmeyen saat dilimi adı: {}"),
+    ("code_pages_making", "Sayfalar oluşturuluyor…"),
+    ("code_pages_cannot", "Metinden sayfalar oluşturulamadı: {}"),
+    ("code_opened", "{} — solda metin, sağda sayfaları. Metin olduğu gibi kaydedilir"),
 ];

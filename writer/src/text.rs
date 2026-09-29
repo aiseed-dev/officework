@@ -159,7 +159,7 @@ impl Writer {
         let base = body.iter().map(|c| c.off).min().unwrap_or(0);
         let mut byte = ln.byte_end();
         for c in body {
-            let cx = self.pg.left_mm + c.x_mm;
+            let cx = self.left_at(ln.y_mm) + c.x_mm;
             if x_now < cx + c.w_mm / 2.0 {
                 byte = ln.byte0 + (c.off - base);
                 break;
@@ -211,7 +211,7 @@ impl Writer {
                 // letters by `dip_mm`, and the caret stood that much higher
                 // than the word it was in (2.28mm on the e22e6b47 heading,
                 // 2026-09-23)
-                Some((self.pg.left_mm + x, line.y_mm + line.dip_mm, pt))
+                Some((self.left_at(line.y_mm) + x, line.y_mm + line.dip_mm, pt))
             };
         }
         hit.unwrap_or((
@@ -587,10 +587,28 @@ impl Writer {
 
     /// **画面に出しているのと同じ紙面を写す**ので、画面と紙が食い違わない。
     pub(crate) fn write_pdf(&mut self, p: &std::path::Path) {
-        let m = Metrics::new(&self.font_bytes).expect("フォント");
-        // **印刷用のテンプレートがあれば、それで組み直してから紙にします**
-        // (テンプレート-印刷.toml)。無ければ画面の紙面がそのまま紙になります
+        // A print template (template-print.toml) lays the document out again
+        // for the paper. Without one, the screen's pages are the paper
+        if self.code.is_some() {
+            let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+            self.status = match self.code_pdf(p) {
+                Ok(()) => ui::tf!("pdf_written", name).into(),
+                Err(e) => ui::tf!("cant_write_pdf", e).into(),
+            };
+            return;
+        }
         let for_print = self.print_layout();
+        if for_print.is_none() {
+            if let Some(r) = self.write_pdf_pages(p) {
+                let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+                self.status = match r {
+                    Ok(()) => ui::tf!("pdf_written", name).into(),
+                    Err(e) => ui::tf!("cant_write_pdf", e).into(),
+                };
+                return;
+            }
+        }
+        let m = Metrics::new(&self.font_bytes).expect("フォント");
         let on_print = for_print.as_ref().map(|(_, _, t)| t.clone());
         // 飾りは合成の写しから(テンプレートの分も入っている)。
         // 印刷用のテンプレートが飾りを持っていれば、そちらが紙に出ます
@@ -1259,6 +1277,9 @@ impl Writer {
         // **横幅可変(原稿の姿)のときは、紙も窓に合わせます。**
         // 紙だけ A4 のままだと、窓のほうが広い機械で本文と表が紙からはみ出ます
         // (2026-08-18 実機で見つけました)
+        if self.code.is_some() {
+            return (self.code_text_w() / crate::PX_PER_MM).max(60.0);
+        }
         if self.native && self.tmpl.setting.fluid {
             return (self.view_w_px / crate::PX_PER_MM).max(60.0);
         }
@@ -1277,7 +1298,7 @@ impl Writer {
     /// **紙を1枚ずつ積んで見せるか。** 普通の文書は積みます。Web の形
     /// (テンプレートの `区切り = "なし"`)と縦書きと見開きは、1枚の長い紙です
     pub(crate) fn sheets(&self) -> bool {
-        let endless = self.native && self.tmpl.setting.endless();
+        let endless = self.setting().endless();
         !endless && !self.page.vertical && !self.multipage
     }
 

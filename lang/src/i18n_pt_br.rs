@@ -2235,4 +2235,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("used_next_xlsx_open", "Usado a partir do próximo xlsx aberto: {}"),
     ("time_zone_prompt", "Nome IANA do fuso horário (ex.: America/Sao_Paulo). Deixe vazio para usar o deste computador"),
     ("unknown_time_zone", "Nome de fuso horário desconhecido: {}"),
+    ("code_pages_making", "Criando as páginas…"),
+    ("code_pages_cannot", "Não foi possível criar as páginas a partir do texto: {}"),
+    ("code_opened", "{} — o texto à esquerda, suas páginas à direita. O texto é salvo como está"),
 ];

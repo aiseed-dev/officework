@@ -31,6 +31,11 @@ pub(crate) struct Look {
     pub vertical: bool,
     pub group: kumihan::theme::Setting,
     pub view_w_px: f32,
+    /// Lay out by the document's own sections, as the PDF does: page 1 on
+    /// the first section's paper and pushed by its header, not `pg` (the
+    /// last section's). A docx is shown this way so the screen's pages are
+    /// the PDF's (docs/sekkei/hyouji-e.ja.adoc)
+    pub sections: bool,
 }
 
 impl Look {
@@ -53,7 +58,11 @@ impl Look {
         });
         paper::layout_doc(
             src,
-            &paper::DocOpts { measure_mm, page: Some(self.pg), endless: self.group.endless() },
+            &paper::DocOpts {
+                measure_mm,
+                page: (!self.sections).then_some(self.pg),
+                endless: self.group.endless(),
+            },
             run_fonts,
         )
     }
@@ -111,6 +120,15 @@ impl Writer {
             recover_at: std::time::Instant::now(),
             image_cache: Default::default(),
             yosomono: Vec::new(),
+            page_flat: None,
+            page_src: None,
+            laid_page: kumihan::PageSetup::default(),
+            layout_gen: 0,
+            pic_gen: 0,
+            pic_leaves: None,
+            pic_cache: Default::default(),
+            code: None,
+            code_open: !cfg!(test) && crate::code::code_on_open(),
             fonts_pending: Vec::new(),
             fonts_added: Default::default(),
             font_bytes: std::sync::Arc::new(font_data().to_vec()),
@@ -610,8 +628,22 @@ impl Writer {
         }
         // run の書体を、この機械にある名前に解決する(画面はその名前で描き、
         // PDF はその名前の書体を埋める — 決め方は kumihan::font の1か所)
+        // The text of an .adoc is shown in a fixed-width face, flowing to
+        // the width of its pane (src/code.rs). Only the laid-out copy
+        // carries the face; the file keeps its characters
+        if self.code.is_some() {
+            for b in &mut composed.blocks {
+                if let kumihan::Block::Para(para) = b {
+                    para.align = Default::default();
+                    for r in &mut para.runs {
+                        r.font = Some(MONO.into());
+                        r.size_pt = Some(10.5);
+                    }
+                }
+            }
+        }
         let run_fonts = paper::resolve_run_fonts(&mut composed);
-        let group = if self.native { self.tmpl.setting } else { Default::default() };
+        let group = self.setting();
         // **ページの飾りは合成の写しから取ります**(2026-08-18)。
         // テンプレートに書いたヘッダー・透かし・縦書きが画面と紙に出ます。
         // `self.doc` は意味だけのまま(保存に漏れない)
@@ -653,7 +685,14 @@ impl Writer {
         };
         self.dress_page = (deco.watermark.clone(), deco.page_color.clone());
         let vertical = deco.vertical;
-        let snapshot = Look { pg: self.pg, vertical, group, view_w_px: self.view_w_px };
+        let snapshot =
+            Look {
+                pg: self.pg,
+                vertical,
+                group,
+                view_w_px: if self.code.is_some() { self.code_text_w() } else { self.view_w_px },
+                sections: !self.native && self.code.is_none(),
+            };
         self.take_laid(snapshot.lay_once(&composed, &run_fonts));
         self.refresh_hf();
         // **跨がない**(発表)。折った結果を見て、境をまたいだ段落があれば
@@ -670,6 +709,32 @@ impl Writer {
         paper::anchored_pictures(&composed, &mut self.page, self.pg);
         self.yosomono = paper::foreign_shapes(&composed, &self.page, self.pg);
         self.fonts_pending = self.faces_to_add(&run_fonts);
+        // What the page pictures and the PDF are made from: the same steps
+        // the paper side takes after its layout, on this layout
+        self.page_src = self.page_flat.take().map(|sheet| paper::PageSource {
+            doc: composed,
+            sheet,
+            page: self.laid_page,
+            family: self.font_name.to_string(),
+            font: self.font_bytes.clone(),
+            run_fonts,
+            bg: self.dress_page.1.as_deref().map(|c| (hex(c, 0), hex(c, 1), hex(c, 2))),
+        });
+        self.layout_gen = self.layout_gen.wrapping_add(1);
+        self.code_touched();
+    }
+
+    /// How the screen lays the document out: the template's way for an
+    /// .adoc on its pages, one flowing column for an .adoc's text, and
+    /// pages for everything else
+    pub(crate) fn setting(&self) -> kumihan::theme::Setting {
+        if self.code.is_some() {
+            kumihan::theme::Setting { fluid: true, br: kumihan::theme::Break::None, keep: false }
+        } else if self.native {
+            self.tmpl.setting
+        } else {
+            Default::default()
+        }
     }
 
     /// The font faces the screen still has to register, for the families the
@@ -721,6 +786,9 @@ impl Writer {
                     self.font_bytes = std::sync::Arc::new(l.font);
                 }
                 self.font_name = SharedString::from(l.family);
+                // The pages are made from the sheet before it is stacked
+                self.page_flat = Some(l.sheet.clone());
+                self.laid_page = l.page;
                 self.page = l.sheet;
             }
             Err(e) => {
@@ -889,6 +957,20 @@ impl Writer {
         }
         let p = self.page_starts.iter().rposition(|s| y >= *s - 0.01).unwrap_or(0);
         (p, y - self.page_offsets.get(p).copied().unwrap_or(0.0))
+    }
+
+    /// The left margin of the page a stacked y falls on (mm).
+    ///
+    /// Stacked pages keep each section's own margin, as print does, so a
+    /// line's x counts from its page's margin, not from the first
+    /// section's `pg.left_mm`. The JST plan's first page stood 4.5mm apart
+    /// from the print picture before this (2026-09-27)
+    pub(crate) fn left_at(&self, y: f32) -> f32 {
+        if self.sheets() && self.page_tops.len() > 1 && self.page_tops.len() == self.page_papers.len() {
+            let p = self.page_tops.iter().rposition(|t| y >= *t - 0.01).unwrap_or(0);
+            return self.page_papers[p].margin_mm;
+        }
+        self.pg.left_mm
     }
 
     // ---- 描画(ペン・蛍光ペン・消しゴム) ----
@@ -1132,7 +1214,7 @@ impl Writer {
         // **区切りなし(Web の組み方)は頁に数えない。** 組み手が折らないのに
         // 数え手だけ折ると、1本のはずの流れが「3ページ」と言われる
         // (2026-08-17 に踏んだ)
-        if self.native && self.tmpl.setting.endless() {
+        if self.setting().endless() {
             self.page_offsets = vec![0.0];
             self.page_starts = vec![f32::NEG_INFINITY];
             self.page_notes.clear();
@@ -1459,6 +1541,7 @@ impl Writer {
         self.notes = Vec::new();
         self.target = Target::Body;
         self.pg = kumihan::PageSetup::default();
+        self.code = None;
         self.set_doc(Document::plain(""));
         self.dirty = false;
         self.status = ui::t!("new_document").into();
@@ -1747,6 +1830,8 @@ impl Writer {
     }
 
     pub(crate) fn open(&mut self, p: PathBuf) {
+        // Whatever opens next leaves the split view of an .adoc
+        self.code = None;
         let bytes = match std::fs::read(&p) {
             Ok(b) => b,
             Err(e) => {
@@ -2486,6 +2571,14 @@ impl Writer {
     /// テンプレートが持つ(SEKKEI「本文とテンプレートを分ける」)。
     pub(crate) fn open_adoc(&mut self, p: &std::path::Path, bytes: &[u8]) {
         let text = String::from_utf8_lossy(bytes).replace("\r\n", "\n");
+        // The text is the document: edit it as it is, beside its pages
+        // (src/code.rs)
+        if self.code_open {
+            self.notes.clear();
+            self.enter_code(p, &text);
+            self.status = ui::tf!("code_opened", p.file_name().unwrap_or_default().to_string_lossy()).into();
+            return;
+        }
         // **1つのファイルに文書が何枚も入っていることがあります**
         // (同時に送る請求書の原稿など。2026-08-19)。`= 題` で切れています
         let (mut docs_of, ledger) = match kumihan::adoc::parse_many_full(&text) {
@@ -2631,7 +2724,7 @@ impl Writer {
     /// 見つかったテンプレートには、**この機械の標準を下に敷きます**
     /// (2026-08-26)。綴りのテンプレートが言っていないことは、自分が
     /// いつも使う書式で埋まります。
-    fn load_template(
+    pub(crate) fn load_template(
         &self,
         name: Option<&str>,
         doc_path: &std::path::Path,
@@ -2842,6 +2935,7 @@ impl Writer {
             vertical: self.doc.vertical,
             group: th.setting,
             view_w_px: self.view_w_px,
+            sections: false,
         };
         // 画面と同じ共通ルーチン(合成 → 書体の解決 → 組み)
         let mut composed = paper::compose_doc(&self.doc, Some(&th));
@@ -4119,6 +4213,23 @@ impl Writer {
     }
 
     pub(crate) fn save_to(&mut self, p: PathBuf) {
+        // The text of an .adoc goes back as it is (src/code.rs)
+        if self.code.is_some() && p.extension().and_then(|e| e.to_str()).is_some_and(is_native_ext) {
+            match self.save_text_to(&p) {
+                Ok(()) => {
+                    self.path = Some(p.clone());
+                    self.dirty = false;
+                    self.drop_recover();
+                    self.status = ui::tf!(
+                        "saved_plain_text",
+                        p.file_name().unwrap_or_default().to_string_lossy()
+                    )
+                    .into();
+                }
+                Err(e) => self.status = ui::tf!("cant_save", e).into(),
+            }
+            return;
+        }
         // **ネイティブ文書(.adoc)は意味だけを返す**(2026-08-16)。
         // 見た目はテンプレートが持っているので、書くものは何も無い
         if p.extension().and_then(|e| e.to_str()).is_some_and(is_native_ext) {

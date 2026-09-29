@@ -5230,4 +5230,250 @@ mod shape_pick_tests {
             assert!(spec.contains("[\"a\\\"b\"]"), "引用符が逃げていない: {spec}");
         });
     }
+
+    /// **The screen's pages are the PDF's pages** (docs/sekkei/hyouji-e.ja.adoc,
+    /// step 1). A docx opened on the screen keeps what its pages are made
+    /// from, and the pages made from it carry the same text at the same
+    /// places, and the same pictures, as the pages the PDF is written from
+    #[gpui::test]
+    fn the_screens_pages_are_the_pdfs_pages(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sample/報告書.docx");
+            let bytes = std::fs::read(&path).expect("the sample report");
+            let (doc, _) = ooxml::read(std::io::Cursor::new(bytes)).expect("reads");
+            this.pg = doc.page.unwrap_or_default();
+            this.set_doc(doc.clone());
+            this.native = false;
+            this.adopt_font();
+            this.relayout_keep();
+            let src = this.page_src.as_ref().expect("the layout keeps its page source");
+            let screen = paper::page_leaves(src).expect("screen pages");
+            let print = paper::doc_pages(&doc, None).expect("print pages").leaves;
+            assert_eq!(screen.len(), print.len(), "page count");
+            for (k, (a, b)) in screen.iter().zip(&print).enumerate() {
+                let words = |l: &paper::pdfw::Leaf| -> Vec<(String, i32, i32)> {
+                    l.pieces
+                        .iter()
+                        .map(|p| (p.text.clone(), (p.x_mm * 10.0).round() as i32, (p.y_mm * 10.0).round() as i32))
+                        .collect()
+                };
+                assert_eq!(words(a), words(b), "page {k}: text or its place differs");
+                assert_eq!(a.images.len(), b.images.len(), "page {k}: pictures");
+            }
+        });
+    }
+
+    /// **Each stacked page keeps its own left margin** for the caret and
+    /// for clicks, as the page pictures (the print leaves) do.
+    ///
+    /// The JST plan's sections have different margins. The caret, the
+    /// selection and the click all counted from `pg.left_mm`, the last
+    /// section's, and stood 4.5mm apart from the text of the first page
+    /// (2026-09-27).
+    #[gpui::test]
+    fn the_caret_counts_from_its_own_pages_margin(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let mut first = kumihan::PageSetup::default();
+            first.left_mm = 30.0;
+            first.right_mm = 30.0;
+            let mut last = kumihan::PageSetup::default();
+            last.left_mm = 15.0;
+            last.right_mm = 15.0;
+            let mut d = kumihan::Document::plain("first page\nsecond page");
+            if let Some(kumihan::Block::Para(p)) = d.blocks.first_mut() {
+                p.sect = Some(kumihan::SectionBreak { raw: String::new(), page: first, continuous: false });
+            }
+            d.page = Some(last);
+            this.pg = last;
+            this.set_doc(d.clone());
+            this.native = false;
+            this.adopt_font();
+            this.relayout_keep();
+            let print = paper::doc_pages(&d, None).expect("print pages").leaves;
+            assert!(print.len() >= 2, "one page only");
+            for (k, byte) in [(0usize, 0usize), (1, "first page\n".len())] {
+                this.ed.move_to(byte, false);
+                let (x, _, _) = this.caret_xy();
+                let want = print[k].pieces.first().expect("text on the page").x_mm;
+                assert!((x - want).abs() < 0.2, "page {k}: the caret at {x}, the text at {want}");
+            }
+            // Click on the right half of the "c" of "second"
+            let line = this
+                .page
+                .lines
+                .iter()
+                .find(|l| l.from_body && l.byte0 == "first page\n".len())
+                .expect("the second page's line")
+                .clone();
+            let pxmm = crate::PX_PER_MM * this.zoom;
+            let c = line.cells[2].clone();
+            let x = 28.0 + (print[1].pieces[0].x_mm + c.x_mm - line.cells[0].x_mm + c.w_mm * 0.75) * pxmm;
+            let y = 14.0 + (line.y_mm - this.scroll_mm) * pxmm;
+            this.click_at(x, y, false);
+            assert_eq!(this.ed.cursor(), "first page\nsec".len(), "the click went to another letter");
+        });
+    }
+
+    /// **The PDF button writes the pages the screen shows** (step 4), which
+    /// for a docx are the print's pages: the file is the one
+    /// `paper::doc_to_pdf` writes
+    #[gpui::test]
+    fn the_pdf_button_writes_the_screens_pages(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sample/報告書.docx");
+            let bytes = std::fs::read(&path).expect("the sample report");
+            let (doc, _) = ooxml::read(std::io::Cursor::new(bytes)).expect("reads");
+            this.pg = doc.page.unwrap_or_default();
+            this.set_doc(doc.clone());
+            this.native = false;
+            this.adopt_font();
+            this.relayout_keep();
+            let dir = std::env::temp_dir().join(format!("ow-pdf-button-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let out = dir.join("a.pdf");
+            this.write_pdf(&out);
+            let got = std::fs::read(&out).expect("the PDF is written");
+            let mut want = Vec::new();
+            paper::doc_to_pdf(&doc, None, &mut want).expect("print");
+            let _ = std::fs::remove_dir_all(&dir);
+            assert_eq!(got.len(), want.len(), "the PDF differs from the print's");
+            assert!(got == want, "the PDF differs from the print's");
+        });
+    }
+
+    /// **An .adoc opens as its text beside its pages, and saving writes
+    /// the text back byte for byte** (src/code.rs). The text is what the
+    /// author wrote: a comment, spaces and the order of the lines stay,
+    /// which writing the document back from its meaning would change
+    #[gpui::test]
+    fn an_adoc_is_edited_as_its_text(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let dir = std::env::temp_dir().join(format!("ow-code-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let src = dir.join("a.adoc");
+            let text = "= 申請書\n:author: 山田\n\n// 下書き\n== 目的\n\n本文です。  二つの空白。\n\n|===\n|氏名 |山田\n|===\n";
+            std::fs::write(&src, text).unwrap();
+            this.code_open = true;
+            this.open(src.clone());
+            assert!(this.code.is_some(), "not the split view: {}", this.status);
+            assert!(!this.native);
+            assert!(!this.sheets(), "the text should flow, not sit on pages");
+            // A fix in the text, then save: only that line changes
+            let fixed = this.doc.body_text().replace("本文です。", "本文を直しました。");
+            this.ed = Editor::new(&fixed);
+            this.relayout();
+            let out = dir.join("b.adoc");
+            this.save_to(out.clone());
+            assert_eq!(std::fs::read_to_string(&out).unwrap(), text.replace("本文です。", "本文を直しました。"));
+            // The pages are those of the text as it is now
+            let pv = crate::code::make_pages(this.job_now().expect("parses")).expect("pages");
+            assert!(!pv.pages.is_empty());
+            let words: String = pv.pages[0].0.pieces.iter().map(|p| p.text.as_str()).collect();
+            assert!(words.contains("本文を直しました"), "the pages show the old text: {words}");
+            assert!(!words.contains("下書き"), "a comment came out on the page");
+            let pdf = dir.join("b.pdf");
+            this.write_pdf(&pdf);
+            let bytes = std::fs::read(&pdf).expect("the PDF is written");
+            assert!(bytes.starts_with(b"%PDF"), "{}", this.status);
+            // Opening a docx leaves the split view
+            this.open(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sample/報告書.docx"));
+            assert!(this.code.is_none());
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+
+    /// **Filling a field of a form and fixing a word, then saving the docx**
+    /// (docs/sekkei/hyouji-e.ja.adoc, step 6). The letters go in the way
+    /// typing puts them (`ui::handler::replace`). After saving and opening
+    /// again, the name is inside its content control, the fixed word is in
+    /// the body, and the other fields are still there
+    #[gpui::test]
+    fn a_form_is_filled_and_a_word_fixed_in_a_docx(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sample/writer/03_申込書.docx");
+            this.open(src);
+            assert!(!this.native && this.code.is_none());
+            let fields = this.sdt_names();
+            // The name field: the second cell of the first row
+            this.switch_target(Target::Cell { table: 0, row: 0, col: 1 });
+            let end = this.ed.text().len();
+            this.ed.move_to(end, false);
+            ui::handler::replace(this, None, "山田 花子");
+            // Fix a word in the body
+            this.switch_target(Target::Body);
+            let at = this.ed.text().find("薄い箱").expect("the word");
+            this.ed.move_to(at, false);
+            this.ed.move_to(at + "薄い箱".len(), true);
+            ui::handler::replace(this, None, "薄い枠");
+            let dir = std::env::temp_dir().join(format!("ow-form-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let out = dir.join("filled.docx");
+            this.save_to(out.clone());
+            let bytes = std::fs::read(&out).expect("saved");
+            let _ = std::fs::remove_dir_all(&dir);
+            let (doc, _) = ooxml::read(std::io::Cursor::new(bytes)).expect("reads again");
+            assert!(doc.body_text().contains("薄い枠"), "the fixed word is lost");
+            assert!(!doc.body_text().contains("薄い箱"));
+            let table = doc.tables().next().expect("the table");
+            let cell = &table.rows[0][1];
+            let runs: Vec<&kumihan::Run> = cell.paragraphs.iter().flat_map(|p| p.runs.iter()).collect();
+            let named = runs
+                .iter()
+                .find(|r| r.text.contains("山田"))
+                .expect("the name is not in the cell");
+            // The field is named by its alias (`w:alias`, ECMA-376 17.5.2.1)
+            assert_eq!(
+                named.fmt.sdt.as_deref().map(|s| s.alias.as_str()),
+                Some("氏名"),
+                "the name is not inside its field"
+            );
+            this.set_doc(doc);
+            assert_eq!(this.sdt_names(), fields, "fields went missing");
+        });
+    }
+
+    /// **A press on the pages puts the caret on its text, and the caret
+    /// brings the pages to its line** (src/code.rs)
+    #[gpui::test]
+    fn the_pages_and_the_text_point_at_each_other(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            let dir = std::env::temp_dir().join(format!("ow-code-click-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let src = dir.join("a.adoc");
+            let text = "= 申請書\n\n== 目的\n\n目的は*太字*です。\n\n== 方法\n\n方法は三つあります。\n";
+            std::fs::write(&src, text).unwrap();
+            this.code_open = true;
+            this.open(src);
+            let pv = crate::code::make_pages(this.job_now().expect("parses")).expect("pages");
+            this.code.as_mut().unwrap().pages = Some(std::sync::Arc::new(pv));
+            let _ = this.code_pane(1.0, cx);
+            let c = this.code.as_ref().unwrap();
+            let pv = c.pages.clone().unwrap();
+            let (li, l) = pv
+                .lines
+                .iter()
+                .enumerate()
+                .find(|(_, l)| l.chars.iter().any(|(ch, _)| *ch == '三'))
+                .expect("the line on the page");
+            let (_, cx_mm) = *l.chars.iter().find(|(ch, _)| *ch == '三').unwrap();
+            let x = 12.0 + (cx_mm + 0.3) * c.pxmm;
+            let y = c.tops[l.page] + (l.top_mm + l.h_mm / 2.0) * c.pxmm - c.scroll_px;
+            this.code_click(x, y);
+            assert_eq!(this.ed.cursor(), text.find('三').unwrap(), "the caret is not on the letter pressed");
+            // The caret on the heading's markings brings the pages to the heading
+            this.ed.move_to(text.find("== 目的").unwrap(), false);
+            this.code_sync();
+            let mark = this.code.as_ref().unwrap().mark.expect("a line is marked");
+            let words: String = pv.lines[mark].chars.iter().map(|(ch, _)| *ch).collect();
+            assert_eq!(words, "目的", "marked {words}");
+            assert_ne!(mark, li);
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
 }

@@ -2235,4 +2235,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("used_next_xlsx_open", "Gilt ab der nächsten geöffneten xlsx: {}"),
     ("time_zone_prompt", "IANA-Name der Zeitzone (z. B. Europe/Berlin). Leer lassen für die Zeitzone dieses Computers"),
     ("unknown_time_zone", "Unbekannter Zeitzonenname: {}"),
+    ("code_pages_making", "Seiten werden erstellt…"),
+    ("code_pages_cannot", "Aus dem Text lassen sich keine Seiten erstellen: {}"),
+    ("code_opened", "{} — links der Text, rechts seine Seiten. Der Text wird unverändert gespeichert"),
 ];

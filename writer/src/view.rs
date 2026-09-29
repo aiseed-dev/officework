@@ -10,6 +10,15 @@ use crate::*;
 /// 置くぶんを含んでいます。文字の描画位置を変えたら、ここも測り直してください。
 const CARET_TOP: f32 = 0.53;
 const CARET_H: f32 = 1.00;
+/// The same for the page pictures. Their letters stand on the true baseline
+/// (the print's), about 0.4 of a letter above where gpui puts its text box,
+/// so the caret and the selection go up by as much (2026-09-27)
+const CARET_TOP_PIC: f32 = 0.95;
+const CARET_H_PIC: f32 = 1.15;
+/// Where the selection starts under the letter box's top (`y - 0.88 * size`),
+/// as a share of the size: gpui's text, and the page pictures
+const SEL_DROP: f32 = HALF_LEADING;
+const SEL_DROP_PIC: f32 = -0.10;
 
 
 impl Render for Writer {
@@ -28,6 +37,10 @@ impl Render for Writer {
         ));
         // **点検の道具へ、ボタンの場所を渡す。** 環境変数が無ければ何もしない
         self.dump_ui();
+        // An .adoc beside its pages: make the pages again when the text
+        // has changed, and draw them in the right pane (src/code.rs)
+        self.code_tick(cx);
+        let code_pane = self.code.is_some().then(|| self.code_pane(window.scale_factor(), cx));
         // Register the fonts the layout resolved, so the screen draws the
         // faces the print uses (Word's bundled fonts are not system fonts)
         if !self.fonts_pending.is_empty() {
@@ -823,7 +836,7 @@ impl Render for Writer {
                     .rounded_sm()
                     .bg(if self.native { rgb(0xE3F0F6) } else { th_cmd_bg })
                     .text_color(if self.native { rgb(0x165E83) } else { th_status })
-                    .child(if self.native { "adoc" } else { "docx" }),
+                    .child(if self.native || self.code.is_some() { "adoc" } else { "docx" }),
             )
             .child(div().flex_1().whitespace_nowrap().overflow_hidden()
                 .child(SharedString::from(match self.hover_hint {
@@ -919,6 +932,14 @@ impl Render for Writer {
             paper = paper.bg(paper_bg).shadow_lg();
         }
 
+        // **The page pictures** (docs/sekkei/hyouji-e.ja.adoc). A docx is shown
+        // as the pages the PDF prints; what the page draws itself is skipped
+        // below, and the editing marks are drawn over the pictures. They go under the ruler
+        let pics = self.pictures_on();
+        if pics {
+            paper = self.put_page_pictures(paper, pxmm, window.scale_factor(), mi_ue, mi_sita);
+        }
+
         // ルーラー(10mm ごとの目盛り。余白の位置が分かる)
         if self.ruler {
             let mut n = 0;
@@ -948,164 +969,168 @@ impl Render for Writer {
             }
         }
 
-        // The document's own drawings without text (page-wide bands, rules
-        // under headings) and the pictures, in one order.
-        //
-        // A group draws its children in the order the file lists them, and
-        // that order is the z order (ECMA-376 20.1.2.2.x). The print sorts
-        // the same way: by z first, and within one z the shapes' fills
-        // before the pictures. Everything the body makes carries 0, so a
-        // band still goes under the body pictures (2026-09-20)
-        let bands = self.yosomono_imgs(pxmm, false);
-        // (picture, box in px, z, the box to cut it to in px)
-        let mut ehon: Vec<(std::sync::Arc<gpui::Image>, [f32; 4], i32, Option<[f32; 4]>)> = Vec::new();
-        for (bytes, [x, top, w_mm, h_mm], z, clip) in self
-            .page
-            .images
-            .iter()
-            .map(|(b, a, f)| {
-                // An inline picture stretched to its fill rectangle
-                // (a:fillRect) is drawn there and cut to its box
-                let [x, y, w, h] = *a;
-                match f {
-                    Some([l, t, r, bo]) => (
-                        b,
-                        [x + w * l, y + h * t, w * (1.0 - l - r), h * (1.0 - t - bo)],
-                        0i32,
-                        Some(*a),
-                    ),
-                    None => (b, *a, 0i32, None),
-                }
-            })
-            .chain(self.page.float_images.iter().map(|(b, a, z, c)| (b, *a, *z, *c)))
-        {
-            let src = self.image_cache.entry(std::sync::Arc::as_ptr(bytes) as usize)
-                .or_insert_with(|| {
-                    let format = match bytes.get(..4) {
-                        Some([0x89, b'P', b'N', b'G']) => gpui::ImageFormat::Png,
-                        Some([0xFF, 0xD8, ..]) => gpui::ImageFormat::Jpeg,
-                        _ => gpui::ImageFormat::Png,
-                    };
-                    std::sync::Arc::new(gpui::Image::from_bytes(format, bytes.to_vec()))
-                })
-                .clone();
-            let at = [
-                (self.pg.left_mm + x) * pxmm,
-                top * pxmm,
-                w_mm * pxmm,
-                h_mm * pxmm,
-            ];
-            let clip = clip.map(|[cx0, ct, cw, ch]: [f32; 4]| {
-                [(self.pg.left_mm + cx0) * pxmm, ct * pxmm, cw * pxmm, ch * pxmm]
-            });
-            ehon.push((src, at, z, clip));
-        }
-        let mut junban: Vec<(i32, u8, usize)> =
-            bands.iter().enumerate().map(|(k, (_, _, z))| (*z, 0u8, k)).collect();
-        junban.extend(ehon.iter().enumerate().map(|(k, (_, _, z, _))| (*z, 2u8, k)));
-        junban.sort_unstable();
-        for (_, kind, k) in junban {
-            let (src, at, clip) = if kind == 0 {
-                (bands[k].0.clone(), bands[k].1, None)
-            } else {
-                (ehon[k].0.clone(), ehon[k].1, ehon[k].3)
-            };
-            let top = clip.map_or(at[1], |c| c[1]);
-            if top / pxmm < mi_ue - 0.01 || top / pxmm > mi_sita { continue; }
-            paper = match clip {
-                // A picture stretched past its shape (a:fillRect) is cut to
-                // the shape's box
-                Some(c) => paper.child(
-                    div().absolute().left(px(c[0])).top(px(c[1])).w(px(c[2])).h(px(c[3])).overflow_hidden().child(
-                        gpui::img(src)
-                            .absolute()
-                            .left(px(at[0] - c[0]))
-                            .top(px(at[1] - c[1]))
-                            .w(px(at[2]))
-                            .h(px(at[3])),
-                    ),
-                ),
-                None => paper.child(
-                    gpui::img(src).absolute().left(px(at[0])).top(px(at[1])).w(px(at[2])).h(px(at[3])),
-                ),
-            };
-        }
-
-        // **セルの塗り**(組んだ紙の fills)。前は PDF だけが描き、画面は
-        // 落としていた — 表スタイルの帯もセルの塗りも紙にだけ出ていた
-        // (2026-09-04、的の順で writer の表にセルの塗りを入れて気づいた)。
-        // 罫線と文字より先に敷く
-        for (at, c) in &self.page.fills {
-            let [x, y, w, h] = *at;
-            paper = paper.child(div().absolute()
-                .left(px((self.pg.left_mm + x) * pxmm)).top(px(y * pxmm))
-                .w(px(w * pxmm)).h(px(h * pxmm))
-                .bg(gpui::Rgba { r: hex(c, 0), g: hex(c, 1), b: hex(c, 2), a: 1.0 }));
-        }
-
-        // 表の罫線。紙面の座標をそのまま引く
-        for r in &self.page.rules {
-            let [x1, y1, x2, y2] = r.at;
-            let (x1, y1) = ((self.pg.left_mm + x1) * pxmm, y1 * pxmm);
-            let (x2, y2) = ((self.pg.left_mm + x2) * pxmm, y2 * pxmm);
-            // The width the rule carries, else the 0.5pt of an ordinary edge
-            let w = if r.pt > 0.0 { (r.pt * 25.4 / 72.0) * pxmm } else { 1.0 };
-            // The colour the border names; `auto` keeps the screen's grey
-            let iro = match r.rgb {
-                Some(c) => gpui::Rgba {
-                    r: c[0] as f32 / 255.0,
-                    g: c[1] as f32 / 255.0,
-                    b: c[2] as f32 / 255.0,
-                    a: 1.0,
-                },
-                None => gpui::Rgba { r: 0.266, g: 0.294, b: 0.322, a: 1.0 },
-            };
-            paper = paper.child(div().absolute()
-                .left(px(x1.min(x2))).top(px(y1.min(y2)))
-                .w(px((x2 - x1).abs().max(w))).h(px((y2 - y1).abs().max(w)))
-                .bg(iro));
-        }
-
-        // 段落の背景色と囲み枠。行の下地として敷く(文字より下に来るよう先に描く)。
-        // 元は `lay` が合成後の段落から控えた `para_deco`(テンプレートの背景も含む)
-        {
-            let deco = &self.para_deco;
-            if !deco.is_empty() {
-                let (bx0, bx1) = (self.pg.left_mm, self.pg.w_mm - self.pg.right_mm);
-                for line in self.page.lines.iter().filter(|l| l.from_body) {
-                    let Some((r, shade, boxed)) = deco
-                        .iter()
-                        .find(|(r, ..)| r.start <= line.byte0 && line.byte0 <= r.end)
-                        .map(|(r, sh, b)| (r.clone(), sh.clone(), *b))
-                    else {
-                        continue;
-                    };
-                    let band_top = (line.y_mm - LINE_MM * 0.75) * pxmm;
-                    let band_h = LINE_MM * pxmm;
-                    if let Some(c) = &shade {
-                        paper = paper.child(div().absolute()
-                            .left(px(bx0 * pxmm)).top(px(band_top))
-                            .w(px((bx1 - bx0) * pxmm)).h(px(band_h))
-                            .bg(gpui::Rgba {
-                                r: hex(c, 0), g: hex(c, 1), b: hex(c, 2), a: 1.0,
-                            }));
+        // Shown as page pictures (src/pages.rs), the page's own content is in the picture
+        if !pics {
+            // The document's own drawings without text (page-wide bands, rules
+            // under headings) and the pictures, in one order.
+            //
+            // A group draws its children in the order the file lists them, and
+            // that order is the z order (ECMA-376 20.1.2.2.x). The print sorts
+            // the same way: by z first, and within one z the shapes' fills
+            // before the pictures. Everything the body makes carries 0, so a
+            // band still goes under the body pictures (2026-09-20)
+            let bands = self.yosomono_imgs(pxmm, false);
+            // (picture, box in px, z, the box to cut it to in px)
+            let mut ehon: Vec<(std::sync::Arc<gpui::Image>, [f32; 4], i32, Option<[f32; 4]>)> = Vec::new();
+            for (bytes, [x, top, w_mm, h_mm], z, clip) in self
+                .page
+                .images
+                .iter()
+                .map(|(b, a, f)| {
+                    // An inline picture stretched to its fill rectangle
+                    // (a:fillRect) is drawn there and cut to its box
+                    let [x, y, w, h] = *a;
+                    match f {
+                        Some([l, t, r, bo]) => (
+                            b,
+                            [x + w * l, y + h * t, w * (1.0 - l - r), h * (1.0 - t - bo)],
+                            0i32,
+                            Some(*a),
+                        ),
+                        None => (b, *a, 0i32, None),
                     }
-                    if boxed {
-                        let ink = rgb(0x444B52);
-                        for x in [bx0, bx1] {
-                            paper = paper.child(div().absolute()
-                                .left(px(x * pxmm)).top(px(band_top))
-                                .w(px(1.0)).h(px(band_h)).bg(ink));
-                        }
-                        if line.byte0 == r.start {
+                })
+                .chain(self.page.float_images.iter().map(|(b, a, z, c)| (b, *a, *z, *c)))
+            {
+                let src = self.image_cache.entry(std::sync::Arc::as_ptr(bytes) as usize)
+                    .or_insert_with(|| {
+                        let format = match bytes.get(..4) {
+                            Some([0x89, b'P', b'N', b'G']) => gpui::ImageFormat::Png,
+                            Some([0xFF, 0xD8, ..]) => gpui::ImageFormat::Jpeg,
+                            _ => gpui::ImageFormat::Png,
+                        };
+                        std::sync::Arc::new(gpui::Image::from_bytes(format, bytes.to_vec()))
+                    })
+                    .clone();
+                let at = [
+                    (self.left_at(top) + x) * pxmm,
+                    top * pxmm,
+                    w_mm * pxmm,
+                    h_mm * pxmm,
+                ];
+                let clip = clip.map(|[cx0, ct, cw, ch]: [f32; 4]| {
+                    [(self.left_at(top) + cx0) * pxmm, ct * pxmm, cw * pxmm, ch * pxmm]
+                });
+                ehon.push((src, at, z, clip));
+            }
+            let mut junban: Vec<(i32, u8, usize)> =
+                bands.iter().enumerate().map(|(k, (_, _, z))| (*z, 0u8, k)).collect();
+            junban.extend(ehon.iter().enumerate().map(|(k, (_, _, z, _))| (*z, 2u8, k)));
+            junban.sort_unstable();
+            for (_, kind, k) in junban {
+                let (src, at, clip) = if kind == 0 {
+                    (bands[k].0.clone(), bands[k].1, None)
+                } else {
+                    (ehon[k].0.clone(), ehon[k].1, ehon[k].3)
+                };
+                let top = clip.map_or(at[1], |c| c[1]);
+                if top / pxmm < mi_ue - 0.01 || top / pxmm > mi_sita { continue; }
+                paper = match clip {
+                    // A picture stretched past its shape (a:fillRect) is cut to
+                    // the shape's box
+                    Some(c) => paper.child(
+                        div().absolute().left(px(c[0])).top(px(c[1])).w(px(c[2])).h(px(c[3])).overflow_hidden().child(
+                            gpui::img(src)
+                                .absolute()
+                                .left(px(at[0] - c[0]))
+                                .top(px(at[1] - c[1]))
+                                .w(px(at[2]))
+                                .h(px(at[3])),
+                        ),
+                    ),
+                    None => paper.child(
+                        gpui::img(src).absolute().left(px(at[0])).top(px(at[1])).w(px(at[2])).h(px(at[3])),
+                    ),
+                };
+            }
+
+            // **セルの塗り**(組んだ紙の fills)。前は PDF だけが描き、画面は
+            // 落としていた — 表スタイルの帯もセルの塗りも紙にだけ出ていた
+            // (2026-09-04、的の順で writer の表にセルの塗りを入れて気づいた)。
+            // 罫線と文字より先に敷く
+            for (at, c) in &self.page.fills {
+                let [x, y, w, h] = *at;
+                paper = paper.child(div().absolute()
+                    .left(px((self.left_at(y) + x) * pxmm)).top(px(y * pxmm))
+                    .w(px(w * pxmm)).h(px(h * pxmm))
+                    .bg(gpui::Rgba { r: hex(c, 0), g: hex(c, 1), b: hex(c, 2), a: 1.0 }));
+            }
+
+            // 表の罫線。紙面の座標をそのまま引く
+            for r in &self.page.rules {
+                let [x1, y1, x2, y2] = r.at;
+                let lm = self.left_at(y1);
+                let (x1, y1) = ((lm + x1) * pxmm, y1 * pxmm);
+                let (x2, y2) = ((lm + x2) * pxmm, y2 * pxmm);
+                // The width the rule carries, else the 0.5pt of an ordinary edge
+                let w = if r.pt > 0.0 { (r.pt * 25.4 / 72.0) * pxmm } else { 1.0 };
+                // The colour the border names; `auto` keeps the screen's grey
+                let iro = match r.rgb {
+                    Some(c) => gpui::Rgba {
+                        r: c[0] as f32 / 255.0,
+                        g: c[1] as f32 / 255.0,
+                        b: c[2] as f32 / 255.0,
+                        a: 1.0,
+                    },
+                    None => gpui::Rgba { r: 0.266, g: 0.294, b: 0.322, a: 1.0 },
+                };
+                paper = paper.child(div().absolute()
+                    .left(px(x1.min(x2))).top(px(y1.min(y2)))
+                    .w(px((x2 - x1).abs().max(w))).h(px((y2 - y1).abs().max(w)))
+                    .bg(iro));
+            }
+
+            // 段落の背景色と囲み枠。行の下地として敷く(文字より下に来るよう先に描く)。
+            // 元は `lay` が合成後の段落から控えた `para_deco`(テンプレートの背景も含む)
+            {
+                let deco = &self.para_deco;
+                if !deco.is_empty() {
+                    let (bx0, bx1) = (self.pg.left_mm, self.pg.w_mm - self.pg.right_mm);
+                    for line in self.page.lines.iter().filter(|l| l.from_body) {
+                        let Some((r, shade, boxed)) = deco
+                            .iter()
+                            .find(|(r, ..)| r.start <= line.byte0 && line.byte0 <= r.end)
+                            .map(|(r, sh, b)| (r.clone(), sh.clone(), *b))
+                        else {
+                            continue;
+                        };
+                        let band_top = (line.y_mm - LINE_MM * 0.75) * pxmm;
+                        let band_h = LINE_MM * pxmm;
+                        if let Some(c) = &shade {
                             paper = paper.child(div().absolute()
                                 .left(px(bx0 * pxmm)).top(px(band_top))
-                                .w(px((bx1 - bx0) * pxmm)).h(px(1.0)).bg(ink));
+                                .w(px((bx1 - bx0) * pxmm)).h(px(band_h))
+                                .bg(gpui::Rgba {
+                                    r: hex(c, 0), g: hex(c, 1), b: hex(c, 2), a: 1.0,
+                                }));
                         }
-                        if line.byte_end() >= r.end {
-                            paper = paper.child(div().absolute()
-                                .left(px(bx0 * pxmm)).top(px(band_top + band_h))
-                                .w(px((bx1 - bx0) * pxmm)).h(px(1.0)).bg(ink));
+                        if boxed {
+                            let ink = rgb(0x444B52);
+                            for x in [bx0, bx1] {
+                                paper = paper.child(div().absolute()
+                                    .left(px(x * pxmm)).top(px(band_top))
+                                    .w(px(1.0)).h(px(band_h)).bg(ink));
+                            }
+                            if line.byte0 == r.start {
+                                paper = paper.child(div().absolute()
+                                    .left(px(bx0 * pxmm)).top(px(band_top))
+                                    .w(px((bx1 - bx0) * pxmm)).h(px(1.0)).bg(ink));
+                            }
+                            if line.byte_end() >= r.end {
+                                paper = paper.child(div().absolute()
+                                    .left(px(bx0 * pxmm)).top(px(band_top + band_h))
+                                    .w(px((bx1 - bx0) * pxmm)).h(px(1.0)).bg(ink));
+                            }
                         }
                     }
                 }
@@ -1133,7 +1158,7 @@ impl Render for Writer {
         }
 
         // 透かし。1字ずつ対角線に沿って置く(画面の近似。紙は回転した字)
-        if let Some(text) = self.dress_page.0.as_deref().filter(|t| !t.is_empty()) {
+        if let Some(text) = self.dress_page.0.as_deref().filter(|t| !t.is_empty() && !pics) {
             let n = text.chars().count().max(1) as f32;
             let wpt = (520.0 / n).clamp(36.0, 120.0);
             let em_mm = wpt * 25.4 / 72.0;
@@ -1173,7 +1198,7 @@ impl Render for Writer {
                         .unwrap_or(false);
                     if changed {
                         paper = paper.child(div().absolute()
-                            .left(px((self.pg.left_mm - 5.0).max(0.5) * pxmm))
+                            .left(px((self.left_at(line.y_mm) - 5.0).max(0.5) * pxmm))
                             .top(px((line.y_mm - LINE_MM * 0.7) * pxmm))
                             .w(px(2.0)).h(px(LINE_MM * pxmm))
                             .bg(rgb(0xE08A00)));
@@ -1213,7 +1238,7 @@ impl Render for Writer {
             for line in self.page.lines.iter().filter(|l| l.from_body) {
                 n += 1;
                 paper = paper.child(div().absolute()
-                    .left(px((self.pg.left_mm - 9.0).max(1.0) * pxmm))
+                    .left(px((self.left_at(line.y_mm) - 9.0).max(1.0) * pxmm))
                     .top(px(line.y_mm * pxmm - 8.5 * self.zoom))
                     .text_size(px(8.5 * self.zoom))
                     .text_color(rgb(0x9DB8C8))
@@ -1229,7 +1254,7 @@ impl Render for Writer {
             for b in &self.page.cell_boxes {
                 if crate::keys::Hani::fukumu(h, b.table, b.row, b.col) {
                     paper = paper.child(div().absolute()
-                        .left(px((self.pg.left_mm + b.x_mm) * pxmm)).top(px(b.top_mm * pxmm))
+                        .left(px((self.left_at(b.top_mm) + b.x_mm) * pxmm)).top(px(b.top_mm * pxmm))
                         .w(px(b.w_mm * pxmm)).h(px(b.h_mm * pxmm))
                         .bg(gpui::Rgba { r: 0.40, g: 0.60, b: 0.85, a: 0.35 }));
                 }
@@ -1299,7 +1324,7 @@ impl Render for Writer {
             }
             let pt = line.cells[0].size_pt;
             let sz = pt * 96.0 / 72.0 * self.zoom;
-            let x0 = self.pg.left_mm + line.cells[0].x_mm;
+            let x0 = self.left_at(line.y_mm) + line.cells[0].x_mm;
             // 字は行の箱の中の置き場(`dip_mm`)だけ下げて描く(紙と同じ。2026-09-08)
             let top = (line.y_mm + line.dip_mm) * pxmm - sz * 0.88;
 
@@ -1320,7 +1345,7 @@ impl Render for Writer {
                     let xr = |upto: usize| -> f32 { line.x_at(upto) - line.cells[0].x_mm };
                     paper = paper.child(div().absolute()
                         .left(px((x0 + xr(a)) * pxmm))
-                        .top(px(top + sz * (1.05 + HALF_LEADING)))
+                        .top(px(top + sz * (1.05 + if pics { 0.0 } else { HALF_LEADING })))
                         .w(px((xr(b) - xr(a)).max(1.0) * pxmm))
                         .h(px(2.0)).bg(rgb(0x165E83)));
                 }
@@ -1346,7 +1371,7 @@ impl Render for Writer {
                     let xr = |upto: usize| -> f32 { line.x_at(upto) - line.cells[0].x_mm };
                     paper = paper.child(div().absolute()
                         .left(px((x0 + xr(a)) * pxmm))
-                        .top(px(top + sz * HALF_LEADING))
+                        .top(px(top + sz * if pics { SEL_DROP_PIC } else { SEL_DROP }))
                         .w(px((xr(b) - xr(a)).max(1.5) * pxmm))
                         .h(px(sz * 1.2))
                         // 半透明の青。文字より下・蛍光ペンより上に敷く
@@ -1355,102 +1380,105 @@ impl Render for Writer {
             }
             // 文字は**同じ書式の連なり**ごとに描く(部分書式。太字・大きさ・
             // 書体・色が行の中で混ざっても、その通りに出る)
-            let mut i = 0usize;
-            while i < line.cells.len() {
-                // **タブと改行は描きません。** 字の並びは gpui が書体の幅で
-                // 置くので、タブを混ぜるとその幅で後ろが全部ずれます。目次の
-                // 行は「見出し + タブ + 点線 + 頁番号」で、点線が頁番号を
-                // 追い越して紙の外まで伸びていました(2026-09-22)。
-                // 紙の側は 1 字ずつ置くので、ここだけの違いでした
-                if matches!(line.cells[i].ch, '\t' | '\n') {
-                    i += 1;
-                    continue;
-                }
-                let c0 = &line.cells[i];
-                let j = tsuranari_no_owari(&line.cells, i);
-                let seg = &line.cells[i..j];
-                let text: String = seg.iter().map(|c| c.ch).collect();
-                let w_mm: f32 = seg.iter().map(|c| c.w_mm).sum();
-                let f = &c0.fmt;
-                let sx = self.pg.left_mm + c0.x_mm;
-                let spt = c0.size_pt * 96.0 / 72.0 * self.zoom;
-                let stop = (line.y_mm + line.dip_mm) * pxmm - spt * 0.88;
-                // 上付き・下付きは小さく描き、少し上下へずらす
-                let (spt, stop) = if f.superscript {
-                    (spt * 0.7, stop - spt * 0.25)
-                } else if f.subscript {
-                    (spt * 0.7, stop + spt * 0.25)
-                } else {
-                    (spt, stop)
-                };
-                // 記入欄(コンテンツコントロール)は薄い箱で囲む。
-                // 「ここは書き込む場所」と分かるように(Word の作法)
-                if f.sdt.is_some() {
-                    paper = paper.child(div().absolute()
-                        .left(px(sx * pxmm)).top(px(stop + spt * HALF_LEADING))
-                        .w(px(w_mm * pxmm)).h(px(spt * 1.15))
-                        .border_1().border_color(rgb(0x8FB8CE))
-                        .bg(gpui::Rgba { r: 0.55, g: 0.75, b: 0.9, a: 0.10 }));
-                }
-                // 参照(フィールド)はうっすら網掛け(Word の作法)。
-                // 「ここは計算された値」と分かるように
-                if f.field.is_some() {
-                    paper = paper.child(div().absolute()
-                        .left(px(sx * pxmm)).top(px(stop + spt * HALF_LEADING))
-                        .w(px(w_mm * pxmm)).h(px(spt * 1.15))
-                        .bg(gpui::Rgba { r: 0.55, g: 0.6, b: 0.65, a: 0.16 }));
-                }
-                // 蛍光ペン。字の下に色を敷く
-                if let Some(h) = &f.highlight {
-                    let bg = match h.as_str() {
-                        "green" => rgb(0xC9F0C9),
-                        "cyan" => rgb(0xC9EEF0),
-                        _ => rgb(0xF7EFA8),
-                    };
-                    paper = paper.child(div().absolute()
-                        .left(px(sx * pxmm)).top(px(stop + spt * HALF_LEADING))
-                        .w(px(w_mm * pxmm)).h(px(spt * 1.15))
-                        .bg(bg));
-                }
-                let (kazoku, omosa) = self.screen_face(c0.font.as_deref(), f.bold, f.italic);
-                let mut d = div().absolute()
-                    .left(px(sx * pxmm)).top(px(stop))
-                    .text_size(px(spt))
-                    .font_family(kazoku)
-                    .font_weight(omosa)
-                    .whitespace_nowrap()
-                    .child(SharedString::from(text));
-                if f.italic {
-                    d = d.italic();
-                }
-                d = match &f.color {
-                    Some(c) => d.text_color(gpui::Rgba {
-                        r: hex(c, 0), g: hex(c, 1), b: hex(c, 2), a: 1.0,
-                    }),
-                    None => d.text_color(rgb(0x1B1B1B)),
-                };
-                paper = paper.child(d);
-                // 下線・取り消し線は連なりごとに引く(gpui の text に無い)
-                // 位置は紙と同じ定数(ベースラインは `stop` から 0.88 字下)
-                for (on, dy) in [
-                    (f.underline, spt * (0.88 - kumihan::UNDERLINE_EM + HALF_LEADING)),
-                    (f.strike, spt * (0.88 - kumihan::STRIKE_EM + HALF_LEADING)),
-                ] {
-                    if on {
-                        paper = paper.child(div().absolute()
-                            .left(px(sx * pxmm)).top(px(stop + dy))
-                            .w(px(w_mm * pxmm)).h(px(1.0))
-                            .bg(rgb(0x1B1B1B)));
+            if !pics {
+                let mut i = 0usize;
+                while i < line.cells.len() {
+                    // **タブと改行は描きません。** 字の並びは gpui が書体の幅で
+                    // 置くので、タブを混ぜるとその幅で後ろが全部ずれます。目次の
+                    // 行は「見出し + タブ + 点線 + 頁番号」で、点線が頁番号を
+                    // 追い越して紙の外まで伸びていました(2026-09-22)。
+                    // 紙の側は 1 字ずつ置くので、ここだけの違いでした
+                    if matches!(line.cells[i].ch, '\t' | '\n') {
+                        i += 1;
+                        continue;
                     }
+                    let c0 = &line.cells[i];
+                    let j = tsuranari_no_owari(&line.cells, i);
+                    let seg = &line.cells[i..j];
+                    let text: String = seg.iter().map(|c| c.ch).collect();
+                    let w_mm: f32 = seg.iter().map(|c| c.w_mm).sum();
+                    let f = &c0.fmt;
+                    let sx = self.left_at(line.y_mm) + c0.x_mm;
+                    let spt = c0.size_pt * 96.0 / 72.0 * self.zoom;
+                    let stop = (line.y_mm + line.dip_mm) * pxmm - spt * 0.88;
+                    // 上付き・下付きは小さく描き、少し上下へずらす
+                    let (spt, stop) = if f.superscript {
+                        (spt * 0.7, stop - spt * 0.25)
+                    } else if f.subscript {
+                        (spt * 0.7, stop + spt * 0.25)
+                    } else {
+                        (spt, stop)
+                    };
+                    // 記入欄(コンテンツコントロール)は薄い箱で囲む。
+                    // 「ここは書き込む場所」と分かるように(Word の作法)
+                    if f.sdt.is_some() {
+                        paper = paper.child(div().absolute()
+                            .left(px(sx * pxmm)).top(px(stop + spt * HALF_LEADING))
+                            .w(px(w_mm * pxmm)).h(px(spt * 1.15))
+                            .border_1().border_color(rgb(0x8FB8CE))
+                            .bg(gpui::Rgba { r: 0.55, g: 0.75, b: 0.9, a: 0.10 }));
+                    }
+                    // 参照(フィールド)はうっすら網掛け(Word の作法)。
+                    // 「ここは計算された値」と分かるように
+                    if f.field.is_some() {
+                        paper = paper.child(div().absolute()
+                            .left(px(sx * pxmm)).top(px(stop + spt * HALF_LEADING))
+                            .w(px(w_mm * pxmm)).h(px(spt * 1.15))
+                            .bg(gpui::Rgba { r: 0.55, g: 0.6, b: 0.65, a: 0.16 }));
+                    }
+                    // 蛍光ペン。字の下に色を敷く
+                    if let Some(h) = &f.highlight {
+                        let bg = match h.as_str() {
+                            "green" => rgb(0xC9F0C9),
+                            "cyan" => rgb(0xC9EEF0),
+                            _ => rgb(0xF7EFA8),
+                        };
+                        paper = paper.child(div().absolute()
+                            .left(px(sx * pxmm)).top(px(stop + spt * HALF_LEADING))
+                            .w(px(w_mm * pxmm)).h(px(spt * 1.15))
+                            .bg(bg));
+                    }
+                    let (kazoku, omosa) = self.screen_face(c0.font.as_deref(), f.bold, f.italic);
+                    let mut d = div().absolute()
+                        .left(px(sx * pxmm)).top(px(stop))
+                        .text_size(px(spt))
+                        .font_family(kazoku)
+                        .font_weight(omosa)
+                        .whitespace_nowrap()
+                        .child(SharedString::from(text));
+                    if f.italic {
+                        d = d.italic();
+                    }
+                    d = match &f.color {
+                        Some(c) => d.text_color(gpui::Rgba {
+                            r: hex(c, 0), g: hex(c, 1), b: hex(c, 2), a: 1.0,
+                        }),
+                        None => d.text_color(rgb(0x1B1B1B)),
+                    };
+                    paper = paper.child(d);
+                    // 下線・取り消し線は連なりごとに引く(gpui の text に無い)
+                    // 位置は紙と同じ定数(ベースラインは `stop` から 0.88 字下)
+                    for (on, dy) in [
+                        (f.underline, spt * (0.88 - kumihan::UNDERLINE_EM + HALF_LEADING)),
+                        (f.strike, spt * (0.88 - kumihan::STRIKE_EM + HALF_LEADING)),
+                    ] {
+                        if on {
+                            paper = paper.child(div().absolute()
+                                .left(px(sx * pxmm)).top(px(stop + dy))
+                                .w(px(w_mm * pxmm)).h(px(1.0))
+                                .bg(rgb(0x1B1B1B)));
+                        }
+                    }
+                    i = j;
                 }
-                i = j;
             }
+
             // 編集記号。空白は・、段落の終わりは ↵(見え方だけ。文書は変わらない)
             if self.show_marks && line.from_body {
                 for c in &line.cells {
                     if c.ch == ' ' || c.ch == '\u{3000}' {
                         paper = paper.child(div().absolute()
-                            .left(px((self.pg.left_mm + c.x_mm + c.w_mm * 0.3) * pxmm))
+                            .left(px((self.left_at(line.y_mm) + c.x_mm + c.w_mm * 0.3) * pxmm))
                             .top(px(top + sz * 0.35))
                             .text_size(px(sz * 0.6)).text_color(rgb(0x9DB8C8))
                             .child(SharedString::from(if c.ch == ' ' { "·" } else { "□" })));
@@ -1458,117 +1486,119 @@ impl Render for Writer {
                 }
                 let end_x = line.cells.last().map(|c| c.x_mm + c.w_mm).unwrap_or(0.0);
                 paper = paper.child(div().absolute()
-                    .left(px((self.pg.left_mm + end_x) * pxmm)).top(px(top))
+                    .left(px((self.left_at(line.y_mm) + end_x) * pxmm)).top(px(top))
                     .text_size(px(sz * 0.8)).text_color(rgb(0x9DB8C8))
                     .child("↵"));
             }
         }
-        // ヘッダー・フッター。画面の紙は巻物なので、ヘッダーは紙の頭、
-        // フッターは紙の末尾の頁の位置に出す(番号は1ページ目のもの。
-        // 各ページの本当の番号は PDF で入る)。編集中は青、普段は灰色
-        //
-        // **頁ごとに、その頁の部品を出します**(2026-09-21 発注者)。行の
-        // `y_mm` はその紙の中の位置なので、紙の上端(`page_tops`)を足します
-        for (pages, active) in [
-            (&self.header_lines, self.hf_edit == Some(false)),
-            (&self.footer_lines, self.hf_edit == Some(true)),
-        ] {
-            for (k, lines) in pages.iter().enumerate() {
-                let dy = self
-                    .page_tops
-                    .get(k)
-                    .or_else(|| self.page_offsets.get(k))
-                    .copied()
-                    .unwrap_or(0.0);
-                for line in lines.iter() {
-                    // **A line is drawn in pieces, as the body is.** One
-                    // string from the first cell's x lost everything a tab
-                    // does: the page number of Word's business plan
-                    // template sits at a right stop and came out right
-                    // after the company name (2026-09-21). A piece ends at
-                    // a tab and where the face or the size changes
-                    let mut i = 0usize;
-                    while i < line.cells.len() {
-                        let c0 = &line.cells[i];
-                        if c0.ch == '\t' || c0.ch == '\n' {
-                            i += 1;
+        if !pics {
+            // ヘッダー・フッター。画面の紙は巻物なので、ヘッダーは紙の頭、
+            // フッターは紙の末尾の頁の位置に出す(番号は1ページ目のもの。
+            // 各ページの本当の番号は PDF で入る)。編集中は青、普段は灰色
+            //
+            // **頁ごとに、その頁の部品を出します**(2026-09-21 発注者)。行の
+            // `y_mm` はその紙の中の位置なので、紙の上端(`page_tops`)を足します
+            for (pages, active) in [
+                (&self.header_lines, self.hf_edit == Some(false)),
+                (&self.footer_lines, self.hf_edit == Some(true)),
+            ] {
+                for (k, lines) in pages.iter().enumerate() {
+                    let dy = self
+                        .page_tops
+                        .get(k)
+                        .or_else(|| self.page_offsets.get(k))
+                        .copied()
+                        .unwrap_or(0.0);
+                    for line in lines.iter() {
+                        // **A line is drawn in pieces, as the body is.** One
+                        // string from the first cell's x lost everything a tab
+                        // does: the page number of Word's business plan
+                        // template sits at a right stop and came out right
+                        // after the company name (2026-09-21). A piece ends at
+                        // a tab and where the face or the size changes
+                        let mut i = 0usize;
+                        while i < line.cells.len() {
+                            let c0 = &line.cells[i];
+                            if c0.ch == '\t' || c0.ch == '\n' {
+                                i += 1;
+                                continue;
+                            }
+                            let mut j = i + 1;
+                            while j < line.cells.len() {
+                                let c = &line.cells[j];
+                                if c.ch == '\t'
+                                    || c.ch == '\n'
+                                    || c.font != c0.font
+                                    || c.fmt.bold != c0.fmt.bold
+                                    || c.fmt.italic != c0.fmt.italic
+                                    || (c.size_pt - c0.size_pt).abs() > 0.01
+                                {
+                                    break;
+                                }
+                                j += 1;
+                            }
+                            let sz = c0.size_pt * 96.0 / 72.0 * self.zoom;
+                            let x0 = self.left_at(dy) + c0.x_mm;
+                            let top = (line.y_mm + line.dip_mm + dy) * pxmm - sz * 0.88;
+                            let (kazoku, omosa) =
+                                self.screen_face(c0.font.as_deref(), c0.fmt.bold, c0.fmt.italic);
+                            let text: String = line.cells[i..j].iter().map(|c| c.ch).collect();
+                            paper = paper.child(div().absolute()
+                                .left(px(x0 * pxmm)).top(px(top))
+                                .text_size(px(sz))
+                                .font_family(kazoku)
+                                .font_weight(omosa)
+                                .whitespace_nowrap()
+                                .text_color(if active { rgb(0x165E83) } else { rgb(0x8899A6) })
+                                .child(SharedString::from(text)));
+                            i = j;
+                        }
+                    }
+                }
+            }
+            // 脚注。**紙(PDF)と同じ割り当て**で、そのページの下に仕切り線とともに出す。
+            // 割り当ては paginate_full から受け取っているので、画面と紙で
+            // 脚注の出るページが食い違わない
+            for (k, idx) in self.page_notes.iter().enumerate() {
+                if idx.is_empty() {
+                    continue;
+                }
+                let Some(off) = self.page_offsets.get(k).copied() else { continue };
+                let total: f32 = idx.iter()
+                    .filter_map(|i| self.page.notes.get(*i))
+                    .map(|n| n.h_mm)
+                    .sum();
+                // ページの上端からの深さ。紙と同じ勘定(下余白のすぐ上に積む)
+                let block_top = self.pg.h_mm - self.pg.left_mm - total;
+                // 仕切り線。紙と同じく三分の一の長さ
+                paper = paper.child(div().absolute()
+                    .left(px(self.pg.left_mm * pxmm))
+                    .top(px((off + block_top - paper::NOTE_GAP_MM * 0.5) * pxmm))
+                    .w(px((self.pg.w_mm - self.pg.left_mm * 2.0) / 3.0 * pxmm))
+                    .h(px(1.0))
+                    .bg(rgb(0x99A5AE)));
+                let mut up = 0.0f32;
+                for i in idx {
+                    let Some(nb) = self.page.notes.get(*i) else { continue };
+                    for nl in &nb.lines {
+                        if nl.cells.is_empty() {
                             continue;
                         }
-                        let mut j = i + 1;
-                        while j < line.cells.len() {
-                            let c = &line.cells[j];
-                            if c.ch == '\t'
-                                || c.ch == '\n'
-                                || c.font != c0.font
-                                || c.fmt.bold != c0.fmt.bold
-                                || c.fmt.italic != c0.fmt.italic
-                                || (c.size_pt - c0.size_pt).abs() > 0.01
-                            {
-                                break;
-                            }
-                            j += 1;
-                        }
-                        let sz = c0.size_pt * 96.0 / 72.0 * self.zoom;
-                        let x0 = self.pg.left_mm + c0.x_mm;
-                        let top = (line.y_mm + line.dip_mm + dy) * pxmm - sz * 0.88;
-                        let (kazoku, omosa) =
-                            self.screen_face(c0.font.as_deref(), c0.fmt.bold, c0.fmt.italic);
-                        let text: String = line.cells[i..j].iter().map(|c| c.ch).collect();
+                        let pt = nl.cells[0].size_pt;
+                        let sz = pt * 96.0 / 72.0 * self.zoom;
+                        let y = off + block_top + up + nl.y_mm;
                         paper = paper.child(div().absolute()
-                            .left(px(x0 * pxmm)).top(px(top))
+                            .left(px((self.pg.left_mm + nl.cells[0].x_mm) * pxmm))
+                            .top(px(y * pxmm - sz * 0.88))
                             .text_size(px(sz))
-                            .font_family(kazoku)
-                            .font_weight(omosa)
+                            .font_family(self.font_name.clone())
                             .whitespace_nowrap()
-                            .text_color(if active { rgb(0x165E83) } else { rgb(0x8899A6) })
-                            .child(SharedString::from(text)));
-                        i = j;
+                            .text_color(rgb(0x1C1C1C))
+                            .child(SharedString::from(
+                                nl.cells.iter().map(|c| c.ch).collect::<String>())));
                     }
+                    up += nb.h_mm;
                 }
-            }
-        }
-        // 脚注。**紙(PDF)と同じ割り当て**で、そのページの下に仕切り線とともに出す。
-        // 割り当ては paginate_full から受け取っているので、画面と紙で
-        // 脚注の出るページが食い違わない
-        for (k, idx) in self.page_notes.iter().enumerate() {
-            if idx.is_empty() {
-                continue;
-            }
-            let Some(off) = self.page_offsets.get(k).copied() else { continue };
-            let total: f32 = idx.iter()
-                .filter_map(|i| self.page.notes.get(*i))
-                .map(|n| n.h_mm)
-                .sum();
-            // ページの上端からの深さ。紙と同じ勘定(下余白のすぐ上に積む)
-            let block_top = self.pg.h_mm - self.pg.left_mm - total;
-            // 仕切り線。紙と同じく三分の一の長さ
-            paper = paper.child(div().absolute()
-                .left(px(self.pg.left_mm * pxmm))
-                .top(px((off + block_top - paper::NOTE_GAP_MM * 0.5) * pxmm))
-                .w(px((self.pg.w_mm - self.pg.left_mm * 2.0) / 3.0 * pxmm))
-                .h(px(1.0))
-                .bg(rgb(0x99A5AE)));
-            let mut up = 0.0f32;
-            for i in idx {
-                let Some(nb) = self.page.notes.get(*i) else { continue };
-                for nl in &nb.lines {
-                    if nl.cells.is_empty() {
-                        continue;
-                    }
-                    let pt = nl.cells[0].size_pt;
-                    let sz = pt * 96.0 / 72.0 * self.zoom;
-                    let y = off + block_top + up + nl.y_mm;
-                    paper = paper.child(div().absolute()
-                        .left(px((self.pg.left_mm + nl.cells[0].x_mm) * pxmm))
-                        .top(px(y * pxmm - sz * 0.88))
-                        .text_size(px(sz))
-                        .font_family(self.font_name.clone())
-                        .whitespace_nowrap()
-                        .text_color(rgb(0x1C1C1C))
-                        .child(SharedString::from(
-                            nl.cells.iter().map(|c| c.ch).collect::<String>())));
-                }
-                up += nb.h_mm;
             }
         }
 
@@ -1586,8 +1616,8 @@ impl Render for Writer {
             let sz = caret_pt * 96.0 / 72.0 * self.zoom;
             paper = paper.child(div().absolute()
                 .left(px(cx_mm * pxmm))
-                .top(px(cy_mm * pxmm - sz * CARET_TOP))
-                .w(px(1.5)).h(px(sz * CARET_H))
+                .top(px(cy_mm * pxmm - sz * if pics { CARET_TOP_PIC } else { CARET_TOP }))
+                .w(px(1.5)).h(px(sz * if pics { CARET_H_PIC } else { CARET_H }))
                 .bg(rgb(0x165E83)));
         }
 
@@ -1596,10 +1626,12 @@ impl Render for Writer {
         // 選んでいる図形には枠を出します
         // The document's own text boxes, over the body text as the print
         // puts them. The plain bands went under the text, further up
-        for (src, at, _) in self.yosomono_imgs(pxmm, true) {
-            paper = paper.child(
-                gpui::img(src).absolute().left(px(at[0])).top(px(at[1])).w(px(at[2])).h(px(at[3])),
-            );
+        if !pics {
+            for (src, at, _) in self.yosomono_imgs(pxmm, true) {
+                paper = paper.child(
+                    gpui::img(src).absolute().left(px(at[0])).top(px(at[1])).w(px(at[2])).h(px(at[3])),
+                );
+            }
         }
         for (i, sp) in self.doc.shapes.iter().enumerate() {
             let oy = self
@@ -1633,14 +1665,17 @@ impl Render for Writer {
             let (x, y) = (sp.x_mm * pxmm, (sp.y_mm + oy) * pxmm);
             let (w, h) = (sp.w_mm * pxmm, sp.h_mm * pxmm);
             let pd = pad / PX_PER_MM * pxmm;
-            paper = paper.child(
-                gpui::img(src)
-                    .absolute()
-                    .left(px(x - pd))
-                    .top(px(y - pd))
-                    .w(px(w + pd * 2.0))
-                    .h(px(h + pd * 2.0)),
-            );
+            // In the page pictures the shape is already drawn; its frame stays
+            if !pics {
+                paper = paper.child(
+                    gpui::img(src)
+                        .absolute()
+                        .left(px(x - pd))
+                        .top(px(y - pd))
+                        .w(px(w + pd * 2.0))
+                        .h(px(h + pd * 2.0)),
+                );
+            }
             // 選んでいる図形には枠を出します。Ctrl+クリックで足した図形も
             // 同じ枠で、主(最後に押した図形)だけ太くします
             let picked = self.shape_pick.contains(&i);
@@ -1975,6 +2010,7 @@ impl Render for Writer {
                     }))
                     .child(InputSink { view: me })
                     .children(menu))
+                .children(code_pane)
                 .children(rp_panel)
             })
             // 端末のパネル(表示 > ターミナル)。本文の下、文書のタブの上
@@ -2255,8 +2291,8 @@ impl gpui::Element for InputSink {
                 // 本文の選択より先に見ないと、図形を掴んだまま字が選ばれます
                 if w.shape_drag.is_some() {
                     let pxmm = PX_PER_MM * w.zoom;
-                    let x = (f32::from(rel.x) - 28.0) / pxmm - w.pg.left_mm;
                     let y = (f32::from(rel.y) - 14.0) / pxmm + w.scroll_mm;
+                    let x = (f32::from(rel.x) - 28.0) / pxmm - w.left_at(y);
                     w.shape_move(x, y);
                     cx.notify();
                     return;

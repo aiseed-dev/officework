@@ -2383,5 +2383,8 @@
  "this_computer_zone": "Quello di questo computer ({})",
  "used_next_xlsx_open": "Usato dal prossimo xlsx aperto: {}",
  "time_zone_prompt": "Nome IANA del fuso orario (es. Europe/Rome). Lasciare vuoto per usare quello di questo computer",
- "unknown_time_zone": "Nome di fuso orario sconosciuto: {}"
+ "unknown_time_zone": "Nome di fuso orario sconosciuto: {}",
+ "code_pages_making": "Creazione delle pagine…",
+ "code_pages_cannot": "Impossibile creare le pagine dal testo: {}",
+ "code_opened": "{} — il testo a sinistra, le sue pagine a destra. Il testo viene salvato così com'è"
 }
