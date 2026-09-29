@@ -1578,10 +1578,15 @@ pub fn parse_many(src: &str) -> Result<Vec<Document>, String> {
     Ok(out)
 }
 
-/// [`parse_many`] の帳簿つき。読めなかった書き方を数えて返します。
+/// [`parse_many`] with the ledger: the kinds of markup it could not read.
+///
+/// The documents of one file share one ledger. Each kind is listed once,
+/// with the file's first line it is on and how many times it appears in
+/// the whole file (2026-09-30). A file of 50 similar documents listed the
+/// same kind 50 times once the entries carried line numbers.
 pub fn parse_many_full(src: &str) -> Result<(Vec<Document>, Vec<String>), String> {
     let mut docs = Vec::new();
-    let mut ledger = Vec::new();
+    let mut ledger: Ledger = std::collections::BTreeMap::new();
     // Where each document starts in the file, so the lines named in the
     // errors and the ledger are the file's lines, not the document's
     let mut from = 0usize;
@@ -1595,15 +1600,13 @@ pub fn parse_many_full(src: &str) -> Result<(Vec<Document>, Vec<String>), String
             }
             _ => 0,
         };
-        let (d, r) = parse_full(&s).map_err(|e| shift_lines(&e, off))?;
+        let (d, r) = parse_with_ledger(&s).map_err(|e| shift_lines(&e, off))?;
         docs.push(d);
-        for x in r.into_iter().map(|x| shift_lines(&x, off)) {
-            if !ledger.contains(&x) {
-                ledger.push(x);
-            }
+        for (k, v) in r {
+            ledger.entry(k).or_default().extend(v.into_iter().map(|l| l + off));
         }
     }
-    Ok((docs, ledger))
+    Ok((docs, ledger_lines(ledger)))
 }
 
 /// Add `off` to every line number written as "N 行目" in a message
@@ -1806,20 +1809,45 @@ pub fn parse(src: &str) -> Result<Document, String> {
     parse_full(src).map(|(d, _)| d)
 }
 
-/// AsciiDoc(部分集合)→ (模型, 帳簿)。
+/// AsciiDoc (a subset) to (model, ledger).
 ///
-/// **帳簿は「読めたけれど、うちの書き方ではないもの」の一覧です。**
-/// 本家の AsciiDoc には、うちが扱わない書き方がたくさんあります(註記・
-/// コードの塊・取り込みなど)。それらは字としては残りますが、**意味は
-/// 落ちています**。黙って本文に化けさせると、書いた人は出来上がりを見るまで
-/// 気づけません(2026-08-18。それまで8つ試して8つとも黙って化けていました)。
+/// The ledger lists markup that was read but is not ours. AsciiDoc has
+/// much markup we do not handle (admonitions, code blocks, includes and
+/// so on). Its text is kept, but its meaning is lost. Turning it silently
+/// into body text left the writer unaware until they saw the result
+/// (2026-08-18; eight tries until then all turned silently).
 pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
-    // Each kind of markup we do not read, and the lines it is on (from 1)
-    let mut ledger: std::collections::BTreeMap<&'static str, Vec<usize>> =
-        std::collections::BTreeMap::new();
+    let (doc, ledger) = parse_with_ledger(src)?;
+    Ok((doc, ledger_lines(ledger)))
+}
+
+/// Each kind of markup we do not read, and the file's lines it is on
+/// (from 1)
+type Ledger = std::collections::BTreeMap<&'static str, Vec<usize>>;
+
+/// The ledger as text. The first line it is on goes with each kind, so
+/// the writer can say where to look (2026-09-28)
+fn ledger_lines(ledger: Ledger) -> Vec<String> {
+    ledger
+        .into_iter()
+        .map(|(k, v)| match v.as_slice() {
+            [l] => format!("{k}({l} 行目)"),
+            [l, ..] => format!("{k} × {}({l} 行目ほか)", v.len()),
+            [] => k.to_string(),
+        })
+        .collect()
+}
+
+/// [`parse_full`] with the ledger before it is made into text
+fn parse_with_ledger(src: &str) -> Result<(Document, Ledger), String> {
+    let mut ledger: Ledger = std::collections::BTreeMap::new();
     let mut doc = Document::default();
-    // 二行の見出し(下線)は先に `=` の形に直しておく(本家の古い書き方)
-    let src_atx = setext_to_atx(src);
+    // Two-line (setext) headings become the `=` form first (the older
+    // AsciiDoc markup). That joins two lines into one, so `file_line` maps
+    // each line of the joined text back to the file's line (from 1), and
+    // the lines named in errors and the ledger are the file's (2026-09-30)
+    let (src_atx, file_lines) = setext_to_atx(src);
+    let file_line = |ln: usize| file_lines.get(ln).copied().unwrap_or(ln + 1);
     let src: &str = &src_atx;
     let mut lines = src.lines().enumerate().peekable();
     let mut pending_bookmarks: Vec<String> = Vec::new();
@@ -1942,7 +1970,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         // 字のまま組む物で、行も継ぎません(本家の作法)。原文のまま持ちます
         let indented = line.starts_with(' ') || line.starts_with('\t');
         if indented && !list_like && (!prev_is_body || in_literal) {
-            ledger.entry("字下げの段落(literal)").or_default().push(ln + 1);
+            ledger.entry("字下げの段落(literal)").or_default().push(file_line(ln));
             // 直前の `[.役割]` と錨は、この段落の前に原文のまま戻す(2026-09-03。
             // 前は次の普通の段落に付いて、字下げの段落の後ろに出ていた)
             push_pending_style(&mut doc, &mut pending_style, &mut style_blank);
@@ -1995,7 +2023,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 _ => doc.blocks.push(Block::Para(Paragraph { line_spacing: 1.0, sect: Some(brk), ..Default::default() })),
             }
             sect_just = Some(doc.blocks.len() - 1);
-            cur_page = Some(apply_page_attrs(base, &attrs).map_err(|e| format!("{} 行目: {e}", ln + 1))?);
+            cur_page = Some(apply_page_attrs(base, &attrs).map_err(|e| format!("{} 行目: {e}", file_line(ln)))?);
             prev_is_body = false;
             prev_is_desc_list = false;
             continue;
@@ -2007,7 +2035,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             // まだ中身を読まないので載せたままです
             let wakaru = role == "塊の区切り" && !what.starts_with("開いた塊") && !what.starts_with("表(");
             if !wakaru {
-                ledger.entry(what).or_default().push(ln + 1);
+                ledger.entry(what).or_default().push(file_line(ln));
             }
             // **原文のまま持ち越し、役割の名前を付けます。**
             // 意味は分からなくても、字は壊さず返し、テンプレートで見た目を
@@ -2235,7 +2263,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
                 rows.push(tl);
             }
             if !closed {
-                return Err(format!("{} 行目: |=== が閉じていません", ln + 1));
+                return Err(format!("{} 行目: |=== が閉じていません", file_line(ln)));
             }
             // **桁の数は先に `[cols=]` から取ります。** `a|` のセルは中身が
             // 次の行に続くので、「最初の行のセルの数」では数えられません
@@ -2298,7 +2326,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         }
         if let Some(rest) = l.strip_prefix("image::") {
             let (path, attrs) = split_macro_target(rest)
-                .ok_or_else(|| format!("{} 行目: image:: の形が読めません", ln + 1))?;
+                .ok_or_else(|| format!("{} 行目: image:: の形が読めません", file_line(ln)))?;
             let mut p = base_para(&mut pending_bookmarks, &mut pending_break, &mut pending_style);
             p.images_new.push(InlineImage { shape: None,
                 bytes: std::sync::Arc::new(Vec::new()),
@@ -2322,7 +2350,7 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
         if let Some(rest) = l.strip_prefix("stem:[") {
             let tex = rest
                 .strip_suffix(']')
-                .ok_or_else(|| format!("{} 行目: stem:[ が閉じていません", ln + 1))?;
+                .ok_or_else(|| format!("{} 行目: stem:[ が閉じていません", file_line(ln)))?;
             let mut p = base_para(&mut pending_bookmarks, &mut pending_break, &mut pending_style);
             p.images_new.push(InlineImage { shape: None,
                 bytes: std::sync::Arc::new(Vec::new()),
@@ -2465,16 +2493,6 @@ pub fn parse_full(src: &str) -> Result<(Document, Vec<String>), String> {
             }
         }
     }
-    // The first line it is on goes with each kind, so the writer can say
-    // where to look (2026-09-28)
-    let ledger = ledger
-        .into_iter()
-        .map(|(k, v)| match v.as_slice() {
-            [l] => format!("{k}({l} 行目)"),
-            [l, ..] => format!("{k} × {}({l} 行目ほか)", v.len()),
-            [] => k.to_string(),
-        })
-        .collect();
     Ok((doc, ledger))
 }
 
@@ -2491,31 +2509,38 @@ fn base_para(
     }
 }
 
-/// `== 見出し` → (1, "見出し")。`=` の数 − 1 が水準(1〜3)
-/// 見出しの行か。返るのは(段, 字)。
+/// Rewrites two-line (setext) headings, a text line underlined, into the
+/// `=` form. This is the older AsciiDoc markup (2026-09-03).
 ///
-/// **段は5まで**(2026-08-18)。AsciiDoc の `=` は表題で、`==` から見出しが
-/// 始まるので、`======` が見出し5です。本家はここまでしかありません
-/// **二行の見出し(下線)を `=` の形に直します**(本家の古い書き方。2026-09-03)。
+/// A text line followed by a line of one repeated character (`=` `-` `~`
+/// `^` `+`), within one character of the text line's length, is a heading.
+/// `=` is the document title, `-` is `==`, `~` is `===`, `^` is `====` and
+/// `+` is `=====`. Lines inside delimited blocks are left alone. Saving
+/// writes the `=` form, so the text changes, but Asciidoctor lays it out
+/// the same way.
 ///
-/// 字の行の次に同じ字(`=` `-` `~` `^` `+`)だけの行があり、長さが字の行と
-/// 1字以内で揃っていれば見出しです。`=` が表題、`-` が `==`、`~` が `===`、
-/// `^` が `====`、`+` が `=====`。区切りの塊の中は見ません。
-/// 書くときは `=` の形になるので、字は変わりますが本家の組み方は同じです
-fn setext_to_atx(src: &str) -> String {
+/// (Heading levels go up to 5 (2026-08-18). In AsciiDoc `=` is the title
+/// and headings start at `==`, so `======` is heading 5, the last level.)
+///
+/// The second value gives, for each line of the result, the file's line it
+/// came from (from 1). A joined heading names its text line.
+fn setext_to_atx(src: &str) -> (String, Vec<usize>) {
     let lines: Vec<&str> = src.lines().collect();
     let mut out = String::with_capacity(src.len());
+    let mut map = Vec::with_capacity(lines.len());
     let mut open: Option<&str> = None;
     let mut i = 0;
     while i < lines.len() {
         let l = lines[i].trim_end();
         if let Some(mark) = open {
-            // 閉じは開きと同じ字(長さも同じ)。`~~~~` の中の `~~~~~~` は中身
+            // A block closes with the same line that opened it (same length
+            // too). `~~~~~~` inside `~~~~` is content
             if l == mark {
                 open = None;
             }
             out.push_str(lines[i]);
             out.push('\n');
+            map.push(i + 1);
             i += 1;
             continue;
         }
@@ -2530,7 +2555,8 @@ fn setext_to_atx(src: &str) -> String {
             }
             Some(c)
         });
-        // 字も数字も無い行(`!@#$`)は見出しにならない(本家と同じ)
+        // A line without letters or digits (`!@#$`) is not a heading, as
+        // in Asciidoctor
         let candidate = !l.is_empty()
             && l.chars().any(|c| c.is_alphanumeric())
             && heading_of(l).is_none()
@@ -2542,6 +2568,7 @@ fn setext_to_atx(src: &str) -> String {
             out.push(' ');
             out.push_str(l);
             out.push('\n');
+            map.push(i + 1);
             i += 2;
             continue;
         }
@@ -2552,12 +2579,13 @@ fn setext_to_atx(src: &str) -> String {
         }
         out.push_str(lines[i]);
         out.push('\n');
+        map.push(i + 1);
         i += 1;
     }
     if !src.ends_with('\n') && out.ends_with('\n') {
         out.pop();
     }
-    out
+    (out, map)
 }
 
 fn heading_of(l: &str) -> Option<(u8, &str)> {
@@ -3692,5 +3720,27 @@ mod dash_bullet_tests {
         let ok = "= 一枚目\n\n本文。\n\n= 二枚目\n\n  字下げの段落\n";
         let (_, ledger) = super::parse_many_full(ok).expect("reads");
         assert!(ledger.iter().any(|x| x.contains("(7 行目)")), "{ledger:?}");
+    }
+
+    /// A two-line (setext) heading takes two of the file's lines. The lines
+    /// named after it are still the file's, in the ledger and in errors
+    #[test]
+    fn lines_after_a_setext_heading_are_the_files_lines() {
+        let src = "Heading\n-------\n\n  字下げの段落\n";
+        let (_, ledger) = super::parse_full(src).expect("reads");
+        assert_eq!(ledger, vec!["字下げの段落(literal)(4 行目)".to_string()]);
+        let bad = "Title\n=====\n\nSection\n-------\n\n|===\n|a |b\n";
+        let e = super::parse_full(bad).expect_err("the table is open");
+        assert!(e.starts_with("7 行目"), "{e}");
+    }
+
+    /// The documents of one file share one ledger. The same kind is listed
+    /// once, with the first line and the count for the whole file
+    #[test]
+    fn one_kind_is_listed_once_per_file() {
+        let src = "= 一枚目\n\n  字下げの段落\n\n= 二枚目\n\n  字下げの段落\n\n  もう1つ\n";
+        let (docs, ledger) = super::parse_many_full(src).expect("reads");
+        assert_eq!(docs.len(), 2);
+        assert_eq!(ledger, vec!["字下げの段落(literal) × 3(3 行目ほか)".to_string()]);
     }
 }
