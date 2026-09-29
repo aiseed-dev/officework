@@ -4,6 +4,7 @@ as pictures.
 
     DYLD_FALLBACK_LIBRARY_PATH=.venv/lib .venv/bin/python tools/screen_compare.py \\
         文書.docx Word.pdf [--dpi 100] [--mm 0.5] [--tol 10] [--out 出力先] [--max 2.5]
+        [--platform mac]
 
 Our pages come from `Doc.save("x.png")` for a docx, which draws the pages
 the PDF prints (`paper::doc_pages`), and from `Book.save("x.png")` for an
@@ -45,13 +46,14 @@ CELL_MM = 2.0
 CELL_SHARE = 0.15
 
 
-def ours_pictures(src, dpi, work):
-    """The paths of our page pictures, in page order."""
+def ours_pictures(src, dpi, work, platform=None):
+    """The paths of our page pictures, in page order. `platform` is the
+    Excel that made an xlsx ("windows" or "mac"; see Book.open)."""
     first = os.path.join(work, "ow.png")
     if src.lower().endswith(".xlsx"):
         from officework import sheet
 
-        sheet.Book.open(src).save(first, dpi=dpi)
+        sheet.Book.open(src, platform=platform).save(first, dpi=dpi)
     else:
         from officework import doc
 
@@ -161,7 +163,7 @@ def run(args):
     pdf = pypdfium2.PdfDocument(args.pdf)
     bad = False
     with tempfile.TemporaryDirectory() as work:
-        ours = ours_pictures(args.source, args.dpi, work)
+        ours = ours_pictures(args.source, args.dpi, work, args.platform)
         n_word = len(pdf)
         print(f"頁数: うち {len(ours)}、Word {n_word}")
         bad |= len(ours) != n_word
@@ -208,6 +210,8 @@ def main(argv):
         allow_abbrev=False,
     )
     ap.add_argument("source", help="the docx or xlsx")
+    ap.add_argument("--platform", choices=["windows", "mac"],
+                    help="read an xlsx as the Excel of this platform lays it out")
     ap.add_argument("pdf")
     ap.add_argument("--dpi", type=float, default=100.0)
     ap.add_argument("--mm", type=float, default=0.5, help="distance a pixel may move (mm)")
