@@ -413,6 +413,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 .chain(p.paths.iter().map(|m| m.a))
                 .chain(p.rules.iter().map(|r| r.a))
                 .chain(p.rules_top.iter().map(|r| r.a))
+                .chain(p.watermark.as_ref().map(|_| watermark_of(p, 0.0, 0.0).a))
                 .map(usu_key)
                 .collect();
             // **薄い物が1つも無ければ資源を作りません。** 逆に1つでも
@@ -493,6 +494,34 @@ pub fn write_pages_fonts<W: std::io::Write>(
             c.rect(0.0, 0.0, pt(pw), pt(ph));
             c.fill_nonzero();
         }
+        // **The watermark lies on the page colour, under everything the
+        // body draws.** Word draws a header's shapes before the body, also
+        // one whose `z-index` is positive (measured 2026-09-30), so the
+        // letters it crosses stay black ([`crate::watermark`])
+        let mut usu_now: Option<u8> = None;
+        if let Some(w) = &page.watermark {
+            let look = watermark_of(page, pw, ph);
+            if let Some(f) = crate::watermark::fit(&look, w, face) {
+                let mut bytes = Vec::with_capacity(w.chars().count() * 2);
+                for ch in w.chars().filter(|ch| face.glyph_index(*ch).is_some()) {
+                    // The first face draws the watermark (its letters were
+                    // gathered into it above)
+                    bytes.extend_from_slice(&new_gid_all[0].get(&ch).copied().unwrap_or(0).to_be_bytes());
+                }
+                let (sin, cos) = f.angle.to_radians().sin_cos();
+                usu(&mut c, &mut usu_now, look.a);
+                c.begin_text();
+                c.set_fill_rgb(look.rgb.0, look.rgb.1, look.rgb.2);
+                c.set_font(f_name, f.size_pt);
+                c.set_horizontal_scaling(f.tz);
+                c.set_text_matrix([cos, sin, -sin, cos, pt(f.x_mm), pt(f.y_mm)]);
+                c.show(Str(&bytes));
+                c.set_horizontal_scaling(100.0);
+                c.end_text();
+                c.set_fill_rgb(0.0, 0.0, 0.0);
+                usu(&mut c, &mut usu_now, 1.0);
+            }
+        }
         // **塗りは絵の下、紙の色の上。** 罫線より先に敷いて線を潰しません
         // **色と太さは変わったときだけ書きます。** セルごとに書き直すと、
         // 90 行の表で中身が 10 倍に膨れます(2026-08-27 に実物で測りました)
@@ -500,7 +529,6 @@ pub fn write_pages_fonts<W: std::io::Write>(
         // **透明度は資源の名前で切り替えます**(PDF は色に透明度を持てず、
         // ExtGState という別の入れ物に置く決まりです)。使った濃さだけ
         // 資源に並べ、変わったときだけ名前を書きます
-        let mut usu_now: Option<u8> = None;
         for f in &page.fills {
             usu(&mut c, &mut usu_now, f.a);
             if fill_now != Some(f.rgb) {
@@ -761,28 +789,6 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 c.line_to(pt(r.x2_mm), pt(r.y2_mm));
                 c.stroke();
             }
-        }
-        // **透かしは字の上**。薄い灰で斜めに置きます(本家と同じ見え方)
-        if let Some(w) = &page.watermark {
-            let mut bytes = Vec::with_capacity(w.chars().count() * 2);
-            for ch in w.chars() {
-                // 透かしは1本目の書体で描きます(上で1本目に集めています)
-                bytes.extend_from_slice(&new_gid_all[0].get(&ch).copied().unwrap_or(0).to_be_bytes());
-            }
-            let size = 60.0f32;
-            // 45 度に倒して紙の真ん中あたりへ
-            let (sin, cos) =
-                (std::f32::consts::FRAC_1_SQRT_2, std::f32::consts::FRAC_1_SQRT_2);
-            c.begin_text();
-            c.set_fill_rgb(0.85, 0.85, 0.85);
-            c.set_font(f_name, size);
-            c.set_text_matrix([
-                cos, sin, -sin, cos,
-                pt(pw) * 0.2,
-                pt(ph) * 0.3,
-            ]);
-            c.show(Str(&bytes));
-            c.end_text();
         }
         // 頁の中身も縮めます。**字も罫線も同じ形の繰り返し**なので、
         // よく縮みます
@@ -1391,6 +1397,13 @@ mod tests {
         assert!(body.contains(" re"), "紙の色の四角が無い");
         // 透かしは倒して置くので、行列に 0.7071 が出ます
         assert!(body.contains("0.7071"), "透かしが斜めに置かれていない");
+        // The watermark is the first text drawn, under the body and the
+        // header (Word draws a header's shapes before the body), in
+        // #d8d8d8 at half opacity
+        let first = &body[body.find("BT").expect("no text")..];
+        let first = &first[..first.find("ET").expect("no end")];
+        assert!(first.contains("0.7071") && first.contains(" Tz"), "the first text is not the watermark: {first}");
+        assert!(body[..body.find("BT").unwrap()].contains("/A128 gs"), "the watermark is not half opaque");
     }
 
     /// **ペンの筆が紙に載る。** 蛍光ペンは字の下、ペンは字の上です
@@ -1746,8 +1759,12 @@ pub struct Leaf {
     pub images: Vec<Image>,
     /// 紙の色(0〜1 の RGB)
     pub bg: Option<(f32, f32, f32)>,
-    /// 透かし(斜めの薄い字)
+    /// The text of the watermark
     pub watermark: Option<String>,
+    /// **How the watermark is drawn** (its box, place, turn and colour;
+    /// [`crate::watermark`]). `None` with a watermark draws
+    /// [`crate::watermark::Vml::ours`] centred on the page
+    pub watermark_look: Option<crate::watermark::Look>,
     /// **塗り(表の帯・セルの背景)。** 罫線より先に敷きます — 線を
     /// 塗り潰さないためです
     pub fills: Vec<Fill>,
@@ -2147,6 +2164,21 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
     page_decor: F,
     font_of: &dyn Fn(Option<&str>) -> u8,
 ) -> (Vec<Leaf>, Vec<String>) {
+    sheet_leaves_wm(sheet, paper, dress, page_decor, font_of, None, None)
+}
+
+/// [`sheet_leaves_fonts`] with the watermark's shape (`None`:
+/// [`crate::watermark::Vml::ours`]) and the page setup of a document of one
+/// section (the paper alone does not know the right margin)
+pub(crate) fn sheet_leaves_wm<F: Fn(usize) -> Vec<kumihan::Line>>(
+    sheet: &kumihan::Sheet,
+    paper: crate::Paper,
+    dress: &crate::PageDress,
+    page_decor: F,
+    font_of: &dyn Fn(Option<&str>) -> u8,
+    wm: Option<&crate::watermark::Vml>,
+    setup: Option<kumihan::PageSetup>,
+) -> (Vec<Leaf>, Vec<String>) {
     // **紙面の x は左余白からの距離**です。紙の左端からではありません。
     // 足さないと字が左端に寄ります(2026-08-27 に pdftotext -bbox で
     // 突き合わせて見つけた — 字が取れるかを見るだけでは分かりません)
@@ -2543,9 +2575,26 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
     }
 
     // 紙の飾りと、ページごとのヘッダー・フッター
+    let ours = crate::watermark::Vml::ours();
+    let wm = wm.unwrap_or(&ours);
     for (k, p) in pages.iter_mut().enumerate() {
         p.bg = dress.bg;
         p.watermark = dress.watermark.clone();
+        if p.watermark.is_some() {
+            // The page's own setup: its section's, the document's, or one
+            // made from the paper with the right margin as the left
+            let pp = paper_of(k);
+            let pg = starts.get(k).and_then(|y| sheet.setup_at(*y)).or(setup).unwrap_or(kumihan::PageSetup {
+                w_mm: pp.width_mm,
+                h_mm: pp.height_mm,
+                left_mm: pp.margin_mm,
+                right_mm: pp.margin_mm,
+                top_mm: pp.top_mm,
+                bottom_mm: pp.bottom_mm,
+                ..Default::default()
+            });
+            p.watermark_look = Some(wm.place(&pg));
+        }
         // **飾りの行の y はページの上端からの mm**(巻物の座標ではありません)
         let pp = full.papers.get(k).copied().unwrap_or(paper);
         for line in page_decor(k + 1) {
@@ -2647,6 +2696,12 @@ fn page_of(offsets: &[f32], y: f32, height_mm: f32) -> usize {
 }
 
 /// 濃さを 0〜255 の目盛りに。**同じ濃さは同じ資源**を使い回すためです
+/// The watermark's look on this page: the one the page carries, or
+/// [`crate::watermark::Vml::ours`] centred on a page of `w_mm` by `h_mm`
+pub(crate) fn watermark_of(page: &Leaf, w_mm: f32, h_mm: f32) -> crate::watermark::Look {
+    page.watermark_look.clone().unwrap_or_else(|| crate::watermark::Look::centred(w_mm, h_mm))
+}
+
 fn usu_key(a: f32) -> u8 {
     (a.clamp(0.0, 1.0) * 255.0).round() as u8
 }

@@ -170,10 +170,19 @@ fn egaku_inner(
     cx.set_paint(iro(leaf.bg.unwrap_or((1.0, 1.0, 1.0)), 1.0));
     cx.fill_rect(&Rect::new(0.0, 0.0, w as f64, h as f64));
 
+    let mut res = Resources::new();
+    // The watermark lies on the paper, under everything else, as the PDF
+    // draws it ([`crate::watermark`])
+    if let (Some(s), Some(data)) = (&leaf.watermark, fonts.first()) {
+        let look = crate::pdfw::watermark_of(leaf, w_mm, h_mm);
+        sukashi(&mut cx, &mut res, s, &look, h_mm, mm, data, fd);
+    }
+
     // The same order as the PDF writer (`pdfw::write_pages_fonts`), so the
     // screen's pages and the PDF stack things alike: the paper colour, the
-    // plain fills, then free shapes, paths and pictures by `(z, kind,
-    // index)`, then the rules, the highlights, the text and the pen strokes
+    // watermark, the plain fills, then free shapes, paths and pictures by
+    // `(z, kind, index)`, then the rules, the highlights, the text and the
+    // pen strokes
     for f in &leaf.fills {
         cx.set_paint(iro(f.rgb, f.a));
         let y = (h_mm - f.y_mm - f.h_mm) as f64 * mm;
@@ -258,14 +267,9 @@ fn egaku_inner(
         }
     }
 
-    let mut res = Resources::new();
     // **字はいちばん上。** 塗りと罫線の後に置きます
     if !fonts.is_empty() {
         moji(&mut cx, &mut res, leaf, h_mm, mm, fonts, fd);
-        // **透かしも字です。** 敷いた後の紙に薄く斜めで重ねます
-        if let Some(s) = &leaf.watermark {
-            sukashi(&mut cx, &mut res, s, w_mm, h_mm, mm, fonts[0], fd(0));
-        }
     }
     // **字の上に引く線**(手描きのペン)。字を書いた後に引きます
     for r in &leaf.rules_top {
@@ -393,38 +397,45 @@ fn moji(
     }
 }
 
-/// **透かしを重ねる。** 薄い灰で 45 度に倒します([`crate::pdfw`] と同じ見え方)
+/// **The watermark**: the text in the first face, stretched to fill its
+/// box less the insets and turned, in its colour at its opacity (the same
+/// [`crate::watermark::fit`] the PDF uses)
 fn sukashi(
     cx: &mut RenderContext,
     res: &mut Resources,
     s: &str,
-    w_mm: f32,
+    look: &crate::watermark::Look,
     h_mm: f32,
     mm: f64,
     data: &[u8],
-    fd: FontData,
+    fd: &mut dyn FnMut(usize) -> FontData,
 ) {
     let Ok(face) = ttf_parser::Face::parse(data, 0) else { return };
+    let Some(f) = crate::watermark::fit(look, s, &face) else { return };
     let em = face.units_per_em() as f64;
-    // pdfw と同じ 60pt・紙の左から2割・下から3割
-    let size = 60.0 * 25.4 / 72.0 * mm;
-    let (x0, y0) = (w_mm as f64 * 0.2 * mm, (h_mm as f64 * 0.7) * mm);
+    let size = f.size_pt as f64 * 25.4 / 72.0 * mm;
+    let th = f.tz as f64 / 100.0;
     let mut okuri = 0.0f64;
     let mut gs: Vec<Glyph> = Vec::with_capacity(s.chars().count());
     for ch in s.chars() {
         let Some(gid) = face.glyph_index(ch) else { continue };
-        // **倒すのは字の並びの方**です。紙ごと回すと他の物まで回ります
         gs.push(Glyph { id: gid.0 as u32, x: okuri as f32, y: 0.0 });
-        okuri += face.glyph_hor_advance(gid).unwrap_or(0) as f64 / em * size;
+        okuri += face.glyph_hor_advance(gid).unwrap_or(0) as f64 / em * size * th;
     }
     if gs.is_empty() {
         return;
     }
-    let c = std::f64::consts::FRAC_1_SQRT_2;
-    // y が下向きなので、上へ上がる向きに倒すには sin の符号を返します
-    cx.set_transform(Affine::new([c, -c, c, c, x0, y0]));
-    cx.set_paint(iro((0.85, 0.85, 0.85), 1.0));
-    cx.glyph_run(res, &fd).font_size(size as f32).hint(false).fill_glyphs(gs.into_iter());
+    // The start of the baseline, from the bottom of the paper; the turn is
+    // counterclockwise with y up, so it is negated here where y goes down
+    let at = Affine::translate((f.x_mm as f64 * mm, (h_mm - f.y_mm) as f64 * mm))
+        * Affine::rotate(-(f.angle as f64).to_radians());
+    cx.set_transform(at);
+    cx.set_paint(iro(look.rgb, look.a));
+    cx.glyph_run(res, &fd(0))
+        .font_size(size as f32)
+        .glyph_transform(Affine::new([th, 0.0, 0.0, 1.0, 0.0, 0.0]))
+        .hint(false)
+        .fill_glyphs(gs.into_iter());
     cx.set_transform(Affine::IDENTITY);
 }
 
@@ -786,6 +797,34 @@ mod tests {
         assert_ne!(nashi.yubi(), ari.yubi(), "透かしが描かれていない");
         // 書体が無ければ紙は白のまま
         assert!(nashi.rgba.iter().all(|b| *b == 255), "字を描かないのに何か出た");
+    }
+
+    /// **The watermark lies under the fills, in its colour at its
+    /// opacity**, as the PDF draws it and as Word does (a shape in the
+    /// header is drawn before the body)
+    #[test]
+    fn the_watermark_lies_under_the_body() {
+        let (fam, _) = kumihan::font::for_text(None, "見本".chars()).expect("書体");
+        let data = kumihan::font::load(fam).expect("読めない");
+        let look = crate::watermark::Look {
+            w_mm: 180.0,
+            h_mm: 90.0,
+            cx_mm: 105.0,
+            cy_mm: 148.5,
+            rotation: 0.0,
+            rgb: (1.0, 0.0, 0.0),
+            a: 0.5,
+        };
+        let mut leaf = Leaf { watermark: Some("見本".into()), watermark_look: Some(look), ..Default::default() };
+        let e = egaku_with(&leaf, 210.0, 297.0, 2.0, Some(&data));
+        // The inked letters are the red at half opacity over white
+        let red = e.rgba.chunks(4).filter(|p| p[0] > 250 && (120..136).contains(&p[1]) && (120..136).contains(&p[2])).count();
+        assert!(red > 1000, "no half-opaque red: {red}");
+        assert!(!e.rgba.chunks(4).any(|p| p[0] > 250 && p[1] < 100), "drawn opaque");
+        // A black fill over the whole page hides it
+        leaf.fills.push(crate::pdfw::Fill { x_mm: 0.0, y_mm: 0.0, w_mm: 210.0, h_mm: 297.0, rgb: (0.0, 0.0, 0.0), a: 1.0 });
+        let e = egaku_with(&leaf, 210.0, 297.0, 2.0, Some(&data));
+        assert!(e.rgba.chunks(4).all(|p| p[0] < 5), "the watermark was drawn over a fill");
     }
 
     /// **絵が出る。** 紙の色で塗りつぶされ、置いた物の色が画素に現れます

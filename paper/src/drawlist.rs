@@ -91,6 +91,23 @@ pub fn pages(pages: &[Leaf], size_mm: (f32, f32), fonts: &[FontFile]) -> Value {
         if let Some(c) = page.bg {
             items.push(json!({"type": "fill", "rect": [0, 0, r2(pt(wmm)), r2(h)], "color": hex(c), "alpha": 1}));
         }
+        // The watermark lies on the page colour, under everything else, as
+        // the PDF draws it: its text stretched to its box and turned
+        // (crate::watermark)
+        if let (Some(w), Some(face)) = (&page.watermark, faces.first().filter(|_| usable)) {
+            let look = crate::pdfw::watermark_of(page, wmm, hmm);
+            if let Some(f) = crate::watermark::fit(&look, w, face) {
+                in_use[0] = true;
+                let (asc, _) = ascent(0);
+                let base = h - pt(f.y_mm);
+                let text: String = w.chars().filter(|c| face.glyph_index(*c).is_some()).collect();
+                items.push(json!({"type": "text", "x": r2(pt(f.x_mm)), "baseline": r2(base),
+                                  "top": r2(base - asc * f.size_pt), "text": text, "font": 0,
+                                  "size": r2(f.size_pt), "width": 0, "color": hex(look.rgb),
+                                  "bold": false, "rotation": r2(f.angle), "scale_x": r2(f.tz / 100.0),
+                                  "alpha": r2(look.a)}));
+            }
+        }
         for f in &page.fills {
             items.push(json!({"type": "fill", "rect": rect(f.x_mm, f.y_mm, f.w_mm, f.h_mm),
                               "color": hex(f.rgb), "alpha": r2(f.a)}));
@@ -209,14 +226,6 @@ pub fn pages(pages: &[Leaf], size_mm: (f32, f32), fonts: &[FontFile]) -> Value {
             }
         }
         items.extend(page.rules_top.iter().map(line));
-        if let Some(w) = &page.watermark {
-            in_use[0] = true;
-            let (asc, _) = ascent(0);
-            let base = h - pt(hmm) * 0.3;
-            items.push(json!({"type": "text", "x": r2(pt(wmm) * 0.2), "baseline": r2(base),
-                              "top": r2(base - asc * 60.0), "text": w, "font": 0, "size": 60,
-                              "width": 0, "color": "#D9D9D9", "bold": false, "rotation": 45}));
-        }
         let spots: Vec<Value> = page.spots.iter().map(|s| json!({
             "key": s.key, "rect": rect(s.x_mm, s.y_mm, s.w_mm, s.h_mm),
         })).collect();
@@ -239,6 +248,31 @@ pub fn pages(pages: &[Leaf], size_mm: (f32, f32), fonts: &[FontFile]) -> Value {
 mod tests {
     use super::*;
     use crate::pdfw::{Fill, Piece, Rule, Spot};
+
+    /// The watermark comes right after the page colour, under the body,
+    /// stretched and turned as the PDF draws it
+    #[test]
+    fn the_watermark_lies_under_the_body() {
+        let (fam, _) = kumihan::font::for_text(None, "見本".chars()).expect("face");
+        let data = kumihan::font::load(fam).expect("not loaded");
+        let page = Leaf {
+            size_mm: Some((210.0, 297.0)),
+            bg: Some((1.0, 1.0, 1.0)),
+            watermark: Some("見本".into()),
+            fills: vec![Fill { x_mm: 0.0, y_mm: 0.0, w_mm: 10.0, h_mm: 10.0, ..Default::default() }],
+            ..Default::default()
+        };
+        let fonts = [FontFile { name: "f".into(), file: String::new(), index: 0, data }];
+        let v = pages(&[page], (210.0, 297.0), &fonts);
+        let items = v["pages"][0]["items"].as_array().unwrap();
+        let kinds: Vec<&str> = items.iter().map(|i| i["type"].as_str().unwrap()).collect();
+        assert_eq!(kinds, ["fill", "text", "fill"]);
+        let w = &items[1];
+        assert_eq!(w["rotation"].as_f64(), Some(45.0));
+        assert_eq!(w["alpha"].as_f64(), Some(0.5));
+        assert_eq!(w["color"], "#D8D8D8");
+        assert!(w["scale_x"].as_f64().is_some());
+    }
 
     /// Points from the top left, in the PDF's order, with the spots
     #[test]

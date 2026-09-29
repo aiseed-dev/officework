@@ -12,6 +12,8 @@ pub mod grid;
 pub mod pdfw;
 /// WMF(Windows メタファイル)の図を、紙の道に直す係
 pub mod wmf;
+/// Text watermarks: Word's VML text path shape, placed and fitted
+pub mod watermark;
 /// 紙面を絵にする(画面の下絵・回帰検査・PNG 書き出し)。
 /// **`--features e` のときだけ**入ります — 絵にする裏(vello)は
 /// 荷物が大きく、ファイルを触るだけの人には要らないためです
@@ -1943,7 +1945,8 @@ fn leaves_of(
     let font_of = |name: Option<&str>| -> u8 {
         name.and_then(|n| names.iter().position(|x| *x == n)).map(|i| i.min(255) as u8).unwrap_or(0)
     };
-    let (leaves, _lost) = pdfw::sheet_leaves_fonts(sheet, paper, &dress, hf, &font_of);
+    let wm = watermark::vml_of(d);
+    let (leaves, _lost) = pdfw::sheet_leaves_wm(sheet, paper, &dress, hf, &font_of, wm.as_ref(), Some(page));
     Ok(leaves)
 }
 
