@@ -97,24 +97,6 @@ impl Writer {
         Some((row.name.clone(), row.endpoint()))
     }
 
-    /// 宛先を一覧の次へ回す。話しながら切り替えられます
-    pub(crate) fn agent_cycle_dest(&mut self) {
-        let rows = face::settings::ai_list();
-        if rows.len() < 2 {
-            self.status = match rows.first() {
-                None => ui::t!("ai_list_empty_write_settings").into(),
-                Some(only) => ui::tf!("ai_only_one_destination", only.name.clone()).into(),
-            };
-            return;
-        }
-        let last = face::settings::ai_last();
-        let at = rows.iter().position(|r| Some(r.name.as_str()) == last.as_deref()).unwrap_or(0);
-        let next = &rows[(at + 1) % rows.len()];
-        face::settings::set_ai_last(&next.name);
-        self.agent_state = AgentState::Idle;
-        self.status = ui::tf!("ai_destination_remembered", next.name.clone()).into();
-    }
-
     /// パネルに1行積む(記録にも1行書く)。
     pub(crate) fn chat_push(&mut self, row: ChatRow) {
         self.record_row(&row);

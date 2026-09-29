@@ -5463,6 +5463,31 @@ mod shape_pick_tests {
         });
     }
 
+    /// **Every PDF of the document screen is written by the engine**: an
+    /// .adoc edited on its pages and a docx in vertical writing no longer go
+    /// through the older writer, which left out shapes and embedded whole
+    /// fonts. Only the letters used are embedded
+    #[gpui::test]
+    fn every_pdf_is_written_by_the_engine(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let dir = std::env::temp_dir().join(format!("ow-pdf-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sample/writer");
+            for src in ["06_書き方の見本.adoc", "02_縦書きの手紙.docx"] {
+                this.open(root.join(src));
+                assert!(this.code.is_none());
+                let out = dir.join(format!("{src}.pdf"));
+                this.write_pdf(&out);
+                let bytes = std::fs::read(&out).unwrap_or_else(|_| panic!("{src}: no PDF: {}", this.status));
+                assert!(bytes.starts_with(b"%PDF"), "{src}");
+                // A subset font, not a whole face: the file stays small
+                assert!(bytes.len() < 3_000_000, "{src}: {} bytes, a whole face embedded?", bytes.len());
+            }
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+
     /// **Filling a field of a form and fixing a word, then saving the docx**
     /// (docs/sekkei/hyouji-e.ja.adoc, step 6). The letters go in the way
     /// typing puts them (`ui::handler::replace`). After saving and opening

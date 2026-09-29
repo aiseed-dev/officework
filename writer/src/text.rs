@@ -593,88 +593,26 @@ impl Writer {
         .detach();
     }
 
-    /// **画面に出しているのと同じ紙面を写す**ので、画面と紙が食い違わない。
+    /// **The PDF is written by the engine from the pages the screen shows**,
+    /// so the screen and the paper do not differ. The text of an .adoc and
+    /// an .adoc on its pages are laid out as the engine lays them out, with
+    /// the print template (template-print.toml) when the folder has one; a
+    /// docx is written from its screen pages
     pub(crate) fn write_pdf(&mut self, p: &std::path::Path) {
-        // A print template (template-print.toml) lays the document out again
-        // for the paper. Without one, the screen's pages are the paper
-        if self.code.is_some() {
-            let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
-            self.status = match self.code_pdf(p) {
-                Ok(()) => ui::tf!("pdf_written", name).into(),
-                Err(e) => ui::tf!("cant_write_pdf", e).into(),
-            };
-            return;
-        }
-        let for_print = self.print_layout();
-        if for_print.is_none() {
-            if let Some(r) = self.write_pdf_pages(p) {
-                let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
-                self.status = match r {
-                    Ok(()) => ui::tf!("pdf_written", name).into(),
-                    Err(e) => ui::tf!("cant_write_pdf", e).into(),
-                };
-                return;
-            }
-        }
-        let m = Metrics::new(&self.font_bytes).expect("フォント");
-        let on_print = for_print.as_ref().map(|(_, _, t)| t.clone());
-        // 飾りは合成の写しから(テンプレートの分も入っている)。
-        // 印刷用のテンプレートが飾りを持っていれば、そちらが紙に出ます
-        let print_dress = self.print_dress();
-        let (hdr, ftr) = match &print_dress {
-            Some((hf, _)) => hf.clone(),
-            None => self.dress_hf.clone(),
+        let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+        let r = if self.code.is_some() {
+            self.code_pdf(p)
+        } else if self.native {
+            self.native_pdf(p)
+        } else if let Some(r) = self.write_pdf_pages(p) {
+            r.map(|_| None)
+        } else {
+            self.docx_pdf(p).map(|_| None)
         };
-        let dress_page = match &print_dress {
-            Some((_, pg)) => pg.clone(),
-            None => self.dress_page.clone(),
-        };
-        let pg = for_print.as_ref().map(|(_, pg, _)| *pg).unwrap_or(self.pg);
-        let sheet = for_print.as_ref().map(|(s, _, _)| s).unwrap_or(&self.page);
-        // **ヘッダーのページ数も紙で数えます**(画面の枚数ではありません)
-        let total = for_print
-            .as_ref()
-            .map(|(s, pg, _)| {
-                paper::paginate(s, paper::Paper::from_page(pg))
-                .0
-                .iter()
-                .copied()
-                .max()
-                .unwrap_or(1)
-            })
-            .unwrap_or_else(|| self.total_pages());
-        let base_pt = self.doc.base_pt();
-        // ページの色と透かしは紙にも(画面と紙の一致)
-        let dress = paper::PageDress {
-            bg: dress_page.1.as_deref().map(|c| (hex(c, 0), hex(c, 1), hex(c, 2))),
-            watermark: dress_page.0.clone(),
-            ink: self.doc.ink.clone(),
-            // **画面の書き出しは printpdf のまま**なので、図形はまだ
-            // 載りません(`to_pdf_with` が見ていません)。渡しておけば、
-            // 書き手を差し替えたときにそのまま出ます
-            shapes: self.doc.shapes.clone(),
-        };
-        let r = kumihan::atomic::save(p, |f| {
-            paper::to_pdf_with(
-                sheet,
-                &self.font_bytes,
-                paper::Paper::from_page(&pg),
-                &dress,
-                // ヘッダー・フッター。ページ番号はここで各頁の数字になる
-                |k| {
-                    let mut v = kumihan::layout_hf(&hdr, &m, &pg, LINE_MM, k, total, false, base_pt);
-                    v.extend(kumihan::layout_hf(&ftr, &m, &pg, LINE_MM, k, total, true, base_pt));
-                    v
-                },
-                std::io::BufWriter::new(f),
-            )
-        });
-        self.status = match (r, on_print) {
-            (Ok(_), Some(t)) => ui::tf!("made_pdf_using_print",
-                                        p.file_name().unwrap_or_default().to_string_lossy(), t).into(),
-            (Ok(_), None) => ui::tf!("pdf_written",
-                                     p.file_name().unwrap_or_default().to_string_lossy()).into(),
-            (Err(e), _) => ui::tf!("cant_write_pdf", e).into(),
+        self.status = match r {
+            Ok(Some(t)) => ui::tf!("made_pdf_using_print", name, t).into(),
+            Ok(None) => ui::tf!("pdf_written", name).into(),
+            Err(e) => ui::tf!("cant_write_pdf", e).into(),
         };
     }
 

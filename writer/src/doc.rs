@@ -225,7 +225,6 @@ impl Writer {
             ai_editing: false,
             ai_chat_in: Editor::new(""),
             ai_chat_focus: false,
-            ai_chat_plan: None,
             multipage: false,
             sd_open: false,
             sd_ed: Editor::new(""),
@@ -1997,28 +1996,20 @@ impl Writer {
         // 渡すもの: 選択があればそこ、無ければ全文(続きはカーソルまで)
         let body = match &job {
             AiJob::Macro(_) => String::new(),
-            // 会話は**選んでいなくても通す**(「この書き方でいい?」のように
-            // 範囲の要らない用件がある)。選んでいれば、そこが相手
-            AiJob::Ask(_) | AiJob::Chat(_) if sel.is_empty() => String::new(),
+            // A request goes without a selection too (some need no range);
+            // with one, the selection is what it is about
+            AiJob::Ask(_) if sel.is_empty() => String::new(),
             _ if sel.is_empty() => text.clone(),
             _ => text[sel.clone()].to_string(),
         };
         if body.trim().is_empty()
-            && !matches!(job, AiJob::Ask(_) | AiJob::Macro(_) | AiJob::Chat(_))
+            && !matches!(job, AiJob::Ask(_) | AiJob::Macro(_))
         {
             self.status = ui::t!("no_text_type_select").into();
             return;
         }
         let (sys, ask) = job.prompt();
         let user = match &job {
-            // **用件そのものが本体。** 選んだ字は付け合わせ
-            AiJob::Chat(q) => {
-                if body.trim().is_empty() {
-                    q.clone()
-                } else {
-                    format!("{q}\n\n---\n{body}")
-                }
-            }
             AiJob::Ask(q) => {
                 if body.trim().is_empty() {
                     q.clone()
@@ -2104,32 +2095,6 @@ impl Writer {
             self.status = ui::t!("ai_answer_empty_nothing").into();
             return;
         }
-        // **会話は文書に入れない。** 左パネルに返し、置き換える文の案は
-        // 人が「入れる」を押すまで文書に触らせない(押したのは人、が残る形)
-        if matches!(job, AiJob::Chat(_)) {
-            let plan = crate::util::extract_box(&out);
-            let show = match &plan {
-                Some(code) => {
-                    // 囲みの外の説明だけを会話に出す(文そのものは下の欄に置く)
-                    let desc = out.split("```").next().unwrap_or("").trim().to_string();
-                    if desc.is_empty() {
-                        let _ = code;
-                        ui::t!("here_change").to_string()
-                    } else {
-                        desc
-                    }
-                }
-                None => out.clone(),
-            };
-            self.ai_chat_log.push(ChatRow::Ai(show));
-            self.ai_chat_plan = plan;
-            self.status = if self.ai_chat_plan.is_some() {
-                ui::t!("revised_text_ready_read").into()
-            } else {
-                ui::t!("answered_left_panel").into()
-            };
-            return;
-        }
         // マクロ台本は文書に入れない — プラグイン置き場に .py で置き、
         // 人が読んで確かめてから一覧から実行する(開く=実行なしのまま)
         if matches!(job, AiJob::Macro(_)) {
@@ -2160,8 +2125,8 @@ impl Writer {
         self.checkpoint(false);
         let label = job.label();
         match job {
-            // Macro と Chat は上で受けて return 済み
-            AiJob::Macro(_) | AiJob::Chat(_) => unreachable!(),
+            // A macro was dealt with above
+            AiJob::Macro(_) => unreachable!(),
             // 自由な頼みは、カーソル(選択の終わり)の後ろへ
             AiJob::Ask(_) => {
                 let at = sel.end.min(self.ed.text().len());
@@ -2260,45 +2225,6 @@ impl Writer {
     // **会話の送りは [`crate::agentloop`] に移りました**(2026-09-04。
     // agent.ja.adoc の段10)。前は1往復で答えを囲みに入れ、人が「入れる」を
     // 押す形でした。いまは道具で文書を読み書きし、書き替えは1手で入ります
-
-    /// **直した文を入れる。** ここが「人が押した」の一点 —
-    /// 押すまで AI は文書に触らない(2026-08-09 の決めを、人の一押しとして残す)。
-    ///
-    /// writer には calc のような Python の橋が無いので、入るのは**文そのもの**。
-    /// 選んでいればそこを置き換え、選んでいなければカーソルの後ろへ挿す。
-    /// どちらも Ctrl+Z 一手で戻る
-    pub(crate) fn ai_chat_insert(&mut self) {
-        let Some(plan) = self.ai_chat_plan.clone() else { return };
-        if self.protected() {
-            self.status =
-                ui::t!("protected_read_only_protection").into();
-            return;
-        }
-        self.switch_target(Target::Body);
-        self.flush_target();
-        self.checkpoint(false);
-        let sel = self.ed.selection();
-        let replaced = !sel.is_empty();
-        if replaced {
-            self.ed.move_to(sel.start, false);
-            self.ed.move_to(sel.end, true);
-            self.ed.insert(&plan);
-        } else {
-            let at = sel.end.min(self.ed.text().len());
-            self.ed.move_to(at, false);
-            self.ed.insert(&format!("\n{plan}"));
-        }
-        self.doc.set_body_text(self.ed.text());
-        self.dirty = true;
-        self.relayout();
-        self.ai_chat_plan = None;
-        self.ai_chat_log.push(ChatRow::Ai(ui::t!("applied").to_string()));
-        self.status = if replaced {
-            ui::t!("replaced_selection_ctrl_z").into()
-        } else {
-            ui::t!("inserted_after_cursor_ctrl").into()
-        };
-    }
 
     /// 記入欄(コンテンツコントロール)を挿す。選択があればそれを欄にし、
     /// 無ければ空欄の字を置いて欄にする。**中は普通に打てる**(欄は保たれる)
@@ -3974,21 +3900,6 @@ impl Writer {
         kumihan::theme::parse(&src)
             .err()
             .map(|e| ui::tf!("not_read_used", at.display(), Self::FOLDER_TEMPLATE, e).to_string())
-    }
-
-    /// 印刷用のテンプレートが持つ**ページの飾り**。
-    ///
-    /// 返りは(ヘッダー, フッター, 透かし, ページの色)です。印刷用の
-    /// テンプレートが無ければ None で、そのときは画面の飾りが紙にも出ます。
-    /// PDF を書く側(`write_pdf`)がこれを見て、画面の飾りの代わりに使います。
-    pub(crate) fn print_dress(
-        &self,
-    ) -> Option<((kumihan::HeadFoot, kumihan::HeadFoot), (Option<String>, Option<String>))> {
-        let (th, used) = self.template_for("印刷");
-        used?;
-        let mut deco = kumihan::Document::default();
-        kumihan::theme::compose_page(&mut deco, &th);
-        Some(((deco.header, deco.footer), (deco.watermark, deco.page_color)))
     }
 
     /// Saves as a native document (.adoc). **Only the meaning is written.**

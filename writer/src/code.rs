@@ -246,6 +246,34 @@ pub(crate) struct Job {
     notes: Vec<String>,
 }
 
+/// Write pages made by [`make_pages`] to a PDF: each letter is pointed at
+/// its face in the one list of the file's fonts, and the strokes drawn by
+/// hand (`ink`) go on the pages of their document
+fn write_preview(pv: Preview, ink: Option<(usize, &[kumihan::Stroke])>, p: &std::path::Path) -> Result<(), String> {
+    if pv.fonts.len() > 256 {
+        return Err(ui::tf!("code_too_many_fonts", pv.fonts.len()).to_string());
+    }
+    let fonts: Vec<&[u8]> = pv.fonts.iter().map(|(_, b)| b.as_slice()).collect();
+    let mut leaves = Vec::new();
+    let mut of_doc = Vec::new();
+    for (mut leaf, d) in pv.pages {
+        let at = &pv.font_at[d];
+        for piece in &mut leaf.pieces {
+            piece.font = at.get(piece.font as usize).copied().unwrap_or(0) as u8;
+        }
+        leaves.push(leaf);
+        of_doc.push(d);
+    }
+    if let Some((d, strokes)) = ink.filter(|(_, s)| !s.is_empty()) {
+        if let (Some(a), Some(b)) = (of_doc.iter().position(|&x| x == d), of_doc.iter().rposition(|&x| x == d)) {
+            paper::pdfw::put_ink(&mut leaves[a..=b], strokes, pv.paper.1);
+        }
+    }
+    kumihan::atomic::save(p, |f| {
+        paper::pdfw::write_pages_fonts(&leaves, pv.paper.0, pv.paper.1, &fonts, std::io::BufWriter::new(f))
+    })
+}
+
 pub(crate) fn make_pages(job: Job) -> Result<Preview, String> {
     let mut pages = Vec::new();
     let mut fonts: Vec<(String, Arc<Vec<u8>>)> = Vec::new();
@@ -400,24 +428,43 @@ impl Writer {
     /// the print template when the folder has one (as the PDF of an .adoc
     /// opened on its pages is). Each letter is pointed at its face in the
     /// one list of the file's fonts
-    pub(crate) fn code_pdf(&mut self, p: &std::path::Path) -> Result<(), String> {
+    pub(crate) fn code_pdf(&mut self, p: &std::path::Path) -> Result<Option<String>, String> {
         let mut job = self.job_now()?;
-        job.theme = self.as_parsed(|w| w.template_for("印刷").0)?;
-        let pv = make_pages(job)?;
-        if pv.fonts.len() > 256 {
-            return Err(ui::tf!("code_too_many_fonts", pv.fonts.len()).to_string());
-        }
-        let fonts: Vec<&[u8]> = pv.fonts.iter().map(|(_, b)| b.as_slice()).collect();
-        let mut leaves = Vec::new();
-        for (mut leaf, d) in pv.pages {
-            let at = &pv.font_at[d];
-            for piece in &mut leaf.pieces {
-                piece.font = at.get(piece.font as usize).copied().unwrap_or(0) as u8;
-            }
-            leaves.push(leaf);
-        }
+        let (theme, used) = self.as_parsed(|w| w.template_for("印刷"))?;
+        job.theme = theme;
+        write_preview(make_pages(job)?, None, p)?;
+        Ok(used)
+    }
+
+    /// The PDF of an .adoc edited on its pages: laid out as the split view
+    /// and the engine lay it out (template, forms, table formulas), with
+    /// the print template when the folder has one, and the strokes drawn by
+    /// hand on the document shown. Returns the print template used
+    pub(crate) fn native_pdf(&mut self, p: &std::path::Path) -> Result<Option<String>, String> {
+        self.flush_target();
+        let (theme, used) = self.template_for("印刷");
+        let at = if self.docs.len() > 1 { self.doc_at } else { 0 };
+        let job = Job { docs: self.docs_for_save(), theme, iter: ui::calc_iter_setting(), notes: Vec::new() };
+        write_preview(make_pages(job)?, Some((at, &self.doc.ink)), p)?;
+        Ok(used)
+    }
+
+    /// The PDF of a docx whose screen pages cannot be used (vertical text,
+    /// or no layout yet): the engine's pages of the document, as
+    /// `Doc.save("x.pdf")` writes them, with the strokes drawn by hand
+    pub(crate) fn docx_pdf(&mut self, p: &std::path::Path) -> Result<(), String> {
+        self.flush_target();
+        let mut pages = paper::doc_pages(&self.doc, None)?;
+        paper::pdfw::put_ink(&mut pages.leaves, &self.doc.ink, pages.paper.height_mm);
+        let fonts: Vec<&[u8]> = pages.fonts.iter().map(|(_, b)| b.as_slice()).collect();
         kumihan::atomic::save(p, |f| {
-            paper::pdfw::write_pages_fonts(&leaves, pv.paper.0, pv.paper.1, &fonts, std::io::BufWriter::new(f))
+            paper::pdfw::write_pages_fonts(
+                &pages.leaves,
+                pages.paper.width_mm,
+                pages.paper.height_mm,
+                &fonts,
+                std::io::BufWriter::new(f),
+            )
         })
     }
 
