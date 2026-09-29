@@ -236,6 +236,54 @@ pub fn fill_in(form: &Book, data_book: &Book, dir: Option<&std::path::Path>) -> 
     fill_choices(form, data_book, dir).0
 }
 
+/// **Values put in by cell** (docs/sekkei/sashikomi.ja.adoc): a template
+/// made in Excel needs no marks. An item of a two-column table of the data
+/// named with an address (`B5`, `履歴書!D9`) or with a defined name of the
+/// form (`氏名`, ECMA-376 Part 1 18.2.5) puts its value in that cell, which
+/// keeps its format. A name for a range takes its top left cell. Items
+/// that are neither are left for the marks (`{氏名}`).
+pub fn fill_cells(form: &Book, data: &Book) -> Book {
+    let mut out = form.clone();
+    for d in &data.sheets {
+        let (rows, cols) = d.extent();
+        if cols != 2 {
+            continue;
+        }
+        for r in 0..rows {
+            let key = d.value(Pos::new(r, 0)).display();
+            let key = key.trim();
+            if key.is_empty() {
+                continue;
+            }
+            let Some((si, at)) = cell_of(&out, key) else { continue };
+            let value = d.value(Pos::new(r, 1)).clone();
+            let s = &mut out.sheets[si];
+            let mut c = s.cells.get(&at).cloned().unwrap_or_default();
+            c.formula = None;
+            c.value = value;
+            s.set(at, c);
+        }
+    }
+    out
+}
+
+/// The sheet and cell an address or a defined name stands for.
+fn cell_of(b: &Book, key: &str) -> Option<(usize, Pos)> {
+    let first = |range: &str| Pos::parse(range.split(':').next()?.trim().trim_start_matches('$').replace('$', "").as_str());
+    if let Some((sheet, addr)) = key.rsplit_once('!') {
+        let sheet = sheet.trim_matches('\'');
+        let si = b.sheets.iter().position(|s| s.name == sheet)?;
+        return Some((si, first(addr)?));
+    }
+    if let Some(p) = Pos::parse(key) {
+        return (!b.sheets.is_empty()).then_some((0, p));
+    }
+    b.sheets.iter().enumerate().find_map(|(si, s)| {
+        let n = s.names.iter().find(|n| n.name == key)?;
+        Some((si, first(&n.range)?))
+    })
+}
+
 /// **A table whose data does not fit the form's rows**: its name, the
 /// columns the form's marks use (in the order they first appear), and the
 /// rows (1 = the first after the header) to carry on a 別紙.
@@ -482,6 +530,8 @@ pub fn fill_choices(
     data_book: &Book,
     dir: Option<&std::path::Path>,
 ) -> (Book, Vec<Choice>) {
+    let by_cell = fill_cells(form, data_book);
+    let form = &by_cell;
     let data = Data::new(data_book);
     let mut choices = Vec::new();
     // Rows that do not fit go on to a 別紙
@@ -813,6 +863,43 @@ pub fn set(data: &mut Book, name: &str, value: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **An Excel template takes values by address and by defined name**
+    /// (docs/sekkei/sashikomi.ja.adoc): an item of a two-column table named
+    /// `B5`, `履歴書!D9` or a defined name puts its value in that cell, which
+    /// keeps its format; the value goes in as the data holds it (a number
+    /// as a number), and an item that is neither is left for the marks
+    #[test]
+    fn a_template_takes_values_by_address_and_by_name() {
+        let mut form = Book::new();
+        form.sheets.clear();
+        let mut s = Sheet::new("履歴書");
+        let mut b5 = Cell::input("");
+        b5.fmt.bold = true;
+        s.set(Pos::parse("B5").unwrap(), b5);
+        s.names.push(crate::DefinedName::new("氏名ふりがな", "C7"));
+        s.set(Pos::parse("A1").unwrap(), Cell::input("{電話}"));
+        form.sheets.push(s);
+        let mut data = Book::new();
+        data.sheets.clear();
+        let mut kihon = Sheet::new("基本");
+        for (r, (k, v)) in [("B5", "山田 花子"), ("氏名ふりがな", "やまだ はなこ"), ("履歴書!D9", "2010"), ("電話", "0120-00-0000")]
+            .iter()
+            .enumerate()
+        {
+            kihon.set(Pos::new(r as u32, 0), Cell::input(k));
+            kihon.set(Pos::new(r as u32, 1), Cell::input(v));
+        }
+        data.sheets.push(kihon);
+        let out = fill(&form, &data);
+        let s = &out.sheets[0];
+        let at = |a: &str| s.cells.get(&Pos::parse(a).unwrap()).cloned().unwrap_or_default();
+        assert_eq!(at("B5").value, Value::Text("山田 花子".into()));
+        assert!(at("B5").fmt.bold, "the cell lost its format");
+        assert_eq!(at("C7").value, Value::Text("やまだ はなこ".into()));
+        assert_eq!(at("D9").value, Value::Number(2010.0));
+        assert_eq!(at("A1").value, Value::Text("0120-00-0000".into()), "the marks stopped working");
+    }
 
     fn data() -> Book {
         let mut b = Book::new();
