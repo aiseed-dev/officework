@@ -19,7 +19,7 @@
 //!
 //! 縦書き・異体字もこの形なら載ります(`printpdf` では載りませんでした)。
 
-use pdf_writer::types::{FontFlags, SystemInfo, TextRenderingMode};
+use pdf_writer::types::{FontFlags, FunctionShadingType, SystemInfo, TextRenderingMode};
 use pdf_writer::{Content, Filter, Finish, Name, Pdf, Rect, Ref, Str};
 use std::collections::BTreeMap;
 
@@ -398,6 +398,25 @@ pub fn write_pages_fonts<W: std::io::Write>(
         })
         .collect();
 
+    // **A gradient piece is painted by a shading** (an axial shading, PDF
+    // 32000 8.7.4.5.3), named `S{k}` after the piece's index. Its colours
+    // come from a function: one exponential function for two stops, or a
+    // stitching function over one per pair of stops
+    let sh_ids: Vec<Vec<(usize, Ref, Vec<Ref>)>> = pages
+        .iter()
+        .map(|p| {
+            p.polys
+                .iter()
+                .enumerate()
+                .filter_map(|(k, g)| {
+                    let n = grad_stops(g.grad.as_ref()?).len();
+                    let funcs = if n <= 2 { 1 } else { n };
+                    Some((k, id(), (0..funcs).map(|_| id()).collect()))
+                })
+                .collect()
+        })
+        .collect();
+
     for (i, page) in pages.iter().enumerate() {
         let (pw, ph) = page.size_mm.unwrap_or((page_w_mm, page_h_mm));
         let mut pg = pdf.page(page_ids[i]);
@@ -425,6 +444,13 @@ pub fn write_pages_fonts<W: std::io::Write>(
                     gs.pair(Name(format!("A{k}").as_bytes()), *r);
                 }
                 gs.finish();
+            }
+            if !sh_ids[i].is_empty() {
+                let mut sh = res.shadings();
+                for (k, r, _) in &sh_ids[i] {
+                    sh.pair(Name(format!("S{k}").as_bytes()), *r);
+                }
+                sh.finish();
             }
             res.finish();
         }
@@ -478,6 +504,21 @@ pub fn write_pages_fonts<W: std::io::Write>(
                         continue;
                     }
                     usu(&mut c, &mut usu_now, g.a);
+                    // A gradient paints the shading inside the piece's outline.
+                    // `Q` puts the fill colour back, so `fill_now` stays right
+                    if g.grad.is_some() {
+                        c.save_state();
+                        c.move_to(pt(*x0), pt(*y0));
+                        for (x, y) in rest {
+                            c.line_to(pt(*x), pt(*y));
+                        }
+                        c.close_path();
+                        c.clip_nonzero();
+                        c.end_path();
+                        c.shading(Name(format!("S{k}").as_bytes()));
+                        c.restore_state();
+                        continue;
+                    }
                     if fill_now != Some(g.rgb) {
                         c.set_fill_rgb(g.rgb.0, g.rgb.1, g.rgb.2);
                         fill_now = Some(g.rgb);
@@ -711,6 +752,38 @@ pub fn write_pages_fonts<W: std::io::Write>(
             let a = *k as f32 / 255.0;
             pdf.ext_graphics(*r).non_stroking_alpha(a).stroking_alpha(a);
         }
+        for (k, r, funcs) in &sh_ids[i] {
+            let Some(g) = page.polys[*k].grad.as_ref() else { continue };
+            let st = grad_stops(g);
+            let rgb = |c: (f32, f32, f32)| [c.0, c.1, c.2];
+            if st.len() <= 2 {
+                pdf.exponential_function(funcs[0])
+                    .domain([0.0, 1.0])
+                    .c0(rgb(st[0].1))
+                    .c1(rgb(st[st.len() - 1].1))
+                    .n(1.0);
+            } else {
+                for j in 0..st.len() - 1 {
+                    pdf.exponential_function(funcs[j + 1])
+                        .domain([0.0, 1.0])
+                        .c0(rgb(st[j].1))
+                        .c1(rgb(st[j + 1].1))
+                        .n(1.0);
+                }
+                pdf.stitching_function(funcs[0])
+                    .domain([0.0, 1.0])
+                    .functions(funcs[1..].iter().copied())
+                    .bounds(st[1..st.len() - 1].iter().map(|s| s.0))
+                    .encode((0..st.len() - 1).flat_map(|_| [0.0, 1.0]));
+            }
+            let mut sh = pdf.function_shading(*r);
+            sh.shading_type(FunctionShadingType::Axial);
+            sh.color_space().device_rgb();
+            sh.function(funcs[0]);
+            sh.coords([pt(g.from.0), pt(g.from.1), pt(g.to.0), pt(g.to.1)]);
+            sh.extend([true, true]);
+            sh.finish();
+        }
     }
 
     // ④ 書体。Type0(CID)— 字の対応は PDF の側が持ちます
@@ -933,6 +1006,7 @@ mod tests {
                 rgb: (0.2, 0.4, 0.8),
                 a: 0.5,
                 z: 1,
+                grad: None,
             }],
             rules: vec![Rule {
                 x1_mm: 10.0, y1_mm: 50.0, x2_mm: 100.0, y2_mm: 50.0,
@@ -945,6 +1019,34 @@ mod tests {
         let body = unpack(&out);
         let thin = body.rfind("/A128 gs").expect("the see-through shape");
         assert!(body[thin..].contains("/A255 gs"), "the rule is drawn see-through:\n{}", &body[thin..]);
+    }
+
+    /// A gradient piece is painted with an axial shading inside its outline,
+    /// and three stops need a stitching function
+    #[test]
+    fn a_gradient_piece_is_painted_with_a_shading() {
+        let leaf = Leaf {
+            polys: vec![Poly {
+                points: vec![(10.0, 10.0), (50.0, 10.0), (50.0, 30.0), (10.0, 30.0)],
+                rgb: (0.5, 0.5, 0.5),
+                grad: Some(Grad {
+                    from: (30.0, 30.0),
+                    to: (30.0, 10.0),
+                    stops: vec![(0.0, (1.0, 0.0, 0.0)), (0.5, (0.0, 1.0, 0.0)), (1.0, (0.0, 0.0, 1.0))],
+                }),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let mut out = Vec::new();
+        write_pages(&[leaf], 210.0, 297.0, &font(), &mut out).expect("PDF not written");
+        let body = unpack(&out);
+        assert!(body.contains("/S0 sh"), "the shading is not painted:\n{body}");
+        assert!(body.contains("\nW\nn\n/S0 sh"), "not clipped to the piece:\n{body}");
+        let raw = String::from_utf8_lossy(&out);
+        assert!(raw.contains("/ShadingType 2"), "no axial shading");
+        assert!(raw.contains("/FunctionType 3"), "three stops need a stitching function");
+        assert!(raw.contains("/Bounds [0.5]"), "the middle stop is not a bound");
     }
 
     /// The colour names of `ST_HighlightColor` (ECMA-376 17.18.40) and
@@ -1746,12 +1848,46 @@ pub struct Poly {
     pub a: f32,
     /// Where this piece sits in the draw order. See [`Leaf::images`]
     pub z: i32,
+    /// A linear gradient that fills the piece instead of `rgb`
+    pub grad: Option<Grad>,
 }
 
 impl Default for Poly {
     fn default() -> Self {
-        Poly { points: Vec::new(), rgb: (0.0, 0.0, 0.0), a: 1.0, z: 0 }
+        Poly { points: Vec::new(), rgb: (0.0, 0.0, 0.0), a: 1.0, z: 0, grad: None }
     }
+}
+
+/// The stops of a gradient from place 0 to place 1. The first colour is
+/// put at 0 and the last at 1 when the stops do not reach them, since the
+/// end colours go on beyond the stops
+pub(crate) fn grad_stops(g: &Grad) -> Vec<(f32, (f32, f32, f32))> {
+    let mut st: Vec<(f32, (f32, f32, f32))> =
+        g.stops.iter().map(|(p, c)| (p.clamp(0.0, 1.0), *c)).collect();
+    let (Some(first), Some(last)) = (st.first().copied(), st.last().copied()) else {
+        return vec![(0.0, (0.0, 0.0, 0.0)), (1.0, (0.0, 0.0, 0.0))];
+    };
+    if first.0 > 0.0 || st.len() == 1 {
+        st.insert(0, (0.0, first.1));
+    }
+    if last.0 < 1.0 {
+        st.push((1.0, last.1));
+    }
+    st
+}
+
+/// A linear gradient (ECMA-376 20.1.8.41 `a:lin`). The colour changes along
+/// the line from `from` to `to` and stays the same across it. Beyond the two
+/// ends the end colours go on.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Grad {
+    /// Where the first stop sits (mm from the bottom left)
+    pub from: (f32, f32),
+    /// Where the last stop sits (mm from the bottom left)
+    pub to: (f32, f32),
+    /// The stops: place from 0 (`from`) to 1 (`to`), and colour (0 to 1
+    /// RGB). In place order
+    pub stops: Vec<(f32, (f32, f32, f32))>,
 }
 
 /// 紙に置く画像。左下からの mm。

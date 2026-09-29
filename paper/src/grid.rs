@@ -494,7 +494,17 @@ impl Ink<'_> {
     /// 透明度つきの塗り
     fn poly_a(&mut self, points: Vec<(f32, f32)>, rgb: (f32, f32, f32), a: f32) {
         if points.len() >= 3 {
-            self.leaf.polys.push(pdfw::Poly { points, rgb, a, z: self.z });
+            self.leaf.polys.push(pdfw::Poly { points, rgb, a, z: self.z, grad: None });
+        }
+    }
+
+    /// A piece filled with a linear gradient. `rgb` is kept for anything that
+    /// draws one colour
+    fn poly_grad(
+        &mut self, points: Vec<(f32, f32)>, rgb: (f32, f32, f32), a: f32, grad: pdfw::Grad,
+    ) {
+        if points.len() >= 3 {
+            self.leaf.polys.push(pdfw::Poly { points, rgb, a, z: self.z, grad: Some(grad) });
         }
     }
 }
@@ -2373,10 +2383,30 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32, fo
             sp.kind.as_str(),
             "spark" | "spark-col" | "spark-wl" | "ink" | "marker" | "path"
         );
+        // **A linear gradient runs across the shape's box** at its angle,
+        // clockwise from left to right (ECMA-376 20.1.8.41). The two ends
+        // sit where the box's corners fall on that line, so the first and
+        // the last colour just touch the corners. They turn with the shape
+        let mut grad_ends: Vec<(f32, f32)> = Vec::new();
+        let grad_stops: Vec<(f32, (f32, f32, f32))> = match &sp.fill_grad {
+            Some(g) if g.path.is_none() => {
+                g.stops.iter().filter_map(|(p, c)| Some((*p as f32 / 1000.0, hex_rgb(c)?))).collect()
+            }
+            _ => Vec::new(),
+        };
+        if !grad_stops.is_empty() {
+            let th = (sp.fill_grad.as_ref().map(|g| g.degree_c).unwrap_or(0) as f32 / 100.0)
+                .to_radians();
+            // Down the page is down in the file and up on paper
+            let (dx, dy) = (th.cos(), -th.sin());
+            let half = (w * th.cos().abs() + h * th.sin().abs()) / 2.0;
+            let (ccx, ccy) = (x + w / 2.0, y_top - h / 2.0);
+            grad_ends = vec![(ccx - dx * half, ccy - dy * half), (ccx + dx * half, ccy + dy * half)];
+        }
         if (rot != 0.0 || sp.flip_h || sp.flip_v) && !poly {
             let (ccx, ccy) = (x + w / 2.0, y_top - h / 2.0);
             let (s, c) = (rot.to_radians().sin(), rot.to_radians().cos());
-            for p in subs.iter_mut().flat_map(|p| p.pts.iter_mut()) {
+            for p in subs.iter_mut().flat_map(|p| p.pts.iter_mut()).chain(grad_ends.iter_mut()) {
                 let mut dx = p.0 - ccx;
                 let mut dy = ccy - p.1; // 下向き正
                 if sp.flip_h {
@@ -2425,7 +2455,12 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32, fo
         for p in &subs {
             if p.closed && p.fill {
                 if let Some(c) = sp.fill.as_deref().and_then(hex_rgb) {
-                    l1.poly_a(p.pts.clone(), c, usu);
+                    if let [from, to] = grad_ends[..] {
+                        let grad = pdfw::Grad { from, to, stops: grad_stops.clone() };
+                        l1.poly_grad(p.pts.clone(), c, usu, grad);
+                    } else {
+                        l1.poly_a(p.pts.clone(), c, usu);
+                    }
                 }
             }
             // 折れ線は辺ごとに引きます。閉じる形なら最後の点から先頭へ1本
@@ -3371,6 +3406,29 @@ mod zukei_tests {
         assert_eq!(leaf.size_mm, Some((210.0, 297.0)));
         assert!(!leaf.polys.is_empty(), "塗りが出ていない");
         assert!(!leaf.rules.is_empty(), "線が出ていない");
+    }
+
+    /// A gradient from top to bottom (90 degrees) runs from the top edge of
+    /// the box to its bottom edge
+    #[test]
+    fn a_linear_gradient_runs_across_the_box() {
+        let mut sp = hako("rect");
+        sp.fill_grad = Some(book::Gradient {
+            degree_c: 9000,
+            stops: vec![(0, "FF0000".into()), (1000, "0000FF".into())],
+            path: None,
+        });
+        let leaf = shapes_leaf(&[(sp.clone(), 20.0, 200.0)], Paper::default());
+        let g = leaf.polys[0].grad.as_ref().expect("no gradient on paper");
+        let (w, h) = (120.0 * 25.4 / 96.0, 80.0 * 25.4 / 96.0);
+        let near = |a: (f32, f32), b: (f32, f32)| (a.0 - b.0).abs() < 1e-3 && (a.1 - b.1).abs() < 1e-3;
+        assert!(near(g.from, (20.0 + w / 2.0, 200.0)), "{g:?}");
+        assert!(near(g.to, (20.0 + w / 2.0, 200.0 - h)), "{g:?}");
+        assert_eq!(g.stops, vec![(0.0, (1.0, 0.0, 0.0)), (1.0, (0.0, 0.0, 1.0))]);
+        // One that follows the shape is drawn in one colour
+        sp.fill_grad.as_mut().unwrap().path = Some("circle".into());
+        let leaf = shapes_leaf(&[(sp, 20.0, 200.0)], Paper::default());
+        assert!(leaf.polys[0].grad.is_none());
     }
 
     /// Two outlines of one free-form shape are filled as two pieces, not

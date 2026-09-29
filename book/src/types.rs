@@ -1397,6 +1397,9 @@ pub struct SheetShape {
     pub kind: String,
     /// 塗り RRGGBB(無ければ塗らない)
     pub fill: Option<String>,
+    /// A gradient fill (`a:gradFill`, ECMA-376 20.1.8.33). `fill` then
+    /// holds one colour for anything that does not draw the gradient
+    pub fill_grad: Option<Gradient>,
     /// 線 RRGGBB(無ければ引かない)
     pub line: Option<String>,
     /// 図形の中の文字(テキストボックス)。xlsx の txBody と往復する。
@@ -1514,6 +1517,7 @@ impl Default for SheetShape {
             height_px: 0.0,
             kind: String::new(),
             fill: None,
+            fill_grad: None,
             line: None,
             dash: None,
             text: None,

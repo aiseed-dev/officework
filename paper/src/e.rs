@@ -29,7 +29,7 @@ use crate::pdfw::Leaf;
 use std::sync::Arc;
 use vello_cpu::kurbo::{Affine, BezPath, Cap, Join, Point, Rect, Stroke};
 use vello_cpu::peniko::color::{AlphaColor, Srgb};
-use vello_cpu::peniko::{Blob, FontData, ImageBrush, ImageQuality, ImageSampler};
+use vello_cpu::peniko::{Blob, FontData, Gradient, ImageBrush, ImageQuality, ImageSampler};
 use vello_cpu::{Glyph, ImageSource, Pixmap, RenderContext, Resources};
 
 /// 出来上がった絵。**画素の並びと大きさ**だけを持ちます
@@ -145,7 +145,17 @@ pub fn egaku_fonts(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, fonts: &[&[u8]])
                     path.line_to(ten(*q));
                 }
                 path.close_path();
-                cx.set_paint(iro(p.rgb, p.a));
+                // A gradient piece: the same stops as the PDF's shading, and
+                // the end colours go on beyond the two ends (pad)
+                if let Some(g) = &p.grad {
+                    let stops: Vec<(f32, AlphaColor<Srgb>)> = crate::pdfw::grad_stops(g)
+                        .into_iter()
+                        .map(|(t, c)| (t, iro(c, p.a)))
+                        .collect();
+                    cx.set_paint(Gradient::new_linear(ten(g.from), ten(g.to)).with_stops(&stops[..]));
+                } else {
+                    cx.set_paint(iro(p.rgb, p.a));
+                }
                 cx.fill_path(&path);
             }
             1 => michi(&mut cx, &leaf.paths[k], h_mm, mm),
@@ -518,6 +528,36 @@ mod tests {
         let runs = dark.windows(2).filter(|w| w[0] && !w[1]).count();
         // 40mm of a 4mm pattern: about 10 dashes
         assert!((9..=11).contains(&runs), "{runs} dashes");
+    }
+
+    /// A gradient piece changes colour from its top to its bottom, as the
+    /// PDF's shading does
+    #[test]
+    fn a_gradient_piece_changes_colour_along_its_line() {
+        let leaf = Leaf {
+            bg: Some((1.0, 1.0, 1.0)),
+            polys: vec![Poly {
+                points: vec![(0.0, 0.0), (40.0, 0.0), (40.0, 40.0), (0.0, 40.0)],
+                rgb: (0.5, 0.5, 0.5),
+                grad: Some(crate::pdfw::Grad {
+                    from: (20.0, 40.0),
+                    to: (20.0, 0.0),
+                    stops: vec![(0.0, (1.0, 0.0, 0.0)), (1.0, (0.0, 0.0, 1.0))],
+                }),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let e = egaku(&leaf, 40.0, 40.0, 4.0);
+        let px = |y: u32| {
+            let i = ((y * e.w + e.w / 2) * 4) as usize;
+            (e.rgba[i], e.rgba[i + 1], e.rgba[i + 2])
+        };
+        let (top, bottom) = (px(1), px(e.h - 2));
+        assert!(top.0 > 240 && top.2 < 15, "top is not red: {top:?}");
+        assert!(bottom.2 > 240 && bottom.0 < 15, "bottom is not blue: {bottom:?}");
+        let mid = px(e.h / 2);
+        assert!((100..160).contains(&mid.0) && (100..160).contains(&mid.2), "middle is not mixed: {mid:?}");
     }
 
     /// 見本の絵。左半分が赤、右半分が青の PNG

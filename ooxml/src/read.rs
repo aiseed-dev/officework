@@ -5390,6 +5390,14 @@ fn shape_look(a: &str, palette: &[String], lines: &[f32]) -> Option<book::SheetS
     // Word's restaurant brochure fills a whole panel with a photo this way,
     // and the accent colour behind `a:fillRef idx="1"` painted a third of
     // the page orange (2026-09-21)
+    // A gradient fill is a fill too (20.1.8.33). `fill` gets one colour
+    // for anything that does not draw the gradient
+    if sp.fill.is_none() && nuru {
+        if let Some(g) = gradient_fill(a, palette) {
+            sp.fill = gradient_colour(&g);
+            sp.fill_grad = Some(g);
+        }
+    }
     if sp.fill.is_none() && nuru && !shape_has_picture_fill(a) {
         sp.fill = sanshou("<a:fillRef ");
     }
@@ -5545,6 +5553,63 @@ fn shape_look(a: &str, palette: &[String], lines: &[f32]) -> Option<book::SheetS
         }
     }
     Some(sp)
+}
+
+/// The gradient fill of a shape's own `spPr` (`a:gradFill`, ECMA-376
+/// 20.1.8.33): the stops in place order, and the angle of a linear one
+/// (`a:lin ang`, 60000ths of a degree, 20.1.8.41). A gradient that follows
+/// the shape (`a:path`, 20.1.8.46) keeps its kind in `path`.
+fn gradient_fill(a: &str, palette: &[String]) -> Option<book::Gradient> {
+    let from = a.find("<wps:spPr").or_else(|| a.find("<a:spPr"))?;
+    let to = a[from..]
+        .find("</wps:spPr>")
+        .or_else(|| a[from..].find("</a:spPr>"))
+        .map(|e| from + e)
+        .unwrap_or(a.len());
+    let pr = &a[from..to];
+    let g = pr.find("<a:gradFill")?;
+    // A gradient inside the outline is the line's, not the fill's
+    if let Some(ln) = pr.find("<a:ln ").or_else(|| pr.find("<a:ln>")) {
+        if ln < g {
+            return None;
+        }
+    }
+    let end = pr[g..].find("</a:gradFill>").map(|e| g + e)?;
+    let body = &pr[g..end];
+    let mut stops: Vec<(u32, String)> = Vec::new();
+    let mut at = 0;
+    while let Some(i) = body[at..].find("<a:gs ") {
+        let s = at + i;
+        let e = body[s..].find("</a:gs>").map(|e| s + e).unwrap_or(body.len());
+        let head = &body[s..body[s..].find('>').map(|x| s + x).unwrap_or(e)];
+        let pos = attr_str(head, "pos").parse::<u32>().unwrap_or(0) / 100;
+        if let Some(c) = crate::theme::dml_iro(&body[s..e], palette) {
+            stops.push((pos.min(1000), c));
+        }
+        at = e;
+    }
+    if stops.is_empty() {
+        return None;
+    }
+    stops.sort_by_key(|(p, _)| *p);
+    let degree_c = body
+        .find("<a:lin ")
+        .map(|i| attr_str(&body[i..], "ang").parse::<i32>().unwrap_or(0) / 600)
+        .unwrap_or(0);
+    let path = body.find("<a:path ").map(|i| attr_str(&body[i..], "path"));
+    Some(book::Gradient { degree_c, stops, path })
+}
+
+/// One colour for a gradient: the first two stops mixed half and half, as
+/// for a cell's gradient (`paper::grid::gradation_iro`)
+fn gradient_colour(g: &book::Gradient) -> Option<String> {
+    let rgb = |c: &str| u32::from_str_radix(c, 16).ok();
+    let a = rgb(&g.stops.first()?.1)?;
+    let Some(b) = g.stops.get(1).and_then(|(_, c)| rgb(c)) else {
+        return Some(format!("{a:06X}"));
+    };
+    let mix = |sh: u32| (((a >> sh) & 0xFF) + ((b >> sh) & 0xFF)) / 2;
+    Some(format!("{:02X}{:02X}{:02X}", mix(16), mix(8), mix(0)))
 }
 
 /// The points of a free-form shape (`a:custGeom`, ECMA-376 20.1.9.8), as
