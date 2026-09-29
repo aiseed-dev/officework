@@ -950,6 +950,20 @@ mod tests {
         if kumihan::font::face_for_weight("Arial", true, false).is_some() {
             assert_eq!(runs.last().unwrap().fmt.spacing_pt, 0.0);
         }
+        // A full-width space keeps its width as well (Word for Mac, measured
+        // 2026-09-30: 36.00pt at 36pt, the kana beside it 36.72pt)
+        let mut d = kumihan::Document::plain("");
+        let mut r = run("Hiragino Sans W3");
+        r.text = "あ\u{3000}\u{3000}い".into();
+        d.push_para(kumihan::Paragraph { runs: vec![r], ..Default::default() });
+        resolve_run_fonts(&mut d);
+        let runs = &d.paragraphs().last().unwrap().runs;
+        if hiragino {
+            let texts: Vec<(&str, f32)> = runs.iter().map(|r| (r.text.as_str(), r.fmt.spacing_pt)).collect();
+            assert_eq!(texts.len(), 3, "{texts:?}");
+            assert_eq!(texts[1], ("\u{3000}\u{3000}", 0.0));
+            assert!((texts[0].1 - 0.36).abs() < 1e-4 && (texts[2].1 - 0.36).abs() < 1e-4, "{texts:?}");
+        }
     }
 
     /// Every child of a group in the line is drawn, fitted into the box the
@@ -2278,9 +2292,11 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
             // for Mac, drawing bold in a face with no bold (Hiragino Sans
             // W3, Hiragino Mincho ProN W3, MS Mincho, MS Gothic, Century),
             // advances every letter by 0.02 em more: 36.72pt at 36pt, 18.36pt
-            // at 18pt, 10.71pt at 10.5pt; a half-width space keeps its width
-            // (the full-width one was not measured), and faces
-            // with a bold face keep that face's widths (2026-09-29)
+            // at 18pt, 10.71pt at 10.5pt; a half-width space keeps its width,
+            // and faces with a bold face keep that face's widths
+            // (2026-09-29). The full-width space (U+3000) keeps its width
+            // too: 36.00pt at 36pt in Hiragino Sans W3 bold, beside 36.72pt
+            // for the kana around it (2026-09-30)
             if *thickened {
                 return 0.02 * r.size_pt.unwrap_or(base);
             }
@@ -2289,7 +2305,7 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
     };
     // The extra advance is laid out as character spacing on this printing
     // copy, so the saved document keeps what it said. A run is cut at its
-    // spaces so that they keep their own width
+    // spaces, half-width and full-width, so that they keep their own width
     let mut widen = |p: &mut kumihan::Paragraph| {
         let mut runs = Vec::with_capacity(p.runs.len());
         for mut r in std::mem::take(&mut p.runs) {
@@ -2298,7 +2314,7 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
                 runs.push(r);
                 continue;
             }
-            let space = |c: char| c == ' ';
+            let space = |c: char| c == ' ' || c == '\u{3000}';
             let mut from = 0;
             let text = r.text.clone();
             let mut cut = |to: usize, is_space: bool, runs: &mut Vec<kumihan::Run>| {
