@@ -1262,9 +1262,11 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 hl.push_attribute(("w:val", h.as_str()));
                 w.write_event(Event::Empty(hl)).unwrap();
             }
-            if let Some(c) = &run.fmt.color {
+            // A run that said `auto` says it again, so a style's colour does
+            // not reach it in Word either
+            if let Some(c) = run.fmt.color.as_deref().or(run.fmt.itta.color.then_some("auto")) {
                 let mut col = BS::new("w:color");
-                col.push_attribute(("w:val", c.as_str()));
+                col.push_attribute(("w:val", c));
                 w.write_event(Event::Empty(col)).unwrap();
             }
             // 字間(`w:spacing`、1/20 pt)と文字の横倍率(`w:w`、%)。読んだ物を返す

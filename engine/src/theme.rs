@@ -1857,7 +1857,7 @@ fn hyou_style_wo_ateru(
                     if caps == Some(true) {
                         r.fmt.caps = true;
                     }
-                    if r.fmt.color.is_none() {
+                    if r.fmt.color.is_none() && !r.fmt.itta.color {
                         r.fmt.color.clone_from(&iro);
                     }
                     // The band's own size reaches a run that names none
@@ -2117,7 +2117,11 @@ fn jibun_wo_ateru(
         if r.fmt.spacing_pt == 0.0 {
             r.fmt.spacing_pt = ck.and_then(|c| c.spacing_pt).or(lk.spacing_pt).unwrap_or(0.0);
         }
-        if r.fmt.color.is_none() {
+        // A run that states its colour keeps it, `auto` included
+        // (ECMA-376 17.3.2.6). The placeholders of Word's letterhead name
+        // the grey Placeholder Text style and say `auto` themselves, and
+        // Word draws them in black (2026-09-29)
+        if r.fmt.color.is_none() && !r.fmt.itta.color {
             r.fmt.color = ck.and_then(|c| c.color.clone()).or_else(|| lk.color.clone());
         }
     }
@@ -2344,7 +2348,7 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             r.fmt.bold |= def.bold;
             r.fmt.italic |= def.italic;
             r.fmt.underline |= def.underline;
-            if r.fmt.color.is_none() {
+            if r.fmt.color.is_none() && !r.fmt.itta.color {
                 r.fmt.color = def.color.clone();
             }
         }

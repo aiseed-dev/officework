@@ -180,12 +180,16 @@ pub struct Itta {
     pub italic: bool,
     pub underline: bool,
     pub strike: bool,
+    /// The run states its colour (`w:color`), `auto` included. `auto`
+    /// leaves `color` empty, and a style's colour must not fill it in
+    /// (ECMA-376 17.3.2.6)
+    pub color: bool,
 }
 
 impl Itta {
     /// 1つでも言っているか
     pub fn nanika(&self) -> bool {
-        self.bold || self.italic || self.underline || self.strike
+        self.bold || self.italic || self.underline || self.strike || self.color
     }
 }
 

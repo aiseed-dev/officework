@@ -603,7 +603,7 @@ mod fmt_tests {
         // 「言った」印も立ちます(2026-09-01)
         let f = CharFormat {
             bold: true, italic: true, underline: true,
-            itta: kumihan::Itta { bold: true, italic: true, underline: true, strike: false },
+            itta: kumihan::Itta { bold: true, italic: true, underline: true, strike: false, color: false },
             ..Default::default()
         };
         let d = Document { align: None, shapes: Vec::new(), no_html_auto_space: false, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, size_pt: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),
@@ -622,7 +622,7 @@ mod fmt_tests {
     fn strikethrough_and_font_color_round_trip() {
         let f = CharFormat {
             strike: true, color: Some("FF0000".into()),
-            itta: kumihan::Itta { strike: true, ..Default::default() },
+            itta: kumihan::Itta { strike: true, color: true, ..Default::default() },
             ..Default::default()
         };
         let d = Document { align: None, shapes: Vec::new(), no_html_auto_space: false, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, size_pt: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), footnotes: Vec::new(),

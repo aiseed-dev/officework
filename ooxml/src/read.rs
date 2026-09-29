@@ -2973,6 +2973,7 @@ pub(super) fn parse_document_rels_num(
                     }
                     b"color" if in_rpr => {
                         fmt.color = attr(&e, "val").filter(|v| !v.is_empty() && v != "auto");
+                        fmt.itta.color = true;
                     }
                     b"vertAlign" if in_rpr => {
                         match attr(&e, "val").as_deref() {
@@ -3800,6 +3801,7 @@ pub(super) fn parse_document_rels_num(
                     }
                     b"color" if in_rpr => {
                         fmt.color = attr(&e, "val").filter(|v| !v.is_empty() && v != "auto");
+                        fmt.itta.color = true;
                     }
                     b"vertAlign" if in_rpr => {
                         match attr(&e, "val").as_deref() {
