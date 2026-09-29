@@ -1695,6 +1695,24 @@ fn draw_sheet(
                     })
                     .sum()
             };
+            // **The width a right-aligned line is placed by** leaves out the
+            // full-width spaces at its end; those at its start stay (decided
+            // 2026-09-29). Mac Excel sets the birth-date line of MHLW's
+            // resume form, "…歳）" and two U+3000, with "）" at the cell's
+            // right edge, where we drew it 21pt to the left
+            let migi_haba = |g: &[Kata]| -> f32 {
+                let mut ato = 0.0f32;
+                'owari: for (t, rp, rf) in g.iter().rev() {
+                    let f = fno_of(rf);
+                    for c in t.chars().rev() {
+                        if c != '\u{3000}' {
+                            break 'owari;
+                        }
+                        ato += haba.ji_mm(ji_fno(f, c) as usize, c, *rp);
+                    }
+                }
+                gyou_haba(g) - ato
+            };
             // 字下げ(indent)。1段 = 全角約1字ぶん空ける — 日本の帳票は
             // 項目の階層を字下げで見せます。**右揃えなら右から空けます**
             // (2026-08-31 発注者。前は右揃えのとき字下げを捨てていました)
@@ -1704,7 +1722,7 @@ fn draw_sheet(
             // いました。国税庁の酒税の総括表の「1,071」がこれです。
             // 中央揃えと折り返しは前から `ma_w` を見ています
             let tx = if right {
-                let w = gyou.first().map(|g| gyou_haba(g)).unwrap_or(0.0);
+                let w = gyou.first().map(|g| migi_haba(g)).unwrap_or(0.0);
                 x + ma_w - MASU_PAD_MM - ind - w
             } else {
                 x + MASU_PAD_MM + ind
@@ -1802,7 +1820,7 @@ fn draw_sheet(
                     // 幅は結合したぶん(`ma_w`)で見ます — 結合の1列目の
                     // 幅で中央を出すと、題が紙の左へはみ出します
                     HAlign::Center | HAlign::CenterContinuous => x + (ma_w - w) / 2.0,
-                    _ if right => x + ma_w - MASU_PAD_MM - w,
+                    _ if right => x + ma_w - MASU_PAD_MM - migi_haba(g),
                     _ => tx,
                 };
                 // **均等割付は字をセルの幅いっぱいに配ります**(2026-08-31。
@@ -3531,6 +3549,24 @@ mod zukei_tests {
     /// 4本が横切っていました。同じ表の「高 松」は内側に罫線が無く、線も
     /// 出ていなかったので、**同じ形の見出しで見え方が食い違って**いました
     /// (2026-08-31 発注者)。
+    /// A right-aligned cell leaves the full-width spaces at the end of its
+    /// text out of the width it is placed by, and keeps those at the start
+    #[test]
+    fn a_right_aligned_cell_leaves_out_its_trailing_full_width_spaces() {
+        let mut g = Grid::default();
+        for (r, t) in [(0u32, "年"), (1, "年\u{3000}\u{3000}"), (2, "\u{3000}年")] {
+            let f = book::CellFormat { align: book::HAlign::Right, ..Default::default() };
+            g.set(book::Pos::new(r, 0), book::Cell { formula: None, value: book::Value::Text(t.into()), fmt: f });
+        }
+        let setup = PrintSetup { date1904: false, col_basis: book::ColBasis::default(), ..Default::default() };
+        let leaf = &sheet_leaves(&g, Paper::default(), &setup).expect("not laid out")[0];
+        let piece = |t: &str| leaf.pieces.iter().find(|p| p.text == t).unwrap_or_else(|| panic!("no {t:?}"));
+        let (plain, trailing, leading) = (piece("年"), piece("年\u{3000}\u{3000}"), piece("\u{3000}年"));
+        assert!((trailing.x_mm - plain.x_mm).abs() < 0.01, "trailing spaces moved it: {} {}", trailing.x_mm, plain.x_mm);
+        assert!((leading.x_mm + leading.w_mm - plain.x_mm - plain.w_mm).abs() < 0.01, "a leading space was dropped");
+        assert!(leading.x_mm < plain.x_mm - 1.0, "the leading space has no width");
+    }
+
     /// A shape held by a cell of the second band of columns (a column break)
     /// is drawn on that band's page, not off the edge of the first
     #[test]
