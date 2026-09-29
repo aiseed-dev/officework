@@ -1111,12 +1111,19 @@ pub struct TableBorders {
     pub inside_h: bool,
     /// 列と列の間
     pub inside_v: bool,
+    /// The width of each edge in pt, in the order top, left, bottom, right,
+    /// inside horizontal, inside vertical (`w:sz` of `w:tblBorders`,
+    /// ECMA-376 17.4.39). 0 is the ordinary 0.5pt
+    pub pt: [f32; 6],
+    /// The colour of each edge, in the same order (`w:color`). `None` is
+    /// `auto`, drawn black
+    pub rgb: [Option<[u8; 3]>; 6],
 }
 
 impl Default for TableBorders {
     fn default() -> Self {
         TableBorders { top: true, left: true, bottom: true, right: true,
-                       inside_h: true, inside_v: true }
+                       inside_h: true, inside_v: true, pt: [0.0; 6], rgb: [None; 6] }
     }
 }
 
@@ -1124,7 +1131,7 @@ impl TableBorders {
     /// 1本も引かない
     pub fn nashi() -> Self {
         TableBorders { top: false, left: false, bottom: false, right: false,
-                       inside_h: false, inside_v: false }
+                       inside_h: false, inside_v: false, pt: [0.0; 6], rgb: [None; 6] }
     }
 }
 

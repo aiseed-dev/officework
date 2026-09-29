@@ -476,16 +476,19 @@ pub(super) fn write_table(w: &mut Writer<Cursor<Vec<u8>>>, t: &kumihan::Table,
     // 枠だらけになりました
     let bd = t.borders;
     w.write_event(Event::Start(BS::new("w:tblBorders"))).unwrap();
-    for (side, hiku) in [
+    for (i, (side, hiku)) in [
         ("top", bd.top), ("left", bd.left), ("bottom", bd.bottom),
         ("right", bd.right), ("insideH", bd.inside_h), ("insideV", bd.inside_v),
-    ] {
+    ].into_iter().enumerate() {
         let tag = format!("w:{side}");
         let mut e = BS::new(tag.as_str());
         if hiku {
+            // The width and colour read, else 0.5pt black
+            let sz = if bd.pt[i] > 0.0 { (bd.pt[i] * 8.0).round() as i64 } else { 4 };
+            let iro = bd.rgb[i].map(|c| format!("{:02X}{:02X}{:02X}", c[0], c[1], c[2]));
             e.push_attribute(("w:val", "single"));
-            e.push_attribute(("w:sz", "4"));
-            e.push_attribute(("w:color", "000000"));
+            e.push_attribute(("w:sz", sz.to_string().as_str()));
+            e.push_attribute(("w:color", iro.as_deref().unwrap_or("000000")));
         } else {
             // **「引かない」と明に言います。** 黙って書かないと、
             // 表のスタイルの罫線が出てきます

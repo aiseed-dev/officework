@@ -3626,13 +3626,29 @@ pub(super) fn parse_document_rels_num(
                         if in_tbl_borders {
                             if let Some(b) = stack.last_mut() {
                                 let bd = b.borders.get_or_insert_with(kumihan::TableBorders::nashi);
-                                match n.as_slice() {
-                                    b"top" => bd.top = hiku,
-                                    b"left" => bd.left = hiku,
-                                    b"bottom" => bd.bottom = hiku,
-                                    b"right" => bd.right = hiku,
-                                    b"insideH" => bd.inside_h = hiku,
-                                    _ => bd.inside_v = hiku,
+                                let i = match n.as_slice() {
+                                    b"top" => { bd.top = hiku; 0 }
+                                    b"left" => { bd.left = hiku; 1 }
+                                    b"bottom" => { bd.bottom = hiku; 2 }
+                                    b"right" => { bd.right = hiku; 3 }
+                                    b"insideH" => { bd.inside_h = hiku; 4 }
+                                    _ => { bd.inside_v = hiku; 5 }
+                                };
+                                // The edge's width and colour, as for a cell's
+                                // edge below. The header table of Word's tensho
+                                // letter ends in a 2.25pt purple bottom edge
+                                // here, drawn 0.5pt black (2026-09-29)
+                                if hiku {
+                                    let sz = attr(&e, "sz").and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
+                                    let hon: f32 = match attr(&e, "val").as_deref() {
+                                        Some("double") => 3.0,
+                                        Some("triple") => 5.0,
+                                        _ => 1.0,
+                                    };
+                                    bd.pt[i] = sz / 8.0 * hon;
+                                    bd.rgb[i] = attr(&e, "color")
+                                        .filter(|v| v != "auto")
+                                        .and_then(|v| kumihan::hex3(&v));
                                 }
                             }
                         } else {

@@ -1141,6 +1141,34 @@ mod table_layout_tests {
         assert!((less - 12.36 * 0.9).abs() < 0.01, "0.9 lines: {less}");
     }
 
+    /// A table's own bottom edge (`w:tblBorders`) is drawn and laid out at
+    /// its own width and colour
+    #[test]
+    fn a_tables_own_edge_has_its_width_and_colour() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let with = |pt: f32| {
+            let mut d = doc_with_table();
+            if let Block::Table(t) = &mut d.blocks[1] {
+                t.borders = TableBorders { bottom: true, ..TableBorders::nashi() };
+                t.borders.pt[2] = pt;
+                t.borders.rgb[2] = Some([0x9A, 0x92, 0xBF]);
+            }
+            d.push_para(Paragraph {
+                runs: vec![Run { text: "後".into(), size_pt: Some(10.5), font: None, fmt: Default::default() }],
+                ..Default::default()
+            });
+            layout(&d, &m, &frame)
+        };
+        let (thin, thick) = (with(0.0), with(2.25));
+        let y = |s: &Sheet| s.lines.iter().find(|l| l.text().contains('後')).unwrap().y_mm;
+        let grew = y(&thick) - y(&thin);
+        assert!((grew - (2.25 - 0.5) * 25.4 / 72.0).abs() < 0.01, "grew {grew}mm");
+        let rule = thick.rules.iter().max_by(|a, b| a.at[1].total_cmp(&b.at[1])).unwrap();
+        assert_eq!((rule.pt, rule.rgb), (2.25, Some([0x9A, 0x92, 0xBF])));
+    }
+
     /// A right-aligned line in a cell ends at the paragraph's right indent,
     /// not at the cell's edge
     #[test]
@@ -1174,7 +1202,7 @@ mod table_layout_tests {
         let with = |pt: Option<f32>| {
             let mut d = doc_with_table();
             if let Block::Table(t) = &mut d.blocks[1] {
-                t.borders = TableBorders { top: false, left: false, bottom: false, right: false, inside_h: false, inside_v: false };
+                t.borders = TableBorders { top: false, left: false, bottom: false, right: false, inside_h: false, inside_v: false, ..TableBorders::nashi() };
                 if let Some(pt) = pt {
                     for c in t.rows.last_mut().unwrap() {
                         c.borders.bottom = Some(true);
@@ -1396,7 +1424,7 @@ mod table_layout_tests {
         assert!((okuri - (8.0 + 0.5 * 25.4 / 72.0)).abs() < 0.01, "行の送りが 8mm + 0.5pt でない: {okuri}");
         // 罫線を引かない表は足さない
         if let Block::Table(t) = &mut d.blocks[1] {
-            t.borders = TableBorders { top: false, left: false, bottom: false, right: false, inside_h: false, inside_v: false };
+            t.borders = TableBorders { top: false, left: false, bottom: false, right: false, inside_h: false, inside_v: false, ..TableBorders::nashi() };
         }
         let s = layout(&d, &m, &frame);
         let y = |t: &str| s.lines.iter().find(|l| l.text().contains(t)).unwrap().y_mm;

@@ -3130,10 +3130,12 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 .map(|c| haba(c.borders.bottom, c.borders.bottom_pt)))
             .fold(0.0f32, f32::max);
         let hyou = if ri_now == 0 { table.borders.top } else { table.borders.inside_h };
+        // The table's own width for that edge (`w:tblBorders`), else 0.5pt
+        let hyou_pt = table.borders.pt[if ri_now == 0 { 0 } else { 4 }];
         let keisen = if jibun > 0.0 {
             jibun * PT_TO_MM
         } else if hyou && cells.iter().any(|c| c.borders.top.is_none()) {
-            KEISEN_PT * PT_TO_MM
+            (if hyou_pt > 0.0 { hyou_pt } else { KEISEN_PT }) * PT_TO_MM
         } else {
             0.0
         };
@@ -3235,7 +3237,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         if jibun > 0.0 {
             jibun * PT_TO_MM
         } else if table.borders.bottom && last.iter().any(|c| c.borders.bottom.is_none()) {
-            KEISEN_PT * PT_TO_MM
+            (if table.borders.pt[2] > 0.0 { table.borders.pt[2] } else { KEISEN_PT }) * PT_TO_MM
         } else {
             0.0
         }
@@ -3544,7 +3546,9 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let shita = cell_at(b, g)
                 .filter(|c| c.borders.top.is_some())
                 .map(|c| (c.borders.top_pt, c.borders.top_lines, c.borders.top_rgb));
-            ue.or(shita).unwrap_or((0.0, 1, None))
+            // An edge no cell names takes the table's (`w:tblBorders`)
+            let hen = if b == 0 { 0 } else if b >= grid.len() { 2 } else { 4 };
+            ue.or(shita).unwrap_or((table.borders.pt[hen], 1, table.borders.rgb[hen]))
         };
         let mut g = 0usize;
         while g < ncols {
@@ -3610,15 +3614,22 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         }
         for (x, say, rgb) in merged {
             // 左端・右端・その間で、引く決まりが違います
-            let hiku_hyou = if (x - xs[0]).abs() < 0.01 {
-                table.borders.left
+            let hen = if (x - xs[0]).abs() < 0.01 {
+                1
             } else if (x - xs[ncols]).abs() < 0.01 {
-                table.borders.right
+                3
             } else {
-                table.borders.inside_v
+                5
             };
+            let hiku_hyou = [table.borders.left, table.borders.right, table.borders.inside_v][(hen - 1) / 2];
             if say.unwrap_or(hiku_hyou) {
-                sheet.rules.push(Rule { at: [x, top, x, bottom], pt: 0.0, rgb });
+                // A side no cell names takes the table's width and colour
+                let (pt, rgb) = if say.is_none() {
+                    (table.borders.pt[hen], rgb.or(table.borders.rgb[hen]))
+                } else {
+                    (0.0, rgb)
+                };
+                sheet.rules.push(Rule { at: [x, top, x, bottom], pt, rgb });
             }
         }
     }
