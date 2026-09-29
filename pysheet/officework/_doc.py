@@ -1946,6 +1946,27 @@ class Doc(NoStrayAttributes):
         return self._d.render(vals, gun)
 
     @staticmethod
+    def fill_template(template, data, out):
+        """Word で作ったテンプレートの docx を、データのブック(``sheet.Book``)で
+        埋めて ``out`` に書きます。本文・ヘッダー・フッターの、印(``{氏名}`` など)と
+        差し込み印刷のフィールド(``MERGEFIELD``)の字だけを変え、ほかはすべて
+        元のまま写します。
+
+        印は、Word が字を別々の書式に分けていても見つかります。値は、印の
+        始まる所の書式で入ります。印の書き方は ``fill_form`` と同じです。
+        差し込み印刷のフィールドは、値の字になります(Word の差し込み印刷で
+        作った文書と同じです)。
+
+        データに答えの無い印とフィールドは空になります。名前がデータに 1 つも
+        無いときは、警告を出し、その名前の並びを返します。"""
+        missing = _doc.Doc.fill_template(_os.fspath(template), data._b, _os.fspath(out))
+        if missing:
+            import warnings as _warnings
+            _warnings.warn("データに無い名前があります(空にしました): " + "、".join(missing),
+                           stacklevel=2)
+        return missing
+
+    @staticmethod
     def fill_form(form, data):
         """文書の様式(``{氏名}`` などの印を持つ文書)を、データのブック
         (``sheet.Book``。``履歴書.sheet.adoc`` などの表)で埋めた新しい文書を

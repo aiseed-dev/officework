@@ -1434,7 +1434,7 @@ pub(super) fn field_mark(instr: &str) -> Option<char> {
 /// The data item a mail merge field takes (`MERGEFIELD 氏名 \* MERGEFORMAT`,
 /// ECMA-376 Part 1 17.16.5.35): the name, with its quotes taken off when
 /// it has spaces, and the switches left out
-pub(super) fn merge_instr(instr: &str) -> Option<String> {
+pub(crate) fn merge_instr(instr: &str) -> Option<String> {
     // `w:fldSimple/@w:instr` comes with its entities as written
     let instr = instr.replace("&quot;", "\"").replace("&amp;", "&");
     let rest = instr.trim_start().strip_prefix("MERGEFIELD")?.trim_start();

@@ -22,6 +22,8 @@
 
 pub mod crypt;
 
+/// Filling a Word template in place, the other parts as they were
+pub mod patch;
 mod read;
 /// `theme1.xml` — 役ごとの書体(見出しはゴシック、本文は明朝)
 pub mod theme;

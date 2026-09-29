@@ -184,6 +184,19 @@ notes = sheet.Book.fill_template("履歴書.xlsx", data, "山田.xlsx")
 
 Only the cells that change are written into the template's sheets; every other part of the file (formats, theme, shapes, document properties) is copied as it was. A text value goes into the cell as text and a number as a number, and the cell keeps its format. A shape named in Excel's name box after a data item (`写真`) takes the picture file the data gives, looked for in the data file's folder: inside the shape, keeping its proportions, centred, and the shape's own text gives way. PNG and JPEG pictures can be put in. `notes` lists what cannot be put in this way (rows that would need a 別紙, a picture of another kind, a file not found). Names the data lacks are warned about, as with `fill`.
 
+=== Filling a Word template in place (in the next version)
+
+A template made in Word takes the same data. Where a value goes, write a mark such as `{氏名}` in the text, or insert a mail merge field (Mailings > Insert Merge Field) named after the data item.
+
+[source,python]
+----
+from officework import doc
+
+missing = doc.Doc.fill_template("letter.docx", data, "yamada.docx")
+----
+
+Only the text of the marks and of the mail merge fields changes, in the body, the headers and the footers; every other part of the file, and everything else in those parts, is copied as it was. A mark is found even when Word keeps parts of it in differently formatted runs, and the value takes the format of the place the mark starts. A mail merge field becomes its value as plain text, as in the document Word's mail merge makes. The marks are those of `fill_form`. A mark or field the data does not answer becomes empty; names the data lacks altogether are warned about and returned.
+
 A shape given a field name with the `field` item (`写真`) takes the picture file the data names under that name, looked for in the data file's folder.
 
 To show the form and edit it, take the draw list with `draw_list()`. Each page's `fields` gives each field's name, kind, rectangle (points from the page's top left) and value. Put an edit into the data with `data.set_field(name, value)` and fill again.

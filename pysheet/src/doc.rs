@@ -413,6 +413,19 @@ impl PyDoc {
     ///                    {"品名": "消しゴム", "数量": "5"}]})
     /// d.save("out.docx")
     /// ```
+    /// A Word template filled in place (ooxml::patch): only the text of the
+    /// marks and the mail merge fields changes; the rest of the file is
+    /// copied as it was. Returns the names the data lacks altogether
+    #[staticmethod]
+    fn fill_template(template: &str, data: &crate::PyBook, out: &str) -> PyResult<Vec<String>> {
+        let bytes = std::fs::read(template)
+            .map_err(|e| PyIOError::new_err(format!("{template}: 読めない: {e}")))?;
+        let book = crate::lock(&data.inner)?.book.clone();
+        let (filled, missing) = ooxml::patch::fill_template(&bytes, &book).map_err(PyValueError::new_err)?;
+        std::fs::write(out, filled).map_err(|e| PyIOError::new_err(format!("{out}: 書けない: {e}")))?;
+        Ok(missing)
+    }
+
     /// A document form filled from a data book (a sheet `Book`), with the
     /// marks of sheet forms. Returns the filled document and the names the
     /// data lacks altogether
