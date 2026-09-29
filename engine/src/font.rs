@@ -869,6 +869,22 @@ fn sagari_em_yomu(name: Option<&str>) -> Option<f32> {
     (sita > 0.0).then_some(sita / upem)
 }
 
+/// Where Word puts the baseline in a single line, in em below the line's
+/// top, for the faces it was measured for.
+///
+/// Hiragino Sans W3 (2026-09-29): Word for Mac puts the first baseline
+/// 12.48pt below the top margin at 12pt, 10.80pt at 10.5pt and 20.64pt at
+/// 20pt (its PDFs step by 0.24pt), which is 1.03 em. The face's ascent is
+/// 0.88 em and its line in Word 1.30 em ([`OKURI_EM`]), so Word puts half
+/// of the 0.30 em it adds to the face's height above the text and half
+/// below. The rule below, which puts all of it above, gives 1.18 em.
+/// At 0.9 lines (`w:line="216"`) Word puts the baseline at 11.28pt (12pt)
+/// and 18.48pt (20pt), 0.9 times these, as [`crate::layout`] scales it
+const AGARI_EM: &[(&str, f32)] = &[
+    ("Hiragino Sans W3", 1.03),
+    ("ヒラギノ角ゴシック W3", 1.03),
+];
+
 /// **行の箱の中で、ベースラインが上端から何 em 下か。**
 ///
 /// LibreOffice と同じ決め方です(`sw/source/core/txtnode/fntcache.cxx`)。
@@ -885,6 +901,10 @@ fn sagari_em_yomu(name: Option<&str>) -> Option<f32> {
 ///
 /// 引けなければ `None`。呼ぶ側が今までどおりの割合を当てます。
 pub fn agari_em(name: Option<&str>) -> Option<f32> {
+    let key = norm(plain_name(split_hankaku(name?).0));
+    if let Some((_, em)) = AGARI_EM.iter().find(|(n, _)| norm(n) == key) {
+        return Some(*em);
+    }
     let zentai = okuri_em(name)?;
     let sita = sagari_em(name)?;
     (zentai > sita).then_some(zentai - sita)
@@ -1721,12 +1741,15 @@ pub fn monospace() -> Option<&'static Family> {
 mod tests {
     use super::*;
 
-    /// Word's single line of Hiragino Sans W3 is 1.30 em, under either name
-    /// and the PostScript one
+    /// Word's single line of Hiragino Sans W3 is 1.30 em, with the baseline
+    /// 1.03 em below its top, under either name and the PostScript one
     #[test]
     fn hiragino_sans_w3_is_the_measured_height() {
         for n in ["Hiragino Sans W3", "ヒラギノ角ゴシック W3", "HiraginoSans-W3"] {
             assert_eq!(okuri_em(Some(n)), Some(1.3), "{n}");
+            assert_eq!(agari_em(Some(n)), Some(1.03), "{n}");
+            let ashi = ashi_em(Some(n)).unwrap();
+            assert!((ashi - 0.27).abs() < 1e-4, "{n}: {ashi}");
         }
     }
 

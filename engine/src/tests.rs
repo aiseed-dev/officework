@@ -1091,6 +1091,22 @@ mod table_layout_tests {
                &Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0})
     }
 
+    /// The baseline of a Hiragino Sans W3 line sits where Word puts it:
+    /// 1.03 em below the line's top at single spacing, 0.9 times that at
+    /// 0.9 lines
+    #[test]
+    fn a_hiragino_line_puts_its_baseline_where_word_does() {
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let below_top_pt = |spacing: f32| {
+            let para = Paragraph { line_spacing: spacing, ..Default::default() };
+            let dip = crate::layout::dip_of(&para, &frame, 12.0, Some("Hiragino Sans W3"), 12.0, 0.0);
+            (dip + crate::layout::BASE_UP_MM) * 72.0 / 25.4
+        };
+        let (one, less) = (below_top_pt(1.0), below_top_pt(0.9));
+        assert!((one - 12.36).abs() < 0.01, "single: {one}");
+        assert!((less - 12.36 * 0.9).abs() < 0.01, "0.9 lines: {less}");
+    }
+
     /// A picture alone in a centred cell paragraph sits in the middle of
     /// the cell, and a right-aligned picture with text ends at the cell's
     /// right edge (the picture and the text are aligned as one block)
