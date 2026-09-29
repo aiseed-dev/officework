@@ -45,8 +45,10 @@
   lib の試験、tests.yml と同じ範囲の clippy に加えて calc・writer・officework の clippy、公開の
   前の文書の検査。release で組んだアプリで、データの adoc(左にコード、右に値を入れた送付状)、
   見るだけの docx、印刷するページの形の xlsx(厚労省の履歴書)を開いて画面を見た。
-  確かめていないこと: この Mac に asciidoctor が無く、adoc の描き出しの検査は回していない
-  (`vendor/asciidoctor` を clone するのは発注者の了解を取ってから)。`adoc_code = "0"` の画面は、
+  発注者の了解を取って `vendor/asciidoctor` を clone した(2026-09-01 の版、30fb8cd)。0.8.0 から
+  後に触った .adoc 18 個は `-v` で警告も誤りも無く、`tools/adoc_syntax_check.py` は本家の書き方
+  19 種とそろい、`--update` で写しを取り直しても変わらなかった。
+  確かめていないこと: `adoc_code = "0"` の画面は、
   発注者の settings.toml を変えないと出せないので、画面では見ていない(試験だけ)。紹介の Web の
   比較の絵は撮り直していない。メニューのテンプレートのファイルがこの Mac に無く、事業の
   ご報告は画面の中身が前の絵と同じ(撮り直すと画面の色の変換で青がずれる)。
