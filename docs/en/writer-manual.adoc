@@ -13,7 +13,8 @@ writer edits two kinds of file, in two different ways:
 | |How you edit |What is saved
 
 |*.adoc* |*You edit the text.* The left side shows the characters of the file, the right side the pages they make. Press a place on a page and the caret goes to its text |The characters as you left them
-|*.docx* |*You edit on the pages.* The pages are shown as they print, and you type on them |The docx, with the parts we do not touch carried over from the original
+|*.docx* |*You look at it.* The pages are shown as they print; you can find, copy and write the PDF |Nothing: the file is not changed
+|*.xlsx* |*You look at it.* The pages it prints are shown |Nothing: the file is not changed
 |===
 
 *For an .adoc, the text is the document.* The look lives in the template, so the text holds only the content.
@@ -22,7 +23,7 @@ Open `sample/writer/07_早見表.adoc` to see them beside the pages they make.
 What you edit is what is saved: nothing is hidden in it, and a diff shows only the lines you changed.
 The same text reads in any text editor and on GitHub, and an AI can read and write it.
 
-A docx carries much more than its content, so you edit it on its pages.
+A docx or an xlsx carries much more than its content. Its values come from data: an `.adoc` that names it as its template fills it, and shows it filled (see "Filling a Word or Excel template").
 
 writer is not a replacement for a processor such as Asciidoctor — it is a tool for writing the source.
 
@@ -407,12 +408,49 @@ The text is the document, so you edit the text itself.
 * *Press a place on a page* and the caret goes to the text it comes from
 * *The pages follow the caret.* The line of a page the caret's text is on has a yellow band, and the pages scroll to it when it is out of sight
 * If the text cannot be made into pages, the reason is shown above the pages with the line of the file, and the last pages stay
-* Markup the pages do not read is listed above the pages with the line it is on (for example `字下げの段落(literal)(7 行目)`; this list is in Japanese for now)
+* Markup the pages do not read is listed above the pages with the line it is on. On a screen in Japanese it is named (「字下げの段落(literal)(7 行目)」); in other languages it is shown by its markup (`literal (line 7)`)
 * *Saving writes the characters back as they are.* Nothing is tidied: comments, blank lines and line breaks stay where you put them. Only the lines you changed show in a diff
 * *Print (PDF)* writes the pages shown on the right. A file with several documents gives one PDF with all of them
-* The buttons that put a look on selected text (bold, size, typeface) do not change the file in this view. Write the marking in the text instead (`*bold*`)
+* The text holds only characters, so the buttons and keys that put a look on text (bold, size, typeface) or insert a table, a picture or a shape are not available here; they say so in the status bar. Write the marking in the text instead (`*bold*`)
+* *Save As* without an extension saves an `.adoc`. With a `.docx` name it writes a docx made from the document the text makes, and the file you are editing stays the `.adoc`
+* Saving keeps the file's line ends (CR LF stays CR LF) and whether it ends with a newline. A file that is not in UTF-8 says so when it opens, and is saved in UTF-8
 
 To open an `.adoc` the older way (edited on its pages), write `adoc_code = "0"` in `~/.config/officework/settings.toml`.
+
+=== Filling a Word or Excel template
+
+An `.adoc` can be the data for a template made in Word or Excel. Name the template with `:template:` in the header; the file is looked for in the same folder:
+
+[source,asciidoc]
+----
+= 山田さんへの送付状
+:template: 送付状.docx
+
+.基本
+|===
+|氏名 |山田 花子
+|会社名 |千代田商事
+|===
+----
+
+* *Right:* the template's pages with the data in it, laid out as its PDF. In a Word template, a mark such as `{氏名}` or a mail merge field named after a data item takes the value; in an Excel template, a data item named with a cell's address (`B5`) or a defined name does (the Python manual, "Filling an Excel template in place", has the whole contract)
+* Names the data lacks, and what could not be put into the template, are shown above the pages
+* *Print (PDF)* writes the pages shown
+* *Save As* with a `.docx` or `.xlsx` name writes the filled template: only the values change, and every other part of the file is as it was. The file you are editing stays the `.adoc`
+* Saving the `.adoc` writes its text, as for any `.adoc`
+
+A `:template:` that names no `.docx` or `.xlsx` is the template of the look, as before.
+
+=== Word and Excel files are opened to be looked at
+
+A `.docx` opens with its pages shown as they print, to be looked at: you can scroll, zoom, find, copy and write its PDF.
+Nothing changes the file — typing, the buttons that edit, and saving are refused, and no caret is shown.
+To edit docx files on their pages as before, write `docx_edit = "1"` in `~/.config/officework/settings.toml`.
+
+A `.xlsx` opens the same way, as the pages it prints, across the whole window. The PDF button writes the same pages.
+To edit xlsx files on the spreadsheet screen as before, write `xlsx_edit = "1"` in `~/.config/officework/settings.toml`.
+
+The values of a Word or Excel file come from data: write the data in an `.adoc` that names the file as its template (above).
 
 === Several documents in one file
 

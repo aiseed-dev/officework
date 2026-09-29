@@ -5,6 +5,8 @@ _日本語版(secondary): link:../ja/calc-manual.adoc[calc-manual.ja.adoc]_
 The manual for officework's spreadsheet editor.
 It opens, edits, and saves workbooks (.sheet.adoc) and xlsx. It also calculates formulas.
 
+In officework, an xlsx opens to be looked at, as the pages it prints (the writer manual, "Word and Excel files are opened to be looked at"). To open xlsx files here for editing, write `xlsx_edit = "1"` in `~/.config/officework/settings.toml`.
+
 This manual describes *only what works today*.
 Commands shown grayed out on the ribbon are unimplemented and cannot be pressed (we never make something look usable when it isn't).
 Grayed-out items and their Python alternatives are listed link:#not-implemented-gray-and-alternatives[at the end].
