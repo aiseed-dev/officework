@@ -2386,5 +2386,8 @@
  "unknown_time_zone": "Nama zona waktu tidak dikenal: {}",
  "code_pages_making": "Membuat halaman…",
  "code_pages_cannot": "Tidak dapat membuat halaman dari teks: {}",
- "code_opened": "{} — teks di kiri, halamannya di kanan. Teks disimpan apa adanya"
+ "code_opened": "{} — teks di kiri, halamannya di kanan. Teks disimpan apa adanya",
+ "code_view_not_here": "Ini tidak berlaku pada teks .adoc. Tuliskan di dalam teks",
+ "code_not_utf8": "{} bukan UTF-8. Karakter yang tidak terbaca tampil sebagai �, dan penyimpanan menulis UTF-8",
+ "code_too_many_fonts": "Terlalu banyak font untuk satu PDF ({})"
 }

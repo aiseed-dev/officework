@@ -7,6 +7,8 @@ use crate::*;
 
 /// 外側の柱の幅(px)。アイコン1つぶん(calc の RAIL と揃える)
 const RAIL: f32 = 34.0;
+/// The width of the right panel when it is open (px)
+pub(crate) const RP_PANEL_W: f32 = 230.0 + RAIL;
 
 /// render に返すパネルの束。欄の名前は view.rs にあった let の名前そのもの
 pub(crate) struct Panels {

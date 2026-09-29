@@ -386,7 +386,7 @@ impl Writer {
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "文書".into());
         let path = dir.join(format!("{name}.adoc"));
-        let text = kumihan::adoc::write(&self.doc);
+        let text = self.adoc_text();
         std::fs::write(&path, &text).map_err(|e| format!("文書を渡せません: {e}"))?;
         self.agent_file = Some((path.clone(), text));
         Ok(path)
@@ -617,7 +617,7 @@ impl Writer {
                 .map_err(|e| format!("マクロを置けません: {e}"))?;
         }
         self.flush_target();
-        let src = kumihan::adoc::write(&self.doc);
+        let src = self.adoc_text();
         let dir = pyrun::cage_work_dir("jo-wagent");
         let _ = std::fs::create_dir_all(&dir);
         let in_a = dir.join("in.adoc");
@@ -667,7 +667,13 @@ impl Writer {
             kumihan::adoc::parse_full(adoc).map_err(|e| format!("直した字が AsciiDoc として読めません: {e}"))?;
         self.acted = false;
         self.checkpoint(false);
-        self.doc.blocks = d.blocks;
+        if self.code.is_some() {
+            // In the split view the text is the file: it goes in as it is
+            let text = kumihan::Document::plain(&adoc.replace("\r\n", "\n")).body_text();
+            self.doc.set_body_text(&text);
+        } else {
+            self.doc.blocks = d.blocks;
+        }
         self.after_block_edit();
         Ok(if out.is_empty() { "終わりました".to_string() } else { out })
     }

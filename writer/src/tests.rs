@@ -5386,6 +5386,83 @@ mod shape_pick_tests {
         });
     }
 
+    /// **The text of an .adoc is still saved as text after going to another
+    /// tab and back, after a file that cannot be opened, and after writing
+    /// a docx from it** (the 2026-09-29 review). Each of these once left the
+    /// view without its split state, and the next save wrote the text
+    /// through the AsciiDoc writer: a blank line after every line and the
+    /// markings escaped. The file's CR LF and its missing final newline stay
+    #[gpui::test]
+    fn the_text_of_an_adoc_is_kept_across_tabs_and_failed_opens(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let dir = std::env::temp_dir().join(format!("ow-code-tabs-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let a = dir.join("a.adoc");
+            let text = "= 申請書\r\n\r\n== 目的\r\n\r\n**太字**の本文。\r\n\r\n* 一つ目\r\n* 二つ目";
+            std::fs::write(&a, text).unwrap();
+            this.code_open = true;
+            this.open(a.clone());
+            assert!(this.code.is_some(), "{}", this.status);
+            // Saved as it was: CR LF, no final newline
+            this.save_to(a.clone());
+            assert_eq!(std::fs::read(&a).unwrap(), text.as_bytes(), "the file changed on saving");
+            // The crash backup holds the same text
+            assert_eq!(this.adoc_text(), text);
+            // A file that cannot be opened leaves the split view in place
+            this.open(dir.join("missing.docx"));
+            assert!(this.code.is_some(), "a failed open left the split view");
+            // Another file in a tab, then back
+            this.open_in_tab(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sample/報告書.docx"));
+            assert!(this.code.is_none(), "the docx is in the split view");
+            this.show_file(0);
+            assert!(this.code.is_some(), "the split view did not come back with its tab");
+            this.save_to(a.clone());
+            assert_eq!(std::fs::read(&a).unwrap(), text.as_bytes(), "going back to the tab broke the text");
+            // A docx is written from the document the text makes, and the
+            // file being edited stays the .adoc
+            let out = dir.join("a.docx");
+            this.save_to(out.clone());
+            assert_eq!(this.path.as_deref(), Some(a.as_path()));
+            assert!(this.code.is_some());
+            let (d, _) = ooxml::read(std::io::Cursor::new(std::fs::read(&out).expect("a docx"))).expect("reads");
+            let body = d.body_text();
+            assert!(body.contains("太字の本文。") && !body.contains("*") && !body.contains("=="), "the docx holds the raw text: {body}");
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+
+    /// **The text of an .adoc takes only what works on text** (the
+    /// 2026-09-29 review). A table, a picture or a look put on it would be
+    /// dropped on saving, so the buttons, their keys and the block commands
+    /// of the socket refuse, and say why
+    #[gpui::test]
+    fn only_what_works_on_text_works_in_the_code_view(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            let dir = std::env::temp_dir().join(format!("ow-code-cmds-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let a = dir.join("a.adoc");
+            std::fs::write(&a, "= 題\n\n本文。\n").unwrap();
+            this.code_open = true;
+            this.open(a.clone());
+            assert!(this.code.is_some());
+            let before = this.doc.body_text();
+            this.run_cmd("instable", cx);
+            this.run_cmd("bold", cx);
+            assert_eq!(this.doc.tables().count(), 0, "a table went into the text");
+            assert_eq!(this.doc.body_text(), before);
+            assert_eq!(this.status.to_string(), ui::t!("code_view_not_here"));
+            let bold = ribbon::tabs().iter().flat_map(|t| t.cmds.iter()).find(|c| c.id == "bold").expect("bold").clone();
+            assert!(!this.usable_here(&bold), "bold is offered on the text");
+            let r = crate::rpc::handle(this, r#"{"cmd":"insert_blocks","at":0,"adoc":"|===\n|a\n|===\n"}"#);
+            assert!(r.contains("err"), "a block went into the text: {r}");
+            // What works on text still works
+            this.run_cmd("selectall", cx);
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+
     /// **Filling a field of a form and fixing a word, then saving the docx**
     /// (docs/sekkei/hyouji-e.ja.adoc, step 6). The letters go in the way
     /// typing puts them (`ui::handler::replace`). After saving and opening

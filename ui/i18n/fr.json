@@ -2386,5 +2386,8 @@
  "unknown_time_zone": "Nom de fuseau horaire inconnu : {}",
  "code_pages_making": "Création des pages…",
  "code_pages_cannot": "Impossible de créer les pages à partir du texte : {}",
- "code_opened": "{} — le texte à gauche, ses pages à droite. Le texte est enregistré tel quel"
+ "code_opened": "{} — le texte à gauche, ses pages à droite. Le texte est enregistré tel quel",
+ "code_view_not_here": "Cela ne fonctionne pas sur le texte d'un .adoc. Écrivez-le dans le texte",
+ "code_not_utf8": "{} n'est pas en UTF-8. Les caractères illisibles s'affichent comme �, et l'enregistrement écrit de l'UTF-8",
+ "code_too_many_fonts": "Trop de polices pour un seul PDF ({})"
 }

@@ -338,6 +338,13 @@ impl Writer {
             self.status = self.protection_message().into();
             return;
         }
+        // The text of an .adoc takes only what works on text: a table, a
+        // picture or a look put on it would be lost on saving (src/code.rs).
+        // Keys such as Ctrl+B come here as well as the buttons
+        if self.code.is_some() && !crate::code::CODE_OK.contains(&id) {
+            self.status = ui::t!("code_view_not_here").into();
+            return;
+        }
         // **共通の命令は1本の捌き手へ**(2026-08-19)。同じ id の腕を
         // ここに残すと死ぬので、移したら消す
         if ui::appcmd::run(self, id) {

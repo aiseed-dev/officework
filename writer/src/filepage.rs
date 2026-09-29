@@ -730,6 +730,8 @@ impl Writer {
         self.hf_edit = None;
         self.track = false;
         self.track_base = None;
+        self.code = None;
+        self.opened += 1;
         self.set_doc(doc);
         self.path = None;
         self.dirty = true;

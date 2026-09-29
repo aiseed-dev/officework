@@ -2386,5 +2386,8 @@
  "unknown_time_zone": "找不到時區名稱:{}",
  "code_pages_making": "正在排版頁面…",
  "code_pages_cannot": "無法由此文字排版頁面：{}",
- "code_opened": "{} — 左邊是文字，右邊是其頁面。文字按原樣儲存"
+ "code_opened": "{} — 左邊是文字，右邊是其頁面。文字按原樣儲存",
+ "code_view_not_here": "在 .adoc 的文字畫面中無法使用。請直接寫在文字中",
+ "code_not_utf8": "{} 不是 UTF-8。無法讀取的字元顯示為 �,儲存時會以 UTF-8 寫入",
+ "code_too_many_fonts": "字型太多,無法放入一個 PDF({} 個)"
 }

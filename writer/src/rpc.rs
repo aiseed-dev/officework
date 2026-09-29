@@ -102,6 +102,12 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
     w.acted = false;
     let Some(o) = ops::Jobj::parse(line) else { return ops::err("JSON が読めません") };
     let Some(cmd) = o.str("cmd") else { return ops::err("cmd がありません") };
+    // In the split view the document is the file's text, one paragraph a
+    // line: block edits would put a table or a heading into it that saving
+    // the text drops. The text is changed with set_text
+    if w.code.is_some() && matches!(cmd.as_str(), "replace_blocks" | "insert_blocks" | "delete_blocks") {
+        return ops::err("コードの画面では、ブロックは直せません。set_text で字を直してください");
+    }
     match cmd.as_str() {
         "ping" => ok(&format!("\"app\":\"writer\",\"version\":{}", q(env!("CARGO_PKG_VERSION")))),
         // **リボンのボタンを id で押す**(2026-09-09。calc と同じ)。実行は受け口の

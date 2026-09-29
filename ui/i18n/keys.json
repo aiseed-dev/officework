@@ -9522,5 +9522,17 @@
   {
     "key": "code_opened",
     "kind": "msg"
+  },
+  {
+    "key": "code_view_not_here",
+    "kind": "msg"
+  },
+  {
+    "key": "code_not_utf8",
+    "kind": "msg"
+  },
+  {
+    "key": "code_too_many_fonts",
+    "kind": "msg"
   }
 ]

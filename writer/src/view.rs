@@ -37,6 +37,9 @@ impl Render for Writer {
         ));
         // **点検の道具へ、ボタンの場所を渡す。** 環境変数が無ければ何もしない
         self.dump_ui();
+        // Give back to the GPU the page pictures no longer shown (gpui keeps
+        // a picture's texture until it is dropped with the window)
+        self.release_pictures(window, cx);
         // An .adoc beside its pages: make the pages again when the text
         // has changed, and draw them in the right pane (src/code.rs)
         self.code_tick(cx);
@@ -935,7 +938,7 @@ impl Render for Writer {
         // **The page pictures** (docs/sekkei/hyouji-e.ja.adoc). A docx is shown
         // as the pages the PDF prints; what the page draws itself is skipped
         // below, and the editing marks are drawn over the pictures. They go under the ruler
-        let pics = self.pictures_on();
+        let pics = self.pictures_ready();
         if pics {
             paper = self.put_page_pictures(paper, pxmm, window.scale_factor(), mi_ue, mi_sita);
         }

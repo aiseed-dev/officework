@@ -127,7 +127,9 @@ impl Writer {
             pic_gen: 0,
             pic_leaves: None,
             pic_cache: Default::default(),
+            pic_drop: Vec::new(),
             code: None,
+            opened: 0,
             code_open: !cfg!(test) && crate::code::code_on_open(),
             fonts_pending: Vec::new(),
             fonts_added: Default::default(),
@@ -1603,10 +1605,10 @@ impl Writer {
             let _ = this.update(cx, |this, cx| {
                 if let Some(mut p) = r {
                     if p.extension().is_none() {
-                        // **拡張子を書かなければ、いまの形式のまま。**
-                        // adoc で書いていたのに docx で保存されると、書式が
-                        // 本文に焼き付いて元に戻せません
-                        p.set_extension(if this.native { "adoc" } else { "docx" });
+                        // **No extension typed keeps the kind being written.**
+                        // An .adoc saved as a docx would burn its look into
+                        // the text, and the text of an .adoc into paragraphs
+                        p.set_extension(if this.native || this.code.is_some() { "adoc" } else { "docx" });
                     }
                     this.save_to(p);
                 }
@@ -1830,8 +1832,27 @@ impl Writer {
     }
 
     pub(crate) fn open(&mut self, p: PathBuf) {
-        // Whatever opens next leaves the split view of an .adoc
-        self.code = None;
+        // The split view of an .adoc belongs to the file shown. It goes only
+        // when another file is in its place: after a file that cannot be
+        // opened, or that waits for its password, the text is still the
+        // file shown and must still be saved as text
+        let was = self.code.take();
+        let opened = self.opened;
+        self.open_file(p);
+        if self.opened != opened {
+            // The steps to undo belong to the file before
+            self.undo_stack.clear();
+            self.redo_stack.clear();
+            if let Some(mut c) = was {
+                self.pic_drop.extend(c.cache.drain().map(|(_, v)| v));
+                self.pic_drop.append(&mut c.drop_later);
+            }
+        } else if self.code.is_none() {
+            self.code = was;
+        }
+    }
+
+    fn open_file(&mut self, p: PathBuf) {
         let bytes = match std::fs::read(&p) {
             Ok(b) => b,
             Err(e) => {
@@ -1888,7 +1909,10 @@ impl Writer {
     /// 効く(HTML 書き出しは作らない — 互換は書式の境界で守る)。
     /// JS は実行しない。理解しない要素は帳簿へ。文字コードは UTF-8 → CP932
     pub(crate) fn open_html(&mut self, p: &std::path::Path, bytes: &[u8]) {
-        self.native = false; // docx と同じ扱いに戻す(上の open_plain の註)
+        // A page fetched from a URL comes here without `open`
+        self.code = None;
+        self.opened += 1;
+        self.native = false; // Back to the docx handling (see open_plain)
         let text = match std::str::from_utf8(bytes) {
             Ok(t) => t.to_string(),
             Err(_) => {
@@ -2554,6 +2578,8 @@ impl Writer {
             left_mm: 12.0, right_mm: 12.0, top_mm: 12.0, bottom_mm: 12.0,
             columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None,
         };
+        self.code = None;
+        self.opened += 1;
         self.set_doc(doc);
         self.adopt_font();
         self.path = Some(p.to_path_buf());
@@ -2576,7 +2602,17 @@ impl Writer {
         if self.code_open {
             self.notes.clear();
             self.enter_code(p, &text);
-            self.status = ui::tf!("code_opened", p.file_name().unwrap_or_default().to_string_lossy()).into();
+            // Saving gives the file back its own line ends and final newline
+            if let Some(c) = self.code.as_mut() {
+                c.crlf = bytes.windows(2).any(|w| w == b"\r\n");
+                c.final_nl = bytes.is_empty() || bytes.ends_with(b"\n");
+            }
+            let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+            self.status = if std::str::from_utf8(bytes).is_err() {
+                ui::tf!("code_not_utf8", name).into()
+            } else {
+                ui::tf!("code_opened", name).into()
+            };
             return;
         }
         // **1つのファイルに文書が何枚も入っていることがあります**
@@ -2615,6 +2651,8 @@ impl Writer {
             self.docs.clear();
         }
         self.doc_at = 0;
+        self.code = None;
+        self.opened += 1;
         self.adopt_font();
         self.path = Some(p.to_path_buf());
         // **数式は開いたときに組みます。** 本文が持っているのは LaTeX の原文
@@ -3039,7 +3077,7 @@ impl Writer {
     }
 
     /// いま見ているファイルの持ち物を取り出す(入れ替えのため)。
-    fn take_open(&mut self) -> OpenFile {
+    pub(crate) fn take_open(&mut self) -> OpenFile {
         OpenFile {
             doc: std::mem::take(&mut self.doc),
             docs: std::mem::take(&mut self.docs),
@@ -3054,11 +3092,13 @@ impl Writer {
             tmpl: std::mem::replace(&mut self.tmpl, kumihan::theme::default_theme()),
             tmpl_path: self.tmpl_path.take(),
             notes: std::mem::take(&mut self.notes),
+            code: self.code.take(),
+            pg: self.pg.clone(),
         }
     }
 
     /// 取り出した持ち物を据える。
-    fn put_open(&mut self, f: OpenFile) {
+    pub(crate) fn put_open(&mut self, f: OpenFile) {
         self.doc = f.doc;
         self.docs = f.docs;
         self.doc_at = f.doc_at;
@@ -3072,6 +3112,8 @@ impl Writer {
         self.tmpl = f.tmpl;
         self.tmpl_path = f.tmpl_path;
         self.notes = f.notes;
+        self.code = f.code;
+        self.pg = f.pg;
     }
 
     /// 見るファイルを替える。
@@ -3385,6 +3427,10 @@ impl Writer {
     /// 資産(読めなかった部品・節・変更履歴)を守る。押した後は
     /// ネイティブになり、保存先は .adoc になる。
     pub(crate) fn distill_now(&mut self) {
+        if self.code.is_some() {
+            self.status = ui::t!("code_view_not_here").into();
+            return;
+        }
         if self.native {
             self.status = ui::t!("document_already_adoc_form").into();
             return;
@@ -4080,12 +4126,9 @@ impl Writer {
     pub(crate) fn write_recover(&mut self, cx: &mut Context<Self>) {
         self.flush_target();
         let dst = crate::io::backup_path(self.path.as_deref());
-        // 何枚も入っているファイルなら全部。保存と同じ形にします
-        let text = if self.docs.len() > 1 {
-            kumihan::adoc::write_many(&self.docs_for_save())
-        } else {
-            kumihan::adoc::write(&self.doc)
-        };
+        // The same text a save writes: the file's text in the split view,
+        // else every document of the file
+        let text = self.adoc_text();
         let orig = self.path.clone();
         let task = cx.background_executor().spawn(async move {
             if let Some(d) = dst.parent() {
@@ -4119,9 +4162,7 @@ impl Writer {
     /// 素の文字として保存する(.py / .txt / .md)。段落を改行でつなぐ
     pub(crate) fn save_text_to(&mut self, p: &std::path::Path) -> Result<(), String> {
         self.flush_target();
-        let text = self.doc.body_text();
-        // 末尾の改行は残す(POSIX の作法。git の差分が汚れない)
-        let text = if text.ends_with('\n') { text } else { format!("{text}\n") };
+        let text = self.file_text();
         std::fs::write(p, text).map_err(|e| e.to_string())
     }
 
@@ -4149,10 +4190,14 @@ impl Writer {
                 self.status = ui::tf!("paragraphs_tables", rep.paragraphs, doc.tables().count(), p.file_name().unwrap_or_default().to_string_lossy())
                 .into();
                 self.pg = doc.page.unwrap_or_default();
+                // An encrypted docx arrives here from the password panel,
+                // after `open` has left the split view in place
+                self.code = None;
+                self.opened += 1;
                 self.set_doc(doc);
                 self.adopt_font();
                 self.relayout_keep();
-                // 排他(共有フォルダの「後勝ちで潰す」を防ぐ。calc と同じ)
+                // Lock the file (so a shared folder does not lose work to the last save; as calc does)
                 self.acquire_lock(&p);
                 if let Some(who) = self.locked_by.clone() {
                     self.status = ui::tf!("open_overwrite_save_blocked", self.status, who)
@@ -4213,6 +4258,15 @@ impl Writer {
     }
 
     pub(crate) fn save_to(&mut self, p: PathBuf) {
+        // From the text of an .adoc, a docx is written from the document the
+        // text makes; the file being edited stays the .adoc
+        let ext = p.extension().and_then(|e| e.to_str()).map(str::to_string);
+        if self.code.is_some() && !ext.as_deref().is_some_and(|e| is_native_ext(e) || is_plain_ext(e)) {
+            if let Err(e) = self.as_parsed(|w| w.save_to(p)) {
+                self.status = ui::tf!("cant_save", e).into();
+            }
+            return;
+        }
         // The text of an .adoc goes back as it is (src/code.rs)
         if self.code.is_some() && p.extension().and_then(|e| e.to_str()).is_some_and(is_native_ext) {
             match self.save_text_to(&p) {

@@ -2386,5 +2386,8 @@
  "unknown_time_zone": "Không rõ tên múi giờ: {}",
  "code_pages_making": "Đang tạo các trang…",
  "code_pages_cannot": "Không thể tạo trang từ văn bản: {}",
- "code_opened": "{} — văn bản ở bên trái, các trang ở bên phải. Văn bản được lưu nguyên dạng"
+ "code_opened": "{} — văn bản ở bên trái, các trang ở bên phải. Văn bản được lưu nguyên dạng",
+ "code_view_not_here": "Không dùng được trên văn bản của tệp .adoc. Hãy viết trong văn bản",
+ "code_not_utf8": "{} không ở dạng UTF-8. Ký tự không đọc được hiện là �, và khi lưu sẽ ghi UTF-8",
+ "code_too_many_fonts": "Quá nhiều phông chữ cho một PDF ({})"
 }

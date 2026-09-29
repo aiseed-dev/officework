@@ -372,8 +372,13 @@ pub struct Writer {
     pic_gen: u64,
     pic_leaves: Option<std::sync::Arc<Vec<paper::pdfw::Leaf>>>,
     pic_cache: std::collections::HashMap<(usize, u32), std::sync::Arc<gpui::RenderImage>>,
+    /// Page pictures to give back to the GPU at the next draw
+    pub(crate) pic_drop: Vec<std::sync::Arc<gpui::RenderImage>>,
     /// An .adoc edited as its text beside its pages (src/code.rs)
     pub(crate) code: Option<code::CodeView>,
+    /// Counts the files put in place, so `open` can tell a file that could
+    /// not be opened from one that was
+    pub(crate) opened: u64,
     /// Whether an .adoc opens as its text beside its pages. From
     /// settings.toml (`adoc_code`); the tests start with it off, as most of
     /// them edit an .adoc on its pages
@@ -823,6 +828,10 @@ impl Writer {
     /// 文章の画面の的の順は [字(段落), 表の中ならセル, 節, 文書]
     pub(crate) fn usable_here(&self, cmd: &ribbon::Cmd) -> bool {
         if !cmd.ready || !Self::HANDLED.contains(&cmd.id) {
+            return false;
+        }
+        // The text of an .adoc takes only what works on text (src/code.rs)
+        if self.code.is_some() && !code::CODE_OK.contains(&cmd.id) {
             return false;
         }
         match ribbon::target_of(cmd.id) {
@@ -1318,6 +1327,11 @@ pub(crate) struct OpenFile {
     tmpl: kumihan::theme::Theme,
     tmpl_path: Option<PathBuf>,
     notes: Vec<SharedString>,
+    /// The split view of an .adoc edited as its text, and the paper its
+    /// text is laid out on: without them, going back to the tab would save
+    /// the text through the AsciiDoc writer and break it
+    code: Option<code::CodeView>,
+    pg: kumihan::PageSetup,
 }
 
 impl Default for OpenFile {
@@ -1336,6 +1350,8 @@ impl Default for OpenFile {
             tmpl: kumihan::theme::default_theme(),
             tmpl_path: None,
             notes: Vec::new(),
+            code: None,
+            pg: kumihan::PageSetup::default(),
         }
     }
 }

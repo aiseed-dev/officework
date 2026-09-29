@@ -31,10 +31,32 @@ impl Writer {
     /// pages (not the flowing view, the two-page spread or vertical text).
     /// `page_pictures = "0"` in settings.toml turns them off
     pub(crate) fn pictures_on(&self) -> bool {
+        // Read once: the settings file is on disk, and this is asked at
+        // every draw
+        static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
         !self.native
             && self.sheets()
             && self.page_src.is_some()
-            && ui::settings::get("page_pictures").is_none_or(|v| v.trim() != "0")
+            && *ON.get_or_init(|| ui::settings::get("page_pictures").is_none_or(|v| v.trim() != "0"))
+    }
+
+    /// Whether the pages are drawn as pictures this time: they are on, and
+    /// the pages could be made. When they could not (a header font that
+    /// cannot be read, say), the view draws the page itself rather than
+    /// showing blank paper
+    pub(crate) fn pictures_ready(&mut self) -> bool {
+        self.pictures_on() && self.pages_now().is_some()
+    }
+
+    /// Give back to the GPU the pictures that are no longer shown
+    pub(crate) fn release_pictures(&mut self, window: &mut Window, cx: &mut App) {
+        let mut gone = std::mem::take(&mut self.pic_drop);
+        if let Some(c) = self.code.as_mut() {
+            gone.append(&mut c.drop_later);
+        }
+        for img in gone {
+            cx.drop_image(img, Some(window));
+        }
     }
 
     /// **The PDF of a docx is written from the same pages as the screen**
@@ -71,7 +93,7 @@ impl Writer {
     fn pages_now(&mut self) -> Option<Arc<Vec<paper::pdfw::Leaf>>> {
         if self.pic_gen != self.layout_gen || self.pic_leaves.is_none() {
             self.pic_gen = self.layout_gen;
-            self.pic_cache.clear();
+            self.pic_drop.extend(self.pic_cache.drain().map(|(_, v)| v));
             self.pic_leaves =
                 self.page_src.as_ref().and_then(|s| paper::page_leaves(s).ok()).map(Arc::new);
         }
@@ -108,6 +130,7 @@ impl Writer {
         let tops = self.page_tops.clone();
         let view_from = self.scroll_mm;
         let view_to = self.scroll_mm + self.view_h_px / pxmm;
+        let mut shown = std::collections::HashSet::new();
         for (k, top) in tops.iter().enumerate() {
             if *top < from_mm - 0.01 || *top >= to_mm {
                 continue;
@@ -118,11 +141,23 @@ impl Writer {
                 continue;
             }
             if let Some((pic, w, h)) = self.page_picture(k, pxmm * scale) {
+                shown.insert(k);
                 paper = paper.child(
                     gpui::img(pic).absolute().left(px(0.0)).top(px(top * pxmm)).w(px(w * pxmm)).h(px(h * pxmm)),
                 );
             }
         }
+        // Only the pages shown (and one either side) stay, at this zoom:
+        // a long document scrolled through, or zoomed, keeps no more
+        let now = ((pxmm * scale) * 100.0).round() as u32;
+        let drop = &mut self.pic_drop;
+        self.pic_cache.retain(|(k, b), v| {
+            let keep = *b == now && shown.contains(k);
+            if !keep {
+                drop.push(v.clone());
+            }
+            keep
+        });
         paper
     }
 }

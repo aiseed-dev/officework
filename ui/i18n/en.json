@@ -2386,5 +2386,8 @@
  "unknown_time_zone": "Unknown time zone name: {}",
  "code_pages_making": "Making the pages…",
  "code_pages_cannot": "Could not make the pages from the text: {}",
- "code_opened": "{} — the text on the left, its pages on the right. The text is saved as it is"
+ "code_opened": "{} — the text on the left, its pages on the right. The text is saved as it is",
+ "code_view_not_here": "This does not work on the text of an .adoc. Write it in the text instead",
+ "code_not_utf8": "{} is not in UTF-8. Characters that could not be read show as �, and saving writes UTF-8",
+ "code_too_many_fonts": "Too many fonts for one PDF ({})"
 }

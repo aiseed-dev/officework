@@ -383,6 +383,11 @@ impl Writer {
     /// 同上。`want_w_mm` があれば、その幅で置きます(高さは比例)。
     /// Python が細かく描いた絵を、紙の上では小さく置きたいときに使います
     pub(crate) fn insert_image_with(&mut self, path: &std::path::Path, want_w_mm: Option<f32>) {
+        // A picture dropped on the text of an .adoc would be lost on saving
+        if self.code.is_some() {
+            self.status = ui::t!("code_view_not_here").into();
+            return;
+        }
         match std::fs::read(path) {
             Ok(bytes) => {
                 let is_svg = path

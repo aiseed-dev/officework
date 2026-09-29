@@ -2386,5 +2386,8 @@
  "unknown_time_zone": "Nombre de zona horaria desconocido: {}",
  "code_pages_making": "Creando las páginas…",
  "code_pages_cannot": "No se pueden crear las páginas a partir del texto: {}",
- "code_opened": "{} — el texto a la izquierda, sus páginas a la derecha. El texto se guarda tal cual"
+ "code_opened": "{} — el texto a la izquierda, sus páginas a la derecha. El texto se guarda tal cual",
+ "code_view_not_here": "Esto no funciona en el texto de un .adoc. Escríbalo en el texto",
+ "code_not_utf8": "{} no está en UTF-8. Los caracteres ilegibles aparecen como �, y al guardar se escribe UTF-8",
+ "code_too_many_fonts": "Demasiadas fuentes para un PDF ({})"
 }

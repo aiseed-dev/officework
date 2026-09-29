@@ -2386,5 +2386,8 @@
  "unknown_time_zone": "Bilinmeyen saat dilimi adı: {}",
  "code_pages_making": "Sayfalar oluşturuluyor…",
  "code_pages_cannot": "Metinden sayfalar oluşturulamadı: {}",
- "code_opened": "{} — solda metin, sağda sayfaları. Metin olduğu gibi kaydedilir"
+ "code_opened": "{} — solda metin, sağda sayfaları. Metin olduğu gibi kaydedilir",
+ "code_view_not_here": "Bu, bir .adoc dosyasının metninde çalışmaz. Metne yazın",
+ "code_not_utf8": "{} UTF-8 değil. Okunamayan karakterler � olarak görünür ve kaydetme UTF-8 yazar",
+ "code_too_many_fonts": "Bir PDF için çok fazla yazı tipi ({})"
 }

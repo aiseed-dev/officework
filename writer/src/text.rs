@@ -520,6 +520,14 @@ impl Writer {
 
     /// HTML を1枚書きます(CSS は中に入れます)。
     pub(crate) fn write_html(&mut self, path: &std::path::Path) {
+        // From the text of an .adoc, the HTML of the document the text makes
+        if self.code.is_some() {
+            let p = path.to_path_buf();
+            if let Err(e) = self.as_parsed(|w| w.write_html(&p)) {
+                self.status = ui::tf!("cant_export", e).into();
+            }
+            return;
+        }
         // **Web 用のテンプレートがあればそれで出します**(テンプレート-web.toml)。
         // 無ければいま着ている物。互換の文書(docx)には型紙がないので既定です
         let (th, used) = self.template_for("web");
@@ -1277,8 +1285,9 @@ impl Writer {
         // **横幅可変(原稿の姿)のときは、紙も窓に合わせます。**
         // 紙だけ A4 のままだと、窓のほうが広い機械で本文と表が紙からはみ出ます
         // (2026-08-18 実機で見つけました)
+        // The text of an .adoc flows to its column, at the zoom it is shown at
         if self.code.is_some() {
-            return (self.code_text_w() / crate::PX_PER_MM).max(60.0);
+            return (self.code_text_w() / (crate::PX_PER_MM * self.zoom.max(0.1))).max(60.0);
         }
         if self.native && self.tmpl.setting.fluid {
             return (self.view_w_px / crate::PX_PER_MM).max(60.0);

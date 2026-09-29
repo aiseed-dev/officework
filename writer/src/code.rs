@@ -19,12 +19,29 @@ const PAUSE_MS: u64 = 350;
 /// The gap between two pages in the right pane (mm)
 const GAP_MM: f32 = 6.0;
 
+/// Numbers each split view, so pages made for one view never land in
+/// another (a file opened while the pages of the last were being made)
+static VIEWS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+/// The buttons and keys that work on the text of an .adoc. The others
+/// change the look or the structure of a document (a table, a picture, a
+/// style), which the text does not hold, and they would be lost on saving
+pub(crate) const CODE_OK: &[&str] = &[
+    "open", "save", "undo", "redo", "selectall", "pdf", "replace", "spell", "wordcount",
+    "copy", "cut", "paste", "zoom", "zoom-in", "zoom-out", "zoom100", "fit-page", "fit-width",
+    "darkmode", "ui-bigger", "ui-smaller", "show-toolbar", "show-statusbar", "show-left",
+    "show-right", "nav", "terminal", "ruler", "hidenchars", "ai-where", "py-folder",
+];
+
 /// The pages made from the text at one moment
 pub(crate) struct Preview {
     /// Each page and the document (of the file) it belongs to
     pub pages: Vec<(paper::pdfw::Leaf, usize)>,
-    /// The fonts of each document, in the order its leaves name them
-    pub fonts: Vec<Vec<(String, Vec<u8>)>>,
+    /// The fonts of all the documents, each face once
+    pub fonts: Vec<(String, Arc<Vec<u8>>)>,
+    /// For each document, where each of its fonts (in the order its leaves
+    /// name them) is in `fonts`
+    pub font_at: Vec<Vec<usize>>,
     /// The paper of a page that does not carry its own size
     pub paper: (f32, f32),
     /// The letters on the pages, line by line, to find the text a place
@@ -121,7 +138,8 @@ pub(crate) fn match_place(from: &[char], at: usize, to: &[char]) -> Option<usize
         return None;
     }
     for len in [8usize, 5, 3, 2, 1] {
-        let end = (at..from.len()).take(len).take_while(|&i| plain(from[i])).last()? + 1;
+        let Some(last) = (at..from.len()).take(len).take_while(|&i| plain(from[i])).last() else { continue };
+        let end = last + 1;
         let needle = &from[at..end];
         if needle.len() < len.min(2) || needle.iter().all(|c| c.is_whitespace()) {
             continue;
@@ -172,9 +190,22 @@ fn visible_from(text: &str, byte: usize) -> usize {
     }
 }
 
+impl Preview {
+    /// The font bytes the leaves of document `d` name, in their order
+    pub fn fonts_of(&self, d: usize) -> Vec<&[u8]> {
+        self.font_at.get(d).map(|m| m.iter().map(|&i| self.fonts[i].1.as_slice()).collect()).unwrap_or_default()
+    }
+}
+
 /// The state of the split view
 #[derive(Default)]
 pub(crate) struct CodeView {
+    /// Which view this is (`VIEWS`)
+    pub id: u64,
+    /// The file's line ends are CR LF, and whether it ends with a newline:
+    /// saving gives them back
+    pub crlf: bool,
+    pub final_nl: bool,
     /// Counts changes to the text; `built` is the one the pages show
     pub edits: u64,
     pub built: u64,
@@ -185,6 +216,8 @@ pub(crate) struct CodeView {
     /// Why the text could not be made into pages, shown above them
     pub err: Option<String>,
     pub cache: std::collections::HashMap<(usize, u32), Arc<gpui::RenderImage>>,
+    /// Pictures no longer shown, given back to the GPU at the next draw
+    pub drop_later: Vec<Arc<gpui::RenderImage>>,
     pub scroll_px: f32,
     /// The width the text was last laid out to (px)
     pub laid_w: f32,
@@ -215,7 +248,8 @@ pub(crate) struct Job {
 
 pub(crate) fn make_pages(job: Job) -> Result<Preview, String> {
     let mut pages = Vec::new();
-    let mut fonts = Vec::new();
+    let mut fonts: Vec<(String, Arc<Vec<u8>>)> = Vec::new();
+    let mut font_at = Vec::new();
     let mut size = (210.0, 297.0);
     for (i, doc) in job.docs.iter().enumerate() {
         // The same steps as the writer's layout of an .adoc and the PDF:
@@ -240,15 +274,24 @@ pub(crate) fn make_pages(job: Job) -> Result<Preview, String> {
             let p = paper::Paper::from_page(&laid.page);
             size = (p.width_mm, p.height_mm);
         }
-        let mut f = vec![(laid.family, laid.font)];
-        f.extend(run_fonts);
         for leaf in paper::page_leaves(&src)? {
             pages.push((leaf, i));
         }
-        fonts.push(f);
+        // The documents of one file share their faces: keep each once
+        let mut at = Vec::new();
+        for (name, bytes) in std::iter::once((laid.family, laid.font)).chain(run_fonts) {
+            match fonts.iter().position(|(n, _)| *n == name) {
+                Some(k) => at.push(k),
+                None => {
+                    at.push(fonts.len());
+                    fonts.push((name, Arc::new(bytes)));
+                }
+            }
+        }
+        font_at.push(at);
     }
     let lines = lines_of(&pages, size);
-    Ok(Preview { pages, fonts, paper: size, lines, notes: job.notes })
+    Ok(Preview { pages, fonts, font_at, paper: size, lines, notes: job.notes })
 }
 
 impl Writer {
@@ -263,7 +306,14 @@ impl Writer {
         self.encrypt_pw = None;
         self.docs.clear();
         self.doc_at = 0;
-        self.code = Some(CodeView { edits: 1, ..Default::default() });
+        // Nothing of the file before stays: its look, its template and the
+        // lock someone else held on it
+        self.tmpl = kumihan::theme::default_theme();
+        self.tmpl_path = None;
+        self.locked_by = None;
+        self.opened += 1;
+        let id = VIEWS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.code = Some(CodeView { id, edits: 1, final_nl: true, ..Default::default() });
         self.pg = kumihan::PageSetup {
             left_mm: 6.0,
             right_mm: 6.0,
@@ -286,22 +336,83 @@ impl Writer {
         Ok(Job { docs, theme, iter: ui::calc_iter_setting(), notes })
     }
 
-    /// The PDF of the text: the pages the right pane shows. The fonts of
-    /// the documents in the file go into one list, and each letter is
-    /// pointed at its face in that list
-    pub(crate) fn code_pdf(&mut self, p: &std::path::Path) -> Result<(), String> {
-        let pv = make_pages(self.job_now()?)?;
-        let mut fonts: Vec<&[u8]> = Vec::new();
-        let mut first = Vec::new();
-        for f in &pv.fonts {
-            first.push(fonts.len());
-            fonts.extend(f.iter().map(|(_, b)| b.as_slice()));
+    /// The text of the file as a save writes it: its own line ends, and a
+    /// final newline when the file had one
+    pub(crate) fn file_text(&self) -> String {
+        let mut text = self.doc.body_text();
+        if !text.ends_with('\n') {
+            text.push('\n');
         }
+        if let Some(c) = &self.code {
+            if !c.final_nl {
+                text.pop();
+            }
+            if c.crlf {
+                text = text.replace('\n', "\r\n");
+            }
+        }
+        text
+    }
+
+    /// The AsciiDoc of what is being edited: the file's text in the split
+    /// view, else every document of the file written out
+    pub(crate) fn adoc_text(&self) -> String {
+        if self.code.is_some() {
+            self.file_text()
+        } else if self.docs.len() > 1 {
+            kumihan::adoc::write_many(&self.docs_for_save())
+        } else {
+            kumihan::adoc::write(&self.doc)
+        }
+    }
+
+    /// Run `f` with the document the text makes in place of the text, as
+    /// an .adoc opened on its pages would be (to write a docx or HTML from
+    /// it), then put the text back as it was
+    pub(crate) fn as_parsed<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> Result<R, String> {
+        self.flush_target();
+        let text = self.doc.body_text();
+        let (docs, _) = kumihan::adoc::parse_many_full(&text).map_err(|e| e.to_string())?;
+        let path = self.path.clone().unwrap_or_default();
+        let (theme, tmpl_path, _) = self.load_template(docs.first().and_then(|d| d.template.as_deref()), &path);
+        let first = docs.first().cloned().unwrap_or_default();
+        let target = self.target;
+        let keep = self.take_open();
+        self.path = keep.path.clone();
+        self.dirty = keep.dirty;
+        self.ed = Editor::new(&first.body_text());
+        self.doc = first;
+        self.docs = if docs.len() > 1 { docs } else { Vec::new() };
+        self.doc_at = 0;
+        self.native = true;
+        // The paper the template gives, as an .adoc opened on its pages has
+        self.pg = theme.page.unwrap_or_default();
+        self.tmpl = theme;
+        self.tmpl_path = tmpl_path;
+        self.target = Target::Body;
+        let r = f(self);
+        self.put_open(keep);
+        self.target = target;
+        Ok(r)
+    }
+
+    /// The PDF of the text: the pages the right pane shows, laid out with
+    /// the print template when the folder has one (as the PDF of an .adoc
+    /// opened on its pages is). Each letter is pointed at its face in the
+    /// one list of the file's fonts
+    pub(crate) fn code_pdf(&mut self, p: &std::path::Path) -> Result<(), String> {
+        let mut job = self.job_now()?;
+        job.theme = self.as_parsed(|w| w.template_for("印刷").0)?;
+        let pv = make_pages(job)?;
+        if pv.fonts.len() > 256 {
+            return Err(ui::tf!("code_too_many_fonts", pv.fonts.len()).to_string());
+        }
+        let fonts: Vec<&[u8]> = pv.fonts.iter().map(|(_, b)| b.as_slice()).collect();
         let mut leaves = Vec::new();
         for (mut leaf, d) in pv.pages {
-            let at = first[d];
+            let at = &pv.font_at[d];
             for piece in &mut leaf.pieces {
-                piece.font = (piece.font as usize + at).min(255) as u8;
+                piece.font = at.get(piece.font as usize).copied().unwrap_or(0) as u8;
             }
             leaves.push(leaf);
         }
@@ -315,9 +426,10 @@ impl Writer {
         (self.view_w_px * 0.5).round()
     }
 
-    /// The width the left side lays its lines to (px)
+    /// The width the left side lays its lines to (px on the screen)
     pub(crate) fn code_text_w(&self) -> f32 {
-        (self.view_w_px - self.code_preview_w() - 60.0).max(200.0)
+        let panel = if self.rp_open { crate::panels::RP_PANEL_W } else { 0.0 };
+        (self.view_w_px - self.code_preview_w() - panel - 60.0).max(200.0)
     }
 
     /// Called after every layout: the text may have changed
@@ -361,6 +473,7 @@ impl Writer {
             return;
         }
         let edits = c.edits;
+        let id = c.id;
         let job = match self.job_now() {
             Ok(j) => j,
             Err(e) => {
@@ -376,13 +489,14 @@ impl Writer {
         cx.spawn(async move |this, cx| {
             let r = work.await;
             let _ = this.update(cx, |this, cx| {
-                if let Some(c) = this.code.as_mut() {
+                if let Some(c) = this.code.as_mut().filter(|c| c.id == id) {
                     c.busy = false;
                     c.built = edits;
                     match r {
                         Ok(p) => {
                             c.pages = Some(Arc::new(p));
-                            c.cache.clear();
+                            let old: Vec<_> = c.cache.drain().map(|(_, v)| v).collect();
+                            c.drop_later.extend(old);
                             c.err = None;
                             c.synced = None;
                         }
@@ -401,17 +515,23 @@ impl Writer {
     pub(crate) fn code_sync(&mut self) {
         let cur = self.ed.cursor();
         let view_h = self.view_h_px;
-        let text = self.ed.text().to_string();
         let Some(c) = self.code.as_mut() else { return };
         if c.synced == Some(cur) {
             return;
         }
         let Some(pv) = c.pages.clone() else { return };
         c.synced = Some(cur);
+        let text = self.ed.text().to_string();
         let src: Vec<char> = text.chars().collect();
-        let at = text[..visible_from(&text, cur.min(text.len()))].chars().count();
+        let cur = cur.min(text.len());
+        let at = text[..visible_from(&text, cur)].chars().count();
         let (pt, starts) = page_text(&pv.lines);
-        let Some(j) = match_place(&src, at, &pt) else { return };
+        // A caret at the end of a line, or on a line of markings only, has
+        // no letter after it: the letters its line starts with are used
+        let line_start = text[..cur].rfind('\n').map(|i| i + 1).unwrap_or(0);
+        let from_line = text[..visible_from(&text, line_start)].chars().count();
+        let Some(j) = match_place(&src, at, &pt).or_else(|| match_place(&src, from_line, &pt)) else { return };
+        let Some(c) = self.code.as_mut() else { return };
         let li = starts.partition_point(|&s| s <= j).saturating_sub(1);
         c.mark = Some(li);
         let Some(l) = pv.lines.get(li) else { return };
@@ -520,17 +640,20 @@ impl Writer {
             at += (leaf.size_mm.map(|s| s.1).unwrap_or(pv.paper.1) + GAP_MM) * pxmm;
         }
         c.scroll_px = c.scroll_px.min((at - view_h * 0.5).max(0.0));
+        let now = (bai * 100.0).round() as u32;
+        let mut shown = std::collections::HashSet::new();
         for (k, (leaf, d)) in pv.pages.iter().enumerate() {
             let (w, h) = leaf.size_mm.unwrap_or(pv.paper);
             let (y, hp) = (c.tops[k] - c.scroll_px, h * pxmm);
             if y + hp < -view_h || y > view_h * 2.0 {
                 continue;
             }
-            let key = (k, (bai * 100.0).round() as u32);
+            shown.insert(k);
+            let key = (k, now);
             let pic = match c.cache.get(&key) {
                 Some(p) => Some(p.clone()),
                 None => {
-                    let fonts: Vec<&[u8]> = pv.fonts[*d].iter().map(|(_, b)| b.as_slice()).collect();
+                    let fonts = pv.fonts_of(*d);
                     let p = crate::pages::picture(leaf, w, h, bai, &fonts);
                     if let Some(p) = &p {
                         c.cache.insert(key, p.clone());
@@ -544,6 +667,15 @@ impl Writer {
                 );
             }
         }
+        // Only the pages near the view stay, at this zoom
+        let drop = &mut c.drop_later;
+        c.cache.retain(|(k, b), v| {
+            let keep = *b == now && shown.contains(k);
+            if !keep {
+                drop.push(v.clone());
+            }
+            keep
+        });
         // The line the caret's text is on
         if let Some(l) = c.mark.and_then(|i| pv.lines.get(i)) {
             let (w, _) = pv.pages[l.page].0.size_mm.unwrap_or(pv.paper);
