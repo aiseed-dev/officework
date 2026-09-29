@@ -229,68 +229,89 @@ fn moji(
     mm: f64,
     fonts: &[&[u8]],
 ) {
-    // 書体ごとに1回だけ開く。`Piece::font` の番号で引く(無い番号は既定)
-    let faces: Vec<Option<(ttf_parser::Face<'_>, FontData)>> = fonts
-        .iter()
-        .map(|data| {
-            let face = ttf_parser::Face::parse(data, 0).ok()?;
-            let fd = FontData::new(Blob::new(std::sync::Arc::new(data.to_vec())), 0);
-            Some((face, fd))
-        })
-        .collect();
+    // The letters are drawn the way the PDF writer writes them
+    // (`pdfw::write_pages_fonts`): the face that has every letter of the
+    // piece (`face_for`), character spacing (Tc) and horizontal scale (Tz)
+    // on the advances, rotation, italic shear for a face that is not
+    // italic, bold stroked only on a face that is not bold, and the
+    // underline and strikethrough lines. The pictures drew none of these,
+    // and a run with spacing drifted off the caret (2026-09-29 review)
+    let faces: Vec<Option<ttf_parser::Face<'_>>> =
+        fonts.iter().map(|data| ttf_parser::Face::parse(data, 0).ok()).collect();
+    let all: Option<Vec<ttf_parser::Face<'_>>> = faces.iter().cloned().collect();
+    let mut datas: Vec<Option<FontData>> = vec![None; fonts.len()];
+    let pt_px = 25.4 / 72.0 * mm;
     for p in &leaf.pieces {
         if p.text.is_empty() {
             continue;
         }
-        let k = (p.font as usize).min(faces.len().saturating_sub(1));
-        let Some((face, fd)) = faces.get(k).and_then(|f| f.as_ref()).or_else(|| faces.first().and_then(|f| f.as_ref())) else { continue };
+        let want = (p.font as usize).min(faces.len().saturating_sub(1));
+        let fi = match &all {
+            Some(ok) => crate::pdfw::face_for(&p.text, p.font, ok),
+            None => want,
+        };
+        let Some(face) = faces.get(fi).and_then(|f| f.as_ref()) else { continue };
+        let fd = datas[fi]
+            .get_or_insert_with(|| FontData::new(Blob::new(Arc::new(fonts[fi].to_vec())), 0))
+            .clone();
         let em = face.units_per_em() as f64;
-        // pt を画素に(1pt = 1/72 インチ = 25.4/72 mm)
-        let size = p.size_pt as f64 * 25.4 / 72.0 * mm;
-        // **`y_mm` は字の下端**です(pdfw と同じ)。紙は下からの y なので
-        // 高さから引き、そのまま置き位置になります
-        let x0 = p.x_mm as f64 * mm;
-        let y0 = (h_mm - p.y_mm) as f64 * mm;
+        let size = p.size_pt as f64 * pt_px;
+        let th = if p.tz > 0.0 { p.tz as f64 / 100.0 } else { 1.0 };
+        let tc = p.tc_pt as f64 * pt_px;
         let mut okuri = 0.0f64;
         let mut gs: Vec<Glyph> = Vec::with_capacity(p.text.chars().count());
         for ch in p.text.chars() {
             let Some(gid) = face.glyph_index(ch) else { continue };
-            gs.push(Glyph { id: gid.0 as u32, x: (x0 + okuri) as f32, y: y0 as f32 });
+            gs.push(Glyph { id: gid.0 as u32, x: okuri as f32, y: 0.0 });
             let adv = face.glyph_hor_advance(gid).unwrap_or(0) as f64;
-            okuri += adv / em * size;
+            // PDF: tx = (w0 * Tfs + Tc) * Th
+            okuri += (adv / em * size + tc) * th;
         }
-        if gs.is_empty() {
-            continue;
-        }
-        let c = p.color.as_deref().map(crate::pdfw::rgb).unwrap_or((0.0, 0.0, 0.0));
-        cx.set_paint(iro(c, 1.0));
-        cx.glyph_run(res, fd)
-            .font_size(size as f32)
-            .hint(false)
-            .fill_glyphs(gs.into_iter());
-        // 太字は 0.12mm ずらして二度打ちます(pdfw と同じ合成)
-        if p.bold {
-            let zure = 0.12 * mm;
-            let gs2: Vec<Glyph> = p
-                .text
-                .chars()
-                .scan(0.0f64, |ok, ch| {
-                    let gid = face.glyph_index(ch)?;
-                    let g = Glyph {
-                        id: gid.0 as u32,
-                        x: (x0 + *ok + zure) as f32,
-                        y: y0 as f32,
-                    };
-                    *ok += face.glyph_hor_advance(gid).unwrap_or(0) as f64 / em * size;
-                    Some(g)
-                })
-                .collect();
-            if !gs2.is_empty() {
-                cx.glyph_run(res, fd)
+        let (r, g, b) = p.color.as_deref().map(crate::pdfw::rgb).unwrap_or((0.0, 0.0, 0.0));
+        if !gs.is_empty() {
+            // `y_mm` is the baseline, from the bottom of the paper; the
+            // rotation turns left (y goes down here, so it is negated)
+            let at = Affine::translate((p.x_mm as f64 * mm, (h_mm - p.y_mm) as f64 * mm))
+                * Affine::rotate(-(p.rotation as f64).to_radians());
+            let sh = if p.italic && !face.is_italic() {
+                -(face.italic_angle() as f64).to_radians().tan()
+            } else {
+                0.0
+            };
+            let per_glyph = Affine::new([th, 0.0, -sh, 1.0, 0.0, 0.0]);
+            cx.set_transform(at);
+            cx.set_paint(iro((r, g, b), 1.0));
+            cx.glyph_run(res, &fd)
+                .font_size(size as f32)
+                .glyph_transform(per_glyph)
+                .hint(false)
+                .fill_glyphs(gs.clone().into_iter());
+            // Bold on a face that is not bold: the outline stroked at a
+            // thirtieth of the size, as the PDF's `Tr 2`
+            if p.bold && !face.is_bold() {
+                cx.set_stroke(Stroke { width: p.size_pt as f64 / 30.0 * pt_px, ..Default::default() });
+                cx.glyph_run(res, &fd)
                     .font_size(size as f32)
+                    .glyph_transform(per_glyph)
                     .hint(false)
-                    .fill_glyphs(gs2.into_iter());
+                    .stroke_glyphs(gs.into_iter());
             }
+            cx.set_transform(Affine::IDENTITY);
+        }
+        // Underline and strikethrough, the width of the piece
+        for (on, at) in [(p.underline, kumihan::UNDERLINE_EM), (p.strike, kumihan::STRIKE_EM)] {
+            if !on || p.w_mm <= 0.0 {
+                continue;
+            }
+            let hh = p.size_pt * 25.4 / 72.0;
+            let y = (h_mm - (p.y_mm + hh * at)) as f64 * mm;
+            let mut path = BezPath::new();
+            path.move_to(Point::new(p.x_mm as f64 * mm, y));
+            path.line_to(Point::new((p.x_mm + p.w_mm) as f64 * mm, y));
+            let w_mm = (hh as f64 * 0.05).max(0.3 * 25.4 / 72.0);
+            cx.set_stroke(Stroke { width: w_mm * mm, join: Join::Miter, start_cap: Cap::Butt, end_cap: Cap::Butt, ..Default::default() });
+            cx.set_paint(iro((r, g, b), 1.0));
+            cx.stroke_path(&path);
         }
     }
 }
@@ -716,6 +737,98 @@ mod tests {
         let ari = egaku_with(&leaf, 40.0, 20.0, 4.0, Some(&data));
         assert_eq!(sumi(&nashi), 0, "書体を渡していないのに字が出ている");
         assert!(sumi(&ari) > 50, "字が出ていない: 墨の画素 {}", sumi(&ari));
+    }
+
+    fn ja_font() -> Vec<u8> {
+        let (fam, _) = kumihan::font::for_text(None, "あ".chars()).expect("書体");
+        kumihan::font::load(fam).expect("読めない")
+    }
+
+    /// Dark pixels in a box of the picture (mm from the top left)
+    fn ink_in(e: &E, bai: f32, x0: f32, x1: f32, y0: f32, y1: f32) -> usize {
+        let w = e.w as usize;
+        let mut n = 0;
+        for y in (y0 * bai) as usize..(y1 * bai) as usize {
+            for x in (x0 * bai) as usize..(x1 * bai) as usize {
+                let i = (y * w + x) * 4;
+                if e.rgba[i] < 128 {
+                    n += 1;
+                }
+            }
+        }
+        n
+    }
+
+    /// **Underline and strikethrough are drawn as in the PDF**: a line the
+    /// width of the piece. The pictures drew neither (2026-09-29 review)
+    #[test]
+    fn underline_and_strike_are_drawn() {
+        let data = ja_font();
+        let piece = |under: bool, strike: bool| Leaf {
+            pieces: vec![crate::pdfw::Piece {
+                x_mm: 5.0, y_mm: 10.0, size_pt: 20.0, w_mm: 30.0,
+                text: "あ".into(), underline: under, strike, ..Default::default()
+            }],
+            ..Default::default()
+        };
+        // Past the letter (7mm wide), where only a line can be
+        let (x0, x1) = (20.0, 34.0);
+        let h = 20.0 * 25.4 / 72.0;
+        let under_y = 20.0 - (10.0 + h * kumihan::UNDERLINE_EM);
+        let strike_y = 20.0 - (10.0 + h * kumihan::STRIKE_EM);
+        let plain = egaku_with(&piece(false, false), 40.0, 20.0, 4.0, Some(&data));
+        let lined = egaku_with(&piece(true, true), 40.0, 20.0, 4.0, Some(&data));
+        assert_eq!(ink_in(&plain, 4.0, x0, x1, 0.0, 20.0), 0);
+        assert!(ink_in(&lined, 4.0, x0, x1, under_y - 0.5, under_y + 0.5) > 20, "no underline");
+        assert!(ink_in(&lined, 4.0, x0, x1, strike_y - 0.5, strike_y + 0.5) > 20, "no strikethrough");
+    }
+
+    /// **Character spacing (`Tc`) moves the letters after each one**, as
+    /// the layout placed them. It was ignored, so the letters drifted off
+    /// the caret and selection
+    #[test]
+    fn character_spacing_moves_the_letters() {
+        let data = ja_font();
+        let piece = |tc: f32| Leaf {
+            pieces: vec![crate::pdfw::Piece {
+                x_mm: 2.0, y_mm: 10.0, size_pt: 20.0, w_mm: 30.0,
+                text: "ああ".into(), tc_pt: tc, ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let right_edge = |e: &E| -> usize {
+            let w = e.w as usize;
+            (0..w).rev().find(|&x| (0..e.h as usize).any(|y| e.rgba[(y * w + x) * 4] < 128)).unwrap_or(0)
+        };
+        let tight = egaku_with(&piece(0.0), 60.0, 20.0, 4.0, Some(&data));
+        let wide = egaku_with(&piece(20.0), 60.0, 20.0, 4.0, Some(&data));
+        // The second letter moves by 20pt = 7.06mm = 28px at 4px/mm
+        let moved = right_edge(&wide) as i64 - right_edge(&tight) as i64;
+        assert!((moved - 28).abs() <= 2, "moved {moved}px");
+    }
+
+    /// **A letter the named face lacks is drawn in the first face**, as the
+    /// PDF writer does (`face_for`); it went missing on the pictures
+    #[test]
+    fn a_letter_the_face_lacks_comes_from_the_first_face() {
+        let ja = ja_font();
+        // A face on this machine without kana; none found, nothing to test
+        let Some(latin) = kumihan::font::list().iter().find_map(|f| {
+            let d = kumihan::font::load(f).ok()?;
+            let face = ttf_parser::Face::parse(&d, 0).ok()?;
+            (face.glyph_index('A').is_some() && face.glyph_index('あ').is_none()).then_some(d)
+        }) else {
+            return;
+        };
+        let leaf = Leaf {
+            pieces: vec![crate::pdfw::Piece {
+                x_mm: 5.0, y_mm: 10.0, size_pt: 20.0, w_mm: 8.0,
+                text: "あ".into(), font: 1, ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let e = egaku_fonts(&leaf, 40.0, 20.0, 4.0, &[&ja, &latin]);
+        assert!(ink_in(&e, 4.0, 4.0, 14.0, 2.0, 12.0) > 30, "the letter is missing");
     }
 
     /// **紙は必ず白く敷きます。** 敷かないと透明のままで、開く道具に
