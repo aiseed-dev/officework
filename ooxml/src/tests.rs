@@ -2741,6 +2741,71 @@ mod hf_tests {
         assert_eq!(s.as_bytes(), orig, "触っていない部品が変わった");
     }
 
+    /// **A header the document did not change is carried over as it was.**
+    /// Filling a template changes the body only, yet the header was written
+    /// again from the model, losing what the model does not hold (2 KB of a
+    /// Word letter's header11.xml went, 2026-09-29); a changed one is written
+    #[test]
+    fn an_unchanged_header_is_carried_over_untouched() {
+        let orig = r#"<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="x14" mc:Ignorable="w14" xmlns:mc="m"><w:p w14:paraId="1A2B3C4D"><w:pPr><w:pStyle w:val="Header"/></w:pPr><w:r><w:t>社外秘</w:t></w:r></w:p></w:hdr>"#.as_bytes();
+        let src = docx_with_header(orig);
+        let (mut doc, _) = crate::read(Cursor::new(&src)).unwrap();
+        assert!(!doc.header.paragraphs.is_empty(), "the header is not read");
+        // The body changes, the header does not
+        if let Some(kumihan::Block::Para(p)) = doc.blocks.first_mut() {
+            p.runs = vec![Run { text: "山田 花子".into(), size_pt: None, font: None, fmt: Default::default() }];
+        }
+        let mut out = Vec::new();
+        crate::write_with(&doc, Some(Cursor::new(&src)), Cursor::new(&mut out)).unwrap();
+        let mut z = zip::ZipArchive::new(Cursor::new(&out)).unwrap();
+        let mut s = String::new();
+        z.by_name("word/header1.xml").unwrap().read_to_string(&mut s).unwrap();
+        assert_eq!(s.as_bytes(), orig, "an unchanged header was written again");
+        // A changed header is written
+        doc.header.paragraphs = vec![para("部外秘")];
+        let mut out = Vec::new();
+        crate::write_with(&doc, Some(Cursor::new(&src)), Cursor::new(&mut out)).unwrap();
+        let (back, _) = crate::read(Cursor::new(&out)).unwrap();
+        assert_eq!(kumihan::paras_text(&back.header.paragraphs), "部外秘");
+    }
+
+    /// **A relationship the original has is not added again**, however its
+    /// target is written. Office writes `Target="/word/settings.xml"` and
+    /// `Target="/docProps/core.xml"`; the check looked for the relative form
+    /// only and added a second settings and a second core-properties
+    /// relationship to a Word template (2026-09-29). Part 1 11.3.3: the
+    /// settings part is the target of one relationship from the main document
+    #[test]
+    fn a_relationship_with_an_absolute_target_is_not_added_again() {
+        let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        let o: zip::write::FileOptions<'_, ()> = Default::default();
+        let mut put = |n: &str, d: &[u8]| {
+            zip.start_file(n, o).unwrap();
+            zip.write_all(d).unwrap();
+        };
+        put("[Content_Types].xml", br#"<Types xmlns="ct"><Default Extension="xml" ContentType="application/xml"/></Types>"#);
+        put("_rels/.rels", br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="/word/document.xml" Id="rId1"/><Relationship Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="/docProps/core.xml" Id="rId2"/></Relationships>"#);
+        put("docProps/core.xml", br#"<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>t</dc:title></cp:coreProperties>"#);
+        put("word/_rels/document.xml.rels", br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="/word/settings.xml" Id="rId6"/></Relationships>"#);
+        put("word/settings.xml", br#"<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>"#);
+        put("word/document.xml", r#"<w:document xmlns:w="x"><w:body><w:p><w:r><w:t>本文</w:t></w:r></w:p></w:body></w:document>"#.as_bytes());
+        let src = zip.finish().unwrap().into_inner();
+        let (mut doc, _) = crate::read(Cursor::new(&src)).unwrap();
+        doc.page_color = Some("FFF2CC".into());
+        let mut out = Vec::new();
+        crate::write_with(&doc, Some(Cursor::new(&src)), Cursor::new(&mut out)).unwrap();
+        let mut z = zip::ZipArchive::new(Cursor::new(&out)).unwrap();
+        let mut read_part = |n: &str| {
+            let mut s = String::new();
+            z.by_name(n).unwrap().read_to_string(&mut s).unwrap();
+            s
+        };
+        let root = read_part("_rels/.rels");
+        let doc_rels = read_part("word/_rels/document.xml.rels");
+        assert_eq!(root.matches("metadata/core-properties").count(), 1, "{root}");
+        assert_eq!(doc_rels.matches("relationships/settings\"").count(), 1, "{doc_rels}");
+    }
+
     #[test]
     fn saving_twice_does_not_duplicate_relations_or_parts() {
         let mut d = Document::plain("本文");

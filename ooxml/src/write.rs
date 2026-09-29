@@ -1951,6 +1951,24 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
     theme: Option<&kumihan::theme::Theme>,
     dst: W,
 ) -> Result<(), String> {
+    // **The header and footer as the original holds them**, to tell whether
+    // this document changed them. Filling a template changes the body only,
+    // and writing an unchanged header again from the model loses what the
+    // model does not hold (2026-09-29)
+    let mut original = original;
+    let before: Option<Document> = original.as_mut().and_then(|r| {
+        r.seek(std::io::SeekFrom::Start(0)).ok()?;
+        let d = crate::read(&mut *r).ok().map(|(d, _)| d);
+        r.seek(std::io::SeekFrom::Start(0)).ok()?;
+        d
+    });
+    let unchanged = |a: &kumihan::HeadFoot, b: &kumihan::HeadFoot, footer: bool, base: f32| {
+        a.part == b.part && a.anchors == b.anchors && hf_xml(a, footer, base) == hf_xml(b, footer, base)
+    };
+    let keep_hdr = before.as_ref().is_some_and(|o| {
+        o.watermark == doc.watermark && unchanged(&o.header, &doc.header, false, doc.base_pt())
+    });
+    let keep_ftr = before.as_ref().is_some_and(|o| unchanged(&o.footer, &doc.footer, true, doc.base_pt()));
     let mut zip = zip::ZipWriter::new(dst);
     let opts: zip::write::FileOptions<'_, ()> =
         zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
@@ -1987,11 +2005,11 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
             }
         }
     }
-    let hdr: Option<(String, String)> = (!hdr_src.paragraphs.is_empty()).then(|| (
+    let hdr: Option<(String, String)> = (!keep_hdr && !hdr_src.paragraphs.is_empty()).then(|| (
         hdr_src.part.clone().unwrap_or_else(|| "word/johdr1.xml".to_string()),
         hf_xml(&hdr_src, false, doc.base_pt()),
     ));
-    let ftr: Option<(String, String)> = (!doc.footer.paragraphs.is_empty()).then(|| (
+    let ftr: Option<(String, String)> = (!keep_ftr && !doc.footer.paragraphs.is_empty()).then(|| (
         doc.footer.part.clone().unwrap_or_else(|| "word/joftr1.xml".to_string()),
         hf_xml(&doc.footer, true, doc.base_pt()),
     ));
@@ -2170,8 +2188,11 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
     }
     {
         let mut rr = orig_root_rels.unwrap_or_else(|| ROOT_RELS.to_string());
+        // Checked by the relationship's type: Office writes the target as
+        // `/docProps/core.xml`, and a check on the relative form added a
+        // second core-properties relationship (2026-09-29)
         if (has_props || orig_core.is_some())
-            && !rr.contains("Target=\"docProps/core.xml\"")
+            && !rr.contains("relationships/metadata/core-properties\"")
         {
             if let Some(i) = rr.rfind("</Relationships>") {
                 rr.insert_str(i, concat!(
@@ -2356,8 +2377,11 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
             }
         }
         // 設定(settings.xml)への関係。素の文書に設定を足したときだけ要る
+        // Checked by type, as the core properties above: `/word/settings.xml`
+        // is the same part (Part 1 11.3.3, one relationship from the main
+        // document)
         if (doc.page_color.is_some() || doc.hyphenate || doc.protection.is_some())
-            && !rels.contains("Target=\"settings.xml\"")
+            && !rels.contains("relationships/settings\"")
         {
             add.push_str(&format!(
                 r#"<Relationship Id="rIdJOset" Type="{RNS_DOC}/settings" Target="settings.xml"/>"#
