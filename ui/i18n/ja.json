@@ -2389,5 +2389,8 @@
  "code_note_many": "{} × {}({} 行目ほか)",
  "docx_view_only": "docx は見るだけで開いています。直すときは、settings.toml に docx_edit = \"1\" と書いてください",
  "docx_opened_view_only": "{}。見るだけで開きました",
- "xlsx_opened_view_only": "{} を、印刷するページの形で、見るだけで開きました。直すときは、settings.toml に xlsx_edit = \"1\" と書いてください"
+ "xlsx_opened_view_only": "{} を、印刷するページの形で、見るだけで開きました。直すときは、settings.toml に xlsx_edit = \"1\" と書いてください",
+ "fill_missing_names": "データに無い名前: {}",
+ "fill_notes": "テンプレートに入らなかった物: {}",
+ "fill_written": "{} に、データを入れたテンプレートを書きました"
 }

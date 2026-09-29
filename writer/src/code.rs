@@ -68,6 +68,9 @@ pub(crate) struct Preview {
     pub lines: Vec<PLine>,
     /// Markup the pages do not read, with the file's line numbers
     pub notes: Vec<String>,
+    /// What filling a template reported (names the data lacks, what could
+    /// not be put in)
+    pub fill_notes: Vec<String>,
 }
 
 /// One line of letters on a page
@@ -317,7 +320,91 @@ pub(crate) struct Job {
     theme: kumihan::theme::Theme,
     iter: Option<(u32, f64)>,
     notes: Vec<String>,
+    /// A template to fill with the text as data, in place of laying the
+    /// text out
+    fill: Option<Fill>,
 }
+
+/// **A template made in Word or Excel that an .adoc of data names**
+/// (`:template: 送付状.docx`; docs/sekkei/sashikomi.ja.adoc). The text is the
+/// data: its tables of names and values fill the template, and the pages
+/// show the filled template
+pub(crate) struct Fill {
+    template: std::path::PathBuf,
+    text: String,
+    /// Where the data's picture files are looked for: the data file's folder
+    dir: std::path::PathBuf,
+}
+
+/// Whether a file name is that of a workbook (else a Word document)
+fn is_book_name(name: &str) -> bool {
+    let n = name.to_ascii_lowercase();
+    n.ends_with(".xlsx") || n.ends_with(".xltx") || n.ends_with(".xlsm")
+}
+
+/// The template to fill when the first document names a docx or an xlsx
+fn fill_of(docs: &[kumihan::Document], text: &str, path: &std::path::Path) -> Option<Fill> {
+    let name = docs.first()?.template.as_deref()?;
+    let lower = name.to_ascii_lowercase();
+    if !(lower.ends_with(".docx") || is_book_name(name)) {
+        return None;
+    }
+    let dir = path.parent().map(|d| d.to_path_buf()).unwrap_or_default();
+    Some(Fill { template: dir.join(name), text: text.to_string(), dir })
+}
+
+/// The template's bytes with the data filled in, and what the filling
+/// reports: names the data lacks, or what could not be put in
+fn fill_bytes(f: &Fill) -> Result<(Vec<u8>, Vec<String>), String> {
+    let bytes = std::fs::read(&f.template).map_err(|e| format!("{}: {e}", f.template.display()))?;
+    let (data, _) = kumihan::book_adoc::parse(&f.text)?;
+    if is_book_name(&f.template.to_string_lossy()) {
+        sheet::xlsx::patch::fill_template(&bytes, &data, Some(&f.dir))
+    } else {
+        let (out, missing) = ooxml::patch::fill_template(&bytes, &data)?;
+        let notes = if missing.is_empty() {
+            Vec::new()
+        } else {
+            vec![ui::tf!("fill_missing_names", missing.join(", ")).to_string()]
+        };
+        Ok((out, notes))
+    }
+}
+
+/// The pages of the filled template, laid out as its PDF
+fn fill_pages(f: &Fill) -> Result<Preview, String> {
+    let (bytes, notes) = fill_bytes(f)?;
+    let (leaves, fonts, paper) = if is_book_name(&f.template.to_string_lossy()) {
+        let (mut b, _) = sheet::xlsx::read_with(std::io::Cursor::new(bytes), &xlsx_read_options())?;
+        book::calc::recalc_all(&mut b);
+        ops::pdf::book_pages(&b)?
+    } else {
+        let (doc, _) = ooxml::read(std::io::Cursor::new(bytes)).map_err(|e| e.to_string())?;
+        let p = paper::doc_pages(&doc, None)?;
+        (p.leaves, p.fonts, (p.paper.width_mm, p.paper.height_mm))
+    };
+    let mut pv = preview_of(leaves, fonts, paper);
+    pv.fill_notes = notes;
+    Ok(pv)
+}
+
+/// Pages laid out elsewhere (a workbook, a filled template), all of one
+/// document with its own list of fonts
+fn preview_of(leaves: Vec<paper::pdfw::Leaf>, fonts: Vec<(String, Vec<u8>)>, paper: (f32, f32)) -> Preview {
+    let n = fonts.len();
+    let pages: Vec<(paper::pdfw::Leaf, usize)> = leaves.into_iter().map(|l| (l, 0)).collect();
+    let lines = lines_of(&pages, paper);
+    Preview {
+        pages,
+        fonts: fonts.into_iter().map(|(na, b)| (na, Arc::new(b))).collect(),
+        font_at: vec![(0..n).collect()],
+        paper,
+        lines,
+        notes: Vec::new(),
+        fill_notes: Vec::new(),
+    }
+}
+
 
 /// Write pages made by [`make_pages`] to a PDF: each letter is pointed at
 /// its face in the one list of the file's fonts, and the strokes drawn by
@@ -348,6 +435,11 @@ fn write_preview(pv: Preview, ink: Option<(usize, &[kumihan::Stroke])>, p: &std:
 }
 
 pub(crate) fn make_pages(job: Job) -> Result<Preview, String> {
+    if let Some(f) = &job.fill {
+        let mut pv = fill_pages(f)?;
+        pv.notes = job.notes;
+        return Ok(pv);
+    }
     let mut pages = Vec::new();
     let mut fonts: Vec<(String, Arc<Vec<u8>>)> = Vec::new();
     let mut font_at = Vec::new();
@@ -392,7 +484,7 @@ pub(crate) fn make_pages(job: Job) -> Result<Preview, String> {
         font_at.push(at);
     }
     let lines = lines_of(&pages, size);
-    Ok(Preview { pages, fonts, font_at, paper: size, lines, notes: job.notes })
+    Ok(Preview { pages, fonts, font_at, paper: size, lines, notes: job.notes, fill_notes: Vec::new() })
 }
 
 impl Writer {
@@ -434,8 +526,31 @@ impl Writer {
         let text = self.doc.body_text();
         let (docs, notes) = kumihan::adoc::parse_many_full(&text).map_err(|e| e.to_string())?;
         let path = self.path.clone().unwrap_or_default();
-        let (theme, _, _) = self.load_template(docs.first().and_then(|d| d.template.as_deref()), &path);
-        Ok(Job { docs, theme, iter: ui::calc_iter_setting(), notes })
+        let fill = fill_of(&docs, &text, &path);
+        let (theme, _, _) = if fill.is_some() {
+            (kumihan::theme::default_theme(), None, String::new())
+        } else {
+            self.load_template(docs.first().and_then(|d| d.template.as_deref()), &path)
+        };
+        Ok(Job { docs, theme, iter: ui::calc_iter_setting(), notes, fill })
+    }
+
+    /// Save As a docx or xlsx from an .adoc that fills a template of that
+    /// kind: the filled template is written, every other part as it was
+    /// (`None` when the text fills no template of that kind)
+    pub(crate) fn fill_export(&self, p: &std::path::Path) -> Option<Result<(), String>> {
+        let f = self.job_now().ok()?.fill?;
+        let want_book = is_book_name(&p.to_string_lossy());
+        let docx = p.extension().is_some_and(|e| e.eq_ignore_ascii_case("docx"));
+        if !(want_book || docx) || want_book != is_book_name(&f.template.to_string_lossy()) {
+            return None;
+        }
+        Some(fill_bytes(&f).and_then(|(bytes, _)| {
+            kumihan::atomic::save(p, |mut out| {
+                use std::io::Write as _;
+                out.write_all(&bytes).map_err(|e| e.to_string())
+            })
+        }))
     }
 
     /// The text of the file as a save writes it: its own line ends, and a
@@ -528,7 +643,7 @@ impl Writer {
         self.flush_target();
         let (theme, used) = self.template_for("印刷");
         let at = if self.docs.len() > 1 { self.doc_at } else { 0 };
-        let job = Job { docs: self.docs_for_save(), theme, iter: ui::calc_iter_setting(), notes: Vec::new() };
+        let job = Job { docs: self.docs_for_save(), theme, iter: ui::calc_iter_setting(), notes: Vec::new(), fill: None };
         write_preview(make_pages(job)?, Some((at, &self.doc.ink)), p)?;
         Ok(used)
     }
@@ -577,17 +692,7 @@ impl Writer {
                 return;
             }
         };
-        let n = fonts.len();
-        let pages: Vec<(paper::pdfw::Leaf, usize)> = leaves.into_iter().map(|l| (l, 0)).collect();
-        let lines = lines_of(&pages, paper);
-        let pv = Preview {
-            pages,
-            fonts: fonts.into_iter().map(|(na, b)| (na, Arc::new(b))).collect(),
-            font_at: vec![(0..n).collect()],
-            paper,
-            lines,
-            notes: Vec::new(),
-        };
+        let pv = preview_of(leaves, fonts, paper);
         self.notes.clear();
         self.enter_code(p, "");
         self.view_only = true;
@@ -872,6 +977,12 @@ impl Writer {
             notes = notes.child(
                 div().p_2().bg(rgb(0xFFF4E5)).text_color(rgb(0x8A4B00))
                     .child(SharedString::from(ui::tf!("code_pages_cannot", e).to_string())),
+            );
+        }
+        if !pv.fill_notes.is_empty() {
+            notes = notes.child(
+                div().p_2().bg(rgb(0xFFF4E5)).text_color(rgb(0x8A4B00))
+                    .child(SharedString::from(ui::tf!("fill_notes", pv.fill_notes.join(" / ")).to_string())),
             );
         }
         if !pv.notes.is_empty() {

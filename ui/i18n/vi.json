@@ -2389,5 +2389,8 @@
  "code_note_many": "{} × {} (dòng {} và các dòng khác)",
  "docx_view_only": "Tệp docx được mở chỉ để xem. Để sửa docx, hãy ghi docx_edit = \"1\" vào settings.toml",
  "docx_opened_view_only": "{} — đã mở chỉ để xem",
- "xlsx_opened_view_only": "{} được hiển thị dưới dạng các trang in, chỉ để xem. Để sửa xlsx, hãy ghi xlsx_edit = \"1\" vào settings.toml"
+ "xlsx_opened_view_only": "{} được hiển thị dưới dạng các trang in, chỉ để xem. Để sửa xlsx, hãy ghi xlsx_edit = \"1\" vào settings.toml",
+ "fill_missing_names": "Tên không có trong dữ liệu: {}",
+ "fill_notes": "Không đưa được vào mẫu: {}",
+ "fill_written": "Đã ghi {}: mẫu đã điền dữ liệu"
 }

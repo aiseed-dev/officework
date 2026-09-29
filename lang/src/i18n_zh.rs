@@ -2241,4 +2241,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("docx_view_only", "docx 仅以查看方式打开。若要编辑 docx,请在 settings.toml 中写入 docx_edit = \"1\""),
     ("docx_opened_view_only", "{} — 已以查看方式打开"),
     ("xlsx_opened_view_only", "{} 以打印页面的形式仅供查看。若要编辑 xlsx,请在 settings.toml 中写入 xlsx_edit = \"1\""),
+    ("fill_missing_names", "数据中没有的名称:{}"),
+    ("fill_notes", "未能放入模板的项目:{}"),
+    ("fill_written", "已写入 {}:填入数据的模板"),
 ];

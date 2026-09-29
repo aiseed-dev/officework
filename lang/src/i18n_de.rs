@@ -2241,4 +2241,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("docx_view_only", "Ein docx wird nur zum Ansehen geöffnet. Zum Bearbeiten schreiben Sie docx_edit = \"1\" in settings.toml"),
     ("docx_opened_view_only", "{} — zum Ansehen geöffnet"),
     ("xlsx_opened_view_only", "{} wird als Druckseiten zum Ansehen gezeigt. Zum Bearbeiten schreiben Sie xlsx_edit = \"1\" in settings.toml"),
+    ("fill_missing_names", "Namen, die in den Daten fehlen: {}"),
+    ("fill_notes", "Nicht in die Vorlage eingefügt: {}"),
+    ("fill_written", "{} geschrieben: die Vorlage mit den eingefügten Daten"),
 ];

@@ -9534,5 +9534,17 @@
   {
     "key": "xlsx_opened_view_only",
     "kind": "msg"
+  },
+  {
+    "key": "fill_missing_names",
+    "kind": "msg"
+  },
+  {
+    "key": "fill_notes",
+    "kind": "msg"
+  },
+  {
+    "key": "fill_written",
+    "kind": "msg"
   }
 ]

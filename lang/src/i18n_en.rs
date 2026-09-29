@@ -2241,4 +2241,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("docx_view_only", "A docx is opened to be looked at. To edit docx files, put docx_edit = \"1\" in settings.toml"),
     ("docx_opened_view_only", "{} — opened to be looked at"),
     ("xlsx_opened_view_only", "{} is shown as the pages it prints, to be looked at. To edit xlsx files, put xlsx_edit = \"1\" in settings.toml"),
+    ("fill_missing_names", "Names the data lacks: {}"),
+    ("fill_notes", "Not put into the template: {}"),
+    ("fill_written", "Wrote {}: the template with the data filled in"),
 ];

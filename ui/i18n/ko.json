@@ -2389,5 +2389,8 @@
  "code_note_many": "{} × {} ({}행 외)",
  "docx_view_only": "docx는 보기 전용으로 열립니다. 편집하려면 settings.toml에 docx_edit = \"1\"을 쓰세요",
  "docx_opened_view_only": "{} — 보기 전용으로 열었습니다",
- "xlsx_opened_view_only": "{}을(를) 인쇄 페이지 형태로 보기 전용으로 열었습니다. 편집하려면 settings.toml에 xlsx_edit = \"1\"을 쓰세요"
+ "xlsx_opened_view_only": "{}을(를) 인쇄 페이지 형태로 보기 전용으로 열었습니다. 편집하려면 settings.toml에 xlsx_edit = \"1\"을 쓰세요",
+ "fill_missing_names": "데이터에 없는 이름: {}",
+ "fill_notes": "템플릿에 넣지 못한 것: {}",
+ "fill_written": "{}에 데이터를 넣은 템플릿을 썼습니다"
 }

@@ -2389,5 +2389,8 @@
  "code_note_many": "{} × {} (строка {} и другие)",
  "docx_view_only": "docx открывается только для просмотра. Чтобы редактировать docx, запишите docx_edit = \"1\" в settings.toml",
  "docx_opened_view_only": "{} — открыт только для просмотра",
- "xlsx_opened_view_only": "{} показан в виде печатных страниц только для просмотра. Чтобы редактировать xlsx, запишите xlsx_edit = \"1\" в settings.toml"
+ "xlsx_opened_view_only": "{} показан в виде печатных страниц только для просмотра. Чтобы редактировать xlsx, запишите xlsx_edit = \"1\" в settings.toml",
+ "fill_missing_names": "Имена, которых нет в данных: {}",
+ "fill_notes": "Не вставлено в шаблон: {}",
+ "fill_written": "Записан {}: шаблон с данными"
 }

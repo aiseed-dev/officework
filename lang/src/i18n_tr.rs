@@ -2241,4 +2241,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("docx_view_only", "docx yalnızca görüntülemek için açılır. Düzenlemek için settings.toml içine docx_edit = \"1\" yazın"),
     ("docx_opened_view_only", "{} — yalnızca görüntülemek için açıldı"),
     ("xlsx_opened_view_only", "{} yazdırdığı sayfalar olarak yalnızca görüntülemek için gösteriliyor. Düzenlemek için settings.toml içine xlsx_edit = \"1\" yazın"),
+    ("fill_missing_names", "Verilerde olmayan adlar: {}"),
+    ("fill_notes", "Şablona konamayanlar: {}"),
+    ("fill_written", "{} yazıldı: veriler eklenmiş şablon"),
 ];

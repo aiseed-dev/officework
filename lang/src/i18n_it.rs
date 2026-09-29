@@ -2241,4 +2241,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("docx_view_only", "Un docx si apre solo in visione. Per modificare i docx, scrivi docx_edit = \"1\" in settings.toml"),
     ("docx_opened_view_only", "{} — aperto solo in visione"),
     ("xlsx_opened_view_only", "{} è mostrato come le pagine che stampa, solo in visione. Per modificare gli xlsx, scrivi xlsx_edit = \"1\" in settings.toml"),
+    ("fill_missing_names", "Nomi assenti nei dati: {}"),
+    ("fill_notes", "Non inserito nel modello: {}"),
+    ("fill_written", "Scritto {}: il modello con i dati inseriti"),
 ];

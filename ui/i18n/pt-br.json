@@ -2389,5 +2389,8 @@
  "code_note_many": "{} × {} (linha {} e outras)",
  "docx_view_only": "Um docx é aberto só para leitura. Para editar docx, escreva docx_edit = \"1\" em settings.toml",
  "docx_opened_view_only": "{} — aberto só para leitura",
- "xlsx_opened_view_only": "{} é mostrado como as páginas que imprime, só para leitura. Para editar xlsx, escreva xlsx_edit = \"1\" em settings.toml"
+ "xlsx_opened_view_only": "{} é mostrado como as páginas que imprime, só para leitura. Para editar xlsx, escreva xlsx_edit = \"1\" em settings.toml",
+ "fill_missing_names": "Nomes que faltam nos dados: {}",
+ "fill_notes": "Não colocado no modelo: {}",
+ "fill_written": "{} gravado: o modelo com os dados"
 }

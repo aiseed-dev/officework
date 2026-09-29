@@ -4202,6 +4202,16 @@ impl Writer {
         // text makes; the file being edited stays the .adoc
         let ext = p.extension().and_then(|e| e.to_str()).map(str::to_string);
         if self.code.is_some() && !ext.as_deref().is_some_and(|e| is_native_ext(e) || is_plain_ext(e)) {
+            // An .adoc of data that fills a Word or Excel template writes
+            // the filled template
+            if let Some(r) = self.fill_export(&p) {
+                let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+                self.status = match r {
+                    Ok(()) => ui::tf!("fill_written", name).into(),
+                    Err(e) => ui::tf!("cant_save", e).into(),
+                };
+                return;
+            }
             if let Err(e) = self.as_parsed(|w| w.save_to(p)) {
                 self.status = ui::tf!("cant_save", e).into();
             }

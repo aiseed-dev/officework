@@ -5572,6 +5572,50 @@ mod shape_pick_tests {
         });
     }
 
+    /// **An .adoc of data fills the Word or Excel template it names**
+    /// (docs/sekkei/sashikomi.ja.adoc, "画面"): `:template: t.docx` makes the
+    /// pages on the right the template with the data in it, the PDF is
+    /// those pages, and Save As a docx writes the filled template. The data
+    /// file itself is still saved as its text
+    #[gpui::test]
+    fn an_adoc_of_data_fills_the_template_it_names(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let dir = std::env::temp_dir().join(format!("ow-fill-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            // A Word template with a mark
+            let form = kumihan::adoc::parse("= 送付状\n\n{氏名} 様\n").unwrap();
+            let t = dir.join("t.docx");
+            ooxml::write(&form, std::fs::File::create(&t).unwrap()).unwrap();
+            let data = "= データ\n:template: t.docx\n\n.基本\n|===\n|氏名 |山田 花子\n|===\n";
+            let a = dir.join("d.adoc");
+            std::fs::write(&a, data).unwrap();
+            this.code_open = true;
+            this.open(a.clone());
+            let pv = crate::code::make_pages(this.job_now().expect("parses")).expect("pages");
+            let words: String = pv.pages.iter().flat_map(|(l, _)| l.pieces.iter().map(|p| p.text.as_str())).collect();
+            assert!(words.contains("山田 花子") && !words.contains("{氏名}"), "not filled: {words}");
+            // Save As a docx: the filled template
+            let out = dir.join("out.docx");
+            this.save_to(out.clone());
+            let (d, _) = ooxml::read(std::io::Cursor::new(std::fs::read(&out).expect("no docx"))).unwrap();
+            assert!(d.body_text().contains("山田 花子 様"), "{}", d.body_text());
+            assert_eq!(this.path.as_deref(), Some(a.as_path()));
+            // The data file is still saved as its text
+            this.save_to(a.clone());
+            assert_eq!(std::fs::read_to_string(&a).unwrap(), data);
+            // An Excel template, named by a cell's address
+            std::fs::copy(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../templates/在庫台帳.xlsx"), dir.join("t.xlsx")).unwrap();
+            let b = dir.join("b.adoc");
+            std::fs::write(&b, "= データ\n:template: t.xlsx\n\n.基本\n|===\n|A1 |検査の値\n|===\n").unwrap();
+            this.open(b.clone());
+            let pv = crate::code::make_pages(this.job_now().expect("parses")).expect("pages");
+            let words: String = pv.pages.iter().flat_map(|(l, _)| l.pieces.iter().map(|p| p.text.as_str())).collect();
+            assert!(words.contains("検査の値"), "the workbook was not filled: {words}");
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+
     /// **Filling a field of a form and fixing a word, then saving the docx**
     /// (docs/sekkei/hyouji-e.ja.adoc, step 6). The letters go in the way
     /// typing puts them (`ui::handler::replace`). After saving and opening
