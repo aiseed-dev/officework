@@ -192,14 +192,15 @@ pub fn pages(pages: &[Leaf], size_mm: (f32, f32), fonts: &[FontFile]) -> Value {
             }
             items.push(t);
             // Underline and strike-through as lines, placed as the PDF does
-            for (on, at) in [(p.underline, kumihan::UNDERLINE_EM), (p.strike, kumihan::STRIKE_EM)] {
+            let (ul_at, ul_w) = crate::pdfw::underline_em(faces.get(fi));
+            for (on, at, w) in [(p.underline, ul_at, ul_w), (p.strike, kumihan::STRIKE_EM, 0.05)] {
                 if !on || p.w_mm <= 0.0 {
                     continue;
                 }
                 let h_mm = p.size_pt * 25.4 / 72.0;
                 let yy = y(p.y_mm + h_mm * at);
                 items.push(json!({"type": "line", "from": [r2(pt(p.x_mm)), yy], "to": [r2(pt(p.x_mm + p.w_mm)), yy],
-                                  "width": r2(pt(h_mm * 0.05).max(0.3)), "color": hex_str(p.color.as_deref()),
+                                  "width": r2(pt(h_mm * w).max(0.3)), "color": hex_str(p.color.as_deref()),
                                   "alpha": 1, "dash": []}));
             }
         }

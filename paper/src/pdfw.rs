@@ -243,6 +243,32 @@ pub fn write_pages<W: std::io::Write>(
 /// 判じて1本目に落としたので、落ちた塊の字が1本目の部分集合に無く、
 /// 字形 0(空白)で出ていました(2026-09-08、Word と並べて見つけた。
 /// Courier New の run の「選ん」が消えていた)
+/// **Where the underline of a piece goes and how thick it is** (em): the
+/// centre's offset up from the baseline (negative below it) and the
+/// thickness.
+///
+/// ECMA-376 17.3.2.40 puts the underline "directly below the character
+/// height" and names no figure, so it comes from the face: the `post`
+/// table's underlinePosition, which OpenType defines as the top of the
+/// line, and underlineThickness. Word for Mac draws Latin faces this way
+/// (at 36pt the top 3.84pt below the baseline for Arial's 3.81, 3.84 for
+/// Times New Roman's 3.92, 3.60 for Century's 3.60). It places East Asian
+/// faces otherwise with no rule found (Hiragino Sans W3 3.60 for 2.70, Yu
+/// Gothic 6.00 for 3.60), and the face's figures were chosen for them too
+/// (2026-09-29). A face without them keeps [`kumihan::UNDERLINE_EM`] and
+/// a twentieth of the size
+pub(crate) fn underline_em(face: Option<&ttf_parser::Face>) -> (f32, f32) {
+    face.and_then(|f| {
+        let m = f.underline_metrics()?;
+        let em = f.units_per_em() as f32;
+        (m.thickness > 0 && em > 0.0).then(|| {
+            let t = m.thickness as f32 / em;
+            (m.position as f32 / em - t / 2.0, t)
+        })
+    })
+    .unwrap_or((kumihan::UNDERLINE_EM, 0.05))
+}
+
 pub(crate) fn face_for(text: &str, want: u8, faces: &[ttf_parser::Face]) -> usize {
     let k = (want as usize).min(faces.len() - 1);
     if text.chars().all(|c| faces[k].glyph_index(c).is_some()) { k } else { 0 }
@@ -692,14 +718,15 @@ pub fn write_pages_fonts<W: std::io::Write>(
             }
             c.end_text();
             // 下線と取り消し線。**字の下に引く線**なので、字を書いた後に
-            for (on, at) in [(p.underline, kumihan::UNDERLINE_EM), (p.strike, kumihan::STRIKE_EM)] {
+            let (ul_at, ul_w) = underline_em(faces.get(fi));
+            for (on, at, w) in [(p.underline, ul_at, ul_w), (p.strike, kumihan::STRIKE_EM, 0.05)] {
                 if !on || p.w_mm <= 0.0 {
                     continue;
                 }
                 let h_mm = p.size_pt * 25.4 / 72.0;
                 let y = p.y_mm + h_mm * at;
                 c.set_stroke_rgb(r, g, b);
-                c.set_line_width(pt(h_mm * 0.05).max(0.3));
+                c.set_line_width(pt(h_mm * w).max(0.3));
                 c.move_to(pt(p.x_mm), pt(y));
                 c.line_to(pt(p.x_mm + p.w_mm), pt(y));
                 c.stroke();
@@ -1047,6 +1074,23 @@ mod tests {
         assert!(raw.contains("/ShadingType 2"), "no axial shading");
         assert!(raw.contains("/FunctionType 3"), "three stops need a stitching function");
         assert!(raw.contains("/Bounds [0.5]"), "the middle stop is not a bound");
+    }
+
+    /// The underline takes the face's `post` figures: the top at
+    /// underlinePosition, the thickness underlineThickness. A face without
+    /// them keeps the fixed place
+    #[test]
+    fn the_underline_comes_from_the_faces_post_table() {
+        let data = font();
+        let face = ttf_parser::Face::parse(&data, 0).unwrap();
+        let m = face.underline_metrics().unwrap();
+        let em = face.units_per_em() as f32;
+        let (at, w) = underline_em(Some(&face));
+        assert!((w - m.thickness as f32 / em).abs() < 1e-6);
+        // The top of the line is at underlinePosition, so the centre is half
+        // the thickness below it
+        assert!((at + w / 2.0 - m.position as f32 / em).abs() < 1e-6, "{at} {w}");
+        assert_eq!(underline_em(None), (kumihan::UNDERLINE_EM, 0.05));
     }
 
     /// The colour names of `ST_HighlightColor` (ECMA-376 17.18.40) and

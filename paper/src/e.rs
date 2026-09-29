@@ -309,7 +309,8 @@ fn moji(
             cx.set_transform(Affine::IDENTITY);
         }
         // Underline and strikethrough, the width of the piece
-        for (on, at) in [(p.underline, kumihan::UNDERLINE_EM), (p.strike, kumihan::STRIKE_EM)] {
+        let (ul_at, ul_w) = crate::pdfw::underline_em(faces.get(fi).and_then(|f| f.as_ref()));
+        for (on, at, w) in [(p.underline, ul_at, ul_w), (p.strike, kumihan::STRIKE_EM, 0.05)] {
             if !on || p.w_mm <= 0.0 {
                 continue;
             }
@@ -318,7 +319,7 @@ fn moji(
             let mut path = BezPath::new();
             path.move_to(Point::new(p.x_mm as f64 * mm, y));
             path.line_to(Point::new((p.x_mm + p.w_mm) as f64 * mm, y));
-            let w_mm = (hh as f64 * 0.05).max(0.3 * 25.4 / 72.0);
+            let w_mm = (hh as f64 * w as f64).max(0.3 * 25.4 / 72.0);
             cx.set_stroke(Stroke { width: w_mm * mm, join: Join::Miter, start_cap: Cap::Butt, end_cap: Cap::Butt, ..Default::default() });
             cx.set_paint(iro((r, g, b), 1.0));
             cx.stroke_path(&path);

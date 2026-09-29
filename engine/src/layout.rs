@@ -365,8 +365,9 @@ pub const LINE_MM: f32 = 6.4;
 /// 読むと、Noto Serif CJK 0.31・Noto Sans CJK 0.33・梅 0.26・IPA 明朝 0.42・
 /// Liberation Serif 0.21 em でした。その中ほどの 0.28 を使います
 pub const STRIKE_EM: f32 = 0.28;
-/// **下線の位置**(同上。負はベースラインの下)。書体の値は −0.02〜−0.13 em で、
-/// Word の PDF と並べて 0.18 em 下に決めてあります
+/// **The underline's centre for a face that gives no figures** (em, negative
+/// below the baseline). The writers take the face's `post` table first
+/// (`paper::pdfw::underline_em`, 2026-09-29)
 pub const UNDERLINE_EM: f32 = -0.18;
 
 /// **行の箱の中で、ベースラインが上端から何 mm 下か。**
