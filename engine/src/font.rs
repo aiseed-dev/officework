@@ -552,6 +552,12 @@ pub fn read_generic(name: &str) -> Option<Generic> {
             return Some(Generic::Serif);
         }
     }
+    // A regular-script (kaisho) face is drawn in a Mincho face in its
+    // place. Mac Excel draws HG正楷書体-PRO, which this machine lacks, in MS
+    // Mincho: the name on MHLW's resume form (2026-09-29)
+    if name.contains("楷書") {
+        return Some(Generic::Serif);
+    }
     if name.contains("ゴシック")
         || lower.contains("gothic")
         || lower.contains("sans")
@@ -1740,6 +1746,13 @@ pub fn monospace() -> Option<&'static Family> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A regular-script face takes a Mincho face's place
+    #[test]
+    fn a_kaisho_face_is_read_as_serif() {
+        assert!(matches!(read_generic("HG正楷書体-PRO"), Some(Generic::Serif)));
+        assert!(matches!(read_generic("HGP正楷書体"), Some(Generic::Serif)));
+    }
 
     /// Word's single line of Hiragino Sans W3 is 1.30 em, with the baseline
     /// 1.03 em below its top, under either name and the PostScript one
