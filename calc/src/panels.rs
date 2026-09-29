@@ -519,7 +519,7 @@ impl Calc {
                 // 描きを1つにしました。ここが持つのは**何が並ぶか**だけです
                 let view = ui::agentpanel::View {
                     log: &self.chat_log,
-                    input: &self.chat_in.text().to_string(),
+                    input: self.chat_in.text(),
                     cursor: self.chat_in.cursor(),
                     focus: self.chat_focus,
                     busy: self.ai_busy,

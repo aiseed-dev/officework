@@ -2238,4 +2238,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("code_too_many_fonts", "書体が多すぎて、1 つの PDF に入りません({} 個)"),
     ("code_note", "{}({} 行目)"),
     ("code_note_many", "{} × {}({} 行目ほか)"),
+    ("docx_view_only", "docx は見るだけで開いています。直すときは、settings.toml に docx_edit = \"1\" と書いてください"),
+    ("docx_opened_view_only", "{}。見るだけで開きました"),
+    ("xlsx_opened_view_only", "{} を、印刷するページの形で、見るだけで開きました。直すときは、settings.toml に xlsx_edit = \"1\" と書いてください"),
 ];

@@ -93,9 +93,19 @@ fn launch_shape(arg: Option<std::path::PathBuf>) -> Start {
 /// **その名前は表か。** 中身は見ません(SEKKEI「画面を1つにする」)。
 /// 起動・受け口・一覧のクリックの**3つとも同じ判定を通す**ための1箇所です。
 fn is_table(p: &std::path::Path) -> bool {
-    p.file_name()
+    let sheet = p
+        .file_name()
         .map(|n| ui::folder::kind_of(&n.to_string_lossy()))
-        .is_some_and(|k| k.is_sheet())
+        .is_some_and(|k| k.is_sheet());
+    // An xlsx opens to be looked at, as the pages it prints, on the document
+    // screen (docs/sekkei/sashikomi.ja.adoc, "画面"). `xlsx_edit = "1"` in
+    // settings.toml opens it on the spreadsheet screen for editing
+    let xlsx = p
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| ["xlsx", "xltx", "xlsm"].iter().any(|x| e.eq_ignore_ascii_case(x)));
+    let edit = ui::settings::get("xlsx_edit").is_some_and(|v| v.trim() == "1");
+    sheet && (!xlsx || edit)
 }
 
 /// 開いているファイル1枚ぶん。**タブ1つ = ファイル1つ = 編集画面1つ**

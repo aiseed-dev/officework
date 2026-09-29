@@ -2238,4 +2238,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("code_too_many_fonts", "Trop de polices pour un seul PDF ({})"),
     ("code_note", "{} (ligne {})"),
     ("code_note_many", "{} × {} (ligne {} et autres)"),
+    ("docx_view_only", "Un docx s'ouvre en lecture seule. Pour modifier les docx, écrivez docx_edit = \"1\" dans settings.toml"),
+    ("docx_opened_view_only", "{} — ouvert en lecture seule"),
+    ("xlsx_opened_view_only", "{} est affiché comme les pages qu'il imprime, en lecture seule. Pour modifier les xlsx, écrivez xlsx_edit = \"1\" dans settings.toml"),
 ];

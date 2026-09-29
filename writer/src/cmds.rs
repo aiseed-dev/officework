@@ -322,7 +322,23 @@ impl Writer {
             self.lay();
         }
     }
+    /// What works on a docx shown only: looking at it, finding in it,
+    /// copying from it and writing its PDF
+    pub(crate) const VIEW_OK: &'static [&'static str] = &[
+        "open", "pdf", "replace", "selectall", "copy", "wordcount", "spell", "zoom", "zoom-in",
+        "zoom-out", "zoom100", "fit-page", "fit-width", "multipage", "printview", "darkmode",
+        "ui-bigger", "ui-smaller", "show-toolbar", "show-statusbar", "show-left", "show-right",
+        "nav", "terminal", "ruler", "hidenchars", "line-numbers", "co-showcomment", "ai-where",
+        "py-folder",
+    ];
+
     fn run_cmd_inner(&mut self, id: &str, cx: &mut Context<Self>) {
+        // A docx shown only: nothing that changes it, and its protection
+        // cannot be lifted from the ribbon
+        if self.view_only && !Self::VIEW_OK.contains(&id) {
+            self.status = self.protection_message().into();
+            return;
+        }
         // 読み取り専用の保護。文書を変えるボタンはここで断る(見る・出す・
         // 保存・検索の類いは通す)。解除はいつでも「保護」のボタン1手
         const READONLY_OK: &[&str] = &[

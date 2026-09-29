@@ -1615,7 +1615,8 @@ impl Render for Writer {
         //
         // 点滅は 530 ミリ秒ごと(Windows の既定と同じ間隔)。打っている間は
         // 消しません — 消えると打ち間違いに気づきにくくなります。
-        if !self.page.vertical && self.caret_on {
+        // A docx shown only takes no typing, so it shows no caret
+        if !self.page.vertical && self.caret_on && !self.view_only {
             let sz = caret_pt * 96.0 / 72.0 * self.zoom;
             paper = paper.child(div().absolute()
                 .left(px(cx_mm * pxmm))

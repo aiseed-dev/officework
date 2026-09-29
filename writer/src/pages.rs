@@ -19,7 +19,7 @@ pub(crate) fn picture(
 ) -> Option<Arc<gpui::RenderImage>> {
     let e = paper::e::egaku_fonts(leaf, w_mm, h_mm, bai, fonts);
     let mut bgra = e.rgba;
-    for p in bgra.chunks_exact_mut(4) {
+    for p in bgra.as_chunks_mut::<4>().0 {
         p.swap(0, 2);
     }
     let buf = image::RgbaImage::from_raw(e.w, e.h, bgra)?;

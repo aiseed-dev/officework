@@ -553,7 +553,7 @@ impl Render for Calc {
                 ctx_bg: rgb(0xF3EDFB),
             },
             self.btn_box.clone(),
-            |i| ctx_hidden(i),
+            ctx_hidden,
             |i| {
                 // 文脈タブ(ピボット・表のデザイン)は色を付けて目に留める —
                 // 出たり消えたりする物は、出た瞬間に分からないと意味がない

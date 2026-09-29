@@ -158,7 +158,7 @@ impl Writer {
             let rows = self.option_rows();
             pane = pane.child(ui::filemenu::options(
                 &ui::filemenu::OptLook { dim: th_status, chip: item_bg, scale: us },
-                &ui::t!("advanced_settings"),
+                ui::t!("advanced_settings"),
                 &ui::tf!("location", ui::settings::path().display()),
                 &rows,
                 Some(self.btn_box.clone()),
@@ -415,8 +415,6 @@ impl Writer {
     }
 }
 
-/// 壊れたファイルから字だけを拾う。docx(zip)なら `word/document.xml` の
-
 impl Writer {
     /// **詳細設定に並べる行**(統合の段8。2026-09-04)。
     ///
@@ -634,7 +632,9 @@ impl Writer {
     }
 }
 
-/// 段落ごとの字、それ以外は文字として読める分。返すのは段落の並び
+/// Take only the letters from a broken file: from a docx (zip), the letters
+/// of each paragraph of `word/document.xml`; from anything else, what can
+/// be read as text. Returns the paragraphs
 pub(crate) fn salvage_text(bytes: &[u8]) -> Vec<String> {
     // zip なら document.xml を探す。読める部品が無ければ空
     if bytes.starts_with(b"PK") {
@@ -732,6 +732,7 @@ impl Writer {
         self.track_base = None;
         self.code = None;
         self.opened += 1;
+        self.view_only = false;
         self.set_doc(doc);
         self.path = None;
         self.dirty = true;

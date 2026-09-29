@@ -57,6 +57,10 @@ impl Writer {
                     self.shape_pick = vec![i];
                 }
                 self.shape_sel = Some(i);
+                // A docx shown only: a shape can be picked, not moved
+                if self.view_only {
+                    return;
+                }
                 self.shape_drag = Some((i, (x_mm, y_mm), (sx, sy)));
                 self.status = if self.shape_pick.len() >= 2 {
                     ui::tf!("shapes_selected_n", self.shape_pick.len()).into()
@@ -386,6 +390,10 @@ impl Writer {
         // A picture dropped on the text of an .adoc would be lost on saving
         if self.code.is_some() {
             self.status = ui::t!("code_view_not_here").into();
+            return;
+        }
+        if self.view_only {
+            self.status = self.protection_message().into();
             return;
         }
         match std::fs::read(path) {

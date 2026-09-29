@@ -1433,7 +1433,7 @@ impl Calc {
                 // 1回にまとめてあるので、サンドボックスの起動(数十ミリ秒)は1セルごとには
                 // 掛からない。funcs の置き場は読み取り専用で見せる。
                 // 時間制限つき(30秒)。関数は値の計算だけ — それより長いのは異常
-                let mut c = caged_or_plain(&py, &dir, &[funcs.clone()]);
+                let mut c = caged_or_plain(&py, &dir, std::slice::from_ref(&funcs));
                 let (ok, _, err) = run_with_timeout(c.arg(&py_path), 30)?;
                 if !ok {
                     let last = err
@@ -1578,7 +1578,7 @@ impl Calc {
             let py = find_python();
             // 置き場(plugins / ribbon)は読み取り専用で見せる。サンドボックスは
             // ホームを隠すので、見せないと import で落ちる
-            let mut c = caged_or_plain(&py, &dir, &[dir_py.clone()]);
+            let mut c = caged_or_plain(&py, &dir, std::slice::from_ref(&dir_py));
             // 時間制限つき(60秒)。返りは (終わったか, 出力, 誤り)
             let (ok, out, err) = run_with_timeout(c.arg(&py_path), 60)?;
             if !ok {

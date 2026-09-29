@@ -2238,4 +2238,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("code_too_many_fonts", "字型太多,無法放入一個 PDF({} 個)"),
     ("code_note", "{}(第 {} 行)"),
     ("code_note_many", "{} × {}(第 {} 行等)"),
+    ("docx_view_only", "docx 僅以檢視方式開啟。若要編輯 docx,請在 settings.toml 中寫入 docx_edit = \"1\""),
+    ("docx_opened_view_only", "{} — 已以檢視方式開啟"),
+    ("xlsx_opened_view_only", "{} 以列印頁面的形式僅供檢視。若要編輯 xlsx,請在 settings.toml 中寫入 xlsx_edit = \"1\""),
 ];

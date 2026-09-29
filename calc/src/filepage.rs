@@ -34,7 +34,7 @@ impl Calc {
             let rows = self.option_rows();
             pane = pane.child(ui::filemenu::options(
                 &ui::filemenu::OptLook { dim, chip: item_bg, scale: us },
-                &ui::t!("advanced_settings"),
+                ui::t!("advanced_settings"),
                 &ui::tf!("location", ui::settings::path().display()),
                 &rows,
                 Some(self.btn_box.clone()),

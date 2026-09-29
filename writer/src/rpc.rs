@@ -108,6 +108,16 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
     if w.code.is_some() && matches!(cmd.as_str(), "replace_blocks" | "insert_blocks" | "delete_blocks") {
         return ops::err("コードの画面では、ブロックは直せません。set_text で字を直してください");
     }
+    // A docx shown only is not changed from the socket either
+    if w.view_only
+        && matches!(
+            cmd.as_str(),
+            "set_text" | "fill_field" | "fill_one" | "fill_fields" | "replace_blocks" | "insert_blocks"
+                | "delete_blocks" | "macro_start" | "save"
+        )
+    {
+        return ops::err(w.protection_message());
+    }
     match cmd.as_str() {
         "ping" => ok(&format!("\"app\":\"writer\",\"version\":{}", q(env!("CARGO_PKG_VERSION")))),
         // **リボンのボタンを id で押す**(2026-09-09。calc と同じ)。実行は受け口の
@@ -152,7 +162,7 @@ pub fn handle(w: &mut Writer, line: &str) -> String {
             let open: Vec<String> = open.iter().map(|k| q(k)).collect();
             ok(&format!(
                 "\"status\":{},\"tab\":{},\"open\":[{}],\"list\":{}",
-                q(&w.status.to_string()),
+                q(w.status.as_ref()),
                 w.ribbon_tab(),
                 open.join(","),
                 w.open_list.map(q).unwrap_or_else(|| "null".into())

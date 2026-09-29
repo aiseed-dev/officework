@@ -11225,6 +11225,7 @@ dependencies = [
  "pyrun",
  "rfd",
  "rustls",
+ "sheet",
  "term",
  "ui",
  "webpki-roots 0.26.11",

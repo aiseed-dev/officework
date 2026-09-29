@@ -855,7 +855,7 @@ impl Writer {
                     let hako = self.dest_rows();
                     let view = ui::agentpanel::View {
                         log: &self.ai_chat_log,
-                        input: &self.ai_chat_in.text().to_string(),
+                        input: self.ai_chat_in.text(),
                         cursor: self.ai_chat_in.cursor(),
                         focus: self.ai_chat_focus,
                         busy: self.ai_busy,

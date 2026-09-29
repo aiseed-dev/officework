@@ -2386,5 +2386,8 @@
  "code_not_utf8": "{} bukan UTF-8. Karakter yang tidak terbaca tampil sebagai �, dan penyimpanan menulis UTF-8",
  "code_too_many_fonts": "Terlalu banyak font untuk satu PDF ({})",
  "code_note": "{} (baris {})",
- "code_note_many": "{} × {} (baris {} dan lainnya)"
+ "code_note_many": "{} × {} (baris {} dan lainnya)",
+ "docx_view_only": "docx dibuka hanya untuk dilihat. Untuk menyunting docx, tulis docx_edit = \"1\" di settings.toml",
+ "docx_opened_view_only": "{} — dibuka hanya untuk dilihat",
+ "xlsx_opened_view_only": "{} ditampilkan sebagai halaman cetaknya, hanya untuk dilihat. Untuk menyunting xlsx, tulis xlsx_edit = \"1\" di settings.toml"
 }

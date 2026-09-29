@@ -2238,4 +2238,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("code_too_many_fonts", "PDF 하나에 넣기에는 글꼴이 너무 많습니다({}개)"),
     ("code_note", "{} ({}행)"),
     ("code_note_many", "{} × {} ({}행 외)"),
+    ("docx_view_only", "docx는 보기 전용으로 열립니다. 편집하려면 settings.toml에 docx_edit = \"1\"을 쓰세요"),
+    ("docx_opened_view_only", "{} — 보기 전용으로 열었습니다"),
+    ("xlsx_opened_view_only", "{}을(를) 인쇄 페이지 형태로 보기 전용으로 열었습니다. 편집하려면 settings.toml에 xlsx_edit = \"1\"을 쓰세요"),
 ];

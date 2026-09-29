@@ -2238,4 +2238,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("code_too_many_fonts", "Слишком много шрифтов для одного PDF ({})"),
     ("code_note", "{} (строка {})"),
     ("code_note_many", "{} × {} (строка {} и другие)"),
+    ("docx_view_only", "docx открывается только для просмотра. Чтобы редактировать docx, запишите docx_edit = \"1\" в settings.toml"),
+    ("docx_opened_view_only", "{} — открыт только для просмотра"),
+    ("xlsx_opened_view_only", "{} показан в виде печатных страниц только для просмотра. Чтобы редактировать xlsx, запишите xlsx_edit = \"1\" в settings.toml"),
 ];

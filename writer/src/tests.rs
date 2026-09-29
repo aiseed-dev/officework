@@ -1164,7 +1164,7 @@ mod page_setup_tests {
             this.relayout();
             assert!(this.page_papers.len() >= 2, "紙が 1 枚しか無い: {:?}", this.page_papers);
             let muki: Vec<bool> = this.page_papers.iter().map(|q| q.width_mm > q.height_mm).collect();
-            assert_eq!(muki[0], false, "1 枚目が横になっている: {:?}", this.page_papers[0]);
+            assert!(!muki[0], "1 枚目が横になっている: {:?}", this.page_papers[0]);
             assert!(muki[1..].iter().any(|b| *b), "横の節が縦のまま: {:?}", this.page_papers);
             // 2 枚目の上端は、1 枚目の紙の高さ(と隙間)だけ下
             let aida = this.page_tops[1] - this.page_tops[0];
@@ -1950,7 +1950,7 @@ mod paged_view_tests {
         let w = opens(cx);
         w.update(cx, |this, cx| {
             assert!(this.sheets(), "既定が紙を積む表示になっていない");
-            assert!(this.page_tops.len() >= 1, "紙の位置が無い");
+            assert!(!this.page_tops.is_empty(), "紙の位置が無い");
             this.run_cmd("multipage", cx);
             assert!(this.multipage && !this.sheets(), "見開きで紙を積む表示が下りない");
             this.run_cmd("multipage", cx);
@@ -5453,7 +5453,7 @@ mod shape_pick_tests {
             assert_eq!(this.doc.tables().count(), 0, "a table went into the text");
             assert_eq!(this.doc.body_text(), before);
             assert_eq!(this.status.to_string(), ui::t!("code_view_not_here"));
-            let bold = ribbon::tabs().iter().flat_map(|t| t.cmds.iter()).find(|c| c.id == "bold").expect("bold").clone();
+            let bold = *ribbon::tabs().iter().flat_map(|t| t.cmds.iter()).find(|c| c.id == "bold").expect("bold");
             assert!(!this.usable_here(&bold), "bold is offered on the text");
             let r = crate::rpc::handle(this, r#"{"cmd":"insert_blocks","at":0,"adoc":"|===\n|a\n|===\n"}"#);
             assert!(r.contains("err"), "a block went into the text: {r}");
@@ -5500,6 +5500,75 @@ mod shape_pick_tests {
             assert!(this.page_src.as_ref().is_some_and(|s| s.bg.is_none()));
             this.run_cmd("pagecolor", cx);
             assert!(this.page_src.as_ref().is_some_and(|s| s.bg.is_some()), "the pages kept no colour");
+        });
+    }
+
+    /// **A docx shown only takes nothing that changes it** (docs/sekkei/
+    /// sashikomi.ja.adoc, "画面"): typing, the buttons that edit, the
+    /// socket's edits and saving are refused with the same message, and
+    /// looking, copying and the PDF still work. The file is not touched
+    #[gpui::test]
+    fn a_docx_shown_only_is_not_changed(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, cx| {
+            let dir = std::env::temp_dir().join(format!("ow-view-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let src = dir.join("r.docx");
+            std::fs::copy(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sample/報告書.docx"), &src).unwrap();
+            let before = std::fs::read(&src).unwrap();
+            this.open(src.clone());
+            // The tests open docx files for editing; shown only is the app's default
+            this.view_only = true;
+            let text = this.doc.body_text();
+            ui::handler::replace(this, None, "字");
+            assert_eq!(this.doc.body_text(), text, "typing changed a docx shown only");
+            this.run_cmd("bold", cx);
+            this.run_cmd("instable", cx);
+            assert_eq!(this.doc.tables().count(), sample_tables(), "a table went in");
+            assert_eq!(this.status.to_string(), ui::t!("docx_view_only"));
+            let r = crate::rpc::handle(this, r#"{"cmd":"set_text","text":"消えた"}"#);
+            assert!(r.contains("err") && this.doc.body_text() == text, "the socket changed it: {r}");
+            this.save_to(src.clone());
+            assert_eq!(std::fs::read(&src).unwrap(), before, "the docx was written");
+            let pdf = dir.join("r.pdf");
+            this.run_cmd("selectall", cx);
+            this.write_pdf(&pdf);
+            assert!(std::fs::read(&pdf).is_ok_and(|b| b.starts_with(b"%PDF")), "{}", this.status);
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+
+        fn sample_tables() -> usize {
+            let bytes = std::fs::read(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../sample/報告書.docx")).unwrap();
+            ooxml::read(std::io::Cursor::new(bytes)).unwrap().0.tables().count()
+        }
+    }
+
+    /// **An xlsx is shown as the pages it prints** (docs/sekkei/
+    /// sashikomi.ja.adoc, "画面"): laid out as its PDF, shown only, and the
+    /// PDF button writes the engine's PDF of the file. Saving never writes
+    /// the workbook
+    #[gpui::test]
+    fn an_xlsx_is_shown_as_its_pages(cx: &mut gpui::TestAppContext) {
+        let w = cx.update(|cx| cx.new(|cx| Writer::new(None, cx)));
+        w.update(cx, |this, _cx| {
+            let dir = std::env::temp_dir().join(format!("ow-xlsx-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let src = dir.join("t.xlsx");
+            std::fs::copy(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../templates/在庫台帳.xlsx"), &src).unwrap();
+            let before = std::fs::read(&src).unwrap();
+            this.open(src.clone());
+            let c = this.code.as_ref().expect("no page view");
+            assert!(c.pages_only && this.view_only, "{}", this.status);
+            let pv = c.pages.clone().expect("no pages");
+            assert!(!pv.pages.is_empty());
+            let words: String = pv.pages[0].0.pieces.iter().map(|p| p.text.as_str()).collect();
+            assert!(!words.is_empty(), "the first page has no text");
+            this.save_to(src.clone());
+            assert_eq!(std::fs::read(&src).unwrap(), before, "the workbook was written");
+            let pdf = dir.join("t.pdf");
+            this.write_pdf(&pdf);
+            assert!(std::fs::read(&pdf).is_ok_and(|b| b.starts_with(b"%PDF")), "{}", this.status);
+            let _ = std::fs::remove_dir_all(&dir);
         });
     }
 

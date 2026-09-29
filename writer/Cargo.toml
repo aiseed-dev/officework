@@ -27,6 +27,7 @@ encoding_rs = "0.8"
 ed25519-dalek = { version = "2", default-features = false, features = ["std", "fast"] }
 kumihan = { path = "../engine" }
 book = { path = "../book" }
+sheet = { path = "../sheet" }
 ui = { path = "../ui" }
 pyrun = { path = "../pyrun" }
 ops = { path = "../ops" }

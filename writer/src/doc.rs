@@ -130,6 +130,7 @@ impl Writer {
             pic_drop: Vec::new(),
             code: None,
             opened: 0,
+            view_only: false,
             code_open: !cfg!(test) && crate::code::code_on_open(),
             fonts_pending: Vec::new(),
             fonts_added: Default::default(),
@@ -1404,7 +1405,13 @@ impl Writer {
 
     /// 読み取り専用の保護が掛かっているか(保護タブの「保護」で入切)
     pub(crate) fn protected(&self) -> bool {
-        self.doc.protection.is_some()
+        self.view_only || self.doc.protection.is_some()
+    }
+
+    /// Whether a docx opens to be shown only (the default), or for editing
+    /// (`docx_edit = "1"` in settings.toml). The tests edit docx files
+    pub(crate) fn docx_view_only() -> bool {
+        !cfg!(test) && ui::settings::get("docx_edit").is_none_or(|v| v.trim() != "1")
     }
 
     /// マクロ = **サンドボックス(bubblewrap)の中の Python** が python-docx で文書の
@@ -1543,6 +1550,7 @@ impl Writer {
         self.target = Target::Body;
         self.pg = kumihan::PageSetup::default();
         self.code = None;
+        self.view_only = false;
         self.set_doc(Document::plain(""));
         self.dirty = false;
         self.status = ui::t!("new_document").into();
@@ -1892,6 +1900,13 @@ impl Writer {
             self.open_text(&p, &bytes);
             return;
         }
+        // A workbook is shown as the pages it prints (src/code.rs)
+        if p.extension().and_then(|e| e.to_str()).is_some_and(|e| {
+            ["xlsx", "xltx", "xlsm"].iter().any(|x| e.eq_ignore_ascii_case(x))
+        }) {
+            self.open_book_pages(&p, bytes);
+            return;
+        }
         if ooxml::crypt::is_encrypted(&bytes) {
             // パネルでパスワードを聞き、Enter(pw_commit)が続きをやる
             self.pw_pending = Some(p);
@@ -1911,6 +1926,7 @@ impl Writer {
         // A page fetched from a URL comes here without `open`
         self.code = None;
         self.opened += 1;
+        self.view_only = false;
         self.native = false; // Back to the docx handling (see open_plain)
         let text = match std::str::from_utf8(bytes) {
             Ok(t) => t.to_string(),
@@ -2506,6 +2522,7 @@ impl Writer {
         };
         self.code = None;
         self.opened += 1;
+        self.view_only = false;
         self.set_doc(doc);
         self.adopt_font();
         self.path = Some(p.to_path_buf());
@@ -2579,6 +2596,7 @@ impl Writer {
         self.doc_at = 0;
         self.code = None;
         self.opened += 1;
+        self.view_only = false;
         self.adopt_font();
         self.path = Some(p.to_path_buf());
         // **数式は開いたときに組みます。** 本文が持っているのは LaTeX の原文
@@ -3019,7 +3037,8 @@ impl Writer {
             tmpl_path: self.tmpl_path.take(),
             notes: std::mem::take(&mut self.notes),
             code: self.code.take(),
-            pg: self.pg.clone(),
+            pg: self.pg,
+            view_only: std::mem::take(&mut self.view_only),
         }
     }
 
@@ -3040,6 +3059,7 @@ impl Writer {
         self.notes = f.notes;
         self.code = f.code;
         self.pg = f.pg;
+        self.view_only = f.view_only;
     }
 
     /// 見るファイルを替える。
@@ -4105,6 +4125,7 @@ impl Writer {
                 // after `open` has left the split view in place
                 self.code = None;
                 self.opened += 1;
+                self.view_only = Self::docx_view_only();
                 self.set_doc(doc);
                 self.adopt_font();
                 self.relayout_keep();
@@ -4114,7 +4135,9 @@ impl Writer {
                     self.status = ui::tf!("open_overwrite_save_blocked", self.status, who)
                     .into();
                 }
-                if self.doc.protection.is_some() {
+                if self.view_only {
+                    self.status = ui::tf!("docx_opened_view_only", self.status).into();
+                } else if self.doc.protection.is_some() {
                     self.status = ui::tf!("protected_read_only_protection_tab", self.status)
                     .into();
                 }
@@ -4169,6 +4192,12 @@ impl Writer {
     }
 
     pub(crate) fn save_to(&mut self, p: PathBuf) {
+        // A docx or workbook shown only is not written back (Ctrl+S and the
+        // socket come here without the ribbon's check)
+        if self.view_only {
+            self.status = self.protection_message().into();
+            return;
+        }
         // From the text of an .adoc, a docx is written from the document the
         // text makes; the file being edited stays the .adoc
         let ext = p.extension().and_then(|e| e.to_str()).map(str::to_string);

@@ -19,6 +19,25 @@ const PAUSE_MS: u64 = 350;
 /// The gap between two pages in the right pane (mm)
 const GAP_MM: f32 = 6.0;
 
+/// How an xlsx is read: the Excel that made it (`xlsx_platform`), its
+/// dates (`xlsx_dates`) and the time zone, from settings.toml, as the
+/// spreadsheet screen reads it
+fn xlsx_read_options() -> sheet::xlsx::ReadOptions {
+    let get = |k: &str| ui::settings::get(k).map(|v| v.trim().to_ascii_lowercase());
+    sheet::xlsx::ReadOptions {
+        platform: match get("xlsx_platform").as_deref() {
+            Some("mac") => book::Platform::Mac,
+            _ => book::Platform::Windows,
+        },
+        date1904: match get("xlsx_dates").as_deref() {
+            Some("1900") => Some(false),
+            Some("1904") => Some(true),
+            _ => None,
+        },
+        time_zone: ui::settings::get("time_zone").map(|v| v.trim().to_string()).filter(|v| book::tz::is_zone(v)),
+    }
+}
+
 /// Numbers each split view, so pages made for one view never land in
 /// another (a file opened while the pages of the last were being made)
 static VIEWS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
@@ -253,6 +272,9 @@ fn note_parts(entry: &str) -> Option<(String, Option<usize>, String)> {
 pub(crate) struct CodeView {
     /// Which view this is (`VIEWS`)
     pub id: u64,
+    /// Pages only, with no text beside them: a workbook shown as the pages
+    /// it prints. The pages are made once, when it opens
+    pub pages_only: bool,
     /// The file's line ends are CR LF, and whether it ends with a newline:
     /// saving gives them back
     pub crlf: bool,
@@ -391,6 +413,7 @@ impl Writer {
         self.tmpl_path = None;
         self.locked_by = None;
         self.opened += 1;
+        self.view_only = false;
         let id = VIEWS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         self.code = Some(CodeView { id, edits: 1, final_nl: true, ..Default::default() });
         self.pg = kumihan::PageSetup {
@@ -480,6 +503,16 @@ impl Writer {
     /// opened on its pages is). Each letter is pointed at its face in the
     /// one list of the file's fonts
     pub(crate) fn code_pdf(&mut self, p: &std::path::Path) -> Result<Option<String>, String> {
+        // A workbook is written as the engine writes its PDF, from the file
+        // (the pages shown were laid out the same way)
+        if self.code.as_ref().is_some_and(|c| c.pages_only) {
+            let src = self.path.clone().ok_or("no file")?;
+            let bytes = std::fs::read(&src).map_err(|e| e.to_string())?;
+            let (mut b, _) = sheet::xlsx::read_with(std::io::Cursor::new(bytes), &xlsx_read_options())?;
+            book::calc::recalc_all(&mut b);
+            ops::pdf::book(&b, p)?;
+            return Ok(None);
+        }
         let mut job = self.job_now()?;
         let (theme, used) = self.as_parsed(|w| w.template_for("印刷"))?;
         job.theme = theme;
@@ -519,9 +552,51 @@ impl Writer {
         })
     }
 
-    /// The width of the right pane (px)
+    /// The width of the right pane (px): half the window, or all of it
+    /// (less the right panel) when there is no text beside the pages
     pub(crate) fn code_preview_w(&self) -> f32 {
+        if self.code.as_ref().is_some_and(|c| c.pages_only) {
+            let panel = if self.rp_open { crate::panels::RP_PANEL_W } else { 0.0 };
+            return (self.view_w_px - panel).max(200.0).round();
+        }
         (self.view_w_px * 0.5).round()
+    }
+
+    /// **A workbook shown as the pages it prints** (docs/sekkei/
+    /// sashikomi.ja.adoc, "画面"): an xlsx opens to be looked at, not edited.
+    /// The pages are laid out as its PDF is, once, and shown as pictures
+    pub(crate) fn open_book_pages(&mut self, p: &std::path::Path, bytes: Vec<u8>) {
+        let pages = sheet::xlsx::read_with(std::io::Cursor::new(bytes), &xlsx_read_options()).and_then(|(mut b, _)| {
+            book::calc::recalc_all(&mut b);
+            ops::pdf::book_pages(&b)
+        });
+        let (leaves, fonts, paper) = match pages {
+            Ok(v) => v,
+            Err(e) => {
+                self.status = ui::tf!("cant_open", e).into();
+                return;
+            }
+        };
+        let n = fonts.len();
+        let pages: Vec<(paper::pdfw::Leaf, usize)> = leaves.into_iter().map(|l| (l, 0)).collect();
+        let lines = lines_of(&pages, paper);
+        let pv = Preview {
+            pages,
+            fonts: fonts.into_iter().map(|(na, b)| (na, Arc::new(b))).collect(),
+            font_at: vec![(0..n).collect()],
+            paper,
+            lines,
+            notes: Vec::new(),
+        };
+        self.notes.clear();
+        self.enter_code(p, "");
+        self.view_only = true;
+        if let Some(c) = self.code.as_mut() {
+            c.pages_only = true;
+            c.pages = Some(Arc::new(pv));
+            c.built = c.edits;
+        }
+        self.status = ui::tf!("xlsx_opened_view_only", p.file_name().unwrap_or_default().to_string_lossy()).into();
     }
 
     /// The width the left side lays its lines to (px on the screen)
@@ -543,6 +618,9 @@ impl Writer {
     /// Make the pages again when the text has changed and the typing has
     /// paused. Called from `render`
     pub(crate) fn code_tick(&mut self, cx: &mut Context<Self>) {
+        if self.code.as_ref().is_some_and(|c| c.pages_only) {
+            return;
+        }
         // The text flows to the pane: lay it out again when the window's
         // width has changed (the first layout runs before the window has one)
         if self.code.as_ref().is_some_and(|c| (c.laid_w - self.code_text_w()).abs() > 2.0) {

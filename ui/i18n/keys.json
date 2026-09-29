@@ -9522,5 +9522,17 @@
   {
     "key": "code_note_many",
     "kind": "msg"
+  },
+  {
+    "key": "docx_view_only",
+    "kind": "msg"
+  },
+  {
+    "key": "docx_opened_view_only",
+    "kind": "msg"
+  },
+  {
+    "key": "xlsx_opened_view_only",
+    "kind": "msg"
   }
 ]

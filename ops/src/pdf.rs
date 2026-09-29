@@ -50,6 +50,21 @@ pub fn book(b: &book::Book, to: &Path) -> Result<u32, String> {
     Ok(cut)
 }
 
+/// **The pages of a book as its PDF prints them**, with the fonts they name
+/// by number and the first sheet's paper (width, height in mm): for a
+/// screen that shows a workbook as its pages (docs/sekkei/sashikomi.ja.adoc)
+#[allow(clippy::type_complexity)]
+pub fn book_pages(b: &book::Book) -> Result<(Vec<paper::pdfw::Leaf>, Vec<(String, Vec<u8>)>, (f32, f32)), String> {
+    let sheets = printed_sheets(b)?;
+    let fonts: Vec<(String, Vec<u8>)> = book_fonts(b)?
+        .into_iter()
+        .filter_map(|(na, fam)| kumihan::font::load(fam).ok().map(|d| (na, d)))
+        .collect();
+    let leaves = paper::grid::book_leaves_fonts(&sheets, &fonts, &[])?;
+    let first = sheets[0].1;
+    Ok((leaves, fonts, (first.width_mm, first.height_mm)))
+}
+
 /// The sheets a book prints (the hidden ones are left out), each with its
 /// paper and print setup.
 pub(crate) fn printed_sheets(

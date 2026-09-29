@@ -2723,13 +2723,6 @@ impl Calc {
         }
     }
 
-    /// Switch the destination to the next one in the list (what "press to switch"
-    /// actually does). The area under the left panel's field and the File > Advanced
-    /// settings row both switch the same list (`[[ai]]`) through this.
-    /// When there is nothing to switch to, the reason is shown in the status bar
-
-
-
     /// **宛先を足す・直す画面へ**(2026-09-04)。ファイルのページの詳細設定に
     /// AI の宛先の一覧があります。パネルからそこへ跳びます
     fn open_ai_settings(&mut self) {

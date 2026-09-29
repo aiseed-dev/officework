@@ -2238,4 +2238,7 @@ pub const TABLE: &[(&str, &str)] = &[
     ("code_too_many_fonts", "Bir PDF için çok fazla yazı tipi ({})"),
     ("code_note", "{} (satır {})"),
     ("code_note_many", "{} × {} (satır {} ve diğerleri)"),
+    ("docx_view_only", "docx yalnızca görüntülemek için açılır. Düzenlemek için settings.toml içine docx_edit = \"1\" yazın"),
+    ("docx_opened_view_only", "{} — yalnızca görüntülemek için açıldı"),
+    ("xlsx_opened_view_only", "{} yazdırdığı sayfalar olarak yalnızca görüntülemek için gösteriliyor. Düzenlemek için settings.toml içine xlsx_edit = \"1\" yazın"),
 ];

@@ -64,13 +64,12 @@ fn strip_ruby_marks(src: &str, base: usize) -> (String, Vec<(std::ops::Range<usi
     (plain, out)
 }
 
-/// AI に頼む仕事。**返事をどう使うかまで決めてから頼む**
-
 /// **やりとりの1行と、モデルの状態は [`ui::agentpanel`] の物**
 /// (2026-09-04。agent.ja.adoc の段10)。表計算と同じ型・同じ描きです
 pub(crate) use ui::agentpanel::{AgentState, Chat as ChatRow};
 
-/// (使い道の決まっていない答えは受け取らない)
+/// A job for the AI. **How the answer will be used is decided before
+/// asking** (an answer with no use decided is not taken)
 #[derive(Clone, Debug)]
 enum AiJob {
     /// 選択にふりがな(ルビ)を振る。**会話では代われない** —
@@ -360,6 +359,11 @@ pub struct Writer {
     /// Counts the files put in place, so `open` can tell a file that could
     /// not be opened from one that was
     pub(crate) opened: u64,
+    /// A docx is shown only: its values come from the data (docs/sekkei/
+    /// sashikomi.ja.adoc, "画面"). It acts as read-only protection that is
+    /// not written into the file. `docx_edit = "1"` in settings.toml opens
+    /// a docx for editing again
+    pub(crate) view_only: bool,
     /// Whether an .adoc opens as its text beside its pages. From
     /// settings.toml (`adoc_code`); the tests start with it off, as most of
     /// them edit an .adoc on its pages
@@ -813,6 +817,10 @@ impl Writer {
         if self.code.is_some() && !code::CODE_OK.contains(&cmd.id) {
             return false;
         }
+        // A docx shown only takes what looks at it
+        if self.view_only && !Self::VIEW_OK.contains(&cmd.id) {
+            return false;
+        }
         match ribbon::target_of(cmd.id) {
             ribbon::Target::Cell => self.cursor_table().is_some(),
             ribbon::Target::Sheet => false,
@@ -931,6 +939,9 @@ impl Writer {
     /// 文書の保護の種類(docx の `w:documentProtection` の `w:edit`)。
     /// `None` は保護なし。値は readOnly / comments / trackedChanges / forms
     pub(crate) fn prot_mode(&self) -> Option<&str> {
+        if self.view_only {
+            return Some("readOnly");
+        }
         self.doc.protection.as_deref()
     }
 
@@ -947,6 +958,9 @@ impl Writer {
 
     /// The message to show in the status bar when protection blocked the edit
     pub(crate) fn protection_message(&self) -> &'static str {
+        if self.view_only {
+            return ui::t!("docx_view_only");
+        }
         match self.prot_mode() {
             Some("comments") => ui::t!("blocked_comments_mode"),
             Some("forms") => ui::t!("blocked_forms_mode"),
@@ -1313,6 +1327,7 @@ pub(crate) struct OpenFile {
     /// the text through the AsciiDoc writer and break it
     code: Option<code::CodeView>,
     pg: kumihan::PageSetup,
+    view_only: bool,
 }
 
 impl Default for OpenFile {
@@ -1333,6 +1348,7 @@ impl Default for OpenFile {
             notes: Vec::new(),
             code: None,
             pg: kumihan::PageSetup::default(),
+            view_only: false,
         }
     }
 }
