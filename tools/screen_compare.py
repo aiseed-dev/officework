@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Compare our pages of a docx with Word's PDF of it, as pictures.
+"""Compare our pages of a docx or an xlsx with Word's or Excel's PDF of it,
+as pictures.
 
     DYLD_FALLBACK_LIBRARY_PATH=.venv/lib .venv/bin/python tools/screen_compare.py \\
         文書.docx Word.pdf [--dpi 100] [--mm 0.5] [--tol 10] [--out 出力先] [--max 2.5]
 
-Our pages come from `Doc.save("x.png")`, which draws the pages the PDF
-prints (`paper::doc_pages`). Word's PDF is drawn at the same resolution
+Our pages come from `Doc.save("x.png")` for a docx, which draws the pages
+the PDF prints (`paper::doc_pages`), and from `Book.save("x.png")` for an
+xlsx. Word's PDF is drawn at the same resolution
 with pypdfium2. Build the Python engine again after changing the engine,
 or this compares the old one.
 
@@ -43,12 +45,17 @@ CELL_MM = 2.0
 CELL_SHARE = 0.15
 
 
-def ours_pictures(docx, dpi, work):
+def ours_pictures(src, dpi, work):
     """The paths of our page pictures, in page order."""
-    from officework import doc
-
     first = os.path.join(work, "ow.png")
-    doc.Doc.open(docx).save(first, dpi=dpi)
+    if src.lower().endswith(".xlsx"):
+        from officework import sheet
+
+        sheet.Book.open(src).save(first, dpi=dpi)
+    else:
+        from officework import doc
+
+        doc.Doc.open(src).save(first, dpi=dpi)
     out, k = [], 1
     while True:
         name = first if k == 1 else os.path.join(work, f"ow-{k}.png")
@@ -154,7 +161,7 @@ def run(args):
     pdf = pypdfium2.PdfDocument(args.pdf)
     bad = False
     with tempfile.TemporaryDirectory() as work:
-        ours = ours_pictures(args.docx, args.dpi, work)
+        ours = ours_pictures(args.source, args.dpi, work)
         n_word = len(pdf)
         print(f"頁数: うち {len(ours)}、Word {n_word}")
         bad |= len(ours) != n_word
@@ -200,7 +207,7 @@ def main(argv):
         description="Compare our pages of a docx with Word's PDF of it, as pictures.",
         allow_abbrev=False,
     )
-    ap.add_argument("docx")
+    ap.add_argument("source", help="the docx or xlsx")
     ap.add_argument("pdf")
     ap.add_argument("--dpi", type=float, default=100.0)
     ap.add_argument("--mm", type=float, default=0.5, help="distance a pixel may move (mm)")
