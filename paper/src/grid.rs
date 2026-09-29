@@ -120,11 +120,11 @@ fn wakeru(t: &str, fno: impl Fn(char) -> u8) -> Vec<(u8, String)> {
 /// 余白(左・右・上・下。mm)。
 type Margins = (f32, f32, f32, f32);
 
-fn hex_rgb(s: &str) -> Option<(f32, f32, f32)> {
-    // 色の書き方は3通り届きます。xlsx は `FFDCE6F1`(頭の2桁は透明度)、
-    // テーマの表は `DCE6F1`、`.sheet.adoc` に人が書くときは `#DCE6F1` です。
-    // **どれも同じ色**なので、ここで揃えます(2026-08-27 に取りこぼしを
-    // 実物の PDF で見つけました)
+pub(crate) fn hex_rgb(s: &str) -> Option<(f32, f32, f32)> {
+    // Colours arrive written three ways: xlsx writes `FFDCE6F1` (the first
+    // two digits are the alpha), the theme table `DCE6F1`, and a person
+    // writing a `.sheet.adoc` `#DCE6F1`. They are the same colour, so they
+    // are made alike here (a missed one was found in a real PDF, 2026-08-27)
     let t = s.trim().trim_start_matches('#');
     let t = if t.len() == 8 { &t[2..] } else { t };
     if t.len() != 6 {

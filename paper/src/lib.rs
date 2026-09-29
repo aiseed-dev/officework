@@ -1875,8 +1875,9 @@ pub struct PageSource {
     pub family: String,
     pub font: std::sync::Arc<Vec<u8>>,
     pub run_fonts: Vec<(String, Vec<u8>)>,
-    /// The page colour (0 to 1 RGB), which the laid-out document does not
-    /// carry: the writer takes it from the composed dress
+    /// The page colour (0 to 1 RGB). When set, it wins over the document's
+    /// own `page_color`; when `None`, the pages take the document's (the
+    /// writer lays out a copy without it and sets this from the dress)
     pub bg: Option<(f32, f32, f32)>,
 }
 
@@ -1919,7 +1920,11 @@ fn leaves_of(
     anchored_pictures(d, sheet, page);
     let mut shapes = d.shapes.clone();
     shapes.extend(foreign_shapes(d, sheet, page));
-    let dress = PageDress { watermark: d.watermark.clone(), shapes, ..Default::default() };
+    // The page colour comes with the composed document (`w:background`,
+    // ECMA-376 17.2.1, or the template's page colour), so the PDF, the PNG
+    // and the pages of the code screen are painted as the writer's PDF is
+    let bg = d.page_color.as_deref().and_then(grid::hex_rgb);
+    let dress = PageDress { bg, watermark: d.watermark.clone(), shapes, ..Default::default() };
     let hf = doc_hf_lines(d, font, sheet, page)?;
     let paper = Paper::from_page(&page);
     // The same numbering as font_index_of: the face's place in the list
@@ -2557,6 +2562,44 @@ pub fn layout_doc(d: &kumihan::Document, opts: &DocOpts, run_fonts: &[(String, V
 
 #[cfg(test)]
 mod doc_pdf_tests {
+    /// **A docx's page colour reaches every page** (`w:background`, ECMA-376
+    /// 17.2.1): the pages the PDF, the PNG and the code screen are made from
+    /// carried no colour, so only the writer's own PDF was painted
+    #[test]
+    fn a_docx_page_colour_reaches_the_pages() {
+        let mut doc = kumihan::Document::plain("一頁目\n本文です。");
+        doc.page_color = Some("FFF2CC".into());
+        let mut buf = std::io::Cursor::new(Vec::new());
+        ooxml::write(&doc, &mut buf).expect("docx not written");
+        let xml = {
+            let (d, _) = ooxml::read(std::io::Cursor::new(buf.get_ref().clone())).expect("docx not read");
+            d
+        };
+        assert_eq!(xml.page_color.as_deref(), Some("FFF2CC"), "w:background was not read back");
+        let p = super::doc_pages(&xml, None).expect("no pages");
+        let want = (0xFF as f32 / 255.0, 0xF2 as f32 / 255.0, 0xCC as f32 / 255.0);
+        assert!(!p.leaves.is_empty());
+        for leaf in &p.leaves {
+            assert_eq!(leaf.bg, Some(want), "a page without the page colour");
+        }
+        // A colour the caller sets wins over the document's
+        let (d, laid, fonts) = super::doc_laid(&xml, None).expect("not laid out");
+        let src = super::PageSource {
+            doc: d,
+            sheet: laid.sheet,
+            page: laid.page,
+            family: laid.family,
+            font: std::sync::Arc::new(laid.font),
+            run_fonts: fonts[1..].to_vec(),
+            bg: Some((0.0, 0.5, 1.0)),
+        };
+        let leaves = super::page_leaves(&src).expect("no pages");
+        assert!(leaves.iter().all(|l| l.bg == Some((0.0, 0.5, 1.0))));
+        // And a document without one stays white
+        let plain = super::doc_pages(&kumihan::Document::plain("本文"), None).expect("no pages");
+        assert!(plain.leaves.iter().all(|l| l.bg.is_none()));
+    }
+
     /// **文書から PDF が1手で出る。**
     #[test]
     fn a_document_becomes_a_pdf_in_one_step() {
