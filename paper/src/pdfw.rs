@@ -1091,6 +1091,20 @@ mod tests {
         assert!(raw.contains("/Bounds [0.5]"), "the middle stop is not a bound");
     }
 
+    /// A stretch of text ends after a kerned letter, so the next letter
+    /// stands where the layout put it and not at the face's own advance
+    #[test]
+    fn a_kerned_letter_ends_its_stretch_of_text() {
+        let doc = kumihan::adoc::parse("ABCD\n").expect("not read");
+        let (mut sheet, page, _) = crate::doc_to_sheet(&doc, None).expect("not laid out");
+        let line = sheet.lines.iter_mut().find(|l| l.cells.len() == 4).expect("no line");
+        line.cells[1].kern_mm = -0.1;
+        let pp = crate::Paper::hitoshii(page.w_mm, page.h_mm, page.left_mm);
+        let (leaves, _) = sheet_leaves_with(&sheet, pp, &crate::PageDress::default(), |_| Vec::new());
+        let texts: Vec<&str> = leaves[0].pieces.iter().map(|p| p.text.as_str()).collect();
+        assert_eq!(texts, vec!["AB", "CD"]);
+    }
+
     /// Text with a clip is written inside `q`/`Q` with that part as the clip
     #[test]
     fn cut_text_is_clipped_to_its_part() {
@@ -1347,7 +1361,7 @@ mod tests {
                 cells: "第1頁"
                     .chars()
                     .enumerate()
-                    .map(|(i, ch)| kumihan::Cell {
+                    .map(|(i, ch)| kumihan::Cell { kern_mm: 0.0,
                         ch,
                         x_mm: 20.0 + i as f32 * 3.5,
                         w_mm: 3.5,
@@ -2205,6 +2219,10 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
         // 掛かります(2026-08-27 に実物を見て気づいた — 題も見出しも
         // 細いままでした)
         let mut run: Option<Piece> = None;
+        // The last character of `run` was kerned: the next one starts a
+        // new stretch at the place the layout gave it, since a stretch is
+        // drawn with the face's own advances
+        let mut kerned = false;
         for c in &line.cells {
             // **タブは字ではありません。** 幅だけ持たせて、字形は出しません。
             // 書体はタブの字形を持たないので、描くと豆腐(□)になります
@@ -2259,7 +2277,9 @@ pub fn sheet_leaves_fonts<F: Fn(usize) -> Vec<kumihan::Line>>(
                     && (r.x_mm + r.w_mm - (mx + c.x_mm)).abs() < 0.05
                     // 書体が変わる所でも切る(run ごとの書体を埋めるため)
                     && r.font == font_of(c.font.as_deref())
+                    && !kerned
             });
+            kerned = c.kern_mm != 0.0;
             match &mut run {
                 Some(r) if same => {
                     r.text.push(c.ch);

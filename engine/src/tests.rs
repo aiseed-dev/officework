@@ -641,6 +641,40 @@ mod list_tests {
     /// before it (LB13), and not between digits (LB25). Word keeps the
     /// business plan's "licenses/permits" whole; this engine breaks it after
     /// the slash when the line is full.
+    /// A run with `w:kern` closes up a pair the face kerns, by the face's
+    /// kerning; without it, or under its size, the pair keeps its advances
+    #[test]
+    fn kerning_closes_up_a_pair_the_face_kerns() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let face = ttf_parser::Face::parse(&data, 0).unwrap();
+        let Some(pair) = ["AV", "To", "Te", "Wa", "Yo", "とを", "った", "、「"].into_iter().find(|p| {
+            let c: Vec<char> = p.chars().collect();
+            crate::font::kern_em(&face, c[0], c[1]) != 0.0
+        }) else {
+            return; // this machine's face kerns none of them
+        };
+        let c: Vec<char> = pair.chars().collect();
+        let width = |kern: Option<f32>| -> (f32, usize) {
+            let mut p = Paragraph::default();
+            p.runs.push(Run { text: pair.into(), size_pt: Some(12.0), font: None,
+                              fmt: CharFormat { kern, ..Default::default() } });
+            let (toks, kerns) = tokenize(&p, &m, &mut NoteCount::default(), 10.0, 0.0);
+            let w = toks.iter().map(|t| match t {
+                Tok::Word(cs, ..) => cs.iter().map(|(_, w, _)| *w).sum(),
+                Tok::One(_, w, ..) | Tok::Space(_, w, ..) => *w,
+            }).sum();
+            (w, kerns.len())
+        };
+        let want = crate::font::kern_em(&face, c[0], c[1]) * 12.0 * 25.4 / 72.0;
+        let (plain, n0) = width(None);
+        let (kerned, n1) = width(Some(1.0));
+        assert_eq!((n0, n1), (0, 1), "{pair}");
+        assert!((kerned - plain - want).abs() < 1e-4, "{pair}: {plain} → {kerned}, kern {want}");
+        let (big_only, n2) = width(Some(14.0));
+        assert!(n2 == 0 && (big_only - plain).abs() < 1e-6, "kerned under its size");
+    }
+
     #[test]
     fn a_slash_lets_the_line_break_after_it_as_unicode_says() {
         let data = test_font();
@@ -648,7 +682,7 @@ mod list_tests {
         let words = |t: &str| -> Vec<String> {
             let mut p = Paragraph::default();
             p.runs.push(Run { text: t.into(), size_pt: Some(10.0), font: None, fmt: Default::default() });
-            tokenize(&p, &m, &mut NoteCount::default(), 10.0, 0.0)
+            tokenize(&p, &m, &mut NoteCount::default(), 10.0, 0.0).0
                 .iter()
                 .map(|t| match t {
                     Tok::Word(cs, ..) => cs.iter().map(|(c, ..)| *c).collect(),
@@ -754,12 +788,12 @@ mod list_tests {
         let sizen = |t: &str, pt: f32| -> f32 {
             let mut q = Paragraph::default();
             q.runs.push(Run { text: t.into(), size_pt: Some(pt), font: None, fmt: Default::default() });
-            match &tokenize(&q, &m, &mut NoteCount::default(), 10.0, 0.0)[0] {
+            match &tokenize(&q, &m, &mut NoteCount::default(), 10.0, 0.0).0[0] {
                 Tok::One(_, w, ..) | Tok::Space(_, w, ..) => *w,
                 Tok::Word(cs, ..) => cs.iter().map(|(_, w, _)| *w).sum(),
             }
         };
-        let toks = tokenize(&p, &m, &mut NoteCount::default(), 10.0, aki);
+        let toks = tokenize(&p, &m, &mut NoteCount::default(), 10.0, aki).0;
         let w: Vec<f32> = toks.iter().map(|t| match t {
             Tok::One(_, w, ..) | Tok::Space(_, w, ..) => *w,
             Tok::Word(cs, ..) => cs.iter().map(|(_, w, _)| *w).sum(),
@@ -769,16 +803,16 @@ mod list_tests {
         // 大きい字も足す空きは同じ(升の倍数には切り上げない)
         let mut big = Paragraph::default();
         big.runs.push(Run { text: "訴".into(), size_pt: Some(18.0), font: None, fmt: Default::default() });
-        let toks = tokenize(&big, &m, &mut NoteCount::default(), 10.0, aki);
+        let toks = tokenize(&big, &m, &mut NoteCount::default(), 10.0, aki).0;
         if let Tok::One(_, w0, ..) = &toks[0] {
             assert!((w0 - (sizen("訴", 18.0) + aki)).abs() < 0.001, "18pt の字の送りが自然の幅 + 空きでない: {w0}");
         }
         // 負の空きは詰まる
-        let toks = tokenize(&p, &m, &mut NoteCount::default(), 10.0, -aki);
+        let toks = tokenize(&p, &m, &mut NoteCount::default(), 10.0, -aki).0;
         if let Tok::One(_, w0, ..) = &toks[0] { assert!(*w0 < sizen("あ", 10.0), "負の charSpace で詰まらない"); }
         // 合わせない段落はそのまま
         p.no_grid = true;
-        let toks = tokenize(&p, &m, &mut NoteCount::default(), 10.0, aki);
+        let toks = tokenize(&p, &m, &mut NoteCount::default(), 10.0, aki).0;
         if let Tok::One(_, w0, ..) = &toks[0] { assert!((w0 - sizen("あ", 10.0)).abs() < 0.001, "snapToGrid=0 なのに空きが付いた"); }
         // 負の余白は固定: ヘッダーがあっても押さない
         let pg = PageSetup { top_mm: 20.0, top_fixed: true, header_mm: 15.0, ..Default::default() };
@@ -1408,7 +1442,7 @@ mod table_layout_tests {
             }],
             ..Default::default()
         };
-        let mut d = Document { align: None, no_html_auto_space: false, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
+        let mut d = Document { align: None, no_html_auto_space: false, kern: None, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
         d.blocks.push(Block::Table(Table {
             col_mm: vec![],
             rows: vec![vec![cell(&"あ".repeat(30)), cell("短い")]],
@@ -1448,7 +1482,7 @@ mod merge_layout_tests {
     fn sheet_of(rows: Vec<Vec<Cellbox>>) -> Sheet {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let d = Document { align: None, no_html_auto_space: false, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
+        let d = Document { align: None, no_html_auto_space: false, kern: None, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
             font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Table(Table { col_mm: vec![], rows,
         ..Default::default()
@@ -1525,7 +1559,7 @@ mod gridcol_tests {
     fn rules_of(col_mm: Vec<f32>) -> Vec<crate::doc::Rule> {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let d = Document { align: None, no_html_auto_space: false, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
+        let d = Document { align: None, no_html_auto_space: false, kern: None, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
             font: None,
             page: None,
             sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
@@ -2718,7 +2752,7 @@ mod fold_print_tests {
                     top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None }
     }
     fn line(y: f32) -> Line {
-        Line { cells: vec![Cell { ch: 'あ', x_mm: 0.0, w_mm: 4.0, size_pt: 10.5,
+        Line { cells: vec![Cell { kern_mm: 0.0, ch: 'あ', x_mm: 0.0, w_mm: 4.0, size_pt: 10.5,
                                   off: 0, fmt: Default::default(), font: None }],
                y_mm: y, from_body: true, x0_mm: 0.0, para0: 0, keep_next: false, widow: false, byte0: 0, cell: None, dip_mm: 0.0, before_mm: 0.0, head: 0 }
     }
@@ -4288,7 +4322,7 @@ mod fold_fill_tests {
         for k in 0..80 {
             let y = 24.0 + k as f32 * 5.0;
             s.lines.push(Line {
-                cells: vec![Cell { ch: 'a', x_mm: 0.0, w_mm: 2.0, size_pt: 10.5, off: 0, fmt: Default::default(), font: None }],
+                cells: vec![Cell { kern_mm: 0.0, ch: 'a', x_mm: 0.0, w_mm: 2.0, size_pt: 10.5, off: 0, fmt: Default::default(), font: None }],
                 y_mm: y, from_body: true, x0_mm: 0.0, para0: 0, keep_next: false, widow: false, byte0: 0,
                 cell: None, dip_mm: 0.0, before_mm: 0.0, head: 0,
             });

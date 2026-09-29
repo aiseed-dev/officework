@@ -2117,6 +2117,9 @@ fn jibun_wo_ateru(
         if r.fmt.spacing_pt == 0.0 {
             r.fmt.spacing_pt = ck.and_then(|c| c.spacing_pt).or(lk.spacing_pt).unwrap_or(0.0);
         }
+        if r.fmt.kern.is_none() {
+            r.fmt.kern = ck.and_then(|c| c.kern).or(lk.kern);
+        }
         // A run that states its colour keeps it, `auto` included
         // (ECMA-376 17.3.2.6). The placeholders of Word's letterhead name
         // the grey Placeholder Text style and say `auto` themselves, and
@@ -2429,6 +2432,23 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
             }
         }
         nuru(&mut out.blocks, &iro);
+    }
+    // **Font kerning of the document default** (`w:docDefaults`, ECMA-376
+    // 17.3.2.19) reaches every run no style or run gave one
+    if let Some(k) = out.kern {
+        let mut fill = |p: &mut crate::doc::Paragraph| {
+            for r in p.runs.iter_mut() {
+                if r.fmt.kern.is_none() {
+                    r.fmt.kern = Some(k);
+                }
+            }
+        };
+        for b in out.blocks.iter_mut() {
+            match b {
+                Block::Para(p) => fill(p),
+                Block::Table(t) => t.for_each_paragraph_mut(&mut fill),
+            }
+        }
     }
     out
 }

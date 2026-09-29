@@ -255,6 +255,10 @@ pub struct CharFormat {
     /// 持つ。字送りをこの倍率で伸縮し、PDF は字形も横に伸縮する(`Tz`)。
     /// 画面は字送りだけ合わせる(2026-09-09)
     pub w_pct: f32,
+    /// Font kerning from this size up (pt; `w:kern`, ECMA-376 17.3.2.19).
+    /// `None` is not stated here; the styles and the document default
+    /// fill it in when the document is composed
+    pub kern: Option<f32>,
     /// **どの書式を「言った」か。**
     ///
     /// docx の `<w:b/>` は入、`<w:b w:val="0"/>` は切、要素そのものが
@@ -1592,6 +1596,9 @@ pub struct Document {
     /// `w:doNotUseHTMLParagraphAutoSpacing`)。立っていると「自動」は 5pt です。
     /// 使う所は [`Paragraph::auto_before`]
     pub no_html_auto_space: bool,
+    /// Font kerning from this size up for the whole document (pt; the
+    /// `w:kern` of `w:docDefaults`)
+    pub kern: Option<f32>,
     /// **行末の空白を折り返す**(docx の settings の `w:compat/w:wrapTrailSpaces`)。
     /// 無いのが普通で、そのとき Word は行末の空白を紙の端を越えても置く。
     /// 立っていると余白の所で折る(288 枚のうち法務局の 7 枚。2026-09-09)
@@ -1915,6 +1922,8 @@ pub struct StyleLook {
     /// `font_latin` and `font`; they stay here for the record
     pub font_theme: Option<String>,
     pub font_theme_ea: Option<String>,
+    /// Font kerning from this size up (pt; `w:kern`)
+    pub kern: Option<f32>,
 }
 
 impl StyleLook {
@@ -2985,6 +2994,7 @@ impl Document {
             lk.fill = lk.fill.clone().or_else(|| s.look.fill.clone());
             lk.caps = lk.caps.or(s.look.caps);
             lk.spacing_pt = lk.spacing_pt.or(s.look.spacing_pt);
+            lk.kern = lk.kern.or(s.look.kern);
             pl.align = pl.align.or(s.para.align);
             pl.space_before_pt = pl.space_before_pt.or(s.para.space_before_pt);
             pl.space_after_pt = pl.space_after_pt.or(s.para.space_after_pt);
@@ -3071,6 +3081,10 @@ pub struct Cell {
     /// この字の書体(run の指定。None は文書の既定)。
     /// 行の中で書体が混ざっても、描く側が連なりごとに切り替えられる
     pub font: Option<String>,
+    /// The kerning laid into `w_mm` after this character (mm, negative
+    /// closes the next one up). The print ends a stretch of text here, so
+    /// the next character stands where the layout put it
+    pub kern_mm: f32,
 }
 
 #[derive(Debug, Clone)]

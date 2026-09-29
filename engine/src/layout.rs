@@ -61,6 +61,21 @@ impl<'a> Metrics<'a> {
         self.advance_mm(ch, size_pt)
     }
 
+    /// **The kerning between two letters** (mm, negative closes them up),
+    /// from the face the run names. A face whose half-width advance is
+    /// replaced ([`crate::font::hankaku_em`]) is not kerned: its letters are
+    /// set on a fixed pitch
+    pub fn kern_for(&self, font: Option<&str>, a: char, b: char, size_pt: f32) -> f32 {
+        let (face, hankaku) = match font.and_then(|n| self.others.iter().find(|(x, ..)| x == n)) {
+            Some((_, face, _, hankaku)) => (face, *hankaku),
+            None => (&self.face, self.hankaku),
+        };
+        if hankaku.is_some() {
+            return 0.0;
+        }
+        crate::font::kern_em(face, a, b) * size_pt * PT_TO_MM
+    }
+
     fn adv(face: &Face<'_>, upem: f32, ch: char, size_pt: f32, hankaku: Option<f32>) -> f32 {
         // 半角の送りの差し替え(ＭＳ 明朝の 0.5em。[`crate::font::hankaku_em`])
         if let Some(em) = hankaku {
@@ -231,8 +246,13 @@ pub(super) fn zenkaku(ch: char) -> bool {
 }
 
 /// `moji` は文字グリッドが字ごとに足す空き(mm。0 で無し。負もある)。全角の字に足す
-pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: f32, moji: f32) -> Vec<Tok> {
+/// Also returns the kerning laid into the width of each character, by its
+/// byte offset ([`Cell::kern_mm`])
+pub(super) fn tokenize(
+    p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: f32, moji: f32,
+) -> (Vec<Tok>, std::collections::HashMap<usize, f32>) {
     let mut out = Vec::new();
+    let mut kerns = std::collections::HashMap::new();
     // 段落の頭からのバイト位置。run をまたいで通しで数える
     let mut off = 0usize;
     for run in &p.runs {
@@ -270,12 +290,30 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
         };
         let mut word: Vec<(char, f32, usize)> = Vec::new();
         let mut moji_it = run.text.chars().peekable();
+        // **Font kerning** (`w:kern`, ECMA-376 17.3.2.19): from the size it
+        // names up, a letter's advance takes the face's kerning with the
+        // next letter of the run. Word applies the `kern` feature of the
+        // face: Hiragino Sans W3 closes "と" and "を" by 0.03 em, and a line
+        // of the tensho letter that fits in Word by 0.0pt broke a letter
+        // early here (2026-09-29). Capitals and a character grid are not
+        // kerned (not measured)
+        let kern_on = run.fmt.kern.is_some_and(|t| rpt >= t) && !run.fmt.caps && masu == 0.0;
         while let Some(moto) = moji_it.next() {
             // `w:caps` draws the text in capitals; the model keeps the
             // original case and the byte offsets stay those of the original
             // character (one lower-case letter can become two capitals)
             let ue: Vec<char> = if run.fmt.caps { moto.to_uppercase().collect() } else { vec![moto] };
             let ch = ue[0];
+            let kern = match moji_it.peek() {
+                Some(&next) if kern_on && !matches!(moto, '\t' | '\n') && !matches!(next, '\t' | '\n') => {
+                    m.kern_for(run.font.as_deref(), moto, next, rpt) * bai
+                }
+                _ => 0.0,
+            };
+            if kern != 0.0 {
+                kerns.insert(off, kern);
+            }
+            let okuri = |c: char| okuri(c) + kern;
             // **A slash follows the Unicode line breaking rules** (UAX #14),
             // not Word. It stays with the word before it, since LB13 allows
             // no break before it, and a line may break after it:
@@ -323,7 +361,7 @@ pub(super) fn tokenize(p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: 
             out.push(Tok::Word(word, rpt, run.fmt.clone(), run.font.clone()));
         }
     }
-    out
+    (out, kerns)
 }
 
 /// **The space between two paragraphs** (mm). The space after the paragraph
@@ -569,7 +607,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
             let w = m.advance_for(font.as_deref(), ch, size);
             // 印は本文の一部ではないので off は段落頭(0)のまま
             cur.push(Cell { ch, x_mm: 0.0, w_mm: w, size_pt: size, fmt: fmt.clone(),
-                            font: font.clone(), off: 0 });
+                            font: font.clone(), off: 0, kern_mm: 0.0 });
             w_cur += w;
         }
         // **印の後の本文は、左のインデントの位置から始めます**(2026-09-11)。
@@ -586,7 +624,7 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
         // run, and both writers already give it width without a glyph.
         let hang = -first_mm;
         if hang > 0.0 && w_cur < hang && !para.list_no_tab {
-            cur.push(Cell { ch: '\t', x_mm: 0.0, w_mm: hang - w_cur, size_pt: size,
+            cur.push(Cell { kern_mm: 0.0, ch: '\t', x_mm: 0.0, w_mm: hang - w_cur, size_pt: size,
                             fmt: fmt.clone(), font: font.clone(), off: 0 });
             w_cur = hang;
         }
@@ -619,7 +657,8 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
             });
         (((tugi.0 - hidari_tw) / 20.0) * 25.4 / 72.0, tugi.1, tugi.2)
     };
-    let toks = tokenize(para, m, notes, base, moji);
+    let (toks, kerns) = tokenize(para, m, notes, base, moji);
+    let kern_at = |o: usize| kerns.get(&o).copied().unwrap_or(0.0);
     // **The width of the text a tab carries to its stop.** A centre or a
     // right stop needs to know how wide the run after the tab is, up to the
     // next tab or the end of the line (ECMA-376 17.3.1.37), so the tokens
@@ -682,15 +721,16 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
         let (cells, w): (Vec<Cell>, f32) = match &tok {
             Tok::One(ch, w, s, f, ft, o) =>
                 (vec![Cell { ch: *ch, x_mm: 0.0, w_mm: *w, size_pt: *s, fmt: f.clone(),
-                             font: ft.clone(), off: *o }], *w),
+                             font: ft.clone(), off: *o, kern_mm: kern_at(*o) }], *w),
             Tok::Word(cs, s, f, ft) => (
                 cs.iter().map(|(c, w, o)| Cell { ch: *c, x_mm: 0.0, w_mm: *w, size_pt: *s,
-                                                 fmt: f.clone(), font: ft.clone(), off: *o })
+                                                 fmt: f.clone(), font: ft.clone(), off: *o,
+                                                 kern_mm: kern_at(*o) })
                     .collect(),
                 cs.iter().map(|(_, w, _)| *w).sum()),
             Tok::Space(ch, w, s, f, ft, o) =>
                 (vec![Cell { ch: *ch, x_mm: 0.0, w_mm: *w, size_pt: *s, fmt: f.clone(),
-                             font: ft.clone(), off: *o }], *w),
+                             font: ft.clone(), off: *o, kern_mm: kern_at(*o) }], *w),
         };
 
         // 1行目だけ行長が短い(字下げのぶん)
@@ -746,7 +786,8 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
                     if let Some(k) = hyphen_split(cs, *sz, m, ft.as_deref(), measure - w_cur) {
                         for (c, wch, o) in &cs[..k] {
                             cur.push(Cell { ch: *c, x_mm: 0.0, w_mm: *wch,
-                                size_pt: *sz, fmt: f.clone(), font: ft.clone(), off: *o });
+                                size_pt: *sz, fmt: f.clone(), font: ft.clone(), off: *o,
+                                kern_mm: kern_at(*o) });
                             w_cur += *wch;
                         }
                         // ハイフンは本文の字ではない。バイト位置は直前の字に重ねる
@@ -754,12 +795,13 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
                         let hw = m.advance_for(ft.as_deref(), '-', *sz);
                         let off_h = cs[k - 1].2;
                         cur.push(Cell { ch: '-', x_mm: 0.0, w_mm: hw,
-                            size_pt: *sz, fmt: f.clone(), font: ft.clone(), off: off_h });
+                            size_pt: *sz, fmt: f.clone(), font: ft.clone(), off: off_h, kern_mm: 0.0 });
                         w_cur += hw;
                         cur = close(&mut done, &mut cur, &mut w_cur, None);
                         for (c, wch, o) in &cs[k..] {
                             cur.push(Cell { ch: *c, x_mm: 0.0, w_mm: *wch,
-                                size_pt: *sz, fmt: f.clone(), font: ft.clone(), off: *o });
+                                size_pt: *sz, fmt: f.clone(), font: ft.clone(), off: *o,
+                                kern_mm: kern_at(*o) });
                             w_cur += *wch;
                         }
                         continue;
@@ -1456,7 +1498,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                         cap_shift = cap_w;
                         // 1行下のベースラインに置く = 2行に掛かる見た目
                         sheet.lines.push(Line {
-                            cells: vec![Cell {
+                            cells: vec![Cell { kern_mm: 0.0,
                                 ch,
                                 x_mm: indent_mm,
                                 w_mm: cap_w,
@@ -1671,7 +1713,7 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                             let mut rcells = Vec::new();
                             for ch in rt.chars() {
                                 let w = m.advance_mm(ch, pt);
-                                rcells.push(Cell {
+                                rcells.push(Cell { kern_mm: 0.0,
                                     ch,
                                     x_mm: rx,
                                     w_mm: w,

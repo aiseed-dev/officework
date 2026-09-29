@@ -1280,6 +1280,13 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 ww.push_attribute(("w:val", (run.fmt.w_pct.round() as i64).to_string().as_str()));
                 w.write_event(Event::Empty(ww)).unwrap();
             }
+            // Font kerning the run states itself (half-points; after `w:w`
+            // in the order of CT_RPr)
+            if let Some(k) = run.fmt.kern {
+                let mut kn = BS::new("w:kern");
+                kn.push_attribute(("w:val", ((k * 2.0).round() as i64).to_string().as_str()));
+                w.write_event(Event::Empty(kn)).unwrap();
+            }
             // **指定のある run だけ w:sz を書く。** 常に書くと、無指定
             // (文書の既定に従う)が往復のたびに「10.5pt 指定」へ化ける
             // (2026-08-13、本家 python-docx との突き合わせで発覚した焼き付き)

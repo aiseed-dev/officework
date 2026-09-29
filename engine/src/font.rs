@@ -891,6 +891,73 @@ const AGARI_EM: &[(&str, f32)] = &[
     ("ヒラギノ角ゴシック W3", 1.03),
 ];
 
+/// **The kerning between two letters of a face** (em, negative closes them
+/// up): the pair adjustments of the `kern` feature in GPOS, else the old
+/// `kern` table. Within one lookup the first subtable that holds the pair
+/// counts, and the lookups of the feature add up, as a shaper applies them
+pub fn kern_em(face: &ttf_parser::Face<'_>, a: char, b: char) -> f32 {
+    use ttf_parser::gpos::{PairAdjustment, PositioningSubtable};
+    let (Some(ga), Some(gb)) = (face.glyph_index(a), face.glyph_index(b)) else { return 0.0 };
+    let upem = face.units_per_em() as f32;
+    if upem <= 0.0 {
+        return 0.0;
+    }
+    if let Some(gpos) = face.tables().gpos {
+        let kern = ttf_parser::Tag::from_bytes(b"kern");
+        let mut lookups: Vec<u16> = Vec::new();
+        for i in 0..gpos.features.len() {
+            if let Some(f) = gpos.features.get(i).filter(|f| f.tag == kern) {
+                for li in f.lookup_indices {
+                    if !lookups.contains(&li) {
+                        lookups.push(li);
+                    }
+                }
+            }
+        }
+        if !lookups.is_empty() {
+            let mut total = 0i32;
+            for li in lookups {
+                let Some(lookup) = gpos.lookups.get(li) else { continue };
+                for si in 0..lookup.subtables.len() {
+                    let Some(PositioningSubtable::Pair(pair)) = lookup.subtables.get::<PositioningSubtable>(si)
+                    else {
+                        continue;
+                    };
+                    let v = match pair {
+                        PairAdjustment::Format1 { coverage, sets } => coverage
+                            .get(ga)
+                            .and_then(|i| sets.get(i))
+                            .and_then(|set| set.get(gb))
+                            .map(|(first, _)| first.x_advance),
+                        PairAdjustment::Format2 { coverage, classes, matrix } => {
+                            if coverage.contains(ga) {
+                                matrix.get((classes.0.get(ga), classes.1.get(gb))).map(|(first, _)| first.x_advance)
+                            } else {
+                                None
+                            }
+                        }
+                    };
+                    if let Some(x) = v {
+                        total += i32::from(x);
+                        break;
+                    }
+                }
+            }
+            return total as f32 / upem;
+        }
+    }
+    if let Some(kern) = face.tables().kern {
+        for st in kern.subtables {
+            if st.horizontal && !st.variable {
+                if let Some(v) = st.glyphs_kerning(ga, gb) {
+                    return v as f32 / upem;
+                }
+            }
+        }
+    }
+    0.0
+}
+
 /// **行の箱の中で、ベースラインが上端から何 em 下か。**
 ///
 /// LibreOffice と同じ決め方です(`sw/source/core/txtnode/fntcache.cxx`)。

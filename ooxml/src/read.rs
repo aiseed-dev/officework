@@ -606,6 +606,11 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                 if let Some(t) = tag(rp, "<w:color ") {
                     doc.color = zoku(&t, "w:val").filter(|v| !v.is_empty() && v != "auto");
                 }
+                // Font kerning from this size up (`w:kern`, half-points,
+                // ECMA-376 17.3.2.19). Recent Word templates say 2 here
+                if let Some(t) = tag(rp, "<w:kern ") {
+                    doc.kern = zoku(&t, "w:val").and_then(|v| v.parse::<f32>().ok()).map(|h| h / 2.0);
+                }
             }
             // 段落の空きと行間は `w:pPrDefault` の中の `w:spacing`
             if let Some(pp) = naka.find("<w:pPrDefault").and_then(|n| {
@@ -2321,6 +2326,7 @@ fn style_look(body: &str) -> kumihan::StyleLook {
         .map(|seg| attr_of(seg, "w:fill"))
         .filter(|c| !c.is_empty() && c != "auto");
     l.size_pt = val_of("sz").and_then(|v| v.parse::<f32>().ok()).map(|h| h / 2.0);
+    l.kern = val_of("kern").and_then(|v| v.parse::<f32>().ok()).map(|h| h / 2.0);
     // 和文は `w:eastAsia`、無ければ `w:ascii`。欧文は `w:ascii` を別に持つ
     let rfonts = body
         .find("<w:rFonts ")
@@ -2974,6 +2980,10 @@ pub(super) fn parse_document_rels_num(
                     b"color" if in_rpr => {
                         fmt.color = attr(&e, "val").filter(|v| !v.is_empty() && v != "auto");
                         fmt.itta.color = true;
+                    }
+                    // Font kerning from this size up (half-points, 17.3.2.19)
+                    b"kern" if in_rpr => {
+                        fmt.kern = attr(&e, "val").and_then(|v| v.parse::<f32>().ok()).map(|h| h / 2.0);
                     }
                     b"vertAlign" if in_rpr => {
                         match attr(&e, "val").as_deref() {
@@ -3802,6 +3812,10 @@ pub(super) fn parse_document_rels_num(
                     b"color" if in_rpr => {
                         fmt.color = attr(&e, "val").filter(|v| !v.is_empty() && v != "auto");
                         fmt.itta.color = true;
+                    }
+                    // Font kerning from this size up (half-points, 17.3.2.19)
+                    b"kern" if in_rpr => {
+                        fmt.kern = attr(&e, "val").and_then(|v| v.parse::<f32>().ok()).map(|h| h / 2.0);
                     }
                     b"vertAlign" if in_rpr => {
                         match attr(&e, "val").as_deref() {

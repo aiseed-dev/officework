@@ -4943,7 +4943,7 @@ mod shape_pick_tests {
     /// the layout and than the selection (2026-09-23).
     #[test]
     fn letters_with_their_own_spacing_are_drawn_one_by_one() {
-        let moji = |ch: char, x: f32, spacing: f32| kumihan::Cell {
+        let moji = |ch: char, x: f32, spacing: f32| kumihan::Cell { kern_mm: 0.0,
             ch, x_mm: x, w_mm: 3.0, size_pt: 18.0, off: 0,
             fmt: kumihan::CharFormat { spacing_pt: spacing, ..Default::default() },
             font: None,
