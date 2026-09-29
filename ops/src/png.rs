@@ -93,14 +93,21 @@ pub fn doc(
     to: &Path,
     dpi: f32,
 ) -> Result<usize, String> {
-    // PDF と同じ道(合成 → run の書体の解決 → 組み)。書体も run ごとに持つ
-    let (_d, laid, fonts) = paper::doc_laid(d, theme)?;
-    let ookisa = (laid.page.w_mm, laid.page.h_mm);
-    let leaves: Vec<_> = paper::doc_leaves_fonts(&laid.sheet, laid.page, &paper::PageDress::default(), &fonts)
+    // The pages the PDF prints and the writer's screen shows
+    // (`paper::doc_pages`): floating pictures, shapes, headers and footers,
+    // and each section's own paper. The laid-out sheet alone left all of
+    // those out (2026-09-28)
+    let p = paper::doc_pages(d, theme)?;
+    let whole = (p.paper.width_mm, p.paper.height_mm);
+    let leaves: Vec<_> = p
+        .leaves
         .into_iter()
-        .map(|l| (l, ookisa))
+        .map(|l| {
+            let size = l.size_mm.unwrap_or(whole);
+            (l, size)
+        })
         .collect();
-    let datas: Vec<&[u8]> = fonts.iter().map(|(_, d)| d.as_slice()).collect();
+    let datas: Vec<&[u8]> = p.fonts.iter().map(|(_, d)| d.as_slice()).collect();
     kaku(&leaves, &datas, to, dpi)
 }
 

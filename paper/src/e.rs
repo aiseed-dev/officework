@@ -111,8 +111,10 @@ pub fn egaku_fonts(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, fonts: &[&[u8]])
     cx.set_paint(iro(leaf.bg.unwrap_or((1.0, 1.0, 1.0)), 1.0));
     cx.fill_rect(&Rect::new(0.0, 0.0, w as f64, h as f64));
 
-    // **塗りが先、罫線が後、絵はその間。** pdfw と同じ順です —
-    // 順が違うと線が塗りに隠れます
+    // The same order as the PDF writer (`pdfw::write_pages_fonts`), so the
+    // screen's pages and the PDF stack things alike: the paper colour, the
+    // plain fills, then free shapes, paths and pictures by `(z, kind,
+    // index)`, then the rules, the highlights, the text and the pen strokes
     for f in &leaf.fills {
         cx.set_paint(iro(f.rgb, f.a));
         let y = (h_mm - f.y_mm - f.h_mm) as f64 * mm;
@@ -124,21 +126,31 @@ pub fn egaku_fonts(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, fonts: &[&[u8]])
         ));
     }
 
-    for p in &leaf.polys {
-        if p.points.len() < 3 {
-            continue;
+    let mut order: Vec<(i32, u8, usize)> = Vec::new();
+    order.extend(leaf.polys.iter().enumerate().map(|(k, g)| (g.z, 0u8, k)));
+    order.extend(leaf.paths.iter().enumerate().map(|(k, m)| (m.z, 1u8, k)));
+    order.extend(leaf.images.iter().enumerate().map(|(k, im)| (im.z, 2u8, k)));
+    order.sort_unstable();
+    for (_, kind, k) in order {
+        match kind {
+            0 => {
+                let p = &leaf.polys[k];
+                if p.points.len() < 3 {
+                    continue;
+                }
+                let mut path = BezPath::new();
+                let ten = |(x, y): (f32, f32)| Point::new(x as f64 * mm, (h_mm - y) as f64 * mm);
+                path.move_to(ten(p.points[0]));
+                for q in &p.points[1..] {
+                    path.line_to(ten(*q));
+                }
+                path.close_path();
+                cx.set_paint(iro(p.rgb, p.a));
+                cx.fill_path(&path);
+            }
+            1 => michi(&mut cx, &leaf.paths[k], h_mm, mm),
+            _ => e_hameru(&mut cx, &leaf.images[k], h_mm, mm),
         }
-        let mut path = BezPath::new();
-        let ten = |(x, y): (f32, f32)| {
-            Point::new(x as f64 * mm, (h_mm - y) as f64 * mm)
-        };
-        path.move_to(ten(p.points[0]));
-        for q in &p.points[1..] {
-            path.line_to(ten(*q));
-        }
-        path.close_path();
-        cx.set_paint(iro(p.rgb, p.a));
-        cx.fill_path(&path);
     }
 
     for r in leaf.rules.iter() {
@@ -162,9 +174,19 @@ pub fn egaku_fonts(leaf: &Leaf, w_mm: f32, h_mm: f32, bai: f32, fonts: &[&[u8]])
         cx.stroke_path(&path);
     }
 
-    // **絵は罫線の後。** pdfw も同じ順です
-    for im in &leaf.images {
-        e_hameru(&mut cx, im, h_mm, mm);
+    // Highlighted text: the box the PDF fills, under the letters
+    for p in &leaf.pieces {
+        if let Some(hl) = &p.highlight {
+            let hh = p.size_pt * 25.4 / 72.0;
+            let y0 = p.y_mm - hh * 0.22;
+            cx.set_paint(iro(crate::pdfw::rgb(hl), 1.0));
+            cx.fill_rect(&Rect::new(
+                p.x_mm as f64 * mm,
+                (h_mm - y0 - hh) as f64 * mm,
+                (p.x_mm + p.w_mm) as f64 * mm,
+                (h_mm - y0) as f64 * mm,
+            ));
+        }
     }
 
     let mut res = Resources::new();
@@ -366,6 +388,60 @@ fn e_hameru(cx: &mut RenderContext, im: &crate::pdfw::Image, h_mm: f32, mm: f64)
     cx.reset_paint_transform();
 }
 
+/// A path of lines and curves (`pdfw::Michi`), filled and stroked as
+/// `pdfw::michi_kaku` writes it, cut to its clip shape when it has one
+fn michi(cx: &mut RenderContext, m: &crate::pdfw::Michi, h_mm: f32, mm: f64) {
+    use crate::pdfw::Suji;
+    use vello_cpu::peniko::Fill;
+    if m.suji.is_empty() {
+        return;
+    }
+    let ten = |x: f32, y: f32| Point::new(x as f64 * mm, (h_mm - y) as f64 * mm);
+    let bez = |suji: &[Suji]| {
+        let mut path = BezPath::new();
+        for s in suji {
+            match *s {
+                Suji::Ugoku(x, y) => path.move_to(ten(x, y)),
+                Suji::Hiku(x, y) => path.line_to(ten(x, y)),
+                Suji::Mageru(x1, y1, x2, y2, x, y) => path.curve_to(ten(x1, y1), ten(x2, y2), ten(x, y)),
+                Suji::Tojiru => path.close_path(),
+            }
+        }
+        path
+    };
+    let clipped = !m.clip.is_empty();
+    if clipped {
+        cx.set_fill_rule(Fill::NonZero);
+        cx.push_clip_layer(&bez(&m.clip));
+    }
+    let path = bez(&m.suji);
+    if let Some(c) = m.fill {
+        cx.set_fill_rule(if m.fill_gusuu { Fill::EvenOdd } else { Fill::NonZero });
+        cx.set_paint(iro(c, m.a));
+        cx.fill_path(&path);
+        cx.set_fill_rule(Fill::NonZero);
+    }
+    if let Some(c) = m.stroke {
+        // The PDF's defaults: mitred joins and butt ends
+        let mut stroke = Stroke {
+            width: (m.w_mm.max(0.05) as f64 * mm).max(0.5),
+            join: Join::Miter,
+            start_cap: Cap::Butt,
+            end_cap: Cap::Butt,
+            ..Default::default()
+        };
+        if !m.dash.is_empty() {
+            stroke = stroke.with_dashes(0.0, m.dash.iter().map(|v| *v as f64 * mm));
+        }
+        cx.set_stroke(stroke);
+        cx.set_paint(iro(c, m.a));
+        cx.stroke_path(&path);
+    }
+    if clipped {
+        cx.pop_layer();
+    }
+}
+
 /// 0〜1 の三つ組を色に
 fn iro(c: (f32, f32, f32), a: f32) -> AlphaColor<Srgb> {
     AlphaColor::new([c.0, c.1, c.2, a])
@@ -473,6 +549,55 @@ mod tests {
         // 絵の外(60mm, 20mm)は白のまま — **引き伸ばしがはみ出していない**
         let (r, g, b) = iro(60.0, 20.0);
         assert!(r > 250 && g > 250 && b > 250, "絵が枠からはみ出した: {r},{g},{b}");
+    }
+
+    /// **Shapes, paths and pictures stack by `z`, as the PDF writes them.**
+    /// The restaurant brochure's dark box with the logo sits above the
+    /// photo; the screen drew every picture last and hid the box, while the
+    /// PDF showed it as Word does (2026-09-27)
+    #[test]
+    fn things_stack_in_the_pdfs_order() {
+        use crate::pdfw::{Michi, Suji};
+        let leaf = Leaf {
+            images: vec![crate::pdfw::Image {
+                x_mm: 10.0,
+                y_mm: 10.0,
+                w_mm: 40.0,
+                h_mm: 20.0,
+                data: std::sync::Arc::new(futairo_png(20, 10)),
+                z: 1,
+                clip: None,
+            }],
+            // A dark box drawn after the picture, and a path under it
+            polys: vec![Poly {
+                points: vec![(12.0, 12.0), (20.0, 12.0), (20.0, 18.0), (12.0, 18.0)],
+                rgb: (0.1, 0.1, 0.1),
+                z: 2,
+                ..Default::default()
+            }],
+            paths: vec![Michi {
+                suji: vec![
+                    Suji::Ugoku(60.0, 10.0),
+                    Suji::Hiku(70.0, 10.0),
+                    Suji::Hiku(70.0, 20.0),
+                    Suji::Tojiru,
+                ],
+                fill: Some((0.0, 0.6, 0.0)),
+                z: 0,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let e = egaku(&leaf, 80.0, 40.0, 4.0);
+        let iro = |x_mm: f32, y_mm: f32| -> (u8, u8, u8) {
+            let (px, py) = ((x_mm * 4.0) as usize, ((40.0 - y_mm) * 4.0) as usize);
+            let i = (py * 320 + px) * 4;
+            (e.rgba[i], e.rgba[i + 1], e.rgba[i + 2])
+        };
+        let (r, g, b) = iro(15.0, 15.0);
+        assert!(r < 60 && g < 60 && b < 60, "the box went under the picture: {r},{g},{b}");
+        let (r, g, b) = iro(68.0, 12.0);
+        assert!(g > 120 && r < 60 && b < 60, "the path is not drawn: {r},{g},{b}");
     }
 
     /// **読めない絵は落とすが、他の物は描く。** 1枚のせいで紙面ごと消えない
