@@ -93,6 +93,12 @@ fn launch_shape(arg: Option<std::path::PathBuf>) -> Start {
 /// **その名前は表か。** 中身は見ません(SEKKEI「画面を1つにする」)。
 /// 起動・受け口・一覧のクリックの**3つとも同じ判定を通す**ための1箇所です。
 fn is_table(p: &std::path::Path) -> bool {
+    table_by_name(p, ui::settings::get("xlsx_edit").is_some_and(|v| v.trim() == "1"))
+}
+
+/// [`is_table`] with the setting given: `xlsx_edit` sends an xlsx to the
+/// spreadsheet screen
+fn table_by_name(p: &std::path::Path, xlsx_edit: bool) -> bool {
     let sheet = p
         .file_name()
         .map(|n| ui::folder::kind_of(&n.to_string_lossy()))
@@ -104,8 +110,7 @@ fn is_table(p: &std::path::Path) -> bool {
         .extension()
         .and_then(|e| e.to_str())
         .is_some_and(|e| ["xlsx", "xltx", "xlsm"].iter().any(|x| e.eq_ignore_ascii_case(x)));
-    let edit = ui::settings::get("xlsx_edit").is_some_and(|v| v.trim() == "1");
-    sheet && (!xlsx || edit)
+    sheet && (!xlsx || xlsx_edit)
 }
 
 /// 開いているファイル1枚ぶん。**タブ1つ = ファイル1つ = 編集画面1つ**
@@ -1126,12 +1131,18 @@ mod tests {
         assert_eq!(file_to_open("{\"cmd\":\"get\",\"a1\":\"A1\"}"), None);
     }
 
-    /// **名前で行き先の画面が決まる**(中身は見ません)。
+    /// **The name decides the screen** (the contents are not looked at). An
+    /// xlsx goes to the document screen to be looked at as its pages, and to
+    /// the spreadsheet screen when `xlsx_edit` is set
     #[test]
     fn the_name_decides_sheet_or_document() {
-        assert!(is_table(std::path::Path::new("/tmp/台帳.sheet.adoc")));
-        assert!(is_table(std::path::Path::new("/tmp/台帳.xlsx")));
-        assert!(!is_table(std::path::Path::new("/tmp/報告書.adoc")));
-        assert!(!is_table(std::path::Path::new("/tmp/報告書.docx")));
+        let p = std::path::Path::new;
+        for edit in [false, true] {
+            assert!(table_by_name(p("/tmp/台帳.sheet.adoc"), edit));
+            assert!(!table_by_name(p("/tmp/報告書.adoc"), edit));
+            assert!(!table_by_name(p("/tmp/報告書.docx"), edit));
+        }
+        assert!(!table_by_name(p("/tmp/台帳.xlsx"), false));
+        assert!(table_by_name(p("/tmp/台帳.xlsx"), true));
     }
 }
