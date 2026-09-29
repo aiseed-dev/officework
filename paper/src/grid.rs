@@ -498,6 +498,14 @@ impl Ink<'_> {
         }
     }
 
+    /// A path (outlines that may curve or have holes), in this layer
+    fn michi(&mut self, mut m: pdfw::Michi) {
+        if !m.suji.is_empty() {
+            m.z = self.z;
+            self.leaf.paths.push(m);
+        }
+    }
+
     /// A piece filled with a linear gradient. `rgb` is kept for anything that
     /// draws one colour
     fn poly_grad(
@@ -2452,8 +2460,25 @@ fn zukei(l1: &mut Ink, sp: &book::SheetShape, x: f32, y_top: f32, scale: f32, fo
         // **塗ってから輪郭。** 2026-08-27 まで紙は輪郭だけでした。
         // 図をこちらで描く(発注者「チャートは python による独自描画」)
         // には、棒も扇も中が塗れないと形になりません
+        // **Several outlines of one free-form shape are filled together**
+        // with the nonzero rule, so an inner outline that runs the other
+        // way is a hole (ECMA-376 20.1.9.15 path). Filled one by one, the
+        // envelope icon of Word's letterhead came out a solid block
+        // (2026-09-29)
+        let together = sp.kind == "path" && subs.len() > 1 && grad_ends.is_empty();
+        if together {
+            if let Some(c) = sp.fill.as_deref().and_then(hex_rgb) {
+                let mut suji = Vec::new();
+                for p in subs.iter().filter(|p| p.closed && p.fill && p.pts.len() >= 3) {
+                    suji.push(pdfw::Suji::Ugoku(p.pts[0].0, p.pts[0].1));
+                    suji.extend(p.pts[1..].iter().map(|q| pdfw::Suji::Hiku(q.0, q.1)));
+                    suji.push(pdfw::Suji::Tojiru);
+                }
+                l1.michi(pdfw::Michi { suji, fill: Some(c), a: usu, ..Default::default() });
+            }
+        }
         for p in &subs {
-            if p.closed && p.fill {
+            if p.closed && p.fill && !together {
                 if let Some(c) = sp.fill.as_deref().and_then(hex_rgb) {
                     if let [from, to] = grad_ends[..] {
                         let grad = pdfw::Grad { from, to, stops: grad_stops.clone() };
@@ -3431,8 +3456,9 @@ mod zukei_tests {
         assert!(leaf.polys[0].grad.is_none());
     }
 
-    /// Two outlines of one free-form shape are filled as two pieces, not
-    /// joined by a line from the end of the first to the start of the second
+    /// Two outlines of one free-form shape are filled together as one path
+    /// of two outlines, not joined by a line from the end of the first to
+    /// the start of the second
     #[test]
     fn each_outline_of_a_path_is_its_own_piece() {
         let mut sp = hako("path");
@@ -3445,8 +3471,11 @@ mod zukei_tests {
             book::PathPoint::at(0.6, 1.0),
         ];
         let leaf = shapes_leaf(&[(sp, 20.0, 200.0)], Paper::default());
-        assert_eq!(leaf.polys.len(), 2, "outlines joined: {:?}", leaf.polys.iter().map(|p| &p.points).collect::<Vec<_>>());
-        assert!(leaf.polys.iter().all(|p| p.points.len() == 3));
+        assert!(leaf.polys.is_empty(), "outlines filled one by one");
+        assert_eq!(leaf.paths.len(), 1);
+        let starts = leaf.paths[0].suji.iter().filter(|s| matches!(s, pdfw::Suji::Ugoku(..))).count();
+        assert_eq!(starts, 2, "outlines joined: {:?}", leaf.paths[0].suji);
+        assert!(!leaf.paths[0].fill_gusuu, "a hole comes from the winding (nonzero)");
     }
 
     /// **下揃えの下駄は、下揃えのときだけ。**
