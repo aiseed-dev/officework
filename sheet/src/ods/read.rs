@@ -14,12 +14,16 @@ use book::{Book, Cell, CellFormat, Pos, Sheet, Value};
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
 
+use super::styles::CellStyles;
 use crate::xlsx::Report;
 
 /// Rows and columns past this are not spread out one by one. LibreOffice
 /// writes the empty rest of a sheet as one repeated row or column
 /// (`number-rows-repeated="1048000"`)
 const SPREAD_LIMIT: u32 = 4096;
+
+/// Empty cells that only carry a style are spread out up to this many
+const STYLE_SPREAD_LIMIT: u32 = 1024;
 
 pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     let mut zip = zip::ZipArchive::new(src).map_err(|e| format!("zipを開けません: {e}"))?;
@@ -35,11 +39,17 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
         .map_err(|_| "content.xml がありません".to_string())?
         .read_to_string(&mut content)
         .map_err(|e| format!("content.xml を読めません: {e}"))?;
+    let mut styles_xml = String::new();
+    if let Ok(mut f) = zip.by_name("styles.xml") {
+        let _ = f.read_to_string(&mut styles_xml);
+    }
     let mut rep = Report::default();
     let styles = Styles::parse(&content);
+    let cells = CellStyles::parse(&styles_xml, &content);
     let mut book = Book::new();
     book.sheets.clear();
-    parse_body(&content, &styles, &mut book, &mut rep);
+    book.default_font = cells.default_font();
+    parse_body(&content, &styles, &cells, &mut book, &mut rep);
     if book.sheets.is_empty() {
         book.sheets.push(Sheet::new("Sheet1"));
     }
@@ -139,9 +149,17 @@ struct Pending {
     repeat: u32,
     span: (u32, u32),
     has_content: bool,
+    /// Formatted differently from a plain cell: kept even when empty
+    styled: bool,
 }
 
-fn parse_body(xml: &str, styles: &Styles, book: &mut Book, rep: &mut Report) {
+fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, book: &mut Book, rep: &mut Report) {
+    // The look of a cell with no style of its own: empty cells in this look
+    // are not kept
+    let plain = cells.format("Default");
+    // A column's default cell style, for cells that name none
+    let mut col_style: HashMap<u32, String> = HashMap::new();
+    let mut rest_style: Option<String> = None;
     let mut r = Reader::from_str(xml);
     r.config_mut().trim_text(false);
     let mut in_body = false;
@@ -195,18 +213,25 @@ fn parse_body(xml: &str, styles: &Styles, book: &mut Book, rep: &mut Report) {
                         sheet = Some(sh);
                         row = 0;
                         col = 0;
+                        col_style.clear();
+                        rest_style = None;
                     }
                     b"table:table-column" => {
                         if let Some(sh) = sheet.as_mut() {
                             let n = repeat(e, "table:number-columns-repeated");
                             let w = attr(e, "table:style-name").and_then(|s| styles.col_mm.get(&s).copied());
                             let hidden = attr(e, "table:visibility").is_some_and(|v| v != "visible");
+                            let dstyle = attr(e, "table:default-cell-style-name");
                             if n > SPREAD_LIMIT {
+                                rest_style = dstyle.clone();
                                 if let Some(w) = w {
                                     sh.default_col_mm.get_or_insert(w);
                                 }
                             } else {
                                 for c in col..col + n {
+                                    if let Some(d) = &dstyle {
+                                        col_style.insert(c, d.clone());
+                                    }
                                     if let Some(w) = w {
                                         sh.col_mm.insert(c, w);
                                     }
@@ -251,7 +276,23 @@ fn parse_body(xml: &str, styles: &Styles, book: &mut Book, rep: &mut Report) {
                     }
                     b"table:table-cell" | b"table:covered-table-cell" => {
                         let covered = name == b"table:covered-table-cell";
-                        let p = start_cell(e, covered, null_date, rep);
+                        let style = attr(e, "table:style-name")
+                            .or_else(|| col_style.get(&col).cloned())
+                            .or_else(|| rest_style.clone().filter(|_| !col_style.contains_key(&col)));
+                        let fmt = style.map(|s| cells.format(&s));
+                        let mut p = start_cell(e, covered, null_date, rep);
+                        if let Some(f) = fmt {
+                            if p.cell.fmt.number_format.is_some() && f.number_format.is_none() {
+                                // Keep the placeholder date or time format
+                                let keep = p.cell.fmt.number_format.take();
+                                p.cell.fmt = CellFormat { number_format: keep, ..f };
+                            } else {
+                                p.cell.fmt = f;
+                            }
+                            if p.cell.fmt != plain {
+                                p.styled = true;
+                            }
+                        }
                         if empty {
                             finish_cell(p, row, &mut col, &mut row_cells, sheet.as_mut());
                         } else {
@@ -319,7 +360,16 @@ fn parse_body(xml: &str, styles: &Styles, book: &mut Book, rep: &mut Report) {
                     b"table:table-row" => {
                         // A repeated row with content is copied to every row it covers
                         if let Some(sh) = sheet.as_mut() {
-                            let copies = row_repeat.min(SPREAD_LIMIT);
+                            // Rows that only carry styles are not copied past
+                            // the limit for styled cells, for the same reason
+                            let content = row_cells.iter().any(|(_, c)| c.formula.is_some() || !c.value.is_empty());
+                            let copies = if content {
+                                row_repeat.min(SPREAD_LIMIT)
+                            } else if row_repeat > STYLE_SPREAD_LIMIT {
+                                1
+                            } else {
+                                row_repeat
+                            };
                             for k in 1..copies {
                                 for (c, cl) in &row_cells {
                                     sh.set(Pos::new(row + k, *c), cl.clone());
@@ -366,7 +416,7 @@ fn start_cell(e: &BytesStart, covered: bool, null_date: Option<(i64, i64, i64)>,
     let mut cell = Cell::default();
     let mut has_content = false;
     if covered {
-        return Pending { cell, repeat, span: (1, 1), has_content };
+        return Pending { cell, repeat, span: (1, 1), has_content, styled: false };
     }
     if let Some(f) = attr(e, "table:formula") {
         match super::formula::to_a1(&f) {
@@ -422,7 +472,7 @@ fn start_cell(e: &BytesStart, covered: bool, null_date: Option<(i64, i64, i64)>,
         has_content = true;
     }
     cell.fmt = fmt;
-    Pending { cell, repeat, span, has_content }
+    Pending { cell, repeat, span, has_content, styled: false }
 }
 
 /// The paragraphs of a cell: the value of a string cell, or of an error
@@ -448,7 +498,9 @@ fn finish_cell(p: Pending, row: u32, col: &mut u32, row_cells: &mut Vec<(u32, Ce
     if p.span.0 > 1 || p.span.1 > 1 {
         sh.merges.push((Pos::new(row, *col), Pos::new(row + p.span.0 - 1, *col + p.span.1 - 1)));
     }
-    if p.has_content {
+    // A styled empty cell repeated this far is the style of the rest of the
+    // row, not cells someone formatted; it is not spread out
+    if p.has_content || (p.styled && p.repeat <= STYLE_SPREAD_LIMIT) {
         for k in 0..p.repeat.min(SPREAD_LIMIT) {
             sh.set(Pos::new(row, *col + k), p.cell.clone());
             row_cells.push((*col + k, p.cell.clone()));

@@ -6,7 +6,9 @@
 //! reader uses.
 
 mod formula;
+mod numfmt;
 mod read;
+mod styles;
 
 pub use crate::xlsx::Report;
 pub use formula::to_a1;

@@ -3,6 +3,10 @@
 //!
 //!     cargo run -q -p sheet --example ods_vs_xlsx -- ~/xlsx-corpus ~/ods-corpus
 //!
+//! With `--fmt` it also counts, per property, the cells whose formatting
+//! differs (bold, fill, font, size, borders, alignment, wrapping, number
+//! format), with one example each.
+//!
 //! Every `<stem>.ods` in the second folder is paired with `<stem>.xlsx` in the
 //! first. The ods comes from `tools/lo_pdf.py --to ods`, so a difference is
 //! either this reader or LibreOffice's own conversion; the list says which
@@ -14,7 +18,9 @@ use std::path::Path;
 use book::{Book, Value};
 
 fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut args: Vec<String> = std::env::args().skip(1).collect();
+    let fmt = args.iter().any(|a| a == "--fmt");
+    args.retain(|a| a != "--fmt");
     let [xdir, odir] = args.as_slice() else {
         eprintln!("usage: ods_vs_xlsx XLSX_DIR ODS_DIR");
         std::process::exit(2);
@@ -50,7 +56,7 @@ fn main() {
             println!("{stem}: xlsx unreadable");
             continue;
         };
-        let diffs = compare(&x, &o);
+        let diffs = if fmt { compare_fmt(&x, &o) } else { compare(&x, &o) };
         if diffs.is_empty() {
             same += 1;
         } else {
@@ -105,4 +111,33 @@ fn compare(x: &Book, o: &Book) -> Vec<String> {
         }
     }
     out
+}
+
+fn compare_fmt(x: &Book, o: &Book) -> Vec<String> {
+    use std::collections::BTreeMap;
+    let mut count: BTreeMap<&str, (usize, String)> = BTreeMap::new();
+    for (xs, os) in x.sheets.iter().zip(&o.sheets) {
+        for (p, c) in &xs.cells {
+            let a = &c.fmt;
+            let d = os.get(*p).map(|c| c.fmt.clone()).unwrap_or_default();
+            let mut note = |k: &'static str, l: String| {
+                let e = count.entry(k).or_insert((0, String::new()));
+                if e.0 == 0 {
+                    e.1 = format!("{}!{:?} {l}", xs.name, p);
+                }
+                e.0 += 1;
+            };
+            if a.bold != d.bold { note("bold", format!("{} vs {}", a.bold, d.bold)); }
+            if a.italic != d.italic { note("italic", format!("{} vs {}", a.italic, d.italic)); }
+            if a.fill != d.fill { note("fill", format!("{:?} vs {:?}", a.fill, d.fill)); }
+            if a.font != d.font { note("font", format!("{:?} vs {:?}", a.font, d.font)); }
+            if a.size_c != d.size_c { note("size", format!("{:?} vs {:?}", a.size_c, d.size_c)); }
+            if a.borders != d.borders { note("borders", format!("{:?} vs {:?}", a.borders.top, d.borders.top)); }
+            if a.align != d.align { note("align", format!("{:?} vs {:?}", a.align, d.align)); }
+            if a.valign != d.valign { note("valign", format!("{:?} vs {:?}", a.valign, d.valign)); }
+            if a.wrap != d.wrap { note("wrap", format!("{} vs {}", a.wrap, d.wrap)); }
+            if a.number_format != d.number_format { note("number_format", format!("{:?} vs {:?}", a.number_format, d.number_format)); }
+        }
+    }
+    count.into_iter().map(|(k, (n, ex))| format!("{k} {n}: {ex}")).collect()
 }
