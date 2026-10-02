@@ -111,8 +111,15 @@ Word のヘルプが使う言葉を選びます。
 
 ## 目標と判断の基準
 
-- 第一の目標は、docx と xlsx を読み込んで、Word・Excel と同じに表示・印刷することです。
-  新しい機能より先に、この一致を上げます。
+- 第一の目標は、ODF(odt と ods)の対応です(2026-10-02 発注者)。LibreOffice の
+  ソースと試験を読んで Rust に写し、LibreOffice と同じに表示・印刷します。
+  決めと理由は SEKKEI の「決め: ODF を先にする」にあります。
+- 第二の目標は、docx と xlsx を読み込んで、Word・Excel と同じに表示・印刷することです。
+  docx と xlsx の読み書きはやめません。
+- LibreOffice からは、API と試験を写し、実装は写しません。ODF の文書に入っている
+  マクロは走らせません。
+- LibreOffice で正解の PDF を作るときは、`-env:UserInstallation=file://<作業用のフォルダー>`
+  で別の設定フォルダーを使います。発注者の LibreOffice の設定と窓に触れないためです。
 - 画面(リボン・ダイアログ・右パネル)は Euro-Office に合わせます。Word・Excel の
   並びや名前には合わせません。
 - **Word・Excel との違いは、直す前に OOXML(ECMA-376)で確かめます。** 要素・属性・
