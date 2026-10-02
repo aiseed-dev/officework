@@ -1,15 +1,17 @@
-//! sheet — **xlsx の交換**。UI非依存。
+//! sheet: exchanging spreadsheet files. Independent of the UI.
 //!
-//! 受け持つのは xlsx の読み書きだけです(2026-08-26。SEKKEI「エンジンは
-//! 3つに分ける」)。セルの模型・式の計算・`.adoc` の読み書きは
-//! `kumihan` にあります。ここから再輸出もしません — この crate から
-//! 引けると、xlsx のエンジンが模型を持っているように見えるためです。
+//! This crate reads and writes xlsx and reads ods (2026-08-26, SEKKEI
+//! "エンジンは3つに分ける"; ods added 2026-10-02, "決め: ODF を先にする").
+//! The cell model, formula calculation and `.adoc` live in `kumihan`, and
+//! this crate does not re-export them, so it never looks as if a file format
+//! owned the model.
 //!
-//! - [`xlsx`] 読み書きそのもの(`styles.xml` と `theme1.xml` も中にあります)
+//! - [`xlsx`] reading and writing xlsx (`styles.xml` and `theme1.xml` included)
+//! - [`ods`] reading ods
 //!
-//! **マクロは実装しない。** 機能不足ではなく設計判断:
-//! 文書の中に特権実行コードが同居する形(VBA)をやめ、
-//! 「開く=実行」という攻撃経路を最初から持たない
-//! (aiseed-migration-kit DESIGN.md §5 と同じ思想)。
+//! Macros are not implemented, by design: a document never carries code with
+//! the right to run, so "opening is running" does not exist as a way in
+//! (the same idea as aiseed-migration-kit DESIGN.md §5).
 
+pub mod ods;
 pub mod xlsx;
