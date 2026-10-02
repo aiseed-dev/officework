@@ -2244,4 +2244,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fill_missing_names", "Nama yang tidak ada di data: {}"),
     ("fill_notes", "Tidak dimasukkan ke templat: {}"),
     ("fill_written", "{} ditulis: templat berisi data"),
+    ("ods_opened_save_as", "{}: {} lembar / {} sel. Menyimpan ke ods belum didukung — gunakan Simpan Sebagai untuk menyimpannya sebagai xlsx atau adoc"),
+    ("ods_cannot_save_yet", "Menyimpan ke ods belum didukung. Gunakan Simpan Sebagai untuk menyimpannya sebagai xlsx atau adoc"),
 ];

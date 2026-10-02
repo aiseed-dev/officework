@@ -2392,5 +2392,7 @@
  "xlsx_opened_view_only": "{} se muestra como las páginas que imprime, solo para verlo. Para editar xlsx, escriba xlsx_edit = \"1\" en settings.toml",
  "fill_missing_names": "Nombres que faltan en los datos: {}",
  "fill_notes": "No se pudo poner en la plantilla: {}",
- "fill_written": "Se escribió {}: la plantilla con los datos"
+ "fill_written": "Se escribió {}: la plantilla con los datos",
+ "ods_opened_save_as": "{}: {} hojas / {} celdas. Aún no se puede guardar como ods: use «Guardar como» para conservarlo como xlsx o adoc",
+ "ods_cannot_save_yet": "Aún no se puede guardar como ods. Use «Guardar como» para conservarlo como xlsx o adoc"
 }

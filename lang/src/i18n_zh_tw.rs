@@ -2244,4 +2244,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fill_missing_names", "資料中沒有的名稱:{}"),
     ("fill_notes", "未能放入範本的項目:{}"),
     ("fill_written", "已寫入 {}:填入資料的範本"),
+    ("ods_opened_save_as", "{}:{} 個工作表 / {} 個儲存格。尚不支援儲存為 ods,請用「另存新檔」儲存為 xlsx 或 adoc"),
+    ("ods_cannot_save_yet", "尚不支援儲存為 ods。請用「另存新檔」儲存為 xlsx 或 adoc"),
 ];

@@ -2244,4 +2244,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fill_missing_names", "Namen, die in den Daten fehlen: {}"),
     ("fill_notes", "Nicht in die Vorlage eingefügt: {}"),
     ("fill_written", "{} geschrieben: die Vorlage mit den eingefügten Daten"),
+    ("ods_opened_save_as", "{}: {} Blätter / {} Zellen. Speichern als ods ist noch nicht möglich – mit „Speichern unter“ als xlsx oder adoc sichern"),
+    ("ods_cannot_save_yet", "Speichern als ods ist noch nicht möglich. Mit „Speichern unter“ als xlsx oder adoc sichern"),
 ];

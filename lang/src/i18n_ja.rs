@@ -2244,4 +2244,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fill_missing_names", "データに無い名前: {}"),
     ("fill_notes", "テンプレートに入らなかった物: {}"),
     ("fill_written", "{} に、データを入れたテンプレートを書きました"),
+    ("ods_opened_save_as", "{} を開きました({} シート / {} セル)。ods への保存はまだできないので、残すときは「名前を付けて保存」で xlsx か adoc にしてください"),
+    ("ods_cannot_save_yet", "ods への保存はまだできません。「名前を付けて保存」で xlsx か adoc にしてください"),
 ];

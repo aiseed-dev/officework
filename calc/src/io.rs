@@ -107,11 +107,13 @@ impl Calc {
         // xlsx は**シートごとに1行=1行**にして渡す(行番号がセルの行に近い)
         let extract = |p: &std::path::Path| -> Option<String> {
             let e = p.extension().and_then(|x| x.to_str())?.to_ascii_lowercase();
-            if e != "xlsx" {
-                return None;
-            }
             let f = std::fs::File::open(p).ok()?;
-            let (book, _) = sheet::xlsx::read(std::io::BufReader::new(f)).ok()?;
+            let f = std::io::BufReader::new(f);
+            let book = match e.as_str() {
+                "xlsx" => sheet::xlsx::read(f).ok()?.0,
+                "ods" => sheet::ods::read(f).ok()?.0,
+                _ => return None,
+            };
             let mut out = String::new();
             for sh in &book.sheets {
                 out.push_str(&format!("[{}]\n", sh.name));
@@ -193,7 +195,11 @@ impl Calc {
             .path
             .extension()
             .and_then(|x| x.to_str())
-            .is_some_and(|e| e.eq_ignore_ascii_case("xlsx") || e.eq_ignore_ascii_case("adoc"));
+            .is_some_and(|e| {
+                e.eq_ignore_ascii_case("xlsx")
+                    || e.eq_ignore_ascii_case("ods")
+                    || e.eq_ignore_ascii_case("adoc")
+            });
         if !ok {
             self.status = ui::tf!(
                 "calc_cannot_open_not",
@@ -279,6 +285,11 @@ impl Calc {
         // `.csv` も字のファイル。データタブ「CSV の形」の文字コードと区切りで読む
         if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("csv")) {
             self.open_csv(p, bytes);
+            return;
+        }
+        // `.ods` is a zip, but not an xlsx: it has its own reader and no repair path
+        if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("ods")) {
+            self.open_ods(p, bytes);
             return;
         }
         if ooxml::crypt::is_encrypted(&bytes) {
@@ -399,6 +410,43 @@ impl Calc {
                     p.file_name().unwrap_or_default().to_string_lossy()
                 );
                 self.adopt_book(p, book, notes, status);
+            }
+            Err(e) => self.status = ui::tf!("cant_open", e).into(),
+        }
+    }
+
+    /// Open an `.ods` workbook (ODF first: SEKKEI "決め: ODF を先にする").
+    ///
+    /// **The workbook gets no path.** There is no ods writer yet, so Ctrl+S must
+    /// not write xlsx bytes under the `.ods` name (the file would claim to be ODF
+    /// and no ODF reader could open it). With no path, Ctrl+S asks for a name
+    /// (xlsx filter), the same as for a workbook opened from csv, and `save_to`
+    /// also refuses a typed `.ods` name. The original `.ods` is never touched.
+    ///
+    /// A file that cannot be read is only reported in the status bar: the repair
+    /// path ([`Self::offer_repair`]) salvages broken xlsx zips and does not apply.
+    pub(crate) fn open_ods(&mut self, p: PathBuf, bytes: Vec<u8>) {
+        self.encrypt_pw = None;
+        match sheet::ods::read(std::io::Cursor::new(bytes)) {
+            Ok((mut book, rep)) => {
+                book::calc::recalc_all(&mut book);
+                let notes = rep
+                    .unsupported
+                    .iter()
+                    .map(|(n, c)| SharedString::from(format!("{n} × {c}")))
+                    .collect();
+                let status = ui::tf!(
+                    "ods_opened_save_as",
+                    p.file_name().unwrap_or_default().to_string_lossy(),
+                    rep.sheets,
+                    rep.cells
+                );
+                self.adopt_book(p, book, notes, status.to_string());
+                // No path (see above). Like csv, the lock is not kept either.
+                self.release_lock();
+                self.locked_by = None;
+                self.set_path(None);
+                self.dirty = false;
             }
             Err(e) => self.status = ui::tf!("cant_open", e).into(),
         }
@@ -1106,8 +1154,9 @@ impl Calc {
     pub(crate) fn open_dialog(&mut self, cx: &mut Context<Self>) {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
-                .add_filter("ブック", &["xlsx", "adoc", "csv"])
+                .add_filter("ブック", &["xlsx", "ods", "adoc", "csv"])
                 .add_filter("Excelブック", &["xlsx"])
+                .add_filter("OpenDocument スプレッドシート", &["ods"])
                 .add_filter("officework のブック", &["adoc"])
                 .add_filter("CSV", &["csv"])
                 .pick_file()
@@ -1470,6 +1519,14 @@ impl Calc {
 
     /// 決まった場所へ書く。成功すると dirty が消える。
     pub(crate) fn save_to(&mut self, p: PathBuf) {
+        // There is no ods writer yet. Writing xlsx bytes under an `.ods` name would
+        // make a file that claims to be ODF but is not, so a typed `.ods` name in
+        // Save As is refused. (Ctrl+S on a workbook opened from ods never gets here:
+        // that workbook has no path, see `open_ods`.)
+        if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("ods")) {
+            self.status = ui::t!("ods_cannot_save_yet").into();
+            return;
+        }
         // 画面の固定枠をモデルへ。**書く前に必ず** — これが無いと、
         // calc で固定した枠がファイルに載らない
         self.freeze_into_book();

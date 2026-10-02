@@ -2244,4 +2244,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fill_missing_names", "Verilerde olmayan adlar: {}"),
     ("fill_notes", "Şablona konamayanlar: {}"),
     ("fill_written", "{} yazıldı: veriler eklenmiş şablon"),
+    ("ods_opened_save_as", "{}: {} sayfa / {} hücre. ods olarak kaydetme henüz desteklenmiyor — xlsx veya adoc olarak saklamak için Farklı Kaydet'i kullanın"),
+    ("ods_cannot_save_yet", "ods olarak kaydetme henüz desteklenmiyor. xlsx veya adoc olarak saklamak için Farklı Kaydet'i kullanın"),
 ];

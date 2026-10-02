@@ -9119,3 +9119,54 @@ mod custom_function_list_tests {
         }
     }
 }
+
+/// An `.ods` opens, but is never overwritten: there is no ods writer yet, so the
+/// workbook has no path and Ctrl+S asks for a name instead of writing xlsx bytes
+/// under the `.ods` name.
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod ods_open_tests {
+    use crate::*;
+
+    const MITSUMORI: &[u8] = include_bytes!("../../sheet/src/ods/testdata/mitsumori.ods");
+
+    #[gpui::test]
+    fn ods_opens_and_is_never_written_back(cx: &mut gpui::TestAppContext) {
+        let dir = std::env::temp_dir().join(format!("jo-ods-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("見積書.ods");
+        std::fs::write(&p, MITSUMORI).unwrap();
+
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.open(p.clone());
+            assert_eq!(this.book.sheets[0].name, "見積書", "{}", this.status);
+            let line = this.book.sheets[0].get(Pos::new(10, 5)).unwrap();
+            assert_eq!(line.value.display(), "450000", "recalculated value");
+            assert_eq!(line.formula.as_deref(), Some("C11*E11"));
+            assert!(this.status.contains("見積書.ods"), "{}", this.status);
+            // No path: Ctrl+S cannot overwrite the .ods
+            assert!(this.path.is_none());
+            assert!(!this.dirty);
+
+            // A typed `.ods` name in Save As is refused too, and nothing is written
+            let q = dir.join("別名.ods");
+            this.save_to(q.clone());
+            assert!(!q.exists(), "xlsx bytes were written under an .ods name");
+            assert_eq!(this.status.to_string(), ui::t!("ods_cannot_save_yet"));
+        });
+        // The original file is untouched
+        assert_eq!(std::fs::read(&p).unwrap(), MITSUMORI);
+
+        // A file that is not an ods is reported in the status bar, with no repair list
+        let bad = dir.join("壊れた.ods");
+        std::fs::write(&bad, b"not a zip").unwrap();
+        c.update(cx, |this, _cx| {
+            this.open(bad.clone());
+            assert_ne!(this.pick_kind, "repair");
+            assert!(this.repair_pend.is_none());
+            assert!(this.status.contains("開けません") || this.status.contains("Can't open"), "{}", this.status);
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

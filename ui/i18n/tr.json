@@ -2392,5 +2392,7 @@
  "xlsx_opened_view_only": "{} yazdırdığı sayfalar olarak yalnızca görüntülemek için gösteriliyor. Düzenlemek için settings.toml içine xlsx_edit = \"1\" yazın",
  "fill_missing_names": "Verilerde olmayan adlar: {}",
  "fill_notes": "Şablona konamayanlar: {}",
- "fill_written": "{} yazıldı: veriler eklenmiş şablon"
+ "fill_written": "{} yazıldı: veriler eklenmiş şablon",
+ "ods_opened_save_as": "{}: {} sayfa / {} hücre. ods olarak kaydetme henüz desteklenmiyor — xlsx veya adoc olarak saklamak için Farklı Kaydet'i kullanın",
+ "ods_cannot_save_yet": "ods olarak kaydetme henüz desteklenmiyor. xlsx veya adoc olarak saklamak için Farklı Kaydet'i kullanın"
 }

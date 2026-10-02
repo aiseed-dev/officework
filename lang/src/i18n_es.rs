@@ -2244,4 +2244,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fill_missing_names", "Nombres que faltan en los datos: {}"),
     ("fill_notes", "No se pudo poner en la plantilla: {}"),
     ("fill_written", "Se escribió {}: la plantilla con los datos"),
+    ("ods_opened_save_as", "{}: {} hojas / {} celdas. Aún no se puede guardar como ods: use «Guardar como» para conservarlo como xlsx o adoc"),
+    ("ods_cannot_save_yet", "Aún no se puede guardar como ods. Use «Guardar como» para conservarlo como xlsx o adoc"),
 ];

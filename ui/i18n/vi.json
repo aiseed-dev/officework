@@ -2392,5 +2392,7 @@
  "xlsx_opened_view_only": "{} được hiển thị dưới dạng các trang in, chỉ để xem. Để sửa xlsx, hãy ghi xlsx_edit = \"1\" vào settings.toml",
  "fill_missing_names": "Tên không có trong dữ liệu: {}",
  "fill_notes": "Không đưa được vào mẫu: {}",
- "fill_written": "Đã ghi {}: mẫu đã điền dữ liệu"
+ "fill_written": "Đã ghi {}: mẫu đã điền dữ liệu",
+ "ods_opened_save_as": "{}: {} trang tính / {} ô. Chưa hỗ trợ lưu sang ods — dùng Lưu dưới dạng để giữ ở dạng xlsx hoặc adoc",
+ "ods_cannot_save_yet": "Chưa hỗ trợ lưu sang ods. Dùng Lưu dưới dạng để giữ ở dạng xlsx hoặc adoc"
 }

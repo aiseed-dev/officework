@@ -28,6 +28,8 @@ pub enum Kind {
     DocX,
     /// 受け渡しの表(`.xlsx`)
     SheetX,
+    /// A spreadsheet to exchange (`.ods`)
+    SheetO,
     /// 大きい表のデータ(`.parquet`)
     Data,
     /// 画像
@@ -41,7 +43,7 @@ pub enum Kind {
 impl Kind {
     /// 表の画面で開く種類か。
     pub fn is_sheet(self) -> bool {
-        matches!(self, Kind::Sheet | Kind::SheetX)
+        matches!(self, Kind::Sheet | Kind::SheetX | Kind::SheetO)
     }
 
     /// 文書の画面で開く種類か。見た目の元と様式も文書です。
@@ -64,6 +66,7 @@ impl Kind {
             Kind::Form => lang::i18n::tr("form_2"),
             Kind::DocX => "docx",
             Kind::SheetX => "xlsx",
+            Kind::SheetO => "ods",
             Kind::Data => "parquet",
             Kind::Image => lang::i18n::tr("images"),
             Kind::Script => "Python",
@@ -104,6 +107,7 @@ pub fn kind_of(file_name: &str) -> Kind {
     match lower.rsplit_once('.').map(|(_, e)| e) {
         Some("docx") => Kind::DocX,
         Some("xlsx" | "xltx") => Kind::SheetX,
+        Some("ods") => Kind::SheetO,
         Some("parquet") => Kind::Data,
         Some("png" | "jpg" | "jpeg" | "gif" | "bmp" | "svg" | "webp") => Kind::Image,
         Some("py") => Kind::Script,
@@ -278,6 +282,8 @@ mod tests {
         assert_eq!(kind_of("申込書.form.adoc"), Kind::Form);
         assert_eq!(kind_of("送付状.docx"), Kind::DocX);
         assert_eq!(kind_of("在庫.xlsx"), Kind::SheetX);
+        assert_eq!(kind_of("在庫.ods"), Kind::SheetO);
+        assert!(kind_of("在庫.ods").is_sheet() && kind_of("在庫.ods").can_open());
         assert_eq!(kind_of("売上.parquet"), Kind::Data);
         assert_eq!(kind_of("写真.png"), Kind::Image);
         assert_eq!(kind_of("集計.py"), Kind::Script);

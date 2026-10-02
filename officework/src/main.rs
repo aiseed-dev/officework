@@ -426,7 +426,7 @@ impl Office {
             .or_else(|| face::session::load().folder);
         let ask = cx.background_executor().spawn(async move {
             let mut d = rfd::FileDialog::new()
-                .add_filter(ui::t!("files_can_open"), &["adoc", "docx", "xlsx", "xltx"])
+                .add_filter(ui::t!("files_can_open"), &["adoc", "docx", "xlsx", "xltx", "ods"])
                 .add_filter(ui::t!("officework_documents_spreadsheets"), &["adoc"])
                 .add_filter("Word (.docx)", &["docx"])
                 .add_filter("Excel (.xlsx)", &["xlsx"]);
@@ -1144,5 +1144,7 @@ mod tests {
         }
         assert!(!table_by_name(p("/tmp/台帳.xlsx"), false));
         assert!(table_by_name(p("/tmp/台帳.xlsx"), true));
+        // An ods is edited on the spreadsheet screen (the document screen cannot read it)
+        assert!(table_by_name(p("/tmp/台帳.ods"), false));
     }
 }

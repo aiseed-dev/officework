@@ -2244,4 +2244,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fill_missing_names", "Names the data lacks: {}"),
     ("fill_notes", "Not put into the template: {}"),
     ("fill_written", "Wrote {}: the template with the data filled in"),
+    ("ods_opened_save_as", "{}: {} sheets / {} cells. Saving to ods is not supported yet — use Save As to keep it as xlsx or adoc"),
+    ("ods_cannot_save_yet", "Saving to ods is not supported yet. Use Save As to keep it as xlsx or adoc"),
 ];

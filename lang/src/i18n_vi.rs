@@ -2244,4 +2244,6 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fill_missing_names", "Tên không có trong dữ liệu: {}"),
     ("fill_notes", "Không đưa được vào mẫu: {}"),
     ("fill_written", "Đã ghi {}: mẫu đã điền dữ liệu"),
+    ("ods_opened_save_as", "{}: {} trang tính / {} ô. Chưa hỗ trợ lưu sang ods — dùng Lưu dưới dạng để giữ ở dạng xlsx hoặc adoc"),
+    ("ods_cannot_save_yet", "Chưa hỗ trợ lưu sang ods. Dùng Lưu dưới dạng để giữ ở dạng xlsx hoặc adoc"),
 ];
