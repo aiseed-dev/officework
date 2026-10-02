@@ -109,6 +109,7 @@ ruby -I vendor/asciidoctor/lib vendor/asciidoctor/bin/asciidoctor -o /dev/null <
   条件付き書式の第2版(バー・スケール・アイコン)、ピボットの絞り込みと
   グループ化、スパークライン3種、テキスト取り込みウィザード、R1C1、
   反復計算などが「挿入」「データ」節にまだ薄い
-- from-excel(en): 日本語版より古い。ピボットグラフと、テーブルの節の
-  構造化参照が、日本語版では「同じ」、英語版では「Not yet」のまま。
-  日本語版と行ごとに比べて合わせる
+- from-excel(ja/en): ショートカット対応表が実物より古い。Ctrl+F・Ctrl+B・
+  Ctrl+P・Ctrl+1・Ctrl+E・Ctrl+D などは、今は calc で効く(face/src/keys.rs)。
+  キーを「未配線」と書いた行(セル書式の基本・検索・数式と関数)も同じ。
+  分析の道具の節の予測シートの行も「まだ無い」のままで、What-If の節と合わない

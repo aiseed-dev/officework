@@ -22,15 +22,16 @@ How to read the marks:
 
 == Getting started — the screen and basic operations
 
-The tabs are in Excel's order (File / Home / Insert / Draw / Layout / Formulas / Data / PivotTable / Table Design / Collaboration / Protection / View / Plugins + AI).
-The band is a single row of icons; hover one and its name appears in the status bar below.
-As a rule we don't place buttons that do nothing when pressed — the few gray buttons are there to mark "the place, and only the place" (see the Protection section).
+The tabs are in Excel's order.
+There are thirteen: File, Home, Insert, Draw, Layout, Formula, Data, Pivot Table, Table Design, Collaboration, Protection, View and Macros.
+The ribbon is a single row of icons. Hover over one and its name appears in the status bar below.
+As a rule, we don't place buttons that do nothing when pressed.
+The few gray buttons only mark where something will go (see the Protection section).
 For details see "The screen" and "Basics" in the link:calc-manual.adoc[calc manual].
 
 [cols="1,1,1"]
 |===
 |Excel's name |Mark |How it works here
-|Documents in MS Mincho / MS Gothic come out with the wrong widths |Different |On a Mac with Microsoft Office installed nothing needs to be added: the MS Mincho, MS Gothic, Yu Mincho, Yu Gothic and Meiryo fonts bundled with Office are used as they are. On a machine without the Windows fonts (MS Mincho, MS Gothic, MS PMincho, MS PGothic), install the free Ume fonts (Ume Mincho, Ume Gothic, Ume P Mincho, Ume P Gothic), which have the same advance widths. Half-width digits and spaces then measure as in Excel, so column widths and table rows of old documents keep their shape. Put the ttf files in `~/Library/Fonts` on a Mac or `~/.fonts` on Linux. Without them, text is drawn in a system font such as Hiragino while half-width characters are still advanced by 0.5em as MS Mincho does, so widths and line breaks match even though the typeface differs
 
 |New, Open, Save |Same |The File tab, plus Ctrl+O / Ctrl+S. xlsx is the canonical save format; there is a CSV export (UTF-8 with BOM, CRLF, values only). ODS and XLTX are pending
 |Recent workbooks |Same |Twelve of them on the File tab
@@ -42,7 +43,7 @@ For details see "The screen" and "Basics" in the link:calc-manual.adoc[calc manu
 |Hide and unhide rows and columns |Same |"Hide" and "Unhide" on the header's right-click menu. To unhide, first select across the hidden part. The container is the same one grouping uses, and it round-trips through xlsx (so it stays hidden for the next person). *You can't hide everything that's in use* — we refuse, because the way back would become invisible
 |Freeze panes |Same |From the View tab: top row, first column, current position, unfreeze. A green line marks the split, and the shadow can be toggled
 |Zoom |Same |50–200% (narrower than Excel's 500%). Paper is unaffected. The on-screen text size is a separate setting under advanced options
-|Split the window |Not yet |For headers, freeze panes; to keep an eye on values, Watch on the Formulas tab stands in
+|Split the window |Same |"Split" on the View tab. The window splits above and to the left of the cursor, and the upper and lower (left and right) parts scroll separately. The wheel scrolls the part the pointer is over. Press it again to remove the split. It can't be used together with freeze panes (turning one on turns the other off). The split is a state of the screen only and is not saved in the file
 |New window, Arrange All |Different |One workbook, one window. To place them side by side, launch again and use your OS's windows. We don't build the path where clicking another workbook writes an external-reference formula (see "Bringing data in" below)
 |Toggle formula bar, gridlines, headings |Same |View tab. There's a "Show zeros" toggle too
 |Sum, average and count in the status bar |Same |Shown live as you select. They respect the filter
@@ -59,7 +60,7 @@ What's here is only what has been verified.
 
 |Autofill (dragging the ■) |Different |There is no fill handle. Select the first row, extend with Shift+↓, and press "Fill" on Home — it copies the first row downward (downward only). Relative references shift, and formatting is copied too
 |Building a series (1, 2, 3…) |Different |Fill only copies; it never guesses. For a running number, spill `=SEQUENCE(10)`, or fill `=A1+1` down. There are no custom lists for weekdays or month names
-|Flash Fill (Ctrl+E) |Not yet |Ask the left-panel conversation to "fill in the rest", or Data > Python
+|Flash Fill (Ctrl+E) |Same |Ctrl+E. It works out a rule from your examples and fills in the cells below. A rule is used only if it reproduces every example exactly; if none does, nothing is filled. Only the examples in the rows that continue from the cursor's row are read. Cells that already hold something are not overwritten
 |Paste values only |Same |Ctrl+Shift+V. Also from "Paste Special" on the right-click menu
 |Paste Special |Different |Four choices — values only / formulas as they are / formatting only / transpose (values). No operations, no skip blanks, no column widths
 |Format Painter (the brush) |Same |Next to Paste. It paints the next cell you click (Shift for a range); Esc to stop
@@ -76,8 +77,13 @@ What's here is only what has been verified.
 
 == Cell formatting basics
 
-The formatting tools are nearly all on the Home band; they work when pressed, and they round-trip with xlsx.
-The differences show up in two habits — borders are not Excel's stamped presets but an *orthogonal place × pen model*, and "Format Cells" is not a six-tab dialog but a small panel you can leave open while you work.
+The formatting tools are nearly all on the Home tab.
+They work when pressed, and they round-trip with xlsx.
+
+There are two differences.
+Borders are not Excel's stamped presets: you choose the place to draw and the pen separately.
+"Format Cells" is not a six-tab dialog but a panel you can leave open while you work.
+
 For details see the link:calc-manual.adoc[calc manual].
 
 [cols="1,1,1"]
@@ -92,19 +98,23 @@ For details see the link:calc-manual.adoc[calc manual].
 |Text alignment (left/center/right, top/middle/bottom, justify) |Same |The Home buttons give three horizontal plus justify, and three vertical. The defaults match Excel — numbers right, text left, vertical at the bottom. Justify turns wrapping on with it (you need wrapping in order to justify). There is no distributed alignment
 |Wrap text |Same |Toggled from the Home button. Both the on-screen drawing and the xlsx (wrapText) round trip are in place. It works together with an in-cell line break (Alt+Enter)
 |Shrink to fit |Not yet |There is no toggle button yet. Cells that already carry it from xlsx are read correctly, drawn shrunk until they fit the width, and not lost on save — only the control is missing
-|Vertical and angled text (text orientation) |Different |The orientation button on Home (still labeled "Page orientation" — a naming slip) offers six presets (no angle, 45° up / 45° down, 90° up / 90° down, vertical = one character stacked on the next) plus "Other (type an angle)…" for −90 to 90 degrees. The current orientation gets a ✓, and the value round-trips. But *the screen does not rotate the glyphs* — anything other than 0° is shown as characters stacked one per line. That is exactly what Japanese forms want for vertical headings, but 45° text only slants once you open it in Excel
+|Vertical and angled text (text orientation) |Different |The "Text orientation" button on Home offers six presets (no angle, 45° up / 45° down, 90° up / 90° down, vertical = one character stacked on the next) plus "Other (type an angle)…" for −90 to 90 degrees. The current orientation gets a ✓, and the value round-trips. But *the screen does not rotate the glyphs* — anything other than 0° is shown as characters stacked one per line. That is exactly what Japanese forms want for vertical headings, but 45° text only slants once you open it in Excel
 |Superscript and subscript |Different |Subscript toggles from a Home button and round-trips. Superscript isn't in the model and is pending (no button on calc's Home)
 |Indent (inside a cell) |Not yet |calc has neither an indent button nor a field in the model (writer's paragraphs do have one). For now, type leading spaces or split the column
 |Cell styles (the built-in set: Heading, Good/Bad and so on) |Different |"Cell Styles" on Home offers ten (Normal, Heading, Title, Good/Bad/Neutral, Note, Calculation, Currency, Percent). Choosing one applies formatting to the selection, and a single Ctrl+Z takes it back. There is no big gallery, no registering your own style, and no "modify style" that updates everywhere — what gets applied is plain formatting, so you fix it by fixing the formatting
 |Workbook themes and theme colors |Different |There is no switch for a whole theme (colors + fonts + effects); Layout > "Change color scheme" swaps between four color sets (Office, warm, cool, ink). Theme-derived colors remember where they came from and round-trip, so changing the scheme moves those cells' colors with it, and saving doesn't flatten them to rgb. "Interface theme" on the View tab is the light/dark of the screen, not the workbook's theme (cells stay white). We don't carry theme font or effect sets
-|The Format Cells dialog (Ctrl+1) |Different |Not a six-tab dialog but the "Cell format" panel — borders, fill, font color, font effects, alignment, wrapping and number format laid out on one sheet as a toolbox. Its Home label reads "Cell Styles", the same name as the real style list beside it, which makes the two hard to tell apart (the panel's own title is "Cell format"). It isn't modal: leave it open and keep re-selecting ranges (close with ✕ or Esc), and every button is one Ctrl+Z per step. The Ctrl+1 key isn't wired
+|The Format Cells dialog (Ctrl+1) |Different |Not a six-tab dialog but the "Cell format" panel — borders, fill, font color, font effects, alignment, wrapping and number format laid out on one sheet as a toolbox. Its label on Home is "Format cells" (the panel's own title is "Cell format"). It isn't modal: leave it open and keep re-selecting ranges (close with ✕ or Esc), and every button is one Ctrl+Z per step. The Ctrl+1 key isn't wired
 |===
 
 == Aids for entering data
 
-Excel's "helpful" machinery — custom lists, form controls floating on the sheet, grouped sheets that bundle several at once — all share one property: *they keep state outside the grid*.
-The line in this house is "state lives in cells": a list is a range on a sheet, a control is the cell itself (checkboxes), and writing to several sheets is an explicit naming under Data > Python.
-We build neither guesswork nor a path that silently rewrites a sheet you can't see.
+Excel has several mechanisms that try to be helpful: custom lists, form controls floating on the sheet, and grouped sheets that bundle several at once.
+All of them *keep state outside the grid.*
+
+Here, state lives in cells.
+A list is a range on a sheet, a control is the cell itself (checkboxes), and writing to several sheets means naming them explicitly under Data > Python.
+We don't guess. We also don't build a way to silently rewrite a sheet you can't see.
+
 For details see the link:calc-manual.adoc[calc manual].
 
 [cols="1,1,1"]
@@ -147,20 +157,24 @@ For details see the link:calc-manual.adoc[calc manual].
 
 == Number precision and the traps of typing
 
-The container for numbers is a single f64; we don't apply Excel's cosmetic of "cutting at fifteen significant digits".
-In exchange, *we don't guess at what you typed either*. Nothing turns into a date, but by the same token neither a leading `'` nor a text number format changes how input is read.
-With the protective tools this thin, work that needs a number held exactly as text is, for now, something we are bad at.
+Numbers are held in one kind only, f64.
+They are shown rounded to fifteen significant digits, the same as Excel.
+We don't guess how to read what you typed.
+Nothing turns into a date on its own, but by the same token neither a leading `'` nor a text number format changes how input is read.
+So work that needs a number kept exactly as text is something we are bad at for now.
+
 For number formats, see "Formatting" in the link:calc-manual.adoc[calc manual].
 
 [cols="1,1,1"]
 |===
 |Excel's name |Mark |How it works here
 
-|The fifteen-significant-digit wall (the tail of a 16-digit card number turning into 0) |Different |The value is kept as f64 and never truncated to fifteen digits — 4111111111111111 comes out as typed. But integers beyond 2^53 (about 9 quadrillion) shift under binary rounding: type 9999999999999999 and you get 10000000000000000. There is currently no escape hatch of typing it as text to protect it (see "Entering a number as text" below)
-|Long numbers switching to scientific notation (1.23E+11) on their own |Different |The General (unformatted) display never switches to exponent form — however many digits there are, all of them are shown (type 1e21 and you get 1000000000000000000000; 1e-7 gives 0.0000001). To see exponents, pick "Scientific (1.23E+04)" from Home's number format list explicitly
+|The fifteen-significant-digit wall (the tail of a 16-digit card number turning into 0) |Same |The value is kept as f64 and rounded to fifteen significant digits when shown. Integers below 2^53 (about 9 quadrillion) are shown as they are, so all sixteen digits of 4111111111111111 appear. Beyond 2^53, binary rounding changes the value itself: type 9999999999999999 and you get 1E+016. There is currently no escape hatch of typing it as text to protect it (see "Entering a number as text" below)
+|Long numbers switching to scientific notation (1.23E+11) on their own |Same |In a cell with no number format, a number switches to exponent form when its power of ten is 15 or more, or -15 or less (1E21 becomes 1E+021; 1e-7 stays 0.0000001). Integers below 2^53 are outside this switch and show every digit. To see exponents, pick "Scientific (1.23E+04)" from Home's number format list explicitly
 |Part numbers like "2E3" or "1E9" read as exponents and turned into numbers |Same |Input is parsed by Rust's f64 parser, so 2E3 becomes 2000 — the same trap as Excel. The spellings inf and nan are read as numbers too, and appear on screen as inf and NaN
-|Floating-point error (0.1+0.2 isn't 0.3) |Different |The display wears no makeup: it shows 0.30000000000000004 as it is. Formula comparison, on the other hand, is lenient by one f64 step (about 2.2e-16), so `=0.1+0.2=0.3` is TRUE — but `>` is not lenient, so `=(0.1+0.2)>0.3` is TRUE as well, and you get the contradiction of = and > both being true at once. Comparison between ranges (spilled) is strict, with no leniency. To round to a digit, write ROUND, ROUNDDOWN or ROUNDUP into the formula
+|Floating-point error (0.1+0.2 isn't 0.3) |Same |The display rounds to fifteen significant digits, so it shows 0.3. Digits from the sixteenth on are leftovers of converting between binary and decimal, and Excel and LibreOffice drop them the same way. When an addition and a subtraction cancel out, the value itself is set to 0, so `=1-0.9-0.1` gives 0 and `=(1-0.9-0.1)=0` is TRUE. Formula comparison, for its part, is *equally lenient for all six operators*: `=0.1+0.2=0.3` is TRUE, and `=(0.1+0.2)>0.3` and `=(0.1+0.2)<0.3` are both FALSE (if two values are equal, neither is larger). The leniency is relative, one step of that number's precision, so it is the same for large and small numbers (`0.000000000000000001` and `0.000000000000000009` differ ninefold, so they are not equal). Numeric criteria in SUMIF and COUNTIF are compared on the same basis. To round to a digit, write ROUND, ROUNDDOWN or ROUNDUP into the formula
 |Reducing the decimal places rounds only the look |Same |Home's "Increase/Decrease Decimal" only rewrites the decimal places in the format code; the stored value doesn't change (it caps at 0–10 places). The calculation always uses the true value — the same as Excel's default
+|A narrow column shows ##### |Same |A number in a cell with no number format first drops digits to fit (`=1/3` becomes `0.3333`, `=1/3*10000000` becomes `3E+06`). At least one significant digit is kept, so a number that isn't 0 never looks like 0. Only when even the shortest form doesn't fit does it show #####. A cell with a number format is shown exactly as specified, so it shows ##### if it doesn't fit
 |The "Precision as displayed" option |Not yet |There is no option to truncate stored values to the displayed digits. To calculate on rounded values, put ROUND into the formula (which is the recommended path in Excel too)
 |Numbers stored as text (left-aligned, and not counted by SUM) |Different |SUM and AVERAGE read "strings that are just digits" inside a range as numbers, so nothing quietly drops out of a total. Exact matching in VLOOKUP and MATCH compares displayed text too, so "123" and 123 match, and numeric criteria in SUMIF and COUNTIF match as well. What doesn't match is COUNT (which counts only Numbers) and ISNUMBER (FALSE). To turn them back into numbers, put =VALUE (which also reads through ¥ and thousands separators) or NUMBERVALUE in another column and paste values only (Ctrl+Shift+V)
 |The green-triangle error checker (error indicators, "Convert to Number") |Not yet |There is no corner mark, no background error-checking rule, and no bulk fix. To inspect text-numbers, write =ISTEXT and =ISNUMBER in a helper column and sift them yourself
@@ -218,7 +232,7 @@ Examples: link:../../templates/README.md[the inquiry ledger] and link:../../samp
 |Refresh All |Different |Re-run the plugins procedure with `@name` (it keeps a record of what was already imported, so nothing is duplicated). *Open-means-run does not exist here* — refreshing is always an explicit human action
 |Text to Columns |Same |On the Data tab. A simplified version that splits on one delimiter (there is no three-step wizard and no fixed-width mode)
 |Combine from Folder |Different |Write it with polars in a plugins procedure (no sample is shipped — the assumption is that you or an AI writes it)
-|Importing tables from PDF |Not yet |For officework, PDF is the exit that printing goes out through
+|Importing tables from PDF |Different |"Text to data" on the Data tab accepts a .pdf too. If the table has ruling lines, it is cut along them; if not, the columns are inferred from the positions of the text. The panel shows which of the two was used, and when the columns were inferred it adds "Check that the columns line up". If there are several tables, you can choose one. A table pasted in as a picture can't be read. Reading needs pdfplumber (if it is missing, you are told how to install it)
 |Importing XML |Not yet |The wizard handles CSV and text only. If you need it now, use a plugins procedure
 |From Jupyter, or existing pandas/xlwings work |Same |Change one line: `from officework import calc as xw`. The only channel is a socket inside this machine (no TCP port is opened)
 |Copilot connectors |By design |AI and data ingestion are not bundled together — there is no cloud-indexing mechanism here at all (link:../sekkei/ayumi.ja.adoc[design]: native first)
@@ -259,7 +273,7 @@ See "Formulas and functions" in link:calc-manual.adoc[the calc manual].
 |Relative and absolute references ($) |Same |The same rules on copy, fill and paste
 |Name completion, argument hints, Insert Function |Same |Completion as you type, plus "Insert Function" on the Formulas tab (category, then function). Only the Shift+F3 key is unwired
 |Defining and managing names |Same |You can also type straight into the Name Box. There is no F3 "Paste Name" — completion offering the names stands in for it
-|References to another sheet (Sheet2!A1) |Same |`=Sheet2!A1` and `=Apr!B2` work written out directly (until then they were #ERROR!). Ranges too: `=SUM(Apr!B1:B5)`; names containing spaces or symbols go in quotes, `='Apr Actuals'!B2`. An unknown sheet name gives #REF! — it is never quietly read as your own sheet. The value is *a copy of the value at that moment*, so fix the target and a recalculation catches up. `INDIRECT("Sheet2!A1")` still works as before
+|References to another sheet (Sheet2!A1) |Same |`=Sheet2!A1` and `=Apr!B2` work written out directly. Ranges too: `=SUM(Apr!B1:B5)`; names containing spaces or symbols go in quotes, `='Apr Actuals'!B2`. An unknown sheet name gives #REF! — it is never quietly read as your own sheet. The value is *a copy of the value at that moment*, so fix the target and a recalculation catches up. `INDIRECT("Sheet2!A1")` still works as before
 |3-D references (=SUM(Sheet1:Sheet3!A1)) |Same |`=SUM(Apr:Jun!B2)` works. It gathers every sheet that lies between the two *in workbook tab order* (reorder the tabs and the gathered range changes — same as Excel). Writing the two in the other order gives the same result; an unknown sheet name gives #REF!
 |Spilling (dynamic arrays) |Same |If something is already in the way you get #SPILL! instead of losing it. Nesting and arithmetic on spills both work
 |Legacy array formulas (Ctrl+Shift+Enter) |Not yet |Dynamic arrays spill automatically on plain Enter. For sum-of-products, use SUMPRODUCT
@@ -312,19 +326,19 @@ See "PivotTables" in link:calc-manual.adoc[the calc manual].
 |Excel's name |Mark |How it works here
 
 |Creating a PivotTable |Different |Put the cursor in the table, choose Insert, and answer the questions — rows, columns, values, aggregation. The result is placed as values in the empty space to the right of the table (nothing is overwritten in silence). You cannot name a destination
-|Recommended PivotTables |Not yet |You put rows, columns and values together yourself
+|Recommended PivotTables |Same |Press the PivotTable button and the suggestions come first. Choose one and the pivot is built in that shape; choose to pick the fields yourself and it asks for rows, columns and values in order, as before. A column with a different value on every row (such as a slip number) is never suggested. No randomness and no learning are used, so the same table always gives the same suggestions
 |Rearranging fields |Different |Not a drag-and-drop side pane but the "Field list" — it loads the current instructions with their check marks, you choose again, and the table is rebuilt in the same place
 |Value Field Settings |Different |Five aggregations in the field list: sum, average, count, max, min. A grand-total average is recomputed from the source data, so it is correct
 |Show Values As (% of total, running total, difference) |Different |"Show values as" on the PivotTable tab, with four choices: as-is, percentage, running total, difference. Percentage shows each value as a % of the grand total. *Running total and difference drop the subtotals and the grand total* — a total sitting in the middle of an accumulation invites misreading. This is not all dozen-plus of Excel's
 |Filtering from the ▼ (items, labels, values) |Same |Check boxes, plus "Filter by label…" and "Filter by value…". The filter is kept in the workbook as part of the instructions and still applies after a refresh. There is no Top 10 and no search box
-|Report filters, and connecting slicers/timelines |Not yet |There are three places to put a field: rows, columns and values. Put the field you want to filter into rows or columns and use its ▼ (a candidate for the backlog)
+|Report filters, and connecting slicers/timelines |Different |The slicer settings have "Report Connections". Turn the pivots to connect on or off in the list, and filtering with that slicer filters those pivots the same way. One slicer can be connected to several pivots. Set "Date unit" in the same settings to month, quarter or year and the dates are grouped, which gives the filtering of an Excel timeline (you press a button for each group rather than dragging along a scale). There is no place for report filters as such
 |Grouping (month/quarter/year, numeric bins) |Same |Dates it cannot read are left as they are, not dropped in silence. You cannot set start and end values, and there is no +/− to expand and collapse
 |Refresh, Refresh All |Same |The definition is kept in the workbook, so it just rebuilds
-|Change Data Source |Not yet |If the table has grown, delete the PivotTable and insert it again (the range is detected automatically) (a candidate for the backlog)
+|Change Data Source |Same |"Data source" on the PivotTable tab. Put the cursor in the pivot and press it, and a field holding the current range appears. Edit it and press Enter to swap the source; the pivot is rebuilt straight away. It refuses a range it can't read, a sheet that doesn't exist, or a new range that lacks a heading the pivot uses now
 |PivotTable styles |Different |Four sets: blue, green, orange, grey. There is no large gallery
 |Report layout, grand totals, subtotals, blank rows |Same |Two layouts, tabular and compact (there is no outline form). Every one of them is a single Ctrl+Z away
 |Sorting inside a PivotTable |Not yet |Not built yet
-|PivotCharts |Not yet |The result is just cells, so you can select the range and insert a chart — but it will not be redrawn on refresh (a candidate for the backlog)
+|PivotCharts |Same |"PivotChart" on the PivotTable tab. Put the cursor in the pivot and press it, and a chart appears below the pivot. It is redrawn every time the pivot is rebuilt. The same button removes it. The grand total is left out of the chart (its bar alone would tower over the rest and make them unreadable)
 |Round-tripping with Excel |Different |In Excel it looks like a table of values. The definition lives in a part of our own (joPivot.xml), so *saving the file again in Excel drops it and refresh stops working* — degradation we say out loud
 |===
 
@@ -338,7 +352,7 @@ See "PivotTables" in link:calc-manual.adoc[the calc manual].
 |The table styles gallery |Not yet |One fixed colour. You can still turn banding, the header row and the first/last column on and off
 |Total row |Different |"Total row" adds a row of =SUM. To change the aggregation, right-click and pick from the eight choices under "How to total" rather than a ▼ in the cell; the formula is rewritten as =SUBTOTAL (for how this meets filtering, see the note in the function table above)
 |Resize, Convert to Range |Same |On the Table Design tab. Formatting and formulas stay
-|Structured references (=Table1[Amount]) |Not yet |Use a range or a defined name (a candidate for the backlog)
+|Structured references (=Table1[Amount]) |Same |`Table[Column]` (the data body, without the header and totals rows), `Table[@Column]`, and `[@Column]`, which works only inside the table, can all be used in formulas
 |Sorting (ascending, descending) |Same |If your selection is part of a table, you get the same three choices as Excel — expand the selection, sort the selection only, or cancel
 |Custom sort on several columns |Different |Not a dialog where you add one level at a time: you type "Amount desc, Item". The result is the same multi-level stable sort
 |Sort by colour |Same |Right-click > Sort > "Put the selected cell's colour on top", and so on
@@ -521,7 +535,7 @@ The house rule is *never block input with a rule we cannot evaluate* — rules w
 |Applying a change to all cells with the same rule |Same |A checkbox in the panel swaps the rule in while leaving its range as it stands
 |Clear All |Different |No dedicated button, but setting Allow to "any value" and confirming takes the rule off
 |Alt+↓ to open the drop-down |Different |Use "Pick From Drop-down List" in the right-click menu, or the ▾. Even a cell with no rule offers the other values in its column as candidates. The key itself is not wired up
-|Circle Invalid Data |Not yet |There is no tool for sweeping up values that stopped matching their rule after the fact
+|Circle Invalid Data |Different |"Circle invalid data" on the Data tab. Press it and the sheet's validation rules are checked from the top, and cells holding values that don't match are circled with a red frame. Press it again and the marks go away (Excel has two buttons; here it is one button that stays pressed). The check is the same one used when you type, so a value you could type is never marked. The marks are not saved in the workbook
 |Round-tripping Excel's rules |Same |Even kinds we do not understand are carried through rather than dropped
 |===
 
@@ -538,11 +552,11 @@ There is no What-If Analysis roll-up menu. *Goal Seek* and *Solver* sit directly
 |When no solution is found |Same |It says so plainly, and writes no half-converged value
 |Solver (max / min / value, variables, constraints) |Same |Set it up in a small window and press Solve. Ctrl+Z undoes it
 |GRG Nonlinear, Evolutionary |By design |One solving method: the simplex LP. If the model is not linear it says so and declines. For nonlinear work, call scipy directly from =PY or from plugins
-|Integer and binary constraints |Not yet |The only operators are <=, = and >=. Use scipy for the time being
+|Integer and binary constraints |Same |The constraint operators include integer and binary. Neither takes a right-hand side, and the left-hand side must be a variable cell or it is refused. The answer from branch and bound can carry a small fraction, so integer variables are rounded before they are put in the cells
 |The Solver Results window |Different |It does not appear. To back out, Ctrl+Z
 |Data Table (sensitivity table) |Different |Data > Data Table asks for the column input cell, then the row input cell — press Enter on an empty prompt for a one-variable table. The layout is Excel's (one variable: input values down the left column, the formula along the top row; two variables: the formula in the corner). Rather than Excel's TABLE array formula, it fills in the values as of that moment, so when you change an input, press it again
-|Scenario Manager |Not yet |Keep each case's inputs on a separate sheet or in a separate workbook and swap them in by hand
-|Forecast Sheet |Not yet |The FORECAST function is there. From =PY, use statsmodels and polars
+|Scenario Manager |Same |"Scenario" on the Data tab. Select the cells you want to vary and compare, give them a name, and their current values are kept. Press a name in the list and those values are written back. Only values are written back; formulas and formatting are left alone. Cells holding formulas are not kept (writing a formula back as text would erase the formula you are comparing against the moment it is applied). Round-trips as the xlsx scenarios
+|Forecast Sheet |Same |"Forecast Sheet" on the Data tab. It asks how many periods ahead, then lays out period, actual, forecast, lower bound and upper bound on a new sheet with a line chart. Underneath is additive exponential smoothing, and the season length is chosen automatically (a length with fewer than three full cycles in the data is not tried, and if the seasonal swing doesn't reach twice the noise, no season is used). The interval is a 95% estimate, not a promise, and the sheet says so too
 |===
 
 == Co-authoring
@@ -578,6 +592,7 @@ See "Shared folders and exclusive locks" in the link:calc-manual.adoc[calc manua
 |===
 |Excel's name |Mark |How it works here
 
+|Doing the same thing to each selected cell (For Each cell In Selection) |Same |Write `for cell in xw.selection():`. `offset(0, 1)` is the cell next to it, and fill and bold can be applied to the whole range at once (see the link:python-manual.adoc[Python manual])
 |Record Macro |Different |There is no record button. Ask the AI in plain language for the Python and try it in the sandbox (the manual carries a copy-paste briefing block). Once it satisfies you, move it into plugins and call it with `@name` from then on
 |VBA and the Visual Basic Editor |By design |See above (link:../sekkei/python.ja.adoc[design])
 |The VBA you already have in .xlsm files |Different |Extract with olevba → hand it to the AI together with the briefing to get Python → check the answers against the same inputs. There is no way to open an .xlsm directly either
@@ -585,7 +600,7 @@ See "Shared folders and exclusive locks" in the link:calc-manual.adoc[calc manua
 |Workbook\_Open / Auto\_Open |By design |Open = execute does not exist — the first safety principle of this software
 |Worksheet\_Change and the other events |By design |Build it out of data validation and conditional formatting plus an explicit `@name` or `@計算`
 |Personal Macro Workbook (PERSONAL.XLSB) |Different |`~/.config/officework/plugins/` is that place — `@name` reaches it from any workbook
-|Assigning a macro to a button or a shape |By design |We do not build a way to wire "clicked = execute" into a workbook (the button keeps its place, grayed)
+|Assigning a macro to a button or a shape |Different |*A macro can't be put into a shape or a workbook.* We don't build anything that lets a received file become the starting point of a run. Instead, you can put a button on the ribbon: place a `.py` in `~/.config/officework/ribbon/` and declare `ribbon = {"label": "Month-end close"}` at the top, and it becomes a button on the Macros tab (link:python-manual.adoc[Python manual]). Only the person who uses that machine can place one
 |Your own worksheet functions (Function) |Different |Write a plain `def` in `~/.config/officework/plugins/*.py` and call it as `=fname(…)`. A 2-D return value spills down-right. *No code is stored in the workbook*
 |Office Scripts + Power Automate |Different |For scheduled runs, drive the engine (`officework.sheet`) from cron as ordinary Python
 |MsgBox, InputBox, UserForms |Different |No windows pop up. `print` goes to the status bar and input comes from cells plus data validation — the sheet itself is the UI
@@ -604,8 +619,8 @@ The AI writes code and prose. *Execution is always an explicit human action*, an
 |"Turn this into a table" |Same |Ask the left-panel conversation; read the script, then Apply
 |Asking for a formula |Different |Type the request into "Ask". The unit is one formula into one cell (not a calculated column added all at once)
 |Summarizing data |Different |Two to four sentences land as a comment on the cursor's cell (and stay in the xlsx on save)
-|Insights (recommended charts, suggested pivot tables) |Not yet |You build charts and pivots by hand — a path that stands up without AI
-|Driving the app in natural language ("sort by amount") |Not yet |The AI answers in three shapes only — a table, a formula, a comment — and never operates the screen for you
+|Insights (recommended charts, suggested pivot tables) |By design |The AI doesn't step in ahead of you with suggestions. You build charts and pivots yourself (Recommended PivotTables lays out suggestions only when you press the button, and you choose)
+|Driving the app in natural language ("sort by amount") |By design |The AI answers only when asked and never operates the screen for you. Its replies come in three shapes only: a table, a formula or a comment
 |Asking for a macro |Different |calc has no button for it (writer has one on the Macros tab). Paste the "briefing for the AI", have it write the script, put it in plugins, and run it yourself
 |AI-assisted VBA migration |Different |No one-press button yet. The pattern — olevba, then the briefing, then checking the answers in the sandbox — is written up in the manual
 |Copilot connectors |By design |We don't bundle AI together with data ingestion (see the section on bringing data in)
@@ -645,10 +660,16 @@ See "Print and PDF" in the link:calc-manual.adoc[calc manual].
 
 == Before you hand it out — proofing, inspection, templates
 
-Three jobs come before handing a workbook to someone else: look for mistakes, flush out what's hidden, and pass the next person a template.
-Proofing doesn't exist in calc yet (in writer it's the "Spell" button along the bottom of the window), and there is no one-shot document inspector either — the places to look are scattered across the File tab's info panel, the View tab, and the comments on individual cells.
-Templates are not .xltx here: keep an ordinary xlsx in a shared folder and copy it.
-One thing comes free, though — *saving never writes your name into the file to begin with*, so what Excel makes you opt in to strip is simply never there.
+Three jobs come before handing a workbook to someone else.
+They are looking for mistakes, flushing out what's hidden, and passing the next person a template.
+
+Proofing doesn't exist in calc yet. In writer it is the "Spell" button along the bottom of the window.
+There is no one-shot document inspector either.
+The places to look are split across the File tab's info panel, the View tab, and the comments on individual cells.
+
+Templates are not .xltx here. Keep an ordinary xlsx in a shared folder and copy it.
+*Saving never writes your name into the file to begin with.* What Excel makes you strip yourself is simply never there.
+
 See the link:calc-manual.adoc[calc manual].
 
 [cols="1,1,1"]
@@ -663,13 +684,13 @@ See the link:calc-manual.adoc[calc manual].
 |Typing a URL turns it into a hyperlink |Different |It doesn't. Links are made explicitly with Ctrl+K or from the Insert tab, and only what you typed into the dialog and confirmed becomes one. With no auto-linking, there is also no hunt for the setting that turns it off (see "Hyperlinks" above)
 |Adding a word to the dictionary (proper nouns and company names flagged as errors) |Different |The user dictionary is a file, pointed at by the `OFFICE_DICT_USER` environment variable (the same convention hunspell uses). A word judged once is remembered and not asked about again. There is no "add to dictionary" button at the point of the flag yet, and no dictionary field in the settings page
 |Proofing language (choosing a dictionary language per document) |Different |You don't pick a language — one entry point routes by content: English through the dictionary, Japanese through the model, and a mixed document through both (English words inside Japanese are ordinary). There is no screen for switching languages. "Language" in Advanced settings is for the ribbon's wording, which is a separate thing
-|Thesaurus |Not yet |No way to invoke one,  For rephrasing, ask the left-panel conversation ("make this column polite") and read the script before applying
+|Thesaurus |Not yet |There is no way to invoke one. For rephrasing, ask the left-panel conversation ("make this column polite") and read the script before applying
 |Lowercase function names still work (=sum → =SUM) |Different |A function name typed in lowercase parses and calculates normally. What doesn't happen is a rewrite of what you typed — `=sum(A1:A3)` stays `=sum(A1:A3)` (Excel would upper-case it)
 |Document Inspector (one sweep for hidden data and personal information) |Not yet |There is no sweeping inspection. The places to look are scattered — properties in the File tab's info panel, hidden sheets on the View tab, comments cell by cell. You can visit each part as listed below; what's missing is the button that bundles them
 |Workbook properties (author, title, tags, subject, comments) |Same |Five fields appear in the File tab's "Workbook info" panel; click a field, type, and press Enter to record it. It goes into docProps on save and is visible in Excel
 |Removing the author's name (stripping a personal name before distribution) |Same |Clear the author field in the info panel and press Enter. On save, `dc:creator` is replaced with an empty tag. The other four fields clear the same way
 |The "remove personal information from file properties on save" option |Different |No opt-out is needed — *saving never writes your name in the first place.* A new workbook's properties are empty, and there is no mechanism at all for recording a last-modified-by. Only what you typed into the info panel goes in. What Excel protects by opt-in, this protects by default behavior
-|Checking or deleting properties that don't appear on screen, such as last modified by |Not yet |The info panel holds five fields. The original's other fields (last modified by, creation time, and so on) are carried over as-is on save, with no way to see them and no way to remove them. A last-modified-by that Excel attached travels on attached (viewing works; removing does not)
+|Checking or deleting properties that don't appear on screen, such as last modified by |Not yet |The info panel holds five fields. The original's other fields (last modified by, creation time, and so on) are carried over as-is on save, with no way to see them and no way to remove them. A last-modified-by that Excel attached travels on attached (there is no way yet to remove it here either)
 |Finding and unhiding hidden worksheets (including veryHidden) |Same |The View tab's "Sheet visibility" lists the hidden sheets; pick one to bring it back. veryHidden is read the same as hidden, so it appears in the list too — a veryHidden sheet Excel's own UI can't restore opens here in the same single step
 |Inspecting data lurking in hidden rows and columns |Not yet |There is no tool that sweeps a whole workbook for hidden rows and columns. To bring them back, right-click a heading and choose "Unhide" (select across the hidden span) or use the +/− of an outline group. What is hidden in the xlsx stays hidden when opened — nothing is lost, but there is no way to hunt for it
 |Deleting all comments (notes) at once |Not yet |Deletion is a button on the Collaboration tab, one cell at a time under the cursor. There is no way to strip them all in one go. Show/hide does exist, but even hidden the status bar says "there are comments attached" — handing a workbook out with comments still in it is prevented by saying so out loud
@@ -702,11 +723,11 @@ See the link:calc-manual.adoc[calc manual].
 |Encrypting a workbook with a password |Same |AES-256 (Agile). *Cross-verified against real Excel.* Clear the field and press Enter to remove it
 |Opening a password-protected file |Same |Both Standard (2007) and Agile (2013+) are readable. Forget the password and it stays closed — there is no back door
 |Changing or removing the password |Same |From the same button. It takes effect from the next save
-|Digital signatures |Same-shaped in intent, Different |Not a signature line but a signature file placed beside the workbook (`name.xlsx.sig`, Ed25519). What it actually provides is tamper detection and proof of the name
+|Digital signatures |Different |Not a signature line but a signature file placed beside the workbook (`name.xlsx.sig`, Ed25519). What it actually provides is tamper detection and proof of the name
 |Enabling/disabling macros, trusted locations |By design |With no open = execute, the moment that would demand you enable something never comes
 |When you receive an .xlsm |Different |The VBA does not run. olevba → AI → check the answers in the sandbox (see the macros section)
 |Worrying about macro viruses |Different |No automatic execution, plus *workbooks carry no code*. A file you receive contains nothing that could run, so "someone else's code runs the moment you open it" cannot happen by construction
-|Recommend read-only, Mark as Final |Not yet |The nearest paths are sheet protection and the exclusive lock
+|Recommend read-only, Mark as Final |Same |Both can be turned on and off from "Protect" on the File tab. Neither is a lock; each only tells the person who opens the file (we don't pretend otherwise). It is also said when the file opens. Read-only recommended round-trips through workbookProtection, and Mark as Final through docProps/custom.xml
 |The sheet-protection password is unknown |Different |We never look at passwords, so protection applied in Excel comes off with the same one-button press. Sheet protection was always about preventing slips — *if you need a safe, encrypt*
 |Protected View (the warning for files from the internet) |By design |There is nothing that opens and executes to begin with (link:../sekkei/python.ja.adoc[design]). Parts we can't read appear in the report shown when the file opens
 |===
@@ -726,7 +747,7 @@ See "Collaboration tab and plugins" and "@-commands" in the link:calc-manual.ado
 |Customizing the ribbon (custom tabs, reordering buttons, exporting the setup) |By design |Tab names and order are fixed to match Excel — letting someone who switched keep the muscle memory outranks everything else, so we don't build a way for the layout to differ machine to machine. Frequently used operations are carried by the right-click menu and the right-hand panel
 |Customizing the Quick Access Toolbar |Not yet |Row 1 is a fixed four buttons — save, print, undo, redo — with no way to add or remove
 |Collapsing / minimizing the ribbon (Ctrl+F1) |Not yet |calc's View tab has no button to fold the band away. writer has an "always show toolbars" toggle; calc does not have one yet
-|The default font and size for new workbooks |Not yet |There is no setting that decides a new workbook's default typeface. Advanced settings' "font (OFFICE\_FONT)" is for the interface, which is a different thing from the cell default. For now, select a range and change it from Home's font and size controls (folding this into settings is planned; not on the ledger yet)
+|The default font and size for new workbooks |Not yet |There is no setting that decides a new workbook's default typeface. Advanced settings' "font (OFFICE\_FONT)" is for the interface, which is a different thing from the cell default. For now, select a range and change it from Home's font and size controls (folding this into settings is planned)
 |Where the cursor moves after Enter |Not yet |Enter is always down, Tab right, Shift+Tab left, fixed. To move right, use Tab
 |AutoSave and the AutoRecover interval |By design |We don't build autosave at all (it's a feature that assumes cloud storage). Saving is Ctrl+S; unsaved changes show in the status bar and are asked about on quit. Nine generations of copies kept in `.jo-history` on every overwrite are the real safety net
 |Changing the default save format (.xls, ODS) |Not yet |"Save As" offers xlsx and CSV (current sheet's values only), and there is no setting to change the default (printing = PDF is a separate door). ODS, OTS, and XLTX are held back. Old .xls is neither read nor written
@@ -743,14 +764,17 @@ See "Collaboration tab and plugins" and "@-commands" in the link:calc-manual.ado
 |Removing, disabling, or not finding an add-in |Different |The list simply reads the files in the folder, so deleting (or moving away) a .py is the whole of removal and disabling. "It isn't showing up" only ever means "it isn't in the folder", and when the folder is empty the status bar tells you its path. With nothing resident and nothing auto-loaded, the accident where an add-in breaks startup can't occur
 |Auto-loading at startup or on open (XLSTART) |By design |"Open = execute" and "start = execute" do not exist — the first safety principle of this software. Plugins procedures and =PY alike run only when a person explicitly acts, at that moment
 |Add-in security (the warning bar, trusted publishers) |By design |The situation that would demand you enable something can't arise by construction — nothing runs automatically, every run is a person's explicit action, with a time limit. What you install is a plain .py, so *you can read it before you place it* — instead of building a registry of trust, we built a shape that doesn't ask for trust
+|Adding functions through add-ins (XLL and automation add-in UDFs) |Different |A custom function is just a `def` in a plugins .py. Write `=fname(…)` in the cell as usual, and it recalculates in the background when its arguments change. A 2-D return value spills down and to the right
 |A workbook using add-in functions shows #NAME? |Same |An unknown function honestly comes out as #NAME? rather than quietly calculating as 0 — the same way it breaks in Excel. The other direction (a =PY workbook opened in Excel) is also #NAME?, but the last computed values remain — the degradation is on the safe side
 |===
 
 == Accessibility
 
-Plainly: *screen reader support is not something we can claim.* The GPUI foundation has the plumbing, but we have not wired up a single role or label, and neither the grid nor the ribbon is visible to assistive technology.
+*Screen reader support is not done yet.*
+The GPUI foundation has the mechanism, but we have not connected a single role or label.
+Neither the grid nor the ribbon is visible to assistive technology.
 What works is enlarging the interface text and keyboard operation inside the grid.
-The ribbon and the dialogs cannot be reached from the keyboard alone.
+The ribbon and the panels (dialogs) cannot be reached from the keyboard alone.
 
 [cols="1,1,1"]
 |===
@@ -805,13 +829,16 @@ In many cases the feature itself is there and only the key is unwired.
 
 == When things go wrong (it won't open, it comes out garbled)
 
-Three promises — *parts we cannot read are named in the report shown when the file opens* (never silently dropped), *parts we don't understand are carried over as-is* (never quietly deleted), and *anything that will be lost on save is announced before it is lost*.
+There are three promises.
+Parts we can't read are named in the report shown when the file opens. They are never dropped silently.
+Parts we don't understand are carried over as they are. They are never trimmed on our own.
+Anything that will be lost on save is announced before it is lost.
 
 [cols="1,1,1"]
 |===
 |Excel's name |Mark |How it works here
 
-|Open and Repair |Not yet |If it can't be read, it stops at "cannot open". The escape route is the nine generations kept in `.jo-history` — go back to a version from before the damage
+|Open and Repair |Different |Opening a file that can't be read shows a list of ways out. If there are saved copies (nine generations), they are offered first; next you can choose "Salvage what can be read and open it (read-only)". It picks up the parts from the start of the file without relying on the zip's directory, and opens with whatever could be read. The parts that couldn't be read are listed one by one at the bottom of the window. Overwrite-saving is not allowed (Save As only), because overwriting the original without noticing the holes would leave no way back
 |AutoRecover / Document Recovery |Not yet |Saving is manual, Ctrl+S only. Unsaved changes show in the status bar and are asked about on quit (autosave is by design absent — see the collaboration section)
 |A garbled CSV |Same |Pick a different encoding in the import wizard. It reports which encoding it used
 |"Another user has it locked" |Different |It reads `.~lock` and names the person for you. The second arrival can read; overwrite-saving is blocked
@@ -819,12 +846,13 @@ Three promises — *parts we cannot read are named in the report shown when the 
 |Password-protected workbooks |Same |Both Standard and Agile are read. Forget the password and it stays closed (no back door)
 |A forgotten sheet-protection password |By design |We never set one in the first place (it's a lock in appearance only). The same button takes it off — the accident where you're stuck can't happen
 |Macro warnings and Protected View |By design |There is no open = execute (see the protection section)
-|An old .xls won't open |Not yet |We read only xlsx (zip). Re-save it as xlsx in Excel or LibreOffice (an accepted trade-off on other formats)
+|An old .xls won't open |Not yet |We read only xlsx (zip). Re-save it as xlsx in Excel or LibreOffice (other formats are not handled)
 |Being asked to "update links" |By design |With no external references by construction, the question never comes up. To refresh, pull it in again with "external link"
 |Dates from a Mac are off by four years (the 1904 system) |Different |It detects this and reports "these will look four years off". The save carries date1904 over as-is rather than breaking it
 |Going back to a previous version |Different |Not the cloud but the local `.jo-history` (nine generations). It opens as an unnamed copy; save it yourself to restore
 |How it will look when reopened in Excel |Same |The same xlsx. Degradation is on the safe side and is spelled out in each section — =PY becomes #NAME? but the values remain, charts become images, pivots become value tables once Excel saves
 |Compatibility Checker |Different |Not a dialog: the report shown on open and the status bar carry that job. The rule is no degradation, with anything that will be lost written down as the exception
+|Documents in MS Mincho / MS Gothic come out with the wrong widths |Different |On a Mac with Microsoft Office installed nothing needs to be added: the MS Mincho, MS Gothic, Yu Mincho, Yu Gothic and Meiryo fonts bundled with Office are used as they are. On a machine without the Windows fonts (MS Mincho, MS Gothic, MS PMincho, MS PGothic), install the free Ume fonts (Ume Mincho, Ume Gothic, Ume P Mincho, Ume P Gothic), which have the same advance widths. Half-width digits and spaces then measure as in Excel, so column widths and table rows of old documents keep their shape. Put the ttf files in `~/Library/Fonts` on a Mac or `~/.fonts` on Linux. Without them, text is drawn in a system font such as Hiragino while half-width characters are still advanced by 0.5em as MS Mincho does, so widths and line breaks match even though the typeface differs
 |===
 
 == What this booklet covers
