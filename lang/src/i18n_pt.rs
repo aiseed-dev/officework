@@ -2244,6 +2244,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fill_missing_names", "Nomes em falta nos dados: {}"),
     ("fill_notes", "Não colocado no modelo: {}"),
     ("fill_written", "{} escrito: o modelo com os dados"),
-    ("ods_opened_save_as", "{}: {} folhas / {} células. Ainda não é possível guardar em ods — use «Guardar como» para o manter como xlsx ou adoc"),
-    ("ods_cannot_save_yet", "Ainda não é possível guardar em ods. Use «Guardar como» para o manter como xlsx ou adoc"),
+    ("ods_opened_save_as", "{}: {} folhas / {} células. Este ods tem partes que ainda não podem ser guardadas, por isso não é substituído. Use Guardar como para manter as alterações"),
+    ("ods_cannot_save_yet", "Um ods não pode ser guardado com palavra-passe. Guarde-o como xlsx"),
+    ("ods_not_written_listed", " (o que o ods não pôde conter está listado abaixo)"),
+    ("excel_tables", "Tabelas"),
 ];

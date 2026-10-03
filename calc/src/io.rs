@@ -417,11 +417,12 @@ impl Calc {
 
     /// Open an `.ods` workbook (ODF first: SEKKEI "決め: ODF を先にする").
     ///
-    /// **The workbook gets no path.** There is no ods writer yet, so Ctrl+S must
-    /// not write xlsx bytes under the `.ods` name (the file would claim to be ODF
-    /// and no ODF reader could open it). With no path, Ctrl+S asks for a name
-    /// (xlsx filter), the same as for a workbook opened from csv, and `save_to`
-    /// also refuses a typed `.ods` name. The original `.ods` is never touched.
+    /// **A workbook read completely keeps its path**, so Ctrl+S writes the
+    /// ods back with `sheet::ods::write`. When the reader reported parts it
+    /// does not understand (comments, pictures, conditional formats…), saving
+    /// would drop them from the original, so that workbook gets no path:
+    /// Ctrl+S asks for a name, as for a workbook opened from csv, and the
+    /// original `.ods` is never overwritten.
     ///
     /// A file that cannot be read is only reported in the status bar: the repair
     /// path ([`Self::offer_repair`]) salvages broken xlsx zips and does not apply.
@@ -430,23 +431,26 @@ impl Calc {
         match sheet::ods::read(std::io::Cursor::new(bytes)) {
             Ok((mut book, rep)) => {
                 book::calc::recalc_all(&mut book);
+                let complete = rep.unsupported.is_empty();
                 let notes = rep
                     .unsupported
                     .iter()
                     .map(|(n, c)| SharedString::from(format!("{n} × {c}")))
                     .collect();
-                let status = ui::tf!(
-                    "ods_opened_save_as",
-                    p.file_name().unwrap_or_default().to_string_lossy(),
-                    rep.sheets,
-                    rep.cells
-                );
+                let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+                let status = if complete {
+                    ui::tf!("sheets_cells", rep.sheets, rep.cells, name)
+                } else {
+                    ui::tf!("ods_opened_save_as", name, rep.sheets, rep.cells)
+                };
                 self.adopt_book(p, book, notes, status.to_string());
-                // No path (see above). Like csv, the lock is not kept either.
-                self.release_lock();
-                self.locked_by = None;
-                self.set_path(None);
-                self.dirty = false;
+                if !complete {
+                    // No path (see above). Like csv, the lock is not kept either
+                    self.release_lock();
+                    self.locked_by = None;
+                    self.set_path(None);
+                    self.dirty = false;
+                }
             }
             Err(e) => self.status = ui::tf!("cant_open", e).into(),
         }
@@ -841,6 +845,7 @@ impl Calc {
                 // ここなので、並びがそのまま既定の形になる
                 .add_filter("officework のブック", &["adoc"])
                 .add_filter("Excelブック", &["xlsx"])
+                .add_filter("OpenDocument スプレッドシート", &["ods"])
                 // 型紙(XLTX)。中身は xlsx と同じで、開くと「新規」になる
                 .add_filter("Excel の型紙", &["xltx"])
                 .add_filter("CSV(いまのシートの値だけ)", &["csv"])
@@ -1496,6 +1501,7 @@ impl Calc {
         let ask = cx.background_executor().spawn(async {
             rfd::FileDialog::new()
                 .add_filter("Excelブック", &["xlsx"])
+                .add_filter("OpenDocument スプレッドシート", &["ods"])
                 .save_file()
         });
         cx.spawn(async move |this, cx| {
@@ -1519,11 +1525,10 @@ impl Calc {
 
     /// 決まった場所へ書く。成功すると dirty が消える。
     pub(crate) fn save_to(&mut self, p: PathBuf) {
-        // There is no ods writer yet. Writing xlsx bytes under an `.ods` name would
-        // make a file that claims to be ODF but is not, so a typed `.ods` name in
-        // Save As is refused. (Ctrl+S on a workbook opened from ods never gets here:
-        // that workbook has no path, see `open_ods`.)
-        if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("ods")) {
+        let as_ods = p.extension().is_some_and(|e| e.eq_ignore_ascii_case("ods"));
+        // An ods is not encrypted by this writer; saving it in the clear
+        // would quietly drop the password
+        if as_ods && self.encrypt_pw.is_some() {
             self.status = ui::t!("ods_cannot_save_yet").into();
             return;
         }
@@ -1534,10 +1539,10 @@ impl Calc {
         // 暗号化されていた原本は解いた平文を渡す
         // **`.adoc` を開いていたら原本は渡さない** — 字のファイルは xlsx の
         // 部品を持っていないので、zip として読ませると保存が落ちます
-        let was_text = self
-            .path
-            .as_ref()
-            .is_some_and(|q| q.extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc")));
+        // An ods has no xlsx parts to carry over either
+        let was_text = self.path.as_ref().is_some_and(|q| {
+            q.extension().is_some_and(|e| e.eq_ignore_ascii_case("adoc") || e.eq_ignore_ascii_case("ods"))
+        });
         // **拾い集めたブックでは原本を渡しません。** 原本は壊れた zip なので、
         // そこから部品を持ち越そうとすると保存ごと落ちます(2026-08-22)
         let original: Option<std::io::Cursor<Vec<u8>>> = if was_text || self.salvaged {
@@ -1550,7 +1555,16 @@ impl Calc {
         if p.exists() {
             self.keep_version(&p);
         }
-        let saved = if as_text {
+        // What the ods writer left out, listed after saving
+        let mut ods_left_out: Vec<(String, usize)> = Vec::new();
+        let saved = if as_ods {
+            let (bytes, rep) = sheet::ods::write(&self.book);
+            ods_left_out = rep.left_out;
+            kumihan::atomic::save(&p, |mut f| {
+                use std::io::Write as _;
+                f.write_all(&bytes).map_err(|e| e.to_string())
+            })
+        } else if as_text {
             if self.encrypt_pw.is_some() {
                 // **暗号を黙って外さない。** AsciiDoc は字のままのファイル
                 // なので暗号化して書けない。前はここで平文のまま書いていて、
@@ -1611,9 +1625,17 @@ impl Calc {
                     ui::t!("template_opening_makes_new")
                 } else if as_text {
                     ui::t!("formulas_kept_appearance_not")
+                } else if !ods_left_out.is_empty() {
+                    ui::t!("ods_not_written_listed")
                 } else {
                     ""
                 };
+                if as_ods {
+                    self.notes = ods_left_out
+                        .iter()
+                        .map(|(what, n)| SharedString::from(format!("{} × {n}", ods_part_name(what))))
+                        .collect();
+                }
                 // **載らなかった物を黙って落とさない。** 帳簿に出します
                 if as_text {
                     self.notes =
@@ -1641,9 +1663,10 @@ impl Calc {
                 self.set_path(Some(p));
                 self.drop_recover();
                 self.dirty = false;
-                // 挿した絵はもう原本(いま書いたファイル)にある。次の保存で
-                // 二重に書かないよう「読んだ側」へ持ち場を移す
-                for sh in &mut self.book.sheets {
+                // Pictures and shapes added since opening are now in the
+                // file just written, so the next save must not write them
+                // twice. An ods does not hold them yet, so they stay new
+                for sh in self.book.sheets.iter_mut().filter(|_| !as_ods) {
                     let moved = std::mem::take(&mut sh.images_new);
                     sh.images.extend(moved);
                     let moved = std::mem::take(&mut sh.shapes_new);
@@ -1655,6 +1678,26 @@ impl Calc {
             Err(e) => self.status = ui::tf!("cant_save", e).into(),
         }
     }
+}
+
+/// The screen's name for a part the ods writer left out
+/// (`sheet::ods::WriteReport`)
+fn ods_part_name(what: &str) -> String {
+    match what {
+        "comment" => ui::t!("comment"),
+        "hyperlink" => ui::t!("hyperlink_menu"),
+        "conditional_formatting" => ui::t!("conditional_formatting"),
+        "data_validation" => ui::t!("data_validation"),
+        "shape" => ui::t!("shapes_images"),
+        "table" => ui::t!("excel_tables"),
+        "scenario" => ui::t!("scenario"),
+        "freeze" => ui::t!("freeze"),
+        "page_break" => ui::t!("page_break"),
+        "sheet_protection" => ui::t!("protect_sheet_2"),
+        "header" => ui::t!("header"),
+        _ => return what.to_string(),
+    }
+    .to_string()
 }
 
 /// CSV のバイト列を、選んだ文字コードで字にする。読めなければ None。

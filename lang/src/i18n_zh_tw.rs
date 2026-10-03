@@ -2244,6 +2244,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fill_missing_names", "資料中沒有的名稱:{}"),
     ("fill_notes", "未能放入範本的項目:{}"),
     ("fill_written", "已寫入 {}:填入資料的範本"),
-    ("ods_opened_save_as", "{}:{} 個工作表 / {} 個儲存格。尚不支援儲存為 ods,請用「另存新檔」儲存為 xlsx 或 adoc"),
-    ("ods_cannot_save_yet", "尚不支援儲存為 ods。請用「另存新檔」儲存為 xlsx 或 adoc"),
+    ("ods_opened_save_as", "{}:{} 個工作表 / {} 個儲存格。此 ods 含有暫時無法儲存的部分,因此不會覆寫。請用「另存新檔」保存變更"),
+    ("ods_cannot_save_yet", "ods 無法加上密碼儲存。請另存為 xlsx"),
+    ("ods_not_written_listed", "(ods 無法容納的內容列在下方)"),
+    ("excel_tables", "表格"),
 ];

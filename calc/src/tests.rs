@@ -9120,9 +9120,9 @@ mod custom_function_list_tests {
     }
 }
 
-/// An `.ods` opens, but is never overwritten: there is no ods writer yet, so the
-/// workbook has no path and Ctrl+S asks for a name instead of writing xlsx bytes
-/// under the `.ods` name.
+/// An `.ods` opens and saves back as ods. A file with parts the writer
+/// cannot hold (a comment here) is not overwritten: that workbook gets no
+/// path, so Ctrl+S asks for a name.
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod ods_open_tests {
@@ -9131,7 +9131,7 @@ mod ods_open_tests {
     const MITSUMORI: &[u8] = include_bytes!("../../sheet/src/ods/testdata/mitsumori.ods");
 
     #[gpui::test]
-    fn ods_opens_and_is_never_written_back(cx: &mut gpui::TestAppContext) {
+    fn ods_opens_and_saves_back_as_ods(cx: &mut gpui::TestAppContext) {
         let dir = std::env::temp_dir().join(format!("jo-ods-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("見積書.ods");
@@ -9144,19 +9144,35 @@ mod ods_open_tests {
             let line = this.book.sheets[0].get(Pos::new(10, 5)).unwrap();
             assert_eq!(line.value.display(), "450000", "recalculated value");
             assert_eq!(line.formula.as_deref(), Some("C11*E11"));
-            assert!(this.status.contains("見積書.ods"), "{}", this.status);
-            // No path: Ctrl+S cannot overwrite the .ods
-            assert!(this.path.is_none());
-            assert!(!this.dirty);
+            // Read completely: the path is kept, so Ctrl+S writes the ods back
+            assert_eq!(this.path.as_deref(), Some(p.as_path()), "{:?}", this.notes);
 
-            // A typed `.ods` name in Save As is refused too, and nothing is written
             let q = dir.join("別名.ods");
             this.save_to(q.clone());
-            assert!(!q.exists(), "xlsx bytes were written under an .ods name");
+            let (b, _) = sheet::ods::read(std::fs::File::open(&q).unwrap()).expect("an ods was written");
+            let line = b.sheets[0].get(Pos::new(10, 5)).unwrap();
+            assert_eq!(line.formula.as_deref(), Some("C11*E11"));
+            assert_eq!(line.value, book::Value::Number(450000.0));
+
+            // A password is not dropped in silence: an ods cannot carry one
+            this.encrypt_pw = Some("pw".into());
+            let r = dir.join("鍵.ods");
+            this.save_to(r.clone());
+            assert!(!r.exists());
             assert_eq!(this.status.to_string(), ui::t!("ods_cannot_save_yet"));
+            this.encrypt_pw = None;
         });
-        // The original file is untouched
-        assert_eq!(std::fs::read(&p).unwrap(), MITSUMORI);
+
+        // A comment the writer cannot hold: no path, and the file is kept
+        let with_note = include_bytes!("../../sheet/src/ods/testdata/mitsumori_comment.ods").to_vec();
+        let n = dir.join("コメント付き.ods");
+        std::fs::write(&n, &with_note).unwrap();
+        c.update(cx, |this, _cx| {
+            this.open(n.clone());
+            assert!(this.path.is_none(), "an ods with a comment must not be overwritten");
+            assert!(!this.dirty);
+        });
+        assert_eq!(std::fs::read(&n).unwrap(), with_note);
 
         // A file that is not an ods is reported in the status bar, with no repair list
         let bad = dir.join("壊れた.ods");

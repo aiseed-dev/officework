@@ -2393,6 +2393,8 @@
  "fill_missing_names": "Nama yang tidak ada di data: {}",
  "fill_notes": "Tidak dimasukkan ke templat: {}",
  "fill_written": "{} ditulis: templat berisi data",
- "ods_opened_save_as": "{}: {} lembar / {} sel. Menyimpan ke ods belum didukung — gunakan Simpan Sebagai untuk menyimpannya sebagai xlsx atau adoc",
- "ods_cannot_save_yet": "Menyimpan ke ods belum didukung. Gunakan Simpan Sebagai untuk menyimpannya sebagai xlsx atau adoc"
+ "ods_opened_save_as": "{}: {} lembar / {} sel. ods ini memiliki bagian yang belum dapat disimpan, jadi tidak ditimpa. Gunakan Simpan Sebagai untuk menyimpan perubahan",
+ "ods_cannot_save_yet": "ods tidak dapat disimpan dengan kata sandi. Simpan sebagai xlsx",
+ "ods_not_written_listed": " (yang tidak dapat dimuat ods tercantum di bawah)",
+ "excel_tables": "Tabel"
 }

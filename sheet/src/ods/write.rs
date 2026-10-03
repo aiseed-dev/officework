@@ -72,20 +72,21 @@ pub fn write(book: &Book) -> (Vec<u8>, WriteReport) {
 
 /// Parts of a sheet this step does not write
 fn left_out(sh: &Sheet, rep: &mut WriteReport) {
-    rep.note("comments", sh.comments.len());
-    rep.note("hyperlinks", sh.links.len());
-    rep.note("conditional formats", sh.cond.len());
-    rep.note("data validation", sh.validations.len());
-    rep.note("shapes and pictures", sh.shapes.len() + sh.shapes_new.len());
-    rep.note("tables", sh.tables.len());
-    rep.note("scenarios", sh.scenarios.len());
-    rep.note("frozen panes", usize::from(sh.freeze.is_some()));
+    // Stable ids: the app turns them into words on the screen
+    rep.note("comment", sh.comments.len());
+    rep.note("hyperlink", sh.links.len());
+    rep.note("conditional_formatting", sh.cond.len());
+    rep.note("data_validation", sh.validations.len());
+    rep.note("shape", sh.shapes.len() + sh.shapes_new.len() + sh.images.len() + sh.images_new.len());
+    rep.note("table", sh.tables.len());
+    rep.note("scenario", sh.scenarios.len());
+    rep.note("freeze", usize::from(sh.freeze.is_some()));
+    rep.note("page_break", sh.row_breaks.len() + sh.col_breaks.len());
+    rep.note("sheet_protection", usize::from(sh.protected));
     rep.note(
-        "different headers on first or even pages",
+        "header",
         [&sh.header_even, &sh.footer_even, &sh.header_first, &sh.footer_first].iter().filter(|h| h.is_some()).count(),
     );
-    rep.note("page breaks", sh.row_breaks.len() + sh.col_breaks.len());
-    rep.note("sheet protection", usize::from(sh.protected));
 }
 
 /// The automatic styles collected while the sheets are written

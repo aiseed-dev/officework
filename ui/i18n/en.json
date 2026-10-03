@@ -2393,6 +2393,8 @@
  "fill_missing_names": "Names the data lacks: {}",
  "fill_notes": "Not put into the template: {}",
  "fill_written": "Wrote {}: the template with the data filled in",
- "ods_opened_save_as": "{}: {} sheets / {} cells. Saving to ods is not supported yet — use Save As to keep it as xlsx or adoc",
- "ods_cannot_save_yet": "Saving to ods is not supported yet. Use Save As to keep it as xlsx or adoc"
+ "ods_opened_save_as": "{}: {} sheets / {} cells. This ods has parts that cannot be saved yet, so it is not overwritten. Use Save As to keep your changes",
+ "ods_cannot_save_yet": "An ods cannot be saved with a password. Save it as xlsx instead",
+ "ods_not_written_listed": " (what the ods could not hold is listed below)",
+ "excel_tables": "Tables"
 }

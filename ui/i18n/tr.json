@@ -2393,6 +2393,8 @@
  "fill_missing_names": "Verilerde olmayan adlar: {}",
  "fill_notes": "Şablona konamayanlar: {}",
  "fill_written": "{} yazıldı: veriler eklenmiş şablon",
- "ods_opened_save_as": "{}: {} sayfa / {} hücre. ods olarak kaydetme henüz desteklenmiyor — xlsx veya adoc olarak saklamak için Farklı Kaydet'i kullanın",
- "ods_cannot_save_yet": "ods olarak kaydetme henüz desteklenmiyor. xlsx veya adoc olarak saklamak için Farklı Kaydet'i kullanın"
+ "ods_opened_save_as": "{}: {} sayfa / {} hücre. Bu ods henüz kaydedilemeyen bölümler içeriyor, bu yüzden üzerine yazılmaz. Değişiklikleri korumak için Farklı Kaydet’i kullanın",
+ "ods_cannot_save_yet": "ods parolayla kaydedilemez. xlsx olarak kaydedin",
+ "ods_not_written_listed": " (ods’nin tutamadıkları aşağıda listelendi)",
+ "excel_tables": "Tablolar"
 }

@@ -2393,6 +2393,8 @@
  "fill_missing_names": "Nomi assenti nei dati: {}",
  "fill_notes": "Non inserito nel modello: {}",
  "fill_written": "Scritto {}: il modello con i dati inseriti",
- "ods_opened_save_as": "{}: {} fogli / {} celle. Il salvataggio in ods non è ancora supportato: usa «Salva con nome» per conservarlo come xlsx o adoc",
- "ods_cannot_save_yet": "Il salvataggio in ods non è ancora supportato. Usa «Salva con nome» per conservarlo come xlsx o adoc"
+ "ods_opened_save_as": "{}: {} fogli / {} celle. Questo ods ha parti che non si possono ancora salvare, quindi non viene sovrascritto. Usa Salva con nome per conservare le modifiche",
+ "ods_cannot_save_yet": "Un ods non può essere salvato con una password. Salvalo come xlsx",
+ "ods_not_written_listed": " (ciò che l’ods non ha potuto contenere è elencato sotto)",
+ "excel_tables": "Tabelle"
 }

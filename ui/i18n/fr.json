@@ -2393,6 +2393,8 @@
  "fill_missing_names": "Noms absents des données : {}",
  "fill_notes": "Non inséré dans le modèle : {}",
  "fill_written": "{} écrit : le modèle rempli avec les données",
- "ods_opened_save_as": "{} : {} feuilles / {} cellules. L'enregistrement en ods n'est pas encore possible : utilisez « Enregistrer sous » pour le conserver en xlsx ou adoc",
- "ods_cannot_save_yet": "L'enregistrement en ods n'est pas encore possible. Utilisez « Enregistrer sous » pour le conserver en xlsx ou adoc"
+ "ods_opened_save_as": "{} : {} feuilles / {} cellules. Cet ods contient des parties qui ne peuvent pas encore être enregistrées, il n’est donc pas écrasé. Utilisez Enregistrer sous pour garder vos modifications",
+ "ods_cannot_save_yet": "Un ods ne peut pas être enregistré avec un mot de passe. Enregistrez-le en xlsx",
+ "ods_not_written_listed": " (ce que l’ods n’a pas pu contenir est listé ci-dessous)",
+ "excel_tables": "Tableaux"
 }

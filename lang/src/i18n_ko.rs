@@ -2244,6 +2244,8 @@ pub const TABLE: &[(&str, &str)] = &[
     ("fill_missing_names", "데이터에 없는 이름: {}"),
     ("fill_notes", "템플릿에 넣지 못한 것: {}"),
     ("fill_written", "{}에 데이터를 넣은 템플릿을 썼습니다"),
-    ("ods_opened_save_as", "{}: 시트 {}개 / 셀 {}개. 아직 ods로 저장할 수 없으므로 xlsx나 adoc으로 남기려면 「다른 이름으로 저장」을 사용하세요"),
-    ("ods_cannot_save_yet", "아직 ods로 저장할 수 없습니다. 「다른 이름으로 저장」으로 xlsx나 adoc으로 저장하세요"),
+    ("ods_opened_save_as", "{}을(를) 열었습니다({} 시트 / {} 셀). 이 ods에는 아직 저장할 수 없는 부분이 있어 덮어쓰지 않습니다. 변경 내용을 남기려면 [다른 이름으로 저장]을 사용하세요"),
+    ("ods_cannot_save_yet", "ods는 암호를 붙여 저장할 수 없습니다. xlsx로 저장하세요"),
+    ("ods_not_written_listed", "(ods에 담지 못한 것은 아래에 표시했습니다)"),
+    ("excel_tables", "표"),
 ];

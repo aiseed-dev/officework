@@ -2393,6 +2393,8 @@
  "fill_missing_names": "Tên không có trong dữ liệu: {}",
  "fill_notes": "Không đưa được vào mẫu: {}",
  "fill_written": "Đã ghi {}: mẫu đã điền dữ liệu",
- "ods_opened_save_as": "{}: {} trang tính / {} ô. Chưa hỗ trợ lưu sang ods — dùng Lưu dưới dạng để giữ ở dạng xlsx hoặc adoc",
- "ods_cannot_save_yet": "Chưa hỗ trợ lưu sang ods. Dùng Lưu dưới dạng để giữ ở dạng xlsx hoặc adoc"
+ "ods_opened_save_as": "{}: {} trang tính / {} ô. Tệp ods này có phần chưa thể lưu nên sẽ không bị ghi đè. Hãy dùng Lưu thành để giữ thay đổi",
+ "ods_cannot_save_yet": "Không thể lưu ods kèm mật khẩu. Hãy lưu dưới dạng xlsx",
+ "ods_not_written_listed": " (những gì ods không chứa được được liệt kê bên dưới)",
+ "excel_tables": "Bảng"
 }
