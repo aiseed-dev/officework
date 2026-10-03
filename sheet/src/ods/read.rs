@@ -77,6 +77,8 @@ struct Styles {
     /// (height in pt, optimal = the height follows the content)
     row_pt: HashMap<String, (f32, bool)>,
     hidden_tables: Vec<String>,
+    /// Table styles that lay the sheet out right to left
+    rtl_tables: Vec<String>,
     /// table style → the master page that holds its page settings
     table_master: HashMap<String, String>,
 }
@@ -115,6 +117,9 @@ impl Styles {
                         if let Some((name, _)) = &cur {
                             if attr(&e, "table:display").as_deref() == Some("false") {
                                 s.hidden_tables.push(name.clone());
+                            }
+                            if attr(&e, "style:writing-mode").is_some_and(|w| w.starts_with("rl")) {
+                                s.rtl_tables.push(name.clone());
                             }
                         }
                     }
@@ -155,11 +160,28 @@ struct Pending {
     has_content: bool,
     /// Formatted differently from a plain cell: kept even when empty
     styled: bool,
+    /// Runs with their own look inside the cell (`text:span`), when any
+    runs: Option<Vec<book::RichRun>>,
+}
+
+fn same_look(a: &book::RichRun, b: &book::RichRun) -> bool {
+    (&a.font, a.size_pt, a.bold, a.italic, &a.color) == (&b.font, b.size_pt, b.bold, b.italic, &b.color)
+}
+
+/// Text added to the cell, also kept as runs under the span style it sits in
+fn run_push(runs: &mut Vec<(Option<String>, String)>, spans: &[String], s: &str) {
+    let style = spans.last().filter(|x| !x.is_empty()).cloned();
+    match runs.last_mut() {
+        Some((st, t)) if *st == style => t.push_str(s),
+        _ => runs.push((style, s.to_string())),
+    }
 }
 
 fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::page::Pages, book: &mut Book, rep: &mut Report) {
     // The first row inside `table:table-header-rows`: the print title rows
     let mut header_rows_from: Option<u32> = None;
+    // The same for `table:table-header-columns`: the print title columns
+    let mut header_cols_from: Option<u32> = None;
     // Names for the whole workbook, put on the sheet they point at once all
     // sheets are read
     let mut pending_names: Vec<(String, book::DefinedName)> = Vec::new();
@@ -182,6 +204,9 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
     // Text of the cell: paragraphs joined with line breaks
     let mut text = String::new();
     let mut paras = 0usize;
+    // The cell's text as runs (span style, text), and the spans open now
+    let mut runs: Vec<(Option<String>, String)> = Vec::new();
+    let mut spans: Vec<String> = Vec::new();
     let mut depth_p = 0usize;
     // Inside a comment or a shape the paragraphs are not the cell's text;
     // this counts the open elements of the part being skipped
@@ -215,6 +240,7 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
                         let mut sh = Sheet::new(&attr(e, "table:name").unwrap_or_default());
                         if let Some(st) = attr(e, "table:style-name") {
                             sh.hidden = styles.hidden_tables.contains(&st);
+                            sh.rtl = styles.rtl_tables.contains(&st);
                             if let Some(m) = styles.table_master.get(&st) {
                                 pages.apply(m, &mut sh);
                             }
@@ -256,6 +282,7 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
                         }
                     }
                     b"table:table-header-rows" if !empty => header_rows_from = Some(row),
+                    b"table:table-header-columns" if !empty => header_cols_from = Some(col),
                     b"table:table-row" => {
                         col = 0;
                         row_repeat = repeat(e, "table:number-rows-repeated");
@@ -311,12 +338,15 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
                         } else {
                             cell = Some(p);
                             text.clear();
+                            runs.clear();
+                            spans.clear();
                             paras = 0;
                         }
                     }
                     b"text:p" | b"text:h" if cell.is_some() => {
                         if paras > 0 {
                             text.push('\n');
+                            run_push(&mut runs, &[], "\n");
                         }
                         paras += 1;
                         if !empty {
@@ -325,10 +355,19 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
                     }
                     b"text:s" if depth_p > 0 => {
                         let n = attr(e, "text:c").and_then(|v| v.parse::<usize>().ok()).unwrap_or(1);
-                        text.extend(std::iter::repeat_n(' ', n));
+                        let sp: String = std::iter::repeat_n(' ', n).collect();
+                        text.push_str(&sp);
+                        run_push(&mut runs, &spans, &sp);
                     }
-                    b"text:tab" if depth_p > 0 => text.push('\t'),
-                    b"text:line-break" if depth_p > 0 => text.push('\n'),
+                    b"text:tab" if depth_p > 0 => {
+                        text.push('\t');
+                        run_push(&mut runs, &spans, "\t");
+                    }
+                    b"text:line-break" if depth_p > 0 => {
+                        text.push('\n');
+                        run_push(&mut runs, &spans, "\n");
+                    }
+                    b"text:span" if depth_p > 0 && !empty => spans.push(attr(e, "text:style-name").unwrap_or_default()),
                     // Comments, pictures, charts and shapes: counted, and their
                     // own paragraphs kept out of the cell
                     n if n == b"office:annotation" || n.starts_with(b"draw:") => {
@@ -369,7 +408,9 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
             }
             Ok(Event::Text(t)) => {
                 if depth_p > 0 && skip == 0 {
-                    text.push_str(&t.unescape().unwrap_or_default());
+                    let t = t.unescape().unwrap_or_default();
+                    text.push_str(&t);
+                    run_push(&mut runs, &spans, &t);
                 }
             }
             Ok(Event::End(ref e)) => {
@@ -379,10 +420,34 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
                 }
                 match e.name().as_ref() {
                     b"text:p" | b"text:h" if depth_p > 0 => depth_p -= 1,
+                    b"text:span" if depth_p > 0 => {
+                        spans.pop();
+                    }
                     b"table:table-cell" | b"table:covered-table-cell" => {
                         if let Some(mut p) = cell.take() {
                             if paras > 0 {
                                 fill_text(&mut p, &text);
+                            }
+                            if runs.iter().any(|(st, _)| st.is_some()) {
+                                // Neighbouring runs that look the same are one run:
+                                // two text styles may say the same thing
+                                let mut merged: Vec<book::RichRun> = Vec::new();
+                                for (st, t) in runs.drain(..) {
+                                    let r = match st {
+                                        Some(st) => cells.run(&st, t),
+                                        None => book::RichRun { text: t, ..Default::default() },
+                                    };
+                                    // A line break has no look of its own: it goes
+                                    // with the run before it
+                                    let only_breaks = r.text.chars().all(|c| c == '\n');
+                                    match merged.last_mut() {
+                                        Some(last) if only_breaks || same_look(last, &r) => last.text.push_str(&r.text),
+                                        _ => merged.push(r),
+                                    }
+                                }
+                                if merged.iter().any(|r| !same_look(r, &book::RichRun::default())) {
+                                    p.runs = Some(merged);
+                                }
                             }
                             finish_cell(p, row, &mut col, &mut row_cells, sheet.as_mut());
                         }
@@ -407,6 +472,13 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
                             }
                         }
                         row = row.saturating_add(row_repeat);
+                    }
+                    b"table:table-header-columns" => {
+                        if let (Some(from), Some(sh)) = (header_cols_from.take(), sheet.as_mut()) {
+                            if col > from {
+                                sh.print_title_cols = Some((from, col - 1));
+                            }
+                        }
                     }
                     b"table:table-header-rows" => {
                         if let (Some(from), Some(sh)) = (header_rows_from.take(), sheet.as_mut()) {
@@ -476,7 +548,7 @@ fn start_cell(e: &BytesStart, covered: bool, null_date: Option<(i64, i64, i64)>,
     let mut cell = Cell::default();
     let mut has_content = false;
     if covered {
-        return Pending { cell, repeat, span: (1, 1), has_content, styled: false };
+        return Pending { cell, repeat, span: (1, 1), has_content, styled: false, runs: None };
     }
     if let Some(f) = attr(e, "table:formula") {
         match super::formula::to_a1(&f) {
@@ -532,7 +604,7 @@ fn start_cell(e: &BytesStart, covered: bool, null_date: Option<(i64, i64, i64)>,
         has_content = true;
     }
     cell.fmt = fmt;
-    Pending { cell, repeat, span, has_content, styled: false }
+    Pending { cell, repeat, span, has_content, styled: false, runs: None }
 }
 
 /// The paragraphs of a cell: the value of a string cell, or of an error
@@ -564,6 +636,9 @@ fn finish_cell(p: Pending, row: u32, col: &mut u32, row_cells: &mut Vec<(u32, Ce
         for k in 0..p.repeat.min(SPREAD_LIMIT) {
             sh.set(Pos::new(row, *col + k), p.cell.clone());
             row_cells.push((*col + k, p.cell.clone()));
+            if let Some(r) = &p.runs {
+                sh.rich_runs.insert(Pos::new(row, *col + k), r.clone());
+            }
         }
     }
     *col = col.saturating_add(p.repeat);

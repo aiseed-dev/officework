@@ -99,8 +99,10 @@ struct Styles {
     codes: Vec<String>,
     /// page setups; each sheet's table style names one master page
     pages: Vec<String>,
-    tables: Vec<(bool, usize)>,
+    tables: Vec<(bool, bool, usize)>,
     fonts: Vec<String>,
+    /// Looks of runs inside cells, as the text styles `T1`, `T2`, …
+    texts: Vec<String>,
 }
 
 impl Styles {
@@ -145,12 +147,45 @@ impl Styles {
         };
         Some(format!("ce{}", i + 1))
     }
-    fn table(&mut self, hidden: bool, page: String) -> String {
+    /// The text style for a run's own look, or None for a plain run
+    fn text(&mut self, r: &book::RichRun) -> Option<String> {
+        let mut tp = String::new();
+        if let Some(f) = &r.font {
+            tp.push_str(&font_names(f));
+            if !self.fonts.contains(f) {
+                self.fonts.push(f.clone());
+            }
+        }
+        if let Some(pt) = r.size_pt {
+            let _ = write!(tp, r#" fo:font-size="{pt}pt" style:font-size-asian="{pt}pt" style:font-size-complex="{pt}pt""#);
+        }
+        if let Some(b) = r.bold {
+            let w = if b { "bold" } else { "normal" };
+            let _ = write!(tp, r#" fo:font-weight="{w}" style:font-weight-asian="{w}" style:font-weight-complex="{w}""#);
+        }
+        if let Some(i) = r.italic {
+            let st = if i { "italic" } else { "normal" };
+            let _ = write!(tp, r#" fo:font-style="{st}" style:font-style-asian="{st}" style:font-style-complex="{st}""#);
+        }
+        if let Some(c) = &r.color {
+            let _ = write!(tp, r##" fo:color="#{}""##, c.to_ascii_lowercase());
+        }
+        if tp.is_empty() {
+            return None;
+        }
+        let i = self.texts.iter().position(|x| *x == tp).unwrap_or_else(|| {
+            self.texts.push(tp);
+            self.texts.len() - 1
+        });
+        Some(format!("T{}", i + 1))
+    }
+
+    fn table(&mut self, hidden: bool, rtl: bool, page: String) -> String {
         let p = self.pages.iter().position(|x| *x == page).unwrap_or_else(|| {
             self.pages.push(page);
             self.pages.len() - 1
         });
-        let key = (hidden, p);
+        let key = (hidden, rtl, p);
         let i = self.tables.iter().position(|x| *x == key).unwrap_or_else(|| {
             self.tables.push(key);
             self.tables.len() - 1
@@ -185,7 +220,7 @@ pub(super) fn esc(s: &str) -> String {
 
 fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &mut WriteReport) {
     let page = page_layout(sh, book);
-    let ta = st.table(sh.hidden, page);
+    let ta = st.table(sh.hidden, sh.rtl, page);
     let _ = write!(out, r#"<table:table table:name="{}" table:style-name="{ta}""#, esc(&sh.name));
     if !sh.print_areas.is_empty() {
         let ranges: Vec<String> = sh
@@ -214,20 +249,36 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
     for r in sh.row_height.keys().chain(sh.row_hidden.iter()) {
         last_row = last_row.max(r + 1);
     }
+    if let Some((_, b)) = sh.print_title_cols {
+        last_col = last_col.max(b + 1);
+    }
+    if let Some((_, b)) = sh.print_title_rows {
+        last_row = last_row.max(b + 1);
+    }
     let last_col = last_col.min(MAX_COLS);
     let last_row = last_row.min(MAX_ROWS);
 
     // Columns: runs of the same width and visibility become one element
     let default_mm = sh.col_haba_mm(u32::MAX, &book.col_basis);
     let col_key = |c: u32| (sh.col_haba_mm(c, &book.col_basis), sh.col_hidden.contains(&c));
+    // Title columns repeat at the left of each printed page; runs do not
+    // cross their edges
+    let tcols = sh.print_title_cols;
+    let in_tcols = |x: u32| tcols.is_some_and(|(a, b)| x >= a && x <= b);
     let mut c = 0;
     while c < last_col {
         let k = col_key(c);
         let mut n = 1;
-        while c + n < last_col && col_key(c + n) == k {
+        while c + n < last_col && col_key(c + n) == k && in_tcols(c + n) == in_tcols(c) && !tcols.is_some_and(|(a, _)| a == c + n) {
             n += 1;
         }
+        if tcols.is_some_and(|(a, _)| a == c) {
+            out.push_str("<table:table-header-columns>");
+        }
         column(out, st, k.0, k.1, n);
+        if tcols.is_some_and(|(_, b)| b == c + n - 1) {
+            out.push_str("</table:table-header-columns>");
+        }
         c += n;
     }
     if last_col < MAX_COLS {
@@ -397,7 +448,7 @@ fn row_cells(
         match used.get(&c) {
             Some(cl) => {
                 flush(&mut out, &mut blank);
-                cell_xml(&mut out, cl, starts.get(&p).copied(), st);
+                cell_xml(&mut out, cl, starts.get(&p).copied(), sh.rich_runs.get(&p), st);
             }
             None => blank += 1,
         }
@@ -410,7 +461,7 @@ fn row_cells(
     Some(out)
 }
 
-fn cell_xml(out: &mut String, cl: &Cell, span: Option<(u32, u32)>, st: &mut Styles) {
+fn cell_xml(out: &mut String, cl: &Cell, span: Option<(u32, u32)>, runs: Option<&Vec<book::RichRun>>, st: &mut Styles) {
     out.push_str("<table:table-cell");
     if let Some(s) = st.cell(&cl.fmt) {
         let _ = write!(out, r#" table:style-name="{s}""#);
@@ -429,7 +480,13 @@ fn cell_xml(out: &mut String, cl: &Cell, span: Option<(u32, u32)>, st: &mut Styl
             Some(if *b { "TRUE".to_string() } else { "FALSE".to_string() })
         }
         Value::Text(t) => {
-            out.push_str(r#" office:value-type="string" calcext:value-type="string""#);
+            out.push_str(r#" office:value-type="string""#);
+            // A formula's text result is read from this attribute, not from
+            // the paragraph (LibreOffice showed 0 without it)
+            if cl.formula.is_some() {
+                let _ = write!(out, r#" office:string-value="{}""#, esc(t));
+            }
+            out.push_str(r#" calcext:value-type="string""#);
             Some(t.clone())
         }
         Value::Error(e) => {
@@ -450,8 +507,31 @@ fn cell_xml(out: &mut String, cl: &Cell, span: Option<(u32, u32)>, st: &mut Styl
     if let Some((rows, cols)) = span {
         let _ = write!(out, r#" table:number-columns-spanned="{cols}" table:number-rows-spanned="{rows}""#);
     }
-    match text {
-        Some(t) if !t.is_empty() => {
+    // Runs are used only while they still spell the cell's text
+    let runs = runs.filter(|r| text.as_ref().is_some_and(|t| r.iter().map(|x| x.text.as_str()).collect::<String>() == *t));
+    match (text, runs) {
+        (Some(t), Some(runs)) if !t.is_empty() => {
+            out.push_str("><text:p>");
+            for r in runs {
+                let style = st.text(r);
+                for (k, seg) in r.text.split('\n').enumerate() {
+                    if k > 0 {
+                        out.push_str("</text:p><text:p>");
+                    }
+                    if seg.is_empty() {
+                        continue;
+                    }
+                    match &style {
+                        Some(s) => {
+                            let _ = write!(out, r#"<text:span text:style-name="{s}">{}</text:span>"#, para(seg));
+                        }
+                        None => out.push_str(&para(seg)),
+                    }
+                }
+            }
+            out.push_str("</text:p></table:table-cell>");
+        }
+        (Some(t), _) if !t.is_empty() => {
             out.push('>');
             for line in t.split('\n') {
                 out.push_str("<text:p>");
@@ -781,19 +861,23 @@ fn content_xml(book: &Book, st: &Styles, body: &str) -> String {
             i + 1
         );
     }
-    for (i, (hidden, page)) in st.tables.iter().enumerate() {
+    for (i, (hidden, rtl, page)) in st.tables.iter().enumerate() {
         let _ = write!(
             s,
-            r#"<style:style style:name="ta{}" style:family="table" style:master-page-name="PageStyle_{}"><style:table-properties table:display="{}" style:writing-mode="lr-tb"/></style:style>"#,
+            r#"<style:style style:name="ta{}" style:family="table" style:master-page-name="PageStyle_{}"><style:table-properties table:display="{}" style:writing-mode="{}"/></style:style>"#,
             i + 1,
             page + 1,
-            !hidden
+            !hidden,
+            if *rtl { "rl-tb" } else { "lr-tb" }
         );
     }
     for (i, code) in st.codes.iter().enumerate() {
         if let Some(x) = super::numfmt_write::data_style(&format!("N{}", i + 100), code) {
             s.push_str(&x);
         }
+    }
+    for (i, tp) in st.texts.iter().enumerate() {
+        let _ = write!(s, r#"<style:style style:name="T{}" style:family="text"><style:text-properties{tp}/></style:style>"#, i + 1);
     }
     for (i, f) in st.cells.iter().enumerate() {
         let data = f
@@ -1046,8 +1130,7 @@ fn zip_parts(content: &str, styles: &str) -> zip::result::ZipResult<Vec<u8>> {
         z.start_file("meta.xml", packed)?;
         let _ = write!(
             z,
-            r#"<?xml version="1.0" encoding="UTF-8"?><office:document-meta {NS}><office:meta><meta:generator>officework/{}</meta:generator></office:meta></office:document-meta>"#,
-            env!("CARGO_PKG_VERSION")
+            r#"<?xml version="1.0" encoding="UTF-8"?><office:document-meta {NS}><office:meta><meta:generator>officework</meta:generator></office:meta></office:document-meta>"#
         );
         z.start_file("META-INF/manifest.xml", packed)?;
         z.write_all(

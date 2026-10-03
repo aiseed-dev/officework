@@ -94,6 +94,17 @@ impl CellStyles {
                                 cur = None;
                             }
                         }
+                        // Text styles (`T1`) hold the look of runs inside a cell;
+                        // they are kept apart, under a prefix no cell style uses
+                        b"style:style" if attr(e, "style:family").as_deref() == Some("text") => {
+                            props = Props::default();
+                            let name = format!("\u{1}{}", attr(e, "style:name").unwrap_or_default());
+                            if empty {
+                                self.styles.insert(name, std::mem::take(&mut props));
+                            } else {
+                                cur = Some((name, false));
+                            }
+                        }
                         b"style:style" if attr(e, "style:family").as_deref() == Some("table-cell") => {
                             props = Props {
                                 parent: attr(e, "style:parent-style-name"),
@@ -165,6 +176,19 @@ impl CellStyles {
         let mut layers: Vec<&Props> = vec![&self.default];
         layers.extend(chain.iter().rev().filter_map(|n| self.styles.get(n)));
         self.flatten(&layers)
+    }
+
+    /// The look of a run inside a cell, from its text style (`T1`)
+    pub(super) fn run(&self, text_style: &str, text: String) -> book::RichRun {
+        let mut r = book::RichRun { text, ..Default::default() };
+        if let Some(p) = self.styles.get(&format!("\u{1}{text_style}")) {
+            r.bold = p.bold;
+            r.italic = p.italic;
+            r.size_pt = p.size_c.map(|c| c as f32 / 100.0);
+            r.color = p.color.clone().flatten();
+            r.font = p.font.clone().or(p.font_asian.clone()).map(|n| self.faces.get(&n).cloned().unwrap_or(n));
+        }
+        r
     }
 
     /// The default cell style's font, for the workbook's default font

@@ -114,6 +114,16 @@ fn diff(a: &Book, b: &Book) -> Vec<String> {
                 break;
             }
         }
+        if x.rich_runs != y.rich_runs {
+            let k = x.rich_runs.keys().chain(y.rich_runs.keys()).find(|k| x.rich_runs.get(k) != y.rich_runs.get(k));
+            out.push(format!(
+                "{} rich text differs at {:?}: {:?} vs {:?}",
+                x.name,
+                k.map(|p| p.a1()),
+                k.and_then(|k| x.rich_runs.get(k)),
+                k.and_then(|k| y.rich_runs.get(k))
+            ));
+        }
         if x.row_hidden != y.row_hidden || x.col_hidden != y.col_hidden {
             out.push(format!("{} hidden rows or columns differ", x.name));
         }
