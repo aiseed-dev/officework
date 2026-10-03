@@ -942,6 +942,10 @@ pub struct Sheet {
     pub paper_size: Option<u32>,
     /// 印刷の余白 mm(左, 右, 上, 下)。xlsx の pageMargins(インチ)から換算
     pub margins_mm: Option<(f32, f32, f32, f32)>,
+    /// How far the header and the footer are from the paper's edge, in mm
+    /// (xlsx `pageMargins@header` / `@footer`; in an ods, the page margin
+    /// above a shown header). None: Excel's 0.3in
+    pub hf_margins_mm: Option<(f32, f32)>,
     /// 印刷範囲(definedName _xlnm.Print_Area)。編集の対象なのでモデルで持つ
     /// (xlsx との往復は読み書きが解く)。複数の域も持てる
     pub print_areas: Vec<(Pos, Pos)>,

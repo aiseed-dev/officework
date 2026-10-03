@@ -275,15 +275,24 @@ fn cell_props(e: &BytesStart, p: &mut Props) {
         p.shrink = Some(v == "true");
     }
     if let Some(v) = attr(e, "style:rotation-angle") {
-        // ODF counts counterclockwise from 0 to 360; the engine keeps
-        // Excel's -90..90 (positive = counterclockwise)
-        let deg = v.trim_end_matches("deg").parse::<f32>().ok().map(|d| d.round() as i32 % 360);
+        // ODF counts counterclockwise from 0 to 360. The engine keeps xlsx's
+        // `textRotation` (ECMA-376 18.8.1): 1-90 above the horizon, 91-180
+        // below it as 90 minus the value. Angles past vertical are folded
+        // back, as text upside down has no xlsx form
+        let deg = v.trim_end_matches("deg").parse::<f32>().ok().map(|d| (d.round() as i32).rem_euclid(360));
         p.rotation = Some(match deg {
             Some(0) | None => None,
             Some(d) if d <= 90 => Some(d),
-            Some(d) if d >= 270 => Some(d - 360),
+            Some(d) if d >= 270 => Some(90 + (360 - d)),
+            // Past vertical: the same line turned half round
+            Some(d) if d < 180 => Some(90 + (180 - d)),
+            Some(180) => None,
             Some(d) => Some(d - 180),
         });
+    }
+    // Characters stacked one below the other: xlsx's 255
+    if attr(e, "style:direction").as_deref() == Some("ttb") {
+        p.rotation = Some(Some(255));
     }
 }
 

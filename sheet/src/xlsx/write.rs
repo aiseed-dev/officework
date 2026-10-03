@@ -495,12 +495,19 @@ pub(super) fn print_extra_xml(orig: &str, sh: &Sheet) -> String {
             let el = set_attr(&el, "left", &inch(l));
             let el = set_attr(&el, "right", &inch(r));
             let el = set_attr(&el, "top", &inch(t));
-            Some(set_attr(&el, "bottom", &inch(b)))
+            let el = set_attr(&el, "bottom", &inch(b));
+            Some(match sh.hf_margins_mm {
+                Some((h, f)) => set_attr(&set_attr(&el, "header", &inch(h)), "footer", &inch(f)),
+                None => el,
+            })
         }
-        (Some((l, r, t, b)), None) => Some(format!(
-            "<pageMargins left=\"{}\" right=\"{}\" top=\"{}\" bottom=\"{}\" header=\"0.3\" footer=\"0.3\"/>",
-            inch(l), inch(r), inch(t), inch(b)
-        )),
+        (Some((l, r, t, b)), None) => {
+            let (h, f) = sh.hf_margins_mm.unwrap_or((7.62, 7.62));
+            Some(format!(
+                "<pageMargins left=\"{}\" right=\"{}\" top=\"{}\" bottom=\"{}\" header=\"{}\" footer=\"{}\"/>",
+                inch(l), inch(r), inch(t), inch(b), inch(h), inch(f)
+            ))
+        }
         (None, el) => el,
     };
     let setup = {

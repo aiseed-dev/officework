@@ -46,10 +46,11 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     let mut rep = Report::default();
     let styles = Styles::parse(&content);
     let cells = CellStyles::parse(&styles_xml, &content);
+    let pages = super::page::Pages::parse(&styles_xml);
     let mut book = Book::new();
     book.sheets.clear();
     book.default_font = cells.default_font();
-    parse_body(&content, &styles, &cells, &mut book, &mut rep);
+    parse_body(&content, &styles, &cells, &pages, &mut book, &mut rep);
     if book.sheets.is_empty() {
         book.sheets.push(Sheet::new("Sheet1"));
     }
@@ -76,6 +77,8 @@ struct Styles {
     /// (height in pt, optimal = the height follows the content)
     row_pt: HashMap<String, (f32, bool)>,
     hidden_tables: Vec<String>,
+    /// table style → the master page that holds its page settings
+    table_master: HashMap<String, String>,
 }
 
 impl Styles {
@@ -87,10 +90,11 @@ impl Styles {
             match r.read_event() {
                 Ok(Event::Start(e)) | Ok(Event::Empty(e)) => match e.name().as_ref() {
                     b"style:style" => {
-                        cur = Some((
-                            attr(&e, "style:name").unwrap_or_default(),
-                            attr(&e, "style:family").unwrap_or_default(),
-                        ));
+                        let name = attr(&e, "style:name").unwrap_or_default();
+                        if let Some(m) = attr(&e, "style:master-page-name") {
+                            s.table_master.insert(name.clone(), m);
+                        }
+                        cur = Some((name, attr(&e, "style:family").unwrap_or_default()));
                     }
                     b"style:table-column-properties" => {
                         if let (Some((name, _)), Some(w)) = (&cur, attr(&e, "style:column-width")) {
@@ -153,7 +157,9 @@ struct Pending {
     styled: bool,
 }
 
-fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, book: &mut Book, rep: &mut Report) {
+fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::page::Pages, book: &mut Book, rep: &mut Report) {
+    // The first row inside `table:table-header-rows`: the print title rows
+    let mut header_rows_from: Option<u32> = None;
     // The look of a cell with no style of its own: empty cells in this look
     // are not kept
     let plain = cells.format("Default");
@@ -206,9 +212,12 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, book: &mut Book, r
                         let mut sh = Sheet::new(&attr(e, "table:name").unwrap_or_default());
                         if let Some(st) = attr(e, "table:style-name") {
                             sh.hidden = styles.hidden_tables.contains(&st);
+                            if let Some(m) = styles.table_master.get(&st) {
+                                pages.apply(m, &mut sh);
+                            }
                         }
-                        if attr(e, "table:print-ranges").is_some() {
-                            rep_note(rep, "table:print-ranges");
+                        if let Some(v) = attr(e, "table:print-ranges") {
+                            sh.print_areas = super::page::print_ranges(&v);
                         }
                         sheet = Some(sh);
                         row = 0;
@@ -243,6 +252,7 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, book: &mut Book, r
                             col = col.saturating_add(n);
                         }
                     }
+                    b"table:table-header-rows" if !empty => header_rows_from = Some(row),
                     b"table:table-row" => {
                         col = 0;
                         row_repeat = repeat(e, "table:number-rows-repeated");
@@ -329,7 +339,6 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, book: &mut Book, r
                     | b"table:content-validations"
                     | b"calcext:conditional-formats"
                     | b"table:data-pilot-tables"
-                    | b"table:table-header-rows"
                     | b"table:table-row-group"
                     | b"table:table-column-group" => {
                         rep_note(rep, std::str::from_utf8(name).unwrap_or("?"));
@@ -377,6 +386,13 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, book: &mut Book, r
                             }
                         }
                         row = row.saturating_add(row_repeat);
+                    }
+                    b"table:table-header-rows" => {
+                        if let (Some(from), Some(sh)) = (header_rows_from.take(), sheet.as_mut()) {
+                            if row > from {
+                                sh.print_title_rows = Some((from, row - 1));
+                            }
+                        }
                     }
                     b"table:table" => {
                         if let Some(sh) = sheet.take() {

@@ -1885,6 +1885,9 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
                     {
                         sh.margins_mm = Some((l, r, t, b));
                     }
+                    if let (Some(h), Some(f)) = (g("header"), g("footer")) {
+                        sh.hf_margins_mm = Some((h, f));
+                    }
                 }
                 _ => {}
             },
