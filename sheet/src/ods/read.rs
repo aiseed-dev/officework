@@ -160,6 +160,9 @@ struct Pending {
 fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::page::Pages, book: &mut Book, rep: &mut Report) {
     // The first row inside `table:table-header-rows`: the print title rows
     let mut header_rows_from: Option<u32> = None;
+    // Names for the whole workbook, put on the sheet they point at once all
+    // sheets are read
+    let mut pending_names: Vec<(String, book::DefinedName)> = Vec::new();
     // The look of a cell with no style of its own: empty cells in this look
     // are not kept
     let plain = cells.format("Default");
@@ -334,8 +337,26 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
                             skip = 1;
                         }
                     }
-                    b"table:named-expressions"
-                    | b"table:database-ranges"
+                    b"table:named-range" => {
+                        let nm = attr(e, "table:name").unwrap_or_default();
+                        let addr = attr(e, "table:cell-range-address").unwrap_or_default();
+                        // Print areas and title rows come from their own
+                        // attributes; LibreOffice also writes them as names
+                        if !nm.starts_with("_xlnm.") {
+                            match named_range(&addr) {
+                                Some((on, range)) => {
+                                    let n = book::DefinedName { name: nm, range, scoped: sheet.is_some() };
+                                    match sheet.as_mut() {
+                                        Some(sh) => sh.names.push(n),
+                                        None => pending_names.push((on, n)),
+                                    }
+                                }
+                                None => rep_note(rep, "table:named-range"),
+                            }
+                        }
+                    }
+                    b"table:named-expression" => rep_note(rep, "table:named-expression"),
+                    b"table:database-ranges"
                     | b"table:content-validations"
                     | b"calcext:conditional-formats"
                     | b"table:data-pilot-tables"
@@ -407,9 +428,32 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
             _ => {}
         }
     }
+    for (on, n) in pending_names {
+        match book.sheets.iter_mut().find(|s| s.name == on) {
+            Some(sh) => sh.names.push(n),
+            None => rep_note(rep, "table:named-range"),
+        }
+    }
     if null_date == Some((1904, 1, 1)) {
         book.date1904 = true;
     }
+}
+
+/// `$出納帳.$A$1:.$F$19` → (sheet, `A1:F19`). Only one cell or one block
+/// of cells, as the model's names hold
+fn named_range(addr: &str) -> Option<(String, String)> {
+    let a1 = super::formula::to_a1(&format!("of:=[{addr}]"))?;
+    let (sheet, r) = a1.rsplit_once('!')?;
+    let sheet = match sheet.strip_prefix('\'').and_then(|q| q.strip_suffix('\'')) {
+        Some(q) => q.replace("''", "'"),
+        None => sheet.to_string(),
+    };
+    let plain: String = r.chars().filter(|c| *c != '$').collect();
+    let ok = match plain.split_once(':') {
+        Some((a, b)) => Pos::parse(a).is_some() && Pos::parse(b).is_some(),
+        None => Pos::parse(&plain).is_some(),
+    };
+    ok.then_some((sheet, plain))
 }
 
 fn repeat(e: &BytesStart, key: &str) -> u32 {

@@ -55,6 +55,15 @@ pub fn write(book: &Book) -> (Vec<u8>, WriteReport) {
         sheet_body(sh, book, &mut st, &mut body, &mut rep);
         left_out(sh, &mut rep);
     }
+    // Names for the whole workbook come after the sheets
+    let global: Vec<String> = book
+        .sheets
+        .iter()
+        .flat_map(|sh| sh.names.iter().filter(|n| !n.scoped).map(move |n| named_range_xml(&sh.name, n)))
+        .collect();
+    if !global.is_empty() {
+        let _ = write!(body, "<table:named-expressions>{}</table:named-expressions>", global.concat());
+    }
     let content = content_xml(book, &st, &body);
     let styles = styles_xml(book, &st);
     let bytes = zip_parts(&content, &styles).unwrap_or_default();
@@ -67,7 +76,6 @@ fn left_out(sh: &Sheet, rep: &mut WriteReport) {
     rep.note("hyperlinks", sh.links.len());
     rep.note("conditional formats", sh.cond.len());
     rep.note("data validation", sh.validations.len());
-    rep.note("defined names", sh.names.len());
     rep.note("shapes and pictures", sh.shapes.len() + sh.shapes_new.len());
     rep.note("tables", sh.tables.len());
     rep.note("scenarios", sh.scenarios.len());
@@ -274,10 +282,35 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
             MAX_ROWS - last_row
         );
     }
+    // Names that only this sheet uses
+    let local: Vec<String> = sh.names.iter().filter(|n| n.scoped).map(|n| named_range_xml(&sh.name, n)).collect();
+    if !local.is_empty() {
+        let _ = write!(out, "<table:named-expressions>{}</table:named-expressions>", local.concat());
+    }
     out.push_str("</table:table>");
     if titles.is_some_and(|(a, b)| a >= last_row || b >= last_row) {
         rep.note("title rows past the used range", 1);
     }
+}
+
+/// A name for a cell or a block of cells on `sheet`, as LibreOffice writes it
+fn named_range_xml(sheet: &str, n: &book::DefinedName) -> String {
+    let s = format!("${}", quote_sheet(sheet));
+    let abs = |a: &str| -> String {
+        let a = a.replace('$', "");
+        let split = a.find(|c: char| c.is_ascii_digit()).unwrap_or(a.len());
+        let (c, r) = a.split_at(split);
+        format!("${c}${r}")
+    };
+    let (first, range) = match n.range.split_once(':') {
+        Some((a, b)) => (abs(a), format!("{s}.{}:.{}", abs(a), abs(b))),
+        None => (abs(&n.range), format!("{s}.{}", abs(&n.range))),
+    };
+    format!(
+        r#"<table:named-range table:name="{}" table:base-cell-address="{s}.{first}" table:cell-range-address="{}"/>"#,
+        esc(&n.name),
+        esc(&range)
+    )
 }
 
 fn column(out: &mut String, st: &mut Styles, mm: f32, hidden: bool, n: u32) {
