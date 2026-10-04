@@ -101,13 +101,14 @@ fn widths_heights_and_hidden_rows_come_from_the_styles() {
 }
 
 #[test]
-fn comments_and_pictures_are_reported_not_dropped_in_silence() {
+fn a_comment_is_read_and_kept_out_of_the_cell_text() {
     let body = r#"<table:table table:name="S"><table:table-row>
 <table:table-cell office:value-type="string"><office:annotation><text:p>note</text:p></office:annotation><text:p>v</text:p></table:table-cell>
 </table:table-row></table:table>"#;
     let (b, rep) = read(ods(body, ""));
     assert_eq!(b.sheets[0].value(Pos::new(0, 0)), Value::Text("v".into()));
-    assert_eq!(rep.unsupported, vec![("office:annotation".to_string(), 1)]);
+    assert!(rep.is_lossless(), "{:?}", rep.unsupported);
+    assert_eq!(b.sheets[0].comments[&Pos::new(0, 0)].text(), "note");
 }
 
 /// A quotation made by LibreOffice 24.2 from sample/見積書.xlsx
@@ -126,4 +127,48 @@ fn a_quotation_saved_by_libreoffice() {
     let line = s.get(Pos::new(10, 5)).unwrap();
     assert_eq!(line.formula.as_deref(), Some("C11*E11"));
     assert_eq!(line.value, Value::Number(450000.0));
+}
+
+/// A comment, a picture and a shape are written into their cells and read
+/// back the same
+#[test]
+fn comments_pictures_and_shapes_round_trip() {
+    let mut b = book::Book::new();
+    let sh = &mut b.sheets[0];
+    sh.set(Pos::new(0, 0), book::Cell { value: Value::Text("見出し".into()), ..Default::default() });
+    sh.comments.insert(
+        Pos::new(0, 0),
+        book::CommentThread { done: false, entries: vec![book::CommentEntry { who: "山田".into(), when: "2026-10-05T09:00:00".into(), text: "確認".into() }] },
+    );
+    // A 1x1 PNG
+    let png: Vec<u8> = vec![
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 0x1F,
+        0x15, 0xC4, 0x89, 0, 0, 0, 13, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0xF8, 0xCF, 0xC0, 0, 0, 0x03, 0x01, 0x01, 0x00, 0xC9, 0xFE,
+        0x92, 0xEF, 0, 0, 0, 0, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+    ];
+    sh.images.push(book::SheetImage { at: Pos::new(2, 1), dx_px: 4.0, dy_px: 2.0, width_px: 96.0, height_px: 48.0, data: png.clone(), z: 1 });
+    sh.shapes.push(book::SheetShape {
+        at: Pos::new(4, 0),
+        kind: "roundRect".into(),
+        width_px: 200.0,
+        height_px: 40.0,
+        fill: Some("FFF2CC".into()),
+        text: Some("社外秘".into()),
+        z: 2,
+        ..Default::default()
+    });
+    let (bytes, rep) = super::write(&b);
+    assert!(rep.is_lossless(), "{:?}", rep.left_out);
+    let (r, read_rep) = read(bytes);
+    assert!(read_rep.is_lossless(), "{:?}", read_rep.unsupported);
+    let s = &r.sheets[0];
+    assert_eq!(s.value(Pos::new(0, 0)), Value::Text("見出し".into()));
+    let t = &s.comments[&Pos::new(0, 0)];
+    assert_eq!((t.entries[0].who.as_str(), t.entries[0].text.as_str()), ("山田", "確認"));
+    let i = &s.images[0];
+    assert_eq!((i.at, i.data.clone()), (Pos::new(2, 1), png));
+    assert!((i.width_px - 96.0).abs() < 0.1 && (i.dx_px - 4.0).abs() < 0.1);
+    let h = &s.shapes[0];
+    assert_eq!((h.at, h.kind.as_str(), h.fill.as_deref(), h.text.as_deref()), (Pos::new(4, 0), "roundRect", Some("FFF2CC"), Some("社外秘")));
+    assert!((h.width_px - 200.0).abs() < 0.1);
 }

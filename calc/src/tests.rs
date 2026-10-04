@@ -9121,7 +9121,7 @@ mod custom_function_list_tests {
 }
 
 /// An `.ods` opens and saves back as ods. A file with parts the writer
-/// cannot hold (a comment here) is not overwritten: that workbook gets no
+/// cannot hold (data validation here) is not overwritten: that workbook gets no
 /// path, so Ctrl+S asks for a name.
 #[cfg(test)]
 #[allow(non_snake_case)]
@@ -9163,13 +9163,13 @@ mod ods_open_tests {
             this.encrypt_pw = None;
         });
 
-        // A comment the writer cannot hold: no path, and the file is kept
-        let with_note = include_bytes!("../../sheet/src/ods/testdata/mitsumori_comment.ods").to_vec();
-        let n = dir.join("コメント付き.ods");
+        // Data validation the writer cannot hold: no path, and the file is kept
+        let with_note = include_bytes!("../../sheet/src/ods/testdata/mitsumori_validation.ods").to_vec();
+        let n = dir.join("入力規則付き.ods");
         std::fs::write(&n, &with_note).unwrap();
         c.update(cx, |this, _cx| {
             this.open(n.clone());
-            assert!(this.path.is_none(), "an ods with a comment must not be overwritten");
+            assert!(this.path.is_none(), "an ods with data validation must not be overwritten");
             assert!(!this.dirty);
         });
         assert_eq!(std::fs::read(&n).unwrap(), with_note);

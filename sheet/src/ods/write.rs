@@ -40,7 +40,7 @@ impl WriteReport {
     }
 }
 
-const NS: &str = r#"xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0" xmlns:of="urn:oasis:names:tc:opendocument:xmlns:of:1.2" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:css3t="http://www.w3.org/TR/css3-text/" xmlns:calcext="urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0" xmlns:loext="urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0" office:version="1.3""#;
+const NS: &str = r#"xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0" xmlns:of="urn:oasis:names:tc:opendocument:xmlns:of:1.2" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:css3t="http://www.w3.org/TR/css3-text/" xmlns:calcext="urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0" xmlns:loext="urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0" office:version="1.3""#;
 
 /// Columns and rows past the last used one are written as one repeated
 /// element up to the sheet's size, as LibreOffice does
@@ -66,18 +66,16 @@ pub fn write(book: &Book) -> (Vec<u8>, WriteReport) {
     }
     let content = content_xml(book, &st, &body);
     let styles = styles_xml(book, &st);
-    let bytes = zip_parts(&content, &styles).unwrap_or_default();
+    let bytes = zip_parts(&content, &styles, &st.pictures).unwrap_or_default();
     (bytes, rep)
 }
 
 /// Parts of a sheet this step does not write
 fn left_out(sh: &Sheet, rep: &mut WriteReport) {
     // Stable ids: the app turns them into words on the screen
-    rep.note("comment", sh.comments.len());
     rep.note("hyperlink", sh.links.len());
     rep.note("conditional_formatting", sh.cond.len());
     rep.note("data_validation", sh.validations.len());
-    rep.note("shape", sh.shapes.len() + sh.shapes_new.len() + sh.images.len() + sh.images_new.len());
     rep.note("table", sh.tables.len());
     rep.note("scenario", sh.scenarios.len());
     rep.note("freeze", usize::from(sh.freeze.is_some()));
@@ -103,6 +101,12 @@ struct Styles {
     fonts: Vec<String>,
     /// Looks of runs inside cells, as the text styles `T1`, `T2`, …
     texts: Vec<String>,
+    /// Looks of shapes and pictures, as the graphic styles `gr1`, …
+    graphics: Vec<String>,
+    /// Paragraph styles of shape text, `P1`, …
+    paras: Vec<String>,
+    /// Pictures in the package: (path, bytes, media type)
+    pictures: Vec<(String, Vec<u8>, &'static str)>,
 }
 
 impl Styles {
@@ -147,6 +151,33 @@ impl Styles {
         };
         Some(format!("ce{}", i + 1))
     }
+    fn paragraph(&mut self, inner: String) -> String {
+        let i = self.paras.iter().position(|x| *x == inner).unwrap_or_else(|| {
+            self.paras.push(inner);
+            self.paras.len() - 1
+        });
+        format!("P{}", i + 1)
+    }
+
+    fn graphic(&mut self, props: String) -> String {
+        let i = self.graphics.iter().position(|x| *x == props).unwrap_or_else(|| {
+            self.graphics.push(props);
+            self.graphics.len() - 1
+        });
+        format!("gr{}", i + 1)
+    }
+
+    /// The package path of a picture, the same bytes stored once
+    fn picture(&mut self, data: &[u8]) -> String {
+        if let Some((p, _, _)) = self.pictures.iter().find(|(_, d, _)| d == data) {
+            return p.clone();
+        }
+        let (ext, mime) = super::drawing::picture_type(data);
+        let path = format!("Pictures/image{}.{ext}", self.pictures.len() + 1);
+        self.pictures.push((path.clone(), data.to_vec(), mime));
+        path
+    }
+
     /// The text style for a run's own look, or None for a plain run
     fn text(&mut self, r: &book::RichRun) -> Option<String> {
         let mut tp = String::new();
@@ -239,9 +270,44 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
     }
     out.push('>');
 
+    // Comments, pictures and shapes go inside the cell they are anchored
+    // to: (comment, drawing objects) by cell
+    let mut extras: HashMap<Pos, (String, String)> = HashMap::new();
+    for (p, t) in &sh.comments {
+        extras.entry(*p).or_default().0 = super::drawing::comment_xml(t);
+    }
+    for i in sh.images.iter().chain(&sh.images_new) {
+        let href = st.picture(&i.data);
+        let style = st.graphic(r#"draw:stroke="none" draw:fill="none""#.to_string());
+        extras.entry(i.at).or_default().1.push_str(&super::drawing::image_xml(i, &href, &style));
+    }
+    for shp in sh.shapes.iter().chain(&sh.shapes_new) {
+        if super::drawing::shape_type(&shp.kind).is_none() {
+            rep.note("shape", 1);
+            continue;
+        }
+        if shp.rot != 0.0 {
+            rep.note("shape_rotation", 1);
+        }
+        let style = st.graphic(super::drawing::shape_graphic(shp));
+        let para = st.paragraph(super::drawing::shape_paragraph(shp));
+        if let Some(f) = &shp.text_fmt.font {
+            if !st.fonts.contains(f) {
+                st.fonts.push(f.clone());
+            }
+        }
+        if let Some(x) = super::drawing::shape_xml(shp, &sh.name, &style, &para) {
+            extras.entry(shp.at).or_default().1.push_str(&x);
+        }
+    }
+
     // How far the sheet is used
     let mut last_row = 0u32;
     let mut last_col = 0u32;
+    for p in extras.keys() {
+        last_row = last_row.max(p.row + 1);
+        last_col = last_col.max(p.col + 1);
+    }
     for p in sh.cells.keys() {
         last_row = last_row.max(p.row + 1);
         last_col = last_col.max(p.col + 1);
@@ -305,7 +371,7 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
         if titles.is_some_and(|(a, _)| a == r) {
             out.push_str("<table:table-header-rows>");
         }
-        let row_xml = row_cells(sh, r, last_col, &covered, &starts, st);
+        let row_xml = row_cells(sh, r, last_col, &covered, &starts, &extras, st);
         // Empty rows in a run are written once with a repeat count
         let mut n = 1;
         let in_titles = |x: u32| titles.is_some_and(|(a, b)| x >= a && x <= b);
@@ -313,7 +379,7 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
             while r + n < last_row
                 && row_attrs(sh, r + n, st) == row_attrs(sh, r, st)
                 && in_titles(r + n) == in_titles(r)
-                && row_cells(sh, r + n, last_col, &covered, &starts, st).is_none()
+                && row_cells(sh, r + n, last_col, &covered, &starts, &extras, st).is_none()
                 && !titles.is_some_and(|(a, _)| a == r + n)
             {
                 n += 1;
@@ -418,13 +484,16 @@ fn row_cells(
     last_col: u32,
     covered: &std::collections::HashSet<Pos>,
     starts: &HashMap<Pos, (u32, u32)>,
+    extras: &HashMap<Pos, (String, String)>,
     st: &mut Styles,
 ) -> Option<String> {
     let used: BTreeMap<u32, &Cell> = sh.cells.range(Pos::new(r, 0)..Pos::new(r + 1, 0)).map(|(p, c)| (p.col, c)).collect();
     let any_cover = covered.iter().any(|p| p.row == r);
-    if used.is_empty() && !any_cover {
+    let any_extra = extras.keys().any(|p| p.row == r);
+    if used.is_empty() && !any_cover && !any_extra {
         return None;
     }
+    let empty_cell = Cell::default();
     let mut out = String::new();
     let mut c = 0;
     let mut blank = 0u32;
@@ -443,19 +512,24 @@ fn row_cells(
         if covered.contains(&p) {
             flush(&mut out, &mut blank);
             let style = used.get(&c).and_then(|cl| st.cell(&cl.fmt));
-            match style {
-                Some(s) => {
-                    let _ = write!(out, r#"<table:covered-table-cell table:style-name="{s}"/>"#);
+            out.push_str("<table:covered-table-cell");
+            if let Some(s) = style {
+                let _ = write!(out, r#" table:style-name="{s}""#);
+            }
+            match extras.get(&p) {
+                Some((note, objects)) => {
+                    let _ = write!(out, ">{note}{objects}</table:covered-table-cell>");
                 }
-                None => out.push_str("<table:covered-table-cell/>"),
+                None => out.push_str("/>"),
             }
             c += 1;
             continue;
         }
-        match used.get(&c) {
+        let extra = extras.get(&p);
+        match used.get(&c).copied().or(extra.map(|_| &empty_cell)) {
             Some(cl) => {
                 flush(&mut out, &mut blank);
-                cell_xml(&mut out, cl, starts.get(&p).copied(), sh.rich_runs.get(&p), st);
+                cell_xml(&mut out, cl, starts.get(&p).copied(), sh.rich_runs.get(&p), extra, st);
             }
             None => blank += 1,
         }
@@ -468,7 +542,17 @@ fn row_cells(
     Some(out)
 }
 
-fn cell_xml(out: &mut String, cl: &Cell, span: Option<(u32, u32)>, runs: Option<&Vec<book::RichRun>>, st: &mut Styles) {
+/// One cell. `extra` is its comment and the drawing objects anchored to it:
+/// the comment comes before the cell's paragraphs, the objects after them,
+/// as LibreOffice writes them
+fn cell_xml(
+    out: &mut String,
+    cl: &Cell,
+    span: Option<(u32, u32)>,
+    runs: Option<&Vec<book::RichRun>>,
+    extra: Option<&(String, String)>,
+    st: &mut Styles,
+) {
     out.push_str("<table:table-cell");
     if let Some(s) = st.cell(&cl.fmt) {
         let _ = write!(out, r#" table:style-name="{s}""#);
@@ -516,38 +600,43 @@ fn cell_xml(out: &mut String, cl: &Cell, span: Option<(u32, u32)>, runs: Option<
     }
     // Runs are used only while they still spell the cell's text
     let runs = runs.filter(|r| text.as_ref().is_some_and(|t| r.iter().map(|x| x.text.as_str()).collect::<String>() == *t));
+    let mut inner = String::new();
     match (text, runs) {
         (Some(t), Some(runs)) if !t.is_empty() => {
-            out.push_str("><text:p>");
+            inner.push_str("<text:p>");
             for r in runs {
                 let style = st.text(r);
                 for (k, seg) in r.text.split('\n').enumerate() {
                     if k > 0 {
-                        out.push_str("</text:p><text:p>");
+                        inner.push_str("</text:p><text:p>");
                     }
                     if seg.is_empty() {
                         continue;
                     }
                     match &style {
                         Some(s) => {
-                            let _ = write!(out, r#"<text:span text:style-name="{s}">{}</text:span>"#, para(seg));
+                            let _ = write!(inner, r#"<text:span text:style-name="{s}">{}</text:span>"#, para(seg));
                         }
-                        None => out.push_str(&para(seg)),
+                        None => inner.push_str(&para(seg)),
                     }
                 }
             }
-            out.push_str("</text:p></table:table-cell>");
+            inner.push_str("</text:p>");
         }
         (Some(t), _) if !t.is_empty() => {
-            out.push('>');
             for line in t.split('\n') {
-                out.push_str("<text:p>");
-                out.push_str(&para(line));
-                out.push_str("</text:p>");
+                inner.push_str("<text:p>");
+                inner.push_str(&para(line));
+                inner.push_str("</text:p>");
             }
-            out.push_str("</table:table-cell>");
         }
-        _ => out.push_str("/>"),
+        _ => {}
+    }
+    let (note, objects) = extra.map(|(a, b)| (a.as_str(), b.as_str())).unwrap_or(("", ""));
+    if inner.is_empty() && note.is_empty() && objects.is_empty() {
+        out.push_str("/>");
+    } else {
+        let _ = write!(out, ">{note}{inner}{objects}</table:table-cell>");
     }
 }
 
@@ -599,7 +688,7 @@ fn para(line: &str) -> String {
     o
 }
 
-fn quote_sheet(name: &str) -> String {
+pub(super) fn quote_sheet(name: &str) -> String {
     if name.chars().all(|c| c.is_alphanumeric() || c == '_') {
         name.to_string()
     } else {
@@ -883,6 +972,12 @@ fn content_xml(book: &Book, st: &Styles, body: &str) -> String {
             s.push_str(&x);
         }
     }
+    for (i, p) in st.paras.iter().enumerate() {
+        let _ = write!(s, r#"<style:style style:name="P{}" style:family="paragraph">{p}</style:style>"#, i + 1);
+    }
+    for (i, g) in st.graphics.iter().enumerate() {
+        let _ = write!(s, r#"<style:style style:name="gr{}" style:family="graphic"><style:graphic-properties {g}/></style:style>"#, i + 1);
+    }
     for (i, tp) in st.texts.iter().enumerate() {
         let _ = write!(s, r#"<style:style style:name="T{}" style:family="text"><style:text-properties{tp}/></style:style>"#, i + 1);
     }
@@ -1120,7 +1215,7 @@ fn styles_xml(book: &Book, st: &Styles) -> String {
     s
 }
 
-fn zip_parts(content: &str, styles: &str) -> zip::result::ZipResult<Vec<u8>> {
+fn zip_parts(content: &str, styles: &str, pictures: &[(String, Vec<u8>, &'static str)]) -> zip::result::ZipResult<Vec<u8>> {
     let mut buf = Cursor::new(Vec::new());
     {
         let mut z = zip::ZipWriter::new(&mut buf);
@@ -1139,10 +1234,20 @@ fn zip_parts(content: &str, styles: &str) -> zip::result::ZipResult<Vec<u8>> {
             z,
             r#"<?xml version="1.0" encoding="UTF-8"?><office:document-meta {NS}><office:meta><meta:generator>officework</meta:generator></office:meta></office:document-meta>"#
         );
+        // Pictures are already compressed
+        for (path, data, _) in pictures {
+            z.start_file(path.as_str(), stored)?;
+            z.write_all(data)?;
+        }
         z.start_file("META-INF/manifest.xml", packed)?;
-        z.write_all(
-            br#"<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.3"><manifest:file-entry manifest:full-path="/" manifest:version="1.3" manifest:media-type="application/vnd.oasis.opendocument.spreadsheet"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/></manifest:manifest>"#,
-        )?;
+        let mut m = String::from(
+            r#"<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.3"><manifest:file-entry manifest:full-path="/" manifest:version="1.3" manifest:media-type="application/vnd.oasis.opendocument.spreadsheet"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/>"#,
+        );
+        for (path, _, mime) in pictures {
+            let _ = write!(m, r#"<manifest:file-entry manifest:full-path="{path}" manifest:media-type="{mime}"/>"#);
+        }
+        m.push_str("</manifest:manifest>");
+        z.write_all(m.as_bytes())?;
         z.finish()?;
     }
     Ok(buf.into_inner())

@@ -114,6 +114,26 @@ fn diff(a: &Book, b: &Book) -> Vec<String> {
                 break;
             }
         }
+        let notes = |s: &book::Sheet| s.comments.iter().map(|(p, t)| (*p, t.text().to_string(), t.entries.first().map(|e| (e.who.clone(), e.when.clone())))).collect::<Vec<_>>();
+        if notes(x) != notes(y) {
+            out.push(format!("{} comments {:?} vs {:?}", x.name, notes(x), notes(y)));
+        }
+        let pics = |s: &book::Sheet| {
+            let mut v: Vec<_> = s.images.iter().map(|i| (i.at, (i.dx_px * 10.0).round() as i32, (i.dy_px * 10.0).round() as i32, (i.width_px * 10.0).round() as i32, (i.height_px * 10.0).round() as i32, i.data.len())).collect();
+            v.sort();
+            v
+        };
+        if pics(x) != pics(y) {
+            out.push(format!("{} pictures {:?} vs {:?}", x.name, pics(x), pics(y)));
+        }
+        let shp = |s: &book::Sheet| {
+            let mut v: Vec<_> = s.shapes.iter().map(|h| (h.at, h.kind.clone(), (h.width_px * 10.0).round() as i32, (h.height_px * 10.0).round() as i32, (h.dx_px * 10.0).round() as i32, (h.dy_px * 10.0).round() as i32, h.fill.clone(), h.line.clone(), h.text.clone(), (h.text_fmt.align, h.text_fmt.anchor, h.text_fmt.size_pt.map(|v| (v * 10.0).round() as i32), h.text_fmt.font.clone()), h.to.map(|(p, a, b)| (p, (a * 10.0).round() as i32, (b * 10.0).round() as i32)))).collect();
+            v.sort_by(|a, b| format!("{a:?}").cmp(&format!("{b:?}")));
+            v
+        };
+        if shp(x) != shp(y) {
+            out.push(format!("{} shapes {:?} vs {:?}", x.name, shp(x), shp(y)));
+        }
         if x.rich_runs != y.rich_runs {
             let k = x.rich_runs.keys().chain(y.rich_runs.keys()).find(|k| x.rich_runs.get(k) != y.rich_runs.get(k));
             out.push(format!(

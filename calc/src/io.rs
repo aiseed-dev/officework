@@ -1665,7 +1665,8 @@ impl Calc {
                 self.dirty = false;
                 // Pictures and shapes added since opening are now in the
                 // file just written, so the next save must not write them
-                // twice. An ods does not hold them yet, so they stay new
+                // twice. After saving an ods they stay new: a later save as
+                // xlsx has no xlsx original to carry them over from
                 for sh in self.book.sheets.iter_mut().filter(|_| !as_ods) {
                     let moved = std::mem::take(&mut sh.images_new);
                     sh.images.extend(moved);
@@ -1688,7 +1689,7 @@ fn ods_part_name(what: &str) -> String {
         "hyperlink" => ui::t!("hyperlink_menu"),
         "conditional_formatting" => ui::t!("conditional_formatting"),
         "data_validation" => ui::t!("data_validation"),
-        "shape" => ui::t!("shapes_images"),
+        "shape" | "shape_rotation" => ui::t!("shapes_images"),
         "table" => ui::t!("excel_tables"),
         "scenario" => ui::t!("scenario"),
         "freeze" => ui::t!("freeze"),

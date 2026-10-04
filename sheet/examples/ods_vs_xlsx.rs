@@ -76,6 +76,9 @@ fn close(a: &Value, b: &Value) -> bool {
     }
 }
 
+/// Where a shape is, how big, and what it shows
+type ShapeKey = (book::Pos, String, i32, i32, Option<String>, Option<String>, Option<String>);
+
 fn compare(x: &Book, o: &Book) -> Vec<String> {
     let mut out = Vec::new();
     let xn: Vec<_> = x.sheets.iter().map(|s| s.name.as_str()).collect();
@@ -99,6 +102,28 @@ fn compare(x: &Book, o: &Book) -> Vec<String> {
             if xs.get(*p).is_none() && !c.value.is_empty() {
                 out.push(format!("{}!{:?} only in ods {:?}", os.name, p, c.value));
             }
+        }
+        // Comments, pictures and shapes: where they are anchored
+        let xc: Vec<_> = xs.comments.iter().map(|(p, t)| (*p, t.text().to_string())).collect();
+        let oc: Vec<_> = os.comments.iter().map(|(p, t)| (*p, t.text().to_string())).collect();
+        if xc != oc {
+            out.push(format!("{} comments {xc:?} vs {oc:?}", xs.name));
+        }
+        let place = |v: &[book::SheetImage]| -> Vec<(book::Pos, i32, i32, i32, i32)> {
+            let mut v: Vec<_> = v.iter().map(|i| (i.at, i.dx_px.round() as i32, i.dy_px.round() as i32, i.width_px.round() as i32, i.height_px.round() as i32)).collect();
+            v.sort();
+            v
+        };
+        if place(&xs.images) != place(&os.images) {
+            out.push(format!("{} pictures {:?} vs {:?}", xs.name, place(&xs.images), place(&os.images)));
+        }
+        let shp = |v: &[book::SheetShape]| -> Vec<ShapeKey> {
+            let mut v: Vec<_> = v.iter().map(|s| (s.at, s.kind.clone(), s.width_px.round() as i32, s.height_px.round() as i32, s.fill.clone(), s.line.clone(), s.text.clone())).collect();
+            v.sort();
+            v
+        };
+        if shp(&xs.shapes) != shp(&os.shapes) {
+            out.push(format!("{} shapes {:?} vs {:?}", xs.name, shp(&xs.shapes), shp(&os.shapes)));
         }
         let mut xm = xs.merges.clone();
         let mut om = os.merges.clone();

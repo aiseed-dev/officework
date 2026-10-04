@@ -47,10 +47,23 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     let styles = Styles::parse(&content);
     let cells = CellStyles::parse(&styles_xml, &content);
     let pages = super::page::Pages::parse(&styles_xml);
+    let graphics = super::drawing::GraphicStyles::parse(&styles_xml, &content);
+    // Pictures by their path in the package (`Pictures/1000….png`)
+    let names: Vec<String> = zip.file_names().filter(|n| n.starts_with("Pictures/")).map(str::to_string).collect();
+    let mut pictures: HashMap<String, Vec<u8>> = HashMap::new();
+    for n in names {
+        if let Ok(mut f) = zip.by_name(&n) {
+            let mut data = Vec::new();
+            if f.read_to_end(&mut data).is_ok() {
+                pictures.insert(n, data);
+            }
+        }
+    }
+    let drawing = Drawing { pictures: &pictures, graphics: &graphics };
     let mut book = Book::new();
     book.sheets.clear();
     book.default_font = cells.default_font();
-    parse_body(&content, &styles, &cells, &pages, &mut book, &mut rep);
+    parse_body(&content, &styles, &cells, &pages, &drawing, &mut book, &mut rep);
     if book.sheets.is_empty() {
         book.sheets.push(Sheet::new("Sheet1"));
     }
@@ -177,7 +190,38 @@ fn run_push(runs: &mut Vec<(Option<String>, String)>, spans: &[String], s: &str)
     }
 }
 
-fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::page::Pages, book: &mut Book, rep: &mut Report) {
+/// What drawing objects need while they are read
+struct Drawing<'a> {
+    pictures: &'a HashMap<String, Vec<u8>>,
+    graphics: &'a super::drawing::GraphicStyles,
+}
+
+impl Drawing<'_> {
+    /// Put a finished object on its sheet
+    fn place(&self, c: super::drawing::Capture, at: Pos, offset: Option<(f32, f32)>, sh: &mut Sheet, z: &mut u32, rep: &mut Report) {
+        use super::drawing::Drawn;
+        *z += 1;
+        match c.finish(at, offset, self.pictures, self.graphics, *z) {
+            Drawn::Comment(t) => {
+                sh.comments.insert(at, t);
+            }
+            Drawn::Image(i) => sh.images.push(i),
+            Drawn::Shape(s) => sh.shapes.push(*s),
+            Drawn::Other(what) => rep_note(rep, &what),
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn parse_body(
+    xml: &str,
+    styles: &Styles,
+    cells: &CellStyles,
+    pages: &super::page::Pages,
+    drawing: &Drawing,
+    book: &mut Book,
+    rep: &mut Report,
+) {
     // The first row inside `table:table-header-rows`: the print title rows
     let mut header_rows_from: Option<u32> = None;
     // The same for `table:table-header-columns`: the print title columns
@@ -208,13 +252,36 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
     let mut runs: Vec<(Option<String>, String)> = Vec::new();
     let mut spans: Vec<String> = Vec::new();
     let mut depth_p = 0usize;
-    // Inside a comment or a shape the paragraphs are not the cell's text;
-    // this counts the open elements of the part being skipped
-    let mut skip = 0usize;
+    // A comment, picture or shape being read, and the cell it is anchored
+    // to (None: the page, inside `table:shapes`). Its paragraphs are its
+    // own, not the cell's
+    let mut cap: Option<(super::drawing::Capture, Option<Pos>)> = None;
+    let mut in_shapes = false;
+    // Objects anchored to the page, placed on a cell once the sheet's
+    // columns and rows are known
+    let mut on_page: Vec<super::drawing::Capture> = Vec::new();
+    // Stacking order of the sheet's objects, the first at the bottom
+    let mut z = 0u32;
     let mut null_date: Option<(i64, i64, i64)> = None;
 
     loop {
         let ev = r.read_event();
+        if let Some((c, _)) = cap.as_mut() {
+            let done = match &ev {
+                Ok(e) => c.feed(e),
+                Err(_) => true,
+            };
+            if done {
+                let (c, at) = cap.take().expect("capturing");
+                match (at, sheet.as_mut()) {
+                    (Some(at), Some(sh)) => drawing.place(c, at, None, sh, &mut z, rep),
+                    _ => on_page.push(c),
+                }
+            }
+            if !matches!(ev, Ok(Event::Eof) | Err(_)) {
+                continue;
+            }
+        }
         match ev {
             Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
                 let empty = matches!(ev, Ok(Event::Empty(_)));
@@ -223,12 +290,6 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
                 if !in_body {
                     if name == b"office:spreadsheet" {
                         in_body = true;
-                    }
-                    continue;
-                }
-                if skip > 0 {
-                    if !empty {
-                        skip += 1;
                     }
                     continue;
                 }
@@ -368,12 +429,20 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
                         run_push(&mut runs, &spans, "\n");
                     }
                     b"text:span" if depth_p > 0 && !empty => spans.push(attr(e, "text:style-name").unwrap_or_default()),
-                    // Comments, pictures, charts and shapes: counted, and their
-                    // own paragraphs kept out of the cell
+                    b"table:shapes" if !empty => in_shapes = true,
+                    // Comments, pictures, charts and shapes: read on their own,
+                    // their paragraphs kept out of the cell
                     n if n == b"office:annotation" || n.starts_with(b"draw:") => {
-                        rep_note(rep, std::str::from_utf8(n).unwrap_or("draw"));
-                        if !empty {
-                            skip = 1;
+                        if let Some(c) = super::drawing::Capture::start(e) {
+                            let at = (!in_shapes).then(|| Pos::new(row, col));
+                            if empty {
+                                match (at, sheet.as_mut()) {
+                                    (Some(at), Some(sh)) => drawing.place(c, at, None, sh, &mut z, rep),
+                                    _ => on_page.push(c),
+                                }
+                            } else {
+                                cap = Some((c, at));
+                            }
                         }
                     }
                     b"table:named-range" => {
@@ -407,18 +476,15 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
                 }
             }
             Ok(Event::Text(t)) => {
-                if depth_p > 0 && skip == 0 {
+                if depth_p > 0 {
                     let t = t.unescape().unwrap_or_default();
                     text.push_str(&t);
                     run_push(&mut runs, &spans, &t);
                 }
             }
             Ok(Event::End(ref e)) => {
-                if skip > 0 {
-                    skip -= 1;
-                    continue;
-                }
                 match e.name().as_ref() {
+                    b"table:shapes" => in_shapes = false,
                     b"text:p" | b"text:h" if depth_p > 0 => depth_p -= 1,
                     b"text:span" if depth_p > 0 => {
                         spans.pop();
@@ -488,6 +554,14 @@ fn parse_body(xml: &str, styles: &Styles, cells: &CellStyles, pages: &super::pag
                         }
                     }
                     b"table:table" => {
+                        if let Some(sh) = sheet.as_mut() {
+                            for c in on_page.drain(..) {
+                                let (x, y, _, _) = c.rect_mm();
+                                let (at, ox, oy) = super::drawing::cell_at(sh, &book.col_basis, x, y);
+                                drawing.place(c, at, Some((ox, oy)), sh, &mut z, rep);
+                            }
+                        }
+                        z = 0;
                         if let Some(sh) = sheet.take() {
                             book.sheets.push(sh);
                         }
