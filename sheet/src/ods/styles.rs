@@ -29,6 +29,8 @@ struct Props {
     underline: Option<bool>,
     strike: Option<bool>,
     subscript: Option<bool>,
+    /// The run position as written (`style:text-position`)
+    position: Option<book::RunPosition>,
     font: Option<String>,
     font_asian: Option<String>,
     size_c: Option<u32>,
@@ -186,6 +188,7 @@ impl CellStyles {
             r.italic = p.italic;
             r.size_pt = p.size_c.map(|c| c as f32 / 100.0);
             r.color = p.color.clone().flatten();
+            r.vert = p.position;
             r.font = p.font.clone().or(p.font_asian.clone()).map(|n| self.faces.get(&n).cloned().unwrap_or(n));
         }
         r
@@ -350,6 +353,17 @@ fn text_props(e: &BytesStart, p: &mut Props) {
     }
     if let Some(v) = attr(e, "style:text-position") {
         p.subscript = Some(v.starts_with("sub") || v.starts_with('-'));
+        // `super 58%`, `sub 58%`, or a percentage (`33% 58%`, `-8% 58%`);
+        // `0%` is the baseline
+        let first = v.split_whitespace().next().unwrap_or("");
+        let rise = first.trim_end_matches('%').parse::<f32>().ok();
+        p.position = Some(match (first, rise) {
+            ("super", _) => book::RunPosition::Superscript,
+            ("sub", _) => book::RunPosition::Subscript,
+            (_, Some(r)) if r > 0.0 => book::RunPosition::Superscript,
+            (_, Some(r)) if r < 0.0 => book::RunPosition::Subscript,
+            _ => book::RunPosition::Baseline,
+        });
     }
     if let Some(v) = attr(e, "style:font-name") {
         p.font = Some(v);

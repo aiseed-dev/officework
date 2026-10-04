@@ -197,6 +197,12 @@ fn runs_of(naka: &str) -> Vec<book::RichRun> {
             run.italic = flag_of(pr, "i");
             run.color = attr_of(pr, "color", "rgb")
                 .map(|v| if v.len() == 8 { v[2..].to_string() } else { v });
+            // ECMA-376 18.4.7 vertAlign: superscript, subscript, baseline
+            run.vert = attr_of(pr, "vertAlign", "val").map(|v| match v.as_str() {
+                "superscript" => book::RunPosition::Superscript,
+                "subscript" => book::RunPosition::Subscript,
+                _ => book::RunPosition::Baseline,
+            });
         }
         let mut t_rest = r_body;
         while let Some(ti) = t_rest.find("<t") {

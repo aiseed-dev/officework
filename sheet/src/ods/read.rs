@@ -165,7 +165,7 @@ struct Pending {
 }
 
 fn same_look(a: &book::RichRun, b: &book::RichRun) -> bool {
-    (&a.font, a.size_pt, a.bold, a.italic, &a.color) == (&b.font, b.size_pt, b.bold, b.italic, &b.color)
+    (&a.font, a.size_pt, a.bold, a.italic, &a.color, a.vert) == (&b.font, b.size_pt, b.bold, b.italic, &b.color, b.vert)
 }
 
 /// Text added to the cell, also kept as runs under the span style it sits in

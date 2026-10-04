@@ -612,6 +612,29 @@ pub struct RichRun {
     pub italic: Option<bool>,
     /// RRGGBB
     pub color: Option<String>,
+    /// Raised or lowered (xlsx `vertAlign`, ODF `style:text-position`)
+    pub vert: Option<RunPosition>,
+}
+
+/// Where a run sits against the line's baseline
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RunPosition {
+    Baseline,
+    Superscript,
+    Subscript,
+}
+
+impl RunPosition {
+    /// The run's size and how far it is moved up, as parts of the font
+    /// size: LibreOffice's defaults (`DFLT_ESC_PROP` 58%, `DFLT_ESC_SUPER`
+    /// 33%, `DFLT_ESC_SUB` -8% in include/editeng/escapementitem.hxx)
+    pub fn size_and_rise(self) -> (f32, f32) {
+        match self {
+            RunPosition::Baseline => (1.0, 0.0),
+            RunPosition::Superscript => (0.58, 0.33),
+            RunPosition::Subscript => (0.58, -0.08),
+        }
+    }
 }
 
 

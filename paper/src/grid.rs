@@ -1740,19 +1740,26 @@ fn draw_sheet(
             // 1つだと、その英文が 8pt で出て折り返しの位置もずれます。
             //
             // 飾りの無いセルは、セルの書式の run が1つあるのと同じです
-            let kire: Vec<(String, f32, Option<String>)> = match grid.rich_runs.get(&p) {
+            //
+            // A raised or lowered run (superscript, subscript) is drawn
+            // smaller and moved by part of its font size; the last field is
+            // that move in mm, up being positive
+            let kire: Vec<(String, f32, Option<String>, f32)> = match grid.rich_runs.get(&p) {
                 Some(rs) if !rs.is_empty() => rs
                     .iter()
                     .map(|r| {
+                        let size = r.size_pt.map_or(pt, |v| v * scale);
+                        let (k, rise) = r.vert.map_or((1.0, 0.0), |v| v.size_and_rise());
                         (r.text.replace('\r', ""),
-                         r.size_pt.map_or(pt, |v| v * scale),
-                         r.font.clone().or_else(|| cell.fmt.font.clone()))
+                         size * k,
+                         r.font.clone().or_else(|| cell.fmt.font.clone()),
+                         rise * size * 25.4 / 72.0)
                     })
                     .collect(),
-                _ => vec![(shown.clone(), pt, cell.fmt.font.clone())],
+                _ => vec![(shown.clone(), pt, cell.fmt.font.clone(), 0.0)],
             };
             // 1つの run の一部(同じ飾りの一続き)
-            type Kata = (String, f32, Option<String>);
+            type Kata = (String, f32, Option<String>, f32);
             // 行の列。1行は run のかけら(字, 大きさ, 書体)の並び
             let mut gyou: Vec<Vec<Kata>> = vec![Vec::new()];
             // **その行を、空でも残すか。** セルの中の改行(Alt+Enter)で
@@ -1760,7 +1767,7 @@ fn draw_sheet(
             // できた行は、空なら出しません
             let mut mamoru: Vec<bool> = vec![true];
             let mut yoko = 0.0f32;
-            for (t, rp, rf) in &kire {
+            for (t, rp, rf, rz) in &kire {
                 for (i, danraku) in t.split('\n').enumerate() {
                     if i > 0 {
                         // セルの中の改行(Alt+Enter)
@@ -1783,7 +1790,7 @@ fn draw_sheet(
                             continue;
                         }
                         if cell.fmt.wrap && !ima.is_empty() && yoko + w > naka {
-                            gyou.last_mut().expect("行").push((std::mem::take(&mut ima), *rp, rf.clone()));
+                            gyou.last_mut().expect("行").push((std::mem::take(&mut ima), *rp, rf.clone(), *rz));
                             gyou.push(Vec::new());
                             mamoru.push(false);
                             yoko = 0.0;
@@ -1792,7 +1799,7 @@ fn draw_sheet(
                         yoko += w;
                     }
                     if !ima.is_empty() {
-                        gyou.last_mut().expect("行").push((ima, *rp, rf.clone()));
+                        gyou.last_mut().expect("行").push((ima, *rp, rf.clone(), *rz));
                     }
                 }
             }
@@ -1803,13 +1810,13 @@ fn draw_sheet(
             let mut k = 0usize;
             gyou.retain(|g| {
                 let nokosu = mamoru.get(k).copied().unwrap_or(true)
-                    || g.iter().any(|(t, _, _)| !t.trim().is_empty());
+                    || g.iter().any(|(t, _, _, _)| !t.trim().is_empty());
                 k += 1;
                 nokosu
             });
             // 末尾の空の行は出しません(高さだけ取って見えないため)
             while gyou.len() > 1 && gyou.last().is_some_and(|g| {
-                g.iter().all(|(t, _, _)| t.trim().is_empty())
+                g.iter().all(|(t, _, _, _)| t.trim().is_empty())
             }) {
                 gyou.pop();
             }
@@ -1819,7 +1826,7 @@ fn draw_sheet(
             // 1行ぶんの幅(mm)。かけらごとの大きさで測ります
             let gyou_haba = |g: &[Kata]| -> f32 {
                 g.iter()
-                    .map(|(t, rp, rf)| {
+                    .map(|(t, rp, rf, _)| {
                         let f = fno_of(rf);
                         t.chars().map(|c| haba.ji_mm(ji_fno(f, c) as usize, c, *rp)).sum::<f32>()
                     })
@@ -1832,7 +1839,7 @@ fn draw_sheet(
             // right edge, where we drew it 21pt to the left
             let migi_haba = |g: &[Kata]| -> f32 {
                 let mut ato = 0.0f32;
-                'owari: for (t, rp, rf) in g.iter().rev() {
+                'owari: for (t, rp, rf, _) in g.iter().rev() {
                     let f = fno_of(rf);
                     for c in t.chars().rev() {
                         if c != '\u{3000}' {
@@ -1871,7 +1878,7 @@ fn draw_sheet(
                     return haba.okuri_mm(ji_fno(fno_of(&cell.fmt.font), 'あ') as usize, pt);
                 }
                 g.iter()
-                    .map(|(_, rp, rf)| haba.okuri_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp))
+                    .map(|(_, rp, rf, _)| haba.okuri_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp))
                     .fold(0.0f32, f32::max)
             };
             // **行と行の間隔**は、書体の高さと「字の大きさ + 4 点」の高い方です
@@ -1883,7 +1890,7 @@ fn draw_sheet(
                     return masu_hiraki_mm(okuri_of(g), pt);
                 }
                 g.iter()
-                    .map(|(_, rp, rf)| {
+                    .map(|(_, rp, rf, _)| {
                         let o = haba.okuri_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp);
                         masu_hiraki_mm(o, *rp)
                     })
@@ -1917,7 +1924,7 @@ fn draw_sheet(
                 .last()
                 .map(|g: &Vec<Kata>| {
                     g.iter()
-                        .map(|(_, rp, rf)| haba.sagari_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp))
+                        .map(|(_, rp, rf, _)| haba.sagari_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp))
                         .fold(0.0f32, f32::max)
                 })
                 .unwrap_or(0.0);
@@ -1957,27 +1964,27 @@ fn draw_sheet(
                 // Fable の指摘5)。役所の表は「清 酒」「合成清酒」のように
                 // 区分の列を割り付けます。前は左に詰めていました
                 let waru = matches!(cell.fmt.align, HAlign::Distribute)
-                    && g.iter().map(|(t, _, _)| t.chars().count()).sum::<usize>() > 1;
+                    && g.iter().map(|(t, _, _, _)| t.chars().count()).sum::<usize>() > 1;
                 if waru {
-                    let kazu: usize = g.iter().map(|(t, _, _)| t.chars().count()).sum();
+                    let kazu: usize = g.iter().map(|(t, _, _, _)| t.chars().count()).sum();
                     // 字と字の間に配る余り。両端はセルの縁に着けます
                     let aki = ((ma_w - 2.0 * MASU_PAD_MM - w) / (kazu - 1) as f32).max(0.0);
                     let mut wx = x + MASU_PAD_MM;
-                    for (t, rp, rf) in g {
+                    for (t, rp, rf, rz) in g {
                         let fno = fno_of(rf);
                         for ch in t.chars() {
                             let one = ch.to_string();
                             let w1 = haba.ji_mm(fno as usize, ch, *rp);
-                            hakaru(wx, w1, ty, *rp, ci);
+                            hakaru(wx, w1, ty + *rz, *rp, ci);
                             ci += 1;
-                            ink.text_kazari(&one, *rp, wx, ty, c, bold, fno, w1,
+                            ink.text_kazari(&one, *rp, wx, ty + *rz, c, bold, fno, w1,
                                             cell.fmt.underline, cell.fmt.strike, katamuki,
                                             cell.fmt.italic);
                             wx += haba.ji_mm(fno as usize, ch, *rp) + aki;
                         }
                     }
                 } else {
-                    for (t, rp, rf) in g {
+                    for (t, rp, rf, rz) in g {
                         let fno = fno_of(rf);
                         // **半角と全角で書体が変わるなら、そこで切ります**
                         // (2026-08-31 発注者。ＭＳ Ｐ明朝など)
@@ -1986,11 +1993,11 @@ fn draw_sheet(
                             let mut cx = gx;
                             for ch in kata.chars() {
                                 let wc = haba.ji_mm(f1 as usize, ch, *rp);
-                                hakaru(cx, wc, ty, *rp, ci);
+                                hakaru(cx, wc, ty + *rz, *rp, ci);
                                 cx += wc;
                                 ci += 1;
                             }
-                            ink.text_kazari(&kata, *rp, gx, ty, c, bold, f1, w1,
+                            ink.text_kazari(&kata, *rp, gx, ty + *rz, c, bold, f1, w1,
                                             cell.fmt.underline, cell.fmt.strike, katamuki,
                                             cell.fmt.italic);
                             gx += w1;

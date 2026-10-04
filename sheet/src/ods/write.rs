@@ -170,6 +170,13 @@ impl Styles {
         if let Some(c) = &r.color {
             let _ = write!(tp, r##" fo:color="#{}""##, c.to_ascii_lowercase());
         }
+        // As LibreOffice writes Excel's vertAlign
+        match r.vert {
+            Some(book::RunPosition::Superscript) => tp.push_str(r#" style:text-position="super 58%""#),
+            Some(book::RunPosition::Subscript) => tp.push_str(r#" style:text-position="sub 58%""#),
+            Some(book::RunPosition::Baseline) => tp.push_str(r#" style:text-position="0% 100%""#),
+            None => {}
+        }
         if tp.is_empty() {
             return None;
         }
