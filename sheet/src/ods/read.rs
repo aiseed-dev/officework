@@ -59,7 +59,25 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
             }
         }
     }
-    let drawing = Drawing { pictures: &pictures, graphics: &graphics };
+    // Embedded objects (charts): their folders and stand-in pictures, with
+    // the media types the manifest gives them
+    let names: Vec<String> =
+        zip.file_names().filter(|n| n.starts_with("Object") || n.starts_with("ObjectReplacements/")).map(str::to_string).collect();
+    let mut objects: HashMap<String, Vec<u8>> = HashMap::new();
+    for n in names {
+        if let Ok(mut f) = zip.by_name(&n) {
+            let mut data = Vec::new();
+            if f.read_to_end(&mut data).is_ok() {
+                objects.insert(n, data);
+            }
+        }
+    }
+    let mut manifest = String::new();
+    if let Ok(mut f) = zip.by_name("META-INF/manifest.xml") {
+        let _ = f.read_to_string(&mut manifest);
+    }
+    let media = manifest_types(&manifest);
+    let drawing = Drawing { pictures: &pictures, graphics: &graphics, objects: &objects, media: &media };
     let mut book = Book::new();
     book.sheets.clear();
     book.default_font = cells.default_font();
@@ -194,9 +212,53 @@ fn run_push(runs: &mut Vec<(Option<String>, String)>, spans: &[String], s: &str)
 struct Drawing<'a> {
     pictures: &'a HashMap<String, Vec<u8>>,
     graphics: &'a super::drawing::GraphicStyles,
+    objects: &'a HashMap<String, Vec<u8>>,
+    /// package path → media type, from the manifest
+    media: &'a HashMap<String, String>,
+}
+
+/// The manifest's media types by path
+fn manifest_types(xml: &str) -> HashMap<String, String> {
+    let mut out = HashMap::new();
+    let mut r = Reader::from_str(xml);
+    loop {
+        match r.read_event() {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if e.name().as_ref() == b"manifest:file-entry" => {
+                if let (Some(p), Some(t)) = (attr(&e, "manifest:full-path"), attr(&e, "manifest:media-type")) {
+                    out.insert(p, t);
+                }
+            }
+            Ok(Event::Eof) | Err(_) => break,
+            _ => {}
+        }
+    }
+    out
 }
 
 impl Drawing<'_> {
+    /// An embedded object (a chart) kept as written, with its files
+    fn keep(&self, c: &super::drawing::Capture, raw: &str, at: Option<Pos>) -> book::KeptObject {
+        let (folder, stand_in) = c.object_paths();
+        let mut files = Vec::new();
+        if let Some(folder) = &folder {
+            let dir = format!("{folder}/");
+            if let Some(t) = self.media.get(&dir) {
+                files.push((dir.clone(), Vec::new(), t.clone()));
+            }
+            let mut inside: Vec<&String> = self.objects.keys().filter(|k| k.starts_with(&dir)).collect();
+            inside.sort();
+            for k in inside {
+                let t = self.media.get(k).cloned().unwrap_or_else(|| "text/xml".into());
+                files.push((k.clone(), self.objects[k].clone(), t));
+            }
+        }
+        if let Some(img) = stand_in.filter(|p| self.objects.contains_key(p)) {
+            let t = self.media.get(&img).cloned().unwrap_or_default();
+            files.push((img.clone(), self.objects[&img].clone(), t));
+        }
+        book::KeptObject { at, xml: raw.to_string(), files }
+    }
+
     /// Put a finished object on its sheet
     fn place(&self, c: super::drawing::Capture, at: Pos, offset: Option<(f32, f32)>, sh: &mut Sheet, z: &mut u32, rep: &mut Report) {
         use super::drawing::Drawn;
@@ -265,6 +327,7 @@ fn parse_body(
     let mut null_date: Option<(i64, i64, i64)> = None;
 
     loop {
+        let before = r.buffer_position() as usize;
         let ev = r.read_event();
         if let Some((c, _)) = cap.as_mut() {
             let done = match &ev {
@@ -273,6 +336,14 @@ fn parse_body(
             };
             if done {
                 let (c, at) = cap.take().expect("capturing");
+                // An embedded object (a chart) is kept as written
+                if c.object.is_some() {
+                    if let Some(sh) = sheet.as_mut() {
+                        let raw = &xml[c.raw_start..r.buffer_position() as usize];
+                        sh.kept_objects.push(drawing.keep(&c, raw, at));
+                    }
+                    continue;
+                }
                 match (at, sheet.as_mut()) {
                     (Some(at), Some(sh)) => drawing.place(c, at, None, sh, &mut z, rep),
                     _ => on_page.push(c),
@@ -433,7 +504,8 @@ fn parse_body(
                     // Comments, pictures, charts and shapes: read on their own,
                     // their paragraphs kept out of the cell
                     n if n == b"office:annotation" || n.starts_with(b"draw:") => {
-                        if let Some(c) = super::drawing::Capture::start(e) {
+                        if let Some(mut c) = super::drawing::Capture::start(e) {
+                            c.raw_start = before;
                             let at = (!in_shapes).then(|| Pos::new(row, col));
                             if empty {
                                 match (at, sheet.as_mut()) {

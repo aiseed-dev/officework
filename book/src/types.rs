@@ -616,6 +616,19 @@ pub struct RichRun {
     pub vert: Option<RunPosition>,
 }
 
+/// An object kept as it was written (see [`Sheet::kept_objects`])
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct KeptObject {
+    /// The cell it is anchored to; None when anchored to the page
+    pub at: Option<Pos>,
+    /// The object's element as written (`<draw:frame>…</draw:frame>`)
+    pub xml: String,
+    /// The files it names in the package: (path, bytes, media type). A
+    /// chart is a folder of its own (`Object 1/content.xml`, …) and a
+    /// picture standing in for it (`ObjectReplacements/Object 1`)
+    pub files: Vec<(String, Vec<u8>, String)>,
+}
+
 /// Where a run sits against the line's baseline
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RunPosition {
@@ -965,6 +978,10 @@ pub struct Sheet {
     pub paper_size: Option<u32>,
     /// 印刷の余白 mm(左, 右, 上, 下)。xlsx の pageMargins(インチ)から換算
     pub margins_mm: Option<(f32, f32, f32, f32)>,
+    /// Objects read from an ods that the model does not understand (a
+    /// chart), kept as their XML and their files so that saving an ods
+    /// writes them back unchanged
+    pub kept_objects: Vec<KeptObject>,
     /// How far the header and the footer are from the paper's edge, in mm
     /// (xlsx `pageMargins@header` / `@footer`; in an ods, the page margin
     /// above a shown header). None: Excel's 0.3in

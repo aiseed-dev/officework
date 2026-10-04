@@ -134,6 +134,10 @@ fn diff(a: &Book, b: &Book) -> Vec<String> {
         if shp(x) != shp(y) {
             out.push(format!("{} shapes {:?} vs {:?}", x.name, shp(x), shp(y)));
         }
+        let kept = |s: &book::Sheet| s.kept_objects.iter().map(|k| (k.at, k.files.len(), k.files.iter().map(|f| f.1.len()).sum::<usize>())).collect::<Vec<_>>();
+        if kept(x) != kept(y) {
+            out.push(format!("{} kept objects {:?} vs {:?}", x.name, kept(x), kept(y)));
+        }
         if x.rich_runs != y.rich_runs {
             let k = x.rich_runs.keys().chain(y.rich_runs.keys()).find(|k| x.rich_runs.get(k) != y.rich_runs.get(k));
             out.push(format!(

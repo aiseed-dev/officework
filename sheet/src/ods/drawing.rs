@@ -241,6 +241,10 @@ pub(super) struct Capture {
     depth: usize,
     image: Option<String>,
     chart: bool,
+    /// The sub-document of an embedded object (`./Object 1`)
+    pub(super) object: Option<String>,
+    /// Where the object starts in content.xml, to keep it as written
+    pub(super) raw_start: usize,
     geometry: Option<String>,
     mirror_h: bool,
     mirror_v: bool,
@@ -301,7 +305,12 @@ impl Capture {
                             self.image = attr(e, "xlink:href");
                         }
                     }
-                    b"draw:object" | b"draw:object-ole" => self.chart = true,
+                    b"draw:object" | b"draw:object-ole" => {
+                        self.chart = true;
+                        if self.object.is_none() {
+                            self.object = attr(e, "xlink:href");
+                        }
+                    }
                     b"draw:enhanced-geometry" => {
                         self.geometry = attr(e, "draw:type");
                         self.mirror_h = attr(e, "draw:mirror-horizontal").as_deref() == Some("true");
@@ -373,6 +382,13 @@ impl Capture {
 
     fn len(&self, key: &str) -> f32 {
         self.attrs.get(key).and_then(|v| length_mm(v)).unwrap_or(0.0)
+    }
+
+    /// The package paths an embedded object uses: its folder and the
+    /// picture standing in for it, without a leading `./`
+    pub(super) fn object_paths(&self) -> (Option<String>, Option<String>) {
+        let clean = |h: &String| h.trim_start_matches("./").to_string();
+        (self.object.as_ref().map(clean), self.image.as_ref().map(clean))
     }
 
     /// Offset and size in mm: (x, y, width, height)

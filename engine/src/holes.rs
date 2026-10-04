@@ -71,6 +71,7 @@ pub const WATCHED: &[(&str, Watch)] = &[
     ("landscape", Watch::Look),
     ("paper_size", Watch::Look),
     ("margins_mm", Watch::Look),
+    ("kept_objects", Watch::Skip("Objects an ods holds that the model does not understand (charts), kept only to write the ods back; the adoc does not hold them")),
     ("hf_margins_mm", Watch::Skip("How far the header and footer sit from the paper edge (xlsx pageMargins header/footer). Read and written by xlsx and ods; the adoc template does not hold it")),
     ("print_areas", Watch::Body),
     ("print_scale", Watch::Look),

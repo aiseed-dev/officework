@@ -66,7 +66,7 @@ pub fn write(book: &Book) -> (Vec<u8>, WriteReport) {
     }
     let content = content_xml(book, &st, &body);
     let styles = styles_xml(book, &st);
-    let bytes = zip_parts(&content, &styles, &st.pictures).unwrap_or_default();
+    let bytes = zip_parts(&content, &styles, &st.pictures, &st.objects).unwrap_or_default();
     (bytes, rep)
 }
 
@@ -107,6 +107,11 @@ struct Styles {
     paras: Vec<String>,
     /// Pictures in the package: (path, bytes, media type)
     pictures: Vec<(String, Vec<u8>, &'static str)>,
+    /// Files of kept objects (charts): (path, bytes, media type); a path
+    /// ending in `/` is a folder, listed in the manifest only
+    objects: Vec<(String, Vec<u8>, String)>,
+    /// Kept objects written so far, to number their folders
+    object_count: usize,
 }
 
 impl Styles {
@@ -151,6 +156,35 @@ impl Styles {
         };
         Some(format!("ce{}", i + 1))
     }
+    /// A kept object's XML with its folder renamed to the next free
+    /// number, its files added to the package under the new name
+    fn keep(&mut self, k: &book::KeptObject) -> String {
+        self.object_count += 1;
+        let new = format!("Object {}", self.object_count);
+        let mut xml = k.xml.clone();
+        // The folder is the first file's top folder (`Object 1/`)
+        let old = k.files.iter().find_map(|(p, _, _)| p.split_once('/').map(|(a, _)| a.to_string())).filter(|a| a != "ObjectReplacements");
+        for (path, data, media) in &k.files {
+            let renamed = match &old {
+                Some(o) if path.starts_with(&format!("{o}/")) => format!("{new}/{}", &path[o.len() + 1..]),
+                Some(o) if path == &format!("ObjectReplacements/{o}") => format!("ObjectReplacements/{new}"),
+                _ => path.clone(),
+            };
+            self.objects.push((renamed, data.clone(), media.clone()));
+        }
+        if let Some(o) = &old {
+            for (from, to) in [
+                (format!("\"./{o}\""), format!("\"./{new}\"")),
+                (format!("\"{o}\""), format!("\"{new}\"")),
+                (format!("\"./ObjectReplacements/{o}\""), format!("\"./ObjectReplacements/{new}\"")),
+                (format!("\"ObjectReplacements/{o}\""), format!("\"ObjectReplacements/{new}\"")),
+            ] {
+                xml = xml.replace(&from, &to);
+            }
+        }
+        xml
+    }
+
     fn paragraph(&mut self, inner: String) -> String {
         let i = self.paras.iter().position(|x| *x == inner).unwrap_or_else(|| {
             self.paras.push(inner);
@@ -299,6 +333,21 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
         if let Some(x) = super::drawing::shape_xml(shp, &sh.name, &style, &para) {
             extras.entry(shp.at).or_default().1.push_str(&x);
         }
+    }
+
+    // Kept objects (charts) get folders numbered across the workbook, so
+    // two never share a name; the page-anchored ones go in table:shapes,
+    // which comes before the columns
+    let mut on_page = String::new();
+    for k in &sh.kept_objects {
+        let xml = st.keep(k);
+        match k.at {
+            Some(at) => extras.entry(at).or_default().1.push_str(&xml),
+            None => on_page.push_str(&xml),
+        }
+    }
+    if !on_page.is_empty() {
+        let _ = write!(out, "<table:shapes>{on_page}</table:shapes>");
     }
 
     // How far the sheet is used
@@ -1215,7 +1264,12 @@ fn styles_xml(book: &Book, st: &Styles) -> String {
     s
 }
 
-fn zip_parts(content: &str, styles: &str, pictures: &[(String, Vec<u8>, &'static str)]) -> zip::result::ZipResult<Vec<u8>> {
+fn zip_parts(
+    content: &str,
+    styles: &str,
+    pictures: &[(String, Vec<u8>, &'static str)],
+    objects: &[(String, Vec<u8>, String)],
+) -> zip::result::ZipResult<Vec<u8>> {
     let mut buf = Cursor::new(Vec::new());
     {
         let mut z = zip::ZipWriter::new(&mut buf);
@@ -1239,12 +1293,19 @@ fn zip_parts(content: &str, styles: &str, pictures: &[(String, Vec<u8>, &'static
             z.start_file(path.as_str(), stored)?;
             z.write_all(data)?;
         }
+        for (path, data, _) in objects.iter().filter(|(p, _, _)| !p.ends_with('/')) {
+            z.start_file(path.as_str(), packed)?;
+            z.write_all(data)?;
+        }
         z.start_file("META-INF/manifest.xml", packed)?;
         let mut m = String::from(
             r#"<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.3"><manifest:file-entry manifest:full-path="/" manifest:version="1.3" manifest:media-type="application/vnd.oasis.opendocument.spreadsheet"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/>"#,
         );
         for (path, _, mime) in pictures {
             let _ = write!(m, r#"<manifest:file-entry manifest:full-path="{path}" manifest:media-type="{mime}"/>"#);
+        }
+        for (path, _, mime) in objects {
+            let _ = write!(m, r#"<manifest:file-entry manifest:full-path="{}" manifest:media-type="{}"/>"#, esc(path), esc(mime));
         }
         m.push_str("</manifest:manifest>");
         z.write_all(m.as_bytes())?;

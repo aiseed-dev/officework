@@ -172,3 +172,44 @@ fn comments_pictures_and_shapes_round_trip() {
     assert_eq!((h.at, h.kind.as_str(), h.fill.as_deref(), h.text.as_deref()), (Pos::new(4, 0), "roundRect", Some("FFF2CC"), Some("社外秘")));
     assert!((h.width_px - 200.0).abs() < 0.1);
 }
+
+/// A chart (an embedded object) is kept as written: its frame stays in its
+/// cell and its folder goes back into the package, under a fresh number
+#[test]
+fn a_chart_is_kept_through_a_round_trip() {
+    let content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" office:version="1.3"><office:body><office:spreadsheet><table:table table:name="S"><table:table-row><table:table-cell office:value-type="float" office:value="1"><text:p>1</text:p><draw:frame draw:z-index="0" svg:width="6cm" svg:height="4cm" svg:x="0cm" svg:y="0cm"><draw:object xlink:href="./Object 7"/><draw:image xlink:href="./ObjectReplacements/Object 7"/></draw:frame></table:table-cell></table:table-row></table:table></office:spreadsheet></office:body></office:document-content>"#;
+    let manifest = r#"<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0"><manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.spreadsheet"/><manifest:file-entry manifest:full-path="Object 7/" manifest:media-type="application/vnd.oasis.opendocument.chart"/><manifest:file-entry manifest:full-path="Object 7/content.xml" manifest:media-type="text/xml"/></manifest:manifest>"#;
+    let mut buf = Cursor::new(Vec::new());
+    {
+        let mut z = zip::ZipWriter::new(&mut buf);
+        let st = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+        for (name, data) in [
+            ("mimetype", b"application/vnd.oasis.opendocument.spreadsheet".as_slice()),
+            ("content.xml", content.as_bytes()),
+            ("META-INF/manifest.xml", manifest.as_bytes()),
+            ("Object 7/content.xml", b"<chart/>".as_slice()),
+            ("ObjectReplacements/Object 7", b"stand-in".as_slice()),
+        ] {
+            z.start_file(name, st).unwrap();
+            z.write_all(data).unwrap();
+        }
+        z.finish().unwrap();
+    }
+    let (b, rep) = read(buf.into_inner());
+    assert!(rep.is_lossless(), "{:?}", rep.unsupported);
+    let k = &b.sheets[0].kept_objects[0];
+    assert_eq!(k.at, Some(Pos::new(0, 0)));
+    assert_eq!(b.sheets[0].value(Pos::new(0, 0)), Value::Number(1.0));
+
+    let (bytes, _) = super::write(&b);
+    let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+    let mut chart = String::new();
+    std::io::Read::read_to_string(&mut z.by_name("Object 1/content.xml").unwrap(), &mut chart).unwrap();
+    assert_eq!(chart, "<chart/>");
+    assert!(z.by_name("ObjectReplacements/Object 1").is_ok());
+    let (again, _) = read(bytes);
+    let k2 = &again.sheets[0].kept_objects[0];
+    assert!(k2.xml.contains("\"./Object 1\""), "{}", k2.xml);
+    assert_eq!(k2.files.len(), k.files.len());
+}
