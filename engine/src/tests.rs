@@ -1954,15 +1954,19 @@ mod hyphen_tests {
         let s = layout(&d, &m, &Frame { measure_mm: 45.0, line_height_mm: 6.0, y0_mm: 20.0});
         let joined: Vec<String> = s.lines.iter().map(|l| l.text()).collect();
         assert!(joined.iter().any(|l| l.ends_with('-')),
-            "どの行末にもハイフンが無い: {joined:?}");
+            "no line ends with a hyphen: {joined:?}");
+        // A space at the end of a line hangs into the margin (as in Word), so
+        // the measure is checked without it
         for l in &s.lines {
-            assert!(l.width_mm() <= 45.1, "行長を超えた: {}", l.width_mm());
+            let hang: f32 = l.cells.iter().rev().take_while(|c| c.ch == ' ').map(|c| c.w_mm).sum();
+            let w = l.width_mm() - hang;
+            assert!(w <= 45.1, "line longer than the measure: {w} {:?}", l.text());
         }
-        // ハイフンを除けば、文字は一つも失われない
+        // Apart from the hyphens, no character is lost
         let got: String = s.lines.iter().flat_map(|l| l.cells.iter())
             .map(|c| c.ch).filter(|c| *c != '-' && *c != ' ').collect();
         let want: String = text.chars().filter(|c| *c != ' ').collect();
-        assert_eq!(got, want, "ハイフネーションで字が消えた");
+        assert_eq!(got, want, "hyphenation lost characters");
     }
 
     #[test]
