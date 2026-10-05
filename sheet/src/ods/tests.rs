@@ -213,3 +213,39 @@ fn a_chart_is_kept_through_a_round_trip() {
     assert!(k2.xml.contains("\"./Object 1\""), "{}", k2.xml);
     assert_eq!(k2.files.len(), k.files.len());
 }
+
+/// Data validation rules are written once before the sheets, their cells
+/// name them, and they read back the same, messages included
+#[test]
+fn data_validation_round_trips() {
+    let mut b = book::Book::new();
+    let sh = &mut b.sheets[0];
+    sh.set(Pos::new(0, 0), book::Cell { value: Value::Text("区分".into()), ..Default::default() });
+    let rule = |range, kind: &str, op: &str, f1: &str, f2: &str| book::Validation {
+        range,
+        formula: f1.into(),
+        kind: kind.into(),
+        op: op.into(),
+        formula2: f2.into(),
+        input_msg: None,
+        error_msg: None,
+        allow_blank: true,
+        hide_arrow: false,
+    };
+    let mut list = rule((Pos::new(1, 0), Pos::new(30, 0)), "list", "", "\"甲,乙,丙\"", "");
+    list.input_msg = Some(("区分".into(), "一覧から選びます".into()));
+    list.error_msg = Some(("warning".into(), "確認".into(), "一覧に無い値です\n入れ直してください".into()));
+    let mut whole = rule((Pos::new(1, 2), Pos::new(5000, 3)), "whole", "between", "1", "100");
+    whole.allow_blank = false;
+    let length = rule((Pos::new(2, 5), Pos::new(2, 5)), "textLength", "lessThanOrEqual", "8", "");
+    sh.validations = vec![list, whole, length];
+    let (bytes, rep) = super::write(&b);
+    assert!(rep.is_lossless(), "{:?}", rep.left_out);
+    let (r, read_rep) = read(bytes);
+    assert!(read_rep.is_lossless(), "{:?}", read_rep.unsupported);
+    let mut got = r.sheets[0].validations.clone();
+    let mut want = b.sheets[0].validations.clone();
+    got.sort_by_key(|v| (v.range.0.col, v.range.0.row));
+    want.sort_by_key(|v| (v.range.0.col, v.range.0.row));
+    assert_eq!(got, want);
+}

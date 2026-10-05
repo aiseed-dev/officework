@@ -125,6 +125,14 @@ fn compare(x: &Book, o: &Book) -> Vec<String> {
         if shp(&xs.shapes) != shp(&os.shapes) {
             out.push(format!("{} shapes {:?} vs {:?}", xs.name, shp(&xs.shapes), shp(&os.shapes)));
         }
+        let vals = |v: &[book::Validation]| -> Vec<String> {
+            let mut out: Vec<String> = v.iter().map(|x| format!("{:?}", x)).collect();
+            out.sort();
+            out
+        };
+        if vals(&xs.validations) != vals(&os.validations) {
+            out.push(format!("{} validations {:?} vs {:?}", xs.name, vals(&xs.validations), vals(&os.validations)));
+        }
         let mut xm = xs.merges.clone();
         let mut om = os.merges.clone();
         xm.sort();

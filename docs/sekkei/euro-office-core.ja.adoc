@@ -98,3 +98,167 @@ Fix: CP_XML_ATTR(L"count", arrFormats.size());
 Reproduced with the x2t of ONLYOFFICE Desktop Editors 9.4.0 (ods → xlsx);
 the same line is in Euro-Office core at 4d2c0365 (2026-09-30).
 ----
+
+== 3. 入力規則の「空白を無視する」を読まない(属性の名前の書き違い)
+
+確かめ方:: コードを読んだ。動かした(2026-10-05。`table:allow-empty-cell="true"` の
+  規則が、xlsx ですべて `allowBlank="0"` になった)
+場所:: `OdfFile/Reader/Format/table.cpp` の
+  `table_content_validation::add_attributes`(825 行目)
+
+ODF の属性の名前は `table:allow-empty-cell` です。読む側のコードは
+`table:allowempty-cell` と書いていて、属性を読みません。読んだ値を xlsx に
+渡す処理もありません。そのため、ods から xlsx に変えると、すべての規則が
+`allowBlank="0"` になります。書く側(`OdfFile/Writer/Format/table.cpp` 992 行目)は
+正しい名前で書いています。
+
+[source,text]
+----
+Title: ODF→XLSX: table:allow-empty-cell of a content validation is never read
+
+OdfFile/Reader/Format/table.cpp, table_content_validation::add_attributes():
+
+    CP_APPLY_ATTR(L"table:allowempty-cell", table_allowempty_cell_);
+
+The attribute is table:allow-empty-cell (with a hyphen), as the writer in
+OdfFile/Writer/Format/table.cpp spells it. The reader never sees it, and
+table_content_validation::xlsx_convert() does not pass it on either, so
+every rule converted from an ods gets allowBlank="0".
+
+Fix: read L"table:allow-empty-cell", and set allowBlank from it in
+xlsx_convert() (through xlsx_dataValidations_context).
+
+Reproduced with the x2t of ONLYOFFICE Desktop Editors 9.4.0: rules written
+by LibreOffice 24.2 with table:allow-empty-cell="true" all convert to
+allowBlank="0". The same code is in Euro-Office core at 4d2c0365.
+----
+
+== 4. 入力規則の「等しい」を `=` で書くと値を失い、書くときは `==` を使う
+
+確かめ方:: コードを読んだ。動かした(2026-10-05)
+場所:: `OdfFile/Reader/Converter/xlsx_data_validation.cpp` の
+  `xlsx_dataValidations_context::add_formula`、
+  `OdfFile/Writer/Format/ods_table_context.cpp`(352 行目付近)
+
+LibreOffice は「等しい」の規則を `cell-content()=5` と書きます
+(`sc/source/filter/xml/XMLStylesExportHelper.cxx`)。x2t は `()==` だけを探すので、
+`=` の規則は演算子と値を失います。たとえば「整数で 5 に等しい」は、xlsx で
+`type="whole"` だけが残り、`operator` と `formula1` がありません。文字数の規則
+(`cell-content-text-length()=3`)も同じです。
+
+逆に xlsx から ods に変えるとき、x2t は `cell-content()==5` と書きます。
+LibreOffice の読み込み(`sc/source/filter/xml/XMLConverter.cxx` の
+`lclGetConditionOperator`)は `=` を演算子として読み、残りの `=5` を式として
+読むので、結果としては通ります。ODF の規約で演算子に `==` があるかは、
+投稿の前に規約(table:condition の項)で確かめます。
+
+[source,text]
+----
+Title: ODF→XLSX: content validation "equal" written as cell-content()=5 loses its operator and value
+
+LibreOffice writes an "equal to" validation as
+  table:condition="of:cell-content-is-whole-number() and cell-content()=5"
+(sc/source/filter/xml/XMLStylesExportHelper.cxx). In
+OdfFile/Reader/Converter/xlsx_data_validation.cpp, add_formula() only looks
+for "()==", so the rule is converted with type="whole" and no operator and
+no formula1. Text length rules (cell-content-text-length()=3) lose their
+value the same way.
+
+The ODS writer (OdfFile/Writer/Format/ods_table_context.cpp) writes "()=="
+for equal. LibreOffice happens to read it, because it takes "=" as the
+operator and "=5" as the expression. Writing "=" would match LibreOffice.
+
+Suggested fix: in add_formula(), accept "()=" (after testing "()<=",
+"()>=", "()!=" and "()=="), and write "()=" in ods_table_context.cpp.
+
+Reproduced with the x2t of ONLYOFFICE Desktop Editors 9.4.0. The same code
+is in Euro-Office core at 4d2c0365.
+----
+
+== 5. 入力規則の条件を「and」の字のすべての所で切る
+
+確かめ方:: コードを読んだ。動かした(2026-10-05。一覧の項目「Grand」「Hand」「Stand」が
+  xlsx で `""G"` になった)
+場所:: `OdfFile/Reader/Converter/xlsx_data_validation.cpp` の
+  `xlsx_dataValidations_context::add_formula`
+
+`boost::algorithm::split_regex(arrFormula, formula, boost::wregex(L"and"))` で、
+条件を「and」という字の所で切っています。前後の空白も、引用符の中かどうかも
+見ていません。そのため、一覧の項目や数式の中の文字列に「and」が入っていると、
+条件が途中で切れます。
+
+例:`of:cell-content-is-in-list("Grand";"Hand";"Stand")` の一覧は、xlsx で
+`formula1` が `""G"` になります。`is-true-formula([.A1]<>"Brand")` のような数式も
+同じように切れます。
+
+[source,text]
+----
+Title: ODF→XLSX: content validation conditions are split at every "and", breaking lists and formulas
+
+OdfFile/Reader/Converter/xlsx_data_validation.cpp, add_formula():
+
+    boost::algorithm::split_regex(arrFormula, formula, boost::wregex(L"and"));
+
+This splits at the letters "and" anywhere, including inside quoted list
+items and string literals. A list rule
+  of:cell-content-is-in-list("Grand";"Hand";"Stand")
+converts to <formula1>""G"</formula1>. A formula rule such as
+is-true-formula([.A1]<>"Brand") is cut the same way.
+
+Suggested fix: split only at " and " outside quotes and brackets, or
+better, match the leading type function (cell-content-is-whole-number()
+etc.) and take the rest after " and " once.
+
+Reproduced with the x2t of ONLYOFFICE Desktop Editors 9.4.0. The same code
+is in Euro-Office core at 4d2c0365.
+----
+
+== 6. シートの終わりの空のセルの行を、入力規則と行の高さを見ないで1つにまとめる
+
+確かめ方:: コードを読んだ。動かした(2026-10-05)
+場所:: `OdfFile/Reader/Format/table_xlsx.cpp` の `table_rows::xlsx_convert`
+  (282〜294 行目)と、`OdfFile/Reader/Format/table.cpp` の `table_table_cell::empty`
+
+シートの最後の行から上へ、空の行を前の行の繰り返しに足してまとめています。
+ここに問題が2つあります。
+
+* 空かどうかを決める `table_table_cell::empty` は、`table:content-validation-name` を
+  見ません。そのため、入力規則だけがあるセルの行もまとめられます。まとめた後は
+  上の行の規則が下の行にも付き、下の行の規則は消えます。A1・A2・A3 に別々の
+  規則がある ods は、xlsx で A1 の規則が A1:A3 に付き、残りの2つが消えました。
+  同じ行に値があれば、3つとも残ります。
+* 行のスタイルを比べる所で、`style` と `style_1` の両方を `row_last` から取って
+  います。2つ目は `row_last_1` のはずです。そのため、高さが違う行もまとめられます。
+  高さ 0.5cm の値のある行の下に、高さ 2cm と 4cm の空の行がある ods は、xlsx で
+  4cm の行の高さを失いました。LibreOffice は3つの高さを残します。
+
+[source,text]
+----
+Title: ODF→XLSX: trailing empty rows are merged even when they carry validations or different heights
+
+OdfFile/Reader/Format/table_xlsx.cpp, table_rows::xlsx_convert(), folds
+empty rows at the end of a table into the row before them. Two problems:
+
+1. table_table_cell::empty() (table.cpp) ignores
+   table:content-validation-name, so rows whose cells only carry a
+   validation are folded too. The rule of the first row then covers all
+   the folded rows and the other rules are lost. An ods with three
+   different rules on empty cells A1, A2 and A3 converts to one rule on
+   A1:A3. With a value in each of those rows, all three rules survive.
+
+2. Both styles are taken from the last row:
+
+       std::wstring style   = row_last->attlist_.table_style_name_.get_value_or(L"");
+       std::wstring style_1 = row_last->attlist_.table_style_name_.get_value_or(L"");
+
+   The second should read row_last_1. Rows with different row styles
+   (heights) are folded. An ods with a 0.5cm row holding a value followed
+   by empty rows of 2cm and 4cm converts to an xlsx where the 4cm row
+   has lost its height. LibreOffice keeps all three heights.
+
+Suggested fix: use row_last_1 for style_1, and treat a cell with
+table:content-validation-name as not empty in this check.
+
+Reproduced with the x2t of ONLYOFFICE Desktop Editors 9.4.0 on small
+hand-written ods files. The same code is in Euro-Office core at 4d2c0365.
+----

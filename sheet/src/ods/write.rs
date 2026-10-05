@@ -74,7 +74,6 @@ pub fn write(book: &Book) -> (Vec<u8>, WriteReport) {
 fn left_out(sh: &Sheet, rep: &mut WriteReport) {
     // Stable ids: the app turns them into words on the screen
     rep.note("hyperlink", sh.links.len());
-    rep.note("data_validation", sh.validations.len());
     rep.note("table", sh.tables.len());
     rep.note("scenario", sh.scenarios.len());
     rep.note("freeze", usize::from(sh.freeze.is_some()));
@@ -105,6 +104,8 @@ struct Styles {
     /// Looks of conditional formats, as the named cell styles
     /// `ConditionalStyle_1`, … in styles.xml
     conds: Vec<book::CondLook>,
+    /// Data validation rules: (the rule as written, its name `val1`, …)
+    vals: Vec<(String, String)>,
     /// Paragraph styles of shape text, `P1`, …
     paras: Vec<String>,
     /// Pictures in the package: (path, bytes, media type)
@@ -185,6 +186,44 @@ impl Styles {
             }
         }
         xml
+    }
+
+    /// The name of a data validation rule, None for a kind ODF has no
+    /// condition for. Rules with the same everything share one name
+    fn validation(&mut self, sheet: &str, v: &book::Validation) -> Option<String> {
+        let cond = super::valid::condition(v)?;
+        let base = format!("{}.{}", quote_sheet(sheet), v.range.0.a1());
+        let mut x = format!(
+            r#" table:condition="{}" table:allow-empty-cell="{}""#,
+            esc(&cond),
+            v.allow_blank
+        );
+        if v.kind == "list" {
+            let _ = write!(x, r#" table:display-list="{}""#, if v.hide_arrow { "none" } else { "unsorted" });
+        }
+        let _ = write!(x, r#" table:base-cell-address="{}">"#, esc(&base));
+        if let Some((t, b)) = &v.input_msg {
+            let _ = write!(x, r#"<table:help-message table:title="{}" table:display="true">{}</table:help-message>"#, esc(t), paras(b));
+        }
+        match &v.error_msg {
+            Some((kind, t, b)) => {
+                let _ = write!(
+                    x,
+                    r#"<table:error-message table:message-type="{}" table:title="{}" table:display="true">{}</table:error-message>"#,
+                    esc(kind),
+                    esc(t),
+                    paras(b)
+                );
+            }
+            // A rule without words still refuses what does not match
+            None => x.push_str(r#"<table:error-message table:message-type="stop" table:display="true"/>"#),
+        }
+        if let Some((_, n)) = self.vals.iter().find(|(r, _)| *r == x) {
+            return Some(n.clone());
+        }
+        let name = format!("val{}", self.vals.len() + 1);
+        self.vals.push((x, name.clone()));
+        Some(name)
     }
 
     fn cond_style(&mut self, look: &book::CondLook) -> String {
@@ -300,7 +339,24 @@ pub(super) fn esc(s: &str) -> String {
     o
 }
 
+/// Text as paragraphs, one per line
+fn paras(t: &str) -> String {
+    if t.is_empty() {
+        return String::new();
+    }
+    t.split('\n').map(|l| format!("<text:p>{}</text:p>", esc(l))).collect()
+}
+
 fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &mut WriteReport) {
+    // Data validation: each range and the name of its rule; the cells in
+    // the range carry the name
+    let mut vals: Vec<((Pos, Pos), String)> = Vec::new();
+    for v in &sh.validations {
+        match st.validation(&sh.name, v) {
+            Some(n) => vals.push((v.range, n)),
+            None => rep.note("data_validation", 1),
+        }
+    }
     let page = page_layout(sh, book);
     let ta = st.table(sh.hidden, sh.rtl, page);
     let _ = write!(out, r#"<table:table table:name="{}" table:style-name="{ta}""#, esc(&sh.name));
@@ -367,6 +423,10 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
         last_row = last_row.max(p.row + 1);
         last_col = last_col.max(p.col + 1);
     }
+    for ((_, b), _) in &vals {
+        last_row = last_row.max(b.row + 1);
+        last_col = last_col.max(b.col + 1);
+    }
     for p in sh.cells.keys() {
         last_row = last_row.max(p.row + 1);
         last_col = last_col.max(p.col + 1);
@@ -425,22 +485,54 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
         .iter()
         .map(|(a, b)| (*a, (b.row - a.row + 1, b.col - a.col + 1)))
         .collect();
+    // The rows where something starts or stops. A row that is not one of
+    // them is written the same as the row before it
+    let mut events = std::collections::BTreeSet::new();
+    let per_row = sh
+        .cells
+        .keys()
+        .map(|p| p.row)
+        .chain(covered.iter().map(|p| p.row))
+        .chain(extras.keys().map(|p| p.row))
+        .chain(sh.row_height.keys().copied())
+        .chain(sh.row_height_auto.keys().copied())
+        .chain(sh.row_hidden.iter().copied())
+        .chain(sh.filter_hidden.iter().copied());
+    for x in per_row {
+        events.extend([x, x + 1]);
+    }
+    for ((a, b), _) in &vals {
+        events.extend([a.row, b.row + 1]);
+    }
+    if let Some((a, b)) = titles {
+        events.extend([a, b + 1]);
+    }
     let mut r = 0;
     while r < last_row {
         if titles.is_some_and(|(a, _)| a == r) {
             out.push_str("<table:table-header-rows>");
         }
-        let row_xml = row_cells(sh, r, last_col, &covered, &starts, &extras, st);
-        // Empty rows in a run are written once with a repeat count
+        let row_xml = row_cells(sh, r, last_col, &covered, &starts, &extras, &vals, st);
+        // Rows with no cells of their own, written the same (empty, or only
+        // under a validation rule), are written once with a repeat count
         let mut n = 1;
         let in_titles = |x: u32| titles.is_some_and(|(a, b)| x >= a && x <= b);
-        if row_xml.is_none() {
-            while r + n < last_row
-                && row_attrs(sh, r + n, st) == row_attrs(sh, r, st)
-                && in_titles(r + n) == in_titles(r)
-                && row_cells(sh, r + n, last_col, &covered, &starts, &extras, st).is_none()
-                && !titles.is_some_and(|(a, _)| a == r + n)
-            {
+        let no_cells = |x: u32| sh.cells.range(Pos::new(x, 0)..Pos::new(x + 1, 0)).next().is_none();
+        if no_cells(r) {
+            while r + n < last_row {
+                let x = r + n;
+                if !events.contains(&x) {
+                    n = events.range(x..).next().copied().unwrap_or(last_row).min(last_row) - r;
+                    continue;
+                }
+                if !(no_cells(x)
+                    && row_attrs(sh, x, st) == row_attrs(sh, r, st)
+                    && in_titles(x) == in_titles(r)
+                    && row_cells(sh, x, last_col, &covered, &starts, &extras, &vals, st) == row_xml
+                    && !titles.is_some_and(|(a, _)| a == x))
+                {
+                    break;
+                }
                 n += 1;
             }
         }
@@ -599,6 +691,7 @@ fn covered_cells(sh: &Sheet) -> std::collections::HashSet<Pos> {
 }
 
 /// The cells of one row, or None when the row has nothing to write
+#[allow(clippy::too_many_arguments)]
 fn row_cells(
     sh: &Sheet,
     r: u32,
@@ -606,34 +699,49 @@ fn row_cells(
     covered: &std::collections::HashSet<Pos>,
     starts: &HashMap<Pos, (u32, u32)>,
     extras: &HashMap<Pos, (String, String)>,
+    vals: &[((Pos, Pos), String)],
     st: &mut Styles,
 ) -> Option<String> {
+    let val_at = |c: u32| {
+        vals.iter()
+            .find(|((a, b), _)| r >= a.row && r <= b.row && c >= a.col && c <= b.col)
+            .map(|(_, n)| n.as_str())
+    };
+    let any_val = vals.iter().any(|((a, b), _)| r >= a.row && r <= b.row);
     let used: BTreeMap<u32, &Cell> = sh.cells.range(Pos::new(r, 0)..Pos::new(r + 1, 0)).map(|(p, c)| (p.col, c)).collect();
     let any_cover = covered.iter().any(|p| p.row == r);
     let any_extra = extras.keys().any(|p| p.row == r);
-    if used.is_empty() && !any_cover && !any_extra {
+    if used.is_empty() && !any_cover && !any_extra && !any_val {
         return None;
     }
     let empty_cell = Cell::default();
     let mut out = String::new();
     let mut c = 0;
+    // A run of empty cells, and the validation rule they are under
     let mut blank = 0u32;
-    let flush = |out: &mut String, blank: &mut u32| {
+    let mut blank_val: Option<&str> = None;
+    let flush = |out: &mut String, blank: &mut u32, val: Option<&str>| {
         if *blank > 0 {
-            if *blank > 1 {
-                let _ = write!(out, r#"<table:table-cell table:number-columns-repeated="{blank}"/>"#);
-            } else {
-                out.push_str("<table:table-cell/>");
+            out.push_str("<table:table-cell");
+            if let Some(v) = val {
+                let _ = write!(out, r#" table:content-validation-name="{v}""#);
             }
+            if *blank > 1 {
+                let _ = write!(out, r#" table:number-columns-repeated="{blank}""#);
+            }
+            out.push_str("/>");
             *blank = 0;
         }
     };
     while c < last_col {
         let p = Pos::new(r, c);
         if covered.contains(&p) {
-            flush(&mut out, &mut blank);
+            flush(&mut out, &mut blank, blank_val);
             let style = used.get(&c).and_then(|cl| st.cell(&cl.fmt));
             out.push_str("<table:covered-table-cell");
+            if let Some(v) = val_at(c) {
+                let _ = write!(out, r#" table:content-validation-name="{v}""#);
+            }
             if let Some(s) = style {
                 let _ = write!(out, r#" table:style-name="{s}""#);
             }
@@ -647,14 +755,26 @@ fn row_cells(
             continue;
         }
         let extra = extras.get(&p);
+        let v = val_at(c);
         match used.get(&c).copied().or(extra.map(|_| &empty_cell)) {
             Some(cl) => {
-                flush(&mut out, &mut blank);
-                cell_xml(&mut out, cl, starts.get(&p).copied(), sh.rich_runs.get(&p), extra, st);
+                flush(&mut out, &mut blank, blank_val);
+                cell_xml(&mut out, cl, starts.get(&p).copied(), sh.rich_runs.get(&p), extra, v, st);
             }
-            None => blank += 1,
+            None => {
+                if blank > 0 && blank_val != v {
+                    flush(&mut out, &mut blank, blank_val);
+                }
+                blank_val = v;
+                blank += 1;
+            }
         }
         c += 1;
+    }
+    // The empty cells at the end join the rest of the row unless they are
+    // under a rule
+    if blank_val.is_some() {
+        flush(&mut out, &mut blank, blank_val);
     }
     let rest = MAX_COLS - last_col + blank;
     if rest > 0 {
@@ -672,9 +792,13 @@ fn cell_xml(
     span: Option<(u32, u32)>,
     runs: Option<&Vec<book::RichRun>>,
     extra: Option<&(String, String)>,
+    validation: Option<&str>,
     st: &mut Styles,
 ) {
     out.push_str("<table:table-cell");
+    if let Some(v) = validation {
+        let _ = write!(out, r#" table:content-validation-name="{v}""#);
+    }
     if let Some(s) = st.cell(&cl.fmt) {
         let _ = write!(out, r#" table:style-name="{s}""#);
     }
@@ -1120,6 +1244,14 @@ fn content_xml(book: &Book, st: &Styles, body: &str) -> String {
     s.push_str("</office:automatic-styles><office:body><office:spreadsheet>");
     if book.date1904 {
         s.push_str(r#"<table:calculation-settings><table:null-date table:date-value="1904-01-01"/></table:calculation-settings>"#);
+    }
+    // Data validation rules come before the sheets
+    if !st.vals.is_empty() {
+        s.push_str("<table:content-validations>");
+        for (x, n) in &st.vals {
+            let _ = write!(s, r#"<table:content-validation table:name="{n}"{x}</table:content-validation>"#);
+        }
+        s.push_str("</table:content-validations>");
     }
     s.push_str(body);
     s.push_str("</office:spreadsheet></office:body></office:document-content>");

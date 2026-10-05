@@ -319,6 +319,13 @@ fn parse_body(
     // own, not the cell's
     let mut cap: Option<(super::drawing::Capture, Option<Pos>)> = None;
     let mut in_shapes = false;
+    // Data validation: the rules by name, the one being read, the message
+    // being read in it (help?, shown, title, type, text, paragraphs), and
+    // the blocks of cells of this sheet that name a rule
+    let mut rules: HashMap<String, book::Validation> = HashMap::new();
+    let mut rule_now: Option<(String, book::Validation)> = None;
+    let mut msg: Option<(bool, bool, String, String, String, usize)> = None;
+    let mut val_cells: Vec<(String, (Pos, Pos))> = Vec::new();
     // The ranges of the conditional format being read, and the colours of
     // a colour scale in it
     let mut cf_ranges: Vec<(Pos, Pos)> = Vec::new();
@@ -452,6 +459,12 @@ fn parse_body(
                     }
                     b"table:table-cell" | b"table:covered-table-cell" => {
                         let covered = name == b"table:covered-table-cell";
+                        // The cells a validation rule covers, as a block
+                        if let Some(v) = attr(e, "table:content-validation-name") {
+                            let n = repeat(e, "table:number-columns-repeated");
+                            let rows = row_repeat.min(MAX_ROW - row);
+                            val_cells.push((v, (Pos::new(row, col), Pos::new(row + rows - 1, col + n - 1))));
+                        }
                         let style = attr(e, "table:style-name")
                             .or_else(|| col_style.get(&col).cloned())
                             .or_else(|| rest_style.clone().filter(|_| !col_style.contains_key(&col)));
@@ -540,6 +553,49 @@ fn parse_body(
                         }
                     }
                     b"table:named-expression" => rep_note(rep, "table:named-expression"),
+                    // Data validation rules, kept by name until cells use them
+                    b"table:content-validation" => {
+                        let name = attr(e, "table:name").unwrap_or_default();
+                        let parsed = attr(e, "table:condition").as_deref().and_then(super::valid::parse);
+                        if parsed.is_none() && attr(e, "table:condition").is_some() {
+                            rep_note(rep, "table:content-validation");
+                        }
+                        let (kind, op, f1, f2) = parsed.unwrap_or_default();
+                        let rule = book::Validation {
+                            range: Default::default(),
+                            formula: f1,
+                            kind,
+                            op,
+                            formula2: f2,
+                            input_msg: None,
+                            error_msg: None,
+                            allow_blank: attr(e, "table:allow-empty-cell").as_deref() != Some("false"),
+                            hide_arrow: attr(e, "table:display-list").as_deref() == Some("none"),
+                        };
+                        if empty {
+                            rules.insert(name, rule);
+                        } else {
+                            rule_now = Some((name, rule));
+                        }
+                    }
+                    b"table:help-message" | b"table:error-message" if rule_now.is_some() => {
+                        let shown = attr(e, "table:display").as_deref() != Some("false");
+                        let title = attr(e, "table:title").unwrap_or_default();
+                        let kind = attr(e, "table:message-type").unwrap_or_else(|| "stop".into());
+                        let help = name == b"table:help-message";
+                        msg = Some((help, shown, title, kind, String::new(), 0));
+                        if empty {
+                            close_msg(&mut msg, &mut rule_now);
+                        }
+                    }
+                    b"text:p" if msg.is_some() => {
+                        if let Some(m) = msg.as_mut() {
+                            if m.5 > 0 {
+                                m.4.push('\n');
+                            }
+                            m.5 += 1;
+                        }
+                    }
                     // Conditional formats (LibreOffice's calcext extension)
                     b"calcext:conditional-format" => {
                         cf_ranges = attr(e, "calcext:target-range-address").map(|v| super::page::print_ranges(&v)).unwrap_or_default();
@@ -581,7 +637,6 @@ fn parse_body(
                     }
                     b"calcext:date-is" => rep_note(rep, "calcext:date-is"),
                     b"table:database-ranges"
-                    | b"table:content-validations"
                     | b"table:data-pilot-tables"
                     | b"table:table-row-group"
                     | b"table:table-column-group" => {
@@ -591,6 +646,9 @@ fn parse_body(
                 }
             }
             Ok(Event::Text(t)) => {
+                if let Some(m) = msg.as_mut() {
+                    m.4.push_str(&t.unescape().unwrap_or_default());
+                }
                 if depth_p > 0 {
                     let t = t.unescape().unwrap_or_default();
                     text.push_str(&t);
@@ -600,6 +658,12 @@ fn parse_body(
             Ok(Event::End(ref e)) => {
                 match e.name().as_ref() {
                     b"table:shapes" => in_shapes = false,
+                    b"table:help-message" | b"table:error-message" => close_msg(&mut msg, &mut rule_now),
+                    b"table:content-validation" => {
+                        if let Some((name, rule)) = rule_now.take() {
+                            rules.insert(name, rule);
+                        }
+                    }
                     b"calcext:color-scale" => {
                         let kind = match scale.as_slice() {
                             [a, b] => Some(book::CondKind::Scale(a.clone(), None, b.clone())),
@@ -692,6 +756,14 @@ fn parse_body(
                             }
                         }
                         z = 0;
+                        if let Some(sh) = sheet.as_mut() {
+                            for (name, range) in merge_blocks(std::mem::take(&mut val_cells)) {
+                                match rules.get(&name) {
+                                    Some(rule) => sh.validations.push(book::Validation { range, ..rule.clone() }),
+                                    None => rep_note(rep, "table:content-validation-name"),
+                                }
+                            }
+                        }
                         if let Some(sh) = sheet.take() {
                             book.sheets.push(sh);
                         }
@@ -730,6 +802,57 @@ fn named_range(addr: &str) -> Option<(String, String)> {
         None => Pos::parse(&plain).is_some(),
     };
     ok.then_some((sheet, plain))
+}
+
+/// The last row index of a sheet
+const MAX_ROW: u32 = 1_048_576;
+
+/// Finish the message being read into the rule
+fn close_msg(msg: &mut Option<(bool, bool, String, String, String, usize)>, rule: &mut Option<(String, book::Validation)>) {
+    let (Some((help, _shown, title, kind, text, _)), Some((_, r))) = (msg.take(), rule.as_mut()) else { return };
+    // As the xlsx reader: a message is kept only when it says something
+    if title.is_empty() && text.is_empty() {
+        return;
+    }
+    if help {
+        r.input_msg = Some((title, text));
+    } else {
+        r.error_msg = Some((kind, title, text));
+    }
+}
+
+/// Blocks of cells under each rule name, joined where they touch: first
+/// along rows, then the same columns down. In the order the names came
+fn merge_blocks(cells: Vec<(String, (Pos, Pos))>) -> Vec<(String, (Pos, Pos))> {
+    let mut names: Vec<String> = Vec::new();
+    for (n, _) in &cells {
+        if !names.contains(n) {
+            names.push(n.clone());
+        }
+    }
+    let mut out = Vec::new();
+    for n in names {
+        let mut b: Vec<(Pos, Pos)> = cells.iter().filter(|(m, _)| *m == n).map(|(_, r)| *r).collect();
+        b.sort_by_key(|(a, c)| (a.row, c.row, a.col));
+        let mut across: Vec<(Pos, Pos)> = Vec::new();
+        for r in b {
+            match across.last_mut() {
+                Some(last) if last.0.row == r.0.row && last.1.row == r.1.row && last.1.col + 1 == r.0.col => last.1.col = r.1.col,
+                _ => across.push(r),
+            }
+        }
+        across.sort_by_key(|(a, c)| (a.col, c.col, a.row));
+        let mut down: Vec<(Pos, Pos)> = Vec::new();
+        for r in across {
+            match down.last_mut() {
+                Some(last) if last.0.col == r.0.col && last.1.col == r.1.col && last.1.row + 1 == r.0.row => last.1.row = r.1.row,
+                _ => down.push(r),
+            }
+        }
+        down.sort_by_key(|(a, _)| (a.row, a.col));
+        out.extend(down.into_iter().map(|r| (n.clone(), r)));
+    }
+    out
 }
 
 fn repeat(e: &BytesStart, key: &str) -> u32 {

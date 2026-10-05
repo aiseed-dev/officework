@@ -13,6 +13,7 @@ mod numfmt_write;
 mod page;
 mod read;
 mod styles;
+mod valid;
 mod write;
 
 pub use crate::xlsx::Report;
