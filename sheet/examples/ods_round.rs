@@ -4,6 +4,9 @@
 //!
 //!     cargo run -q -p sheet --example ods_round -- ~/ods-corpus OUT_DIR
 //!
+//! With `--against`, nothing is written: each ods is compared with the file
+//! of the same name already in OUT_DIR (an ods another program saved).
+//!
 //! The written files are kept in OUT_DIR so LibreOffice can be asked to
 //! open them (`tools/lo_pdf.py OUT_DIR/*.ods`) and their PDFs compared with
 //! the originals' (`tools/ms_compare.py`).
@@ -14,7 +17,9 @@ use std::path::Path;
 use book::{Book, Value};
 
 fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut args: Vec<String> = std::env::args().skip(1).collect();
+    let against = args.iter().any(|a| a == "--against");
+    args.retain(|a| a != "--against");
     let [src, out] = args.as_slice() else {
         eprintln!("usage: ods_round ODS_DIR OUT_DIR");
         std::process::exit(2);
@@ -35,9 +40,22 @@ fn main() {
             continue;
         };
         total += 1;
-        let (bytes, rep) = sheet::ods::write(&a);
         let dst = Path::new(out).join(format!("{stem}.ods"));
-        std::fs::write(&dst, &bytes).unwrap();
+        // With --against, OUT_DIR already holds the other ods to compare with
+        // (written by another program); otherwise this writes it
+        let (bytes, rep) = if against {
+            match std::fs::read(&dst) {
+                Ok(b) => (b, sheet::ods::WriteReport::default()),
+                Err(_) => {
+                    println!("{stem}: no counterpart");
+                    continue;
+                }
+            }
+        } else {
+            let (bytes, rep) = sheet::ods::write(&a);
+            std::fs::write(&dst, &bytes).unwrap();
+            (bytes, rep)
+        };
         let b = match sheet::ods::read(std::io::Cursor::new(bytes)) {
             Ok((b, _)) => b,
             Err(e) => {
@@ -53,7 +71,8 @@ fn main() {
             same += 1;
         } else {
             println!("{stem}: {} differences", d.len());
-            for x in d.iter().take(6) {
+            let all = std::env::var_os("ODS_ROUND_ALL").is_some();
+            for x in d.iter().take(if all { usize::MAX } else { 6 }) {
                 println!("  {x}");
             }
         }
@@ -84,12 +103,16 @@ fn diff(a: &Book, b: &Book) -> Vec<String> {
             if c.formula != d.formula {
                 out.push(format!("{}!{} formula {:?} vs {:?}", x.name, p.a1(), c.formula, d.formula));
             }
-            if c.fmt != d.fmt {
+            // With ODS_ROUND_SHOWN, only differences that can show in print:
+            // any on a cell with a value, borders and fills anywhere
+            let shown_only = std::env::var_os("ODS_ROUND_SHOWN").is_some();
+            let visible = !c.value.is_empty() || c.fmt.borders != d.fmt.borders || c.fmt.fill != d.fmt.fill;
+            if c.fmt != d.fmt && (!shown_only || visible) {
                 out.push(format!("{}!{} format: {}", x.name, p.a1(), fmt_diff(&c.fmt, &d.fmt)));
             }
         }
-        for p in y.cells.keys() {
-            if x.get(*p).is_none() {
+        for (p, c) in &y.cells {
+            if x.get(*p).is_none() && (std::env::var_os("ODS_ROUND_SHOWN").is_none() || !c.value.is_empty() || c.fmt.borders.any() || c.fmt.fill.is_some()) {
                 out.push(format!("{}!{} only after writing", x.name, p.a1()));
             }
         }

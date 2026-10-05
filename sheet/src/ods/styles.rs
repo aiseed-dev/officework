@@ -386,10 +386,13 @@ fn text_props(e: &BytesStart, p: &mut Props) {
             _ => book::RunPosition::Baseline,
         });
     }
-    if let Some(v) = attr(e, "style:font-name") {
+    // A font is named through a font-face (`style:font-name`) or given
+    // directly (`fo:font-family`, as ONLYOFFICE and Euro-Office write it)
+    let family = |k: &str| attr(e, k).map(|v| v.trim_matches(|c| c == '\'' || c == '"').to_string());
+    if let Some(v) = attr(e, "style:font-name").or_else(|| family("fo:font-family")) {
         p.font = Some(v);
     }
-    if let Some(v) = attr(e, "style:font-name-asian") {
+    if let Some(v) = attr(e, "style:font-name-asian").or_else(|| family("style:font-family-asian")) {
         p.font_asian = Some(v);
     }
     if let Some(v) = attr(e, "fo:font-size").and_then(|s| super::read::length_mm(&s)) {

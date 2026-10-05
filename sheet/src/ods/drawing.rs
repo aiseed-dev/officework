@@ -114,7 +114,12 @@ impl GraphicStyles {
                                     if let Some(v) = attr(e, "fo:font-size").and_then(|v| length_mm(&v)) {
                                         t.size_pt = Some(v / 25.4 * 72.0);
                                     }
-                                    t.font = attr(e, "style:font-name-asian").or_else(|| attr(e, "style:font-name")).or(t.font.take());
+                                    t.font = attr(e, "style:font-name-asian")
+                                        .or_else(|| attr(e, "style:font-name"))
+                                        .or_else(|| attr(e, "style:font-family-asian"))
+                                        .or_else(|| attr(e, "fo:font-family"))
+                                        .map(|v| v.trim_matches(|c| c == '\'' || c == '"').to_string())
+                                        .or(t.font.take());
                                 }
                             }
                             b"style:font-face" => {

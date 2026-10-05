@@ -10,13 +10,17 @@ ODF の読み書きを作るとき、LibreOffice と並べて Euro-Office core
 各項目には、どう確かめたかを書きます。
 
 * 「コードを読んだ」は、Euro-Office を動かしてはいません。
-* 「動かした」は、Euro-Office の変換器で実際に変換して確かめました。
+* 「動かした」は、変換器で実際に変換して確かめました。Euro-Office は配布用の
+  版が無いので、元になった ONLYOFFICE Desktop Editors 9.4.0(flatpak)の
+  x2t を `tools/oo_pdf.py` で動かしました。同じ所を Euro-Office core の
+  コードでも確かめ、同じ書き方であることを見ています。
 
 見たのは main の 4d2c0365(2026-09-30)です。
 
 == 1. 条件付き書式の値の中の「top」「bottom」「duplicate」で、規則の種類を取り違える
 
-確かめ方:: コードを読んだ
+確かめ方:: コードを読んだ。動かした(2026-10-05。`="Desktop"` の規則が
+  xlsx で `<cfRule type="top10"/>` になった)
 場所:: `OdfFile/Reader/Converter/xlsx_conditionalFormatting.cpp` の
   `xlsx_conditionalFormatting_context::set_formula`
 
@@ -52,5 +56,45 @@ Suggested fix: match the function names only at the start of the value
 "top-percent(" / ...), and treat values starting with an operator
 (<, >, <=, >=, =, !=) as cellIs comparisons.
 
-Found by reading the code at 4d2c0365 (2026-09-30); not run.
+Found by reading the code at 4d2c0365 (2026-09-30), and reproduced with
+the x2t of ONLYOFFICE Desktop Editors 9.4.0: an ods whose rule is
+calcext:value="=&quot;Desktop&quot;" converts to <cfRule type="top10"/>.
+----
+
+== 2. ODF から xlsx への変換で、numFmts に count ではなく formatCode を書く
+
+確かめ方:: 動かした。コードを読んだ
+場所:: `OdfFile/Reader/Converter/xlsx_numFmts.cpp` の
+  `xlsx_num_fmts::Impl::serialize`(168 行目)
+
+ods を xlsx に変えると、styles.xml に `<numFmts formatCode="6">` が出ます。
+`numFmts` が持つ属性は `count` で、`formatCode` は子の `numFmt` の属性です。
+LibreOffice も `count` を書きます(`sc/source/filter/excel/xestyle.cxx` 1389 行目)。
+規約の項の番号(18.8.31 のはず)は、この機械に ECMA-376 が無いため、投稿の前に
+Mac の規約で確かめます。比べるための ods 49 個を
+変換すると、どの xlsx にもこの形が出ました。openpyxl はこの xlsx を開けず、
+`NumberFormatList.__init__() got an unexpected keyword argument 'formatCode'`
+で止まります。
+
+[source,text]
+----
+Title: ODF→XLSX: <numFmts> is written with a formatCode attribute instead of count
+
+OdfFile/Reader/Converter/xlsx_numFmts.cpp, xlsx_num_fmts::Impl::serialize():
+
+    CP_XML_NODE (L"numFmts")
+    {
+        CP_XML_ATTR (L"formatCode", arrFormats.size());
+
+ECMA-376 Part 1, 18.8.31 numFmts defines the attribute count (the number
+of numFmt children); formatCode is an attribute of numFmt, not numFmts.
+LibreOffice writes count (sc/source/filter/excel/xestyle.cxx).
+Every xlsx converted from an ods gets e.g. <numFmts formatCode="6">.
+Strict readers refuse the file: openpyxl stops with
+"NumberFormatList.__init__() got an unexpected keyword argument 'formatCode'".
+
+Fix: CP_XML_ATTR(L"count", arrFormats.size());
+
+Reproduced with the x2t of ONLYOFFICE Desktop Editors 9.4.0 (ods → xlsx);
+the same line is in Euro-Office core at 4d2c0365 (2026-09-30).
 ----
