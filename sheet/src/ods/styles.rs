@@ -59,6 +59,9 @@ pub(super) struct CellStyles {
     /// data style name → format code
     codes: HashMap<String, String>,
     cache: std::cell::RefCell<HashMap<String, CellFormat>>,
+    /// display name → name, for styles a conditional format names by its
+    /// display name (`ConditionalStyle_1` is `ConditionalStyle_5f_1`)
+    display: HashMap<String, String>,
 }
 
 impl CellStyles {
@@ -114,6 +117,9 @@ impl CellStyles {
                                 ..Props::default()
                             };
                             let name = attr(e, "style:name").unwrap_or_default();
+                            if let Some(d) = attr(e, "style:display-name") {
+                                self.display.insert(d, name.clone());
+                            }
                             if empty {
                                 self.styles.insert(name, std::mem::take(&mut props));
                             } else {
@@ -192,6 +198,21 @@ impl CellStyles {
             r.font = p.font.clone().or(p.font_asian.clone()).map(|n| self.faces.get(&n).cloned().unwrap_or(n));
         }
         r
+    }
+
+    /// The look a conditional format gives: only what its style sets
+    /// itself, by the style's name or display name
+    pub(super) fn cond_look(&self, name: &str) -> book::CondLook {
+        let key = self.display.get(name).map(String::as_str).unwrap_or(name);
+        let Some(p) = self.styles.get(key) else { return book::CondLook::default() };
+        book::CondLook {
+            color: p.color.clone().flatten(),
+            fill: p.fill.clone().flatten(),
+            bold: p.bold,
+            italic: p.italic,
+            underline: p.underline,
+            strike: p.strike,
+        }
     }
 
     /// The default cell style's font, for the workbook's default font

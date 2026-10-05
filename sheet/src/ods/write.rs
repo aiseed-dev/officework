@@ -74,7 +74,6 @@ pub fn write(book: &Book) -> (Vec<u8>, WriteReport) {
 fn left_out(sh: &Sheet, rep: &mut WriteReport) {
     // Stable ids: the app turns them into words on the screen
     rep.note("hyperlink", sh.links.len());
-    rep.note("conditional_formatting", sh.cond.len());
     rep.note("data_validation", sh.validations.len());
     rep.note("table", sh.tables.len());
     rep.note("scenario", sh.scenarios.len());
@@ -103,6 +102,9 @@ struct Styles {
     texts: Vec<String>,
     /// Looks of shapes and pictures, as the graphic styles `gr1`, …
     graphics: Vec<String>,
+    /// Looks of conditional formats, as the named cell styles
+    /// `ConditionalStyle_1`, … in styles.xml
+    conds: Vec<book::CondLook>,
     /// Paragraph styles of shape text, `P1`, …
     paras: Vec<String>,
     /// Pictures in the package: (path, bytes, media type)
@@ -183,6 +185,14 @@ impl Styles {
             }
         }
         xml
+    }
+
+    fn cond_style(&mut self, look: &book::CondLook) -> String {
+        let i = self.conds.iter().position(|x| x == look).unwrap_or_else(|| {
+            self.conds.push(look.clone());
+            self.conds.len() - 1
+        });
+        format!("ConditionalStyle_{}", i + 1)
     }
 
     fn paragraph(&mut self, inner: String) -> String {
@@ -455,6 +465,68 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
             r#"<table:table-row table:number-rows-repeated="{}"><table:table-cell table:number-columns-repeated="{MAX_COLS}"/></table:table-row>"#,
             MAX_ROWS - last_row
         );
+    }
+    // Conditional formats, in LibreOffice's calcext extension: one
+    // conditional-format per range, in the order of the rules
+    if !sh.cond.is_empty() {
+        out.push_str("<calcext:conditional-formats>");
+        let q = quote_sheet(&sh.name);
+        // Neighbouring rules on the same range share one conditional-format:
+        // LibreOffice draws a range's rules together only then
+        for (i, rule) in sh.cond.iter().enumerate() {
+            let (a, b) = rule.range;
+            let first = i == 0 || sh.cond[i - 1].range != rule.range;
+            let last = sh.cond.get(i + 1).is_none_or(|n| n.range != rule.range);
+            if first {
+                let _ = write!(
+                    out,
+                    r#"<calcext:conditional-format calcext:target-range-address="{}">"#,
+                    esc(&format!("{q}.{}:{q}.{}", a.a1(), b.a1()))
+                );
+            }
+            let base = esc(&format!("{q}.{}", a.a1()));
+            match &rule.kind {
+                book::CondKind::Bar(c) => {
+                    let c = c.to_ascii_lowercase();
+                    let _ = write!(
+                        out,
+                        r##"<calcext:data-bar calcext:min-length="10" calcext:max-length="90" calcext:negative-color="#{c}" calcext:axis-position="none" calcext:positive-color="#{c}" calcext:axis-color="#000000"><calcext:formatting-entry calcext:value="0" calcext:type="minimum"/><calcext:formatting-entry calcext:value="0" calcext:type="maximum"/></calcext:data-bar>"##
+                    );
+                }
+                book::CondKind::Scale(lo, mid, hi) => {
+                    out.push_str("<calcext:color-scale>");
+                    let _ = write!(out, r##"<calcext:color-scale-entry calcext:value="0" calcext:type="minimum" calcext:color="#{}"/>"##, lo.to_ascii_lowercase());
+                    if let Some(m) = mid {
+                        let _ = write!(out, r##"<calcext:color-scale-entry calcext:value="50" calcext:type="percentile" calcext:color="#{}"/>"##, m.to_ascii_lowercase());
+                    }
+                    let _ = write!(out, r##"<calcext:color-scale-entry calcext:value="0" calcext:type="maximum" calcext:color="#{}"/></calcext:color-scale>"##, hi.to_ascii_lowercase());
+                }
+                book::CondKind::Icons(name) => {
+                    // Thresholds at even shares, as Excel's defaults
+                    let n = name.chars().next().and_then(|c| c.to_digit(10)).unwrap_or(3);
+                    let _ = write!(out, r#"<calcext:icon-set calcext:icon-set-type="{}">"#, esc(name));
+                    for k in 0..n {
+                        let share = (k as f32 * 100.0 / n as f32).round();
+                        let _ = write!(out, r#"<calcext:formatting-entry calcext:value="{share}" calcext:type="percent"/>"#);
+                    }
+                    out.push_str("</calcext:icon-set>");
+                }
+                kind => {
+                    if let Some(v) = super::cond::value_of(kind) {
+                        let style = st.cond_style(&rule.look);
+                        let _ = write!(
+                            out,
+                            r#"<calcext:condition calcext:apply-style-name="{style}" calcext:value="{}" calcext:base-cell-address="{base}"/>"#,
+                            esc(&v)
+                        );
+                    }
+                }
+            }
+            if last {
+                out.push_str("</calcext:conditional-format>");
+            }
+        }
+        out.push_str("</calcext:conditional-formats>");
     }
     // Names that only this sheet uses
     let local: Vec<String> = sh.names.iter().filter(|n| n.scoped).map(|n| named_range_xml(&sh.name, n)).collect();
@@ -1224,6 +1296,39 @@ fn styles_xml(book: &Book, st: &Styles) -> String {
         s,
         r#"<style:default-style style:family="table-cell"><style:text-properties{tp}/></style:default-style><style:style style:name="Default" style:family="table-cell"/>"#
     );
+    // The looks of conditional formats, as named cell styles
+    for (i, look) in st.conds.iter().enumerate() {
+        let mut cp = String::new();
+        if let Some(f) = &look.fill {
+            let _ = write!(cp, r##"<style:table-cell-properties fo:background-color="#{}"/>"##, f.to_ascii_lowercase());
+        }
+        let mut tp = String::new();
+        if let Some(c) = &look.color {
+            let _ = write!(tp, r##" fo:color="#{}""##, c.to_ascii_lowercase());
+        }
+        if let Some(b) = look.bold {
+            let w = if b { "bold" } else { "normal" };
+            let _ = write!(tp, r#" fo:font-weight="{w}" style:font-weight-asian="{w}" style:font-weight-complex="{w}""#);
+        }
+        if let Some(it) = look.italic {
+            let v = if it { "italic" } else { "normal" };
+            let _ = write!(tp, r#" fo:font-style="{v}" style:font-style-asian="{v}" style:font-style-complex="{v}""#);
+        }
+        if let Some(u) = look.underline {
+            let _ = write!(tp, r#" style:text-underline-style="{}""#, if u { "solid" } else { "none" });
+        }
+        if let Some(k) = look.strike {
+            let _ = write!(tp, r#" style:text-line-through-style="{}""#, if k { "solid" } else { "none" });
+        }
+        if !tp.is_empty() {
+            let _ = write!(cp, "<style:text-properties{tp}/>");
+        }
+        let _ = write!(
+            s,
+            r#"<style:style style:name="ConditionalStyle_{}" style:family="table-cell" style:parent-style-name="Default">{cp}</style:style>"#,
+            i + 1
+        );
+    }
     s.push_str("</office:styles><office:automatic-styles>");
     let parts: Vec<Vec<&str>> = st.pages.iter().map(|p| p.split('\u{1}').collect()).collect();
     for (i, p) in parts.iter().enumerate() {

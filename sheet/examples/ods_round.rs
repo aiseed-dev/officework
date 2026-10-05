@@ -138,6 +138,9 @@ fn diff(a: &Book, b: &Book) -> Vec<String> {
         if kept(x) != kept(y) {
             out.push(format!("{} kept objects {:?} vs {:?}", x.name, kept(x), kept(y)));
         }
+        if x.cond != y.cond {
+            out.push(format!("{} conditional formats {:?} vs {:?}", x.name, x.cond, y.cond));
+        }
         if x.rich_runs != y.rich_runs {
             let k = x.rich_runs.keys().chain(y.rich_runs.keys()).find(|k| x.rich_runs.get(k) != y.rich_runs.get(k));
             out.push(format!(

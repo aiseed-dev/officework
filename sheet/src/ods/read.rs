@@ -319,6 +319,10 @@ fn parse_body(
     // own, not the cell's
     let mut cap: Option<(super::drawing::Capture, Option<Pos>)> = None;
     let mut in_shapes = false;
+    // The ranges of the conditional format being read, and the colours of
+    // a colour scale in it
+    let mut cf_ranges: Vec<(Pos, Pos)> = Vec::new();
+    let mut scale: Vec<String> = Vec::new();
     // Objects anchored to the page, placed on a cell once the sheet's
     // columns and rows are known
     let mut on_page: Vec<super::drawing::Capture> = Vec::new();
@@ -536,9 +540,48 @@ fn parse_body(
                         }
                     }
                     b"table:named-expression" => rep_note(rep, "table:named-expression"),
+                    // Conditional formats (LibreOffice's calcext extension)
+                    b"calcext:conditional-format" => {
+                        cf_ranges = attr(e, "calcext:target-range-address").map(|v| super::page::print_ranges(&v)).unwrap_or_default();
+                    }
+                    b"calcext:condition" => {
+                        let at = cf_ranges.first().map(|r| r.0).unwrap_or_default();
+                        let kind = attr(e, "calcext:value").and_then(|v| super::cond::kind_of(&v, at));
+                        let look = attr(e, "calcext:apply-style-name").map(|n| cells.cond_look(&n)).unwrap_or_default();
+                        match (kind, sheet.as_mut()) {
+                            (Some(kind), Some(sh)) => {
+                                for r in &cf_ranges {
+                                    sh.cond.push(book::CondRule { range: *r, kind: kind.clone(), look: look.clone() });
+                                }
+                            }
+                            _ => rep_note(rep, "calcext:condition"),
+                        }
+                    }
+                    b"calcext:data-bar" => {
+                        let color = attr(e, "calcext:positive-color").and_then(|c| c.strip_prefix('#').map(|h| h.to_ascii_uppercase())).unwrap_or_else(|| "638EC6".into());
+                        if let Some(sh) = sheet.as_mut() {
+                            for r in &cf_ranges {
+                                sh.cond.push(book::CondRule { range: *r, kind: book::CondKind::Bar(color.clone()), look: Default::default() });
+                            }
+                        }
+                    }
+                    b"calcext:color-scale" if !empty => scale.clear(),
+                    b"calcext:color-scale-entry" => {
+                        if let Some(c) = attr(e, "calcext:color").and_then(|c| c.strip_prefix('#').map(|h| h.to_ascii_uppercase())) {
+                            scale.push(c);
+                        }
+                    }
+                    b"calcext:icon-set" => {
+                        let name = attr(e, "calcext:icon-set-type").unwrap_or_else(|| "3Arrows".into());
+                        if let Some(sh) = sheet.as_mut() {
+                            for r in &cf_ranges {
+                                sh.cond.push(book::CondRule { range: *r, kind: book::CondKind::Icons(name.clone()), look: Default::default() });
+                            }
+                        }
+                    }
+                    b"calcext:date-is" => rep_note(rep, "calcext:date-is"),
                     b"table:database-ranges"
                     | b"table:content-validations"
-                    | b"calcext:conditional-formats"
                     | b"table:data-pilot-tables"
                     | b"table:table-row-group"
                     | b"table:table-column-group" => {
@@ -557,6 +600,21 @@ fn parse_body(
             Ok(Event::End(ref e)) => {
                 match e.name().as_ref() {
                     b"table:shapes" => in_shapes = false,
+                    b"calcext:color-scale" => {
+                        let kind = match scale.as_slice() {
+                            [a, b] => Some(book::CondKind::Scale(a.clone(), None, b.clone())),
+                            [a, m, b] => Some(book::CondKind::Scale(a.clone(), Some(m.clone()), b.clone())),
+                            _ => None,
+                        };
+                        match (kind, sheet.as_mut()) {
+                            (Some(kind), Some(sh)) => {
+                                for r in &cf_ranges {
+                                    sh.cond.push(book::CondRule { range: *r, kind: kind.clone(), look: Default::default() });
+                                }
+                            }
+                            _ => rep_note(rep, "calcext:color-scale"),
+                        }
+                    }
                     b"text:p" | b"text:h" if depth_p > 0 => depth_p -= 1,
                     b"text:span" if depth_p > 0 => {
                         spans.pop();

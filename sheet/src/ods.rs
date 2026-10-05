@@ -5,6 +5,7 @@
 //! code is not. Unread parts are counted in the same [`Report`] the xlsx
 //! reader uses.
 
+mod cond;
 mod drawing;
 mod formula;
 mod numfmt;

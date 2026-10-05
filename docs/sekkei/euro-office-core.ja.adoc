@@ -1,0 +1,56 @@
+= Euro-Office core の問題の記録
+
+ODF の読み書きを作るとき、LibreOffice と並べて Euro-Office core
+(github.com/Euro-Office/core)の `OdfFile` を参考にしています
+(SEKKEI「決め: ODF を先にする」)。置き場は `vendor/euro-office-core` です。
+
+読んでいて見つけた問題をここに控えます。まとめて issue に投稿するためです
+(2026-10-05 発注者)。issue の本文は英語で書いておきます。
+
+各項目には、どう確かめたかを書きます。
+
+* 「コードを読んだ」は、Euro-Office を動かしてはいません。
+* 「動かした」は、Euro-Office の変換器で実際に変換して確かめました。
+
+見たのは main の 4d2c0365(2026-09-30)です。
+
+== 1. 条件付き書式の値の中の「top」「bottom」「duplicate」で、規則の種類を取り違える
+
+確かめ方:: コードを読んだ
+場所:: `OdfFile/Reader/Converter/xlsx_conditionalFormatting.cpp` の
+  `xlsx_conditionalFormatting_context::set_formula`
+
+規則の種類を、値の文字列のどこかにその語があるか(`find`)で決めています。
+語が値の頭にあるかは見ていません。普通の比較(`cellIs`)の判定は最後です。
+そのため、文字列と比べる規則の値に「top」などの語が入っていると、
+別の種類の規則として読みます。
+
+例:「セルの値が "Desktop" に等しい」。LibreOffice はこれを
+`calcext:value="=&quot;Desktop&quot;"` と書きます。`f.find(L"top")` が
+当たるので、上位 10 項目(`top10`)の規則に変わります。「laptop」「stop」
+「bottom line」「duplicate」を含む文字列でも同じです。
+
+[source,text]
+----
+Title: ODF→XLSX: conditional formatting values containing "top", "bottom" or "duplicate" are converted to the wrong rule type
+
+In OdfFile/Reader/Converter/xlsx_conditionalFormatting.cpp,
+xlsx_conditionalFormatting_context::set_formula() picks the rule type by
+searching for keywords anywhere in the calcext:value string (f.find(...)),
+and only falls back to cellIs at the end. A plain comparison with a text
+value that happens to contain one of the keywords is therefore taken for
+another rule type.
+
+Example: "cell value is equal to "Desktop"" is written by LibreOffice as
+  <calcext:condition calcext:value="=&quot;Desktop&quot;" .../>
+f.find(L"top") matches, so the rule becomes a top10 rule. The same
+happens for values containing "bottom", "duplicate", "begins-with",
+"contains-text", etc.
+
+Suggested fix: match the function names only at the start of the value
+(e.g. value starts with "top-elements(" / "bottom-elements(" /
+"top-percent(" / ...), and treat values starting with an operator
+(<, >, <=, >=, =, !=) as cellIs comparisons.
+
+Found by reading the code at 4d2c0365 (2026-09-30); not run.
+----
