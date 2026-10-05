@@ -249,3 +249,43 @@ fn data_validation_round_trips() {
     want.sort_by_key(|v| (v.range.0.col, v.range.0.row));
     assert_eq!(got, want);
 }
+
+/// Page breaks, sheet protection, unlocked cells, links and frozen panes
+/// are written and read back the same
+#[test]
+fn breaks_protection_links_and_frozen_panes_round_trip() {
+    let mut b = book::Book::new();
+    b.sheets.push(book::Sheet::new("Data Sheet"));
+    let sh = &mut b.sheets[0];
+    for (r, t) in [(0, "見出し"), (1, "社外"), (2, "社内"), (3, "範囲")] {
+        sh.set(Pos::new(r, 0), book::Cell { value: Value::Text(t.into()), ..Default::default() });
+    }
+    sh.row_breaks = vec![20, 40];
+    sh.col_breaks = vec![5];
+    sh.protected = true;
+    sh.protect_allow.insert_rows = true;
+    sh.protect_allow.select_locked = false;
+    let mut open = book::Cell { value: Value::Number(1.0), ..Default::default() };
+    open.fmt.unlocked = true;
+    sh.set(Pos::new(1, 2), open);
+    let mut hidden = book::Cell { value: Value::Number(2.0), formula: Some("C2*2".into()), ..Default::default() };
+    hidden.fmt.formula_hidden = true;
+    sh.set(Pos::new(2, 2), hidden);
+    sh.links.insert(Pos::new(1, 0), "https://example.com/a?b=1&c=2".into());
+    sh.links.insert(Pos::new(2, 0), "#'Data Sheet'!B3".into());
+    sh.links.insert(Pos::new(3, 0), "#'Data Sheet'!A1:C4".into());
+    sh.freeze = Some(book::FreezePane { frozen_rows: 1, frozen_columns: 2 });
+    b.sheets[1].freeze = Some(book::FreezePane { frozen_rows: 3, frozen_columns: 0 });
+    let (bytes, rep) = super::write(&b);
+    assert!(rep.is_lossless(), "{:?}", rep.left_out);
+    let (r, read_rep) = read(bytes);
+    assert!(read_rep.is_lossless(), "{:?}", read_rep.unsupported);
+    let (x, y) = (&b.sheets[0], &r.sheets[0]);
+    assert_eq!((&y.row_breaks, &y.col_breaks), (&x.row_breaks, &x.col_breaks));
+    assert_eq!((y.protected, &y.protect_allow), (true, &x.protect_allow));
+    let c = |s: &book::Sheet, r, c| s.get(Pos::new(r, c)).map(|c| (c.fmt.unlocked, c.fmt.formula_hidden));
+    assert_eq!((c(y, 1, 2), c(y, 2, 2)), (Some((true, false)), Some((false, true))));
+    assert_eq!(y.links, x.links);
+    assert_eq!(y.freeze, x.freeze);
+    assert_eq!(r.sheets[1].freeze, b.sheets[1].freeze);
+}

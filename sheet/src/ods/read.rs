@@ -82,6 +82,14 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     book.sheets.clear();
     book.default_font = cells.default_font();
     parse_body(&content, &styles, &cells, &pages, &drawing, &mut book, &mut rep);
+    let mut settings = String::new();
+    if let Ok(mut f) = zip.by_name("settings.xml") {
+        let _ = f.read_to_string(&mut settings);
+    }
+    let mut frozen = super::settings::parse(&settings);
+    for sh in &mut book.sheets {
+        sh.freeze = frozen.remove(&sh.name);
+    }
     if book.sheets.is_empty() {
         book.sheets.push(Sheet::new("Sheet1"));
     }
@@ -107,6 +115,9 @@ struct Styles {
     col_mm: HashMap<String, f32>,
     /// (height in pt, optimal = the height follows the content)
     row_pt: HashMap<String, (f32, bool)>,
+    /// Row and column styles that start a new page (`fo:break-before="page"`)
+    row_break: std::collections::HashSet<String>,
+    col_break: std::collections::HashSet<String>,
     hidden_tables: Vec<String>,
     /// Table styles that lay the sheet out right to left
     rtl_tables: Vec<String>,
@@ -130,6 +141,9 @@ impl Styles {
                         cur = Some((name, attr(&e, "style:family").unwrap_or_default()));
                     }
                     b"style:table-column-properties" => {
+                        if let (Some((name, _)), Some("page")) = (&cur, attr(&e, "fo:break-before").as_deref()) {
+                            s.col_break.insert(name.clone());
+                        }
                         if let (Some((name, _)), Some(w)) = (&cur, attr(&e, "style:column-width")) {
                             if let Some(mm) = length_mm(&w) {
                                 s.col_mm.insert(name.clone(), mm);
@@ -137,6 +151,9 @@ impl Styles {
                         }
                     }
                     b"style:table-row-properties" => {
+                        if let (Some((name, _)), Some("page")) = (&cur, attr(&e, "fo:break-before").as_deref()) {
+                            s.row_break.insert(name.clone());
+                        }
                         if let (Some((name, _)), Some(h)) = (&cur, attr(&e, "style:row-height")) {
                             if let Some(mm) = length_mm(&h) {
                                 let optimal = attr(&e, "style:use-optimal-row-height").as_deref() == Some("true");
@@ -193,6 +210,8 @@ struct Pending {
     styled: bool,
     /// Runs with their own look inside the cell (`text:span`), when any
     runs: Option<Vec<book::RichRun>>,
+    /// The target of the first link in the cell's text (`text:a`)
+    link: Option<String>,
 }
 
 fn same_look(a: &book::RichRun, b: &book::RichRun) -> bool {
@@ -391,16 +410,39 @@ fn parse_body(
                         if let Some(v) = attr(e, "table:print-ranges") {
                             sh.print_areas = super::page::print_ranges(&v);
                         }
+                        // A password is not kept: the model protects without one
+                        sh.protected = attr(e, "table:protected").as_deref() == Some("true");
                         sheet = Some(sh);
                         row = 0;
                         col = 0;
                         col_style.clear();
                         rest_style = None;
                     }
+                    // What a protected sheet allows; without this element
+                    // LibreOffice allows selecting cells and nothing else
+                    // (sc/source/filter/xml/xmlsubti.cxx)
+                    b"loext:table-protection" | b"table:table-protection" | b"officeooo:table-protection" => {
+                        if let Some(sh) = sheet.as_mut() {
+                            let on = |k: &str| {
+                                ["loext", "table", "officeooo"].iter().any(|ns| attr(e, &format!("{ns}:{k}")).as_deref() == Some("true"))
+                            };
+                            let a = &mut sh.protect_allow;
+                            a.select_locked = on("select-protected-cells");
+                            a.select_unlocked = on("select-unprotected-cells");
+                            a.insert_cols = on("insert-columns");
+                            a.insert_rows = on("insert-rows");
+                            a.delete_cols = on("delete-columns");
+                            a.delete_rows = on("delete-rows");
+                        }
+                    }
                     b"table:table-column" => {
                         if let Some(sh) = sheet.as_mut() {
                             let n = repeat(e, "table:number-columns-repeated");
-                            let w = attr(e, "table:style-name").and_then(|s| styles.col_mm.get(&s).copied());
+                            let cs = attr(e, "table:style-name");
+                            if cs.as_ref().is_some_and(|s| styles.col_break.contains(s)) {
+                                sh.col_breaks.push(col);
+                            }
+                            let w = cs.and_then(|s| styles.col_mm.get(&s).copied());
                             let hidden = attr(e, "table:visibility").is_some_and(|v| v != "visible");
                             let dstyle = attr(e, "table:default-cell-style-name");
                             if n > SPREAD_LIMIT {
@@ -431,7 +473,14 @@ fn parse_body(
                         row_repeat = repeat(e, "table:number-rows-repeated");
                         row_cells.clear();
                         if let Some(sh) = sheet.as_mut() {
-                            let h = attr(e, "table:style-name").and_then(|s| styles.row_pt.get(&s).copied());
+                            let rs = attr(e, "table:style-name");
+                            // A repeated row with a break is one break at its
+                            // first row: LibreOffice writes rows with breaks
+                            // one by one
+                            if rs.as_ref().is_some_and(|s| styles.row_break.contains(s)) {
+                                sh.row_breaks.push(row);
+                            }
+                            let h = rs.and_then(|s| styles.row_pt.get(&s).copied());
                             let vis = attr(e, "table:visibility");
                             if row_repeat <= SPREAD_LIMIT {
                                 for rr in row..row + row_repeat {
@@ -517,6 +566,18 @@ fn parse_body(
                         run_push(&mut runs, &spans, "\n");
                     }
                     b"text:span" if depth_p > 0 && !empty => spans.push(attr(e, "text:style-name").unwrap_or_default()),
+                    // A cell keeps one link; a place in the workbook is
+                    // written `#Sheet.A1` and kept as `#Sheet!A1`, as in an xlsx
+                    b"text:a" if depth_p > 0 => {
+                        if let (Some(p), Some(h)) = (cell.as_mut(), attr(e, "xlink:href")) {
+                            if p.link.is_none() {
+                                p.link = Some(match h.strip_prefix('#').and_then(|l| super::write::split_place(l, '.')) {
+                                    Some((sheet, at)) => format!("#{sheet}!{at}"),
+                                    None => h,
+                                });
+                            }
+                        }
+                    }
                     b"table:shapes" if !empty => in_shapes = true,
                     // Comments, pictures, charts and shapes: read on their own,
                     // their paragraphs kept out of the cell
@@ -875,7 +936,7 @@ fn start_cell(e: &BytesStart, covered: bool, null_date: Option<(i64, i64, i64)>,
     let mut cell = Cell::default();
     let mut has_content = false;
     if covered {
-        return Pending { cell, repeat, span: (1, 1), has_content, styled: false, runs: None };
+        return Pending { cell, repeat, span: (1, 1), has_content, styled: false, runs: None, link: None };
     }
     if let Some(f) = attr(e, "table:formula") {
         match super::formula::to_a1(&f) {
@@ -931,7 +992,7 @@ fn start_cell(e: &BytesStart, covered: bool, null_date: Option<(i64, i64, i64)>,
         has_content = true;
     }
     cell.fmt = fmt;
-    Pending { cell, repeat, span, has_content, styled: false, runs: None }
+    Pending { cell, repeat, span, has_content, styled: false, runs: None, link: None }
 }
 
 /// The paragraphs of a cell: the value of a string cell, or of an error
@@ -965,6 +1026,9 @@ fn finish_cell(p: Pending, row: u32, col: &mut u32, row_cells: &mut Vec<(u32, Ce
             row_cells.push((*col + k, p.cell.clone()));
             if let Some(r) = &p.runs {
                 sh.rich_runs.insert(Pos::new(row, *col + k), r.clone());
+            }
+            if let Some(l) = &p.link {
+                sh.links.insert(Pos::new(row, *col + k), l.clone());
             }
         }
     }

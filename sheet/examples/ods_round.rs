@@ -161,6 +161,24 @@ fn diff(a: &Book, b: &Book) -> Vec<String> {
         if kept(x) != kept(y) {
             out.push(format!("{} kept objects {:?} vs {:?}", x.name, kept(x), kept(y)));
         }
+        let breaks = |s: &book::Sheet| {
+            let (mut r, mut c) = (s.row_breaks.clone(), s.col_breaks.clone());
+            r.sort();
+            c.sort();
+            (r, c)
+        };
+        if breaks(x) != breaks(y) {
+            out.push(format!("{} page breaks {:?} vs {:?}", x.name, breaks(x), breaks(y)));
+        }
+        if (x.protected, &x.protect_allow) != (y.protected, &y.protect_allow) {
+            out.push(format!("{} protection {} {:?} vs {} {:?}", x.name, x.protected, x.protect_allow, y.protected, y.protect_allow));
+        }
+        if x.links != y.links {
+            out.push(format!("{} links {:?} vs {:?}", x.name, x.links, y.links));
+        }
+        if x.freeze != y.freeze {
+            out.push(format!("{} freeze {:?} vs {:?}", x.name, x.freeze, y.freeze));
+        }
         if x.cond != y.cond {
             out.push(format!("{} conditional formats {:?} vs {:?}", x.name, x.cond, y.cond));
         }

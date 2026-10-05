@@ -12,6 +12,7 @@ mod numfmt;
 mod numfmt_write;
 mod page;
 mod read;
+mod settings;
 mod styles;
 mod valid;
 mod write;

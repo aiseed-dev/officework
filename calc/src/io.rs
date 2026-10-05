@@ -1692,8 +1692,6 @@ fn ods_part_name(what: &str) -> String {
         "shape" | "shape_rotation" => ui::t!("shapes_images"),
         "table" => ui::t!("excel_tables"),
         "scenario" => ui::t!("scenario"),
-        "freeze" => ui::t!("freeze"),
-        "page_break" => ui::t!("page_break"),
         "sheet_protection" => ui::t!("protect_sheet_2"),
         "header" => ui::t!("header"),
         _ => return what.to_string(),

@@ -6,7 +6,7 @@ that the PDFs officework writes itself are compared against (with
 `tools/ms_compare.py`). It also turns the xlsx / docx corpus into ODF test
 documents.
 
-    python3 tools/lo_pdf.py FILE... [--out DIR] [--to pdf|ods|odt]
+    python3 tools/lo_pdf.py FILE... [--out DIR] [--to pdf|ods|odt|xlsx|docx]
                             [--profile DIR] [--timeout SECONDS]
 
 Accepted inputs: ods, odt, xlsx, docx, csv, fods, fodt.
@@ -15,7 +15,9 @@ Accepted inputs: ods, odt, xlsx, docx, csv, fods, fodt.
   source file (`ms_pdf.py` writes `.ms.pdf`). With `--out DIR`, `<stem>.lo.pdf`
   is written into DIR.
 * `--to ods` converts spreadsheets (ods, xlsx, csv, fods) to `<stem>.ods`.
-  `--to odt` converts documents (odt, docx, fodt) to `<stem>.odt`. The output
+  `--to odt` converts documents (odt, docx, fodt) to `<stem>.odt`. `--to xlsx`
+  and `--to docx` convert the same inputs to OOXML, to check how LibreOffice
+  read a file by what it writes back. The output
   goes next to the source, or into DIR with `--out`. An existing output file is
   overwritten.
 
@@ -96,6 +98,8 @@ TARGETS = {
     "pdf": {"suffix": ".lo.pdf", "ext": "pdf", "accepts": ALL_EXTS},
     "ods": {"suffix": ".ods", "ext": "ods", "accepts": SHEET_EXTS},
     "odt": {"suffix": ".odt", "ext": "odt", "accepts": TEXT_EXTS},
+    "xlsx": {"suffix": ".xlsx", "ext": "xlsx", "accepts": SHEET_EXTS},
+    "docx": {"suffix": ".docx", "ext": "docx", "accepts": TEXT_EXTS},
 }
 
 
@@ -196,7 +200,8 @@ def main(argv=None):
     ap.add_argument("files", nargs="+", help="ods, odt, xlsx, docx, csv, fods, fodt")
     ap.add_argument("--out", metavar="DIR", help="write outputs into DIR instead of next to the sources")
     ap.add_argument("--to", choices=sorted(TARGETS), default="pdf",
-                    help="pdf (default, writes <stem>.lo.pdf), ods or odt (convert to ODF)")
+                    help="pdf (default, writes <stem>.lo.pdf), ods or odt (convert to ODF), "
+                         "xlsx or docx (convert to OOXML)")
     ap.add_argument("--profile", metavar="DIR",
                     help="LibreOffice profile folder to use (default: a new temporary one, removed at the end)")
     ap.add_argument("--timeout", type=float, default=120.0, metavar="SECONDS",

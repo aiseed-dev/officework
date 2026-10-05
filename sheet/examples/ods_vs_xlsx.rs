@@ -130,6 +130,21 @@ fn compare(x: &Book, o: &Book) -> Vec<String> {
             out.sort();
             out
         };
+        let breaks = |s: &book::Sheet| {
+            let (mut r, mut c) = (s.row_breaks.clone(), s.col_breaks.clone());
+            r.sort();
+            c.sort();
+            (r, c)
+        };
+        if breaks(xs) != breaks(os) {
+            out.push(format!("{} page breaks {:?} vs {:?}", xs.name, breaks(xs), breaks(os)));
+        }
+        if (xs.protected, &xs.protect_allow) != (os.protected, &os.protect_allow) {
+            out.push(format!("{} protection {} {:?} vs {} {:?}", xs.name, xs.protected, xs.protect_allow, os.protected, os.protect_allow));
+        }
+        if xs.links != os.links {
+            out.push(format!("{} links {:?} vs {:?}", xs.name, xs.links, os.links));
+        }
         if vals(&xs.validations) != vals(&os.validations) {
             out.push(format!("{} validations {:?} vs {:?}", xs.name, vals(&xs.validations), vals(&os.validations)));
         }

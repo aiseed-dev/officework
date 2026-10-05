@@ -66,19 +66,23 @@ pub fn write(book: &Book) -> (Vec<u8>, WriteReport) {
     }
     let content = content_xml(book, &st, &body);
     let styles = styles_xml(book, &st);
-    let bytes = zip_parts(&content, &styles, &st.pictures, &st.objects).unwrap_or_default();
+    let settings = super::settings::write(book);
+    let bytes = zip_parts(&content, &styles, settings.as_deref(), &st.pictures, &st.objects).unwrap_or_default();
     (bytes, rep)
 }
 
 /// Parts of a sheet this step does not write
 fn left_out(sh: &Sheet, rep: &mut WriteReport) {
     // Stable ids: the app turns them into words on the screen
-    rep.note("hyperlink", sh.links.len());
+    // A link in ODF is text; a link on an empty cell has nothing to sit on
+    rep.note("hyperlink", sh.links.keys().filter(|p| sh.value(**p).display().is_empty()).count());
     rep.note("table", sh.tables.len());
     rep.note("scenario", sh.scenarios.len());
-    rep.note("freeze", usize::from(sh.freeze.is_some()));
-    rep.note("page_break", sh.row_breaks.len() + sh.col_breaks.len());
-    rep.note("sheet_protection", usize::from(sh.protected));
+    // ODF keeps six of the things a protected sheet allows (selecting
+    // locked and unlocked cells, inserting and deleting rows and columns)
+    let a = &sh.protect_allow;
+    let more = [a.format_cells, a.format_cols, a.format_rows, a.insert_links, a.sort, a.autofilter, a.pivot, a.objects];
+    rep.note("sheet_protection", usize::from(sh.protected && more.iter().any(|x| *x)));
     rep.note(
         "header",
         [&sh.header_even, &sh.footer_even, &sh.header_first, &sh.footer_first].iter().filter(|h| h.is_some()).count(),
@@ -88,8 +92,10 @@ fn left_out(sh: &Sheet, rep: &mut WriteReport) {
 /// The automatic styles collected while the sheets are written
 #[derive(Default)]
 struct Styles {
-    cols: Vec<String>,
-    rows: Vec<(String, bool)>,
+    /// Column styles: (width, starts a page)
+    cols: Vec<(String, bool)>,
+    /// Row styles: (height, optimal height, starts a page)
+    rows: Vec<(String, bool, bool)>,
     cells: Vec<CellFormat>,
     cell_index: BTreeMap<CellFormat, usize>,
     codes: Vec<String>,
@@ -118,17 +124,17 @@ struct Styles {
 }
 
 impl Styles {
-    fn col(&mut self, mm: f32) -> String {
-        let w = length(mm);
+    fn col(&mut self, mm: f32, brk: bool) -> String {
+        let w = (length(mm), brk);
         let i = self.cols.iter().position(|x| *x == w).unwrap_or_else(|| {
             self.cols.push(w);
             self.cols.len() - 1
         });
         format!("co{}", i + 1)
     }
-    fn row(&mut self, pt: f32, auto: bool) -> String {
+    fn row(&mut self, pt: f32, auto: bool, brk: bool) -> String {
         let h = length(pt * 25.4 / 72.0);
-        let key = (h, auto);
+        let key = (h, auto, brk);
         let i = self.rows.iter().position(|x| *x == key).unwrap_or_else(|| {
             self.rows.push(key);
             self.rows.len() - 1
@@ -368,7 +374,29 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
             .collect();
         let _ = write!(out, r#" table:print-ranges="{}""#, esc(&ranges.join(" ")));
     }
+    // A protected sheet without a password, and what it allows, in
+    // LibreOffice's extension (sc/source/filter/xml/xmlexprt.cxx)
+    if sh.protected {
+        out.push_str(r#" table:protected="true""#);
+    }
     out.push('>');
+    if sh.protected {
+        let a = &sh.protect_allow;
+        out.push_str("<loext:table-protection");
+        for (on, key) in [
+            (a.select_locked, "select-protected-cells"),
+            (a.select_unlocked, "select-unprotected-cells"),
+            (a.insert_cols, "insert-columns"),
+            (a.insert_rows, "insert-rows"),
+            (a.delete_cols, "delete-columns"),
+            (a.delete_rows, "delete-rows"),
+        ] {
+            if on {
+                let _ = write!(out, r#" loext:{key}="true""#);
+            }
+        }
+        out.push_str("/>");
+    }
 
     // Comments, pictures and shapes go inside the cell they are anchored
     // to: (comment, drawing objects) by cell
@@ -435,10 +463,10 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
         last_row = last_row.max(b.row + 1);
         last_col = last_col.max(b.col + 1);
     }
-    for c in sh.col_mm.keys().chain(sh.col_hidden.iter()) {
+    for c in sh.col_mm.keys().chain(sh.col_hidden.iter()).chain(sh.col_breaks.iter()) {
         last_col = last_col.max(c + 1);
     }
-    for r in sh.row_height.keys().chain(sh.row_hidden.iter()) {
+    for r in sh.row_height.keys().chain(sh.row_hidden.iter()).chain(sh.row_breaks.iter()) {
         last_row = last_row.max(r + 1);
     }
     if let Some((_, b)) = sh.print_title_cols {
@@ -452,7 +480,7 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
 
     // Columns: runs of the same width and visibility become one element
     let default_mm = sh.col_haba_mm(u32::MAX, &book.col_basis);
-    let col_key = |c: u32| (sh.col_haba_mm(c, &book.col_basis), sh.col_hidden.contains(&c));
+    let col_key = |c: u32| (sh.col_haba_mm(c, &book.col_basis), sh.col_hidden.contains(&c), sh.col_breaks.contains(&c));
     // Title columns repeat at the left of each printed page; runs do not
     // cross their edges
     let tcols = sh.print_title_cols;
@@ -467,14 +495,14 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
         if tcols.is_some_and(|(a, _)| a == c) {
             out.push_str("<table:table-header-columns>");
         }
-        column(out, st, k.0, k.1, n);
+        column(out, st, k.0, k.1, k.2, n);
         if tcols.is_some_and(|(_, b)| b == c + n - 1) {
             out.push_str("</table:table-header-columns>");
         }
         c += n;
     }
     if last_col < MAX_COLS {
-        column(out, st, default_mm, false, MAX_COLS - last_col);
+        column(out, st, default_mm, false, false, MAX_COLS - last_col);
     }
 
     // Title rows repeat at the top of each printed page
@@ -497,7 +525,8 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
         .chain(sh.row_height.keys().copied())
         .chain(sh.row_height_auto.keys().copied())
         .chain(sh.row_hidden.iter().copied())
-        .chain(sh.filter_hidden.iter().copied());
+        .chain(sh.filter_hidden.iter().copied())
+        .chain(sh.row_breaks.iter().copied());
     for x in per_row {
         events.extend([x, x + 1]);
     }
@@ -651,8 +680,8 @@ fn named_range_xml(sheet: &str, n: &book::DefinedName) -> String {
     )
 }
 
-fn column(out: &mut String, st: &mut Styles, mm: f32, hidden: bool, n: u32) {
-    let co = st.col(mm);
+fn column(out: &mut String, st: &mut Styles, mm: f32, hidden: bool, brk: bool, n: u32) {
+    let co = st.col(mm, brk);
     let _ = write!(out, r#"<table:table-column table:style-name="{co}""#);
     if n > 1 {
         let _ = write!(out, r#" table:number-columns-repeated="{n}""#);
@@ -667,7 +696,7 @@ fn row_attrs(sh: &Sheet, r: u32, st: &mut Styles) -> String {
     let mut a = String::new();
     let h = sh.row_height.get(&r).copied().or(sh.default_row_height).unwrap_or(book::DEFAULT_ROW_PT);
     let auto = sh.row_height_auto.contains_key(&r) || !sh.row_height.contains_key(&r);
-    let _ = write!(a, r#" table:style-name="{}""#, st.row(h, auto));
+    let _ = write!(a, r#" table:style-name="{}""#, st.row(h, auto, sh.row_breaks.contains(&r)));
     if sh.row_hidden.contains(&r) {
         a.push_str(r#" table:visibility="collapse""#);
     } else if sh.filter_hidden.contains(&r) {
@@ -759,7 +788,8 @@ fn row_cells(
         match used.get(&c).copied().or(extra.map(|_| &empty_cell)) {
             Some(cl) => {
                 flush(&mut out, &mut blank, blank_val);
-                cell_xml(&mut out, cl, starts.get(&p).copied(), sh.rich_runs.get(&p), extra, v, st);
+                let link = sh.links.get(&p).map(|l| link_href(l));
+                cell_xml(&mut out, cl, starts.get(&p).copied(), sh.rich_runs.get(&p), extra, v, link.as_deref(), st);
             }
             None => {
                 if blank > 0 && blank_val != v {
@@ -786,6 +816,7 @@ fn row_cells(
 /// One cell. `extra` is its comment and the drawing objects anchored to it:
 /// the comment comes before the cell's paragraphs, the objects after them,
 /// as LibreOffice writes them
+#[allow(clippy::too_many_arguments)]
 fn cell_xml(
     out: &mut String,
     cl: &Cell,
@@ -793,6 +824,7 @@ fn cell_xml(
     runs: Option<&Vec<book::RichRun>>,
     extra: Option<&(String, String)>,
     validation: Option<&str>,
+    link: Option<&str>,
     st: &mut Styles,
 ) {
     out.push_str("<table:table-cell");
@@ -877,12 +909,68 @@ fn cell_xml(
         }
         _ => {}
     }
+    // A link covers the text of each paragraph, as LibreOffice writes it
+    if let Some(href) = link.filter(|_| !inner.is_empty()) {
+        let a = format!(r#"<text:p><text:a xlink:href="{}" xlink:type="simple">"#, esc(href));
+        inner = inner.replace("<text:p>", &a).replace("</text:p>", "</text:a></text:p>");
+    }
     let (note, objects) = extra.map(|(a, b)| (a.as_str(), b.as_str())).unwrap_or(("", ""));
     if inner.is_empty() && note.is_empty() && objects.is_empty() {
         out.push_str("/>");
     } else {
         let _ = write!(out, ">{note}{inner}{objects}</table:table-cell>");
     }
+}
+
+/// A link of the model as an ODF href. A place in the workbook is
+/// `#Sheet!A1` in the model (as an xlsx location) and `#Sheet.A1` in ODF
+fn link_href(l: &str) -> String {
+    match l.strip_prefix('#') {
+        Some(loc) => match split_place(loc, '!') {
+            Some((sheet, cell)) => format!("#{sheet}.{cell}"),
+            None => l.to_string(),
+        },
+        None => l.to_string(),
+    }
+}
+
+/// `Sheet!A1` → (`Sheet`, `A1`), and `Sheet!A1:Sheet!B2` or `Sheet!A1:B2`
+/// → (`Sheet`, `A1:B2`), splitting at the last separator outside quotes.
+/// None when what follows is not a cell or a range (a name, say)
+pub(super) fn split_place(loc: &str, sep: char) -> Option<(String, String)> {
+    let last_sep = |s: &str| {
+        let mut quoted = false;
+        let mut at = None;
+        for (i, c) in s.char_indices() {
+            match c {
+                '\'' => quoted = !quoted,
+                c if c == sep && !quoted => at = Some(i),
+                _ => {}
+            }
+        }
+        at
+    };
+    let is_ref = |s: &str| Pos::parse(&s.replace('$', "")).is_some();
+    let (first, second) = match loc.rsplit_once(':') {
+        Some((a, b)) if !b.contains('\'') => (a, Some(b)),
+        _ => (loc, None),
+    };
+    let i = last_sep(first)?;
+    let (sheet, a) = (&first[..i], &first[i + 1..]);
+    if sheet.is_empty() || !is_ref(a) {
+        return None;
+    }
+    let cell = match second {
+        Some(b) => {
+            let b = last_sep(b).map_or(b, |j| &b[j + 1..]);
+            if !is_ref(b) {
+                return None;
+            }
+            format!("{a}:{b}")
+        }
+        None => a.to_string(),
+    };
+    Some((sheet.to_string(), cell))
 }
 
 /// One line of text: runs of spaces after the first, and leading spaces,
@@ -1188,18 +1276,20 @@ fn content_xml(book: &Book, st: &Styles, body: &str) -> String {
     let _ = write!(s, r#"<?xml version="1.0" encoding="UTF-8"?><office:document-content {NS}>"#);
     s.push_str(&font_decls(book, st));
     s.push_str("<office:automatic-styles>");
-    for (i, w) in st.cols.iter().enumerate() {
+    for (i, (w, brk)) in st.cols.iter().enumerate() {
         let _ = write!(
             s,
-            r#"<style:style style:name="co{}" style:family="table-column"><style:table-column-properties fo:break-before="auto" style:column-width="{w}"/></style:style>"#,
-            i + 1
+            r#"<style:style style:name="co{}" style:family="table-column"><style:table-column-properties fo:break-before="{}" style:column-width="{w}"/></style:style>"#,
+            i + 1,
+            if *brk { "page" } else { "auto" }
         );
     }
-    for (i, (h, auto)) in st.rows.iter().enumerate() {
+    for (i, (h, auto, brk)) in st.rows.iter().enumerate() {
         let _ = write!(
             s,
-            r#"<style:style style:name="ro{}" style:family="table-row"><style:table-row-properties style:row-height="{h}" fo:break-before="auto" style:use-optimal-row-height="{auto}"/></style:style>"#,
-            i + 1
+            r#"<style:style style:name="ro{}" style:family="table-row"><style:table-row-properties style:row-height="{h}" fo:break-before="{}" style:use-optimal-row-height="{auto}"/></style:style>"#,
+            i + 1,
+            if *brk { "page" } else { "auto" }
         );
     }
     for (i, (hidden, rtl, page)) in st.tables.iter().enumerate() {
@@ -1366,6 +1456,13 @@ fn cell_style(f: &CellFormat) -> String {
     if f.align != HAlign::General {
         cp.push_str(r#" style:text-align-source="fix""#);
     }
+    // Cells are locked unless a style says otherwise, as in an xlsx
+    match (f.unlocked, f.formula_hidden) {
+        (true, false) => cp.push_str(r#" style:cell-protect="none""#),
+        (true, true) => cp.push_str(r#" style:cell-protect="formula-hidden""#),
+        (false, true) => cp.push_str(r#" style:cell-protect="protected formula-hidden""#),
+        (false, false) => {}
+    }
     let mut out = String::new();
     if !cp.is_empty() {
         let _ = write!(out, "<style:table-cell-properties{cp}/>");
@@ -1504,6 +1601,7 @@ fn styles_xml(book: &Book, st: &Styles) -> String {
 fn zip_parts(
     content: &str,
     styles: &str,
+    settings: Option<&str>,
     pictures: &[(String, Vec<u8>, &'static str)],
     objects: &[(String, Vec<u8>, String)],
 ) -> zip::result::ZipResult<Vec<u8>> {
@@ -1520,6 +1618,10 @@ fn zip_parts(
         z.write_all(content.as_bytes())?;
         z.start_file("styles.xml", packed)?;
         z.write_all(styles.as_bytes())?;
+        if let Some(x) = settings {
+            z.start_file("settings.xml", packed)?;
+            z.write_all(x.as_bytes())?;
+        }
         z.start_file("meta.xml", packed)?;
         let _ = write!(
             z,
@@ -1538,6 +1640,9 @@ fn zip_parts(
         let mut m = String::from(
             r#"<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.3"><manifest:file-entry manifest:full-path="/" manifest:version="1.3" manifest:media-type="application/vnd.oasis.opendocument.spreadsheet"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/>"#,
         );
+        if settings.is_some() {
+            m.push_str(r#"<manifest:file-entry manifest:full-path="settings.xml" manifest:media-type="text/xml"/>"#);
+        }
         for (path, _, mime) in pictures {
             let _ = write!(m, r#"<manifest:file-entry manifest:full-path="{path}" manifest:media-type="{mime}"/>"#);
         }

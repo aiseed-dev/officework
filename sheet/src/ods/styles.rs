@@ -47,6 +47,8 @@ struct Props {
     wrap: Option<bool>,
     shrink: Option<bool>,
     rotation: Option<Option<i32>>,
+    /// `style:cell-protect` as (unlocked, formula hidden)
+    protect: Option<(bool, bool)>,
 }
 
 /// The cell styles of both parts and the fonts they name
@@ -249,6 +251,10 @@ impl CellStyles {
             take!(wrap, f.wrap);
             take!(shrink, f.shrink);
             take!(rotation, f.rotation);
+            if let Some((unlocked, hidden)) = p.protect {
+                f.unlocked = unlocked;
+                f.formula_hidden = hidden;
+            }
             if let Some(s) = p.size_c {
                 f.size_c = Some(s);
             }
@@ -321,6 +327,19 @@ fn cell_props(e: &BytesStart, p: &mut Props) {
     }
     if let Some(v) = attr(e, "style:shrink-to-fit") {
         p.shrink = Some(v == "true");
+    }
+    // `none`, `protected`, `formula-hidden`, `protected formula-hidden` or
+    // `hidden-and-protected`, read as LibreOffice does
+    // (sc/source/filter/xml/xmlstyle.cxx). The model has no "hide
+    // the value", so hidden-and-protected keeps the formula hidden
+    if let Some(v) = attr(e, "style:cell-protect") {
+        let words: Vec<&str> = v.split_whitespace().collect();
+        let p_ = |w: &str| words.contains(&w);
+        p.protect = Some(if p_("hidden-and-protected") {
+            (false, true)
+        } else {
+            (!p_("protected"), p_("formula-hidden"))
+        });
     }
     if let Some(v) = attr(e, "style:rotation-angle") {
         // ODF counts counterclockwise from 0 to 360. The engine keeps xlsx's
