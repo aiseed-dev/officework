@@ -314,6 +314,10 @@ fn parse_body(
     // Names for the whole workbook, put on the sheet they point at once all
     // sheets are read
     let mut pending_names: Vec<(String, book::DefinedName)> = Vec::new();
+    // Excel tables, kept by LibreOffice as named database ranges after the
+    // sheets: (sheet, table)
+    let mut pending_tables: Vec<(String, book::TableDef)> = Vec::new();
+    let mut in_db_range = false;
     // The look of a cell with no style of its own: empty cells in this look
     // are not kept
     let plain = cells.format("Default");
@@ -708,8 +712,37 @@ fn parse_body(
                         }
                     }
                     b"calcext:date-is" => rep_note(rep, "calcext:date-is"),
-                    b"table:database-ranges"
-                    | b"table:data-pilot-tables"
+                    // A named range of data with filter buttons: an Excel
+                    // table as LibreOffice writes it. `__Anonymous_Sheet_DB__`
+                    // ranges hold a sheet's own autofilter, which the model
+                    // does not have
+                    b"table:database-range" => {
+                        let name = attr(e, "table:name").unwrap_or_default();
+                        let range = attr(e, "table:target-range-address").and_then(|a| named_range(&a));
+                        match range {
+                            Some((sheet, r)) if !name.starts_with("__Anonymous_Sheet_DB__") => {
+                                let (a, b) = r.split_once(':').unwrap_or((&r, &r));
+                                if let (Some(a), Some(b)) = (Pos::parse(a), Pos::parse(b)) {
+                                    let t = book::TableDef {
+                                        name,
+                                        a,
+                                        b,
+                                        header: attr(e, "table:contains-header").as_deref() != Some("false"),
+                                        filter: attr(e, "table:display-filter-buttons").as_deref() == Some("true"),
+                                        ..Default::default()
+                                    };
+                                    pending_tables.push((sheet, t));
+                                }
+                            }
+                            _ => rep_note(rep, "table:database-range"),
+                        }
+                        in_db_range = !empty;
+                    }
+                    // Sorting and filter conditions kept with a range
+                    b"table:filter" | b"table:sort" | b"table:subtotal-rules" if in_db_range => {
+                        rep_note(rep, std::str::from_utf8(name).unwrap_or("?"));
+                    }
+                    b"table:data-pilot-tables"
                     | b"table:table-row-group"
                     | b"table:table-column-group" => {
                         rep_note(rep, std::str::from_utf8(name).unwrap_or("?"));
@@ -840,6 +873,7 @@ fn parse_body(
                             book.sheets.push(sh);
                         }
                     }
+                    b"table:database-range" => in_db_range = false,
                     b"office:spreadsheet" => break,
                     _ => {}
                 }
@@ -852,6 +886,12 @@ fn parse_body(
         match book.sheets.iter_mut().find(|s| s.name == on) {
             Some(sh) => sh.names.push(n),
             None => rep_note(rep, "table:named-range"),
+        }
+    }
+    for (on, t) in pending_tables {
+        match book.sheets.iter_mut().find(|s| s.name == on) {
+            Some(sh) => sh.tables.push(t),
+            None => rep_note(rep, "table:database-range"),
         }
     }
     if null_date == Some((1904, 1, 1)) {

@@ -238,7 +238,10 @@ fn data_validation_round_trips() {
     let mut whole = rule((Pos::new(1, 2), Pos::new(5000, 3)), "whole", "between", "1", "100");
     whole.allow_blank = false;
     let length = rule((Pos::new(2, 5), Pos::new(2, 5)), "textLength", "lessThanOrEqual", "8", "");
-    sh.validations = vec![list, whole, length];
+    // Any value, with only a message to show
+    let mut any = rule((Pos::new(4, 6), Pos::new(9, 6)), "", "", "", "");
+    any.input_msg = Some(("メモ".into(), "自由に書きます".into()));
+    sh.validations = vec![list, whole, length, any];
     let (bytes, rep) = super::write(&b);
     assert!(rep.is_lossless(), "{:?}", rep.left_out);
     let (r, read_rep) = read(bytes);
@@ -250,8 +253,8 @@ fn data_validation_round_trips() {
     assert_eq!(got, want);
 }
 
-/// Page breaks, sheet protection, unlocked cells, links and frozen panes
-/// are written and read back the same
+/// Page breaks, sheet protection, unlocked cells, links, frozen panes and
+/// tables are written and read back the same
 #[test]
 fn breaks_protection_links_and_frozen_panes_round_trip() {
     let mut b = book::Book::new();
@@ -275,6 +278,7 @@ fn breaks_protection_links_and_frozen_panes_round_trip() {
     sh.links.insert(Pos::new(2, 0), "#'Data Sheet'!B3".into());
     sh.links.insert(Pos::new(3, 0), "#'Data Sheet'!A1:C4".into());
     sh.freeze = Some(book::FreezePane { frozen_rows: 1, frozen_columns: 2 });
+    sh.tables.push(book::TableDef { name: "名簿".into(), a: Pos::new(0, 0), b: Pos::new(3, 2), ..Default::default() });
     b.sheets[1].freeze = Some(book::FreezePane { frozen_rows: 3, frozen_columns: 0 });
     let (bytes, rep) = super::write(&b);
     assert!(rep.is_lossless(), "{:?}", rep.left_out);
@@ -288,6 +292,7 @@ fn breaks_protection_links_and_frozen_panes_round_trip() {
     assert_eq!(y.links, x.links);
     assert_eq!(y.freeze, x.freeze);
     assert_eq!(r.sheets[1].freeze, b.sheets[1].freeze);
+    assert_eq!(y.tables, x.tables);
 }
 
 /// Header and footer text keeps its font, size and bold, its runs of
@@ -311,4 +316,36 @@ fn header_looks_and_even_and_first_pages_round_trip() {
     assert_eq!(y.footer, x.footer);
     assert_eq!((y.hf_diff_odd_even, &y.header_even, &y.footer_even), (true, &x.header_even, &None));
     assert_eq!((y.hf_diff_first, &y.header_first, &y.footer_first), (true, &None, &x.footer_first));
+}
+
+/// A turned shape is written with a transform and read back with the same
+/// angle and box
+#[test]
+fn a_turned_shape_round_trips() {
+    let mut b = book::Book::new();
+    let sh = &mut b.sheets[0];
+    sh.set(Pos::new(0, 0), book::Cell { value: Value::Number(1.0), ..Default::default() });
+    sh.shapes.push(book::SheetShape {
+        at: Pos::new(2, 1),
+        kind: "rect".into(),
+        dx_px: 10.0,
+        dy_px: 5.0,
+        width_px: 200.0,
+        height_px: 60.0,
+        rot: 30.0,
+        fill: Some("DDEBF7".into()),
+        text: Some("回して  置く".into()),
+        z: 1,
+        ..Default::default()
+    });
+    let (bytes, rep) = super::write(&b);
+    assert!(rep.is_lossless(), "{:?}", rep.left_out);
+    let (r, _) = read(bytes);
+    let (x, y) = (&b.sheets[0].shapes[0], &r.sheets[0].shapes[0]);
+    assert!((y.rot - 30.0).abs() < 0.01, "{}", y.rot);
+    assert_eq!(y.at, x.at);
+    for (a, b) in [(x.dx_px, y.dx_px), (x.dy_px, y.dy_px), (x.width_px, y.width_px), (x.height_px, y.height_px)] {
+        assert!((a - b).abs() < 0.1, "{a} vs {b}");
+    }
+    assert_eq!(y.text, x.text);
 }

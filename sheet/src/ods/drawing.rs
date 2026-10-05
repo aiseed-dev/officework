@@ -396,13 +396,26 @@ impl Capture {
         (self.object.as_ref().map(clean), self.image.as_ref().map(clean))
     }
 
-    /// Offset and size in mm: (x, y, width, height)
+    /// Offset and size in mm: (x, y, width, height), of the box before it
+    /// is turned
     pub(super) fn rect_mm(&self) -> (f32, f32, f32, f32) {
         if self.kind == "draw:line" {
             let (x1, y1, x2, y2) = (self.len("svg:x1"), self.len("svg:y1"), self.len("svg:x2"), self.len("svg:y2"));
             return (x1.min(x2), y1.min(y2), (x2 - x1).abs(), (y2 - y1).abs());
         }
-        (self.len("svg:x"), self.len("svg:y"), self.len("svg:width"), self.len("svg:height"))
+        let (w, h) = (self.len("svg:width"), self.len("svg:height"));
+        match self.attrs.get("draw:transform").and_then(|t| turn(t)) {
+            Some((deg, tx, ty)) => {
+                let (cx, cy) = turned_centre(deg, tx, ty, w, h);
+                (cx - w / 2.0, cy - h / 2.0, w, h)
+            }
+            None => (self.len("svg:x"), self.len("svg:y"), w, h),
+        }
+    }
+
+    /// Degrees clockwise the object is turned by (`draw:transform`)
+    fn rot_deg(&self) -> f32 {
+        self.attrs.get("draw:transform").and_then(|t| turn(t)).map_or(0.0, |(d, _, _)| d)
     }
 
     /// The cell at the far corner when the object resizes with the cells
@@ -484,6 +497,7 @@ impl Capture {
             shadow: g.shadow.unwrap_or(false),
             alpha: g.alpha.unwrap_or(1.0),
             to: self.end(),
+            rot: self.rot_deg(),
             name: self.attrs.get("draw:name").cloned(),
             z,
             ..SheetShape::default()
@@ -508,6 +522,45 @@ impl Capture {
         }
         Drawn::Shape(Box::new(s))
     }
+}
+
+/// `rotate (a) translate (x y)` as (degrees clockwise, x mm, y mm). ODF
+/// keeps the angle mirrored: LibreOffice writes `rotate(-φ)` for a shape
+/// turned by φ (xmloff/source/draw/shapeexport.cxx, #i78696#), and turns
+/// clockwise on the page for a positive φ, since y grows downwards. The
+/// translation is where the turned box's first corner lands
+fn turn(t: &str) -> Option<(f32, f32, f32)> {
+    let arg = |name: &str| -> Option<&str> {
+        let i = t.find(name)? + name.len();
+        let rest = t[i..].trim_start().strip_prefix('(')?;
+        Some(&rest[..rest.find(')')?])
+    };
+    let a: f32 = arg("rotate")?.trim().parse().ok()?;
+    let (tx, ty) = match arg("translate") {
+        Some(v) => {
+            let mut it = v.split_whitespace();
+            (length_mm(it.next()?)?, length_mm(it.next().unwrap_or("0cm")).unwrap_or(0.0))
+        }
+        None => (0.0, 0.0),
+    };
+    let deg = (-a).to_degrees().rem_euclid(360.0);
+    Some(((deg * 1000.0).round() / 1000.0 % 360.0, tx, ty))
+}
+
+/// The centre of a `w` × `h` box turned `deg` clockwise whose first corner
+/// was moved to `(tx, ty)`
+fn turned_centre(deg: f32, tx: f32, ty: f32, w: f32, h: f32) -> (f32, f32) {
+    let (s, c) = deg.to_radians().sin_cos();
+    (tx + c * w / 2.0 - s * h / 2.0, ty + s * w / 2.0 + c * h / 2.0)
+}
+
+/// Where the first corner of a `w` × `h` box at `(x, y)` lands when it is
+/// turned `deg` clockwise about its centre: the inverse of
+/// [`turned_centre`]
+fn turned_corner(deg: f32, x: f32, y: f32, w: f32, h: f32) -> (f32, f32) {
+    let (s, c) = deg.to_radians().sin_cos();
+    let (cx, cy) = (x + w / 2.0, y + h / 2.0);
+    (cx - (c * w / 2.0 - s * h / 2.0), cy - (s * w / 2.0 + c * h / 2.0))
 }
 
 /// Which cell holds the point `(x, y)` mm from the sheet's corner, and the
@@ -701,6 +754,11 @@ pub(super) fn shape_xml(s: &SheetShape, sheet: &str, style: &str, para: &str) ->
     if ty == "line" {
         let (x1, x2) = if s.flip_h { (x + w, x) } else { (x, x + w) };
         let (y1, y2) = if s.flip_v { (y + h, y) } else { (y, y + h) };
+        // A turned line is its two ends turned about the middle
+        let (sn, cs) = s.rot.to_radians().sin_cos();
+        let (cx, cy) = (x + w / 2.0, y + h / 2.0);
+        let spin = |px: f32, py: f32| (cx + cs * (px - cx) - sn * (py - cy), cy + sn * (px - cx) + cs * (py - cy));
+        let ((x1, y1), (x2, y2)) = (spin(x1, y1), spin(x2, y2));
         return Some(format!(
             r#"<draw:line draw:z-index="{z}"{name} draw:style-name="{style}" svg:x1="{}" svg:y1="{}" svg:x2="{}" svg:y2="{}"{end}><text:p/></draw:line>"#,
             cm(x1),
@@ -710,7 +768,7 @@ pub(super) fn shape_xml(s: &SheetShape, sheet: &str, style: &str, para: &str) ->
         ));
     }
     let text: String = match &s.text {
-        Some(t) => t.split('\n').map(|l| format!(r#"<text:p text:style-name="{para}">{}</text:p>"#, super::write::esc(l))).collect(),
+        Some(t) => t.split('\n').map(|l| format!(r#"<text:p text:style-name="{para}">{}</text:p>"#, super::write::para(l))).collect(),
         None => String::new(),
     };
     let mirror = format!(
@@ -718,12 +776,17 @@ pub(super) fn shape_xml(s: &SheetShape, sheet: &str, style: &str, para: &str) ->
         if s.flip_h { r#" draw:mirror-horizontal="true""# } else { "" },
         if s.flip_v { r#" draw:mirror-vertical="true""# } else { "" }
     );
+    // A turned shape gives its place as a transform instead of svg:x / svg:y
+    let place = if s.rot.rem_euclid(360.0) == 0.0 {
+        format!(r#" svg:x="{}" svg:y="{}""#, cm(x), cm(y))
+    } else {
+        let (tx, ty) = turned_corner(s.rot, x, y, w, h);
+        format!(r#" draw:transform="rotate ({}) translate ({} {})""#, -s.rot.to_radians(), cm(tx), cm(ty))
+    };
     Some(format!(
-        r#"<draw:custom-shape draw:z-index="{z}"{name} draw:style-name="{style}" svg:width="{}" svg:height="{}" svg:x="{}" svg:y="{}"{end}>{text}<draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:type="{ty}"{mirror}/></draw:custom-shape>"#,
+        r#"<draw:custom-shape draw:z-index="{z}"{name} draw:style-name="{style}" svg:width="{}" svg:height="{}"{place}{end}>{text}<draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:type="{ty}"{mirror}/></draw:custom-shape>"#,
         cm(w),
-        cm(h),
-        cm(x),
-        cm(y)
+        cm(h)
     ))
 }
 

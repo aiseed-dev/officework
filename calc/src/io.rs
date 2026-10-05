@@ -1689,7 +1689,7 @@ fn ods_part_name(what: &str) -> String {
         "hyperlink" => ui::t!("hyperlink_menu"),
         "conditional_formatting" => ui::t!("conditional_formatting"),
         "data_validation" => ui::t!("data_validation"),
-        "shape" | "shape_rotation" => ui::t!("shapes_images"),
+        "shape" => ui::t!("shapes_images"),
         "table" => ui::t!("excel_tables"),
         "scenario" => ui::t!("scenario"),
         "sheet_protection" => ui::t!("protect_sheet_2"),

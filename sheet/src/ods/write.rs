@@ -64,6 +64,32 @@ pub fn write(book: &Book) -> (Vec<u8>, WriteReport) {
     if !global.is_empty() {
         let _ = write!(body, "<table:named-expressions>{}</table:named-expressions>", global.concat());
     }
+    // Excel tables as named database ranges, as LibreOffice writes them
+    // (sc/source/filter/xml/XMLExportDatabaseRanges.cxx)
+    let tables: Vec<String> = book
+        .sheets
+        .iter()
+        .flat_map(|sh| sh.tables.iter().map(move |t| (sh, t)))
+        .map(|(sh, t)| {
+            let q = quote_sheet(&sh.name);
+            let mut x = format!(
+                r#"<table:database-range table:name="{}" table:target-range-address="{}""#,
+                esc(&t.name),
+                esc(&format!("{q}.{}:{q}.{}", t.a.a1(), t.b.a1()))
+            );
+            if t.filter {
+                x.push_str(r#" table:display-filter-buttons="true""#);
+            }
+            if !t.header {
+                x.push_str(r#" table:contains-header="false""#);
+            }
+            x.push_str("/>");
+            x
+        })
+        .collect();
+    if !tables.is_empty() {
+        let _ = write!(body, "<table:database-ranges>{}</table:database-ranges>", tables.concat());
+    }
     let content = content_xml(book, &st, &body);
     let styles = styles_xml(book, &st);
     let settings = super::settings::write(book);
@@ -76,7 +102,21 @@ fn left_out(sh: &Sheet, rep: &mut WriteReport) {
     // Stable ids: the app turns them into words on the screen
     // A link in ODF is text; a link on an empty cell has nothing to sit on
     rep.note("hyperlink", sh.links.keys().filter(|p| sh.value(**p).display().is_empty()).count());
-    rep.note("table", sh.tables.len());
+    // ODF keeps a table's name, range, header row and filter buttons. Its
+    // style and banding, and the totals row flag, have no place: noted
+    // when they are not what a table gets by default
+    let plain = book::TableDef::default();
+    rep.note(
+        "table",
+        sh.tables
+            .iter()
+            .filter(|t| {
+                t.style.as_deref().is_some_and(|s| s != "TableStyleMedium2")
+                    || t.totals
+                    || (t.banded_rows, t.banded_cols, t.first_col, t.last_col) != (plain.banded_rows, plain.banded_cols, plain.first_col, plain.last_col)
+            })
+            .count(),
+    );
     rep.note("scenario", sh.scenarios.len());
     // ODF keeps six of the things a protected sheet allows (selecting
     // locked and unlocked cells, inserting and deleting rows and columns)
@@ -193,13 +233,14 @@ impl Styles {
     /// The name of a data validation rule, None for a kind ODF has no
     /// condition for. Rules with the same everything share one name
     fn validation(&mut self, sheet: &str, v: &book::Validation) -> Option<String> {
-        let cond = super::valid::condition(v)?;
+        // A rule that allows any value (only messages) has no condition
+        let cond = match super::valid::condition(v) {
+            Some(c) => format!(r#" table:condition="{}""#, esc(&c)),
+            None if v.kind.is_empty() || v.kind == "none" => String::new(),
+            None => return None,
+        };
         let base = format!("{}.{}", quote_sheet(sheet), v.range.0.a1());
-        let mut x = format!(
-            r#" table:condition="{}" table:allow-empty-cell="{}""#,
-            esc(&cond),
-            v.allow_blank
-        );
+        let mut x = format!(r#"{cond} table:allow-empty-cell="{}""#, v.allow_blank);
         if v.kind == "list" {
             let _ = write!(x, r#" table:display-list="{}""#, if v.hide_arrow { "none" } else { "unsorted" });
         }
@@ -409,9 +450,6 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
         if super::drawing::shape_type(&shp.kind).is_none() {
             rep.note("shape", 1);
             continue;
-        }
-        if shp.rot != 0.0 {
-            rep.note("shape_rotation", 1);
         }
         let style = st.graphic(super::drawing::shape_graphic(shp));
         let para = st.paragraph(super::drawing::shape_paragraph(shp));
@@ -976,7 +1014,7 @@ pub(super) fn split_place(loc: &str, sep: char) -> Option<(String, String)> {
 
 /// One line of text: runs of spaces after the first, and leading spaces,
 /// become `<text:s/>`, since XML would fold them; tabs become `<text:tab/>`
-fn para(line: &str) -> String {
+pub(super) fn para(line: &str) -> String {
     let mut o = String::new();
     let mut spaces = 0usize;
     let mut at_start = true;
