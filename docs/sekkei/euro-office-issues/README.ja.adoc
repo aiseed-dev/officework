@@ -1,7 +1,9 @@
 = Euro-Office core に出す issue
 
 `docs/sekkei/euro-office-core.ja.adoc` に記録した問題を、GitHub の
-Euro-Office/core にそのまま出せる形にしたものです。1 つの issue に、本文の
+Euro-Office/core にそのまま出せる形にしたものです。
+
+変換の問題なので、出さないことになりました(2026-10-06 発注者)。記録として残します。1 つの issue に、本文の
 ファイル(`.md`)が 1 つと、再現用の ods があります。
 
 == 出し方
