@@ -70,8 +70,9 @@ calcext:value="=&quot;Desktop&quot;" converts to <cfRule type="top10"/>.
 ods を xlsx に変えると、styles.xml に `<numFmts formatCode="6">` が出ます。
 `numFmts` が持つ属性は `count` で、`formatCode` は子の `numFmt` の属性です。
 LibreOffice も `count` を書きます(`sc/source/filter/excel/xestyle.cxx` 1389 行目)。
-規約の項の番号(18.8.31 のはず)は、この機械に ECMA-376 が無いため、投稿の前に
-Mac の規約で確かめます。比べるための ods 49 個を
+規約は ECMA-376 Part 1 の 18.8.31 numFmts で、属性は count(numFmt の数)だけです
+(2026-10-06 に Microsoft の [MS-OI29500] 2.1.713 と c-rex.net の規約の写しで確かめた)。
+比べるための ods 49 個を
 変換すると、どの xlsx にもこの形が出ました。openpyxl はこの xlsx を開けず、
 `NumberFormatList.__init__() got an unexpected keyword argument 'formatCode'`
 で止まります。
@@ -149,8 +150,9 @@ LibreOffice は「等しい」の規則を `cell-content()=5` と書きます
 逆に xlsx から ods に変えるとき、x2t は `cell-content()==5` と書きます。
 LibreOffice の読み込み(`sc/source/filter/xml/XMLConverter.cxx` の
 `lclGetConditionOperator`)は `=` を演算子として読み、残りの `=5` を式として
-読むので、結果としては通ります。ODF の規約で演算子に `==` があるかは、
-投稿の前に規約(table:condition の項)で確かめます。
+読むので、結果としては通ります。ODF の規約(1.2 Part 1 の 19.596 table:condition)の
+演算子は `<` `>` `<=` `>=` `=` `!=` の 6 つで、`==` はありません
+(2026-10-06 に確かめた)。
 
 [source,text]
 ----
@@ -167,6 +169,9 @@ value the same way.
 The ODS writer (OdfFile/Writer/Format/ods_table_context.cpp) writes "()=="
 for equal. LibreOffice happens to read it, because it takes "=" as the
 operator and "=5" as the expression. Writing "=" would match LibreOffice.
+
+The condition grammar (ODF 1.2 Part 1, 19.596 table:condition) has the
+operators '<' | '>' | '<=' | '>=' | '=' | '!='; "==" is not one of them.
 
 Suggested fix: in add_formula(), accept "()=" (after testing "()<=",
 "()>=", "()!=" and "()=="), and write "()=" in ods_table_context.cpp.
