@@ -1,0 +1,38 @@
+= Euro-Office core に出す issue
+
+`docs/sekkei/euro-office-core.ja.adoc` に記録した問題を、GitHub の
+Euro-Office/core にそのまま出せる形にしたものです。1 つの issue に、本文の
+ファイル(`.md`)が 1 つと、再現用の ods があります。
+
+== 出し方
+
+. https://github.com/Euro-Office/core/issues/new を開きます。
+. `.md` の 1 行目(`# ` の後)を Title に、2 行目から後を本文に貼ります。
+. 本文の「Steps to reproduce」に書いた ods を、本文の欄にドラッグして付けます。
+  GitHub は ods を付けられます。
+
+リポジトリに issue のひな形と CONTRIBUTING はありません(2026-10-06 に確かめた)。
+
+[cols="1,3,2",options="header"]
+|===
+| 番号 | 本文 | 付ける ods
+| 1 | `01-cf-value-containing-top.md` | `01-cf-value-containing-top.ods`
+| 2 | `02-numfmts-count.md` | `02-numfmts-count.ods`
+| 3 | `03-allow-empty-cell.md` | `03-allow-empty-cell.ods`
+| 4 | `04-equal-operator.md` | `04-equal-operator.ods`
+| 5 | `05-split-at-and.md` | `05-split-at-and.ods`
+| 6 | `06-trailing-rows-merged.md` | `06a-rules-on-empty-cells.ods` と `06b-row-heights.ods`
+|===
+
+== 確かめたこと(2026-10-06)
+
+* 6 つとも、Euro-Office core の最新の main(25ea5148)に同じコードが残っています。
+  本文の行番号とリンクは、この版を指しています。
+* 再現用の ods は `make_files.py` で作りました。LibreOffice 24.2 で xlsx に
+  保存すると、どれも書いたとおりに読まれます。
+* ONLYOFFICE Desktop Editors 9.4.0 の x2t で xlsx に変えると、どれも本文の
+  「Actual result」のとおりになります。
+* 規約の項の番号は、ECMA-376 Part 1 の 18.8.31 numFmts と、ODF 1.2 Part 1 の
+  19.596 table:condition です。
+
+出す前に main が進んでいたら、行番号がずれていないかだけ見ます。
