@@ -2632,15 +2632,19 @@ fn read_inner<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 buf.clear();
             }
         }
-        // データの入力規則。list(候補から選ぶ)だけ理解し、他は報告
+        // Data validation. Every rule is kept whole: type, operator, both
+        // formulas and the messages, also for types this does not check.
+        // Rules in the x14 extension (extLst) have the same shape, but give
+        // their range as an xm:sqref child instead of an attribute; Excel
+        // writes them there when a formula points to another sheet, and
+        // ONLYOFFICE writes every rule there
         {
             let mut r = Reader::from_str(&s);
             let mut buf = Vec::new();
-            // (sqref の原文, list か)。formula1 は子要素なので End まで貯める
-            // 種類・比較・第2式・文言まで全部持ち越す(知らない種類も落とさない)
+            // The formulas are children, so the rule is gathered until its end
             let mut dv: Option<book::Validation> = None;
             let mut dv_sq = String::new();
-            let mut in_f: u8 = 0; // 1=formula1 2=formula2
+            let mut in_f: u8 = 0; // 1 = formula1, 2 = formula2, 3 = sqref
             let read_attrs = |e: &quick_xml::events::BytesStart| -> (book::Validation, String) {
                 let a = |k: &str| attr(e, k).unwrap_or_default();
                 let input = {
@@ -2668,7 +2672,7 @@ fn read_inner<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                 )
             };
             let push = |sh: &mut book::Sheet, v: book::Validation, sq: &str| {
-                // sqref は空白区切りで複数の範囲を持てる
+                // sqref can hold several ranges, separated by spaces
                 for part in sq.split_whitespace() {
                     let range = match part.split_once(':') {
                         Some((a, b)) => Pos::parse(a).zip(Pos::parse(b)),
@@ -2689,25 +2693,27 @@ fn read_inner<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
                         dv = Some(v);
                         dv_sq = sq;
                     }
-                    // 自己閉じ = 式を持たない規則(文言だけ等)。それも持ち越す
+                    // An empty element is a rule without formulas (only
+                    // messages, say); it is kept too
                     Ok(Event::Empty(e)) if local(e.name().as_ref()) == b"dataValidation" => {
                         let (v, sq) = read_attrs(&e);
                         push(&mut sh, v, &sq);
                     }
                     Ok(Event::Start(e)) if local(e.name().as_ref()) == b"formula1" => in_f = 1,
                     Ok(Event::Start(e)) if local(e.name().as_ref()) == b"formula2" => in_f = 2,
+                    Ok(Event::Start(e)) if dv.is_some() && local(e.name().as_ref()) == b"sqref" => in_f = 3,
                     Ok(Event::Text(t)) if in_f > 0 => {
                         let s = t.unescape().unwrap_or_default();
                         if let Some(v) = &mut dv {
-                            if in_f == 1 {
-                                v.formula.push_str(&s);
-                            } else {
-                                v.formula2.push_str(&s);
+                            match in_f {
+                                1 => v.formula.push_str(&s),
+                                2 => v.formula2.push_str(&s),
+                                _ => dv_sq.push_str(&s),
                             }
                         }
                     }
                     Ok(Event::End(e)) => match local(e.name().as_ref()) {
-                        b"formula1" | b"formula2" => in_f = 0,
+                        b"formula1" | b"formula2" | b"sqref" => in_f = 0,
                         b"dataValidation" => {
                             if let Some(mut v) = dv.take() {
                                 v.formula = v.formula.trim().to_string();

@@ -1752,6 +1752,44 @@ mod validation_roundtrip_tests {
         assert_eq!(back.sheets[0].validations[0].kind, "whole", "種類が持ち越せない");
     }
 
+    /// Rules in the x14 extension give their range as an xm:sqref child.
+    /// ONLYOFFICE writes every rule there
+    #[test]
+    fn validation_rules_in_the_x14_extension_are_read() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("writes");
+        let ext = r#"<extLst><ext uri="{CCE6A557-97BC-4b89-ADB6-D9C93CAAB3DF}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"><x14:dataValidations count="2" xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main"><x14:dataValidation type="list" allowBlank="1" showErrorMessage="1" errorTitle="t" error="e"><x14:formula1><xm:f>Sheet2!$A$1:$A$3</xm:f></x14:formula1><xm:sqref>B2:B20 D2</xm:sqref></x14:dataValidation><x14:dataValidation type="whole" operator="between" allowBlank="0"><x14:formula1><xm:f>1</xm:f></x14:formula1><x14:formula2><xm:f>9</xm:f></x14:formula2><xm:sqref>C2:C20</xm:sqref></x14:dataValidation></x14:dataValidations></ext></extLst>"#;
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.get_ref().clone())).unwrap();
+        let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        use std::io::{Read as _, Write as _};
+        for i in 0..z.len() {
+            let mut f = z.by_index(i).unwrap();
+            let name = f.name().to_string();
+            let mut s = Vec::new();
+            f.read_to_end(&mut s).unwrap();
+            if name.ends_with("sheet1.xml") {
+                s = String::from_utf8(s).unwrap().replace("</worksheet>", &format!("{ext}</worksheet>")).into_bytes();
+            }
+            w.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+            w.write_all(&s).unwrap();
+        }
+        let out = w.finish().unwrap();
+        let (back, _rep) = read(Cursor::new(out.into_inner())).expect("reads");
+        let v = &back.sheets[0].validations;
+        let got: Vec<_> = v.iter().map(|v| (v.range.0.a1(), v.range.1.a1(), v.kind.as_str(), v.formula.as_str(), v.formula2.as_str(), v.allow_blank)).collect();
+        assert_eq!(
+            got,
+            vec![
+                ("B2".to_string(), "B20".to_string(), "list", "Sheet2!$A$1:$A$3", "", true),
+                ("D2".to_string(), "D2".to_string(), "list", "Sheet2!$A$1:$A$3", "", true),
+                ("C2".to_string(), "C20".to_string(), "whole", "1", "9", false),
+            ]
+        );
+        assert_eq!(v[0].error_msg, Some(("stop".into(), "t".into(), "e".into())));
+    }
+
     #[test]
     fn image_offsets_round_trip() {
         let mut b = Book::new();
