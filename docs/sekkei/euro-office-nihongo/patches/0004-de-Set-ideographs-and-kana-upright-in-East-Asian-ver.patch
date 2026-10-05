@@ -1,0 +1,237 @@
+From eef7b093d796a50b1e6e658f0016d3addff27ee5 Mon Sep 17 00:00:00 2001
+From: Yasuhiro Niji <ysniji@gmail.com>
+Date: Tue, 6 Oct 2026 07:56:14 +0900
+Subject: [PATCH 4/4] [de] Set ideographs and kana upright in East Asian vertical
+ text
+
+A table cell with w:textDirection="tbRl" and a shape with vert="eaVert"
+laid their text out as horizontal lines and drew them turned by 90
+degrees, so every Japanese character lay on its side. Word writes tbRl
+for Japanese vertical writing (MS-OE376 notes that it uses tbRlV for
+another purpose) and sets ideographs, kana and full-width forms upright
+in it; Latin letters, brackets, dashes and the prolonged sound mark
+stay turned with the line, which gives them their vertical shape.
+
+The container that turns its text now tells the text drawing the
+transform it draws with. A character that stands upright in vertical
+text (UAX #50 Vertical_Orientation U and Tu) is drawn turned back about
+the centre of its em square; the comma and the full stop also move to
+the top right of their square, where they sit in vertical text. Layout,
+selection and the cursor are unchanged.
+
+Vertical writing for a whole section is not part of this change: the
+section's text direction does not reach sdkjs.
+
+Assisted-by: ClaudeCode:claude-opus-5-5
+---
+ common/Drawings/Format/Shape.js          |  23 +++++
+ word/Editor/Paragraph/RunContent/Text.js | 104 ++++++++++++++++++++++-
+ word/Editor/Table/TableCell.js           |   3 +
+ 3 files changed, 128 insertions(+), 2 deletions(-)
+
+diff --git a/common/Drawings/Format/Shape.js b/common/Drawings/Format/Shape.js
+index 43dc09f..d8b7402 100644
+--- a/common/Drawings/Format/Shape.js
++++ b/common/Drawings/Format/Shape.js
+@@ -5555,6 +5555,25 @@
+ 				}
+ 			}
+ 		};
++		/**
++		 * Tells the text drawing whether this shape's text is East Asian vertical text (vert="eaVert"),
++		 * where ideographs and kana stand upright
++		 * @param {?AscCommon.CMatrix} transformText the transform the text is drawn with
++		 * @param {boolean} [restore] put back the value returned by an earlier call
++		 * @returns {?AscCommon.CMatrix} the previous value
++		 */
++		CShape.prototype.setEastAsianVerticalText = function (transformText, restore) {
++			let word = window["AscWord"];
++			if (!word || !word.SetEastAsianVerticalText) {
++				return null;
++			}
++			if (restore) {
++				return word.SetEastAsianVerticalText(transformText);
++			}
++			let bodyPr = this.getBodyPr && this.getBodyPr();
++			let isVertical = bodyPr && bodyPr.vert === AscFormat.nVertTTeaVert && !bodyPr.upright;
++			return word.SetEastAsianVerticalText(isVertical ? transformText : null);
++		};
+ 		CShape.prototype.drawTxBody = function (graphics, transform, transformText, pageIndex) {
+ 			if (this.txBody) {
+ 				var oController = this.getDrawingObjectsController && this.getDrawingObjectsController();
+@@ -5581,7 +5600,9 @@
+ 					graphics.CheckUseFonts2(_transformText);
+ 
+ 				graphics.SetIntegerGrid(true);
++				let previousVertical = this.setEastAsianVerticalText(_transformText);
+ 				this.txBody.draw(graphics);
++				this.setEastAsianVerticalText(previousVertical, true);
+ 				if (graphics.UncheckUseFonts2 !== undefined)
+ 					graphics.UncheckUseFonts2(_transformText);
+ 				graphics.RestoreGrState();
+@@ -5738,7 +5759,9 @@
+ 
+ 
+ 						this.textBoxContent.Set_StartPage(result_page_index);
++						let previousVertical = this.setEastAsianVerticalText(this.transformText);
+ 						this.textBoxContent.Draw(result_page_index, graphics);
++						this.setEastAsianVerticalText(previousVertical, true);
+ 
+ 						if (graphics.UncheckUseFonts2 !== undefined)
+ 							graphics.UncheckUseFonts2();
+diff --git a/word/Editor/Paragraph/RunContent/Text.js b/word/Editor/Paragraph/RunContent/Text.js
+index 5083e7a..905aa75 100644
+--- a/word/Editor/Paragraph/RunContent/Text.js
++++ b/word/Editor/Paragraph/RunContent/Text.js
+@@ -370,6 +370,104 @@
+ 
+ 		return (nWidth > 0 ? nWidth / (((this.Flags >> 16) & 0xFFFF) / 64) : 0);
+ 	};
++	// East Asian vertical text (a table cell with w:textDirection="tbRl", a shape with
++	// vert="eaVert") is laid out as horizontal lines and drawn turned by 90 degrees.
++	// Word sets ideographs, kana and full-width forms upright in it; Latin letters,
++	// brackets, dashes and the prolonged sound mark stay turned with the line, which
++	// gives them their vertical shape. The container that turns its text puts the
++	// transform it draws with here while it draws.
++	let eastAsianVerticalTransform = null;
++	
++	/**
++	 * Sets the transform of the East Asian vertical text being drawn (null when the text is not vertical)
++	 * @param {?AscCommon.CMatrix} transform
++	 * @returns {?AscCommon.CMatrix} the previous one, to put back afterwards
++	 */
++	function SetEastAsianVerticalText(transform)
++	{
++		let previous = eastAsianVerticalTransform;
++		eastAsianVerticalTransform = transform ? transform : null;
++		return previous;
++	}
++	
++	// Characters in the East Asian blocks that stay turned in vertical text: brackets,
++	// the wave dash, dashes, the prolonged sound marks and the full-width low line
++	// (UAX #50 Vertical_Orientation R and Tr)
++	const VERTICAL_TURNED = new Set([
++		0x3008, 0x3009, 0x300A, 0x300B, 0x300C, 0x300D, 0x300E, 0x300F, 0x3010, 0x3011,
++		0x3014, 0x3015, 0x3016, 0x3017, 0x3018, 0x3019, 0x301A, 0x301B, 0x301C, 0x301D, 0x301E, 0x301F,
++		0x3030, 0x30A0, 0x30FC, 0xFF08, 0xFF09, 0xFF0D, 0xFF1C, 0xFF1D, 0xFF1E, 0xFF3B, 0xFF3D, 0xFF3F,
++		0xFF5B, 0xFF5C, 0xFF5D, 0xFF5E, 0xFF5F, 0xFF60, 0xFFE3
++	]);
++	
++	/**
++	 * Whether a character stands upright in East Asian vertical text (UAX #50 Vertical_Orientation U and Tu)
++	 * @param {number} c code point
++	 * @returns {boolean}
++	 */
++	function IsUprightInVerticalText(c)
++	{
++		if (VERTICAL_TURNED.has(c))
++			return false;
++		
++		return ((0x1100 <= c && c <= 0x11FF)
++			|| (0x2E80 <= c && c <= 0xA4CF)
++			|| (0xAC00 <= c && c <= 0xD7AF)
++			|| (0xF900 <= c && c <= 0xFAFF)
++			|| (0xFE10 <= c && c <= 0xFE1F)
++			|| (0xFE30 <= c && c <= 0xFE4F)
++			|| (0xFF01 <= c && c <= 0xFF60)
++			|| (0xFFE0 <= c && c <= 0xFFE6)
++			|| (0x20000 <= c && c <= 0x3FFFF));
++	}
++	
++	/**
++	 * Whether a character moves from the bottom left to the top right of its square in vertical text
++	 * @param {number} c code point
++	 * @returns {boolean}
++	 */
++	function IsVerticalCommaOrStop(c)
++	{
++		return (0x3001 === c || 0x3002 === c || 0xFF0C === c || 0xFF0E === c);
++	}
++	
++	/**
++	 * Draws a grapheme upright in East Asian vertical text: the glyph is turned back about the
++	 * centre of its em square, so the turn of the line is undone for it alone
++	 */
++	CRunText.prototype.private_DrawUpright = function(grapheme, Context, X, Y, fontSize)
++	{
++		let em = fontSize * 25.4 / 72;
++		let cx = X + this.GetWidth() / 2;
++		let cy = Y - 0.38 * em; // the centre of the ideographic em box, which sits 0.12 em below the baseline
++		
++		// The angle the line is turned by, in the sense RotateRadAppend takes (its shy is -sin);
++		// turning the glyph by the same angle again undoes it
++		let line  = eastAsianVerticalTransform;
++		let angle = Math.atan2(line.shy, line.sx);
++		
++		let m = new AscCommon.CMatrix();
++		global_MatrixTransformer.TranslateAppend(m, -cx, -cy);
++		global_MatrixTransformer.RotateRadAppend(m, angle);
++		global_MatrixTransformer.TranslateAppend(m, cx, cy);
++		global_MatrixTransformer.MultiplyAppend(m, line);
++		
++		// A vertical comma or full stop sits in the top right of its square
++		if (IsVerticalCommaOrStop(this.Value))
++			global_MatrixTransformer.TranslateAppend(m, 0.5 * em, -0.5 * em);
++		
++		Context.SaveGrState();
++		Context.transform3(m);
++		AscFonts.DrawGrapheme(grapheme, Context, X, Y, fontSize);
++		Context.RestoreGrState();
++	};
++	CRunText.prototype.private_DrawGrapheme = function(grapheme, Context, X, Y, fontSize)
++	{
++		if (eastAsianVerticalTransform && IsUprightInVerticalText(this.Value))
++			this.private_DrawUpright(grapheme, Context, X, Y, fontSize);
++		else
++			AscFonts.DrawGrapheme(grapheme, Context, X, Y, fontSize);
++	};
+ 	CRunText.prototype.Draw = function(X, Y, Context, PDSE, oTextPr, forceGrapheme)
+ 	{
+ 		if (Context.m_bIsTextDrawer === true)
+@@ -394,11 +492,11 @@
+ 		else if (this.Flags & FLAGS_TEMPORARY)
+ 		{
+ 			if (AscFonts.NO_GRAPHEME !== this.TempGrapheme)
+-				AscFonts.DrawGrapheme(this.TempGrapheme, Context, X, Y, nFontSize);
++				this.private_DrawGrapheme(this.TempGrapheme, Context, X, Y, nFontSize);
+ 		}
+ 		else if (AscFonts.NO_GRAPHEME !== this.Grapheme)
+ 		{
+-			AscFonts.DrawGrapheme(forceGrapheme ? forceGrapheme : this.Grapheme, Context, X, Y, nFontSize);
++			this.private_DrawGrapheme(forceGrapheme ? forceGrapheme : this.Grapheme, Context, X, Y, nFontSize);
+ 		}
+ 		
+ 		if (this.Flags & FLAGS_TEMPORARY_HYPHEN_AFTER)
+@@ -897,6 +995,8 @@
+ 		this.originSize  = Reader.GetDouble();
+ 	};
+ 	AscWord.CPdfRunText = CPdfRunText;
++	AscWord.SetEastAsianVerticalText = SetEastAsianVerticalText;
++	AscWord.IsUprightInVerticalText  = IsUprightInVerticalText;
+ 	
+ 
+ })(window);
+diff --git a/word/Editor/Table/TableCell.js b/word/Editor/Table/TableCell.js
+index 024430c..b6f2d9f 100644
+--- a/word/Editor/Table/TableCell.js
++++ b/word/Editor/Table/TableCell.js
+@@ -753,6 +753,8 @@ CTableCell.prototype =
+             pGraphics.transform3(_transform);
+         }
+ 
++		// tbRl is East Asian vertical text: Word sets ideographs and kana upright in it
++		let previousVertical = AscWord.SetEastAsianVerticalText(textdirection_TBRL === TextDirection ? _transform : null);
+         if (pGraphics.bIsDrawCellTextLines)
+         {
+             this.Content_Draw_Line(pGraphics);
+@@ -761,6 +763,7 @@ CTableCell.prototype =
+         {
+             this.Content.Draw(PageIndex, pGraphics);
+         }
++		AscWord.SetEastAsianVerticalText(previousVertical);
+         if (bNeedRestore)
+         {
+             pGraphics.RestoreGrState();
+-- 
+2.43.0
+

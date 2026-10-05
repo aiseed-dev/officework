@@ -24,6 +24,8 @@ for (const t of tests) {
     close(a, b, d, m) { if (Math.abs(a - b) > d) fails.push(`${m || ""}: ${a} not close to ${b}`); },
     expect() {}
   };
+  // Some tests call QUnit.assert.* directly
+  g.QUnit.assert = assert;
   try { if (t.hooks.beforeEach) t.hooks.beforeEach(); t.fn(assert); if (t.hooks.afterEach) t.hooks.afterEach(); }
   catch (e) { fails.push("threw " + String(e).slice(0, 200)); }
   if (fails.length) { fail++; console.log("FAIL", t.mod, "/", t.name); fails.slice(0, 5).forEach(x => console.log("   ", x)); }

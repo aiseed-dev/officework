@@ -16,7 +16,9 @@ import openpyxl
 from openpyxl.styles import Alignment, Font
 
 OUT = sys.argv[1]
-W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+W = ('xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+     'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" '
+     'xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"')
 FONT = '<w:rFonts w:ascii="IPAexMincho" w:hAnsi="IPAexMincho" w:eastAsia="IPAexMincho"/><w:sz w:val="21"/><w:szCs w:val="21"/>'
 
 
@@ -69,8 +71,19 @@ docx("04-vertical-section.docx",
 cell = ('<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders><w:top w:val="single" w:sz="4"/><w:left w:val="single" w:sz="4"/>'
         '<w:bottom w:val="single" w:sz="4"/><w:right w:val="single" w:sz="4"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="800"/></w:tblGrid>'
         '<w:tr><w:trPr><w:trHeight w:val="3000"/></w:trPr><w:tc><w:tcPr><w:tcW w:w="800" w:type="dxa"/><w:textDirection w:val="tbRl"/></w:tcPr>'
-        '<w:p>' + run("縦書きＡＢ「題」") + '</w:p></w:tc></w:tr></w:tbl><w:p/>')
+        '<w:p>' + run("縦書きＡＢ「題」、ー。abc") + '</w:p></w:tc></w:tr></w:tbl><w:p/>')
 docx("05-vertical-cell.docx", cell + sect())
+# A text box with East Asian vertical text (wps:bodyPr vert="eaVert")
+box = ('<w:p><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="900000" cy="2400000"/>'
+       '<wp:docPr id="1" name="縦書きの枠"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+       '<a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp>'
+       '<wps:cNvSpPr txBox="1"/><wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="900000" cy="2400000"/></a:xfrm>'
+       '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:ln w="6350"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:ln></wps:spPr>'
+       '<wps:txbx><w:txbxContent><w:p>' + run("縦書きの枠、ＡＢ「題」ー。abc") + '</w:p></w:txbxContent></wps:txbx>'
+       '<wps:bodyPr rot="0" vert="eaVert" wrap="square" lIns="91440" tIns="45720" rIns="91440" bIns="45720" anchor="t"/>'
+       '</wps:wsp></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>')
+docx("12-vertical-textbox.docx", box + sect())
+
 # Japanese paragraph and character properties that a round trip should keep
 body = (
     '<w:p>' + run("傍点", '<w:em w:val="dot"/>') + run("と") + run("傍点", '<w:em w:val="comma"/>') + '</w:p>'
