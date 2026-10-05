@@ -1,0 +1,122 @@
+From d847c5b99d3168d357a38bcdcbfb6eb72ae614ca Mon Sep 17 00:00:00 2001
+From: Yasuhiro Niji <ysniji@gmail.com>
+Date: Tue, 6 Oct 2026 07:23:20 +0900
+Subject: [PATCH 3/3] [de] Keep Word's standard Japanese kinsoku characters off
+ the start of a line
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The punctuation table let ・, 々, ゝゞヽヾ, ゛゜, ℃ and the half-width
+｡｣､･ﾞﾟ begin a line, and let the half-width ｢ end one. Word's standard
+Japanese kinsoku level forbids all of them, so a line could start with
+a middle dot or an iteration mark where Word keeps it on the line
+before. They now carry CANT_BE_AT_BEGIN (｢ carries CANT_BE_AT_END), and
+with the previous change they hang at the end of the line as in Word.
+
+Small kana and the prolonged sound mark ー are left as they are: Word's
+standard level lets them begin a line (its high level does not).
+
+Assisted-by: ClaudeCode:claude-opus-5-5
+---
+ common/commonDefines.js                       | 28 +++++++++++++----
+ .../paragraph/paragraph-lines.js              | 30 +++++++++++++++++++
+ 2 files changed, 52 insertions(+), 6 deletions(-)
+
+diff --git a/common/commonDefines.js b/common/commonDefines.js
+index 85f80d9..e0f0ff7 100644
+--- a/common/commonDefines.js
++++ b/common/commonDefines.js
+@@ -2411,7 +2411,7 @@ window.AscCommon.g_cIsBeta = "false";
+ 	g_aPunctuation[0x3002] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // 。
+ 	g_aPunctuation[0x3003] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // 〃
+ 	g_aPunctuation[0x3004] = PUNCTUATION_FLAG_BASE;                                     // 〄
+-	g_aPunctuation[0x3005] = PUNCTUATION_FLAG_BASE;                                     // 々
++	g_aPunctuation[0x3005] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // 々
+ 	g_aPunctuation[0x3006] = PUNCTUATION_FLAG_BASE;                                     // 〆
+ 	g_aPunctuation[0x3007] = PUNCTUATION_FLAG_BASE;                                     // 〇
+ 	g_aPunctuation[0x3008] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_CANT_BE_AT_END;   // 〈
+@@ -2439,6 +2439,20 @@ window.AscCommon.g_cIsBeta = "false";
+ 	g_aPunctuation[0x301E] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // 〞
+ 	g_aPunctuation[0x301F] = PUNCTUATION_FLAG_BASE;                                     // 〟
+ 
++	// The kana voicing and iteration marks, the katakana middle dot and ℃ may
++	// not begin a line either. With 々 above and the half-width ｡｣､･ﾞﾟ below
++	// they complete the "cannot begin a line" set of Word's standard Japanese
++	// kinsoku level. JLREQ also keeps middle dots and iteration marks off the
++	// start of a line
++	g_aPunctuation[0x309B] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ゛
++	g_aPunctuation[0x309C] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ゜
++	g_aPunctuation[0x309D] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ゝ
++	g_aPunctuation[0x309E] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ゞ
++	g_aPunctuation[0x30FB] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ・
++	g_aPunctuation[0x30FD] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ヽ
++	g_aPunctuation[0x30FE] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ヾ
++	g_aPunctuation[0x2103] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ℃
++
+ 	g_aPunctuation[0xFF01] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN_E; // ！
+ 	g_aPunctuation[0xFF02] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ＂
+ 	g_aPunctuation[0xFF03] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN;                                     // ＃
+@@ -2473,11 +2487,13 @@ window.AscCommon.g_cIsBeta = "false";
+ 	g_aPunctuation[0xFF5E] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ～
+ 	g_aPunctuation[0xFF5F] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN;                                     // ｟
+ 	g_aPunctuation[0xFF60] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN;                                     // ｠
+-	g_aPunctuation[0xFF61] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN;                                     // ｡
+-	g_aPunctuation[0xFF62] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN;                                     // ｢
+-	g_aPunctuation[0xFF63] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN;                                     // ｣
+-	g_aPunctuation[0xFF64] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN;                                     // ､
+-	g_aPunctuation[0xFF65] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN;                                     // ･
++	g_aPunctuation[0xFF61] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ｡
++	g_aPunctuation[0xFF62] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN | PUNCTUATION_FLAG_CANT_BE_AT_END; // ｢
++	g_aPunctuation[0xFF63] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ｣
++	g_aPunctuation[0xFF64] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ､
++	g_aPunctuation[0xFF65] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ･
++	g_aPunctuation[0xFF9E] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ﾞ
++	g_aPunctuation[0xFF9F] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ﾟ
+ 	g_aPunctuation[0xFFE0] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN | PUNCTUATION_FLAG_CANT_BE_AT_BEGIN; // ￠
+ 	g_aPunctuation[0xFFE1] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN | PUNCTUATION_FLAG_CANT_BE_AT_END;   // ￡
+ 	g_aPunctuation[0xFFE2] = PUNCTUATION_FLAG_BASE | PUNCTUATION_FLAG_EAST_ASIAN;                                     // ￢
+diff --git a/tests/word/document-calculation/paragraph/paragraph-lines.js b/tests/word/document-calculation/paragraph/paragraph-lines.js
+index 547fc6d..7c4aca2 100644
+--- a/tests/word/document-calculation/paragraph/paragraph-lines.js
++++ b/tests/word/document-calculation/paragraph/paragraph-lines.js
+@@ -198,6 +198,36 @@ $(function () {
+ 			"漢字漢字"
+ 		]);
+ 		
++		// The middle dot, the iteration marks and the half-width full stop may
++		// not begin a line either (Word's standard kinsoku level)
++		setText("漢字漢字漢字漢・漢字漢字");
++		recalculate(charWidth * 7.5);
++		checkLines(assert, para, [
++			"漢字漢字漢字漢・",
++			"漢字漢字"
++		]);
++		
++		setText("漢字漢字漢字漢々漢字漢字");
++		recalculate(charWidth * 7.5);
++		checkLines(assert, para, [
++			"漢字漢字漢字漢々",
++			"漢字漢字"
++		]);
++		
++		setText("漢字漢字漢字漢ゝ漢字漢字");
++		recalculate(charWidth * 7.5);
++		checkLines(assert, para, [
++			"漢字漢字漢字漢ゝ",
++			"漢字漢字"
++		]);
++		
++		setText("漢字漢字漢字漢｡漢字漢字");
++		recalculate(charWidth * 7.5);
++		checkLines(assert, para, [
++			"漢字漢字漢字漢｡",
++			"漢字漢字"
++		]);
++		
+ 		// Only one character hangs: with two, the break moves back
+ 		setText("漢字漢字漢字漢。」漢字");
+ 		recalculate(charWidth * 7.5);
+-- 
+2.43.0
+

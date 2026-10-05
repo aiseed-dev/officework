@@ -1,0 +1,213 @@
+From 4c18b78a26b62b18c5cb033f1ca7bbc1a69a3293 Mon Sep 17 00:00:00 2001
+From: Yasuhiro Niji <ysniji@gmail.com>
+Date: Tue, 6 Oct 2026 07:22:59 +0900
+Subject: [PATCH 2/3] [de] Hang one Japanese character past the line end
+ instead of pushing it out
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+When a character that may not begin a line (、。」 and the like) did not
+fit at the end of a line, the line was broken at the previous break
+opportunity, so the character before it moved to the next line too.
+Word keeps the character at the end of the line, past the margin, and a
+line laid out the other way ends one or two characters early. Forms and
+documents written to a fixed number of characters per line then reflow
+and run onto more lines and pages than in Word.
+
+Now one East Asian character (U+3000 and above) that may not begin a
+line stays at the end of the line. Only one hangs: if the line is
+already past the margin, the break moves back as before. The width
+pass records the hanging width, and the alignment leaves it out, so a
+justified, centred or right-aligned line keeps its other characters in
+place instead of squeezing the hanging one back inside the margin.
+
+Assisted-by: ClaudeCode:claude-opus-5-5
+---
+ .../paragraph/paragraph-lines.js              | 46 +++++++++++++++++++
+ word/Editor/Paragraph/RunContent/Base.js      |  8 ++++
+ word/Editor/Paragraph/RunContent/Text.js      | 10 ++++
+ word/Editor/Paragraph_Recalculate.js          |  9 ++++
+ word/Editor/Run.js                            | 14 +++++-
+ 5 files changed, 85 insertions(+), 2 deletions(-)
+
+diff --git a/tests/word/document-calculation/paragraph/paragraph-lines.js b/tests/word/document-calculation/paragraph/paragraph-lines.js
+index cbf8359..547fc6d 100644
+--- a/tests/word/document-calculation/paragraph/paragraph-lines.js
++++ b/tests/word/document-calculation/paragraph/paragraph-lines.js
+@@ -182,6 +182,38 @@ $(function () {
+ 			"ステム"
+ 		]);
+ 		
++		// Punctuation that may not begin a line stays at the end of the previous
++		// line, past the margin (one character only)
++		setText("漢字漢字漢字漢。漢字漢字");
++		recalculate(charWidth * 7.5);
++		checkLines(assert, para, [
++			"漢字漢字漢字漢。",
++			"漢字漢字"
++		]);
++		
++		setText("漢字漢字漢字漢」漢字漢字");
++		recalculate(charWidth * 7.5);
++		checkLines(assert, para, [
++			"漢字漢字漢字漢」",
++			"漢字漢字"
++		]);
++		
++		// Only one character hangs: with two, the break moves back
++		setText("漢字漢字漢字漢。」漢字");
++		recalculate(charWidth * 7.5);
++		checkLines(assert, para, [
++			"漢字漢字漢字",
++			"漢。」漢字"
++		]);
++		
++		// An opening bracket may not end a line
++		setText("漢字漢字漢字「漢字漢字」");
++		recalculate(charWidth * 7.5);
++		checkLines(assert, para, [
++			"漢字漢字漢字",
++			"「漢字漢字」"
++		]);
++		
+ 		// A full stop never begins a line, even after a run of kana
+ 		setText("東京にすんでいます。わたしはがくせいです。");
+ 		recalculate(charWidth * 8.5);
+@@ -201,6 +233,20 @@ $(function () {
+ 		]);
+ 	});
+ 	
++	QUnit.test("Test hanging punctuation is left out of the alignment", function (assert)
++	{
++		setText("漢字漢字漢字漢。漢字漢字漢字漢字漢字");
++		for (let jc of [AscCommon.align_Left, AscCommon.align_Justify, AscCommon.align_Center, AscCommon.align_Right])
++		{
++			para.SetParagraphAlign(jc);
++			recalculate(charWidth * 7);
++			let range = para.Lines[0].Ranges[0];
++			assert.close(range.XVisible, 0, 0.001, "The line starts at the left edge, jc = " + jc);
++			assert.close(range.XEndVisible, charWidth * 8, 0.001, "The full stop hangs one character past the edge, jc = " + jc);
++		}
++		para.SetParagraphAlign(AscCommon.align_Left);
++	});
++	
+ 	QUnit.test("Test: \"Test paragraph with very narrow width\"", function (assert)
+ 	{
+ 		assert.strictEqual(dc.GetElementsCount(), 1, "Paragraphs count");
+diff --git a/word/Editor/Paragraph/RunContent/Base.js b/word/Editor/Paragraph/RunContent/Base.js
+index 6027bb6..74fd341 100644
+--- a/word/Editor/Paragraph/RunContent/Base.js
++++ b/word/Editor/Paragraph/RunContent/Base.js
+@@ -209,6 +209,14 @@
+ 	{
+ 		return true;
+ 	};
++	/**
++	 * Whether this element may hang past the end of a line when it may not begin the next one
++	 * @returns {boolean}
++	 */
++	CRunElementBase.prototype.IsEastAsianHangingAllowed = function()
++	{
++		return false;
++	};
+ 	/**
+ 	 * Может ли строка заканчиваться данным элементом
+ 	 * @returns {boolean}
+diff --git a/word/Editor/Paragraph/RunContent/Text.js b/word/Editor/Paragraph/RunContent/Text.js
+index d6e1832..375addc 100644
+--- a/word/Editor/Paragraph/RunContent/Text.js
++++ b/word/Editor/Paragraph/RunContent/Text.js
+@@ -574,6 +574,16 @@
+ 
+ 		return (!(AscCommon.g_aPunctuation[this.Value] & AscCommon.PUNCTUATION_FLAG_CANT_BE_AT_BEGIN));
+ 	};
++	/**
++	 * Whether this character may hang past the end of a line when it may not
++	 * begin the next one: East Asian punctuation, kana marks and full-width or
++	 * half-width forms (U+3000 and above), as Word lets them
++	 * @returns {boolean}
++	 */
++	CRunText.prototype.IsEastAsianHangingAllowed = function()
++	{
++		return (this.Value >= 0x3000 && !this.CanBeAtBeginOfLine());
++	};
+ 	CRunText.prototype.CanBeAtEndOfLine = function()
+ 	{
+ 		if (this.IsNBSP())
+diff --git a/word/Editor/Paragraph_Recalculate.js b/word/Editor/Paragraph_Recalculate.js
+index 04c6cfb..296ecd9 100644
+--- a/word/Editor/Paragraph_Recalculate.js
++++ b/word/Editor/Paragraph_Recalculate.js
+@@ -1996,6 +1996,11 @@ Paragraph.prototype.private_RecalculateLineAlign       = function(CurLine, CurPa
+ 			}
+ 			else
+ 			{
++				// A character hanging past the line end (see ParaRun.Recalculate_Range) stays in the margin:
++				// the line is aligned and justified without it, so the other characters keep their places
++				let hangW = (!bRtlAlign && PRSC.LastHangW > 0 && Range.W > RangeWidth) ? PRSC.LastHangW : 0;
++				Range.W -= hangW;
++				
+ 				// RangeWidth - ширина всего пространства в данном отрезке, а Range.W - ширина занимаемого пространства
+ 				switch (jc)
+ 				{
+@@ -2130,6 +2135,8 @@ Paragraph.prototype.private_RecalculateLineAlign       = function(CurLine, CurPa
+ 						break;
+ 					}
+ 				}
++				
++				Range.W += hangW;
+ 			}
+ 		}
+ 		
+@@ -4397,6 +4404,7 @@ function CParagraphRecalculateStateCounter(wrapState)
+     this.Letters     = 0;
+     this.SpacesSkip  = 0;
+     this.LettersSkip = 0;
++	this.LastHangW   = 0; // Width of the last letter of the range when it may hang past the line end
+ 
+     this.ComplexFields = new AscWord.ParagraphComplexFieldStack();
+ }
+@@ -4413,6 +4421,7 @@ CParagraphRecalculateStateCounter.prototype.Reset = function(Paragraph, Range)
+ 	this.Letters     = 0;
+ 	this.SpacesSkip  = 0;
+ 	this.LettersSkip = 0;
++	this.LastHangW   = 0;
+ 	
+ 	this.ParaEnd   = false;
+ 	this.LineBreak = false;
+diff --git a/word/Editor/Run.js b/word/Editor/Run.js
+index 223c089..039ecae 100644
+--- a/word/Editor/Run.js
++++ b/word/Editor/Run.js
+@@ -3945,8 +3945,16 @@ ParaRun.prototype.Recalculate_Range = function(PRS, ParaPr, Depth)
+ 							{
+ 								if (para_Text === ItemType && !Item.CanBeAtBeginOfLine() && !PRS.LineBreakFirst)
+ 								{
+-									MoveToLBP = true;
+-									NewRange  = true;
++									// One East Asian character that may not begin a line stays at the end of
++									// this line, past the margin, as Word sets it (oikomi). Moving it to the
++									// next line together with the character before it leaves a line one or
++									// two characters shorter than in Word. Only one character hangs: when the
++									// line is already past the margin, the break moves back as before
++									if (!Item.IsEastAsianHangingAllowed() || X + SpaceLen > XEnd)
++									{
++										MoveToLBP = true;
++										NewRange  = true;
++									}
+ 								}
+ 								else
+ 								{
+@@ -5275,6 +5283,8 @@ ParaRun.prototype.Recalculate_Range_Width = function(PRSC, _CurLine, _CurRange)
+ 
+                 PRSC.SpaceLen = 0;
+ 
++				PRSC.LastHangW = (para_Text === ItemType && Item.IsEastAsianHangingAllowed()) ? Item.GetWidth(textPr) : 0;
++
+                 // Пробелы перед первым словом в строке не считаем
+                 if (PRSC.Words > 1)
+                     PRSC.Spaces += PRSC.SpacesCount;
+-- 
+2.43.0
+

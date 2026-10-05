@@ -1,0 +1,18 @@
+= sdkjs の試験を node で回す
+
+Euro-Office(と ONLYOFFICE)の sdkjs には、文書の組み方の試験が QUnit で
+入っています(`tests/word/document-calculation/`)。本来はブラウザーで開いて回す物です。
+ここの仕組みは、ブラウザーの代わりを最小限に作って、同じ試験を node で回します。
+
+[source,bash]
+----
+# sdkjs の試験を回す(既定は vendor/sdkjs。別の場所は SDKJS で指定)
+node tools/sdkjs_node/qunit.js vendor/sdkjs/tests/word/document-calculation/paragraph/paragraph-lines.js
+
+# 日本語の折り返しを見る(cases.json の [文, 字数] ごとに行を出す)
+node tools/sdkjs_node/probe.js tools/sdkjs_node/cases.json
+----
+
+* 読み込む順は、sdkjs の `build/Gruntfile.js` と同じく `configs/word.json` から作ります。
+* 試験の計り方は、どの字も同じ幅(10pt の 0.5 倍)です。字数で幅を指定できます。
+* 画面に描く処理は通らないので、行の折り返しと位置の試験に使います。
