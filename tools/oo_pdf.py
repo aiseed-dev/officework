@@ -6,7 +6,7 @@ from the `core` repository. This runs the x2t of an installed ONLYOFFICE
 Desktop Editors flatpak, to compare how it prints and converts documents
 with LibreOffice (`tools/lo_pdf.py`) and with officework.
 
-    python3 tools/oo_pdf.py FILE... [--out DIR] [--to pdf|ods|xlsx|odt|docx]
+    python3 tools/oo_pdf.py FILE... [--out DIR] [--to pdf|ods|xlsx|odt|docx] [--x2t PATH]
 
 The default output is `<stem>.oo.pdf` next to each source, or in DIR. With
 `--to`, the file is converted to that format instead (`<stem>.<ext>`).
@@ -24,6 +24,10 @@ The default output is `<stem>.oo.pdf` next to each source, or in DIR. With
   the font list and a temporary folder makes it work. The font list is read
   from the app's own data folder and never written.
 * The format codes are x2t's: 513 PDF, 257 xlsx, 259 ods, 65 docx, 67 odt.
+* `--x2t PATH` runs another x2t, for example one in an unpacked Linux package
+  (`onlyoffice-desktopeditors-x64.tar.xz`) whose sdkjs was replaced. It still
+  runs inside the flatpak sandbox, so the flatpak's font list and its font
+  paths (`/run/host/fonts`, `/app/...`) stay valid.
 """
 from __future__ import annotations
 
@@ -39,7 +43,7 @@ FONTS = pathlib.Path.home() / ".var/app" / APP / "data/onlyoffice/desktopeditors
 CODES = {"pdf": 513, "xlsx": 257, "ods": 259, "docx": 65, "odt": 67}
 
 
-def convert(src: pathlib.Path, dst: pathlib.Path, to: str, timeout: float) -> str | None:
+def convert(src: pathlib.Path, dst: pathlib.Path, to: str, timeout: float, x2t: str = X2T) -> str | None:
     """Convert one file. Returns None on success, or why it failed"""
     with tempfile.TemporaryDirectory(dir=dst.parent) as tmp:
         task = pathlib.Path(tmp) / "task.xml"
@@ -52,11 +56,11 @@ def convert(src: pathlib.Path, dst: pathlib.Path, to: str, timeout: float) -> st
             "</TaskQueueDataConvert>",
             encoding="utf-8",
         )
-        cmd = [
-            "flatpak", "run",
-            f"--filesystem={src.parent}", f"--filesystem={dst.parent}",
-            f"--command={X2T}", APP, str(task),
-        ]
+        cmd = ["flatpak", "run", f"--filesystem={src.parent}", f"--filesystem={dst.parent}"]
+        if x2t != X2T:
+            # The package folder holds the converter's libraries and sdkjs
+            cmd.append(f"--filesystem={pathlib.Path(x2t).resolve().parents[1]}")
+        cmd += [f"--command={x2t}", APP, str(task)]
         try:
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         except subprocess.TimeoutExpired:
@@ -72,6 +76,7 @@ def main() -> int:
     ap.add_argument("--out")
     ap.add_argument("--to", default="pdf", choices=sorted(CODES))
     ap.add_argument("--timeout", type=float, default=180)
+    ap.add_argument("--x2t", default=X2T, help="the x2t to run (default: the flatpak's own)")
     a = ap.parse_args()
     if not (FONTS / "AllFonts.js").exists():
         print(f"no font list at {FONTS}: start ONLYOFFICE once to build it", file=sys.stderr)
@@ -82,7 +87,8 @@ def main() -> int:
         out = pathlib.Path(a.out).resolve() if a.out else src.parent
         out.mkdir(parents=True, exist_ok=True)
         dst = out / (f"{src.stem}.oo.pdf" if a.to == "pdf" else f"{src.stem}.{a.to}")
-        why = convert(src, dst, a.to, a.timeout)
+        x2t = X2T if a.x2t == X2T else str(pathlib.Path(a.x2t).resolve())
+        why = convert(src, dst, a.to, a.timeout, x2t)
         if why:
             failed += 1
             print(f"FAILED {src}: {why}")
