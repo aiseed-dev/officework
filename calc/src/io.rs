@@ -1693,7 +1693,6 @@ fn ods_part_name(what: &str) -> String {
         "table" => ui::t!("excel_tables"),
         "scenario" => ui::t!("scenario"),
         "sheet_protection" => ui::t!("protect_sheet_2"),
-        "header" => ui::t!("header"),
         _ => return what.to_string(),
     }
     .to_string()

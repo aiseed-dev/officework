@@ -131,7 +131,7 @@ fn diff(a: &Book, b: &Book) -> Vec<String> {
             }
         }
         for (r, h) in &x.row_height {
-            let v = y.row_height.get(r).copied();
+            let v = y.row_height.get(r).copied().or(y.default_row_height);
             if v.is_none_or(|v| (v - h).abs() > 0.05) {
                 out.push(format!("{} row {r} height {h} vs {v:?}", x.name));
                 break;

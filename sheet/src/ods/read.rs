@@ -46,7 +46,11 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     let mut rep = Report::default();
     let styles = Styles::parse(&content);
     let cells = CellStyles::parse(&styles_xml, &content);
-    let pages = super::page::Pages::parse(&styles_xml);
+    let base = cells
+        .default_font()
+        .map(|(font, pt)| super::page::HfLook { font: Some(font), size: Some(pt.round() as u32), ..Default::default() })
+        .unwrap_or_default();
+    let pages = super::page::Pages::parse(&styles_xml, base);
     let graphics = super::drawing::GraphicStyles::parse(&styles_xml, &content);
     // Pictures by their path in the package (`Pictures/1000….png`)
     let names: Vec<String> = zip.file_names().filter(|n| n.starts_with("Pictures/")).map(str::to_string).collect();
@@ -482,7 +486,14 @@ fn parse_body(
                             }
                             let h = rs.and_then(|s| styles.row_pt.get(&s).copied());
                             let vis = attr(e, "table:visibility");
-                            if row_repeat <= SPREAD_LIMIT {
+                            // The rows to the end of the sheet are not spread
+                            // out; their height is the sheet's default, as with
+                            // the columns
+                            if row_repeat > SPREAD_LIMIT {
+                                if let Some((pt, _)) = h {
+                                    sh.default_row_height.get_or_insert(pt);
+                                }
+                            } else {
                                 for rr in row..row + row_repeat {
                                     if let Some((pt, optimal)) = h {
                                         sh.row_height.insert(rr, pt);

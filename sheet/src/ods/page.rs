@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use book::Sheet;
-use quick_xml::events::Event;
+use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
 
 use super::read::{attr, length_mm};
@@ -34,14 +34,78 @@ pub(super) struct Page {
 pub(super) struct Pages {
     /// master page name → page layout name, header shown, footer shown
     masters: HashMap<String, (String, bool, bool)>,
-    /// master page name → header and footer as xlsx header text
+    /// master page name → its headers and footers as xlsx header text
     /// (`&L…&C…&R…` with `&A` for the sheet name, `&P` for the page)
-    texts: HashMap<String, (Option<String>, Option<String>)>,
+    texts: HashMap<String, HfTexts>,
     layouts: HashMap<String, Page>,
 }
 
+/// The headers and footers of a master page. Each is None when it is not
+/// shown. The left (even) and first page ones exist only when shown
+#[derive(Default)]
+struct HfTexts {
+    header: Option<String>,
+    footer: Option<String>,
+    header_left: Option<String>,
+    footer_left: Option<String>,
+    header_first: Option<String>,
+    footer_first: Option<String>,
+}
+
+/// The look of text in a header or footer, the part that xlsx header codes
+/// can carry
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(super) struct HfLook {
+    pub(super) font: Option<String>,
+    pub(super) size: Option<u32>,
+    pub(super) bold: bool,
+    pub(super) italic: bool,
+    pub(super) underline: bool,
+    pub(super) strike: bool,
+}
+
+/// The codes that change text from look `from` to look `to`
+/// (`&"Font,Bold"`, `&16`, `&B`, `&I`, `&U`, `&S`). A font is named with
+/// its style; without a new font, bold and italic are switched
+pub(super) fn look_codes(from: &HfLook, to: &HfLook) -> String {
+    let mut s = String::new();
+    match &to.font {
+        Some(f) if to.font != from.font => {
+            let style = match (to.bold, to.italic) {
+                (true, true) => "Bold Italic",
+                (true, false) => "Bold",
+                (false, true) => "Italic",
+                (false, false) => "Regular",
+            };
+            s.push_str(&format!("&\"{f},{style}\""));
+        }
+        _ => {
+            if to.bold != from.bold {
+                s.push_str("&B");
+            }
+            if to.italic != from.italic {
+                s.push_str("&I");
+            }
+        }
+    }
+    if let Some(n) = to.size.filter(|_| to.size != from.size) {
+        s.push_str(&format!("&{n}"));
+    }
+    if to.underline != from.underline {
+        s.push_str("&U");
+    }
+    if to.strike != from.strike {
+        s.push_str("&S");
+    }
+    s
+}
+
 impl Pages {
-    pub(super) fn parse(styles_xml: &str) -> Pages {
+    /// `base` is the look header text starts in: the workbook's default
+    /// font, as LibreOffice starts header text when it reads an xlsx
+    /// (sc/source/filter/oox/pagesettings.cxx). A span in that look adds
+    /// no codes
+    pub(super) fn parse(styles_xml: &str, base: HfLook) -> Pages {
         let mut p = Pages::default();
         let mut r = Reader::from_str(styles_xml);
         let mut layout: Option<String> = None;
@@ -50,21 +114,30 @@ impl Pages {
         let mut master: Option<(String, String, bool, bool)> = None;
         // Inside a shown header (true) or footer (false) of a master page:
         // the text of its regions so far
-        let mut hf_text: Option<(bool, HfText)> = None;
-        let mut texts: (Option<String>, Option<String>) = (None, None);
+        let mut hf_text: Option<(Vec<u8>, HfText)> = None;
+        let mut texts = HfTexts::default();
+        // Text styles (`MT1`, …) and font faces, for the look of header text
+        let mut looks: HashMap<String, HfLook> = HashMap::new();
+        let mut faces: HashMap<String, String> = HashMap::new();
+        let mut text_style: Option<String> = None;
         loop {
             let ev = r.read_event();
-            if let Some((_, t)) = hf_text.as_mut() {
+            if let Some((tag, t)) = hf_text.as_mut() {
                 match &ev {
-                    Ok(Event::Start(e)) | Ok(Event::Empty(e)) => t.element(e.name().as_ref(), matches!(ev, Ok(Event::Empty(_)))),
+                    Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
+                        t.element(e, matches!(ev, Ok(Event::Empty(_))), &looks)
+                    }
                     Ok(Event::Text(x)) => t.text(&x.unescape().unwrap_or_default()),
-                    Ok(Event::End(e)) if matches!(e.name().as_ref(), b"style:header" | b"style:footer") => {
-                        if let Some((is_header, t)) = hf_text.take() {
-                            let code = t.code();
-                            if is_header {
-                                texts.0 = Some(code);
-                            } else {
-                                texts.1 = Some(code);
+                    Ok(Event::End(e)) if e.name().as_ref() == tag.as_slice() => {
+                        if let Some((tag, t)) = hf_text.take() {
+                            let code = Some(t.code());
+                            match tag.as_slice() {
+                                b"style:header" => texts.header = code,
+                                b"style:footer" => texts.footer = code,
+                                b"style:header-left" => texts.header_left = code,
+                                b"style:footer-left" => texts.footer_left = code,
+                                b"style:header-first" => texts.header_first = code,
+                                _ => texts.footer_first = code,
                             }
                         }
                         continue;
@@ -106,6 +179,19 @@ impl Pages {
                             pg.centering = attr(&e, "style:table-centering").filter(|v| v != "none");
                         }
                     }
+                    b"style:font-face" => {
+                        if let (Some(n), Some(f)) = (attr(&e, "style:name"), attr(&e, "svg:font-family")) {
+                            faces.insert(n, f.trim_matches(|c| c == '\'' || c == '"').to_string());
+                        }
+                    }
+                    b"style:style" if attr(&e, "style:family").as_deref() == Some("text") => {
+                        text_style = attr(&e, "style:name");
+                    }
+                    b"style:text-properties" => {
+                        if let Some(n) = &text_style {
+                            looks.insert(n.clone(), text_look(&e, &faces));
+                        }
+                    }
                     b"style:header-style" => hf = Some(true),
                     b"style:footer-style" => hf = Some(false),
                     b"style:header-footer-properties" => {
@@ -144,14 +230,31 @@ impl Pages {
                             }
                             // An empty element is a shown header with nothing in it
                             if shown && !empty {
-                                hf_text = Some((is_header, HfText::default()));
+                                hf_text = Some((e.name().as_ref().to_vec(), HfText::new(base.clone())));
                             }
+                        }
+                    }
+                    // Headers and footers of left (even) and first pages, used
+                    // only when shown
+                    b"style:header-left" | b"style:footer-left" | b"style:header-first" | b"style:footer-first"
+                        if master.is_some() && attr(&e, "style:display").as_deref() != Some("false") =>
+                    {
+                        let code = (!empty).then(|| (e.name().as_ref().to_vec(), HfText::new(base.clone())));
+                        match code {
+                            Some(c) => hf_text = Some(c),
+                            None => match e.name().as_ref() {
+                                b"style:header-left" => texts.header_left = Some(String::new()),
+                                b"style:footer-left" => texts.footer_left = Some(String::new()),
+                                b"style:header-first" => texts.header_first = Some(String::new()),
+                                _ => texts.footer_first = Some(String::new()),
+                            },
                         }
                     }
                     _ => {}
                 },
                 Ok(Event::End(e)) => match e.name().as_ref() {
                     b"style:page-layout" => layout = None,
+                    b"style:style" => text_style = None,
                     b"style:header-style" | b"style:footer-style" => hf = None,
                     b"style:master-page" => {
                         if let Some((n, l, h, f)) = master.take() {
@@ -172,9 +275,16 @@ impl Pages {
     pub(super) fn apply(&self, master: &str, sh: &mut Sheet) {
         let Some((layout, header, footer)) = self.masters.get(master) else { return };
         let Some(pg) = self.layouts.get(layout) else { return };
-        if let Some((h, f)) = self.texts.get(master) {
-            sh.header = h.clone().filter(|_| *header).filter(|t| !t.is_empty());
-            sh.footer = f.clone().filter(|_| *footer).filter(|t| !t.is_empty());
+        if let Some(t) = self.texts.get(master) {
+            let some = |x: &Option<String>| x.clone().filter(|t| !t.is_empty());
+            sh.header = some(&t.header).filter(|_| *header);
+            sh.footer = some(&t.footer).filter(|_| *footer);
+            sh.hf_diff_odd_even = t.header_left.is_some() || t.footer_left.is_some();
+            sh.header_even = some(&t.header_left);
+            sh.footer_even = some(&t.footer_left);
+            sh.hf_diff_first = t.header_first.is_some() || t.footer_first.is_some();
+            sh.header_first = some(&t.header_first);
+            sh.footer_first = some(&t.footer_first);
         }
         sh.landscape = pg.landscape;
         if let (Some(w), Some(h)) = (pg.width_mm, pg.height_mm) {
@@ -207,26 +317,73 @@ impl Pages {
     }
 }
 
+/// The look a text style gives: font, size, bold, italic, underline, strike
+fn text_look(e: &BytesStart, faces: &HashMap<String, String>) -> HfLook {
+    let font = attr(e, "style:font-name")
+        .map(|n| faces.get(&n).cloned().unwrap_or(n))
+        .or_else(|| attr(e, "fo:font-family").map(|f| f.trim_matches(|c| c == '\'' || c == '"').to_string()));
+    let size = attr(e, "fo:font-size").and_then(|v| v.strip_suffix("pt").and_then(|n| n.parse::<f32>().ok())).map(|n| n.round() as u32);
+    let on = |k: &str, off: &str| attr(e, k).is_some_and(|v| v != off);
+    HfLook {
+        font,
+        size,
+        bold: attr(e, "fo:font-weight").is_some_and(|w| w == "bold" || w.parse::<u32>().is_ok_and(|n| n >= 600)),
+        italic: on("fo:font-style", "normal"),
+        underline: on("style:text-underline-style", "none"),
+        strike: on("style:text-line-through-style", "none"),
+    }
+}
+
 /// The text of a header or footer as it is read: one string per region
-/// (`L`, `C`, `R`); text outside regions counts as the centre
-#[derive(Default)]
+/// (`L`, `C`, `R`); text outside regions counts as the centre. A change of
+/// look on the way becomes codes, as in an xlsx
 struct HfText {
-    regions: Vec<(char, String)>,
+    /// The look every region starts in
+    base: HfLook,
+    /// Each region's text and the look it has reached
+    regions: Vec<(char, String, HfLook)>,
     cur: Option<char>,
     paras: usize,
     in_field: bool,
+    /// The looks of the spans open now (None for a style without one)
+    spans: Vec<Option<HfLook>>,
 }
 
 impl HfText {
-    fn slot(&mut self) -> &mut String {
-        let k = self.cur.unwrap_or('C');
-        if let Some(i) = self.regions.iter().position(|(c, _)| *c == k) {
-            return &mut self.regions[i].1;
-        }
-        self.regions.push((k, String::new()));
-        &mut self.regions.last_mut().unwrap().1
+    fn new(base: HfLook) -> HfText {
+        HfText { base, regions: Vec::new(), cur: None, paras: 0, in_field: false, spans: Vec::new() }
     }
-    fn element(&mut self, name: &[u8], empty: bool) {
+    fn slot(&mut self) -> (&mut String, &mut HfLook) {
+        let k = self.cur.unwrap_or('C');
+        let i = match self.regions.iter().position(|(c, _, _)| *c == k) {
+            Some(i) => i,
+            None => {
+                self.regions.push((k, String::new(), self.base.clone()));
+                self.regions.len() - 1
+            }
+        };
+        let (_, t, l) = &mut self.regions[i];
+        (t, l)
+    }
+    /// Text or a code in the look of the spans open now
+    fn put(&mut self, s: &str) {
+        let want = self.spans.iter().rev().find_map(|l| l.clone()).unwrap_or_else(|| self.base.clone());
+        let (t, have) = self.slot();
+        // A look cannot go back to "no font" or "no size" in codes: those stay
+        let want = HfLook { font: want.font.or(have.font.clone()), size: want.size.or(have.size), ..want };
+        let codes = look_codes(have, &want);
+        t.push_str(&codes);
+        // A size code runs into digits after it (`&11` and `1` read as
+        // `&111`); bold switched on and off again keeps them apart
+        if codes.chars().last().is_some_and(|c| c.is_ascii_digit()) && s.starts_with(|c: char| c.is_ascii_digit()) {
+            t.push_str("&B&B");
+        }
+        *have = want;
+        t.push_str(s);
+    }
+    fn element(&mut self, e: &BytesStart, empty: bool, looks: &HashMap<String, HfLook>) {
+        let name = e.name();
+        let name = name.as_ref();
         match name {
             b"style:region-left" => {
                 self.cur = Some('L');
@@ -242,18 +399,22 @@ impl HfText {
             }
             b"text:p" => {
                 if self.paras > 0 {
-                    self.slot().push('\n');
+                    self.slot().0.push('\n');
                 }
                 self.paras += 1;
-                let _ = empty;
             }
-            b"text:sheet-name" => self.slot().push_str("&A"),
-            b"text:page-number" => self.slot().push_str("&P"),
-            b"text:page-count" => self.slot().push_str("&N"),
-            b"text:date" => self.slot().push_str("&D"),
-            b"text:time" => self.slot().push_str("&T"),
-            b"text:title" | b"text:file-name" => self.slot().push_str("&F"),
-            b"text:s" => self.slot().push(' '),
+            b"text:span" if !empty => self.spans.push(attr(e, "text:style-name").and_then(|n| looks.get(&n).cloned())),
+            b"text:sheet-name" => self.put("&A"),
+            b"text:page-number" => self.put("&P"),
+            b"text:page-count" => self.put("&N"),
+            b"text:date" => self.put("&D"),
+            b"text:time" => self.put("&T"),
+            b"text:title" | b"text:file-name" => self.put("&F"),
+            b"text:s" => {
+                let n = attr(e, "text:c").and_then(|v| v.parse::<usize>().ok()).unwrap_or(1);
+                self.put(&" ".repeat(n));
+            }
+            b"text:tab" => self.put("\t"),
             _ => {}
         }
         // A field's own text (`???`, `1`) is LibreOffice's preview of it
@@ -265,21 +426,23 @@ impl HfText {
         if matches!(name, b"text:sheet-name" | b"text:page-number" | b"text:page-count" | b"text:date" | b"text:time" | b"text:title" | b"text:file-name") {
             self.in_field = false;
         }
+        if name == b"text:span" {
+            self.spans.pop();
+        }
         if matches!(name, b"style:region-left" | b"style:region-center" | b"style:region-right") {
             self.cur = None;
         }
     }
     fn text(&mut self, t: &str) {
         if !self.in_field {
-            let t = t.replace('&', "&&");
-            self.slot().push_str(&t);
+            self.put(&t.replace('&', "&&"));
         }
     }
     /// As xlsx header text: `&L…&C…&R…`, empty regions left out
     fn code(&self) -> String {
         let mut out = String::new();
         for k in ['L', 'C', 'R'] {
-            if let Some((_, t)) = self.regions.iter().find(|(c, _)| *c == k) {
+            if let Some((_, t, _)) = self.regions.iter().find(|(c, _, _)| *c == k) {
                 if !t.is_empty() {
                     out.push('&');
                     out.push(k);
@@ -332,7 +495,7 @@ mod tests {
 </office:automatic-styles><office:master-styles>
 <style:master-page style:name="P1" style:page-layout-name="pm1"><style:header><text:p>x</text:p></style:header><style:footer style:display="false"/></style:master-page>
 </office:master-styles></office:document-styles>"#;
-        let p = Pages::parse(xml);
+        let p = Pages::parse(xml, HfLook::default());
         let mut sh = Sheet::new("S");
         p.apply("P1", &mut sh);
         assert!(sh.landscape);

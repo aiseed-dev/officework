@@ -83,10 +83,6 @@ fn left_out(sh: &Sheet, rep: &mut WriteReport) {
     let a = &sh.protect_allow;
     let more = [a.format_cells, a.format_cols, a.format_rows, a.insert_links, a.sort, a.autofilter, a.pivot, a.objects];
     rep.note("sheet_protection", usize::from(sh.protected && more.iter().any(|x| *x)));
-    rep.note(
-        "header",
-        [&sh.header_even, &sh.footer_even, &sh.header_first, &sh.footer_first].iter().filter(|h| h.is_some()).count(),
-    );
 }
 
 /// The automatic styles collected while the sheets are written
@@ -350,7 +346,7 @@ fn paras(t: &str) -> String {
     if t.is_empty() {
         return String::new();
     }
-    t.split('\n').map(|l| format!("<text:p>{}</text:p>", esc(l))).collect()
+    t.split('\n').map(|l| format!("<text:p>{}</text:p>", para(l))).collect()
 }
 
 fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &mut WriteReport) {
@@ -581,9 +577,14 @@ fn sheet_body(sh: &Sheet, book: &Book, st: &mut Styles, out: &mut String, rep: &
         r += n;
     }
     if last_row < MAX_ROWS {
+        // The rows to the end take the sheet's default height when it has one
+        let style = match sh.default_row_height {
+            Some(h) => format!(r#" table:style-name="{}""#, st.row(h, true, false)),
+            None => String::new(),
+        };
         let _ = write!(
             out,
-            r#"<table:table-row table:number-rows-repeated="{}"><table:table-cell table:number-columns-repeated="{MAX_COLS}"/></table:table-row>"#,
+            r#"<table:table-row{style} table:number-rows-repeated="{}"><table:table-cell table:number-columns-repeated="{MAX_COLS}"/></table:table-row>"#,
             MAX_ROWS - last_row
         );
     }
@@ -1089,6 +1090,17 @@ fn page_layout(sh: &Sheet, book: &Book) -> String {
         let _ = write!(a, r#" style:table-centering="{v}""#);
     }
     let _ = write!(a, "\u{1}{}\u{1}{}", hf(&sh.header, header), hf(&sh.footer, footer));
+    // Headers and footers of even (left) and first pages: `1|code` when
+    // shown, empty when the pages use the plain ones
+    let other = |on: bool, h: &Option<String>| if on { format!("1|{}", h.as_deref().unwrap_or("")) } else { String::new() };
+    let _ = write!(
+        a,
+        "\u{1}{}\u{1}{}\u{1}{}\u{1}{}",
+        other(sh.hf_diff_odd_even, &sh.header_even),
+        other(sh.hf_diff_odd_even, &sh.footer_even),
+        other(sh.hf_diff_first, &sh.header_first),
+        other(sh.hf_diff_first, &sh.footer_first)
+    );
     a
 }
 
@@ -1182,77 +1194,160 @@ fn hf_text_height_pt(code: &str, default_pt: f32) -> f32 {
 }
 
 /// xlsx header text (`&L…&C…&R…`, `&P` and the other codes) as the
-/// regions of an ODF header or footer
-fn hf_xml(code: &str) -> String {
-    let mut regions: Vec<(char, String)> = Vec::new();
+/// regions of an ODF header or footer. Changes of look (`&"Font,Bold"`,
+/// `&16`, `&B`, …) become text spans whose styles are added to `looks`
+/// `base` is the look each region starts in: the workbook's default font,
+/// as LibreOffice gives header text when it reads an xlsx
+fn hf_xml(code: &str, looks: &mut Vec<String>, base: &super::page::HfLook) -> String {
+    use super::page::HfLook;
+    /// A piece of a region: text or a field in a look, or a new paragraph
+    enum Bit {
+        Text(HfLook, String),
+        Field(HfLook, &'static str),
+        Para,
+    }
+    let mut regions: Vec<(char, Vec<Bit>)> = Vec::new();
     let mut cur = 'C';
-    let mut text = String::new();
-    let mut paras: Vec<String> = Vec::new();
-    let flush = |regions: &mut Vec<(char, String)>, cur: char, paras: &mut Vec<String>, text: &mut String| {
-        paras.push(std::mem::take(text));
-        let body: String = paras.drain(..).map(|p| format!("<text:p>{p}</text:p>")).collect();
-        if body != "<text:p></text:p>" {
-            regions.push((cur, body));
-        }
-    };
+    let mut bits: Vec<Bit> = Vec::new();
+    let mut look = base.clone();
     let ch: Vec<char> = code.chars().collect();
     let mut i = 0;
+    let push_text = |bits: &mut Vec<Bit>, look: &HfLook, c: char| match bits.last_mut() {
+        Some(Bit::Text(l, t)) if l == look => t.push(c),
+        _ => bits.push(Bit::Text(look.clone(), c.to_string())),
+    };
     while i < ch.len() {
         let c = ch[i];
         if c == '\n' {
-            paras.push(std::mem::take(&mut text));
+            bits.push(Bit::Para);
             i += 1;
             continue;
         }
         if c != '&' {
-            text.push_str(&esc(&c.to_string()));
+            push_text(&mut bits, &look, c);
             i += 1;
             continue;
         }
         let Some(&n) = ch.get(i + 1) else { break };
         i += 2;
         match n {
+            // Each section starts in the plain look
             'L' | 'C' | 'R' => {
-                if !text.is_empty() || !paras.is_empty() {
-                    flush(&mut regions, cur, &mut paras, &mut text);
+                if !bits.is_empty() {
+                    regions.push((cur, std::mem::take(&mut bits)));
                 }
                 cur = n;
+                look = base.clone();
             }
-            'A' => text.push_str("<text:sheet-name>???</text:sheet-name>"),
-            'P' => text.push_str("<text:page-number>1</text:page-number>"),
-            'N' => text.push_str("<text:page-count>99</text:page-count>"),
-            'D' => text.push_str("<text:date/>"),
-            'T' => text.push_str("<text:time/>"),
-            'F' => text.push_str("<text:title>???</text:title>"),
-            '&' => text.push_str("&amp;"),
-            // A font name in quotes, or a size in digits: formatting, skipped
+            'A' => bits.push(Bit::Field(look.clone(), "<text:sheet-name>???</text:sheet-name>")),
+            'P' => bits.push(Bit::Field(look.clone(), "<text:page-number>1</text:page-number>")),
+            'N' => bits.push(Bit::Field(look.clone(), "<text:page-count>99</text:page-count>")),
+            'D' => bits.push(Bit::Field(look.clone(), "<text:date/>")),
+            'T' => bits.push(Bit::Field(look.clone(), "<text:time/>")),
+            'F' => bits.push(Bit::Field(look.clone(), "<text:title>???</text:title>")),
+            '&' => push_text(&mut bits, &look, '&'),
+            // `&"Font,Style"`: `-` keeps the font; the style sets bold and
+            // italic (Excel writes its own language's words for them)
             '"' => {
+                let start = i;
                 while i < ch.len() && ch[i] != '"' {
                     i += 1;
                 }
+                let spec: String = ch[start..i.min(ch.len())].iter().collect();
                 i += 1;
-            }
-            d if d.is_ascii_digit() => {
-                while i < ch.len() && ch[i].is_ascii_digit() {
-                    i += 1;
+                let (font, style) = spec.split_once(',').unwrap_or((spec.as_str(), ""));
+                if font != "-" && !font.is_empty() {
+                    look.font = Some(font.to_string());
+                }
+                if !style.is_empty() {
+                    let st = style.to_lowercase();
+                    look.bold = st.contains("bold") || style.contains("太字");
+                    look.italic = st.contains("italic") || st.contains("oblique") || style.contains("斜体");
                 }
             }
+            d if d.is_ascii_digit() => {
+                let mut v = d.to_digit(10).unwrap_or(0);
+                while i < ch.len() && ch[i].is_ascii_digit() {
+                    v = v * 10 + ch[i].to_digit(10).unwrap_or(0);
+                    i += 1;
+                }
+                if v > 0 {
+                    look.size = Some(v);
+                }
+            }
+            'B' => look.bold = !look.bold,
+            'I' => look.italic = !look.italic,
+            'U' | 'E' => look.underline = !look.underline,
+            'S' => look.strike = !look.strike,
+            // A colour: six hex digits, or a theme colour with a tint
+            // (`&K01+000`); not kept
+            'K' => i = (i + 6).min(ch.len()),
             _ => {}
         }
     }
-    if !text.is_empty() || !paras.is_empty() {
-        flush(&mut regions, cur, &mut paras, &mut text);
+    if !bits.is_empty() {
+        regions.push((cur, bits));
     }
+    let mut style_of = |l: &HfLook| -> Option<String> {
+        if *l == HfLook::default() {
+            return None;
+        }
+        let mut tp = String::new();
+        if let Some(f) = &l.font {
+            let f = esc(f);
+            let _ = write!(tp, r#" fo:font-family="{f}" style:font-family-asian="{f}" style:font-family-complex="{f}""#);
+        }
+        if let Some(n) = l.size {
+            let _ = write!(tp, r#" fo:font-size="{n}pt" style:font-size-asian="{n}pt" style:font-size-complex="{n}pt""#);
+        }
+        if l.bold {
+            tp.push_str(r#" fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold""#);
+        }
+        if l.italic {
+            tp.push_str(r#" fo:font-style="italic" style:font-style-asian="italic" style:font-style-complex="italic""#);
+        }
+        if l.underline {
+            tp.push_str(r#" style:text-underline-style="solid" style:text-underline-width="auto" style:text-underline-color="font-color""#);
+        }
+        if l.strike {
+            tp.push_str(r#" style:text-line-through-style="solid""#);
+        }
+        let i = looks.iter().position(|x| *x == tp).unwrap_or_else(|| {
+            looks.push(tp);
+            looks.len() - 1
+        });
+        Some(format!("MT{}", i + 1))
+    };
     let mut out = String::new();
     for k in ['L', 'C', 'R'] {
-        if let Some((_, body)) = regions.iter().find(|(c, _)| *c == k) {
-            let tag = match k {
-                'L' => "region-left",
-                'C' => "region-center",
-                _ => "region-right",
+        let Some((_, bits)) = regions.iter().find(|(c, _)| *c == k) else { continue };
+        let mut body = String::from("<text:p>");
+        for b in bits {
+            let (l, x) = match b {
+                Bit::Para => {
+                    body.push_str("</text:p><text:p>");
+                    continue;
+                }
+                Bit::Text(l, t) => (l, para(t)),
+                Bit::Field(l, f) => (l, f.to_string()),
             };
-            let _ = write!(out, "<style:{tag}>{body}</style:{tag}>");
+            match style_of(l) {
+                Some(s) => {
+                    let _ = write!(body, r#"<text:span text:style-name="{s}">{x}</text:span>"#);
+                }
+                None => body.push_str(&x),
+            }
         }
+        body.push_str("</text:p>");
+        if body == "<text:p></text:p>" {
+            continue;
+        }
+        let tag = match k {
+            'L' => "region-left",
+            'C' => "region-center",
+            _ => "region-right",
+        };
+        let _ = write!(out, "<style:{tag}>{body}</style:{tag}>");
     }
     out
 }
@@ -1560,6 +1655,41 @@ fn styles_xml(book: &Book, st: &Styles) -> String {
     }
     s.push_str("</office:styles><office:automatic-styles>");
     let parts: Vec<Vec<&str>> = st.pages.iter().map(|p| p.split('\u{1}').collect()).collect();
+    // The master pages first, since their text adds text styles
+    let mut looks: Vec<String> = Vec::new();
+    let mut masters = String::new();
+    let base = super::page::HfLook {
+        font: book.default_font.as_ref().map(|(f, _)| f.clone()),
+        size: book.default_font.as_ref().map(|(_, pt)| pt.round() as u32).filter(|n| *n > 0),
+        ..Default::default()
+    };
+    for (i, p) in parts.iter().enumerate() {
+        // A sheet without a header or footer gets none: LibreOffice's own
+        // default page style would print the sheet name and the page number
+        let mut hf = |k: usize, tag: &str| -> String {
+            let f: Vec<&str> = p.get(k).copied().unwrap_or("").splitn(4, '|').collect();
+            match f.get(3) {
+                Some(code) => format!("<style:{tag}>{}</style:{tag}>", hf_xml(code, &mut looks, &base)),
+                None => format!(r#"<style:{tag} style:display="false"/>"#),
+            }
+        };
+        let (header, footer) = (hf(1, "header"), hf(2, "footer"));
+        let mut other = |k: usize, tag: &str| -> String {
+            match p.get(k).and_then(|x| x.strip_prefix("1|")) {
+                Some(code) => format!("<style:{tag}>{}</style:{tag}>", hf_xml(code, &mut looks, &base)),
+                None => format!(r#"<style:{tag} style:display="false"/>"#),
+            }
+        };
+        let (hl, fl, hfst, ffst) = (other(3, "header-left"), other(4, "footer-left"), other(5, "header-first"), other(6, "footer-first"));
+        let _ = write!(
+            masters,
+            r#"<style:master-page style:name="PageStyle_{0}" style:page-layout-name="pm{0}">{header}{hl}{hfst}{footer}{fl}{ffst}</style:master-page>"#,
+            i + 1
+        );
+    }
+    for (i, tp) in looks.iter().enumerate() {
+        let _ = write!(s, r#"<style:style style:name="MT{}" style:family="text"><style:text-properties{tp}/></style:style>"#, i + 1);
+    }
     for (i, p) in parts.iter().enumerate() {
         let _ = write!(s, r#"<style:page-layout style:name="pm{}"><style:page-layout-properties {}/>"#, i + 1, p[0]);
         for (k, tag, gap) in [(1, "header-style", "margin-bottom"), (2, "footer-style", "margin-top")] {
@@ -1576,24 +1706,7 @@ fn styles_xml(book: &Book, st: &Styles) -> String {
         s.push_str("</style:page-layout>");
     }
     s.push_str("</office:automatic-styles><office:master-styles>");
-    for (i, p) in parts.iter().enumerate() {
-        // A sheet without a header or footer gets none: LibreOffice's own
-        // default page style would print the sheet name and the page number
-        let hf = |k: usize, tag: &str| -> String {
-            let f: Vec<&str> = p.get(k).copied().unwrap_or("").splitn(4, '|').collect();
-            match f.get(3) {
-                Some(code) => format!("<style:{tag}>{}</style:{tag}>", hf_xml(code)),
-                None => format!(r#"<style:{tag} style:display="false"/>"#),
-            }
-        };
-        let _ = write!(
-            s,
-            r#"<style:master-page style:name="PageStyle_{0}" style:page-layout-name="pm{0}">{1}{2}</style:master-page>"#,
-            i + 1,
-            hf(1, "header"),
-            hf(2, "footer")
-        );
-    }
+    s.push_str(&masters);
     s.push_str("</office:master-styles></office:document-styles>");
     s
 }

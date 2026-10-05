@@ -289,3 +289,26 @@ fn breaks_protection_links_and_frozen_panes_round_trip() {
     assert_eq!(y.freeze, x.freeze);
     assert_eq!(r.sheets[1].freeze, b.sheets[1].freeze);
 }
+
+/// Header and footer text keeps its font, size and bold, its runs of
+/// spaces, and the headers of even and first pages
+#[test]
+fn header_looks_and_even_and_first_pages_round_trip() {
+    let mut b = book::Book::new();
+    let sh = &mut b.sheets[0];
+    sh.set(Pos::new(0, 0), book::Cell { value: Value::Number(1.0), ..Default::default() });
+    sh.header = Some("&C&\"ＭＳ Ｐ明朝,Regular\"&16 第 ２ 表   収入&B支出&R&P / &N".into());
+    sh.footer = Some("&L&\"Arial,Bold Italic\"社外秘&C&A".into());
+    sh.hf_diff_odd_even = true;
+    sh.header_even = Some("&L偶数 &P".into());
+    sh.hf_diff_first = true;
+    sh.footer_first = Some("&C表紙".into());
+    let (bytes, rep) = super::write(&b);
+    assert!(rep.is_lossless(), "{:?}", rep.left_out);
+    let (r, _) = read(bytes);
+    let (x, y) = (&b.sheets[0], &r.sheets[0]);
+    assert_eq!(y.header, x.header);
+    assert_eq!(y.footer, x.footer);
+    assert_eq!((y.hf_diff_odd_even, &y.header_even, &y.footer_even), (true, &x.header_even, &None));
+    assert_eq!((y.hf_diff_first, &y.header_first, &y.footer_first), (true, &None, &x.footer_first));
+}
