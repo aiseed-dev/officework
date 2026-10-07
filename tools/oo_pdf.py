@@ -24,10 +24,15 @@ The default output is `<stem>.oo.pdf` next to each source, or in DIR. With
   the font list and a temporary folder makes it work. The font list is read
   from the app's own data folder and never written.
 * The format codes are x2t's: 513 PDF, 257 xlsx, 259 ods, 65 docx, 67 odt.
-* `--x2t PATH` runs another x2t, for example one in an unpacked Linux package
-  (`onlyoffice-desktopeditors-x64.tar.xz`) whose sdkjs was replaced. It still
-  runs inside the flatpak sandbox, so the flatpak's font list and its font
-  paths (`/run/host/fonts`, `/app/...`) stay valid.
+* Each install builds its own font list, with the font paths as that app
+  sees them. The flatpak's list names `/run/host/fonts/...`, which exist only
+  inside its sandbox, so the flatpak's x2t runs there.
+* `--x2t PATH` runs another x2t directly, for example one in an unpacked
+  Linux package (`onlyoffice-desktopeditors-x64.tar.xz`) whose sdkjs was
+  replaced. It uses the font list that package's app builds on its first
+  start, in `~/.local/share/onlyoffice`, which names `/usr/share/fonts/...`.
+  On 2026-10-07 a docx printed this way and in the flatpak gave the same
+  pixels.
 """
 from __future__ import annotations
 
@@ -40,27 +45,30 @@ import tempfile
 APP = "org.onlyoffice.desktopeditors"
 X2T = "/app/bin/opt/onlyoffice/desktopeditors/converter/x2t"
 FONTS = pathlib.Path.home() / ".var/app" / APP / "data/onlyoffice/desktopeditors/data/fonts"
+# The font list of an unpacked Linux package's app
+LOCAL_FONTS = pathlib.Path.home() / ".local/share/onlyoffice/desktopeditors/data/fonts"
 CODES = {"pdf": 513, "xlsx": 257, "ods": 259, "docx": 65, "odt": 67}
 
 
 def convert(src: pathlib.Path, dst: pathlib.Path, to: str, timeout: float, x2t: str = X2T) -> str | None:
     """Convert one file. Returns None on success, or why it failed"""
+    fonts = FONTS if x2t == X2T else LOCAL_FONTS
     with tempfile.TemporaryDirectory(dir=dst.parent) as tmp:
         task = pathlib.Path(tmp) / "task.xml"
         task.write_text(
             '<?xml version="1.0" encoding="utf-8"?><TaskQueueDataConvert>'
             f"<m_sFileFrom>{src}</m_sFileFrom><m_sFileTo>{dst}</m_sFileTo>"
             f"<m_nFormatTo>{CODES[to]}</m_nFormatTo>"
-            f"<m_sAllFontsPath>{FONTS / 'AllFonts.js'}</m_sAllFontsPath><m_sFontDir>{FONTS}</m_sFontDir>"
+            f"<m_sAllFontsPath>{fonts / 'AllFonts.js'}</m_sAllFontsPath><m_sFontDir>{fonts}</m_sFontDir>"
             f"<m_sTempDir>{tmp}</m_sTempDir><m_bIsNoBase64>true</m_bIsNoBase64>"
             "</TaskQueueDataConvert>",
             encoding="utf-8",
         )
-        cmd = ["flatpak", "run", f"--filesystem={src.parent}", f"--filesystem={dst.parent}"]
-        if x2t != X2T:
-            # The package folder holds the converter's libraries and sdkjs
-            cmd.append(f"--filesystem={pathlib.Path(x2t).resolve().parents[1]}")
-        cmd += [f"--command={x2t}", APP, str(task)]
+        if x2t == X2T:
+            cmd = ["flatpak", "run", f"--filesystem={src.parent}", f"--filesystem={dst.parent}",
+                   f"--command={x2t}", APP, str(task)]
+        else:
+            cmd = [x2t, str(task)]
         try:
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         except subprocess.TimeoutExpired:
@@ -78,8 +86,9 @@ def main() -> int:
     ap.add_argument("--timeout", type=float, default=180)
     ap.add_argument("--x2t", default=X2T, help="the x2t to run (default: the flatpak's own)")
     a = ap.parse_args()
-    if not (FONTS / "AllFonts.js").exists():
-        print(f"no font list at {FONTS}: start ONLYOFFICE once to build it", file=sys.stderr)
+    fonts = FONTS if a.x2t == X2T else LOCAL_FONTS
+    if not (fonts / "AllFonts.js").exists():
+        print(f"no font list at {fonts}: start ONLYOFFICE once to build it", file=sys.stderr)
         return 2
     failed = 0
     for f in a.files:
