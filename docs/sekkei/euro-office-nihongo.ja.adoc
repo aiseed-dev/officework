@@ -101,6 +101,21 @@ vendor/sdkjs のブランチ `ja-line-break` にも同じコミットがあり�
 AGPL-3.0 の LICENSE と NOTICE を入れました。手を入れた実行ファイルは配らず、利用者が公式の版を取って
 手元でパッチを当てる形です。push と公開は発注者がします。
 
+2026-10-07 に、公開用のリポジトリと手元の環境を次のように変えました。
+
+* `build.py all` の最後で、メニューに「ja-office-fixes」を足すようにしました(発注者「メニューから起動できるようにして」)。
+  アイコンは、デスクトップの一般的な文書のアイコンです。ONLYOFFICE のロゴは商標なので使いません。
+* 文書(docx・doc・odt・rtf)をダブルクリックすると、パッチ版で開くようにしました(発注者「ダブルクリックで開けるようにして」)。
+  `xdg-mime` で既定のアプリにします。`build.py unmenu` で、システムの既定のアプリに戻ります。
+* 発注者が、この機械の flatpak 版の ONLYOFFICE を削除しました。
+* `tools/oo_pdf.py` は、`vendor/onlyoffice-desktop` に展開した公式の Linux 版の x2t を使うようにしました。
+  そこの文書エディターは `tools/onlyoffice_ja.py restore` で公式に戻しました。
+  パッチ版で印刷するときは、`--x2t` で `~/dev/ja-office-fixes/work/desktop` の x2t を指定します。
+* フォントの一覧(`AllFonts.js`)は、アプリごとに最初の起動で作られます。一覧にはフォントのファイルの場所が書かれます。
+  flatpak 版の一覧には、flatpak の中からしか見えない `/run/host/fonts/...` が書かれていました。
+  展開した Linux 版の一覧は `~/.local/share/onlyoffice` にでき、`/usr/share/fonts/...` が書かれます。
+  この一覧で印刷した docx は、flatpak 版で印刷した物と画素まで同じでした。
+
 手元で使うだけなら条件はありません。人に配るときは、ONLYOFFICE の追加の条件
 (同梱の LICENSE.txt の Additional Terms)に従います。
 

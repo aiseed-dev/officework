@@ -18,6 +18,9 @@ Folders (git-ignored):
   release (the header of its sdk-all-min.js says "build:129").
 * vendor/onlyoffice-desktop: the tar.xz from the DesktopEditors release,
   unpacked. The original word sdkjs is kept in orig-sdkjs-word/ there.
+  Since 2026-10-07 its word editor is the official one (restore), and
+  tools/oo_pdf.py prints with its x2t. The patched app for daily use is
+  built by ja-office-fixes (~/dev/ja-office-fixes/build.py).
 
 ## What we ran into
 
