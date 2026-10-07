@@ -1,0 +1,539 @@
+From 7ec21c311024a3ba6d5ff3c50d5b4e19a03ef114 Mon Sep 17 00:00:00 2001
+From: Yasuhiro Niji <aiseed-dev@users.noreply.github.com>
+Date: Thu, 8 Oct 2026 00:43:10 +0900
+Subject: [PATCH] [se] Convert Japanese text in ASC and JIS, and count bytes in
+ the B functions
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+ASC added 0x20 to every code from U+FF00 to U+FFEF and kept the low
+byte, so half-width katakana became control characters and full-width
+katakana stayed as they were. JIS subtracted 0x20 from every other
+code, which turned hiragana and kanji into unrelated characters. Both
+now follow ECMA-376 Part 1, 18.17.7.11 and 18.17.7.187, whose examples
+are ASC("エクセル") = ｴｸｾﾙ and JIS("ｴｸｾﾙ") = エクセル: full-width ASCII,
+the ideographic space and katakana become half-width and back, a voiced
+kana is one full-width character or two half-width ones (ガ, ｶﾞ), and
+hiragana and kanji are left alone. As in code page 932, ￥ and \ are the
+same character. JIS is no longer hidden from the function list.
+
+LENB, LEFTB, RIGHTB, MIDB, REPLACEB, FINDB and SEARCHB counted
+characters, so LENB("あいう") was 3 where a Japanese spreadsheet has 6.
+They now count the bytes of code page 932 (18.17.7.192, 18.17.7.194):
+ASCII and half-width katakana take one byte, other characters two. Half
+of a two-byte character at a cut becomes a space, as LibreOffice does.
+
+VALUE reads full-width digits and signs (VALUE("１２３") = 123).
+
+Five expectations in the ASC tests recorded the old output, such as
+ASC("デジタル") = デジタル and a control character for U+FFEF; they now
+expect the converted text.
+
+Assisted-by: ClaudeCode:claude-opus-5-5
+---
+ .../FormulaObjects/textanddataFunctions.js    | 310 ++++++++++++++++--
+ .../formula-tests/textAndDataTests.js         |  52 ++-
+ 2 files changed, 328 insertions(+), 34 deletions(-)
+
+diff --git a/cell/model/FormulaObjects/textanddataFunctions.js b/cell/model/FormulaObjects/textanddataFunctions.js
+index 2a9e1c4..7e8a9d0 100644
+--- a/cell/model/FormulaObjects/textanddataFunctions.js
++++ b/cell/model/FormulaObjects/textanddataFunctions.js
+@@ -68,10 +68,177 @@ function (window, undefined) {
+ 		cTRIM, cUNICHAR, cUNICODE, cUPPER, cVALUE, cTEXTBEFORE, cTEXTAFTER, cTEXTSPLIT);
+ 
+ 	cFormulaFunctionGroup['NotRealised'] = cFormulaFunctionGroup['NotRealised'] || [];
+-	cFormulaFunctionGroup['NotRealised'].push(cBAHTTEXT, cJIS, cPHONETIC);
++	cFormulaFunctionGroup['NotRealised'].push(cBAHTTEXT, cPHONETIC);
+ 
+ 	const MAX_UNSIGNED_INT_16 = 65535;
+ 
++	// Full-width and half-width forms for ASC and JIS (ECMA-376 Part 1,
++	// 18.17.7.11 and 18.17.7.187): ASC("エクセル") is ｴｸｾﾙ and JIS("ｴｸｾﾙ")
++	// is エクセル. A voiced kana is one full-width character and two
++	// half-width ones (ガ, ｶﾞ).
++	const HALF_VOICED = '\uFF9E', HALF_SEMI_VOICED = '\uFF9F';
++	let halfToFullKana = null, fullToHalfKana = null;
++	function initKanaTables() {
++		if (halfToFullKana) {
++			return;
++		}
++		halfToFullKana = {};
++		fullToHalfKana = {};
++		for (let code = 0xFF61; code <= 0xFF9F; code++) {
++			let half = String.fromCharCode(code);
++			let full = half.normalize('NFKC');
++			if (HALF_VOICED === half) {
++				full = '\u309B';
++			} else if (HALF_SEMI_VOICED === half) {
++				full = '\u309C';
++			}
++			halfToFullKana[half] = full;
++			fullToHalfKana[full] = half;
++		}
++	}
++	function toHalfWidth(str) {
++		initKanaTables();
++		let res = '';
++		for (let i = 0; i < str.length; i++) {
++			let ch = str[i], code = str.charCodeAt(i);
++			if (code >= 0xFF01 && code <= 0xFF5E) {
++				// ￥ is the yen sign at 0x5C in Japanese; it becomes \, as in code page 932
++				res += String.fromCharCode(code - 0xFEE0);
++			} else if (0xFFE5 === code) {
++				res += '\\';
++			} else if (0x3000 === code) {
++				res += ' ';
++			} else if (fullToHalfKana[ch]) {
++				res += fullToHalfKana[ch];
++			} else {
++				let parts = ch.normalize('NFD');
++				if (2 === parts.length && fullToHalfKana[parts[0]] && ('\u3099' === parts[1] || '\u309A' === parts[1])) {
++					res += fullToHalfKana[parts[0]] + ('\u3099' === parts[1] ? HALF_VOICED : HALF_SEMI_VOICED);
++				} else {
++					res += ch;
++				}
++			}
++		}
++		return res;
++	}
++	function toFullWidth(str) {
++		initKanaTables();
++		let res = '';
++		for (let i = 0; i < str.length; i++) {
++			let ch = str[i], code = str.charCodeAt(i);
++			if (0x5C === code) {
++				res += '\uFFE5';
++			} else if (code >= 0x21 && code <= 0x7E) {
++				res += String.fromCharCode(code + 0xFEE0);
++			} else if (0x20 === code) {
++				res += '\u3000';
++			} else if (halfToFullKana[ch]) {
++				let full = halfToFullKana[ch], next = str[i + 1];
++				if (HALF_VOICED === next || HALF_SEMI_VOICED === next) {
++					let voiced = (full + (HALF_VOICED === next ? '\u3099' : '\u309A')).normalize('NFC');
++					if (1 === voiced.length) {
++						full = voiced;
++						i++;
++					}
++				}
++				res += full;
++			} else {
++				res += ch;
++			}
++		}
++		return res;
++	}
++
++	// Bytes of text in the double-byte character set of Japanese (code page
++	// 932), for LENB and the other B functions (ECMA-376 Part 1, 18.17.7.194):
++	// ASCII and half-width katakana take one byte, other characters two
++	function getCharBytes(code) {
++		return code <= 0x7F || (code >= 0xFF61 && code <= 0xFF9F) ? 1 : 2;
++	}
++	// The characters of str with the byte each one starts at
++	function getByteChars(str) {
++		let chars = [], bytes = 0;
++		for (let i = 0; i < str.length; i++) {
++			let code = str.charCodeAt(i), ch = str[i];
++			if (code >= 0xD800 && code <= 0xDBFF && i + 1 < str.length) {
++				ch += str[++i];
++			}
++			let size = getCharBytes(code);
++			chars.push({ch: ch, start: bytes, size: size, index: i + 1 - ch.length});
++			bytes += size;
++		}
++		return {chars: chars, length: bytes};
++	}
++	function getByteLength(str) {
++		return getByteChars(str).length;
++	}
++	// The bytes [start, start + count) of str; half of a two-byte character
++	// at either end becomes a space
++	function sliceBytes(str, start, count) {
++		let res = '', end = start + count;
++		let chars = getByteChars(str).chars;
++		for (let i = 0; i < chars.length; i++) {
++			let c = chars[i], from = Math.max(start, c.start), to = Math.min(end, c.start + c.size);
++			if (to <= from) {
++				continue;
++			}
++			res += to - from === c.size ? c.ch : ' '.repeat(to - from);
++		}
++		return res;
++	}
++	// The character index at a byte position, and back
++	function byteToCharIndex(str, byte) {
++		let chars = getByteChars(str).chars;
++		for (let i = 0; i < chars.length; i++) {
++			if (chars[i].start + chars[i].size > byte) {
++				return chars[i].index;
++			}
++		}
++		return str.length;
++	}
++	function charToByteIndex(str, index) {
++		return getByteLength(str.substring(0, index));
++	}
++	// The text of an argument that is one value
++	function getSingleText(arg, cross) {
++		if (arg instanceof cArea || arg instanceof cArea3D) {
++			arg = arg.cross(cross);
++		} else if (arg instanceof cRef || arg instanceof cRef3D) {
++			arg = arg.getValue();
++		}
++		if (arg instanceof cArray) {
++			arg = arg.getElementRowCol(0, 0);
++		}
++		return arg instanceof cError ? null : arg.toLocaleString();
++	}
++	// FINDB and SEARCHB: the start is a byte and so is the result
++	function findBytes(func, arg, cross) {
++		let within = getSingleText(arg[1], cross);
++		if (null === within || [arg[0], arg[1], arg[2]].some(function (a) { return a instanceof cArray; })) {
++			return func.call(this, arg, cross);
++		}
++		let args = arg.slice();
++		if (args.length > 2) {
++			let start = args[2];
++			if (start instanceof cArea || start instanceof cArea3D) {
++				start = start.cross(cross);
++			}
++			start = start.tocNumber();
++			if (start instanceof cError) {
++				return start;
++			}
++			if (start.getValue() < 1) {
++				return new cError(cErrorType.wrong_value_type);
++			}
++			args[2] = new cNumber(byteToCharIndex(within, start.getValue() - 1) + 1);
++		}
++		let res = func.call(this, args, cross);
++		if (res instanceof cNumber) {
++			res = new cNumber(charToByteIndex(within, res.getValue() - 1) + 1);
++		}
++		return res;
++	}
++
+ 	function calcBeforeAfterText(arg, arg1, isAfter) {
+ 		let newArgs = cBaseFunction.prototype._prepareArguments.call(this, arg, arg1, null, null, true).args;
+ 		let text = newArgs[0];
+@@ -356,19 +523,7 @@ function (window, undefined) {
+ 		var arg0 = arg[0];
+ 
+ 		var calcAsc = function (str) {
+-			var res = '';
+-			var fullWidthFrom = 0xFF00;
+-			var fullWidthTo = 0xFFEF;
+-
+-			for (var i = 0; i < str.length; i++) {
+-				var nCh = str[i].charCodeAt(0);
+-				if (nCh >= fullWidthFrom && nCh <= fullWidthTo) {
+-					nCh = 0xFF & (nCh + 0x20);
+-				}
+-				res += String.fromCharCode(nCh);
+-			}
+-
+-			return new cString(res);
++			return new cString(toHalfWidth(str));
+ 		};
+ 
+ 		if (arg0 instanceof cArea || arg0 instanceof cArea3D) {
+@@ -1040,6 +1195,9 @@ function (window, undefined) {
+ 	cFINDB.prototype.constructor = cFINDB;
+ 	cFINDB.prototype.name = 'FINDB';
+ 	cFINDB.prototype.argumentsType = [argType.text, argType.text, argType.number];
++	cFINDB.prototype.Calculate = function (arg) {
++		return findBytes.call(this, cFIND.prototype.Calculate, arg, arguments[1]);
++	};
+ 
+ 	/**
+ 	 * @constructor
+@@ -1393,19 +1551,7 @@ function (window, undefined) {
+ 		var arg0 = arg[0];
+ 
+ 		var calc = function (str) {
+-			var res = '';
+-			var fullWidthFrom = 0xFF00;
+-			var fullWidthTo = 0xFFEF;
+-
+-			for (var i = 0; i < str.length; i++) {
+-				var nCh = str[i].charCodeAt(0);
+-				if (!(nCh >= fullWidthFrom && nCh <= fullWidthTo)) {
+-					nCh = nCh - 0x20 + 0xff00;
+-				}
+-				res += String.fromCharCode(nCh);
+-			}
+-
+-			return new cString(res);
++			return new cString(toFullWidth(str));
+ 		};
+ 
+ 		if (arg0 instanceof cArea || arg0 instanceof cArea3D) {
+@@ -1495,6 +1641,27 @@ function (window, undefined) {
+ 	cLEFTB.prototype.constructor = cLEFTB;
+ 	cLEFTB.prototype.name = 'LEFTB';
+ 	cLEFTB.prototype.argumentsType = [argType.text, argType.number];
++	cLEFTB.prototype.Calculate = function (arg) {
++		let res = cLEFT.prototype.Calculate.call(this, [arg[0], new cNumber(Number.MAX_SAFE_INTEGER)], arguments[1]);
++		let count = arg.length === 1 ? new cNumber(1) : arg[1];
++		if (count instanceof cArea || count instanceof cArea3D) {
++			count = count.cross(arguments[1]);
++		}
++		count = count.tocNumber();
++		if (count instanceof cArray) {
++			count = count.getElementRowCol(0, 0);
++		}
++		if (!(res instanceof cString)) {
++			return res;
++		}
++		if (count instanceof cError) {
++			return count;
++		}
++		if (count.getValue() < 0) {
++			return new cError(cErrorType.wrong_value_type);
++		}
++		return new cString(sliceBytes(res.getValue(), 0, Math.floor(count.getValue())));
++	};
+ 
+ 	/**
+ 	 * @constructor
+@@ -1540,6 +1707,13 @@ function (window, undefined) {
+ 	cLENB.prototype.constructor = cLENB;
+ 	cLENB.prototype.name = 'LENB';
+ 	cLENB.prototype.argumentsType = [argType.text];
++	cLENB.prototype.Calculate = function (arg) {
++		let str = getSingleText(arg[0], arguments[1]);
++		if (null === str) {
++			return cLEN.prototype.Calculate.call(this, arg, arguments[1]);
++		}
++		return new cNumber(getByteLength(str));
++	};
+ 
+ 	/**
+ 	 * @constructor
+@@ -1661,6 +1835,37 @@ function (window, undefined) {
+ 	cMIDB.prototype = Object.create(cMID.prototype);
+ 	cMIDB.prototype.constructor = cMIDB;
+ 	cMIDB.prototype.name = 'MIDB';
++	cMIDB.prototype.Calculate = function (arg) {
++		let str = getSingleText(arg[0], arguments[1]);
++		let start = arg[1], count = arg[2];
++		if (start instanceof cArea || start instanceof cArea3D) {
++			start = start.cross(arguments[1]);
++		}
++		if (count instanceof cArea || count instanceof cArea3D) {
++			count = count.cross(arguments[1]);
++		}
++		start = start.tocNumber();
++		count = count.tocNumber();
++		if (start instanceof cArray) {
++			start = start.getElementRowCol(0, 0);
++		}
++		if (count instanceof cArray) {
++			count = count.getElementRowCol(0, 0);
++		}
++		if (null === str) {
++			return cMID.prototype.Calculate.call(this, arg, arguments[1]);
++		}
++		if (start instanceof cError) {
++			return start;
++		}
++		if (count instanceof cError) {
++			return count;
++		}
++		if (start.getValue() < 1 || count.getValue() < 0) {
++			return new cError(cErrorType.wrong_value_type);
++		}
++		return new cString(sliceBytes(str, Math.floor(start.getValue()) - 1, Math.floor(count.getValue())));
++	};
+ 
+ 	/**
+ 	 * @constructor
+@@ -1958,6 +2163,28 @@ function (window, undefined) {
+ 	cREPLACEB.prototype.constructor = cREPLACEB;
+ 	cREPLACEB.prototype.name = 'REPLACEB';
+ 	cREPLACEB.prototype.argumentsType = [argType.text, argType.number, argType.number, argType.text];
++	cREPLACEB.prototype.Calculate = function (arg) {
++		let str = getSingleText(arg[0], arguments[1]);
++		if (null === str) {
++			return cREPLACE.prototype.Calculate.call(this, arg, arguments[1]);
++		}
++		// REPLACE with the character positions of the bytes
++		let res = cREPLACE.prototype.Calculate.call(this, [new cString(str), arg[1], arg[2], arg[3]], arguments[1]);
++		if (!(res instanceof cString)) {
++			return res;
++		}
++		let start = arg[1], count = arg[2];
++		if (start instanceof cArea || start instanceof cArea3D) {
++			start = start.cross(arguments[1]);
++		}
++		if (count instanceof cArea || count instanceof cArea3D) {
++			count = count.cross(arguments[1]);
++		}
++		start = Math.floor(start.tocNumber().getValue()) - 1;
++		count = Math.floor(count.tocNumber().getValue());
++		let total = getByteLength(str), newText = getSingleText(arg[3], arguments[1]) || '';
++		return new cString(sliceBytes(str, 0, start) + newText + sliceBytes(str, start + count, Math.max(0, total - start - count)));
++	};
+ 
+ 	/**
+ 	 * @constructor
+@@ -2082,6 +2309,28 @@ function (window, undefined) {
+ 	cRIGHTB.prototype.constructor = cRIGHTB;
+ 	cRIGHTB.prototype.name = 'RIGHTB';
+ 	cRIGHTB.prototype.argumentsType = [argType.text, argType.number];
++	cRIGHTB.prototype.Calculate = function (arg) {
++		let res = cRIGHT.prototype.Calculate.call(this, [arg[0], new cNumber(Number.MAX_SAFE_INTEGER)], arguments[1]);
++		let count = arg.length === 1 ? new cNumber(1) : arg[1];
++		if (count instanceof cArea || count instanceof cArea3D) {
++			count = count.cross(arguments[1]);
++		}
++		count = count.tocNumber();
++		if (count instanceof cArray) {
++			count = count.getElementRowCol(0, 0);
++		}
++		if (!(res instanceof cString)) {
++			return res;
++		}
++		if (count instanceof cError) {
++			return count;
++		}
++		if (count.getValue() < 0) {
++			return new cError(cErrorType.wrong_value_type);
++		}
++		let str = res.getValue(), total = getByteLength(str), n = Math.min(total, Math.floor(count.getValue()));
++		return new cString(sliceBytes(str, total - n, n));
++	};
+ 
+ 	/**
+ 	 * @constructor
+@@ -3079,6 +3328,9 @@ function (window, undefined) {
+ 	cSEARCHB.prototype.constructor = cSEARCHB;
+ 	cSEARCHB.prototype.name = 'SEARCHB';
+ 	cSEARCHB.prototype.argumentsType = [argType.text, argType.text, argType.number];
++	cSEARCHB.prototype.Calculate = function (arg) {
++		return findBytes.call(this, cSEARCH.prototype.Calculate, arg, arguments[1]);
++	};
+ 
+ 	/**
+ 	 * @constructor
+@@ -3574,6 +3826,10 @@ function (window, undefined) {
+ 		}
+ 
+ 		var res = g_oFormatParser.parse(arg0.getValue());
++		if (!res) {
++			// Full-width digits and signs, as Japanese text often has them
++			res = g_oFormatParser.parse(toHalfWidth(arg0.getValue()).trim());
++		}
+ 
+ 		if (res) {
+ 			return new cNumber(res.value);
+diff --git a/tests/cell/spreadsheet-calculation/formula-tests/textAndDataTests.js b/tests/cell/spreadsheet-calculation/formula-tests/textAndDataTests.js
+index bd8389b..383b8ce 100644
+--- a/tests/cell/spreadsheet-calculation/formula-tests/textAndDataTests.js
++++ b/tests/cell/spreadsheet-calculation/formula-tests/textAndDataTests.js
+@@ -870,11 +870,11 @@ $(function () {
+ 		// Case #2: String. String with japanese hieroglyphs
+ 		oParser = new parserFormula('ASC("デジタル")', 'A2', ws);
+ 		assert.ok(oParser.parse(), 'Test: Formula ASC("デジタル") is parsed.');
+-		assert.strictEqual(oParser.calculate().getValue(), 'デジタル', 'Test: Positive case: String. String with japanese hieroglyphs');
++		assert.strictEqual(oParser.calculate().getValue(), 'ﾃﾞｼﾞﾀﾙ', 'Test: Positive case: String. String with japanese hieroglyphs');
+ 		// Case #3: String. String with uknown symbol
+ 		oParser = new parserFormula('ASC("￯")', 'A2', ws);
+ 		assert.ok(oParser.parse(), 'Test: Formula ASC("￯") is parsed.');
+-		assert.strictEqual(oParser.calculate().getValue(), '', 'Test: Positive case: String. String with uknown symbol');
++		assert.strictEqual(oParser.calculate().getValue(), '￯', 'Test: Positive case: String. String with uknown symbol');
+ 		// Case #4: String. Basic test: full-width Latin characters to half-width. The ASC function converts full-width (double-byte) characters to half-width (single-byte) characters.
+ 		oParser = new parserFormula('ASC("ＡＢＣＤ")', 'A2', ws);
+ 		assert.ok(oParser.parse(), 'Test: Formula ASC("ＡＢＣＤ") is parsed.');
+@@ -899,7 +899,7 @@ $(function () {
+ 		// Case #9: String. Full-width Latin and Japanese characters with full-width space.
+ 		oParser = new parserFormula('ASC("ＡＢＣＤ　テスト")', 'A2', ws);
+ 		assert.ok(oParser.parse(), 'Test: Formula ASC("ＡＢＣＤ　テスト") is parsed.');
+-		assert.strictEqual(oParser.calculate().getValue(), 'ABCD　テスト', 'Test: Positive case: String. Full-width Latin and Japanese characters with full-width space.');
++		assert.strictEqual(oParser.calculate().getValue(), 'ABCD ﾃｽﾄ', 'Test: Positive case: String. Full-width Latin and Japanese characters with full-width space.');
+ 		// Case #10: String. Full-width numeric characters to half-width.
+ 		oParser = new parserFormula('ASC("１２３４５")', 'A2', ws);
+ 		assert.ok(oParser.parse(), 'Test: Formula ASC("１２３４５") is parsed.');
+@@ -959,11 +959,11 @@ $(function () {
+ 		// Case #24: String. Japanese characters mixed with half-width numerals.
+ 		oParser = new parserFormula('ASC("テスト123")', 'A2', ws);
+ 		assert.ok(oParser.parse(), 'Test: Formula ASC("テスト123") is parsed.');
+-		assert.strictEqual(oParser.calculate().getValue(), 'テスト123', 'Test: Positive case: String. Japanese characters mixed with half-width numerals.');
++		assert.strictEqual(oParser.calculate().getValue(), 'ﾃｽﾄ123', 'Test: Positive case: String. Japanese characters mixed with half-width numerals.');
+ 		// Case #25: String. Full-width space character to half-width.
+ 		oParser = new parserFormula('ASC("　")', 'A2', ws);
+ 		assert.ok(oParser.parse(), 'Test: Formula ASC("　") is parsed.');
+-		assert.strictEqual(oParser.calculate().getValue(), '　', 'Test: Positive case: String. Full-width space character to half-width.');
++		assert.strictEqual(oParser.calculate().getValue(), ' ', 'Test: Positive case: String. Full-width space character to half-width.');
+ 		// Case #26: Formula. CHAR function to generate full-width character (я).
+ 		// Different result with MS TODO: Need to fix: Blocked by https://nct.onlyoffice.com/Products/Files/DocEditor.aspx?fileid=366936 Bugs Row#32
+ 		/*oParser = new parserFormula('ASC(CHAR(255))', 'A2', ws);
+@@ -1025,7 +1025,7 @@ $(function () {
+ 		// Case #40: String. Long full-width string with spaces.
+ 		oParser = new parserFormula('ASC("ＡＢＣ　ＤＥＦ　ＧＨＩ")', 'A2', ws);
+ 		assert.ok(oParser.parse(), 'Test: Formula ASC("ＡＢＣ　ＤＥＦ　ＧＨＩ") is parsed.');
+-		assert.strictEqual(oParser.calculate().getValue(), 'ABC　DEF　GHI', 'Test: Positive case: String. Long full-width string with spaces.');
++		assert.strictEqual(oParser.calculate().getValue(), 'ABC DEF GHI', 'Test: Positive case: String. Long full-width string with spaces.');
+ 		// Case #41: Array. Multi-element array with full-width characters.
+ 		oParser = new parserFormula('ASC({"ＡＢＣ";"ＤＥＦ"})', 'A2', ws);
+ 		assert.ok(oParser.parse(), 'Test: Formula ASC({"ＡＢＣ";"ＤＥＦ"}) is parsed.');
+@@ -1134,7 +1134,7 @@ $(function () {
+ 		// Case #4: String. Only full-width space character.
+ 		oParser = new parserFormula('ASC("　")', 'A2', ws);
+ 		assert.ok(oParser.parse(), 'Test: Formula ASC("　") is parsed.');
+-		assert.strictEqual(oParser.calculate().getValue(), '　', 'Test: Bounded case: String. Only full-width space character.');
++		assert.strictEqual(oParser.calculate().getValue(), ' ', 'Test: Bounded case: String. Only full-width space character.');
+ 		// Case #5: String. Only full-width special characters.
+ 		oParser = new parserFormula('ASC("！＠＃＄％＾＆＊（）＿＋")', 'A2', ws);
+ 		assert.ok(oParser.parse(), 'Test: Formula ASC("！＠＃＄％＾＆＊（）＿＋") is parsed.');
+@@ -1142,6 +1142,44 @@ $(function () {
+ 
+ 	});
+ 
++	QUnit.test("Test: Japanese full-width, half-width and byte functions", function (assert) {
++		// ECMA-376 Part 1: ASC 18.17.7.11, JIS 18.17.7.187, LEFTB 18.17.7.192,
++		// LENB 18.17.7.194. Bytes are those of code page 932: ASCII and
++		// half-width katakana take one, other characters two; half of a
++		// two-byte character at a cut becomes a space.
++		let cases = [
++			['ASC("エクセル")', 'ｴｸｾﾙ'],
++			['ASC("ガパヴ　ー。「」、・＄１")', 'ｶﾞﾊﾟｳﾞ ｰ｡｢｣､･$1'],
++			['ASC("ひらがな漢字ヵヶ")', 'ひらがな漢字ヵヶ'],
++			['ASC("ｱｲｳ")', 'ｱｲｳ'],
++			['JIS("ABC")', 'ＡＢＣ'],
++			['JIS("ｴｸｾﾙ")', 'エクセル'],
++			['JIS("ｶﾞﾊﾟｳﾞ ｰ｡｢｣､･$1")', 'ガパヴ　ー。「」、・＄１'],
++			['JIS("あいう漢字")', 'あいう漢字'],
++			['JIS("aﾞ")', 'ａ゛'],
++			['LENB("あいう")', 6],
++			['LENB("aｱあ")', 4],
++			['LENB("abc")', 3],
++			['LEFTB("あいう",2)', 'あ'],
++			['LEFTB("あいう",3)', 'あ '],
++			['LEFTB("abcdef",2)', 'ab'],
++			['RIGHTB("あいう",3)', ' う'],
++			['MIDB("あいう",3,2)', 'い'],
++			['MIDB("あいう",2,2)', '  '],
++			['REPLACEB("あいう",3,2,"X")', 'あXう'],
++			['FINDB("い","あいう")', 3],
++			['FINDB("う","あいう",3)', 5],
++			['SEARCHB("I","aあi")', 4],
++			['VALUE("１２３")', 123],
++			['VALUE("１，２３４．５")', 1234.5],
++		];
++		for (let i = 0; i < cases.length; i++) {
++			oParser = new parserFormula(cases[i][0], 'A2', ws);
++			assert.ok(oParser.parse(), 'Test: Formula ' + cases[i][0] + ' is parsed.');
++			assert.strictEqual(oParser.calculate().getValue(), cases[i][1], 'Test: ' + cases[i][0]);
++		}
++	});
++
+ 	QUnit.test("Test: \"CHAR\"", function (assert) {
+ 		// Data for reference link. Use A100-A111
+ 		ws.getRange2("A100").setValue("65");
+-- 
+2.43.0
+
