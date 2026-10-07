@@ -1,0 +1,277 @@
+From 59799c8237a3ef6fbbf50a651f874a3e1a4c9594 Mon Sep 17 00:00:00 2001
+From: Yasuhiro Niji <aiseed-dev@users.noreply.github.com>
+Date: Thu, 8 Oct 2026 00:34:10 +0900
+Subject: [PATCH] [se] Show dates in the Japanese era with the g, e and r
+ format codes
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Excel's Japanese date formats name the era with g and its year with e:
+[$-411]ggge"年"m"月"d"日" and [$-411]ge.m.d are the ja-jp built-in
+formats 27-29, 36 and 50-58 of ECMA-376 Part 1, 18.8.30. g was shown as
+a literal letter, and e was read as the start of a scientific format,
+which swallowed the next character, so a date came out as
+"ggg年m月d日" or "g46301.m.d".
+
+The codes now follow 18.8.31 (International Considerations). In the
+ja-jp locale, g is the initial of the era (R), gg its first kanji (令)
+and ggg its name (令和); e is the year in the era and ee the same with a
+leading zero; r is ee and rr is gggee. The locale is the format's
+[$-411], or the workbook's when the format names none. Outside ja-jp, e
+is yyyy and ee is yy, as 18.8.31 says, and g shows nothing. E+ and E-
+stay scientific.
+
+Excel also writes [$-ja-JP-x-gannen], which names the language with a
+tag; it is read as ja-jp. G/標準, the Japanese name of General, was
+shown as text and is now General, so the new g does not turn it into
+"R/標準".
+
+Assisted-by: ClaudeCode:claude-opus-5-5
+---
+ common/NumFormat.js                           | 101 +++++++++++++++++-
+ .../spreadsheet-calculation/NumFormatParse.js |  41 +++++++
+ 2 files changed, 138 insertions(+), 4 deletions(-)
+
+diff --git a/common/NumFormat.js b/common/NumFormat.js
+index a39f570..b561419 100644
+--- a/common/NumFormat.js
++++ b/common/NumFormat.js
+@@ -71,6 +71,11 @@ var numFormat_AmPm = 19;
+ var numFormat_DateSeparator = 20;
+ var numFormat_TimeSeparator = 21;
+ var numFormat_DecimalPointText = 22;
++// Japanese era (ECMA-376 Part 1, 18.8.31, International Considerations):
++// g/gg/ggg is the era name, e/ee the year in the era; r is ee and rr gggee
++var numFormat_Era = 23;
++var numFormat_EraYear = 24;
++var numFormat_EraR = 25;
+ //Helper types that will be replaced in _prepareFormat
+ var numFormat_MonthMinute = 101;
+ var numFormat_Percent = 102;
+@@ -206,6 +211,26 @@ function FormatObjDecimalFrac(aLeft, aRight)
+ 	this.numerator = 0;
+ 	this.denominator = 0;
+ }
++// Start of each era in the Gregorian calendar, newest first
++var g_aJapaneseEras = [
++	{year: 2019, month: 5, day: 1, name: "令和", initial: "R"},
++	{year: 1989, month: 1, day: 8, name: "平成", initial: "H"},
++	{year: 1926, month: 12, day: 25, name: "昭和", initial: "S"},
++	{year: 1912, month: 7, day: 30, name: "大正", initial: "T"},
++	{year: 1868, month: 10, day: 23, name: "明治", initial: "M"}
++];
++// The era of a date (month from 0), or null before the first era
++function getJapaneseEra(year, month, day)
++{
++	var key = year * 10000 + (month + 1) * 100 + day;
++	for (var i = 0; i < g_aJapaneseEras.length; ++i)
++	{
++		var era = g_aJapaneseEras[i];
++		if (key >= era.year * 10000 + era.month * 100 + era.day)
++			return {name: era.name, initial: era.initial, year: year - era.year + 1};
++	}
++	return null;
++}
+ function FormatObjDateVal(type, nCount, bElapsed)
+ {
+     this.type = type;
+@@ -930,6 +955,27 @@ NumFormat.prototype =
+                     var sign = ("+" == nextnext) ? SignType.Positive : SignType.Negative;
+                     this._addToFormat2(new FormatObjScientific(next, "", sign));
+                 }
++                else
++                {
++                    // Not a scientific format: e is the year in the Japanese era
++                    if(this.EOF != nextnext)
++                        this._skip(-1);
++                    this._addToFormat2(new FormatObjDateVal(numFormat_EraYear, 1, false));
++                }
++            }
++            else if(("G" == next || "g" == next) && "/標準" === this._GetText(3))
++            {
++                // G/標準 is General in Japanese
++                this._addToFormat(numFormat_General);
++                this._skip(3);
++            }
++            else if("G" == next || "g" == next)
++            {
++                this._addToFormat2(new FormatObjDateVal(numFormat_Era, 1, false));
++            }
++            else if("R" == next || "r" == next)
++            {
++                this._addToFormat2(new FormatObjDateVal(numFormat_EraR, 1, false));
+             }
+             else if("*" == next)
+             {
+@@ -1151,7 +1197,7 @@ NumFormat.prototype =
+                 }
+             }
+             else if(numFormat_Year == item.type || numFormat_MonthMinute == item.type || numFormat_Month == item.type || numFormat_Day == item.type || numFormat_Hour == item.type || numFormat_Minute == item.type || numFormat_Second == item.type || numFormat_Thousand == item.type ||
+-				numFormat_DayOfWeek == item.type)
++				numFormat_DayOfWeek == item.type || numFormat_Era == item.type || numFormat_EraYear == item.type || numFormat_EraR == item.type)
+             {
+                 //Combine hhh sequences into one
+                 var nStartType = item.type;
+@@ -1170,12 +1216,24 @@ NumFormat.prototype =
+                     this.aRawFormat.splice(i + 1, nDelCount);
+                     nFormatLength -= nDelCount;
+                 }
++                if(numFormat_EraR == item.type)
++                {
++                    // r is ee and rr is gggee
++                    var aEra = [new FormatObjDateVal(numFormat_EraYear, 2, false)];
++                    if(item.val > 1)
++                        aEra.unshift(new FormatObjDateVal(numFormat_Era, 3, false));
++                    this.aRawFormat.splice.apply(this.aRawFormat, [i, 1].concat(aEra));
++                    nFormatLength += aEra.length - 1;
++                    i += aEra.length - 1;
++                    item = this.aRawFormat[i];
++                }
+                 if(numFormat_Thousand != item.type)
+                 {
+                     this.bDateTime = true;
+                     if(numFormat_Hour == item.type || numFormat_Minute == item.type || numFormat_Second == item.type || numFormat_Milliseconds == item.type)
+                         this.bTime = true;
+-                    else if (numFormat_Year == item.type || numFormat_Month == item.type || numFormat_Day == item.type) {
++                    else if (numFormat_Year == item.type || numFormat_Month == item.type || numFormat_Day == item.type ||
++                        numFormat_Era == item.type || numFormat_EraYear == item.type) {
+                         this.bDate = true;
+                         if (numFormat_Day == item.type)
+                             this.bDay = true;
+@@ -1335,7 +1393,8 @@ NumFormat.prototype =
+                     {
+                         var subItem = this.aRawFormat[j];
+                         if(numFormat_Year == subItem.type || numFormat_Month == subItem.type || numFormat_Day == subItem.type || numFormat_MonthMinute == subItem.type ||
+-                        numFormat_Hour == subItem.type || numFormat_Minute == subItem.type || numFormat_Second == subItem.type || numFormat_Milliseconds == subItem.type)
++                        numFormat_Hour == subItem.type || numFormat_Minute == subItem.type || numFormat_Second == subItem.type || numFormat_Milliseconds == subItem.type ||
++                        numFormat_Era == subItem.type || numFormat_EraYear == subItem.type)
+                         {
+                             if(numFormat_Second == subItem.type)
+                                 bRightCond = true;
+@@ -1368,7 +1427,8 @@ NumFormat.prototype =
+                                 bFindSec = false;
+                             break;
+                         }
+-                        else if(numFormat_Year == subItem.type || numFormat_Day == subItem.type || numFormat_Hour == subItem.type || numFormat_Second == subItem.type || numFormat_Milliseconds == subItem.type)
++                        else if(numFormat_Year == subItem.type || numFormat_Day == subItem.type || numFormat_Hour == subItem.type || numFormat_Second == subItem.type || numFormat_Milliseconds == subItem.type ||
++                            numFormat_Era == subItem.type || numFormat_EraYear == subItem.type)
+                         {
+                             if(true == bFindSec)
+                                 break;
+@@ -1997,6 +2057,10 @@ NumFormat.prototype =
+ 							if (null != item.Lid) {
+ 								//Excel sometimes add 0x10000(0x442 and 0x10442)
+ 								this.LCID = parseInt(item.Lid, 16) & 0xFFFF;
++								// Excel writes [$-ja-JP-x-gannen] for the Japanese era with 元年; the
++								// bracket keeps only "ja" of it
++								if (/^ja$/i.test(item.Lid))
++									this.LCID = 0x411;
+ 							}
+ 						}
+                     }
+@@ -2116,6 +2180,9 @@ NumFormat.prototype =
+         if (null != this.LCID) {
+             cultureInfoLCID = g_aCultureInfos[this.LCID] || cultureInfo;
+         }
++        // The era codes follow the ja-jp locale: the format's [$-411], or the
++        // workbook's when the format names none
++        var isJapanese = 0x411 === (null != this.LCID ? this.LCID : cultureInfo.LCID);
+         if(null == nValType)
+             nValType = CellValueType.Number;
+         var res = [];
+@@ -2331,6 +2398,28 @@ NumFormat.prototype =
+ 						oCurText.text += 'a'.repeat(item.val);
+ 					}
+ 				}
++                else if(numFormat_Era == item.type || numFormat_EraYear == item.type)
++                {
++                    var date = oParsedNumber.date;
++                    var era = isJapanese ? getJapaneseEra(date.year, date.month, date.d) : null;
++                    if (numFormat_Era == item.type)
++                    {
++                        // g: the initial, gg: the first kanji, ggg: the name
++                        if (era)
++                            oCurText.text += 1 === item.val ? era.initial : (2 === item.val ? era.name[0] : era.name);
++                    }
++                    else
++                    {
++                        checkRLM();
++                        if (era)
++                            oCurText.text += item.val > 1 ? this._ZeroPad(era.year) : era.year;
++                        else if (item.val > 1)
++                            // Outside ja-jp, ee is yy and e is yyyy
++                            oCurText.text += date.year.toString().slice(-2);
++                        else
++                            oCurText.text += date.year;
++                    }
++                }
+                 else if(numFormat_Year == item.type)
+                 {
+                   if (item.val > 0) {
+@@ -2778,6 +2867,10 @@ NumFormat.prototype =
+ 				for(var j = 0; j < nIndex; ++j)
+ 					res += dayOfWeek;
+ 			}
++			else if(numFormat_Era == item.type)
++				res += "g".repeat(item.val);
++			else if(numFormat_EraYear == item.type)
++				res += "e".repeat(item.val);
+             else if(numFormat_AmPm == item.type)
+                 res += "AM/PM";
+             else if(numFormat_Milliseconds == item.type)
+diff --git a/tests/cell/spreadsheet-calculation/NumFormatParse.js b/tests/cell/spreadsheet-calculation/NumFormatParse.js
+index cc6701d..8277b03 100644
+--- a/tests/cell/spreadsheet-calculation/NumFormatParse.js
++++ b/tests/cell/spreadsheet-calculation/NumFormatParse.js
+@@ -650,6 +650,47 @@ $(function () {
+         }
+     });
+ 
++    QUnit.test('Japanese era formats', function (assert) {
++        // ECMA-376 Part 1, 18.8.31 (International Considerations) and the
++        // ja-jp built-in formats of 18.8.30 (ids 27, 28, 36, 50, 51 ...)
++        const ja = AscCommon.g_aCultureInfos[1041];
++        const en = AscCommon.g_aCultureInfos[1033];
++        let testCases = [
++            [46301, '[$-411]ggge"年"m"月"d"日"', ja, '令和8年10月6日'],
++            [46301, '[$-411]ge.m.d', ja, 'R8.10.6'],
++            [46301, '[$-411]gge"."m"."d', ja, '令8.10.6'],
++            [46301, '[$-411]ggg ee"年"', ja, '令和 08年'],
++            [46301, '[$-411]rr"年"', ja, '令和08年'],
++            [46301, '[$-411]r', ja, '08'],
++            // Excel names the language with a tag here
++            [46301, '[$-ja-JP-x-gannen]ggge"年"m"月"d"日";@', ja, '令和8年10月6日'],
++            // The era changes on its first day
++            [43585, '[$-411]ggge"年"m"月"d"日"', ja, '平成31年4月30日'],
++            [43586, '[$-411]ggge"年"m"月"d"日"', ja, '令和1年5月1日'],
++            [32515, '[$-411]ggge"年"m"月"d"日"', ja, '昭和64年1月7日'],
++            [32516, '[$-411]ge.m.d', ja, 'H1.1.8'],
++            [9856, '[$-411]ggge"年"', ja, '昭和1年'],
++            [4594, '[$-411]ggge"年"', ja, '明治45年'],
++            [4595, '[$-411]gge"年"', ja, '大1年'],
++            // Without [$-411] the workbook's locale decides; outside ja-jp
++            // e is yyyy and ee is yy
++            [46301, 'ggge"年"m"月"d"日"', ja, '令和8年10月6日'],
++            [46301, 'e/m/d', en, '2026/10/6'],
++            [46301, 'ee/mm/dd', en, '26/10/06'],
++            [46301, '[$-411]aaaa', en, '火曜日'],
++            // E+ and E- stay scientific, and G/標準 is General
++            [46301, '0.00E+00', ja, '4.63E+04'],
++            [46301, '0.0e-0', ja, '4.6e4'],
++            [46301.5, 'G/標準', ja, '46301.5'],
++        ];
++        for (let i = 0; i < testCases.length; i++) {
++            let [value, format, culture, expected] = testCases[i];
++            let formatted = new AscCommon.CellFormat(format).format(value, undefined, undefined, undefined, culture);
++            let text = formatted.map(function (part) { return part.text; }).join('');
++            assert.strictEqual(text, expected, `format("${format}", ${value})`);
++        }
++    });
++
+     QUnit.test('date/time elapsed formats', function (assert) {
+         let testCases = [
+             // Date format cases
+-- 
+2.43.0
+

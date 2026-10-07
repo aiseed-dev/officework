@@ -1,5 +1,6 @@
-// Load the sdkjs word editor and its test helpers in node, without a
-// browser, so its layout tests can run here (set SDKJS to another checkout)
+// Load an sdkjs editor and its test helpers in node, without a browser, so
+// its tests can run here. SDKJS names another checkout; SDKJS_PRODUCT=cell
+// loads the spreadsheet editor instead of the word one
 const fs = require("fs"), vm = require("vm"), path = require("path");
 const SDK = path.resolve(process.env.SDKJS || path.join(__dirname, "../../vendor/sdkjs"));
 // A stub that accepts any property access or call
@@ -36,13 +37,14 @@ g.__tests = [];
 // The scripts in the order the develop build loads them (build/Gruntfile.js,
 // writeScripts): the polyfill, applyDocumentChanges.js, then the word
 // configuration's files. The Local/ files belong to the offline app only
-const cfg = JSON.parse(fs.readFileSync(path.join(SDK, "configs/word.json"), "utf8")).sdk;
+const PRODUCT = process.env.SDKJS_PRODUCT || "word";
+const cfg = JSON.parse(fs.readFileSync(path.join(SDK, `configs/${PRODUCT}.json`), "utf8")).sdk;
 const files = ["vendor/polyfill.js", "common/applyDocumentChanges.js"]
   .concat(cfg.min, cfg.common, cfg.desktop.min, cfg.desktop.common)
   .filter(f => !f.includes("/Local/"))
   .map(f => path.join(SDK, f));
 const pre = [SDK + "/vendor/xregexp-all-min.js"];
-const helpers = ["common.js", "editor.js", "document.js", "measurer.js"].map(f => SDK + "/tests/word/common/" + f);
+const helpers = PRODUCT !== "word" ? [] : ["common.js", "editor.js", "document.js", "measurer.js"].map(f => SDK + "/tests/word/common/" + f);
 let failed = 0;
 for (const f of pre.concat(files, helpers)) {
   try { vm.runInThisContext(fs.readFileSync(f, "utf8"), { filename: f }); }
