@@ -51,6 +51,16 @@ the source file.
   screen and run it again. A window is taken as a dialog when its title is a
   known dialog's, or when it is smaller than a document window, its title is
   not the document's name, and it stays up for 8 seconds.
+* On 2026-10-08 Excel asked for access to a new file with a window titled
+  "開く" (880 by 448, larger than the size rule), so the script waited out its
+  600 seconds. "開く" and "Open" are known titles now.
+* The same day, a PDF left from an earlier run was taken for the result of a
+  run in which Excel wrote nothing. The output is now removed first, and a run
+  that leaves no PDF is an error.
+* Also that day, Excel refused to open every new xlsx with -50 (parameter
+  error), while an xlsx it had opened before still opened. The cause was not
+  found. When it failed, the empty workbook made for the window stayed open
+  ("Book1"); it is now closed on that path too.
 """
 import os
 import subprocess
@@ -65,7 +75,7 @@ class DialogError(RuntimeError):
 # Titles of dialogs seen on this Mac. A window with one of these titles is a
 # dialog at once; any other small window has to stay up for a while first.
 _DIALOG_TITLES = (
-    "ファイル アクセスを許可", "Grant File Access",
+    "ファイル アクセスを許可", "Grant File Access", "開く", "Open",
 )
 
 
@@ -200,6 +210,9 @@ def word_pdf(src, out):
     name = os.path.basename(src)
     # A dialog already up makes every command below wait: say so and stop
     check_no_dialog("Microsoft Word", [name])
+    # A PDF left from an earlier run must not pass for this one's
+    if os.path.exists(out):
+        os.remove(out)
     # Close documents of ours left over from an earlier run (when `save as`
     # failed, the run stopped before closing, and 70 documents piled up in
     # Word on 2026-09-09)
@@ -227,6 +240,8 @@ end timeout
 ''',
             watch="Microsoft Word", doc_names=[name],
         )
+        if not os.path.exists(out):
+            raise RuntimeError(f"Word wrote no PDF: {out}")
     except DialogError as e:
         dialog = e
         raise
@@ -334,6 +349,9 @@ def _excel_one(src, out, wait=180):
     name = os.path.basename(src)
     check_no_dialog("Microsoft Excel", [name])
     hfs, out = _hfs(src), os.path.abspath(out)
+    # A PDF left from an earlier run must not pass for this one's
+    if os.path.exists(out):
+        os.remove(out)
     _osa(
         f'''
 with timeout of 600 seconds
@@ -352,7 +370,13 @@ tell application "Microsoft Excel"
         end try
     end repeat
     if nb is missing value then error "Excel が空のブックを作れませんでした(最初の画面が消えない)"
-    open workbook workbook file name "{hfs}"
+    -- When the file does not open, close the empty workbook before stopping
+    try
+        open workbook workbook file name "{hfs}"
+    on error errMsg number errNum
+        close nb saving no
+        error errMsg number errNum
+    end try
     set wb to missing value
     repeat {wait} times
         try
@@ -361,7 +385,10 @@ tell application "Microsoft Excel"
         if wb is not missing value then exit repeat
         delay 1
     end repeat
-    if wb is missing value then error "Excel が {wait} 秒たっても開きませんでした(壊れたファイルと見た可能性): {hfs}"
+    if wb is missing value then
+        close nb saving no
+        error "Excel が {wait} 秒たっても開きませんでした(壊れたファイルと見た可能性): {hfs}"
+    end if
     activate object wb
     save as active sheet filename "{out}" file format PDF file format
     close wb saving no
@@ -372,6 +399,8 @@ end timeout
 ''',
         watch="Microsoft Excel", doc_names=[name],
     )
+    if not os.path.exists(out):
+        raise RuntimeError(f"Excel wrote no PDF: {out}")
 
 
 def excel_pdf_many(pairs, wait=120, on_done=None):
