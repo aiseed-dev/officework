@@ -116,6 +116,28 @@ AGPL-3.0 の LICENSE と NOTICE を入れました。手を入れた実行ファ
   展開した Linux 版の一覧は `~/.local/share/onlyoffice` にでき、`/usr/share/fonts/...` が書かれます。
   この一覧で印刷した docx は、flatpak 版で印刷した物と画素まで同じでした。
 
+=== Mac 版の進め方(2026-10-08、まだ作っていません)
+
+発注者「mac版を作ってもらえばいいですね」。Mac で作業するときに、`build.py` を Mac でも動くようにします。
+
+* 公式の 9.4.0 の配布物に、Mac 用の `ONLYOFFICE-arm.dmg`(約 542MB)と `ONLYOFFICE-x86_64.dmg`(約 555MB)があります
+  (github.com/ONLYOFFICE/DesktopEditors の v9.4.0)。ダウンロードは、発注者の許可を得てからにします。
+* 考えている手順:
+** `fetch`:Mac の CPU に合う dmg を取り、`hdiutil attach -nobrowse -readonly` で開いて、
+   アプリを `work/` に写し(`ditto`)、`hdiutil detach` で閉じます。
+** `build`:Linux と同じです(sdkjs のタグにパッチを当てて組み立てる)。
+** `install`:アプリの中の文書と表計算の sdkjs を入れ替え、キャッシュ(`sdk-all.bin`、`sdk-all.cache`)を消します。
+   中身を変えると署名が合わなくなるので、`codesign --force --deep --sign -` で手元用の署名をし直し、
+   `xattr -dr com.apple.quarantine` で検疫の印を外します。
+** `menu`:Linux のメニューの代わりに、`~/Applications` に置くかどうかを決めます。
+   ダブルクリックで開くアプリの設定は、Finder の「情報を見る」の「このアプリケーションで開く」で利用者がします。
+* Mac で確かめること:
+** アプリの中の sdkjs の場所(`Contents/Resources/editors/sdkjs/word` などのはず)。
+** Mac 版の sdkjs が同じタグ(v9.4.0.129)か。`sdk-all-min.js` の頭の「build:129」で確かめます。
+** 署名をし直したアプリが起動するか。起動しないときは、そこで止めて発注者に言います。
+** アプリの名前。「ONLYOFFICE」を主な名前にしない決まりなので、写したアプリの表示名をどうするか。
+* Mac で確かめた後、漢数字の結果を Excel で見ます(Excel を開くのは発注者の許可を得てから)。
+
 手元で使うだけなら条件はありません。人に配るときは、ONLYOFFICE の追加の条件
 (同梱の LICENSE.txt の Additional Terms)に従います。
 
