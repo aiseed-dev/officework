@@ -116,27 +116,37 @@ AGPL-3.0 の LICENSE と NOTICE を入れました。手を入れた実行ファ
   展開した Linux 版の一覧は `~/.local/share/onlyoffice` にでき、`/usr/share/fonts/...` が書かれます。
   この一覧で印刷した docx は、flatpak 版で印刷した物と画素まで同じでした。
 
-=== Mac 版の進め方(2026-10-08、まだ作っていません)
+=== Mac 版(2026-10-08)
 
-発注者「mac版を作ってもらえばいいですね」。Mac で作業するときに、`build.py` を Mac でも動くようにします。
+発注者「mac版を作ってもらえばいいですね」。`build.py` を Mac でも動くようにしました
+(ja-office-fixes の 339207c)。Apple シリコンの Mac で、miniforge の Python 3.14 で確かめました。
 
-* 公式の 9.4.0 の配布物に、Mac 用の `ONLYOFFICE-arm.dmg`(約 542MB)と `ONLYOFFICE-x86_64.dmg`(約 555MB)があります
-  (github.com/ONLYOFFICE/DesktopEditors の v9.4.0)。ダウンロードは、発注者の許可を得てからにします。
-* 考えている手順:
-** `fetch`:Mac の CPU に合う dmg を取り、`hdiutil attach -nobrowse -readonly` で開いて、
-   アプリを `work/` に写し(`ditto`)、`hdiutil detach` で閉じます。
-** `build`:Linux と同じです(sdkjs のタグにパッチを当てて組み立てる)。
-** `install`:アプリの中の文書と表計算の sdkjs を入れ替え、キャッシュ(`sdk-all.bin`、`sdk-all.cache`)を消します。
-   中身を変えると署名が合わなくなるので、`codesign --force --deep --sign -` で手元用の署名をし直し、
-   `xattr -dr com.apple.quarantine` で検疫の印を外します。
-** `menu`:Linux のメニューの代わりに、`~/Applications` に置くかどうかを決めます。
-   ダブルクリックで開くアプリの設定は、Finder の「情報を見る」の「このアプリケーションで開く」で利用者がします。
-* Mac で確かめること:
-** アプリの中の sdkjs の場所(`Contents/Resources/editors/sdkjs/word` などのはず)。
-** Mac 版の sdkjs が同じタグ(v9.4.0.129)か。`sdk-all-min.js` の頭の「build:129」で確かめます。
-** 署名をし直したアプリが起動するか。起動しないときは、そこで止めて発注者に言います。
-** アプリの名前。「ONLYOFFICE」を主な名前にしない決まりなので、写したアプリの表示名をどうするか。
-* Mac で確かめた後、漢数字の結果を Excel で見ます(Excel を開くのは発注者の許可を得てから)。
+* `fetch` は、Mac の CPU に合う公式の 9.4.0 のディスクイメージ(`ONLYOFFICE-arm.dmg`、542MB)を取り、
+  読み取り専用で開いて、アプリを `~/Applications/Office.app` に写します。
+** 名前は「Office」です(発注者「Officeでいいのでは」)。「MyOffice」の案もありましたが、ロシアの
+   オフィスソフト(МойОфис)の英語の名前と同じなので使っていません。名前は `build.py` の `APP_NAME` の
+   1 か所です。
+** 初めは `work/` に写しました。最初の起動の後、アプリは `~/Applications` に移っていました。発注者が
+   移したのか、アプリがアプリケーションのフォルダーへ移るよう聞いたのかは、分かっていません。
+   どちらにしても `~/Applications` に置く形にしました。そこに ONLYOFFICE でない「Office.app」が
+   あるときは、`build.py` は止まります。
+* アプリの中の sdkjs は `Contents/Resources/editors/sdkjs/word` と `cell` でした。版は Linux 版と
+  同じ 9.4.0 build 129 なので、パッチと組み立ては Linux と同じです。
+* 中身を変えると署名が合わなくなるので、`install` と `restore` の後に、この Mac 用の署名
+  (`codesign --force --deep --sign -`)をし直し、検疫の印を外します。`codesign --verify` は通り、
+  アプリは起動しました。`spctl`(Gatekeeper の検査)は、公証の無い署名なので「rejected」です。
+* 最初の起動で「アップデートを自動で確認しますか?」と聞かれます。発注者が「確認しない」を
+  押しました。自動で新しい版にすると、パッチの無い公式の版になるからです。README にも書きました。
+* アプリの x2t で、禁則と仮名の折り返しの試験の文書を PDF にして、公式のエディターと比べました。
+  パッチを当てた方は、句読点、閉じ括弧、「・」「：」「々」が行末に 1 字はみ出し、仮名の行も
+  埋まりました。公式の方は前の折り返しのままです。Linux で確かめた結果と同じです。
+  フォントの一覧は `~/Library/Application Support/asc.onlyoffice.ONLYOFFICE/data/fonts` にできます。
+* アプリに終わりの信号(SIGTERM)を送ると、絵を描くプロセスが終わり、本体は白い窓のまま
+  止まりました。その後は AppleEvent の終了も時間切れになり、`kill -9` で終わらせました。
+  閉じるときは、画面の ⌘Q か終了の操作を使います。
+* Intel の Mac(`ONLYOFFICE-x86_64.dmg`)では、まだ確かめていません。
+
+残っていること:漢数字の結果を Excel で見ます(Excel を開くのは発注者の許可を得てから)。
 
 手元で使うだけなら条件はありません。人に配るときは、ONLYOFFICE の追加の条件
 (同梱の LICENSE.txt の Additional Terms)に従います。
