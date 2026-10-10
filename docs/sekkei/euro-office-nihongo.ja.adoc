@@ -369,8 +369,11 @@ Mac の Excel 16.113.4 に印刷させて確かめました(`~/Documents/officew
 ** sdkjs に試験を 3 件足しました(`tests/word/styles/themeFonts.js`)。直す前は 3 件とも落ち、直した後は通ります。
 ** 直した x2t で印刷すると、游明朝の版は日本語も游明朝(YuMincho)になりました。
    ＭＳ ゴシックの版は、Mac にＭＳ ゴシックが無いので Arial Unicode MS に置き換わりました。
-* 残り:Word で同じ 2 つを印刷して、書体を比べます。Word の「ファイル アクセスを許可」で止まったので、まだです。
-  手元に無い書体の置き換え(ＭＳ ゴシック → Arial Unicode MS)は、別に考えます。
+** 2026-10-11 に Mac の Word で同じ 2 つを印刷しました。游明朝の版は、日本語も欧文も YuMincho でした。
+   ＭＳ ゴシックの版は、日本語が MS-Gothic、欧文が YuMincho でした。
+   Word は Jpan の書体を使っています。直した ONLYOFFICE は、游明朝の版で Word と同じ書体になりました。
+* 残り:手元に無い書体の置き換えです。Word は自分の中にＭＳ ゴシックを持っていますが、ONLYOFFICE からは見えません。
+  そのため ONLYOFFICE では Arial Unicode MS に置き換わります。どの書体に置き換えるかは、別に考えます。
 
 
 * テーマの書体に、日本語用の書体の一覧(`<a:font script="Jpan">`)の置き場がありません。
