@@ -345,7 +345,7 @@ Mac の Excel 16.113.4 に印刷させて確かめました(`~/Documents/officew
 
 == 5. 書体
 
-最初の項目は、2026-10-08 に Mac 版で動かして確かめました。残りの 2 つは、コードを読んだだけです。
+最初の項目は、2026-10-08 に Mac 版で動かして確かめ、2026-10-10 に直しました。残りの 2 つは、コードを読んだだけです。
 
 * 確かめ方:北大の docx を元に、2 つの docx を作りました(`officework-cmp/sashikomi/font_jpan_mincho.docx` と `font_jpan_gothic.docx`)。
   本文の書体はテーマの `minorEastAsia` で、テーマの東アジアの書体は空です。
@@ -354,8 +354,23 @@ Mac の Excel 16.113.4 に印刷させて確かめました(`~/Documents/officew
   日本語の本文は PingFang SC(中国語の簡体字の書体)で、「。」だけ Toppan Bunkyu Midashi Gothic でした。
   欧文はテーマの欧文の書体の游明朝でした。
 * 集めた docx のうち約 450 件が、テーマの東アジアの書体が空で、Jpan の書体を持っています(游明朝 191 件、ＭＳ 明朝 114 件など)。
+* 原因:sdkjs は、テーマの読み込みで書体の一覧(C++ の変換器が書く 3 番の記録)を読み飛ばしていました。
+  `w:themeFontLang` は、C++ の変換器から sdkjs に渡りません(設定の記録の種類にありません)。
+
+=== 直したもの(ja-office-fixes の 0009、2026-10-10)
+
+* 規約:ECMA-376 Part 1 の 17.15.1.88(themeFontLang)は、`minorEastAsia` を `eastAsia` の言語の
+  `<a:font>`(20.1.4.1.16)で決めると書いています。
+* 直し方:テーマの書体の一覧を読んで持ち、保存でも書き出します。
+  `minorEastAsia` と `majorEastAsia` は、文字の言語(`w:lang` の `eastAsia`)の書体を使います。
+  ja は Jpan、ko は Hang、zh は地域で Hans か Hant です。
+  `w:themeFontLang` が sdkjs に届かないので、文字の言語で代えました。日本語の Word の文書では、どちらも `ja-JP` です。
+* 確かめたこと:
+** sdkjs に試験を 3 件足しました(`tests/word/styles/themeFonts.js`)。直す前は 3 件とも落ち、直した後は通ります。
+** 直した x2t で印刷すると、游明朝の版は日本語も游明朝(YuMincho)になりました。
+   ＭＳ ゴシックの版は、Mac にＭＳ ゴシックが無いので Arial Unicode MS に置き換わりました。
 * 残り:Word で同じ 2 つを印刷して、書体を比べます。Word の「ファイル アクセスを許可」で止まったので、まだです。
-  その後、sdkjs でテーマの書体を決める所を探して、Jpan を使うパッチ(0009)を作ります。
+  手元に無い書体の置き換え(ＭＳ ゴシック → Arial Unicode MS)は、別に考えます。
 
 
 * テーマの書体に、日本語用の書体の一覧(`<a:font script="Jpan">`)の置き場がありません。
