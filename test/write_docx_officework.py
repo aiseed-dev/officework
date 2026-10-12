@@ -210,7 +210,7 @@ def circular():
     p.add_run("O の量で変わります。")
 
     p = d.add_paragraph("詳しい資料: ")
-    p.add_hyperlink("https://github.com/aiseed-dev/officework", "officework の置き場")
+    p.add_hyperlink("officework の置き場", "https://github.com/aiseed-dev/officework")
 
     p = d.add_paragraph("確認したら名前の右に日付を書いてください。")
     p.add_comment("今週中にお願いします", author="事務局")
