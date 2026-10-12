@@ -221,6 +221,25 @@ Fable が触るので、Opus はそこを触らない。** それ以外の write
   Excel の AppleScript で踏んだ穴は各道具の頭に書いてある(開くのは `open -a`
   で、名前が `workbooks` に出るまで待つ。`repeat with w in workbooks` は -50 を返す。
   保存先は `~/Documents` の下。同じ名前のブックは2つ開けない)
+* **Debian の PC では、Windows 11 の仮想マシンの Word と Excel を使います(2026-10-12)。**
+  仮想マシンは virt-manager で作った `win11`(`qemu:///session`)で、Microsoft 365 の
+  Word と Excel(16.0.20430)が入っています。
+** PDF にする道具は `tools/winvm_pdf.py` です。`tools/ms_round.sh` は Linux ではこれを使います。
+   使い方と仕組みは、道具の頭のコメントに書いてあります。
+** ファイルの出し入れと命令は、QEMU のゲストエージェントで行います。Word と Excel は、
+   サインインしている利用者のタスクとして動かします。
+** Word か Excel がすでに動いているときは、道具は始めずに止まります。発注者の窓の
+   可能性があるためです。
+** **Word を強制終了しません。** 強制終了すると Word が回復用のファイルを残します。
+   すると、次に窓を出さずに動かした Word が、終わるときにそのファイルの扱いを聞く
+   ダイアログを出し、見えないまま待ち続けます(2026-10-12 に起きました)。
+   時間内に終わらないときは、`tools/winvm/close.ps1` が窓を閉じる操作と COM の `Quit`
+   で閉じます。それでも残るときは、道具が止まって知らせます。
+** PowerShell から Word にパスを渡すときは、`[string]` にします。`Join-Path` の結果を
+   そのまま渡すと、Word の `Documents.Open` と `ExportAsFixedFormat` が戻りませんでした。
+** 比べるには、置き替えの書体が手元に要ります。Noto Sans/Serif CJK JP(游の代わり)、
+   梅フォント(ＭＳ 明朝・ゴシックの代わり)、BIZ UD、Carlito、Caladea、Liberation、
+   C059 です。2026-10-12 に入れました。
 
 * cargo が PATH に無い機械なら `export PATH="$HOME/.cargo/bin:$PATH"`。そもそも rustup ごと無い機械もある — その場合は user レベルの導入で足りる(`curl https://sh.rustup.rs | sh -s -- -y`。sudo 不要。2026-08-03 に実施済み)
 * `.cargo/config.toml` と `.linklibs/` は**この機械固有**(libxkbcommon-x11 の開発リンク回避)。別の機械では不要か、作り直しが要る。作り直しは2手: `.linklibs/libxkbcommon-x11.so` → 実行時の `.so.0` へ symlink、`.cargo/config.toml` に `rustflags = ["-L", "<絶対パス>/.linklibs"]`
