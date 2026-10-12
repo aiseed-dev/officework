@@ -53,7 +53,9 @@ Office が規約からどう外れているかは、Microsoft の MS-OI29500
    - OOXML に書いてあり、こちらが違う → OOXML に合わせて直します。
    - OOXML に書いてあり、Office が違う → こちらは OOXML のままにし、発注者に
      報告します(Office に合わせるかは発注者が決めます)。
-   - OOXML に書いていない → 推測で直さず、分かったことと案を発注者に出します。
+   - OOXML に書いていない → Word・Excel に合わせます(2026-10-12 発注者)。
+     推測の数字は使わず、Word・Excel に確かめ用の文書を作らせて PDF で測ります。
+     Linux では `tools/winvm_pdf.py` で Windows の仮想マシンの Word・Excel を使います。
 7. **記録します。** コミットと設計の文書(`docs/sekkei/`)に、項の番号と
    決めた理由を書きます。
 
