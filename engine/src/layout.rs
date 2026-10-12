@@ -2731,6 +2731,37 @@ fn utsusu(tmp: Sheet, dx: f32, dy: f32, sheet: &mut Sheet) {
     sheet.keep_rows.extend(tmp.keep_rows);
 }
 
+/// The width a cell's content takes when no line is broken (mm), with the
+/// cell's margins: the "maximum content width" of ECMA-376 Part 1, 17.18.87.
+/// Each paragraph is broken on a very wide measure and its longest line taken.
+/// `notes` is a copy, so measuring does not move the note numbers
+#[allow(clippy::too_many_arguments)]
+fn cell_content_mm(cell: &Cellbox, table: &Table, m: &Metrics, doc: &Document, base: f32,
+                   mut notes: NoteCount, tsume: bool, moji: f32) -> f32 {
+    let moto = table.cell_mar_mm.unwrap_or([CELL_PAD_V, CELL_PAD, CELL_PAD_V, CELL_PAD]);
+    let pad: [f32; 4] = match cell.mar_mm {
+        Some(mm) => [0, 1, 2, 3].map(|i| if mm[i].is_nan() { moto[i] } else { mm[i] }),
+        None => moto,
+    };
+    let mut widest = 0.0f32;
+    for para in &cell.paragraphs {
+        if para.nested.is_some() || para.tate {
+            continue;
+        }
+        let pbase = doc.style_pt(para.style_id.as_deref()).unwrap_or(base);
+        let side = left_mm(para, pbase * PT_TO_MM).max(0.0) + (para.right_twips as f32) * 25.4 / 1440.0;
+        for line in break_para(para, m, 1.0e4, None, false, &mut notes, pbase, tsume, moji,
+                               doc.wrap_trail_spaces) {
+            // The letters are not placed yet: add up their advances
+            let w: f32 = line.iter().map(|c| c.w_mm + c.kern_mm).sum();
+            widest = widest.max(w + side);
+        }
+    }
+    // A hair more than the sum: a line exactly as wide as the measure was
+    // broken before its last letter (rounding), "場所" in the test minutes
+    widest + pad[1] + pad[3] + 0.1
+}
+
 pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32, sheet: &mut Sheet,
                 table_no: usize, hyphenate: bool, notes: &mut NoteCount, base: f32,
                 doc: &Document, pitch: f32, tsume: bool, moji: f32,
@@ -2776,6 +2807,68 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
     } else {
         vec![haba / ncols as f32; ncols]
     };
+    // **Zero-width grid columns of an autofit table take their content's
+    // width.** ECMA-376 Part 1, 17.4.16: a `w:gridCol` without a width has a
+    // width of zero, and the grid only gives the initial widths; 17.18.87
+    // (AutoFit): a cell may then grow up to its content's maximum width, and
+    // the table up to the page width. officework itself writes
+    // `<w:gridCol w:w="0"/>` for a column whose width was not set. Word sets
+    // such columns as wide as their text; here they stayed at zero and the
+    // text stood one letter to a line (the test minutes, 2026-10-12).
+    // Only exact zeros are widened: the hairline columns Word leaves behind
+    // merges (6 to 54 twips) are real widths and stay as they are
+    if !table.fixed_layout
+        && table.width_mm.is_none()
+        && table.width_pct.is_none()
+        && widths.iter().any(|w| *w < 0.01)
+    {
+        let zero: Vec<bool> = widths.iter().map(|w| *w < 0.01).collect();
+        // (first grid column, span, content width) of each cell that has content
+        let mut needs: Vec<(usize, usize, f32)> = Vec::new();
+        for row in &table.rows {
+            let mut gc = 0usize;
+            for cell in row {
+                let span = cell.span().min(ncols.saturating_sub(gc)).max(1);
+                if cell.v_merge != VMerge::Continue {
+                    let need = cell_content_mm(cell, table, m, doc, base, *notes, tsume, moji);
+                    needs.push((gc, span, need));
+                }
+                gc += span;
+            }
+        }
+        let room = (haba - widths.iter().sum::<f32>()).max(0.0);
+        // Single-span cells first: a zero column takes its widest cell
+        let mut want = vec![0.0f32; ncols];
+        for &(gc, span, need) in &needs {
+            if span == 1 && gc < ncols && zero[gc] {
+                want[gc] = want[gc].max(need);
+            }
+        }
+        // Then cells spanning several columns: what they still lack is shared
+        // by the zero columns they span
+        for &(gc, span, need) in &needs {
+            let end = (gc + span).min(ncols);
+            let z: Vec<usize> = (gc..end).filter(|&j| zero[j]).collect();
+            if span < 2 || z.is_empty() {
+                continue;
+            }
+            let have: f32 = (gc..end).map(|j| if zero[j] { want[j] } else { widths[j] }).sum();
+            if need > have {
+                let add = (need - have) / z.len() as f32;
+                for j in z {
+                    want[j] += add;
+                }
+            }
+        }
+        // Within the page width: shrink the wanted widths in proportion
+        let total: f32 = want.iter().sum();
+        let k = if total > room && total > 0.0 { room / total } else { 1.0 };
+        for j in 0..ncols {
+            if zero[j] {
+                widths[j] = want[j] * k;
+            }
+        }
+    }
     // **幅を割合で言う表**(docx の `w:tblW w:type="pct"`)。
     //
     // `w:tblGrid` は LibreOffice が言うとおり比でしかありません

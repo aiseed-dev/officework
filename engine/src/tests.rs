@@ -1407,6 +1407,50 @@ mod table_layout_tests {
         assert!(bottom - top > 18.0 + 1.0, "最後の行が中身のぶん伸びていない: {}", bottom - top);
     }
 
+    /// Zero-width grid columns of an autofit table take their content's width
+    /// (ECMA-376 Part 1, 17.4.16 and 17.18.87). officework writes
+    /// `<w:gridCol w:w="0"/>` for a column whose width was not set; Word sets
+    /// those columns as wide as their text, and here they stayed at zero with
+    /// one letter to a line (the test minutes, 2026-10-12)
+    #[test]
+    fn zero_width_columns_of_an_autofit_table_take_their_content() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 150.0, line_height_mm: 6.0, y0_mm: 20.0};
+        let cell = |s: &str| Cellbox {
+            paragraphs: vec![Paragraph {
+                runs: vec![Run { text: s.into(), size_pt: Some(10.5), font: None, fmt: Default::default() }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let mut wide = cell("玄関ドアのカタログ改善");
+        wide.col_span = 3;
+        let table = |fixed: bool| Table {
+            col_mm: vec![22.0, 0.0, 0.0, 0.0],
+            rows: vec![
+                vec![cell("件名"), wide.clone()],
+                vec![cell("日時"), cell("2026-08-26 10:00"), cell("場所"), cell("第2会議室")],
+            ],
+            fixed_layout: fixed,
+            ..Default::default()
+        };
+        let mut d = Document::plain("前");
+        d.blocks.push(Block::Table(table(false)));
+        let s = layout(&d, &m, &frame);
+        for t in ["玄関ドアのカタログ改善", "2026-08-26 10:00", "第2会議室"] {
+            assert!(s.lines.iter().any(|l| l.text().contains(t)), "{t} was broken across lines");
+        }
+        let right = s.lines.iter().flat_map(|l| l.cells.iter()).map(|c| c.x_mm + c.w_mm).fold(0.0f32, f32::max);
+        assert!(right <= 150.0 + 0.01, "the table went past the page: {right}");
+
+        // A fixed-layout table keeps the widths it states (17.18.87, Fixed)
+        let mut d = Document::plain("前");
+        d.blocks.push(Block::Table(table(true)));
+        let s = layout(&d, &m, &frame);
+        assert!(!s.lines.iter().any(|l| l.text().contains("第2会議室")), "a fixed table was widened");
+    }
+
     /// **表の行の送りは、行の高さに罫線の太さ(0.5pt)を足した物**
     /// (2026-09-09、Word の PDF で測った。続き30)
     #[test]
