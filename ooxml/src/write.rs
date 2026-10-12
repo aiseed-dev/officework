@@ -2045,6 +2045,9 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
     let iru_ban = doc.paragraphs().any(|p| p.list != ListKind::None);
     let mut orig_has_num = false;
     let mut orig_has_styles = false;
+    // A font table in the original is kept as it is; ours is added only to a
+    // document whose styles and theme we write
+    let mut orig_has_fonts = false;
     let has_props = doc.props != Default::default();
     if let Some(src) = original {
         if let Ok(mut z) = zip::ZipArchive::new(src) {
@@ -2067,6 +2070,9 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
                 // いました(2026-09-01。python-docx が読めません)
                 if name.starts_with("word/numbering") && name.ends_with(".xml") {
                     orig_has_num = true; // 原本の定義を持ち越す(下で作らない)
+                }
+                if name.starts_with("word/fontTable") && name.ends_with(".xml") {
+                    orig_has_fonts = true;
                 }
                 if name.starts_with("word/styles") && name.ends_with(".xml") {
                     if theme.is_some() {
@@ -2150,6 +2156,12 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
         }
     }
 
+    // The font table goes with the theme we write: it gives Word the other
+    // names of the theme's fonts (ECMA-376 Part 1, 17.8.3.1 altName)
+    let add_fonts = !orig_has_styles
+        && !orig_has_fonts
+        && !orig_rels.as_deref().is_some_and(|r| r.contains("/fontTable\""));
+
     // [Content_Types]。挿した画像の拡張子とヘッダー・フッターの宣言が無ければ足す
     {
         let mut ct = orig_ct.unwrap_or_else(|| CONTENT_TYPES.to_string());
@@ -2183,6 +2195,8 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
              "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"),
             ((!orig_has_styles).then_some("word/theme/theme1.xml"),
              "application/vnd.openxmlformats-officedocument.theme+xml"),
+            (add_fonts.then_some("word/fontTable.xml"),
+             "application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"),
         ] {
             let Some(name) = name else { continue };
             if !ct.contains(&format!("PartName=\"/{name}\"")) {
@@ -2290,6 +2304,10 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
         zip.start_file("word/theme/theme1.xml", opts).map_err(|e| e.to_string())?;
         zip.write_all(crate::theme::xml().as_bytes()).map_err(|e| e.to_string())?;
     }
+    if add_fonts {
+        zip.start_file("word/fontTable.xml", opts).map_err(|e| e.to_string())?;
+        zip.write_all(crate::theme::font_table_xml().as_bytes()).map_err(|e| e.to_string())?;
+    }
 
     // **番号の定義。** 段落が `w:numPr` で指す先です
     if iru_ban && !orig_has_num {
@@ -2387,6 +2405,11 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
                     ));
                 }
             }
+        }
+        if add_fonts && !add.contains("/fontTable\"") {
+            add.push_str(&format!(
+                r#"<Relationship Id="rIdJOfnt" Type="{RNS_DOC}/fontTable" Target="fontTable.xml"/>"#
+            ));
         }
         // 設定(settings.xml)への関係。素の文書に設定を足したときだけ要る
         // Checked by type, as the core properties above: `/word/settings.xml`

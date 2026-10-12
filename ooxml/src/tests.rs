@@ -3512,6 +3512,28 @@ mod through_template {
         assert!(ct.contains("/word/theme/theme1.xml"), "テーマが目録に無い: {ct}");
     }
 
+    /// The font table goes with the theme: part, relationship and content type.
+    /// Without the Mincho's Windows name in it, Word set the body in Yu Gothic.
+    #[test]
+    fn a_new_document_has_a_font_table_with_the_other_names() {
+        kumihan::font::set_default_language("ja");
+        let out = write_out(None);
+        let f = parts(&out, "word/fontTable.xml").expect("no font table");
+        assert!(f.contains(r#"<w:altName w:val="BIZ UDP明朝 Medium"/>"#), "{f}");
+        let rels = parts(&out, "word/_rels/document.xml.rels").unwrap();
+        assert_eq!(rels.matches("/fontTable\"").count(), 1, "{rels}");
+        let ct = parts(&out, "[Content_Types].xml").unwrap();
+        assert!(ct.contains("/word/fontTable.xml"), "{ct}");
+
+        // Saving it again keeps the one font table; it does not add a second
+        let mut again = Vec::new();
+        crate::write_with_theme(&heading_doc(), Some(Cursor::new(out.clone())), None,
+                                Cursor::new(&mut again)).unwrap();
+        assert!(parts(&again, "word/fontTable.xml").is_some(), "the font table was dropped");
+        let rels = parts(&again, "word/_rels/document.xml.rels").unwrap();
+        assert_eq!(rels.matches("/fontTable\"").count(), 1, "{rels}");
+    }
+
     /// **用紙は必ず入ります。**
     ///
     /// 前は指定が無ければ `sectPr` ごと書かず、読む機械の既定に落ちて

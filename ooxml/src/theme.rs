@@ -69,6 +69,42 @@ pub fn xml() -> String {
     )
 }
 
+/// Other names of a theme font, for the font table's `w:altName`.
+///
+/// Windows names the BIZ UD Mincho it ships "BIZ UDP明朝 Medium" (name ID 1,
+/// the name Word looks fonts up by); "BIZ UDP明朝" is only its typographic
+/// family (name ID 16). The Morisawa release on Linux and in Google Fonts is
+/// "BIZ UDP明朝". Without the other name Word did not find the font and set the
+/// body in Yu Gothic (2026-10-12, Word 16.0.20430 on Windows 11).
+const ALT_NAMES: &[(&str, &str)] = &[
+    ("BIZ UDP明朝", "BIZ UDP明朝 Medium"),
+    ("BIZ UD明朝", "BIZ UD明朝 Medium"),
+];
+
+/// `word/fontTable.xml`: the theme's two fonts, each with its other names.
+///
+/// ECMA-376 Part 1, 17.8.3.1: when an application cannot locate a font by its
+/// primary name, it should try each alternate name in turn.
+pub fn font_table_xml() -> String {
+    let (major, minor) = fonts();
+    let mut body = String::new();
+    for name in [major, minor] {
+        if body.contains(&format!("w:name=\"{}\"", esc(&name))) {
+            continue;
+        }
+        let alt = ALT_NAMES
+            .iter()
+            .filter(|(n, _)| *n == name)
+            .map(|(_, a)| format!(r#"<w:altName w:val="{}"/>"#, esc(a)))
+            .collect::<String>();
+        body.push_str(&format!(r#"<w:font w:name="{}">{alt}</w:font>"#, esc(&name)));
+    }
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:fonts xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">{body}</w:fonts>"#
+    )
+}
+
 /// **本文(minor)を指す参照。** `docDefaults` が使います
 pub const MINOR_REF: &str = r#"<w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:eastAsiaTheme="minorEastAsia" w:cstheme="minorBidi"/>"#;
 
@@ -312,5 +348,14 @@ mod tests {
         assert!(x.contains("<a:minorFont>"), "minor が無い");
         assert!(x.contains("BIZ UDPゴシック"), "ゴシックが入らない");
         assert!(x.contains("BIZ UDP明朝"), "明朝が入らない");
+    }
+
+    #[test]
+    fn the_font_table_gives_word_the_windows_name_of_the_mincho() {
+        kumihan::font::set_default_language("ja");
+        let x = font_table_xml();
+        assert!(x.contains(r#"<w:font w:name="BIZ UDP明朝"><w:altName w:val="BIZ UDP明朝 Medium"/></w:font>"#), "{x}");
+        // The Gothic has the same name on both, so it has no other name
+        assert!(x.contains(r#"<w:font w:name="BIZ UDPゴシック"></w:font>"#), "{x}");
     }
 }
