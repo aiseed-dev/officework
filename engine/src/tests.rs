@@ -783,6 +783,8 @@ mod list_tests {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
         let mut p = Paragraph::default();
+        // The grid alone: no automatic space between "あ" and "a"
+        p.auto_space_de = Some(false);
         p.runs.push(Run { text: "あa".into(), size_pt: Some(10.0), font: None, fmt: Default::default() });
         let aki = 0.5 * 25.4 / 72.0;
         let sizen = |t: &str, pt: f32| -> f32 {
@@ -1405,6 +1407,72 @@ mod table_layout_tests {
         let lines_in = s.lines.iter().filter(|l| l.cell.is_some() && l.cells.first().is_some_and(|c| nagai.contains(c.ch))).count();
         assert!(lines_in >= 3, "結合したセルの中身が折れていない: {lines_in}");
         assert!(bottom - top > 18.0 + 1.0, "最後の行が中身のぶん伸びていない: {}", bottom - top);
+    }
+
+    /// A quarter of the size goes between East Asian text and half-width
+    /// letters or digits, none next to symbols, and none when the paragraph
+    /// turns it off (`w:autoSpaceDN w:val="0"`). Measured in Word, 2026-10-12
+    #[test]
+    fn east_asian_text_and_digits_get_a_quarter_em_between() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 150.0, line_height_mm: 6.0, y0_mm: 20.0};
+        let gaps = |text: &str, dn: Option<bool>| -> Vec<(char, f32)> {
+            let mut d = Document::plain("");
+            d.blocks.push(Block::Para(Paragraph {
+                runs: vec![Run { text: text.into(), size_pt: Some(10.0), font: None, fmt: Default::default() }],
+                auto_space_dn: dn,
+                ..Default::default()
+            }));
+            let s = layout(&d, &m, &frame);
+            let cs: Vec<&Cell> = s.lines.iter().flat_map(|l| l.cells.iter()).collect();
+            cs.windows(2)
+                .map(|w| (w[0].ch, w[1].x_mm - w[0].x_mm - m.advance_mm(w[0].ch, 10.0)))
+                .filter(|(_, g)| g.abs() > 0.01)
+                .collect()
+        };
+        let q = 0.25 * 10.0 * 25.4 / 72.0;
+        let g = gaps("2026年8月", None);
+        assert_eq!(g.len(), 3, "{g:?}");
+        assert!(g.iter().all(|(_, x)| (x - q).abs() < 0.01), "{g:?}");
+        assert!(gaps("3%増", None).is_empty());
+        assert!(gaps("１回", None).is_empty());
+        assert_eq!(gaps("A社", None).len(), 1);
+        assert!(gaps("2026年8月", Some(false)).is_empty());
+    }
+
+    /// A superscript or subscript run is set at Word's smaller size, and the
+    /// PDF and the screen move it by `raised_rise_mm` (2026-10-12)
+    #[test]
+    fn superscript_and_subscript_are_set_smaller() {
+        assert_eq!(raised_size_pt(10.5, true), 6.5);
+        assert_eq!(raised_size_pt(12.0, true), 7.0);
+        assert_eq!(raised_size_pt(10.5, false), 7.0);
+        assert_eq!(raised_size_pt(12.0, false), 8.0);
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 150.0, line_height_mm: 6.0, y0_mm: 20.0};
+        let run = |t: &str, sup: bool, sub: bool| {
+            let mut fmt = CharFormat::default();
+            fmt.superscript = sup;
+            fmt.subscript = sub;
+            Run { text: t.into(), size_pt: Some(10.5), font: None, fmt }
+        };
+        let mut d = Document::plain("");
+        d.blocks.push(Block::Para(Paragraph {
+            runs: vec![run("m", false, false), run("2", true, false), run("H", false, false), run("2", false, true)],
+            ..Default::default()
+        }));
+        let s = layout(&d, &m, &frame);
+        let cells: Vec<&Cell> = s.lines.iter().flat_map(|l| l.cells.iter()).filter(|c| c.ch == '2').collect();
+        assert_eq!(cells.len(), 2);
+        let east_asian = m.covers(None, '日');
+        for c in cells {
+            assert_eq!(c.size_pt, raised_size_pt(10.5, east_asian), "{c:?}");
+        }
+        let up = CharFormat { superscript: true, ..Default::default() };
+        let down = CharFormat { subscript: true, ..Default::default() };
+        assert!(raised_rise_mm(&up, 6.5) > 1.3 && raised_rise_mm(&down, 6.5) < -0.5);
     }
 
     /// Zero-width grid columns of an autofit table take their content's width

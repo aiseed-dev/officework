@@ -1962,6 +1962,11 @@ fn style_para(
             .is_none_or(|v| !matches!(v.as_str(), "0" | "false"))),
         // 行グリッドに合わせない(`w:val="0"` のときだけ)
         no_grid: val("w:snapToGrid").map(|v| v == "0" || v == "false" || v == "off"),
+        // ECMA-376 17.3.1.2 and 17.3.1.3 (an element without `w:val` is on)
+        auto_space_de: body.contains("<w:autoSpaceDE").then(|| val("w:autoSpaceDE")
+            .is_none_or(|v| !matches!(v.as_str(), "0" | "false" | "off"))),
+        auto_space_dn: body.contains("<w:autoSpaceDN").then(|| val("w:autoSpaceDN")
+            .is_none_or(|v| !matches!(v.as_str(), "0" | "false" | "off"))),
     }
 }
 
@@ -2699,6 +2704,8 @@ pub(super) fn parse_document_rels_num(
     let mut line_spacing = 0.0f32;
     let mut line_pt: Option<(f32, bool)> = None;
     let mut no_grid = false; // w:pPr の w:snapToGrid w:val="0"
+    // w:pPr's w:autoSpaceDE / w:autoSpaceDN (None: not said)
+    let (mut auto_space_de, mut auto_space_dn): (Option<bool>, Option<bool>) = (None, None);
     let mut ind_itta = false; // 段落自身が w:ind を言ったか
     let mut space_before_pt = 0.0f32;
     let mut space_after_pt = 0.0f32;
@@ -2905,6 +2912,7 @@ pub(super) fn parse_document_rels_num(
                               line_spacing = 0.0;
                               line_pt = None;
                               no_grid = false;
+                              (auto_space_de, auto_space_dn) = (None, None);
                               ind_itta = false;
                               space_before_pt = 0.0;
                               space_after_pt = 0.0;
@@ -3141,6 +3149,8 @@ pub(super) fn parse_document_rels_num(
                     // **行グリッドに合わせない**(`w:pPr` の `w:snapToGrid`。
                     // `w:rPr` の中の同名は字の格子の話なので分ける)
                     b"snapToGrid" if in_ppr && !in_rpr => no_grid = !on(&e),
+                    b"autoSpaceDE" if in_ppr && !in_rpr => auto_space_de = Some(on(&e)),
+                    b"autoSpaceDN" if in_ppr && !in_rpr => auto_space_dn = Some(on(&e)),
                     b"spacing" if in_ppr => {
                         (line_spacing, line_pt) = gyou_bairitsu(
                             attr(&e, "line").and_then(|v| v.parse::<f32>().ok()),
@@ -3987,6 +3997,8 @@ pub(super) fn parse_document_rels_num(
                             .unwrap_or(0);
                     }
                     b"snapToGrid" if in_ppr && !in_rpr => no_grid = !on(&e),
+                    b"autoSpaceDE" if in_ppr && !in_rpr => auto_space_de = Some(on(&e)),
+                    b"autoSpaceDN" if in_ppr && !in_rpr => auto_space_dn = Some(on(&e)),
                     b"spacing" if in_ppr => {
                         (line_spacing, line_pt) = gyou_bairitsu(
                             attr(&e, "line").and_then(|v| v.parse::<f32>().ok()),
@@ -4385,6 +4397,8 @@ pub(super) fn parse_document_rels_num(
                                 line_spacing,
                                 line_pt,
                                 no_grid,
+                                auto_space_de: auto_space_de.take(),
+                                auto_space_dn: auto_space_dn.take(),
                                 ind_itta,
                                 space_before_pt,
                                 space_after_pt,

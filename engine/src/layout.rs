@@ -51,6 +51,15 @@ impl<'a> Metrics<'a> {
         Self::adv(&self.face, self.upem, ch, size_pt, self.hankaku)
     }
 
+    /// Whether the face the run names (or the main face) has a glyph for `ch`
+    pub fn covers(&self, font: Option<&str>, ch: char) -> bool {
+        let face = font
+            .and_then(|n| self.others.iter().find(|(x, ..)| x == n))
+            .map(|(_, f, ..)| f)
+            .unwrap_or(&self.face);
+        face.glyph_index(ch).is_some()
+    }
+
     /// その書体の名前で測る。名前が無い・知らない書体なら主の書体
     pub fn advance_for(&self, font: Option<&str>, ch: char, size_pt: f32) -> f32 {
         if let Some(name) = font {
@@ -248,6 +257,36 @@ pub(super) fn zenkaku(ch: char) -> bool {
 /// `moji` は文字グリッドが字ごとに足す空き(mm。0 で無し。負もある)。全角の字に足す
 /// Also returns the kerning laid into the width of each character, by its
 /// byte offset ([`Cell::kern_mm`])
+/// **The size of a superscript or subscript letter** (pt), from the run's.
+///
+/// ECMA-376 Part 1, 17.3.2.42 vertAlign says only that the text is made
+/// smaller and raised or lowered, so the sizes Word uses are taken. Measured
+/// in Word 16.0.20430's PDFs (2026-10-12): 0.6 of the size in an East Asian
+/// face (Yu Gothic, Yu Mincho, BIZ UDP Mincho) and 0.65 in a Latin one (Arial,
+/// Times New Roman), on whole half points (10.5pt gives 6.5pt and 7pt, 12pt
+/// gives 7pt and 8pt)
+pub fn raised_size_pt(size_pt: f32, east_asian: bool) -> f32 {
+    let k = if east_asian { 0.6 } else { 0.65 };
+    ((size_pt * k * 2.0).round() / 2.0).max(1.0)
+}
+
+/// **How far a superscript (up) or subscript (down, negative) letter sits
+/// from the baseline** (mm), from its own reduced size.
+///
+/// Word moved BIZ UDP Mincho Medium at 10.5pt (6.5pt letters) up 3.9pt and
+/// down 1.6pt (2026-10-12): 0.6 and 0.25 of the reduced size. Other faces
+/// move a little more or less (0.33 to 0.42 and 0.04 to 0.21 of the full
+/// size); officework's own default face is followed
+pub fn raised_rise_mm(fmt: &CharFormat, size_pt: f32) -> f32 {
+    if fmt.superscript {
+        size_pt * 0.6 * PT_TO_MM
+    } else if fmt.subscript {
+        -size_pt * 0.25 * PT_TO_MM
+    } else {
+        0.0
+    }
+}
+
 pub(super) fn tokenize(
     p: &Paragraph, m: &Metrics, notes: &mut NoteCount, base: f32, moji: f32,
 ) -> (Vec<Tok>, std::collections::HashMap<usize, f32>) {
@@ -259,6 +298,13 @@ pub(super) fn tokenize(
         // 無指定(None)はここで文書の既定に解く — Tok/Cell は紙面の産物なので
         // 解決済みの数を持つ(模型の Option を紙面まで運ばない)
         let rpt = run.pt(base);
+        // A superscript or subscript run is set smaller ([`raised_size_pt`]);
+        // a note mark has its own size below
+        let rpt = if (run.fmt.superscript || run.fmt.subscript) && run.fmt.footnote.is_none() {
+            raised_size_pt(rpt, m.covers(run.font.as_deref(), '日'))
+        } else {
+            rpt
+        };
         // 脚注の印。**番号は出てくる順**(id の数ではない)に振る。
         // 箇条書きの印と同じで**本文の字ではない**ので、
         // off は動かさない — 動かすとカーソルが本文とずれる
@@ -361,7 +407,65 @@ pub(super) fn tokenize(
             out.push(Tok::Word(word, rpt, run.fmt.clone(), run.font.clone()));
         }
     }
+    auto_space(p, &mut out, &mut kerns);
     (out, kerns)
+}
+
+/// **The automatic space between East Asian text and Latin letters
+/// (`w:autoSpaceDE`) or digits (`w:autoSpaceDN`).**
+///
+/// ECMA-376 Part 1, 17.3.1.2 and 17.3.1.3: on unless the paragraph or its
+/// style turns it off, with "sufficient" spacing and no amount. Word adds a
+/// quarter of the letter's size between a kanji or kana and a half-width
+/// letter or digit, and none next to punctuation, symbols ("%", brackets,
+/// "-", ".", "。", "〜") or full-width digits (measured in Word 16.0.20430's
+/// PDFs, 2026-10-12: "2026[0.25]年[0.25]8[0.25]月", "A[0.25]社", "3%増").
+/// The space goes on the left letter's advance and is noted with the
+/// kerning, so the PDF and the screen start a new stretch after it
+fn auto_space(p: &Paragraph, out: &mut [Tok], kerns: &mut std::collections::HashMap<usize, f32>) {
+    let de = p.auto_space_de.unwrap_or(true);
+    let dn = p.auto_space_dn.unwrap_or(true);
+    if !de && !dn {
+        return;
+    }
+    // (token, letter in a word or usize::MAX, letter, size, byte offset)
+    let mut seq: Vec<(usize, usize, char, f32, usize)> = Vec::new();
+    for (ti, t) in out.iter().enumerate() {
+        match t {
+            // A note mark is not text of the paragraph
+            Tok::One(_, _, _, f, ..) if f.footnote.is_some() => seq.push((ti, usize::MAX, ' ', 0.0, 0)),
+            Tok::One(c, _, sz, _, _, o) | Tok::Space(c, _, sz, _, _, o) => seq.push((ti, usize::MAX, *c, *sz, *o)),
+            Tok::Word(cs, sz, ..) => {
+                for (k, (c, _, o)) in cs.iter().enumerate() {
+                    seq.push((ti, k, *c, *sz, *o));
+                }
+            }
+        }
+    }
+    let wa = |c: char| matches!(c,
+        '\u{3005}'..='\u{3007}' | '\u{3041}'..='\u{3096}' | '\u{309D}'..='\u{309F}'
+        | '\u{30A1}'..='\u{30FA}' | '\u{30FC}'..='\u{30FF}' | '\u{31F0}'..='\u{31FF}'
+        | '\u{3400}'..='\u{4DBF}' | '\u{4E00}'..='\u{9FFF}' | '\u{F900}'..='\u{FAFF}'
+        | '\u{FF10}'..='\u{FF19}' | '\u{FF21}'..='\u{FF3A}' | '\u{FF41}'..='\u{FF5A}'
+        | '\u{FF66}'..='\u{FF9F}' | '\u{20000}'..='\u{3FFFF}');
+    let latin = |c: char| c.is_ascii_alphabetic() || (('\u{C0}'..='\u{24F}').contains(&c) && c.is_alphabetic());
+    let digit = |c: char| c.is_ascii_digit();
+    let between = |a: char, b: char| {
+        let pair = |x: &dyn Fn(char) -> bool| (wa(a) && x(b)) || (x(a) && wa(b));
+        (de && pair(&latin)) || (dn && pair(&digit))
+    };
+    for w in seq.windows(2) {
+        let ((ti, k, a, sz, o), (_, _, b, ..)) = (w[0], w[1]);
+        if !between(a, b) {
+            continue;
+        }
+        let gap = 0.25 * sz * PT_TO_MM;
+        match &mut out[ti] {
+            Tok::One(_, x, ..) | Tok::Space(_, x, ..) => *x += gap,
+            Tok::Word(cs, ..) => cs[k].1 += gap,
+        }
+        *kerns.entry(o).or_insert(0.0) += gap;
+    }
 }
 
 /// **The space between two paragraphs** (mm). The space after the paragraph

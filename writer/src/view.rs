@@ -1409,15 +1409,11 @@ impl Render for Writer {
                     let f = &c0.fmt;
                     let sx = self.left_at(line.y_mm) + c0.x_mm;
                     let spt = c0.size_pt * 96.0 / 72.0 * self.zoom;
-                    let stop = (line.y_mm + line.dip_mm) * pxmm - spt * 0.88;
-                    // 上付き・下付きは小さく描き、少し上下へずらす
-                    let (spt, stop) = if f.superscript {
-                        (spt * 0.7, stop - spt * 0.25)
-                    } else if f.subscript {
-                        (spt * 0.7, stop + spt * 0.25)
-                    } else {
-                        (spt, stop)
-                    };
+                    // A superscript or subscript letter is already set smaller
+                    // by the layout; it is moved by the same amount as on
+                    // paper (`kumihan::raised_rise_mm`)
+                    let stop = (line.y_mm + line.dip_mm - kumihan::raised_rise_mm(f, c0.size_pt)) * pxmm
+                        - spt * 0.88;
                     // 記入欄(コンテンツコントロール)は薄い箱で囲む。
                     // 「ここは書き込む場所」と分かるように(Word の作法)
                     if f.sdt.is_some() {
@@ -2391,6 +2387,10 @@ pub(crate) fn tsuranari_no_owari(cells: &[kumihan::Cell], i: usize) -> usize {
         && cells[j].fmt == c0.fmt
         && cells[j].size_pt == c0.size_pt
         && cells[j].font == c0.font
+        // A kerned letter, or one followed by the automatic space between
+        // East Asian text and Latin letters or digits, ends the stretch:
+        // gpui would draw the next letter at the face's own advance
+        && cells[j - 1].kern_mm == 0.0
         // 字間が広げられた行(均等割付)は1本で描けない —
         // x が飛んだら連なりを切る
         && (cells[j].x_mm - cells[j - 1].x_mm - cells[j - 1].w_mm).abs() < 0.05

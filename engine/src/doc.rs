@@ -684,6 +684,11 @@ pub struct Paragraph {
     /// **行グリッドに合わせない**(docx の `w:pPr/w:snapToGrid w:val="0"`)。
     /// 既定(false)は合わせる。[`PageSetup::line_pitch_pt`] が 0 なら意味を持たない
     pub no_grid: bool,
+    /// Space between East Asian text and Latin letters (`w:autoSpaceDE`) and
+    /// digits (`w:autoSpaceDN`), ECMA-376 Part 1, 17.3.1.2 and 17.3.1.3.
+    /// None: not said here, so the style's, else on
+    pub auto_space_de: Option<bool>,
+    pub auto_space_dn: Option<bool>,
     pub list: ListKind,
     /// **文書が決めている箇条書きの印**(docx の `numbering.xml` の
     /// `w:lvlText`)。`○` や `(%1)` のような書き方で、`%1` はその段の番号に
@@ -1791,6 +1796,8 @@ impl StyleParaLook {
         self.keep_next = self.keep_next.or(oya.keep_next);
         self.widow_control = self.widow_control.or(oya.widow_control);
         self.no_grid = self.no_grid.or(oya.no_grid);
+        self.auto_space_de = self.auto_space_de.or(oya.auto_space_de);
+        self.auto_space_dn = self.auto_space_dn.or(oya.auto_space_dn);
         self.border = self.border.or(oya.border);
         self.shade = self.shade.take().or_else(|| oya.shade.clone());
     }
@@ -1886,6 +1893,9 @@ pub struct StyleParaLook {
     /// 日本語の Word のヘッダー・フッター・表の文字などのスタイルが持ちます
     /// (官公庁の様式 45 枚で 80 か所。2026-09-09)
     pub no_grid: Option<bool>,
+    /// `w:autoSpaceDE` / `w:autoSpaceDN` of the style ([`Paragraph::auto_space_de`])
+    pub auto_space_de: Option<bool>,
+    pub auto_space_dn: Option<bool>,
     /// **段落の罫線**(docx の `w:pPr/w:pBdr`)。
     ///
     /// python-docx の既定の型紙では、題(`Title`)の下の線がここにあります。
@@ -3032,6 +3042,8 @@ impl Document {
             pl.keep_next = pl.keep_next.or(s.para.keep_next);
             pl.widow_control = pl.widow_control.or(s.para.widow_control);
             pl.no_grid = pl.no_grid.or(s.para.no_grid);
+            pl.auto_space_de = pl.auto_space_de.or(s.para.auto_space_de);
+            pl.auto_space_dn = pl.auto_space_dn.or(s.para.auto_space_dn);
             pl.border = pl.border.or(s.para.border);
             pl.shade = pl.shade.clone().or_else(|| s.para.shade.clone());
             match s.based_on.as_deref() {

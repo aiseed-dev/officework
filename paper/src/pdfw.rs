@@ -2299,6 +2299,8 @@ pub(crate) fn sheet_leaves_wm<F: Fn(usize) -> Vec<kumihan::Line>>(
                     && r.highlight == c.fmt.highlight
                     && (r.tc_pt - c.fmt.spacing_pt).abs() < 0.001
                     && (r.tz - c.fmt.w_pct).abs() < 0.001
+                    // A raised or lowered letter sits on its own baseline
+                    && (r.y_mm - (y + kumihan::raised_rise_mm(&c.fmt, c.size_pt))).abs() < 0.001
                     // **字が続いている所だけ繋ぎます**(2026-09-03)。
                     //
                     // 繋いだまとまりは1つの文字列として描くので、字の位置は
@@ -2323,7 +2325,8 @@ pub(crate) fn sheet_leaves_wm<F: Fn(usize) -> Vec<kumihan::Line>>(
                     }
                     run = Some(Piece {
                         x_mm: mx + c.x_mm,
-                        y_mm: y,
+                        // Superscript up, subscript down (`kumihan::raised_rise_mm`)
+                        y_mm: y + kumihan::raised_rise_mm(&c.fmt, c.size_pt),
                         size_pt: c.size_pt,
                         text: c.ch.to_string(),
                         color: c.fmt.color.clone(),

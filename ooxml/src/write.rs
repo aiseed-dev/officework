@@ -909,6 +909,17 @@ pub(super) fn write_para(w: &mut Writer<Cursor<Vec<u8>>>, p: &Paragraph,
                 }
                 w.write_event(Event::End(BytesEnd::new("w:tabs"))).unwrap();
             }
+            // The automatic space between East Asian text and Latin letters
+            // or digits, as the paragraph said it (ECMA-376 17.3.1.2 and
+            // 17.3.1.3, after `w:tabs` in `CT_PPrBase`). Dropped on saving,
+            // a form that turns it off would get the space in Word
+            for (tag, v) in [("w:autoSpaceDE", p.auto_space_de), ("w:autoSpaceDN", p.auto_space_dn)] {
+                if let Some(v) = v {
+                    let mut e = BS::new(tag);
+                    e.push_attribute(("w:val", if v { "1" } else { "0" }));
+                    w.write_event(Event::Empty(e)).unwrap();
+                }
+            }
             if p.indent > 0 || p.left_twips > 0 || p.first_line_twips != 0 {
                 let mut ind = BS::new("w:ind");
                 // **読んだ twip をそのまま返します**(2026-08-30)。段数へ

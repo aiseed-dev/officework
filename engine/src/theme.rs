@@ -1966,6 +1966,9 @@ fn jibun_wo_ateru(
     if pl.no_grid == Some(true) {
         para.no_grid = true;
     }
+    // A paragraph that does not say takes the style's automatic spacing
+    para.auto_space_de = para.auto_space_de.or(pl.auto_space_de);
+    para.auto_space_dn = para.auto_space_dn.or(pl.auto_space_dn);
     // 段落自身が `w:ind` を言っていれば、スタイルの字下げは当てない(0 も指定)
     // The numbering level's indent counts only below the style's own
     // `w:ind` (ECMA-376 17.7.2), and not at all when the paragraph removes
