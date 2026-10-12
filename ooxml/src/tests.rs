@@ -3534,6 +3534,50 @@ mod through_template {
         assert_eq!(rels.matches("/fontTable\"").count(), 1, "{rels}");
     }
 
+    /// A template replaces the original's styles and theme: one of each in
+    /// the zip, one relationship of each type, and the original's
+    /// `styles2.xml` gone with its relationship and content type. Carrying
+    /// the original's theme over as well put two `word/theme/theme1.xml` in
+    /// the zip and the save failed (2026-10-12)
+    #[test]
+    fn a_template_replaces_the_original_styles_and_theme() {
+        kumihan::font::set_default_language("ja");
+        let first = write_out(None);
+        // Rename the styles part, as the Cabinet Office's document_4 has it
+        let mut z = zip::ZipArchive::new(Cursor::new(first)).unwrap();
+        let mut orig = Vec::new();
+        {
+            let mut w = zip::ZipWriter::new(Cursor::new(&mut orig));
+            for i in 0..z.len() {
+                let mut f = z.by_index(i).unwrap();
+                let mut s = String::new();
+                f.read_to_string(&mut s).unwrap();
+                let name = f.name().replace("word/styles.xml", "word/styles2.xml");
+                let s = s.replace("Target=\"styles.xml\"", "Target=\"styles2.xml\"")
+                    .replace("/word/styles.xml\"", "/word/styles2.xml\"");
+                w.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+                std::io::Write::write_all(&mut w, s.as_bytes()).unwrap();
+            }
+            w.finish().unwrap();
+        }
+        let mut out = Vec::new();
+        crate::write_with_theme(&heading_doc(), Some(Cursor::new(orig)),
+                                Some(&kumihan::theme::default_theme()),
+                                Cursor::new(&mut out)).expect("the save failed");
+        let names: Vec<String> = {
+            let z = zip::ZipArchive::new(Cursor::new(out.clone())).unwrap();
+            z.file_names().map(String::from).collect()
+        };
+        assert_eq!(names.iter().filter(|n| *n == "word/theme/theme1.xml").count(), 1, "{names:?}");
+        assert!(!names.iter().any(|n| n == "word/styles2.xml"), "{names:?}");
+        let rels = parts(&out, "word/_rels/document.xml.rels").unwrap();
+        assert_eq!(rels.matches("/styles\"").count(), 1, "{rels}");
+        assert_eq!(rels.matches("/theme\"").count(), 1, "{rels}");
+        assert!(rels.contains("Target=\"styles.xml\""), "{rels}");
+        let ct = parts(&out, "[Content_Types].xml").unwrap();
+        assert!(!ct.contains("styles2.xml"), "{ct}");
+    }
+
     /// **用紙は必ず入ります。**
     ///
     /// 前は指定が無ければ `sectPr` ごと書かず、読む機械の既定に落ちて

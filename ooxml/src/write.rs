@@ -2048,6 +2048,9 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
     // A font table in the original is kept as it is; ours is added only to a
     // document whose styles and theme we write
     let mut orig_has_fonts = false;
+    // Parts of the original that a template replaces (its styles and theme).
+    // Their relationships and content types go with them, below
+    let mut replaced: Vec<String> = Vec::new();
     let has_props = doc.props != Default::default();
     if let Some(src) = original {
         if let Ok(mut z) = zip::ZipArchive::new(src) {
@@ -2074,8 +2077,16 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
                 if name.starts_with("word/fontTable") && name.ends_with(".xml") {
                     orig_has_fonts = true;
                 }
+                // A template brings its own theme, written below with the
+                // styles. Carrying the original's over as well put two
+                // `word/theme/theme1.xml` in the zip, and the save failed
+                if theme.is_some() && name.starts_with("word/theme/") {
+                    replaced.push(name);
+                    continue;
+                }
                 if name.starts_with("word/styles") && name.ends_with(".xml") {
                     if theme.is_some() {
+                        replaced.push(name);
                         continue;
                     }
                     orig_has_styles = true; // 原本の定義を持ち越す(下で作らない)
@@ -2152,6 +2163,21 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
                 }
                 zip.start_file(name, opts).map_err(|e| e.to_string())?;
                 zip.write_all(&buf).map_err(|e| e.to_string())?;
+            }
+        }
+    }
+
+    // The original's relationships to the styles and theme a template
+    // replaced, and their content types, go too. Left in, the relationship
+    // to a `styles2.xml` pointed at a part no longer there, and ours was not
+    // added because one of that type was already present
+    if !replaced.is_empty() {
+        if let Some(r) = orig_rels.as_mut() {
+            *r = drop_relationships(r, &["/styles\"", "/stylesWithEffects\"", "/theme\""]);
+        }
+        if let Some(ct) = orig_ct.as_mut() {
+            for name in &replaced {
+                *ct = drop_override(ct, &format!("/{name}"));
             }
         }
     }
@@ -2536,4 +2562,35 @@ pub fn write_with_theme<R: Read + Seek, W: Write + Seek>(
     zip.write_all(body.as_bytes()).map_err(|e| e.to_string())?;
     zip.finish().map_err(|e| e.to_string())?;
     Ok(())
+}
+/// `rels` without the `<Relationship …/>` elements whose `Type` ends with one
+/// of `types` (each given with its closing quote, as `/styles"`)
+fn drop_relationships(rels: &str, types: &[&str]) -> String {
+    let mut out = String::with_capacity(rels.len());
+    let mut rest = rels;
+    while let Some(i) = rest.find("<Relationship ") {
+        out.push_str(&rest[..i]);
+        let Some(j) = rest[i..].find("/>").map(|j| i + j + 2) else {
+            rest = &rest[i..];
+            break;
+        };
+        let el = &rest[i..j];
+        let ty = el.find("Type=\"").map(|k| &el[k..]).unwrap_or("");
+        let ty = &ty[..ty[6..].find('"').map(|e| e + 7).unwrap_or(ty.len())];
+        if !types.iter().any(|t| ty.ends_with(t)) {
+            out.push_str(el);
+        }
+        rest = &rest[j..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// `[Content_Types].xml` without the `Override` for `part_name`
+fn drop_override(ct: &str, part_name: &str) -> String {
+    let needle = format!("PartName=\"{part_name}\"");
+    let Some(k) = ct.find(&needle) else { return ct.to_string() };
+    let Some(i) = ct[..k].rfind("<Override") else { return ct.to_string() };
+    let Some(j) = ct[k..].find("/>").map(|j| k + j + 2) else { return ct.to_string() };
+    format!("{}{}", &ct[..i], &ct[j..])
 }
