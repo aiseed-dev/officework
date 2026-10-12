@@ -90,6 +90,10 @@ fn hikae() -> BTreeMap<String, String> {
 /// 返す組は(名前, 紙面, **書体で形が変わるか**)です。3つ目が真なら、
 /// 控えと違う書体のときは罫線も突き合わせません
 fn mihon() -> Vec<(&'static str, paper::pdfw::Leaf, bool)> {
+    // The language decides the column widths of a book whose default font
+    // has no name (`book::unnamed_digit_em`); name it, so every machine
+    // draws the same pictures
+    kumihan::font::set_default_language("ja");
     let mut out = Vec::new();
 
     // ① 表計算。罫線・帯・縞・行番号・ヘッダーとフッター

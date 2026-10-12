@@ -1978,6 +1978,18 @@ pub(super) fn parse_sheet(xml: &str, shared: &[String], rubies: &[Option<String>
         }
         buf.clear();
     }
+    // A sheet without `pageMargins` is printed with Excel's normal margins.
+    // ECMA-376 Part 1, 18.3.1.62 makes the element optional and gives no
+    // value for its absence (only an example of 0.7in, 0.75in and 0.3in),
+    // so the margins Excel uses are taken: Excel set an xlsx written without
+    // the element 0.7in from the left edge (2026-10-12, Excel 16.0.20430 on
+    // Windows 11), where the paper default put it at 20mm
+    if sh.margins_mm.is_none() {
+        sh.margins_mm = Some((0.7 * 25.4, 0.7 * 25.4, 0.75 * 25.4, 0.75 * 25.4));
+    }
+    if sh.hf_margins_mm.is_none() {
+        sh.hf_margins_mm = Some((0.3 * 25.4, 0.3 * 25.4));
+    }
     sh
 }
 
@@ -2096,14 +2108,15 @@ pub fn read_with<R: Read + Seek>(src: R, opts: &ReadOptions) -> Result<(Book, Re
         .and_then(|(name, pt)| {
             let pt = if *pt > 0.0 { *pt } else { book::DEFAULT_CELL_PT };
             // A default font with no name is what we write when the book
-            // named none; its widths were counted with half-width digits
-            // (`ColBasis::default`), so they are read back the same way
+            // named none. Excel sets it in its own default font, so its
+            // widths are counted with that font's digit, as
+            // `ColBasis::default` counts them (`book::unnamed_digit_em`)
             if name.is_empty() {
-                return Some(pt * 0.5);
+                return Some(pt * book::unnamed_digit_em());
             }
             kumihan::font::digit_em_named(name).map(|em| em * pt)
         })
-        .unwrap_or(book::DEFAULT_CELL_PT * 0.5);
+        .unwrap_or(book::DEFAULT_CELL_PT * book::unnamed_digit_em());
     book.set_col_basis(opts.platform, digit_pt);
     Ok((book, rep))
 }

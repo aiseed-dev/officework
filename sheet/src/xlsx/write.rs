@@ -469,6 +469,9 @@ pub(super) fn set_attr(el: &str, name: &str, value: &str) -> String {
     el.replacen("/>", &format!(" {name}=\"{value}\"/>"), 1)
 }
 
+/// The margin `paper::Paper` prints a sheet with when the sheet has none (mm)
+const PAPER_MARGIN_MM: f32 = 20.0;
+
 /// 印刷まわりの塊(pageMargins → pageSetup → drawing の順 = schema の順)。
 /// 原文があれば**属性だけ差し替える**(拡大縮小など知らない属性を残す)。
 /// 無ければモデルの値から最小の要素を作る。
@@ -508,7 +511,17 @@ pub(super) fn print_extra_xml(orig: &str, sh: &Sheet) -> String {
                 inch(l), inch(r), inch(t), inch(b), inch(h), inch(f)
             ))
         }
-        (None, el) => el,
+        (None, Some(el)) => Some(el),
+        // A sheet that never had margins is printed here with the paper's
+        // default margin (`paper::Paper`, 20mm). Write it, so Excel does not
+        // fall back on its own 0.7in and 0.75in and print another page
+        (None, None) => {
+            let (h, f) = sh.hf_margins_mm.unwrap_or((7.62, 7.62));
+            Some(format!(
+                "<pageMargins left=\"{m}\" right=\"{m}\" top=\"{m}\" bottom=\"{m}\" header=\"{}\" footer=\"{}\"/>",
+                inch(h), inch(f), m = inch(PAPER_MARGIN_MM)
+            ))
+        }
     };
     let setup = {
         let orig_el = take("<pageSetup");

@@ -841,10 +841,45 @@ impl ColBasis {
 }
 
 impl Default for ColBasis {
-    /// Windows, with an 11pt face of half-width digits (MS P Gothic)
+    /// Windows, with the 11pt default font of a book that names none
+    /// ([`unnamed_digit_em`])
     fn default() -> Self {
-        ColBasis::new(Platform::Windows, DEFAULT_CELL_PT * 0.5)
+        ColBasis::new(Platform::Windows, DEFAULT_CELL_PT * unnamed_digit_em())
     }
+}
+
+/// The digit width (em) set by [`set_unnamed_digit_em`]; 0 while unset
+static UNNAMED_DIGIT_EM: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// **The digit width (em) of a book's default font when the book names none.**
+///
+/// officework writes `<font><sz val="11"/></font>` without a name for such a
+/// book. ECMA-376 Part 1 counts column widths in the default font's widest
+/// digit (18.3.1.13) but says nothing of a font without a name, so the font
+/// Excel then uses is taken: on Japanese Windows it is Yu Gothic, whose 11pt
+/// digit is 8 pixels, and Excel set an xlsx with such a font 8 pixels to a
+/// digit (2026-10-12, Excel 16.0.20430 on Windows 11). Other languages keep
+/// half-width digits (7 pixels at 11pt, as Calibri) until checked.
+/// The language is the engine's ([`set_unnamed_digit_em`]), else
+/// [`crate::lang::decide`]
+pub fn unnamed_digit_em() -> f32 {
+    let bits = UNNAMED_DIGIT_EM.load(std::sync::atomic::Ordering::Relaxed);
+    if bits != 0 {
+        return f32::from_bits(bits);
+    }
+    static DECIDED: std::sync::OnceLock<f32> = std::sync::OnceLock::new();
+    *DECIDED.get_or_init(|| excel_default_digit_em(&crate::lang::decide(None)))
+}
+
+/// Set [`unnamed_digit_em`] (kumihan does so when the language is set)
+pub fn set_unnamed_digit_em(em: f32) {
+    UNNAMED_DIGIT_EM.store(em.to_bits(), std::sync::atomic::Ordering::Relaxed);
+}
+
+/// The digit width (em) of Excel's default font for a language tag
+pub fn excel_default_digit_em(lang: &str) -> f32 {
+    // Yu Gothic's digit, as `kumihan::font` measures it (DIGIT_EM)
+    if lang.split(['-', '_']).next() == Some("ja") { 0.5562 } else { 0.5 }
 }
 
 /// 1枚のシート。疎な表なので BTreeMap で持つ(空セルは持たない)。
@@ -3333,7 +3368,17 @@ mod col_basis_tests {
         assert_eq!(ColBasis::new(Platform::Windows, 0.5068 * 11.0).mdw, 7.0);
         assert_eq!(ColBasis::new(Platform::Windows, 5.5).mdw, 7.0);
         assert_eq!(ColBasis::new(Platform::Mac, 5.5).mdw, 6.0);
-        assert_eq!(ColBasis::default(), ColBasis::new(Platform::Windows, 5.5));
+        assert_eq!(ColBasis::default(), ColBasis::new(Platform::Windows, 11.0 * unnamed_digit_em()));
+    }
+
+    /// A default font without a name is counted as Excel's default font:
+    /// Yu Gothic (8 pixels at 11pt) in Japanese, half-width digits (7)
+    /// elsewhere until checked (2026-10-12)
+    #[test]
+    fn an_unnamed_font_is_counted_as_excels_default() {
+        assert_eq!(ColBasis::new(Platform::Windows, 11.0 * excel_default_digit_em("ja")).mdw, 8.0);
+        assert_eq!(ColBasis::new(Platform::Windows, 11.0 * excel_default_digit_em("ja-JP")).mdw, 8.0);
+        assert_eq!(ColBasis::new(Platform::Windows, 11.0 * excel_default_digit_em("en-us")).mdw, 7.0);
     }
 
     /// The resume form of the Ministry of Health, Labour and Welfare (the

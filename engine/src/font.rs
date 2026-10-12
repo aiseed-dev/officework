@@ -1646,6 +1646,9 @@ pub fn lang_lock() -> std::sync::MutexGuard<'static, ()> {
 /// en)。言語を変えたときも、もう一度呼んでください。
 pub fn set_default_language(tag: &str) {
     *UI_LANG.write().expect("言語の錠") = Some(tag.to_string());
+    // The column widths of a book whose default font has no name follow
+    // the language too: Excel sets such a font in its own default
+    book::set_unnamed_digit_em(book::excel_default_digit_em(tag));
 }
 
 /// いまエンジンが見ている言語。

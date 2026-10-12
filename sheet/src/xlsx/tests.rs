@@ -300,11 +300,14 @@ mod colwidth_round {
     /// Windows's (96 dpi, the standard's example)
     #[test]
     fn the_mac_option_reads_the_widths_the_mac_way() {
-        let bs = book::ColBasis::default();
+        // A face of half-width digits (5.5pt at 11pt): 7 pixels on Windows,
+        // 6 points on a Mac, so the two ways give other widths
+        let bs = book::ColBasis::new(book::Platform::Windows, 5.5);
         let mut s = Sheet { name: "帳票".into(), ..Default::default() };
         s.set_col_xlsx(0, 21.375, &bs);
         let mut buf = Vec::new();
-        crate::xlsx::write(&Book { sheets: vec![s], ..Default::default() }, std::io::Cursor::new(&mut buf)).unwrap();
+        let b = Book { sheets: vec![s], default_font: Some(("ＭＳ Ｐゴシック".into(), 11.0)), col_basis: bs, ..Default::default() };
+        crate::xlsx::write(&b, std::io::Cursor::new(&mut buf)).unwrap();
         let (win, _) = crate::xlsx::read(std::io::Cursor::new(&buf)).unwrap();
         let opts = crate::xlsx::ReadOptions { platform: book::Platform::Mac, ..Default::default() };
         let (mac, _) = crate::xlsx::read_with(std::io::Cursor::new(&buf), &opts).unwrap();
@@ -2109,6 +2112,51 @@ mod print_setup_roundtrip_tests {
             vec![(Pos::parse("A1").unwrap(), Pos::parse("G30").unwrap())],
             "印刷範囲が往復しない"
         );
+    }
+
+    /// A sheet that never had margins is written with the margin officework
+    /// prints it with (20mm), so Excel prints it the same; a sheet read
+    /// without `pageMargins` takes Excel's normal margins (ECMA-376 Part 1,
+    /// 18.3.1.62 gives none for the element's absence)
+    #[test]
+    fn margins_are_written_when_unset_and_read_as_excels_when_absent() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("cannot write");
+        let xml = {
+            let mut z = zip::ZipArchive::new(Cursor::new(buf.get_ref().clone())).unwrap();
+            let mut s = String::new();
+            std::io::Read::read_to_string(&mut z.by_name("xl/worksheets/sheet1.xml").unwrap(), &mut s).unwrap();
+            s
+        };
+        assert!(xml.contains(r#"<pageMargins left="0.78740" right="0.78740" top="0.78740" bottom="0.78740""#), "{xml}");
+
+        // Without the element: Excel's 0.7in, 0.75in, 0.3in
+        let bare = xml.split("<pageMargins").next().unwrap().to_string()
+            + &xml[xml.find("<pageMargins").unwrap()..].splitn(2, "/>").nth(1).unwrap().to_string();
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.into_inner())).unwrap();
+        let mut out = Cursor::new(Vec::new());
+        {
+            let mut w = zip::ZipWriter::new(&mut out);
+            for i in 0..z.len() {
+                let mut f = z.by_index(i).unwrap();
+                let mut data = Vec::new();
+                std::io::Read::read_to_end(&mut f, &mut data).unwrap();
+                let name = f.name().to_string();
+                w.start_file(&name, zip::write::SimpleFileOptions::default()).unwrap();
+                let data = if name == "xl/worksheets/sheet1.xml" { bare.clone().into_bytes() } else { data };
+                std::io::Write::write_all(&mut w, &data).unwrap();
+            }
+            w.finish().unwrap();
+        }
+        out.set_position(0);
+        let (back, _) = read(out).expect("cannot read");
+        let (l, r, t, bo) = back.sheets[0].margins_mm.expect("no margins");
+        assert!((l - 17.78).abs() < 0.01 && (r - 17.78).abs() < 0.01, "{l} {r}");
+        assert!((t - 19.05).abs() < 0.01 && (bo - 19.05).abs() < 0.01, "{t} {bo}");
+        let (h, f) = back.sheets[0].hf_margins_mm.expect("no header margin");
+        assert!((h - 7.62).abs() < 0.01 && (f - 7.62).abs() < 0.01, "{h} {f}");
     }
 
     /// **「紙 N 枚に収める」は、選ばれているときだけ効く。**
