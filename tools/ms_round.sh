@@ -34,11 +34,18 @@ if src.endswith(".docx"):
 else:
     sheet.Book.open(src).to_pdf(out)
 EOF
-  if [ "$(uname)" = Linux ]; then
-    python3 "$ROOT/tools/winvm_pdf.py" "$f" >/dev/null || { echo "× $f: Word/Excel で PDF にできない"; continue; }
-  else
+done
+# On Linux all the files go to the Windows VM in one run: it starts the VM if
+# needed and shuts it down afterwards, so once for the whole round
+if [ "$(uname)" = Linux ]; then
+  python3 "$ROOT/tools/winvm_pdf.py" *.docx *.xlsx >/dev/null || echo "× some files: Word/Excel could not save them as PDF"
+fi
+for f in *.docx *.xlsx; do
+  n="${f%.*}"
+  if [ "$(uname)" != Linux ]; then
     python3 "$ROOT/tools/ms_pdf.py" "$f" "$n.ms.pdf" || { echo "× $f: Word/Excel で PDF にできない"; continue; }
   fi
+  [ -f "$n.ms.pdf" ] || { echo "× $f: no PDF from Word/Excel"; continue; }
   "$PY" "$ROOT/tools/ms_compare.py" "$n.ow.pdf" "$n.ms.pdf" > "$n.diff.txt"
   echo "== $n: $(tail -1 "$n.diff.txt")"
 done

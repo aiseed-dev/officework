@@ -5,7 +5,7 @@ The Linux counterpart of `tools/ms_pdf.py` (which drives Word and Excel on a
 Mac). The PDFs are the material `tools/ms_compare.py` compares with the PDF
 officework writes.
 
-    python3 tools/winvm_pdf.py document.docx ledger.xlsx [--out DIR] [--timeout 300]
+    python3 tools/winvm_pdf.py document.docx ledger.xlsx [--out DIR] [--timeout 300] [--keep]
 
 Each `<name>.docx` / `<name>.xlsx` gives `<name>.ms.pdf`, next to the source
 file or in `--out`. The exit status is 0 when every file gave a PDF, 1 when
@@ -18,6 +18,14 @@ A libvirt domain (default `win11` on `qemu:///session`; `OW_WINVM_DOMAIN` and
 in, and the QEMU guest agent running: install `virtio-win-guest-tools.exe`
 from the virtio-win ISO in Windows, and give the domain the channel
 `<channel type='unix'><target type='virtio' name='org.qemu.guest_agent.0'/></channel>`.
+
+## Starting and shutting down the VM
+
+The VM is meant to run only while comparing (it holds its memory until it is
+shut down). If it is not running, the tool starts it, waits until someone
+signs in to Windows (the tool does not sign in), and shuts Windows down when
+done. A VM that was already running is left running, since it may be in use;
+`--keep` leaves a VM the tool started running too.
 
 ## How it works
 
@@ -132,6 +140,55 @@ $p = New-ScheduledTaskPrincipal -UserId '{user}' -LogonType Interactive -RunLeve
 Register-ScheduledTask -TaskName '{task}' -Action $a -Principal $p -Force | Out-Null""")
 
 
+def virsh(*args, check=True):
+    # virsh answers in the user's language ("シャットオフ" for "shut off"); the
+    # states are compared in English
+    env = dict(os.environ, LC_ALL="C")
+    r = subprocess.run(["virsh", "-c", CONNECT, *args], capture_output=True, text=True, env=env)
+    if check and r.returncode != 0:
+        raise VmError(r.stderr.strip() or r.stdout.strip())
+    return r.stdout.strip()
+
+
+def running():
+    return virsh("domstate", DOMAIN) == "running"
+
+
+def start_and_wait_for_sign_in(limit=900):
+    """Start the VM and wait for the guest agent, then for a signed-in user."""
+    virsh("start", DOMAIN)
+    print(f"started {DOMAIN}; waiting for Windows", file=sys.stderr)
+    t0, told = time.time(), False
+    while time.time() - t0 < limit:
+        time.sleep(5)
+        try:
+            agent("guest-ping")
+            user = ps_ok("(Get-CimInstance Win32_ComputerSystem).UserName", 30).strip()
+        except (VmError, json.JSONDecodeError, KeyError):
+            continue
+        if user:
+            # Give the desktop a moment after sign-in before Office starts
+            time.sleep(20)
+            return
+        if not told:
+            print("sign in to Windows (virt-manager's console); the tool waits", file=sys.stderr)
+            told = True
+    raise VmError(f"nobody signed in to Windows within {limit}s")
+
+
+def shut_down(limit=300):
+    """Shut Windows down the normal way (ACPI) and wait until the VM is off."""
+    virsh("shutdown", DOMAIN)
+    t0 = time.time()
+    while time.time() - t0 < limit:
+        time.sleep(5)
+        if virsh("domstate", DOMAIN, check=False) == "shut off":
+            print(f"{DOMAIN} is shut down", file=sys.stderr)
+            return True
+    print(f"{DOMAIN} did not shut down in {limit}s; shut it down in Windows", file=sys.stderr)
+    return False
+
+
 def office_running():
     out = ps_ok("@(Get-Process WINWORD,EXCEL -ErrorAction SilentlyContinue | "
                 "ForEach-Object { $_.ProcessName + ' ' + $_.Id }) -join ', '")
@@ -206,6 +263,7 @@ def main():
     ap.add_argument("files", nargs="+", type=Path)
     ap.add_argument("--out", type=Path, help="folder for the PDFs (default: next to each file)")
     ap.add_argument("--timeout", type=int, default=300, help="seconds for the whole run")
+    ap.add_argument("--keep", action="store_true", help="leave the VM running if the tool started it")
     a = ap.parse_args()
     bad = [f for f in a.files if f.suffix.lower() not in (".docx", ".xlsx") or not f.is_file()]
     if bad:
@@ -215,11 +273,27 @@ def main():
         ap.error("two files have the same name")
     if a.out:
         a.out.mkdir(parents=True, exist_ok=True)
+    started = False
+    status = 2
     try:
-        sys.exit(run([f.resolve() for f in a.files], a.out, a.timeout))
+        if not running():
+            start_and_wait_for_sign_in()
+            started = True
+        status = run([f.resolve() for f in a.files], a.out, a.timeout)
     except VmError as e:
         print(f"winvm_pdf: {e}", file=sys.stderr)
-        sys.exit(2)
+    finally:
+        # Shut down only a VM this run started, and never with Word or Excel
+        # of this run still open (status 2 then says so)
+        if started and not a.keep:
+            try:
+                if not office_running():
+                    shut_down()
+                else:
+                    print("Word or Excel is still running; the VM is left on", file=sys.stderr)
+            except VmError as e:
+                print(f"winvm_pdf: {e}", file=sys.stderr)
+    sys.exit(status)
 
 
 if __name__ == "__main__":
