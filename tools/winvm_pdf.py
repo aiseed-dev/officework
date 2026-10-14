@@ -154,10 +154,13 @@ def running():
     return virsh("domstate", DOMAIN) == "running"
 
 
-def start_and_wait_for_sign_in(limit=900):
-    """Start the VM and wait for the guest agent, then for a signed-in user."""
+def start_vm():
     virsh("start", DOMAIN)
     print(f"started {DOMAIN}; waiting for Windows", file=sys.stderr)
+
+
+def wait_for_sign_in(limit=900):
+    """Wait for the guest agent, then for a signed-in user."""
     t0, told = time.time(), False
     while time.time() - t0 < limit:
         time.sleep(5)
@@ -277,8 +280,10 @@ def main():
     status = 2
     try:
         if not running():
-            start_and_wait_for_sign_in()
+            start_vm()
+            # Noted before waiting, so a VM nobody signed in to is shut down too
             started = True
+            wait_for_sign_in()
         status = run([f.resolve() for f in a.files], a.out, a.timeout)
     except VmError as e:
         print(f"winvm_pdf: {e}", file=sys.stderr)
