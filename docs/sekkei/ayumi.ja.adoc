@@ -233,6 +233,15 @@ Electron + React、xlsx だけ Rust の脇役、Apache-2.0 + EE 予約、AI は 
 学ぶものは学ぶ: スイートの幅(slides / PDF 編集)はあちらが広い。
 ブロック粒度の AI 編集の UI は、AI メニューの**挙動の教師がもう一人増えた**ということ(vendor の Euro-Office と同じ扱い — 参照はするが継がない)。
 
+== 同類との距離 — ibis-office(2026-10-15 発注者「officework と同じやり方です」)
+
+株式会社アイビスの ibis-office は、Rust と GPUI で作り、Office の PDF と比べて見た目を
+合わせています。いちばん大きな違いは、合わせている Office です。ibis は Mac の Office に
+合わせ、officework は Windows の Word・Excel に合わせています。比べた内容は
+link:ibis-office.ja.adoc[ibis-office.ja.adoc] にあります。
+
+発注者の見方(2026-10-15):「誰でも Office が作れる時代になりましたね」。
+
 == 里程標
 
 * *K0 済* 組版の核(`engine`/crate kumihan): 禁則・欧文語の不分割を実フォント字幅で。テスト6件 + A4 PDF で目視検証。**禁則は行を折る瞬間に解決**する(後処理で字を送ると行長を超える。一度踏んで直した)

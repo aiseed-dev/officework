@@ -1,0 +1,188 @@
+= ibis-office との比較(2026-10-15)
+
+発注者が、officework と同じやり方で作られた Office として ibis-office を見つけました
+(2026-10-15「officework と同じやり方です」)。リポジトリを
+`~/Documents/officework-cmp/ibis-office` に clone し、コードを読んで比べました。
+ビルドも実行もしていません。比べた版は 0.8.1(コミット 077d503、2026-10-12)です。
+
+== ibis-office とは
+
+* 株式会社アイビス(ibis inc.)が作り、2026 年 10 月 12 日に公開しました(0.8.0。同じ日に 0.8.1)。
+* Rust と GPUI で書いた Office です。docx・xlsx・pptx を開いて、編集して、保存します。
+  xls は読むだけです。
+* Mac と Windows のアプリがあり、ブラウザでも動きます(WebAssembly と WebGPU)。
+* 作る理由は、自社のファイルの保存と共有のサービス(ibisStorage)で、Office の文書を
+  速く正確に表示して編集するためです。
+* Rust は約 32 万行です。アプリが約 18 万行、pptx・xlsx・docx の読み書きが約 7.7 万行、
+  文書のモデルが約 3.5 万行、計算が約 2.4 万行です。officework は約 26 万行です
+  (`vendor/` を除く)。
+* 公開の履歴は、10 月 12 日の 4 つのコミットにまとめられています。
+
+== 同じところ
+
+* Rust と GPUI で作り、画面を GPU で描きます。
+* Word・Excel が書き出した PDF と比べて、見た目を合わせています。
+* 組み込みの表のスタイルは、どちらも ECMA-376 の presetTableStyles.xml をそのまま使います。
+  要素を重ねる順(表全体、列の縞、行の縞、最後の列、最初の列、見出し行、集計行、角のセル)も
+  同じです。
+* 保存するときは、読んだファイルを元にして、変えた所だけを書き替えます。
+* 機能の一覧に「完了」と「一部」を付けて、進み具合を出しています。ibis の一覧は docx 339 行、
+  xlsx 830 行、pptx 230 行です。
+* マクロは実行せずに、ファイルに残します。
+* ライセンスは AGPL です。
+* 作業を担当(core・document・presentation・spreadsheet・fix・test)に分け、担当ごとに
+  フォルダーを持たせています。コードは AGENTS.md に触れていますが、その文書は公開されて
+  いません。
+
+== 基準にしている Office
+
+いちばん大きな違いは、合わせている Office です。
+
+* ibis は Mac の Office に合わせています。コードの注記に「Excel for Mac」「Word for Mac」が
+  約 50 行あり、Windows の Office は 2 行です。正解の PDF も Mac の Office で作っています。
+* officework は、Windows 11 の Word・Excel(Microsoft 365、16.0.20430)に合わせています
+  (winvm-tsukiawase.ja.adoc)。日本の役所や会社の文書は、多くが Windows で作られます。
+
+同じことについての値は、次のとおりです。ibis のファイルの場所は、リポジトリの `crates/` からのパスで書きます。
+
+[cols="2,3,3"]
+|===
+|項目 |officework(Windows の Word・Excel で測った値) |ibis(Mac の Office に合わせた値)
+
+|上付き・下付きの大きさ
+|和文の書体は 0.6 倍、欧文の書体は 0.65 倍。0.5pt 単位に丸める
+|どの書体も 0.65 倍。丸めない(`ibis-office-app/src/docx/flow_layout.rs` 923 行)
+
+|上付き・下付きの上げ下げ
+|小さくした字の大きさの 0.6 倍(上)と 0.25 倍(下)
+|行でいちばん大きな字の大きさの 0.35 倍(上)と 0.1 倍(下)(同じファイル 1555〜1559 行)
+
+|和文と英字・数字の間
+|0.25em
+|0.25em。行末に来た空きは取り除く(同じファイル 1132〜1148 行、1364〜1370 行)
+
+|xlsx の数字の幅
+|書体ごとの表(Excel の書体のファイルから測った値)。名前の無い書体は、Excel の既定の書体で数える
+|どの書体も、字の大きさの 0.55 倍を pt に丸める(`ibis-pptx/src/reader.rs` 2981〜2983 行)
+
+|xlsx の画面の倍率
+|列の幅と字は 96dpi
+|1pt を 1px で描く。Mac の Excel と同じ(`ibis-office-app/src/shell/editor.rs` 72〜75 行)
+
+|行の高さの印刷
+|指定した高さ × 書体ごとの係数(游ゴシック 0.98376、ＭＳ Ｐゴシック 0.90549)を、600dpi の点に丸める
+|係数は無く、指定した高さのまま
+
+|ヘッダーとフッターの位置
+|ヘッダーの余白から 1.236em 下、フッターの余白から 0.61em 上
+|書体の寸法と行間から計算する(`ibis-office-app/src/xlsx/header_footer.rs` 194〜216 行)
+
+|データバー
+|長さは 10%〜90%。セルの端から 1.9pt 内側。色から白へ
+|長さは 10%〜90%。1pt 内側。色から 9 割の白へ 32 段(`ibis-office-app/src/xlsx/sheet_view.rs` 1045〜1062 行)
+
+|テーマの無い xlsx
+|2023 年版のテーマを使う(アクセント 1 は #156082)
+|テーマを空として読むので、テーマの色が出ない(`ibis-pptx/src/reader.rs` 2943〜2949 行)。
+新しく作る表などは 2013 年版の色を使う(`ibis-pptx/src/new_file.rs` 92〜96 行)
+
+|xlsx の余白の既定
+|0.7・0.7・0.75・0.75 インチ。ヘッダーとフッターは 0.3 インチ
+|同じ(`ibis-doc-model/src/sheet.rs` 1592〜1604 行)
+
+|docx の fontTable の altName
+|読む。BIZ UDP明朝 が無ければ、BIZ UDP明朝 Medium で探す
+|fontTable を読まない
+
+|自動調整の表の、幅が 0 の列
+|中身の幅まで広げる
+|中身の幅まで広げる。セルの幅があれば、それを使う
+|===
+
+== 範囲の違い
+
+[cols="2,3,3"]
+|===
+| |officework |ibis
+
+|形式
+|docx・xlsx・ods・AsciiDoc
+|docx・xlsx・pptx(xls は読むだけ)
+
+|動く所
+|Linux・Mac・Windows、Python(PyPI)
+|Mac・Windows、ブラウザ。Linux の版は配っておらず、公開の Issue に Linux でビルドできないという報告がある(#3)
+
+|PDF
+|自前の PDF の書き出し。Linux でも Python からも作れる
+|画面と同じ描画の記録を PDF にする(krilla)。Mac と Windows だけ
+
+|画面
+|Euro-Office のリボンと右のパネル
+|メニューと 1 列のツールバーと右のパネル。Google ドキュメントに似ている(アイコンは Material Symbols)
+
+|画面の言語
+|15
+|日本語と英語(それぞれ約 5,460)
+
+|ダークモード
+|あり
+|無い
+
+|計算できる関数
+|407
+|約 500(LAMBDA・動的配列あり)
+
+|Python と AI
+|あり
+|無い
+|===
+
+== 試験の違い
+
+* ibis は、Mac の Office の PDF を 144dpi の画像にし、色の差(CIE76 の ΔE)で比べます。
+  8px の区画ごとに見て、ΔE 10 を超える画素が 5% あれば違いとします(`ibis-imgdiff`)。
+* 計算の結果は、Excel がファイルに残した値と 15 桁まで比べます。
+* README には「7 万を超える試験」とありますが、試験の文書と正解の PDF は公開されていません。
+  公開されているのは、テストが約 1,165、画面の手順の試験が約 1,000 です。
+* officework は、Windows の Word・Excel の PDF と、行ごとに字の位置で比べます
+  (`tools/winvm_pdf.py`、`tools/ms_round.sh`)。紙面は回帰テストの画像でも見ます。
+
+== ibis の方が進んでいる所
+
+* pptx を開いて、編集して、保存できます。
+* 表計算の表の見出しのセルに、フィルターのボタン(▼)を出します(collabora-gamen.ja.adoc にも
+  書いた違いです)。
+* ステータスバーに、選んだセルの平均・データの個数・合計を出します。
+* 開く速さと PDF にする速さを測って公開しています(Mac の M2 Pro。150 ページの docx を
+  0.45 秒で開くなど)。officework は、同じ文書での速さを測っていません。
+* 和文と英字・数字の間の空きを、行末では取り除きます。officework は行末の空きも行の長さに
+  数えるので、Word より 1 字早く折れることがあります(winvm-tsukiawase.ja.adoc の
+  「残っていること」)。
+
+== officework にあって ibis に無いもの
+
+* Windows の Word・Excel で測った値(上の表)
+* docx の fontTable の altName
+* Linux の版と、Linux でも作れる PDF
+* Python の API とマクロ、AI
+* ods と AsciiDoc
+* 15 の言語の画面
+
+== ライセンスとコードの扱い
+
+* ibis は、AGPL-3.0-only と有償の商用ライセンスの両方で出しています。著作権はすべて
+  株式会社アイビスが持っています。
+* ibis を元にした物には、画面に「Powered by ibisOffice」と出す必要があります(AGPL の
+  7 条 (b) の追加の条件)。
+* 外からの貢献(プルリクエスト)は、貢献者のライセンスの同意書ができるまで受け付けていません。
+* officework は AGPL-3.0-or-later です。
+* ibis のコードに、officework の名前(officework、aiseed、kumihan)はありませんでした。
+* ibis のコードを officework に入れるかどうかは、決めていません。入れると、上の表示の条件が
+  付きます。
+
+== まだ確かめていないこと
+
+* 同じ文書を両方で PDF にして並べていません。この日は試験を止めていました。
+* ibis の値は、コードを読んで確かめただけです。動かしていません。
+* ibis の「7 万を超える試験」は公開されていないので、確かめられません。
