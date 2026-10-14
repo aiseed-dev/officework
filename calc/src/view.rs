@@ -1453,7 +1453,12 @@ impl Render for Calc {
                 // マウスの結線はセルではなく InputSink(窓レベル)にある。
                 // セルの id は当たり判定ではなく描画の区別のためだけに残す
                 // 罫線・塗り・文字書式。**帳票の見た目はここで決まる**
-                let f = cell.map(|x| x.fmt.clone()).unwrap_or_default();
+                let mut f = cell.map(|x| x.fmt.clone()).unwrap_or_default();
+                // A table's built-in style lies under the cell's own format,
+                // as on paper (`book::table_style`)
+                if let Some(tl) = book::table_style::look_at(&self.sheet().tables, &self.book.theme, p) {
+                    tl.apply(&mut f);
+                }
                 let mut base = f.fill.as_deref().map(hex).unwrap_or(gpui::Rgba {
                     r: 1.0, g: 1.0, b: 1.0, a: 1.0,
                 });
@@ -1480,14 +1485,23 @@ impl Render for Calc {
                     // 柄は下地の上に敷く(データバーと同じ重ね方)
                     d = d.relative().child(div().absolute().inset_0().bg(p));
                 }
-                // データバー(文字の下に敷く。子は後の文字が上に描かれる)
+                // A data bar, under the text (the children after it draw on
+                // top). It is drawn as the paper draws it: in from the cell's
+                // left edge, top and bottom by `kumihan::look::BAR_INSET_PT`,
+                // and from its colour on the left to white on the right
                 if let Some((t, bc)) = cond_bar {
-                    let bw = (self.col_px(c) - 2.0).max(0.0) * t;
+                    let inset = kumihan::look::BAR_INSET_PT as f32 * 96.0 / 72.0 * self.zoom;
+                    let bw = (self.col_px(c) * kumihan::look::bar_share(t as f64) as f32 - inset).max(0.0);
+                    let white = gpui::Rgba { r: 1.0, g: 1.0, b: 1.0, a: 1.0 };
                     d = d.relative().child(
-                        div().absolute().left(px(1.0)).top(px(2.0)).bottom(px(2.0))
+                        div().absolute().left(px(inset)).top(px(inset)).bottom(px(inset))
                             .w(px(bw))
-                            .bg(gpui::Rgba { a: 0.65, ..bc })
-                            .rounded_xs(),
+                            // GPUI's 90 degrees runs from left to right
+                            .bg(gpui::linear_gradient(
+                                90.0,
+                                gpui::linear_color_stop(bc, 0.0),
+                                gpui::linear_color_stop(white, 1.0),
+                            )),
                     );
                 }
                 // 範囲は下地に緑を**混ぜて**見せる(塗りは透けて残る)。
@@ -3029,7 +3043,10 @@ impl Render for Calc {
                 }
                 let Some((x0, y0, x1, y1)) = rect else { continue };
                 let cell = self.sheet().get(a);
-                let f = cell.map(|x| x.fmt.clone()).unwrap_or_default();
+                let mut f = cell.map(|x| x.fmt.clone()).unwrap_or_default();
+                if let Some(tl) = book::table_style::look_at(&self.sheet().tables, &self.book.theme, a) {
+                    tl.apply(&mut f);
+                }
                 let v = cell.map(|x| x.value.clone()).unwrap_or(Value::Empty);
                 let mut shown = book::format_value(&v, f.number_format.as_deref(), self.book.date1904);
                 // 結合の上で編集中は、打ちかけを結合の枠の中に見せる(セルと同じ)

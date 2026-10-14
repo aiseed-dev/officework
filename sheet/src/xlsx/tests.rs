@@ -291,8 +291,9 @@ mod colwidth_round {
         let b = back.col_basis;
         assert_eq!(s.col_mm.get(&2).copied(), Some(b.chars_to_mm(24.0)), "mm がブックの換算どおりでない");
         // The book named no default font, so the file has a nameless one;
-        // its widths come back as wide as they were written
-        assert_eq!(b, bs, "the nameless default font was read with another digit width");
+        // its widths come back as wide as they were written (the print
+        // factors that reading adds are another matter)
+        assert_eq!((b.dpi, b.mdw), (bs.dpi, bs.mdw), "the nameless default font was read with another digit width");
     }
 
     /// **The same file has other widths on a Mac** (decided 2026-09-23): a
@@ -487,6 +488,10 @@ mod carry_tests {
             let name = f.name().to_string();
             let mut buf = Vec::new();
             f.read_to_end(&mut buf).unwrap();
+            // The theme written is replaced by the one this test adds below
+            if name == "xl/theme/theme1.xml" {
+                continue;
+            }
             if name == "xl/worksheets/sheet1.xml" {
                 let s = String::from_utf8(buf).unwrap().replace(
                     "</worksheet>",
@@ -2157,6 +2162,59 @@ mod print_setup_roundtrip_tests {
         assert!((t - 19.05).abs() < 0.01 && (bo - 19.05).abs() < 0.01, "{t} {bo}");
         let (h, f) = back.sheets[0].hf_margins_mm.expect("no header margin");
         assert!((h - 7.62).abs() < 0.01 && (f - 7.62).abs() < 0.01, "{h} {f}");
+    }
+
+    /// A text box's inset is written when it is not DrawingML's default, and
+    /// read back; before, every saved box went back to the default
+    #[test]
+    fn a_text_inset_is_written_and_read_back() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
+        let mut tf = book::TextFmt::default();
+        tf.ins_mm = (0.0, 0.0, 0.0, 0.0);
+        b.sheets[0].shapes_new.push(book::SheetShape {
+            at: Pos::parse("B2").unwrap(), width_px: 40.0, height_px: 14.0,
+            kind: "rect".into(), text: Some("4,000".into()), text_fmt: tf, ..Default::default()
+        });
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("cannot write");
+        let bytes = buf.into_inner();
+        let mut z = zip::ZipArchive::new(Cursor::new(bytes.clone())).unwrap();
+        let name = z.file_names().find(|n| n.starts_with("xl/drawings/drawing") && n.ends_with(".xml")).unwrap().to_string();
+        let mut x = String::new();
+        std::io::Read::read_to_string(&mut z.by_name(&name).unwrap(), &mut x).unwrap();
+        assert!(x.contains(r#"lIns="0" tIns="0" rIns="0" bIns="0""#), "{x}");
+        let (back, _) = read(Cursor::new(bytes)).expect("cannot read");
+        let sh = &back.sheets[0];
+        let sp = sh.shapes.iter().chain(sh.shapes_new.iter()).find(|s| s.text.as_deref() == Some("4,000")).expect("no box");
+        assert_eq!(sp.text_fmt.ins_mm, (0.0, 0.0, 0.0, 0.0));
+    }
+
+    /// A drawing's offset is written within its cell (ECMA-376 20.5.2.11 and
+    /// 20.5.2.27): a shape kept as cell A1 and an offset past it is written at
+    /// the cell that holds that point. Excel kept such an offset inside A1 and
+    /// piled a chart's shapes up there (2026-10-12)
+    #[test]
+    fn a_drawing_offset_is_written_within_its_cell() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::parse("A1").unwrap(), Cell::input("x"));
+        let bs = b.col_basis;
+        let col_px = b.sheets[0].col_haba_mm(0, &bs) * 96.0 / 25.4;
+        let mut sp = book::SheetShape {
+            at: Pos::parse("A1").unwrap(), width_px: 100.0, height_px: 40.0,
+            kind: "rect".into(), ..Default::default()
+        };
+        sp.dx_px = col_px * 2.0 + 5.0;
+        sp.dy_px = 7.0 * 96.0 / 25.4 * 3.0 + 4.0;
+        b.sheets[0].shapes_new.push(sp);
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("cannot write");
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.into_inner())).unwrap();
+        let name = z.file_names().find(|n| n.starts_with("xl/drawings/drawing") && n.ends_with(".xml")).unwrap().to_string();
+        let mut x = String::new();
+        std::io::Read::read_to_string(&mut z.by_name(&name).unwrap(), &mut x).unwrap();
+        assert!(x.contains("<xdr:col>2</xdr:col><xdr:colOff>47625</xdr:colOff>"), "{x}");
+        assert!(x.contains("<xdr:row>3</xdr:row><xdr:rowOff>38100</xdr:rowOff>"), "{x}");
     }
 
     /// **「紙 N 枚に収める」は、選ばれているときだけ効く。**

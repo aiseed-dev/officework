@@ -790,6 +790,12 @@ pub enum Platform {
 pub struct ColBasis {
     pub dpi: f32,
     pub mdw: f32,
+    /// **How Windows Excel prints a row** (1 for anything else): the row's
+    /// height times this, on 600 dpi dots ([`Self::print_row_pt`])
+    pub row_print: f32,
+    /// **How Windows Excel prints a column** (1 for anything else): the
+    /// column's screen width times this ([`Self::print_col_mm`])
+    pub col_print: f32,
 }
 
 impl ColBasis {
@@ -810,7 +816,7 @@ impl ColBasis {
             Platform::Mac => 72.0,
         };
         let digit_pt = if digit_pt > 0.0 { digit_pt } else { DEFAULT_CELL_PT * 0.5 };
-        ColBasis { dpi, mdw: (digit_pt * dpi / 72.0).round().max(1.0) }
+        ColBasis { dpi, mdw: (digit_pt * dpi / 72.0).round().max(1.0), row_print: 1.0, col_print: 1.0 }
     }
 
     /// An xlsx width (digits) as millimetres
@@ -837,6 +843,55 @@ impl ColBasis {
     /// [`Self::default_chars`] in millimetres
     pub fn default_mm(&self, base: f32) -> f32 {
         self.chars_to_mm(self.default_chars(base))
+    }
+}
+
+impl ColBasis {
+    /// **The basis with Windows Excel's print sizes** for a workbook whose
+    /// default font is `font` (`""`: no name) with digits `digit_pt` wide.
+    ///
+    /// ECMA-376 gives column widths in digits (18.3.1.13) and row heights in
+    /// points, and says nothing of how they are printed, so Excel's is taken.
+    /// Measured in Excel 16.0.20430's PDFs on Windows 11 (2026-10-13), with
+    /// rows of 10 to 45pt and columns of 2 to 20 digits:
+    ///
+    /// * A column prints its width in digits times the digit's true width:
+    ///   width 14 in Yu Gothic 11pt (6.12pt digits) is 85.68pt, where the
+    ///   screen's whole 8 pixels give 84pt. So the screen width times the
+    ///   true digit over the screen's digit.
+    /// * A row prints its height times a factor of the default font, on
+    ///   600 dpi dots: 0.98376 for Yu Gothic (and a font without a name,
+    ///   which Excel sets in Yu Gothic), 0.90549 for MS PGothic; 18.75pt
+    ///   prints 18.48pt and 16.92pt. A font not measured keeps its height
+    pub fn excel_print(self, font: &str, digit_pt: f32) -> ColBasis {
+        if self.dpi != 96.0 {
+            return self;
+        }
+        let key: String = font.chars().filter(|c| !c.is_whitespace())
+            .flat_map(|c| c.to_lowercase())
+            .map(|c| match c { 'ｍ' => 'm', 'ｓ' => 's', 'ｐ' => 'p', _ => c })
+            .collect();
+        let row = match key.as_str() {
+            "" if unnamed_digit_em() > 0.55 => 0.98376,
+            "游ゴシック" | "yugothic" => 0.98376,
+            "msｐゴシック" | "mspゴシック" | "mspgothic" => 0.90549,
+            _ => 1.0,
+        };
+        let col = if digit_pt > 0.0 { digit_pt * self.dpi / 72.0 / self.mdw } else { 1.0 };
+        ColBasis { row_print: row, col_print: col, ..self }
+    }
+
+    /// A row height (points) as printed ([`Self::row_print`])
+    pub fn print_row_pt(&self, pt: f32) -> f32 {
+        if self.row_print == 1.0 {
+            return pt;
+        }
+        (pt * self.row_print * 600.0 / 72.0).round() * 72.0 / 600.0
+    }
+
+    /// A column's screen width (mm) as printed ([`Self::col_print`])
+    pub fn print_col_mm(&self, mm: f32) -> f32 {
+        mm * self.col_print
     }
 }
 
@@ -3369,6 +3424,21 @@ mod col_basis_tests {
         assert_eq!(ColBasis::new(Platform::Windows, 5.5).mdw, 7.0);
         assert_eq!(ColBasis::new(Platform::Mac, 5.5).mdw, 6.0);
         assert_eq!(ColBasis::default(), ColBasis::new(Platform::Windows, 11.0 * unnamed_digit_em()));
+    }
+
+    /// Windows Excel prints a Yu Gothic workbook's 18.75pt row 18.48pt and a
+    /// width of 14 digits 85.68pt; MS PGothic's row 16.92pt (2026-10-13). A
+    /// Mac workbook keeps its sizes
+    #[test]
+    fn excel_prints_rows_and_columns_by_the_default_font() {
+        let yu = ColBasis::new(Platform::Windows, 0.5562 * 11.0).excel_print("游ゴシック", 0.5562 * 11.0);
+        assert!((yu.print_row_pt(18.75) - 18.48).abs() < 0.001, "{}", yu.print_row_pt(18.75));
+        let w14 = yu.print_col_mm(yu.chars_to_mm(14.0)) * 72.0 / 25.4;
+        assert!((w14 - 85.68).abs() < 0.1, "{w14}");
+        let ms = ColBasis::new(Platform::Windows, 5.5).excel_print("ＭＳ Ｐゴシック", 5.5);
+        assert!((ms.print_row_pt(18.75) - 16.92).abs() < 0.001, "{}", ms.print_row_pt(18.75));
+        let mac = ColBasis::new(Platform::Mac, 5.5).excel_print("ＭＳ Ｐゴシック", 5.5);
+        assert_eq!((mac.row_print, mac.col_print), (1.0, 1.0));
     }
 
     /// A default font without a name is counted as Excel's default font:

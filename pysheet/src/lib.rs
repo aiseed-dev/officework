@@ -1049,11 +1049,15 @@ impl PySheet {
     /// - `points` — `path` のときの点。**0〜1 に正規化**した (x, y) の列で、
     ///   図形の左上が (0,0)、右下が (1,1) です
     ///
+    /// - `inset` — the space between the box and its text (px, all four
+    ///   sides). Unset, DrawingML's default: 0.1in left and right, 0.05in top
+    ///   and bottom (ECMA-376 21.1.2.1.1)
+    ///
     /// xlsx へは図形(prstGeom / custGeom)として書きます。**Excel でも
     /// 図形として開けます** — 絵にして貼るのではありません。
     #[pyo3(signature = (kind, at, width, height, *, dx=0.0, dy=0.0, fill=None,
                         line=None, line_w=1.5, text=None, points=None,
-                        rot=0.0, alpha=1.0, font_pt=None, align=None))]
+                        rot=0.0, alpha=1.0, font_pt=None, align=None, inset=None))]
     #[allow(clippy::too_many_arguments)]
     fn add_shape(
         &self,
@@ -1072,6 +1076,7 @@ impl PySheet {
         alpha: f32,
         font_pt: Option<f32>,
         align: Option<&str>,
+        inset: Option<f32>,
     ) -> PyResult<usize> {
         const KIND: &[&str] = &[
             "rect", "roundRect", "ellipse", "line", "diamond", "rightArrow", "path",
@@ -1101,6 +1106,10 @@ impl PySheet {
             };
         }
         fmt.size_pt = font_pt;
+        if let Some(px) = inset {
+            let mm = px.max(0.0) * 25.4 / 96.0;
+            fmt.ins_mm = (mm, mm, mm, mm);
+        }
         let sp = book::SheetShape {
             at: p,
             width_px: width,

@@ -154,6 +154,8 @@ pub(crate) fn setup_of(s: &book::Sheet, b: &book::Book) -> paper::grid::PrintSet
         date1904: b.date1904,
         col_basis: b.col_basis,
         default_pt: default_pt_of(b),
+        theme: b.theme.clone(),
+        default_font: b.default_font.as_ref().map(|(n, _)| n.clone()).unwrap_or_default(),
     }
 }
 

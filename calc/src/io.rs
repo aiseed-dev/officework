@@ -1318,6 +1318,8 @@ impl Calc {
             date1904: self.book.date1904,
             col_basis: self.book.col_basis,
             default_pt: self.default_pt(),
+            theme: self.book.theme.clone(),
+            default_font: self.book.default_font.as_ref().map(|(n, _)| n.clone()).unwrap_or_default(),
         };
         paper::grid::page_starts(sh, paper, &setup)
     }
@@ -1356,6 +1358,8 @@ impl Calc {
                     date1904: self.book.date1904,
             col_basis: self.book.col_basis,
             default_pt: self.default_pt(),
+            theme: self.book.theme.clone(),
+            default_font: self.book.default_font.as_ref().map(|(n, _)| n.clone()).unwrap_or_default(),
                 },
             ));
         }
@@ -1422,6 +1426,8 @@ impl Calc {
             date1904: self.book.date1904,
             col_basis: self.book.col_basis,
             default_pt: self.default_pt(),
+            theme: self.book.theme.clone(),
+            default_font: self.book.default_font.as_ref().map(|(n, _)| n.clone()).unwrap_or_default(),
         };
         match areas.len() {
             0 => {}

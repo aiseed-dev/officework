@@ -2118,6 +2118,9 @@ pub fn read_with<R: Read + Seek>(src: R, opts: &ReadOptions) -> Result<(Book, Re
         })
         .unwrap_or(book::DEFAULT_CELL_PT * book::unnamed_digit_em());
     book.set_col_basis(opts.platform, digit_pt);
+    // Windows Excel prints other sizes than its screen shows (`ColBasis::excel_print`)
+    let font = book.default_font.as_ref().map(|(n, _)| n.clone()).unwrap_or_default();
+    book.col_basis = book.col_basis.excel_print(&font, digit_pt);
     Ok((book, rep))
 }
 

@@ -161,9 +161,12 @@ class Chart:
                              {"line": line, "line_w": line_w}))
 
     def label(self, text, x, y, w, h, *, align="center", pt=_TICK_PT):
+        # No inset: the box is sized for the text itself. With DrawingML's
+        # default 0.1in each side, a 40px tick box kept 15pt for "4,000"
+        # and broke it over two lines (2026-10-13)
         self._shapes.append(("rect", x, y, w, h,
                              {"text": str(text), "align": align, "font_pt": pt,
-                              "fill": None, "line": None, "line_w": 0.0}))
+                              "fill": None, "line": None, "line_w": 0.0, "inset": 0.0}))
 
     # ── 軸 ─────────────────────────────────────────────────────
 

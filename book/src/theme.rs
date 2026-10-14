@@ -9,10 +9,14 @@
 //! 0=背景1 1=文字1 2=背景2 3=文字2 4〜9=アクセント1〜6 10=リンク 11=既読リンク。
 //! (theme1.xml の中の並びは dk1,lt1,dk2,lt2,… なので読むときに入れ替える)
 
-/// 既定(Office)の色の組。テーマの部品が無いブックはこれを使う
+/// **The default (Office) colours**, for a book without a theme part: the
+/// theme Excel 16.0.20430 writes into a new workbook (its 2023 theme, read
+/// from one it saved on 2026-10-13), which it also takes for a workbook
+/// without a theme. Until then this was the 2013 theme (accent 1 #4472C4),
+/// and a table style came out another blue than in Excel (#156082)
 pub const OFFICE: [&str; 12] = [
-    "FFFFFF", "000000", "E7E6E6", "44546A", "4472C4", "ED7D31", "A5A5A5", "FFC000",
-    "5B9BD5", "70AD47", "0563C1", "954F72",
+    "FFFFFF", "000000", "E8E8E8", "0E2841", "156082", "E97132", "196B24", "0F9ED5",
+    "A02B93", "4EA72E", "467886", "96607D",
 ];
 
 /// 名前つきの色の組(配色の変更で選ぶ)。名前は Euro-Office の言い方に寄せた
@@ -200,7 +204,7 @@ mod tests {
     #[test]
     fn the_brightness_tweak_applies() {
         let c: Vec<String> = OFFICE.iter().map(|s| s.to_string()).collect();
-        assert_eq!(resolve(&c, 4, 0.0), "4472C4", "加減なしは素の色");
+        assert_eq!(resolve(&c, 4, 0.0), OFFICE[4], "no tint gives the colour itself");
         let light = resolve(&c, 4, 0.6);
         let dark = resolve(&c, 4, -0.5);
         let lum = |h: &str| {

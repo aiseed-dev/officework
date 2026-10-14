@@ -1104,6 +1104,19 @@ pub fn digit_em_named(name: &str) -> Option<f32> {
     memo_em("digit", Some(name), || digit_em_yomu(name))
 }
 
+/// **The width of `#` (em) in an Office face**, for the `#` a number that
+/// does not fit fills its cell with: Excel fills with its own face's `#`, and
+/// the face that stands for it here is narrower. Measured in Excel
+/// 16.0.20430's PDFs (2026-10-13): Yu Gothic 11pt sets `#` 6.48pt apart
+/// (0.587em), where Noto Sans CJK JP, which stands for it, gives 0.555em and
+/// one `#` more
+pub fn hash_em_named(name: &str) -> Option<f32> {
+    match digit_key(name).as_str() {
+        "游ゴシック" | "游ゴシックmedium" | "yugothic" => Some(0.587),
+        _ => None,
+    }
+}
+
 /// The digit widths (em) of the faces Office ships, keyed by
 /// [`digit_key`]. MS Gothic and MS Mincho and their kin have half-width
 /// digits (0.5 em)
@@ -1881,6 +1894,14 @@ pub fn monospace() -> Option<&'static Family> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Excel's `#` in Yu Gothic, by name in any of its spellings
+    #[test]
+    fn the_hash_width_of_yu_gothic_is_known() {
+        assert_eq!(hash_em_named("游ゴシック"), Some(0.587));
+        assert_eq!(hash_em_named("Yu Gothic"), Some(0.587));
+        assert_eq!(hash_em_named("Arial"), None);
+    }
 
     /// A stand-in for a folder that waits on a privacy prompt: the call
     /// blocks until the test lets it go. The helper returns after the

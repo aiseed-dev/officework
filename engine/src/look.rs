@@ -60,14 +60,29 @@ fn icon_of(set: &str, t: f64) -> (&'static str, &'static str) {
     }
 }
 
-/// このセルに条件付き書式が何をするかを決める。
+/// **The length of a data bar, as a share of the cell's width**, from its
+/// place in the range (0 to 1). ECMA-376 Part 1, 18.3.1.28: minLength +
+/// place × (maxLength − minLength), by default 10% and 90%. The screen and
+/// the paper both draw with this
+pub fn bar_share(t: f64) -> f64 {
+    0.1 + 0.8 * t.clamp(0.0, 1.0)
+}
+
+/// How far in from the cell's left edge, top and bottom a data bar is
+/// drawn, in points. ECMA-376 gives no measure, so this is Excel's
+/// (16.0.20430, 2026-10-13). The screen and the paper both draw with this
+pub const BAR_INSET_PT: f64 = 1.9;
+
+/// Decides what conditional formatting does to this cell.
 ///
-/// `prep` は描画の前に1回だけ作った (規則, 下ごしらえ) の列
-/// ([`CondRule::aux`] は範囲の統計を採るので、セルごとに作り直さない)。
+/// `prep` is the list of (rule, preparation) pairs made once before drawing.
+/// [`CondRule::aux`] takes statistics over the range, so it is not made
+/// again for each cell.
 ///
-/// **後に来た規則が勝つ。** xlsx の `priority` は読みの時点で並べ替え済みで、
-/// ここは並びをそのまま信じる。当たった規則が塗りを持たなければ塗りは
-/// 触らない(前の規則の答えが残る)— これも `CondLook` の三択と同じ考え方
+/// **The later rule wins.** The xlsx `priority` is sorted when the file is
+/// read, and this keeps the order as it is. When a rule that applies has no
+/// fill, the fill is left alone and the earlier rule's answer stays. This is
+/// the same idea as the three choices of `CondLook`
 pub fn resolve_cond(prep: &[(CondRule, CondAux)], p: Pos, v: &Value) -> CondResolved {
     let mut out = CondResolved::default();
     for (rule, aux) in prep {

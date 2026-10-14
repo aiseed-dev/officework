@@ -37,7 +37,8 @@ fn gyou_mm(grid: &Grid, r: u32, basis: &book::ColBasis) -> f32 {
         .get(&r)
         .copied()
         .or(grid.default_row_height)
-        .map(|pt| kirisute_mm(pt, basis))
+        // As Windows Excel prints the row (`ColBasis::print_row_pt`)
+        .map(|pt| kirisute_mm(basis.print_row_pt(pt), basis))
         .unwrap_or(ROW_MM)
 }
 /// **書体が読めないときの行送り**(1em あたり)。
@@ -180,6 +181,12 @@ pub struct PrintSetup {
     /// 決め打ちだと Excel の紙と行の高さや折り返しが合わない(2026-09-08)。
     /// 0 なら `book::DEFAULT_CELL_PT`
     pub default_pt: f32,
+    /// The workbook's theme colours (`Book::theme`; empty: the default), for
+    /// the colours of a built-in table style (`book::table_style`)
+    pub theme: Vec<String>,
+    /// The name of the workbook's default font (empty: it names none), for
+    /// what Excel would set a cell without a font in
+    pub default_font: String,
 }
 
 /// **紙 N 枚に収めるための縮尺。** `fit_to_w`/`fit_to_h` のどちらかが
@@ -214,7 +221,7 @@ fn fit_scale(
     let total_w: f32 = (c0..c1)
         .filter(|c| !grid.col_hidden.contains(c))
         .map(|c| {
-            grid.col_haba_mm(c, &setup.col_basis)
+            setup.col_basis.print_col_mm(grid.col_haba_mm(c, &setup.col_basis))
         })
         .sum();
     let total_h: f32 = (r0..r1)
@@ -273,7 +280,7 @@ pub fn page_starts(grid: &Grid, paper: Paper, setup: &PrintSetup) -> (Vec<u32>, 
         if grid.col_hidden.contains(&c) {
             continue;
         }
-        let cw = grid.col_haba_mm(c, &setup.col_basis) * scale;
+        let cw = setup.col_basis.print_col_mm(grid.col_haba_mm(c, &setup.col_basis)) * scale;
         if w > 0.0 && (grid.col_breaks.contains(&c) || w + cw > usable_w + 0.1) {
             cols.push(c);
             w = 0.0;
@@ -360,9 +367,10 @@ fn draw_header_footer(
     grid: &Grid,
     paper: Paper,
     hf_pages: std::ops::Range<usize>,
-    (ml, mr, mt, mb): (f32, f32, f32, f32),
+    (ml, mr, _mt, _mb): (f32, f32, f32, f32),
     offset: usize,
     total: usize,
+    default_pt: f32,
 ) {
     // 印刷のヘッダー/フッター(&L/&C/&R の区分。&P=頁 &N=総頁。
     // 他の &コード(&"書体" など)は落とす — 黙って化けさせない)
@@ -370,13 +378,24 @@ fn draw_header_footer(
         return;
     }
     {
+        // **The book's default font size, in black** (ECMA-376 Part 1,
+        // 18.3.1.46 has `&size` codes but no size for text without one, so
+        // Excel's is taken: Excel 16.0.20430 on Windows 11 set an xlsx's
+        // header and footer in its 11pt default font, 2026-10-13)
+        let pt = if default_pt > 0.0 { default_pt } else { book::DEFAULT_CELL_PT };
+        let em = pt * 25.4 / 72.0;
+        // The width of a text, full-width letters 1em and others 0.5em
         let est = |s: &str| -> f32 {
-            // 文字幅の見積り(全角=1em・半角=0.5em)。9pt ≒ 3.175mm/em
             s.chars()
                 .map(|c| if (c as u32) < 0x2E80 { 0.5 } else { 1.0 })
-                .sum::<f32>() * 3.175
+                .sum::<f32>() * em
         };
-        const HF_INK: (f32, f32, f32) = (0.25, 0.28, 0.31);
+        const HF_INK: (f32, f32, f32) = (0.0, 0.0, 0.0);
+        // The header's and footer's distance from the paper's edge
+        // (`pageMargins@header` / `@footer`, Excel's 0.3in when none). Excel
+        // put the header's baseline 1.236em below it and the footer's 0.61em
+        // above it (13.6pt and 6.7pt at 11pt, measured in its PDFs)
+        let (hm, fm) = grid.hf_margins_mm.unwrap_or((7.62, 7.62));
         for (i, page) in hf_pages.enumerate() {
             let ink = &mut board.ink(page);
             let subst = |raw: &str| -> String { hf_subst(raw, offset + i + 1, total) };
@@ -384,22 +403,22 @@ fn draw_header_footer(
                 let (lf, cn, rt) = book::hf_split(raw);
                 let (lf, cn, rt) = (subst(&lf), subst(&cn), subst(&rt));
                 if !lf.is_empty() {
-                    ink.text(&lf, 9.0, ml, y, HF_INK, false);
+                    ink.text(&lf, pt, ml, y, HF_INK, false);
                 }
                 if !cn.is_empty() {
                     let x = (paper.width_mm - est(&cn)) / 2.0;
-                    ink.text(&cn, 9.0, x.max(ml), y, HF_INK, false);
+                    ink.text(&cn, pt, x.max(ml), y, HF_INK, false);
                 }
                 if !rt.is_empty() {
                     let x = paper.width_mm - mr - est(&rt);
-                    ink.text(&rt, 9.0, x.max(ml), y, HF_INK, false);
+                    ink.text(&rt, pt, x.max(ml), y, HF_INK, false);
                 }
             };
             if let Some(h) = &grid.header {
-                put3(ink, h, paper.height_mm - mt * 0.55);
+                put3(ink, h, paper.height_mm - hm - 1.236 * em);
             }
             if let Some(f) = &grid.footer {
-                put3(ink, f, mb * 0.35);
+                put3(ink, f, fm + 0.61 * em);
             }
         }
     }
@@ -996,7 +1015,7 @@ fn sheet_leaves_haba(
     board.haba = Habakei::new(data, fonts, &deru_ji(grid));
     let (pages, _clipped, margins) = draw_sheet(&mut board, grid, paper, setup, true);
     let total = pages.len();
-    draw_header_footer(&mut board, grid, paper, pages, margins, 0, total);
+    draw_header_footer(&mut board, grid, paper, pages, margins, 0, total, setup.default_pt);
     Ok(board.leaves)
 }
 
@@ -1095,7 +1114,7 @@ pub fn sheet_to_pdf<W: Write>(
     let (pages, clipped, margins) = draw_sheet(&mut board, grid, paper, setup, true);
     // 1枚だけの PDF は、そのシートの頁数がそのまま総頁
     let total = pages.len();
-    draw_header_footer(&mut board, grid, paper, pages, margins, 0, total);
+    draw_header_footer(&mut board, grid, paper, pages, margins, 0, total, setup.default_pt);
     board.save(paper, font_data, out)?;
     Ok(clipped)
 }
@@ -1196,9 +1215,9 @@ fn book_board(
     let total: usize = laid.iter().map(|(_, p, _)| p.len()).sum();
     let mut offset = 0usize;
     for (i, pages, margins) in laid {
-        let (grid, paper, _) = &sheets[i];
+        let (grid, paper, setup) = &sheets[i];
         let n = pages.len();
-        draw_header_footer(&mut board, grid, *paper, pages, margins, offset, total);
+        draw_header_footer(&mut board, grid, *paper, pages, margins, offset, total, setup.default_pt);
         offset += n;
     }
     Ok((board, clipped))
@@ -1279,7 +1298,7 @@ fn draw_sheet(
             if grid.col_hidden.contains(&c) {
                 return 0.0;
             }
-            grid.col_haba_mm(c, &setup.col_basis) * scale
+            setup.col_basis.print_col_mm(grid.col_haba_mm(c, &setup.col_basis)) * scale
         })
         .collect();
     let mut col_x = vec![0.0f32];
@@ -1374,7 +1393,13 @@ fn draw_sheet(
         default_pt: f32,
         // Stretches of text whose place is wanted ([`WantText`])
         want_text: &WantText,
+        // The theme colours, for the tables' styles
+        theme: &[String],
+        // The workbook's default font's name ("" when it names none)
+        default_font: &str,
     ) {
+        // A cell of a table may hold nothing and still take the table's look
+        let empty = book::Cell::default();
         let ncols = cols.len();
         // 印刷の枠線(printOptions gridLines)。薄い灰で先に敷く
         if grid.print_gridlines {
@@ -1402,16 +1427,28 @@ fn draw_sheet(
             if cw <= 0.0 {
                 continue; // 畳んだ列(幅ゼロ)は中身も描かない
             }
-            let Some(cell) = grid.cells.get(&p) else { continue };
+            // **A table's built-in style** (`book::table_style`): under the
+            // cell's own fill, font colour and borders, and under conditional
+            // formatting, as Excel lays them
+            let tl = book::table_style::look_at(&grid.tables, theme, p);
+            let cell = match grid.cells.get(&p) {
+                Some(c) => c,
+                None if tl.is_some() => &empty,
+                None => continue,
+            };
+            let mut tfmt = cell.fmt.clone();
+            if let Some(tl) = &tl {
+                tl.apply(&mut tfmt);
+            }
 
             // 塗りと文字色。**条件付き書式の当てはめは kumihan::look の1本** —
             // 画面(calc/src/view.rs)も同じ関数を通るので、答えは必ず揃う。
             // ここは決まった答えを紙の形に写すだけ
             let ck = kumihan::look::resolve_cond(cond_prep, p, &cell.value);
-            let fill = ck.fill.clone().or_else(|| cell.fmt.fill.clone());
-            let colour = ck.color.clone().or_else(|| cell.fmt.color.clone());
+            let fill = ck.fill.clone().or_else(|| tfmt.fill.clone());
+            let colour = ck.color.clone().or_else(|| tfmt.color.clone());
             // **None は「触らない」**(セル自身の書式のまま)
-            let bold = ck.bold.unwrap_or(cell.fmt.bold);
+            let bold = ck.bold.unwrap_or(tfmt.bold);
             //
             // **カラースケールは 2026-08-14 から紙にも出る。** `ck.fill` が
             // スケールの色も返すので、塗りとして自然に乗った(前は当てはめが
@@ -1419,9 +1456,9 @@ fn draw_sheet(
             // 紙は元から塗りを描けるので、足したのは判断だけで仕掛けは要らない
             //
             // **紙に出ないもの**(画面には出る。ここが残る差):
-            // - データバー(`ck.bar`)・アイコン(`ck.icon`)= 敷く/字を置く
-            //   仕掛けが要る。**やるならグリフが紙の書体にあるかを先に確かめる**
-            //   (↓→↑ と ● — 無い書体だと黙って空白か豆腐になる)
+            // - Icons (`ck.icon`) need their glyphs in the paper's face first
+            //   (↓→↑ and ●; a face without them prints blanks or boxes). Data
+            //   bars (`ck.bar`) are drawn, below
             // - 斜体・下線・取り消し線(`ck.italic`/`underline`/`strike`)=
             //   **セル自身のそれらも描いていない**ので、条件付き書式のぶんだけ
             //   描くと食い違いがかえって増える
@@ -1442,6 +1479,27 @@ fn draw_sheet(
             } else if let Some(c) = fill.as_deref().and_then(hex_rgb) {
                 ink.fill(x, y_top - rh, cw, rh, c);
             }
+            // **A data bar** (ECMA-376 18.3.1.28: "a gradated data bar", its
+            // length `kumihan::look::bar_share` of the cell's width), under the
+            // borders and the text. Excel draws it `kumihan::look::BAR_INSET_PT`
+            // in from the cell's left edge, top and bottom, and from its colour
+            // on the left to white on the right (Excel 16.0.20430, 2026-10-13)
+            if let Some((t, c)) = ck.bar.as_ref() {
+                if let Some(rgb) = hex_rgb(c) {
+                    let inset = (kumihan::look::BAR_INSET_PT * 25.4 / 72.0) as f32;
+                    let len = (cw * kumihan::look::bar_share(*t) as f32 - inset).max(0.0);
+                    let (x0, x1) = (x + inset, x + inset + len);
+                    let (yb, yt) = (y_top - rh + inset, y_top - inset);
+                    if len > 0.0 && yt > yb {
+                        ink.poly_grad(
+                            vec![(x0, yb), (x1, yb), (x1, yt), (x0, yt)],
+                            rgb,
+                            1.0,
+                            pdfw::Grad { from: (x0, yb), to: (x1, yb), stops: vec![(0.0, rgb), (1.0, (1.0, 1.0, 1.0))] },
+                        );
+                    }
+                }
+            }
 
             // 罫線。引いてある辺だけ — 線種の太さと色まで写す
             // (破線の刻みは紙では実線に落とす。太さと色が形を保つ)
@@ -1453,7 +1511,7 @@ fn draw_sheet(
             let uti = grid.merges.iter().find(|(a, b)| {
                 (a.row..=b.row).contains(&p.row) && (a.col..=b.col).contains(&p.col)
             });
-            let b = cell.fmt.borders;
+            let b = tfmt.borders;
             // **斜めの罫線**(2026-08-31 発注者)。日本の帳票は表の左上のセルを
             // 斜めに割り、上と下に別の見出しを入れます。結合のセルでは、結合
             // ぜんぶを1つのセルとして引きます
@@ -1463,7 +1521,7 @@ fn draw_sheet(
                         let w: f32 = (a.col..=z.col)
                             .filter(|c| !grid.col_hidden.contains(c))
                             .map(|c| {
-                                grid.col_haba_mm(c, &col_basis) * scale
+                                col_basis.print_col_mm(grid.col_haba_mm(c, &col_basis)) * scale
                             })
                             .sum();
                         let h: f32 = (a.row..=z.row)
@@ -1590,7 +1648,7 @@ fn draw_sheet(
                 ma_w = (tl.col..=br.col)
                     .filter(|c| !grid.col_hidden.contains(c))
                     .map(|c| {
-                        grid.col_haba_mm(c, &col_basis) * scale
+                        col_basis.print_col_mm(grid.col_haba_mm(c, &col_basis)) * scale
                     })
                     .sum();
                 ma_h = (tl.row..=br.row)
@@ -1696,7 +1754,15 @@ fn draw_sheet(
                     }
                 }
                 // いちばん短い形でも入らなければ、入らないと知らせます
-                let hitotsu = haba.ji_mm(ji_fno(fno_cell, '#') as usize, '#', pt);
+                // The `#` is as wide as in Excel's face when it is known
+                // (`kumihan::font::hash_em_named`); a cell without a font is
+                // in the book's, and a book without one is set by Excel in
+                // its default (Yu Gothic in Japanese)
+                let na = cell.fmt.font.as_deref().unwrap_or(default_font);
+                let na = if na.is_empty() && book::unnamed_digit_em() > 0.55 { "游ゴシック" } else { na };
+                let hitotsu = kumihan::font::hash_em_named(na)
+                    .map(|em| em * pt * 25.4 / 72.0)
+                    .unwrap_or_else(|| haba.ji_mm(ji_fno(fno_cell, '#') as usize, '#', pt));
                 if haba_cell(&shown, pt) > naka && hitotsu > 0.0 {
                     let kazu = (naka / hitotsu).floor().max(1.0) as usize;
                     shown = "#".repeat(kazu);
@@ -2107,7 +2173,7 @@ fn draw_sheet(
                 for tr in &title_rows {
                     let th = row_mm(*tr);
                     let y_top = paper.height_mm - mt - sageru(pi) - y_used;
-                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt, &want_text);
+                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt, &want_text, &setup.theme, &setup.default_font);
                     y_used += th;
                 }
             }
@@ -2137,7 +2203,7 @@ fn draw_sheet(
                 }
             }
         }
-        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt, &want_text);
+        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt, &want_text, &setup.theme, &setup.default_font);
     }
     }
     // 図形(挿した分も読んだ分も)。塗りと輪郭を紙に出します
@@ -2174,7 +2240,7 @@ fn draw_sheet(
                     col_mm
                         .get((c - c0) as usize)
                         .copied()
-                        .unwrap_or(setup.col_basis.default_mm(8.0) * scale)
+                        .unwrap_or(setup.col_basis.print_col_mm(setup.col_basis.default_mm(8.0)) * scale)
                 })
                 .sum();
             // 控えに無い行(隠した行など)は、手前のいちばん近い行から数えます
@@ -2200,7 +2266,7 @@ fn draw_sheet(
         let colw = |c: u32| -> f32 {
             c.checked_sub(c0)
                 .and_then(|i| col_mm.get(i as usize).copied())
-                .unwrap_or(setup.col_basis.default_mm(8.0) * scale)
+                .unwrap_or(setup.col_basis.print_col_mm(setup.col_basis.default_mm(8.0)) * scale)
         };
         // twoCellAnchor はセルと一緒に伸び縮みする — 幅と高さを
         // 右下のセル(to)から出す。列幅の換算が原本の Excel と
@@ -3182,6 +3248,8 @@ mod tests {
             areas: vec![(Pos::new(0, 0), Pos::new(2, 0))],
             margins_mm: None,
             date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0,
+            theme: Vec::new(),
+            default_font: String::new(),
         });
         // 同じ大きさの域を2つ = 紙も2枚(**繋げて1枚に詰めない**)
         let two = pages(&PrintSetup {
@@ -3191,6 +3259,8 @@ mod tests {
             ],
             margins_mm: None,
             date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0,
+            theme: Vec::new(),
+            default_font: String::new(),
         });
         assert_eq!(one, 1, "1域なのに {one} 枚になった");
         assert_eq!(two, 2, "2域が {two} 枚 — 域ごとに紙を変えていない");
@@ -3327,6 +3397,8 @@ mod print_setup_tests {
             areas: vec![(Pos::new(0, 0), Pos::new(4, 0))],
             margins_mm: None,
             date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0,
+            theme: Vec::new(),
+            default_font: String::new(),
         };
         let mut part = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(), &setup, &mut part).unwrap();
@@ -3340,11 +3412,11 @@ mod print_setup_tests {
         let s = long_sheet();
         let mut narrow = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(),
-            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 10.0, 10.0)) , date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0 },
+            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 10.0, 10.0)) , date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0, theme: Vec::new(), default_font: String::new() },
             &mut narrow).unwrap();
         let mut wide = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(),
-            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 100.0, 100.0)) , date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0 },
+            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 100.0, 100.0)) , date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0, theme: Vec::new(), default_font: String::new() },
             &mut wide).unwrap();
         assert!(pages(&wide) > pages(&narrow), "余白が紙の枚数に効いていない");
     }

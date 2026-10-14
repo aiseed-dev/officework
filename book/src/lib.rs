@@ -33,6 +33,7 @@ pub mod grid;
 pub mod lang;
 /// テーマ色の組と、番号+明るさの加減から色を解く
 pub mod theme;
+pub mod table_style;
 
 mod fmt;
 mod ops;

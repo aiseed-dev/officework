@@ -1183,6 +1183,15 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         }
         let mut anchors = String::new();
         let mut rels_add = String::new();
+        let cells = Cells { sh, basis: &book.col_basis };
+        let shape_within = |sp: &book::SheetShape| -> book::SheetShape {
+            let mut s2 = sp.clone();
+            (s2.at, s2.dx_px, s2.dy_px) = cells.within(sp.at, sp.dx_px, sp.dy_px);
+            if let Some((to, tx, ty)) = sp.to {
+                s2.to = Some(cells.within(to, tx, ty));
+            }
+            s2
+        };
         // **束ねた図形は1つの `xdr:grpSp` にまとめます**(2026-08-29)。
         // Excel でも束として開け、まとめて動かせます。束ねていない図形は
         // 今までどおり1枚ずつです
@@ -1193,7 +1202,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             }
             let base = (i as u32) * 100 + k as u32 + 50;
             if spn.group == 0 {
-                anchors.push_str(&shape_anchor_xml(spn, base));
+                anchors.push_str(&shape_anchor_xml(&shape_within(spn), base));
                 continue;
             }
             let nakama: Vec<usize> = sh
@@ -1205,12 +1214,13 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 .collect();
             sunda.extend(&nakama);
             if nakama.len() < 2 {
-                anchors.push_str(&shape_anchor_xml(spn, base));
+                anchors.push_str(&shape_anchor_xml(&shape_within(spn), base));
                 continue;
             }
             anchors.push_str(&group_anchor_xml(
                 &nakama.iter().map(|&n| &sh.shapes_new[n]).collect::<Vec<_>>(),
                 base,
+                &cells,
             ));
         }
         for (k, im) in sh.images_new.iter().enumerate() {
@@ -1230,7 +1240,9 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
             rels_add.push_str(&format!(
                 r#"<Relationship Id="{rid}" Type="{RNS}/image" Target="../media/imageC{media_n}.{ext}"/>"#
             ));
-            anchors.push_str(&image_anchor_xml(im, &rid, (i as u32) * 100 + k as u32 + 2));
+            let mut im2 = im.clone();
+            (im2.at, im2.dx_px, im2.dy_px) = cells.within(im.at, im.dx_px, im.dy_px);
+            anchors.push_str(&image_anchor_xml(&im2, &rid, (i as u32) * 100 + k as u32 + 2));
         }
         let orig_target = orig_sheet_rels.get(i).cloned().flatten().and_then(|onr| {
             parse_rels(&onr)
@@ -1437,7 +1449,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                 ));
             }
         }
-        if !book.theme.is_empty() && !ct.contains("/xl/theme/theme1.xml") {
+        if !ct.contains("/xl/theme/theme1.xml") {
             add.push_str(r#"<Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>"#);
         }
         if has_comments && !ct.contains("/xl/persons/person.xml") {
@@ -1604,17 +1616,17 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         // (2026-09-08、Mac の Excel で確かめた。警告を止めた状態では黙って
         // 開かず、修復の問い合わせを出す)。LibreOffice と openpyxl は
         // 見過ごすので、Excel を相手にするまで気付かなかった
-        if book.theme.is_empty() { "" } else {
-            r#"<Relationship Id="rIdTH" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>"#
-        },
+        r#"<Relationship Id="rIdTH" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>"#,
         // 人の一覧の部品を書くなら、その関係も(上の PERSON_REL の説明)
         if has_persons(book) { PERSON_REL } else { "" }))?;
     }
 
-    // テーマの色。読んだものをそのまま返し、配色を変えたときは新しい組を書く
-    if !book.theme.is_empty() {
-        put("xl/theme/theme1.xml", &super::theme::to_xml(&book.theme))?;
-    }
+    // The theme's colours: the ones read, a new set after a change of
+    // palette, and the default for a book that has none. Always written, so
+    // the colours a cell or a table style takes from the theme are the ones
+    // officework draws, whatever an Excel would take for a book without a
+    // theme (Excel 16.0.20430 takes its 2023 theme, older ones the 2013 one)
+    put("xl/theme/theme1.xml", &super::theme::to_xml(&book.theme))?;
     put("xl/styles.xml", &styles_xml)?;
 
     // **飾りの付いた字は原本のまま返します。** 字が変わっていないセルは
@@ -2441,6 +2453,60 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     Ok(())
 }
 
+/// **A sheet's columns and rows, measured for placing drawings** (pixels at
+/// 96 dpi, as `SheetShape::dx_px` and the paper count them).
+pub(super) struct Cells<'a> {
+    pub sh: &'a book::Sheet,
+    pub basis: &'a book::ColBasis,
+}
+
+impl Cells<'_> {
+    fn col_px(&self, c: u32) -> f32 {
+        self.sh.col_haba_mm(c, self.basis) * 96.0 / 25.4
+    }
+
+    fn row_px(&self, r: u32) -> f32 {
+        // As the paper measures a row: its height, the sheet's default, 7mm
+        self.sh.row_height.get(&r).copied().or(self.sh.default_row_height)
+            .map(|pt| pt * 96.0 / 72.0)
+            .unwrap_or(7.0 * 96.0 / 25.4)
+    }
+
+    /// **The cell that holds a point, and the offset within it.**
+    ///
+    /// ECMA-376 Part 1, 20.5.2.11 and 20.5.2.27: `xdr:colOff` and
+    /// `xdr:rowOff` are offsets within the cell. The model keeps a drawing
+    /// as a cell and an offset that may run past it (the shapes a chart is
+    /// drawn with all hang from one cell); written that way, Excel kept each
+    /// offset inside its cell and piled the chart up there (2026-10-12)
+    pub fn within(&self, mut at: book::Pos, mut dx: f32, mut dy: f32) -> (book::Pos, f32, f32) {
+        while at.col < 16_383 {
+            let w = self.col_px(at.col);
+            if dx < w - 0.001 {
+                break;
+            }
+            dx -= w;
+            at.col += 1;
+        }
+        while at.row < 1_048_575 {
+            let h = self.row_px(at.row);
+            if dy < h - 0.001 {
+                break;
+            }
+            dy -= h;
+            at.row += 1;
+        }
+        (at, dx.max(0.0), dy.max(0.0))
+    }
+
+    /// A cell and an offset as pixels from the sheet's top left
+    pub fn abs(&self, at: book::Pos, dx: f32, dy: f32) -> (f32, f32) {
+        let x: f32 = (0..at.col).map(|c| self.col_px(c)).sum();
+        let y: f32 = (0..at.row).map(|r| self.row_px(r)).sum();
+        (x + dx, y + dy)
+    }
+}
+
 /// 挿した図形1枚のアンカー(oneCellAnchor の xdr:sp)。Excel でも図形として開ける。
 pub(super) fn shape_anchor_xml(sp: &book::SheetShape, id: u32) -> String {
     shape_xml(sp, id, None)
@@ -2647,8 +2713,19 @@ fn shape_xml(sp: &book::SheetShape, id: u32, naka_off: Option<(i64, i64)>) -> St
                     }
                 })
                 .collect();
+            // The box's inset when it is not DrawingML's default (ECMA-376
+            // 21.1.2.1.1: 91440 EMU left and right, 45720 top and bottom).
+            // Read into `TextFmt::ins_mm` but never written until 2026-10-13,
+            // so saving set every box back to the default
+            let ins = if tf.ins_mm != book::TextFmt::default().ins_mm {
+                let emu = |mm: f32| (mm / 25.4 * 914400.0).round() as i64;
+                let (l, r, t, b) = tf.ins_mm;
+                format!(r#" lIns="{}" tIns="{}" rIns="{}" bIns="{}""#, emu(l), emu(t), emu(r), emu(b))
+            } else {
+                String::new()
+            };
             format!(
-                "<xdr:txBody><a:bodyPr wrap=\"square\"{anchor}{vert}/><a:lstStyle/>{paras}</xdr:txBody>"
+                "<xdr:txBody><a:bodyPr wrap=\"square\"{ins}{anchor}{vert}/><a:lstStyle/>{paras}</xdr:txBody>"
             )
         }
         None => String::new(),
@@ -2711,12 +2788,12 @@ fn shape_xml(sp: &book::SheetShape, id: u32, naka_off: Option<(i64, i64)>) -> St
             sp_xml = sp_xml,
             col = sp.at.col,
             row = sp.at.row,
-            dx = (sp.dx_px * 9525.0) as i64,
-            dy = (sp.dy_px * 9525.0) as i64,
+            dx = (sp.dx_px * 9525.0).round() as i64,
+            dy = (sp.dy_px * 9525.0).round() as i64,
             tcol = to.col,
             trow = to.row,
-            tdx = (tdx * 9525.0) as i64,
-            tdy = (tdy * 9525.0) as i64,
+            tdx = (tdx * 9525.0).round() as i64,
+            tdy = (tdy * 9525.0).round() as i64,
         );
     }
     format!(
@@ -2731,8 +2808,8 @@ fn shape_xml(sp: &book::SheetShape, id: u32, naka_off: Option<(i64, i64)>) -> St
         sp_xml = sp_xml,
         col = sp.at.col,
         row = sp.at.row,
-        dx = (sp.dx_px * 9525.0) as i64,
-        dy = (sp.dy_px * 9525.0) as i64,
+        dx = (sp.dx_px * 9525.0).round() as i64,
+        dy = (sp.dy_px * 9525.0).round() as i64,
         cx = cx,
         cy = cy,
     )
@@ -2745,12 +2822,11 @@ fn shape_xml(sp: &book::SheetShape, id: u32, naka_off: Option<(i64, i64)>) -> St
 ///
 /// 子の座標は**束の中の EMU** です。`chOff`/`chExt` を `off`/`ext` と
 /// 同じにしてあるので、子は束の左上からの位置をそのまま書けます。
-fn group_anchor_xml(sps: &[&book::SheetShape], id: u32) -> String {
-    // 束の外枠(画素)。留めるセルは、いちばん左上の図形のもの
-    let px = |sp: &book::SheetShape| -> (f32, f32) {
-        // セルの粗さは無視して、留めたセル + ずらしで比べます
-        (sp.at.col as f32 * 64.0 + sp.dx_px, sp.at.row as f32 * 20.0 + sp.dy_px)
-    };
+fn group_anchor_xml(sps: &[&book::SheetShape], id: u32, cells: &Cells) -> String {
+    // The group's box in pixels from the sheet's top left, with the sheet's
+    // own column widths and row heights; it is anchored at the cell that
+    // holds its top left corner (an offset stays within its cell)
+    let px = |sp: &book::SheetShape| -> (f32, f32) { cells.abs(sp.at, sp.dx_px, sp.dy_px) };
     let atama = sps
         .iter()
         .min_by(|a, b| {
@@ -2778,6 +2854,7 @@ fn group_anchor_xml(sps: &[&book::SheetShape], id: u32) -> String {
             Some((((x - bx) * 9525.0) as i64, ((y - by) * 9525.0) as i64)),
         ));
     }
+    let (at, adx, ady) = cells.within(book::Pos { row: 0, col: 0 }, bx, by);
     format!(
         concat!(
             "<xdr:oneCellAnchor>",
@@ -2791,10 +2868,10 @@ fn group_anchor_xml(sps: &[&book::SheetShape], id: u32) -> String {
             "{ko}",
             "</xdr:grpSp><xdr:clientData/></xdr:oneCellAnchor>"
         ),
-        col = atama.at.col,
-        row = atama.at.row,
-        dx = (atama.dx_px * 9525.0) as i64,
-        dy = (atama.dy_px * 9525.0) as i64,
+        col = at.col,
+        row = at.row,
+        dx = (adx * 9525.0).round() as i64,
+        dy = (ady * 9525.0).round() as i64,
         cx = cx,
         cy = cy,
         id = id,
@@ -2820,8 +2897,8 @@ pub(super) fn image_anchor_xml(im: &book::SheetImage, rid: &str, id: u32) -> Str
         ),
         col = im.at.col,
         row = im.at.row,
-        cox = (im.dx_px * 9525.0) as i64,
-        roy = (im.dy_px * 9525.0) as i64,
+        cox = (im.dx_px * 9525.0).round() as i64,
+        roy = (im.dy_px * 9525.0).round() as i64,
         cx = cx,
         cy = cy,
         id = id,
