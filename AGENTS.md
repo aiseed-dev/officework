@@ -122,6 +122,7 @@ Word のヘルプが使う言葉を選びます。
   で別の設定フォルダーを使います。発注者の LibreOffice の設定と窓に触れないためです。
 - 画面(リボン・ダイアログ・右パネル)は Euro-Office に合わせます。Word・Excel の
   並びや名前には合わせません。
+- Euro-Office に無い機能の画面は、Collabora Office を参考にします(2026-10-13 発注者)。
 - **Word・Excel との違いは、直す前に OOXML(ECMA-376)で確かめます。** 要素・属性・
   値と規約の項の番号を確かめ、推測や勝手な数字で直しません。手順は
   `.claude/skills/ooxml-check/SKILL.md` にあります。
@@ -184,6 +185,8 @@ PYO3_PYTHON=$PWD/.venv/bin/python cargo build -q --release --bin officework
     `python3 ui/gen_lang.py <言語…>` と `python3 ui/gen_lang.py --check`
   - 関数の一覧と説明:`calc/gen_funcs.py` の `HAND_JA` と `calc/funcs_hand.json` に書いて
     `.venv/bin/python calc/gen_funcs.py --all`(3.9 では動きません)
+  - xlsx の組み込みの表のスタイル:`book/src/table_styles.txt` は
+    `python3 tools/gen_table_styles.py` で ECMA-376 の presetTableStyles.xml から作ります
 - ビルド先は `target/` だけを使います。`CARGO_TARGET_DIR` を別の場所に作りません
   (2026-09-22、合わせて約 490GB になっていました)。
 - `flatpak-builder` は `--delete-build-dirs` を付けて実行します。終わったら
