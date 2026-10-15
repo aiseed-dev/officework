@@ -92,6 +92,30 @@ kill $(cat $S/app.pid)
 `pkill -f release/officework` のように名前で終わらせると、発注者が開いている
 窓まで終わります。
 
+## Debian(Linux)では、見えない画面で開く
+
+発注者の画面にアプリの窓を出しません。2026-10-15 に、開いた窓が前に出て、発注者が
+打っていた字がセルに入りました。`tools/nested_display.py` で別の画面(`:5`)を作り、
+その中で開きます。この画面は発注者の画面に何も出さず、キーボードも取りません。
+
+```bash
+python3 -I tools/nested_display.py start :5 1100x1000 &   # 止めるまで動く
+echo $! > $S/nd.pid
+env -u WAYLAND_DISPLAY -u DBUS_SESSION_BUS_ADDRESS DISPLAY=:5 MESA_VK_WSI_DEBUG=sw \
+  XDG_RUNTIME_DIR=$S/xdg HOME=$S/home ./target/release/officework $S/test.xlsx > $S/app.log 2>&1 &
+echo $! > $S/app.pid
+sleep 10
+python3 -I tools/nested_display.py shot :5 $S/shot.png   # 描き直させてから撮る
+kill $(cat $S/app.pid) $(cat $S/nd.pid)
+```
+
+- この画面(Xephyr)には DRI3 が無いので、`MESA_VK_WSI_DEBUG=sw` を付けます。付けないと
+  窓が黒いままです。
+- GPUI の窓は、描き直しを頼まれるまで最初の絵を描きません。`shot` は `xrefresh` を
+  送ってから撮ります。
+- `XDG_RUNTIME_DIR` は作業用のフォルダー(`chmod 700`)にします。分けないと、動いている
+  発注者のアプリに相乗りします。
+
 ## 報告に書くこと
 
 - 何を、どの手順で見たか(撮った絵を添える)

@@ -247,6 +247,20 @@ Fable が触るので、Opus はそこを触らない。** それ以外の write
 ** 比べるには、置き替えの書体が手元に要ります。Noto Sans/Serif CJK JP(游の代わり)、
    梅フォント(ＭＳ 明朝・ゴシックの代わり)、BIZ UD、Carlito、Caladea、Liberation、
    C059 です。2026-10-12 に入れました。
+* **Debian の PC で画面を見るときは、発注者の画面にアプリの窓を出しません(2026-10-15)。**
+  開いた窓が前に出て、発注者が打っていた字がセルに入ったためです。
+  `tools/nested_display.py` の見えない画面(Xephyr)で開いて撮ります。手順は
+  `.claude/skills/app-check/SKILL.md` の「Debian(Linux)では、見えない画面で開く」です。
+* **calc の試験は、作業用の HOME で走らせます(2026-10-15)。** `every_button_runs_without_panicking`
+  がすべてのボタンを押すので、「新しい道具N.py」と操作の記録を `~/.config/officework` に
+  作り、エディターも開きます。2026-10-15 には、`funcs` に 11,719 個、`records` に 5,443 個
+  たまっていました。試験を直すまでは、次の形で走らせます。
++
+----
+env -u DISPLAY -u WAYLAND_DISPLAY -u DBUS_SESSION_BUS_ADDRESS \
+  XDG_RUNTIME_DIR=<作業用>/xdg HOME=<作業用> CARGO_HOME=$HOME/.cargo RUSTUP_HOME=$HOME/.rustup \
+  PYO3_PYTHON=$PWD/.venv/bin/python cargo test -q -p calc
+----
 
 * cargo が PATH に無い機械なら `export PATH="$HOME/.cargo/bin:$PATH"`。そもそも rustup ごと無い機械もある — その場合は user レベルの導入で足りる(`curl https://sh.rustup.rs | sh -s -- -y`。sudo 不要。2026-08-03 に実施済み)
 * `.cargo/config.toml` と `.linklibs/` は**この機械固有**(libxkbcommon-x11 の開発リンク回避)。別の機械では不要か、作り直しが要る。作り直しは2手: `.linklibs/libxkbcommon-x11.so` → 実行時の `.so.0` へ symlink、`.cargo/config.toml` に `rustflags = ["-L", "<絶対パス>/.linklibs"]`
@@ -279,7 +293,8 @@ XWayland 経由で X11 に出す):
 **実行時ディレクトリを分けないと、動いている本人の calc に相乗りする。
 **撮るのは `import -window <id>`(窓は `_NET_WM_PID` で引く。
 ID も位置も起動ごとに変わる)。
-Xephyr は DRI3 が無く GPUI が真っ黒。
+Xephyr は DRI3 が無いが、`MESA_VK_WSI_DEBUG=sw` を付け、`xrefresh` で描き直させると
+GPUI も描ける(2026-10-15。`tools/nested_display.py`)。
 GNOME のスクリーンショット D-Bus は拒否される。
 
 == GPUI の踏み跡(再発させない)
