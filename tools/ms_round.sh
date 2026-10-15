@@ -10,6 +10,8 @@
 # 3. Word / Excel save each as PDF (<name>.ms.pdf): tools/ms_pdf.py on a Mac,
 #    tools/winvm_pdf.py (Word / Excel in the Windows VM) on Linux
 # 4. tools/ms_compare.py compares the two and writes <name>.diff.txt
+# 5. tools/ms_imgdiff.py compares them as pictures (fills, lines, what
+#    covers what) and writes <name>.imgdiff.txt and <name>.imgdiff.png
 #
 # The output goes under ~/Documents: Excel on the Mac cannot write under
 # /private/tmp. After changing the engine, reinstall it first:
@@ -19,7 +21,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$HOME/Documents/officework-cmp/out}"
 PY="$ROOT/.venv/bin/python"
 mkdir -p "$OUT"
-rm -f "$OUT"/*.pdf "$OUT"/*.diff.txt
+rm -f "$OUT"/*.pdf "$OUT"/*.diff.txt "$OUT"/*.imgdiff.txt "$OUT"/*.imgdiff.png
 "$PY" "$ROOT/test/write_docx_officework.py" "$OUT" || exit 1
 "$PY" "$ROOT/test/write_xlsx_officework.py" "$OUT" || exit 1
 cd "$OUT" || exit 1
@@ -47,5 +49,6 @@ for f in *.docx *.xlsx; do
   fi
   [ -f "$n.ms.pdf" ] || { echo "× $f: no PDF from Word/Excel"; continue; }
   "$PY" "$ROOT/tools/ms_compare.py" "$n.ow.pdf" "$n.ms.pdf" > "$n.diff.txt"
-  echo "== $n: $(tail -1 "$n.diff.txt")"
+  "$PY" "$ROOT/tools/ms_imgdiff.py" "$n.ow.pdf" "$n.ms.pdf" --out "$n.imgdiff.png" > "$n.imgdiff.txt"
+  echo "== $n: $(tail -1 "$n.diff.txt") / $(tail -1 "$n.imgdiff.txt")"
 done
