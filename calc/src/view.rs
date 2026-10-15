@@ -3064,13 +3064,21 @@ impl Render for Calc {
                 if sel_on && Some(a) != Some(self.anchor.unwrap_or(self.cursor)) {
                     base = tint(base, 0.20);
                 }
+                // The merged area takes its top-left cell's fill, gradients and
+                // patterns included, as a single cell does (`cell_background`);
+                // before 2026-10-15 only a solid fill was drawn here
+                let (bgv, pat) = cell_background(&f, base);
                 let mut d = div().absolute()
                     .left(px(x0)).top(px(y0))
                     .w(px((x1 - x0).max(2.0))).h(px((y1 - y0).max(2.0)))
-                    .bg(base)
+                    .bg(bgv)
                     .px_1p5().flex().overflow_hidden()
                     .font_family(self.font_name.clone())
                     .text_size(px(cell_font_px(f.size_c, self.zoom)));
+                if let Some(pt) = pat {
+                    // A pattern lies over the fill and under the text
+                    d = d.child(div().absolute().inset_0().bg(pt));
+                }
                 match f.valign {
                     book::VAlign::Top => d = d.items_start(),
                     book::VAlign::Middle => d = d.items_center(),

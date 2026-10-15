@@ -822,7 +822,7 @@ mod tests {
         assert!(red > 1000, "no half-opaque red: {red}");
         assert!(!e.rgba.chunks(4).any(|p| p[0] > 250 && p[1] < 100), "drawn opaque");
         // A black fill over the whole page hides it
-        leaf.fills.push(crate::pdfw::Fill { x_mm: 0.0, y_mm: 0.0, w_mm: 210.0, h_mm: 297.0, rgb: (0.0, 0.0, 0.0), a: 1.0 });
+        leaf.fills.push(crate::pdfw::Fill { z: 0, x_mm: 0.0, y_mm: 0.0, w_mm: 210.0, h_mm: 297.0, rgb: (0.0, 0.0, 0.0), a: 1.0 });
         let e = egaku_with(&leaf, 210.0, 297.0, 2.0, Some(&data));
         assert!(e.rgba.chunks(4).all(|p| p[0] < 5), "the watermark was drawn over a fill");
     }

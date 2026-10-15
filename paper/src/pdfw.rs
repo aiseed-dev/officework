@@ -26,6 +26,9 @@ use std::collections::BTreeMap;
 /// 1つの紙に置く字。**要る所だけ書けます**(`..Default::default()`)
 #[derive(Default, Clone)]
 pub struct Piece {
+    /// Where the text sits in the draw order, as [`Poly::z`]. It counts
+    /// only on a page with [`Leaf::over_text`]
+    pub z: i32,
     /// 左下からの位置(mm)
     pub x_mm: f32,
     pub y_mm: f32,
@@ -522,257 +525,268 @@ pub fn write_pages_fonts<W: std::io::Write>(
                 usu(&mut c, &mut usu_now, 1.0);
             }
         }
-        // **塗りは絵の下、紙の色の上。** 罫線より先に敷いて線を潰しません
-        // **色と太さは変わったときだけ書きます。** セルごとに書き直すと、
-        // 90 行の表で中身が 10 倍に膨れます(2026-08-27 に実物で測りました)
-        let mut fill_now: Option<(f32, f32, f32)> = None;
-        // **透明度は資源の名前で切り替えます**(PDF は色に透明度を持てず、
-        // ExtGState という別の入れ物に置く決まりです)。使った濃さだけ
-        // 資源に並べ、変わったときだけ名前を書きます
-        for f in &page.fills {
-            usu(&mut c, &mut usu_now, f.a);
-            if fill_now != Some(f.rgb) {
-                c.set_fill_rgb(f.rgb.0, f.rgb.1, f.rgb.2);
-                fill_now = Some(f.rgb);
+        // **Layers.** A spreadsheet's page (`over_text`) draws its cells
+        // (`z` 0) first and its drawings (`z` 1 and up) over them, each
+        // with its own lines and text; any other page is one layer
+        let layers: &[(i32, i32)] = if page.over_text {
+            &[(i32::MIN, 0), (1, i32::MAX)]
+        } else {
+            &[(i32::MIN, i32::MAX)]
+        };
+        for &(z_lo, z_hi) in layers {
+            let inz = |z: i32| (z_lo..=z_hi).contains(&z);
+            // **塗りは絵の下、紙の色の上。** 罫線より先に敷いて線を潰しません
+            // **色と太さは変わったときだけ書きます。** セルごとに書き直すと、
+            // 90 行の表で中身が 10 倍に膨れます(2026-08-27 に実物で測りました)
+            let mut fill_now: Option<(f32, f32, f32)> = None;
+            // **透明度は資源の名前で切り替えます**(PDF は色に透明度を持てず、
+            // ExtGState という別の入れ物に置く決まりです)。使った濃さだけ
+            // 資源に並べ、変わったときだけ名前を書きます
+            for f in page.fills.iter().filter(|f| inz(f.z)) {
+                usu(&mut c, &mut usu_now, f.a);
+                if fill_now != Some(f.rgb) {
+                    c.set_fill_rgb(f.rgb.0, f.rgb.1, f.rgb.2);
+                    fill_now = Some(f.rgb);
+                }
+                c.rect(pt(f.x_mm), pt(f.y_mm), pt(f.w_mm), pt(f.h_mm));
+                c.fill_nonzero();
             }
-            c.rect(pt(f.x_mm), pt(f.y_mm), pt(f.w_mm), pt(f.h_mm));
-            c.fill_nonzero();
-        }
-        // **Free shapes, paths and pictures, in one order.**
-        //
-        // A group draws its children in the order the file lists them, and
-        // that order is the z order (ECMA-376 20.1.2.2.x). Sorting by
-        // `(z, kind, index)` leaves everything the body makes (`z` 0) in
-        // the order it had — free fills, then paths, then pictures — and
-        // puts a group's children between the pictures of the same group.
-        // Word's ticket template draws three stars after the scroll
-        // picture, and drawing every picture last hid them (2026-09-20)
-        let mut order: Vec<(i32, u8, usize)> = Vec::new();
-        order.extend(page.polys.iter().enumerate().map(|(k, g)| (g.z, 0u8, k)));
-        order.extend(page.paths.iter().enumerate().map(|(k, m)| (m.z, 1u8, k)));
-        order.extend(img_ids[i].iter().enumerate().map(|(k, (_, im))| (im.z, 2u8, k)));
-        order.sort_unstable();
-        for (_, kind, k) in order {
-            match kind {
-                // 好きな形の塗り。四角の塗りと同じ層です
-                0 => {
-                    let g = &page.polys[k];
-                    let Some(((x0, y0), rest)) = g.points.split_first() else { continue };
-                    if rest.is_empty() {
-                        continue;
-                    }
-                    usu(&mut c, &mut usu_now, g.a);
-                    // A gradient paints the shading inside the piece's outline.
-                    // `Q` puts the fill colour back, so `fill_now` stays right
-                    if g.grad.is_some() {
-                        c.save_state();
+            // **Free shapes, paths and pictures, in one order.**
+            //
+            // A group draws its children in the order the file lists them, and
+            // that order is the z order (ECMA-376 20.1.2.2.x). Sorting by
+            // `(z, kind, index)` leaves everything the body makes (`z` 0) in
+            // the order it had — free fills, then paths, then pictures — and
+            // puts a group's children between the pictures of the same group.
+            // Word's ticket template draws three stars after the scroll
+            // picture, and drawing every picture last hid them (2026-09-20)
+            let mut order: Vec<(i32, u8, usize)> = Vec::new();
+            order.extend(page.polys.iter().enumerate().filter(|(_, g)| inz(g.z)).map(|(k, g)| (g.z, 0u8, k)));
+            order.extend(page.paths.iter().enumerate().filter(|(_, m)| inz(m.z)).map(|(k, m)| (m.z, 1u8, k)));
+            order.extend(img_ids[i].iter().enumerate().filter(|(_, (_, im))| inz(im.z)).map(|(k, (_, im))| (im.z, 2u8, k)));
+            order.sort_unstable();
+            for (_, kind, k) in order {
+                match kind {
+                    // 好きな形の塗り。四角の塗りと同じ層です
+                    0 => {
+                        let g = &page.polys[k];
+                        let Some(((x0, y0), rest)) = g.points.split_first() else { continue };
+                        if rest.is_empty() {
+                            continue;
+                        }
+                        usu(&mut c, &mut usu_now, g.a);
+                        // A gradient paints the shading inside the piece's outline.
+                        // `Q` puts the fill colour back, so `fill_now` stays right
+                        if g.grad.is_some() {
+                            c.save_state();
+                            c.move_to(pt(*x0), pt(*y0));
+                            for (x, y) in rest {
+                                c.line_to(pt(*x), pt(*y));
+                            }
+                            c.close_path();
+                            c.clip_nonzero();
+                            c.end_path();
+                            c.shading(Name(format!("S{k}").as_bytes()));
+                            c.restore_state();
+                            continue;
+                        }
+                        if fill_now != Some(g.rgb) {
+                            c.set_fill_rgb(g.rgb.0, g.rgb.1, g.rgb.2);
+                            fill_now = Some(g.rgb);
+                        }
                         c.move_to(pt(*x0), pt(*y0));
                         for (x, y) in rest {
                             c.line_to(pt(*x), pt(*y));
                         }
                         c.close_path();
-                        c.clip_nonzero();
-                        c.end_path();
-                        c.shading(Name(format!("S{k}").as_bytes()));
+                        c.fill_nonzero();
+                    }
+                    // **曲がる線と切り抜きのある形**([`Michi`])。塗りと同じ層です。
+                    // 色も太さも道ごとに書き直すので、上の `fill_now`/`pen` の控えは
+                    // 当てにならなくなります — 書いた後で消しておきます
+                    1 => {
+                        usu(&mut c, &mut usu_now, page.paths[k].a);
+                        michi_kaku(&mut c, &page.paths[k], pt);
+                        fill_now = None;
+                    }
+                    // 置いた絵
+                    _ => {
+                        let im = img_ids[i][k].1;
+                        c.save_state();
+                        if let Some([cx0, cy0, cw, ch]) = im.clip {
+                            c.rect(pt(cx0), pt(cy0), pt(cw), pt(ch));
+                            c.clip_nonzero();
+                            c.end_path();
+                        }
+                        // 置き方の行列。大きさをそのまま使います
+                        c.transform([pt(im.w_mm), 0.0, 0.0, pt(im.h_mm), pt(im.x_mm), pt(im.y_mm)]);
+                        c.x_object(Name(format!("I{k}").as_bytes()));
                         c.restore_state();
-                        continue;
                     }
-                    if fill_now != Some(g.rgb) {
-                        c.set_fill_rgb(g.rgb.0, g.rgb.1, g.rgb.2);
-                        fill_now = Some(g.rgb);
+                }
+            }
+            // A path is drawn inside `q`/`Q`, which puts back the colours it set.
+            // Its alpha is set outside (just before `michi_kaku`), so `Q` keeps
+            // it and the tracked alpha stays right: forgetting it here made the
+            // writer skip putting the page back to opaque, and every rule and
+            // letter after a see-through shape came out see-through (2026-09-29)
+            // **罫線を先に引きます**(字の下)
+            let mut pen: Option<((f32, f32, f32), f32)> = None;
+            // 破線の刻み。前の線の分が残らないよう、実線のときは戻します
+            let mut kizami: Option<Vec<f32>> = None;
+            for r in page.rules.iter().filter(|r| inz(r.z)) {
+                usu(&mut c, &mut usu_now, r.a);
+                if pen != Some((r.rgb, r.w_mm)) {
+                    c.set_stroke_rgb(r.rgb.0, r.rgb.1, r.rgb.2);
+                    c.set_line_width(pt(r.w_mm));
+                    pen = Some((r.rgb, r.w_mm));
+                }
+                if kizami != r.dash {
+                    match &r.dash {
+                        Some(d) => { c.set_dash_pattern(d.iter().map(|v| pt(*v)), 0.0); }
+                        None => { c.set_dash_pattern([], 0.0); }
                     }
-                    c.move_to(pt(*x0), pt(*y0));
-                    for (x, y) in rest {
-                        c.line_to(pt(*x), pt(*y));
-                    }
-                    c.close_path();
-                    c.fill_nonzero();
+                    kizami = r.dash.clone();
                 }
-                // **曲がる線と切り抜きのある形**([`Michi`])。塗りと同じ層です。
-                // 色も太さも道ごとに書き直すので、上の `fill_now`/`pen` の控えは
-                // 当てにならなくなります — 書いた後で消しておきます
-                1 => {
-                    usu(&mut c, &mut usu_now, page.paths[k].a);
-                    michi_kaku(&mut c, &page.paths[k], pt);
-                    fill_now = None;
-                }
-                // 置いた絵
-                _ => {
-                    let im = img_ids[i][k].1;
-                    c.save_state();
-                    if let Some([cx0, cy0, cw, ch]) = im.clip {
-                        c.rect(pt(cx0), pt(cy0), pt(cw), pt(ch));
-                        c.clip_nonzero();
-                        c.end_path();
-                    }
-                    // 置き方の行列。大きさをそのまま使います
-                    c.transform([pt(im.w_mm), 0.0, 0.0, pt(im.h_mm), pt(im.x_mm), pt(im.y_mm)]);
-                    c.x_object(Name(format!("I{k}").as_bytes()));
-                    c.restore_state();
-                }
-            }
-        }
-        // A path is drawn inside `q`/`Q`, which puts back the colours it set.
-        // Its alpha is set outside (just before `michi_kaku`), so `Q` keeps
-        // it and the tracked alpha stays right: forgetting it here made the
-        // writer skip putting the page back to opaque, and every rule and
-        // letter after a see-through shape came out see-through (2026-09-29)
-        // **罫線を先に引きます**(字の下)
-        let mut pen: Option<((f32, f32, f32), f32)> = None;
-        // 破線の刻み。前の線の分が残らないよう、実線のときは戻します
-        let mut kizami: Option<Vec<f32>> = None;
-        for r in &page.rules {
-            usu(&mut c, &mut usu_now, r.a);
-            if pen != Some((r.rgb, r.w_mm)) {
-                c.set_stroke_rgb(r.rgb.0, r.rgb.1, r.rgb.2);
-                c.set_line_width(pt(r.w_mm));
-                pen = Some((r.rgb, r.w_mm));
-            }
-            if kizami != r.dash {
-                match &r.dash {
-                    Some(d) => { c.set_dash_pattern(d.iter().map(|v| pt(*v)), 0.0); }
-                    None => { c.set_dash_pattern([], 0.0); }
-                }
-                kizami = r.dash.clone();
-            }
-            c.move_to(pt(r.x1_mm), pt(r.y1_mm));
-            c.line_to(pt(r.x2_mm), pt(r.y2_mm));
-            c.stroke();
-        }
-        if kizami.is_some() {
-            c.set_dash_pattern([], 0.0);
-        }
-        // Text highlights go under the letters, opaque (Word draws them so)
-        usu(&mut c, &mut usu_now, 1.0);
-        for p in &page.pieces {
-            if let Some((r, g, b)) = p.highlight.as_deref().and_then(highlight_rgb) {
-                c.set_fill_rgb(r, g, b);
-                // 字の高さのぶん。下に少し出して本家の見え方に寄せます
-                let h_mm = p.size_pt * 25.4 / 72.0;
-                c.rect(pt(p.x_mm), pt(p.y_mm - h_mm * 0.22), pt(p.w_mm), pt(h_mm));
-                c.fill_nonzero();
-            }
-        }
-        // **字を書く前に不透明へ戻します。** 戻さないと、直前に敷いた
-        // 薄い物(蛍光ペン・図形の影)の濃さが字にも掛かります。
-        // 2026-08-29 に PDF を開いて字が灰色なのを見て気づきました —
-        // 絵の側は色ごとに濃さを持つので、そちらには出ません
-        usu(&mut c, &mut usu_now, 1.0);
-        for p in &page.pieces {
-            // **字形の番号を2バイトで並べます。** CID フォントなので、
-            // 字そのものではなく番号を書きます
-            // **その字を持っている書体で描きます**(2026-08-31)。
-            // 名指しの書体に無い字は1本目に落とします — 無い書体で描くと
-            // その字だけ消えます
-            let fi = face_for(&p.text, p.font, &faces);
-            let mut bytes = Vec::with_capacity(p.text.chars().count() * 2);
-            for ch in p.text.chars() {
-                let g = new_gid_all[fi].get(&ch).copied().unwrap_or(0);
-                bytes.extend_from_slice(&g.to_be_bytes());
-            }
-            let (r, g, b) = p.color.as_deref().map(rgb).unwrap_or((0.0, 0.0, 0.0));
-            // Text cut to a part of the page: its letters and lines are
-            // drawn inside `q`/`Q` with that part as the clip
-            if let Some([cx0, cy0, cw, ch]) = p.clip {
-                c.save_state();
-                c.rect(pt(cx0), pt(cy0), pt(cw), pt(ch));
-                c.clip_nonzero();
-                c.end_path();
-            }
-            c.begin_text();
-            c.set_fill_rgb(r, g, b);
-            c.set_font(Name(f_names[fi].as_bytes()), p.size_pt);
-            // 傾き(度。左回り)。0 のときはいままでと同じ行列です。
-            //
-            // **斜体は書体が持つ角度でだけ倒します**(`post` の
-            // `italicAngle`。右へ倒す書体は負の値)。斜体の顔を持たない
-            // 書体は 0 度なので、倒れません — 斜体にしない、が答えです
-            // (2026-08-31 発注者)。角度をこちらで決めることはしません。
-            //
-            // PDF には「斜体」という指示が無く、読む側は傾けてくれません。
-            // 画面は OS の文字描画に任せられるので、この計算は要りません
-            let (sin, cos) = p.rotation.to_radians().sin_cos();
-            // A face that is italic already draws its letters slanted, and
-            // is not sheared again; the print picks italic faces since
-            // 2026-09-21, and a bold italic run can now land on one
-            let sh = if p.italic && !faces[fi].is_italic() {
-                -faces[fi].italic_angle().to_radians().tan()
-            } else {
-                0.0
-            };
-            // [a b c d] = 回転 × 剪断。剪断は [1 0; sh 1]
-            //
-            // **名前は `m0`〜`m3` です。** 前は `a b cc d` と書いていて、
-            // `b` が**色の青**を隠していました(上の `let (r, g, b)`)。
-            // 塗りは隠れる前に済んでいたので気づきにくく、太字のときだけ
-            // 輪郭が青 0 の色で描かれていました。`#17365D` の題が
-            // `#173600` で出ます(2026-09-03、python-docx の見本で発見)
-            let (m0, m1) = (cos, sin);
-            let (m2, m3) = (-sin + cos * sh, cos + sin * sh);
-            // **太字は輪郭を重ねて作ります。**
-            //
-            // 前は同じ字を 0.12mm ずらして2度打っていました。見た目は太く
-            // なりますが、**PDF の中には字が2つ並びます** — 選んで写すと
-            // 「TotalTotal」になり、語をまたぐ検索も当たりません。読み上げも
-            // 2度読みます(2026-09-01、国税庁の課税状況の PDF で気づきました)。
-            //
-            // PDF には塗りと線の両方で字を描く指示(`Tr 2`)があります。
-            // 線の太さのぶんだけ字が太り、字は1つのままです。
-            // **A face that is already bold is not stroked.** The run
-            // resolves to the family's bold face when the machine has one
-            // (see `paper::resolve_run_fonts`), and stroking it again made
-            // it heavier than Word's (2026-09-20)
-            let futoraseru = p.bold && !faces[fi].is_bold();
-            if futoraseru {
-                c.set_text_rendering_mode(TextRenderingMode::FillStroke);
-                c.set_stroke_rgb(r, g, b);
-                // **太さは字の高さの 30 分の1**(2026-09-03)。
-                // LibreOffice の PDF の書き手と同じ数です
-                // (`vcl/source/pdf/pdfwriter_impl.cxx`、artificial bold:
-                // `double fW = GetFontHeight() / 30.0;`)。
-                // 前は 0.12mm の決め打ちで、16pt の見出しでは 0.34pt にしか
-                // ならず、太字に見えていませんでした(内閣府の面談の記録の
-                // 「議論項目」)。大きい字ほど太らせる量も要ります
-                c.set_line_width(p.size_pt / 30.0);
-            }
-            // **字間**(`Tc`)。組む側が詰めた分を紙にも伝えます。
-            // 単位は字送りと同じ text space(ここでは pt)です
-            if p.tc_pt.abs() > 0.001 {
-                c.set_char_spacing(p.tc_pt);
-            }
-            // **文字の横倍率**(`Tz`)。組む側の字送りと同じ倍率で字形も伸縮する
-            let nobasu = p.tz > 0.0 && (p.tz - 100.0).abs() > 0.001;
-            if nobasu {
-                c.set_horizontal_scaling(p.tz);
-            }
-            c.set_text_matrix([m0, m1, m2, m3, pt(p.x_mm), pt(p.y_mm)]);
-            c.show(Str(&bytes));
-            if nobasu {
-                c.set_horizontal_scaling(100.0);
-            }
-            if p.tc_pt.abs() > 0.001 {
-                c.set_char_spacing(0.0);
-            }
-            if futoraseru {
-                c.set_text_rendering_mode(TextRenderingMode::Fill);
-            }
-            c.end_text();
-            // 下線と取り消し線。**字の下に引く線**なので、字を書いた後に
-            let (ul_at, ul_w) = underline_em(faces.get(fi));
-            for (on, at, w) in [(p.underline, ul_at, ul_w), (p.strike, kumihan::STRIKE_EM, 0.05)] {
-                if !on || p.w_mm <= 0.0 {
-                    continue;
-                }
-                let h_mm = p.size_pt * 25.4 / 72.0;
-                let y = p.y_mm + h_mm * at;
-                c.set_stroke_rgb(r, g, b);
-                c.set_line_width(pt(h_mm * w).max(0.3));
-                c.move_to(pt(p.x_mm), pt(y));
-                c.line_to(pt(p.x_mm + p.w_mm), pt(y));
+                c.move_to(pt(r.x1_mm), pt(r.y1_mm));
+                c.line_to(pt(r.x2_mm), pt(r.y2_mm));
                 c.stroke();
             }
-            if p.clip.is_some() {
-                c.restore_state();
+            if kizami.is_some() {
+                c.set_dash_pattern([], 0.0);
+            }
+            // Text highlights go under the letters, opaque (Word draws them so)
+            usu(&mut c, &mut usu_now, 1.0);
+            for p in page.pieces.iter().filter(|p| inz(p.z)) {
+                if let Some((r, g, b)) = p.highlight.as_deref().and_then(highlight_rgb) {
+                    c.set_fill_rgb(r, g, b);
+                    // 字の高さのぶん。下に少し出して本家の見え方に寄せます
+                    let h_mm = p.size_pt * 25.4 / 72.0;
+                    c.rect(pt(p.x_mm), pt(p.y_mm - h_mm * 0.22), pt(p.w_mm), pt(h_mm));
+                    c.fill_nonzero();
+                }
+            }
+            // **字を書く前に不透明へ戻します。** 戻さないと、直前に敷いた
+            // 薄い物(蛍光ペン・図形の影)の濃さが字にも掛かります。
+            // 2026-08-29 に PDF を開いて字が灰色なのを見て気づきました —
+            // 絵の側は色ごとに濃さを持つので、そちらには出ません
+            usu(&mut c, &mut usu_now, 1.0);
+            for p in page.pieces.iter().filter(|p| inz(p.z)) {
+                // **字形の番号を2バイトで並べます。** CID フォントなので、
+                // 字そのものではなく番号を書きます
+                // **その字を持っている書体で描きます**(2026-08-31)。
+                // 名指しの書体に無い字は1本目に落とします — 無い書体で描くと
+                // その字だけ消えます
+                let fi = face_for(&p.text, p.font, &faces);
+                let mut bytes = Vec::with_capacity(p.text.chars().count() * 2);
+                for ch in p.text.chars() {
+                    let g = new_gid_all[fi].get(&ch).copied().unwrap_or(0);
+                    bytes.extend_from_slice(&g.to_be_bytes());
+                }
+                let (r, g, b) = p.color.as_deref().map(rgb).unwrap_or((0.0, 0.0, 0.0));
+                // Text cut to a part of the page: its letters and lines are
+                // drawn inside `q`/`Q` with that part as the clip
+                if let Some([cx0, cy0, cw, ch]) = p.clip {
+                    c.save_state();
+                    c.rect(pt(cx0), pt(cy0), pt(cw), pt(ch));
+                    c.clip_nonzero();
+                    c.end_path();
+                }
+                c.begin_text();
+                c.set_fill_rgb(r, g, b);
+                c.set_font(Name(f_names[fi].as_bytes()), p.size_pt);
+                // 傾き(度。左回り)。0 のときはいままでと同じ行列です。
+                //
+                // **斜体は書体が持つ角度でだけ倒します**(`post` の
+                // `italicAngle`。右へ倒す書体は負の値)。斜体の顔を持たない
+                // 書体は 0 度なので、倒れません — 斜体にしない、が答えです
+                // (2026-08-31 発注者)。角度をこちらで決めることはしません。
+                //
+                // PDF には「斜体」という指示が無く、読む側は傾けてくれません。
+                // 画面は OS の文字描画に任せられるので、この計算は要りません
+                let (sin, cos) = p.rotation.to_radians().sin_cos();
+                // A face that is italic already draws its letters slanted, and
+                // is not sheared again; the print picks italic faces since
+                // 2026-09-21, and a bold italic run can now land on one
+                let sh = if p.italic && !faces[fi].is_italic() {
+                    -faces[fi].italic_angle().to_radians().tan()
+                } else {
+                    0.0
+                };
+                // [a b c d] = 回転 × 剪断。剪断は [1 0; sh 1]
+                //
+                // **名前は `m0`〜`m3` です。** 前は `a b cc d` と書いていて、
+                // `b` が**色の青**を隠していました(上の `let (r, g, b)`)。
+                // 塗りは隠れる前に済んでいたので気づきにくく、太字のときだけ
+                // 輪郭が青 0 の色で描かれていました。`#17365D` の題が
+                // `#173600` で出ます(2026-09-03、python-docx の見本で発見)
+                let (m0, m1) = (cos, sin);
+                let (m2, m3) = (-sin + cos * sh, cos + sin * sh);
+                // **太字は輪郭を重ねて作ります。**
+                //
+                // 前は同じ字を 0.12mm ずらして2度打っていました。見た目は太く
+                // なりますが、**PDF の中には字が2つ並びます** — 選んで写すと
+                // 「TotalTotal」になり、語をまたぐ検索も当たりません。読み上げも
+                // 2度読みます(2026-09-01、国税庁の課税状況の PDF で気づきました)。
+                //
+                // PDF には塗りと線の両方で字を描く指示(`Tr 2`)があります。
+                // 線の太さのぶんだけ字が太り、字は1つのままです。
+                // **A face that is already bold is not stroked.** The run
+                // resolves to the family's bold face when the machine has one
+                // (see `paper::resolve_run_fonts`), and stroking it again made
+                // it heavier than Word's (2026-09-20)
+                let futoraseru = p.bold && !faces[fi].is_bold();
+                if futoraseru {
+                    c.set_text_rendering_mode(TextRenderingMode::FillStroke);
+                    c.set_stroke_rgb(r, g, b);
+                    // **太さは字の高さの 30 分の1**(2026-09-03)。
+                    // LibreOffice の PDF の書き手と同じ数です
+                    // (`vcl/source/pdf/pdfwriter_impl.cxx`、artificial bold:
+                    // `double fW = GetFontHeight() / 30.0;`)。
+                    // 前は 0.12mm の決め打ちで、16pt の見出しでは 0.34pt にしか
+                    // ならず、太字に見えていませんでした(内閣府の面談の記録の
+                    // 「議論項目」)。大きい字ほど太らせる量も要ります
+                    c.set_line_width(p.size_pt / 30.0);
+                }
+                // **字間**(`Tc`)。組む側が詰めた分を紙にも伝えます。
+                // 単位は字送りと同じ text space(ここでは pt)です
+                if p.tc_pt.abs() > 0.001 {
+                    c.set_char_spacing(p.tc_pt);
+                }
+                // **文字の横倍率**(`Tz`)。組む側の字送りと同じ倍率で字形も伸縮する
+                let nobasu = p.tz > 0.0 && (p.tz - 100.0).abs() > 0.001;
+                if nobasu {
+                    c.set_horizontal_scaling(p.tz);
+                }
+                c.set_text_matrix([m0, m1, m2, m3, pt(p.x_mm), pt(p.y_mm)]);
+                c.show(Str(&bytes));
+                if nobasu {
+                    c.set_horizontal_scaling(100.0);
+                }
+                if p.tc_pt.abs() > 0.001 {
+                    c.set_char_spacing(0.0);
+                }
+                if futoraseru {
+                    c.set_text_rendering_mode(TextRenderingMode::Fill);
+                }
+                c.end_text();
+                // 下線と取り消し線。**字の下に引く線**なので、字を書いた後に
+                let (ul_at, ul_w) = underline_em(faces.get(fi));
+                for (on, at, w) in [(p.underline, ul_at, ul_w), (p.strike, kumihan::STRIKE_EM, 0.05)] {
+                    if !on || p.w_mm <= 0.0 {
+                        continue;
+                    }
+                    let h_mm = p.size_pt * 25.4 / 72.0;
+                    let y = p.y_mm + h_mm * at;
+                    c.set_stroke_rgb(r, g, b);
+                    c.set_line_width(pt(h_mm * w).max(0.3));
+                    c.move_to(pt(p.x_mm), pt(y));
+                    c.line_to(pt(p.x_mm + p.w_mm), pt(y));
+                    c.stroke();
+                }
+                if p.clip.is_some() {
+                    c.restore_state();
+                }
             }
         }
         // **字の上の線**(手描きのペン)。字を書いた後に引きます
@@ -1056,7 +1070,7 @@ mod tests {
                 z: 1,
                 grad: None,
             }],
-            rules: vec![Rule {
+            rules: vec![Rule { z: 0,
                 x1_mm: 10.0, y1_mm: 50.0, x2_mm: 100.0, y2_mm: 50.0,
                 w_mm: 0.3, rgb: (0.0, 0.0, 0.0), a: 1.0, dash: None,
             }],
@@ -1067,6 +1081,33 @@ mod tests {
         let body = unpack(&out);
         let thin = body.rfind("/A128 gs").expect("the see-through shape");
         assert!(body[thin..].contains("/A255 gs"), "the rule is drawn see-through:\n{}", &body[thin..]);
+    }
+
+    /// **On a spreadsheet's page a drawing covers the cells' text.** The
+    /// cells (`z` 0) come first and the drawing (`z` 1) after their text;
+    /// a document's page keeps every drawing under every letter
+    #[test]
+    fn a_drawing_goes_over_the_cells_text_on_a_sheet_page() {
+        let leaf = |over_text| Leaf {
+            pieces: vec![Piece { text: "A".into(), font: 0, size_pt: 10.0, x_mm: 20.0, y_mm: 20.0, ..Default::default() }],
+            polys: vec![Poly {
+                points: vec![(10.0, 10.0), (60.0, 10.0), (60.0, 40.0), (10.0, 40.0)],
+                rgb: (0.25, 0.5, 0.75),
+                a: 1.0,
+                z: 1,
+                grad: None,
+            }],
+            over_text,
+            ..Default::default()
+        };
+        for (over, drawing_last) in [(true, true), (false, false)] {
+            let mut out = Vec::new();
+            write_pages(&[leaf(over)], 210.0, 297.0, &font(), &mut out).expect("PDF が出ない");
+            let body = unpack(&out);
+            let text = body.find("BT").expect("the text");
+            let shape = body.find("0.25 0.5 0.75 rg").expect("the drawing");
+            assert_eq!(shape > text, drawing_last, "over_text {over}:\n{body}");
+        }
     }
 
     /// A gradient piece is painted with an axial shading inside its outline,
@@ -1719,6 +1760,8 @@ mod tests {
 
 /// 引く線(表の罫線)。左下からの mm。
 pub struct Rule {
+    /// Where the line sits in the draw order, as [`Poly::z`]
+    pub z: i32,
     pub x1_mm: f32,
     pub y1_mm: f32,
     pub x2_mm: f32,
@@ -1738,7 +1781,7 @@ pub struct Rule {
 impl Default for Rule {
     fn default() -> Self {
         // **透明度の既定は1**です。0 にすると足した所が全部消えます
-        Rule { x1_mm: 0.0, y1_mm: 0.0, x2_mm: 0.0, y2_mm: 0.0, w_mm: 0.0,
+        Rule { z: 0, x1_mm: 0.0, y1_mm: 0.0, x2_mm: 0.0, y2_mm: 0.0, w_mm: 0.0,
                rgb: (0.0, 0.0, 0.0), a: 1.0, dash: None }
     }
 }
@@ -1746,6 +1789,13 @@ impl Default for Rule {
 /// **紙1枚に置く物。** `pdf_writer` の `Page` と名前がぶつかるので別の名前です
 #[derive(Default)]
 pub struct Leaf {
+    /// **Drawings over the text** (a spreadsheet's pages). Everything with
+    /// `z` 0 (the cells: fills, borders and text) is drawn first, and then
+    /// what sits above it (`z` 1 and up: shapes, charts and pictures) with
+    /// its own text. Excel hides cell text under a picture (16.0.20430,
+    /// 2026-10-15). Off, every fill, path and picture comes before every
+    /// rule and letter, as a document's page always had
+    pub over_text: bool,
     pub pieces: Vec<Piece>,
     pub rules: Vec<Rule>,
     /// **置いた絵。**
@@ -1928,6 +1978,8 @@ impl Default for Michi {
 
 /// 塗る四角。左下からの mm。
 pub struct Fill {
+    /// Where the fill sits in the draw order, as [`Poly::z`]
+    pub z: i32,
     pub x_mm: f32,
     pub y_mm: f32,
     pub w_mm: f32,
@@ -1940,7 +1992,7 @@ pub struct Fill {
 
 impl Default for Fill {
     fn default() -> Self {
-        Fill { x_mm: 0.0, y_mm: 0.0, w_mm: 0.0, h_mm: 0.0, rgb: (0.0, 0.0, 0.0), a: 1.0 }
+        Fill { z: 0, x_mm: 0.0, y_mm: 0.0, w_mm: 0.0, h_mm: 0.0, rgb: (0.0, 0.0, 0.0), a: 1.0 }
     }
 }
 
@@ -2225,7 +2277,7 @@ pub(crate) fn sheet_leaves_wm<F: Fn(usize) -> Vec<kumihan::Line>>(
                     continue;
                 }
                 let em = c.size_pt * 0.3528;
-                p.pieces.push(Piece {
+                p.pieces.push(Piece { z: 0,
                     x_mm: mx + colx,
                     y_mm: ph - (y_roll + c.x_mm + em * 0.85),
                     size_pt: c.size_pt,
@@ -2269,7 +2321,7 @@ pub(crate) fn sheet_leaves_wm<F: Fn(usize) -> Vec<kumihan::Line>>(
                     p.pieces.push(r);
                 }
                 if c.fmt.underline || c.fmt.strike {
-                    p.pieces.push(Piece {
+                    p.pieces.push(Piece { z: 0,
                         x_mm: mx + c.x_mm,
                         y_mm: y,
                         size_pt: c.size_pt,
@@ -2323,7 +2375,7 @@ pub(crate) fn sheet_leaves_wm<F: Fn(usize) -> Vec<kumihan::Line>>(
                     if let Some(r) = run.take() {
                         p.pieces.push(r);
                     }
-                    run = Some(Piece {
+                    run = Some(Piece { z: 0,
                         x_mm: mx + c.x_mm,
                         // Superscript up, subscript down (`kumihan::raised_rise_mm`)
                         y_mm: y + kumihan::raised_rise_mm(&c.fmt, c.size_pt),
@@ -2436,7 +2488,7 @@ pub(crate) fn sheet_leaves_wm<F: Fn(usize) -> Vec<kumihan::Line>>(
             let Some(p) = pages.get_mut(k) else { continue };
             for line in &head {
                 for c in &line.cells {
-                    p.pieces.push(Piece {
+                    p.pieces.push(Piece { z: 0,
                         x_mm: pp.margin_mm + c.x_mm,
                         // **縦は上の余白から**です(2026-09-01)。左の余白を
                         // 使っていたので、上下と左右が違う紙では繰り返した
@@ -2612,7 +2664,7 @@ pub(crate) fn sheet_leaves_wm<F: Fn(usize) -> Vec<kumihan::Line>>(
                 if c.ch == '\t' || c.ch == '\n' {
                     continue;
                 }
-                p.pieces.push(Piece {
+                p.pieces.push(Piece { z: 0,
                     x_mm: pp.margin_mm + c.x_mm,
                     // **The text is drawn `dip_mm` below `y_mm`**, as the
                     // body is. The header and footer loop ignored it, so
@@ -2672,7 +2724,7 @@ pub fn put_ink(pages: &mut [Leaf], ink: &[kumihan::Stroke], height_mm: f32) {
             };
             let saki = if st.highlighter { &mut leaf.rules } else { &mut leaf.rules_top };
             for w in st.points.windows(2) {
-                saki.push(Rule {
+                saki.push(Rule { z: 0,
                     x1_mm: w[0].0,
                     y1_mm: h - w[0].1,
                     x2_mm: w[1].0,

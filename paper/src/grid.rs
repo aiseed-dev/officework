@@ -607,6 +607,7 @@ impl Ink<'_> {
             underline,
             strike,
             color: Some(pdfw::to_hex(rgb)),
+            z: self.z,
             ..Default::default()
         });
     }
@@ -621,7 +622,7 @@ impl Ink<'_> {
         a: f32, dash: Option<Vec<f32>>,
     ) {
         self.leaf.rules.push(pdfw::Rule {
-            x1_mm: x1, y1_mm: y1, x2_mm: x2, y2_mm: y2, w_mm: w, rgb, a, dash,
+            z: self.z, x1_mm: x1, y1_mm: y1, x2_mm: x2, y2_mm: y2, w_mm: w, rgb, a, dash,
         });
     }
 
@@ -630,13 +631,13 @@ impl Ink<'_> {
         &mut self, x1: f32, y1: f32, x2: f32, y2: f32, w: f32, rgb: (f32, f32, f32), a: f32,
     ) {
         self.leaf.rules.push(pdfw::Rule {
-            x1_mm: x1, y1_mm: y1, x2_mm: x2, y2_mm: y2, w_mm: w, rgb, a, dash: None,
+            z: self.z, x1_mm: x1, y1_mm: y1, x2_mm: x2, y2_mm: y2, w_mm: w, rgb, a, dash: None,
         });
     }
 
     fn fill(&mut self, x: f32, y: f32, w: f32, h: f32, rgb: (f32, f32, f32)) {
         self.leaf.fills.push(pdfw::Fill {
-            x_mm: x, y_mm: y, w_mm: w, h_mm: h, rgb, ..Default::default()
+            x_mm: x, y_mm: y, w_mm: w, h_mm: h, rgb, z: self.z, ..Default::default()
         });
     }
 
@@ -954,7 +955,8 @@ pub fn shapes_leaf(shapes: &[(book::SheetShape, f32, f32)], paper: Paper) -> pdf
 }
 
 fn leaf(paper: Paper) -> pdfw::Leaf {
-    pdfw::Leaf { size_mm: Some((paper.width_mm, paper.height_mm)), ..Default::default() }
+    // A spreadsheet's page: its drawings go over the cells' text
+    pdfw::Leaf { size_mm: Some((paper.width_mm, paper.height_mm)), over_text: true, ..Default::default() }
 }
 
 /// **紙面を1枚だけ取り出す。** 絵にする道([`crate::e`])の入り口です。
@@ -1096,6 +1098,36 @@ fn gradation_iro(g: &book::Gradient) -> Option<(f32, f32, f32)> {
         Some(b) => Some(((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0, (a.2 + b.2) / 2.0)),
         None => Some(a),
     }
+}
+
+/// **A cell's gradient fill** (ECMA-376 Part 1, 18.8.24 gradientFill), over
+/// the cell or its merged area. A linear one runs along its `degree` (0 is
+/// left to right, 90 top to bottom) through every stop. A path one keeps the
+/// mean of its first two colours, as before
+fn fill_gradient(ink: &mut Ink<'_>, x: f32, y: f32, w: f32, h: f32, g: &book::Gradient) {
+    let stops: Vec<(f32, (f32, f32, f32))> = g
+        .stops
+        .iter()
+        .filter_map(|(at, c)| hex_rgb(c).map(|rgb| (*at as f32 / 1000.0, rgb)))
+        .collect();
+    if g.path.is_some() || stops.len() < 2 {
+        if let Some(c) = gradation_iro(g) {
+            ink.fill(x, y, w, h, c);
+        }
+        return;
+    }
+    let th = (g.degree_c as f32 / 100.0).to_radians();
+    // The paper's y grows upward, so the direction's y turns over
+    let (dx, dy) = (th.cos(), -th.sin());
+    let half = (w * dx.abs() + h * dy.abs()) / 2.0;
+    let (cx, cy) = (x + w / 2.0, y + h / 2.0);
+    let first = stops[0].1;
+    ink.poly_grad(
+        vec![(x, y), (x + w, y), (x + w, y + h), (x, y + h)],
+        first,
+        1.0,
+        pdfw::Grad { from: (cx - dx * half, cy - dy * half), to: (cx + dx * half, cy + dy * half), stops },
+    );
 }
 
 /// 1つの表を PDF にする。行が紙に収まらなければ次のページへ。
@@ -1470,14 +1502,37 @@ fn draw_sheet(
             //
             // 柄は前景色と地の色を混ぜた1色にします([`gara_iro`])。
             // 地の色が無ければ白を地とします(Excel の既定)
+            // The size of the cell, or of its merged area when it is a merge's
+            // top-left cell. Excel fills a merged area with that cell's fill
+            // and ignores the fills of the other cells in it (Excel
+            // 16.0.20430, 2026-10-15: the application form's B2:G2 banner)
+            let mut ma_w = cw;
+            let mut ma_h = rh;
+            if let Some((tl, br)) = grid.merges.iter().find(|(tl, _)| *tl == p) {
+                ma_w = (tl.col..=br.col)
+                    .filter(|c| !grid.col_hidden.contains(c))
+                    .map(|c| {
+                        col_basis.print_col_mm(grid.col_haba_mm(c, &col_basis)) * scale
+                    })
+                    .sum();
+                ma_h = (tl.row..=br.row)
+                    .filter(|r| !grid.row_hidden.contains(r))
+                    .map(|r| gyou_mm(grid, r, &col_basis) * scale)
+                    .sum();
+            }
+            let in_merge = grid.merges.iter().any(|(a, b)| {
+                *a != p && (a.row..=b.row).contains(&p.row) && (a.col..=b.col).contains(&p.col)
+            });
             let gara = cell.fmt.fill_pattern.as_deref();
-            if let Some(c) = cell.fmt.fill_grad.as_ref().and_then(gradation_iro) {
-                ink.fill(x, y_top - rh, cw, rh, c);
+            if in_merge {
+                // Filled by the merge's top-left cell
+            } else if let Some(g) = cell.fmt.fill_grad.as_ref() {
+                fill_gradient(ink, x, y_top - ma_h, ma_w, ma_h, g);
             } else if let (Some(na), Some(mae)) = (gara, fill.as_deref().and_then(hex_rgb)) {
                 let ji = cell.fmt.fill_bg.as_deref().and_then(hex_rgb).unwrap_or((1.0, 1.0, 1.0));
-                ink.fill(x, y_top - rh, cw, rh, gara_iro(na, mae, ji));
+                ink.fill(x, y_top - ma_h, ma_w, ma_h, gara_iro(na, mae, ji));
             } else if let Some(c) = fill.as_deref().and_then(hex_rgb) {
-                ink.fill(x, y_top - rh, cw, rh, c);
+                ink.fill(x, y_top - ma_h, ma_w, ma_h, c);
             }
             // **A data bar** (ECMA-376 18.3.1.28: "a gradated data bar", its
             // length `kumihan::look::bar_share` of the cell's width), under the
@@ -1642,20 +1697,7 @@ fn draw_sheet(
             // 字を1行目の高さだけで置いていたので、結合の1行目の下端に
             // 出ていました。見た目は上揃えです — 国税庁の酒税の表の
             // 「区 分」がこれでした
-            let mut ma_w = cw;
-            let mut ma_h = rh;
-            if let Some((tl, br)) = grid.merges.iter().find(|(tl, _)| *tl == p) {
-                ma_w = (tl.col..=br.col)
-                    .filter(|c| !grid.col_hidden.contains(c))
-                    .map(|c| {
-                        col_basis.print_col_mm(grid.col_haba_mm(c, &col_basis)) * scale
-                    })
-                    .sum();
-                ma_h = (tl.row..=br.row)
-                    .filter(|r| !grid.row_hidden.contains(r))
-                    .map(|r| gyou_mm(grid, r, &col_basis) * scale)
-                    .sum();
-            }
+            // (`ma_w` and `ma_h`, the merged size, are counted before the fill)
             // **セルが名指しした書体で描きます**(2026-08-31。Fable の指摘2)。
             // run が自分で名乗っていればそちらが勝ちます。
             // **幅もこの書体で測ります** — 書体で1字の幅が違うためです
@@ -4026,6 +4068,34 @@ mod zukei_tests {
         let cw = g.col_haba_mm(0, &setup.col_basis);
         assert!((r.x2_mm - r.x1_mm).abs() > cw * 1.5,
                 "1列ぶんしか引いていない: {:.1}mm", (r.x2_mm - r.x1_mm).abs());
+    }
+
+    /// A merged area takes its top-left cell's gradient fill across the
+    /// whole merge, as a gradient from the first colour to the last (the
+    /// application form's B2:G2 banner, 2026-10-15)
+    #[test]
+    fn a_merged_gradient_fills_the_whole_merge() {
+        let mut g = Grid::default();
+        let mut f = book::CellFormat::default();
+        f.fill_grad = Some(book::Gradient {
+            degree_c: 0,
+            stops: vec![(0, "1B6E3C".into()), (1000, "63BE7B".into())],
+            path: None,
+        });
+        g.set(book::Pos::new(0, 0), book::Cell {
+            formula: None, value: book::Value::Text("会員申込書".into()), fmt: f });
+        g.merges.push((book::Pos::new(0, 0), book::Pos::new(0, 3)));
+        let setup = PrintSetup { date1904: false, col_basis: book::ColBasis::default(), ..Default::default() };
+        let leaf = &sheet_leaves(&g, Paper::default(), &setup).expect("組めない")[0];
+        let grads: Vec<&pdfw::Poly> = leaf.polys.iter().filter(|q| q.grad.is_some()).collect();
+        assert_eq!(grads.len(), 1, "グラデーションが {} 枚", grads.len());
+        let xs: Vec<f32> = grads[0].points.iter().map(|p| p.0).collect();
+        let w = xs.iter().cloned().fold(f32::MIN, f32::max) - xs.iter().cloned().fold(f32::MAX, f32::min);
+        let cw = setup.col_basis.print_col_mm(g.col_haba_mm(0, &setup.col_basis));
+        assert!(w > cw * 3.5, "結合の幅を塗っていない: {w:.1}mm(1列 {cw:.1}mm)");
+        let gr = grads[0].grad.as_ref().unwrap();
+        assert!(gr.to.0 > gr.from.0, "0 度が左から右でない");
+        assert_eq!(gr.stops.len(), 2);
     }
 
     /// **行末の空白で折り返さない。**
