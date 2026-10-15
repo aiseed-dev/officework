@@ -2908,6 +2908,16 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
         } else {
             table.col_mm.clone()
         }
+    } else if table.col_mm.len() == ncols
+        && !table.fixed_layout
+        && table.width_mm.is_none()
+        && table.width_pct.is_none()
+    {
+        // A grid of zero-width columns only (every `w:gridCol` without `w`)
+        // of an autofit table: every column takes its content's width below,
+        // as Word sets the circular's name table (2026-10-15). An equal
+        // share spread it over the page
+        vec![0.0; ncols]
     } else {
         vec![haba / ncols as f32; ncols]
     };

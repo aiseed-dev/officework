@@ -2869,8 +2869,16 @@ pub(super) fn parse_document_rels_num(
                             .filter(|v| !v.is_empty() && v != "auto"));
                     }
                     b"gridCol" => if let Some(b) = stack.last_mut() {
-                        if let Some(w) = attr(&e, "w").and_then(|v| v.parse::<f32>().ok()) {
-                            b.col_mm.push(twip_mm(w));
+                        // ECMA-376 Part 1, 17.4.16: an omitted `w` is a width
+                        // of zero. Skipping it lost the whole grid, and an
+                        // autofit table spread over the page instead of
+                        // taking its content's width (the circular's name
+                        // table, 2026-10-15)
+                        match attr(&e, "w") {
+                            None => b.col_mm.push(0.0),
+                            Some(v) => if let Ok(w) = v.parse::<f32>() {
+                                b.col_mm.push(twip_mm(w));
+                            },
                         }
                     },
                     b"tr" => if let Some(b) = stack.last_mut() {
@@ -3702,8 +3710,16 @@ pub(super) fn parse_document_rels_num(
                     }
                     // gridCol は空要素で来る
                     b"gridCol" => if let Some(b) = stack.last_mut() {
-                        if let Some(w) = attr(&e, "w").and_then(|v| v.parse::<f32>().ok()) {
-                            b.col_mm.push(twip_mm(w));
+                        // ECMA-376 Part 1, 17.4.16: an omitted `w` is a width
+                        // of zero. Skipping it lost the whole grid, and an
+                        // autofit table spread over the page instead of
+                        // taking its content's width (the circular's name
+                        // table, 2026-10-15)
+                        match attr(&e, "w") {
+                            None => b.col_mm.push(0.0),
+                            Some(v) => if let Ok(w) = v.parse::<f32>() {
+                                b.col_mm.push(twip_mm(w));
+                            },
                         }
                     },
                     // **空の段落 `<w:p/>`。** 中身の無い段落を Word はこの形で書く。

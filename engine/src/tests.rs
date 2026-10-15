@@ -1519,6 +1519,36 @@ mod table_layout_tests {
         assert!(!s.lines.iter().any(|l| l.text().contains("第2会議室")), "a fixed table was widened");
     }
 
+    /// A grid of zero-width columns only (`w:gridCol` without `w` in every
+    /// column) of an autofit table takes its content's widths too, as Word
+    /// sets the circular's name table; an equal share spread it over the
+    /// page (2026-10-15)
+    #[test]
+    fn an_all_zero_grid_of_an_autofit_table_takes_its_content() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 150.0, line_height_mm: 6.0, y0_mm: 20.0};
+        let cell = |s: &str| Cellbox {
+            paragraphs: vec![Paragraph {
+                runs: vec![Run { text: s.into(), size_pt: Some(10.5), font: None, fmt: Default::default() }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let names = ["佐藤", "鈴木", "高橋", "田中", "伊藤"];
+        let table = Table {
+            col_mm: vec![0.0; 5],
+            rows: vec![names.iter().map(|n| cell(n)).collect()],
+            ..Default::default()
+        };
+        let mut d = Document::plain("前");
+        d.blocks.push(Block::Table(table));
+        let s = layout(&d, &m, &frame);
+        let last = s.lines.iter().flat_map(|l| l.cells.iter())
+            .filter(|c| c.ch == '藤').map(|c| c.x_mm).fold(0.0f32, f32::max);
+        assert!(last > 0.0 && last < 80.0, "the table was spread over the page: 伊藤 at {last}mm");
+    }
+
     /// **表の行の送りは、行の高さに罫線の太さ(0.5pt)を足した物**
     /// (2026-09-09、Word の PDF で測った。続き30)
     #[test]

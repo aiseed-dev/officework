@@ -78,6 +78,20 @@ mod round {
         assert!(!ps2[1].list_off);
     }
 
+    /// A `w:gridCol` without `w` is a column of width zero (ECMA-376 Part 1,
+    /// 17.4.16), so the grid keeps one column for each, and layout widens
+    /// them to their content. Skipping them lost the grid (2026-10-15)
+    #[test]
+    fn a_grid_column_without_a_width_is_zero_wide() {
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:tbl><w:tblGrid><w:gridCol/><w:gridCol/><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>佐藤</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>鈴木</w:t></w:r></w:p></w:tc><w:tc><w:p/></w:tc></w:tr></w:tbl></w:body></w:document>"#;
+        let (d, _) = crate::read::parse_document_xml(xml);
+        let t = d.tables().next().expect("表がありません");
+        assert_eq!(t.col_mm.len(), 3, "幅の無い列を数えていない: {:?}", t.col_mm);
+        assert_eq!(t.col_mm[0], 0.0);
+        assert_eq!(t.col_mm[1], 0.0);
+        assert!((t.col_mm[2] - 2000.0 / 20.0 * 25.4 / 72.0).abs() < 0.01);
+    }
+
     /// **A cell's own `w:vAlign` is told apart from none**, so a table
     /// style's band can give its alignment only where the cell is silent,
     /// and a stated "top" is written back (ECMA-376 17.7.6, 2026-09-23)
