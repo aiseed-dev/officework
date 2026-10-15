@@ -196,10 +196,28 @@ mod size_grip_tests {
         let mm = ((px0 / PX_PER_MM) * 100.0).round() / 100.0;
         assert!((mm * PX_PER_MM - px0).abs() < 0.5, "幅の往復がずれる");
         assert!((PX_PER_MM - 96.0 / 25.4).abs() < 1e-6, "画面の 1mm が 96dpi でない");
-        // 行: 画面px → pt → 画面px。既定 24px = 15pt
-        let pt = (24.0f32 * 15.0 / 24.0 * 100.0).round() / 100.0;
-        assert_eq!(pt, 15.0);
-        assert_eq!(pt * 24.0 / 15.0, 24.0);
+        // Rows: screen pixels to points and back, at 96 dpi like the text.
+        // Excel's 18.75pt is 25 pixels
+        let pt = ((25.0f32 / PX_PER_PT) * 100.0).round() / 100.0;
+        assert_eq!(pt, 18.75);
+        assert!((pt * PX_PER_PT - 25.0).abs() < 1e-4, "行の往復がずれる");
+    }
+
+    /// A row without a height of its own is as tall as the sheet's default,
+    /// and every row is drawn at 96 dpi, as Excel shows it at 100%
+    #[gpui::test]
+    fn a_row_takes_the_sheets_default_height_at_96_dpi(cx: &mut gpui::TestAppContext) {
+        let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
+        c.update(cx, |this, _cx| {
+            this.zoom = 1.0;
+            this.sheet_mut().default_row_height = Some(13.5);
+            this.sheet_mut().row_height.insert(2, 30.0);
+            assert!((this.row_px(0) - 18.0).abs() < 1e-3, "既定の高さを使っていない: {}", this.row_px(0));
+            assert!((this.row_px(2) - 40.0).abs() < 1e-3, "30pt の行が 40px でない: {}", this.row_px(2));
+            // A sheet that names no default takes Excel's 18.75pt
+            this.sheet_mut().default_row_height = None;
+            assert!((this.row_px(0) - 25.0).abs() < 1e-3, "18.75pt の行が 25px でない: {}", this.row_px(0));
+        });
     }
 }
 
@@ -4628,9 +4646,11 @@ mod udf_tests {
         // 大きさの表は kumihan::cellmark::HEADINGS が正(画面の文字と同じ所を見る)
         let c = cx.update(|cx| cx.new(|cx| Calc::new(None, cx)));
         c.update(cx, |this, _cx| {
-            let base = 15.0_f32;
+            // A row without a height of its own stands at the sheet's
+            // default, and a heading grows it from there
+            let base = book::DEFAULT_ROW_PT;
             fn h(this: &Calc, r: u32) -> f32 {
-                *this.book.sheets[0].row_height.get(&r).unwrap_or(&15.0)
+                this.book.sheets[0].row_height.get(&r).copied().unwrap_or(book::DEFAULT_ROW_PT)
             }
 
             // 普通の文字では触らない

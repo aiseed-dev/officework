@@ -1527,10 +1527,11 @@ impl Calc {
             self.status = ui::tf!("column_width_px", col_name(idx), (chars * 100.0).round() / 100.0, (mm * PX_PER_MM).round())
             .into();
         } else {
-            let pt = ((base + y - grab) / self.zoom).max(6.0) * 15.0 / 24.0;
+            // Dragged in pixels, kept in points, at the scale `row_px` draws
+            let pt = ((base + y - grab) / self.zoom).max(6.0) / PX_PER_PT;
             let pt = (pt * 100.0).round() / 100.0;
             self.sheet_mut().row_height.insert(idx, pt);
-            self.status = ui::tf!("row_height_pt_px", idx + 1, pt, pt * 24.0 / 15.0)
+            self.status = ui::tf!("row_height_pt_px", idx + 1, pt, pt * PX_PER_PT)
             .into();
         }
         self.dirty = true;
@@ -3465,7 +3466,10 @@ impl Calc {
         }
         // 折り返しの無いセルは1行に畳んで描くので、要るのは一番高い行のぶんだけ
         let wrap = self.sheet().get(at).map(|c| c.fmt.wrap).unwrap_or(false);
-        let base = 15.0; // xlsx の既定の行の高さ(pt)
+        // A line of the default size takes the sheet's default height, the
+        // height `row_px` gives a row without one; a larger line takes that
+        // much more
+        let base = self.sheet().default_row_height.unwrap_or(book::DEFAULT_ROW_PT);
         let named = self.book.named_styles.clone();
         let want = if wrap {
             kumihan::cellmark::wanted_height_pt(&md, base, &named)
@@ -3475,17 +3479,25 @@ impl Calc {
                 .fold(1.0, f32::max)
                 * base
         };
-        let now = *self.sheet().row_height.get(&at.row).unwrap_or(&base);
+        // A row without a height of its own stands at that default, so the
+        // row grows only past it
+        let now = self.sheet().row_height.get(&at.row).copied().unwrap_or(base);
         if want > now + 0.01 {
             self.sheet_mut().row_height.insert(at.row, want);
         }
     }
 
-    /// カーソルを動かす(動かす前に編集中の内容を確定する)。
-    /// いま選んでいる長方形(左上, 右下)。
-    /// 行の画面高。文書の指定(xlsx の ht、pt)に従う。既定 15pt = 24px
+    /// A row's height on screen. It is the height the file gives the row,
+    /// else the sheet's default (`sheetFormatPr@defaultRowHeight`), else
+    /// `book::DEFAULT_ROW_PT`, at `PX_PER_PT` like the text and the columns.
+    /// Before 2026-10-15 a row without a height was 24 pixels whatever the
+    /// sheet said
     pub(crate) fn row_px(&self, r: u32) -> f32 {
-        self.sheet().row_height.get(&r).map(|pt| pt * 24.0 / 15.0).unwrap_or(ROW_H)
+        let sh = self.sheet();
+        sh.row_height.get(&r).copied()
+            .or(sh.default_row_height)
+            .unwrap_or(book::DEFAULT_ROW_PT)
+            * PX_PER_PT
             * self.zoom
     }
 }

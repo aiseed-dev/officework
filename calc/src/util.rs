@@ -4,6 +4,9 @@ use crate::*;
 
 pub(crate) use ops::{font_data, image_px};
 
+/// The height of the column headings (A, B, C…), and the offset some panels
+/// keep from the top. The rows of a sheet take their own heights
+/// (`Calc::row_px`)
 pub(crate) const ROW_H: f32 = 24.0;
 
 /// 表の端(この番号まで。0 から数える)。**行 10000・列 256**。
@@ -84,6 +87,11 @@ where
 /// wide as the print; before, a digit of width was 108/8.43 pixels, a scale
 /// of its own that made every column wider on screen than on paper
 pub(crate) const PX_PER_MM: f32 = 96.0 / 25.4;
+/// **Screen pixels in a point**: 96 dpi, as the text and the columns. A row
+/// is as tall on screen as the sheet says, the height Excel shows at 100%
+/// ("18.75 (25 pixels)"). Before 2026-10-15 a row took 1.6 pixels a point,
+/// 20% taller than the text and the columns
+pub(crate) const PX_PER_PT: f32 = 96.0 / 72.0;
 /// **文字が要る幅(px)。** 半角=1・全角=2 で数えた概算。
 ///
 /// 画面のはみ出し描き(隣の空きセルへ流す判定)と、列幅の自動調整で

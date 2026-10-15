@@ -4526,8 +4526,11 @@ impl Calc {
                 }
             } else {
                 let named = self.book.named_styles.clone();
+                // A line of the default size takes the sheet's default height,
+                // the height `row_px` gives a row without one
+                let base = self.sheet().default_row_height.unwrap_or(book::DEFAULT_ROW_PT);
                 for r in a.row..=b.row {
-                    let mut want: f32 = 15.0; // xlsx の既定(pt)
+                    let mut want: f32 = base;
                     for c in 0..cols.max(1) {
                         let p = Pos::new(r, c);
                         let Some(cell) = self.sheet().get(p) else { continue };
@@ -4553,7 +4556,7 @@ impl Calc {
                         } else {
                             1.0
                         };
-                        want = want.max(15.0 * scale * lines);
+                        want = want.max(base * scale * lines);
                     }
                     self.sheet_mut().row_height.insert(r, want);
                     n += 1;
