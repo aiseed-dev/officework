@@ -454,6 +454,36 @@ mod format_tests {
         format_value(&Value::Number(n), Some(code), false)
     }
 
+    /// The third section is for zero, and an empty section shows nothing
+    /// (ECMA-376 18.8.31)
+    #[test]
+    fn a_zero_section_is_used_and_an_empty_section_hides_the_number() {
+        assert_eq!(f(0.0, "#,##0;\\-#,##0;;"), "");
+        assert_eq!(f(1234.0, "#,##0;\\-#,##0;;"), "1,234");
+        assert_eq!(f(-5.0, "#,##0;\\-#,##0;;"), "-5");
+        assert_eq!(f(0.0, "0;-0;\"zero\""), "zero");
+        assert_eq!(f(0.0, "0;-0"), "0", "with two sections zero takes the first");
+        assert_eq!(f(7.0, ";;;"), "");
+        assert_eq!(f(-7.0, "0;;0"), "", "an empty negative section hides negatives");
+        assert_eq!(f(1234.0, "General;General"), "1234");
+    }
+
+    /// Fraction formats: the whole part, then the nearest fraction with a
+    /// denominator of as many digits as there are places, or the fixed one
+    #[test]
+    fn fraction_formats() {
+        assert_eq!(f(0.75, "# ?/?"), "3/4");
+        assert_eq!(f(1.5, "# ?/?"), "1 1/2");
+        assert_eq!(f(2.0, "# ?/?"), "2");
+        assert_eq!(f(3.14159, "# ??/??"), "3 14/99");
+        assert_eq!(f(0.3333, "# ?/?"), "1/3");
+        assert_eq!(f(1.25, "?/?"), "5/4");
+        assert_eq!(f(0.5, "# ?/8"), "4/8");
+        assert_eq!(f(-0.75, "# ?/?"), "-3/4");
+        // A slash in quotes is text
+        assert_eq!(f(12.0, "0\"/月\""), "12/月");
+    }
+
     #[test]
     fn leading_zero_format() {
         // **品番・会員番号・郵便番号の定番。** 2026-08-15 に種苗の会の

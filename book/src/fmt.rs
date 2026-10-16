@@ -155,7 +155,30 @@ pub fn format_value(v: &Value, code: Option<&str>, date1904: bool) -> String {
     // 前は区画を見ずに `-5,148` と出していました(国税庁の酒税の表)
     let sects: Vec<&str> = code.split(';').collect();
     let hu_sect = (n < 0.0).then(|| sects.get(1).copied()).flatten();
-    let sect = hu_sect.unwrap_or_else(|| sects.first().copied().unwrap_or(code));
+    // The third section is for zero (ECMA-376 18.8.31). A section that is
+    // empty shows nothing: `#,##0;-#,##0;;` hides a zero, and `;;;` hides
+    // every number. With two sections zero takes the first
+    let zero_sect = (n == 0.0 && sects.len() >= 3).then(|| sects[2]);
+    let sect = hu_sect
+        .or(zero_sect)
+        .unwrap_or_else(|| sects.first().copied().unwrap_or(code));
+    let core_of = |c: char| c == '#' || c == '0' || c == '?';
+    if sects.len() >= 2 {
+        if sect.trim().eq_ignore_ascii_case("general") {
+            return v.display();
+        }
+        // An empty section hides the number; one with no digit places is
+        // text only (`"-"` for a zero)
+        if sect.trim().is_empty() {
+            return String::new();
+        }
+        if !sect.chars().any(core_of) {
+            return affix(sect);
+        }
+    }
+    if let Some(f) = format_fraction(n, sect, hu_sect.is_none()) {
+        return f;
+    }
     let mut out = String::new();
     // 負の区画が無ければ、こちらで `-` を付けます。区画があるときは、
     // その区画の字(`△ ` や `(`)が符号の役をします
@@ -177,6 +200,99 @@ pub fn format_value(v: &Value, code: Option<&str>, date1904: bool) -> String {
     out.push_str(&frac);
     out.push_str(&affix(tail));
     out
+}
+
+/// A fraction format (`# ?/?`, `?/??`, `# ?/8`) as Excel shows it, or None
+/// for a section that is not one. The whole part goes in front when the
+/// section has a digit place before the fraction; the fraction is the nearest
+/// one whose denominator has at most as many digits as the places after the
+/// slash, or the fixed denominator that is written there (ECMA-376 18.8.31).
+/// A negative number takes a `-` unless its own section is given
+fn format_fraction(n: f64, sect: &str, sign: bool) -> Option<String> {
+    let core = |c: char| c == '#' || c == '0' || c == '?';
+    // The slash outside quotes and not escaped
+    let slash = {
+        let (mut q, mut esc, mut at) = (false, false, None);
+        for (i, c) in sect.char_indices() {
+            match c {
+                _ if esc => esc = false,
+                '\\' => esc = true,
+                '"' => q = !q,
+                '/' if !q => {
+                    at = Some(i);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        at?
+    };
+    // Digit places before the slash: the numerator's, after a possible
+    // whole part and a space; the slash follows them directly
+    let before = &sect[..slash];
+    let after = &sect[slash + 1..];
+    let num_end = before.rfind(core)? + 1;
+    if num_end != before.len() {
+        return None;
+    }
+    let num_start = before[..num_end].rfind(|c: char| !core(c)).map_or(0, |i| i + 1);
+    let whole_places = before[..num_start].chars().filter(|c| core(*c)).count();
+    // After the slash: either places, or a fixed denominator (it cannot
+    // start with 0, which is a place)
+    let (fixed, places) = if after.starts_with(|c: char| ('1'..='9').contains(&c)) {
+        let digits: String = after.chars().take_while(char::is_ascii_digit).collect();
+        (digits.parse::<u32>().ok(), digits.len())
+    } else {
+        (None, after.chars().take_while(|c| core(*c)).count())
+    };
+    if places == 0 && fixed.is_none() {
+        return None;
+    }
+    let max_den = fixed.unwrap_or_else(|| 10u32.pow(places as u32) - 1).max(1);
+    let a = n.abs();
+    let (whole, rest) = if whole_places > 0 { (a.floor(), a - a.floor()) } else { (0.0, a) };
+    // The nearest fraction rest ≈ p/q
+    let (mut bp, mut bq, mut berr) = (0u64, 1u32, f64::MAX);
+    let qs: Vec<u32> = match fixed {
+        Some(q) => vec![q],
+        None => (1..=max_den).collect(),
+    };
+    for q in qs {
+        let p = (rest * f64::from(q)).round();
+        let err = (rest - p / f64::from(q)).abs();
+        if err < berr - 1e-12 {
+            (bp, bq, berr) = (p as u64, q, err);
+        }
+    }
+    // The head and tail text around the places
+    let head = affix(&sect[..before.find(core).unwrap_or(0)]);
+    let tail_from = slash + 1 + places;
+    let tail = affix(&sect[tail_from..]);
+    let mut out = String::new();
+    if n < 0.0 && sign {
+        out.push('-');
+    }
+    out.push_str(&head);
+    let (mut whole, mut bp) = (whole as u64, bp);
+    if whole_places > 0 && bp == u64::from(bq) {
+        whole += 1;
+        bp = 0;
+    }
+    if whole_places > 0 {
+        if bp == 0 {
+            out.push_str(&whole.to_string());
+        } else if whole > 0 {
+            out.push_str(&format!("{whole} {bp}/{bq}"));
+        } else {
+            out.push_str(&format!("{bp}/{bq}"));
+        }
+    } else if bp == 0 {
+        out.push('0');
+    } else {
+        out.push_str(&format!("{bp}/{bq}"));
+    }
+    out.push_str(&tail);
+    Some(out)
 }
 
 /// 数の前後に付く字を出す。引用と `\` の逃げを読み、`_x`(x の幅だけ空ける)と
