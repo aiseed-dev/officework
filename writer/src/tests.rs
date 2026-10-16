@@ -3342,6 +3342,7 @@ mod marker_tests {
                 src: None,
                 off: 0,
                 fill: None,
+                parts: Vec::new(),
             });
             d.push_para(p);
             this.set_doc(d);
@@ -3475,6 +3476,7 @@ mod marker_tests {
                 src: None,
                 off: 0,
                 fill: None,
+                parts: Vec::new(),
             });
             d.push_para(p);
             this.set_doc(d);

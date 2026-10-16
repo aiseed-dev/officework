@@ -2336,6 +2336,7 @@ fn parse_with_ledger(src: &str) -> Result<(Document, Ledger), String> {
                 src: Some(path.to_string()),
                 off: 0,
                 fill: None,
+                parts: Vec::new(),
             });
             // **`[…]` の中身(代替の字・幅・リンク)は原文のまま持ちます**(2026-09-03)。
             // 模型には代替の字の欄が無いので、行を丸ごと覚えて書き戻しで返します。
@@ -2360,6 +2361,7 @@ fn parse_with_ledger(src: &str) -> Result<(Document, Ledger), String> {
                 src: None,
                 off: 0,
                 fill: None,
+                parts: Vec::new(),
             });
             doc.blocks.push(Block::Para(p));
             continue;

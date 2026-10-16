@@ -441,6 +441,7 @@ impl Writer {
                     src: None,
                     off: 0,
                     fill: None,
+                    parts: Vec::new(),
                 };
                 // 選択があっても、挿すのはカーソルの段落だけ
                 let cur = self.ed.cursor();

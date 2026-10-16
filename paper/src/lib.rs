@@ -1669,6 +1669,7 @@ mod image_tests {
                 src: None,
                 off: 0,
                 fill: None,
+                parts: Vec::new(),
             });
         }
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0});
@@ -1696,6 +1697,7 @@ mod image_tests {
                 src: None,
                 off: 0,
                 fill: None,
+                parts: Vec::new(),
             });
         }
         let s = layout(&d, &m, &Frame { measure_mm: 170.0, line_height_mm: 6.4, y0_mm: 24.0});
@@ -3639,6 +3641,11 @@ pub fn foreign_shapes(
     // of Word's letterhead (a group of two shapes) showed only its flap
     // (2026-09-29)
     for (xml, [x, top, w, h]) in &sheet.inline_shapes {
+        // A group of pictures only has no shape to draw: its pictures are
+        // in `sheet.images`
+        if xml.contains("<wpg:wgp") && !xml.contains("<wps:wsp") {
+            continue;
+        }
         let (kami, soko) = kami_no(*top);
         let kora = ooxml::foreign_shapes_in(xml, &doc.theme_colors, &doc.theme_line_pt);
         // The group's own box as read, to fit the children into the layout's box

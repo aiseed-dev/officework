@@ -1041,7 +1041,59 @@ pub(super) fn group_pictures(
             off: usize::MAX,
             shape: Some(ko.to_string()),
             fill: None,
+            parts: Vec::new(),
         });
+    }
+    out
+}
+
+/// The pictures (`pic:pic`) of an inline group, each with its box as
+/// fractions of the group's box: a child's `a:off` / `a:ext` are in the
+/// group's `a:chOff` / `a:chExt` coordinates (ECMA-376 20.1.7.6). A picture
+/// in a group nested inside is taken in the outer group's coordinates
+fn inline_group_pictures(
+    raw: &str,
+    media: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
+) -> Vec<(std::sync::Arc<Vec<u8>>, [f32; 4])> {
+    let num = |seg: &str, tag: &str, key: &str| -> Option<f32> {
+        let i = seg.find(tag)?;
+        let e = seg[i..].find('>')? + i;
+        let k = format!("{key}=\"");
+        let j = seg[i..e].find(&k)? + i + k.len();
+        seg[j..e].find('"').and_then(|x| seg[j..j + x].parse::<f32>().ok())
+    };
+    let Some(gi) = raw.find("<wpg:grpSpPr") else { return Vec::new() };
+    let gp = &raw[gi..raw[gi..].find("</wpg:grpSpPr>").map_or(raw.len(), |e| gi + e)];
+    let (ox, oy) = (num(gp, "<a:chOff", "x").unwrap_or(0.0), num(gp, "<a:chOff", "y").unwrap_or(0.0));
+    let (cw, ch) = match (num(gp, "<a:chExt", "cx"), num(gp, "<a:chExt", "cy")) {
+        (Some(w), Some(h)) if w > 0.0 && h > 0.0 => (w, h),
+        _ => match (num(gp, "<a:ext", "cx"), num(gp, "<a:ext", "cy")) {
+            (Some(w), Some(h)) if w > 0.0 && h > 0.0 => (w, h),
+            _ => return Vec::new(),
+        },
+    };
+    let mut out = Vec::new();
+    let mut at = 0usize;
+    while let Some(s) = raw[at..].find("<pic:pic").map(|i| at + i) {
+        let Some(e) = raw[s..].find("</pic:pic>").map(|i| s + i) else { break };
+        let ko = &raw[s..e];
+        at = e;
+        let bytes = ko
+            .find("r:embed=\"")
+            .map(|i| i + 9)
+            .and_then(|i| ko[i..].find('"').map(|x| &ko[i..i + x]))
+            .and_then(|rid| media.get(rid).cloned());
+        let sp = ko.find("<pic:spPr").map_or(ko, |i| &ko[i..]);
+        let (Some(bytes), Some(x), Some(y), Some(w), Some(h)) = (
+            bytes,
+            num(sp, "<a:off", "x"),
+            num(sp, "<a:off", "y"),
+            num(sp, "<a:ext", "cx"),
+            num(sp, "<a:ext", "cy"),
+        ) else {
+            continue;
+        };
+        out.push((bytes, [(x - ox) / cw, (y - oy) / ch, w / cw, h / ch]));
     }
     out
 }
@@ -1101,9 +1153,27 @@ pub(super) fn image_of(
                 off: usize::MAX,
                 shape: Some(raw.to_string()),
                 fill: None,
+                parts: Vec::new(),
             });
         }
         return None;
+    }
+    // An inline group is a drawn shape: its shapes are drawn from the XML,
+    // and the pictures in it are carried with their boxes in the group
+    if raw.contains("<wp:inline") && raw.contains("<wpg:wgp") {
+        let cx: f32 = grab("cx=\"")?.parse().ok()?;
+        let cy: f32 = grab("cy=\"")?.parse().ok()?;
+        return Some(kumihan::InlineImage {
+            bytes: std::sync::Arc::new(Vec::new()),
+            w_mm: cx / 36000.0,
+            h_mm: cy / 36000.0,
+            tex: None,
+            src: None,
+            off: 0,
+            shape: Some(raw.to_string()),
+            fill: None,
+            parts: inline_group_pictures(raw, media),
+        });
     }
     let rid = grab("r:embed=\"").or_else(|| if vml { grab("<v:imagedata r:id=\"") } else { None });
     let bytes = match rid.and_then(|r| media.get(&r).cloned()) {
@@ -1129,6 +1199,7 @@ pub(super) fn image_of(
                 off: 0,
                 shape: Some(raw.to_string()),
                 fill: None,
+                parts: Vec::new(),
             });
         }
     };
@@ -1157,7 +1228,7 @@ pub(super) fn image_of(
         .filter(|d| d.starts_with(TEX_SIRUSI))
         .map(|d| unesc(&d[TEX_SIRUSI.len()..]));
     Some(kumihan::InlineImage { bytes, w_mm: cx / 36000.0, h_mm: cy / 36000.0, tex, src: None,
-        off: 0, shape: None, fill: fill_rect_of(raw) })
+        off: 0, shape: None, fill: fill_rect_of(raw), parts: Vec::new() })
 }
 
 /// The fill rectangle of a stretched picture (`a:stretch/a:fillRect`, ECMA-376
@@ -3463,6 +3534,7 @@ pub(super) fn parse_document_rels_num(
                                     off,
                                     shape: None,
                                     fill: None,
+                                    parts: Vec::new(),
                                 });
                             }
                             match carry_math(raw, &ns_decls) {

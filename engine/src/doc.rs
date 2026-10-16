@@ -434,6 +434,12 @@ pub struct InlineImage {
     /// of its width and height, negative outward (`a:stretch/a:fillRect`,
     /// ECMA-376 20.1.8.30). `None` when the picture fills the box exactly
     pub fill: Option<[f32; 4]>,
+    /// **The pictures inside a drawn shape** (`shape` is `Some`): a
+    /// `pic:pic` in an inline group, with its box as fractions (x, y, w, h)
+    /// of the shape's box. Word's event brochure puts each icon in an inline
+    /// group of a pink circle and the icon's picture; the group was read as
+    /// one picture, and the circle was lost (2026-10-16)
+    pub parts: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4])>,
 }
 
 /// **段落の罫線の、引く辺**(docx の `w:pBdr` の子)。

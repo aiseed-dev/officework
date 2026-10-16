@@ -1274,7 +1274,7 @@ mod table_layout_tests {
         let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 };
         let pic = || crate::InlineImage { shape: None,
             bytes: std::sync::Arc::new(vec![0x89, b'P', b'N', b'G']),
-            w_mm: 4.0, h_mm: 4.0, tex: None, src: None, off: 0, fill: None };
+            w_mm: 4.0, h_mm: 4.0, tex: None, src: None, off: 0, fill: None, parts: Vec::new() };
         let cell = |align: Align, text: &str| Cellbox {
             paragraphs: vec![Paragraph {
                 runs: vec![Run { text: text.into(), size_pt: Some(10.5), font: None, fmt: Default::default() }],
@@ -1306,6 +1306,26 @@ mod table_layout_tests {
         assert!(xs[1][0] + 4.0 <= end + 0.01, "picture is not before the text");
     }
 
+    /// The pictures inside an inline drawn shape are placed in its box
+    #[test]
+    fn the_pictures_in_an_inline_shape_are_placed_in_its_box() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let mut p = Paragraph::default();
+        p.images_new.push(crate::InlineImage { shape: Some("<wp:inline/>".into()),
+            bytes: std::sync::Arc::new(Vec::new()),
+            w_mm: 20.0, h_mm: 20.0, tex: None, src: None, off: 0, fill: None,
+            parts: vec![(std::sync::Arc::new(vec![1]), [0.25, 0.5, 0.5, 0.25])] });
+        let mut d = Document::default();
+        d.push_para(p);
+        let s = layout(&d, &m, &frame);
+        let (_, sb) = s.inline_shapes.first().expect("no shape");
+        let (_, r, _) = s.images.first().expect("the picture inside is not placed");
+        assert!((r[0] - (sb[0] + 5.0)).abs() < 0.01 && (r[1] - (sb[1] + 10.0)).abs() < 0.01, "{r:?} in {sb:?}");
+        assert!((r[2] - 10.0).abs() < 0.01 && (r[3] - 5.0).abs() < 0.01);
+    }
+
     /// A picture wider than its cell keeps its own size, as Word draws it:
     /// the ring photo of Word's engagement card runs over the cell's right
     /// edge (2026-10-16)
@@ -1318,7 +1338,7 @@ mod table_layout_tests {
             paragraphs: vec![Paragraph {
                 images_new: vec![crate::InlineImage { shape: None,
                     bytes: std::sync::Arc::new(vec![0x89, b'P', b'N', b'G']),
-                    w_mm: 60.0, h_mm: 30.0, tex: None, src: None, off: 0, fill: None }],
+                    w_mm: 60.0, h_mm: 30.0, tex: None, src: None, off: 0, fill: None, parts: Vec::new() }],
                 ..Default::default()
             }],
             ..Default::default()
@@ -3762,6 +3782,7 @@ mod html_write_tests {
             src: None,
             off: 0,
             fill: None,
+            parts: Vec::new(),
         });
         d.push_para(p);
         let page = html_write::page(&d, &theme::default_theme());
@@ -4381,6 +4402,7 @@ mod atama_no_gazou_tests {
             p.images_new.push(crate::InlineImage { shape: None,
                 bytes: std::sync::Arc::new(vec![1]), w_mm: 20.0, h_mm: 10.0, tex: Some("x".into()), src: None, off: 0,
                 fill: None,
+                parts: Vec::new(),
             });
             d.push_para(p);
             let frame = Frame { measure_mm: 150.0, line_height_mm: 6.4, y0_mm: 24.0};

@@ -592,7 +592,14 @@ pub(super) fn atama_no_gazou_takasa(para: &Paragraph) -> f32 {
 /// Put an image, or a drawn shape, on the sheet at `rect` ([x, top, w, h])
 fn oku_gazou(sheet: &mut Sheet, im: &InlineImage, rect: [f32; 4]) {
     match &im.shape {
-        Some(xml) => sheet.inline_shapes.push((xml.clone(), rect)),
+        Some(xml) => {
+            sheet.inline_shapes.push((xml.clone(), rect));
+            // the pictures in the shape, over its drawn shapes
+            let [x, y, w, h] = rect;
+            for (bytes, [fx, fy, fw, fh]) in &im.parts {
+                sheet.images.push((bytes.clone(), [x + fx * w, y + fy * h, fw * w, fh * h], None));
+            }
+        }
         None => sheet.images.push((im.bytes.clone(), rect, im.fill)),
     }
 }

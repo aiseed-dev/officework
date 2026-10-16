@@ -1271,6 +1271,7 @@ impl PyDoc {
             off: 0,
             shape: None, // a picture, never a drawn shape,
             fill: None,
+            parts: Vec::new(),
         });
         g.doc.blocks.push(Block::Para(p));
         let b = g.doc.blocks.len() - 1;
@@ -2415,6 +2416,7 @@ impl PyRun {
             off: 0,
             shape: None, // a picture, never a drawn shape,
             fill: None,
+            parts: Vec::new(),
         });
         Ok(())
     }

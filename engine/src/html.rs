@@ -328,6 +328,7 @@ impl Builder {
                     src: Some(src),
                     off: 0,
                     fill: None,
+                    parts: Vec::new(),
                 });
             }
             // 記入(フォーム)。欄は下線の空欄として見せ、中身は Form に集める

@@ -2884,6 +2884,7 @@ mod image_insert_tests {
             tex: None, off: 0,
                     src: None,
                     fill: None,
+            parts: Vec::new(),
         });
         let d = Document { align: None, no_html_auto_space: false, kern: None, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, size_pt: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, note_ids_taken: Vec::new(), template: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
                            blocks: vec![Block::Para(p)] };
@@ -2922,6 +2923,7 @@ mod image_insert_tests {
             tex: Some(shiki.to_string()),
                     src: None, off: 0,
                     fill: None,
+            parts: Vec::new(),
         });
         let d = Document { blocks: vec![Block::Para(p)], ..Default::default() };
         let mut buf = Cursor::new(Vec::new());
@@ -2959,6 +2961,28 @@ mod image_insert_tests {
         // 代替テキストが無いのも当然 None
         let im = crate::read::image_of(&raw(""), &media).unwrap();
         assert_eq!(im.tex, None, "無いものを拾った");
+    }
+
+    /// An inline group is a drawn shape, and the pictures in it are kept with
+    /// their boxes in the group (Word's event brochure: a pink circle with an
+    /// icon in it)
+    #[test]
+    fn an_inline_group_keeps_its_shapes_and_its_pictures() {
+        let mut media = std::collections::BTreeMap::new();
+        media.insert("rId14".to_string(), std::sync::Arc::new(png_bytes()));
+        let raw = concat!(
+            r#"<w:drawing><wp:inline><wp:extent cx="485775" cy="485775"/><a:graphic><a:graphicData><wpg:wgp>"#,
+            r#"<wpg:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="485775" cy="485775"/><a:chOff x="0" y="0"/><a:chExt cx="485775" cy="485775"/></a:xfrm></wpg:grpSpPr>"#,
+            r#"<wps:wsp><wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="485775" cy="485775"/></a:xfrm><a:prstGeom prst="ellipse"/></wps:spPr></wps:wsp>"#,
+            r#"<pic:pic><pic:blipFill><a:blip r:embed="rId14"/></pic:blipFill><pic:spPr><a:xfrm><a:off x="68580" y="60960"/><a:ext cx="371475" cy="371475"/></a:xfrm></pic:spPr></pic:pic>"#,
+            r#"</wpg:wgp></a:graphicData></a:graphic></wp:inline></w:drawing>"#,
+        );
+        let im = crate::read::image_of(raw, &media).expect("not read");
+        assert!(im.shape.is_some() && im.bytes.is_empty(), "read as one picture");
+        assert_eq!(im.parts.len(), 1);
+        let [x, y, w, h] = im.parts[0].1;
+        assert!((x - 68580.0 / 485775.0).abs() < 1e-4 && (y - 60960.0 / 485775.0).abs() < 1e-4, "{:?}", im.parts[0].1);
+        assert!((w - 371475.0 / 485775.0).abs() < 1e-4 && (h - w).abs() < 1e-4);
     }
 
     /// A floating rectangle filled with a picture, alone in its anchor, is a
