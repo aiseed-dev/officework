@@ -217,9 +217,11 @@ def visible(ch, im):
     gap = dist(t, bg)
     if gap < 30:
         return False, contrast(t, bg), 0.0  # the letter's colour is the ground's
-    # Ink: pixels nearer the letter's colour than halfway to the ground. A
-    # thin Mincho stroke at 100 dpi is grey, not the letter's black
-    ink = sum(1 for q in px if dist(q, t) < 0.5 * gap)
+    # Ink: pixels moved from the ground at least 40% of the way to the
+    # letter's colour. A thin stroke at 100 dpi is a blend of the two: a
+    # Mincho stroke is grey, not black, and the hyphen of Word's business
+    # card on its light blue ground had no pixel nearer black than halfway
+    ink = sum(1 for q in px if dist(q, bg) > 0.4 * gap and dist(q, t) < gap)
     # One pixel is enough: a small "、" at 100 dpi has only a few. But a
     # letter cut at a page's edge shows a sliver of its box: the cut "求" of
     # Excel's invoice title has 0.05% of its box inked, the smallest "、"
@@ -267,8 +269,11 @@ def contrast(a, b):
 
 def colour_areas(doc):
     """Area (cm²) of every colour on the pages outside the letters, by colour
-    group (colours within ΔE 10 of each other are one)."""
+    group (colours within ΔE 10 of each other are one), and the area of each
+    colour as it is (to compare with: a group's first colour depends on the
+    order the colours come in)."""
     groups = []  # [rgb, area]
+    each = defaultdict(float)
     cm2 = (2.54 / DPI) ** 2
     for pi, (_, _, im) in enumerate(doc["pages"]):
         if im is None:
@@ -288,15 +293,25 @@ def colour_areas(doc):
                 q = small.getpixel((x, y))
                 if min(q) > 245:
                     continue  # paper
+                # A cell of an area has a like neighbour across and one up or
+                # down. The blend along the edge of a fill or a picture is a
+                # line one cell wide, and where it falls depends on how the
+                # edge meets the pixels: the top edge of the red bar of Word's
+                # business card shows as a pink grey line in Word's PDF only
+                like = lambda dx, dy: 0 <= x + dx < small.width and 0 <= y + dy < small.height \
+                    and delta_e(small.getpixel((x + dx, y + dy)), q) < 10
+                if not ((like(-1, 0) or like(1, 0)) and (like(0, -1) or like(0, 1))):
+                    continue
                 counts[tuple(v // 8 * 8 for v in q)] += 1
         for q, n in counts.items():
+            each[q] += n * 16 * cm2
             for g in groups:
                 if delta_e(g[0], q) < 10:
                     g[1] += n * 16 * cm2
                     break
             else:
                 groups.append([q, n * 16 * cm2])
-    return groups
+    return groups, each
 
 
 # ---- the evaluation ------------------------------------------------------
@@ -375,6 +390,18 @@ def evaluate(ours_pdf, theirs_pdf, source=None):
                     else:
                         kind = "字が違う"
                     f["違う"][kind].append(f"うち「{ours}」/ 本家「{theirs}」")
+
+        # The same text missing in one place and extra in another was only
+        # read in another order (two business cards side by side whose
+        # lines sit at slightly different heights): a reader sees it
+        missing, extra = f["表示されない"]["字が無い"], f["違う"]["うちにしか無い字"]
+        for t in list(missing):
+            if t in extra:
+                missing.remove(t)
+                extra.remove(t)
+        for w, k in (("表示されない", "字が無い"), ("違う", "うちにしか無い字")):
+            if not f[w][k]:
+                del f[w][k]
 
         # Letter by letter: shown, colour, face, size; the ink per line
         ink = defaultdict(lambda: [0.0, 0.0, 0])
@@ -474,13 +501,13 @@ def evaluate(ours_pdf, theirs_pdf, source=None):
             f["読みにくい"]["字の重なり"] = exa + [f"(うち {na} 組 / 本家 {nb} 組)"]
 
         # Colour on the page outside the letters
-        ga, gb = colour_areas(a), colour_areas(b)
+        (ga, ea), (gb, eb) = colour_areas(a), colour_areas(b)
         for rgb, area in gb:
-            have = sum(x[1] for x in ga if delta_e(x[0], rgb) < 10)
+            have = sum(n for q, n in ea.items() if delta_e(q, rgb) < 12)
             if area >= 1.0 and have < 0.3 * area:
                 f["表示されない"]["色の面が無い"].append(f"{hexrgb(rgb)} 本家 {area:.1f}cm² / うち {have:.1f}cm²")
         for rgb, area in ga:
-            have = sum(x[1] for x in gb if delta_e(x[0], rgb) < 10)
+            have = sum(n for q, n in eb.items() if delta_e(q, rgb) < 12)
             if area >= 1.0 and have < 0.3 * area:
                 f["違う"]["うちにしか無い色の面"].append(f"{hexrgb(rgb)} うち {area:.1f}cm² / 本家 {have:.1f}cm²")
 
