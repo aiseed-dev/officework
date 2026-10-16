@@ -217,11 +217,16 @@ def visible(ch, im):
     gap = dist(t, bg)
     if gap < 30:
         return False, contrast(t, bg), 0.0  # the letter's colour is the ground's
-    # Ink: pixels moved from the ground at least 40% of the way to the
+    # Ink: pixels moved from the ground at least 30% of the way to the
     # letter's colour. A thin stroke at 100 dpi is a blend of the two: a
     # Mincho stroke is grey, not black, and the hyphen of Word's business
-    # card on its light blue ground had no pixel nearer black than halfway
-    ink = sum(1 for q in px if dist(q, bg) > 0.4 * gap and dist(q, t) < gap)
+    # card on its light blue ground had no pixel nearer black than halfway.
+    # The ring of a small "。" in a light colour is thinner still: its
+    # darkest pixel is 40% to 55% of the way in both Word's and our print, so
+    # a bound of 40% counted it shown in one and not in the other by where
+    # the ring fell on the pixels (the non-fiction template, 2026-10-17; at
+    # 400 dpi every one of them is plainly there)
+    ink = sum(1 for q in px if dist(q, bg) > 0.3 * gap and dist(q, t) < gap)
     # One pixel is enough: a small "、" at 100 dpi has only a few. But a
     # letter cut at a page's edge shows a sliver of its box: the cut "求" of
     # Excel's invoice title has 0.05% of its box inked, the smallest "、"
