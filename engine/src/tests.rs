@@ -562,6 +562,41 @@ mod list_tests {
         assert_eq!(ps[1].indent, 2, "言っていない段落はスタイルの字下げ");
     }
 
+    /// **A style's `auto` colour stops the document's default colour**
+    /// (ECMA-376 17.3.2.6). Word's engagement card has a white
+    /// `w:docDefaults` colour and a Normal style that says `auto`; its Title,
+    /// based on Normal, prints black (2026-10-16). A style that states
+    /// nothing still takes the default
+    #[test]
+    fn a_styles_auto_colour_stops_the_documents_default() {
+        let mut d = Document::plain("題\n本文");
+        d.color = Some("FFFFFF".into());
+        d.styles.push(StyleInfo {
+            id: "a2".into(), name: "Normal".into(), kind: "paragraph".into(),
+            look: StyleLook { color_auto: true, ..Default::default() },
+            ..Default::default()
+        });
+        d.styles.push(StyleInfo {
+            id: "ad".into(), name: "Title".into(), kind: "paragraph".into(),
+            based_on: Some("a2".into()),
+            look: StyleLook { size_pt: Some(28.0), ..Default::default() },
+            ..Default::default()
+        });
+        d.styles.push(StyleInfo {
+            id: "x".into(), name: "Plain".into(), kind: "paragraph".into(),
+            ..Default::default()
+        });
+        for (i, b) in d.blocks.iter_mut().enumerate() {
+            if let Block::Para(p) = b {
+                p.style_id = Some(if i == 0 { "ad" } else { "x" }.into());
+            }
+        }
+        let c = crate::theme::compose(&d, &crate::theme::default_theme());
+        let ps: Vec<&Paragraph> = c.paragraphs().collect();
+        assert_eq!(ps[0].runs[0].fmt.color, None, "the Title took the document's white");
+        assert_eq!(ps[1].runs[0].fmt.color.as_deref(), Some("FFFFFF"), "a style without a colour lost the default");
+    }
+
     /// **`w:numId w:val="0"` takes the style's numbering away** (ECMA-376
     /// 17.9.19), and with it the indent the numbering level brings. The
     /// style's own `w:ind` still counts (numbering sits below the paragraph
@@ -1269,6 +1304,30 @@ mod table_layout_tests {
         let end = line.cells.last().map(|c| c.x_mm + c.w_mm).unwrap();
         assert!(end <= 100.0 + 0.01, "text runs past the cell: {end}");
         assert!(xs[1][0] + 4.0 <= end + 0.01, "picture is not before the text");
+    }
+
+    /// A picture wider than its cell keeps its own size, as Word draws it:
+    /// the ring photo of Word's engagement card runs over the cell's right
+    /// edge (2026-10-16)
+    #[test]
+    fn a_picture_wider_than_its_cell_keeps_its_size() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let frame = Frame { measure_mm: 100.0, line_height_mm: 6.0, y0_mm: 20.0 };
+        let cell = Cellbox {
+            paragraphs: vec![Paragraph {
+                images_new: vec![crate::InlineImage { shape: None,
+                    bytes: std::sync::Arc::new(vec![0x89, b'P', b'N', b'G']),
+                    w_mm: 60.0, h_mm: 30.0, tex: None, src: None, off: 0, fill: None }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let mut d = Document::plain("前の本文");
+        d.blocks.push(Block::Table(Table { col_mm: vec![50.0], rows: vec![vec![cell]], ..Default::default() }));
+        let s = layout(&d, &m, &frame);
+        let r = s.images.first().expect("no picture").1;
+        assert!((r[2] - 60.0).abs() < 0.01 && (r[3] - 30.0).abs() < 0.01, "the picture was resized: {r:?}");
     }
 
     /// **`atLeast` のセルは字を箱の底に置く**(2026-09-09)。本文と同じ

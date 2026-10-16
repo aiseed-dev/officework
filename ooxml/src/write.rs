@@ -1800,7 +1800,7 @@ fn style_look_xml_with(
         Some(false) => r.push_str(r#"<w:u w:val="none"/>"#),
         None => {}
     }
-    if let Some(c) = &l.color {
+    if let Some(c) = l.color.as_deref().or(l.color_auto.then_some("auto")) {
         r.push_str(&format!(r#"<w:color w:val="{}"/>"#, esc(c)));
     }
     if let Some(pt) = l.size_pt {

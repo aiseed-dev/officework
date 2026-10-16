@@ -3248,8 +3248,12 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                         if im.off == usize::MAX {
                             continue; // floating: placed by the paper side
                         }
-                        let k = if im.w_mm > inner { inner / im.w_mm } else { 1.0 };
-                        let (iw, ih) = (im.w_mm * k, im.h_mm * k);
+                        // At its own size, wider than the cell or not:
+                        // Word does not shrink it. The ring photo of Word's
+                        // engagement card is 98.2mm wide in a cell 94.6mm
+                        // wide inside, and Word draws it at 98.2mm, over the
+                        // cell's right edge (2026-10-16). We shrank it to fit
+                        let (iw, ih) = (im.w_mm, im.h_mm);
                         if im.off == 0 {
                             if let Some(l) = ls.get_mut(saisho) {
                                 // The image stands on the baseline: the line's

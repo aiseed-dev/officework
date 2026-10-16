@@ -3138,22 +3138,33 @@ fn anchor_size(
     tate: bool,
 ) -> f32 {
     let Some((from, wari)) = pct else { return kitei };
-    let moto = if tate {
-        match from.as_str() {
+    (anchor_extent(from, page, tate) * wari).max(0.1)
+}
+
+/// The width (or, `tate`, the height) of the base an anchored shape's size
+/// or position share counts from
+fn anchor_extent(from: &str, page: &kumihan::PageSetup, tate: bool) -> f32 {
+    if tate {
+        match from {
             "page" => page.h_mm,
             "topMargin" => page.top_mm,
             "bottomMargin" => page.bottom_mm,
             _ => page.h_mm - page.top_mm - page.bottom_mm,
         }
     } else {
-        match from.as_str() {
+        match from {
             "page" => page.w_mm,
             "leftMargin" => page.left_mm,
             "rightMargin" => page.right_mm,
             _ => page.w_mm - page.left_mm - page.right_mm,
         }
-    };
-    (moto * wari).max(0.1)
+    }
+}
+
+/// An anchored shape's offset from its base (mm): its share of the base
+/// when it gives one (`wp14:pctPosHOffset`), else its distance
+fn anchor_offset(from: &str, zure: f32, wari: Option<f32>, page: &kumihan::PageSetup, tate: bool) -> f32 {
+    wari.map(|w| anchor_extent(from, page, tate) * w).unwrap_or(zure)
 }
 
 /// **The fill rectangle of a stretched picture** (`a:stretch/a:fillRect`,
@@ -3228,8 +3239,8 @@ pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, pa
             let migi = kami0 % 2 == 1;
             let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
             let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
-            let x = anchor_place_at(&f.h_from, f.x_mm, f.h_align.as_deref(), w_mm, &page, false, y_para, migi, x_moto);
-            let y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(), h_mm, &page, true, y_para, migi);
+            let x = anchor_place_at(&f.h_from, anchor_offset(&f.h_from, f.x_mm, f.x_pct, &page, false), f.h_align.as_deref(), w_mm, &page, false, y_para, migi, x_moto);
+            let y = anchor_place(&f.v_from, anchor_offset(&f.v_from, f.y_mm, f.y_pct, &page, true), f.v_align.as_deref(), h_mm, &page, true, y_para, migi);
             // sheet coordinates: x from the left margin, y continuous over pages
             let (at, clip) = fill_rect(&part, [x - page.left_mm, y + soko, w_mm, h_mm]);
             out.push((im.bytes.clone(), at, z, clip));
@@ -3318,8 +3329,8 @@ fn hf_pictures(
                         continue;
                     }
                     let migi = k % 2 == 1;
-                    let x = anchor_place(&f.h_from, f.x_mm, f.h_align.as_deref(), w_mm, &page, false, kono, migi);
-                    let y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(), h_mm, &page, true, kono, migi);
+                    let x = anchor_place(&f.h_from, anchor_offset(&f.h_from, f.x_mm, f.x_pct, &page, false), f.h_align.as_deref(), w_mm, &page, false, kono, migi);
+                    let y = anchor_place(&f.v_from, anchor_offset(&f.v_from, f.y_mm, f.y_pct, &page, true), f.v_align.as_deref(), h_mm, &page, true, kono, migi);
                     let soko = pg.offsets.get(k).copied().unwrap_or(0.0);
                     let (at, clip) = fill_rect(&part, [x - page.left_mm, y + soko, w_mm, h_mm]);
                     out.push((im.bytes.clone(), at, z, clip));
@@ -3474,9 +3485,9 @@ pub fn foreign_shapes(
                     continue;
                 }
                 let migi = k % 2 == 1;
-                let x = anchor_place(&f.h_from, f.x_mm, f.h_align.as_deref(),
+                let x = anchor_place(&f.h_from, anchor_offset(&f.h_from, f.x_mm, f.x_pct, &page, false), f.h_align.as_deref(),
                                      w_mm, &page, false, y_para, migi);
-                let y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(),
+                let y = anchor_place(&f.v_from, anchor_offset(&f.v_from, f.y_mm, f.y_pct, &page, true), f.v_align.as_deref(),
                                      h_mm, &page, true, y_para, migi);
                 out.push(kumihan::DocShape {
                     page: k,
@@ -3528,9 +3539,9 @@ pub fn foreign_shapes(
                 let migi = kami0 % 2 == 1;
                 let w_mm = anchor_size(f.w_pct.as_ref(), f.w_mm, &page, false);
                 let h_mm = anchor_size(f.h_pct.as_ref(), f.h_mm, &page, true);
-                let x = anchor_place_at(&f.h_from, f.x_mm, f.h_align.as_deref(),
+                let x = anchor_place_at(&f.h_from, anchor_offset(&f.h_from, f.x_mm, f.x_pct, &page, false), f.h_align.as_deref(),
                                         w_mm, &page, false, y_para, migi, x_moto) + f.dx_mm;
-                let mut y = anchor_place(&f.v_from, f.y_mm, f.v_align.as_deref(),
+                let mut y = anchor_place(&f.v_from, anchor_offset(&f.v_from, f.y_mm, f.y_pct, &page, true), f.v_align.as_deref(),
                                          h_mm, &page, true, y_para, migi) + f.dy_mm;
                 let mut kami = kami0;
                 let tsukaeru = (page.h_mm - page.top_mm - page.bottom_mm).max(1.0);

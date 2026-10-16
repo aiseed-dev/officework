@@ -70,3 +70,19 @@ fn a_colour_inside_the_line_is_not_the_fill() {
     assert_eq!(sp.fill, None, "線の色で塗り潰している");
     assert_eq!(sp.line.as_deref(), Some("4472C4"), "線の色が読めていない");
 }
+
+/// A line whose `a:ln` gives only its colour takes its width from the theme
+/// entry `a:lnRef` names (ECMA-376 20.1.4.1.20). The fold lines of Word's
+/// engagement card name `idx="1"` (0.5pt) and were drawn at 1.5pt
+#[test]
+fn a_line_that_gives_only_its_colour_takes_the_width_from_its_style() {
+    let a = format!(
+        r#"<wp:anchor xmlns:wp="x" xmlns:a="y" xmlns:wps="z">
+<wp:extent cx="1828800" cy="0"/>
+<wps:wsp><wps:spPr><a:prstGeom prst="line"><a:avLst/></a:prstGeom><a:ln><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></wps:spPr>{}</wps:wsp></wp:anchor>"#,
+        SANSHOU.replace("idx=\"2\"", "idx=\"1\"")
+    );
+    let sp = ooxml::foreign_shape_with(&a, &irodana(), &[0.5, 1.0, 1.5]).expect("not read").look;
+    assert_eq!(sp.line.as_deref(), Some("D9D9D9"), "the shape's own colour was lost");
+    assert!((sp.line_w - 0.5).abs() < 0.01, "width {}", sp.line_w);
+}

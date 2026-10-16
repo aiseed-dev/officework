@@ -2324,7 +2324,11 @@ fn style_look(body: &str) -> kumihan::StyleLook {
         let v = attr_of(seg, "w:val");
         (!v.is_empty()).then_some(v)
     };
-    l.color = val_of("color").filter(|c| c != "auto");
+    l.color = val_of("color");
+    l.color_auto = l.color.as_deref() == Some("auto");
+    if l.color_auto {
+        l.color = None;
+    }
     l.fill = body
         .find("<w:shd ")
         .and_then(|i| body[i..].find('>').map(|e| &body[i..i + e + 1]))
@@ -4966,6 +4970,13 @@ pub struct ForeignShape {
     pub w_pct: Option<(String, f32)>,
     /// **高さが何かの百分率のとき**(`wp14:sizeRelV`)
     pub h_pct: Option<(String, f32)>,
+    /// **The position as a share of the base** (`wp14:pctPosHOffset` and
+    /// `wp14:pctPosVOffset`, [MS-ODRAWXML] 2.3.1.x; 0.5 is half of the
+    /// base's width or height), in place of `x_mm` / `y_mm`. Word's
+    /// engagement card puts its fold lines at 50% of the page this way, and
+    /// they came out at the page's top and left edges (2026-10-16)
+    pub x_pct: Option<f32>,
+    pub y_pct: Option<f32>,
     /// 形・塗り・線・中の文字
     pub look: book::SheetShape,
     /// Offset inside the anchor's box (mm), for a child of a group
@@ -5184,8 +5195,8 @@ pub fn foreign_shape_with(a: &str, palette: &[String], lines: &[f32]) -> Option<
     // 距離、後者は基準の中での寄せ方です。`align` を読まないと、寄せて
     // 置いた図形が全部基準の原点(紙なら左上)へ落ちます。内閣府の
     // 面談の記録の飾り枠がそれでした(2026-09-03 発注者)
-    let kijun = |tag: &str| -> (String, f32, Option<String>) {
-        let Some(i) = a.find(tag) else { return (String::new(), 0.0, None) };
+    let kijun = |tag: &str| -> (String, f32, Option<String>, Option<f32>) {
+        let Some(i) = a.find(tag) else { return (String::new(), 0.0, None, None) };
         let from = a[i..]
             .find("relativeFrom=\"")
             .and_then(|j| {
@@ -5206,10 +5217,16 @@ pub fn foreign_shape_with(a: &str, palette: &[String], lines: &[f32]) -> Option<
             let s2 = j + 10;
             naka[s2..].find('<').map(|e| naka[s2..s2 + e].trim().to_string())
         });
-        (from, zure, yose)
+        // A share in thousandths of a percent
+        let wari = ["<wp14:pctPosHOffset>", "<wp14:pctPosVOffset>"].iter().find_map(|t| {
+            let s2 = naka.find(t)? + t.len();
+            let e = naka[s2..].find('<')? + s2;
+            naka[s2..e].trim().parse::<f32>().ok().map(|v| v / 100_000.0)
+        });
+        (from, zure, yose, wari)
     };
-    let (h_from, x_mm, h_align) = kijun("<wp:positionH");
-    let (v_from, y_mm, v_align) = kijun("<wp:positionV");
+    let (h_from, x_mm, h_align, x_pct) = kijun("<wp:positionH");
+    let (v_from, y_mm, v_align, y_pct) = kijun("<wp:positionV");
     // The size may be a share of the page or the margins (Word 2010's
     // `wp14:sizeRelH` / `wp14:sizeRelV`). `wp:extent` is then only a copy,
     // and the share is the real size. The frame of the Cabinet Office's
@@ -5217,7 +5234,7 @@ pub fn foreign_shape_with(a: &str, palette: &[String], lines: &[f32]) -> Option<
     // 279.2mm, not the 197.9 x 261.4mm of `wp:extent` (2026-09-03)
     let (w_pct, h_pct) = size_shares(a);
     Some(ForeignShape {
-        x_mm, y_mm, w_mm, h_mm, h_from, v_from, h_align, v_align, w_pct, h_pct, look,
+        x_mm, y_mm, w_mm, h_mm, h_from, v_from, h_align, v_align, w_pct, h_pct, x_pct, y_pct, look,
         dx_mm: 0.0, dy_mm: 0.0,
     })
 }
@@ -5286,6 +5303,8 @@ pub fn foreign_shapes_in(a: &str, palette: &[String], lines: &[f32]) -> Vec<Fore
             v_align: base.v_align.clone(),
             w_pct: None,
             h_pct: None,
+            x_pct: base.x_pct,
+            y_pct: base.y_pct,
             look,
             dx_mm: (x - ox) / cw * base.w_mm,
             dy_mm: (y - oy) / ch * base.h_mm,
@@ -5489,14 +5508,18 @@ fn shape_look(a: &str, palette: &[String], lines: &[f32]) -> Option<book::SheetS
         .unwrap_or(false);
     if ln_nashi {
         sp.line = None;
-    } else if sp.line.is_none() {
-        sp.line = sanshou("<a:lnRef ");
+    } else {
+        if sp.line.is_none() {
+            sp.line = sanshou("<a:lnRef ");
+        }
         // **The width comes from the theme entry the reference names**
         // (`a:lnRef idx` into `a:lnStyleLst`, counting from 1; ECMA-376
         // 20.1.4.1.20). Word's business report 4e493df5 names `idx="2"`,
         // whose entry says `w="12700"`, and Word strokes its full-page
         // rectangle with 1pt where we drew the model's 1.5pt default
-        // (2026-09-21)
+        // (2026-09-21). It does so too when `a:ln` gives only the colour:
+        // the fold lines of Word's engagement card say `a:solidFill` and no
+        // `w`, name `idx="1"` (0.5pt), and were drawn 1.5pt (2026-10-16)
         if sp.line.is_some() && !a.contains("<a:ln w=\"") {
             let idx = a
                 .find("<a:lnRef ")

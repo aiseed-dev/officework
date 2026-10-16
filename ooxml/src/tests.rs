@@ -817,6 +817,25 @@ mod para_tests {
     /// 出ていませんでした。保存では原文のまま残るので、往復の試験では
     /// 気づけません。中の字は5行あり、**前は最初の1行しか読んで**
     /// いませんでした。
+    /// A position given as a share of the page (`wp14:pctPosVOffset`,
+    /// [MS-ODRAWXML]) is read as that share, inside `mc:Choice`, as Word's
+    /// engagement card places its fold line at half the page's height
+    #[test]
+    fn a_position_share_of_the_page_is_read() {
+        let a = concat!(
+            r#"<w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="1" behindDoc="0" locked="1" layoutInCell="1" allowOverlap="1">"#,
+            r#"<wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="page"><wp:align>left</wp:align></wp:positionH>"#,
+            r#"<mc:AlternateContent><mc:Choice Requires="wp14"><wp:positionV relativeFrom="page">"#,
+            r#"<wp14:pctPosVOffset>50000</wp14:pctPosVOffset></wp:positionV></mc:Choice>"#,
+            r#"<mc:Fallback><wp:positionV relativeFrom="page"><wp:posOffset>5346065</wp:posOffset></wp:positionV></mc:Fallback></mc:AlternateContent>"#,
+            r#"<wp:extent cx="7772400" cy="0"/><wp:wrapNone/><wp:docPr id="9" name="fold"/>"#,
+            r#"<wps:wsp><wps:spPr><a:prstGeom prst="line"><a:avLst/></a:prstGeom></wps:spPr></wps:wsp></wp:anchor></w:drawing>"#,
+        );
+        let f = crate::foreign_shape(a).expect("shape not read");
+        assert_eq!(f.y_pct, Some(0.5));
+        assert_eq!((f.x_pct, f.v_from.as_str()), (None, "page"));
+    }
+
     #[test]
     fn a_word_text_box_is_read_with_all_its_lines() {
         let a = concat!(
@@ -3707,6 +3726,20 @@ mod default_font_tests {
         let src = docx(styles, None);
         let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
         assert_eq!(doc.color, None, "auto を色として読んだ: {:?}", doc.color);
+    }
+
+    /// A style's `w:color w:val="auto"` is kept as the automatic colour, so
+    /// it can stop the document's default (Word's engagement card)
+    #[test]
+    fn a_styles_auto_colour_is_read() {
+        let styles = r#"<w:styles xmlns:w="x"><w:docDefaults><w:rPrDefault><w:rPr>
+            <w:color w:val="FFFFFF"/></w:rPr></w:rPrDefault></w:docDefaults>
+            <w:style w:type="paragraph" w:default="1" w:styleId="a2"><w:name w:val="Normal"/>
+            <w:rPr><w:color w:val="auto"/></w:rPr></w:style></w:styles>"#;
+        let src = docx(styles, None);
+        let (doc, _) = crate::read(Cursor::new(&src)).unwrap();
+        let s = doc.styles.iter().find(|s| s.id == "a2").expect("no Normal style");
+        assert!(s.look.color_auto && s.look.color.is_none(), "{:?}", s.look);
     }
 
     #[test]

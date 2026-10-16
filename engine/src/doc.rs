@@ -1920,6 +1920,12 @@ pub struct StyleLook {
     pub size_pt: Option<f32>,
     /// 字の色(RRGGBB)
     pub color: Option<String>,
+    /// **The style states the automatic colour** (`w:color w:val="auto"`,
+    /// ECMA-376 17.3.2.6), with `color` empty. It stops the colour of the
+    /// styles it is based on and of the document's defaults. The Normal
+    /// style of Word's engagement card says `auto` over a white
+    /// `w:docDefaults`, and Word prints the text black (2026-10-16)
+    pub color_auto: bool,
     /// 書体の名前
     pub font: Option<String>,
     /// **欧文の書体**(docx の `w:rFonts` の `w:ascii`。`font` は和文の
@@ -3005,7 +3011,10 @@ impl Document {
             lk.underline = lk.underline.or(s.look.underline);
             lk.strike = lk.strike.or(s.look.strike);
             lk.size_pt = lk.size_pt.or(s.look.size_pt);
-            lk.color = lk.color.clone().or_else(|| s.look.color.clone());
+            if lk.color.is_none() && !lk.color_auto {
+                lk.color = s.look.color.clone();
+                lk.color_auto = s.look.color_auto;
+            }
             lk.font = lk.font.clone().or_else(|| s.look.font.clone());
             lk.font_latin = lk.font_latin.clone().or_else(|| s.look.font_latin.clone());
             lk.fill = lk.fill.clone().or_else(|| s.look.fill.clone());

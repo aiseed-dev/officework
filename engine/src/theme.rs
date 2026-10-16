@@ -2128,7 +2128,15 @@ fn jibun_wo_ateru(
         // the grey Placeholder Text style and say `auto` themselves, and
         // Word draws them in black (2026-09-29)
         if r.fmt.color.is_none() && !r.fmt.itta.color {
-            r.fmt.color = ck.and_then(|c| c.color.clone()).or_else(|| lk.color.clone());
+            // The nearer style that states a colour wins, `auto` included
+            let (iro, auto) = match ck.filter(|c| c.color.is_some() || c.color_auto) {
+                Some(c) => (c.color.clone(), c.color_auto),
+                None => (lk.color.clone(), lk.color_auto),
+            };
+            r.fmt.color = iro;
+            // A style's `auto` counts as the run stating it, so the
+            // document's default colour does not reach the run
+            r.fmt.itta.color = r.fmt.color.is_none() && auto;
         }
     }
 }
@@ -2420,7 +2428,9 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
         }
         fn hitotsu(p: &mut crate::doc::Paragraph, iro: &str) {
             for r in p.runs.iter_mut() {
-                if r.fmt.color.is_none() {
+                // A run that states `auto`, itself or through its style,
+                // keeps it (ECMA-376 17.3.2.6)
+                if r.fmt.color.is_none() && !r.fmt.itta.color {
                     r.fmt.color = Some(iro.to_string());
                 }
             }
