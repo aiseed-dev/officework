@@ -842,6 +842,54 @@ fn rule(l: &PdfLayerReference, f: &CharFormat, x: f32, y: f32, w: f32, pt: f32) 
 #[cfg(test)]
 mod tests {
 
+    /// Anchors on the same side of the text are drawn in the order of their
+    /// `relativeHeight` (ECMA-376 20.4.2.3), and every anchor behind the
+    /// text stays below every one in front of it
+    #[test]
+    fn anchors_are_drawn_in_the_order_of_their_relative_height() {
+        let one = |rh: u64, behind: u8| format!(
+            r#"<w:drawing><wp:anchor relativeHeight="{rh}" behindDoc="{behind}"><wp:extent cx="10" cy="10"/><a:graphic><a:graphicData><wps:wsp><wps:spPr><a:prstGeom prst="rect"/></wps:spPr></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing>"#);
+        let page = kumihan::PageSetup::default();
+        let z = |x: String| split_anchors_z(&x, &page)[0].1;
+        let (photo, panel) = (z(one(251667456, 1)), z(one(251669504, 1)));
+        assert!(panel > photo, "the higher one is not above: {panel} {photo}");
+        assert!(z(one(251659264, 0)) > panel, "an anchor in front of the text is below one behind it");
+        assert!(z(one(3, 0)) > z(one(2, 0)), "small values lost their order");
+    }
+
+    /// A shape anchored to a paragraph near the foot of a page that ends
+    /// early at a page break stays on that paragraph's page. The page after
+    /// starts its scroll measure above that paragraph, and the shape was put
+    /// there (the cover of Word's business report, 2026-10-16)
+    #[test]
+    fn a_shape_stays_on_its_paragraphs_page_before_a_page_break() {
+        let para = |t: &str| kumihan::Paragraph {
+            runs: vec![kumihan::Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
+            ..Default::default()
+        };
+        let mut d = kumihan::Document::default();
+        for _ in 0..28 {
+            d.push_para(para("本文です。"));
+        }
+        let mut ikari = para("錨");
+        ikari.anchors.push(r#"<w:drawing><wp:anchor><wp:positionH relativeFrom="column"><wp:posOffset>0</wp:posOffset></wp:positionH>
+<wp:positionV relativeFrom="page"><wp:posOffset>720000</wp:posOffset></wp:positionV>
+<wp:extent cx="1800000" cy="720000"/><a:graphic><a:graphicData><wps:wsp><wps:spPr>
+<a:prstGeom prst="rect"/><a:solidFill><a:srgbClr val="A4063E"/></a:solidFill></wps:spPr></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing>"#.into());
+        d.push_para(ikari);
+        let mut next = para("次の頁");
+        next.page_break_before = true;
+        d.push_para(next);
+        let (sheet, page, _) = doc_to_sheet(&d, None).expect("not laid out");
+        let pg = paginate_full(&sheet, Paper::from_page(&page));
+        let (_, _, y) = sheet.anchors_at[0];
+        assert_eq!(pg.page_at(y), 0, "the anchoring paragraph is not on page 1");
+        assert!(pg.offsets.get(1).is_some_and(|o| *o <= y), "the case this test is for does not arise: {:?} {y}", pg.offsets);
+        let v = foreign_shapes(&d, &sheet, page);
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].page, 0, "the shape went to the next page");
+    }
+
     /// **紙に入らない図形は次の紙へ送る。**
     ///
     /// 錨の段落が紙の下の方にあると、そこからのずれを足した位置が紙の外に
@@ -3008,7 +3056,11 @@ pub(crate) fn split_anchors_z(a: &str, page: &kumihan::PageSetup) -> Vec<(String
         // the text is above every one that is (ECMA-376 Part 1 20.4.2.3,
         // behindDoc and relativeHeight). Word's restaurant brochure puts its
         // dark panels behind the text, and they hid the inline ramen photo
-        let base = if behind_doc(&x) { BEHIND } else { 0 };
+        // Among anchors on the same side of the text, a higher
+        // `relativeHeight` is drawn above a lower one (20.4.2.3). The cover
+        // of Word's business report puts its red panel above its photo, and
+        // the photo hid it (2026-10-16)
+        let base = if behind_doc(&x) { BEHIND } else { 0 } + relative_height_rank(&x) * 128;
         match open_group(&x, page) {
             Some(kora) => {
                 for (i, ko) in kora.into_iter().enumerate() {
@@ -3023,6 +3075,21 @@ pub(crate) fn split_anchors_z(a: &str, page: &kumihan::PageSetup) -> Vec<(String
 
 /// The z an anchor behind the text starts from, far below the body's 0
 const BEHIND: i32 = -1_000_000;
+
+/// An anchor's `relativeHeight` as a small rank that keeps its order. Word
+/// counts from 0x0F000000 in steps of 1024; other writers count 1, 2, 3.
+/// The rank stays under 7000, so 128 children of a group at each rank stay
+/// clear of the side of the text the anchor is on ([`BEHIND`])
+fn relative_height_rank(x: &str) -> i32 {
+    let Some(i) = x.find("<wp:anchor") else { return 0 };
+    let e = x[i..].find('>').map_or(x.len(), |e| i + e);
+    let tag = &x[i..e];
+    let Some(j) = tag.find("relativeHeight=\"") else { return 0 };
+    let v = &tag[j + 16..];
+    let Some(rh) = v.find('"').and_then(|k| v[..k].parse::<u64>().ok()) else { return 0 };
+    let rank = if rh >= 0x0F00_0000 { (rh - 0x0F00_0000) >> 10 } else { rh };
+    rank.min(7000) as i32
+}
 
 /// Is this anchor behind the text? (`wp:anchor behindDoc`, true or 1)
 fn behind_doc(x: &str) -> bool {
@@ -3253,8 +3320,13 @@ pub(crate) fn stretch([x, y, w, h]: [f32; 4], fill: Option<[f32; 4]>) -> ([f32; 
 /// their anchors, into `sheet.float_images` (2026-09-20)
 pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, page: kumihan::PageSetup) {
     let pg = paginate_full(sheet, Paper::from_page(&page));
+    // The page by the first line each page starts with ([`Pagination::page_at`]):
+    // `offsets` overlaps the foot of the page before, and a paragraph near the
+    // foot of a page that ends early at a page break was taken for the next
+    // page. The cover of Word's business report anchors its red panel and
+    // photo there, and they came out on page 2 (2026-10-16)
     let kami_no = |y: f32| -> (usize, f32) {
-        let k = pg.offsets.iter().rposition(|o| *o <= y).unwrap_or(0);
+        let k = pg.page_at(y);
         (k, pg.offsets.get(k).copied().unwrap_or(0.0))
     };
     let mut pictures: Vec<&kumihan::InlineImage> = Vec::new();
@@ -3481,8 +3553,13 @@ pub fn foreign_shapes(
     let mut out: Vec<kumihan::DocShape> = Vec::new();
     let kami_kazu = pg.offsets.len().max(1);
     // the page a sheet y falls on, and where that page starts
+    // The page by the first line each page starts with ([`Pagination::page_at`]):
+    // `offsets` overlaps the foot of the page before, and a paragraph near the
+    // foot of a page that ends early at a page break was taken for the next
+    // page. The cover of Word's business report anchors its red panel and
+    // photo there, and they came out on page 2 (2026-10-16)
     let kami_no = |y: f32| -> (usize, f32) {
-        let k = pg.offsets.iter().rposition(|o| *o <= y).unwrap_or(0);
+        let k = pg.page_at(y);
         (k, pg.offsets.get(k).copied().unwrap_or(0.0))
     };
     // **A section's own header and footer carry shapes too** (`w:sectPr`
