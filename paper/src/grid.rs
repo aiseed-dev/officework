@@ -310,53 +310,116 @@ pub fn page_starts(grid: &Grid, paper: Paper, setup: &PrintSetup) -> (Vec<u32>, 
 }
 
 
-/// ヘッダー/フッターの1区分を、頁番号を入れた字にする。
-/// `&P` はこの頁の番号(**ブック通し**)、`&N` は総頁。
-/// 他の `&コード`(`&"書体"` など)は落とす — 黙って化けさせない。
-///
-/// **純粋な関数にしてある** — 頁番号の規則はここだけで決まるので、
-/// 試験でそのまま縛れる(2026-08-13、Book.to_pdf の頁の数え方のため)。
-pub fn hf_subst(raw: &str, page_no: usize, total: usize) -> String {
-    // **一度の走査で読む。** 先に &P を数へ置き換えてから印を落とす作りだと、
-    // 「&&P」(素の & のあとに P)が数に化ける — 走査を分けない
-    let mut out = String::new();
+/// A stretch of a header or footer section in one look
+#[derive(Debug, Clone, PartialEq)]
+struct HfRun {
+    text: String,
+    /// The size set by `&nn`; None is the book's default size
+    pt: Option<f32>,
+    bold: bool,
+    italic: bool,
+    underline: bool,
+    strike: bool,
+}
+
+/// **A header or footer section read into runs** (ECMA-376 Part 1,
+/// 18.3.1.46). `&P` is this page's number (counted through the book), `&N`
+/// the number of pages and `&A` the sheet's name; `&nn` sets the size, `&B`
+/// `&I` `&U` `&S` switch bold, italic, underline and strike-through, and `&&`
+/// is a plain `&`. The font name (`&"name,style"`), the colour (`&Krrggbb`)
+/// and the codes for date, time and file name are left out, so nothing is
+/// shown wrong: the digits of `&16` were drawn as "6" before (2026-10-17,
+/// the footer of an ods that sets its page number in 16pt)
+fn hf_runs(raw: &str, page_no: usize, total: usize, sheet: &str) -> Vec<HfRun> {
+    let mut out: Vec<HfRun> = Vec::new();
+    let (mut pt, mut bold, mut italic, mut underline, mut strike) = (None, false, false, false, false);
+    let mut cur = String::new();
+    let flush = |cur: &mut String, out: &mut Vec<HfRun>, pt: Option<f32>, b: bool, i: bool, u: bool, k: bool| {
+        if !cur.is_empty() {
+            out.push(HfRun { text: std::mem::take(cur), pt, bold: b, italic: i, underline: u, strike: k });
+        }
+    };
     let mut it = raw.chars().peekable();
     while let Some(ch) = it.next() {
         if ch != '&' {
-            out.push(ch);
+            cur.push(ch);
             continue;
         }
-        match it.peek() {
-            // 「&&」は素の &(xlsx の書き方)。落とすと「山田&田中」が壊れる
-            Some('&') => {
+        let Some(&c2) = it.peek() else { continue };
+        match c2 {
+            '&' => {
                 it.next();
-                out.push('&');
+                cur.push('&');
             }
-            Some('P') => {
+            'P' => {
                 it.next();
-                out.push_str(&page_no.to_string());
+                cur.push_str(&page_no.to_string());
             }
-            Some('N') => {
+            'N' => {
                 it.next();
-                out.push_str(&total.to_string());
+                cur.push_str(&total.to_string());
             }
-            // &"書体名" は書体の指定 — 名前ごと落とす
-            Some('"') => {
+            'A' => {
                 it.next();
-                for c2 in it.by_ref() {
-                    if c2 == '"' {
+                cur.push_str(sheet);
+            }
+            // The font's name: left out with its name
+            '"' => {
+                it.next();
+                for c3 in it.by_ref() {
+                    if c3 == '"' {
                         break;
                     }
                 }
             }
-            // 知らない &コード(&B 太字 など)は落とす — 黙って化けさせない
-            Some(c2) if c2.is_ascii_alphanumeric() => {
+            'B' | 'I' | 'U' | 'E' | 'S' => {
+                it.next();
+                flush(&mut cur, &mut out, pt, bold, italic, underline, strike);
+                match c2 {
+                    'B' => bold = !bold,
+                    'I' => italic = !italic,
+                    'S' => strike = !strike,
+                    _ => underline = !underline,
+                }
+            }
+            'K' => {
+                it.next();
+                for _ in 0..6 {
+                    if it.peek().is_some_and(|c| c.is_ascii_hexdigit()) {
+                        it.next();
+                    }
+                }
+            }
+            d if d.is_ascii_digit() => {
+                let mut n = String::new();
+                while let Some(&d) = it.peek() {
+                    if d.is_ascii_digit() && n.len() < 3 {
+                        n.push(d);
+                        it.next();
+                    } else {
+                        break;
+                    }
+                }
+                flush(&mut cur, &mut out, pt, bold, italic, underline, strike);
+                pt = n.parse::<f32>().ok().filter(|v| *v > 0.0);
+            }
+            // Other codes (date, time, file name, picture) are left out
+            c3 if c3.is_ascii_alphabetic() => {
                 it.next();
             }
             _ => {}
         }
     }
+    flush(&mut cur, &mut out, pt, bold, italic, underline, strike);
     out
+}
+
+/// ヘッダー/フッターの1区分を、頁番号を入れた字にする(大きさや太字の
+/// 指定は落とす)。**純粋な関数にしてある** — 頁番号の規則はここだけで
+/// 決まるので、試験でそのまま縛れる(2026-08-13、Book.to_pdf の頁の数え方
+/// のため)。
+pub fn hf_subst(raw: &str, page_no: usize, total: usize) -> String {
+    hf_runs(raw, page_no, total, "").into_iter().map(|r| r.text).collect()
 }
 
 /// 印刷のヘッダー/フッターを、渡された頁の並びに描く。
@@ -389,10 +452,10 @@ fn draw_header_footer(
         let pt = if default_pt > 0.0 { default_pt } else { book::DEFAULT_CELL_PT };
         let em = pt * 25.4 / 72.0;
         // The width of a text, full-width letters 1em and others 0.5em
-        let est = |s: &str| -> f32 {
+        let est = |s: &str, pt: f32| -> f32 {
             s.chars()
                 .map(|c| if (c as u32) < 0x2E80 { 0.5 } else { 1.0 })
-                .sum::<f32>() * em
+                .sum::<f32>() * pt * 25.4 / 72.0
         };
         const HF_INK: (f32, f32, f32) = (0.0, 0.0, 0.0);
         // The header's and footer's distance from the paper's edge
@@ -402,20 +465,30 @@ fn draw_header_footer(
         let (hm, fm) = grid.hf_margins_mm.unwrap_or((7.62, 7.62));
         for (i, page) in hf_pages.enumerate() {
             let ink = &mut board.ink(page);
-            let subst = |raw: &str| -> String { hf_subst(raw, offset + i + 1, total) };
+            let runs_of = |raw: &str| -> Vec<HfRun> { hf_runs(raw, offset + i + 1, total, &grid.name) };
+            // One section's runs, set from x one after another
+            let width = |runs: &[HfRun]| -> f32 { runs.iter().map(|r| est(&r.text, r.pt.unwrap_or(pt))).sum() };
+            let draw = |ink: &mut Ink<'_>, runs: &[HfRun], mut x: f32, y: f32| {
+                for r in runs {
+                    let size = r.pt.unwrap_or(pt);
+                    let w = est(&r.text, size);
+                    ink.text_kazari(&r.text, size, x, y, HF_INK, r.bold, 0, w, r.underline, r.strike, 0.0, r.italic);
+                    x += w;
+                }
+            };
             let put3 = |ink: &mut Ink<'_>, raw: &str, y: f32| {
                 let (lf, cn, rt) = book::hf_split(raw);
-                let (lf, cn, rt) = (subst(&lf), subst(&cn), subst(&rt));
+                let (lf, cn, rt) = (runs_of(&lf), runs_of(&cn), runs_of(&rt));
                 if !lf.is_empty() {
-                    ink.text(&lf, pt, ml, y, HF_INK, false);
+                    draw(ink, &lf, ml, y);
                 }
                 if !cn.is_empty() {
-                    let x = (paper.width_mm - est(&cn)) / 2.0;
-                    ink.text(&cn, pt, x.max(ml), y, HF_INK, false);
+                    let x = (paper.width_mm - width(&cn)) / 2.0;
+                    draw(ink, &cn, x.max(ml), y);
                 }
                 if !rt.is_empty() {
-                    let x = paper.width_mm - mr - est(&rt);
-                    ink.text(&rt, pt, x.max(ml), y, HF_INK, false);
+                    let x = paper.width_mm - mr - width(&rt);
+                    draw(ink, &rt, x.max(ml), y);
                 }
             };
             if let Some(h) = &grid.header {
@@ -1039,6 +1112,13 @@ fn deru_ji(grid: &Grid) -> std::collections::BTreeSet<char> {
     let mut ji: std::collections::BTreeSet<char> = std::collections::BTreeSet::new();
     for c in grid.cells.values() {
         ji.extend(c.value.display().chars());
+        // What a number format makes of the value: the colons of a time, the
+        // slash of a date or a fraction, the letters of an exponent. These
+        // fell to the 0.55em estimate, and a time that fits its column
+        // (12:59:02 in 17mm) was shown as ### (2026-10-17)
+        if let Some(code) = &c.fmt.number_format {
+            ji.extend(book::format_value(&c.value, Some(code), false).chars());
+        }
         if let Some(f) = &c.formula {
             ji.extend(f.chars());
         }
@@ -1585,14 +1665,17 @@ fn draw_sheet(
         // 印刷の枠線(printOptions gridLines)。薄い灰で先に敷く
         if grid.print_gridlines {
             let w_total = col_x[ncols];
+            // LibreOffice prints them black, a 0.1pt hairline
+            // (`ScPrintFunc`: `aGridColor( COL_BLACK )`)
+            let (gw, gc) = if as_libreoffice { (0.1 * 25.4 / 72.0, (0.0, 0.0, 0.0)) } else { (0.1, GRID_GREY) };
             for (x1, y1, x2, y2) in [
                 (ml, y_top, ml + w_total, y_top),
                 (ml, y_top - rh, ml + w_total, y_top - rh),
             ] {
-                ink.line(x1, y1, x2, y2, 0.1, GRID_GREY);
+                ink.line(x1, y1, x2, y2, gw, gc);
             }
             for &x in col_x.iter().take(ncols + 1) {
-                ink.line(ml + x, y_top, ml + x, y_top - rh, 0.1, GRID_GREY);
+                ink.line(ml + x, y_top, ml + x, y_top - rh, gw, gc);
             }
         }
         // 行番号(printOptions headings)。左の余白に小さく
@@ -3881,6 +3964,22 @@ mod print_extras_tests {
     /// 頁番号の規則そのもの(&P はブック通し・&N は総頁)。
     /// PDF の字は埋め込み書体の符号なので外から読めない — **規則は
     /// ここで縛る**(2026-08-13、Book.to_pdf の数え方)
+    /// The codes of a header or footer section (ECMA-376 18.3.1.46): `&16`
+    /// is a size, not the digits "16" after an `&`; `&A` is the sheet's name
+    #[test]
+    fn header_codes_set_size_style_and_sheet_name() {
+        let r = hf_runs("&\"ＭＳ 明朝,Regular\"&16- &A -", 2, 9, "1");
+        assert_eq!(r.len(), 1);
+        assert_eq!((r[0].text.as_str(), r[0].pt), ("- 1 -", Some(16.0)));
+        let r = hf_runs("&B社外秘&B 済 &I&U斜&P", 4, 9, "S");
+        let look = |i: usize| (r[i].text.as_str(), r[i].bold, r[i].italic, r[i].underline);
+        assert_eq!(look(0), ("社外秘", true, false, false));
+        assert_eq!(look(1), (" 済 ", false, false, false));
+        assert_eq!(look(2), ("斜4", false, true, true));
+        // A colour and the date are left out
+        assert_eq!(hf_subst("&KFF0000赤&D", 1, 1), "赤");
+    }
+
     #[test]
     fn page_number_text_is_book_wide() {
         // 1冊 5 頁のうち、2枚目のシートの最初の頁が 3 頁目のとき
