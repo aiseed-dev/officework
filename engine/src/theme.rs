@@ -1914,6 +1914,22 @@ fn kitei_no_yose(para: &mut crate::doc::Paragraph, said: bool, yose: Option<crat
     }
 }
 
+/// **The document's default indents go under the style's and the numbering
+/// level's** (ECMA-376 17.7.2: the document defaults are the lowest layer).
+/// A value is taken only where neither the style chain nor the numbering
+/// level of the paragraph says one; a stated 0 counts as stated
+fn ind_default_under(pl: &mut crate::doc::StyleParaLook, d: &crate::doc::StyleParaLook) {
+    if pl.first_line_twips.is_none() && pl.list_first_twips.is_none() {
+        pl.first_line_twips = d.first_line_twips;
+    }
+    if pl.left_twips.is_none() && pl.list_left_twips.is_none() {
+        pl.left_twips = d.left_twips;
+    }
+    if pl.right_twips.is_none() {
+        pl.right_twips = d.right_twips;
+    }
+}
+
 fn jibun_wo_ateru(
     para: &mut crate::doc::Paragraph,
     lk: &crate::doc::StyleLook,
@@ -2176,6 +2192,10 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
         .collect::<std::collections::BTreeSet<_>>()
         .into_iter()
         .filter_map(|id| out.style_matome(&id).map(|(l, p)| (id, l, p)))
+        .map(|(id, l, mut p)| {
+            ind_default_under(&mut p, &doc.ind_default);
+            (id, l, p)
+        })
         .collect();
     // **文書の既定(層1)。** `w:docDefaults` が言う段落後の空きと行間です。
     // スタイルより下の層なので、スタイルを当てた後に、まだ言っていない所へ
@@ -2195,7 +2215,11 @@ pub fn compose(doc: &Document, theme: &Theme) -> Document {
         .chain(out.styles_new.iter())
         .find(|s| s.default && s.kind == "paragraph")
         .map(|s| s.id.clone())
-        .and_then(|id| out.style_matome(&id));
+        .and_then(|id| out.style_matome(&id))
+        .map(|(l, mut p)| {
+            ind_default_under(&mut p, &doc.ind_default);
+            (l, p)
+        });
     // **同じスタイルが続く間は空きを入れない**(docx の `w:contextualSpacing`)。
     // 隣を見る必要があるので、先に「この段落の前後が同じスタイルか」を出します。
     // 箇条書きの項目がこれで詰まります(2026-09-03)

@@ -635,6 +635,89 @@ mod list_tests {
         assert_eq!(ps[1].right_twips, 576, "スタイル自身の w:ind まで消えた");
     }
 
+    /// **A page break at the top of a page adds no page.** The paragraph
+    /// that ends a section holds the `w:br w:type="page"` itself; the reader
+    /// hands the break to the next paragraph, and the section break had
+    /// started that page already (2026-10-17)
+    #[test]
+    fn a_page_break_right_after_a_section_break_adds_no_blank_page() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let mut d = Document::plain("front\n\nchapter\nmore");
+        let pg = PageSetup::default();
+        if let Block::Para(p) = &mut d.blocks[1] {
+            p.sect = Some(SectionBreak { raw: String::new(), page: pg, continuous: false });
+        }
+        if let Block::Para(p) = &mut d.blocks[2] {
+            p.page_break_before = true;
+        }
+        let s = layout(&d, &m, &Frame { measure_mm: pg.measure_mm(), line_height_mm: 6.4, y0_mm: 0.0 });
+        assert_eq!(s.breaks.len(), 1, "one page break makes one new page: {:?}", s.breaks);
+    }
+
+    /// **A right tab with a leader whose stop lies past the right margin
+    /// puts the page number at the margin, on the same line.** The `TOC 2`
+    /// style of Word's non-fiction template has its stop at 9350 twips on a
+    /// 9026 twip line. The leader ended exactly at the margin, the page
+    /// number rounded over it by a hair and went to a line of its own, for
+    /// four of the five entries (2026-10-17).
+    #[test]
+    fn a_leader_to_a_tab_past_the_margin_keeps_the_page_number_on_the_line() {
+        let data = test_font();
+        let m = Metrics::new(&data).unwrap();
+        let mut p = Paragraph::default();
+        for t in ["第 2 章:章タイトルをここに挿入", "\t", "5"] {
+            p.runs.push(Run { text: t.into(), size_pt: Some(12.0), font: None, fmt: Default::default() });
+        }
+        p.left_twips = 720;
+        p.first_line_twips = 720;
+        p.tab_stops = vec![TabStop { twips: 9350, kind: TabKind::Right, leader: Some('.') }];
+        let mut d = Document::default();
+        d.push_para(p);
+        let measure = (11906.0 - 2.0 * 1440.0) * 25.4 / 1440.0;
+        for w in [measure, measure - 0.003, measure + 0.007, 150.0, 140.3] {
+            let s = layout(&d, &m, &Frame { measure_mm: w, line_height_mm: 6.4, y0_mm: 0.0 });
+            assert_eq!(s.lines.len(), 1, "the page number left the line at {w}mm: {:?}",
+                       s.lines.iter().map(|l| l.text()).collect::<Vec<_>>());
+        }
+    }
+
+    /// **The document's default indents are the lowest layer** (ECMA-376
+    /// 17.7.2): they reach a paragraph that no style and no numbering level
+    /// gives an indent, and a style that states 0 stops them. Word's
+    /// non-fiction template has `w:firstLine="720"` in `w:pPrDefault`, and
+    /// `Title` states `w:firstLine="0"` (2026-10-17)
+    #[test]
+    fn the_document_default_indent_is_the_lowest_layer() {
+        let mut d = Document::plain("body\ntitle\nbullet");
+        d.ind_default = StyleParaLook { first_line_twips: Some(720), ..Default::default() };
+        d.styles.push(StyleInfo { id: "N".into(), kind: "paragraph".into(), default: true, ..Default::default() });
+        d.styles.push(StyleInfo {
+            id: "T".into(), kind: "paragraph".into(),
+            para: StyleParaLook { first_line_twips: Some(0), ..Default::default() },
+            ..Default::default()
+        });
+        d.styles.push(StyleInfo {
+            id: "B".into(), kind: "paragraph".into(),
+            para: StyleParaLook {
+                list: Some(ListKind::Bullet), list_left_twips: Some(360), list_first_twips: Some(-360),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let ids = [None, Some("T"), Some("B")];
+        for (b, id) in d.blocks.iter_mut().zip(ids) {
+            if let Block::Para(p) = b {
+                p.style_id = id.map(|s| s.to_string());
+            }
+        }
+        let c = crate::theme::compose(&d, &crate::theme::default_theme());
+        let ps: Vec<&Paragraph> = c.paragraphs().collect();
+        assert_eq!(ps[0].first_line_twips, 720, "the default indent does not reach an unstyled paragraph");
+        assert_eq!(ps[1].first_line_twips, 0, "a style's own 0 did not stop the default");
+        assert_eq!(ps[2].first_line_twips, -360, "the default beat the numbering level");
+    }
+
     /// **A table style's band centres the cells that state no `w:vAlign`**
     /// (ECMA-376 17.7.6, 17.4.84). The `FinancialTable` style of the business
     /// plan e22e6b47 does this for its header row; a cell that states its
@@ -1699,7 +1782,7 @@ mod table_layout_tests {
             }],
             ..Default::default()
         };
-        let mut d = Document { align: None, no_html_auto_space: false, kern: None, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
+        let mut d = Document { ind_default: Default::default(), align: None, no_html_auto_space: false, kern: None, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(), font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), shapes: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false, blocks: vec![] };
         d.blocks.push(Block::Table(Table {
             col_mm: vec![],
             rows: vec![vec![cell(&"あ".repeat(30)), cell("短い")]],
@@ -1739,7 +1822,7 @@ mod merge_layout_tests {
     fn sheet_of(rows: Vec<Vec<Cellbox>>) -> Sheet {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let d = Document { align: None, no_html_auto_space: false, kern: None, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
+        let d = Document { ind_default: Default::default(), align: None, no_html_auto_space: false, kern: None, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
             font: None, page: None, sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
             blocks: vec![Block::Table(Table { col_mm: vec![], rows,
         ..Default::default()
@@ -1816,7 +1899,7 @@ mod gridcol_tests {
     fn rules_of(col_mm: Vec<f32>) -> Vec<crate::doc::Rule> {
         let data = test_font();
         let m = Metrics::new(&data).unwrap();
-        let d = Document { align: None, no_html_auto_space: false, kern: None, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
+        let d = Document { ind_default: Default::default(), align: None, no_html_auto_space: false, kern: None, page_start: None, wrap_trail_spaces: false, balance_sbcs: false, font_latin: None, color: None, shapes: Vec::new(), note_ids_taken: Vec::new(), template: None, theme_colors: Vec::new(), theme_line_pt: Vec::new(), space_after_pt: None, line_spacing: None, attrs: Vec::new(), styles: Vec::new(), styles_new: Vec::new(),  footnote_fmt: Default::default(), size_pt: None, endnote_fmt: Default::default(),
             font: None,
             page: None,
             sect_raw: None, footnotes: Vec::new(), header: Default::default(), footer: Default::default(), page_color: None, watermark: None, ink: Vec::new(), track_author: None, hyphenate: false, compress_punct: false, sect_hf: Default::default(), title_pg: false, first_header: None, first_footer: None, protection: None, props: Default::default(), vertical: false,
@@ -2404,6 +2487,26 @@ mod hf_layout_tests {
         assert_eq!(face_of(&f, "www").as_deref(), Some("Microsoft Sans Serif"));
     }
 
+    /// A section whose `w:pgNumType` names a format prints its page numbers
+    /// in it (ECMA-376 17.6.12): the front matter of Word's non-fiction
+    /// template reads i, ii, iii, iv
+    #[test]
+    fn the_page_number_takes_the_format_of_the_section() {
+        let data = metrics();
+        let m = Metrics::new(&data).unwrap();
+        let pg = PageSetup { page_fmt: NoteNumFmt::LowerRoman, ..PageSetup::default() };
+        let f = hf(&PAGE_MARK.to_string());
+        assert_eq!(layout_hf(&f, &m, &pg, 6.4, 4, 9, true, DEFAULT_PT)[0].text(), "iv");
+        let mut b = hf("");
+        b.blocks = vec![Block::Table(Table {
+            col_mm: vec![pg.measure_mm()],
+            rows: vec![vec![Cellbox { paragraphs: hf(&PAGE_MARK.to_string()).paragraphs, ..Default::default() }]],
+            ..Default::default()
+        })];
+        let s = layout_hf_sheet(&b, &m, &pg, 3, 9, true, DEFAULT_PT, None).expect("not laid out");
+        assert_eq!(s.lines[0].text(), "iii");
+    }
+
     #[test]
     fn the_page_number_field_becomes_the_number() {
         let data = metrics();
@@ -2499,7 +2602,7 @@ mod section_layout_tests {
 
     fn paper(w: f32, h: f32) -> PageSetup {
         PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None }
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None, page_fmt: Default::default() }
     }
 
     fn tab(text: &str, sect: Option<PageSetup>) -> Block {
@@ -3092,7 +3195,7 @@ mod fold_print_tests {
 
     fn paper(w: f32, h: f32) -> PageSetup {
         PageSetup { w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None }
+                    top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None, page_fmt: Default::default() }
     }
     fn line(y: f32) -> Line {
         Line { cells: vec![Cell { kern_mm: 0.0, ch: 'あ', x_mm: 0.0, w_mm: 4.0, size_pt: 10.5,

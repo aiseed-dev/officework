@@ -618,6 +618,9 @@ pub(super) fn atama_no_gazou_mm(para: &Paragraph) -> f32 {
 /// 段数(`indent`)は全角2文字きざみなので、1文字や3文字を表せません。
 /// docx から読んだ細かい値は `left_twips` が持っているので、それを先に
 /// 見ます(2026-08-30)。`em` は全角1文字の幅(mm)です。
+/// How far past the end of a line a token may stand and still count as fitting (mm)
+const FIT_EPS_MM: f32 = 0.003;
+
 pub(super) fn left_mm(para: &Paragraph, em: f32) -> f32 {
     // A negative left indent (`w:ind w:left="-945"`) pulls the text into
     // the margin; it used to count as no indent (2026-09-19, a MHLW form
@@ -876,7 +879,11 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
         // **句読点の詰め**(Word の compressPunctuation。2026-09-09)。行の約物の
         // 空きを詰めれば入る字は、行に留めます([`tsume_yoyuu`])
         let yoyuu = if tsume { tsume_goukei(&cur) + tsume_goukei(&cells) } else { 0.0 };
-        if w_cur + w - yoyuu > measure && !cur.is_empty() && !oikomi {
+        // **A hair of room, 0.003mm**: a right tab that is clamped to the end
+        // of the line is laid to end exactly there, and float rounding put
+        // the page number of a table of contents entry over the end
+        // (2026-10-17)
+        if w_cur + w - yoyuu > measure + FIT_EPS_MM && !cur.is_empty() && !oikomi {
             if let Tok::Space(..) = tok {
                 // **行末の空白は折らず、右の余白へぶら下げます**(2026-09-09、Word の
                 // PDF で測った)。半角も全角も同じで、幅の上限は無い。裁判所の訴状の
@@ -1459,7 +1466,16 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                     if let Some((_, sita)) = ukabu_obi.take() {
                         y = y.max(sita);
                     }
-                    sheet.breaks.push(y);
+                    // **A page break on the first line of a page makes no
+                    // new page.** The last paragraph of a section often holds
+                    // the `w:br w:type="page"` itself, and the section break
+                    // that ends the paragraph has already started the next
+                    // page; Word's non-fiction template has a blank sheet
+                    // between its front matter and its first chapter in our
+                    // print, and none in Word's (2026-10-17)
+                    if !sheet.breaks.last().is_some_and(|b| (y - b).abs() < 0.01) {
+                        sheet.breaks.push(y);
+                    }
                 }
                 // **段落の前の空き。** 文書が言っていればそれ、言っていなくて
                 // 見出しなら既定の空き(見出しが本文に貼り付いて見えるのを防ぐ)。
@@ -2232,7 +2248,7 @@ pub fn layout_hf_with(
     if hf.paragraphs.is_empty() {
         return Vec::new();
     }
-    let num = page_no.to_string();
+    let num = pg.page_fmt.label(page_no);
     let tot = total.to_string();
     let measure = pg.measure_mm();
     // **ヘッダーは用紙の上端から [`HEADER_MM`]、フッターは下端から [`FOOTER_MM`]**
@@ -2398,6 +2414,7 @@ fn hf_little_doc(hf: &HeadFoot, base_pt: f32, moto: Option<&Document>, num: &str
             space_after_pt: d.space_after_pt,
             line_spacing: d.line_spacing,
             theme_colors: d.theme_colors.clone(),
+            ind_default: d.ind_default.clone(),
             ..Default::default()
         },
         None => Document { size_pt: Some(base_pt), ..Default::default() },
@@ -2489,7 +2506,7 @@ fn hf_blocks_sheet(
     base_pt: f32,
     moto: Option<&Document>,
 ) -> (Sheet, f32) {
-    let doc = hf_little_doc(hf, base_pt, moto, &page_no.to_string(), &total.to_string());
+    let doc = hf_little_doc(hf, base_pt, moto, &pg.page_fmt.label(page_no), &total.to_string());
     let size_mm = base_pt * PT_TO_MM;
     let frame = Frame { measure_mm: pg.measure_mm(), line_height_mm: LINE_MM, y0_mm: 0.0 };
     let sheet = layout(&doc, m, &frame);

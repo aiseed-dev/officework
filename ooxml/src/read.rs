@@ -634,6 +634,16 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                         }
                     }
                 }
+                // The default indents (`w:ind`, ECMA-376 17.3.1.12)
+                if let Some(t) = tag(pp, "<w:ind") {
+                    let v = |k: &str| zoku(&t, k).and_then(|v| v.parse::<i32>().ok());
+                    doc.ind_default = kumihan::StyleParaLook {
+                        left_twips: v("w:left").or_else(|| v("w:start")),
+                        right_twips: v("w:right").or_else(|| v("w:end")),
+                        first_line_twips: v("w:firstLine").or_else(|| v("w:hanging").map(|h| -h)),
+                        ..Default::default()
+                    };
+                }
                 // 揃え(`w:jc`)。Word の入場券の型紙は中央寄せと言います
                 if let Some(t) = tag(pp, "<w:jc ") {
                     doc.align = match zoku(&t, "w:val").as_deref() {
@@ -1313,6 +1323,22 @@ pub(super) fn parse_sect(raw: &str) -> kumihan::PageSetup {
         bottom_fixed: bottom < 0.0,
         first_top_mm: None,
         first_bottom_mm: None,
+        page_fmt: page_fmt_of(raw),
+    }
+}
+
+/// **The format of the section's page numbers** (`w:pgNumType w:fmt`,
+/// ECMA-376 17.6.12). Without it they are decimal
+fn page_fmt_of(sect: &str) -> kumihan::NoteNumFmt {
+    let Some(i) = sect.find("<w:pgNumType") else { return kumihan::NoteNumFmt::Decimal };
+    let Some(e) = sect[i..].find('>').map(|e| i + e) else { return kumihan::NoteNumFmt::Decimal };
+    let tag = &sect[i..e];
+    match tag.find("w:fmt=\"").map(|k| k + 7) {
+        Some(k) => match tag[k..].find('"') {
+            Some(q) => kumihan::NoteNumFmt::from_docx(&tag[k..k + q]),
+            None => kumihan::NoteNumFmt::Decimal,
+        },
+        None => kumihan::NoteNumFmt::Decimal,
     }
 }
 

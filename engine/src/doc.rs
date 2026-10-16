@@ -1484,6 +1484,10 @@ pub struct PageSetup {
     /// leave room. `None` means the same as the other pages (2026-09-19)
     pub first_top_mm: Option<f32>,
     pub first_bottom_mm: Option<f32>,
+    /// **The format of the page numbers printed in this section** (docx
+    /// `w:pgNumType w:fmt`, ECMA-376 17.6.12). Word's non-fiction template
+    /// numbers its front matter i, ii, iii, iv (2026-10-17)
+    pub page_fmt: NoteNumFmt,
 }
 
 impl Default for PageSetup {
@@ -1493,7 +1497,7 @@ impl Default for PageSetup {
                     top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0,
                     header_mm: HEADER_MM, footer_mm: FOOTER_MM,
                     char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false,
-                    first_top_mm: None, first_bottom_mm: None }
+                    first_top_mm: None, first_bottom_mm: None, page_fmt: NoteNumFmt::Decimal }
     }
 }
 
@@ -1589,6 +1593,15 @@ pub struct Document {
     /// Word の入場券の型紙はここで中央寄せと言っていて、読まないと
     /// 表の中の字が全部左に寄っていました(2026-09-20)
     pub align: Option<Align>,
+    /// **The document's default indents** (`w:docDefaults/w:pPrDefault/w:pPr/
+    /// w:ind`, ECMA-376 17.3.1.12, 17.7.5.3). Only `left_twips`,
+    /// `right_twips` and `first_line_twips` are used. They are the lowest
+    /// layer of the paragraph indents (17.7.2): a style, a numbering level
+    /// or the paragraph itself that states an indent wins over them. Word's
+    /// "Write a non-fiction book" template says `w:firstLine="720"` there
+    /// and indents the first line of every body paragraph by 36pt; we
+    /// drew them flush left (2026-10-17)
+    pub ind_default: StyleParaLook,
     /// **テーマの配色**(docx の `theme1.xml` の `a:clrScheme`)。
     /// 並びは `dk1 lt1 dk2 lt2 accent1..6 hlink folHlink` の12色です。
     ///

@@ -1281,7 +1281,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None, page_fmt: Default::default(),
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -1426,7 +1426,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None, page_fmt: Default::default(),
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -1475,7 +1475,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None, page_fmt: Default::default(),
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -1521,7 +1521,7 @@ mod tests {
         let pg = kumihan::PageSetup {
             w_mm: 210.0, h_mm: 297.0,
             left_mm: 25.0, right_mm: 25.0, top_mm: 30.0, bottom_mm: 30.0,
-            columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None,
+            columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None, page_fmt: Default::default(),
         };
         // 助手の `sheet` は固定の枠で組むので、ここは紙の設定に合わせて
         // 自分で組みます(1頁目の頭も `top_mm + BASE_UP_MM` になります)
@@ -1573,7 +1573,7 @@ mod tests {
         let m = Metrics::new(&data).unwrap();
         let paper = |w: f32, h: f32| PageSetup {
             w_mm: w, h_mm: h, left_mm: 20.0, right_mm: 20.0,
-            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None,
+            top_mm: 20.0, bottom_mm: 20.0, columns: 1, line_pitch_pt: 0.0, header_mm: 15.0, footer_mm: 17.5, char_grid: false, char_space_pt: 0.0, top_fixed: false, bottom_fixed: false, first_top_mm: None, first_bottom_mm: None, page_fmt: Default::default(),
         };
         let tab = |t: &str, sect: Option<PageSetup>| Block::Para(Paragraph {
             runs: vec![Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
@@ -2171,10 +2171,12 @@ fn leaves_of(
     let hf_sheets = doc_hf_sheets(d, font, sheet, page)?;
     let n_pages = paginate_full(sheet, Paper::from_page(&page)).offsets.len().max(1);
     let mut hf_draw: Vec<(usize, kumihan::Sheet, kumihan::PageSetup)> = Vec::new();
-    let mut bangou: Vec<(usize, usize)> = Vec::new();
+    let mut bangou: Vec<(String, usize)> = Vec::new();
     for k in 0..n_pages {
         let (head, foot, pg, printed, total) = hf_sheets(k + 1);
-        bangou.push((printed, total));
+        // The page number of a section is printed in its own format
+        // (`w:pgNumType w:fmt`, ECMA-376 17.6.12)
+        bangou.push((pg.page_fmt.label(printed), total));
         for s in [head, foot].into_iter().flatten() {
             for (xml, r) in &s.inline_shapes {
                 shapes.extend(inline_shape_parts(d, xml, *r, &pg, k, 0.0));
@@ -2187,7 +2189,7 @@ fn leaves_of(
     for sh in &mut shapes {
         if let (Some(t), Some((n, total))) = (sh.look.text.as_mut(), bangou.get(sh.page)) {
             if t.contains(kumihan::PAGE_MARK) || t.contains(kumihan::PAGES_MARK) {
-                *t = t.replace(kumihan::PAGE_MARK, &n.to_string()).replace(kumihan::PAGES_MARK, &total.to_string());
+                *t = t.replace(kumihan::PAGE_MARK, n).replace(kumihan::PAGES_MARK, &total.to_string());
             }
         }
     }
