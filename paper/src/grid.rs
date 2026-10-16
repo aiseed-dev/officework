@@ -935,7 +935,7 @@ impl Board {
 ///
 /// `y_mm` は紙の**上から**の mm(文書の図形はそう持ちます)。紙面は下からの
 /// mm なので、ここで裏返します。
-pub(crate) fn doc_shapes(leaf: &mut pdfw::Leaf, shapes: &[kumihan::DocShape], h_mm: f32) {
+pub(crate) fn doc_shapes(leaf: &mut pdfw::Leaf, shapes: &[kumihan::DocShape], h_mm: f32, fonts: &[String]) {
     let mut l1 = Ink { leaf, z: 0, clip: None };
     for sp in shapes {
         l1.z = sp.z;
@@ -945,7 +945,7 @@ pub(crate) fn doc_shapes(leaf: &mut pdfw::Leaf, shapes: &[kumihan::DocShape], h_
         look.dy_px = 0.0;
         look.width_px = sp.w_mm * 96.0 / 25.4;
         look.height_px = sp.h_mm * 96.0 / 25.4;
-        zukei(&mut l1, &look, sp.x_mm, h_mm - sp.y_mm, 1.0, &[]);
+        zukei(&mut l1, &look, sp.x_mm, h_mm - sp.y_mm, 1.0, fonts);
     }
 }
 

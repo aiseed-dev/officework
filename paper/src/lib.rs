@@ -37,6 +37,11 @@ pub struct PageDress {
     /// **ページに貼り付く図形。** 形を作るのは表を刷るときと同じ
     /// [`grid`] の1本なので、文書と表で図形の形が食い違いません
     pub shapes: Vec<kumihan::DocShape>,
+    /// The list of faces, in the order the pages' text pieces number them
+    /// (the names of [`resolve_run_fonts`], the body face first). A shape's
+    /// text names its face; without the list every shape is drawn in the
+    /// body face
+    pub fonts: Vec<String>,
 }
 
 /// 紙の大きさ(mm)。既定は A4 縦。
@@ -895,6 +900,59 @@ mod tests {
         };
         assert_eq!(style(&xml("")).as_deref(), Some("FFFFFF"));
         assert_eq!(style(&xml(r#"<w:rPr><w:color w:val="C00000"/></w:rPr>"#)).as_deref(), Some("C00000"));
+    }
+
+    /// ASCII text in a shape takes the Latin face of the style chain and, when
+    /// no style names one, the document's Latin default; the `w:eastAsia`
+    /// face of the style is for East Asian text only (ECMA-376 17.3.2.26)
+    #[test]
+    fn ascii_shape_text_takes_the_latin_default_face() {
+        let xml = |t: &str| format!(
+            r#"<wp:anchor><wp:extent cx="100" cy="100"/><a:graphic><a:graphicData><wps:wsp><wps:spPr><a:prstGeom prst="rect"/></wps:spPr><wps:txbx><w:txbxContent><w:p><w:r><w:t>{t}</w:t></w:r></w:p></w:txbxContent></wps:txbx></wps:wsp></a:graphicData></a:graphic></wp:anchor>"#);
+        let mut d = kumihan::Document::plain("x");
+        d.font = Some("MS Mincho".into());
+        d.font_latin = Some("Microsoft Sans Serif".into());
+        // The default style names only the East Asian face, as `Normal` does
+        // in Word's business report
+        d.styles.push(kumihan::StyleInfo {
+            id: "Normal".into(),
+            kind: "paragraph".into(),
+            default: true,
+            look: kumihan::StyleLook { font: Some("Meiryo UI".into()), ..Default::default() },
+            ..Default::default()
+        });
+        let face = |t: &str| {
+            let x = xml(t);
+            let mut f = ooxml::foreign_shape_with(&x, &d.theme_colors, &[]).expect("not read");
+            shape_text_style(&d, &x, &mut f.look);
+            f.look.text_fmt.font
+        };
+        assert_eq!(face("2").as_deref(), Some("Microsoft Sans Serif"));
+        assert_eq!(face("箇").as_deref(), Some("Meiryo UI"));
+    }
+
+    /// A footer run that names no face takes the document's Latin default,
+    /// and the PDF draws it in that face, not in the body's: the name has to
+    /// reach the list of faces (Word's business report prints its footer in
+    /// Microsoft Sans Serif and the body in MS Mincho)
+    #[test]
+    fn a_footer_is_drawn_in_the_latin_default_face() {
+        let mut d = kumihan::Document::plain("本文");
+        d.font = Some("MS Mincho".into());
+        d.font_latin = Some("Microsoft Sans Serif".into());
+        d.footer = kumihan::HeadFoot {
+            paragraphs: kumihan::Document::plain("www").paragraphs().cloned().collect(),
+            ..Default::default()
+        };
+        let body = kumihan::font::for_document(Some("MS Mincho")).unwrap().0.name.clone();
+        let latin = kumihan::font::for_document(Some("Microsoft Sans Serif")).unwrap().0.name.clone();
+        let p = doc_pages(&d, None).expect("not laid out");
+        let piece = p.leaves[0].pieces.iter().find(|x| x.text == "w").expect("the footer is not drawn");
+        let drawn = p.fonts.get(piece.font as usize).map(|(n, _)| n.clone()).unwrap_or_default();
+        assert!(drawn.starts_with(&latin), "the footer is drawn in {drawn}, not {latin}");
+        if latin != body {
+            assert_ne!(piece.font, 0, "the footer is drawn in the body face");
+        }
     }
 
     /// Anchors on the same side of the text are drawn in the order of their
@@ -2133,8 +2191,45 @@ fn leaves_of(
             }
         }
     }
-    let dress = PageDress { bg, watermark: d.watermark.clone(), shapes, ..Default::default() };
+    // The names the layout left in headers, footers and shapes are the
+    // ones the document wrote, or the style chain's; the list of faces
+    // holds the names they resolve to ([`face_pick`])
+    let balance = d.balance_sbcs;
+    let cache = std::cell::RefCell::new(std::collections::BTreeMap::<(String, bool, bool), String>::new());
+    let named = |n: &str, bold: bool, italic: bool| -> String {
+        cache
+            .borrow_mut()
+            .entry((n.to_string(), bold, italic))
+            .or_insert_with(|| face_pick(n, bold, italic, balance).map(|(_, r, _)| r).unwrap_or_else(|| n.to_string()))
+            .clone()
+    };
+    for sh in &mut shapes {
+        if sh.look.text.is_some() {
+            let tf = &mut sh.look.text_fmt;
+            if let Some(n) = tf.font.take().or_else(|| d.font.clone()) {
+                tf.font = Some(named(&n, tf.bold, false));
+            }
+        }
+    }
+    let dress = PageDress {
+        bg,
+        watermark: d.watermark.clone(),
+        shapes,
+        fonts: names.iter().map(|n| n.to_string()).collect(),
+        ..Default::default()
+    };
     let hf = doc_hf_lines(d, font, sheet, page)?;
+    let hf = |k: usize| {
+        let mut lines = hf(k);
+        for l in &mut lines {
+            for c in &mut l.cells {
+                if let Some(n) = c.font.take() {
+                    c.font = Some(named(&n, c.fmt.bold, c.fmt.italic));
+                }
+            }
+        }
+        lines
+    };
     let paper = Paper::from_page(&page);
     // The same numbering as font_index_of: the face's place in the list
     let font_of = |name: Option<&str>| -> u8 {
@@ -2460,6 +2555,38 @@ pub fn compose_doc(doc: &kumihan::Document, theme: Option<&kumihan::theme::Theme
     d
 }
 
+/// **The face a name, a weight and a slant resolve to on this machine**:
+/// the face that is embedded, the name it goes by in the list of faces
+/// ([`resolve_run_fonts`]) and whether bold is made by thickening the
+/// outline (no bold face). `None` when no face can be loaded.
+fn face_pick(
+    name: &str,
+    bold: bool,
+    italic: bool,
+    balance: bool,
+) -> Option<(&'static kumihan::font::Family, String, bool)> {
+    let (fam, _) = kumihan::font::for_document(Some(name)).ok()?;
+    // その太さ・傾きの顔があれば、その顔で測り、その顔を埋めます
+    let kao = kumihan::font::face_for_weight(&fam.name, bold, italic);
+    let hon = kao.unwrap_or(fam);
+    // 字送りの合う書体が無ければ、名前に半角の送りの印を付けて登録する
+    // (`Metrics` が半角を 0.5em で測る。描く側は印を外して描く)。
+    // The compat flag balanceSingleByteDoubleByteWidth does the same
+    // for any East Asian font: Word advances ASCII by 0.5em there
+    let em = kumihan::font::hankaku_em(name).or(if balance && fam.japanese { Some(0.5) } else { None });
+    let resolved = match kao {
+        Some(_) => kumihan::font::weight_name(&fam.name, bold, italic),
+        None => fam.name.clone(),
+    };
+    let resolved = match em {
+        Some(em) => kumihan::font::hankaku_name(&resolved, em),
+        None => resolved,
+    };
+    // Bold with no bold face: the outline is thickened
+    let thickened = bold && !kao.is_some_and(|k| k.bold);
+    Some((hon, resolved, thickened))
+}
+
 /// **run が名乗った書体を、この機械にある書体の名前に解決します**(2026-09-08)。
 /// 置き替えの決め方は kumihan::font の1か所(`for_document`)で、画面はその
 /// 名前で描き、紙はその名前の書体を埋めます。前は画面が gpui に選ばせ、紙は
@@ -2483,27 +2610,8 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
         let Some(name) = r.font.clone() else { return 0.0 };
         let (futoi, nanameta) = (r.fmt.bold, r.fmt.italic);
         let hit = cache.entry((name.clone(), futoi, nanameta)).or_insert_with(|| {
-            let (fam, _) = kumihan::font::for_document(Some(&name)).ok()?;
-            // その太さ・傾きの顔があれば、その顔で測り、その顔を埋めます
-            let kao = kumihan::font::face_for_weight(&fam.name, futoi, nanameta);
-            let hon = kao.unwrap_or(fam);
+            let (hon, resolved, thickened) = face_pick(&name, futoi, nanameta, balance)?;
             let bytes = kumihan::font::load(hon).ok()?;
-            // 字送りの合う書体が無ければ、名前に半角の送りの印を付けて登録する
-            // (`Metrics` が半角を 0.5em で測る。描く側は印を外して描く)。
-            // The compat flag balanceSingleByteDoubleByteWidth does the same
-            // for any East Asian font: Word advances ASCII by 0.5em there
-            let em = kumihan::font::hankaku_em(&name)
-                .or(if balance && fam.japanese { Some(0.5) } else { None });
-            let resolved = match kao {
-                Some(_) => kumihan::font::weight_name(&fam.name, futoi, nanameta),
-                None => fam.name.clone(),
-            };
-            let resolved = match em {
-                Some(em) => kumihan::font::hankaku_name(&resolved, em),
-                None => resolved,
-            };
-            // Bold with no bold face: the outline is thickened
-            let thickened = futoi && !kao.is_some_and(|k| k.bold);
             Some((resolved, bytes, thickened))
         });
         if let Some((resolved, bytes, thickened)) = hit {
@@ -2624,6 +2732,81 @@ pub fn resolve_run_fonts(d: &mut kumihan::Document) -> Vec<(String, Vec<u8>)> {
         match b {
             kumihan::Block::Para(p) => widen(p),
             kumihan::Block::Table(t) => t.for_each_paragraph_mut(&mut |p| widen(p)),
+        }
+    }
+    // **The faces of the headers, footers and shapes are put in the list as
+    // well.** They are known only once a part is laid out, and a name that
+    // is not in the list is drawn in the document's face: the footer and the
+    // page number of Word's business report named Microsoft Sans Serif (the
+    // document's Latin default) and were printed in the Mincho face
+    // (2026-10-17). `leaves_of` turns each name into the same entry by
+    // [`face_pick`].
+    let mut wanted = kumihan::hf_faces(d);
+    wanted.extend(shape_faces(d));
+    for (name, bold, italic) in wanted {
+        if let Some((hon, resolved, _)) = face_pick(&name, bold, italic, balance) {
+            if !out.iter().any(|(n, _)| *n == resolved) {
+                if let Ok(bytes) = kumihan::font::load(hon) {
+                    out.push((resolved, bytes));
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The faces the text of the document's shapes names, as (name, bold,
+/// italic): the floating and inline shapes of the body, of table cells and of
+/// the headers and footers, read the way `foreign_shapes` reads them
+fn shape_faces(d: &kumihan::Document) -> Vec<(String, bool, bool)> {
+    let page = d.page.unwrap_or_default();
+    let mut xmls: Vec<String> = Vec::new();
+    let from_para = |p: &kumihan::Paragraph, v: &mut Vec<String>| {
+        for a in &p.anchors {
+            v.extend(split_anchors(a, &page));
+        }
+        v.extend(p.images_new.iter().filter_map(|i| i.shape.clone()));
+    };
+    for b in &d.blocks {
+        match b {
+            kumihan::Block::Para(p) => from_para(p, &mut xmls),
+            kumihan::Block::Table(t) => t.all_paragraphs().into_iter().for_each(|p| from_para(p, &mut xmls)),
+        }
+    }
+    let mut parts: Vec<&kumihan::HeadFoot> = vec![&d.header, &d.footer];
+    parts.extend(d.first_header.iter().chain(d.first_footer.iter()));
+    for h in d.sect_hf.values() {
+        parts.extend([&h.header, &h.footer]);
+        parts.extend(h.first_header.iter().chain(h.first_footer.iter()));
+    }
+    for hf in parts {
+        for a in &hf.anchors {
+            xmls.extend(split_anchors(a, &page));
+        }
+        for p in &hf.paragraphs {
+            from_para(p, &mut xmls);
+        }
+        for b in &hf.blocks {
+            match b {
+                kumihan::Block::Para(p) => from_para(p, &mut xmls),
+                kumihan::Block::Table(t) => t.all_paragraphs().into_iter().for_each(|p| from_para(p, &mut xmls)),
+            }
+        }
+    }
+    let mut out: Vec<(String, bool, bool)> = Vec::new();
+    for x in xmls {
+        if !x.contains("<w:txbxContent") {
+            continue;
+        }
+        for mut f in ooxml::foreign_shapes_in(&x, &d.theme_colors, &d.theme_line_pt) {
+            shape_text_style(d, &x, &mut f.look);
+            let name = f.look.text_fmt.font.clone().or_else(|| d.font.clone());
+            if let (Some(n), Some(_)) = (name, f.look.text.as_ref()) {
+                let k = (n, f.look.text_fmt.bold, false);
+                if !out.contains(&k) {
+                    out.push(k);
+                }
+            }
         }
     }
     out
@@ -3675,7 +3858,7 @@ fn shape_text_style(doc: &kumihan::Document, xml: &str, look: &mut book::SheetSh
                 .text
                 .as_deref()
                 .is_some_and(|t| kumihan::font::east_asian_text(t, false));
-            tf.font = if wabun { lk.font.clone() } else { lk.font_latin.clone().or_else(|| lk.font.clone()) };
+            tf.font = if wabun { lk.font.clone() } else { latin_of_style(doc, lk.font_latin.clone(), lk.font.clone()) };
         }
         tf.bold |= lk.bold.unwrap_or(false);
         if tf.color.is_none() {
@@ -3693,6 +3876,15 @@ fn shape_text_style(doc: &kumihan::Document, xml: &str, look: &mut book::SheetSh
                 _ => book::HAlign::General,
             };
         }
+    }
+    // Nothing in the style chain names a face: ASCII text takes the
+    // document's Latin default, East Asian text the document's own
+    if look.text_fmt.font.is_none() {
+        let wabun = look
+            .text
+            .as_deref()
+            .is_some_and(|t| kumihan::font::east_asian_text(t, false));
+        look.text_fmt.font = if wabun { None } else { doc.font_latin.clone() };
     }
     // The document default (`w:docDefaults/w:pPrDefault/w:jc`) is the last
     // layer, as it is for a body paragraph
@@ -3713,6 +3905,17 @@ fn shape_text_style(doc: &kumihan::Document, xml: &str, look: &mut book::SheetSh
     if look.text_fmt.color.is_none() {
         look.text_fmt.color = font_ref_colour(xml, &doc.theme_colors);
     }
+}
+
+/// The Latin face of text in a shape: the style chain's `w:ascii`, then
+/// the document's own Latin default (`w:docDefaults`, or the theme face it
+/// names), and only then the East Asian face, which ASCII text never takes
+/// when a Latin face exists (ECMA-376 17.3.2.26, 17.7.2). The page number in
+/// the header box of Word's business report was drawn in the substitute of
+/// MS Mincho, the `w:eastAsia` default, where Word draws Microsoft Sans
+/// Serif (2026-10-17)
+fn latin_of_style(doc: &kumihan::Document, latin: Option<String>, ea: Option<String>) -> Option<String> {
+    latin.or_else(|| doc.font_latin.clone()).or(ea)
 }
 
 /// The colour a shape's style gives its text (`wps:style/a:fontRef`)

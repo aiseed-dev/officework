@@ -2370,6 +2370,40 @@ mod hf_layout_tests {
         assert!(layout_hf_sheet(&hf("足"), &m, &pg, 1, 1, true, DEFAULT_PT, None).is_none());
     }
 
+    /// ASCII text in a header or footer that names no face takes the
+    /// document's Latin default, not the East Asian default (ECMA-376
+    /// 17.3.2.26, 17.7.2). Word's business report names only `w:eastAsia`
+    /// in its styles; its docDefaults give the theme's minor Latin face
+    #[test]
+    fn ascii_in_a_footer_takes_the_latin_default() {
+        let data = metrics();
+        let m = Metrics::new(&data).unwrap();
+        let pg = PageSetup::default();
+        let moto = Document {
+            font: Some("MS Mincho".into()),
+            font_latin: Some("Microsoft Sans Serif".into()),
+            ..Default::default()
+        };
+        let face_of = |f: &HeadFoot, word: &str| {
+            let lines = layout_hf_with(f, &m, &pg, 6.4, 1, 1, true, DEFAULT_PT, Some(&moto));
+            let l = lines.iter().find(|l| l.text().contains(word)).expect("no text");
+            l.cells.iter().find(|c| word.starts_with(c.ch)).expect("no cell").font.clone()
+        };
+        // The paragraph path
+        assert_eq!(face_of(&hf("www"), "www").as_deref(), Some("Microsoft Sans Serif"));
+        // The table path
+        let cell = Cellbox {
+            paragraphs: vec![Paragraph {
+                runs: vec![Run { text: "www".into(), size_pt: None, font: None, fmt: Default::default() }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let mut f = hf("");
+        f.blocks = vec![Block::Table(Table { col_mm: vec![pg.measure_mm()], rows: vec![vec![cell]], ..Default::default() })];
+        assert_eq!(face_of(&f, "www").as_deref(), Some("Microsoft Sans Serif"));
+    }
+
     #[test]
     fn the_page_number_field_becomes_the_number() {
         let data = metrics();

@@ -2261,6 +2261,7 @@ pub fn layout_hf_with(
                 r.text = r.text.replace(PAGES_MARK, &tot);
             }
         }
+        latin_default(&mut para, moto.and_then(|d| d.font_latin.as_deref()));
         for cells in break_para(&para, m, measure, None, false, &mut NoteCount::default(),
                                 base_pt, false, 0.0, false) {
             let w: f32 = cells.iter().map(|c| c.w_mm).sum();
@@ -2358,20 +2359,27 @@ pub fn layout_hf_sheet(
     Some(out)
 }
 
-/// The part laid out as a little document, and how far down the page it goes
-#[allow(clippy::too_many_arguments)]
-fn hf_blocks_sheet(
-    hf: &HeadFoot,
-    m: &Metrics,
-    pg: &PageSetup,
-    page_no: usize,
-    total: usize,
-    footer: bool,
-    base_pt: f32,
-    moto: Option<&Document>,
-) -> (Sheet, f32) {
-    let num = page_no.to_string();
-    let tot = total.to_string();
+/// **A run outside the East Asian blocks that names no face takes the
+/// document's Latin default** (`w:docDefaults` `w:ascii`, or the theme face
+/// it names), not the East Asian default `Document::font` holds
+/// (ECMA-376 17.3.2.26 for the slots, 17.7.2 for the order of the layers).
+/// A footer paragraph whose style names only `w:eastAsia` printed
+/// "www.companywebsite.com" in the substitute of MS Mincho, where Word
+/// draws Microsoft Sans Serif, the minor theme face (2026-10-17)
+fn latin_default(p: &mut Paragraph, latin: Option<&str>) {
+    let Some(latin) = latin else { return };
+    for r in p.runs.iter_mut() {
+        if r.font.is_none() && !r.text.is_empty() && !crate::font::east_asian_text(&r.text, false) {
+            r.font = Some(latin.to_string());
+        }
+    }
+}
+
+/// **A header or footer part with blocks, made ready to lay out**: a little
+/// document of its own, carrying the document's styles and defaults, with
+/// the page marks replaced by `num` and `tot`, the styles worn, and the
+/// East Asian default kept from ASCII text ([`latin_default`]).
+fn hf_little_doc(hf: &HeadFoot, base_pt: f32, moto: Option<&Document>, num: &str, tot: &str) -> Document {
     // The part's paragraphs name the document's styles, so the little
     // document they are laid out in carries them and the document's own
     // defaults (ECMA-376 17.7.2). It had none at all until 2026-09-21, and
@@ -2398,10 +2406,10 @@ fn hf_blocks_sheet(
     let mut ireru = |p: &mut Paragraph| {
         for r in p.runs.iter_mut() {
             if r.text.contains(PAGE_MARK) {
-                r.text = r.text.replace(PAGE_MARK, &num);
+                r.text = r.text.replace(PAGE_MARK, num);
             }
             if r.text.contains(PAGES_MARK) {
-                r.text = r.text.replace(PAGES_MARK, &tot);
+                r.text = r.text.replace(PAGES_MARK, tot);
             }
         }
     };
@@ -2411,11 +2419,79 @@ fn hf_blocks_sheet(
             Block::Table(t) => t.for_each_paragraph_mut(&mut ireru),
         }
     }
-    let size_mm = base_pt * PT_TO_MM;
-    let frame = Frame { measure_mm: pg.measure_mm(), line_height_mm: LINE_MM, y0_mm: 0.0 };
     // The styles have to be worn before the part is laid out; `layout`
     // reads a style's size and face but not its spacing
-    let doc = crate::theme::compose(&doc, &crate::theme::default_theme());
+    let mut doc = crate::theme::compose(&doc, &crate::theme::default_theme());
+    let latin = doc.font_latin.clone();
+    for b in doc.blocks.iter_mut() {
+        match b {
+            Block::Para(p) => latin_default(p, latin.as_deref()),
+            Block::Table(t) => t.for_each_paragraph_mut(&mut |p| latin_default(p, latin.as_deref())),
+        }
+    }
+    doc
+}
+
+/// **The faces the runs of the document's headers and footers will be laid
+/// out in**, as (face name, bold, italic), each once: what the part's own
+/// runs name, what its styles name, and the document's Latin default for
+/// ASCII text. The faces are only known once a part is laid out, so the
+/// printing side asks here to have them ready before it writes the pages
+/// (2026-10-17).
+pub fn hf_faces(doc: &Document) -> Vec<(String, bool, bool)> {
+    let mut parts: Vec<&HeadFoot> = vec![&doc.header, &doc.footer];
+    parts.extend(doc.first_header.iter().chain(doc.first_footer.iter()));
+    for h in doc.sect_hf.values() {
+        parts.extend([&h.header, &h.footer]);
+        parts.extend(h.first_header.iter().chain(h.first_footer.iter()));
+    }
+    let mut out: Vec<(String, bool, bool)> = Vec::new();
+    let mut take = |p: &Paragraph| {
+        for r in &p.runs {
+            if let Some(f) = r.font.as_ref().filter(|_| !r.text.is_empty()) {
+                let k = (f.clone(), r.fmt.bold, r.fmt.italic);
+                if !out.contains(&k) {
+                    out.push(k);
+                }
+            }
+        }
+    };
+    let base_pt = doc.base_pt();
+    for hf in parts {
+        if hf.blocks.is_empty() {
+            for p in &hf.paragraphs {
+                let mut p = p.clone();
+                latin_default(&mut p, doc.font_latin.as_deref());
+                take(&p);
+            }
+            continue;
+        }
+        let d = hf_little_doc(hf, base_pt, Some(doc), "1", "1");
+        for b in &d.blocks {
+            match b {
+                Block::Para(p) => take(p),
+                Block::Table(t) => t.all_paragraphs().into_iter().for_each(&mut take),
+            }
+        }
+    }
+    out
+}
+
+/// The part laid out as a little document, and how far down the page it goes
+#[allow(clippy::too_many_arguments)]
+fn hf_blocks_sheet(
+    hf: &HeadFoot,
+    m: &Metrics,
+    pg: &PageSetup,
+    page_no: usize,
+    total: usize,
+    footer: bool,
+    base_pt: f32,
+    moto: Option<&Document>,
+) -> (Sheet, f32) {
+    let doc = hf_little_doc(hf, base_pt, moto, &page_no.to_string(), &total.to_string());
+    let size_mm = base_pt * PT_TO_MM;
+    let frame = Frame { measure_mm: pg.measure_mm(), line_height_mm: LINE_MM, y0_mm: 0.0 };
     let sheet = layout(&doc, m, &frame);
     let out = &sheet.lines;
     // **表の上端を `w:header`(フッターは `w:footer`)の距離に置きます。**

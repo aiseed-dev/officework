@@ -2751,7 +2751,7 @@ pub(crate) fn sheet_leaves_wm<F: Fn(usize) -> Vec<kumihan::Line>>(
             let kono: Vec<kumihan::DocShape> =
                 dress.shapes.iter().filter(|s| s.page == k).cloned().collect();
             if !kono.is_empty() {
-                crate::grid::doc_shapes(leaf, &kono, h);
+                crate::grid::doc_shapes(leaf, &kono, h, &dress.fonts);
             }
         }
     }
