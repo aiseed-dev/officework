@@ -704,7 +704,8 @@ pub(super) fn break_para(para: &Paragraph, m: &Metrics, measure: f32, marker: Op
     // 箇条書きの印は本文の前に置く。**本文の一部にはしない**ので、
     // 編集中の文字位置とずれない(印は組版のときだけ現れる)
     if let Some(mk) = marker {
-        let size = para.runs.first().and_then(|r| r.size_pt).unwrap_or(base);
+        // The level's own size for the mark, else the text's
+        let size = para.list_size_pt.or_else(|| para.runs.first().and_then(|r| r.size_pt)).unwrap_or(base);
         let mut fmt = para.runs.first().map(|r| r.fmt.clone()).unwrap_or_default();
         // **The mark takes the colour the level gives it** (`w:lvl/w:rPr`,
         // ECMA-376 17.9.6 and 17.3.2.6), which is not the colour of the text

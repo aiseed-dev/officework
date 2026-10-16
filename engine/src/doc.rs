@@ -725,6 +725,10 @@ pub struct Paragraph {
     /// text. Word's booklet template 22568a97 puts its bullets in `63A537`
     /// and leaves the text black (2026-09-21).
     pub list_color: Option<String>,
+    /// **The size of the list mark** (docx `w:lvl/w:rPr/w:sz`, ECMA-376
+    /// 17.9.6 and 17.3.2.38, in pt), when the level gives one. Word's event
+    /// brochure draws its pink bullets at 20pt beside 12pt text (2026-10-16)
+    pub list_size_pt: Option<f32>,
     /// 左のインデント段数。1段 = 全角2文字ぶん(日本の書類の慣習)。
     ///
     /// **段数なので、1文字や3文字は表せません。** 箇条書きの深さでもあり
@@ -1814,6 +1818,7 @@ impl StyleParaLook {
         self.list = self.list.or(oya.list);
         self.list_no_tab = self.list_no_tab.or(oya.list_no_tab);
         self.list_color = self.list_color.take().or_else(|| oya.list_color.clone());
+        self.list_size_pt = self.list_size_pt.or(oya.list_size_pt);
         self.list_fmt = self.list_fmt.or(oya.list_fmt);
         self.list_id = self.list_id.or(oya.list_id);
         self.list_text = self.list_text.take().or_else(|| oya.list_text.clone());
@@ -1895,6 +1900,9 @@ pub struct StyleParaLook {
     /// **The colour of the list mark**, when the style names the list
     /// (docx `w:lvl/w:rPr/w:color`)
     pub list_color: Option<String>,
+    /// **The size of the list mark**, when the style names the list
+    /// (docx `w:lvl/w:rPr/w:sz`, pt)
+    pub list_size_pt: Option<f32>,
     /// **番号の形**(`w:numFmt`、ECMA-376 17.18.59)
     pub list_fmt: Option<ListNumFmt>,
     /// **どの番号付け(`w:numPr/w:numId`)か。** 同じ番号の段落は、間に
@@ -3069,6 +3077,7 @@ impl Document {
             pl.list = pl.list.or(s.para.list);
             pl.list_no_tab = pl.list_no_tab.or(s.para.list_no_tab);
             pl.list_color = pl.list_color.clone().or_else(|| s.para.list_color.clone());
+            pl.list_size_pt = pl.list_size_pt.or(s.para.list_size_pt);
             pl.list_fmt = pl.list_fmt.or(s.para.list_fmt);
             pl.list_id = pl.list_id.or(s.para.list_id);
             pl.list_text = pl.list_text.clone().or_else(|| s.para.list_text.clone());

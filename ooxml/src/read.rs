@@ -1921,7 +1921,7 @@ pub(super) fn parse_styles(xml: &str) -> Vec<kumihan::StyleInfo> {
 /// 書かないので、これを読まないと箇条書きがただの段落になります(2026-09-03)
 pub(super) fn parse_styles_num(
     xml: &str,
-    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool, Option<String>, kumihan::ListNumFmt)>,
+    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool, MarkLook, kumihan::ListNumFmt)>,
     // The indent of every numbering level ([`num_indents`]), for a style that
     // names a `w:numPr` and no `w:ind` of its own
     sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32, bool)>,
@@ -1930,7 +1930,7 @@ pub(super) fn parse_styles_num(
 /// スタイルの段落の見た目(`w:pPr` の中)。読めない物は「言わない」のまま
 fn style_para(
     body: &str,
-    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool, Option<String>, kumihan::ListNumFmt)>,
+    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool, MarkLook, kumihan::ListNumFmt)>,
     sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32, bool)>,
 ) -> kumihan::StyleParaLook {
     let val = |tag: &str| -> Option<String> {
@@ -2026,7 +2026,8 @@ fn style_para(
         }),
         list_text: num_of(body).and_then(|n| shirushi.get(&(n, 0)).map(|(t, _, _, _)| t.clone())),
         // The colour of the mark alone (`w:lvl/w:rPr/w:color`)
-        list_color: num_of(body).and_then(|n| shirushi.get(&(n, 0)).and_then(|(_, _, c, _)| c.clone())),
+        list_color: num_of(body).and_then(|n| shirushi.get(&(n, 0)).and_then(|(_, _, c, _)| c.color.clone())),
+        list_size_pt: num_of(body).and_then(|n| shirushi.get(&(n, 0)).and_then(|(_, _, c, _)| c.size_pt)),
         // 番号の形(`w:numFmt`)と、どの番号付けか(`w:numId`)
         list_fmt: num_of(body).and_then(|n| shirushi.get(&(n, 0)).map(|(_, _, _, f)| *f)),
         list_id: num_of(body).filter(|n| *n > 0),
@@ -2699,7 +2700,7 @@ pub(super) fn parse_document_num(
     xml: &str,
     media: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
     cmts: &std::collections::BTreeMap<String, Comment>,
-    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool, Option<String>, kumihan::ListNumFmt)>,
+    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool, MarkLook, kumihan::ListNumFmt)>,
 ) -> (Document, Report) {
     parse_document_rels_num(xml, media, cmts, &Default::default(), shirushi, &Default::default())
 }
@@ -2710,7 +2711,7 @@ pub(super) fn parse_document_rels_num(
     media: &std::collections::BTreeMap<String, std::sync::Arc<Vec<u8>>>,
     cmts: &std::collections::BTreeMap<String, Comment>,
     targets: &std::collections::BTreeMap<String, String>,
-    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool, Option<String>, kumihan::ListNumFmt)>,
+    shirushi: &std::collections::BTreeMap<(u32, u8), (String, bool, MarkLook, kumihan::ListNumFmt)>,
     sagari: &std::collections::BTreeMap<(u32, u8), (i32, i32, bool)>,
 ) -> (Document, Report) {
     // **BOM をここで外します。** quick-xml は位置を BOM の後ろから数えるのに、
@@ -2795,6 +2796,7 @@ pub(super) fn parse_document_rels_num(
     let mut list_off = false;
     let mut list_no_tab = false; // w:lvl の w:suff が space か nothing
     let mut list_color: Option<String> = None; // w:lvl の w:rPr の w:color(印だけの色)
+    let mut list_size_pt: Option<f32> = None; // and its w:sz
     let mut list_fmt: Option<kumihan::ListNumFmt> = None; // w:numFmt(番号の形)
     let mut line_spacing = 0.0f32;
     let mut line_pt: Option<(f32, bool)> = None;
@@ -3012,6 +3014,7 @@ pub(super) fn parse_document_rels_num(
                               list_off = false;
                               list_no_tab = false;
                               list_color = None;
+                              list_size_pt = None;
                               line_spacing = 0.0;
                               line_pt = None;
                               no_grid = false;
@@ -3128,7 +3131,8 @@ pub(super) fn parse_document_rels_num(
                         list_text = n.and_then(|n| shirushi.get(&(n, ilvl)).cloned()).map(
                             |(t, kazu, iro, katachi)| {
                                 list = if kazu { ListKind::Number } else { ListKind::Bullet };
-                                list_color = iro;
+                                list_color = iro.color;
+                                list_size_pt = iro.size_pt;
                                 list_fmt = Some(katachi);
                                 t
                             },
@@ -3987,7 +3991,8 @@ pub(super) fn parse_document_rels_num(
                         list_text = n.and_then(|n| shirushi.get(&(n, ilvl)).cloned()).map(
                             |(t, kazu, iro, katachi)| {
                                 list = if kazu { ListKind::Number } else { ListKind::Bullet };
-                                list_color = iro;
+                                list_color = iro.color;
+                                list_size_pt = iro.size_pt;
                                 list_fmt = Some(katachi);
                                 t
                             },
@@ -4502,6 +4507,7 @@ pub(super) fn parse_document_rels_num(
                                 list_off,
                                 list_no_tab,
                                 list_color: list_color.take(),
+                                list_size_pt: list_size_pt.take(),
                                 first_line_twips: first_line,
                                 first_line_chars,
                                 align_itta,
@@ -5183,7 +5189,14 @@ pub(crate) fn num_indents(xml: &str) -> std::collections::BTreeMap<(u32, u8), (i
     out
 }
 
-pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (String, bool, Option<String>, kumihan::ListNumFmt)> {
+/// How a level draws its mark: the colour and size its `w:rPr` gives
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct MarkLook {
+    pub color: Option<String>,
+    pub size_pt: Option<f32>,
+}
+
+pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (String, bool, MarkLook, kumihan::ListNumFmt)> {
     let mut out = std::collections::BTreeMap::new();
     if xml.is_empty() {
         return out;
@@ -5194,7 +5207,7 @@ pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (S
         seg[i..].find('"').map(|e| seg[i..i + e].to_string())
     };
     // 本体: abstractNumId → 段ごとの (印, 番号か, 印の色)
-    let mut honnin: std::collections::BTreeMap<u32, Vec<(u8, String, bool, Option<String>, kumihan::ListNumFmt)>> = Default::default();
+    let mut honnin: std::collections::BTreeMap<u32, Vec<(u8, String, bool, MarkLook, kumihan::ListNumFmt)>> = Default::default();
     let mut rest = xml;
     while let Some(i) = rest.find("<w:abstractNum ") {
         let owari = rest[i..].find("</w:abstractNum>").map(|e| i + e).unwrap_or(rest.len());
@@ -5242,7 +5255,15 @@ pub(crate) fn num_markers(xml: &str) -> std::collections::BTreeMap<(u32, u8), (S
                     // 型紙 e22e6b47 の目次(`upperRoman`)が I. ではなく
                     // 1. と出ていました(2026-09-21)
                     let katachi = kumihan::ListNumFmt::of(&fmt);
-                    honnin.entry(id).or_default().push((ilvl, txt, fmt != "bullet", iro, katachi));
+                    // **The size of the mark** (`w:lvl/w:rPr/w:sz`, half-points)
+                    let ookisa = one
+                        .find("<w:rPr>")
+                        .and_then(|k| one[k..].find("<w:sz ").map(|x| k + x))
+                        .and_then(|k| one[k..].find('>').map(|e| &one[k..k + e]))
+                        .and_then(|seg| attr1(seg, "w:val"))
+                        .and_then(|v| v.parse::<f32>().ok())
+                        .map(|h| h / 2.0);
+                    honnin.entry(id).or_default().push((ilvl, txt, fmt != "bullet", MarkLook { color: iro, size_pt: ookisa }, katachi));
                 }
                 lv = &lv[le.max(j + 7)..];
             }

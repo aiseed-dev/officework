@@ -2027,6 +2027,9 @@ fn jibun_wo_ateru(
         if let Some(v) = pl.list_no_tab {
             para.list_no_tab = v;
         }
+        if para.list_size_pt.is_none() {
+            para.list_size_pt = pl.list_size_pt;
+        }
         if para.list_color.is_none() {
             para.list_color = pl.list_color.clone();
         }
