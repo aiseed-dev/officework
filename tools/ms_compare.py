@@ -9,7 +9,9 @@
 
 出す物: ページ数と用紙の違い、ページごとの行数の違い、行の字の違い、
 同じ字の行の y のずれ(tol pt を超えた物)、同じ字の行の字の色の違い
-(CIELAB の ΔE が 6 を超えた物。2026-10-16)。違いが無ければ 0 で終わります。
+(CIELAB の ΔE が 6 を超えた物。2026-10-16)、同じ字の行の中の 1 字ずつの x の
+ずれ(tol pt を超えた物。表の列の幅や字の間の違い。2026-10-16)。違いが無ければ
+0 で終わります。
 色の違いの数は、最後の行の前に「色の違い N 件」として別にも出します。
 
 ## 見方の決め
@@ -108,6 +110,9 @@ def lines_of(page, ytol=2.0):
             "size": cs[0].get("size"),
             # One colour per letter as drawn, for the colour check
             "colours": [rgb_of(c.get("non_stroking_color")) for c in cs],
+            # Where each letter starts, for the letter-by-letter check
+            "xs": [c["x0"] for c in cs],
+            "letters": [c["text"] for c in cs],
         })
     return out
 
@@ -144,6 +149,14 @@ def compare(a_path, b_path, tol=6.0):
                             diffs.append(f"p{i + 1} 行{a0 + j + 1} y: うち {x['top']:.1f} / 本家 {y['top']:.1f} 「{x['text'][:20]}」")
                         if abs(x["x0"] - y["x0"]) > tol:
                             diffs.append(f"p{i + 1} 行{a0 + j + 1} x: うち {x['x0']:.1f} / 本家 {y['x0']:.1f} 「{x['text'][:20]}」")
+                        # Every letter where it stands, when both lines have
+                        # as many: a line can start in place and still be
+                        # spread wider, as the circular's table was
+                        if len(x["xs"]) == len(y["xs"]) and len(x["xs"]) > 1:
+                            k = max(range(len(x["xs"])), key=lambda k: abs(x["xs"][k] - y["xs"][k]))
+                            dev = abs(x["xs"][k] - y["xs"][k])
+                            if dev > tol:
+                                diffs.append(f"p{i + 1} 行{a0 + j + 1} 字の x: 「{x['letters'][k]}」で うち {x['xs'][k]:.1f} / 本家 {y['xs'][k]:.1f} 「{x['text'][:20]}」")
                         # The letters' colours, letter by letter when both
                         # lines have as many, else the most used colour
                         ca, cb = x["colours"], y["colours"]

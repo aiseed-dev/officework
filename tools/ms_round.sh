@@ -12,6 +12,7 @@
 # 4. tools/ms_compare.py compares the two and writes <name>.diff.txt
 # 5. tools/ms_imgdiff.py compares them as pictures (fills, lines, what
 #    covers what) and writes <name>.imgdiff.txt and <name>.imgdiff.png
+# 6. tools/ms_rules.py compares the ruled lines and writes <name>.rules.txt
 #
 # The output goes under ~/Documents: Excel on the Mac cannot write under
 # /private/tmp. After changing the engine, reinstall it first:
@@ -21,7 +22,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$HOME/Documents/officework-cmp/out}"
 PY="$ROOT/.venv/bin/python"
 mkdir -p "$OUT"
-rm -f "$OUT"/*.pdf "$OUT"/*.diff.txt "$OUT"/*.imgdiff.txt "$OUT"/*.imgdiff.png
+rm -f "$OUT"/*.pdf "$OUT"/*.diff.txt "$OUT"/*.imgdiff.txt "$OUT"/*.imgdiff.png "$OUT"/*.rules.txt
 "$PY" "$ROOT/test/write_docx_officework.py" "$OUT" || exit 1
 "$PY" "$ROOT/test/write_xlsx_officework.py" "$OUT" || exit 1
 cd "$OUT" || exit 1
@@ -50,5 +51,6 @@ for f in *.docx *.xlsx; do
   [ -f "$n.ms.pdf" ] || { echo "× $f: no PDF from Word/Excel"; continue; }
   "$PY" "$ROOT/tools/ms_compare.py" "$n.ow.pdf" "$n.ms.pdf" > "$n.diff.txt"
   "$PY" "$ROOT/tools/ms_imgdiff.py" "$n.ow.pdf" "$n.ms.pdf" --out "$n.imgdiff.png" > "$n.imgdiff.txt"
-  echo "== $n: $(tail -1 "$n.diff.txt") / $(tail -1 "$n.imgdiff.txt")"
+  "$PY" "$ROOT/tools/ms_rules.py" "$n.ow.pdf" "$n.ms.pdf" > "$n.rules.txt"
+  echo "== $n: $(tail -1 "$n.diff.txt") / $(tail -1 "$n.rules.txt") / $(tail -2 "$n.imgdiff.txt" | head -1) / $(tail -1 "$n.imgdiff.txt")"
 done

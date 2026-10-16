@@ -2,9 +2,9 @@
 """Print the collected Japanese Word and Excel templates with Microsoft 365 and
 with officework, and compare them (Linux, with the Windows VM).
 
-    python3 tools/templates_ja_round.py                 # Word and Excel
-    python3 tools/templates_ja_round.py --app excel --limit 10
-    python3 tools/templates_ja_round.py --skip-ms        # reuse the Word/Excel PDFs
+    .venv/bin/python tools/templates_ja_round.py         # Word and Excel (needs pdfplumber)
+    .venv/bin/python tools/templates_ja_round.py --app excel --limit 10
+    .venv/bin/python tools/templates_ja_round.py --skip-ms   # reuse the Word/Excel PDFs
 
 Reads `templates/目録-ja.tsv` and `templates/excel/目録-ja.tsv` (written by
 `tools/templates_fetch.py --ja-only`). For every template:
@@ -14,8 +14,9 @@ Reads `templates/目録-ja.tsv` and `templates/excel/目録-ja.tsv` (written by
 2. officework prints it as `<GUID>.ow.pdf` (the `officework` module in .venv),
 3. the page counts are compared, and page by page the letters
    (`tools/ms_compare.py`: lines beyond 6pt and beyond 2pt, and letters of
-   another colour) and the pictures (`tools/ms_imgdiff.py`, differing 8-pixel
-   squares, pale fills included).
+   another colour, letters out of place within a line), the ruled lines
+   (`tools/ms_rules.py`) and the pictures (`tools/ms_imgdiff.py`, differing
+   8-pixel squares, and those outside the letters).
 
 A template "matches" when both have the same number of pages, no line is more
 than 6pt away and no letter has another colour. The table goes to `templates/結果-ja.tsv`, with the error
@@ -80,7 +81,12 @@ def compare(ow, ms):
     r = subprocess.run([str(PY), str(REPO / "tools/ms_imgdiff.py"), str(ow), str(ms),
                         "--out", str(ow.with_suffix(".imgdiff.png"))],
                        capture_output=True, text=True, timeout=600)
-    out["img"] = last_number((r.stdout.strip().splitlines() or ["-1"])[-1])
+    lines = r.stdout.strip().splitlines() or ["-1"]
+    out["img"] = last_number(lines[-1])
+    out["img_out"] = next((last_number(x) for x in lines if x.startswith("字の外の違い")), -1)
+    r = subprocess.run([str(PY), str(REPO / "tools/ms_rules.py"), str(ow), str(ms)],
+                       capture_output=True, text=True, timeout=300)
+    out["rules"] = last_number((r.stdout.strip().splitlines() or ["-1"])[-1])
     return out
 
 
@@ -106,7 +112,7 @@ def main():
                         "--timeout", str(120 + 60 * len(missing))])
 
     # 2 and 3. officework, then the comparison
-    table = ["アプリ\tGUID\t頁\t題\tWord・Excel の頁数\tofficework の頁数\t6pt を超えた行\t2pt を超えた行\t字の色の違い\t絵の違う区画\t一致\t誤り"]
+    table = ["アプリ\tGUID\t頁\t題\tWord・Excel の頁数\tofficework の頁数\t6pt を超えた行\t2pt を超えた行\t字の色の違い\t罫線の違い\t絵の違う区画\t字の外の違う区画\t一致\t誤り"]
     n = n_ok = 0
     for app, guid, page, title, src in rows:
         ms, ow = src.with_suffix(".ms.pdf"), src.with_suffix(".ow.pdf")
@@ -127,9 +133,9 @@ def main():
         n += 1
         n_ok += ok
         table.append("\t".join(map(str, [app, guid, page, title, pm, po, res.get("lines6", ""),
-                                          res.get("lines2", ""), res.get("colour", ""), res.get("img", ""), "○" if ok else "", err])))
+                                          res.get("lines2", ""), res.get("colour", ""), res.get("rules", ""), res.get("img", ""), res.get("img_out", ""), "○" if ok else "", err])))
         print(f"{'○' if ok else '×'} {app} {title[:30]} 頁 {pm}/{po} 行6pt {res.get('lines6', '-')} "
-              f"色 {res.get('colour', '-')} 絵 {res.get('img', '-')} {err}", flush=True)
+              f"色 {res.get('colour', '-')} 罫線 {res.get('rules', '-')} 絵 {res.get('img', '-')}({res.get('img_out', '-')}) {err}", flush=True)
     (ROOT / "結果-ja.tsv").write_text("\n".join(table) + "\n", encoding="utf-8")
     print(f"\n一致 {n_ok} / {n}  (表: {ROOT / '結果-ja.tsv'})")
 

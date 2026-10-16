@@ -16,8 +16,12 @@ pictures. A square that is one flat colour on both pages (a fill, such as a
 table's pale stripe) differs already at `--flat-de` (4): a mean over letters
 needs the wide margin, a fill does not, and pale fills told apart by less than
 12 were missed (2026-10-16). Letter colours are checked by ms_compare.py.
-The last line is the number of differing squares; `--out` writes the
-reference page with the differing squares outlined in red.
+Squares a letter of either PDF touches are counted apart as well: a
+substitute face gives letters another shape, so the squares outside the
+letters ("字の外の違い") are the fills, lines and pictures that differ
+(2026-10-16). The last line is the number of all differing squares; `--out`
+writes the reference page with the differing squares outlined in red (those
+outside the letters in red, those on letters in orange).
 """
 import os
 import subprocess
@@ -50,6 +54,26 @@ def lab(rgb):
         return t ** (1 / 3) if t > 0.008856 else 7.787 * t + 16 / 116
     fx, fy, fz = f(x), f(y), f(z)
     return 116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)
+
+
+def letter_squares(pdf, dpi):
+    """For each page, the squares (column, row) that a letter touches."""
+    import pdfplumber
+    k = dpi / 72.0
+    out = []
+    with pdfplumber.open(pdf) as p:
+        for page in p.pages:
+            sq = set()
+            for c in page.chars:
+                if c["text"].isspace():
+                    continue
+                i0, i1 = int(c["x0"] * k) // SQUARE, int(c["x1"] * k) // SQUARE
+                j0, j1 = int(c["top"] * k) // SQUARE, int(c["bottom"] * k) // SQUARE
+                for i in range(i0, i1 + 1):
+                    for j in range(j0, j1 + 1):
+                        sq.add((i, j))
+            out.append(sq)
+    return out
 
 
 def flat(im, i, j):
@@ -91,18 +115,22 @@ def main():
         ours, theirs = pages(args[0], dpi, tmp, "a"), pages(args[1], dpi, tmp, "b")
         if len(ours) != len(theirs):
             print(f"ページ数: うち {len(ours)} / 本家 {len(theirs)}")
-        total = 0
+        total = outside = 0
         marked = []
+        letters_a, letters_b = letter_squares(args[0], dpi), letter_squares(args[1], dpi)
         for k, (a, b) in enumerate(zip(ours, theirs), 1):
             diff = compare(a, b, de, flat_de)
+            on_letters = letters_a[k - 1] | letters_b[k - 1] if k - 1 < len(letters_a) and k - 1 < len(letters_b) else set()
+            off = [q for q in diff if q not in on_letters]
             total += len(diff)
+            outside += len(off)
             if diff:
-                print(f"p{k}: 色の違う区画 {len(diff)}")
+                print(f"p{k}: 色の違う区画 {len(diff)}(字の外 {len(off)})")
             pic = b.copy()
             d = ImageDraw.Draw(pic)
             for i, j in diff:
                 d.rectangle((i * SQUARE, j * SQUARE, i * SQUARE + SQUARE - 1, j * SQUARE + SQUARE - 1),
-                            outline=(230, 0, 0))
+                            outline=(230, 120, 0) if (i, j) in on_letters else (230, 0, 0))
             marked.append(pic)
         if opt["--out"] and marked:
             width = max(p.width for p in marked)
@@ -112,6 +140,7 @@ def main():
                 sheet.paste(p, (0, y))
                 y += p.height
             sheet.save(opt["--out"])
+    print(f"字の外の違い {outside} 区画")
     print(f"絵の違い {total} 区画")
     sys.exit(0 if total == 0 else 1)
 
