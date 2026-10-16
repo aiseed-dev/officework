@@ -48,11 +48,13 @@ unit_only = {
     "request_quit": "同上",
     "commit": "終わる前の打ちかけの確定。officework は 書きかけの名前() で見る",
     "release_lock": "錠は Drop で外す(両方の画面が持っている)",
+    "bind_ui_scale_keys": "officework は bind_ui_scale_keys_with で結ぶ(見ているタブの画面へ向ける)",
+    "set_col_xlsx": "JO_SELFTEST を立てたときだけの画面の自己診断。開発用で、配る形では動かさない",
     "write_recover": "控えは officework の見張りが取る(2026-08-21 に移した)",
     # 言葉の部品(判定や小道具)は仕掛けではない
     "as_ref": "小道具", "as_secs": "小道具", "clamp": "小道具",
-    "elapsed": "小道具", "insert": "小道具", "is_ok": "小道具",
-    "is_some": "小道具", "name": "小道具", "var": "小道具", "var_os": "小道具", "Python": "文言の中の字",
+    "elapsed": "小道具", "is_ok": "小道具",
+    "is_some": "小道具", "name": "小道具", "var": "小道具", "var_os": "小道具",
 }
 
 ignored = {"if", "match", "for", "while", "px", "size", "format", "Some", "None", "vec"}
@@ -79,9 +81,12 @@ def call_re(s: str) -> set[str]:
     同じ物を `crate::py::start_udf_watch` と `calc::start_udf_watch` の
     ように別の道から呼ぶので、頭を付けたままだと別物に見えます。
     """
+    # **説明の中の字は数えません。** 「after startup (ui::…)」のような説明の
+    # 中の語が、呼び出しに見えていました(2026-10-17)
+    code = "\n".join(re.sub(r"\s//.*$|^\s*//.*$", "", l) for l in s.split("\n"))
     out = {
         m.split("::")[-1]
-        for m in re.findall(r"\b([a-zA-Z_:]*[a-z_]{3,})\s*\(", s)
+        for m in re.findall(r"\b([a-zA-Z_:]*[a-z_]{3,})\s*\(", code)
     }
     return out_filter(out)
 

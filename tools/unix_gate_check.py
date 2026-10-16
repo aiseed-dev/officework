@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """**Windows に無い物を、旗の外から呼んでいないか**(2026-08-22)。
 
-受け口(ソケット)は Windows では作りません。`ops::listen` / `ops::ask` /
-`ops::sock_path` / `calc::rpc` は `#[cfg(unix)]` の向こうに居ます。
+受け口のソケットは Windows では作りません。`ops::listen` / `ops::ask` /
+`ops::sock_path` は `#[cfg(unix)]` の向こうに居ます。
 
 ところが**試験がうっかり旗の外から呼ぶ**と、手元(Linux)では緑のまま
 Windows の CI だけが赤くなります。この機械では calc を Windows の的で
@@ -16,6 +16,13 @@ Windows の CI だけが赤くなります。この機械では calc を Windows
 * 「開いて修復」の試験が `ops::Host::save` を旗の外から呼んでいた
   (同じ踏み跡が、すぐ上の試験の説明に書いてあったのに)
 
+**`ops::Host` と `crate::rpc::` は、2026-09-06 から Windows でも組みます。**
+パネルのエージェントがどの OS でも `Host` を使うため、トレイトと `rpc` の
+モジュールは旗の外に出しました(ソケットを開く `listen` と `start` だけが
+`#[cfg(unix)]`)。この2つを今も咎めていたので、旗の外から呼んでいる
+`calc/src/rpc.rs` の `ops::Host::activate_sheet` が誤って赤になっていました
+(2026-10-17 に直した)。
+
 ## 使い方
 
     python3 tools/unix_gate_check.py
@@ -27,14 +34,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # Windows には無い物。呼ぶ側は `#[cfg(unix)]` の内側に居なければなりません
-UNIX_ONLY = re.compile(r"\b(ops::Host\b|crate::rpc::|ops::listen|ops::ask|ops::sock_path|std::os::unix)")
-
-# **writer の受け口は分かれました**(2026-09-04)。動詞を捌く `rpc::handle` は
-# どの OS でも組み、ソケットを開く `rpc::start` だけが `#[cfg(unix)]` です。
-# エージェントのパネルが道具の呼びを `handle` へ流すので、そこまで旗の中に
-# 入れると Windows でパネルごと消えます。**calc の `rpc` は今までどおり
-# 丸ごと Unix**(あちらはまだ分けていない)なので、writer だけを外します
-SPLIT_OK = {"writer/src": re.compile(r"crate::rpc::(handle|Reply)\b")}
+UNIX_ONLY = re.compile(r"\b(ops::listen|ops::ask|ops::sock_path|std::os::unix)")
 
 # 見る場所。生成物と外から持ってきた物は見ません
 check = ["calc/src", "writer/src", "ui/src", "officework/src", "ops/src", "sheet/src"]
@@ -110,12 +110,6 @@ def main() -> int:
                     continue
                 if not UNIX_ONLY.search(l):
                     continue
-                # 分けた所は数えない(その crate だけ)
-                ok_pat = SPLIT_OK.get(d)
-                if ok_pat is not None and ok_pat.search(l) and not re.search(
-                    r"ops::Host\b|ops::listen|ops::ask|ops::sock_path|std::os::unix", l
-                ):
-                    continue
                 numbers += 1
                 if not inside_flag(lines, i):
                     leak.append((p.relative_to(ROOT), i + 1, l.strip()[:70]))
@@ -127,7 +121,7 @@ def main() -> int:
         print(f"::error::{f}:{n} が `#[cfg(unix)]` の外から Windows に無い物を呼んでいます")
         print(f"    {t}")
     if leak:
-        print("\n  受け口は Windows では作りません(ops と calc::rpc は cfg(unix))。")
+        print("\n  受け口は Windows では作りません(ソケットを開く ops::listen などは cfg(unix))。")
         print("  呼ぶ側にも同じ旗を付けてください。この機械では Windows の的で")
         print("  calc を組めないので、CI の Windows の段まで気づけません。")
         return 1
