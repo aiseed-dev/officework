@@ -9200,3 +9200,67 @@ df = ws.read_df()                  # 使っている範囲
 . `officework.openpyxl` と `install()`。2026-10-17 済み。連載の openpyxl のサンプルは 13 本あり(第 2 回 7 本、第 3 回 6 本)、`install()` の後に 1 字も変えずに回して 13 本とも通った。1 本(第 3 回 List6)は openpyxl 3.0 の `defined_names.definedName` と `append` を使っていたので、その名前も受けるようにした
 . セル関数の登録(`sheet.register`)。2026-10-17 済み。エンジンの `custom.rs` に閉包の登録(`register_dyn`)を足した
 . Flet の部品の入り口に 3 つを並べる
+
+== 測った: Flet の往復(2026-10-17)
+
+「Flet の中に表を入れる」案の速さを決める数を、試作で測りました。Flet 1.0.4 の Web 版を内蔵のブラウザーで開き、ブラウザーの WebSocket の送受信と Python 側のログに時刻を付けて突き合わせました。試作は 45 行 × 20 列の表を officework(release)で PNG(1240 × 1754 画素、255 KB)にして `ft.Image` に出し、赤い枠の `Container` を `Stack` で重ねた物です。
+
+[cols="2,1,3"]
+|===
+|操作 |押してから画面の次のコマまで |内訳
+
+|PNG を作り直して差し替え(確定の場合) |113〜129 ms |Flutter が押下を送るまで 4 ms、往き 1 ms、Python 85 ms(うち絵 82 ms)、255 KB を送って届くまで 22〜36 ms、コマ 3 ms
+|枠を動かすだけ(右クリック) |11〜17 ms |往復 6 ms、Python 1.3 ms
+|矢印キーで枠を動かす |往復 5〜9 ms(1 回だけ 54 ms) |Python 1〜2 ms
+|===
+
+* Flet の往復そのものは 5〜9 ms で、問題になりません。
+* 確定が遅いのは Python 側の絵(82 ms)です。168 ページをまとめて刷ると 1 ページ 20 ms なので、1 回ずつ呼ぶと書体の読み込みと組みの準備を毎回やり直している分です。組んだ物を持ったまま画素だけ作り直す入り口を paper に足せば 20〜30 ms になります。
+* Flutter が届いた PNG を開く時間は、この数に入っていない可能性があります。
+* 試作のファイルはリポジトリに入れていません。
+
+== 検討: officework を Flet の画面側にする(2026-10-17 発注者)
+
+発注者「逆転させて、officework の中で Flet 互換が動くようにするのは」。前の案(Flet の中に表を入れる)の逆で、officework(gpui)を Flet の画面側(Flutter の代わり)にします。Flet で書いた普通のプログラムが、officework の窓の中で動き、表計算と文書は今の画面そのものになります。当方はこの向きを勧めました。発注者は Opus に見てもらうと言っているので、確かめたことと見立てを分けて書きます。
+
+=== 確かめたこと(Flet 1.0.4 の中身を読んだ)
+
+* Python 側と画面側の決まりは小さい。メッセージは 7 種類(`flet/messaging/protocol.py` の `MessageAction`: REGISTER_CLIENT・PATCH_CONTROL・CONTROL_EVENT・UPDATE_CONTROL_PROPS・INVOKE_METHOD・SESSION_CRASHED・PYTHON_OUTPUT)。1 つのメッセージは `[action_code, body]` の msgpack で、Unix ソケットか TCP に `[長さ u32 LE][0x00][本体]` で流す(`flet_socket_server.py`)。
+* 画面側を差し替える入り口が Flet にある。`FLET_VIEW_PATH` のフォルダーにある `flet` という実行ファイルを、`flet <ページの URL> <pid ファイル>` の形で起動する(`flet_desktop/__init__.py`。コメントに「developer mode」とあり、公開の約束ではない)。
+* 同じプロセスの中でつなぐ先例がある。ブラウザー用の `pyodide_connection.py` は、ソケットを使わずに Python の中で画面側と話す。
+* Flet は Apache-2.0。LibreOffice と同じ作法(API と試験を写し、実装は写さない)で進められる。
+
+=== 前の案と比べて
+
+[cols="1,2,2"]
+|===
+| |Flet の中に表を入れる |officework の中で Flet 互換を動かす
+
+|表計算の速さ |移る 1 コマ、確定 4〜8 コマ(上の「測った」) |どれも 1 コマ。今の calc の画面がそのまま
+|Flet の部品(ボタンなど) |Flutter の本物 |gpui で作り直す。見た目は officework 風(Material ではない)
+|使える部品 |約 250 全部 |絞る。builder の約 20(文章・フォーム・データの表示・入れ物)+ 表計算 + 文書。無い部品は「無い」と言って止まる
+|Dart |無し |無し
+|段B-2(calc から gpui を外す) |要る |要らない(やってもよいが前提ではない)
+|動く場所 |Flet が動く所すべて(Web・スマホも) |officework が動く所(いまは据え置き。Web は WASM の後)
+|作る物 |段B-2 + paper の帯 + Python の薄い層 |メッセージの読み書き(約 1,000 行)+ 部品の木の差分を当てる仕組み + gpui の部品 20 個(1 個 100〜300 行)。合わせて 5,000〜8,000 行の見込み
+|Flet の版が変わったとき |Python の API を追う |決まりの変化も追う(月 1 回上げる決めのとおり)
+|===
+
+速さの見立て: 表計算は 1 コマ(16 ms)。Flet のボタンを押して Python が応えるまでは、往復 1〜5 ms + Python の処理。上の「測った」の往き 1.2 ms から見て、ここは問題にならない。
+
+=== 気になる所(Opus に見てもらう点)
+
+. *部品の木の差分(PATCH_CONTROL)の当て方。* Flet の画面側(Dart、`packages/flet/lib/src/protocol`)と同じにする必要がある。Python 側の差分の作り方は `flet/controls/base_control.py` と `flet/messaging/session.py` にあり、手元の venv で読める。Dart の側は Flet のリポジトリを読むので、取る前に出所と大きさを言って発注者の許可を得る。
+. *レイアウト。* Flet の `Row` / `Column` / `Container` は Flutter の flex。gpui は taffy(flexbox)を持つので対応は付くが、`expand`・`alignment`・`spacing` の意味を 1 つずつ Flet の型録(`get_api`)で確かめて写す。
+. *見た目。* Material にならない。officework 風で、画面の決め(Euro-Office に合わせる)に従う。builder の用途なら合っている。
+. *入り口。* `FLET_VIEW_PATH` は公開の約束ではないので、`officework.flet.run(main)` のような入り口を用意し、中で環境変数を立てて `ft.run` を呼ぶ。同じプロセスでつなぐ道(pyodide の先例)はその後の選択肢。
+. *前の案は捨てない。* 宣言(Flet の書き方)は同じなので、同じプログラムが「本物の Flet では絵の表」「officework では本物の表」で動く。「4 つの面」の Flet の面がこれ。
+. *表計算と文書の部品の名前。* Flet に無い部品(`Sheet`・`Doc`)をどの名前と属性で宣言するか。本物の Flet で動かすときは、前の案の部品(絵の表)が同じ名前を受ける。
+. *Flet の版の追い方。* `MessageAction` の番号は Dart と合わせる決まり(ソースの注記)。版を上げたら決まりの変化を読んで直す。
+
+=== 進め方の案
+
+. この節を書く(2026-10-17。済み)
+. Flet のリポジトリ(Dart の画面側)を読む許可をもらい、PATCH_CONTROL の当て方と登録の手順を写す
+. 最初の目標は小さく、`Text`・`Column`・`Row`・`TextField`・`Button` と表計算の 6 つで、変えていない Flet のサンプルが officework の窓で動くこと
+. builder の 20 に広げる
