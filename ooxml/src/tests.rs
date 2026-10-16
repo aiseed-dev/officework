@@ -3000,6 +3000,21 @@ mod image_insert_tests {
         assert!((w - 371475.0 / 485775.0).abs() < 1e-4 && (h - w).abs() < 1e-4);
     }
 
+    /// A page number field in a shape's text keeps the page mark, so each
+    /// page prints its own number (the header box of Word's business report)
+    #[test]
+    fn a_page_number_field_in_a_shape_keeps_the_page_mark() {
+        let a = concat!(
+            r#"<wp:anchor><wp:extent cx="100" cy="100"/><a:graphic><a:graphicData><wps:wsp><wps:spPr><a:prstGeom prst="rect"/></wps:spPr>"#,
+            r#"<wps:txbx><w:txbxContent><w:p><w:r><w:t xml:space="preserve">p. </w:t></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r>"#,
+            r#"<w:r><w:instrText xml:space="preserve"> PAGE  \* Arabic  \* MERGEFORMAT </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>"#,
+            r#"<w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r><w:r><w:t xml:space="preserve"> / </w:t></w:r>"#,
+            r#"<w:fldSimple w:instr=" NUMPAGES "><w:r><w:t>9</w:t></w:r></w:fldSimple></w:p></w:txbxContent></wps:txbx></wps:wsp></a:graphicData></a:graphic></wp:anchor>"#,
+        );
+        let f = crate::foreign_shape(a).expect("not read");
+        assert_eq!(f.look.text, Some(format!("p. {} / {}", kumihan::PAGE_MARK, kumihan::PAGES_MARK)));
+    }
+
     /// A floating rectangle filled with a picture, alone in its anchor, is a
     /// floating picture (Word's event brochure puts its page-sized
     /// background behind the text this way)

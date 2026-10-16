@@ -2322,6 +2322,26 @@ mod hf_layout_tests {
         }
     }
 
+    /// A picture standing on the first line of a header starts at the
+    /// header's distance from the top, not above the paper (the page number
+    /// box of Word's business report, 16.5mm tall, at a distance of 0)
+    #[test]
+    fn a_tall_picture_in_a_header_starts_at_the_header_distance() {
+        let data = metrics();
+        let m = Metrics::new(&data).unwrap();
+        let pg = PageSetup { header_mm: 0.0, ..PageSetup::default() };
+        let mut p = Paragraph::default();
+        p.images_new.push(crate::InlineImage { shape: Some("<wp:inline/>".into()),
+            bytes: std::sync::Arc::new(Vec::new()), w_mm: 37.6, h_mm: 16.5, tex: None, src: None,
+            off: 0, fill: None, parts: Vec::new() });
+        let mut f = hf("");
+        f.blocks = vec![Block::Table(Table { col_mm: vec![pg.measure_mm()], rows: vec![vec![Cellbox { paragraphs: vec![p], ..Default::default() }]], ..Default::default() })];
+        let s = layout_hf_sheet(&f, &m, &pg, 1, 1, false, DEFAULT_PT, None).expect("not laid out");
+        let (_, r) = s.inline_shapes.first().expect("no shape");
+        assert!(r[1] >= -0.01, "the box rises above the paper: {r:?}");
+        assert!(r[1] < 3.0, "the box is not at the top: {r:?}");
+    }
+
     /// A footer table keeps what its cells draw: the black band of Word's
     /// business report is the shading of its footer table's cell, under
     /// the white website text, at the foot of the paper

@@ -2435,7 +2435,17 @@ fn hf_blocks_sheet(
             .fold(f32::NEG_INFINITY, f32::max);
         pg.h_mm - pg.footer_mm - size_mm * 0.28 - sita
     } else {
-        let atama = out.iter().map(|l| l.y_mm).fold(f32::INFINITY, f32::min);
+        // A picture or a drawn shape standing on the first line rises above
+        // its box: its top goes to the header's distance too. The page
+        // number box in the header table of Word's business report stands
+        // 16.5mm tall on its line and was pushed off the top of the paper
+        // (2026-10-16)
+        let atama = out
+            .iter()
+            .map(|l| l.y_mm)
+            .chain(sheet.images.iter().map(|(_, r, _)| r[1] + BASE_UP_MM))
+            .chain(sheet.inline_shapes.iter().map(|(_, r)| r[1] + BASE_UP_MM))
+            .fold(f32::INFINITY, f32::min);
         pg.header_mm + BASE_UP_MM - atama
     };
     (sheet, if zure.is_finite() { zure } else { 0.0 })

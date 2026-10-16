@@ -5985,16 +5985,85 @@ fn txbx_text(naka: &str) -> String {
     for p in naka.split("</w:p>") {
         let mut s = String::new();
         let mut at = 0usize;
-        while let Some(i) = p[at..].find("<w:t").map(|i| i + at) {
-            let Some(k) = p[i..].find('>').map(|k| k + i + 1) else { break };
-            // `<w:tab/>` などを `<w:t>` と読み違えない
-            if !matches!(p[i + 4..].chars().next(), Some('>') | Some(' ')) {
-                at = k;
-                continue;
+        // **A page number field** (`PAGE` / `NUMPAGES`, ECMA-376 17.16.5.43
+        // and 17.16.5.38) keeps the mark the header's paragraphs use in
+        // place of its stored result, so each page prints its own number.
+        // The page number box in the header of Word's business report read
+        // "1" on every page (2026-10-16). `Some(mark)` while the result of
+        // such a field is being read
+        let mut instr = String::new();
+        let mut kekka: Option<char> = None;
+        let mut kaita = false;
+        let field_mark = |instr: &str| -> Option<char> {
+            match instr.split_whitespace().next()? {
+                "PAGE" => Some(kumihan::PAGE_MARK),
+                "NUMPAGES" | "SECTIONPAGES" => Some(kumihan::PAGES_MARK),
+                _ => None,
             }
-            let Some(e) = p[k..].find("</w:t>").map(|e| e + k) else { break };
-            s.push_str(&unesc(&p[k..e]));
-            at = e + 6;
+        };
+        loop {
+            let next = ["<w:t", "<w:instrText", "<w:fldChar", "<w:fldSimple"]
+                .into_iter()
+                .filter_map(|t| p[at..].find(t).map(|i| (i + at, t)))
+                .min_by_key(|(i, _)| *i);
+            let Some((i, tag)) = next else { break };
+            let Some(k) = p[i..].find('>').map(|k| k + i + 1) else { break };
+            match tag {
+                "<w:fldChar" => {
+                    let head = &p[i..k];
+                    if head.contains("w:fldCharType=\"begin\"") {
+                        instr.clear();
+                        kekka = None;
+                        kaita = false;
+                    } else if head.contains("w:fldCharType=\"separate\"") {
+                        kekka = field_mark(&instr);
+                    } else if head.contains("w:fldCharType=\"end\"") {
+                        // a field whose result holds no text still prints its number
+                        if !kaita {
+                            if let Some(c) = field_mark(&instr) {
+                                s.push(c);
+                            }
+                        }
+                        instr.clear();
+                        kekka = None;
+                        kaita = false;
+                    }
+                    at = k;
+                }
+                "<w:instrText" => {
+                    let Some(e) = p[k..].find("</w:instrText>").map(|e| e + k) else { break };
+                    instr.push_str(&unesc(&p[k..e]));
+                    at = e;
+                }
+                "<w:fldSimple" => {
+                    let head = &p[i..k];
+                    if let Some(c) = field_mark(&attr_str(head, "w:instr")) {
+                        // its result runs follow inside; they are replaced by the mark
+                        s.push(c);
+                        at = p[k..].find("</w:fldSimple>").map_or(p.len(), |e| e + k);
+                    } else {
+                        at = k;
+                    }
+                }
+                _ => {
+                    // `<w:tab/>` などを `<w:t>` と読み違えない
+                    if !matches!(p[i + 4..].chars().next(), Some('>') | Some(' ')) {
+                        at = k;
+                        continue;
+                    }
+                    let Some(e) = p[k..].find("</w:t>").map(|e| e + k) else { break };
+                    match kekka {
+                        Some(c) => {
+                            if !kaita {
+                                s.push(c);
+                                kaita = true;
+                            }
+                        }
+                        None => s.push_str(&unesc(&p[k..e])),
+                    }
+                    at = e + 6;
+                }
+            }
         }
         if !s.is_empty() {
             gyou.push(s);

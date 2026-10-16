@@ -588,7 +588,13 @@ pub fn paginate_full(sheet: &Sheet, paper: Paper) -> Pagination {
             .fold(None, |m: Option<(f32, f32)>, (b, t)| {
                 Some(m.map_or((*t, *b), |(mt, mb)| (mt.min(*t), mb.max(*b))))
             });
-        if line.cells.is_empty() && !kaipeji_koko && gazou_hako.is_none() {
+        // An empty line in a table cell is judged by its row's box like any
+        // other: a row that moves to the next page whole goes with all its
+        // cells. The empty cells of the first row of a table in Word's event
+        // brochure stayed on page 1 while the rest of the row moved, and the
+        // `w:keepNext` paragraph before the table stayed with them, taking
+        // the page 2 background it anchors to page 1 (2026-10-16)
+        if line.cells.is_empty() && !kaipeji_koko && gazou_hako.is_none() && line.cell.is_none() {
             // 空行は頁を進めない(描かれないので)。いまの頁に属するとみなす
             pages[li] = offsets.len();
             continue;
@@ -841,6 +847,55 @@ fn rule(l: &PdfLayerReference, f: &CharFormat, x: f32, y: f32, w: f32, pt: f32) 
 
 #[cfg(test)]
 mod tests {
+
+    /// A table row that does not fit at the foot of a page moves whole,
+    /// its empty cells included (the first row of a table in Word's event
+    /// brochure, whose empty cells stayed behind)
+    #[test]
+    fn an_empty_cell_moves_with_its_row() {
+        let para = |t: &str| kumihan::Paragraph {
+            runs: vec![kumihan::Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
+            ..Default::default()
+        };
+        let mut d = kumihan::Document::default();
+        for _ in 0..34 {
+            d.push_para(para("本文です。"));
+        }
+        let cell = |t: &str| kumihan::Cellbox { paragraphs: vec![para(t)], ..Default::default() };
+        d.blocks.push(kumihan::Block::Table(kumihan::Table {
+            col_mm: vec![40.0, 40.0],
+            rows: vec![vec![cell(""), cell("字")]],
+            row_mm: vec![45.0],
+            row_exact: vec![true],
+            ..Default::default()
+        }));
+        let (sheet, page, _) = doc_to_sheet(&d, None).expect("not laid out");
+        let pg = paginate_full(&sheet, Paper::from_page(&page));
+        let of = |c: usize| {
+            let i = sheet.lines.iter().position(|l| l.cell.is_some_and(|(_, _, cc)| cc == c)).expect("no cell line");
+            pg.pages[i]
+        };
+        assert!(of(1) > 1, "the case this test is for does not arise: the row fits on page 1");
+        assert_eq!(of(0), of(1), "the empty cell stayed behind its row");
+    }
+
+    /// Shape text that names no colour takes the colour of the style's
+    /// `a:fontRef`; a colour of its own wins
+    #[test]
+    fn shape_text_takes_the_font_colour_of_its_style() {
+        let mut d = kumihan::Document::plain("x");
+        d.theme_colors = ["000000", "FFFFFF", "44546A", "E7E6E6", "4472C4", "ED7D31", "A5A5A5", "FFC000",
+                          "5B9BD5", "70AD47", "0563C1", "954F72"].iter().map(|c| c.to_string()).collect();
+        let xml = |rpr: &str| format!(
+            r#"<wp:anchor><wp:extent cx="100" cy="100"/><a:graphic><a:graphicData><wps:wsp><wps:spPr><a:prstGeom prst="rect"/></wps:spPr><wps:style><a:fontRef idx="minor"><a:schemeClr val="lt1"/></a:fontRef></wps:style><wps:txbx><w:txbxContent><w:p><w:r>{rpr}<w:t>2</w:t></w:r></w:p></w:txbxContent></wps:txbx></wps:wsp></a:graphicData></a:graphic></wp:anchor>"#);
+        let style = |x: &str| {
+            let mut f = ooxml::foreign_shape_with(x, &d.theme_colors, &[]).expect("not read");
+            shape_text_style(&d, x, &mut f.look);
+            f.look.text_fmt.color
+        };
+        assert_eq!(style(&xml("")).as_deref(), Some("FFFFFF"));
+        assert_eq!(style(&xml(r#"<w:rPr><w:color w:val="C00000"/></w:rPr>"#)).as_deref(), Some("C00000"));
+    }
 
     /// Anchors on the same side of the text are drawn in the order of their
     /// `relativeHeight` (ECMA-376 20.4.2.3), and every anchor behind the
@@ -2058,13 +2113,24 @@ fn leaves_of(
     let hf_sheets = doc_hf_sheets(d, font, sheet, page)?;
     let n_pages = paginate_full(sheet, Paper::from_page(&page)).offsets.len().max(1);
     let mut hf_draw: Vec<(usize, kumihan::Sheet, kumihan::PageSetup)> = Vec::new();
+    let mut bangou: Vec<(usize, usize)> = Vec::new();
     for k in 0..n_pages {
-        let (head, foot, pg) = hf_sheets(k + 1);
+        let (head, foot, pg, printed, total) = hf_sheets(k + 1);
+        bangou.push((printed, total));
         for s in [head, foot].into_iter().flatten() {
             for (xml, r) in &s.inline_shapes {
                 shapes.extend(inline_shape_parts(d, xml, *r, &pg, k, 0.0));
             }
             hf_draw.push((k, s, pg));
+        }
+    }
+    // A page number field in a shape's text prints the number of the page
+    // the shape is on
+    for sh in &mut shapes {
+        if let (Some(t), Some((n, total))) = (sh.look.text.as_mut(), bangou.get(sh.page)) {
+            if t.contains(kumihan::PAGE_MARK) || t.contains(kumihan::PAGES_MARK) {
+                *t = t.replace(kumihan::PAGE_MARK, &n.to_string()).replace(kumihan::PAGES_MARK, &total.to_string());
+            }
         }
     }
     let dress = PageDress { bg, watermark: d.watermark.clone(), shapes, ..Default::default() };
@@ -2193,20 +2259,23 @@ pub fn doc_hf_pairs<'a>(
 }
 
 /// The header and the footer of page `k` (from 1) laid out with all they
-/// draw ([`kumihan::layout_hf_sheet`]), with the page's setup; `None` for a
-/// part without blocks, whose lines are all it draws
+/// draw ([`kumihan::layout_hf_sheet`]), with the page's setup, its printed
+/// number and the page count; `None` for a part without blocks, whose
+/// lines are all it draws
 #[allow(clippy::type_complexity)]
 pub fn doc_hf_sheets<'a>(
     doc: &'a kumihan::Document,
     font: &'a [u8],
     sheet: &kumihan::Sheet,
     page: kumihan::PageSetup,
-) -> Result<impl Fn(usize) -> (Option<kumihan::Sheet>, Option<kumihan::Sheet>, kumihan::PageSetup) + 'a, String> {
+) -> Result<impl Fn(usize) -> (Option<kumihan::Sheet>, Option<kumihan::Sheet>, kumihan::PageSetup, usize, usize) + 'a, String> {
     doc_hf_with(doc, font, sheet, page, move |head, foot, pg, k, total, m, base_pt| {
         (
             kumihan::layout_hf_sheet(head, m, pg, k, total, false, base_pt, Some(doc)),
             kumihan::layout_hf_sheet(foot, m, pg, k, total, true, base_pt, Some(doc)),
             *pg,
+            k,
+            total,
         )
     })
 }
@@ -3583,6 +3652,16 @@ fn shape_text_style(doc: &kumihan::Document, xml: &str, look: &mut book::SheetSh
         let k = seg[..e].find("w:val=\"")? + 7;
         seg[k..e].find('"').map(|x| seg[k..k + x].to_string())
     });
+    // A paragraph that names no style takes the default paragraph style,
+    // as in the body (ECMA-376 17.7.4.17). The page number in the header
+    // box of Word's business report is 14pt from `Normal` (2026-10-16)
+    let id = id.or_else(|| {
+        doc.styles
+            .iter()
+            .chain(doc.styles_new.iter())
+            .find(|s| s.default && s.kind == "paragraph")
+            .map(|s| s.id.clone())
+    });
     let matome = id.as_deref().and_then(|id| doc.style_matome(id));
     if let Some((lk, pl)) = &matome {
         let tf = &mut look.text_fmt;
@@ -3626,6 +3705,22 @@ fn shape_text_style(doc: &kumihan::Document, xml: &str, look: &mut book::SheetSh
             _ => book::HAlign::General,
         };
     }
+    // **Text that names no colour takes the shape style's font colour**
+    // (`wps:style/a:fontRef`, ECMA-376 20.1.4.1.17). Word draws the text of
+    // the shapes it inserts in `lt1`, white: the page number in the header
+    // box of its business report and the label in a circle of its event
+    // brochure, which we drew black (2026-10-16)
+    if look.text_fmt.color.is_none() {
+        look.text_fmt.color = font_ref_colour(xml, &doc.theme_colors);
+    }
+}
+
+/// The colour a shape's style gives its text (`wps:style/a:fontRef`)
+fn font_ref_colour(xml: &str, palette: &[String]) -> Option<String> {
+    let st = xml.find("<wps:style>")?;
+    let i = xml[st..].find("<a:fontRef").map(|i| st + i)?;
+    let e = xml[i..].find("</a:fontRef>").map(|e| i + e)?;
+    ooxml::theme::dml_iro(&xml[i..e], palette)
 }
 
 pub fn foreign_shapes(
@@ -3828,7 +3923,10 @@ fn inline_shape_parts(
     if xml.contains("<wpg:wgp") && !xml.contains("<wps:wsp") {
         return out;
     }
-    let kora = ooxml::foreign_shapes_in(xml, &doc.theme_colors, &doc.theme_line_pt);
+    let mut kora = ooxml::foreign_shapes_in(xml, &doc.theme_colors, &doc.theme_line_pt);
+    for f in &mut kora {
+        shape_text_style(doc, xml, &mut f.look);
+    }
     // The group's own box as read, to fit the children into the layout's box
     let (gw, gh) = ooxml::foreign_shape_with(xml, &doc.theme_colors, &doc.theme_line_pt)
         .map(|g| (g.w_mm, g.h_mm))
