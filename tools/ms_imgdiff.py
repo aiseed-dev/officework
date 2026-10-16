@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare two PDFs as pictures: where do their colours differ?
 
-    .venv/bin/python tools/ms_imgdiff.py ours.pdf theirs.pdf [--dpi 50] [--de 12] [--out diff.png]
+    .venv/bin/python tools/ms_imgdiff.py ours.pdf theirs.pdf [--dpi 50] [--de 12] [--flat-de 4] [--out diff.png]
 
 `tools/ms_compare.py` compares where the letters stand. It does not see
 fills, shapes, pictures or what covers what: on 2026-10-15 a merged cell's
@@ -12,8 +12,12 @@ Each page is drawn at `--dpi` (pdftoppm) and cut into 8-pixel squares. A
 square differs when the mean colours of the two pages there are more than
 `--de` apart (CIE76 ΔE in CIELAB). Means over a square smooth away the
 small differences of a substitute face, so what is left is fills, lines and
-pictures. The last line is the number of differing squares; `--out` writes
-the reference page with the differing squares outlined in red.
+pictures. A square that is one flat colour on both pages (a fill, such as a
+table's pale stripe) differs already at `--flat-de` (4): a mean over letters
+needs the wide margin, a fill does not, and pale fills told apart by less than
+12 were missed (2026-10-16). Letter colours are checked by ms_compare.py.
+The last line is the number of differing squares; `--out` writes the
+reference page with the differing squares outlined in red.
 """
 import os
 import subprocess
@@ -23,6 +27,8 @@ import tempfile
 from PIL import Image, ImageDraw
 
 SQUARE = 8
+# A square is flat when no channel varies by more than this inside it
+FLAT_SPREAD = 10
 
 
 def pages(pdf, dpi, tmp, tag):
@@ -46,8 +52,14 @@ def lab(rgb):
     return 116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)
 
 
-def compare(a, b, de):
-    """The squares (column, row) whose mean colours differ by more than de."""
+def flat(im, i, j):
+    box = (i * SQUARE, j * SQUARE, i * SQUARE + SQUARE, j * SQUARE + SQUARE)
+    return all(hi - lo <= FLAT_SPREAD for lo, hi in im.crop(box).getextrema())
+
+
+def compare(a, b, de, flat_de=4.0):
+    """The squares (column, row) whose mean colours differ by more than de,
+    or by more than flat_de where both squares are one flat colour."""
     w, h = min(a.width, b.width) // SQUARE, min(a.height, b.height) // SQUARE
     ma = a.crop((0, 0, w * SQUARE, h * SQUARE)).resize((w, h), Image.BOX)
     mb = b.crop((0, 0, w * SQUARE, h * SQUARE)).resize((w, h), Image.BOX)
@@ -58,14 +70,15 @@ def compare(a, b, de):
             if pa == pb:
                 continue
             la, lb = lab(pa), lab(pb)
-            if sum((u - v) ** 2 for u, v in zip(la, lb)) ** 0.5 > de:
+            d = sum((u - v) ** 2 for u, v in zip(la, lb)) ** 0.5
+            if d > de or (d > flat_de and flat(a, i, j) and flat(b, i, j)):
                 out.append((i, j))
     return out
 
 
 def main():
     args = sys.argv[1:]
-    opt = {"--dpi": "50", "--de": "12", "--out": None}
+    opt = {"--dpi": "50", "--de": "12", "--flat-de": "4", "--out": None}
     for k in list(opt):
         if k in args:
             i = args.index(k)
@@ -73,7 +86,7 @@ def main():
             del args[i:i + 2]
     if len(args) != 2:
         raise SystemExit(__doc__)
-    dpi, de = int(opt["--dpi"]), float(opt["--de"])
+    dpi, de, flat_de = int(opt["--dpi"]), float(opt["--de"]), float(opt["--flat-de"])
     with tempfile.TemporaryDirectory() as tmp:
         ours, theirs = pages(args[0], dpi, tmp, "a"), pages(args[1], dpi, tmp, "b")
         if len(ours) != len(theirs):
@@ -81,7 +94,7 @@ def main():
         total = 0
         marked = []
         for k, (a, b) in enumerate(zip(ours, theirs), 1):
-            diff = compare(a, b, de)
+            diff = compare(a, b, de, flat_de)
             total += len(diff)
             if diff:
                 print(f"p{k}: 色の違う区画 {len(diff)}")

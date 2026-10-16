@@ -10,6 +10,13 @@ be collected by keeping the GUIDs that appear on both pages.
     python3 tools/templates_fetch.py
     python3 tools/templates_fetch.py --kinds resume,memo --per-kind 5
     python3 tools/templates_fetch.py --limit 20 --force
+    python3 tools/templates_fetch.py --ja-only                # Japanese Word templates
+    python3 tools/templates_fetch.py --ja-only --app excel    # Japanese Excel templates
+
+`--ja-only` takes the kinds from the gallery's sitemap at the time and keeps
+every Japanese template, with or without an English twin (2026-10-16). Word's
+go to `templates/ja-jp/<GUID>.docx` and `templates/目録-ja.tsv`; Excel's to
+`templates/excel/ja-jp/<GUID>.xlsx` and `templates/excel/目録-ja.tsv`.
 
 The files land under `~/Documents/officework-cmp/templates/` (outside git; the
 templates are Microsoft's content and are used only for testing):
@@ -134,6 +141,74 @@ def download(url, dst, force=False):
     return "get"
 
 
+def sitemap_kinds(app):
+    """The Japanese pages of an app's gallery, as page names ("invoice-templates")."""
+    _, body = get(f"https://{app}.cloud.microsoft/create/sitemap.xml")
+    out = []
+    for loc in re.findall(r"<loc>([^<]+)</loc>", body.decode("utf-8", "replace")):
+        m = re.match(rf"https://{app}\.cloud\.microsoft/create/ja/([a-z0-9-]+)/?$", loc)
+        if m and m.group(1) not in out:
+            out.append(m.group(1))
+    return out
+
+
+def ja_only(app, per_kind, limit, force, out):
+    """Collect Japanese templates of one app, kind by kind from its sitemap."""
+    ext = {"word": ".docx", "excel": ".xlsx"}[app]
+    root = out if app == "word" else os.path.join(out, "excel")
+    mokuroku = os.path.join(root, "目録-ja.tsv")
+    have = set()
+    if os.path.exists(mokuroku):
+        for line in open(mokuroku, encoding="utf-8").read().splitlines()[1:]:
+            if line.strip():
+                have.add(line.split("\t")[0])
+    today = datetime.date.today().isoformat()
+    rows, n_get, n_skip, n_err = [], 0, 0, 0
+    for page in sitemap_kinds(app):
+        if limit and len(have) >= limit:
+            break
+        url = f"https://{app}.cloud.microsoft/create/ja/{page}/"
+        try:
+            final, body = get(url)
+        except Exception as e:  # noqa: BLE001 - one page must not stop the run
+            print(f"== {page}: × {e}")
+            continue
+        found = [c for c in cards(body.decode("utf-8", "replace")) if c[2].endswith(ext)]
+        if not found:
+            continue  # a page about the app, not a gallery
+        print(f"== {page}: {len(found)} 個")
+        n = 0
+        for guid, title, src in found:
+            if (per_kind and n >= per_kind) or (limit and len(have) >= limit):
+                break
+            if guid in have:
+                n += 1
+                continue
+            dst = os.path.join(root, "ja-jp", guid + ext)
+            try:
+                r = download(src, dst, force)
+            except Exception as e:  # noqa: BLE001 - keep going on one failure
+                print(f"  × {guid}: {e}")
+                n_err += 1
+                continue
+            n_get += r == "get"
+            n_skip += r == "skip"
+            n += 1
+            have.add(guid)
+            rows.append([guid, page, title, src, today])
+            print(f"  ○ {guid} {title}")
+    os.makedirs(root, exist_ok=True)
+    new = not os.path.exists(mokuroku)
+    with open(mokuroku, "a", encoding="utf-8") as f:
+        if new:
+            f.write("GUID\t頁\t題\tURL\t落とした日\n")
+        for r in rows:
+            f.write("\t".join(r) + "\n")
+    print(f"\n目録: {mokuroku}")
+    print(f"新しく目録に足した物 {len(rows)}、落としたファイル {n_get}、すでにあった物 {n_skip}、失敗 {n_err}")
+    return 0
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description="Word のテンプレートを英語と日本語の組で集めます")
     p.add_argument("--kinds", default=",".join(KINDS), help="種類をコンマで並べます")
@@ -141,7 +216,11 @@ def main(argv=None):
     p.add_argument("--limit", type=int, default=0, help="全体の数の上限(0 は無制限)")
     p.add_argument("--force", action="store_true", help="すでにあるファイルも落とし直します")
     p.add_argument("--out", default=ROOT, help="置き場")
+    p.add_argument("--ja-only", action="store_true", help="日本語のテンプレートだけを集めます")
+    p.add_argument("--app", default="word", choices=["word", "excel"], help="--ja-only で集めるアプリ")
     a = p.parse_args(argv)
+    if a.ja_only:
+        return ja_only(a.app, a.per_kind, a.limit, a.force, a.out)
 
     kinds = [k.strip() for k in a.kinds.split(",") if k.strip()]
     today = datetime.date.today().isoformat()

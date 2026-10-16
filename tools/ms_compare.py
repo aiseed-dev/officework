@@ -8,7 +8,9 @@
     .venv/bin/python tools/ms_compare.py うち.pdf 本家.pdf [--tol 6]
 
 出す物: ページ数と用紙の違い、ページごとの行数の違い、行の字の違い、
-同じ字の行の y のずれ(tol pt を超えた物)。違いが無ければ 0 で終わります。
+同じ字の行の y のずれ(tol pt を超えた物)、同じ字の行の字の色の違い
+(CIELAB の ΔE が 6 を超えた物。2026-10-16)。違いが無ければ 0 で終わります。
+色の違いの数は、最後の行の前に「色の違い N 件」として別にも出します。
 
 ## 見方の決め
 
@@ -21,6 +23,52 @@
 """
 import sys
 import unicodedata
+
+# A letter's colour differs when the colours are more than this far apart
+# (CIE76 ΔE in CIELAB). The PDF's own colour values are compared, so a thin
+# red letter is not washed out by the white around it as in a picture
+COLOUR_DE = 6.0
+
+
+def rgb_of(colour):
+    """A pdfplumber fill colour (gray, RGB or CMYK, 0 to 1) as RGB 0 to 255.
+    No colour is black, the PDF default"""
+    if isinstance(colour, (int, float)):
+        colour = (colour,)
+    if not isinstance(colour, (tuple, list)) or not all(isinstance(v, (int, float)) for v in colour):
+        return (0, 0, 0)
+    if len(colour) == 1:
+        g = colour[0]
+        return (g * 255, g * 255, g * 255)
+    if len(colour) == 3:
+        return tuple(v * 255 for v in colour)
+    if len(colour) == 4:
+        c, m, y, k = colour
+        return ((1 - c) * (1 - k) * 255, (1 - m) * (1 - k) * 255, (1 - y) * (1 - k) * 255)
+    return (0, 0, 0)
+
+
+def lab(rgb):
+    def lin(c):
+        c /= 255.0
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = (lin(float(v)) for v in rgb)
+    x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047
+    y = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883
+
+    def f(t):
+        return t ** (1 / 3) if t > 0.008856 else 7.787 * t + 16 / 116
+    fx, fy, fz = f(x), f(y), f(z)
+    return 116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)
+
+
+def delta_e(a, b):
+    return sum((u - v) ** 2 for u, v in zip(lab(a), lab(b))) ** 0.5
+
+
+def hexrgb(rgb):
+    return "#%02X%02X%02X" % tuple(int(round(v)) for v in rgb)
 
 import pdfplumber
 
@@ -58,6 +106,8 @@ def lines_of(page, ytol=2.0):
             "x0": cs[0]["x0"],
             "text": text.replace("(cid:0)", "□").replace("\\", "¥"),
             "size": cs[0].get("size"),
+            # One colour per letter as drawn, for the colour check
+            "colours": [rgb_of(c.get("non_stroking_color")) for c in cs],
         })
     return out
 
@@ -94,6 +144,15 @@ def compare(a_path, b_path, tol=6.0):
                             diffs.append(f"p{i + 1} 行{a0 + j + 1} y: うち {x['top']:.1f} / 本家 {y['top']:.1f} 「{x['text'][:20]}」")
                         if abs(x["x0"] - y["x0"]) > tol:
                             diffs.append(f"p{i + 1} 行{a0 + j + 1} x: うち {x['x0']:.1f} / 本家 {y['x0']:.1f} 「{x['text'][:20]}」")
+                        # The letters' colours, letter by letter when both
+                        # lines have as many, else the most used colour
+                        ca, cb = x["colours"], y["colours"]
+                        if len(ca) != len(cb):
+                            ca, cb = [max(ca, key=ca.count)], [max(cb, key=cb.count)]
+                        for u, v in zip(ca, cb):
+                            if delta_e(u, v) > COLOUR_DE:
+                                diffs.append(f"p{i + 1} 行{a0 + j + 1} 色: うち {hexrgb(u)} / 本家 {hexrgb(v)} 「{x['text'][:20]}」")
+                                break
                     continue
                 for j in range(a0, a1):
                     diffs.append(f"p{i + 1} 行{j + 1} うちだけ: 「{la[j]['text'][:40]}」 y={la[j]['top']:.1f}")
@@ -113,5 +172,6 @@ if __name__ == "__main__":
     d = compare(args[0], args[1], tol)
     for line in d:
         print(line)
+    print(f"色の違い {sum(' 色: ' in x for x in d)} 件")
     print(f"違い {len(d)} 件")
     sys.exit(1 if d else 0)
