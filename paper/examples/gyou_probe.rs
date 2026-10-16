@@ -114,7 +114,9 @@ fn main() -> Result<(), String> {
                 }
             }
         }
-        for cb in sheet.cell_boxes.iter().filter(|c| c.table == 0) {
+        // TABLE=n: the cell boxes of table n (0 by default)
+        let hyou: usize = std::env::var("TABLE").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
+        for cb in sheet.cell_boxes.iter().filter(|c| c.table == hyou) {
             println!("cell ({},{}) x={:.1} top={:.1} w={:.1} h={:.1}", cb.row, cb.col, cb.x_mm, cb.top_mm, cb.w_mm, cb.h_mm);
         }
         println!("sheet.anchors_at = {}", sheet.anchors_at.len());
