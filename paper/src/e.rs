@@ -180,28 +180,30 @@ fn egaku_inner(
 
     // The same order as the PDF writer (`pdfw::write_pages_fonts`), so the
     // screen's pages and the PDF stack things alike: the paper colour, the
-    // watermark, the plain fills, then free shapes, paths and pictures by
-    // `(z, kind, index)`, then the rules, the highlights, the text and the
-    // pen strokes
-    for f in &leaf.fills {
-        cx.set_paint(iro(f.rgb, f.a));
-        let y = (h_mm - f.y_mm - f.h_mm) as f64 * mm;
-        cx.fill_rect(&Rect::new(
-            f.x_mm as f64 * mm,
-            y,
-            (f.x_mm + f.w_mm) as f64 * mm,
-            y + f.h_mm as f64 * mm,
-        ));
-    }
-
+    // watermark, then the plain fills, free shapes, paths and pictures by
+    // `(z, kind, index)` (a fill first at the same `z`, so a drawing behind
+    // the text stays under the cell shading), then the rules, the
+    // highlights, the text and the pen strokes
     let mut order: Vec<(i32, u8, usize)> = Vec::new();
-    order.extend(leaf.polys.iter().enumerate().map(|(k, g)| (g.z, 0u8, k)));
-    order.extend(leaf.paths.iter().enumerate().map(|(k, m)| (m.z, 1u8, k)));
-    order.extend(leaf.images.iter().enumerate().map(|(k, im)| (im.z, 2u8, k)));
+    order.extend(leaf.fills.iter().enumerate().map(|(k, f)| (f.z, 0u8, k)));
+    order.extend(leaf.polys.iter().enumerate().map(|(k, g)| (g.z, 1u8, k)));
+    order.extend(leaf.paths.iter().enumerate().map(|(k, m)| (m.z, 2u8, k)));
+    order.extend(leaf.images.iter().enumerate().map(|(k, im)| (im.z, 3u8, k)));
     order.sort_unstable();
     for (_, kind, k) in order {
         match kind {
             0 => {
+                let f = &leaf.fills[k];
+                cx.set_paint(iro(f.rgb, f.a));
+                let y = (h_mm - f.y_mm - f.h_mm) as f64 * mm;
+                cx.fill_rect(&Rect::new(
+                    f.x_mm as f64 * mm,
+                    y,
+                    (f.x_mm + f.w_mm) as f64 * mm,
+                    y + f.h_mm as f64 * mm,
+                ));
+            }
+            1 => {
                 let p = &leaf.polys[k];
                 if p.points.len() < 3 {
                     continue;
@@ -226,7 +228,7 @@ fn egaku_inner(
                 }
                 cx.fill_path(&path);
             }
-            1 => michi(&mut cx, &leaf.paths[k], h_mm, mm),
+            2 => michi(&mut cx, &leaf.paths[k], h_mm, mm),
             _ => e_hameru(&mut cx, &leaf.images[k], h_mm, mm),
         }
     }

@@ -1196,6 +1196,56 @@ mod tests {
         assert!(pic_turn("<wp:anchor><pic:pic><pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/></a:xfrm></pic:spPr></pic:pic></wp:anchor>").is_none());
     }
 
+    /// An anchoring paragraph whose line lies below its page's text area is
+    /// on the next page, at its top (the page 2 background of Word's
+    /// thank-you card); one inside the text area stays where it is
+    #[test]
+    fn an_anchoring_paragraph_below_the_text_area_is_on_the_next_page() {
+        let paper = Paper { width_mm: 297.0, height_mm: 210.0, margin_mm: 12.7, top_mm: 12.7, bottom_mm: 12.7, ..Paper::default() };
+        let pg = Pagination {
+            pages: Vec::new(),
+            offsets: vec![0.0, 185.0],
+            papers: vec![paper, paper],
+            notes: vec![Vec::new(), Vec::new()],
+            header_h: vec![0.0, 0.0],
+            starts: vec![17.0, 202.0],
+        };
+        assert_eq!(anchor_page(&pg, 150.0), (0, 0.0));
+        let (k, soko) = anchor_page(&pg, 198.6);
+        assert_eq!(k, 1, "the paragraph below the text area stayed on page 1");
+        assert!((198.6 - soko - kumihan::BASE_UP_MM - 12.7).abs() < 0.01, "not at the top of page 2: {soko}");
+    }
+
+    /// A group placed by alignment (`wp:align` right of the page) opens into
+    /// children placed by distance: each keeps its place inside the group,
+    /// and the vertical distance stays the group's (the background of
+    /// Word's thank-you card)
+    #[test]
+    fn a_group_aligned_to_the_right_opens_by_distance() {
+        let page = kumihan::PageSetup { w_mm: 297.0, ..Default::default() };
+        let a = concat!(
+            r#"<w:drawing><wp:anchor behindDoc="1"><wp:positionH relativeFrom="page"><wp:align>right</wp:align></wp:positionH>"#,
+            r#"<wp:positionV relativeFrom="paragraph"><wp:posOffset>-457200</wp:posOffset></wp:positionV><wp:extent cx="3600000" cy="1800000"/>"#,
+            r#"<a:graphic><a:graphicData><wpg:wgp><wpg:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="3600000" cy="1800000"/><a:chOff x="0" y="0"/><a:chExt cx="3600000" cy="1800000"/></a:xfrm></wpg:grpSpPr>"#,
+            r#"<wps:wsp><wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="360000" cy="360000"/></a:xfrm><a:prstGeom prst="rect"/></wps:spPr></wps:wsp>"#,
+            r#"<wps:wsp><wps:spPr><a:xfrm><a:off x="3240000" y="0"/><a:ext cx="360000" cy="360000"/></a:xfrm><a:prstGeom prst="rect"/></wps:spPr></wps:wsp>"#,
+            r#"</wpg:wgp></a:graphicData></a:graphic></wp:anchor></w:drawing>"#,
+        );
+        let kora = split_anchors(a, &page);
+        assert_eq!(kora.len(), 2);
+        let pos = |x: &str, name: &str| -> f32 {
+            let (s, e) = anchor_pos_span(x, name).expect("no position");
+            let t = &x[s..e];
+            assert!(!t.contains("<wp:align>"), "a child is still placed by alignment: {t}");
+            t.trim_start_matches("<wp:posOffset>").trim_end_matches("</wp:posOffset>").parse().expect(t)
+        };
+        // The group (100mm wide) ends at the page's right edge
+        let left = (297.0 - 100.0) * 36000.0;
+        assert!((pos(&kora[0], "positionH") - left).abs() < 2.0, "{}", pos(&kora[0], "positionH"));
+        assert!((pos(&kora[1], "positionH") - (left + 3240000.0)).abs() < 2.0);
+        assert!((pos(&kora[0], "positionV") + 457200.0).abs() < 2.0, "the vertical distance was overwritten");
+    }
+
     #[test]
     fn a_group_opens_into_its_children() {
         let a = concat!(
@@ -3293,18 +3343,6 @@ fn group_leaves<'a>(body: &'a str, xf: &GroupXf, out: &mut Vec<GroupKo<'a>>) {
 /// "Scroll banner every day card" on top of each other (2026-09-20)
 fn open_group(anchor: &str, page: &kumihan::PageSetup) -> Option<Vec<String>> {
     let gi = anchor.find("<wpg:wgp")?;
-    // 錨の距離
-    let px = {
-        let i = anchor.find("<wp:positionH")?;
-        let j = anchor[i..].find("<wp:posOffset>")? + i + 14;
-        anchor[j..].find('<').and_then(|e| anchor[j..j + e].trim().parse::<f32>().ok())
-    };
-    let py = {
-        let i = anchor.find("<wp:positionV")?;
-        let j = anchor[i..].find("<wp:posOffset>")? + i + 14;
-        anchor[j..].find('<').and_then(|e| anchor[j..j + e].trim().parse::<f32>().ok())
-    };
-    let (px, py) = (px?, py?);
     let head_end = anchor.find("<a:graphic")?;
     let head = &anchor[..head_end];
     // グループの座標系
@@ -3328,23 +3366,22 @@ fn open_group(anchor: &str, page: &kumihan::PageSetup) -> Option<Vec<String>> {
     };
     let ax = grow(w_share, xf_num(head, "<wp:extent", "cx"), false);
     let ay = grow(h_share, xf_num(head, "<wp:extent", "cy"), true);
+    // 錨の距離(EMU)。寄せ方(`wp:align`)で置いた錨は、寄せた先までの距離に
+    // 直します
+    let gw = xf_num(head, "<wp:extent", "cx").unwrap_or(0.0) * ax / 36000.0;
+    let gh = xf_num(head, "<wp:extent", "cy").unwrap_or(0.0) * ay / 36000.0;
+    let px = anchor_pos_emu(head, "positionH", gw, page, false)?;
+    let py = anchor_pos_emu(head, "positionV", gh, page, true)?;
     let ne = GroupXf { ax, bx: px, ay, by: py, rot: Vec::new() };
     let xf = group_xf(&anchor[gp_i..gp_e], &ne);
     let mut leaves = Vec::new();
     group_leaves(&anchor[gp_e..], &xf, &mut leaves);
     let mut out = Vec::new();
     for ko in leaves {
-        // 錨の頭の距離と大きさを子の物に書き替える
+        // 錨の頭の距離と大きさを子の物に書き替える。子は距離で置きます
         let mut h = head.to_string();
-        for (tag, v) in [("<wp:positionH", ko.x), ("<wp:positionV", ko.y)] {
-            if let Some(i) = h.find(tag) {
-                if let Some(j) = h[i..].find("<wp:posOffset>") {
-                    let js = i + j + 14;
-                    if let Some(je) = h[js..].find('<') {
-                        h.replace_range(js..js + je, &format!("{}", v.round() as i64));
-                    }
-                }
-            }
+        for (name, v) in [("positionH", ko.x), ("positionV", ko.y)] {
+            set_anchor_pos(&mut h, name, v);
         }
         if let Some(i) = h.find("<wp:extent ") {
             if let Some(e2) = h[i..].find("/>") {
@@ -3369,6 +3406,58 @@ fn open_group(anchor: &str, page: &kumihan::PageSetup) -> Option<Vec<String>> {
         ));
     }
     (!out.is_empty()).then_some(out)
+}
+
+/// The inside of an anchor's `<wp:positionH>` or `<wp:positionV>` (the
+/// element whose name is `name`): (start, end) in `head`
+fn anchor_pos_span(head: &str, name: &str) -> Option<(usize, usize)> {
+    let i = head.find(&format!("<wp:{name}"))?;
+    let s = head[i..].find('>')? + i + 1;
+    let e = head[s..].find(&format!("</wp:{name}>"))? + s;
+    Some((s, e))
+}
+
+/// **An anchor's distance from its base along one axis (EMU)**, read from
+/// inside that axis's own element. A position given by alignment
+/// (`wp:align`, ECMA-376 20.4.3.1) is turned into the distance it comes to
+/// for a drawing `size_mm` long. The position was read from the first
+/// `wp:posOffset` after `wp:positionH`, which for a group aligned to the
+/// right of the page was the vertical one: every child of the background of
+/// Word's thank-you card went to the right edge of the page (2026-10-17)
+fn anchor_pos_emu(head: &str, name: &str, size_mm: f32, page: &kumihan::PageSetup, tate: bool) -> Option<f32> {
+    let (s, e) = anchor_pos_span(head, name)?;
+    let naka = &head[s..e];
+    let tag_text = |tag: &str| -> Option<&str> {
+        let j = naka.find(tag)? + tag.len();
+        naka[j..].find('<').map(|k| naka[j..j + k].trim())
+    };
+    if let Some(v) = tag_text("<wp:posOffset>").and_then(|v| v.parse::<f32>().ok()) {
+        return Some(v);
+    }
+    let from = {
+        let i = head.find(&format!("<wp:{name}"))?;
+        let k = head[i..].find("relativeFrom=\"")? + i + 14;
+        head[k..].find('"').map(|x| head[k..k + x].to_string())?
+    };
+    // a share of the base (`wp14:pctPosHOffset`, thousandths of a percent)
+    for t in ["<wp14:pctPosHOffset>", "<wp14:pctPosVOffset>"] {
+        if let Some(v) = tag_text(t).and_then(|v| v.parse::<f32>().ok()) {
+            return Some(anchor_extent(&from, page, tate) * v / 100_000.0 * 36000.0);
+        }
+    }
+    let yose = tag_text("<wp:align>")?;
+    // the distance from the base's own start: the base starts at 0 here
+    let moto = anchor_place_at(&from, 0.0, None, size_mm, page, tate, 0.0, false, 0.0);
+    let at = anchor_place_at(&from, 0.0, Some(yose), size_mm, page, tate, 0.0, false, 0.0);
+    Some((at - moto) * 36000.0)
+}
+
+/// Write `v` (EMU) as the distance of the axis `name` of an anchor head,
+/// in place of whatever position the element held
+fn set_anchor_pos(h: &mut String, name: &str, v: f32) {
+    if let Some((s, e)) = anchor_pos_span(h, name) {
+        h.replace_range(s..e, &format!("<wp:posOffset>{}</wp:posOffset>", v.round() as i64));
+    }
 }
 
 /// 控えの原文を `<wp:anchor>` / `<wp:inline>` ごとに切る。1 つも無ければ原文のまま
@@ -3408,6 +3497,29 @@ pub(crate) fn split_anchors_z(a: &str, page: &kumihan::PageSetup) -> Vec<(String
         }
     }
     out
+}
+
+/// **The page an anchoring paragraph is on**, and where that page starts
+/// in sheet coordinates, for the paragraph's line at sheet `y`. The page is
+/// looked up by the first line each page starts with
+/// ([`Pagination::page_at`]): `offsets` overlaps the foot of the page
+/// before, and a paragraph near the foot of a page that ends early at a page
+/// break was taken for the next page (the cover of Word's business report,
+/// 2026-10-16).
+///
+/// A paragraph whose line lies below the page's text area goes to the top
+/// of the next page, as Word sends it. The pagination keeps an empty line on
+/// the page it would run off, and the empty paragraph that anchors the page
+/// 2 background of Word's thank-you card is one (2026-10-17)
+fn anchor_page(pg: &Pagination, y: f32) -> (usize, f32) {
+    let k = pg.page_at(y);
+    let off = pg.offsets.get(k).copied().unwrap_or(0.0);
+    if let (Some(p), Some(next)) = (pg.papers.get(k), pg.papers.get(k + 1)) {
+        if y - off > p.height_mm - p.bottom_mm + 0.01 {
+            return (k + 1, y - next.top_mm - kumihan::BASE_UP_MM);
+        }
+    }
+    (k, off)
 }
 
 /// The z an anchor behind the text starts from, far below the body's 0
@@ -3662,10 +3774,7 @@ pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, pa
     // foot of a page that ends early at a page break was taken for the next
     // page. The cover of Word's business report anchors its red panel and
     // photo there, and they came out on page 2 (2026-10-16)
-    let kami_no = |y: f32| -> (usize, f32) {
-        let k = pg.page_at(y);
-        (k, pg.offsets.get(k).copied().unwrap_or(0.0))
-    };
+    let kami_no = |y: f32| -> (usize, f32) { anchor_page(&pg, y) };
     let mut pictures: Vec<&kumihan::InlineImage> = Vec::new();
     for p in doc.paragraphs() {
         pictures.extend(p.images.iter().filter(|im| im.off == usize::MAX && im.shape.is_some()));
@@ -3945,10 +4054,7 @@ pub fn foreign_shapes(
     // foot of a page that ends early at a page break was taken for the next
     // page. The cover of Word's business report anchors its red panel and
     // photo there, and they came out on page 2 (2026-10-16)
-    let kami_no = |y: f32| -> (usize, f32) {
-        let k = pg.page_at(y);
-        (k, pg.offsets.get(k).copied().unwrap_or(0.0))
-    };
+    let kami_no = |y: f32| -> (usize, f32) { anchor_page(&pg, y) };
     // **A section's own header and footer carry shapes too** (`w:sectPr`
     // `w:headerReference` / `w:footerReference`, ECMA-376 17.10.5). A file
     // whose only section names them leaves `doc.header` empty and fills

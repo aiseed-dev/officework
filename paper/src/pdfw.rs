@@ -542,15 +542,12 @@ pub fn write_pages_fonts<W: std::io::Write>(
             // **透明度は資源の名前で切り替えます**(PDF は色に透明度を持てず、
             // ExtGState という別の入れ物に置く決まりです)。使った濃さだけ
             // 資源に並べ、変わったときだけ名前を書きます
-            for f in page.fills.iter().filter(|f| inz(f.z)) {
-                usu(&mut c, &mut usu_now, f.a);
-                if fill_now != Some(f.rgb) {
-                    c.set_fill_rgb(f.rgb.0, f.rgb.1, f.rgb.2);
-                    fill_now = Some(f.rgb);
-                }
-                c.rect(pt(f.x_mm), pt(f.y_mm), pt(f.w_mm), pt(f.h_mm));
-                c.fill_nonzero();
-            }
+            //
+            // **The fills go in the same order as the rest** (below), first
+            // at the same `z`. Drawn before everything, they were covered by
+            // the drawings behind the text (`z` below 0): the cell shading of
+            // Word's financial agenda lay under its page-sized background
+            // (2026-10-17)
             // **Free shapes, paths and pictures, in one order.**
             //
             // A group draws its children in the order the file lists them, and
@@ -561,14 +558,26 @@ pub fn write_pages_fonts<W: std::io::Write>(
             // Word's ticket template draws three stars after the scroll
             // picture, and drawing every picture last hid them (2026-09-20)
             let mut order: Vec<(i32, u8, usize)> = Vec::new();
-            order.extend(page.polys.iter().enumerate().filter(|(_, g)| inz(g.z)).map(|(k, g)| (g.z, 0u8, k)));
-            order.extend(page.paths.iter().enumerate().filter(|(_, m)| inz(m.z)).map(|(k, m)| (m.z, 1u8, k)));
-            order.extend(img_ids[i].iter().enumerate().filter(|(_, (_, im))| inz(im.z)).map(|(k, (_, im))| (im.z, 2u8, k)));
+            order.extend(page.fills.iter().enumerate().filter(|(_, f)| inz(f.z)).map(|(k, f)| (f.z, 0u8, k)));
+            order.extend(page.polys.iter().enumerate().filter(|(_, g)| inz(g.z)).map(|(k, g)| (g.z, 1u8, k)));
+            order.extend(page.paths.iter().enumerate().filter(|(_, m)| inz(m.z)).map(|(k, m)| (m.z, 2u8, k)));
+            order.extend(img_ids[i].iter().enumerate().filter(|(_, (_, im))| inz(im.z)).map(|(k, (_, im))| (im.z, 3u8, k)));
             order.sort_unstable();
             for (_, kind, k) in order {
                 match kind {
-                    // 好きな形の塗り。四角の塗りと同じ層です
+                    // 四角の塗り
                     0 => {
+                        let f = &page.fills[k];
+                        usu(&mut c, &mut usu_now, f.a);
+                        if fill_now != Some(f.rgb) {
+                            c.set_fill_rgb(f.rgb.0, f.rgb.1, f.rgb.2);
+                            fill_now = Some(f.rgb);
+                        }
+                        c.rect(pt(f.x_mm), pt(f.y_mm), pt(f.w_mm), pt(f.h_mm));
+                        c.fill_nonzero();
+                    }
+                    // 好きな形の塗り。四角の塗りと同じ層です
+                    1 => {
                         let g = &page.polys[k];
                         let Some(((x0, y0), rest)) = g.points.split_first() else { continue };
                         if rest.is_empty() {
@@ -604,7 +613,7 @@ pub fn write_pages_fonts<W: std::io::Write>(
                     // **曲がる線と切り抜きのある形**([`Michi`])。塗りと同じ層です。
                     // 色も太さも道ごとに書き直すので、上の `fill_now`/`pen` の控えは
                     // 当てにならなくなります — 書いた後で消しておきます
-                    1 => {
+                    2 => {
                         usu(&mut c, &mut usu_now, page.paths[k].a);
                         michi_kaku(&mut c, &page.paths[k], pt);
                         fill_now = None;
@@ -1181,6 +1190,29 @@ mod tests {
         assert!(x.abs() < 1e-3 && (y - 1.0).abs() < 1e-3, "{x} {y}");
     }
 
+
+    /// A drawing behind the text (`z` below 0) is drawn before a cell's
+    /// fill (`z` 0), not over it (the cell shading of Word's financial
+    /// agenda under its page-sized background)
+    #[test]
+    fn a_drawing_behind_the_text_is_under_the_fills() {
+        let leaf = Leaf {
+            fills: vec![Fill { x_mm: 20.0, y_mm: 20.0, w_mm: 30.0, h_mm: 10.0, rgb: (1.0, 0.0, 0.0), ..Default::default() }],
+            polys: vec![Poly {
+                points: vec![(0.0, 0.0), (210.0, 0.0), (210.0, 297.0), (0.0, 297.0)],
+                rgb: (0.0, 0.0, 1.0),
+                z: -1_000_000,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let mut out = Vec::new();
+        write_pages(&[leaf], 210.0, 297.0, &font(), &mut out).expect("PDF not written");
+        let body = unpack(&out);
+        let blue = body.find("0 0 1 rg").expect("no blue");
+        let red = body.find("1 0 0 rg").expect("no red");
+        assert!(blue < red, "the background is drawn over the fill:\n{body}");
+    }
 
     /// Text with a clip is written inside `q`/`Q` with that part as the clip
     #[test]
