@@ -26,6 +26,22 @@
 //! 強いので、置き場ごと写すしかありません)。
 use std::process::Command;
 
+/// Copies the .py files under `src` to `dst`, keeping the directories
+fn copy_py(src: &std::path::Path, dst: &std::path::Path) {
+    std::fs::create_dir_all(dst).expect("写しの場所を作れない");
+    for entry in std::fs::read_dir(src).expect("officework/ を読めない") {
+        let path = entry.expect("officework/ を読めない").path();
+        let name = path.file_name().expect("名前が無い");
+        if path.is_dir() {
+            if name != "__pycache__" {
+                copy_py(&path, &dst.join(name));
+            }
+        } else if path.extension().is_some_and(|e| e == "py") {
+            std::fs::copy(&path, dst.join(name)).expect("py を写せない");
+        }
+    }
+}
+
 #[test]
 fn a_form_can_be_inserted_from_python() {
     // **Python の名前は OS で違う。** Windows は `python`(と `py`)で、
@@ -87,15 +103,10 @@ fn a_form_can_be_inserted_from_python() {
     let pkg_dst = stage.join("officework");
     std::fs::create_dir_all(&pkg_dst).expect("写しの場所を作れない");
 
-    // パッケージの .py を写す(__pycache__ などは要らない)
+    // Copy the package's .py files, sub-packages included (`enum`,
+    // `openpyxl`); __pycache__ and the like are not wanted
     let pkg_src = std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/officework"));
-    for entry in std::fs::read_dir(&pkg_src).expect("officework/ を読めない") {
-        let path = entry.expect("officework/ を読めない").path();
-        if path.extension().is_some_and(|e| e == "py") {
-            let name = path.file_name().expect("名前が無い");
-            std::fs::copy(&path, pkg_dst.join(name)).expect("py を写せない");
-        }
-    }
+    copy_py(&pkg_src, &pkg_dst);
     // **Python が探す名前も OS で違う。** Windows は `.pyd`、
     // mac は `.dylib` ではなく `.so`(CPython の作法)
     let put_name = if cfg!(target_os = "windows") { "_sheet.pyd" } else { "_sheet.so" };

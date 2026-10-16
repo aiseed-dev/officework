@@ -114,7 +114,9 @@ pub fn write(
     Ok((row - origin.row, f.fields.len() as u32))
 }
 
-fn put(sheet: &mut book::Sheet, p: Pos, v: Value, date_fmt: Option<&str>) {
+/// Puts a value, keeping the cell's format; a date format only where the
+/// cell states none
+pub(crate) fn put(sheet: &mut book::Sheet, p: Pos, v: Value, date_fmt: Option<&str>) {
     let mut fmt = sheet.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
     if fmt.number_format.is_none() && !matches!(v, Value::Empty) {
         if let Some(df) = date_fmt {

@@ -9161,3 +9161,42 @@ df = ws.read_df()                  # 使っている範囲
 . 40,000 セルの時間を測り直す(2026-10-17。済み。debug の組みで、2,000 行 × 20 列の `write_df` が 0.06 秒、`read_df` が 0.03 秒。20,000 行 × 20 列で 0.65 秒と 0.39 秒。1 セルずつの 12 秒から、呼び出しの手間が消えた分だけ速くなった)
 . Flet の部品の入り口を「DataFrame か Book のどちらでも」にする
 . 位置づけの文に「polars の DataFrame をそのまま読み書きできる」を足す
+
+== 決め: 部品へのデータとコードの入り口は 3 つ(2026-10-17 発注者)
+
+発注者「Calc でやっていたように、3 種類のコンポーネントを使えるようにしたらどうか。Arrow の PyCapsule(`__arrow_c_stream__`)で受け取る。numpy の ndarray で受け取る。openpyxl のプログラムが動くようにするとともにセル関数やマクロが使えるようにする」。当方の案の順で進めると決まりました。
+
+表計算の部品(とライブラリー `officework.sheet`)に、データとコードが入って来る道を 3 つにそろえます。Calc の 3 本の道(一括のデータ、セル関数、plugins の手続き)と同じ並びです。
+
+=== 1. Arrow
+
+済みです(上の「決め: Python との表のやり取りは Arrow」)。
+
+=== 2. numpy の ndarray
+
+* numpy を import せず、Python のバッファープロトコルで受け取ります。Arrow と同じ考え方で、numpy の版に結びつきません。
+* 数(int・float)の 1 次元と 2 次元の配列は、バッファーから一括で読みます。bool の配列は `view("u1")` でバイトにして読みます。文字・object・日付(datetime64)の配列は `tolist()` に落として、`ws["A1"] = 値` と同じ変換で置きます。
+* 1 次元の配列は縦 1 列に置きます(UDF のスピルの「1 次元は縦」と同じ決まり)。
+* `read_array(range)` は、数だけの範囲なら float64(全部が整数なら int64)、論理値だけなら bool の配列を返します。文字が混ざれば、Python の値の list の list を numpy に渡します。numpy があれば `ndarray`、無ければ `memoryview`(形つき)か list を返します。
+* 書き方は `ws.write_array(arr, "B2")` と `ws.read_array("B2:F100")` です。見出しは無く、型は 1 つです。
+
+=== 3. openpyxl のプログラム、セル関数、マクロ
+
+*(a) openpyxl のプログラムをそのまま動かす。* `officework.openpyxl` という互換のモジュールを作り、`openpyxl` の下にある名前(`Workbook`、`load_workbook`、`styles`、`utils`、`chart`、`workbook`、`worksheet.table`、`worksheet.datavalidation`、`comments`)を同じ場所に並べます。`from officework import openpyxl` と書き替えるだけで動きます。1 字も変えずに動かすには `officework.openpyxl.install()` を先に呼びます。`sys.modules["openpyxl"]` に差し込むので、その後の `import openpyxl` はこちらを読みます。合否は、連載のサンプル(`test/out/blog/ref` の openpyxl の 12 本)を変えずに回して数えます。officework に無い名前の所はそのまま止まります。止まった事が結果です。
+
+*(b) セル関数。* エンジンにはすでに Rust の独自関数の登録(`book::calc::custom::register`)があります。これに、閉包(Python の関数を包んだ物)も登録できる入り口を足します。Python では `sheet.register(倍)` で `def 倍(x)` を登録し、セルに `=倍(A1)` と書けば再計算のときに呼ばれます。
+
+* 登録はこの Python のプロセスの中で有効です(Rust の登録と同じ単位)。ブックごとの登録は、要るときに考えます。
+* 引数は計算した値で渡し、範囲は左から右、上から下に平らにします(Rust の独自関数と同じ約束)。返せるのは 1 つの値(数・文字・論理値・日付・None)です。
+* 関数の中で例外が出たセルは `#PY!` になります。
+* 関数の中から同じブックに書きません(再計算の最中なので)。
+* 「開く=実行しない」は守られます。ファイルから来る物は値と式だけで、走る関数はプログラムが自分で登録した物だけです。
+
+*(c) マクロ。* ライブラリーと Flet の部品では、マクロは「API を呼ぶ Python の関数」そのものです。Flet ではボタンの `on_click` に結ぶだけで、新しい仕組みは作りません。手引きに「マクロは Python の関数」と書きます。calc のアプリの `@名前` の手続きは今のままです。
+
+=== 進める順
+
+. numpy(`write_array` / `read_array`)。2026-10-17 済み(`pysheet/src/ndarray.rs`)。バッファー API そのものは Python 3.11 より前の limited API に無いので、`memoryview` を通して読む
+. `officework.openpyxl` と `install()`。2026-10-17 済み。連載の openpyxl のサンプルは 13 本あり(第 2 回 7 本、第 3 回 6 本)、`install()` の後に 1 字も変えずに回して 13 本とも通った。1 本(第 3 回 List6)は openpyxl 3.0 の `defined_names.definedName` と `append` を使っていたので、その名前も受けるようにした
+. セル関数の登録(`sheet.register`)。2026-10-17 済み。エンジンの `custom.rs` に閉包の登録(`register_dyn`)を足した
+. Flet の部品の入り口に 3 つを並べる

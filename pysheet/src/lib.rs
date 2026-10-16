@@ -18,12 +18,13 @@
 
 mod arrow;
 mod doc;
+mod ndarray;
 
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use pyo3::exceptions::{PyIOError, PyIndexError, PyKeyError, PyTypeError, PyValueError};
+use pyo3::exceptions::{PyIOError, PyIndexError, PyKeyError, PyRuntimeError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyDate, PyDateTime, PyDict, PyTime};
+use pyo3::types::{PyDate, PyDateTime, PyDict, PyTime, PyTuple};
 
 use book::calc::{date_serial_at, excel_epoch};
 use book::{
@@ -47,6 +48,11 @@ struct Inner {
 }
 
 fn lock(inner: &Arc<Mutex<Inner>>) -> PyResult<MutexGuard<'_, Inner>> {
+    // A cell function runs while the book is locked for the recalculation,
+    // so touching a book from inside one would wait forever
+    if IN_CELL_FUNCTION.with(|c| c.get()) {
+        return Err(PyRuntimeError::new_err("セル関数の中からブックは触れません(再計算の最中です)"));
+    }
     inner
         .lock()
         .map_err(|_| PyValueError::new_err("別の操作が失敗した後で、ブックの状態が信用できない"))
@@ -127,6 +133,67 @@ fn to_out(v: &Value) -> Option<Out> {
         .map(Out::Obj)
         .or_else(|| Some(Out::Text(v.display()))),
     }
+}
+
+/// A Python value as a cell, and the number format to put on a cell that
+/// has none (a date). The one conversion for `ws["A1"] = v`, `append`, and
+/// the arrays and lists of `write_array`.
+fn cell_of(value: Option<&Bound<'_, PyAny>>, d1904: bool) -> PyResult<(Cell, Option<&'static str>)> {
+    Ok(match value {
+        None => (Cell::default(), None),
+        // datetime は date の子なので、必ず datetime を先に見る
+        Some(v) => {
+            if v.cast::<PyDateTime>().is_ok() {
+                (num_cell(date_days(v, d1904)? as f64 + time_frac(v)?), Some("yyyy/m/d h:mm"))
+            } else if v.cast::<PyDate>().is_ok() {
+                (num_cell(date_days(v, d1904)? as f64), Some("yyyy/m/d"))
+            } else if v.cast::<PyTime>().is_ok() {
+                (num_cell(time_frac(v)?), Some("h:mm"))
+            } else if let Ok(b) = v.extract::<bool>() {
+                // bool を数より先に見る(Python の bool は int の子)
+                (Cell { formula: None, value: Value::Bool(b), fmt: Default::default() }, None)
+            } else if let Ok(n) = v.extract::<f64>() {
+                (num_cell(n), None)
+            } else if let Ok(t) = v.extract::<String>() {
+                // **文字は文字のまま置く**(2026-08-15 に直した)。
+                //
+                // 前は `Cell::input(&t)` — **人が打った字の解釈器** — を
+                // 通していたので、`ws["A1"] = "0001"` が数の 1 になり、
+                // 品番・郵便番号・電話番号・会員番号が壊れていた。前後の
+                // 空白も削られていた。**ファイルの口と打鍵の口は別物**で、
+                // 打鍵の側が「0001 と打ったら数の 1」なのは Excel と同じで
+                // 正しいが、API がそれを真似る理由は無い(openpyxl も
+                // 文字は文字のまま置く。うちは「openpyxl の代替」と名乗る)。
+                //
+                // `=` で始まる字を式にするのだけは残す — openpyxl も
+                // `ws["A1"] = "=SUM(A1:A2)"` を式として置く。
+                // 空文字は空のセル(前と同じ。使っている範囲の数え方を変えない)
+                if t.starts_with('=') || t.trim().is_empty() {
+                    // **日付を返す式には日付の形式を薦める**(元の形式が
+                    // 無いときだけ)。Python の date を置いたときと同じ作法 —
+                    // 打った字が `"=TODAY()"` でも `date.today()` でも
+                    // 画面は同じであるべき
+                    let c = Cell::input(&t);
+                    let df = c.formula.as_deref().and_then(Cell::date_format_of);
+                    (c, df)
+                } else {
+                    (
+                        Cell {
+                            formula: None,
+                            value: book::Value::Text(t),
+                            fmt: Default::default(),
+                        },
+                        None,
+                    )
+                }
+            } else {
+                return Err(PyTypeError::new_err(format!(
+                    "セルに置けるのは 数・bool・文字列・datetime/date/time・None。渡されたのは {}",
+                    v.get_type().name().map(|n| n.to_string()).unwrap_or_default()
+                )));
+            }
+        }
+    })
 }
 
 /// 数の入ったセル(書式は呼び側で付け直す)。
@@ -822,62 +889,7 @@ impl PySheet {
     fn __setitem__(&self, key: &str, value: Option<Bound<'_, PyAny>>) -> PyResult<()> {
         let p = parse_ref(key)?;
         let d1904 = lock(&self.inner)?.book.date1904;
-        // (セルの中身, セルに表示形式が無いときに付ける形式)
-        let (cell, date_fmt): (Cell, Option<&str>) = match &value {
-            None => (Cell::default(), None),
-            // datetime は date の子なので、必ず datetime を先に見る
-            Some(v) => {
-                if v.cast::<PyDateTime>().is_ok() {
-                    (num_cell(date_days(v, d1904)? as f64 + time_frac(v)?), Some("yyyy/m/d h:mm"))
-                } else if v.cast::<PyDate>().is_ok() {
-                    (num_cell(date_days(v, d1904)? as f64), Some("yyyy/m/d"))
-                } else if v.cast::<PyTime>().is_ok() {
-                    (num_cell(time_frac(v)?), Some("h:mm"))
-                } else if let Ok(b) = v.extract::<bool>() {
-                    // bool を数より先に見る(Python の bool は int の子)
-                    (Cell { formula: None, value: Value::Bool(b), fmt: Default::default() }, None)
-                } else if let Ok(n) = v.extract::<f64>() {
-                    (num_cell(n), None)
-                } else if let Ok(t) = v.extract::<String>() {
-                    // **文字は文字のまま置く**(2026-08-15 に直した)。
-                    //
-                    // 前は `Cell::input(&t)` — **人が打った字の解釈器** — を
-                    // 通していたので、`ws["A1"] = "0001"` が数の 1 になり、
-                    // 品番・郵便番号・電話番号・会員番号が壊れていた。前後の
-                    // 空白も削られていた。**ファイルの口と打鍵の口は別物**で、
-                    // 打鍵の側が「0001 と打ったら数の 1」なのは Excel と同じで
-                    // 正しいが、API がそれを真似る理由は無い(openpyxl も
-                    // 文字は文字のまま置く。うちは「openpyxl の代替」と名乗る)。
-                    //
-                    // `=` で始まる字を式にするのだけは残す — openpyxl も
-                    // `ws["A1"] = "=SUM(A1:A2)"` を式として置く。
-                    // 空文字は空のセル(前と同じ。使っている範囲の数え方を変えない)
-                    if t.starts_with('=') || t.trim().is_empty() {
-                        // **日付を返す式には日付の形式を薦める**(元の形式が
-                        // 無いときだけ)。Python の date を置いたときと同じ作法 —
-                        // 打った字が `"=TODAY()"` でも `date.today()` でも
-                        // 画面は同じであるべき
-                        let c = Cell::input(&t);
-                        let df = c.formula.as_deref().and_then(Cell::date_format_of);
-                        (c, df)
-                    } else {
-                        (
-                            Cell {
-                                formula: None,
-                                value: book::Value::Text(t),
-                                fmt: Default::default(),
-                            },
-                            None,
-                        )
-                    }
-                } else {
-                    return Err(PyTypeError::new_err(format!(
-                        "セルに置けるのは 数・bool・文字列・datetime/date/time・None。渡されたのは {}",
-                        v.get_type().name().map(|n| n.to_string()).unwrap_or_default()
-                    )));
-                }
-            }
-        };
+        let (cell, date_fmt) = cell_of(value.as_ref(), d1904)?;
         self.with_calc(|s| {
             let mut fmt = s.get(p).map(|c| c.fmt.clone()).unwrap_or_default();
             if fmt.number_format.is_none() {
@@ -961,6 +973,34 @@ impl PySheet {
                 }
             };
             arrow::read(s, a, b, header, d1904)
+        })
+    }
+
+    /// Writes an array (numpy's ndarray, or a list of lists) at `at`. Numbers
+    /// are read from the array's buffer in one go; everything else goes
+    /// through `tolist()` and the conversion of `ws["A1"] = v`. A
+    /// one-dimensional array is one column. Returns (rows, columns).
+    #[pyo3(signature = (arr, at="A1"))]
+    fn write_array(&self, arr: &Bound<'_, PyAny>, at: &str) -> PyResult<(u32, u32)> {
+        let origin = parse_ref(at)?;
+        let d1904 = lock(&self.inner)?.book.date1904;
+        self.with_calc(|s| ndarray::write(s, arr, origin, d1904))
+    }
+
+    /// Reads a range (the used range when none) for an ndarray: numbers
+    /// only come as `(bytes, "d" | "q", shape)`, booleans only as
+    /// `(bytes, "?", shape)`, anything else as a list of lists.
+    #[pyo3(signature = (range=None))]
+    fn read_array(&self, py: Python<'_>, range: Option<&str>) -> PyResult<Py<PyAny>> {
+        self.with(|s| {
+            let (a, b) = match range {
+                Some(r) => parse_range(r)?,
+                None => {
+                    let (rows, cols) = s.extent();
+                    (Pos::new(0, 0), Pos::new(rows.saturating_sub(1), cols.saturating_sub(1)))
+                }
+            };
+            ndarray::read(py, s, a, b)
         })
     }
 
@@ -2703,6 +2743,69 @@ fn suushiki_svg(tex: &str, size_pt: f32, color: Option<&str>, font: Option<&str>
     kumihan::suushiki::kumu_svg(tex, size_pt, bytes.as_deref(), color).map_err(PyValueError::new_err)
 }
 
+
+thread_local! {
+    // Set while a Python cell function runs. The book is locked for the
+    // recalculation then, so a call back into it would wait forever; `lock`
+    // refuses instead
+    static IN_CELL_FUNCTION: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Registers a Python function as a cell function: `sheet.register(倍)`
+/// makes `=倍(A1)` call `def 倍(x)` whenever the sheet is recalculated.
+/// The name defaults to the function's `__name__`; it is matched the way
+/// formulas are read (ASCII without regard to case). Arguments come as
+/// calculated values, ranges flattened left to right and top to bottom;
+/// the function returns one value (number, text, bool, date, None). An
+/// exception shows in the cell as `#PY!` with the message. The
+/// registration lasts for this Python process. Returns the name.
+#[pyfunction]
+#[pyo3(signature = (f, name=None))]
+fn register(py: Python<'_>, f: Py<PyAny>, name: Option<String>) -> PyResult<String> {
+    let name = match name {
+        Some(n) => n,
+        None => f.bind(py).getattr("__name__")?.extract::<String>()?,
+    };
+    let f = std::sync::Arc::new(f);
+    book::calc::custom::register_dyn(
+        &name,
+        Box::new(move |args: &[Value], ctx: &book::calc::custom::Ctx| {
+            Python::attach(|py| {
+                let f = f.bind(py);
+                let pyargs: Vec<Option<Out>> = args.iter().map(to_out).collect();
+                let Ok(tuple) = PyTuple::new(py, pyargs) else { return Value::Error("#PY!".into()) };
+                IN_CELL_FUNCTION.with(|c| c.set(true));
+                let r = f.call1(tuple);
+                IN_CELL_FUNCTION.with(|c| c.set(false));
+                match r {
+                    Ok(r) => {
+                        let v = if r.is_none() { None } else { Some(&r) };
+                        match cell_of(v, ctx.date1904) {
+                            Ok((cell, _)) => cell.value,
+                            Err(_) => Value::Error("#VALUE!".into()),
+                        }
+                    }
+                    Err(e) => Value::Error(format!("#PY! {e}")),
+                }
+            })
+        }),
+    );
+    Ok(name)
+}
+
+/// Removes a cell function registered with `register`. Returns whether
+/// there was one.
+#[pyfunction]
+fn unregister(name: &str) -> bool {
+    book::calc::custom::unregister(name)
+}
+
+/// The names of the custom cell functions (Rust and Python)
+#[pyfunction]
+fn functions() -> Vec<String> {
+    book::calc::custom::names()
+}
+
 #[pymodule]
 fn _sheet(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBook>()?;
@@ -2710,6 +2813,10 @@ fn _sheet(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // A table read from a sheet; polars and pyarrow take it through
     // `__arrow_c_stream__`
     m.add_class::<arrow::PyFrame>()?;
+    // Cell functions written in Python
+    m.add_function(wrap_pyfunction!(register, m)?)?;
+    m.add_function(wrap_pyfunction!(unregister, m)?)?;
+    m.add_function(wrap_pyfunction!(functions, m)?)?;
     // 数式(typst + mitex)。tex.py が呼ぶ
     m.add_function(wrap_pyfunction!(suushiki_png, m)?)?;
     m.add_function(wrap_pyfunction!(suushiki_svg, m)?)?;

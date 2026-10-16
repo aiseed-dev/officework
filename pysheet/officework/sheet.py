@@ -31,6 +31,14 @@ import os as _os
 from . import _sheet as _engine
 from ._strict import NoStrayAttributes
 
+# Python で書いたセル関数(SEKKEI「決め: 部品へのデータとコードの入り口は
+# 3 つ」2026-10-17)。`register(倍)` で `def 倍(x)` を登録すると、セルの
+# `=倍(A1)` が再計算のたびに呼ばれます。登録はこの Python のプロセスの中で
+# 有効です。`unregister(名前)` で外し、`functions()` で名前を見ます
+register = _engine.register
+unregister = _engine.unregister
+functions = _engine.functions
+
 
 def _col_letter(n):
     # 1 → A, 26 → Z, 27 → AA(1起点)
@@ -591,6 +599,16 @@ class _DefinedNames:
             return self._all()[name]
         except KeyError:
             raise KeyError("名前が無い: {!r}".format(name)) from None
+
+    # openpyxl 3.0 の形(DefinedNameList)。解説の連載はこの形で書いている
+    # ので、読む側の名前も受けます(2026-10-17。shibutan-bloomers の
+    # openpyxl 第 3 回 List6)
+    @property
+    def definedName(self):  # noqa: N802  本家の名前
+        return list(self._all().values())
+
+    def append(self, dn):
+        self[dn.name] = dn
 
     def __setitem__(self, name, dn):
         sheet, ref = _split_ref(
@@ -1300,6 +1318,37 @@ class Sheet(NoStrayAttributes):
         first = int(re.sub(r"[^0-9]", "", at.split(":")[0]) or 1)
         self._append_row = max(self._append_row, first + rows - 1)
         return rows, cols
+
+    def write_array(self, arr, at="A1"):
+        """numpy の配列(か list の list)を `at` から置きます。
+
+        数の配列は、配列のバッファーから 1 回で読みます(numpy は import
+        しません)。bool、文字、object、datetime64 の配列と list は、値ごとに
+        `ws["A1"] = 値` と同じ変換で置きます。1 次元の配列は縦 1 列です。
+        NaN は空のセルです。書式は据え置きです。返りは (行数, 列数) です。
+        """
+        return self._s.write_array(arr, at)
+
+    def read_array(self, range=None):
+        """範囲(省くと使っている範囲)を numpy の配列で返します。
+
+        数だけなら float64(全部が整数なら int64)、論理値だけなら bool の
+        配列です。文字が混ざれば、値の list の list から作った配列です。
+        numpy が無いときは、数と論理値は形つきの `memoryview`、それ以外は
+        list の list を返します。
+        """
+        r = self._s.read_array(range)
+        try:
+            import numpy as np
+        except ImportError:
+            np = None
+        if isinstance(r, list):
+            return np.array(r) if np is not None else r
+        data, fmt, shape = r
+        if np is None:
+            return memoryview(data).cast(fmt, shape)
+        dtype = {"d": "float64", "q": "int64", "?": "bool"}[fmt]
+        return np.frombuffer(data, dtype=dtype).reshape(shape).copy()
 
     def read_df(self, range=None, header=True):
         """範囲(省くと使っている範囲)を DataFrame で返します。

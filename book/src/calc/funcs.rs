@@ -4737,10 +4737,11 @@ pub(super) fn call(name: &str, args: Vec<Arg>, date1904: bool) -> Result<Value, 
             }
         }
         "PY" => Value::Error("#PY単独".into()), // =PY(…) はセル単独でだけ使える
-        // Not a built-in function: a custom function written in Rust, if one
-        // has that name (built-ins come first and cannot be replaced)
+        // Not a built-in function: a custom function written in Rust or
+        // registered from Python, if one has that name (built-ins come first
+        // and cannot be replaced)
         _ => match super::custom::find(name) {
-            Some(f) => f(&a, &super::custom::Ctx { date1904 }),
+            Some(f) => f.call(&a, &super::custom::Ctx { date1904 }),
             None => Value::Error("#NAME?".into()),
         },
     })

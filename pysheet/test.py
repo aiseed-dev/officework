@@ -376,4 +376,94 @@ with tempfile.TemporaryDirectory() as d:
     check(back[0]._s.fmt("A1").get("size") == 12.0, f"見た目がテンプレートから戻らない: {back[0]._s.fmt('A1')}")
     check(back[0]._s.shapes[0]["field"] == "写真", "図形の欄が戻らない")
 
+
+# --- numpy の配列(numpy がある環境でだけ回る)---------------------------------
+# SEKKEI「決め: 部品へのデータとコードの入り口は 3 つ」(2026-10-17)の 2 つ目
+try:
+    import numpy as np
+except ImportError:
+    print("numpy が無いので、その分の検査は飛ばした", file=sys.stderr)
+else:
+    nb = office_sheet.Book()
+    ns = nb[0]
+    ns["A1"].number_format = "0.0"
+    rows, cols = ns.write_array(np.array([[1.5, 2.0], [3.0, np.nan]]), "A1")
+    check((rows, cols) == (2, 2), f"write_array の返り: {(rows, cols)}")
+    check(ns["A1"].value == 1.5 and ns["A1"].number_format == "0.0", "数の配列が置けない、書式が消えた")
+    check(ns["B2"].value is None, "NaN が空のセルにならない")
+    ns.write_array(np.arange(3, dtype=np.int64), "D1")                     # 1 次元は縦
+    check(ns["D3"].value == 2 and ns["E1"].value is None, "1 次元の配列が縦 1 列にならない")
+    ns.write_array(np.array([True, False]), "F1")
+    check(ns["F1"].value is True and ns["F2"].value is False, "bool の配列が置けない")
+    ns.write_array(np.array(["甲", "乙"]), "G1")
+    check(ns["G2"].value == "乙", "文字の配列が置けない")
+    ns.write_array(np.array(["2026-10-17"], dtype="datetime64[D]"), "H1")
+    check(ns.display("H1") == "2026/10/17", f"datetime64 の配列: {ns.display('H1')}")
+    ns.write_array([[1, "x"], [None, 2.5]], "A5")
+    check(ns["B5"].value == "x" and ns["A6"].value is None and ns["B6"].value == 2.5, "list の list が置けない")
+    back = ns.read_array("A1:B2")
+    check(back.dtype == np.float64 and back.shape == (2, 2) and back[0, 0] == 1.5 and np.isnan(back[1, 1]), f"read_array float: {back!r}")
+    ints = ns.read_array("D1:D3")
+    check(ints.dtype == np.int64 and ints.tolist() == [[0], [1], [2]], f"read_array int: {ints!r}")
+    bl = ns.read_array("F1:F2")
+    check(bl.dtype == np.bool_ and bl.tolist() == [[True], [False]], f"read_array bool: {bl!r}")
+    mixed = ns.read_array("A5:B6")
+    check(mixed.shape == (2, 2) and mixed[0, 1] == "x", f"read_array 混在: {mixed!r}")
+
+# --- Python のセル関数(sheet.register)------------------------------------------
+# 3 つ目の入り口。登録した関数を =名前(…) で呼ぶ
+def 倍(x):
+    return x * 2
+
+def 連結(*xs):
+    return "".join(str(x) for x in xs if x is not None)
+
+def 割る(x):
+    return 1 / x
+
+check(office_sheet.register(倍) == "倍", "register が名前を返さない")
+office_sheet.register(連結)
+office_sheet.register(割る)
+check("倍" in office_sheet.functions(), f"functions に無い: {office_sheet.functions()}")
+ub = office_sheet.Book()
+us = ub[0]
+us["A1"] = 21
+us["B1"] = "=倍(A1)"
+check(us["B1"].value == 42, f"セル関数が呼ばれない: {us['B1'].value}")
+us["A1"] = 5
+check(us["B1"].value == 10, f"引数が変わっても計算し直されない: {us['B1'].value}")
+us["A2"] = "甲"
+us["A3"] = "乙"
+us["B2"] = '=連結(A2:A3, "!")'
+check(us["B2"].value == "甲乙!", f"範囲が平らに渡らない: {us['B2'].value}")
+us["B3"] = "=割る(0)"
+check(str(us["B3"].value).startswith("#PY!"), f"例外が #PY! にならない: {us['B3'].value}")
+us["B4"] = "=倍(A1)+1"
+check(us["B4"].value == 11, f"式の中で使えない: {us['B4'].value}")
+check(office_sheet.unregister("倍") and not office_sheet.unregister("倍"), "unregister の返り")
+ub.recalc()
+check(us["B1"].value == "#NAME?", f"外した後も呼ばれる: {us['B1'].value}")
+
+# --- officework.openpyxl — openpyxl のプログラムをそのまま動かす ----------------
+import officework.openpyxl as _ox
+_ox.install()
+import openpyxl  # noqa: E402  これは officework です
+from openpyxl.styles import Font  # noqa: E402
+from openpyxl.utils import get_column_letter  # noqa: E402
+from openpyxl.worksheet.table import Table  # noqa: E402
+check(openpyxl is _ox, "install() の後の import openpyxl が officework でない")
+owb = openpyxl.Workbook()
+ows = owb.active
+ows["A1"] = "見出し"
+ows["A1"].font = Font(bold=True)
+check(get_column_letter(27) == "AA", "openpyxl.utils の名前が無い")
+check(Table is office_sheet.Table, "openpyxl.worksheet.table の名前が違う")
+with tempfile.TemporaryDirectory() as d:
+    path = os.path.join(d, "ox.xlsx")
+    owb.save(path)
+    again = openpyxl.load_workbook(path)
+    check(again.active["A1"].value == "見出し" and again.active["A1"].font.bold, "openpyxl の名前で往復できない")
+_ox.uninstall()
+check("openpyxl" not in sys.modules, "uninstall で外れない")
+
 print("OK")

@@ -15,7 +15,7 @@
 //! added while the program runs with [`register`].
 
 use crate::Value;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 mod zoned;
 
@@ -37,6 +37,27 @@ pub const BUILT_IN: &[(&str, CustomFn)] = &[
 
 static REGISTERED: RwLock<Vec<(String, CustomFn)>> = RwLock::new(Vec::new());
 
+/// A custom function that carries state: a closure, such as one holding a
+/// Python function (`officework.sheet.register`, 2026-10-17)
+pub type DynFn = Box<dyn Fn(&[Value], &Ctx) -> Value + Send + Sync>;
+
+static DYNAMIC: RwLock<Vec<(String, Arc<DynFn>)>> = RwLock::new(Vec::new());
+
+/// A custom function found by name, either kind
+pub enum Found {
+    Plain(CustomFn),
+    Dynamic(Arc<DynFn>),
+}
+
+impl Found {
+    pub fn call(&self, args: &[Value], ctx: &Ctx) -> Value {
+        match self {
+            Found::Plain(f) => f(args, ctx),
+            Found::Dynamic(f) => f(args, ctx),
+        }
+    }
+}
+
 /// Adds a custom function. The name is matched without regard to case, the
 /// way formulas are read. A second function with the same name replaces
 /// the first.
@@ -48,6 +69,34 @@ pub fn register(name: &str, f: CustomFn) {
     }
 }
 
+/// Adds a custom function that carries state. Same matching and replacing
+/// as [`register`]; a name registered both ways resolves to the plain one.
+pub fn register_dyn(name: &str, f: DynFn) {
+    let up = name.to_ascii_uppercase();
+    if let Ok(mut g) = DYNAMIC.write() {
+        g.retain(|(n, _)| *n != up);
+        g.push((up, Arc::new(f)));
+    }
+}
+
+/// Removes a registered custom function of either kind (not a built-in
+/// one). Returns whether there was one.
+pub fn unregister(name: &str) -> bool {
+    let up = name.to_ascii_uppercase();
+    let mut had = false;
+    if let Ok(mut g) = REGISTERED.write() {
+        let n = g.len();
+        g.retain(|(x, _)| *x != up);
+        had |= g.len() != n;
+    }
+    if let Ok(mut g) = DYNAMIC.write() {
+        let n = g.len();
+        g.retain(|(x, _)| *x != up);
+        had |= g.len() != n;
+    }
+    had
+}
+
 /// The names of all custom functions, the ones that come with officework
 /// first.
 pub fn names() -> Vec<String> {
@@ -55,15 +104,23 @@ pub fn names() -> Vec<String> {
     if let Ok(g) = REGISTERED.read() {
         out.extend(g.iter().map(|(n, _)| n.clone()).filter(|n| !out.contains(n)).collect::<Vec<_>>());
     }
+    if let Ok(g) = DYNAMIC.read() {
+        out.extend(g.iter().map(|(n, _)| n.clone()).filter(|n| !out.contains(n)).collect::<Vec<_>>());
+    }
     out
 }
 
 /// The custom function called `name` (already upper case), if there is one.
-pub(super) fn find(name: &str) -> Option<CustomFn> {
+pub(super) fn find(name: &str) -> Option<Found> {
     if let Ok(g) = REGISTERED.read() {
         if let Some((_, f)) = g.iter().find(|(n, _)| n == name) {
-            return Some(*f);
+            return Some(Found::Plain(*f));
         }
     }
-    BUILT_IN.iter().find(|(n, _)| *n == name).map(|(_, f)| *f)
+    if let Ok(g) = DYNAMIC.read() {
+        if let Some((_, f)) = g.iter().find(|(n, _)| n == name) {
+            return Some(Found::Dynamic(f.clone()));
+        }
+    }
+    BUILT_IN.iter().find(|(n, _)| *n == name).map(|(_, f)| Found::Plain(*f))
 }
