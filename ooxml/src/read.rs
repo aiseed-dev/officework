@@ -1158,7 +1158,21 @@ pub(super) fn image_of(
 /// 20.1.8.30) as the offsets (l, t, r, b) of each edge from the box, fractions
 /// of its size (ST_Percentage, 100000 is the whole); `None` when all are 0
 pub fn fill_rect_of(raw: &str) -> Option<[f32; 4]> {
-    let i = raw.find("<a:fillRect")?;
+    edge_shares(raw, "<a:fillRect")
+}
+
+/// **The part of a picture that is shown** (`a:srcRect`, ECMA-376
+/// 20.1.8.55): how much is cut from each edge (l, t, r, b) as a fraction of
+/// the picture's width or height; a negative value pads it. Word's business
+/// card template cuts 3.7% from the left and right of its yellow half circle
+/// (2026-10-16)
+pub fn src_rect_of(raw: &str) -> Option<[f32; 4]> {
+    edge_shares(raw, "<a:srcRect")
+}
+
+/// The l, t, r, b of the first `tag` in `raw`, in 1/100000ths
+fn edge_shares(raw: &str, tag_name: &str) -> Option<[f32; 4]> {
+    let i = raw.find(tag_name)?;
     let e = raw[i..].find('>').map_or(raw.len(), |e| i + e);
     let tag = &raw[i..e];
     let v = |name: &str| -> f32 {

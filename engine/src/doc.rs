@@ -1387,6 +1387,25 @@ impl Table {
     }
 }
 
+/// **How a picture is turned in its box**: the degrees it is turned
+/// clockwise about the box's centre, and whether it is mirrored first
+/// (`a:xfrm` `rot`, `flipH`, `flipV`, ECMA-376 20.1.7.6). Word's business
+/// card template turns its yellow half circle by 180 degrees, and it came out
+/// upside down (2026-10-16)
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Turn {
+    pub deg: f32,
+    pub flip_h: bool,
+    pub flip_v: bool,
+}
+
+impl Turn {
+    /// Not turned and not mirrored
+    pub fn is_none(&self) -> bool {
+        self.deg == 0.0 && !self.flip_h && !self.flip_v
+    }
+}
+
 /// 文書の中身は、段落か表。順序を保つ。
 #[derive(Debug, Clone)]
 pub enum Block {
@@ -3308,7 +3327,9 @@ pub struct Sheet {
     /// The fourth is the box to clip to, when the picture is stretched to a
     /// fill rectangle bigger than the shape that holds it (`a:fillRect`,
     /// ECMA-376 20.1.8.30); the part outside the shape's box is not drawn.
-    pub float_images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], i32, Option<[f32; 4]>)>,
+    ///
+    /// The fifth is how the picture is turned in its box ([`Turn`]).
+    pub float_images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], i32, Option<[f32; 4]>, Turn)>,
     /// Where each paragraph that carries anchored drawings starts:
     /// (anchor XML, x of the text in mm, y of the first line's box top plus
     /// BASE_UP_MM). Body paragraphs and table cells alike; the paper side

@@ -1013,6 +1013,28 @@ mod tests {
     }
 
     /// **グループの子を 1 つずつ描く**(2026-09-09)。子の位置はグループの座標に写す
+    /// A cropped picture (`a:srcRect`) is drawn larger than its box, so the
+    /// part it keeps fills the box, and is cut to the box
+    #[test]
+    fn a_cropped_picture_fills_its_box_with_the_part_it_keeps() {
+        let part = r#"<pic:blipFill><a:blip/><a:srcRect l="10000" r="10000"/><a:stretch/></pic:blipFill>"#;
+        let (at, clip) = fill_rect(part, [10.0, 20.0, 80.0, 40.0]);
+        assert!((at[2] - 100.0).abs() < 1e-3 && (at[0] - 0.0).abs() < 1e-3, "{at:?}");
+        assert_eq!((at[1], at[3]), (20.0, 40.0));
+        assert_eq!(clip, Some([10.0, 20.0, 80.0, 40.0]));
+        // Nothing cropped and nothing stretched: drawn as it is, uncut
+        assert_eq!(fill_rect("<pic:blipFill/>", [1.0, 2.0, 3.0, 4.0]), ([1.0, 2.0, 3.0, 4.0], None));
+    }
+
+    /// A floating picture's own `a:xfrm` turn is read (Word's business card
+    /// template turns its yellow half circle by 180 degrees)
+    #[test]
+    fn a_pictures_turn_is_read() {
+        let a = r#"<wp:anchor><pic:pic><pic:blipFill/><pic:spPr bwMode="auto"><a:xfrm rot="10800000" flipV="1"><a:off x="0" y="0"/><a:ext cx="10" cy="10"/></a:xfrm></pic:spPr></pic:pic></wp:anchor>"#;
+        assert_eq!(pic_turn(a), kumihan::Turn { deg: 180.0, flip_h: false, flip_v: true });
+        assert!(pic_turn("<wp:anchor><pic:pic><pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/></a:xfrm></pic:spPr></pic:pic></wp:anchor>").is_none());
+    }
+
     #[test]
     fn a_group_opens_into_its_children() {
         let a = concat!(
@@ -2768,6 +2790,21 @@ impl GroupXf {
     }
 }
 
+/// How a floating picture is turned: the `a:xfrm` of its `pic:spPr`
+/// (ECMA-376 20.1.7.6; `rot` in 60000ths of a degree, clockwise)
+fn pic_turn(part: &str) -> kumihan::Turn {
+    let Some(i) = part.find("<pic:spPr") else { return kumihan::Turn::default() };
+    let sp = &part[i..];
+    let Some(j) = sp.find("<a:xfrm") else { return kumihan::Turn::default() };
+    let head = &sp[j..sp[j..].find('>').map(|e| j + e).unwrap_or(sp.len())];
+    let on = |k: &str| head.contains(&format!("{k}=\"1\"")) || head.contains(&format!("{k}=\"true\""));
+    kumihan::Turn {
+        deg: xf_num(sp, "<a:xfrm", "rot").map(|v| v / 60_000.0).unwrap_or(0.0),
+        flip_h: on("flipH"),
+        flip_v: on("flipV"),
+    }
+}
+
 /// The attribute `key` of the first `tag` in `seg`, as a number
 fn xf_num(seg: &str, tag: &str, key: &str) -> Option<f32> {
     let i = seg.find(tag)?;
@@ -3175,7 +3212,26 @@ fn anchor_offset(from: &str, zure: f32, wari: Option<f32>, page: &kumihan::PageS
 /// it to. Word's restaurant brochure stretches its photos past their boxes
 /// (`l="-31092" r="-20036"` on a 252.7 pt box gives 382.0 pt, as Word draws)
 fn fill_rect(part: &str, bx: [f32; 4]) -> ([f32; 4], Option<[f32; 4]>) {
-    stretch(bx, ooxml::fill_rect_of(part))
+    let (at, clip) = stretch(bx, ooxml::fill_rect_of(part));
+    crop(at, clip.unwrap_or(bx), ooxml::src_rect_of(part))
+}
+
+/// The rectangle the whole picture is drawn to so that the part `a:srcRect`
+/// keeps (l, t, r, b) fills `at`, and the box to cut it to: `at` within the
+/// shape's box `bx`
+fn crop(at: [f32; 4], bx: [f32; 4], src: Option<[f32; 4]>) -> ([f32; 4], Option<[f32; 4]>) {
+    let Some([l, t, r, b]) = src else {
+        return (at, (at != bx).then_some(bx));
+    };
+    let (kw, kh) = (1.0 - l - r, 1.0 - t - b);
+    if kw <= 0.0 || kh <= 0.0 {
+        return (at, Some(bx));
+    }
+    let (w, h) = (at[2] / kw, at[3] / kh);
+    let whole = [at[0] - l * w, at[1] - t * h, w, h];
+    let (x0, y0) = (at[0].max(bx[0]), at[1].max(bx[1]));
+    let (x1, y1) = ((at[0] + at[2]).min(bx[0] + bx[2]), (at[1] + at[3]).min(bx[1] + bx[3]));
+    (whole, Some([x0, y0, (x1 - x0).max(0.0), (y1 - y0).max(0.0)]))
 }
 
 /// The rectangle a picture is stretched to from its box `[x, y, w, h]` (y
@@ -3243,7 +3299,7 @@ pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, pa
             let y = anchor_place(&f.v_from, anchor_offset(&f.v_from, f.y_mm, f.y_pct, &page, true), f.v_align.as_deref(), h_mm, &page, true, y_para, migi);
             // sheet coordinates: x from the left margin, y continuous over pages
             let (at, clip) = fill_rect(&part, [x - page.left_mm, y + soko, w_mm, h_mm]);
-            out.push((im.bytes.clone(), at, z, clip));
+            out.push((im.bytes.clone(), at, z, clip, pic_turn(&part)));
         }
     }
     sheet.float_images.extend(out);
@@ -3266,7 +3322,7 @@ fn hf_pictures(
     doc: &kumihan::Document,
     pg: &Pagination,
     page: kumihan::PageSetup,
-    out: &mut Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], i32, Option<[f32; 4]>)>,
+    out: &mut Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], i32, Option<[f32; 4]>, kumihan::Turn)>,
 ) {
     let kami_kazu = pg.offsets.len().max(1);
     // **The first page's own header and footer** (`w:headerReference
@@ -3333,7 +3389,7 @@ fn hf_pictures(
                     let y = anchor_place(&f.v_from, anchor_offset(&f.v_from, f.y_mm, f.y_pct, &page, true), f.v_align.as_deref(), h_mm, &page, true, kono, migi);
                     let soko = pg.offsets.get(k).copied().unwrap_or(0.0);
                     let (at, clip) = fill_rect(&part, [x - page.left_mm, y + soko, w_mm, h_mm]);
-                    out.push((im.bytes.clone(), at, z, clip));
+                    out.push((im.bytes.clone(), at, z, clip, pic_turn(&part)));
                 }
             }
         }

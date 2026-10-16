@@ -2559,6 +2559,7 @@ fn draw_sheet(
                 data: std::sync::Arc::new(im.data.clone()),
                 z,
                 clip: None,
+                turn: Default::default(),
             });
         }
     }

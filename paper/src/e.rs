@@ -671,6 +671,7 @@ mod tests {
                 data: std::sync::Arc::new(futairo_png(20, 10)),
                 z: 0,
                 clip: None,
+                turn: Default::default(),
             }],
             ..Default::default()
         };
@@ -706,6 +707,7 @@ mod tests {
                 data: std::sync::Arc::new(futairo_png(20, 10)),
                 z: 1,
                 clip: None,
+                turn: Default::default(),
             }],
             // A dark box drawn after the picture, and a path under it
             polys: vec![Poly {
@@ -775,6 +777,7 @@ mod tests {
             data: std::sync::Arc::new("これは PNG ではありません".as_bytes().to_vec()),
             z: 0,
             clip: None,
+            turn: Default::default(),
         }];
         let e = egaku(&leaf, 80.0, 40.0, 4.0);
         assert_eq!((e.w, e.h), (320, 160));

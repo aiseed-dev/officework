@@ -613,6 +613,13 @@ pub fn write_pages_fonts<W: std::io::Write>(
                     _ => {
                         let im = img_ids[i][k].1;
                         c.save_state();
+                        // A turned picture turns about the centre of its box
+                        // (the clip box when it has one: the picture may be
+                        // stretched or cropped past it), clip and all
+                        if !im.turn.is_none() {
+                            let [bx, by, bw, bh] = im.clip.unwrap_or([im.x_mm, im.y_mm, im.w_mm, im.h_mm]);
+                            c.transform(turn_matrix(pt(bx + bw / 2.0), pt(by + bh / 2.0), im.turn));
+                        }
                         if let Some([cx0, cy0, cw, ch]) = im.clip {
                             c.rect(pt(cx0), pt(cy0), pt(cw), pt(ch));
                             c.clip_nonzero();
@@ -1152,6 +1159,29 @@ mod tests {
         assert_eq!(texts, vec!["AB", "CD"]);
     }
 
+    /// A picture turned by 180 degrees puts the image's first corner at the
+    /// box's opposite corner; a quarter turn stands it on the box's centre
+    #[test]
+    fn a_turned_picture_is_drawn_about_its_centre() {
+        let at = |m: [f32; 6], x: f32, y: f32| (m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]);
+        // The box (10, 20, 40, 30) turns about its centre (30, 35)
+        let none = turn_matrix(30.0, 35.0, kumihan::Turn::default());
+        assert_eq!(at(none, 10.0, 20.0), (10.0, 20.0));
+        let half = turn_matrix(30.0, 35.0, kumihan::Turn { deg: 180.0, ..Default::default() });
+        let (x, y) = at(half, 10.0, 20.0);
+        assert!((x - 50.0).abs() < 1e-3 && (y - 50.0).abs() < 1e-3, "{x} {y}");
+        // A flip mirrors left and right inside the same box
+        let fh = turn_matrix(30.0, 35.0, kumihan::Turn { flip_h: true, ..Default::default() });
+        let (x, y) = at(fh, 10.0, 20.0);
+        assert!((x - 50.0).abs() < 1e-3 && (y - 20.0).abs() < 1e-3, "{x} {y}");
+        // A quarter turn clockwise on the page (y up in PDF) takes the
+        // centre's left neighbour to above the centre
+        let q = turn_matrix(0.0, 0.0, kumihan::Turn { deg: 90.0, ..Default::default() });
+        let (x, y) = at(q, -1.0, 0.0);
+        assert!(x.abs() < 1e-3 && (y - 1.0).abs() < 1e-3, "{x} {y}");
+    }
+
+
     /// Text with a clip is written inside `q`/`Q` with that part as the clip
     #[test]
     fn cut_text_is_clipped_to_its_part() {
@@ -1366,6 +1396,7 @@ mod tests {
                 data: std::sync::Arc::new(png.into_inner()),
                 z: 0,
                 clip: None,
+                turn: Default::default(),
             }],
             ..Default::default()
         };
@@ -2067,6 +2098,19 @@ pub struct Image {
     /// it is stretched past the shape that holds it (`a:fillRect`, ECMA-376
     /// 20.1.8.30)
     pub clip: Option<[f32; 4]>,
+    /// How the picture is turned about the centre of its box
+    pub turn: kumihan::Turn,
+}
+
+/// The matrix that mirrors and then turns the page clockwise by `turn.deg`
+/// about the point (cx, cy) (pt, PDF space)
+fn turn_matrix(cx: f32, cy: f32, turn: kumihan::Turn) -> [f32; 6] {
+    let (sx, sy) = (if turn.flip_h { -1.0 } else { 1.0 }, if turn.flip_v { -1.0 } else { 1.0 });
+    // Clockwise on the page is the negative angle in PDF space (y up)
+    let f = (-turn.deg).to_radians();
+    let (cs, sn) = (f.cos(), f.sin());
+    let (a, b, c, d) = (cs * sx, sn * sx, -sn * sy, cs * sy);
+    [a, b, c, d, cx - (a * cx + c * cy), cy - (b * cx + d * cy)]
 }
 
 /// **組み上がった紙面を PDF にする。**
@@ -2568,10 +2612,10 @@ pub(crate) fn sheet_leaves_wm<F: Fn(usize) -> Vec<kumihan::Line>>(
             // An inline picture stretched to its fill rectangle is drawn
             // there and cut to its box; the box decides its page
             let (at, clip) = crate::stretch(*a, *f);
-            (d, at, 0i32, true, clip, *a)
+            (d, at, 0i32, true, clip, *a, kumihan::Turn::default())
         })
-        .chain(sheet.float_images.iter().map(|(d, a, z, c)| (d, *a, *z, false, *c, c.unwrap_or(*a))));
-    for (data, at, z, nagare, clip, place) in hairetsu {
+        .chain(sheet.float_images.iter().map(|(d, a, z, c, t)| (d, *a, *z, false, *c, c.unwrap_or(*a), *t)));
+    for (data, at, z, nagare, clip, place, turn) in hairetsu {
         // **A picture in the text goes on the page its line went to.**
         // Pages overlap in the scroll's own measure once a page pulls its
         // last paragraph down, so picking by the page's origin can put a
@@ -2619,6 +2663,7 @@ pub(crate) fn sheet_leaves_wm<F: Fn(usize) -> Vec<kumihan::Line>>(
                 z,
                 // the clip box in the same page measure as the picture
                 clip: clip.map(|c: [f32; 4]| [pp.margin_mm + c[0], pp.height_mm - (c[1] - off) - c[3], c[2], c[3]]),
+                turn,
             });
         }
     }
