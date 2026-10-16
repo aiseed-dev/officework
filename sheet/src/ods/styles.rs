@@ -197,6 +197,8 @@ impl CellStyles {
             r.size_pt = p.size_c.map(|c| c as f32 / 100.0);
             r.color = p.color.clone().flatten();
             r.vert = p.position;
+            r.underline = p.underline;
+            r.strike = p.strike;
             r.font = p.font.clone().or(p.font_asian.clone()).map(|n| self.faces.get(&n).cloned().unwrap_or(n));
         }
         r

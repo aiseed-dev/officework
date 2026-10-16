@@ -614,6 +614,10 @@ pub struct RichRun {
     pub color: Option<String>,
     /// Raised or lowered (xlsx `vertAlign`, ODF `style:text-position`)
     pub vert: Option<RunPosition>,
+    /// Underlined or struck through (ODF `style:text-underline-style`,
+    /// `style:text-line-through-style`); None follows the cell's format
+    pub underline: Option<bool>,
+    pub strike: Option<bool>,
 }
 
 /// An object kept as it was written (see [`Sheet::kept_objects`])
@@ -3317,6 +3321,14 @@ pub struct Book {
     /// Arial 12pt なら 9画素です。**セルの書式ではありません** — 書式は
     /// `CellFormat` が持ちます
     pub default_font: Option<(String, f32)>,
+    /// **The sheets are printed by LibreOffice's rules** where they differ
+    /// from Excel's; the ods reader sets it. Text that runs over empty cells
+    /// widens the printed area (`ScTable::ExtendPrintArea`: the last column
+    /// goes right until the longest text has room; Excel cuts such text at
+    /// the last printed column). A number that does not fit is shown as
+    /// `###` (`ScDrawStringsVars::SetHashText`; Excel fills the cell with
+    /// `#`)
+    pub print_as_libreoffice: bool,
     /// こちらが理解できなかった definedName の原文(Print_Area など)。
     /// **理解はしないが、捨てない。** 保存でそのまま返す
     pub names_raw: Vec<String>,

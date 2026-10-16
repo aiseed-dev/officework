@@ -349,3 +349,18 @@ fn a_turned_shape_round_trips() {
     }
     assert_eq!(y.text, x.text);
 }
+
+#[test]
+fn a_span_keeps_its_underline_and_strike_through_and_the_book_prints_as_libreoffice() {
+    let styles = r##"<style:style style:name="T1" style:family="text"><style:text-properties style:text-underline-style="solid" fo:color="#ff0000"/></style:style><style:style style:name="T2" style:family="text"><style:text-properties style:text-line-through-style="solid"/></style:style>"##;
+    let body = r#"<table:table table:name="S"><table:table-row>
+<table:table-cell office:value-type="string"><text:p>plain <text:span text:style-name="T1">under</text:span> <text:span text:style-name="T2">struck</text:span></text:p></table:table-cell>
+</table:table-row></table:table>"#;
+    let (b, _) = read(ods(body, styles));
+    assert!(b.print_as_libreoffice, "the ods reader asks for LibreOffice's print rules");
+    let runs = &b.sheets[0].rich_runs[&Pos::new(0, 0)];
+    let under = runs.iter().find(|r| r.text == "under").expect("run");
+    assert_eq!((under.underline, under.strike, under.color.as_deref()), (Some(true), None, Some("FF0000")));
+    let struck = runs.iter().find(|r| r.text == "struck").expect("run");
+    assert_eq!((struck.underline, struck.strike), (None, Some(true)));
+}

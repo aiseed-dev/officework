@@ -187,6 +187,10 @@ pub struct PrintSetup {
     /// The name of the workbook's default font (empty: it names none), for
     /// what Excel would set a cell without a font in
     pub default_font: String,
+    /// The sheet is printed by LibreOffice's rules where they differ from
+    /// Excel's (`Book::print_as_libreoffice`): the printed area follows text
+    /// that runs over empty cells, and a number that does not fit is `###`
+    pub as_libreoffice: bool,
 }
 
 /// **紙 N 枚に収めるための縮尺。** `fit_to_w`/`fit_to_h` のどちらかが
@@ -1349,6 +1353,64 @@ pub fn band_cols(title_cols: &[u32], start: u32, n: u32) -> Vec<u32> {
     title_cols.iter().copied().filter(|t| *t < start).chain(start..start + n).collect()
 }
 
+/// What a run inside a cell sets itself: colour, bold, italic, underline and
+/// strike-through; None follows the cell's format
+type RunLook = (Option<(f32, f32, f32)>, Option<bool>, Option<bool>, Option<bool>, Option<bool>);
+
+/// **The last printed column, widened for text that runs over empty
+/// cells** (LibreOffice, `ScTable::ExtendPrintArea` and `MaybeAddExtraColumn`,
+/// 2026-10-17). For each text cell of the printed rows whose right neighbour
+/// is empty, the text's width beyond its own column goes on to the right over
+/// empty columns until it has room; text centred in its cell needs half of it,
+/// right-aligned text none (it runs to the left), and wrapped text none. The
+/// first cell with something in it stops the run. Returns the new column
+/// count; it never shrinks.
+fn overflow_cols(
+    grid: &Grid, setup: &PrintSetup, fonts: &[String], haba: &Habakei, rows: u32, cols: u32,
+) -> u32 {
+    let width = |c: u32| -> f32 {
+        if grid.col_hidden.contains(&c) {
+            return 0.0;
+        }
+        setup.col_basis.print_col_mm(grid.col_haba_mm(c, &setup.col_basis))
+    };
+    let filled = |r: u32, c: u32| {
+        grid.cells.get(&book::Pos::new(r, c)).is_some_and(|x| !x.value.is_empty() || x.formula.is_some())
+    };
+    let default_pt = if setup.default_pt > 0.0 { setup.default_pt } else { book::DEFAULT_CELL_PT };
+    let mut end = cols;
+    for (p, cell) in &grid.cells {
+        let Value::Text(t) = &cell.value else { continue };
+        if p.row >= rows || p.col >= cols || cell.fmt.wrap || t.is_empty() || t.contains('\n') {
+            continue;
+        }
+        if grid.row_hidden.contains(&p.row) || grid.col_hidden.contains(&p.col) || filled(p.row, p.col + 1) {
+            continue;
+        }
+        let fno = fonts.iter().position(|x| Some(x.as_str()) == cell.fmt.font.as_deref()).unwrap_or(0);
+        let han = fonts.iter().position(|x| *x == format!("{}{HANKAKU_SIRUSI}", fonts[fno])).unwrap_or(fno);
+        let pt = cell.fmt.size_c.map_or(default_pt, |c| c as f32 / 100.0);
+        let need: f32 = t
+            .chars()
+            .map(|ch| haba.ji_mm(if ch.is_ascii() { han } else { fno }, ch, pt))
+            .sum::<f32>()
+            + 2.0 * MASU_PAD_MM;
+        let mut missing = need - width(p.col);
+        match cell.fmt.align {
+            HAlign::Right => missing = 0.0,
+            HAlign::Center | HAlign::CenterContinuous => missing /= 2.0,
+            _ => {}
+        }
+        let mut c = p.col;
+        while missing > 0.0 && c < 16383 && !filled(p.row, c + 1) {
+            c += 1;
+            missing -= width(c);
+        }
+        end = end.max(c + 1);
+    }
+    end
+}
+
 fn draw_sheet(
     board: &mut Board,
     grid: &Grid,
@@ -1361,6 +1423,9 @@ fn draw_sheet(
     let board_haba = board.haba.clone();
     let want_text = board.want_text.clone();
     let (mut ext_rows, mut ext_cols) = grid.print_extent();
+    if setup.as_libreoffice {
+        ext_cols = overflow_cols(grid, setup, &fonts, &board_haba, ext_rows, ext_cols);
+    }
     // **図形の置き場まで紙を伸ばします。** 中身のあるセルより下に置いた図は、
     // 伸ばさないと最後の行の所へ寄ってしまい、図が全部重なります
     // (2026-08-27 に図を紙で見て気づきました)
@@ -1511,6 +1576,8 @@ fn draw_sheet(
         theme: &[String],
         // The workbook's default font's name ("" when it names none)
         default_font: &str,
+        // LibreOffice's rules where they differ from Excel's
+        as_libreoffice: bool,
     ) {
         // A cell of a table may hold nothing and still take the table's look
         let empty = book::Cell::default();
@@ -1909,7 +1976,7 @@ fn draw_sheet(
                     .map(|em| em * pt * 25.4 / 72.0)
                     .unwrap_or_else(|| haba.ji_mm(ji_fno(fno_cell, '#') as usize, '#', pt));
                 if haba_cell(&shown, pt) > naka && hitotsu > 0.0 {
-                    let kazu = (naka / hitotsu).floor().max(1.0) as usize;
+                    let kazu = if as_libreoffice { 3 } else { (naka / hitotsu).floor().max(1.0) as usize };
                     shown = "#".repeat(kazu);
                 }
             }
@@ -1955,7 +2022,7 @@ fn draw_sheet(
             // A raised or lowered run (superscript, subscript) is drawn
             // smaller and moved by part of its font size; the last field is
             // that move in mm, up being positive
-            let kire: Vec<(String, f32, Option<String>, f32)> = match grid.rich_runs.get(&p) {
+            let kire: Vec<(String, f32, Option<String>, f32, RunLook)> = match grid.rich_runs.get(&p) {
                 Some(rs) if !rs.is_empty() => rs
                     .iter()
                     .map(|r| {
@@ -1964,13 +2031,20 @@ fn draw_sheet(
                         (r.text.replace('\r', ""),
                          size * k,
                          r.font.clone().or_else(|| cell.fmt.font.clone()),
-                         rise * size * 25.4 / 72.0)
+                         rise * size * 25.4 / 72.0,
+                         (r.color.as_deref().and_then(hex_rgb), r.bold, r.italic, r.underline, r.strike))
                     })
                     .collect(),
-                _ => vec![(shown.clone(), pt, cell.fmt.font.clone(), 0.0)],
+                // LibreOffice prints a cell's hyperlink in the link colour
+                // (#000080, ColorConfig's unvisited link) and underlined
+                _ if as_libreoffice && grid.links.contains_key(&p) => vec![(
+                    shown.clone(), pt, cell.fmt.font.clone(), 0.0,
+                    (Some((0.0, 0.0, 128.0 / 255.0)), None, None, Some(true), None),
+                )],
+                _ => vec![(shown.clone(), pt, cell.fmt.font.clone(), 0.0, RunLook::default())],
             };
             // 1つの run の一部(同じ飾りの一続き)
-            type Kata = (String, f32, Option<String>, f32);
+            type Kata = (String, f32, Option<String>, f32, RunLook);
             // 行の列。1行は run のかけら(字, 大きさ, 書体)の並び
             let mut gyou: Vec<Vec<Kata>> = vec![Vec::new()];
             // **その行を、空でも残すか。** セルの中の改行(Alt+Enter)で
@@ -1978,7 +2052,7 @@ fn draw_sheet(
             // できた行は、空なら出しません
             let mut mamoru: Vec<bool> = vec![true];
             let mut yoko = 0.0f32;
-            for (t, rp, rf, rz) in &kire {
+            for (t, rp, rf, rz, lk) in &kire {
                 for (i, danraku) in t.split('\n').enumerate() {
                     if i > 0 {
                         // セルの中の改行(Alt+Enter)
@@ -2001,7 +2075,7 @@ fn draw_sheet(
                             continue;
                         }
                         if cell.fmt.wrap && !ima.is_empty() && yoko + w > naka {
-                            gyou.last_mut().expect("行").push((std::mem::take(&mut ima), *rp, rf.clone(), *rz));
+                            gyou.last_mut().expect("行").push((std::mem::take(&mut ima), *rp, rf.clone(), *rz, *lk));
                             gyou.push(Vec::new());
                             mamoru.push(false);
                             yoko = 0.0;
@@ -2010,7 +2084,7 @@ fn draw_sheet(
                         yoko += w;
                     }
                     if !ima.is_empty() {
-                        gyou.last_mut().expect("行").push((ima, *rp, rf.clone(), *rz));
+                        gyou.last_mut().expect("行").push((ima, *rp, rf.clone(), *rz, *lk));
                     }
                 }
             }
@@ -2021,13 +2095,13 @@ fn draw_sheet(
             let mut k = 0usize;
             gyou.retain(|g| {
                 let nokosu = mamoru.get(k).copied().unwrap_or(true)
-                    || g.iter().any(|(t, _, _, _)| !t.trim().is_empty());
+                    || g.iter().any(|(t, _, _, _, _)| !t.trim().is_empty());
                 k += 1;
                 nokosu
             });
             // 末尾の空の行は出しません(高さだけ取って見えないため)
             while gyou.len() > 1 && gyou.last().is_some_and(|g| {
-                g.iter().all(|(t, _, _, _)| t.trim().is_empty())
+                g.iter().all(|(t, _, _, _, _)| t.trim().is_empty())
             }) {
                 gyou.pop();
             }
@@ -2037,7 +2111,7 @@ fn draw_sheet(
             // 1行ぶんの幅(mm)。かけらごとの大きさで測ります
             let gyou_haba = |g: &[Kata]| -> f32 {
                 g.iter()
-                    .map(|(t, rp, rf, _)| {
+                    .map(|(t, rp, rf, _, _)| {
                         let f = fno_of(rf);
                         t.chars().map(|c| haba.ji_mm(ji_fno(f, c) as usize, c, *rp)).sum::<f32>()
                     })
@@ -2050,7 +2124,7 @@ fn draw_sheet(
             // right edge, where we drew it 21pt to the left
             let migi_haba = |g: &[Kata]| -> f32 {
                 let mut ato = 0.0f32;
-                'owari: for (t, rp, rf, _) in g.iter().rev() {
+                'owari: for (t, rp, rf, _, _) in g.iter().rev() {
                     let f = fno_of(rf);
                     for c in t.chars().rev() {
                         if c != '\u{3000}' {
@@ -2089,7 +2163,7 @@ fn draw_sheet(
                     return haba.okuri_mm(ji_fno(fno_of(&cell.fmt.font), 'あ') as usize, pt);
                 }
                 g.iter()
-                    .map(|(_, rp, rf, _)| haba.okuri_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp))
+                    .map(|(_, rp, rf, _, _)| haba.okuri_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp))
                     .fold(0.0f32, f32::max)
             };
             // **行と行の間隔**は、書体の高さと「字の大きさ + 4 点」の高い方です
@@ -2101,7 +2175,7 @@ fn draw_sheet(
                     return masu_hiraki_mm(okuri_of(g), pt);
                 }
                 g.iter()
-                    .map(|(_, rp, rf, _)| {
+                    .map(|(_, rp, rf, _, _)| {
                         let o = haba.okuri_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp);
                         masu_hiraki_mm(o, *rp)
                     })
@@ -2135,7 +2209,7 @@ fn draw_sheet(
                 .last()
                 .map(|g: &Vec<Kata>| {
                     g.iter()
-                        .map(|(_, rp, rf, _)| haba.sagari_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp))
+                        .map(|(_, rp, rf, _, _)| haba.sagari_mm(ji_fno(fno_of(rf), 'あ') as usize, *rp))
                         .fold(0.0f32, f32::max)
                 })
                 .unwrap_or(0.0);
@@ -2175,27 +2249,27 @@ fn draw_sheet(
                 // Fable の指摘5)。役所の表は「清 酒」「合成清酒」のように
                 // 区分の列を割り付けます。前は左に詰めていました
                 let waru = matches!(cell.fmt.align, HAlign::Distribute)
-                    && g.iter().map(|(t, _, _, _)| t.chars().count()).sum::<usize>() > 1;
+                    && g.iter().map(|(t, _, _, _, _)| t.chars().count()).sum::<usize>() > 1;
                 if waru {
-                    let kazu: usize = g.iter().map(|(t, _, _, _)| t.chars().count()).sum();
+                    let kazu: usize = g.iter().map(|(t, _, _, _, _)| t.chars().count()).sum();
                     // 字と字の間に配る余り。両端はセルの縁に着けます
                     let aki = ((ma_w - 2.0 * MASU_PAD_MM - w) / (kazu - 1) as f32).max(0.0);
                     let mut wx = x + MASU_PAD_MM;
-                    for (t, rp, rf, rz) in g {
+                    for (t, rp, rf, rz, lk) in g {
                         let fno = fno_of(rf);
                         for ch in t.chars() {
                             let one = ch.to_string();
                             let w1 = haba.ji_mm(fno as usize, ch, *rp);
                             hakaru(wx, w1, ty + *rz, *rp, ci);
                             ci += 1;
-                            ink.text_kazari(&one, *rp, wx, ty + *rz, c, bold, fno, w1,
-                                            cell.fmt.underline, cell.fmt.strike, katamuki,
-                                            cell.fmt.italic);
+                            ink.text_kazari(&one, *rp, wx, ty + *rz, lk.0.unwrap_or(c), lk.1.unwrap_or(bold), fno, w1,
+                                            lk.3.unwrap_or(cell.fmt.underline), lk.4.unwrap_or(cell.fmt.strike), katamuki,
+                                            lk.2.unwrap_or(cell.fmt.italic));
                             wx += haba.ji_mm(fno as usize, ch, *rp) + aki;
                         }
                     }
                 } else {
-                    for (t, rp, rf, rz) in g {
+                    for (t, rp, rf, rz, lk) in g {
                         let fno = fno_of(rf);
                         // **半角と全角で書体が変わるなら、そこで切ります**
                         // (2026-08-31 発注者。ＭＳ Ｐ明朝など)
@@ -2208,9 +2282,9 @@ fn draw_sheet(
                                 cx += wc;
                                 ci += 1;
                             }
-                            ink.text_kazari(&kata, *rp, gx, ty + *rz, c, bold, f1, w1,
-                                            cell.fmt.underline, cell.fmt.strike, katamuki,
-                                            cell.fmt.italic);
+                            ink.text_kazari(&kata, *rp, gx, ty + *rz, lk.0.unwrap_or(c), lk.1.unwrap_or(bold), f1, w1,
+                                            lk.3.unwrap_or(cell.fmt.underline), lk.4.unwrap_or(cell.fmt.strike), katamuki,
+                                            lk.2.unwrap_or(cell.fmt.italic));
                             gx += w1;
                         }
                     }
@@ -2319,7 +2393,7 @@ fn draw_sheet(
                 for tr in &title_rows {
                     let th = row_mm(*tr);
                     let y_top = paper.height_mm - mt - sageru(pi) - y_used;
-                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt, &want_text, &setup.theme, &setup.default_font);
+                    draw_row(grid, &mut board.ink(cur), *tr, y_top, th, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt, &want_text, &setup.theme, &setup.default_font, setup.as_libreoffice);
                     y_used += th;
                 }
             }
@@ -2349,7 +2423,7 @@ fn draw_sheet(
                 }
             }
         }
-        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt, &want_text, &setup.theme, &setup.default_font);
+        draw_row(grid, &mut board.ink(cur), r, y_top, rh, ml, &cols, &col_x, &col_mm, scale, &cond_prep, setup.date1904, &fonts, &board_haba, setup.col_basis, setup.default_pt, &want_text, &setup.theme, &setup.default_font, setup.as_libreoffice);
     }
     }
     // 図形(挿した分も読んだ分も)。塗りと輪郭を紙に出します
@@ -3216,6 +3290,40 @@ mod tests {
         s
     }
 
+    /// LibreOffice widens the printed area for text that runs over empty
+    /// cells (`ScTable::ExtendPrintArea`): a long text in A1 needs column B,
+    /// right-aligned text runs to the left and needs nothing, and a cell
+    /// with something in it stops the run
+    #[test]
+    fn text_running_over_empty_cells_widens_the_printed_area() {
+        let at = |a1: &str, v: &str, align: HAlign| {
+            (Pos::parse(a1).unwrap(), Cell {
+                formula: None,
+                value: Value::Text(v.into()),
+                fmt: CellFormat { align, ..Default::default() },
+            })
+        };
+        let long = "あ".repeat(12);
+        let widen = |cells: Vec<(Pos, Cell)>| {
+            let mut g = Grid { name: "S".into(), ..Default::default() };
+            for (p, c) in cells {
+                g.set(p, c);
+            }
+            for c in 0..4 {
+                g.col_mm.insert(c, 20.0);
+            }
+            let setup = PrintSetup { default_pt: 11.0, as_libreoffice: true, ..Default::default() };
+            overflow_cols(&g, &setup, &[String::new()], &Habakei::default(), 1, g.print_extent().1)
+        };
+        // 12 wide letters at 11pt are 46.6mm: A, B and C hold them
+        assert_eq!(widen(vec![at("A1", &long, HAlign::General)]), 3);
+        // Centred, half of the missing width goes to the right
+        assert_eq!(widen(vec![at("A1", &long, HAlign::Center)]), 2);
+        assert_eq!(widen(vec![at("A1", &long, HAlign::Right)]), 1);
+        // Something in B stops the run
+        assert_eq!(widen(vec![at("A1", &long, HAlign::General), at("B1", "x", HAlign::General)]), 2);
+    }
+
     #[test]
     fn form_becomes_pdf() {
         let (fam, _) = kumihan::font::for_document(None).unwrap();
@@ -3397,6 +3505,7 @@ mod tests {
             date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0,
             theme: Vec::new(),
             default_font: String::new(),
+            as_libreoffice: false,
         });
         // 同じ大きさの域を2つ = 紙も2枚(**繋げて1枚に詰めない**)
         let two = pages(&PrintSetup {
@@ -3408,6 +3517,7 @@ mod tests {
             date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0,
             theme: Vec::new(),
             default_font: String::new(),
+            as_libreoffice: false,
         });
         assert_eq!(one, 1, "1域なのに {one} 枚になった");
         assert_eq!(two, 2, "2域が {two} 枚 — 域ごとに紙を変えていない");
@@ -3546,6 +3656,7 @@ mod print_setup_tests {
             date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0,
             theme: Vec::new(),
             default_font: String::new(),
+            as_libreoffice: false,
         };
         let mut part = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(), &setup, &mut part).unwrap();
@@ -3559,11 +3670,11 @@ mod print_setup_tests {
         let s = long_sheet();
         let mut narrow = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(),
-            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 10.0, 10.0)) , date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0, theme: Vec::new(), default_font: String::new() },
+            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 10.0, 10.0)) , date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0, theme: Vec::new(), default_font: String::new(), as_libreoffice: false },
             &mut narrow).unwrap();
         let mut wide = Vec::new();
         sheet_to_pdf(&s, &data, Paper::default(),
-            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 100.0, 100.0)) , date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0, theme: Vec::new(), default_font: String::new() },
+            &PrintSetup { areas: Vec::new(), margins_mm: Some((10.0, 10.0, 100.0, 100.0)) , date1904: false, col_basis: book::ColBasis::default(), default_pt: 11.0, theme: Vec::new(), default_font: String::new(), as_libreoffice: false },
             &mut wide).unwrap();
         assert!(pages(&wide) > pages(&narrow), "余白が紙の枚数に効いていない");
     }

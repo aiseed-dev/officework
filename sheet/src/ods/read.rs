@@ -85,6 +85,7 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     let mut book = Book::new();
     book.sheets.clear();
     book.default_font = cells.default_font();
+    book.print_as_libreoffice = true;
     parse_body(&content, &styles, &cells, &pages, &drawing, &mut book, &mut rep);
     let mut settings = String::new();
     if let Ok(mut f) = zip.by_name("settings.xml") {
@@ -219,7 +220,8 @@ struct Pending {
 }
 
 fn same_look(a: &book::RichRun, b: &book::RichRun) -> bool {
-    (&a.font, a.size_pt, a.bold, a.italic, &a.color, a.vert) == (&b.font, b.size_pt, b.bold, b.italic, &b.color, b.vert)
+    (&a.font, a.size_pt, a.bold, a.italic, &a.color, a.vert, a.underline, a.strike)
+        == (&b.font, b.size_pt, b.bold, b.italic, &b.color, b.vert, b.underline, b.strike)
 }
 
 /// Text added to the cell, also kept as runs under the span style it sits in

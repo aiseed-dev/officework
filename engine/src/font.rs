@@ -1724,7 +1724,11 @@ pub fn for_text(
         return Ok((f, exact));
     }
     // 系統(明朝・ゴシック・等幅)は保ったまま、字が足りる物を探します
-    let g = read_generic(&f.name);
+    // A replacement such as Caladea (for Cambria) tells nothing by its name;
+    // the name the document asked for does. With no kind at all, the first
+    // face that sets Japanese was Unifont, a bitmap face, and every cell of
+    // an ods that names Cambria came out as black blocks (2026-10-17)
+    let g = read_generic(&f.name).or_else(|| wanted.and_then(read_generic));
     let ok = |c: &&Family| need.iter().all(|s| c.covers(*s));
     // Word draws Japanese that the named face cannot show in ＭＳ 明朝: its
     // PDF of a document whose theme fonts are Times New Roman and Helvetica
@@ -2127,6 +2131,16 @@ mod tests {
                 assert!(f.regular, "{name} で太字・斜体を返した: {}", f.path.display());
             }
         }
+    }
+
+    /// A replacement that tells nothing by its name (Caladea for Cambria)
+    /// takes its kind from the name the document asked for. With no kind the
+    /// first face that sets Japanese was Unifont, a bitmap face
+    /// (2026-10-17)
+    #[test]
+    fn japanese_in_cambria_does_not_fall_to_a_bitmap_face() {
+        let Ok((f, _)) = for_text(Some("Cambria"), "見積書".chars()) else { return };
+        assert!(!f.name.to_lowercase().contains("unifont"), "{}", f.name);
     }
 
     #[test]

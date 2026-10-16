@@ -1320,6 +1320,7 @@ impl Calc {
             default_pt: self.default_pt(),
             theme: self.book.theme.clone(),
             default_font: self.book.default_font.as_ref().map(|(n, _)| n.clone()).unwrap_or_default(),
+            as_libreoffice: self.book.print_as_libreoffice,
         };
         paper::grid::page_starts(sh, paper, &setup)
     }
@@ -1360,6 +1361,7 @@ impl Calc {
             default_pt: self.default_pt(),
             theme: self.book.theme.clone(),
             default_font: self.book.default_font.as_ref().map(|(n, _)| n.clone()).unwrap_or_default(),
+            as_libreoffice: self.book.print_as_libreoffice,
                 },
             ));
         }
@@ -1428,6 +1430,7 @@ impl Calc {
             default_pt: self.default_pt(),
             theme: self.book.theme.clone(),
             default_font: self.book.default_font.as_ref().map(|(n, _)| n.clone()).unwrap_or_default(),
+            as_libreoffice: self.book.print_as_libreoffice,
         };
         match areas.len() {
             0 => {}

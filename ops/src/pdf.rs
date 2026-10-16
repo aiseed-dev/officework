@@ -94,6 +94,18 @@ pub(crate) fn book_fonts(
     // 機械に無い書体は置き替えます(`for_document` が系統を保ちます)
     let mut fonts: Vec<(String, &'static kumihan::font::Family)> =
         vec![("".into(), crate::book_family(b)?)];
+    // The default font may be one that cannot set the book's Japanese
+    // (Cambria is replaced by Caladea, which has no kana). The first face is
+    // then a Japanese one, and the half-width letters keep the default's own
+    // face as LibreOffice draws them: "M-2026-001" in Caladea beside the
+    // Japanese in another face (2026-10-17)
+    if let Some((want, _)) = b.default_font.as_ref().filter(|(n, _)| !n.is_empty()) {
+        if let Ok((named, _)) = kumihan::font::for_document(Some(want)) {
+            if named.name != fonts[0].1.name {
+                fonts.push((paper::grid::HANKAKU_SIRUSI.to_string(), named));
+            }
+        }
+    }
     let mut mita: std::collections::BTreeSet<String> = Default::default();
     for s in &b.sheets {
         // Cells, rich text runs, and the text in shapes (text boxes)
@@ -156,6 +168,7 @@ pub(crate) fn setup_of(s: &book::Sheet, b: &book::Book) -> paper::grid::PrintSet
         default_pt: default_pt_of(b),
         theme: b.theme.clone(),
         default_font: b.default_font.as_ref().map(|(n, _)| n.clone()).unwrap_or_default(),
+        as_libreoffice: b.print_as_libreoffice,
     }
 }
 

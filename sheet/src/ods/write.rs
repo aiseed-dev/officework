@@ -334,6 +334,20 @@ impl Styles {
             Some(book::RunPosition::Baseline) => tp.push_str(r#" style:text-position="0% 100%""#),
             None => {}
         }
+        if let Some(u) = r.underline {
+            if u {
+                tp.push_str(r#" style:text-underline-style="solid" style:text-underline-width="auto" style:text-underline-color="font-color""#);
+            } else {
+                tp.push_str(r#" style:text-underline-style="none""#);
+            }
+        }
+        if let Some(k) = r.strike {
+            if k {
+                tp.push_str(r#" style:text-line-through-style="solid" style:text-line-through-type="single""#);
+            } else {
+                tp.push_str(r#" style:text-line-through-style="none""#);
+            }
+        }
         if tp.is_empty() {
             return None;
         }
