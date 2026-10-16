@@ -33,6 +33,7 @@
 |`officework` |0.1万 |calc と writer を**1つの窓のタブ**に束ねるアプリ。起動はここ
 |`pysheet` |0.4万 |Python 束縛(PyO3・abi3)。pip の officework の中身
 |`sidecar` |0.2万 |genoffice と同じ言葉を喋る橋(突き合わせの検査に使う)
+|`fletview` |0.1万 |**Flet の画面側の、絵を描かない半分**。Flet の Python 側と話し(msgpack・7 つのメッセージ)、部品の木と差分を持つ。gpui を持たない(`docs/sekkei/flet-client.ja.adoc`)
 |===
 
 依存の向きは一方通行です: 画面(calc / writer / officework)→

@@ -336,7 +336,7 @@ ops の言葉と同じです。これで「表示は正確に、編集は薄く�
 == 作る順
 
 . `fletview`: 枠と msgpack(拡張型つき)、7 つのメッセージ、部品の木と差分の当て方。
-  本物の Flet を相手にした試験
+  本物の Flet を相手にした試験(2026-10-17。済み。`fletview/`。msgpack は `rmp` の印だけを使い、読み手は自前。試験 `fletview/tests/real_flet.rs` は `FLET_PYTHON`(無ければ `python3`)の flet を相手に、登録 → 差分 → クリック → 値の差分まで通す。flet が無い機械では飛ばしたと言う)
 . 起動: `FLET_VIEW_PATH` の形で officework が画面側として起動し、pid ファイルを書く
 . 描く: Page / View / Column / Row / Text / Button / TextField を gpui で。
   イベントと UPDATE_CONTROL_PROPS

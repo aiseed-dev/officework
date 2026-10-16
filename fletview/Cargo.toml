@@ -1,0 +1,19 @@
+[package]
+# **The client side of Flet's protocol, without a screen.** officework
+# becomes the window a Flet program (`ft.run(main)`) draws in: this crate
+# speaks to the Python side (docs/sekkei/flet-client.ja.adoc) and keeps the
+# control tree; drawing is the gpui side's job, elsewhere.
+#
+# **gpui is not a dependency here**, the same wall as `face`: the protocol and
+# the tree must be usable from a Kotlin / Swift shell too.
+name = "fletview"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# MessagePack markers and writers. Already in the tree (via vendor/zed), so
+# nothing new is downloaded. Only `Marker` and the `encode::write_*`
+# functions are used; the reader is ours, because the values must keep
+# maps ordered and allow integer keys (a patch's tree index has them)
+rmp = "0.8"

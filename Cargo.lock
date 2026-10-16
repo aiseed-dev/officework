@@ -2421,6 +2421,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fletview"
+version = "0.0.1"
+dependencies = [
+ "rmp",
+]
+
+[[package]]
 name = "float-cmp"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
