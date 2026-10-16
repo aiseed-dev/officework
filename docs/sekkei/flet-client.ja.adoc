@@ -1,0 +1,307 @@
+= officework を Flet の画面側にする
+:toc:
+
+作る側の資料です。SEKKEI「検討: officework を Flet の画面側にする(2026-10-17 発注者)」の
+続きで、Flet 1.0.4 の Python 側(天気アプリの `.venv`)と Dart の画面側
+(flet-dev/flet の `v1.0.4` タグ、`packages/flet/lib/src` と `client/lib`)を読み、
+officework が画面側になるために要る決まりを写しました。実装は写していません。
+Flet は Apache-2.0 です。
+
+実物の確かめ: Python で書いた偽の画面側(`tools/flet_fake_view.py`)を
+`FLET_VIEW_PATH` で本物の Flet のプログラムにつなぎ、登録の応答と差分の
+メッセージを受け取り、クリックのイベントを送って値の差分が返ることを
+確かめました(2026-10-17)。この文書の例は、そのときの実物です。
+
+== 目的と範囲
+
+Flet で書いた普通のプログラム(`ft.run(main)`)が、officework の窓の中で動くように
+します。表計算と文書は officework の今の画面です。Flet の部品のうち、builder の
+約 20(文章・フォーム・データの表示・入れ物)を gpui で作ります。無い部品は
+「無い」と言って止まります。
+
+最初の目標は `Text`・`Column`・`Row`・`TextField`・`Button` と表計算の 6 つで、
+変えていない Flet のサンプルが officework の窓で動くことです。
+
+== 起動
+
+Python の `ft.run(main)` は、据え置きでは画面側を子のプロセスとして起動します
+(`flet_desktop/__init__.py`)。探す順は、(1) `flet build` が作ったアプリ、
+(2) `FLET_VIEW_PATH` のフォルダーにある実行ファイル(Linux と mac は `flet`、
+Windows は `flet.exe`)、(3) `~/.flet/client/` に取ってある本物、です。
+
+起動の形は `flet <ページの URL> <pid ファイル> [assets のフォルダー]` です
+(`client/lib/main.dart`)。画面側は pid ファイルに自分のプロセス番号を書きます。
+Python はこのプロセスが終わるのを待って、終わります。
+
+ページの URL は、Unix ソケットの径路(`/tmp/xxxx`)か `tcp://ホスト:ポート` です
+(`flet_socket_server.py`)。
+
+officework から Flet のプログラムを動かすときは、向きが逆になります。officework が
+Python を起動し、Python が起動する `flet` は小さな中継にして、動いている officework に
+URL を渡します(Opus の指摘)。最初は `FLET_VIEW_PATH` で officework 自身を起動する
+形で進め、中継はその後に作ります。
+
+== 通信
+
+=== 枠
+
+ソケットに流す 1 つの通信は `[長さ u32 LE][種類 u8][本体]` です。長さは種類と本体を
+合わせた数です(`flet_backend_channel_socket.dart`)。
+
+[cols="1,3"]
+|===
+|種類 |本体
+
+|`0x00` |msgpack のメッセージ `[action_code, body]`
+|`0x01` |データの通り道(DataChannel)。`[通り道の番号 u32 LE][バイト列]`。生の画像などが使う。最初の部品では使わないので、受けて捨てる
+|===
+
+=== msgpack の拡張型
+
+[cols="1,2,2"]
+|===
+|番号 |意味 |中身
+
+|1 |日時 |ISO 8601 の文字列(UTC。Python の `fromisoformat` が読めるよう `Z` でなく `+00:00`)
+|2 |時刻 |`時:分` の文字列
+|3 |期間 |マイクロ秒の数を文字列で
+|4 |JS の値(Web だけ) |文字列
+|===
+
+Python 側は `protocol.py` の `configure_encode_object_for_msgpack` と
+`decode_ext_from_msgpack`、Dart 側は `flet_msgpack_encoder.dart` と
+`flet_msgpack_decoder.dart` です。
+
+=== メッセージ
+
+`action_code` は 7 つです(`MessageAction`。Python と Dart で番号を合わせる決まり)。
+
+[cols="1,1,1,3"]
+|===
+|番号 |名前 |向き |body
+
+|1 |REGISTER_CLIENT |画面側 → Python、Python → 画面側 |要求 `{session_id, page_name, page}`。応答 `{session_id, page_patch, error}`
+|2 |PATCH_CONTROL |Python → 画面側 |`{id, patch}`。`id` の部品に差分を当てる
+|3 |CONTROL_EVENT |画面側 → Python |`{target, name, data}`。`target` は部品の番号、`name` は `on_` を外した名前
+|4 |UPDATE_CONTROL_PROPS |画面側 → Python |`{id, props}`。画面側で変わった属性(入力欄の値など)を Python の部品に写す
+|5 |INVOKE_METHOD |Python → 画面側、画面側 → Python |要求 `{control_id, call_id, name, args, timeout}`。応答 `{control_id, call_id, result, error}`
+|6 |SESSION_CRASHED |Python → 画面側 |`{message}`
+|7 |PYTHON_OUTPUT |(Pyodide だけ) |`{text, is_stderr}`
+|===
+
+== 登録の手順
+
+. 画面側がつないで、REGISTER_CLIENT を送ります。`session_id` は初回は `null`、
+  つなぎ直しなら前の番号です。`page` は Page の属性の差分で、Python はこれを Page に
+  当てます(`apply_page_patch`)。Dart の画面側が送る項目は次のとおりです。
+
+[source,json]
+----
+{"session_id": null, "page_name": "", "page": {
+  "route": "/", "pwa": false, "web": false, "debug": false, "wasm": false,
+  "test": false, "multi_view": false, "pyodide": false,
+  "platform_brightness": "light", "width": 800, "height": 600,
+  "platform": "linux",
+  "window": {"_c": "Window", "_i": 0, "width": 800, "height": 600},
+  "media": {"padding": {…}, "view_padding": {…}, "view_insets": {…}}}}
+----
+
+. Python が応答を返します。`page_patch` は Page の木の全体です。実物(上の
+  `tools/flet_fake_view.py` で受けた物。`main` が `page.add` する前の姿)です。
+
+[source,json]
+----
+[1, {"session_id": "NPs2SUizqowJh19Y", "error": "",
+ "page_patch": {"_c": "Page", "_i": 1,
+   "platform_brightness": "light", "width": 800, "height": 600, "platform": "linux",
+   "media": {"padding": {}, "view_padding": {}, "view_insets": {},
+             "device_pixel_ratio": 0, "orientation": "portrait",
+             "always_use_24_hour_format": false},
+   "window": {"_c": "Window", "_i": 0, "width": 800, "height": 600},
+   "_overlay": {"_c": "Overlay", "_i": 4, "_internals": {"host_positioned": true}},
+   "_services": {"_c": "ServiceRegistry", "_i": 7, "_internals": {"uid": "SZpI3Rh5Qv"}},
+   "_dialogs": {"_c": "Dialogs", "_i": 5},
+   "views": [{"_c": "View", "_i": 3, "route": "/",
+              "padding": {"left": 10, "top": 10, "right": 10, "bottom": 10},
+              "_internals": {"host_expanded": true}}]}}]
+----
+
+. その後、`main` が置いた部品が PATCH_CONTROL で届きます(下の「差分」の例 1)。
+. 画面側は、窓の大きさが変わったら UPDATE_CONTROL_PROPS で Page の `width`・`height`
+  を送り、`resize` のイベントも送ります(`flet_backend.dart` の `updatePageSize`)。
+
+== 部品の木
+
+部品は `{"_c": 種類, "_i": 番号, 属性…}` の辞書です(`models/control.dart`)。
+
+* 属性の値が辞書で `_c` を持てば、それも部品です。list の中の辞書も同じです。
+  木は属性の中に入れ子になります(`Column` の `controls` は部品の list)。
+* `_i` は Python が振る番号で、セッションの中で一意です。差分とイベントは
+  この番号で部品を指します。画面側は番号から部品を引く表を持ちます。
+* イベントの手当てがある属性は、`on_click: true` のように真偽で届きます。
+  画面側は `on_<名前>` が真のときだけイベントを送ります(`hasEventHandler`)。
+* `visible`(既定 true)が偽の部品は描きません。`disabled` は親から継承します。
+* `_internals` は Python が画面側に渡す内部の印です。`host_expanded`(親が
+  `expand` を受ける)と `host_positioned`(親が `left`・`top` の位置を受ける)を使います。
+* 種類 `C` は Python の `@component`(宣言の関数)で、本体は `_b` に入ります。
+  描くときは `_b` までたどります。本体が無い間は何も描きません。
+* `data` の属性は画面側に送られません。
+
+== 差分(PATCH_CONTROL)
+
+`{"id": 部品の番号, "patch": [木の索引, 操作, 操作, …]}` です。差分は `id` の部品を
+根にして当てます。Python は変わった部品ごとにまとめて送るので、`id` はたいてい
+Page(1)です。
+
+=== 木の索引
+
+`[索引の番号, {属性か位置: 子の索引, …}]` の入れ子です。操作は索引の番号で
+「どの物に当てるか」を指します。番号 0 が根の部品です。たどる途中に部品があれば、
+その部品が「変わった部品」になり、描き直しの対象です。
+
+=== 操作
+
+[cols="1,3"]
+|===
+|形 |意味
+
+|`[0, 索引, 鍵か位置, 値]` |置き換え(replace)。辞書の鍵か list の位置に値を置く
+|`[1, 索引, 鍵か位置, 値]` |足す(add)。list なら位置に挿し込む
+|`[2, 索引, 鍵か位置]` |消す(remove)
+|`[3, 元の索引, 元の位置, 先の索引, 先の位置]` |移す(move)。list から list へ、辞書から辞書へ
+|===
+
+値が辞書で `_c` を持てば部品にし、番号の表に入れます。list の中も同じです。
+`_i` と `_c` は置き換えません。
+
+=== 例 1: 部品の木を足す(`page.add` の直後)
+
+[source,json]
+----
+[2, {"id": 1, "patch": [
+  [0, {"views": [1, {"0": [2]}]}],
+  [0, 0, "title", "fake client test"],
+  [0, 2, "controls", [
+    {"_c": "Column", "_i": 12, "_internals": {"host_expanded": true}, "controls": [
+      {"_c": "Text", "_i": 9, "value": "押す前"},
+      {"_c": "Button", "_i": 10, "content": "押す", "on_click": true},
+      {"_c": "TextField", "_i": 11, "label": "名前"}]}]]]}]
+----
+
+索引 0 は Page、1 は `views` の list、2 は `views[0]`(View)です。操作は
+「Page の `title` を置く」と「View の `controls` を置く」の 2 つです。
+
+=== 例 2: クリックの後、値だけが変わる
+
+画面側が `[3, {"target": 10, "name": "click", "data": null}]` を送ると、Python の
+`on_click` が `t.value = "押した"` として、次の差分が返ります。
+
+[source,json]
+----
+[2, {"id": 1, "patch": [
+  [0, {"views": [1, {"0": [2, {"controls": [3, {"0": [4, {"controls": [5, {"0": [6]}]}]}]}]}]}],
+  [0, 6, "value", "押した"]]}]
+----
+
+索引 6 は `Page.views[0].controls[0].controls[0]`(Text 9)です。操作は 1 つで、
+`value` の置き換えです。
+
+== イベント、属性の写し、呼び出し
+
+* CONTROL_EVENT: `{"target": 部品の番号, "name": "click", "data": …}`。`data` は
+  イベントの種類で決まります(ボタンのクリックは `null`、入力欄の `change` は
+  新しい値、タップは `{"lx", "ly", "gx", "gy", "kind"}` のような辞書)。Python は
+  `on_<name>` の手当てに渡します。
+* UPDATE_CONTROL_PROPS: 画面側で変わった値を Python の部品に写します。入力欄なら
+  `{"id": 11, "props": {"value": "打った字"}}`。Python の `TextField.value` がこれで
+  変わるので、プログラムが `tf.value` を読めます。イベントとは別に送ります。
+* INVOKE_METHOD: Python が画面側の部品のメソッドを呼びます(`page.launch_url` や
+  入力欄の `focus()` など)。画面側は `call_id` を付けて結果か `error` を返します。
+  最初の 6 部品では `TextField.focus` と、Page の幅と高さの問い合わせ程度です。
+
+== 最初の 6 部品の属性
+
+Python の `@control` の定義(`flet/controls/…`)が元です。Dart の画面側が読む名前と
+既定を、同じ名前で読みます。
+
+=== 共通(`LayoutControl`、`base_controls.dart`)
+
+`width`・`height`・`expand`(数。親の `_internals.host_expanded` が真のとき効く。
+`expand_loose` が真なら縮んでよい)・`visible`・`disabled`・`opacity`・`tooltip`・
+`left`・`top`・`right`・`bottom`(親が `host_positioned` のとき)・`margin`・
+`align`・`aspect_ratio`。回転と拡大と動きは最初は受けません。
+
+=== Column / Row(`column.dart`・`row.dart`)
+
+`controls`、`alignment`(主軸。`start`・`center`・`end`・`space_between`・
+`space_around`・`space_evenly`)、`horizontal_alignment` / `vertical_alignment`
+(交差軸。`start`・`center`・`end`・`stretch`)、`spacing`(既定 10)、`tight`
+(真なら中身の大きさ、偽なら親いっぱい)、`wrap`、`scroll`。Row の
+`vertical_alignment` の既定は `center` です。
+
+=== Text(`text.dart`)
+
+`value`、`size`、`weight`(`bold` など)、`italic`、`color`、`bgcolor`、
+`font_family`、`text_align`、`max_lines`、`overflow`、`no_wrap`、`selectable`、
+`style`(TextStyle の辞書)、`theme_style`、`spans`。イベントは `tap`。
+
+=== TextField(`textfield.dart`)
+
+`value`、`label`、`hint_text`、`multiline`、`min_lines`、`max_lines`、
+`password`、`read_only`、`autofocus`、`text_align`、`keyboard_type`、
+`input_filter`、`max_length`、`border`、`filled`。イベントは `change`(値)、
+`submit`(値)、`focus`、`blur`、`selection_change`。値が変わるたびに
+UPDATE_CONTROL_PROPS で `value` を Python に写します。メソッドは `focus`・`blur`。
+
+=== Button(`button.dart`)
+
+`content`(字か部品)、`icon`、`color`、`bgcolor`、`elevation`、`style`、
+`autofocus`、`url`。イベントは `click`、`long_press`、`hover`(真偽)、`focus`、`blur`。
+
+=== Page / View / Window(`page.dart`)
+
+Page の `title`、`theme_mode`、`padding`、`bgcolor`、`views`(View の list)、
+`window`(Window)、`_overlay`・`_dialogs`・`_services`(最初は受けて描かない)。
+View の `controls`、`route`、`padding`、`appbar`(最初は無い)、`scroll`。
+Window の `width`・`height`・`top`・`left`・`title`・`resizable` など。
+窓の大きさが変わったら Window と Page に UPDATE_CONTROL_PROPS を送り、
+`resize` のイベントを出します。
+
+== レイアウトの決まり(Opus の指摘)
+
+Flutter の配置は flexbox と同じではありません。親から子へ大きさの上限と下限を渡し、
+子が自分の大きさを決めて返します。gpui は taffy(flexbox)なので、Column と Row は
+flex で近づき、`expand` は `flex-grow`、`tight` は主軸の `min` / `max` で表せます。
+違う所は、(1) `Stack` の中の `left`・`top` の位置、(2) 中身の大きさで決まる部品
+(`Text`)の折り返し、(3) スクロール、(4) `Container` の `alignment` と `padding`
+の組み合わせです。1 つずつ Flet の型録(`get_api`)と Dart の読み方を確かめて写し、
+見た目の違いは本物の Flet と並べて比べます。
+
+== 置き場と作り
+
+* メッセージの読み書き、部品の木、差分の当て方は gpui を持たないクレートに置きます
+  (`face` と同じ決め。Kotlin / Swift のアプリからも使えるように)。名前の案は `fletview`。
+* 描く所(gpui の部品)は `ui` か calc のアプリ側に置きます。
+* msgpack は Rust の `rmp-serde` か `rmpv` を使います。拡張型 1〜3 を自分で読み書きします。
+* 試験は、Python の本物の Flet を相手に回します。`tools/flet_fake_view.py` と同じ
+  手順(登録 → 差分 → イベント → 差分)を Rust の試験にし、Flet の版を上げたときに
+  決まりの変化をここで見つけます。
+
+== 作る順
+
+. `fletview`: 枠と msgpack(拡張型つき)、7 つのメッセージ、部品の木と差分の当て方。
+  本物の Flet を相手にした試験
+. 起動: `FLET_VIEW_PATH` の形で officework が画面側として起動し、pid ファイルを書く
+. 描く: Page / View / Column / Row / Text / Button / TextField を gpui で。
+  イベントと UPDATE_CONTROL_PROPS
+. 表計算の部品(名前と属性は決め待ち。本物の Flet では「絵の表」の部品が同じ名前を受ける)
+. builder の 20 へ広げる。見積もりは Opus の指摘どおり、試験を含めて 1.5 倍を見込む
+
+== 参考
+
+* `tools/flet_fake_view.py`: Python で書いた偽の画面側。メッセージの実物を取るのに使った
+* flet-dev/flet `v1.0.4`: `packages/flet/lib/src/models/control.dart`(差分の当て方)、
+  `flet_backend.dart`(登録と振り分け)、`transport/flet_backend_channel_socket.dart`(枠)、
+  `client/lib/main.dart`(起動の引数)
+* Flet 1.0.4 の Python: `flet/messaging/protocol.py`、`flet_socket_server.py`、
+  `session.py`、`flet_desktop/__init__.py`

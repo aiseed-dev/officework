@@ -9254,7 +9254,7 @@ df = ws.read_df()                  # 使っている範囲
 . *レイアウト。* Flet の `Row` / `Column` / `Container` は Flutter の flex。gpui は taffy(flexbox)を持つので対応は付くが、`expand`・`alignment`・`spacing` の意味を 1 つずつ Flet の型録(`get_api`)で確かめて写す。
 . *見た目。* Material にならない。officework 風で、画面の決め(Euro-Office に合わせる)に従う。builder の用途なら合っている。
 . *入り口。* `FLET_VIEW_PATH` は公開の約束ではないので、`officework.flet.run(main)` のような入り口を用意し、中で環境変数を立てて `ft.run` を呼ぶ。同じプロセスでつなぐ道(pyodide の先例)はその後の選択肢。
-. *前の案は捨てない。* 宣言(Flet の書き方)は同じなので、同じプログラムが「本物の Flet では絵の表」「officework では本物の表」で動く。「4 つの面」の Flet の面がこれ。
+. *前の案は捨てない。* 宣言(Flet の書き方)は同じなので、同じプログラムが「本物の Flet では絵の表」「officework では本物の表」で動く。「4 つの表し方」(AsciiDoc・リボン・HTML・Flet)の Flet がこれ。
 . *表計算と文書の部品の名前。* Flet に無い部品(`Sheet`・`Doc`)をどの名前と属性で宣言するか。本物の Flet で動かすときは、前の案の部品(絵の表)が同じ名前を受ける。
 . *Flet の版の追い方。* `MessageAction` の番号は Dart と合わせる決まり(ソースの注記)。版を上げたら決まりの変化を読んで直す。
 
@@ -9288,6 +9288,15 @@ df = ws.read_df()                  # 使っている範囲
 === 進め方の案
 
 . この節を書く(2026-10-17。済み)
-. Flet のリポジトリ(Dart の画面側)を読む許可をもらい、PATCH_CONTROL の当て方と登録の手順を写す
+. Flet のリポジトリ(Dart の画面側)を読む許可をもらい、PATCH_CONTROL の当て方と登録の手順を写す(2026-10-17。済み。link:docs/sekkei/flet-client.ja.adoc[docs/sekkei/flet-client.ja.adoc]。Python で書いた偽の画面側 `tools/flet_fake_view.py` を本物の Flet のプログラムにつなぎ、登録の応答・部品の木を足す差分・クリックの後の値の差分の実物を取った)
 . 最初の目標は小さく、`Text`・`Column`・`Row`・`TextField`・`Button` と表計算の 6 つで、変えていない Flet のサンプルが officework の窓で動くこと
 . builder の 20 に広げる
+
+=== Opus の評価への答え(2026-10-17)
+
+* 直す所の 2 つ(0x01 のデータの通り道、msgpack の拡張型 3 つ)は、そのとおりでした。設計書に書きました。
+* 同じプロセスでつなぐ道は `dart_bridge` に置き換えます。最初はソケットで進めます。
+* 起動の向きは、実物で確かめました。Python が画面側を子のプロセスとして起動し、pid ファイルに書かれたプロセスが終わるのを待ちます。officework から動かす形は中継が要ります。設計書の「起動」に書きました。
+* 範囲は「最初の 6 部品で、変えていないサンプルが動く」とし、受け入れの一覧はその後に決めます。
+* 見積もりは 1.5 倍を見込みます。
+* 「4 つの面」は「4 つの表し方」と言い換えます。
