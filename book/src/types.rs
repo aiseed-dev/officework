@@ -3090,6 +3090,16 @@ impl Sheet {
                 break;
             }
         }
+        // A merge whose top-left cell is printed is printed whole: its text
+        // and fill cover the merged area, though the other cells of it may
+        // not be in the file
+        let mut rows = rows;
+        for (tl, br) in &self.merges {
+            if self.cells.get(tl).is_some_and(miru) {
+                rows = rows.max(br.row + 1);
+                cols = cols.max(br.col + 1);
+            }
+        }
         (rows, cols)
     }
 

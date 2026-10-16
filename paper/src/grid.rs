@@ -569,6 +569,9 @@ struct Ink<'a> {
     /// Where what this pen draws sits in the draw order. 0 is the body;
     /// a group's children count from 1 in file order (see [`pdfw::Leaf`])
     z: i32,
+    /// The part of the page this pen's text may show in (mm from the bottom
+    /// left: x, y, width, height), or all of it
+    clip: Option<[f32; 4]>,
 }
 
 impl Ink<'_> {
@@ -608,6 +611,9 @@ impl Ink<'_> {
             strike,
             color: Some(pdfw::to_hex(rgb)),
             z: self.z,
+            // Only a piece that runs out of the part is cut; the rest is
+            // written as before
+            clip: self.clip.filter(|c| x < c[0] - 0.01 || x + w_mm > c[0] + c[2] + 0.01),
             ..Default::default()
         });
     }
@@ -903,7 +909,7 @@ impl Board {
 
     /// `i` 枚目に描く筆を借ります
     fn ink(&mut self, i: usize) -> Ink<'_> {
-        Ink { leaf: &mut self.leaves[i], z: 0 }
+        Ink { leaf: &mut self.leaves[i], z: 0, clip: None }
     }
 
     fn save<W: Write>(self, paper: Paper, font_data: &[u8], out: W) -> Result<(), String> {
@@ -930,7 +936,7 @@ impl Board {
 /// `y_mm` は紙の**上から**の mm(文書の図形はそう持ちます)。紙面は下からの
 /// mm なので、ここで裏返します。
 pub(crate) fn doc_shapes(leaf: &mut pdfw::Leaf, shapes: &[kumihan::DocShape], h_mm: f32) {
-    let mut l1 = Ink { leaf, z: 0 };
+    let mut l1 = Ink { leaf, z: 0, clip: None };
     for sp in shapes {
         l1.z = sp.z;
         // `zukei` は図形自身のずらしを足すので、写しで 0 にしてから渡します
@@ -1098,6 +1104,82 @@ fn gradation_iro(g: &book::Gradient) -> Option<(f32, f32, f32)> {
         Some(b) => Some(((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0, (a.2 + b.2) / 2.0)),
         None => Some(a),
     }
+}
+
+/// **A cell left of this page whose text goes on into it.** Excel prints
+/// such text on both pages, each part cut at its page's edge (Excel
+/// 16.0.20430, 2026-10-16: the invoice of Excel's gallery shows "請" at the
+/// right edge of one page and "求書" at the left of the next). Two kinds of
+/// cell do so: the top-left cell of a merge that goes on into this page,
+/// and a text cell whose text runs right over empty cells into it (not a
+/// number, wrapped text, right-aligned text or a merge). Returns the cell's
+/// slot (column, left edge, width, true) and the part of the page its text
+/// may show in, which starts at the page's first column after any repeated
+/// title columns. Running text stops at the first cell with something in
+/// it
+fn run_on_cell(
+    grid: &Grid, r: u32, cols: &[u32], col_x: &[f32], ml: f32, scale: f32, basis: &book::ColBasis,
+) -> Option<((u32, f32, f32, bool), [f32; 4])> {
+    let n = cols.len();
+    if n == 0 {
+        return None;
+    }
+    // The page's own columns: the run at the end of `cols` (repeated title
+    // columns sit before it)
+    let mut k = n - 1;
+    while k > 0 && cols[k - 1] + 1 == cols[k] {
+        k -= 1;
+    }
+    let c0 = cols[k];
+    if c0 == 0 {
+        return None;
+    }
+    let width = |c: u32| {
+        if grid.col_hidden.contains(&c) { 0.0 } else { basis.print_col_mm(grid.col_haba_mm(c, basis)) * scale }
+    };
+    // A merge that begins left of this page and goes on into it: Excel
+    // prints its text on both pages, each cut at the page's edge. The
+    // invoice's title is the right-aligned merge D2:H2 over a break after F
+    // (Excel 16.0.20430, 2026-10-16). Its top row draws it, as on the page
+    // where it begins
+    if let Some((a, _)) = grid.merges.iter().find(|(a, b)| a.row == r && a.col < c0 && (a.col..=b.col).contains(&c0)) {
+        let off: f32 = (a.col..c0).map(width).sum();
+        return Some(((a.col, ml + col_x[k] - off, width(a.col), true), [ml + col_x[k], -1000.0, col_x[n] - col_x[k], 3000.0]));
+    }
+    let mut stop = col_x[n];
+    for (j, &c) in cols.iter().enumerate().skip(k) {
+        if grid.cells.get(&book::Pos::new(r, c)).is_some_and(|x| !x.value.is_empty()) {
+            stop = col_x[j];
+            break;
+        }
+    }
+    if stop <= col_x[k] {
+        return None;
+    }
+    let mut off = 0.0f32;
+    for c in (0..c0).rev() {
+        if grid.col_hidden.contains(&c) {
+            continue;
+        }
+        let w = width(c);
+        off += w;
+        if off > 1000.0 {
+            return None;
+        }
+        let Some(cell) = grid.cells.get(&book::Pos::new(r, c)) else { continue };
+        if cell.value.is_empty() {
+            continue;
+        }
+        let runs = matches!(cell.value, Value::Text(_))
+            && !cell.fmt.wrap
+            && matches!(cell.fmt.align, HAlign::General | HAlign::Left | HAlign::Center | HAlign::CenterContinuous)
+            && !grid.merges.iter().any(|(a, b)| (a.row..=b.row).contains(&r) && (a.col..=b.col).contains(&c));
+        if !runs {
+            return None;
+        }
+        return Some(((c, ml + col_x[k] - off, w, true), [ml + col_x[k], -1000.0, stop - col_x[k], 3000.0]));
+    }
+    None
 }
 
 /// **A cell's gradient fill** (ECMA-376 Part 1, 18.8.24 gradientFill), over
@@ -1452,10 +1534,25 @@ fn draw_sheet(
         if grid.print_headings {
             ink.text(&(r + 1).to_string(), 6.5, ml - 7.0, y_top - rh + 2.0, HEAD_GREY, false);
         }
-        for (i, &c) in cols.iter().enumerate() {
+        // (column, left edge, width, text running on from the page before).
+        // A cell left of this page whose text runs into it comes first: Excel
+        // prints the rest of such text from the page's left edge
+        let mut slots: Vec<(u32, f32, f32, bool)> = Vec::new();
+        let run_on = run_on_cell(grid, r, cols, col_x, ml, scale, &col_basis);
+        if let Some((slot, _)) = run_on {
+            slots.push(slot);
+        }
+        slots.extend(cols.iter().enumerate().map(|(i, &c)| (c, ml + col_x[i], col_mm[i], false)));
+        // Text is cut at the right edge of the columns this page prints, as
+        // Excel cuts it; it was drawn off the paper (2026-10-16, the invoice
+        // title of Excel's gallery)
+        let page_clip = [ml, -1000.0, col_x[ncols], 3000.0];
+        for &(c, x, cw, ghost) in &slots {
             let p = book::Pos::new(r, c);
-            let x = ml + col_x[i];
-            let cw = col_mm[i];
+            ink.clip = Some(match (ghost, run_on) {
+                (true, Some((_, cut))) => cut,
+                _ => page_clip,
+            });
             if cw <= 0.0 {
                 continue; // 畳んだ列(幅ゼロ)は中身も描かない
             }
@@ -1524,22 +1621,28 @@ fn draw_sheet(
                 *a != p && (a.row..=b.row).contains(&p.row) && (a.col..=b.col).contains(&p.col)
             });
             let gara = cell.fmt.fill_pattern.as_deref();
-            if in_merge {
-                // Filled by the merge's top-left cell
+            // A merged area is filled only over this page's columns: it may
+            // run past the page's right edge, or begin on the page before
+            let merge_tl = grid.merges.iter().any(|(tl, _)| *tl == p);
+            let (fx0, fx1) = (x.max(page_clip[0]), (x + ma_w).min(page_clip[0] + page_clip[2]));
+            let (fx, fw) = if merge_tl { (fx0, (fx1 - fx0).max(0.0)) } else { (x, ma_w) };
+            if in_merge || (ghost && !merge_tl) || fw <= 0.0 {
+                // Filled by the merge's top-left cell; a cell running on from
+                // the page before shows only its text
             } else if let Some(g) = cell.fmt.fill_grad.as_ref() {
-                fill_gradient(ink, x, y_top - ma_h, ma_w, ma_h, g);
+                fill_gradient(ink, fx, y_top - ma_h, fw, ma_h, g);
             } else if let (Some(na), Some(mae)) = (gara, fill.as_deref().and_then(hex_rgb)) {
                 let ji = cell.fmt.fill_bg.as_deref().and_then(hex_rgb).unwrap_or((1.0, 1.0, 1.0));
-                ink.fill(x, y_top - ma_h, ma_w, ma_h, gara_iro(na, mae, ji));
+                ink.fill(fx, y_top - ma_h, fw, ma_h, gara_iro(na, mae, ji));
             } else if let Some(c) = fill.as_deref().and_then(hex_rgb) {
-                ink.fill(x, y_top - ma_h, ma_w, ma_h, c);
+                ink.fill(fx, y_top - ma_h, fw, ma_h, c);
             }
             // **A data bar** (ECMA-376 18.3.1.28: "a gradated data bar", its
             // length `kumihan::look::bar_share` of the cell's width), under the
             // borders and the text. Excel draws it `kumihan::look::BAR_INSET_PT`
             // in from the cell's left edge, top and bottom, and from its colour
             // on the left to white on the right (Excel 16.0.20430, 2026-10-13)
-            if let Some((t, c)) = ck.bar.as_ref() {
+            if let (false, Some((t, c))) = (ghost, ck.bar.as_ref()) {
                 if let Some(rgb) = hex_rgb(c) {
                     let inset = (kumihan::look::BAR_INSET_PT * 25.4 / 72.0) as f32;
                     let len = (cw * kumihan::look::bar_share(*t) as f32 - inset).max(0.0);
@@ -1566,7 +1669,7 @@ fn draw_sheet(
             let uti = grid.merges.iter().find(|(a, b)| {
                 (a.row..=b.row).contains(&p.row) && (a.col..=b.col).contains(&p.col)
             });
-            let b = tfmt.borders;
+            let b = if ghost { book::Borders::NONE } else { tfmt.borders };
             // **斜めの罫線**(2026-08-31 発注者)。日本の帳票は表の左上のセルを
             // 斜めに割り、上と下に別の見出しを入れます。結合のセルでは、結合
             // ぜんぶを1つのセルとして引きます
@@ -2120,6 +2223,7 @@ fn draw_sheet(
                 }
             }
         }
+        ink.clip = None;
     }
 
     // 列名の見出し(printOptions headings)。各ページの上の余白に
@@ -3957,6 +4061,78 @@ mod zukei_tests {
         let (a, b) = (texts(&leaves[0]), texts(&leaves[1]));
         assert!(!a.is_empty() && !b.is_empty(), "the text is not on both pages: {} {}", a.len(), b.len());
         assert!(a.iter().chain(b.iter()).all(|p| p.clip.is_some()), "text over the break is not cut");
+    }
+
+    /// Text that runs past the last column of a page is cut at that column's
+    /// right edge, and the rest is printed from the next page's left edge,
+    /// as Excel prints it (the invoice title of Excel's gallery)
+    #[test]
+    fn text_over_a_column_break_is_cut_and_runs_on() {
+        let mut g = Grid::default();
+        g.set(book::Pos::new(0, 1), book::Cell::input("請求書請求書請求書請求書請求書"));
+        g.set(book::Pos::new(0, 4), book::Cell::input("右"));
+        g.col_breaks.push(2);
+        let basis = book::ColBasis::default();
+        let colw = g.col_haba_mm(0, &basis);
+        let setup = PrintSetup { date1904: false, col_basis: basis, ..Default::default() };
+        let leaves = sheet_leaves(&g, Paper::default(), &setup).expect("not laid out");
+        assert_eq!(leaves.len(), 2);
+        let texts = |l: &pdfw::Leaf| -> Vec<pdfw::Piece> {
+            l.pieces.iter().filter(|p| p.text.contains("求")).cloned().collect()
+        };
+        let (a, b) = (texts(&leaves[0]), texts(&leaves[1]));
+        assert!(!a.is_empty(), "the text is not on the first page");
+        let ml = a[0].x_mm - colw - MASU_PAD_MM;
+        for p in &a {
+            let [x, _, w, _] = p.clip.expect("the text is not cut at the page's columns");
+            assert!((x - ml).abs() < 0.1 && (x + w - (ml + 2.0 * colw)).abs() < 0.1, "cut at {x}..{}", x + w);
+        }
+        // On the second page it starts left of the margin, by columns A and B
+        // less the text's padding, and shows from the margin up to E
+        assert!(!b.is_empty(), "the rest of the text is not on the second page");
+        let start = b.iter().map(|p| p.x_mm).fold(f32::MAX, f32::min);
+        assert!((start - (ml - colw + MASU_PAD_MM)).abs() < 0.1, "the rest starts at {start}");
+        let [x, _, w, _] = b[0].clip.expect("the rest is not cut");
+        assert!((x - ml).abs() < 0.1 && (w - 2.0 * colw).abs() < 0.1, "the rest shows in {x}..{}", x + w);
+    }
+
+    /// A merge over a column break shows its text and fill on both pages,
+    /// each cut at the page's columns, as Excel prints the invoice title of
+    /// its gallery (the right-aligned merge D2:H2, a break after F)
+    #[test]
+    fn a_merge_over_a_column_break_is_drawn_on_both_pages() {
+        let mut g = Grid::default();
+        let mut c = book::Cell::input("請求書");
+        c.fmt.align = HAlign::Right;
+        c.fmt.fill = Some("FF0000".into());
+        g.set(book::Pos::new(0, 1), c);
+        g.merges.push((book::Pos::new(0, 1), book::Pos::new(0, 3)));
+        g.set(book::Pos::new(0, 4), book::Cell::input("右"));
+        g.col_breaks.push(3);
+        let basis = book::ColBasis::default();
+        let colw = g.col_haba_mm(0, &basis);
+        let setup = PrintSetup { date1904: false, col_basis: basis, ..Default::default() };
+        let leaves = sheet_leaves(&g, Paper::default(), &setup).expect("not laid out");
+        assert_eq!(leaves.len(), 2);
+        let texts = |l: &pdfw::Leaf| -> Vec<pdfw::Piece> {
+            l.pieces.iter().filter(|p| p.text.contains("求")).cloned().collect()
+        };
+        let red = |l: &pdfw::Leaf| -> Vec<(f32, f32)> {
+            l.fills.iter().filter(|f| f.rgb == (1.0, 0.0, 0.0)).map(|f| (f.x_mm, f.w_mm)).collect()
+        };
+        let (fa, fb) = (red(&leaves[0]), red(&leaves[1]));
+        assert_eq!((fa.len(), fb.len()), (1, 1), "the fill is not on both pages");
+        // Page one prints A to C: the fill covers B and C, not D past the edge
+        let ml = fa[0].0 - colw;
+        assert!((fa[0].1 - 2.0 * colw).abs() < 0.1, "page one's fill is {}mm", fa[0].1);
+        // Page two prints D and E: the fill and the right end of the text are in D
+        assert!((fb[0].0 - ml).abs() < 0.1 && (fb[0].1 - colw).abs() < 0.1, "page two's fill is {:?}", fb[0]);
+        let b = texts(&leaves[1]);
+        assert!(!b.is_empty(), "the merge's text is not on the second page");
+        let end = b.iter().map(|p| p.x_mm + p.w_mm).fold(f32::MIN, f32::max);
+        assert!(end > ml && end <= ml + colw, "the text ends at {end}, not inside D");
+        // On page one the text lies past the page's right edge, and is cut
+        assert!(texts(&leaves[0]).iter().all(|p| p.clip.is_some()), "page one's text is not cut");
     }
 
     /// The box a stretch of a cell's text is set in is reported where the

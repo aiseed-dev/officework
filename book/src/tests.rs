@@ -79,6 +79,19 @@ mod print_extent_tests {
         s.set(Pos::new(0, 1), Cell { formula: None, value: Value::Empty, fmt: ue });
         assert_eq!(s.print_extent(), (3, 2), "縁ではない列まで落とした");
     }
+
+    /// A merge whose top-left cell is printed is printed whole, though the
+    /// rest of its cells are not in the file
+    #[test]
+    fn a_printed_merge_is_printed_whole() {
+        let mut s = Sheet { name: "見本".into(), ..Default::default() };
+        s.set(Pos::new(0, 0), Cell {
+            formula: None, value: Value::Text("題".into()), fmt: Default::default() });
+        s.merges.push((Pos::new(0, 0), Pos::new(1, 3)));
+        // An empty merge adds nothing
+        s.merges.push((Pos::new(5, 5), Pos::new(6, 8)));
+        assert_eq!(s.print_extent(), (2, 4));
+    }
 }
 
 #[cfg(test)]
