@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Print the collected Japanese Word and Excel templates with Microsoft 365 and
-with officework, and compare them (Linux, with the Windows VM).
+with officework, and evaluate how officework's print differs (Linux, with the
+Windows VM).
 
     .venv/bin/python tools/templates_ja_round.py         # Word and Excel (needs pdfplumber)
     .venv/bin/python tools/templates_ja_round.py --app excel --limit 10
@@ -12,19 +13,17 @@ Reads `templates/目録-ja.tsv` and `templates/excel/目録-ja.tsv` (written by
 1. Word / Excel in the Windows VM save it as `<GUID>.ms.pdf`
    (`tools/winvm_pdf.py`, all the missing ones in one run of the VM),
 2. officework prints it as `<GUID>.ow.pdf` (the `officework` module in .venv),
-3. the page counts are compared, and page by page the letters
-   (`tools/ms_compare.py`: lines beyond 6pt and beyond 2pt, and letters of
-   another colour, letters out of place within a line), the ruled lines
-   (`tools/ms_rules.py`) and the pictures (`tools/ms_imgdiff.py`, differing
-   8-pixel squares, and those outside the letters).
+3. `tools/pdf_eval.py` evaluates the difference by what matters to a reader:
+   what is not shown, what is shown wrong, what is hard to read
+   (`<GUID>.eval.json`). Page counts and positions are not the measure
+   (decided 2026-10-16).
 
-A template "matches" when both have the same number of pages, no line is more
-than 6pt away and no letter has another colour. The table goes to `templates/結果-ja.tsv`, with the error
-text of a file that failed. The templates are Microsoft's: used for testing
-only, never shared (decided 2026-09-19).
+The table goes to `templates/結果-ja.tsv`; `tools/eval_summary.py` adds the
+findings up over all templates. The templates are Microsoft's: used for
+testing only, never shared (decided 2026-09-19).
 """
 import argparse
-import os
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -33,6 +32,7 @@ ROOT = Path.home() / "Documents/officework-cmp/templates"
 REPO = Path(__file__).resolve().parent.parent
 PY = REPO / ".venv/bin/python"
 APPS = {"word": (ROOT, ".docx"), "excel": (ROOT / "excel", ".xlsx")}
+WEIGHTS = ("表示されない", "改ページ", "違う", "読みにくい")
 
 OW = """
 import sys
@@ -58,38 +58,6 @@ def rows_of(app):
     return out
 
 
-def pages(pdf):
-    import pdfplumber
-    with pdfplumber.open(pdf) as p:
-        return len(p.pages)
-
-
-def last_number(text):
-    nums = [int(t) for t in text.replace("件", " ").replace("区画", " ").split() if t.isdigit()]
-    return nums[-1] if nums else -1
-
-
-def compare(ow, ms):
-    out = {}
-    for tol in ("6", "2"):
-        r = subprocess.run([str(PY), str(REPO / "tools/ms_compare.py"), str(ow), str(ms), "--tol", tol],
-                           capture_output=True, text=True, timeout=300)
-        lines = r.stdout.strip().splitlines() or ["-1"]
-        out["lines" + tol] = last_number(lines[-1])
-        if tol == "6":
-            out["colour"] = next((last_number(x) for x in lines if x.startswith("色の違い")), -1)
-    r = subprocess.run([str(PY), str(REPO / "tools/ms_imgdiff.py"), str(ow), str(ms),
-                        "--out", str(ow.with_suffix(".imgdiff.png"))],
-                       capture_output=True, text=True, timeout=600)
-    lines = r.stdout.strip().splitlines() or ["-1"]
-    out["img"] = last_number(lines[-1])
-    out["img_out"] = next((last_number(x) for x in lines if x.startswith("字の外の違い")), -1)
-    r = subprocess.run([str(PY), str(REPO / "tools/ms_rules.py"), str(ow), str(ms)],
-                       capture_output=True, text=True, timeout=300)
-    out["rules"] = last_number((r.stdout.strip().splitlines() or ["-1"])[-1])
-    return out
-
-
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--app", choices=["word", "excel", "both"], default="both")
@@ -111,12 +79,11 @@ def main():
         subprocess.run([sys.executable, str(REPO / "tools/winvm_pdf.py"), *map(str, missing),
                         "--timeout", str(120 + 60 * len(missing))])
 
-    # 2 and 3. officework, then the comparison
-    table = ["アプリ\tGUID\t頁\t題\tWord・Excel の頁数\tofficework の頁数\t6pt を超えた行\t2pt を超えた行\t字の色の違い\t罫線の違い\t絵の違う区画\t字の外の違う区画\t一致\t誤り"]
-    n = n_ok = 0
+    # 2 and 3. officework, then the evaluation
+    table = ["アプリ\tGUID\t頁\t題\t表示されない\t改ページ\t違う\t読みにくい\t主な違い\t誤り"]
     for app, guid, page, title, src in rows:
-        ms, ow = src.with_suffix(".ms.pdf"), src.with_suffix(".ow.pdf")
-        err, res, pm, po = "", {}, -1, -1
+        ms, ow, ev = src.with_suffix(".ms.pdf"), src.with_suffix(".ow.pdf"), src.with_suffix(".eval.json")
+        err, res = "", {}
         try:
             r = subprocess.run([str(PY), "-c", OW, str(src), str(ow)], capture_output=True, text=True, timeout=300)
             if r.returncode or not ow.exists():
@@ -124,26 +91,28 @@ def main():
             elif not ms.exists():
                 err = "Word・Excel の PDF が無い"
             else:
-                pm, po = pages(ms), pages(ow)
-                res = compare(ow, ms)
+                r = subprocess.run([str(PY), str(REPO / "tools/pdf_eval.py"), str(ow), str(ms), "--source", str(src), "--json", str(ev)],
+                                   capture_output=True, text=True, timeout=900)
+                if ev.exists():
+                    res = json.loads(ev.read_text(encoding="utf-8"))
+                else:
+                    err = (r.stderr.strip().splitlines() or ["評価できない"])[-1][:200]
         except subprocess.TimeoutExpired:
             err = "時間切れ"
-        # lines6 counts the colour differences too
-        ok = not err and pm == po and res.get("lines6") == 0
-        n += 1
-        n_ok += ok
-        table.append("\t".join(map(str, [app, guid, page, title, pm, po, res.get("lines6", ""),
-                                          res.get("lines2", ""), res.get("colour", ""), res.get("rules", ""), res.get("img", ""), res.get("img_out", ""), "○" if ok else "", err])))
-        print(f"{'○' if ok else '×'} {app} {title[:30]} 頁 {pm}/{po} 行6pt {res.get('lines6', '-')} "
-              f"色 {res.get('colour', '-')} 罫線 {res.get('rules', '-')} 絵 {res.get('img', '-')}({res.get('img_out', '-')}) {err}", flush=True)
+        counts = [sum(len(v) for v in res.get(w, {}).values()) for w in WEIGHTS]
+        kinds = sorted(((len(v), f"{k}") for w in WEIGHTS for k, v in res.get(w, {}).items()), reverse=True)
+        main_kinds = "、".join(f"{k} {n}" for n, k in kinds[:3])
+        table.append("\t".join(map(str, [app, guid, page, title, *counts, main_kinds, err])))
+        print(f"{app} {title[:28]}: 表示されない {counts[0]} / 改ページ {counts[1]} / 違う {counts[2]} / 読みにくい {counts[3]}  {main_kinds} {err}",
+              flush=True)
     # A run of one app keeps the other app's rows from the last run
     old = ROOT / "結果-ja.tsv"
     if old.exists():
-        for line in old.read_text(encoding="utf-8").splitlines()[1:]:
-            if line.split("\t", 1)[0] not in apps:
-                table.append(line)
+        lines = old.read_text(encoding="utf-8").splitlines()
+        if lines and lines[0] == table[0]:
+            table += [ln for ln in lines[1:] if ln.split("\t", 1)[0] not in apps]
     old.write_text("\n".join(table) + "\n", encoding="utf-8")
-    print(f"\n一致 {n_ok} / {n}  (表: {ROOT / '結果-ja.tsv'})")
+    print(f"\n表: {old}  まとめ: .venv/bin/python tools/eval_summary.py")
 
 
 if __name__ == "__main__":
