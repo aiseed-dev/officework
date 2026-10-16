@@ -466,6 +466,10 @@ mod format_tests {
         assert_eq!(f(7.0, ";;;"), "");
         assert_eq!(f(-7.0, "0;;0"), "", "an empty negative section hides negatives");
         assert_eq!(f(1234.0, "General;General"), "1234");
+        // The accounting format shows a zero as a dash, not as 0.00
+        let acc = "_ \"¥\"* #,##0.00_ ;_ \"¥\"* \\-#,##0.00_ ;_ \"¥\"* \"-\"??_ ;_ @_ ";
+        assert_eq!(f(0.0, acc), "¥-  ");
+        assert_eq!(f(1234.5, acc), "¥1,234.50");
     }
 
     /// Fraction formats: the whole part, then the nearest fraction with a

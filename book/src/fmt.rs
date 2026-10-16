@@ -176,6 +176,16 @@ pub fn format_value(v: &Value, code: Option<&str>, date1904: bool) -> String {
             return affix(sect);
         }
     }
+    // A zero section with no `0` place shows no digit: each `?` is a blank
+    // (`_ "¥"* "-"??_` of the accounting format is "¥ -", not "¥-0.00")
+    if zero_sect.is_some() && !sect.contains('0') {
+        let (head, mid, tail) = match (sect.find(core_of), sect.rfind(core_of)) {
+            (Some(a), Some(b)) => (&sect[..a], &sect[a..=b], &sect[b + 1..]),
+            _ => (sect, "", ""),
+        };
+        let blanks = mid.chars().filter(|c| *c == '?').count();
+        return format!("{}{}{}{}", bracket_sym, affix(head), " ".repeat(blanks), affix(tail));
+    }
     if let Some(f) = format_fraction(n, sect, hu_sect.is_none()) {
         return f;
     }
