@@ -1397,6 +1397,26 @@ impl Table {
     }
 }
 
+/// **A floating picture placed by the paper side** ([`Sheet::float_images`])
+#[derive(Debug, Clone)]
+pub struct FloatImage {
+    pub bytes: std::sync::Arc<Vec<u8>>,
+    /// [x, top, w, h] in sheet coordinates (mm)
+    pub rect: [f32; 4],
+    /// Its place in the draw order (see [`DocShape::z`])
+    pub z: i32,
+    /// The box to cut it to (see [`Sheet::float_images`])
+    pub clip: Option<[f32; 4]>,
+    /// How it is turned in its box
+    pub turn: Turn,
+    /// **The page it belongs to** (from 0), when the paper side knows it.
+    /// Sheet coordinates run on over pages, and the foot of one page and
+    /// the head of the next overlap there, so `rect` alone cannot tell: the
+    /// logo at the foot of the cover of Word's business report went to
+    /// page 2 (2026-10-16)
+    pub page: Option<usize>,
+}
+
 /// **How a picture is turned in its box**: the degrees it is turned
 /// clockwise about the box's centre, and whether it is mirrored first
 /// (`a:xfrm` `rot`, `flipH`, `flipV`, ECMA-376 20.1.7.6). Word's business
@@ -3343,8 +3363,8 @@ pub struct Sheet {
     /// fill rectangle bigger than the shape that holds it (`a:fillRect`,
     /// ECMA-376 20.1.8.30); the part outside the shape's box is not drawn.
     ///
-    /// The fifth is how the picture is turned in its box ([`Turn`]).
-    pub float_images: Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], i32, Option<[f32; 4]>, Turn)>,
+    /// See [`FloatImage`] for the rest.
+    pub float_images: Vec<FloatImage>,
     /// Where each paragraph that carries anchored drawings starts:
     /// (anchor XML, x of the text in mm, y of the first line's box top plus
     /// BASE_UP_MM). Body paragraphs and table cells alike; the paper side

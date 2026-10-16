@@ -2322,6 +2322,34 @@ mod hf_layout_tests {
         }
     }
 
+    /// A footer table keeps what its cells draw: the black band of Word's
+    /// business report is the shading of its footer table's cell, under
+    /// the white website text, at the foot of the paper
+    #[test]
+    fn a_footer_table_keeps_its_cell_shading() {
+        let data = metrics();
+        let m = Metrics::new(&data).unwrap();
+        let pg = PageSetup::default();
+        let cell = Cellbox {
+            paragraphs: vec![Paragraph {
+                runs: vec![Run { text: "www".into(), size_pt: None, font: None, fmt: Default::default() }],
+                ..Default::default()
+            }],
+            shade: Some("161718".into()),
+            ..Default::default()
+        };
+        let mut f = hf("");
+        f.blocks = vec![Block::Table(Table { col_mm: vec![pg.measure_mm()], rows: vec![vec![cell]], ..Default::default() })];
+        let s = layout_hf_sheet(&f, &m, &pg, 1, 1, true, DEFAULT_PT, None).expect("not laid out");
+        let (band, c) = s.fills.first().expect("the cell's shading is lost");
+        assert_eq!(c, "161718");
+        let line = s.lines.iter().find(|l| l.text().contains("www")).expect("no text");
+        assert!(band[1] <= line.y_mm && line.y_mm <= band[1] + band[3], "the band is not behind the text: {band:?} {}", line.y_mm);
+        assert!(band[1] > pg.h_mm / 2.0 && band[1] + band[3] <= pg.h_mm, "the band is not at the foot of the paper: {band:?}");
+        // A part without blocks has nothing more than its lines
+        assert!(layout_hf_sheet(&hf("足"), &m, &pg, 1, 1, true, DEFAULT_PT, None).is_none());
+    }
+
     #[test]
     fn the_page_number_field_becomes_the_number() {
         let data = metrics();

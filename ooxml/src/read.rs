@@ -364,6 +364,12 @@ pub fn read<R: Read + Seek>(src: R) -> Result<(Document, Report), String> {
                 .collect();
             if hdoc.tables().next().is_some() {
                 rep.note(&format!("{which}の表(編集できないが保存では残る)"));
+                // It is printed all the same, laid out from its blocks as the
+                // first-page and section parts are. Word's business report
+                // has its page number box and its black footer band in such
+                // tables, and they were missing from every page but the
+                // first (2026-10-16)
+                hf.blocks = hdoc.blocks.clone();
             } else {
                 hf.paragraphs = hdoc.paragraphs().cloned().collect();
                 if hf.paragraphs.is_empty() {

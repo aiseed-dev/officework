@@ -19,6 +19,9 @@ fn main() -> Result<(), String> {
         println!("doc.font={:?} doc.font_latin={:?} base={}", doc.font, doc.font_latin, doc.base_pt());
         println!("title_pg={} first_footer={} footer paras={} text={:?} sect_hf={}", doc.title_pg, doc.first_footer.is_some(),
             doc.footer.paragraphs.len(), doc.footer.paragraphs.iter().map(|p| p.runs.iter().map(|r| r.text.clone()).collect::<String>()).collect::<Vec<_>>(), doc.sect_hf.len());
+        println!("header paras={} blocks={} anchors={} / footer blocks={} anchors={} / first_footer blocks={:?}",
+            doc.header.paragraphs.len(), doc.header.blocks.len(), doc.header.anchors.len(),
+            doc.footer.blocks.len(), doc.footer.anchors.len(), doc.first_footer.as_ref().map(|f| (f.paragraphs.len(), f.blocks.len())));
         match kumihan::font::resolve(&name) {
             Some(f) => println!("font {name:?} -> {:?} index {} ({}) okuri={:?} agari={:?}", f.path, f.index, f.name, kumihan::font::okuri_em(Some(&name)), kumihan::font::agari_em(Some(&name))),
             None => println!("font {name:?} -> none; substitute {:?}",

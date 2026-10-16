@@ -1702,6 +1702,34 @@ mod image_tests {
         buf.into_inner()
     }
 
+    /// A floating picture anchored to a paragraph just before a page break
+    /// keeps the page of its paragraph, though its sheet y also falls in the
+    /// next page's range (the logo of the cover of Word's business report)
+    #[test]
+    fn a_floating_picture_keeps_its_paragraphs_page() {
+        let para = |t: &str| kumihan::Paragraph {
+            runs: vec![kumihan::Run { text: t.into(), size_pt: None, font: None, fmt: Default::default() }],
+            ..Default::default()
+        };
+        let mut d = Document::default();
+        d.push_para(para("表紙"));
+        let a = r#"<w:drawing><wp:anchor behindDoc="0"><wp:positionH relativeFrom="column"><wp:posOffset>0</wp:posOffset></wp:positionH>
+<wp:positionV relativeFrom="paragraph"><wp:posOffset>7804150</wp:posOffset></wp:positionV><wp:extent cx="1573530" cy="683260"/><wp:wrapNone/>
+<a:graphic><a:graphicData><pic:pic><pic:blipFill><a:blip r:embed="rId9"/></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="1573530" cy="683260"/></a:xfrm><a:prstGeom prst="rect"/></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing>"#;
+        let mut ikari = para("");
+        ikari.anchors.push(a.into());
+        ikari.images.push(InlineImage { bytes: std::sync::Arc::new(png()), shape: Some(a.into()),
+            w_mm: 43.7, h_mm: 19.0, tex: None, src: None, off: usize::MAX, fill: None, parts: Vec::new() });
+        d.push_para(ikari);
+        let mut next = para("次の頁");
+        next.page_break_before = true;
+        d.push_para(next);
+        let (mut sheet, page, _) = doc_to_sheet(&d, None).expect("not laid out");
+        anchored_pictures(&d, &mut sheet, page);
+        let f = sheet.float_images.first().expect("the picture is not placed");
+        assert_eq!(f.page, Some(0), "the picture is not on its paragraph's page");
+    }
+
     #[test]
     fn image_is_embedded_in_paper() {
         let (fam, _) = font::for_document(None).unwrap();
@@ -2024,6 +2052,21 @@ fn leaves_of(
     // ECMA-376 17.2.1, or the template's page colour), so the PDF, the PNG
     // and the pages of the code screen are painted as the writer's PDF is
     let bg = d.page_color.as_deref().and_then(grid::hex_rgb);
+    // **What the header and footer tables draw besides their lines**: the
+    // shapes go with the page's shapes, the fills, rules and pictures onto
+    // the page once it is made
+    let hf_sheets = doc_hf_sheets(d, font, sheet, page)?;
+    let n_pages = paginate_full(sheet, Paper::from_page(&page)).offsets.len().max(1);
+    let mut hf_draw: Vec<(usize, kumihan::Sheet, kumihan::PageSetup)> = Vec::new();
+    for k in 0..n_pages {
+        let (head, foot, pg) = hf_sheets(k + 1);
+        for s in [head, foot].into_iter().flatten() {
+            for (xml, r) in &s.inline_shapes {
+                shapes.extend(inline_shape_parts(d, xml, *r, &pg, k, 0.0));
+            }
+            hf_draw.push((k, s, pg));
+        }
+    }
     let dress = PageDress { bg, watermark: d.watermark.clone(), shapes, ..Default::default() };
     let hf = doc_hf_lines(d, font, sheet, page)?;
     let paper = Paper::from_page(&page);
@@ -2032,7 +2075,12 @@ fn leaves_of(
         name.and_then(|n| names.iter().position(|x| *x == n)).map(|i| i.min(255) as u8).unwrap_or(0)
     };
     let wm = watermark::vml_of(d);
-    let (leaves, _lost) = pdfw::sheet_leaves_wm(sheet, paper, &dress, hf, &font_of, wm.as_ref(), Some(page));
+    let (mut leaves, _lost) = pdfw::sheet_leaves_wm(sheet, paper, &dress, hf, &font_of, wm.as_ref(), Some(page));
+    for (k, s, pg) in hf_draw {
+        if let Some(leaf) = leaves.get_mut(k) {
+            pdfw::hf_onto(leaf, &s, &pg);
+        }
+    }
     Ok(leaves)
 }
 
@@ -2136,6 +2184,44 @@ pub fn doc_hf_pairs<'a>(
     sheet: &kumihan::Sheet,
     page: kumihan::PageSetup,
 ) -> Result<impl Fn(usize) -> (Vec<kumihan::Line>, Vec<kumihan::Line>) + 'a, String> {
+    doc_hf_with(doc, font, sheet, page, move |head, foot, pg, k, total, m, base_pt| {
+        (
+            kumihan::layout_hf_with(head, m, pg, kumihan::LINE_MM, k, total, false, base_pt, Some(doc)),
+            kumihan::layout_hf_with(foot, m, pg, kumihan::LINE_MM, k, total, true, base_pt, Some(doc)),
+        )
+    })
+}
+
+/// The header and the footer of page `k` (from 1) laid out with all they
+/// draw ([`kumihan::layout_hf_sheet`]), with the page's setup; `None` for a
+/// part without blocks, whose lines are all it draws
+#[allow(clippy::type_complexity)]
+pub fn doc_hf_sheets<'a>(
+    doc: &'a kumihan::Document,
+    font: &'a [u8],
+    sheet: &kumihan::Sheet,
+    page: kumihan::PageSetup,
+) -> Result<impl Fn(usize) -> (Option<kumihan::Sheet>, Option<kumihan::Sheet>, kumihan::PageSetup) + 'a, String> {
+    doc_hf_with(doc, font, sheet, page, move |head, foot, pg, k, total, m, base_pt| {
+        (
+            kumihan::layout_hf_sheet(head, m, pg, k, total, false, base_pt, Some(doc)),
+            kumihan::layout_hf_sheet(foot, m, pg, k, total, true, base_pt, Some(doc)),
+            *pg,
+        )
+    })
+}
+
+/// Pick the header and footer of each page (its section's, the first-page
+/// ones under `w:titlePg`) and hand them to `f` with the page's setup, its
+/// printed number, the page count, the metrics and the base size
+#[allow(clippy::type_complexity)]
+fn doc_hf_with<'a, T>(
+    doc: &'a kumihan::Document,
+    font: &'a [u8],
+    sheet: &kumihan::Sheet,
+    page: kumihan::PageSetup,
+    f: impl Fn(&kumihan::HeadFoot, &kumihan::HeadFoot, &kumihan::PageSetup, usize, usize, &kumihan::Metrics, f32) -> T + 'a,
+) -> Result<impl Fn(usize) -> T + 'a, String> {
     let m = kumihan::Metrics::new(font)?;
     let pn = paginate_full(sheet, Paper::from_page(&page));
     let total = pn.offsets.len().max(1);
@@ -2181,10 +2267,7 @@ pub fn doc_hf_pairs<'a>(
                 }
                 None => (&doc.header, &doc.footer),
             };
-        (
-            kumihan::layout_hf_with(head, &m, &pg, kumihan::LINE_MM, k, total, false, base_pt, Some(doc)),
-            kumihan::layout_hf_with(foot, &m, &pg, kumihan::LINE_MM, k, total, true, base_pt, Some(doc)),
-        )
+        f(head, foot, &pg, k, total, &m, base_pt)
     })
 }
 
@@ -3373,7 +3456,9 @@ pub fn anchored_pictures(doc: &kumihan::Document, sheet: &mut kumihan::Sheet, pa
             let y = anchor_place(&f.v_from, anchor_offset(&f.v_from, f.y_mm, f.y_pct, &page, true), f.v_align.as_deref(), h_mm, &page, true, y_para, migi);
             // sheet coordinates: x from the left margin, y continuous over pages
             let (at, clip) = fill_rect(&part, [x - page.left_mm, y + soko, w_mm, h_mm]);
-            out.push((im.bytes.clone(), at, z, clip, pic_turn(&part)));
+            out.push(kumihan::FloatImage {
+                bytes: im.bytes.clone(), rect: at, z, clip, turn: pic_turn(&part), page: Some(kami0),
+            });
         }
     }
     sheet.float_images.extend(out);
@@ -3396,7 +3481,7 @@ fn hf_pictures(
     doc: &kumihan::Document,
     pg: &Pagination,
     page: kumihan::PageSetup,
-    out: &mut Vec<(std::sync::Arc<Vec<u8>>, [f32; 4], i32, Option<[f32; 4]>, kumihan::Turn)>,
+    out: &mut Vec<kumihan::FloatImage>,
 ) {
     let kami_kazu = pg.offsets.len().max(1);
     // **The first page's own header and footer** (`w:headerReference
@@ -3463,7 +3548,9 @@ fn hf_pictures(
                     let y = anchor_place(&f.v_from, anchor_offset(&f.v_from, f.y_mm, f.y_pct, &page, true), f.v_align.as_deref(), h_mm, &page, true, kono, migi);
                     let soko = pg.offsets.get(k).copied().unwrap_or(0.0);
                     let (at, clip) = fill_rect(&part, [x - page.left_mm, y + soko, w_mm, h_mm]);
-                    out.push((im.bytes.clone(), at, z, clip, pic_turn(&part)));
+                    out.push(kumihan::FloatImage {
+                        bytes: im.bytes.clone(), rect: at, z, clip, turn: pic_turn(&part), page: Some(k),
+                    });
                 }
             }
         }
@@ -3717,32 +3804,48 @@ pub fn foreign_shapes(
     // the group. Only the first child was drawn before, and the envelope icon
     // of Word's letterhead (a group of two shapes) showed only its flap
     // (2026-09-29)
-    for (xml, [x, top, w, h]) in &sheet.inline_shapes {
-        // A group of pictures only has no shape to draw: its pictures are
-        // in `sheet.images`
-        if xml.contains("<wpg:wgp") && !xml.contains("<wps:wsp") {
-            continue;
-        }
-        let (kami, soko) = kami_no(*top);
-        let kora = ooxml::foreign_shapes_in(xml, &doc.theme_colors, &doc.theme_line_pt);
-        // The group's own box as read, to fit the children into the layout's box
-        let (gw, gh) = ooxml::foreign_shape_with(xml, &doc.theme_colors, &doc.theme_line_pt)
-            .map(|g| (g.w_mm, g.h_mm))
-            .unwrap_or((*w, *h));
-        let (sx, sy) = (if gw > 0.0 { w / gw } else { 1.0 }, if gh > 0.0 { h / gh } else { 1.0 });
-        let one = kora.len() == 1;
-        for f in kora {
-            let (w_mm, h_mm) = if one { (*w, *h) } else { (f.w_mm * sx, f.h_mm * sy) };
-            out.push(kumihan::DocShape {
-                page: kami,
-                x_mm: page.left_mm + x + f.dx_mm * sx,
-                y_mm: top - soko + f.dy_mm * sy,
-                w_mm,
-                h_mm,
-                look: f.look,
-                z: 0,
-            });
-        }
+    for (xml, r) in &sheet.inline_shapes {
+        let (kami, soko) = kami_no(r[1]);
+        out.extend(inline_shape_parts(doc, xml, *r, &page, kami, soko));
+    }
+    out
+}
+
+/// The shapes of an inline drawing (a rule under a heading, an inline
+/// group) placed in the box `[x, top, w, h]` the layout gave it, on page
+/// `kami` whose sheet y starts at `soko`
+fn inline_shape_parts(
+    doc: &kumihan::Document,
+    xml: &str,
+    [x, top, w, h]: [f32; 4],
+    page: &kumihan::PageSetup,
+    kami: usize,
+    soko: f32,
+) -> Vec<kumihan::DocShape> {
+    let mut out = Vec::new();
+    // A group of pictures only has no shape to draw: its pictures are
+    // in `sheet.images`
+    if xml.contains("<wpg:wgp") && !xml.contains("<wps:wsp") {
+        return out;
+    }
+    let kora = ooxml::foreign_shapes_in(xml, &doc.theme_colors, &doc.theme_line_pt);
+    // The group's own box as read, to fit the children into the layout's box
+    let (gw, gh) = ooxml::foreign_shape_with(xml, &doc.theme_colors, &doc.theme_line_pt)
+        .map(|g| (g.w_mm, g.h_mm))
+        .unwrap_or((w, h));
+    let (sx, sy) = (if gw > 0.0 { w / gw } else { 1.0 }, if gh > 0.0 { h / gh } else { 1.0 });
+    let one = kora.len() == 1;
+    for f in kora {
+        let (w_mm, h_mm) = if one { (w, h) } else { (f.w_mm * sx, f.h_mm * sy) };
+        out.push(kumihan::DocShape {
+            page: kami,
+            x_mm: page.left_mm + x + f.dx_mm * sx,
+            y_mm: top - soko + f.dy_mm * sy,
+            w_mm,
+            h_mm,
+            look: f.look,
+            z: 0,
+        });
     }
     out
 }

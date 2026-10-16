@@ -2777,6 +2777,8 @@ mod hf_tests {
         let src = docx_with_header(orig);
         let (doc, rep) = crate::read(Cursor::new(&src)).unwrap();
         assert!(doc.header.paragraphs.is_empty(), "編集できない部品を編集の対象にした");
+        // It is printed all the same: its table is kept for the layout
+        assert!(matches!(doc.header.blocks.first(), Some(kumihan::Block::Table(_))), "the header's table is not kept for printing");
         assert!(rep.unsupported.iter().any(|(n, _)| n.contains("ヘッダーの表")),
             "黙って隠した: {:?}", rep.unsupported);
         let mut out = Vec::new();

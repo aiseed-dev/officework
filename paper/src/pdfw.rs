@@ -2612,10 +2612,10 @@ pub(crate) fn sheet_leaves_wm<F: Fn(usize) -> Vec<kumihan::Line>>(
             // An inline picture stretched to its fill rectangle is drawn
             // there and cut to its box; the box decides its page
             let (at, clip) = crate::stretch(*a, *f);
-            (d, at, 0i32, true, clip, *a, kumihan::Turn::default())
+            (d, at, 0i32, true, clip, *a, kumihan::Turn::default(), None)
         })
-        .chain(sheet.float_images.iter().map(|(d, a, z, c, t)| (d, *a, *z, false, *c, c.unwrap_or(*a), *t)));
-    for (data, at, z, nagare, clip, place, turn) in hairetsu {
+        .chain(sheet.float_images.iter().map(|f| (&f.bytes, f.rect, f.z, false, f.clip, f.clip.unwrap_or(f.rect), f.turn, f.page)));
+    for (data, at, z, nagare, clip, place, turn, kami) in hairetsu {
         // **A picture in the text goes on the page its line went to.**
         // Pages overlap in the scroll's own measure once a page pulls its
         // last paragraph down, so picking by the page's origin can put a
@@ -2626,7 +2626,10 @@ pub(crate) fn sheet_leaves_wm<F: Fn(usize) -> Vec<kumihan::Line>>(
         // bottom of an inline picture sits on its line's baseline, so the
         // same lookup puts the two together. A floating picture is placed
         // by its own anchor and keeps the geometric lookup
-        let k = if nagare {
+        let k = if let Some(k) = kami {
+            // a floating picture that knows its page
+            k
+        } else if nagare {
             starts.iter().rposition(|s| place[1] + place[3] >= *s - 0.01).unwrap_or(0)
         } else {
             page_of(offsets, place[1], paper.height_mm)
@@ -2785,6 +2788,54 @@ pub fn put_ink(pages: &mut [Leaf], ink: &[kumihan::Stroke], height_mm: f32) {
 }
 
 /// その y がどの頁か(頁の頭の並びから引く)
+/// **Put what a header or footer table draws besides its lines on a page**:
+/// the fills and rules of its cells and its pictures. `hf` is in page
+/// coordinates (x from the left margin, y from the top of the paper), as
+/// [`kumihan::layout_hf_sheet`] gives it. They go under the page's text
+pub(crate) fn hf_onto(leaf: &mut Leaf, hf: &kumihan::Sheet, pg: &kumihan::PageSetup) {
+    let (left, h) = (pg.left_mm, pg.h_mm);
+    for (at, color) in &hf.fills {
+        leaf.fills.push(Fill {
+            x_mm: left + at[0],
+            y_mm: h - at[1] - at[3],
+            w_mm: at[2],
+            h_mm: at[3],
+            rgb: rgb(color),
+            ..Default::default()
+        });
+    }
+    for r in &hf.rules {
+        leaf.rules.push(Rule {
+            x1_mm: left + r.at[0],
+            y1_mm: h - r.at[1],
+            x2_mm: left + r.at[2],
+            y2_mm: h - r.at[3],
+            w_mm: if r.pt > 0.0 { r.pt * 25.4 / 72.0 } else { 0.2 },
+            rgb: match r.rgb {
+                Some(c) => (c[0] as f32 / 255.0, c[1] as f32 / 255.0, c[2] as f32 / 255.0),
+                None => (0.0, 0.0, 0.0),
+            },
+            ..Default::default()
+        });
+    }
+    for (data, a, f) in &hf.images {
+        if image::load_from_memory(data).is_err() {
+            continue;
+        }
+        let (at, clip) = crate::stretch(*a, *f);
+        leaf.images.push(Image {
+            x_mm: left + at[0],
+            y_mm: h - at[1] - at[3],
+            w_mm: at[2],
+            h_mm: at[3],
+            data: data.clone(),
+            z: 0,
+            clip: clip.map(|c| [left + c[0], h - c[1] - c[3], c[2], c[3]]),
+            turn: Default::default(),
+        });
+    }
+}
+
 fn page_of(offsets: &[f32], y: f32, height_mm: f32) -> usize {
     let mut k = 0;
     for (i, off) in offsets.iter().enumerate() {

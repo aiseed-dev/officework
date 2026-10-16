@@ -1208,7 +1208,7 @@ fn drop_break_over_empty(sheet: &mut Sheet, y: f32) {
     let ari = |ys: f32, h: f32| ys + h > last - 0.01 && ys < y - 0.01;
     if sheet.images.iter().any(|(_, b, _)| ari(b[1], b[3]))
         || sheet.inline_shapes.iter().any(|(_, b)| ari(b[1], b[3]))
-        || sheet.float_images.iter().any(|(_, b, _, _, _)| ari(b[1], b[3]))
+        || sheet.float_images.iter().any(|f| ari(f.rect[1], f.rect[3]))
         || sheet.rules.iter().any(|r| ari(r.at[1].min(r.at[3]), (r.at[3] - r.at[1]).abs()))
     {
         return;
@@ -1399,6 +1399,9 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
     // **横に字を流す浮かぶ表**の占める所(下端 y, 左 x, 右 x。mm)。この下端より上の
     // 段落は、表の横の幅で組む(Word の「文字列の折り返し」)
     let mut yoke: Option<(f32, f32, f32)> = None;
+    // The band (top, bottom) a wide floating table takes on the page. Text
+    // goes on above it and moves below it, not beside it
+    let mut ukabu_obi: Option<(f32, f32)> = None;
     for (bi, block) in doc.blocks.iter().enumerate() {
         // この段落に効いている行長。節が変われば紙の幅も余白も変わるので、
         // **折り返しそのものがやり直しになる**(折る所だけの話ではない)
@@ -1452,6 +1455,10 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 let pfont = doc.style_font(para.style_id.as_deref()).or_else(|| doc.font.clone());
                 // 改ページ。紙に写すときにここで頁が割れる
                 if para.page_break_before && !sheet.lines.is_empty() {
+                    // A floating table still open stays on the page it is on
+                    if let Some((_, sita)) = ukabu_obi.take() {
+                        y = y.max(sita);
+                    }
                     sheet.breaks.push(y);
                 }
                 // **段落の前の空き。** 文書が言っていればそれ、言っていなくて
@@ -1504,6 +1511,19 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // **浮かぶ表の横**にいる段落は、表を避けた幅で組む(2026-09-09)。
                 // 表が右にあれば行長を縮め、左にあれば左を空ける。表の下端を過ぎたら
                 // 元の幅に戻る。横浜市の届は右の「受付欄」の横に注意書きが並ぶ
+                // **A paragraph that would run into a wide floating table
+                // goes below it**; one above it stays where it is. Word puts
+                // the floating cover table of its business report 56.6mm
+                // below the paragraph after it (`w:tblpY`), and that
+                // paragraph at the top of the page (2026-10-16)
+                if let Some((ue, sita)) = ukabu_obi {
+                    if y >= sita - 0.01 {
+                        ukabu_obi = None;
+                    } else if y + frame.line_height_mm > ue {
+                        y = sita;
+                        ukabu_obi = None;
+                    }
+                }
                 if let Some((soko, hidari, migi)) = yoke {
                     if y < soko {
                         let aki = 2.5; // `w:leftFromText` / `w:rightFromText` の 142 twip
@@ -1989,6 +2009,9 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                         let same = (here.w_mm - next.w_mm).abs() < 0.01
                             && (here.h_mm - next.h_mm).abs() < 0.01;
                         if !(sb.continuous && same) {
+                            if let Some((_, sita)) = ukabu_obi.take() {
+                                y = y.max(sita);
+                            }
                             drop_break_over_empty(&mut sheet, y);
                             sheet.breaks.push(y);
                             sheet.sect_pages.push((y, next));
@@ -2004,6 +2027,9 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                 // 横に字を流していた浮かぶ表の下に出る
                 if let Some((soko, _, _)) = yoke.take() {
                     y = y.max(soko);
+                }
+                if let Some((_, sita)) = ukabu_obi.take() {
+                    y = y.max(sita);
                 }
                 // 浮かぶ表は `w:tblpY` の分だけずらして置く(負なら上へ)
                 let y_in = y + table.float_y_mm.unwrap_or(0.0);
@@ -2041,9 +2067,17 @@ pub fn layout(doc: &Document, m: &Metrics, frame: &Frame) -> Sheet {
                         line_height_mm: frame.line_height_mm,
                         y0_mm: frame.y0_mm,
                     };
-                    y = layout_table(table, m, &fr, y_in, &mut sheet, table_no, doc.hyphenate,
-                                     &mut note_no, base, doc, pitch, doc.compress_punct, moji,
-                                     &mut list_counts);
+                    let sita = layout_table(table, m, &fr, y_in, &mut sheet, table_no, doc.hyphenate,
+                                            &mut note_no, base, doc, pitch, doc.compress_punct, moji,
+                                            &mut list_counts);
+                    // A floating table set down from where it is anchored
+                    // (`w:tblpY`) takes no room in the flow; the text after it
+                    // goes on from here and moves below it when it reaches it
+                    if table.float_y_mm.is_some_and(|d| d > 0.5) {
+                        ukabu_obi = Some((y_in, sita));
+                    } else {
+                        y = sita;
+                    }
                 }
                 ukabu = table.float_y_mm.is_some();
                 table_no += 1;
@@ -2284,6 +2318,58 @@ fn layout_hf_blocks(
     base_pt: f32,
     moto: Option<&Document>,
 ) -> Vec<Line> {
+    let (sheet, zure) = hf_blocks_sheet(hf, m, pg, page_no, total, footer, base_pt, moto);
+    sheet
+        .lines
+        .into_iter()
+        .map(|mut l| {
+            l.from_body = false;
+            l.cell = None;
+            l.y_mm += zure;
+            l
+        })
+        .collect()
+}
+
+/// **A header or footer laid out from its blocks, with all it draws**: the
+/// fills and rules of its table cells, its pictures and drawn shapes, as
+/// well as its lines, in page coordinates (x from the left margin, y from
+/// the top of the paper). [`layout_hf_with`] gives the lines only, and the
+/// rest was lost: the black band of the footer table of Word's business
+/// report and the red page number box in its header table (2026-10-16).
+/// `None` for a part without blocks
+#[allow(clippy::too_many_arguments)]
+pub fn layout_hf_sheet(
+    hf: &HeadFoot,
+    m: &Metrics,
+    pg: &PageSetup,
+    page_no: usize,
+    total: usize,
+    footer: bool,
+    base_pt: f32,
+    moto: Option<&Document>,
+) -> Option<Sheet> {
+    if hf.blocks.is_empty() {
+        return None;
+    }
+    let (sheet, zure) = hf_blocks_sheet(hf, m, pg, page_no, total, footer, base_pt, moto);
+    let mut out = Sheet::default();
+    utsusu(sheet, 0.0, zure, &mut out);
+    Some(out)
+}
+
+/// The part laid out as a little document, and how far down the page it goes
+#[allow(clippy::too_many_arguments)]
+fn hf_blocks_sheet(
+    hf: &HeadFoot,
+    m: &Metrics,
+    pg: &PageSetup,
+    page_no: usize,
+    total: usize,
+    footer: bool,
+    base_pt: f32,
+    moto: Option<&Document>,
+) -> (Sheet, f32) {
     let num = page_no.to_string();
     let tot = total.to_string();
     // The part's paragraphs name the document's styles, so the little
@@ -2331,15 +2417,7 @@ fn layout_hf_blocks(
     // reads a style's size and face but not its spacing
     let doc = crate::theme::compose(&doc, &crate::theme::default_theme());
     let sheet = layout(&doc, m, &frame);
-    let mut out: Vec<Line> = sheet
-        .lines
-        .into_iter()
-        .map(|mut l| {
-            l.from_body = false;
-            l.cell = None;
-            l
-        })
-        .collect();
+    let out = &sheet.lines;
     // **表の上端を `w:header`(フッターは `w:footer`)の距離に置きます。**
     // 行の箱の上端はベースラインの [`BASE_UP_MM`] 上なので、一番上の行を
     // そこへ送ります。裁判所の特例執行文の申立書(ヘッダーが 3 欄の表)で、
@@ -2360,12 +2438,7 @@ fn layout_hf_blocks(
         let atama = out.iter().map(|l| l.y_mm).fold(f32::INFINITY, f32::min);
         pg.header_mm + BASE_UP_MM - atama
     };
-    if zure.is_finite() {
-        for l in &mut out {
-            l.y_mm += zure;
-        }
-    }
-    out
+    (sheet, if zure.is_finite() { zure } else { 0.0 })
 }
 
 /// **ヘッダー(フッター)が本文を押し下げる(押し上げる)高さ**(mm)。

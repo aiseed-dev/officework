@@ -1009,7 +1009,7 @@ impl Render for Writer {
                         None => (b, *a, 0i32, None),
                     }
                 })
-                .chain(self.page.float_images.iter().map(|(b, a, z, c, _)| (b, *a, *z, *c)))
+                .chain(self.page.float_images.iter().map(|f| (&f.bytes, f.rect, f.z, f.clip)))
             {
                 let src = self.image_cache.entry(std::sync::Arc::as_ptr(bytes) as usize)
                     .or_insert_with(|| {
