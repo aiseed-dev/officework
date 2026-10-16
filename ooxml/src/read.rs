@@ -1080,8 +1080,14 @@ pub(super) fn image_of(
         // the flowers of Word's menu template, the photos of its reports)
         //
         // A group holds a picture of its own, in the group's coordinates and
-        // often more than one; [`group_pictures`] takes those
-        if raw.contains("<pic:pic") && !raw.contains("<wpg:wgp") {
+        // often more than one; [`group_pictures`] takes those.
+        //
+        // A shape filled with a picture (`a:blipFill` in `wps:spPr`, ECMA-376
+        // 20.1.8.14) is one too. Word's event brochure has a page-sized
+        // rectangle filled with its dark background picture behind the
+        // text, alone in its anchor, and it was not drawn: the white text on
+        // it was not visible (2026-10-16)
+        if (raw.contains("<pic:pic") || shape_has_picture_fill(raw)) && !raw.contains("<wpg:wgp") {
             let rid = grab("r:embed=\"")?;
             let bytes = media.get(&rid)?.clone();
             let cx: f32 = grab("cx=\"")?.parse().ok()?;

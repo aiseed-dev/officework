@@ -2961,6 +2961,28 @@ mod image_insert_tests {
         assert_eq!(im.tex, None, "無いものを拾った");
     }
 
+    /// A floating rectangle filled with a picture, alone in its anchor, is a
+    /// floating picture (Word's event brochure puts its page-sized
+    /// background behind the text this way)
+    #[test]
+    fn a_lone_shape_filled_with_a_picture_is_read_as_a_floating_picture() {
+        let mut media = std::collections::BTreeMap::new();
+        media.insert("rId10".to_string(), std::sync::Arc::new(png_bytes()));
+        let raw = concat!(
+            r#"<w:drawing><wp:anchor behindDoc="1"><wp:positionH relativeFrom="margin"><wp:align>left</wp:align></wp:positionH>"#,
+            r#"<wp:positionV relativeFrom="margin"><wp:align>top</wp:align></wp:positionV><wp:extent cx="9601200" cy="7315200"/><wp:wrapNone/>"#,
+            r#"<a:graphic><a:graphicData><wps:wsp><wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="9601200" cy="7315200"/></a:xfrm>"#,
+            r#"<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:blipFill><a:blip r:embed="rId10"/><a:stretch><a:fillRect/></a:stretch></a:blipFill>"#,
+            r#"</wps:spPr></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing>"#,
+        );
+        let im = crate::read::image_of(raw, &media).expect("not read as a picture");
+        assert_eq!(im.off, usize::MAX, "not floating");
+        assert!((im.w_mm - 266.7).abs() < 0.1 && (im.h_mm - 203.2).abs() < 0.1, "{} x {}", im.w_mm, im.h_mm);
+        // A shape filled with a colour is not a picture
+        let iro = raw.replace(r#"<a:blipFill><a:blip r:embed="rId10"/><a:stretch><a:fillRect/></a:stretch></a:blipFill>"#, r#"<a:solidFill><a:srgbClr val="1F1F50"/></a:solidFill>"#);
+        assert!(crate::read::image_of(&iro, &media).is_none());
+    }
+
 }
 
 #[cfg(test)]
