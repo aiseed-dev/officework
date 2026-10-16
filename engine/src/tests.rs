@@ -1326,8 +1326,16 @@ mod table_layout_tests {
         let mut d = Document::plain("前の本文");
         d.blocks.push(Block::Table(Table { col_mm: vec![50.0], rows: vec![vec![cell]], ..Default::default() }));
         let s = layout(&d, &m, &frame);
-        let r = s.images.first().expect("no picture").1;
-        assert!((r[2] - 60.0).abs() < 0.01 && (r[3] - 30.0).abs() < 0.01, "the picture was resized: {r:?}");
+        let (_, r, fill) = s.images.first().expect("no picture");
+        // Drawn at 60 x 30mm and cut at the cell's right edge (Word cuts the
+        // balloon photo of its balloon card there)
+        // The paper side draws the picture over the fill rectangle (l, t, r, b
+        // of the shown box) and cuts it to the box
+        let [l, t, rr, b] = fill.expect("the picture is not cut");
+        let (w, h) = (r[2] * (1.0 - l - rr), r[3] * (1.0 - t - b));
+        assert!((w - 60.0).abs() < 0.01 && (h - 30.0).abs() < 0.01, "the picture was resized: {w} x {h}");
+        // The cell is 50mm wide from the frame's left edge
+        assert!((r[0] + r[2] - 50.0).abs() < 0.01, "not cut at the cell's right edge: {r:?}");
     }
 
     /// **`atLeast` のセルは字を箱の底に置く**(2026-09-09)。本文と同じ

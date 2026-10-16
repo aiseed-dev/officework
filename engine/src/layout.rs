@@ -3526,6 +3526,7 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
             let mut yy = row_top + l.pad[0] + ue;
             let id = Some((table_no, ri, l.ci));
             let uti = (l.w - l.pad[1] - l.pad[3]).max(0.0);
+            let cell_migi = l.x + l.w;
             // セルの中の表を、何行目の前に置くかの順に写す
             let mut hyou_no = l.naka_hyou.into_iter().peekable();
             let gazou = l.images;
@@ -3654,7 +3655,20 @@ pub(super) fn layout_table(table: &Table, m: &Metrics, frame: &Frame, y_in: f32,
                 let mut ix = x0 + zure + sagari - atama_haba;
                 for (_, im, iw, ih, atama) in gazou.iter().filter(|g| g.0 == j) {
                     let top = if *atama { yy - ih } else { yy - agari };
-                    oku_gazou(sheet, im, [ix, top, *iw, *ih]);
+                    // A picture wider than the cell is cut at the cell's
+                    // right edge: Word shows 96.7mm of the 101.6mm balloon
+                    // photo of its balloon card, up to the edge of the cell
+                    // (2026-10-16). The cut is a fill rectangle reaching past
+                    // the shown box (ECMA-376 20.1.8.30), which the paper
+                    // side already draws and cuts
+                    let mieru = cell_migi - ix;
+                    if ix + iw > cell_migi + 0.01 && mieru > 0.01 && im.fill.is_none() && im.shape.is_none() {
+                        let mut kiru = im.clone();
+                        kiru.fill = Some([0.0, 0.0, 1.0 - iw / mieru, 0.0]);
+                        oku_gazou(sheet, &kiru, [ix, top, mieru, *ih]);
+                    } else {
+                        oku_gazou(sheet, im, [ix, top, *iw, *ih]);
+                    }
                     ix += iw;
                 }
                 // **均等割り付け**(段落の `distribute` と `w:tcFitText`)。
