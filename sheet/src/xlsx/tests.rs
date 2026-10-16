@@ -3196,6 +3196,39 @@ mod script_roundtrip_tests {
         );
     }
 
+    /// A table whose file gives no style name (`<tableStyleInfo
+    /// showRowStripes="1"/>`, as in the invoice template of Excel's
+    /// gallery) is drawn without a style, as Excel 16.0.20430 draws it, and
+    /// written back without a name. It used to take TableStyleMedium2, blue
+    /// over the template's purple, and kept it on a save (2026-10-16)
+    #[test]
+    fn a_table_without_a_style_name_stays_without_a_style() {
+        let mut b = Book::new();
+        b.sheets[0].set(Pos::new(0, 0), Cell::input("数量"));
+        b.sheets[0].set(Pos::new(1, 0), Cell::input("1"));
+        b.sheets[0].tables.push(book::TableDef {
+            name: "明細".into(),
+            style: Some(String::new()),
+            a: Pos::new(0, 0),
+            b: Pos::new(1, 0),
+            header: true,
+            banded_rows: true,
+            ..Default::default()
+        });
+        let mut buf = Cursor::new(Vec::new());
+        write(&b, &mut buf).expect("書けない");
+        let mut z = zip::ZipArchive::new(Cursor::new(buf.get_ref().clone())).unwrap();
+        let mut xml = String::new();
+        z.by_name("xl/tables/table1.xml").unwrap().read_to_string(&mut xml).unwrap();
+        assert!(xml.contains("<tableStyleInfo showFirstColumn"), "a name was added: {xml}");
+        buf.set_position(0);
+        let (back, _) = read(buf).expect("読めない");
+        let t = &back.sheets[0].tables[0];
+        assert_eq!(t.style.as_deref(), Some(""), "the absent name did not survive");
+        assert!(book::table_style::table_look(t, &back.theme, Pos::new(0, 0)).is_none(),
+                "a style was drawn for a table without one");
+    }
+
     #[test]
     fn freeze_panes_and_view_settings_round_trip() {
         use book::FreezePane;

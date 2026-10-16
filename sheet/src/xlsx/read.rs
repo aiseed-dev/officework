@@ -635,7 +635,11 @@ pub(super) fn parse_table(xml: &str) -> Option<book::TableDef> {
             .unwrap_or_else(|| "テーブル".into()),
         // **`table/@name` と `tableStyleInfo/@name` は別物。** 前者は
         // `Table1` のような識別子、後者は `TableStyleMedium2` のような見た目
-        style: attr_of("tableStyleInfo", "name"),
+        // A table the file gives no style name is drawn without a style, as
+        // Excel 16.0.20430 draws it; held as an empty name, apart from a new
+        // table of officework's (`None`). ECMA-376 18.5.1.5 says nothing of
+        // an absent name (2026-10-16, the invoice template of Excel's gallery)
+        style: Some(attr_of("tableStyleInfo", "name").unwrap_or_default()),
         a,
         b,
         header: num("table", "headerRowCount", 1) > 0,

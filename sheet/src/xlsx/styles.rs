@@ -263,7 +263,11 @@ fn parse_section(xml: &str, theme: &[String], want: &[u8]) -> Vec<CellFormat> {
                 // `<color indexed="12"/>` の**青い罫線が黒で描かれていた**)。
                 // 64(自動)は色ではないので indexed() が None を返し、そのときは
                 // 色なし = 既定の色で描く
-                if let (Some(sd), Some(c)) = (&side, rgb(&e).or_else(|| indexed(&e))) {
+                // A theme colour too (`<color theme="5"/>`, with its tint), as
+                // a letter's: Excel's gallery templates colour every border
+                // so, and they were drawn black (2026-10-16)
+                let themed = || theme_ref(&e).map(|(i, t)| book::theme::resolve(theme, i, t as f32 / 1000.0));
+                if let (Some(sd), Some(c)) = (&side, rgb(&e).or_else(|| indexed(&e)).or_else(themed)) {
                     if let Ok(v) = u32::from_str_radix(&c, 16) {
                         let edge = match sd.as_slice() {
                             b"left" => &mut bd.left,
@@ -584,6 +588,23 @@ mod tests {
         assert_eq!(builtin(0), None);
         assert_eq!(builtin(30), None);
         assert_eq!(builtin(44), None);
+    }
+
+    /// A border coloured from the theme (`<color theme="5"/>`) takes the
+    /// theme's colour, as a letter does; it was drawn black (2026-10-16)
+    #[test]
+    fn a_border_takes_its_theme_colour() {
+        let xml = r##"<styleSheet>
+          <fonts count="1"><font><sz val="11"/></font></fonts>
+          <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+          <borders count="1"><border><left/><right/><top/>
+            <bottom style="thin"><color theme="5"/></bottom></border></borders>
+          <cellXfs count="1"><xf fontId="0" fillId="0" borderId="0" numFmtId="0"/></cellXfs>
+        </styleSheet>"##;
+        let theme: Vec<String> = book::theme::OFFICE.iter().map(|s| s.to_string()).collect();
+        let x = parse(xml, &theme);
+        let want = u32::from_str_radix(&book::theme::resolve(&theme, 5, 0.0), 16).unwrap();
+        assert_eq!(x[0].borders.bottom.color, Some(want), "{:?}", x[0].borders.bottom);
     }
 
     #[test]

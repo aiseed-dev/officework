@@ -2367,7 +2367,7 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                         r#"<table xmlns="{ns}" id="{n}" name="{nm}" displayName="{nm}" ref="{r}""#,
                         r#" headerRowCount="{hdr}" totalsRowCount="{tot}">"#,
                         r#"{af}<tableColumns count="{cnt}">{cols}</tableColumns>"#,
-                        r#"<tableStyleInfo name="{sty}" showFirstColumn="{fc}""#,
+                        r#"<tableStyleInfo{sty} showFirstColumn="{fc}""#,
                         r#" showLastColumn="{lc}" showRowStripes="{rs}" showColumnStripes="{cs}"/>"#,
                         r#"</table>"#
                     ),
@@ -2386,7 +2386,11 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                     cols = cols,
                     // **原本の様式を据え置く。** ここを決め打ちにしていたので、
                     // `TableStyleLight9` の帳票を開いて保存すると青くなっていた
-                    sty = esc(t.style.as_deref().unwrap_or("TableStyleMedium2")),
+                    // No name for a table the file gave none (an empty name)
+                    sty = match t.style.as_deref() {
+                        Some("") => String::new(),
+                        s => format!(r#" name="{}""#, esc(s.unwrap_or("TableStyleMedium2"))),
+                    },
                     fc = b01(t.first_col),
                     lc = b01(t.last_col),
                     rs = b01(t.banded_rows),

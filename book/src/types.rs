@@ -3245,8 +3245,10 @@ pub struct TableDef {
     /// **`name` とは別物。** `name` は `Table1` のような式から使う識別子で、
     /// こちらは見た目の名前。混同すると、保存で他人の帳票の配色が変わる。
     ///
-    /// `None` は原本に指定が無いという意味。書くときは既定の
-    /// `TableStyleMedium2` に落とす(Excel が新しい表に付けるもの)
+    /// `None` is a table made in officework: it is written as
+    /// `TableStyleMedium2`, the style Excel gives a new table. An empty name
+    /// is a table the file gives no style name: it is drawn without a style
+    /// and written without a name, as Excel does (2026-10-16)
     pub style: Option<String>,
     /// 範囲(左上, 右下)。見出し行を含む
     pub a: Pos,

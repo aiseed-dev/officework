@@ -120,7 +120,12 @@ pub fn table_look(t: &TableDef, theme: &[String], p: Pos) -> Option<TableLook> {
     if p.row < t.a.row || p.row > t.b.row || p.col < t.a.col || p.col > t.b.col {
         return None;
     }
-    let els = presets().get(t.style.as_deref().unwrap_or("TableStyleMedium2"))?;
+    // An empty name: the file gives the table no style
+    let name = t.style.as_deref().unwrap_or("TableStyleMedium2");
+    if name.is_empty() {
+        return None;
+    }
+    let els = presets().get(name)?;
     let (r0, r1, c0, c1) = (t.a.row, t.b.row, t.a.col, t.b.col);
     // The data rows: without the header and the total row
     let d0 = if t.header { r0 + 1 } else { r0 };
