@@ -310,6 +310,26 @@ pub fn page_starts(grid: &Grid, paper: Paper, setup: &PrintSetup) -> (Vec<u32>, 
 }
 
 
+/// Where a line of a wrapped cell may be broken inside its Latin word: the
+/// byte index the next line starts at, or None when the line has no earlier
+/// break (it is one word, so it is cut at a letter). A break is after a space
+/// or a hyphen and next to a letter that is not ASCII
+fn word_break(line: &str) -> Option<usize> {
+    let mut at = None;
+    let mut prev: Option<char> = None;
+    for (i, c) in line.char_indices() {
+        if let Some(p) = prev {
+            let after_space = p == ' ' || p == '\u{3000}';
+            let after_hyphen = p == '-' && c.is_ascii_alphanumeric();
+            if (after_space && c != ' ') || after_hyphen || !p.is_ascii() || !c.is_ascii() {
+                at = Some(i);
+            }
+        }
+        prev = Some(c);
+    }
+    at
+}
+
 /// A stretch of a header or footer section in one look
 #[derive(Debug, Clone, PartialEq)]
 struct HfRun {
@@ -690,7 +710,15 @@ impl Ink<'_> {
             z: self.z,
             // Only a piece that runs out of the part is cut; the rest is
             // written as before
-            clip: self.clip.filter(|c| x < c[0] - 0.01 || x + w_mm > c[0] + c[2] + 0.01),
+            // or that runs out of it above or below: a line of text is about
+            // 0.8em over its baseline and 0.25em under it
+            clip: self.clip.filter(|c| {
+                let em = pt * 25.4 / 72.0;
+                x < c[0] - 0.01
+                    || x + w_mm > c[0] + c[2] + 0.01
+                    || y - 0.25 * em < c[1] - 0.01
+                    || y + 0.8 * em > c[1] + c[3] + 0.01
+            }),
             ..Default::default()
         });
     }
@@ -2158,10 +2186,25 @@ fn draw_sheet(
                             continue;
                         }
                         if cell.fmt.wrap && !ima.is_empty() && yoko + w > naka {
+                            // **A Latin word is not split** when a break
+                            // before it is possible: the part of the line
+                            // after the last space, hyphen or Japanese letter
+                            // goes down whole (LibreOffice and Excel both
+                            // break at words). A word wider than the line is
+                            // still cut at a letter
+                            let tail = if ch.is_ascii() && !ch.is_whitespace() && ima.chars().last().is_some_and(|c| c.is_ascii() && !c.is_whitespace()) {
+                                word_break(&ima).map(|at| ima.split_off(at))
+                            } else {
+                                None
+                            };
                             gyou.last_mut().expect("行").push((std::mem::take(&mut ima), *rp, rf.clone(), *rz, *lk));
                             gyou.push(Vec::new());
                             mamoru.push(false);
                             yoko = 0.0;
+                            if let Some(t) = tail {
+                                yoko = t.chars().map(|c| haba.ji_mm(ji_fno(fno_of(rf), c) as usize, c, *rp)).sum();
+                                ima = t;
+                            }
                         }
                         ima.push(ch);
                         yoko += w;
@@ -2280,7 +2323,12 @@ fn draw_sheet(
             // 要りません。足していたので、字がセルの上の罫線に乗っていました
             // (国税庁の消費税の表の「件」「百万円」)
             let soko = y_top - ma_h; // 結合したぶんの下端
-            let aki = (ma_h - takasa).max(0.0);
+            // The room left over may be negative: a text taller than its cell
+            // stays on the cell's top when it is top-aligned and on the middle
+            // when it is centred, and the cell cuts what runs out (as
+            // `ScOutputData::DrawEditStandard` places it). It was clamped to
+            // 0, which put every such text on the cell's bottom
+            let aki = ma_h - takasa;
             let ue = match cell.fmt.valign {
                 book::VAlign::Bottom => 0.0,
                 book::VAlign::Middle => aki / 2.0,
@@ -2318,6 +2366,13 @@ fn draw_sheet(
                     }
                 }
             };
+            // **Lines of one cell are cut at the cell's top and bottom**: a
+            // wrapped text that is taller than its row does not run into the
+            // rows under it (LibreOffice and Excel both cut it)
+            if gyou.len() > 1 {
+                let c0 = ink.clip.unwrap_or(page_clip);
+                ink.clip = Some([c0[0], soko, c0[2], ma_h]);
+            }
             for g in &gyou {
                 let w = gyou_haba(g);
                 let mut gx = match cell.fmt.align {
@@ -3966,6 +4021,16 @@ mod print_extras_tests {
     /// ここで縛る**(2026-08-13、Book.to_pdf の数え方)
     /// The codes of a header or footer section (ECMA-376 18.3.1.46): `&16`
     /// is a size, not the digits "16" after an `&`; `&A` is the sheet's name
+    /// A wrapped line keeps its Latin word whole when it can break before it
+    #[test]
+    fn a_line_breaks_before_its_last_latin_word() {
+        assert_eq!(word_break("Holdings by Gen"), Some(12));
+        assert_eq!(word_break("Government"), None, "one word is cut at a letter");
+        assert_eq!(word_break("non-prof"), Some(4));
+        assert_eq!(word_break("日本語Eng"), Some(9));
+        assert_eq!(word_break("a  bc"), Some(3));
+    }
+
     #[test]
     fn header_codes_set_size_style_and_sheet_name() {
         let r = hf_runs("&\"ＭＳ 明朝,Regular\"&16- &A -", 2, 9, "1");
