@@ -171,6 +171,58 @@ else:
     check(売上["金額"].to_list() == [12600, 17800, 9000], f"df の手引きの金額が違う: {売上['金額'].to_list()}")
     check([round(x) for x in 売上["税額"].to_list()] == [1260, 1780, 900], f"df の手引きの税額が違う: {売上['税額'].to_list()}")
 
+    # write_df / read_df — 表を 1 回で置き、1 回で読む(Arrow の
+    # __arrow_c_stream__。SEKKEI「決め: Python との表のやり取りは Arrow」2026-10-17)
+    import datetime as _dt
+    df = pl.DataFrame({
+        "品名": ["甲", "乙", None, ""],
+        "数量": [1, 2, None, 4],
+        "単価": [1.5, 2.5, 3.5, None],
+        "納品": [_dt.date(2026, 10, 17), _dt.date(2026, 1, 1), None, _dt.date(1999, 12, 31)],
+        "更新": [_dt.datetime(2026, 10, 17, 9, 30), None, _dt.datetime(2000, 2, 29, 23, 59, 59), _dt.datetime(2026, 1, 1)],
+        "済": [True, False, None, True],
+        "区分": pl.Series(["a", "b", "a", None], dtype=pl.Categorical),
+    })
+    wb = office_sheet.Book()
+    ws = wb[0]
+    ws["A1"].number_format = "#,##0"           # 書式は据え置かれる
+    ws["B2"].number_format = "0.0"
+    rows, cols = ws.write_df(df, "A1")
+    check((rows, cols) == (5, 7), f"write_df の返りが違う: {(rows, cols)}")
+    check(ws["A1"].value == "品名" and ws["G1"].value == "区分", "列の名前が 1 行目に無い")
+    check(ws["B2"].value == 1 and ws["B2"].number_format == "0.0", f"数量と書式: {ws['B2'].value} {ws['B2'].number_format}")
+    check(ws["A4"].value is None and ws["A5"].value is None, "null と空の文字が空のセルにならない")
+    check(ws["D2"].number_format == "yyyy/m/d" and ws.display("D2") == "2026/10/17", f"日付: {ws['D2'].number_format} {ws.display('D2')}")
+    check(ws.display("E4") == "2000/2/29 23:59", f"日時: {ws.display('E4')}")
+    check(ws["F2"].value is True and ws["F3"].value is False, "論理値が置けない")
+    check(ws["G2"].value == "a" and ws["G3"].value == "b" and ws["G5"].value is None, f"Categorical: {ws['G2'].value} {ws['G5'].value}")
+    ws["H1"] = "金額"
+    for r in range(2, 6):
+        ws[f"H{r}"] = f"=B{r}*C{r}"
+    back = ws.read_df()
+    check(back.shape == (4, 8), f"read_df の形: {back.shape}")
+    check(back.columns == ["品名", "数量", "単価", "納品", "更新", "済", "区分", "金額"], f"列の名前: {back.columns}")
+    check(back["数量"].dtype == pl.Int64 and back["数量"].to_list() == [1, 2, None, 4], f"数量: {back['数量']}")
+    check(back["単価"].dtype == pl.Float64, f"単価の型: {back['単価'].dtype}")
+    check(back["納品"].dtype == pl.Date and back["納品"][0] == _dt.date(2026, 10, 17), f"納品: {back['納品']}")
+    check(back["更新"].dtype == pl.Datetime("us") and back["更新"][2] == _dt.datetime(2000, 2, 29, 23, 59, 59), f"更新: {back['更新']}")
+    check(back["済"].dtype == pl.Boolean and back["済"].to_list() == [True, False, None, True], f"済: {back['済']}")
+    check(back["区分"].dtype == pl.String and back["区分"].to_list() == ["a", "b", "a", None], f"区分: {back['区分']}")
+    check(back["金額"].to_list() == [1.5, 5.0, 0.0, 0.0], f"数式の結果(空のセルは 0): {back['金額'].to_list()}")
+    # 見出し無しで置き、範囲で読む
+    ws2 = wb.create_sheet("値だけ")
+    ws2.write_df(df.select("品名", "数量"), "B3", header=False)
+    check(ws2["B3"].value == "甲" and ws2["C6"].value == 4, "見出し無しの置き方")
+    part = ws2.read_df("B3:C6", header=False)
+    check(part.columns == ["column_0", "column_1"] and part["column_1"].to_list() == [1, 2, None, 4], f"範囲の読み: {part}")
+    # 混ざった列は文字で返る
+    ws3 = wb.create_sheet("混在")
+    ws3["A1"] = "x"
+    ws3["A2"] = 12
+    ws3["A3"] = True
+    mixed = ws3.read_df(header=False)
+    check(mixed["column_0"].dtype == pl.String and mixed["column_0"].to_list() == ["x", "12", "TRUE"], f"混ざった列: {mixed}")
+
 # ── シートの名前は文字列でも渡せる(remove / copy_worksheet)────────────
 # 前は Sheet しか受けず、名前を渡すと `.title` が無くて TypeError で
 # 止まっていました。openpyxl の見本は Sheet を渡しますが、手引きは名前で

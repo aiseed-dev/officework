@@ -6822,6 +6822,7 @@ dependencies = [
  "ops",
  "paper",
  "pivot",
+ "polars-arrow",
  "pyo3",
  "pyo3-build-config",
  "sheet",

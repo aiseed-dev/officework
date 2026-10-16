@@ -16,6 +16,7 @@
 //!     s["C30"] = "=B30*100"        # 文字列は「打ったのと同じ」解釈
 //!     b.save("out.xlsx")           # 罫線・結合・列幅・図形は元のまま
 
+mod arrow;
 mod doc;
 
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -927,6 +928,39 @@ impl PySheet {
                     (0..cols).map(|c| to_out(&s.value(Pos { row: r, col: c }))).collect()
                 })
                 .collect())
+        })
+    }
+
+    /// Writes a table that exports the Arrow C stream (a polars, pyarrow or
+    /// pandas DataFrame) at `at`, the column names first when `header`.
+    /// One call for the whole table (SEKKEI "決め: Python との表のやり取りは
+    /// Arrow", 2026-10-17). Formats stay; a date format is put only on cells
+    /// that have none, as `ws["A1"] = date` does. The sheet is recalculated
+    /// once. Returns (rows, columns) written, the header counted.
+    #[pyo3(signature = (frame, at="A1", header=true))]
+    fn write_frame(&self, frame: &Bound<'_, PyAny>, at: &str, header: bool) -> PyResult<(u32, u32)> {
+        let origin = parse_ref(at)?;
+        let f = arrow::import(frame)?;
+        let d1904 = lock(&self.inner)?.book.date1904;
+        self.with_calc(|s| arrow::write(s, &f, origin, header, d1904))
+    }
+
+    /// Reads a range (the used range when none) as a table that exports the
+    /// Arrow C stream; with `header` the first row names the columns. Column
+    /// types come from the cells: Int64 / Float64, Date or Datetime when the
+    /// number format shows one, Boolean, String, and String for a mix.
+    #[pyo3(signature = (range=None, header=true))]
+    fn read_frame(&self, range: Option<&str>, header: bool) -> PyResult<arrow::PyFrame> {
+        let d1904 = lock(&self.inner)?.book.date1904;
+        self.with(|s| {
+            let (a, b) = match range {
+                Some(r) => parse_range(r)?,
+                None => {
+                    let (rows, cols) = s.extent();
+                    (Pos::new(0, 0), Pos::new(rows.saturating_sub(1), cols.saturating_sub(1)))
+                }
+            };
+            arrow::read(s, a, b, header, d1904)
         })
     }
 
@@ -2673,6 +2707,9 @@ fn suushiki_svg(tex: &str, size_pt: f32, color: Option<&str>, font: Option<&str>
 fn _sheet(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBook>()?;
     m.add_class::<PySheet>()?;
+    // A table read from a sheet; polars and pyarrow take it through
+    // `__arrow_c_stream__`
+    m.add_class::<arrow::PyFrame>()?;
     // 数式(typst + mitex)。tex.py が呼ぶ
     m.add_function(wrap_pyfunction!(suushiki_png, m)?)?;
     m.add_function(wrap_pyfunction!(suushiki_svg, m)?)?;

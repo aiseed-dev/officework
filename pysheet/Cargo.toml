@@ -29,6 +29,10 @@ ooxml = { path = "../ooxml" }
 paper = { path = "../paper" }
 kumihan = { path = "../engine" }
 pyo3 = { version = "0.29", features = ["abi3-py310"] }
+# Tables to and from Python through the Arrow C stream (`__arrow_c_stream__`,
+# src/arrow.rs). The same crate the engine's polars already carries; its
+# version is free of the Python polars version
+polars-arrow = { version = "0.55", default-features = false }
 
 [features]
 # 配る .so はこれを付けて組む(libpython に依存しない、どの 3.10+ でも動く):

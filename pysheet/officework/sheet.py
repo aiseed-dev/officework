@@ -1282,6 +1282,43 @@ class Sheet(NoStrayAttributes):
         """
         return _Values(self._s.values())
 
+    def write_df(self, df, at="A1", header=True):
+        """DataFrame(polars・pyarrow・pandas)を `at` から置きます。
+
+        1 回の呼び出しで表を全部渡します(1 セルずつ置くと 40,000 セルで
+        12 秒かかりました。2026-10-17)。`header=True` なら 1 行目に列の
+        名前を書き、2 行目から値を置きます。セルの書式(表示形式・罫線・
+        結合)は据え置きです。日付の列には、表示形式の無いセルにだけ日付の
+        形式を付けます。null は空のセルです。
+
+        受け取れるのは Arrow で出せる物(`__arrow_c_stream__` を持つ物)です。
+        polars を import しないので、polars の版は問いません。
+        返りは (置いた行数, 列数) です。
+        """
+        import re
+        rows, cols = self._s.write_frame(df, at, header)
+        first = int(re.sub(r"[^0-9]", "", at.split(":")[0]) or 1)
+        self._append_row = max(self._append_row, first + rows - 1)
+        return rows, cols
+
+    def read_df(self, range=None, header=True):
+        """範囲(省くと使っている範囲)を DataFrame で返します。
+
+        `header=True` なら 1 行目を列の名前にします。列の型はセルの値から
+        決めます(整数なら Int64、小数なら Float64、表示形式が日付の数なら
+        Date か Datetime、論理値、文字。混ざっていれば文字)。
+
+        polars があれば `polars.DataFrame` を返します。無ければ Arrow で
+        出せる物(`__arrow_c_stream__` を持つ `Frame`)を返すので、
+        `pyarrow.table(frame)` や `pandas.api.interchange` で受けられます。
+        """
+        frame = self._s.read_frame(range, header)
+        try:
+            import polars as pl
+        except ImportError:
+            return frame
+        return pl.DataFrame(frame)
+
     @property
     def merges(self):
         return self._s.merges
