@@ -136,7 +136,13 @@ def main():
                                           res.get("lines2", ""), res.get("colour", ""), res.get("rules", ""), res.get("img", ""), res.get("img_out", ""), "○" if ok else "", err])))
         print(f"{'○' if ok else '×'} {app} {title[:30]} 頁 {pm}/{po} 行6pt {res.get('lines6', '-')} "
               f"色 {res.get('colour', '-')} 罫線 {res.get('rules', '-')} 絵 {res.get('img', '-')}({res.get('img_out', '-')}) {err}", flush=True)
-    (ROOT / "結果-ja.tsv").write_text("\n".join(table) + "\n", encoding="utf-8")
+    # A run of one app keeps the other app's rows from the last run
+    old = ROOT / "結果-ja.tsv"
+    if old.exists():
+        for line in old.read_text(encoding="utf-8").splitlines()[1:]:
+            if line.split("\t", 1)[0] not in apps:
+                table.append(line)
+    old.write_text("\n".join(table) + "\n", encoding="utf-8")
     print(f"\n一致 {n_ok} / {n}  (表: {ROOT / '結果-ja.tsv'})")
 
 

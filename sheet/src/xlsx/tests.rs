@@ -511,6 +511,49 @@ mod carry_tests {
         out.finish().unwrap().into_inner()
     }
 
+    /// A workbook whose theme part has another name than `theme1.xml` (Excel's
+    /// gallery templates keep `xl/theme/theme11.xml`) is read through its
+    /// relationship, and a save writes one theme, not two (2026-10-16)
+    #[test]
+    fn a_theme_part_of_another_name_is_found_and_not_doubled() {
+        let mut book = Book::new();
+        book.theme = book::theme::OFFICE.iter().map(|s| s.to_string()).collect();
+        book.theme[4] = "2F75B5".into();
+        let mut base = Vec::new();
+        crate::xlsx::write(&book, Cursor::new(&mut base)).unwrap();
+        let mut z = zip::ZipArchive::new(Cursor::new(&base)).unwrap();
+        let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        let o: zip::write::FileOptions<'_, ()> = Default::default();
+        for i in 0..z.len() {
+            let mut f = z.by_index(i).unwrap();
+            let mut name = f.name().to_string();
+            let mut buf = Vec::new();
+            f.read_to_end(&mut buf).unwrap();
+            if name == "xl/theme/theme1.xml" {
+                name = "xl/theme/theme11.xml".into();
+            }
+            if name == "xl/_rels/workbook.xml.rels" || name == "[Content_Types].xml" {
+                buf = String::from_utf8(buf).unwrap().replace("theme1.xml", "theme11.xml").into_bytes();
+            }
+            out.start_file(name, o).unwrap();
+            out.write_all(&buf).unwrap();
+        }
+        let src = out.finish().unwrap().into_inner();
+        let (read, _) = crate::xlsx::read(Cursor::new(&src)).unwrap();
+        assert_eq!(read.theme[4], "2F75B5", "theme11.xml was not read");
+        let mut saved = Vec::new();
+        crate::xlsx::write_with(&read, Some(Cursor::new(&src)), Cursor::new(&mut saved)).unwrap();
+        let mut z = zip::ZipArchive::new(Cursor::new(&saved)).unwrap();
+        let names: Vec<String> = (0..z.len()).map(|i| z.by_index(i).unwrap().name().into()).collect();
+        let themes: Vec<&String> = names.iter().filter(|n| n.starts_with("xl/theme/")).collect();
+        assert_eq!(themes, vec!["xl/theme/theme1.xml"], "{names:?}");
+        let mut ct = String::new();
+        z.by_name("[Content_Types].xml").unwrap().read_to_string(&mut ct).unwrap();
+        assert!(!ct.contains("theme11.xml"), "the old theme is still declared");
+        let (again, _) = crate::xlsx::read(Cursor::new(&saved)).unwrap();
+        assert_eq!(again.theme[4], "2F75B5");
+    }
+
     #[test]
     fn open_and_save_keeps_the_parts() {
         let src = xlsx_with_parts();

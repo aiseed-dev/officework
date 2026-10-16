@@ -2128,6 +2128,24 @@ fn read_inner<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     let mut zip = zip::ZipArchive::new(src).map_err(|e| format!("zipを開けません: {e}"))?;
     let mut rep = Report::default();
 
+    // The workbook's own parts, found through its relationships (ECMA-376
+    // Part 2, 9.3: parts are reached by relationship, not by name). A
+    // template of Excel's gallery keeps its theme as `xl/theme/theme11.xml`;
+    // reading `theme1.xml` by name lost it, and every theme colour came out
+    // as Office's default (2026-10-16)
+    let book_part = {
+        let mut s = String::new();
+        if let Ok(mut f) = zip.by_name("xl/_rels/workbook.xml.rels") {
+            let _ = f.read_to_string(&mut s);
+        }
+        let rels = parse_rels(&s);
+        move |kind: &str, usual: &str| -> String {
+            rels.iter()
+                .find(|(_, ty, _, ext)| !ext && ty.rsplit('/').next() == Some(kind))
+                .map(|(_, _, target, _)| resolve_book_target(target))
+                .unwrap_or_else(|| usual.to_string())
+        }
+    };
     // 書式表を先に読む。セルの s= はこの索引
     let mut default_font: Option<(String, f32)> = None;
     let mut styles: Vec<book::CellFormat> = Vec::new();
@@ -2135,13 +2153,13 @@ fn read_inner<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
     // テーマの色(styles より先に読む — 色を解くのに要る)
     let theme_colors: Vec<String> = {
         let mut tx = String::new();
-        if let Ok(mut f) = zip.by_name("xl/theme/theme1.xml") {
+        if let Ok(mut f) = zip.by_name(&book_part("theme", "xl/theme/theme1.xml")) {
             let _ = f.read_to_string(&mut tx);
         }
         super::theme::parse(&tx)
     };
     let mut named_styles: Vec<(String, Option<u32>, book::CellFormat)> = Vec::new();
-    if let Ok(mut f) = zip.by_name("xl/styles.xml") {
+    if let Ok(mut f) = zip.by_name(&book_part("styles", "xl/styles.xml")) {
         let mut s = String::new();
         let _ = f.read_to_string(&mut s);
         styles = crate::xlsx::styles::parse(&s, &theme_colors);
@@ -2155,7 +2173,7 @@ fn read_inner<R: Read + Seek>(src: R) -> Result<(Book, Report), String> {
 
     let (shared, rubies, shared_run_list) = {
         let mut s = String::new();
-        match zip.by_name("xl/sharedStrings.xml") {
+        match zip.by_name(&book_part("sharedStrings", "xl/sharedStrings.xml")) {
             Ok(mut f) => {
                 let _ = f.read_to_string(&mut s);
                 let (a, b) = parse_shared(&s);

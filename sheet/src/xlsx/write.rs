@@ -238,6 +238,9 @@ pub(super) fn patch_book_rels(rels: &str, rids: &[Option<String>], n_sheets: usi
             // `<sheet>` から指されていないシートの項は落とす。
             // 書き出す部品に無いものを残すと Excel が「修復」に入る
             None if ty.ends_with("/worksheet") || ty.ends_with("/chartsheet") => continue,
+            // The theme is always written as `theme1.xml` (the original's
+            // part, such as Excel's `theme11.xml`, is not carried)
+            None if ty.ends_with("/theme") => (ty, "theme/theme1.xml".to_string()),
             None => (ty, target),
         };
         inner.push_str(&format!(
@@ -255,6 +258,17 @@ pub(super) fn patch_book_rels(rels: &str, rids: &[Option<String>], n_sheets: usi
     // 落ちる(2026-08-13、テーブルの検分で踏んだ)
     if persons && !inner.contains("/relationships/person\"") {
         inner.push_str(PERSON_REL);
+    }
+    if !inner.contains("/relationships/theme\"") {
+        let mut id = "rIdTH".to_string();
+        let mut n = 2;
+        while inner.contains(&format!("Id=\"{id}\"")) {
+            id = format!("rIdTH{n}");
+            n += 1;
+        }
+        inner.push_str(&format!(
+            r#"<Relationship Id="{id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>"#
+        ));
     }
     if !inner.contains("/sharedStrings\"") {
         let mut id = "rIdSS".to_string();
@@ -969,8 +983,12 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
                     carried.push((name, patched.into_bytes()));
                     continue;
                 }
-                if name == "xl/theme/theme1.xml" {
-                    continue; // テーマの色はモデルが正(配色の変更が効く)
+                // The workbook's theme, whatever its name (Excel's gallery
+                // templates keep `theme11.xml`): the model's colours are
+                // written as `theme1.xml` below, so the original is not
+                // carried. A chart's `themeOverrideN.xml` is kept
+                if is_book_theme(&name) {
+                    continue;
                 }
                 if name == "xl/sharedStrings.xml" {
                     // 原本の共有文字列は**セルの中の飾りの土台**として持つ。
@@ -1385,6 +1403,19 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
         // ある**(消した跡)が、こちらは並び順に sheet1..N と書き出すので、
         // 原本の宣言をそのまま持ち越すと有る部品が漏れ、無い部品を宣言する
         if orig_ct.is_some() {
+            // The original theme's declaration goes with its part (above)
+            let mut from = 0;
+            while let Some(k) = ct[from..].find(r#"<Override PartName="/xl/theme/"#) {
+                let i = from + k;
+                let Some(j) = ct[i..].find("/>") else { break };
+                let decl = &ct[i..i + j + 2];
+                let part = decl.split('"').nth(1).unwrap_or("").trim_start_matches('/').to_string();
+                if is_book_theme(&part) {
+                    ct.replace_range(i..i + j + 2, "");
+                } else {
+                    from = i + j + 2;
+                }
+            }
             for pat in [
                 r#"<Override PartName="/xl/worksheets/"#,
                 r#"<Override PartName="/xl/chartsheets/"#,
@@ -2451,6 +2482,14 @@ pub fn write_with<R: Read + Seek, W: Write + Seek>(
     }
     zip.finish().map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// A workbook theme part, `xl/theme/theme<number>.xml` (not a chart's
+/// `themeOverride<number>.xml`)
+fn is_book_theme(name: &str) -> bool {
+    name.strip_prefix("xl/theme/theme")
+        .and_then(|r| r.strip_suffix(".xml"))
+        .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
 }
 
 /// **A sheet's columns and rows, measured for placing drawings** (pixels at
