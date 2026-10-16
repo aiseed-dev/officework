@@ -277,6 +277,52 @@ flex で近づき、`expand` は `flex-grow`、`tight` は主軸の `min` / `max
 の組み合わせです。1 つずつ Flet の型録(`get_api`)と Dart の読み方を確かめて写し、
 見た目の違いは本物の Flet と並べて比べます。
 
+=== 先に決める定型のレイアウト(Gemini Argon の指摘、2026-10-17)
+
+flexbox と Flutter の違いを部品ごとに追うより、業務の画面でよく組む形を先に決め、
+その形で taffy の計算が崩れないことを最初に確かめます。候補は 4 つです。
+
+. 左に固定幅の `Column`(メニュー)、右に `expand=True` の表計算。窓の大きさに
+  表計算が追従する
+. 入力のフォーム。`Column` に `TextField` を縦に並べ、最後に `Row` でボタンを右寄せ。
+  `Column(scroll=...)` で縦に流れる
+. 上に見出しの `Row`、下に `ListView`(一覧)。一覧の行の高さは中身で決まる
+. 上に表計算(`expand=3`)、下に説明の `Text`(`expand=1`)。`expand` の入れ子
+
+これらを本物の Flet と並べて比べ、違う所を直してから部品を増やします。
+
+== プロセスの寿命(Gemini Argon の指摘)
+
+`FLET_VIEW_PATH` の形では、Python が officework を子のプロセスとして起動し、pid
+ファイルのプロセスが終わるのを待ちます。この形は単純で、officework が終われば Python も
+終わります。Python が先に落ちたときは、officework はソケットの EOF を受けるので、
+その場でページを閉じて理由を出します。
+
+officework から Python を起動する形(中継あり)は、officework → Python → 中継 →
+officework の三角になり、Python が孤児になりやすい構造です。作るときは次の 2 つを
+最初から入れます。
+
+* ソケットの EOF(どちらの向きでも)で、残った子のプロセスをすぐ終える
+* 子のプロセスを親に結ぶ。Windows は Job Object、Linux と mac はプロセスグループ
+  (`setsid` した上で group ごと signal)。今の `pyrun` は時間切れで `kill` する
+  だけで、親の終了に子を結ぶ仕組みは持っていない(2026-10-17 に確かめた)
+
+== 表計算と文書の部品のイベント(Gemini Argon の指摘)
+
+セルを打つたびに Python へイベントを送ると、1 コマの速さが Python の処理待ちで
+失われます。表計算の部品は、カーソルの移動、入力、再計算を Rust の中で完結させ、
+Python へ CONTROL_EVENT を送るのは次のときだけにします。
+
+* Python が `on_change` を付けた範囲の値が変わったとき(範囲を省けばシート全体。
+  確定の単位で 1 回)
+* `on_select`(選択が変わったとき)を付けたときだけ、その都度
+* フォームのボタンが押されたとき(これは Button の仕事)
+
+セルの値を Python が読むときは、UPDATE_CONTROL_PROPS で全部を写すのではなく、
+INVOKE_METHOD(`get(範囲)`・`set(範囲, 値)`・`read_df`・`write_df`)で取りに行きます。
+ops の言葉と同じです。これで「表示は正確に、編集は薄く」(2026-09-03)の部品の API
+(開く・描く・値を入れる・値を取る)と揃います。
+
 == 置き場と作り
 
 * メッセージの読み書き、部品の木、差分の当て方は gpui を持たないクレートに置きます
