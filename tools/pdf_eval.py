@@ -156,7 +156,7 @@ def read(pdf, tmp, tag, drop_invisible=False):
     print never sees a template's text meant not to be shown)."""
     subprocess.run(["pdftoppm", "-r", str(DPI), "-png", pdf, os.path.join(tmp, tag)], check=True)
     pics = sorted(n for n in os.listdir(tmp) if n.startswith(tag + "-"))
-    doc = {"lines": [], "chars": [], "images": [], "rules": [], "pages": []}
+    doc = {"lines": [], "chars": [], "images": [], "rules": [], "pages": [], "hidden": []}
     with pdfplumber.open(pdf) as p:
         for pi, page in enumerate(p.pages):
             im = Image.open(os.path.join(tmp, pics[pi])).convert("RGB") if pi < len(pics) else None
@@ -181,6 +181,7 @@ def read(pdf, tmp, tag, drop_invisible=False):
                           "font": c.get("fontname", ""), "rgb": rgb_of(c.get("non_stroking_color")),
                           "line": len(doc["lines"])}
                     if drop_invisible and not visible(ch, im)[0]:
+                        doc["hidden"].append(ch)
                         continue
                     line["chars"].append(ch)
                     doc["chars"].append(ch)
@@ -219,8 +220,36 @@ def visible(ch, im):
     # Ink: pixels nearer the letter's colour than halfway to the ground. A
     # thin Mincho stroke at 100 dpi is grey, not the letter's black
     ink = sum(1 for q in px if dist(q, t) < 0.5 * gap)
-    # One pixel is enough: a small "、" at 100 dpi has only a few
-    return ink >= 1, contrast(t, bg), ink / len(px)
+    # One pixel is enough: a small "、" at 100 dpi has only a few. But a
+    # letter cut at a page's edge shows a sliver of its box: the cut "求" of
+    # Excel's invoice title has 0.05% of its box inked, the smallest "、"
+    # 1.1%
+    share = ink / len(px)
+    return ink >= 1 and share >= 0.003, contrast(t, bg), share
+
+
+def inks_edge(ch, im, w, h):
+    """Whether a letter's colour is drawn in the strip of its box along the
+    edge of the paper it runs over (1 mm wide)."""
+    if im is None:
+        return True
+    k, strip = K, 72 / 25.4
+    x0, x1, y0, y1 = max(ch["x0"], 0), min(ch["x1"], w), max(ch["top"], 0), min(ch["bottom"], h)
+    if ch["x1"] > w:
+        x0 = max(x0, w - strip)
+    elif ch["x0"] < 0:
+        x1 = min(x1, strip)
+    elif ch["bottom"] > h:
+        y0 = max(y0, h - strip)
+    else:
+        y1 = min(y1, strip)
+    box = (int(x0 * k), int(y0 * k), min(int(x1 * k) + 1, im.width), min(int(y1 * k) + 1, im.height))
+    if box[2] <= box[0] or box[3] <= box[1]:
+        return False
+    crop = im.crop(box)
+    px = crop.get_flattened_data() if hasattr(crop, "get_flattened_data") else crop.getdata()
+    t = ch["rgb"]
+    return any(((q[0] - t[0]) ** 2 + (q[1] - t[1]) ** 2 + (q[2] - t[2]) ** 2) ** 0.5 < 60 for q in px)
 
 
 def luminance(rgb):
@@ -272,9 +301,34 @@ def colour_areas(doc):
 
 # ---- the evaluation ------------------------------------------------------
 
+def hide_alike(a, b):
+    """Leave out our letters that cannot be seen where theirs cannot be seen
+    either: the same letter at the same place on the paper. Both cut the
+    text that runs past a page's last column, and the cut letters stay in
+    the PDF (the invoice title of Excel's gallery)."""
+    def alike(ca):
+        return any(h["t"] == ca["t"] and abs(h["x0"] - ca["x0"]) < 6 and abs(h["top"] - ca["top"]) < 6
+                   for h in b["hidden"])
+    drop = {id(ca) for ca in a["chars"]
+            if alike(ca) and not visible(ca, a["pages"][ca["page"]][2])[0]}
+    if not drop:
+        return
+    a["chars"] = [c for c in a["chars"] if id(c) not in drop]
+    lines = []
+    for ln in a["lines"]:
+        ln["chars"] = [c for c in ln["chars"] if id(c) not in drop]
+        if ln["chars"]:
+            ln["text"] = "".join(c["t"] for c in ln["chars"])
+            for c in ln["chars"]:
+                c["line"] = len(lines)
+            lines.append(ln)
+    a["lines"] = lines
+
+
 def evaluate(ours_pdf, theirs_pdf, source=None):
     with tempfile.TemporaryDirectory() as tmp:
         a, b = read(ours_pdf, tmp, "a"), read(theirs_pdf, tmp, "b", drop_invisible=True)
+        hide_alike(a, b)
         f = {"表示されない": defaultdict(list), "改ページ": defaultdict(list),
              "違う": defaultdict(list), "読みにくい": defaultdict(list)}
 
@@ -374,10 +428,14 @@ def evaluate(ours_pdf, theirs_pdf, source=None):
                 word = "太い" if ia > ib else "細い"
                 f["違う"]["字の太さ"].append(f"うちが{word}(線の量 {ia / ib:.2f} 倍) in 「{b['lines'][ln]['text'][:24]}」")
 
-        # Letters of ours off the paper (cut on a printed page), matched or not
+        # Letters of ours off the paper (cut on a printed page), matched or not.
+        # A letter cut short of the paper's edge (Excel cuts text at the
+        # last printed column) keeps its whole box in the PDF, so it counts
+        # only when its ink reaches the edge
         for ca in a["chars"]:
-            w, h = a["pages"][ca["page"]][:2]
-            if ca["x1"] > w + 0.5 or ca["x0"] < -0.5 or ca["bottom"] > h + 0.5 or ca["top"] < -0.5:
+            w, h, im = a["pages"][ca["page"]]
+            if (ca["x1"] > w + 0.5 or ca["x0"] < -0.5 or ca["bottom"] > h + 0.5 or ca["top"] < -0.5) \
+                    and inks_edge(ca, im, w, h):
                 f["読みにくい"]["紙からはみ出た字"].append(f"「{ca['t']}」 in 「{a['lines'][ca['line']]['text'][:24]}」(うち {ca['page'] + 1} 頁)")
 
         # A line of theirs spread over three or more of our lines
