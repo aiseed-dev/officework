@@ -388,17 +388,18 @@ ops の言葉と同じです。これで「表示は正確に、編集は薄く�
 
 === 残っていること
 
-. *`expand` が縦に効かない。* `test/out/flet/app_layout.py`(左に幅 160 のメニュー、右に
-  `expand=True` の Row、その中に `expand=3` と `expand=1` の Column)で、Row が View の高さ
-  いっぱいにならず、中身の高さで止まる(`layout5.png`)。本物の Flet では Row が窓の高さを
-  取り、3 対 1 に分かれる(`real_app_layout.py.png`)。疑っている所: 包みの div に
-  `h_full` と `flex_basis(0) + flex_grow` を両方付けている所と、View が `size_full` の flex 列で
-  その子の百分率の高さが解けていない所。`gpui::Styled` の `flex_grow` と `h_full` の組み合わせを
-  小さな例で確かめるのが早い。
-. *クリックと打鍵を機械から送る道具が無い。* この機械には `xdotool`・`xte`・python-xlib が無く、
-  ボタンの `click` と入力欄の `change` / `submit` は実機で確かめていない(コードは
-  `fletview` の試験と同じ `send_event` を使う)。python-xlib(PyPI、純 Python、約 400 KB)を
-  天気の venv に入れれば XTEST で送れる。入れるには発注者の許可が要る。
+. *`expand` が縦に効かない* は直した(2026-10-17、Opus)。原因は View を包む div だった。
+  `element` はどの部品も `layout` の div で包むが、View は `wants_full_width` /
+  `wants_full_height` に入っていなかったので、包みが中身の高さしか取らず、View の
+  `size_full` も中身の高さになっていた。View を両方に足して、`app_layout.py` は本物と同じく
+  3 対 1 に分かれた(上の字は窓の高さの 0.38、下は 0.76。本物は 0.38 と 0.76)。
+  `app_form.py` の並びは前と同じだった。
+. *クリックと打鍵は実機で確かめた*(2026-10-17、Opus)。発注者の許可を得て python-xlib 0.33
+  (PyPI、182 KB)を天気の venv に入れ、`tools/flet_xsend.py`(XTEST でクリック・文字・キーを
+  送る)を作った。`app_form.py` で、入力欄のクリックで焦点が移り、打った字ごとに `change` が
+  値つきで Python に届き、Enter で `submit`、BackSpace、「登録」の `click` で Python が書いた
+  文が出る所、「消す」で Python が空にした値が入力欄に写る所まで通った。IME での日本語の
+  入力はまだ確かめていない。
 . *本物の Flet と並べて比べる手順。* `~/.flet/client/flet-desktop-light-1.0.0/flet/flet` が
   本物の画面側で、`FLET_VIEW_PATH` にこれへのシンボリックリンク `flet` を置いたフォルダーを
   指し、`env -u WAYLAND_DISPLAY GDK_BACKEND=x11 DISPLAY=:0` で起動すると X11 に出る

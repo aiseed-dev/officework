@@ -292,12 +292,13 @@ impl FletView {
         self.layout(div().child(el), c, parent).into_any_element()
     }
 
-    /// Whether a control takes all the width it is offered: a Row (unless
-    /// tight), a TextField, and a Column holding one of those (Flutter sizes
-    /// a Column to its widest child)
+    /// Whether a control takes all the width it is offered: a View (the
+    /// page fills the window), a Row (unless tight), a TextField, and a
+    /// Column holding one of those (Flutter sizes a Column to its widest child)
     fn wants_full_width(&self, c: &Control) -> bool {
         let tight = c.get_bool("tight").unwrap_or(false);
         match c.ctype.as_str() {
+            "View" => true,
             "Row" => !tight,
             "TextField" => true,
             "Column" => self.tree.children(c.id, "controls").iter().any(|k| self.tree.get(*k).is_some_and(|k| self.wants_full_width(k))),
@@ -305,11 +306,12 @@ impl FletView {
         }
     }
 
-    /// Whether a control takes all the height it is offered: a Column
-    /// (unless tight), and a Row holding one
+    /// Whether a control takes all the height it is offered: a View, a
+    /// Column (unless tight), and a Row holding one
     fn wants_full_height(&self, c: &Control) -> bool {
         let tight = c.get_bool("tight").unwrap_or(false);
         match c.ctype.as_str() {
+            "View" => true,
             "Column" => !tight,
             "Row" => self.tree.children(c.id, "controls").iter().any(|k| self.tree.get(*k).is_some_and(|k| self.wants_full_height(k))),
             _ => false,
