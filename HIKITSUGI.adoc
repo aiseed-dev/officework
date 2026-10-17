@@ -938,4 +938,4 @@ calc の暗号化保存は encrypt\_agile へ切り替え(AES-256。
 * `cargo test -p pysheet` はこの Linux では `LD_LIBRARY_PATH=$PWD/.venv/lib` が要る(AGENTS.md の Mac 用の変数では libpython3.14 が見つからない)
 * `.claude/launch.json` に一時的に足した設定は元に戻してある(差分なし)
 * 作業用のフォルダーの試作(Flet の往復の測定、偽の画面側)は、要る物を `test/out/flet/`(追跡外)と `tools/flet_fake_view.py` に写してある
-* 同じ日に、Python 側に `write_df` / `read_df`(Arrow)、`write_array` / `read_array`(numpy)、`officework.openpyxl`(`install()` で `import openpyxl` を差し替え)、`sheet.register`(Python のセル関数)を足した(`b25d7714`・`5f5eaef3`)。手引きはまだ書いていない
+* 同じ日に、Python 側に `write_df` / `read_df`(Arrow)、`write_array` / `read_array`(numpy)、`officework.openpyxl`(`install()` で `import openpyxl` を差し替え)、`sheet.register`(Python のセル関数)を足した(`b25d7714`・`5f5eaef3`)。手引きは docs/{en,ja}/python-manual.adoc に書いた(`c438c0fd`・`c6128301`)
