@@ -886,3 +886,56 @@ calc の暗号化保存は encrypt\_agile へ切り替え(AES-256。
 * *拾うのではなく食べ尽くす。* 残りが出たら落ちる形にすれば飛ばせない
 * *数を報告するなら、その場で測る。* 記憶から出した数は必ずずれる
 * *まとめて直すときほど、1件ずつの意味が薄まる* — clippy 41件を機械的に片付ける速さの中で、「押しても何も起きないボタン」を1つ作った
+
+== 2026-10-17 の状態(Fable → Opus への引き継ぎ): Flet の画面側
+
+発注者の指示で、「officework を Flet のプログラムの窓にする」仕事をここから Opus に任せます。
+設計と状態は全部コミット済みです(push は発注者)。
+
+=== 読む物(この順で)
+
+. link:docs/sekkei/flet-client.ja.adoc[docs/sekkei/flet-client.ja.adoc] — Flet 1.0.4 の決まりを写した設計書。最後の「段 3 の状態と引き継ぎ」に、できている物と残りがある
+. link:SEKKEI.adoc[SEKKEI.adoc] の「検討: officework を Flet の画面側にする(2026-10-17 発注者)」— 経緯、Opus 自身の評価、Gemini Argon の意見への答え、進め方
+. `fletview/src/*.rs` と `officework/src/flet.rs` — コード。コメントに Dart のどのファイルを写したかがある
+
+=== コミット(新しい順)
+
+* `c23379f5` officework が Flet のページを描く(Column / Row / Text / Button / TextField、イベント、resize)
+* `98f97e47` officework が Flet のプログラムの画面側として起動する(`FLET_VIEW_PATH`、pid ファイル、EOF で終わる)
+* `a6e65653` `fletview` クレート(msgpack、枠、7 つのメッセージ、部品の木と差分、ソケットの client)
+* `e1d9bcd8` 設計書と `tools/flet_fake_view.py`(Python で書いた偽の画面側。実物のメッセージを取った)
+* `4ecdc834` / `2e1e63f0` / `e2bf136b` SEKKEI(Gemini の 3 点、Opus の評価、往復の測定)
+
+=== 動かし方と確かめ方
+
+* 試験: `FLET_PYTHON=$HOME/dev/weather/.venv/bin/python cargo test -p fletview`。本物の Flet(天気の venv の 1.0.4)を相手に、登録 → 差分 → クリック → 値の差分まで通る。flet が無い Python では飛ばしたと言って通る
+* 実機: `cargo build -p officework`(debug)のあと、`test/out/flet/run2.sh app_form.py` で officework が Flet のプログラムの窓として開く(`view/flet` が `target/debug/officework` へのシンボリックリンク。`FLET_VIEW_PATH` でそのフォルダーを指す)。撮るのは `test/out/flet/shot.sh <pid> out.png`(`xwd` + `xwd2png.py`。`import` はこの機械に無い)。環境は `env -u WAYLAND_DISPLAY XDG_RUNTIME_DIR=<作業用> DISPLAY=:0`(XWayland)
+* 本物の Flet と並べて比べる: `~/.flet/client/flet-desktop-light-1.0.0/flet/flet` へのシンボリックリンク `flet` を置いたフォルダーを `FLET_VIEW_PATH` にして、`env -u WAYLAND_DISPLAY GDK_BACKEND=x11 DISPLAY=:0` で起動する(`XDG_RUNTIME_DIR` を替えると GTK が display を開けない)。撮影は同じ `shot.sh`
+* 止めるときは pid で止める。`pkill -f` は自分のシェルの命令行にも一致して、シェルごと止まった(AGENTS.md の `pgrep -f` の注意と同じ)。Python を `kill`(TERM)しただけでは Flet が画面側の終了を待って残ることがあるので `kill -9`
+
+=== できていること
+
+* 入力のフォーム(`test/out/flet/app_form.py`)は本物の Flet と同じ並び(`test/out/flet/form4.png`)。`resize` が Python に届くことは確認済み
+* TextField は `kumihan::Editor` + `ui::handler`(calc と同じ道)なので IME も受ける作り。ただし下の 2 の理由で打鍵は未確認
+
+=== 残り(優先順)
+
+. `expand` が縦に効かない。`test/out/flet/app_layout.py`(左に幅 160 のメニュー、右に `expand=True` の Row、中に `expand=3` と `expand=1` の Column)で、Row が View の高さを取らない(`layout5.png`)。本物は 3 対 1 に分かれる(`real_app_layout.py.png`)。疑っている所は `officework/src/flet.rs` の `layout()`: 包みに `h_full` と `flex_basis(0)+flex_grow` を両方付けている所、View(`size_full` の flex 列)の子で百分率の高さが解けていない所。gpui の小さな例で `flex_grow` と `h_full` の組み合わせを確かめるのが早い
+. クリックと打鍵を機械から送る道具がこの機械に無い(`xdotool`・`xte`・python-xlib なし)。python-xlib(PyPI、純 Python、約 400 KB)を天気の venv に入れれば XTEST で送れる。**入れるには発注者の許可が要る**(AGENTS.md のダウンロードの決まり)
+. 暗い配色への追従(本物は `platform_brightness` が dark でこの機械では暗く出る。登録のときの値と Page の `theme_mode` を読む)。Button は本物が Material 3 の tonal(灰色の地)、こちらは primary の塗り
+. Button の `content` が部品のとき、`icon`、TextField の `blur`・`selection_change`・`multiline`、定型 3(見出し + ListView。ListView は未対応の部品)と 4
+. 段 4: 表計算と文書の部品の名前と属性(発注者の決め待ち。本物の Flet 側では「絵の表」の部品が同じ名前を受ける)。段 5: builder の 20 へ
+
+=== 決まっていること(変えない)
+
+* Dart は使わない(発注者)。WebView も使わない(発注者)
+* 部品の木と差分は gpui を持たないクレート(`fletview`)に置く。描く側は `officework/src/flet.rs`。calc と writer のコードには触れていない
+* 表計算の部品のイベントは `on_change`(付けた範囲、確定の単位)・`on_select`(付けたときだけ)・ボタンに絞り、値は INVOKE_METHOD で取りに行く(Gemini の指摘、SEKKEI に記録)
+* Flet の版を上げたら、`fletview/tests/real_flet.rs` で決まりの変化を見つける
+
+=== その他
+
+* `cargo test -p pysheet` はこの Linux では `LD_LIBRARY_PATH=$PWD/.venv/lib` が要る(AGENTS.md の Mac 用の変数では libpython3.14 が見つからない)
+* `.claude/launch.json` に一時的に足した設定は元に戻してある(差分なし)
+* 作業用のフォルダーの試作(Flet の往復の測定、偽の画面側)は、要る物を `test/out/flet/`(追跡外)と `tools/flet_fake_view.py` に写してある
+* 同じ日に、Python 側に `write_df` / `read_df`(Arrow)、`write_array` / `read_array`(numpy)、`officework.openpyxl`(`install()` で `import openpyxl` を差し替え)、`sheet.register`(Python のセル関数)を足した(`b25d7714`・`5f5eaef3`)。手引きはまだ書いていない
