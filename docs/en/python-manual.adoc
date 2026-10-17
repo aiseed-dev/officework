@@ -123,20 +123,76 @@ for i, row in enumerate(data):
 b.recalc()
 ----
 
-=== Round-tripping with polars
+=== Round-tripping with polars — `write_df` and `read_df`
+
+A whole table goes in and out in one call. `write_df` takes any table that
+exports the Arrow C stream interface (`__arrow_c_stream__`): a polars,
+pyarrow or pandas (2.2 or later) DataFrame. officework does not import
+those libraries, so their versions do not matter.
 
 [source,python]
 ----
 import polars as pl
-# sheet → DataFrame (first row as headings)
-v = s.values()
-df = pl.DataFrame({h: [r[i] for r in v[1:]] for i, h in enumerate(v[0])})
+df = pl.DataFrame({"品名": ["ペン", "ノート"], "数量": [10, 5], "単価": [150.0, 180.5]})
 
-# DataFrame → sheet (below the headings)
-for i, row in enumerate(df.rows()):
-    for j, val in enumerate(row):
-        s[f"{chr(65 + j)}{2 + i}"] = val
+rows, cols = s.write_df(df, "A1")   # (3, 4): the headings in row 1, values from row 2
+s["D1"] = "金額"
+s["D2"] = "=B2*C2"
+s["D3"] = "=B3*C3"
+
+back = s.read_df()                  # the used range, row 1 as the headings
+back.columns                        # ['品名', '数量', '単価', '金額']
+back.dtypes                         # [String, Int64, Float64, Float64]
 ----
+
+`s.write_df(df, at="A1", header=True)`
+
+* `at` is the top-left cell. With `header=True` (the default) the column names go
+  into that row and the values start one row below; with `header=False` the values
+  start at `at`.
+* Cell formats stay as they are (number format, borders, merges). A date column puts
+  `yyyy/m/d` on a cell that has no number format, a date-time column `yyyy/m/d h:mm`,
+  a time column `h:mm`, a duration column `[h]:mm:ss`. A cell that already has a
+  number format keeps it.
+* A null becomes an empty cell, the same as `s["A1"] = None`. An empty string becomes
+  an empty cell too.
+* The sheet is recalculated once, after the whole table is placed.
+* The return value is `(rows, columns)` written, the heading row counted.
+
+Column types are placed like this:
+
+[cols="1,2"]
+|===
+|DataFrame column |Cell
+
+|Int, UInt, Float, Decimal |number
+|String |text
+|Boolean |logical value
+|Date |date serial number (number format `yyyy/m/d` where the cell has none)
+|Datetime without a time zone |date-time serial number (`yyyy/m/d h:mm`)
+|Datetime with a time zone |the clock time of that zone, as a serial number
+|Time |fraction of a day (`h:mm`)
+|Duration |number of days (`[h]:mm:ss`)
+|Categorical, Enum |text
+|Null |empty cell
+|List, Struct, Binary and the rest |refused with `TypeError`, naming the column and its type
+|===
+
+`s.read_df(range=None, header=True)`
+
+* `range` is an A1 range (`"A1:F100"`); without it the used range is read.
+* With `header=True` the first row names the columns; an empty heading cell names its
+  column `column_N` (N counted from 0). With `header=False` every column is named
+  `column_N`.
+* A formula cell gives its calculated value.
+* Each column's type comes from its cells: all integers → `Int64`; numbers with a
+  fraction → `Float64`; numbers whose number format shows a date → `Date` (whole
+  days) or `Datetime` (with a time); all logical values → `Boolean`; text → `String`;
+  a mix of kinds → `String`, with numbers shown as the cell displays them; only empty
+  cells → `Null`.
+* With polars installed the result is a `polars.DataFrame`. Without it the result is
+  a `Frame` that exports `__arrow_c_stream__`, which pyarrow (`pyarrow.table(frame)`)
+  and pandas can take.
 
 Aggregation, joins, and filtering belong on the polars side — that's the division of labor (the sheet is the form; computation is Python's job).
 

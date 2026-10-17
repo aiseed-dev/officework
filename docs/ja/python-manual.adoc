@@ -193,54 +193,73 @@ for i, row in enumerate(data):
 b.recalc()
 ----
 
-=== polars との往復
+=== polars との往復 — `write_df` と `read_df`
+
+表を丸ごと 1 回の呼び出しで出し入れします。`write_df` は、Arrow の
+C stream(`__arrow_c_stream__`)で出せる表なら何でも受け取ります。polars、pyarrow、
+pandas(2.2 以降)の DataFrame です。officework はこれらのライブラリを import
+しないので、版は問いません。
 
 [source,python]
 ----
 import polars as pl
-# シート → DataFrame(1行目を見出しに)
-v = s.values()
-df = pl.DataFrame({h: [r[i] for r in v[1:]] for i, h in enumerate(v[0])})
+df = pl.DataFrame({"品名": ["ペン", "ノート"], "数量": [10, 5], "単価": [150.0, 180.5]})
 
-# DataFrame → シート(見出しの下へ)
-for i, row in enumerate(df.rows()):
-    for j, val in enumerate(row):
-        s[f"{chr(65 + j)}{2 + i}"] = val
+rows, cols = s.write_df(df, "A1")   # (3, 4)。1 行目に見出し、2 行目から値
+s["D1"] = "金額"
+s["D2"] = "=B2*C2"
+s["D3"] = "=B3*C3"
+
+back = s.read_df()                  # 使っている範囲。1 行目が列の名前
+back.columns                        # ['品名', '数量', '単価', '金額']
+back.dtypes                         # [String, Int64, Float64, Float64]
 ----
+
+`s.write_df(df, at="A1", header=True)`
+
+* `at` は左上のセルです。`header=True`(既定)なら、その行に列の名前を書き、値は
+  1 行下から置きます。`header=False` なら値を `at` から置きます。
+* セルの書式(表示形式、罫線、結合)は据え置きです。日付の列は、表示形式の無い
+  セルにだけ `yyyy/m/d` を付けます。日時の列は `yyyy/m/d h:mm`、時刻の列は `h:mm`、
+  期間の列は `[h]:mm:ss` です。表示形式のあるセルはそのままです。
+* null は空のセルになります。`s["A1"] = None` と同じです。空の文字列も空のセルです。
+* 再計算は、表を全部置いた後に 1 回です。
+* 返りは置いた `(行数, 列数)` です。見出しの行も数えます。
+
+列の型は次のように置きます。
+
+[cols="1,2"]
+|===
+|DataFrame の列の型 |セル
+
+|Int、UInt、Float、Decimal |数値
+|String |文字列
+|Boolean |論理値
+|Date |日付の通し番号(表示形式の無いセルには `yyyy/m/d`)
+|Datetime(タイムゾーンなし) |日時の通し番号(`yyyy/m/d h:mm`)
+|Datetime(タイムゾーンあり) |そのタイムゾーンの時刻を通し番号に
+|Time |1 日の中の割合(`h:mm`)
+|Duration |日数(`[h]:mm:ss`)
+|Categorical、Enum |文字列
+|Null |空のセル
+|List、Struct、Binary など |`TypeError` で断ります。列の名前と型を言います
+|===
+
+`s.read_df(range=None, header=True)`
+
+* `range` は A1 形式の範囲(`"A1:F100"`)です。省くと、使っている範囲を読みます。
+* `header=True` なら 1 行目を列の名前にします。見出しのセルが空なら、その列は
+  `column_N`(N は 0 から)という名前になります。`header=False` なら全部の列が
+  `column_N` です。
+* 数式のセルは計算した値になります。
+* 列の型はセルの値から決めます。全部が整数なら `Int64`、小数があれば `Float64`、
+  表示形式が日付の数値なら `Date`(日だけ)か `Datetime`(時刻つき)、全部が論理値なら
+  `Boolean`、文字列なら `String`、種類が混ざっていれば `String`(数値はセルの表示の
+  とおりの文字)、空のセルだけなら `Null` です。
+* polars が入っていれば `polars.DataFrame` を返します。無ければ `__arrow_c_stream__` を
+  持つ `Frame` を返すので、pyarrow(`pyarrow.table(frame)`)や pandas で受けられます。
 
 集計・結合・絞り込みは polars 側でやるのが分業の流儀(シートは帳票の形、データの計算は Python)。
-
-== `officework.doc` の API
-
-同じ wheel、同じ約束を docx で。
-`doc` の副モジュールです。
-`Doc.open` が**元のバイトを抱えたまま**持ち、`save` は変えた所だけ書き戻すので、スタイル・ヘッダー・フッター・図形・変更履歴がそのまま通ります。
-python-docx が約束できないのはここです。
-
-[source,python]
-----
-from officework import doc
-
-d = doc.Doc.open("報告書.docx")
-d.unsupported          # [(何が, 何個)] — 読めなかった物。まずここを見る
-d.paragraphs           # 本文の段落(表の中の段落はここに入らない)
-d[3]                   # 本文の4つ目の段落。d[-1] も引ける
-len(d)                 # 本文の段落の数
-d.text                 # 本文を "\n" で繋いだ1本の字
-d.header, d.footer     # 読むだけ。ページ番号は "#"、総ページ数は "##" で出る
-d.tables               # 表(文書に出てくる順)
-d.add_paragraph("…")   # 本文の末尾に足す
-d.save("out.docx")
-d.to_pdf("out.pdf")    # PDF に。省くと開いた名前の .pdf
-----
-
-*何より先に `d.unsupported` を読んでください。* 空なら全部読めています。
-空でなければ、何が読めなかったかが出ます。
-*そこに出た物も、保存では原本から持ち越されます。*
-「読めなかった」と「落とした」は別の話です。
-
-`Doc.open` は `.adoc`(ネイティブの文書)も読み、`save("報告.adoc")` で書けます。
-docx を AsciiDoc にするのは2行です。
 
 === ブロック — 番号で文書を読み書きする
 
