@@ -90,7 +90,7 @@ fn a_real_flet_program_registers_patches_and_answers_a_click() {
             std::thread::sleep(Duration::from_millis(100));
         };
         let mut c = Client::connect(&url).expect("つなげない");
-        let r = c.register(page_props(800.0, 600.0, "linux")).expect("登録できない");
+        let r = c.register(page_props(800.0, 600.0, "linux", "light")).expect("登録できない");
         assert!(r.session_id.is_some());
         let mut tree = Tree::new();
         let root = tree.set_root(&r.page_patch).expect("Page が読めない");

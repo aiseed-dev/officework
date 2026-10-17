@@ -381,9 +381,11 @@ ops の言葉と同じです。これで「表示は正確に、編集は薄く�
 * INVOKE_METHOD は「未対応」の `error` を返す(Python を待たせない)。
 * Flutter の大きさの決まりを `layout` に写した。親が与える余地が有界な軸だけ、部品はその余地を
   取る(Row と TextField は幅、Column は高さ。Column の中の Column は高さが無界なので中身の高さ)。
-  `wants_full_width` / `wants_full_height` がその判断で、Row や TextField を持つ Column は幅を取る。
+  `wants_full_width` / `wants_full_height` がその判断で、Row や `expand` の TextField を持つ
+  Column は幅を取る。
 * 実機(この Linux、XWayland)で確かめた物: `test/out/flet/app_form.py`(入力のフォーム。
-  `form4.png`)は本物の Flet と同じ並びになった(入力欄が幅いっぱい、ボタンが右寄せ)。
+  `form4.png`)はボタンが右寄せになった。入力欄の幅は、下の「配色と Button・TextField の
+  見た目」で 300 に直した。
   `app_button.py`(段 2 の 3 部品)も出る。
 
 === 残っていること
@@ -405,9 +407,29 @@ ops の言葉と同じです。これで「表示は正確に、編集は薄く�
   指し、`env -u WAYLAND_DISPLAY GDK_BACKEND=x11 DISPLAY=:0` で起動すると X11 に出る
   (`XDG_RUNTIME_DIR` を替えると GTK が display を開けない)。撮るのは `test/out/flet/shot.sh <pid>`
   (`xwd` + `xwd2png.py`)。本物は窓の飾りごと撮れる。
-. *見た目の違い。* 本物はこの機械の設定で暗い配色(`platform_brightness` が dark)になり、
-  Button は Material 3 の tonal(灰色の地)。こちらは明るい配色と primary 色の塗りで固定。
-  登録のときの `platform_brightness` と Page の `theme_mode` を読んで切り替える。
+. *配色と Button・TextField の見た目* は直した(2026-10-17、Opus)。
+** 配色: Flet の既定のテーマは Flutter の `ColorScheme.fromSeed(Colors.blue)` です
+   (`utils/theme.dart` の `parseTheme`)。本物の Flet 1.0.4 に色の役割ごとの見本を描かせて撮り、
+   明るい配色と暗い配色の 25 の役割の値を読んで `Scheme` に写した。Page の `theme_mode` が
+   "light" / "dark" ならそれを使い、"system" か無いときはシステムの明るさを使う(`page.dart`)。
+   システムの明るさは gpui の `window.appearance()`(Linux ではデスクトップのポータル)で取り、
+   登録の `platform_brightness` に書く。後で変わったら Page に書き、`platform_brightness_change`
+   を送る(`flet_backend.dart`)。この機械では暗い配色になることを確かめた。明るさを途中で
+   切り替える所は確かめていない(システムの設定を変えるため)。
+** Button: 本物は ElevatedButton で、デスクトップの詰めた密度で高さ 32、左右 24、地は
+   surface-container-low、字は primary(14、medium)、影は高さ 1。Python の Button は
+   `color`・`bgcolor` を `_internals.style` に移すので(`button.py` の `before_update`)、そこから
+   読む。style があるときの既定の地は surface(`button.dart`)。本物と並べて、地・字・幅・高さ・
+   影が同じに見えることを確かめた。
+** TextField: 前の版の「塗りつぶしで幅いっぱい」は誤りだった。本物は枠線の形で、幅や `expand`
+   が無いときは幅 300(`textfield.dart` の `BoxConstraints.tightFor(width: 300)`)、高さ 48、
+   枠は outline の 1px(焦点のときは primary の 2px)、角は 4、字は 16。ラベルは、空で焦点が
+   無いときは中に、それ以外は上の枠の上に 12 で出る。ヒントはラベルが上にあって空のときだけ
+   出る。本物と並べて、焦点と入力のある状態が同じに見えることを確かめた。
+** 残った違い: 見出しの `weight="bold"` が太字にならない(登録した書体に太字が無いためと
+   思われる)。Text の行の高さが本物より大きい(24 の字で本物は約 34、こちらは約 39)。
+   本物の入力欄の字には字間(0.5)がある。Page の `theme`(`color_scheme_seed` など)は
+   未対応で、いつも既定の青の配色になる。
 . *Button の `content` が部品のとき*(アイコンつきなど)は、その部品を描く。`icon` は未対応。
 . *TextField の `blur`*(焦点が外れたとき)は送っていない。`selection_change` も未対応。
   複数行(`multiline`)も未対応。

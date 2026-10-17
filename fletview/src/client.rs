@@ -118,7 +118,7 @@ pub struct Client {
 /// The Page properties the Dart client sends when it registers: the ones
 /// Python's Page needs before `main` runs (`flet_backend.dart`,
 /// `_registerClient`)
-pub fn page_props(width: f64, height: f64, platform: &str) -> Value {
+pub fn page_props(width: f64, height: f64, platform: &str, brightness: &str) -> Value {
     let zero = || Value::map(vec![("top", Value::Int(0)), ("right", Value::Int(0)), ("bottom", Value::Int(0)), ("left", Value::Int(0))]);
     Value::map(vec![
         ("route", Value::str("/")),
@@ -129,7 +129,7 @@ pub fn page_props(width: f64, height: f64, platform: &str) -> Value {
         ("test", Value::Bool(false)),
         ("multi_view", Value::Bool(false)),
         ("pyodide", Value::Bool(false)),
-        ("platform_brightness", Value::str("light")),
+        ("platform_brightness", Value::str(brightness)),
         ("width", Value::F64(width)),
         ("height", Value::F64(height)),
         ("platform", Value::str(platform)),

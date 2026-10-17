@@ -32,7 +32,8 @@ pub enum Prop {
 }
 
 impl Prop {
-    fn get(&self, name: &str) -> Option<&Prop> {
+    /// The entry `name` of a map
+    pub fn get(&self, name: &str) -> Option<&Prop> {
         match self {
             Prop::Map(m) => m.iter().find(|(k, _)| k == name).map(|(_, p)| p),
             _ => None,

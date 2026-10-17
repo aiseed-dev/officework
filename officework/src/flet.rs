@@ -88,8 +88,94 @@ const WIDTH: f32 = 800.0;
 const HEIGHT: f32 = 600.0;
 /// Material's default body text, which Flet's Text uses
 const TEXT_PX: f32 = 14.0;
-/// Material's primary colour, which Flet's Button uses by default
-const PRIMARY: u32 = 0x6750A4;
+
+/// The colour roles of Flet's default theme: Flutter's
+/// `ColorScheme.fromSeed(Colors.blue)` (`utils/theme.dart`, `parseTheme`),
+/// light and dark. The values were read from swatches drawn by the real
+/// Flet 1.0.4 client on Linux (2026-10-17).
+struct Scheme {
+    primary: u32,
+    on_primary: u32,
+    primary_container: u32,
+    on_primary_container: u32,
+    secondary: u32,
+    on_secondary: u32,
+    secondary_container: u32,
+    on_secondary_container: u32,
+    tertiary: u32,
+    on_tertiary: u32,
+    error: u32,
+    on_error: u32,
+    error_container: u32,
+    surface: u32,
+    on_surface: u32,
+    on_surface_variant: u32,
+    surface_container_lowest: u32,
+    surface_container_low: u32,
+    surface_container: u32,
+    surface_container_high: u32,
+    surface_container_highest: u32,
+    outline: u32,
+    outline_variant: u32,
+    inverse_surface: u32,
+    on_inverse_surface: u32,
+}
+
+const LIGHT: Scheme = Scheme {
+    primary: 0x36618E,
+    on_primary: 0xFFFFFF,
+    primary_container: 0xD1E4FF,
+    on_primary_container: 0x194975,
+    secondary: 0x535F70,
+    on_secondary: 0xFFFFFF,
+    secondary_container: 0xD7E3F7,
+    on_secondary_container: 0x3B4858,
+    tertiary: 0x6B5778,
+    on_tertiary: 0xFFFFFF,
+    error: 0xBA1A1A,
+    on_error: 0xFFFFFF,
+    error_container: 0xFFDAD6,
+    surface: 0xF8F9FF,
+    on_surface: 0x191C20,
+    on_surface_variant: 0x43474E,
+    surface_container_lowest: 0xFFFFFF,
+    surface_container_low: 0xF2F3FA,
+    surface_container: 0xECEEF4,
+    surface_container_high: 0xE6E8EE,
+    surface_container_highest: 0xE1E2E8,
+    outline: 0x73777F,
+    outline_variant: 0xC3C7CF,
+    inverse_surface: 0x2E3135,
+    on_inverse_surface: 0xEFF0F7,
+};
+
+const DARK: Scheme = Scheme {
+    primary: 0xA0CAFD,
+    on_primary: 0x003258,
+    primary_container: 0x194975,
+    on_primary_container: 0xD1E4FF,
+    secondary: 0xBBC7DB,
+    on_secondary: 0x253140,
+    secondary_container: 0x3B4858,
+    on_secondary_container: 0xD7E3F7,
+    tertiary: 0xD6BEE4,
+    on_tertiary: 0x3B2948,
+    error: 0xFFB4AB,
+    on_error: 0x690005,
+    error_container: 0x93000A,
+    surface: 0x111418,
+    on_surface: 0xE1E2E8,
+    on_surface_variant: 0xC3C7CF,
+    surface_container_lowest: 0x0B0E13,
+    surface_container_low: 0x191C20,
+    surface_container: 0x1D2024,
+    surface_container_high: 0x272A2F,
+    surface_container_highest: 0x32353A,
+    outline: 0x8D9199,
+    outline_variant: 0x43474E,
+    inverse_surface: 0xE1E2E8,
+    on_inverse_surface: 0x2E3135,
+};
 
 /// What a control sits in. Flutter gives a child bounded or unbounded room
 /// per axis: a Column bounds the width and leaves the height unbounded, a
@@ -141,10 +227,14 @@ struct FletView {
     scratch: Editor,
     /// The window size last written to the Page
     reported: Option<(f32, f32)>,
+    /// Whether the system asks for dark colours (Flutter's
+    /// `platformBrightness`), and what was last written to the Page
+    dark: bool,
+    reported_dark: bool,
 }
 
 impl FletView {
-    fn new() -> FletView {
+    fn new(dark: bool) -> FletView {
         FletView {
             tree: Tree::new(),
             sender: None,
@@ -154,6 +244,51 @@ impl FletView {
             focused: None,
             scratch: Editor::new(""),
             reported: None,
+            dark,
+            reported_dark: dark,
+        }
+    }
+
+    /// The colours in use: the Page's `theme_mode`, and with "system" or
+    /// none the system's brightness (`page.dart`)
+    fn scheme(&self) -> &'static Scheme {
+        let mode = self.tree.root.and_then(|r| self.tree.get(r)).and_then(|p| p.get_str("theme_mode"));
+        let dark = match mode {
+            Some("dark") => true,
+            Some("light") => false,
+            _ => self.dark,
+        };
+        if dark {
+            &DARK
+        } else {
+            &LIGHT
+        }
+    }
+
+    /// The background behind the controls: the Page's `bgcolor`, or surface
+    fn page_bg(&self) -> gpui::Rgba {
+        let k = self.scheme();
+        let page = self.tree.root.and_then(|r| self.tree.get(r));
+        page.and_then(|p| p.get_str("bgcolor")).and_then(|s| color(s, k)).unwrap_or(gpui::rgb(k.surface))
+    }
+
+    /// The system's brightness, written to the Page when it changes, with
+    /// `platform_brightness_change` (`flet_backend.dart`)
+    fn report_brightness(&mut self, window: &Window) {
+        self.dark = is_dark(window.appearance());
+        if self.reported_dark == self.dark {
+            return;
+        }
+        let Some(root) = self.tree.root else { return };
+        self.reported_dark = self.dark;
+        let name = if self.dark { "dark" } else { "light" };
+        let props = Value::map(vec![("platform_brightness", Value::str(name))]);
+        let _ = self.tree.update(root, &props);
+        if let Some(s) = &self.sender {
+            let _ = s.update_props(root, props);
+            if self.tree.get(root).is_some_and(|c| c.has_event("platform_brightness_change")) {
+                let _ = s.send_event(root, "platform_brightness_change", Value::str(name));
+            }
         }
     }
 
@@ -293,14 +428,15 @@ impl FletView {
     }
 
     /// Whether a control takes all the width it is offered: a View (the
-    /// page fills the window), a Row (unless tight), a TextField, and a
+    /// page fills the window), a Row (unless tight), an expanding TextField, and a
     /// Column holding one of those (Flutter sizes a Column to its widest child)
     fn wants_full_width(&self, c: &Control) -> bool {
         let tight = c.get_bool("tight").unwrap_or(false);
         match c.ctype.as_str() {
             "View" => true,
             "Row" => !tight,
-            "TextField" => true,
+            // 300 wide unless it expands (`textfield.dart`)
+            "TextField" => expand_of(c).is_some(),
             "Column" => self.tree.children(c.id, "controls").iter().any(|k| self.tree.get(*k).is_some_and(|k| self.wants_full_width(k))),
             _ => false,
         }
@@ -336,12 +472,7 @@ impl FletView {
             d = d.h(px(h as f32)).flex_shrink_0();
         }
         if parent.expand_axis().is_some() {
-            let expand = match c.get_value("expand") {
-                Some(Value::Bool(true)) => Some(1.0),
-                Some(v) => v.as_f64().filter(|n| *n > 0.0),
-                None => None,
-            };
-            if let Some(n) = expand {
+            if let Some(n) = expand_of(c) {
                 d = d.flex_basis(px(0.0)).flex_grow(n as f32).min_h_0().min_w_0();
             }
         }
@@ -379,7 +510,7 @@ impl FletView {
         }
         d = main_axis(d, c.get_str("vertical_alignment"));
         d = cross_axis(d, c.get_str("horizontal_alignment"));
-        if let Some(bg) = c.get_str("bgcolor").and_then(color) {
+        if let Some(bg) = c.get_str("bgcolor").and_then(|s| color(s, self.scheme())) {
             d = d.bg(bg);
         }
         d.children(self.children(c.id, "controls", Parent::View, cx)).into_any_element()
@@ -420,10 +551,11 @@ impl FletView {
         if c.get_bool("italic") == Some(true) {
             d = d.italic();
         }
-        if let Some(col) = c.get_str("color").and_then(color) {
+        let k = self.scheme();
+        if let Some(col) = c.get_str("color").and_then(|s| color(s, k)) {
             d = d.text_color(col);
         }
-        if let Some(bg) = c.get_str("bgcolor").and_then(color) {
+        if let Some(bg) = c.get_str("bgcolor").and_then(|s| color(s, k)) {
             d = d.bg(bg);
         }
         d = match c.get_str("text_align") {
@@ -437,27 +569,42 @@ impl FletView {
         d.into_any_element()
     }
 
-    /// Button (`button.dart`): a filled button; `click` goes to Python
+    /// Button (`button.dart`): Flutter's ElevatedButton in Material 3 at the
+    /// desktop's compact density: 32 high, 24 either side, a stadium in
+    /// surface-container-low with the level-1 shadow, the label in primary
+    /// (labelLarge: 14, medium). Hovering lays primary over it at 8%.
+    /// `click` goes to Python.
     fn button(&self, c: &Control, cx: &mut Context<Self>) -> AnyElement {
+        let k = self.scheme();
         let id = c.id;
         let disabled = c.get_bool("disabled") == Some(true);
-        let bg = c.get_str("bgcolor").and_then(color).unwrap_or(gpui::rgb(PRIMARY));
-        let fg = c.get_str("color").and_then(color).unwrap_or(gpui::rgb(0xFFFFFF));
+        // With a style the Dart client's own default background (surface)
+        // replaces Material's
+        let styled = c.get("_internals").and_then(|i| i.get("style")).is_some();
+        let bg_default = if styled { k.surface } else { k.surface_container_low };
+        let bg = style_color(c, "bgcolor").and_then(|s| color(s, k)).unwrap_or(gpui::rgb(bg_default));
+        let fg = style_color(c, "color").and_then(|s| color(s, k)).unwrap_or(gpui::rgb(k.primary));
         let mut d = div()
             .id(name("btn", id))
             .flex()
             .flex_row()
+            .flex_shrink_0()
             .items_center()
             .justify_center()
             .gap_2()
-            .px_6()
-            .py_2()
+            .h(px(32.0))
+            .px(px(24.0))
             .rounded_full()
             .bg(bg)
+            .shadow(elevation_1())
             .text_color(fg)
+            .text_size(px(14.0))
+            .font_weight(FontWeight::MEDIUM)
+            .whitespace_nowrap()
             .cursor_pointer();
         if !disabled {
-            d = d.hover(|s| s.opacity(0.9)).on_click(cx.listener(move |this, _ev, _window, _cx| {
+            let hover = mix(bg, gpui::rgb(k.primary), 0.08);
+            d = d.hover(move |s| s.bg(hover)).on_click(cx.listener(move |this, _ev, _window, _cx| {
                 this.event(id, "click", Value::Nil);
             }));
         }
@@ -468,9 +615,15 @@ impl FletView {
         d.child(content).into_any_element()
     }
 
-    /// TextField (`textfield.dart`): a single line with a label, edited with
-    /// the engine's Editor (IME included)
+    /// TextField (`textfield.dart`, `form_field.dart`): Flutter's outlined
+    /// field in Material 3 at the desktop's compact density: 48 high, 300
+    /// wide unless it has a width or expands, a 1px outline with 4px corners
+    /// (2px primary when focused), 16 either side, the text in bodyLarge (16).
+    /// The label sits inside while the field is empty and unfocused, and
+    /// otherwise moves onto the top border (12); the hint shows only then.
+    /// Edited with the engine's Editor (IME included).
     fn text_field(&self, c: &Control, cx: &mut Context<Self>) -> AnyElement {
+        let k = self.scheme();
         let id = c.id;
         let Some(f) = self.fields.get(&id) else { return div().into_any_element() };
         let focused = self.focused == Some(id);
@@ -482,20 +635,19 @@ impl FletView {
         let shown: String = if password { "•".repeat(text.chars().count()) } else { text.clone() };
         let cursor = if password { shown.len().min(text[..f.ed.cursor()].chars().count() * "•".len()) } else { f.ed.cursor() };
         let (before, after) = shown.split_at(cursor.min(shown.len()));
-        let line_color = if focused { gpui::rgb(PRIMARY) } else { gpui::rgb(0x79747E) };
+        let floating = focused || !shown.is_empty();
+        let border = if focused { 2.0 } else { 1.0 };
         let mut d = div()
             .id(name("tf", id))
             .track_focus(&f.focus)
+            .relative()
             .flex()
-            .flex_col()
-            .w_full()
-            .pt_2()
-            .px_3()
-            .pb_1()
-            .rounded_t_md()
-            .bg(gpui::rgb(0xE6E0E9))
-            .border_b(px(if focused { 2.0 } else { 1.0 }))
-            .border_color(line_color)
+            .flex_row()
+            .flex_shrink_0()
+            .items_center()
+            .h(px(48.0))
+            .px(px(16.0))
+            .text_size(px(16.0))
             .cursor_text()
             .on_click(cx.listener(move |this, _ev, window, cx| {
                 if let Some(f) = this.fields.get(&id) {
@@ -510,23 +662,53 @@ impl FletView {
             .on_key_down(cx.listener(move |this, ev: &KeyDownEvent, _window, cx| {
                 this.key(id, ev, cx);
             }));
-        if !label.is_empty() {
-            d = d.child(
-                div()
-                    .text_size(px(12.0))
-                    .text_color(if focused { gpui::rgb(PRIMARY) } else { gpui::rgb(0x49454F) })
-                    .child(SharedString::from(label)),
-            );
-        }
-        let mut line = div().flex().flex_row().items_center().h(px(24.0)).text_color(gpui::rgb(0x1D1B20));
-        if shown.is_empty() && !hint.is_empty() && !focused {
-            line = line.child(div().text_color(gpui::rgb(0x79747E)).child(SharedString::from(hint)));
-        } else {
-            line = line.child(div().whitespace_nowrap().child(SharedString::from(before.to_string())));
-            if focused && !read_only {
-                line = line.child(div().w(px(1.5)).h(px(18.0)).bg(gpui::rgb(PRIMARY)));
+        d = if c.get_f64("width").is_none() && expand_of(c).is_none() { d.w(px(300.0)) } else { d.w_full() };
+        // The outline is a layer of its own, so that the text does not move
+        // when it thickens and the floating label can be drawn over it
+        d = d.child(
+            div()
+                .absolute()
+                .top_0()
+                .left_0()
+                .size_full()
+                .rounded(px(4.0))
+                .border(px(border))
+                .border_color(gpui::rgb(if focused { k.primary } else { k.outline })),
+        );
+        let label_color = gpui::rgb(if focused { k.primary } else { k.on_surface_variant });
+        let mut line = div().flex().flex_row().items_center().h(px(24.0)).whitespace_nowrap();
+        if !floating {
+            if !label.is_empty() {
+                line = line.child(div().text_color(label_color).child(SharedString::from(label.clone())));
             }
-            line = line.child(div().whitespace_nowrap().child(SharedString::from(after.to_string())));
+        } else {
+            if !label.is_empty() {
+                // On the top border, with a gap cut out of the outline: the
+                // background behind the field fills the gap
+                d = d.child(
+                    div()
+                        .absolute()
+                        .top(px(border / 2.0 - 8.0))
+                        .left(px(12.0))
+                        .px(px(4.0))
+                        .h(px(16.0))
+                        .flex()
+                        .items_center()
+                        .bg(self.page_bg())
+                        .text_size(px(12.0))
+                        .text_color(label_color)
+                        .child(SharedString::from(label)),
+                );
+            }
+            // The text with the caret; an empty field shows the hint after the caret
+            line = line.child(div().text_color(gpui::rgb(k.on_surface)).child(SharedString::from(before.to_string())));
+            if focused && !read_only {
+                line = line.child(div().w(px(2.0)).h(px(20.0)).bg(gpui::rgb(k.primary)));
+            }
+            line = line.child(div().text_color(gpui::rgb(k.on_surface)).child(SharedString::from(after.to_string())));
+            if shown.is_empty() && !hint.is_empty() {
+                line = line.child(div().text_color(gpui::rgb(k.on_surface_variant)).child(SharedString::from(hint)));
+            }
         }
         d.child(line).into_any_element()
     }
@@ -623,8 +805,53 @@ fn weight(w: &str) -> FontWeight {
     }
 }
 
-/// A Flet colour: `#RRGGBB`, `#AARRGGBB`, or one of Material's names
-fn color(s: &str) -> Option<gpui::Rgba> {
+/// A button's colour. Python's Button moves its `color` and `bgcolor` into
+/// `_internals.style` (`button.py`, `before_update`); a style gives one
+/// colour or one per state, and then the "default" one is used.
+fn style_color<'a>(c: &'a Control, name: &str) -> Option<&'a str> {
+    let p = c.get("_internals")?.get("style")?.get(name)?;
+    match p {
+        fletview::Prop::Value(v) => v.as_str(),
+        fletview::Prop::Map(_) => p.get("default")?.as_value()?.as_str(),
+        _ => None,
+    }
+}
+
+/// Whether the system's appearance is dark
+fn is_dark(a: gpui::WindowAppearance) -> bool {
+    matches!(a, gpui::WindowAppearance::Dark | gpui::WindowAppearance::VibrantDark)
+}
+
+/// A control's `expand` as a flex factor: true is 1, a positive number is
+/// itself, anything else is none
+fn expand_of(c: &Control) -> Option<f64> {
+    match c.get_value("expand") {
+        Some(Value::Bool(true)) => Some(1.0),
+        Some(v) => v.as_f64().filter(|n| *n > 0.0),
+        None => None,
+    }
+}
+
+/// `b` laid over `a` at `t` (Material's state layers)
+fn mix(a: gpui::Rgba, b: gpui::Rgba, t: f32) -> gpui::Rgba {
+    gpui::Rgba { r: a.r + (b.r - a.r) * t, g: a.g + (b.g - a.g) * t, b: a.b + (b.b - a.b) * t, a: a.a }
+}
+
+/// Material's shadow for elevation 1 (`kElevationToShadow[1]`)
+fn elevation_1() -> Vec<gpui::BoxShadow> {
+    let shadow = |y: f32, blur: f32, spread: f32, alpha: u32| gpui::BoxShadow {
+        color: gpui::rgba(alpha).into(),
+        offset: gpui::point(px(0.0), px(y)),
+        blur_radius: px(blur),
+        spread_radius: px(spread),
+        inset: false,
+    };
+    vec![shadow(2.0, 1.0, -1.0, 0x00000033), shadow(1.0, 1.0, 0.0, 0x00000024), shadow(1.0, 3.0, 0.0, 0x0000001F)]
+}
+
+/// A Flet colour: `#RRGGBB`, `#AARRGGBB`, one of Material's names, or a
+/// colour role of the theme in use (`ft.Colors.PRIMARY` is "primary")
+fn color(s: &str, k: &Scheme) -> Option<gpui::Rgba> {
     let s = s.trim();
     if let Some(hex) = s.strip_prefix('#') {
         return match hex.len() {
@@ -637,32 +864,52 @@ fn color(s: &str) -> Option<gpui::Rgba> {
         Some((n, a)) => (n.trim(), a.trim().parse::<f32>().ok()),
         None => (s, None),
     };
-    let rgb = match name.to_ascii_lowercase().as_str() {
+    let rgb = match name.to_ascii_lowercase().replace('_', "").as_str() {
         "red" => 0xF44336,
         "pink" => 0xE91E63,
         "purple" => 0x9C27B0,
         "blue" => 0x2196F3,
-        "lightblue" | "light_blue" => 0x03A9F4,
+        "lightblue" => 0x03A9F4,
         "cyan" => 0x00BCD4,
         "teal" => 0x009688,
         "green" => 0x4CAF50,
-        "lightgreen" | "light_green" => 0x8BC34A,
+        "lightgreen" => 0x8BC34A,
         "lime" => 0xCDDC39,
         "yellow" => 0xFFEB3B,
         "amber" => 0xFFC107,
         "orange" => 0xFF9800,
-        "deeporange" | "deep_orange" => 0xFF5722,
+        "deeporange" => 0xFF5722,
         "brown" => 0x795548,
         "grey" | "gray" => 0x9E9E9E,
-        "bluegrey" | "blue_grey" => 0x607D8B,
+        "bluegrey" => 0x607D8B,
         "black" => 0x000000,
         "white" => 0xFFFFFF,
-        "primary" => PRIMARY,
-        "onprimary" | "on_primary" => 0xFFFFFF,
-        "secondary" => 0x625B71,
-        "surface" => 0xFEF7FF,
-        "onsurface" | "on_surface" => 0x1D1B20,
-        "error" => 0xB3261E,
+        "primary" => k.primary,
+        "onprimary" => k.on_primary,
+        "primarycontainer" => k.primary_container,
+        "onprimarycontainer" => k.on_primary_container,
+        "secondary" => k.secondary,
+        "onsecondary" => k.on_secondary,
+        "secondarycontainer" => k.secondary_container,
+        "onsecondarycontainer" => k.on_secondary_container,
+        "tertiary" => k.tertiary,
+        "ontertiary" => k.on_tertiary,
+        "error" => k.error,
+        "onerror" => k.on_error,
+        "errorcontainer" => k.error_container,
+        "surface" => k.surface,
+        "onsurface" => k.on_surface,
+        "onsurfacevariant" => k.on_surface_variant,
+        "surfacecontainerlowest" => k.surface_container_lowest,
+        "surfacecontainerlow" => k.surface_container_low,
+        "surfacecontainer" => k.surface_container,
+        "surfacecontainerhigh" => k.surface_container_high,
+        "surfacecontainerhighest" => k.surface_container_highest,
+        "outline" => k.outline,
+        "outlinevariant" => k.outline_variant,
+        "inversesurface" => k.inverse_surface,
+        "oninversesurface" => k.on_inverse_surface,
+        "shadow" | "scrim" => 0x000000,
         "transparent" => return Some(gpui::rgba(0x00000000)),
         _ => return None,
     };
@@ -774,26 +1021,26 @@ impl Render for FletView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         window.set_window_title(&self.title);
         self.report_size(window);
+        self.report_brightness(window);
         let root = self.tree.root;
-        let page = root.and_then(|r| self.tree.get(r));
-        let bg = page.and_then(|p| p.get_str("bgcolor")).and_then(color).unwrap_or(gpui::rgb(0xFFFFFF));
-        let mut d = div().relative().size_full().bg(bg).text_color(gpui::rgb(0x1D1B20)).text_size(px(TEXT_PX));
+        let k = self.scheme();
+        let mut d = div().relative().size_full().bg(self.page_bg()).text_color(gpui::rgb(k.on_surface)).text_size(px(TEXT_PX));
         if let Some(r) = root {
             // The first view is the page being shown; routes come later
             if let Some(v) = self.tree.children(r, "views").into_iter().next() {
                 d = d.child(self.element(v, Parent::Bounded, cx));
             } else {
-                d = d.child(div().p_4().text_color(gpui::rgb(0x66707A)).child(self.status.clone()));
+                d = d.child(div().p_4().text_color(gpui::rgb(k.on_surface_variant)).child(self.status.clone()));
             }
         } else {
-            d = d.child(div().p_4().text_color(gpui::rgb(0x66707A)).child(self.status.clone()));
+            d = d.child(div().p_4().text_color(gpui::rgb(k.on_surface_variant)).child(self.status.clone()));
         }
         d.child(Ime { view: cx.entity() })
     }
 }
 
 /// Reads from the socket on its own thread and queues what arrives
-fn listen(url: String, queue: Queue) {
+fn listen(url: String, queue: Queue, dark: bool) {
     std::thread::spawn(move || {
         let push = |e: Event| {
             if let Ok(mut q) = queue.lock() {
@@ -802,7 +1049,7 @@ fn listen(url: String, queue: Queue) {
         };
         let result = (|| -> std::io::Result<()> {
             let mut c = Client::connect(&url)?;
-            let r = c.register(page_props(WIDTH as f64, HEIGHT as f64, platform()))?;
+            let r = c.register(page_props(WIDTH as f64, HEIGHT as f64, platform(), if dark { "dark" } else { "light" }))?;
             push(Event::Registered(r, c.sender()));
             loop {
                 push(Event::In(c.next()?));
@@ -822,7 +1069,6 @@ pub fn run(args: Args) {
         eprintln!("pid ファイルに書けません({}): {e}", args.pid_file.display());
     }
     let queue: Queue = Arc::new(Mutex::new(Vec::new()));
-    listen(args.url.clone(), queue.clone());
     application().with_assets(ui::Icons).run(move |cx: &mut App| {
         cx.text_system()
             .add_fonts(vec![std::borrow::Cow::Borrowed(ops::font_data())])
@@ -836,7 +1082,15 @@ pub fn run(args: Args) {
                 ..Default::default()
             },
             move |window, cx| {
-                let view = cx.new(|_| FletView::new());
+                // The page registers with the system's brightness; a later
+                // change (the desktop portal answers after the window opens
+                // on Linux) is written to the Page
+                let dark = is_dark(window.appearance());
+                listen(args.url.clone(), queue.clone(), dark);
+                let view = cx.new(|cx: &mut Context<FletView>| {
+                    cx.observe_window_appearance(window, |_this, _window, cx| cx.notify()).detach();
+                    FletView::new(dark)
+                });
                 // Every 30 ms, what the socket thread queued is applied on the
                 // main thread (the same rule as calc's inlet)
                 let v = view.clone();
