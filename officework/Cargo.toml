@@ -21,6 +21,8 @@ ops = { path = "../ops" }
 face = { path = "../face" }
 # The client side of Flet's protocol (officework as a Flet program's window)
 fletview = { path = "../fletview" }
+# The editing core (cursor, selection, undo, IME) for a Flet TextField
+kumihan = { path = "../engine" }
 # 起動のときの「フォルダを選ぶ画面」だけに使う(writer / calc と同じ版)
 rfd = "0.14"
 # GPUI は crates.io に無いので、版を固定して zed から直に取る(writer / calc と同じ版)

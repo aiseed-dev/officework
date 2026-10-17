@@ -9297,7 +9297,7 @@ df = ws.read_df()                  # 使っている範囲
 
 . この節を書く(2026-10-17。済み)
 . Flet のリポジトリ(Dart の画面側)を読む許可をもらい、PATCH_CONTROL の当て方と登録の手順を写す(2026-10-17。済み。link:docs/sekkei/flet-client.ja.adoc[docs/sekkei/flet-client.ja.adoc]。Python で書いた偽の画面側 `tools/flet_fake_view.py` を本物の Flet のプログラムにつなぎ、登録の応答・部品の木を足す差分・クリックの後の値の差分の実物を取った)
-. 最初の目標は小さく、`Text`・`Column`・`Row`・`TextField`・`Button` と表計算の 6 つで、変えていない Flet のサンプルが officework の窓で動くこと
+. 最初の目標は小さく、`Text`・`Column`・`Row`・`TextField`・`Button` と表計算の 6 つで、変えていない Flet のサンプルが officework の窓で動くこと(2026-10-17。`fletview` クレート、officework の起動、5 部品の描画まで進めた。入力のフォームは本物の Flet と同じ並びで出る。`expand` の縦の広がりが残り、クリックと打鍵の実機の確かめは道具待ち。発注者の指示で、ここから Opus が引き継ぐ。状態は link:docs/sekkei/flet-client.ja.adoc[設計書]の「段 3 の状態と引き継ぎ」)
 . builder の 20 に広げる
 
 === Opus の評価への答え(2026-10-17)

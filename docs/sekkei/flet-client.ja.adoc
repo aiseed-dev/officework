@@ -348,7 +348,7 @@ ops の言葉と同じです。これで「表示は正確に、編集は薄く�
   プログラムを起動し、窓の題「fake client test」と Page / View / Column / Text / Button /
   TextField の並びが出て、Python を止めると窓が閉じるのを撮って確かめた)
 . 描く: Page / View / Column / Row / Text / Button / TextField を gpui で。
-  イベントと UPDATE_CONTROL_PROPS
+  イベントと UPDATE_CONTROL_PROPS(2026-10-17。途中。下の「段 3 の状態と引き継ぎ」)
 . 表計算の部品(名前と属性は決め待ち。本物の Flet では「絵の表」の部品が同じ名前を受ける)
 . builder の 20 へ広げる。見積もりは Opus の指摘どおり、試験を含めて 1.5 倍を見込む
 
@@ -360,3 +360,56 @@ ops の言葉と同じです。これで「表示は正確に、編集は薄く�
   `client/lib/main.dart`(起動の引数)
 * Flet 1.0.4 の Python: `flet/messaging/protocol.py`、`flet_socket_server.py`、
   `session.py`、`flet_desktop/__init__.py`
+
+== 段 3 の状態と引き継ぎ(2026-10-17。Fable から Opus へ)
+
+発注者「動作したら管理者の Opus に任せたらどうですか」。動く所まで固めてコミットし、残りを
+ここに書きます。
+
+=== できていること(`officework/src/flet.rs`)
+
+* Page(`bgcolor`)、View(`padding`・`spacing`・揃え)、Column / Row(`spacing`・`alignment`・
+  交差軸の揃え・`tight`・`scroll`)、Text(`value`・`size`・`weight`・`italic`・`color`・`bgcolor`・
+  `text_align`・`no_wrap`)、Button(`content`・`color`・`bgcolor`・`disabled`。`click` を送る)、
+  TextField(`label`・`hint_text`・`password`・`read_only`・`value`。エンジンの `kumihan::Editor` で
+  編集し、`ui::handler` 経由で IME を受ける。`change`(値つき)・`submit`(値つき)・`focus` を
+  送り、値を UPDATE_CONTROL_PROPS で Python に写す)。
+* 共通: `width`・`height`・`expand`(親が Column / Row / View のとき)・`opacity`・`visible`・
+  `disabled`。知らない部品は「名前(未対応)」と出す。
+* 窓の大きさを Page の `width`・`height` に書き、`resize` を送る(Python 側で
+  `page.on_resize` が「800 600」を受け取るのを確かめた)。
+* INVOKE_METHOD は「未対応」の `error` を返す(Python を待たせない)。
+* Flutter の大きさの決まりを `layout` に写した。親が与える余地が有界な軸だけ、部品はその余地を
+  取る(Row と TextField は幅、Column は高さ。Column の中の Column は高さが無界なので中身の高さ)。
+  `wants_full_width` / `wants_full_height` がその判断で、Row や TextField を持つ Column は幅を取る。
+* 実機(この Linux、XWayland)で確かめた物: `test/out/flet/app_form.py`(入力のフォーム。
+  `form4.png`)は本物の Flet と同じ並びになった(入力欄が幅いっぱい、ボタンが右寄せ)。
+  `app_button.py`(段 2 の 3 部品)も出る。
+
+=== 残っていること
+
+. *`expand` が縦に効かない。* `test/out/flet/app_layout.py`(左に幅 160 のメニュー、右に
+  `expand=True` の Row、その中に `expand=3` と `expand=1` の Column)で、Row が View の高さ
+  いっぱいにならず、中身の高さで止まる(`layout5.png`)。本物の Flet では Row が窓の高さを
+  取り、3 対 1 に分かれる(`real_app_layout.py.png`)。疑っている所: 包みの div に
+  `h_full` と `flex_basis(0) + flex_grow` を両方付けている所と、View が `size_full` の flex 列で
+  その子の百分率の高さが解けていない所。`gpui::Styled` の `flex_grow` と `h_full` の組み合わせを
+  小さな例で確かめるのが早い。
+. *クリックと打鍵を機械から送る道具が無い。* この機械には `xdotool`・`xte`・python-xlib が無く、
+  ボタンの `click` と入力欄の `change` / `submit` は実機で確かめていない(コードは
+  `fletview` の試験と同じ `send_event` を使う)。python-xlib(PyPI、純 Python、約 400 KB)を
+  天気の venv に入れれば XTEST で送れる。入れるには発注者の許可が要る。
+. *本物の Flet と並べて比べる手順。* `~/.flet/client/flet-desktop-light-1.0.0/flet/flet` が
+  本物の画面側で、`FLET_VIEW_PATH` にこれへのシンボリックリンク `flet` を置いたフォルダーを
+  指し、`env -u WAYLAND_DISPLAY GDK_BACKEND=x11 DISPLAY=:0` で起動すると X11 に出る
+  (`XDG_RUNTIME_DIR` を替えると GTK が display を開けない)。撮るのは `test/out/flet/shot.sh <pid>`
+  (`xwd` + `xwd2png.py`)。本物は窓の飾りごと撮れる。
+. *見た目の違い。* 本物はこの機械の設定で暗い配色(`platform_brightness` が dark)になり、
+  Button は Material 3 の tonal(灰色の地)。こちらは明るい配色と primary 色の塗りで固定。
+  登録のときの `platform_brightness` と Page の `theme_mode` を読んで切り替える。
+. *Button の `content` が部品のとき*(アイコンつきなど)は、その部品を描く。`icon` は未対応。
+. *TextField の `blur`*(焦点が外れたとき)は送っていない。`selection_change` も未対応。
+  複数行(`multiline`)も未対応。
+. *4 つの定型のうち 3 と 4*(見出し + `ListView`、`expand` の入れ子)は、1 の `expand` が
+  直ってから。`ListView` は未対応の部品。
+. 段 4(表計算の部品の名前と属性)と段 5(builder の 20 へ)。
