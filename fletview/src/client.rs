@@ -1,12 +1,15 @@
 //! **A client on a socket**: connects to the page URL a Flet program hands
-//! over (`flet <url> <pid file>`), registers, keeps the tree up to date from
-//! the patches, and sends events, property updates and method results.
+//! over (`flet <url> <pid file>`), registers, reads what Python sends, and
+//! sends events, property updates and method results.
 //!
-//! The calls block on the socket, so the gpui side runs them on a thread of
-//! their own and hands the results over (the tree is plain data).
+//! Reading blocks, so the app reads on a thread of its own ([`Client::next`])
+//! and applies the patches to its [`Tree`] where it draws. Sending goes
+//! through a [`Sender`], a clone of the socket's writing half behind a lock,
+//! so the drawing side sends events while the reading thread waits.
 
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
+use std::sync::{Arc, Mutex};
 
 use crate::message::{
     Action, ControlEvent, InvokeRequest, InvokeResponse, Message, PatchControl, RegisterRequest, RegisterResponse,
@@ -20,6 +23,16 @@ enum Stream {
     Tcp(TcpStream),
     #[cfg(unix)]
     Unix(std::os::unix::net::UnixStream),
+}
+
+impl Stream {
+    fn try_clone(&self) -> io::Result<Stream> {
+        Ok(match self {
+            Stream::Tcp(s) => Stream::Tcp(s.try_clone()?),
+            #[cfg(unix)]
+            Stream::Unix(s) => Stream::Unix(s.try_clone()?),
+        })
+    }
 }
 
 impl Read for Stream {
@@ -53,9 +66,9 @@ impl Write for Stream {
 /// What arrived from Python
 #[derive(Debug)]
 pub enum Incoming {
-    /// A patch was applied; these controls changed and are drawn again
-    Patched { root: ControlId, changed: Vec<ControlId> },
-    /// Python asks for a control's method; answer with [`Client::invoke_result`]
+    /// A patch to apply to the tree with [`Tree::apply_patch`]
+    Patch(PatchControl),
+    /// Python asks for a control's method; answer with [`Sender::invoke_result`]
     Invoke(InvokeRequest),
     Crashed(String),
     /// A line of Python's output (Pyodide only)
@@ -66,9 +79,39 @@ pub enum Incoming {
     Other(Message),
 }
 
+/// The writing half; clone it freely
+#[derive(Clone)]
+pub struct Sender(Arc<Mutex<Stream>>);
+
+impl Sender {
+    fn send(&self, m: Message) -> io::Result<()> {
+        let mut s = self.0.lock().map_err(|_| io::Error::other("送る側の錠が壊れています"))?;
+        write_message(&mut *s, &m.to_value())
+    }
+
+    /// Sends an event of a control (`name` without `on_`)
+    pub fn send_event(&self, target: ControlId, name: &str, data: Value) -> io::Result<()> {
+        self.send(Message::new(Action::ControlEvent, ControlEvent { target, name: name.to_string(), data }.to_value()))
+    }
+
+    /// Writes properties the client changed back to Python's control. The
+    /// caller puts the same into its tree ([`Tree::update`]).
+    pub fn update_props(&self, id: ControlId, props: Value) -> io::Result<()> {
+        self.send(Message::new(Action::UpdateControlProps, UpdateProps { id, props }.to_value()))
+    }
+
+    /// Answers an [`Incoming::Invoke`]
+    pub fn invoke_result(&self, req: &InvokeRequest, result: Value, error: Option<String>) -> io::Result<()> {
+        self.send(Message::new(
+            Action::InvokeMethod,
+            InvokeResponse { control_id: req.control_id, call_id: req.call_id.clone(), result, error }.to_value(),
+        ))
+    }
+}
+
 pub struct Client {
-    stream: Stream,
-    pub tree: Tree,
+    reader: Stream,
+    sender: Sender,
     pub session_id: Option<String>,
 }
 
@@ -101,7 +144,7 @@ pub fn page_props(width: f64, height: f64, platform: &str) -> Value {
 impl Client {
     /// Connects to `tcp://host:port` or a Unix socket path
     pub fn connect(url: &str) -> io::Result<Client> {
-        let stream = if let Some(addr) = url.strip_prefix("tcp://") {
+        let reader = if let Some(addr) = url.strip_prefix("tcp://") {
             Stream::Tcp(TcpStream::connect(addr)?)
         } else {
             #[cfg(unix)]
@@ -113,63 +156,47 @@ impl Client {
                 return Err(io::Error::other(format!("この OS では Unix ソケットにつなげません: {url}")));
             }
         };
-        Ok(Client { stream, tree: Tree::new(), session_id: None })
+        let writer = reader.try_clone()?;
+        Ok(Client { reader, sender: Sender(Arc::new(Mutex::new(writer))), session_id: None })
     }
 
-    fn send(&mut self, m: Message) -> io::Result<()> {
-        write_message(&mut self.stream, &m.to_value())
+    pub fn sender(&self) -> Sender {
+        self.sender.clone()
     }
 
-    fn read_message(&mut self) -> io::Result<Packet> {
-        read_packet(&mut self.stream)
-    }
-
-    /// Registers with Python and takes the Page tree. Returns Python's error
-    /// text as an error.
+    /// Registers with Python. The response carries the whole Page; put it
+    /// in a tree with [`Tree::set_root`] (or [`Tree::update`] when
+    /// reconnecting). Python's error text comes back as an error.
     pub fn register(&mut self, page: Value) -> io::Result<RegisterResponse> {
-        self.send(Message::new(
+        self.sender.send(Message::new(
             Action::RegisterClient,
             RegisterRequest { session_id: self.session_id.clone(), page_name: String::new(), page }.to_value(),
         ))?;
         loop {
-            match self.read_message()? {
-                Packet::Message(v) => {
-                    let m = Message::from_value(v).map_err(io::Error::other)?;
-                    if m.action != Action::RegisterClient {
-                        continue;
-                    }
-                    let r = RegisterResponse::from_value(&m.body).map_err(io::Error::other)?;
-                    if let Some(e) = &r.error {
-                        return Err(io::Error::other(format!("登録を断られました: {e}")));
-                    }
-                    self.session_id = r.session_id.clone();
-                    match self.tree.root {
-                        None => {
-                            self.tree.set_root(&r.page_patch).map_err(io::Error::other)?;
-                        }
-                        Some(root) => {
-                            self.tree.update(root, &r.page_patch).map_err(io::Error::other)?;
-                        }
-                    }
-                    return Ok(r);
+            if let Packet::Message(v) = read_packet(&mut self.reader)? {
+                let m = Message::from_value(v).map_err(io::Error::other)?;
+                if m.action != Action::RegisterClient {
+                    continue;
                 }
-                _ => continue,
+                let r = RegisterResponse::from_value(&m.body).map_err(io::Error::other)?;
+                if let Some(e) = &r.error {
+                    return Err(io::Error::other(format!("登録を断られました: {e}")));
+                }
+                self.session_id = r.session_id.clone();
+                return Ok(r);
             }
         }
     }
 
-    /// Waits for the next thing from Python and applies it to the tree
+    /// Waits for the next thing from Python. An `UnexpectedEof` means
+    /// Python closed the socket (the program ended).
     pub fn next(&mut self) -> io::Result<Incoming> {
         loop {
-            return Ok(match self.read_message()? {
+            return Ok(match read_packet(&mut self.reader)? {
                 Packet::Message(v) => {
                     let m = Message::from_value(v).map_err(io::Error::other)?;
                     match m.action {
-                        Action::PatchControl => {
-                            let p = PatchControl::from_value(&m.body).map_err(io::Error::other)?;
-                            let changed = self.tree.apply_patch(p.id, &p.patch).map_err(io::Error::other)?;
-                            Incoming::Patched { root: p.id, changed }
-                        }
+                        Action::PatchControl => Incoming::Patch(PatchControl::from_value(&m.body).map_err(io::Error::other)?),
                         Action::InvokeMethod => Incoming::Invoke(InvokeRequest::from_value(&m.body).map_err(io::Error::other)?),
                         Action::SessionCrashed => Incoming::Crashed(SessionCrashed::from_value(&m.body).message),
                         Action::PythonOutput => Incoming::Output {
@@ -184,25 +211,13 @@ impl Client {
             });
         }
     }
+}
 
-    /// Sends an event of a control (`name` without `on_`)
-    pub fn send_event(&mut self, target: ControlId, name: &str, data: Value) -> io::Result<()> {
-        self.send(Message::new(Action::ControlEvent, ControlEvent { target, name: name.to_string(), data }.to_value()))
-    }
-
-    /// Writes properties the client changed back to Python's control (and
-    /// into the tree here)
-    pub fn update_props(&mut self, id: ControlId, props: Vec<(&str, Value)>) -> io::Result<()> {
-        let v = Value::map(props);
-        self.tree.update(id, &v).map_err(io::Error::other)?;
-        self.send(Message::new(Action::UpdateControlProps, UpdateProps { id, props: v }.to_value()))
-    }
-
-    /// Answers an [`Incoming::Invoke`]
-    pub fn invoke_result(&mut self, req: &InvokeRequest, result: Value, error: Option<String>) -> io::Result<()> {
-        self.send(Message::new(
-            Action::InvokeMethod,
-            InvokeResponse { control_id: req.control_id, call_id: req.call_id.clone(), result, error }.to_value(),
-        ))
+/// Applies what arrived to a tree. Returns the controls that changed, or
+/// None when it was not a patch.
+pub fn apply(tree: &mut Tree, incoming: &Incoming) -> Result<Option<Vec<ControlId>>, String> {
+    match incoming {
+        Incoming::Patch(p) => tree.apply_patch(p.id, &p.patch).map(Some),
+        _ => Ok(None),
     }
 }

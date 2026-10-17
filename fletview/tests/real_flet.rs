@@ -17,7 +17,7 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use fletview::client::page_props;
-use fletview::{Client, Incoming, Value};
+use fletview::{Client, Incoming, Tree, Value};
 
 const APP: &str = r#"
 import flet as ft
@@ -92,23 +92,26 @@ fn a_real_flet_program_registers_patches_and_answers_a_click() {
         let mut c = Client::connect(&url).expect("つなげない");
         let r = c.register(page_props(800.0, 600.0, "linux")).expect("登録できない");
         assert!(r.session_id.is_some());
-        let root = c.tree.root.expect("Page が無い");
-        assert_eq!(c.tree.get(root).unwrap().ctype, "Page");
+        let mut tree = Tree::new();
+        let root = tree.set_root(&r.page_patch).expect("Page が読めない");
+        assert_eq!(tree.get(root).unwrap().ctype, "Page");
+        let sender = c.sender();
 
         let mut clicked = false;
         let deadline = Instant::now() + Duration::from_secs(10);
         loop {
             assert!(Instant::now() < deadline, "待ちきれませんでした");
-            match c.next().expect("受け取れない") {
-                Incoming::Patched { .. } => {
+            let incoming = c.next().expect("受け取れない");
+            match &incoming {
+                Incoming::Patch(_) => {
+                    fletview::client::apply(&mut tree, &incoming).expect("差分が当てられない");
                     if !clicked {
-                        if let Some(b) = c.tree.find_type("Button") {
+                        if let Some(b) = tree.find_type("Button") {
                             assert!(b.has_event("click"));
-                            let id = b.id;
-                            c.send_event(id, "click", Value::Nil).unwrap();
+                            sender.send_event(b.id, "click", Value::Nil).unwrap();
                             clicked = true;
                         }
-                    } else if c.tree.find_type("Text").is_some_and(|t| t.get_str("value") == Some("押した")) {
+                    } else if tree.find_type("Text").is_some_and(|t| t.get_str("value") == Some("押した")) {
                         break;
                     }
                 }
@@ -116,8 +119,8 @@ fn a_real_flet_program_registers_patches_and_answers_a_click() {
                 _ => {}
             }
         }
-        assert_eq!(c.tree.get(root).unwrap().get_str("title"), Some("fletview test"));
-        assert!(c.tree.find_type("TextField").is_some());
+        assert_eq!(tree.get(root).unwrap().get_str("title"), Some("fletview test"));
+        assert!(tree.find_type("TextField").is_some());
     });
 
     let _ = app.kill();

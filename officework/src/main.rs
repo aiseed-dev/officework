@@ -922,7 +922,16 @@ fn mac_menus(cx: &mut App) {
     ]);
 }
 
+mod flet;
+
 fn main() {
+    // Started by a Flet program as its client (`officework <url> <pid file>`):
+    // the window is the page's, not a folder's (docs/sekkei/flet-client.ja.adoc)
+    let argv: Vec<String> = std::env::args().collect();
+    if let Some(a) = flet::parse(&argv) {
+        flet::run(a);
+        return;
+    }
     // The ribbon settings file must be read before the ribbon is first built
     face::profile::load();
     let arg = std::env::args().nth(1).map(std::path::PathBuf::from);

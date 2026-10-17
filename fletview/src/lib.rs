@@ -19,7 +19,7 @@ pub mod msgpack;
 pub mod tree;
 pub mod wire;
 
-pub use client::{Client, Incoming};
+pub use client::{Client, Incoming, Sender};
 pub use message::{Action, Message};
 pub use msgpack::Value;
 pub use tree::{Control, ControlId, Prop, Tree};

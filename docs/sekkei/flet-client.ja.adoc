@@ -338,6 +338,15 @@ ops の言葉と同じです。これで「表示は正確に、編集は薄く�
 . `fletview`: 枠と msgpack(拡張型つき)、7 つのメッセージ、部品の木と差分の当て方。
   本物の Flet を相手にした試験(2026-10-17。済み。`fletview/`。msgpack は `rmp` の印だけを使い、読み手は自前。試験 `fletview/tests/real_flet.rs` は `FLET_PYTHON`(無ければ `python3`)の flet を相手に、登録 → 差分 → クリック → 値の差分まで通す。flet が無い機械では飛ばしたと言う)
 . 起動: `FLET_VIEW_PATH` の形で officework が画面側として起動し、pid ファイルを書く
+  (2026-10-17。済み。`officework/src/flet.rs`。`officework <URL> <pid ファイル>` で
+  起動されると、pid を書き、別のスレッドでつないで登録し、届いた差分を 30 ms ごとに
+  主のスレッドで木に当てる。窓の題は Page の `title`。Python が終わる(ソケットの EOF)と
+  窓も終わる。この段では部品を描かず、木を 1 行ずつ並べて出す。動かし方は、
+  `flet` という名前のシンボリックリンクを officework に向けて置いたフォルダーを
+  `FLET_VIEW_PATH` にする: `ln -s target/debug/officework /tmp/view/flet`、
+  `FLET_VIEW_PATH=/tmp/view python app.py`。この Mac(Linux)で、Text・Button・TextField の
+  プログラムを起動し、窓の題「fake client test」と Page / View / Column / Text / Button /
+  TextField の並びが出て、Python を止めると窓が閉じるのを撮って確かめた)
 . 描く: Page / View / Column / Row / Text / Button / TextField を gpui で。
   イベントと UPDATE_CONTROL_PROPS
 . 表計算の部品(名前と属性は決め待ち。本物の Flet では「絵の表」の部品が同じ名前を受ける)
