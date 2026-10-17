@@ -261,6 +261,43 @@ back.dtypes                         # [String, Int64, Float64, Float64]
 
 集計・結合・絞り込みは polars 側でやるのが分業の流儀(シートは帳票の形、データの計算は Python)。
 
+=== numpy の配列 — `write_array` と `read_array`
+
+配列も 1 回の呼び出しで出し入れします。`write_array` は numpy の配列か、リストの
+リストを受け取ります。numpy は import せず、数値は配列の中身をそのまま読みます。
+
+[source,python]
+----
+import numpy as np
+s.write_array(np.array([[1.5, 2.0], [3.0, np.nan]]), "A1")   # (2, 2)
+s.write_array(np.arange(3), "D1")                            # (3, 1)。縦 1 列、D1:D3
+s.write_array(["甲", "乙"], "E1")                             # (2, 1)。リストも縦 1 列
+
+s.read_array("A1:B2")      # array([[1.5, 2. ], [3. , nan]])。float64
+s.read_array("D1:D3")      # array([[0], [1], [2]])。int64
+s.read_array("A1:E2")      # 混ざると object の配列([[1.5, 2, None, 0, '甲'], …])
+----
+
+`s.write_array(arr, at="A1")`
+
+* 2 次元の配列は `at` から行 × 列に置きます。1 次元の配列(と平らなリスト)は縦 1 列です。
+* 数値(int と float。大きさは問いません)と論理値は配列からそのまま読みます。
+  `NaN` は空のセルです。文字列、object、`datetime64`、リストは `s["A1"] = 値` と同じ
+  変換を通るので、`None` は空のセル、`datetime64` の日付には日付の表示形式が付きます。
+* セルの書式は据え置きです。再計算は 1 回です。返りは置いた `(行数, 列数)` です。
+  3 次元以上の配列は `ValueError` で断ります。
+
+`s.read_array(range=None)`
+
+* `range` は A1 形式の範囲です。省くと、使っている範囲を読みます。見出しの行は
+  ありません。範囲のセルが全部、配列の要素です。
+* 数値だけなら `float64`(空のセルは `NaN`)、全部が整数で空のセルが無ければ `int64`、
+  論理値だけなら `bool`、それ以外は Python の値から作った配列です(リストのリストを
+  `numpy.array` に渡すので、文字列なら文字列の配列、混ざれば object の配列。空のセルは
+  `None`)。
+* numpy が無いときは、数値と論理値は形つきの `memoryview`、それ以外はリストのリストを
+  返します。
+
 === ブロック — 番号で文書を読み書きする
 
 文書は見出し・段落・表という**ブロック**の並びです。
@@ -509,6 +546,38 @@ wb.add_named_style(...)                       # セルのスタイル(名前付�
 
 データの入力規則・名前付き範囲・グループ化・画像(`add_image`)・ヘッダー/フッター(奇数・偶数・先頭ページの別まで)・1904 日付システム・`move_range`(数式の参照が付いて動く)も同じ流儀で。
 *何がどこまであるかは対応表を見てください。* 全件の判定と理由は link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc] にあります(作る側の記録で、日本語だけです)。
+
+=== openpyxl のプログラムをそのまま動かす — `officework.openpyxl`
+
+`officework.openpyxl` は、openpyxl の名前を openpyxl と同じ場所に並べた
+モジュールです。`Workbook`、`load_workbook`、`open` と、`styles`、`utils`(`utils.cell` も)、
+`chart`、`workbook`(`workbook.defined_name` も)、`worksheet.table`、
+`worksheet.datavalidation`、`worksheet.worksheet`、`comments`、`drawing.image` があります。
+openpyxl 向けに書いたプログラムは、import の行をこのモジュールにすれば動きます。
+
+[source,python]
+----
+from officework.openpyxl import Workbook, load_workbook
+from officework.openpyxl.styles import Font
+----
+
+1 行も変えずに動かすときは、そのプログラムを import する前に `install()` を呼びます。
+`sys.modules` に `openpyxl` の名前でこのモジュールを入れるので、その後の
+`import openpyxl` は officework を読みます。本物の openpyxl が入っていても同じです。
+`uninstall()` で元に戻します。
+
+[source,python]
+----
+import officework.openpyxl
+officework.openpyxl.install()
+import openpyxl                      # これは officework です
+from openpyxl.styles import Font
+wb = openpyxl.Workbook()
+----
+
+officework に無い名前はここにもありません。その行で、いつもの `ImportError` か
+`AttributeError` で止まります。openpyxl 3.0 の書き方の `defined_names.definedName` と
+`defined_names.append` も受けます。
 
 === xlwings の書き方(officework.calc — 動いている calc を操る)
 
@@ -1007,6 +1076,46 @@ def 集計(r, 上限, 種別):        # r = [[行1列1, 行1列2], [行2列1, �
 *セル関数から AI を呼ばないでください。* 式は再計算のたびに走るので、答えが揺れ、何回走ったかも見えません。
 AI はマクロ(`ribbon/` か `plugins/`)から呼び、結果を普通の値としてセルに置きます。
 手元で動くモデルでも同じです。
+
+=== ライブラリーを使うプログラムのセル関数 — `sheet.register`
+
+エンジンを自分の Python の中で動かすとき(`officework.sheet`。calc の窓は無い)、
+セルの関数は登録した関数です。ブックはコードを持ちません。走るのは、プログラムが
+登録した関数だけです。
+
+[source,python]
+----
+from officework import sheet
+def 倍(x):
+    return x * 2
+sheet.register(倍)            # '倍'。名前は関数の __name__
+s["A1"] = 21
+s["B1"] = "=倍(A1)"
+s["B1"].value                 # 42
+s["A1"] = 5
+s["B1"].value                 # 10。普通の数式と同じに計算し直す
+----
+
+`sheet.register(f, name=None)`
+
+* `name` を省くと `f.__name__` です。名前は数式の読み方と同じに照合します(ASCII は
+  大文字と小文字を区別しない。日本語はそのまま)。同じ名前をもう一度登録すると
+  置き換わります。返りは名前です。
+* 登録は、その Python のプロセスの中の全部のブックで効きます。
+* 引数は計算した値で届きます。数値(整数は `int`)、文字列、`True` / `False`、空のセルは
+  `None` です。範囲は、左から右、上から下の順に、セルごとの引数に平らになります
+  (`=連結(A2:A3, "!")` は `連結("甲", "乙", "!")` を呼びます)。
+* 関数は値を 1 つ返します。数値、文字列、論理値、日付か日時、空のセルなら `None` です。
+  リストを返してもスピルしません。
+* 例外は、セルに `#PY!` とメッセージで出ます(`#PY! ZeroDivisionError: division by zero`)。
+* 関数の中でブックを読み書きしないでください。再計算の最中です。呼ぶと
+  `RuntimeError` で断ります。
+* 組み込みの関数名(SUM など)が優先です。同じ名前を登録しても呼ばれません。
+* 登録より前に書いた数式は `#NAME?` のままです。登録した後に `b.recalc()` を呼びます。
+
+`sheet.unregister(名前)` は関数を外し、あったかどうかを返します。
+`sheet.functions()` は独自の関数の名前の一覧です。officework に付いている物
+(`ZONED`、`TO_ZONE`)が先に並びます。
 
 == writer のマクロ(d = python-docx)
 

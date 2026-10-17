@@ -196,6 +196,46 @@ Column types are placed like this:
 
 Aggregation, joins, and filtering belong on the polars side — that's the division of labor (the sheet is the form; computation is Python's job).
 
+=== numpy arrays — `write_array` and `read_array`
+
+An array goes in and out in one call too. `write_array` takes a numpy array or a
+list of lists; numpy is not imported, numbers are read from the array's buffer.
+
+[source,python]
+----
+import numpy as np
+s.write_array(np.array([[1.5, 2.0], [3.0, np.nan]]), "A1")   # (2, 2)
+s.write_array(np.arange(3), "D1")                            # (3, 1): one column, D1:D3
+s.write_array(["甲", "乙"], "E1")                             # (2, 1): a list is one column too
+
+s.read_array("A1:B2")      # array([[1.5, 2. ], [3. , nan]]), float64
+s.read_array("D1:D3")      # array([[0], [1], [2]]), int64
+s.read_array("A1:E2")      # a mix: array of objects ([[1.5, 2, None, 0, '甲'], …])
+----
+
+`s.write_array(arr, at="A1")`
+
+* A two-dimensional array fills rows × columns from `at`. A one-dimensional array
+  (or a flat list) is one column.
+* Numbers (int and float of any size) and booleans are read from the array's
+  buffer. `NaN` becomes an empty cell. Strings, objects, `datetime64` and lists go
+  through the same conversion as `s["A1"] = value`, so `None` is an empty cell and a
+  `datetime64` date gets the date format.
+* Cell formats stay as they are. The sheet is recalculated once. The return value
+  is `(rows, columns)` written. An array with three or more dimensions is refused
+  with `ValueError`.
+
+`s.read_array(range=None)`
+
+* `range` is an A1 range; without it the used range is read. There is no heading
+  row: every cell of the range is an element.
+* Numbers only → `float64` (empty cells become `NaN`); all whole numbers with no
+  empty cell → `int64`; logical values only → `bool`; anything else → an array made
+  from the Python values (`numpy.array` of a list of lists, so text gives a string
+  array and a mix gives objects, with `None` for empty cells).
+* Without numpy, numbers and logical values come back as a `memoryview` with the
+  shape, and the rest as a list of lists.
+
 === Filling a form book (a resume, say)
 
 A fixed form such as a resume is written as two books: the form, whose cells hold marks such as `{氏名}` where values go, and the data, with two-column (name, value) tables and tables with a header row. The aiai repository's `rirekisho` folder has an example, with two forms: the Ministry's (`履歴書-厚労省.form.adoc`) and the JIS layout (`履歴書-JIS.form.adoc`). The link:forms-manual.adoc[forms manual] has every mark and the data's shape.
@@ -529,6 +569,38 @@ wb.add_named_style(...)                       # named cell styles are carried to
 
 Data validation, defined names, outline groups, pictures (`add_image`), headers/footers (down to odd/even/first pages), the 1904 date system, and `move_range` (references follow the move) all work the same way. *The canonical list of what exists* is link:../pysheet-gokan.ja.adoc[pysheet-gokan.ja.adoc], a working record kept in Japanese (every item with a verdict and a reason).
 
+=== Running an openpyxl program as it is — `officework.openpyxl`
+
+`officework.openpyxl` lays out openpyxl's names in openpyxl's places: `Workbook`,
+`load_workbook`, `open`, and the modules `styles`, `utils` (with `utils.cell`),
+`chart`, `workbook` (with `workbook.defined_name`), `worksheet.table`,
+`worksheet.datavalidation`, `worksheet.worksheet`, `comments` and `drawing.image`.
+A program written for openpyxl runs when its import lines name this module:
+
+[source,python]
+----
+from officework.openpyxl import Workbook, load_workbook
+from officework.openpyxl.styles import Font
+----
+
+To run a program without changing a line, call `install()` before it is imported.
+It puts the module into `sys.modules` under the name `openpyxl`, so every
+`import openpyxl` after that gets officework, even when the real openpyxl is
+installed. `uninstall()` takes it out again.
+
+[source,python]
+----
+import officework.openpyxl
+officework.openpyxl.install()
+import openpyxl                      # this is officework now
+from openpyxl.styles import Font
+wb = openpyxl.Workbook()
+----
+
+A name officework does not have is not there either; the program stops at that
+line with the usual `ImportError` or `AttributeError`. `defined_names.definedName`
+and `defined_names.append`, the openpyxl 3.0 way, are accepted as well.
+
 === The xlwings vocabulary (officework.calc — a running calc)
 
 Reference arithmetic is in. *The arithmetic works even without a connection* (measured):
@@ -676,6 +748,48 @@ def aggregate(r, limit, kind):   # r = [[r1c1, r1c2], [r2c1, …], …]
 *Do not call an AI from a cell function.* Formulas run on every recalculation, so the answer drifts and you cannot see how often it ran.
 Call the AI from a macro (`ribbon/` or `plugins/`) and write the result into the cell as an ordinary value.
 The same holds for a model running on your own machine.
+
+=== Cell functions in a program that uses the library — `sheet.register`
+
+When the engine runs inside your own Python (`officework.sheet`, no calc window), a
+cell function is a function you register. The workbook carries no code: only what
+your program registered runs.
+
+[source,python]
+----
+from officework import sheet
+def 倍(x):
+    return x * 2
+sheet.register(倍)            # '倍' — the name is the function's __name__
+s["A1"] = 21
+s["B1"] = "=倍(A1)"
+s["B1"].value                 # 42
+s["A1"] = 5
+s["B1"].value                 # 10 — recalculated like any formula
+----
+
+`sheet.register(f, name=None)`
+
+* `name` defaults to `f.__name__`; it is matched the way formulas are read (ASCII
+  without regard to case, Japanese as it is). A second registration with the same
+  name replaces the first. The return value is the name.
+* The registration lasts for the Python process, for every workbook in it.
+* Arguments arrive as calculated values: numbers (an integer as `int`), text, `True`
+  / `False`, `None` for an empty cell. A range is flattened into one argument per
+  cell, left to right and top to bottom (`=連結(A2:A3, "!")` calls `連結("甲", "乙", "!")`).
+* The function returns one value: a number, text, a logical value, a date or
+  date-time, or `None` for an empty cell. A list does not spill here.
+* An exception shows in the cell as `#PY!` followed by the message
+  (`#PY! ZeroDivisionError: division by zero`).
+* Do not read or write the workbook inside the function; it is being recalculated.
+  Such a call is refused with `RuntimeError`.
+* A built-in name (SUM and friends) wins over a registered one.
+* A formula written before its function was registered shows `#NAME?`; call
+  `b.recalc()` after registering.
+
+`sheet.unregister(name)` removes a function and returns whether there was one.
+`sheet.functions()` lists the names of the custom functions, the ones that come
+with officework (`ZONED`, `TO_ZONE`) first.
 
 == A misspelt name is refused on the spot
 
